@@ -5,9 +5,14 @@ options {
 }
 
 start
-  : sourceText EOF
+  : expr EOF
+  ;
+  
+expr:
+  expr BINARY_OP expr # BinaryExpr
+  | sourceText       # SoleExpr
   ;
 
 sourceText
-  : (idents+=IDENTIFIER)*
+  : IDENTIFIER
   ;
