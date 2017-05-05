@@ -8,6 +8,7 @@ import java.io.File
 class AParser(path: String) {
 
   def loadFile(filename:String):String = {
+    println(filename)
     val bufferedSource = Source.fromFile(filename)
     val code = bufferedSource.mkString
     bufferedSource.close
@@ -15,8 +16,8 @@ class AParser(path: String) {
   }
   
   object myVisitor extends antlr4.VParserBaseVisitor[String] {
-    override def visitSourceText(ctx: antlr4.VParser.SourceTextContext) = {
-      println(ctx.IDENTIFIER)
+    override def visitBinaryExpr(ctx: antlr4.VParser.BinaryExprContext) = {
+      //println(ctx.binary_op) TODO why does this print out a long list of stuff?
       visitChildren(ctx)
       "test"
     }
@@ -24,7 +25,7 @@ class AParser(path: String) {
 
   val tokenStream = { 
     val inputStream = new ANTLRInputStream(loadFile(path))
-    inputStream.name = path
+    inputStream.name = path + '\n'  // TODO why have error messages stopped reporting the input stream?
     val lexer = new antlr4.VLexer(inputStream)
     val tokenStream = new CommonTokenStream(lexer)
     tokenStream.fill()
@@ -35,6 +36,10 @@ class AParser(path: String) {
     val parser = new antlr4.VParser(tokenStream)
     val parseTree = parser.start()
     myVisitor.visit(parseTree)
+    val errCount = parser.getNumberOfSyntaxErrors()
+    if (errCount > 0) {
+      println(errCount)
+    }
     parseTree
   }
 

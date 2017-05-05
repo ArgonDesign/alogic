@@ -11,9 +11,7 @@ INTTYPE: 'i' [0-9]+;
   
 BOOL: 'bool';
   
-TICKNUM: '\'' [bdhx] [0-9a-fA-F_]+ ;
-
-NUMBER: [0-9_]+;
+TICKNUM: '\'' 's'? [bdhx] [0-9a-fA-F_]+ ;
 
 // TODO Add verilog_body
 
@@ -21,9 +19,12 @@ COLON: ':';
 
 DOLLAR: '$' SIMPLEID;
 
-ASSIGNOP: '=' | '+=' | '-=' | '&=' | '|=' | '^=' | '>>=' | '<<=' | '>>>=' ;
+DOLLARCOMMENT: '$';
 
-BINARYOP: '+' | '-' | '&&' | '||' | '<' | '>' | '<<' | '>>' | '^' | '>>>' | '!=' | '==' | '*' | '<=' | '>=';
+EQUALS: '=';
+ASSIGNOP: '+=' | '-=' | '&=' | '|=' | '^=' | '>>=' | '<<=' | '>>>=' ;
+
+BINARYOP: '+' | '&&' | '||' | '<' | '>' | '<<' | '>>' | '^' | '>>>' | '!=' | '==' | '*' | '<=' | '>=';
 
 AND: '&';
 OR: '|';
@@ -74,13 +75,26 @@ CASE    : 'case' ;
 DEFAULT : 'default' ; 
 VERILOG : 'verilog' ; 
 
+SYNC_TYPE : 
+  'sync ready bubble'
+  | 'wire sync accept'
+  | 'sync ready'
+  | 'wire sync'
+  | 'sync accept'
+  | 'sync'
+  | 'wire' 
+  ;
+
 LITERAL: '"' ~["]* '"';
 
 HASHDEFINE: '#' [ \t]* 'define';
 
-VERILOGBODY: 'void' WS 'verilog' WS '(' WS ')' WS '{' -> pushMode(VMODE);
+VERILOGBODY: 'void' WS? 'verilog' WS? '(' WS? ')' WS? '{' -> pushMode(VMODE);
+
+CONSTANT: [0-9_]+;
 
 IDENTIFIER: SIMPLEID;
+
 
 ONE_LINE_COMMENT
   : '//' .*? NL -> channel(COMMENT)
@@ -91,8 +105,10 @@ BLOCK_COMMENT
   ;
 
 fragment SIMPLEID: [a-zA-Z_][a-zA-Z0-9_$]* ;
+
+MINUS: '-';
   
-BINARY_OP: '+' | '-' | '*';
+BINARY_OP: '+' | '*';
 
 fragment NL
   : '\r'? '\n'
@@ -109,6 +125,8 @@ mode VMODE;
 VLEFTCURLY: '{' -> pushMode(VMODE);
 
 VRIGHTCURLY: '}' -> popMode;
+
+VANY : . ;
 
 
 

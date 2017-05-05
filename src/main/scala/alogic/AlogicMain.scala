@@ -6,7 +6,7 @@ import java.io.File
 
 object AlogicMain extends App {
 
-  val multiThreaded = true;
+  val multiThreaded = false;
 
   def getListOfFiles(dir: File): List[File] = {
     dir.listFiles.filter(_.isFile).toList.filter { s => s.getName.endsWith("alogic") }
