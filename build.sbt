@@ -14,6 +14,8 @@ scalacOptions ++= Seq("-deprecation", "-feature")
 
 libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value
 
+libraryDependencies += "com.beachape.filemanagement" %% "schwatcher" % "0.3.2"
+
 ////////////////////////////////////////////////////////////////////////////////
 // Antlr4 plugin
 ////////////////////////////////////////////////////////////////////////////////
