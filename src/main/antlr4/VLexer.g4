@@ -76,6 +76,10 @@ VERILOG : 'verilog' ;
 
 LITERAL: '"' ~["]* '"';
 
+HASHDEFINE: '#' [ \t]* 'define';
+
+VERILOGBODY: 'void' WS 'verilog' WS '(' WS ')' WS '{' -> pushMode(VMODE);
+
 IDENTIFIER: SIMPLEID;
 
 ONE_LINE_COMMENT
@@ -99,3 +103,12 @@ WS
   ;
 
 ERRORCHAR : . ;
+
+mode VMODE;
+
+VLEFTCURLY: '{' -> pushMode(VMODE);
+
+VRIGHTCURLY: '}' -> popMode;
+
+
+
