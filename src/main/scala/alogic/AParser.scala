@@ -35,10 +35,12 @@ class AParser(path: String) {
   val parseTree = {
     val parser = new antlr4.VParser(tokenStream)
     val parseTree = parser.start()
-    myVisitor.visit(parseTree)
+    val builder = new AstBuilder()
+    val ast = builder(parseTree)
+    println(ast)
     val errCount = parser.getNumberOfSyntaxErrors()
     if (errCount > 0) {
-      println(errCount)
+      println(s"Parsing error count is $errCount in $path")
     }
     parseTree
   }

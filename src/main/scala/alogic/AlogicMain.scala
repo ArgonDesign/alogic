@@ -12,8 +12,6 @@ import java.io.{FileWriter, BufferedWriter}
 import java.nio.file.Paths
 import java.nio.file.StandardWatchEventKinds._
 
-// Run 1000 times, Lex of all files takes 15s single threaded, or 5 seconds multi threaded
-
 object AlogicMain extends App {
 
   val multiThreaded = false;
@@ -29,6 +27,7 @@ object AlogicMain extends App {
       println("-m tells alogic to recompile whenever the source changes.")
       System.exit(-1)
   }
+  go
   go
   if (useMonitor) {
     implicit val system = ActorSystem("actorSystem")
