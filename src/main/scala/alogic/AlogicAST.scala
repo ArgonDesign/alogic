@@ -80,8 +80,8 @@ case class Task() extends AlogicAST
 // 
 // // AlogicType used to define the allowed types
 sealed trait AlogicType
-// case class Integer(value : INTTYPE) extends AlogicType
-// case class IntegerExpr(signed: Boolean, expr: AlogicAST) extends AlogicType // variable number of bits definition
+case class IntType(signed: Boolean, size : Int) extends AlogicType
+case class IntVType(signed: Boolean, expr: AlogicAST) extends AlogicType // variable number of bits definition
 // case class Struct(fields : List[FieldType]) extends AlogicType
 case class State() extends AlogicType   // Type with enough bits to hold state variable
 // 

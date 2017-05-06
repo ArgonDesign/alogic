@@ -33,13 +33,13 @@ task_declaration :
 task : tasktype IDENTIFIER LEFTCURLY (decls+=task_declaration)* (contents+=task_content)* RIGHTCURLY;
 
 known_type : 
-  BOOL
-  | INTTYPE
-  | UINTTYPE
-  | IDENTIFIER
-  | STRUCT LEFTCURLY (fields+=field)* RIGHTCURLY
-  | INT LEFTBRACKET expr RIGHTBRACKET
-  | UINT LEFTBRACKET expr RIGHTBRACKET
+  BOOL                                            # BoolType
+  | INTTYPE                                       # IntType
+  | UINTTYPE                                      # UintType
+  | IDENTIFIER                                    # IdentifierType
+  | STRUCT LEFTCURLY (fields+=field)* RIGHTCURLY  # StructType
+  | INT LEFTBRACKET expr RIGHTBRACKET             # IntVType
+  | UINT LEFTBRACKET expr RIGHTBRACKET            # UintVType
   ;
     
 task_content :

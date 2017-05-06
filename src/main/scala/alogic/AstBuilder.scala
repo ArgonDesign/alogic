@@ -46,7 +46,7 @@ class AstBuilder {
       if (typedefs contains s) {
         warning(ctx,s"Repeated typedef $s")
       } else {
-        typedefs(s) = State() // TODO
+        typedefs(s) = TypeVisitor.visit(ctx.known_type())
       }
       Typedef()
     }
@@ -65,6 +65,33 @@ class AstBuilder {
       Name("task")
       Task()
     }
+  }
+  
+  object TypeVisitor extends VParserBaseVisitor[AlogicType] {
+    override def visitBoolType(ctx: BoolTypeContext) = IntType(false,1)
+    
+    override def visitIntType(ctx: IntTypeContext) = {
+      val s = ctx.INTTYPE().getText()
+      val n = s.substring(1,s.length)
+      IntType(true,n.toInt)
+    }
+    
+    override def visitUintType(ctx: UintTypeContext) = {
+      val s = ctx.UINTTYPE().getText()
+      val n = s.substring(1,s.length)
+      IntType(false,n.toInt)
+    }
+    
+    override def visitIdentifierType(ctx: IdentifierTypeContext) = {
+      val s = ctx.IDENTIFIER().getText()
+      typedefs.getOrElse( s, {
+        warning(ctx,s"Unknown type $s")
+        IntType(false,1)
+      } )
+    }
+    
+    // TODO IntVType and UintVType and Struct
+    
   }
   
   // Return if this node is a task node
