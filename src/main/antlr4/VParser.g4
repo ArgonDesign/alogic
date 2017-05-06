@@ -16,17 +16,30 @@ typedef : TYPEDEF known_type IDENTIFIER SEMICOLON;
 
 define : HASHDEFINE IDENTIFIER expr; // TODO May want to stop at end of line somehow?
   
-tasktype : FSM | PIPELINE | VERILOG | NETWORK;
+tasktype : FSM #FsmType
+  | PIPELINE   #PipelineType
+  | VERILOG    #VerilogType
+  | NETWORK    #NetworkType
+  ;
 
 initializer : EQUALS expr;
 
 declaration : known_type primary_expr initializer?;
 
+sync_type : SYNC_READY_BUBBLE #SyncReadyBubbleType
+          | WIRE_SYNC_ACCEPT  #WireSyncAcceptType
+          | SYNC_READY #SyncReadyType
+          | WIRE_SYNC #WireSyncType
+          | SYNC_ACCEPT #SyncAcceptType
+          | SYNC #SyncType
+          | WIRE #WireType
+          ;
+
 task_declaration : 
-    OUT SYNC_TYPE? known_type IDENTIFIER SEMICOLON     #OutDecl
-  | IN SYNC_TYPE? known_type IDENTIFIER SEMICOLON      #InDecl
-  | CONST SYNC_TYPE? known_type IDENTIFIER initializer? SEMICOLON   #ConstDecl
-  | VERILOG SYNC_TYPE? known_type primary_expr SEMICOLON #VerilogDecl
+    OUT sync_type? known_type IDENTIFIER SEMICOLON     #OutDecl
+  | IN sync_type? known_type IDENTIFIER SEMICOLON      #InDecl
+  | CONST sync_type? known_type IDENTIFIER initializer? SEMICOLON   #ConstDecl
+  | VERILOG sync_type? known_type primary_expr SEMICOLON #VerilogDecl
   | declaration SEMICOLON                              #Decl
   ;
     
@@ -69,8 +82,8 @@ binary_expr :
 unary_op : NOT | TILDA | OR | MINUS | AND;
         
 unary_expr : 
-  unary_op primary_expr
-  | primary_expr 
+  unary_op primary_expr # UnaryExpr
+  | primary_expr # NotUnaryExpr
   ;
     
 primary_expr : 

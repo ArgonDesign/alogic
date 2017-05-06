@@ -61,10 +61,60 @@ class AstBuilder {
       Define()
     }
     
-    override def visitTask(ctx: TaskContext) = {
-      Name("task")
-      Task()
+    override def visitTask(ctx: TaskContext) = { 
+      Task(
+        TasktypeVisitor.visit(ctx.tasktype),
+        ctx.IDENTIFIER().getText(),
+        ctx.decls.asScala.toList.map(TaskDeclVisitor.visit),
+        Nil //TODO ctx.contents.asScala.toList.map(TaskContentVisitor.visit)
+        )
     }
+  }
+  
+  object TaskDeclVisitor extends VParserBaseVisitor[Declaration] {
+    override def visitOutDecl(ctx: OutDeclContext) = OutDeclaration(
+      Option(ctx.sync_type()).map(SyncTypeVisitor.visit).getOrElse(Wire()),
+      TypeVisitor.visit(ctx.known_type()),
+      ctx.IDENTIFIER.getText()
+    )
+    
+    override def visitInDecl(ctx: InDeclContext) = InDeclaration(
+      Option(ctx.sync_type()).map(SyncTypeVisitor.visit).getOrElse(Wire()),
+      TypeVisitor.visit(ctx.known_type()),
+      ctx.IDENTIFIER.getText()
+    )
+    
+    override def visitConstDecl(ctx: ConstDeclContext) = ConstDeclaration(
+      TypeVisitor.visit(ctx.known_type()),
+      Name(ctx.IDENTIFIER.getText()),
+      Option(ctx.initializer()).map(ExprVisitor.visit)
+    )
+    // TODO verilog
+    // TODO decl
+  }
+  
+  object TasktypeVisitor extends VParserBaseVisitor[TaskType] {
+    override def visitFsmType(ctx: FsmTypeContext) = Fsm()
+    override def visitPipelineType(ctx: PipelineTypeContext) = Pipeline()
+    override def visitVerilogType(ctx: VerilogTypeContext) = Verilog()
+    override def visitNetworkType(ctx: NetworkTypeContext) = Fsm()
+  }
+  
+  object SyncTypeVisitor extends VParserBaseVisitor[SyncType] {
+    override def visitSyncReadyBubbleType(ctx: SyncReadyBubbleTypeContext) = SyncReadyBubble()
+    override def visitWireSyncAcceptType(ctx: WireSyncAcceptTypeContext) = WireSyncAccept()
+    override def visitSyncReadyType(ctx: SyncReadyTypeContext) = SyncReady()
+    override def visitWireSyncType(ctx: WireSyncTypeContext) = WireSync()
+    override def visitSyncAcceptType(ctx: SyncAcceptTypeContext) = SyncAccept()
+    override def visitSyncType(ctx: SyncTypeContext) = Sync()
+    override def visitWireType(ctx: WireTypeContext) = Wire()
+  }
+  
+  object ExprVisitor extends VParserBaseVisitor[AlogicAST] {
+    override def visitTernaryExpr(ctx: TernaryExprContext) = TernaryOp(visit(ctx.binary_expr()), visit(ctx.expr(0)), visit(ctx.expr(1)))
+    override def visitBinaryExpr(ctx: BinaryExprContext) = BinaryOp(visit(ctx.unary_expr()), ctx.binary_op().getText(), visit(ctx.expr()))
+    override def visitUnaryExpr(ctx: UnaryExprContext) = UnaryOp(ctx.unary_op().getText(), visit(ctx.primary_expr()))
+    
   }
   
   object TypeVisitor extends VParserBaseVisitor[AlogicType] {
@@ -95,7 +145,7 @@ class AstBuilder {
   }
   
   // Return if this node is a task node
-  def is_task(ast:AlogicAST) : Boolean = ast match {case Task() => true; case _ => false}
+  def is_task(ast:AlogicAST) : Boolean = ast match {case Task(_,_,_,_) => true; case _ => false}
   
   // Build the abstract syntax tree from a parse tree
   def apply(parseTree : ParseTree) : Program = {

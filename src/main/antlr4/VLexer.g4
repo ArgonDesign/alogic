@@ -74,16 +74,14 @@ RETURN  : 'return' ;
 CASE    : 'case' ;    
 DEFAULT : 'default' ; 
 VERILOG : 'verilog' ; 
-
-SYNC_TYPE : 
-  'sync ready bubble'
-  | 'wire sync accept'
-  | 'sync ready'
-  | 'wire sync'
-  | 'sync accept'
-  | 'sync'
-  | 'wire' 
-  ;
+ 
+SYNC_READY_BUBBLE:  'sync ready bubble';
+WIRE_SYNC_ACCEPT:  'wire sync accept';
+SYNC_READY: 'sync ready';
+WIRE_SYNC: 'wire sync';
+SYNC_ACCEPT: 'sync accept';
+SYNC: 'sync';
+WIRE: 'wire';
 
 LITERAL: '"' ~["]* '"';
 

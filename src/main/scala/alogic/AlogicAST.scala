@@ -7,25 +7,25 @@ package alogic
 // Use different abstract classes to decompose problem.
 
 // // TaskType defines different types of modules
-// sealed trait TaskType extends Positional
-// case class Fsm() extends TaskType
-// case class Pipeline() extends TaskType
-// case class Network() extends TaskType
-// case class Verilog() extends TaskType
+sealed trait TaskType
+case class Fsm() extends TaskType
+case class Pipeline() extends TaskType
+case class Network() extends TaskType
+case class Verilog() extends TaskType
 // 
 // // Declaration used for top-level and function declarations
-// sealed trait Declaration extends Positional
-// case class VarDeclaration(decltype: AlogicType,id: AlogicAST,init: Option[AlogicAST]) extends Declaration
-// case class ConstDeclaration(decltype: AlogicType,id: AlogicAST,init: Option[AlogicAST]) extends Declaration
-// case class VerilogDeclaration(decltype: AlogicType,id: AlogicAST) extends Declaration
-// case class OutDeclaration(synctype: Option[SyncType],decltype: AlogicType,name: Name) extends Declaration
-// case class InDeclaration(synctype: Option[SyncType],decltype: AlogicType,name: Name) extends Declaration
-// 
-// // TaskContent used for each function
-// sealed trait TaskContent extends Positional
-// case class Function(name: IDENTIFIER, body: AlogicAST) extends TaskContent
-// case class FenceFunction(body: AlogicAST) extends TaskContent
-// case class VerilogFunction(text:VERILOGSTMT) extends TaskContent
+sealed trait Declaration
+case class VarDeclaration(decltype: AlogicType,id: AlogicAST,init: Option[AlogicAST]) extends Declaration
+case class ConstDeclaration(decltype: AlogicType,id: AlogicAST,init: Option[AlogicAST]) extends Declaration
+case class VerilogDeclaration(decltype: AlogicType,id: AlogicAST) extends Declaration
+case class OutDeclaration(synctype: SyncType,decltype: AlogicType,name: String) extends Declaration
+case class InDeclaration(synctype: SyncType,decltype: AlogicType,name: String) extends Declaration
+
+// TaskContent used for each function
+sealed trait TaskContent
+case class Function(name: String, body: AlogicAST) extends TaskContent
+case class FenceFunction(body: AlogicAST) extends TaskContent
+case class VerilogFunction(body: String) extends TaskContent
 // 
 // // AlogicAST used for abstract syntax nodes
 sealed trait AlogicAST
@@ -35,8 +35,7 @@ case class Program(cmds : List[AlogicAST]) extends AlogicAST
 case class Name(value : String) extends AlogicAST
 case class Define() extends AlogicAST
 case class Typedef() extends AlogicAST
-case class Task() extends AlogicAST
-//case class Task(tasktype: TaskType, name: String, decls: List[Declaration], fns: List[TaskContent]) extends AlogicAST
+case class Task(tasktype: TaskType, name: String, decls: List[Declaration], fns: List[TaskContent]) extends AlogicAST
 // case class DottedName(names: List[IDENTIFIER]) extends AlogicAST
 // case class ArrayLookup(name: AlogicAST, index: AlogicAST) extends AlogicAST
 // case class BinaryArrayLookup(name: AlogicAST, lhs: AlogicAST, op: ArrayOp, rhs: AlogicAST) extends AlogicAST
@@ -47,10 +46,10 @@ case class Task() extends AlogicAST
 // case class Assign(lhs: AlogicAST, op: AlogicToken, rhs: AlogicAST) extends AlogicAST
 // case class Plusplus(lhs: AlogicAST) extends AlogicAST
 // case class Minusminus(lhs: AlogicAST) extends AlogicAST
-// case class BinaryOp(lhs: AlogicAST, op: AlogicToken, rhs: AlogicAST) extends AlogicAST
-// case class UnaryOp(op: AlogicToken, lhs: AlogicAST) extends AlogicAST
+case class BinaryOp(lhs: AlogicAST, op: String, rhs: AlogicAST) extends AlogicAST
+case class UnaryOp(op: String, lhs: AlogicAST) extends AlogicAST
 // case class Bracket(content: AlogicAST) extends AlogicAST
-// case class TernaryOp(cond: AlogicAST, lhs: AlogicAST, rhs: AlogicAST) extends AlogicAST
+case class TernaryOp(cond: AlogicAST, lhs: AlogicAST, rhs: AlogicAST) extends AlogicAST
 // case class ControlBlock(cmds: List[AlogicAST]) extends AlogicAST
 // case class CombinatorialBlock(cmds: List[AlogicAST]) extends AlogicAST
 // case class FenceStmt() extends AlogicAST
@@ -90,19 +89,11 @@ case class State() extends AlogicType   // Type with enough bits to hold state v
 // case class Field(typ: AlogicType, name: IDENTIFIER) extends FieldType
 // 
 // // SyncType for allowed port types
-// sealed trait SyncType extends Positional
-// case class SyncReadyBubble() extends SyncType
-// case class SyncReady() extends SyncType
-// case class SyncAccept() extends SyncType
-// case class Sync() extends SyncType
-// case class WireSyncAccept() extends SyncType
-// case class WireSync() extends SyncType
-// case class Wire() extends SyncType
-// 
-// // SyncSpec provides a single word that is a sync type
-// sealed trait SyncSpec extends Positional
-// case class IdentWire() extends SyncSpec
-// case class IdentSync() extends SyncSpec
-// case class IdentBubble() extends SyncSpec
-// case class IdentReady() extends SyncSpec
-// case class IdentAccept() extends SyncSpec
+sealed trait SyncType
+case class SyncReadyBubble() extends SyncType
+case class SyncReady() extends SyncType
+case class SyncAccept() extends SyncType
+case class Sync() extends SyncType
+case class WireSyncAccept() extends SyncType
+case class WireSync() extends SyncType
+case class Wire() extends SyncType
