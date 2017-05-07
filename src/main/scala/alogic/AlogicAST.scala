@@ -30,17 +30,17 @@ case class VerilogFunction(body: String) extends TaskContent
 // // AlogicAST used for abstract syntax nodes
 sealed trait AlogicAST
 case class Program(cmds : List[AlogicAST]) extends AlogicAST
-// case class Num(value : String) extends AlogicAST  // Numbers held as textual representation
-// case class Literal(value : LITERAL) extends AlogicAST  // Numbers held as textual representation
+case class Num(value : String) extends AlogicAST  // Numbers held as textual representation
+case class Literal(value : String) extends AlogicAST  // Strings held as textual representation including quotes
 case class Name(value : String) extends AlogicAST
 case class Define() extends AlogicAST
 case class Typedef() extends AlogicAST
 case class Task(tasktype: TaskType, name: String, decls: List[Declaration], fns: List[TaskContent]) extends AlogicAST
-// case class DottedName(names: List[IDENTIFIER]) extends AlogicAST
-// case class ArrayLookup(name: AlogicAST, index: AlogicAST) extends AlogicAST
-// case class BinaryArrayLookup(name: AlogicAST, lhs: AlogicAST, op: ArrayOp, rhs: AlogicAST) extends AlogicAST
-// case class FunCall(name: DottedName, args: List[AlogicAST]) extends AlogicAST
-// case class DollarFun(name: IDENTIFIER, args: List[AlogicAST]) extends AlogicAST
+case class DottedName(names: List[String]) extends AlogicAST
+case class ArrayLookup(name: AlogicAST, index: AlogicAST) extends AlogicAST
+case class BinaryArrayLookup(name: AlogicAST, lhs: AlogicAST, op: String, rhs: AlogicAST) extends AlogicAST
+case class FunCall(name: AlogicAST, args: List[AlogicAST]) extends AlogicAST
+case class DollarCall(name: String, args: List[AlogicAST]) extends AlogicAST
 // case class ReadCall(name: DottedName, args: List[AlogicAST]) extends AlogicAST
 // case class WriteCall(name: DottedName, args: List[AlogicAST]) extends AlogicAST
 // case class Assign(lhs: AlogicAST, op: AlogicToken, rhs: AlogicAST) extends AlogicAST
@@ -48,7 +48,7 @@ case class Task(tasktype: TaskType, name: String, decls: List[Declaration], fns:
 // case class Minusminus(lhs: AlogicAST) extends AlogicAST
 case class BinaryOp(lhs: AlogicAST, op: String, rhs: AlogicAST) extends AlogicAST
 case class UnaryOp(op: String, lhs: AlogicAST) extends AlogicAST
-// case class Bracket(content: AlogicAST) extends AlogicAST
+case class Bracket(content: AlogicAST) extends AlogicAST
 case class TernaryOp(cond: AlogicAST, lhs: AlogicAST, rhs: AlogicAST) extends AlogicAST
 // case class ControlBlock(cmds: List[AlogicAST]) extends AlogicAST
 // case class CombinatorialBlock(cmds: List[AlogicAST]) extends AlogicAST
@@ -62,8 +62,8 @@ case class TernaryOp(cond: AlogicAST, lhs: AlogicAST, rhs: AlogicAST) extends Al
 // case class ControlDo(cond:AlogicAST, body:List[AlogicAST]) extends AlogicAST
 // case class CombinatorialIf(cond:AlogicAST, body:AlogicAST, elsebody:Option[AlogicAST]) extends AlogicAST
 // case class ControlIf(cond:AlogicAST, body:AlogicAST, elsebody:Option[AlogicAST]) extends AlogicAST
-// case class BitRep(count:AlogicAST,value:AlogicAST) extends AlogicAST
-// case class BitCat(parts:List[AlogicAST]) extends AlogicAST
+case class BitRep(count:AlogicAST,value:AlogicAST) extends AlogicAST
+case class BitCat(parts:List[AlogicAST]) extends AlogicAST
 // case class AlogicComment(str:LITERAL) extends AlogicAST
 // case class ControlCaseStmt(value:AlogicAST,cases:List[CaseLabel]) extends AlogicAST
 // case class CombinatorialCaseStmt(value:AlogicAST,cases:List[CaseLabel]) extends AlogicAST

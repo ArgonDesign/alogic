@@ -33,6 +33,9 @@ class AstBuilder {
     val pos = tok.getCharPositionInLine()
     errors += s"line $line:$pos $msg"
   }
+  
+  // Convert identifier to tree
+  def identifier(ident: String): AlogicAST = defines.getOrElse(ident,DottedName(List(ident)))
 
   object ProgVisitor extends VParserBaseVisitor[List[AlogicAST]] {
     override def visitStart(ctx: StartContext) = {
@@ -114,7 +117,36 @@ class AstBuilder {
     override def visitTernaryExpr(ctx: TernaryExprContext) = TernaryOp(visit(ctx.binary_expr()), visit(ctx.expr(0)), visit(ctx.expr(1)))
     override def visitBinaryExpr(ctx: BinaryExprContext) = BinaryOp(visit(ctx.unary_expr()), ctx.binary_op().getText(), visit(ctx.expr()))
     override def visitUnaryExpr(ctx: UnaryExprContext) = UnaryOp(ctx.unary_op().getText(), visit(ctx.primary_expr()))
+    override def visitArrayAccessExpr(ctx: ArrayAccessExprContext) = ArrayLookup(visit(ctx.secondary_expr()),visit(ctx.expr()))
+    override def visitArrayAccess2Expr(ctx: ArrayAccess2ExprContext) = BinaryArrayLookup(
+      visit(ctx.secondary_expr()),visit(ctx.expr(0)),ctx.arrayop().getText(),visit(ctx.expr(1))
+    )
+    override def visitTrueExpr(ctx: TrueExprContext) = Num("1'b1")
+    override def visitFalseExpr(ctx: FalseExprContext) = Num("1'b0")
+    override def visitBracketExpr(ctx: BracketExprContext) = Bracket(visit(ctx.expr()))
+    override def visitTicknumExpr(ctx: TicknumExprContext) = Num(ctx.TICKNUM().getText())
+    override def visitConstantTickNumExpr(ctx: ConstantTickNumExprContext) = Num(ctx.CONSTANT().getText()+ctx.TICKNUM().getText())
+    override def visitIdentifierTickNumExpr(ctx: IdentifierTickNumExprContext) = {
+      val id = identifier(ctx.IDENTIFIER().getText())
+      val tick = ctx.TICKNUM().getText()
+      id match {
+        case Num(s) => Num(s+tick)
+        case _ => { warning(ctx, "Cannot build a number from $id$tick"); Num("Unknown") }
+      } 
+    }
+    override def visitConstantExpr(ctx: ConstantExprContext) = Num(ctx.CONSTANT().getText())
+    override def visitLiteralExpr(ctx: LiteralExprContext) = Literal(ctx.LITERAL().getText())
+    override def visitBitRepExpr(ctx: BitRepExprContext) = BitRep(visit(ctx.expr(0)),visit(ctx.expr(1)))
+    override def visitBitCatExpr(ctx: BitCatExprContext) = BitCat(CommaArgsVisitor.visit(ctx.comma_args()))
+    override def visitFunCallExpr(ctx: FunCallExprContext) = FunCall(visit(ctx.dotted_name()),CommaArgsVisitor.visit(ctx.comma_args()))
+    override def visitDollarExpr(ctx: DollarExprContext) = DollarCall(ctx.DOLLAR().getText(),CommaArgsVisitor.visit(ctx.comma_args()))
+    override def visitDotted_name(ctx: Dotted_nameContext) = DottedName(ctx.es.asScala.toList.map(a=>a.getText()))
     
+    
+  }
+  
+  object CommaArgsVisitor extends VParserBaseVisitor[List[AlogicAST]] {
+    override def visitComma_args(ctx: Comma_argsContext) = ctx.es.asScala.toList.map(ExprVisitor.visit)
   }
   
   object TypeVisitor extends VParserBaseVisitor[AlogicType] {

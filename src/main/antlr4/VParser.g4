@@ -87,9 +87,9 @@ unary_expr :
   ;
     
 primary_expr : 
-  secondary_expr LEFTSQUARE expr RIGHTSQUARE
-  | secondary_expr LEFTSQUARE expr arrayop expr RIGHTSQUARE
-  | secondary_expr
+  secondary_expr LEFTSQUARE expr RIGHTSQUARE  # ArrayAccessExpr
+  | secondary_expr LEFTSQUARE expr arrayop expr RIGHTSQUARE # ArrayAccess2Expr
+  | secondary_expr # SecondaryExpr
   ;
     
 arrayop : 
@@ -101,19 +101,19 @@ arrayop :
 comma_args : (es+=expr)? (COMMA es+=expr)*;
     
 secondary_expr : 
-  TRUE
-  | FALSE
-  | LEFTBRACKET expr RIGHTBRACKET
-  | TICKNUM
-  | CONSTANT TICKNUM
-  | CONSTANT
-  | LITERAL 
-  | LEFTCURLY expr LEFTCURLY expr RIGHTCURLY RIGHTCURLY
-  | LEFTCURLY comma_args RIGHTCURLY
-  | dotted_name LEFTBRACKET comma_args RIGHTBRACKET
-  | DOLLAR LEFTBRACKET comma_args RIGHTBRACKET
-  | IDENTIFIER TICKNUM // Used to handle #define for the NUM'd0
-  | dotted_name
+  TRUE # TrueExpr
+  | FALSE # FalseExpr
+  | LEFTBRACKET expr RIGHTBRACKET # BracketExpr
+  | TICKNUM # TicknumExpr
+  | CONSTANT TICKNUM # ConstantTickNumExpr
+  | IDENTIFIER TICKNUM # IdentifierTickNumExpr // Used to handle #define for the NUM'd0
+  | CONSTANT # ConstantExpr
+  | LITERAL # LiteralExpr
+  | LEFTCURLY expr LEFTCURLY expr RIGHTCURLY RIGHTCURLY # BitRepExpr
+  | LEFTCURLY comma_args RIGHTCURLY # BitCatExpr
+  | dotted_name LEFTBRACKET comma_args RIGHTBRACKET # FunCallExpr
+  | DOLLAR LEFTBRACKET comma_args RIGHTBRACKET # DollarExpr
+  | dotted_name # DottedNameExpr
   ;
    
 dotted_name : (es+=IDENTIFIER) (DOT es+=IDENTIFIER)*;
@@ -131,7 +131,7 @@ else_statement : ELSE statement;
 
 statement : 
   LEFTCURLY (stmts+=statement)* RIGHTCURLY  # BlockStmt
-  | declaration # DeclStmt
+  | declaration SEMICOLON # DeclStmt
   | WHILE LEFTBRACKET expr RIGHTBRACKET statement # WhileStmt
   | IF LEFTBRACKET expr RIGHTBRACKET statement else_statement? # IfStmt
   | CASE LEFTBRACKET expr RIGHTBRACKET LEFTCURLY (cases+=case_stmt)+ RIGHTCURLY # CaseSTmt
@@ -141,15 +141,15 @@ statement :
   ;
     
 single_statement : 
-  |primary_expr PLUSPLUS
-  |primary_expr MINUSMINUS
-  |primary_expr assign_op expr
-  |primary_expr
-  |FENCE 
-  |BREAK 
-  |RETURN
-  |DOLLARCOMMENT LEFTBRACKET LITERAL RIGHTBRACKET
-  |GOTO IDENTIFIER
+  primary_expr PLUSPLUS   # PrimaryIncStmt
+  |primary_expr MINUSMINUS # PrimaryDecStmt
+  |primary_expr assign_op expr # AssignStmt
+  |primary_expr            # PrimaryStmt
+  |FENCE                   # FenceStmt
+  |BREAK                   # BreakStmt
+  |RETURN                  # ReturnStmt
+  |DOLLARCOMMENT LEFTBRACKET LITERAL RIGHTBRACKET # DollarCommentStmt
+  |GOTO IDENTIFIER         # GotoStmt
   ;
 
 
