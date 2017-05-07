@@ -5,7 +5,14 @@ import org.antlr.v4.runtime.{ ANTLRInputStream, CommonTokenStream }
 import scala.io.Source
 import java.io.File
 
-class AParser(path: String) {
+class AParser() {
+
+  val builder = new AstBuilder()
+  
+  def this(old: AParser) {
+    this()
+    builder.add(old.builder)
+  }
 
   def loadFile(filename:String):String = {
     println(filename)
@@ -22,31 +29,25 @@ class AParser(path: String) {
       "test"
     }
   }
+  
+  def apply(path: String): AlogicAST = {
 
-  val tokenStream = { 
     val inputStream = new ANTLRInputStream(loadFile(path))
     inputStream.name = path + '\n'  // TODO why have error messages stopped reporting the input stream?
     val lexer = new antlr4.VLexer(inputStream)
     val tokenStream = new CommonTokenStream(lexer)
     tokenStream.fill()
-    tokenStream
-  }
-  
-  val parseTree = {
+    
     val parser = new antlr4.VParser(tokenStream)
     val parseTree = parser.start()
-    val builder = new AstBuilder()
     val ast = builder(parseTree)
-    println(ast)
+    //println(ast)
     val errCount = parser.getNumberOfSyntaxErrors()
     if (errCount > 0) {
       println(s"Parsing error count is $errCount in $path")
     }
-    parseTree
+    ast
   }
 
 }
 
-object AParser {
-  def apply(path: String) = new AParser(path)
-}

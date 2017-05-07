@@ -20,10 +20,11 @@ object AlogicMain extends App {
     dir.listFiles.filter(_.isFile).toList.filter { s => s.getName.endsWith("alogic") }
   }
   
-  val useMonitor = args.length==2 && args(0)=="-m"
-      
-  if ((args.length==2 && !useMonitor) || args.length>2 || args.length<1) {
-      println("Syntax: alogic [-m] (source_file|source_dir)")
+  val useMonitor = args.length>1 && args(0)=="-m"
+  val args2 = if (useMonitor) args.tail else args
+  
+  if (args2.length>2 || args2.length<1) {
+      println("Syntax: alogic [-m] [header file]* (source_file|source_dir)")
       println("-m tells alogic to recompile whenever the source changes.")
       System.exit(-1)
   }
@@ -44,9 +45,13 @@ object AlogicMain extends App {
   } 
   
   def go() {
-    val codeFile = args.last
-    val d = new File(codeFile)
     val t0 = System.nanoTime()
+    val codeFile = args.last
+    // Parse header files
+    val parser = new AParser()
+    for (f <- args2.init) parser(f)
+
+    val d = new File(codeFile)
     if (d.exists && d.isDirectory) {
         val lst = getListOfFiles(d)
         if (multiThreaded) {
@@ -55,7 +60,8 @@ object AlogicMain extends App {
             // make copies of the Lexer and Parser to avoid conflicts
             val thread = new Thread {
               override def run {
-                  AParser(f.getPath)
+                  val parser2 = new AParser(parser)
+                  parser2(f.getPath)
               }
             }
             thread.start
@@ -64,11 +70,14 @@ object AlogicMain extends App {
           // Join threads
           for {t <- threads} t.join()
         } else {
-          for {f <- lst} AParser(f.getPath)
+          for {f <- lst} {
+            val parser2 = new AParser(parser)
+            parser2(f.getPath)
+          }
         }
     } else {
-        val s = AParser(codeFile)
-        println(s.parseTree)
+        val s = parser(codeFile)
+        // println(s.parseTree)
     }
     val t1 = System.nanoTime()
     println("Elapsed time: " + (t1 - t0)/1000000000.0 + "s")

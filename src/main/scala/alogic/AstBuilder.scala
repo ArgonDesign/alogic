@@ -21,8 +21,9 @@ import scala.collection.mutable.ListBuffer
 // The object can be called multiple times to allow us to only build a common header file once.
 //
 // TODO
-//   Map reads and writes into the nodes (this allows function calls versus ctx.write to be detected
-//   Add header file reading, and reuse defines!
+//   Map reads and writes into the nodes (this allows function calls to count as control statements)
+//   Check function names
+
 
 class AstBuilder {
 
@@ -36,6 +37,13 @@ class AstBuilder {
     val line = tok.getLine()
     val pos = tok.getCharPositionInLine()
     errors += s"line $line:$pos $msg"
+  }
+  
+  // Add definitions/typedefs from another file
+  // Note that identifiers are not copied over
+  def add(old: AstBuilder) {
+    typedefs ++= old.typedefs
+    defines ++= old.defines
   }
   
   // Convert identifier to tree
