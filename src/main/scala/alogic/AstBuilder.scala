@@ -267,7 +267,17 @@ class AstBuilder {
       }
     }
     
-    // TODO for and do
+    override def visitForStmt(ctx: ForStmtContext) = ControlFor(
+      visit(ctx.single_statement(0)), 
+      visit(ctx.expr()),
+      visit(ctx.single_statement(1)),
+      ctx.stmts.asScala.toList.map(visit)
+    )
+    
+    override def visitDoStmt(ctx: DoStmtContext) = ControlDo(
+      visit(ctx.expr()),
+      ctx.stmts.asScala.toList.map(visit)
+    )
     
     override def visitSingleStmt(ctx: SingleStmtContext) = visit(ctx.single_statement())
     override def visitPrimaryIncStmt(ctx: PrimaryIncStmtContext) = Plusplus(visit(ctx.primary_expr()))
