@@ -43,52 +43,47 @@ case class FunCall(name: AlogicAST, args: List[AlogicAST]) extends AlogicAST
 case class DollarCall(name: String, args: List[AlogicAST]) extends AlogicAST
 // case class ReadCall(name: DottedName, args: List[AlogicAST]) extends AlogicAST
 // case class WriteCall(name: DottedName, args: List[AlogicAST]) extends AlogicAST
-// case class Assign(lhs: AlogicAST, op: AlogicToken, rhs: AlogicAST) extends AlogicAST
-// case class Plusplus(lhs: AlogicAST) extends AlogicAST
-// case class Minusminus(lhs: AlogicAST) extends AlogicAST
+case class Assign(lhs: AlogicAST, op: String, rhs: AlogicAST) extends AlogicAST
+case class Plusplus(lhs: AlogicAST) extends AlogicAST
+case class Minusminus(lhs: AlogicAST) extends AlogicAST
 case class BinaryOp(lhs: AlogicAST, op: String, rhs: AlogicAST) extends AlogicAST
 case class UnaryOp(op: String, lhs: AlogicAST) extends AlogicAST
 case class Bracket(content: AlogicAST) extends AlogicAST
 case class TernaryOp(cond: AlogicAST, lhs: AlogicAST, rhs: AlogicAST) extends AlogicAST
-// case class ControlBlock(cmds: List[AlogicAST]) extends AlogicAST
-// case class CombinatorialBlock(cmds: List[AlogicAST]) extends AlogicAST
-// case class FenceStmt() extends AlogicAST
-// case class BreakStmt() extends AlogicAST
-// case class ReturnStmt() extends AlogicAST
-// case class GotoStmt(target:IDENTIFIER) extends AlogicAST
-// case class DeclarationStmt(decl:VarDeclaration) extends AlogicAST  // Used when a declaration is mixed in with the code
-// case class WhileLoop(cond:AlogicAST, body:AlogicAST) extends AlogicAST
-// case class ControlFor(init:AlogicAST, cond:AlogicAST, incr:AlogicAST, body:List[AlogicAST]) extends AlogicAST
-// case class ControlDo(cond:AlogicAST, body:List[AlogicAST]) extends AlogicAST
-// case class CombinatorialIf(cond:AlogicAST, body:AlogicAST, elsebody:Option[AlogicAST]) extends AlogicAST
-// case class ControlIf(cond:AlogicAST, body:AlogicAST, elsebody:Option[AlogicAST]) extends AlogicAST
+case class ControlBlock(cmds: List[AlogicAST]) extends AlogicAST
+case class CombinatorialBlock(cmds: List[AlogicAST]) extends AlogicAST
+case class FenceStmt() extends AlogicAST
+case class BreakStmt() extends AlogicAST
+case class ReturnStmt() extends AlogicAST
+case class GotoStmt(target:String) extends AlogicAST
+case class DeclarationStmt(decl:VarDeclaration) extends AlogicAST  // Used when a declaration is mixed in with the code
+case class WhileLoop(cond:AlogicAST, body:AlogicAST) extends AlogicAST
+case class ControlFor(init:AlogicAST, cond:AlogicAST, incr:AlogicAST, body:List[AlogicAST]) extends AlogicAST
+case class ControlDo(cond:AlogicAST, body:List[AlogicAST]) extends AlogicAST
+case class CombinatorialIf(cond:AlogicAST, body:AlogicAST, elsebody:Option[AlogicAST]) extends AlogicAST
+case class ControlIf(cond:AlogicAST, body:AlogicAST, elsebody:Option[AlogicAST]) extends AlogicAST
 case class BitRep(count:AlogicAST,value:AlogicAST) extends AlogicAST
 case class BitCat(parts:List[AlogicAST]) extends AlogicAST
-// case class AlogicComment(str:LITERAL) extends AlogicAST
-// case class ControlCaseStmt(value:AlogicAST,cases:List[CaseLabel]) extends AlogicAST
-// case class CombinatorialCaseStmt(value:AlogicAST,cases:List[CaseLabel]) extends AlogicAST
-// 
-// sealed trait CaseLabel extends Positional
-// case class ControlCaseLabel(cond:List[AlogicAST],body: AlogicAST) extends CaseLabel
-// case class CombinatorialCaseLabel(cond:List[AlogicAST],body: AlogicAST) extends CaseLabel
-// 
-// sealed trait ArrayOp extends Positional
-// case class BitRange() extends ArrayOp
-// case class LsbSelect() extends ArrayOp
-// case class MsbSelect() extends ArrayOp
-// 
-// // AlogicType used to define the allowed types
+case class AlogicComment(str:String) extends AlogicAST
+case class ControlCaseStmt(value:AlogicAST,cases:List[CaseLabel]) extends AlogicAST
+case class CombinatorialCaseStmt(value:AlogicAST,cases:List[CaseLabel]) extends AlogicAST
+
+sealed trait CaseLabel
+case class ControlCaseLabel(cond:List[AlogicAST],body: AlogicAST) extends CaseLabel
+case class CombinatorialCaseLabel(cond:List[AlogicAST],body: AlogicAST) extends CaseLabel
+
+// AlogicType used to define the allowed types
 sealed trait AlogicType
 case class IntType(signed: Boolean, size : Int) extends AlogicType
 case class IntVType(signed: Boolean, expr: AlogicAST) extends AlogicType // variable number of bits definition
-// case class Struct(fields : List[FieldType]) extends AlogicType
+case class Struct(fields : List[FieldType]) extends AlogicType
 case class State() extends AlogicType   // Type with enough bits to hold state variable
-// 
-// // FieldType used for fields within a structure
-// sealed trait FieldType extends Positional
-// case class Field(typ: AlogicType, name: IDENTIFIER) extends FieldType
-// 
-// // SyncType for allowed port types
+
+// FieldType used for fields within a structure
+sealed trait FieldType
+case class Field(typ: AlogicType, name: String) extends FieldType
+
+// SyncType for allowed port types
 sealed trait SyncType
 case class SyncReadyBubble() extends SyncType
 case class SyncReady() extends SyncType
@@ -97,3 +92,4 @@ case class Sync() extends SyncType
 case class WireSyncAccept() extends SyncType
 case class WireSync() extends SyncType
 case class Wire() extends SyncType
+

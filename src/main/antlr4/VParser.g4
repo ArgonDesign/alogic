@@ -39,7 +39,7 @@ task_declaration :
     OUT sync_type? known_type IDENTIFIER SEMICOLON     #OutDecl
   | IN sync_type? known_type IDENTIFIER SEMICOLON      #InDecl
   | CONST sync_type? known_type IDENTIFIER initializer? SEMICOLON   #ConstDecl
-  | VERILOG sync_type? known_type primary_expr SEMICOLON #VerilogDecl
+  | VERILOG known_type primary_expr SEMICOLON #VerilogDecl
   | declaration SEMICOLON                              #Decl
   ;
     
@@ -56,16 +56,16 @@ known_type :
   ;
     
 task_content :
-  VOID IDENTIFIER LEFTBRACKET RIGHTBRACKET statement
-  | VOID FENCE LEFTBRACKET RIGHTBRACKET statement
-  | VERILOGBODY verilogbody VRIGHTCURLY
+  VOID IDENTIFIER LEFTBRACKET RIGHTBRACKET statement  # Function
+  | VOID FENCE LEFTBRACKET RIGHTBRACKET statement     # FenceFunction
+  | VERILOGBODY verilogbody VRIGHTCURLY               # VerilogFunction
   ;
   
 verilogbody : (tks+=verilogtoken)*;
 
 verilogtoken :
-  VANY
-  | VLEFTCURLY verilogbody VRIGHTCURLY
+  VANY  # Vany
+  | VLEFTCURLY verilogbody VRIGHTCURLY # Vbody
   ;
   
 expr : binary_expr # NotTernaryExpr
@@ -123,8 +123,8 @@ field : known_type IDENTIFIER SEMICOLON;
 assign_op : EQUALS | ASSIGNOP;
       
 case_stmt : 
-  DEFAULT COLON statement 
-  | comma_args COLON statement 
+  DEFAULT COLON statement # DefaultCase
+  | comma_args COLON statement # NormalCase
   ;
     
 else_statement : ELSE statement;
@@ -134,7 +134,7 @@ statement :
   | declaration SEMICOLON # DeclStmt
   | WHILE LEFTBRACKET expr RIGHTBRACKET statement # WhileStmt
   | IF LEFTBRACKET expr RIGHTBRACKET statement else_statement? # IfStmt
-  | CASE LEFTBRACKET expr RIGHTBRACKET LEFTCURLY (cases+=case_stmt)+ RIGHTCURLY # CaseSTmt
+  | CASE LEFTBRACKET expr RIGHTBRACKET LEFTCURLY (cases+=case_stmt)+ RIGHTCURLY # CaseStmt
   | FOR LEFTBRACKET single_statement SEMICOLON expr SEMICOLON single_statement RIGHTBRACKET LEFTCURLY (stmts += statement)* RIGHTCURLY # ForStmt
   | DO LEFTCURLY (stmts += statement)* RIGHTCURLY WHILE LEFTBRACKET expr RIGHTBRACKET SEMICOLON  # DoStmt
   | single_statement SEMICOLON # SingleStmt
@@ -144,7 +144,7 @@ single_statement :
   primary_expr PLUSPLUS   # PrimaryIncStmt
   |primary_expr MINUSMINUS # PrimaryDecStmt
   |primary_expr assign_op expr # AssignStmt
-  |primary_expr            # PrimaryStmt
+  |primary_expr            # PrimaryStmt // Used when providing a function call by itself
   |FENCE                   # FenceStmt
   |BREAK                   # BreakStmt
   |RETURN                  # ReturnStmt
