@@ -19,13 +19,17 @@ import scala.collection.mutable.ListBuffer
 //
 // The overall API is to make a AstBuilder class, and then call it to build the ast from a parse tree.
 // The object can be called multiple times to allow us to only build a common header file once.
+//
+// TODO
+//   Map reads and writes into the nodes (this allows function calls versus ctx.write to be detected
+//   Add header file reading, and reuse defines!
 
 class AstBuilder {
 
   val typedefs = mutable.Map[String,AlogicType]()
-  val defines = mutable.Map[String,AlogicAST]()
-  
+  val defines = mutable.Map[String,AlogicAST]() 
   val errors = new ListBuffer[String]()
+  val NS = new Namespace(warning)
   
   def warning(ctx: ParserRuleContext, msg: String) {
     val tok = ctx.getStart()
@@ -75,7 +79,7 @@ class AstBuilder {
   }
   
   object TaskContentVisitor extends VParserBaseVisitor[TaskContent] {
-    override def visitFunction(ctx: FunctionContext) = Function(ctx.IDENTIFIER().getText(), ExprVisitor.visit(ctx.statement()))
+    override def visitFunction(ctx: FunctionContext) = Function(NS.insert(ctx, ctx.IDENTIFIER().getText()), ExprVisitor.visit(ctx.statement()))
     override def visitFenceFunction(ctx: FenceFunctionContext) = FenceFunction(ExprVisitor.visit(ctx.statement()))
     override def visitVerilogFunction(ctx: VerilogFunctionContext) = VerilogFunction(VerilogBodyVisitor.visit(ctx.verilogbody()))
   }
@@ -90,18 +94,18 @@ class AstBuilder {
     override def visitOutDecl(ctx: OutDeclContext) = OutDeclaration(
       Option(ctx.sync_type()).map(SyncTypeVisitor.visit).getOrElse(Wire()),
       TypeVisitor.visit(ctx.known_type()),
-      ctx.IDENTIFIER.getText()
+      NS.insert(ctx,ctx.IDENTIFIER.getText())
     )
     
     override def visitInDecl(ctx: InDeclContext) = InDeclaration(
       Option(ctx.sync_type()).map(SyncTypeVisitor.visit).getOrElse(Wire()),
       TypeVisitor.visit(ctx.known_type()),
-      ctx.IDENTIFIER.getText()
+      NS.insert(ctx,ctx.IDENTIFIER.getText())
     )
     
     override def visitConstDecl(ctx: ConstDeclContext) = ConstDeclaration(
       TypeVisitor.visit(ctx.known_type()),
-      Name(ctx.IDENTIFIER.getText()),
+      NS.insert(ctx,ctx.IDENTIFIER.getText()),
       Option(ctx.initializer()).map(ExprVisitor.visit)
     )
     
@@ -109,16 +113,45 @@ class AstBuilder {
 
     override def visitVerilogDecl(ctx: VerilogDeclContext) = VerilogDeclaration(
       TypeVisitor.visit(ctx.known_type()),
-      ExprVisitor.visit(ctx.primary_expr())
+      InsertExprVisitor.visit(ctx.primary_expr())  
     )
     
     override def visitDeclaration(ctx: DeclarationContext) = VarDeclaration(
       TypeVisitor.visit(ctx.known_type()),
-      ExprVisitor.visit(ctx.primary_expr()),
-      Option(ctx.initializer()).map(ExprVisitor.visit)
+      InsertExprVisitor.visit(ctx.primary_expr()),
+      Option(ctx.initializer()).map(ExprVisitor.visit)  
+      
+      // Insert into NS - tricky because we want to rewrite in visitor - but the identifier is currently unknown
+      // We could do all of this as a second stage:
+      //   + Stand alone code
+      //   - Lose access to ctx for error messages
+      //   - an extra pass may be slightly less efficient and produce error messages in a less useful order?
+      //
+      // Could add a ctx to all of these objects for use in later messages?
+      //
+      // If in the case class, 
+      //    - all grow an extra field - a bit ugly
+      // If in the base class, 
+      //    - need an extra Positioned call to insert the ctx?
+      //
+      // Or we could call a namespace function to indicate we are inside a declaration?
+      //    - a bit hacky
+      // Or we could use an alternative visitor function to parse declarations?  (Would only need a couple of special cases)
+      //   This is the chosen approach
     )
+  }
+  
+  // This visitor is used to parse an expression used as a declaration of a variable
+  // When we have identified the name, we insert it into the namespace
+  object InsertExprVisitor extends VParserBaseVisitor[AlogicAST] {
+    override def visitArrayAccessExpr(ctx: ArrayAccessExprContext) = ArrayLookup(visit(ctx.secondary_expr()),ExprVisitor.visit(ctx.expr()))
     
-
+    override def visitDotted_name(ctx: Dotted_nameContext) = {
+      val s = ctx.es.asScala.toList.map(a=>a.getText())
+      if (s.length!=1)
+        warning(ctx,s"Malformed declaration $s")
+      DottedName(List(NS.insert(ctx,s.head)))
+    }
   }
   
   object TasktypeVisitor extends VParserBaseVisitor[TaskType] {
@@ -156,17 +189,6 @@ class AstBuilder {
         CombinatorialCaseLabel(args,s)
     }
   }
-  //
-    //def case_stmt : Parser[CaseLabel] = positioned {
-    //    DEFAULT() ~> COLON() ~> statement ^^ {
-    //        case x if (is_control_stmt(x)) => ControlCaseLabel(List(),x) 
-    //        case x => CombinatorialCaseLabel(List(),x)
-    //        } |
-    //    repsep(expr,COMMA()) ~ COLON() ~ statement ^^ {
-    //    case e ~ _ ~ body if (is_control_stmt(body)) => ControlCaseLabel(e,body)
-    //    case e ~ _ ~ body => CombinatorialCaseLabel(e,body)
-    //    }
-    //}
     
   // Statement visitors
   def is_control_stmt(cmd: AlogicAST) : Boolean = cmd match {
@@ -211,12 +233,19 @@ class AstBuilder {
     override def visitBitCatExpr(ctx: BitCatExprContext) = BitCat(CommaArgsVisitor.visit(ctx.comma_args()))
     override def visitFunCallExpr(ctx: FunCallExprContext) = FunCall(visit(ctx.dotted_name()),CommaArgsVisitor.visit(ctx.comma_args()))
     override def visitDollarExpr(ctx: DollarExprContext) = DollarCall(ctx.DOLLAR().getText(),CommaArgsVisitor.visit(ctx.comma_args()))
-    override def visitDotted_name(ctx: Dotted_nameContext) = LookupName(DottedName(ctx.es.asScala.toList.map(a=>a.getText())))
+    override def visitDotted_name(ctx: Dotted_nameContext) = LookupName(ctx, DottedName(ctx.es.asScala.toList.map(a=>a.getText())))
     
+    // This function handles #defines and namespace lookups
     // Convert using #defines where necessary
-    def LookupName(dotname: DottedName) : AlogicAST = {
+    def LookupName(ctx: ParserRuleContext, dotname: DottedName) : AlogicAST = {
       val s = dotname.names
-      if (s.length == 1) identifier(s(0)) else dotname
+      // Check for a #define conversion
+      val name2 = if (s.length == 1) identifier(s(0)) else dotname
+      // Check in namespace and rewrite if necessary
+      name2 match {
+        case DottedName(ns) => DottedName(NS.lookup(ctx,ns.head) :: ns.tail)
+        case x => x
+      }
     }
       
     def is_control_label(cmd: CaseLabel) : Boolean = cmd match {
@@ -224,15 +253,20 @@ class AstBuilder {
         case _ => false
     }
 
-    override def visitBlockStmt(ctx: BlockStmtContext) = ctx.stmts.asScala.toList.map(visit) match {
+    override def visitBlockStmt(ctx: BlockStmtContext) = {
+      NS.addNamespace()
+      val ret = ctx.stmts.asScala.toList.map(visit) match {
         case s if (s.length>0 && is_control_stmt(s.last)) => ControlBlock(s) 
         case s if (s.forall(x => !is_control_stmt(x))) => CombinatorialBlock(s)
         case s => { warning(ctx, "A control block must end with a control statement"); ControlBlock(s) }
       }
+      NS.removeNamespace()
+      ret
+    }
     
     override def visitDeclStmt(ctx: DeclStmtContext) = DeclVisitor.visit(ctx.declaration()) match {
       case s @ VarDeclaration(_,_,_) => DeclarationStmt(s)
-      case _ => { warning(ctx,"Only variable declarations allowed as statements"); DeclarationStmt( VarDeclaration(State(),Name("Unknown"),None) ) }
+      case _ => { warning(ctx,"Only variable declarations allowed as statements"); DeclarationStmt( VarDeclaration(State(),DottedName(List("Unknown")),None) ) }
     }  
     
     override def visitWhileStmt(ctx: WhileStmtContext) = WhileLoop(visit(ctx.expr()), {
@@ -287,9 +321,7 @@ class AstBuilder {
     override def visitBreakStmt(ctx: BreakStmtContext) = BreakStmt()
     override def visitReturnStmt(ctx: ReturnStmtContext) = ReturnStmt()
     override def visitDollarCommentStmt(ctx: DollarCommentStmtContext) = AlogicComment(ctx.LITERAL().getText())
-    override def visitGotoStmt(ctx: GotoStmtContext) = GotoStmt(ctx.IDENTIFIER().getText())
-    
-    
+    override def visitGotoStmt(ctx: GotoStmtContext) = GotoStmt(ctx.IDENTIFIER().getText()) 
   }
   
   object CommaArgsVisitor extends VParserBaseVisitor[List[AlogicAST]] {
@@ -327,10 +359,8 @@ class AstBuilder {
       Struct(ctx.fields.asScala.toList.map(FieldVisitor.visit))
     }
     
-    // TODO IntVType and UintVType
     override def visitIntVType(ctx: IntVTypeContext) = IntVType(true,ExprVisitor.visit(ctx.expr()))
     override def visitUintVType(ctx: UintVTypeContext) = IntVType(false,ExprVisitor.visit(ctx.expr()))
-    
   }
   
   // Return if this node is a task node

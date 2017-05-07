@@ -16,7 +16,7 @@ case class Verilog() extends TaskType
 // // Declaration used for top-level and function declarations
 sealed trait Declaration
 case class VarDeclaration(decltype: AlogicType,id: AlogicAST,init: Option[AlogicAST]) extends Declaration
-case class ConstDeclaration(decltype: AlogicType,id: AlogicAST,init: Option[AlogicAST]) extends Declaration
+case class ConstDeclaration(decltype: AlogicType,id: String,init: Option[AlogicAST]) extends Declaration
 case class VerilogDeclaration(decltype: AlogicType,id: AlogicAST) extends Declaration
 case class OutDeclaration(synctype: SyncType,decltype: AlogicType,name: String) extends Declaration
 case class InDeclaration(synctype: SyncType,decltype: AlogicType,name: String) extends Declaration
@@ -32,7 +32,6 @@ sealed trait AlogicAST
 case class Program(cmds : List[AlogicAST]) extends AlogicAST
 case class Num(value : String) extends AlogicAST  // Numbers held as textual representation
 case class Literal(value : String) extends AlogicAST  // Strings held as textual representation including quotes
-case class Name(value : String) extends AlogicAST
 case class Define() extends AlogicAST
 case class Typedef() extends AlogicAST
 case class Task(tasktype: TaskType, name: String, decls: List[Declaration], fns: List[TaskContent]) extends AlogicAST
