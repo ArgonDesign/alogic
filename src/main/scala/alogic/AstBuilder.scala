@@ -14,6 +14,7 @@ import scala.collection.mutable.ListBuffer
 //   Deal with typedefs
 //   Deal with variable scope
 //   Deal with #defines
+//   Rewrite go/zxt/sxt/read/write function calls
 //
 // We use different visitors for the different things we wish to extract.
 //
@@ -22,7 +23,7 @@ import scala.collection.mutable.ListBuffer
 //
 // TODO
 //   Map reads and writes into the nodes (this allows function calls to count as control statements)
-//   Check function names
+//   Deal with go and zxt and sxt rewrites
 
 
 class AstBuilder {
@@ -31,6 +32,8 @@ class AstBuilder {
   val defines = mutable.Map[String,AlogicAST]() 
   val errors = new ListBuffer[String]()
   val NS = new Namespace(warning)
+  
+  typedefs("state") = State()
   
   def warning(ctx: ParserRuleContext, msg: String) {
     val tok = ctx.getStart()
@@ -86,8 +89,12 @@ class AstBuilder {
     }
   }
   
+  object FunVisitor extends VParserBaseVisitor[Unit] {
+    override def visitFunction(ctx: FunctionContext): Unit = NS.insert(ctx,ctx.IDENTIFIER().getText())
+  }
+  
   object TaskContentVisitor extends VParserBaseVisitor[TaskContent] {
-    override def visitFunction(ctx: FunctionContext) = Function(NS.insert(ctx, ctx.IDENTIFIER().getText()), ExprVisitor.visit(ctx.statement()))
+    override def visitFunction(ctx: FunctionContext) = Function(ctx.IDENTIFIER().getText(), ExprVisitor.visit(ctx.statement()))
     override def visitFenceFunction(ctx: FenceFunctionContext) = FenceFunction(ExprVisitor.visit(ctx.statement()))
     override def visitVerilogFunction(ctx: VerilogFunctionContext) = VerilogFunction(VerilogBodyVisitor.visit(ctx.verilogbody()))
   }
@@ -376,6 +383,9 @@ class AstBuilder {
   
   // Build the abstract syntax tree from a parse tree
   def apply(parseTree : ParseTree) : Program = {
+    // First capture all function names into toplevel namespace
+    FunVisitor.visit(parseTree)
+    // Then build abstract syntax tree and remap identifiers
     val p = Program(ProgVisitor.visit(parseTree).filter(is_task))
     errors.foreach(println)
     p
