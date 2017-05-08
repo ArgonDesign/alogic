@@ -104,11 +104,23 @@ final class MakeStates {
         CombinatorialIf(cond,CombinatorialBlock(follow),Some(GotoState(finalState)))
         ), extra)
     }
+    case ControlIf(cond, body, None) => {
+      val (current,extra) = makeStates(finalState,body)
+      (List(
+        CombinatorialIf(cond,CombinatorialBlock(current),Some(GotoState(finalState)))
+        ), extra)
+    }
+    case ControlIf(cond, body, Some(elsebody)) => {
+      val (current,extra) = makeStates(finalState,body)
+      val (current2,extra2) = makeStates(finalState,elsebody)
+      (List(
+        CombinatorialIf(cond,CombinatorialBlock(current),Some(CombinatorialBlock(current2)))
+        ), extra ::: extra2)
+    }
       
     // TODO
 //   ControlFor
 //   ControlDo
-//   ControlIf
 //   ControlCaseStmt
 
 
