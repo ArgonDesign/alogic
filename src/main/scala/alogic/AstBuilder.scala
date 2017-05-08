@@ -118,7 +118,7 @@ class AstBuilder {
       NS.insert(ctx,ctx.IDENTIFIER.getText())
     )
     
-    override def visitConstDecl(ctx: ConstDeclContext) = ConstDeclaration(
+    override def visitParamDecl(ctx: ParamDeclContext) = ParamDeclaration(
       TypeVisitor.visit(ctx.known_type()),
       NS.insert(ctx,ctx.IDENTIFIER.getText()),
       Option(ctx.initializer()).map(ExprVisitor.visit)

@@ -38,7 +38,7 @@ sync_type : SYNC_READY_BUBBLE #SyncReadyBubbleType
 task_declaration : 
     OUT sync_type? known_type IDENTIFIER SEMICOLON     #OutDecl
   | IN sync_type? known_type IDENTIFIER SEMICOLON      #InDecl
-  | CONST sync_type? known_type IDENTIFIER initializer? SEMICOLON   #ConstDecl
+  | PARAM sync_type? known_type IDENTIFIER initializer? SEMICOLON   #ParamDecl
   | VERILOG known_type primary_expr SEMICOLON #VerilogDecl
   | declaration SEMICOLON                              #Decl
   ;
