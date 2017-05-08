@@ -39,9 +39,11 @@ case class DottedName(names: List[String]) extends AlogicAST
 case class ArrayLookup(name: AlogicAST, index: AlogicAST) extends AlogicAST
 case class BinaryArrayLookup(name: AlogicAST, lhs: AlogicAST, op: String, rhs: AlogicAST) extends AlogicAST
 case class FunCall(name: AlogicAST, args: List[AlogicAST]) extends AlogicAST
+case class Zxt(numbits: AlogicAST, expr: AlogicAST) extends AlogicAST
+case class Sxt(numbits: AlogicAST, expr: AlogicAST) extends AlogicAST
 case class DollarCall(name: String, args: List[AlogicAST]) extends AlogicAST
-// case class ReadCall(name: DottedName, args: List[AlogicAST]) extends AlogicAST
-// case class WriteCall(name: DottedName, args: List[AlogicAST]) extends AlogicAST
+case class ReadCall(name: DottedName, args: List[AlogicAST]) extends AlogicAST
+case class WriteCall(name: DottedName, args: List[AlogicAST]) extends AlogicAST
 case class Assign(lhs: AlogicAST, op: String, rhs: AlogicAST) extends AlogicAST
 case class Plusplus(lhs: AlogicAST) extends AlogicAST
 case class Minusminus(lhs: AlogicAST) extends AlogicAST

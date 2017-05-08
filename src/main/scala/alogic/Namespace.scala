@@ -40,7 +40,11 @@ final class Namespace(warning: (ParserRuleContext, String) => Unit) {
     val n = namespaces.head
     if (n contains name)
       warning(ctx,s"Multiple declarations of $name")
-
+    insert(name)
+  }
+    
+  def insert(name: String) : String = {
+    val n = namespaces.head
     var target = name
     while (variables contains target) {
       target += "Dup"

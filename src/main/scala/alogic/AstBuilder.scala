@@ -74,7 +74,7 @@ class AstBuilder {
       if (defines contains s) {
         warning(ctx,s"Repeated identifier $s")
       } else {
-        defines(s) = Define() // TODO
+        defines(s) = ExprVisitor.visit(ctx.expr())
       }
       Define()
     }
@@ -239,14 +239,40 @@ class AstBuilder {
       val tick = ctx.TICKNUM().getText()
       id match {
         case Num(s) => Num(s+tick)
-        case _ => { warning(ctx, "Cannot build a number from $id$tick"); Num("Unknown") }
+        case _ => { warning(ctx, s"Cannot build a number from $id$tick"); Num("Unknown") }
       } 
     }
     override def visitConstantExpr(ctx: ConstantExprContext) = Num(ctx.CONSTANT().getText())
     override def visitLiteralExpr(ctx: LiteralExprContext) = Literal(ctx.LITERAL().getText())
     override def visitBitRepExpr(ctx: BitRepExprContext) = BitRep(visit(ctx.expr(0)),visit(ctx.expr(1)))
     override def visitBitCatExpr(ctx: BitCatExprContext) = BitCat(CommaArgsVisitor.visit(ctx.comma_args()))
-    override def visitFunCallExpr(ctx: FunCallExprContext) = FunCall(visit(ctx.dotted_name()),CommaArgsVisitor.visit(ctx.comma_args()))
+    override def visitFunCallExpr(ctx: FunCallExprContext) = {
+      val n = visit(ctx.dotted_name())
+      val a = CommaArgsVisitor.visit(ctx.comma_args())
+      n match {
+        case DottedName(names) if (names.last=="read") => {
+          if (a.length > 0)
+            warning(ctx, s"Interface read takes no arguments (${a.length} found)")
+          ReadCall(DottedName(names.init),a)
+        }
+        case DottedName(names) if (names.last=="write") => {
+          if (a.length != 1)
+            warning(ctx, s"Interface write takes exactly one argument (${a.length} found)")
+          WriteCall(DottedName(names.init),a)
+        }
+        case DottedName(names) if (names.length==1 && names.head=="zxt") => {
+          if (a.length != 2)
+            warning(ctx, s"Zero extend function takes exactly two arguments: number of bits and expression (${a.length} found)")
+          Zxt(a(0),a(1))
+        }
+        case DottedName(names) if (names.length==1 && names.head=="sxt") => {
+          if (a.length != 2)
+            warning(ctx, s"Sign extend function takes exactly two arguments: number of bits and expression (${a.length} found)")
+          Sxt(a(0),a(1))
+        }
+        case _ => FunCall(n,a)
+      }
+    }
     override def visitDollarExpr(ctx: DollarExprContext) = DollarCall(ctx.DOLLAR().getText(),CommaArgsVisitor.visit(ctx.comma_args()))
     override def visitDotted_name(ctx: Dotted_nameContext) = LookupName(ctx, DottedName(ctx.es.asScala.toList.map(a=>a.getText())))
     
@@ -383,7 +409,9 @@ class AstBuilder {
   
   // Build the abstract syntax tree from a parse tree
   def apply(parseTree : ParseTree) : Program = {
-    // First capture all function names into toplevel namespace
+    // Add known identifiers that are not already recognized as keywords
+    for{ id <- List("zxt","sxt","go") } NS.insert(id)
+    // Capture all found function names into toplevel namespace
     FunVisitor.visit(parseTree)
     // Then build abstract syntax tree and remap identifiers
     val p = Program(ProgVisitor.visit(parseTree).filter(is_task))

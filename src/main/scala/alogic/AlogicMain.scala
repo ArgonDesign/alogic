@@ -14,7 +14,7 @@ import java.nio.file.StandardWatchEventKinds._
 
 object AlogicMain extends App {
 
-  val multiThreaded = false;
+  val multiThreaded = false;  // At the moment there does not seem to be much benefit from multithreading, so leave it off in order that error messages are in correct order
 
   def getListOfFiles(dir: File): List[File] = {
     dir.listFiles.filter(_.isFile).toList.filter { s => s.getName.endsWith("alogic") }
