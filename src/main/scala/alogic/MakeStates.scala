@@ -55,7 +55,8 @@ final class MakeStates {
   def makeFnStates(tree: TaskContent) : TaskContent = tree match {
     case Function(name,body) => {
       val s = fn2state(name)
-      Function(name,CombinatorialBlock(StateStmt(s) :: makeStates(s,body)))
+      val (current, extra) = makeStates(s,body)
+      Function(name,CombinatorialBlock( StateStmt(s) :: current ::: extra ))
     }
     case x => x
   }
@@ -73,33 +74,45 @@ final class MakeStates {
   def makeNum(x: Int) = Num(s"$x")
   
   // Create an AST that finishes by moving to finalState
-  def makeStates(finalState: Int, tree: AlogicAST) : List[AlogicAST] = tree match {
-    case FenceStmt() => List(GotoState(finalState))
-    case BreakStmt() => List(GotoState(breakTargets.head))
-    case ReturnStmt() => List(
+  // Returns two lists
+  //   The first list is all the statements that should be appended to the current list (i.e. cmds in this state)
+  //   The second list is additional self-contained statements that need to go somewhere
+  //   Need to consider what would happen if the first commands were generated within a while statement
+  def makeStates(finalState: Int, tree: AlogicAST) : (List[AlogicAST],List[AlogicAST]) = tree match {
+    case FenceStmt() => (List(GotoState(finalState)), Nil)
+    case BreakStmt() => (List(GotoState(breakTargets.head)), Nil)
+    case ReturnStmt() => (List(
       Minusminus(callDepth),
       GotoStmt("call_stack[call_depth_nxt]")
-    )
-    case GotoStmt(t) => List(GotoState(fn2state(t))) // TODO check targets exist in AstBuilder to avoid exception here
-    case FunCall(name,args) => List( // require(args.length==0)  // TODO check in builder
+    ), Nil)
+    case GotoStmt(t) => (List(GotoState(fn2state(t))), Nil) // TODO check targets exist in AstBuilder to avoid exception here
+    case FunCall(name,args) => (List( // require(args.length==0)  // TODO check in builder
       // Push return state
       Assign(ArrayLookup(callStack,callDepth),"=",makeNum(finalState)),
       // increment depth
       Plusplus(callDepth),
       // branch to function
       GotoState(fn2state(ExtractName(name))) // TODO check target exists in builder
-    )
-    case ControlBlock(cmds) => makeBlockStmts(finalState, cmds) 
+    ), Nil)
+    case ControlBlock(cmds) => makeBlockStmts(finalState, cmds)
+    case WhileLoop(cond,body) => {
+      val s = newState()
+      val (follow,extra) = makeStates(finalState,body)
+      (List(
+        GotoState(s),
+        StateStmt(s),
+        CombinatorialIf(cond,CombinatorialBlock(follow),Some(GotoState(finalState)))
+        ), extra)
+    }
       
     // TODO
 //   ControlFor
 //   ControlDo
 //   ControlIf
 //   ControlCaseStmt
-//   WhileLoop 
 
 
-    case x => x :: Nil
+    case x => (x :: Nil, Nil)
   }
   
   def newState() : Int = {
@@ -111,14 +124,19 @@ final class MakeStates {
   //  We need to split into control units
   //  A control unit is a set of combinatorial statements followed by a control statement
   //  We then have a new state for each intermediate control unit   
-  def makeBlockStmts(finalState: Int, tree: List[AlogicAST] ) : List[AlogicAST] = tree match {
-    case Nil => Nil
+  def makeBlockStmts(finalState: Int, tree: List[AlogicAST] ) : (List[AlogicAST],List[AlogicAST])  = tree match {
+    case Nil => (Nil, Nil)
     case x :: Nil => makeStates(finalState, x) 
     case x :: xs if (is_control_stmt(x)) => {
       val s = newState()
-      makeStates(s,x) ::: (StateStmt(s) :: makeBlockStmts(finalState, xs))  // TODO can we make this function tail recursive somehow?
+      val (current, extra) = makeStates(s,x)
+      val (current2, extra2) = makeBlockStmts(finalState, xs)
+      (current, StateStmt(s) :: current2 ::: extra ::: extra2) // TODO can we make this function tail recursive somehow?
     }
-    case x :: xs => x :: makeBlockStmts(finalState, xs)
+    case x :: xs => { // x must be combinatorial
+      val (current, extra) = makeBlockStmts(finalState,xs)
+      (x :: current, extra)
+    }
   }
    
 
