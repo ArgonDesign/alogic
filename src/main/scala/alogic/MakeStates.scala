@@ -31,6 +31,14 @@ final class MakeStates {
   val fn2state = mutable.Map[String, Int]()  // First state in each function
   
   var breakTargets : List[Int] = Nil // Stack of targets when we see a break
+  
+  def addTarget(x: Int) : Unit = {
+    breakTargets = x :: breakTargets
+  }
+  
+  def removeTarget() : Unit = {
+    breakTargets = breakTargets.tail
+  }
 
   def apply(tree:Program) : Program = {
     tree.cmds.map(generateFunStates)  // Prepare mapping fn2state
@@ -97,7 +105,9 @@ final class MakeStates {
     case ControlBlock(cmds) => makeBlockStmts(finalState, cmds)
     case WhileLoop(cond,body) => {
       val s = newState()
+      addTarget(finalState)
       val (follow,extra) = makeStates(finalState,body)
+      removeTarget()
       (List(
         GotoState(s),
         StateStmt(s),
@@ -116,6 +126,18 @@ final class MakeStates {
       (List(
         CombinatorialIf(cond,CombinatorialBlock(current),Some(CombinatorialBlock(current2)))
         ), extra ::: extra2)
+    }
+    case ControlFor(init, cond, incr, body) if body.forall(x => !is_control_stmt(x)) => {
+      // Can do the whole thing in one state
+      val s = newState()
+      // Combinatorial cannot include break, so no need for a new target
+      val (current,extra) = makeBlockStmts(finalState,body)
+      assert (extra.isEmpty) // This should get caught by the builder already
+      (List(
+         init, CombinatorialIf(cond, GotoState(s), Some(GotoState(finalState)))
+       ), 
+         StateStmt(s) :: current ::: incr :: CombinatorialIf(cond, GotoState(s), Some(GotoState(finalState))) :: Nil
+       )
     }
       
     // TODO
