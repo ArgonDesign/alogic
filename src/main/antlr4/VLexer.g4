@@ -75,11 +75,11 @@ CASE    : 'case' ;
 DEFAULT : 'default' ; 
 VERILOG : 'verilog' ; 
  
-SYNC_READY_BUBBLE:  'sync ready bubble';
-WIRE_SYNC_ACCEPT:  'wire sync accept';
-SYNC_READY: 'sync ready';
-WIRE_SYNC: 'wire sync';
-SYNC_ACCEPT: 'sync accept';
+SYNC_READY_BUBBLE:  'sync' WS 'ready' WS 'bubble';
+WIRE_SYNC_ACCEPT:  'wire' WS 'sync' WS 'accept';
+SYNC_READY: 'sync' WS 'ready';
+WIRE_SYNC: 'wire' WS 'sync';
+SYNC_ACCEPT: 'sync' WS 'accept';
 SYNC: 'sync';
 WIRE: 'wire';
 
