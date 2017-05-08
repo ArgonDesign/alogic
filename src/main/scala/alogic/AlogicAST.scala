@@ -69,6 +69,11 @@ case class AlogicComment(str:String) extends AlogicAST
 case class ControlCaseStmt(value:AlogicAST,cases:List[CaseLabel]) extends AlogicAST
 case class CombinatorialCaseStmt(value:AlogicAST,cases:List[CaseLabel]) extends AlogicAST
 
+// Extra types made in MakeStates
+case class StateStmt(state: Int) extends AlogicAST
+case class GotoState(state: Int) extends AlogicAST
+
+// Types within a case statement
 sealed trait CaseLabel
 case class ControlCaseLabel(cond:List[AlogicAST],body: AlogicAST) extends CaseLabel
 case class CombinatorialCaseLabel(cond:List[AlogicAST],body: AlogicAST) extends CaseLabel

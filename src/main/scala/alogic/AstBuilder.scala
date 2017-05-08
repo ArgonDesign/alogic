@@ -7,6 +7,7 @@ import org.antlr.v4.runtime.tree.ParseTree
 import org.antlr.v4.runtime.ParserRuleContext
 import scala.collection._
 import scala.collection.mutable.ListBuffer
+import alogic.AstOps._
 
 // The aim of the AstBuilder stage is:
 //   Build an abstract syntax tree
@@ -21,9 +22,6 @@ import scala.collection.mutable.ListBuffer
 // The overall API is to make a AstBuilder class, and then call it to build the ast from a parse tree.
 // The object can be called multiple times to allow us to only build a common header file once.
 //
-// TODO
-//   Map reads and writes into the nodes (this allows function calls to count as control statements)
-//   Deal with go and zxt and sxt rewrites
 
 
 class AstBuilder {
@@ -206,20 +204,7 @@ class AstBuilder {
   }
     
   // Statement visitors
-  def is_control_stmt(cmd: AlogicAST) : Boolean = cmd match {
-      case FenceStmt() => true
-      case BreakStmt() => true
-      case ReturnStmt() => true
-      case GotoStmt(target) => true
-      case ControlBlock(s) => true
-      case ControlIf(cond,body,elsebody) => true
-      case WhileLoop(cond,body) => true
-      case ControlFor(_,_,_,_) => true
-      case ControlDo(_,_) => true
-      case ControlCaseStmt(_,_) => true
-      case FunCall(_,_) => true
-      case _ => false
-    }
+  
   
   object ExprVisitor extends VParserBaseVisitor[AlogicAST] {
     override def visitTernaryExpr(ctx: TernaryExprContext) = TernaryOp(visit(ctx.binary_expr()), visit(ctx.expr(0)), visit(ctx.expr(1)))
