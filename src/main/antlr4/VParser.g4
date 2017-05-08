@@ -68,6 +68,9 @@ verilogtoken :
   | VLEFTCURLY verilogbody VRIGHTCURLY # Vbody
   ;
   
+// TODO: Express expr as a single left-recursive structure
+//       Antlr will recognize this and treat with appropriate precedence
+  
 expr : binary_expr # NotTernaryExpr
      | binary_expr QUESTIONMARK expr COLON expr # TernaryExpr
      ; 
