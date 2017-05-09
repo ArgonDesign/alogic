@@ -47,9 +47,10 @@ final class MakeStates {
     breakTargets = breakTargets.tail
   }
 
-  def apply(tree:Program) : Program = {
+  def apply(tree:Program) : StateProgram = {
     tree.cmds.map(generateFunStates)  // Prepare mapping fn2state
-    Program(tree.cmds.map(makeEntityStates))   // Transform tree
+    val cmds = tree.cmds.map(makeEntityStates)
+    StateProgram(cmds,state_num)   // Transform tree
   }
   
   def generateFunStates(tree: AlogicAST) : Unit = tree match {

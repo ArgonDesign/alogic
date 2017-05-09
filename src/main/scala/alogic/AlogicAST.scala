@@ -29,11 +29,8 @@ case class VerilogFunction(body: String) extends TaskContent
 // 
 // // AlogicAST used for abstract syntax nodes
 sealed trait AlogicAST
-case class Program(cmds : List[AlogicAST]) extends AlogicAST
 case class Num(value : String) extends AlogicAST  // Numbers held as textual representation
 case class Literal(value : String) extends AlogicAST  // Strings held as textual representation including quotes
-case class Define() extends AlogicAST
-case class Typedef() extends AlogicAST
 case class Task(tasktype: TaskType, name: String, decls: List[Declaration], fns: List[TaskContent]) extends AlogicAST
 case class DottedName(names: List[String]) extends AlogicAST
 case class ArrayLookup(name: AlogicAST, index: AlogicAST) extends AlogicAST
@@ -59,7 +56,12 @@ case class BitCat(parts:List[AlogicAST]) extends AlogicAST
 case class AlogicComment(str:String) extends AlogicAST
 case class CombinatorialCaseStmt(value:AlogicAST,cases:List[CaseLabel]) extends AlogicAST
 
+// Types revmoed by AstBuilder
+case class Define() extends AlogicAST
+case class Typedef() extends AlogicAST
+
 // Types removed by MakeStates
+case class Program(cmds : List[AlogicAST]) extends AlogicAST
 case class ControlCaseStmt(value:AlogicAST,cases:List[CaseLabel]) extends AlogicAST
 case class ControlIf(cond:AlogicAST, body:AlogicAST, elsebody:Option[AlogicAST]) extends AlogicAST
 case class ControlBlock(cmds: List[AlogicAST]) extends AlogicAST
@@ -72,6 +74,7 @@ case class ReturnStmt() extends AlogicAST
 case class GotoStmt(target:String) extends AlogicAST
 
 // Extra types inserted by MakeStates
+case class StateProgram(cmds : List[AlogicAST], numStates: Int) extends AlogicAST
 case class StateStmt(state: Int) extends AlogicAST
 case class GotoState(state: Int) extends AlogicAST
 
