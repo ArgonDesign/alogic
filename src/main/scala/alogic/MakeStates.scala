@@ -48,19 +48,12 @@ final class MakeStates {
   }
 
   def apply(tree:Program) : StateProgram = {
-    tree.cmds.map(generateFunStates)  // Prepare mapping fn2state
+    VisitAST( tree, {
+      case Function(name,body) => createFnState(name)
+      case x => 
+    })
     val cmds = tree.cmds.map(makeEntityStates)
     StateProgram(cmds,state_num)   // Transform tree
-  }
-  
-  def generateFunStates(tree: AlogicAST) : Unit = tree match {
-    case Task(t,n,decls,fns) => fns.map(generateFunStates)
-    case x => 
-  }
-  
-  def generateFunStates(tree: TaskContent) : Unit = tree match {
-    case Function(name,body) => createFnState(name)
-    case x => 
   }
   
   def makeEntityStates(tree: AlogicAST) : AlogicAST = tree match {
@@ -68,7 +61,7 @@ final class MakeStates {
     case x => x
   }
   
-  def makeFnStates(tree: TaskContent) : TaskContent = tree match {
+  def makeFnStates(tree: AlogicAST) : AlogicAST = tree match {
     case Function(name,body) => {
       val s = fn2state(name)
       val current = makeStates(s,body)

@@ -21,17 +21,14 @@ case class VerilogDeclaration(decltype: AlogicType,id: AlogicAST) extends Declar
 case class OutDeclaration(synctype: SyncType,decltype: AlogicType,name: String) extends Declaration
 case class InDeclaration(synctype: SyncType,decltype: AlogicType,name: String) extends Declaration
 
-// TaskContent used for each function
-sealed trait TaskContent
-case class Function(name: String, body: AlogicAST) extends TaskContent
-case class FenceFunction(body: AlogicAST) extends TaskContent
-case class VerilogFunction(body: String) extends TaskContent
-// 
 // // AlogicAST used for abstract syntax nodes
 sealed trait AlogicAST
+case class Function(name: String, body: AlogicAST) extends AlogicAST
+case class FenceFunction(body: AlogicAST) extends AlogicAST
+case class VerilogFunction(body: String) extends AlogicAST
 case class Num(value : String) extends AlogicAST  // Numbers held as textual representation
 case class Literal(value : String) extends AlogicAST  // Strings held as textual representation including quotes
-case class Task(tasktype: TaskType, name: String, decls: List[Declaration], fns: List[TaskContent]) extends AlogicAST
+case class Task(tasktype: TaskType, name: String, decls: List[Declaration], fns: List[AlogicAST]) extends AlogicAST
 case class DottedName(names: List[String]) extends AlogicAST
 case class ArrayLookup(name: AlogicAST, index: AlogicAST) extends AlogicAST
 case class BinaryArrayLookup(name: AlogicAST, lhs: AlogicAST, op: String, rhs: AlogicAST) extends AlogicAST

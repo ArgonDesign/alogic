@@ -91,7 +91,7 @@ class AstBuilder {
     override def visitFunction(ctx: FunctionContext): Unit = NS.insert(ctx,ctx.IDENTIFIER().getText())
   }
   
-  object TaskContentVisitor extends VParserBaseVisitor[TaskContent] {
+  object TaskContentVisitor extends VParserBaseVisitor[AlogicAST] {
     override def visitFunction(ctx: FunctionContext) = Function(ctx.IDENTIFIER().getText(), ExprVisitor.visit(ctx.statement()))
     override def visitFenceFunction(ctx: FenceFunctionContext) = FenceFunction(ExprVisitor.visit(ctx.statement()))
     override def visitVerilogFunction(ctx: VerilogFunctionContext) = VerilogFunction(VerilogBodyVisitor.visit(ctx.verilogbody()))
