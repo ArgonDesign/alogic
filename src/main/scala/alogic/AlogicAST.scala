@@ -51,25 +51,27 @@ case class BinaryOp(lhs: AlogicAST, op: String, rhs: AlogicAST) extends AlogicAS
 case class UnaryOp(op: String, lhs: AlogicAST) extends AlogicAST
 case class Bracket(content: AlogicAST) extends AlogicAST
 case class TernaryOp(cond: AlogicAST, lhs: AlogicAST, rhs: AlogicAST) extends AlogicAST
-case class ControlBlock(cmds: List[AlogicAST]) extends AlogicAST
 case class CombinatorialBlock(cmds: List[AlogicAST]) extends AlogicAST
+case class DeclarationStmt(decl:VarDeclaration) extends AlogicAST  // Used when a declaration is mixed in with the code
+case class CombinatorialIf(cond:AlogicAST, body:AlogicAST, elsebody:Option[AlogicAST]) extends AlogicAST
+case class BitRep(count:AlogicAST,value:AlogicAST) extends AlogicAST
+case class BitCat(parts:List[AlogicAST]) extends AlogicAST
+case class AlogicComment(str:String) extends AlogicAST
+case class CombinatorialCaseStmt(value:AlogicAST,cases:List[CaseLabel]) extends AlogicAST
+
+// Types removed by MakeStates
+case class ControlCaseStmt(value:AlogicAST,cases:List[CaseLabel]) extends AlogicAST
+case class ControlIf(cond:AlogicAST, body:AlogicAST, elsebody:Option[AlogicAST]) extends AlogicAST
+case class ControlBlock(cmds: List[AlogicAST]) extends AlogicAST
+case class WhileLoop(cond:AlogicAST, body:AlogicAST) extends AlogicAST
+case class ControlFor(init:AlogicAST, cond:AlogicAST, incr:AlogicAST, body:List[AlogicAST]) extends AlogicAST
+case class ControlDo(cond:AlogicAST, body:List[AlogicAST]) extends AlogicAST
 case class FenceStmt() extends AlogicAST
 case class BreakStmt() extends AlogicAST
 case class ReturnStmt() extends AlogicAST
 case class GotoStmt(target:String) extends AlogicAST
-case class DeclarationStmt(decl:VarDeclaration) extends AlogicAST  // Used when a declaration is mixed in with the code
-case class WhileLoop(cond:AlogicAST, body:AlogicAST) extends AlogicAST
-case class ControlFor(init:AlogicAST, cond:AlogicAST, incr:AlogicAST, body:List[AlogicAST]) extends AlogicAST
-case class ControlDo(cond:AlogicAST, body:List[AlogicAST]) extends AlogicAST
-case class CombinatorialIf(cond:AlogicAST, body:AlogicAST, elsebody:Option[AlogicAST]) extends AlogicAST
-case class ControlIf(cond:AlogicAST, body:AlogicAST, elsebody:Option[AlogicAST]) extends AlogicAST
-case class BitRep(count:AlogicAST,value:AlogicAST) extends AlogicAST
-case class BitCat(parts:List[AlogicAST]) extends AlogicAST
-case class AlogicComment(str:String) extends AlogicAST
-case class ControlCaseStmt(value:AlogicAST,cases:List[CaseLabel]) extends AlogicAST
-case class CombinatorialCaseStmt(value:AlogicAST,cases:List[CaseLabel]) extends AlogicAST
 
-// Extra types made in MakeStates
+// Extra types inserted by MakeStates
 case class StateStmt(state: Int) extends AlogicAST
 case class GotoState(state: Int) extends AlogicAST
 
