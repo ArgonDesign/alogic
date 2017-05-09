@@ -10,6 +10,15 @@ object AstOps {
     case _ => "Unknown"
   }
   
+  def ExtractName(tree:Declaration) : String = tree match {
+    case VarDeclaration(_,id,_) => ExtractName(id)
+    case ParamDeclaration(_,id,_) => id
+    case VerilogDeclaration(_,id) => ExtractName(id)
+    case OutDeclaration(_,_,name) => name
+    case InDeclaration(_,_,name) => name
+    case _ => "Unknown"
+  }
+  
   def is_control_stmt(cmd: AlogicAST) : Boolean = cmd match {
     case FenceStmt() => true
     case BreakStmt() => true
