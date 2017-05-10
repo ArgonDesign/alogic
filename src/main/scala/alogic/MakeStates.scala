@@ -46,14 +46,12 @@ final class MakeStates {
   def removeTarget() : Unit = {
     breakTargets = breakTargets.tail
   }
-  
-  def captureFn(fn: AlogicAST): Unit = fn match {
-      case Function(name,body) => createFnState(name)
-      case x => 
-    }
 
   def apply(tree:Program) : StateProgram = {
-    VisitAST( tree, captureFn(_))
+    VisitAST( tree, {
+      case Function(name,body) => createFnState(name)
+      case x =>
+    })
     val cmds = tree.cmds.map(makeEntityStates)
     StateProgram(cmds,state_num)   // Transform tree
   }

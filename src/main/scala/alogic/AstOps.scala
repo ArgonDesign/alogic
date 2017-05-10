@@ -63,11 +63,11 @@ object AstOps {
       case BitRep(count,value)  => {VisitAST(count,callback); VisitAST(value,callback)}
       case BitCat(parts) => for (f <- parts) VisitAST(f,callback)
       case AlogicComment(str) => 
-      case CombinatorialCaseStmt(value,cases) => {VisitAST(value,callback); for {f <- cases} VisitAST(f,callback)}
+      case CombinatorialCaseStmt(value,cases) => {VisitAST(value,callback); for {f <- cases} VisitCase(f,callback)}
       case Define() =>
       case Typedef() =>
       case Program(cmds) => for {f <- cmds} VisitAST(f,callback)
-      case ControlCaseStmt(value,cases) => {VisitAST(value,callback); for {f <- cases} VisitAST(f,callback)}
+      case ControlCaseStmt(value,cases) => {VisitAST(value,callback); for {f <- cases} VisitCase(f,callback)}
       case ControlIf(cond, body, Some(e)) => {VisitAST(cond,callback); VisitAST(body,callback); VisitAST(e,callback)}
       case ControlIf(cond, body, None) => {VisitAST(cond,callback); VisitAST(body,callback)}
       case ControlBlock(cmds) => for (f <- cmds) VisitAST(f,callback)
@@ -91,7 +91,7 @@ object AstOps {
     }
   }  
   
-  def VisitAST(tree: CaseLabel, callback: AlogicAST => Unit): Unit = tree match {
+  def VisitCase(tree: CaseLabel, callback: AlogicAST => Unit): Unit = tree match {
     case ControlCaseLabel(cond,body) => {
       for {f <- cond} VisitAST(f,callback)
       VisitAST(body,callback)
