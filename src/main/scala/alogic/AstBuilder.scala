@@ -1,7 +1,7 @@
 package alogic
 
-import alogic.antlr4._
-import alogic.antlr4.VParser._
+import alogic.antlr._
+import alogic.antlr.VParser._
 import scala.collection.JavaConverters._
 import org.antlr.v4.runtime.tree.ParseTree
 import org.antlr.v4.runtime.ParserRuleContext

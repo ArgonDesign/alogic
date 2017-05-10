@@ -16,7 +16,7 @@ final class MakeVerilog {
   }
 
   def apply(tree:StateProgram, fname: String) : Unit = {
-    VisitAST( tree, saveDecl)
+    VisitAST( tree, saveDecl(_))
   }
 
 }

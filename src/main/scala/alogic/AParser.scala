@@ -22,8 +22,8 @@ class AParser() {
     code
   }
   
-  object myVisitor extends antlr4.VParserBaseVisitor[String] {
-    override def visitBinaryExpr(ctx: antlr4.VParser.BinaryExprContext) = {
+  object myVisitor extends antlr.VParserBaseVisitor[String] {
+    override def visitBinaryExpr(ctx: antlr.VParser.BinaryExprContext) = {
       //println(ctx.binary_op) TODO why does this print out a long list of stuff?
       visitChildren(ctx)
       "test"
@@ -34,11 +34,11 @@ class AParser() {
 
     val inputStream = new ANTLRInputStream(loadFile(path))
     inputStream.name = path + '\n'  // TODO why have error messages stopped reporting the input stream?
-    val lexer = new antlr4.VLexer(inputStream)
+    val lexer = new antlr.VLexer(inputStream)
     val tokenStream = new CommonTokenStream(lexer)
     tokenStream.fill()
     
-    val parser = new antlr4.VParser(tokenStream)
+    val parser = new antlr.VParser(tokenStream)
     val parseTree = parser.start()
     val ast = builder(parseTree)
     //println(ast)

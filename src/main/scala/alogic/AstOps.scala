@@ -82,8 +82,12 @@ object AstOps {
       case ReturnStmt() =>
       case GotoStmt(target:String) =>
       case StateProgram(cmds, numStates) => for {f <- cmds} VisitAST(f,callback)
-      case StateStmt(state: Int) =>
-      case GotoState(state: Int) =>
+      case StateStmt(state) =>
+      case GotoState(state) =>
+      case DottedName(names) =>
+      case Literal(_) =>
+      case Num(_) =>
+      case VerilogFunction(_) =>
     }
   }  
   

@@ -8,7 +8,7 @@ organization := "alogic"
 
 version := "1"
 
-scalaVersion := "2.12.1"
+scalaVersion := "2.11.8"
 
 scalacOptions ++= Seq("-deprecation", "-feature")
 
@@ -22,7 +22,7 @@ libraryDependencies += "com.beachape.filemanagement" %% "schwatcher" % "0.3.2"
 
 antlr4Settings
 
-antlr4PackageName in Antlr4 := Some("alogic.antlr4")
+antlr4PackageName in Antlr4 := Some("alogic.antlr")
 
 antlr4GenListener in Antlr4 := false
 
