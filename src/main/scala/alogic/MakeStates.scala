@@ -47,11 +47,11 @@ final class MakeStates {
     breakTargets = breakTargets.tail
   }
 
-  def apply(tree:Program) : StateProgram = {
-    VisitAST( tree, {
-      case Function(name,body) => createFnState(name)
-      case x =>
-    })
+  def apply(tree: Program): StateProgram = {
+    VisitAST(tree) {
+      case Function(name, body) => createFnState(name)
+      case _                    => ()
+    }
     val cmds = tree.cmds.map(makeEntityStates)
     StateProgram(cmds,state_num)   // Transform tree
   }

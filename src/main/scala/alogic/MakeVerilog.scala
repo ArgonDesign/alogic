@@ -17,12 +17,10 @@ final class MakeVerilog {
     System.exit(-1) 
   }
 
-  def apply(tree:StateProgram, fname: String) : Unit = {
-    // Collect all the declarations
-    VisitAST( tree, {
-      case DeclarationStmt(d) => id2decl(ExtractName(d)) = d
-      case _ => 
-    })
+  // Collect all the declarations
+  def apply(tree: StateProgram, fname: String): Unit = VisitAST(tree) {
+    case DeclarationStmt(d) => id2decl(ExtractName(d)) = d
+    case _                  =>
   }
   
   // Construct the string to be used when this identifier is used on the RHS of an assignment
@@ -58,7 +56,4 @@ final class MakeVerilog {
   def StallExpr(indent: Int, tree: AlogicAST): String = {
     ""
   }
-
 }
-
-
