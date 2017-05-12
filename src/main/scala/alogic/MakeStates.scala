@@ -160,7 +160,7 @@ final class MakeStates {
     case x => x :: Nil
   }
 
-  def isCaseDefault(c: CaseLabel): Boolean = c match {
+  def isCaseDefault(c: AlogicAST): Boolean = c match {
     case ControlCaseLabel(Nil, body) => true
     case _                           => false
   }

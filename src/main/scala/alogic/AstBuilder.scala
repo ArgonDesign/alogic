@@ -176,7 +176,7 @@ class AstBuilder {
     override def visitWireType(ctx: WireTypeContext) = Wire()
   }
 
-  object CaseVisitor extends VParserBaseVisitor[CaseLabel] {
+  object CaseVisitor extends VParserBaseVisitor[AlogicAST] {
     override def visitDefaultCase(ctx: DefaultCaseContext) = {
       val s = ExprVisitor.visit(ctx.statement())
       if (is_control_stmt(s))
@@ -264,7 +264,7 @@ class AstBuilder {
       }
     }
 
-    def is_control_label(cmd: CaseLabel): Boolean = cmd match {
+    def is_control_label(cmd: AlogicAST): Boolean = cmd match {
       case ControlCaseLabel(_, _) => true
       case _                      => false
     }

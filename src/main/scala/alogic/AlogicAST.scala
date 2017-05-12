@@ -51,7 +51,7 @@ case class CombinatorialIf(cond: AlogicAST, body: AlogicAST, elsebody: Option[Al
 case class BitRep(count: AlogicAST, value: AlogicAST) extends AlogicAST
 case class BitCat(parts: List[AlogicAST]) extends AlogicAST
 case class AlogicComment(str: String) extends AlogicAST
-case class CombinatorialCaseStmt(value: AlogicAST, cases: List[CaseLabel]) extends AlogicAST
+case class CombinatorialCaseStmt(value: AlogicAST, cases: List[AlogicAST]) extends AlogicAST
 
 // Types revmoed by AstBuilder
 case class Define() extends AlogicAST
@@ -59,7 +59,7 @@ case class Typedef() extends AlogicAST
 
 // Types removed by MakeStates
 case class Program(cmds: List[AlogicAST]) extends AlogicAST
-case class ControlCaseStmt(value: AlogicAST, cases: List[CaseLabel]) extends AlogicAST
+case class ControlCaseStmt(value: AlogicAST, cases: List[AlogicAST]) extends AlogicAST
 case class ControlIf(cond: AlogicAST, body: AlogicAST, elsebody: Option[AlogicAST]) extends AlogicAST
 case class ControlBlock(cmds: List[AlogicAST]) extends AlogicAST
 case class WhileLoop(cond: AlogicAST, body: AlogicAST) extends AlogicAST
@@ -76,9 +76,8 @@ case class StateStmt(state: Int) extends AlogicAST
 case class GotoState(state: Int) extends AlogicAST
 
 // Types within a case statement
-sealed trait CaseLabel
-case class ControlCaseLabel(cond: List[AlogicAST], body: AlogicAST) extends CaseLabel
-case class CombinatorialCaseLabel(cond: List[AlogicAST], body: AlogicAST) extends CaseLabel
+case class ControlCaseLabel(cond: List[AlogicAST], body: AlogicAST) extends AlogicAST
+case class CombinatorialCaseLabel(cond: List[AlogicAST], body: AlogicAST) extends AlogicAST
 
 // AlogicType used to define the allowed types
 sealed trait AlogicType

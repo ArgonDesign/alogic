@@ -36,7 +36,6 @@ object AstOps {
 
   // Recurse through the tree and apply function to all nodes in pre-order
   def VisitAST(tree: AlogicAST)(callback: AlogicAST => Unit): Unit = {
-    def visitCaseLabel(label: CaseLabel): Unit = VisitAST(label)(callback)
 
     def visit(tree: AlogicAST): Unit = {
       callback(tree)
@@ -66,11 +65,11 @@ object AstOps {
         case BitRep(count, value)                  => { visit(count); visit(value) }
         case BitCat(parts)                         => parts foreach visit
         case AlogicComment(str)                    =>
-        case CombinatorialCaseStmt(value, cases)   => { visit(value); cases foreach visitCaseLabel }
+        case CombinatorialCaseStmt(value, cases)   => { visit(value); cases foreach visit }
         case Define()                              =>
         case Typedef()                             =>
         case Program(cmds)                         => cmds foreach visit
-        case ControlCaseStmt(value, cases)         => { visit(value); cases foreach visitCaseLabel }
+        case ControlCaseStmt(value, cases)         => { visit(value); cases foreach visit }
         case ControlIf(cond, body, Some(e))        => { visit(cond); visit(body); visit(e) }
         case ControlIf(cond, body, None)           => { visit(cond); visit(body) }
         case ControlBlock(cmds)                    => cmds foreach visit
@@ -88,17 +87,11 @@ object AstOps {
         case Literal(_)                            =>
         case Num(_)                                =>
         case VerilogFunction(_)                    =>
+        case ControlCaseLabel(cond, body)          => { cond foreach visit; visit(body) }
+        case CombinatorialCaseLabel(cond, body)    => { cond foreach visit; visit(body) }
       }
     }
 
     visit(tree)
-  }
-
-  def VisitAST(tree: CaseLabel)(callback: AlogicAST => Unit): Unit = {
-    def visit(node: AlogicAST): Unit = VisitAST(node)(callback)
-    tree match {
-      case ControlCaseLabel(cond, body)       => { cond foreach visit; visit(body) }
-      case CombinatorialCaseLabel(cond, body) => { cond foreach visit; visit(body) }
-    }
   }
 }
