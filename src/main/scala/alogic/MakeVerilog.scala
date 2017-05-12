@@ -121,4 +121,26 @@ final class MakeVerilog {
     VisitAST(tree)(v)
     return blockingStatements
   }
+
+  // Called with an integer representing a state, returns the appropriate string
+  def MakeState(state: Int): String = s"$state" // TODO add correct number of bits
+
+  // This function defines how to write next values (D input on flip-flops)
+  def nx(x: String): StrTree = StrList(List(x, Str("_d")))
+
+  // Produce code to go into the case statements (we assume we have already had a "case(state) default: begin"
+  // The top call should be with Function or VerilogFunction
+  def CombStmt(indent: Int, tree: AlogicAST): StrTree = tree match {
+    case Assign(lhs, op, rhs) => Str("TODO")
+    case CombinatorialCaseStmt(value, cases) => Str("TODO")
+    case CombinatorialIf(cond, body, elsebody) => Str("TODO")
+    case WriteCall(name, args) => Str("TODO")
+    case CombinatorialBlock(cmds) => Str("TODO")
+    case DeclarationStmt(VarDeclaration(decltype, id, Some(rhs))) => CombStmt(indent, Assign(id, "=", rhs))
+    case Plusplus(lhs) => CombStmt(indent, Assign(lhs, "=", BinaryOp(lhs, "+", Num("1'b1"))))
+    case AlogicComment(s) => s"// $s\n"
+    case StateStmt(state) => StrList(List(" " * (indent - 4), "end\n", " " * (indent - 4), MakeState(state), ": begin\n"))
+    case GotoState(target) => StrList(List(" " * indent, nx("state"), "=", MakeState(target), ";\n"))
+    case x => error("Don't know how to emit code for $x"); Str("")
+  }
 }
