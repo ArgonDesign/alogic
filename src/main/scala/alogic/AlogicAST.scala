@@ -52,8 +52,9 @@ case class BitRep(count: AlogicAST, value: AlogicAST) extends AlogicAST
 case class BitCat(parts: List[AlogicAST]) extends AlogicAST
 case class AlogicComment(str: String) extends AlogicAST
 case class CombinatorialCaseStmt(value: AlogicAST, cases: List[AlogicAST]) extends AlogicAST
+case class CombinatorialCaseLabel(cond: List[AlogicAST], body: AlogicAST) extends AlogicAST
 
-// Types revmoed by AstBuilder
+// Types removed by AstBuilder
 case class Define() extends AlogicAST
 case class Typedef() extends AlogicAST
 
@@ -69,15 +70,12 @@ case class FenceStmt() extends AlogicAST
 case class BreakStmt() extends AlogicAST
 case class ReturnStmt() extends AlogicAST
 case class GotoStmt(target: String) extends AlogicAST
+case class ControlCaseLabel(cond: List[AlogicAST], body: AlogicAST) extends AlogicAST
 
 // Extra types inserted by MakeStates
 case class StateProgram(cmds: List[AlogicAST], numStates: Int) extends AlogicAST
 case class StateStmt(state: Int) extends AlogicAST
 case class GotoState(state: Int) extends AlogicAST
-
-// Types within a case statement
-case class ControlCaseLabel(cond: List[AlogicAST], body: AlogicAST) extends AlogicAST
-case class CombinatorialCaseLabel(cond: List[AlogicAST], body: AlogicAST) extends AlogicAST
 
 // AlogicType used to define the allowed types
 sealed trait AlogicType

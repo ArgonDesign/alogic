@@ -49,8 +49,9 @@ final class MakeStates {
 
   def apply(tree: Program): StateProgram = {
     VisitAST(tree) {
-      case Function(name, body) => createFnState(name)
-      case _                    => ()
+      case Function(name, body) =>
+        createFnState(name); false
+      case _                    => true // Recurse
     }
     val cmds = tree.cmds.map(makeEntityStates)
     StateProgram(cmds, state_num) // Transform tree
