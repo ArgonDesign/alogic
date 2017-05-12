@@ -11,39 +11,39 @@ import scala.annotation.tailrec
 
 final class Namespace(warning: (ParserRuleContext, String) => Unit) {
 
-  val variables = mutable.Set[String]()  // Track all ids we are planning to use
-  
-  var namespaces: List[mutable.Map[String,String]] = Nil  // Keep a stack of namespaces
-  
+  val variables = mutable.Set[String]() // Track all ids we are planning to use
+
+  var namespaces: List[mutable.Map[String, String]] = Nil // Keep a stack of namespaces
+
   addNamespace() // Prepare default namespace for top level declarations
-  
-  def addNamespace() = {namespaces = mutable.Map[String,String]() :: namespaces}
-  
-  def removeNamespace() = {namespaces = namespaces.tail}
-  
-  def lookup(ctx: ParserRuleContext, name: String) : String = lookup(ctx,name,namespaces)
-  
-  @tailrec def lookup(ctx: ParserRuleContext, name: String, ns: List[mutable.Map[String,String]] ) : String = 
+
+  def addNamespace() = { namespaces = mutable.Map[String, String]() :: namespaces }
+
+  def removeNamespace() = { namespaces = namespaces.tail }
+
+  def lookup(ctx: ParserRuleContext, name: String): String = lookup(ctx, name, namespaces)
+
+  @tailrec def lookup(ctx: ParserRuleContext, name: String, ns: List[mutable.Map[String, String]]): String =
     if (ns.length <= 0) {
-      warning(ctx,s"Unknown identifier $name")
+      warning(ctx, s"Unknown identifier $name")
       s"Unknown_$name"
     } else {
       val n = ns.head
       if (n contains name)
         n(name)
       else
-        lookup(ctx,name,ns.tail)
+        lookup(ctx, name, ns.tail)
     }
-  
+
   // Can only have one copy of each identifier in each namespace
-  def insert(ctx: ParserRuleContext, name: String) : String = {
+  def insert(ctx: ParserRuleContext, name: String): String = {
     val n = namespaces.head
     if (n contains name)
-      warning(ctx,s"Multiple declarations of $name")
+      warning(ctx, s"Multiple declarations of $name")
     insert(name)
   }
-    
-  def insert(name: String) : String = {
+
+  def insert(name: String): String = {
     val n = namespaces.head
     var target = name
     while (variables contains target) {
@@ -53,5 +53,5 @@ final class Namespace(warning: (ParserRuleContext, String) => Unit) {
     variables += target
     target
   }
-  
+
 }
