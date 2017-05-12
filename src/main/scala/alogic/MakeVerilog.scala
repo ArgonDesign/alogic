@@ -103,20 +103,20 @@ final class MakeVerilog {
         d match {
           case OutDeclaration(synctype, _, _) => {
             synctype match {
-              case SyncReadyBubble() => add(s"$go = $go && !${valid(n)};")
-              case SyncReady()       => add(s"$go = $go && (!${valid(n)} || !${ready(n)});")
+              case SyncReadyBubble() => add(s"$go = $go && !${valid(n)};\n")
+              case SyncReady()       => add(s"$go = $go && (!${valid(n)} || !${ready(n)});\n")
               case SyncAccept()      => error("sync accept only supported as wire output type") // TODO check this earlier
-              case WireSyncAccept()  => add(s"$go = $go && ${accept(n)};")
+              case WireSyncAccept()  => add(s"$go = $go && ${accept(n)};\n")
               case _                 =>
             }
             if (HasValid(synctype))
-              blockingStatements = s"${valid(n)} = 1'b1;" :: blockingStatements
+              add(s"${valid(n)} = 1'b1;\n")
           }
           case _ => error(s"$name cannot be written"); false // TODO check this earlier?
         }
         true // Recurse in case arguments use reads
       }
-
+      case _ => true
     }
     VisitAST(tree)(v)
     return blockingStatements
@@ -128,14 +128,26 @@ final class MakeVerilog {
   // This function defines how to write next values (D input on flip-flops)
   def nx(x: String): StrTree = StrList(List(x, Str("_d")))
 
+  def AddStall(indent: Int, stalls: List[String], expr: StrTree): StrTree = {
+    if (stalls.isEmpty)
+      StrList(" " * indent :: expr :: Nil)
+    else
+      StrList(Str(" " * indent) :: Str("begin\n") ::
+        stalls.map(x => Str(" " * (indent + 4) + x)) :::
+        Str(" " * indent) :: expr ::
+        Str(" " * indent) :: Str("end\n") :: Nil)
+  }
+
   // Produce code to go into the case statements (we assume we have already had a "case(state) default: begin"
   // The top call should be with Function or VerilogFunction
   def CombStmt(indent: Int, tree: AlogicAST): StrTree = tree match {
-    case Assign(lhs, op, rhs) => Str("TODO")
-    case CombinatorialCaseStmt(value, cases) => Str("TODO")
-    case CombinatorialIf(cond, body, elsebody) => Str("TODO")
-    case WriteCall(name, args) => Str("TODO")
-    case CombinatorialBlock(cmds) => Str("TODO")
+    case Assign(lhs, "=", rhs)                       => AddStall(indent, StallExpr(lhs) ::: StallExpr(rhs), StrList(List(MakeExpr(lhs), "=", MakeExpr(rhs))))
+    case CombinatorialCaseStmt(value, cases)         => Str("TODO")
+    case CombinatorialIf(cond, body, elsebody)       => Str("TODO")
+    case WriteCall(name, args) if (args.length == 1) => AddStall(indent, StallExpr(name) ::: StallExpr(args(0)), StrList(List(MakeExpr(name), "=", MakeExpr(args(0)))))
+    case CombinatorialBlock(cmds) => StrList(Str(" " * indent) :: Str("begin\n") ::
+      StrList(for { cmd <- cmds } yield CombStmt(indent + 4, cmd)) ::
+      Str(" " * indent) :: Str("end\n") :: Nil)
     case DeclarationStmt(VarDeclaration(decltype, id, Some(rhs))) => CombStmt(indent, Assign(id, "=", rhs))
     case Plusplus(lhs) => CombStmt(indent, Assign(lhs, "=", BinaryOp(lhs, "+", Num("1'b1"))))
     case AlogicComment(s) => s"// $s\n"
