@@ -141,9 +141,19 @@ final class MakeVerilog {
   // Produce code to go into the case statements (we assume we have already had a "case(state) default: begin"
   // The top call should be with Function or VerilogFunction
   def CombStmt(indent: Int, tree: AlogicAST): StrTree = tree match {
-    case Assign(lhs, "=", rhs)                       => AddStall(indent, StallExpr(lhs) ::: StallExpr(rhs), StrList(List(MakeExpr(lhs), "=", MakeExpr(rhs))))
-    case CombinatorialCaseStmt(value, cases)         => Str("TODO")
-    case CombinatorialIf(cond, body, elsebody)       => Str("TODO")
+    case Assign(lhs, "=", rhs) => AddStall(indent, StallExpr(lhs) ::: StallExpr(rhs), StrList(List(MakeExpr(lhs), "=", MakeExpr(rhs))))
+    case CombinatorialCaseStmt(value, cases) => AddStall(indent, StallExpr(value),
+      StrList(Str(" " * indent) :: Str("case(") :: MakeExpr(value) :: Str(") begin\n") ::
+        StrList(for (c <- cases) yield CombStmt(indent + 4, c)) ::
+        Str(" " * indent) :: Str("end\n") :: Nil))
+    case CombinatorialIf(cond, body, Some(elsebody)) => AddStall(indent, StallExpr(cond),
+      StrList(Str(" " * indent) :: Str("if\n") ::
+        CombStmt(indent + 4, body) ::
+        Str(" " * indent) :: Str("else\n") ::
+        CombStmt(indent + 4, elsebody) :: Nil))
+    case CombinatorialIf(cond, body, None) => AddStall(indent, StallExpr(cond),
+      StrList(Str(" " * indent) :: Str("if\n") ::
+        CombStmt(indent + 4, body) :: Nil))
     case WriteCall(name, args) if (args.length == 1) => AddStall(indent, StallExpr(name) ::: StallExpr(args(0)), StrList(List(MakeExpr(name), "=", MakeExpr(args(0)))))
     case CombinatorialBlock(cmds) => StrList(Str(" " * indent) :: Str("begin\n") ::
       StrList(for { cmd <- cmds } yield CombStmt(indent + 4, cmd)) ::
@@ -153,6 +163,10 @@ final class MakeVerilog {
     case AlogicComment(s) => s"// $s\n"
     case StateStmt(state) => StrList(List(" " * (indent - 4), "end\n", " " * (indent - 4), MakeState(state), ": begin\n"))
     case GotoState(target) => StrList(List(" " * indent, nx("state"), "=", MakeState(target), ";\n"))
+    case CombinatorialCaseLabel(conds, body) => StrList(
+      Str(" " * indent) ::
+        StrCommaList(conds.map(MakeExpr)) ::
+        Str(":\n") :: CombStmt(indent + 4, body) :: Nil)
     case x => error("Don't know how to emit code for $x"); Str("")
   }
 }
