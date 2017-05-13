@@ -36,13 +36,15 @@ final class MakeVerilog {
     s + "_accept"
 
   def apply(tree: StateProgram, fname: String): Unit = {
+    numstates = tree.numStates
     // Collect all the declarations
     VisitAST(tree) {
       case Task(_, _, decls, _) => { decls foreach { x => id2decl(ExtractName(x)) }; false }
       case DeclarationStmt(d)   => { id2decl(ExtractName(d)) = d; false }
       case _                    => true
     }
-    numstates = tree.numStates
+    // Add in state declaration
+    // TODO
     val pw = new PrintWriter(new File(fname))
     def writeOut(typ: AlogicType, name: StrTree): Unit = typ match {
       case IntType(true, 1)     => pw.println(s"out signed reg " + MakeString(name) + ";")
@@ -51,7 +53,24 @@ final class MakeVerilog {
       case IntType(false, size) => pw.println(s"out reg [$size-1:0]" + MakeString(name) + ";")
       case _                    => // TODO
     }
+    def writeIn(typ: AlogicType, name: StrTree): Unit = typ match {
+      case IntType(true, 1)     => pw.println(s"in signed wire " + MakeString(name) + ";")
+      case IntType(true, size)  => pw.println(s"in signed wire [$size-1:0]" + MakeString(name) + ";")
+      case IntType(false, 1)    => pw.println(s"in wire " + MakeString(name) + ";")
+      case IntType(false, size) => pw.println(s"in wire [$size-1:0]" + MakeString(name) + ";")
+      case _                    => // TODO
+    }
+    def writeVar(typ: AlogicType, name: StrTree): Unit = typ match {
+      case IntType(true, 1)     => pw.println(s"signed reg " + MakeString(name) + ";")
+      case IntType(true, size)  => pw.println(s"signed reg [$size-1:0]" + MakeString(name) + ";")
+      case IntType(false, 1)    => pw.println(s"reg " + MakeString(name) + ";")
+      case IntType(false, size) => pw.println(s"reg [$size-1:0]" + MakeString(name) + ";")
+      case _                    => // TODO
+    }
     // Emit header and combinatorial code
+    var fns: List[StrTree] = Nil
+    var fencefns: List[StrTree] = Nil
+
     VisitAST(tree) {
       case Task(Fsm(), name, decls, fns) => {
         pw.println(s"module $name (")
@@ -66,16 +85,36 @@ final class MakeVerilog {
               pw.println("out reg " + accept(name) + ";")
             VisitType(decltype, name)(writeOut)
           }
-          case InDeclaration(_, _, name) => name // TODO
-          case _                         =>
+          case InDeclaration(synctype, decltype, name) => {
+            if (HasValid(synctype))
+              pw.println("in wire " + valid(name) + ";")
+            if (HasReady(synctype))
+              pw.println("out reg " + ready(name) + ";")
+            if (HasAccept(synctype))
+              pw.println("in wire " + accept(name) + ";")
+            VisitType(decltype, name)(writeOut)
+          }
+          case _ =>
         })
         pw.println(") begin")
-        // TODO declare remaining variables
+        // declare remaining variables
+        id2decl.values.foreach({
+          case VarDeclaration(decltype, name, init) => VisitType(decltype, ExtractName(name))(writeVar)
+          case _                                    =>
+        })
         true
       }
-      // TODO add function
-      case _ => true
+      case Function(name, body) => { fns = CombStmt(6, body) :: fns; false }
+      case FenceFunction(body)  => { fencefns = CombStmt(4, body) :: fencefns; false }
+      case _                    => true
     }
+    // Start main combinatorial loop
+    pw.println("always @* begin")
+    pw.println(MakeString(StrList(fencefns)))
+    pw.println("  case(state) begin")
+    pw.println("    default: begin")
+    pw.println(MakeString(StrList(fns)))
+    pw.println("end")
     // Now emit clocked blocks
     pw.println("endmodule")
   }
