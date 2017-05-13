@@ -110,13 +110,19 @@ final class MakeVerilog {
     }
     // Start main combinatorial loop
     pw.println("always @* begin")
+    // Prepare defaults
+    // TODO
     pw.println(MakeString(StrList(fencefns)))
     pw.println("  case(state) begin")
     pw.println("    default: begin")
     pw.println(MakeString(StrList(fns)))
+    pw.println("    end")
+    pw.println("  end")
+    // TODO clear outputs based on go
     pw.println("end")
     // Now emit clocked blocks
     pw.println("endmodule")
+    pw.close()
   }
 
   // Construct the string to be used when this identifier is used on the RHS of an assignment
