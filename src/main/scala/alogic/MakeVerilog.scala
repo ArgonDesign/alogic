@@ -3,6 +3,8 @@
 package alogic
 
 import scala.collection._
+import java.io._
+
 import AstOps._
 import scala.annotation.tailrec
 
@@ -13,6 +15,8 @@ final class MakeVerilog {
   val id2decl = mutable.Map[String, Declaration]()
 
   val go = "go" // Name of the signal used to decide whether to clock registers
+
+  var numstates = 0
 
   def error(msg: String) {
     println(msg)
@@ -31,11 +35,49 @@ final class MakeVerilog {
   def accept(s: String): String =
     s + "_accept"
 
-  // Collect all the declarations
-  def apply(tree: StateProgram, fname: String): Unit = VisitAST(tree) {
-    case DeclarationStmt(d) =>
-      id2decl(ExtractName(d)) = d; false
-    case _ => true
+  def apply(tree: StateProgram, fname: String): Unit = {
+    // Collect all the declarations
+    VisitAST(tree) {
+      case Task(_, _, decls, _) => { decls foreach { x => id2decl(ExtractName(x)) }; false }
+      case DeclarationStmt(d)   => { id2decl(ExtractName(d)) = d; false }
+      case _                    => true
+    }
+    numstates = tree.numStates
+    val pw = new PrintWriter(new File(fname))
+    def writeOut(typ: AlogicType, name: StrTree): Unit = typ match {
+      case IntType(true, 1)     => pw.println(s"out signed reg " + MakeString(name) + ";")
+      case IntType(true, size)  => pw.println(s"out signed reg [$size-1:0]" + MakeString(name) + ";")
+      case IntType(false, 1)    => pw.println(s"out reg " + MakeString(name) + ";")
+      case IntType(false, size) => pw.println(s"out reg [$size-1:0]" + MakeString(name) + ";")
+      case _                    => // TODO
+    }
+    // Emit header and combinatorial code
+    VisitAST(tree) {
+      case Task(Fsm(), name, decls, fns) => {
+        pw.println(s"module $name (")
+        // TODO params
+        id2decl.values.foreach({
+          case OutDeclaration(synctype, decltype, name) => {
+            if (HasValid(synctype))
+              pw.println("out reg " + valid(name) + ";")
+            if (HasReady(synctype))
+              pw.println("in wire " + ready(name) + ";")
+            if (HasAccept(synctype))
+              pw.println("out reg " + accept(name) + ";")
+            VisitType(decltype, name)(writeOut)
+          }
+          case InDeclaration(_, _, name) => name // TODO
+          case _                         =>
+        })
+        pw.println(") begin")
+        // TODO declare remaining variables
+        true
+      }
+      // TODO add function
+      case _ => true
+    }
+    // Now emit clocked blocks
+    pw.println("endmodule")
   }
 
   // Construct the string to be used when this identifier is used on the RHS of an assignment
@@ -123,7 +165,7 @@ final class MakeVerilog {
   }
 
   // Called with an integer representing a state, returns the appropriate string
-  def MakeState(state: Int): String = s"$state" // TODO add correct number of bits
+  def MakeState(state: Int): String = s"$numstates'd$state"
 
   // This function defines how to write next values (D input on flip-flops)
   def nx(x: String): StrTree = StrList(List(x, Str("_d")))

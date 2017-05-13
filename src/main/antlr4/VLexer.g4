@@ -85,7 +85,7 @@ WIRE: 'wire';
 
 LITERAL: '"' ~["]* '"';
 
-HASHDEFINE: '#' [ \t]* 'define';
+HASHDEFINE: '#' [ \t]* ('define' | 'def');
 
 VERILOGBODY: 'void' WS? 'verilog' WS? '(' WS? ')' WS? '{' -> pushMode(VMODE);
 
