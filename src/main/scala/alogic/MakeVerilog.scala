@@ -46,15 +46,15 @@ final class MakeVerilog {
     // Add in state declaration
     // TODO - perhaps add in earlier stage?
     // Perhaps omit if only 1 state?
-    
+
     // Emit header and combinatorial code
-    var fns: List[StrTree] = Nil  // Collection of function code
+    var fns: List[StrTree] = Nil // Collection of function code
     var fencefns: List[StrTree] = Nil // Collection of fence function code
     var clears: List[StrTree] = Nil // Collection of outputs to clear if !go
     var defaults: List[StrTree] = Nil // Collection of things to set at start of each cycle
     var clocks: List[StrTree] = Nil // Collection of things to clock if go
     var resets: List[StrTree] = Nil // Collection of things to reset
-    
+
     val pw = new PrintWriter(new File(fname))
     def writeOut(typ: AlogicType, name: StrTree): Unit = typ match {
       case IntType(true, 1)     => pw.println(s"out signed reg " + MakeString(name) + ";")
@@ -79,11 +79,11 @@ final class MakeVerilog {
         case _                    => // TODO variable int type
       }
       typ match {
-        case IntType(a,num) => {
+        case IntType(a, num) => {
           resets = StrList(Str("      ") :: Str(reg(name)) :: Str(s" <= $num'b0;\n") :: Nil) :: resets
           clocks = StrList(Str("      ") :: Str(reg(name)) :: Str(" <= ") :: Str(nx(name)) :: Str(";\n") :: Nil) :: resets
         }
-        case _=> 
+        case _ =>
       }
     }
 
@@ -95,23 +95,23 @@ final class MakeVerilog {
           case OutDeclaration(synctype, decltype, name) => {
             if (HasValid(synctype)) {
               pw.println("out reg " + valid(name) + ";")
-              clears = Str("    "+valid(name)+" = 1'b0;\n") :: clears
-              defaults = Str("    "+valid(name)+" = 1'b0;\n") :: defaults
+              clears = Str("    " + valid(name) + " = 1'b0;\n") :: clears
+              defaults = Str("    " + valid(name) + " = 1'b0;\n") :: defaults
             }
             if (HasReady(synctype))
               pw.println("in wire " + ready(name) + ";")
             if (HasAccept(synctype))
               pw.println("out reg " + accept(name) + ";")
             VisitType(decltype, name)(writeOut)
-            
+
           }
           case InDeclaration(synctype, decltype, name) => {
             if (HasValid(synctype))
               pw.println("in wire " + valid(name) + ";")
             if (HasReady(synctype)) {
               pw.println("out reg " + ready(name) + ";")
-              clears = Str("    "+ready(name)+" = 1'b0;\n") :: clears
-              defaults = Str("    "+ready(name)+" = 1'b0;\n") :: defaults
+              clears = Str("    " + ready(name) + " = 1'b0;\n") :: clears
+              defaults = Str("    " + ready(name) + " = 1'b0;\n") :: defaults
             }
             if (HasAccept(synctype))
               pw.println("in wire " + accept(name) + ";")
@@ -142,7 +142,7 @@ final class MakeVerilog {
     pw.println(MakeString(StrList(fns)))
     pw.println("    end")
     pw.println("  end")
-    if (clears.length>0) {
+    if (clears.length > 0) {
       pw.println(s"  if (!$go) begin")
       pw.write(MakeString(clears))
       pw.println("  end")
@@ -164,12 +164,11 @@ final class MakeVerilog {
 
   // Construct the string to be used when this identifier is used on the RHS of an assignment
   def nx(names: List[String]): String = names.mkString("_") // TODO inspect type and expand
-  def nx(name: StrTree): String = MakeString(name)+"_d"
-  
+  def nx(name: StrTree): String = MakeString(name) + "_d"
+
   // Construct the string to be used when this identifier is used on the LHS of an assignment
   def reg(names: List[String]): String = names.mkString // TODO inspect type and expand
-  def reg(name: StrTree): String = MakeString(name)+"_q"
-
+  def reg(name: StrTree): String = MakeString(name) + "_q"
 
   implicit def string2StrTree(s: String): StrTree = Str(s)
   implicit def stringList2StrTree(s: List[StrTree]): StrTree = StrList(s)
