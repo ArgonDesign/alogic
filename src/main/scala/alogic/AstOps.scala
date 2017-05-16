@@ -62,6 +62,7 @@ object AstOps {
     def visit(tree: AlogicAST): Unit = {
       if (callback(tree))
         tree match {
+          case Connect(start, end)                   => { visit(start); visit(end); }
           case Function(name, body)                  => visit(body)
           case FenceFunction(body)                   => visit(body)
           case Task(tasktype, name, decls, fns)      => fns foreach visit

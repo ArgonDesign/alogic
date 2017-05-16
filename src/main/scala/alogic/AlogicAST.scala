@@ -23,6 +23,7 @@ case class InDeclaration(synctype: SyncType, decltype: AlogicType, name: String)
 
 // // AlogicAST used for abstract syntax nodes
 sealed trait AlogicAST
+case class Connect(start: AlogicAST, end: AlogicAST) extends AlogicAST
 case class Function(name: String, body: AlogicAST) extends AlogicAST
 case class FenceFunction(body: AlogicAST) extends AlogicAST
 case class VerilogFunction(body: String) extends AlogicAST
@@ -39,8 +40,8 @@ case class DollarCall(name: String, args: List[AlogicAST]) extends AlogicAST
 case class ReadCall(name: DottedName, args: List[AlogicAST]) extends AlogicAST
 case class WriteCall(name: DottedName, args: List[AlogicAST]) extends AlogicAST
 case class Assign(lhs: AlogicAST, op: String, rhs: AlogicAST) extends AlogicAST
-case class Plusplus(lhs: AlogicAST) extends AlogicAST    
-case class Minusminus(lhs: AlogicAST) extends AlogicAST  
+case class Plusplus(lhs: AlogicAST) extends AlogicAST
+case class Minusminus(lhs: AlogicAST) extends AlogicAST
 case class BinaryOp(lhs: AlogicAST, op: String, rhs: AlogicAST) extends AlogicAST
 case class UnaryOp(op: String, lhs: AlogicAST) extends AlogicAST
 case class Bracket(content: AlogicAST) extends AlogicAST

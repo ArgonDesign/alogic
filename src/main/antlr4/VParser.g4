@@ -10,6 +10,7 @@ entity :
    typedef
  | define
  | task
+ | network
  ;
   
 typedef : TYPEDEF known_type IDENTIFIER SEMICOLON;
@@ -19,7 +20,6 @@ define : HASHDEFINE IDENTIFIER expr; // TODO May want to stop at end of line som
 tasktype : FSM #FsmType
   | PIPELINE   #PipelineType
   | VERILOG    #VerilogType
-  | NETWORK    #NetworkType
   ;
 
 initializer : EQUALS expr;
@@ -44,6 +44,12 @@ task_declaration :
   ;
     
 task : tasktype IDENTIFIER LEFTCURLY (decls+=task_declaration)* (contents+=task_content)* RIGHTCURLY;
+
+network : NETWORK IDENTIFIER LEFTCURLY (decls+=task_declaration)* (contents+=network_content)* RIGHTCURLY;
+
+network_content : task | connect;
+
+connect : dotted_name GOESTO dotted_name;
 
 known_type : 
   BOOL                                            # BoolType

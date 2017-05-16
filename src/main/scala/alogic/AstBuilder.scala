@@ -83,6 +83,18 @@ class AstBuilder {
         ctx.decls.asScala.toList.map(DeclVisitor.visit),
         ctx.contents.asScala.toList.map(TaskContentVisitor.visit))
     }
+
+    override def visitNetwork(ctx: NetworkContext) = {
+      Task(
+        Network(),
+        ctx.IDENTIFIER().getText(),
+        ctx.decls.asScala.toList.map(DeclVisitor.visit),
+        ctx.contents.asScala.toList.map(visit))
+    }
+
+    override def visitConnect(ctx: ConnectContext) = {
+      Connect(visit(ctx.dotted_name(0)), visit(ctx.dotted_name(1))) // TODO check that these names exist?
+    }
   }
 
   object FunVisitor extends VParserBaseVisitor[Unit] {
@@ -163,7 +175,6 @@ class AstBuilder {
     override def visitFsmType(ctx: FsmTypeContext) = Fsm()
     override def visitPipelineType(ctx: PipelineTypeContext) = Pipeline()
     override def visitVerilogType(ctx: VerilogTypeContext) = Verilog()
-    override def visitNetworkType(ctx: NetworkTypeContext) = Fsm()
   }
 
   object SyncTypeVisitor extends VParserBaseVisitor[SyncType] {

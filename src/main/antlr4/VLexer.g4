@@ -21,6 +21,8 @@ DOLLAR: '$' SIMPLEID;
 
 DOLLARCOMMENT: '$';
 
+GOESTO: '->';
+
 EQUALS: '=';
 ASSIGNOP: '+=' | '-=' | '&=' | '|=' | '^=' | '>>=' | '<<=' | '>>>=' ;
 
