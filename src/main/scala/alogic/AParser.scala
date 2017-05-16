@@ -22,14 +22,6 @@ class AParser() {
     code
   }
 
-  object myVisitor extends antlr.VParserBaseVisitor[String] {
-    override def visitBinaryExpr(ctx: antlr.VParser.BinaryExprContext) = {
-      //println(ctx.binary_op) TODO why does this print out a long list of stuff?
-      visitChildren(ctx)
-      "test"
-    }
-  }
-
   def apply(path: String): AlogicAST = {
 
     val inputStream = new ANTLRInputStream(loadFile(path))

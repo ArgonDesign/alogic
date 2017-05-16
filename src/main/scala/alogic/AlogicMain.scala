@@ -1,6 +1,7 @@
 
 package alogic
 import java.io.File
+import sys.process._
 
 import akka.actor.ActorSystem
 import com.beachape.filemanagement.MonitorActor
@@ -22,6 +23,11 @@ object AlogicMain extends App {
 
   val useMonitor = args.length > 1 && args(0) == "-m"
   val args2 = if (useMonitor) args.tail else args
+
+  ///println("""python test.py""".!)  Example of how to run python code
+  // .!! gets output
+  // Process("").lines runs in background and provides a Stream[String] of output
+  // Throws exception if non-zero exit code
 
   if (args2.length > 2 || args2.length < 1) {
     println("Syntax: alogic [-m] [header file]* (source_file|source_dir)")
