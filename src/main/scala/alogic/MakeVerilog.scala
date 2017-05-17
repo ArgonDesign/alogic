@@ -84,8 +84,9 @@ final class MakeVerilog {
     VisitAST(tree) {
       case Task(Fsm(), name, decls, fns) => {
         pw.println(s"module $name (")
-        // TODO params
         id2decl.values.foreach({
+          case ParamDeclaration(decltype, id, Some(init)) => pw.println("param " + id + " = " + MakeString(MakeExpr(init)) + ";")
+          case ParamDeclaration(decltype, id, None)       => pw.println("param " + id + ";")
           case OutDeclaration(synctype, decltype, name) => {
             if (HasValid(synctype)) {
               pw.println("out reg " + valid(name) + ";")
