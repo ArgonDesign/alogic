@@ -43,9 +43,6 @@ final class MakeVerilog {
       case DeclarationStmt(d)   => { id2decl(ExtractName(d)) = d; false }
       case _                    => true
     }
-    // Add in state declaration
-    // TODO - perhaps add in earlier stage?
-    // Perhaps omit if only 1 state?
 
     // Emit header and combinatorial code
     var fns: List[StrTree] = Nil // Collection of function code
@@ -203,26 +200,30 @@ final class MakeVerilog {
 
     def add(s: String): Unit = blockingStatements = s :: blockingStatements
 
+    def AddRead(name: DottedName, isLock: Boolean): Boolean = {
+      val n: String = ExtractName(name)
+      val d: Declaration = id2decl(n)
+      d match {
+        case InDeclaration(synctype, _, _) => {
+          if (HasValid(synctype))
+            add(s"$go = $go && ${valid(n)};")
+          if (!isLock && HasReady(synctype))
+            add(ready(n) + " = 1'b1;")
+        }
+        case _ => error(s"$name cannot be read"); false // TODO check this earlier?
+      }
+      false // No need to recurse
+    }
+
     def v(tree: AlogicAST): Boolean = tree match {
       case CombinatorialCaseStmt(value, _) =>
         VisitAST(value)(v); false
       case CombinatorialBlock(_) => false
       case CombinatorialIf(cond, _, _) =>
         VisitAST(cond)(v); false
-      case ReadCall(name, _) => {
-        val n: String = ExtractName(name)
-        val d: Declaration = id2decl(n)
-        d match {
-          case InDeclaration(synctype, _, _) => {
-            if (HasValid(synctype))
-              add(s"$go = $go && ${valid(n)};")
-            if (HasReady(synctype))
-              add(ready(n) + " = 1'b1;")
-          }
-          case _ => error(s"$name cannot be read"); false // TODO check this earlier?
-        }
-        false // No need to recurse
-      }
+      case ReadCall(name, _)   => AddRead(name, false)
+      case LockCall(name, _)   => AddRead(name, true)
+      case UnlockCall(name, _) => AddRead(name, false)
       case WriteCall(name, _) => {
         val n: String = ExtractName(name)
         val d: Declaration = id2decl(n)
@@ -280,6 +281,8 @@ final class MakeVerilog {
     case CombinatorialIf(cond, body, None) => AddStall(indent, StallExpr(cond),
       StrList(Str(" " * indent) :: Str("if\n") ::
         CombStmt(indent + 4, body) :: Nil))
+    case LockCall(_, _)                              => Str("")
+    case UnlockCall(_, _)                            => Str("")
     case WriteCall(name, args) if (args.length == 1) => AddStall(indent, StallExpr(name) ::: StallExpr(args(0)), StrList(List(MakeExpr(name), "=", MakeExpr(args(0)))))
     case CombinatorialBlock(cmds) => StrList(Str(" " * indent) :: Str("begin\n") ::
       StrList(for { cmd <- cmds } yield CombStmt(indent + 4, cmd)) ::
