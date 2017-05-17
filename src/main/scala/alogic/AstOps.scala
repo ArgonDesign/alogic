@@ -62,7 +62,7 @@ object AstOps {
     def visit(tree: AlogicAST): Unit = {
       if (callback(tree))
         tree match {
-          case Instantiate(_, _)                     => ()
+          case Instantiate(_, _, args)               => args foreach visit
           case Connect(start, end)                   => { visit(start); visit(end); }
           case Function(name, body)                  => visit(body)
           case FenceFunction(body)                   => visit(body)
@@ -145,7 +145,7 @@ object AstOps {
       callback(tree) match {
         case Some(x) => x
         case None => tree match {
-          case x @ Instantiate(_, _)                     => x
+          case Instantiate(a, b, args)                   => Instantiate(a, b, args map rewrite)
           case Connect(start, end)                       => Connect(rewrite(start), rewrite(end))
           case Function(name, body)                      => Function(name, rewrite(body))
           case FenceFunction(body)                       => FenceFunction(rewrite(body))

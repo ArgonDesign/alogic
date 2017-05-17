@@ -51,7 +51,7 @@ network_content : task | connect | instantiate;
 
 connect : dotted_name GOESTO dotted_name SEMICOLON;
 
-instantiate : IDENTIFIER EQUALS IDENTIFIER SEMICOLON;
+instantiate : IDENTIFIER EQUALS IDENTIFIER LEFTBRACKET param_args RIGHTBRACKET SEMICOLON;
 
 known_type : 
   BOOL                                            # BoolType
@@ -110,6 +110,10 @@ arrayop :
   ;
   
 comma_args : (es+=expr)? (COMMA es+=expr)*;
+
+param_args : (es+=paramAssign)? (COMMA es+=paramAssign)*;
+
+paramAssign : expr EQUALS expr;
     
 secondary_expr : 
   TRUE # TrueExpr

@@ -97,7 +97,7 @@ class AstBuilder {
     }
 
     override def visitInstantiate(ctx: InstantiateContext) = {
-      Instantiate(ctx.IDENTIFIER(0).getText(), ctx.IDENTIFIER(1).getText())
+      Instantiate(ctx.IDENTIFIER(0).getText(), ctx.IDENTIFIER(1).getText(), CommaArgsVisitor.visit(ctx.param_args()))
     }
   }
 
@@ -356,10 +356,13 @@ class AstBuilder {
     override def visitReturnStmt(ctx: ReturnStmtContext) = ReturnStmt()
     override def visitDollarCommentStmt(ctx: DollarCommentStmtContext) = AlogicComment(ctx.LITERAL().getText())
     override def visitGotoStmt(ctx: GotoStmtContext) = GotoStmt(ctx.IDENTIFIER().getText())
+    override def visitParamAssign(ctx: ParamAssignContext) = Assign(visit(ctx.expr(0)), "=", visit(ctx.expr(1)))
   }
 
   object CommaArgsVisitor extends VParserBaseVisitor[List[AlogicAST]] {
     override def visitComma_args(ctx: Comma_argsContext) = ctx.es.asScala.toList.map(ExprVisitor.visit)
+
+    override def visitParam_args(ctx: Param_argsContext) = ctx.es.asScala.toList.map(ExprVisitor.visit)
   }
 
   object FieldVisitor extends VParserBaseVisitor[FieldType] {
