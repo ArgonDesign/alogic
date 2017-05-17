@@ -1,5 +1,7 @@
 
 package alogic
+
+import AstOps._
 import java.io.File
 import sys.process._
 
@@ -59,8 +61,13 @@ object AlogicMain extends App {
     // This method is called for each file that should be converted to Verilog
     def compileFile(fname: String) = {
       val parser2 = new AParser(parser) // Capture all structures from header files
-      val ast = parser2(fname) // Build AST
-      val prog = new MakeStates()(ast)
+
+      // Build AST
+      val ast = parser2(fname)
+
+      // Convert to state machine
+      val prog: StateProgram = new MakeStates()(ast)
+
     }
 
     val d = new File(codeFile)

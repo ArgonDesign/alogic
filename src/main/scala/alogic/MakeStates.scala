@@ -54,7 +54,20 @@ final class MakeStates {
       case _ => true // Recurse
     }
     val cmds = tree.cmds.map(makeEntityStates)
-    StateProgram(cmds, state_num) // Transform tree
+    val prog = StateProgram(cmds, state_num) // Transform tree
+
+    // Add a declaration for the state variable
+    if (fn2state contains "main") {
+      val start = fn2state("main")
+      val sd = VarDeclaration(State(), DottedName("state" :: Nil), Some(makeNum(start)))
+      val prog2 = RewriteAST(prog) {
+        case Task(tasktype, name, decls, fns) => Some(Task(tasktype, name, sd :: decls, fns))
+        case _                                => None
+      }
+      prog2.asInstanceOf[StateProgram]
+    } else {
+      prog
+    }
   }
 
   def makeEntityStates(tree: AlogicAST): AlogicAST = tree match {
