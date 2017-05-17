@@ -47,9 +47,11 @@ task : tasktype IDENTIFIER LEFTCURLY (decls+=task_declaration)* (contents+=task_
 
 network : NETWORK IDENTIFIER LEFTCURLY (decls+=task_declaration)* (contents+=network_content)* RIGHTCURLY;
 
-network_content : task | connect;
+network_content : task | connect | instantiate;
 
-connect : dotted_name GOESTO dotted_name;
+connect : dotted_name GOESTO dotted_name SEMICOLON;
+
+instantiate : IDENTIFIER EQUALS IDENTIFIER SEMICOLON;
 
 known_type : 
   BOOL                                            # BoolType
@@ -57,8 +59,8 @@ known_type :
   | UINTTYPE                                      # UintType
   | IDENTIFIER                                    # IdentifierType
   | STRUCT LEFTCURLY (fields+=field)* RIGHTCURLY  # StructType
-  | INT LEFTBRACKET expr RIGHTBRACKET             # IntVType
-  | UINT LEFTBRACKET expr RIGHTBRACKET            # UintVType
+  | INT LEFTBRACKET comma_args RIGHTBRACKET             # IntVType
+  | UINT LEFTBRACKET comma_args RIGHTBRACKET            # UintVType
   ;
     
 task_content :

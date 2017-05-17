@@ -24,6 +24,7 @@ case class InDeclaration(synctype: SyncType, decltype: AlogicType, name: String)
 // // AlogicAST used for abstract syntax nodes
 sealed trait AlogicAST
 case class Connect(start: AlogicAST, end: AlogicAST) extends AlogicAST
+case class Instantiate(id: String, module: String) extends AlogicAST
 case class Function(name: String, body: AlogicAST) extends AlogicAST
 case class FenceFunction(body: AlogicAST) extends AlogicAST
 case class VerilogFunction(body: String) extends AlogicAST
@@ -81,7 +82,7 @@ case class GotoState(state: Int) extends AlogicAST
 // AlogicType used to define the allowed types
 sealed trait AlogicType
 case class IntType(signed: Boolean, size: Int) extends AlogicType
-case class IntVType(signed: Boolean, expr: AlogicAST) extends AlogicType // variable number of bits definition
+case class IntVType(signed: Boolean, args: List[AlogicAST]) extends AlogicType // variable number of bits definition
 case class Struct(fields: List[FieldType]) extends AlogicType
 case class State() extends AlogicType // Type with enough bits to hold state variable
 

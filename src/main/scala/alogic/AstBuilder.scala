@@ -95,6 +95,10 @@ class AstBuilder {
     override def visitConnect(ctx: ConnectContext) = {
       Connect(visit(ctx.dotted_name(0)), visit(ctx.dotted_name(1))) // TODO check that these names exist?
     }
+
+    override def visitInstantiate(ctx: InstantiateContext) = {
+      Instantiate(ctx.IDENTIFIER(0).getText(), ctx.IDENTIFIER(1).getText())
+    }
   }
 
   object FunVisitor extends VParserBaseVisitor[Unit] {
@@ -384,8 +388,8 @@ class AstBuilder {
       Struct(ctx.fields.asScala.toList.map(FieldVisitor.visit))
     }
 
-    override def visitIntVType(ctx: IntVTypeContext) = IntVType(true, ExprVisitor.visit(ctx.expr()))
-    override def visitUintVType(ctx: UintVTypeContext) = IntVType(false, ExprVisitor.visit(ctx.expr()))
+    override def visitIntVType(ctx: IntVTypeContext) = IntVType(true, CommaArgsVisitor.visit(ctx.comma_args()))
+    override def visitUintVType(ctx: UintVTypeContext) = IntVType(false, CommaArgsVisitor.visit(ctx.comma_args()))
   }
 
   // Return if this node is a task node
