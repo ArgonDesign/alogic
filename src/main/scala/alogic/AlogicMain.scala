@@ -36,6 +36,11 @@ object AlogicMain extends App {
     println("-m tells alogic to recompile whenever the source changes.")
     System.exit(-1)
   }
+
+  val outputdir = "generated"
+  val outdir = new File(outputdir)
+  if (!outdir.exists())
+    outdir.mkdir()
   go
   go
   if (useMonitor) {
@@ -68,6 +73,11 @@ object AlogicMain extends App {
       // Convert to state machine
       val prog: StateProgram = new MakeStates()(ast)
 
+      // Construct output filename
+      val f = new File(outdir, fname + ".v").getPath()
+
+      // Write Verilog
+      // new MakeVerilog()(prog, f)
     }
 
     val d = new File(codeFile)
