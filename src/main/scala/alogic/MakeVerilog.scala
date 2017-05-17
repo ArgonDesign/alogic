@@ -56,27 +56,24 @@ final class MakeVerilog {
     var resets: List[StrTree] = Nil // Collection of things to reset
 
     val pw = new PrintWriter(new File(fname))
+
+    def writeSigned(signed: Boolean) = if (signed) "signed " else ""
+
     def writeOut(typ: AlogicType, name: StrTree): Unit = typ match {
-      case IntType(true, 1)     => pw.println(s"out signed reg " + MakeString(name) + ";")
-      case IntType(true, size)  => pw.println(s"out signed reg [$size-1:0]" + MakeString(name) + ";")
-      case IntType(false, 1)    => pw.println(s"out reg " + MakeString(name) + ";")
-      case IntType(false, size) => pw.println(s"out reg [$size-1:0]" + MakeString(name) + ";")
-      case _                    => // TODO
+      case IntType(b, 1)    => pw.println(s"out ${writeSigned(b)}reg " + MakeString(name) + ";")
+      case IntType(b, size) => pw.println(s"out ${writeSigned(b)}reg [$size-1:0]" + MakeString(name) + ";")
+      case _                => // TODO
     }
     def writeIn(typ: AlogicType, name: StrTree): Unit = typ match {
-      case IntType(true, 1)     => pw.println(s"in signed wire " + MakeString(name) + ";")
-      case IntType(true, size)  => pw.println(s"in signed wire [$size-1:0]" + MakeString(name) + ";")
-      case IntType(false, 1)    => pw.println(s"in wire " + MakeString(name) + ";")
-      case IntType(false, size) => pw.println(s"in wire [$size-1:0]" + MakeString(name) + ";")
-      case _                    => // TODO
+      case IntType(b, 1)    => pw.println(s"in ${writeSigned(b)}wire " + MakeString(name) + ";")
+      case IntType(b, size) => pw.println(s"in ${writeSigned(b)}wire [$size-1:0]" + MakeString(name) + ";")
+      case _                => // TODO
     }
     def writeVar(typ: AlogicType, name: StrTree): Unit = {
       typ match {
-        case IntType(true, 1)     => pw.println(s"signed reg " + MakeString(name) + ";")
-        case IntType(true, size)  => pw.println(s"signed reg [$size-1:0]" + MakeString(name) + ";")
-        case IntType(false, 1)    => pw.println(s"reg " + MakeString(name) + ";")
-        case IntType(false, size) => pw.println(s"reg [$size-1:0]" + MakeString(name) + ";")
-        case _                    => // TODO variable int type
+        case IntType(b, 1)    => pw.println(s"${writeSigned(b)}reg " + MakeString(name) + ";")
+        case IntType(b, size) => pw.println(s"${writeSigned(b)}reg [$size-1:0]" + MakeString(name) + ";")
+        case _                => // TODO variable int type
       }
       typ match {
         case IntType(a, num) => {
