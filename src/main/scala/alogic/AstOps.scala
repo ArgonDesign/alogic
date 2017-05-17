@@ -74,6 +74,8 @@ object AstOps {
           case Sxt(numbits, expr)                    => { visit(numbits); visit(expr) }
           case DollarCall(name, args)                => args foreach visit
           case ReadCall(name, args)                  => args foreach visit
+          case LockCall(name, args)                  => args foreach visit
+          case UnlockCall(name, args)                => args foreach visit
           case WriteCall(name, args)                 => args foreach visit
           case Assign(lhs, op, rhs)                  => { visit(lhs); visit(rhs) }
           case Plusplus(lhs)                         => visit(lhs)
@@ -155,6 +157,8 @@ object AstOps {
           case Sxt(numbits, expr)                        => Sxt(rewrite(numbits), rewrite(expr))
           case DollarCall(name, args)                    => DollarCall(name, args map rewrite)
           case ReadCall(name, args)                      => ReadCall(name, args map rewrite)
+          case LockCall(name, args)                      => ReadCall(name, args map rewrite)
+          case UnlockCall(name, args)                    => ReadCall(name, args map rewrite)
           case WriteCall(name, args)                     => WriteCall(name, args map rewrite)
           case Assign(lhs, op, rhs)                      => Assign(rewrite(lhs), op, rewrite(rhs))
           case Plusplus(lhs)                             => Plusplus(rewrite(lhs))

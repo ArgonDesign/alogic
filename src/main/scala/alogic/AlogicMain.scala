@@ -56,6 +56,13 @@ object AlogicMain extends App {
     val parser = new AParser()
     for (f <- args2.init) parser(f)
 
+    // This method is called for each file that should be converted to Verilog
+    def compileFile(fname: String) = {
+      val parser2 = new AParser(parser) // Capture all structures from header files
+      val ast = parser2(fname) // Build AST
+      val prog = new MakeStates()(ast)
+    }
+
     val d = new File(codeFile)
     if (d.exists && d.isDirectory) {
       val lst = getListOfFiles(d)
@@ -64,10 +71,7 @@ object AlogicMain extends App {
         val threads = for { f <- lst } yield {
           // make copies of the Lexer and Parser to avoid conflicts
           val thread = new Thread {
-            override def run {
-              val parser2 = new AParser(parser)
-              parser2(f.getPath)
-            }
+            override def run = compileFile(f.getPath)
           }
           thread.start
           thread
@@ -75,13 +79,10 @@ object AlogicMain extends App {
         // Join threads
         for { t <- threads } t.join()
       } else {
-        for { f <- lst } {
-          val parser2 = new AParser(parser)
-          parser2(f.getPath)
-        }
+        for { f <- lst } compileFile(f.getPath)
       }
     } else {
-      val s = parser(codeFile)
+      compileFile(codeFile)
       // println(s.parseTree)
     }
     val t1 = System.nanoTime()

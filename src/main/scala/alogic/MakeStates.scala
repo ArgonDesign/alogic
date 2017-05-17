@@ -146,7 +146,7 @@ final class MakeStates {
           val a = makeStates(-1, finalState, body)
           val content: AlogicAST = {
             if (a.length == 1)
-              a(1)
+              a(0)
             else
               CombinatorialBlock(a)
           }

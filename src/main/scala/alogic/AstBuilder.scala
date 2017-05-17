@@ -15,7 +15,7 @@ import alogic.AstOps._
 //   Deal with typedefs
 //   Deal with variable scope
 //   Deal with #defines
-//   Rewrite go/zxt/sxt/read/write function calls
+//   Rewrite go/zxt/sxt/read/write/lock/unlock function calls
 //
 // We use different visitors for the different things we wish to extract.
 //
@@ -240,10 +240,15 @@ class AstBuilder {
       val n = visit(ctx.dotted_name())
       val a = CommaArgsVisitor.visit(ctx.comma_args())
       n match {
-        case DottedName(names) if (names.last == "read") => {
+        case DottedName(names) if (names.last == "read" || names.last == "unlock") => {
           if (a.length > 0)
             warning(ctx, s"Interface read takes no arguments (${a.length} found)")
           ReadCall(DottedName(names.init), a)
+        }
+        case DottedName(names) if (names.last == "lock") => {
+          if (a.length > 0)
+            warning(ctx, s"Interface lock takes no arguments (${a.length} found)")
+          LockCall(DottedName(names.init), a)
         }
         case DottedName(names) if (names.last == "write") => {
           if (a.length != 1)

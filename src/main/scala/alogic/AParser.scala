@@ -22,7 +22,7 @@ class AParser() {
     code
   }
 
-  def apply(path: String): AlogicAST = {
+  def apply(path: String): Program = {
 
     val inputStream = new ANTLRInputStream(loadFile(path))
     inputStream.name = path + '\n' // TODO why have error messages stopped reporting the input stream?
