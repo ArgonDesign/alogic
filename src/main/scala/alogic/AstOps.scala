@@ -134,4 +134,70 @@ object AstOps {
     }
     visit(typ, name)
   }
+
+  // Recurse through the tree and apply function to all nodes in pre-order
+  // Callback returns None to continue recursing, or Some to change the tree
+  def RewriteAST(tree: AlogicAST)(callback: AlogicAST => Option[AlogicAST]): AlogicAST = {
+
+    def rewrite(tree: AlogicAST): AlogicAST = {
+      callback(tree) match {
+        case Some(x) => x
+        case None => tree match {
+          case x @ Instantiate(_, _)                     => x
+          case Connect(start, end)                       => Connect(rewrite(start), rewrite(end))
+          case Function(name, body)                      => Function(name, rewrite(body))
+          case FenceFunction(body)                       => FenceFunction(rewrite(body))
+          case Task(tasktype, name, decls, fns)          => Task(tasktype, name, decls, fns map rewrite)
+          case ArrayLookup(name, index)                  => ArrayLookup(rewrite(name), rewrite(index))
+          case BinaryArrayLookup(name, lhs, op, rhs)     => BinaryArrayLookup(rewrite(name), rewrite(lhs), op, rewrite(rhs))
+          case FunCall(name, args)                       => FunCall(rewrite(name), args map rewrite)
+          case Zxt(numbits, expr)                        => Zxt(rewrite(numbits), rewrite(expr))
+          case Sxt(numbits, expr)                        => Sxt(rewrite(numbits), rewrite(expr))
+          case DollarCall(name, args)                    => DollarCall(name, args map rewrite)
+          case ReadCall(name, args)                      => ReadCall(name, args map rewrite)
+          case WriteCall(name, args)                     => WriteCall(name, args map rewrite)
+          case Assign(lhs, op, rhs)                      => Assign(rewrite(lhs), op, rewrite(rhs))
+          case Plusplus(lhs)                             => Plusplus(rewrite(lhs))
+          case Minusminus(lhs)                           => Minusminus(rewrite(lhs))
+          case BinaryOp(lhs, op, rhs)                    => BinaryOp(rewrite(lhs), op, rewrite(rhs))
+          case UnaryOp(op, lhs)                          => UnaryOp(op, rewrite(lhs))
+          case Bracket(content)                          => Bracket(rewrite(content))
+          case TernaryOp(cond, lhs, rhs)                 => TernaryOp(rewrite(cond), rewrite(lhs), rewrite(rhs))
+          case CombinatorialBlock(cmds)                  => CombinatorialBlock(cmds map rewrite)
+          case x @ DeclarationStmt(decl: VarDeclaration) => x
+          case CombinatorialIf(cond, body, Some(e))      => CombinatorialIf(rewrite(cond), rewrite(body), Some(rewrite(e)))
+          case CombinatorialIf(cond, body, None)         => CombinatorialIf(rewrite(cond), rewrite(body), None)
+          case BitRep(count, value)                      => BitRep(rewrite(count), rewrite(value))
+          case BitCat(parts)                             => BitCat(parts map rewrite)
+          case x @ AlogicComment(str)                    => x
+          case CombinatorialCaseStmt(value, cases)       => CombinatorialCaseStmt(rewrite(value), cases map rewrite)
+          case x @ Define()                              => x
+          case x @ Typedef()                             => x
+          case Program(cmds)                             => Program(cmds map rewrite)
+          case ControlCaseStmt(value, cases)             => ControlCaseStmt(rewrite(value), cases map rewrite)
+          case ControlIf(cond, body, Some(e))            => ControlIf(rewrite(cond), rewrite(body), Some(rewrite(e)))
+          case ControlIf(cond, body, None)               => ControlIf(rewrite(cond), rewrite(body), None)
+          case ControlBlock(cmds)                        => ControlBlock(cmds map rewrite)
+          case WhileLoop(cond, body)                     => WhileLoop(rewrite(cond), rewrite(body))
+          case ControlFor(init, cond, incr, body)        => ControlFor(rewrite(init), rewrite(cond), rewrite(incr), body map rewrite)
+          case ControlDo(cond, body)                     => ControlDo(rewrite(cond), body map rewrite)
+          case x @ FenceStmt()                           => x
+          case x @ BreakStmt()                           => x
+          case x @ ReturnStmt()                          => x
+          case x @ GotoStmt(target: String)              => x
+          case StateProgram(cmds, numStates)             => StateProgram(cmds map rewrite, numStates)
+          case x @ StateStmt(state: Int)                 => x
+          case x @ GotoState(state: Int)                 => x
+          case x @ DottedName(names)                     => x
+          case x @ Literal(_)                            => x
+          case x @ Num(_)                                => x
+          case x @ VerilogFunction(_)                    => x
+          case ControlCaseLabel(cond, body)              => ControlCaseLabel(cond map rewrite, rewrite(body))
+          case CombinatorialCaseLabel(cond, body)        => CombinatorialCaseLabel(cond map rewrite, rewrite(body))
+        }
+      }
+    }
+
+    rewrite(tree)
+  }
 }
