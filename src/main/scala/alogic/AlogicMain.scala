@@ -70,8 +70,11 @@ object AlogicMain extends App {
       // Build AST
       val ast = parser2(fname)
 
+      // Remove assignments
+      val ast2 = Desugar.RemoveAssigns(ast)
+
       // Convert to state machine
-      val prog: StateProgram = new MakeStates()(ast)
+      val prog: StateProgram = new MakeStates()(ast2)
 
       // Construct output filename
       val f0 = new File(fname).getName
@@ -101,7 +104,6 @@ object AlogicMain extends App {
       }
     } else {
       compileFile(codeFile)
-      // println(s.parseTree)
     }
     val t1 = System.nanoTime()
     println("Elapsed time: " + (t1 - t0) / 1000000000.0 + "s")

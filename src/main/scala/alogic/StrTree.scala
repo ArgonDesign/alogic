@@ -13,8 +13,9 @@ object MakeString {
     val b = StringBuilder.newBuilder
 
     def go(tree: StrTree): Unit = tree match {
-      case Str(name)      => b.append(name)
-      case StrList(names) => names foreach go
+      case Str(name)         => b.append(name)
+      case StrList(names)    => names foreach go
+      case StrCommaList(Nil) => ()
       case StrCommaList(names) => {
         go(names.head)
         for (n <- names.tail) {

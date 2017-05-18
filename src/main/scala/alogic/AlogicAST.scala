@@ -43,8 +43,6 @@ case class LockCall(name: DottedName, args: List[AlogicAST]) extends AlogicAST
 case class UnlockCall(name: DottedName, args: List[AlogicAST]) extends AlogicAST
 case class WriteCall(name: DottedName, args: List[AlogicAST]) extends AlogicAST
 case class Assign(lhs: AlogicAST, op: String, rhs: AlogicAST) extends AlogicAST
-case class Plusplus(lhs: AlogicAST) extends AlogicAST
-case class Minusminus(lhs: AlogicAST) extends AlogicAST
 case class BinaryOp(lhs: AlogicAST, op: String, rhs: AlogicAST) extends AlogicAST
 case class UnaryOp(op: String, lhs: AlogicAST) extends AlogicAST
 case class Bracket(content: AlogicAST) extends AlogicAST
@@ -61,6 +59,10 @@ case class CombinatorialCaseLabel(cond: List[AlogicAST], body: AlogicAST) extend
 // Types removed by AstBuilder
 case class Define() extends AlogicAST
 case class Typedef() extends AlogicAST
+
+// Types removed by Desugar (also += style operations)
+case class Plusplus(lhs: AlogicAST) extends AlogicAST
+case class Minusminus(lhs: AlogicAST) extends AlogicAST
 
 // Types removed by MakeStates
 case class Program(cmds: List[AlogicAST]) extends AlogicAST

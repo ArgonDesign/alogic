@@ -57,19 +57,19 @@ final class MakeVerilog {
     def writeSigned(signed: Boolean) = if (signed) "signed " else ""
 
     def writeOut(typ: AlogicType, name: StrTree): Unit = typ match {
-      case IntType(b, 1)    => pw.println(s"out ${writeSigned(b)}reg " + MakeString(name) + ";")
-      case IntType(b, size) => pw.println(s"out ${writeSigned(b)}reg [$size-1:0]" + MakeString(name) + ";")
+      case IntType(b, 1)    => pw.println(s"out reg ${writeSigned(b)}" + MakeString(name) + ";")
+      case IntType(b, size) => pw.println(s"out reg ${writeSigned(b)}[$size-1:0]" + MakeString(name) + ";")
       case _                => // TODO
     }
     def writeIn(typ: AlogicType, name: StrTree): Unit = typ match {
-      case IntType(b, 1)    => pw.println(s"in ${writeSigned(b)}wire " + MakeString(name) + ";")
-      case IntType(b, size) => pw.println(s"in ${writeSigned(b)}wire [$size-1:0]" + MakeString(name) + ";")
+      case IntType(b, 1)    => pw.println(s"in wire ${writeSigned(b)}" + MakeString(name) + ";")
+      case IntType(b, size) => pw.println(s"in wire ${writeSigned(b)}[$size-1:0]" + MakeString(name) + ";")
       case _                => // TODO
     }
     def writeVar(typ: AlogicType, name: StrTree): Unit = {
       typ match {
-        case IntType(b, 1)    => pw.println(s"${writeSigned(b)}reg " + MakeString(name) + ";")
-        case IntType(b, size) => pw.println(s"${writeSigned(b)}reg [$size-1:0]" + MakeString(name) + ";")
+        case IntType(b, 1)    => pw.println(s"reg ${writeSigned(b)}" + MakeString(name) + ";")
+        case IntType(b, size) => pw.println(s"reg ${writeSigned(b)}[$size-1:0]" + MakeString(name) + ";")
         case _                => // TODO variable int type
       }
       typ match {
