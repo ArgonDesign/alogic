@@ -39,7 +39,7 @@ final class MakeVerilog {
     numstates = tree.numStates
     // Collect all the declarations
     VisitAST(tree) {
-      case Task(_, _, decls, _) => { decls foreach { x => id2decl(ExtractName(x)) }; false }
+      case Task(_, _, decls, _) => { decls foreach { x => id2decl(ExtractName(x)) = x }; false }
       case DeclarationStmt(d)   => { id2decl(ExtractName(d)) = d; false }
       case _                    => true
     }
@@ -289,6 +289,7 @@ final class MakeVerilog {
       StrList(for { cmd <- cmds } yield CombStmt(indent + 4, cmd)) ::
       Str(" " * indent) :: Str("end\n") :: Nil)
     case DeclarationStmt(VarDeclaration(decltype, id, Some(rhs))) => CombStmt(indent, Assign(id, "=", rhs))
+    case DeclarationStmt(VarDeclaration(decltype, id, None)) => CombStmt(indent, Assign(id, "=", Num("'b0")))
     case Plusplus(lhs) => CombStmt(indent, Assign(lhs, "=", BinaryOp(lhs, "+", Num("1'b1"))))
     case AlogicComment(s) => s"// $s\n"
     case StateStmt(state) => StrList(List(" " * (indent - 4), "end\n", " " * (indent - 4), MakeState(state), ": begin\n"))
@@ -297,6 +298,6 @@ final class MakeVerilog {
       Str(" " * indent) ::
         StrCommaList(conds.map(MakeExpr)) ::
         Str(":\n") :: CombStmt(indent + 4, body) :: Nil)
-    case x => error("Don't know how to emit code for $x"); Str("")
+    case x => error(s"Don't know how to emit code for $x"); Str("")
   }
 }

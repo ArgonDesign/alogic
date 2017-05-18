@@ -74,10 +74,11 @@ object AlogicMain extends App {
       val prog: StateProgram = new MakeStates()(ast)
 
       // Construct output filename
-      val f = new File(outdir, fname + ".v").getPath()
+      val f0 = new File(fname).getName
+      val f = new File(outdir, f0 + ".v").getPath()
 
       // Write Verilog
-      // new MakeVerilog()(prog, f)
+      new MakeVerilog()(prog, f)
     }
 
     val d = new File(codeFile)
