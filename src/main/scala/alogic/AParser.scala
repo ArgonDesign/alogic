@@ -38,7 +38,7 @@ class AParser() {
     if (errCount > 0) {
       println(s"Parsing error count is $errCount in $path")
     }
-    ast
+    ast // TODO if have parsing errors should not continue compilation - return Option instead?
   }
 
 }

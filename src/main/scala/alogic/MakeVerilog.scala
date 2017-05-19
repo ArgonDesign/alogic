@@ -71,7 +71,7 @@ final class MakeVerilog {
       case IntType(b, size) => pw.println(s"  input wire ${writeSigned(b)}${writeSize(size)}" + MakeString(name) + ";")
       case _                => // TODO
     }
-    def writeVar(typ: AlogicType, name: StrTree): Unit = {
+    def writeVarInternal(typ: AlogicType, name: StrTree, resetToZero: Boolean): Unit = {
       // Convert state to uint type
       val typ2 = typ match {
         case State() => IntType(false, log2numstates)
@@ -86,13 +86,16 @@ final class MakeVerilog {
       }
       typ2 match {
         case IntType(a, num) => {
-          resets = StrList(Str("      ") :: Str(reg(name)) :: Str(s" <= $num'b0;\n") :: Nil) :: resets
+          if (resetToZero)
+            resets = StrList(Str("      ") :: Str(reg(name)) :: Str(s" <= $num'b0;\n") :: Nil) :: resets
           clocks = StrList(Str("        ") :: Str(reg(name)) :: Str(" <= ") :: Str(nx(name)) :: Str(";\n") :: Nil) :: clocks
           defaults = StrList(Str("    ") :: Str(nx(name)) :: Str(" = ") :: Str(reg(name)) :: Str(";\n") :: Nil) :: defaults
         }
         case _ =>
       }
     }
+    def writeVarWithReset(typ: AlogicType, name: StrTree): Unit = writeVarInternal(typ, name, true)
+    def writeVarWithNoReset(typ: AlogicType, name: StrTree): Unit = writeVarInternal(typ, name, false)
 
     VisitAST(tree) {
       case Task(Fsm(), name, decls, fns) => {
@@ -134,12 +137,17 @@ final class MakeVerilog {
         pw.println(") begin")
         // declare remaining variables
         id2decl.values.foreach({
-          case VarDeclaration(decltype, name, init) => VisitType(decltype, ExtractName(name))(writeVar) // TODO add reset values
-          case _                                    =>
+          case VarDeclaration(decltype, name, None) => VisitType(decltype, ExtractName(name))(writeVarWithReset)
+          case VarDeclaration(decltype, name, Some(init)) => {
+            val n = ExtractName(name)
+            VisitType(decltype, n)(writeVarWithNoReset)
+            resets = StrList(Str("      ") :: Str(reg(n)) :: Str(s" <= ") :: MakeExpr(init) :: Str(";\n") :: Nil) :: resets
+          }
+          case _ =>
         })
         true
       }
-      case DeclarationStmt(VarDeclaration(decltype, name, init)) => { VisitType(decltype, ExtractName(name))(writeVar); false }
+      case DeclarationStmt(VarDeclaration(decltype, name, init)) => { VisitType(decltype, ExtractName(name))(writeVarWithReset); false } // These resets are done when variable is declared in the code
       case Function(name, body) => { fns = CombStmt(6, body) :: fns; true }
       case FenceFunction(body) => { fencefns = CombStmt(4, body) :: fencefns; true }
       case VerilogFunction(body) => { verilogfns = body :: verilogfns; false }
@@ -233,7 +241,7 @@ final class MakeVerilog {
         val exprSz = MakeNumBits(GetType(expr))
         StrList(List("{{", totalSz, " - ", exprSz, "{1'b0}},", MakeExpr(expr), "}"))
       }
-      // TODO     case Sxt(numbits, expr) => {VisitAST(numbits,callback); VisitAST(expr,callback)}
+      // TODO     case Sxt(numbits, expr) => ...
       case DollarCall(name, args)    => StrList(List(name, "(", StrCommaList(args.map(MakeExpr)), ")"))
       case ReadCall(name)            => MakeExpr(name)
       case BinaryOp(lhs, op, rhs)    => StrList(List(MakeExpr(lhs), Str(" "), op, Str(" "), MakeExpr(rhs)))
