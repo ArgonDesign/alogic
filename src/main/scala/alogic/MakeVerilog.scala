@@ -51,26 +51,29 @@ final class MakeVerilog {
     var defaults: List[StrTree] = Nil // Collection of things to set at start of each cycle
     var clocks: List[StrTree] = Nil // Collection of things to clock if go
     var resets: List[StrTree] = Nil // Collection of things to reset
+    var verilogfns: List[StrTree] = Nil // Collection of raw verilog text
 
     val pw = new PrintWriter(new File(fname))
 
     def writeSigned(signed: Boolean) = if (signed) "signed " else ""
 
+    def writeSize(size: Int) = if (size > 1) s"[$size-1:0] " else ""
+
     def writeOut(typ: AlogicType, name: StrTree): Unit = typ match {
-      case IntType(b, 1)    => pw.println(s"  output reg ${writeSigned(b)}" + MakeString(name) + ";")
-      case IntType(b, size) => pw.println(s"  output reg ${writeSigned(b)}[$size-1:0] " + MakeString(name) + ";")
+      case IntType(b, size) => pw.println(s"  output reg ${writeSigned(b)}${writeSize(size)}" + MakeString(name) + ";")
       case _                => // TODO
     }
     def writeIn(typ: AlogicType, name: StrTree): Unit = typ match {
-      case IntType(b, 1)    => pw.println(s"  input wire ${writeSigned(b)}" + MakeString(name) + ";")
-      case IntType(b, size) => pw.println(s"  input wire ${writeSigned(b)}[$size-1:0] " + MakeString(name) + ";")
+      case IntType(b, size) => pw.println(s"  input wire ${writeSigned(b)}${writeSize(size)}" + MakeString(name) + ";")
       case _                => // TODO
     }
     def writeVar(typ: AlogicType, name: StrTree): Unit = {
       typ match {
-        case IntType(b, 1)    => pw.println(s"  reg ${writeSigned(b)}" + MakeString(name) + ";")
-        case IntType(b, size) => pw.println(s"  reg ${writeSigned(b)}[$size-1:0] " + MakeString(name) + ";")
-        case _                => // TODO variable int type
+        case IntType(b, size) => {
+          val nm = MakeString(name)
+          pw.println(s"  reg ${writeSigned(b)}${writeSize(size)}" + MakeString(nx(nm)) + ", " + MakeString(reg(nm)) + ";")
+        }
+        case _ => // TODO variable int type
       }
       typ match {
         case IntType(a, num) => {
@@ -127,9 +130,14 @@ final class MakeVerilog {
         })
         true
       }
-      case Function(name, body) => { fns = CombStmt(6, body) :: fns; false }
-      case FenceFunction(body)  => { fencefns = CombStmt(4, body) :: fencefns; false }
-      case _                    => true
+      case DeclarationStmt(VarDeclaration(decltype, name, init)) => { VisitType(decltype, ExtractName(name))(writeVar); false }
+      case Function(name, body) => { fns = CombStmt(6, body) :: fns; true }
+      case FenceFunction(body) => { fencefns = CombStmt(4, body) :: fencefns; true }
+      case VerilogFunction(body) => { verilogfns = body :: verilogfns; false }
+      case _ => true
+    }
+    if (verilogfns.length > 0) {
+      pw.write(MakeString(verilogfns))
     }
     // Start main combinatorial loop
     pw.println()
