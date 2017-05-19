@@ -172,12 +172,12 @@ final class MakeVerilog {
             pw.println(s"  reg ${t}${n}_wrdata;")
             pw.println(s"  reg [${log2depth - 1}:0]${n}_wraddr;")
             defaults = StrList(
-              Str(s"    ${n}_wr = 1'b0;") ::
-                Str(s"    ${n}_wraddr = 'b0;") ::
-                Str(s"    ${n}_wrdata = 'b0;") :: Nil) :: defaults
-            clears = Str(s"    ${n}_wr = 1'b0;") :: clears
+              Str(s"    ${n}_wr = 1'b0;\n") ::
+                Str(s"    ${n}_wraddr = 'b0;\n") ::
+                Str(s"    ${n}_wrdata = 'b0;\n") :: Nil) :: defaults
+            clears = Str(s"      ${n}_wr = 1'b0;\n") :: clears
             clocks = Str(s"""
-    if (${n}_wr)  ${n}[ ${n}_wraddr ] <= ${n}_wrdata;
+        if (${n}_wr)  ${n}[ ${n}_wraddr ] <= ${n}_wrdata;
 """) :: clocks
           }
           case VarDeclaration(decltype, name, None) => VisitType(decltype, ExtractName(name))(writeVarWithReset)
