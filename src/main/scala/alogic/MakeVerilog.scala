@@ -194,26 +194,57 @@ final class MakeVerilog {
   implicit def string2StrTree(s: String): StrTree = Str(s)
   implicit def stringList2StrTree(s: List[StrTree]): StrTree = StrList(s)
 
+  // Compute an string tree for the number of bits in this type
+  def MakeNumBits(typ: AlogicType): StrTree = typ match {
+    case IntType(signed, size)  => Str(s"$size")
+    case IntVType(signed, args) => StrProduct(args.map(MakeExpr))
+    case State()                => Str(s"$log2numstates")
+    case Struct(fields)         => StrSum(fields.map(MakeNumBits))
+  }
+
+  def MakeNumBits(typ: FieldType): StrTree = typ match { case Field(typ2, name) => MakeNumBits(typ2) }
+
+  implicit def Decl2Typ(decl: Declaration): AlogicType = decl match {
+    case ParamDeclaration(decltype, _, _) => decltype
+    case OutDeclaration(_, decltype, _)   => decltype
+    case InDeclaration(_, decltype, _)    => decltype
+    case VarDeclaration(decltype, _, _)   => decltype
+    case VerilogDeclaration(decltype, _)  => decltype
+  }
+
+  // Return the type for an AST
+  def GetType(tree: AlogicAST): AlogicType = tree match {
+    case DottedName(names) => {
+      val n = names.mkString("_")
+      id2decl(n)
+    }
+    case _ => { error(s"Cannot compute type for $tree"); State() }
+  }
+
   // Construct a string for an expression
   def MakeExpr(tree: AlogicAST): StrTree = {
     tree match {
       case ArrayLookup(name, index)              => StrList(List(MakeExpr(name), "[", MakeExpr(index), "]"))
       case BinaryArrayLookup(name, lhs, op, rhs) => StrList(List(MakeExpr(name), "[", MakeExpr(lhs), op, MakeExpr(rhs), "]"))
       case FunCall(name, args)                   => StrList(List(MakeExpr(name), "(", StrCommaList(args.map(MakeExpr)), ")"))
-      // TODO      case Zxt(numbits, expr) => {VisitAST(numbits,callback); VisitAST(expr,callback)}
+      case Zxt(numbits, expr) => {
+        val totalSz = MakeExpr(numbits)
+        val exprSz = MakeNumBits(GetType(expr))
+        StrList(List("{{", totalSz, " - ", exprSz, "{1'b0}},", MakeExpr(expr), "}"))
+      }
       // TODO     case Sxt(numbits, expr) => {VisitAST(numbits,callback); VisitAST(expr,callback)}
-      case DollarCall(name, args)                => StrList(List(name, "(", StrCommaList(args.map(MakeExpr)), ")"))
-      case ReadCall(name, args)                  => MakeExpr(name)
-      case BinaryOp(lhs, op, rhs)                => StrList(List(MakeExpr(lhs), Str(" "), op, Str(" "), MakeExpr(rhs)))
-      case UnaryOp(op, lhs)                      => StrList(List(op, MakeExpr(lhs)))
-      case Bracket(content)                      => StrList(List("(", MakeExpr(content), ")"))
-      case TernaryOp(cond, lhs, rhs)             => StrList(List(MakeExpr(cond), " ? ", MakeExpr(lhs), " : ", MakeExpr(rhs)))
-      case BitRep(count, value)                  => StrList(List("{", MakeExpr(count), "{", MakeExpr(value), "}}"))
-      case BitCat(parts)                         => StrList(List("{", StrCommaList(parts.map(MakeExpr)), "}"))
-      case DottedName(names)                     => nx(names)
-      case Literal(s)                            => StrList(List(""""""", s, """""""))
-      case Num(n)                                => n
-      case e                                     => error(s"Unexpected expression $e"); ""
+      case DollarCall(name, args)    => StrList(List(name, "(", StrCommaList(args.map(MakeExpr)), ")"))
+      case ReadCall(name, args)      => MakeExpr(name)
+      case BinaryOp(lhs, op, rhs)    => StrList(List(MakeExpr(lhs), Str(" "), op, Str(" "), MakeExpr(rhs)))
+      case UnaryOp(op, lhs)          => StrList(List(op, MakeExpr(lhs)))
+      case Bracket(content)          => StrList(List("(", MakeExpr(content), ")"))
+      case TernaryOp(cond, lhs, rhs) => StrList(List(MakeExpr(cond), " ? ", MakeExpr(lhs), " : ", MakeExpr(rhs)))
+      case BitRep(count, value)      => StrList(List("{", MakeExpr(count), "{", MakeExpr(value), "}}"))
+      case BitCat(parts)             => StrList(List("{", StrCommaList(parts.map(MakeExpr)), "}"))
+      case DottedName(names)         => nx(names)
+      case Literal(s)                => StrList(List(""""""", s, """""""))
+      case Num(n)                    => n
+      case e                         => error(s"Unexpected expression $e"); ""
     }
   }
 
@@ -320,6 +351,7 @@ final class MakeVerilog {
     case AlogicComment(s)                                         => s"// $s\n"
     case StateStmt(state)                                         => StrList(List(" " * (indent - 4), "end\n", " " * (indent - 4), MakeState(state), ": begin\n"))
     case GotoState(target)                                        => StrList(List(" " * indent, nx("state"), " = ", MakeState(target), ";\n"))
+    case GotoStmt(target)                                         => StrList(List(" " * indent, nx("state"), " = ", target, ";\n"))
     case CombinatorialCaseLabel(Nil, body) => StrList(
       Str(" " * indent) ::
         Str("default:\n") ::

@@ -70,18 +70,18 @@ object AlogicMain extends App {
       // Build AST
       val ast = parser2(fname)
 
-      // Remove assignments
-      val ast2 = Desugar.RemoveAssigns(ast)
-
       // Convert to state machine
-      val prog: StateProgram = new MakeStates()(ast2)
+      val prog: StateProgram = new MakeStates()(ast)
+
+      // Remove complicated assignments and ++ and -- (MakeStates inserts some ++/--)
+      val prog2 = Desugar.RemoveAssigns(prog)
 
       // Construct output filename
       val f0 = new File(fname).getName
       val f = new File(outdir, f0 + ".v").getPath()
 
       // Write Verilog
-      new MakeVerilog()(prog, f)
+      new MakeVerilog()(prog2, f)
     }
 
     val d = new File(codeFile)
