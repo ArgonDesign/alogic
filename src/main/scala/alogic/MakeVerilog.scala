@@ -360,6 +360,7 @@ final class MakeVerilog {
       Str(" " * indent) ::
         StrCommaList(conds.map(MakeExpr)) ::
         Str(":\n") :: CombStmt(indent + 4, body) :: Nil)
-    case x => error(s"Don't know how to emit code for $x"); Str("")
+    case DollarCall(name, args) => StrList(List(" " * indent, name, StrCommaList(args.map(MakeExpr))))
+    case x                      => error(s"Don't know how to emit code for $x"); Str("")
   }
 }
