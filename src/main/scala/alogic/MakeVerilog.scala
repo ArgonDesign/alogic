@@ -88,7 +88,11 @@ final class MakeVerilog {
       }
       typ2 match {
         case IntType(b, size) => writeSigned(b) + writeSize(size)
-        case _                => "" // TODO variable int type
+        case IntVType(b, args) => {
+          val sz = MakeString(StrProduct(args.map(MakeExpr)))
+          writeSigned(b) + "[" + sz + "-1:0] "
+        }
+        case _ => error("Cannot make type for $typ"); ""
       }
     }
     def writeVarInternal(typ: AlogicType, name: StrTree, resetToZero: Boolean): Unit = {
@@ -98,11 +102,11 @@ final class MakeVerilog {
         case x       => x
       }
       val nm = MakeString(name)
-      pw.println(s"  reg " + typeString(typ2) + MakeString(nx(nm)) + ", " + MakeString(reg(nm)) + ";")
       typ2 match {
-        case IntType(a, num) => {
+        case IntType(_, _) | IntVType(_, _) => {
+          pw.println(s"  reg " + typeString(typ2) + MakeString(nx(nm)) + ", " + MakeString(reg(nm)) + ";")
           if (resetToZero)
-            resets = StrList(Str("      ") :: Str(reg(name)) :: Str(s" <= $num'b0;\n") :: Nil) :: resets
+            resets = StrList(Str("      ") :: Str(reg(name)) :: Str(s" <= 'b0;\n") :: Nil) :: resets
           clocks = StrList(Str("        ") :: Str(reg(name)) :: Str(" <= ") :: Str(nx(name)) :: Str(";\n") :: Nil) :: clocks
           defaults = StrList(Str("    ") :: Str(nx(name)) :: Str(" = ") :: Str(reg(name)) :: Str(";\n") :: Nil) :: defaults
         }
