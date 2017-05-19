@@ -18,6 +18,8 @@ final class MakeVerilog {
 
   var numstates = 0
 
+  var log2numstates = 0
+
   def error(msg: String) {
     println(msg)
     System.exit(-1)
@@ -37,6 +39,8 @@ final class MakeVerilog {
 
   def apply(tree: StateProgram, fname: String): Unit = {
     numstates = tree.numStates
+    while (1 << log2numstates < numstates)
+      log2numstates += 1
     // Collect all the declarations
     VisitAST(tree) {
       case Task(_, _, decls, _) => { decls foreach { x => id2decl(ExtractName(x)) = x }; false }
@@ -68,14 +72,19 @@ final class MakeVerilog {
       case _                => // TODO
     }
     def writeVar(typ: AlogicType, name: StrTree): Unit = {
-      typ match {
+      // Convert state to uint type
+      val typ2 = typ match {
+        case State() => IntType(false, log2numstates)
+        case x       => x
+      }
+      typ2 match {
         case IntType(b, size) => {
           val nm = MakeString(name)
           pw.println(s"  reg ${writeSigned(b)}${writeSize(size)}" + MakeString(nx(nm)) + ", " + MakeString(reg(nm)) + ";")
         }
         case _ => // TODO variable int type
       }
-      typ match {
+      typ2 match {
         case IntType(a, num) => {
           resets = StrList(Str("      ") :: Str(reg(name)) :: Str(s" <= $num'b0;\n") :: Nil) :: resets
           clocks = StrList(Str("        ") :: Str(reg(name)) :: Str(" <= ") :: Str(nx(name)) :: Str(";\n") :: Nil) :: clocks
@@ -148,7 +157,7 @@ final class MakeVerilog {
       pw.println(MakeString(StrList(defaults)))
     if (fencefns.length > 0)
       pw.println(MakeString(StrList(fencefns)))
-    pw.println("    case(state) begin")
+    pw.println("    case(state_q) begin")
     pw.println("      default: begin")
     pw.println(MakeString(StrList(fns)))
     pw.println("      end")
@@ -268,7 +277,7 @@ final class MakeVerilog {
   }
 
   // Called with an integer representing a state, returns the appropriate string
-  def MakeState(state: Int): String = s"$numstates'd$state"
+  def MakeState(state: Int): String = s"$log2numstates'd$state"
 
   // This function defines how to write next values (D input on flip-flops)
   def nx(x: String): StrTree = StrList(List(x, Str("_d")))
