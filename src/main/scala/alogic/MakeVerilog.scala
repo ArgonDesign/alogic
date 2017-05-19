@@ -53,7 +53,7 @@ final class MakeVerilog {
 
     // Collect all the declarations
     VisitAST(tree) {
-      case Task(_, _, decls, _) => { decls foreach { x => id2decl(ExtractName(x)) = x }; true }
+      case Task(t, _, decls, _) => { decls foreach { x => id2decl(ExtractName(x)) = x }; true }
       case DeclarationStmt(d)   => { id2decl(ExtractName(d)) = d; false }
       case _                    => true
     }
@@ -113,25 +113,28 @@ final class MakeVerilog {
     def writeVarWithNoReset(typ: AlogicType, name: StrTree): Unit = writeVarInternal(typ, name, false)
 
     VisitAST(tree) {
-      case Task(Fsm(), name, decls, fns) => {
+      case Task(t, name, decls, fns) => {
         pw.println(s"module $name (")
         pw.println("  input wire clk,")
         pw.println("  input wire rst_n,")
-        // TODO if a network or a verilog module these should all be wires
+        val outtype = t match {
+          case Fsm() | Pipeline()    => "reg "
+          case Network() | Verilog() => "wire "
+        }
         // TODO skip auto stuff if we have a verilog task
         id2decl.values.foreach({
           case ParamDeclaration(decltype, id, Some(init)) => pw.println("param " + id + " = " + MakeString(MakeExpr(init)) + ";")
           case ParamDeclaration(decltype, id, None)       => pw.println("param " + id + ";")
           case OutDeclaration(synctype, decltype, name) => {
             if (HasValid(synctype)) {
-              pw.println("  output reg " + valid(name) + ";")
+              pw.println("  output " + outtype + valid(name) + ";")
               clears = Str("      " + valid(name) + " = 1'b0;\n") :: clears
               defaults = Str("    " + valid(name) + " = 1'b0;\n") :: defaults
             }
             if (HasReady(synctype))
               pw.println("  input wire " + ready(name) + ";")
             if (HasAccept(synctype))
-              pw.println("  output reg " + accept(name) + ";")
+              pw.println("  output " + outtype + accept(name) + ";")
             VisitType(decltype, name)(writeOut)
 
           }
@@ -139,7 +142,7 @@ final class MakeVerilog {
             if (HasValid(synctype))
               pw.println("  input wire " + valid(name) + ";")
             if (HasReady(synctype)) {
-              pw.println("  output reg " + ready(name) + ";")
+              pw.println("  output " + outtype + ready(name) + ";")
               clears = Str("      " + ready(name) + " = 1'b0;\n") :: clears
               defaults = Str("    " + ready(name) + " = 1'b0;\n") :: defaults
             }

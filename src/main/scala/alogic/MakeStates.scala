@@ -61,8 +61,8 @@ final class MakeStates {
       val start = fn2state("main")
       val sd = VarDeclaration(State(), DottedName("state" :: Nil), Some(makeNum(start)))
       val prog2 = RewriteAST(prog) {
-        case Task(tasktype, name, decls, fns) => Some(Task(tasktype, name, sd :: decls, fns))
-        case _                                => None
+        case Task(tasktype @ Fsm(), name, decls, fns) => Some(Task(tasktype, name, sd :: decls, fns))
+        case _                                        => None
       }
       prog2.asInstanceOf[StateProgram]
     } else {
