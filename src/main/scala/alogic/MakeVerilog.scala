@@ -43,7 +43,7 @@ final class MakeVerilog {
       log2numstates += 1
     // Collect all the declarations
     VisitAST(tree) {
-      case Task(_, _, decls, _) => { decls foreach { x => id2decl(ExtractName(x)) = x }; false }
+      case Task(_, _, decls, _) => { decls foreach { x => id2decl(ExtractName(x)) = x }; true }
       case DeclarationStmt(d)   => { id2decl(ExtractName(d)) = d; false }
       case _                    => true
     }
@@ -134,7 +134,7 @@ final class MakeVerilog {
         pw.println(") begin")
         // declare remaining variables
         id2decl.values.foreach({
-          case VarDeclaration(decltype, name, init) => VisitType(decltype, ExtractName(name))(writeVar)
+          case VarDeclaration(decltype, name, init) => VisitType(decltype, ExtractName(name))(writeVar) // TODO add reset values
           case _                                    =>
         })
         true
@@ -218,7 +218,8 @@ final class MakeVerilog {
       val n = names.mkString("_")
       id2decl(n)
     }
-    case _ => { error(s"Cannot compute type for $tree"); State() }
+    case ReadCall(name) => GetType(name)
+    case _              => { error(s"Cannot compute type for $tree"); State() }
   }
 
   // Construct a string for an expression
@@ -234,7 +235,7 @@ final class MakeVerilog {
       }
       // TODO     case Sxt(numbits, expr) => {VisitAST(numbits,callback); VisitAST(expr,callback)}
       case DollarCall(name, args)    => StrList(List(name, "(", StrCommaList(args.map(MakeExpr)), ")"))
-      case ReadCall(name, args)      => MakeExpr(name)
+      case ReadCall(name)            => MakeExpr(name)
       case BinaryOp(lhs, op, rhs)    => StrList(List(MakeExpr(lhs), Str(" "), op, Str(" "), MakeExpr(rhs)))
       case UnaryOp(op, lhs)          => StrList(List(op, MakeExpr(lhs)))
       case Bracket(content)          => StrList(List("(", MakeExpr(content), ")"))
@@ -279,9 +280,9 @@ final class MakeVerilog {
       case CombinatorialBlock(_) => false
       case CombinatorialIf(cond, _, _) =>
         VisitAST(cond)(v); false
-      case ReadCall(name, _)   => AddRead(name, false)
-      case LockCall(name, _)   => AddRead(name, true)
-      case UnlockCall(name, _) => AddRead(name, false)
+      case ReadCall(name)   => AddRead(name, false)
+      case LockCall(name)   => AddRead(name, true)
+      case UnlockCall(name) => AddRead(name, false)
       case WriteCall(name, _) => {
         val n: String = ExtractName(name)
         val d: Declaration = id2decl(n)
@@ -339,8 +340,8 @@ final class MakeVerilog {
     case CombinatorialIf(cond, body, None) => AddStall(indent, StallExpr(cond),
       StrList(Str(" " * indent) :: Str("if\n") ::
         CombStmt(indent + 4, body) :: Nil))
-    case LockCall(_, _)   => Str("")
-    case UnlockCall(_, _) => Str("")
+    case LockCall(name)   => AddStall(indent, StallExpr(name), Str(""))
+    case UnlockCall(name) => AddStall(indent, StallExpr(name), Str(""))
     case WriteCall(name, args) if (args.length == 1) => AddStall(indent, StallExpr(name) ::: StallExpr(args(0)),
       StrList(List(Str(" " * indent), MakeExpr(name), " = ", MakeExpr(args(0)), Str(";\n"))))
     case CombinatorialBlock(cmds) => StrList(Str(" " * indent) :: Str("begin\n") ::

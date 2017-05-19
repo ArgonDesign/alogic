@@ -240,15 +240,20 @@ class AstBuilder {
       val n = visit(ctx.dotted_name())
       val a = CommaArgsVisitor.visit(ctx.comma_args())
       n match {
-        case DottedName(names) if (names.last == "read" || names.last == "unlock") => {
+        case DottedName(names) if (names.last == "read") => {
           if (a.length > 0)
             warning(ctx, s"Interface read takes no arguments (${a.length} found)")
-          ReadCall(DottedName(names.init), a)
+          ReadCall(DottedName(names.init))
         }
         case DottedName(names) if (names.last == "lock") => {
           if (a.length > 0)
             warning(ctx, s"Interface lock takes no arguments (${a.length} found)")
-          LockCall(DottedName(names.init), a)
+          LockCall(DottedName(names.init))
+        }
+        case DottedName(names) if (names.last == "unlock") => {
+          if (a.length > 0)
+            warning(ctx, s"Interface unlock takes no arguments (${a.length} found)")
+          UnlockCall(DottedName(names.init))
         }
         case DottedName(names) if (names.last == "write") => {
           if (a.length != 1)
