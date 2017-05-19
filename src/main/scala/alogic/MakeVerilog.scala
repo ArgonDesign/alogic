@@ -156,8 +156,14 @@ final class MakeVerilog {
         pw.println("  input wire rst_n,")
 
         id2decl.values.foreach({
-          case ParamDeclaration(decltype, id, Some(init)) => pw.println("param " + id + " = " + MakeString(MakeExpr(init)) + ";")
-          case ParamDeclaration(decltype, id, None)       => pw.println("param " + id + ";")
+          case ParamDeclaration(decltype, id, Some(init)) => {
+            SetNxType(decltype, id, "")
+            pw.println("param " + id + " = " + MakeString(MakeExpr(init)) + ";")
+          }
+          case ParamDeclaration(decltype, id, None) => {
+            SetNxType(decltype, id, "")
+            pw.println("param " + id + ";")
+          }
           case OutDeclaration(synctype, decltype, name) => {
             if (HasValid(synctype)) {
               pw.println("  output " + outtype + valid(name) + ";")
@@ -185,6 +191,9 @@ final class MakeVerilog {
             SetNxType(decltype, name, "")
             VisitType(decltype, name)(writeOut)
 
+          }
+          case VerilogDeclaration(decltype, id) => {
+            SetNxType(decltype, ExtractName(id), "")
           }
           case _ =>
         })
@@ -322,7 +331,12 @@ final class MakeVerilog {
     tree match {
       case ArrayLookup(name, index)              => StrList(List(MakeExpr(name), "[", MakeExpr(index), "]"))
       case BinaryArrayLookup(name, lhs, op, rhs) => StrList(List(MakeExpr(name), "[", MakeExpr(lhs), op, MakeExpr(rhs), "]"))
-      case FunCall(name, args)                   => StrList(List(MakeExpr(name), "(", StrCommaList(args.map(MakeExpr)), ")"))
+      case ValidCall(DottedName(names)) => id2decl(names.head) match {
+        case OutDeclaration(synctype, decl, n) => if (HasValid(synctype)) valid(n) else { error(s"Port $names does not use valid"); "" }
+        case InDeclaration(synctype, decl, n)  => if (HasValid(synctype)) valid(n) else { error(s"Port $names does not use valid"); "" }
+        case _                                 => error(s"Cannot access valid on $names"); ""
+      }
+      case FunCall(name, args) => StrList(List(MakeExpr(name), "(", StrCommaList(args.map(MakeExpr)), ")"))
       case Zxt(numbits, expr) => {
         val totalSz = MakeExpr(numbits)
         val exprSz = MakeNumBits(GetType(expr))

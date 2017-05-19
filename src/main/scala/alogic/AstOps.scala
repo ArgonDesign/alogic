@@ -75,7 +75,7 @@ object AstOps {
           case DollarCall(name, args)                => args foreach visit
           case ReadCall(name)                        =>
           case LockCall(name)                        =>
-          case UnlockCall(name)                      =>
+          case UnlockCall(_) | ValidCall(_)          =>
           case WriteCall(name, args)                 => args foreach visit
           case Assign(lhs, op, rhs)                  => { visit(lhs); visit(rhs) }
           case Plusplus(lhs)                         => visit(lhs)
@@ -159,6 +159,7 @@ object AstOps {
           case ReadCall(name)                            => ReadCall(name)
           case LockCall(name)                            => LockCall(name)
           case UnlockCall(name)                          => UnlockCall(name)
+          case ValidCall(name)                           => ValidCall(name)
           case WriteCall(name, args)                     => WriteCall(name, args map rewrite)
           case Assign(lhs, op, rhs)                      => Assign(rewrite(lhs), op, rewrite(rhs))
           case Plusplus(lhs)                             => Plusplus(rewrite(lhs))

@@ -255,6 +255,11 @@ class AstBuilder {
             warning(ctx, s"Interface unlock takes no arguments (${a.length} found)")
           UnlockCall(DottedName(names.init))
         }
+        case DottedName(names) if (names.last == "valid" || names.last == "v") => {
+          if (a.length > 0)
+            warning(ctx, s"Accessing valid property takes no arguments (${a.length} found)")
+          ValidCall(DottedName(names.init))
+        }
         case DottedName(names) if (names.last == "write") => {
           if (a.length != 1)
             warning(ctx, s"Interface write takes exactly one argument (${a.length} found)")
