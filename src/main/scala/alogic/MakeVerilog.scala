@@ -14,6 +14,8 @@ final class MakeVerilog {
 
   val id2decl = mutable.Map[String, Declaration]()
 
+  val nxMap = mutable.Map[String, String]() // Returns string to use when this identifier is accesses
+
   val Arrays = mutable.Set[String]()
 
   val go = "go" // Name of the signal used to decide whether to clock registers
@@ -47,15 +49,25 @@ final class MakeVerilog {
     y
   }
 
+  var outtype = "Unknown"
+
   def apply(tree: StateProgram, fname: String): Unit = {
     numstates = tree.numStates
     log2numstates = ceillog2(numstates)
 
     // Collect all the declarations
     VisitAST(tree) {
-      case Task(t, _, decls, _) => { decls foreach { x => id2decl(ExtractName(x)) = x }; true }
-      case DeclarationStmt(d)   => { id2decl(ExtractName(d)) = d; false }
-      case _                    => true
+      case Task(t, _, decls, _) => {
+        outtype = t match {
+          case Fsm() | Pipeline()    => "reg "
+          case Network() | Verilog() => "wire "
+        }
+        decls foreach { x => id2decl(ExtractName(x)) = x }; true
+      }
+      // We remove the initializer from declaration statements
+      // These will be reset inline where they are declared.
+      case DeclarationStmt(VarDeclaration(decltype, id, _)) => { id2decl(ExtractName(id)) = VarDeclaration(decltype, id, None); false }
+      case _ => true
     }
 
     // Emit header and combinatorial code
@@ -74,7 +86,7 @@ final class MakeVerilog {
     def writeSize(size: Int) = if (size > 1) s"[$size-1:0] " else ""
 
     def writeOut(typ: AlogicType, name: StrTree): Unit = typ match {
-      case IntType(b, size) => pw.println(s"  output reg ${writeSigned(b)}${writeSize(size)}" + MakeString(name) + ";")
+      case IntType(b, size) => pw.println("  output " + outtype + writeSigned(b) + writeSize(size) + MakeString(name) + ";")
       case _                => // TODO support IntVType
     }
     def writeIn(typ: AlogicType, name: StrTree): Unit = typ match {
@@ -116,16 +128,33 @@ final class MakeVerilog {
     def writeVarWithReset(typ: AlogicType, name: StrTree): Unit = writeVarInternal(typ, name, true)
     def writeVarWithNoReset(typ: AlogicType, name: StrTree): Unit = writeVarInternal(typ, name, false)
 
+    // Prepare the mapping for the nx() map
+    // Different types of variables need different suffices
+    // For efficiency this returns the comma separated list of underlying fields
+    // TODO better for Verilator simulation speed if we could detect assignments and expand this concatenation
+    def SetNxType(typ: AlogicType, name: String, suffix: String): String = typ match {
+      case Struct(fields) => {
+        val c = for { f <- fields } yield f match {
+          case Field(t, n) => SetNxType(t, name + '_' + n, suffix)
+          case _           => ""
+        }
+        val commaFields = c.mkString(",")
+        nxMap(name) = "{" + commaFields + "}"
+        commaFields
+      }
+      case _ => {
+        val t = name + suffix
+        nxMap(name) = t
+        t
+      }
+    }
+
     VisitAST(tree) {
       case Task(t, name, decls, fns) => {
         pw.println(s"module $name (")
         pw.println("  input wire clk,")
         pw.println("  input wire rst_n,")
-        val outtype = t match {
-          case Fsm() | Pipeline()    => "reg "
-          case Network() | Verilog() => "wire "
-        }
-        // TODO skip auto stuff if we have a verilog task
+
         id2decl.values.foreach({
           case ParamDeclaration(decltype, id, Some(init)) => pw.println("param " + id + " = " + MakeString(MakeExpr(init)) + ";")
           case ParamDeclaration(decltype, id, None)       => pw.println("param " + id + ";")
@@ -139,7 +168,8 @@ final class MakeVerilog {
               pw.println("  input wire " + ready(name) + ";")
             if (HasAccept(synctype))
               pw.println("  output " + outtype + accept(name) + ";")
-            VisitType(decltype, name)(writeOut)
+            SetNxType(decltype, name, "") // TODO decide on NxType based on synctype
+            VisitType(decltype, name)(writeOut) // TODO declare nxt values for outputs
 
           }
           case InDeclaration(synctype, decltype, name) => {
@@ -152,7 +182,9 @@ final class MakeVerilog {
             }
             if (HasAccept(synctype))
               pw.println("  in wire " + accept(name) + ";")
+            SetNxType(decltype, name, "")
             VisitType(decltype, name)(writeOut)
+
           }
           case _ =>
         })
@@ -171,6 +203,7 @@ final class MakeVerilog {
             pw.println(s"  reg ${n}_wr;")
             pw.println(s"  reg ${t}${n}_wrdata;")
             pw.println(s"  reg [${log2depth - 1}:0]${n}_wraddr;")
+            SetNxType(decltype, names.head, "")
             defaults = StrList(
               Str(s"    ${n}_wr = 1'b0;\n") ::
                 Str(s"    ${n}_wraddr = 'b0;\n") ::
@@ -180,9 +213,15 @@ final class MakeVerilog {
         if (${n}_wr)  ${n}[ ${n}_wraddr ] <= ${n}_wrdata;
 """) :: clocks
           }
-          case VarDeclaration(decltype, name, None) => VisitType(decltype, ExtractName(name))(writeVarWithReset)
+          case VarDeclaration(decltype, name, None) => {
+            val n = ExtractName(name)
+            SetNxType(decltype, n, "_nxt")
+            VisitType(decltype, n)(writeVarWithReset)
+
+          }
           case VarDeclaration(decltype, name, Some(init)) => {
             val n = ExtractName(name)
+            SetNxType(decltype, n, "_nxt")
             VisitType(decltype, n)(writeVarWithNoReset)
             resets = StrList(Str("      ") :: Str(reg(n)) :: Str(s" <= ") :: MakeExpr(init) :: Str(";\n") :: Nil) :: resets
           }
@@ -236,13 +275,16 @@ final class MakeVerilog {
     pw.close()
   }
 
+  // We would prefer to use _d and _q, except that it is more useful
+  // for mixing with verilog and for output ports to use the name without a suffix for direct access
+
   // Construct the string to be used when this identifier is used on the RHS of an assignment
-  def nx(names: List[String]): String = names.mkString("_") + "_d" // TODO inspect type and expand
-  def nx(name: StrTree): String = MakeString(name) + "_d"
+  def nx(names: List[String]): String = nxMap(names.mkString("_")) // TODO inspect type and expand
+  def nx(name: StrTree): String = nxMap(MakeString(name))
 
   // Construct the string to be used when this identifier is used on the LHS of an assignment
-  def reg(names: List[String]): String = names.mkString("_") + "_q" // TODO inspect type and expand
-  def reg(name: StrTree): String = MakeString(name) + "_q"
+  def reg(names: List[String]): String = names.mkString("_") // TODO inspect type and expand
+  def reg(name: StrTree): String = MakeString(name)
 
   implicit def string2StrTree(s: String): StrTree = Str(s)
   implicit def stringList2StrTree(s: List[StrTree]): StrTree = StrList(s)
@@ -365,7 +407,7 @@ final class MakeVerilog {
   def MakeState(state: Int): String = s"$log2numstates'd$state"
 
   // This function defines how to write next values (D input on flip-flops)
-  def nx(x: String): StrTree = StrList(List(x, Str("_d")))
+  def nx(x: String): StrTree = StrList(List(x, Str("_nxt")))
 
   def AddStall(indent: Int, stalls: List[String], expr: StrTree): StrTree = {
     if (stalls.isEmpty)
