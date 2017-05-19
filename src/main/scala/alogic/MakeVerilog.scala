@@ -75,11 +75,11 @@ final class MakeVerilog {
 
     def writeOut(typ: AlogicType, name: StrTree): Unit = typ match {
       case IntType(b, size) => pw.println(s"  output reg ${writeSigned(b)}${writeSize(size)}" + MakeString(name) + ";")
-      case _                => // TODO
+      case _                => // TODO support IntVType
     }
     def writeIn(typ: AlogicType, name: StrTree): Unit = typ match {
       case IntType(b, size) => pw.println(s"  input wire ${writeSigned(b)}${writeSize(size)}" + MakeString(name) + ";")
-      case _                => // TODO
+      case _                => // TODO support IntVType
     }
     def typeString(typ: AlogicType): String = {
       val typ2 = typ match {
@@ -199,37 +199,39 @@ final class MakeVerilog {
     if (verilogfns.length > 0) {
       pw.write(MakeString(verilogfns))
     }
-    // Start main combinatorial loop
-    pw.println()
-    pw.println("  always @* begin")
-    pw.println("    go = 1'b1;")
-    // Prepare defaults
-    if (defaults.length > 0)
-      pw.println(MakeString(StrList(defaults)))
-    if (fencefns.length > 0)
-      pw.println(MakeString(StrList(fencefns)))
-    pw.println("    case(state_q) begin")
-    pw.println("      default: begin")
-    pw.println(MakeString(StrList(fns)))
-    pw.println("      end")
-    pw.println("    end")
-    if (clears.length > 0) {
-      pw.println(s"    if (!$go) begin")
-      pw.write(MakeString(clears))
+    if (fns.length > 0 || fencefns.length > 0) {
+      // Start main combinatorial loop
+      pw.println()
+      pw.println("  always @* begin")
+      pw.println("    go = 1'b1;")
+      // Prepare defaults
+      if (defaults.length > 0)
+        pw.println(MakeString(StrList(defaults)))
+      if (fencefns.length > 0)
+        pw.println(MakeString(StrList(fencefns)))
+      pw.println("    case(state_q) begin")
+      pw.println("      default: begin")
+      pw.println(MakeString(StrList(fns)))
+      pw.println("      end")
       pw.println("    end")
+      if (clears.length > 0) {
+        pw.println(s"    if (!$go) begin")
+        pw.write(MakeString(clears))
+        pw.println("    end")
+      }
+      pw.println("  end")
+      // Now emit clocked blocks
+      pw.println("")
+      pw.println("  always @(posedge clk or negedge rst_n) begin")
+      pw.println("    if (!rst_n) begin")
+      pw.print(MakeString(StrList(resets)))
+      pw.println("    end else begin")
+      pw.println(s"      if ($go) begin")
+      pw.print(MakeString(StrList(clocks)))
+      pw.println("      end")
+      pw.println("    end")
+      pw.println("  end")
     }
-    pw.println("  end")
-    // Now emit clocked blocks
-    pw.println("")
-    pw.println("  always @(posedge clk or negedge rst_n) begin")
-    pw.println("    if (!rst_n) begin")
-    pw.print(MakeString(StrList(resets)))
-    pw.println("    end else begin")
-    pw.println(s"      if ($go) begin")
-    pw.print(MakeString(StrList(clocks)))
-    pw.println("      end")
-    pw.println("    end")
-    pw.println("  end")
     pw.println("endmodule")
     pw.close()
   }
