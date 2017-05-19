@@ -14,6 +14,8 @@ final class MakeVerilog {
 
   val id2decl = mutable.Map[String, Declaration]()
 
+  val Arrays = mutable.Set[String]()
+
   val go = "go" // Name of the signal used to decide whether to clock registers
 
   var numstates = 0
@@ -37,10 +39,18 @@ final class MakeVerilog {
   def accept(s: String): String =
     s + "_accept"
 
+  // Compute number of address bits required for a given depth
+  def ceillog2(x: Int): Int = {
+    var y = 0
+    while ((1 << y) < x)
+      y += 1
+    y
+  }
+
   def apply(tree: StateProgram, fname: String): Unit = {
     numstates = tree.numStates
-    while (1 << log2numstates < numstates)
-      log2numstates += 1
+    log2numstates = ceillog2(numstates)
+
     // Collect all the declarations
     VisitAST(tree) {
       case Task(_, _, decls, _) => { decls foreach { x => id2decl(ExtractName(x)) = x }; true }
@@ -71,19 +81,24 @@ final class MakeVerilog {
       case IntType(b, size) => pw.println(s"  input wire ${writeSigned(b)}${writeSize(size)}" + MakeString(name) + ";")
       case _                => // TODO
     }
+    def typeString(typ: AlogicType): String = {
+      val typ2 = typ match {
+        case State() => IntType(false, log2numstates)
+        case x       => x
+      }
+      typ2 match {
+        case IntType(b, size) => writeSigned(b) + writeSize(size)
+        case _                => "" // TODO variable int type
+      }
+    }
     def writeVarInternal(typ: AlogicType, name: StrTree, resetToZero: Boolean): Unit = {
       // Convert state to uint type
       val typ2 = typ match {
         case State() => IntType(false, log2numstates)
         case x       => x
       }
-      typ2 match {
-        case IntType(b, size) => {
-          val nm = MakeString(name)
-          pw.println(s"  reg ${writeSigned(b)}${writeSize(size)}" + MakeString(nx(nm)) + ", " + MakeString(reg(nm)) + ";")
-        }
-        case _ => // TODO variable int type
-      }
+      val nm = MakeString(name)
+      pw.println(s"  reg " + typeString(typ2) + MakeString(nx(nm)) + ", " + MakeString(reg(nm)) + ";")
       typ2 match {
         case IntType(a, num) => {
           if (resetToZero)
@@ -137,6 +152,27 @@ final class MakeVerilog {
         pw.println(") begin")
         // declare remaining variables
         id2decl.values.foreach({
+          case VarDeclaration(decltype, ArrayLookup(DottedName(names), index), None) => {
+            // Arrays only work with non-struct types
+            // TODO maybe figure out the number of bits in the type and declare as this many?
+            // TODO maybe detect more than one write to the same array in the same cycle?
+            val n = names.mkString("_")
+            Arrays.add(n)
+            val depth = MakeString(MakeExpr(index)).toInt // TODO detect if this fails and fail gracefully
+            val log2depth = ceillog2(depth)
+            val t = typeString(decltype)
+            pw.println(s"  reg ${n}_wr;")
+            pw.println(s"  reg ${t}${n}_wrdata;")
+            pw.println(s"  reg [${log2depth - 1}:0]${n}_wraddr;")
+            defaults = StrList(
+              Str(s"    ${n}_wr = 1'b0;") ::
+                Str(s"    ${n}_wraddr = 'b0;") ::
+                Str(s"    ${n}_wrdata = 'b0;") :: Nil) :: defaults
+            clears = Str(s"    ${n}_wr = 1'b0;") :: clears
+            clocks = Str(s"""
+    if (${n}_wr)  ${n}[ ${n}_wraddr ] <= ${n}_wrdata;
+""") :: clocks
+          }
           case VarDeclaration(decltype, name, None) => VisitType(decltype, ExtractName(name))(writeVarWithReset)
           case VarDeclaration(decltype, name, Some(init)) => {
             val n = ExtractName(name)
@@ -335,6 +371,19 @@ final class MakeVerilog {
   // Produce code to go into the case statements (we assume we have already had a "case(state) default: begin"
   // The top call should be with Function or VerilogFunction
   def CombStmt(indent: Int, tree: AlogicAST): StrTree = tree match {
+    case Assign(ArrayLookup(DottedName(names), index), "=", rhs) if (Arrays contains names.head) => {
+      val i = " " * indent
+      val n = names.head
+      val r = MakeString(MakeExpr(rhs))
+      val d = MakeString(MakeExpr(index))
+      val a = Str(s"""${i}begin
+$i  ${n}_wr = 1'b1;
+$i  ${n}_addr = $r;
+$i  ${n}_wrdata = $d;
+${i}end
+""")
+      AddStall(indent, StallExpr(index) ::: StallExpr(rhs), a)
+    }
     case Assign(lhs, "=", rhs) => AddStall(indent, StallExpr(lhs) ::: StallExpr(rhs), StrList(List(Str(" " * indent), MakeExpr(lhs), " = ", MakeExpr(rhs), ";\n")))
     case CombinatorialCaseStmt(value, cases) => AddStall(indent, StallExpr(value),
       StrList(Str(" " * indent + "case(") :: MakeExpr(value) :: Str(") begin\n") ::
