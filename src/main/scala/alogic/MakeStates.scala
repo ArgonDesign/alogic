@@ -80,7 +80,14 @@ final class MakeStates {
     case Function(name, body) => {
       val s = fn2state(name)
       val current = makeStates(s, s, body)
-      Function(name, CombinatorialBlock(StateStmt(s) :: current ::: extra.flatten))
+      emit(StateStmt(s) :: current)
+      // Now convert sequences of state followed by no-state into a StateBlock
+      val states = for { b <- extra } yield {
+        val state = b.head.asInstanceOf[StateStmt].state
+        StateBlock(state, b.tail)
+      }
+      extra = Nil
+      Function(name, CombinatorialBlock(states))
     }
     case x => x
   }
@@ -124,9 +131,10 @@ final class MakeStates {
       val follow = makeStates(s, finalState, body)
       removeTarget()
       val loop = CombinatorialIf(cond, CombinatorialBlock(follow), Some(GotoState(finalState)))
-      if (startState < 0)
-        List(GotoState(s), StateStmt(s), loop)
-      else
+      if (startState < 0) {
+        emit(StateStmt(s) :: loop :: Nil)
+        List(GotoState(s))
+      } else
         List(loop)
     }
     case ControlIf(cond, body, None) => {

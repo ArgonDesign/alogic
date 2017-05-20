@@ -78,6 +78,7 @@ final class MakeVerilog {
     var clocks: List[StrTree] = Nil // Collection of things to clock if go
     var resets: List[StrTree] = Nil // Collection of things to reset
     var verilogfns: List[StrTree] = Nil // Collection of raw verilog text
+    var acceptfns: List[StrTree] = Nil // Collection of code to generate accept outputs
 
     val pw = new PrintWriter(new File(fname))
 
@@ -149,6 +150,8 @@ final class MakeVerilog {
       }
     }
 
+    var generateAccept = false // As an optimization, don't bother generating accept for modules without any ports that require it
+
     VisitAST(tree) {
       case Task(t, name, decls, fns) => {
         pw.println(s"module $name (")
@@ -172,8 +175,10 @@ final class MakeVerilog {
             }
             if (HasReady(synctype))
               pw.println("  input wire " + ready(name) + ";")
-            if (HasAccept(synctype))
+            if (HasAccept(synctype)) {
               pw.println("  output " + outtype + accept(name) + ";")
+              generateAccept = true;
+            }
             SetNxType(decltype, name, "") // TODO decide on NxType based on synctype
             VisitType(decltype, name)(writeOut) // TODO declare nxt values for outputs
 
@@ -239,10 +244,15 @@ final class MakeVerilog {
         true
       }
       case DeclarationStmt(VarDeclaration(decltype, name, init)) => { VisitType(decltype, ExtractName(name))(writeVarWithReset); false } // These resets are done when variable is declared in the code
-      case Function(name, body) => { fns = CombStmt(6, body) :: fns; true }
-      case FenceFunction(body) => { fencefns = CombStmt(4, body) :: fencefns; true }
+      case Function(name, body) => {
+        fns = CombStmt(6, body) :: fns
+        if (generateAccept)
+          acceptfns = AcceptStmt(6, body) :: acceptfns
+        true
+      }
+      case FenceFunction(body)   => { fencefns = CombStmt(4, body) :: fencefns; true }
       case VerilogFunction(body) => { verilogfns = body :: verilogfns; false }
-      case _ => true
+      case _                     => true
     }
     if (verilogfns.length > 0) {
       pw.write(MakeString(verilogfns))
@@ -472,9 +482,11 @@ ${i}end
     case DeclarationStmt(VarDeclaration(decltype, id, Some(rhs))) => CombStmt(indent, Assign(id, "=", rhs))
     case DeclarationStmt(VarDeclaration(decltype, id, None))      => CombStmt(indent, Assign(id, "=", Num("'b0")))
     case AlogicComment(s)                                         => s"// $s\n"
-    case StateStmt(state)                                         => StrList(List(" " * (indent - 4), "end\n", " " * (indent - 4), MakeState(state), ": begin\n"))
-    case GotoState(target)                                        => StrList(List(" " * indent, nx("state"), " = ", MakeState(target), ";\n"))
-    case GotoStmt(target)                                         => StrList(List(" " * indent, nx("state"), " = ", target, ";\n"))
+    case StateBlock(state, cmds) => StrList(List(" " * (indent - 4), "end\n", " " * (indent - 4), MakeState(state), ": begin\n",
+      StrList(for { cmd <- cmds } yield CombStmt(indent, cmd))))
+    //case StateStmt(state)  => Str(s"Bad state stmt for $state")
+    case GotoState(target) => StrList(List(" " * indent, nx("state"), " = ", MakeState(target), ";\n"))
+    case GotoStmt(target)  => StrList(List(" " * indent, nx("state"), " = ", target, ";\n"))
     case CombinatorialCaseLabel(Nil, body) => StrList(
       Str(" " * indent) ::
         Str("default:\n") ::
@@ -501,5 +513,59 @@ ${i}end
   // Therefore we need to check:
   //   There are no other stalling port reads/writes in this state
   //   None of the variables that affect whether p.read() is called are written in this state, we call forbid to ban assigns to these registers
+  //
+  // As an optimization we can skip all of this if there are no sync accept ports
+  def AcceptStmt(indent: Int, tree: AlogicAST): StrTree = tree match {
+    case Assign(ArrayLookup(DottedName(names), index), "=", rhs) if (Arrays contains names.head) => { // TODO
+      val i = " " * indent
+      val n = names.head
+      val r = MakeString(MakeExpr(rhs))
+      val d = MakeString(MakeExpr(index))
+      val a = Str(s"""${i}begin
+$i  ${n}_wr = 1'b1;
+$i  ${n}_addr = $r;
+$i  ${n}_wrdata = $d;
+${i}end
+""")
+      AddStall(indent, StallExpr(index) ::: StallExpr(rhs), a)
+    }
+    case Assign(lhs, "=", rhs) => AddStall(indent, StallExpr(lhs) ::: StallExpr(rhs), StrList(List(Str(" " * indent), MakeExpr(lhs), " = ", MakeExpr(rhs), ";\n"))) // TODO
+    case CombinatorialCaseStmt(value, cases) => AddStall(indent, StallExpr(value), // TODO
+      StrList(Str(" " * indent + "case(") :: MakeExpr(value) :: Str(") begin\n") ::
+        StrList(for (c <- cases) yield AcceptStmt(indent + 4, c)) ::
+        Str(" " * indent) :: Str("endcase\n") :: Nil))
+    case CombinatorialIf(cond, body, Some(elsebody)) => AddStall(indent, StallExpr(cond), // TODO
+      StrList(Str(" " * indent) :: Str("if (") :: MakeExpr(cond) :: Str(")\n") ::
+        CombStmt(indent + 4, body) ::
+        Str(" " * indent) :: Str("else\n") ::
+        CombStmt(indent + 4, elsebody) :: Nil))
+    case CombinatorialIf(cond, body, None) => AddStall(indent, StallExpr(cond), // TODO
+      StrList(Str(" " * indent) :: Str("if\n") ::
+        CombStmt(indent + 4, body) :: Nil))
+    case LockCall(name)   => AddStall(indent, StallExpr(name), Str("")) // TODO
+    case UnlockCall(name) => AddStall(indent, StallExpr(name), Str("")) // TODO
+    case WriteCall(name, args) if (args.length == 1) => AddStall(indent, StallExpr(name) ::: StallExpr(args(0)), // TODO
+      StrList(List(Str(" " * indent), MakeExpr(name), " = ", MakeExpr(args(0)), Str(";\n"))))
+    case CombinatorialBlock(cmds) => StrList(Str(" " * indent) :: Str("begin\n") :: // TODO
+      StrList(for { cmd <- cmds } yield AcceptStmt(indent + 4, cmd)) ::
+      Str(" " * indent) :: Str("end\n") :: Nil)
+    case DeclarationStmt(VarDeclaration(decltype, id, Some(rhs))) => ""
+    case DeclarationStmt(VarDeclaration(decltype, id, None))      => ""
+    //case AlogicComment(s)                                         => ""
+    case StateBlock(state, cmds) => StrList(List(" " * (indent - 4), "end\n", " " * (indent - 4), MakeState(state), ": begin\n",
+      StrList(for { cmd <- cmds } yield AcceptStmt(indent, cmd))))
+    case GotoState(target) => ""
+    case GotoStmt(target)  => ""
+    case CombinatorialCaseLabel(Nil, body) => StrList( // TODO
+      Str(" " * indent) ::
+        Str("default:\n") ::
+        AcceptStmt(indent + 4, body) :: Nil)
+    case CombinatorialCaseLabel(conds, body) => StrList( // TODO
+      Str(" " * indent) ::
+        StrCommaList(conds.map(MakeExpr)) ::
+        Str(":\n") :: AcceptStmt(indent + 4, body) :: Nil)
+    //case DollarCall(name, args) => ""
+    case x => error(s"Don't know how to emit accept code for $x"); Str("")
+  }
 
 }

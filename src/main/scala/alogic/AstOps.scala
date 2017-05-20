@@ -85,6 +85,7 @@ object AstOps {
           case Bracket(content)                      => visit(content)
           case TernaryOp(cond, lhs, rhs)             => { visit(cond); visit(lhs); visit(rhs) }
           case CombinatorialBlock(cmds)              => cmds foreach visit
+          case StateBlock(state, cmds)               => cmds foreach visit
           case DeclarationStmt(decl: VarDeclaration) => () // TODO should we recurse here?
           case CombinatorialIf(cond, body, Some(e))  => { visit(cond); visit(body); visit(e) }
           case CombinatorialIf(cond, body, None)     => { visit(cond); visit(body) }
@@ -169,6 +170,7 @@ object AstOps {
           case Bracket(content)                          => Bracket(rewrite(content))
           case TernaryOp(cond, lhs, rhs)                 => TernaryOp(rewrite(cond), rewrite(lhs), rewrite(rhs))
           case CombinatorialBlock(cmds)                  => CombinatorialBlock(cmds map rewrite)
+          case StateBlock(state, cmds)                   => StateBlock(state, cmds map rewrite)
           case x @ DeclarationStmt(decl: VarDeclaration) => x
           case CombinatorialIf(cond, body, Some(e))      => CombinatorialIf(rewrite(cond), rewrite(body), Some(rewrite(e)))
           case CombinatorialIf(cond, body, None)         => CombinatorialIf(rewrite(cond), rewrite(body), None)

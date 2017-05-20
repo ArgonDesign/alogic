@@ -81,7 +81,8 @@ case class ControlCaseLabel(cond: List[AlogicAST], body: AlogicAST) extends Alog
 
 // Extra types inserted by MakeStates
 case class StateProgram(cmds: List[AlogicAST], numStates: Int) extends AlogicAST
-case class StateStmt(state: Int) extends AlogicAST
+case class StateStmt(state: Int) extends AlogicAST // This is both added and removed by MakeStates
+case class StateBlock(state: Int, contents: List[AlogicAST]) extends AlogicAST
 case class GotoState(state: Int) extends AlogicAST
 
 // AlogicType used to define the allowed types
