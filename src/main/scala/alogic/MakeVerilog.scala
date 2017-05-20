@@ -486,4 +486,20 @@ ${i}end
     case DollarCall(name, args) => StrList(List(" " * indent, name, StrCommaList(args.map(MakeExpr))))
     case x                      => error(s"Don't know how to emit code for $x"); Str("")
   }
+
+  // Note that valid can depend on accept
+  //      and ready can depend on valid
+  //
+  // Accept is useful when we want low-latency wire communications from A->B (e.g. A is decoding bits in a tight feedback loop with B)
+  // We cannot use sync ready because A's valid depends on B's ready (as this is a wire port), and B's ready depends on A's valid.
+  // Instead we use sync accept.
+  // B outputs accept if it contains a p.read() in the current state
+  // The accept should only be based on B's local registers, and constructed in a separate always_comb block.
+  //
+  // If we assert accept we are contractually obliged to go if and only if the valid ends up high.
+  //
+  // Therefore we need to check:
+  //   There are no other stalling port reads/writes in this state
+  //   None of the variables that affect whether p.read() is called are written in this state, we call forbid to ban assigns to these registers
+
 }
