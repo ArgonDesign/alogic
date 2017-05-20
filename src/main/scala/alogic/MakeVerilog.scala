@@ -14,7 +14,8 @@ final class MakeVerilog {
 
   val id2decl = mutable.Map[String, Declaration]()
 
-  val nxMap = mutable.Map[String, String]() // Returns string to use when this identifier is accesses
+  val nxMap = mutable.Map[String, String]() // Returns string to use when this identifier is accessed
+  val regMap = mutable.Map[String, String]()
 
   val Arrays = mutable.Set[String]()
 
@@ -50,6 +51,8 @@ final class MakeVerilog {
   }
 
   var outtype = "Unknown"
+
+  var makingAccept = false // We use this to decide how to emit expressions
 
   def apply(tree: StateProgram, fname: String): Unit = {
     numstates = tree.numStates
@@ -133,19 +136,19 @@ final class MakeVerilog {
     // Different types of variables need different suffices
     // For efficiency this returns the comma separated list of underlying fields
     // TODO better for Verilator simulation speed if we could detect assignments and expand this concatenation
-    def SetNxType(typ: AlogicType, name: String, suffix: String): String = typ match {
+    def SetNxType(m: mutable.Map[String, String], typ: AlogicType, name: String, suffix: String): String = typ match {
       case Struct(fields) => {
         val c = for { f <- fields } yield f match {
-          case Field(t, n) => SetNxType(t, name + '_' + n, suffix)
+          case Field(t, n) => SetNxType(m, t, name + '_' + n, suffix)
           case _           => ""
         }
         val commaFields = c.mkString(",")
-        nxMap(name) = "{" + commaFields + "}"
+        m(name) = "{" + commaFields + "}"
         commaFields
       }
       case _ => {
         val t = name + suffix
-        nxMap(name) = t
+        m(name) = t
         t
       }
     }
@@ -160,11 +163,13 @@ final class MakeVerilog {
 
         id2decl.values.foreach({
           case ParamDeclaration(decltype, id, Some(init)) => {
-            SetNxType(decltype, id, "")
+            SetNxType(nxMap, decltype, id, "")
+            SetNxType(regMap, decltype, id, "")
             pw.println("param " + id + " = " + MakeString(MakeExpr(init)) + ";")
           }
           case ParamDeclaration(decltype, id, None) => {
-            SetNxType(decltype, id, "")
+            SetNxType(nxMap, decltype, id, "")
+            SetNxType(regMap, decltype, id, "")
             pw.println("param " + id + ";")
           }
           case OutDeclaration(synctype, decltype, name) => {
@@ -179,7 +184,8 @@ final class MakeVerilog {
               pw.println("  output " + outtype + accept(name) + ";")
               generateAccept = true;
             }
-            SetNxType(decltype, name, "") // TODO decide on NxType based on synctype
+            SetNxType(nxMap, decltype, name, "") // TODO decide on NxType based on synctype
+            SetNxType(regMap, decltype, name, "")
             VisitType(decltype, name)(writeOut) // TODO declare nxt values for outputs
 
           }
@@ -193,12 +199,14 @@ final class MakeVerilog {
             }
             if (HasAccept(synctype))
               pw.println("  in wire " + accept(name) + ";")
-            SetNxType(decltype, name, "")
+            SetNxType(nxMap, decltype, name, "")
+            SetNxType(regMap, decltype, name, "")
             VisitType(decltype, name)(writeOut)
 
           }
           case VerilogDeclaration(decltype, id) => {
-            SetNxType(decltype, ExtractName(id), "")
+            SetNxType(nxMap, decltype, ExtractName(id), "")
+            SetNxType(regMap, decltype, ExtractName(id), "")
           }
           case _ =>
         })
@@ -217,7 +225,8 @@ final class MakeVerilog {
             pw.println(s"  reg ${n}_wr;")
             pw.println(s"  reg ${t}${n}_wrdata;")
             pw.println(s"  reg [${log2depth - 1}:0]${n}_wraddr;")
-            SetNxType(decltype, names.head, "")
+            SetNxType(nxMap, decltype, names.head, "")
+            SetNxType(regMap, decltype, names.head, "")
             defaults = StrList(
               Str(s"    ${n}_wr = 1'b0;\n") ::
                 Str(s"    ${n}_wraddr = 'b0;\n") ::
@@ -229,13 +238,15 @@ final class MakeVerilog {
           }
           case VarDeclaration(decltype, name, None) => {
             val n = ExtractName(name)
-            SetNxType(decltype, n, "_nxt")
+            SetNxType(nxMap, decltype, n, "_nxt")
+            SetNxType(regMap, decltype, n, "")
             VisitType(decltype, n)(writeVarWithReset)
 
           }
           case VarDeclaration(decltype, name, Some(init)) => {
             val n = ExtractName(name)
-            SetNxType(decltype, n, "_nxt")
+            SetNxType(nxMap, decltype, n, "_nxt")
+            SetNxType(regMap, decltype, n, "")
             VisitType(decltype, n)(writeVarWithNoReset)
             resets = StrList(Str("      ") :: Str(reg(n)) :: Str(s" <= ") :: MakeExpr(init) :: Str(";\n") :: Nil) :: resets
           }
@@ -246,8 +257,14 @@ final class MakeVerilog {
       case DeclarationStmt(VarDeclaration(decltype, name, init)) => { VisitType(decltype, ExtractName(name))(writeVarWithReset); false } // These resets are done when variable is declared in the code
       case Function(name, body) => {
         fns = CombStmt(6, body) :: fns
-        if (generateAccept)
-          acceptfns = AcceptStmt(6, body) :: acceptfns
+        if (generateAccept) {
+          makingAccept = true
+          AcceptStmt(6, body) match {
+            case Some(a) => acceptfns = a :: acceptfns
+            case None    =>
+          }
+          makingAccept = false
+        }
         true
       }
       case FenceFunction(body)   => { fencefns = CombStmt(4, body) :: fencefns; true }
@@ -298,12 +315,17 @@ final class MakeVerilog {
   // for mixing with verilog and for output ports to use the name without a suffix for direct access
 
   // Construct the string to be used when this identifier is used on the RHS of an assignment
-  def nx(names: List[String]): String = nxMap(names.mkString("_")) // TODO inspect type and expand
-  def nx(name: StrTree): String = nxMap(MakeString(name))
+  def nx(name: String): String = if (makingAccept) {
+    IdsUsedToMakeAccept.add(name)
+    name
+  } else nxMap(name)
+
+  def nx(names: List[String]): String = nx(names.mkString("_"))
+  def nx(name: StrTree): String = nx(MakeString(name))
 
   // Construct the string to be used when this identifier is used on the LHS of an assignment
-  def reg(names: List[String]): String = names.mkString("_") // TODO inspect type and expand
-  def reg(name: StrTree): String = MakeString(name)
+  def reg(names: List[String]): String = regMap(names.mkString("_"))
+  def reg(name: StrTree): String = regMap(MakeString(name))
 
   implicit def string2StrTree(s: String): StrTree = Str(s)
   implicit def stringList2StrTree(s: List[StrTree]): StrTree = StrList(s)
@@ -431,7 +453,7 @@ final class MakeVerilog {
   def MakeState(state: Int): String = s"$log2numstates'd$state"
 
   // This function defines how to write next values (D input on flip-flops)
-  def nx(x: String): StrTree = StrList(List(x, Str("_nxt")))
+  //def nx(x: String): StrTree = StrList(List(x, Str("_nxt")))
 
   def AddStall(indent: Int, stalls: List[String], expr: StrTree): StrTree = {
     if (stalls.isEmpty)
@@ -470,7 +492,7 @@ ${i}end
         Str(" " * indent) :: Str("else\n") ::
         CombStmt(indent + 4, elsebody) :: Nil))
     case CombinatorialIf(cond, body, None) => AddStall(indent, StallExpr(cond),
-      StrList(Str(" " * indent) :: Str("if\n") ::
+      StrList(Str(" " * indent) :: Str("if (") :: MakeExpr(cond) :: Str(")\n") ::
         CombStmt(indent + 4, body) :: Nil))
     case LockCall(name)   => AddStall(indent, StallExpr(name), Str(""))
     case UnlockCall(name) => AddStall(indent, StallExpr(name), Str(""))
@@ -515,57 +537,185 @@ ${i}end
   //   None of the variables that affect whether p.read() is called are written in this state, we call forbid to ban assigns to these registers
   //
   // As an optimization we can skip all of this if there are no sync accept ports
-  def AcceptStmt(indent: Int, tree: AlogicAST): StrTree = tree match {
-    case Assign(ArrayLookup(DottedName(names), index), "=", rhs) if (Arrays contains names.head) => { // TODO
-      val i = " " * indent
-      val n = names.head
-      val r = MakeString(MakeExpr(rhs))
-      val d = MakeString(MakeExpr(index))
-      val a = Str(s"""${i}begin
-$i  ${n}_wr = 1'b1;
-$i  ${n}_addr = $r;
-$i  ${n}_wrdata = $d;
-${i}end
-""")
-      AddStall(indent, StallExpr(index) ::: StallExpr(rhs), a)
+  //
+  // While we are generating accept, the nx function is adjusted to point to the reg version instead.
+  // It also captures the ids that are used so we can check they are stable
+
+  val IdsUsedToMakeAccept = mutable.Set[String]() // This allows us to flag errors where the accept signal would be generated incorrectly
+  val IdsWritten = mutable.Set[String]()
+
+  var syncPortsFound: Int = 0 // This allows us to flag errors if we use two accept ports in the same state
+
+  var usesPort: Option[String] = None // This allows us to flag errors if another port is read
+
+  // Combine a list of stalls (often empty) with an optional body (often empty)
+  // Return None if result is empty
+  def AddAccept(indent: Int, stalls: List[String], expr: Option[StrTree]): Option[StrTree] = {
+    if (stalls.isEmpty)
+      expr
+    else {
+      val e: List[StrTree] = expr match {
+        case Some(x) => x :: Nil
+        case None    => Nil
+      }
+      Some(StrList(Str(" " * indent) :: Str("begin\n") ::
+        stalls.map(x => Str(" " * (indent) + x)) :::
+        e :::
+        Str(" " * indent) :: Str("end\n") :: Nil))
     }
-    case Assign(lhs, "=", rhs) => AddStall(indent, StallExpr(lhs) ::: StallExpr(rhs), StrList(List(Str(" " * indent), MakeExpr(lhs), " = ", MakeExpr(rhs), ";\n"))) // TODO
-    case CombinatorialCaseStmt(value, cases) => AddStall(indent, StallExpr(value), // TODO
-      StrList(Str(" " * indent + "case(") :: MakeExpr(value) :: Str(") begin\n") ::
-        StrList(for (c <- cases) yield AcceptStmt(indent + 4, c)) ::
-        Str(" " * indent) :: Str("endcase\n") :: Nil))
-    case CombinatorialIf(cond, body, Some(elsebody)) => AddStall(indent, StallExpr(cond), // TODO
-      StrList(Str(" " * indent) :: Str("if (") :: MakeExpr(cond) :: Str(")\n") ::
-        CombStmt(indent + 4, body) ::
-        Str(" " * indent) :: Str("else\n") ::
-        CombStmt(indent + 4, elsebody) :: Nil))
-    case CombinatorialIf(cond, body, None) => AddStall(indent, StallExpr(cond), // TODO
-      StrList(Str(" " * indent) :: Str("if\n") ::
-        CombStmt(indent + 4, body) :: Nil))
-    case LockCall(name)   => AddStall(indent, StallExpr(name), Str("")) // TODO
-    case UnlockCall(name) => AddStall(indent, StallExpr(name), Str("")) // TODO
-    case WriteCall(name, args) if (args.length == 1) => AddStall(indent, StallExpr(name) ::: StallExpr(args(0)), // TODO
-      StrList(List(Str(" " * indent), MakeExpr(name), " = ", MakeExpr(args(0)), Str(";\n"))))
-    case CombinatorialBlock(cmds) => StrList(Str(" " * indent) :: Str("begin\n") :: // TODO
-      StrList(for { cmd <- cmds } yield AcceptStmt(indent + 4, cmd)) ::
-      Str(" " * indent) :: Str("end\n") :: Nil)
-    case DeclarationStmt(VarDeclaration(decltype, id, Some(rhs))) => ""
-    case DeclarationStmt(VarDeclaration(decltype, id, None))      => ""
-    //case AlogicComment(s)                                         => ""
-    case StateBlock(state, cmds) => StrList(List(" " * (indent - 4), "end\n", " " * (indent - 4), MakeState(state), ": begin\n",
-      StrList(for { cmd <- cmds } yield AcceptStmt(indent, cmd))))
-    case GotoState(target) => ""
-    case GotoStmt(target)  => ""
-    case CombinatorialCaseLabel(Nil, body) => StrList( // TODO
-      Str(" " * indent) ::
-        Str("default:\n") ::
-        AcceptStmt(indent + 4, body) :: Nil)
-    case CombinatorialCaseLabel(conds, body) => StrList( // TODO
-      Str(" " * indent) ::
-        StrCommaList(conds.map(MakeExpr)) ::
-        Str(":\n") :: AcceptStmt(indent + 4, body) :: Nil)
-    //case DollarCall(name, args) => ""
-    case x => error(s"Don't know how to emit accept code for $x"); Str("")
+  }
+
+  def AcceptStmt(indent: Int, tree: AlogicAST): Option[StrTree] = tree match {
+    case Assign(lhs, "=", rhs) => {
+      IdsWritten.add(ExtractName(lhs))
+      AddAccept(indent, AcceptExpr(lhs) ::: AcceptExpr(rhs), None)
+    }
+    case CombinatorialCaseStmt(value, cases) => {
+      // Take care to only use MakeExpr when we are sure the code needs to be emitted
+      // This is because MakeExpr will track the used ids
+      val s: List[Option[StrTree]] = for (c <- cases) yield AcceptStmt(indent + 4, c)
+      val s2: List[StrTree] = s.flatten
+      val e = if (s2.length == 0)
+        None
+      else
+        Some(StrList(Str(" " * indent + "case(") :: MakeExpr(value) :: Str(") begin\n") ::
+          StrList(s2) :: Str(" " * indent) :: Str("endcase\n") :: Nil))
+      AddAccept(indent, AcceptExpr(value), e)
+    }
+    case CombinatorialIf(cond, body, Some(elsebody)) =>
+      {
+        val b = AcceptStmt(indent + 4, body)
+        val eb = AcceptStmt(indent + 4, elsebody)
+        val gen = b.isDefined || eb.isDefined
+        val bs = b match {
+          case Some(a) => a
+          case None    => Str(" " * indent + "begin\n" + " " * indent + "end\n")
+        }
+        val ebs = eb match {
+          case Some(a) => a
+          case None    => Str(" " * indent + "begin\n" + " " * indent + "end\n")
+        }
+        val e = if (gen)
+          Some(StrList(Str(" " * indent) :: Str("if (") :: MakeExpr(cond) :: Str(")\n") :: bs :: Str(" " * indent) :: Str("else\n") :: ebs :: Nil))
+        else
+          None
+        AddAccept(indent, AcceptExpr(cond), e)
+      }
+    case CombinatorialIf(cond, body, None) => {
+      val b = AcceptStmt(indent + 4, body)
+      // We take care to only call MakeExpr when the body would have something to generate
+      // This avoids forbidding ids that are not actually important for generating accept
+      val e = b match {
+        case None    => None
+        case Some(a) => Some(StrList(Str(" " * indent) :: Str("if (") :: MakeExpr(cond) :: Str(")\n") :: a :: Nil))
+      }
+      AddAccept(indent, AcceptExpr(cond), e)
+    }
+
+    case LockCall(name)                              => AddAccept(indent, AcceptExpr(name), None)
+    case UnlockCall(name)                            => AddAccept(indent, AcceptExpr(name), None)
+    case WriteCall(name, args) if (args.length == 1) => AddAccept(indent, AcceptExpr(name) ::: AcceptExpr(args(0)), None)
+    case CombinatorialBlock(cmds) => {
+      val s: List[Option[StrTree]] = for (c <- cmds) yield AcceptStmt(indent + 4, c)
+      val s2: List[StrTree] = s.flatten
+      if (s2.length == 0)
+        None
+      else
+        Some(StrList(Str(" " * indent) :: Str("begin\n") :: StrList(s2) :: Str(" " * indent) :: Str("end\n") :: Nil))
+    }
+
+    case DeclarationStmt(VarDeclaration(decltype, id, Some(rhs))) => AcceptStmt(indent, Assign(id, "=", rhs))
+    case StateBlock(state, cmds) => {
+      // Clear sets used for tracking
+      syncPortsFound = 0
+      IdsUsedToMakeAccept.clear()
+      IdsWritten.clear()
+      // See if there is anything to do for this state
+      val s = for { cmd <- cmds } yield AcceptStmt(indent, cmd)
+      val s2 = s.flatten
+      if (s2.length > 0) {
+        // Check for error conditions
+        if (syncPortsFound > 1) error(s"Found multiple accept port reads in same cycle: $cmds")
+        if (usesPort.isDefined) error(s"Cannot access port $usesPort while generating accept: $cmds")
+        if (!IdsUsedToMakeAccept.intersect(IdsWritten).isEmpty) error("Cannot generate accept because an identifier is being written to: $cmds")
+        Some(StrList(List(" " * (indent - 4), MakeState(state), ": begin\n", s2, " " * (indent - 4), "end\n")))
+      } else
+        None
+    }
+    case CombinatorialCaseLabel(Nil, body) => {
+      val b = AcceptStmt(indent + 4, body)
+      b match {
+        case None    => None
+        case Some(a) => Some(StrList(Str(" " * indent) :: Str("default:\n") :: a :: Nil))
+      }
+    }
+    case CombinatorialCaseLabel(conds, body) => {
+      val b = AcceptStmt(indent + 4, body)
+      val e = b match {
+        case None => None
+        case Some(a) => Some(StrList(
+          Str(" " * indent) ::
+            StrCommaList(conds.map(MakeExpr)) ::
+            Str(":\n") :: a :: Nil))
+      }
+      val as = conds.map(AcceptExpr).flatten
+      AddAccept(indent, as, e)
+    }
+
+    case x => None
+  }
+
+  // Take a combinatorial statement and return accept statements that should be emitted now based on ids that are read/written
+  // This code will be emitted before the actual statement
+  // It is useful to keep as a list of strings here so we can decide when to insert an extra begin/end block
+  // Strings have \n at the end, but indent will be added later
+  def AcceptExpr(tree: AlogicAST): List[String] = {
+    // Use a local function to avoid having to copy emitted list down the stack
+    var blockingStatements: List[String] = Nil
+
+    def add(s: String): Unit = blockingStatements = s :: blockingStatements
+
+    def AddRead(name: DottedName): Boolean = {
+      val n: String = ExtractName(name)
+      id2decl(n) match {
+        case InDeclaration(synctype, _, _) => {
+          if (HasAccept(synctype)) {
+            syncPortsFound += 1
+            add(accept(n) + " = 1'b1;\n")
+          }
+          if (HasReady(synctype))
+            usesPort = Some(MakeString(MakeExpr(name)))
+        }
+        case _ =>
+      }
+      false // No need to recurse
+    }
+
+    def v(tree: AlogicAST): Boolean = tree match {
+      case CombinatorialCaseStmt(value, _) =>
+        VisitAST(value)(v); false
+      case CombinatorialBlock(_) => false
+      case CombinatorialIf(cond, _, _) =>
+        VisitAST(cond)(v); false
+      case ReadCall(name)   => AddRead(name)
+      case LockCall(name)   => AddRead(name)
+      case UnlockCall(name) => AddRead(name)
+      case WriteCall(name, _) => {
+        val n: String = ExtractName(name)
+        val d: Declaration = id2decl(n)
+        d match {
+          case OutDeclaration(synctype, _, _) => {
+            if (HasValid(synctype))
+              usesPort = Some(MakeString(MakeExpr(name)))
+          }
+          case _ => false
+        }
+        true // Recurse in case arguments use reads
+      }
+      case _ => true
+    }
+    VisitAST(tree)(v)
+    return blockingStatements
   }
 
 }
