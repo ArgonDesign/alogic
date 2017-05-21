@@ -9,9 +9,6 @@ import scala.collection._
 import scala.collection.mutable.ListBuffer
 import alogic.AstOps._
 
-// TODO strip comments here as well
-// (Avoids issues with #defines in comments!)
-
 class Preproc {
 
   val defines = mutable.Map[String, String]()
@@ -60,13 +57,25 @@ class Preproc {
       val ident = ctx.IDENTIFIER().getText()
       if (defines contains ident) {
         val cond = defines(ident)
-        if (cond.toInt == 0)
-          visit(ctx.entities(1))
-        else
+        val useElse = (cond.toInt == 0)
+        val useFirst = !useElse
+        val hasElse = ctx.entities.asScala.toList.length > 1
+
+        val first = if (useFirst)
           visit(ctx.entities(0))
+        else
+          Str("\n" * ctx.entities(0).getText().count(_ == '\n'))
+
+        val second = if (useElse && hasElse)
+          visit(ctx.entities(0))
+        else if (hasElse)
+          Str("\n" * ctx.entities(1).getText().count(_ == '\n'))
+        else
+          Str("")
+
+        StrList(first :: second :: Nil)
         // TODO catch exception if not an integer
         // TODO check it is either 0 or 1
-        // TODO replace with appropriate number of blank lines to make line numbers match up
       } else {
         warning(ctx, s"Unknown preprocessor symbol $ident")
         Str("Unknown")
