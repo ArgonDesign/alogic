@@ -17,10 +17,12 @@ import java.io.File
 class AParser() {
 
   val builder = new AstBuilder()
+  val preproc = new Preproc()
 
   def this(old: AParser) {
     this()
     builder.add(old.builder)
+    preproc.add(old.preproc)
   }
 
   def loadFile(filename: String): String = {
@@ -33,8 +35,23 @@ class AParser() {
 
   def apply(path: String): Program = {
 
-    val inputStream = new ANTLRInputStream(loadFile(path))
-    inputStream.name = path + '\n' // TODO why have error messages stopped reporting the input stream?
+    val pinputStream = new ANTLRInputStream(loadFile(path))
+    pinputStream.name = path + '\n' // TODO why have error messages stopped reporting the input stream?
+
+    // First preprocess input file to deal with #define s
+    val plexer = new antlr.VPreprocLexer(pinputStream)
+    val ptokenStream = new CommonTokenStream(plexer)
+    ptokenStream.fill()
+
+    val pparser = new antlr.VPreprocParser(ptokenStream)
+    val pparseTree = pparser.start()
+    val preprocessed: String = preproc(pparseTree)
+
+    //println(preprocessed)
+    // TODO can remove #defines from parser
+
+    // Now parse the file
+    val inputStream = new ANTLRInputStream(preprocessed)
     val lexer = new antlr.VLexer(inputStream)
     val tokenStream = new CommonTokenStream(lexer)
     tokenStream.fill()

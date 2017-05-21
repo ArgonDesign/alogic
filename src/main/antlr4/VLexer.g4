@@ -87,11 +87,11 @@ LITERAL: '"' ~["]* '"';
 
 HASHDEFINE: '#' [ \t]* ('define' | 'def');
 
-HASHIF: '#' [ \t]* 'if'
+HASHIF: '#' [ \t]* 'if';
 
-HASHELSE: '#' [ \t]* 'else'
+HASHELSE: '#' [ \t]* 'else';
 
-HASHENDIF: '#' [ \t]* 'endif'
+HASHENDIF: '#' [ \t]* 'endif';
 
 VERILOGBODY: 'void' WS? 'verilog' WS? '(' WS? ')' WS? '{' -> pushMode(VMODE);
 
