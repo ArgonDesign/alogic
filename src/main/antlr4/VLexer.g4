@@ -85,28 +85,11 @@ WIRE: 'wire';
 
 LITERAL: '"' ~["]* '"';
 
-HASHDEFINE: '#' [ \t]* ('define' | 'def');
-
-HASHIF: '#' [ \t]* 'if';
-
-HASHELSE: '#' [ \t]* 'else';
-
-HASHENDIF: '#' [ \t]* 'endif';
-
 VERILOGBODY: 'void' WS? 'verilog' WS? '(' WS? ')' WS? '{' -> pushMode(VMODE);
 
 CONSTANT: [0-9_]+;
 
 IDENTIFIER: SIMPLEID;
-
-
-ONE_LINE_COMMENT
-  : '//' .*? NL -> channel(COMMENT)
-  ;
-
-BLOCK_COMMENT
-  : '/*'  .*? '*/' -> channel(COMMENT)
-  ;
 
 fragment SIMPLEID: [a-zA-Z_][a-zA-Z0-9_$]* ;
 

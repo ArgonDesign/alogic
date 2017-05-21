@@ -8,14 +8,11 @@ start : (entities+=entity)* EOF ;
 
 entity : 
    typedef
- | define
  | task
  | network
  ;
   
 typedef : TYPEDEF known_type IDENTIFIER SEMICOLON;
-
-define : HASHDEFINE IDENTIFIER expr; // TODO May want to stop at end of line somehow?
   
 tasktype : FSM #FsmType
   | PIPELINE   #PipelineType

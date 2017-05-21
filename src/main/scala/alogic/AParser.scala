@@ -47,9 +47,6 @@ class AParser() {
     val pparseTree = pparser.start()
     val preprocessed: String = preproc(pparseTree)
 
-    //println(preprocessed)
-    // TODO can remove #defines from parser
-
     // Now parse the file
     val inputStream = new ANTLRInputStream(preprocessed)
     val lexer = new antlr.VLexer(inputStream)

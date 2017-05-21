@@ -26,7 +26,6 @@ import alogic.AstOps._
 class AstBuilder {
 
   val typedefs = mutable.Map[String, AlogicType]()
-  val defines = mutable.Map[String, AlogicAST]()
   val errors = new ListBuffer[String]()
   val NS = new Namespace(warning)
 
@@ -43,11 +42,10 @@ class AstBuilder {
   // Note that identifiers are not copied over
   def add(old: AstBuilder) {
     typedefs ++= old.typedefs
-    defines ++= old.defines
   }
 
   // Convert identifier to tree
-  def identifier(ident: String): AlogicAST = defines.getOrElse(ident, DottedName(List(ident)))
+  def identifier(ident: String): AlogicAST = DottedName(List(ident))
 
   object ProgVisitor extends VParserBaseVisitor[List[AlogicAST]] {
     override def visitStart(ctx: StartContext) = {
@@ -64,16 +62,6 @@ class AstBuilder {
         typedefs(s) = TypeVisitor.visit(ctx.known_type())
       }
       Typedef()
-    }
-
-    override def visitDefine(ctx: DefineContext) = {
-      val s = ctx.IDENTIFIER().getText()
-      if (defines contains s) {
-        warning(ctx, s"Repeated identifier $s")
-      } else {
-        defines(s) = ExprVisitor.visit(ctx.expr())
-      }
-      Define()
     }
 
     override def visitTask(ctx: TaskContext) = {
