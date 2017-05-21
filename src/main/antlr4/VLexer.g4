@@ -13,8 +13,6 @@ BOOL: 'bool';
   
 TICKNUM: '\'' 's'? [bdhx] [0-9a-fA-F_]+ ;
 
-// TODO Add verilog_body
-
 COLON: ':';
 
 DOLLAR: '$' SIMPLEID;
@@ -88,6 +86,12 @@ WIRE: 'wire';
 LITERAL: '"' ~["]* '"';
 
 HASHDEFINE: '#' [ \t]* ('define' | 'def');
+
+HASHIF: '#' [ \t]* 'if'
+
+HASHELSE: '#' [ \t]* 'else'
+
+HASHENDIF: '#' [ \t]* 'endif'
 
 VERILOGBODY: 'void' WS? 'verilog' WS? '(' WS? ')' WS? '{' -> pushMode(VMODE);
 
