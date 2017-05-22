@@ -14,8 +14,11 @@ import java.io.{ FileWriter, BufferedWriter }
 
 import java.nio.file.Paths
 import java.nio.file.StandardWatchEventKinds._
+import scala.collection.concurrent.TrieMap
 
 object AlogicMain extends App {
+
+  val portMap = new TrieMap[String, Task]()
 
   val multiThreaded = false; // At the moment there does not seem to be much benefit from multithreading, so leave it off in order that error messages are in correct order
 
@@ -59,17 +62,34 @@ object AlogicMain extends App {
   def go() {
     val t0 = System.nanoTime()
     val codeFile = args.last
+
+    portMap.clear()
+
     // Parse header files
     val parser = new AParser()
     for (f <- args2.init) parser(f)
 
     // This method is called for each file that should be converted to Verilog
-    def compileFile(fname: String) = {
+    def compileFile(fname: String): (String, Program) = {
       val parser2 = new AParser(parser) // Capture all structures from header files
 
       // Build AST
       val ast = parser2(fname)
 
+      // Extract ports
+      VisitAST(ast) {
+        case t @ Task(_, name, _, _) => {
+          if (portMap contains name)
+            println(s"WARNING: $name defined multiple times")
+          portMap(name) = t; false
+        }
+        case _ => true // Recurse
+      }
+      return (fname, ast)
+    }
+
+    def buildFile(params: (String, Program)): Unit = {
+      val (fname, ast) = params
       // Convert to state machine
       val prog: StateProgram = new MakeStates()(ast)
 
@@ -84,27 +104,25 @@ object AlogicMain extends App {
       new MakeVerilog()(prog2, f)
     }
 
+    // Construct file list
     val d = new File(codeFile)
-    if (d.exists && d.isDirectory) {
-      val lst = getListOfFiles(d)
-      if (multiThreaded) {
-        // Start threads
-        val threads = for { f <- lst } yield {
-          // make copies of the Lexer and Parser to avoid conflicts
-          val thread = new Thread {
-            override def run = compileFile(f.getPath)
-          }
-          thread.start
-          thread
-        }
-        // Join threads
-        for { t <- threads } t.join()
-      } else {
-        for { f <- lst } compileFile(f.getPath)
-      }
-    } else {
-      compileFile(codeFile)
-    }
+    val fileList = if (d.exists && d.isDirectory)
+      for (f <- getListOfFiles(d)) yield f.getPath
+    else
+      codeFile :: Nil
+
+    // First pass
+    val asts = if (multiThreaded)
+      fileList.par.map(compileFile).seq.toList
+    else
+      fileList.map(compileFile)
+
+    // Second pass
+    if (multiThreaded)
+      asts.par.foreach(buildFile)
+    else
+      asts.foreach(buildFile)
+
     val t1 = System.nanoTime()
     println("Elapsed time: " + (t1 - t0) / 1000000000.0 + "s")
 
