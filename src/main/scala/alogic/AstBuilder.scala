@@ -81,7 +81,7 @@ class AstBuilder {
     }
 
     override def visitConnect(ctx: ConnectContext) = {
-      Connect(visit(ctx.dotted_name(0)), visit(ctx.dotted_name(1))) // TODO check that these names exist?
+      Connect(visit(ctx.dotted_name()), CommaArgsVisitor.visit(ctx.comma_args())) // TODO check that these names exist?
     }
 
     override def visitInstantiate(ctx: InstantiateContext) = {

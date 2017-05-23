@@ -16,6 +16,7 @@ final class MakeVerilog {
 
   val nxMap = mutable.Map[String, String]() // Returns string to use when this identifier is accessed
   val regMap = mutable.Map[String, String]()
+  val modMap = mutable.Map[String, ModuleInstance]()
 
   val Arrays = mutable.Set[String]()
 
@@ -48,6 +49,17 @@ final class MakeVerilog {
     while ((1 << y) < x)
       y += 1
     y
+  }
+
+  def getModule(ast: AlogicAST): (DottedName, ModuleInstance) = {
+    val f = ast.asInstanceOf[DottedName]
+    val n = f.names(0)
+    if (modMap contains n) {
+      (f, modMap(n))
+    } else {
+      error(s"Unknown module name $n")
+      (DottedName(Nil), new ModuleInstance("Unknown", Nil))
+    }
   }
 
   var outtype = "Unknown"
@@ -267,9 +279,15 @@ final class MakeVerilog {
         }
         true
       }
-      case FenceFunction(body)   => { fencefns = CombStmt(4, body) :: fencefns; true }
+      case FenceFunction(body)   => { fencefns = CombStmt(4, body) :: fencefns; false }
       case VerilogFunction(body) => { verilogfns = body :: verilogfns; false }
-      case _                     => true
+      case Instantiate(id, module, args) =>
+        modMap(id) = new ModuleInstance(module, args); false
+      case Connect(from, to) => {
+        val (n, m) = getModule(from)
+        m.connect(n, to map getModule); false
+      }
+      case _ => true
     }
     if (verilogfns.length > 0) {
       pw.write(MakeString(verilogfns))
@@ -306,6 +324,9 @@ final class MakeVerilog {
       pw.println("      end")
       pw.println("    end")
       pw.println("  end")
+    }
+    if (!modMap.isEmpty) {
+      // Generate interconnect
     }
     pw.println("endmodule")
     pw.close()

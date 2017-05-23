@@ -46,7 +46,7 @@ network : NETWORK IDENTIFIER LEFTCURLY (decls+=task_declaration)* (contents+=net
 
 network_content : task | connect | instantiate;
 
-connect : dotted_name GOESTO dotted_name SEMICOLON;
+connect : dotted_name GOESTO comma_args SEMICOLON;
 
 instantiate : IDENTIFIER EQUALS IDENTIFIER LEFTBRACKET param_args RIGHTBRACKET SEMICOLON;
 

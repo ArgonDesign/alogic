@@ -63,7 +63,7 @@ object AstOps {
       if (callback(tree))
         tree match {
           case Instantiate(_, _, args)               => args foreach visit
-          case Connect(start, end)                   => { visit(start); visit(end); }
+          case Connect(start, end)                   => { visit(start); end foreach visit }
           case Function(name, body)                  => visit(body)
           case FenceFunction(body)                   => visit(body)
           case Task(tasktype, name, decls, fns)      => fns foreach visit
@@ -147,7 +147,7 @@ object AstOps {
         case Some(x) => x
         case None => tree match {
           case Instantiate(a, b, args)                   => Instantiate(a, b, args map rewrite)
-          case Connect(start, end)                       => Connect(rewrite(start), rewrite(end))
+          case Connect(start, end)                       => Connect(rewrite(start), end map rewrite)
           case Function(name, body)                      => Function(name, rewrite(body))
           case FenceFunction(body)                       => FenceFunction(rewrite(body))
           case Task(tasktype, name, decls, fns)          => Task(tasktype, name, decls, fns map rewrite)

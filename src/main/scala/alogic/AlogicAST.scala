@@ -23,7 +23,7 @@ case class InDeclaration(synctype: SyncType, decltype: AlogicType, name: String)
 
 // // AlogicAST used for abstract syntax nodes
 sealed trait AlogicAST
-case class Connect(start: AlogicAST, end: AlogicAST) extends AlogicAST
+case class Connect(start: AlogicAST, end: List[AlogicAST]) extends AlogicAST
 case class Instantiate(id: String, module: String, args: List[AlogicAST]) extends AlogicAST
 case class Function(name: String, body: AlogicAST) extends AlogicAST
 case class FenceFunction(body: AlogicAST) extends AlogicAST
