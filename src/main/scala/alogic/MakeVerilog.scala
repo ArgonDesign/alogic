@@ -17,6 +17,7 @@ final class MakeVerilog {
   val nxMap = mutable.Map[String, String]() // Returns string to use when this identifier is accessed
   val regMap = mutable.Map[String, String]()
   val modMap = mutable.Map[String, ModuleInstance]()
+  var modules: List[ModuleInstance] = Nil // Keep a list of all modules instantiated (not including this)
 
   val Arrays = mutable.Set[String]()
 
@@ -64,6 +65,8 @@ final class MakeVerilog {
 
   var outtype = "Unknown"
 
+  var modname = "Unknown" // Save the name of this module
+
   var makingAccept = false // We use this to decide how to emit expressions
 
   def apply(tree: StateProgram, fname: String): Unit = {
@@ -72,7 +75,8 @@ final class MakeVerilog {
 
     // Collect all the declarations
     VisitAST(tree) {
-      case Task(t, _, decls, _) => {
+      case Task(t, n, decls, _) => {
+        modname = n
         outtype = t match {
           case Fsm() | Pipeline()    => "reg "
           case Network() | Verilog() => "wire "
@@ -281,8 +285,14 @@ final class MakeVerilog {
       }
       case FenceFunction(body)   => { fencefns = CombStmt(4, body) :: fencefns; false }
       case VerilogFunction(body) => { verilogfns = body :: verilogfns; false }
-      case Instantiate(id, module, args) =>
-        modMap(id) = new ModuleInstance(module, args); false
+      case Instantiate(id, module, args) => {
+        if (modMap.isEmpty)
+          modMap("this") = new ModuleInstance(modname, Nil);
+        val m = new ModuleInstance(module, args);
+        modMap(id) = m
+        modules = m :: modules
+        false
+      }
       case Connect(from, to) => {
         val (n, m) = getModule(from)
         m.connect(n, to map getModule); false
@@ -326,7 +336,13 @@ final class MakeVerilog {
       pw.println("  end")
     }
     if (!modMap.isEmpty) {
-      // Generate interconnect
+      val t = modMap("this")
+      t.declareWires(pw)
+      for (m <- modules)
+        m.declareWires(pw)
+      for ((m, unitnum) <- modules.zipWithIndex) {
+        m.instantiateModule(unitnum, pw)
+      }
     }
     pw.println("endmodule")
     pw.close()
@@ -399,7 +415,7 @@ final class MakeVerilog {
         val totalSz = MakeExpr(numbits)
         val exprSz = MakeNumBits(GetType(expr))
         val e = MakeExpr(expr)
-        StrList(List("{{", totalSz, " - ", exprSz, "{",e,"[(",exprSz,") - 1]}},", e, "}"))
+        StrList(List("{{", totalSz, " - ", exprSz, "{", e, "[(", exprSz, ") - 1]}},", e, "}"))
       }
       case DollarCall(name, args)    => StrList(List(name, "(", StrCommaList(args.map(MakeExpr)), ")"))
       case ReadCall(name)            => MakeExpr(name)

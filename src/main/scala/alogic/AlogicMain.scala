@@ -18,7 +18,7 @@ import scala.collection.concurrent.TrieMap
 
 object AlogicMain extends App {
 
-  val portMap = new TrieMap[String, Task]()
+  val portMap = new TrieMap[String, Task]() // This must be from a concurrent collection because it is populated from multiple threads
 
   val multiThreaded = false; // At the moment there does not seem to be much benefit from multithreading, so leave it off in order that error messages are in correct order
 
