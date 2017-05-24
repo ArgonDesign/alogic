@@ -395,7 +395,12 @@ final class MakeVerilog {
         val exprSz = MakeNumBits(GetType(expr))
         StrList(List("{{", totalSz, " - ", exprSz, "{1'b0}},", MakeExpr(expr), "}"))
       }
-      // TODO     case Sxt(numbits, expr) => ...
+      case Sxt(numbits, expr) => {
+        val totalSz = MakeExpr(numbits)
+        val exprSz = MakeNumBits(GetType(expr))
+        val e = MakeExpr(expr)
+        StrList(List("{{", totalSz, " - ", exprSz, "{",e,"[(",exprSz,") - 1]}},", e, "}"))
+      }
       case DollarCall(name, args)    => StrList(List(name, "(", StrCommaList(args.map(MakeExpr)), ")"))
       case ReadCall(name)            => MakeExpr(name)
       case BinaryOp(lhs, op, rhs)    => StrList(List(MakeExpr(lhs), Str(" "), op, Str(" "), MakeExpr(rhs)))
