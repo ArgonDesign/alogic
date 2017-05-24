@@ -15,9 +15,10 @@ final class MakeVerilog {
   val id2decl = mutable.Map[String, Declaration]()
 
   val nxMap = mutable.Map[String, String]() // Returns string to use when this identifier is accessed
-  val regMap = mutable.Map[String, String]()
+  val regMap = mutable.Map[String, String]() // Map from name in alogic to name in Verilog
   val modMap = mutable.Map[String, ModuleInstance]()
   var modules: List[ModuleInstance] = Nil // Keep a list of all modules instantiated (not including this)
+  val unames = mutable.Set[String]() // Set of names used to instantiate modules
 
   val Arrays = mutable.Set[String]()
 
@@ -59,7 +60,7 @@ final class MakeVerilog {
       (f, modMap(n))
     } else {
       error(s"Unknown module name $n")
-      (DottedName(Nil), new ModuleInstance("Unknown", Nil))
+      (DottedName(Nil), new ModuleInstance("Unknown", "Unknown", Nil))
     }
   }
 
@@ -111,6 +112,10 @@ final class MakeVerilog {
     }
     def writeIn(typ: AlogicType, name: StrTree): Unit = typ match {
       case IntType(b, size) => pw.println(s"  input wire ${writeSigned(b)}${writeSize(size)}" + MakeString(name) + ";")
+      case _                => // TODO support IntVType
+    }
+    def writeWire(typ: AlogicType, name: StrTree): Unit = typ match {
+      case IntType(b, size) => pw.println(s"  wire ${writeSigned(b)}${writeSize(size)}" + MakeString(name) + ";")
       case _                => // TODO support IntVType
     }
     def typeString(typ: AlogicType): String = {
@@ -287,8 +292,15 @@ final class MakeVerilog {
       case VerilogFunction(body) => { verilogfns = body :: verilogfns; false }
       case Instantiate(id, module, args) => {
         if (modMap.isEmpty)
-          modMap("this") = new ModuleInstance(modname, Nil);
-        val m = new ModuleInstance(module, args);
+          modMap("this") = new ModuleInstance("this", modname, Nil);
+        var c = 0;
+        var uname = id + "_" + c
+        while (unames contains uname) {
+          c += 1
+          uname = id + "_" + c
+        }
+        unames.add(uname)
+        val m = new ModuleInstance(uname, module, args);
         modMap(id) = m
         modules = m :: modules
         false
@@ -337,12 +349,21 @@ final class MakeVerilog {
     }
     if (!modMap.isEmpty) {
       val t = modMap("this")
-      t.declareWires(pw)
-      for (m <- modules)
-        m.declareWires(pw)
-      for ((m, unitnum) <- modules.zipWithIndex) {
-        m.instantiateModule(unitnum, pw)
+      def declareWires(m: ModuleInstance): Unit = {
+        for ((p, decl) <- m.outs) {
+          VisitType(decl.decltype, m.outwires(p) + '_' + decl.name)(writeWire)
+          // TODO add valid and ready and accept wires?
+          // Perhaps add a VisitSyncType?
+        }
       }
+      declareWires(t)
+      for (m <- modules)
+        declareWires(m)
+      // Make modules
+      for ((m, unitnum) <- modules.zipWithIndex) {
+        // TODO m.instantiateModule(unitnum, pw)
+      }
+      // TODO Connect top-level ports to the appropriate wires
     }
     pw.println("endmodule")
     pw.close()

@@ -5,13 +5,13 @@ package alogic
 import scala.collection._
 import java.io._
 
-class ModuleInstance(val module: String, val args: List[AlogicAST]) {
+class ModuleInstance(val uname: String, val module: String, val args: List[AlogicAST]) {
 
   // Gather the ports from the AST
   val task: Task = AlogicMain.portMap(module) // TODO check before phase 2 that this module exists
 
-  val outs = mutable.Map[String, OutDeclaration]()
-  val outwires = mutable.Map[String, String]()
+  val outs = mutable.Map[String, OutDeclaration]() // Map from portname to declaration
+  val outwires = mutable.Map[String, String]() // From portname to wire to be used
   val ins = mutable.Map[String, InDeclaration]()
   val inwires = mutable.Map[String, String]()
 
@@ -19,11 +19,6 @@ class ModuleInstance(val module: String, val args: List[AlogicAST]) {
     case d @ OutDeclaration(_, _, name) => outs(name) = d // TODO check in parser that no port name repeats
     case d @ InDeclaration(_, _, name)  => ins(name) = d
     case _                              =>
-  }
-
-  def wirein(wirename: String, portname: String) {
-    // TODO check portname in port list
-    inwires(portname) = wirename
   }
 
   def connect(port: DottedName, to: List[(DottedName, ModuleInstance)]): Unit = {
@@ -43,16 +38,12 @@ class ModuleInstance(val module: String, val args: List[AlogicAST]) {
         dest.names(1)
       else
         p
-      m.wirein(wirename, p)
+      m.inwires(p) = wirename // TODO check portname is in port list
+
+      // TODO work out how to connect modules with different declaration types?
+      // Need to have matching sync types, but declaration just needs to match total size
+      // Could make this illegal, and force modules to do it internally - may make system safer overall
     })
   }
 
-  def declareWires(pw: PrintWriter): Unit = {
-    // Wires will be declared by module that produces them as an out
-    // TODO
-  }
-
-  def instantiateModule(unitnum: Int, pw: PrintWriter): Unit = {
-    // TODO
-  }
 }
