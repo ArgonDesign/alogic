@@ -41,7 +41,7 @@ class AParser() {
   }
 
   def loadFile(filename: String): String = {
-    println(filename)
+    Message.info(s"Reading file: $filename")
     val bufferedSource = Source.fromFile(filename)
     val code = bufferedSource.mkString
     bufferedSource.close

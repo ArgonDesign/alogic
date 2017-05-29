@@ -35,7 +35,9 @@ object AlogicMain extends App {
     odir.createDirectory()
   }
 
-  val multiThreaded = conf.parallel();
+  val multiThreaded = conf.parallel()
+
+  Message.verbose = conf.verbose()
 
   //////////////////////////////////////////////////////////////////////////////
   // Compile
@@ -54,13 +56,13 @@ object AlogicMain extends App {
   if (conf.monitor()) {
     implicit val system = ActorSystem("actorSystem")
     val fileMonitorActor = system.actorOf(MonitorActor(concurrency = 2))
-    println(s"Waiting for ${conf.ipath().path} to be modified (press return to quit)...")
+    Message.info(s"Waiting for ${conf.ipath().path} to be modified (press return to quit)...")
     fileMonitorActor ! RegisterCallback(
       event = ENTRY_MODIFY,
       path = Paths get conf.ipath().path,
       callback = { _ => go })
     io.StdIn.readLine()
-    println("Quitting")
+    Message.info("Quitting")
     system.terminate()
   }
 
@@ -116,7 +118,6 @@ object AlogicMain extends App {
         new MakeVerilog()(prog2, opath.path)
     }
 
-    val t1 = System.nanoTime()
-    println("Elapsed time: " + (t1 - t0) / 1000000000.0 + "s")
+    Message.info(s"Compilation time: ${(System.nanoTime() - t0) / 1e9}s")
   }
 }

@@ -5,8 +5,17 @@ import Antlr4Conversions._
 
 object Message {
 
+  // Whether to output verbose messages
+  var verbose = false;
+
   // Indicate what the final exit status of the program shoud be
   var fail = false
+
+  // INFO messages are only displayed when the verbose option is
+  // provided, and in general describe compiler status
+  def info(msg: String): Unit = {
+    if (verbose) println(s"INFO: $msg")
+  }
 
   // Warnings are informative messages about issues that the compiler
   // can recover from, and still produce functional output.
@@ -35,6 +44,10 @@ object Message {
   // Versions that take a source location
   //////////////////////////////////////////////////////////////////////////////
 
+  def info(loc: Loc, msg: String): Unit = {
+    println(s"$loc: INFO: $msg")
+  }
+
   def warning(loc: Loc, msg: String): Unit = {
     println(s"$loc: WARNING: $msg")
   }
@@ -52,6 +65,7 @@ object Message {
   //////////////////////////////////////////////////////////////////////////////
   // Versions that take an Antlr4 token/parse tree node for location info
   //////////////////////////////////////////////////////////////////////////////
+  def info(ctx: ParserRuleContext, msg: String): Unit = info(ctx.loc, msg)
 
   def warning(ctx: ParserRuleContext, msg: String): Unit = warning(ctx.loc, msg)
 

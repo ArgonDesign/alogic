@@ -48,6 +48,10 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) {
     short = 'p',
     descr = "Compile using multiple threads")
 
+  val verbose = opt[Boolean](
+    noshort = true,
+    descr = "Produce more verbose messages")
+
   val headers = trailArg[List[Path]](
     required = false,
     descr = "header files")
