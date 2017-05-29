@@ -13,8 +13,10 @@ scalaVersion := "2.11.8"
 scalacOptions ++= Seq("-deprecation", "-feature")
 
 libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value
-
 libraryDependencies += "com.beachape.filemanagement" %% "schwatcher" % "0.3.2"
+libraryDependencies += "com.github.scala-incubator.io" %% "scala-io-core" % "0.4.3"
+libraryDependencies += "com.github.scala-incubator.io" %% "scala-io-file" % "0.4.3"
+libraryDependencies += "org.rogach" %% "scallop" % "2.1.1"
 
 ////////////////////////////////////////////////////////////////////////////////
 // Antlr4 plugin
