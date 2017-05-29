@@ -28,11 +28,6 @@ final class MakeVerilog {
 
   var log2numstates = 0
 
-  def error(msg: String) {
-    println(msg)
-    System.exit(-1)
-  }
-
   // Name of signal used to check that a port contains valid data
   def valid(s: String): String =
     s + "_valid"
@@ -59,7 +54,7 @@ final class MakeVerilog {
     if (modMap contains n) {
       (f, modMap(n))
     } else {
-      error(s"Unknown module name $n")
+      Message.fatal(s"Unknown module name $n")
       (DottedName(Nil), new ModuleInstance("Unknown", "Unknown", Nil))
     }
   }
@@ -129,7 +124,7 @@ final class MakeVerilog {
           val sz = MakeString(StrProduct(args.map(MakeExpr)))
           writeSigned(b) + "[" + sz + "-1:0] "
         }
-        case _ => error("Cannot make type for $typ"); ""
+        case _ => Message.fatal("Cannot make type for $typ"); ""
       }
     }
     def writeVarInternal(typ: AlogicType, name: StrTree, resetToZero: Boolean): Unit = {
@@ -413,7 +408,7 @@ final class MakeVerilog {
       id2decl(n)
     }
     case ReadCall(name) => GetType(name)
-    case _              => { error(s"Cannot compute type for $tree"); State() }
+    case _              => { Message.fatal(s"Cannot compute type for $tree"); State() }
   }
 
   // Construct a string for an expression
@@ -422,9 +417,9 @@ final class MakeVerilog {
       case ArrayLookup(name, index)              => StrList(List(MakeExpr(name), "[", MakeExpr(index), "]"))
       case BinaryArrayLookup(name, lhs, op, rhs) => StrList(List(MakeExpr(name), "[", MakeExpr(lhs), op, MakeExpr(rhs), "]"))
       case ValidCall(DottedName(names)) => id2decl(names.head) match {
-        case OutDeclaration(synctype, decl, n) => if (HasValid(synctype)) valid(n) else { error(s"Port $names does not use valid"); "" }
-        case InDeclaration(synctype, decl, n)  => if (HasValid(synctype)) valid(n) else { error(s"Port $names does not use valid"); "" }
-        case _                                 => error(s"Cannot access valid on $names"); ""
+        case OutDeclaration(synctype, decl, n) => if (HasValid(synctype)) valid(n) else { Message.fatal(s"Port $names does not use valid"); "" }
+        case InDeclaration(synctype, decl, n)  => if (HasValid(synctype)) valid(n) else { Message.fatal(s"Port $names does not use valid"); "" }
+        case _                                 => Message.fatal(s"Cannot access valid on $names"); ""
       }
       case FunCall(name, args) => StrList(List(MakeExpr(name), "(", StrCommaList(args.map(MakeExpr)), ")"))
       case Zxt(numbits, expr) => {
@@ -449,7 +444,7 @@ final class MakeVerilog {
       case DottedName(names)         => nx(names)
       case Literal(s)                => StrList(List(""""""", s, """""""))
       case Num(n)                    => n
-      case e                         => error(s"Unexpected expression $e"); ""
+      case e                         => Message.fatal(s"Unexpected expression $e"); ""
     }
   }
 
@@ -473,7 +468,7 @@ final class MakeVerilog {
           if (!isLock && HasReady(synctype))
             add(ready(n) + " = 1'b1;\n")
         }
-        case _ => error(s"$name cannot be read"); false // TODO check this earlier?
+        case _ => Message.fatal(s"$name cannot be read"); false // TODO check this earlier?
       }
       false // No need to recurse
     }
@@ -495,14 +490,14 @@ final class MakeVerilog {
             synctype match {
               case SyncReadyBubble() => add(s"$go = $go && !${valid(n)};\n")
               case SyncReady()       => add(s"$go = $go && (!${valid(n)} || !${ready(n)});\n")
-              case SyncAccept()      => error("sync accept only supported as wire output type") // TODO check this earlier
+              case SyncAccept()      => Message.fatal("sync accept only supported as wire output type") // TODO check this earlier
               case WireSyncAccept()  => add(s"$go = $go && ${accept(n)};\n")
               case _                 =>
             }
             if (HasValid(synctype))
               add(s"${valid(n)} = 1'b1;\n")
           }
-          case _ => error(s"$name cannot be written"); false // TODO check this earlier?
+          case _ => Message.fatal(s"$name cannot be written"); false // TODO check this earlier?
         }
         true // Recurse in case arguments use reads
       }
@@ -581,7 +576,7 @@ ${i}end
         StrCommaList(conds.map(MakeExpr)) ::
         Str(":\n") :: CombStmt(indent + 4, body) :: Nil)
     case DollarCall(name, args) => StrList(List(" " * indent, name, StrCommaList(args.map(MakeExpr))))
-    case x                      => error(s"Don't know how to emit code for $x"); Str("")
+    case x                      => Message.fatal(s"Don't know how to emit code for $x"); Str("")
   }
 
   // Note that valid can depend on accept
@@ -698,9 +693,9 @@ ${i}end
       val s2 = s.flatten
       if (s2.length > 0) {
         // Check for error conditions
-        if (syncPortsFound > 1) error(s"Found multiple accept port reads in same cycle: $cmds")
-        if (usesPort.isDefined) error(s"Cannot access port $usesPort while generating accept: $cmds")
-        if (!IdsUsedToMakeAccept.intersect(IdsWritten).isEmpty) error("Cannot generate accept because an identifier is being written to: $cmds")
+        if (syncPortsFound > 1) Message.fatal(s"Found multiple accept port reads in same cycle: $cmds")
+        if (usesPort.isDefined) Message.fatal(s"Cannot access port $usesPort while generating accept: $cmds")
+        if (!IdsUsedToMakeAccept.intersect(IdsWritten).isEmpty) Message.fatal("Cannot generate accept because an identifier is being written to: $cmds")
         Some(StrList(List(" " * (indent - 4), MakeState(state), ": begin\n", s2, " " * (indent - 4), "end\n")))
       } else
         None

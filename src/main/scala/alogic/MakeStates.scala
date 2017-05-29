@@ -66,7 +66,7 @@ final class MakeStates {
       }
       prog2.asInstanceOf[StateProgram]
     } else {
-      println(s"No function named main found")
+      Message.error(s"No function named 'main' found")
       prog
     }
   }
@@ -228,4 +228,3 @@ final class MakeStates {
   }
 
 }
-

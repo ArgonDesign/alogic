@@ -9,6 +9,8 @@ import scala.collection._
 import scala.collection.mutable.ListBuffer
 import alogic.AstOps._
 
+import Antlr4Conversions._
+
 // The aim of the AstBuilder stage is:
 //   Build an abstract syntax tree
 //   Deal with as many error conditions as possible (while we can easily report error location)
@@ -26,17 +28,9 @@ import alogic.AstOps._
 class AstBuilder {
 
   val typedefs = mutable.Map[String, AlogicType]()
-  val errors = new ListBuffer[String]()
-  val NS = new Namespace(warning)
+  val NS = new Namespace()
 
   typedefs("state") = State()
-
-  def warning(ctx: ParserRuleContext, msg: String) {
-    val tok = ctx.getStart()
-    val line = tok.getLine()
-    val pos = tok.getCharPositionInLine()
-    errors += s"line $line:$pos $msg"
-  }
 
   // Add definitions/typedefs from another file
   // Note that identifiers are not copied over
@@ -57,7 +51,7 @@ class AstBuilder {
     override def visitTypedef(ctx: TypedefContext) = {
       val s = ctx.IDENTIFIER().getText()
       if (typedefs contains s) {
-        warning(ctx, s"Repeated typedef $s")
+        Message.error(ctx, s"Repeated typedef '$s'")
       } else {
         typedefs(s) = TypeVisitor.visit(ctx.known_type())
       }
@@ -158,7 +152,7 @@ class AstBuilder {
     override def visitDotted_name(ctx: Dotted_nameContext) = {
       val s = ctx.es.asScala.toList.map(a => a.getText())
       if (s.length != 1)
-        warning(ctx, s"Malformed declaration $s")
+        Message.error(ctx, s"Malformed declaration '$s'")
       DottedName(List(NS.insert(ctx, s.head)))
     }
   }
@@ -217,7 +211,7 @@ class AstBuilder {
       val tick = ctx.TICKNUM().getText()
       id match {
         case Num(s) => Num(s + tick)
-        case _      => { warning(ctx, s"Cannot build a number from $id$tick"); Num("Unknown") }
+        case _      => { Message.error(ctx, s"Cannot build a number from '$id$tick'"); Num("Unknown") }
       }
     }
     override def visitConstantExpr(ctx: ConstantExprContext) = Num(ctx.CONSTANT().getText())
@@ -230,37 +224,37 @@ class AstBuilder {
       n match {
         case DottedName(names) if (names.last == "read") => {
           if (a.length > 0)
-            warning(ctx, s"Interface read takes no arguments (${a.length} found)")
+            Message.error(ctx, s"Interface read takes no arguments (${a.length} found)")
           ReadCall(DottedName(names.init))
         }
         case DottedName(names) if (names.last == "lock") => {
           if (a.length > 0)
-            warning(ctx, s"Interface lock takes no arguments (${a.length} found)")
+            Message.error(ctx, s"Interface lock takes no arguments (${a.length} found)")
           LockCall(DottedName(names.init))
         }
         case DottedName(names) if (names.last == "unlock") => {
           if (a.length > 0)
-            warning(ctx, s"Interface unlock takes no arguments (${a.length} found)")
+            Message.error(ctx, s"Interface unlock takes no arguments (${a.length} found)")
           UnlockCall(DottedName(names.init))
         }
         case DottedName(names) if (names.last == "valid" || names.last == "v") => {
           if (a.length > 0)
-            warning(ctx, s"Accessing valid property takes no arguments (${a.length} found)")
+            Message.error(ctx, s"Accessing valid property takes no arguments (${a.length} found)")
           ValidCall(DottedName(names.init))
         }
         case DottedName(names) if (names.last == "write") => {
           if (a.length != 1)
-            warning(ctx, s"Interface write takes exactly one argument (${a.length} found)")
+            Message.error(ctx, s"Interface write takes exactly one argument (${a.length} found)")
           WriteCall(DottedName(names.init), a)
         }
         case DottedName(names) if (names.length == 1 && names.head == "zxt") => {
           if (a.length != 2)
-            warning(ctx, s"Zero extend function takes exactly two arguments: number of bits and expression (${a.length} found)")
+            Message.error(ctx, s"Zero extend function takes exactly two arguments: number of bits and expression (${a.length} found)")
           Zxt(a(0), a(1))
         }
         case DottedName(names) if (names.length == 1 && names.head == "sxt") => {
           if (a.length != 2)
-            warning(ctx, s"Sign extend function takes exactly two arguments: number of bits and expression (${a.length} found)")
+            Message.error(ctx, s"Sign extend function takes exactly two arguments: number of bits and expression (${a.length} found)")
           Sxt(a(0), a(1))
         }
         case _ => FunCall(n, a)
@@ -292,7 +286,7 @@ class AstBuilder {
       val ret = ctx.stmts.asScala.toList.map(visit) match {
         case s if (s.length > 0 && is_control_stmt(s.last)) => ControlBlock(s)
         case s if (s.forall(x => !is_control_stmt(x))) => CombinatorialBlock(s)
-        case s => { warning(ctx, "A control block must end with a control statement"); ControlBlock(s) }
+        case s => { Message.error(ctx, "A control block must end with a control statement"); ControlBlock(s) }
       }
       NS.removeNamespace()
       ret
@@ -300,13 +294,13 @@ class AstBuilder {
 
     override def visitDeclStmt(ctx: DeclStmtContext) = DeclVisitor.visit(ctx.declaration()) match {
       case s @ VarDeclaration(_, _, _) => DeclarationStmt(s)
-      case _                           => { warning(ctx, "Only variable declarations allowed as statements"); DeclarationStmt(VarDeclaration(State(), DottedName(List("Unknown")), None)) }
+      case _                           => { Message.error(ctx, "Only variable declarations allowed as statements"); DeclarationStmt(VarDeclaration(State(), DottedName(List("Unknown")), None)) }
     }
 
     override def visitWhileStmt(ctx: WhileStmtContext) = WhileLoop(visit(ctx.expr()), {
       val body = visit(ctx.statement)
       if (!is_control_stmt(body))
-        warning(ctx, "The body of a while loop must end with a control statement")
+        Message.error(ctx, "The body of a while loop must end with a control statement")
       body
     })
 
@@ -317,12 +311,12 @@ class AstBuilder {
       if (is_control_stmt(yes)) no match {
         case None                            => ControlIf(cond, yes, no)
         case Some(s) if (is_control_stmt(s)) => ControlIf(cond, yes, no)
-        case _                               => { warning(ctx, "Both branches of an if must be control statements, or both must be combinatorial statements"); ControlIf(cond, yes, no) }
+        case _                               => { Message.error(ctx, "Both branches of an if must be control statements, or both must be combinatorial statements"); ControlIf(cond, yes, no) }
       }
       else no match {
         case None                             => CombinatorialIf(cond, yes, no)
         case Some(s) if (!is_control_stmt(s)) => CombinatorialIf(cond, yes, no)
-        case _                                => { warning(ctx, "Both branches of an if must be control statements, or both must be combinatorial statements"); CombinatorialIf(cond, yes, no) }
+        case _                                => { Message.error(ctx, "Both branches of an if must be control statements, or both must be combinatorial statements"); CombinatorialIf(cond, yes, no) }
       }
     }
 
@@ -331,7 +325,7 @@ class AstBuilder {
       ctx.cases.asScala.toList.map(CaseVisitor.visit) match {
         case stmts if (stmts.forall(is_control_label)) => ControlCaseStmt(test, stmts)
         case stmts if (stmts.forall(x => !is_control_label(x))) => CombinatorialCaseStmt(test, stmts)
-        case stmts => { warning(ctx, "Either all or none of the case items must be control statements"); ControlCaseStmt(test, stmts) }
+        case stmts => { Message.error(ctx, "Either all or none of the case items must be control statements"); ControlCaseStmt(test, stmts) }
       }
     }
 
@@ -385,7 +379,7 @@ class AstBuilder {
     override def visitIdentifierType(ctx: IdentifierTypeContext) = {
       val s = ctx.IDENTIFIER().getText()
       typedefs.getOrElse(s, {
-        warning(ctx, s"Unknown type $s")
+        Message.error(ctx, s"Unknown type '$s'")
         IntType(false, 1)
       })
     }
@@ -408,9 +402,6 @@ class AstBuilder {
     // Capture all found function names into toplevel namespace
     FunVisitor.visit(parseTree)
     // Then build abstract syntax tree and remap identifiers
-    val p = Program(ProgVisitor.visit(parseTree).filter(is_task))
-    errors.foreach(println)
-    p
+    Program(ProgVisitor.visit(parseTree).filter(is_task))
   }
 }
-

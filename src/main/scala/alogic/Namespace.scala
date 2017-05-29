@@ -3,13 +3,13 @@ package alogic
 import org.antlr.v4.runtime.ParserRuleContext
 import scala.collection._
 import scala.annotation.tailrec
+import Antlr4Conversions._
 
 // This class keeps track of the variables in our name space
 // We can declare a new id, or lookup an exisiting one.
-// Failures result in a callback to the warning function.
-// For this to give a sensible error message, we need to pass in a context for the lookup operation.
+// Failures result in a warning.
 
-final class Namespace(warning: (ParserRuleContext, String) => Unit) {
+final class Namespace {
 
   val variables = mutable.Set[String]() // Track all ids we are planning to use
 
@@ -25,7 +25,7 @@ final class Namespace(warning: (ParserRuleContext, String) => Unit) {
 
   @tailrec def lookup(ctx: ParserRuleContext, name: String, ns: List[mutable.Map[String, String]]): String =
     if (ns.length <= 0) {
-      warning(ctx, s"Unknown identifier $name")
+      Message.error(ctx.loc, s"Unknown identifier '$name'")
       s"Unknown_$name"
     } else {
       val n = ns.head
@@ -39,7 +39,7 @@ final class Namespace(warning: (ParserRuleContext, String) => Unit) {
   def insert(ctx: ParserRuleContext, name: String): String = {
     val n = namespaces.head
     if (n contains name)
-      warning(ctx, s"Multiple declarations of $name")
+      Message.error(ctx.loc, s"Multiple declarations of '$name'")
     insert(name)
   }
 

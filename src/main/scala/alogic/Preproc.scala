@@ -13,11 +13,6 @@ import alogic.antlr.VPreprocParser._
 class Preproc {
 
   val defines = mutable.Map[String, String]()
-  val errors = new ListBuffer[String]()
-
-  def warning(ctx: ParserRuleContext, msg: String) {
-    errors += s"line ${ctx.loc} $msg"
-  }
 
   // Add definitions from another file
   def add(old: Preproc) {
@@ -34,7 +29,7 @@ class Preproc {
     override def visitHashDefine(ctx: HashDefineContext): StrTree = {
       val s = ctx.VIDENTIFIER.text
       if (defines contains s) {
-        warning(ctx, s"Repeated identifier $s")
+        Message.warning(ctx.loc, s"Redefined preprocessor identifier '$s'")
       }
       defines(s) = ctx.VREST.text
       Str("")
@@ -75,7 +70,7 @@ class Preproc {
         // TODO catch exception if not an integer
         // TODO check it is either 0 or 1
       } else {
-        warning(ctx, s"Unknown preprocessor symbol $ident")
+        Message.error(ctx.loc, s"Unknown preprocessor symbol $ident")
         Str("Unknown")
       }
     }
@@ -83,8 +78,6 @@ class Preproc {
 
   // Build the abstract syntax tree from a parse tree
   def apply(parseTree: ParseTree): String = {
-    val p = MakeString(PreprocVisitor.visit(parseTree))
-    errors.foreach(println)
-    p
+    MakeString(PreprocVisitor.visit(parseTree))
   }
 }

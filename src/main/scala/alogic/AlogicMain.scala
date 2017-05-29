@@ -64,6 +64,8 @@ object AlogicMain extends App {
     system.terminate()
   }
 
+  sys exit (if (Message.fail) 1 else 0)
+
   def go() {
     val t0 = System.nanoTime()
 
@@ -89,7 +91,7 @@ object AlogicMain extends App {
       VisitAST(ast) {
         case t @ Task(_, name, _, _) => {
           if (portMap contains name)
-            println(s"WARNING: $name defined multiple times")
+            Message.warning(s"$name defined multiple times")
           portMap(name) = t; false
         }
         case _ => true // Recurse

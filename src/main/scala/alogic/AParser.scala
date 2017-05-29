@@ -25,7 +25,7 @@ object ParserErrorListener extends BaseErrorListener {
                            msg: String,
                            e: RecognitionException) = {
     val loc = Loc(recognizer.getInputStream.getSourceName, line, charPositionInLine)
-    println(loc + " Syntax error: " + msg)
+    Message.error(loc, s"Syntax error: $msg")
   }
 }
 
@@ -76,10 +76,9 @@ class AParser() {
     parser.addErrorListener(ParserErrorListener)
     val parseTree = parser.start()
     val ast = builder(parseTree)
-    //println(ast)
     val errCount = parser.getNumberOfSyntaxErrors()
     if (errCount > 0) {
-      println(s"Parsing error count is $errCount in $path")
+      Message.error(s"Syntax error count is $errCount")
     }
     ast // TODO if have parsing errors should not continue compilation - return Option instead?
   }
