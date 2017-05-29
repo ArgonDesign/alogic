@@ -1,13 +1,14 @@
 package alogic
 
-import alogic.antlr._
-import alogic.antlr.VPreprocParser._
-import scala.collection.JavaConverters._
-import org.antlr.v4.runtime.tree.ParseTree
-import org.antlr.v4.runtime.ParserRuleContext
 import scala.collection._
 import scala.collection.mutable.ListBuffer
-import alogic.AstOps._
+
+import org.antlr.v4.runtime.ParserRuleContext
+import org.antlr.v4.runtime.tree.ParseTree
+
+import Antlr4Conversions._
+import alogic.antlr._
+import alogic.antlr.VPreprocParser._
 
 class Preproc {
 
@@ -15,10 +16,7 @@ class Preproc {
   val errors = new ListBuffer[String]()
 
   def warning(ctx: ParserRuleContext, msg: String) {
-    val tok = ctx.getStart()
-    val line = tok.getLine()
-    val pos = tok.getCharPositionInLine()
-    errors += s"line $line:$pos $msg"
+    errors += s"line ${ctx.loc} $msg"
   }
 
   // Add definitions from another file
@@ -31,45 +29,45 @@ class Preproc {
   object PreprocVisitor extends VPreprocParserBaseVisitor[StrTree] {
     override def visitStart(ctx: StartContext) = visit(ctx.entities())
 
-    override def visitEntities(ctx: EntitiesContext) = StrList(ctx.entity().asScala.toList.map(visit))
+    override def visitEntities(ctx: EntitiesContext) = StrList(ctx.entity.toList.map(visit))
 
     override def visitHashDefine(ctx: HashDefineContext): StrTree = {
-      val s = ctx.VIDENTIFIER().getText()
+      val s = ctx.VIDENTIFIER.text
       if (defines contains s) {
         warning(ctx, s"Repeated identifier $s")
       }
-      defines(s) = ctx.VREST().getText()
+      defines(s) = ctx.VREST.text
       Str("")
     }
 
     override def visitIdentifier(ctx: IdentifierContext): StrTree = {
-      val ident = ctx.IDENTIFIER().getText()
+      val ident = ctx.IDENTIFIER.text
       Str(defines.getOrElse(ident, ident))
     }
 
     override def visitOneLineComment(ctx: OneLineCommentContext): StrTree = Str("\n")
 
-    override def visitBlockComment(ctx: BlockCommentContext): StrTree = Str("\n" * ctx.getText().count(_ == '\n'))
+    override def visitBlockComment(ctx: BlockCommentContext): StrTree = Str("\n" * ctx.text.count(_ == '\n'))
 
-    override def visitAnything(ctx: AnythingContext): StrTree = Str(ctx.ANYTHING().getText())
+    override def visitAnything(ctx: AnythingContext): StrTree = Str(ctx.ANYTHING.text)
 
     override def visitHashIf(ctx: HashIfContext): StrTree = {
-      val ident = ctx.IDENTIFIER().getText()
+      val ident = ctx.IDENTIFIER.text
       if (defines contains ident) {
         val cond = defines(ident)
         val useElse = (cond.toInt == 0)
         val useFirst = !useElse
-        val hasElse = ctx.entities.asScala.toList.length > 1
+        val hasElse = ctx.entities.toList.length > 1
 
         val first = if (useFirst)
           visit(ctx.entities(0))
         else
-          Str("\n" * ctx.entities(0).getText().count(_ == '\n'))
+          Str("\n" * ctx.entities(0).text.count(_ == '\n'))
 
         val second = if (useElse && hasElse)
           visit(ctx.entities(0))
         else if (hasElse)
-          Str("\n" * ctx.entities(1).getText().count(_ == '\n'))
+          Str("\n" * ctx.entities(1).text.count(_ == '\n'))
         else
           Str("")
 
@@ -90,4 +88,3 @@ class Preproc {
     p
   }
 }
-
