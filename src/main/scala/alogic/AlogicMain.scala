@@ -13,6 +13,7 @@ import com.beachape.filemanagement.MonitorActor
 import AstOps._
 import akka.actor.ActorSystem
 import scalax.file.PathMatcher._
+import scalax.file.Path
 
 object AlogicMain extends App {
 
@@ -22,17 +23,17 @@ object AlogicMain extends App {
 
   val conf = new CLIConf(args)
 
-  val listOfHeaders: List[File] = conf.headers() map (_.fileOption.get)
+  val listOfHeaders: List[Path] = conf.headers()
 
-  val listOfFiles: List[File] = conf.ipath() match {
-    case IsFile(file)     => List(file.fileOption.get)
-    case IsDirectory(dir) => dir.descendants("*.alogic", 1).toList map (_.fileOption.get)
+  val listOfFiles: List[Path] = conf.ipath() match {
+    case IsFile(file)     => List(file)
+    case IsDirectory(dir) => dir.descendants("*.alogic", 1).toList
   }
 
-  val outputdir = conf.odir().path
-  val outdir = new File(outputdir)
-  if (!outdir.exists())
-    outdir.mkdir()
+  val odir = conf.odir()
+  if (!odir.exists) {
+    odir.createDirectory()
+  }
 
   val multiThreaded = conf.parallel();
 
@@ -71,15 +72,18 @@ object AlogicMain extends App {
     // Parse header files
     val parser = new AParser()
     for (f <- listOfHeaders) {
-      parser(f.getPath)
+      parser(f.path)
     }
 
-    // This method is called for each file that should be converted to Verilog
-    def compileFile(fname: String): (String, Program) = {
+    // Construct potentially parallel file list
+    val filePaths = if (multiThreaded) listOfFiles.par else listOfFiles
+
+    // First pass
+    val asts = filePaths map { path: Path =>
       val parser2 = new AParser(parser) // Capture all structures from header files
 
       // Build AST
-      val ast = parser2(fname)
+      val ast = parser2(path.path)
 
       // Extract ports
       VisitAST(ast) {
@@ -90,42 +94,27 @@ object AlogicMain extends App {
         }
         case _ => true // Recurse
       }
-      return (fname, ast)
+
+      (path, ast)
     }
-
-    def buildFile(params: (String, Program)): Unit = {
-      val (fname, ast) = params
-      // Convert to state machine
-      val prog: StateProgram = new MakeStates()(ast)
-
-      // Remove complicated assignments and ++ and -- (MakeStates inserts some ++/--)
-      val prog2 = Desugar.RemoveAssigns(prog)
-
-      // Construct output filename
-      val f0 = new File(fname).getName
-      val f = new File(outdir, f0 + ".v").getPath()
-
-      // Write Verilog
-      new MakeVerilog()(prog2, f)
-    }
-
-    // Construct file list
-    val fileList = listOfFiles map (_.getPath)
-
-    // First pass
-    val asts = if (multiThreaded)
-      fileList.par.map(compileFile).seq.toList
-    else
-      fileList.map(compileFile)
 
     // Second pass
-    if (multiThreaded)
-      asts.par.foreach(buildFile)
-    else
-      asts.foreach(buildFile)
+    asts.foreach {
+      case (path: Path, ast: Program) =>
+        // Convert to state machine
+        val prog: StateProgram = new MakeStates()(ast)
+
+        // Remove complicated assignments and ++ and -- (MakeStates inserts some ++/--)
+        val prog2 = Desugar.RemoveAssigns(prog)
+
+        // Construct output filename
+        val opath: Path = odir / (path.name + ".v")
+
+        // Write Verilog
+        new MakeVerilog()(prog2, opath.path)
+    }
 
     val t1 = System.nanoTime()
     println("Elapsed time: " + (t1 - t0) / 1000000000.0 + "s")
-
   }
 }
