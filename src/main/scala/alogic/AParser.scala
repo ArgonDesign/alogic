@@ -13,6 +13,21 @@ import org.antlr.v4.runtime.{ ANTLRInputStream, CommonTokenStream }
 
 import scala.io.Source
 import java.io.File
+import org.antlr.v4.runtime.RecognitionException
+import org.antlr.v4.runtime.Recognizer
+import org.antlr.v4.runtime.BaseErrorListener
+
+object ParserErrorListener extends BaseErrorListener {
+  override def syntaxError(recognizer: Recognizer[_, _],
+                           offendingSymbol: Object,
+                           line: Int,
+                           charPositionInLine: Int,
+                           msg: String,
+                           e: RecognitionException) = {
+    val loc = Loc(recognizer.getInputStream.getSourceName, line, charPositionInLine)
+    println(loc + " Syntax error: " + msg)
+  }
+}
 
 class AParser() {
 
@@ -36,7 +51,7 @@ class AParser() {
   def apply(path: String): Program = {
 
     val pinputStream = new ANTLRInputStream(loadFile(path))
-    pinputStream.name = path + '\n' // TODO why have error messages stopped reporting the input stream?
+    pinputStream.name = path
 
     // First preprocess input file to deal with #define s
     val plexer = new antlr.VPreprocLexer(pinputStream)
@@ -44,16 +59,21 @@ class AParser() {
     ptokenStream.fill()
 
     val pparser = new antlr.VPreprocParser(ptokenStream)
+    pparser.removeErrorListeners()
+    pparser.addErrorListener(ParserErrorListener)
     val pparseTree = pparser.start()
     val preprocessed: String = preproc(pparseTree)
 
     // Now parse the file
     val inputStream = new ANTLRInputStream(preprocessed)
+    inputStream.name = path
     val lexer = new antlr.VLexer(inputStream)
     val tokenStream = new CommonTokenStream(lexer)
     tokenStream.fill()
 
     val parser = new antlr.VParser(tokenStream)
+    parser.removeErrorListeners()
+    parser.addErrorListener(ParserErrorListener)
     val parseTree = parser.start()
     val ast = builder(parseTree)
     //println(ast)
@@ -65,4 +85,3 @@ class AParser() {
   }
 
 }
-
