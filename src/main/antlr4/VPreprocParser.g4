@@ -8,9 +8,11 @@ start : entities EOF ;
 
 entities : (entity)*;
 
-entity : 
-   HASHDEFINE VIDENTIFIER VREST # HashDefine
+entity
+ : HASHINCLUDE LITERAL # HashInclude
+ | HASHDEFINE VIDENTIFIER VREST # HashDefine
  | IDENTIFIER # Identifier
+ | LITERAL # Literal
  | HASHIF IDENTIFIER entities (HASHELSE entities)? HASHENDIF # HashIf
  | ANYTHING # Anything
  | ONE_LINE_COMMENT # OneLineComment

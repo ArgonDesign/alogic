@@ -4,6 +4,8 @@ lexer grammar VPreprocLexer;
 // Comments are not stripped in order to keep the line numbers accurate for error messages in later stages
 //
 
+HASHINCLUDE: '#' [ \t]* 'include' [ \t]+;
+
 HASHDEFINE: '#' [ \t]* ('define' | 'def') [ \t]+ -> pushMode(VMODE);
 
 HASHIF: '#' [ \t]* 'if' [ \t]+;
@@ -13,6 +15,8 @@ HASHELSE: '#' [ \t]* 'else';
 HASHENDIF: '#' [ \t]* 'endif';
 
 IDENTIFIER: SIMPLEID;
+
+LITERAL: '"' ~["]* '"';
 
 ONE_LINE_COMMENT: '//' .*? NL;
 

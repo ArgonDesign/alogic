@@ -36,7 +36,7 @@ trait Antlr4Conversions extends WrapAsScala with WrapAsJava {
   }
 
   implicit class TokenWrapper(val token: Token) {
-    def loc = Loc(token.getTokenSource.getSourceName, token.getLine, token.getCharPositionInLine)
+    def loc = Loc(token.getTokenSource.getSourceName, token.getLine)
 
     def text = token.getText
 

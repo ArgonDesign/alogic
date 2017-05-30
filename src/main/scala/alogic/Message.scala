@@ -11,16 +11,20 @@ object Message {
   // Indicate what the final exit status of the program shoud be
   var fail = false
 
+  private def printit(prefix: String, msg: Seq[String]): Unit = {
+    println(msg mkString (prefix, "\n" + prefix, ""))
+  }
+
   // INFO messages are only displayed when the verbose option is
   // provided, and in general describe compiler status
-  def info(msg: String): Unit = {
-    if (verbose) println(s"INFO: $msg")
+  def info(msg: String*): Unit = {
+    if (verbose) printit("INFO: ", msg)
   }
 
   // Warnings are informative messages about issues that the compiler
   // can recover from, and still produce functional output.
-  def warning(msg: String): Unit = {
-    println(s"WARNING: $msg")
+  def warning(msg: String*): Unit = {
+    printit("WARNING: ", msg)
   }
 
   // Errors indicate situations where the compiler can still make
@@ -28,15 +32,15 @@ object Message {
   // In this case the compiler carries on trying to generate as many
   // messages as possible, but the final exit status of the program
   // will indicate failure.
-  def error(msg: String): Unit = {
-    println(s"ERROR: $msg")
+  def error(msg: String*): Unit = {
+    printit("ERROR: ", msg)
     fail = true
   }
 
   // Fatal indicates situations where the compiler cannot make forward
   // progress. The first fatal message will cause the program to exit.
-  def fatal(msg: String): Unit = {
-    println(s"FATAL: $msg")
+  def fatal(msg: String*): Nothing = {
+    printit("FATAL: ", msg)
     sys exit 1
   }
 
@@ -44,32 +48,32 @@ object Message {
   // Versions that take a source location
   //////////////////////////////////////////////////////////////////////////////
 
-  def info(loc: Loc, msg: String): Unit = {
-    println(s"$loc: INFO: $msg")
+  def info(loc: Loc, msg: String*): Unit = {
+    printit(s"$loc: INFO: ", msg)
   }
 
-  def warning(loc: Loc, msg: String): Unit = {
-    println(s"$loc: WARNING: $msg")
+  def warning(loc: Loc, msg: String*): Unit = {
+    printit(s"$loc: WARNING: ", msg)
   }
 
-  def error(loc: Loc, msg: String): Unit = {
-    println(s"$loc: ERROR: $msg")
+  def error(loc: Loc, msg: String*): Unit = {
+    printit(s"$loc: ERROR: ", msg)
     fail = true
   }
 
-  def fatal(loc: Loc, msg: String): Unit = {
-    println(s"$loc: FATAL: $msg")
+  def fatal(loc: Loc, msg: String*): Nothing = {
+    printit(s"$loc: FATAL: ", msg)
     sys exit 1
   }
 
   //////////////////////////////////////////////////////////////////////////////
   // Versions that take an Antlr4 token/parse tree node for location info
   //////////////////////////////////////////////////////////////////////////////
-  def info(ctx: ParserRuleContext, msg: String): Unit = info(ctx.loc, msg)
+  def info(ctx: ParserRuleContext, msg: String*): Unit = info(ctx.loc, msg: _*)
 
-  def warning(ctx: ParserRuleContext, msg: String): Unit = warning(ctx.loc, msg)
+  def warning(ctx: ParserRuleContext, msg: String*): Unit = warning(ctx.loc, msg: _*)
 
-  def error(ctx: ParserRuleContext, msg: String): Unit = error(ctx.loc, msg)
+  def error(ctx: ParserRuleContext, msg: String*): Unit = error(ctx.loc, msg: _*)
 
-  def fatal(ctx: ParserRuleContext, msg: String): Unit = fatal(ctx.loc, msg)
+  def fatal(ctx: ParserRuleContext, msg: String*): Nothing = fatal(ctx.loc, msg: _*)
 }

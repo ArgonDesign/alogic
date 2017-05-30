@@ -3,8 +3,11 @@ package alogic
 import org.rogach.scallop.ScallopConf
 import org.rogach.scallop.listArgConverter
 import org.rogach.scallop.singleArgConverter
+import org.rogach.scallop.propsConverter
 
 import scalax.file.Path
+import org.rogach.scallop.ArgType
+import org.rogach.scallop.ValueConverter
 
 /**
  * Option parser based on Scallop. See the Scallop wiki for usage:
@@ -13,6 +16,23 @@ import scalax.file.Path
 class CLIConf(args: Seq[String]) extends ScallopConf(args) {
   implicit val pathCovnert = singleArgConverter[Path](Path.fromString(_))
   implicit val pathListConverter = listArgConverter[Path](Path.fromString(_))
+
+  // Ensures all option instances have only a single argument
+  // eg -I foo -I bar -I baz, but not -I foo bar
+  val singlePathListConverter = new ValueConverter[List[Path]] {
+    def parse(instances: List[(String, List[String])]) = {
+      val bad = instances.filter(_._2.size > 1)
+      if (!bad.isEmpty) {
+        val msg: List[String] = "Only one argument can be provided for each " +
+          s"instance of option '${bad.head._1}'. Provided:" :: (for ((_, r) <- bad) yield r mkString " ");
+        Left(msg mkString "\n")
+      } else {
+        Right(Some(instances.flatMap(_._2) map Path.fromString))
+      }
+    }
+    val tag = scala.reflect.runtime.universe.typeTag[List[Path]] // Magic to make typing work
+    val argType = ArgType.SINGLE
+  }
 
   def pathValidator(path: Path): Either[String, Unit] = {
     if (path.nonExistent)
@@ -38,6 +58,11 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) {
     default = Some(Path.fromString("generated")),
     descr = "Output directory")
 
+  val incdir = opt[List[Path]](
+    short = 'I',
+    descr = "Add to include search path")(singlePathListConverter)
+  validate(incdir)(pathListValidator)
+
   val monitor = opt[Boolean](
     short = 'm',
     descr = "Recompile whenever sources change")
@@ -52,15 +77,10 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) {
     noshort = true,
     descr = "Produce more verbose messages")
 
-  val headers = trailArg[List[Path]](
-    required = false,
-    descr = "header files")
-  validate(headers)(pathListValidator)
-
-  val ipath = trailArg[Path](
+  val path = trailArg[Path](
     required = true,
     descr = "Source file or source directory")
-  validate(ipath)(pathValidator)
+  validate(path)(pathValidator)
 
   verify()
 }

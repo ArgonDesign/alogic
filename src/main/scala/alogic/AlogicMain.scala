@@ -23,9 +23,7 @@ object AlogicMain extends App {
 
   val conf = new CLIConf(args)
 
-  val listOfHeaders: List[Path] = conf.headers()
-
-  val listOfFiles: List[Path] = conf.ipath() match {
+  val listOfFiles: List[Path] = conf.path() match {
     case IsFile(file)     => List(file)
     case IsDirectory(dir) => dir.descendants("*.alogic", 1).toList
   }
@@ -38,6 +36,8 @@ object AlogicMain extends App {
   val multiThreaded = conf.parallel()
 
   Message.verbose = conf.verbose()
+
+  val includeSearchPaths = conf.incdir()
 
   //////////////////////////////////////////////////////////////////////////////
   // Compile
@@ -56,10 +56,10 @@ object AlogicMain extends App {
   if (conf.monitor()) {
     implicit val system = ActorSystem("actorSystem")
     val fileMonitorActor = system.actorOf(MonitorActor(concurrency = 2))
-    Message.info(s"Waiting for ${conf.ipath().path} to be modified (press return to quit)...")
+    Message.info(s"Waiting for ${conf.path().path} to be modified (press return to quit)...")
     fileMonitorActor ! RegisterCallback(
       event = ENTRY_MODIFY,
-      path = Paths get conf.ipath().path,
+      path = Paths get conf.path().path,
       callback = { _ => go })
     io.StdIn.readLine()
     Message.info("Quitting")
@@ -73,21 +73,16 @@ object AlogicMain extends App {
 
     portMap.clear()
 
-    // Parse header files
-    val parser = new AParser()
-    for (f <- listOfHeaders) {
-      parser(f.path)
-    }
-
     // Construct potentially parallel file list
     val filePaths = if (multiThreaded) listOfFiles.par else listOfFiles
 
     // First pass
     val asts = filePaths map { path: Path =>
-      val parser2 = new AParser(parser) // Capture all structures from header files
+      val parser = new AParser(includeSearchPaths)
 
       // Build AST
-      val ast = parser2(path.path)
+      Message.info(s"Parsing ${path.path}")
+      val ast = parser(path)
 
       // Extract ports
       VisitAST(ast) {

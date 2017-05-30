@@ -16,6 +16,7 @@ import java.io.File
 import org.antlr.v4.runtime.RecognitionException
 import org.antlr.v4.runtime.Recognizer
 import org.antlr.v4.runtime.BaseErrorListener
+import scalax.file.Path
 
 object ParserErrorListener extends BaseErrorListener {
   override def syntaxError(recognizer: Recognizer[_, _],
@@ -24,49 +25,23 @@ object ParserErrorListener extends BaseErrorListener {
                            charPositionInLine: Int,
                            msg: String,
                            e: RecognitionException) = {
-    val loc = Loc(recognizer.getInputStream.getSourceName, line, charPositionInLine)
+    val loc = Loc(recognizer.getInputStream.getSourceName, line)
     Message.error(loc, s"Syntax error: $msg")
   }
 }
 
-class AParser() {
+class AParser(includeSearchPaths: List[Path]) {
 
   val builder = new AstBuilder()
-  val preproc = new Preproc()
 
-  def this(old: AParser) {
-    this()
-    builder.add(old.builder)
-    preproc.add(old.preproc)
-  }
-
-  def loadFile(filename: String): String = {
-    Message.info(s"Reading file: $filename")
-    val bufferedSource = Source.fromFile(filename)
-    val code = bufferedSource.mkString
-    bufferedSource.close
-    code
-  }
-
-  def apply(path: String): Program = {
-
-    val pinputStream = new ANTLRInputStream(loadFile(path))
-    pinputStream.name = path
-
+  def apply(path: Path): Program = {
     // First preprocess input file to deal with #define s
-    val plexer = new antlr.VPreprocLexer(pinputStream)
-    val ptokenStream = new CommonTokenStream(plexer)
-    ptokenStream.fill()
-
-    val pparser = new antlr.VPreprocParser(ptokenStream)
-    pparser.removeErrorListeners()
-    pparser.addErrorListener(ParserErrorListener)
-    val pparseTree = pparser.start()
-    val preprocessed: String = preproc(pparseTree)
+    val preproc = new Preproc(includeSearchPaths)
+    val preprocessed: String = preproc(path)
 
     // Now parse the file
     val inputStream = new ANTLRInputStream(preprocessed)
-    inputStream.name = path
+    inputStream.name = path.path
     val lexer = new antlr.VLexer(inputStream)
     val tokenStream = new CommonTokenStream(lexer)
     tokenStream.fill()
