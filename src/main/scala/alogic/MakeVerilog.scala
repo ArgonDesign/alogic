@@ -102,15 +102,15 @@ final class MakeVerilog {
     def writeSize(size: Int) = if (size > 1) s"[$size-1:0] " else ""
 
     def writeOut(typ: AlogicType, name: StrTree): Unit = typ match {
-      case IntType(b, size) => pw.println("  output " + outtype + writeSigned(b) + writeSize(size) + MakeString(name) + ";")
+      case IntType(b, size) => pw.println("  output " + outtype + writeSigned(b) + writeSize(size) + name + ";")
       case _                => // TODO support IntVType
     }
     def writeIn(typ: AlogicType, name: StrTree): Unit = typ match {
-      case IntType(b, size) => pw.println(s"  input wire ${writeSigned(b)}${writeSize(size)}" + MakeString(name) + ";")
+      case IntType(b, size) => pw.println(s"  input wire ${writeSigned(b)}${writeSize(size)}" + name + ";")
       case _                => // TODO support IntVType
     }
     def writeWire(typ: AlogicType, name: StrTree): Unit = typ match {
-      case IntType(b, size) => pw.println(s"  wire ${writeSigned(b)}${writeSize(size)}" + MakeString(name) + ";")
+      case IntType(b, size) => pw.println(s"  wire ${writeSigned(b)}${writeSize(size)}" + name + ";")
       case _                => // TODO support IntVType
     }
     def typeString(typ: AlogicType): String = {
@@ -121,7 +121,7 @@ final class MakeVerilog {
       typ2 match {
         case IntType(b, size) => writeSigned(b) + writeSize(size)
         case IntVType(b, args) => {
-          val sz = MakeString(StrProduct(args.map(MakeExpr)))
+          val sz = StrProduct(args.map(MakeExpr)).toString
           writeSigned(b) + "[" + sz + "-1:0] "
         }
         case _ => Message.fatal("Cannot make type for $typ"); ""
@@ -133,10 +133,10 @@ final class MakeVerilog {
         case State() => IntType(false, log2numstates)
         case x       => x
       }
-      val nm = MakeString(name)
+      val nm = name.toString
       typ2 match {
         case IntType(_, _) | IntVType(_, _) => {
-          pw.println(s"  reg " + typeString(typ2) + MakeString(nx(nm)) + ", " + MakeString(reg(nm)) + ";")
+          pw.println(s"  reg " + typeString(typ2) + nx(nm) + ", " + reg(nm) + ";")
           if (resetToZero)
             resets = StrList(Str("      ") :: Str(reg(name)) :: Str(s" <= 'b0;\n") :: Nil) :: resets
           clocks = StrList(Str("        ") :: Str(reg(name)) :: Str(" <= ") :: Str(nx(name)) :: Str(";\n") :: Nil) :: clocks
@@ -181,7 +181,7 @@ final class MakeVerilog {
           case ParamDeclaration(decltype, id, Some(init)) => {
             SetNxType(nxMap, decltype, id, "")
             SetNxType(regMap, decltype, id, "")
-            pw.println("param " + id + " = " + MakeString(MakeExpr(init)) + ";")
+            pw.println("param " + id + " = " + MakeExpr(init) + ";")
           }
           case ParamDeclaration(decltype, id, None) => {
             SetNxType(nxMap, decltype, id, "")
@@ -235,7 +235,7 @@ final class MakeVerilog {
             // TODO maybe detect more than one write to the same array in the same cycle?
             val n = names.mkString("_")
             Arrays.add(n)
-            val depth = MakeString(MakeExpr(index)).toInt // TODO detect if this fails and fail gracefully
+            val depth = MakeExpr(index).toString.toInt // TODO detect if this fails and fail gracefully
             val log2depth = ceillog2(depth)
             val t = typeString(decltype)
             pw.println(s"  reg ${n}_wr;")
@@ -307,7 +307,7 @@ final class MakeVerilog {
       case _ => true
     }
     if (verilogfns.length > 0) {
-      pw.write(MakeString(StrList(verilogfns)))
+      pw.print(StrList(verilogfns))
     }
     if (fns.length > 0 || fencefns.length > 0) {
       // Start main combinatorial loop
@@ -316,17 +316,17 @@ final class MakeVerilog {
       pw.println("    go = 1'b1;")
       // Prepare defaults
       if (defaults.length > 0)
-        pw.println(MakeString(StrList(defaults)))
+        pw.println(StrList(defaults))
       if (fencefns.length > 0)
-        pw.println(MakeString(StrList(fencefns)))
+        pw.println(StrList(fencefns))
       pw.println("    case(state_q) begin")
       pw.println("      default: begin")
-      pw.println(MakeString(StrList(fns)))
+      pw.println(StrList(fns))
       pw.println("      end")
       pw.println("    end")
       if (clears.length > 0) {
         pw.println(s"    if (!$go) begin")
-        pw.write(MakeString(StrList(clears)))
+        pw.print(StrList(clears))
         pw.println("    end")
       }
       pw.println("  end")
@@ -334,10 +334,10 @@ final class MakeVerilog {
       pw.println("")
       pw.println("  always @(posedge clk or negedge rst_n) begin")
       pw.println("    if (!rst_n) begin")
-      pw.print(MakeString(StrList(resets)))
+      pw.print(StrList(resets))
       pw.println("    end else begin")
       pw.println(s"      if ($go) begin")
-      pw.print(MakeString(StrList(clocks)))
+      pw.print(StrList(clocks))
       pw.println("      end")
       pw.println("    end")
       pw.println("  end")
@@ -374,11 +374,11 @@ final class MakeVerilog {
   } else nxMap(name)
 
   def nx(names: List[String]): String = nx(names.mkString("_"))
-  def nx(name: StrTree): String = nx(MakeString(name))
+  def nx(name: StrTree): String = nx(name.toString)
 
   // Construct the string to be used when this identifier is used on the LHS of an assignment
   def reg(names: List[String]): String = regMap(names.mkString("_"))
-  def reg(name: StrTree): String = regMap(MakeString(name))
+  def reg(name: StrTree): String = regMap(name.toString)
 
   implicit def string2StrTree(s: String): StrTree = Str(s)
 
@@ -528,8 +528,8 @@ final class MakeVerilog {
     case Assign(ArrayLookup(DottedName(names), index), "=", rhs) if (Arrays contains names.head) => {
       val i = " " * indent
       val n = names.head
-      val r = MakeString(MakeExpr(rhs))
-      val d = MakeString(MakeExpr(index))
+      val r = MakeExpr(rhs).toString
+      val d = MakeExpr(index).toString
       val a = Str(s"""${i}begin
 $i  ${n}_wr = 1'b1;
 $i  ${n}_addr = $r;
@@ -741,7 +741,7 @@ ${i}end
             add(accept(n) + " = 1'b1;\n")
           }
           if (HasReady(synctype))
-            usesPort = Some(MakeString(MakeExpr(name)))
+            usesPort = Some(MakeExpr(name).toString)
         }
         case _ =>
       }
@@ -763,7 +763,7 @@ ${i}end
         d match {
           case OutDeclaration(synctype, _, _) => {
             if (HasValid(synctype))
-              usesPort = Some(MakeString(MakeExpr(name)))
+              usesPort = Some(MakeExpr(name).toString)
           }
           case _ => false
         }

@@ -163,7 +163,7 @@ class Preproc(
     }
 
     // Return processed contents as a string
-    MakeString(strTree)
+    strTree.toString
   }
 
   // Private method to use by recursive includes, returns defines as well

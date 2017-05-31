@@ -3,16 +3,8 @@ package alogic
 // An efficient tree string builder (hopefully...)
 // The idea is that we construct an immutable tree representation of strings
 // With a fast toString function
-sealed trait StrTree
-case class Str(name: String) extends StrTree
-case class StrList(names: List[StrTree]) extends StrTree
-case class StrCommaList(names: List[StrTree]) extends StrTree
-case class StrProduct(names: List[StrTree]) extends StrTree
-case class StrSum(names: List[StrTree]) extends StrTree
-
-object MakeString {
-
-  def apply(tree: StrTree): String = {
+sealed trait StrTree {
+  override def toString: String = {
     val b = StringBuilder.newBuilder
 
     def reduce(names: List[StrTree], op: String, addBrackets: Boolean): Unit = {
@@ -40,7 +32,13 @@ object MakeString {
       case StrSum(names)       => reduce(names, "+", true)
     }
 
-    go(tree)
+    go(this)
     b.toString
   }
 }
+
+case class Str(name: String) extends StrTree
+case class StrList(names: List[StrTree]) extends StrTree
+case class StrCommaList(names: List[StrTree]) extends StrTree
+case class StrProduct(names: List[StrTree]) extends StrTree
+case class StrSum(names: List[StrTree]) extends StrTree
