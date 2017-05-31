@@ -121,7 +121,7 @@ final class MakeVerilog {
       typ2 match {
         case IntType(b, size) => writeSigned(b) + writeSize(size)
         case IntVType(b, args) => {
-          val sz = StrProduct(args.map(MakeExpr)).toString
+          val sz = StrList(args.map(MakeExpr), "*").toString
           writeSigned(b) + "[" + sz + "-1:0] "
         }
         case _ => Message.fatal("Cannot make type for $typ"); ""
@@ -385,9 +385,9 @@ final class MakeVerilog {
   // Compute an string tree for the number of bits in this type
   def MakeNumBits(typ: AlogicType): StrTree = typ match {
     case IntType(signed, size)  => Str(s"$size")
-    case IntVType(signed, args) => StrProduct(args.map(MakeExpr))
+    case IntVType(signed, args) => StrList(args.map(MakeExpr), "*")
     case State()                => Str(s"$log2numstates")
-    case Struct(fields)         => StrSum(fields.map(MakeNumBits))
+    case Struct(fields)         => StrList(fields.map(MakeNumBits), "+")
   }
 
   def MakeNumBits(typ: FieldType): StrTree = typ match { case Field(typ2, name) => MakeNumBits(typ2) }
@@ -420,7 +420,7 @@ final class MakeVerilog {
         case InDeclaration(synctype, decl, n)  => if (HasValid(synctype)) valid(n) else { Message.fatal(s"Port $names does not use valid"); "" }
         case _                                 => Message.fatal(s"Cannot access valid on $names"); ""
       }
-      case FunCall(name, args) => StrList(List(MakeExpr(name), "(", StrCommaList(args.map(MakeExpr)), ")"))
+      case FunCall(name, args) => StrList(List(MakeExpr(name), "(", StrList(args.map(MakeExpr), ","), ")"))
       case Zxt(numbits, expr) => {
         val totalSz = MakeExpr(numbits)
         val exprSz = MakeNumBits(GetType(expr))
@@ -432,14 +432,14 @@ final class MakeVerilog {
         val e = MakeExpr(expr)
         StrList(List("{{", totalSz, " - ", exprSz, "{", e, "[(", exprSz, ") - 1]}},", e, "}"))
       }
-      case DollarCall(name, args)    => StrList(List(name, "(", StrCommaList(args.map(MakeExpr)), ")"))
+      case DollarCall(name, args)    => StrList(List(name, "(", StrList(args.map(MakeExpr), ","), ")"))
       case ReadCall(name)            => MakeExpr(name)
       case BinaryOp(lhs, op, rhs)    => StrList(List(MakeExpr(lhs), Str(" "), op, Str(" "), MakeExpr(rhs)))
       case UnaryOp(op, lhs)          => StrList(List(op, MakeExpr(lhs)))
       case Bracket(content)          => StrList(List("(", MakeExpr(content), ")"))
       case TernaryOp(cond, lhs, rhs) => StrList(List(MakeExpr(cond), " ? ", MakeExpr(lhs), " : ", MakeExpr(rhs)))
       case BitRep(count, value)      => StrList(List("{", MakeExpr(count), "{", MakeExpr(value), "}}"))
-      case BitCat(parts)             => StrList(List("{", StrCommaList(parts.map(MakeExpr)), "}"))
+      case BitCat(parts)             => StrList(List("{", StrList(parts.map(MakeExpr), ","), "}"))
       case DottedName(names)         => nx(names)
       case Literal(s)                => StrList(List(""""""", s, """""""))
       case Num(n)                    => n
@@ -572,9 +572,9 @@ ${i}end
         CombStmt(indent + 4, body) :: Nil)
     case CombinatorialCaseLabel(conds, body) => StrList(
       Str(" " * indent) ::
-        StrCommaList(conds.map(MakeExpr)) ::
+        StrList(conds.map(MakeExpr), ",") ::
         Str(":\n") :: CombStmt(indent + 4, body) :: Nil)
-    case DollarCall(name, args) => StrList(List(" " * indent, name, StrCommaList(args.map(MakeExpr))))
+    case DollarCall(name, args) => StrList(List(" " * indent, name, StrList(args.map(MakeExpr), ",")))
     case x                      => Message.fatal(s"Don't know how to emit code for $x"); Str("")
   }
 
@@ -712,7 +712,7 @@ ${i}end
         case None => None
         case Some(a) => Some(StrList(
           Str(" " * indent) ::
-            StrCommaList(conds.map(MakeExpr)) ::
+            StrList(conds.map(MakeExpr), ",") ::
             Str(":\n") :: a :: Nil))
       }
       val as = conds.map(AcceptExpr).flatten
