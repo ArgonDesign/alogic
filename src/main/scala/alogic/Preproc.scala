@@ -1,17 +1,13 @@
 package alogic
 
 import scala.collection._
-import scala.collection.mutable.ListBuffer
 
-import org.antlr.v4.runtime.ParserRuleContext
-import org.antlr.v4.runtime.tree.ParseTree
+import org.antlr.v4.runtime.ANTLRInputStream
+import org.antlr.v4.runtime.CommonTokenStream
 
 import Antlr4Conversions._
 import alogic.antlr._
 import alogic.antlr.VPreprocParser._
-import org.antlr.v4.runtime.CommonTokenStream
-import org.antlr.v4.runtime.ANTLRInputStream
-import scala.io.Source
 import scalax.file.Path
 
 class Preproc(
@@ -144,6 +140,8 @@ class Preproc(
     tokenStream.fill()
 
     val parser = new antlr.VPreprocParser(tokenStream)
+    parser.removeErrorListeners()
+    parser.addErrorListener(ParserErrorListener)
     val parseTree = parser.start()
 
     val strTree = PreprocVisitor.visit(parseTree)
