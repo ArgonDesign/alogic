@@ -307,7 +307,7 @@ final class MakeVerilog {
       case _ => true
     }
     if (verilogfns.length > 0) {
-      pw.write(MakeString(verilogfns))
+      pw.write(MakeString(StrList(verilogfns)))
     }
     if (fns.length > 0 || fencefns.length > 0) {
       // Start main combinatorial loop
@@ -326,7 +326,7 @@ final class MakeVerilog {
       pw.println("    end")
       if (clears.length > 0) {
         pw.println(s"    if (!$go) begin")
-        pw.write(MakeString(clears))
+        pw.write(MakeString(StrList(clears)))
         pw.println("    end")
       }
       pw.println("  end")
@@ -381,7 +381,6 @@ final class MakeVerilog {
   def reg(name: StrTree): String = regMap(MakeString(name))
 
   implicit def string2StrTree(s: String): StrTree = Str(s)
-  implicit def stringList2StrTree(s: List[StrTree]): StrTree = StrList(s)
 
   // Compute an string tree for the number of bits in this type
   def MakeNumBits(typ: AlogicType): StrTree = typ match {
@@ -696,7 +695,7 @@ ${i}end
         if (syncPortsFound > 1) Message.fatal(s"Found multiple accept port reads in same cycle: $cmds")
         if (usesPort.isDefined) Message.fatal(s"Cannot access port $usesPort while generating accept: $cmds")
         if (!IdsUsedToMakeAccept.intersect(IdsWritten).isEmpty) Message.fatal("Cannot generate accept because an identifier is being written to: $cmds")
-        Some(StrList(List(" " * (indent - 4), MakeState(state), ": begin\n", s2, " " * (indent - 4), "end\n")))
+        Some(StrList(List(" " * (indent - 4), MakeState(state), ": begin\n", StrList(s2), " " * (indent - 4), "end\n")))
       } else
         None
     }
