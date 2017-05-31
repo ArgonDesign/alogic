@@ -77,6 +77,15 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) {
     noshort = true,
     descr = "Produce more verbose messages")
 
+  val time = opt[Int](
+    noshort = true,
+    argName = "N",
+    hidden = true,
+    descr = "Run compilation N times for benchmarking")
+  validate(time) { value: Int =>
+    if (value < 2) Left("Must be > 2") else Right(())
+  }
+
   val path = trailArg[Path](
     required = true,
     descr = "Source file or source directory")

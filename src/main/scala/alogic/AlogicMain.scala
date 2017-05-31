@@ -51,9 +51,28 @@ object AlogicMain extends App {
   val portMap = new TrieMap[String, Task]() // This must be from a concurrent collection because it is populated from multiple threads
 
   go
-  go
 
-  if (conf.monitor()) {
+  if (conf.time.isDefined) {
+    // Benchmark compilation time
+    val n = conf.time()
+    // run 'n' times an collect the runtimes
+    val dt = for (i <- 1 to n) yield {
+      Message.note(s"Benchmarking iteration $i")
+      val t0 = System.nanoTime()
+      go
+      (System.nanoTime() - t0) / 1e9
+    }
+    // Compute mean
+    val mean = dt.sum / n
+    // Compute 95% confidence interval using the normal distribution
+    // This really should be based on the t distribution, but we don't
+    // want a library depencency just for this ...
+    val sdev = dt.map(_ - mean).map(math.pow(_, 2)).sum / (n - 1)
+    val se = sdev / math.sqrt(n)
+    val me = 1.96 * se
+    Message.note("Compilation time: %.3fs +/- %.2f%% (%.3fs, %.3fs)" format (mean, me / mean * 100, mean - me, mean + me))
+  } else if (conf.monitor()) {
+    // Stay alive and wait for source chagnes
     implicit val system = ActorSystem("actorSystem")
     val fileMonitorActor = system.actorOf(MonitorActor(concurrency = 2))
     Message.info(s"Waiting for ${conf.path().path} to be modified (press return to quit)...")
@@ -69,7 +88,6 @@ object AlogicMain extends App {
   sys exit (if (Message.fail) 1 else 0)
 
   def go() {
-    val t0 = System.nanoTime()
 
     portMap.clear()
 
@@ -113,6 +131,5 @@ object AlogicMain extends App {
         new MakeVerilog()(prog2, opath.path)
     }
 
-    Message.info(s"Compilation time: ${(System.nanoTime() - t0) / 1e9}s")
   }
 }

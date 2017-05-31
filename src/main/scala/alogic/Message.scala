@@ -21,6 +21,12 @@ object Message {
     if (verbose) printit("INFO: ", msg)
   }
 
+  // NOTE messages are always displayed and in general describe
+  // compiler status
+  def note(msg: String*): Unit = {
+    printit("NOTE: ", msg)
+  }
+
   // Warnings are informative messages about issues that the compiler
   // can recover from, and still produce functional output.
   def warning(msg: String*): Unit = {
