@@ -12,21 +12,22 @@ import scalax.file.Path
 
 class Preproc(
     includeSearchPaths: List[Path],
-    initialDefines: immutable.Map[String, String] = immutable.Map[String, String]()) {
+    initialDefines: Map[String, String] = Map[String, String]()) {
 
+  // Alternative constructor accepting mutable.Map for initialDefines
   def this(
     includeSearchPaths: List[Path],
     initialDefines: mutable.Map[String, String]) = {
-    this(includeSearchPaths, immutable.Map[String, String]() ++ initialDefines)
+    this(includeSearchPaths, Map[String, String]() ++ initialDefines)
   }
 
   // Map of #define to substitution
-  val defines = mutable.Map[String, String]() ++ initialDefines
+  private[this] val defines = mutable.Map[String, String]() ++ initialDefines
 
   // Deferred line number remappings
-  val remaps = mutable.Stack[(Range, Path)]()
+  private[this] val remaps = mutable.Stack[(Range, Path)]()
 
-  // Build the abstract syntax tree from a parse tree
+  // Preprocess a file defined by path
   def apply(path: Path): String = {
 
     object PreprocVisitor extends VPreprocParserBaseVisitor[StrTree] {
@@ -112,12 +113,12 @@ class Preproc(
 
         // Create a new preprocessor and process the include file
         val preproc = new Preproc(includeSearchPaths, defines)
-        val text = preproc(resultPath)
+        val (text, newDefines) = preproc.process(resultPath)
 
         // Add the new #defines from the incldued file, there is no need
         // to warn for redefinitions here, as we have passed in 'defines'
         // to the nested preprocessor, so we have already yielded all warnings
-        defines ++= preproc.defines
+        defines ++= newDefines
 
         // Record that we need to remap these locations for error messages,
         // but defer doing so until the whole file is processed. This ensures
@@ -131,28 +132,42 @@ class Preproc(
       }
     }
 
+    // Slurp the file contents
     val text = path.lines(includeTerminator = true).mkString
+
+    // Create ANTLR input stream
     val inputStream = new ANTLRInputStream(text)
     inputStream.name = path.path
 
+    // Create the lexer
     val lexer = new antlr.VPreprocLexer(inputStream)
     val tokenStream = new CommonTokenStream(lexer)
     tokenStream.fill()
 
+    // Create the parser
     val parser = new antlr.VPreprocParser(tokenStream)
     parser.removeErrorListeners()
     parser.addErrorListener(ParserErrorListener)
+
+    // Parse the the file
     val parseTree = parser.start()
 
+    // Walk parse tree to do the work
     val strTree = PreprocVisitor.visit(parseTree)
 
-    // Update the source location map
+    // Apply the deferred remappings to the source location map
     val remapList = remaps.toList.reverse
     val remapCumSum = remapList.map(_._1.size).scanLeft(0)(_ + _)
     for (((range, source), offset) <- remapList zip remapCumSum) {
       LocMap.remap(path, range.start + offset until range.end + offset, source)
     }
 
+    // Return processed contents as a string
     MakeString(strTree)
+  }
+
+  // Private method to use by recursive includes, returns defines as well
+  private def process(path: Path): (String, Map[String, String]) = {
+    (apply(path), Map[String, String]() ++ defines)
   }
 }
