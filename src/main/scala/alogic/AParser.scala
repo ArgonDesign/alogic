@@ -7,9 +7,10 @@ import scalax.file.Path
 
 class AParser(includeSearchPaths: List[Path]) {
 
-  val builder = new AstBuilder()
-
   def apply(path: Path): Program = {
+
+    val builder = new AstBuilder()
+
     // First preprocess input file to deal with #define s
     val preproc = new Preproc(includeSearchPaths)
     val preprocessed: String = preproc(path)

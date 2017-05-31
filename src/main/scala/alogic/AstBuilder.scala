@@ -32,12 +32,6 @@ class AstBuilder {
 
   typedefs("state") = State()
 
-  // Add definitions/typedefs from another file
-  // Note that identifiers are not copied over
-  def add(old: AstBuilder) {
-    typedefs ++= old.typedefs
-  }
-
   // Convert identifier to tree
   def identifier(ident: String): AlogicAST = DottedName(List(ident))
 
