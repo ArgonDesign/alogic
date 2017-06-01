@@ -58,8 +58,6 @@ object AlogicMain extends App {
     // run 'n' times an collect the runtimes
     val dt = for (i <- 1 to n) yield {
       Message.note(s"Benchmarking iteration $i")
-      // Clear caches
-      Cache.clearAll()
       val t0 = System.nanoTime()
       go
       (System.nanoTime() - t0) / 1e9
@@ -90,6 +88,8 @@ object AlogicMain extends App {
   sys exit (if (Message.fail) 1 else 0)
 
   def go() {
+    // Clear caches
+    Cache.clearAll()
 
     portMap.clear()
 
