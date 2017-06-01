@@ -56,7 +56,7 @@ class Preproc(
           if (defines contains s) {
             Message.warning(ctx.loc, s"Redefined preprocessor identifier '$s'")
           }
-          defines(s) = ctx.VREST.text
+          defines(s) = ctx.VREST.text.trim
           Str("")
         }
 
