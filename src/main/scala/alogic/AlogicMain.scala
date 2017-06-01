@@ -96,16 +96,16 @@ object AlogicMain extends App {
     // Construct potentially parallel file list
     val filePaths = if (multiThreaded) listOfFiles.par else listOfFiles
 
-    // First pass
-    val asts = filePaths map { path: Path =>
-      val parser = new AParser(includeSearchPaths)
+    // First pass - Build AST
+    val (asts, paths) = {
+      filePaths map (AParser(_, includeSearchPaths)) zip filePaths collect {
+        case (Some(ast), path) => (ast, path)
+      }
+    }.unzip
 
-      // Build AST
-      Message.info(s"Parsing ${path.path}")
-      val ast = parser(path)
-
-      // Extract ports
-      VisitAST(ast) {
+    // Extract ports
+    asts foreach {
+      case (ast: Program) => VisitAST(ast) {
         case t @ Task(_, name, _, _) => {
           if (portMap contains name)
             Message.warning(s"$name defined multiple times")
@@ -113,13 +113,11 @@ object AlogicMain extends App {
         }
         case _ => true // Recurse
       }
-
-      (path, ast)
     }
 
     // Second pass
-    asts.foreach {
-      case (path: Path, ast: Program) =>
+    asts zip paths foreach {
+      case (ast: Program, path: Path) =>
         // Convert to state machine
         val prog: StateProgram = new MakeStates()(ast)
 
