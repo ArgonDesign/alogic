@@ -3,57 +3,59 @@ package alogic
 import scala.collection.concurrent.TrieMap
 
 import scalax.file.Path
+import scala.annotation.tailrec
 
-object LocMap {
+class Loc private (val file: String, val line: Int) {
+  override def toString = s"${file}:${line}"
+}
 
-  type LineMap = TrieMap[Range, String]
+object Loc {
+
+  private[this]type LineMap = TrieMap[Range, String]
 
   // Global object and hence accessed from multiple threads
-  val locMap = TrieMap[String, LineMap]()
+  private[this] val locMap = TrieMap[String, LineMap]()
 
-  // Canonicalise file names so equivalent paths map to the same string
-  private def canon(path: Path): String = path.toRealPath().path
+  def apply(path: Path, line: Int): Loc = {
 
-  private def canon(path: String): String = Path.fromString(path).toRealPath().path
+    // Map modified location to canonical source location
+    @tailrec def loop(file: String, line: Int): (String, Int) = {
+      if (!(locMap contains file)) {
+        (file, line)
+      } else {
+        val lineMap = locMap(file)
 
-  // Adjust map so that lines form 'file' that are in 'range'
-  // will be printed as belonging to file 'source'
-  def remap(file: Path, range: Range, source: Path) = {
-    val lineMap = locMap.getOrElseUpdate(canon(file), TrieMap[Range, String]())
-    lineMap(range) = canon(source)
-  }
-
-  // Map modified location to canonical source location
-  def apply(loc: Loc): Loc = {
-    val file = canon(loc.file)
-    if (!(locMap contains file)) {
-      loc
-    } else {
-      val lineMap = locMap(file)
-
-      // Find the mapping that contains this line
-      val mapping: Option[(Range, String)] = lineMap.find(_._1 contains loc.line)
-
-      mapping match {
-        // If found a mapping, remap source and location and apply recursively
-        case Some((range, source)) => {
-          apply(Loc(source, loc.line - range.start + 1))
-        }
-        // If not found a mapping, then adjust our own line number based on
-        // how many lines were added by the mappings preceding this line
-        case None => {
-          val addedLines = (0 /: lineMap.keys.filter(_.end < loc.line))(_ + _.size)
-          Loc(loc.file, loc.line - addedLines)
+        // Find the mapping that contains this line
+        lineMap.find(_._1 contains line) match {
+          // If found a mapping, remap source and location and apply recursively
+          case Some((range, source)) => {
+            loop(source, line - range.start + 1)
+          }
+          // If not found a mapping, then adjust our own line number based on
+          // how many lines were added by the mappings preceding this line
+          case None => {
+            val addedLines = (0 /: lineMap.keys.filter(_.end < line))(_ + _.size)
+            (file, line - addedLines)
+          }
         }
       }
     }
-  }
-}
 
-case class Loc(file: String, line: Int) {
-  override def toString = {
-    val rloc = LocMap(this)
-    val absPath = Path.fromString(rloc.file).toRealPath().path
-    s"${absPath}:${rloc.line}"
+    val (f, l) = loop(canon(path), line)
+
+    new Loc(f, l)
   }
+
+  def apply(path: String, line: Int): Loc = apply(Path.fromString(path), line)
+
+  // Adjust map so that lines form 'file' that are in 'range'
+  // will be printed as belonging to file 'source'
+  def remap(path: Path, range: Range, source: Path) = {
+    val lineMap = locMap.getOrElseUpdate(canon(path), TrieMap[Range, String]())
+    lineMap(range) = canon(source)
+  }
+
+  // Canonicalise file names so equivalent paths map to the same string
+  private[this] def canon(path: Path): String = path.toRealPath().path
+
 }

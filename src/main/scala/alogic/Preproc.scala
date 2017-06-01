@@ -172,7 +172,7 @@ object Preproc {
     // Apply the deferred remappings to the source location map for this processed file
     val remapCumSum = remaps.scanLeft(0)(_ + _._1.size)
     for (((range, source), offset) <- remaps zip remapCumSum) {
-      LocMap.remap(path, range.start + offset until range.end + offset, source)
+      Loc.remap(path, range.start + offset until range.end + offset, source)
     }
 
     (text, defines)
