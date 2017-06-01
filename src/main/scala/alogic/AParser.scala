@@ -12,8 +12,7 @@ class AParser(includeSearchPaths: List[Path]) {
     val builder = new AstBuilder()
 
     // First preprocess input file to deal with #define s
-    val preproc = new Preproc(includeSearchPaths)
-    val preprocessed: String = preproc(path)
+    val preprocessed = Preproc(path, includeSearchPaths)
 
     // Now parse the file
     val inputStream = new ANTLRInputStream(preprocessed)

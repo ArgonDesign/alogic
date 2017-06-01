@@ -10,34 +10,29 @@ import alogic.antlr._
 import alogic.antlr.VPreprocParser._
 import scalax.file.Path
 
-// The Cache maps
-// from (path, initialDefines)
-// to (text, finalDefines, finalRemaps)
-object PreprocCache extends Cache[(Path, Map[String, String]), (String, Map[String, String], List[(Range, Path)])] {
+object Preproc {
 
-  // Canonicalise path and convert to string to compute the unique tag
-  override type Tag = (String, Map[String, String])
+  // The Cache maps
+  // from (path, initialDefines)
+  // to (text, finalDefines, finalRemaps)
+  private object PreprocCache
+      extends Cache[(Path, Map[String, String]), (String, Map[String, String], List[(Range, Path)])] {
 
-  override def index(key: Key): Tag = {
-    val (path, initialDefines) = key;
-    (path.toRealPath().path, initialDefines)
-  }
+    // Canonicalise path and convert to string to compute the unique tag
+    override type Tag = (String, Map[String, String])
 
-}
+    override def index(key: Key): Tag = {
+      val (path, initialDefines) = key;
+      (path.toRealPath().path, initialDefines)
+    }
 
-class Preproc(
-    includeSearchPaths: List[Path],
-    initialDefines: Map[String, String] = Map[String, String]()) {
-
-  // Alternative constructor accepting mutable.Map for initialDefines
-  def this(
-    includeSearchPaths: List[Path],
-    initialDefines: mutable.Map[String, String]) = {
-    this(includeSearchPaths, Map[String, String]() ++ initialDefines)
   }
 
   // Private worker to use by recursive includes, returns defines as well
-  private def process(path: Path): (String, Map[String, String]) = {
+  private def process(
+    path: Path,
+    includeSearchPaths: List[Path],
+    initialDefines: immutable.Map[String, String]): (String, Map[String, String]) = {
     // Cache the text, final defines and the remapping
     val (text, defines, remaps) = PreprocCache(path, initialDefines) {
       // Map of #define to substitution
@@ -127,11 +122,10 @@ class Preproc(
             }
           }
 
-          // Create a new preprocessor and process the include file
-          val preproc = new Preproc(includeSearchPaths, defines)
-          val (text, newDefines) = preproc.process(resultPath)
+          // Process the include file in the current context
+          val (text, newDefines) = Preproc.process(resultPath, includeSearchPaths, immutable.Map() ++ defines)
 
-          // Add the new #defines from the incldued file, there is no need
+          // Add the new #defines from the included file, there is no need
           // to warn for redefinitions here, as we have passed in 'defines'
           // to the nested preprocessor, so we have already yielded all warnings
           defines ++= newDefines
@@ -185,5 +179,10 @@ class Preproc(
   }
 
   // Preprocess a file defined by path
-  def apply(path: Path): String = process(path)._1
+  def apply(
+    path: Path,
+    includeSearchPaths: List[Path],
+    initialDefines: Map[String, String] = Map()): String = {
+    process(path, includeSearchPaths, immutable.Map() ++ initialDefines)._1
+  }
 }
