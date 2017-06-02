@@ -8,9 +8,9 @@ channels {
 UINTTYPE: 'u' [0-9]+;
 
 INTTYPE: 'i' [0-9]+;
-  
+
 BOOL: 'bool';
-  
+
 TICKNUM: '\'' 's'? [bdhx] [0-9a-fA-F_]+ ;
 
 COLON: ':';
@@ -57,24 +57,24 @@ STRUCT: 'struct';
 IN: 'in';
 OUT: 'out';
 PARAM: 'const' | 'param';  // TODO move 'const' option and use it instead of #defines
-FENCE   : 'fence' ;   
-TRUE    : 'true' ;    
-FALSE   : 'false' ;   
-VOID    : 'void' ;    
-UINT    : 'uint' ;    
-INT     : 'int' ;     
-WHILE   : 'while' ;   
-DO      : 'do' ;      
-FOR     : 'for' ;     
-IF      : 'if' ;      
-GOTO    : 'goto' ;    
-ELSE    : 'else' ;    
-BREAK   : 'break' ;   
-RETURN  : 'return' ;  
-CASE    : 'case' ;    
-DEFAULT : 'default' ; 
-VERILOG : 'verilog' ; 
- 
+FENCE   : 'fence' ;
+TRUE    : 'true' ;
+FALSE   : 'false' ;
+VOID    : 'void' ;
+UINT    : 'uint' ;
+INT     : 'int' ;
+WHILE   : 'while' ;
+DO      : 'do' ;
+FOR     : 'for' ;
+IF      : 'if' ;
+GOTO    : 'goto' ;
+ELSE    : 'else' ;
+BREAK   : 'break' ;
+RETURN  : 'return' ;
+CASE    : 'case' ;
+DEFAULT : 'default' ;
+VERILOG : 'verilog' ;
+
 SYNC_READY_BUBBLE:  'sync' WS 'ready' WS 'bubble';
 WIRE_SYNC_ACCEPT:  'wire' WS 'sync' WS 'accept';
 SYNC_READY: 'sync' WS 'ready';
@@ -94,7 +94,7 @@ IDENTIFIER: SIMPLEID;
 fragment SIMPLEID: [a-zA-Z_][a-zA-Z0-9_$]* ;
 
 MINUS: '-';
-  
+
 BINARY_OP: '+' | '*';
 
 fragment NL
