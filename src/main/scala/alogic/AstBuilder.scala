@@ -97,8 +97,8 @@ class AstBuilder {
   }
 
   object TaskContentVisitor extends BaseVisitor[AlogicAST] {
-    override def visitFunction(ctx: FunctionContext) = Function(ctx.IDENTIFIER, ExprVisitor(ctx.statement()))
-    override def visitFenceFunction(ctx: FenceFunctionContext) = FenceFunction(ExprVisitor(ctx.statement()))
+    override def visitFunction(ctx: FunctionContext) = Function(ctx.IDENTIFIER, StatementVisitor(ctx.statement()))
+    override def visitFenceFunction(ctx: FenceFunctionContext) = FenceFunction(StatementVisitor(ctx.statement()))
     override def visitVerilogFunction(ctx: VerilogFunctionContext) = VerilogFunction(VerilogBodyVisitor(ctx.verilogbody()))
   }
 
@@ -124,7 +124,7 @@ class AstBuilder {
       NS.insert(ctx, ctx.IDENTIFIER),
       ExprVisitor(Option(ctx.initializer())))
 
-    override def visitDecl(ctx: DeclContext) = visit(ctx.declaration()) // TODO: Why is this requiresd?
+    override def visitDecl(ctx: DeclContext) = visit(ctx.declaration())
 
     override def visitVerilogDecl(ctx: VerilogDeclContext) =
       VerilogDeclaration(TypeVisitor(ctx.known_type()), InsertExprVisitor(ctx.primary_expr()))
@@ -184,7 +184,7 @@ class AstBuilder {
 
   object CaseVisitor extends BaseVisitor[AlogicAST] {
     override def visitDefaultCase(ctx: DefaultCaseContext) = {
-      val s = ExprVisitor(ctx.statement())
+      val s = StatementVisitor(ctx.statement())
       if (is_control_stmt(s))
         ControlCaseLabel(List(), s)
       else
@@ -192,7 +192,7 @@ class AstBuilder {
     }
 
     override def visitNormalCase(ctx: NormalCaseContext) = {
-      val s = ExprVisitor(ctx.statement())
+      val s = StatementVisitor(ctx.statement())
       val args = CommaArgsVisitor(ctx.comma_args())
       if (is_control_stmt(s))
         ControlCaseLabel(args, s)
@@ -276,7 +276,9 @@ class AstBuilder {
         case x              => x
       }
     }
+  }
 
+  object StatementVisitor extends BaseVisitor[AlogicAST] {
     private def is_control_label(cmd: AlogicAST): Boolean = cmd match {
       case ControlCaseLabel(_, _) => true
       case _                      => false
@@ -295,10 +297,13 @@ class AstBuilder {
 
     override def visitDeclStmt(ctx: DeclStmtContext) = DeclVisitor(ctx.declaration()) match {
       case s @ VarDeclaration(_, _, _) => DeclarationStmt(s)
-      case _                           => { Message.error(ctx, "Only variable declarations allowed as statements"); DeclarationStmt(VarDeclaration(State(), DottedName(List("Unknown")), None)) }
+      case _ => {
+        Message.error(ctx, "Only variable declarations allowed as statements")
+        DeclarationStmt(VarDeclaration(State(), DottedName(List("Unknown")), None))
+      }
     }
 
-    override def visitWhileStmt(ctx: WhileStmtContext) = WhileLoop(visit(ctx.expr()), {
+    override def visitWhileStmt(ctx: WhileStmtContext) = WhileLoop(ExprVisitor(ctx.expr()), {
       val body = visit(ctx.statement)
       if (!is_control_stmt(body))
         Message.error(ctx, "The body of a while loop must end with a control statement")
@@ -306,7 +311,7 @@ class AstBuilder {
     })
 
     override def visitIfStmt(ctx: IfStmtContext) = {
-      val cond = visit(ctx.expr())
+      val cond = ExprVisitor(ctx.expr())
       val yes = visit(ctx.thenStmt)
       val no = visit(Option(ctx.elseStmt))
       if (is_control_stmt(yes)) no match {
@@ -322,7 +327,7 @@ class AstBuilder {
     }
 
     override def visitCaseStmt(ctx: CaseStmtContext) = {
-      val test = visit(ctx.expr())
+      val test = ExprVisitor(ctx.expr())
       CaseVisitor(ctx.cases) match {
         case stmts if (stmts.forall(is_control_label)) => ControlCaseStmt(test, stmts)
         case stmts if (stmts.forall(x => !is_control_label(x))) => CombinatorialCaseStmt(test, stmts)
@@ -331,24 +336,23 @@ class AstBuilder {
     }
 
     override def visitForStmt(ctx: ForStmtContext) =
-      ControlFor(visit(ctx.init), visit(ctx.cond), visit(ctx.step), visit(ctx.stmts))
+      ControlFor(visit(ctx.init), ExprVisitor(ctx.cond), visit(ctx.step), visit(ctx.stmts))
 
     override def visitDoStmt(ctx: DoStmtContext) =
-      ControlDo(visit(ctx.expr), visit(ctx.stmts))
+      ControlDo(ExprVisitor(ctx.expr), visit(ctx.stmts))
 
-    override def aggregateResult(aggregate: AlogicAST, nextResult: AlogicAST) =
-      if (aggregate eq null) nextResult else aggregate
-
-    //    override def visitSingleStmt(ctx: SingleStmtContext) = visit(ctx.single_statement())
-    override def visitPrimaryIncStmt(ctx: PrimaryIncStmtContext) = Plusplus(visit(ctx.primary_expr()))
-    override def visitPrimaryDecStmt(ctx: PrimaryDecStmtContext) = Minusminus(visit(ctx.primary_expr()))
-    override def visitAssignStmt(ctx: AssignStmtContext) = Assign(visit(ctx.primary_expr()), ctx.assign_op, visit(ctx.expr()))
     override def visitFenceStmt(ctx: FenceStmtContext) = FenceStmt()
     override def visitBreakStmt(ctx: BreakStmtContext) = BreakStmt()
     override def visitReturnStmt(ctx: ReturnStmtContext) = ReturnStmt()
     override def visitDollarCommentStmt(ctx: DollarCommentStmtContext) = AlogicComment(ctx.LITERAL)
     override def visitGotoStmt(ctx: GotoStmtContext) = GotoStmt(ctx.IDENTIFIER)
-    override def visitParamAssign(ctx: ParamAssignContext) = Assign(visit(ctx.expr(0)), "=", visit(ctx.expr(1)))
+
+    override def visitAssignmentStmt(ctx: AssignmentStmtContext) = visit(ctx.assignment_statement)
+    override def visitPrimaryIncStmt(ctx: PrimaryIncStmtContext) = Plusplus(ExprVisitor(ctx.primary_expr()))
+    override def visitPrimaryDecStmt(ctx: PrimaryDecStmtContext) = Minusminus(ExprVisitor(ctx.primary_expr()))
+    override def visitAssignStmt(ctx: AssignStmtContext) = Assign(ExprVisitor(ctx.primary_expr()), ctx.assign_op, ExprVisitor(ctx.expr()))
+
+    override def visitExprStmt(ctx: ExprStmtContext) = ExprVisitor(ctx.primary_expr)
   }
 
   object CommaArgsVisitor extends BaseVisitor[List[AlogicAST]] {

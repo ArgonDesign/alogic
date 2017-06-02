@@ -162,7 +162,7 @@ statement
   | '$' '(' LITERAL ')' ';'                                 # DollarCommentStmt
   | 'goto' IDENTIFIER ';'                                   # GotoStmt
   | assignment_statement ';'                                # AssignmentStmt
-  | primary_expr ';'                                        # PrimaryStmt // Used when providing a function call by itself
+  | primary_expr ';'                                        # ExprStmt
   ;
 
 assign_op : '=' | ASSIGNOP;
