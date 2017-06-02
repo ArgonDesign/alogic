@@ -152,44 +152,30 @@ object AstOps {
           case Function(name, body)                      => Function(name, rewrite(body))
           case FenceFunction(body)                       => FenceFunction(rewrite(body))
           case Task(tasktype, name, decls, fns)          => Task(tasktype, name, decls, fns map rewrite)
-          case ArrayLookup(name, index)                  => ArrayLookup(rewrite(name), rewrite(index))
-          case BinaryArrayLookup(name, lhs, op, rhs)     => BinaryArrayLookup(rewrite(name), rewrite(lhs), op, rewrite(rhs))
-          case FunCall(name, args)                       => FunCall(rewrite(name), args map rewrite)
-          case Zxt(numbits, expr)                        => Zxt(rewrite(numbits), rewrite(expr))
-          case Sxt(numbits, expr)                        => Sxt(rewrite(numbits), rewrite(expr))
-          case DollarCall(name, args)                    => DollarCall(name, args map rewrite)
-          case ReadCall(name)                            => ReadCall(name)
-          case LockCall(name)                            => LockCall(name)
-          case UnlockCall(name)                          => UnlockCall(name)
-          case ValidCall(name)                           => ValidCall(name)
-          case WriteCall(name, args)                     => WriteCall(name, args map rewrite)
-          case Assign(lhs, rhs)                          => Assign(rewrite(lhs), rewrite(rhs))
-          case Update(lhs, op, rhs)                      => Update(rewrite(lhs), op, rewrite(rhs))
-          case Plusplus(lhs)                             => Plusplus(rewrite(lhs))
-          case Minusminus(lhs)                           => Minusminus(rewrite(lhs))
-          case BinaryOp(lhs, op, rhs)                    => BinaryOp(rewrite(lhs), op, rewrite(rhs))
-          case UnaryOp(op, lhs)                          => UnaryOp(op, rewrite(lhs))
-          case Bracket(content)                          => Bracket(rewrite(content))
-          case TernaryOp(cond, lhs, rhs)                 => TernaryOp(rewrite(cond), rewrite(lhs), rewrite(rhs))
+          case ArrayLookup(name, index)                  => ArrayLookup(rewrite(name), index)
+          case BinaryArrayLookup(name, lhs, op, rhs)     => BinaryArrayLookup(rewrite(name), lhs, op, rhs)
+          case FunCall(name, args)                       => FunCall(rewrite(name), args)
+          case Assign(lhs, rhs)                          => Assign(rewrite(lhs), rhs)
+          case x: Update                                 => x
+          case x: Plusplus                               => x
+          case x: Minusminus                             => x
           case CombinatorialBlock(cmds)                  => CombinatorialBlock(cmds map rewrite)
           case StateBlock(state, cmds)                   => StateBlock(state, cmds map rewrite)
           case x @ DeclarationStmt(decl: VarDeclaration) => x
           case CombinatorialIf(cond, body, Some(e))      => CombinatorialIf(rewrite(cond), rewrite(body), Some(rewrite(e)))
           case CombinatorialIf(cond, body, None)         => CombinatorialIf(rewrite(cond), rewrite(body), None)
-          case BitRep(count, value)                      => BitRep(rewrite(count), rewrite(value))
-          case BitCat(parts)                             => BitCat(parts map rewrite)
           case x @ AlogicComment(str)                    => x
           case CombinatorialCaseStmt(value, cases)       => CombinatorialCaseStmt(rewrite(value), cases map rewrite)
           case x @ Define()                              => x
           case x @ Typedef()                             => x
           case Program(cmds)                             => Program(cmds map rewrite)
           case ControlCaseStmt(value, cases)             => ControlCaseStmt(rewrite(value), cases map rewrite)
-          case ControlIf(cond, body, Some(e))            => ControlIf(rewrite(cond), rewrite(body), Some(rewrite(e)))
-          case ControlIf(cond, body, None)               => ControlIf(rewrite(cond), rewrite(body), None)
+          case ControlIf(cond, body, Some(e))            => ControlIf(cond, rewrite(body), Some(rewrite(e)))
+          case ControlIf(cond, body, None)               => ControlIf(cond, rewrite(body), None)
           case ControlBlock(cmds)                        => ControlBlock(cmds map rewrite)
-          case WhileLoop(cond, body)                     => WhileLoop(rewrite(cond), rewrite(body))
-          case ControlFor(init, cond, incr, body)        => ControlFor(rewrite(init), rewrite(cond), rewrite(incr), body map rewrite)
-          case ControlDo(cond, body)                     => ControlDo(rewrite(cond), body map rewrite)
+          case WhileLoop(cond, body)                     => WhileLoop(cond, rewrite(body))
+          case ControlFor(init, cond, incr, body)        => ControlFor(rewrite(init), cond, rewrite(incr), body map rewrite)
+          case ControlDo(cond, body)                     => ControlDo(cond, body map rewrite)
           case x @ FenceStmt()                           => x
           case x @ BreakStmt()                           => x
           case x @ ReturnStmt()                          => x
@@ -197,12 +183,43 @@ object AstOps {
           case StateProgram(cmds, numStates)             => StateProgram(cmds map rewrite, numStates)
           case x @ StateStmt(state: Int)                 => x
           case x @ GotoState(state: Int)                 => x
-          case x @ DottedName(names)                     => x
-          case x @ Literal(_)                            => x
-          case x @ Num(_)                                => x
           case x @ VerilogFunction(_)                    => x
-          case ControlCaseLabel(cond, body)              => ControlCaseLabel(cond map rewrite, rewrite(body))
-          case CombinatorialCaseLabel(cond, body)        => CombinatorialCaseLabel(cond map rewrite, rewrite(body))
+          case ControlCaseLabel(cond, body)              => ControlCaseLabel(cond, rewrite(body))
+          case CombinatorialCaseLabel(cond, body)        => CombinatorialCaseLabel(cond, rewrite(body))
+          case x: AlogicExpr                             => x
+        }
+      }
+    }
+
+    rewrite(tree)
+  }
+
+  def RewriteExpr(tree: AlogicExpr)(callback: AlogicExpr => Option[AlogicExpr]): AlogicExpr = {
+
+    def rewrite(tree: AlogicExpr): AlogicExpr = {
+      callback(tree) match {
+        case Some(x) => x
+        case None => tree match {
+          case ArrayLookup(name, index)              => ArrayLookup(name, rewrite(index))
+          case BinaryArrayLookup(name, lhs, op, rhs) => BinaryArrayLookup(name, rewrite(lhs), op, rewrite(rhs))
+          case FunCall(name, args)                   => FunCall(name, args map rewrite)
+          case Zxt(numbits, expr)                    => Zxt(rewrite(numbits), rewrite(expr))
+          case Sxt(numbits, expr)                    => Sxt(rewrite(numbits), rewrite(expr))
+          case DollarCall(name, args)                => DollarCall(name, args map rewrite)
+          case ReadCall(name)                        => ReadCall(name)
+          case LockCall(name)                        => LockCall(name)
+          case UnlockCall(name)                      => UnlockCall(name)
+          case ValidCall(name)                       => ValidCall(name)
+          case WriteCall(name, args)                 => WriteCall(name, args map rewrite)
+          case BinaryOp(lhs, op, rhs)                => BinaryOp(rewrite(lhs), op, rewrite(rhs))
+          case UnaryOp(op, lhs)                      => UnaryOp(op, rewrite(lhs))
+          case Bracket(content)                      => Bracket(rewrite(content))
+          case TernaryOp(cond, lhs, rhs)             => TernaryOp(rewrite(cond), rewrite(lhs), rewrite(rhs))
+          case BitRep(count, value)                  => BitRep(rewrite(count), rewrite(value))
+          case BitCat(parts)                         => BitCat(parts map rewrite)
+          case x: DottedName                         => x
+          case x: Literal                            => x
+          case x: Num                                => x
         }
       }
     }

@@ -48,7 +48,7 @@ class AstBuilder {
   typedefs("state") = State()
 
   // Convert identifier to tree
-  private[this] def identifier(ident: String): AlogicAST = DottedName(List(ident))
+  private[this] def identifier(ident: String): AlogicExpr = DottedName(List(ident))
 
   object FunVisitor extends BaseVisitor[Unit] {
     override def visitFunction(ctx: FunctionContext): Unit = NS.insert(ctx, ctx.IDENTIFIER)
@@ -91,8 +91,16 @@ class AstBuilder {
       Connect(visit(ctx.dotted_name()), CommaArgsVisitor(ctx.comma_args())) // TODO check that these names exist?
     }
 
+    object ParamArgsVisitor extends BaseVisitor[List[Assign]] {
+      object ParamAssignVisitor extends BaseVisitor[Assign] {
+        override def visitParamAssign(ctx: ParamAssignContext) = Assign(ExprVisitor(ctx.expr(0)), ExprVisitor(ctx.expr(1)))
+      }
+
+      override def visitParam_args(ctx: Param_argsContext) = ParamAssignVisitor(ctx.es)
+    }
+
     override def visitInstantiate(ctx: InstantiateContext) = {
-      Instantiate(ctx.IDENTIFIER(0), ctx.IDENTIFIER(1), CommaArgsVisitor(ctx.param_args()))
+      Instantiate(ctx.IDENTIFIER(0), ctx.IDENTIFIER(1), ParamArgsVisitor(ctx.param_args()))
     }
   }
 
@@ -203,7 +211,7 @@ class AstBuilder {
 
   // Statement visitors
 
-  object ExprVisitor extends BaseVisitor[AlogicAST] {
+  object ExprVisitor extends BaseVisitor[AlogicExpr] {
     override def visitTernaryExpr(ctx: TernaryExprContext) = TernaryOp(visit(ctx.binary_expr()), visit(ctx.expr(0)), visit(ctx.expr(1)))
     override def visitBinaryExpr(ctx: BinaryExprContext) = BinaryOp(visit(ctx.unary_expr()), ctx.binary_op(), visit(ctx.expr()))
     override def visitUnaryExpr(ctx: UnaryExprContext) = UnaryOp(ctx.unary_op().getText(), visit(ctx.primary_expr()))
@@ -264,11 +272,9 @@ class AstBuilder {
     override def visitDollarExpr(ctx: DollarExprContext) = DollarCall(ctx.DOLLAR, CommaArgsVisitor(ctx.comma_args()))
     override def visitDotted_name(ctx: Dotted_nameContext) = LookupName(ctx, DottedName(ctx.es.toList.map(_.text)))
 
-    // This function handles #defines and namespace lookups
-    // Convert using #defines where necessary
-    private def LookupName(ctx: ParserRuleContext, dotname: DottedName): AlogicAST = {
+    // This function handles namespace lookups
+    private def LookupName(ctx: ParserRuleContext, dotname: DottedName): AlogicExpr = {
       val s = dotname.names
-      // Check for a #define conversion
       val name2 = if (s.length == 1) identifier(s(0)) else dotname
       // Check in namespace and rewrite if necessary
       name2 match {
@@ -356,10 +362,8 @@ class AstBuilder {
     override def visitExprStmt(ctx: ExprStmtContext) = ExprVisitor(ctx.primary_expr)
   }
 
-  object CommaArgsVisitor extends BaseVisitor[List[AlogicAST]] {
+  object CommaArgsVisitor extends BaseVisitor[List[AlogicExpr]] {
     override def visitComma_args(ctx: Comma_argsContext) = ExprVisitor(ctx.es)
-
-    override def visitParam_args(ctx: Param_argsContext) = ExprVisitor(ctx.es)
   }
 
   object TypeVisitor extends BaseVisitor[AlogicType] {
