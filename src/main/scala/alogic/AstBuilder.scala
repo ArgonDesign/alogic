@@ -261,7 +261,7 @@ class AstBuilder {
       }
     }
     override def visitDollarExpr(ctx: DollarExprContext) = DollarCall(ctx.DOLLAR, CommaArgsVisitor(ctx.comma_args()))
-    override def visitDotted_name(ctx: Dotted_nameContext) = LookupName(ctx, DottedName(ctx.es.toList.map(a => a.getText())))
+    override def visitDotted_name(ctx: Dotted_nameContext) = LookupName(ctx, DottedName(ctx.es.toList.map(_.text)))
 
     // This function handles #defines and namespace lookups
     // Convert using #defines where necessary
@@ -342,7 +342,7 @@ class AstBuilder {
     override def visitSingleStmt(ctx: SingleStmtContext) = visit(ctx.single_statement())
     override def visitPrimaryIncStmt(ctx: PrimaryIncStmtContext) = Plusplus(visit(ctx.primary_expr()))
     override def visitPrimaryDecStmt(ctx: PrimaryDecStmtContext) = Minusminus(visit(ctx.primary_expr()))
-    override def visitAssignStmt(ctx: AssignStmtContext) = Assign(visit(ctx.primary_expr()), ctx.assign_op.getText(), visit(ctx.expr()))
+    override def visitAssignStmt(ctx: AssignStmtContext) = Assign(visit(ctx.primary_expr()), ctx.assign_op, visit(ctx.expr()))
     override def visitFenceStmt(ctx: FenceStmtContext) = FenceStmt()
     override def visitBreakStmt(ctx: BreakStmtContext) = BreakStmt()
     override def visitReturnStmt(ctx: ReturnStmtContext) = ReturnStmt()

@@ -12,8 +12,8 @@ import org.antlr.v4.runtime.tree.TerminalNode
 import org.antlr.v4.runtime.tree.Tree
 import org.antlr.v4.runtime.RuleContext
 
-trait Antlr4Conversions extends WrapAsScala with WrapAsJava {
-  implicit class ParserRuleContextWrapper(val ctx: ParserRuleContext) {
+object Antlr4Conversions extends WrapAsScala with WrapAsJava {
+  implicit class ParserRuleContextWrapper(val ctx: ParserRuleContext) extends AnyVal {
     def sourceText: String = {
       val inputStream = ctx.start.getInputStream
       val startIdx = ctx.start.getStartIndex
@@ -36,7 +36,7 @@ trait Antlr4Conversions extends WrapAsScala with WrapAsJava {
     def loc = ctx.start.loc
   }
 
-  implicit class TokenWrapper(val token: Token) {
+  implicit class TokenWrapper(val token: Token) extends AnyVal {
     def loc = Loc(token.getTokenSource.getSourceName, token.getLine)
 
     def text = token.getText
@@ -46,7 +46,7 @@ trait Antlr4Conversions extends WrapAsScala with WrapAsJava {
     def isHidden = token.getChannel != Token.DEFAULT_CHANNEL
   }
 
-  implicit class ParseTreeWrapper(val node: ParseTree) {
+  implicit class ParseTreeWrapper(val node: ParseTree) extends AnyVal {
     def text = node.getText
 
     def children: List[ParseTree] = {
@@ -55,7 +55,7 @@ trait Antlr4Conversions extends WrapAsScala with WrapAsJava {
     }.toList
   }
 
-  implicit class TreeWrapper(val node: Tree) {
+  implicit class TreeWrapper(val node: Tree) extends AnyVal {
     private[this] def descendantOf(self: Tree, that: Tree): Boolean = {
       var parent = self.getParent
       while (parent != null) {
@@ -77,5 +77,3 @@ trait Antlr4Conversions extends WrapAsScala with WrapAsJava {
 
   implicit def parserRuleContextToString(ctx: ParserRuleContext): String = ctx.text
 }
-
-object Antlr4Conversions extends Antlr4Conversions {}
