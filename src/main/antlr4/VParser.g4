@@ -137,26 +137,35 @@ case_stmt :
   | comma_args COLON statement # NormalCase
   ;
 
-else_statement : ELSE statement;
-
 statement
-  : LEFTCURLY (stmts+=statement)* RIGHTCURLY  # BlockStmt
-  | declaration SEMICOLON # DeclStmt
-  | WHILE LEFTBRACKET expr RIGHTBRACKET statement # WhileStmt
-  | IF LEFTBRACKET expr RIGHTBRACKET statement else_statement? # IfStmt
-  | CASE LEFTBRACKET expr RIGHTBRACKET LEFTCURLY (cases+=case_stmt)+ RIGHTCURLY # CaseStmt
-  | FOR LEFTBRACKET init=assignment_statement SEMICOLON expr SEMICOLON step=assignment_statement RIGHTBRACKET LEFTCURLY (stmts += statement)* RIGHTCURLY # ForStmt
-  | DO LEFTCURLY (stmts += statement)* RIGHTCURLY WHILE LEFTBRACKET expr RIGHTBRACKET SEMICOLON  # DoStmt
-  | FENCE ';'                   # FenceStmt
-  | BREAK ';'                   # BreakStmt
-  | RETURN ';'                  # ReturnStmt
-  | '$' '(' LITERAL ')' ';'     # DollarCommentStmt
-  | 'goto' IDENTIFIER ';'       # GotoStmt
-  | assignment_statement ';'    # AssignmentStmt
-  | primary_expr ';'            # PrimaryStmt // Used when providing a function call by itself
+  : LEFTCURLY (stmts+=statement)* RIGHTCURLY                # BlockStmt
+  | declaration ';'                                         # DeclStmt
+  | 'while' '(' expr ')' statement                          # WhileStmt
+  | 'if' '(' expr ')'
+      thenStmt=statement
+    ('else'
+      elseStmt=statement)?                                  # IfStmt
+  | 'case' '(' expr ')' LEFTCURLY
+      (cases+=case_stmt)+
+    RIGHTCURLY                                              # CaseStmt
+  | 'for' '(' init=assignment_statement ';'
+              cond=expr ';'
+              step=assignment_statement ')' LEFTCURLY
+      (stmts += statement)*
+    RIGHTCURLY                                              # ForStmt
+  | 'do' LEFTCURLY
+      (stmts += statement)*
+    RIGHTCURLY 'while' '(' expr ')' ';'                     # DoStmt
+  | 'fence' ';'                                             # FenceStmt
+  | 'break' ';'                                             # BreakStmt
+  | 'return' ';'                                            # ReturnStmt
+  | '$' '(' LITERAL ')' ';'                                 # DollarCommentStmt
+  | 'goto' IDENTIFIER ';'                                   # GotoStmt
+  | assignment_statement ';'                                # AssignmentStmt
+  | primary_expr ';'                                        # PrimaryStmt // Used when providing a function call by itself
   ;
 
-assign_op : EQUALS | ASSIGNOP;
+assign_op : '=' | ASSIGNOP;
 
 assignment_statement
   : primary_expr '++'             # PrimaryIncStmt

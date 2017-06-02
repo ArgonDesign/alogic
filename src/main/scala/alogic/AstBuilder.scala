@@ -307,8 +307,8 @@ class AstBuilder {
 
     override def visitIfStmt(ctx: IfStmtContext) = {
       val cond = visit(ctx.expr())
-      val yes = visit(ctx.statement())
-      val no = visit(Option(ctx.else_statement()))
+      val yes = visit(ctx.thenStmt)
+      val no = visit(Option(ctx.elseStmt))
       if (is_control_stmt(yes)) no match {
         case None                            => ControlIf(cond, yes, no)
         case Some(s) if (is_control_stmt(s)) => ControlIf(cond, yes, no)
@@ -331,7 +331,7 @@ class AstBuilder {
     }
 
     override def visitForStmt(ctx: ForStmtContext) =
-      ControlFor(visit(ctx.init), visit(ctx.expr), visit(ctx.step), visit(ctx.stmts))
+      ControlFor(visit(ctx.init), visit(ctx.cond), visit(ctx.step), visit(ctx.stmts))
 
     override def visitDoStmt(ctx: DoStmtContext) =
       ControlDo(visit(ctx.expr), visit(ctx.stmts))
