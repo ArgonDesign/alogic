@@ -118,7 +118,6 @@ secondary_expr :
   | LEFTBRACKET expr RIGHTBRACKET # BracketExpr
   | TICKNUM # TicknumExpr
   | CONSTANT TICKNUM # ConstantTickNumExpr
-  | IDENTIFIER TICKNUM # IdentifierTickNumExpr // Used to handle #define for the NUM'd0
   | CONSTANT # ConstantExpr
   | LITERAL # LiteralExpr
   | LEFTCURLY expr LEFTCURLY expr RIGHTCURLY RIGHTCURLY # BitRepExpr

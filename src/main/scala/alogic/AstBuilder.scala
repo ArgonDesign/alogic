@@ -215,14 +215,6 @@ class AstBuilder {
     override def visitBracketExpr(ctx: BracketExprContext) = Bracket(visit(ctx.expr()))
     override def visitTicknumExpr(ctx: TicknumExprContext) = Num(ctx.TICKNUM)
     override def visitConstantTickNumExpr(ctx: ConstantTickNumExprContext) = Num(ctx.CONSTANT + ctx.TICKNUM)
-    override def visitIdentifierTickNumExpr(ctx: IdentifierTickNumExprContext) = {
-      val id = identifier(ctx.IDENTIFIER)
-      val tick = ctx.TICKNUM.text
-      id match {
-        case Num(s) => Num(s + tick)
-        case _      => { Message.error(ctx, s"Cannot build a number from '$id$tick'"); Num("Unknown") }
-      }
-    }
     override def visitConstantExpr(ctx: ConstantExprContext) = Num(ctx.CONSTANT)
     override def visitLiteralExpr(ctx: LiteralExprContext) = Literal(ctx.LITERAL)
     override def visitBitRepExpr(ctx: BitRepExprContext) = BitRep(visit(ctx.expr(0)), visit(ctx.expr(1)))
