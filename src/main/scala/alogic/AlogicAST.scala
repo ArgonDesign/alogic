@@ -8,10 +8,10 @@ package alogic
 
 // // TaskType defines different types of modules
 sealed trait TaskType
-case class Fsm() extends TaskType
-case class Pipeline() extends TaskType
-case class Network() extends TaskType
-case class Verilog() extends TaskType
+case object Fsm extends TaskType
+case object Pipeline extends TaskType
+case object Network extends TaskType
+case object Verilog extends TaskType
 //
 // // Declaration used for top-level and function declarations
 sealed trait Declaration
@@ -64,8 +64,8 @@ case class BitRep(count: AlogicExpr, value: AlogicExpr) extends AlogicExpr
 case class BitCat(parts: List[AlogicExpr]) extends AlogicExpr
 
 // Types removed by AstBuilder
-case class Define() extends AlogicAST
-case class Typedef() extends AlogicAST
+case object Define extends AlogicAST
+case object Typedef extends AlogicAST
 
 // Types removed by Desugar
 case class Update(lhs: AlogicExpr, op: String, rhs: AlogicExpr) extends AlogicAST
@@ -80,9 +80,9 @@ case class ControlBlock(cmds: List[AlogicAST]) extends AlogicAST
 case class WhileLoop(cond: AlogicExpr, body: AlogicAST) extends AlogicAST
 case class ControlFor(init: AlogicAST, cond: AlogicExpr, incr: AlogicAST, body: List[AlogicAST]) extends AlogicAST
 case class ControlDo(cond: AlogicExpr, body: List[AlogicAST]) extends AlogicAST
-case class FenceStmt() extends AlogicAST
-case class BreakStmt() extends AlogicAST
-case class ReturnStmt() extends AlogicAST
+case object FenceStmt extends AlogicAST
+case object BreakStmt extends AlogicAST
+case object ReturnStmt extends AlogicAST
 case class GotoStmt(target: String) extends AlogicAST
 case class ControlCaseLabel(cond: List[AlogicExpr], body: AlogicAST) extends AlogicAST
 
@@ -97,7 +97,7 @@ sealed trait AlogicType
 case class IntType(signed: Boolean, size: Int) extends AlogicType
 case class IntVType(signed: Boolean, args: List[AlogicAST]) extends AlogicType // variable number of bits definition
 case class Struct(fields: List[FieldType]) extends AlogicType
-case class State() extends AlogicType // Type with enough bits to hold state variable
+case object State extends AlogicType // Type with enough bits to hold state variable
 
 // FieldType used for fields within a structure
 sealed trait FieldType
@@ -105,10 +105,10 @@ case class Field(typ: AlogicType, name: String) extends FieldType
 
 // SyncType for allowed port types
 sealed trait SyncType
-case class SyncReadyBubble() extends SyncType
-case class SyncReady() extends SyncType
-case class SyncAccept() extends SyncType
-case class Sync() extends SyncType
-case class WireSyncAccept() extends SyncType
-case class WireSync() extends SyncType
-case class Wire() extends SyncType
+case object SyncReadyBubble extends SyncType
+case object SyncReady extends SyncType
+case object SyncAccept extends SyncType
+case object Sync extends SyncType
+case object WireSyncAccept extends SyncType
+case object WireSync extends SyncType
+case object Wire extends SyncType

@@ -59,10 +59,10 @@ final class MakeStates {
     // Add a declaration for the state variable
     if (fn2state contains "main") {
       val start = fn2state("main")
-      val sd = VarDeclaration(State(), DottedName("state" :: Nil), Some(makeNum(start)))
+      val sd = VarDeclaration(State, DottedName("state" :: Nil), Some(makeNum(start)))
       val prog2 = RewriteAST(prog) {
-        case Task(tasktype @ Fsm(), name, decls, fns) => Some(Task(tasktype, name, sd :: decls, fns))
-        case _                                        => None
+        case Task(Fsm, name, decls, fns) => Some(Task(Fsm, name, sd :: decls, fns))
+        case _                           => None
       }
       prog2.asInstanceOf[StateProgram]
     } else {
@@ -110,9 +110,9 @@ final class MakeStates {
   // If startState >= 0 it means the current list consists simply of StateStmt(startState)
   //    This can be useful to avoid emitting an empty state
   def makeStates(startState: Int, finalState: Int, tree: AlogicAST): List[AlogicAST] = tree match {
-    case FenceStmt() => List(GotoState(finalState))
-    case BreakStmt() => List(GotoState(breakTargets.head))
-    case ReturnStmt() => List(
+    case FenceStmt => List(GotoState(finalState))
+    case BreakStmt => List(GotoState(breakTargets.head))
+    case ReturnStmt => List(
       Minusminus(callDepth),
       GotoStmt("call_stack[call_depth_nxt]"))
     case GotoStmt(t) => List(GotoState(fn2state(t))) // TODO check targets exist in AstBuilder to avoid exception here

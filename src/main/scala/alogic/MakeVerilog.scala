@@ -74,8 +74,8 @@ final class MakeVerilog {
       case Task(t, n, decls, _) => {
         modname = n
         outtype = t match {
-          case Fsm() | Pipeline()    => "reg "
-          case Network() | Verilog() => "wire "
+          case Fsm | Pipeline    => "reg "
+          case Network | Verilog => "wire "
         }
         decls foreach { x => id2decl(ExtractName(x)) = x }; true
       }
@@ -115,8 +115,8 @@ final class MakeVerilog {
     }
     def typeString(typ: AlogicType): String = {
       val typ2 = typ match {
-        case State() => IntType(false, log2numstates)
-        case x       => x
+        case State => IntType(false, log2numstates)
+        case x     => x
       }
       typ2 match {
         case IntType(b, size) => writeSigned(b) + writeSize(size)
@@ -130,8 +130,8 @@ final class MakeVerilog {
     def writeVarInternal(typ: AlogicType, name: StrTree, resetToZero: Boolean): Unit = {
       // Convert state to uint type
       val typ2 = typ match {
-        case State() => IntType(false, log2numstates)
-        case x       => x
+        case State => IntType(false, log2numstates)
+        case x     => x
       }
       val nm = name.toString
       typ2 match {
@@ -386,7 +386,7 @@ final class MakeVerilog {
   def MakeNumBits(typ: AlogicType): StrTree = typ match {
     case IntType(signed, size)  => Str(s"$size")
     case IntVType(signed, args) => StrList(args.map(MakeExpr), "*")
-    case State()                => Str(s"$log2numstates")
+    case State                  => Str(s"$log2numstates")
     case Struct(fields)         => StrList(fields.map(MakeNumBits), "+")
   }
 
@@ -407,7 +407,7 @@ final class MakeVerilog {
       id2decl(n)
     }
     case ReadCall(name) => GetType(name)
-    case _              => { Message.fatal(s"Cannot compute type for $tree"); State() }
+    case _              => { Message.fatal(s"Cannot compute type for $tree"); State }
   }
 
   // Construct a string for an expression
@@ -487,11 +487,11 @@ final class MakeVerilog {
         d match {
           case OutDeclaration(synctype, _, _) => {
             synctype match {
-              case SyncReadyBubble() => add(s"$go = $go && !${valid(n)};\n")
-              case SyncReady()       => add(s"$go = $go && (!${valid(n)} || !${ready(n)});\n")
-              case SyncAccept()      => Message.fatal("sync accept only supported as wire output type") // TODO check this earlier
-              case WireSyncAccept()  => add(s"$go = $go && ${accept(n)};\n")
-              case _                 =>
+              case SyncReadyBubble => add(s"$go = $go && !${valid(n)};\n")
+              case SyncReady       => add(s"$go = $go && (!${valid(n)} || !${ready(n)});\n")
+              case SyncAccept      => Message.fatal("sync accept only supported as wire output type") // TODO check this earlier
+              case WireSyncAccept  => add(s"$go = $go && ${accept(n)};\n")
+              case _               =>
             }
             if (HasValid(synctype))
               add(s"${valid(n)} = 1'b1;\n")

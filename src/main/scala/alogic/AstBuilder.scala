@@ -45,7 +45,7 @@ class AstBuilder {
   private[this] val typedefs = mutable.Map[String, AlogicType]()
   private[this] val NS = new Namespace()
 
-  typedefs("state") = State()
+  typedefs("state") = State
 
   // Convert identifier to tree
   private[this] def identifier(ident: String): AlogicExpr = DottedName(List(ident))
@@ -68,7 +68,7 @@ class AstBuilder {
       } else {
         typedefs(s) = TypeVisitor(ctx.known_type())
       }
-      Typedef()
+      Typedef
     }
 
     override def visitTask(ctx: TaskContext) = {
@@ -81,7 +81,7 @@ class AstBuilder {
 
     override def visitNetwork(ctx: NetworkContext) = {
       Task(
-        Network(),
+        Network,
         ctx.IDENTIFIER,
         DeclVisitor(ctx.decls),
         visit(ctx.contents))
@@ -174,20 +174,20 @@ class AstBuilder {
   }
 
   object TasktypeVisitor extends BaseVisitor[TaskType] {
-    override def visitFsmType(ctx: FsmTypeContext) = Fsm()
-    override def visitPipelineType(ctx: PipelineTypeContext) = Pipeline()
-    override def visitVerilogType(ctx: VerilogTypeContext) = Verilog()
+    override def visitFsmType(ctx: FsmTypeContext) = Fsm
+    override def visitPipelineType(ctx: PipelineTypeContext) = Pipeline
+    override def visitVerilogType(ctx: VerilogTypeContext) = Verilog
   }
 
   object SyncTypeVisitor extends BaseVisitor[SyncType] {
-    override def visitSyncReadyBubbleType(ctx: SyncReadyBubbleTypeContext) = SyncReadyBubble()
-    override def visitWireSyncAcceptType(ctx: WireSyncAcceptTypeContext) = WireSyncAccept()
-    override def visitSyncReadyType(ctx: SyncReadyTypeContext) = SyncReady()
-    override def visitWireSyncType(ctx: WireSyncTypeContext) = WireSync()
-    override def visitSyncAcceptType(ctx: SyncAcceptTypeContext) = SyncAccept()
-    override def visitSyncType(ctx: SyncTypeContext) = Sync()
-    override def visitWireType(ctx: WireTypeContext) = Wire()
-    override val defaultResult = Wire()
+    override def visitSyncReadyBubbleType(ctx: SyncReadyBubbleTypeContext) = SyncReadyBubble
+    override def visitWireSyncAcceptType(ctx: WireSyncAcceptTypeContext) = WireSyncAccept
+    override def visitSyncReadyType(ctx: SyncReadyTypeContext) = SyncReady
+    override def visitWireSyncType(ctx: WireSyncTypeContext) = WireSync
+    override def visitSyncAcceptType(ctx: SyncAcceptTypeContext) = SyncAccept
+    override def visitSyncType(ctx: SyncTypeContext) = Sync
+    override def visitWireType(ctx: WireTypeContext) = Wire
+    override val defaultResult = Wire
   }
 
   object CaseVisitor extends BaseVisitor[AlogicAST] {
@@ -305,7 +305,7 @@ class AstBuilder {
       case s @ VarDeclaration(_, _, _) => DeclarationStmt(s)
       case _ => {
         Message.error(ctx, "Only variable declarations allowed as statements")
-        DeclarationStmt(VarDeclaration(State(), DottedName(List("Unknown")), None))
+        DeclarationStmt(VarDeclaration(State, DottedName(List("Unknown")), None))
       }
     }
 
@@ -347,9 +347,9 @@ class AstBuilder {
     override def visitDoStmt(ctx: DoStmtContext) =
       ControlDo(ExprVisitor(ctx.expr), visit(ctx.stmts))
 
-    override def visitFenceStmt(ctx: FenceStmtContext) = FenceStmt()
-    override def visitBreakStmt(ctx: BreakStmtContext) = BreakStmt()
-    override def visitReturnStmt(ctx: ReturnStmtContext) = ReturnStmt()
+    override def visitFenceStmt(ctx: FenceStmtContext) = FenceStmt
+    override def visitBreakStmt(ctx: BreakStmtContext) = BreakStmt
+    override def visitReturnStmt(ctx: ReturnStmtContext) = ReturnStmt
     override def visitDollarCommentStmt(ctx: DollarCommentStmtContext) = AlogicComment(ctx.LITERAL)
     override def visitGotoStmt(ctx: GotoStmtContext) = GotoStmt(ctx.IDENTIFIER)
 

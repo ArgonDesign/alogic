@@ -21,9 +21,9 @@ object AstOps {
 
   // Does this statement translate to a goto?
   def is_control_stmt(cmd: AlogicAST): Boolean = cmd match {
-    case FenceStmt()                     => true
-    case BreakStmt()                     => true
-    case ReturnStmt()                    => true
+    case FenceStmt                       => true
+    case BreakStmt                       => true
+    case ReturnStmt                      => true
     case GotoStmt(target)                => true
     case ControlBlock(s)                 => true
     case ControlIf(cond, body, elsebody) => true
@@ -37,22 +37,22 @@ object AstOps {
 
   // Does this sync type contain a valid line?
   def HasValid(s: SyncType): Boolean = s match {
-    case Wire() => false
-    case _      => true
+    case Wire => false
+    case _    => true
   }
 
   // Does this sync type contain a ready line?
   def HasReady(s: SyncType): Boolean = s match {
-    case SyncReadyBubble() => true
-    case SyncReady()       => true
-    case _                 => false
+    case SyncReadyBubble => true
+    case SyncReady       => true
+    case _               => false
   }
 
   // Does this sync type contain an accept line?
   def HasAccept(s: SyncType): Boolean = s match {
-    case SyncAccept()     => true
-    case WireSyncAccept() => true
-    case _                => false
+    case SyncAccept     => true
+    case WireSyncAccept => true
+    case _              => false
   }
 
   // Recurse through the tree and apply function to all nodes in pre-order
@@ -94,8 +94,8 @@ object AstOps {
           case BitCat(parts)                         => parts foreach visit
           case AlogicComment(str)                    =>
           case CombinatorialCaseStmt(value, cases)   => { visit(value); cases foreach visit }
-          case Define()                              =>
-          case Typedef()                             =>
+          case Define                                =>
+          case Typedef                               =>
           case Program(cmds)                         => cmds foreach visit
           case ControlCaseStmt(value, cases)         => { visit(value); cases foreach visit }
           case ControlIf(cond, body, Some(e))        => { visit(cond); visit(body); visit(e) }
@@ -104,9 +104,9 @@ object AstOps {
           case WhileLoop(cond, body)                 => { visit(cond); visit(body) }
           case ControlFor(init, cond, incr, body)    => { visit(init); visit(cond); visit(incr); body foreach visit }
           case ControlDo(cond, body)                 => { visit(cond); body foreach visit }
-          case FenceStmt()                           =>
-          case BreakStmt()                           =>
-          case ReturnStmt()                          =>
+          case FenceStmt                             =>
+          case BreakStmt                             =>
+          case ReturnStmt                            =>
           case GotoStmt(target: String)              =>
           case StateProgram(cmds, numStates)         => cmds foreach visit
           case StateStmt(state: Int)                 =>
@@ -166,8 +166,8 @@ object AstOps {
           case CombinatorialIf(cond, body, None)         => CombinatorialIf(rewrite(cond), rewrite(body), None)
           case x @ AlogicComment(str)                    => x
           case CombinatorialCaseStmt(value, cases)       => CombinatorialCaseStmt(rewrite(value), cases map rewrite)
-          case x @ Define()                              => x
-          case x @ Typedef()                             => x
+          case Define                                    => Define
+          case Typedef                                   => Typedef
           case Program(cmds)                             => Program(cmds map rewrite)
           case ControlCaseStmt(value, cases)             => ControlCaseStmt(rewrite(value), cases map rewrite)
           case ControlIf(cond, body, Some(e))            => ControlIf(cond, rewrite(body), Some(rewrite(e)))
@@ -176,9 +176,9 @@ object AstOps {
           case WhileLoop(cond, body)                     => WhileLoop(cond, rewrite(body))
           case ControlFor(init, cond, incr, body)        => ControlFor(rewrite(init), cond, rewrite(incr), body map rewrite)
           case ControlDo(cond, body)                     => ControlDo(cond, body map rewrite)
-          case x @ FenceStmt()                           => x
-          case x @ BreakStmt()                           => x
-          case x @ ReturnStmt()                          => x
+          case FenceStmt                                 => FenceStmt
+          case BreakStmt                                 => BreakStmt
+          case ReturnStmt                                => ReturnStmt
           case x @ GotoStmt(target: String)              => x
           case StateProgram(cmds, numStates)             => StateProgram(cmds map rewrite, numStates)
           case x @ StateStmt(state: Int)                 => x
