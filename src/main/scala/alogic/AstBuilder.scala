@@ -28,9 +28,19 @@ import org.antlr.v4.runtime.tree.RuleNode
 
 class AstBuilder {
   class BaseVisitor[T] extends VParserBaseVisitor[T] {
-    def apply[U <: RuleNode](ctx: U): T = {
-      if (ctx eq null) defaultResult else visit(ctx)
-    }
+    def apply[U <: RuleNode](ctx: U): T = if (ctx eq null) defaultResult else visit(ctx)
+
+    def apply[U <: RuleNode](ctxList: List[U]): List[T] = ctxList.map(apply(_))
+
+    def apply[U <: RuleNode](ctxList: java.util.List[U]): List[T] = apply(ctxList.toList)
+
+    def apply[U <: RuleNode](ctxOpt: Option[U]): Option[T] = ctxOpt.map(apply(_))
+
+    def visit[U <: RuleNode](ctxList: List[U]): List[T] = apply(ctxList)
+
+    def visit[U <: RuleNode](ctxList: java.util.List[U]): List[T] = apply(ctxList)
+
+    def visit[U <: RuleNode](ctxOpt: Option[U]): Option[T] = apply(ctxOpt)
   }
 
   val typedefs = mutable.Map[String, AlogicType]()
@@ -46,9 +56,7 @@ class AstBuilder {
   }
 
   object ProgVisitor extends BaseVisitor[List[AlogicAST]] {
-    override def visitStart(ctx: StartContext) = {
-      ctx.entities.asScala.toList.map(EntityVisitor.visit)
-    }
+    override def visitStart(ctx: StartContext) = EntityVisitor(ctx.entities)
   }
 
   object EntityVisitor extends BaseVisitor[AlogicAST] {
@@ -66,16 +74,16 @@ class AstBuilder {
       Task(
         TasktypeVisitor(ctx.tasktype),
         ctx.IDENTIFIER,
-        ctx.decls.toList.map(DeclVisitor.visit),
-        ctx.contents.toList.map(TaskContentVisitor.visit))
+        DeclVisitor(ctx.decls),
+        TaskContentVisitor(ctx.contents))
     }
 
     override def visitNetwork(ctx: NetworkContext) = {
       Task(
         Network(),
         ctx.IDENTIFIER,
-        ctx.decls.toList.map(DeclVisitor.visit),
-        ctx.contents.toList.map(visit))
+        DeclVisitor(ctx.decls),
+        visit(ctx.contents))
     }
 
     override def visitConnect(ctx: ConnectContext) = {
@@ -94,7 +102,7 @@ class AstBuilder {
   }
 
   object VerilogBodyVisitor extends BaseVisitor[String] {
-    override def visitVerilogbody(ctx: VerilogbodyContext) = ctx.tks.toList.map(visit).mkString
+    override def visitVerilogbody(ctx: VerilogbodyContext) = visit(ctx.tks).mkString
     override def visitVany(ctx: VanyContext) = ctx.VANY
     override def visitVbody(ctx: VbodyContext) = visit(ctx.verilogbody())
   }
@@ -113,7 +121,7 @@ class AstBuilder {
     override def visitParamDecl(ctx: ParamDeclContext) = ParamDeclaration(
       TypeVisitor(ctx.known_type()),
       NS.insert(ctx, ctx.IDENTIFIER),
-      Option(ctx.initializer()).map(ExprVisitor.visit))
+      ExprVisitor(Option(ctx.initializer())))
 
     override def visitDecl(ctx: DeclContext) = visit(ctx.declaration()) // TODO: Why is this requiresd?
 
@@ -123,7 +131,7 @@ class AstBuilder {
     override def visitDeclaration(ctx: DeclarationContext) = VarDeclaration(
       TypeVisitor(ctx.known_type()),
       InsertExprVisitor(ctx.primary_expr()),
-      Option(ctx.initializer()).map(ExprVisitor.visit) // Insert into NS - tricky because we want to rewrite in visitor - but the identifier is currently unknown
+      ExprVisitor(Option(ctx.initializer())) // Insert into NS - tricky because we want to rewrite in visitor - but the identifier is currently unknown
       // We could do all of this as a second stage:
       //   + Stand alone code
       //   - Lose access to ctx for error messages
@@ -283,7 +291,7 @@ class AstBuilder {
 
     override def visitBlockStmt(ctx: BlockStmtContext) = {
       NS.addNamespace()
-      val ret = ctx.stmts.asScala.toList.map(visit) match {
+      val ret = visit(ctx.stmts) match {
         case s if (s.length > 0 && is_control_stmt(s.last)) => ControlBlock(s)
         case s if (s.forall(x => !is_control_stmt(x))) => CombinatorialBlock(s)
         case s => { Message.error(ctx, "A control block must end with a control statement"); ControlBlock(s) }
@@ -307,7 +315,7 @@ class AstBuilder {
     override def visitIfStmt(ctx: IfStmtContext) = {
       val cond = visit(ctx.expr())
       val yes = visit(ctx.statement())
-      val no = Option(ctx.else_statement()).map(visit)
+      val no = visit(Option(ctx.else_statement()))
       if (is_control_stmt(yes)) no match {
         case None                            => ControlIf(cond, yes, no)
         case Some(s) if (is_control_stmt(s)) => ControlIf(cond, yes, no)
@@ -322,7 +330,7 @@ class AstBuilder {
 
     override def visitCaseStmt(ctx: CaseStmtContext) = {
       val test = visit(ctx.expr())
-      ctx.cases.toList.map(CaseVisitor.visit) match {
+      CaseVisitor(ctx.cases) match {
         case stmts if (stmts.forall(is_control_label)) => ControlCaseStmt(test, stmts)
         case stmts if (stmts.forall(x => !is_control_label(x))) => CombinatorialCaseStmt(test, stmts)
         case stmts => { Message.error(ctx, "Either all or none of the case items must be control statements"); ControlCaseStmt(test, stmts) }
@@ -333,11 +341,11 @@ class AstBuilder {
       visit(ctx.single_statement(0)),
       visit(ctx.expr()),
       visit(ctx.single_statement(1)),
-      ctx.stmts.toList.map(visit))
+      visit(ctx.stmts))
 
     override def visitDoStmt(ctx: DoStmtContext) = ControlDo(
       visit(ctx.expr()),
-      ctx.stmts.toList.map(visit))
+      visit(ctx.stmts))
 
     override def visitSingleStmt(ctx: SingleStmtContext) = visit(ctx.single_statement())
     override def visitPrimaryIncStmt(ctx: PrimaryIncStmtContext) = Plusplus(visit(ctx.primary_expr()))
@@ -352,9 +360,9 @@ class AstBuilder {
   }
 
   object CommaArgsVisitor extends BaseVisitor[List[AlogicAST]] {
-    override def visitComma_args(ctx: Comma_argsContext) = ctx.es.toList.map(ExprVisitor.visit)
+    override def visitComma_args(ctx: Comma_argsContext) = ExprVisitor(ctx.es)
 
-    override def visitParam_args(ctx: Param_argsContext) = ctx.es.toList.map(ExprVisitor.visit)
+    override def visitParam_args(ctx: Param_argsContext) = ExprVisitor(ctx.es)
   }
 
   object FieldVisitor extends BaseVisitor[FieldType] {
@@ -384,9 +392,7 @@ class AstBuilder {
       })
     }
 
-    override def visitStructType(ctx: StructTypeContext) = {
-      Struct(ctx.fields.toList.map(FieldVisitor.visit))
-    }
+    override def visitStructType(ctx: StructTypeContext) = Struct(FieldVisitor(ctx.fields))
 
     override def visitIntVType(ctx: IntVTypeContext) = IntVType(true, CommaArgsVisitor(ctx.comma_args()))
     override def visitUintVType(ctx: UintVTypeContext) = IntVType(false, CommaArgsVisitor(ctx.comma_args()))
