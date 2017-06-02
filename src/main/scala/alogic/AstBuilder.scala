@@ -266,7 +266,7 @@ class AstBuilder {
 
     // This function handles #defines and namespace lookups
     // Convert using #defines where necessary
-    def LookupName(ctx: ParserRuleContext, dotname: DottedName): AlogicAST = {
+    private def LookupName(ctx: ParserRuleContext, dotname: DottedName): AlogicAST = {
       val s = dotname.names
       // Check for a #define conversion
       val name2 = if (s.length == 1) identifier(s(0)) else dotname
@@ -277,7 +277,7 @@ class AstBuilder {
       }
     }
 
-    def is_control_label(cmd: AlogicAST): Boolean = cmd match {
+    private def is_control_label(cmd: AlogicAST): Boolean = cmd match {
       case ControlCaseLabel(_, _) => true
       case _                      => false
     }
@@ -330,17 +330,16 @@ class AstBuilder {
       }
     }
 
-    override def visitForStmt(ctx: ForStmtContext) = ControlFor(
-      visit(ctx.single_statement(0)),
-      visit(ctx.expr()),
-      visit(ctx.single_statement(1)),
-      visit(ctx.stmts))
+    override def visitForStmt(ctx: ForStmtContext) =
+      ControlFor(visit(ctx.init), visit(ctx.expr), visit(ctx.step), visit(ctx.stmts))
 
-    override def visitDoStmt(ctx: DoStmtContext) = ControlDo(
-      visit(ctx.expr()),
-      visit(ctx.stmts))
+    override def visitDoStmt(ctx: DoStmtContext) =
+      ControlDo(visit(ctx.expr), visit(ctx.stmts))
 
-    override def visitSingleStmt(ctx: SingleStmtContext) = visit(ctx.single_statement())
+    override def aggregateResult(aggregate: AlogicAST, nextResult: AlogicAST) =
+      if (aggregate eq null) nextResult else aggregate
+
+    //    override def visitSingleStmt(ctx: SingleStmtContext) = visit(ctx.single_statement())
     override def visitPrimaryIncStmt(ctx: PrimaryIncStmtContext) = Plusplus(visit(ctx.primary_expr()))
     override def visitPrimaryDecStmt(ctx: PrimaryDecStmtContext) = Minusminus(visit(ctx.primary_expr()))
     override def visitAssignStmt(ctx: AssignStmtContext) = Assign(visit(ctx.primary_expr()), ctx.assign_op, visit(ctx.expr()))

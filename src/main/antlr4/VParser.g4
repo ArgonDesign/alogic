@@ -131,7 +131,6 @@ dotted_name : (es+=IDENTIFIER) (DOT es+=IDENTIFIER)*;
 
 field : known_type IDENTIFIER SEMICOLON;
 
-assign_op : EQUALS | ASSIGNOP;
 
 case_stmt :
   DEFAULT COLON statement # DefaultCase
@@ -140,27 +139,29 @@ case_stmt :
 
 else_statement : ELSE statement;
 
-statement :
-  LEFTCURLY (stmts+=statement)* RIGHTCURLY  # BlockStmt
+statement
+  : LEFTCURLY (stmts+=statement)* RIGHTCURLY  # BlockStmt
   | declaration SEMICOLON # DeclStmt
   | WHILE LEFTBRACKET expr RIGHTBRACKET statement # WhileStmt
   | IF LEFTBRACKET expr RIGHTBRACKET statement else_statement? # IfStmt
   | CASE LEFTBRACKET expr RIGHTBRACKET LEFTCURLY (cases+=case_stmt)+ RIGHTCURLY # CaseStmt
-  | FOR LEFTBRACKET single_statement SEMICOLON expr SEMICOLON single_statement RIGHTBRACKET LEFTCURLY (stmts += statement)* RIGHTCURLY # ForStmt
+  | FOR LEFTBRACKET init=assignment_statement SEMICOLON expr SEMICOLON step=assignment_statement RIGHTBRACKET LEFTCURLY (stmts += statement)* RIGHTCURLY # ForStmt
   | DO LEFTCURLY (stmts += statement)* RIGHTCURLY WHILE LEFTBRACKET expr RIGHTBRACKET SEMICOLON  # DoStmt
-  | single_statement SEMICOLON # SingleStmt
+  | FENCE ';'                   # FenceStmt
+  | BREAK ';'                   # BreakStmt
+  | RETURN ';'                  # ReturnStmt
+  | '$' '(' LITERAL ')' ';'     # DollarCommentStmt
+  | 'goto' IDENTIFIER ';'       # GotoStmt
+  | assignment_statement ';'    # AssignmentStmt
+  | primary_expr ';'            # PrimaryStmt // Used when providing a function call by itself
   ;
 
-single_statement :
-  primary_expr PLUSPLUS   # PrimaryIncStmt
-  |primary_expr MINUSMINUS # PrimaryDecStmt
-  |primary_expr assign_op expr # AssignStmt
-  |primary_expr            # PrimaryStmt // Used when providing a function call by itself
-  |FENCE                   # FenceStmt
-  |BREAK                   # BreakStmt
-  |RETURN                  # ReturnStmt
-  |DOLLARCOMMENT LEFTBRACKET LITERAL RIGHTBRACKET # DollarCommentStmt
-  |GOTO IDENTIFIER         # GotoStmt
+assign_op : EQUALS | ASSIGNOP;
+
+assignment_statement
+  : primary_expr '++'             # PrimaryIncStmt
+  | primary_expr '--'             # PrimaryDecStmt
+  | primary_expr assign_op expr   # AssignStmt
   ;
 
 
