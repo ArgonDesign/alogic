@@ -50,16 +50,16 @@ connect : dotted_name GOESTO comma_args SEMICOLON;
 
 instantiate : IDENTIFIER EQUALS IDENTIFIER LEFTBRACKET param_args RIGHTBRACKET SEMICOLON;
 
-known_type : 
+known_type :
   BOOL                                            # BoolType
   | INTTYPE                                       # IntType
   | UINTTYPE                                      # UintType
   | IDENTIFIER                                    # IdentifierType
   | STRUCT LEFTCURLY (fields+=field)* RIGHTCURLY  # StructType
-  | INT LEFTBRACKET comma_args RIGHTBRACKET             # IntVType
-  | UINT LEFTBRACKET comma_args RIGHTBRACKET            # UintVType
+  | INT LEFTBRACKET comma_args RIGHTBRACKET       # IntVType
+  | UINT LEFTBRACKET comma_args RIGHTBRACKET      # UintVType
   ;
-    
+
 task_content :
   VOID IDENTIFIER LEFTBRACKET RIGHTBRACKET statement  # Function
   | VOID FENCE LEFTBRACKET RIGHTBRACKET statement     # FenceFunction

@@ -17,7 +17,6 @@ import org.antlr.v4.runtime.tree.RuleNode
 //   Deal with as many error conditions as possible (while we can easily report error location)
 //   Deal with typedefs
 //   Deal with variable scope
-//   Deal with #defines
 //   Rewrite go/zxt/sxt/read/write/lock/unlock function calls
 //
 // We use different visitors for the different things we wish to extract.
@@ -43,20 +42,22 @@ class AstBuilder {
     def visit[U <: RuleNode](ctxOpt: Option[U]): Option[T] = apply(ctxOpt)
   }
 
-  val typedefs = mutable.Map[String, AlogicType]()
-  val NS = new Namespace()
+  private[this] val typedefs = mutable.Map[String, AlogicType]()
+  private[this] val NS = new Namespace()
 
   typedefs("state") = State()
 
   // Convert identifier to tree
-  def identifier(ident: String): AlogicAST = DottedName(List(ident))
+  private[this] def identifier(ident: String): AlogicAST = DottedName(List(ident))
 
   object FunVisitor extends BaseVisitor[Unit] {
     override def visitFunction(ctx: FunctionContext): Unit = NS.insert(ctx, ctx.IDENTIFIER)
   }
 
-  object ProgVisitor extends BaseVisitor[List[AlogicAST]] {
-    override def visitStart(ctx: StartContext) = EntityVisitor(ctx.entities)
+  object ProgVisitor extends BaseVisitor[List[Task]] {
+    override def visitStart(ctx: StartContext) = EntityVisitor(ctx.entities) collect {
+      case t @ Task(_, _, _, _) => t
+    }
   }
 
   object EntityVisitor extends BaseVisitor[AlogicAST] {
@@ -365,24 +366,12 @@ class AstBuilder {
     override def visitParam_args(ctx: Param_argsContext) = ExprVisitor(ctx.es)
   }
 
-  object FieldVisitor extends BaseVisitor[FieldType] {
-    override def visitField(ctx: FieldContext) = Field(TypeVisitor(ctx.known_type()), ctx.IDENTIFIER)
-  }
-
   object TypeVisitor extends BaseVisitor[AlogicType] {
     override def visitBoolType(ctx: BoolTypeContext) = IntType(false, 1)
 
-    override def visitIntType(ctx: IntTypeContext) = {
-      val s = ctx.INTTYPE.text
-      val n = s.substring(1, s.length)
-      IntType(true, n.toInt)
-    }
+    override def visitIntType(ctx: IntTypeContext) = IntType(true, ctx.INTTYPE.text.tail.toInt)
 
-    override def visitUintType(ctx: UintTypeContext) = {
-      val s = ctx.UINTTYPE.text
-      val n = s.substring(1, s.length)
-      IntType(false, n.toInt)
-    }
+    override def visitUintType(ctx: UintTypeContext) = IntType(false, ctx.UINTTYPE.text.tail.toInt)
 
     override def visitIdentifierType(ctx: IdentifierTypeContext) = {
       val s = ctx.IDENTIFIER.text
@@ -392,14 +381,15 @@ class AstBuilder {
       })
     }
 
+    object FieldVisitor extends BaseVisitor[FieldType] {
+      override def visitField(ctx: FieldContext) = Field(TypeVisitor(ctx.known_type()), ctx.IDENTIFIER)
+    }
+
     override def visitStructType(ctx: StructTypeContext) = Struct(FieldVisitor(ctx.fields))
 
     override def visitIntVType(ctx: IntVTypeContext) = IntVType(true, CommaArgsVisitor(ctx.comma_args()))
     override def visitUintVType(ctx: UintVTypeContext) = IntVType(false, CommaArgsVisitor(ctx.comma_args()))
   }
-
-  // Return if this node is a task node
-  def is_task(ast: AlogicAST): Boolean = ast match { case Task(_, _, _, _) => true; case _ => false }
 
   // Build the abstract syntax tree from a parse tree
   def apply(parseTree: RuleNode): Program = {
@@ -408,6 +398,6 @@ class AstBuilder {
     // Capture all found function names into toplevel namespace
     FunVisitor(parseTree)
     // Then build abstract syntax tree and remap identifiers
-    Program(ProgVisitor(parseTree).filter(is_task))
+    Program(ProgVisitor(parseTree))
   }
 }
