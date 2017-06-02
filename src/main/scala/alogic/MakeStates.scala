@@ -118,7 +118,7 @@ final class MakeStates {
     case GotoStmt(t) => List(GotoState(fn2state(t))) // TODO check targets exist in AstBuilder to avoid exception here
     case FunCall(name, args) => List( // require(args.length==0)  // TODO check in builder
       // Push return state
-      Assign(ArrayLookup(callStack, callDepth), "=", makeNum(finalState)),
+      Assign(ArrayLookup(callStack, callDepth), makeNum(finalState)),
       // increment depth
       Plusplus(callDepth),
       // branch to function

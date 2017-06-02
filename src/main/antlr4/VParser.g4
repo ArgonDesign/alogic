@@ -165,12 +165,11 @@ statement
   | primary_expr ';'                                        # ExprStmt
   ;
 
-assign_op : '=' | ASSIGNOP;
-
 assignment_statement
   : primary_expr '++'             # PrimaryIncStmt
   | primary_expr '--'             # PrimaryDecStmt
-  | primary_expr assign_op expr   # AssignStmt
+  | primary_expr '=' expr         # AssignStmt
+  | primary_expr ASSIGNOP expr    # UpdateStmt
   ;
 
 

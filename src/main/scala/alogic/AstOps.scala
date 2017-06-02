@@ -77,7 +77,8 @@ object AstOps {
           case LockCall(name)                        =>
           case UnlockCall(_) | ValidCall(_)          =>
           case WriteCall(name, args)                 => args foreach visit
-          case Assign(lhs, op, rhs)                  => { visit(lhs); visit(rhs) }
+          case Assign(lhs, rhs)                      => { visit(lhs); visit(rhs) }
+          case Update(lhs, op, rhs)                  => { visit(lhs); visit(rhs) }
           case Plusplus(lhs)                         => visit(lhs)
           case Minusminus(lhs)                       => visit(lhs)
           case BinaryOp(lhs, op, rhs)                => { visit(lhs); visit(rhs) }
@@ -162,7 +163,8 @@ object AstOps {
           case UnlockCall(name)                          => UnlockCall(name)
           case ValidCall(name)                           => ValidCall(name)
           case WriteCall(name, args)                     => WriteCall(name, args map rewrite)
-          case Assign(lhs, op, rhs)                      => Assign(rewrite(lhs), op, rewrite(rhs))
+          case Assign(lhs, rhs)                          => Assign(rewrite(lhs), rewrite(rhs))
+          case Update(lhs, op, rhs)                      => Update(rewrite(lhs), op, rewrite(rhs))
           case Plusplus(lhs)                             => Plusplus(rewrite(lhs))
           case Minusminus(lhs)                           => Minusminus(rewrite(lhs))
           case BinaryOp(lhs, op, rhs)                    => BinaryOp(rewrite(lhs), op, rewrite(rhs))

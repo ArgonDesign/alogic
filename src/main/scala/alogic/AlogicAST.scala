@@ -21,6 +21,8 @@ case class VerilogDeclaration(decltype: AlogicType, id: AlogicAST) extends Decla
 case class OutDeclaration(synctype: SyncType, decltype: AlogicType, name: String) extends Declaration
 case class InDeclaration(synctype: SyncType, decltype: AlogicType, name: String) extends Declaration
 
+case class Update(lhs: AlogicAST, op: String, rhs: AlogicAST) extends AlogicAST
+
 // // AlogicAST used for abstract syntax nodes
 sealed trait AlogicAST
 case class Connect(start: AlogicAST, end: List[AlogicAST]) extends AlogicAST
@@ -43,7 +45,7 @@ case class LockCall(name: DottedName) extends AlogicAST
 case class UnlockCall(name: DottedName) extends AlogicAST
 case class ValidCall(name: DottedName) extends AlogicAST
 case class WriteCall(name: DottedName, args: List[AlogicAST]) extends AlogicAST
-case class Assign(lhs: AlogicAST, op: String, rhs: AlogicAST) extends AlogicAST
+case class Assign(lhs: AlogicAST, rhs: AlogicAST) extends AlogicAST
 case class BinaryOp(lhs: AlogicAST, op: String, rhs: AlogicAST) extends AlogicAST
 case class UnaryOp(op: String, lhs: AlogicAST) extends AlogicAST
 case class Bracket(content: AlogicAST) extends AlogicAST
@@ -105,4 +107,3 @@ case class Sync() extends SyncType
 case class WireSyncAccept() extends SyncType
 case class WireSync() extends SyncType
 case class Wire() extends SyncType
-

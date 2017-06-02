@@ -525,7 +525,7 @@ final class MakeVerilog {
   // Produce code to go into the case statements (we assume we have already had a "case(state) default: begin"
   // The top call should be with Function or VerilogFunction
   def CombStmt(indent: Int, tree: AlogicAST): StrTree = tree match {
-    case Assign(ArrayLookup(DottedName(names), index), "=", rhs) if (Arrays contains names.head) => {
+    case Assign(ArrayLookup(DottedName(names), index), rhs) if (Arrays contains names.head) => {
       val i = " " * indent
       val n = names.head
       val r = MakeExpr(rhs).toString
@@ -538,7 +538,7 @@ ${i}end
 """)
       AddStall(indent, StallExpr(index) ::: StallExpr(rhs), a)
     }
-    case Assign(lhs, "=", rhs) => AddStall(indent, StallExpr(lhs) ::: StallExpr(rhs), StrList(List(Str(" " * indent), MakeExpr(lhs), " = ", MakeExpr(rhs), ";\n")))
+    case Assign(lhs, rhs) => AddStall(indent, StallExpr(lhs) ::: StallExpr(rhs), StrList(List(Str(" " * indent), MakeExpr(lhs), " = ", MakeExpr(rhs), ";\n")))
     case CombinatorialCaseStmt(value, cases) => AddStall(indent, StallExpr(value),
       StrList(Str(" " * indent + "case(") :: MakeExpr(value) :: Str(") begin\n") ::
         StrList(for (c <- cases) yield CombStmt(indent + 4, c)) ::
@@ -558,8 +558,8 @@ ${i}end
     case CombinatorialBlock(cmds) => StrList(Str(" " * indent) :: Str("begin\n") ::
       StrList(for { cmd <- cmds } yield CombStmt(indent + 4, cmd)) ::
       Str(" " * indent) :: Str("end\n") :: Nil)
-    case DeclarationStmt(VarDeclaration(decltype, id, Some(rhs))) => CombStmt(indent, Assign(id, "=", rhs))
-    case DeclarationStmt(VarDeclaration(decltype, id, None))      => CombStmt(indent, Assign(id, "=", Num("'b0")))
+    case DeclarationStmt(VarDeclaration(decltype, id, Some(rhs))) => CombStmt(indent, Assign(id, rhs))
+    case DeclarationStmt(VarDeclaration(decltype, id, None))      => CombStmt(indent, Assign(id, Num("'b0")))
     case AlogicComment(s)                                         => s"// $s\n"
     case StateBlock(state, cmds) => StrList(List(" " * (indent - 4), "end\n", " " * (indent - 4), MakeState(state), ": begin\n",
       StrList(for { cmd <- cmds } yield CombStmt(indent, cmd))))
@@ -623,7 +623,7 @@ ${i}end
   }
 
   def AcceptStmt(indent: Int, tree: AlogicAST): Option[StrTree] = tree match {
-    case Assign(lhs, "=", rhs) => {
+    case Assign(lhs, rhs) => {
       IdsWritten.add(ExtractName(lhs))
       AddAccept(indent, AcceptExpr(lhs) ::: AcceptExpr(rhs), None)
     }
@@ -681,7 +681,7 @@ ${i}end
         Some(StrList(Str(" " * indent) :: Str("begin\n") :: StrList(s2) :: Str(" " * indent) :: Str("end\n") :: Nil))
     }
 
-    case DeclarationStmt(VarDeclaration(decltype, id, Some(rhs))) => AcceptStmt(indent, Assign(id, "=", rhs))
+    case DeclarationStmt(VarDeclaration(decltype, id, Some(rhs))) => AcceptStmt(indent, Assign(id, rhs))
     case StateBlock(state, cmds) => {
       // Clear sets used for tracking
       syncPortsFound = 0

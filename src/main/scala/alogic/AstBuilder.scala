@@ -350,7 +350,8 @@ class AstBuilder {
     override def visitAssignmentStmt(ctx: AssignmentStmtContext) = visit(ctx.assignment_statement)
     override def visitPrimaryIncStmt(ctx: PrimaryIncStmtContext) = Plusplus(ExprVisitor(ctx.primary_expr()))
     override def visitPrimaryDecStmt(ctx: PrimaryDecStmtContext) = Minusminus(ExprVisitor(ctx.primary_expr()))
-    override def visitAssignStmt(ctx: AssignStmtContext) = Assign(ExprVisitor(ctx.primary_expr()), ctx.assign_op, ExprVisitor(ctx.expr()))
+    override def visitAssignStmt(ctx: AssignStmtContext) = Assign(ExprVisitor(ctx.primary_expr()), ExprVisitor(ctx.expr()))
+    override def visitUpdateStmt(ctx: UpdateStmtContext) = Update(ExprVisitor(ctx.primary_expr()), ctx.ASSIGNOP, ExprVisitor(ctx.expr()))
 
     override def visitExprStmt(ctx: ExprStmtContext) = ExprVisitor(ctx.primary_expr)
   }
