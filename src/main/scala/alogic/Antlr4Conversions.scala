@@ -10,6 +10,7 @@ import org.antlr.v4.runtime.misc.Interval
 import org.antlr.v4.runtime.tree.ParseTree
 import org.antlr.v4.runtime.tree.TerminalNode
 import org.antlr.v4.runtime.tree.Tree
+import org.antlr.v4.runtime.RuleContext
 
 trait Antlr4Conversions extends WrapAsScala with WrapAsJava {
   implicit class ParserRuleContextWrapper(val ctx: ParserRuleContext) {
@@ -73,6 +74,8 @@ trait Antlr4Conversions extends WrapAsScala with WrapAsJava {
   implicit def terminalNodeToString(node: TerminalNode): String = node.text
   implicit def terminalNodeToToken(node: TerminalNode): Token = node.getSymbol
   implicit def terminalNodeToTokenWrapper(node: TerminalNode): TokenWrapper = new TokenWrapper(node.getSymbol)
+
+  implicit def parserRuleContextToString(ctx: ParserRuleContext): String = ctx.text
 }
 
 object Antlr4Conversions extends Antlr4Conversions {}
