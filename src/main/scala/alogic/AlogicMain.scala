@@ -15,6 +15,12 @@ import akka.actor.ActorSystem
 import scalax.file.PathMatcher._
 import scalax.file.Path
 
+// TODO: handle this in a nicer way if possible
+object PortMap {
+  // This must be from a concurrent collection because it is populated from multiple threads
+  val portMap = new TrieMap[String, Task]()
+}
+
 object AlogicMain extends App {
 
   //////////////////////////////////////////////////////////////////////////////
@@ -47,8 +53,6 @@ object AlogicMain extends App {
   // .!! gets output
   // Process("").lines runs in background and provides a Stream[String] of output
   // Throws exception if non-zero exit code
-
-  val portMap = new TrieMap[String, Task]() // This must be from a concurrent collection because it is populated from multiple threads
 
   go
 
@@ -91,7 +95,7 @@ object AlogicMain extends App {
     // Clear caches
     Cache.clearAll()
 
-    portMap.clear()
+    PortMap.portMap.clear()
 
     // Construct potentially parallel file list
     val filePaths = if (multiThreaded) listOfFiles.par else listOfFiles
@@ -107,9 +111,9 @@ object AlogicMain extends App {
     asts foreach {
       case (ast: Program) => VisitAST(ast) {
         case t @ Task(_, name, _, _) => {
-          if (portMap contains name)
+          if (PortMap.portMap contains name)
             Message.warning(s"$name defined multiple times")
-          portMap(name) = t; false
+          PortMap.portMap(name) = t; false
         }
         case _ => true // Recurse
       }

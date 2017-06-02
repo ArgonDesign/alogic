@@ -124,7 +124,7 @@ final class MakeVerilog {
           val sz = StrList(args.map(MakeExpr), "*").toString
           writeSigned(b) + "[" + sz + "-1:0] "
         }
-        case _ => Message.fatal("Cannot make type for $typ"); ""
+        case _ => Message.fatal(s"Cannot make type for $typ"); ""
       }
     }
     def writeVarInternal(typ: AlogicType, name: StrTree, resetToZero: Boolean): Unit = {
@@ -694,7 +694,7 @@ ${i}end
         // Check for error conditions
         if (syncPortsFound > 1) Message.fatal(s"Found multiple accept port reads in same cycle: $cmds")
         if (usesPort.isDefined) Message.fatal(s"Cannot access port $usesPort while generating accept: $cmds")
-        if (!IdsUsedToMakeAccept.intersect(IdsWritten).isEmpty) Message.fatal("Cannot generate accept because an identifier is being written to: $cmds")
+        if (!IdsUsedToMakeAccept.intersect(IdsWritten).isEmpty) Message.fatal(s"Cannot generate accept because an identifier is being written to: $cmds")
         Some(StrList(List(" " * (indent - 4), MakeState(state), ": begin\n", StrList(s2), " " * (indent - 4), "end\n")))
       } else
         None

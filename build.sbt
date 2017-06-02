@@ -10,7 +10,7 @@ version := "1"
 
 scalaVersion := "2.11.8"
 
-scalacOptions ++= Seq("-deprecation", "-feature")
+scalacOptions ++= Seq("-deprecation", "-feature", "-Xlint:_")
 
 libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value
 libraryDependencies += "com.beachape.filemanagement" %% "schwatcher" % "0.3.2"
