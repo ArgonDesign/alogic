@@ -43,3 +43,8 @@ logBuffered in Test := false
 ////////////////////////////////////////////////////////////////////////////////
 
 enablePlugins(JavaAppPackaging)
+
+// Prepend '--' to the command line arguments in the wrapper script.
+// This in fact causes the wrapper script to not consume any arguments,
+// in particular -D options
+bashScriptExtraDefines += """set -- -- "$@""""
