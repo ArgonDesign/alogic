@@ -7,12 +7,12 @@ import scalax.file.Path
 
 object AParser {
 
-  def apply(path: Path, includeSearchPaths: List[Path] = Nil): Option[Program] = {
+  def apply(path: Path, includeSearchPaths: List[Path] = Nil, initalDefines: Map[String, String] = Map()): Option[Program] = {
 
     Message.info(s"Parsing ${path.path}")
 
     // First preprocess input file to deal with #define s
-    val preprocessed = Preproc(path, includeSearchPaths)
+    val preprocessed = Preproc(path, includeSearchPaths, initalDefines)
 
     // Now parse the file, return None if syntax error
     val parseTree = {

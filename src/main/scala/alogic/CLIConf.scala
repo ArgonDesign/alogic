@@ -63,6 +63,10 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) {
     descr = "Add to include search path")(singlePathListConverter)
   validate(incdir)(pathListValidator)
 
+  val defs = props[String]('D',
+    keyName = "name",
+    descr = "Predefine preprocessor macro")
+
   val monitor = opt[Boolean](
     short = 'm',
     descr = "Recompile whenever sources change")

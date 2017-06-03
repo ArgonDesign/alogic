@@ -45,6 +45,8 @@ object AlogicMain extends App {
 
   val includeSearchPaths = conf.incdir()
 
+  val initalDefines = conf.defs.toMap
+
   //////////////////////////////////////////////////////////////////////////////
   // Compile
   //////////////////////////////////////////////////////////////////////////////
@@ -102,7 +104,7 @@ object AlogicMain extends App {
 
     // First pass - Build AST
     val (asts, paths) = {
-      filePaths map (AParser(_, includeSearchPaths)) zip filePaths collect {
+      filePaths map (AParser(_, includeSearchPaths, initalDefines)) zip filePaths collect {
         case (Some(ast), path) => (ast, path)
       }
     }.unzip
