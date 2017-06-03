@@ -27,7 +27,11 @@ import org.antlr.v4.runtime.tree.RuleNode
 
 class AstBuilder {
   class BaseVisitor[T] extends VParserBaseVisitor[T] {
-    def apply[U <: RuleNode](ctx: U): T = if (ctx eq null) defaultResult else visit(ctx)
+    override def visit(tree: ParseTree): T = {
+      if (null == tree) defaultResult else super.visit(tree)
+    } ensuring (null != _)
+
+    def apply[U <: RuleNode](ctx: U): T = visit(ctx)
 
     def apply[U <: RuleNode](ctxList: List[U]): List[T] = ctxList.map(apply(_))
 
@@ -48,9 +52,10 @@ class AstBuilder {
   typedefs("state") = State
 
   // Convert identifier to tree
-  private[this] def identifier(ident: String): AlogicExpr = DottedName(List(ident))
+  private[this] def identifier(ident: String) = DottedName(List(ident))
 
   object FunVisitor extends BaseVisitor[Unit] {
+    override def defaultResult = ()
     override def visitFunction(ctx: FunctionContext): Unit = NS.insert(ctx, ctx.IDENTIFIER)
   }
 
@@ -135,11 +140,11 @@ class AstBuilder {
     override def visitDecl(ctx: DeclContext) = visit(ctx.declaration())
 
     override def visitVerilogDecl(ctx: VerilogDeclContext) =
-      VerilogDeclaration(TypeVisitor(ctx.known_type()), InsertExprVisitor(ctx.primary_expr()))
+      VerilogDeclaration(TypeVisitor(ctx.known_type()), InsertVarVisitor(ctx.var_ref))
 
     override def visitDeclaration(ctx: DeclarationContext) = VarDeclaration(
       TypeVisitor(ctx.known_type()),
-      InsertExprVisitor(ctx.primary_expr()),
+      InsertVarVisitor(ctx.var_ref),
       ExprVisitor(Option(ctx.initializer())) // Insert into NS - tricky because we want to rewrite in visitor - but the identifier is currently unknown
       // We could do all of this as a second stage:
       //   + Stand alone code
@@ -162,8 +167,8 @@ class AstBuilder {
 
   // This visitor is used to parse an expression used as a declaration of a variable
   // When we have identified the name, we insert it into the namespace
-  object InsertExprVisitor extends BaseVisitor[AlogicAST] {
-    override def visitArrayAccessExpr(ctx: ArrayAccessExprContext) = ArrayLookup(visit(ctx.secondary_expr()), ExprVisitor(ctx.expr()))
+  object InsertVarVisitor extends BaseVisitor[AlogicAST] {
+    override def visitVarRefIndex(ctx: VarRefIndexContext) = ArrayLookup(visit(ctx.dotted_name), ExprVisitor(ctx.expr))
 
     override def visitDotted_name(ctx: Dotted_nameContext) = {
       val s = ctx.es.toList.map(_.text)
@@ -209,26 +214,55 @@ class AstBuilder {
     }
   }
 
-  // Statement visitors
+  object VarRefVisitor extends BaseVisitor[AlogicExpr] {
+    override def visitVarRef(ctx: VarRefContext) = visit(ctx.dotted_name)
+    override def visitVarRefIndex(ctx: VarRefIndexContext) =
+      ArrayLookup(visit(ctx.dotted_name), ExprVisitor(ctx.expr))
+    override def visitVarRefSlice(ctx: VarRefSliceContext) =
+      BinaryArrayLookup(visit(ctx.dotted_name), ExprVisitor(ctx.expr(0)), ctx.op, ExprVisitor(ctx.expr(1)))
+
+    override def visitLValueCat(ctx: LValueCatContext) = BitCat(visit(ctx.refs))
+
+    override def visitDotted_name(ctx: Dotted_nameContext) = LookupName(ctx, DottedName(ctx.es.toList.map(_.text)))
+
+    // This function handles namespace lookups
+    private def LookupName(ctx: ParserRuleContext, dotname: DottedName): DottedName = {
+      val s = dotname.names
+      val name2 = if (s.length == 1) identifier(s(0)) else dotname
+      // Check in namespace and rewrite if necessary
+      name2 match {
+        case DottedName(ns) => DottedName(NS.lookup(ctx, ns.head) :: ns.tail)
+      }
+    }
+  }
 
   object ExprVisitor extends BaseVisitor[AlogicExpr] {
-    override def visitTernaryExpr(ctx: TernaryExprContext) = TernaryOp(visit(ctx.binary_expr()), visit(ctx.expr(0)), visit(ctx.expr(1)))
-    override def visitBinaryExpr(ctx: BinaryExprContext) = BinaryOp(visit(ctx.unary_expr()), ctx.binary_op(), visit(ctx.expr()))
-    override def visitUnaryExpr(ctx: UnaryExprContext) = UnaryOp(ctx.unary_op().getText(), visit(ctx.primary_expr()))
-    override def visitArrayAccessExpr(ctx: ArrayAccessExprContext) = ArrayLookup(visit(ctx.secondary_expr()), visit(ctx.expr()))
-    override def visitArrayAccess2Expr(ctx: ArrayAccess2ExprContext) = BinaryArrayLookup(
-      visit(ctx.secondary_expr()), visit(ctx.expr(0)), ctx.arrayop(), visit(ctx.expr(1)))
-    override def visitTrueExpr(ctx: TrueExprContext) = Num("1'b1")
-    override def visitFalseExpr(ctx: FalseExprContext) = Num("1'b0")
-    override def visitBracketExpr(ctx: BracketExprContext) = Bracket(visit(ctx.expr()))
-    override def visitTicknumExpr(ctx: TicknumExprContext) = Num(ctx.TICKNUM)
-    override def visitConstantTickNumExpr(ctx: ConstantTickNumExprContext) = Num(ctx.CONSTANT + ctx.TICKNUM)
-    override def visitConstantExpr(ctx: ConstantExprContext) = Num(ctx.CONSTANT)
-    override def visitLiteralExpr(ctx: LiteralExprContext) = Literal(ctx.LITERAL)
-    override def visitBitRepExpr(ctx: BitRepExprContext) = BitRep(visit(ctx.expr(0)), visit(ctx.expr(1)))
-    override def visitBitCatExpr(ctx: BitCatExprContext) = BitCat(CommaArgsVisitor(ctx.comma_args()))
-    override def visitFunCallExpr(ctx: FunCallExprContext) = {
-      val n = visit(ctx.dotted_name())
+    override def visitExprBracket(ctx: ExprBracketContext) = Bracket(visit(ctx.expr))
+    override def visitExprUnary(ctx: ExprUnaryContext) = UnaryOp(ctx.op, visit(ctx.expr))
+    override def visitExprMulDiv(ctx: ExprMulDivContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
+    override def visitExprAddSub(ctx: ExprAddSubContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
+    override def visitExprShift(ctx: ExprShiftContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
+    override def visitExprCompare(ctx: ExprCompareContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
+    override def visitExprEqual(ctx: ExprEqualContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
+    override def visitExprBAnd(ctx: ExprBAndContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
+    override def visitExprBXor(ctx: ExprBXorContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
+    override def visitExprBOr(ctx: ExprBOrContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
+    override def visitExprAnd(ctx: ExprAndContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
+    override def visitExprOr(ctx: ExprOrContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
+    override def visitExprTernary(ctx: ExprTernaryContext) = TernaryOp(visit(ctx.expr(0)), visit(ctx.expr(1)), visit(ctx.expr(2)))
+    override def visitExprRep(ctx: ExprRepContext) = BitRep(visit(ctx.expr(0)), visit(ctx.expr(1)))
+    override def visitExprCat(ctx: ExprCatContext) = BitCat(CommaArgsVisitor(ctx.comma_args()))
+    override def visitExprVarRef(ctx: ExprVarRefContext) = VarRefVisitor(ctx)
+    override def visitExprDollar(ctx: ExprDollarContext) = DollarCall(ctx.DOLLARID, CommaArgsVisitor(ctx.comma_args()))
+    override def visitExprTrue(ctx: ExprTrueContext) = Num("1'b1")
+    override def visitExprFalse(ctx: ExprFalseContext) = Num("1'b0")
+    override def visitExprTrickNum(ctx: ExprTrickNumContext) = Num(ctx.TICKNUM)
+    override def visitExprConstTickNum(ctx: ExprConstTickNumContext) = Num(ctx.CONSTANT + ctx.TICKNUM)
+    override def visitExprConst(ctx: ExprConstContext) = Num(ctx.CONSTANT)
+    override def visitExprLiteral(ctx: ExprLiteralContext) = Literal(ctx.LITERAL)
+
+    override def visitExprCall(ctx: ExprCallContext) = {
+      val n = VarRefVisitor(ctx.dotted_name)
       val a = CommaArgsVisitor(ctx.comma_args())
       n match {
         case DottedName(names) if (names.last == "read") => {
@@ -269,19 +303,6 @@ class AstBuilder {
         case _ => FunCall(n, a)
       }
     }
-    override def visitDollarExpr(ctx: DollarExprContext) = DollarCall(ctx.DOLLAR, CommaArgsVisitor(ctx.comma_args()))
-    override def visitDotted_name(ctx: Dotted_nameContext) = LookupName(ctx, DottedName(ctx.es.toList.map(_.text)))
-
-    // This function handles namespace lookups
-    private def LookupName(ctx: ParserRuleContext, dotname: DottedName): AlogicExpr = {
-      val s = dotname.names
-      val name2 = if (s.length == 1) identifier(s(0)) else dotname
-      // Check in namespace and rewrite if necessary
-      name2 match {
-        case DottedName(ns) => DottedName(NS.lookup(ctx, ns.head) :: ns.tail)
-        case x              => x
-      }
-    }
   }
 
   object StatementVisitor extends BaseVisitor[AlogicAST] {
@@ -294,8 +315,11 @@ class AstBuilder {
       NS.addNamespace()
       val ret = visit(ctx.stmts) match {
         case s if (s.length > 0 && is_control_stmt(s.last)) => ControlBlock(s)
-        case s if (s.forall(x => !is_control_stmt(x))) => CombinatorialBlock(s)
-        case s => { Message.error(ctx, "A control block must end with a control statement"); ControlBlock(s) }
+        case s if (s.forall(!is_control_stmt(_)))           => CombinatorialBlock(s)
+        case s => {
+          Message.error(ctx, "A control block must end with a control statement");
+          ControlBlock(s)
+        }
       }
       NS.removeNamespace()
       ret
@@ -323,21 +347,33 @@ class AstBuilder {
       if (is_control_stmt(yes)) no match {
         case None                            => ControlIf(cond, yes, no)
         case Some(s) if (is_control_stmt(s)) => ControlIf(cond, yes, no)
-        case _                               => { Message.error(ctx, "Both branches of an if must be control statements, or both must be combinatorial statements"); ControlIf(cond, yes, no) }
+        case _ => {
+          Message.error(ctx, "Both branches of an if must be control statements, or both must be combinatorial statements");
+          Message.error(ctx, s"1 $no");
+          ControlIf(cond, yes, no)
+        }
       }
       else no match {
         case None                             => CombinatorialIf(cond, yes, no)
         case Some(s) if (!is_control_stmt(s)) => CombinatorialIf(cond, yes, no)
-        case _                                => { Message.error(ctx, "Both branches of an if must be control statements, or both must be combinatorial statements"); CombinatorialIf(cond, yes, no) }
+        case _ => {
+          Message.error(ctx, "Both branches of an if must be control statements, or both must be combinatorial statements");
+          Message.error(ctx, s"2 $yes");
+          Message.error(ctx, s"2 $no");
+          CombinatorialIf(cond, yes, no)
+        }
       }
     }
 
     override def visitCaseStmt(ctx: CaseStmtContext) = {
       val test = ExprVisitor(ctx.expr())
       CaseVisitor(ctx.cases) match {
-        case stmts if (stmts.forall(is_control_label)) => ControlCaseStmt(test, stmts)
-        case stmts if (stmts.forall(x => !is_control_label(x))) => CombinatorialCaseStmt(test, stmts)
-        case stmts => { Message.error(ctx, "Either all or none of the case items must be control statements"); ControlCaseStmt(test, stmts) }
+        case stmts if (stmts.forall(is_control_label))     => ControlCaseStmt(test, stmts)
+        case stmts if (stmts.forall(!is_control_label(_))) => CombinatorialCaseStmt(test, stmts)
+        case stmts => {
+          Message.error(ctx, "Either all or none of the case items must be control statements");
+          ControlCaseStmt(test, stmts)
+        }
       }
     }
 
@@ -354,12 +390,12 @@ class AstBuilder {
     override def visitGotoStmt(ctx: GotoStmtContext) = GotoStmt(ctx.IDENTIFIER)
 
     override def visitAssignmentStmt(ctx: AssignmentStmtContext) = visit(ctx.assignment_statement)
-    override def visitPrimaryIncStmt(ctx: PrimaryIncStmtContext) = Plusplus(ExprVisitor(ctx.primary_expr()))
-    override def visitPrimaryDecStmt(ctx: PrimaryDecStmtContext) = Minusminus(ExprVisitor(ctx.primary_expr()))
-    override def visitAssignStmt(ctx: AssignStmtContext) = Assign(ExprVisitor(ctx.primary_expr()), ExprVisitor(ctx.expr()))
-    override def visitUpdateStmt(ctx: UpdateStmtContext) = Update(ExprVisitor(ctx.primary_expr()), ctx.ASSIGNOP, ExprVisitor(ctx.expr()))
+    override def visitPrimaryIncStmt(ctx: PrimaryIncStmtContext) = Plusplus(VarRefVisitor(ctx.lvalue))
+    override def visitPrimaryDecStmt(ctx: PrimaryDecStmtContext) = Minusminus(VarRefVisitor(ctx.lvalue))
+    override def visitAssignStmt(ctx: AssignStmtContext) = Assign(VarRefVisitor(ctx.lvalue), ExprVisitor(ctx.expr()))
+    override def visitUpdateStmt(ctx: UpdateStmtContext) = Update(VarRefVisitor(ctx.lvalue), ctx.ASSIGNOP, ExprVisitor(ctx.expr()))
 
-    override def visitExprStmt(ctx: ExprStmtContext) = ExprVisitor(ctx.primary_expr)
+    override def visitExprStmt(ctx: ExprStmtContext) = ExprVisitor(ctx.expr)
   }
 
   object CommaArgsVisitor extends BaseVisitor[List[AlogicExpr]] {

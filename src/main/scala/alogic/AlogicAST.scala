@@ -58,7 +58,7 @@ case class ValidCall(name: DottedName) extends AlogicExpr
 case class WriteCall(name: DottedName, args: List[AlogicExpr]) extends AlogicExpr
 case class BinaryOp(lhs: AlogicExpr, op: String, rhs: AlogicExpr) extends AlogicExpr
 case class UnaryOp(op: String, lhs: AlogicExpr) extends AlogicExpr
-case class Bracket(content: AlogicExpr) extends AlogicExpr
+case class Bracket(content: AlogicExpr) extends AlogicExpr // TODO: This node is likely redundant
 case class TernaryOp(cond: AlogicExpr, lhs: AlogicExpr, rhs: AlogicExpr) extends AlogicExpr
 case class BitRep(count: AlogicExpr, value: AlogicExpr) extends AlogicExpr
 case class BitCat(parts: List[AlogicExpr]) extends AlogicExpr

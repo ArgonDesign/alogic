@@ -19,9 +19,9 @@ tasktype : FSM #FsmType
   | VERILOG    #VerilogType
   ;
 
-initializer : EQUALS expr;
+initializer : '=' expr;
 
-declaration : known_type primary_expr initializer?;
+declaration : known_type var_ref initializer?;
 
 sync_type : SYNC_READY_BUBBLE #SyncReadyBubbleType
           | WIRE_SYNC_ACCEPT  #WireSyncAcceptType
@@ -36,7 +36,7 @@ task_declaration :
     OUT sync_type? known_type IDENTIFIER SEMICOLON     #OutDecl
   | IN sync_type? known_type IDENTIFIER SEMICOLON      #InDecl
   | PARAM sync_type? known_type IDENTIFIER initializer? SEMICOLON   #ParamDecl
-  | VERILOG known_type primary_expr SEMICOLON #VerilogDecl
+  | VERILOG known_type var_ref SEMICOLON #VerilogDecl
   | declaration SEMICOLON                              #Decl
   ;
 
@@ -73,37 +73,38 @@ verilogtoken :
   | VLEFTCURLY verilogbody VRIGHTCURLY # Vbody
   ;
 
-// TODO: Express expr as a single left-recursive structure
-//       Antlr will recognize this and treat with appropriate precedence
-
-expr : binary_expr # NotTernaryExpr
-     | binary_expr QUESTIONMARK expr COLON expr # TernaryExpr
-     ;
-
-binary_op : BINARYOP | AND | OR | MINUS;
-
-binary_expr :
-  unary_expr binary_op expr # BinaryExpr
-  | unary_expr # NotBinaryExpr
+expr
+  : '(' expr ')'                                          # ExprBracket
+  | op=('+' | '-' | '!' | '~' | '&' |
+        '~&' | '|' | '~|' | '^' | '~^') expr              # ExprUnary
+  | expr op='*' expr                                      # ExprMulDiv  // TODO: '/' '%'
+  | expr op=('+' | '-') expr                              # ExprAddSub
+  | expr op=('<<' | '>>' | '>>>') expr                    # ExprShift   // TODO: '<<<'
+  | expr op=('>' | '>=' | '<' | '<=') expr                # ExprCompare
+  | expr op=('==' | '!=') expr                            # ExprEqual
+  | expr op='&' expr                                      # ExprBAnd
+  | expr op=('^' | '~^') expr                             # ExprBXor
+  | expr op='|' expr                                      # ExprBOr
+  | expr op='&&' expr                                     # ExprAnd
+  | expr op='||' expr                                     # ExprOr
+  | expr '?' expr ':' expr                                # ExprTernary
+  | LEFTCURLY expr LEFTCURLY expr RIGHTCURLY RIGHTCURLY   # ExprRep
+  | LEFTCURLY comma_args RIGHTCURLY                       # ExprCat
+  | dotted_name '(' comma_args ')'                        # ExprCall
+  | var_ref                                               # ExprVarRef
+  | DOLLARID '(' comma_args ')'                           # ExprDollar
+  | 'true'                                                # ExprTrue
+  | 'false'                                               # ExprFalse
+  | TICKNUM                                               # ExprTrickNum
+  | CONSTANT TICKNUM                                      # ExprConstTickNum
+  | CONSTANT                                              # ExprConst
+  | LITERAL                                               # ExprLiteral
   ;
 
-unary_op : NOT | TILDA | OR | MINUS | AND;
-
-unary_expr :
-  unary_op primary_expr # UnaryExpr
-  | primary_expr # NotUnaryExpr
-  ;
-
-primary_expr :
-  secondary_expr LEFTSQUARE expr RIGHTSQUARE  # ArrayAccessExpr
-  | secondary_expr LEFTSQUARE expr arrayop expr RIGHTSQUARE # ArrayAccess2Expr
-  | secondary_expr # SecondaryExpr
-  ;
-
-arrayop :
-  COLON
-  | MINUSCOLON
-  | PLUSCOLON
+var_ref
+  : dotted_name '[' expr ']'                              # VarRefIndex
+  | dotted_name '[' expr op=(':' | '-:' | '+:') expr ']'  # VarRefSlice
+  | dotted_name                                           # VarRef
   ;
 
 comma_args : (es+=expr)? (COMMA es+=expr)*;
@@ -111,21 +112,6 @@ comma_args : (es+=expr)? (COMMA es+=expr)*;
 param_args : (es+=paramAssign)? (COMMA es+=paramAssign)*;
 
 paramAssign : expr EQUALS expr;
-
-secondary_expr :
-  TRUE # TrueExpr
-  | FALSE # FalseExpr
-  | LEFTBRACKET expr RIGHTBRACKET # BracketExpr
-  | TICKNUM # TicknumExpr
-  | CONSTANT TICKNUM # ConstantTickNumExpr
-  | CONSTANT # ConstantExpr
-  | LITERAL # LiteralExpr
-  | LEFTCURLY expr LEFTCURLY expr RIGHTCURLY RIGHTCURLY # BitRepExpr
-  | LEFTCURLY comma_args RIGHTCURLY # BitCatExpr
-  | dotted_name LEFTBRACKET comma_args RIGHTBRACKET # FunCallExpr
-  | DOLLAR LEFTBRACKET comma_args RIGHTBRACKET # DollarExpr
-  | dotted_name # DottedNameExpr
-  ;
 
 dotted_name : (es+=IDENTIFIER) (DOT es+=IDENTIFIER)*;
 
@@ -162,14 +148,17 @@ statement
   | '$' '(' LITERAL ')' ';'                                 # DollarCommentStmt
   | 'goto' IDENTIFIER ';'                                   # GotoStmt
   | assignment_statement ';'                                # AssignmentStmt
-  | primary_expr ';'                                        # ExprStmt
+  | expr ';'                                                # ExprStmt
+  ;
+
+lvalue
+  : var_ref                                                 # LValue
+  | LEFTCURLY refs+=lvalue (',' refs+=lvalue)+ RIGHTCURLY   # LValueCat
   ;
 
 assignment_statement
-  : primary_expr '++'             # PrimaryIncStmt
-  | primary_expr '--'             # PrimaryDecStmt
-  | primary_expr '=' expr         # AssignStmt
-  | primary_expr ASSIGNOP expr    # UpdateStmt
+  : lvalue '++'                              # PrimaryIncStmt
+  | lvalue '--'                              # PrimaryDecStmt
+  | lvalue '=' expr                          # AssignStmt
+  | lvalue ASSIGNOP expr                     # UpdateStmt
   ;
-
-

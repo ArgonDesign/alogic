@@ -76,4 +76,6 @@ object Antlr4Conversions extends WrapAsScala with WrapAsJava {
   implicit def terminalNodeToTokenWrapper(node: TerminalNode): TokenWrapper = new TokenWrapper(node.getSymbol)
 
   implicit def parserRuleContextToString(ctx: ParserRuleContext): String = ctx.text
+
+  implicit def tokenToString(token: Token): String = token.text
 }
