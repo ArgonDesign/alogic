@@ -51,9 +51,6 @@ class AstBuilder {
 
   typedefs("state") = State
 
-  // Convert identifier to tree
-  private[this] def identifier(ident: String) = DottedName(List(ident))
-
   object FunVisitor extends BaseVisitor[Unit] {
     override def defaultResult = ()
     override def visitFunction(ctx: FunctionContext): Unit = NS.insert(ctx, ctx.IDENTIFIER)
@@ -66,6 +63,18 @@ class AstBuilder {
   }
 
   object EntityVisitor extends BaseVisitor[AlogicAST] {
+    object TaskContentVisitor extends BaseVisitor[AlogicAST] {
+      override def visitFunction(ctx: FunctionContext) = Function(ctx.IDENTIFIER, StatementVisitor(ctx.statement()))
+      override def visitFenceFunction(ctx: FenceFunctionContext) = FenceFunction(StatementVisitor(ctx.statement()))
+      override def visitVerilogFunction(ctx: VerilogFunctionContext) = VerilogFunction(VerilogBodyVisitor(ctx.verilogbody()))
+    }
+
+    object VerilogBodyVisitor extends BaseVisitor[String] {
+      override def visitVerilogbody(ctx: VerilogbodyContext) = visit(ctx.tks).mkString
+      override def visitVany(ctx: VanyContext) = ctx.VANY
+      override def visitVbody(ctx: VbodyContext) = visit(ctx.verilogbody())
+    }
+
     override def visitTypedef(ctx: TypedefContext) = {
       val s = ctx.IDENTIFIER.text
       if (typedefs contains s) {
@@ -77,19 +86,16 @@ class AstBuilder {
     }
 
     override def visitTask(ctx: TaskContext) = {
-      Task(
-        TasktypeVisitor(ctx.tasktype),
-        ctx.IDENTIFIER,
-        DeclVisitor(ctx.decls),
-        TaskContentVisitor(ctx.contents))
+      val tasktype = ctx.tasktype.text match {
+        case "fsm"      => Fsm
+        case "pipeline" => Pipeline
+        case "verilog"  => Verilog
+      }
+      Task(tasktype, ctx.IDENTIFIER, DeclVisitor(ctx.decls), TaskContentVisitor(ctx.contents))
     }
 
     override def visitNetwork(ctx: NetworkContext) = {
-      Task(
-        Network,
-        ctx.IDENTIFIER,
-        DeclVisitor(ctx.decls),
-        visit(ctx.contents))
+      Task(Network, ctx.IDENTIFIER, DeclVisitor(ctx.decls), visit(ctx.contents))
     }
 
     override def visitConnect(ctx: ConnectContext) = {
@@ -109,19 +115,33 @@ class AstBuilder {
     }
   }
 
-  object TaskContentVisitor extends BaseVisitor[AlogicAST] {
-    override def visitFunction(ctx: FunctionContext) = Function(ctx.IDENTIFIER, StatementVisitor(ctx.statement()))
-    override def visitFenceFunction(ctx: FenceFunctionContext) = FenceFunction(StatementVisitor(ctx.statement()))
-    override def visitVerilogFunction(ctx: VerilogFunctionContext) = VerilogFunction(VerilogBodyVisitor(ctx.verilogbody()))
-  }
-
-  object VerilogBodyVisitor extends BaseVisitor[String] {
-    override def visitVerilogbody(ctx: VerilogbodyContext) = visit(ctx.tks).mkString
-    override def visitVany(ctx: VanyContext) = ctx.VANY
-    override def visitVbody(ctx: VbodyContext) = visit(ctx.verilogbody())
-  }
-
   object DeclVisitor extends BaseVisitor[Declaration] {
+
+    object InsertVarVisitor extends BaseVisitor[AlogicAST] {
+      // This visitor is used to parse an expression used as a declaration of a variable
+      // When we have identified the name, we insert it into the namespace
+      override def visitVarRefIndex(ctx: VarRefIndexContext) = ArrayLookup(visit(ctx.dotted_name), ExprVisitor(ctx.expr))
+
+      override def visitDotted_name(ctx: Dotted_nameContext) = ctx.es.toList.map(_.text) match {
+        case s :: Nil => DottedName(List(NS.insert(ctx, s)))
+        case x => {
+          Message.error(ctx, s"Declaration with scoped name '${x mkString "."}'")
+          DottedName(List("Malformed"))
+        }
+      }
+    }
+
+    object SyncTypeVisitor extends BaseVisitor[SyncType] {
+      override def visitSyncReadyBubbleType(ctx: SyncReadyBubbleTypeContext) = SyncReadyBubble
+      override def visitWireSyncAcceptType(ctx: WireSyncAcceptTypeContext) = WireSyncAccept
+      override def visitSyncReadyType(ctx: SyncReadyTypeContext) = SyncReady
+      override def visitWireSyncType(ctx: WireSyncTypeContext) = WireSync
+      override def visitSyncAcceptType(ctx: SyncAcceptTypeContext) = SyncAccept
+      override def visitSyncType(ctx: SyncTypeContext) = Sync
+      override def visitWireType(ctx: WireTypeContext) = Wire
+      override val defaultResult = Wire
+    }
+
     override def visitOutDecl(ctx: OutDeclContext) = OutDeclaration(
       SyncTypeVisitor(ctx.sync_type()),
       TypeVisitor(ctx.known_type()),
@@ -165,55 +185,6 @@ class AstBuilder {
       )
   }
 
-  // This visitor is used to parse an expression used as a declaration of a variable
-  // When we have identified the name, we insert it into the namespace
-  object InsertVarVisitor extends BaseVisitor[AlogicAST] {
-    override def visitVarRefIndex(ctx: VarRefIndexContext) = ArrayLookup(visit(ctx.dotted_name), ExprVisitor(ctx.expr))
-
-    override def visitDotted_name(ctx: Dotted_nameContext) = {
-      val s = ctx.es.toList.map(_.text)
-      if (s.length != 1)
-        Message.error(ctx, s"Malformed declaration '$s'")
-      DottedName(List(NS.insert(ctx, s.head)))
-    }
-  }
-
-  object TasktypeVisitor extends BaseVisitor[TaskType] {
-    override def visitFsmType(ctx: FsmTypeContext) = Fsm
-    override def visitPipelineType(ctx: PipelineTypeContext) = Pipeline
-    override def visitVerilogType(ctx: VerilogTypeContext) = Verilog
-  }
-
-  object SyncTypeVisitor extends BaseVisitor[SyncType] {
-    override def visitSyncReadyBubbleType(ctx: SyncReadyBubbleTypeContext) = SyncReadyBubble
-    override def visitWireSyncAcceptType(ctx: WireSyncAcceptTypeContext) = WireSyncAccept
-    override def visitSyncReadyType(ctx: SyncReadyTypeContext) = SyncReady
-    override def visitWireSyncType(ctx: WireSyncTypeContext) = WireSync
-    override def visitSyncAcceptType(ctx: SyncAcceptTypeContext) = SyncAccept
-    override def visitSyncType(ctx: SyncTypeContext) = Sync
-    override def visitWireType(ctx: WireTypeContext) = Wire
-    override val defaultResult = Wire
-  }
-
-  object CaseVisitor extends BaseVisitor[AlogicAST] {
-    override def visitDefaultCase(ctx: DefaultCaseContext) = {
-      val s = StatementVisitor(ctx.statement())
-      if (is_control_stmt(s))
-        ControlCaseLabel(List(), s)
-      else
-        CombinatorialCaseLabel(List(), s)
-    }
-
-    override def visitNormalCase(ctx: NormalCaseContext) = {
-      val s = StatementVisitor(ctx.statement())
-      val args = CommaArgsVisitor(ctx.comma_args())
-      if (is_control_stmt(s))
-        ControlCaseLabel(args, s)
-      else
-        CombinatorialCaseLabel(args, s)
-    }
-  }
-
   object VarRefVisitor extends BaseVisitor[AlogicExpr] {
     override def visitVarRef(ctx: VarRefContext) = visit(ctx.dotted_name)
     override def visitVarRefIndex(ctx: VarRefIndexContext) =
@@ -223,16 +194,10 @@ class AstBuilder {
 
     override def visitLValueCat(ctx: LValueCatContext) = BitCat(visit(ctx.refs))
 
-    override def visitDotted_name(ctx: Dotted_nameContext) = LookupName(ctx, DottedName(ctx.es.toList.map(_.text)))
-
-    // This function handles namespace lookups
-    private def LookupName(ctx: ParserRuleContext, dotname: DottedName): DottedName = {
-      val s = dotname.names
-      val name2 = if (s.length == 1) identifier(s(0)) else dotname
-      // Check in namespace and rewrite if necessary
-      name2 match {
-        case DottedName(ns) => DottedName(NS.lookup(ctx, ns.head) :: ns.tail)
-      }
+    override def visitDotted_name(ctx: Dotted_nameContext) = {
+      // Look up name in namespace
+      val (head :: tail) = ctx.es.toList.map(_.text)
+      DottedName(NS.lookup(ctx, head) :: tail)
     }
   }
 
@@ -290,12 +255,12 @@ class AstBuilder {
             Message.error(ctx, s"Interface write takes exactly one argument (${a.length} found)")
           WriteCall(DottedName(names.init), a)
         }
-        case DottedName(names) if (names.length == 1 && names.head == "zxt") => {
+        case DottedName("zxt" :: Nil) => {
           if (a.length != 2)
             Message.error(ctx, s"Zero extend function takes exactly two arguments: number of bits and expression (${a.length} found)")
           Zxt(a(0), a(1))
         }
-        case DottedName(names) if (names.length == 1 && names.head == "sxt") => {
+        case DottedName("sxt" :: Nil) => {
           if (a.length != 2)
             Message.error(ctx, s"Sign extend function takes exactly two arguments: number of bits and expression (${a.length} found)")
           Sxt(a(0), a(1))
@@ -306,16 +271,11 @@ class AstBuilder {
   }
 
   object StatementVisitor extends BaseVisitor[AlogicAST] {
-    private def is_control_label(cmd: AlogicAST): Boolean = cmd match {
-      case ControlCaseLabel(_, _) => true
-      case _                      => false
-    }
-
     override def visitBlockStmt(ctx: BlockStmtContext) = {
       NS.addNamespace()
       val ret = visit(ctx.stmts) match {
         case s if (s.length > 0 && is_control_stmt(s.last)) => ControlBlock(s)
-        case s if (s.forall(!is_control_stmt(_)))           => CombinatorialBlock(s)
+        case s if (!s.exists(is_control_stmt))              => CombinatorialBlock(s)
         case s => {
           Message.error(ctx, "A control block must end with a control statement");
           ControlBlock(s)
@@ -326,50 +286,71 @@ class AstBuilder {
     }
 
     override def visitDeclStmt(ctx: DeclStmtContext) = DeclVisitor(ctx.declaration()) match {
-      case s @ VarDeclaration(_, _, _) => DeclarationStmt(s)
+      case s: VarDeclaration => DeclarationStmt(s)
       case _ => {
         Message.error(ctx, "Only variable declarations allowed as statements")
         DeclarationStmt(VarDeclaration(State, DottedName(List("Unknown")), None))
       }
     }
 
-    override def visitWhileStmt(ctx: WhileStmtContext) = WhileLoop(ExprVisitor(ctx.expr()), {
+    override def visitWhileStmt(ctx: WhileStmtContext) = {
+      val cond = ExprVisitor(ctx.expr)
       val body = visit(ctx.statement)
-      if (!is_control_stmt(body))
+      if (!is_control_stmt(body)) {
+        // TODO(geza): can't we just infer a fence here, so all loops have the same rule
+        // and the while is not special?
         Message.error(ctx, "The body of a while loop must end with a control statement")
-      body
-    })
+      }
+      WhileLoop(cond, body)
+    }
 
     override def visitIfStmt(ctx: IfStmtContext) = {
       val cond = ExprVisitor(ctx.expr())
       val yes = visit(ctx.thenStmt)
       val no = visit(Option(ctx.elseStmt))
-      if (is_control_stmt(yes)) no match {
-        case None                            => ControlIf(cond, yes, no)
-        case Some(s) if (is_control_stmt(s)) => ControlIf(cond, yes, no)
+
+      (yes, no) match {
+        case (y, None) if (is_control_stmt(y))                            => ControlIf(cond, yes, None)
+        case (y, Some(n)) if (is_control_stmt(y) && is_control_stmt(n))   => ControlIf(cond, yes, no)
+        case (y, None) if (!is_control_stmt(y))                           => CombinatorialIf(cond, yes, None)
+        case (y, Some(n)) if (!is_control_stmt(y) && !is_control_stmt(n)) => CombinatorialIf(cond, yes, no)
         case _ => {
           Message.error(ctx, "Both branches of an if must be control statements, or both must be combinatorial statements");
-          Message.error(ctx, s"1 $no");
           ControlIf(cond, yes, no)
-        }
-      }
-      else no match {
-        case None                             => CombinatorialIf(cond, yes, no)
-        case Some(s) if (!is_control_stmt(s)) => CombinatorialIf(cond, yes, no)
-        case _ => {
-          Message.error(ctx, "Both branches of an if must be control statements, or both must be combinatorial statements");
-          Message.error(ctx, s"2 $yes");
-          Message.error(ctx, s"2 $no");
-          CombinatorialIf(cond, yes, no)
         }
       }
     }
 
     override def visitCaseStmt(ctx: CaseStmtContext) = {
+
+      object CaseVisitor extends BaseVisitor[AlogicAST] {
+        override def visitDefaultCase(ctx: DefaultCaseContext) = {
+          val s = StatementVisitor(ctx.statement())
+          if (is_control_stmt(s))
+            ControlCaseLabel(List(), s)
+          else
+            CombinatorialCaseLabel(List(), s)
+        }
+
+        override def visitNormalCase(ctx: NormalCaseContext) = {
+          val s = StatementVisitor(ctx.statement())
+          val args = CommaArgsVisitor(ctx.comma_args())
+          if (is_control_stmt(s))
+            ControlCaseLabel(args, s)
+          else
+            CombinatorialCaseLabel(args, s)
+        }
+      }
+
+      def is_control_label(cmd: AlogicAST): Boolean = cmd match {
+        case ControlCaseLabel(_, _) => true
+        case _                      => false
+      }
+
       val test = ExprVisitor(ctx.expr())
       CaseVisitor(ctx.cases) match {
-        case stmts if (stmts.forall(is_control_label))     => ControlCaseStmt(test, stmts)
-        case stmts if (stmts.forall(!is_control_label(_))) => CombinatorialCaseStmt(test, stmts)
+        case stmts if (stmts.forall(is_control_label))  => ControlCaseStmt(test, stmts)
+        case stmts if (!stmts.exists(is_control_label)) => CombinatorialCaseStmt(test, stmts)
         case stmts => {
           Message.error(ctx, "Either all or none of the case items must be control statements");
           ControlCaseStmt(test, stmts)
@@ -377,11 +358,9 @@ class AstBuilder {
       }
     }
 
-    override def visitForStmt(ctx: ForStmtContext) =
-      ControlFor(visit(ctx.init), ExprVisitor(ctx.cond), visit(ctx.step), visit(ctx.stmts))
+    override def visitForStmt(ctx: ForStmtContext) = ControlFor(visit(ctx.init), ExprVisitor(ctx.cond), visit(ctx.step), visit(ctx.stmts))
 
-    override def visitDoStmt(ctx: DoStmtContext) =
-      ControlDo(ExprVisitor(ctx.expr), visit(ctx.stmts))
+    override def visitDoStmt(ctx: DoStmtContext) = ControlDo(ExprVisitor(ctx.expr), visit(ctx.stmts))
 
     override def visitFenceStmt(ctx: FenceStmtContext) = FenceStmt
     override def visitBreakStmt(ctx: BreakStmtContext) = BreakStmt
@@ -390,10 +369,11 @@ class AstBuilder {
     override def visitGotoStmt(ctx: GotoStmtContext) = GotoStmt(ctx.IDENTIFIER)
 
     override def visitAssignmentStmt(ctx: AssignmentStmtContext) = visit(ctx.assignment_statement)
-    override def visitPrimaryIncStmt(ctx: PrimaryIncStmtContext) = Plusplus(VarRefVisitor(ctx.lvalue))
-    override def visitPrimaryDecStmt(ctx: PrimaryDecStmtContext) = Minusminus(VarRefVisitor(ctx.lvalue))
-    override def visitAssignStmt(ctx: AssignStmtContext) = Assign(VarRefVisitor(ctx.lvalue), ExprVisitor(ctx.expr()))
-    override def visitUpdateStmt(ctx: UpdateStmtContext) = Update(VarRefVisitor(ctx.lvalue), ctx.ASSIGNOP, ExprVisitor(ctx.expr()))
+
+    override def visitAssignInc(ctx: AssignIncContext) = Plusplus(VarRefVisitor(ctx.lvalue))
+    override def visitAssignDec(ctx: AssignDecContext) = Minusminus(VarRefVisitor(ctx.lvalue))
+    override def visitAssign(ctx: AssignContext) = Assign(VarRefVisitor(ctx.lvalue), ExprVisitor(ctx.expr()))
+    override def visitAssignUpdate(ctx: AssignUpdateContext) = Update(VarRefVisitor(ctx.lvalue), ctx.ASSIGNOP, ExprVisitor(ctx.expr()))
 
     override def visitExprStmt(ctx: ExprStmtContext) = ExprVisitor(ctx.expr)
   }
@@ -404,11 +384,14 @@ class AstBuilder {
 
   object TypeVisitor extends BaseVisitor[AlogicType] {
     override def visitBoolType(ctx: BoolTypeContext) = IntType(false, 1)
-
     override def visitIntType(ctx: IntTypeContext) = IntType(true, ctx.INTTYPE.text.tail.toInt)
-
     override def visitUintType(ctx: UintTypeContext) = IntType(false, ctx.UINTTYPE.text.tail.toInt)
-
+    object FieldVisitor extends BaseVisitor[FieldType] {
+      override def visitField(ctx: FieldContext) = Field(TypeVisitor(ctx.known_type()), ctx.IDENTIFIER)
+    }
+    override def visitStructType(ctx: StructTypeContext) = Struct(FieldVisitor(ctx.fields))
+    override def visitIntVType(ctx: IntVTypeContext) = IntVType(true, CommaArgsVisitor(ctx.comma_args()))
+    override def visitUintVType(ctx: UintVTypeContext) = IntVType(false, CommaArgsVisitor(ctx.comma_args()))
     override def visitIdentifierType(ctx: IdentifierTypeContext) = {
       val s = ctx.IDENTIFIER.text
       typedefs.getOrElse(s, {
@@ -416,15 +399,6 @@ class AstBuilder {
         IntType(false, 1)
       })
     }
-
-    object FieldVisitor extends BaseVisitor[FieldType] {
-      override def visitField(ctx: FieldContext) = Field(TypeVisitor(ctx.known_type()), ctx.IDENTIFIER)
-    }
-
-    override def visitStructType(ctx: StructTypeContext) = Struct(FieldVisitor(ctx.fields))
-
-    override def visitIntVType(ctx: IntVTypeContext) = IntVType(true, CommaArgsVisitor(ctx.comma_args()))
-    override def visitUintVType(ctx: UintVTypeContext) = IntVType(false, CommaArgsVisitor(ctx.comma_args()))
   }
 
   // Build the abstract syntax tree from a parse tree

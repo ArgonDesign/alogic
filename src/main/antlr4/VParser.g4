@@ -113,7 +113,7 @@ param_args : (es+=paramAssign)? (COMMA es+=paramAssign)*;
 
 paramAssign : expr EQUALS expr;
 
-dotted_name : (es+=IDENTIFIER) (DOT es+=IDENTIFIER)*;
+dotted_name : (es+=IDENTIFIER) ('.' es+=IDENTIFIER)*;
 
 field : known_type IDENTIFIER SEMICOLON;
 
@@ -157,8 +157,8 @@ lvalue
   ;
 
 assignment_statement
-  : lvalue '++'                              # PrimaryIncStmt
-  | lvalue '--'                              # PrimaryDecStmt
-  | lvalue '=' expr                          # AssignStmt
-  | lvalue ASSIGNOP expr                     # UpdateStmt
+  : lvalue '++'                              # AssignInc
+  | lvalue '--'                              # AssignDec
+  | lvalue '=' expr                          # Assign
+  | lvalue ASSIGNOP expr                     # AssignUpdate
   ;
