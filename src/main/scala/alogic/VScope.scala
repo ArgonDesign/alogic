@@ -124,6 +124,12 @@ class VScope(root: RuleNode) {
       visitChildren(ctx)
     }
 
+    // Create new scope for fence functon
+    override def visitFenceFunction(ctx: FenceFunctionContext) = {
+      create(ctx)
+      visitChildren(ctx)
+    }
+
     // Create new scope for task bodies
     override def visitTask(ctx: TaskContext) = {
       create(ctx)
@@ -146,9 +152,10 @@ class VScope(root: RuleNode) {
     override def visitDeclNoInit(ctx: DeclNoInitContext) = InsertDeclVarRef(ctx.var_ref)
     override def visitDeclInit(ctx: DeclInitContext) = InsertDeclVarRef(ctx.var_ref)
 
-    // Insert function names
+    // Insert function names and create new scope
     override def visitFunction(ctx: FunctionContext) = {
       insert(ctx, ctx.IDENTIFIER)
+      create(ctx)
       visitChildren(ctx)
     }
   }

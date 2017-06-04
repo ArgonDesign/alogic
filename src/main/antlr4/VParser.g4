@@ -69,10 +69,14 @@ known_type :
   | UINT LEFTBRACKET comma_args RIGHTBRACKET      # UintVType
   ;
 
-task_content :
-  VOID IDENTIFIER LEFTBRACKET RIGHTBRACKET statement  # Function
-  | VOID FENCE LEFTBRACKET RIGHTBRACKET statement     # FenceFunction
-  | VERILOGBODY verilogbody VRIGHTCURLY               # VerilogFunction
+task_content
+  : 'void' IDENTIFIER '(' ')' LEFTCURLY
+      (stmts += statement)*
+    RIGHTCURLY                                    # Function
+  | 'void' 'fence' '(' ')' LEFTCURLY
+      (stmts += statement)*
+    RIGHTCURLY                                    # FenceFunction
+  | VERILOGBODY verilogbody VRIGHTCURLY           # VerilogFunction
   ;
 
 verilogbody : (tks+=verilogtoken)*;
