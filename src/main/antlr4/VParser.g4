@@ -19,9 +19,18 @@ tasktype : FSM #FsmType
   | VERILOG    #VerilogType
   ;
 
-initializer : '=' expr;
+decl_noinit
+  : known_type var_ref            #DeclNoInit
+  ;
 
-declaration : known_type var_ref initializer?;
+decl_init
+  : known_type var_ref '=' expr   #DeclInit
+  ;
+
+declaration
+  : decl_noinit
+  | decl_init
+  ;
 
 sync_type : SYNC_READY_BUBBLE #SyncReadyBubbleType
           | WIRE_SYNC_ACCEPT  #WireSyncAcceptType

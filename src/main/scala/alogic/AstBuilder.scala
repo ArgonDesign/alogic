@@ -128,10 +128,12 @@ class AstBuilder {
 
     override def visitTaskDecl(ctx: TaskDeclContext) = visit(ctx.declaration)
 
-    override def visitDeclaration(ctx: DeclarationContext) = VarDeclaration(
-      TypeVisitor(ctx.known_type()),
-      LookUpDeclVarRef(ctx.var_ref),
-      ExprVisitor(Option(ctx.initializer())))
+    override def visitDeclNoInit(ctx: DeclNoInitContext) =
+      VarDeclaration(TypeVisitor(ctx.known_type()), LookUpDeclVarRef(ctx.var_ref), None)
+
+    override def visitDeclInit(ctx: DeclInitContext) =
+      VarDeclaration(TypeVisitor(ctx.known_type()), LookUpDeclVarRef(ctx.var_ref), Some(ExprVisitor(ctx.expr)))
+
   }
 
   object VarRefVisitor extends VBaseVisitor[AlogicExpr] {

@@ -113,7 +113,8 @@ class VScope(root: RuleNode) {
     override def visitTaskDeclVerilog(ctx: TaskDeclVerilogContext) = InsertDeclVarRef(ctx.var_ref)
 
     // Insert regular declaration
-    override def visitDeclaration(ctx: DeclarationContext) = InsertDeclVarRef(ctx.var_ref)
+    override def visitDeclNoInit(ctx: DeclNoInitContext) = InsertDeclVarRef(ctx.var_ref)
+    override def visitDeclInit(ctx: DeclInitContext) = InsertDeclVarRef(ctx.var_ref)
 
     // Insert function names
     override def visitFunction(ctx: FunctionContext) = {
