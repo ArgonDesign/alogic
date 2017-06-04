@@ -6,17 +6,18 @@ options {
 
 start : (entities+=entity)* EOF ;
 
-entity :
-   typedef
- | task
- | network
- ;
+entity
+  : typedef
+  | task
+  | network
+  ;
 
-typedef : TYPEDEF known_type IDENTIFIER SEMICOLON;
+typedef : 'typedef' known_type IDENTIFIER ';' ;
 
-tasktype : FSM #FsmType
-  | PIPELINE   #PipelineType
-  | VERILOG    #VerilogType
+tasktype
+  : 'fsm'       #FsmType
+  | 'pipeline'  #PipelineType
+  | 'verilog'   #VerilogType
   ;
 
 decl_noinit
@@ -32,14 +33,15 @@ declaration
   | decl_init
   ;
 
-sync_type : SYNC_READY_BUBBLE #SyncReadyBubbleType
-          | WIRE_SYNC_ACCEPT  #WireSyncAcceptType
-          | SYNC_READY #SyncReadyType
-          | WIRE_SYNC #WireSyncType
-          | SYNC_ACCEPT #SyncAcceptType
-          | SYNC #SyncType
-          | WIRE #WireType
-          ;
+sync_type
+  : SYNC_READY_BUBBLE #SyncReadyBubbleType
+  | WIRE_SYNC_ACCEPT  #WireSyncAcceptType
+  | SYNC_READY        #SyncReadyType
+  | WIRE_SYNC         #WireSyncType
+  | SYNC_ACCEPT       #SyncAcceptType
+  | SYNC              #SyncType
+  | WIRE              #WireType
+  ;
 
 task_declaration
   : 'out' sync_type? known_type IDENTIFIER ';'          #TaskDeclOut
@@ -49,62 +51,76 @@ task_declaration
   | declaration ';'                                     #TaskDecl
   ;
 
-task : tasktype IDENTIFIER LEFTCURLY (decls+=task_declaration)* (contents+=task_content)* RIGHTCURLY;
+task
+  : tasktype IDENTIFIER '{'
+      (decls+=task_declaration)*
+      (contents+=task_content)* 
+    '}';
 
-network : NETWORK IDENTIFIER LEFTCURLY (decls+=task_declaration)* (contents+=network_content)* RIGHTCURLY;
+network
+  : 'network' IDENTIFIER '{'
+      (decls+=task_declaration)*
+       (contents+=network_content)*
+    '}';
 
-network_content : task | connect | instantiate;
+network_content
+  : task
+  | connect
+  | instantiate
+  ;
 
-connect : dotted_name GOESTO comma_args SEMICOLON;
+connect : dotted_name '->' comma_args ';' ;
 
-instantiate : IDENTIFIER EQUALS IDENTIFIER LEFTBRACKET param_args RIGHTBRACKET SEMICOLON;
+instantiate : IDENTIFIER '=' IDENTIFIER '(' param_args ')' ';' ;
 
-known_type :
-  BOOL                                            # BoolType
-  | INTTYPE                                       # IntType
-  | UINTTYPE                                      # UintType
-  | IDENTIFIER                                    # IdentifierType
-  | STRUCT LEFTCURLY (fields+=field)* RIGHTCURLY  # StructType
-  | INT LEFTBRACKET comma_args RIGHTBRACKET       # IntVType
-  | UINT LEFTBRACKET comma_args RIGHTBRACKET      # UintVType
+known_type
+  : 'bool'                    # BoolType
+  | INTTYPE                   # IntType
+  | UINTTYPE                  # UintType
+  | IDENTIFIER                # IdentifierType
+  | 'struct' '{'
+      (fields+=field)* 
+    '}'                       # StructType
+  | 'int'  '(' comma_args ')' # IntVType
+  | 'uint' '(' comma_args ')' # UintVType
   ;
 
 task_content
-  : 'void' IDENTIFIER '(' ')' LEFTCURLY
+  : 'void' IDENTIFIER '(' ')' '{'
       (stmts += statement)*
-    RIGHTCURLY                                    # Function
-  | 'void' 'fence' '(' ')' LEFTCURLY
+    '}'                             # Function
+  | 'void' 'fence' '(' ')' '{'
       (stmts += statement)*
-    RIGHTCURLY                                    # FenceFunction
-  | VERILOGFUNC VERILOGBODY                       # VerilogFunction
+    '}'                             # FenceFunction
+  | VERILOGFUNC VERILOGBODY         # VerilogFunction
   ;
 
 expr
-  : '(' expr ')'                                          # ExprBracket
+  : '(' expr ')'                              # ExprBracket
   | op=('+' | '-' | '!' | '~' | '&' |
-        '~&' | '|' | '~|' | '^' | '~^') expr              # ExprUnary
-  | expr op='*' expr                                      # ExprMulDiv  // TODO: '/' '%'
-  | expr op=('+' | '-') expr                              # ExprAddSub
-  | expr op=('<<' | '>>' | '>>>') expr                    # ExprShift   // TODO: '<<<'
-  | expr op=('>' | '>=' | '<' | '<=') expr                # ExprCompare
-  | expr op=('==' | '!=') expr                            # ExprEqual
-  | expr op='&' expr                                      # ExprBAnd
-  | expr op=('^' | '~^') expr                             # ExprBXor
-  | expr op='|' expr                                      # ExprBOr
-  | expr op='&&' expr                                     # ExprAnd
-  | expr op='||' expr                                     # ExprOr
-  | expr '?' expr ':' expr                                # ExprTernary
-  | LEFTCURLY expr LEFTCURLY expr RIGHTCURLY RIGHTCURLY   # ExprRep
-  | LEFTCURLY comma_args RIGHTCURLY                       # ExprCat
-  | dotted_name '(' comma_args ')'                        # ExprCall
-  | var_ref                                               # ExprVarRef
-  | DOLLARID '(' comma_args ')'                           # ExprDollar
-  | 'true'                                                # ExprTrue
-  | 'false'                                               # ExprFalse
-  | TICKNUM                                               # ExprTrickNum
-  | CONSTANT TICKNUM                                      # ExprConstTickNum
-  | CONSTANT                                              # ExprConst
-  | LITERAL                                               # ExprLiteral
+        '~&' | '|' | '~|' | '^' | '~^') expr  # ExprUnary
+  | expr op='*' expr                          # ExprMulDiv  // TODO: '/' '%'
+  | expr op=('+' | '-') expr                  # ExprAddSub
+  | expr op=('<<' | '>>' | '>>>') expr        # ExprShift   // TODO: '<<<'
+  | expr op=('>' | '>=' | '<' | '<=') expr    # ExprCompare
+  | expr op=('==' | '!=') expr                # ExprEqual
+  | expr op='&' expr                          # ExprBAnd
+  | expr op=('^' | '~^') expr                 # ExprBXor
+  | expr op='|' expr                          # ExprBOr
+  | expr op='&&' expr                         # ExprAnd
+  | expr op='||' expr                         # ExprOr
+  | expr '?' expr ':' expr                    # ExprTernary
+  | '{' expr '{' expr '}' '}'                 # ExprRep
+  | '{' comma_args '}'                        # ExprCat
+  | dotted_name '(' comma_args ')'            # ExprCall
+  | var_ref                                   # ExprVarRef
+  | DOLLARID '(' comma_args ')'               # ExprDollar
+  | 'true'                                    # ExprTrue
+  | 'false'                                   # ExprFalse
+  | TICKNUM                                   # ExprTrickNum
+  | CONSTANT TICKNUM                          # ExprConstTickNum
+  | CONSTANT                                  # ExprConst
+  | LITERAL                                   # ExprLiteral
   ;
 
 var_ref
@@ -113,50 +129,49 @@ var_ref
   | dotted_name                                           # VarRef
   ;
 
-comma_args : (es+=expr)? (COMMA es+=expr)*;
+comma_args : (es+=expr)? (',' es+=expr)*;
 
-param_args : (es+=paramAssign)? (COMMA es+=paramAssign)*;
+param_args : (es+=paramAssign)? (',' es+=paramAssign)*;
 
-paramAssign : expr EQUALS expr;
+paramAssign : expr '=' expr;
 
 dotted_name : (es+=IDENTIFIER) ('.' es+=IDENTIFIER)*;
 
 field : known_type IDENTIFIER SEMICOLON;
 
-
-case_stmt :
-  DEFAULT COLON statement # DefaultCase
-  | comma_args COLON statement # NormalCase
+case_stmt
+  : 'default'  ':' statement # DefaultCase
+  | comma_args ':' statement # NormalCase
   ;
 
 statement
-  : LEFTCURLY (stmts+=statement)* RIGHTCURLY                # BlockStmt
-  | declaration ';'                                         # DeclStmt
-  | 'while' '(' expr ')' LEFTCURLY
+  : '{' (stmts+=statement)* '}'                 # BlockStmt
+  | declaration ';'                             # DeclStmt
+  | 'while' '(' expr ')' '{'
       (stmts += statement)*
-    RIGHTCURLY                                              # WhileStmt
+    '}'                                         # WhileStmt
   | 'if' '(' expr ')'
       thenStmt=statement
     ('else'
-      elseStmt=statement)?                                  # IfStmt
-  | 'case' '(' expr ')' LEFTCURLY
+      elseStmt=statement)?                      # IfStmt
+  | 'case' '(' expr ')' '{'
       (cases+=case_stmt)+
-    RIGHTCURLY                                              # CaseStmt
+    '}'                                         # CaseStmt
   | 'for' '(' init=for_init ';'
               cond=expr ';'
-              step=assignment_statement ')' LEFTCURLY
+              step=assignment_statement ')' '{'
       (stmts += statement)*
-    RIGHTCURLY                                              # ForStmt
-  | 'do' LEFTCURLY
+    '}'                                         # ForStmt
+  | 'do' '{'
       (stmts += statement)*
-    RIGHTCURLY 'while' '(' expr ')' ';'                     # DoStmt
-  | 'fence' ';'                                             # FenceStmt
-  | 'break' ';'                                             # BreakStmt
-  | 'return' ';'                                            # ReturnStmt
-  | '$' '(' LITERAL ')' ';'                                 # DollarCommentStmt
-  | 'goto' IDENTIFIER ';'                                   # GotoStmt
-  | assignment_statement ';'                                # AssignmentStmt
-  | expr ';'                                                # ExprStmt
+    '}' 'while' '(' expr ')' ';'                # DoStmt
+  | 'fence' ';'                                 # FenceStmt
+  | 'break' ';'                                 # BreakStmt
+  | 'return' ';'                                # ReturnStmt
+  | '$' '(' LITERAL ')' ';'                     # DollarCommentStmt
+  | 'goto' IDENTIFIER ';'                       # GotoStmt
+  | assignment_statement ';'                    # AssignmentStmt
+  | expr ';'                                    # ExprStmt
   ;
 
 for_init
@@ -165,13 +180,13 @@ for_init
   ;
 
 lvalue
-  : var_ref                                                 # LValue
-  | LEFTCURLY refs+=lvalue (',' refs+=lvalue)+ RIGHTCURLY   # LValueCat
+  : var_ref                                   # LValue
+  | '{' refs+=lvalue (',' refs+=lvalue)+ '}'  # LValueCat
   ;
 
 assignment_statement
-  : lvalue '++'                              # AssignInc
-  | lvalue '--'                              # AssignDec
-  | lvalue '=' expr                          # Assign
-  | lvalue ASSIGNOP expr                     # AssignUpdate
+  : lvalue '++'           # AssignInc
+  | lvalue '--'           # AssignDec
+  | lvalue '=' expr       # Assign
+  | lvalue ASSIGNOP expr  # AssignUpdate
   ;
