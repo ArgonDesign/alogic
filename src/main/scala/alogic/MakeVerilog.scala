@@ -183,6 +183,7 @@ final class MakeVerilog {
           pw.println(s"(")
         } else {
           pw.println(s"#(")
+          // Emit parameter declarations
           paramDecls foreach {
             case ParamDeclaration(decltype, id, init) => {
               SetNxType(nxMap, decltype, id, "")
@@ -201,7 +202,8 @@ final class MakeVerilog {
         pw.println("  input wire clk,")
         pw.println("  input wire rst_n,")
 
-        id2decl.values.foreach({
+        // Emit port declarations
+        id2decl.values foreach {
           case OutDeclaration(synctype, decltype, name) => {
             if (HasValid(synctype)) {
               pw.println("  output " + outtype + valid(name) + ";")
@@ -239,11 +241,12 @@ final class MakeVerilog {
             SetNxType(regMap, decltype, ExtractName(id), "")
           }
           case _ =>
-        })
+        }
+
         pw.println(")")
 
-        // declare remaining variables
-        id2decl.values.foreach({
+        // Emit remaining variables
+        id2decl.values foreach {
           case VarDeclaration(decltype, ArrayLookup(DottedName(names), index), None) => {
             // Arrays only work with non-struct types
             // TODO maybe figure out the number of bits in the type and declare as this many?
@@ -282,7 +285,7 @@ final class MakeVerilog {
             resets = StrList(Str("      ") :: Str(reg(n)) :: Str(s" <= ") :: MakeExpr(init) :: Str(";\n") :: Nil) :: resets
           }
           case _ =>
-        })
+        }
         true
       }
       case DeclarationStmt(VarDeclaration(decltype, name, init)) => false
