@@ -118,6 +118,18 @@ class VScope(root: RuleNode) {
       visitChildren(ctx)
     }
 
+    // Create new scope for task bodies
+    override def visitTask(ctx: TaskContext) = {
+      create(ctx)
+      visitChildren(ctx)
+    }
+
+    // Create new scope for network bodies
+    override def visitNetwork(ctx: NetworkContext) = {
+      create(ctx)
+      visitChildren(ctx)
+    }
+
     // Insert special task declarations
     override def visitTaskDeclOut(ctx: TaskDeclOutContext) = insert(ctx, ctx.IDENTIFIER)
     override def visitTaskDeclIn(ctx: TaskDeclInContext) = insert(ctx, ctx.IDENTIFIER)
