@@ -235,7 +235,8 @@ final class MakeVerilog {
           }
           case _ =>
         })
-        pw.println(") begin")
+        pw.println(")")
+
         // declare remaining variables
         id2decl.values.foreach({
           case VarDeclaration(decltype, ArrayLookup(DottedName(names), index), None) => {
