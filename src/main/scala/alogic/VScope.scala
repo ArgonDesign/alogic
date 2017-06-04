@@ -106,6 +106,12 @@ class VScope(root: RuleNode) {
       visitChildren(ctx)
     }
 
+    // Create new scope for 'while' loop
+    override def visitWhileStmt(ctx: WhileStmtContext) = {
+      create(ctx)
+      visitChildren(ctx)
+    }
+
     // Create new scope for 'for' loop
     override def visitForStmt(ctx: ForStmtContext) = {
       create(ctx)

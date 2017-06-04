@@ -77,7 +77,7 @@ case class Program(cmds: List[AlogicAST]) extends AlogicAST
 case class ControlCaseStmt(value: AlogicAST, cases: List[AlogicAST]) extends AlogicAST
 case class ControlIf(cond: AlogicExpr, body: AlogicAST, elsebody: Option[AlogicAST]) extends AlogicAST
 case class ControlBlock(cmds: List[AlogicAST]) extends AlogicAST
-case class WhileLoop(cond: AlogicExpr, body: AlogicAST) extends AlogicAST
+case class ControlWhile(cond: AlogicExpr, body: List[AlogicAST]) extends AlogicAST
 case class ControlFor(init: AlogicAST, cond: AlogicExpr, incr: AlogicAST, body: List[AlogicAST]) extends AlogicAST
 case class ControlDo(cond: AlogicExpr, body: List[AlogicAST]) extends AlogicAST
 case object FenceStmt extends AlogicAST

@@ -135,7 +135,9 @@ case_stmt :
 statement
   : LEFTCURLY (stmts+=statement)* RIGHTCURLY                # BlockStmt
   | declaration ';'                                         # DeclStmt
-  | 'while' '(' expr ')' statement                          # WhileStmt
+  | 'while' '(' expr ')' LEFTCURLY
+      (stmts += statement)*
+    RIGHTCURLY                                              # WhileStmt
   | 'if' '(' expr ')'
       thenStmt=statement
     ('else'

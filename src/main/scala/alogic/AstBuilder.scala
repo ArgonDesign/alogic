@@ -241,13 +241,13 @@ class AstBuilder {
 
     override def visitWhileStmt(ctx: WhileStmtContext) = {
       val cond = ExprVisitor(ctx.expr)
-      val body = visit(ctx.statement)
-      if (!is_control_stmt(body)) {
+      val body = visit(ctx.stmts)
+      if (!is_control_stmt(body.last)) {
         // TODO(geza): can't we just infer a fence here, so all loops have the same rule
         // and the while is not special?
         Message.error(ctx, "The body of a while loop must end with a control statement")
       }
-      WhileLoop(cond, body)
+      ControlWhile(cond, body)
     }
 
     override def visitIfStmt(ctx: IfStmtContext) = {

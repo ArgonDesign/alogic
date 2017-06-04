@@ -27,7 +27,7 @@ object AstOps {
     case GotoStmt(target)                => true
     case ControlBlock(s)                 => true
     case ControlIf(cond, body, elsebody) => true
-    case WhileLoop(cond, body)           => true
+    case ControlWhile(cond, body)        => true
     case ControlFor(_, _, _, _)          => true
     case ControlDo(_, _)                 => true
     case ControlCaseStmt(_, _)           => true
@@ -101,7 +101,7 @@ object AstOps {
           case ControlIf(cond, body, Some(e))        => { visit(cond); visit(body); visit(e) }
           case ControlIf(cond, body, None)           => { visit(cond); visit(body) }
           case ControlBlock(cmds)                    => cmds foreach visit
-          case WhileLoop(cond, body)                 => { visit(cond); visit(body) }
+          case ControlWhile(cond, body)              => { visit(cond); body foreach visit }
           case ControlFor(init, cond, incr, body)    => { visit(init); visit(cond); visit(incr); body foreach visit }
           case ControlDo(cond, body)                 => { visit(cond); body foreach visit }
           case FenceStmt                             =>
@@ -173,7 +173,7 @@ object AstOps {
           case ControlIf(cond, body, Some(e))            => ControlIf(cond, rewrite(body), Some(rewrite(e)))
           case ControlIf(cond, body, None)               => ControlIf(cond, rewrite(body), None)
           case ControlBlock(cmds)                        => ControlBlock(cmds map rewrite)
-          case WhileLoop(cond, body)                     => WhileLoop(cond, rewrite(body))
+          case ControlWhile(cond, body)                  => ControlWhile(cond, body map rewrite)
           case ControlFor(init, cond, incr, body)        => ControlFor(rewrite(init), cond, rewrite(incr), body map rewrite)
           case ControlDo(cond, body)                     => ControlDo(cond, body map rewrite)
           case FenceStmt                                 => FenceStmt

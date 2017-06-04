@@ -7,7 +7,7 @@
 //   ControlDo
 //   ControlIf
 //   ControlCaseStmt
-//   WhileLoop
+//   ControlWhile
 //   FunCall
 //   ControlBlock
 //   FenceStmt
@@ -125,10 +125,10 @@ final class MakeStates {
       GotoState(fn2state(ExtractName(name))) // TODO check target exists in builder
       )
     case ControlBlock(cmds) => makeBlockStmts(startState, finalState, cmds)
-    case WhileLoop(cond, body) => {
+    case ControlWhile(cond, body) => {
       val s = if (startState < 0) newState() else startState
       addTarget(finalState)
-      val follow = makeStates(s, finalState, body)
+      val follow = makeStates(s, finalState, ControlBlock(body))
       removeTarget()
       val loop = CombinatorialIf(cond, CombinatorialBlock(follow), Some(GotoState(finalState)))
       if (startState < 0) {
