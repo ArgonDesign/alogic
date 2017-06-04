@@ -187,7 +187,12 @@ final class MakeVerilog {
             case ParamDeclaration(decltype, id, init) => {
               SetNxType(nxMap, decltype, id, "")
               SetNxType(regMap, decltype, id, "")
-              pw.println("  parameter " + id + " = " + MakeExpr(init) + ";")
+              decltype match {
+                case IntType(b, size) => {
+                  pw.println(s"  parameter " + writeSigned(b) + writeSize(size) + id + "=" + MakeExpr(init) + ";")
+                }
+                case x => println(x) //() // TODO support IntVType
+              }
             }
           }
           pw.println(s") (")
