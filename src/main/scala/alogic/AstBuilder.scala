@@ -238,7 +238,7 @@ class AstBuilder {
     override def visitDeclStmt(ctx: DeclStmtContext) = DeclVisitor(ctx.declaration()) match {
       case s: VarDeclaration => DeclarationStmt(s)
       case _ => {
-        Message.error(ctx, "Only variable declarations allowed as statements")
+        Message.error(ctx, "Only variable declarations allowed inside functions")
         DeclarationStmt(VarDeclaration(State, DottedName(List("Unknown")), None))
       }
     }
