@@ -270,7 +270,7 @@ final class MakeVerilog {
         })
         true
       }
-      case DeclarationStmt(VarDeclaration(decltype, name, init)) => { VisitType(decltype, ExtractName(name))(writeVarWithReset); false } // These resets are done when variable is declared in the code
+      case DeclarationStmt(VarDeclaration(decltype, name, init)) => false
       case Function(name, body) => {
         fns = CombStmt(6, body) :: fns
         if (generateAccept) {
