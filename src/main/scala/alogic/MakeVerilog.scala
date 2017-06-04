@@ -178,15 +178,10 @@ final class MakeVerilog {
         pw.println("  input wire rst_n,")
 
         id2decl.values.foreach({
-          case ParamDeclaration(decltype, id, Some(init)) => {
+          case ParamDeclaration(decltype, id, init) => {
             SetNxType(nxMap, decltype, id, "")
             SetNxType(regMap, decltype, id, "")
             pw.println("param " + id + " = " + MakeExpr(init) + ";")
-          }
-          case ParamDeclaration(decltype, id, None) => {
-            SetNxType(nxMap, decltype, id, "")
-            SetNxType(regMap, decltype, id, "")
-            pw.println("param " + id + ";")
           }
           case OutDeclaration(synctype, decltype, name) => {
             if (HasValid(synctype)) {

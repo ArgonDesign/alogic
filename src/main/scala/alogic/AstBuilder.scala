@@ -114,20 +114,14 @@ class AstBuilder {
       override val defaultResult = Wire
     }
 
-    override def visitTaskDeclOut(ctx: TaskDeclOutContext) = OutDeclaration(
-      SyncTypeVisitor(ctx.sync_type),
-      TypeVisitor(ctx.known_type),
-      scope(ctx, ctx.IDENTIFIER))
+    override def visitTaskDeclOut(ctx: TaskDeclOutContext) =
+      OutDeclaration(SyncTypeVisitor(ctx.sync_type), TypeVisitor(ctx.known_type), scope(ctx, ctx.IDENTIFIER))
 
-    override def visitTaskDeclIn(ctx: TaskDeclInContext) = InDeclaration(
-      SyncTypeVisitor(ctx.sync_type),
-      TypeVisitor(ctx.known_type),
-      scope(ctx, ctx.IDENTIFIER))
+    override def visitTaskDeclIn(ctx: TaskDeclInContext) =
+      InDeclaration(SyncTypeVisitor(ctx.sync_type), TypeVisitor(ctx.known_type), scope(ctx, ctx.IDENTIFIER))
 
-    override def visitTaskDeclParam(ctx: TaskDeclParamContext) = ParamDeclaration(
-      TypeVisitor(ctx.known_type),
-      scope(ctx, ctx.IDENTIFIER),
-      ExprVisitor(Option(ctx.initializer)))
+    override def visitTaskDeclParam(ctx: TaskDeclParamContext) =
+      ParamDeclaration(TypeVisitor(ctx.known_type), scope(ctx, ctx.IDENTIFIER), ExprVisitor(ctx.expr))
 
     override def visitTaskDeclVerilog(ctx: TaskDeclVerilogContext) =
       VerilogDeclaration(TypeVisitor(ctx.known_type()), LookUpDeclVarRef(ctx.var_ref))
