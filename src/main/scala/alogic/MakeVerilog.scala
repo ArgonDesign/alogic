@@ -181,7 +181,7 @@ final class MakeVerilog {
           case ParamDeclaration(decltype, id, init) => {
             SetNxType(nxMap, decltype, id, "")
             SetNxType(regMap, decltype, id, "")
-            pw.println("param " + id + " = " + MakeExpr(init) + ";")
+            pw.println("parameter " + id + " = " + MakeExpr(init) + ";")
           }
           case OutDeclaration(synctype, decltype, name) => {
             if (HasValid(synctype)) {
