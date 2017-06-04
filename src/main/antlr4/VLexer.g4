@@ -118,7 +118,7 @@ WIRE: 'wire';
 
 LITERAL: '"' ~["]* '"';
 
-VERILOGBODY: 'void' WS? 'verilog' WS? '(' WS? ')' WS? '{' -> pushMode(VMODE);
+VERILOGFUNC: 'void' WS? 'verilog' WS? '(' WS? ')' WS? -> pushMode(VMODE);
 
 CONSTANT: [0-9_]+;
 
@@ -140,8 +140,5 @@ ERRORCHAR : . ;
 
 mode VMODE;
 
-VLEFTCURLY: '{' -> pushMode(VMODE);
+VERILOGBODY:  '{' ( VERILOGBODY | ~[{}] )* '}'  -> popMode;
 
-VRIGHTCURLY: '}' -> popMode;
-
-VANY : . ;

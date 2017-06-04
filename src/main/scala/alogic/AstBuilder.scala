@@ -41,13 +41,7 @@ class AstBuilder {
     object TaskContentVisitor extends VBaseVisitor[AlogicAST] {
       override def visitFunction(ctx: FunctionContext) = Function(ctx.IDENTIFIER, ControlBlock(StatementVisitor(ctx.stmts)))
       override def visitFenceFunction(ctx: FenceFunctionContext) = FenceFunction(CombinatorialBlock(StatementVisitor(ctx.stmts)))
-      override def visitVerilogFunction(ctx: VerilogFunctionContext) = VerilogFunction(VerilogBodyVisitor(ctx.verilogbody()))
-    }
-
-    object VerilogBodyVisitor extends VBaseVisitor[String] {
-      override def visitVerilogbody(ctx: VerilogbodyContext) = visit(ctx.tks).mkString
-      override def visitVany(ctx: VanyContext) = ctx.VANY
-      override def visitVbody(ctx: VbodyContext) = visit(ctx.verilogbody())
+      override def visitVerilogFunction(ctx: VerilogFunctionContext) = VerilogFunction(ctx.VERILOGBODY.text.drop(1).dropRight(1))
     }
 
     override def visitTypedef(ctx: TypedefContext) = {

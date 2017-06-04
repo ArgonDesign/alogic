@@ -76,14 +76,7 @@ task_content
   | 'void' 'fence' '(' ')' LEFTCURLY
       (stmts += statement)*
     RIGHTCURLY                                    # FenceFunction
-  | VERILOGBODY verilogbody VRIGHTCURLY           # VerilogFunction
-  ;
-
-verilogbody : (tks+=verilogtoken)*;
-
-verilogtoken :
-  VANY  # Vany
-  | VLEFTCURLY verilogbody VRIGHTCURLY # Vbody
+  | VERILOGFUNC VERILOGBODY                       # VerilogFunction
   ;
 
 expr
