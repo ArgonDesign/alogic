@@ -173,16 +173,30 @@ final class MakeVerilog {
 
     VisitAST(tree) {
       case Task(t, name, decls, fns) => {
-        pw.println(s"module $name (")
+        pw.print(s"module $name ")
+
+        val paramDecls = id2decl.values collect {
+          case x: ParamDeclaration => x
+        }
+
+        if (paramDecls.isEmpty) {
+          pw.println(s"(")
+        } else {
+          pw.println(s"#(")
+          paramDecls foreach {
+            case ParamDeclaration(decltype, id, init) => {
+              SetNxType(nxMap, decltype, id, "")
+              SetNxType(regMap, decltype, id, "")
+              pw.println("  parameter " + id + " = " + MakeExpr(init) + ";")
+            }
+          }
+          pw.println(s") (")
+        }
+
         pw.println("  input wire clk,")
         pw.println("  input wire rst_n,")
 
         id2decl.values.foreach({
-          case ParamDeclaration(decltype, id, init) => {
-            SetNxType(nxMap, decltype, id, "")
-            SetNxType(regMap, decltype, id, "")
-            pw.println("parameter " + id + " = " + MakeExpr(init) + ";")
-          }
           case OutDeclaration(synctype, decltype, name) => {
             if (HasValid(synctype)) {
               pw.println("  output " + outtype + valid(name) + ";")
