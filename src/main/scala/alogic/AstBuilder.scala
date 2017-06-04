@@ -1,16 +1,13 @@
 package alogic
 
-import alogic.antlr._
-import alogic.antlr.VParser._
-import scala.collection.JavaConverters._
-import org.antlr.v4.runtime.tree.ParseTree
-import org.antlr.v4.runtime.ParserRuleContext
-import scala.collection._
-import scala.collection.mutable.ListBuffer
-import alogic.AstOps._
+import scala.collection.mutable
+
+import org.antlr.v4.runtime.tree.RuleNode
 
 import Antlr4Conversions._
-import org.antlr.v4.runtime.tree.RuleNode
+import alogic.AstOps._
+import alogic.antlr._
+import alogic.antlr.VParser._
 
 // The aim of the AstBuilder stage is:
 //   Build an abstract syntax tree
@@ -26,50 +23,28 @@ import org.antlr.v4.runtime.tree.RuleNode
 //
 
 class AstBuilder {
-  class BaseVisitor[T] extends VParserBaseVisitor[T] {
-    override def visit(tree: ParseTree): T = {
-      if (null == tree) defaultResult else super.visit(tree)
-    } ensuring (null != _)
 
-    def apply[U <: RuleNode](ctx: U): T = visit(ctx)
-
-    def apply[U <: RuleNode](ctxList: List[U]): List[T] = ctxList.map(apply(_))
-
-    def apply[U <: RuleNode](ctxList: java.util.List[U]): List[T] = apply(ctxList.toList)
-
-    def apply[U <: RuleNode](ctxOpt: Option[U]): Option[T] = ctxOpt.map(apply(_))
-
-    def visit[U <: RuleNode](ctxList: List[U]): List[T] = apply(ctxList)
-
-    def visit[U <: RuleNode](ctxList: java.util.List[U]): List[T] = apply(ctxList)
-
-    def visit[U <: RuleNode](ctxOpt: Option[U]): Option[T] = apply(ctxOpt)
-  }
-
+  private[this] var scope: VScope = null
   private[this] val typedefs = mutable.Map[String, AlogicType]()
-  private[this] val NS = new Namespace()
+
+  // Keep track of containing variable scope for each parse tree node
 
   typedefs("state") = State
 
-  object FunVisitor extends BaseVisitor[Unit] {
-    override def defaultResult = ()
-    override def visitFunction(ctx: FunctionContext): Unit = NS.insert(ctx, ctx.IDENTIFIER)
-  }
-
-  object ProgVisitor extends BaseVisitor[List[Task]] {
+  object ProgVisitor extends VBaseVisitor[List[Task]] {
     override def visitStart(ctx: StartContext) = EntityVisitor(ctx.entities) collect {
       case t @ Task(_, _, _, _) => t
     }
   }
 
-  object EntityVisitor extends BaseVisitor[AlogicAST] {
-    object TaskContentVisitor extends BaseVisitor[AlogicAST] {
+  object EntityVisitor extends VBaseVisitor[AlogicAST] {
+    object TaskContentVisitor extends VBaseVisitor[AlogicAST] {
       override def visitFunction(ctx: FunctionContext) = Function(ctx.IDENTIFIER, StatementVisitor(ctx.statement()))
       override def visitFenceFunction(ctx: FenceFunctionContext) = FenceFunction(StatementVisitor(ctx.statement()))
       override def visitVerilogFunction(ctx: VerilogFunctionContext) = VerilogFunction(VerilogBodyVisitor(ctx.verilogbody()))
     }
 
-    object VerilogBodyVisitor extends BaseVisitor[String] {
+    object VerilogBodyVisitor extends VBaseVisitor[String] {
       override def visitVerilogbody(ctx: VerilogbodyContext) = visit(ctx.tks).mkString
       override def visitVany(ctx: VanyContext) = ctx.VANY
       override def visitVbody(ctx: VbodyContext) = visit(ctx.verilogbody())
@@ -102,8 +77,8 @@ class AstBuilder {
       Connect(visit(ctx.dotted_name()), CommaArgsVisitor(ctx.comma_args())) // TODO check that these names exist?
     }
 
-    object ParamArgsVisitor extends BaseVisitor[List[Assign]] {
-      object ParamAssignVisitor extends BaseVisitor[Assign] {
+    object ParamArgsVisitor extends VBaseVisitor[List[Assign]] {
+      object ParamAssignVisitor extends VBaseVisitor[Assign] {
         override def visitParamAssign(ctx: ParamAssignContext) = Assign(ExprVisitor(ctx.expr(0)), ExprVisitor(ctx.expr(1)))
       }
 
@@ -115,23 +90,20 @@ class AstBuilder {
     }
   }
 
-  object DeclVisitor extends BaseVisitor[Declaration] {
+  object DeclVisitor extends VBaseVisitor[Declaration] {
+    // Extract name from var_ref and look up in current scope
+    object LookUpDeclVarRef extends VBaseVisitor[AlogicAST] {
+      override def visitVarRefIndex(ctx: VarRefIndexContext) = {
+        ArrayLookup(visit(ctx.dotted_name), ExprVisitor(ctx.expr))
+      }
 
-    object InsertVarVisitor extends BaseVisitor[AlogicAST] {
-      // This visitor is used to parse an expression used as a declaration of a variable
-      // When we have identified the name, we insert it into the namespace
-      override def visitVarRefIndex(ctx: VarRefIndexContext) = ArrayLookup(visit(ctx.dotted_name), ExprVisitor(ctx.expr))
-
-      override def visitDotted_name(ctx: Dotted_nameContext) = ctx.es.toList.map(_.text) match {
-        case s :: Nil => DottedName(List(NS.insert(ctx, s)))
-        case x => {
-          Message.error(ctx, s"Declaration with scoped name '${x mkString "."}'")
-          DottedName(List("Malformed"))
-        }
+      override def visitDotted_name(ctx: Dotted_nameContext) = {
+        val name = ctx.es.toList.map(_.text) mkString "."
+        DottedName(List(scope(ctx, name)))
       }
     }
 
-    object SyncTypeVisitor extends BaseVisitor[SyncType] {
+    object SyncTypeVisitor extends VBaseVisitor[SyncType] {
       override def visitSyncReadyBubbleType(ctx: SyncReadyBubbleTypeContext) = SyncReadyBubble
       override def visitWireSyncAcceptType(ctx: WireSyncAcceptTypeContext) = WireSyncAccept
       override def visitSyncReadyType(ctx: SyncReadyTypeContext) = SyncReady
@@ -142,50 +114,33 @@ class AstBuilder {
       override val defaultResult = Wire
     }
 
-    override def visitOutDecl(ctx: OutDeclContext) = OutDeclaration(
-      SyncTypeVisitor(ctx.sync_type()),
-      TypeVisitor(ctx.known_type()),
-      NS.insert(ctx, ctx.IDENTIFIER))
+    override def visitTaskDeclOut(ctx: TaskDeclOutContext) = OutDeclaration(
+      SyncTypeVisitor(ctx.sync_type),
+      TypeVisitor(ctx.known_type),
+      scope(ctx, ctx.IDENTIFIER))
 
-    override def visitInDecl(ctx: InDeclContext) = InDeclaration(
-      SyncTypeVisitor(ctx.sync_type()),
-      TypeVisitor(ctx.known_type()),
-      NS.insert(ctx, ctx.IDENTIFIER))
+    override def visitTaskDeclIn(ctx: TaskDeclInContext) = InDeclaration(
+      SyncTypeVisitor(ctx.sync_type),
+      TypeVisitor(ctx.known_type),
+      scope(ctx, ctx.IDENTIFIER))
 
-    override def visitParamDecl(ctx: ParamDeclContext) = ParamDeclaration(
-      TypeVisitor(ctx.known_type()),
-      NS.insert(ctx, ctx.IDENTIFIER),
-      ExprVisitor(Option(ctx.initializer())))
+    override def visitTaskDeclParam(ctx: TaskDeclParamContext) = ParamDeclaration(
+      TypeVisitor(ctx.known_type),
+      scope(ctx, ctx.IDENTIFIER),
+      ExprVisitor(Option(ctx.initializer)))
 
-    override def visitDecl(ctx: DeclContext) = visit(ctx.declaration())
+    override def visitTaskDeclVerilog(ctx: TaskDeclVerilogContext) =
+      VerilogDeclaration(TypeVisitor(ctx.known_type()), LookUpDeclVarRef(ctx.var_ref))
 
-    override def visitVerilogDecl(ctx: VerilogDeclContext) =
-      VerilogDeclaration(TypeVisitor(ctx.known_type()), InsertVarVisitor(ctx.var_ref))
+    override def visitTaskDecl(ctx: TaskDeclContext) = visit(ctx.declaration)
 
     override def visitDeclaration(ctx: DeclarationContext) = VarDeclaration(
       TypeVisitor(ctx.known_type()),
-      InsertVarVisitor(ctx.var_ref),
-      ExprVisitor(Option(ctx.initializer())) // Insert into NS - tricky because we want to rewrite in visitor - but the identifier is currently unknown
-      // We could do all of this as a second stage:
-      //   + Stand alone code
-      //   - Lose access to ctx for error messages
-      //   - an extra pass may be slightly less efficient and produce error messages in a less useful order?
-      //
-      // Could add a ctx to all of these objects for use in later messages?
-      //
-      // If in the case class,
-      //    - all grow an extra field - a bit ugly
-      // If in the base class,
-      //    - need an extra Positioned call to insert the ctx?
-      //
-      // Or we could call a namespace function to indicate we are inside a declaration?
-      //    - a bit hacky
-      // Or we could use an alternative visitor function to parse declarations?  (Would only need a couple of special cases)
-      //   This is the chosen approach
-      )
+      LookUpDeclVarRef(ctx.var_ref),
+      ExprVisitor(Option(ctx.initializer())))
   }
 
-  object VarRefVisitor extends BaseVisitor[AlogicExpr] {
+  object VarRefVisitor extends VBaseVisitor[AlogicExpr] {
     override def visitVarRef(ctx: VarRefContext) = visit(ctx.dotted_name)
     override def visitVarRefIndex(ctx: VarRefIndexContext) =
       ArrayLookup(visit(ctx.dotted_name), ExprVisitor(ctx.expr))
@@ -197,11 +152,11 @@ class AstBuilder {
     override def visitDotted_name(ctx: Dotted_nameContext) = {
       // Look up name in namespace
       val (head :: tail) = ctx.es.toList.map(_.text)
-      DottedName(NS.lookup(ctx, head) :: tail)
+      DottedName(scope(ctx, head) :: tail)
     }
   }
 
-  object ExprVisitor extends BaseVisitor[AlogicExpr] {
+  object ExprVisitor extends VBaseVisitor[AlogicExpr] {
     override def visitExprBracket(ctx: ExprBracketContext) = Bracket(visit(ctx.expr))
     override def visitExprUnary(ctx: ExprUnaryContext) = UnaryOp(ctx.op, visit(ctx.expr))
     override def visitExprMulDiv(ctx: ExprMulDivContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
@@ -270,19 +225,14 @@ class AstBuilder {
     }
   }
 
-  object StatementVisitor extends BaseVisitor[AlogicAST] {
-    override def visitBlockStmt(ctx: BlockStmtContext) = {
-      NS.addNamespace()
-      val ret = visit(ctx.stmts) match {
-        case s if (s.length > 0 && is_control_stmt(s.last)) => ControlBlock(s)
-        case s if (!s.exists(is_control_stmt))              => CombinatorialBlock(s)
-        case s => {
-          Message.error(ctx, "A control block must end with a control statement");
-          ControlBlock(s)
-        }
+  object StatementVisitor extends VBaseVisitor[AlogicAST] {
+    override def visitBlockStmt(ctx: BlockStmtContext) = visit(ctx.stmts) match {
+      case s if (s.length > 0 && is_control_stmt(s.last)) => ControlBlock(s)
+      case s if (!s.exists(is_control_stmt))              => CombinatorialBlock(s)
+      case s => {
+        Message.error(ctx, "A control block must end with a control statement");
+        ControlBlock(s)
       }
-      NS.removeNamespace()
-      ret
     }
 
     override def visitDeclStmt(ctx: DeclStmtContext) = DeclVisitor(ctx.declaration()) match {
@@ -323,7 +273,7 @@ class AstBuilder {
 
     override def visitCaseStmt(ctx: CaseStmtContext) = {
 
-      object CaseVisitor extends BaseVisitor[AlogicAST] {
+      object CaseVisitor extends VBaseVisitor[AlogicAST] {
         override def visitDefaultCase(ctx: DefaultCaseContext) = {
           val s = StatementVisitor(ctx.statement())
           if (is_control_stmt(s))
@@ -378,15 +328,15 @@ class AstBuilder {
     override def visitExprStmt(ctx: ExprStmtContext) = ExprVisitor(ctx.expr)
   }
 
-  object CommaArgsVisitor extends BaseVisitor[List[AlogicExpr]] {
+  object CommaArgsVisitor extends VBaseVisitor[List[AlogicExpr]] {
     override def visitComma_args(ctx: Comma_argsContext) = ExprVisitor(ctx.es)
   }
 
-  object TypeVisitor extends BaseVisitor[AlogicType] {
+  object TypeVisitor extends VBaseVisitor[AlogicType] {
     override def visitBoolType(ctx: BoolTypeContext) = IntType(false, 1)
     override def visitIntType(ctx: IntTypeContext) = IntType(true, ctx.INTTYPE.text.tail.toInt)
     override def visitUintType(ctx: UintTypeContext) = IntType(false, ctx.UINTTYPE.text.tail.toInt)
-    object FieldVisitor extends BaseVisitor[FieldType] {
+    object FieldVisitor extends VBaseVisitor[FieldType] {
       override def visitField(ctx: FieldContext) = Field(TypeVisitor(ctx.known_type()), ctx.IDENTIFIER)
     }
     override def visitStructType(ctx: StructTypeContext) = Struct(FieldVisitor(ctx.fields))
@@ -403,10 +353,8 @@ class AstBuilder {
 
   // Build the abstract syntax tree from a parse tree
   def apply(parseTree: RuleNode): Program = {
-    // Add known identifiers that are not already recognised as keywords
-    for { id <- List("zxt", "sxt", "go") } NS.insert(id)
-    // Capture all found function names into toplevel namespace
-    FunVisitor(parseTree)
+    // Extract names from declarations and build scopes
+    scope = new VScope(parseTree)
     // Then build abstract syntax tree and remap identifiers
     Program(ProgVisitor(parseTree))
   }

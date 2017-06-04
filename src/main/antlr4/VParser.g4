@@ -32,12 +32,12 @@ sync_type : SYNC_READY_BUBBLE #SyncReadyBubbleType
           | WIRE #WireType
           ;
 
-task_declaration :
-    OUT sync_type? known_type IDENTIFIER SEMICOLON     #OutDecl
-  | IN sync_type? known_type IDENTIFIER SEMICOLON      #InDecl
-  | PARAM sync_type? known_type IDENTIFIER initializer? SEMICOLON   #ParamDecl
-  | VERILOG known_type var_ref SEMICOLON #VerilogDecl
-  | declaration SEMICOLON                              #Decl
+task_declaration
+  : 'out' sync_type? known_type IDENTIFIER ';'                  #TaskDeclOut
+  | 'in' sync_type? known_type IDENTIFIER ';'                   #TaskDeclIn
+  | PARAM sync_type? known_type IDENTIFIER initializer? ';'     #TaskDeclParam
+  | 'verilog' known_type var_ref ';'                            #TaskDeclVerilog
+  | declaration ';'                                             #TaskDecl
   ;
 
 task : tasktype IDENTIFIER LEFTCURLY (decls+=task_declaration)* (contents+=task_content)* RIGHTCURLY;
