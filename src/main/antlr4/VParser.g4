@@ -143,7 +143,7 @@ statement
   | 'case' '(' expr ')' LEFTCURLY
       (cases+=case_stmt)+
     RIGHTCURLY                                              # CaseStmt
-  | 'for' '(' init=assignment_statement ';'
+  | 'for' '(' init=for_init ';'
               cond=expr ';'
               step=assignment_statement ')' LEFTCURLY
       (stmts += statement)*
@@ -158,6 +158,11 @@ statement
   | 'goto' IDENTIFIER ';'                                   # GotoStmt
   | assignment_statement ';'                                # AssignmentStmt
   | expr ';'                                                # ExprStmt
+  ;
+
+for_init
+  : assignment_statement  #ForInitNoDecl
+  | decl_init             #ForInitDecl
   ;
 
 lvalue

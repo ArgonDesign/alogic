@@ -304,7 +304,23 @@ class AstBuilder {
       }
     }
 
-    override def visitForStmt(ctx: ForStmtContext) = ControlFor(visit(ctx.init), ExprVisitor(ctx.cond), visit(ctx.step), visit(ctx.stmts))
+    object ForInitVisitor extends VBaseVisitor[(Option[VarDeclaration], AlogicAST)] {
+      override def visitForInitNoDecl(ctx: ForInitNoDeclContext) = (None, StatementVisitor(ctx.assignment_statement))
+      override def visitDeclInit(ctx: DeclInitContext) = {
+        val varDecl = DeclVisitor(ctx).asInstanceOf[VarDeclaration]
+        val initExpr = Assign(VarRefVisitor(ctx.var_ref), ExprVisitor(ctx.expr))
+        (Some(varDecl), initExpr)
+      }
+    }
+
+    override def visitForStmt(ctx: ForStmtContext) = {
+      val (optDecl, initExpr) = ForInitVisitor(ctx.init)
+      val forAST = ControlFor(initExpr, ExprVisitor(ctx.cond), visit(ctx.step), visit(ctx.stmts))
+      optDecl match {
+        case None       => forAST
+        case Some(decl) => ControlBlock(DeclarationStmt(decl) :: forAST :: Nil)
+      }
+    }
 
     override def visitDoStmt(ctx: DoStmtContext) = ControlDo(ExprVisitor(ctx.expr), visit(ctx.stmts))
 

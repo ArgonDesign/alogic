@@ -106,6 +106,12 @@ class VScope(root: RuleNode) {
       visitChildren(ctx)
     }
 
+    // Create new scope for 'for' loop
+    override def visitForStmt(ctx: ForStmtContext) = {
+      create(ctx)
+      visitChildren(ctx)
+    }
+
     // Insert special task declarations
     override def visitTaskDeclOut(ctx: TaskDeclOutContext) = insert(ctx, ctx.IDENTIFIER)
     override def visitTaskDeclIn(ctx: TaskDeclInContext) = insert(ctx, ctx.IDENTIFIER)
