@@ -49,9 +49,17 @@ class VScope(root: RuleNode) {
   private[this] def insert(ctx: ParserRuleContext, name: String): Unit = {
     val scope = find(ctx)
     if (scope contains name) {
-      val Some(Item(_, line)) = scope(name)
-      Message.error(ctx, s"Multiple declarations of '$name' ...")
-      Message.error(ctx, s"... previous declaration at: ${line}")
+      val Some(Item(_, loc)) = scope(name)
+      Message.error(ctx, s"Multiple declarations of name '$name' ...")
+      Message.error(ctx, s"... previous declaration at: ${loc}")
+    } else {
+      scope(name) match {
+        case Some(Item(_, loc)) => {
+          Message.warning(ctx, s"Declaration of '$name' hides previous declaration of same name at ...")
+          Message.warning(ctx, s"... ${loc}")
+        }
+        case None => ()
+      }
     }
     scope(name) = Some(Item(name, ctx.loc))
     multiplicity(name) += 1
