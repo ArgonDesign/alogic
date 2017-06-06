@@ -145,6 +145,7 @@ class VScope(root: RuleNode) {
     // Insert special task declarations
     override def visitTaskDeclOut(ctx: TaskDeclOutContext) = insert(ctx, ctx.IDENTIFIER)
     override def visitTaskDeclIn(ctx: TaskDeclInContext) = insert(ctx, ctx.IDENTIFIER)
+    override def visitTaskDeclConst(ctx: TaskDeclConstContext) = insert(ctx, ctx.IDENTIFIER)
     override def visitTaskDeclParam(ctx: TaskDeclParamContext) = insert(ctx, ctx.IDENTIFIER)
     override def visitTaskDeclVerilog(ctx: TaskDeclVerilogContext) = InsertDeclVarRef(ctx.var_ref)
 

@@ -114,6 +114,9 @@ class AstBuilder {
     override def visitTaskDeclIn(ctx: TaskDeclInContext) =
       InDeclaration(SyncTypeVisitor(ctx.sync_type), TypeVisitor(ctx.known_type), scope(ctx, ctx.IDENTIFIER))
 
+    override def visitTaskDeclConst(ctx: TaskDeclConstContext) =
+      ConstDeclaration(TypeVisitor(ctx.known_type), scope(ctx, ctx.IDENTIFIER), ExprVisitor(ctx.expr))
+
     override def visitTaskDeclParam(ctx: TaskDeclParamContext) =
       ParamDeclaration(TypeVisitor(ctx.known_type), scope(ctx, ctx.IDENTIFIER), ExprVisitor(ctx.expr))
 

@@ -88,7 +88,8 @@ TYPEDEF : 'typedef';
 STRUCT  : 'struct';
 IN      : 'in';
 OUT     : 'out';
-PARAM   : 'const' | 'param';  // TODO move 'const' option and use it instead of #defines
+CONST   : 'const' ;
+PARAM   : 'param' ;
 FENCE   : 'fence' ;
 TRUE    : 'true' ;
 FALSE   : 'false' ;

@@ -12,6 +12,7 @@ object AstOps {
 
   def ExtractName(tree: Declaration): String = tree match {
     case VarDeclaration(_, id, _)   => ExtractName(id)
+    case ConstDeclaration(_, id, _) => id
     case ParamDeclaration(_, id, _) => id
     case VerilogDeclaration(_, id)  => ExtractName(id)
     case OutDeclaration(_, _, name) => name

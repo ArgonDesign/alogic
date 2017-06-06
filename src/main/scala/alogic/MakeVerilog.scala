@@ -192,7 +192,7 @@ final class MakeVerilog {
                 case IntType(b, size) => {
                   pw.println(s"  parameter " + writeSigned(b) + writeSize(size) + id + "=" + MakeExpr(init) + ";")
                 }
-                case x => println(x) //() // TODO support IntVType
+                case x => ??? //() // TODO support IntVType
               }
             }
           }
@@ -242,8 +242,23 @@ final class MakeVerilog {
           }
           case _ =>
         }
+        pw.println(")\n")
 
-        pw.println(")")
+        // Emit localparam (const) declaratoins
+
+        id2decl.values foreach {
+          case ConstDeclaration(decltype, id, init) => {
+            SetNxType(nxMap, decltype, id, "")
+            SetNxType(regMap, decltype, id, "")
+            decltype match {
+              case IntType(b, size) => {
+                pw.println(s"  localparam " + writeSigned(b) + writeSize(size) + id + "=" + MakeExpr(init) + ";")
+              }
+              case x => ??? //() // TODO support IntVType
+            }
+          }
+          case _ =>
+        }
 
         // Emit remaining variables
         id2decl.values foreach {
@@ -412,6 +427,7 @@ final class MakeVerilog {
 
   implicit def Decl2Typ(decl: Declaration): AlogicType = decl match {
     case ParamDeclaration(decltype, _, _) => decltype
+    case ConstDeclaration(decltype, _, _) => decltype
     case OutDeclaration(_, decltype, _)   => decltype
     case InDeclaration(_, decltype, _)    => decltype
     case VarDeclaration(decltype, _, _)   => decltype

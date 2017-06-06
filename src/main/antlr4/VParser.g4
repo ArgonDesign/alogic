@@ -44,11 +44,12 @@ sync_type
   ;
 
 task_declaration
-  : 'out' sync_type? known_type IDENTIFIER ';'          #TaskDeclOut
-  | 'in' sync_type? known_type IDENTIFIER ';'           #TaskDeclIn
-  | PARAM sync_type? known_type IDENTIFIER '=' expr ';' #TaskDeclParam
-  | 'verilog' known_type var_ref ';'                    #TaskDeclVerilog
-  | declaration ';'                                     #TaskDecl
+  : 'out' sync_type? known_type IDENTIFIER ';'            #TaskDeclOut
+  | 'in' sync_type? known_type IDENTIFIER ';'             #TaskDeclIn
+  | 'const' sync_type? known_type IDENTIFIER '=' expr ';' #TaskDeclConst
+  | 'param' sync_type? known_type IDENTIFIER '=' expr ';' #TaskDeclParam
+  | 'verilog' known_type var_ref ';'                      #TaskDeclVerilog
+  | declaration ';'                                       #TaskDecl
   ;
 
 task
