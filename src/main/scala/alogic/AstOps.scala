@@ -144,87 +144,68 @@ object AstOps {
 
     val cb = callback.lift
 
-    def rewrite(tree: AlogicAST): AlogicAST = {
-      cb(tree) match {
+    def rewrite[E <: AlogicAST](tree: AlogicAST): E = {
+      val v = cb(tree) match {
         case Some(x) => x
         case None => tree match {
-          case Instantiate(a, b, args)                   => Instantiate(a, b, args map rewrite)
-          case Connect(start, end)                       => Connect(rewrite(start), end map rewrite)
-          case Function(name, body)                      => Function(name, rewrite(body))
-          case FenceFunction(body)                       => FenceFunction(rewrite(body))
-          case Task(tasktype, name, decls, fns)          => Task(tasktype, name, decls, fns map rewrite)
-          case ArrayLookup(name, index)                  => ArrayLookup(rewrite(name), index)
-          case BinaryArrayLookup(name, lhs, op, rhs)     => BinaryArrayLookup(rewrite(name), lhs, op, rhs)
-          case FunCall(name, args)                       => FunCall(rewrite(name), args)
-          case Assign(lhs, rhs)                          => Assign(rewrite(lhs), rhs)
-          case x: Update                                 => x
-          case x: Plusplus                               => x
-          case x: Minusminus                             => x
-          case CombinatorialBlock(cmds)                  => CombinatorialBlock(cmds map rewrite)
-          case StateBlock(state, cmds)                   => StateBlock(state, cmds map rewrite)
-          case x @ DeclarationStmt(decl: VarDeclaration) => x
-          case CombinatorialIf(cond, body, Some(e))      => CombinatorialIf(rewrite(cond), rewrite(body), Some(rewrite(e)))
-          case CombinatorialIf(cond, body, None)         => CombinatorialIf(rewrite(cond), rewrite(body), None)
-          case x @ AlogicComment(str)                    => x
-          case CombinatorialCaseStmt(value, cases)       => CombinatorialCaseStmt(rewrite(value), cases map rewrite)
-          case Program(cmds)                             => Program(cmds map rewrite)
-          case ControlCaseStmt(value, cases)             => ControlCaseStmt(rewrite(value), cases map rewrite)
-          case ControlIf(cond, body, Some(e))            => ControlIf(cond, rewrite(body), Some(rewrite(e)))
-          case ControlIf(cond, body, None)               => ControlIf(cond, rewrite(body), None)
-          case ControlBlock(cmds)                        => ControlBlock(cmds map rewrite)
-          case ControlWhile(cond, body)                  => ControlWhile(cond, body map rewrite)
-          case ControlFor(init, cond, incr, body)        => ControlFor(rewrite(init), cond, rewrite(incr), body map rewrite)
-          case ControlDo(cond, body)                     => ControlDo(cond, body map rewrite)
-          case FenceStmt                                 => FenceStmt
-          case BreakStmt                                 => BreakStmt
-          case ReturnStmt                                => ReturnStmt
-          case x @ GotoStmt(target: String)              => x
-          case StateProgram(cmds, numStates)             => StateProgram(cmds map rewrite, numStates)
-          case x @ StateStmt(state: Int)                 => x
-          case x @ GotoState(state: Int)                 => x
-          case x @ VerilogFunction(_)                    => x
-          case ControlCaseLabel(cond, body)              => ControlCaseLabel(cond, rewrite(body))
-          case CombinatorialCaseLabel(cond, body)        => CombinatorialCaseLabel(cond, rewrite(body))
-          case x: AlogicExpr                             => x
-        }
-      }
-    }
+          case Instantiate(a, b, args)               => Instantiate(a, b, args map rewrite[AlogicAST])
+          case Connect(start, end)                   => Connect(rewrite[AlogicAST](start), end map rewrite[AlogicAST])
+          case Function(name, body)                  => Function(name, rewrite[AlogicAST](body))
+          case FenceFunction(body)                   => FenceFunction(rewrite[AlogicAST](body))
+          case Task(tasktype, name, decls, fns)      => Task(tasktype, name, decls, fns map rewrite[AlogicAST])
+          case Assign(lhs, rhs)                      => Assign(rewrite[AlogicAST](lhs), rewrite[AlogicExpr](rhs))
+          case Update(lhs, op, rhs)                  => Update(rewrite[AlogicExpr](lhs), op, rewrite[AlogicExpr](rhs))
+          case Plusplus(lhs)                         => Plusplus(rewrite[AlogicExpr](lhs))
+          case Minusminus(lhs)                       => Minusminus(rewrite[AlogicExpr](lhs))
+          case CombinatorialBlock(cmds)              => CombinatorialBlock(cmds map rewrite[AlogicAST])
+          case StateBlock(state, cmds)               => StateBlock(state, cmds map rewrite[AlogicAST])
+          case x: DeclarationStmt                    => x
+          case CombinatorialIf(cond, body, e)        => CombinatorialIf(rewrite[AlogicAST](cond), rewrite[AlogicAST](body), e map rewrite[AlogicAST])
+          case x: AlogicComment                      => x
+          case CombinatorialCaseStmt(value, cases)   => CombinatorialCaseStmt(rewrite[AlogicAST](value), cases map rewrite[AlogicAST])
+          case Program(cmds)                         => Program(cmds map rewrite[AlogicAST])
+          case ControlCaseStmt(value, cases)         => ControlCaseStmt(rewrite[AlogicAST](value), cases map rewrite[AlogicAST])
+          case ControlIf(cond, body, e)              => ControlIf(cond, rewrite[AlogicAST](body), e map rewrite[AlogicAST])
+          case ControlBlock(cmds)                    => ControlBlock(cmds map rewrite[AlogicAST])
+          case ControlWhile(cond, body)              => ControlWhile(rewrite[AlogicExpr](cond), body map rewrite[AlogicAST])
+          case ControlFor(init, cond, incr, body)    => ControlFor(rewrite[AlogicAST](init), rewrite[AlogicExpr](cond), rewrite[AlogicAST](incr), body map rewrite[AlogicAST])
+          case ControlDo(cond, body)                 => ControlDo(rewrite[AlogicExpr](cond), body map rewrite[AlogicAST])
+          case FenceStmt                             => FenceStmt
+          case BreakStmt                             => BreakStmt
+          case ReturnStmt                            => ReturnStmt
+          case x: GotoStmt                           => x
+          case StateProgram(cmds, numStates)         => StateProgram(cmds map rewrite[AlogicAST], numStates)
+          case x: StateStmt                          => x
+          case x: GotoState                          => x
+          case x: VerilogFunction                    => x
+          case ControlCaseLabel(cond, body)          => ControlCaseLabel(cond map rewrite[AlogicExpr], rewrite[AlogicAST](body))
+          case CombinatorialCaseLabel(cond, body)    => CombinatorialCaseLabel(cond map rewrite[AlogicExpr], rewrite[AlogicAST](body))
 
-    rewrite(tree).asInstanceOf[T]
-  }
-
-  def RewriteExpr[T <: AlogicExpr](tree: T)(callback: PartialFunction[AlogicExpr, AlogicExpr]): T = {
-
-    val cb = callback.lift
-
-    def rewrite(tree: AlogicExpr): AlogicExpr = {
-      cb(tree) match {
-        case Some(x) => x
-        case None => tree match {
-          case ArrayLookup(name, index)              => ArrayLookup(name, rewrite(index))
-          case BinaryArrayLookup(name, lhs, op, rhs) => BinaryArrayLookup(name, rewrite(lhs), op, rewrite(rhs))
-          case FunCall(name, args)                   => FunCall(name, args map rewrite)
-          case Zxt(numbits, expr)                    => Zxt(rewrite(numbits), rewrite(expr))
-          case Sxt(numbits, expr)                    => Sxt(rewrite(numbits), rewrite(expr))
-          case DollarCall(name, args)                => DollarCall(name, args map rewrite)
+          case ArrayLookup(name, index)              => ArrayLookup(rewrite[AlogicAST](name), rewrite[AlogicExpr](index))
+          case BinaryArrayLookup(name, lhs, op, rhs) => BinaryArrayLookup(rewrite[AlogicAST](name), rewrite[AlogicExpr](lhs), op, rewrite[AlogicExpr](rhs))
+          case FunCall(name, args)                   => FunCall(rewrite[AlogicAST](name), args map rewrite[AlogicExpr])
+          case Zxt(numbits, expr)                    => Zxt(rewrite[AlogicExpr](numbits), rewrite[AlogicExpr](expr))
+          case Sxt(numbits, expr)                    => Sxt(rewrite[AlogicExpr](numbits), rewrite[AlogicExpr](expr))
+          case DollarCall(name, args)                => DollarCall(name, args map rewrite[AlogicExpr])
           case ReadCall(name)                        => ReadCall(name)
           case LockCall(name)                        => LockCall(name)
           case UnlockCall(name)                      => UnlockCall(name)
           case ValidCall(name)                       => ValidCall(name)
-          case WriteCall(name, args)                 => WriteCall(name, args map rewrite)
-          case BinaryOp(lhs, op, rhs)                => BinaryOp(rewrite(lhs), op, rewrite(rhs))
-          case UnaryOp(op, lhs)                      => UnaryOp(op, rewrite(lhs))
-          case Bracket(content)                      => Bracket(rewrite(content))
-          case TernaryOp(cond, lhs, rhs)             => TernaryOp(rewrite(cond), rewrite(lhs), rewrite(rhs))
-          case BitRep(count, value)                  => BitRep(rewrite(count), rewrite(value))
-          case BitCat(parts)                         => BitCat(parts map rewrite)
+          case WriteCall(name, args)                 => WriteCall(name, args map rewrite[AlogicExpr])
+          case BinaryOp(lhs, op, rhs)                => BinaryOp(rewrite[AlogicExpr](lhs), op, rewrite[AlogicExpr](rhs))
+          case UnaryOp(op, lhs)                      => UnaryOp(op, rewrite[AlogicExpr](lhs))
+          case Bracket(content)                      => Bracket(rewrite[AlogicExpr](content))
+          case TernaryOp(cond, lhs, rhs)             => TernaryOp(rewrite[AlogicExpr](cond), rewrite[AlogicExpr](lhs), rewrite[AlogicExpr](rhs))
+          case BitRep(count, value)                  => BitRep(rewrite[AlogicExpr](count), rewrite[AlogicExpr](value))
+          case BitCat(parts)                         => BitCat(parts map rewrite[AlogicExpr])
           case x: DottedName                         => x
           case x: Literal                            => x
           case x: Num                                => x
         }
       }
+      v.asInstanceOf[E]
     }
 
-    rewrite(tree).asInstanceOf[T]
+    rewrite[T](tree)
   }
 }
