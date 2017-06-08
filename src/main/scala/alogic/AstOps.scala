@@ -95,7 +95,6 @@ object AstOps {
           case BitCat(parts)                         => parts foreach visit
           case AlogicComment(str)                    =>
           case CombinatorialCaseStmt(value, cases)   => { visit(value); cases foreach visit }
-          case Define                                =>
           case Typedef                               =>
           case Program(cmds)                         => cmds foreach visit
           case ControlCaseStmt(value, cases)         => { visit(value); cases foreach visit }
@@ -167,7 +166,6 @@ object AstOps {
           case CombinatorialIf(cond, body, None)         => CombinatorialIf(rewrite(cond), rewrite(body), None)
           case x @ AlogicComment(str)                    => x
           case CombinatorialCaseStmt(value, cases)       => CombinatorialCaseStmt(rewrite(value), cases map rewrite)
-          case Define                                    => Define
           case Typedef                                   => Typedef
           case Program(cmds)                             => Program(cmds map rewrite)
           case ControlCaseStmt(value, cases)             => ControlCaseStmt(rewrite(value), cases map rewrite)

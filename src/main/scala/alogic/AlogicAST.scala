@@ -65,7 +65,6 @@ case class BitRep(count: AlogicExpr, value: AlogicExpr) extends AlogicExpr
 case class BitCat(parts: List[AlogicExpr]) extends AlogicExpr
 
 // Types removed by AstBuilder
-case object Define extends AlogicAST
 case object Typedef extends AlogicAST
 
 // Types removed by Desugar
