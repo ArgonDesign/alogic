@@ -60,12 +60,11 @@ final class MakeStates {
     if (fn2state contains "main") {
       val start = fn2state("main")
       val sd = VarDeclaration(State, DottedName("state" :: Nil), Some(makeNum(start)))
-      val prog2 = RewriteAST(prog) {
-        case Task(Fsm, name, decls, fns) => Some(Task(Fsm, name, sd :: decls, fns))
-        case _                           => None
+      RewriteAST(prog) {
+        case Task(Fsm, name, decls, fns) => Task(Fsm, name, sd :: decls, fns)
       }
-      prog2.asInstanceOf[StateProgram]
     } else {
+      // TODO: this fires for modules which only have 'void verilog()' functions but no main
       Message.error(s"No function named 'main' found")
       prog
     }

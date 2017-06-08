@@ -140,10 +140,12 @@ object AstOps {
 
   // Recurse through the tree and apply function to all nodes in pre-order
   // Callback returns None to continue recursing, or Some to change the tree
-  def RewriteAST(tree: AlogicAST)(callback: AlogicAST => Option[AlogicAST]): AlogicAST = {
+  def RewriteAST[T <: AlogicAST](tree: T)(callback: PartialFunction[AlogicAST, AlogicAST]): T = {
+
+    val cb = callback.lift
 
     def rewrite(tree: AlogicAST): AlogicAST = {
-      callback(tree) match {
+      cb(tree) match {
         case Some(x) => x
         case None => tree match {
           case Instantiate(a, b, args)                   => Instantiate(a, b, args map rewrite)
@@ -188,13 +190,15 @@ object AstOps {
       }
     }
 
-    rewrite(tree)
+    rewrite(tree).asInstanceOf[T]
   }
 
-  def RewriteExpr(tree: AlogicExpr)(callback: AlogicExpr => Option[AlogicExpr]): AlogicExpr = {
+  def RewriteExpr[T <: AlogicExpr](tree: T)(callback: PartialFunction[AlogicExpr, AlogicExpr]): T = {
+
+    val cb = callback.lift
 
     def rewrite(tree: AlogicExpr): AlogicExpr = {
-      callback(tree) match {
+      cb(tree) match {
         case Some(x) => x
         case None => tree match {
           case ArrayLookup(name, index)              => ArrayLookup(name, rewrite(index))
@@ -221,6 +225,6 @@ object AstOps {
       }
     }
 
-    rewrite(tree)
+    rewrite(tree).asInstanceOf[T]
   }
 }
