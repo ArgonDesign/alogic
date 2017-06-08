@@ -48,7 +48,7 @@ final class MakeStates {
   }
 
   def apply(tree: Program): StateProgram = {
-    VisitAST(tree) {
+    tree visit {
       case Function(name, body) =>
         createFnState(name); false
       case _ => true // Recurse
@@ -60,7 +60,7 @@ final class MakeStates {
     if (fn2state contains "main") {
       val start = fn2state("main")
       val sd = VarDeclaration(State, DottedName("state" :: Nil), Some(makeNum(start)))
-      RewriteAST(prog) {
+      prog rewrite {
         case Task(Fsm, name, decls, fns) => Task(Fsm, name, sd :: decls, fns)
       }
     } else {

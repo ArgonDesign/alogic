@@ -111,7 +111,7 @@ object AlogicMain extends App {
 
     // Extract ports
     asts foreach {
-      case (ast: Program) => VisitAST(ast) {
+      case (ast: Program) => ast visit {
         case t @ Task(_, name, _, _) => {
           if (PortMap.portMap contains name)
             Message.warning(s"$name defined multiple times")

@@ -70,7 +70,7 @@ final class MakeVerilog {
     log2numstates = ceillog2(numstates)
 
     // Collect all the declarations
-    VisitAST(tree) {
+    tree visit {
       case Task(t, n, decls, _) => {
         modname = n
         outtype = t match {
@@ -171,7 +171,7 @@ final class MakeVerilog {
 
     var generateAccept = false // As an optimization, don't bother generating accept for modules without any ports that require it
 
-    VisitAST(tree) {
+    tree visit {
       case Task(t, name, decls, fns) => {
         pw.print(s"module $name ")
 
@@ -508,10 +508,10 @@ final class MakeVerilog {
 
     def v(tree: AlogicAST): Boolean = tree match {
       case CombinatorialCaseStmt(value, _) =>
-        VisitAST(value)(v); false
+        value visit v; false
       case CombinatorialBlock(_) => false
       case CombinatorialIf(cond, _, _) =>
-        VisitAST(cond)(v); false
+        cond visit v; false
       case ReadCall(name)   => AddRead(name, false)
       case LockCall(name)   => AddRead(name, true)
       case UnlockCall(name) => AddRead(name, false)
@@ -536,7 +536,7 @@ final class MakeVerilog {
       }
       case _ => true
     }
-    VisitAST(tree)(v)
+    tree visit v
     return blockingStatements
   }
 
@@ -784,10 +784,10 @@ ${i}end
 
     def v(tree: AlogicAST): Boolean = tree match {
       case CombinatorialCaseStmt(value, _) =>
-        VisitAST(value)(v); false
+        value visit v; false
       case CombinatorialBlock(_) => false
       case CombinatorialIf(cond, _, _) =>
-        VisitAST(cond)(v); false
+        cond visit v; false
       case ReadCall(name)   => AddRead(name)
       case LockCall(name)   => AddRead(name)
       case UnlockCall(name) => AddRead(name)
@@ -805,7 +805,7 @@ ${i}end
       }
       case _ => true
     }
-    VisitAST(tree)(v)
+    tree visit v
     return blockingStatements
   }
 
