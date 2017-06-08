@@ -88,15 +88,18 @@ class AstBuilder {
 
   object DeclVisitor extends VBaseVisitor[Declaration] {
     // Extract name from var_ref and look up in current scope
-    object LookUpDeclVarRef extends VBaseVisitor[AlogicAST] {
-      override def visitVarRefIndex(ctx: VarRefIndexContext) = {
-        ArrayLookup(visit(ctx.dotted_name), ExprVisitor(ctx.expr))
+    object LookUpDeclVarRef extends VBaseVisitor[AlogicVarRef] {
+      object LookUpDottedName extends VBaseVisitor[DottedName] {
+        override def visitDotted_name(ctx: Dotted_nameContext) = {
+          val name = ctx.es.toList.map(_.text) mkString "."
+          DottedName(List(scope(ctx, name)))
+        }
       }
 
-      override def visitDotted_name(ctx: Dotted_nameContext) = {
-        val name = ctx.es.toList.map(_.text) mkString "."
-        DottedName(List(scope(ctx, name)))
-      }
+      override def visitVarRefIndex(ctx: VarRefIndexContext) =
+        ArrayLookup(LookUpDottedName(ctx.dotted_name), ExprVisitor(ctx.expr))
+      override def visitDotted_name(ctx: Dotted_nameContext) =
+        LookUpDottedName(ctx)
     }
 
     object SyncTypeVisitor extends VBaseVisitor[SyncType] {
@@ -135,20 +138,23 @@ class AstBuilder {
 
   }
 
-  object VarRefVisitor extends VBaseVisitor[AlogicExpr] {
-    override def visitVarRef(ctx: VarRefContext) = visit(ctx.dotted_name)
-    override def visitVarRefIndex(ctx: VarRefIndexContext) =
-      ArrayLookup(visit(ctx.dotted_name), ExprVisitor(ctx.expr))
-    override def visitVarRefSlice(ctx: VarRefSliceContext) =
-      BinaryArrayLookup(visit(ctx.dotted_name), ExprVisitor(ctx.expr(0)), ctx.op, ExprVisitor(ctx.expr(1)))
-
-    override def visitLValueCat(ctx: LValueCatContext) = BitCat(visit(ctx.refs))
-
+  object LookUpName extends VBaseVisitor[DottedName] {
     override def visitDotted_name(ctx: Dotted_nameContext) = {
       // Look up name in namespace
       val (head :: tail) = ctx.es.toList.map(_.text)
       DottedName(scope(ctx, head) :: tail)
     }
+  }
+
+  object VarRefVisitor extends VBaseVisitor[AlogicExpr] {
+    override def visitVarRef(ctx: VarRefContext) =
+      LookUpName(ctx.dotted_name)
+    override def visitVarRefIndex(ctx: VarRefIndexContext) =
+      ArrayLookup(LookUpName(ctx.dotted_name), ExprVisitor(ctx.expr))
+    override def visitVarRefSlice(ctx: VarRefSliceContext) =
+      BinaryArrayLookup(LookUpName(ctx.dotted_name), ExprVisitor(ctx.expr(0)), ctx.op, ExprVisitor(ctx.expr(1)))
+    override def visitLValueCat(ctx: LValueCatContext) =
+      BitCat(visit(ctx.refs))
   }
 
   object ExprVisitor extends VBaseVisitor[AlogicExpr] {
@@ -177,7 +183,7 @@ class AstBuilder {
     override def visitExprLiteral(ctx: ExprLiteralContext) = Literal(ctx.LITERAL)
 
     override def visitExprCall(ctx: ExprCallContext) = {
-      val n = VarRefVisitor(ctx.dotted_name)
+      val n = LookUpName(ctx.dotted_name)
       val a = CommaArgsVisitor(ctx.comma_args())
       n match {
         case DottedName(names) if (names.last == "read") => {

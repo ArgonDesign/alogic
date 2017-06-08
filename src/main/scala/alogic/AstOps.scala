@@ -165,8 +165,8 @@ object AstOps {
             case CombinatorialIf(cond, body, e)        => CombinatorialIf(r[AlogicAST](cond), r[AlogicAST](body), e map r[AlogicAST])
             case x: AlogicComment                      => x
             case CombinatorialCaseStmt(value, cases)   => CombinatorialCaseStmt(r[AlogicAST](value), cases map r[AlogicAST])
-            case Program(cmds)                         => Program(cmds map r[AlogicAST])
-            case ControlCaseStmt(value, cases)         => ControlCaseStmt(r[AlogicAST](value), cases map r[AlogicAST])
+            case Program(cmds)                         => Program(cmds map r[Task])
+            case ControlCaseStmt(value, cases)         => ControlCaseStmt(r[AlogicAST](value), cases map r[ControlCaseLabel])
             case ControlIf(cond, body, e)              => ControlIf(cond, r[AlogicAST](body), e map r[AlogicAST])
             case ControlBlock(cmds)                    => ControlBlock(cmds map r[AlogicAST])
             case ControlWhile(cond, body)              => ControlWhile(r[AlogicExpr](cond), body map r[AlogicAST])
@@ -183,9 +183,10 @@ object AstOps {
             case ControlCaseLabel(cond, body)          => ControlCaseLabel(cond map r[AlogicExpr], r[AlogicAST](body))
             case CombinatorialCaseLabel(cond, body)    => CombinatorialCaseLabel(cond map r[AlogicExpr], r[AlogicAST](body))
 
-            case ArrayLookup(name, index)              => ArrayLookup(r[AlogicAST](name), r[AlogicExpr](index))
-            case BinaryArrayLookup(name, lhs, op, rhs) => BinaryArrayLookup(r[AlogicAST](name), r[AlogicExpr](lhs), op, r[AlogicExpr](rhs))
-            case FunCall(name, args)                   => FunCall(r[AlogicAST](name), args map r[AlogicExpr])
+            // Expressions
+            case ArrayLookup(name, index)              => ArrayLookup(r[DottedName](name), r[AlogicExpr](index))
+            case BinaryArrayLookup(name, lhs, op, rhs) => BinaryArrayLookup(r[DottedName](name), r[AlogicExpr](lhs), op, r[AlogicExpr](rhs))
+            case FunCall(name, args)                   => FunCall(r[DottedName](name), args map r[AlogicExpr])
             case Zxt(numbits, expr)                    => Zxt(r[AlogicExpr](numbits), r[AlogicExpr](expr))
             case Sxt(numbits, expr)                    => Sxt(r[AlogicExpr](numbits), r[AlogicExpr](expr))
             case DollarCall(name, args)                => DollarCall(name, args map r[AlogicExpr])

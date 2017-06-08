@@ -45,10 +45,7 @@ case class CombinatorialCaseLabel(cond: List[AlogicExpr], body: AlogicAST) exten
 sealed trait AlogicExpr extends AlogicAST
 case class Num(value: String) extends AlogicExpr // Numbers held as textual representation
 case class Literal(value: String) extends AlogicExpr // Strings held as textual representation including quotes
-case class DottedName(names: List[String]) extends AlogicExpr
-case class ArrayLookup(name: AlogicAST, index: AlogicExpr) extends AlogicExpr
-case class BinaryArrayLookup(name: AlogicAST, lhs: AlogicExpr, op: String, rhs: AlogicExpr) extends AlogicExpr
-case class FunCall(name: AlogicAST, args: List[AlogicExpr]) extends AlogicExpr
+case class FunCall(name: DottedName, args: List[AlogicExpr]) extends AlogicExpr
 case class Zxt(numbits: AlogicExpr, expr: AlogicExpr) extends AlogicExpr
 case class Sxt(numbits: AlogicExpr, expr: AlogicExpr) extends AlogicExpr
 case class DollarCall(name: String, args: List[AlogicExpr]) extends AlogicExpr
@@ -64,13 +61,18 @@ case class TernaryOp(cond: AlogicExpr, lhs: AlogicExpr, rhs: AlogicExpr) extends
 case class BitRep(count: AlogicExpr, value: AlogicExpr) extends AlogicExpr
 case class BitCat(parts: List[AlogicExpr]) extends AlogicExpr
 
+sealed trait AlogicVarRef extends AlogicExpr
+case class DottedName(names: List[String]) extends AlogicVarRef
+case class ArrayLookup(name: DottedName, index: AlogicExpr) extends AlogicVarRef
+case class BinaryArrayLookup(name: DottedName, lhs: AlogicExpr, op: String, rhs: AlogicExpr) extends AlogicVarRef
+
 // Types removed by Desugar
 case class Update(lhs: AlogicExpr, op: String, rhs: AlogicExpr) extends AlogicAST
 case class Plusplus(lhs: AlogicExpr) extends AlogicAST
 case class Minusminus(lhs: AlogicExpr) extends AlogicAST
 
 // Types removed by MakeStates
-case class Program(cmds: List[AlogicAST]) extends AlogicAST
+case class Program(cmds: List[Task]) extends AlogicAST
 case class ControlCaseStmt(value: AlogicAST, cases: List[AlogicAST]) extends AlogicAST
 case class ControlIf(cond: AlogicExpr, body: AlogicAST, elsebody: Option[AlogicAST]) extends AlogicAST
 case class ControlBlock(cmds: List[AlogicAST]) extends AlogicAST
