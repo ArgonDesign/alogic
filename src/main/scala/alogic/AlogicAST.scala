@@ -64,9 +64,6 @@ case class TernaryOp(cond: AlogicExpr, lhs: AlogicExpr, rhs: AlogicExpr) extends
 case class BitRep(count: AlogicExpr, value: AlogicExpr) extends AlogicExpr
 case class BitCat(parts: List[AlogicExpr]) extends AlogicExpr
 
-// Types removed by AstBuilder
-case object Typedef extends AlogicAST
-
 // Types removed by Desugar
 case class Update(lhs: AlogicExpr, op: String, rhs: AlogicExpr) extends AlogicAST
 case class Plusplus(lhs: AlogicExpr) extends AlogicAST

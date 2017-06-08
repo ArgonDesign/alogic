@@ -33,11 +33,11 @@ class AstBuilder {
 
   object ProgVisitor extends VBaseVisitor[List[Task]] {
     override def visitStart(ctx: StartContext) = EntityVisitor(ctx.entities) collect {
-      case t @ Task(_, _, _, _) => t
+      case Left(t @ Task(_, _, _, _)) => t
     }
   }
 
-  object EntityVisitor extends VBaseVisitor[AlogicAST] {
+  object EntityVisitor extends VBaseVisitor[Either[AlogicAST, Unit]] {
     object TaskContentVisitor extends VBaseVisitor[AlogicAST] {
       override def visitFunction(ctx: FunctionContext) = Function(ctx.IDENTIFIER, ControlBlock(StatementVisitor(ctx.stmts)))
       override def visitFenceFunction(ctx: FenceFunctionContext) = FenceFunction(CombinatorialBlock(StatementVisitor(ctx.stmts)))
@@ -51,7 +51,7 @@ class AstBuilder {
       } else {
         typedefs(s) = TypeVisitor(ctx.known_type())
       }
-      Typedef
+      Right(())
     }
 
     override def visitTask(ctx: TaskContext) = {
@@ -60,15 +60,17 @@ class AstBuilder {
         case "pipeline" => Pipeline
         case "verilog"  => Verilog
       }
-      Task(tasktype, ctx.IDENTIFIER, DeclVisitor(ctx.decls), TaskContentVisitor(ctx.contents))
+      Left(Task(tasktype, ctx.IDENTIFIER, DeclVisitor(ctx.decls), TaskContentVisitor(ctx.contents)))
     }
 
     override def visitNetwork(ctx: NetworkContext) = {
-      Task(Network, ctx.IDENTIFIER, DeclVisitor(ctx.decls), visit(ctx.contents))
+      val contents = visit(ctx.contents) collect { case Left(x) => x; }
+      Left(Task(Network, ctx.IDENTIFIER, DeclVisitor(ctx.decls), contents))
     }
 
     override def visitConnect(ctx: ConnectContext) = {
-      Connect(visit(ctx.dotted_name()), CommaArgsVisitor(ctx.comma_args())) // TODO check that these names exist?
+      val Left(name) = visit(ctx.dotted_name())
+      Left(Connect(name, CommaArgsVisitor(ctx.comma_args()))) // TODO check that these names exist?
     }
 
     object ParamArgsVisitor extends VBaseVisitor[List[Assign]] {
@@ -80,7 +82,7 @@ class AstBuilder {
     }
 
     override def visitInstantiate(ctx: InstantiateContext) = {
-      Instantiate(ctx.IDENTIFIER(0), ctx.IDENTIFIER(1), ParamArgsVisitor(ctx.param_args()))
+      Left(Instantiate(ctx.IDENTIFIER(0), ctx.IDENTIFIER(1), ParamArgsVisitor(ctx.param_args())))
     }
   }
 
