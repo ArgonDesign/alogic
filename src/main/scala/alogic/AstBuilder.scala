@@ -55,9 +55,19 @@ class AstBuilder {
       Right(())
     }
 
-    override def visitTask(ctx: TaskContext) = ctx.tasktype.text match {
-      case "fsm"     => Left(FsmTask(ctx.IDENTIFIER, DeclVisitor(ctx.decls), TaskContentVisitor(ctx.contents)))
-      case "verilog" => Left(VerilogTask(ctx.IDENTIFIER, DeclVisitor(ctx.decls), TaskContentVisitor(ctx.contents)))
+    override def visitTask(ctx: TaskContext) = {
+      val contents = TaskContentVisitor(ctx.contents)
+      val fns = contents collect { case x: Function => x }
+      val fencefns = contents collect { case x: FenceFunction => x }
+      val vfns = contents collect { case x: VerilogFunction => x }
+
+      // TODO: check there is only 1 fence function and olny in fsm
+
+      val res = ctx.tasktype.text match {
+        case "fsm"     => FsmTask(ctx.IDENTIFIER, DeclVisitor(ctx.decls), fns, fencefns.headOption, vfns)
+        case "verilog" => VerilogTask(ctx.IDENTIFIER, DeclVisitor(ctx.decls), TaskContentVisitor(ctx.contents))
+      }
+      Left(res)
     }
 
     override def visitNetwork(ctx: NetworkContext) = {

@@ -25,9 +25,20 @@ object AlogicTask {
   def unapply(task: AlogicTask) = Some((task.name, task.decls))
 }
 
-case class FsmTask(name: String, decls: List[Declaration], fns: List[AlogicAST]) extends AlogicTask
+case class FsmTask(name: String,
+                   decls: List[Declaration],
+                   fns: List[AlogicAST],
+                   fencefn: Option[FenceFunction],
+                   vfns: List[VerilogFunction]) extends AlogicTask
 case class NetworkTask(name: String, decls: List[Declaration], fns: List[AlogicAST]) extends AlogicTask
 case class VerilogTask(name: String, decls: List[Declaration], fns: List[AlogicAST]) extends AlogicTask
+
+///////////////////////////////////////////////////////////////////////////////
+// Function nodes
+///////////////////////////////////////////////////////////////////////////////
+case class Function(name: String, body: AlogicAST) extends AlogicAST
+case class FenceFunction(body: AlogicAST) extends AlogicAST
+case class VerilogFunction(body: String) extends AlogicAST
 
 ///////////////////////////////////////////////////////////////////////////////
 // Expression nodes
@@ -76,9 +87,6 @@ case class InDeclaration(synctype: SyncType, decltype: AlogicType, name: String)
 // // AlogicAST used for abstract syntax nodes
 case class Connect(start: AlogicAST, end: List[AlogicAST]) extends AlogicAST
 case class Instantiate(id: String, module: String, args: List[AlogicAST]) extends AlogicAST
-case class Function(name: String, body: AlogicAST) extends AlogicAST
-case class FenceFunction(body: AlogicAST) extends AlogicAST
-case class VerilogFunction(body: String) extends AlogicAST
 
 case class Assign(lhs: AlogicAST, rhs: AlogicExpr) extends AlogicAST
 

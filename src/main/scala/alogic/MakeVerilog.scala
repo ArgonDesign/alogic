@@ -75,9 +75,9 @@ final class MakeVerilog {
         modname = n
         decls foreach { x => id2decl(ExtractName(x)) = x }
         outtype = t match {
-          case FsmTask(_, _, _)     => "reg "
-          case NetworkTask(_, _, _) => "wire "
-          case VerilogTask(_, _, _) => "wire "
+          case FsmTask(_, _, _, _, _) => "reg "
+          case NetworkTask(_, _, _)   => "wire "
+          case VerilogTask(_, _, _)   => "wire "
         }
         true
       }
@@ -175,7 +175,7 @@ final class MakeVerilog {
     var generateAccept = false // As an optimization, don't bother generating accept for modules without any ports that require it
 
     tree visit {
-      case FsmTask(_, _, _) | NetworkTask(_, _, _) | VerilogTask(_, _, _) => {
+      case FsmTask(_, _, _, _, _) | NetworkTask(_, _, _) | VerilogTask(_, _, _) => {
         pw.print(s"module $modname ")
 
         val paramDecls = id2decl.values collect {
