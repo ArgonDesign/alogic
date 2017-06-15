@@ -121,7 +121,7 @@ object AlogicMain extends App {
       case t @ AlogicTask(name, _) => {
         // Convert to state machine
         val prog: AlogicTask = t match {
-          case t: FsmTask => new MakeStates()(t)
+          case t: FsmTask => MakeStates(t)
           case t          => t
         }
 

@@ -23,76 +23,70 @@ package alogic
 import scala.collection._
 import AstOps._
 import scala.annotation.tailrec
+import scala.collection.mutable.Stack
 
 final class MakeStates {
 
-  var state_num = 0; // Track which state to use
+  val state_alloc = Stream.from(0).toIterator; // Allocate sequential state numbers
 
   val fn2state = mutable.Map[String, Int]() // First state in each function
 
-  var breakTargets: List[Int] = Nil // Stack of targets when we see a break
+  val breakTargets = Stack[Int]() // Stack of targets when we see a break
 
   var extra: List[List[AlogicAST]] = Nil // list of commands in each state
 
   // Transfer a batch of instructions to the states list
   def emit(insns: List[AlogicAST]): Unit = {
+    assert(insns.head.isInstanceOf[StateStmt])
     extra = insns :: extra
   }
 
-  def addTarget(x: Int): Unit = {
-    breakTargets = x :: breakTargets
-  }
+  def apply(fsm: FsmTask): StateTask = {
+    val FsmTask(name, decls, fns, fencefn, vfns) = fsm
 
-  def removeTarget(): Unit = {
-    breakTargets = breakTargets.tail
-  }
-
-  def apply(tree: FsmTask): StateTask = {
-    tree.fns foreach {
-      case Function(name, body) => createFnState(name);
+    // Allocate function state numbers
+    for (Function(name, _) <- fns) {
+      fn2state(name) = state_alloc.next
     }
 
-    val cmd = tree match {
-      case FsmTask(n, decls, fns, fencefn, vfns) => StateTask(n, decls, fns.map(makeFnStates), fencefn, vfns, 0)
-    }
-
-    val prog = cmd match {
-      case StateTask(n, decls, fns, fencefn, vfns, 0) => StateTask(n, decls, fns, fencefn, vfns, state_num)
-    }
-
-    // Add a declaration for the state variable
     if (fn2state contains "main") {
+      // Convert all functions (do not inline below -- side effect on state_alloc)
+      val nfns = fns map makeFnStates
+
+      // Capture number of states
+      val states = state_alloc.next
+
+      // Add a declaration for the state variable
       val start = fn2state("main")
       val sd = VarDeclaration(State, DottedName("state" :: Nil), Some(makeNum(start)))
-      prog rewrite {
-        case StateTask(name, decls, fns, fencefn, vfns, states) => StateTask(name, sd :: decls, fns, fencefn, vfns, states)
-      }
+
+      // Create State Task
+      StateTask(name, sd :: decls, nfns, fencefn, vfns, states)
+    } else if (fencefn == None && fns == Nil) {
+      // 'fsm' with only 'verilog' functions
+      Message.warning(s"FSM '$name' contains only 'verilog' functions. Consider using a 'verilog' task")
+      StateTask(name, decls, Nil, None, vfns, 0)
     } else {
-      Message.error(s"No function named 'main' found in FSM '${tree.name}'")
-      prog
+      Message.fatal(s"No function named 'main' found in FSM '$name'")
     }
   }
 
-  def makeFnStates(tree: Function): Function = tree match {
-    case Function(name, body) => {
-      val s = fn2state(name)
-      val current = makeStates(s, s, body)
-      emit(StateStmt(s) :: current)
-      // Now convert sequences of state followed by no-state into a StateBlock
-      val states = for { b <- extra } yield {
-        val state = b.head.asInstanceOf[StateStmt].state
-        StateBlock(state, b.tail)
-      }
-      extra = Nil
-      Function(name, CombinatorialBlock(states))
-    }
-  }
+  def makeFnStates(fn: Function): Function = {
+    val Function(name, body) = fn
 
-  def createFnState(name: String): Int = {
-    val s = state_num
-    fn2state(name) = s
-    state_num += 1
-    s
+    val s = fn2state(name)
+    val current = makeStates(s, s, body)
+
+    emit(StateStmt(s) :: current)
+
+    // Now convert sequences of state followed by no-state into a StateBlock
+    val states = for { b <- extra } yield {
+      val state = b.head.asInstanceOf[StateStmt].state
+      StateBlock(state, b.tail)
+    }
+    extra = Nil
+
+    Function(name, CombinatorialBlock(states))
   }
 
   val callDepth = DottedName(List("call_depth"))
@@ -122,10 +116,10 @@ final class MakeStates {
       )
     case ControlBlock(cmds) => makeBlockStmts(startState, finalState, cmds)
     case ControlWhile(cond, body) => {
-      val s = if (startState < 0) newState() else startState
-      addTarget(finalState)
+      val s = if (startState < 0) state_alloc.next else startState
+      breakTargets push finalState
       val follow = makeStates(s, finalState, ControlBlock(body))
-      removeTarget()
+      breakTargets.pop
       val loop = CombinatorialIf(cond, CombinatorialBlock(follow), Some(GotoState(finalState)))
       if (startState < 0) {
         emit(StateStmt(s) :: loop :: Nil)
@@ -143,22 +137,22 @@ final class MakeStates {
       List(CombinatorialIf(cond, CombinatorialBlock(current), Some(CombinatorialBlock(current2))))
     }
     case ControlFor(init, cond, incr, body) => {
-      val s = newState()
+      val s = state_alloc.next
       val f = findLastStmts(-1, StateStmt(s) :: Nil, finalState, body)
       emit(f ::: incr :: CombinatorialIf(cond, GotoState(s), Some(GotoState(finalState))) :: Nil)
       List(init, CombinatorialIf(cond, GotoState(s), Some(GotoState(finalState))))
     }
     case ControlDo(cond, body) => {
-      val s = newState()
-      addTarget(finalState)
+      val s = state_alloc.next
+      breakTargets push finalState
       val f = findLastStmts(startState, StateStmt(s) :: Nil, finalState, body)
       emit(f ::: CombinatorialIf(cond, GotoState(s), Some(GotoState(finalState))) :: Nil)
-      removeTarget()
+      breakTargets.pop
       List(GotoState(s))
     }
     case ControlCaseStmt(value, cases) => {
       val hasDefault = cases.exists(isCaseDefault)
-      addTarget(finalState)
+      breakTargets push finalState
       var combcases = for { c <- cases } yield c match {
         case ControlCaseLabel(cond, body) => {
           val a = makeStates(-1, finalState, body)
@@ -174,7 +168,7 @@ final class MakeStates {
       }
       if (!hasDefault)
         combcases = CombinatorialCaseLabel(Nil, GotoState(finalState)) :: combcases
-      removeTarget()
+      breakTargets.pop
       List(CombinatorialCaseStmt(value, combcases))
     }
 
@@ -186,12 +180,6 @@ final class MakeStates {
     case _                           => false
   }
 
-  def newState(): Int = {
-    val s = state_num
-    state_num += 1
-    s
-  }
-
   //  We need to split into control units
   //  A control unit is a set of combinatorial statements followed by a control statement
   //  We then have a new state for each intermediate control unit
@@ -200,7 +188,7 @@ final class MakeStates {
     case Nil      => Nil
     case x :: Nil => makeStates(startState, finalState, x)
     case x :: xs if (is_control_stmt(x)) => {
-      val s = newState()
+      val s = state_alloc.next
       val current = makeStates(startState, s, x)
       val current2 = makeBlockStmts(s, finalState, xs)
       emit(StateStmt(s) :: current2) // TODO can we make this function tail recursive somehow?
@@ -215,7 +203,7 @@ final class MakeStates {
     case Nil      => initial
     case x :: Nil => initial ::: makeStates(startState, finalState, x) // TODO check this is not a combinatorial statement?
     case x :: xs if (is_control_stmt(x)) => {
-      val s = newState()
+      val s = state_alloc.next
       val current = makeStates(startState, s, x)
       emit(initial ::: current)
       findLastStmts(s, StateStmt(s) :: Nil, finalState, xs)
@@ -223,4 +211,10 @@ final class MakeStates {
     case x :: xs => findLastStmts(-1, initial ::: x :: Nil, finalState, xs) // x must be combinatorial
   }
 
+}
+
+object MakeStates {
+  def apply(fsm: FsmTask): StateTask = {
+    new MakeStates()(fsm)
+  }
 }
