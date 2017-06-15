@@ -103,11 +103,9 @@ object AlogicMain extends App {
     val filePaths = if (multiThreaded) listOfFiles.par else listOfFiles
 
     // First pass - Build AST
-    val (asts, paths) = {
-      filePaths map (AParser(_, includeSearchPaths, initalDefines)) zip filePaths collect {
-        case (Some(ast), path) => (ast, path)
-      }
-    }.unzip
+    val asts = filePaths map (AParser(_, includeSearchPaths, initalDefines)) collect {
+      case Some(ast) => ast
+    }
 
     // Extract ports
     asts foreach {
@@ -122,8 +120,10 @@ object AlogicMain extends App {
     }
 
     // Second pass
-    asts zip paths foreach {
-      case (ast: Program, path: Path) =>
+    asts foreach {
+      case ast: Program => {
+        assert(ast.cmds.size == 1)
+
         // Convert to state machine
         val prog: StateProgram = new MakeStates()(ast)
 
@@ -131,10 +131,11 @@ object AlogicMain extends App {
         val prog2 = Desugar.RemoveAssigns(prog)
 
         // Construct output filename
-        val opath: Path = odir / (path.name + ".v")
+        val opath: Path = odir / (ast.cmds.head.name + ".v")
 
         // Write Verilog
         new MakeVerilog()(prog2, opath.path)
+      }
     }
 
   }
