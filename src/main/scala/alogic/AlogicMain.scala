@@ -120,10 +120,9 @@ object AlogicMain extends App {
     asts foreach {
       case t @ AlogicTask(name, _) => {
         // Convert to state machine
-        val prog: StateProgram = t match {
-          case t: NetworkTask => StateProgram(t :: Nil, 0);
-          case t: VerilogTask => StateProgram(t :: Nil, 0);
-          case t: FsmTask     => new MakeStates()(t)
+        val prog: AlogicTask = t match {
+          case t: FsmTask => new MakeStates()(t)
+          case t          => t
         }
 
         // Remove complicated assignments and ++ and -- (MakeStates inserts some ++/--)

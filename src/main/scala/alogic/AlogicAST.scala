@@ -8,12 +8,7 @@ package alogic
 sealed trait AlogicAST
 
 ///////////////////////////////////////////////////////////////////////////////
-// Root nodes
-///////////////////////////////////////////////////////////////////////////////
-case class StateProgram(cmds: List[AlogicTask], numStates: Int) extends AlogicAST
-
-///////////////////////////////////////////////////////////////////////////////
-// Task (module) nodes
+// Task (module) nodes, these are the roots of the ASTs
 ///////////////////////////////////////////////////////////////////////////////
 sealed trait AlogicTask extends AlogicAST {
   val name: String
@@ -29,6 +24,12 @@ case class FsmTask(name: String,
                    fns: List[Function],
                    fencefn: Option[FenceFunction],
                    vfns: List[VerilogFunction]) extends AlogicTask
+case class StateTask(name: String,
+                     decls: List[Declaration],
+                     fns: List[Function],
+                     fencefn: Option[FenceFunction],
+                     vfns: List[VerilogFunction],
+                     states: Int) extends AlogicTask
 case class NetworkTask(name: String, decls: List[Declaration], fns: List[AlogicAST]) extends AlogicTask
 case class VerilogTask(name: String, decls: List[Declaration], fns: List[VerilogFunction]) extends AlogicTask
 

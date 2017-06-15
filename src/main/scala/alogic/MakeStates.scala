@@ -47,23 +47,25 @@ final class MakeStates {
     breakTargets = breakTargets.tail
   }
 
-  def apply(tree: FsmTask): StateProgram = {
+  def apply(tree: FsmTask): StateTask = {
     tree.fns foreach {
       case Function(name, body) => createFnState(name);
     }
 
     val cmd = tree match {
-      case FsmTask(n, decls, fns, fencefn, vfns) => FsmTask(n, decls, fns.map(makeFnStates), fencefn, vfns)
+      case FsmTask(n, decls, fns, fencefn, vfns) => StateTask(n, decls, fns.map(makeFnStates), fencefn, vfns, 0)
     }
 
-    val prog = StateProgram(cmd :: Nil, state_num) // Transform tree
+    val prog = cmd match {
+      case StateTask(n, decls, fns, fencefn, vfns, 0) => StateTask(n, decls, fns, fencefn, vfns, state_num)
+    }
 
     // Add a declaration for the state variable
     if (fn2state contains "main") {
       val start = fn2state("main")
       val sd = VarDeclaration(State, DottedName("state" :: Nil), Some(makeNum(start)))
       prog rewrite {
-        case FsmTask(name, decls, fns, fencefn, vfns) => FsmTask(name, sd :: decls, fns, fencefn, vfns)
+        case StateTask(name, decls, fns, fencefn, vfns, states) => StateTask(name, sd :: decls, fns, fencefn, vfns, states)
       }
     } else {
       Message.error(s"No function named 'main' found in FSM '${tree.name}'")
