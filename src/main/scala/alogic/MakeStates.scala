@@ -47,19 +47,16 @@ final class MakeStates {
     breakTargets = breakTargets.tail
   }
 
-  def apply(tree: Program): StateProgram = {
-    tree visit {
-      case Function(name, body) =>
-        createFnState(name); false
-      case _ => true // Recurse
-    }
-    val cmds = tree.cmds map {
-      case FsmTask(n, decls, fns, fencefn, vfns) => FsmTask(n, decls, fns.map(makeFnStates), fencefn, vfns)
-      case NetworkTask(n, decls, fns)            => NetworkTask(n, decls, fns.map(makeFnStates))
-      case t: VerilogTask                        => t
+  def apply(tree: FsmTask): StateProgram = {
+    tree.fns foreach {
+      case Function(name, body) => createFnState(name);
     }
 
-    val prog = StateProgram(cmds, state_num) // Transform tree
+    val cmd = tree match {
+      case FsmTask(n, decls, fns, fencefn, vfns) => FsmTask(n, decls, fns.map(makeFnStates), fencefn, vfns)
+    }
+
+    val prog = StateProgram(cmd :: Nil, state_num) // Transform tree
 
     // Add a declaration for the state variable
     if (fn2state contains "main") {
@@ -69,13 +66,12 @@ final class MakeStates {
         case FsmTask(name, decls, fns, fencefn, vfns) => FsmTask(name, sd :: decls, fns, fencefn, vfns)
       }
     } else {
-      // TODO: this fires for modules which only have 'void verilog()' functions but no main
-      Message.error(s"No function named 'main' found")
+      Message.error(s"No function named 'main' found in FSM '${tree.name}'")
       prog
     }
   }
 
-  def makeFnStates(tree: AlogicAST): AlogicAST = tree match {
+  def makeFnStates(tree: Function): Function = tree match {
     case Function(name, body) => {
       val s = fn2state(name)
       val current = makeStates(s, s, body)
@@ -88,7 +84,6 @@ final class MakeStates {
       extra = Nil
       Function(name, CombinatorialBlock(states))
     }
-    case x => x
   }
 
   def createFnState(name: String): Int = {

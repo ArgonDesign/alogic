@@ -10,7 +10,6 @@ sealed trait AlogicAST
 ///////////////////////////////////////////////////////////////////////////////
 // Root nodes
 ///////////////////////////////////////////////////////////////////////////////
-case class Program(cmds: List[AlogicTask]) extends AlogicAST
 case class StateProgram(cmds: List[AlogicTask], numStates: Int) extends AlogicAST
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -27,7 +26,7 @@ object AlogicTask {
 
 case class FsmTask(name: String,
                    decls: List[Declaration],
-                   fns: List[AlogicAST],
+                   fns: List[Function],
                    fencefn: Option[FenceFunction],
                    vfns: List[VerilogFunction]) extends AlogicTask
 case class NetworkTask(name: String, decls: List[Declaration], fns: List[AlogicAST]) extends AlogicTask

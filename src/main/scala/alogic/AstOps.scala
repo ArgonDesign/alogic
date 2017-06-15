@@ -114,7 +114,6 @@ object AstOps {
             case BitCat(parts)                            => parts foreach v
             case AlogicComment(str)                       =>
             case CombinatorialCaseStmt(value, cases)      => { v(value); cases foreach v }
-            case Program(cmds)                            => cmds foreach v
             case ControlCaseStmt(value, cases)            => { v(value); cases foreach v }
             case ControlIf(cond, body, Some(e))           => { v(cond); v(body); v(e) }
             case ControlIf(cond, body, None)              => { v(cond); v(body) }
@@ -156,7 +155,7 @@ object AstOps {
             case Connect(start, end)                      => Connect(r[AlogicAST](start), end map r[AlogicAST])
             case Function(name, body)                     => Function(name, r[AlogicAST](body))
             case FenceFunction(body)                      => FenceFunction(r[AlogicAST](body))
-            case FsmTask(name, decls, fns, fencefn, vfns) => FsmTask(name, decls, fns map r[AlogicAST], fencefn map r[FenceFunction], vfns)
+            case FsmTask(name, decls, fns, fencefn, vfns) => FsmTask(name, decls, fns map r[Function], fencefn map r[FenceFunction], vfns)
             case NetworkTask(name, decls, fns)            => NetworkTask(name, decls, fns map r[AlogicAST])
             case x: VerilogTask                           => x
             case Assign(lhs, rhs)                         => Assign(r[AlogicAST](lhs), r[AlogicExpr](rhs))
@@ -169,7 +168,6 @@ object AstOps {
             case CombinatorialIf(cond, body, e)           => CombinatorialIf(r[AlogicAST](cond), r[AlogicAST](body), e map r[AlogicAST])
             case x: AlogicComment                         => x
             case CombinatorialCaseStmt(value, cases)      => CombinatorialCaseStmt(r[AlogicAST](value), cases map r[AlogicAST])
-            case Program(cmds)                            => Program(cmds map r[AlogicTask])
             case ControlCaseStmt(value, cases)            => ControlCaseStmt(r[AlogicAST](value), cases map r[ControlCaseLabel])
             case ControlIf(cond, body, e)                 => ControlIf(cond, r[AlogicAST](body), e map r[AlogicAST])
             case ControlBlock(cmds)                       => ControlBlock(cmds map r[AlogicAST])

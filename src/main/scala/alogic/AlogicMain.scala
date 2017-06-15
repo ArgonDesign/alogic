@@ -103,35 +103,34 @@ object AlogicMain extends App {
     val filePaths = if (multiThreaded) listOfFiles.par else listOfFiles
 
     // First pass - Build AST
-    val asts = filePaths map (AParser(_, includeSearchPaths, initalDefines)) collect {
-      case Some(ast) => ast
+    val asts = filePaths flatMap {
+      AParser(_, includeSearchPaths, initalDefines)
     }
 
     // Extract ports
     asts foreach {
-      case (ast: Program) => ast visit {
-        case t @ AlogicTask(name, _) => {
-          if (PortMap.portMap contains name)
-            Message.warning(s"$name defined multiple times")
-          PortMap.portMap(name) = t; false
-        }
-        case _ => true // Recurse
+      case t @ AlogicTask(name, _) => {
+        if (PortMap.portMap contains name)
+          Message.warning(s"$name defined multiple times")
+        PortMap.portMap(name) = t; false
       }
     }
 
     // Second pass
     asts foreach {
-      case ast: Program => {
-        assert(ast.cmds.size == 1)
-
+      case t @ AlogicTask(name, _) => {
         // Convert to state machine
-        val prog: StateProgram = new MakeStates()(ast)
+        val prog: StateProgram = t match {
+          case t: NetworkTask => StateProgram(t :: Nil, 0);
+          case t: VerilogTask => StateProgram(t :: Nil, 0);
+          case t: FsmTask     => new MakeStates()(t)
+        }
 
         // Remove complicated assignments and ++ and -- (MakeStates inserts some ++/--)
         val prog2 = Desugar.RemoveAssigns(prog)
 
         // Construct output filename
-        val opath: Path = odir / (ast.cmds.head.name + ".v")
+        val opath: Path = odir / (name + ".v")
 
         // Write Verilog
         new MakeVerilog()(prog2, opath.path)
