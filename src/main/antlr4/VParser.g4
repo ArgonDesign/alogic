@@ -16,7 +16,6 @@ typedef : 'typedef' known_type IDENTIFIER ';' ;
 
 tasktype
   : 'fsm'       #FsmType
-  | 'pipeline'  #PipelineType
   | 'verilog'   #VerilogType
   ;
 
