@@ -71,14 +71,17 @@ final class MakeVerilog {
 
     // Collect all the declarations
     tree visit {
-      case Task(t, n, decls, _) => {
+      case t @ AlogicTask(n, decls) => {
         modname = n
+        decls foreach { x => id2decl(ExtractName(x)) = x }
         outtype = t match {
-          case Fsm | Pipeline    => "reg "
-          case Network | Verilog => "wire "
+          case FsmTask(_, _, _)     => "reg "
+          case NetworkTask(_, _, _) => "wire "
+          case VerilogTask(_, _, _) => "wire "
         }
-        decls foreach { x => id2decl(ExtractName(x)) = x }; true
+        true
       }
+
       // We remove the initializer from declaration statements
       // These will be reset inline where they are declared.
       case DeclarationStmt(VarDeclaration(decltype, id, _)) => { id2decl(ExtractName(id)) = VarDeclaration(decltype, id, None); false }
@@ -172,8 +175,8 @@ final class MakeVerilog {
     var generateAccept = false // As an optimization, don't bother generating accept for modules without any ports that require it
 
     tree visit {
-      case Task(t, name, decls, fns) => {
-        pw.print(s"module $name ")
+      case FsmTask(_, _, _) | NetworkTask(_, _, _) | VerilogTask(_, _, _) => {
+        pw.print(s"module $modname ")
 
         val paramDecls = id2decl.values collect {
           case x: ParamDeclaration => x

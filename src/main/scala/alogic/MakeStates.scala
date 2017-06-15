@@ -54,7 +54,9 @@ final class MakeStates {
       case _ => true // Recurse
     }
     val cmds = tree.cmds map {
-      case Task(t, n, decls, fns) => Task(t, n, decls, fns.map(makeFnStates))
+      case FsmTask(n, decls, fns)     => FsmTask(n, decls, fns.map(makeFnStates))
+      case NetworkTask(n, decls, fns) => NetworkTask(n, decls, fns.map(makeFnStates))
+      case VerilogTask(n, decls, fns) => VerilogTask(n, decls, fns.map(makeFnStates))
     }
 
     val prog = StateProgram(cmds, state_num) // Transform tree
@@ -64,7 +66,7 @@ final class MakeStates {
       val start = fn2state("main")
       val sd = VarDeclaration(State, DottedName("state" :: Nil), Some(makeNum(start)))
       prog rewrite {
-        case Task(Fsm, name, decls, fns) => Task(Fsm, name, sd :: decls, fns)
+        case FsmTask(name, decls, fns) => FsmTask(name, sd :: decls, fns)
       }
     } else {
       // TODO: this fires for modules which only have 'void verilog()' functions but no main

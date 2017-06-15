@@ -8,7 +8,7 @@ import java.io._
 class ModuleInstance(val uname: String, val module: String, val args: List[AlogicAST]) {
 
   // Gather the ports from the AST
-  val task: Task = PortMap.portMap(module) // TODO check before phase 2 that this module exists
+  val task: AlogicTask = PortMap.portMap(module) // TODO check before phase 2 that this module exists
 
   val outs = mutable.Map[String, OutDeclaration]() // Map from portname to declaration
   val outwires = mutable.Map[String, String]() // From portname to wire to be used

@@ -31,13 +31,14 @@ class AstBuilder {
 
   typedefs("state") = State
 
-  object ProgVisitor extends VBaseVisitor[List[Task]] {
+  object ProgVisitor extends VBaseVisitor[List[AlogicTask]] {
     override def visitStart(ctx: StartContext) = EntityVisitor(ctx.entities) collect {
-      case Left(t @ Task(_, _, _, _)) => t
+      case Left(t: AlogicTask) => t
     }
   }
 
   object EntityVisitor extends VBaseVisitor[Either[AlogicAST, Unit]] {
+
     object TaskContentVisitor extends VBaseVisitor[AlogicAST] {
       override def visitFunction(ctx: FunctionContext) = Function(ctx.IDENTIFIER, ControlBlock(StatementVisitor(ctx.stmts)))
       override def visitFenceFunction(ctx: FenceFunctionContext) = FenceFunction(CombinatorialBlock(StatementVisitor(ctx.stmts)))
@@ -54,18 +55,14 @@ class AstBuilder {
       Right(())
     }
 
-    override def visitTask(ctx: TaskContext) = {
-      val tasktype = ctx.tasktype.text match {
-        case "fsm"      => Fsm
-        case "pipeline" => Pipeline
-        case "verilog"  => Verilog
-      }
-      Left(Task(tasktype, ctx.IDENTIFIER, DeclVisitor(ctx.decls), TaskContentVisitor(ctx.contents)))
+    override def visitTask(ctx: TaskContext) = ctx.tasktype.text match {
+      case "fsm"     => Left(FsmTask(ctx.IDENTIFIER, DeclVisitor(ctx.decls), TaskContentVisitor(ctx.contents)))
+      case "verilog" => Left(VerilogTask(ctx.IDENTIFIER, DeclVisitor(ctx.decls), TaskContentVisitor(ctx.contents)))
     }
 
     override def visitNetwork(ctx: NetworkContext) = {
       val contents = visit(ctx.contents) collect { case Left(x) => x; }
-      Left(Task(Network, ctx.IDENTIFIER, DeclVisitor(ctx.decls), contents))
+      Left(NetworkTask(ctx.IDENTIFIER, DeclVisitor(ctx.decls), contents))
     }
 
     override def visitConnect(ctx: ConnectContext) = {

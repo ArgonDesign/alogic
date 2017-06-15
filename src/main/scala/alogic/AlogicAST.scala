@@ -10,11 +10,27 @@ sealed trait AlogicAST
 ///////////////////////////////////////////////////////////////////////////////
 // Root nodes
 ///////////////////////////////////////////////////////////////////////////////
-case class Program(cmds: List[Task]) extends AlogicAST
-case class StateProgram(cmds: List[Task], numStates: Int) extends AlogicAST
+case class Program(cmds: List[AlogicTask]) extends AlogicAST
+case class StateProgram(cmds: List[AlogicTask], numStates: Int) extends AlogicAST
 
 ///////////////////////////////////////////////////////////////////////////////
-// Expressions
+// Task (module) nodes
+///////////////////////////////////////////////////////////////////////////////
+sealed trait AlogicTask extends AlogicAST {
+  val name: String
+  val decls: List[Declaration]
+}
+
+object AlogicTask {
+  def unapply(task: AlogicTask) = Some((task.name, task.decls))
+}
+
+case class FsmTask(name: String, decls: List[Declaration], fns: List[AlogicAST]) extends AlogicTask
+case class NetworkTask(name: String, decls: List[Declaration], fns: List[AlogicAST]) extends AlogicTask
+case class VerilogTask(name: String, decls: List[Declaration], fns: List[AlogicAST]) extends AlogicTask
+
+///////////////////////////////////////////////////////////////////////////////
+// Expression nodes
 ///////////////////////////////////////////////////////////////////////////////
 sealed trait AlogicExpr extends AlogicAST
 case class Num(value: String) extends AlogicExpr // Numbers held as textual representation
@@ -36,7 +52,7 @@ case class BitRep(count: AlogicExpr, value: AlogicExpr) extends AlogicExpr
 case class BitCat(parts: List[AlogicExpr]) extends AlogicExpr
 
 ///////////////////////////////////////////////////////////////////////////////
-// Variable references (also expressions)
+// Variable reference nodes (also expressions)
 ///////////////////////////////////////////////////////////////////////////////
 sealed trait AlogicVarRef extends AlogicExpr
 case class DottedName(names: List[String]) extends AlogicVarRef
@@ -47,12 +63,6 @@ case class BinaryArrayLookup(name: DottedName, lhs: AlogicExpr, op: String, rhs:
 // Use sealed trait to force compiler to detect all cases are covered
 // Use different abstract classes to decompose problem.
 
-// // TaskType defines different types of modules
-sealed trait TaskType
-case object Fsm extends TaskType
-case object Pipeline extends TaskType
-case object Network extends TaskType
-case object Verilog extends TaskType
 //
 // // Declaration used for top-level and function declarations
 sealed trait Declaration
@@ -69,8 +79,6 @@ case class Instantiate(id: String, module: String, args: List[AlogicAST]) extend
 case class Function(name: String, body: AlogicAST) extends AlogicAST
 case class FenceFunction(body: AlogicAST) extends AlogicAST
 case class VerilogFunction(body: String) extends AlogicAST
-
-case class Task(tasktype: TaskType, name: String, decls: List[Declaration], fns: List[AlogicAST]) extends AlogicAST
 
 case class Assign(lhs: AlogicAST, rhs: AlogicExpr) extends AlogicAST
 

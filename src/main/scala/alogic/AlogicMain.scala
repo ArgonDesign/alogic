@@ -18,7 +18,7 @@ import scalax.file.Path
 // TODO: handle this in a nicer way if possible
 object PortMap {
   // This must be from a concurrent collection because it is populated from multiple threads
-  val portMap = new TrieMap[String, Task]()
+  val portMap = new TrieMap[String, AlogicTask]()
 }
 
 object AlogicMain extends App {
@@ -112,7 +112,7 @@ object AlogicMain extends App {
     // Extract ports
     asts foreach {
       case (ast: Program) => ast visit {
-        case t @ Task(_, name, _, _) => {
+        case t @ AlogicTask(name, _) => {
           if (PortMap.portMap contains name)
             Message.warning(s"$name defined multiple times")
           PortMap.portMap(name) = t; false

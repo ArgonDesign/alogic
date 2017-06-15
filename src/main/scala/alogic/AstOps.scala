@@ -84,7 +84,9 @@ object AstOps {
             case Connect(start, end)                   => { v(start); end foreach v }
             case Function(name, body)                  => v(body)
             case FenceFunction(body)                   => v(body)
-            case Task(tasktype, name, decls, fns)      => fns foreach v
+            case FsmTask(name, decls, fns)             => fns foreach v
+            case NetworkTask(name, decls, fns)         => fns foreach v
+            case VerilogTask(name, decls, fns)         => fns foreach v
             case ArrayLookup(name, index)              => { v(name); v(index) }
             case BinaryArrayLookup(name, lhs, op, rhs) => { v(name); v(lhs); v(rhs) }
             case FunCall(name, args)                   => { v(name); args foreach v }
@@ -154,7 +156,9 @@ object AstOps {
             case Connect(start, end)                   => Connect(r[AlogicAST](start), end map r[AlogicAST])
             case Function(name, body)                  => Function(name, r[AlogicAST](body))
             case FenceFunction(body)                   => FenceFunction(r[AlogicAST](body))
-            case Task(tasktype, name, decls, fns)      => Task(tasktype, name, decls, fns map r[AlogicAST])
+            case FsmTask(name, decls, fns)             => FsmTask(name, decls, fns map r[AlogicAST])
+            case NetworkTask(name, decls, fns)         => NetworkTask(name, decls, fns map r[AlogicAST])
+            case VerilogTask(name, decls, fns)         => VerilogTask(name, decls, fns map r[AlogicAST])
             case Assign(lhs, rhs)                      => Assign(r[AlogicAST](lhs), r[AlogicExpr](rhs))
             case Update(lhs, op, rhs)                  => Update(r[AlogicExpr](lhs), op, r[AlogicExpr](rhs))
             case Plusplus(lhs)                         => Plusplus(r[AlogicExpr](lhs))
@@ -165,7 +169,7 @@ object AstOps {
             case CombinatorialIf(cond, body, e)        => CombinatorialIf(r[AlogicAST](cond), r[AlogicAST](body), e map r[AlogicAST])
             case x: AlogicComment                      => x
             case CombinatorialCaseStmt(value, cases)   => CombinatorialCaseStmt(r[AlogicAST](value), cases map r[AlogicAST])
-            case Program(cmds)                         => Program(cmds map r[Task])
+            case Program(cmds)                         => Program(cmds map r[AlogicTask])
             case ControlCaseStmt(value, cases)         => ControlCaseStmt(r[AlogicAST](value), cases map r[ControlCaseLabel])
             case ControlIf(cond, body, e)              => ControlIf(cond, r[AlogicAST](body), e map r[AlogicAST])
             case ControlBlock(cmds)                    => ControlBlock(cmds map r[AlogicAST])
@@ -176,7 +180,7 @@ object AstOps {
             case BreakStmt                             => BreakStmt
             case ReturnStmt                            => ReturnStmt
             case x: GotoStmt                           => x
-            case StateProgram(cmds, numStates)         => StateProgram(cmds map r[Task], numStates)
+            case StateProgram(cmds, numStates)         => StateProgram(cmds map r[AlogicTask], numStates)
             case x: StateStmt                          => x
             case x: GotoState                          => x
             case x: VerilogFunction                    => x
