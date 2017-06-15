@@ -53,7 +53,10 @@ final class MakeStates {
         createFnState(name); false
       case _ => true // Recurse
     }
-    val cmds = tree.cmds.map(makeEntityStates)
+    val cmds = tree.cmds map {
+      case Task(t, n, decls, fns) => Task(t, n, decls, fns.map(makeFnStates))
+    }
+
     val prog = StateProgram(cmds, state_num) // Transform tree
 
     // Add a declaration for the state variable
@@ -68,11 +71,6 @@ final class MakeStates {
       Message.error(s"No function named 'main' found")
       prog
     }
-  }
-
-  def makeEntityStates(tree: AlogicAST): AlogicAST = tree match {
-    case Task(t, n, decls, fns) => Task(t, n, decls, fns.map(makeFnStates))
-    case x                      => x
   }
 
   def makeFnStates(tree: AlogicAST): AlogicAST = tree match {

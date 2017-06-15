@@ -176,7 +176,7 @@ object AstOps {
             case BreakStmt                             => BreakStmt
             case ReturnStmt                            => ReturnStmt
             case x: GotoStmt                           => x
-            case StateProgram(cmds, numStates)         => StateProgram(cmds map r[AlogicAST], numStates)
+            case StateProgram(cmds, numStates)         => StateProgram(cmds map r[Task], numStates)
             case x: StateStmt                          => x
             case x: GotoState                          => x
             case x: VerilogFunction                    => x
