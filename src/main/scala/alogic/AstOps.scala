@@ -158,7 +158,7 @@ object AstOps {
             case FenceFunction(body)                      => FenceFunction(r[AlogicAST](body))
             case FsmTask(name, decls, fns, fencefn, vfns) => FsmTask(name, decls, fns map r[AlogicAST], fencefn map r[FenceFunction], vfns)
             case NetworkTask(name, decls, fns)            => NetworkTask(name, decls, fns map r[AlogicAST])
-            case VerilogTask(name, decls, fns)            => VerilogTask(name, decls, fns map r[AlogicAST])
+            case x: VerilogTask                           => x
             case Assign(lhs, rhs)                         => Assign(r[AlogicAST](lhs), r[AlogicExpr](rhs))
             case Update(lhs, op, rhs)                     => Update(r[AlogicExpr](lhs), op, r[AlogicExpr](rhs))
             case Plusplus(lhs)                            => Plusplus(r[AlogicExpr](lhs))

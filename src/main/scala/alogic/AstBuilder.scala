@@ -65,7 +65,7 @@ class AstBuilder {
 
       val res = ctx.tasktype.text match {
         case "fsm"     => FsmTask(ctx.IDENTIFIER, DeclVisitor(ctx.decls), fns, fencefns.headOption, vfns)
-        case "verilog" => VerilogTask(ctx.IDENTIFIER, DeclVisitor(ctx.decls), TaskContentVisitor(ctx.contents))
+        case "verilog" => VerilogTask(ctx.IDENTIFIER, DeclVisitor(ctx.decls), vfns)
       }
       Left(res)
     }

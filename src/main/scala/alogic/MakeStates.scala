@@ -56,7 +56,7 @@ final class MakeStates {
     val cmds = tree.cmds map {
       case FsmTask(n, decls, fns, fencefn, vfns) => FsmTask(n, decls, fns.map(makeFnStates), fencefn, vfns)
       case NetworkTask(n, decls, fns)            => NetworkTask(n, decls, fns.map(makeFnStates))
-      case VerilogTask(n, decls, fns)            => VerilogTask(n, decls, fns.map(makeFnStates))
+      case t: VerilogTask                        => t
     }
 
     val prog = StateProgram(cmds, state_num) // Transform tree
