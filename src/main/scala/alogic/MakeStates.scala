@@ -212,7 +212,7 @@ final class MakeStates {
   // Given a series of combinatorial and control statements this emits all control blocks, and returns the final combinatorial statements
   // initial is a list of statements in the current state
   def findLastStmts(startState: Int, initial: List[AlogicAST], finalState: Int, tree: List[AlogicAST]): List[AlogicAST] = tree match {
-    case Nil      => Nil
+    case Nil      => initial
     case x :: Nil => initial ::: makeStates(startState, finalState, x) // TODO check this is not a combinatorial statement?
     case x :: xs if (is_control_stmt(x)) => {
       val s = newState()
