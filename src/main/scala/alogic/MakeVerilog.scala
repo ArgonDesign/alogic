@@ -69,8 +69,8 @@ final class MakeVerilog {
 
   def apply(tree: AlogicTask, fname: String): Unit = {
     numstates = tree match {
-      case StateTask(_, _, states, _, _) => states.length
-      case _                             => 0
+      case StateTask(_, _, s, _, _) => s.length
+      case _                        => 0
     }
     log2numstates = ceillog2(numstates)
 
@@ -95,7 +95,7 @@ final class MakeVerilog {
     }
 
     // Emit header and combinatorial code
-    var fns: List[StrTree] = Nil // Collection of function code
+    val states = mutable.Map[Int, StrTree]() // Collection of state code
     var fencefns: List[StrTree] = Nil // Collection of fence function code
     var clears: List[StrTree] = Nil // Collection of outputs to clear if !go
     var defaults: List[StrTree] = Nil // Collection of things to set at start of each cycle
@@ -317,11 +317,12 @@ final class MakeVerilog {
         true
       }
       case DeclarationStmt(VarDeclaration(decltype, name, init)) => false
-      case blk: StateBlock => {
-        fns = CombStmt(3)(blk) :: fns
+      case blk @ StateBlock(n, _) => {
+        val indent = if (numstates == 1) 2 else 3
+        states(n) = CombStmt(indent)(blk)
         if (generateAccept) {
           makingAccept = true
-          AcceptStmt(3, blk) match {
+          AcceptStmt(indent, blk) match {
             case Some(a) => acceptfns = a :: acceptfns
             case None    =>
           }
@@ -356,7 +357,7 @@ final class MakeVerilog {
     if (verilogfns.length > 0) {
       pw.print(StrList(verilogfns))
     }
-    if (fns.length > 0 || fencefns.length > 0) {
+    if (states.size > 0 || fencefns.length > 0) {
       // Start main combinatorial loop
       pw.println()
       pw.println("  always @* begin")
@@ -366,11 +367,19 @@ final class MakeVerilog {
         pw.println(StrList(defaults))
       if (fencefns.length > 0)
         pw.println(StrList(fencefns))
-      pw.println("    case (state_q)")
-      pw.println("      default: begin")
-      pw.println("      end")
-      pw.println(StrList(fns.toList.reverse))
-      pw.println("    endcase")
+
+      if (numstates > 1) {
+        pw.println("    case (state)")
+        pw.println("      default: begin")
+        pw.println("      end")
+        for ((n, c) <- states.toList.sortBy(_._1)) {
+          pw.println(s"      ${MakeState(n)}: ${c}")
+        }
+        pw.println("    endcase")
+      } else {
+        pw.println(s"    ${states(0)}")
+      }
+
       pw.println()
       if (clears.length > 0) {
         pw.println(s"    if (!$go) begin")
@@ -601,12 +610,7 @@ final class MakeVerilog {
                 |${i}end""".stripMargin)
       }
 
-      case StateBlock(state, cmds) => {
-        Str(s"""|${i}${MakeState(state)}: begin
-                |${i + i0}${cmds map CombStmt(indent + 1) mkString s"\n${i + i0}"}
-                |${i}end
-                |""".stripMargin)
-      }
+      case StateBlock(_, cmds) => CombStmt(indent)(CombinatorialBlock(cmds))
 
       case CombinatorialIf(cond, thenBody, optElseBody) => AddStall(cond) {
         val condPart = s"if (${MakeExpr(cond)}) "
@@ -631,11 +635,23 @@ final class MakeVerilog {
       case CombinatorialCaseLabel(Nil, body)   => Str(s"default: ${CombStmt(indent)(body)}")
       case CombinatorialCaseLabel(conds, body) => Str(s"${conds map MakeExpr mkString ", "}: ${CombStmt(indent)(body)}")
 
-      case GotoState(target)                   => StrList(List(nx("state"), " = ", MakeState(target), ";"))
-      case GotoStmt(target)                    => StrList(List(nx("state"), " = ", target, ";"))
+      case GotoState(target) => {
+        if (numstates == 1) {
+          Str("")
+        } else {
+          StrList(List(nx("state"), " = ", MakeState(target), ";"))
+        }
+      }
+      case GotoStmt(target) => {
+        if (numstates == 1) {
+          Str("")
+        } else {
+          StrList(List(nx("state"), " = ", target, ";"))
+        }
+      }
 
-      case LockCall(name)                      => AddStall(name) { Str("") }
-      case UnlockCall(name)                    => AddStall(name) { Str("") }
+      case LockCall(name)   => AddStall(name) { Str("") }
+      case UnlockCall(name) => AddStall(name) { Str("") }
       case WriteCall(name, arg :: Nil) => AddStall(name, arg) {
         Str(s"${MakeExpr(name)} = ${MakeExpr(arg)};")
       }

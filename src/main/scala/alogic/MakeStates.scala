@@ -55,11 +55,15 @@ final class MakeStates {
       // Convert all functions (do not inline below -- side effect on state_alloc)
       val states = fns flatMap makeFnStates
 
-      // Add a declaration for the state variable (reset to the entry state of main)
-      val sd = VarDeclaration(State, DottedName("state" :: Nil), Some(makeNum(0)))
+      val newDecls = if (states.length > 1) {
+        // Add a declaration for the state variable (reset to the entry state of main)
+        VarDeclaration(State, DottedName("state" :: Nil), Some(makeNum(0))) :: decls
+      } else {
+        decls
+      }
 
       // Create State Task
-      StateTask(name, sd :: decls, states, fencefn, vfns)
+      StateTask(name, newDecls, states, fencefn, vfns)
     } else if (fencefn == None && fns == Nil) {
       // 'fsm' with only 'verilog' functions
       Message.warning(s"FSM '$name' contains only 'verilog' functions. Consider using a 'verilog' task.")
