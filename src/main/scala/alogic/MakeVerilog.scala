@@ -12,6 +12,8 @@ import scala.language.implicitConversions
 
 final class MakeVerilog {
 
+  val i0 = "  "; // Single indentation depth (2 spaces)
+
   val id2decl = mutable.Map[String, Declaration]()
 
   val nxMap = mutable.Map[String, String]() // Returns string to use when this identifier is accessed
@@ -109,15 +111,15 @@ final class MakeVerilog {
     def writeSize(size: Int) = if (size > 1) s"[$size-1:0] " else ""
 
     def writeOut(typ: AlogicType, name: StrTree): Unit = typ match {
-      case IntType(b, size) => pw.println("  output " + outtype + writeSigned(b) + writeSize(size) + name + ";")
+      case IntType(b, size) => pw.println("  output " + outtype + writeSigned(b) + writeSize(size) + name + ",")
       case _                => // TODO support IntVType
     }
     def writeIn(typ: AlogicType, name: StrTree): Unit = typ match {
-      case IntType(b, size) => pw.println(s"  input wire ${writeSigned(b)}${writeSize(size)}" + name + ";")
+      case IntType(b, size) => pw.println(s"  input wire ${writeSigned(b)}${writeSize(size)}" + name + ",")
       case _                => // TODO support IntVType
     }
     def writeWire(typ: AlogicType, name: StrTree): Unit = typ match {
-      case IntType(b, size) => pw.println(s"  wire ${writeSigned(b)}${writeSize(size)}" + name + ";")
+      case IntType(b, size) => pw.println(s"  wire ${writeSigned(b)}${writeSize(size)}" + name + ",")
       case _                => // TODO support IntVType
     }
     def typeString(typ: AlogicType): String = {
@@ -178,6 +180,9 @@ final class MakeVerilog {
 
     var generateAccept = false // As an optimization, don't bother generating accept for modules without any ports that require it
 
+    pw.println(s"`default_nettype none")
+    pw.println()
+
     tree visit {
       case _: AlogicTask => {
         pw.print(s"module $modname ")
@@ -206,21 +211,18 @@ final class MakeVerilog {
           pw.println(s") (")
         }
 
-        pw.println("  input wire clk,")
-        pw.println("  input wire rst_n,")
-
         // Emit port declarations
         id2decl.values foreach {
           case OutDeclaration(synctype, decltype, name) => {
             if (HasValid(synctype)) {
-              pw.println("  output " + outtype + valid(name) + ";")
+              pw.println("  output " + outtype + valid(name) + ",")
               clears = Str("      " + valid(name) + " = 1'b0;\n") :: clears
               defaults = Str("    " + valid(name) + " = 1'b0;\n") :: defaults
             }
             if (HasReady(synctype))
-              pw.println("  input wire " + ready(name) + ";")
+              pw.println("  input wire " + ready(name) + ",")
             if (HasAccept(synctype)) {
-              pw.println("  output " + outtype + accept(name) + ";")
+              pw.println("  output " + outtype + accept(name) + ",")
               generateAccept = true;
             }
             SetNxType(nxMap, decltype, name, "") // TODO decide on NxType based on synctype
@@ -230,14 +232,14 @@ final class MakeVerilog {
           }
           case InDeclaration(synctype, decltype, name) => {
             if (HasValid(synctype))
-              pw.println("  input wire " + valid(name) + ";")
+              pw.println("  input wire " + valid(name) + ",")
             if (HasReady(synctype)) {
-              pw.println("  output " + outtype + ready(name) + ";")
+              pw.println("  output " + outtype + ready(name) + ",")
               clears = Str("      " + ready(name) + " = 1'b0;\n") :: clears
               defaults = Str("    " + ready(name) + " = 1'b0;\n") :: defaults
             }
             if (HasAccept(synctype))
-              pw.println("  in wire " + accept(name) + ";")
+              pw.println("  in wire " + accept(name) + ",")
             SetNxType(nxMap, decltype, name, "")
             SetNxType(regMap, decltype, name, "")
             VisitType(decltype, name)(writeOut)
@@ -249,7 +251,11 @@ final class MakeVerilog {
           }
           case _ =>
         }
-        pw.println(")\n")
+
+        //Goes on bottom so we don't need to special case the lack of comma after the last port
+        pw.println("  input wire clk,")
+        pw.println("  input wire rst_n")
+        pw.println(");\n")
 
         // Emit localparam (const) declaratoins
 
@@ -311,19 +317,22 @@ final class MakeVerilog {
         true
       }
       case DeclarationStmt(VarDeclaration(decltype, name, init)) => false
-      case Function(name, body) => {
-        fns = CombStmt(6, body) :: fns
-        if (generateAccept) {
-          makingAccept = true
-          AcceptStmt(6, body) match {
-            case Some(a) => acceptfns = a :: acceptfns
-            case None    =>
+      case Function(name, CombinatorialBlock(cmds)) => {
+        cmds.reverse foreach { cmd =>
+          fns = CombStmt(3)(cmd) :: fns
+          if (generateAccept) {
+            makingAccept = true
+            AcceptStmt(3, cmd) match {
+              case Some(a) => acceptfns = a :: acceptfns
+              case None    =>
+            }
+            makingAccept = false
           }
-          makingAccept = false
         }
         true
       }
-      case FenceFunction(body)   => { fencefns = CombStmt(4, body) :: fencefns; false }
+      case Function(name, _)     => ??? // TODO: this is redundant remove in a later refactor
+      case FenceFunction(body)   => { fencefns = CombStmt(2)(body) :: fencefns; false }
       case VerilogFunction(body) => { verilogfns = body :: verilogfns; false }
       case Instantiate(id, module, args) => {
         if (modMap.isEmpty)
@@ -359,11 +368,12 @@ final class MakeVerilog {
         pw.println(StrList(defaults))
       if (fencefns.length > 0)
         pw.println(StrList(fencefns))
-      pw.println("    case(state_q) begin")
+      pw.println("    case (state_q)")
       pw.println("      default: begin")
-      pw.println(StrList(fns))
       pw.println("      end")
-      pw.println("    end")
+      pw.println(StrList(fns))
+      pw.println("    endcase")
+      pw.println()
       if (clears.length > 0) {
         pw.println(s"    if (!$go) begin")
         pw.print(StrList(clears))
@@ -401,6 +411,9 @@ final class MakeVerilog {
       // TODO Connect top-level ports to the appropriate wires
     }
     pw.println("endmodule")
+    pw.println()
+    pw.println(s"`default_nettype wire")
+
     pw.close()
   }
 
@@ -488,135 +501,155 @@ final class MakeVerilog {
     }
   }
 
-  // Take a combinatorial statement and return stall conditions that should be emitted now based on ids that are read/written
-  // This code will be emitted before the actual statement
-  // It is useful to keep as a list of strings here so we can decide when to insert an extra begin/end block
-  // Strings have \n at the end, but indent will be added later
-  def StallExpr(tree: AlogicAST): List[String] = {
-    // Use a local function to avoid having to copy emitted list down the stack
-    var blockingStatements: List[String] = Nil
-
-    def add(s: String): Unit = blockingStatements = s :: blockingStatements
-
-    def AddRead(name: DottedName, isLock: Boolean): Boolean = {
-      val n: String = ExtractName(name)
-      val d: Declaration = id2decl(n)
-      d match {
-        case InDeclaration(synctype, _, _) => {
-          if (HasValid(synctype))
-            add(s"$go = $go && ${valid(n)};\n")
-          if (!isLock && HasReady(synctype))
-            add(ready(n) + " = 1'b1;\n")
-        }
-        case _ => Message.fatal(s"$name cannot be read"); false // TODO check this earlier?
-      }
-      false // No need to recurse
-    }
-
-    def v(tree: AlogicAST): Boolean = tree match {
-      case CombinatorialCaseStmt(value, _) =>
-        value visit v; false
-      case CombinatorialBlock(_) => false
-      case CombinatorialIf(cond, _, _) =>
-        cond visit v; false
-      case ReadCall(name)   => AddRead(name, false)
-      case LockCall(name)   => AddRead(name, true)
-      case UnlockCall(name) => AddRead(name, false)
-      case WriteCall(name, _) => {
-        val n: String = ExtractName(name)
-        val d: Declaration = id2decl(n)
-        d match {
-          case OutDeclaration(synctype, _, _) => {
-            synctype match {
-              case SyncReadyBubble => add(s"$go = $go && !${valid(n)};\n")
-              case SyncReady       => add(s"$go = $go && (!${valid(n)} || !${ready(n)});\n")
-              case SyncAccept      => Message.fatal("sync accept only supported as wire output type") // TODO check this earlier
-              case WireSyncAccept  => add(s"$go = $go && ${accept(n)};\n")
-              case _               =>
-            }
-            if (HasValid(synctype))
-              add(s"${valid(n)} = 1'b1;\n")
-          }
-          case _ => Message.fatal(s"$name cannot be written"); false // TODO check this earlier?
-        }
-        true // Recurse in case arguments use reads
-      }
-      case _ => true
-    }
-    tree visit v
-    return blockingStatements
-  }
-
   // Called with an integer representing a state, returns the appropriate string
   def MakeState(state: Int): String = s"$log2numstates'd$state"
 
   // This function defines how to write next values (D input on flip-flops)
   //def nx(x: String): StrTree = StrList(List(x, Str("_nxt")))
 
-  def AddStall(indent: Int, stalls: List[String], expr: StrTree): StrTree = {
-    if (stalls.isEmpty)
-      expr
-    else
-      StrList(Str(" " * indent) :: Str("begin\n") ::
-        stalls.map(x => Str(" " * (indent) + x)) :::
-        expr ::
-        Str(" " * indent) :: Str("end\n") :: Nil)
-  }
-
-  // Produce code to go into the case statements (we assume we have already had a "case(state) default: begin"
+  // Produce code to go into the case statements (we assume we have already had a "case(state) default: begin end"
   // The top call should be with Function or VerilogFunction
-  def CombStmt(indent: Int, tree: AlogicAST): StrTree = tree match {
-    case Assign(ArrayLookup(DottedName(names), index), rhs) if (Arrays contains names.head) => {
-      val i = " " * indent
-      val n = names.head
-      val r = MakeExpr(rhs).toString
-      val d = MakeExpr(index).toString
-      val a = Str(s"""${i}begin
-$i  ${n}_wr = 1'b1;
-$i  ${n}_addr = $r;
-$i  ${n}_wrdata = $d;
-${i}end
-""")
-      AddStall(indent, StallExpr(index) ::: StallExpr(rhs), a)
+  def CombStmt(indent: Int)(tree: AlogicAST): StrTree = {
+    val i = i0 * indent
+    val si = Str(i)
+
+    // Take a combinatorial statement and return stall conditions that should be emitted now based on ids that are read/written
+    // This code will be emitted before the actual statement
+    // It is useful to keep as a list of strings here so we can decide when to insert an extra begin/end block
+    def StallExpr(tree: AlogicAST): List[String] = {
+      // Use a local function to avoid having to copy emitted list down the stack
+      var blockingStatements: List[String] = Nil
+
+      def add(s: String): Unit = blockingStatements = s :: blockingStatements
+
+      def AddRead(name: DottedName, isLock: Boolean): Boolean = {
+        val n: String = ExtractName(name)
+        val d: Declaration = id2decl(n)
+        d match {
+          case InDeclaration(synctype, _, _) => {
+            if (HasValid(synctype))
+              add(s"$go = $go && ${valid(n)};")
+            if (!isLock && HasReady(synctype))
+              add(ready(n) + " = 1'b1;")
+          }
+          case _ => Message.fatal(s"$name cannot be read"); false // TODO check this earlier?
+        }
+        false // No need to recurse
+      }
+
+      def v(tree: AlogicAST): Boolean = tree match {
+        case CombinatorialCaseStmt(value, _) =>
+          value visit v; false
+        case CombinatorialBlock(_) => false
+        case CombinatorialIf(cond, _, _) =>
+          cond visit v; false
+        case ReadCall(name)   => AddRead(name, false)
+        case LockCall(name)   => AddRead(name, true)
+        case UnlockCall(name) => AddRead(name, false)
+        case WriteCall(name, _) => {
+          val n: String = ExtractName(name)
+          val d: Declaration = id2decl(n)
+          d match {
+            case OutDeclaration(synctype, _, _) => {
+              synctype match {
+                case SyncReadyBubble => add(s"$go = $go && !${valid(n)};")
+                case SyncReady       => add(s"$go = $go && (!${valid(n)} || !${ready(n)});")
+                case SyncAccept      => Message.fatal("sync accept only supported as wire output type") // TODO check this earlier
+                case WireSyncAccept  => add(s"$go = $go && ${accept(n)};")
+                case _               =>
+              }
+              if (HasValid(synctype))
+                add(s"${valid(n)} = 1'b1;")
+            }
+            case _ => Message.fatal(s"$name cannot be written"); false // TODO check this earlier?
+          }
+          true // Recurse in case arguments use reads
+        }
+        case _ => true
+      }
+      tree visit v
+      return blockingStatements
     }
-    case Assign(lhs, rhs) => AddStall(indent, StallExpr(lhs) ::: StallExpr(rhs), StrList(List(Str(" " * indent), MakeExpr(lhs), " = ", MakeExpr(rhs), ";\n")))
-    case CombinatorialCaseStmt(value, cases) => AddStall(indent, StallExpr(value),
-      StrList(Str(" " * indent + "case(") :: MakeExpr(value) :: Str(") begin\n") ::
-        StrList(for (c <- cases) yield CombStmt(indent + 4, c)) ::
-        Str(" " * indent) :: Str("endcase\n") :: Nil))
-    case CombinatorialIf(cond, body, Some(elsebody)) => AddStall(indent, StallExpr(cond),
-      StrList(Str(" " * indent) :: Str("if (") :: MakeExpr(cond) :: Str(")\n") ::
-        CombStmt(indent + 4, body) ::
-        Str(" " * indent) :: Str("else\n") ::
-        CombStmt(indent + 4, elsebody) :: Nil))
-    case CombinatorialIf(cond, body, None) => AddStall(indent, StallExpr(cond),
-      StrList(Str(" " * indent) :: Str("if (") :: MakeExpr(cond) :: Str(")\n") ::
-        CombStmt(indent + 4, body) :: Nil))
-    case LockCall(name)   => AddStall(indent, StallExpr(name), Str(""))
-    case UnlockCall(name) => AddStall(indent, StallExpr(name), Str(""))
-    case WriteCall(name, args) if (args.length == 1) => AddStall(indent, StallExpr(name) ::: StallExpr(args(0)),
-      StrList(List(Str(" " * indent), MakeExpr(name), " = ", MakeExpr(args(0)), Str(";\n"))))
-    case CombinatorialBlock(cmds) => StrList(Str(" " * indent) :: Str("begin\n") ::
-      StrList(for { cmd <- cmds } yield CombStmt(indent + 4, cmd)) ::
-      Str(" " * indent) :: Str("end\n") :: Nil)
-    case DeclarationStmt(VarDeclaration(decltype, id, Some(rhs))) => CombStmt(indent, Assign(id, rhs))
-    case DeclarationStmt(VarDeclaration(decltype, id, None))      => CombStmt(indent, Assign(id, Num("'b0")))
-    case AlogicComment(s)                                         => s"// $s\n"
-    case StateBlock(state, cmds) => StrList(List(" " * (indent - 4), "end\n", " " * (indent - 4), MakeState(state), ": begin\n",
-      StrList(for { cmd <- cmds } yield CombStmt(indent, cmd))))
-    //case StateStmt(state)  => Str(s"Bad state stmt for $state")
-    case GotoState(target) => StrList(List(" " * indent, nx("state"), " = ", MakeState(target), ";\n"))
-    case GotoStmt(target)  => StrList(List(" " * indent, nx("state"), " = ", target, ";\n"))
-    case CombinatorialCaseLabel(Nil, body) => StrList(
-      Str(" " * indent) ::
-        Str("default:\n") ::
-        CombStmt(indent + 4, body) :: Nil)
-    case CombinatorialCaseLabel(conds, body) => StrList(
-      Str(" " * indent) ::
-        StrList(conds.map(MakeExpr), ",") ::
-        Str(":\n") :: CombStmt(indent + 4, body) :: Nil)
-    case DollarCall(name, args) => StrList(List(" " * indent, name, StrList(args.map(MakeExpr), ",")))
-    case x                      => Message.fatal(s"Don't know how to emit code for $x"); Str("")
+
+    def AddStall(terms: AlogicAST*)(expr: StrTree): StrTree = {
+      val stalls = terms.toList flatMap StallExpr
+      if (stalls.isEmpty) {
+        expr
+      } else {
+        val s = stalls map { x => Str(x) }
+        Str(s"""|begin
+                |${i + i0}${s mkString s"\n${i + i0}"}
+                |${i + i0}${expr}
+                |${i}end""".stripMargin)
+      }
+    }
+
+    tree match {
+      case Assign(ArrayLookup(DottedName(n :: _), index), rhs) if (Arrays contains n) => AddStall(index, rhs) {
+        Str(s"""|begin
+                |${i + i0}${n}_wr = 1'b1;
+                |${i + i0}${n}_addr = ${MakeExpr(rhs)};
+                |${i + i0}${n}_wrdata = ${MakeExpr(index)};
+                |${i}end
+                |""".stripMargin)
+      }
+      case Assign(lhs, rhs) => AddStall(lhs, rhs) {
+        Str(s"${MakeExpr(lhs)} = ${MakeExpr(rhs)};")
+      }
+
+      case CombinatorialBlock(cmds) => {
+        Str(s"""|begin
+                |${i + i0}${cmds map CombStmt(indent + 1) mkString s"\n${i + i0}"}
+                |${i}end""".stripMargin)
+      }
+
+      case StateBlock(state, cmds) => {
+        Str(s"""|${i}${MakeState(state)}: begin
+                |${i + i0}${cmds map CombStmt(indent + 1) mkString s"\n${i + i0}"}
+                |${i}end
+                |""".stripMargin)
+      }
+
+      case CombinatorialIf(cond, thenBody, optElseBody) => AddStall(cond) {
+        val condPart = s"if (${MakeExpr(cond)}) "
+        val thenPart = thenBody match {
+          case block: CombinatorialBlock => CombStmt(indent)(block)
+          case other                     => CombStmt(indent)(CombinatorialBlock(other :: Nil))
+        }
+        val elsePart = optElseBody match {
+          case None                            => ""
+          case Some(block: CombinatorialBlock) => s" else ${CombStmt(indent)(block)}"
+          case Some(other)                     => s" else ${CombStmt(indent)(CombinatorialBlock(other :: Nil))}"
+        }
+        Str(condPart + thenPart + elsePart)
+      }
+
+      // TODO: do the conds not need a stall expr to be precise?
+      case CombinatorialCaseStmt(value, cases) => AddStall(value) {
+        Str(s"""|case (${MakeExpr(value)})
+                |${i + i0}${cases map CombStmt(indent + 1) mkString s"\n${i + i0}"}
+                |${i}endcase""".stripMargin)
+      }
+      case CombinatorialCaseLabel(Nil, body)   => Str(s"default: ${CombStmt(indent)(body)}")
+      case CombinatorialCaseLabel(conds, body) => Str(s"${conds map MakeExpr mkString ", "}: ${CombStmt(indent)(body)}")
+
+      case GotoState(target)                   => StrList(List(nx("state"), " = ", MakeState(target), ";"))
+      case GotoStmt(target)                    => StrList(List(nx("state"), " = ", target, ";"))
+
+      case LockCall(name)                      => AddStall(name) { Str("") }
+      case UnlockCall(name)                    => AddStall(name) { Str("") }
+      case WriteCall(name, arg :: Nil) => AddStall(name, arg) {
+        Str(s"${MakeExpr(name)} = ${MakeExpr(arg)};")
+      }
+
+      case DeclarationStmt(VarDeclaration(decltype, id, Some(rhs))) => CombStmt(indent)(Assign(id, rhs))
+      case DeclarationStmt(VarDeclaration(decltype, id, None)) => CombStmt(indent)(Assign(id, Num("'b0"))) // TODO: Why is this needed ?
+
+      case DollarCall(name, args) => StrList(List(i, name, StrList(args.map(MakeExpr), ",")))
+      case AlogicComment(s) => s"// $s\n"
+
+      case x => Message.fatal(s"Don't know how to emit code for $x"); Str("")
+    }
   }
 
   // Note that valid can depend on accept
@@ -652,14 +685,15 @@ ${i}end
     if (stalls.isEmpty)
       expr
     else {
+      val i = i0 * indent
       val e: List[StrTree] = expr match {
         case Some(x) => x :: Nil
         case None    => Nil
       }
-      Some(StrList(Str(" " * indent) :: Str("begin\n") ::
-        stalls.map(x => Str(" " * (indent) + x)) :::
+      Some(StrList(Str(i) :: Str("begin\n") ::
+        stalls.map(x => Str(i + x)) :::
         e :::
-        Str(" " * indent) :: Str("end\n") :: Nil))
+        Str(i) :: Str("end\n") :: Nil))
     }
   }
 
@@ -671,41 +705,41 @@ ${i}end
     case CombinatorialCaseStmt(value, cases) => {
       // Take care to only use MakeExpr when we are sure the code needs to be emitted
       // This is because MakeExpr will track the used ids
-      val s: List[Option[StrTree]] = for (c <- cases) yield AcceptStmt(indent + 4, c)
+      val s: List[Option[StrTree]] = for (c <- cases) yield AcceptStmt(indent + 1, c)
       val s2: List[StrTree] = s.flatten
       val e = if (s2.length == 0)
         None
       else
-        Some(StrList(Str(" " * indent + "case(") :: MakeExpr(value) :: Str(") begin\n") ::
-          StrList(s2) :: Str(" " * indent) :: Str("endcase\n") :: Nil))
+        Some(StrList(Str(i0 * indent + "case(") :: MakeExpr(value) :: Str(") begin\n") ::
+          StrList(s2) :: Str(i0 * indent) :: Str("endcase\n") :: Nil))
       AddAccept(indent, AcceptExpr(value), e)
     }
     case CombinatorialIf(cond, body, Some(elsebody)) =>
       {
-        val b = AcceptStmt(indent + 4, body)
-        val eb = AcceptStmt(indent + 4, elsebody)
+        val b = AcceptStmt(indent + 1, body)
+        val eb = AcceptStmt(indent + 1, elsebody)
         val gen = b.isDefined || eb.isDefined
         val bs = b match {
           case Some(a) => a
-          case None    => Str(" " * indent + "begin\n" + " " * indent + "end\n")
+          case None    => Str(i0 * indent + "begin\n" + i0 * indent + "end\n")
         }
         val ebs = eb match {
           case Some(a) => a
-          case None    => Str(" " * indent + "begin\n" + " " * indent + "end\n")
+          case None    => Str(i0 * indent + "begin\n" + i0 * indent + "end\n")
         }
         val e = if (gen)
-          Some(StrList(Str(" " * indent) :: Str("if (") :: MakeExpr(cond) :: Str(")\n") :: bs :: Str(" " * indent) :: Str("else\n") :: ebs :: Nil))
+          Some(StrList(Str(i0 * indent) :: Str("if (") :: MakeExpr(cond) :: Str(")\n") :: bs :: Str(i0 * indent) :: Str("else\n") :: ebs :: Nil))
         else
           None
         AddAccept(indent, AcceptExpr(cond), e)
       }
     case CombinatorialIf(cond, body, None) => {
-      val b = AcceptStmt(indent + 4, body)
+      val b = AcceptStmt(indent + 1, body)
       // We take care to only call MakeExpr when the body would have something to generate
       // This avoids forbidding ids that are not actually important for generating accept
       val e = b match {
         case None    => None
-        case Some(a) => Some(StrList(Str(" " * indent) :: Str("if (") :: MakeExpr(cond) :: Str(")\n") :: a :: Nil))
+        case Some(a) => Some(StrList(Str(i0 * indent) :: Str("if (") :: MakeExpr(cond) :: Str(")\n") :: a :: Nil))
       }
       AddAccept(indent, AcceptExpr(cond), e)
     }
@@ -714,12 +748,12 @@ ${i}end
     case UnlockCall(name)                            => AddAccept(indent, AcceptExpr(name), None)
     case WriteCall(name, args) if (args.length == 1) => AddAccept(indent, AcceptExpr(name) ::: AcceptExpr(args(0)), None)
     case CombinatorialBlock(cmds) => {
-      val s: List[Option[StrTree]] = for (c <- cmds) yield AcceptStmt(indent + 4, c)
+      val s: List[Option[StrTree]] = for (c <- cmds) yield AcceptStmt(indent + 1, c)
       val s2: List[StrTree] = s.flatten
       if (s2.length == 0)
         None
       else
-        Some(StrList(Str(" " * indent) :: Str("begin\n") :: StrList(s2) :: Str(" " * indent) :: Str("end\n") :: Nil))
+        Some(StrList(Str(i0 * indent) :: Str("begin\n") :: StrList(s2) :: Str(i0 * indent) :: Str("end\n") :: Nil))
     }
 
     case DeclarationStmt(VarDeclaration(decltype, id, Some(rhs))) => AcceptStmt(indent, Assign(id, rhs))
@@ -736,23 +770,23 @@ ${i}end
         if (syncPortsFound > 1) Message.fatal(s"Found multiple accept port reads in same cycle: $cmds")
         if (usesPort.isDefined) Message.fatal(s"Cannot access port $usesPort while generating accept: $cmds")
         if (!IdsUsedToMakeAccept.intersect(IdsWritten).isEmpty) Message.fatal(s"Cannot generate accept because an identifier is being written to: $cmds")
-        Some(StrList(List(" " * (indent - 4), MakeState(state), ": begin\n", StrList(s2), " " * (indent - 4), "end\n")))
+        Some(StrList(List(i0 * (indent - 1), MakeState(state), ": begin\n", StrList(s2), i0 * (indent - 1), "end\n")))
       } else
         None
     }
     case CombinatorialCaseLabel(Nil, body) => {
-      val b = AcceptStmt(indent + 4, body)
+      val b = AcceptStmt(indent + 1, body)
       b match {
         case None    => None
-        case Some(a) => Some(StrList(Str(" " * indent) :: Str("default:\n") :: a :: Nil))
+        case Some(a) => Some(StrList(Str(i0 * indent) :: Str("default:\n") :: a :: Nil))
       }
     }
     case CombinatorialCaseLabel(conds, body) => {
-      val b = AcceptStmt(indent + 4, body)
+      val b = AcceptStmt(indent + 1, body)
       val e = b match {
         case None => None
         case Some(a) => Some(StrList(
-          Str(" " * indent) ::
+          Str(i0 * indent) ::
             StrList(conds.map(MakeExpr), ",") ::
             Str(":\n") :: a :: Nil))
       }
