@@ -137,7 +137,7 @@ final class MakeStates {
     case ControlWhile(cond, body) => {
       val s = if (startState < 0) state_alloc.next else startState
       breakTargets push finalState
-      val follow = makeStates(s, finalState, ControlBlock(body))
+      val follow = makeStates(s, s, ControlBlock(body))
       breakTargets.pop
       val loop = CombinatorialIf(cond, CombinatorialBlock(follow), Some(GotoState(finalState)))
       if (startState < 0) {
