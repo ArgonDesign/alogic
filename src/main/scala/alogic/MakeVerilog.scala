@@ -294,9 +294,10 @@ final class MakeVerilog {
                 Str(s"    ${n}_wraddr = 'b0;\n") ::
                 Str(s"    ${n}_wrdata = 'b0;\n") :: Nil) :: defaults
             clears = Str(s"      ${n}_wr = 1'b0;\n") :: clears
-            clocks = Str(s"""
-        if (${n}_wr)  ${n}[ ${n}_wraddr ] <= ${n}_wrdata;
-""") :: clocks
+            clocks = Str(s"""|${i0 * 4}if (${n}_wr) begin
+                             |${i0 * 5}${n}[${n}_wraddr] <= ${n}_wrdata;
+                             |${i0 * 4}end
+                             |""".stripMargin) :: clocks
           }
           case VarDeclaration(decltype, name, None) => {
             val n = ExtractName(name)
