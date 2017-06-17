@@ -112,11 +112,10 @@ case class ControlDo(cond: AlogicExpr, body: List[AlogicAST]) extends AlogicAST
 case object FenceStmt extends AlogicAST
 case object BreakStmt extends AlogicAST
 case object ReturnStmt extends AlogicAST
-case class GotoStmt(target: String) extends AlogicAST
+case class GotoStmt(target: String) extends AlogicAST // tODO: take DottedName ?
 case class ControlCaseLabel(cond: List[AlogicExpr], body: AlogicAST) extends AlogicAST
 
 // Extra types inserted by MakeStates
-case class StateStmt(state: Int) extends AlogicAST // This is both added and removed by MakeStates
 case class StateBlock(state: Int, contents: List[AlogicAST]) extends AlogicAST
 case class GotoState(state: Int) extends AlogicAST
 

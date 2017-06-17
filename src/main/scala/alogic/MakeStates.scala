@@ -14,8 +14,8 @@
 //   GotoStmt
 //
 // These will be replaced with
+//   StateBlock
 //   GotoState
-//   StateStmt
 //   GotoStmt (this is used to target the callstack)
 
 package alogic
@@ -33,12 +33,11 @@ final class MakeStates {
 
   val breakTargets = Stack[Int]() // Stack of targets when we see a break
 
-  var extra: List[List[AlogicAST]] = Nil // list of commands in each state
+  val extra = Stack[StateBlock]() // list of (state, commands) pairs
 
   // Transfer a batch of instructions to the states list
-  def emit(insns: List[AlogicAST]): Unit = {
-    assert(insns.head.isInstanceOf[StateStmt])
-    extra = insns :: extra
+  def emit(state: Int, insns: List[AlogicAST]): Unit = {
+    extra.push(StateBlock(state, insns))
   }
 
   def apply(fsm: FsmTask): StateTask = {
@@ -76,16 +75,13 @@ final class MakeStates {
     val s = fn2state(name)
     val current = makeStates(s, s, body)
 
-    emit(StateStmt(s) :: current)
+    emit(s, current)
 
-    // Now convert sequences of state followed by no-state into a StateBlock
-    val states = for { b <- extra } yield {
-      val state = b.head.asInstanceOf[StateStmt].state
-      StateBlock(state, b.tail)
-    }
-    extra = Nil
+    val f = Function(name, CombinatorialBlock(extra.toList))
 
-    Function(name, CombinatorialBlock(states))
+    extra.clear()
+
+    f
   }
 
   val callDepth = DottedName(List("call_depth"))
@@ -93,27 +89,47 @@ final class MakeStates {
 
   def makeNum(x: Int) = Num(s"$x")
 
-  // Create an AST that finishes by moving to finalState
-  // Returns a list of all the statements that should be appended to the current list (i.e. cmds in this state)
-  // If complete additional commands are generated they are emitted
-  // If startState >= 0 it means the current list consists simply of StateStmt(startState)
+  // Create an AST that finishes by moving to finalState (unless break, return etc)
+  // Returns a list of all the statements that should be appended to the list in the current state
+  // If complete additional states are generated they are emitted
+  // If startState >= 0 it means the current list is empty, and startState is the state we are starting to construct
   //    This can be useful to avoid emitting an empty state
   def makeStates(startState: Int, finalState: Int, tree: AlogicAST): List[AlogicAST] = tree match {
-    case FenceStmt => List(GotoState(finalState))
-    case BreakStmt => List(GotoState(breakTargets.head))
-    case ReturnStmt => List(
-      Minusminus(callDepth),
-      GotoStmt("call_stack[call_depth_nxt]"))
+    ///////////////////////////////////////////////////////////////////////////
+    // Simple control transfer statements
+    ///////////////////////////////////////////////////////////////////////////
+
+    case FenceStmt   => List(GotoState(finalState))
+    case BreakStmt   => List(GotoState(breakTargets.head))
     case GotoStmt(t) => List(GotoState(fn2state(t))) // TODO check targets exist in AstBuilder to avoid exception here
-    case FunCall(name, args) => List( // require(args.length==0)  // TODO check in builder
-      // Push return state
-      Assign(ArrayLookup(callStack, callDepth), makeNum(finalState)),
-      // increment depth
-      Plusplus(callDepth),
-      // branch to function
-      GotoState(fn2state(ExtractName(name))) // TODO check target exists in builder
-      )
+    case ReturnStmt => {
+      List(
+        // Pop state
+        Minusminus(callDepth),
+        // Return to new top of stack
+        GotoStmt("call_stack[call_depth_nxt]"))
+    }
+    case FunCall(n, args) => {
+      val DottedName(name :: _) = n
+      List(
+        // Push return state
+        Assign(ArrayLookup(callStack, callDepth), makeNum(finalState)),
+        // increment depth
+        Plusplus(callDepth),
+        // branch to function - TODO check target exists in builder
+        GotoState(fn2state(name)))
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    // ControlBlock
+    ///////////////////////////////////////////////////////////////////////////
+
     case ControlBlock(cmds) => makeBlockStmts(startState, finalState, cmds)
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Loops
+    ///////////////////////////////////////////////////////////////////////////
+
     case ControlWhile(cond, body) => {
       val s = if (startState < 0) state_alloc.next else startState
       breakTargets push finalState
@@ -121,11 +137,30 @@ final class MakeStates {
       breakTargets.pop
       val loop = CombinatorialIf(cond, CombinatorialBlock(follow), Some(GotoState(finalState)))
       if (startState < 0) {
-        emit(StateStmt(s) :: loop :: Nil)
+        emit(s, loop :: Nil)
         List(GotoState(s))
       } else
         List(loop)
     }
+    case ControlFor(init, cond, incr, body) => {
+      val s = state_alloc.next
+      val (i, f) = findLastStmts(-1, (s, Nil), finalState, body)
+      emit(i, f ::: incr :: CombinatorialIf(cond, GotoState(s), Some(GotoState(finalState))) :: Nil)
+      List(init, CombinatorialIf(cond, GotoState(s), Some(GotoState(finalState))))
+    }
+    case ControlDo(cond, body) => {
+      val s = state_alloc.next
+      breakTargets push finalState
+      val (i, f) = findLastStmts(startState, (s, Nil), finalState, body)
+      emit(i, f ::: CombinatorialIf(cond, GotoState(s), Some(GotoState(finalState))) :: Nil)
+      breakTargets.pop
+      List(GotoState(s))
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Branches
+    ///////////////////////////////////////////////////////////////////////////
+
     case ControlIf(cond, body, None) => {
       val current = makeStates(-1, finalState, body)
       List(CombinatorialIf(cond, CombinatorialBlock(current), Some(GotoState(finalState))))
@@ -135,20 +170,7 @@ final class MakeStates {
       val current2 = makeStates(-1, finalState, elsebody)
       List(CombinatorialIf(cond, CombinatorialBlock(current), Some(CombinatorialBlock(current2))))
     }
-    case ControlFor(init, cond, incr, body) => {
-      val s = state_alloc.next
-      val f = findLastStmts(-1, StateStmt(s) :: Nil, finalState, body)
-      emit(f ::: incr :: CombinatorialIf(cond, GotoState(s), Some(GotoState(finalState))) :: Nil)
-      List(init, CombinatorialIf(cond, GotoState(s), Some(GotoState(finalState))))
-    }
-    case ControlDo(cond, body) => {
-      val s = state_alloc.next
-      breakTargets push finalState
-      val f = findLastStmts(startState, StateStmt(s) :: Nil, finalState, body)
-      emit(f ::: CombinatorialIf(cond, GotoState(s), Some(GotoState(finalState))) :: Nil)
-      breakTargets.pop
-      List(GotoState(s))
-    }
+
     case ControlCaseStmt(value, cases) => {
       val hasDefault = cases.exists(isCaseDefault)
       breakTargets push finalState
@@ -171,7 +193,14 @@ final class MakeStates {
       List(CombinatorialCaseStmt(value, combcases))
     }
 
-    case x => x :: Nil
+    ///////////////////////////////////////////////////////////////////////////
+    // Combinatorial statements
+    ///////////////////////////////////////////////////////////////////////////
+
+    case x => {
+      assert(!is_control_stmt(x))
+      x :: Nil
+    }
   }
 
   def isCaseDefault(c: AlogicAST): Boolean = c match {
@@ -179,18 +208,21 @@ final class MakeStates {
     case _                           => false
   }
 
-  //  We need to split into control units
+  //  We need to split the list of statements into control units
   //  A control unit is a set of combinatorial statements followed by a control statement
-  //  We then have a new state for each intermediate control unit
+  //  We then create a new state for each intermediate control unit
   //  We return the statements to be appended to the initial list
   def makeBlockStmts(startState: Int, finalState: Int, tree: List[AlogicAST]): List[AlogicAST] = tree match {
-    case Nil      => Nil
-    case x :: Nil => makeStates(startState, finalState, x)
+    case Nil => Nil /// TODO: This is probably unreachable. Check in builder.
+    case x :: Nil => {
+      assert(is_control_stmt(x))
+      makeStates(startState, finalState, x)
+    }
     case x :: xs if (is_control_stmt(x)) => {
       val s = state_alloc.next
       val current = makeStates(startState, s, x)
       val current2 = makeBlockStmts(s, finalState, xs)
-      emit(StateStmt(s) :: current2) // TODO can we make this function tail recursive somehow?
+      emit(s, current2) // TODO can we make this function tail recursive somehow?
       current
     }
     case x :: xs => x :: makeBlockStmts(-1, finalState, xs) // x must be combinatorial
@@ -198,16 +230,16 @@ final class MakeStates {
 
   // Given a series of combinatorial and control statements this emits all control blocks, and returns the final combinatorial statements
   // initial is a list of statements in the current state
-  def findLastStmts(startState: Int, initial: List[AlogicAST], finalState: Int, tree: List[AlogicAST]): List[AlogicAST] = tree match {
+  def findLastStmts(startState: Int, initial: (Int, List[AlogicAST]), finalState: Int, tree: List[AlogicAST]): (Int, List[AlogicAST]) = tree match {
     case Nil      => initial
-    case x :: Nil => initial ::: makeStates(startState, finalState, x) // TODO check this is not a combinatorial statement?
+    case x :: Nil => (initial._1, initial._2 ::: makeStates(startState, finalState, x)) // TODO check this is not a combinatorial statement?
     case x :: xs if (is_control_stmt(x)) => {
       val s = state_alloc.next
       val current = makeStates(startState, s, x)
-      emit(initial ::: current)
-      findLastStmts(s, StateStmt(s) :: Nil, finalState, xs)
+      emit(initial._1, initial._2 ::: current)
+      findLastStmts(s, (s, Nil), finalState, xs)
     }
-    case x :: xs => findLastStmts(-1, initial ::: x :: Nil, finalState, xs) // x must be combinatorial
+    case x :: xs => findLastStmts(-1, (initial._1, initial._2 ::: x :: Nil), finalState, xs) // x must be combinatorial
   }
 
 }

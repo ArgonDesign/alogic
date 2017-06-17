@@ -126,7 +126,6 @@ object AstOps {
             case BreakStmt                                     =>
             case ReturnStmt                                    =>
             case GotoStmt(target: String)                      =>
-            case StateStmt(state: Int)                         =>
             case GotoState(state: Int)                         =>
             case DottedName(names)                             =>
             case Literal(_)                                    =>
@@ -179,7 +178,6 @@ object AstOps {
             case BreakStmt                                     => BreakStmt
             case ReturnStmt                                    => ReturnStmt
             case x: GotoStmt                                   => x
-            case x: StateStmt                                  => x
             case x: GotoState                                  => x
             case x: VerilogFunction                            => x
             case ControlCaseLabel(cond, body)                  => ControlCaseLabel(cond map r[AlogicExpr], r[AlogicAST](body))

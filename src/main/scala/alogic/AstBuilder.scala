@@ -228,7 +228,11 @@ class AstBuilder {
             Message.error(ctx, s"Sign extend function takes exactly two arguments: number of bits and expression (${a.length} found)")
           Sxt(a(0), a(1))
         }
-        case _ => FunCall(n, a)
+        case _ => {
+          if (a.length > 0)
+            Message.error(ctx, s"State functions take no arguments (${a.length} found)")
+          FunCall(n, a)
+        }
       }
     }
   }
