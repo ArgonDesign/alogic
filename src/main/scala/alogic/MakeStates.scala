@@ -44,27 +44,26 @@ final class MakeStates {
   def apply(fsm: FsmTask): StateTask = {
     val FsmTask(name, decls, fns, fencefn, vfns) = fsm
 
-    // Allocate function state numbers
-    for (Function(name, _) <- fns) {
-      fn2state(name) = state_alloc.next
-    }
+    if (fns exists (_.name == "main")) {
+      // Ensure entry to main is state 0
+      fn2state("main") = state_alloc.next
 
-    if (fn2state contains "main") {
+      // Allocate remaining function state numbers
+      for (Function(name, _) <- fns if name != "main") {
+        fn2state(name) = state_alloc.next
+      }
+
       // Convert all functions (do not inline below -- side effect on state_alloc)
       val nfns = fns map makeFnStates
 
-      // Capture number of states
-      val states = state_alloc.next
-
-      // Add a declaration for the state variable
-      val start = fn2state("main")
-      val sd = VarDeclaration(State, DottedName("state" :: Nil), Some(makeNum(start)))
+      // Add a declaration for the state variable (reset to the entry state of main)
+      val sd = VarDeclaration(State, DottedName("state" :: Nil), Some(makeNum(0)))
 
       // Create State Task
-      StateTask(name, sd :: decls, nfns, fencefn, vfns, states)
+      StateTask(name, sd :: decls, nfns, fencefn, vfns, state_alloc.next)
     } else if (fencefn == None && fns == Nil) {
       // 'fsm' with only 'verilog' functions
-      Message.warning(s"FSM '$name' contains only 'verilog' functions. Consider using a 'verilog' task")
+      Message.warning(s"FSM '$name' contains only 'verilog' functions. Consider using a 'verilog' task.")
       StateTask(name, decls, Nil, None, vfns, 0)
     } else {
       Message.fatal(s"No function named 'main' found in FSM '$name'")

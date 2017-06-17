@@ -29,7 +29,7 @@ case class StateTask(name: String,
                      fns: List[Function],
                      fencefn: Option[FenceFunction],
                      vfns: List[VerilogFunction],
-                     states: Int) extends AlogicTask
+                     nstates: Int) extends AlogicTask
 case class NetworkTask(name: String, decls: List[Declaration], fns: List[AlogicAST]) extends AlogicTask
 case class VerilogTask(name: String, decls: List[Declaration], fns: List[VerilogFunction]) extends AlogicTask
 
