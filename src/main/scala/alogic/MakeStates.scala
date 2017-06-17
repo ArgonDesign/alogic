@@ -53,23 +53,23 @@ final class MakeStates {
       }
 
       // Convert all functions (do not inline below -- side effect on state_alloc)
-      val nfns = fns map makeFnStates
+      val states = fns flatMap makeFnStates
 
       // Add a declaration for the state variable (reset to the entry state of main)
       val sd = VarDeclaration(State, DottedName("state" :: Nil), Some(makeNum(0)))
 
       // Create State Task
-      StateTask(name, sd :: decls, nfns, fencefn, vfns, state_alloc.next)
+      StateTask(name, sd :: decls, states, fencefn, vfns)
     } else if (fencefn == None && fns == Nil) {
       // 'fsm' with only 'verilog' functions
       Message.warning(s"FSM '$name' contains only 'verilog' functions. Consider using a 'verilog' task.")
-      StateTask(name, decls, Nil, None, vfns, 0)
+      StateTask(name, decls, Nil, None, vfns)
     } else {
       Message.fatal(s"No function named 'main' found in FSM '$name'")
     }
   }
 
-  def makeFnStates(fn: Function): Function = {
+  def makeFnStates(fn: Function): List[StateBlock] = {
     val Function(name, body) = fn
 
     val s = fn2state(name)
@@ -77,11 +77,11 @@ final class MakeStates {
 
     emit(s, current)
 
-    val f = Function(name, CombinatorialBlock(extra.toList))
+    val result = extra.toList
 
     extra.clear()
 
-    f
+    result
   }
 
   val callDepth = DottedName(List("call_depth"))

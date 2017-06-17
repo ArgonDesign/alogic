@@ -69,8 +69,8 @@ final class MakeVerilog {
 
   def apply(tree: AlogicTask, fname: String): Unit = {
     numstates = tree match {
-      case StateTask(_, _, _, _, _, n) => n
-      case _                           => 0
+      case StateTask(_, _, states, _, _) => states.length
+      case _                             => 0
     }
     log2numstates = ceillog2(numstates)
 
@@ -80,10 +80,10 @@ final class MakeVerilog {
         modname = n
         decls foreach { x => id2decl(ExtractName(x)) = x }
         outtype = t match {
-          case StateTask(_, _, _, _, _, _) => "reg "
-          case FsmTask(_, _, _, _, _)      => "reg "
-          case NetworkTask(_, _, _)        => "wire "
-          case VerilogTask(_, _, _)        => "wire "
+          case StateTask(_, _, _, _, _) => "reg "
+          case FsmTask(_, _, _, _, _)   => "reg "
+          case NetworkTask(_, _, _)     => "wire "
+          case VerilogTask(_, _, _)     => "wire "
         }
         true
       }
@@ -317,21 +317,19 @@ final class MakeVerilog {
         true
       }
       case DeclarationStmt(VarDeclaration(decltype, name, init)) => false
-      case Function(name, CombinatorialBlock(cmds)) => {
-        cmds.reverse foreach { cmd =>
-          fns = CombStmt(3)(cmd) :: fns
-          if (generateAccept) {
-            makingAccept = true
-            AcceptStmt(3, cmd) match {
-              case Some(a) => acceptfns = a :: acceptfns
-              case None    =>
-            }
-            makingAccept = false
+      case blk: StateBlock => {
+        fns = CombStmt(3)(blk) :: fns
+        if (generateAccept) {
+          makingAccept = true
+          AcceptStmt(3, blk) match {
+            case Some(a) => acceptfns = a :: acceptfns
+            case None    =>
           }
+          makingAccept = false
         }
         true
       }
-      case Function(name, _)     => ??? // TODO: this is redundant remove in a later refactor
+      case Function(name, _)     => ??? // TODO: This is an internal error. There should be no functions left at this stage
       case FenceFunction(body)   => { fencefns = CombStmt(2)(body) :: fencefns; false }
       case VerilogFunction(body) => { verilogfns = body :: verilogfns; false }
       case Instantiate(id, module, args) => {
@@ -371,7 +369,7 @@ final class MakeVerilog {
       pw.println("    case (state_q)")
       pw.println("      default: begin")
       pw.println("      end")
-      pw.println(StrList(fns))
+      pw.println(StrList(fns.toList.reverse))
       pw.println("    endcase")
       pw.println()
       if (clears.length > 0) {

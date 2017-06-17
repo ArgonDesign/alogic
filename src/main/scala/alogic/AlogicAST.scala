@@ -26,10 +26,9 @@ case class FsmTask(name: String,
                    vfns: List[VerilogFunction]) extends AlogicTask
 case class StateTask(name: String,
                      decls: List[Declaration],
-                     fns: List[Function],
+                     states: List[StateBlock],
                      fencefn: Option[FenceFunction],
-                     vfns: List[VerilogFunction],
-                     nstates: Int) extends AlogicTask
+                     vfns: List[VerilogFunction]) extends AlogicTask
 case class NetworkTask(name: String, decls: List[Declaration], fns: List[AlogicAST]) extends AlogicTask
 case class VerilogTask(name: String, decls: List[Declaration], fns: List[VerilogFunction]) extends AlogicTask
 

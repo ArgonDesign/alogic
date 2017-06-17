@@ -98,21 +98,18 @@ object PrettyPrinters {
                 |${i}  // Functions
                 |${i}  /////////////////////////////////
                 |
-                |${i}  ${fns map v(indent + 1) mkString s"\n${i}  "}
+                |${i}  ${fns map v(indent + 1) mkString s"\n\n${i}  "}
                 |
                 |${i}  /////////////////////////////////
                 |${i}  // Verilog functions
                 |${i}  /////////////////////////////////
                 |
-                |${i}  ${vfns map v(indent + 1) mkString s"\n${i}  "}
+                |${i}  ${vfns map v(indent + 1) mkString s"\n\n${i}  "}
                 |
                 |${i}}""".stripMargin
 
-          case StateTask(name, decls, fns, fencefn, vfns, n) =>
+          case StateTask(name, decls, sbs, fencefn, vfns) =>
             s"""|@StateTask $name {
-                |
-                |${i}  @nstates = ${n};
-                |
                 |${i}  /////////////////////////////////
                 |${i}  // Declarations
                 |${i}  /////////////////////////////////
@@ -126,10 +123,10 @@ object PrettyPrinters {
                 |${i}  ${if (fencefn.isDefined) v(indent + 1)(fencefn.get) else "// None"}
                 |
                 |${i}  /////////////////////////////////
-                |${i}  // Functions
+                |${i}  // States
                 |${i}  /////////////////////////////////
                 |
-                |${i}  ${fns map v(indent + 1) mkString s"\n${i}  "}
+                |${i}  ${sbs map v(indent + 1) mkString s"\n\n${i}  "}
                 |
                 |${i}  /////////////////////////////////
                 |${i}  // Verilog functions
