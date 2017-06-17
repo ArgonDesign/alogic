@@ -196,18 +196,15 @@ final class MakeVerilog {
         } else {
           pw.println(s"#(")
           // Emit parameter declarations
-          paramDecls foreach {
-            case ParamDeclaration(decltype, id, init) => {
-              SetNxType(nxMap, decltype, id, "")
-              SetNxType(regMap, decltype, id, "")
-              decltype match {
-                case IntType(b, size) => {
-                  pw.println(s"  parameter " + writeSigned(b) + writeSize(size) + id + "=" + MakeExpr(init) + ";")
-                }
-                case x => ??? //() // TODO support IntVType
-              }
+          val s = for (ParamDeclaration(decltype, id, init) <- paramDecls) yield {
+            SetNxType(nxMap, decltype, id, "")
+            SetNxType(regMap, decltype, id, "")
+            decltype match {
+              case IntType(b, size) => s"${i0}parameter " + writeSigned(b) + writeSize(size) + id + "=" + MakeExpr(init)
+              case x                => ??? // TODO support IntVType
             }
           }
+          pw.println(s mkString ",\n")
           pw.println(s") (")
         }
 
