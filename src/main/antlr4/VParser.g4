@@ -27,7 +27,7 @@ decl_init
   : known_type var_ref '=' expr   #DeclInit
   ;
 
-declaration
+decl
   : decl_noinit
   | decl_init
   ;
@@ -42,24 +42,28 @@ sync_type
   | WIRE              #WireType
   ;
 
-task_declaration
-  : 'out' sync_type? known_type IDENTIFIER ';'            #TaskDeclOut
-  | 'in' sync_type? known_type IDENTIFIER ';'             #TaskDeclIn
-  | 'const' sync_type? known_type IDENTIFIER '=' expr ';' #TaskDeclConst
-  | 'param' sync_type? known_type IDENTIFIER '=' expr ';' #TaskDeclParam
-  | 'verilog' known_type var_ref ';'                      #TaskDeclVerilog
-  | declaration ';'                                       #TaskDecl
+network_decl
+  : 'out' sync_type? known_type IDENTIFIER ';'  #TaskDeclOut
+  | 'in' sync_type? known_type IDENTIFIER ';'   #TaskDeclIn
+  | 'param' known_type IDENTIFIER '=' expr ';'  #TaskDeclParam
+  | 'const' known_type IDENTIFIER '=' expr ';'  #TaskDeclConst
+  ;
+
+task_decl
+  : network_decl                        #DUMMYRULENAME
+  | 'verilog' known_type var_ref ';'    #TaskDeclVerilog
+  | decl ';'                            #TaskDecl
   ;
 
 task
   : tasktype IDENTIFIER '{'
-      (decls+=task_declaration)*
-      (contents+=task_content)* 
+      (decls+=task_decl)*
+      (contents+=task_content)*
     '}';
 
 network
   : 'network' IDENTIFIER '{'
-      (decls+=task_declaration)*
+      (decls+=network_decl)*
        (contents+=network_content)*
     '}';
 
@@ -67,6 +71,7 @@ network_content
   : task
   | connect
   | instantiate
+  | verilog_function
   ;
 
 connect : dotted_name '->' comma_args ';' ;
@@ -85,14 +90,26 @@ known_type
   | 'uint' '(' comma_args ')' # UintVType
   ;
 
-task_content
+function
   : 'void' IDENTIFIER '(' ')' '{'
       (stmts += statement)*
-    '}'                             # Function
-  | 'void' 'fence' '(' ')' '{'
+    '}'
+  ;
+
+fence_function
+  : 'void' 'fence' '(' ')' '{'
       (stmts += statement)*
     '}'                             # FenceFunction
-  | VERILOGFUNC VERILOGBODY         # VerilogFunction
+  ;
+
+verilog_function
+  : VERILOGFUNC VERILOGBODY         # VerilogFunction
+  ;
+
+task_content
+  : function
+  | fence_function
+  | verilog_function 
   ;
 
 expr
@@ -146,7 +163,7 @@ case_stmt
 
 statement
   : '{' (stmts+=statement)* '}'                 # BlockStmt
-  | declaration ';'                             # DeclStmt
+  | decl ';'                                    # DeclStmt
   | 'while' '(' expr ')' '{'
       (stmts += statement)*
     '}'                                         # WhileStmt

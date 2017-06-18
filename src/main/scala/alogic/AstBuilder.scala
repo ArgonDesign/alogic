@@ -135,7 +135,7 @@ class AstBuilder {
     override def visitTaskDeclVerilog(ctx: TaskDeclVerilogContext) =
       VerilogDeclaration(TypeVisitor(ctx.known_type()), LookUpDeclVarRef(ctx.var_ref))
 
-    override def visitTaskDecl(ctx: TaskDeclContext) = visit(ctx.declaration)
+    override def visitTaskDecl(ctx: TaskDeclContext) = visit(ctx.decl)
 
     override def visitDeclNoInit(ctx: DeclNoInitContext) =
       VarDeclaration(TypeVisitor(ctx.known_type()), LookUpDeclVarRef(ctx.var_ref), None)
@@ -252,7 +252,7 @@ class AstBuilder {
       }
     }
 
-    override def visitDeclStmt(ctx: DeclStmtContext) = DeclVisitor(ctx.declaration()) match {
+    override def visitDeclStmt(ctx: DeclStmtContext) = DeclVisitor(ctx.decl()) match {
       case s: VarDeclaration => DeclarationStmt(s)
       case _ => {
         Message.error(ctx, "Only variable declarations allowed inside functions")
