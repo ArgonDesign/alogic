@@ -19,6 +19,8 @@ GOESTO: '->';
 
 
 MUL:        '*'   ;
+DIV:        '/'   ;
+MOD:        '%'   ;
 
 PLUS:       '+'   ;
 MINUS:      '-'   ;

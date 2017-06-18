@@ -99,7 +99,7 @@ expr
   : '(' expr ')'                              # ExprBracket
   | op=('+' | '-' | '!' | '~' | '&' |
         '~&' | '|' | '~|' | '^' | '~^') expr  # ExprUnary
-  | expr op='*' expr                          # ExprMulDiv  // TODO: '/' '%'
+  | expr op=('*' | '/' | '%') expr            # ExprMulDiv
   | expr op=('+' | '-') expr                  # ExprAddSub
   | expr op=('<<' | '>>' | '>>>') expr        # ExprShift   // TODO: '<<<'
   | expr op=('>' | '>=' | '<' | '<=') expr    # ExprCompare
