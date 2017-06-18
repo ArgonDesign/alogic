@@ -34,15 +34,15 @@ class AstBuilder {
 
   typedefs("state") = State
 
-  object ProgVisitor extends VBaseVisitor[List[AlogicTask]] {
+  object ProgVisitor extends VBaseVisitor[List[Task]] {
     override def visitStart(ctx: StartContext) = EntityVisitor(ctx.entities) collect {
-      case Left(t: AlogicTask) => t
+      case Left(t: Task) => t
     }
   }
 
-  object EntityVisitor extends VBaseVisitor[Either[AlogicAST, Unit]] {
+  object EntityVisitor extends VBaseVisitor[Either[Node, Unit]] {
 
-    object TaskContentVisitor extends VBaseVisitor[AlogicAST] {
+    object TaskContentVisitor extends VBaseVisitor[Node] {
       override def visitFunction(ctx: FunctionContext) = Function(ctx.IDENTIFIER, ControlBlock(StatementVisitor(ctx.stmts)))
       override def visitFenceFunction(ctx: FenceFunctionContext) = FenceFunction(CombinatorialBlock(StatementVisitor(ctx.stmts)))
       override def visitVerilogFunction(ctx: VerilogFunctionContext) = VerilogFunction(ctx.VERILOGBODY.text.drop(1).dropRight(1))
@@ -98,7 +98,7 @@ class AstBuilder {
 
   object DeclVisitor extends VBaseVisitor[Declaration] {
     // Extract name from var_ref and look up in current scope
-    object LookUpDeclVarRef extends VBaseVisitor[AlogicVarRef] {
+    object LookUpDeclVarRef extends VBaseVisitor[VarRef] {
       object LookUpDottedName extends VBaseVisitor[DottedName] {
         override def visitDotted_name(ctx: Dotted_nameContext) = {
           val name = ctx.es.toList.map(_.text) mkString "."
@@ -156,14 +156,14 @@ class AstBuilder {
     }
   }
 
-  object VarRefVisitor extends VBaseVisitor[AlogicVarRef] {
+  object VarRefVisitor extends VBaseVisitor[VarRef] {
     override def visitVarRef(ctx: VarRefContext) =
       LookUpName(ctx.dotted_name)
     override def visitVarRefIndex(ctx: VarRefIndexContext) =
       ArrayLookup(LookUpName(ctx.dotted_name), ExprVisitor(ctx.es))
   }
 
-  object LValueVisitor extends VBaseVisitor[AlogicExpr] {
+  object LValueVisitor extends VBaseVisitor[Expr] {
     override def visitLValue(ctx: LValueContext) = VarRefVisitor(ctx.var_ref)
     override def visitLValueSlice(ctx: LValueSliceContext) =
       Slice(VarRefVisitor(ctx.var_ref), ExprVisitor(ctx.expr(0)), ctx.op, ExprVisitor(ctx.expr(1)))
@@ -171,9 +171,9 @@ class AstBuilder {
       BitCat(visit(ctx.refs))
   }
 
-  object ExprVisitor extends VBaseVisitor[AlogicExpr] {
+  object ExprVisitor extends VBaseVisitor[Expr] {
     // If applied to a commaexpr node, return a list of the constructed expressions
-    def apply(ctx: CommaexprContext): List[AlogicExpr] = visit(ctx.expr)
+    def apply(ctx: CommaexprContext): List[Expr] = visit(ctx.expr)
 
     override def visitExprBracket(ctx: ExprBracketContext) = Bracket(visit(ctx.expr))
     override def visitExprUnary(ctx: ExprUnaryContext) = UnaryOp(ctx.op, visit(ctx.expr))
@@ -248,7 +248,7 @@ class AstBuilder {
     }
   }
 
-  object StatementVisitor extends VBaseVisitor[AlogicStmt] {
+  object StatementVisitor extends VBaseVisitor[Stmt] {
     override def visitBlockStmt(ctx: BlockStmtContext) = visit(ctx.stmts) match {
       case s if (s.length > 0 && is_control_stmt(s.last)) => ControlBlock(s)
       case s if (!s.exists(is_control_stmt))              => CombinatorialBlock(s)
@@ -296,7 +296,7 @@ class AstBuilder {
 
     override def visitCaseStmt(ctx: CaseStmtContext) = {
 
-      object CaseVisitor extends VBaseVisitor[AlogicAST] {
+      object CaseVisitor extends VBaseVisitor[Node] {
         override def visitDefaultCase(ctx: DefaultCaseContext) = {
           val s = StatementVisitor(ctx.statement())
           if (is_control_stmt(s))
@@ -315,7 +315,7 @@ class AstBuilder {
         }
       }
 
-      def is_control_label(cmd: AlogicAST): Boolean = cmd match {
+      def is_control_label(cmd: Node): Boolean = cmd match {
         case ControlCaseLabel(_, _) => true
         case _                      => false
       }
@@ -331,7 +331,7 @@ class AstBuilder {
       }
     }
 
-    object ForInitVisitor extends VBaseVisitor[(Option[VarDeclaration], AlogicStmt)] {
+    object ForInitVisitor extends VBaseVisitor[(Option[VarDeclaration], Stmt)] {
       override def visitForInitNoDecl(ctx: ForInitNoDeclContext) = (None, StatementVisitor(ctx.assignment_statement))
       override def visitDeclInit(ctx: DeclInitContext) = {
         val varDecl = DeclVisitor(ctx).asInstanceOf[VarDeclaration]

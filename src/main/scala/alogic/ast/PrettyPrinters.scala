@@ -39,9 +39,9 @@ object PrettyPrinters {
     }
   }
 
-  implicit class AlogicExprPrinter(val tree: AlogicExpr) extends AnyVal {
+  implicit class AlogicExprPrinter(val tree: Expr) extends AnyVal {
     def toSource: String = {
-      def v(node: AlogicExpr): String = node match {
+      def v(node: Expr): String = node match {
         case DottedName(names)         => names mkString "."
         case ArrayLookup(name, index)  => s"${v(name)}${index map v mkString ("[", "][", "]")}"
         case Slice(ref, l, op, r)      => s"${v(ref)}[${v(l)}$op${v(r)}]"
@@ -68,12 +68,12 @@ object PrettyPrinters {
     }
   }
 
-  implicit class AlogicASTPrinter[T <: AlogicAST](val tree: T) extends AnyVal {
+  implicit class AlogicASTPrinter[T <: Node](val tree: T) extends AnyVal {
     def toSource: String = {
-      def v(indent: Int)(node: AlogicAST): String = {
+      def v(indent: Int)(node: Node): String = {
         val i = "  " * indent
         node match {
-          case expr: AlogicExpr              => expr.toSource
+          case expr: Expr              => expr.toSource
 
           case Instantiate(id, module, args) => s"${i}new $id  = ${module}(${args map v(indent) mkString ", "});\n"
           case Connect(start, end)           => s"$start -> ${end map v(indent) mkString ", "}\n"

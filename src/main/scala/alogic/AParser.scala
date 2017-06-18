@@ -7,7 +7,7 @@ import scalax.file.Path
 
 object AParser {
 
-  def apply(path: Path, includeSearchPaths: List[Path] = Nil, initalDefines: Map[String, String] = Map()): List[ast.AlogicTask] = {
+  def apply(path: Path, includeSearchPaths: List[Path] = Nil, initalDefines: Map[String, String] = Map()): List[ast.Task] = {
 
     Message.info(s"Parsing ${path.path}")
 

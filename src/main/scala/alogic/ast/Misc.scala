@@ -5,17 +5,17 @@ package alogic.ast
 // // Declaration used for top-level and function declarations
 sealed trait Declaration
 // TODO: Add separate Decl for Arrays, it just makes a lot of things simpler
-case class VarDeclaration(decltype: AlogicType, id: AlogicAST, init: Option[AlogicExpr]) extends Declaration
-case class ParamDeclaration(decltype: AlogicType, id: String, init: AlogicExpr) extends Declaration
-case class ConstDeclaration(decltype: AlogicType, id: String, init: AlogicExpr) extends Declaration
-case class VerilogDeclaration(decltype: AlogicType, id: AlogicAST) extends Declaration
+case class VarDeclaration(decltype: AlogicType, id: Node, init: Option[Expr]) extends Declaration
+case class ParamDeclaration(decltype: AlogicType, id: String, init: Expr) extends Declaration
+case class ConstDeclaration(decltype: AlogicType, id: String, init: Expr) extends Declaration
+case class VerilogDeclaration(decltype: AlogicType, id: Node) extends Declaration
 case class OutDeclaration(synctype: SyncType, decltype: AlogicType, name: String) extends Declaration
 case class InDeclaration(synctype: SyncType, decltype: AlogicType, name: String) extends Declaration
 
 // AlogicType used to define the allowed types
 sealed trait AlogicType
 case class IntType(signed: Boolean, size: Int) extends AlogicType
-case class IntVType(signed: Boolean, args: List[AlogicExpr]) extends AlogicType // variable number of bits definition
+case class IntVType(signed: Boolean, args: List[Expr]) extends AlogicType // variable number of bits definition
 case class Struct(fields: Map[String, AlogicType]) extends AlogicType
 case object State extends AlogicType // Type with enough bits to hold state variable
 

@@ -50,7 +50,7 @@ final class MakeVerilog {
     y
   }
 
-  def getModule(ast: AlogicAST): (DottedName, ModuleInstance) = {
+  def getModule(ast: Node): (DottedName, ModuleInstance) = {
     val f = ast.asInstanceOf[DottedName]
     val n = f.names(0)
     if (modMap contains n) {
@@ -67,7 +67,7 @@ final class MakeVerilog {
 
   var makingAccept = false // We use this to decide how to emit expressions
 
-  def apply(tree: AlogicTask, fname: String): Unit = {
+  def apply(tree: Task, fname: String): Unit = {
     numstates = tree match {
       case StateTask(_, _, s, _, _) => s.length
       case _                        => 0
@@ -76,7 +76,7 @@ final class MakeVerilog {
 
     // Collect all the declarations
     tree visit {
-      case t @ AlogicTask(n, decls) => {
+      case t @ Task(n, decls) => {
         modname = n
         decls foreach { x => id2decl(ExtractName(x)) = x }
         outtype = t match {
@@ -216,7 +216,7 @@ final class MakeVerilog {
     pw.println()
 
     tree visit {
-      case _: AlogicTask => {
+      case _: Task => {
         pw.print(s"module $modname ")
 
         val paramDecls = id2decl.values collect {
@@ -480,7 +480,7 @@ final class MakeVerilog {
   }
 
   // Return the type for an AST
-  def GetType(tree: AlogicExpr): AlogicType = {
+  def GetType(tree: Expr): AlogicType = {
 
     def LookUpField(names: List[String], kind: AlogicType): AlogicType = {
       val n :: ns = names
@@ -510,7 +510,7 @@ final class MakeVerilog {
   }
 
   // Construct a string for an expression
-  def MakeExpr(tree: AlogicAST): StrTree = {
+  def MakeExpr(tree: Node): StrTree = {
     tree match {
       case ArrayLookup(name, index) => {
         val indices = index map MakeExpr mkString ("[", "][", "]")
@@ -557,14 +557,14 @@ final class MakeVerilog {
 
   // Produce code to go into the case statements (we assume we have already had a "case(state) default: begin end"
   // The top call should be with Function or VerilogFunction
-  def CombStmt(indent: Int)(tree: AlogicAST): StrTree = {
+  def CombStmt(indent: Int)(tree: Node): StrTree = {
     val i = i0 * indent
     val si = Str(i)
 
     // Take a combinatorial statement and return stall conditions that should be emitted now based on ids that are read/written
     // This code will be emitted before the actual statement
     // It is useful to keep as a list of strings here so we can decide when to insert an extra begin/end block
-    def StallExpr(tree: AlogicAST): List[String] = {
+    def StallExpr(tree: Node): List[String] = {
       // Use a local function to avoid having to copy emitted list down the stack
       var blockingStatements: List[String] = Nil
 
@@ -585,7 +585,7 @@ final class MakeVerilog {
         false // No need to recurse
       }
 
-      def v(tree: AlogicAST): Boolean = tree match {
+      def v(tree: Node): Boolean = tree match {
         case CombinatorialCaseStmt(value, _) =>
           value visit v; false
         case CombinatorialBlock(_) => false
@@ -619,7 +619,7 @@ final class MakeVerilog {
       return blockingStatements
     }
 
-    def AddStall(terms: AlogicAST*)(expr: StrTree): StrTree = {
+    def AddStall(terms: Node*)(expr: StrTree): StrTree = {
       val stalls = terms.toList flatMap StallExpr
       if (stalls.isEmpty) {
         expr
@@ -751,7 +751,7 @@ final class MakeVerilog {
     }
   }
 
-  def AcceptStmt(indent: Int, tree: AlogicAST): Option[StrTree] = tree match {
+  def AcceptStmt(indent: Int, tree: Node): Option[StrTree] = tree match {
     case Assign(lhs, rhs) => {
       IdsWritten.add(ExtractName(lhs))
       AddAccept(indent, AcceptExpr(lhs) ::: AcceptExpr(rhs), None)
@@ -855,7 +855,7 @@ final class MakeVerilog {
   // This code will be emitted before the actual statement
   // It is useful to keep as a list of strings here so we can decide when to insert an extra begin/end block
   // Strings have \n at the end, but indent will be added later
-  def AcceptExpr(tree: AlogicAST): List[String] = {
+  def AcceptExpr(tree: Node): List[String] = {
     // Use a local function to avoid having to copy emitted list down the stack
     var blockingStatements: List[String] = Nil
 
@@ -877,7 +877,7 @@ final class MakeVerilog {
       false // No need to recurse
     }
 
-    def v(tree: AlogicAST): Boolean = tree match {
+    def v(tree: Node): Boolean = tree match {
       case CombinatorialCaseStmt(value, _) =>
         value visit v; false
       case CombinatorialBlock(_) => false

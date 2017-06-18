@@ -7,7 +7,7 @@ import alogic.StrList
 import alogic.StrTree
 
 object AstOps {
-  def ExtractName(tree: AlogicAST): String = tree match {
+  def ExtractName(tree: Node): String = tree match {
     case DottedName(ns)    => ns.head
     case ArrayLookup(a, _) => ExtractName(a)
     case _                 => "Unknown"
@@ -24,7 +24,7 @@ object AstOps {
   }
 
   // Does this statement translate to a goto?
-  def is_control_stmt(cmd: AlogicStmt): Boolean = cmd match {
+  def is_control_stmt(cmd: Stmt): Boolean = cmd match {
     case FenceStmt                       => true
     case BreakStmt                       => true
     case ReturnStmt                      => true
@@ -74,12 +74,12 @@ object AstOps {
     visit(typ, name)
   }
 
-  implicit class AlogicAstWrapper[T <: AlogicAST](val tree: T) extends AnyVal {
+  implicit class AlogicAstWrapper[T <: Node](val tree: T) extends AnyVal {
     // Recurse through the tree and apply function to all nodes in pre-order
     // Callback returns true to continue recursing, or false to stop processing children
-    def visit(callback: AlogicAST => Boolean): Unit = {
+    def visit(callback: Node => Boolean): Unit = {
 
-      def v(node: AlogicAST): Unit = {
+      def v(node: Node): Unit = {
         if (callback(node))
           node match {
             case Instantiate(_, _, args)                    => args foreach v
@@ -145,66 +145,66 @@ object AstOps {
     // Recurse through the tree and apply partial function to all nodes in pre-order
     // Wherever the partial function is defined, the tree is rewritten, otherwise the
     // recursion continues
-    def rewrite(callback: PartialFunction[AlogicAST, AlogicAST]): T = {
+    def rewrite(callback: PartialFunction[Node, Node]): T = {
 
       val cb = callback.lift
 
-      def r[E <: AlogicAST](node: AlogicAST): E = {
+      def r[E <: Node](node: Node): E = {
         val v = cb(node) match {
           case Some(x) => x
           case None => node match {
-            case Instantiate(a, b, args)                    => Instantiate(a, b, args map r[AlogicAST])
-            case Connect(start, end)                        => Connect(r[AlogicAST](start), end map r[AlogicAST])
-            case Function(name, body)                       => Function(name, r[AlogicStmt](body))
-            case FenceFunction(body)                        => FenceFunction(r[AlogicStmt](body))
+            case Instantiate(a, b, args)                    => Instantiate(a, b, args map r[Node])
+            case Connect(start, end)                        => Connect(r[Node](start), end map r[Node])
+            case Function(name, body)                       => Function(name, r[Stmt](body))
+            case FenceFunction(body)                        => FenceFunction(r[Stmt](body))
             case FsmTask(name, decls, fns, fencefn, vfns)   => FsmTask(name, decls, fns map r[Function], fencefn map r[FenceFunction], vfns)
             case StateTask(name, decls, sbs, fencefn, vfns) => StateTask(name, decls, sbs map r[StateBlock], fencefn map r[FenceFunction], vfns)
-            case NetworkTask(name, decls, fns)              => NetworkTask(name, decls, fns map r[AlogicAST])
+            case NetworkTask(name, decls, fns)              => NetworkTask(name, decls, fns map r[Node])
             case x: VerilogTask                             => x
-            case Assign(lhs, rhs)                           => Assign(r[AlogicAST](lhs), r[AlogicExpr](rhs))
-            case Update(lhs, op, rhs)                       => Update(r[AlogicExpr](lhs), op, r[AlogicExpr](rhs))
-            case Plusplus(lhs)                              => Plusplus(r[AlogicExpr](lhs))
-            case Minusminus(lhs)                            => Minusminus(r[AlogicExpr](lhs))
-            case CombinatorialBlock(cmds)                   => CombinatorialBlock(cmds map r[AlogicStmt])
-            case StateBlock(state, cmds)                    => StateBlock(state, cmds map r[AlogicStmt])
+            case Assign(lhs, rhs)                           => Assign(r[Node](lhs), r[Expr](rhs))
+            case Update(lhs, op, rhs)                       => Update(r[Expr](lhs), op, r[Expr](rhs))
+            case Plusplus(lhs)                              => Plusplus(r[Expr](lhs))
+            case Minusminus(lhs)                            => Minusminus(r[Expr](lhs))
+            case CombinatorialBlock(cmds)                   => CombinatorialBlock(cmds map r[Stmt])
+            case StateBlock(state, cmds)                    => StateBlock(state, cmds map r[Stmt])
             case x: DeclarationStmt                         => x
-            case CombinatorialIf(cond, body, e)             => CombinatorialIf(r[AlogicAST](cond), r[AlogicStmt](body), e map r[AlogicStmt])
+            case CombinatorialIf(cond, body, e)             => CombinatorialIf(r[Node](cond), r[Stmt](body), e map r[Stmt])
             case x: AlogicComment                           => x
-            case CombinatorialCaseStmt(value, cases)        => CombinatorialCaseStmt(r[AlogicAST](value), cases map r[AlogicAST])
-            case ControlCaseStmt(value, cases)              => ControlCaseStmt(r[AlogicAST](value), cases map r[ControlCaseLabel])
-            case ControlIf(cond, body, e)                   => ControlIf(cond, r[AlogicStmt](body), e map r[AlogicStmt])
-            case ControlBlock(cmds)                         => ControlBlock(cmds map r[AlogicStmt])
-            case ControlWhile(cond, body)                   => ControlWhile(r[AlogicExpr](cond), body map r[AlogicStmt])
-            case ControlFor(init, cond, incr, body)         => ControlFor(r[AlogicStmt](init), r[AlogicExpr](cond), r[AlogicStmt](incr), body map r[AlogicStmt])
-            case ControlDo(cond, body)                      => ControlDo(r[AlogicExpr](cond), body map r[AlogicStmt])
+            case CombinatorialCaseStmt(value, cases)        => CombinatorialCaseStmt(r[Node](value), cases map r[Node])
+            case ControlCaseStmt(value, cases)              => ControlCaseStmt(r[Node](value), cases map r[ControlCaseLabel])
+            case ControlIf(cond, body, e)                   => ControlIf(cond, r[Stmt](body), e map r[Stmt])
+            case ControlBlock(cmds)                         => ControlBlock(cmds map r[Stmt])
+            case ControlWhile(cond, body)                   => ControlWhile(r[Expr](cond), body map r[Stmt])
+            case ControlFor(init, cond, incr, body)         => ControlFor(r[Stmt](init), r[Expr](cond), r[Stmt](incr), body map r[Stmt])
+            case ControlDo(cond, body)                      => ControlDo(r[Expr](cond), body map r[Stmt])
             case FenceStmt                                  => FenceStmt
             case BreakStmt                                  => BreakStmt
             case ReturnStmt                                 => ReturnStmt
             case x: GotoStmt                                => x
             case x: GotoState                               => x
             case x: VerilogFunction                         => x
-            case ControlCaseLabel(cond, body)               => ControlCaseLabel(cond map r[AlogicExpr], r[AlogicStmt](body))
-            case CombinatorialCaseLabel(cond, body)         => CombinatorialCaseLabel(cond map r[AlogicExpr], r[AlogicStmt](body))
-            case ExprStmt(expr)                             => ExprStmt(r[AlogicExpr](expr))
+            case ControlCaseLabel(cond, body)               => ControlCaseLabel(cond map r[Expr], r[Stmt](body))
+            case CombinatorialCaseLabel(cond, body)         => CombinatorialCaseLabel(cond map r[Expr], r[Stmt](body))
+            case ExprStmt(expr)                             => ExprStmt(r[Expr](expr))
 
             // Expressions
-            case ArrayLookup(name, index)                   => ArrayLookup(r[DottedName](name), index map r[AlogicExpr])
-            case Slice(ref, lidx, op, ridx)                 => Slice(r[AlogicVarRef](ref), r[AlogicExpr](lidx), op, r[AlogicExpr](ridx))
-            case FunCall(name, args)                        => FunCall(r[DottedName](name), args map r[AlogicExpr])
-            case Zxt(numbits, expr)                         => Zxt(r[AlogicExpr](numbits), r[AlogicExpr](expr))
-            case Sxt(numbits, expr)                         => Sxt(r[AlogicExpr](numbits), r[AlogicExpr](expr))
-            case DollarCall(name, args)                     => DollarCall(name, args map r[AlogicExpr])
+            case ArrayLookup(name, index)                   => ArrayLookup(r[DottedName](name), index map r[Expr])
+            case Slice(ref, lidx, op, ridx)                 => Slice(r[VarRef](ref), r[Expr](lidx), op, r[Expr](ridx))
+            case FunCall(name, args)                        => FunCall(r[DottedName](name), args map r[Expr])
+            case Zxt(numbits, expr)                         => Zxt(r[Expr](numbits), r[Expr](expr))
+            case Sxt(numbits, expr)                         => Sxt(r[Expr](numbits), r[Expr](expr))
+            case DollarCall(name, args)                     => DollarCall(name, args map r[Expr])
             case ReadCall(name)                             => ReadCall(name)
             case LockCall(name)                             => LockCall(name)
             case UnlockCall(name)                           => UnlockCall(name)
             case ValidCall(name)                            => ValidCall(name)
-            case WriteCall(name, args)                      => WriteCall(name, args map r[AlogicExpr])
-            case BinaryOp(lhs, op, rhs)                     => BinaryOp(r[AlogicExpr](lhs), op, r[AlogicExpr](rhs))
-            case UnaryOp(op, lhs)                           => UnaryOp(op, r[AlogicExpr](lhs))
-            case Bracket(content)                           => Bracket(r[AlogicExpr](content))
-            case TernaryOp(cond, lhs, rhs)                  => TernaryOp(r[AlogicExpr](cond), r[AlogicExpr](lhs), r[AlogicExpr](rhs))
-            case BitRep(count, value)                       => BitRep(r[AlogicExpr](count), r[AlogicExpr](value))
-            case BitCat(parts)                              => BitCat(parts map r[AlogicExpr])
+            case WriteCall(name, args)                      => WriteCall(name, args map r[Expr])
+            case BinaryOp(lhs, op, rhs)                     => BinaryOp(r[Expr](lhs), op, r[Expr](rhs))
+            case UnaryOp(op, lhs)                           => UnaryOp(op, r[Expr](lhs))
+            case Bracket(content)                           => Bracket(r[Expr](content))
+            case TernaryOp(cond, lhs, rhs)                  => TernaryOp(r[Expr](cond), r[Expr](lhs), r[Expr](rhs))
+            case BitRep(count, value)                       => BitRep(r[Expr](count), r[Expr](value))
+            case BitCat(parts)                              => BitCat(parts map r[Expr])
             case x: DottedName                              => x
             case x: Literal                                 => x
             case x: Num                                     => x
