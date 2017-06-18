@@ -179,6 +179,38 @@ final class MakeVerilog {
       }
     }
 
+    id2decl.values foreach {
+      case InDeclaration(synctype, decltype, name) => {
+        SetNxType(nxMap, decltype, name, "")
+        SetNxType(regMap, decltype, name, "")
+      }
+      case OutDeclaration(synctype, decltype, name) => {
+        SetNxType(nxMap, decltype, name, "") // TODO decide on NxType based on synctype
+        SetNxType(regMap, decltype, name, "")
+      }
+      case ParamDeclaration(decltype, id, init) => {
+        SetNxType(nxMap, decltype, id, "")
+        SetNxType(regMap, decltype, id, "")
+      }
+      case ConstDeclaration(decltype, id, init) => {
+        SetNxType(nxMap, decltype, id, "")
+        SetNxType(regMap, decltype, id, "")
+      }
+      case VerilogDeclaration(decltype, id) => {
+        SetNxType(nxMap, decltype, ExtractName(id), "")
+        SetNxType(regMap, decltype, ExtractName(id), "")
+      }
+      case VarDeclaration(decltype, ArrayLookup(DottedName(name :: Nil), index), None) => {
+        SetNxType(nxMap, decltype, name, "")
+        SetNxType(regMap, decltype, name, "")
+      }
+      case VarDeclaration(decltype, DottedName(name :: Nil), _) => {
+        SetNxType(nxMap, decltype, name, "_nxt")
+        SetNxType(regMap, decltype, name, "")
+      }
+      case x => Message.fatal(s"Don't know how to handle ${x}") // TODO: turn this into ice
+    }
+
     var generateAccept = false // As an optimization, don't bother generating accept for modules without any ports that require it
 
     pw.println(s"`default_nettype none")
@@ -198,8 +230,6 @@ final class MakeVerilog {
           pw.println(s"#(")
           // Emit parameter declarations
           val s = for (ParamDeclaration(decltype, id, init) <- paramDecls) yield {
-            SetNxType(nxMap, decltype, id, "")
-            SetNxType(regMap, decltype, id, "")
             decltype match {
               case IntType(b, size) => s"${i0}parameter " + writeSigned(b) + writeSize(size) + id + "=" + MakeExpr(init)
               case x                => ??? // TODO support IntVType
@@ -223,8 +253,6 @@ final class MakeVerilog {
               pw.println("  output " + outtype + accept(name) + ",")
               generateAccept = true;
             }
-            SetNxType(nxMap, decltype, name, "") // TODO decide on NxType based on synctype
-            SetNxType(regMap, decltype, name, "")
             VisitType(decltype, name)(writeOut) // TODO declare nxt values for outputs
 
           }
@@ -238,14 +266,8 @@ final class MakeVerilog {
             }
             if (HasAccept(synctype))
               pw.println("  input wire " + accept(name) + ",")
-            SetNxType(nxMap, decltype, name, "")
-            SetNxType(regMap, decltype, name, "")
             VisitType(decltype, name)(writeOut)
 
-          }
-          case VerilogDeclaration(decltype, id) => {
-            SetNxType(nxMap, decltype, ExtractName(id), "")
-            SetNxType(regMap, decltype, ExtractName(id), "")
           }
           case _ =>
         }
@@ -256,11 +278,8 @@ final class MakeVerilog {
         pw.println(");\n")
 
         // Emit localparam (const) declaratoins
-
         id2decl.values foreach {
           case ConstDeclaration(decltype, id, init) => {
-            SetNxType(nxMap, decltype, id, "")
-            SetNxType(regMap, decltype, id, "")
             decltype match {
               case IntType(b, size) => {
                 pw.println(s"  localparam " + writeSigned(b) + writeSize(size) + id + "=" + MakeExpr(init) + ";")
@@ -286,8 +305,6 @@ final class MakeVerilog {
             pw.println(s"  reg ${t}${n}_wrdata;")
             pw.println(s"  reg [${log2depth - 1}:0] ${n}_wraddr;")
             pw.println(s"  reg ${n} [${depth - 1}:0];")
-            SetNxType(nxMap, decltype, names.head, "")
-            SetNxType(regMap, decltype, names.head, "")
             defaults = StrList(
               Str(s"    ${n}_wr = 1'b0;\n") ::
                 Str(s"    ${n}_wraddr = 'b0;\n") ::
@@ -300,15 +317,10 @@ final class MakeVerilog {
           }
           case VarDeclaration(decltype, name, None) => {
             val n = ExtractName(name)
-            SetNxType(nxMap, decltype, n, "_nxt")
-            SetNxType(regMap, decltype, n, "")
             VisitType(decltype, n)(writeVarWithReset)
-
           }
           case VarDeclaration(decltype, name, Some(init)) => {
             val n = ExtractName(name)
-            SetNxType(nxMap, decltype, n, "_nxt")
-            SetNxType(regMap, decltype, n, "")
             VisitType(decltype, n)(writeVarWithNoReset)
             resets = StrList(Str("      ") :: Str(reg(n)) :: Str(s" <= ") :: MakeExpr(init) :: Str(";\n") :: Nil) :: resets
           }
