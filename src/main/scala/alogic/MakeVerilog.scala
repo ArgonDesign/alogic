@@ -636,9 +636,9 @@ final class MakeVerilog {
       case Assign(ArrayLookup(DottedName(n :: _), index :: Nil), rhs) if (Arrays contains n) => AddStall(index, rhs) {
         Str(s"""|begin
                 |${i + i0}${n}_wr = 1'b1;
-                |${i + i0}${n}_addr = ${MakeExpr(rhs)};
-                |${i + i0}${n}_wrdata = ${MakeExpr(index)};
-                |${i}end""".stripMargin) // TODO: FIX rhs/idx swap
+                |${i + i0}${n}_addr = ${MakeExpr(index)};
+                |${i + i0}${n}_wrdata = ${MakeExpr(rhs)};
+                |${i}end""".stripMargin)
       }
       case Assign(lhs, rhs) => AddStall(lhs, rhs) {
         Str(s"${MakeExpr(lhs)} = ${MakeExpr(rhs)};")
