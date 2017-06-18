@@ -1,22 +1,23 @@
 // We convert control statements into state labels and goto statements
 //
 // In the returned AST there will be no:
-//   CallStmt
-//   GotoStmt
-//   ReturnStmt
-//   BreakStmt
-//   FenceStmt
 //   ControlFor
 //   ControlDo
 //   ControlIf
 //   ControlCaseStmt
 //   ControlWhile
 //   ControlBlock
+//   FenceStmt
+//   BreakStmt
+//   GotoStmt
+//   CallStmt
+//   ReturnStmt
 //
 // These will be replaced with
 //   StateBlock
 //   GotoState
-//   GotoStmt (this is used to target the callstack)
+//   CallState
+//   PopState
 
 package alogic
 
@@ -89,9 +90,6 @@ final class MakeStates {
     result
   }
 
-  val callDepth = DottedName(List("call_depth"))
-  val callStack = DottedName(List("call_stack"))
-
   def makeNum(x: Int) = Num(s"$x")
 
   // Create an AST that finishes by moving to finalState (unless break, return etc)
@@ -104,26 +102,11 @@ final class MakeStates {
     // Simple control transfer statements
     ///////////////////////////////////////////////////////////////////////////
 
-    case FenceStmt   => List(GotoState(finalState))
-    case BreakStmt   => List(GotoState(breakTargets.head))
-    case GotoStmt(t) => List(GotoState(fn2state(t))) // TODO check targets exist in AstBuilder to avoid exception here
-    case ReturnStmt => {
-      List(
-        // Pop state
-        Minusminus(callDepth),
-        // Return to new top of stack
-        GotoStmt("call_stack[call_depth_nxt]"))
-    }
-    case CallStmt(n, args) => {
-      val DottedName(name :: _) = n
-      List(
-        // Push return state
-        Assign(ArrayLookup(callStack, callDepth :: Nil), makeNum(finalState)),
-        // increment depth
-        Plusplus(callDepth),
-        // branch to function - TODO check target exists in builder
-        GotoState(fn2state(name)))
-    }
+    case FenceStmt          => List(GotoState(finalState))
+    case BreakStmt          => List(GotoState(breakTargets.head))
+    case GotoStmt(t)        => List(GotoState(fn2state(t))) // TODO check targets exist in builder
+    case CallStmt(t)        => List(CallState(fn2state(t), finalState)) // TODO check target exists in builder
+    case ReturnStmt         => List(ReturnState)
 
     ///////////////////////////////////////////////////////////////////////////
     // ControlBlock

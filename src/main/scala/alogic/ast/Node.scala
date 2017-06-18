@@ -79,7 +79,7 @@ case class Update(lhs: Expr, op: String, rhs: Expr) extends Stmt
 case class Plusplus(lhs: Expr) extends Stmt
 case class Minusminus(lhs: Expr) extends Stmt
 
-case class CallStmt(name: DottedName, args: List[Expr]) extends Stmt
+case class CallStmt(target: String) extends Stmt
 
 case class ExprStmt(expr: Expr) extends Stmt
 
@@ -102,7 +102,9 @@ case class GotoStmt(target: String) extends Stmt // tODO: take DottedName ?
 
 // Extra types inserted by MakeStates
 case class StateBlock(state: Int, contents: List[Stmt]) extends Stmt
-case class GotoState(state: Int) extends Stmt
+case class GotoState(tgt: Int) extends Stmt
+case class CallState(tgt: Int, ret: Int) extends Stmt
+case object ReturnState extends Stmt
 
 // // AlogicAST used for abstract syntax nodes
 case class Connect(start: Node, end: List[Node]) extends Node

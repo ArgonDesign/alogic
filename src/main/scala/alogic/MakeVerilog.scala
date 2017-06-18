@@ -638,7 +638,7 @@ final class MakeVerilog {
                 |${i + i0}${n}_wr = 1'b1;
                 |${i + i0}${n}_addr = ${MakeExpr(rhs)};
                 |${i + i0}${n}_wrdata = ${MakeExpr(index)};
-                |${i}end""".stripMargin)
+                |${i}end""".stripMargin) // TODO: FIX rhs/idx swap
       }
       case Assign(lhs, rhs) => AddStall(lhs, rhs) {
         Str(s"${MakeExpr(lhs)} = ${MakeExpr(rhs)};")
@@ -682,12 +682,22 @@ final class MakeVerilog {
           StrList(List(nx("state"), " = ", MakeState(target), ";"))
         }
       }
-      case GotoStmt(target) => {
-        if (numstates == 1) {
-          Str("")
-        } else {
-          StrList(List(nx("state"), " = ", target, ";"))
-        }
+
+      case CallState(tgt, ret) => {
+        Str(s"""|begin
+                |${i + i0}call_stack_wr = 1'b1;
+                |${i + i0}call_stack_addr = call_depth_nxt;
+                |${i + i0}call_stack_wrdata = ${MakeState(ret)};
+                |${i + i0}call_depth_nxt = call_depth_nxt + 1'b1;
+                |${i + i0}${nx("state")} = ${MakeState(tgt)};
+                |${i}end""".stripMargin)
+      }
+
+      case ReturnState => {
+        Str(s"""|begin
+                |${i + i0}call_depth_nxt = call_depth_nxt - 1'b1;
+                |${i + i0}${nx("state")} = call_stack[call_depth_nxt];
+                |${i}end""".stripMargin)
       }
 
       case ExprStmt(LockCall(name))   => AddStall(name) { Str("") }

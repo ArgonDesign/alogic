@@ -365,8 +365,16 @@ class AstBuilder {
     override def visitAssignUpdate(ctx: AssignUpdateContext) = Update(LValueVisitor(ctx.lvalue), ctx.ASSIGNOP, ExprVisitor(ctx.expr()))
 
     override def visitExprStmt(ctx: ExprStmtContext) = ExprVisitor(ctx.expr) match {
-      case CallExpr(name, args) => CallStmt(name, args)
-      case expr                => ExprStmt(expr)
+      case CallExpr(DottedName(target :: xs), args) => {
+        if (!args.isEmpty) {
+          Message.fatal(ctx, "Function calls in statement position take no arguments")
+        }
+        if (!xs.isEmpty) {
+          Message.fatal(ctx, "Function calls in statement position must use unqualified name")
+        }
+        CallStmt(target)
+      }
+      case expr => ExprStmt(expr)
     }
   }
 

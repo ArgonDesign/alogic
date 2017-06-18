@@ -190,15 +190,17 @@ object PrettyPrinters {
                 |${i}  ${body map v(indent + 1) mkString s"\n${i}  "}
                 |${i}} while (${v(indent)(cond)});""".stripMargin
 
-          case ExprStmt(expr)       => s"${expr.toSource};"
-          case CallStmt(name, args) => s"${name.toSource}(${args map { _.toSource } mkString ", "});"
+          case ExprStmt(expr)      => s"${expr.toSource};"
+          case CallStmt(name)      => s"$name();"
 
-          case FenceStmt            => "fence;"
-          case BreakStmt            => "break;"
-          case ReturnStmt           => "return;"
-          case GotoStmt(target)     => s"goto $target;"
-          case GotoState(n)         => s"goto state ${n};"
-          case AlogicComment(str)   => s"TODO: AlogicComment(str)"
+          case FenceStmt           => "fence;"
+          case BreakStmt           => "break;"
+          case ReturnStmt          => "return;"
+          case GotoStmt(target)    => s"goto $target;"
+          case GotoState(tgt)      => s"goto state ${tgt};"
+          case CallState(tgt, ret) => s"@push state ${tgt} ${ret}"
+          case ReturnState         => "@pop state"
+          case AlogicComment(str)  => s"TODO: AlogicComment(str)"
         }
       }
 

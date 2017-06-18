@@ -35,7 +35,7 @@ object AstOps {
     case ControlFor(_, _, _, _)          => true
     case ControlDo(_, _)                 => true
     case ControlCaseStmt(_, _)           => true
-    case CallStmt(_, _)                  => true
+    case CallStmt(_)                     => true
     case _                               => false
   }
 
@@ -136,7 +136,10 @@ object AstOps {
             case ControlCaseLabel(cond, body)               => { cond foreach v; v(body) }
             case CombinatorialCaseLabel(cond, body)         => { cond foreach v; v(body) }
             case ExprStmt(expr)                             => v(expr)
-            case CallStmt(name, args)                       => { v(name); args foreach v }
+            case CallStmt(_)                                =>
+            case CallState(_, _)                            =>
+            case ReturnState                                =>
+
           }
       }
 
@@ -187,7 +190,9 @@ object AstOps {
             case ControlCaseLabel(cond, body)               => ControlCaseLabel(cond map r[Expr], r[Stmt](body))
             case CombinatorialCaseLabel(cond, body)         => CombinatorialCaseLabel(cond map r[Expr], r[Stmt](body))
             case ExprStmt(expr)                             => ExprStmt(r[Expr](expr))
-            case CallStmt(name, args)                       => CallStmt(r[DottedName](name), args map r[Expr])
+            case x: CallStmt                                => x
+            case x: CallState                               => x
+            case ReturnState                                => ReturnState
 
             // Expressions
             case ArrayLookup(name, index)                   => ArrayLookup(r[DottedName](name), index map r[Expr])
