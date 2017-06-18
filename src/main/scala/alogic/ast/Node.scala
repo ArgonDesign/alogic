@@ -45,7 +45,7 @@ case class VerilogFunction(body: String) extends Node
 sealed trait Expr extends Node
 case class Num(value: String) extends Expr // Numbers held as textual representation
 case class Literal(value: String) extends Expr // Strings held as textual representation including quotes
-case class FunCall(name: DottedName, args: List[Expr]) extends Expr // When not in statement position
+case class CallExpr(name: DottedName, args: List[Expr]) extends Expr
 case class Zxt(numbits: Expr, expr: Expr) extends Expr
 case class Sxt(numbits: Expr, expr: Expr) extends Expr
 case class DollarCall(name: String, args: List[Expr]) extends Expr

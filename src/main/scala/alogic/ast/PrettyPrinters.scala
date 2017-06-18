@@ -45,7 +45,7 @@ object PrettyPrinters {
         case DottedName(names)         => names mkString "."
         case ArrayLookup(name, index)  => s"${v(name)}${index map v mkString ("[", "][", "]")}"
         case Slice(ref, l, op, r)      => s"${v(ref)}[${v(l)}$op${v(r)}]"
-        case FunCall(name, args)       => s"${v(name)}(${args map v mkString ", "})"
+        case CallExpr(name, args)      => s"${v(name)}(${args map v mkString ", "})"
         case Zxt(numbits, expr)        => s"zxt(${v(numbits)}, ${v(expr)})"
         case Sxt(numbits, expr)        => s"sxt(${v(numbits)}, ${v(expr)})"
         case DollarCall(name, args)    => "$" + s"$name(${args map v mkString ", "})"

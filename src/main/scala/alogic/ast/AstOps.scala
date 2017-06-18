@@ -92,7 +92,7 @@ object AstOps {
             case VerilogTask(name, decls, fns)              => fns foreach v
             case ArrayLookup(name, index)                   => { v(name); index foreach v }
             case Slice(ref, l, op, r)                       => { v(ref); v(l); v(r) }
-            case FunCall(name, args)                        => { v(name); args foreach v }
+            case CallExpr(name, args)                       => { v(name); args foreach v }
             case Zxt(numbits, expr)                         => { v(numbits); v(expr) }
             case Sxt(numbits, expr)                         => { v(numbits); v(expr) }
             case DollarCall(name, args)                     => args foreach v
@@ -192,7 +192,7 @@ object AstOps {
             // Expressions
             case ArrayLookup(name, index)                   => ArrayLookup(r[DottedName](name), index map r[Expr])
             case Slice(ref, lidx, op, ridx)                 => Slice(r[VarRef](ref), r[Expr](lidx), op, r[Expr](ridx))
-            case FunCall(name, args)                        => FunCall(r[DottedName](name), args map r[Expr])
+            case CallExpr(name, args)                       => CallExpr(r[DottedName](name), args map r[Expr])
             case Zxt(numbits, expr)                         => Zxt(r[Expr](numbits), r[Expr](expr))
             case Sxt(numbits, expr)                         => Sxt(r[Expr](numbits), r[Expr](expr))
             case DollarCall(name, args)                     => DollarCall(name, args map r[Expr])

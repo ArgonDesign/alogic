@@ -522,7 +522,7 @@ final class MakeVerilog {
         case InDeclaration(synctype, decl, n)  => if (HasValid(synctype)) valid(n) else { Message.fatal(s"Port $names does not use valid"); "" }
         case _                                 => Message.fatal(s"Cannot access valid on $names"); ""
       }
-      case FunCall(name, args) => StrList(List(MakeExpr(name), "(", StrList(args.map(MakeExpr), ","), ")"))
+      case CallExpr(name, args) => StrList(List(MakeExpr(name), "(", StrList(args.map(MakeExpr), ","), ")"))
       case Zxt(numbits, expr) => {
         val totalSz = MakeExpr(numbits)
         val exprSz = MakeNumBits(GetType(expr))
