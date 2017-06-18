@@ -78,7 +78,7 @@ class AstBuilder {
 
     override def visitConnect(ctx: ConnectContext) = {
       val Left(name) = visit(ctx.dotted_name())
-      Left(Connect(name, CommaArgsVisitor(ctx.comma_args()))) // TODO check that these names exist?
+      Left(Connect(name, ExprVisitor(ctx.commaexpr))) // TODO check that these names exist?
     }
 
     object ParamArgsVisitor extends VBaseVisitor[List[Assign]] {
@@ -170,6 +170,9 @@ class AstBuilder {
   }
 
   object ExprVisitor extends VBaseVisitor[AlogicExpr] {
+    // If applied to a commaexpr node, return a list of the constructed expressions
+    def apply(ctx: CommaexprContext): List[AlogicExpr] = visit(ctx.expr)
+
     override def visitExprBracket(ctx: ExprBracketContext) = Bracket(visit(ctx.expr))
     override def visitExprUnary(ctx: ExprUnaryContext) = UnaryOp(ctx.op, visit(ctx.expr))
     override def visitExprMulDiv(ctx: ExprMulDivContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
@@ -184,10 +187,10 @@ class AstBuilder {
     override def visitExprOr(ctx: ExprOrContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
     override def visitExprTernary(ctx: ExprTernaryContext) = TernaryOp(visit(ctx.expr(0)), visit(ctx.expr(1)), visit(ctx.expr(2)))
     override def visitExprRep(ctx: ExprRepContext) = BitRep(visit(ctx.expr(0)), visit(ctx.expr(1)))
-    override def visitExprCat(ctx: ExprCatContext) = BitCat(CommaArgsVisitor(ctx.comma_args()))
+    override def visitExprCat(ctx: ExprCatContext) = BitCat(ExprVisitor(ctx.commaexpr))
     override def visitExprVarRef(ctx: ExprVarRefContext) = VarRefVisitor(ctx)
     override def visitExprSlice(ctx: ExprSliceContext) = Slice(VarRefVisitor(ctx.var_ref), visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
-    override def visitExprDollar(ctx: ExprDollarContext) = DollarCall(ctx.DOLLARID, CommaArgsVisitor(ctx.comma_args()))
+    override def visitExprDollar(ctx: ExprDollarContext) = DollarCall(ctx.DOLLARID, ExprVisitor(ctx.commaexpr))
     override def visitExprTrue(ctx: ExprTrueContext) = Num("1'b1")
     override def visitExprFalse(ctx: ExprFalseContext) = Num("1'b0")
     override def visitExprTrickNum(ctx: ExprTrickNumContext) = Num(ctx.TICKNUM)
@@ -197,7 +200,7 @@ class AstBuilder {
 
     override def visitExprCall(ctx: ExprCallContext) = {
       val n = LookUpName(ctx.dotted_name)
-      val a = CommaArgsVisitor(ctx.comma_args())
+      val a = ExprVisitor(ctx.commaexpr)
       n match {
         case DottedName(names) if (names.last == "read") => {
           if (a.length > 0)
@@ -302,7 +305,7 @@ class AstBuilder {
 
         override def visitNormalCase(ctx: NormalCaseContext) = {
           val s = StatementVisitor(ctx.statement())
-          val args = CommaArgsVisitor(ctx.comma_args())
+          val args = ExprVisitor(ctx.commaexpr)
           if (is_control_stmt(s))
             ControlCaseLabel(args, s)
           else
@@ -362,10 +365,6 @@ class AstBuilder {
     override def visitExprStmt(ctx: ExprStmtContext) = ExprVisitor(ctx.expr)
   }
 
-  object CommaArgsVisitor extends VBaseVisitor[List[AlogicExpr]] {
-    override def visitComma_args(ctx: Comma_argsContext) = ExprVisitor(ctx.es)
-  }
-
   object TypeVisitor extends VBaseVisitor[AlogicType] {
     override def visitBoolType(ctx: BoolTypeContext) = IntType(false, 1)
     override def visitIntType(ctx: IntTypeContext) = IntType(true, ctx.INTTYPE.text.tail.toInt)
@@ -374,8 +373,8 @@ class AstBuilder {
       val pairs = ctx.fields.toList map { c => c.IDENTIFIER.text -> TypeVisitor(c.known_type) }
       Struct(ListMap(pairs: _*))
     }
-    override def visitIntVType(ctx: IntVTypeContext) = IntVType(true, CommaArgsVisitor(ctx.comma_args()))
-    override def visitUintVType(ctx: UintVTypeContext) = IntVType(false, CommaArgsVisitor(ctx.comma_args()))
+    override def visitIntVType(ctx: IntVTypeContext) = IntVType(true, ExprVisitor(ctx.commaexpr))
+    override def visitUintVType(ctx: UintVTypeContext) = IntVType(false, ExprVisitor(ctx.commaexpr))
     override def visitIdentifierType(ctx: IdentifierTypeContext) = {
       val s = ctx.IDENTIFIER.text
       typedefs.getOrElse(s, {

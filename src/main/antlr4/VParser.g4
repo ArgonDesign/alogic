@@ -74,7 +74,7 @@ network_content
   | verilog_function
   ;
 
-connect : dotted_name '->' comma_args ';' ;
+connect : dotted_name '->' commaexpr ';' ;
 
 instantiate : IDENTIFIER '=' 'new' IDENTIFIER '(' param_args ')' ';' ;
 
@@ -84,10 +84,10 @@ known_type
   | UINTTYPE                  # UintType
   | IDENTIFIER                # IdentifierType
   | 'struct' '{'
-      (fields+=field)* 
+      (fields+=field)*
     '}'                       # StructType
-  | 'int'  '(' comma_args ')' # IntVType
-  | 'uint' '(' comma_args ')' # UintVType
+  | 'int'  '(' commaexpr ')'  # IntVType
+  | 'uint' '(' commaexpr ')'  # UintVType
   ;
 
 function
@@ -128,11 +128,11 @@ expr
   | expr op='||' expr                                 # ExprOr
   | expr '?' expr ':' expr                            # ExprTernary
   | '{' expr '{' expr '}' '}'                         # ExprRep
-  | '{' comma_args '}'                                # ExprCat
-  | dotted_name '(' comma_args ')'                    # ExprCall
+  | '{' commaexpr '}'                                 # ExprCat
+  | dotted_name '(' commaexpr ')'                     # ExprCall
   | var_ref                                           # ExprVarRef
   | var_ref '[' expr op=(':' | '-:' | '+:') expr ']'  # ExprSlice
-  | DOLLARID '(' comma_args ')'                       # ExprDollar
+  | DOLLARID '(' commaexpr ')'                        # ExprDollar
   | 'true'                                            # ExprTrue
   | 'false'                                           # ExprFalse
   | TICKNUM                                           # ExprTrickNum
@@ -146,7 +146,7 @@ var_ref
   | dotted_name                       # VarRef
   ;
 
-comma_args : (es+=expr)? (',' es+=expr)*;
+commaexpr : (expr)? (',' expr)* ;
 
 param_args : (es+=paramAssign)? (',' es+=paramAssign)*;
 
@@ -157,8 +157,8 @@ dotted_name : (es+=IDENTIFIER) ('.' es+=IDENTIFIER)*;
 field : known_type IDENTIFIER SEMICOLON;
 
 case_stmt
-  : 'default'  ':' statement # DefaultCase
-  | comma_args ':' statement # NormalCase
+  : 'default' ':' statement # DefaultCase
+  | commaexpr ':' statement # NormalCase
   ;
 
 statement
