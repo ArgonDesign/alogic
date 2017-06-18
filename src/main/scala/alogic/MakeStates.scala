@@ -1,17 +1,17 @@
 // We convert control statements into state labels and goto statements
 //
 // In the returned AST there will be no:
-//   BreakStmt
+//   CallStmt
+//   GotoStmt
 //   ReturnStmt
+//   BreakStmt
+//   FenceStmt
 //   ControlFor
 //   ControlDo
 //   ControlIf
 //   ControlCaseStmt
 //   ControlWhile
-//   FunCall
 //   ControlBlock
-//   FenceStmt
-//   GotoStmt
 //
 // These will be replaced with
 //   StateBlock
@@ -114,7 +114,7 @@ final class MakeStates {
         // Return to new top of stack
         GotoStmt("call_stack[call_depth_nxt]"))
     }
-    case ExprStmt(FunCall(n, args)) => {
+    case CallStmt(n, args) => {
       val DottedName(name :: _) = n
       List(
         // Push return state

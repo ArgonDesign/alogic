@@ -364,7 +364,10 @@ class AstBuilder {
     override def visitAssign(ctx: AssignContext) = Assign(LValueVisitor(ctx.lvalue), ExprVisitor(ctx.expr()))
     override def visitAssignUpdate(ctx: AssignUpdateContext) = Update(LValueVisitor(ctx.lvalue), ctx.ASSIGNOP, ExprVisitor(ctx.expr()))
 
-    override def visitExprStmt(ctx: ExprStmtContext) = ExprStmt(ExprVisitor(ctx.expr))
+    override def visitExprStmt(ctx: ExprStmtContext) = ExprVisitor(ctx.expr) match {
+      case FunCall(name, args) => CallStmt(name, args)
+      case expr                => ExprStmt(expr)
+    }
   }
 
   object TypeVisitor extends VBaseVisitor[AlogicType] {

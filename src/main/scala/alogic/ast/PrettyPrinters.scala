@@ -73,7 +73,7 @@ object PrettyPrinters {
       def v(indent: Int)(node: Node): String = {
         val i = "  " * indent
         node match {
-          case expr: Expr              => expr.toSource
+          case expr: Expr                    => expr.toSource
 
           case Instantiate(id, module, args) => s"${i}new $id  = ${module}(${args map v(indent) mkString ", "});\n"
           case Connect(start, end)           => s"$start -> ${end map v(indent) mkString ", "}\n"
@@ -190,14 +190,15 @@ object PrettyPrinters {
                 |${i}  ${body map v(indent + 1) mkString s"\n${i}  "}
                 |${i}} while (${v(indent)(cond)});""".stripMargin
 
-          case ExprStmt(expr)     => s"${expr.toSource};"
+          case ExprStmt(expr)       => s"${expr.toSource};"
+          case CallStmt(name, args) => s"${name.toSource}(${args map { _.toSource } mkString ", "});"
 
-          case FenceStmt          => "fence;"
-          case BreakStmt          => "break;"
-          case ReturnStmt         => "return;"
-          case GotoStmt(target)   => s"goto $target;"
-          case GotoState(n)       => s"goto state ${n};"
-          case AlogicComment(str) => s"TODO: AlogicComment(str)"
+          case FenceStmt            => "fence;"
+          case BreakStmt            => "break;"
+          case ReturnStmt           => "return;"
+          case GotoStmt(target)     => s"goto $target;"
+          case GotoState(n)         => s"goto state ${n};"
+          case AlogicComment(str)   => s"TODO: AlogicComment(str)"
         }
       }
 
