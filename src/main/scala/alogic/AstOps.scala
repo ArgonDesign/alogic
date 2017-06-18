@@ -61,9 +61,8 @@ object AstOps {
     def visit(typ: AlogicType, name: StrTree): Unit = {
       callback(typ, name)
       typ match {
-        case Struct(fields) => fields foreach {
-          case Field(t, n) =>
-            visit(t, StrList(name :: Str("_") :: Str(n) :: Nil))
+        case Struct(fields) => for ((n, t) <- fields) {
+          visit(t, StrList(name :: Str("_") :: Str(n) :: Nil))
         }
         case _ => ()
       }

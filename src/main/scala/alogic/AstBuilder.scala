@@ -1,5 +1,6 @@
 package alogic
 
+import scala.collection.immutable.ListMap
 import scala.collection.mutable
 
 import org.antlr.v4.runtime.tree.RuleNode
@@ -369,10 +370,10 @@ class AstBuilder {
     override def visitBoolType(ctx: BoolTypeContext) = IntType(false, 1)
     override def visitIntType(ctx: IntTypeContext) = IntType(true, ctx.INTTYPE.text.tail.toInt)
     override def visitUintType(ctx: UintTypeContext) = IntType(false, ctx.UINTTYPE.text.tail.toInt)
-    object FieldVisitor extends VBaseVisitor[Field] {
-      override def visitField(ctx: FieldContext) = Field(TypeVisitor(ctx.known_type()), ctx.IDENTIFIER)
+    override def visitStructType(ctx: StructTypeContext) = {
+      val pairs = ctx.fields.toList map { c => c.IDENTIFIER.text -> TypeVisitor(c.known_type) }
+      Struct(ListMap(pairs: _*))
     }
-    override def visitStructType(ctx: StructTypeContext) = Struct(FieldVisitor(ctx.fields))
     override def visitIntVType(ctx: IntVTypeContext) = IntVType(true, CommaArgsVisitor(ctx.comma_args()))
     override def visitUintVType(ctx: UintVTypeContext) = IntVType(false, CommaArgsVisitor(ctx.comma_args()))
     override def visitIdentifierType(ctx: IdentifierTypeContext) = {

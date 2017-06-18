@@ -164,9 +164,8 @@ final class MakeVerilog {
     // TODO better for Verilator simulation speed if we could detect assignments and expand this concatenation
     def SetNxType(m: mutable.Map[String, String], typ: AlogicType, name: String, suffix: String): String = typ match {
       case Struct(fields) => {
-        val c = for { f <- fields } yield f match {
-          case Field(t, n) => SetNxType(m, t, name + '_' + n, suffix)
-          case _           => ""
+        val c = for ((n, t) <- fields) yield {
+          SetNxType(m, t, name + '_' + n, suffix)
         }
         val commaFields = c.mkString(",")
         m(name) = "{" + commaFields + "}"
@@ -468,10 +467,8 @@ final class MakeVerilog {
     case IntType(signed, size)  => Str(s"$size")
     case IntVType(signed, args) => StrList(args.map(MakeExpr), "*")
     case State                  => Str(s"$log2numstates")
-    case Struct(fields)         => StrList(fields.map(MakeNumBits), "+")
+    case Struct(fields)         => StrList(fields.values.toList map MakeNumBits, "+")
   }
-
-  def MakeNumBits(typ: FieldType): StrTree = typ match { case Field(typ2, name) => MakeNumBits(typ2) }
 
   implicit def Decl2Typ(decl: Declaration): AlogicType = decl match {
     case ParamDeclaration(decltype, _, _) => decltype
@@ -485,18 +482,21 @@ final class MakeVerilog {
   // Return the type for an AST
   def GetType(tree: AlogicExpr): AlogicType = {
 
-    def LookUpField(names: List[String], kind: AlogicType): AlogicType = kind match {
-      case Struct(fields) => {
-        val n :: ns = names
-        fields find (_.name == n) match {
-          case Some(field) => ns match {
-            case Nil => field.typ
-            case _   => LookUpField(ns, field.typ)
+    def LookUpField(names: List[String], kind: AlogicType): AlogicType = {
+      val n :: ns = names
+      kind match {
+        case Struct(fields) => {
+          if (fields contains n) {
+            ns match {
+              case Nil => fields(n)
+              case _   => LookUpField(ns, fields(n))
+            }
+          } else {
+            Message.fatal(s"No field named '$n' in struct '$kind'") // TODO: better error message, check earlier
           }
-          case None => Message.fatal(s"No field named '$n' in struct '$kind'") // TODO: better error message
         }
+        case _ => Message.fatal(s"Cannot find field '$n' in non-struct type '$kind'")
       }
-      case _ => Message.fatal(s"Cannot find field '${names mkString "."}' in non-struct type '$kind'")
     }
 
     tree match {
