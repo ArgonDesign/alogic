@@ -471,13 +471,30 @@ final class MakeVerilog {
   }
 
   // Return the type for an AST
-  def GetType(tree: AlogicAST): AlogicType = tree match {
-    case DottedName(names) => {
-      val n = names.mkString("_")
-      id2decl(n)
+  def GetType(tree: AlogicExpr): AlogicType = {
+
+    def LookUpField(names: List[String], kind: AlogicType): AlogicType = kind match {
+      case Struct(fields) => {
+        val n :: ns = names
+        fields find (_.name == n) match {
+          case Some(field) => ns match {
+            case Nil => field.typ
+            case _   => LookUpField(ns, field.typ)
+          }
+          case None => Message.fatal(s"No field named '$n' in struct '$kind'") // TODO: better error message
+        }
+      }
+      case _ => Message.fatal(s"Cannot find field '${names mkString "."}' in non-struct type '$kind'")
     }
-    case ReadCall(name) => GetType(name)
-    case _              => { Message.fatal(s"Cannot compute type for $tree"); State }
+
+    tree match {
+      case ReadCall(n)          => GetType(n)
+      case DottedName(n :: Nil) => id2decl(n)
+      case DottedName(n :: ns)  => LookUpField(ns, id2decl(n))
+      case _ => {
+        Message.fatal(s"Cannot compute type for $tree")
+      }
+    }
   }
 
   // Construct a string for an expression

@@ -364,7 +364,7 @@ class AstBuilder {
     override def visitBoolType(ctx: BoolTypeContext) = IntType(false, 1)
     override def visitIntType(ctx: IntTypeContext) = IntType(true, ctx.INTTYPE.text.tail.toInt)
     override def visitUintType(ctx: UintTypeContext) = IntType(false, ctx.UINTTYPE.text.tail.toInt)
-    object FieldVisitor extends VBaseVisitor[FieldType] {
+    object FieldVisitor extends VBaseVisitor[Field] {
       override def visitField(ctx: FieldContext) = Field(TypeVisitor(ctx.known_type()), ctx.IDENTIFIER)
     }
     override def visitStructType(ctx: StructTypeContext) = Struct(FieldVisitor(ctx.fields))

@@ -122,7 +122,7 @@ case class GotoState(state: Int) extends AlogicAST
 sealed trait AlogicType
 case class IntType(signed: Boolean, size: Int) extends AlogicType
 case class IntVType(signed: Boolean, args: List[AlogicExpr]) extends AlogicType // variable number of bits definition
-case class Struct(fields: List[FieldType]) extends AlogicType
+case class Struct(fields: List[Field]) extends AlogicType
 case object State extends AlogicType // Type with enough bits to hold state variable
 
 // FieldType used for fields within a structure
