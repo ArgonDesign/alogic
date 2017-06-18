@@ -285,6 +285,7 @@ final class MakeVerilog {
             pw.println(s"  reg ${n}_wr;")
             pw.println(s"  reg ${t}${n}_wrdata;")
             pw.println(s"  reg [${log2depth - 1}:0] ${n}_wraddr;")
+            pw.println(s"  reg ${n} [${depth - 1}:0];")
             SetNxType(nxMap, decltype, names.head, "")
             SetNxType(regMap, decltype, names.head, "")
             defaults = StrList(
