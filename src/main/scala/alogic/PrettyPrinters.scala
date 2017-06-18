@@ -190,6 +190,8 @@ object PrettyPrinters {
                 |${i}  ${body map v(indent + 1) mkString s"\n${i}  "}
                 |${i}} while (${v(indent)(cond)});""".stripMargin
 
+          case ExprStmt(expr)     => s"${expr.toSource};"
+
           case FenceStmt          => "fence;"
           case BreakStmt          => "break;"
           case ReturnStmt         => "return;"

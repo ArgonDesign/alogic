@@ -35,8 +35,8 @@ case class VerilogTask(name: String, decls: List[Declaration], fns: List[Verilog
 ///////////////////////////////////////////////////////////////////////////////
 // Function nodes
 ///////////////////////////////////////////////////////////////////////////////
-case class Function(name: String, body: AlogicAST) extends AlogicAST
-case class FenceFunction(body: AlogicAST) extends AlogicAST
+case class Function(name: String, body: AlogicStmt) extends AlogicAST
+case class FenceFunction(body: AlogicStmt) extends AlogicAST
 case class VerilogFunction(body: String) extends AlogicAST
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -69,6 +69,39 @@ sealed trait AlogicVarRef extends AlogicExpr
 case class DottedName(names: List[String]) extends AlogicVarRef
 case class ArrayLookup(name: DottedName, index: List[AlogicExpr]) extends AlogicVarRef
 
+///////////////////////////////////////////////////////////////////////////////
+// Expression nodes
+///////////////////////////////////////////////////////////////////////////////
+sealed trait AlogicStmt extends AlogicAST
+
+case class Assign(lhs: AlogicAST, rhs: AlogicExpr) extends AlogicStmt
+case class Update(lhs: AlogicExpr, op: String, rhs: AlogicExpr) extends AlogicStmt
+case class Plusplus(lhs: AlogicExpr) extends AlogicStmt
+case class Minusminus(lhs: AlogicExpr) extends AlogicStmt
+
+case class ExprStmt(expr: AlogicExpr) extends AlogicStmt
+
+case class CombinatorialBlock(cmds: List[AlogicStmt]) extends AlogicStmt
+case class DeclarationStmt(decl: VarDeclaration) extends AlogicStmt // Used when a declaration is mixed in with the code
+case class CombinatorialIf(cond: AlogicAST, body: AlogicStmt, elsebody: Option[AlogicStmt]) extends AlogicStmt
+case class AlogicComment(str: String) extends AlogicStmt
+case class CombinatorialCaseStmt(value: AlogicAST, cases: List[AlogicAST]) extends AlogicStmt
+
+case class ControlCaseStmt(value: AlogicAST, cases: List[AlogicAST]) extends AlogicStmt
+case class ControlIf(cond: AlogicExpr, body: AlogicStmt, elsebody: Option[AlogicStmt]) extends AlogicStmt
+case class ControlBlock(cmds: List[AlogicStmt]) extends AlogicStmt
+case class ControlWhile(cond: AlogicExpr, body: List[AlogicStmt]) extends AlogicStmt
+case class ControlFor(init: AlogicStmt, cond: AlogicExpr, incr: AlogicStmt, body: List[AlogicStmt]) extends AlogicStmt
+case class ControlDo(cond: AlogicExpr, body: List[AlogicStmt]) extends AlogicStmt
+case object FenceStmt extends AlogicStmt
+case object BreakStmt extends AlogicStmt
+case object ReturnStmt extends AlogicStmt
+case class GotoStmt(target: String) extends AlogicStmt // tODO: take DottedName ?
+
+// Extra types inserted by MakeStates
+case class StateBlock(state: Int, contents: List[AlogicStmt]) extends AlogicStmt
+case class GotoState(state: Int) extends AlogicStmt
+
 // Case classes do not support inheritance
 // Use sealed trait to force compiler to detect all cases are covered
 // Use different abstract classes to decompose problem.
@@ -88,36 +121,10 @@ case class InDeclaration(synctype: SyncType, decltype: AlogicType, name: String)
 case class Connect(start: AlogicAST, end: List[AlogicAST]) extends AlogicAST
 case class Instantiate(id: String, module: String, args: List[AlogicAST]) extends AlogicAST
 
-case class Assign(lhs: AlogicAST, rhs: AlogicExpr) extends AlogicAST
-
-case class CombinatorialBlock(cmds: List[AlogicAST]) extends AlogicAST
-case class DeclarationStmt(decl: VarDeclaration) extends AlogicAST // Used when a declaration is mixed in with the code
-case class CombinatorialIf(cond: AlogicAST, body: AlogicAST, elsebody: Option[AlogicAST]) extends AlogicAST
-case class AlogicComment(str: String) extends AlogicAST
-case class CombinatorialCaseStmt(value: AlogicAST, cases: List[AlogicAST]) extends AlogicAST
-case class CombinatorialCaseLabel(cond: List[AlogicExpr], body: AlogicAST) extends AlogicAST
-
-// Types removed by Desugar
-case class Update(lhs: AlogicExpr, op: String, rhs: AlogicExpr) extends AlogicAST
-case class Plusplus(lhs: AlogicExpr) extends AlogicAST
-case class Minusminus(lhs: AlogicExpr) extends AlogicAST
+case class CombinatorialCaseLabel(cond: List[AlogicExpr], body: AlogicStmt) extends AlogicAST
 
 // Types removed by MakeStates
-case class ControlCaseStmt(value: AlogicAST, cases: List[AlogicAST]) extends AlogicAST
-case class ControlIf(cond: AlogicExpr, body: AlogicAST, elsebody: Option[AlogicAST]) extends AlogicAST
-case class ControlBlock(cmds: List[AlogicAST]) extends AlogicAST
-case class ControlWhile(cond: AlogicExpr, body: List[AlogicAST]) extends AlogicAST
-case class ControlFor(init: AlogicAST, cond: AlogicExpr, incr: AlogicAST, body: List[AlogicAST]) extends AlogicAST
-case class ControlDo(cond: AlogicExpr, body: List[AlogicAST]) extends AlogicAST
-case object FenceStmt extends AlogicAST
-case object BreakStmt extends AlogicAST
-case object ReturnStmt extends AlogicAST
-case class GotoStmt(target: String) extends AlogicAST // tODO: take DottedName ?
-case class ControlCaseLabel(cond: List[AlogicExpr], body: AlogicAST) extends AlogicAST
-
-// Extra types inserted by MakeStates
-case class StateBlock(state: Int, contents: List[AlogicAST]) extends AlogicAST
-case class GotoState(state: Int) extends AlogicAST
+case class ControlCaseLabel(cond: List[AlogicExpr], body: AlogicStmt) extends AlogicAST
 
 // AlogicType used to define the allowed types
 sealed trait AlogicType

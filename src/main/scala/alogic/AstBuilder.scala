@@ -246,7 +246,7 @@ class AstBuilder {
     }
   }
 
-  object StatementVisitor extends VBaseVisitor[AlogicAST] {
+  object StatementVisitor extends VBaseVisitor[AlogicStmt] {
     override def visitBlockStmt(ctx: BlockStmtContext) = visit(ctx.stmts) match {
       case s if (s.length > 0 && is_control_stmt(s.last)) => ControlBlock(s)
       case s if (!s.exists(is_control_stmt))              => CombinatorialBlock(s)
@@ -329,7 +329,7 @@ class AstBuilder {
       }
     }
 
-    object ForInitVisitor extends VBaseVisitor[(Option[VarDeclaration], AlogicAST)] {
+    object ForInitVisitor extends VBaseVisitor[(Option[VarDeclaration], AlogicStmt)] {
       override def visitForInitNoDecl(ctx: ForInitNoDeclContext) = (None, StatementVisitor(ctx.assignment_statement))
       override def visitDeclInit(ctx: DeclInitContext) = {
         val varDecl = DeclVisitor(ctx).asInstanceOf[VarDeclaration]
@@ -339,8 +339,8 @@ class AstBuilder {
     }
 
     override def visitForStmt(ctx: ForStmtContext) = {
-      val (optDecl, initExpr) = ForInitVisitor(ctx.init)
-      val forAST = ControlFor(initExpr, ExprVisitor(ctx.cond), visit(ctx.step), visit(ctx.stmts))
+      val (optDecl, initStmt) = ForInitVisitor(ctx.init)
+      val forAST = ControlFor(initStmt, ExprVisitor(ctx.cond), visit(ctx.step), visit(ctx.stmts))
       optDecl match {
         case None       => forAST
         case Some(decl) => ControlBlock(DeclarationStmt(decl) :: forAST :: Nil)
@@ -362,7 +362,7 @@ class AstBuilder {
     override def visitAssign(ctx: AssignContext) = Assign(LValueVisitor(ctx.lvalue), ExprVisitor(ctx.expr()))
     override def visitAssignUpdate(ctx: AssignUpdateContext) = Update(LValueVisitor(ctx.lvalue), ctx.ASSIGNOP, ExprVisitor(ctx.expr()))
 
-    override def visitExprStmt(ctx: ExprStmtContext) = ExprVisitor(ctx.expr)
+    override def visitExprStmt(ctx: ExprStmtContext) = ExprStmt(ExprVisitor(ctx.expr))
   }
 
   object TypeVisitor extends VBaseVisitor[AlogicType] {

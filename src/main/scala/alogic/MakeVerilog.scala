@@ -690,16 +690,16 @@ final class MakeVerilog {
         }
       }
 
-      case LockCall(name)   => AddStall(name) { Str("") }
-      case UnlockCall(name) => AddStall(name) { Str("") }
-      case WriteCall(name, arg :: Nil) => AddStall(name, arg) {
+      case ExprStmt(LockCall(name))   => AddStall(name) { Str("") }
+      case ExprStmt(UnlockCall(name)) => AddStall(name) { Str("") }
+      case ExprStmt(WriteCall(name, arg :: Nil)) => AddStall(name, arg) {
         Str(s"${MakeExpr(name)} = ${MakeExpr(arg)};")
       }
 
       case DeclarationStmt(VarDeclaration(decltype, id, Some(rhs))) => CombStmt(indent)(Assign(id, rhs))
       case DeclarationStmt(VarDeclaration(decltype, id, None)) => CombStmt(indent)(Assign(id, Num("'b0"))) // TODO: Why is this needed ?
 
-      case DollarCall(name, args) => StrList(List(i, name, StrList(args.map(MakeExpr), ",")))
+      case ExprStmt(DollarCall(name, args)) => StrList(List(i, name, StrList(args.map(MakeExpr), ",")))
       case AlogicComment(s) => s"// $s\n"
 
       case x => Message.fatal(s"Don't know how to emit code for $x"); Str("")

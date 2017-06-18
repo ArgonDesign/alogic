@@ -20,7 +20,7 @@ object AstOps {
   }
 
   // Does this statement translate to a goto?
-  def is_control_stmt(cmd: AlogicAST): Boolean = cmd match {
+  def is_control_stmt(cmd: AlogicStmt): Boolean = cmd match {
     case FenceStmt                       => true
     case BreakStmt                       => true
     case ReturnStmt                      => true
@@ -31,7 +31,7 @@ object AstOps {
     case ControlFor(_, _, _, _)          => true
     case ControlDo(_, _)                 => true
     case ControlCaseStmt(_, _)           => true
-    case FunCall(_, _)                   => true
+    case ExprStmt(FunCall(_, _))         => true
     case _                               => false
   }
 
@@ -131,6 +131,7 @@ object AstOps {
             case VerilogFunction(_)                         =>
             case ControlCaseLabel(cond, body)               => { cond foreach v; v(body) }
             case CombinatorialCaseLabel(cond, body)         => { cond foreach v; v(body) }
+            case ExprStmt(expr)                             => v(expr)
           }
       }
 
@@ -150,8 +151,8 @@ object AstOps {
           case None => node match {
             case Instantiate(a, b, args)                    => Instantiate(a, b, args map r[AlogicAST])
             case Connect(start, end)                        => Connect(r[AlogicAST](start), end map r[AlogicAST])
-            case Function(name, body)                       => Function(name, r[AlogicAST](body))
-            case FenceFunction(body)                        => FenceFunction(r[AlogicAST](body))
+            case Function(name, body)                       => Function(name, r[AlogicStmt](body))
+            case FenceFunction(body)                        => FenceFunction(r[AlogicStmt](body))
             case FsmTask(name, decls, fns, fencefn, vfns)   => FsmTask(name, decls, fns map r[Function], fencefn map r[FenceFunction], vfns)
             case StateTask(name, decls, sbs, fencefn, vfns) => StateTask(name, decls, sbs map r[StateBlock], fencefn map r[FenceFunction], vfns)
             case NetworkTask(name, decls, fns)              => NetworkTask(name, decls, fns map r[AlogicAST])
@@ -160,26 +161,27 @@ object AstOps {
             case Update(lhs, op, rhs)                       => Update(r[AlogicExpr](lhs), op, r[AlogicExpr](rhs))
             case Plusplus(lhs)                              => Plusplus(r[AlogicExpr](lhs))
             case Minusminus(lhs)                            => Minusminus(r[AlogicExpr](lhs))
-            case CombinatorialBlock(cmds)                   => CombinatorialBlock(cmds map r[AlogicAST])
-            case StateBlock(state, cmds)                    => StateBlock(state, cmds map r[AlogicAST])
+            case CombinatorialBlock(cmds)                   => CombinatorialBlock(cmds map r[AlogicStmt])
+            case StateBlock(state, cmds)                    => StateBlock(state, cmds map r[AlogicStmt])
             case x: DeclarationStmt                         => x
-            case CombinatorialIf(cond, body, e)             => CombinatorialIf(r[AlogicAST](cond), r[AlogicAST](body), e map r[AlogicAST])
+            case CombinatorialIf(cond, body, e)             => CombinatorialIf(r[AlogicAST](cond), r[AlogicStmt](body), e map r[AlogicStmt])
             case x: AlogicComment                           => x
             case CombinatorialCaseStmt(value, cases)        => CombinatorialCaseStmt(r[AlogicAST](value), cases map r[AlogicAST])
             case ControlCaseStmt(value, cases)              => ControlCaseStmt(r[AlogicAST](value), cases map r[ControlCaseLabel])
-            case ControlIf(cond, body, e)                   => ControlIf(cond, r[AlogicAST](body), e map r[AlogicAST])
-            case ControlBlock(cmds)                         => ControlBlock(cmds map r[AlogicAST])
-            case ControlWhile(cond, body)                   => ControlWhile(r[AlogicExpr](cond), body map r[AlogicAST])
-            case ControlFor(init, cond, incr, body)         => ControlFor(r[AlogicAST](init), r[AlogicExpr](cond), r[AlogicAST](incr), body map r[AlogicAST])
-            case ControlDo(cond, body)                      => ControlDo(r[AlogicExpr](cond), body map r[AlogicAST])
+            case ControlIf(cond, body, e)                   => ControlIf(cond, r[AlogicStmt](body), e map r[AlogicStmt])
+            case ControlBlock(cmds)                         => ControlBlock(cmds map r[AlogicStmt])
+            case ControlWhile(cond, body)                   => ControlWhile(r[AlogicExpr](cond), body map r[AlogicStmt])
+            case ControlFor(init, cond, incr, body)         => ControlFor(r[AlogicStmt](init), r[AlogicExpr](cond), r[AlogicStmt](incr), body map r[AlogicStmt])
+            case ControlDo(cond, body)                      => ControlDo(r[AlogicExpr](cond), body map r[AlogicStmt])
             case FenceStmt                                  => FenceStmt
             case BreakStmt                                  => BreakStmt
             case ReturnStmt                                 => ReturnStmt
             case x: GotoStmt                                => x
             case x: GotoState                               => x
             case x: VerilogFunction                         => x
-            case ControlCaseLabel(cond, body)               => ControlCaseLabel(cond map r[AlogicExpr], r[AlogicAST](body))
-            case CombinatorialCaseLabel(cond, body)         => CombinatorialCaseLabel(cond map r[AlogicExpr], r[AlogicAST](body))
+            case ControlCaseLabel(cond, body)               => ControlCaseLabel(cond map r[AlogicExpr], r[AlogicStmt](body))
+            case CombinatorialCaseLabel(cond, body)         => CombinatorialCaseLabel(cond map r[AlogicExpr], r[AlogicStmt](body))
+            case ExprStmt(expr)                             => ExprStmt(r[AlogicExpr](expr))
 
             // Expressions
             case ArrayLookup(name, index)                   => ArrayLookup(r[DottedName](name), index map r[AlogicExpr])

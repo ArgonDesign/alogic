@@ -36,7 +36,7 @@ final class MakeStates {
   val extra = Stack[StateBlock]() // list of (state, commands) pairs
 
   // Transfer a batch of instructions to the states list
-  def emit(state: Int, insns: List[AlogicAST]): Unit = {
+  def emit(state: Int, insns: List[AlogicStmt]): Unit = {
     extra.push(StateBlock(state, insns))
   }
 
@@ -98,7 +98,7 @@ final class MakeStates {
   // If complete additional states are generated they are emitted
   // If startState >= 0 it means the current list is empty, and startState is the state we are starting to construct
   //    This can be useful to avoid emitting an empty state
-  def makeStates(startState: Int, finalState: Int, tree: AlogicAST): List[AlogicAST] = tree match {
+  def makeStates(startState: Int, finalState: Int, tree: AlogicStmt): List[AlogicStmt] = tree match {
     ///////////////////////////////////////////////////////////////////////////
     // Simple control transfer statements
     ///////////////////////////////////////////////////////////////////////////
@@ -113,7 +113,7 @@ final class MakeStates {
         // Return to new top of stack
         GotoStmt("call_stack[call_depth_nxt]"))
     }
-    case FunCall(n, args) => {
+    case ExprStmt(FunCall(n, args)) => {
       val DottedName(name :: _) = n
       List(
         // Push return state
@@ -181,7 +181,7 @@ final class MakeStates {
       var combcases = for { c <- cases } yield c match {
         case ControlCaseLabel(cond, body) => {
           val a = makeStates(-1, finalState, body)
-          val content: AlogicAST = {
+          val content: AlogicStmt = {
             if (a.length == 1)
               a(0)
             else
@@ -216,7 +216,7 @@ final class MakeStates {
   //  A control unit is a set of combinatorial statements followed by a control statement
   //  We then create a new state for each intermediate control unit
   //  We return the statements to be appended to the initial list
-  def makeBlockStmts(startState: Int, finalState: Int, tree: List[AlogicAST]): List[AlogicAST] = tree match {
+  def makeBlockStmts(startState: Int, finalState: Int, tree: List[AlogicStmt]): List[AlogicStmt] = tree match {
     case Nil => Nil /// TODO: This is probably unreachable. Check in builder.
     case x :: Nil => {
       assert(is_control_stmt(x))
@@ -234,7 +234,7 @@ final class MakeStates {
 
   // Given a series of combinatorial and control statements this emits all control blocks, and returns the final combinatorial statements
   // initial is a list of statements in the current state
-  def findLastStmts(startState: Int, initial: (Int, List[AlogicAST]), finalState: Int, tree: List[AlogicAST]): (Int, List[AlogicAST]) = tree match {
+  def findLastStmts(startState: Int, initial: (Int, List[AlogicStmt]), finalState: Int, tree: List[AlogicStmt]): (Int, List[AlogicStmt]) = tree match {
     case Nil      => initial
     case x :: Nil => (initial._1, initial._2 ::: makeStates(startState, finalState, x)) // TODO check this is not a combinatorial statement?
     case x :: xs if (is_control_stmt(x)) => {
