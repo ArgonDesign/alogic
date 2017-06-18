@@ -110,6 +110,7 @@ RETURN  : 'return' ;
 CASE    : 'case' ;
 DEFAULT : 'default' ;
 VERILOG : 'verilog' ;
+NEW     : 'new' ;
 
 SYNC_READY_BUBBLE:  'sync' WS 'ready' WS 'bubble';
 WIRE_SYNC_ACCEPT:  'wire' WS 'sync' WS 'accept';

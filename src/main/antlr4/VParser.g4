@@ -76,7 +76,7 @@ network_content
 
 connect : dotted_name '->' comma_args ';' ;
 
-instantiate : IDENTIFIER '=' IDENTIFIER '(' param_args ')' ';' ;
+instantiate : IDENTIFIER '=' 'new' IDENTIFIER '(' param_args ')' ';' ;
 
 known_type
   : 'bool'                    # BoolType
