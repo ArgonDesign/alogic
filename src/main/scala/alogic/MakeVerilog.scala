@@ -237,7 +237,7 @@ final class MakeVerilog {
               defaults = Str("    " + ready(name) + " = 1'b0;\n") :: defaults
             }
             if (HasAccept(synctype))
-              pw.println("  in wire " + accept(name) + ",")
+              pw.println("  input wire " + accept(name) + ",")
             SetNxType(nxMap, decltype, name, "")
             SetNxType(regMap, decltype, name, "")
             VisitType(decltype, name)(writeOut)
