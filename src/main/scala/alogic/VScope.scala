@@ -86,10 +86,6 @@ class VScope(root: RuleNode) {
 
       override def visitVarRefIndex(ctx: VarRefIndexContext) = visit(ctx.dotted_name)
 
-      override def visitVarRefSlice(ctx: VarRefSliceContext) = {
-        Message.error(ctx, s"Declaration of array with range expression is invalid")
-      }
-
       override def visitDotted_name(ctx: Dotted_nameContext) = {
         val name = ctx.es.toList.map(_.text) mkString "."
 

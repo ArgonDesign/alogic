@@ -4,10 +4,9 @@ package alogic
 
 object AstOps {
   def ExtractName(tree: AlogicAST): String = tree match {
-    case DottedName(ns)                => ns.head
-    case ArrayLookup(a, _)             => ExtractName(a)
-    case BinaryArrayLookup(a, _, _, _) => ExtractName(a)
-    case _                             => "Unknown"
+    case DottedName(ns)    => ns.head
+    case ArrayLookup(a, _) => ExtractName(a)
+    case _                 => "Unknown"
   }
 
   def ExtractName(tree: Declaration): String = tree match {
@@ -89,7 +88,7 @@ object AstOps {
             case NetworkTask(name, decls, fns)              => fns foreach v
             case VerilogTask(name, decls, fns)              => fns foreach v
             case ArrayLookup(name, index)                   => { v(name); index foreach v }
-            case BinaryArrayLookup(name, lhs, op, rhs)      => { v(name); v(lhs); v(rhs) }
+            case Slice(ref, l, op, r)                       => { v(ref); v(l); v(r) }
             case FunCall(name, args)                        => { v(name); args foreach v }
             case Zxt(numbits, expr)                         => { v(numbits); v(expr) }
             case Sxt(numbits, expr)                         => { v(numbits); v(expr) }
@@ -185,7 +184,7 @@ object AstOps {
 
             // Expressions
             case ArrayLookup(name, index)                   => ArrayLookup(r[DottedName](name), index map r[AlogicExpr])
-            case BinaryArrayLookup(name, lhs, op, rhs)      => BinaryArrayLookup(r[DottedName](name), r[AlogicExpr](lhs), op, r[AlogicExpr](rhs))
+            case Slice(ref, lidx, op, ridx)                 => Slice(r[AlogicVarRef](ref), r[AlogicExpr](lidx), op, r[AlogicExpr](ridx))
             case FunCall(name, args)                        => FunCall(r[DottedName](name), args map r[AlogicExpr])
             case Zxt(numbits, expr)                         => Zxt(r[AlogicExpr](numbits), r[AlogicExpr](expr))
             case Sxt(numbits, expr)                         => Sxt(r[AlogicExpr](numbits), r[AlogicExpr](expr))

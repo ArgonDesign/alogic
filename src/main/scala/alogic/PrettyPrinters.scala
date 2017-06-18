@@ -42,26 +42,26 @@ object PrettyPrinters {
   implicit class AlogicExprPrinter(val tree: AlogicExpr) extends AnyVal {
     def toSource: String = {
       def v(node: AlogicExpr): String = node match {
-        case DottedName(names)                     => names mkString "."
-        case ArrayLookup(name, index)              => s"${v(name)}${index map v mkString ("[", "][", "]")}"
-        case BinaryArrayLookup(name, lhs, op, rhs) => s"${v(name)}[${v(lhs)}$op${v(rhs)}]"
-        case FunCall(name, args)                   => s"${v(name)}(${args map v mkString ", "})"
-        case Zxt(numbits, expr)                    => s"zxt(${v(numbits)}, ${v(expr)})"
-        case Sxt(numbits, expr)                    => s"sxt(${v(numbits)}, ${v(expr)})"
-        case DollarCall(name, args)                => "$" + s"$name(${args map v mkString ", "})"
-        case ReadCall(name)                        => s"${v(name)}.read()"
-        case LockCall(name)                        => s"${v(name)}.lock()"
-        case UnlockCall(name)                      => s"${v(name)}.unlock()"
-        case ValidCall(name)                       => s"${v(name)}.valid()"
-        case WriteCall(name, args)                 => s"${v(name)}.write(${args map v mkString ", "})"
-        case BinaryOp(lhs, op, rhs)                => s"(${lhs.toSource})$op(${rhs.toSource})"
-        case UnaryOp(op, lhs)                      => s"${op}(${v(lhs)})"
-        case Bracket(e)                            => s"(${v(e)})"
-        case TernaryOp(cond, lhs, rhs)             => s"(${v(cond)}) ? (${v(lhs)}) : (${v(rhs)}) "
-        case BitRep(count, value)                  => s"{${v(count)}{${v(value)}}}"
-        case BitCat(parts)                         => s"{${parts map v mkString ", "}}"
-        case Literal(value)                        => value
-        case Num(value)                            => value
+        case DottedName(names)         => names mkString "."
+        case ArrayLookup(name, index)  => s"${v(name)}${index map v mkString ("[", "][", "]")}"
+        case Slice(ref, l, op, r)      => s"${v(ref)}[${v(l)}$op${v(r)}]"
+        case FunCall(name, args)       => s"${v(name)}(${args map v mkString ", "})"
+        case Zxt(numbits, expr)        => s"zxt(${v(numbits)}, ${v(expr)})"
+        case Sxt(numbits, expr)        => s"sxt(${v(numbits)}, ${v(expr)})"
+        case DollarCall(name, args)    => "$" + s"$name(${args map v mkString ", "})"
+        case ReadCall(name)            => s"${v(name)}.read()"
+        case LockCall(name)            => s"${v(name)}.lock()"
+        case UnlockCall(name)          => s"${v(name)}.unlock()"
+        case ValidCall(name)           => s"${v(name)}.valid()"
+        case WriteCall(name, args)     => s"${v(name)}.write(${args map v mkString ", "})"
+        case BinaryOp(lhs, op, rhs)    => s"(${lhs.toSource})$op(${rhs.toSource})"
+        case UnaryOp(op, lhs)          => s"${op}(${v(lhs)})"
+        case Bracket(e)                => s"(${v(e)})"
+        case TernaryOp(cond, lhs, rhs) => s"(${v(cond)}) ? (${v(lhs)}) : (${v(rhs)}) "
+        case BitRep(count, value)      => s"{${v(count)}{${v(value)}}}"
+        case BitCat(parts)             => s"{${parts map v mkString ", "}}"
+        case Literal(value)            => value
+        case Num(value)                => value
       }
 
       v(tree)

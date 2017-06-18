@@ -153,13 +153,17 @@ class AstBuilder {
     }
   }
 
-  object VarRefVisitor extends VBaseVisitor[AlogicExpr] {
+  object VarRefVisitor extends VBaseVisitor[AlogicVarRef] {
     override def visitVarRef(ctx: VarRefContext) =
       LookUpName(ctx.dotted_name)
     override def visitVarRefIndex(ctx: VarRefIndexContext) =
       ArrayLookup(LookUpName(ctx.dotted_name), ExprVisitor(ctx.es))
-    override def visitVarRefSlice(ctx: VarRefSliceContext) =
-      BinaryArrayLookup(LookUpName(ctx.dotted_name), ExprVisitor(ctx.expr(0)), ctx.op, ExprVisitor(ctx.expr(1)))
+  }
+
+  object LValueVisitor extends VBaseVisitor[AlogicExpr] {
+    override def visitLValue(ctx: LValueContext) = VarRefVisitor(ctx.var_ref)
+    override def visitLValueSlice(ctx: LValueSliceContext) =
+      Slice(VarRefVisitor(ctx.var_ref), ExprVisitor(ctx.expr(0)), ctx.op, ExprVisitor(ctx.expr(1)))
     override def visitLValueCat(ctx: LValueCatContext) =
       BitCat(visit(ctx.refs))
   }
@@ -181,6 +185,7 @@ class AstBuilder {
     override def visitExprRep(ctx: ExprRepContext) = BitRep(visit(ctx.expr(0)), visit(ctx.expr(1)))
     override def visitExprCat(ctx: ExprCatContext) = BitCat(CommaArgsVisitor(ctx.comma_args()))
     override def visitExprVarRef(ctx: ExprVarRefContext) = VarRefVisitor(ctx)
+    override def visitExprSlice(ctx: ExprSliceContext) = Slice(VarRefVisitor(ctx.var_ref), visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
     override def visitExprDollar(ctx: ExprDollarContext) = DollarCall(ctx.DOLLARID, CommaArgsVisitor(ctx.comma_args()))
     override def visitExprTrue(ctx: ExprTrueContext) = Num("1'b1")
     override def visitExprFalse(ctx: ExprFalseContext) = Num("1'b0")
@@ -348,10 +353,10 @@ class AstBuilder {
 
     override def visitAssignmentStmt(ctx: AssignmentStmtContext) = visit(ctx.assignment_statement)
 
-    override def visitAssignInc(ctx: AssignIncContext) = Plusplus(VarRefVisitor(ctx.lvalue))
-    override def visitAssignDec(ctx: AssignDecContext) = Minusminus(VarRefVisitor(ctx.lvalue))
-    override def visitAssign(ctx: AssignContext) = Assign(VarRefVisitor(ctx.lvalue), ExprVisitor(ctx.expr()))
-    override def visitAssignUpdate(ctx: AssignUpdateContext) = Update(VarRefVisitor(ctx.lvalue), ctx.ASSIGNOP, ExprVisitor(ctx.expr()))
+    override def visitAssignInc(ctx: AssignIncContext) = Plusplus(LValueVisitor(ctx.lvalue))
+    override def visitAssignDec(ctx: AssignDecContext) = Minusminus(LValueVisitor(ctx.lvalue))
+    override def visitAssign(ctx: AssignContext) = Assign(LValueVisitor(ctx.lvalue), ExprVisitor(ctx.expr()))
+    override def visitAssignUpdate(ctx: AssignUpdateContext) = Update(LValueVisitor(ctx.lvalue), ctx.ASSIGNOP, ExprVisitor(ctx.expr()))
 
     override def visitExprStmt(ctx: ExprStmtContext) = ExprVisitor(ctx.expr)
   }

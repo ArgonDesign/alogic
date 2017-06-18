@@ -60,6 +60,7 @@ case class Bracket(content: AlogicExpr) extends AlogicExpr // TODO: This node is
 case class TernaryOp(cond: AlogicExpr, lhs: AlogicExpr, rhs: AlogicExpr) extends AlogicExpr
 case class BitRep(count: AlogicExpr, value: AlogicExpr) extends AlogicExpr
 case class BitCat(parts: List[AlogicExpr]) extends AlogicExpr
+case class Slice(ref: AlogicVarRef, lidx: AlogicExpr, op: String, ridx: AlogicExpr) extends AlogicExpr
 
 ///////////////////////////////////////////////////////////////////////////////
 // Variable reference nodes (also expressions)
@@ -67,7 +68,6 @@ case class BitCat(parts: List[AlogicExpr]) extends AlogicExpr
 sealed trait AlogicVarRef extends AlogicExpr
 case class DottedName(names: List[String]) extends AlogicVarRef
 case class ArrayLookup(name: DottedName, index: List[AlogicExpr]) extends AlogicVarRef
-case class BinaryArrayLookup(name: DottedName, lhs: AlogicExpr, op: String, rhs: AlogicExpr) extends AlogicVarRef
 
 // Case classes do not support inheritance
 // Use sealed trait to force compiler to detect all cases are covered

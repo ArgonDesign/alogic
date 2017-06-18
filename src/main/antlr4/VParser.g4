@@ -96,37 +96,37 @@ task_content
   ;
 
 expr
-  : '(' expr ')'                              # ExprBracket
+  : '(' expr ')'                                      # ExprBracket
   | op=('+' | '-' | '!' | '~' | '&' |
-        '~&' | '|' | '~|' | '^' | '~^') expr  # ExprUnary
-  | expr op=('*' | '/' | '%') expr            # ExprMulDiv
-  | expr op=('+' | '-') expr                  # ExprAddSub
-  | expr op=('<<' | '>>' | '>>>') expr        # ExprShift   // TODO: '<<<'
-  | expr op=('>' | '>=' | '<' | '<=') expr    # ExprCompare
-  | expr op=('==' | '!=') expr                # ExprEqual
-  | expr op='&' expr                          # ExprBAnd
-  | expr op=('^' | '~^') expr                 # ExprBXor
-  | expr op='|' expr                          # ExprBOr
-  | expr op='&&' expr                         # ExprAnd
-  | expr op='||' expr                         # ExprOr
-  | expr '?' expr ':' expr                    # ExprTernary
-  | '{' expr '{' expr '}' '}'                 # ExprRep
-  | '{' comma_args '}'                        # ExprCat
-  | dotted_name '(' comma_args ')'            # ExprCall
-  | var_ref                                   # ExprVarRef
-  | DOLLARID '(' comma_args ')'               # ExprDollar
-  | 'true'                                    # ExprTrue
-  | 'false'                                   # ExprFalse
-  | TICKNUM                                   # ExprTrickNum
-  | CONSTANT TICKNUM                          # ExprConstTickNum
-  | CONSTANT                                  # ExprConst
-  | LITERAL                                   # ExprLiteral
+        '~&' | '|' | '~|' | '^' | '~^') expr          # ExprUnary
+  | expr op=('*' | '/' | '%') expr                    # ExprMulDiv
+  | expr op=('+' | '-') expr                          # ExprAddSub
+  | expr op=('<<' | '>>' | '>>>') expr                # ExprShift   // TODO: '<<<'
+  | expr op=('>' | '>=' | '<' | '<=') expr            # ExprCompare
+  | expr op=('==' | '!=') expr                        # ExprEqual
+  | expr op='&' expr                                  # ExprBAnd
+  | expr op=('^' | '~^') expr                         # ExprBXor
+  | expr op='|' expr                                  # ExprBOr
+  | expr op='&&' expr                                 # ExprAnd
+  | expr op='||' expr                                 # ExprOr
+  | expr '?' expr ':' expr                            # ExprTernary
+  | '{' expr '{' expr '}' '}'                         # ExprRep
+  | '{' comma_args '}'                                # ExprCat
+  | dotted_name '(' comma_args ')'                    # ExprCall
+  | var_ref                                           # ExprVarRef
+  | var_ref '[' expr op=(':' | '-:' | '+:') expr ']'  # ExprSlice
+  | DOLLARID '(' comma_args ')'                       # ExprDollar
+  | 'true'                                            # ExprTrue
+  | 'false'                                           # ExprFalse
+  | TICKNUM                                           # ExprTrickNum
+  | CONSTANT TICKNUM                                  # ExprConstTickNum
+  | CONSTANT                                          # ExprConst
+  | LITERAL                                           # ExprLiteral
   ;
 
 var_ref
-  : dotted_name ('[' es+=expr ']')+                       # VarRefIndex
-  | dotted_name '[' expr op=(':' | '-:' | '+:') expr ']'  # VarRefSlice
-  | dotted_name                                           # VarRef
+  : dotted_name ('[' es+=expr ']')+   # VarRefIndex
+  | dotted_name                       # VarRef
   ;
 
 comma_args : (es+=expr)? (',' es+=expr)*;
@@ -180,8 +180,9 @@ for_init
   ;
 
 lvalue
-  : var_ref                                   # LValue
-  | '{' refs+=lvalue (',' refs+=lvalue)+ '}'  # LValueCat
+  : var_ref                                             # LValue
+  | var_ref '[' expr op=(':' | '-:' | '+:') expr ']'    # LValueSlice
+  | '{' refs+=lvalue (',' refs+=lvalue)+ '}'            # LValueCat
   ;
 
 assignment_statement

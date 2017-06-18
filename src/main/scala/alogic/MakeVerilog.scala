@@ -516,7 +516,7 @@ final class MakeVerilog {
         val indices = index map MakeExpr mkString ("[", "][", "]")
         StrList(List(MakeExpr(name), Str(indices)))
       }
-      case BinaryArrayLookup(name, lhs, op, rhs) => StrList(List(MakeExpr(name), "[", MakeExpr(lhs), op, MakeExpr(rhs), "]"))
+      case Slice(ref, l, op, r) => StrList(List(MakeExpr(ref), "[", MakeExpr(l), op, MakeExpr(r), "]"))
       case ValidCall(DottedName(names)) => id2decl(names.head) match {
         case OutDeclaration(synctype, decl, n) => if (HasValid(synctype)) valid(n) else { Message.fatal(s"Port $names does not use valid"); "" }
         case InDeclaration(synctype, decl, n)  => if (HasValid(synctype)) valid(n) else { Message.fatal(s"Port $names does not use valid"); "" }
