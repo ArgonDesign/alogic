@@ -100,6 +100,7 @@ final class MakeVerilog {
     var clears: List[StrTree] = Nil // Collection of outputs to clear if !go
     var defaults: List[StrTree] = Nil // Collection of things to set at start of each cycle
     var clocks: List[StrTree] = Nil // Collection of things to clock if go
+    val clocks_no_reset = mutable.Stack[StrTree]() // Collection of things to clock if go but do not need reset
     var resets: List[StrTree] = Nil // Collection of things to reset
     var verilogfns: List[StrTree] = Nil // Collection of raw verilog text
     var acceptfns: List[StrTree] = Nil // Collection of code to generate accept outputs
@@ -283,7 +284,7 @@ final class MakeVerilog {
             val t = typeString(decltype)
             pw.println(s"  reg ${n}_wr;")
             pw.println(s"  reg ${t}${n}_wrdata;")
-            pw.println(s"  reg [${log2depth - 1}:0]${n}_wraddr;")
+            pw.println(s"  reg [${log2depth - 1}:0] ${n}_wraddr;")
             SetNxType(nxMap, decltype, names.head, "")
             SetNxType(regMap, decltype, names.head, "")
             defaults = StrList(
@@ -291,10 +292,10 @@ final class MakeVerilog {
                 Str(s"    ${n}_wraddr = 'b0;\n") ::
                 Str(s"    ${n}_wrdata = 'b0;\n") :: Nil) :: defaults
             clears = Str(s"      ${n}_wr = 1'b0;\n") :: clears
-            clocks = Str(s"""|${i0 * 4}if (${n}_wr) begin
-                             |${i0 * 5}${n}[${n}_wraddr] <= ${n}_wrdata;
-                             |${i0 * 4}end
-                             |""".stripMargin) :: clocks
+            clocks_no_reset push Str(s"""|${i0 * 3}if (${n}_wr) begin
+                                         |${i0 * 4}${n}[${n}_wraddr] <= ${n}_wrdata;
+                                         |${i0 * 3}end
+                                         |""".stripMargin)
           }
           case VarDeclaration(decltype, name, None) => {
             val n = ExtractName(name)
@@ -386,7 +387,7 @@ final class MakeVerilog {
       }
       pw.println("  end")
       // Now emit clocked blocks
-      pw.println("")
+      pw.println()
       pw.println("  always @(posedge clk or negedge rst_n) begin")
       pw.println("    if (!rst_n) begin")
       pw.print(StrList(resets))
@@ -396,6 +397,15 @@ final class MakeVerilog {
       pw.println("      end")
       pw.println("    end")
       pw.println("  end")
+
+      if (!clocks_no_reset.isEmpty) {
+        pw.println()
+        pw.println(s"  always @(posedge clk) begin")
+        pw.println(s"    if ($go) begin")
+        pw.print(StrList(clocks_no_reset.toList))
+        pw.println(s"    end")
+        pw.println(s"  end")
+      }
     }
     if (!modMap.isEmpty) {
       val t = modMap("this")
