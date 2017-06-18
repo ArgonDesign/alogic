@@ -1,9 +1,10 @@
 package alogic
 
-// This class keeps track of the connections of a particular module instance
-
 import scala.collection._
-import java.io._
+
+import alogic.ast._
+
+// This class keeps track of the connections of a particular module instance
 
 class ModuleInstance(val uname: String, val module: String, val args: List[AlogicAST]) {
 

@@ -1,7 +1,6 @@
 
 package alogic
 
-import java.io.File
 import java.nio.file.Paths
 import java.nio.file.StandardWatchEventKinds._
 
@@ -10,15 +9,14 @@ import scala.collection.concurrent.TrieMap
 import com.beachape.filemanagement.Messages._
 import com.beachape.filemanagement.MonitorActor
 
-import AstOps._
 import akka.actor.ActorSystem
-import scalax.file.PathMatcher._
 import scalax.file.Path
+import scalax.file.PathMatcher._
 
 // TODO: handle this in a nicer way if possible
 object PortMap {
   // This must be from a concurrent collection because it is populated from multiple threads
-  val portMap = new TrieMap[String, AlogicTask]()
+  val portMap = new TrieMap[String, ast.AlogicTask]()
 }
 
 object AlogicMain extends App {
@@ -109,7 +107,7 @@ object AlogicMain extends App {
 
     // Extract ports
     asts foreach {
-      case t @ AlogicTask(name, _) => {
+      case t @ ast.AlogicTask(name, _) => {
         if (PortMap.portMap contains name)
           Message.warning(s"$name defined multiple times")
         PortMap.portMap(name) = t; false
@@ -118,11 +116,11 @@ object AlogicMain extends App {
 
     // Second pass
     asts foreach {
-      case t @ AlogicTask(name, _) => {
+      case t @ ast.AlogicTask(name, _) => {
         // Convert to state machine
-        val prog: AlogicTask = t match {
-          case t: FsmTask => MakeStates(t)
-          case t          => t
+        val prog: ast.AlogicTask = t match {
+          case t: ast.FsmTask => MakeStates(t)
+          case t              => t
         }
 
         // Remove complicated assignments and ++ and -- (MakeStates inserts some ++/--)

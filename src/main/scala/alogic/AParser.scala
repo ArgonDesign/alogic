@@ -7,7 +7,7 @@ import scalax.file.Path
 
 object AParser {
 
-  def apply(path: Path, includeSearchPaths: List[Path] = Nil, initalDefines: Map[String, String] = Map()): List[AlogicTask] = {
+  def apply(path: Path, includeSearchPaths: List[Path] = Nil, initalDefines: Map[String, String] = Map()): List[ast.AlogicTask] = {
 
     Message.info(s"Parsing ${path.path}")
 
@@ -36,7 +36,7 @@ object AParser {
     parseTree match {
       case None => Nil
       case Some(t) => {
-        val builder = new AstBuilder()
+        val builder = new ast.AstBuilder()
         builder(t)
       }
     }

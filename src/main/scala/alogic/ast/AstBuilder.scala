@@ -1,14 +1,16 @@
-package alogic
+package alogic.ast
 
 import scala.collection.immutable.ListMap
 import scala.collection.mutable
 
 import org.antlr.v4.runtime.tree.RuleNode
 
-import Antlr4Conversions._
-import alogic.AstOps._
-import alogic.antlr._
+import alogic.Antlr4Conversions._
+import alogic.Message
+import alogic.VBaseVisitor
+import alogic.VScope
 import alogic.antlr.VParser._
+import alogic.ast.AstOps._
 
 // The aim of the AstBuilder stage is:
 //   Build an abstract syntax tree

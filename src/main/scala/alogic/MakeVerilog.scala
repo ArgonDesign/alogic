@@ -2,13 +2,13 @@
 
 package alogic
 
-import scala.collection._
 import java.io._
 
-import AstOps._
-import scala.annotation.tailrec
-
+import scala.collection._
 import scala.language.implicitConversions
+
+import alogic.ast._
+import alogic.ast.AstOps._
 
 final class MakeVerilog {
 

@@ -21,9 +21,10 @@
 package alogic
 
 import scala.collection._
-import AstOps._
-import scala.annotation.tailrec
 import scala.collection.mutable.Stack
+
+import alogic.ast._
+import alogic.ast.AstOps._
 
 final class MakeStates {
 

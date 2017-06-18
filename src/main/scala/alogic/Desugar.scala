@@ -1,6 +1,7 @@
-
 package alogic
-import AstOps._
+
+import alogic.ast._
+import alogic.ast.AstOps._
 
 object Desugar {
   def RemoveAssigns(tree: AlogicTask): AlogicTask = tree rewrite {

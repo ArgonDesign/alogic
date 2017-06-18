@@ -1,6 +1,10 @@
 // This file contains some useful functions for manipulating the abstract syntax tree
 
-package alogic
+package alogic.ast
+
+import alogic.Str
+import alogic.StrList
+import alogic.StrTree
 
 object AstOps {
   def ExtractName(tree: AlogicAST): String = tree match {

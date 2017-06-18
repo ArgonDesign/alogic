@@ -1,6 +1,6 @@
 // Pretty printers for various internal structures
 
-package alogic
+package alogic.ast
 
 object PrettyPrinters {
 

@@ -1,4 +1,4 @@
-package alogic
+package alogic.ast
 
 // This file describes the classes used in the parser output.
 

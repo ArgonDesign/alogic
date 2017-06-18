@@ -10,7 +10,6 @@ import org.antlr.v4.runtime.misc.Interval
 import org.antlr.v4.runtime.tree.ParseTree
 import org.antlr.v4.runtime.tree.TerminalNode
 import org.antlr.v4.runtime.tree.Tree
-import org.antlr.v4.runtime.RuleContext
 
 object Antlr4Conversions extends WrapAsScala with WrapAsJava {
   implicit class ParserRuleContextWrapper(val ctx: ParserRuleContext) extends AnyVal {
