@@ -200,7 +200,7 @@ final class MakeVerilog {
         SetNxType(nxMap, decltype, ExtractName(id), "")
         SetNxType(regMap, decltype, ExtractName(id), "")
       }
-      case VarDeclaration(decltype, ArrayLookup(DottedName(name :: Nil), index), None) => {
+      case VarDeclaration(decltype, ArrayLookup(DottedName(name :: Nil), _), None) => {
         SetNxType(nxMap, decltype, name, "")
         SetNxType(regMap, decltype, name, "")
       }
@@ -292,7 +292,7 @@ final class MakeVerilog {
 
         // Emit remaining variables
         id2decl.values foreach {
-          case VarDeclaration(decltype, ArrayLookup(DottedName(names), index), None) => {
+          case VarDeclaration(decltype, ArrayLookup(DottedName(names), index :: Nil), None) => {
             // Arrays only work with non-struct types
             // TODO maybe figure out the number of bits in the type and declare as this many?
             // TODO maybe detect more than one write to the same array in the same cycle?
@@ -512,7 +512,10 @@ final class MakeVerilog {
   // Construct a string for an expression
   def MakeExpr(tree: AlogicAST): StrTree = {
     tree match {
-      case ArrayLookup(name, index)              => StrList(List(MakeExpr(name), "[", MakeExpr(index), "]"))
+      case ArrayLookup(name, index) => {
+        val indices = index map MakeExpr mkString ("[", "][", "]")
+        StrList(List(MakeExpr(name), Str(indices)))
+      }
       case BinaryArrayLookup(name, lhs, op, rhs) => StrList(List(MakeExpr(name), "[", MakeExpr(lhs), op, MakeExpr(rhs), "]"))
       case ValidCall(DottedName(names)) => id2decl(names.head) match {
         case OutDeclaration(synctype, decl, n) => if (HasValid(synctype)) valid(n) else { Message.fatal(s"Port $names does not use valid"); "" }
@@ -630,7 +633,7 @@ final class MakeVerilog {
     }
 
     tree match {
-      case Assign(ArrayLookup(DottedName(n :: _), index), rhs) if (Arrays contains n) => AddStall(index, rhs) {
+      case Assign(ArrayLookup(DottedName(n :: _), index :: Nil), rhs) if (Arrays contains n) => AddStall(index, rhs) {
         Str(s"""|begin
                 |${i + i0}${n}_wr = 1'b1;
                 |${i + i0}${n}_addr = ${MakeExpr(rhs)};

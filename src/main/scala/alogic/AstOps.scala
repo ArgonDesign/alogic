@@ -88,7 +88,7 @@ object AstOps {
             case StateTask(name, decls, sbs, fencefn, vfns) => { sbs foreach v; fencefn foreach v; vfns foreach v }
             case NetworkTask(name, decls, fns)              => fns foreach v
             case VerilogTask(name, decls, fns)              => fns foreach v
-            case ArrayLookup(name, index)                   => { v(name); v(index) }
+            case ArrayLookup(name, index)                   => { v(name); index foreach v }
             case BinaryArrayLookup(name, lhs, op, rhs)      => { v(name); v(lhs); v(rhs) }
             case FunCall(name, args)                        => { v(name); args foreach v }
             case Zxt(numbits, expr)                         => { v(numbits); v(expr) }
@@ -184,7 +184,7 @@ object AstOps {
             case CombinatorialCaseLabel(cond, body)         => CombinatorialCaseLabel(cond map r[AlogicExpr], r[AlogicAST](body))
 
             // Expressions
-            case ArrayLookup(name, index)                   => ArrayLookup(r[DottedName](name), r[AlogicExpr](index))
+            case ArrayLookup(name, index)                   => ArrayLookup(r[DottedName](name), index map r[AlogicExpr])
             case BinaryArrayLookup(name, lhs, op, rhs)      => BinaryArrayLookup(r[DottedName](name), r[AlogicExpr](lhs), op, r[AlogicExpr](rhs))
             case FunCall(name, args)                        => FunCall(r[DottedName](name), args map r[AlogicExpr])
             case Zxt(numbits, expr)                         => Zxt(r[AlogicExpr](numbits), r[AlogicExpr](expr))

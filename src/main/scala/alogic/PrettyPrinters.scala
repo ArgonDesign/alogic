@@ -43,7 +43,7 @@ object PrettyPrinters {
     def toSource: String = {
       def v(node: AlogicExpr): String = node match {
         case DottedName(names)                     => names mkString "."
-        case ArrayLookup(name, index)              => s"${v(name)}[${v(index)}]"
+        case ArrayLookup(name, index)              => s"${v(name)}${index map v mkString ("[", "][", "]")}"
         case BinaryArrayLookup(name, lhs, op, rhs) => s"${v(name)}[${v(lhs)}$op${v(rhs)}]"
         case FunCall(name, args)                   => s"${v(name)}(${args map v mkString ", "})"
         case Zxt(numbits, expr)                    => s"zxt(${v(numbits)}, ${v(expr)})"

@@ -104,7 +104,7 @@ class AstBuilder {
       }
 
       override def visitVarRefIndex(ctx: VarRefIndexContext) =
-        ArrayLookup(LookUpDottedName(ctx.dotted_name), ExprVisitor(ctx.expr))
+        ArrayLookup(LookUpDottedName(ctx.dotted_name), ExprVisitor(ctx.es))
       override def visitDotted_name(ctx: Dotted_nameContext) =
         LookUpDottedName(ctx)
     }
@@ -157,7 +157,7 @@ class AstBuilder {
     override def visitVarRef(ctx: VarRefContext) =
       LookUpName(ctx.dotted_name)
     override def visitVarRefIndex(ctx: VarRefIndexContext) =
-      ArrayLookup(LookUpName(ctx.dotted_name), ExprVisitor(ctx.expr))
+      ArrayLookup(LookUpName(ctx.dotted_name), ExprVisitor(ctx.es))
     override def visitVarRefSlice(ctx: VarRefSliceContext) =
       BinaryArrayLookup(LookUpName(ctx.dotted_name), ExprVisitor(ctx.expr(0)), ctx.op, ExprVisitor(ctx.expr(1)))
     override def visitLValueCat(ctx: LValueCatContext) =

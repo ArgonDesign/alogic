@@ -117,7 +117,7 @@ final class MakeStates {
       val DottedName(name :: _) = n
       List(
         // Push return state
-        Assign(ArrayLookup(callStack, callDepth), makeNum(finalState)),
+        Assign(ArrayLookup(callStack, callDepth :: Nil), makeNum(finalState)),
         // increment depth
         Plusplus(callDepth),
         // branch to function - TODO check target exists in builder

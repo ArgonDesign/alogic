@@ -124,7 +124,7 @@ expr
   ;
 
 var_ref
-  : dotted_name '[' expr ']'                              # VarRefIndex
+  : dotted_name ('[' es+=expr ']')+                       # VarRefIndex
   | dotted_name '[' expr op=(':' | '-:' | '+:') expr ']'  # VarRefSlice
   | dotted_name                                           # VarRef
   ;

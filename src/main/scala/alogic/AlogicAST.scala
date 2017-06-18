@@ -66,7 +66,7 @@ case class BitCat(parts: List[AlogicExpr]) extends AlogicExpr
 ///////////////////////////////////////////////////////////////////////////////
 sealed trait AlogicVarRef extends AlogicExpr
 case class DottedName(names: List[String]) extends AlogicVarRef
-case class ArrayLookup(name: DottedName, index: AlogicExpr) extends AlogicVarRef
+case class ArrayLookup(name: DottedName, index: List[AlogicExpr]) extends AlogicVarRef
 case class BinaryArrayLookup(name: DottedName, lhs: AlogicExpr, op: String, rhs: AlogicExpr) extends AlogicVarRef
 
 // Case classes do not support inheritance
@@ -76,6 +76,7 @@ case class BinaryArrayLookup(name: DottedName, lhs: AlogicExpr, op: String, rhs:
 //
 // // Declaration used for top-level and function declarations
 sealed trait Declaration
+// TODO: Add separate Decl for Arrays, it just makes a lot of things simpler
 case class VarDeclaration(decltype: AlogicType, id: AlogicAST, init: Option[AlogicExpr]) extends Declaration
 case class ParamDeclaration(decltype: AlogicType, id: String, init: AlogicExpr) extends Declaration
 case class ConstDeclaration(decltype: AlogicType, id: String, init: AlogicExpr) extends Declaration
