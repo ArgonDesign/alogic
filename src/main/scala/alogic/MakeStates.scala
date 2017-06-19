@@ -160,7 +160,6 @@ final class MakeStates {
     }
 
     case ControlCaseStmt(value, cases, default) => {
-      breakTargets push finalState
       val combcases = for { c <- cases } yield c match {
         case ControlCaseLabel(cond, body) => {
           val content = makeStates(-1, finalState, body) match {
@@ -171,7 +170,7 @@ final class MakeStates {
         }
         case _ => ??? // Trigger error here
       }
-      val r = default match {
+      default match {
         case None => List(CombinatorialCaseStmt(value, combcases, Some(GotoState(finalState))))
         case Some(d) => {
           val defaultCase = makeStates(-1, finalState, d) match {
@@ -181,8 +180,6 @@ final class MakeStates {
           List(CombinatorialCaseStmt(value, combcases, Some(defaultCase)))
         }
       }
-      breakTargets.pop
-      r
     }
 
     ///////////////////////////////////////////////////////////////////////////
