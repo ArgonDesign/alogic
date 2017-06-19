@@ -143,8 +143,8 @@ object AstOps {
           case None => node match {
             case Instantiate(a, b, args)                    => Instantiate(a, b, args map r[Node])
             case Connect(start, end)                        => Connect(r[Node](start), end map r[Node])
-            case Function(name, body)                       => Function(name, r[Stmt](body))
-            case FenceFunction(body)                        => FenceFunction(r[Stmt](body))
+            case Function(name, body)                       => Function(name, r[CtrlStmt](body))
+            case FenceFunction(body)                        => FenceFunction(r[CombStmt](body))
             case FsmTask(name, decls, fns, fencefn, vfns)   => FsmTask(name, decls, fns map r[Function], fencefn map r[FenceFunction], vfns)
             case StateTask(name, decls, sbs, fencefn, vfns) => StateTask(name, decls, sbs map r[StateBlock], fencefn map r[FenceFunction], vfns)
             case NetworkTask(name, decls, fns)              => NetworkTask(name, decls, fns map r[Node])

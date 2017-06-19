@@ -35,8 +35,8 @@ case class VerilogTask(name: String, decls: List[Declaration], fns: List[Verilog
 ///////////////////////////////////////////////////////////////////////////////
 // Function nodes
 ///////////////////////////////////////////////////////////////////////////////
-case class Function(name: String, body: Stmt) extends Node
-case class FenceFunction(body: Stmt) extends Node
+case class Function(name: String, body: CtrlStmt) extends Node
+case class FenceFunction(body: CombStmt) extends Node
 case class VerilogFunction(body: String) extends Node
 
 ///////////////////////////////////////////////////////////////////////////////
