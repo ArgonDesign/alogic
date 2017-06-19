@@ -70,47 +70,54 @@ case class DottedName(names: List[String]) extends VarRef
 case class ArrayLookup(name: DottedName, index: List[Expr]) extends VarRef
 
 ///////////////////////////////////////////////////////////////////////////////
-// Expression nodes
+// Statement nodes
 ///////////////////////////////////////////////////////////////////////////////
 sealed trait Stmt extends Node
 
-case class Assign(lhs: Node, rhs: Expr) extends Stmt
-case class Update(lhs: Expr, op: String, rhs: Expr) extends Stmt
-case class Plusplus(lhs: Expr) extends Stmt
-case class Minusminus(lhs: Expr) extends Stmt
+///////////////////////////////////////////////////////////////////////////////
+// Combinatorial statement nodes
+///////////////////////////////////////////////////////////////////////////////
+sealed trait CombStmt extends Stmt
+case class Assign(lhs: Node, rhs: Expr) extends CombStmt
+case class Update(lhs: Expr, op: String, rhs: Expr) extends CombStmt
+case class Plusplus(lhs: Expr) extends CombStmt
+case class Minusminus(lhs: Expr) extends CombStmt
+case class ExprStmt(expr: Expr) extends CombStmt
+case class DeclarationStmt(decl: VarDeclaration) extends CombStmt
+case class AlogicComment(str: String) extends CombStmt
+case class CombinatorialBlock(cmds: List[CombStmt]) extends CombStmt
+case class CombinatorialIf(cond: Node, body: CombStmt, elsebody: Option[CombStmt]) extends CombStmt
+case class CombinatorialCaseStmt(value: Node, cases: List[CombinatorialCaseLabel]) extends CombStmt
+case class GotoState(tgt: Int) extends CombStmt // inserted by MakeStates
+case class CallState(tgt: Int, ret: Int) extends CombStmt // inserted by MakeStates
+case object ReturnState extends CombStmt // inserted by MakeStates
 
-case class CallStmt(target: String) extends Stmt
+///////////////////////////////////////////////////////////////////////////////
+// Control statement nodes
+///////////////////////////////////////////////////////////////////////////////
+sealed trait CtrlStmt extends Stmt
+case class ControlBlock(cmds: List[Stmt]) extends CtrlStmt
+case class ControlIf(cond: Expr, body: CtrlStmt, elsebody: Option[CtrlStmt]) extends CtrlStmt
+case class ControlCaseStmt(value: Node, cases: List[ControlCaseLabel]) extends CtrlStmt
+case class ControlWhile(cond: Expr, body: List[Stmt]) extends CtrlStmt
+case class ControlFor(init: CombStmt, cond: Expr, incr: CombStmt, body: List[Stmt]) extends CtrlStmt
+case class ControlDo(cond: Expr, body: List[Stmt]) extends CtrlStmt
+case class GotoStmt(target: String) extends CtrlStmt // TODO: take DottedName ?
+case class CallStmt(target: String) extends CtrlStmt
+case object ReturnStmt extends CtrlStmt
+case object FenceStmt extends CtrlStmt
+case object BreakStmt extends CtrlStmt
 
-case class ExprStmt(expr: Expr) extends Stmt
-
-case class CombinatorialBlock(cmds: List[Stmt]) extends Stmt
-case class DeclarationStmt(decl: VarDeclaration) extends Stmt // Used when a declaration is mixed in with the code
-case class CombinatorialIf(cond: Node, body: Stmt, elsebody: Option[Stmt]) extends Stmt
-case class AlogicComment(str: String) extends Stmt
-case class CombinatorialCaseStmt(value: Node, cases: List[Node]) extends Stmt
-
-case class ControlCaseStmt(value: Node, cases: List[Node]) extends Stmt
-case class ControlIf(cond: Expr, body: Stmt, elsebody: Option[Stmt]) extends Stmt
-case class ControlBlock(cmds: List[Stmt]) extends Stmt
-case class ControlWhile(cond: Expr, body: List[Stmt]) extends Stmt
-case class ControlFor(init: Stmt, cond: Expr, incr: Stmt, body: List[Stmt]) extends Stmt
-case class ControlDo(cond: Expr, body: List[Stmt]) extends Stmt
-case object FenceStmt extends Stmt
-case object BreakStmt extends Stmt
-case object ReturnStmt extends Stmt
-case class GotoStmt(target: String) extends Stmt // tODO: take DottedName ?
-
-// Extra types inserted by MakeStates
-case class StateBlock(state: Int, contents: List[Stmt]) extends Stmt
-case class GotoState(tgt: Int) extends Stmt
-case class CallState(tgt: Int, ret: Int) extends Stmt
-case object ReturnState extends Stmt
+///////////////////////////////////////////////////////////////////////////////
+// Node representing FSM states after control statement conversion
+///////////////////////////////////////////////////////////////////////////////
+case class StateBlock(state: Int, contents: List[CombStmt]) extends Node
 
 // // AlogicAST used for abstract syntax nodes
 case class Connect(start: Node, end: List[Node]) extends Node
 case class Instantiate(id: String, module: String, args: List[Node]) extends Node
 
-case class CombinatorialCaseLabel(cond: List[Expr], body: Stmt) extends Node
+case class CombinatorialCaseLabel(cond: List[Expr], body: CombStmt) extends Node
 
 // Types removed by MakeStates
-case class ControlCaseLabel(cond: List[Expr], body: Stmt) extends Node
+case class ControlCaseLabel(cond: List[Expr], body: CtrlStmt) extends Node

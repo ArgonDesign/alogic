@@ -23,22 +23,6 @@ object AstOps {
     case _                          => "Unknown"
   }
 
-  // Does this statement translate to a goto?
-  def is_control_stmt(cmd: Stmt): Boolean = cmd match {
-    case FenceStmt                       => true
-    case BreakStmt                       => true
-    case ReturnStmt                      => true
-    case GotoStmt(target)                => true
-    case ControlBlock(s)                 => true
-    case ControlIf(cond, body, elsebody) => true
-    case ControlWhile(cond, body)        => true
-    case ControlFor(_, _, _, _)          => true
-    case ControlDo(_, _)                 => true
-    case ControlCaseStmt(_, _)           => true
-    case CallStmt(_)                     => true
-    case _                               => false
-  }
-
   // Does this sync type contain a valid line?
   def HasValid(s: SyncType): Boolean = s match {
     case Wire => false
@@ -169,17 +153,17 @@ object AstOps {
             case Update(lhs, op, rhs)                       => Update(r[Expr](lhs), op, r[Expr](rhs))
             case Plusplus(lhs)                              => Plusplus(r[Expr](lhs))
             case Minusminus(lhs)                            => Minusminus(r[Expr](lhs))
-            case CombinatorialBlock(cmds)                   => CombinatorialBlock(cmds map r[Stmt])
-            case StateBlock(state, cmds)                    => StateBlock(state, cmds map r[Stmt])
+            case CombinatorialBlock(cmds)                   => CombinatorialBlock(cmds map r[CombStmt])
+            case StateBlock(state, cmds)                    => StateBlock(state, cmds map r[CombStmt])
             case x: DeclarationStmt                         => x
-            case CombinatorialIf(cond, body, e)             => CombinatorialIf(r[Node](cond), r[Stmt](body), e map r[Stmt])
+            case CombinatorialIf(cond, body, e)             => CombinatorialIf(r[Node](cond), r[CombStmt](body), e map r[CombStmt])
             case x: AlogicComment                           => x
-            case CombinatorialCaseStmt(value, cases)        => CombinatorialCaseStmt(r[Node](value), cases map r[Node])
+            case CombinatorialCaseStmt(value, cases)        => CombinatorialCaseStmt(r[Node](value), cases map r[CombinatorialCaseLabel])
             case ControlCaseStmt(value, cases)              => ControlCaseStmt(r[Node](value), cases map r[ControlCaseLabel])
-            case ControlIf(cond, body, e)                   => ControlIf(cond, r[Stmt](body), e map r[Stmt])
+            case ControlIf(cond, body, e)                   => ControlIf(cond, r[CtrlStmt](body), e map r[CtrlStmt])
             case ControlBlock(cmds)                         => ControlBlock(cmds map r[Stmt])
             case ControlWhile(cond, body)                   => ControlWhile(r[Expr](cond), body map r[Stmt])
-            case ControlFor(init, cond, incr, body)         => ControlFor(r[Stmt](init), r[Expr](cond), r[Stmt](incr), body map r[Stmt])
+            case ControlFor(init, cond, incr, body)         => ControlFor(r[CombStmt](init), r[Expr](cond), r[CombStmt](incr), body map r[Stmt])
             case ControlDo(cond, body)                      => ControlDo(r[Expr](cond), body map r[Stmt])
             case FenceStmt                                  => FenceStmt
             case BreakStmt                                  => BreakStmt
@@ -187,8 +171,8 @@ object AstOps {
             case x: GotoStmt                                => x
             case x: GotoState                               => x
             case x: VerilogFunction                         => x
-            case ControlCaseLabel(cond, body)               => ControlCaseLabel(cond map r[Expr], r[Stmt](body))
-            case CombinatorialCaseLabel(cond, body)         => CombinatorialCaseLabel(cond map r[Expr], r[Stmt](body))
+            case ControlCaseLabel(cond, body)               => ControlCaseLabel(cond map r[Expr], r[CtrlStmt](body))
+            case CombinatorialCaseLabel(cond, body)         => CombinatorialCaseLabel(cond map r[Expr], r[CombStmt](body))
             case ExprStmt(expr)                             => ExprStmt(r[Expr](expr))
             case x: CallStmt                                => x
             case x: CallState                               => x

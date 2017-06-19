@@ -38,7 +38,7 @@ final class MakeStates {
   val extra = Stack[StateBlock]() // list of (state, commands) pairs
 
   // Transfer a batch of instructions to the states list
-  def emit(state: Int, insns: List[Stmt]): Unit = {
+  def emit(state: Int, insns: List[CombStmt]): Unit = {
     extra.push(StateBlock(state, insns))
   }
 
@@ -97,7 +97,7 @@ final class MakeStates {
   // If complete additional states are generated they are emitted
   // If startState >= 0 it means the current list is empty, and startState is the state we are starting to construct
   //    This can be useful to avoid emitting an empty state
-  def makeStates(startState: Int, finalState: Int, tree: Stmt): List[Stmt] = tree match {
+  def makeStates(startState: Int, finalState: Int, tree: Stmt): List[CombStmt] = tree match {
     ///////////////////////////////////////////////////////////////////////////
     // Simple control transfer statements
     ///////////////////////////////////////////////////////////////////////////
@@ -165,7 +165,7 @@ final class MakeStates {
       var combcases = for { c <- cases } yield c match {
         case ControlCaseLabel(cond, body) => {
           val a = makeStates(-1, finalState, body)
-          val content: Stmt = {
+          val content = {
             if (a.length == 1)
               a(0)
             else
@@ -173,7 +173,7 @@ final class MakeStates {
           }
           CombinatorialCaseLabel(cond, content)
         }
-        case _ => c // Trigger error here
+        case _ => ??? // Trigger error here
       }
       if (!hasDefault)
         combcases = CombinatorialCaseLabel(Nil, GotoState(finalState)) :: combcases
@@ -185,10 +185,7 @@ final class MakeStates {
     // Combinatorial statements
     ///////////////////////////////////////////////////////////////////////////
 
-    case x => {
-      assert(!is_control_stmt(x))
-      x :: Nil
-    }
+    case x: CombStmt => x :: Nil
   }
 
   def isCaseDefault(c: Node): Boolean = c match {
@@ -200,34 +197,32 @@ final class MakeStates {
   //  A control unit is a set of combinatorial statements followed by a control statement
   //  We then create a new state for each intermediate control unit
   //  We return the statements to be appended to the initial list
-  def makeBlockStmts(startState: Int, finalState: Int, tree: List[Stmt]): List[Stmt] = tree match {
-    case Nil => Nil /// TODO: This is probably unreachable. Check in builder.
-    case x :: Nil => {
-      assert(is_control_stmt(x))
-      makeStates(startState, finalState, x)
-    }
-    case x :: xs if (is_control_stmt(x)) => {
+  def makeBlockStmts(startState: Int, finalState: Int, tree: List[Stmt]): List[CombStmt] = tree match {
+    case Nil                  => Nil /// TODO: This is probably unreachable. Check in builder.
+    case (x: CtrlStmt) :: Nil => makeStates(startState, finalState, x)
+    case (x: CtrlStmt) :: xs => {
       val s = state_alloc.next
       val current = makeStates(startState, s, x)
       val current2 = makeBlockStmts(s, finalState, xs)
       emit(s, current2) // TODO can we make this function tail recursive somehow?
       current
     }
-    case x :: xs => x :: makeBlockStmts(-1, finalState, xs) // x must be combinatorial
+    case (x: CombStmt) :: Nil => Message.fatal("Unreachable")
+    case (x: CombStmt) :: xs  => x :: makeBlockStmts(-1, finalState, xs)
   }
 
   // Given a series of combinatorial and control statements this emits all control blocks, and returns the final combinatorial statements
   // initial is a list of statements in the current state
-  def findLastStmts(startState: Int, initial: (Int, List[Stmt]), finalState: Int, tree: List[Stmt]): (Int, List[Stmt]) = tree match {
+  def findLastStmts(startState: Int, initial: (Int, List[CombStmt]), finalState: Int, tree: List[Stmt]): (Int, List[CombStmt]) = tree match {
     case Nil      => initial
     case x :: Nil => (initial._1, initial._2 ::: makeStates(startState, finalState, x)) // TODO check this is not a combinatorial statement?
-    case x :: xs if (is_control_stmt(x)) => {
+    case (x: CtrlStmt) :: xs => {
       val s = state_alloc.next
       val current = makeStates(startState, s, x)
       emit(initial._1, initial._2 ::: current)
       findLastStmts(s, (s, Nil), finalState, xs)
     }
-    case x :: xs => findLastStmts(-1, (initial._1, initial._2 ::: x :: Nil), finalState, xs) // x must be combinatorial
+    case (x: CombStmt) :: xs => findLastStmts(-1, (initial._1, initial._2 ::: x :: Nil), finalState, xs) // x must be combinatorial
   }
 
 }

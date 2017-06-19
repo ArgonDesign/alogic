@@ -1,5 +1,7 @@
 package alogic.ast
 
+import alogic.antlr.VParser._
+
 import scala.collection.immutable.ListMap
 import scala.collection.mutable
 
@@ -9,7 +11,6 @@ import alogic.Antlr4Conversions._
 import alogic.Message
 import alogic.VBaseVisitor
 import alogic.VScope
-import alogic.antlr.VParser._
 import alogic.ast.AstOps._
 
 // The aim of the AstBuilder stage is:
@@ -44,7 +45,13 @@ class AstBuilder {
 
     object TaskContentVisitor extends VBaseVisitor[Node] {
       override def visitFunction(ctx: FunctionContext) = Function(ctx.IDENTIFIER, ControlBlock(StatementVisitor(ctx.stmts)))
-      override def visitFenceFunction(ctx: FenceFunctionContext) = FenceFunction(CombinatorialBlock(StatementVisitor(ctx.stmts)))
+      override def visitFenceFunction(ctx: FenceFunctionContext) = {
+        val body = StatementVisitor(ctx.stmts) collect {
+          case stmt: CombStmt => stmt
+          case stmt: CtrlStmt => Message.fatal(ctx, "Body of 'fence' function must not contain control statements")
+        }
+        FenceFunction(CombinatorialBlock(body))
+      }
       override def visitVerilogFunction(ctx: VerilogFunctionContext) = VerilogFunction(ctx.VERILOGBODY.text.drop(1).dropRight(1))
     }
 
@@ -249,12 +256,22 @@ class AstBuilder {
   }
 
   object StatementVisitor extends VBaseVisitor[Stmt] {
-    override def visitBlockStmt(ctx: BlockStmtContext) = visit(ctx.stmts) match {
-      case s if (s.length > 0 && is_control_stmt(s.last)) => ControlBlock(s)
-      case s if (!s.exists(is_control_stmt))              => CombinatorialBlock(s)
-      case s => {
-        Message.error(ctx, "A control block must end with a control statement");
-        ControlBlock(s)
+    override def visitBlockStmt(ctx: BlockStmtContext) = {
+      val stmts = visit(ctx.stmts)
+      val ctrlStmts = stmts collect { case s: CtrlStmt => s }
+      val combStmts = stmts collect { case s: CombStmt => s }
+
+      (ctrlStmts, combStmts) match { // TODO: Not sure this is the best way to write this
+        case (Nil, comb) => CombinatorialBlock(comb)
+        case (ctrl, comb) => {
+          stmts.last match {
+            case s: CtrlStmt => ControlBlock(stmts)
+            case s: CombStmt => {
+              Message.error(ctx, "A control block must end with a control statement")
+              ControlBlock(Nil)
+            }
+          }
+        }
       }
     }
 
@@ -269,27 +286,26 @@ class AstBuilder {
     override def visitWhileStmt(ctx: WhileStmtContext) = {
       val cond = ExprVisitor(ctx.expr)
       val body = visit(ctx.stmts)
-      if (!is_control_stmt(body.last)) {
-        // TODO(geza): can't we just infer a fence here, so all loops have the same rule
-        // and the while is not special?
-        Message.error(ctx, "The body of a while loop must end with a control statement")
+      body.last match {
+        case _: CombStmt => Message.error(ctx, "The body of a while loop must end with a control statement")
+        case _           =>
       }
       ControlWhile(cond, body)
     }
 
     override def visitIfStmt(ctx: IfStmtContext) = {
       val cond = ExprVisitor(ctx.expr())
-      val yes = visit(ctx.thenStmt)
-      val no = visit(Option(ctx.elseStmt))
+      val thenStmt = visit(ctx.thenStmt)
+      val elseStmt = visit(Option(ctx.elseStmt))
 
-      (yes, no) match {
-        case (y, None) if (is_control_stmt(y))                            => ControlIf(cond, yes, None)
-        case (y, Some(n)) if (is_control_stmt(y) && is_control_stmt(n))   => ControlIf(cond, yes, no)
-        case (y, None) if (!is_control_stmt(y))                           => CombinatorialIf(cond, yes, None)
-        case (y, Some(n)) if (!is_control_stmt(y) && !is_control_stmt(n)) => CombinatorialIf(cond, yes, no)
+      (thenStmt, elseStmt) match {
+        case (t: CtrlStmt, None)              => ControlIf(cond, t, None)
+        case (t: CtrlStmt, Some(e: CtrlStmt)) => ControlIf(cond, t, Some(e))
+        case (t: CombStmt, None)              => CombinatorialIf(cond, t, None)
+        case (t: CombStmt, Some(e: CombStmt)) => CombinatorialIf(cond, t, Some(e))
         case _ => {
           Message.error(ctx, "Both branches of an if must be control statements, or both must be combinatorial statements");
-          ControlIf(cond, yes, no)
+          ControlIf(cond, ControlBlock(Nil), None)
         }
       }
     }
@@ -298,41 +314,46 @@ class AstBuilder {
 
       object CaseVisitor extends VBaseVisitor[Node] {
         override def visitDefaultCase(ctx: DefaultCaseContext) = {
-          val s = StatementVisitor(ctx.statement())
-          if (is_control_stmt(s))
-            ControlCaseLabel(List(), s)
-          else
-            CombinatorialCaseLabel(List(), s)
+          StatementVisitor(ctx.statement()) match {
+            case s: CtrlStmt => ControlCaseLabel(List(), s)
+            case s: CombStmt => CombinatorialCaseLabel(List(), s)
+          }
         }
 
         override def visitNormalCase(ctx: NormalCaseContext) = {
-          val s = StatementVisitor(ctx.statement())
           val args = ExprVisitor(ctx.commaexpr)
-          if (is_control_stmt(s))
-            ControlCaseLabel(args, s)
-          else
-            CombinatorialCaseLabel(args, s)
+          StatementVisitor(ctx.statement()) match {
+            case s: CtrlStmt => ControlCaseLabel(args, s)
+            case s: CombStmt => CombinatorialCaseLabel(args, s)
+          }
         }
       }
 
-      def is_control_label(cmd: Node): Boolean = cmd match {
-        case ControlCaseLabel(_, _) => true
-        case _                      => false
-      }
-
       val test = ExprVisitor(ctx.expr())
-      CaseVisitor(ctx.cases) match {
-        case stmts if (stmts.forall(is_control_label))  => ControlCaseStmt(test, stmts)
-        case stmts if (!stmts.exists(is_control_label)) => CombinatorialCaseStmt(test, stmts)
-        case stmts => {
+
+      val cases = CaseVisitor(ctx.cases)
+      val ctrlCases = cases collect { case s: ControlCaseLabel => s }
+      val combCases = cases collect { case s: CombinatorialCaseLabel => s }
+
+      (ctrlCases, combCases) match { // TODO: Not sure this is the best way to write this
+        case (Nil, Nil)  => CombinatorialCaseStmt(test, Nil)
+        case (Nil, comb) => CombinatorialCaseStmt(test, comb)
+        case (ctrl, Nil) => ControlCaseStmt(test, ctrl)
+        case _ => {
           Message.error(ctx, "Either all or none of the case items must be control statements");
-          ControlCaseStmt(test, stmts)
+          ControlCaseStmt(test, Nil)
         }
       }
     }
 
-    object ForInitVisitor extends VBaseVisitor[(Option[VarDeclaration], Stmt)] {
-      override def visitForInitNoDecl(ctx: ForInitNoDeclContext) = (None, StatementVisitor(ctx.assignment_statement))
+    object ForInitVisitor extends VBaseVisitor[(Option[VarDeclaration], CombStmt)] {
+      override def visitForInitNoDecl(ctx: ForInitNoDeclContext) = {
+        val stmt = StatementVisitor(ctx.assignment_statement) match {
+          case s: CombStmt => s
+          case _: CtrlStmt => Message.fatal("Unreachable")
+        }
+        (None, stmt)
+      }
       override def visitDeclInit(ctx: DeclInitContext) = {
         val varDecl = DeclVisitor(ctx).asInstanceOf[VarDeclaration]
         val initExpr = Assign(VarRefVisitor(ctx.var_ref), ExprVisitor(ctx.expr))
@@ -342,7 +363,11 @@ class AstBuilder {
 
     override def visitForStmt(ctx: ForStmtContext) = {
       val (optDecl, initStmt) = ForInitVisitor(ctx.init)
-      val forAST = ControlFor(initStmt, ExprVisitor(ctx.cond), visit(ctx.step), visit(ctx.stmts))
+      val stepStmt = visit(ctx.step) match {
+        case s: CombStmt => s
+        case _: CtrlStmt => Message.fatal("Unreachable")
+      }
+      val forAST = ControlFor(initStmt, ExprVisitor(ctx.cond), stepStmt, visit(ctx.stmts))
       optDecl match {
         case None       => forAST
         case Some(decl) => ControlBlock(DeclarationStmt(decl) :: forAST :: Nil)

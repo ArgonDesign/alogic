@@ -330,7 +330,7 @@ final class MakeVerilog {
       case DeclarationStmt(VarDeclaration(decltype, name, init)) => false
       case blk @ StateBlock(n, _) => {
         val indent = if (numstates == 1) 2 else 3
-        states(n) = CombStmt(indent)(blk)
+        states(n) = MakeStmt(indent)(blk)
         if (generateAccept) {
           makingAccept = true
           AcceptStmt(indent, blk) match {
@@ -342,7 +342,7 @@ final class MakeVerilog {
         true
       }
       case Function(name, _)     => ??? // TODO: This is an internal error. There should be no functions left at this stage
-      case FenceFunction(body)   => { fencefns = CombStmt(2)(body) :: fencefns; false }
+      case FenceFunction(body)   => { fencefns = MakeStmt(2)(body) :: fencefns; false }
       case VerilogFunction(body) => { verilogfns = body :: verilogfns; false }
       case Instantiate(id, module, args) => {
         if (modMap.isEmpty)
@@ -557,7 +557,7 @@ final class MakeVerilog {
 
   // Produce code to go into the case statements (we assume we have already had a "case(state) default: begin end"
   // The top call should be with Function or VerilogFunction
-  def CombStmt(indent: Int)(tree: Node): StrTree = {
+  def MakeStmt(indent: Int)(tree: Node): StrTree = {
     val i = i0 * indent
     val si = Str(i)
 
@@ -646,22 +646,22 @@ final class MakeVerilog {
 
       case CombinatorialBlock(cmds) => {
         Str(s"""|begin
-                |${i + i0}${cmds map CombStmt(indent + 1) mkString s"\n${i + i0}"}
+                |${i + i0}${cmds map MakeStmt(indent + 1) mkString s"\n${i + i0}"}
                 |${i}end""".stripMargin)
       }
 
-      case StateBlock(_, cmds) => CombStmt(indent)(CombinatorialBlock(cmds))
+      case StateBlock(_, cmds) => MakeStmt(indent)(CombinatorialBlock(cmds))
 
       case CombinatorialIf(cond, thenBody, optElseBody) => AddStall(cond) {
         val condPart = s"if (${MakeExpr(cond)}) "
         val thenPart = thenBody match {
-          case block: CombinatorialBlock => CombStmt(indent)(block)
-          case other                     => CombStmt(indent)(CombinatorialBlock(other :: Nil))
+          case block: CombinatorialBlock => MakeStmt(indent)(block)
+          case other                     => MakeStmt(indent)(CombinatorialBlock(other :: Nil))
         }
         val elsePart = optElseBody match {
           case None                            => ""
-          case Some(block: CombinatorialBlock) => s" else ${CombStmt(indent)(block)}"
-          case Some(other)                     => s" else ${CombStmt(indent)(CombinatorialBlock(other :: Nil))}"
+          case Some(block: CombinatorialBlock) => s" else ${MakeStmt(indent)(block)}"
+          case Some(other)                     => s" else ${MakeStmt(indent)(CombinatorialBlock(other :: Nil))}"
         }
         Str(condPart + thenPart + elsePart)
       }
@@ -669,11 +669,11 @@ final class MakeVerilog {
       // TODO: do the conds not need a stall expr to be precise?
       case CombinatorialCaseStmt(value, cases) => AddStall(value) {
         Str(s"""|case (${MakeExpr(value)})
-                |${i + i0}${cases map CombStmt(indent + 1) mkString s"\n${i + i0}"}
+                |${i + i0}${cases map MakeStmt(indent + 1) mkString s"\n${i + i0}"}
                 |${i}endcase""".stripMargin)
       }
-      case CombinatorialCaseLabel(Nil, body)   => Str(s"default: ${CombStmt(indent)(body)}")
-      case CombinatorialCaseLabel(conds, body) => Str(s"${conds map MakeExpr mkString ", "}: ${CombStmt(indent)(body)}")
+      case CombinatorialCaseLabel(Nil, body)   => Str(s"default: ${MakeStmt(indent)(body)}")
+      case CombinatorialCaseLabel(conds, body) => Str(s"${conds map MakeExpr mkString ", "}: ${MakeStmt(indent)(body)}")
 
       case GotoState(target) => {
         if (numstates == 1) {
@@ -706,8 +706,8 @@ final class MakeVerilog {
         Str(s"${MakeExpr(name)} = ${MakeExpr(arg)};")
       }
 
-      case DeclarationStmt(VarDeclaration(decltype, id, Some(rhs))) => CombStmt(indent)(Assign(id, rhs))
-      case DeclarationStmt(VarDeclaration(decltype, id, None)) => CombStmt(indent)(Assign(id, Num("'b0"))) // TODO: Why is this needed ?
+      case DeclarationStmt(VarDeclaration(decltype, id, Some(rhs))) => MakeStmt(indent)(Assign(id, rhs))
+      case DeclarationStmt(VarDeclaration(decltype, id, None)) => MakeStmt(indent)(Assign(id, Num("'b0"))) // TODO: Why is this needed ?
 
       case ExprStmt(DollarCall(name, args)) => StrList(List(i, name, StrList(args.map(MakeExpr), ",")))
       case AlogicComment(s) => s"// $s\n"
