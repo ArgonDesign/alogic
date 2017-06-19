@@ -78,7 +78,7 @@ sealed trait Stmt extends Node
 // Combinatorial statement nodes
 ///////////////////////////////////////////////////////////////////////////////
 sealed trait CombStmt extends Stmt
-case class Assign(lhs: Node, rhs: Expr) extends CombStmt
+case class Assign(lhs: Expr, rhs: Expr) extends CombStmt
 case class Update(lhs: Expr, op: String, rhs: Expr) extends CombStmt
 case class Plusplus(lhs: Expr) extends CombStmt
 case class Minusminus(lhs: Expr) extends CombStmt

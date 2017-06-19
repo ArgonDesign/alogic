@@ -149,7 +149,7 @@ object AstOps {
             case StateTask(name, decls, sbs, fencefn, vfns) => StateTask(name, decls, sbs map r[StateBlock], fencefn map r[FenceFunction], vfns)
             case NetworkTask(name, decls, fns)              => NetworkTask(name, decls, fns map r[Node])
             case x: VerilogTask                             => x
-            case Assign(lhs, rhs)                           => Assign(r[Node](lhs), r[Expr](rhs))
+            case Assign(lhs, rhs)                           => Assign(r[Expr](lhs), r[Expr](rhs))
             case Update(lhs, op, rhs)                       => Update(r[Expr](lhs), op, r[Expr](rhs))
             case Plusplus(lhs)                              => Plusplus(r[Expr](lhs))
             case Minusminus(lhs)                            => Minusminus(r[Expr](lhs))

@@ -5,10 +5,10 @@ package alogic.ast
 // // Declaration used for top-level and function declarations
 sealed trait Declaration
 // TODO: Add separate Decl for Arrays, it just makes a lot of things simpler
-case class VarDeclaration(decltype: AlogicType, id: Node, init: Option[Expr]) extends Declaration
+case class VarDeclaration(decltype: AlogicType, id: VarRef, init: Option[Expr]) extends Declaration
 case class ParamDeclaration(decltype: AlogicType, id: String, init: Expr) extends Declaration
 case class ConstDeclaration(decltype: AlogicType, id: String, init: Expr) extends Declaration
-case class VerilogDeclaration(decltype: AlogicType, id: Node) extends Declaration
+case class VerilogDeclaration(decltype: AlogicType, id: VarRef) extends Declaration
 case class OutDeclaration(synctype: SyncType, decltype: AlogicType, name: String) extends Declaration
 case class InDeclaration(synctype: SyncType, decltype: AlogicType, name: String) extends Declaration
 
