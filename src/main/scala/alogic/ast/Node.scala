@@ -109,15 +109,16 @@ case object FenceStmt extends CtrlStmt
 case object BreakStmt extends CtrlStmt
 
 ///////////////////////////////////////////////////////////////////////////////
+// Case label nodes
+///////////////////////////////////////////////////////////////////////////////
+case class CombinatorialCaseLabel(cond: List[Expr], body: CombStmt) extends Node
+case class ControlCaseLabel(cond: List[Expr], body: CtrlStmt) extends Node
+
+///////////////////////////////////////////////////////////////////////////////
 // Node representing FSM states after control statement conversion
 ///////////////////////////////////////////////////////////////////////////////
 case class StateBlock(state: Int, contents: List[CombStmt]) extends Node
 
-// // AlogicAST used for abstract syntax nodes
+// TODO: strengthen types
 case class Connect(start: Node, end: List[Node]) extends Node
 case class Instantiate(id: String, module: String, args: List[Node]) extends Node
-
-case class CombinatorialCaseLabel(cond: List[Expr], body: CombStmt) extends Node
-
-// Types removed by MakeStates
-case class ControlCaseLabel(cond: List[Expr], body: CtrlStmt) extends Node
