@@ -164,12 +164,9 @@ final class MakeStates {
       breakTargets push finalState
       var combcases = for { c <- cases } yield c match {
         case ControlCaseLabel(cond, body) => {
-          val a = makeStates(-1, finalState, body)
-          val content = {
-            if (a.length == 1)
-              a(0)
-            else
-              CombinatorialBlock(a)
+          val content = makeStates(-1, finalState, body) match {
+            case a :: Nil => a
+            case as       => CombinatorialBlock(as)
           }
           CombinatorialCaseLabel(cond, content)
         }
