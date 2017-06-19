@@ -156,10 +156,10 @@ object AstOps {
             case CombinatorialBlock(cmds)                   => CombinatorialBlock(cmds map r[CombStmt])
             case StateBlock(state, cmds)                    => StateBlock(state, cmds map r[CombStmt])
             case x: DeclarationStmt                         => x
-            case CombinatorialIf(cond, body, e)             => CombinatorialIf(r[Node](cond), r[CombStmt](body), e map r[CombStmt])
+            case CombinatorialIf(cond, body, e)             => CombinatorialIf(r[Expr](cond), r[CombStmt](body), e map r[CombStmt])
             case x: AlogicComment                           => x
-            case CombinatorialCaseStmt(value, c, d)         => CombinatorialCaseStmt(r[Node](value), c map r[CombinatorialCaseLabel], d map r[CombStmt])
-            case ControlCaseStmt(value, c, d)               => ControlCaseStmt(r[Node](value), c map r[ControlCaseLabel], d map r[CtrlStmt])
+            case CombinatorialCaseStmt(value, c, d)         => CombinatorialCaseStmt(r[Expr](value), c map r[CombinatorialCaseLabel], d map r[CombStmt])
+            case ControlCaseStmt(value, c, d)               => ControlCaseStmt(r[Expr](value), c map r[ControlCaseLabel], d map r[CtrlStmt])
             case ControlIf(cond, body, e)                   => ControlIf(cond, r[CtrlStmt](body), e map r[CtrlStmt])
             case ControlBlock(cmds)                         => ControlBlock(cmds map r[Stmt])
             case ControlWhile(cond, body)                   => ControlWhile(r[Expr](cond), body map r[Stmt])

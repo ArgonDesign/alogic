@@ -86,8 +86,8 @@ case class ExprStmt(expr: Expr) extends CombStmt
 case class DeclarationStmt(decl: VarDeclaration) extends CombStmt
 case class AlogicComment(str: String) extends CombStmt
 case class CombinatorialBlock(cmds: List[CombStmt]) extends CombStmt
-case class CombinatorialIf(cond: Node, body: CombStmt, elsebody: Option[CombStmt]) extends CombStmt
-case class CombinatorialCaseStmt(value: Node, cases: List[CombinatorialCaseLabel], default: Option[CombStmt]) extends CombStmt
+case class CombinatorialIf(cond: Expr, body: CombStmt, elsebody: Option[CombStmt]) extends CombStmt
+case class CombinatorialCaseStmt(value: Expr, cases: List[CombinatorialCaseLabel], default: Option[CombStmt]) extends CombStmt
 case class GotoState(tgt: Int) extends CombStmt // inserted by MakeStates
 case class CallState(tgt: Int, ret: Int) extends CombStmt // inserted by MakeStates
 case object ReturnState extends CombStmt // inserted by MakeStates
@@ -98,7 +98,7 @@ case object ReturnState extends CombStmt // inserted by MakeStates
 sealed trait CtrlStmt extends Stmt
 case class ControlBlock(cmds: List[Stmt]) extends CtrlStmt
 case class ControlIf(cond: Expr, body: CtrlStmt, elsebody: Option[CtrlStmt]) extends CtrlStmt
-case class ControlCaseStmt(value: Node, cases: List[ControlCaseLabel], default: Option[CtrlStmt]) extends CtrlStmt
+case class ControlCaseStmt(value: Expr, cases: List[ControlCaseLabel], default: Option[CtrlStmt]) extends CtrlStmt
 case class ControlWhile(cond: Expr, body: List[Stmt]) extends CtrlStmt
 case class ControlFor(init: CombStmt, cond: Expr, incr: CombStmt, body: List[Stmt]) extends CtrlStmt
 case class ControlDo(cond: Expr, body: List[Stmt]) extends CtrlStmt
