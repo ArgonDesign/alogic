@@ -100,8 +100,8 @@ object AstOps {
             case BitRep(count, value)                       => { v(count); v(value) }
             case BitCat(parts)                              => parts foreach v
             case AlogicComment(str)                         =>
-            case CombinatorialCaseStmt(value, cases)        => { v(value); cases foreach v }
-            case ControlCaseStmt(value, cases)              => { v(value); cases foreach v }
+            case CombinatorialCaseStmt(value, c, d)         => { v(value); c foreach v; d foreach v }
+            case ControlCaseStmt(value, c, d)               => { v(value); c foreach v; d foreach v }
             case ControlIf(cond, body, Some(e))             => { v(cond); v(body); v(e) }
             case ControlIf(cond, body, None)                => { v(cond); v(body) }
             case ControlBlock(cmds)                         => cmds foreach v
@@ -158,8 +158,8 @@ object AstOps {
             case x: DeclarationStmt                         => x
             case CombinatorialIf(cond, body, e)             => CombinatorialIf(r[Node](cond), r[CombStmt](body), e map r[CombStmt])
             case x: AlogicComment                           => x
-            case CombinatorialCaseStmt(value, cases)        => CombinatorialCaseStmt(r[Node](value), cases map r[CombinatorialCaseLabel])
-            case ControlCaseStmt(value, cases)              => ControlCaseStmt(r[Node](value), cases map r[ControlCaseLabel])
+            case CombinatorialCaseStmt(value, c, d)         => CombinatorialCaseStmt(r[Node](value), c map r[CombinatorialCaseLabel], d map r[CombStmt])
+            case ControlCaseStmt(value, c, d)               => ControlCaseStmt(r[Node](value), c map r[ControlCaseLabel], d map r[CtrlStmt])
             case ControlIf(cond, body, e)                   => ControlIf(cond, r[CtrlStmt](body), e map r[CtrlStmt])
             case ControlBlock(cmds)                         => ControlBlock(cmds map r[Stmt])
             case ControlWhile(cond, body)                   => ControlWhile(r[Expr](cond), body map r[Stmt])

@@ -163,13 +163,23 @@ object PrettyPrinters {
           case ControlIf(cond, body, Some(e))       => s"if (${v(indent)(cond)}) ${v(indent)(body)} else ${v(indent)(e)}"
           case ControlIf(cond, body, None)          => s"if (${v(indent)(cond)}) ${v(indent)(body)}"
 
-          case CombinatorialCaseStmt(value, cases) =>
+          case CombinatorialCaseStmt(value, cases, None) =>
             s"""|case (${v(indent)(value)}) {
                 |${i}  ${cases map v(indent + 1) mkString s"\n${i}  "}
                 |${i}}""".stripMargin
-          case ControlCaseStmt(value, cases) =>
+          case CombinatorialCaseStmt(value, cases, Some(default)) =>
             s"""|case (${v(indent)(value)}) {
                 |${i}  ${cases map v(indent + 1) mkString s"\n${i}  "}
+                |${i}  default: ${v(indent + 1)(default)}
+                |${i}}""".stripMargin
+          case ControlCaseStmt(value, cases, None) =>
+            s"""|case (${v(indent)(value)}) {
+                |${i}  ${cases map v(indent + 1) mkString s"\n${i}  "}
+                |${i}}""".stripMargin
+          case ControlCaseStmt(value, cases, Some(default)) =>
+            s"""|case (${v(indent)(value)}) {
+                |${i}  ${cases map v(indent + 1) mkString s"\n${i}  "}
+                |${i}  default: ${v(indent + 1)(default)}
                 |${i}}""".stripMargin
 
           case ControlCaseLabel(Nil, body)        => s"default : ${v(indent)(body)}"

@@ -312,36 +312,45 @@ class AstBuilder {
 
     override def visitCaseStmt(ctx: CaseStmtContext) = {
 
-      object CaseVisitor extends VBaseVisitor[Node] {
-        override def visitDefaultCase(ctx: DefaultCaseContext) = {
-          StatementVisitor(ctx.statement()) match {
-            case s: CtrlStmt => ControlCaseLabel(List(), s)
-            case s: CombStmt => CombinatorialCaseLabel(List(), s)
-          }
-        }
+      object DefaultVisitor extends VBaseVisitor[Option[Stmt]] {
+        override val defaultResult = None
+        override def visitDefaultCase(ctx: DefaultCaseContext) = Some(StatementVisitor(ctx.statement()))
+      }
 
+      object CaseVisitor extends VBaseVisitor[Option[Node]] {
+        override val defaultResult = None
         override def visitNormalCase(ctx: NormalCaseContext) = {
           val args = ExprVisitor(ctx.commaexpr)
           StatementVisitor(ctx.statement()) match {
-            case s: CtrlStmt => ControlCaseLabel(args, s)
-            case s: CombStmt => CombinatorialCaseLabel(args, s)
+            case s: CtrlStmt => Some(ControlCaseLabel(args, s))
+            case s: CombStmt => Some(CombinatorialCaseLabel(args, s))
           }
         }
       }
 
       val test = ExprVisitor(ctx.expr())
 
-      val cases = CaseVisitor(ctx.cases)
+      val defaultCase = DefaultVisitor(ctx.cases).flatten match {
+        case Nil      => None
+        case d :: Nil => Some(d)
+        case _        => Message.error(ctx, "More than one 'default' case item specified"); None
+      }
+
+      val cases = CaseVisitor(ctx.cases).flatten
       val ctrlCases = cases collect { case s: ControlCaseLabel => s }
       val combCases = cases collect { case s: CombinatorialCaseLabel => s }
 
-      (ctrlCases, combCases) match { // TODO: Not sure this is the best way to write this
-        case (Nil, Nil)  => CombinatorialCaseStmt(test, Nil)
-        case (Nil, comb) => CombinatorialCaseStmt(test, comb)
-        case (ctrl, Nil) => ControlCaseStmt(test, ctrl)
+      (ctrlCases, combCases, defaultCase) match {
+        case (Nil, Nil, None)               => CombinatorialCaseStmt(test, Nil, None)
+        case (Nil, Nil, Some(d: CombStmt))  => CombinatorialCaseStmt(test, Nil, Some(d))
+        case (Nil, Nil, Some(d: CtrlStmt))  => ControlCaseStmt(test, Nil, Some(d))
+        case (Nil, comb, None)              => CombinatorialCaseStmt(test, comb, None)
+        case (Nil, comb, Some(d: CombStmt)) => CombinatorialCaseStmt(test, comb, Some(d))
+        case (ctrl, Nil, None)              => ControlCaseStmt(test, ctrl, None)
+        case (ctrl, Nil, Some(d: CtrlStmt)) => ControlCaseStmt(test, ctrl, Some(d))
         case _ => {
           Message.error(ctx, "Either all or none of the case items must be control statements");
-          ControlCaseStmt(test, Nil)
+          ControlCaseStmt(test, Nil, None)
         }
       }
     }

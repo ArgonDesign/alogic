@@ -586,7 +586,7 @@ final class MakeVerilog {
       }
 
       def v(tree: Node): Boolean = tree match {
-        case CombinatorialCaseStmt(value, _) =>
+        case CombinatorialCaseStmt(value, _, _) =>
           value visit v; false
         case CombinatorialBlock(_) => false
         case CombinatorialIf(cond, _, _) =>
@@ -667,12 +667,17 @@ final class MakeVerilog {
       }
 
       // TODO: do the conds not need a stall expr to be precise?
-      case CombinatorialCaseStmt(value, cases) => AddStall(value) {
+      case CombinatorialCaseStmt(value, cases, None) => AddStall(value) {
         Str(s"""|case (${MakeExpr(value)})
                 |${i + i0}${cases map MakeStmt(indent + 1) mkString s"\n${i + i0}"}
                 |${i}endcase""".stripMargin)
       }
-      case CombinatorialCaseLabel(Nil, body)   => Str(s"default: ${MakeStmt(indent)(body)}")
+      case CombinatorialCaseStmt(value, cases, Some(default)) => AddStall(value) {
+        Str(s"""|case (${MakeExpr(value)})
+                |${i + i0}${cases map MakeStmt(indent + 1) mkString s"\n${i + i0}"}
+                |${i + i0}default: ${MakeStmt(indent + 1)(default)}
+                |${i}endcase""".stripMargin)
+      }
       case CombinatorialCaseLabel(conds, body) => Str(s"${conds map MakeExpr mkString ", "}: ${MakeStmt(indent)(body)}")
 
       case GotoState(target) => {
@@ -766,11 +771,11 @@ final class MakeVerilog {
       IdsWritten.add(ExtractName(lhs))
       AddAccept(indent, AcceptExpr(lhs) ::: AcceptExpr(rhs), None)
     }
-    case CombinatorialCaseStmt(value, cases) => {
+    case CombinatorialCaseStmt(value, cases, Some(default)) => {
       // Take care to only use MakeExpr when we are sure the code needs to be emitted
       // This is because MakeExpr will track the used ids
       val s: List[Option[StrTree]] = for (c <- cases) yield AcceptStmt(indent + 1, c)
-      val s2: List[StrTree] = s.flatten
+      val s2: List[StrTree] = (AcceptStmt(indent + 1, default) :: s).flatten
       val e = if (s2.length == 0)
         None
       else
@@ -888,7 +893,7 @@ final class MakeVerilog {
     }
 
     def v(tree: Node): Boolean = tree match {
-      case CombinatorialCaseStmt(value, _) =>
+      case CombinatorialCaseStmt(value, _, _) =>
         value visit v; false
       case CombinatorialBlock(_) => false
       case CombinatorialIf(cond, _, _) =>

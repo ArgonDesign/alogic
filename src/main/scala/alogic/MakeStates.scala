@@ -159,10 +159,9 @@ final class MakeStates {
       List(CombinatorialIf(cond, CombinatorialBlock(current), Some(CombinatorialBlock(current2))))
     }
 
-    case ControlCaseStmt(value, cases) => {
-      val hasDefault = cases.exists(isCaseDefault)
+    case ControlCaseStmt(value, cases, default) => {
       breakTargets push finalState
-      var combcases = for { c <- cases } yield c match {
+      val combcases = for { c <- cases } yield c match {
         case ControlCaseLabel(cond, body) => {
           val content = makeStates(-1, finalState, body) match {
             case a :: Nil => a
@@ -172,10 +171,18 @@ final class MakeStates {
         }
         case _ => ??? // Trigger error here
       }
-      if (!hasDefault)
-        combcases = CombinatorialCaseLabel(Nil, GotoState(finalState)) :: combcases
+      val r = default match {
+        case None => List(CombinatorialCaseStmt(value, combcases, Some(GotoState(finalState))))
+        case Some(d) => {
+          val defaultCase = makeStates(-1, finalState, d) match {
+            case a :: Nil => a
+            case as       => CombinatorialBlock(as)
+          }
+          List(CombinatorialCaseStmt(value, combcases, Some(defaultCase)))
+        }
+      }
       breakTargets.pop
-      List(CombinatorialCaseStmt(value, combcases))
+      r
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -183,11 +190,6 @@ final class MakeStates {
     ///////////////////////////////////////////////////////////////////////////
 
     case x: CombStmt => x :: Nil
-  }
-
-  def isCaseDefault(c: Node): Boolean = c match {
-    case ControlCaseLabel(Nil, body) => true
-    case _                           => false
   }
 
   //  We need to split the list of statements into control units
