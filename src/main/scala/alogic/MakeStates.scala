@@ -160,25 +160,18 @@ final class MakeStates {
     }
 
     case ControlCaseStmt(value, cases, default) => {
-      val combcases = for { c <- cases } yield c match {
-        case ControlCaseLabel(cond, body) => {
-          val content = makeStates(-1, finalState, body) match {
-            case a :: Nil => a
-            case as       => CombinatorialBlock(as)
-          }
-          CombinatorialCaseLabel(cond, content)
-        }
-        case _ => ??? // Trigger error here
+      def makeBodyStmt(body: CtrlStmt) = makeStates(-1, finalState, body) match {
+        case a :: Nil => a
+        case as       => CombinatorialBlock(as)
       }
+
+      val combcases = cases map {
+        case ControlCaseLabel(cond, body) => CombinatorialCaseLabel(cond, makeBodyStmt(body))
+      }
+
       default match {
-        case None => List(CombinatorialCaseStmt(value, combcases, Some(GotoState(finalState))))
-        case Some(d) => {
-          val defaultCase = makeStates(-1, finalState, d) match {
-            case a :: Nil => a
-            case as       => CombinatorialBlock(as)
-          }
-          List(CombinatorialCaseStmt(value, combcases, Some(defaultCase)))
-        }
+        case Some(d) => List(CombinatorialCaseStmt(value, combcases, Some(makeBodyStmt(d))))
+        case None    => List(CombinatorialCaseStmt(value, combcases, Some(GotoState(finalState))))
       }
     }
 
