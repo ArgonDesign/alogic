@@ -27,9 +27,100 @@ import org.antlr.v4.runtime.ParserRuleContext
 // The object can be called multiple times to allow us to only build a common header file once.
 //
 
+class ExprVisitor(private[this] val scope: VScope) extends VBaseVisitor[Expr] { self =>
+  // If applied to a commaexpr node, return a list of the constructed expressions
+  def apply(ctx: CommaexprContext): List[Expr] = visit(ctx.expr)
+
+  object LookUpName extends VBaseVisitor[DottedName] {
+    override def visitDotted_name(ctx: Dotted_nameContext) = {
+      // Look up name in namespace
+      val (head :: tail) = ctx.es.toList.map(_.text)
+      DottedName(scope(ctx, head) :: tail)
+    }
+  }
+
+  object VarRefVisitor extends VBaseVisitor[VarRef] {
+    override def visitVarRef(ctx: VarRefContext) = LookUpName(ctx.dotted_name)
+    override def visitVarRefIndex(ctx: VarRefIndexContext) = ArrayLookup(LookUpName(ctx.dotted_name), self(ctx.es))
+  }
+
+  override def visitExprBracket(ctx: ExprBracketContext) = Bracket(visit(ctx.expr))
+  override def visitExprUnary(ctx: ExprUnaryContext) = UnaryOp(ctx.op, visit(ctx.expr))
+  override def visitExprMulDiv(ctx: ExprMulDivContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
+  override def visitExprAddSub(ctx: ExprAddSubContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
+  override def visitExprShift(ctx: ExprShiftContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
+  override def visitExprCompare(ctx: ExprCompareContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
+  override def visitExprEqual(ctx: ExprEqualContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
+  override def visitExprBAnd(ctx: ExprBAndContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
+  override def visitExprBXor(ctx: ExprBXorContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
+  override def visitExprBOr(ctx: ExprBOrContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
+  override def visitExprAnd(ctx: ExprAndContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
+  override def visitExprOr(ctx: ExprOrContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
+  override def visitExprTernary(ctx: ExprTernaryContext) = TernaryOp(visit(ctx.expr(0)), visit(ctx.expr(1)), visit(ctx.expr(2)))
+  override def visitExprRep(ctx: ExprRepContext) = BitRep(visit(ctx.expr(0)), visit(ctx.expr(1)))
+  override def visitExprCat(ctx: ExprCatContext) = BitCat(this(ctx.commaexpr))
+  override def visitExprVarRef(ctx: ExprVarRefContext) = VarRefVisitor(ctx)
+  override def visitExprSlice(ctx: ExprSliceContext) = Slice(VarRefVisitor(ctx.var_ref), visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
+  override def visitExprDollar(ctx: ExprDollarContext) = DollarCall(ctx.DOLLARID, this(ctx.commaexpr))
+  override def visitExprTrue(ctx: ExprTrueContext) = Num("1'b1")
+  override def visitExprFalse(ctx: ExprFalseContext) = Num("1'b0")
+  override def visitExprTrickNum(ctx: ExprTrickNumContext) = Num(ctx.TICKNUM)
+  override def visitExprConstTickNum(ctx: ExprConstTickNumContext) = Num(ctx.CONSTANT + ctx.TICKNUM)
+  override def visitExprConst(ctx: ExprConstContext) = Num(ctx.CONSTANT)
+  override def visitExprLiteral(ctx: ExprLiteralContext) = Literal(ctx.LITERAL)
+
+  override def visitExprCall(ctx: ExprCallContext) = {
+    val n = LookUpName(ctx.dotted_name)
+    val a = this(ctx.commaexpr)
+    n match {
+      case DottedName(names) if (names.last == "read") => {
+        if (a.length > 0)
+          Message.error(ctx, s"Interface read takes no arguments (${a.length} found)")
+        ReadCall(DottedName(names.init))
+      }
+      case DottedName(names) if (names.last == "lock") => {
+        if (a.length > 0)
+          Message.error(ctx, s"Interface lock takes no arguments (${a.length} found)")
+        LockCall(DottedName(names.init))
+      }
+      case DottedName(names) if (names.last == "unlock") => {
+        if (a.length > 0)
+          Message.error(ctx, s"Interface unlock takes no arguments (${a.length} found)")
+        UnlockCall(DottedName(names.init))
+      }
+      case DottedName(names) if (names.last == "valid" || names.last == "v") => {
+        if (a.length > 0)
+          Message.error(ctx, s"Accessing valid property takes no arguments (${a.length} found)")
+        ValidCall(DottedName(names.init))
+      }
+      case DottedName(names) if (names.last == "write") => {
+        if (a.length != 1)
+          Message.error(ctx, s"Interface write takes exactly one argument (${a.length} found)")
+        WriteCall(DottedName(names.init), a)
+      }
+      case DottedName("zxt" :: Nil) => {
+        if (a.length != 2)
+          Message.error(ctx, s"Zero extend function takes exactly two arguments: number of bits and expression (${a.length} found)")
+        Zxt(a(0), a(1))
+      }
+      case DottedName("sxt" :: Nil) => {
+        if (a.length != 2)
+          Message.error(ctx, s"Sign extend function takes exactly two arguments: number of bits and expression (${a.length} found)")
+        Sxt(a(0), a(1))
+      }
+      case _ => {
+        if (a.length > 0)
+          Message.error(ctx, s"State functions take no arguments (${a.length} found)")
+        CallExpr(n, a)
+      }
+    }
+  }
+}
+
 class FsmBuilder(typedefs: Map[String, AlogicType]) {
 
   private[this] var scope: VScope = null
+  private[this] var exprVisitor: ExprVisitor = null
 
   object FsmVisitor extends VBaseVisitor[FsmTask] {
 
@@ -67,7 +158,7 @@ class FsmBuilder(typedefs: Map[String, AlogicType]) {
       }
 
       override def visitVarRefIndex(ctx: VarRefIndexContext) =
-        ArrayLookup(LookUpDottedName(ctx.dotted_name), ExprVisitor(ctx.es))
+        ArrayLookup(LookUpDottedName(ctx.dotted_name), exprVisitor(ctx.es))
       override def visitDotted_name(ctx: Dotted_nameContext) =
         LookUpDottedName(ctx)
     }
@@ -90,10 +181,10 @@ class FsmBuilder(typedefs: Map[String, AlogicType]) {
       InDeclaration(SyncTypeVisitor(ctx.sync_type), TypeVisitor(ctx.known_type), scope(ctx, ctx.IDENTIFIER))
 
     override def visitTaskDeclConst(ctx: TaskDeclConstContext) =
-      ConstDeclaration(TypeVisitor(ctx.known_type), scope(ctx, ctx.IDENTIFIER), ExprVisitor(ctx.expr))
+      ConstDeclaration(TypeVisitor(ctx.known_type), scope(ctx, ctx.IDENTIFIER), exprVisitor(ctx.expr))
 
     override def visitTaskDeclParam(ctx: TaskDeclParamContext) =
-      ParamDeclaration(TypeVisitor(ctx.known_type), scope(ctx, ctx.IDENTIFIER), ExprVisitor(ctx.expr))
+      ParamDeclaration(TypeVisitor(ctx.known_type), scope(ctx, ctx.IDENTIFIER), exprVisitor(ctx.expr))
 
     override def visitTaskDeclVerilog(ctx: TaskDeclVerilogContext) =
       VerilogDeclaration(TypeVisitor(ctx.known_type()), LookUpDeclVarRef(ctx.var_ref))
@@ -104,7 +195,7 @@ class FsmBuilder(typedefs: Map[String, AlogicType]) {
       VarDeclaration(TypeVisitor(ctx.known_type()), LookUpDeclVarRef(ctx.var_ref), None)
 
     override def visitDeclInit(ctx: DeclInitContext) =
-      VarDeclaration(TypeVisitor(ctx.known_type()), LookUpDeclVarRef(ctx.var_ref), Some(ExprVisitor(ctx.expr)))
+      VarDeclaration(TypeVisitor(ctx.known_type()), LookUpDeclVarRef(ctx.var_ref), Some(exprVisitor(ctx.expr)))
 
   }
 
@@ -120,92 +211,15 @@ class FsmBuilder(typedefs: Map[String, AlogicType]) {
     override def visitVarRef(ctx: VarRefContext) =
       LookUpName(ctx.dotted_name)
     override def visitVarRefIndex(ctx: VarRefIndexContext) =
-      ArrayLookup(LookUpName(ctx.dotted_name), ExprVisitor(ctx.es))
+      ArrayLookup(LookUpName(ctx.dotted_name), exprVisitor(ctx.es))
   }
 
   object LValueVisitor extends VBaseVisitor[Expr] {
     override def visitLValue(ctx: LValueContext) = VarRefVisitor(ctx.var_ref)
     override def visitLValueSlice(ctx: LValueSliceContext) =
-      Slice(VarRefVisitor(ctx.var_ref), ExprVisitor(ctx.expr(0)), ctx.op, ExprVisitor(ctx.expr(1)))
+      Slice(VarRefVisitor(ctx.var_ref), exprVisitor(ctx.expr(0)), ctx.op, exprVisitor(ctx.expr(1)))
     override def visitLValueCat(ctx: LValueCatContext) =
       BitCat(visit(ctx.refs))
-  }
-
-  object ExprVisitor extends VBaseVisitor[Expr] {
-    // If applied to a commaexpr node, return a list of the constructed expressions
-    def apply(ctx: CommaexprContext): List[Expr] = visit(ctx.expr)
-
-    override def visitExprBracket(ctx: ExprBracketContext) = Bracket(visit(ctx.expr))
-    override def visitExprUnary(ctx: ExprUnaryContext) = UnaryOp(ctx.op, visit(ctx.expr))
-    override def visitExprMulDiv(ctx: ExprMulDivContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
-    override def visitExprAddSub(ctx: ExprAddSubContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
-    override def visitExprShift(ctx: ExprShiftContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
-    override def visitExprCompare(ctx: ExprCompareContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
-    override def visitExprEqual(ctx: ExprEqualContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
-    override def visitExprBAnd(ctx: ExprBAndContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
-    override def visitExprBXor(ctx: ExprBXorContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
-    override def visitExprBOr(ctx: ExprBOrContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
-    override def visitExprAnd(ctx: ExprAndContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
-    override def visitExprOr(ctx: ExprOrContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
-    override def visitExprTernary(ctx: ExprTernaryContext) = TernaryOp(visit(ctx.expr(0)), visit(ctx.expr(1)), visit(ctx.expr(2)))
-    override def visitExprRep(ctx: ExprRepContext) = BitRep(visit(ctx.expr(0)), visit(ctx.expr(1)))
-    override def visitExprCat(ctx: ExprCatContext) = BitCat(ExprVisitor(ctx.commaexpr))
-    override def visitExprVarRef(ctx: ExprVarRefContext) = VarRefVisitor(ctx)
-    override def visitExprSlice(ctx: ExprSliceContext) = Slice(VarRefVisitor(ctx.var_ref), visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
-    override def visitExprDollar(ctx: ExprDollarContext) = DollarCall(ctx.DOLLARID, ExprVisitor(ctx.commaexpr))
-    override def visitExprTrue(ctx: ExprTrueContext) = Num("1'b1")
-    override def visitExprFalse(ctx: ExprFalseContext) = Num("1'b0")
-    override def visitExprTrickNum(ctx: ExprTrickNumContext) = Num(ctx.TICKNUM)
-    override def visitExprConstTickNum(ctx: ExprConstTickNumContext) = Num(ctx.CONSTANT + ctx.TICKNUM)
-    override def visitExprConst(ctx: ExprConstContext) = Num(ctx.CONSTANT)
-    override def visitExprLiteral(ctx: ExprLiteralContext) = Literal(ctx.LITERAL)
-
-    override def visitExprCall(ctx: ExprCallContext) = {
-      val n = LookUpName(ctx.dotted_name)
-      val a = ExprVisitor(ctx.commaexpr)
-      n match {
-        case DottedName(names) if (names.last == "read") => {
-          if (a.length > 0)
-            Message.error(ctx, s"Interface read takes no arguments (${a.length} found)")
-          ReadCall(DottedName(names.init))
-        }
-        case DottedName(names) if (names.last == "lock") => {
-          if (a.length > 0)
-            Message.error(ctx, s"Interface lock takes no arguments (${a.length} found)")
-          LockCall(DottedName(names.init))
-        }
-        case DottedName(names) if (names.last == "unlock") => {
-          if (a.length > 0)
-            Message.error(ctx, s"Interface unlock takes no arguments (${a.length} found)")
-          UnlockCall(DottedName(names.init))
-        }
-        case DottedName(names) if (names.last == "valid" || names.last == "v") => {
-          if (a.length > 0)
-            Message.error(ctx, s"Accessing valid property takes no arguments (${a.length} found)")
-          ValidCall(DottedName(names.init))
-        }
-        case DottedName(names) if (names.last == "write") => {
-          if (a.length != 1)
-            Message.error(ctx, s"Interface write takes exactly one argument (${a.length} found)")
-          WriteCall(DottedName(names.init), a)
-        }
-        case DottedName("zxt" :: Nil) => {
-          if (a.length != 2)
-            Message.error(ctx, s"Zero extend function takes exactly two arguments: number of bits and expression (${a.length} found)")
-          Zxt(a(0), a(1))
-        }
-        case DottedName("sxt" :: Nil) => {
-          if (a.length != 2)
-            Message.error(ctx, s"Sign extend function takes exactly two arguments: number of bits and expression (${a.length} found)")
-          Sxt(a(0), a(1))
-        }
-        case _ => {
-          if (a.length > 0)
-            Message.error(ctx, s"State functions take no arguments (${a.length} found)")
-          CallExpr(n, a)
-        }
-      }
-    }
   }
 
   object StatementVisitor extends VBaseVisitor[Stmt] {
@@ -237,7 +251,7 @@ class FsmBuilder(typedefs: Map[String, AlogicType]) {
     }
 
     override def visitWhileStmt(ctx: WhileStmtContext) = {
-      val cond = ExprVisitor(ctx.expr)
+      val cond = exprVisitor(ctx.expr)
       val body = visit(ctx.stmts)
       body.last match {
         case _: CombStmt => Message.error(ctx, "The body of a while loop must end with a control statement")
@@ -247,7 +261,7 @@ class FsmBuilder(typedefs: Map[String, AlogicType]) {
     }
 
     override def visitIfStmt(ctx: IfStmtContext) = {
-      val cond = ExprVisitor(ctx.expr())
+      val cond = exprVisitor(ctx.expr())
       val thenStmt = visit(ctx.thenStmt)
       val elseStmt = visit(Option(ctx.elseStmt))
 
@@ -273,7 +287,7 @@ class FsmBuilder(typedefs: Map[String, AlogicType]) {
       object CaseVisitor extends VBaseVisitor[Option[Node]] {
         override val defaultResult = None
         override def visitNormalCase(ctx: NormalCaseContext) = {
-          val args = ExprVisitor(ctx.commaexpr)
+          val args = exprVisitor(ctx.commaexpr)
           StatementVisitor(ctx.statement()) match {
             case s: CtrlStmt => Some(ControlCaseLabel(args, s))
             case s: CombStmt => Some(CombinatorialCaseLabel(args, s))
@@ -281,7 +295,7 @@ class FsmBuilder(typedefs: Map[String, AlogicType]) {
         }
       }
 
-      val test = ExprVisitor(ctx.expr())
+      val test = exprVisitor(ctx.expr())
 
       val defaultCase = DefaultVisitor(ctx.cases).flatten match {
         case Nil      => None
@@ -318,7 +332,7 @@ class FsmBuilder(typedefs: Map[String, AlogicType]) {
       }
       override def visitDeclInit(ctx: DeclInitContext) = {
         val varDecl = DeclVisitor(ctx).asInstanceOf[VarDeclaration]
-        val initExpr = Assign(VarRefVisitor(ctx.var_ref), ExprVisitor(ctx.expr))
+        val initExpr = Assign(VarRefVisitor(ctx.var_ref), exprVisitor(ctx.expr))
         (Some(varDecl), initExpr)
       }
     }
@@ -329,14 +343,14 @@ class FsmBuilder(typedefs: Map[String, AlogicType]) {
         case s: CombStmt => s
         case _: CtrlStmt => Message.fatal("Unreachable")
       }
-      val forAST = ControlFor(initStmt, ExprVisitor(ctx.cond), stepStmt, visit(ctx.stmts))
+      val forAST = ControlFor(initStmt, exprVisitor(ctx.cond), stepStmt, visit(ctx.stmts))
       optDecl match {
         case None       => forAST
         case Some(decl) => ControlBlock(DeclarationStmt(decl) :: forAST :: Nil)
       }
     }
 
-    override def visitDoStmt(ctx: DoStmtContext) = ControlDo(ExprVisitor(ctx.expr), visit(ctx.stmts))
+    override def visitDoStmt(ctx: DoStmtContext) = ControlDo(exprVisitor(ctx.expr), visit(ctx.stmts))
 
     override def visitFenceStmt(ctx: FenceStmtContext) = FenceStmt
     override def visitBreakStmt(ctx: BreakStmtContext) = BreakStmt
@@ -348,10 +362,10 @@ class FsmBuilder(typedefs: Map[String, AlogicType]) {
 
     override def visitAssignInc(ctx: AssignIncContext) = Plusplus(LValueVisitor(ctx.lvalue))
     override def visitAssignDec(ctx: AssignDecContext) = Minusminus(LValueVisitor(ctx.lvalue))
-    override def visitAssign(ctx: AssignContext) = Assign(LValueVisitor(ctx.lvalue), ExprVisitor(ctx.expr()))
-    override def visitAssignUpdate(ctx: AssignUpdateContext) = Update(LValueVisitor(ctx.lvalue), ctx.ASSIGNOP, ExprVisitor(ctx.expr()))
+    override def visitAssign(ctx: AssignContext) = Assign(LValueVisitor(ctx.lvalue), exprVisitor(ctx.expr()))
+    override def visitAssignUpdate(ctx: AssignUpdateContext) = Update(LValueVisitor(ctx.lvalue), ctx.ASSIGNOP, exprVisitor(ctx.expr()))
 
-    override def visitExprStmt(ctx: ExprStmtContext) = ExprVisitor(ctx.expr) match {
+    override def visitExprStmt(ctx: ExprStmtContext) = exprVisitor(ctx.expr) match {
       case CallExpr(DottedName(target :: xs), args) => {
         if (!args.isEmpty) {
           Message.fatal(ctx, "Function calls in statement position take no arguments")
@@ -369,8 +383,8 @@ class FsmBuilder(typedefs: Map[String, AlogicType]) {
     override def visitBoolType(ctx: BoolTypeContext) = IntType(false, 1)
     override def visitIntType(ctx: IntTypeContext) = IntType(true, ctx.INTTYPE.text.tail.toInt)
     override def visitUintType(ctx: UintTypeContext) = IntType(false, ctx.UINTTYPE.text.tail.toInt)
-    override def visitIntVType(ctx: IntVTypeContext) = IntVType(true, ExprVisitor(ctx.commaexpr))
-    override def visitUintVType(ctx: UintVTypeContext) = IntVType(false, ExprVisitor(ctx.commaexpr))
+    override def visitIntVType(ctx: IntVTypeContext) = IntVType(true, exprVisitor(ctx.commaexpr))
+    override def visitUintVType(ctx: UintVTypeContext) = IntVType(false, exprVisitor(ctx.commaexpr))
     override def visitIdentifierType(ctx: IdentifierTypeContext) = {
       val s = ctx.IDENTIFIER.text
       typedefs.getOrElse(s, {
@@ -384,60 +398,18 @@ class FsmBuilder(typedefs: Map[String, AlogicType]) {
   def apply(parseTree: TaskFSMContext): FsmTask = {
     // Extract names from declarations and build scopes
     scope = new VScope(parseTree)
+    exprVisitor = new ExprVisitor(scope)
     // Then build abstract syntax tree and remap identifiers
     FsmVisitor(parseTree)
   }
 }
 
-// Builds an AST for an expression that can be constructed without name references
-object ConstExprVisitor extends VBaseVisitor[Expr] {
-  // If applied to a commaexpr node, return a list of the constructed expressions
-  def apply(ctx: CommaexprContext): List[Expr] = visit(ctx.expr)
-
-  override def visitExprBracket(ctx: ExprBracketContext) = Bracket(visit(ctx.expr))
-  override def visitExprUnary(ctx: ExprUnaryContext) = UnaryOp(ctx.op, visit(ctx.expr))
-  override def visitExprMulDiv(ctx: ExprMulDivContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
-  override def visitExprAddSub(ctx: ExprAddSubContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
-  override def visitExprShift(ctx: ExprShiftContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
-  override def visitExprCompare(ctx: ExprCompareContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
-  override def visitExprEqual(ctx: ExprEqualContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
-  override def visitExprBAnd(ctx: ExprBAndContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
-  override def visitExprBXor(ctx: ExprBXorContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
-  override def visitExprBOr(ctx: ExprBOrContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
-  override def visitExprAnd(ctx: ExprAndContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
-  override def visitExprOr(ctx: ExprOrContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
-  override def visitExprTernary(ctx: ExprTernaryContext) = TernaryOp(visit(ctx.expr(0)), visit(ctx.expr(1)), visit(ctx.expr(2)))
-  override def visitExprRep(ctx: ExprRepContext) = BitRep(visit(ctx.expr(0)), visit(ctx.expr(1)))
-  override def visitExprCat(ctx: ExprCatContext) = BitCat(ConstExprVisitor(ctx.commaexpr))
-  override def visitExprTrue(ctx: ExprTrueContext) = Num("1'b1")
-  override def visitExprFalse(ctx: ExprFalseContext) = Num("1'b0")
-  override def visitExprTrickNum(ctx: ExprTrickNumContext) = Num(ctx.TICKNUM)
-  override def visitExprConstTickNum(ctx: ExprConstTickNumContext) = Num(ctx.CONSTANT + ctx.TICKNUM)
-  override def visitExprConst(ctx: ExprConstContext) = Num(ctx.CONSTANT)
-  override def visitExprLiteral(ctx: ExprLiteralContext) = Literal(ctx.LITERAL)
-
-  override def visitExprVarRef(ctx: ExprVarRefContext) = {
-    Message.error(ctx, "Non-constant expression (variable reference)")
-    Num("1'b0")
-  }
-  override def visitExprSlice(ctx: ExprSliceContext) = {
-    Message.error(ctx, "Non-constant expression (variable slice)")
-    Num("1'b0")
-  }
-  override def visitExprDollar(ctx: ExprDollarContext) = {
-    // TODO: handle some of these like clog2 ???
-    Message.error(ctx, "Non-constant expression (dollar call)")
-    Num("1'b0")
-  }
-  override def visitExprCall(ctx: ExprCallContext) = {
-    Message.error(ctx, "Non-constant expression (functoin call)")
-    Num("1'b0")
-  }
-}
-
 object AstBuilder {
 
-  def apply(parseTree: RuleNode): List[Task] = {
+  def apply(tree: ParserRuleContext): List[Task] = {
+    val scope = new VScope(tree)
+    val exprVisitor = new ExprVisitor(scope)
+
     object StartVisitor extends VBaseVisitor[List[Task]] {
       override def defaultResult = Message.ice("Should be called with Start node")
       override def visitStart(ctx: StartContext) = EntityVisitor(ctx.entities) collect {
@@ -454,8 +426,8 @@ object AstBuilder {
         override def visitBoolType(ctx: BoolTypeContext) = IntType(false, 1)
         override def visitIntType(ctx: IntTypeContext) = IntType(true, ctx.INTTYPE.text.tail.toInt)
         override def visitUintType(ctx: UintTypeContext) = IntType(false, ctx.UINTTYPE.text.tail.toInt)
-        override def visitIntVType(ctx: IntVTypeContext) = IntVType(true, ConstExprVisitor(ctx.commaexpr))
-        override def visitUintVType(ctx: UintVTypeContext) = IntVType(false, ConstExprVisitor(ctx.commaexpr))
+        override def visitIntVType(ctx: IntVTypeContext) = IntVType(true, exprVisitor(ctx.commaexpr))
+        override def visitUintVType(ctx: UintVTypeContext) = IntVType(false, exprVisitor(ctx.commaexpr))
         override def visitIdentifierType(ctx: IdentifierTypeContext) = {
           val s = ctx.IDENTIFIER.text
           typedefs.getOrElse(s, {
@@ -489,6 +461,6 @@ object AstBuilder {
       override def visitTaskFSM(ctx: TaskFSMContext) = Some(new FsmBuilder(Map() ++ typedefs)(ctx))
     }
 
-    StartVisitor(parseTree)
+    StartVisitor(tree)
   }
 }
