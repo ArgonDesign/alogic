@@ -8,15 +8,19 @@ start : (entities+=entity)* EOF ;
 
 entity
   : typedef
+  | struct
   | task
   | network
   ;
 
 typedef
-  : 'typedef' known_type IDENTIFIER ';'   # TypedefKnownType
-  | 'typedef' 'struct' '{'
+  : 'typedef' known_type IDENTIFIER ';'
+  ;
+
+struct
+  :  'typedef' 'struct' '{'
       (fields+=field)*
-    '}' IDENTIFIER ';'                    # TypedefStruct
+    '}' IDENTIFIER ';'
   ;
 
 decl_noinit

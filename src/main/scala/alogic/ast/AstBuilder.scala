@@ -446,7 +446,6 @@ object AstBuilder {
     }
 
     object EntityVisitor extends VBaseVisitor[Option[Task]] {
-
       private[this] val typedefs = mutable.Map[String, AlogicType]("state" -> State)
 
       override def defaultResult = None
@@ -466,7 +465,7 @@ object AstBuilder {
         }
       }
 
-      override def visitTypedefStruct(ctx: TypedefStructContext) = {
+      override def visitStruct(ctx: StructContext) = {
         val s = ctx.IDENTIFIER.text
         if (typedefs contains s) {
           Message.error(ctx, s"Repeated typedef '$s'")
@@ -477,7 +476,7 @@ object AstBuilder {
         None
       }
 
-      override def visitTypedefKnownType(ctx: TypedefKnownTypeContext) = {
+      override def visitTypedef(ctx: TypedefContext) = {
         val s = ctx.IDENTIFIER.text
         if (typedefs contains s) {
           Message.error(ctx, s"Repeated typedef '$s'")
