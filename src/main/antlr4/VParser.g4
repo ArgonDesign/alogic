@@ -12,8 +12,12 @@ entity
   | network
   ;
 
-typedef : 'typedef' known_type IDENTIFIER ';' ;
-
+typedef
+  : 'typedef' known_type IDENTIFIER ';'   # TypedefKnownType
+  | 'typedef' 'struct' '{'
+      (fields+=field)*
+    '}' IDENTIFIER ';'                    # TypedefStruct
+  ;
 
 decl_noinit
   : known_type var_ref            #DeclNoInit
@@ -65,7 +69,7 @@ task
 network
   : 'network' IDENTIFIER '{'
       (decls+=network_decl)*
-       (contents+=network_content)*
+      (contents+=network_content)*
     '}';
 
 network_content
@@ -84,9 +88,6 @@ known_type
   | INTTYPE                   # IntType
   | UINTTYPE                  # UintType
   | IDENTIFIER                # IdentifierType
-  | 'struct' '{'
-      (fields+=field)*
-    '}'                       # StructType
   | 'int'  '(' commaexpr ')'  # IntVType
   | 'uint' '(' commaexpr ')'  # UintVType
   ;

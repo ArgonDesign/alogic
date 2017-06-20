@@ -56,12 +56,23 @@ class AstBuilder {
       override def visitVerilogFunction(ctx: VerilogFunctionContext) = VerilogFunction(ctx.VERILOGBODY.text.drop(1).dropRight(1))
     }
 
-    override def visitTypedef(ctx: TypedefContext) = {
+    override def visitTypedefStruct(ctx: TypedefStructContext) = {
       val s = ctx.IDENTIFIER.text
       if (typedefs contains s) {
         Message.error(ctx, s"Repeated typedef '$s'")
       } else {
-        typedefs(s) = TypeVisitor(ctx.known_type())
+        val pairs = ctx.fields.toList map { c => c.IDENTIFIER.text -> TypeVisitor(c.known_type) }
+        typedefs(s) = Struct(ListMap(pairs: _*))
+      }
+      Right(())
+    }
+
+    override def visitTypedefKnownType(ctx: TypedefKnownTypeContext) = {
+      val s = ctx.IDENTIFIER.text
+      if (typedefs contains s) {
+        Message.error(ctx, s"Repeated typedef '$s'")
+      } else {
+        typedefs(s) = TypeVisitor(ctx.known_type)
       }
       Right(())
     }
@@ -417,10 +428,6 @@ class AstBuilder {
     override def visitBoolType(ctx: BoolTypeContext) = IntType(false, 1)
     override def visitIntType(ctx: IntTypeContext) = IntType(true, ctx.INTTYPE.text.tail.toInt)
     override def visitUintType(ctx: UintTypeContext) = IntType(false, ctx.UINTTYPE.text.tail.toInt)
-    override def visitStructType(ctx: StructTypeContext) = {
-      val pairs = ctx.fields.toList map { c => c.IDENTIFIER.text -> TypeVisitor(c.known_type) }
-      Struct(ListMap(pairs: _*))
-    }
     override def visitIntVType(ctx: IntVTypeContext) = IntVType(true, ExprVisitor(ctx.commaexpr))
     override def visitUintVType(ctx: UintVTypeContext) = IntVType(false, ExprVisitor(ctx.commaexpr))
     override def visitIdentifierType(ctx: IdentifierTypeContext) = {
