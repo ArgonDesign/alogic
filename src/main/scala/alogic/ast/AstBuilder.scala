@@ -432,7 +432,7 @@ class AstBuilder {
   }
 
   // Build the abstract syntax tree from a parse tree
-  def apply(parseTree: RuleNode): List[AlogicTask] = {
+  def apply(parseTree: RuleNode): List[Task] = {
     // Extract names from declarations and build scopes
     scope = new VScope(parseTree)
     // Then build abstract syntax tree and remap identifiers
