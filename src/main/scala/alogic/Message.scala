@@ -50,6 +50,13 @@ object Message {
     sys exit 1
   }
 
+  // Internal compiler error indicates a programming error in the compiler
+  // please file a bug report
+  def ice(msg: String*): Nothing = {
+    printit("INTERNAL COMPILER ERROR: ", msg ++ Seq("Please file a bug report"))
+    sys exit 1
+  }
+
   //////////////////////////////////////////////////////////////////////////////
   // Versions that take a source location
   //////////////////////////////////////////////////////////////////////////////
@@ -72,6 +79,11 @@ object Message {
     sys exit 1
   }
 
+  def ice(loc: Loc, msg: String*): Nothing = {
+    printit(s"$loc: INTERNAL COMPILER ERROR: ", msg ++ Seq("Please file a bug report"))
+    sys exit 1
+  }
+
   //////////////////////////////////////////////////////////////////////////////
   // Versions that take an Antlr4 token/parse tree node for location info
   //////////////////////////////////////////////////////////////////////////////
@@ -82,4 +94,6 @@ object Message {
   def error(ctx: ParserRuleContext, msg: String*): Unit = error(ctx.loc, msg: _*)
 
   def fatal(ctx: ParserRuleContext, msg: String*): Nothing = fatal(ctx.loc, msg: _*)
+
+  def ice(ctx: ParserRuleContext, msg: String*): Nothing = ice(ctx.loc, msg: _*)
 }
