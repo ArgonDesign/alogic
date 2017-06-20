@@ -4,12 +4,19 @@ options {
   tokenVocab = VLexer;
 }
 
-start : (entities+=entity)* EOF ;
+start
+  : typedefinition*
+    entity
+    EOF
+  ;
 
-entity
+typedefinition
   : typedef
   | struct
-  | task
+  ;
+
+entity
+  : task
   | network
   ;
 

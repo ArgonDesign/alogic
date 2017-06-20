@@ -409,19 +409,11 @@ object AstBuilder {
     val scope = new VScope(tree)
     val exprVisitor = new ExprVisitor(scope)
 
-    object StartVisitor extends VBaseVisitor[List[Task]] {
-      override def defaultResult = Message.ice("Should be called with Start node")
-      override def visitStart(ctx: StartContext) = EntityVisitor(ctx.entities) collect {
-        case Some(task: Task) => task
-      }
-    }
+    val typedefs = mutable.Map[String, AlogicType]("state" -> State)
 
-    object EntityVisitor extends VBaseVisitor[Option[Task]] {
-      private[this] val typedefs = mutable.Map[String, AlogicType]("state" -> State)
+    object TypeDefinitionVisitor extends VBaseVisitor[Unit] {
 
-      override def defaultResult = None
-
-      object TypedefVisitor extends VBaseVisitor[AlogicType] {
+      object KnownTypeVisitor extends VBaseVisitor[AlogicType] {
         override def visitBoolType(ctx: BoolTypeContext) = IntType(false, 1)
         override def visitIntType(ctx: IntTypeContext) = IntType(true, ctx.INTTYPE.text.tail.toInt)
         override def visitUintType(ctx: UintTypeContext) = IntType(false, ctx.UINTTYPE.text.tail.toInt)
@@ -439,25 +431,32 @@ object AstBuilder {
       override def visitStruct(ctx: StructContext) = {
         val s = ctx.IDENTIFIER.text
         if (typedefs contains s) {
-          Message.error(ctx, s"Repeated typedef '$s'")
-        } else {
-          val pairs = ctx.fields.toList map { c => c.IDENTIFIER.text -> TypedefVisitor(c.known_type) }
-          typedefs(s) = Struct(ListMap(pairs: _*))
+          Message.error(ctx, s"Repeated typedef 'struct $s'")
         }
-        None
+        val pairs = ctx.fields.toList map { c => c.IDENTIFIER.text -> KnownTypeVisitor(c.known_type) }
+        typedefs(s) = Struct(ListMap(pairs: _*))
       }
 
       override def visitTypedef(ctx: TypedefContext) = {
         val s = ctx.IDENTIFIER.text
         if (typedefs contains s) {
           Message.error(ctx, s"Repeated typedef '$s'")
-        } else {
-          typedefs(s) = TypedefVisitor(ctx.known_type)
         }
-        None
+        typedefs(s) = KnownTypeVisitor(ctx.known_type)
       }
+    }
 
-      override def visitTaskFSM(ctx: TaskFSMContext) = Some(FsmBuilder(Map() ++ typedefs, ctx))
+    object EntityVisitor extends VBaseVisitor[List[Task]] {
+      override def defaultResult = Nil
+      override def visitTaskFSM(ctx: TaskFSMContext) = List(FsmBuilder(Map() ++ typedefs, ctx))
+    }
+
+    object StartVisitor extends VBaseVisitor[List[Task]] {
+      override def defaultResult = Message.ice("Should be called with Start node")
+      override def visitStart(ctx: StartContext) = {
+        TypeDefinitionVisitor(ctx.typedefinition)
+        EntityVisitor(ctx.entity)
+      }
     }
 
     StartVisitor(tree)
