@@ -12,6 +12,7 @@ import alogic.Message
 import alogic.VBaseVisitor
 import alogic.VScope
 import alogic.ast.AstOps._
+import org.antlr.v4.runtime.ParserRuleContext
 
 // The aim of the AstBuilder stage is:
 //   Build an abstract syntax tree
@@ -432,7 +433,7 @@ class AstBuilder {
   }
 
   // Build the abstract syntax tree from a parse tree
-  def apply(parseTree: RuleNode): List[Task] = {
+  def apply(parseTree: ParserRuleContext): List[Task] = {
     // Extract names from declarations and build scopes
     scope = new VScope(parseTree)
     // Then build abstract syntax tree and remap identifiers

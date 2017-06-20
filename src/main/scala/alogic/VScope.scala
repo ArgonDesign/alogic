@@ -18,7 +18,7 @@ import alogic.antlr.VParser._
 // Variable instances with a multiplicity greater than 1 are renamed as
 // <name> -> <name>_L<lineno> where <lineno> is the line number where the
 // variable is declared.
-class VScope(root: RuleNode) {
+class VScope(root: ParserRuleContext) {
 
   // A named pair of declared name and the location of the declaration
   private[this] case class Item(name: String, loc: Loc)
@@ -38,9 +38,12 @@ class VScope(root: RuleNode) {
 
   // Create new scope at node ctx
   private[this] def create(ctx: RuleContext) = {
-    if (ctx.parent == null) {
-      scopes(ctx) = mutable.Map[String, Option[Item]]().withDefaultValue(None)
-    } else {
+    if (ctx != root) {
+      if (scopes contains ctx) {
+        // If the mapping already exists, then it must be a transitive scope of
+        // the parent created by the getOrElseUpdate of the find method above
+        assert(scopes(ctx) == scopes(ctx.parent))
+      }
       scopes(ctx) = mutable.Map[String, Option[Item]]().withDefault(find(ctx.parent))
     }
   }
@@ -100,11 +103,6 @@ class VScope(root: RuleNode) {
     // Create root scope and add predefined identifiers
     override def visitStart(ctx: StartContext) = {
       create(ctx)
-
-      for (id <- List("zxt", "sxt", "go")) {
-        insert(ctx, id)
-      }
-
       visitChildren(ctx)
     }
 
@@ -173,6 +171,14 @@ class VScope(root: RuleNode) {
       create(ctx)
       visitChildren(ctx)
     }
+  }
+
+  // Create root scope
+  scopes(root) = mutable.Map[String, Option[Item]]().withDefaultValue(None)
+
+  // Add all predefined names
+  for (id <- List("zxt", "sxt", "go")) {
+    insert(root, id)
   }
 
   // Built the scopes
