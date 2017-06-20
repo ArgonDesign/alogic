@@ -14,10 +14,6 @@ entity
 
 typedef : 'typedef' known_type IDENTIFIER ';' ;
 
-tasktype
-  : 'fsm'       #FsmType
-  | 'verilog'   #VerilogType
-  ;
 
 decl_noinit
   : known_type var_ref            #DeclNoInit
@@ -56,10 +52,15 @@ task_decl
   ;
 
 task
-  : tasktype IDENTIFIER '{'
+  : 'fsm' IDENTIFIER '{'
       (decls+=task_decl)*
       (contents+=task_content)*
-    '}';
+    '}'                                 #TaskFSM
+  | 'verilog' IDENTIFIER '{'
+      (decls+=task_decl)*
+      (contents+=verilog_function)*
+    '}'                                 #TaskVerilog
+  ;
 
 network
   : 'network' IDENTIFIER '{'

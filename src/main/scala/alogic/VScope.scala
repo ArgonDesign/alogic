@@ -138,8 +138,14 @@ class VScope(root: RuleNode) {
       visitChildren(ctx)
     }
 
-    // Create new scope for task bodies
-    override def visitTask(ctx: TaskContext) = {
+    // Create new scope for fsm bodies
+    override def visitTaskFSM(ctx: TaskFSMContext) = {
+      create(ctx)
+      visitChildren(ctx)
+    }
+
+    // Create new scope for verilog bodies
+    override def visitTaskVerilog(ctx: TaskVerilogContext) = {
       create(ctx)
       visitChildren(ctx)
     }
