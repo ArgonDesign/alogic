@@ -100,12 +100,6 @@ class VScope(root: ParserRuleContext) {
       }
     }
 
-    // Create root scope and add predefined identifiers
-    override def visitStart(ctx: StartContext) = {
-      create(ctx)
-      visitChildren(ctx)
-    }
-
     // Create new scope for blocks
     override def visitBlockStmt(ctx: BlockStmtContext) = {
       create(ctx)
