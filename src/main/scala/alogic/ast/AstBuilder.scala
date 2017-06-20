@@ -403,15 +403,23 @@ object FsmBuilder {
   }
 }
 
-object AstBuilder {
-
-  def apply(tree: ParserRuleContext): List[Task] = {
+// Extract all type definitions from the parse tree
+object TypeDefinitions {
+  def apply(tree: ParserRuleContext): Map[String, AlogicType] = {
     val scope = new VScope(tree)
+
     val exprVisitor = new ExprVisitor(scope)
 
     val typedefs = mutable.Map[String, AlogicType]("state" -> State)
 
-    object TypeDefinitionVisitor extends VBaseVisitor[Unit] {
+    object TypeDefinitionExtractor extends VBaseVisitor[Unit] {
+      override def defaultResult = ??? //Message.ice("Should be called with Start node")
+
+      override def visitStart(ctx: StartContext) = visit(ctx.typedefinition)
+      override def visitTypedefinition(ctx: TypedefinitionContext) = {
+        visit(Option(ctx.typedef))
+        visit(Option(ctx.struct))
+      }
 
       object KnownTypeVisitor extends VBaseVisitor[AlogicType] {
         override def visitBoolType(ctx: BoolTypeContext) = IntType(false, 1)
@@ -446,6 +454,19 @@ object AstBuilder {
       }
     }
 
+    TypeDefinitionExtractor(tree)
+
+    Map() ++ typedefs // Convert to immutable map
+  }
+}
+
+object AstBuilder {
+  def apply(tree: ParserRuleContext): List[Task] = {
+    val scope = new VScope(tree)
+    val exprVisitor = new ExprVisitor(scope)
+
+    val typedefs = TypeDefinitions(tree)
+
     object EntityVisitor extends VBaseVisitor[List[Task]] {
       override def defaultResult = Nil
       override def visitTaskFSM(ctx: TaskFSMContext) = List(FsmBuilder(Map() ++ typedefs, ctx))
@@ -453,10 +474,7 @@ object AstBuilder {
 
     object StartVisitor extends VBaseVisitor[List[Task]] {
       override def defaultResult = Message.ice("Should be called with Start node")
-      override def visitStart(ctx: StartContext) = {
-        TypeDefinitionVisitor(ctx.typedefinition)
-        EntityVisitor(ctx.entity)
-      }
+      override def visitStart(ctx: StartContext) = EntityVisitor(ctx.entity)
     }
 
     StartVisitor(tree)
