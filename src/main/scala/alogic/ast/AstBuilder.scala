@@ -27,22 +27,11 @@ import org.antlr.v4.runtime.ParserRuleContext
 // The object can be called multiple times to allow us to only build a common header file once.
 //
 
-class AstBuilder {
+class FsmBuilder(typedefs: Map[String, AlogicType]) {
 
   private[this] var scope: VScope = null
-  private[this] val typedefs = mutable.Map[String, AlogicType]()
 
-  // Keep track of containing variable scope for each parse tree node
-
-  typedefs("state") = State
-
-  object ProgVisitor extends VBaseVisitor[List[Task]] {
-    override def visitStart(ctx: StartContext) = EntityVisitor(ctx.entities) collect {
-      case Left(t: Task) => t
-    }
-  }
-
-  object EntityVisitor extends VBaseVisitor[Either[Node, Unit]] {
+  object FsmVisitor extends VBaseVisitor[FsmTask] {
 
     object TaskContentVisitor extends VBaseVisitor[Node] {
       override def visitFunction(ctx: FunctionContext) = Function(ctx.IDENTIFIER, ControlBlock(StatementVisitor(ctx.stmts)))
@@ -56,27 +45,6 @@ class AstBuilder {
       override def visitVerilogFunction(ctx: VerilogFunctionContext) = VerilogFunction(ctx.VERILOGBODY.text.drop(1).dropRight(1))
     }
 
-    override def visitTypedefStruct(ctx: TypedefStructContext) = {
-      val s = ctx.IDENTIFIER.text
-      if (typedefs contains s) {
-        Message.error(ctx, s"Repeated typedef '$s'")
-      } else {
-        val pairs = ctx.fields.toList map { c => c.IDENTIFIER.text -> TypeVisitor(c.known_type) }
-        typedefs(s) = Struct(ListMap(pairs: _*))
-      }
-      Right(())
-    }
-
-    override def visitTypedefKnownType(ctx: TypedefKnownTypeContext) = {
-      val s = ctx.IDENTIFIER.text
-      if (typedefs contains s) {
-        Message.error(ctx, s"Repeated typedef '$s'")
-      } else {
-        typedefs(s) = TypeVisitor(ctx.known_type)
-      }
-      Right(())
-    }
-
     override def visitTaskFSM(ctx: TaskFSMContext) = {
       val contents = TaskContentVisitor(ctx.contents)
       val fns = contents collect { case x: Function => x }
@@ -84,34 +52,7 @@ class AstBuilder {
       val vfns = contents collect { case x: VerilogFunction => x }
 
       // TODO: check there is only 1 fence function and olny in fsm
-      Left(FsmTask(ctx.IDENTIFIER, DeclVisitor(ctx.decls), fns, fencefns.headOption, vfns))
-    }
-
-    override def visitTaskVerilog(ctx: TaskVerilogContext) = {
-      val vfns = TaskContentVisitor(ctx.contents) collect { case x: VerilogFunction => x }
-      Left(VerilogTask(ctx.IDENTIFIER, DeclVisitor(ctx.decls), vfns))
-    }
-
-    override def visitNetwork(ctx: NetworkContext) = {
-      val contents = visit(ctx.contents) collect { case Left(x) => x; }
-      Left(NetworkTask(ctx.IDENTIFIER, DeclVisitor(ctx.decls), contents))
-    }
-
-    override def visitConnect(ctx: ConnectContext) = {
-      val Left(name) = visit(ctx.dotted_name())
-      Left(Connect(name, ExprVisitor(ctx.commaexpr))) // TODO check that these names exist?
-    }
-
-    object ParamArgsVisitor extends VBaseVisitor[List[Assign]] {
-      object ParamAssignVisitor extends VBaseVisitor[Assign] {
-        override def visitParamAssign(ctx: ParamAssignContext) = Assign(ExprVisitor(ctx.expr(0)), ExprVisitor(ctx.expr(1)))
-      }
-
-      override def visitParam_args(ctx: Param_argsContext) = ParamAssignVisitor(ctx.es)
-    }
-
-    override def visitInstantiate(ctx: InstantiateContext) = {
-      Left(Instantiate(ctx.IDENTIFIER(0), ctx.IDENTIFIER(1), ParamArgsVisitor(ctx.param_args())))
+      FsmTask(ctx.IDENTIFIER, DeclVisitor(ctx.decls), fns, fencefns.headOption, vfns)
     }
   }
 
@@ -440,10 +381,115 @@ class AstBuilder {
   }
 
   // Build the abstract syntax tree from a parse tree
-  def apply(parseTree: ParserRuleContext): List[Task] = {
+  def apply(parseTree: TaskFSMContext): FsmTask = {
     // Extract names from declarations and build scopes
     scope = new VScope(parseTree)
     // Then build abstract syntax tree and remap identifiers
-    ProgVisitor(parseTree)
+    FsmVisitor(parseTree)
+  }
+}
+
+// Builds an AST for an expression that can be constructed without name references
+object ConstExprVisitor extends VBaseVisitor[Expr] {
+  // If applied to a commaexpr node, return a list of the constructed expressions
+  def apply(ctx: CommaexprContext): List[Expr] = visit(ctx.expr)
+
+  override def visitExprBracket(ctx: ExprBracketContext) = Bracket(visit(ctx.expr))
+  override def visitExprUnary(ctx: ExprUnaryContext) = UnaryOp(ctx.op, visit(ctx.expr))
+  override def visitExprMulDiv(ctx: ExprMulDivContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
+  override def visitExprAddSub(ctx: ExprAddSubContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
+  override def visitExprShift(ctx: ExprShiftContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
+  override def visitExprCompare(ctx: ExprCompareContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
+  override def visitExprEqual(ctx: ExprEqualContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
+  override def visitExprBAnd(ctx: ExprBAndContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
+  override def visitExprBXor(ctx: ExprBXorContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
+  override def visitExprBOr(ctx: ExprBOrContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
+  override def visitExprAnd(ctx: ExprAndContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
+  override def visitExprOr(ctx: ExprOrContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
+  override def visitExprTernary(ctx: ExprTernaryContext) = TernaryOp(visit(ctx.expr(0)), visit(ctx.expr(1)), visit(ctx.expr(2)))
+  override def visitExprRep(ctx: ExprRepContext) = BitRep(visit(ctx.expr(0)), visit(ctx.expr(1)))
+  override def visitExprCat(ctx: ExprCatContext) = BitCat(ConstExprVisitor(ctx.commaexpr))
+  override def visitExprTrue(ctx: ExprTrueContext) = Num("1'b1")
+  override def visitExprFalse(ctx: ExprFalseContext) = Num("1'b0")
+  override def visitExprTrickNum(ctx: ExprTrickNumContext) = Num(ctx.TICKNUM)
+  override def visitExprConstTickNum(ctx: ExprConstTickNumContext) = Num(ctx.CONSTANT + ctx.TICKNUM)
+  override def visitExprConst(ctx: ExprConstContext) = Num(ctx.CONSTANT)
+  override def visitExprLiteral(ctx: ExprLiteralContext) = Literal(ctx.LITERAL)
+
+  override def visitExprVarRef(ctx: ExprVarRefContext) = {
+    Message.error(ctx, "Non-constant expression (variable reference)")
+    Num("1'b0")
+  }
+  override def visitExprSlice(ctx: ExprSliceContext) = {
+    Message.error(ctx, "Non-constant expression (variable slice)")
+    Num("1'b0")
+  }
+  override def visitExprDollar(ctx: ExprDollarContext) = {
+    // TODO: handle some of these like clog2 ???
+    Message.error(ctx, "Non-constant expression (dollar call)")
+    Num("1'b0")
+  }
+  override def visitExprCall(ctx: ExprCallContext) = {
+    Message.error(ctx, "Non-constant expression (functoin call)")
+    Num("1'b0")
+  }
+}
+
+object AstBuilder {
+
+  def apply(parseTree: RuleNode): List[Task] = {
+    object StartVisitor extends VBaseVisitor[List[Task]] {
+      override def defaultResult = Message.ice("Should be called with Start node")
+      override def visitStart(ctx: StartContext) = EntityVisitor(ctx.entities) collect {
+        case Some(task: Task) => task
+      }
+    }
+
+    object EntityVisitor extends VBaseVisitor[Option[Task]] {
+
+      private[this] val typedefs = mutable.Map[String, AlogicType]("state" -> State)
+
+      override def defaultResult = None
+
+      object TypedefVisitor extends VBaseVisitor[AlogicType] {
+        override def visitBoolType(ctx: BoolTypeContext) = IntType(false, 1)
+        override def visitIntType(ctx: IntTypeContext) = IntType(true, ctx.INTTYPE.text.tail.toInt)
+        override def visitUintType(ctx: UintTypeContext) = IntType(false, ctx.UINTTYPE.text.tail.toInt)
+        override def visitIntVType(ctx: IntVTypeContext) = IntVType(true, ConstExprVisitor(ctx.commaexpr))
+        override def visitUintVType(ctx: UintVTypeContext) = IntVType(false, ConstExprVisitor(ctx.commaexpr))
+        override def visitIdentifierType(ctx: IdentifierTypeContext) = {
+          val s = ctx.IDENTIFIER.text
+          typedefs.getOrElse(s, {
+            Message.error(ctx, s"Unknown type '$s'")
+            IntType(false, 1)
+          })
+        }
+      }
+
+      override def visitTypedefStruct(ctx: TypedefStructContext) = {
+        val s = ctx.IDENTIFIER.text
+        if (typedefs contains s) {
+          Message.error(ctx, s"Repeated typedef '$s'")
+        } else {
+          val pairs = ctx.fields.toList map { c => c.IDENTIFIER.text -> TypedefVisitor(c.known_type) }
+          typedefs(s) = Struct(ListMap(pairs: _*))
+        }
+        None
+      }
+
+      override def visitTypedefKnownType(ctx: TypedefKnownTypeContext) = {
+        val s = ctx.IDENTIFIER.text
+        if (typedefs contains s) {
+          Message.error(ctx, s"Repeated typedef '$s'")
+        } else {
+          typedefs(s) = TypedefVisitor(ctx.known_type)
+        }
+        None
+      }
+
+      override def visitTaskFSM(ctx: TaskFSMContext) = Some(new FsmBuilder(Map() ++ typedefs)(ctx))
+    }
+
+    StartVisitor(parseTree)
   }
 }

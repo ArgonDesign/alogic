@@ -4,6 +4,7 @@ import org.antlr.v4.runtime.ANTLRInputStream
 import org.antlr.v4.runtime.CommonTokenStream
 
 import scalax.file.Path
+import alogic.ast.AstBuilder
 
 object AParser {
 
@@ -34,11 +35,8 @@ object AParser {
 
     // If Some, build the AST
     parseTree match {
-      case None => Nil
-      case Some(t) => {
-        val builder = new ast.AstBuilder()
-        builder(t)
-      }
+      case None    => Nil
+      case Some(t) => AstBuilder(t)
     }
   }
 
