@@ -13,6 +13,7 @@ import alogic.VScalarVisitor
 import alogic.VScope
 import alogic.ast.AstOps._
 import org.antlr.v4.runtime.ParserRuleContext
+import scala.collection.mutable.Stack
 
 // The aim of the AstBuilder stage is:
 //   Build an abstract syntax tree
@@ -117,13 +118,12 @@ class ExprVisitor(private[this] val scope: VScope) extends VScalarVisitor[Expr] 
   }
 }
 
-object FsmBuilder {
+object FsmTaskBuilder {
 
   // Build the abstract syntax tree from a parse tree
-  def apply(typedefs: Map[String, AlogicType], parseTree: TaskFSMContext): FsmTask = {
+  def apply(scope: VScope, typedefs: Map[String, AlogicType], parseTree: TaskFSMContext): FsmTask = {
 
     // Extract names from declarations and build scopes
-    val scope = new VScope(parseTree)
     val exprVisitor = new ExprVisitor(scope)
 
     object FsmVisitor extends VScalarVisitor[FsmTask] {
@@ -403,16 +403,15 @@ object FsmBuilder {
   }
 }
 
-// Extract all type definitions from the parse tree
-object TypeDefinitions {
-  def apply(tree: ParserRuleContext): Map[String, AlogicType] = {
+object AstBuilder {
+  def apply(tree: ParserRuleContext): List[Task] = {
     val scope = new VScope(tree)
 
     val exprVisitor = new ExprVisitor(scope)
 
     val typedefs = mutable.Map[String, AlogicType]("state" -> State)
 
-    object TypeDefinitionExtractor extends VScalarVisitor[Unit] {
+    object TypeDefinitionVisitor extends VScalarVisitor[Unit] {
       override def defaultResult = ??? //Message.ice("Should be called with Start node")
 
       override def visitStart(ctx: StartContext) = visit(ctx.typedefinition)
@@ -454,29 +453,21 @@ object TypeDefinitions {
       }
     }
 
-    TypeDefinitionExtractor(tree)
+    val tasks = Stack[Task]()
 
-    Map() ++ typedefs // Convert to immutable map
-  }
-}
+    object RootVisitor extends VScalarVisitor[Unit] {
+      override def defaultResult = ()
 
-object AstBuilder {
-  def apply(tree: ParserRuleContext): List[Task] = {
-    val scope = new VScope(tree)
-    val exprVisitor = new ExprVisitor(scope)
+      override def visitTypedefinition(ctx: TypedefinitionContext) = TypeDefinitionVisitor(ctx)
 
-    val typedefs = TypeDefinitions(tree)
+      override def visitTaskFSM(ctx: TaskFSMContext) = tasks push FsmTaskBuilder(scope, typedefs.toMap, ctx)
+      override def visitTaskVerilog(ctx: TaskVerilogContext) = Message.note("Verilog tasks not implemented yet") // TODO
 
-    object EntityVisitor extends VScalarVisitor[List[Task]] {
-      override def defaultResult = Nil
-      override def visitTaskFSM(ctx: TaskFSMContext) = List(FsmBuilder(Map() ++ typedefs, ctx))
+      override def visitNetwork(ctx: NetworkContext) = Message.note("Networks not implemented yet") // TODO
     }
 
-    object StartVisitor extends VScalarVisitor[List[Task]] {
-      override def defaultResult = Message.ice("Should be called with Start node")
-      override def visitStart(ctx: StartContext) = EntityVisitor(ctx.entity)
-    }
+    RootVisitor(tree)
 
-    StartVisitor(tree)
+    tasks.toList
   }
 }

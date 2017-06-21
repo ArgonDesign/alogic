@@ -9,8 +9,8 @@ import org.antlr.v4.runtime.tree.TerminalNode
 
 class VCollectVisitor[T](initialResult: T, combine: (T, T) => T) extends VBaseVisitor[T, T, T] {
 
-  override def defaultResult = Message.ice("unreachable a")
-  override def aggregateResult(a: T, b: T) = Message.ice("unreachable b")
+  override def defaultResult = Message.ice("unreachable")
+  override def aggregateResult(a: T, b: T) = Message.ice("unreachable")
 
   var result = initialResult
 
