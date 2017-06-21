@@ -54,7 +54,7 @@ object Message {
   // please file a bug report
   def ice(msg: String*): Nothing = {
     printit("INTERNAL COMPILER ERROR: ", msg ++ Seq("Please file a bug report"))
-    sys exit 1
+    throw new RuntimeException("INTERNAL COMPILER ERROR")
   }
 
   //////////////////////////////////////////////////////////////////////////////
