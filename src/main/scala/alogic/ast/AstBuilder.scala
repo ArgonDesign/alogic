@@ -14,6 +14,7 @@ import alogic.VScope
 import alogic.ast.AstOps._
 import org.antlr.v4.runtime.ParserRuleContext
 import scala.collection.mutable.Stack
+import alogic.VScalarVisitor
 
 // The aim of the AstBuilder stage is:
 //   Build an abstract syntax tree
@@ -213,13 +214,16 @@ class CommonContext(root: ParserRuleContext) {
     override def visitDeclInit(ctx: DeclInitContext) =
       VarDeclaration(KnownTypeVisitor(ctx.known_type()), VarRefVisitor(ctx.var_ref), Some(ExprVisitor(ctx.expr)))
   }
+
+  object VerilogFunctionVisitor extends VScalarVisitor[VerilogFunction] {
+    override def visitVerilogFunction(ctx: VerilogFunctionContext) = VerilogFunction(ctx.VERILOGBODY.text.drop(1).dropRight(1))
+  }
 }
 
-// Builder to handle 'fsm' definitions
+// Builder to handle 'fsm' task definitions
 class FsmTaskBuilder(cc: CommonContext) {
   import cc._
 
-  // Build the abstract syntax tree from a parse tree
   def apply(tree: TaskFSMContext): FsmTask = {
 
     object LValueVisitor extends VScalarVisitor[Expr] {
@@ -387,7 +391,7 @@ class FsmTaskBuilder(cc: CommonContext) {
       }
     }
 
-    object FsmVisitor extends VScalarVisitor[FsmTask] {
+    object FsmTaskVisitor extends VScalarVisitor[FsmTask] {
       object FsmContentVisitor extends VScalarVisitor[Node] {
         override def visitFunction(ctx: FunctionContext) = Function(ctx.IDENTIFIER, ControlBlock(StatementVisitor(ctx.stmts)))
         override def visitFenceFunction(ctx: FenceFunctionContext) = {
@@ -397,7 +401,7 @@ class FsmTaskBuilder(cc: CommonContext) {
           }
           FenceFunction(CombinatorialBlock(body))
         }
-        override def visitVerilogFunction(ctx: VerilogFunctionContext) = VerilogFunction(ctx.VERILOGBODY.text.drop(1).dropRight(1))
+        override def visitVerilogFunction(ctx: VerilogFunctionContext) = VerilogFunctionVisitor(ctx)
       }
 
       override def visitTaskFSM(ctx: TaskFSMContext) = {
@@ -416,7 +420,26 @@ class FsmTaskBuilder(cc: CommonContext) {
       }
     }
 
-    FsmVisitor(tree)
+    FsmTaskVisitor(tree)
+  }
+}
+
+// Builder to handle 'verilog' task definitions
+class VerilogTaskBuilder(cc: CommonContext) {
+  import cc._
+
+  def apply(tree: TaskVerilogContext): VerilogTask = {
+
+    object VerilogTaskVisitor extends VScalarVisitor[VerilogTask] {
+      override def visitTaskVerilog(ctx: TaskVerilogContext) = {
+        val vfns = ctx.contents.toList collect {
+          case c: VerilogFunctionContext => VerilogFunctionVisitor(c)
+        }
+        VerilogTask(ctx.IDENTIFIER.text, DeclVisitor(ctx.decls), vfns)
+      }
+    }
+
+    VerilogTaskVisitor(tree)
   }
 }
 
@@ -427,13 +450,15 @@ object AstBuilder {
 
     lazy val fsmTaskBuilder = new FsmTaskBuilder(cc)
 
+    lazy val verilogTaskBuilder = new VerilogTaskBuilder(cc)
+
     val tasks = Stack[Task]()
 
     object RootVisitor extends VScalarVisitor[Unit] {
       override def defaultResult = ()
 
       override def visitTaskFSM(ctx: TaskFSMContext) = tasks push fsmTaskBuilder(ctx)
-      override def visitTaskVerilog(ctx: TaskVerilogContext) = Message.note("Verilog tasks not implemented yet") // TODO
+      override def visitTaskVerilog(ctx: TaskVerilogContext) = tasks push verilogTaskBuilder(ctx)
 
       override def visitNetwork(ctx: NetworkContext) = Message.note("Networks not implemented yet") // TODO
     }
