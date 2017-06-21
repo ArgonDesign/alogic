@@ -6,7 +6,7 @@ import org.antlr.v4.runtime.tree.ParseTree
 
 import Antlr4Conversions._
 
-class VBaseVisitor[T] extends VParserBaseVisitor[T] {
+class VScalarVisitor[T] extends VParserBaseVisitor[T] {
   override def visit(tree: ParseTree): T = {
     if (null == tree) defaultResult else super.visit(tree)
   } ensuring (null != _)

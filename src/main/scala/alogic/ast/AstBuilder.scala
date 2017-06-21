@@ -9,7 +9,7 @@ import org.antlr.v4.runtime.tree.RuleNode
 
 import alogic.Antlr4Conversions._
 import alogic.Message
-import alogic.VBaseVisitor
+import alogic.VScalarVisitor
 import alogic.VScope
 import alogic.ast.AstOps._
 import org.antlr.v4.runtime.ParserRuleContext
@@ -27,11 +27,11 @@ import org.antlr.v4.runtime.ParserRuleContext
 // The object can be called multiple times to allow us to only build a common header file once.
 //
 
-class ExprVisitor(private[this] val scope: VScope) extends VBaseVisitor[Expr] { self =>
+class ExprVisitor(private[this] val scope: VScope) extends VScalarVisitor[Expr] { self =>
   // If applied to a commaexpr node, return a list of the constructed expressions
   def apply(ctx: CommaexprContext): List[Expr] = visit(ctx.expr)
 
-  object LookUpName extends VBaseVisitor[DottedName] {
+  object LookUpName extends VScalarVisitor[DottedName] {
     override def visitDotted_name(ctx: Dotted_nameContext) = {
       // Look up name in namespace
       val (head :: tail) = ctx.es.toList.map(_.text)
@@ -39,7 +39,7 @@ class ExprVisitor(private[this] val scope: VScope) extends VBaseVisitor[Expr] { 
     }
   }
 
-  object VarRefVisitor extends VBaseVisitor[VarRef] {
+  object VarRefVisitor extends VScalarVisitor[VarRef] {
     override def visitVarRef(ctx: VarRefContext) = LookUpName(ctx.dotted_name)
     override def visitVarRefIndex(ctx: VarRefIndexContext) = ArrayLookup(LookUpName(ctx.dotted_name), self(ctx.es))
   }
@@ -126,9 +126,9 @@ object FsmBuilder {
     val scope = new VScope(parseTree)
     val exprVisitor = new ExprVisitor(scope)
 
-    object FsmVisitor extends VBaseVisitor[FsmTask] {
+    object FsmVisitor extends VScalarVisitor[FsmTask] {
 
-      object TaskContentVisitor extends VBaseVisitor[Node] {
+      object TaskContentVisitor extends VScalarVisitor[Node] {
         override def visitFunction(ctx: FunctionContext) = Function(ctx.IDENTIFIER, ControlBlock(StatementVisitor(ctx.stmts)))
         override def visitFenceFunction(ctx: FenceFunctionContext) = {
           val body = StatementVisitor(ctx.stmts) collect {
@@ -151,10 +151,10 @@ object FsmBuilder {
       }
     }
 
-    object DeclVisitor extends VBaseVisitor[Declaration] {
+    object DeclVisitor extends VScalarVisitor[Declaration] {
       // Extract name from var_ref and look up in current scope
-      object LookUpDeclVarRef extends VBaseVisitor[VarRef] {
-        object LookUpDottedName extends VBaseVisitor[DottedName] {
+      object LookUpDeclVarRef extends VScalarVisitor[VarRef] {
+        object LookUpDottedName extends VScalarVisitor[DottedName] {
           override def visitDotted_name(ctx: Dotted_nameContext) = {
             val name = ctx.es.toList.map(_.text) mkString "."
             DottedName(List(scope(ctx, name)))
@@ -167,7 +167,7 @@ object FsmBuilder {
           LookUpDottedName(ctx)
       }
 
-      object SyncTypeVisitor extends VBaseVisitor[SyncType] {
+      object SyncTypeVisitor extends VScalarVisitor[SyncType] {
         override def visitSyncReadyBubbleType(ctx: SyncReadyBubbleTypeContext) = SyncReadyBubble
         override def visitWireSyncAcceptType(ctx: WireSyncAcceptTypeContext) = WireSyncAccept
         override def visitSyncReadyType(ctx: SyncReadyTypeContext) = SyncReady
@@ -203,7 +203,7 @@ object FsmBuilder {
 
     }
 
-    object LookUpName extends VBaseVisitor[DottedName] {
+    object LookUpName extends VScalarVisitor[DottedName] {
       override def visitDotted_name(ctx: Dotted_nameContext) = {
         // Look up name in namespace
         val (head :: tail) = ctx.es.toList.map(_.text)
@@ -211,14 +211,14 @@ object FsmBuilder {
       }
     }
 
-    object VarRefVisitor extends VBaseVisitor[VarRef] {
+    object VarRefVisitor extends VScalarVisitor[VarRef] {
       override def visitVarRef(ctx: VarRefContext) =
         LookUpName(ctx.dotted_name)
       override def visitVarRefIndex(ctx: VarRefIndexContext) =
         ArrayLookup(LookUpName(ctx.dotted_name), exprVisitor(ctx.es))
     }
 
-    object LValueVisitor extends VBaseVisitor[Expr] {
+    object LValueVisitor extends VScalarVisitor[Expr] {
       override def visitLValue(ctx: LValueContext) = VarRefVisitor(ctx.var_ref)
       override def visitLValueSlice(ctx: LValueSliceContext) =
         Slice(VarRefVisitor(ctx.var_ref), exprVisitor(ctx.expr(0)), ctx.op, exprVisitor(ctx.expr(1)))
@@ -226,7 +226,7 @@ object FsmBuilder {
         BitCat(visit(ctx.refs))
     }
 
-    object StatementVisitor extends VBaseVisitor[Stmt] {
+    object StatementVisitor extends VScalarVisitor[Stmt] {
       override def visitBlockStmt(ctx: BlockStmtContext) = {
         val stmts = visit(ctx.stmts)
         val ctrlStmts = stmts collect { case s: CtrlStmt => s }
@@ -283,12 +283,12 @@ object FsmBuilder {
 
       override def visitCaseStmt(ctx: CaseStmtContext) = {
 
-        object DefaultVisitor extends VBaseVisitor[Option[Stmt]] {
+        object DefaultVisitor extends VScalarVisitor[Option[Stmt]] {
           override val defaultResult = None
           override def visitDefaultCase(ctx: DefaultCaseContext) = Some(StatementVisitor(ctx.statement()))
         }
 
-        object CaseVisitor extends VBaseVisitor[Option[Node]] {
+        object CaseVisitor extends VScalarVisitor[Option[Node]] {
           override val defaultResult = None
           override def visitNormalCase(ctx: NormalCaseContext) = {
             val args = exprVisitor(ctx.commaexpr)
@@ -326,7 +326,7 @@ object FsmBuilder {
         }
       }
 
-      object ForInitVisitor extends VBaseVisitor[(Option[VarDeclaration], CombStmt)] {
+      object ForInitVisitor extends VScalarVisitor[(Option[VarDeclaration], CombStmt)] {
         override def visitForInitNoDecl(ctx: ForInitNoDeclContext) = {
           val stmt = StatementVisitor(ctx.assignment_statement) match {
             case s: CombStmt => s
@@ -383,7 +383,7 @@ object FsmBuilder {
       }
     }
 
-    object TypeVisitor extends VBaseVisitor[AlogicType] {
+    object TypeVisitor extends VScalarVisitor[AlogicType] {
       override def visitBoolType(ctx: BoolTypeContext) = IntType(false, 1)
       override def visitIntType(ctx: IntTypeContext) = IntType(true, ctx.INTTYPE.text.tail.toInt)
       override def visitUintType(ctx: UintTypeContext) = IntType(false, ctx.UINTTYPE.text.tail.toInt)
@@ -412,7 +412,7 @@ object TypeDefinitions {
 
     val typedefs = mutable.Map[String, AlogicType]("state" -> State)
 
-    object TypeDefinitionExtractor extends VBaseVisitor[Unit] {
+    object TypeDefinitionExtractor extends VScalarVisitor[Unit] {
       override def defaultResult = ??? //Message.ice("Should be called with Start node")
 
       override def visitStart(ctx: StartContext) = visit(ctx.typedefinition)
@@ -421,7 +421,7 @@ object TypeDefinitions {
         visit(Option(ctx.struct))
       }
 
-      object KnownTypeVisitor extends VBaseVisitor[AlogicType] {
+      object KnownTypeVisitor extends VScalarVisitor[AlogicType] {
         override def visitBoolType(ctx: BoolTypeContext) = IntType(false, 1)
         override def visitIntType(ctx: IntTypeContext) = IntType(true, ctx.INTTYPE.text.tail.toInt)
         override def visitUintType(ctx: UintTypeContext) = IntType(false, ctx.UINTTYPE.text.tail.toInt)
@@ -467,12 +467,12 @@ object AstBuilder {
 
     val typedefs = TypeDefinitions(tree)
 
-    object EntityVisitor extends VBaseVisitor[List[Task]] {
+    object EntityVisitor extends VScalarVisitor[List[Task]] {
       override def defaultResult = Nil
       override def visitTaskFSM(ctx: TaskFSMContext) = List(FsmBuilder(Map() ++ typedefs, ctx))
     }
 
-    object StartVisitor extends VBaseVisitor[List[Task]] {
+    object StartVisitor extends VScalarVisitor[List[Task]] {
       override def defaultResult = Message.ice("Should be called with Start node")
       override def visitStart(ctx: StartContext) = EntityVisitor(ctx.entity)
     }

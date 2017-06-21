@@ -80,11 +80,11 @@ class VScope(root: ParserRuleContext) {
   }
 
   // Walk the parse tree, extract declared names and build the variable scopes
-  private[this] object BuildScopes extends VBaseVisitor[Unit] {
+  private[this] object BuildScopes extends VScalarVisitor[Unit] {
     override def defaultResult = ()
 
     // Extract name from var_ref and insert into current scope
-    object InsertDeclVarRef extends VBaseVisitor[Unit] {
+    object InsertDeclVarRef extends VScalarVisitor[Unit] {
       override def defaultResult = ()
 
       override def visitVarRefIndex(ctx: VarRefIndexContext) = visit(ctx.dotted_name)
