@@ -7,7 +7,7 @@ sealed trait StrTree {
   override def toString: String = {
     val b = StringBuilder.newBuilder
 
-    def reduce(names: List[StrTree], op: String, addBrackets: Boolean): Unit = {
+    def reduce(names: Seq[StrTree], op: String, addBrackets: Boolean): Unit = {
       if (addBrackets)
         b.append("(")
       go(names.head)
@@ -38,4 +38,4 @@ sealed trait StrTree {
 }
 
 case class Str(name: String) extends StrTree
-case class StrList(names: List[StrTree], sep: String = "") extends StrTree
+case class StrList(names: Seq[StrTree], sep: String = "") extends StrTree

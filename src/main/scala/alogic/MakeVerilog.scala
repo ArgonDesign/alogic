@@ -9,6 +9,7 @@ import scala.language.implicitConversions
 
 import alogic.ast._
 import alogic.ast.AstOps._
+import scala.collection.mutable.Stack
 
 final class MakeVerilog {
 
@@ -56,38 +57,31 @@ final class MakeVerilog {
     if (modMap contains n) {
       (f, modMap(n))
     } else {
-      Message.fatal(s"Unknown module name $n")
-      (DottedName(Nil), new ModuleInstance("Unknown", "Unknown", Nil))
+      Message.fatal(s"Unknown module name '$n'")
     }
   }
 
-  var outtype = "Unknown"
-
-  var modname = "Unknown" // Save the name of this module
-
   var makingAccept = false // We use this to decide how to emit expressions
 
-  def apply(tree: Task, fname: String): Unit = {
-    numstates = tree match {
+  def apply(task: Task, fname: String): Unit = {
+    val Task(modname, decls) = task // Save the name of this module
+
+    val outtype = task match {
+      case _: StateTask   => "reg "
+      case _: FsmTask     => "reg "
+      case _: NetworkTask => "wire "
+      case _: VerilogTask => "wire "
+    }
+
+    numstates = task match {
       case StateTask(_, _, s, _, _) => s.length
       case _                        => 0
     }
     log2numstates = ceillog2(numstates)
 
     // Collect all the declarations
-    tree visit {
-      case t @ Task(n, decls) => {
-        modname = n
-        decls foreach { x => id2decl(ExtractName(x)) = x }
-        outtype = t match {
-          case _: StateTask   => "reg "
-          case _: FsmTask     => "reg "
-          case _: NetworkTask => "wire "
-          case _: VerilogTask => "wire "
-        }
-        true
-      }
-
+    decls foreach { x => id2decl(ExtractName(x)) = x }
+    task visit {
       // We remove the initializer from declaration statements
       // These will be reset inline where they are declared.
       case DeclarationStmt(VarDeclaration(decltype, id, _)) => { id2decl(ExtractName(id)) = VarDeclaration(decltype, id, None); false }
@@ -96,14 +90,14 @@ final class MakeVerilog {
 
     // Emit header and combinatorial code
     val states = mutable.Map[Int, StrTree]() // Collection of state code
-    var fencefns: List[StrTree] = Nil // Collection of fence function code
-    var clears: List[StrTree] = Nil // Collection of outputs to clear if !go
-    var defaults: List[StrTree] = Nil // Collection of things to set at start of each cycle
-    var clocks: List[StrTree] = Nil // Collection of things to clock if go
-    val clocks_no_reset = mutable.Stack[StrTree]() // Collection of things to clock if go but do not need reset
-    var resets: List[StrTree] = Nil // Collection of things to reset
-    var verilogfns: List[StrTree] = Nil // Collection of raw verilog text
-    var acceptfns: List[StrTree] = Nil // Collection of code to generate accept outputs
+    val fencefns = Stack[StrTree]() // Collection of fence function code
+    val clears = Stack[StrTree]() // Collection of outputs to clear if !go
+    val defaults = Stack[StrTree]() // Collection of things to set at start of each cycle
+    val clocks = Stack[StrTree]() // Collection of things to clock if go
+    val clocks_no_reset = Stack[StrTree]() // Collection of things to clock if go but do not need reset
+    val resets = Stack[StrTree]() // Collection of things to reset
+    val verilogfns = Stack[StrTree]() // Collection of raw verilog text
+    val acceptfns = Stack[StrTree]() // Collection of code to generate accept outputs
 
     val pw = new PrintWriter(new File(fname))
 
@@ -147,10 +141,11 @@ final class MakeVerilog {
       typ2 match {
         case IntType(_, _) | IntVType(_, _) => {
           pw.println(s"  reg " + typeString(typ2) + nx(nm) + ", " + reg(nm) + ";")
-          if (resetToZero)
-            resets = StrList(Str("      ") :: Str(reg(name)) :: Str(s" <= 'b0;\n") :: Nil) :: resets
-          clocks = StrList(Str("        ") :: Str(reg(name)) :: Str(" <= ") :: Str(nx(name)) :: Str(";\n") :: Nil) :: clocks
-          defaults = StrList(Str("    ") :: Str(nx(name)) :: Str(" = ") :: Str(reg(name)) :: Str(";\n") :: Nil) :: defaults
+          if (resetToZero) {
+            resets push StrList(Str("      ") :: Str(reg(name)) :: Str(s" <= 'b0;\n") :: Nil)
+          }
+          clocks push StrList(Str("        ") :: Str(reg(name)) :: Str(" <= ") :: Str(nx(name)) :: Str(";\n") :: Nil)
+          defaults push StrList(Str("    ") :: Str(nx(name)) :: Str(" = ") :: Str(reg(name)) :: Str(";\n") :: Nil)
         }
         case _ =>
       }
@@ -215,135 +210,133 @@ final class MakeVerilog {
     pw.println(s"`default_nettype none")
     pw.println()
 
-    tree visit {
-      case _: Task => {
-        pw.print(s"module $modname ")
+    pw.print(s"module $modname ")
 
-        val paramDecls = id2decl.values collect {
-          case x: ParamDeclaration => x
+    val paramDecls = id2decl.values collect {
+      case x: ParamDeclaration => x
+    }
+
+    if (paramDecls.isEmpty) {
+      pw.println(s"(")
+    } else {
+      pw.println(s"#(")
+      // Emit parameter declarations
+      val s = for (ParamDeclaration(decltype, id, init) <- paramDecls) yield {
+        decltype match {
+          case IntType(b, size) => s"${i0}parameter " + writeSigned(b) + writeSize(size) + id + "=" + MakeExpr(init)
+          case x                => ??? // TODO support IntVType
         }
+      }
+      pw.println(s mkString ",\n")
+      pw.println(s") (")
+    }
 
-        if (paramDecls.isEmpty) {
-          pw.println(s"(")
-        } else {
-          pw.println(s"#(")
-          // Emit parameter declarations
-          val s = for (ParamDeclaration(decltype, id, init) <- paramDecls) yield {
-            decltype match {
-              case IntType(b, size) => s"${i0}parameter " + writeSigned(b) + writeSize(size) + id + "=" + MakeExpr(init)
-              case x                => ??? // TODO support IntVType
-            }
-          }
-          pw.println(s mkString ",\n")
-          pw.println(s") (")
+    // Emit port declarations
+    id2decl.values foreach {
+      case OutDeclaration(synctype, decltype, name) => {
+        if (HasValid(synctype)) {
+          pw.println("  output " + outtype + valid(name) + ",")
+          clears push Str("      " + valid(name) + " = 1'b0;\n")
+          defaults push Str("    " + valid(name) + " = 1'b0;\n")
         }
-
-        // Emit port declarations
-        id2decl.values foreach {
-          case OutDeclaration(synctype, decltype, name) => {
-            if (HasValid(synctype)) {
-              pw.println("  output " + outtype + valid(name) + ",")
-              clears = Str("      " + valid(name) + " = 1'b0;\n") :: clears
-              defaults = Str("    " + valid(name) + " = 1'b0;\n") :: defaults
-            }
-            if (HasReady(synctype))
-              pw.println("  input wire " + ready(name) + ",")
-            if (HasAccept(synctype)) {
-              pw.println("  output " + outtype + accept(name) + ",")
-              generateAccept = true;
-            }
-            VisitType(decltype, name)(writeOut) // TODO declare nxt values for outputs
-
-          }
-          case InDeclaration(synctype, decltype, name) => {
-            if (HasValid(synctype))
-              pw.println("  input wire " + valid(name) + ",")
-            if (HasReady(synctype)) {
-              pw.println("  output " + outtype + ready(name) + ",")
-              clears = Str("      " + ready(name) + " = 1'b0;\n") :: clears
-              defaults = Str("    " + ready(name) + " = 1'b0;\n") :: defaults
-            }
-            if (HasAccept(synctype))
-              pw.println("  input wire " + accept(name) + ",")
-            VisitType(decltype, name)(writeOut)
-
-          }
-          case _ =>
+        if (HasReady(synctype))
+          pw.println("  input wire " + ready(name) + ",")
+        if (HasAccept(synctype)) {
+          pw.println("  output " + outtype + accept(name) + ",")
+          generateAccept = true;
         }
+        VisitType(decltype, name)(writeOut) // TODO declare nxt values for outputs
 
-        //Goes on bottom so we don't need to special case the lack of comma after the last port
-        pw.println("  input wire clk,")
-        pw.println("  input wire rst_n")
-        pw.println(");\n")
-
-        // Emit localparam (const) declaratoins
-        id2decl.values foreach {
-          case ConstDeclaration(decltype, id, init) => {
-            decltype match {
-              case IntType(b, size) => {
-                pw.println(s"  localparam " + writeSigned(b) + writeSize(size) + id + "=" + MakeExpr(init) + ";")
-              }
-              case x => ??? //() // TODO support IntVType
-            }
-          }
-          case _ =>
+      }
+      case InDeclaration(synctype, decltype, name) => {
+        if (HasValid(synctype))
+          pw.println("  input wire " + valid(name) + ",")
+        if (HasReady(synctype)) {
+          pw.println("  output " + outtype + ready(name) + ",")
+          clears push Str("      " + ready(name) + " = 1'b0;\n")
+          defaults push Str("    " + ready(name) + " = 1'b0;\n")
         }
+        if (HasAccept(synctype))
+          pw.println("  input wire " + accept(name) + ",")
+        VisitType(decltype, name)(writeOut)
 
-        // Emit remaining variables
-        id2decl.values foreach {
-          case VarDeclaration(decltype, ArrayLookup(DottedName(names), index :: Nil), None) => {
-            // Arrays only work with non-struct types
-            // TODO maybe figure out the number of bits in the type and declare as this many?
-            // TODO maybe detect more than one write to the same array in the same cycle?
-            val n = names.mkString("_")
-            Arrays.add(n)
-            val depth = MakeExpr(index).toString.toInt // TODO detect if this fails and fail gracefully
-            val log2depth = ceillog2(depth)
-            val t = typeString(decltype)
-            pw.println(s"  reg ${n}_wr;")
-            pw.println(s"  reg ${t}${n}_wrdata;")
-            pw.println(s"  reg [${log2depth - 1}:0] ${n}_wraddr;")
-            pw.println(s"  reg ${n} [${depth - 1}:0];")
-            defaults = StrList(
-              Str(s"    ${n}_wr = 1'b0;\n") ::
-                Str(s"    ${n}_wraddr = 'b0;\n") ::
-                Str(s"    ${n}_wrdata = 'b0;\n") :: Nil) :: defaults
-            clears = Str(s"      ${n}_wr = 1'b0;\n") :: clears
-            clocks_no_reset push Str(s"""|${i0 * 3}if (${n}_wr) begin
+      }
+      case _ =>
+    }
+
+    //Goes on bottom so we don't need to special case the lack of comma after the last port
+    pw.println("  input wire clk,")
+    pw.println("  input wire rst_n")
+    pw.println(");\n")
+
+    // Emit localparam (const) declaratoins
+    id2decl.values foreach {
+      case ConstDeclaration(decltype, id, init) => {
+        decltype match {
+          case IntType(b, size) => {
+            pw.println(s"  localparam " + writeSigned(b) + writeSize(size) + id + "=" + MakeExpr(init) + ";")
+          }
+          case x => ??? //() // TODO support IntVType
+        }
+      }
+      case _ =>
+    }
+
+    // Emit remaining variable declarations
+    id2decl.values foreach {
+      case VarDeclaration(decltype, ArrayLookup(DottedName(names), index :: Nil), None) => {
+        // Arrays only work with non-struct types
+        // TODO maybe figure out the number of bits in the type and declare as this many?
+        // TODO maybe detect more than one write to the same array in the same cycle?
+        val n = names.mkString("_")
+        Arrays.add(n)
+        val depth = MakeExpr(index).toString.toInt // TODO detect if this fails and fail gracefully
+        val log2depth = ceillog2(depth)
+        val t = typeString(decltype)
+        pw.println(s"  reg ${n}_wr;")
+        pw.println(s"  reg ${t}${n}_wrdata;")
+        pw.println(s"  reg [${log2depth - 1}:0] ${n}_wraddr;")
+        pw.println(s"  reg ${n} [${depth - 1}:0];")
+        defaults push StrList(
+          Str(s"    ${n}_wr = 1'b0;\n") ::
+            Str(s"    ${n}_wraddr = 'b0;\n") ::
+            Str(s"    ${n}_wrdata = 'b0;\n") :: Nil)
+        clears push Str(s"      ${n}_wr = 1'b0;\n")
+        clocks_no_reset push Str(s"""|${i0 * 3}if (${n}_wr) begin
                                          |${i0 * 4}${n}[${n}_wraddr] <= ${n}_wrdata;
                                          |${i0 * 3}end
                                          |""".stripMargin)
-          }
-          case VarDeclaration(decltype, name, None) => {
-            val n = ExtractName(name)
-            VisitType(decltype, n)(writeVarWithReset)
-          }
-          case VarDeclaration(decltype, name, Some(init)) => {
-            val n = ExtractName(name)
-            VisitType(decltype, n)(writeVarWithNoReset)
-            resets = StrList(Str("      ") :: Str(reg(n)) :: Str(s" <= ") :: MakeExpr(init) :: Str(";\n") :: Nil) :: resets
-          }
-          case _ =>
-        }
-        true
       }
-      case DeclarationStmt(VarDeclaration(decltype, name, init)) => false
+      case VarDeclaration(decltype, name, None) => {
+        val n = ExtractName(name)
+        VisitType(decltype, n)(writeVarWithReset)
+      }
+      case VarDeclaration(decltype, name, Some(init)) => {
+        val n = ExtractName(name)
+        VisitType(decltype, n)(writeVarWithNoReset)
+        resets push StrList(Str("      ") :: Str(reg(n)) :: Str(s" <= ") :: MakeExpr(init) :: Str(";\n") :: Nil)
+      }
+      case _ =>
+    }
+
+    // Walk the tree and construct always block contents
+    task visit {
       case blk @ StateBlock(n, _) => {
         val indent = if (numstates == 1) 2 else 3
         states(n) = MakeStmt(indent)(blk)
         if (generateAccept) {
           makingAccept = true
           AcceptStmt(indent, blk) match {
-            case Some(a) => acceptfns = a :: acceptfns
+            case Some(a) => acceptfns push a
             case None    =>
           }
           makingAccept = false
         }
-        true
+        false
       }
-      case Function(name, _)     => ??? // TODO: This is an internal error. There should be no functions left at this stage
-      case FenceFunction(body)   => { fencefns = MakeStmt(2)(body) :: fencefns; false }
-      case VerilogFunction(body) => { verilogfns = body :: verilogfns; false }
+      case FenceFunction(body)   => { fencefns push MakeStmt(2)(body); false }
+      case VerilogFunction(body) => { verilogfns push body; false }
+
       case Instantiate(id, module, args) => {
         if (modMap.isEmpty)
           modMap("this") = new ModuleInstance("this", modname, Nil);
@@ -363,8 +356,12 @@ final class MakeVerilog {
         val (n, m) = getModule(from)
         m.connect(n, to map getModule); false
       }
-      case _ => true
+
+      case Function(name, _)  => Message.ice("unreachable")
+      case _: DeclarationStmt => false
+      case _                  => true
     }
+
     if (verilogfns.length > 0) {
       pw.print(StrList(verilogfns))
     }
