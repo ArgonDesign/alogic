@@ -19,7 +19,9 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
 
   val nxMap = mutable.Map[String, String]() // Returns string to use when this identifier is accessed
   val regMap = mutable.Map[String, String]() // Map from name in alogic to name in Verilog
-  val modMap = mutable.Map[String, ModuleInstance]()
+  val modMap = mutable.Map[String, ModuleInstance]() withDefault {
+    name => Message.fatal(s"Unknown module name '$name'")
+  }
 
   // Map of names used to instantiate modules to multiplicity of that name
   val namecnt = mutable.Map[String, Int]() withDefaultValue (0)
@@ -50,16 +52,6 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     while ((1 << y) < x)
       y += 1
     y
-  }
-
-  def getModule(ast: Node): (DottedName, ModuleInstance) = {
-    val f = ast.asInstanceOf[DottedName]
-    val n = f.names(0)
-    if (modMap contains n) {
-      (f, modMap(n))
-    } else {
-      Message.fatal(s"Unknown module name '$n'")
-    }
   }
 
   var makingAccept = false // We use this to decide how to emit expressions
@@ -357,9 +349,11 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         false
       }
 
-      case Connect(from, to) => {
-        val (n, m) = getModule(from)
-        m.connect(n, to map getModule); false
+      case Connect(DottedName(fromName :: fromPort :: Nil), to) => {
+        val fromInst = modMap(fromName)
+        val toName = to map { _.names.head }
+        val toInst = toName map modMap
+        fromInst.connect(fromPort, to zip toInst); false
       }
 
       case _: Task => true
@@ -420,7 +414,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         pw.println(s"  end")
       }
     }
-    if (!modMap.isEmpty) {
+    if (modMap.nonEmpty) {
       val t = modMap("this")
       def declareWires(m: ModuleInstance): Unit = {
         for ((p, decl) <- m.outs) {
