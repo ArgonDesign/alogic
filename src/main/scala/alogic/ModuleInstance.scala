@@ -6,7 +6,7 @@ import alogic.ast._
 
 // This class keeps track of the connections of a particular module instance
 
-class ModuleInstance(val uname: String, val task: Task, val args: List[Node]) {
+class ModuleInstance(val uname: String, val task: Task, val params: List[ParamAssign]) {
 
   // Gather the ports from the AST
   val outs = mutable.Map[String, OutDeclaration]() // Map from portname to declaration

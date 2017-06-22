@@ -20,8 +20,9 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
   val nxMap = mutable.Map[String, String]() // Returns string to use when this identifier is accessed
   val regMap = mutable.Map[String, String]() // Map from name in alogic to name in Verilog
   val modMap = mutable.Map[String, ModuleInstance]()
-  var modules: List[ModuleInstance] = Nil // Keep a list of all modules instantiated (not including this)
-  val unames = mutable.Set[String]() // Set of names used to instantiate modules
+
+  // Map of names used to instantiate modules to multiplicity of that name
+  val namecnt = mutable.Map[String, Int]() withDefaultValue (0)
 
   val Arrays = mutable.Set[String]()
 
@@ -98,6 +99,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     val resets = Stack[StrTree]() // Collection of things to reset
     val verilogfns = Stack[StrTree]() // Collection of raw verilog text
     val acceptfns = Stack[StrTree]() // Collection of code to generate accept outputs
+    val modules = Stack[ModuleInstance]() // Keep a list of all modules instantiated (not including this)
 
     val pw = new PrintWriter(new File(fname))
 
@@ -339,32 +341,29 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
 
       case Instantiate(id, module, args) => {
         if (!(moduleCatalogue contains module)) {
-          Message.error(s"Cannot instantiate undefined module '${module}'")
+          Message.error(s"Cannot instantiate undefined module '${module}' in module '${modname}'")
         }
 
-        if (modMap.isEmpty)
+        if (modMap.isEmpty) {
           modMap("this") = new ModuleInstance("this", task, Nil);
-        var c = 0;
-        var uname = id + "_" + c
-        while (unames contains uname) {
-          c += 1
-          uname = id + "_" + c
         }
-        unames.add(uname)
 
-        val m = new ModuleInstance(uname, moduleCatalogue(module), args);
+        val name = id + "_" + namecnt(id)
+        namecnt(id) += 1
+
+        val m = new ModuleInstance(name, moduleCatalogue(module), args);
         modMap(id) = m
-        modules = m :: modules
+        modules push m
         false
       }
+
       case Connect(from, to) => {
         val (n, m) = getModule(from)
         m.connect(n, to map getModule); false
       }
 
-      case Function(name, _)  => Message.ice("unreachable")
-      case _: DeclarationStmt => false
-      case _                  => true
+      case _: Task => true
+      case _       => Message.ice("unreachable")
     }
 
     if (verilogfns.length > 0) {
