@@ -393,7 +393,18 @@ class FsmTaskBuilder(cc: CommonContext) {
 
     object FsmTaskVisitor extends VScalarVisitor[FsmTask] {
       object FsmContentVisitor extends VScalarVisitor[Node] {
-        override def visitFunction(ctx: FunctionContext) = Function(ctx.IDENTIFIER, ControlBlock(StatementVisitor(ctx.stmts)))
+        override def visitFunction(ctx: FunctionContext) = {
+          val name = ctx.IDENTIFIER.text
+          val stmts = StatementVisitor(ctx.stmts)
+          val body = stmts.last match {
+            case _: CtrlStmt => ControlBlock(stmts)
+            case _: CombStmt => {
+              Message.error(ctx, "A function body must end with a control statement")
+              ControlBlock(List(FenceStmt))
+            }
+          }
+          Function(name, body)
+        }
         override def visitFenceFunction(ctx: FenceFunctionContext) = {
           val body = StatementVisitor(ctx.stmts) collect {
             case stmt: CombStmt => stmt
