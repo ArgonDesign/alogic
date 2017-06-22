@@ -196,7 +196,7 @@ final class MakeStates {
       emit(s, current2) // TODO can we make this function tail recursive somehow?
       current
     }
-    case (x: CombStmt) :: Nil => Message.fatal("Unreachable")
+    case (x: CombStmt) :: Nil => Message.ice("unreachable")
     case (x: CombStmt) :: xs  => x :: makeBlockStmts(-1, finalState, xs)
   }
 

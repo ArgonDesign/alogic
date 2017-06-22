@@ -338,7 +338,7 @@ class FsmTaskBuilder(cc: CommonContext) {
         override def visitForInitNoDecl(ctx: ForInitNoDeclContext) = {
           val stmt = StatementVisitor(ctx.assignment_statement) match {
             case s: CombStmt => s
-            case _: CtrlStmt => Message.fatal("Unreachable")
+            case _: CtrlStmt => Message.ice("unreachable")
           }
           (None, stmt)
         }
@@ -353,7 +353,7 @@ class FsmTaskBuilder(cc: CommonContext) {
         val (optDecl, initStmt) = ForInitVisitor(ctx.init)
         val stepStmt = visit(ctx.step) match {
           case s: CombStmt => s
-          case _: CtrlStmt => Message.fatal("Unreachable")
+          case _: CtrlStmt => Message.ice("unreachable")
         }
         val forAST = ControlFor(initStmt, ExprVisitor(ctx.cond), stepStmt, visit(ctx.stmts))
         optDecl match {
