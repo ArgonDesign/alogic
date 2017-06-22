@@ -11,7 +11,7 @@ import alogic.ast._
 import alogic.ast.AstOps._
 import scala.collection.mutable.Stack
 
-final class MakeVerilog {
+final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
 
   val i0 = "  "; // Single indentation depth (2 spaces)
 
@@ -338,8 +338,12 @@ final class MakeVerilog {
       case VerilogFunction(body) => { verilogfns push body; false }
 
       case Instantiate(id, module, args) => {
+        if (!(moduleCatalogue contains module)) {
+          Message.error(s"Cannot instantiate undefined module '${module}'")
+        }
+
         if (modMap.isEmpty)
-          modMap("this") = new ModuleInstance("this", modname, Nil);
+          modMap("this") = new ModuleInstance("this", task, Nil);
         var c = 0;
         var uname = id + "_" + c
         while (unames contains uname) {
@@ -347,7 +351,8 @@ final class MakeVerilog {
           uname = id + "_" + c
         }
         unames.add(uname)
-        val m = new ModuleInstance(uname, module, args);
+
+        val m = new ModuleInstance(uname, moduleCatalogue(module), args);
         modMap(id) = m
         modules = m :: modules
         false

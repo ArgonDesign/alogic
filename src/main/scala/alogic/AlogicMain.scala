@@ -13,12 +13,6 @@ import akka.actor.ActorSystem
 import scalax.file.Path
 import scalax.file.PathMatcher._
 
-// TODO: handle this in a nicer way if possible
-object PortMap {
-  // This must be from a concurrent collection because it is populated from multiple threads
-  val portMap = new TrieMap[String, ast.Task]()
-}
-
 object AlogicMain extends App {
 
   //////////////////////////////////////////////////////////////////////////////
@@ -95,23 +89,17 @@ object AlogicMain extends App {
     // Clear caches
     Cache.clearAll()
 
-    PortMap.portMap.clear()
-
     // Construct potentially parallel file list
     val filePaths = if (multiThreaded) listOfFiles.par else listOfFiles
 
     // First pass - Build AST
     val asts = filePaths flatMap { AParser(_, includeSearchPaths, initalDefines) }
 
-    // Extract ports
-    asts foreach {
-      case t @ ast.Task(name, _) => {
-        if (PortMap.portMap contains name) {
-          Message.error(s"task '$name' defined multiple times")
-        }
-        PortMap.portMap(name) = t; false
-      }
-    }
+    // Build catalogue of all modules
+    // TODO: check for multiple definitions of same module
+    val moduleCatalogue = {
+      asts.toList collect { case t @ ast.Task(name, _) => name -> t }
+    }.toMap
 
     // Second pass
     asts foreach {
