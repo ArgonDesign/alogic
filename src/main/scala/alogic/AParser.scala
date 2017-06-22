@@ -8,7 +8,7 @@ import alogic.ast.AstBuilder
 
 object AParser {
 
-  def apply(path: Path, includeSearchPaths: List[Path] = Nil, initalDefines: Map[String, String] = Map()): List[ast.Task] = {
+  def apply(path: Path, includeSearchPaths: List[Path] = Nil, initalDefines: Map[String, String] = Map()): Option[ast.Task] = {
 
     Message.info(s"Parsing ${path.path}")
 
@@ -34,10 +34,7 @@ object AParser {
     }
 
     // If Some, build the AST
-    parseTree match {
-      case None    => Nil
-      case Some(t) => AstBuilder(t)
-    }
+    parseTree map { AstBuilder(_) }
   }
 
 }

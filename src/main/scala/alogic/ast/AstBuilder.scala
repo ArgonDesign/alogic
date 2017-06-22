@@ -24,12 +24,10 @@ import alogic.VScalarVisitor
 //   Rewrite go/zxt/sxt/read/write/lock/unlock function calls
 //
 // We use different visitors for the different things we wish to extract.
-//
-// The overall API is to make a AstBuilder class, and then call it to build the ast from a parse tree.
-// The object can be called multiple times to allow us to only build a common header file once.
-//
 
+////////////////////////////////////////////////////////////////////////////////
 // Visitors and data structures required when parsing all kinds of source files
+////////////////////////////////////////////////////////////////////////////////
 class CommonContext(root: ParserRuleContext) {
   // Build scopes and allocate static variable names
   private[this] val scope = new VScope(root)
@@ -220,7 +218,9 @@ class CommonContext(root: ParserRuleContext) {
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
 // Builder to handle 'fsm' task definitions
+////////////////////////////////////////////////////////////////////////////////
 class FsmTaskBuilder(cc: CommonContext) {
   import cc._
 
@@ -424,7 +424,9 @@ class FsmTaskBuilder(cc: CommonContext) {
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
 // Builder to handle 'verilog' task definitions
+////////////////////////////////////////////////////////////////////////////////
 class VerilogTaskBuilder(cc: CommonContext) {
   import cc._
 
@@ -443,28 +445,71 @@ class VerilogTaskBuilder(cc: CommonContext) {
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// Builder to handle 'network' definitions
+////////////////////////////////////////////////////////////////////////////////
+class NetworkTaskBuilder(cc: CommonContext) {
+  import cc._
+
+  def apply(tree: NetworkContext): NetworkTask = {
+
+    object DottedNameVisitor extends VScalarVisitor[DottedName] {
+      override def visitDotted_name(ctx: Dotted_nameContext) = DottedName(ctx.es.toList map (_.text))
+    }
+
+    object ParamAssignVisitor extends VScalarVisitor[ParamAssign] {
+      override def visitParam_assign(ctx: Param_assignContext) = ParamAssign(ctx.IDENTIFIER, ExprVisitor(ctx.expr));
+    }
+
+    object NetworkVisitor extends VScalarVisitor[NetworkTask] {
+      object NetworkContentVisitor extends VScalarVisitor[Node] {
+        override def visitTaskFSM(ctx: TaskFSMContext) = ???
+        override def visitTaskVerilog(ctx: TaskVerilogContext) = ???
+        override def visitConnect(ctx: ConnectContext) = {
+          val lhs = DottedNameVisitor(ctx.lhs)
+          val rhs = DottedNameVisitor(ctx.rhs)
+          Connect(lhs, rhs)
+        }
+        override def visitInstantiate(ctx: InstantiateContext) = {
+          val id = ctx.IDENTIFIER(0).text
+          val module = ctx.IDENTIFIER(1).text
+          val pas = ParamAssignVisitor(ctx.param_args.param_assign)
+          Instantiate(id, module, pas)
+        }
+        override def visitVerilogFunction(ctx: VerilogFunctionContext) = VerilogFunctionVisitor(ctx)
+      }
+
+      override def visitNetwork(ctx: NetworkContext) = {
+        val name = ctx.IDENTIFIER.text
+        val decls = DeclVisitor(ctx.decls)
+        val contents = NetworkContentVisitor(ctx.contents)
+        val inst = contents collect { case x: Instantiate => x }
+        val conn = contents collect { case x: Connect => x }
+        val vfns = contents collect { case x: VerilogFunction => x }
+
+        NetworkTask(name, decls, inst, conn, vfns)
+      }
+    }
+
+    NetworkVisitor(tree)
+  }
+}
+
 object AstBuilder {
-  def apply(root: ParserRuleContext): List[Task] = {
+  def apply(root: ParserRuleContext): Task = {
 
     val cc = new CommonContext(root)
 
     lazy val fsmTaskBuilder = new FsmTaskBuilder(cc)
-
     lazy val verilogTaskBuilder = new VerilogTaskBuilder(cc)
+    lazy val networkTaskBuilder = new NetworkTaskBuilder(cc)
 
-    val tasks = Stack[Task]()
-
-    object RootVisitor extends VScalarVisitor[Unit] {
-      override def defaultResult = ()
-
-      override def visitTaskFSM(ctx: TaskFSMContext) = tasks push fsmTaskBuilder(ctx)
-      override def visitTaskVerilog(ctx: TaskVerilogContext) = tasks push verilogTaskBuilder(ctx)
-
-      override def visitNetwork(ctx: NetworkContext) = Message.note("Networks not implemented yet") // TODO
+    object RootVisitor extends VScalarVisitor[Task] {
+      override def visitTaskFSM(ctx: TaskFSMContext) = fsmTaskBuilder(ctx)
+      override def visitTaskVerilog(ctx: TaskVerilogContext) = verilogTaskBuilder(ctx)
+      override def visitNetwork(ctx: NetworkContext) = networkTaskBuilder(ctx)
     }
 
     RootVisitor(cc.entityCtx)
-
-    tasks.toList
   }
 }

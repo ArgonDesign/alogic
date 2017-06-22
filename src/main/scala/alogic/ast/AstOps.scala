@@ -66,13 +66,14 @@ object AstOps {
       def v(node: Node): Unit = {
         if (callback(node))
           node match {
+            case ParamAssign(_, rhs)                        => v(rhs)
             case Instantiate(_, _, args)                    => args foreach v
             case Connect(start, end)                        => { v(start); end foreach v }
             case Function(name, body)                       => v(body)
             case FenceFunction(body)                        => v(body)
             case FsmTask(name, decls, fns, fencefn, vfns)   => { fns foreach v; fencefn foreach v; vfns foreach v }
             case StateTask(name, decls, sbs, fencefn, vfns) => { sbs foreach v; fencefn foreach v; vfns foreach v }
-            case NetworkTask(name, decls, fns)              => fns foreach v
+            case NetworkTask(name, decls, inst, conn, vfns) => { inst foreach v; conn foreach v; vfns foreach v }
             case VerilogTask(name, decls, fns)              => fns foreach v
             case ArrayLookup(name, index)                   => { v(name); index foreach v }
             case Slice(ref, l, op, r)                       => { v(ref); v(l); v(r) }
@@ -141,13 +142,14 @@ object AstOps {
         val v = cb(node) match {
           case Some(x) => x
           case None => node match {
-            case Instantiate(a, b, args)                    => Instantiate(a, b, args map r[Node])
-            case Connect(start, end)                        => Connect(r[Node](start), end map r[Node])
+            case ParamAssign(id, rhs)                       => ParamAssign(id, r[Expr](rhs))
+            case Instantiate(a, b, args)                    => Instantiate(a, b, args map r[ParamAssign])
+            case Connect(start, end)                        => Connect(r[DottedName](start), end map r[DottedName])
             case Function(name, body)                       => Function(name, r[CtrlStmt](body))
             case FenceFunction(body)                        => FenceFunction(r[CombStmt](body))
             case FsmTask(name, decls, fns, fencefn, vfns)   => FsmTask(name, decls, fns map r[Function], fencefn map r[FenceFunction], vfns)
             case StateTask(name, decls, sbs, fencefn, vfns) => StateTask(name, decls, sbs map r[StateBlock], fencefn map r[FenceFunction], vfns)
-            case NetworkTask(name, decls, fns)              => NetworkTask(name, decls, fns map r[Node])
+            case NetworkTask(name, decls, inst, conn, vfns) => NetworkTask(name, decls, inst map r[Instantiate], conn map r[Connect], vfns map r[VerilogFunction])
             case x: VerilogTask                             => x
             case Assign(lhs, rhs)                           => Assign(r[Expr](lhs), r[Expr](rhs))
             case Update(lhs, op, rhs)                       => Update(r[Expr](lhs), op, r[Expr](rhs))

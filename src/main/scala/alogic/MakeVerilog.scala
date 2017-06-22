@@ -80,10 +80,10 @@ final class MakeVerilog {
         modname = n
         decls foreach { x => id2decl(ExtractName(x)) = x }
         outtype = t match {
-          case StateTask(_, _, _, _, _) => "reg "
-          case FsmTask(_, _, _, _, _)   => "reg "
-          case NetworkTask(_, _, _)     => "wire "
-          case VerilogTask(_, _, _)     => "wire "
+          case _: StateTask   => "reg "
+          case _: FsmTask     => "reg "
+          case _: NetworkTask => "wire "
+          case _: VerilogTask => "wire "
         }
         true
       }

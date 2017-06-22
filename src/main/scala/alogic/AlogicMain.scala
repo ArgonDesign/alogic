@@ -101,15 +101,14 @@ object AlogicMain extends App {
     val filePaths = if (multiThreaded) listOfFiles.par else listOfFiles
 
     // First pass - Build AST
-    val asts = filePaths flatMap {
-      AParser(_, includeSearchPaths, initalDefines)
-    }
+    val asts = filePaths flatMap { AParser(_, includeSearchPaths, initalDefines) }
 
     // Extract ports
     asts foreach {
       case t @ ast.Task(name, _) => {
-        if (PortMap.portMap contains name)
-          Message.warning(s"$name defined multiple times")
+        if (PortMap.portMap contains name) {
+          Message.error(s"task '$name' defined multiple times")
+        }
         PortMap.portMap(name) = t; false
       }
     }
@@ -123,7 +122,7 @@ object AlogicMain extends App {
           case t              => t
         }
 
-        // Remove complicated assignments and ++ and -- (MakeStates inserts some ++/--)
+        // Remove updating assignments ('+=' etc), '++' and '--'
         val prog2 = Desugar.RemoveAssigns(prog)
 
         // Construct output filename

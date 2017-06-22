@@ -29,8 +29,12 @@ case class StateTask(name: String,
                      states: List[StateBlock],
                      fencefn: Option[FenceFunction],
                      vfns: List[VerilogFunction]) extends Task
-case class NetworkTask(name: String, decls: List[Declaration], fns: List[Node]) extends Task
 case class VerilogTask(name: String, decls: List[Declaration], fns: List[VerilogFunction]) extends Task
+case class NetworkTask(name: String,
+                       decls: List[Declaration],
+                       instantiate: List[Instantiate],
+                       connect: List[Connect],
+                       vfns: List[VerilogFunction]) extends Task
 
 ///////////////////////////////////////////////////////////////////////////////
 // Function nodes
@@ -119,6 +123,9 @@ case class ControlCaseLabel(cond: List[Expr], body: CtrlStmt) extends Node
 ///////////////////////////////////////////////////////////////////////////////
 case class StateBlock(state: Int, contents: List[CombStmt]) extends Node
 
-// TODO: strengthen types
-case class Connect(start: Node, end: List[Node]) extends Node
-case class Instantiate(id: String, module: String, args: List[Node]) extends Node
+///////////////////////////////////////////////////////////////////////////////
+// Network contents
+///////////////////////////////////////////////////////////////////////////////
+case class ParamAssign(lhs: String, rhs: Expr) extends Node
+case class Connect(lhs: DottedName, rhs: List[DottedName]) extends Node
+case class Instantiate(id: String, module: String, args: List[ParamAssign]) extends Node

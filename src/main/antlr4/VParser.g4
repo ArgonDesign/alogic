@@ -90,7 +90,7 @@ network_content
   | verilog_function
   ;
 
-connect : dotted_name '->' commaexpr ';' ;
+connect : lhs=dotted_name '->' rhs+=dotted_name (',' rhs+=dotted_name)* ';' ;
 
 instantiate : IDENTIFIER '=' 'new' IDENTIFIER '(' param_args ')' ';' ;
 
@@ -161,9 +161,9 @@ var_ref
 
 commaexpr : (expr)? (',' expr)* ;
 
-param_args : (es+=paramAssign)? (',' es+=paramAssign)*;
+param_args : (param_assign (',' param_assign)*)? ;
 
-paramAssign : expr '=' expr;
+param_assign : IDENTIFIER '=' expr ;
 
 dotted_name : (es+=IDENTIFIER) ('.' es+=IDENTIFIER)*;
 
