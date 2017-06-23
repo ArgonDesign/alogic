@@ -59,7 +59,7 @@ final class MakeStates {
 
       val newDecls = if (states.length > 1) {
         // Add a declaration for the state variable (reset to the entry state of main)
-        VarDeclaration(State, DottedName("state" :: Nil), Some(makeNum(0))) :: decls
+        VarDeclaration(State, DottedName("state" :: Nil), Some(Num(Some(false), None, 0))) :: decls
       } else {
         decls
       }
@@ -89,8 +89,6 @@ final class MakeStates {
 
     result
   }
-
-  def makeNum(x: Int) = Num(s"$x")
 
   // Create an AST that finishes by moving to finalState (unless break, return etc)
   // Returns a list of all the statements that should be appended to the list in the current state

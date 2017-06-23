@@ -116,7 +116,7 @@ object AstOps {
             case GotoState(state: Int)                      =>
             case DottedName(names)                          =>
             case Literal(_)                                 =>
-            case Num(_)                                     =>
+            case Num(_, _, _)                               =>
             case VerilogFunction(_)                         =>
             case ControlCaseLabel(cond, body)               => { cond foreach v; v(body) }
             case CombinatorialCaseLabel(cond, body)         => { cond foreach v; v(body) }

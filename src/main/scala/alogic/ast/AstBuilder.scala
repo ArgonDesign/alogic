@@ -50,6 +50,25 @@ class CommonContext(root: ParserRuleContext) {
     // If applied to a commaexpr node, return a list of the constructed expressions
     def apply(ctx: CommaexprContext): List[Expr] = visit(ctx.expr)
 
+    def const2Num(const: String) = Num(None, None, BigInt(const filter (_ != '_')))
+    def tickn2Num(ctx: ParserRuleContext, tickn: String, width: Option[String]): Num = {
+      assert(tickn(0) == '\'')
+      val widthVal = width filter (_ != '_') map (BigInt(_))
+      val signed = tickn(1) == 's'
+      val baseChar = if (signed) tickn(2) else tickn(1)
+      val base = baseChar match {
+        case 'b' => 2
+        case 'd' => 10
+        case 'h' => 16
+        case c   => Message.error(ctx, s"Unknown base '$c'"); 16
+      }
+      val rest = if (signed) tickn drop 3 else tickn drop 2
+      val digits = rest filter (_ != '_')
+      val value = BigInt(digits, base)
+      // TODO: check value fits in width
+      Num(Some(signed), widthVal, value)
+    }
+
     override def visitExprBracket(ctx: ExprBracketContext) = Bracket(visit(ctx.expr))
     override def visitExprUnary(ctx: ExprUnaryContext) = UnaryOp(ctx.op, visit(ctx.expr))
     override def visitExprMulDiv(ctx: ExprMulDivContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
@@ -68,11 +87,11 @@ class CommonContext(root: ParserRuleContext) {
     override def visitExprVarRef(ctx: ExprVarRefContext) = VarRefVisitor(ctx)
     override def visitExprSlice(ctx: ExprSliceContext) = Slice(VarRefVisitor(ctx.var_ref), visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
     override def visitExprDollar(ctx: ExprDollarContext) = DollarCall(ctx.DOLLARID, this(ctx.commaexpr))
-    override def visitExprTrue(ctx: ExprTrueContext) = Num("1'b1")
-    override def visitExprFalse(ctx: ExprFalseContext) = Num("1'b0")
-    override def visitExprTrickNum(ctx: ExprTrickNumContext) = Num(ctx.TICKNUM)
-    override def visitExprConstTickNum(ctx: ExprConstTickNumContext) = Num(ctx.CONSTANT + ctx.TICKNUM)
-    override def visitExprConst(ctx: ExprConstContext) = Num(ctx.CONSTANT)
+    override def visitExprTrue(ctx: ExprTrueContext) = Num(Some(false), Some(1), 1)
+    override def visitExprFalse(ctx: ExprFalseContext) = Num(Some(false), Some(1), 0)
+    override def visitExprTrickNum(ctx: ExprTrickNumContext) = tickn2Num(ctx, ctx.TICKNUM, None)
+    override def visitExprConstTickNum(ctx: ExprConstTickNumContext) = tickn2Num(ctx, ctx.TICKNUM, Some(ctx.CONSTANT))
+    override def visitExprConst(ctx: ExprConstContext) = const2Num(ctx.CONSTANT)
     override def visitExprLiteral(ctx: ExprLiteralContext) = Literal(ctx.LITERAL)
 
     override def visitExprCall(ctx: ExprCallContext) = {

@@ -47,7 +47,13 @@ case class VerilogFunction(body: String) extends Node
 // Expression nodes
 ///////////////////////////////////////////////////////////////////////////////
 sealed trait Expr extends Node
-case class Num(value: String) extends Expr // Numbers held as textual representation
+// Numbers have optional signedness. If signed is None, then the number can be
+// treated as either signed or unsigned depending on context, and in this case
+// the value must be positive. Numbers also have an optional width. If with is
+// None, the number is considered un-sized
+// TODO: some factories would be good as writing ' Num(Some(false), Some(1), 1)'
+// for the constant 1'b1 is quite a pain
+case class Num(signed: Option[Boolean], width: Option[BigInt], value: BigInt) extends Expr
 case class Literal(value: String) extends Expr // Strings held as textual representation including quotes
 case class CallExpr(name: DottedName, args: List[Expr]) extends Expr
 case class Zxt(numbits: Expr, expr: Expr) extends Expr

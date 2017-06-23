@@ -9,7 +9,7 @@ UINTTYPE: 'u' [0-9]+;
 
 INTTYPE: 'i' [0-9]+;
 
-TICKNUM: '\'' 's'? [bdhx] [0-9a-fA-F_]+ ;
+TICKNUM: '\'' 's'? [bdhx] [0-9a-fA-F_]+ ; // TODO remove 'x' ?
 
 DOLLARID: '$' SIMPLEID;
 

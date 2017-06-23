@@ -28,3 +28,13 @@ case object Sync extends SyncType
 case object WireSyncAccept extends SyncType
 case object WireSync extends SyncType
 case object Wire extends SyncType
+
+// Signal channel which has a name, some payload and possibly some flow control signals
+sealed trait Channel {
+  val name: String
+  val width: Expr
+}
+case class ChannelNone(name: String, width: Expr) extends Channel // no flow control
+case class ChannelValid(name: String, width: Expr) extends Channel // valid only
+case class ChannelReady(name: String, width: Expr) extends Channel // valid + ready
+case class ChannelAccept(name: String, width: Expr) extends Channel // valid + accept

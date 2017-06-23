@@ -529,18 +529,22 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         val e = MakeExpr(expr)
         StrList(List("{{", totalSz, " - ", exprSz, "{", e, "[(", exprSz, ") - 1]}},", e, "}"))
       }
-      case DollarCall(name, args)    => StrList(List(name, "(", StrList(args.map(MakeExpr), ","), ")"))
-      case ReadCall(name)            => MakeExpr(name)
-      case BinaryOp(lhs, op, rhs)    => StrList(List(MakeExpr(lhs), Str(" "), op, Str(" "), MakeExpr(rhs)))
-      case UnaryOp(op, lhs)          => StrList(List(op, MakeExpr(lhs)))
-      case Bracket(content)          => StrList(List("(", MakeExpr(content), ")"))
-      case TernaryOp(cond, lhs, rhs) => StrList(List(MakeExpr(cond), " ? ", MakeExpr(lhs), " : ", MakeExpr(rhs)))
-      case BitRep(count, value)      => StrList(List("{", MakeExpr(count), "{", MakeExpr(value), "}}"))
-      case BitCat(parts)             => StrList(List("{", StrList(parts.map(MakeExpr), ","), "}"))
-      case DottedName(names)         => nx(names)
-      case Literal(s)                => StrList(List(""""""", s, """""""))
-      case Num(n)                    => n
-      case e                         => Message.fatal(s"Unexpected expression $e"); ""
+      case DollarCall(name, args)               => StrList(List(name, "(", StrList(args.map(MakeExpr), ","), ")"))
+      case ReadCall(name)                       => MakeExpr(name)
+      case BinaryOp(lhs, op, rhs)               => StrList(List(MakeExpr(lhs), Str(" "), op, Str(" "), MakeExpr(rhs)))
+      case UnaryOp(op, lhs)                     => StrList(List(op, MakeExpr(lhs)))
+      case Bracket(content)                     => StrList(List("(", MakeExpr(content), ")"))
+      case TernaryOp(cond, lhs, rhs)            => StrList(List(MakeExpr(cond), " ? ", MakeExpr(lhs), " : ", MakeExpr(rhs)))
+      case BitRep(count, value)                 => StrList(List("{", MakeExpr(count), "{", MakeExpr(value), "}}"))
+      case BitCat(parts)                        => StrList(List("{", StrList(parts.map(MakeExpr), ","), "}"))
+      case DottedName(names)                    => nx(names)
+      case Literal(s)                           => StrList(List(""""""", s, """""""))
+      case Num(None, None, value)               => s"${value}"
+      case Num(Some(false), None, value)        => s"'d${value}"
+      case Num(Some(true), None, value)         => s"'sd${value}"
+      case Num(Some(false), Some(width), value) => s"${width}'d${value}"
+      case Num(Some(true), Some(width), value)  => s"${width}'sd${value}"
+      case e                                    => Message.fatal(s"Unexpected expression $e"); ""
     }
   }
 
@@ -707,7 +711,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       }
 
       case DeclarationStmt(VarDeclaration(decltype, id, Some(rhs))) => MakeStmt(indent)(Assign(id, rhs))
-      case DeclarationStmt(VarDeclaration(decltype, id, None)) => MakeStmt(indent)(Assign(id, Num("'b0"))) // TODO: Why is this needed ?
+      case DeclarationStmt(VarDeclaration(decltype, id, None)) => MakeStmt(indent)(Assign(id, Num(Some(false), None, 0))) // TODO: Why is this needed ?
 
       case ExprStmt(DollarCall(name, args)) => StrList(List(i, name, StrList(args.map(MakeExpr), ",")))
       case AlogicComment(s) => s"// $s\n"
