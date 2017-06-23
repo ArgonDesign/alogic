@@ -123,11 +123,11 @@ class CommonContext(root: ParserRuleContext) {
     }
   }
 
-  private[this] val typedefs = mutable.Map[String, AlogicType]("state" -> State)
+  private[this] val typedefs = mutable.Map[String, Type]("state" -> State)
 
   var entityCtx: EntityContext = null
 
-  object KnownTypeVisitor extends VScalarVisitor[AlogicType] {
+  object KnownTypeVisitor extends VScalarVisitor[Type] {
     override def visitBoolType(ctx: BoolTypeContext) = IntType(false, 1)
     override def visitIntType(ctx: IntTypeContext) = IntType(true, ctx.INTTYPE.text.tail.toInt)
     override def visitUintType(ctx: UintTypeContext) = IntType(false, ctx.UINTTYPE.text.tail.toInt)

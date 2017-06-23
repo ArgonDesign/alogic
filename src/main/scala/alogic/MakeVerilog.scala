@@ -99,19 +99,19 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
 
     def writeSize(size: Int) = if (size > 1) s"[$size-1:0] " else ""
 
-    def writeOut(typ: AlogicType, name: StrTree): Unit = typ match {
+    def writeOut(typ: Type, name: StrTree): Unit = typ match {
       case IntType(b, size) => pw.println("  output " + outtype + writeSigned(b) + writeSize(size) + name + ",")
       case _                => // TODO support IntVType
     }
-    def writeIn(typ: AlogicType, name: StrTree): Unit = typ match {
+    def writeIn(typ: Type, name: StrTree): Unit = typ match {
       case IntType(b, size) => pw.println(s"  input wire ${writeSigned(b)}${writeSize(size)}" + name + ",")
       case _                => // TODO support IntVType
     }
-    def writeWire(typ: AlogicType, name: StrTree): Unit = typ match {
+    def writeWire(typ: Type, name: StrTree): Unit = typ match {
       case IntType(b, size) => pw.println(s"  wire ${writeSigned(b)}${writeSize(size)}" + name + ",")
       case _                => // TODO support IntVType
     }
-    def typeString(typ: AlogicType): String = {
+    def typeString(typ: Type): String = {
       val typ2 = typ match {
         case State => IntType(false, log2numstates)
         case x     => x
@@ -125,7 +125,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         case _ => Message.fatal(s"Cannot make type for $typ"); ""
       }
     }
-    def writeVarInternal(typ: AlogicType, name: StrTree, resetToZero: Boolean): Unit = {
+    def writeVarInternal(typ: Type, name: StrTree, resetToZero: Boolean): Unit = {
       // Convert state to uint type
       val typ2 = typ match {
         case State => IntType(false, log2numstates)
@@ -144,14 +144,14 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         case _ =>
       }
     }
-    def writeVarWithReset(typ: AlogicType, name: StrTree): Unit = writeVarInternal(typ, name, true)
-    def writeVarWithNoReset(typ: AlogicType, name: StrTree): Unit = writeVarInternal(typ, name, false)
+    def writeVarWithReset(typ: Type, name: StrTree): Unit = writeVarInternal(typ, name, true)
+    def writeVarWithNoReset(typ: Type, name: StrTree): Unit = writeVarInternal(typ, name, false)
 
     // Prepare the mapping for the nx() map
     // Different types of variables need different suffices
     // For efficiency this returns the comma separated list of underlying fields
     // TODO better for Verilator simulation speed if we could detect assignments and expand this concatenation
-    def SetNxType(m: mutable.Map[String, String], typ: AlogicType, name: String, suffix: String): String = typ match {
+    def SetNxType(m: mutable.Map[String, String], typ: Type, name: String, suffix: String): String = typ match {
       case Struct(fields) => {
         val c = for ((n, t) <- fields) yield {
           SetNxType(m, t, name + '_' + n, suffix)
@@ -458,14 +458,14 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
   implicit def string2StrTree(s: String): StrTree = Str(s)
 
   // Compute an string tree for the number of bits in this type
-  def MakeNumBits(typ: AlogicType): StrTree = typ match {
+  def MakeNumBits(typ: Type): StrTree = typ match {
     case IntType(signed, size)  => Str(s"$size")
     case IntVType(signed, args) => StrList(args.map(MakeExpr), "*")
     case State                  => Str(s"$log2numstates")
     case Struct(fields)         => StrList(fields.values.toList map MakeNumBits, "+")
   }
 
-  implicit def Decl2Typ(decl: Declaration): AlogicType = decl match {
+  implicit def Decl2Typ(decl: Declaration): Type = decl match {
     case ParamDeclaration(decltype, _, _) => decltype
     case ConstDeclaration(decltype, _, _) => decltype
     case OutDeclaration(_, decltype, _)   => decltype
@@ -475,9 +475,9 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
   }
 
   // Return the type for an AST
-  def GetType(tree: Expr): AlogicType = {
+  def GetType(tree: Expr): Type = {
 
-    def LookUpField(names: List[String], kind: AlogicType): AlogicType = {
+    def LookUpField(names: List[String], kind: Type): Type = {
       val n :: ns = names
       kind match {
         case Struct(fields) => {

@@ -16,7 +16,7 @@ object PrettyPrinters {
     }
   }
 
-  implicit class AlogicTypePrinter(val kind: AlogicType) {
+  implicit class AlogicTypePrinter(val kind: Type) {
     def toSource: String = kind match {
       case IntType(true, size)   => s"i${size}"
       case IntType(false, size)  => s"u${size}"

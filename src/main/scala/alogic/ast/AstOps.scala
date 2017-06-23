@@ -44,9 +44,9 @@ object AstOps {
   }
 
   // Call VisitType to get callback for each node
-  def VisitType(typ: AlogicType, name: StrTree)(callback: (AlogicType, StrTree) => Unit): Unit = {
+  def VisitType(typ: Type, name: StrTree)(callback: (Type, StrTree) => Unit): Unit = {
 
-    def visit(typ: AlogicType, name: StrTree): Unit = {
+    def visit(typ: Type, name: StrTree): Unit = {
       callback(typ, name)
       typ match {
         case Struct(fields) => for ((n, t) <- fields) {
