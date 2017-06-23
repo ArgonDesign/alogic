@@ -1,0 +1,18 @@
+
+typedef struct {
+  bool s1;
+  u2   s2;
+  i3   s3;
+} s_t;
+
+fsm a {
+  in sync ready bool p_in;
+  out sync ready bool p_out;
+
+  out sync accept s_t p_out_struct;
+
+  void main() {
+    p_out.write(p_in.read());
+    fence;
+  }
+}

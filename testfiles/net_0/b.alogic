@@ -1,0 +1,12 @@
+
+fsm b {
+  in sync ready bool p_in;
+  out sync ready bool p_out;
+
+  in sync ready u6 p_in_vec;
+
+  void main() {
+    p_out.write(~p_in.read());
+    fence;
+  }
+}

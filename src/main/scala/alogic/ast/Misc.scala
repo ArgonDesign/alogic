@@ -20,6 +20,7 @@ case class Struct(fields: Map[String, Type]) extends Type
 case object State extends Type // Type with enough bits to hold state variable
 
 // SyncType for allowed port types
+// TODO: separate the flow control (none/valid/ready/accept) type from the storage type (wire/bubble/reg)
 sealed trait SyncType
 case object SyncReadyBubble extends SyncType
 case object SyncReady extends SyncType
@@ -28,13 +29,3 @@ case object Sync extends SyncType
 case object WireSyncAccept extends SyncType
 case object WireSync extends SyncType
 case object Wire extends SyncType
-
-// Signal channel which has a name, some payload and possibly some flow control signals
-sealed trait Channel {
-  val name: String
-  val width: Expr
-}
-case class ChannelNone(name: String, width: Expr) extends Channel // no flow control
-case class ChannelValid(name: String, width: Expr) extends Channel // valid only
-case class ChannelReady(name: String, width: Expr) extends Channel // valid + ready
-case class ChannelAccept(name: String, width: Expr) extends Channel // valid + accept

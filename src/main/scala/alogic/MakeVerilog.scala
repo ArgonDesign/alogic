@@ -5,11 +5,12 @@ package alogic
 import java.io._
 
 import scala.collection._
+import scala.collection.mutable.Stack
 import scala.language.implicitConversions
 
 import alogic.ast._
 import alogic.ast.AstOps._
-import scala.collection.mutable.Stack
+import alogic.ast.ExprOps._
 
 final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
 
@@ -105,10 +106,6 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     }
     def writeIn(typ: Type, name: StrTree): Unit = typ match {
       case IntType(b, size) => pw.println(s"  input wire ${writeSigned(b)}${writeSize(size)}" + name + ",")
-      case _                => // TODO support IntVType
-    }
-    def writeWire(typ: Type, name: StrTree): Unit = typ match {
-      case IntType(b, size) => pw.println(s"  wire ${writeSigned(b)}${writeSize(size)}" + name + ",")
       case _                => // TODO support IntVType
     }
     def typeString(typ: Type): String = {
@@ -313,6 +310,8 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       case _ =>
     }
 
+    val portConnections = Stack[(ModuleInstance, Port, ModuleInstance, Port)]()
+
     // Walk the tree and construct always block contents
     task visit {
       case blk @ StateBlock(n, _) => {
@@ -349,11 +348,18 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         false
       }
 
-      case Connect(DottedName(fromName :: fromPort :: Nil), to) => {
-        val fromInst = modMap(fromName)
-        val toName = to map { _.names.head }
-        val toInst = toName map modMap
-        fromInst.connect(fromPort, to zip toInst); false
+      case Connect(DottedName(fromName :: fromPortName :: Nil), to) => {
+        val fromInstance = modMap(fromName)
+        val fromPort = if (fromName == "this") fromInstance.iwires(fromPortName) else fromInstance.owires(fromPortName)
+        to foreach {
+          case DottedName(toName :: toPortName :: Nil) => {
+            val toInstance = modMap(toName)
+            val toPort = if (toName == "this") toInstance.owires(toPortName) else toInstance.iwires(toPortName)
+            // TODO: check ports have compatible control flow
+            portConnections push ((fromInstance, fromPort, toInstance, toPort))
+          }
+        }
+        false
       }
 
       case _: Task => true
@@ -415,23 +421,49 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       }
     }
     if (modMap.nonEmpty) {
-      val t = modMap("this")
-      def declareWires(m: ModuleInstance): Unit = {
-        for ((p, decl) <- m.outs) {
-          VisitType(decl.decltype, m.outwires(p) + '_' + decl.name)(writeWire)
-          // TODO add valid and ready and accept wires?
-          // Perhaps add a VisitSyncType?
+      for (instance <- modules) {
+        // declare all port wires
+        val prefix = instance.name + "__"
+        pw.println(s"${i0}// Port wires for ${instance.name}")
+        for (port <- instance.wires; signal <- port.signals) {
+          pw.println(i0 + signal.declString)
         }
+        pw.println()
+
+        // instantiate
+        if (instance.params.nonEmpty) {
+          pw.println(s"${i0}${instance.task.name} #(")
+          // TODO: parameter assignments
+          pw.println(s"${i0})")
+        } else {
+          pw.println(s"${i0}${instance.task.name}")
+        }
+        pw.println(s"${i0}${instance.name} (")
+
+        val connects = for (port <- instance.ports; Signal(name, s, w) <- port.signals) yield {
+          s".${name}(${prefix + name})"
+        }
+        val allConnects = ".clk(clk)" :: ".rst_n(rst_n)" :: connects
+        pw.println(i0 * 2 + (allConnects mkString s"\n${i0 * 2}"))
+
+        pw.println(s"${i0});")
+        pw.println()
       }
-      declareWires(t)
-      for (m <- modules)
-        declareWires(m)
-      // Make modules
-      for ((m, unitnum) <- modules.zipWithIndex) {
-        // TODO m.instantiateModule(unitnum, pw)
+
+      // Assign all ports
+      for ((srcInstance, srcPort, dstInstance, dstPort) <- portConnections) {
+        val dstSignals = dstPort.payload map { _.name }
+        val srcSignals = srcPort.payload map { _.name }
+        pw.println(s"${i0}// ${srcInstance.name}.${srcPort.name} -> ${dstInstance.name}.${dstPort.name}")
+        pw.println(s"${i0}assign { ${dstSignals mkString ", "} } = { ${srcSignals mkString ", "} };")
+
+        // TODO: connect flow control signals
+
+        pw.println()
       }
-      // TODO Connect top-level ports to the appropriate wires
+      pw.println()
     }
+
     pw.println("endmodule")
     pw.println()
     pw.println(s"`default_nettype wire")
@@ -529,22 +561,18 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         val e = MakeExpr(expr)
         StrList(List("{{", totalSz, " - ", exprSz, "{", e, "[(", exprSz, ") - 1]}},", e, "}"))
       }
-      case DollarCall(name, args)               => StrList(List(name, "(", StrList(args.map(MakeExpr), ","), ")"))
-      case ReadCall(name)                       => MakeExpr(name)
-      case BinaryOp(lhs, op, rhs)               => StrList(List(MakeExpr(lhs), Str(" "), op, Str(" "), MakeExpr(rhs)))
-      case UnaryOp(op, lhs)                     => StrList(List(op, MakeExpr(lhs)))
-      case Bracket(content)                     => StrList(List("(", MakeExpr(content), ")"))
-      case TernaryOp(cond, lhs, rhs)            => StrList(List(MakeExpr(cond), " ? ", MakeExpr(lhs), " : ", MakeExpr(rhs)))
-      case BitRep(count, value)                 => StrList(List("{", MakeExpr(count), "{", MakeExpr(value), "}}"))
-      case BitCat(parts)                        => StrList(List("{", StrList(parts.map(MakeExpr), ","), "}"))
-      case DottedName(names)                    => nx(names)
-      case Literal(s)                           => StrList(List(""""""", s, """""""))
-      case Num(None, None, value)               => s"${value}"
-      case Num(Some(false), None, value)        => s"'d${value}"
-      case Num(Some(true), None, value)         => s"'sd${value}"
-      case Num(Some(false), Some(width), value) => s"${width}'d${value}"
-      case Num(Some(true), Some(width), value)  => s"${width}'sd${value}"
-      case e                                    => Message.fatal(s"Unexpected expression $e"); ""
+      case DollarCall(name, args)    => StrList(List(name, "(", StrList(args.map(MakeExpr), ","), ")"))
+      case ReadCall(name)            => MakeExpr(name)
+      case BinaryOp(lhs, op, rhs)    => StrList(List(MakeExpr(lhs), Str(" "), op, Str(" "), MakeExpr(rhs)))
+      case UnaryOp(op, lhs)          => StrList(List(op, MakeExpr(lhs)))
+      case Bracket(content)          => StrList(List("(", MakeExpr(content), ")"))
+      case TernaryOp(cond, lhs, rhs) => StrList(List(MakeExpr(cond), " ? ", MakeExpr(lhs), " : ", MakeExpr(rhs)))
+      case BitRep(count, value)      => StrList(List("{", MakeExpr(count), "{", MakeExpr(value), "}}"))
+      case BitCat(parts)             => StrList(List("{", StrList(parts.map(MakeExpr), ","), "}"))
+      case DottedName(names)         => nx(names)
+      case Literal(s)                => StrList(List(""""""", s, """""""))
+      case n: Num                    => n.toVerilog
+      case e                         => Message.fatal(s"Unexpected expression $e"); ""
     }
   }
 
