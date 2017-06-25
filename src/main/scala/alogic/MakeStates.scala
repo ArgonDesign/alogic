@@ -42,7 +42,7 @@ final class MakeStates {
     extra.push(StateBlock(state, insns))
   }
 
-  def apply(fsm: FsmTask): StateTask = {
+  def apply(fsm: FsmTask): Option[StateTask] = {
     val FsmTask(name, decls, fns, fencefn, vfns) = fsm
 
     if (fns exists (_.name == "main")) {
@@ -65,13 +65,13 @@ final class MakeStates {
       }
 
       // Create State Task
-      StateTask(name, newDecls, states, fencefn, vfns)
+      Some(StateTask(name, newDecls, states, fencefn, vfns))
     } else if (fencefn == None && fns == Nil) {
-      // 'fsm' with only 'verilog' functions
-      Message.warning(s"FSM '$name' contains only 'verilog' functions. Consider using a 'verilog' task.")
-      StateTask(name, decls, Nil, None, vfns)
+      Message.error(s"fsm '$name' contains only 'verilog' functions. Use a 'verilog' task instead.")
+      None
     } else {
-      Message.fatal(s"No function named 'main' found in FSM '$name'")
+      Message.error(s"No function named 'main' found in FSM '$name'")
+      None
     }
   }
 
@@ -215,7 +215,7 @@ final class MakeStates {
 }
 
 object MakeStates {
-  def apply(fsm: FsmTask): StateTask = {
+  def apply(fsm: FsmTask): Option[StateTask] = {
     new MakeStates()(fsm)
   }
 }

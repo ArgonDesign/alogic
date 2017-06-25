@@ -92,7 +92,7 @@ object AlogicMain extends App {
     // Construct potentially parallel file list
     val filePaths = if (multiThreaded) listOfFiles.par else listOfFiles
 
-    // First pass - Build AST
+    // Build AST
     val asts = filePaths flatMap { AParser(_, includeSearchPaths, initalDefines) }
 
     // Build catalogue of all modules
@@ -101,25 +101,32 @@ object AlogicMain extends App {
       asts.toList collect { case t @ ast.Task(name, _) => name -> t }
     }.toMap
 
-    // Second pass
-    asts foreach {
-      case t @ ast.Task(name, _) => {
-        // Convert to state machine
-        val prog: ast.Task = t match {
-          case t: ast.FsmTask => MakeStates(t)
-          case t              => t
-        }
+    // Synthesise tasks
+    val tasks = {
+      val results = asts flatMap {
+        case task: ast.FsmTask => MakeStates(task)
+        case task              => Some(task)
+      }
 
-        // Remove updating assignments ('+=' etc), '++' and '--'
-        val prog2 = Desugar.RemoveAssigns(prog)
+      // Flatten and apply desugaring
+      results map {
+        Desugar.RemoveAssigns(_)
+      }
+    }
 
+    // Generate verilog
+    tasks foreach {
+      case task @ ast.Task(name, _) => {
         // Construct output filename
         val opath: Path = odir / (name + ".v")
 
         // Write Verilog
-        new MakeVerilog()(prog2, opath.path)
+        try {
+          new MakeVerilog(moduleCatalogue)(task, opath.path)
+        } catch {
+          case _: java.util.NoSuchElementException => // Temporarily until it is handled more gracefully
+        }
       }
     }
-
   }
 }
