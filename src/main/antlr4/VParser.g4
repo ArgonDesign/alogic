@@ -4,6 +4,28 @@ options {
   tokenVocab = VLexer;
 }
 
+// TODO: syntax changes:
+//
+// AGREED: Add 'loop' '{'...'}' as the fundamental loop
+//
+// AGREED: Change
+//   'typedef' 'struct' '{'...'}' ID ';'
+// to:
+//   'struct' ID '{'...'}'
+//
+// PROPOSED: Change
+//   task ID '{' ports body '}'
+// to:
+//   task ID '('ports')' '{' body '}'
+//
+// PROPOSED: change
+//   'void' 'verilog' '(')' '{'...'}'
+// to:
+//   'verilog' {...}
+// or to something similar to:
+//   'verbatim' 'verilog' '{'...'}'
+//   (for when we would support multiple target languages???)
+
 start
   : typedefinition*
     entity
