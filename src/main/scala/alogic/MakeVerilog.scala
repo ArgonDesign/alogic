@@ -780,7 +780,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       case DeclarationStmt(VarDeclaration(decltype, id, Some(rhs))) => MakeStmt(indent)(Assign(id, rhs))
       case DeclarationStmt(VarDeclaration(decltype, id, None)) => MakeStmt(indent)(Assign(id, Num(Some(false), None, 0))) // TODO: Why is this needed ?
 
-      case ExprStmt(DollarCall(name, args)) => StrList(List(i, name, StrList(args.map(MakeExpr), ",")))
+      case ExprStmt(DollarCall(name, args)) => StrList(List(name, "(", StrList(args.map(MakeExpr), ","), ");"))
       case AlogicComment(s) => s"// $s\n"
 
       case x => Message.fatal(s"Don't know how to emit code for $x"); Str("")
