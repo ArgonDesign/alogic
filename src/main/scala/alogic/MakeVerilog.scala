@@ -355,6 +355,30 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
           case DottedName(toName :: toPortName :: Nil) => {
             val toInstance = modMap(toName)
             val toPort = if (toName == "this") toInstance.owires(toPortName) else toInstance.iwires(toPortName)
+
+            val msg = s"Flow control of port '${fromName}.${fromPortName}' is not compatible with port '${toName}.${toPortName}'"
+            (fromPort, toPort) match {
+              case (_: PortNone, _: PortNone)     => // OK
+              case (_: PortNone, _: PortValid)    => Message.error(msg, "none -> sync")
+              case (_: PortNone, _: PortReady)    => Message.error(msg, "none -> sync ready")
+              case (_: PortNone, _: PortAccept)   => Message.error(msg, "none -> sync accept")
+
+              case (_: PortValid, _: PortNone)    => Message.error(msg, "sync -> none")
+              case (_: PortValid, _: PortValid)   => // OK
+              case (_: PortValid, _: PortReady)   => Message.error(msg, "sync -> sync ready")
+              case (_: PortValid, _: PortAccept)  => Message.error(msg, "sync -> sync accept")
+
+              case (_: PortReady, _: PortNone)    => Message.error(msg, "sync ready -> none")
+              case (_: PortReady, _: PortValid)   => Message.error(msg, "sync ready -> sync")
+              case (_: PortReady, _: PortReady)   => // OK
+              case (_: PortReady, _: PortAccept)  => // OK (accept can drive ready)
+
+              case (_: PortAccept, _: PortNone)   => Message.error(msg, "sync accept -> none")
+              case (_: PortAccept, _: PortValid)  => Message.error(msg, "sync accept -> sync")
+              case (_: PortAccept, _: PortReady)  => Message.error(msg, "sync accept -> sync ready")
+              case (_: PortAccept, _: PortAccept) => // OK
+            }
+
             // TODO: check ports have compatible control flow and type
             portConnections push ((fromInstance, fromPort, toInstance, toPort))
           }
@@ -482,6 +506,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         }
 
         // Connect flow control signals
+        // We already checked that the connected ports are compatible, so no need to check here
         (dstPort.valid, srcPort.valid) match {
           case (Some(dstSig), Some(srcSig)) => pw.println(s"${i0}assign ${dstSig.name} = ${srcSig.name};")
           case _                            =>

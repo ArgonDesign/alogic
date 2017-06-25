@@ -3,7 +3,7 @@ fsm b {
   in sync ready bool p_in;
   out sync ready bool p_out;
 
-  in sync ready u6 p_in_vec;
+  in sync accept u6 p_in_vec;
   out sync ready u6 p_out_vec;
 
   void main() {
