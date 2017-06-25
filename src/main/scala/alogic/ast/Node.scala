@@ -29,7 +29,9 @@ case class StateTask(name: String,
                      states: List[StateBlock],
                      fencefn: Option[FenceFunction],
                      vfns: List[VerilogFunction]) extends Task
-case class VerilogTask(name: String, decls: List[Declaration], fns: List[VerilogFunction]) extends Task
+case class VerilogTask(name: String,
+                       decls: List[Declaration],
+                       vfns: List[VerilogFunction]) extends Task
 case class NetworkTask(name: String,
                        decls: List[Declaration],
                        instantiate: List[Instantiate],

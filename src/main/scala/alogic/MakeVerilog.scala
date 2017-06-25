@@ -20,9 +20,6 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
 
   val nxMap = mutable.Map[String, String]() // Returns string to use when this identifier is accessed
   val regMap = mutable.Map[String, String]() // Map from name in alogic to name in Verilog
-  val modMap = mutable.Map[String, ModuleInstance]() withDefault {
-    name => Message.fatal(s"Unknown module name '$name'")
-  }
 
   // Map of names used to instantiate modules to multiplicity of that name
   val namecnt = mutable.Map[String, Int]() withDefaultValue (0)
@@ -92,7 +89,6 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     val resets = Stack[StrTree]() // Collection of things to reset
     val verilogfns = Stack[StrTree]() // Collection of raw verilog text
     val acceptfns = Stack[StrTree]() // Collection of code to generate accept outputs
-    val modules = Stack[ModuleInstance]() // Keep a list of all modules instantiated (not including this)
 
     val pw = new PrintWriter(new File(fname))
 
@@ -310,48 +306,123 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       case _ =>
     }
 
-    val portConnections = Stack[(ModuleInstance, Port, ModuleInstance, Port)]()
-
-    // Walk the tree and construct always block contents
-    task visit {
-      case blk @ StateBlock(n, _) => {
-        val indent = if (numstates == 1) 2 else 3
-        states(n) = MakeStmt(indent)(blk)
-        if (generateAccept) {
-          makingAccept = true
-          AcceptStmt(indent, blk) match {
-            case Some(a) => acceptfns push a
-            case None    =>
+    task match {
+      case network: NetworkTask => finishNetwork(network, pw)
+      case VerilogTask(_, _, vfns) => {
+        // Emit all verilog functions
+        vfns.reverse foreach { vfn =>
+          pw.print(vfn.body)
+        }
+      }
+      case statetask: StateTask => {
+        // Construct always block contents
+        statetask.states foreach {
+          case blk @ StateBlock(n, _) => {
+            val indent = if (numstates == 1) 2 else 3
+            states(n) = MakeStmt(indent)(blk)
+            if (generateAccept) {
+              makingAccept = true
+              AcceptStmt(indent, blk) match {
+                case Some(a) => acceptfns push a
+                case None    =>
+              }
+              makingAccept = false
+            }
           }
-          makingAccept = false
         }
-        false
+
+        val fencefn = statetask.fencefn map { f => MakeStmt(2)(f.body) }
+
+        // Emit all verilog functions
+        statetask.vfns.reverse foreach { vfn =>
+          pw.print(vfn.body)
+        }
+
+        // Start main combinatorial loop
+        pw.println()
+        pw.println("  always @* begin")
+        pw.println("    go = 1'b1;")
+        // Prepare defaults
+        if (defaults.length > 0)
+          pw.println(StrList(defaults))
+        fencefn foreach pw.println
+
+        if (numstates == 1) {
+          pw.println(s"    ${states(0)}")
+        } else if (numstates > 1) {
+          pw.println("    case (state)")
+          pw.println("      default: begin")
+          pw.println("      end")
+          for ((n, c) <- states.toList.sortBy(_._1)) {
+            pw.println(s"      ${MakeState(n)}: ${c}")
+          }
+          pw.println("    endcase")
+        }
+
+        pw.println()
+        if (clears.length > 0) {
+          pw.println(s"    if (!$go) begin")
+          pw.print(StrList(clears))
+          pw.println("    end")
+        }
+        pw.println("  end")
+        // Now emit clocked blocks
+        pw.println()
+        pw.println("  always @(posedge clk or negedge rst_n) begin")
+        pw.println("    if (!rst_n) begin")
+        pw.print(StrList(resets))
+        pw.println("    end else begin")
+        pw.println(s"      if ($go) begin")
+        pw.print(StrList(clocks))
+        pw.println("      end")
+        pw.println("    end")
+        pw.println("  end")
+
+        if (!clocks_no_reset.isEmpty) {
+          pw.println()
+          pw.println(s"  always @(posedge clk) begin")
+          pw.println(s"    if ($go) begin")
+          pw.print(StrList(clocks_no_reset.toList))
+          pw.println(s"    end")
+          pw.println(s"  end")
+        }
+        pw.println()
+
       }
-      case FenceFunction(body)   => { fencefns push MakeStmt(2)(body); false }
-      case VerilogFunction(body) => { verilogfns push body; false }
+      case _ => Message.ice("unreachable")
+    }
 
-      case Instantiate(id, module, args) => {
-        if (!(moduleCatalogue contains module)) {
-          Message.error(s"Cannot instantiate undefined module '${module}' in module '${modname}'")
-        }
+    pw.println("endmodule")
+    pw.println()
+    pw.println(s"`default_nettype wire")
+    pw.close()
+  }
 
-        if (modMap.isEmpty) {
-          modMap("this") = new ModuleInstance("this", task, Map());
-        }
+  def finishNetwork(network: NetworkTask, pw: PrintWriter) = {
 
-        val name = id + "_" + namecnt(id)
-        namecnt(id) += 1
-
-        val m = new ModuleInstance(name, moduleCatalogue(module), args);
-        modMap(id) = m
-        modules push m
-        false
+    // Collect all instatiations
+    val instances = for (Instantiate(id, module, args) <- network.instantiate) yield {
+      if (!(moduleCatalogue contains module)) {
+        Message.error(s"Cannot instantiate undefined module '${module}' in module '${network.name}'")
       }
+      new ModuleInstance(id, moduleCatalogue(module), args);
+    }
 
+    // Construct an instance name -> ModuleInstance map
+    val modMap = {
+      val pairs = instances map { instance => instance.name -> instance }
+      val preMap = immutable.Map("this" -> new ModuleInstance("this", network, Map())) ++ pairs
+      preMap withDefault {
+        key => Message.fatal(s"Unknown module name '${key}'")
+      }
+    }
+
+    // Collect port connections
+    val portConnections = network.connect flatMap {
       case Connect(DottedName(fromName :: fromPortName :: Nil), to) => {
         val fromInstance = modMap(fromName)
         val fromPort = if (fromName == "this") fromInstance.iwires(fromPortName) else fromInstance.owires(fromPortName)
-        to foreach {
+        to map {
           case DottedName(toName :: toPortName :: Nil) => {
             val toInstance = modMap(toName)
             val toPort = if (toName == "this") toInstance.owires(toPortName) else toInstance.iwires(toPortName)
@@ -380,159 +451,98 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
             }
 
             // TODO: check ports have compatible control flow and type
-            portConnections push ((fromInstance, fromPort, toInstance, toPort))
+            (fromInstance, fromPort, toInstance, toPort)
           }
         }
-        false
       }
-
-      case _: Task => true
-      case _       => Message.ice("unreachable")
     }
 
-    if (verilogfns.length > 0) {
-      pw.print(StrList(verilogfns))
+    // Emit all verilog functions
+    network.vfns.reverse foreach { vfn =>
+      pw.print(vfn.body)
     }
-    if (states.size > 0 || fencefns.length > 0) {
-      // Start main combinatorial loop
-      pw.println()
-      pw.println("  always @* begin")
-      pw.println("    go = 1'b1;")
-      // Prepare defaults
-      if (defaults.length > 0)
-        pw.println(StrList(defaults))
-      if (fencefns.length > 0)
-        pw.println(StrList(fencefns))
 
-      if (numstates > 1) {
-        pw.println("    case (state)")
-        pw.println("      default: begin")
-        pw.println("      end")
-        for ((n, c) <- states.toList.sortBy(_._1)) {
-          pw.println(s"      ${MakeState(n)}: ${c}")
+    // Emit instantiations
+    for (instance <- instances.reverse) {
+      val paramAssigns = instance.paramAssigns
+      // declare all port wires
+      pw.println(s"${i0}// Port wires for ${instance.name}")
+      for (port <- instance.wires; Signal(name, signed, formalWidth) <- port.signals) {
+        // substitute formal parameters with actual parameters
+        val actualWidth = formalWidth rewrite {
+          case DottedName(name :: Nil) if (paramAssigns contains name) => paramAssigns(name)
         }
-        pw.println("    endcase")
+        val signal = Signal(name, signed, actualWidth)
+        pw.println(i0 + signal.declString)
+      }
+      pw.println()
+
+      // instantiate
+      if (paramAssigns.nonEmpty) {
+        val pas = paramAssigns map {
+          case (lhs, rhs) => s".${lhs}(${rhs.toVerilog})"
+        }
+        pw.println(s"""|${i0}${instance.task.name} #(
+                       |${i0 * 2}${pas mkString s",\n${i0 * 2}"}
+                       |${i0})""".stripMargin)
       } else {
-        pw.println(s"    ${states(0)}")
+        pw.println(s"${i0}${instance.task.name}")
       }
 
-      pw.println()
-      if (clears.length > 0) {
-        pw.println(s"    if (!$go) begin")
-        pw.print(StrList(clears))
-        pw.println("    end")
+      val portAssigns = for {
+        (port, wire) <- instance.ports zip instance.wires
+        (Signal(portName, _, _), Signal(wireName, _, _)) <- port.signals zip wire.signals
+      } yield {
+        s".${portName}(${wireName})"
       }
-      pw.println("  end")
-      // Now emit clocked blocks
-      pw.println()
-      pw.println("  always @(posedge clk or negedge rst_n) begin")
-      pw.println("    if (!rst_n) begin")
-      pw.print(StrList(resets))
-      pw.println("    end else begin")
-      pw.println(s"      if ($go) begin")
-      pw.print(StrList(clocks))
-      pw.println("      end")
-      pw.println("    end")
-      pw.println("  end")
-
-      if (!clocks_no_reset.isEmpty) {
-        pw.println()
-        pw.println(s"  always @(posedge clk) begin")
-        pw.println(s"    if ($go) begin")
-        pw.print(StrList(clocks_no_reset.toList))
-        pw.println(s"    end")
-        pw.println(s"  end")
-      }
+      val miscAssigns = ".clk(clk)" :: ".rst_n(rst_n)" :: Nil
+      pw.println(s"""|${i0}${instance.name} (
+                     |${i0 * 2}${miscAssigns ::: portAssigns mkString s",\n${i0 * 2}"}
+                     |${i0});""".stripMargin)
       pw.println()
     }
 
-    if (modMap.nonEmpty) {
-      for (instance <- modules) {
-        val paramAssigns = instance.paramAssigns
-        // declare all port wires
-        pw.println(s"${i0}// Port wires for ${instance.name}")
-        for (port <- instance.wires; Signal(name, signed, formalWidth) <- port.signals) {
-          // substitute formal parameters with actual parameters
-          val actualWidth = formalWidth rewrite {
-            case DottedName(name :: Nil) if (paramAssigns contains name) => paramAssigns(name)
-          }
-          val signal = Signal(name, signed, actualWidth)
-          pw.println(i0 + signal.declString)
-        }
-        pw.println()
-
-        // instantiate
-        if (paramAssigns.nonEmpty) {
-          val pas = paramAssigns map {
-            case (lhs, rhs) => s".${lhs}(${rhs.toVerilog})"
-          }
-          pw.println(s"""|${i0}${instance.task.name} #(
-                         |${i0 * 2}${pas mkString s",\n${i0 * 2}"}
-                         |${i0})""".stripMargin)
-        } else {
-          pw.println(s"${i0}${instance.task.name}")
-        }
-
-        val portAssigns = for {
-          (port, wire) <- instance.ports zip instance.wires
-          (Signal(portName, _, _), Signal(wireName, _, _)) <- port.signals zip wire.signals
-        } yield {
-          s".${portName}(${wireName})"
-        }
-        val miscAssigns = ".clk(clk)" :: ".rst_n(rst_n)" :: Nil
-        pw.println(s"""|${i0}${instance.name} (
-                       |${i0 * 2}${miscAssigns ::: portAssigns mkString s",\n${i0 * 2}"}
-                       |${i0});""".stripMargin)
-        pw.println()
+    // Assign all ports
+    for ((srcInstance, srcPort, dstInstance, dstPort) <- portConnections.reverse) {
+      // Connect payload signals
+      val dstSignals = dstPort.payload map { _.name }
+      val srcSignals = srcPort.payload map { _.name }
+      pw.println(s"${i0}// ${srcPort.name} -> ${dstPort.name}")
+      dstSignals match {
+        case sig :: Nil => pw.print(s"${i0}assign ${sig} = ")
+        case sigs => pw.print(s"""|${i0}assign {
+                                  |${i0 * 2}${sigs mkString s",\n${i0 * 2}"}
+                                  |${i0}} = """.stripMargin)
       }
-
-      // Assign all ports
-      for ((srcInstance, srcPort, dstInstance, dstPort) <- portConnections) {
-        // Connect payload signals
-        val dstSignals = dstPort.payload map { _.name }
-        val srcSignals = srcPort.payload map { _.name }
-        pw.println(s"${i0}// ${srcPort.name} -> ${dstPort.name}")
-        dstSignals match {
-          case sig :: Nil => pw.print(s"${i0}assign ${sig} = ")
-          case sigs => pw.print(s"""|${i0}assign {
+      srcSignals match {
+        case sig :: Nil => pw.println(s"${sig};")
+        case sigs => pw.println(s"""|{
                                     |${i0 * 2}${sigs mkString s",\n${i0 * 2}"}
-                                    |${i0}} = """.stripMargin)
-        }
-        srcSignals match {
-          case sig :: Nil => pw.println(s"${sig};")
-          case sigs => pw.println(s"""|{
-                                      |${i0 * 2}${sigs mkString s",\n${i0 * 2}"}
-                                      |${i0}};""".stripMargin)
-        }
-
-        // Connect flow control signals
-        // We already checked that the connected ports are compatible, so no need to check here
-        (dstPort.valid, srcPort.valid) match {
-          case (Some(dstSig), Some(srcSig)) => pw.println(s"${i0}assign ${dstSig.name} = ${srcSig.name};")
-          case _                            =>
-        }
-        (dstPort.ready, srcPort.ready) match {
-          case (Some(dstSig), Some(srcSig)) => pw.println(s"${i0}assign ${srcSig.name} = ${dstSig.name};")
-          case _                            =>
-        }
-        (dstPort.accept, srcPort.accept) match {
-          case (Some(dstSig), Some(srcSig)) => pw.println(s"${i0}assign ${srcSig.name} = ${dstSig.name};")
-          case _                            =>
-        }
-        (dstPort.accept, srcPort.ready) match {
-          case (Some(dstSig), Some(srcSig)) => pw.println(s"${i0}assign ${srcSig.name} = ${dstSig.name};")
-          case _                            =>
-        }
-
-        pw.println()
+                                    |${i0}};""".stripMargin)
       }
+
+      // Connect flow control signals
+      // We already checked that the connected ports are compatible, so no need to check here
+      (dstPort.valid, srcPort.valid) match {
+        case (Some(dstSig), Some(srcSig)) => pw.println(s"${i0}assign ${dstSig.name} = ${srcSig.name};")
+        case _                            =>
+      }
+      (dstPort.ready, srcPort.ready) match {
+        case (Some(dstSig), Some(srcSig)) => pw.println(s"${i0}assign ${srcSig.name} = ${dstSig.name};")
+        case _                            =>
+      }
+      (dstPort.accept, srcPort.accept) match {
+        case (Some(dstSig), Some(srcSig)) => pw.println(s"${i0}assign ${srcSig.name} = ${dstSig.name};")
+        case _                            =>
+      }
+      (dstPort.accept, srcPort.ready) match {
+        case (Some(dstSig), Some(srcSig)) => pw.println(s"${i0}assign ${srcSig.name} = ${dstSig.name};")
+        case _                            =>
+      }
+
+      pw.println()
     }
 
-    pw.println("endmodule")
-    pw.println()
-    pw.println(s"`default_nettype wire")
-
-    pw.close()
   }
 
   // We would prefer to use _d and _q, except that it is more useful
