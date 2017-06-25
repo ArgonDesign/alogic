@@ -355,7 +355,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
           case DottedName(toName :: toPortName :: Nil) => {
             val toInstance = modMap(toName)
             val toPort = if (toName == "this") toInstance.owires(toPortName) else toInstance.iwires(toPortName)
-            // TODO: check ports have compatible control flow
+            // TODO: check ports have compatible control flow and type
             portConnections push ((fromInstance, fromPort, toInstance, toPort))
           }
         }
@@ -419,7 +419,9 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         pw.println(s"    end")
         pw.println(s"  end")
       }
+      pw.println()
     }
+
     if (modMap.nonEmpty) {
       for (instance <- modules) {
         // declare all port wires
@@ -456,13 +458,13 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
 
       // Assign all ports
       for ((srcInstance, srcPort, dstInstance, dstPort) <- portConnections) {
+        // Connect payload signals
         val dstSignals = dstPort.payload map { _.name }
         val srcSignals = srcPort.payload map { _.name }
-        pw.println(s"${i0}// ${srcInstance.name}.${srcPort.name} -> ${dstInstance.name}.${dstPort.name}")
-        pw.print(s"${i0}assign ")
+        pw.println(s"${i0}// ${srcPort.name} -> ${dstPort.name}")
         dstSignals match {
-          case sig :: Nil => pw.print(s"${sig} = ")
-          case sigs => pw.print(s"""|{
+          case sig :: Nil => pw.print(s"${i0}assign ${sig} = ")
+          case sigs => pw.print(s"""|${i0}assign {
                                     |${i0 * 2}${sigs mkString s",\n${i0 * 2}"}
                                     |${i0}} = """.stripMargin)
         }
@@ -473,11 +475,26 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
                                       |${i0}};""".stripMargin)
         }
 
-        // TODO: connect flow control signals
+        // Connect flow control signals
+        (dstPort.valid, srcPort.valid) match {
+          case (Some(dstSig), Some(srcSig)) => pw.println(s"${i0}assign ${dstSig.name} = ${srcSig.name};")
+          case _                            =>
+        }
+        (dstPort.ready, srcPort.ready) match {
+          case (Some(dstSig), Some(srcSig)) => pw.println(s"${i0}assign ${srcSig.name} = ${dstSig.name};")
+          case _                            =>
+        }
+        (dstPort.accept, srcPort.accept) match {
+          case (Some(dstSig), Some(srcSig)) => pw.println(s"${i0}assign ${srcSig.name} = ${dstSig.name};")
+          case _                            =>
+        }
+        (dstPort.accept, srcPort.ready) match {
+          case (Some(dstSig), Some(srcSig)) => pw.println(s"${i0}assign ${srcSig.name} = ${dstSig.name};")
+          case _                            =>
+        }
 
         pw.println()
       }
-      pw.println()
     }
 
     pw.println("endmodule")
