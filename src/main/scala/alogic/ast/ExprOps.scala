@@ -12,7 +12,7 @@ object ExprOps {
       case _: CallExpr               => false
       case Zxt(numbits, expr)        => numbits.isConst && expr.isConst
       case Sxt(numbits, expr)        => numbits.isConst && expr.isConst
-      case _: DollarCall             => false
+      case _: DollarCall             => false // Could handle some defined ones like $clog2
       case _: ReadCall               => false
       case _: LockCall               => false
       case _: UnlockCall             => false
@@ -21,13 +21,39 @@ object ExprOps {
       case BinaryOp(lhs, _, rhs)     => lhs.isConst && rhs.isConst
       case UnaryOp(_, lhs)           => lhs.isConst
       case Bracket(content)          => content.isConst
-      case TernaryOp(cond, lhs, rhs) => cond.isConst && lhs.isConst && rhs.isConst
+      case TernaryOp(cond, lhs, rhs) => cond.isConst && lhs.isConst && rhs.isConst // Could loosen this
       case BitRep(count, value)      => count.isConst && value.isConst
       case BitCat(terms)             => terms forall (_.isConst)
       case _: Slice                  => false
       case _: DottedName             => false
       case _: ArrayLookup            => false
       case _: Literal                => true
+    }
+
+    def eval: BigInt = expr match {
+      case Num(_, _, value)          => value
+      case _: CallExpr               => Message.ice("unreachable")
+      case Zxt(numbits, expr)        => expr.eval
+      case Sxt(numbits, expr)        => expr.eval
+      case _: DollarCall             => Message.ice("unreachable") // Could handle some defined ones like $clog2
+      case _: ReadCall               => Message.ice("unreachable")
+      case _: LockCall               => Message.ice("unreachable")
+      case _: UnlockCall             => Message.ice("unreachable")
+      case _: ValidCall              => Message.ice("unreachable")
+      case _: WriteCall              => Message.ice("unreachable")
+      case BinaryOp(lhs, "+", rhs)   => lhs.eval + rhs.eval
+      case BinaryOp(lhs, "-", rhs)   => lhs.eval - rhs.eval
+      case BinaryOp(lhs, "*", rhs)   => lhs.eval * rhs.eval
+      case BinaryOp(lhs, _, rhs)     => ???
+      case UnaryOp(_, lhs)           => ???
+      case Bracket(content)          => content.eval
+      case TernaryOp(cond, lhs, rhs) => ???
+      case BitRep(count, value)      => ???
+      case BitCat(terms)             => ???
+      case _: Slice                  => Message.ice("unreachable")
+      case _: DottedName             => Message.ice("unreachable")
+      case _: ArrayLookup            => Message.ice("unreachable")
+      case _: Literal                => Message.ice("unreachable")
     }
 
     // Evaluate expression, returning None if the expression is not constant
