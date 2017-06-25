@@ -424,20 +424,26 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
 
     if (modMap.nonEmpty) {
       for (instance <- modules) {
+        val paramAssigns = instance.paramAssigns
         // declare all port wires
         pw.println(s"${i0}// Port wires for ${instance.name}")
-        for (port <- instance.wires; signal <- port.signals) {
+        for (port <- instance.wires; Signal(name, signed, formalWidth) <- port.signals) {
+          // substitute formal parameters with actual parameters
+          val actualWidth = formalWidth rewrite {
+            case DottedName(name :: Nil) if (paramAssigns contains name) => paramAssigns(name)
+          }
+          val signal = Signal(name, signed, actualWidth)
           pw.println(i0 + signal.declString)
         }
         pw.println()
 
         // instantiate
-        if (instance.paramAssigns.nonEmpty) {
-          val paramAssigns = instance.paramAssigns map {
+        if (paramAssigns.nonEmpty) {
+          val pas = paramAssigns map {
             case (lhs, rhs) => s".${lhs}(${rhs.toVerilog})"
           }
           pw.println(s"""|${i0}${instance.task.name} #(
-                         |${i0 * 2}${paramAssigns mkString s",\n${i0 * 2}"}
+                         |${i0 * 2}${pas mkString s",\n${i0 * 2}"}
                          |${i0})""".stripMargin)
         } else {
           pw.println(s"${i0}${instance.task.name}")
