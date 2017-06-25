@@ -27,7 +27,7 @@ object ExprOps {
       case _: Slice                  => false
       case _: DottedName             => false
       case _: ArrayLookup            => false
-      case _: Literal                => false // TODO: this should not really be an expression node
+      case _: Literal                => true
     }
 
     // Evaluate expression, returning None if the expression is not constant

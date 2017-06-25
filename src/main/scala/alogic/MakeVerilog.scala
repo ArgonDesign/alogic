@@ -609,7 +609,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       case BitRep(count, value)      => StrList(List("{", MakeExpr(count), "{", MakeExpr(value), "}}"))
       case BitCat(parts)             => StrList(List("{", StrList(parts.map(MakeExpr), ","), "}"))
       case DottedName(names)         => nx(names)
-      case Literal(s)                => StrList(List(""""""", s, """""""))
+      case Literal(s)                => Str(s)
       case n: Num                    => n.toVerilog
       case e                         => Message.fatal(s"Unexpected expression $e"); ""
     }

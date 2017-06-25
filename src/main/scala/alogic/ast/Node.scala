@@ -54,7 +54,6 @@ sealed trait Expr extends Node
 // TODO: some factories would be good as writing ' Num(Some(false), Some(1), 1)'
 // for the constant 1'b1 is quite a pain
 case class Num(signed: Option[Boolean], width: Option[BigInt], value: BigInt) extends Expr
-case class Literal(value: String) extends Expr // Strings held as textual representation including quotes
 case class CallExpr(name: DottedName, args: List[Expr]) extends Expr
 case class Zxt(numbits: Expr, expr: Expr) extends Expr
 case class Sxt(numbits: Expr, expr: Expr) extends Expr
@@ -78,6 +77,11 @@ case class Slice(ref: VarRef, lidx: Expr, op: String, ridx: Expr) extends Expr
 sealed trait VarRef extends Expr
 case class DottedName(names: List[String]) extends VarRef
 case class ArrayLookup(name: DottedName, index: List[Expr]) extends VarRef
+
+///////////////////////////////////////////////////////////////////////////////
+// String Literal - including " on both ends
+///////////////////////////////////////////////////////////////////////////////
+case class Literal(value: String) extends Expr
 
 ///////////////////////////////////////////////////////////////////////////////
 // Statement nodes
