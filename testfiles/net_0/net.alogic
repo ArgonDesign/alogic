@@ -5,7 +5,11 @@ network net {
   in sync ready bool p_in;
   out sync ready bool p_out;
 
-  a_i = new a();
+  param u10 B = 1;
+  param u10 D = 2;
+  param u10 E = 3;
+
+  a_i = new a(A=B, C=D+2*E);
   b_i = new b();
 
   this.p_in -> b_i.p_in;

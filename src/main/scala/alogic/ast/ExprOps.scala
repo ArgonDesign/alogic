@@ -47,7 +47,7 @@ object ExprOps {
       case _: UnlockCall                        => ???
       case _: ValidCall                         => ???
       case _: WriteCall                         => ???
-      case BinaryOp(lhs, _, rhs)                => ???
+      case BinaryOp(lhs, op, rhs)               => s"(${lhs.toVerilog}) $op (${rhs.toVerilog})"
       case UnaryOp(_, lhs)                      => ???
       case Bracket(content)                     => ???
       case TernaryOp(cond, lhs, rhs)            => ???

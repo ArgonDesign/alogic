@@ -7,7 +7,7 @@ import scala.collection.mutable.Stack
 
 // This class keeps track of the connections of a particular module instance
 
-class ModuleInstance(val name: String, val task: Task, val params: List[ParamAssign]) {
+class ModuleInstance(val name: String, val task: Task, val paramAssigns: List[ParamAssign]) {
 
   // TODO check in parser that no port name repeats
 

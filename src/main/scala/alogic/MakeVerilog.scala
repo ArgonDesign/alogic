@@ -430,25 +430,27 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         pw.println()
 
         // instantiate
-        if (instance.params.nonEmpty) {
-          pw.println(s"${i0}${instance.task.name} #(")
-          // TODO: parameter assignments
-          pw.println(s"${i0})")
+        if (instance.paramAssigns.nonEmpty) {
+          val paramAssigns = instance.paramAssigns map {
+            case ParamAssign(lhs, rhs) => s".${lhs}(${rhs.toVerilog})"
+          }
+          pw.println(s"""|${i0}${instance.task.name} #(
+                         |${i0 * 2}${paramAssigns mkString s",\n${i0 * 2}"}
+                         |${i0})""".stripMargin)
         } else {
           pw.println(s"${i0}${instance.task.name}")
         }
-        pw.println(s"${i0}${instance.name} (")
 
-        val connects = for {
+        val portAssigns = for {
           (port, wire) <- instance.ports zip instance.wires
           (Signal(portName, _, _), Signal(wireName, _, _)) <- port.signals zip wire.signals
         } yield {
           s".${portName}(${wireName})"
         }
-        val allConnects = ".clk(clk)" :: ".rst_n(rst_n)" :: connects
-        pw.println(i0 * 2 + (allConnects mkString s"\n${i0 * 2}"))
-
-        pw.println(s"${i0});")
+        val miscAssigns = ".clk(clk)" :: ".rst_n(rst_n)" :: Nil
+        pw.println(s"""|${i0}${instance.name} (
+                       |${i0 * 2}${miscAssigns ::: portAssigns mkString s",\n${i0 * 2}"}
+                       |${i0});""".stripMargin)
         pw.println()
       }
 
