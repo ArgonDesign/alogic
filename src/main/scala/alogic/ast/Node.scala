@@ -132,6 +132,5 @@ case class StateBlock(state: Int, contents: List[CombStmt]) extends Node
 ///////////////////////////////////////////////////////////////////////////////
 // Network contents
 ///////////////////////////////////////////////////////////////////////////////
-case class ParamAssign(lhs: String, rhs: Expr) extends Node
 case class Connect(lhs: DottedName, rhs: List[DottedName]) extends Node
-case class Instantiate(id: String, module: String, args: List[ParamAssign]) extends Node
+case class Instantiate(id: String, module: String, args: Map[String, Expr]) extends Node

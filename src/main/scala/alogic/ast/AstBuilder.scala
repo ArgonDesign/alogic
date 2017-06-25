@@ -487,10 +487,6 @@ class NetworkTaskBuilder(cc: CommonContext) {
       override def visitDotted_name(ctx: Dotted_nameContext) = DottedName(ctx.es.toList map (_.text))
     }
 
-    object ParamAssignVisitor extends VScalarVisitor[ParamAssign] {
-      override def visitParam_assign(ctx: Param_assignContext) = ParamAssign(ctx.IDENTIFIER, ExprVisitor(ctx.expr));
-    }
-
     object NetworkVisitor extends VScalarVisitor[NetworkTask] {
       object NetworkContentVisitor extends VScalarVisitor[Node] {
         override def visitTaskFSM(ctx: TaskFSMContext) = ???
@@ -503,8 +499,10 @@ class NetworkTaskBuilder(cc: CommonContext) {
         override def visitInstantiate(ctx: InstantiateContext) = {
           val id = ctx.IDENTIFIER(0).text
           val module = ctx.IDENTIFIER(1).text
-          val pas = ParamAssignVisitor(ctx.param_args.param_assign)
-          Instantiate(id, module, pas)
+          val pas = ctx.param_args.param_assign.toList map { pa =>
+            pa.IDENTIFIER.text -> ExprVisitor(pa.expr)
+          }
+          Instantiate(id, module, ListMap(pas: _*))
         }
         override def visitVerilogFunction(ctx: VerilogFunctionContext) = VerilogFunctionVisitor(ctx)
       }

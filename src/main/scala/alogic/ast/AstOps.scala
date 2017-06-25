@@ -66,8 +66,7 @@ object AstOps {
       def v(node: Node): Unit = {
         if (callback(node))
           node match {
-            case ParamAssign(_, rhs)                        => v(rhs)
-            case Instantiate(_, _, args)                    => args foreach v
+            case Instantiate(_, _, _)                       =>
             case Connect(start, end)                        => { v(start); end foreach v }
             case Function(name, body)                       => v(body)
             case FenceFunction(body)                        => v(body)
@@ -142,8 +141,7 @@ object AstOps {
         val v = cb(node) match {
           case Some(x) => x
           case None => node match {
-            case ParamAssign(id, rhs)                       => ParamAssign(id, r[Expr](rhs))
-            case Instantiate(a, b, args)                    => Instantiate(a, b, args map r[ParamAssign])
+            case x: Instantiate                             => x
             case Connect(start, end)                        => Connect(r[DottedName](start), end map r[DottedName])
             case Function(name, body)                       => Function(name, r[CtrlStmt](body))
             case FenceFunction(body)                        => FenceFunction(r[CombStmt](body))

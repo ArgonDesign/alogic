@@ -336,7 +336,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         }
 
         if (modMap.isEmpty) {
-          modMap("this") = new ModuleInstance("this", task, Nil);
+          modMap("this") = new ModuleInstance("this", task, Map());
         }
 
         val name = id + "_" + namecnt(id)
@@ -434,7 +434,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         // instantiate
         if (instance.paramAssigns.nonEmpty) {
           val paramAssigns = instance.paramAssigns map {
-            case ParamAssign(lhs, rhs) => s".${lhs}(${rhs.toVerilog})"
+            case (lhs, rhs) => s".${lhs}(${rhs.toVerilog})"
           }
           pw.println(s"""|${i0}${instance.task.name} #(
                          |${i0 * 2}${paramAssigns mkString s",\n${i0 * 2}"}

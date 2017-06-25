@@ -78,14 +78,16 @@ object PrettyPrinters {
       def v(indent: Int)(node: Node): String = {
         val i = "  " * indent
         node match {
-          case expr: Expr                    => expr.toSource
+          case expr: Expr => expr.toSource
 
-          case ParamAssign(lhs, rhs)         => s"${lhs} = ${v(indent)(rhs)}"
-          case Instantiate(id, module, args) => s"${i}new $id  = ${module}(${args map v(indent) mkString ", "});\n"
-          case Connect(lhs, rhs)             => s"$lhs -> ${rhs map v(indent) mkString ", "}\n"
-          case Function(name, body)          => s"void $name() ${v(indent)(body)}"
-          case FenceFunction(body)           => s"void fence() ${v(indent)(body)}"
-          case VerilogFunction(body)         => s"void verilog() {$body}"
+          case Instantiate(id, module, args) => {
+            val pas = for ((lhs, rhs) <- args.toList) yield { s"${lhs} = ${v(indent)(rhs)}" }
+            s"${i}new $id  = ${module}(${pas mkString ", "});\n"
+          }
+          case Connect(lhs, rhs)     => s"$lhs -> ${rhs map v(indent) mkString ", "}\n"
+          case Function(name, body)  => s"void $name() ${v(indent)(body)}"
+          case FenceFunction(body)   => s"void fence() ${v(indent)(body)}"
+          case VerilogFunction(body) => s"void verilog() {$body}"
           case FsmTask(name, decls, fns, fencefn, vfns) =>
             s"""|fsm $name {
                 |${i}  /////////////////////////////////
