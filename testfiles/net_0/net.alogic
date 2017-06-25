@@ -13,4 +13,7 @@ network net {
   a_i.p_out -> this.p_out;
 
   a_i.p_out_struct -> b_i.p_in_vec;
+  b_i.p_out_vec -> a_i.p_in_struct;
+
+  a_i.p_loop_out_struct -> a_i.p_loop_in_struct;
 }

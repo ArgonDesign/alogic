@@ -4,6 +4,7 @@ fsm b {
   out sync ready bool p_out;
 
   in sync ready u6 p_in_vec;
+  out sync ready u6 p_out_vec;
 
   void main() {
     p_out.write(~p_in.read());

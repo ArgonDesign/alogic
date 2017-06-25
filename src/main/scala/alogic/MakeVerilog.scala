@@ -423,7 +423,6 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     if (modMap.nonEmpty) {
       for (instance <- modules) {
         // declare all port wires
-        val prefix = instance.name + "__"
         pw.println(s"${i0}// Port wires for ${instance.name}")
         for (port <- instance.wires; signal <- port.signals) {
           pw.println(i0 + signal.declString)
@@ -440,8 +439,11 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         }
         pw.println(s"${i0}${instance.name} (")
 
-        val connects = for (port <- instance.ports; Signal(name, s, w) <- port.signals) yield {
-          s".${name}(${prefix + name})"
+        val connects = for {
+          (port, wire) <- instance.ports zip instance.wires
+          (Signal(portName, _, _), Signal(wireName, _, _)) <- port.signals zip wire.signals
+        } yield {
+          s".${portName}(${wireName})"
         }
         val allConnects = ".clk(clk)" :: ".rst_n(rst_n)" :: connects
         pw.println(i0 * 2 + (allConnects mkString s"\n${i0 * 2}"))
@@ -455,7 +457,19 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         val dstSignals = dstPort.payload map { _.name }
         val srcSignals = srcPort.payload map { _.name }
         pw.println(s"${i0}// ${srcInstance.name}.${srcPort.name} -> ${dstInstance.name}.${dstPort.name}")
-        pw.println(s"${i0}assign { ${dstSignals mkString ", "} } = { ${srcSignals mkString ", "} };")
+        pw.print(s"${i0}assign ")
+        dstSignals match {
+          case sig :: Nil => pw.print(s"${sig} = ")
+          case sigs => pw.print(s"""|{
+                                    |${i0 * 2}${sigs mkString s",\n${i0 * 2}"}
+                                    |${i0}} = """.stripMargin)
+        }
+        srcSignals match {
+          case sig :: Nil => pw.println(s"${sig};")
+          case sigs => pw.println(s"""|{
+                                      |${i0 * 2}${sigs mkString s",\n${i0 * 2}"}
+                                      |${i0}};""".stripMargin)
+        }
 
         // TODO: connect flow control signals
 

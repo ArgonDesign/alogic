@@ -10,6 +10,10 @@ fsm a {
   out sync ready bool p_out;
 
   out sync accept s_t p_out_struct;
+  in sync ready s_t p_in_struct;
+
+  in sync ready s_t p_loop_in_struct;
+  out sync ready s_t p_loop_out_struct;
 
   void main() {
     p_out.write(p_in.read());
