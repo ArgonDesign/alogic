@@ -310,7 +310,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       case network: NetworkTask => finishNetwork(network, pw)
       case VerilogTask(_, _, vfns) => {
         // Emit all verilog functions
-        vfns.reverse foreach { vfn =>
+        vfns foreach { vfn =>
           pw.print(vfn.body)
         }
       }
@@ -334,7 +334,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         val fencefn = statetask.fencefn map { f => MakeStmt(2)(f.body) }
 
         // Emit all verilog functions
-        statetask.vfns.reverse foreach { vfn =>
+        statetask.vfns foreach { vfn =>
           pw.print(vfn.body)
         }
 
@@ -458,12 +458,12 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     }
 
     // Emit all verilog functions
-    network.vfns.reverse foreach { vfn =>
+    network.vfns foreach { vfn =>
       pw.print(vfn.body)
     }
 
     // Emit instantiations
-    for (instance <- instances.reverse) {
+    for (instance <- instances) {
       val paramAssigns = instance.paramAssigns
       // declare all port wires
       pw.println(s"${i0}// Port wires for ${instance.name}")
@@ -503,7 +503,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     }
 
     // Assign all ports
-    for ((srcInstance, srcPort, dstInstance, dstPort) <- portConnections.reverse) {
+    for ((srcInstance, srcPort, dstInstance, dstPort) <- portConnections) {
       // Connect payload signals
       val dstSignals = dstPort.payload map { _.name }
       val srcSignals = srcPort.payload map { _.name }
