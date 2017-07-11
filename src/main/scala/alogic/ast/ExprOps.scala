@@ -56,7 +56,6 @@ object ExprOps {
       case _: Literal                => Message.ice("unreachable")
     }
 
-    // Evaluate expression, returning None if the expression is not constant
     def toVerilog: String = expr match {
       case Num(None, None, value)               => s"${value}"
       case Num(None, Some(width), value)        => Message.ice("unreachable")

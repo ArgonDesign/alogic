@@ -199,6 +199,9 @@ case_stmt
 statement
   : '{' (stmts+=statement)* '}'                 # BlockStmt
   | decl ';'                                    # DeclStmt
+  | 'loop' '{'
+      (stmts += statement)*
+    '}'                                         # LoopStmt
   | 'while' '(' expr ')' '{'
       (stmts += statement)*
     '}'                                         # WhileStmt

@@ -1,11 +1,12 @@
 // We convert control statements into state labels and goto statements
 //
 // In the returned AST there will be no:
-//   ControlFor
+//   ControlLoop
+//   ControlWhile
 //   ControlDo
+//   ControlFor
 //   ControlIf
 //   ControlCaseStmt
-//   ControlWhile
 //   ControlBlock
 //   FenceStmt
 //   BreakStmt
@@ -113,34 +114,50 @@ final class MakeStates {
     case ControlBlock(cmds) => makeBlockStmts(startState, finalState, cmds)
 
     ///////////////////////////////////////////////////////////////////////////
-    // Loops
+    // Fundamental Loop
     ///////////////////////////////////////////////////////////////////////////
 
-    case ControlWhile(cond, body) => {
+    case ControlLoop(body) => {
       val s = if (startState < 0) state_alloc.next else startState
       breakTargets push finalState
-      val follow = makeStates(s, s, ControlBlock(body))
+      val follow = makeStates(s, s, body)
       breakTargets.pop
-      val loop = CombinatorialIf(cond, CombinatorialBlock(follow), Some(GotoState(finalState)))
+      val loop = CombinatorialBlock(follow)
       if (startState < 0) {
         emit(s, loop :: Nil)
         List(GotoState(s))
-      } else
+      } else {
         List(loop)
+      }
     }
-    case ControlFor(init, cond, incr, body) => {
-      val s = state_alloc.next
-      val (i, f) = findLastStmts(-1, (s, Nil), finalState, body)
-      emit(i, f ::: incr :: CombinatorialIf(cond, GotoState(s), Some(GotoState(finalState))) :: Nil)
-      List(init, CombinatorialIf(cond, GotoState(s), Some(GotoState(finalState))))
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Common Loops
+    ///////////////////////////////////////////////////////////////////////////
+
+    case ControlWhile(cond, body) => {
+      val entryState = state_alloc.next
+      breakTargets push finalState
+      val (lastState, lastStmts) = findLastStmts(entryState, finalState, body)
+      breakTargets.pop
+      emit(lastState, lastStmts ::: CombinatorialIf(cond, GotoState(entryState), Some(GotoState(finalState))) :: Nil)
+      List(CombinatorialIf(cond, GotoState(entryState), Some(GotoState(finalState))))
     }
     case ControlDo(cond, body) => {
-      val s = state_alloc.next
+      val entryState = state_alloc.next
       breakTargets push finalState
-      val (i, f) = findLastStmts(startState, (s, Nil), finalState, body)
-      emit(i, f ::: CombinatorialIf(cond, GotoState(s), Some(GotoState(finalState))) :: Nil)
+      val (lastState, lastStmts) = findLastStmts(entryState, finalState, body)
       breakTargets.pop
-      List(GotoState(s))
+      emit(lastState, lastStmts ::: CombinatorialIf(cond, GotoState(entryState), Some(GotoState(finalState))) :: Nil)
+      List(GotoState(entryState))
+    }
+    case ControlFor(init, cond, incr, body) => {
+      val entryState = state_alloc.next
+      breakTargets push finalState
+      val (lastState, lastStmts) = findLastStmts(entryState, finalState, body)
+      breakTargets.pop
+      emit(lastState, lastStmts ::: incr :: CombinatorialIf(cond, GotoState(entryState), Some(GotoState(finalState))) :: Nil)
+      List(init, CombinatorialIf(cond, GotoState(entryState), Some(GotoState(finalState))))
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -198,18 +215,21 @@ final class MakeStates {
     case (x: CombStmt) :: xs  => x :: makeBlockStmts(-1, finalState, xs)
   }
 
-  // Given a series of combinatorial and control statements this emits all control blocks, and returns the final combinatorial statements
-  // initial is a list of statements in the current state
-  def findLastStmts(startState: Int, initial: (Int, List[CombStmt]), finalState: Int, tree: List[Stmt]): (Int, List[CombStmt]) = tree match {
-    case Nil      => initial
-    case x :: Nil => (initial._1, initial._2 ::: makeStates(startState, finalState, x)) // TODO check this is not a combinatorial statement?
-    case (x: CtrlStmt) :: xs => {
-      val s = state_alloc.next
-      val current = makeStates(startState, s, x)
-      emit(initial._1, initial._2 ::: current)
-      findLastStmts(s, (s, Nil), finalState, xs)
+  // Given a series of combinatorial and control statements this emits all control blocks,
+  // and returns the last state and combinatorial statements
+  def findLastStmts(initialState: Int, finalState: Int, stmts: List[Stmt]): (Int, List[CombStmt]) = {
+    def loop(initialState: Int, initialStmts: List[CombStmt], stmts: List[Stmt]): (Int, List[CombStmt]) = stmts match {
+      case Nil                 => (initialState, initialStmts)
+      case x :: Nil            => (initialState, initialStmts ::: makeStates(-1, finalState, x))
+      case (x: CombStmt) :: xs => loop(initialState, initialStmts ::: x :: Nil, xs)
+      case (x: CtrlStmt) :: xs => {
+        val s = state_alloc.next
+        val current = makeStates(-1, s, x)
+        emit(initialState, initialStmts ::: current)
+        loop(s, Nil, xs)
+      }
     }
-    case (x: CombStmt) :: xs => findLastStmts(-1, (initial._1, initial._2 ::: x :: Nil), finalState, xs) // x must be combinatorial
+    loop(initialState, Nil, stmts)
   }
 
 }

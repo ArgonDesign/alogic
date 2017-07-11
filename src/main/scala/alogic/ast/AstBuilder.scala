@@ -12,6 +12,7 @@ import alogic.Message
 import alogic.VScalarVisitor
 import alogic.VScope
 import alogic.ast.AstOps._
+import alogic.ast.ExprOps._
 import org.antlr.v4.runtime.ParserRuleContext
 import scala.collection.mutable.Stack
 import alogic.VScalarVisitor
@@ -281,16 +282,6 @@ class FsmTaskBuilder(cc: CommonContext) {
         }
       }
 
-      override def visitWhileStmt(ctx: WhileStmtContext) = {
-        val cond = ExprVisitor(ctx.expr)
-        val body = visit(ctx.stmts)
-        body.last match {
-          case _: CombStmt => Message.error(ctx, "The body of a while loop must end with a control statement")
-          case _           =>
-        }
-        ControlWhile(cond, body)
-      }
-
       override def visitIfStmt(ctx: IfStmtContext) = {
         val cond = ExprVisitor(ctx.expr())
         val thenStmt = visit(ctx.thenStmt)
@@ -353,6 +344,47 @@ class FsmTaskBuilder(cc: CommonContext) {
         }
       }
 
+      override def visitLoopStmt(ctx: LoopStmtContext) = {
+        val body = visit(ctx.stmts)
+
+        body.last match {
+          case _: CombStmt => Message.error(ctx, "The body of a 'loop' must end with a control statement")
+          case _           =>
+        }
+
+        ControlLoop(ControlBlock(body))
+      }
+
+      override def visitWhileStmt(ctx: WhileStmtContext) = {
+        val cond = ExprVisitor(ctx.expr)
+        val body = visit(ctx.stmts)
+
+        if (cond.isConst) {
+          if (cond.eval == 0) {
+            Message.warning(ctx.expr, "Condition of 'while' loop is always false")
+          } else {
+            Message.warning(ctx.expr, "Condition of 'while' loop is always true. Use 'loop' instead.")
+          }
+        }
+
+        ControlWhile(cond, body)
+      }
+
+      override def visitDoStmt(ctx: DoStmtContext) = {
+        val cond = ExprVisitor(ctx.expr)
+        val body = visit(ctx.stmts)
+
+        if (cond.isConst) {
+          if (cond.eval == 0) {
+            Message.warning(ctx.expr, "Condition of 'do' loop is always false")
+          } else {
+            Message.warning(ctx.expr, "Condition of 'do' loop is always true. Use 'loop' instead.")
+          }
+        }
+
+        ControlDo(cond, body)
+      }
+
       object ForInitVisitor extends VScalarVisitor[(Option[VarDeclaration], CombStmt)] {
         override def visitForInitNoDecl(ctx: ForInitNoDeclContext) = {
           val stmt = StatementVisitor(ctx.assignment_statement) match {
@@ -370,18 +402,27 @@ class FsmTaskBuilder(cc: CommonContext) {
 
       override def visitForStmt(ctx: ForStmtContext) = {
         val (optDecl, initStmt) = ForInitVisitor(ctx.init)
+        val cond = ExprVisitor(ctx.cond)
         val stepStmt = visit(ctx.step) match {
           case s: CombStmt => s
           case _: CtrlStmt => Message.ice("unreachable")
         }
-        val forAST = ControlFor(initStmt, ExprVisitor(ctx.cond), stepStmt, visit(ctx.stmts))
+        val body = visit(ctx.stmts)
+
+        if (cond.isConst) {
+          if (cond.eval == 0) {
+            Message.warning(ctx.expr, "Condition of 'for' loop is always false")
+          } else {
+            Message.warning(ctx.expr, "Condition of 'for' loop is always true. Use 'loop' instead.")
+          }
+        }
+
+        val forAST = ControlFor(initStmt, cond, stepStmt, body)
         optDecl match {
           case None       => forAST
           case Some(decl) => ControlBlock(DeclarationStmt(decl) :: forAST :: Nil)
         }
       }
-
-      override def visitDoStmt(ctx: DoStmtContext) = ControlDo(ExprVisitor(ctx.expr), visit(ctx.stmts))
 
       override def visitFenceStmt(ctx: FenceStmtContext) = FenceStmt
       override def visitBreakStmt(ctx: BreakStmtContext) = BreakStmt

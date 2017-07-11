@@ -99,6 +99,7 @@ VOID    : 'void' ;
 BOOL    : 'bool';
 UINT    : 'uint' ;
 INT     : 'int' ;
+LOOP    : 'loop' ;
 WHILE   : 'while' ;
 DO      : 'do' ;
 FOR     : 'for' ;

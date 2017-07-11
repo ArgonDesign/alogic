@@ -105,6 +105,7 @@ object AstOps {
             case ControlIf(cond, body, Some(e))             => { v(cond); v(body); v(e) }
             case ControlIf(cond, body, None)                => { v(cond); v(body) }
             case ControlBlock(cmds)                         => cmds foreach v
+            case ControlLoop(body)                          => v(body)
             case ControlWhile(cond, body)                   => { v(cond); body foreach v }
             case ControlFor(init, cond, incr, body)         => { v(init); v(cond); v(incr); body foreach v }
             case ControlDo(cond, body)                      => { v(cond); body foreach v }
@@ -162,6 +163,7 @@ object AstOps {
             case ControlCaseStmt(value, c, d)               => ControlCaseStmt(r[Expr](value), c map r[ControlCaseLabel], d map r[CtrlStmt])
             case ControlIf(cond, body, e)                   => ControlIf(cond, r[CtrlStmt](body), e map r[CtrlStmt])
             case ControlBlock(cmds)                         => ControlBlock(cmds map r[Stmt])
+            case ControlLoop(body)                          => ControlLoop(r[ControlBlock](body))
             case ControlWhile(cond, body)                   => ControlWhile(r[Expr](cond), body map r[Stmt])
             case ControlFor(init, cond, incr, body)         => ControlFor(r[CombStmt](init), r[Expr](cond), r[CombStmt](incr), body map r[Stmt])
             case ControlDo(cond, body)                      => ControlDo(r[Expr](cond), body map r[Stmt])

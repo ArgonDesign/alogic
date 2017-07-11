@@ -2,6 +2,8 @@
 
 package alogic.ast
 
+import alogic.Message
+
 object PrettyPrinters {
 
   implicit class SyncTypePritner(val kind: SyncType) {
@@ -195,6 +197,10 @@ object PrettyPrinters {
           case ControlCaseLabel(cond, body)       => s"${cond map v(indent) mkString ", "} : ${v(indent)(body)}"
           case CombinatorialCaseLabel(cond, body) => s"${cond map v(indent) mkString ", "} : ${v(indent)(body)}"
 
+          case ControlLoop(ControlBlock(body)) =>
+            s"""|loop {
+                |${i}  ${body map v(indent + 1) mkString s"\n${i}  "}
+                |${i}}""".stripMargin
           case ControlWhile(cond, body) =>
             s"""|while (${v(indent)(cond)}) {
                 |${i}  ${body map v(indent + 1) mkString s"\n${i}  "}
@@ -207,6 +213,8 @@ object PrettyPrinters {
             s"""|do {
                 |${i}  ${body map v(indent + 1) mkString s"\n${i}  "}
                 |${i}} while (${v(indent)(cond)});""".stripMargin
+
+          case ControlLoop(_)      => Message.ice("unreachable")
 
           case ExprStmt(expr)      => s"${expr.toSource};"
           case CallStmt(name)      => s"$name();"

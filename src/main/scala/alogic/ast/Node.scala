@@ -115,6 +115,7 @@ sealed trait CtrlStmt extends Stmt
 case class ControlBlock(cmds: List[Stmt]) extends CtrlStmt
 case class ControlIf(cond: Expr, body: CtrlStmt, elsebody: Option[CtrlStmt]) extends CtrlStmt
 case class ControlCaseStmt(value: Expr, cases: List[ControlCaseLabel], default: Option[CtrlStmt]) extends CtrlStmt
+case class ControlLoop(body: ControlBlock) extends CtrlStmt
 case class ControlWhile(cond: Expr, body: List[Stmt]) extends CtrlStmt
 case class ControlFor(init: CombStmt, cond: Expr, incr: CombStmt, body: List[Stmt]) extends CtrlStmt
 case class ControlDo(cond: Expr, body: List[Stmt]) extends CtrlStmt
