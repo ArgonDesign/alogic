@@ -220,7 +220,6 @@ final class MakeStates {
   def findLastStmts(initialState: Int, finalState: Int, stmts: List[Stmt]): (Int, List[CombStmt]) = {
     def loop(initialState: Int, initialStmts: List[CombStmt], stmts: List[Stmt]): (Int, List[CombStmt]) = stmts match {
       case Nil                 => (initialState, initialStmts)
-      case x :: Nil            => (initialState, initialStmts ::: makeStates(-1, finalState, x))
       case (x: CombStmt) :: xs => loop(initialState, initialStmts ::: x :: Nil, xs)
       case (x: CtrlStmt) :: xs => {
         val s = state_alloc.next
