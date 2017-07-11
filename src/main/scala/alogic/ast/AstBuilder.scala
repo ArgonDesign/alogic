@@ -355,17 +355,29 @@ class FsmTaskBuilder(cc: CommonContext) {
         ControlLoop(ControlBlock(body))
       }
 
+      def loopWarnings(cond: Expr, body: List[Stmt], condCtx: ParserRuleContext, stmtLastCtx: Option[ParserRuleContext]) = {
+        if (cond.isConst) {
+          if (cond.eval == 0) {
+            Message.warning(condCtx, "Condition of loop is always false")
+          } else {
+            Message.warning(condCtx, "Condition of loop is always true. Use 'loop' instead.")
+          }
+        }
+
+        stmtLastCtx match {
+          case Some(ctx) => body.last match {
+            case FenceStmt => Message.warning(ctx, "Redundant 'fence' at end of loop body")
+            case _         =>
+          }
+          case None =>
+        }
+      }
+
       override def visitWhileStmt(ctx: WhileStmtContext) = {
         val cond = ExprVisitor(ctx.expr)
         val body = visit(ctx.stmts)
 
-        if (cond.isConst) {
-          if (cond.eval == 0) {
-            Message.warning(ctx.expr, "Condition of 'while' loop is always false")
-          } else {
-            Message.warning(ctx.expr, "Condition of 'while' loop is always true. Use 'loop' instead.")
-          }
-        }
+        loopWarnings(cond, body, ctx, ctx.stmts.lastOption)
 
         ControlWhile(cond, body)
       }
@@ -374,13 +386,7 @@ class FsmTaskBuilder(cc: CommonContext) {
         val cond = ExprVisitor(ctx.expr)
         val body = visit(ctx.stmts)
 
-        if (cond.isConst) {
-          if (cond.eval == 0) {
-            Message.warning(ctx.expr, "Condition of 'do' loop is always false")
-          } else {
-            Message.warning(ctx.expr, "Condition of 'do' loop is always true. Use 'loop' instead.")
-          }
-        }
+        loopWarnings(cond, body, ctx, ctx.stmts.lastOption)
 
         ControlDo(cond, body)
       }
@@ -409,13 +415,7 @@ class FsmTaskBuilder(cc: CommonContext) {
         }
         val body = visit(ctx.stmts)
 
-        if (cond.isConst) {
-          if (cond.eval == 0) {
-            Message.warning(ctx.expr, "Condition of 'for' loop is always false")
-          } else {
-            Message.warning(ctx.expr, "Condition of 'for' loop is always true. Use 'loop' instead.")
-          }
-        }
+        loopWarnings(cond, body, ctx, ctx.stmts.lastOption)
 
         val forAST = ControlFor(initStmt, cond, stepStmt, body)
         optDecl match {
