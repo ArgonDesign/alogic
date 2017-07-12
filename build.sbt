@@ -13,6 +13,7 @@ scalaVersion := "2.11.8"
 scalacOptions ++= Seq("-deprecation", "-feature", "-Xlint:_")
 
 libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value
+libraryDependencies += "org.scala-graph" %% "graph-core" % "1.11.5"
 libraryDependencies += "com.beachape.filemanagement" %% "schwatcher" % "0.3.2"
 libraryDependencies += "com.github.scala-incubator.io" %% "scala-io-core" % "0.4.3"
 libraryDependencies += "com.github.scala-incubator.io" %% "scala-io-file" % "0.4.3"

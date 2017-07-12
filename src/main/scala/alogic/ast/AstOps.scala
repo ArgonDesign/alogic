@@ -124,7 +124,6 @@ object AstOps {
             case CallStmt(_)                                =>
             case CallState(_, _)                            =>
             case ReturnState                                =>
-
           }
       }
 
@@ -207,6 +206,83 @@ object AstOps {
       }
 
       r[T](tree)
+    }
+
+    // Recurse through the tree and collect results of pf for all nodes where it is defined.
+    // This function is analogous to List.collect in the standard library
+    def collect[E](pf: PartialFunction[Node, E]): List[E] = {
+
+      val f = pf.lift
+
+      def c(node: Node): List[E] = {
+        val headOption: Option[E] = f(node)
+        val tail: List[E] = node match {
+          case Instantiate(_, _, args)                      => args.values.toList flatMap c
+          case Connect(start, end)                          => (start :: end) flatMap c
+          case Function(_, body)                            => c(body)
+          case FenceFunction(body)                          => c(body)
+          case FsmTask(_, _, fns, fencefn, vfns)            => (fns flatMap c) ::: (fencefn map c getOrElse Nil) ::: (vfns flatMap c)
+          case StateTask(_, _, sbs, fencefn, vfns)          => (sbs flatMap c) ::: (fencefn map c getOrElse Nil) ::: (vfns flatMap c)
+          case NetworkTask(_, _, inst, conn, vfns)          => (inst flatMap c) ::: (conn flatMap c) ::: (vfns flatMap c)
+          case VerilogTask(_, _, vfns)                      => vfns flatMap c
+          case ArrayLookup(name, index)                     => c(name) ::: (index flatMap c)
+          case Slice(ref, l, _, r)                          => c(ref) ::: c(l) ::: c(r)
+          case CallExpr(name, args)                         => c(name) ::: (args flatMap c)
+          case Zxt(numbits, expr)                           => c(numbits) ::: c(expr)
+          case Sxt(numbits, expr)                           => c(numbits) ::: c(expr)
+          case DollarCall(name, args)                       => args flatMap c
+          case ReadCall(name)                               => c(name)
+          case LockCall(name)                               => c(name)
+          case UnlockCall(name)                             => c(name)
+          case ValidCall(name)                              => c(name)
+          case WriteCall(name, args)                        => c(name) ::: (args flatMap c)
+          case Assign(lhs, rhs)                             => c(lhs) ::: c(rhs)
+          case Update(lhs, op, rhs)                         => c(lhs) ::: c(rhs)
+          case Plusplus(lhs)                                => c(lhs)
+          case Minusminus(lhs)                              => c(lhs)
+          case BinaryOp(lhs, op, rhs)                       => c(lhs) ::: c(rhs)
+          case UnaryOp(op, lhs)                             => c(lhs)
+          case Bracket(content)                             => c(content)
+          case TernaryOp(cond, lhs, rhs)                    => c(cond) ::: c(lhs) ::: c(rhs)
+          case CombinatorialBlock(cmds)                     => cmds flatMap c
+          case StateBlock(state, cmds)                      => cmds flatMap c
+          case DeclarationStmt(VarDeclaration(_, id, init)) => c(id) ::: (init map c getOrElse Nil)
+          case CombinatorialIf(cond, t, e)                  => c(cond) ::: c(t) ::: (e map c getOrElse Nil)
+          case BitRep(count, value)                         => c(count) ::: c(value)
+          case BitCat(parts)                                => parts flatMap c
+          case _: AlogicComment                             => Nil
+          case CombinatorialCaseStmt(value, cases, default) => c(value) ::: (cases flatMap c) ::: (default map c getOrElse Nil)
+          case CombinatorialCaseLabel(cond, body)           => (cond flatMap c) ::: c(body)
+          case ControlCaseStmt(value, cases, default)       => c(value) ::: (cases flatMap c) ::: (default map c getOrElse Nil)
+          case ControlCaseLabel(cond, body)                 => (cond flatMap c) ::: c(body)
+          case ControlIf(cond, t, e)                        => c(cond) ::: c(t) ::: (e map c getOrElse Nil)
+          case ControlBlock(cmds)                           => cmds flatMap c
+          case ControlLoop(body)                            => c(body)
+          case ControlWhile(cond, body)                     => c(cond) ::: (body flatMap c)
+          case ControlFor(init, cond, incr, body)           => c(init) ::: c(cond) ::: c(incr) ::: (body flatMap c)
+          case ControlDo(cond, body)                        => c(cond) ::: (body flatMap c)
+          case FenceStmt                                    => Nil
+          case BreakStmt                                    => Nil
+          case ReturnStmt                                   => Nil
+          case _: GotoStmt                                  => Nil
+          case _: GotoState                                 => Nil
+          case DottedName(names)                            => Nil
+          case Literal(_)                                   => Nil
+          case Num(_, _, _)                                 => Nil
+          case VerilogFunction(_)                           => Nil
+          case ExprStmt(expr)                               => c(expr)
+          case _: CallStmt                                  => Nil
+          case _: CallState                                 => Nil
+          case ReturnState                                  => Nil
+        }
+
+        headOption match {
+          case Some(head) => head :: tail
+          case None       => tail
+        }
+      }
+
+      c(tree)
     }
   }
 }

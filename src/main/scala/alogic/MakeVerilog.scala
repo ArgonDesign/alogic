@@ -278,7 +278,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         val n = names.mkString("_")
         Arrays.add(n)
         val depth = MakeExpr(index).toString.toInt // TODO detect if this fails and fail gracefully
-        val log2depth = ceillog2(depth)
+        val log2depth = ceillog2(depth) max 1 // TODO: handle degenerate case of depth == 1 better
         val t = typeString(decltype)
         pw.println(s"  reg ${n}_wr;")
         pw.println(s"  reg ${t}${n}_wrdata;")
@@ -805,6 +805,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
                 |${i + i0}call_depth_nxt = call_depth_nxt + 1'b1;
                 |${i + i0}${nx("state")} = ${MakeState(tgt)};
                 |${i}end""".stripMargin)
+        // TODO: Add assertion for call_depth < CALL_STACK_SIZE
       }
 
       case ReturnState => {

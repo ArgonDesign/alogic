@@ -27,6 +27,10 @@ import scala.collection.mutable.Stack
 
 import alogic.ast._
 import alogic.ast.AstOps._
+import alogic.ast.ExprOps._
+import scalax.collection.Graph
+import scalax.collection.GraphPredef._
+import scalax.collection.GraphEdge._
 
 final class MakeStates {
 
@@ -43,10 +47,96 @@ final class MakeStates {
     extra.push(StateBlock(state, insns))
   }
 
+  // TODO: factor out to some common place
+  def ceillog2(x: Int): Int = {
+    var y = 0
+    while ((1 << y) < x)
+      y += 1
+    y
+  }
+
+  // Return the call stack size for this fsm and whether it is implicit or explicit
+  def callStackSize(fsm: FsmTask): (Int, Boolean) = {
+    val FsmTask(name, decls, fns, fencefn, vfns) = fsm
+
+    // Find the value of the CALL_STACK_SIZE constant, if any
+    val cssOpt: Option[Int] = {
+      val expr = decls collectFirst { case ConstDeclaration(_, "CALL_STACK_SIZE", value) => value }
+      expr map { e =>
+        if (!e.isConst) {
+          Message.error("The value of 'CALL_STACK_SIZE' must be a compile time constant"); 1
+        } else {
+          val value = e.eval.toInt
+          if (value < 1) {
+            Message.error("The value of 'CALL_STACK_SIZE' must be >= 1"); 1
+          } else {
+            value
+          }
+        }
+      }
+    }
+
+    // Collect the call graph
+    val nodes = fns map { _.name }
+    val edges = for {
+      Function(caller, body) <- fns
+      callee <- body collect {
+        case CallStmt(name) => name
+      }
+    } yield {
+      caller ~> callee
+    }
+    val callGraph = Graph.from(nodes, edges)
+
+    // Find directly recursive functions or an indirectly recursive path
+    val directlyRecursiveFns = callGraph.edges.toList.map { _.toOuter } collect { case s ~> t if s == t => s }
+    val cycle = callGraph.findCycle
+
+    val recursive = directlyRecursiveFns.nonEmpty || cycle.isDefined
+
+    // Emit error if CALL_STACK_SIZE definition is inconsistent
+    if (recursive && !cssOpt.isDefined) {
+      val msg = s"Recursive fsm '$name' must define the 'CALL_STACK_SIZE' constant" :: {
+        directlyRecursiveFns map { n => s"directly recursive function: '$n'" }
+      } ::: {
+        cycle.toList flatMap { c =>
+          s"indirectly recursive path:" :: {
+            c.nodes.toList.init map { n => s"  $n ->" }
+          } ::: {
+            List("  " + c.nodes.last)
+          }
+        }
+      }
+      Message.error(msg: _*)
+    } else if (!recursive && cssOpt.isDefined) {
+      Message.error(s"Non-recursive fsm '$name' must not define the 'CALL_STACK_SIZE' constant")
+    }
+
+    // Get the value of CALL_STACK_SIZE if defined, or otherwise the length of the longest path in the call graph
+    val css = cssOpt getOrElse {
+      val root = callGraph get "main"
+
+      val pathLengths = for {
+        node <- callGraph.nodes
+        path <- root pathTo node
+      } yield {
+        path.length
+      }
+
+      pathLengths.max + 1
+    }
+
+    // Return css, and true if it's explicitly defined
+    (css, cssOpt.isDefined)
+  }
+
   def apply(fsm: FsmTask): Option[StateTask] = {
     val FsmTask(name, decls, fns, fencefn, vfns) = fsm
 
     if (fns exists (_.name == "main")) {
+      // Figure out the call stack size
+      val (css, explicitCss) = callStackSize(fsm)
+
       // Ensure entry to main is state 0
       fn2state("main") = state_alloc.next
 
@@ -58,12 +148,41 @@ final class MakeStates {
       // Convert all functions (do not inline below -- side effect on state_alloc)
       val states = fns flatMap makeFnStates
 
-      val newDecls = if (states.length > 1) {
-        // Add a declaration for the state variable (reset to the entry state of main)
-        VarDeclaration(State, DottedName("state" :: Nil), Some(Num(Some(false), None, 0))) :: decls
+      // Add a declaration for the state variable if required (reset to the entry state of main)
+      val stateDecl = if (states.length > 1) {
+        Some(VarDeclaration(State, DottedName("state" :: Nil), Some(Num(Some(false), None, 0))))
       } else {
-        decls
+        None
       }
+
+      // Add a declaration for the CALL_STACK_SIZE constant if required
+      val cssDecl = if (!explicitCss && css > 1) {
+        Some(ConstDeclaration(IntType(false, 32), "CALL_STACK_SIZE", Num(None, None, css)))
+      } else {
+        None
+      }
+
+      // Add declarations for 'call_stack' and 'call_depth'
+      val callStackDecls = if (css > 1) {
+        // TODO: the depth of 'call_stack' should be "DottedName("CALL_STACK_SIZE" :: Nil)" but MakeVerilog does not support
+        // parametrizable depth arrays yet
+        val csDecl = VarDeclaration(
+          State,
+          ArrayLookup(DottedName("call_stack" :: Nil), List(Num(None, None, css - 1))),
+          None)
+        val cdDecl = {
+          val sz = ceillog2(css)
+          VarDeclaration(
+            IntType(false, sz),
+            DottedName("call_depth" :: Nil),
+            Some(Num(Some(false), Some(sz), 0)))
+        }
+        List(csDecl, cdDecl)
+      } else {
+        Nil
+      }
+
+      val newDecls = stateDecl.toList ::: cssDecl.toList ::: callStackDecls ::: decls
 
       // Create State Task
       Some(StateTask(name, newDecls, states, fencefn, vfns))
