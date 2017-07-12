@@ -147,10 +147,11 @@ final class MakeStates {
 
       // Convert all functions (do not inline below -- side effect on state_alloc)
       val states = fns flatMap makeFnStates
+      val stateType = IntType(false, ceillog2(states.length))
 
       // Add a declaration for the state variable if required (reset to the entry state of main)
       val stateDecl = if (states.length > 1) {
-        Some(VarDeclaration(State, DottedName("state" :: Nil), Some(Num(Some(false), None, 0))))
+        Some(VarDeclaration(stateType, DottedName("state" :: Nil), Some(Num(Some(false), None, 0))))
       } else {
         None
       }
@@ -167,7 +168,7 @@ final class MakeStates {
         // TODO: the depth of 'call_stack' should be "DottedName("CALL_STACK_SIZE" :: Nil)" but MakeVerilog does not support
         // parametrizable depth arrays yet
         val csDecl = VarDeclaration(
-          State,
+          stateType,
           ArrayLookup(DottedName("call_stack" :: Nil), List(Num(None, None, css - 1))),
           None)
         val cdDecl = {

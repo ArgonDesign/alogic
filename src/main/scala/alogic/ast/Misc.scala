@@ -17,7 +17,6 @@ sealed trait Type
 case class IntType(signed: Boolean, size: Int) extends Type
 case class IntVType(signed: Boolean, args: List[Expr]) extends Type // variable number of bits definition
 case class Struct(name: String, fields: Map[String, Type]) extends Type
-case object State extends Type // Type with enough bits to hold state variable
 
 // SyncType for allowed port types
 // TODO: separate the flow control (none/valid/ready/accept) type from the storage type (wire/bubble/reg)

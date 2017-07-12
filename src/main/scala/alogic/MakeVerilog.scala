@@ -104,30 +104,19 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       case IntType(b, size) => pw.println(s"  input wire ${writeSigned(b)}${writeSize(size)}" + name + ",")
       case _                => // TODO support IntVType
     }
-    def typeString(typ: Type): String = {
-      val typ2 = typ match {
-        case State => IntType(false, log2numstates)
-        case x     => x
+    def typeString(typ: Type): String = typ match {
+      case IntType(b, size) => writeSigned(b) + writeSize(size)
+      case IntVType(b, args) => {
+        val sz = StrList(args.map(MakeExpr), "*").toString
+        writeSigned(b) + "[" + sz + "-1:0] "
       }
-      typ2 match {
-        case IntType(b, size) => writeSigned(b) + writeSize(size)
-        case IntVType(b, args) => {
-          val sz = StrList(args.map(MakeExpr), "*").toString
-          writeSigned(b) + "[" + sz + "-1:0] "
-        }
-        case _ => Message.fatal(s"Cannot make type for $typ"); ""
-      }
+      case _ => Message.fatal(s"Cannot make type for $typ"); ""
     }
     def writeVarInternal(typ: Type, name: StrTree, resetToZero: Boolean): Unit = {
-      // Convert state to uint type
-      val typ2 = typ match {
-        case State => IntType(false, log2numstates)
-        case x     => x
-      }
       val nm = name.toString
-      typ2 match {
+      typ match {
         case IntType(_, _) | IntVType(_, _) => {
-          pw.println(s"  reg " + typeString(typ2) + nx(nm) + ", " + reg(nm) + ";")
+          pw.println(s"  reg " + typeString(typ) + nx(nm) + ", " + reg(nm) + ";")
           if (resetToZero) {
             resets push StrList(Str("      ") :: Str(reg(name)) :: Str(s" <= 'b0;\n") :: Nil)
           }
@@ -575,7 +564,6 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
   def MakeNumBits(typ: Type): StrTree = typ match {
     case IntType(signed, size)  => Str(s"$size")
     case IntVType(signed, args) => StrList(args.map(MakeExpr), "*")
-    case State                  => Str(s"$log2numstates")
     case Struct(_, fields)      => StrList(fields.values.toList map MakeNumBits, "+")
   }
 

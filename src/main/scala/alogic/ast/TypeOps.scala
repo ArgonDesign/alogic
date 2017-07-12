@@ -12,8 +12,6 @@ object TypeOps {
         val widths = fields.values map (_.width)
         widths reduce (BinaryOp(_, "+", _))
       }
-
-      case State => ???
     }
   }
 }

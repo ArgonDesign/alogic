@@ -143,7 +143,7 @@ class CommonContext(root: ParserRuleContext) {
     }
   }
 
-  private[this] val typedefs = mutable.Map[String, Type]("state" -> State)
+  private[this] val typedefs = mutable.Map[String, Type]()
 
   var entityCtx: EntityContext = null
 
@@ -278,7 +278,7 @@ class FsmTaskBuilder(cc: CommonContext) {
         case s: VarDeclaration => DeclarationStmt(s)
         case _ => {
           Message.error(ctx, "Only variable declarations allowed inside functions")
-          DeclarationStmt(VarDeclaration(State, DottedName(List("Unknown")), None))
+          DeclarationStmt(VarDeclaration(IntType(false, 1), DottedName(List("Unknown")), None))
         }
       }
 
