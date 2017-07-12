@@ -177,12 +177,12 @@ class CommonContext(root: ParserRuleContext) {
     }
 
     override def visitStruct(ctx: StructContext) = {
-      val s = ctx.IDENTIFIER.text
-      if (typedefs contains s) {
-        Message.error(ctx, s"Repeated typedef 'struct $s'")
+      val name = ctx.IDENTIFIER.text
+      if (typedefs contains name) {
+        Message.error(ctx, s"Repeated typedef 'struct $name'")
       }
       val pairs = ctx.fields.toList map { c => c.IDENTIFIER.text -> KnownTypeVisitor(c.known_type) }
-      typedefs(s) = Struct(ListMap(pairs: _*))
+      typedefs(name) = Struct(name, ListMap(pairs: _*))
     }
 
     override def visitTypedef(ctx: TypedefContext) = {

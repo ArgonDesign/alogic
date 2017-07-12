@@ -10,7 +10,7 @@ sealed trait Port {
     def signals(prefix: String, kind: Type): List[Signal] = kind match {
       case IntType(signed, width)         => List(Signal(s"${prefix}", signed, Num(None, None, width)))
       case IntVType(signed, width :: Nil) => List(Signal(s"${prefix}", signed, width))
-      case Struct(fields) => fields.toList flatMap {
+      case Struct(_, fields) => fields.toList flatMap {
         case (n, k) => signals(prefix + "__" + n, k)
       }
       case _ => ???

@@ -145,7 +145,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     // For efficiency this returns the comma separated list of underlying fields
     // TODO better for Verilator simulation speed if we could detect assignments and expand this concatenation
     def SetNxType(m: mutable.Map[String, String], typ: Type, name: String, suffix: String): String = typ match {
-      case Struct(fields) => {
+      case Struct(_, fields) => {
         val c = for ((n, t) <- fields) yield {
           SetNxType(m, t, name + '_' + n, suffix)
         }
@@ -576,7 +576,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     case IntType(signed, size)  => Str(s"$size")
     case IntVType(signed, args) => StrList(args.map(MakeExpr), "*")
     case State                  => Str(s"$log2numstates")
-    case Struct(fields)         => StrList(fields.values.toList map MakeNumBits, "+")
+    case Struct(_, fields)      => StrList(fields.values.toList map MakeNumBits, "+")
   }
 
   implicit def Decl2Typ(decl: Declaration): Type = decl match {
@@ -594,14 +594,14 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     def LookUpField(names: List[String], kind: Type): Type = {
       val n :: ns = names
       kind match {
-        case Struct(fields) => {
+        case Struct(name, fields) => {
           if (fields contains n) {
             ns match {
               case Nil => fields(n)
               case _   => LookUpField(ns, fields(n))
             }
           } else {
-            Message.fatal(s"No field named '$n' in struct '$kind'") // TODO: better error message, check earlier
+            Message.fatal(s"No field named '$n' in struct '$name'") // TODO: check earlier
           }
         }
         case _ => Message.fatal(s"Cannot find field '$n' in non-struct type '$kind'")

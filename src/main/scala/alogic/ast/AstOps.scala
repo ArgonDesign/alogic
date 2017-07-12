@@ -49,7 +49,7 @@ object AstOps {
     def visit(typ: Type, name: StrTree): Unit = {
       callback(typ, name)
       typ match {
-        case Struct(fields) => for ((n, t) <- fields) {
+        case Struct(_, fields) => for ((n, t) <- fields) {
           visit(t, StrList(name :: Str("_") :: Str(n) :: Nil))
         }
         case _ => ()

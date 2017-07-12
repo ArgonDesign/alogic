@@ -6,13 +6,6 @@ options {
 
 // TODO: syntax changes:
 //
-// AGREED: Add 'loop' '{'...'}' as the fundamental loop
-//
-// AGREED: Change
-//   'typedef' 'struct' '{'...'}' ID ';'
-// to:
-//   'struct' ID '{'...'}'
-//
 // PROPOSED: Change
 //   task ID '{' ports body '}'
 // to:
@@ -47,9 +40,9 @@ typedef
   ;
 
 struct
-  :  'typedef' 'struct' '{'
+  :  'struct' IDENTIFIER '{'
       (fields+=field)*
-    '}' IDENTIFIER ';'
+    '}' ';'
   ;
 
 decl_noinit

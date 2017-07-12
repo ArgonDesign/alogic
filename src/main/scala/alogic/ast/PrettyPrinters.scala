@@ -24,7 +24,7 @@ object PrettyPrinters {
       case IntType(false, size)  => s"u${size}"
       case IntVType(true, args)  => s"int(${args map (_.toSource) mkString ", "})"
       case IntVType(false, args) => s"uint(${args map (_.toSource) mkString ", "})"
-      case Struct(fields)        => s"struct { ${(for ((n, t) <- fields) yield s"${t.toSource} $n;") mkString " "} }"
+      case Struct(name, _)       => s"struct $name"
       case State                 => "@state"
     }
   }
