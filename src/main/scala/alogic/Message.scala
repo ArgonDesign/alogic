@@ -12,7 +12,7 @@ object Message {
   var fail = false
 
   private def printit(prefix: String, msg: Seq[String]): Unit = {
-    println(msg mkString (prefix, "\n" + prefix, ""))
+    println(msg mkString (prefix, "\n" + prefix + "... ", ""))
   }
 
   // INFO messages are only displayed when the verbose option is
