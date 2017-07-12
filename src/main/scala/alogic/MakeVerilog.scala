@@ -800,17 +800,17 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       case CallState(tgt, ret) => {
         Str(s"""|begin
                 |${i + i0}call_stack_wr = 1'b1;
-                |${i + i0}call_stack_addr = call_depth_nxt;
+                |${i + i0}call_stack_addr = call_depth;
                 |${i + i0}call_stack_wrdata = ${MakeState(ret)};
-                |${i + i0}call_depth_nxt = call_depth_nxt + 1'b1;
+                |${i + i0}call_depth_nxt = call_depth + 1'b1;
                 |${i + i0}${nx("state")} = ${MakeState(tgt)};
                 |${i}end""".stripMargin)
-        // TODO: Add assertion for call_depth < CALL_STACK_SIZE
+        // TODO: Add assertion for call_depth_nxt < CALL_STACK_SIZE
       }
 
       case ReturnState => {
         Str(s"""|begin
-                |${i + i0}call_depth_nxt = call_depth_nxt - 1'b1;
+                |${i + i0}call_depth_nxt = call_depth - 1'b1;
                 |${i + i0}${nx("state")} = call_stack[call_depth_nxt];
                 |${i}end""".stripMargin)
       }
