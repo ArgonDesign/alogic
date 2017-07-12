@@ -121,11 +121,7 @@ object AlogicMain extends App {
         val opath: Path = odir / (name + ".v")
 
         // Write Verilog
-        try {
-          new MakeVerilog(moduleCatalogue)(task, opath.path)
-        } catch {
-          case _: java.util.NoSuchElementException => // Temporarily until it is handled more gracefully
-        }
+        new MakeVerilog(moduleCatalogue)(task, opath.path)
       }
     }
   }

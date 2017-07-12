@@ -398,15 +398,23 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     pw.close()
   }
 
-  def finishNetwork(network: NetworkTask, pw: PrintWriter) = {
+  def finishNetwork(network: NetworkTask, pw: PrintWriter): Unit = {
 
     // Collect all instatiations
-    val instances = for (Instantiate(id, module, args) <- network.instantiate) yield {
+    val optInstances = for (Instantiate(id, module, args) <- network.instantiate) yield {
       if (!(moduleCatalogue contains module)) {
         Message.error(s"Cannot instantiate undefined module '${module}' in module '${network.name}'")
+        None
+      } else {
+        Some(new ModuleInstance(id, moduleCatalogue(module), args))
       }
-      new ModuleInstance(id, moduleCatalogue(module), args);
     }
+
+    if (optInstances contains None) {
+      return
+    }
+
+    val instances = optInstances.flatten
 
     // Construct an instance name -> ModuleInstance map
     val modMap = {
