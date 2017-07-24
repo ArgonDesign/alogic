@@ -1,3 +1,10 @@
+////////////////////////////////////////////////////////////////////////////////
+// Copyright (c) 2017 Argon Design Ltd.
+// All rights reserved.
+// This file is covered by the BSD (with attribution) license.
+// See the LICENSE file for the precise wording of the license.
+////////////////////////////////////////////////////////////////////////////////
+
 // We convert control statements into state labels and goto statements
 //
 // In the returned AST there will be no:
