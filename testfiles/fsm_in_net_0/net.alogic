@@ -1,0 +1,63 @@
+////////////////////////////////////////////////////////////////////////////////
+// Copyright (c) 2017 Argon Design Ltd.
+// All rights reserved.
+// This file is covered by the BSD (with attribution) license.
+// See the LICENSE file for the precise wording of the license.
+////////////////////////////////////////////////////////////////////////////////
+
+struct s_t {
+  bool s1;
+  u2   s2;
+  i3   s3;
+};
+
+network net {
+
+  in sync ready bool p_in;
+  out sync ready bool p_out;
+
+  param u10 B = 1;
+  param u10 D = 2;
+  param u10 E = 3;
+
+  fsm a {
+    in sync ready bool p_in;
+    out sync ready bool p_out;
+
+    out sync accept s_t p_out_struct;
+    in sync ready s_t p_in_struct;
+
+    in sync ready s_t p_loop_in_struct;
+    out sync ready s_t p_loop_out_struct;
+
+    void main() {
+      p_out.write(p_in.read());
+      fence;
+    }
+  }
+
+  fsm b {
+    in sync ready bool p_in;
+    out sync ready bool p_out;
+
+    in sync accept u6 p_in_vec;
+    out sync ready u6 p_out_vec;
+
+    void main() {
+      p_out.write(~p_in.read());
+      fence;
+    }
+  }
+
+  a_i = new a(A=B, C=D+2*E);
+  b_i = new b();
+
+  this.p_in -> b_i.p_in;
+  b_i.p_out -> a_i.p_in;
+  a_i.p_out -> this.p_out;
+
+  a_i.p_out_struct -> b_i.p_in_vec;
+  b_i.p_out_vec -> a_i.p_in_struct;
+
+  a_i.p_loop_out_struct -> a_i.p_loop_in_struct;
+}

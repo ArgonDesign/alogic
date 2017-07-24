@@ -6,11 +6,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 
-typedef struct {
+struct s_t {
   bool s1;
   u2   s2;
   i3   s3;
-} s_t;
+};
 
 fsm a {
   in sync ready bool p_in;
