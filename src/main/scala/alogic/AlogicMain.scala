@@ -5,13 +5,10 @@
 // See the LICENSE file for the precise wording of the license.
 ////////////////////////////////////////////////////////////////////////////////
 
-
 package alogic
 
 import java.nio.file.Paths
 import java.nio.file.StandardWatchEventKinds._
-
-import scala.collection.concurrent.TrieMap
 
 import com.beachape.filemanagement.Messages._
 import com.beachape.filemanagement.MonitorActor
@@ -100,7 +97,18 @@ object AlogicMain extends App {
     val filePaths = if (multiThreaded) listOfFiles.par else listOfFiles
 
     // Build AST
-    val asts = filePaths flatMap { AParser(_, includeSearchPaths, initalDefines) }
+    val asts = {
+      val rootAsts = filePaths flatMap { AParser(_, includeSearchPaths, initalDefines) }
+
+      // Extract embedded FSMs from networks
+      rootAsts flatMap {
+        case net: ast.NetworkTask => MakeStages(net) match {
+          case Some((network, stages)) => network :: stages
+          case None                    => Nil
+        }
+        case task => task :: Nil
+      }
+    }
 
     // Build catalogue of all modules
     // TODO: check for multiple definitions of same module

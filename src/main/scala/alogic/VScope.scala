@@ -152,7 +152,10 @@ class VScope(root: ParserRuleContext) {
     // Create new scope for network bodies
     override def visitNetwork(ctx: NetworkContext) = {
       create(ctx)
-      visitChildren(ctx)
+      // Recurse only into the local definitions, but ignore nested Connect,
+      // Instantiate and Task nodes. Connect and Instantiate nodes do not
+      // contain definitions, and nested tasks will be handled on their own.
+      visit(ctx.decls)
     }
 
     // Insert special task declarations

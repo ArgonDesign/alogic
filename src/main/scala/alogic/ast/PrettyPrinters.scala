@@ -152,13 +152,13 @@ object PrettyPrinters {
                 |
                 |${i}}""".stripMargin
 
-          case NetworkTask(name, decls, inst, conn, vfns) => s"TODO: NetworkTask(name, decls, fns)"
-          case VerilogTask(name, decls, fns)              => s"TODO: VerilogTask(name, decls, fns)"
-          case Assign(lhs, rhs)                           => s"${v(indent)(lhs)} = ${v(indent)(rhs)};"
-          case Update(lhs, op, rhs)                       => s"${v(indent)(lhs)} ${op}= ${v(indent)(rhs)};"
-          case Plusplus(lhs)                              => s"${v(indent)(lhs)}++;"
-          case Minusminus(lhs)                            => s"${v(indent)(lhs)}--;"
-          case DeclarationStmt(decl)                      => s"${decl.toSource};"
+          case NetworkTask(name, decls, inst, conn, vfns, fsms) => s"TODO: NetworkTask(name, decls, fns)"
+          case VerilogTask(name, decls, fns)                    => s"TODO: VerilogTask(name, decls, fns)"
+          case Assign(lhs, rhs)                                 => s"${v(indent)(lhs)} = ${v(indent)(rhs)};"
+          case Update(lhs, op, rhs)                             => s"${v(indent)(lhs)} ${op}= ${v(indent)(rhs)};"
+          case Plusplus(lhs)                                    => s"${v(indent)(lhs)}++;"
+          case Minusminus(lhs)                                  => s"${v(indent)(lhs)}--;"
+          case DeclarationStmt(decl)                            => s"${decl.toSource};"
 
           case CombinatorialBlock(cmds) =>
             s"""|{

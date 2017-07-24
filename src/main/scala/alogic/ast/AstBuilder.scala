@@ -7,22 +7,17 @@
 
 package alogic.ast
 
-import alogic.antlr.VParser._
-
 import scala.collection.immutable.ListMap
 import scala.collection.mutable
 
-import org.antlr.v4.runtime.tree.RuleNode
+import org.antlr.v4.runtime.ParserRuleContext
 
 import alogic.Antlr4Conversions._
 import alogic.Message
 import alogic.VScalarVisitor
 import alogic.VScope
-import alogic.ast.AstOps._
+import alogic.antlr.VParser._
 import alogic.ast.ExprOps._
-import org.antlr.v4.runtime.ParserRuleContext
-import scala.collection.mutable.Stack
-import alogic.VScalarVisitor
 
 // The aim of the AstBuilder stage is:
 //   Build an abstract syntax tree
@@ -36,7 +31,7 @@ import alogic.VScalarVisitor
 ////////////////////////////////////////////////////////////////////////////////
 // Visitors and data structures required when parsing all kinds of source files
 ////////////////////////////////////////////////////////////////////////////////
-class CommonContext(root: ParserRuleContext) {
+class CommonContext(root: ParserRuleContext, initialTypedefs: Map[String, Type]) {
   // Build scopes and allocate static variable names
   private[this] val scope = new VScope(root)
 
@@ -150,9 +145,9 @@ class CommonContext(root: ParserRuleContext) {
     }
   }
 
-  private[this] val typedefs = mutable.Map[String, Type]()
+  private[this] val _typedefs = mutable.Map[String, Type]() ++ initialTypedefs
 
-  var entityCtx: EntityContext = null
+  private[this] var _entityCtx: ParserRuleContext = null
 
   object KnownTypeVisitor extends VScalarVisitor[Type] {
     override def visitBoolType(ctx: BoolTypeContext) = IntType(false, 1)
@@ -162,7 +157,7 @@ class CommonContext(root: ParserRuleContext) {
     override def visitUintVType(ctx: UintVTypeContext) = IntVType(false, ExprVisitor(ctx.commaexpr))
     override def visitIdentifierType(ctx: IdentifierTypeContext) = {
       val s = ctx.IDENTIFIER.text
-      typedefs.getOrElse(s, {
+      _typedefs.getOrElse(s, {
         Message.error(ctx, s"Unknown type '$s'")
         IntType(false, 1)
       })
@@ -175,7 +170,7 @@ class CommonContext(root: ParserRuleContext) {
     override def visitStart(ctx: StartContext) = {
       visit(ctx.typedefinition)
       // we save the parse tree node to save walking the whole parse tree again
-      entityCtx = ctx.entity
+      _entityCtx = ctx.entity
     }
 
     override def visitTypedefinition(ctx: TypedefinitionContext) = {
@@ -185,24 +180,30 @@ class CommonContext(root: ParserRuleContext) {
 
     override def visitStruct(ctx: StructContext) = {
       val name = ctx.IDENTIFIER.text
-      if (typedefs contains name) {
+      if (_typedefs contains name) {
         Message.error(ctx, s"Repeated typedef 'struct $name'")
       }
       val pairs = ctx.fields.toList map { c => c.IDENTIFIER.text -> KnownTypeVisitor(c.known_type) }
-      typedefs(name) = Struct(name, ListMap(pairs: _*))
+      _typedefs(name) = Struct(name, ListMap(pairs: _*))
     }
 
     override def visitTypedef(ctx: TypedefContext) = {
       val s = ctx.IDENTIFIER.text
-      if (typedefs contains s) {
+      if (_typedefs contains s) {
         Message.error(ctx, s"Repeated typedef '$s'")
       }
-      typedefs(s) = KnownTypeVisitor(ctx.known_type)
+      _typedefs(s) = KnownTypeVisitor(ctx.known_type)
     }
   }
 
   // Collect type definitions and entityContext)
-  TypeDefinitionExtractor(root)
+  root match {
+    case ctx: StartContext   => TypeDefinitionExtractor(ctx)
+    case ctx: TaskFSMContext => _entityCtx = ctx
+  }
+
+  val typedefs = _typedefs.toMap
+  val entityCtx = _entityCtx
 
   object DeclVisitor extends VScalarVisitor[Declaration] {
     object SyncTypeVisitor extends VScalarVisitor[SyncType] {
@@ -537,7 +538,7 @@ class NetworkTaskBuilder(cc: CommonContext) {
 
     object NetworkVisitor extends VScalarVisitor[NetworkTask] {
       object NetworkContentVisitor extends VScalarVisitor[Node] {
-        override def visitTaskFSM(ctx: TaskFSMContext) = ???
+        override def visitTaskFSM(ctx: TaskFSMContext) = AstBuilder(ctx, typedefs)
         override def visitTaskVerilog(ctx: TaskVerilogContext) = ???
         override def visitConnect(ctx: ConnectContext) = {
           val lhs = DottedNameVisitor(ctx.lhs)
@@ -562,8 +563,9 @@ class NetworkTaskBuilder(cc: CommonContext) {
         val inst = contents collect { case x: Instantiate => x }
         val conn = contents collect { case x: Connect => x }
         val vfns = contents collect { case x: VerilogFunction => x }
+        val fsms = contents collect { case x: FsmTask => x }
 
-        NetworkTask(name, decls, inst, conn, vfns)
+        NetworkTask(name, decls, inst, conn, vfns, fsms)
       }
     }
 
@@ -572,9 +574,9 @@ class NetworkTaskBuilder(cc: CommonContext) {
 }
 
 object AstBuilder {
-  def apply(root: ParserRuleContext): Task = {
+  def apply(root: ParserRuleContext, initialTypedefs: Map[String, Type] = Map[String, Type]()): Task = {
 
-    val cc = new CommonContext(root)
+    val cc = new CommonContext(root, initialTypedefs)
 
     lazy val fsmTaskBuilder = new FsmTaskBuilder(cc)
     lazy val verilogTaskBuilder = new VerilogTaskBuilder(cc)

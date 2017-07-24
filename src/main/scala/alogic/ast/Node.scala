@@ -43,7 +43,8 @@ case class NetworkTask(name: String,
                        decls: List[Declaration],
                        instantiate: List[Instantiate],
                        connect: List[Connect],
-                       vfns: List[VerilogFunction]) extends Task
+                       vfns: List[VerilogFunction],
+                       fsms: List[FsmTask]) extends Task
 
 ///////////////////////////////////////////////////////////////////////////////
 // Function nodes
