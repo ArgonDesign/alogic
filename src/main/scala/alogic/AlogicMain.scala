@@ -25,9 +25,11 @@ object AlogicMain extends App {
 
   val conf = new CLIConf(args)
 
-  val listOfFiles: List[Path] = conf.path() match {
+  val idir = conf.path()
+
+  val listOfFiles: List[Path] = idir match {
     case IsFile(file)     => List(file)
-    case IsDirectory(dir) => dir.descendants("*.alogic", 1).toList
+    case IsDirectory(dir) => dir.descendants("*.alogic").toList
   }
 
   val odir = conf.odir()
@@ -93,50 +95,55 @@ object AlogicMain extends App {
     // Clear caches
     Cache.clearAll()
 
+    case class Item(task: ast.Task, path: Path)
+
     // Construct potentially parallel file list
-    val filePaths = if (multiThreaded) listOfFiles.par else listOfFiles
+    val rootPaths = if (multiThreaded) listOfFiles.par else listOfFiles
 
     // Build AST
-    val asts = {
-      val rootAsts = filePaths flatMap { AParser(_, includeSearchPaths, initalDefines) }
+    val astItems = {
+      val rootItems = rootPaths flatMap { path =>
+        AParser(path, includeSearchPaths, initalDefines) map { Item(_, path) }
+      }
 
       // Extract embedded FSMs from networks
-      rootAsts flatMap {
-        case net: ast.NetworkTask => MakeStages(net) match {
-          case Some((network, stages)) => network :: stages
+      rootItems flatMap {
+        case Item(net: ast.NetworkTask, path) => MakeStages(net) match {
+          case Some((network, stages)) => (network :: stages) map { Item(_, path) }
           case None                    => Nil
         }
-        case task => task :: Nil
+        case item => item :: Nil
       }
     }
 
     // Build catalogue of all modules
     // TODO: check for multiple definitions of same module
     val moduleCatalogue = {
-      asts.toList collect { case t @ ast.Task(name, _) => name -> t }
-    }.toMap
+      astItems map { _.task } collect { case t @ ast.Task(name, _) => name -> t }
+    }.toList.toMap
 
     // Synthesise tasks
-    val tasks = {
-      val results = asts flatMap {
-        case task: ast.FsmTask => MakeStates(task)
-        case task              => Some(task)
+    val taskItems = {
+      val results = astItems flatMap {
+        case Item(task: ast.FsmTask, path) => MakeStates(task) map { Item(_, path) }
+        case item                          => Some(item)
       }
 
       // Flatten and apply desugaring
-      results map {
-        Desugar.RemoveAssigns(_)
+      results map { item =>
+        Item(Desugar.RemoveAssigns(item.task), item.path)
       }
     }
 
     // Generate verilog
-    tasks foreach {
-      case task @ ast.Task(name, _) => {
-        // Construct output filename
-        val opath: Path = odir / (name + ".v")
+    taskItems foreach {
+      case Item(task @ ast.Task(name, _), ipath) => {
+        // Construct output file path
+        val subdir = ipath.parent.get relativize idir
+        val opath: Path = odir / subdir / (name + ".v")
 
         // Write Verilog
-        new MakeVerilog(moduleCatalogue)(task, opath.path)
+        new MakeVerilog(moduleCatalogue)(task, opath)
       }
     }
   }

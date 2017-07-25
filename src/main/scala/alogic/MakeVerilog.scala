@@ -18,6 +18,7 @@ import scala.language.implicitConversions
 import alogic.ast._
 import alogic.ast.AstOps._
 import alogic.ast.ExprOps._
+import scalax.file.Path
 
 final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
 
@@ -61,7 +62,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
 
   var makingAccept = false // We use this to decide how to emit expressions
 
-  def apply(task: Task, fname: String): Unit = {
+  def apply(task: Task, opath: Path): Unit = {
     val Task(modname, decls) = task // Save the name of this module
 
     val outtype = task match {
@@ -97,7 +98,9 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     val verilogfns = Stack[StrTree]() // Collection of raw verilog text
     val acceptfns = Stack[StrTree]() // Collection of code to generate accept outputs
 
-    val pw = new PrintWriter(new File(fname))
+    opath.createFile(createParents = true, failIfExists = false)
+
+    val pw = new PrintWriter(new File(opath.path))
 
     def writeSigned(signed: Boolean) = if (signed) "signed " else ""
 
