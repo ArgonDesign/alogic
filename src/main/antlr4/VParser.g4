@@ -88,11 +88,9 @@ task_decl
   | 'verilog' known_type var_ref ';'    #TaskDeclVerilog
   | decl ';'                            #TaskDecl
   ;
-  
-new_keyword : 'new';
 
 task
-  : new_keyword? 'fsm' IDENTIFIER '{'
+  : (autoinst='new')? 'fsm' IDENTIFIER '{'
       (decls+=task_decl)*
       (contents+=task_content)*
     '}'                                 #TaskFSM

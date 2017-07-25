@@ -500,7 +500,7 @@ class FsmTaskBuilder(cc: CommonContext) {
         val fns = contents collect { case x: Function => x }
         val fencefns = contents collect { case x: FenceFunction => x }
         val vfns = contents collect { case x: VerilogFunction => x }
-        val hasNew = Option(ctx.new_keyword()).isDefined;
+        val hasNew = Option(ctx.autoinst).isDefined;
         if (fencefns.length > 1) {
           Message.error(ctx, s"fsm '$name' has more than 1 fence function defined")
         }
