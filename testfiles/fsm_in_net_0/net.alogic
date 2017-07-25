@@ -13,8 +13,8 @@ struct s_t {
 
 network net {
 
-  in sync ready bool p_in;
-  out sync ready bool p_out;
+  in sync ready bool p_data;
+  out sync ready bool p_result;
 
   param u10 B = 1;
   param u10 D = 2;
@@ -52,9 +52,9 @@ network net {
   a_i = new a(A=B, C=D+2*E);
   b_i = new b();
 
-  this.p_in -> b_i.p_in;
+  this.p_data -> b_i.p_in;
   b_i.p_out -> a_i.p_in;
-  a_i.p_out -> this.p_out;
+  a_i.p_out -> this.p_result;
 
   a_i.p_out_struct -> b_i.p_in_vec;
   b_i.p_out_vec -> a_i.p_in_struct;

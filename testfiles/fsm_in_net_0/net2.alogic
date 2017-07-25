@@ -1,0 +1,41 @@
+////////////////////////////////////////////////////////////////////////////////
+// Copyright (c) 2017 Argon Design Ltd.
+// All rights reserved.
+// This file is covered by the BSD (with attribution) license.
+// See the LICENSE file for the precise wording of the license.
+////////////////////////////////////////////////////////////////////////////////
+
+network net {
+
+  in sync ready u8 p_data;
+  in sync ready u8 p_bonus;
+  out sync ready u8 p_result;
+  
+  pipeline u8 x;
+  pipeline u8 y;
+
+  new fsm a {
+    out sync ready bubble;    
+    void main() {
+      x = p_data.read();
+      y = x + 8'd3;
+      write();
+      fence;
+    }
+  }
+  
+  a->b;
+  
+  new fsm b {
+    void main() {
+      read();
+      p_result.write(x+y);
+      fence;
+      read();
+      x = p_bonus.read();
+      p_result.write(x+y);
+      fence;
+    }
+  }
+
+}

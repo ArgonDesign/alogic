@@ -56,7 +56,7 @@ class VScope(root: ParserRuleContext) {
   }
 
   // Insert name into scope of node ctx
-  private[this] def insert(ctx: ParserRuleContext, name: String): Unit = {
+  private[this] def insert(ctx: ParserRuleContext, name: String, renameDuplicates: Boolean = true ): Unit = {
     val scope = find(ctx)
     if (scope contains name) {
       val Some(Item(_, loc)) = scope(name)
@@ -72,13 +72,15 @@ class VScope(root: ParserRuleContext) {
       }
     }
     scope(name) = Some(Item(name, ctx.loc))
-    multiplicity(name) += 1
+    if (renameDuplicates) {
+      multiplicity(name) += 1
+    }
   }
 
   // Look up name in scope of node ctx
   def apply(ctx: ParserRuleContext, name: String): String = {
     find(ctx)(name) match {
-      case Some(Item(name, loc)) => if (multiplicity(name) == 1) name else s"${name}_L${loc.line}"
+      case Some(Item(name, loc)) => if (multiplicity(name) <= 1) name else s"${name}_L${loc.line}"
       case None => {
         Message.error(ctx, s"Unknown identifier '$name'")
         s"Unknown_$name"
@@ -152,17 +154,14 @@ class VScope(root: ParserRuleContext) {
     // Create new scope for network bodies
     override def visitNetwork(ctx: NetworkContext) = {
       create(ctx)
-      // Recurse only into the local definitions, but ignore nested Connect,
-      // Instantiate and Task nodes. Connect and Instantiate nodes do not
-      // contain definitions, and nested tasks will be handled on their own.
-      visit(ctx.decls)
+      visitChildren(ctx)
     }
 
     // Insert special task declarations
-    override def visitTaskDeclOut(ctx: TaskDeclOutContext) = insert(ctx, ctx.IDENTIFIER)
-    override def visitTaskDeclIn(ctx: TaskDeclInContext) = insert(ctx, ctx.IDENTIFIER)
-    override def visitTaskDeclConst(ctx: TaskDeclConstContext) = insert(ctx, ctx.IDENTIFIER)
-    override def visitTaskDeclParam(ctx: TaskDeclParamContext) = insert(ctx, ctx.IDENTIFIER)
+    override def visitTaskDeclOut(ctx: TaskDeclOutContext) = insert(ctx, ctx.IDENTIFIER, false)
+    override def visitTaskDeclIn(ctx: TaskDeclInContext) = insert(ctx, ctx.IDENTIFIER, false)
+    override def visitTaskDeclConst(ctx: TaskDeclConstContext) = insert(ctx, ctx.IDENTIFIER, false)
+    override def visitTaskDeclParam(ctx: TaskDeclParamContext) = insert(ctx, ctx.IDENTIFIER, false)
     override def visitTaskDeclVerilog(ctx: TaskDeclVerilogContext) = InsertDeclVarRef(ctx.var_ref)
 
     // Insert regular declaration

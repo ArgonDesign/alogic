@@ -530,6 +530,9 @@ class VerilogTaskBuilder(cc: CommonContext) {
 class NetworkTaskBuilder(cc: CommonContext) {
   import cc._
 
+  lazy val fsmTaskBuilder = new FsmTaskBuilder(cc)
+
+  
   def apply(tree: NetworkContext): NetworkTask = {
 
     object DottedNameVisitor extends VScalarVisitor[DottedName] {
@@ -538,7 +541,7 @@ class NetworkTaskBuilder(cc: CommonContext) {
 
     object NetworkVisitor extends VScalarVisitor[NetworkTask] {
       object NetworkContentVisitor extends VScalarVisitor[Node] {
-        override def visitTaskFSM(ctx: TaskFSMContext) = AstBuilder(ctx, typedefs)
+        override def visitTaskFSM(ctx: TaskFSMContext) = fsmTaskBuilder(ctx)//, typedefs)
         override def visitTaskVerilog(ctx: TaskVerilogContext) = ???
         override def visitConnect(ctx: ConnectContext) = {
           val lhs = DottedNameVisitor(ctx.lhs)
