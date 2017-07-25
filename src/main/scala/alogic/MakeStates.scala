@@ -64,7 +64,7 @@ final class MakeStates {
 
   // Return the call stack size for this fsm and whether it is implicit or explicit
   def callStackSize(fsm: FsmTask): (Int, Boolean) = {
-    val FsmTask(name, decls, fns, fencefn, vfns) = fsm
+    val FsmTask(name, decls, fns, fencefn, vfns, hasnew) = fsm
 
     // Find the value of the CALL_STACK_SIZE constant, if any
     val cssOpt: Option[Int] = {
@@ -138,7 +138,7 @@ final class MakeStates {
   }
 
   def apply(fsm: FsmTask): Option[StateTask] = {
-    val FsmTask(name, decls, fns, fencefn, vfns) = fsm
+    val FsmTask(name, decls, fns, fencefn, vfns, hasnew) = fsm
 
     if (fns exists (_.name == "main")) {
       // Figure out the call stack size

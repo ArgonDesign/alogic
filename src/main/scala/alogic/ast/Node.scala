@@ -30,7 +30,8 @@ case class FsmTask(name: String,
                    decls: List[Declaration],
                    fns: List[Function],
                    fencefn: Option[FenceFunction],
-                   vfns: List[VerilogFunction]) extends Task
+                   vfns: List[VerilogFunction],
+                   makeNew: Boolean) extends Task
 case class StateTask(name: String,
                      decls: List[Declaration],
                      states: List[StateBlock],
@@ -70,6 +71,8 @@ case class Sxt(numbits: Expr, expr: Expr) extends Expr
 case class DollarCall(name: String, args: List[Expr]) extends Expr
 case class ReadCall(name: DottedName) extends Expr
 case class LockCall(name: DottedName) extends Expr
+case object PipelineRead extends Expr
+case object PipelineWrite extends Expr
 case class UnlockCall(name: DottedName) extends Expr
 case class ValidCall(name: DottedName) extends Expr
 case class WriteCall(name: DottedName, args: List[Expr]) extends Expr

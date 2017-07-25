@@ -77,7 +77,7 @@ object AstOps {
             case Connect(start, end)                              => { v(start); end foreach v }
             case Function(name, body)                             => v(body)
             case FenceFunction(body)                              => v(body)
-            case FsmTask(name, decls, fns, fencefn, vfns)         => { fns foreach v; fencefn foreach v; vfns foreach v }
+            case FsmTask(name, decls, fns, fencefn, vfns, hasnew) => { fns foreach v; fencefn foreach v; vfns foreach v }
             case StateTask(name, decls, sbs, fencefn, vfns)       => { sbs foreach v; fencefn foreach v; vfns foreach v }
             case NetworkTask(name, decls, inst, conn, vfns, fsms) => { inst foreach v; conn foreach v; vfns foreach v; fsms foreach v }
             case VerilogTask(name, decls, fns)                    => fns foreach v
@@ -88,6 +88,8 @@ object AstOps {
             case Sxt(numbits, expr)                               => { v(numbits); v(expr) }
             case DollarCall(name, args)                           => args foreach v
             case ReadCall(name)                                   =>
+            case PipelineRead                                     =>
+            case PipelineWrite                                    =>
             case LockCall(name)                                   =>
             case UnlockCall(_) | ValidCall(_)                     =>
             case WriteCall(name, args)                            => args foreach v
@@ -148,12 +150,12 @@ object AstOps {
         val v = cb(node) match {
           case Some(x) => x
           case None => node match {
-            case x: Instantiate                             => x
-            case Connect(start, end)                        => Connect(r[DottedName](start), end map r[DottedName])
-            case Function(name, body)                       => Function(name, r[CtrlStmt](body))
-            case FenceFunction(body)                        => FenceFunction(r[CombStmt](body))
-            case FsmTask(name, decls, fns, fencefn, vfns)   => FsmTask(name, decls, fns map r[Function], fencefn map r[FenceFunction], vfns)
-            case StateTask(name, decls, sbs, fencefn, vfns) => StateTask(name, decls, sbs map r[StateBlock], fencefn map r[FenceFunction], vfns)
+            case x: Instantiate                                   => x
+            case Connect(start, end)                              => Connect(r[DottedName](start), end map r[DottedName])
+            case Function(name, body)                             => Function(name, r[CtrlStmt](body))
+            case FenceFunction(body)                              => FenceFunction(r[CombStmt](body))
+            case FsmTask(name, decls, fns, fencefn, vfns, hasnew) => FsmTask(name, decls, fns map r[Function], fencefn map r[FenceFunction], vfns, hasnew)
+            case StateTask(name, decls, sbs, fencefn, vfns)       => StateTask(name, decls, sbs map r[StateBlock], fencefn map r[FenceFunction], vfns)
             case NetworkTask(name, decls, inst, conn, vfns, fsms) => {
               NetworkTask(name, decls, inst map r[Instantiate], conn map r[Connect], vfns map r[VerilogFunction], fsms map r[FsmTask])
             }
@@ -196,6 +198,8 @@ object AstOps {
             case Sxt(numbits, expr)                 => Sxt(r[Expr](numbits), r[Expr](expr))
             case DollarCall(name, args)             => DollarCall(name, args map r[Expr])
             case ReadCall(name)                     => ReadCall(name)
+            case PipelineRead                       => PipelineRead
+            case PipelineWrite                      => PipelineWrite
             case LockCall(name)                     => LockCall(name)
             case UnlockCall(name)                   => UnlockCall(name)
             case ValidCall(name)                    => ValidCall(name)
@@ -230,7 +234,7 @@ object AstOps {
           case Connect(start, end)                          => (start :: end) flatMap c
           case Function(_, body)                            => c(body)
           case FenceFunction(body)                          => c(body)
-          case FsmTask(_, _, fns, fencefn, vfns)            => (fns flatMap c) ::: (fencefn map c getOrElse Nil) ::: (vfns flatMap c)
+          case FsmTask(_, _, fns, fencefn, vfns, hasnew)    => (fns flatMap c) ::: (fencefn map c getOrElse Nil) ::: (vfns flatMap c)
           case StateTask(_, _, sbs, fencefn, vfns)          => (sbs flatMap c) ::: (fencefn map c getOrElse Nil) ::: (vfns flatMap c)
           case NetworkTask(_, _, inst, conn, vfns, fsms)    => (inst flatMap c) ::: (conn flatMap c) ::: (vfns flatMap c) ::: (fsms flatMap c)
           case VerilogTask(_, _, vfns)                      => vfns flatMap c
@@ -273,6 +277,8 @@ object AstOps {
           case FenceStmt                                    => Nil
           case BreakStmt                                    => Nil
           case ReturnStmt                                   => Nil
+          case PipelineRead                                 => Nil
+          case PipelineWrite                                => Nil
           case _: GotoStmt                                  => Nil
           case _: GotoState                                 => Nil
           case DottedName(names)                            => Nil

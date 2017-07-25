@@ -13,6 +13,7 @@ package alogic.ast
 sealed trait Declaration
 // TODO: Add separate Decl for Arrays, it just makes a lot of things simpler
 case class VarDeclaration(decltype: Type, id: VarRef, init: Option[Expr]) extends Declaration
+case class PipelineVarDeclaration(decltype: Type, id: String) extends Declaration
 case class ParamDeclaration(decltype: Type, id: String, init: Expr) extends Declaration
 case class ConstDeclaration(decltype: Type, id: String, init: Expr) extends Declaration
 case class VerilogDeclaration(decltype: Type, id: VarRef) extends Declaration

@@ -15,7 +15,7 @@ network net {
   pipeline u8 y;
 
   new fsm a {
-    out sync ready bubble;    
+    //out sync ready bubble;    
     void main() {
       x = p_data.read();
       y = x + 8'd3;

@@ -44,6 +44,7 @@ object PrettyPrinters {
       case VerilogDeclaration(decltype, id)         => s"verilog ${decltype.toSource} ${id.toSource}"
       case OutDeclaration(synctype, decltype, name) => s"out ${synctype.toSource} ${decltype.toSource} ${name}"
       case InDeclaration(synctype, decltype, name)  => s"in ${synctype.toSource} ${decltype.toSource} ${name}"
+      case _                                        => Message.ice("Unreachable")
     }
   }
 
@@ -58,6 +59,8 @@ object PrettyPrinters {
         case Sxt(numbits, expr)                   => s"sxt(${v(numbits)}, ${v(expr)})"
         case DollarCall(name, args)               => "$" + s"$name(${args map v mkString ", "})"
         case ReadCall(name)                       => s"${v(name)}.read()"
+        case PipelineRead                         => "read()"
+        case PipelineWrite                        => "write()"
         case LockCall(name)                       => s"${v(name)}.lock()"
         case UnlockCall(name)                     => s"${v(name)}.unlock()"
         case ValidCall(name)                      => s"${v(name)}.valid()"
@@ -96,7 +99,7 @@ object PrettyPrinters {
           case Function(name, body)  => s"void $name() ${v(indent)(body)}"
           case FenceFunction(body)   => s"void fence() ${v(indent)(body)}"
           case VerilogFunction(body) => s"void verilog() {$body}"
-          case FsmTask(name, decls, fns, fencefn, vfns) =>
+          case FsmTask(name, decls, fns, fencefn, vfns, hasnew) =>
             s"""|fsm $name {
                 |${i}  /////////////////////////////////
                 |${i}  // Declarations

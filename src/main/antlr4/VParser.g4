@@ -80,6 +80,7 @@ network_decl
   | 'in' sync_type? known_type IDENTIFIER ';'   #TaskDeclIn
   | 'param' known_type IDENTIFIER '=' expr ';'  #TaskDeclParam
   | 'const' known_type IDENTIFIER '=' expr ';'  #TaskDeclConst
+  | 'pipeline' known_type IDENTIFIER ';'        #TaskDeclPipeline
   ;
 
 task_decl
@@ -87,9 +88,11 @@ task_decl
   | 'verilog' known_type var_ref ';'    #TaskDeclVerilog
   | decl ';'                            #TaskDecl
   ;
+  
+new_keyword : 'new';
 
 task
-  : 'fsm' IDENTIFIER '{'
+  : new_keyword? 'fsm' IDENTIFIER '{'
       (decls+=task_decl)*
       (contents+=task_content)*
     '}'                                 #TaskFSM

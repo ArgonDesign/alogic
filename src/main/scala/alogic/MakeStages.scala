@@ -18,8 +18,8 @@ object MakeStages {
 
     val stageNames = fsms map { _.name }
 
-    val stages = for (FsmTask(sub, decls, fns, fencefn, vfns) <- fsms) yield {
-      FsmTask(s"${name}__${sub}", decls, fns, fencefn, vfns)
+    val stages = for (FsmTask(sub, decls, fns, fencefn, vfns, hasnew) <- fsms) yield {
+      FsmTask(s"${name}__${sub}", decls, fns, fencefn, vfns, hasnew)
     }
 
     val newInsts = for (inst <- insts) yield inst rewrite {

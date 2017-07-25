@@ -162,6 +162,7 @@ class VScope(root: ParserRuleContext) {
     override def visitTaskDeclIn(ctx: TaskDeclInContext) = insert(ctx, ctx.IDENTIFIER, false)
     override def visitTaskDeclConst(ctx: TaskDeclConstContext) = insert(ctx, ctx.IDENTIFIER, false)
     override def visitTaskDeclParam(ctx: TaskDeclParamContext) = insert(ctx, ctx.IDENTIFIER, false)
+    override def visitTaskDeclPipeline(ctx: TaskDeclPipelineContext) = insert(ctx, ctx.IDENTIFIER)
     override def visitTaskDeclVerilog(ctx: TaskDeclVerilogContext) = InsertDeclVarRef(ctx.var_ref)
 
     // Insert regular declaration

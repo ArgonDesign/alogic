@@ -5,7 +5,6 @@
 // See the LICENSE file for the precise wording of the license.
 ////////////////////////////////////////////////////////////////////////////////
 
-
 package alogic.ast
 
 import alogic.Message
@@ -13,7 +12,7 @@ import alogic.Message
 object ExprOps {
   implicit class Wrapper(val expr: Expr) extends AnyVal {
 
-    // Test it the expression is univeraslly constant, i.e.: contains no unbound variables
+    // Test it the expression is universally constant, i.e.: contains no unbound variables
     def isConst: Boolean = expr match {
       case _: Num                    => true
       case _: CallExpr               => false
@@ -21,6 +20,8 @@ object ExprOps {
       case Sxt(numbits, expr)        => numbits.isConst && expr.isConst
       case _: DollarCall             => false // Could handle some defined ones like $clog2
       case _: ReadCall               => false
+      case PipelineRead              => false
+      case PipelineWrite             => false
       case _: LockCall               => false
       case _: UnlockCall             => false
       case _: ValidCall              => false
@@ -44,6 +45,8 @@ object ExprOps {
       case Sxt(numbits, expr)        => expr.eval
       case _: DollarCall             => Message.ice("unreachable") // Could handle some defined ones like $clog2
       case _: ReadCall               => Message.ice("unreachable")
+      case PipelineRead              => Message.ice("unreachable")
+      case PipelineWrite             => Message.ice("unreachable")
       case _: LockCall               => Message.ice("unreachable")
       case _: UnlockCall             => Message.ice("unreachable")
       case _: ValidCall              => Message.ice("unreachable")
@@ -75,6 +78,8 @@ object ExprOps {
       case Sxt(numbits, expr)                   => ???
       case _: DollarCall                        => ???
       case _: ReadCall                          => ???
+      case PipelineRead                         => ???
+      case PipelineWrite                        => ???
       case _: LockCall                          => ???
       case _: UnlockCall                        => ???
       case _: ValidCall                         => ???

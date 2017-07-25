@@ -98,48 +98,55 @@ class CommonContext(root: ParserRuleContext, initialTypedefs: Map[String, Type])
     override def visitExprLiteral(ctx: ExprLiteralContext) = Literal(ctx.LITERAL)
 
     override def visitExprCall(ctx: ExprCallContext) = {
-      val n = LookUpName(ctx.dotted_name)
-      val a = this(ctx.commaexpr)
-      n match {
-        case DottedName(names) if (names.last == "read") => {
-          if (a.length > 0)
-            Message.error(ctx, s"Interface read takes no arguments (${a.length} found)")
-          ReadCall(DottedName(names.init))
-        }
-        case DottedName(names) if (names.last == "lock") => {
-          if (a.length > 0)
-            Message.error(ctx, s"Interface lock takes no arguments (${a.length} found)")
-          LockCall(DottedName(names.init))
-        }
-        case DottedName(names) if (names.last == "unlock") => {
-          if (a.length > 0)
-            Message.error(ctx, s"Interface unlock takes no arguments (${a.length} found)")
-          UnlockCall(DottedName(names.init))
-        }
-        case DottedName(names) if (names.last == "valid" || names.last == "v") => {
-          if (a.length > 0)
-            Message.error(ctx, s"Accessing valid property takes no arguments (${a.length} found)")
-          ValidCall(DottedName(names.init))
-        }
-        case DottedName(names) if (names.last == "write") => {
-          if (a.length != 1)
-            Message.error(ctx, s"Interface write takes exactly one argument (${a.length} found)")
-          WriteCall(DottedName(names.init), a)
-        }
-        case DottedName("zxt" :: Nil) => {
-          if (a.length != 2)
-            Message.error(ctx, s"Zero extend function takes exactly two arguments: number of bits and expression (${a.length} found)")
-          Zxt(a(0), a(1))
-        }
-        case DottedName("sxt" :: Nil) => {
-          if (a.length != 2)
-            Message.error(ctx, s"Sign extend function takes exactly two arguments: number of bits and expression (${a.length} found)")
-          Sxt(a(0), a(1))
-        }
-        case _ => {
-          if (a.length > 0)
-            Message.error(ctx, s"State functions take no arguments (${a.length} found)")
-          CallExpr(n, a)
+      val ns = ctx.dotted_name.es
+      if (ns.length == 1 && ns.head.getText() == "read") {
+        PipelineRead
+      } else if (ns.length == 1 && ns.head.getText() == "write") {
+        PipelineWrite
+      } else {
+        val n = LookUpName(ctx.dotted_name)
+        val a = this(ctx.commaexpr)
+        n match {
+          case DottedName(names) if (names.last == "read") => {
+            if (a.length > 0)
+              Message.error(ctx, s"Interface read takes no arguments (${a.length} found)")
+            ReadCall(DottedName(names.init))
+          }
+          case DottedName(names) if (names.last == "lock") => {
+            if (a.length > 0)
+              Message.error(ctx, s"Interface lock takes no arguments (${a.length} found)")
+            LockCall(DottedName(names.init))
+          }
+          case DottedName(names) if (names.last == "unlock") => {
+            if (a.length > 0)
+              Message.error(ctx, s"Interface unlock takes no arguments (${a.length} found)")
+            UnlockCall(DottedName(names.init))
+          }
+          case DottedName(names) if (names.last == "valid" || names.last == "v") => {
+            if (a.length > 0)
+              Message.error(ctx, s"Accessing valid property takes no arguments (${a.length} found)")
+            ValidCall(DottedName(names.init))
+          }
+          case DottedName(names) if (names.last == "write") => {
+            if (a.length != 1)
+              Message.error(ctx, s"Interface write takes exactly one argument (${a.length} found)")
+            WriteCall(DottedName(names.init), a)
+          }
+          case DottedName("zxt" :: Nil) => {
+            if (a.length != 2)
+              Message.error(ctx, s"Zero extend function takes exactly two arguments: number of bits and expression (${a.length} found)")
+            Zxt(a(0), a(1))
+          }
+          case DottedName("sxt" :: Nil) => {
+            if (a.length != 2)
+              Message.error(ctx, s"Sign extend function takes exactly two arguments: number of bits and expression (${a.length} found)")
+            Sxt(a(0), a(1))
+          }
+          case _ => {
+            if (a.length > 0)
+              Message.error(ctx, s"State functions take no arguments (${a.length} found)")
+            CallExpr(n, a)
+          }
         }
       }
     }
@@ -225,6 +232,9 @@ class CommonContext(root: ParserRuleContext, initialTypedefs: Map[String, Type])
 
     override def visitTaskDeclConst(ctx: TaskDeclConstContext) =
       ConstDeclaration(KnownTypeVisitor(ctx.known_type), scope(ctx, ctx.IDENTIFIER), ExprVisitor(ctx.expr))
+
+    override def visitTaskDeclPipeline(ctx: TaskDeclPipelineContext) =
+      PipelineVarDeclaration(KnownTypeVisitor(ctx.known_type), scope(ctx, ctx.IDENTIFIER))
 
     override def visitTaskDeclParam(ctx: TaskDeclParamContext) =
       ParamDeclaration(KnownTypeVisitor(ctx.known_type), scope(ctx, ctx.IDENTIFIER), ExprVisitor(ctx.expr))
@@ -490,12 +500,12 @@ class FsmTaskBuilder(cc: CommonContext) {
         val fns = contents collect { case x: Function => x }
         val fencefns = contents collect { case x: FenceFunction => x }
         val vfns = contents collect { case x: VerilogFunction => x }
-
+        val hasNew = Option(ctx.new_keyword()).isDefined;
         if (fencefns.length > 1) {
           Message.error(ctx, s"fsm '$name' has more than 1 fence function defined")
         }
 
-        FsmTask(name, decls, fns, fencefns.headOption, vfns)
+        FsmTask(name, decls, fns, fencefns.headOption, vfns, hasNew)
       }
     }
 
@@ -532,7 +542,6 @@ class NetworkTaskBuilder(cc: CommonContext) {
 
   lazy val fsmTaskBuilder = new FsmTaskBuilder(cc)
 
-  
   def apply(tree: NetworkContext): NetworkTask = {
 
     object DottedNameVisitor extends VScalarVisitor[DottedName] {
@@ -541,7 +550,7 @@ class NetworkTaskBuilder(cc: CommonContext) {
 
     object NetworkVisitor extends VScalarVisitor[NetworkTask] {
       object NetworkContentVisitor extends VScalarVisitor[Node] {
-        override def visitTaskFSM(ctx: TaskFSMContext) = fsmTaskBuilder(ctx)//, typedefs)
+        override def visitTaskFSM(ctx: TaskFSMContext) = fsmTaskBuilder(ctx) //, typedefs)
         override def visitTaskVerilog(ctx: TaskVerilogContext) = ???
         override def visitConnect(ctx: ConnectContext) = {
           val lhs = DottedNameVisitor(ctx.lhs)
@@ -563,7 +572,10 @@ class NetworkTaskBuilder(cc: CommonContext) {
         val name = ctx.IDENTIFIER.text
         val decls = DeclVisitor(ctx.decls)
         val contents = NetworkContentVisitor(ctx.contents)
-        val inst = contents collect { case x: Instantiate => x }
+        val inst = contents collect {
+          case x: Instantiate                                 => x
+          case FsmTask(name, decls, fns, fencefn, vfns, true) => Instantiate(name, name, ListMap.empty)
+        }
         val conn = contents collect { case x: Connect => x }
         val vfns = contents collect { case x: VerilogFunction => x }
         val fsms = contents collect { case x: FsmTask => x }
@@ -571,7 +583,6 @@ class NetworkTaskBuilder(cc: CommonContext) {
         NetworkTask(name, decls, inst, conn, vfns, fsms)
       }
     }
-
     NetworkVisitor(tree)
   }
 }

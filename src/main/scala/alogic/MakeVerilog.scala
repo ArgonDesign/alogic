@@ -581,6 +581,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     case InDeclaration(_, decltype, _)    => decltype
     case VarDeclaration(decltype, _, _)   => decltype
     case VerilogDeclaration(decltype, _)  => decltype
+    case _ => Message.ice("unreachable")
   }
 
   // Return the type for an AST
