@@ -13,7 +13,7 @@ import alogic.Message
 
 object PrettyPrinters {
 
-  implicit class SyncTypePritner(val kind: SyncType) {
+  implicit class SyncTypePrinter(val kind: SyncType) {
     def toSource: String = kind match {
       case SyncReadyBubble => "sync ready bubble"
       case SyncReady       => "sync ready"
