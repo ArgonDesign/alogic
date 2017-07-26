@@ -609,12 +609,11 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     }
 
     tree match {
-      case ReadCall(n)          => GetType(n)
-      case DottedName(n :: Nil) => id2decl(n)
-      case DottedName(n :: ns)  => LookUpField(ns, id2decl(n))
-      case _ => {
-        Message.ice(s"Cannot compute type for $tree")
-      }
+      case ReadCall(n)                          => GetType(n)
+      case DottedName(n :: Nil)                 => id2decl(n)
+      case DottedName(n :: ns)                  => LookUpField(ns, id2decl(n))
+      case ArrayLookup(DottedName(n :: Nil), _) => id2decl(n)
+      case _                                    => Message.ice(s"Cannot compute type for $tree")
     }
   }
 
