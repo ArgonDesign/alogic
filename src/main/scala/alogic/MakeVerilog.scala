@@ -107,14 +107,12 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     def writeSize(size: Int) = if (size > 1) s"[$size-1:0] " else ""
 
     def writeOut(typ: Type, name: StrTree): Unit = typ match {
-      case IntType(b, size)         => pw.println("  output " + outtype + writeSigned(b) + writeSize(size) + name + ",")
-      case kind @ IntVType(b, args) => pw.println("  output " + outtype + typeString(kind) + name + ",")
-      case _: Struct                => /* Nothing to do */
+      case kind : ScalarType => pw.println("  output " + outtype + typeString(kind) + name + ",")
+      case _: Struct         => /* Nothing to do */
     }
     def writeIn(typ: Type, name: StrTree): Unit = typ match {
-      case IntType(b, size)         => pw.println(s"  input wire ${writeSigned(b)}${writeSize(size)}" + name + ",")
-      case kind @ IntVType(b, args) => pw.println("  input wire " + typeString(kind) + name + ",")
-      case _: Struct                => /* Nothing to do */
+      case kind : ScalarType => pw.println("  input wire " + typeString(kind) + name + ",")
+      case _: Struct         => /* Nothing to do */
     }
     def typeString(typ: ScalarType): String = typ match {
       case IntType(b, size) => writeSigned(b) + writeSize(size)
