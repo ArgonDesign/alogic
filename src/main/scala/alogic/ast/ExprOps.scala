@@ -99,8 +99,9 @@ object ExprOps {
       case _: Literal                           => ???
     }
 
+    // Compute width of expression. Return None if it cannot be determined but the expression is legal.
+    def width: Option[Expr] = expr.width(Map.empty[String, Declaration])
     def width(symtab: mutable.Map[String, Declaration]): Option[Expr] = expr.width(symtab.toMap)
-
     def width(symtab: Map[String, Declaration]): Option[Expr] = {
       def widthOfName(tree: DottedName): Option[Expr] = {
         val kind = {
