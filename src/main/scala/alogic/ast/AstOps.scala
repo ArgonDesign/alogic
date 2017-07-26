@@ -9,10 +9,10 @@
 
 package alogic.ast
 
+import alogic.Message
 import alogic.Str
 import alogic.StrList
 import alogic.StrTree
-import alogic.Message
 
 object AstOps {
   def ExtractName(tree: Node): String = tree match {
@@ -68,7 +68,7 @@ object AstOps {
     visit(typ, name)
   }
 
-  implicit class AlogicAstWrapper[T <: Node](val tree: T) extends AnyVal {
+  implicit class AstOpstWrapper[T <: Node](val tree: T) extends AnyVal {
     // Recurse through the tree and apply function to all nodes in pre-order
     // Callback returns true to continue recursing, or false to stop processing children
     def visit(callback: Node => Boolean): Unit = {

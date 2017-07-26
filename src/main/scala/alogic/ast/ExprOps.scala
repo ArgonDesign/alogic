@@ -8,9 +8,11 @@
 package alogic.ast
 
 import alogic.Message
+import alogic.ast.TypeOps._
+import scala.collection.mutable
 
 object ExprOps {
-  implicit class Wrapper(val expr: Expr) extends AnyVal {
+  implicit class ExprOpsWrapper(val expr: Expr) extends AnyVal {
 
     // Test it the expression is universally constant, i.e.: contains no unbound variables
     def isConst: Boolean = expr match {
@@ -95,6 +97,77 @@ object ExprOps {
       case x: DottedName                        => Message.ice(s"Cannot generate verilog for '$x'")
       case _: ArrayLookup                       => ???
       case _: Literal                           => ???
+    }
+
+    def width(symtab: mutable.Map[String, Declaration]): Option[Expr] = expr.width(symtab.toMap)
+
+    def width(symtab: Map[String, Declaration]): Option[Expr] = {
+      def widthOfName(tree: DottedName): Option[Expr] = {
+        val kind = {
+          def lookUpField(names: List[String], kind: Type): Type = {
+            val n :: ns = names
+            kind match {
+              case Struct(name, fields) => {
+                if (fields contains n) {
+                  ns match {
+                    case Nil => fields(n)
+                    case _   => lookUpField(ns, fields(n))
+                  }
+                } else {
+                  Message.fatal(s"No field named '$n' in struct '$name'") // TODO: check earlier
+                }
+              }
+              case _ => Message.fatal(s"Cannot find field '$n' in non-struct type '$kind'")
+            }
+          }
+
+          tree match {
+            case DottedName(n :: Nil) => symtab.get(n) map { decl => decl.decltype }
+            case DottedName(n :: ns)  => symtab.get(n) map { decl => lookUpField(ns, decl.decltype) }
+          }
+        }
+
+        kind map { x: Type => x.width }
+      }
+
+      expr match {
+        case name: DottedName          => widthOfName(name)
+        case ArrayLookup(name, _)      => widthOfName(name) // TODO: handle IntVType properly
+        case ReadCall(name)            => widthOfName(name)
+
+        case Num(_, None, _)           => None
+        case Num(_, Some(width), _)    => Some(Num(None, None, width))
+        case _: CallExpr               => Some(Num(None, None, 0))
+        case Zxt(numbits, _)           => Some(numbits)
+        case Sxt(numbits, _)           => Some(numbits)
+        case _: DollarCall             => None
+        case PipelineRead              => Some(Num(None, None, 0))
+        case PipelineWrite             => Some(Num(None, None, 0))
+        case _: LockCall               => Some(Num(None, None, 0))
+        case _: UnlockCall             => Some(Num(None, None, 0))
+        case _: ValidCall              => Some(Num(None, None, 1))
+        case _: WriteCall              => Some(Num(None, None, 0))
+        case _: BinaryOp               => ???
+        case UnaryOp(_, lhs)           => lhs.width(symtab)
+        case Bracket(content)          => content.width(symtab)
+        case _: TernaryOp              => ???
+        case Slice(_, lidx, ":", ridx) => Some(BinaryOp(BinaryOp(lidx, "-", ridx), "+", Num(None, None, 1))) // TODO: assert lidx >= ridx
+        case Slice(_, _, _, width)     => Some(width)
+        case _: Literal                => None
+        case BitRep(count, value) => value.width(symtab) match {
+          case Some(w) => Some(BinaryOp(count, "*", w))
+          case None    => Message.fatal("Cannot compute width of bit repetion")
+        }
+        case BitCat(terms) => {
+          val exprs = for (term <- terms) yield {
+            term.width(symtab) match {
+              case Some(expr) => expr
+              case None       => Message.fatal("Cannot compute width of bit concatenation operand")
+            }
+          }
+          Some(exprs.reduce(BinaryOp(_, "+", _)))
+        }
+      }
     }
 
     // Test if the expression is constant given the provided name bindings

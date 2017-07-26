@@ -5,11 +5,10 @@
 // See the LICENSE file for the precise wording of the license.
 ////////////////////////////////////////////////////////////////////////////////
 
-
 package alogic.ast
 
 object TypeOps {
-  implicit class Wrapper(val kind: Type) extends AnyVal {
+  implicit class TypeOpsWrapper(val kind: Type) extends AnyVal {
     def width: Expr = kind match {
       case IntType(_, size)       => Num(None, None, size)
       case IntVType(_, sizeExprs) => ???

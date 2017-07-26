@@ -20,6 +20,8 @@ import alogic.ast.AstOps._
 import alogic.ast.ExprOps._
 import scalax.file.Path
 
+import ast.PrettyPrinters._
+
 final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
 
   val i0 = "  "; // Single indentation depth (2 spaces)
@@ -577,13 +579,6 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
 
   implicit def string2StrTree(s: String): StrTree = Str(s)
 
-  // Compute an string tree for the number of bits in this type
-  def MakeNumBits(typ: Type): StrTree = typ match {
-    case IntType(signed, size)  => Str(s"$size")
-    case IntVType(signed, args) => StrList(args.map(MakeExpr), "*")
-    case Struct(_, fields)      => StrList(fields.values.toList map MakeNumBits, "+")
-  }
-
   implicit def Decl2Typ(decl: Declaration): Type = decl match {
     case ParamDeclaration(decltype, _, _)        => decltype
     case ConstDeclaration(decltype, _, _)        => decltype
@@ -594,35 +589,6 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     case VerilogVarDeclaration(decltype, _)      => decltype
     case VerilogArrayDeclaration(decltype, _, _) => decltype
     case _: PipelineVarDeclaration               => Message.ice("unreachable")
-  }
-
-  // Return the type for an AST
-  def GetType(tree: Expr): Type = {
-
-    def LookUpField(names: List[String], kind: Type): Type = {
-      val n :: ns = names
-      kind match {
-        case Struct(name, fields) => {
-          if (fields contains n) {
-            ns match {
-              case Nil => fields(n)
-              case _   => LookUpField(ns, fields(n))
-            }
-          } else {
-            Message.fatal(s"No field named '$n' in struct '$name'") // TODO: check earlier
-          }
-        }
-        case _ => Message.fatal(s"Cannot find field '$n' in non-struct type '$kind'")
-      }
-    }
-
-    tree match {
-      case ReadCall(n)                          => GetType(n)
-      case DottedName(n :: Nil)                 => id2decl(n)
-      case DottedName(n :: ns)                  => LookUpField(ns, id2decl(n))
-      case ArrayLookup(DottedName(n :: Nil), _) => id2decl(n)
-      case _                                    => Message.ice(s"Cannot compute type for $tree")
-    }
   }
 
   // Construct a string for an expression
@@ -641,14 +607,18 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       case CallExpr(name, args) => StrList(List(MakeExpr(name), "(", StrList(args.map(MakeExpr), ","), ")"))
       case Zxt(numbits, expr) => {
         val totalSz = MakeExpr(numbits)
-        val exprSz = MakeNumBits(GetType(expr))
-        StrList(List("{{", totalSz, " - ", exprSz, "{1'b0}},", MakeExpr(expr), "}"))
+        expr.width(id2decl) map { MakeExpr(_) } match {
+          case Some(exprSz) => StrList(List("{{", totalSz, " - ", exprSz, "{1'b0}},", MakeExpr(expr), "}"))
+          case None         => Message.fatal(s"Cannot compute size of expression '${expr.toSource}' for zxt")
+        }
       }
       case Sxt(numbits, expr) => {
         val totalSz = MakeExpr(numbits)
-        val exprSz = MakeNumBits(GetType(expr))
         val e = MakeExpr(expr)
-        StrList(List("{{", totalSz, " - ", exprSz, "{", e, "[(", exprSz, ") - 1]}},", e, "}"))
+        expr.width(id2decl) map { MakeExpr(_) } match {
+          case Some(exprSz) => StrList(List("{{", totalSz, " - ", exprSz, "{", e, "[(", exprSz, ") - 1]}},", e, "}"))
+          case None         => Message.fatal(s"Cannot compute size of expression '${expr.toSource}' for sxt")
+        }
       }
       case DollarCall(name, args)    => StrList(List(name, "(", StrList(args.map(MakeExpr), ","), ")"))
       case ReadCall(name)            => MakeExpr(name)
