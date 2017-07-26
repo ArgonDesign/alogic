@@ -107,12 +107,14 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     def writeSize(size: Int) = if (size > 1) s"[$size-1:0] " else ""
 
     def writeOut(typ: Type, name: StrTree): Unit = typ match {
-      case IntType(b, size) => pw.println("  output " + outtype + writeSigned(b) + writeSize(size) + name + ",")
-      case _                => // TODO support IntVType
+      case IntType(b, size)  => pw.println("  output " + outtype + writeSigned(b) + writeSize(size) + name + ",")
+      case IntVType(b, args) => pw.println("  output " + outtype + typeString(typ) + name + ",")
+      case _                 => ???
     }
     def writeIn(typ: Type, name: StrTree): Unit = typ match {
-      case IntType(b, size) => pw.println(s"  input wire ${writeSigned(b)}${writeSize(size)}" + name + ",")
-      case _                => // TODO support IntVType
+      case IntType(b, size)  => pw.println(s"  input wire ${writeSigned(b)}${writeSize(size)}" + name + ",")
+      case IntVType(b, args) => pw.println("  input wire " + typeString(typ) + name + ",")
+      case _                 => ??? // TODO support IntVType
     }
     def typeString(typ: Type): String = typ match {
       case IntType(b, size) => writeSigned(b) + writeSize(size)
@@ -244,7 +246,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         }
         if (HasAccept(synctype))
           pw.println("  input wire " + accept(name) + ",")
-        VisitType(decltype, name)(writeOut)
+        VisitType(decltype, name)(writeIn)
 
       }
       case _ =>
@@ -584,7 +586,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     case InDeclaration(_, decltype, _)    => decltype
     case VarDeclaration(decltype, _, _)   => decltype
     case VerilogDeclaration(decltype, _)  => decltype
-    case _ => Message.ice("unreachable")
+    case _                                => Message.ice("unreachable")
   }
 
   // Return the type for an AST
