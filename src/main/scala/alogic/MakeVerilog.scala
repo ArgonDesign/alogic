@@ -822,6 +822,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       case ExprStmt(LockCall(name))   => AddStall(tree) { Str("") }
       case ExprStmt(UnlockCall(name)) => AddStall(tree) { Str("") }
       case ExprStmt(WriteCall(name, arg :: Nil)) =>
+        AddStall(tree) {
           Str(s"${MakeExpr(name)} = ${MakeExpr(arg)};")
         }
 
