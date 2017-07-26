@@ -735,6 +735,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         expr
       } else {
         val s = stalls map { x => Str(x) }
+        // TODO remove string interpolation/mkString and use StrTree for speed
         Str(s"""|begin
                 |${i + i0}${s mkString s"\n${i + i0}"}
                 |${i + i0}${expr}
@@ -755,6 +756,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       }
 
       case CombinatorialBlock(cmds) => {
+        // TODO remove string interpolation/mkString and use StrTree for speed
         Str(s"""|begin
                 |${i + i0}${cmds map MakeStmt(indent + 1) mkString s"\n${i + i0}"}
                 |${i}end""".stripMargin)
@@ -763,6 +765,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       case StateBlock(_, cmds) => MakeStmt(indent)(CombinatorialBlock(cmds))
 
       case CombinatorialIf(cond, thenBody, optElseBody) => AddStall(cond) {
+        // TODO remove string interpolation/mkString and use StrTree for speed
         val condPart = s"if (${MakeExpr(cond)}) "
         val thenPart = thenBody match {
           case block: CombinatorialBlock => MakeStmt(indent)(block)
@@ -816,11 +819,11 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
                 |${i}end""".stripMargin)
       }
 
-      case ExprStmt(LockCall(name))   => AddStall(name) { Str("") }
-      case ExprStmt(UnlockCall(name)) => AddStall(name) { Str("") }
-      case ExprStmt(WriteCall(name, arg :: Nil)) => AddStall(name, arg) {
-        Str(s"${MakeExpr(name)} = ${MakeExpr(arg)};")
-      }
+      case ExprStmt(LockCall(name))   => AddStall(tree) { Str("") }
+      case ExprStmt(UnlockCall(name)) => AddStall(tree) { Str("") }
+      case ExprStmt(WriteCall(name, arg :: Nil)) =>
+          Str(s"${MakeExpr(name)} = ${MakeExpr(arg)};")
+        }
 
       case DeclarationStmt(VarDeclaration(decltype, id, Some(rhs))) => MakeStmt(indent)(Assign(id, rhs))
       case DeclarationStmt(VarDeclaration(decltype, id, None)) => MakeStmt(indent)(Assign(id, Num(Some(false), None, 0))) // TODO: Why is this needed ?
