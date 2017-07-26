@@ -12,6 +12,7 @@ package alogic.ast
 import alogic.Str
 import alogic.StrList
 import alogic.StrTree
+import alogic.Message
 
 object AstOps {
   def ExtractName(tree: Node): String = tree match {
@@ -21,13 +22,15 @@ object AstOps {
   }
 
   def ExtractName(tree: Declaration): String = tree match {
-    case VarDeclaration(_, id, _)   => ExtractName(id)
-    case ConstDeclaration(_, id, _) => id
-    case ParamDeclaration(_, id, _) => id
-    case VerilogDeclaration(_, id)  => ExtractName(id)
-    case OutDeclaration(_, _, name) => name
-    case InDeclaration(_, _, name)  => name
-    case _                          => "Unknown"
+    case VarDeclaration(_, id, _)          => id
+    case ArrayDeclaration(_, id, _)        => id
+    case ConstDeclaration(_, id, _)        => id
+    case ParamDeclaration(_, id, _)        => id
+    case VerilogVarDeclaration(_, id)      => id
+    case VerilogArrayDeclaration(_, id, _) => id
+    case OutDeclaration(_, _, name)        => name
+    case InDeclaration(_, _, name)         => name
+    case _                                 => Message.ice("unreachable")
   }
 
   // Does this sync type contain a valid line?
@@ -259,7 +262,7 @@ object AstOps {
           case TernaryOp(cond, lhs, rhs)                    => c(cond) ::: c(lhs) ::: c(rhs)
           case CombinatorialBlock(cmds)                     => cmds flatMap c
           case StateBlock(state, cmds)                      => cmds flatMap c
-          case DeclarationStmt(VarDeclaration(_, id, init)) => c(id) ::: (init map c getOrElse Nil)
+          case DeclarationStmt(VarDeclaration(_, _, init))  => init map c getOrElse Nil
           case CombinatorialIf(cond, t, e)                  => c(cond) ::: c(t) ::: (e map c getOrElse Nil)
           case BitRep(count, value)                         => c(count) ::: c(value)
           case BitCat(parts)                                => parts flatMap c

@@ -10,20 +10,32 @@ package alogic.ast
 // Various representational case classes not descendant from ast.Node
 
 // // Declaration used for top-level and function declarations
-sealed trait Declaration
-// TODO: Add separate Decl for Arrays, it just makes a lot of things simpler
-case class VarDeclaration(decltype: Type, id: VarRef, init: Option[Expr]) extends Declaration
+sealed trait Declaration {
+  val decltype: Type
+  val id: String
+}
+
+object Declaration {
+  def unapply(decl: Declaration) = Some((decl.decltype, decl.id))
+}
+
+case class VarDeclaration(decltype: Type, id: String, init: Option[Expr]) extends Declaration
+case class ArrayDeclaration(decltype: ScalarType, id: String, dims: List[Expr]) extends Declaration
 case class PipelineVarDeclaration(decltype: Type, id: String) extends Declaration
-case class ParamDeclaration(decltype: Type, id: String, init: Expr) extends Declaration
-case class ConstDeclaration(decltype: Type, id: String, init: Expr) extends Declaration
-case class VerilogDeclaration(decltype: Type, id: VarRef) extends Declaration
-case class OutDeclaration(synctype: SyncType, decltype: Type, name: String) extends Declaration
-case class InDeclaration(synctype: SyncType, decltype: Type, name: String) extends Declaration
+case class ParamDeclaration(decltype: ScalarType, id: String, init: Expr) extends Declaration
+case class ConstDeclaration(decltype: ScalarType, id: String, init: Expr) extends Declaration
+case class OutDeclaration(synctype: SyncType, decltype: Type, id: String) extends Declaration
+case class InDeclaration(synctype: SyncType, decltype: Type, id: String) extends Declaration
+
+sealed trait VerilogDeclaration extends Declaration
+case class VerilogVarDeclaration(decltype: Type, id: String) extends VerilogDeclaration
+case class VerilogArrayDeclaration(decltype: ScalarType, id: String, dims: List[Expr]) extends VerilogDeclaration
 
 // AlogicType used to define the allowed types
 sealed trait Type
-case class IntType(signed: Boolean, size: Int) extends Type
-case class IntVType(signed: Boolean, args: List[Expr]) extends Type // variable number of bits definition
+sealed trait ScalarType extends Type
+case class IntType(signed: Boolean, size: Int) extends ScalarType
+case class IntVType(signed: Boolean, args: List[Expr]) extends ScalarType // variable number of bits definition
 case class Struct(name: String, fields: Map[String, Type]) extends Type
 
 // SyncType for allowed port types

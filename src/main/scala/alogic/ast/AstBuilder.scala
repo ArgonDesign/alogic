@@ -230,25 +230,78 @@ class CommonContext(root: ParserRuleContext, initialTypedefs: Map[String, Type])
     override def visitTaskDeclIn(ctx: TaskDeclInContext) =
       InDeclaration(SyncTypeVisitor(ctx.sync_type), KnownTypeVisitor(ctx.known_type), scope(ctx, ctx.IDENTIFIER))
 
-    override def visitTaskDeclConst(ctx: TaskDeclConstContext) =
-      ConstDeclaration(KnownTypeVisitor(ctx.known_type), scope(ctx, ctx.IDENTIFIER), ExprVisitor(ctx.expr))
+    override def visitTaskDeclConst(ctx: TaskDeclConstContext) = {
+      val name = scope(ctx, ctx.IDENTIFIER)
+      val kind = KnownTypeVisitor(ctx.known_type) match {
+        case x: ScalarType => x
+        case x             => Message.error(ctx, s"Constant '${name}' must be declared with scalar type"); IntType(false, 1);
+      }
+      ConstDeclaration(kind, name, ExprVisitor(ctx.expr))
+    }
 
     override def visitTaskDeclPipeline(ctx: TaskDeclPipelineContext) =
       PipelineVarDeclaration(KnownTypeVisitor(ctx.known_type), scope(ctx, ctx.IDENTIFIER))
 
-    override def visitTaskDeclParam(ctx: TaskDeclParamContext) =
-      ParamDeclaration(KnownTypeVisitor(ctx.known_type), scope(ctx, ctx.IDENTIFIER), ExprVisitor(ctx.expr))
+    override def visitTaskDeclParam(ctx: TaskDeclParamContext) = {
+      val name = scope(ctx, ctx.IDENTIFIER)
+      val kind = KnownTypeVisitor(ctx.known_type) match {
+        case x: ScalarType => x
+        case x             => Message.error(ctx, s"Parameter '${name}' must be declared with scalar type"); IntType(false, 1);
+      }
+      ParamDeclaration(kind, name, ExprVisitor(ctx.expr))
+    }
 
-    override def visitTaskDeclVerilog(ctx: TaskDeclVerilogContext) =
-      VerilogDeclaration(KnownTypeVisitor(ctx.known_type()), VarRefVisitor(ctx.var_ref))
+    override def visitTaskDeclVerilog(ctx: TaskDeclVerilogContext) = {
+      val kind = KnownTypeVisitor(ctx.known_type())
+      val vref = VarRefVisitor(ctx.var_ref)
+      vref match {
+        case DottedName(name :: Nil) => VerilogVarDeclaration(kind, name)
+        case ArrayLookup(DottedName(name :: Nil), index) => {
+          kind match {
+            case x: ScalarType => VerilogArrayDeclaration(x, name, index)
+            case s: Struct => {
+              Message.error(ctx, s"Arrays must be declared with scalar type, not struct '${s.name}'")
+              ArrayDeclaration(IntType(false, 1), name, index);
+            }
+          }
+        }
+        case _ => Message.ice("unreachable")
+      }
+    }
 
     override def visitTaskDecl(ctx: TaskDeclContext) = visit(ctx.decl)
 
-    override def visitDeclNoInit(ctx: DeclNoInitContext) =
-      VarDeclaration(KnownTypeVisitor(ctx.known_type()), VarRefVisitor(ctx.var_ref), None)
+    override def visitDeclNoInit(ctx: DeclNoInitContext) = {
+      val kind = KnownTypeVisitor(ctx.known_type())
+      val vref = VarRefVisitor(ctx.var_ref)
+      vref match {
+        case DottedName(name :: Nil) => VarDeclaration(kind, name, None)
+        case ArrayLookup(DottedName(name :: Nil), index) => {
+          kind match {
+            case x: ScalarType => ArrayDeclaration(x, name, index)
+            case s: Struct => {
+              Message.error(ctx, s"Arrays must be declared with scalar types, not struct '${s.name}'")
+              ArrayDeclaration(IntType(false, 1), name, index);
+            }
+          }
+        }
+        case _ => Message.ice("unreachable")
+      }
+    }
 
-    override def visitDeclInit(ctx: DeclInitContext) =
-      VarDeclaration(KnownTypeVisitor(ctx.known_type()), VarRefVisitor(ctx.var_ref), Some(ExprVisitor(ctx.expr)))
+    override def visitDeclInit(ctx: DeclInitContext) = {
+      val kind = KnownTypeVisitor(ctx.known_type())
+      val vref = VarRefVisitor(ctx.var_ref)
+      val init = ExprVisitor(ctx.expr)
+      vref match {
+        case DottedName(name :: Nil) => VarDeclaration(kind, name, Some(init))
+        case ArrayLookup(DottedName(name :: Nil), _) => {
+          Message.error(ctx, s"Cannot use initializer in declaration of array '${name}'")
+          VarDeclaration(kind, name, None)
+        }
+        case _ => Message.ice("unreachable")
+      }
+    }
   }
 
   object VerilogFunctionVisitor extends VScalarVisitor[VerilogFunction] {
@@ -296,7 +349,7 @@ class FsmTaskBuilder(cc: CommonContext) {
         case s: VarDeclaration => DeclarationStmt(s)
         case _ => {
           Message.error(ctx, "Only variable declarations allowed inside functions")
-          DeclarationStmt(VarDeclaration(IntType(false, 1), DottedName(List("Unknown")), None))
+          DeclarationStmt(VarDeclaration(IntType(false, 1), "Unknown", None))
         }
       }
 

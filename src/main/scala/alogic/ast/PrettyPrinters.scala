@@ -37,14 +37,16 @@ object PrettyPrinters {
 
   implicit class DeclarationPrinter(val decl: Declaration) extends AnyVal {
     def toSource: String = decl match {
-      case VarDeclaration(decltype, id, Some(init)) => s"${decltype.toSource} ${id.toSource} = ${init.toSource}"
-      case VarDeclaration(decltype, id, None)       => s"${decltype.toSource} ${id.toSource}"
-      case ParamDeclaration(decltype, id, init)     => s"param ${decltype.toSource} ${id} = ${init.toSource}"
-      case ConstDeclaration(decltype, id, init)     => s"const ${decltype.toSource} ${id} = ${init.toSource}"
-      case VerilogDeclaration(decltype, id)         => s"verilog ${decltype.toSource} ${id.toSource}"
-      case OutDeclaration(synctype, decltype, name) => s"out ${synctype.toSource} ${decltype.toSource} ${name}"
-      case InDeclaration(synctype, decltype, name)  => s"in ${synctype.toSource} ${decltype.toSource} ${name}"
-      case _                                        => Message.ice("Unreachable")
+      case VarDeclaration(decltype, id, Some(init))    => s"${decltype.toSource} ${id} = ${init.toSource}"
+      case VarDeclaration(decltype, id, None)          => s"${decltype.toSource} ${id}"
+      case ArrayDeclaration(decltype, id, dims)        => s"${decltype.toSource} ${id}${dims map { _.toSource } mkString ("[", "][", "]")}"
+      case ParamDeclaration(decltype, id, init)        => s"param ${decltype.toSource} ${id} = ${init.toSource}"
+      case ConstDeclaration(decltype, id, init)        => s"const ${decltype.toSource} ${id} = ${init.toSource}"
+      case VerilogVarDeclaration(decltype, id)         => s"verilog ${decltype.toSource} ${id}"
+      case VerilogArrayDeclaration(decltype, id, dims) => s"verilog ${decltype.toSource} ${id}${id}${dims map { _.toSource } mkString ("[", "][", "]")}"
+      case OutDeclaration(synctype, decltype, id)      => s"out ${synctype.toSource} ${decltype.toSource} ${id}"
+      case InDeclaration(synctype, decltype, id)       => s"in ${synctype.toSource} ${decltype.toSource} ${id}"
+      case PipelineVarDeclaration(decltype, id)        => s"pipeline ${decltype.toSource} ${id}"
     }
   }
 

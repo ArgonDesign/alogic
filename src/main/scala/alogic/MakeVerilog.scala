@@ -79,11 +79,11 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     log2numstates = ceillog2(numstates)
 
     // Collect all the declarations
-    decls foreach { x => id2decl(ExtractName(x)) = x }
+    decls foreach { x => id2decl(x.id) = x }
     task visit {
       // We remove the initializer from declaration statements
       // These will be reset inline where they are declared.
-      case DeclarationStmt(VarDeclaration(decltype, id, _)) => { id2decl(ExtractName(id)) = VarDeclaration(decltype, id, None); false }
+      case DeclarationStmt(VarDeclaration(decltype, id, _)) => { id2decl(id) = VarDeclaration(decltype, id, None); false }
       case _ => true
     }
 
@@ -107,28 +107,27 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     def writeSize(size: Int) = if (size > 1) s"[$size-1:0] " else ""
 
     def writeOut(typ: Type, name: StrTree): Unit = typ match {
-      case IntType(b, size)  => pw.println("  output " + outtype + writeSigned(b) + writeSize(size) + name + ",")
-      case IntVType(b, args) => pw.println("  output " + outtype + typeString(typ) + name + ",")
-      case _: Struct         => /* Nothing to do */
+      case IntType(b, size)         => pw.println("  output " + outtype + writeSigned(b) + writeSize(size) + name + ",")
+      case kind @ IntVType(b, args) => pw.println("  output " + outtype + typeString(kind) + name + ",")
+      case _: Struct                => /* Nothing to do */
     }
     def writeIn(typ: Type, name: StrTree): Unit = typ match {
-      case IntType(b, size)  => pw.println(s"  input wire ${writeSigned(b)}${writeSize(size)}" + name + ",")
-      case IntVType(b, args) => pw.println("  input wire " + typeString(typ) + name + ",")
-      case _: Struct         => /* Nothing to do */
+      case IntType(b, size)         => pw.println(s"  input wire ${writeSigned(b)}${writeSize(size)}" + name + ",")
+      case kind @ IntVType(b, args) => pw.println("  input wire " + typeString(kind) + name + ",")
+      case _: Struct                => /* Nothing to do */
     }
-    def typeString(typ: Type): String = typ match {
+    def typeString(typ: ScalarType): String = typ match {
       case IntType(b, size) => writeSigned(b) + writeSize(size)
       case IntVType(b, args) => {
         val sz = StrList(args.map(MakeExpr), "*").toString
         writeSigned(b) + "[" + sz + "-1:0] "
       }
-      case _ => Message.fatal(s"Cannot make type for $typ"); ""
     }
     def writeVarInternal(typ: Type, name: StrTree, resetToZero: Boolean): Unit = {
       val nm = name.toString
       typ match {
-        case IntType(_, _) | IntVType(_, _) => {
-          pw.println(s"  reg " + typeString(typ) + nx(nm) + ", " + reg(nm) + ";")
+        case kind: ScalarType => {
+          pw.println(s"  reg " + typeString(kind) + nx(nm) + ", " + reg(nm) + ";")
           if (resetToZero) {
             resets push StrList(Str("      ") :: Str(reg(name)) :: Str(s" <= 'b0;\n") :: Nil)
           }
@@ -170,27 +169,31 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         SetNxType(nxMap, decltype, name, "") // TODO decide on NxType based on synctype
         SetNxType(regMap, decltype, name, "")
       }
-      case ParamDeclaration(decltype, id, init) => {
-        SetNxType(nxMap, decltype, id, "")
-        SetNxType(regMap, decltype, id, "")
-      }
-      case ConstDeclaration(decltype, id, init) => {
-        SetNxType(nxMap, decltype, id, "")
-        SetNxType(regMap, decltype, id, "")
-      }
-      case VerilogDeclaration(decltype, id) => {
-        SetNxType(nxMap, decltype, ExtractName(id), "")
-        SetNxType(regMap, decltype, ExtractName(id), "")
-      }
-      case VarDeclaration(decltype, ArrayLookup(DottedName(name :: Nil), _), None) => {
+      case ParamDeclaration(decltype, name, init) => {
         SetNxType(nxMap, decltype, name, "")
         SetNxType(regMap, decltype, name, "")
       }
-      case VarDeclaration(decltype, DottedName(name :: Nil), _) => {
+      case ConstDeclaration(decltype, name, init) => {
+        SetNxType(nxMap, decltype, name, "")
+        SetNxType(regMap, decltype, name, "")
+      }
+      case VarDeclaration(decltype, name, _) => {
         SetNxType(nxMap, decltype, name, "_nxt")
         SetNxType(regMap, decltype, name, "")
       }
-      case x => Message.fatal(s"Don't know how to handle ${x}") // TODO: turn this into ice
+      case ArrayDeclaration(decltype, name, _) => {
+        SetNxType(nxMap, decltype, name, "")
+        SetNxType(regMap, decltype, name, "")
+      }
+      case VerilogVarDeclaration(decltype, name) => {
+        SetNxType(nxMap, decltype, name, "")
+        SetNxType(regMap, decltype, name, "")
+      }
+      case VerilogArrayDeclaration(decltype, name, _) => {
+        SetNxType(nxMap, decltype, name, "")
+        SetNxType(regMap, decltype, name, "")
+      }
+      case x => Message.ice(s"Don't know how to handle ${x}") // TODO: turn this into ice
     }
 
     var generateAccept = false // As an optimization, don't bother generating accept for modules without any ports that require it
@@ -272,37 +275,33 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
 
     // Emit remaining variable declarations
     id2decl.values foreach {
-      case VarDeclaration(decltype, ArrayLookup(DottedName(names), index :: Nil), None) => {
-        // Arrays only work with non-struct types
+      case ArrayDeclaration(decltype, name, index :: Nil) => {
         // TODO maybe figure out the number of bits in the type and declare as this many?
         // TODO maybe detect more than one write to the same array in the same cycle?
-        val n = names.mkString("_")
-        Arrays.add(n)
+        Arrays.add(name)
         val depth = MakeExpr(index).toString.toInt // TODO detect if this fails and fail gracefully
         val log2depth = ceillog2(depth) max 1 // TODO: handle degenerate case of depth == 1 better
         val t = typeString(decltype)
-        pw.println(s"  reg ${n}_wr;")
-        pw.println(s"  reg ${t}${n}_wrdata;")
-        pw.println(s"  reg [${log2depth - 1}:0] ${n}_wraddr;")
-        pw.println(s"  reg ${n} [${depth - 1}:0];")
+        pw.println(s"  reg ${name}_wr;")
+        pw.println(s"  reg ${t}${name}_wrdata;")
+        pw.println(s"  reg [${log2depth - 1}:0] ${name}_wraddr;")
+        pw.println(s"  reg ${name} [${depth - 1}:0];")
         defaults push StrList(
-          Str(s"    ${n}_wr = 1'b0;\n") ::
-            Str(s"    ${n}_wraddr = 'b0;\n") ::
-            Str(s"    ${n}_wrdata = 'b0;\n") :: Nil)
-        clears push Str(s"      ${n}_wr = 1'b0;\n")
-        clocks_no_reset push Str(s"""|${i0 * 3}if (${n}_wr) begin
-                                         |${i0 * 4}${n}[${n}_wraddr] <= ${n}_wrdata;
+          Str(s"    ${name}_wr = 1'b0;\n") ::
+            Str(s"    ${name}_wraddr = 'b0;\n") ::
+            Str(s"    ${name}_wrdata = 'b0;\n") :: Nil)
+        clears push Str(s"      ${name}_wr = 1'b0;\n")
+        clocks_no_reset push Str(s"""|${i0 * 3}if (${name}_wr) begin
+                                         |${i0 * 4}${name}[${name}_wraddr] <= ${name}_wrdata;
                                          |${i0 * 3}end
                                          |""".stripMargin)
       }
       case VarDeclaration(decltype, name, None) => {
-        val n = ExtractName(name)
-        VisitType(decltype, n)(writeVarWithReset)
+        VisitType(decltype, name)(writeVarWithReset)
       }
       case VarDeclaration(decltype, name, Some(init)) => {
-        val n = ExtractName(name)
-        VisitType(decltype, n)(writeVarWithNoReset)
-        resets push StrList(Str("      ") :: Str(reg(n)) :: Str(s" <= ") :: MakeExpr(init) :: Str(";\n") :: Nil)
+        VisitType(decltype, name)(writeVarWithNoReset)
+        resets push StrList(Str("      ") :: Str(reg(name)) :: Str(s" <= ") :: MakeExpr(init) :: Str(";\n") :: Nil)
       }
       case _ =>
     }
@@ -580,13 +579,15 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
   }
 
   implicit def Decl2Typ(decl: Declaration): Type = decl match {
-    case ParamDeclaration(decltype, _, _) => decltype
-    case ConstDeclaration(decltype, _, _) => decltype
-    case OutDeclaration(_, decltype, _)   => decltype
-    case InDeclaration(_, decltype, _)    => decltype
-    case VarDeclaration(decltype, _, _)   => decltype
-    case VerilogDeclaration(decltype, _)  => decltype
-    case _                                => Message.ice("unreachable")
+    case ParamDeclaration(decltype, _, _)        => decltype
+    case ConstDeclaration(decltype, _, _)        => decltype
+    case OutDeclaration(_, decltype, _)          => decltype
+    case InDeclaration(_, decltype, _)           => decltype
+    case VarDeclaration(decltype, _, _)          => decltype
+    case ArrayDeclaration(decltype, _, _)        => decltype
+    case VerilogVarDeclaration(decltype, _)      => decltype
+    case VerilogArrayDeclaration(decltype, _, _) => decltype
+    case _: PipelineVarDeclaration               => Message.ice("unreachable")
   }
 
   // Return the type for an AST
@@ -614,7 +615,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       case DottedName(n :: Nil) => id2decl(n)
       case DottedName(n :: ns)  => LookUpField(ns, id2decl(n))
       case _ => {
-        Message.fatal(s"Cannot compute type for $tree")
+        Message.ice(s"Cannot compute type for $tree")
       }
     }
   }
@@ -826,8 +827,8 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
           Str(s"${MakeExpr(name)} = ${MakeExpr(arg)};")
         }
 
-      case DeclarationStmt(VarDeclaration(decltype, id, Some(rhs))) => MakeStmt(indent)(Assign(id, rhs))
-      case DeclarationStmt(VarDeclaration(decltype, id, None)) => MakeStmt(indent)(Assign(id, Num(Some(false), None, 0))) // TODO: Why is this needed ?
+      case DeclarationStmt(VarDeclaration(decltype, id, Some(rhs))) => MakeStmt(indent)(Assign(DottedName(id :: Nil), rhs))
+      case DeclarationStmt(VarDeclaration(decltype, id, None)) => MakeStmt(indent)(Assign(DottedName(id :: Nil), Num(Some(false), None, 0))) // TODO: Why is this needed ?
 
       case ExprStmt(DollarCall(name, args)) => StrList(List(name, "(", StrList(args.map(MakeExpr), ","), ");"))
       case AlogicComment(s) => s"// $s\n"
@@ -940,7 +941,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         Some(StrList(Str(i0 * indent) :: Str("begin\n") :: StrList(s2) :: Str(i0 * indent) :: Str("end\n") :: Nil))
     }
 
-    case DeclarationStmt(VarDeclaration(decltype, id, Some(rhs))) => AcceptStmt(indent, Assign(id, rhs))
+    case DeclarationStmt(VarDeclaration(decltype, id, Some(rhs))) => AcceptStmt(indent, Assign(DottedName(id :: Nil), rhs))
     case StateBlock(state, cmds) => {
       // Clear sets used for tracking
       syncPortsFound = 0

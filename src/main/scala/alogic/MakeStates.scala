@@ -158,7 +158,7 @@ final class MakeStates {
 
       // Add a declaration for the state variable if required (reset to the entry state of main)
       val stateDecl = if (states.length > 1) {
-        Some(VarDeclaration(stateType, DottedName("state" :: Nil), Some(Num(Some(false), None, 0))))
+        Some(VarDeclaration(stateType, "state", Some(Num(Some(false), None, 0))))
       } else {
         None
       }
@@ -172,18 +172,12 @@ final class MakeStates {
 
       // Add declarations for 'call_stack' and 'call_depth'
       val callStackDecls = if (css > 1) {
-        // TODO: the depth of 'call_stack' should be "DottedName("CALL_STACK_SIZE" :: Nil)" but MakeVerilog does not support
+        // TODO: the depth of 'call_stack' should be "CALL_STACK_SIZE" but MakeVerilog does not support
         // parametrizable depth arrays yet
-        val csDecl = VarDeclaration(
-          stateType,
-          ArrayLookup(DottedName("call_stack" :: Nil), List(Num(None, None, css - 1))),
-          None)
+        val csDecl = ArrayDeclaration(stateType, "call_stack", List(Num(None, None, css - 1)))
         val cdDecl = {
           val sz = ceillog2(css)
-          VarDeclaration(
-            IntType(false, sz),
-            DottedName("call_depth" :: Nil),
-            Some(Num(Some(false), Some(sz), 0)))
+          VarDeclaration(IntType(false, sz), "call_depth", Some(Num(Some(false), Some(sz), 0)))
         }
         List(csDecl, cdDecl)
       } else {

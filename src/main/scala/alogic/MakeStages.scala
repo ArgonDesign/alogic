@@ -127,20 +127,20 @@ object MakeStages {
       if (usesWrite)
         decls2 ::= OutDeclaration(SyncReady, IntVType(false, (outputs map pipeVarMap reduce (BinaryOp(_, "+", _))) :: Nil), outName)
       if (usesRead || usesWrite)
-        decls2 :::= used map { v => VarDeclaration(pipeVarMapType(v), MakeVar(v), None) }
+        decls2 :::= used map { v => VarDeclaration(pipeVarMapType(v), v, None) }
 
       // Add in declaration of locally used ports
       decls2 :::= ports filter {
-        case x: InDeclaration if usedPorts contains x.name => {
+        case InDeclaration(_, _, id) if usedPorts contains id => {
           // Add this.port -> fsm.port
           // TODO this relies on instance name matching fsm name at the moment for auto-ports
           // TODO support use of input variables even if not explicitly read
           // e.g. so network can have an "in u8 width" and the lower level modules can read this directly.
-          conns2 ::= Connect(DottedName("this" :: x.name :: Nil), DottedName(sub :: x.name :: Nil) :: Nil) // TODO support several pipeline stages sharing the same input
+          conns2 ::= Connect(DottedName("this" :: id :: Nil), DottedName(sub :: id :: Nil) :: Nil) // TODO support several pipeline stages sharing the same input
           true
         }
-        case x: OutDeclaration if usedPorts contains x.name => {
-          conns2 ::= Connect(DottedName(sub :: x.name :: Nil), DottedName("this" :: x.name :: Nil) :: Nil)
+        case OutDeclaration(_, _, id) if usedPorts contains id => {
+          conns2 ::= Connect(DottedName(sub :: id :: Nil), DottedName("this" :: id :: Nil) :: Nil)
           true
         }
         case _ => false

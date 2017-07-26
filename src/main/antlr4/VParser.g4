@@ -238,7 +238,7 @@ for_init
 leftvalue
   : var_ref                                             # LValue
   | var_ref '[' expr op=(':' | '-:' | '+:') expr ']'    # LValueSlice
-  | '{' refs+=leftvalue (',' refs+=leftvalue)+ '}'            # LValueCat
+  | '{' refs+=leftvalue (',' refs+=leftvalue)+ '}'      # LValueCat
   ;
 
 assignment_statement
