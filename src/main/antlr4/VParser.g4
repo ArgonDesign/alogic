@@ -235,15 +235,15 @@ for_init
   | decl_init             #ForInitDecl
   ;
 
-lvalue
+leftvalue
   : var_ref                                             # LValue
   | var_ref '[' expr op=(':' | '-:' | '+:') expr ']'    # LValueSlice
-  | '{' refs+=lvalue (',' refs+=lvalue)+ '}'            # LValueCat
+  | '{' refs+=leftvalue (',' refs+=leftvalue)+ '}'            # LValueCat
   ;
 
 assignment_statement
-  : lvalue '++'           # AssignInc
-  | lvalue '--'           # AssignDec
-  | lvalue '=' expr       # Assign
-  | lvalue ASSIGNOP expr  # AssignUpdate
+  : leftvalue '++'           # AssignInc
+  | leftvalue '--'           # AssignDec
+  | leftvalue '=' expr       # Assign
+  | leftvalue ASSIGNOP expr  # AssignUpdate
   ;

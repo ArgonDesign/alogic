@@ -450,10 +450,10 @@ class FsmTaskBuilder(cc: CommonContext) {
 
       override def visitAssignmentStmt(ctx: AssignmentStmtContext) = visit(ctx.assignment_statement)
 
-      override def visitAssignInc(ctx: AssignIncContext) = Plusplus(LValueVisitor(ctx.lvalue))
-      override def visitAssignDec(ctx: AssignDecContext) = Minusminus(LValueVisitor(ctx.lvalue))
-      override def visitAssign(ctx: AssignContext) = Assign(LValueVisitor(ctx.lvalue), ExprVisitor(ctx.expr()))
-      override def visitAssignUpdate(ctx: AssignUpdateContext) = Update(LValueVisitor(ctx.lvalue), ctx.ASSIGNOP, ExprVisitor(ctx.expr()))
+      override def visitAssignInc(ctx: AssignIncContext) = Plusplus(LValueVisitor(ctx.leftvalue))
+      override def visitAssignDec(ctx: AssignDecContext) = Minusminus(LValueVisitor(ctx.leftvalue))
+      override def visitAssign(ctx: AssignContext) = Assign(LValueVisitor(ctx.leftvalue), ExprVisitor(ctx.expr()))
+      override def visitAssignUpdate(ctx: AssignUpdateContext) = Update(LValueVisitor(ctx.leftvalue), ctx.ASSIGNOP, ExprVisitor(ctx.expr()))
 
       override def visitExprStmt(ctx: ExprStmtContext) = ExprVisitor(ctx.expr) match {
         case CallExpr(DottedName(target :: xs), args) => {
