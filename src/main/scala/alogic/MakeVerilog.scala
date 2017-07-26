@@ -107,12 +107,12 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     def writeSize(size: Int) = if (size > 1) s"[$size-1:0] " else ""
 
     def writeOut(typ: Type, name: StrTree): Unit = typ match {
-      case kind : ScalarType => pw.println("  output " + outtype + typeString(kind) + name + ",")
-      case _: Struct         => /* Nothing to do */
+      case kind: ScalarType => pw.println("  output " + outtype + typeString(kind) + name + ",")
+      case _: Struct        => /* Nothing to do */
     }
     def writeIn(typ: Type, name: StrTree): Unit = typ match {
-      case kind : ScalarType => pw.println("  input wire " + typeString(kind) + name + ",")
-      case _: Struct         => /* Nothing to do */
+      case kind: ScalarType => pw.println("  input wire " + typeString(kind) + name + ",")
+      case _: Struct        => /* Nothing to do */
     }
     def typeString(typ: ScalarType): String = typ match {
       case IntType(b, size) => writeSigned(b) + writeSize(size)
@@ -818,12 +818,12 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
                 |${i}end""".stripMargin)
       }
 
-      case ExprStmt(LockCall(name))   => AddStall(tree) { Str("") }
-      case ExprStmt(UnlockCall(name)) => AddStall(tree) { Str("") }
-      case ExprStmt(WriteCall(name, arg :: Nil)) =>
-        AddStall(tree) {
-          Str(s"${MakeExpr(name)} = ${MakeExpr(arg)};")
-        }
+      case ExprStmt(LockCall(_))   => AddStall(tree) { Str("") }
+      case ExprStmt(UnlockCall(_)) => AddStall(tree) { Str("") }
+      case ExprStmt(ReadCall(_))   => AddStall(tree) { Str("") }
+      case ExprStmt(WriteCall(name, arg :: Nil)) => AddStall(tree) {
+        Str(s"${MakeExpr(name)} = ${MakeExpr(arg)};")
+      }
 
       case DeclarationStmt(VarDeclaration(decltype, id, Some(rhs))) => MakeStmt(indent)(Assign(DottedName(id :: Nil), rhs))
       case DeclarationStmt(VarDeclaration(decltype, id, None)) => MakeStmt(indent)(Assign(DottedName(id :: Nil), Num(Some(false), None, 0))) // TODO: Why is this needed ?
@@ -831,7 +831,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       case ExprStmt(DollarCall(name, args)) => StrList(List(name, "(", StrList(args.map(MakeExpr), ","), ");"))
       case AlogicComment(s) => s"// $s\n"
 
-      case x => Message.fatal(s"Don't know how to emit code for $x"); Str("")
+      case x => Message.ice(s"Don't know how to emit code for $x"); Str("")
     }
   }
 
