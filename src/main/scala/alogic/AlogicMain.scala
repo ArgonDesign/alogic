@@ -25,14 +25,19 @@ object AlogicMain extends App {
 
   val conf = new CLIConf(args)
 
-  val idir = conf.path()
+  val ipath: Path = conf.path().toRealPath()
 
-  val listOfFiles: List[Path] = idir match {
+  val listOfFiles: List[Path] = ipath match {
     case IsFile(file)     => List(file)
     case IsDirectory(dir) => dir.descendants("*.alogic").toList
   }
 
-  val odir = conf.odir()
+  val idir: Path = ipath match {
+    case IsFile(file)     => file.parent.get
+    case IsDirectory(dir) => dir
+  }
+
+  val odir: Path = conf.odir().toRealPath()
   if (!odir.exists) {
     odir.createDirectory()
   }
@@ -137,14 +142,25 @@ object AlogicMain extends App {
 
     // Generate verilog
     taskItems foreach {
-      case Item(task @ ast.Task(name, _), ipath) => {
+      case Item(task @ ast.Task(name, _), fpath) => {
         // Construct output file path
-        val subdir = ipath.parent.get relativize idir
+        val opath = {
+          val subdirOpt: Option[Path] = {
+            val pdir = fpath.parent.get
+            if (pdir == idir) {
+              None
+            } else {
+              Some(pdir relativize idir)
+            }
+          }
 
-        val opath: Path = if (Option(subdir).isDefined)
-          odir / subdir / (name + ".v")
-        else
-          odir / (name + ".v")
+          val oname = name + ".v"
+
+          subdirOpt match {
+            case Some(subdir) => odir / subdir / oname
+            case None         => odir / oname
+          }
+        }
 
         // Write Verilog
         new MakeVerilog(moduleCatalogue)(task, opath)
