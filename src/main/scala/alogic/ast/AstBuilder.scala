@@ -347,9 +347,9 @@ class FsmTaskBuilder(cc: CommonContext) {
 
       override def visitDeclStmt(ctx: DeclStmtContext) = DeclVisitor(ctx.decl()) match {
         case s: VarDeclaration => DeclarationStmt(s)
-        case _ => {
+        case Declaration(decltype, id) => {
           Message.error(ctx, "Only variable declarations allowed inside functions")
-          DeclarationStmt(VarDeclaration(IntType(false, 1), "Unknown", None))
+          DeclarationStmt(VarDeclaration(decltype, id, None))
         }
       }
 
