@@ -140,7 +140,11 @@ object AlogicMain extends App {
       case Item(task @ ast.Task(name, _), ipath) => {
         // Construct output file path
         val subdir = ipath.parent.get relativize idir
-        val opath: Path = odir / subdir / (name + ".v")
+
+        val opath: Path = if (Option(subdir).isDefined)
+          odir / subdir / (name + ".v")
+        else
+          odir / (name + ".v")
 
         // Write Verilog
         new MakeVerilog(moduleCatalogue)(task, opath)
