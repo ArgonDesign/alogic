@@ -109,12 +109,12 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     def writeOut(typ: Type, name: StrTree): Unit = typ match {
       case IntType(b, size)  => pw.println("  output " + outtype + writeSigned(b) + writeSize(size) + name + ",")
       case IntVType(b, args) => pw.println("  output " + outtype + typeString(typ) + name + ",")
-      case _                 => ???
+      case _: Struct         => /* Nothing to do */
     }
     def writeIn(typ: Type, name: StrTree): Unit = typ match {
       case IntType(b, size)  => pw.println(s"  input wire ${writeSigned(b)}${writeSize(size)}" + name + ",")
       case IntVType(b, args) => pw.println("  input wire " + typeString(typ) + name + ",")
-      case _                 => ??? // TODO support IntVType
+      case _: Struct         => /* Nothing to do */
     }
     def typeString(typ: Type): String = typ match {
       case IntType(b, size) => writeSigned(b) + writeSize(size)
