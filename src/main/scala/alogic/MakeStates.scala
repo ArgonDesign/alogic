@@ -89,8 +89,8 @@ final class MakeStates {
     val edges = for {
       Function(caller, body) <- fns
       (callee, weight) <- body collect {
-        case CallStmt(name) => (name, 1)
-        case GotoStmt(name) => (name, 0)
+        case CallStmt(name)                   => (name, 1)
+        case GotoStmt(name) if name != caller => (name, 0)
       }
     } yield {
       caller ~> callee % weight
