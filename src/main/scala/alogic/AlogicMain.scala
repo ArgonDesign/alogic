@@ -75,22 +75,26 @@ object AlogicMain extends App {
     val mean = dt.sum / n
     // Compute 95% confidence interval using the normal distribution
     // This really should be based on the t distribution, but we don't
-    // want a library depencency just for this ...
+    // want a library dependency just for this ...
     val sdev = dt.map(_ - mean).map(math.pow(_, 2)).sum / (n - 1)
     val se = sdev / math.sqrt(n)
     val me = 1.96 * se
     Message.note("Compilation time: %.3fs +/- %.2f%% (%.3fs, %.3fs)" format (mean, me / mean * 100, mean - me, mean + me))
   } else if (conf.monitor()) {
-    // Stay alive and wait for source chagnes
+    // Stay alive and wait for source changes
     implicit val system = ActorSystem("actorSystem")
     val fileMonitorActor = system.actorOf(MonitorActor(concurrency = 2))
-    Message.info(s"Waiting for ${conf.path().path} to be modified (press return to quit)...")
+    Message.note(s"Waiting for ${conf.path().path} to be modified (press return to quit)...")
     fileMonitorActor ! RegisterCallback(
       event = ENTRY_MODIFY,
       path = Paths get conf.path().path,
-      callback = { _ => go })
+      callback = { _ =>
+        val t0 = System.nanoTime()
+        go
+        Message.note("Compilation time: %.3fs" format ((System.nanoTime() - t0) / 1e9))
+      })
     io.StdIn.readLine()
-    Message.info("Quitting")
+    Message.note("Quitting")
     system.terminate()
   }
 
