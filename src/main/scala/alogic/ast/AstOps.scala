@@ -106,7 +106,7 @@ object AstOps {
             case TernaryOp(cond, lhs, rhs)                        => { v(cond); v(lhs); v(rhs) }
             case CombinatorialBlock(cmds)                         => cmds foreach v
             case StateBlock(state, cmds)                          => cmds foreach v
-            case DeclarationStmt(decl: VarDeclaration)            => () // TODO should we recurse here?
+            case DeclarationStmt(decl: VarDeclaration)            => decl.init foreach v
             case CombinatorialIf(cond, body, Some(e))             => { v(cond); v(body); v(e) }
             case CombinatorialIf(cond, body, None)                => { v(cond); v(body) }
             case BitRep(count, value)                             => { v(count); v(value) }
