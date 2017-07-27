@@ -38,6 +38,7 @@ import alogic.ast.ExprOps._
 import scalax.collection.Graph
 import scalax.collection.GraphPredef._
 import scalax.collection.GraphEdge._
+import scalax.collection.edge.Implicits._
 
 final class MakeStates {
 
@@ -87,16 +88,17 @@ final class MakeStates {
     val nodes = fns map { _.name }
     val edges = for {
       Function(caller, body) <- fns
-      callee <- body collect {
-        case CallStmt(name) => name
+      (callee, weight) <- body collect {
+        case CallStmt(name) => (name, 1)
+        case GotoStmt(name) => (name, 0)
       }
     } yield {
-      caller ~> callee
+      caller ~> callee % weight
     }
     val callGraph = Graph.from(nodes, edges)
 
     // Find directly recursive functions or an indirectly recursive path
-    val directlyRecursiveFns = callGraph.edges.toList.map { _.toOuter } collect { case s ~> t if s == t => s }
+    val directlyRecursiveFns = callGraph.edges.toList.map { _.toOuter } collect { case s :~> t % _ if s == t => s }
     val cycle = callGraph.findCycle
 
     val recursive = directlyRecursiveFns.nonEmpty || cycle.isDefined
@@ -127,7 +129,7 @@ final class MakeStates {
         node <- callGraph.nodes
         path <- root pathTo node
       } yield {
-        path.length
+        path.weight.toInt
       }
 
       pathLengths.max + 1
