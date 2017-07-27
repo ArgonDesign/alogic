@@ -16,6 +16,15 @@ import scala.collection.mutable.Stack
 
 class ModuleInstance(val name: String, val task: Task, val paramAssigns: Map[String, Expr]) {
 
+  // Check assigned parameters exist
+  {
+    val paramNames = task.decls collect { case ParamDeclaration(_, id, _) => id }
+
+    for (paramName <- paramAssigns.keys if !(paramNames contains paramName)) {
+      Message.error(s"module instance '${name}' (module '${task.name}') has no parameter named '${paramName}'")
+    }
+  }
+
   // TODO check in parser that no port name repeats
 
   // Map from portname to Port with internal name
