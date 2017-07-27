@@ -123,16 +123,19 @@ final class MakeStates {
 
     // Get the value of CALL_STACK_SIZE if defined, or otherwise the length of the longest path in the call graph
     val css = cssOpt getOrElse {
-      val root = callGraph get "main"
+      val maxWeightSum = mutable.Map[String, Long]("main" -> 1)
 
-      val pathLengths = for {
-        node <- callGraph.nodes
-        path <- root pathTo node
-      } yield {
-        path.weight.toInt
+      callGraph.topologicalSort {
+        case n: callGraph.InnerNode if n.toOuter != "main" => {
+          val weightSums = for (edge <- n.incoming) yield {
+            maxWeightSum(edge.source.toOuter) + edge.weight
+          }
+          maxWeightSum(n.toOuter) = weightSums.max
+        }
+        case _ =>
       }
 
-      pathLengths.max + 1
+      maxWeightSum.values.max.toInt
     }
 
     // Return css, and true if it's explicitly defined
