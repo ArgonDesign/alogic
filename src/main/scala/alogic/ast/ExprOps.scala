@@ -185,6 +185,7 @@ object ExprOps {
       case _: ArrayLookup     => false
       case _: Num             => false
       case _: ValidCall       => false
+      case _: Literal         => false
 
       case Zxt(_, e)          => e.hasSideEffect
       case Sxt(_, e)          => e.hasSideEffect
