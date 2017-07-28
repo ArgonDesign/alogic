@@ -18,6 +18,7 @@ import alogic.VScalarVisitor
 import alogic.VScope
 import alogic.antlr.VParser._
 import alogic.ast.ExprOps._
+import alogic.ast.PrettyPrinters._
 
 // The aim of the AstBuilder stage is:
 //   Build an abstract syntax tree
@@ -518,7 +519,12 @@ class FsmTaskBuilder(cc: CommonContext) {
           }
           CallStmt(target)
         }
-        case expr => ExprStmt(expr)
+        case expr => if (expr.hasSideEffect) {
+          ExprStmt(expr)
+        } else {
+          Message.error(ctx, "A pure expression in statement position does nothing")
+          AlogicComment(s"Omitted ${expr.toSource} in statement position")
+        }
       }
     }
 

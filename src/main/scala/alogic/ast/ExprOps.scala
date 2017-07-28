@@ -171,6 +171,32 @@ object ExprOps {
       }
     }
 
+    def hasSideEffect: Boolean = expr match {
+      case _: CallExpr        => true
+      case _: DollarCall      => true
+      case _: ReadCall        => true
+      case _: WriteCall       => true
+      case PipelineRead       => true
+      case PipelineWrite      => true
+      case _: UnlockCall      => true
+      case _: LockCall        => true
+
+      case _: DottedName      => false
+      case _: ArrayLookup     => false
+      case _: Num             => false
+      case _: ValidCall       => false
+
+      case Zxt(_, e)          => e.hasSideEffect
+      case Sxt(_, e)          => e.hasSideEffect
+      case BinaryOp(l, _, r)  => l.hasSideEffect || r.hasSideEffect
+      case UnaryOp(_, e)      => e.hasSideEffect
+      case Bracket(e)         => e.hasSideEffect
+      case TernaryOp(c, t, f) => c.hasSideEffect || t.hasSideEffect || f.hasSideEffect
+      case BitRep(_, e)       => e.hasSideEffect
+      case BitCat(terms)      => terms exists { _.hasSideEffect }
+      case Slice(_, l, _, r)  => l.hasSideEffect || r.hasSideEffect
+    }
+
     // Test if the expression is constant given the provided name bindings
     //def isConstWith(bindings) = ???
   }
