@@ -25,17 +25,32 @@ object AlogicMain extends App {
 
   val conf = new CLIConf(args)
 
-  val ipath: Path = conf.path().toRealPath()
+  // Note that the CLI argument validator checks that the input paths
+  // and srcdir are consistent, so we can assume they are in the following.
+  val srcdir: Path = {
+    conf.srcdir.getOrElse {
+      conf.path() match {
+        case path :: Nil if path.isFile => path.parent.get
+        case path :: Nil                => path
+        case _                          => Message.ice("unreachable")
+      }
+    }
+  }.toRealPath()
 
-  val listOfFiles: List[Path] = ipath match {
-    case IsFile(file)     => List(file)
-    case IsDirectory(dir) => dir.descendants("*.alogic").toList
-  }
+  val ipaths: List[Path] = {
+    if (conf.srcdir.isDefined) {
+      conf.path() map { path => (srcdir / path).toRealPath() }
+    } else {
+      conf.path() map { _.toRealPath() }
+    }
+  }.distinct
 
-  val idir: Path = ipath match {
-    case IsFile(file)     => file.parent.get
-    case IsDirectory(dir) => dir
-  }
+  val ifiles: List[Path] = {
+    ipaths flatMap {
+      case IsFile(file)     => List(file)
+      case IsDirectory(dir) => dir.descendants("*.alogic").toList
+    }
+  }.distinct
 
   val odir: Path = conf.odir().toRealPath()
   if (!odir.exists) {
@@ -84,15 +99,19 @@ object AlogicMain extends App {
     // Stay alive and wait for source changes
     implicit val system = ActorSystem("actorSystem")
     val fileMonitorActor = system.actorOf(MonitorActor(concurrency = 2))
-    Message.note(s"Waiting for ${conf.path().path} to be modified (press return to quit)...")
-    fileMonitorActor ! RegisterCallback(
-      event = ENTRY_MODIFY,
-      path = Paths get conf.path().path,
-      callback = { _ =>
-        val t0 = System.nanoTime()
-        go
-        Message.note("Compilation time: %.3fs" format ((System.nanoTime() - t0) / 1e9))
-      })
+
+    def callback(path: Any): Unit = {
+      val t0 = System.nanoTime()
+      go
+      Message.note("Compilation time: %.3fs" format ((System.nanoTime() - t0) / 1e9))
+    }
+
+    // TODO: This is probably not safe if multiple paths change simultaneously
+    for (path <- ipaths) {
+      Message.note(s"Waiting for ${path.path} to be modified (press return to quit)...")
+      fileMonitorActor ! RegisterCallback(event = ENTRY_MODIFY, path = Paths get path.path, callback = callback)
+    }
+
     io.StdIn.readLine()
     Message.note("Quitting")
     system.terminate()
@@ -107,7 +126,7 @@ object AlogicMain extends App {
     case class Item(task: ast.Task, path: Path)
 
     // Construct potentially parallel file list
-    val rootPaths = if (multiThreaded) listOfFiles.par else listOfFiles
+    val rootPaths = if (multiThreaded) ifiles.par else ifiles
 
     // Build AST
     val astItems = {
@@ -151,10 +170,10 @@ object AlogicMain extends App {
         val opath = {
           val subdirOpt: Option[Path] = {
             val pdir = fpath.parent.get
-            if (pdir == idir) {
+            if (pdir == srcdir) {
               None
             } else {
-              Some(pdir relativize idir)
+              Some(pdir relativize srcdir)
             }
           }
 
