@@ -315,6 +315,9 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         }
       }
       case statetask: StateTask => {
+        // Declare 'go'
+        pw.println("  reg go;")
+
         // Construct always block contents
         statetask.states foreach {
           case blk @ StateBlock(n, _) => {
