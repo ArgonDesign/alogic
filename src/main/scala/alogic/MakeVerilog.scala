@@ -726,7 +726,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       case Assign(ArrayLookup(DottedName(n :: _), index :: Nil), rhs) if (Arrays contains n) => AddStall(index, rhs) {
         Str(s"""|begin
                 |${i + i0}${n}_wr = 1'b1;
-                |${i + i0}${n}_addr = ${MakeExpr(index)};
+                |${i + i0}${n}_wraddr = ${MakeExpr(index)};
                 |${i + i0}${n}_wrdata = ${MakeExpr(rhs)};
                 |${i}end""".stripMargin)
       }
@@ -783,7 +783,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       case CallState(tgt, ret) => {
         Str(s"""|begin
                 |${i + i0}call_stack_wr = 1'b1;
-                |${i + i0}call_stack_addr = call_depth;
+                |${i + i0}call_stack_wraddr = call_depth;
                 |${i + i0}call_stack_wrdata = ${MakeState(ret)};
                 |${i + i0}call_depth_nxt = call_depth + 1'b1;
                 |${i + i0}${nx("state")} = ${MakeState(tgt)};
