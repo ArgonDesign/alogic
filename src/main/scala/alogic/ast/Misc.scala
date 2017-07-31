@@ -32,7 +32,7 @@ case class VerilogVarDeclaration(decltype: Type, id: String) extends VerilogDecl
 case class VerilogArrayDeclaration(decltype: ScalarType, id: String, dims: List[Expr]) extends VerilogDeclaration
 
 // AlogicType used to define the allowed types
-sealed trait Type
+sealed trait Type extends TypeOps
 sealed trait ScalarType extends Type
 case class IntType(signed: Boolean, size: Int) extends ScalarType
 case class IntVType(signed: Boolean, args: List[Expr]) extends ScalarType // variable number of bits definition

@@ -5,10 +5,8 @@
 // See the LICENSE file for the precise wording of the license.
 ////////////////////////////////////////////////////////////////////////////////
 
-
 package alogic.ast
 
-import alogic.ast.ExprOps._
 import alogic.Message
 
 // Signals have a name, a width and a signedness

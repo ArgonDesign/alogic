@@ -7,28 +7,25 @@
 
 package alogic.ast
 
-import alogic.ast.AstOps._
-
 // This file describes the classes used in the parser output.
 
 ///////////////////////////////////////////////////////////////////////////////
 // AST node super type
 ///////////////////////////////////////////////////////////////////////////////
-sealed trait Node
+sealed trait Node extends NodeOps
+
+object Node {
+  // NodeOpsDispatcher is used for methods that need to return the same
+  // Node subtype as they are called on. This is essentially double dispatch.
+  implicit class NodeOpsDispatcher[T <: Node](val node: T) extends AnyVal {
+    def rewrite(callback: PartialFunction[Node, Node]): T = node._rewrite[T](callback)
+  }
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // Task (module) nodes, these are the roots of the ASTs
 ///////////////////////////////////////////////////////////////////////////////
-sealed trait Task extends Node {
-  val name: String
-  val decls: List[Declaration]
-
-  lazy val defaultParams: Map[String, Expr] = {
-    decls collect {
-      case ParamDeclaration(_, id, expr) => id -> expr
-    }
-  }.toMap
-}
+sealed trait Task extends Node with TaskOps
 
 object Task {
   def unapply(task: Task) = Some((task.name, task.decls))
@@ -65,7 +62,7 @@ case class VerilogFunction(body: String) extends Node
 ///////////////////////////////////////////////////////////////////////////////
 // Expression nodes
 ///////////////////////////////////////////////////////////////////////////////
-sealed trait Expr extends Node
+sealed trait Expr extends Node with ExprOps
 // Numbers have optional signedness. If signed is None, then the number can be
 // treated as either signed or unsigned depending on context, and in this case
 // the value must be positive. Numbers also have an optional width. If with is

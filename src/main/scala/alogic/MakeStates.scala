@@ -34,7 +34,6 @@ import scala.collection.mutable.Stack
 
 import alogic.ast._
 import alogic.ast.AstOps._
-import alogic.ast.ExprOps._
 import scalax.collection.Graph
 import scalax.collection.GraphPredef._
 import scalax.collection.GraphEdge._

@@ -17,7 +17,6 @@ import scala.language.implicitConversions
 
 import alogic.ast._
 import alogic.ast.AstOps._
-import alogic.ast.ExprOps._
 import scalax.file.Path
 
 import ast.PrettyPrinters._
@@ -612,7 +611,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       case CallExpr(name, args) => StrList(List(MakeExpr(name), "(", StrList(args.map(MakeExpr), ","), ")"))
       case Zxt(numbits, expr) => {
         val totalSz = MakeExpr(numbits)
-        expr.width(id2decl) map { MakeExpr(_) } match {
+        expr.widthExpr(id2decl) map { MakeExpr(_) } match {
           case Some(exprSz) => StrList(List("{{", totalSz, " - ", exprSz, "{1'b0}},", MakeExpr(expr), "}"))
           case None         => Message.fatal(s"Cannot compute size of expression '${expr.toSource}' for zxt")
         }
@@ -620,7 +619,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       case Sxt(numbits, expr) => {
         val totalSz = MakeExpr(numbits)
         val e = MakeExpr(expr)
-        expr.width(id2decl) map { MakeExpr(_) } match {
+        expr.widthExpr(id2decl) map { MakeExpr(_) } match {
           case Some(exprSz) => StrList(List("{{", totalSz, " - ", exprSz, "{", e, "[(", exprSz, ") - 1]}},", e, "}"))
           case None         => Message.fatal(s"Cannot compute size of expression '${expr.toSource}' for sxt")
         }

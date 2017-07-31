@@ -10,8 +10,6 @@
 package alogic
 
 import alogic.ast._
-import alogic.ast.AstOps._
-import alogic.ast.TypeOps._
 import scala.collection.mutable
 import alogic.ast.PrettyPrinters._
 

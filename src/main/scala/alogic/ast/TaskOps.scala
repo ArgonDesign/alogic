@@ -7,16 +7,13 @@
 
 package alogic.ast
 
-trait TypeOps { this: Type =>
+trait TaskOps { this: Task =>
+  val name: String
+  val decls: List[Declaration]
 
-  def width: Expr = this match {
-    case IntType(_, size)       => Num(None, None, size)
-    case IntVType(_, sizeExprs) => ???
-    case Struct(_, fields) => if (fields.size == 1) {
-      fields.values.head.width
-    } else {
-      val widths = fields.values map (_.width)
-      widths reduce (BinaryOp(_, "+", _))
+  lazy val defaultParams: Map[String, Expr] = {
+    decls collect {
+      case ParamDeclaration(_, id, expr) => id -> expr
     }
-  }
+  }.toMap
 }
