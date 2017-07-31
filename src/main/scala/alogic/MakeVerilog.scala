@@ -285,7 +285,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         pw.println(s"  reg ${name}_wr;")
         pw.println(s"  reg ${t}${name}_wrdata;")
         pw.println(s"  reg [${log2depth - 1}:0] ${name}_wraddr;")
-        pw.println(s"  reg ${name} [${depth - 1}:0];")
+        pw.println(s"  reg ${t}${name} [${depth - 1}:0];")
         defaults push StrList(
           Str(s"    ${name}_wr = 1'b0;\n") ::
             Str(s"    ${name}_wraddr = 'b0;\n") ::
