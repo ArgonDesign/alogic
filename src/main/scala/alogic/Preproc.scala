@@ -69,9 +69,9 @@ object Preproc {
 
         override def visitLiteral(ctx: LiteralContext): StrTree = Str(ctx.LITERAL.text)
 
-        override def visitOneLineComment(ctx: OneLineCommentContext): StrTree = Str("\n")
+        override def visitLineComment(ctx: LineCommentContext): StrTree = Str(ctx.text)
 
-        override def visitBlockComment(ctx: BlockCommentContext): StrTree = Str("\n" * ctx.text.count(_ == '\n'))
+        override def visitBlockComment(ctx: BlockCommentContext): StrTree = Str(ctx.text)
 
         override def visitAnything(ctx: AnythingContext): StrTree = Str(ctx.ANYTHING.text)
 

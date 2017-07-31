@@ -12,6 +12,9 @@ channels {
   COMMENT
 }
 
+LINE_COMMENT: '//' .*? NL -> channel(WHITESPACE);
+BLOCK_COMMENT: '/*'  .*? '*/' -> channel(WHITESPACE);
+
 UINTTYPE: 'u' [0-9]+;
 
 INTTYPE: 'i' [0-9]+;

@@ -25,7 +25,7 @@ IDENTIFIER: SIMPLEID;
 
 LITERAL: '"' ~["]* '"';
 
-ONE_LINE_COMMENT: '//' .*? NL;
+LINE_COMMENT: '//' .*? NL;
 
 BLOCK_COMMENT: '/*'  .*? '*/';
 
