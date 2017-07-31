@@ -5,7 +5,6 @@
 // See the LICENSE file for the precise wording of the license.
 ////////////////////////////////////////////////////////////////////////////////
 
-
 package alogic.ast
 
 // Ports have a name, some payload and possibly some flow control signals
@@ -28,15 +27,15 @@ sealed trait Port {
 
   def valid: Option[Signal] = this match {
     case _: PortNone   => None
-    case _: PortValid  => Some(Signal(s"${name}_valid", false, Num(None, None, 1)))
-    case _: PortReady  => Some(Signal(s"${name}_valid", false, Num(None, None, 1)))
-    case _: PortAccept => Some(Signal(s"${name}_valid", false, Num(None, None, 1)))
+    case _: PortValid  => Some(Signal(s"${name}__valid", false, Num(None, None, 1)))
+    case _: PortReady  => Some(Signal(s"${name}__valid", false, Num(None, None, 1)))
+    case _: PortAccept => Some(Signal(s"${name}__valid", false, Num(None, None, 1)))
   }
 
   def ready: Option[Signal] = this match {
     case _: PortNone   => None
     case _: PortValid  => None
-    case _: PortReady  => Some(Signal(s"${name}_ready", false, Num(None, None, 1)))
+    case _: PortReady  => Some(Signal(s"${name}__ready", false, Num(None, None, 1)))
     case _: PortAccept => None
   }
 
@@ -44,7 +43,7 @@ sealed trait Port {
     case _: PortNone   => None
     case _: PortValid  => None
     case _: PortReady  => None
-    case _: PortAccept => Some(Signal(s"${name}_accept", false, Num(None, None, 1)))
+    case _: PortAccept => Some(Signal(s"${name}__accept", false, Num(None, None, 1)))
   }
 
   def flowControl: List[Signal] = List(valid, ready, accept).flatten

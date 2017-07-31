@@ -60,7 +60,7 @@ object AstOps {
       callback(typ, name)
       typ match {
         case Struct(_, fields) => for ((n, t) <- fields) {
-          visit(t, StrList(name :: Str("_") :: Str(n) :: Nil))
+          visit(t, StrList(name :: Str("__") :: Str(n) :: Nil))
         }
         case _ => ()
       }

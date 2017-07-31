@@ -44,15 +44,15 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
 
   // Name of signal used to check that a port contains valid data
   def valid(s: String): String =
-    s + "_valid"
+    s + "__valid"
 
   // Name of signal used to signal that a port contains ready data
   def ready(s: String): String =
-    s + "_ready"
+    s + "__ready"
 
   // Name of signal used to signal that a port contains ready data
   def accept(s: String): String =
-    s + "_accept"
+    s + "__accept"
 
   // Compute number of address bits required for a given depth
   def ceillog2(x: Int): Int = {
@@ -147,7 +147,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     def SetNxType(m: mutable.Map[String, String], typ: Type, name: String, suffix: String): String = typ match {
       case Struct(_, fields) => {
         val c = for ((n, t) <- fields) yield {
-          SetNxType(m, t, name + '_' + n, suffix)
+          SetNxType(m, t, name + "__" + n, suffix)
         }
         val commaFields = c.mkString(",")
         m(name) = "{" + commaFields + "}"
@@ -573,11 +573,11 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     name
   } else nxMap(name)
 
-  def nx(names: List[String]): String = nx(names.mkString("_"))
+  def nx(names: List[String]): String = nx(names.mkString("__"))
   def nx(name: StrTree): String = nx(name.toString)
 
   // Construct the string to be used when this identifier is used on the LHS of an assignment
-  def reg(names: List[String]): String = regMap(names.mkString("_"))
+  def reg(names: List[String]): String = regMap(names.mkString("__"))
   def reg(name: StrTree): String = regMap(name.toString)
 
   implicit def string2StrTree(s: String): StrTree = Str(s)
