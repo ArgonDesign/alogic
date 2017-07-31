@@ -484,12 +484,14 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     // Emit instantiations
     for (instance <- instances) {
       val paramAssigns = instance.paramAssigns
+      val paramValues = instance.task.defaultParams ++ paramAssigns
       // declare all port wires
       pw.println(s"${i0}// Port wires for ${instance.name}")
       for (port <- instance.wires; Signal(name, signed, formalWidth) <- port.signals) {
         // substitute formal parameters with actual parameters
+        // TODO: This still cannot cope with dependent default parameters
         val actualWidth = formalWidth rewrite {
-          case DottedName(name :: Nil) if (paramAssigns contains name) => paramAssigns(name)
+          case DottedName(name :: Nil) if (paramValues contains name) => paramValues(name)
         }
         val signal = Signal(name, signed, actualWidth)
         pw.println(i0 + signal.declString)

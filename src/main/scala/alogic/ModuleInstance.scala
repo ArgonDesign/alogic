@@ -10,7 +10,6 @@ package alogic
 import scala.collection._
 
 import alogic.ast._
-import scala.collection.mutable.Stack
 
 // This class keeps track of the connections of a particular module instance
 

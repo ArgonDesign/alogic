@@ -7,6 +7,8 @@
 
 package alogic.ast
 
+import alogic.ast.AstOps._
+
 // This file describes the classes used in the parser output.
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -20,6 +22,12 @@ sealed trait Node
 sealed trait Task extends Node {
   val name: String
   val decls: List[Declaration]
+
+  lazy val defaultParams: Map[String, Expr] = {
+    decls collect {
+      case ParamDeclaration(_, id, expr) => id -> expr
+    }
+  }.toMap
 }
 
 object Task {

@@ -249,7 +249,8 @@ class CommonContext(root: ParserRuleContext, initialTypedefs: Map[String, Type])
         case x: ScalarType => x
         case x             => Message.error(ctx, s"Parameter '${name}' must be declared with scalar type"); IntType(false, 1);
       }
-      ParamDeclaration(kind, name, ExprVisitor(ctx.expr))
+      val expr = ExprVisitor(ctx.expr)
+      ParamDeclaration(kind, name, expr)
     }
 
     override def visitTaskDeclVerilog(ctx: TaskDeclVerilogContext) = {
