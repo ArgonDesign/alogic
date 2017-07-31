@@ -13,6 +13,7 @@ import alogic.ast._
 import alogic.ast.AstOps._
 import alogic.ast.TypeOps._
 import scala.collection.mutable
+import alogic.ast.PrettyPrinters._
 
 object MakeStages {
   def apply(net: NetworkTask): Option[(NetworkTask, List[FsmTask])] = {
@@ -104,16 +105,7 @@ object MakeStages {
           usesWrite = true;
           writeCmd
         }
-        case ReadCall(name) =>
-          useport(name); ReadCall(name)
-        case LockCall(name) =>
-          useport(name); LockCall(name)
-        case UnlockCall(name) =>
-          useport(name); UnlockCall(name)
-        case ValidCall(name) =>
-          useport(name); ValidCall(name)
-        case WriteCall(name, args) =>
-          useport(name); WriteCall(name, args)
+        case x: DottedName => useport(x); x
       }
 
       val fencefn2 = fencefn.map(_ rewrite r)
@@ -146,7 +138,9 @@ object MakeStages {
         case _ => false
       }
 
-      FsmTask(sub, decls2, fns2, fencefn2, vfns, false)
+      val res = FsmTask(sub, decls2, fns2, fencefn2, vfns, false)
+      //println(res.toSource)
+      res
     }
 
     val stages = for (FsmTask(sub, decls, fns, fencefn, vfns, hasnew) <- fsms2) yield {
