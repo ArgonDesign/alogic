@@ -12,8 +12,9 @@ channels {
   COMMENT
 }
 
-LINE_COMMENT: '//' .*? NL -> channel(WHITESPACE);
-BLOCK_COMMENT: '/*'  .*? '*/' -> channel(WHITESPACE);
+fragment LCMT: '//' .*? NL;                 // Line comment
+fragment BCMT: '/*'  .*? '*/';              // Block comment
+CMT: (LCMT | BCMT) -> channel(COMMENT) ;    // Any comment
 
 UINTTYPE: 'u' [0-9]+;
 
@@ -133,7 +134,7 @@ WIRE: 'wire';
 
 LITERAL: '"' ~["]* '"';
 
-VERILOGFUNC: 'void' WS? 'verilog' WS? '(' WS? ')' WS? -> pushMode(VMODE);
+VERILOGFUNC: 'void' (WS|CMT)* 'verilog' (WS|CMT)* '(' (WS|CMT)* ')' (WS|CMT)* -> pushMode(VMODE);
 
 CONSTANT: [0-9_]+;
 
