@@ -52,7 +52,7 @@ class ModuleInstance(val name: String, val task: Task, val paramAssigns: Map[Str
 
   val ports = iports.values.toList ::: oports.values.toList
 
-  private[this] val prefix = if (name == "this") "" else name + "__"
+  private[this] val prefix = if (name == "this") "" else name + "_"
 
   // Map from portname to Port with external wire names
   val iwires: Map[String, Port] = {

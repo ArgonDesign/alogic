@@ -144,11 +144,11 @@ object MakeStages {
     }
 
     val stages = for (FsmTask(sub, decls, fns, fencefn, vfns, hasnew) <- fsms2) yield {
-      FsmTask(s"${name}__${sub}", decls, fns, fencefn, vfns, hasnew)
+      FsmTask(s"${name}_${sub}", decls, fns, fencefn, vfns, hasnew)
     }
 
     val newInsts = for (inst <- insts) yield inst rewrite {
-      case Instantiate(id, module, args) if stageNames contains module => Instantiate(id, s"${name}__${module}", args)
+      case Instantiate(id, module, args) if stageNames contains module => Instantiate(id, s"${name}_${module}", args)
     }
 
     // We can also remove the pipeline declarations from the network block
