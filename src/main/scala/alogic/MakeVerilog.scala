@@ -680,7 +680,6 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         case InDeclaration(fctype, decl, n)     => if (HasValid(fctype)) valid(n) else { Message.fatal(s"Port $names does not use valid"); "" }
         case _                                  => Message.fatal(s"Cannot access valid on $names"); ""
       }
-      case CallExpr(name, args) => StrList(List(MakeExpr(name), "(", StrList(args.map(MakeExpr), ","), ")"))
       case Zxt(numbitsExpr, expr) => expr.widthExpr(id2decl) match {
         case None => Message.fatal(s"Cannot compute size of expression '${expr.toSource}' for zxt")
         case Some(widthExpr) => {
