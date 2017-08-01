@@ -14,14 +14,6 @@ package alogic.ast
 ///////////////////////////////////////////////////////////////////////////////
 sealed trait Node extends NodeOps
 
-object Node {
-  // NodeOpsDispatcher is used for methods that need to return the same
-  // Node subtype as they are called on. This is essentially double dispatch.
-  implicit class NodeOpsDispatcher[T <: Node](val node: T) extends AnyVal {
-    def rewrite(callback: PartialFunction[Node, Node]): T = node._rewrite[T](callback)
-  }
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 // Task (module) nodes, these are the roots of the ASTs
 ///////////////////////////////////////////////////////////////////////////////
