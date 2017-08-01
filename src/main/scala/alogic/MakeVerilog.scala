@@ -103,8 +103,8 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     val clocks_no_reset = Stack[StrTree]() // Collection of things to clock if go but do not need reset
     val resets = Stack[StrTree]() // Collection of things to reset
     val verilogfns = Stack[StrTree]() // Collection of raw verilog text
-    val acceptfns = Stack[StrTree]() // Collection of code to generate accept outputs
     val clock_clears = Stack[StrTree]() // Collection of how to clear sync outputs
+    val acceptstates = mutable.Map[Int, StrTree]() // Collection of code to generate accept outputs for each state
 
     opath.createFile(createParents = true, failIfExists = false)
 
@@ -263,8 +263,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         if (HasReady(fctype))
           pw.println("  input wire " + ready(name) + ",")
         if (HasAccept(fctype)) {
-          pw.println("  output " + outtype + accept(name) + ",")
-          generateAccept = true;
+          pw.println("  input " + outtype + accept(name) + ",")
         }
         VisitType(decltype, name)(writeOut)
         (fctype, stype) match {
@@ -303,8 +302,10 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
           clears push Str("      " + ready(name) + " = 1'b0;\n")
           defaults push Str("    " + ready(name) + " = 1'b0;\n")
         }
-        if (HasAccept(synctype))
-          pw.println("  input wire " + accept(name) + ",")
+        if (HasAccept(synctype)) {
+          generateAccept = true;
+          pw.println("  output wire " + accept(name) + ",")
+        }
         VisitType(decltype, name)(writeIn)
 
       }
@@ -393,8 +394,8 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
             if (generateAccept) {
               makingAccept = true
               AcceptStmt(indent, blk) match {
-                case Some(a) => acceptfns push a
-                case None    =>
+                case Some(x) => acceptstates(n) = x
+                case None =>
               }
               makingAccept = false
             }
@@ -436,6 +437,26 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
           pw.println("    end")
         }
         pw.println("  end")
+        
+        // Generate accept output if used
+        if (generateAccept) {
+          pw.println()
+          pw.println("  always @* begin")
+          if (numstates == 1) {
+            pw.println(s"    ${acceptstates(0)}")
+          } else if (numstates > 1) {
+            pw.println("    case (state)")
+            pw.println("      default: begin")
+            pw.println("      end")
+            for ((n, c) <- acceptstates.toList.sortBy(_._1)) {
+              pw.println(s"      ${MakeState(n)}: ${c}")
+            }
+            pw.println("    endcase")
+          }
+          pw.println("  end")
+          pw.println()
+        }
+        
         // Now emit clocked blocks
         pw.println()
         pw.println("  always @(posedge clk or negedge rst_n) begin")
@@ -1003,7 +1024,9 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         if (syncPortsFound > 1) Message.fatal(s"Found multiple accept port reads in same cycle: $cmds")
         if (usesPort.isDefined) Message.fatal(s"Cannot access port $usesPort while generating accept: $cmds")
         if (!IdsUsedToMakeAccept.intersect(IdsWritten).isEmpty) Message.fatal(s"Cannot generate accept because an identifier is being written to: $cmds")
-        Some(StrList(List(i0 * (indent - 1), MakeState(state), ": begin\n", StrList(s2), i0 * (indent - 1), "end\n")))
+        //It seems that now the state is emitted by higher level code?
+        //Some(StrList(List(i0 * (indent - 1), MakeState(state), ": begin\n", StrList(s2), i0 * (indent - 1), "end\n")))
+        Some(StrList(List("begin\n", StrList(s2), i0 * (indent), "end\n")))
       } else
         None
     }
