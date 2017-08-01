@@ -9,7 +9,7 @@
 
 package alogic.ast
 
-trait NodeOps { this: Node =>
+trait NodeOps extends NodePrettyPrintOps { this: Node =>
 
   // Recurse through the tree and apply function to all nodes in pre-order
   // Callback returns true to continue recursing, or false to stop processing children
@@ -243,5 +243,13 @@ trait NodeOps { this: Node =>
     }
 
     c(this)
+  }
+}
+
+object NodeOps {
+  // NodeOpsDispatcher is used for methods that need to return the same
+  // Node subtype as they are called on.
+  implicit class NodeOpsDispatcher[T <: Node](val node: T) extends AnyVal {
+    def rewrite(callback: PartialFunction[Node, Node]): T = node._rewrite[T](callback)
   }
 }

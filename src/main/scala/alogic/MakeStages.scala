@@ -9,9 +9,9 @@
 
 package alogic
 
-import alogic.ast._
 import scala.collection.mutable
-import alogic.ast.PrettyPrinters._
+
+import alogic.ast._
 
 object MakeStages {
   def apply(net: NetworkTask): Option[(NetworkTask, List[FsmTask])] = {

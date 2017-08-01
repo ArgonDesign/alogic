@@ -10,10 +10,7 @@ package alogic.ast
 // Various representational case classes not descendant from ast.Node
 
 // // Declaration used for top-level and function declarations
-sealed trait Declaration {
-  val decltype: Type
-  val id: String
-}
+sealed trait Declaration extends DeclarationOps
 
 object Declaration {
   def unapply(decl: Declaration) = Some((decl.decltype, decl.id))
@@ -40,7 +37,7 @@ case class Struct(name: String, fields: Map[String, Type]) extends Type
 
 // SyncType for allowed port types
 // TODO: separate the flow control (none/valid/ready/accept) type from the storage type (wire/bubble/reg)
-sealed trait SyncType
+sealed trait SyncType extends SyncTypeOps
 case object SyncReadyBubble extends SyncType
 case object SyncReady extends SyncType
 case object SyncAccept extends SyncType
