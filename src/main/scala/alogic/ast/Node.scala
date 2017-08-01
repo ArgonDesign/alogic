@@ -55,6 +55,7 @@ case class VerilogFunction(body: String) extends Node
 // Expression nodes
 ///////////////////////////////////////////////////////////////////////////////
 sealed trait Expr extends Node with ExprOps
+object Expr extends ExprObjOps
 // Numbers have optional signedness. If signed is None, then the number can be
 // treated as either signed or unsigned depending on context, and in this case
 // the value must be positive. Numbers also have an optional width. If with is

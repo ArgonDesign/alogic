@@ -14,6 +14,29 @@ import alogic.Message
 
 trait ExprOps { this: Expr =>
 
+  def *(rhs: Expr) = BinaryOp(this, "*", rhs)
+  def /(rhs: Expr) = BinaryOp(this, "/", rhs)
+  def %(rhs: Expr) = BinaryOp(this, "%", rhs)
+  def +(rhs: Expr) = BinaryOp(this, "+", rhs)
+  def -(rhs: Expr) = BinaryOp(this, "-", rhs)
+  def <<(rhs: Expr) = BinaryOp(this, "<<", rhs)
+  def >>(rhs: Expr) = BinaryOp(this, ">>", rhs)
+  def >>>(rhs: Expr) = BinaryOp(this, ">>>", rhs)
+  def &(rhs: Expr) = BinaryOp(this, "&", rhs)
+  def ^(rhs: Expr) = BinaryOp(this, "^", rhs)
+  def |(rhs: Expr) = BinaryOp(this, "|", rhs)
+  def &&(rhs: Expr) = BinaryOp(this, "&&", rhs)
+  def ||(rhs: Expr) = BinaryOp(this, "||", rhs)
+
+  def *(rhs: Int) = BinaryOp(this, "*", Num(None, None, rhs))
+  def /(rhs: Int) = BinaryOp(this, "/", Num(None, None, rhs))
+  def %(rhs: Int) = BinaryOp(this, "%", Num(None, None, rhs))
+  def +(rhs: Int) = BinaryOp(this, "+", Num(None, None, rhs))
+  def -(rhs: Int) = BinaryOp(this, "-", Num(None, None, rhs))
+  def <<(rhs: Int) = BinaryOp(this, "<<", Num(None, None, rhs))
+  def >>(rhs: Int) = BinaryOp(this, ">>", Num(None, None, rhs))
+  def >>>(rhs: Int) = BinaryOp(this, ">>>", Num(None, None, rhs))
+
   // Test it the expression is universally constant, i.e.: contains no unbound variables
   def isConst: Boolean = this match {
     case _: Num                    => true
@@ -201,4 +224,8 @@ trait ExprOps { this: Expr =>
   // Test if the expression is constant given the provided name bindings
   //def isConstWith(bindings) = ???
 
+}
+
+trait ExprObjOps {
+  def apply(n: Int) = Num(None, None, n)
 }
