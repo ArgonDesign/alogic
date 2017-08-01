@@ -9,21 +9,22 @@ package alogic.ast
 
 import alogic.Message
 
-// Signals have a name, a width and a signedness
-case class Signal(name: String, signed: Boolean, width: Expr) {
+// Signals have a name, and a scalar type (which carries a width and a signedness)
+case class Signal(name: String, kind: ScalarType) {
   def declString = {
-    val signedStr = if (signed) "signed " else ""
+    val signedStr = if (kind.signed) "signed " else ""
+    val width = kind.width.simplify
     if (width.isConst) {
       val w = width.eval
       if (w < 1) {
         Message.fatal(s"Cannot declare signal with width ${w}")
       } else if (w == 1) {
-        s"${signedStr}${name};"
+        s"${signedStr}${name}"
       } else {
-        s"${signedStr}[${w - 1}:0] ${name};"
+        s"${signedStr}[${w - 1}:0] ${name}"
       }
     } else {
-      s"${signedStr}[(${width.simplify.toVerilog})-1:0] ${name};"
+      s"${signedStr}[${(width - 1).simplify.toVerilog}:0] ${name}"
     }
   }
 }

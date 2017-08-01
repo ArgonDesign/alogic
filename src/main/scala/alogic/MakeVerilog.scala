@@ -574,14 +574,14 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       val paramValues = instance.task.defaultParams ++ paramAssigns
       // declare all port wires
       pw.println(s"${i0}// Port wires for ${instance.name}")
-      for (port <- instance.wires; Signal(name, signed, formalWidth) <- port.signals) {
+      for (port <- instance.wires; Signal(name, kind) <- port.signals) {
         // substitute formal parameters with actual parameters
         // TODO: This still cannot cope with dependent default parameters
-        val actualWidth = formalWidth rewrite {
+        val actualWidth = kind.width rewrite {
           case DottedName(name :: Nil) if (paramValues contains name) => paramValues(name)
         }
-        val signal = Signal(name, signed, actualWidth)
-        pw.println(s"${i0}wire ${signal.declString}")
+        val signal = Signal(name, IntVType(kind.signed, actualWidth :: Nil))
+        pw.println(s"${i0}wire ${signal.declString};")
       }
       pw.println()
 
@@ -599,7 +599,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
 
       val portAssigns = for {
         (port, wire) <- instance.ports zip instance.wires
-        (Signal(portName, _, _), Signal(wireName, _, _)) <- port.signals zip wire.signals
+        (Signal(portName, _), Signal(wireName, _)) <- port.signals zip wire.signals
       } yield {
         s".${portName}(${wireName})"
       }

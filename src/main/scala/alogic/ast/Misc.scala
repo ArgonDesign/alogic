@@ -30,7 +30,9 @@ case class VerilogArrayDeclaration(decltype: ScalarType, id: String, dims: List[
 
 // AlogicType used to define the allowed types
 sealed trait Type extends TypeOps
-sealed trait ScalarType extends Type
+sealed trait ScalarType extends Type {
+  val signed: Boolean
+}
 case class IntType(signed: Boolean, size: Int) extends ScalarType
 case class IntVType(signed: Boolean, args: List[Expr]) extends ScalarType // variable number of bits definition
 case class Struct(name: String, fields: Map[String, Type]) extends Type

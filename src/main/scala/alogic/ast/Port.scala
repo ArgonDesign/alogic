@@ -14,8 +14,7 @@ sealed trait Port {
 
   def payload: List[Signal] = {
     def signals(prefix: String, kind: Type): List[Signal] = kind match {
-      case IntType(signed, width)         => List(Signal(s"${prefix}", signed, Num(None, None, width)))
-      case IntVType(signed, width :: Nil) => List(Signal(s"${prefix}", signed, width))
+      case t: ScalarType => List(Signal(s"${prefix}", t))
       case Struct(_, fields) => fields.toList flatMap {
         case (n, k) => signals(prefix + "_" + n, k)
       }
@@ -27,15 +26,15 @@ sealed trait Port {
 
   def valid: Option[Signal] = this match {
     case _: PortNone   => None
-    case _: PortValid  => Some(Signal(s"${name}_valid", false, Num(None, None, 1)))
-    case _: PortReady  => Some(Signal(s"${name}_valid", false, Num(None, None, 1)))
-    case _: PortAccept => Some(Signal(s"${name}_valid", false, Num(None, None, 1)))
+    case _: PortValid  => Some(Signal(s"${name}_valid", IntType(false, 1)))
+    case _: PortReady  => Some(Signal(s"${name}_valid", IntType(false, 1)))
+    case _: PortAccept => Some(Signal(s"${name}_valid", IntType(false, 1)))
   }
 
   def ready: Option[Signal] = this match {
     case _: PortNone   => None
     case _: PortValid  => None
-    case _: PortReady  => Some(Signal(s"${name}_ready", false, Num(None, None, 1)))
+    case _: PortReady  => Some(Signal(s"${name}_ready", IntType(false, 1)))
     case _: PortAccept => None
   }
 
@@ -43,7 +42,7 @@ sealed trait Port {
     case _: PortNone   => None
     case _: PortValid  => None
     case _: PortReady  => None
-    case _: PortAccept => Some(Signal(s"${name}_accept", false, Num(None, None, 1)))
+    case _: PortAccept => Some(Signal(s"${name}_accept", IntType(false, 1)))
   }
 
   def flowControl: List[Signal] = List(valid, ready, accept).flatten
