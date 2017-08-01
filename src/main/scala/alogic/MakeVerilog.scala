@@ -561,7 +561,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       for (port <- instance.wires; Signal(name, kind) <- port.signals) {
         // substitute formal parameters with actual parameters
         // TODO: This still cannot cope with dependent default parameters
-        val actualWidth = kind.width rewrite {
+        val actualWidth = kind.widthExpr rewrite {
           case DottedName(name :: Nil) if (paramValues contains name) => paramValues(name)
         }
         val signal = Signal(name, IntVType(kind.signed, actualWidth :: Nil))

@@ -13,7 +13,7 @@ import alogic.Message
 case class Signal(name: String, kind: ScalarType) {
   def declString = {
     val signedStr = if (kind.signed) "signed " else ""
-    val width = kind.width.simplify
+    val width = kind.widthExpr.simplify
     if (width.isConst) {
       val w = width.eval
       if (w < 1) {

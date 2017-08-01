@@ -141,7 +141,7 @@ trait ExprOps { this: Expr =>
       }
     }
 
-    kind map { x: Type => x.width }
+    kind map { x: Type => x.widthExpr }
   }
 
   // Compute a new expression representing the width of this expression.

@@ -27,7 +27,7 @@ object MakeStages {
     // Find the pipeline variables
     val pipeVarList = decls collect { case x: PipelineVarDeclaration => x.id -> x.decltype }
     val pipeVarMapType = Map(pipeVarList: _*) // Map from name of variable to Type
-    val pipeVarMap = pipeVarMapType mapValues (_.width) // Map from name of variable to expression for its width
+    val pipeVarMap = pipeVarMapType mapValues (_.widthExpr) // Map from name of variable to expression for its width
     val pipeVarSet = pipeVarList.map(_._1).toSet // Set of names of pipeline variables
 
     // TODO For the moment, assume pipeline stages are instantiated in order (otherwise we should first generate a topological sort of the connections and reorder the list of fsms accordingly)
