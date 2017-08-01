@@ -231,30 +231,30 @@ trait ExprOps { this: Expr =>
   }
 
   def hasSideEffect: Boolean = this match {
-    case _: CallExpr        => true
-    case _: DollarCall      => true
-    case _: ReadCall        => true
-    case _: WriteCall       => true
-    case PipelineRead       => true
-    case PipelineWrite      => true
-    case _: UnlockCall      => true
-    case _: LockCall        => true
+    case _: CallExpr             => true
+    case _: DollarCall           => true
+    case _: ReadCall             => true
+    case _: WriteCall            => true
+    case PipelineRead            => true
+    case PipelineWrite           => true
+    case _: UnlockCall           => true
+    case _: LockCall             => true
 
-    case _: DottedName      => false
-    case _: ArrayLookup     => false // TODO: Check indices?
-    case _: Num             => false
-    case _: ValidCall       => false
-    case _: Literal         => false
+    case _: DottedName           => false
+    case _: Num                  => false
+    case _: ValidCall            => false
+    case _: Literal              => false
 
-    case Zxt(_, e)          => e.hasSideEffect
-    case Sxt(_, e)          => e.hasSideEffect
-    case BinaryOp(l, _, r)  => l.hasSideEffect || r.hasSideEffect
-    case UnaryOp(_, e)      => e.hasSideEffect
-    case Bracket(e)         => e.hasSideEffect
-    case TernaryOp(c, t, f) => c.hasSideEffect || t.hasSideEffect || f.hasSideEffect
-    case BitRep(_, e)       => e.hasSideEffect
-    case BitCat(terms)      => terms exists { _.hasSideEffect }
-    case Slice(_, l, _, r)  => l.hasSideEffect || r.hasSideEffect
+    case ArrayLookup(_, indices) => indices exists { _.hasSideEffect }
+    case Zxt(_, e)               => e.hasSideEffect
+    case Sxt(_, e)               => e.hasSideEffect
+    case BinaryOp(l, _, r)       => l.hasSideEffect || r.hasSideEffect
+    case UnaryOp(_, e)           => e.hasSideEffect
+    case Bracket(e)              => e.hasSideEffect
+    case TernaryOp(c, t, f)      => c.hasSideEffect || t.hasSideEffect || f.hasSideEffect
+    case BitRep(_, e)            => e.hasSideEffect
+    case BitCat(terms)           => terms exists { _.hasSideEffect }
+    case Slice(_, l, _, r)       => l.hasSideEffect || r.hasSideEffect
   }
 
   def toVerilog: String = this match {
