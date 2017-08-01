@@ -73,6 +73,14 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       case _: VerilogTask => "wire "
     }
 
+    // This controls whether we will declare _nxt signals for relevant output ports
+    val declareExtraOut = task match {
+      case _: StateTask   => true
+      case _: FsmTask     => true
+      case _: NetworkTask => false
+      case _: VerilogTask => false
+    }
+
     numstates = task match {
       case StateTask(_, _, s, _, _) => s.length
       case _                        => 0
@@ -188,11 +196,11 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
           SetNxType(nxMap, decltype, name, "_nxt")
         SetNxType(regMap, decltype, name, "")
         if (HasValid(synctype)) {
-          SetNxType(regMap, IntType(false,1), valid(name), "")
+          SetNxType(regMap, IntType(false, 1), valid(name), "")
           if (HasWire(synctype))
-           SetNxType(nxMap, IntType(false,1), valid(name), "")
+            SetNxType(nxMap, IntType(false, 1), valid(name), "")
           else
-           SetNxType(nxMap, IntType(false,1), valid(name), "_nxt")
+            SetNxType(nxMap, IntType(false, 1), valid(name), "_nxt")
         }
       }
       case ParamDeclaration(decltype, name, init) => {
@@ -279,15 +287,15 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         }
         synctype match {
           case Sync | SyncReady => {
-            val v= valid(name)
+            val v = valid(name)
             resets push StrList(Str("      ") :: Str(v) :: Str(" <= 1'b0;\n") :: Nil)
             clocks push StrList(Str("        ") :: Str(v) :: Str(" <= ") :: Str(nx(v)) :: Str(";\n") :: Nil)
           }
           case SyncReadyBubble => {
-            val v= valid(name)
+            val v = valid(name)
             resets push StrList(Str("      ") :: Str(v) :: Str(" <= 1'b0;\n") :: Nil)
             clocks push StrList(Str("        ") :: Str(v) :: Str(" <= ") :: Str(nx(v)) ::
-                Str(" || (") :: Str(v) :: Str(" && !") :: Str(ready(name)) :: Str(");\n") :: Nil)
+              Str(" || (") :: Str(v) :: Str(" && !") :: Str(ready(name)) :: Str(");\n") :: Nil)
           }
           case _ =>
         }
@@ -330,7 +338,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     // Emit remaining variable declarations
     id2decl.values foreach {
       case OutDeclaration(synctype, decltype, name) => {
-        if (!HasWire(synctype)) {
+        if (declareExtraOut && !HasWire(synctype)) {
           VisitType(decltype, name)(writeOutNxt) // declare nxt values for outputs
           if (HasValid(synctype)) {
             pw.println("  reg " + nx(valid(name)) + ";")
