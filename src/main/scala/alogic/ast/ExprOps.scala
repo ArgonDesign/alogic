@@ -122,64 +122,64 @@ trait ExprOps { this: Expr =>
     case _: Literal                           => ???
   }
 
-  // Compute width of expression. Return None if it cannot be determined but the expression is legal.
-  def widthExpr: Option[Expr] = widthExpr(Map.empty[String, Declaration])
-  def widthExpr(symtab: mutable.Map[String, Declaration]): Option[Expr] = widthExpr(symtab.toMap)
-  def widthExpr(symtab: Map[String, Declaration]): Option[Expr] = {
-    def widthOfName(tree: DottedName): Option[Expr] = {
-      val kind = {
-        def lookUpField(names: List[String], kind: Type): Type = {
-          val n :: ns = names
-          kind match {
-            case Struct(name, fields) => {
-              if (fields contains n) {
-                ns match {
-                  case Nil => fields(n)
-                  case _   => lookUpField(ns, fields(n))
-                }
-              } else {
-                Message.fatal(s"No field named '$n' in struct '$name'") // TODO: check earlier
+  private[this] def widthOfName(symtab: Map[String, Declaration], tree: DottedName): Option[Expr] = {
+    val kind = {
+      def lookUpField(names: List[String], kind: Type): Type = {
+        val n :: ns = names
+        kind match {
+          case Struct(name, fields) => {
+            if (fields contains n) {
+              ns match {
+                case Nil => fields(n)
+                case _   => lookUpField(ns, fields(n))
               }
+            } else {
+              Message.fatal(s"No field named '$n' in struct '$name'") // TODO: check earlier
             }
-            case _ => Message.fatal(s"Cannot find field '$n' in non-struct type '$kind'")
           }
-        }
-
-        tree match {
-          case DottedName(n :: Nil) => symtab.get(n) map { decl => decl.decltype }
-          case DottedName(n :: ns)  => symtab.get(n) map { decl => lookUpField(ns, decl.decltype) }
+          case _ => Message.fatal(s"Cannot find field '$n' in non-struct type '$kind'")
         }
       }
 
-      kind map { x: Type => x.width }
+      tree match {
+        case DottedName(n :: Nil) => symtab.get(n) map { decl => decl.decltype }
+        case DottedName(n :: ns)  => symtab.get(n) map { decl => lookUpField(ns, decl.decltype) }
+      }
     }
 
-    this match {
-      case name: DottedName          => widthOfName(name)
-      case ArrayLookup(name, _)      => widthOfName(name) // TODO: handle IntVType properly
-      case ReadCall(name)            => widthOfName(name)
+    kind map { x: Type => x.width }
+  }
 
+  // Compute a new expression representing the width of this expression.
+  // Return None if it cannot be determined.
+  def widthExpr: Option[Expr] = widthExpr(Map.empty[String, Declaration])
+  def widthExpr(symtab: mutable.Map[String, Declaration]): Option[Expr] = widthExpr(symtab.toMap)
+  def widthExpr(symtab: Map[String, Declaration]): Option[Expr] = {
+    this match {
+      case name: DottedName          => widthOfName(symtab, name)
+      case ArrayLookup(name, _)      => widthOfName(symtab, name) // TODO: handle IntVType properly
+      case ReadCall(name)            => widthOfName(symtab, name)
+      case Num(_, Some(width), _)    => Some(Expr(width))
       case Num(_, None, _)           => None
-      case Num(_, Some(width), _)    => Some(Num(None, None, width))
-      case _: CallExpr               => Some(Num(None, None, 0))
+      case _: CallExpr               => Some(Expr(0))
       case Zxt(numbits, _)           => Some(numbits)
       case Sxt(numbits, _)           => Some(numbits)
       case _: DollarCall             => None
-      case PipelineRead              => Some(Num(None, None, 0))
-      case PipelineWrite             => Some(Num(None, None, 0))
-      case _: LockCall               => Some(Num(None, None, 0))
-      case _: UnlockCall             => Some(Num(None, None, 0))
-      case _: ValidCall              => Some(Num(None, None, 1))
-      case _: WriteCall              => Some(Num(None, None, 0))
-      case _: BinaryOp               => ???
+      case PipelineRead              => Some(Expr(0))
+      case PipelineWrite             => Some(Expr(0))
+      case _: LockCall               => Some(Expr(0))
+      case _: UnlockCall             => Some(Expr(0))
+      case _: ValidCall              => Some(Expr(1))
+      case _: WriteCall              => Some(Expr(0))
+      case _: BinaryOp               => None
       case UnaryOp(_, lhs)           => lhs.widthExpr(symtab)
       case Bracket(content)          => content.widthExpr(symtab)
-      case _: TernaryOp              => ???
-      case Slice(_, lidx, ":", ridx) => Some(BinaryOp(BinaryOp(lidx, "-", ridx), "+", Num(None, None, 1))) // TODO: assert lidx >= ridx
+      case _: TernaryOp              => None
+      case Slice(_, lidx, ":", ridx) => Some(lidx - ridx + 1) // TODO: assert lidx >= ridx
       case Slice(_, _, _, width)     => Some(width)
       case _: Literal                => None
       case BitRep(count, value) => value.widthExpr(symtab) match {
-        case Some(w) => Some(BinaryOp(count, "*", w))
+        case Some(w) => Some(count * w)
         case None    => Message.fatal("Cannot compute width of bit repetion")
       }
       case BitCat(terms) => {
@@ -189,8 +189,50 @@ trait ExprOps { this: Expr =>
             case None       => Message.fatal("Cannot compute width of bit concatenation operand")
           }
         }
-        Some(exprs.reduce(BinaryOp(_, "+", _)))
+        Some(exprs.reduce(_ + _))
       }
+    }
+  }
+
+  // Compute a new expression representing the MSB of this expression.
+  // Return None if it cannot be determined.
+  def msbExpr: Option[Expr] = msbExpr(Map.empty[String, Declaration])
+  def msbExpr(symtab: mutable.Map[String, Declaration]): Option[Expr] = msbExpr(symtab.toMap)
+  def msbExpr(symtab: Map[String, Declaration]): Option[Expr] = {
+    this match {
+      case name: DottedName => widthOfName(symtab, name) map { width =>
+        Slice(name, width - 1, "+:", Expr(1))
+      }
+      case vref @ ArrayLookup(name, _) => widthOfName(symtab, name) map { width =>
+        Slice(vref, width - 1, "+:", Expr(1))
+      } // TODO: handle IntVType properly
+      case ReadCall(name) => widthOfName(symtab, name) map { width =>
+        Slice(name, width - 1, "+:", Expr(1))
+      }
+
+      case Num(_, Some(width), value)    => Some(Num(None, Some(1), value >> (width - BigInt(1)).toInt))
+      case Num(_, None, _)               => None
+      case _: CallExpr                   => None
+      case Zxt(_, expr)                  => None // if (numbits == expr.widthExpr.eval) expr.msbExpr else 0
+      case Sxt(_, expr)                  => expr.msbExpr(symtab)
+      case _: DollarCall                 => None
+      case PipelineRead                  => None
+      case PipelineWrite                 => None
+      case _: LockCall                   => None
+      case _: UnlockCall                 => None
+      case _: ValidCall                  => None
+      case _: WriteCall                  => None
+      case _: BinaryOp                   => None
+      case UnaryOp(_, lhs)               => None // TODO: could handle ~
+      case Bracket(content)              => content.msbExpr(symtab)
+      case _: TernaryOp                  => None
+      case Slice(ref, lidx, ":", _)      => Some(Slice(ref, lidx, "+:", Expr(1)))
+      case Slice(ref, base, "+:", width) => Some(Slice(ref, base + width - 1, "+:", Expr(1)))
+      case Slice(ref, base, "-:", _)     => Some(Slice(ref, base, "+:", Expr(1)))
+      case _: Slice                      => Message.ice("unreachable")
+      case BitRep(_, value)              => value.msbExpr(symtab)
+      case BitCat(terms)                 => terms.head.msbExpr(symtab)
+      case _: Literal                    => None
     }
   }
 
@@ -228,4 +270,5 @@ trait ExprOps { this: Expr =>
 
 trait ExprObjOps {
   def apply(n: Int) = Num(None, None, n)
+  def apply(n: BigInt) = Num(None, None, n)
 }

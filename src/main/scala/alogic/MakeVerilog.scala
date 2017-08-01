@@ -279,7 +279,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         }
 
         (fctype, stype) match {
-          case (FlowControlTypeValid , StorageTypeReg) | (FlowControlTypeReady, StorageTypeReg) => {
+          case (FlowControlTypeValid, StorageTypeReg) | (FlowControlTypeReady, StorageTypeReg) => {
             val v = valid(name)
             resets push StrList(Str("      ") :: Str(v) :: Str(" <= 1'b0;\n") :: Nil)
             clocks push StrList(Str("        ") :: Str(v) :: Str(" <= ") :: Str(nx(v)) :: Str(";\n") :: Nil)
@@ -709,8 +709,12 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       case Sxt(numbits, expr) => {
         val totalSz = MakeExpr(numbits)
         val e = MakeExpr(expr)
+        val msb = expr.msbExpr(id2decl) match {
+          case Some(expr) => MakeExpr(expr)
+          case None       => Message.fatal(s"Cannot compute msb of expression '${expr.toSource}' for sxt")
+        }
         expr.widthExpr(id2decl) map { MakeExpr(_) } match {
-          case Some(exprSz) => StrList(List("{{", totalSz, " - ", exprSz, "{", e, "[(", exprSz, ") - 1]}},", e, "}"))
+          case Some(exprSz) => StrList(List("{{", totalSz, " - ", exprSz, "{", msb, "}},", e, "}"))
           case None         => Message.fatal(s"Cannot compute size of expression '${expr.toSource}' for sxt")
         }
       }
