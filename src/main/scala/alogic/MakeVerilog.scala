@@ -110,10 +110,6 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
 
     val pw = new PrintWriter(new File(opath.path))
 
-    def writeSigned(signed: Boolean) = if (signed) "signed " else ""
-
-    def writeSize(size: Int) = if (size > 1) s"[$size-1:0] " else ""
-
     def writeOut(typ: Type, name: StrTree): Unit = typ match {
       case kind: ScalarType => {
         pw.println("  output " + outtype + Signal(name.toString, kind).declString + ",")
@@ -234,10 +230,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       pw.println(s"#(")
       // Emit parameter declarations
       val s = for (ParamDeclaration(decltype, id, init) <- paramDecls) yield {
-        decltype match {
-          case IntType(b, size) => s"${i0}parameter " + writeSigned(b) + writeSize(size) + id + "=" + MakeExpr(init)
-          case x                => ??? // TODO support IntVType
-        }
+        s"${i0}parameter " + Signal(id, decltype).declString + "=" + MakeExpr(init)
       }
       pw.println(s mkString ",\n")
       pw.println(s") (")
@@ -314,12 +307,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     // Emit localparam (const) declaratoins
     id2decl.values foreach {
       case ConstDeclaration(decltype, id, init) => {
-        decltype match {
-          case IntType(b, size) => {
-            pw.println(s"  localparam " + writeSigned(b) + writeSize(size) + id + "=" + MakeExpr(init) + ";")
-          }
-          case x => ??? //() // TODO support IntVType
-        }
+        pw.println(s"${i0}localparam " + Signal(id, decltype).declString + "=" + MakeExpr(init) + ";")
       }
       case _ =>
     }
