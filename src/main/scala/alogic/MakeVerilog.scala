@@ -116,13 +116,13 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
 
     def writeOut(typ: Type, name: StrTree): Unit = typ match {
       case kind: ScalarType => {
-        pw.println("  output " + outtype + typeString(kind) + name + ",")
+        pw.println("  output " + outtype + Signal(name.toString, kind).declString + ",")
       }
       case _: Struct => /* Nothing to do */
     }
     def writeOutNxt(typ: Type, name: StrTree): Unit = typ match {
       case kind: ScalarType => {
-        pw.println(s"  reg " + typeString(kind) + nx(name) + ";")
+        pw.println(s"  reg " + Signal(nx(name), kind).declString + ";")
         resets push StrList(Str("      ") :: Str(reg(name)) :: Str(s" <= 'b0;\n") :: Nil)
         clocks push StrList(Str("        ") :: Str(reg(name)) :: Str(" <= ") :: Str(nx(name)) :: Str(";\n") :: Nil)
         defaults push StrList(Str("    ") :: Str(nx(name)) :: Str(" = ") :: Str(reg(name)) :: Str(";\n") :: Nil)
@@ -130,19 +130,15 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       case _: Struct => /* Nothing to do */
     }
     def writeIn(typ: Type, name: StrTree): Unit = typ match {
-      case kind: ScalarType => pw.println("  input wire " + typeString(kind) + name + ",")
+      case kind: ScalarType => pw.println("  input wire " + Signal(name.toString, kind).declString + ",")
       case _: Struct        => /* Nothing to do */
-    }
-    def typeString(typ: ScalarType): String = typ match {
-      case IntType(b, size)         => writeSigned(b) + writeSize(size)
-      case kind @ IntVType(b, args) => writeSigned(b) + "[" + (kind.width - 1).simplify.toVerilog + ":0] "
     }
     def writeVarInternal(typ: Type, name: StrTree, resetToZero: Boolean): Unit = {
       val nm = name.toString
       typ match {
         case kind: ScalarType => {
-          pw.println(s"  reg " + typeString(kind) + reg(nm) + ";")
-          pw.println(s"  reg " + typeString(kind) + nx(nm) + ";")
+          pw.println(s"  reg " + Signal(reg(nm), kind).declString + ";")
+          pw.println(s"  reg " + Signal(nx(nm), kind).declString + ";")
           if (resetToZero) {
             resets push StrList(Str("      ") :: Str(reg(name)) :: Str(s" <= 'b0;\n") :: Nil)
           }
@@ -344,11 +340,11 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         Arrays.add(name)
         val depth = MakeExpr(index).toString.toInt // TODO detect if this fails and fail gracefully
         val log2depth = ceillog2(depth) max 1 // TODO: handle degenerate case of depth == 1 better
-        val t = typeString(decltype)
+        //        val t = typeString(decltype)
         pw.println(s"  reg ${name}_wr;")
-        pw.println(s"  reg ${t}${name}_wrdata;")
+        pw.println(s"  reg ${Signal(name + "_wrdata", decltype).declString};")
         pw.println(s"  reg [${log2depth - 1}:0] ${name}_wraddr;")
-        pw.println(s"  reg ${t}${name} [${depth - 1}:0];")
+        pw.println(s"  reg ${Signal(name, decltype).declString} [${depth - 1}:0];")
         defaults push StrList(
           Str(s"    ${name}_wr = 1'b0;\n") ::
             Str(s"    ${name}_wraddr = 'b0;\n") ::
