@@ -9,14 +9,8 @@ package alogic.ast
 
 trait TypeOps extends TypePrettyPrintOps { this: Type =>
   def widthExpr: Expr = this match {
-    case IntType(_, size)              => Num(None, None, size)
-    case IntVType(_, sizeExprs :: Nil) => sizeExprs
-    case IntVType(_, _)                => ???
-    case Struct(_, fields) => if (fields.size == 1) {
-      fields.values.head.widthExpr
-    } else {
-      val widths = fields.values map (_.widthExpr)
-      widths reduce (BinaryOp(_, "+", _))
-    }
+    case IntType(_, size)       => Expr(size)
+    case IntVType(_, sizeExprs) => sizeExprs reduce (_ * _)
+    case Struct(_, fields)      => fields.values map (_.widthExpr) reduce (_ + _)
   }
 }
