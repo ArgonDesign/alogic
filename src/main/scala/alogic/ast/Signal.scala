@@ -18,12 +18,12 @@ case class Signal(name: String, signed: Boolean, width: Expr) {
       if (w < 1) {
         Message.fatal(s"Cannot declare signal with width ${w}")
       } else if (w == 1) {
-        s"wire ${signedStr}${name};"
+        s"${signedStr}${name};"
       } else {
-        s"wire ${signedStr}[${w - 1}:0] ${name};"
+        s"${signedStr}[${w - 1}:0] ${name};"
       }
     } else {
-      s"wire ${signedStr}[(${width.toVerilog})-1:0] ${name};"
+      s"${signedStr}[(${width.simplify.toVerilog})-1:0] ${name};"
     }
   }
 }

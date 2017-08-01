@@ -580,7 +580,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
           case DottedName(name :: Nil) if (paramValues contains name) => paramValues(name)
         }
         val signal = Signal(name, signed, actualWidth)
-        pw.println(i0 + signal.declString)
+        pw.println(s"${i0}wire ${signal.declString}")
       }
       pw.println()
 
