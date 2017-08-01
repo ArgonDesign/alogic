@@ -38,11 +38,21 @@ trait ExprOps { this: Expr =>
   def >>>(rhs: Int) = BinaryOp(this, ">>>", Num(None, None, rhs))
 
   // Test it the expression is universally constant, i.e.: contains no unbound variables
-  def isConst: Boolean = this match {
+  def isConst: Boolean = isConst(Map.empty[String, Declaration])
+  def isConst(symtab: mutable.Map[String, Declaration]): Boolean = isConst(symtab.toMap)
+  def isConst(symtab: Map[String, Declaration]): Boolean = this match {
+    case DottedName(name :: Nil) => symtab get name match {
+      case Some(_: ParamDeclaration) => true
+      case Some(_: ConstDeclaration) => true
+      case _                         => false
+    }
+
     case _: Num                    => true
+    case _: Literal                => true
+
+    case _: DottedName             => false
+    case _: ArrayLookup            => false
     case _: CallExpr               => false
-    case Zxt(numbits, expr)        => numbits.isConst && expr.isConst
-    case Sxt(numbits, expr)        => numbits.isConst && expr.isConst
     case _: DollarCall             => false // Could handle some defined ones like $clog2
     case _: ReadCall               => false
     case PipelineRead              => false
@@ -51,75 +61,59 @@ trait ExprOps { this: Expr =>
     case _: UnlockCall             => false
     case _: ValidCall              => false
     case _: WriteCall              => false
-    case BinaryOp(lhs, _, rhs)     => lhs.isConst && rhs.isConst
-    case UnaryOp(_, lhs)           => lhs.isConst
-    case Bracket(content)          => content.isConst
-    case TernaryOp(cond, lhs, rhs) => cond.isConst && lhs.isConst && rhs.isConst // Could loosen this
-    case BitRep(count, value)      => count.isConst && value.isConst
-    case BitCat(terms)             => terms forall (_.isConst)
-    case _: Slice                  => false
-    case _: DottedName             => false
-    case _: ArrayLookup            => false
-    case _: Literal                => true
+
+    case Zxt(numbits, expr)        => numbits.isConst(symtab) && expr.isConst(symtab)
+    case Sxt(numbits, expr)        => numbits.isConst(symtab) && expr.isConst(symtab)
+    case BinaryOp(lhs, _, rhs)     => lhs.isConst(symtab) && rhs.isConst(symtab)
+    case UnaryOp(_, lhs)           => lhs.isConst(symtab)
+    case Bracket(content)          => content.isConst(symtab)
+    case TernaryOp(cond, lhs, rhs) => cond.isConst(symtab) && lhs.isConst(symtab) && rhs.isConst(symtab) // Could loosen this
+    case BitRep(count, value)      => count.isConst(symtab) && value.isConst(symtab)
+    case BitCat(terms)             => terms forall (_.isConst(symtab))
+    case Slice(ref, lidx, _, ridx) => ref.isConst(symtab) && lidx.isConst(symtab) && ridx.isConst(symtab)
   }
 
-  def eval: BigInt = this match {
-    case Num(_, _, value)          => value
-    case _: CallExpr               => Message.ice("unreachable")
-    case Zxt(numbits, expr)        => expr.eval
-    case Sxt(numbits, expr)        => expr.eval
-    case _: DollarCall             => Message.ice("unreachable") // Could handle some defined ones like $clog2
-    case _: ReadCall               => Message.ice("unreachable")
-    case PipelineRead              => Message.ice("unreachable")
-    case PipelineWrite             => Message.ice("unreachable")
-    case _: LockCall               => Message.ice("unreachable")
-    case _: UnlockCall             => Message.ice("unreachable")
-    case _: ValidCall              => Message.ice("unreachable")
-    case _: WriteCall              => Message.ice("unreachable")
-    case BinaryOp(lhs, "+", rhs)   => lhs.eval + rhs.eval
-    case BinaryOp(lhs, "-", rhs)   => lhs.eval - rhs.eval
-    case BinaryOp(lhs, "*", rhs)   => lhs.eval * rhs.eval
-    case BinaryOp(lhs, _, rhs)     => ???
-    case UnaryOp(_, lhs)           => ???
-    case Bracket(content)          => content.eval
-    case TernaryOp(cond, lhs, rhs) => ???
-    case BitRep(count, value)      => ???
-    case BitCat(terms)             => ???
-    case _: Slice                  => Message.ice("unreachable")
-    case _: DottedName             => Message.ice("unreachable")
-    case _: ArrayLookup            => Message.ice("unreachable")
-    case _: Literal                => Message.ice("unreachable")
+  def eval: BigInt = this.simplify match {
+    case Num(_, _, value) => value
+    case x                => Message.ice(s"Don't know how to eval '${x.toSource}'")
   }
 
-  def toVerilog: String = this match {
-    case Num(None, None, value)               => s"${value}"
-    case Num(None, Some(width), value)        => Message.ice("unreachable")
-    case Num(Some(false), None, value)        => s"'d${value}"
-    case Num(Some(true), None, value)         => s"'sd${value}"
-    case Num(Some(false), Some(width), value) => if (width == 1) s"1'b${value}" else s"${width}'d${value}"
-    case Num(Some(true), Some(width), value)  => s"${width}'sd${value}"
-    case _: CallExpr                          => ???
-    case Zxt(numbits, expr)                   => ???
-    case Sxt(numbits, expr)                   => ???
-    case _: DollarCall                        => ???
-    case _: ReadCall                          => ???
-    case PipelineRead                         => ???
-    case PipelineWrite                        => ???
-    case _: LockCall                          => ???
-    case _: UnlockCall                        => ???
-    case _: ValidCall                         => ???
-    case _: WriteCall                         => ???
-    case BinaryOp(lhs, op, rhs)               => s"(${lhs.toVerilog}) $op (${rhs.toVerilog})"
-    case UnaryOp(_, lhs)                      => ???
-    case Bracket(content)                     => ???
-    case TernaryOp(cond, lhs, rhs)            => ???
-    case BitRep(count, value)                 => ???
-    case BitCat(terms)                        => ???
-    case _: Slice                             => ???
-    case DottedName(name :: Nil)              => name
-    case x: DottedName                        => Message.ice(s"Cannot generate verilog for '$x'")
-    case _: ArrayLookup                       => ???
-    case _: Literal                           => ???
+  def simplify: Expr = this match {
+    case Bracket(content) => content.simplify
+
+    case UnaryOp(op, lhs) => UnaryOp(op, lhs.simplify)
+
+    case BinaryOp(lhs, op, rhs) => BinaryOp(lhs.simplify, op, rhs.simplify) match {
+      case x @ BinaryOp(Num(None, None, lv), op, Num(None, None, rv)) => op match {
+        case "+" => Num(None, None, lv + rv)
+        case "-" => Num(None, None, lv - rv)
+        case "*" => Num(None, None, lv * rv)
+        case _   => x
+      }
+      case x => x
+    }
+
+    case TernaryOp(cond, lhs, rhs)        => TernaryOp(cond.simplify, lhs.simplify, rhs.simplify)
+
+    case Zxt(numbits, expr)               => Zxt(numbits.simplify, expr.simplify)
+    case Sxt(numbits, expr)               => Sxt(numbits.simplify, expr.simplify)
+    case CallExpr(name, args)             => CallExpr(name, args map { _.simplify })
+    case DollarCall(name, args)           => DollarCall(name, args map { _.simplify })
+    case WriteCall(name, args)            => WriteCall(name, args map { _.simplify })
+    case BitRep(count: Expr, value: Expr) => BitRep(count.simplify, value.simplify)
+    case BitCat(terms)                    => BitCat(terms map { _.simplify })
+    case Slice(ref, lidx, op, ridx)       => Slice(ref, lidx.simplify, op, ridx.simplify) // TODO: simplify ref
+
+    case x: ReadCall                      => x
+    case x: LockCall                      => x
+    case x: UnlockCall                    => x
+    case x: ValidCall                     => x
+    case x: DottedName                    => x
+    case x: ArrayLookup                   => x // TODO: simplify
+    case x: Num                           => x
+    case x: Literal                       => x
+    case PipelineRead                     => PipelineRead
+    case PipelineWrite                    => PipelineWrite
   }
 
   private[this] def widthOfName(symtab: Map[String, Declaration], tree: DottedName): Option[Expr] = {
@@ -213,7 +207,7 @@ trait ExprOps { this: Expr =>
       case Num(_, Some(width), value)    => Some(Num(None, Some(1), value >> (width - BigInt(1)).toInt))
       case Num(_, None, _)               => None
       case _: CallExpr                   => None
-      case Zxt(_, expr)                  => None // if (numbits == expr.widthExpr.eval) expr.msbExpr else 0
+      case Zxt(_, expr)                  => None // TODO: if (numbits == expr.widthExpr.eval) expr.msbExpr else 0
       case Sxt(_, expr)                  => expr.msbExpr(symtab)
       case _: DollarCall                 => None
       case PipelineRead                  => None
@@ -247,7 +241,7 @@ trait ExprOps { this: Expr =>
     case _: LockCall        => true
 
     case _: DottedName      => false
-    case _: ArrayLookup     => false
+    case _: ArrayLookup     => false // TODO: Check indices?
     case _: Num             => false
     case _: ValidCall       => false
     case _: Literal         => false
@@ -263,9 +257,36 @@ trait ExprOps { this: Expr =>
     case Slice(_, l, _, r)  => l.hasSideEffect || r.hasSideEffect
   }
 
-  // Test if the expression is constant given the provided name bindings
-  //def isConstWith(bindings) = ???
-
+  def toVerilog: String = this match {
+    case Num(None, None, value)               => s"${value}"
+    case Num(None, Some(width), value)        => Message.ice("unreachable")
+    case Num(Some(false), None, value)        => s"'d${value}"
+    case Num(Some(true), None, value)         => s"'sd${value}"
+    case Num(Some(false), Some(width), value) => if (width == 1) s"1'b${value}" else s"${width}'d${value}"
+    case Num(Some(true), Some(width), value)  => s"${width}'sd${value}"
+    case _: CallExpr                          => ???
+    case Zxt(numbits, expr)                   => ???
+    case Sxt(numbits, expr)                   => ???
+    case _: DollarCall                        => ???
+    case _: ReadCall                          => ???
+    case PipelineRead                         => ???
+    case PipelineWrite                        => ???
+    case _: LockCall                          => ???
+    case _: UnlockCall                        => ???
+    case _: ValidCall                         => ???
+    case _: WriteCall                         => ???
+    case BinaryOp(lhs, op, rhs)               => s"(${lhs.toVerilog}) $op (${rhs.toVerilog})"
+    case UnaryOp(_, lhs)                      => ???
+    case Bracket(content)                     => s"(${content})"
+    case TernaryOp(cond, lhs, rhs)            => ???
+    case BitRep(count, value)                 => ???
+    case BitCat(terms)                        => ???
+    case _: Slice                             => ???
+    case DottedName(name :: Nil)              => name
+    case x: DottedName                        => Message.ice(s"Cannot generate verilog for '$x'")
+    case _: ArrayLookup                       => ???
+    case _: Literal                           => ???
+  }
 }
 
 trait ExprObjOps {

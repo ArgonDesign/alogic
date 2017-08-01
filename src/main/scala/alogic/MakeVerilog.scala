@@ -134,11 +134,8 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       case _: Struct        => /* Nothing to do */
     }
     def typeString(typ: ScalarType): String = typ match {
-      case IntType(b, size) => writeSigned(b) + writeSize(size)
-      case IntVType(b, args) => {
-        val sz = StrList(args.map(MakeExpr), "*").toString
-        writeSigned(b) + "[" + sz + "-1:0] "
-      }
+      case IntType(b, size)         => writeSigned(b) + writeSize(size)
+      case kind @ IntVType(b, args) => writeSigned(b) + "[" + (kind.width - 1).simplify.toVerilog + ":0] "
     }
     def writeVarInternal(typ: Type, name: StrTree, resetToZero: Boolean): Unit = {
       val nm = name.toString
@@ -686,7 +683,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
   }
 
   // Construct a string for an expression
-  def MakeExpr(tree: Node): StrTree = {
+  def MakeExpr(tree: Expr): StrTree = {
     tree match {
       case ArrayLookup(name, index) => {
         val indices = index map MakeExpr mkString ("[", "][", "]")
@@ -699,23 +696,22 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         case _                                  => Message.fatal(s"Cannot access valid on $names"); ""
       }
       case CallExpr(name, args) => StrList(List(MakeExpr(name), "(", StrList(args.map(MakeExpr), ","), ")"))
-      case Zxt(numbits, expr) => {
-        val totalSz = MakeExpr(numbits)
-        expr.widthExpr(id2decl) map { MakeExpr(_) } match {
-          case Some(exprSz) => StrList(List("{{", totalSz, " - ", exprSz, "{1'b0}},", MakeExpr(expr), "}"))
-          case None         => Message.fatal(s"Cannot compute size of expression '${expr.toSource}' for zxt")
+      case Zxt(numbitsExpr, expr) => expr.widthExpr(id2decl) match {
+        case None => Message.fatal(s"Cannot compute size of expression '${expr.toSource}' for zxt")
+        case Some(widthExpr) => {
+          val deltaExpr = (numbitsExpr - widthExpr).simplify
+          StrList(List("{{", MakeExpr(deltaExpr), "{1'b0}},", MakeExpr(expr), "}"))
         }
       }
-      case Sxt(numbits, expr) => {
-        val totalSz = MakeExpr(numbits)
-        val e = MakeExpr(expr)
-        val msb = expr.msbExpr(id2decl) match {
-          case Some(expr) => MakeExpr(expr)
-          case None       => Message.fatal(s"Cannot compute msb of expression '${expr.toSource}' for sxt")
-        }
-        expr.widthExpr(id2decl) map { MakeExpr(_) } match {
-          case Some(exprSz) => StrList(List("{{", totalSz, " - ", exprSz, "{", msb, "}},", e, "}"))
-          case None         => Message.fatal(s"Cannot compute size of expression '${expr.toSource}' for sxt")
+      case Sxt(numbitsExpr, expr) => expr.widthExpr(id2decl) match {
+        case None => Message.fatal(s"Cannot compute size of expression '${expr.toSource}' for sxt")
+        case Some(widthExpr) => {
+          val deltaExpr = (numbitsExpr - widthExpr).simplify
+          val msbExpr = expr.msbExpr(id2decl) match {
+            case None       => Message.fatal(s"Cannot compute msb of expression '${expr.toSource}' for sxt")
+            case Some(expr) => expr.simplify
+          }
+          StrList(List("{{", MakeExpr(deltaExpr), "{", MakeExpr(msbExpr), "}},", MakeExpr(expr), "}"))
         }
       }
       case DollarCall(name, args)    => StrList(List(name, "(", StrList(args.map(MakeExpr), ","), ")"))
@@ -729,7 +725,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       case DottedName(names)         => nx(names)
       case Literal(s)                => Str(s)
       case n: Num                    => n.toVerilog
-      case e                         => Message.fatal(s"Unexpected expression $e"); ""
+      case e                         => Message.ice(s"Unexpected expression '$e'"); ""
     }
   }
 
