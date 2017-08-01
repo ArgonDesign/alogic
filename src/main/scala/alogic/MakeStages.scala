@@ -154,7 +154,7 @@ object MakeStages {
       case x: PipelineVarDeclaration => false
       case _                         => true
     }
-    val network = NetworkTask(name, decls2, newInsts, conns2, vfns, fsms2)
+    val network = NetworkTask(name, decls2, newInsts, conns2, vfns, Nil)
 
     Some((network, stages))
   }

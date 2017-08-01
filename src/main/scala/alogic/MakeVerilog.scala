@@ -116,11 +116,6 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
 
     def writeSize(size: Int) = if (size > 1) s"[$size-1:0] " else ""
 
-    // Add a variable which has nx and reg aliases onto lists of things to default, reset, and clock
-    def pushNxtVar(name: StrTree): Unit = {
-
-    }
-
     def writeOut(typ: Type, name: StrTree): Unit = typ match {
       case kind: ScalarType => {
         pw.println("  output " + outtype + typeString(kind) + name + ",")
@@ -377,7 +372,10 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     }
 
     task match {
-      case network: NetworkTask => finishNetwork(network, pw)
+      case network: NetworkTask => {
+        assert(network.fsms.isEmpty)
+        finishNetwork(network, pw)
+      }
       case VerilogTask(_, _, vfns) => {
         // Emit all verilog functions
         vfns foreach { vfn =>

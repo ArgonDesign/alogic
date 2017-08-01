@@ -28,7 +28,8 @@ network net2 {
   new fsm b {
     void main() {
       read();
-      y = x + 8'd3;
+      u8 local_var = x+8'd1;
+      y = x + local_var;
       write();
       fence;
     }
