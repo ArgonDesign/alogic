@@ -29,24 +29,18 @@ class ModuleInstance(val name: String, val task: Task, val paramAssigns: Map[Str
   // Map from portname to Port with internal name
   val iports: Map[String, Port] = {
     task.decls collect {
-      case InDeclaration(SyncReadyBubble, kind, name) => name -> PortReady(name, kind)
-      case InDeclaration(SyncReady, kind, name)       => name -> PortReady(name, kind)
-      case InDeclaration(SyncAccept, kind, name)      => name -> PortAccept(name, kind)
-      case InDeclaration(WireSyncAccept, kind, name)  => name -> PortAccept(name, kind)
-      case InDeclaration(Sync, kind, name)            => name -> PortValid(name, kind)
-      case InDeclaration(WireSync, kind, name)        => name -> PortValid(name, kind)
-      case InDeclaration(Wire, kind, name)            => name -> PortNone(name, kind)
+      case InDeclaration(FlowControlTypeNone, kind, name)   => name -> PortNone(name, kind)
+      case InDeclaration(FlowControlTypeValid, kind, name)  => name -> PortValid(name, kind)
+      case InDeclaration(FlowControlTypeReady, kind, name)  => name -> PortReady(name, kind)
+      case InDeclaration(FlowControlTypeAccept, kind, name) => name -> PortAccept(name, kind)
     }
   }.toMap
   val oports: Map[String, Port] = {
     task.decls collect {
-      case OutDeclaration(SyncReadyBubble, kind, name) => name -> PortReady(name, kind)
-      case OutDeclaration(SyncReady, kind, name)       => name -> PortReady(name, kind)
-      case OutDeclaration(SyncAccept, kind, name)      => name -> PortAccept(name, kind)
-      case OutDeclaration(WireSyncAccept, kind, name)  => name -> PortAccept(name, kind)
-      case OutDeclaration(Sync, kind, name)            => name -> PortValid(name, kind)
-      case OutDeclaration(WireSync, kind, name)        => name -> PortValid(name, kind)
-      case OutDeclaration(Wire, kind, name)            => name -> PortNone(name, kind)
+      case OutDeclaration(FlowControlTypeNone, kind, name, _)   => name -> PortNone(name, kind)
+      case OutDeclaration(FlowControlTypeValid, kind, name, _)  => name -> PortValid(name, kind)
+      case OutDeclaration(FlowControlTypeReady, kind, name, _)  => name -> PortReady(name, kind)
+      case OutDeclaration(FlowControlTypeAccept, kind, name, _) => name -> PortAccept(name, kind)
     }
   }.toMap
 

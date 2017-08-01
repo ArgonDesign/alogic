@@ -124,13 +124,13 @@ DEFAULT : 'default' ;
 VERILOG : 'verilog' ;
 NEW     : 'new' ;
 
-SYNC_READY_BUBBLE:  'sync' WS 'ready' WS 'bubble';
-WIRE_SYNC_ACCEPT:  'wire' WS 'sync' WS 'accept';
-SYNC_READY: 'sync' WS 'ready';
-WIRE_SYNC: 'wire' WS 'sync';
-SYNC_ACCEPT: 'sync' WS 'accept';
-SYNC: 'sync';
-WIRE: 'wire';
+
+SYNC        : 'sync';
+SYNC_READY  : 'sync' (WS|CMT)* 'ready';
+SYNC_ACCEPT : 'sync' (WS|CMT)* 'accept';
+
+WIRE        : 'wire';
+BUBBLE      : 'bubble';
 
 LITERAL: '"' ~["]* '"';
 

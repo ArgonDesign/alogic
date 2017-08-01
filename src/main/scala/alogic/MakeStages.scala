@@ -113,9 +113,9 @@ object MakeStages {
       // TODO add support for spotting a naked synctype and using that for output type (once we support buffer sync type)
       var decls2 = decls
       if (usesRead)
-        decls2 ::= InDeclaration(SyncReady, IntVType(false, (inputs map pipeVarMap reduce (BinaryOp(_, "+", _))) :: Nil), inName)
+        decls2 ::= InDeclaration(FlowControlTypeReady, IntVType(false, (inputs map pipeVarMap reduce (BinaryOp(_, "+", _))) :: Nil), inName)
       if (usesWrite)
-        decls2 ::= OutDeclaration(SyncReady, IntVType(false, (outputs map pipeVarMap reduce (BinaryOp(_, "+", _))) :: Nil), outName)
+        decls2 ::= OutDeclaration(FlowControlTypeReady, IntVType(false, (outputs map pipeVarMap reduce (BinaryOp(_, "+", _))) :: Nil), outName, StorageTypeReg)
       if (usesRead || usesWrite)
         decls2 :::= used map { v => VarDeclaration(pipeVarMapType(v), v, None) }
 
@@ -129,7 +129,7 @@ object MakeStages {
           conns2 ::= Connect(DottedName("this" :: id :: Nil), DottedName(sub :: id :: Nil) :: Nil) // TODO support several pipeline stages sharing the same input
           true
         }
-        case OutDeclaration(_, _, id) if usedPorts contains id => {
+        case OutDeclaration(_, _, id, _) if usedPorts contains id => {
           conns2 ::= Connect(DottedName(sub :: id :: Nil), DottedName("this" :: id :: Nil) :: Nil)
           true
         }

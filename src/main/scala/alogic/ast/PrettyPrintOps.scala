@@ -18,21 +18,26 @@ trait DeclarationPrettyPrintOps { this: Declaration =>
     case ConstDeclaration(decltype, id, init)        => s"const ${decltype.toSource} ${id} = ${init.toSource}"
     case VerilogVarDeclaration(decltype, id)         => s"verilog ${decltype.toSource} ${id}"
     case VerilogArrayDeclaration(decltype, id, dims) => s"verilog ${decltype.toSource} ${id}${id}${dims map { _.toSource } mkString ("[", "][", "]")}"
-    case OutDeclaration(synctype, decltype, id)      => s"out ${synctype.toSource} ${decltype.toSource} ${id}"
-    case InDeclaration(synctype, decltype, id)       => s"in ${synctype.toSource} ${decltype.toSource} ${id}"
+    case OutDeclaration(fctype, decltype, id, stype) => s"out ${fctype.toSource} ${stype.toSource} ${decltype.toSource} ${id}"
+    case InDeclaration(fctype, decltype, id)         => s"in ${fctype.toSource} ${decltype.toSource} ${id}"
     case PipelineVarDeclaration(decltype, id)        => s"pipeline ${decltype.toSource} ${id}"
   }
 }
 
-trait SyncTypePrettyPrintOps { this: SyncType =>
+trait FlowControlTypePrettyPrintOps { this: FlowControlType =>
   def toSource: String = this match {
-    case SyncReadyBubble => "sync ready bubble"
-    case SyncReady       => "sync ready"
-    case SyncAccept      => "sync accept"
-    case Sync            => "sync"
-    case WireSyncAccept  => "wire sync accept"
-    case WireSync        => "wire sync"
-    case Wire            => "wire"
+    case FlowControlTypeNone   => ""
+    case FlowControlTypeValid  => "sync"
+    case FlowControlTypeReady  => "sync ready"
+    case FlowControlTypeAccept => "sync accept"
+  }
+}
+
+trait StorageTypePrettyPrintOps { this: StorageType =>
+  def toSource: String = this match {
+    case StorageTypeWire   => "wire"
+    case StorageTypeBubble => "bubble"
+    case StorageTypeReg    => ""
   }
 }
 

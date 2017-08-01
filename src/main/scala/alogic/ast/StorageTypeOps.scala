@@ -7,6 +7,6 @@
 
 package alogic.ast
 
-trait SyncTypeOps extends SyncTypePrettyPrintOps { this: SyncType =>
+trait StorageTypeOps extends StorageTypePrettyPrintOps { this: StorageType =>
 
 }

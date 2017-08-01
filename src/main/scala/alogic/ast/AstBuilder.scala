@@ -212,22 +212,33 @@ class CommonContext(root: ParserRuleContext, initialTypedefs: Map[String, Type])
   val entityCtx = _entityCtx
 
   object DeclVisitor extends VScalarVisitor[Declaration] {
-    object SyncTypeVisitor extends VScalarVisitor[SyncType] {
-      override def visitSyncReadyBubbleType(ctx: SyncReadyBubbleTypeContext) = SyncReadyBubble
-      override def visitWireSyncAcceptType(ctx: WireSyncAcceptTypeContext) = WireSyncAccept
-      override def visitSyncReadyType(ctx: SyncReadyTypeContext) = SyncReady
-      override def visitWireSyncType(ctx: WireSyncTypeContext) = WireSync
-      override def visitSyncAcceptType(ctx: SyncAcceptTypeContext) = SyncAccept
-      override def visitSyncType(ctx: SyncTypeContext) = Sync
-      override def visitWireType(ctx: WireTypeContext) = Wire
-      override val defaultResult = Wire
+    object StorageTypeVisitor extends VScalarVisitor[StorageType] {
+      override def visitStorageTypeWire(ctx: StorageTypeWireContext) = StorageTypeWire
+      override def visitStorageTypeBubble(ctx: StorageTypeBubbleContext) = StorageTypeBubble
+      override val defaultResult = StorageTypeReg
     }
 
-    override def visitTaskDeclOut(ctx: TaskDeclOutContext) =
-      OutDeclaration(SyncTypeVisitor(ctx.sync_type), KnownTypeVisitor(ctx.known_type), scope(ctx, ctx.IDENTIFIER))
+    object FlowControlTypeVisitor extends VScalarVisitor[FlowControlType] {
+      override def visitFlowControlTypeSync(ctx: FlowControlTypeSyncContext) = FlowControlTypeValid
+      override def visitFlowControlTypeSyncReady(ctx: FlowControlTypeSyncReadyContext) = FlowControlTypeReady
+      override def visitFlowControlTypeSyncAccept(ctx: FlowControlTypeSyncAcceptContext) = FlowControlTypeAccept
+      override val defaultResult = FlowControlTypeNone
+    }
 
-    override def visitTaskDeclIn(ctx: TaskDeclInContext) =
-      InDeclaration(SyncTypeVisitor(ctx.sync_type), KnownTypeVisitor(ctx.known_type), scope(ctx, ctx.IDENTIFIER))
+    override def visitTaskDeclOut(ctx: TaskDeclOutContext) = {
+      val fctype = FlowControlTypeVisitor(ctx.flow_control_type)
+      val kind = KnownTypeVisitor(ctx.known_type)
+      val id = scope(ctx, ctx.IDENTIFIER)
+      val stype = StorageTypeVisitor(ctx.storage_type)
+      OutDeclaration(fctype, kind, id, stype)
+    }
+
+    override def visitTaskDeclIn(ctx: TaskDeclInContext) = {
+      val fctype = FlowControlTypeVisitor(ctx.flow_control_type)
+      val kind = KnownTypeVisitor(ctx.known_type)
+      val id = scope(ctx, ctx.IDENTIFIER)
+      InDeclaration(fctype, kind, id)
+    }
 
     override def visitTaskDeclConst(ctx: TaskDeclConstContext) = {
       val name = scope(ctx, ctx.IDENTIFIER)

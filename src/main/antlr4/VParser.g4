@@ -65,22 +65,23 @@ decl
   | decl_init
   ;
 
-sync_type
-  : SYNC_READY_BUBBLE #SyncReadyBubbleType
-  | WIRE_SYNC_ACCEPT  #WireSyncAcceptType
-  | SYNC_READY        #SyncReadyType
-  | WIRE_SYNC         #WireSyncType
-  | SYNC_ACCEPT       #SyncAcceptType
-  | SYNC              #SyncType
-  | WIRE              #WireType
+flow_control_type
+  : 'sync'        #FlowControlTypeSync
+  | SYNC_READY    #FlowControlTypeSyncReady
+  | SYNC_ACCEPT   #FlowControlTypeSyncAccept
+  ;
+
+storage_type
+  : 'wire'    #StorageTypeWire
+  | 'bubble'  #StorageTypeBubble
   ;
 
 network_decl
-  : 'out' sync_type? known_type IDENTIFIER ';'  #TaskDeclOut
-  | 'in' sync_type? known_type IDENTIFIER ';'   #TaskDeclIn
-  | 'param' known_type IDENTIFIER '=' expr ';'  #TaskDeclParam
-  | 'const' known_type IDENTIFIER '=' expr ';'  #TaskDeclConst
-  | 'pipeline' known_type IDENTIFIER ';'        #TaskDeclPipeline
+  : 'out' flow_control_type? storage_type? known_type IDENTIFIER ';'  #TaskDeclOut
+  | 'in' flow_control_type? known_type IDENTIFIER ';'                 #TaskDeclIn
+  | 'param' known_type IDENTIFIER '=' expr ';'                        #TaskDeclParam
+  | 'const' known_type IDENTIFIER '=' expr ';'                        #TaskDeclConst
+  | 'pipeline' known_type IDENTIFIER ';'                              #TaskDeclPipeline
   ;
 
 task_decl

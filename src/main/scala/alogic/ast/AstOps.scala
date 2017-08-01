@@ -28,37 +28,27 @@ object AstOps {
     case ParamDeclaration(_, id, _)        => id
     case VerilogVarDeclaration(_, id)      => id
     case VerilogArrayDeclaration(_, id, _) => id
-    case OutDeclaration(_, _, name)        => name
+    case OutDeclaration(_, _, name, _)     => name
     case InDeclaration(_, _, name)         => name
     case _                                 => Message.ice("unreachable")
   }
 
   // Does this sync type contain a valid line?
-  def HasValid(s: SyncType): Boolean = s match {
-    case Wire => false
-    case _    => true
+  def HasValid(s: FlowControlType): Boolean = s match {
+    case FlowControlTypeNone => false
+    case _                   => true
   }
 
   // Does this sync type contain a ready line?
-  def HasReady(s: SyncType): Boolean = s match {
-    case SyncReadyBubble => true
-    case SyncReady       => true
-    case _               => false
+  def HasReady(s: FlowControlType): Boolean = s match {
+    case FlowControlTypeReady => true
+    case _                    => false
   }
 
   // Does this sync type contain an accept line?
-  def HasAccept(s: SyncType): Boolean = s match {
-    case SyncAccept     => true
-    case WireSyncAccept => true
-    case _              => false
-  }
-
-  // Does this sync type contain a wire type?
-  def HasWire(s: SyncType): Boolean = s match {
-    case Wire           => true
-    case WireSync       => true
-    case WireSyncAccept => true
-    case _              => false
+  def HasAccept(s: FlowControlType): Boolean = s match {
+    case FlowControlTypeAccept => true
+    case _                     => false
   }
 
   // Call VisitType to get callback for each node
