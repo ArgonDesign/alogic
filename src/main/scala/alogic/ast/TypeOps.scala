@@ -7,8 +7,7 @@
 
 package alogic.ast
 
-trait TypeOps { this: Type =>
-
+trait TypeOps extends TypePrettyPrintOps { this: Type =>
   def width: Expr = this match {
     case IntType(_, size)       => Num(None, None, size)
     case IntVType(_, sizeExprs) => ???

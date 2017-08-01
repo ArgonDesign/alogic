@@ -9,7 +9,9 @@
 
 package alogic.ast
 
-trait NodeOps { this: Node =>
+import alogic.Message
+
+trait NodeOps extends NodePrettyPrintOps { this: Node =>
 
   // Recurse through the tree and apply function to all nodes in pre-order
   // Callback returns true to continue recursing, or false to stop processing children

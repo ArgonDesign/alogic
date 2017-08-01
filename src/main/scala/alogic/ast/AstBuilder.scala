@@ -17,7 +17,6 @@ import alogic.Message
 import alogic.VScalarVisitor
 import alogic.VScope
 import alogic.antlr.VParser._
-import alogic.ast.PrettyPrinters._
 
 // The aim of the AstBuilder stage is:
 //   Build an abstract syntax tree

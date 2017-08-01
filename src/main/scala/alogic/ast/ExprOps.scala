@@ -200,4 +200,5 @@ trait ExprOps { this: Expr =>
 
   // Test if the expression is constant given the provided name bindings
   //def isConstWith(bindings) = ???
+
 }

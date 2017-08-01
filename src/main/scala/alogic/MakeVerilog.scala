@@ -19,8 +19,6 @@ import alogic.ast._
 import alogic.ast.AstOps._
 import scalax.file.Path
 
-import ast.PrettyPrinters._
-
 final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
 
   val i0 = "  "; // Single indentation depth (2 spaces)
