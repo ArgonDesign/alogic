@@ -98,6 +98,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     val resets = Stack[StrTree]() // Collection of things to reset
     val verilogfns = Stack[StrTree]() // Collection of raw verilog text
     val acceptfns = Stack[StrTree]() // Collection of code to generate accept outputs
+    val clock_clears = Stack[StrTree]() // Collection of how to clear sync outputs
 
     opath.createFile(createParents = true, failIfExists = false)
 
@@ -107,9 +108,25 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
 
     def writeSize(size: Int) = if (size > 1) s"[$size-1:0] " else ""
 
+    // Add a variable which has nx and reg aliases onto lists of things to default, reset, and clock
+    def pushNxtVar(name: StrTree): Unit = {
+
+    }
+
     def writeOut(typ: Type, name: StrTree): Unit = typ match {
-      case kind: ScalarType => pw.println("  output " + outtype + typeString(kind) + name + ",")
-      case _: Struct        => /* Nothing to do */
+      case kind: ScalarType => {
+        pw.println("  output " + outtype + typeString(kind) + name + ",")
+      }
+      case _: Struct => /* Nothing to do */
+    }
+    def writeOutNxt(typ: Type, name: StrTree): Unit = typ match {
+      case kind: ScalarType => {
+        pw.println(s"  reg " + typeString(kind) + nx(name) + ";")
+        resets push StrList(Str("      ") :: Str(reg(name)) :: Str(s" <= 'b0;\n") :: Nil)
+        clocks push StrList(Str("        ") :: Str(reg(name)) :: Str(" <= ") :: Str(nx(name)) :: Str(";\n") :: Nil)
+        defaults push StrList(Str("    ") :: Str(nx(name)) :: Str(" = ") :: Str(reg(name)) :: Str(";\n") :: Nil)
+      }
+      case _: Struct => /* Nothing to do */
     }
     def writeIn(typ: Type, name: StrTree): Unit = typ match {
       case kind: ScalarType => pw.println("  input wire " + typeString(kind) + name + ",")
@@ -165,8 +182,18 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         SetNxType(regMap, decltype, name, "")
       }
       case OutDeclaration(synctype, decltype, name) => {
-        SetNxType(nxMap, decltype, name, "") // TODO decide on NxType based on synctype
+        if (HasWire(synctype))
+          SetNxType(nxMap, decltype, name, "")
+        else
+          SetNxType(nxMap, decltype, name, "_nxt")
         SetNxType(regMap, decltype, name, "")
+        if (HasValid(synctype)) {
+          SetNxType(regMap, IntType(false,1), valid(name), "")
+          if (HasWire(synctype))
+           SetNxType(nxMap, IntType(false,1), valid(name), "")
+          else
+           SetNxType(nxMap, IntType(false,1), valid(name), "_nxt")
+        }
       }
       case ParamDeclaration(decltype, name, init) => {
         SetNxType(nxMap, decltype, name, "")
@@ -226,8 +253,11 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       case OutDeclaration(synctype, decltype, name) => {
         if (HasValid(synctype)) {
           pw.println("  output " + outtype + valid(name) + ",")
-          clears push Str("      " + valid(name) + " = 1'b0;\n")
-          defaults push Str("    " + valid(name) + " = 1'b0;\n")
+          clears push Str("      " + nx(valid(name)) + " = 1'b0;\n")
+          defaults push Str("    " + nx(valid(name)) + " = 1'b0;\n")
+        }
+        if (HasWire(synctype)) {
+          defaults push Str("    " + nx(name) + " = 'b0;\n")
         }
         if (HasReady(synctype))
           pw.println("  input wire " + ready(name) + ",")
@@ -235,7 +265,32 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
           pw.println("  output " + outtype + accept(name) + ",")
           generateAccept = true;
         }
-        VisitType(decltype, name)(writeOut) // TODO declare nxt values for outputs
+        VisitType(decltype, name)(writeOut)
+        synctype match {
+          case Sync => clock_clears push Str("      " + valid(name) + " <= 1'b0;\n")
+          case _    =>
+        }
+        if (HasReady(synctype)) {
+          clock_clears push StrList(
+            Str("      if (" + ready(name) + ") begin\n") ::
+              Str("        " + valid(name) + " <= 1'b0;\n") ::
+              Str("      end\n") :: Nil)
+          //StrList(Str("        ") :: Str(reg(name)) :: Str(" <= ") :: Str(nx(name)) :: Str(";\n") :: Nil)
+        }
+        synctype match {
+          case Sync | SyncReady => {
+            val v= valid(name)
+            resets push StrList(Str("      ") :: Str(v) :: Str(" <= 1'b0;\n") :: Nil)
+            clocks push StrList(Str("        ") :: Str(v) :: Str(" <= ") :: Str(nx(v)) :: Str(";\n") :: Nil)
+          }
+          case SyncReadyBubble => {
+            val v= valid(name)
+            resets push StrList(Str("      ") :: Str(v) :: Str(" <= 1'b0;\n") :: Nil)
+            clocks push StrList(Str("        ") :: Str(v) :: Str(" <= ") :: Str(nx(v)) ::
+                Str(" || (") :: Str(v) :: Str(" && !") :: Str(ready(name)) :: Str(");\n") :: Nil)
+          }
+          case _ =>
+        }
 
       }
       case InDeclaration(synctype, decltype, name) => {
@@ -274,6 +329,14 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
 
     // Emit remaining variable declarations
     id2decl.values foreach {
+      case OutDeclaration(synctype, decltype, name) => {
+        if (!HasWire(synctype)) {
+          VisitType(decltype, name)(writeOutNxt) // declare nxt values for outputs
+          if (HasValid(synctype)) {
+            pw.println("  reg " + nx(valid(name)) + ";")
+          }
+        }
+      }
       case ArrayDeclaration(decltype, name, index :: Nil) => {
         // TODO maybe figure out the number of bits in the type and declare as this many?
         // TODO maybe detect more than one write to the same array in the same cycle?
@@ -374,6 +437,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         pw.println("    if (!rst_n) begin")
         pw.print(StrList(resets))
         pw.println("    end else begin")
+        pw.print(StrList(clock_clears))
         pw.println(s"      if ($go) begin")
         pw.print(StrList(clocks))
         pw.println("      end")
@@ -691,7 +755,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
             case OutDeclaration(synctype, _, _) => {
               synctype match {
                 case SyncReadyBubble => add(s"$go = $go && !${valid(n)};")
-                case SyncReady       => add(s"$go = $go && (!${valid(n)} || !${ready(n)});")
+                case SyncReady       => add(s"$go = $go && (!${valid(n)} || ${ready(n)});")
                 case SyncAccept      => Message.fatal("sync accept only supported as wire output type") // TODO check this earlier
                 case WireSyncAccept  => add(s"$go = $go && ${accept(n)};")
                 case _               =>

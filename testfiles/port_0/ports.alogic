@@ -1,0 +1,23 @@
+fsm ports {
+  out u8 aRaw;
+  out sync u8 bSync;
+  out sync ready u8 cSyncReady;
+  out sync ready bubble u8 dBubble;
+  out wire sync u8 eWireSync;
+  out wire sync accept u8 fWireSyncAccept;
+  out wire u8 gWire;
+  
+  in u8 data;
+  
+  void main() {
+    u8 x = data.read();
+    aRaw.write(x);
+    bSync.write(x);
+    cSyncReady.write(x);
+    dBubble.write(x);
+    eWireSync.write(x);
+    fWireSyncAccept.write(x);
+    gWire.write(x);
+    fence;
+  }
+}

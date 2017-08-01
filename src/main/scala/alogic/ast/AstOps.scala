@@ -53,6 +53,14 @@ object AstOps {
     case _              => false
   }
 
+  // Does this sync type contain a wire type?
+  def HasWire(s: SyncType): Boolean = s match {
+    case Wire           => true
+    case WireSync       => true
+    case WireSyncAccept => true
+    case _              => false
+  }
+
   // Call VisitType to get callback for each node
   def VisitType(typ: Type, name: StrTree)(callback: (Type, StrTree) => Unit): Unit = {
 
