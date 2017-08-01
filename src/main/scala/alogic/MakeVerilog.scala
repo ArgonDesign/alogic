@@ -141,7 +141,8 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       val nm = name.toString
       typ match {
         case kind: ScalarType => {
-          pw.println(s"  reg " + typeString(kind) + nx(nm) + ", " + reg(nm) + ";")
+          pw.println(s"  reg " + typeString(kind) + reg(nm) + ";")
+          pw.println(s"  reg " + typeString(kind) + nx(nm) + ";")
           if (resetToZero) {
             resets push StrList(Str("      ") :: Str(reg(name)) :: Str(s" <= 'b0;\n") :: Nil)
           }
