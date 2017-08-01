@@ -765,7 +765,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
                 case _               =>
               }
               if (HasValid(synctype))
-                add(s"${valid(n)} = 1'b1;")
+                add(s"${nx(valid(n))} = 1'b1;")
             }
             case _ => Message.fatal(s"$name cannot be written"); false // TODO check this earlier?
           }
