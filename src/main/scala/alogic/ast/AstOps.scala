@@ -30,7 +30,7 @@ object AstOps {
     case VerilogArrayDeclaration(_, id, _) => id
     case OutDeclaration(_, _, name, _)     => name
     case InDeclaration(_, _, name)         => name
-    case _                                 => Message.ice("unreachable")
+    case PipelineVarDeclaration(_, id)     => unreachable
   }
 
   // Does this sync type contain a valid line?

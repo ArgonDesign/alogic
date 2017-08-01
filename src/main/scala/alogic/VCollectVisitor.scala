@@ -7,17 +7,14 @@
 
 package alogic
 
-import org.antlr.v4.runtime.tree.RuleNode
-import alogic.antlr.VParserBaseVisitor
 import org.antlr.v4.runtime.tree.ParseTree
-
-import Antlr4Conversions._
+import org.antlr.v4.runtime.tree.RuleNode
 import org.antlr.v4.runtime.tree.TerminalNode
 
 class VCollectVisitor[T](initialResult: T, combine: (T, T) => T) extends VBaseVisitor[T, T, T] {
 
-  override def defaultResult = Message.ice("unreachable")
-  override def aggregateResult(a: T, b: T) = Message.ice("unreachable")
+  override def defaultResult = unreachable
+  override def aggregateResult(a: T, b: T) = unreachable
 
   var result = initialResult
 

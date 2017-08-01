@@ -32,7 +32,7 @@ object AlogicMain extends App {
       conf.path() match {
         case path :: Nil if path.isFile => path.parent.get
         case path :: Nil                => path
-        case _                          => Message.ice("unreachable")
+        case _                          => unreachable
       }
     }
   }.toRealPath()

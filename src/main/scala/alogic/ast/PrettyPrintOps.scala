@@ -223,8 +223,6 @@ trait NodePrettyPrintOps { this: Node =>
               |${i}  ${body map v(indent + 1) mkString s"\n${i}  "}
               |${i}} while (${v(indent)(cond)});""".stripMargin
 
-        case ControlLoop(_)      => Message.ice("unreachable")
-
         case ExprStmt(expr)      => s"${expr.toSource};"
         case CallStmt(name)      => s"$name();"
 

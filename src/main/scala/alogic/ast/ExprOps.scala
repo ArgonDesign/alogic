@@ -223,7 +223,7 @@ trait ExprOps { this: Expr =>
       case Slice(ref, lidx, ":", _)      => Some(Slice(ref, lidx, "+:", Expr(1)))
       case Slice(ref, base, "+:", width) => Some(Slice(ref, base + width - 1, "+:", Expr(1)))
       case Slice(ref, base, "-:", _)     => Some(Slice(ref, base, "+:", Expr(1)))
-      case _: Slice                      => Message.ice("unreachable")
+      case _: Slice                      => unreachable
       case BitRep(_, value)              => value.msbExpr(symtab)
       case BitCat(terms)                 => terms.head.msbExpr(symtab)
       case _: Literal                    => None
@@ -259,7 +259,7 @@ trait ExprOps { this: Expr =>
 
   def toVerilog: String = this match {
     case Num(None, None, value)               => s"${value}"
-    case Num(None, Some(width), value)        => Message.ice("unreachable")
+    case Num(None, Some(width), value)        => unreachable
     case Num(Some(false), None, value)        => s"'d${value}"
     case Num(Some(true), None, value)         => s"'sd${value}"
     case Num(Some(false), Some(width), value) => if (width == 1) s"1'b${value}" else s"${width}'d${value}"

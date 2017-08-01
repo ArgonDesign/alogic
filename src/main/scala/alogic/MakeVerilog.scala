@@ -463,7 +463,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         pw.println()
 
       }
-      case _ => Message.ice("unreachable")
+      case _ => unreachable
     }
 
     pw.println("endmodule")
@@ -664,7 +664,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     case ArrayDeclaration(decltype, _, _)        => decltype
     case VerilogVarDeclaration(decltype, _)      => decltype
     case VerilogArrayDeclaration(decltype, _, _) => decltype
-    case _: PipelineVarDeclaration               => Message.ice("unreachable")
+    case _: PipelineVarDeclaration               => unreachable
   }
 
   // Construct a string for an expression

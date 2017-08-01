@@ -276,7 +276,7 @@ class CommonContext(root: ParserRuleContext, initialTypedefs: Map[String, Type])
             }
           }
         }
-        case _ => Message.ice("unreachable")
+        case _ => unreachable
       }
     }
 
@@ -296,7 +296,7 @@ class CommonContext(root: ParserRuleContext, initialTypedefs: Map[String, Type])
             }
           }
         }
-        case _ => Message.ice("unreachable")
+        case _ => unreachable
       }
     }
 
@@ -310,7 +310,7 @@ class CommonContext(root: ParserRuleContext, initialTypedefs: Map[String, Type])
           Message.error(ctx, s"Cannot use initializer in declaration of array '${name}'")
           VarDeclaration(kind, name, None)
         }
-        case _ => Message.ice("unreachable")
+        case _ => unreachable
       }
     }
   }
@@ -477,7 +477,7 @@ class FsmTaskBuilder(cc: CommonContext) {
         override def visitForInitNoDecl(ctx: ForInitNoDeclContext) = {
           val stmt = StatementVisitor(ctx.assignment_statement) match {
             case s: CombStmt => s
-            case _: CtrlStmt => Message.ice("unreachable")
+            case _: CtrlStmt => unreachable
           }
           (None, stmt)
         }
@@ -493,7 +493,7 @@ class FsmTaskBuilder(cc: CommonContext) {
         val cond = ExprVisitor(ctx.cond)
         val stepStmt = visit(ctx.step) match {
           case s: CombStmt => s
-          case _: CtrlStmt => Message.ice("unreachable")
+          case _: CtrlStmt => unreachable
         }
         val body = visit(ctx.stmts)
 
