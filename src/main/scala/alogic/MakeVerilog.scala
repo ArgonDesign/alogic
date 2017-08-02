@@ -913,7 +913,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
   val IdsUsedToMakeAccept = mutable.Set[String]() // This allows us to flag errors where the accept signal would be generated incorrectly
   val IdsWritten = mutable.Set[String]()
 
-  var syncPortsFound: Int = 0 // This allows us to flag errors if we use two accept ports in the same state
+  val syncPortsFound = mutable.Set[String]() // This allows us to flag errors if we use two accept ports in the same state
 
   var usesPort: Option[String] = None // This allows us to flag errors if another port is read
 
@@ -997,7 +997,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     case DeclarationStmt(VarDeclaration(decltype, id, Some(rhs))) => AcceptStmt(indent, Assign(DottedName(id :: Nil), rhs))
     case StateBlock(state, cmds) => {
       // Clear sets used for tracking
-      syncPortsFound = 0
+      syncPortsFound.clear()
       IdsUsedToMakeAccept.clear()
       IdsWritten.clear()
       // See if there is anything to do for this state
@@ -1006,7 +1006,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       if (s2.length > 0) {
         // Check for error conditions
         // TODO change sync ports into a set so only warn if different ports detected
-        if (syncPortsFound > 1) Message.warning(s"Multiple accept port reads in same cycle, check this is legal: $cmds")
+        if (syncPortsFound.size > 1) Message.fatal(s"Cannot access multiple accept port reads in same cycle: $cmds")
         if (usesPort.isDefined) Message.fatal(s"Cannot access port $usesPort while generating accept: $cmds")
         // TODO make this test more robust
         if (!IdsUsedToMakeAccept.intersect(IdsWritten).isEmpty) Message.warning(s"Accept is based on registered signals: check condition does not depend on a written identifier: $cmds")
@@ -1054,7 +1054,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       id2decl(n) match {
         case InDeclaration(synctype, _, _) => {
           if (HasAccept(synctype)) {
-            syncPortsFound += 1
+            syncPortsFound.add(n)
             add(accept(n) + " = 1'b1;\n")
           }
           if (HasReady(synctype))
