@@ -1,3 +1,17 @@
+////////////////////////////////////////////////////////////////////////////////
+// Argon Design Ltd. Project P8009 Alogic
+// Copyright (c) 2017 Argon Design Ltd. All rights reserved.
+//
+// Module : Scala Alogic Compiler
+// Author : Peter de Rivaz/Geza Lore
+//
+// DESCRIPTION:
+//
+//
+// This file is covered by the BSD (with attribution) license.
+// See the LICENSE file for the precise wording of the license.
+////////////////////////////////////////////////////////////////////////////////
+
 fsm ports {
   out u8 aRaw;
   out sync u8 bSync;
@@ -6,10 +20,10 @@ fsm ports {
   out sync wire u8 eWireSync;
   out sync accept wire u8 fWireSyncAccept;
   out wire u8 gWire;
-  
+
   in u8 data;
   in sync accept u8 datab;
-  
+
   void main() {
     u8 x = data.read() + datab.read();
     aRaw.write(x);
