@@ -20,6 +20,11 @@ fsm ports {
     fWireSyncAccept.write(x);
     gWire.write(x);
     fence;
+    u8 y;
+    if (|x) {
+      y = datab.read();
+      x=-x;
+    }
     fence;
   }
 }

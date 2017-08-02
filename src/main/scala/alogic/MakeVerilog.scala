@@ -1007,7 +1007,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         // Check for error conditions
         if (syncPortsFound > 1) Message.fatal(s"Found multiple accept port reads in same cycle: $cmds")
         if (usesPort.isDefined) Message.fatal(s"Cannot access port $usesPort while generating accept: $cmds")
-        if (!IdsUsedToMakeAccept.intersect(IdsWritten).isEmpty) Message.fatal(s"Cannot generate accept because an identifier is being written to: $cmds")
+        if (!IdsUsedToMakeAccept.intersect(IdsWritten).isEmpty) Message.warning(s"Accept is based on registered signals: check condition does not depend on a written identifier: $cmds")
         //It seems that now the state is emitted by higher level code?
         //Some(StrList(List(i0 * (indent - 1), MakeState(state), ": begin\n", StrList(s2), i0 * (indent - 1), "end\n")))
         Some(StrList(List("begin\n", StrList(s2), i0 * (indent), "end\n")))
