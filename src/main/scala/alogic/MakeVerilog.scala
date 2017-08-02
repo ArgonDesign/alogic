@@ -642,7 +642,10 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
 
   // Construct the string to be used when this identifier is used on the RHS of an assignment
   def nx(name: String): String = if (makingAccept) {
-    IdsUsedToMakeAccept.add(name)
+   // IdsUsedToMakeAccept.add(name)
+    if (IdsWritten contains name) {
+      Message.fatal(s"Cannot have the use of an accept port conditional on $name because it is written in the same cycle.")
+    }
     name
   } else nxMap(name)
 
@@ -911,7 +914,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
   // It also captures the ids that are used so we can check they are stable
 
   val IdsUsedToMakeAccept = mutable.Set[String]() // This allows us to flag errors where the accept signal would be generated incorrectly
-  val IdsWritten = mutable.Set[String]()
+  var IdsWritten = mutable.Set[String]()
 
   val syncPortsFound = mutable.Set[String]() // This allows us to flag errors if we use two accept ports in the same state
 
@@ -943,6 +946,10 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     case CombinatorialCaseStmt(value, cases, Some(default)) => {
       // Take care to only use MakeExpr when we are sure the code needs to be emitted
       // This is because MakeExpr will track the used ids
+      
+      // TODO add support for resetting IdsWritten between each statement, and form union of used ids at end
+      // At the moment the warning about symbol use will be over-protective here.
+      
       val s: List[Option[StrTree]] = for (c <- cases) yield AcceptStmt(indent + 1, c)
       val s2: List[StrTree] = (AcceptStmt(indent + 1, default) :: s).flatten
       val e = if (s2.length == 0)
@@ -954,8 +961,12 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     }
     case CombinatorialIf(cond, body, Some(elsebody)) =>
       {
+        val initialIds = IdsWritten.clone()
         val b = AcceptStmt(indent + 1, body)
+        val IdsWithBody = IdsWritten
+        IdsWritten = initialIds
         val eb = AcceptStmt(indent + 1, elsebody)
+        val IdsWithElse = IdsWritten
         val gen = b.isDefined || eb.isDefined
         val bs = b match {
           case Some(a) => a
@@ -965,20 +976,26 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
           case Some(a) => a
           case None    => Str(i0 * indent + "begin\n" + i0 * indent + "end\n")
         }
+        IdsWritten = initialIds
         val e = if (gen)
           Some(StrList(Str(i0 * indent) :: Str("if (") :: MakeExpr(cond) :: Str(")\n") :: bs :: Str(i0 * indent) :: Str("else\n") :: ebs :: Nil))
         else
           None
+        IdsWritten = IdsWithBody union IdsWithElse
         AddAccept(indent, AcceptExpr(cond), e)
       }
     case CombinatorialIf(cond, body, None) => {
+      val initialIds = IdsWritten.clone()
       val b = AcceptStmt(indent + 1, body)
+      val IdsWithBody = IdsWritten
+      IdsWritten = initialIds
       // We take care to only call MakeExpr when the body would have something to generate
       // This avoids forbidding ids that are not actually important for generating accept
       val e = b match {
         case None    => None
         case Some(a) => Some(StrList(Str(i0 * indent) :: Str("if (") :: MakeExpr(cond) :: Str(")\n") :: a :: Nil))
       }
+      IdsWritten = IdsWithBody
       AddAccept(indent, AcceptExpr(cond), e)
     }
 
@@ -998,7 +1015,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     case StateBlock(state, cmds) => {
       // Clear sets used for tracking
       syncPortsFound.clear()
-      IdsUsedToMakeAccept.clear()
+      //IdsUsedToMakeAccept.clear()
       IdsWritten.clear()
       // See if there is anything to do for this state
       val s = for { cmd <- cmds } yield AcceptStmt(indent, cmd)
@@ -1008,8 +1025,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         // TODO change sync ports into a set so only warn if different ports detected
         if (syncPortsFound.size > 1) Message.fatal(s"Cannot access multiple accept port reads in same cycle: $cmds")
         if (usesPort.isDefined) Message.fatal(s"Cannot access port $usesPort while generating accept: $cmds")
-        // TODO make this test more robust
-        if (!IdsUsedToMakeAccept.intersect(IdsWritten).isEmpty) Message.warning(s"Accept is based on registered signals: check condition does not depend on a written identifier: $cmds")
+        //if (!IdsUsedToMakeAccept.intersect(IdsWritten).isEmpty) Message.warning(s"Accept is based on registered signals: check condition does not depend on a written identifier: $cmds")
         //It seems that now the state is emitted by higher level code?
         //Some(StrList(List(i0 * (indent - 1), MakeState(state), ": begin\n", StrList(s2), i0 * (indent - 1), "end\n")))
         Some(StrList(List("begin\n", StrList(s2), i0 * (indent), "end\n")))
