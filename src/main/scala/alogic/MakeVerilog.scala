@@ -241,8 +241,14 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       case OutDeclaration(fctype, decltype, name, stype) => {
         if (HasValid(fctype)) {
           pw.println("  output " + outtype + valid(name) + ",")
-          clears push Str("      " + nx(valid(name)) + " = 1'b0;\n")
-          defaults push Str("    " + nx(valid(name)) + " = 1'b0;\n")
+          if (stype == StorageTypeWire) {
+            clears push Str("      " + nx(valid(name)) + " = 1'b0;\n") 
+          }
+          if (stype == StorageTypeReg && fctype == FlowControlTypeReady) {
+            defaults push Str("    " + nx(valid(name)) + " = " + valid(name) + " && !" + ready(name) + ";\n")
+          } else {
+            defaults push Str("    " + nx(valid(name)) + " = 1'b0;\n")
+          }
         }
         if (stype == StorageTypeWire) {
           defaults push Str("    " + nx(name) + " = 'b0;\n")
