@@ -106,6 +106,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     val fencefns = Stack[StrTree]() // Collection of fence function code
     val clears = Stack[StrTree]() // Collection of outputs to clear if !go
     val defaults = Stack[StrTree]() // Collection of things to set at start of each cycle
+    val acceptdefaults = Stack[StrTree]() // Collection of things to set at start of accept generation
     val clocks = Stack[StrTree]() // Collection of things to clock if go
     val clocks_no_reset = Stack[StrTree]() // Collection of things to clock if go but do not need reset
     val resets = Stack[StrTree]() // Collection of things to reset
@@ -305,6 +306,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         if (HasAccept(synctype)) {
           generateAccept = true;
           pw.println("  output wire " + accept(name) + ",")
+          acceptdefaults push Str("    " + accept(name) + " = 1'b0;\n")
         }
         VisitType(decltype, name)(writeIn)
 
@@ -437,6 +439,8 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         if (generateAccept) {
           pw.println()
           pw.println("  always @* begin")
+          if (acceptdefaults.length > 0)
+            pw.println(StrList(acceptdefaults))
           if (numstates == 1) {
             pw.println(s"    ${acceptstates(0)}")
           } else if (numstates > 1) {
