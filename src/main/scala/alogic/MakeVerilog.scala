@@ -73,17 +73,17 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
 
     val outtype = task match {
       case _: StateTask   => "reg "
-      case _: FsmTask     => "reg "
       case _: NetworkTask => "wire "
-      case _: VerilogTask => "wire "
+      case _: VerilogTask => "reg "
+      case _: FsmTask     => unreachable
     }
 
     // This controls whether we will declare _nxt signals for relevant output ports
     val declareExtraOut = task match {
       case _: StateTask   => true
-      case _: FsmTask     => true
       case _: NetworkTask => false
       case _: VerilogTask => false
+      case _: FsmTask     => unreachable
     }
 
     numstates = task match {
@@ -250,7 +250,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         if (HasValid(fctype)) {
           pw.println("  output " + outtype + valid(name) + ",")
           if (stype == StorageTypeWire) {
-            clears push Str("      " + nx(valid(name)) + " = 1'b0;\n") 
+            clears push Str("      " + nx(valid(name)) + " = 1'b0;\n")
           }
           if (stype == StorageTypeReg && fctype == FlowControlTypeReady) {
             defaults push Str("    " + nx(valid(name)) + " = " + valid(name) + " && !" + ready(name) + ";\n")
@@ -434,7 +434,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
           pw.println("    end")
         }
         pw.println("  end")
-        
+
         // Generate accept output if used
         if (generateAccept) {
           pw.println()
@@ -455,7 +455,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
           pw.println("  end")
           pw.println()
         }
-        
+
         // Now emit clocked blocks
         pw.println()
         pw.println("  always @(posedge clk or negedge rst_n) begin")
@@ -963,10 +963,10 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     case CombinatorialCaseStmt(value, cases, Some(default)) => {
       // Take care to only use MakeExpr when we are sure the code needs to be emitted
       // This is because MakeExpr will track the used ids
-      
+
       // TODO add support for resetting IdsWritten between each statement, and form union of used ids at end
       // At the moment the warning about symbol use will be over-protective here.
-      
+
       val s: List[Option[StrTree]] = for (c <- cases) yield AcceptStmt(indent + 1, c)
       val s2: List[StrTree] = (AcceptStmt(indent + 1, default) :: s).flatten
       val e = if (s2.length == 0)
