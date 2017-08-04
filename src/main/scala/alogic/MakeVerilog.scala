@@ -264,7 +264,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         if (HasReady(fctype))
           pw.println("  input wire " + ready(name) + ",")
         if (HasAccept(fctype)) {
-          pw.println("  input " + outtype + accept(name) + ",")
+          pw.println("  input wire " + accept(name) + ",")
         }
         VisitType(decltype, name)(writeOut)
         (fctype, stype) match {
@@ -305,7 +305,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         }
         if (HasAccept(synctype)) {
           generateAccept = true;
-          pw.println("  output wire " + accept(name) + ",")
+          pw.println("  output " + outtype + accept(name) + ",")
           acceptdefaults push Str("    " + accept(name) + " = 1'b0;\n")
         }
         VisitType(decltype, name)(writeIn)
@@ -392,7 +392,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
               makingAccept = true
               AcceptStmt(indent, blk) match {
                 case Some(x) => acceptstates(n) = x
-                case None =>
+                case None    =>
               }
               makingAccept = false
             }
@@ -659,7 +659,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
 
   // Construct the string to be used when this identifier is used on the RHS of an assignment
   def nx(name: String): String = if (makingAccept) {
-   // IdsUsedToMakeAccept.add(name)
+    // IdsUsedToMakeAccept.add(name)
     if (IdsWritten contains name) {
       Message.fatal(s"Cannot have the use of an accept port conditional on $name because it is written in the same cycle.")
     }
