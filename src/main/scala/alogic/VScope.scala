@@ -122,6 +122,12 @@ class VScope(root: ParserRuleContext) {
       visitChildren(ctx)
     }
 
+    // Create new scope for 'loop' loop
+    override def visitLoopStmt(ctx: LoopStmtContext) = {
+      create(ctx)
+      visitChildren(ctx)
+    }
+
     // Create new scope for 'while' loop
     override def visitWhileStmt(ctx: WhileStmtContext) = {
       create(ctx)
