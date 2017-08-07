@@ -42,6 +42,7 @@ trait NodeOps extends NodePrettyPrintOps { this: Node =>
           case ReadCall(name)                                   =>
           case PipelineRead                                     =>
           case PipelineWrite                                    =>
+          case ErrorExpr                                        =>
           case LockCall(name)                                   =>
           case UnlockCall(_) | ValidCall(_)                     =>
           case WriteCall(name, args)                            => args foreach v
@@ -85,6 +86,7 @@ trait NodeOps extends NodePrettyPrintOps { this: Node =>
           case CallStmt(_)                                      =>
           case CallState(_, _)                                  =>
           case ReturnState                                      =>
+          case ErrorStmt                                        =>
         }
     }
 
@@ -141,6 +143,7 @@ trait NodeOps extends NodePrettyPrintOps { this: Node =>
           case x: CallStmt                           => x
           case x: CallState                          => x
           case ReturnState                           => ReturnState
+          case ErrorStmt                             => ErrorStmt
 
           // Expressions
           case ArrayLookup(name, index)              => ArrayLookup(r[DottedName](name), index map r[Expr])
@@ -165,6 +168,7 @@ trait NodeOps extends NodePrettyPrintOps { this: Node =>
           case x: DottedName                         => x
           case x: Literal                            => x
           case x: Num                                => x
+          case ErrorExpr                             => ErrorExpr
         }
       }
       v.asInstanceOf[E]
@@ -241,6 +245,8 @@ trait NodeOps extends NodePrettyPrintOps { this: Node =>
         case _: CallStmt                                  => Nil
         case _: CallState                                 => Nil
         case ReturnState                                  => Nil
+        case ErrorExpr                                    => Nil
+        case ErrorStmt                                    => Nil
       }
 
       headOption match {

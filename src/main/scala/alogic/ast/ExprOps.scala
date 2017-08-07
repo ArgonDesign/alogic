@@ -68,6 +68,7 @@ trait ExprOps { this: Expr =>
     case _: UnlockCall             => false
     case _: ValidCall              => false
     case _: WriteCall              => false
+    case ErrorExpr                 => false
 
     case Zxt(numbits, expr)        => numbits.isConst(symtab) && expr.isConst(symtab)
     case Sxt(numbits, expr)        => numbits.isConst(symtab) && expr.isConst(symtab)
@@ -121,6 +122,7 @@ trait ExprOps { this: Expr =>
     case x: Literal                       => x
     case PipelineRead                     => PipelineRead
     case PipelineWrite                    => PipelineWrite
+    case ErrorExpr                        => ErrorExpr
   }
 
   private[this] def widthOfName(symtab: Map[String, Declaration], tree: DottedName): Option[Expr] = {
@@ -166,8 +168,8 @@ trait ExprOps { this: Expr =>
       case Zxt(numbits, _)           => Some(numbits)
       case Sxt(numbits, _)           => Some(numbits)
       case _: DollarCall             => None
-      case PipelineRead              => Some(Expr(0))
-      case PipelineWrite             => Some(Expr(0))
+      case PipelineRead              => None
+      case PipelineWrite             => None
       case _: LockCall               => Some(Expr(0))
       case _: UnlockCall             => Some(Expr(0))
       case _: ValidCall              => Some(Expr(1))
@@ -179,6 +181,7 @@ trait ExprOps { this: Expr =>
       case Slice(_, lidx, ":", ridx) => Some(lidx - ridx + 1) // TODO: assert lidx >= ridx
       case Slice(_, _, _, width)     => Some(width)
       case _: Literal                => None
+      case ErrorExpr                 => None
       case BitRep(count, value) => value.widthExpr(symtab) match {
         case Some(w) => Some(count * w)
         case None    => Message.fatal("Cannot compute width of bit repetion")
@@ -234,6 +237,7 @@ trait ExprOps { this: Expr =>
       case BitRep(_, value)              => value.msbExpr(symtab)
       case BitCat(terms)                 => terms.head.msbExpr(symtab)
       case _: Literal                    => None
+      case ErrorExpr                     => None
     }
   }
 
@@ -246,6 +250,7 @@ trait ExprOps { this: Expr =>
     case PipelineWrite           => true
     case _: UnlockCall           => true
     case _: LockCall             => true
+    case ErrorExpr               => true
 
     case _: DottedName           => false
     case _: Num                  => false
@@ -293,6 +298,7 @@ trait ExprOps { this: Expr =>
     case x: DottedName                        => Message.ice(s"Cannot generate verilog for '$x'")
     case _: ArrayLookup                       => ???
     case _: Literal                           => ???
+    case ErrorExpr                            => "/*Error expression*/"
   }
 }
 

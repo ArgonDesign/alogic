@@ -102,67 +102,72 @@ class CommonContext(root: ParserRuleContext, initialTypedefs: Map[String, Type])
     override def visitExprConst(ctx: ExprConstContext) = const2Num(ctx.CONSTANT)
     override def visitExprLiteral(ctx: ExprLiteralContext) = Literal(ctx.LITERAL)
 
-    override def visitExprCall(ctx: ExprCallContext) = {
-      val ns = ctx.dotted_name.es
-      if (ns.length == 1 && ns.head.getText() == "read") {
-        PipelineRead
-      } else if (ns.length == 1 && ns.head.getText() == "write") {
-        PipelineWrite
-      } else {
-        val n = LookUpName(ctx.dotted_name)
-        val a = this(ctx.commaexpr)
-        n match {
-          case DottedName(names) if (names.last == "read") => {
-            if (a.length > 0)
-              Message.error(ctx, s"Interface read takes no arguments (${a.length} found)")
-            ReadCall(DottedName(names.init))
+    override def visitExprCall(ctx: ExprCallContext) = ctx.dotted_name.text match {
+      case "read"  => PipelineRead
+      case "write" => PipelineWrite
+      case _ => {
+        val args = this(ctx.commaexpr)
+        val DottedName(names) = LookUpName(ctx.dotted_name)
+
+        def checkargs(hint: String*)(expr: => Expr) = {
+          val expected = hint.length
+          if (args.length != expected) {
+            val nstr = names mkString "."
+            val hstr = hint mkString ", "
+            Message.error(ctx, s"Call of '$nstr' takes exactly ${expected} arguments: '$nstr($hstr)'"); ErrorExpr
+          } else {
+            expr
           }
-          case DottedName(names) if (names.last == "lock") => {
-            if (a.length > 0)
-              Message.error(ctx, s"Interface lock takes no arguments (${a.length} found)")
-            LockCall(DottedName(names.init))
+        }
+
+        names match {
+          case name :: "read" :: Nil => checkargs() {
+            ReadCall(DottedName(name :: Nil))
           }
-          case DottedName(names) if (names.last == "unlock") => {
-            if (a.length > 0)
-              Message.error(ctx, s"Interface unlock takes no arguments (${a.length} found)")
-            UnlockCall(DottedName(names.init))
+          case name :: "write" :: Nil => checkargs("value") {
+            WriteCall(DottedName(name :: Nil), args)
           }
-          case DottedName(names) if (names.last == "valid" || names.last == "v") => {
-            if (a.length > 0)
-              Message.error(ctx, s"Accessing valid property takes no arguments (${a.length} found)")
-            ValidCall(DottedName(names.init))
+          case name :: "lock" :: Nil => checkargs() {
+            LockCall(DottedName(name :: Nil))
           }
-          case DottedName(names) if (names.last == "write") => {
-            if (a.length != 1)
-              Message.error(ctx, s"Interface write takes exactly one argument (${a.length} found)")
-            WriteCall(DottedName(names.init), a)
+          case name :: "unlock" :: Nil => checkargs() {
+            UnlockCall(DottedName(name :: Nil))
+          }
+          case name :: ("valid" | "v") :: Nil => checkargs() {
+            ValidCall(DottedName(name :: Nil))
+          }
+          case name :: Nil => checkargs() {
+            CallExpr(DottedName(name :: Nil), args)
           }
           case _ => {
-            if (a.length > 0)
-              Message.error(ctx, s"State functions take no arguments (${a.length} found)")
-            CallExpr(n, a)
+            Message.error(ctx, s"Call of unknown function '${names mkString "."}(...)'"); ErrorExpr
           }
         }
       }
     }
 
     override def visitExprAt(ctx: ExprAtContext) = {
-      val name = ctx.ATID.text drop 1
+      val name = ctx.ATID.text
       val args = this(ctx.commaexpr)
+
+      def checkargs(hint: String*)(expr: => Expr) = {
+        val expected = hint.length
+        if (args.length != expected) {
+          Message.error(ctx, s"'$name' takes exactly ${expected} arguments: '$name(${hint mkString ", "})'"); ErrorExpr
+        } else {
+          expr
+        }
+      }
+
       name match {
-        case "zx" => {
-          if (args.length != 2)
-            Message.error(ctx, s"'@zx'takes exactly 2 arguments: number of bits, expression")
+        case "@zx" => checkargs("number of bits", "expression") {
           Zxt(args(0), args(1))
         }
-        case "sx" => {
-          if (args.length != 2)
-            Message.error(ctx, s"'@sx' takes exactly 2 arguments: number of bits, expression")
+        case "@sx" => checkargs("number of bits", "expression") {
           Sxt(args(0), args(1))
         }
         case _ => {
-          // TODO: make into error emmit DummyExpr
-          Message.fatal(ctx, s"Unknown Alogic function '@$name'")
+          Message.error(ctx, s"Unknown Alogic function '$name'"); ErrorExpr
         }
       }
     }
@@ -206,7 +211,7 @@ class CommonContext(root: ParserRuleContext, initialTypedefs: Map[String, Type])
     override def visitStruct(ctx: StructContext) = {
       val name = ctx.IDENTIFIER.text
       if (_typedefs contains name) {
-        Message.error(ctx, s"Repeated typedef 'struct $name'")
+        Message.error(ctx, s"Repeated structure definition 'struct $name'")
       }
       val pairs = ctx.fields.toList map { c => c.IDENTIFIER.text -> KnownTypeVisitor(c.known_type) }
       _typedefs(name) = Struct(name, ListMap(pairs: _*))
@@ -366,10 +371,7 @@ class FsmTaskBuilder(cc: CommonContext) {
           case (ctrl, comb) => {
             stmts.last match {
               case s: CtrlStmt => ControlBlock(stmts)
-              case s: CombStmt => {
-                Message.error(ctx, "A control block must end with a control statement")
-                ControlBlock(Nil)
-              }
+              case s: CombStmt => Message.error(ctx, "A control block must end with a control statement"); ErrorStmt
             }
           }
         }
@@ -378,8 +380,7 @@ class FsmTaskBuilder(cc: CommonContext) {
       override def visitDeclStmt(ctx: DeclStmtContext) = DeclVisitor(ctx.decl()) match {
         case s: VarDeclaration => DeclarationStmt(s)
         case Declaration(decltype, id) => {
-          Message.error(ctx, "Only variable declarations allowed inside functions")
-          DeclarationStmt(VarDeclaration(decltype, id, None))
+          Message.error(ctx, "Only variable declarations allowed inside functions"); ErrorStmt
         }
       }
 
@@ -395,7 +396,7 @@ class FsmTaskBuilder(cc: CommonContext) {
           case (t: CombStmt, Some(e: CombStmt)) => CombinatorialIf(cond, t, Some(e))
           case _ => {
             Message.error(ctx, "Both branches of an if must be control statements, or both must be combinatorial statements");
-            ControlIf(cond, ControlBlock(Nil), None)
+            ErrorStmt
           }
         }
       }
@@ -440,7 +441,7 @@ class FsmTaskBuilder(cc: CommonContext) {
           case (ctrl, Nil, Some(d: CtrlStmt)) => ControlCaseStmt(test, ctrl, Some(d))
           case _ => {
             Message.error(ctx, "Either all or none of the case items must be control statements");
-            ControlCaseStmt(test, Nil, None)
+            ErrorStmt
           }
         }
       }
@@ -449,11 +450,11 @@ class FsmTaskBuilder(cc: CommonContext) {
         val body = visit(ctx.stmts)
 
         body.last match {
-          case _: CombStmt => Message.error(ctx, "The body of a 'loop' must end with a control statement")
-          case _           =>
+          case _: CombStmt => {
+            Message.error(ctx, "The body of a 'loop' must end with a control statement"); ErrorStmt
+          }
+          case _ => ControlLoop(ControlBlock(body))
         }
-
-        ControlLoop(ControlBlock(body))
       }
 
       def loopWarnings(cond: Expr, body: List[Stmt], condCtx: ParserRuleContext, stmtLastCtx: Option[ParserRuleContext]) = {
@@ -551,8 +552,7 @@ class FsmTaskBuilder(cc: CommonContext) {
         case expr => if (expr.hasSideEffect) {
           ExprStmt(expr)
         } else {
-          Message.error(ctx, "A pure expression in statement position does nothing")
-          AlogicComment(s"Omitted ${expr.toSource} in statement position")
+          Message.error(ctx, "A pure expression in statement position does nothing"); ErrorStmt
         }
       }
     }
@@ -565,8 +565,7 @@ class FsmTaskBuilder(cc: CommonContext) {
           val body = stmts.last match {
             case _: CtrlStmt => ControlBlock(stmts)
             case _: CombStmt => {
-              Message.error(ctx, "A function body must end with a control statement")
-              ControlBlock(List(FenceStmt))
+              Message.error(ctx, "A function body must end with a control statement"); ErrorStmt
             }
           }
           Function(name, body)

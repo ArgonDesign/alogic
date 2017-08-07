@@ -729,6 +729,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       case DottedName(names)         => nx(names)
       case Literal(s)                => Str(s)
       case n: Num                    => n.toVerilog
+      case ErrorExpr                 => ErrorExpr.toVerilog
       case e                         => Message.ice(s"Unexpected expression '$e'"); ""
     }
   }
@@ -905,6 +906,8 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
 
       case ExprStmt(DollarCall(name, args)) => StrList(List(name, "(", StrList(args.map(MakeExpr), ","), ");"))
       case AlogicComment(s) => s"// $s\n"
+
+      case ErrorStmt | ExprStmt(ErrorExpr) => Str("/*Error statment*/")
 
       case x => Message.ice(s"Don't know how to emit code for $x"); Str("")
     }

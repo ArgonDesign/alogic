@@ -14,8 +14,6 @@
 
 package alogic.ast
 
-import alogic.Message
-
 trait DeclarationPrettyPrintOps { this: Declaration =>
   def toSource: String = this match {
     case VarDeclaration(decltype, id, Some(init))    => s"${decltype.toSource} ${id} = ${init.toSource}"
@@ -89,6 +87,7 @@ trait NodePrettyPrintOps { this: Node =>
         case Num(Some(true), None, value)         => s"'sd${value}"
         case Num(Some(false), Some(width), value) => s"${width}'d${value}"
         case Num(Some(true), Some(width), value)  => s"${width}'sd${value}"
+        case ErrorExpr                            => "/*Error expression*/"
       }
       v(expr)
     }
@@ -241,6 +240,9 @@ trait NodePrettyPrintOps { this: Node =>
         case CallState(tgt, ret) => s"@push state ${tgt} ${ret}"
         case ReturnState         => "@pop state"
         case AlogicComment(str)  => s"TODO: AlogicComment(str)"
+
+        case ErrorStmt           => "/*Error statement*/"
+
       }
     }
 
