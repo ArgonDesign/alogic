@@ -137,7 +137,7 @@ class CommonContext(root: ParserRuleContext, initialTypedefs: Map[String, Type])
             ValidCall(DottedName(name :: Nil))
           }
           case name :: Nil => checkargs() {
-            CallExpr(DottedName(name :: Nil), args)
+            CallExpr(DottedName(name :: Nil), Nil)
           }
           case _ => {
             Message.error(ctx, s"Call of unknown function '${names mkString "."}(...)'"); ErrorExpr
@@ -540,19 +540,14 @@ class FsmTaskBuilder(cc: CommonContext) {
       override def visitAssignUpdate(ctx: AssignUpdateContext) = Update(LValueVisitor(ctx.leftvalue), ctx.ASSIGNOP, ExprVisitor(ctx.expr()))
 
       override def visitExprStmt(ctx: ExprStmtContext) = ExprVisitor(ctx.expr) match {
-        case CallExpr(DottedName(target :: xs), args) => {
-          if (!args.isEmpty) {
-            Message.fatal(ctx, "Function calls in statement position take no arguments")
+        case CallExpr(DottedName(target :: Nil), Nil) => CallStmt(target)
+        case CallExpr(_, _)                           => unreachable
+        case expr => {
+          if (expr.hasSideEffect) {
+            ExprStmt(expr)
+          } else {
+            Message.error(ctx, "A pure expression in statement position does nothing"); ErrorStmt
           }
-          if (!xs.isEmpty) {
-            Message.fatal(ctx, "Function calls in statement position must use unqualified name")
-          }
-          CallStmt(target)
-        }
-        case expr => if (expr.hasSideEffect) {
-          ExprStmt(expr)
-        } else {
-          Message.error(ctx, "A pure expression in statement position does nothing"); ErrorStmt
         }
       }
     }
@@ -573,7 +568,7 @@ class FsmTaskBuilder(cc: CommonContext) {
         override def visitFenceFunction(ctx: FenceFunctionContext) = {
           val body = StatementVisitor(ctx.stmts) collect {
             case stmt: CombStmt => stmt
-            case stmt: CtrlStmt => Message.fatal(ctx, "Body of 'fence' function must not contain control statements")
+            case stmt: CtrlStmt => Message.error(ctx, "Body of 'fence' function must not contain control statements"); ErrorStmt
           }
           FenceFunction(CombinatorialBlock(body))
         }
