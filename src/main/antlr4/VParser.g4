@@ -177,6 +177,7 @@ expr
   | var_ref                                           # ExprVarRef
   | var_ref '[' expr op=(':' | '-:' | '+:') expr ']'  # ExprSlice
   | DOLLARID '(' commaexpr ')'                        # ExprDollar
+  | ATID '(' commaexpr ')'                            # ExprAt
   | 'true'                                            # ExprTrue
   | 'false'                                           # ExprFalse
   | TICKNUM                                           # ExprTrickNum

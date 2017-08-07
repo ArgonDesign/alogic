@@ -31,6 +31,8 @@ TICKNUM: '\'' 's'? [bdhx] [0-9a-fA-F_]+ ; // TODO remove 'x' ?
 
 DOLLARID: '$' SIMPLEID;
 
+ATID: '@' SIMPLEID;
+
 DOLLAR: '$';
 
 GOESTO: '->';

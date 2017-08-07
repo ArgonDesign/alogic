@@ -701,18 +701,18 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         case _                                  => Message.fatal(s"Cannot access valid on $names"); ""
       }
       case Zxt(numbitsExpr, expr) => expr.widthExpr(id2decl) match {
-        case None => Message.fatal(s"Cannot compute size of expression '${expr.toSource}' for zxt")
+        case None => Message.fatal(s"Cannot compute size of expression '${expr.toSource}' for '@zx'")
         case Some(widthExpr) => {
           val deltaExpr = (numbitsExpr - widthExpr).simplify
           StrList(List("{{", MakeExpr(deltaExpr), "{1'b0}},", MakeExpr(expr), "}"))
         }
       }
       case Sxt(numbitsExpr, expr) => expr.widthExpr(id2decl) match {
-        case None => Message.fatal(s"Cannot compute size of expression '${expr.toSource}' for sxt")
+        case None => Message.fatal(s"Cannot compute size of expression '${expr.toSource}' for '@sx'")
         case Some(widthExpr) => {
           val deltaExpr = (numbitsExpr - widthExpr).simplify
           val msbExpr = expr.msbExpr(id2decl) match {
-            case None       => Message.fatal(s"Cannot compute msb of expression '${expr.toSource}' for sxt")
+            case None       => Message.fatal(s"Cannot compute msb of expression '${expr.toSource}' for '@sx'")
             case Some(expr) => expr.simplify
           }
           StrList(List("{{", MakeExpr(deltaExpr), "{", MakeExpr(msbExpr), "}},", MakeExpr(expr), "}"))

@@ -30,7 +30,6 @@ import alogic.antlr.VParser._
 //   Deal with as many error conditions as possible (while we can easily report error location)
 //   Deal with typedefs
 //   Deal with variable scope
-//   Rewrite go/zxt/sxt/read/write/lock/unlock function calls
 //
 // We use different visitors for the different things we wish to extract.
 
@@ -138,16 +137,6 @@ class CommonContext(root: ParserRuleContext, initialTypedefs: Map[String, Type])
               Message.error(ctx, s"Interface write takes exactly one argument (${a.length} found)")
             WriteCall(DottedName(names.init), a)
           }
-          case DottedName("zxt" :: Nil) => {
-            if (a.length != 2)
-              Message.error(ctx, s"Zero extend function takes exactly two arguments: number of bits and expression (${a.length} found)")
-            Zxt(a(0), a(1))
-          }
-          case DottedName("sxt" :: Nil) => {
-            if (a.length != 2)
-              Message.error(ctx, s"Sign extend function takes exactly two arguments: number of bits and expression (${a.length} found)")
-            Sxt(a(0), a(1))
-          }
           case _ => {
             if (a.length > 0)
               Message.error(ctx, s"State functions take no arguments (${a.length} found)")
@@ -155,6 +144,28 @@ class CommonContext(root: ParserRuleContext, initialTypedefs: Map[String, Type])
           }
         }
       }
+    }
+
+    override def visitExprAt(ctx: ExprAtContext) = {
+      val name = ctx.ATID.text drop 1
+      val args = this(ctx.commaexpr)
+      name match {
+        case "zx" => {
+          if (args.length != 2)
+            Message.error(ctx, s"'@zx'takes exactly 2 arguments: number of bits, expression")
+          Zxt(args(0), args(1))
+        }
+        case "sx" => {
+          if (args.length != 2)
+            Message.error(ctx, s"'@sx' takes exactly 2 arguments: number of bits, expression")
+          Sxt(args(0), args(1))
+        }
+        case _ => {
+          // TODO: make into error emmit DummyExpr
+          Message.fatal(ctx, s"Unknown Alogic function '@$name'")
+        }
+      }
+
     }
   }
 

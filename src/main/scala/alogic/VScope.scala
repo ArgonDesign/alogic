@@ -188,7 +188,7 @@ class VScope(root: ParserRuleContext) {
   scopes(root) = mutable.Map[String, Option[Item]]().withDefaultValue(None)
 
   // Add all predefined names
-  for (id <- List("zxt", "sxt", "go", "state", "call_stack", "call_depth")) {
+  for (id <- List("go", "state", "call_stack", "call_depth")) {
     insert(root, id)
   }
 
