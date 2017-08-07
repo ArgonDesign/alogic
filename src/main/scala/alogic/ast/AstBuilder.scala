@@ -165,8 +165,9 @@ class CommonContext(root: ParserRuleContext, initialTypedefs: Map[String, Type])
           Message.fatal(ctx, s"Unknown Alogic function '@$name'")
         }
       }
-
     }
+
+    override def visitExprAtBits(ctx: ExprAtBitsContext) = KnownTypeVisitor(ctx.known_type).widthExpr
   }
 
   private[this] val _typedefs = mutable.Map[String, Type]() ++ initialTypedefs

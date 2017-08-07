@@ -29,9 +29,10 @@ INTTYPE: 'i' [0-9]+;
 
 TICKNUM: '\'' 's'? [bdhx] [0-9a-fA-F_]+ ; // TODO remove 'x' ?
 
-DOLLARID: '$' SIMPLEID;
+ATBITS  : '@bits'       ;
+ATID    : '@' SIMPLEID  ;
 
-ATID: '@' SIMPLEID;
+DOLLARID: '$' SIMPLEID;
 
 DOLLAR: '$';
 
