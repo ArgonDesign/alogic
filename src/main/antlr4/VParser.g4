@@ -83,9 +83,14 @@ storage_type
   | 'bubble'  #StorageTypeBubble
   ;
 
+port_type
+  : known_type #PortTypeKnown
+  | 'void'     #PortTypeVoid
+  ;
+
 network_decl
-  : 'out' flow_control_type? storage_type? known_type IDENTIFIER ';'  #TaskDeclOut
-  | 'in' flow_control_type? known_type IDENTIFIER ';'                 #TaskDeclIn
+  : 'out' flow_control_type? storage_type? port_type IDENTIFIER ';'   #TaskDeclOut
+  | 'in' flow_control_type? port_type IDENTIFIER ';'                  #TaskDeclIn
   | 'param' known_type IDENTIFIER '=' expr ';'                        #TaskDeclParam
   | 'const' known_type IDENTIFIER '=' expr ';'                        #TaskDeclConst
   | 'pipeline' known_type IDENTIFIER ';'                              #TaskDeclPipeline

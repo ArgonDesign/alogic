@@ -109,34 +109,41 @@ class CommonContext(root: ParserRuleContext, initialTypedefs: Map[String, Type])
         val args = this(ctx.commaexpr)
         val DottedName(names) = LookUpName(ctx.dotted_name)
 
-        def checkargs(hint: String*)(expr: => Expr) = {
-          val expected = hint.length
-          if (args.length != expected) {
-            val nstr = names mkString "."
-            val hstr = hint mkString ", "
-            Message.error(ctx, s"Call of '$nstr' takes exactly ${expected} arguments: '$nstr($hstr)'"); ErrorExpr
+        def checkargs(minArgs: Int, maxArgs: Int = 0, hint: String = "")(expr: => Expr) = {
+          val minA = minArgs
+          val maxA = minArgs max maxArgs
+
+          lazy val nstr = names mkString "."
+
+          if (!((minA to maxA) contains args.length)) {
+            if (minA == maxA) {
+              Message.error(ctx, s"'$nstr' takes exactly ${minA} arguments: '$nstr($hint)'")
+            } else {
+              Message.error(ctx, s"'$nstr' takes between ${minA} and ${maxA} arguments: '$nstr($hint)'")
+            }
+            ErrorExpr
           } else {
             expr
           }
         }
 
         names match {
-          case name :: "read" :: Nil => checkargs() {
+          case name :: "read" :: Nil => checkargs(0) {
             ReadCall(DottedName(name :: Nil))
           }
-          case name :: "write" :: Nil => checkargs("value") {
+          case name :: "write" :: Nil => checkargs(0, 1, "[value]") {
             WriteCall(DottedName(name :: Nil), args)
           }
-          case name :: "lock" :: Nil => checkargs() {
+          case name :: "lock" :: Nil => checkargs(0) {
             LockCall(DottedName(name :: Nil))
           }
-          case name :: "unlock" :: Nil => checkargs() {
+          case name :: "unlock" :: Nil => checkargs(0) {
             UnlockCall(DottedName(name :: Nil))
           }
-          case name :: ("valid" | "v") :: Nil => checkargs() {
+          case name :: ("valid" | "v") :: Nil => checkargs(0) {
             ValidCall(DottedName(name :: Nil))
           }
-          case name :: Nil => checkargs() {
+          case name :: Nil => checkargs(0, 0) {
             CallExpr(DottedName(name :: Nil), Nil)
           }
           case _ => {
@@ -192,6 +199,11 @@ class CommonContext(root: ParserRuleContext, initialTypedefs: Map[String, Type])
         IntType(false, 1)
       })
     }
+  }
+
+  object PortTypeVisitor extends VScalarVisitor[Type] {
+    override def visitPortTypeKnown(ctx: PortTypeKnownContext) = KnownTypeVisitor(ctx)
+    override def visitPortTypeVoid(ctx: PortTypeVoidContext) = VoidType
   }
 
   private[this] object TypeDefinitionExtractor extends VScalarVisitor[Unit] {
@@ -251,7 +263,7 @@ class CommonContext(root: ParserRuleContext, initialTypedefs: Map[String, Type])
 
     override def visitTaskDeclOut(ctx: TaskDeclOutContext) = {
       val fctype = FlowControlTypeVisitor(ctx.flow_control_type)
-      val kind = KnownTypeVisitor(ctx.known_type)
+      val kind = PortTypeVisitor(ctx.port_type)
       val id = scope(ctx, ctx.IDENTIFIER)
       val stype = StorageTypeVisitor(ctx.storage_type)
       OutDeclaration(fctype, kind, id, stype)
@@ -259,7 +271,7 @@ class CommonContext(root: ParserRuleContext, initialTypedefs: Map[String, Type])
 
     override def visitTaskDeclIn(ctx: TaskDeclInContext) = {
       val fctype = FlowControlTypeVisitor(ctx.flow_control_type)
-      val kind = KnownTypeVisitor(ctx.known_type)
+      val kind = PortTypeVisitor(ctx.port_type)
       val id = scope(ctx, ctx.IDENTIFIER)
       InDeclaration(fctype, kind, id)
     }
@@ -298,6 +310,7 @@ class CommonContext(root: ParserRuleContext, initialTypedefs: Map[String, Type])
               Message.error(ctx, s"Arrays must be declared with scalar type, not struct '${s.name}'")
               ArrayDeclaration(IntType(false, 1), name, index);
             }
+            case VoidType => unreachable
           }
         }
         case _ => unreachable
@@ -318,6 +331,7 @@ class CommonContext(root: ParserRuleContext, initialTypedefs: Map[String, Type])
               Message.error(ctx, s"Arrays must be declared with scalar types, not struct '${s.name}'")
               ArrayDeclaration(IntType(false, 1), name, index);
             }
+            case VoidType => unreachable
           }
         }
         case _ => unreachable

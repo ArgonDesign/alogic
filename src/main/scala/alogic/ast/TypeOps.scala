@@ -19,5 +19,6 @@ trait TypeOps extends TypePrettyPrintOps { this: Type =>
     case IntType(_, size)       => Expr(size)
     case IntVType(_, sizeExprs) => sizeExprs reduce (_ * _)
     case Struct(_, fields)      => fields.values map (_.widthExpr) reduce (_ + _)
+    case VoidType               => Expr(0)
   }
 }

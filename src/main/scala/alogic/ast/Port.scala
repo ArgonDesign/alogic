@@ -25,6 +25,7 @@ sealed trait Port {
       case Struct(_, fields) => fields.toList flatMap {
         case (n, k) => signals(prefix + "_" + n, k)
       }
+      case VoidType => Nil
     }
 
     signals(name, kind)

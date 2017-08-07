@@ -53,6 +53,7 @@ trait TypePrettyPrintOps { this: Type =>
     case IntVType(true, args)  => s"int(${args map (_.toSource) mkString ", "})"
     case IntVType(false, args) => s"uint(${args map (_.toSource) mkString ", "})"
     case Struct(name, _)       => s"struct $name"
+    case VoidType              => "void"
   }
 }
 

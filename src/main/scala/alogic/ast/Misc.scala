@@ -43,6 +43,7 @@ sealed trait ScalarType extends Type {
 case class IntType(signed: Boolean, size: Int) extends ScalarType
 case class IntVType(signed: Boolean, args: List[Expr]) extends ScalarType // variable number of bits definition
 case class Struct(name: String, fields: Map[String, Type]) extends Type
+case object VoidType extends Type // No bits, just flow control signals
 
 sealed trait FlowControlType extends FlowControlTypeOps
 case object FlowControlTypeNone extends FlowControlType

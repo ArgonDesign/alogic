@@ -122,7 +122,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       case kind: ScalarType => {
         pw.println("  output " + outtype + Signal(name.toString, kind).declString + ",")
       }
-      case _: Struct => /* Nothing to do */
+      case (_: Struct | VoidType) => /* Nothing to do */
     }
     def writeOutNxt(typ: Type, name: StrTree): Unit = typ match {
       case kind: ScalarType => {
@@ -131,11 +131,11 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         clocks push StrList(Str("        ") :: Str(reg(name)) :: Str(" <= ") :: Str(nx(name)) :: Str(";\n") :: Nil)
         defaults push StrList(Str("    ") :: Str(nx(name)) :: Str(" = ") :: Str(reg(name)) :: Str(";\n") :: Nil)
       }
-      case _: Struct => /* Nothing to do */
+      case (_: Struct | VoidType) => /* Nothing to do */
     }
     def writeIn(typ: Type, name: StrTree): Unit = typ match {
-      case kind: ScalarType => pw.println("  input wire " + Signal(name.toString, kind).declString + ",")
-      case _: Struct        => /* Nothing to do */
+      case kind: ScalarType       => pw.println("  input wire " + Signal(name.toString, kind).declString + ",")
+      case (_: Struct | VoidType) => /* Nothing to do */
     }
     def writeVarInternal(typ: Type, name: StrTree, resetToZero: Boolean): Unit = {
       val nm = name.toString
@@ -718,8 +718,14 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
           StrList(List("{{", MakeExpr(deltaExpr), "{", MakeExpr(msbExpr), "}},", MakeExpr(expr), "}"))
         }
       }
-      case DollarCall(name, args)    => StrList(List(name, "(", StrList(args.map(MakeExpr), ","), ")"))
-      case ReadCall(name)            => MakeExpr(name)
+      case DollarCall(name, args) => StrList(List(name, "(", StrList(args.map(MakeExpr), ","), ")"))
+      case ReadCall(name) => id2decl(name.names.head) match {
+        case InDeclaration(_, VoidType, _) => {
+          Message.error(s"Cannot read 'void' port '${name.toSource}' in expression position"); Str("")
+        }
+        case _ => MakeExpr(name)
+      }
+
       case BinaryOp(lhs, op, rhs)    => StrList(List(MakeExpr(lhs), Str(" "), op, Str(" "), MakeExpr(rhs)))
       case UnaryOp(op, lhs)          => StrList(List(op, MakeExpr(lhs)))
       case Bracket(content)          => StrList(List("(", MakeExpr(content), ")"))
@@ -894,9 +900,10 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
                 |${i}end""".stripMargin)
       }
 
-      case ExprStmt(LockCall(_))   => AddStall(tree) { Str("") }
-      case ExprStmt(UnlockCall(_)) => AddStall(tree) { Str("") }
-      case ExprStmt(ReadCall(_))   => AddStall(tree) { Str("") }
+      case ExprStmt(LockCall(_))       => AddStall(tree) { Str("") }
+      case ExprStmt(UnlockCall(_))     => AddStall(tree) { Str("") }
+      case ExprStmt(ReadCall(_))       => AddStall(tree) { Str("") }
+      case ExprStmt(WriteCall(_, Nil)) => AddStall(tree) { Str("") }
       case ExprStmt(WriteCall(name, arg :: Nil)) => AddStall(tree) {
         Str(s"${MakeExpr(name)} = ${MakeExpr(arg)};")
       }
