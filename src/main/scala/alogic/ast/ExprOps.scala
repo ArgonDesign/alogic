@@ -45,7 +45,7 @@ trait ExprOps { this: Expr =>
   def >>>(rhs: Int) = BinaryOp(this, ">>>", Num(None, None, rhs))
 
   // Test it the expression is universally constant, i.e.: contains no unbound variables
-  def isConst: Boolean = isConst(Map.empty[String, Declaration])
+  lazy val isConst: Boolean = isConst(Map.empty[String, Declaration])
   def isConst(symtab: mutable.Map[String, Declaration]): Boolean = isConst(symtab.toMap)
   def isConst(symtab: Map[String, Declaration]): Boolean = this match {
     case DottedName(name :: Nil) => symtab get name match {
@@ -155,7 +155,7 @@ trait ExprOps { this: Expr =>
 
   // Compute a new expression representing the width of this expression.
   // Return None if it cannot be determined.
-  def widthExpr: Option[Expr] = widthExpr(Map.empty[String, Declaration])
+  lazy val widthExpr: Option[Expr] = widthExpr(Map.empty[String, Declaration])
   def widthExpr(symtab: mutable.Map[String, Declaration]): Option[Expr] = widthExpr(symtab.toMap)
   def widthExpr(symtab: Map[String, Declaration]): Option[Expr] = {
     this match {
