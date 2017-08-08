@@ -126,8 +126,9 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     }
     def writeOutNxt(typ: Type, name: StrTree): Unit = typ match {
       case kind: ScalarType => {
+        val wstr = if (kind.widthExpr.isConst) s"${kind.widthExpr.eval}" else ""
         pw.println(s"  reg " + Signal(nx(name), kind).declString + ";")
-        resets push StrList(Str("      ") :: Str(reg(name)) :: Str(s" <= 'b0;\n") :: Nil)
+        resets push StrList(Str("      ") :: Str(reg(name)) :: Str(s" <= ${wstr}'b0;\n") :: Nil)
         clocks push StrList(Str("        ") :: Str(reg(name)) :: Str(" <= ") :: Str(nx(name)) :: Str(";\n") :: Nil)
         defaults push StrList(Str("    ") :: Str(nx(name)) :: Str(" = ") :: Str(reg(name)) :: Str(";\n") :: Nil)
       }
@@ -144,7 +145,8 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
           pw.println(s"  reg " + Signal(reg(nm), kind).declString + ";")
           pw.println(s"  reg " + Signal(nx(nm), kind).declString + ";")
           if (resetToZero) {
-            resets push StrList(Str("      ") :: Str(reg(name)) :: Str(s" <= 'b0;\n") :: Nil)
+            val wstr = if (kind.widthExpr.isConst) s"${kind.widthExpr.eval}" else ""
+            resets push StrList(Str("      ") :: Str(reg(name)) :: Str(s" <= ${wstr}'b0;\n") :: Nil)
           }
           clocks push StrList(Str("        ") :: Str(reg(name)) :: Str(" <= ") :: Str(nx(name)) :: Str(";\n") :: Nil)
           defaults push StrList(Str("    ") :: Str(nx(name)) :: Str(" = ") :: Str(reg(name)) :: Str(";\n") :: Nil)

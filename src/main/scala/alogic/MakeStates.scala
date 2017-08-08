@@ -38,6 +38,7 @@ package alogic
 
 import scala.collection._
 import scala.collection.mutable.Stack
+import scala.math.BigInt.int2bigInt
 
 import alogic.ast._
 import alogic.ast.AstOps._
@@ -165,11 +166,12 @@ final class MakeStates {
 
       // Convert all functions (do not inline below -- side effect on state_alloc)
       val states = fns flatMap makeFnStates
-      val stateType = IntType(false, ceillog2(states.length))
+      val stateSize = ceillog2(states.length)
+      val stateType = IntType(false, stateSize)
 
       // Add a declaration for the state variable if required (reset to the entry state of main)
       val stateDecl = if (states.length > 1) {
-        Some(VarDeclaration(stateType, "state", Some(Num(Some(false), None, 0))))
+        Some(VarDeclaration(stateType, "state", Some(Num(Some(false), Some(stateSize), 0))))
       } else {
         None
       }
