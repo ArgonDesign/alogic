@@ -825,6 +825,14 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       }
     }
 
+    lazy val call_stack_addr_msb = { // MSB index of addrss into call_stack
+      val css = id2decl("CALL_STACK_SIZE") match {
+        case ConstDeclaration(_, _, init: Expr) => init.eval.toInt
+        case _                                  => unreachable
+      }
+      ceillog2(css - 1) - 1
+    }
+
     tree match {
       case Assign(ArrayLookup(DottedName(n :: _), index :: Nil), rhs) if (Arrays contains n) => AddStall(index, rhs) {
         Str(s"""|begin
@@ -886,7 +894,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       case CallState(tgt, ret) => {
         Str(s"""|begin
                 |${i + i0}call_stack_wr = 1'b1;
-                |${i + i0}call_stack_wraddr = call_depth;
+                |${i + i0}call_stack_wraddr = call_depth[${call_stack_addr_msb}:0];
                 |${i + i0}call_stack_wrdata = ${MakeState(ret)};
                 |${i + i0}call_depth_nxt = call_depth + 1'b1;
                 |${i + i0}${nx("state")} = ${MakeState(tgt)};
@@ -897,7 +905,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       case ReturnState => {
         Str(s"""|begin
                 |${i + i0}call_depth_nxt = call_depth - 1'b1;
-                |${i + i0}${nx("state")} = call_stack[call_depth_nxt];
+                |${i + i0}${nx("state")} = call_stack[call_depth_nxt[${call_stack_addr_msb}:0]];
                 |${i}end""".stripMargin)
       }
 
