@@ -1,6 +1,9 @@
 /new/
 /ref/
 
+.ensime
+.ensime_cache/
+
 *.class
 *.log
 *.bat
