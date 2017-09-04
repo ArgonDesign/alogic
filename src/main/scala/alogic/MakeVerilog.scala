@@ -618,13 +618,15 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       val srcSignals = srcPort.payload map { _.name }
       pw.println(s"${i0}// ${srcPort.name} -> ${dstPort.name}")
       dstSignals match {
-        case sig :: Nil => pw.print(s"${i0}assign ${sig} = ")
+        case Nil        => () // Void port
+        case sig :: Nil => pw.print(s"${i0}assign ${sig} = ") // Scalar port
         case sigs => pw.print(s"""|${i0}assign {
                                   |${i0 * 2}${sigs mkString s",\n${i0 * 2}"}
                                   |${i0}} = """.stripMargin)
       }
       srcSignals match {
-        case sig :: Nil => pw.println(s"${sig};")
+        case Nil        => () // Void port
+        case sig :: Nil => pw.println(s"${sig};") // Scalar port
         case sigs => pw.println(s"""|{
                                     |${i0 * 2}${sigs mkString s",\n${i0 * 2}"}
                                     |${i0}};""".stripMargin)
