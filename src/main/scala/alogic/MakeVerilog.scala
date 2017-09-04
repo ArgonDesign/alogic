@@ -103,14 +103,12 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
 
     // Emit header and combinatorial code
     val states = mutable.Map[Int, StrTree]() // Collection of state code
-    val fencefns = Stack[StrTree]() // Collection of fence function code
     val clears = Stack[StrTree]() // Collection of outputs to clear if !go
     val defaults = Stack[StrTree]() // Collection of things to set at start of each cycle
     val acceptdefaults = Stack[StrTree]() // Collection of things to set at start of accept generation
     val clocks = Stack[StrTree]() // Collection of things to clock if go
     val clocks_no_reset = Stack[StrTree]() // Collection of things to clock if go but do not need reset
     val resets = Stack[StrTree]() // Collection of things to reset
-    val verilogfns = Stack[StrTree]() // Collection of raw verilog text
     val clock_clears = Stack[StrTree]() // Collection of how to clear sync outputs
     val acceptstates = mutable.Map[Int, StrTree]() // Collection of code to generate accept outputs for each state
 
@@ -752,7 +750,6 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
   // The top call should be with Function or VerilogFunction
   def MakeStmt(indent: Int)(tree: Node): StrTree = {
     val i = i0 * indent
-    val si = Str(i)
 
     // Take a combinatorial statement and return stall conditions that should be emitted now based on ids that are read/written
     // This code will be emitted before the actual statement

@@ -45,7 +45,6 @@ object MakeStages {
 
     // Search each fsm for pipeline variables
     for (FsmTask(sub, decls, fns, fencefn, vfns, hasnew) <- fsms) {
-      val ns = mutable.Set[String]()
       def v(tree: Node): Boolean = tree match {
         case DottedName(names) => {
           val n = names.head

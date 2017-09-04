@@ -41,10 +41,8 @@ import scala.collection.mutable.Stack
 import scala.math.BigInt.int2bigInt
 
 import alogic.ast._
-import alogic.ast.AstOps._
 import scalax.collection.Graph
 import scalax.collection.GraphPredef._
-import scalax.collection.GraphEdge._
 import scalax.collection.edge.Implicits._
 
 final class MakeStates {
