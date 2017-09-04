@@ -1,12 +1,14 @@
 
-fsm void_port {
+network void_port {
   in sync ready void p_in;
   out sync ready void p_out;
 
-  void main() {
-    p_in.read();
-    p_out.write();
-    fence;
-    fence;
-  }
+  new fsm vp {
+    void main() {
+      p_in.read();
+      p_out.write();
+      fence;
+      fence;
+    }
+ }
 }
