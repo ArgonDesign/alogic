@@ -45,8 +45,18 @@ to the common RTL best practice guidelines. Compilation of Alogic to Verilog
 takes a similar amount of time as a similar complexity C program would take to
 compile into an executable.
 
+Having implemented major ASIC designs in Alogic, including modern partial and
+end-to-end video decoders, we have experienced a code density improvement of
+over 5x, while reducing design effort by a substantial factor compared to a pure
+Verilog design. The concise syntax and well defined compilation of Alogic into
+Verilog also allowed us to push the architectural complexity of the design
+further than we would otherwise have been able to given the design and
+verification schedules. This in turn resulted in a significant Silicon area
+reduction compared to similar solutions designed using direct Verilog
+description.
+
 ## Further information
 
-* [Installation](https://github.com/ArgonDesign/alogic/blob/master/doc/install.md)
 * [Documentation](https://github.com/ArgonDesign/alogic/blob/master/doc/index.md)
+* [Installation](https://github.com/ArgonDesign/alogic/blob/master/doc/install.md)
 * [License](https://github.com/ArgonDesign/alogic/blob/master/LICENSE)
