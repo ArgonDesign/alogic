@@ -69,6 +69,7 @@ object Expr extends ExprObjOps
 // None, the number is considered un-sized
 // TODO: some factories would be good as writing ' Num(Some(false), Some(1), 1)'
 // for the constant 1'b1 is quite a pain
+// TODO: Num should be (signed:Boolean..., i.e.: signed is not Option)
 case class Num(signed: Option[Boolean], width: Option[BigInt], value: BigInt) extends Expr
 case class CallExpr(name: DottedName, args: List[Expr]) extends Expr
 case class Zxt(numbits: Expr, expr: Expr) extends Expr

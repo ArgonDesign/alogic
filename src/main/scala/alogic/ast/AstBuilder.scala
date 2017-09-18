@@ -58,7 +58,7 @@ class CommonContext(root: ParserRuleContext, initialTypedefs: Map[String, Type])
     // If applied to a commaexpr node, return a list of the constructed expressions
     def apply(ctx: CommaexprContext): List[Expr] = visit(ctx.expr)
 
-    def const2Num(const: String) = Num(None, None, BigInt(const filter (_ != '_')))
+    def const2Num(const: String) = Num(Some(true), None, BigInt(const filter (_ != '_')))
     def tickn2Num(ctx: ParserRuleContext, tickn: String, width: Option[String]): Num = {
       assert(tickn(0) == '\'')
       val widthVal = width filter (_ != '_') map (BigInt(_))
