@@ -35,14 +35,14 @@ trait ExprOps { this: Expr =>
   def &&(rhs: Expr) = BinaryOp(this, "&&", rhs)
   def ||(rhs: Expr) = BinaryOp(this, "||", rhs)
 
-  def *(rhs: Int) = BinaryOp(this, "*", Num(None, None, rhs))
-  def /(rhs: Int) = BinaryOp(this, "/", Num(None, None, rhs))
-  def %(rhs: Int) = BinaryOp(this, "%", Num(None, None, rhs))
-  def +(rhs: Int) = BinaryOp(this, "+", Num(None, None, rhs))
-  def -(rhs: Int) = BinaryOp(this, "-", Num(None, None, rhs))
-  def <<(rhs: Int) = BinaryOp(this, "<<", Num(None, None, rhs))
-  def >>(rhs: Int) = BinaryOp(this, ">>", Num(None, None, rhs))
-  def >>>(rhs: Int) = BinaryOp(this, ">>>", Num(None, None, rhs))
+  def *(rhs: Int) = BinaryOp(this, "*", Num(true, None, rhs))
+  def /(rhs: Int) = BinaryOp(this, "/", Num(true, None, rhs))
+  def %(rhs: Int) = BinaryOp(this, "%", Num(true, None, rhs))
+  def +(rhs: Int) = BinaryOp(this, "+", Num(true, None, rhs))
+  def -(rhs: Int) = BinaryOp(this, "-", Num(true, None, rhs))
+  def <<(rhs: Int) = BinaryOp(this, "<<", Num(true, None, rhs))
+  def >>(rhs: Int) = BinaryOp(this, ">>", Num(true, None, rhs))
+  def >>>(rhs: Int) = BinaryOp(this, ">>>", Num(true, None, rhs))
 
   // Test it the expression is universally constant, i.e.: contains no unbound variables
   lazy val isConst: Boolean = isConst(Map.empty[String, Declaration])
@@ -92,10 +92,16 @@ trait ExprOps { this: Expr =>
     case UnaryOp(op, lhs) => UnaryOp(op, lhs.simplify)
 
     case BinaryOp(lhs, op, rhs) => BinaryOp(lhs.simplify, op, rhs.simplify) match {
-      case x @ BinaryOp(Num(None, None, lv), op, Num(None, None, rv)) => op match {
-        case "+" => Num(None, None, lv + rv)
-        case "-" => Num(None, None, lv - rv)
-        case "*" => Num(None, None, lv * rv)
+      case x @ BinaryOp(Num(true, None, lv), op, Num(true, None, rv)) => op match {
+        case "+" => Num(true, None, lv + rv)
+        case "-" => Num(true, None, lv - rv)
+        case "*" => Num(true, None, lv * rv)
+        case _   => x
+      }
+      case x @ BinaryOp(Num(_, None, lv), op, Num(_, None, rv)) => op match {
+        case "+" => Num(false, None, lv + rv)
+        case "-" => Num(false, None, lv - rv)
+        case "*" => Num(false, None, lv * rv)
         case _   => x
       }
       case x => x
@@ -214,7 +220,7 @@ trait ExprOps { this: Expr =>
         Slice(name, width - 1, "+:", Expr(1))
       }
 
-      case Num(_, Some(width), value)    => Some(Num(None, Some(1), value >> (width - BigInt(1)).toInt))
+      case Num(_, Some(width), value)    => Some(Num(false, Some(1), value >> (width - BigInt(1)).toInt))
       case Num(_, None, _)               => None
       case _: CallExpr                   => None
       case Zxt(_, expr)                  => None // TODO: if (numbits == expr.widthExpr.eval) expr.msbExpr else 0
@@ -270,39 +276,37 @@ trait ExprOps { this: Expr =>
   }
 
   def toVerilog: String = this match {
-    case Num(None, None, value)               => s"${value}"
-    case Num(None, Some(width), value)        => unreachable
-    case Num(Some(false), None, value)        => s"'d${value}"
-    case Num(Some(true), None, value)         => s"'sd${value}"
-    case Num(Some(false), Some(width), value) => if (width == 1) s"1'b${value}" else s"${width}'d${value}"
-    case Num(Some(true), Some(width), value)  => s"${width}'sd${value}"
-    case _: CallExpr                          => ???
-    case Zxt(numbits, expr)                   => ???
-    case Sxt(numbits, expr)                   => ???
-    case _: DollarCall                        => ???
-    case _: ReadCall                          => ???
-    case PipelineRead                         => ???
-    case PipelineWrite                        => ???
-    case _: LockCall                          => ???
-    case _: UnlockCall                        => ???
-    case _: ValidCall                         => ???
-    case _: WriteCall                         => ???
-    case BinaryOp(lhs, op, rhs)               => s"(${lhs.toVerilog}) $op (${rhs.toVerilog})"
-    case UnaryOp(_, lhs)                      => ???
-    case Bracket(content)                     => s"(${content})"
-    case TernaryOp(cond, lhs, rhs)            => ???
-    case BitRep(count, value)                 => ???
-    case BitCat(terms)                        => ???
-    case _: Slice                             => ???
-    case DottedName(name :: Nil)              => name
-    case x: DottedName                        => Message.ice(s"Cannot generate verilog for '$x'")
-    case _: ArrayLookup                       => ???
-    case _: Literal                           => ???
-    case ErrorExpr                            => "/*Error expression*/"
+    case Num(false, None, value)        => s"'d${value}"
+    case Num(true, None, value)         => value.toString
+    case Num(false, Some(width), value) => if (width == 1) s"1'b${value}" else s"${width}'d${value}"
+    case Num(true, Some(width), value)  => s"${width}'sd${value}"
+    case _: CallExpr                    => ???
+    case Zxt(numbits, expr)             => ???
+    case Sxt(numbits, expr)             => ???
+    case _: DollarCall                  => ???
+    case _: ReadCall                    => ???
+    case PipelineRead                   => ???
+    case PipelineWrite                  => ???
+    case _: LockCall                    => ???
+    case _: UnlockCall                  => ???
+    case _: ValidCall                   => ???
+    case _: WriteCall                   => ???
+    case BinaryOp(lhs, op, rhs)         => s"(${lhs.toVerilog}) $op (${rhs.toVerilog})"
+    case UnaryOp(_, lhs)                => ???
+    case Bracket(content)               => s"(${content})"
+    case TernaryOp(cond, lhs, rhs)      => ???
+    case BitRep(count, value)           => ???
+    case BitCat(terms)                  => ???
+    case _: Slice                       => ???
+    case DottedName(name :: Nil)        => name
+    case x: DottedName                  => Message.ice(s"Cannot generate verilog for '$x'")
+    case _: ArrayLookup                 => ???
+    case _: Literal                     => ???
+    case ErrorExpr                      => "/*Error expression*/"
   }
 }
 
 trait ExprObjOps {
-  def apply(n: Int) = Num(None, None, n)
-  def apply(n: BigInt) = Num(None, None, n)
+  def apply(n: Int) = Num(true, None, n)
+  def apply(n: BigInt) = Num(true, None, n)
 }

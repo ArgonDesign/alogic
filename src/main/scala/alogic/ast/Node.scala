@@ -63,14 +63,9 @@ case class VerilogFunction(body: String) extends Node
 ///////////////////////////////////////////////////////////////////////////////
 sealed trait Expr extends Node with ExprOps
 object Expr extends ExprObjOps
-// Numbers have optional signedness. If signed is None, then the number can be
-// treated as either signed or unsigned depending on context, and in this case
-// the value must be positive. Numbers also have an optional width. If with is
-// None, the number is considered un-sized
-// TODO: some factories would be good as writing ' Num(Some(false), Some(1), 1)'
-// for the constant 1'b1 is quite a pain
-// TODO: Num should be (signed:Boolean..., i.e.: signed is not Option)
-case class Num(signed: Option[Boolean], width: Option[BigInt], value: BigInt) extends Expr
+// Numbers have signedness and an optional width. If with is  None,
+// the number is considered un-sized
+case class Num(signed: Boolean, width: Option[BigInt], value: BigInt) extends Expr
 case class CallExpr(name: DottedName, args: List[Expr]) extends Expr
 case class Zxt(numbits: Expr, expr: Expr) extends Expr
 case class Sxt(numbits: Expr, expr: Expr) extends Expr

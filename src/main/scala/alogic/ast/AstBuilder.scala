@@ -58,7 +58,7 @@ class CommonContext(root: ParserRuleContext, initialTypedefs: Map[String, Type])
     // If applied to a commaexpr node, return a list of the constructed expressions
     def apply(ctx: CommaexprContext): List[Expr] = visit(ctx.expr)
 
-    def const2Num(const: String) = Num(Some(true), None, BigInt(const filter (_ != '_')))
+    def const2Num(const: String) = Num(true, None, BigInt(const filter (_ != '_')))
     def tickn2Num(ctx: ParserRuleContext, tickn: String, width: Option[String]): Num = {
       assert(tickn(0) == '\'')
       val widthVal = width filter (_ != '_') map (BigInt(_))
@@ -74,7 +74,7 @@ class CommonContext(root: ParserRuleContext, initialTypedefs: Map[String, Type])
       val digits = rest filter (_ != '_')
       val value = BigInt(digits, base)
       // TODO: check value fits in width
-      Num(Some(signed), widthVal, value)
+      Num(signed, widthVal, value)
     }
 
     override def visitExprBracket(ctx: ExprBracketContext) = Bracket(visit(ctx.expr))
@@ -95,8 +95,8 @@ class CommonContext(root: ParserRuleContext, initialTypedefs: Map[String, Type])
     override def visitExprVarRef(ctx: ExprVarRefContext) = VarRefVisitor(ctx)
     override def visitExprSlice(ctx: ExprSliceContext) = Slice(VarRefVisitor(ctx.var_ref), visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
     override def visitExprDollar(ctx: ExprDollarContext) = DollarCall(ctx.DOLLARID, this(ctx.commaexpr))
-    override def visitExprTrue(ctx: ExprTrueContext) = Num(Some(false), Some(1), 1)
-    override def visitExprFalse(ctx: ExprFalseContext) = Num(Some(false), Some(1), 0)
+    override def visitExprTrue(ctx: ExprTrueContext) = Num(false, Some(1), 1)
+    override def visitExprFalse(ctx: ExprFalseContext) = Num(false, Some(1), 0)
     override def visitExprTrickNum(ctx: ExprTrickNumContext) = tickn2Num(ctx, ctx.TICKNUM, None)
     override def visitExprConstTickNum(ctx: ExprConstTickNumContext) = tickn2Num(ctx, ctx.TICKNUM, Some(ctx.CONSTANT))
     override def visitExprConst(ctx: ExprConstContext) = const2Num(ctx.CONSTANT)

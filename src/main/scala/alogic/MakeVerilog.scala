@@ -341,7 +341,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         // TODO maybe figure out the number of bits in the type and declare as this many?
         // TODO maybe detect more than one write to the same array in the same cycle?
         Arrays.add(name)
-        val depth = MakeExpr(index).toString.toInt // TODO detect if this fails and fail gracefully
+        val depth = index.eval.toInt // TODO detect if this fails and fail gracefully
         val log2depth = ceillog2(depth) max 1 // TODO: handle degenerate case of depth == 1 better
         //        val t = typeString(decltype)
         pw.println(s"  reg ${name}_wr;")
@@ -918,7 +918,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       }
 
       case DeclarationStmt(VarDeclaration(decltype, id, Some(rhs))) => MakeStmt(indent)(Assign(DottedName(id :: Nil), rhs))
-      case DeclarationStmt(VarDeclaration(decltype, id, None)) => MakeStmt(indent)(Assign(DottedName(id :: Nil), Num(Some(false), None, 0))) // TODO: Why is this needed ?
+      case DeclarationStmt(VarDeclaration(decltype, id, None)) => MakeStmt(indent)(Assign(DottedName(id :: Nil), Num(false, None, 0))) // TODO: Why is this needed ?
 
       case ExprStmt(DollarCall(name, args)) => StrList(List(name, "(", StrList(args.map(MakeExpr), ","), ");"))
       case AlogicComment(s) => s"// $s\n"
