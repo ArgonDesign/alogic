@@ -137,9 +137,6 @@ class CommonContext(root: ParserRuleContext, initialTypedefs: Map[String, Type])
           case name :: "lock" :: Nil => checkargs(0) {
             LockCall(DottedName(name :: Nil))
           }
-          case name :: "unlock" :: Nil => checkargs(0) {
-            UnlockCall(DottedName(name :: Nil))
-          }
           case name :: ("valid" | "v") :: Nil => checkargs(0) {
             ValidCall(DottedName(name :: Nil))
           }

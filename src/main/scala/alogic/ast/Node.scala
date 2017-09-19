@@ -74,7 +74,6 @@ case class ReadCall(name: DottedName) extends Expr
 case class LockCall(name: DottedName) extends Expr
 case object PipelineRead extends Expr
 case object PipelineWrite extends Expr
-case class UnlockCall(name: DottedName) extends Expr
 case class ValidCall(name: DottedName) extends Expr
 case class WriteCall(name: DottedName, args: List[Expr]) extends Expr
 case class BinaryOp(lhs: Expr, op: String, rhs: Expr) extends Expr

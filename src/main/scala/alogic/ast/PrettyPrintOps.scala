@@ -72,7 +72,6 @@ trait NodePrettyPrintOps { this: Node =>
         case PipelineRead                   => "read()"
         case PipelineWrite                  => "write()"
         case LockCall(name)                 => s"${v(name)}.lock()"
-        case UnlockCall(name)               => s"${v(name)}.unlock()"
         case ValidCall(name)                => s"${v(name)}.valid()"
         case WriteCall(name, args)          => s"${v(name)}.write(${args map v mkString ", "})"
         case BinaryOp(lhs, op, rhs)         => s"(${lhs.toSource})$op(${rhs.toSource})"
