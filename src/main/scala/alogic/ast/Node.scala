@@ -71,7 +71,7 @@ case class Zxt(numbits: Expr, expr: Expr) extends Expr
 case class Sxt(numbits: Expr, expr: Expr) extends Expr
 case class DollarCall(name: String, args: List[Expr]) extends Expr
 case class ReadCall(name: DottedName) extends Expr
-case class LockCall(name: DottedName) extends Expr
+case class WaitCall(name: DottedName) extends Expr
 case object PipelineRead extends Expr
 case object PipelineWrite extends Expr
 case class ValidCall(name: DottedName) extends Expr

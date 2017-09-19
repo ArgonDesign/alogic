@@ -134,8 +134,8 @@ class CommonContext(root: ParserRuleContext, initialTypedefs: Map[String, Type])
           case name :: "write" :: Nil => checkargs(0, 1, "[value]") {
             WriteCall(DottedName(name :: Nil), args)
           }
-          case name :: "lock" :: Nil => checkargs(0) {
-            LockCall(DottedName(name :: Nil))
+          case name :: "wait" :: Nil => checkargs(0) {
+            WaitCall(DottedName(name :: Nil))
           }
           case name :: ("valid" | "v") :: Nil => checkargs(0) {
             ValidCall(DottedName(name :: Nil))

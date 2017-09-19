@@ -784,7 +784,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         case CombinatorialIf(cond, _, _) =>
           cond visit v; false
         case ReadCall(name) => AddRead(name, false)
-        case LockCall(name) => AddRead(name, true)
+        case WaitCall(name) => AddRead(name, true)
         case WriteCall(name, _) => {
           val n: String = ExtractName(name)
           val d: Declaration = id2decl(n)
@@ -908,7 +908,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
                 |${i}end""".stripMargin)
       }
 
-      case ExprStmt(LockCall(_))       => AddStall(tree) { Str("") }
+      case ExprStmt(WaitCall(_))       => AddStall(tree) { Str("") }
       case ExprStmt(ReadCall(_))       => AddStall(tree) { Str("") }
       case ExprStmt(WriteCall(_, Nil)) => AddStall(tree) { Str("") }
       case ExprStmt(WriteCall(name, arg :: Nil)) => AddStall(tree) {
@@ -1033,7 +1033,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       AddAccept(indent, AcceptExpr(cond), e)
     }
 
-    case LockCall(name)                              => AddAccept(indent, AcceptExpr(name), None)
+    case WaitCall(name)                              => AddAccept(indent, AcceptExpr(name), None)
     case WriteCall(name, args) if (args.length == 1) => AddAccept(indent, AcceptExpr(name) ::: AcceptExpr(args(0)), None)
     case CombinatorialBlock(cmds) => {
       val s: List[Option[StrTree]] = for (c <- cmds) yield AcceptStmt(indent + 1, c)
@@ -1121,7 +1121,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       case CombinatorialIf(cond, _, _) =>
         cond visit v; false
       case ReadCall(name) => AddRead(name)
-      case LockCall(name) => AddRead(name)
+      case WaitCall(name) => AddRead(name)
       case WriteCall(name, _) => {
         val n: String = ExtractName(name)
         val d: Declaration = id2decl(n)
