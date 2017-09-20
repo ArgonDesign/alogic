@@ -35,9 +35,6 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
   val nxMap = mutable.Map[String, String]() // Returns string to use when this identifier is accessed
   val regMap = mutable.Map[String, String]() // Map from name in alogic to name in Verilog
 
-  // Map of names used to instantiate modules to multiplicity of that name
-  val namecnt = mutable.Map[String, Int]() withDefaultValue (0)
-
   val Arrays = mutable.Set[String]()
 
   val go = "go" // Name of the signal used to decide whether to clock registers
