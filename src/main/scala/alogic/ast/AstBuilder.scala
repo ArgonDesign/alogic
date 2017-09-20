@@ -15,14 +15,10 @@
 package alogic.ast
 
 import scala.collection.immutable.ListMap
-import scala.collection.mutable
-
 import org.antlr.v4.runtime.ParserRuleContext
-
 import alogic.Antlr4Conversions._
 import alogic.Message
 import alogic.VScalarVisitor
-import alogic.VScope
 import alogic.antlr.VParser._
 
 // The aim of the AstBuilder stage is:
@@ -37,214 +33,38 @@ import alogic.antlr.VParser._
 // Visitors and data structures required when parsing all kinds of source files
 ////////////////////////////////////////////////////////////////////////////////
 class CommonContext(root: ParserRuleContext, initialTypedefs: Map[String, Type]) {
-  // Build scopes and allocate static variable names
-  private[this] val scope = new VScope(root)
-
-  // Construct tree for dotted name, looking up the variable name in the current scope
-  object LookUpName extends VScalarVisitor[DottedName] {
-    override def visitDotted_name(ctx: Dotted_nameContext) = {
-      val (head :: tail) = ctx.es.toList.map(_.text)
-      DottedName(scope(ctx, head) :: tail)
-    }
+  // Collect type definitions and entityContext
+  val (typedefs, entityCtx) = root match {
+    case ctx: StartContext   => ExtractTypedefs(ctx, initialTypedefs)
+    case ctx: TaskFSMContext => (initialTypedefs, ctx)
   }
+
+  // Build scopes and allocate static variable names
+  private[this] val symtab = new Symtab(root, typedefs)
+
+  val exprVisitor = new ExprVisitor(Some(symtab), typedefs)
+
+  val knownTypeVisitor = new KnownTypeVisitor(Some(symtab), typedefs)
 
   // Construct tree for variable reference, looking up the variable name in the current scope
   object VarRefVisitor extends VScalarVisitor[VarRef] {
+    // Construct tree for dotted name, looking up the variable name in the current scope
+    object LookUpName extends VScalarVisitor[DottedName] {
+      override def visitDotted_name(ctx: Dotted_nameContext) = {
+        val (head :: tail) = ctx.es.toList.map(_.text)
+        DottedName(symtab(ctx, head) :: tail)
+      }
+    }
     override def visitVarRef(ctx: VarRefContext) = LookUpName(ctx.dotted_name)
-    override def visitVarRefIndex(ctx: VarRefIndexContext) = ArrayLookup(LookUpName(ctx.dotted_name), ExprVisitor(ctx.es))
+    override def visitVarRefIndex(ctx: VarRefIndexContext) = ArrayLookup(LookUpName(ctx.dotted_name), exprVisitor(ctx.es))
   }
-
-  object ExprVisitor extends VScalarVisitor[Expr] {
-    // If applied to a commaexpr node, return a list of the constructed expressions
-    def apply(ctx: CommaexprContext): List[Expr] = visit(ctx.expr)
-
-    def const2Num(const: String) = Num(true, None, BigInt(const filter (_ != '_')))
-    def tickn2Num(ctx: ParserRuleContext, tickn: String, width: Option[String]): Num = {
-      assert(tickn(0) == '\'')
-      val widthVal = width filter (_ != '_') map (BigInt(_))
-      val signed = tickn(1) == 's'
-      val baseChar = if (signed) tickn(2) else tickn(1)
-      val base = baseChar match {
-        case 'b' => 2
-        case 'd' => 10
-        case 'h' => 16
-        case c   => Message.error(ctx, s"Unknown base '$c'"); 16
-      }
-      val rest = if (signed) tickn drop 3 else tickn drop 2
-      val digits = rest filter (_ != '_')
-      val value = BigInt(digits, base)
-      // TODO: check value fits in width
-      Num(signed, widthVal, value)
-    }
-
-    override def visitExprBracket(ctx: ExprBracketContext) = Bracket(visit(ctx.expr))
-    override def visitExprUnary(ctx: ExprUnaryContext) = UnaryOp(ctx.op, visit(ctx.expr))
-    override def visitExprMulDiv(ctx: ExprMulDivContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
-    override def visitExprAddSub(ctx: ExprAddSubContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
-    override def visitExprShift(ctx: ExprShiftContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
-    override def visitExprCompare(ctx: ExprCompareContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
-    override def visitExprEqual(ctx: ExprEqualContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
-    override def visitExprBAnd(ctx: ExprBAndContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
-    override def visitExprBXor(ctx: ExprBXorContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
-    override def visitExprBOr(ctx: ExprBOrContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
-    override def visitExprAnd(ctx: ExprAndContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
-    override def visitExprOr(ctx: ExprOrContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
-    override def visitExprTernary(ctx: ExprTernaryContext) = TernaryOp(visit(ctx.expr(0)), visit(ctx.expr(1)), visit(ctx.expr(2)))
-    override def visitExprRep(ctx: ExprRepContext) = BitRep(visit(ctx.expr(0)), visit(ctx.expr(1)))
-    override def visitExprCat(ctx: ExprCatContext) = BitCat(this(ctx.commaexpr))
-    override def visitExprVarRef(ctx: ExprVarRefContext) = VarRefVisitor(ctx)
-    override def visitExprSlice(ctx: ExprSliceContext) = Slice(VarRefVisitor(ctx.var_ref), visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
-    override def visitExprDollar(ctx: ExprDollarContext) = DollarCall(ctx.DOLLARID, this(ctx.commaexpr))
-    override def visitExprTrue(ctx: ExprTrueContext) = Num(false, Some(1), 1)
-    override def visitExprFalse(ctx: ExprFalseContext) = Num(false, Some(1), 0)
-    override def visitExprTrickNum(ctx: ExprTrickNumContext) = tickn2Num(ctx, ctx.TICKNUM, None)
-    override def visitExprConstTickNum(ctx: ExprConstTickNumContext) = tickn2Num(ctx, ctx.TICKNUM, Some(ctx.CONSTANT))
-    override def visitExprConst(ctx: ExprConstContext) = const2Num(ctx.CONSTANT)
-    override def visitExprLiteral(ctx: ExprLiteralContext) = Literal(ctx.LITERAL)
-
-    override def visitExprCall(ctx: ExprCallContext) = ctx.dotted_name.text match {
-      case "read"  => PipelineRead
-      case "write" => PipelineWrite
-      case _ => {
-        val args = this(ctx.commaexpr)
-        val DottedName(names) = LookUpName(ctx.dotted_name)
-
-        def checkargs(minArgs: Int, maxArgs: Int = 0, hint: String = "")(expr: => Expr) = {
-          val minA = minArgs
-          val maxA = minArgs max maxArgs
-
-          lazy val nstr = names mkString "."
-
-          if (!((minA to maxA) contains args.length)) {
-            if (minA == maxA) {
-              Message.error(ctx, s"'$nstr' takes exactly ${minA} arguments: '$nstr($hint)'")
-            } else {
-              Message.error(ctx, s"'$nstr' takes between ${minA} and ${maxA} arguments: '$nstr($hint)'")
-            }
-            ErrorExpr
-          } else {
-            expr
-          }
-        }
-
-        names match {
-          case name :: "read" :: Nil => checkargs(0) {
-            ReadCall(DottedName(name :: Nil))
-          }
-          case name :: "write" :: Nil => checkargs(0, 1, "[value]") {
-            WriteCall(DottedName(name :: Nil), args)
-          }
-          case name :: "wait" :: Nil => checkargs(0) {
-            WaitCall(DottedName(name :: Nil))
-          }
-          case name :: ("valid" | "v") :: Nil => checkargs(0) {
-            ValidCall(DottedName(name :: Nil))
-          }
-          case name :: Nil => checkargs(0, 0) {
-            CallExpr(DottedName(name :: Nil), Nil)
-          }
-          case _ => {
-            Message.error(ctx, s"Call of unknown function '${names mkString "."}(...)'"); ErrorExpr
-          }
-        }
-      }
-    }
-
-    override def visitExprAt(ctx: ExprAtContext) = {
-      val name = ctx.ATID.text
-      val args = this(ctx.commaexpr)
-
-      def checkargs(hint: String*)(expr: => Expr) = {
-        val expected = hint.length
-        if (args.length != expected) {
-          Message.error(ctx, s"'$name' takes exactly ${expected} arguments: '$name(${hint mkString ", "})'"); ErrorExpr
-        } else {
-          expr
-        }
-      }
-
-      name match {
-        case "@zx" => checkargs("number of bits", "expression") {
-          Zxt(args(0), args(1))
-        }
-        case "@sx" => checkargs("number of bits", "expression") {
-          Sxt(args(0), args(1))
-        }
-        case _ => {
-          Message.error(ctx, s"Unknown Alogic function '$name'"); ErrorExpr
-        }
-      }
-    }
-
-    override def visitExprAtBits(ctx: ExprAtBitsContext) = KnownTypeVisitor(ctx.known_type).widthExpr
-  }
-
-  private[this] val _typedefs = mutable.Map[String, Type]() ++ initialTypedefs
-
-  private[this] var _entityCtx: ParserRuleContext = null
-
-  object KnownTypeVisitor extends VScalarVisitor[Type] {
-    override def visitBoolType(ctx: BoolTypeContext) = IntType(false, 1)
-    override def visitIntType(ctx: IntTypeContext) = IntType(true, ctx.INTTYPE.text.tail.toInt)
-    override def visitUintType(ctx: UintTypeContext) = IntType(false, ctx.UINTTYPE.text.tail.toInt)
-    override def visitIntVType(ctx: IntVTypeContext) = IntVType(true, ExprVisitor(ctx.commaexpr))
-    override def visitUintVType(ctx: UintVTypeContext) = IntVType(false, ExprVisitor(ctx.commaexpr))
-    override def visitIdentifierType(ctx: IdentifierTypeContext) = {
-      val s = ctx.IDENTIFIER.text
-      _typedefs.getOrElse(s, {
-        Message.error(ctx, s"Unknown type '$s'")
-        IntType(false, 1)
-      })
-    }
-  }
-
-  object PortTypeVisitor extends VScalarVisitor[Type] {
-    override def visitPortTypeKnown(ctx: PortTypeKnownContext) = KnownTypeVisitor(ctx)
-    override def visitPortTypeVoid(ctx: PortTypeVoidContext) = VoidType
-  }
-
-  private[this] object TypeDefinitionExtractor extends VScalarVisitor[Unit] {
-    override def defaultResult = Message.ice("Should be called with Start node")
-
-    override def visitStart(ctx: StartContext) = {
-      visit(ctx.typedefinition)
-      // we save the parse tree node to save walking the whole parse tree again
-      _entityCtx = ctx.entity
-    }
-
-    override def visitTypedefinition(ctx: TypedefinitionContext) = {
-      visit(Option(ctx.typedef))
-      visit(Option(ctx.struct))
-    }
-
-    override def visitStruct(ctx: StructContext) = {
-      val name = ctx.IDENTIFIER.text
-      if (_typedefs contains name) {
-        Message.error(ctx, s"Repeated structure definition 'struct $name'")
-      }
-      val pairs = ctx.fields.toList map { c => c.IDENTIFIER.text -> KnownTypeVisitor(c.known_type) }
-      _typedefs(name) = Struct(name, ListMap(pairs: _*))
-    }
-
-    override def visitTypedef(ctx: TypedefContext) = {
-      val s = ctx.IDENTIFIER.text
-      if (_typedefs contains s) {
-        Message.error(ctx, s"Repeated typedef '$s'")
-      }
-      _typedefs(s) = KnownTypeVisitor(ctx.known_type)
-    }
-  }
-
-  // Collect type definitions and entityContext)
-  root match {
-    case ctx: StartContext   => TypeDefinitionExtractor(ctx)
-    case ctx: TaskFSMContext => _entityCtx = ctx
-  }
-
-  val typedefs = _typedefs.toMap
-  val entityCtx = _entityCtx
 
   object DeclVisitor extends VScalarVisitor[Declaration] {
+    object PortTypeVisitor extends VScalarVisitor[Type] {
+      override def visitPortTypeKnown(ctx: PortTypeKnownContext) = knownTypeVisitor(ctx)
+      override def visitPortTypeVoid(ctx: PortTypeVoidContext) = VoidType
+    }
+
     object StorageTypeVisitor extends VScalarVisitor[StorageType] {
       override def visitStorageTypeWire(ctx: StorageTypeWireContext) = StorageTypeWire
       override def visitStorageTypeBubble(ctx: StorageTypeBubbleContext) = StorageTypeBubble
@@ -261,7 +81,7 @@ class CommonContext(root: ParserRuleContext, initialTypedefs: Map[String, Type])
     override def visitTaskDeclOut(ctx: TaskDeclOutContext) = {
       val fctype = FlowControlTypeVisitor(ctx.flow_control_type)
       val kind = PortTypeVisitor(ctx.port_type)
-      val id = scope(ctx, ctx.IDENTIFIER)
+      val id = symtab(ctx, ctx.IDENTIFIER)
       val stype = StorageTypeVisitor(ctx.storage_type)
       OutDeclaration(fctype, kind, id, stype)
     }
@@ -269,34 +89,34 @@ class CommonContext(root: ParserRuleContext, initialTypedefs: Map[String, Type])
     override def visitTaskDeclIn(ctx: TaskDeclInContext) = {
       val fctype = FlowControlTypeVisitor(ctx.flow_control_type)
       val kind = PortTypeVisitor(ctx.port_type)
-      val id = scope(ctx, ctx.IDENTIFIER)
+      val id = symtab(ctx, ctx.IDENTIFIER)
       InDeclaration(fctype, kind, id)
     }
 
     override def visitTaskDeclConst(ctx: TaskDeclConstContext) = {
-      val name = scope(ctx, ctx.IDENTIFIER)
-      val kind = KnownTypeVisitor(ctx.known_type) match {
+      val name = symtab(ctx, ctx.IDENTIFIER)
+      val kind = knownTypeVisitor(ctx.known_type) match {
         case x: ScalarType => x
         case x             => Message.error(ctx, s"Constant '${name}' must be declared with scalar type"); IntType(false, 1);
       }
-      ConstDeclaration(kind, name, ExprVisitor(ctx.expr))
+      ConstDeclaration(kind, name, exprVisitor(ctx.expr))
     }
 
     override def visitTaskDeclPipeline(ctx: TaskDeclPipelineContext) =
-      PipelineVarDeclaration(KnownTypeVisitor(ctx.known_type), scope(ctx, ctx.IDENTIFIER))
+      PipelineVarDeclaration(knownTypeVisitor(ctx.known_type), symtab(ctx, ctx.IDENTIFIER))
 
     override def visitTaskDeclParam(ctx: TaskDeclParamContext) = {
-      val name = scope(ctx, ctx.IDENTIFIER)
-      val kind = KnownTypeVisitor(ctx.known_type) match {
+      val name = symtab(ctx, ctx.IDENTIFIER)
+      val kind = knownTypeVisitor(ctx.known_type) match {
         case x: ScalarType => x
         case x             => Message.error(ctx, s"Parameter '${name}' must be declared with scalar type"); IntType(false, 1);
       }
-      val expr = ExprVisitor(ctx.expr)
+      val expr = exprVisitor(ctx.expr)
       ParamDeclaration(kind, name, expr)
     }
 
     override def visitTaskDeclVerilog(ctx: TaskDeclVerilogContext) = {
-      val kind = KnownTypeVisitor(ctx.known_type())
+      val kind = knownTypeVisitor(ctx.known_type())
       val vref = VarRefVisitor(ctx.var_ref)
       vref match {
         case DottedName(name :: Nil) => VerilogVarDeclaration(kind, name)
@@ -317,7 +137,7 @@ class CommonContext(root: ParserRuleContext, initialTypedefs: Map[String, Type])
     override def visitTaskDecl(ctx: TaskDeclContext) = visit(ctx.decl)
 
     override def visitDeclNoInit(ctx: DeclNoInitContext) = {
-      val kind = KnownTypeVisitor(ctx.known_type())
+      val kind = knownTypeVisitor(ctx.known_type())
       val vref = VarRefVisitor(ctx.var_ref)
       vref match {
         case DottedName(name :: Nil) => VarDeclaration(kind, name, None)
@@ -336,9 +156,9 @@ class CommonContext(root: ParserRuleContext, initialTypedefs: Map[String, Type])
     }
 
     override def visitDeclInit(ctx: DeclInitContext) = {
-      val kind = KnownTypeVisitor(ctx.known_type())
+      val kind = knownTypeVisitor(ctx.known_type())
       val vref = VarRefVisitor(ctx.var_ref)
-      val init = ExprVisitor(ctx.expr)
+      val init = exprVisitor(ctx.expr)
       vref match {
         case DottedName(name :: Nil) => VarDeclaration(kind, name, Some(init))
         case ArrayLookup(DottedName(name :: Nil), _) => {
@@ -366,7 +186,7 @@ class FsmTaskBuilder(cc: CommonContext) {
     object LValueVisitor extends VScalarVisitor[Expr] {
       override def visitLValue(ctx: LValueContext) = VarRefVisitor(ctx.var_ref)
       override def visitLValueSlice(ctx: LValueSliceContext) =
-        Slice(VarRefVisitor(ctx.var_ref), ExprVisitor(ctx.expr(0)), ctx.op, ExprVisitor(ctx.expr(1)))
+        Slice(VarRefVisitor(ctx.var_ref), exprVisitor(ctx.expr(0)), ctx.op, exprVisitor(ctx.expr(1)))
       override def visitLValueCat(ctx: LValueCatContext) =
         BitCat(visit(ctx.refs))
     }
@@ -396,7 +216,7 @@ class FsmTaskBuilder(cc: CommonContext) {
       }
 
       override def visitIfStmt(ctx: IfStmtContext) = {
-        val cond = ExprVisitor(ctx.expr())
+        val cond = exprVisitor(ctx.expr())
         val thenStmt = visit(ctx.thenStmt)
         val elseStmt = visit(Option(ctx.elseStmt))
 
@@ -422,7 +242,7 @@ class FsmTaskBuilder(cc: CommonContext) {
         object CaseVisitor extends VScalarVisitor[Option[Node]] {
           override val defaultResult = None
           override def visitNormalCase(ctx: NormalCaseContext) = {
-            val args = ExprVisitor(ctx.commaexpr)
+            val args = exprVisitor(ctx.commaexpr)
             StatementVisitor(ctx.statement()) match {
               case s: CtrlStmt => Some(ControlCaseLabel(args, s))
               case s: CombStmt => Some(CombinatorialCaseLabel(args, s))
@@ -430,7 +250,7 @@ class FsmTaskBuilder(cc: CommonContext) {
           }
         }
 
-        val test = ExprVisitor(ctx.expr())
+        val test = exprVisitor(ctx.expr())
 
         val defaultCase = DefaultVisitor(ctx.cases).flatten match {
           case Nil      => None
@@ -487,7 +307,7 @@ class FsmTaskBuilder(cc: CommonContext) {
       }
 
       override def visitWhileStmt(ctx: WhileStmtContext) = {
-        val cond = ExprVisitor(ctx.expr)
+        val cond = exprVisitor(ctx.expr)
         val body = visit(ctx.stmts)
 
         loopWarnings(cond, body, ctx, ctx.stmts.lastOption)
@@ -496,7 +316,7 @@ class FsmTaskBuilder(cc: CommonContext) {
       }
 
       override def visitDoStmt(ctx: DoStmtContext) = {
-        val cond = ExprVisitor(ctx.expr)
+        val cond = exprVisitor(ctx.expr)
         val body = visit(ctx.stmts)
 
         loopWarnings(cond, body, ctx, ctx.stmts.lastOption)
@@ -514,14 +334,14 @@ class FsmTaskBuilder(cc: CommonContext) {
         }
         override def visitDeclInit(ctx: DeclInitContext) = {
           val varDecl = DeclVisitor(ctx).asInstanceOf[VarDeclaration]
-          val initExpr = Assign(VarRefVisitor(ctx.var_ref), ExprVisitor(ctx.expr))
+          val initExpr = Assign(VarRefVisitor(ctx.var_ref), exprVisitor(ctx.expr))
           (Some(varDecl), initExpr)
         }
       }
 
       override def visitForStmt(ctx: ForStmtContext) = {
         val (optDecl, initStmt) = ForInitVisitor(ctx.init)
-        val cond = ExprVisitor(ctx.cond)
+        val cond = exprVisitor(ctx.cond)
         val stepStmt = visit(ctx.step) match {
           case s: CombStmt => s
           case _: CtrlStmt => unreachable
@@ -547,10 +367,10 @@ class FsmTaskBuilder(cc: CommonContext) {
 
       override def visitAssignInc(ctx: AssignIncContext) = Plusplus(LValueVisitor(ctx.leftvalue))
       override def visitAssignDec(ctx: AssignDecContext) = Minusminus(LValueVisitor(ctx.leftvalue))
-      override def visitAssign(ctx: AssignContext) = Assign(LValueVisitor(ctx.leftvalue), ExprVisitor(ctx.expr()))
-      override def visitAssignUpdate(ctx: AssignUpdateContext) = Update(LValueVisitor(ctx.leftvalue), ctx.ASSIGNOP, ExprVisitor(ctx.expr()))
+      override def visitAssign(ctx: AssignContext) = Assign(LValueVisitor(ctx.leftvalue), exprVisitor(ctx.expr()))
+      override def visitAssignUpdate(ctx: AssignUpdateContext) = Update(LValueVisitor(ctx.leftvalue), ctx.ASSIGNOP, exprVisitor(ctx.expr()))
 
-      override def visitExprStmt(ctx: ExprStmtContext) = ExprVisitor(ctx.expr) match {
+      override def visitExprStmt(ctx: ExprStmtContext) = exprVisitor(ctx.expr) match {
         case CallExpr(DottedName(target :: Nil), Nil) => CallStmt(target)
         case CallExpr(_, _)                           => unreachable
         case expr => {
@@ -654,7 +474,7 @@ class NetworkTaskBuilder(cc: CommonContext) {
           val id = ctx.IDENTIFIER(0).text
           val module = ctx.IDENTIFIER(1).text
           val pas = ctx.param_args.param_assign.toList map { pa =>
-            pa.IDENTIFIER.text -> ExprVisitor(pa.expr)
+            pa.IDENTIFIER.text -> exprVisitor(pa.expr)
           }
           Instantiate(id, module, ListMap(pas: _*))
         }

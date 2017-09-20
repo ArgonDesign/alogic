@@ -12,15 +12,15 @@
 // See the LICENSE file for the precise wording of the license.
 ////////////////////////////////////////////////////////////////////////////////
 
-package alogic
+package alogic.ast
 import scala.collection.mutable
-
 import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.RuleContext
-import org.antlr.v4.runtime.tree.RuleNode
-
-import Antlr4Conversions._
+import alogic.Antlr4Conversions._
 import alogic.antlr.VParser._
+import alogic.Loc
+import alogic.Message
+import alogic.VScalarVisitor
 
 // This class constructs the lexical scopes of the provided parse tree.
 // We use standard mutable.Map instances with the 'withDefault' extension
@@ -32,7 +32,7 @@ import alogic.antlr.VParser._
 // Variable instances with a multiplicity greater than 1 are renamed as
 // <name> -> <name>_L<lineno> where <lineno> is the line number where the
 // variable is declared.
-class VScope(root: ParserRuleContext) {
+class Symtab(root: ParserRuleContext, typedefs: scala.collection.Map[String, Type]) {
 
   // A named pair of declared name and the location of the declaration
   private[this] case class Item(name: String, loc: Loc)
@@ -63,7 +63,7 @@ class VScope(root: ParserRuleContext) {
   }
 
   // Insert name into scope of node ctx
-  private[this] def insert(ctx: ParserRuleContext, name: String, renameDuplicates: Boolean = true ): Unit = {
+  private[this] def insert(ctx: ParserRuleContext, name: String, renameDuplicates: Boolean = true): Unit = {
     val scope = find(ctx)
     if (scope contains name) {
       val Some(Item(_, loc)) = scope(name)
