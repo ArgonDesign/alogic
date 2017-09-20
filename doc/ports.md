@@ -1,3 +1,5 @@
+# Ports
+
 ### Communication between entities
 
 Alogic uses the concept of ports to communicate across entity boundaries.
@@ -7,13 +9,13 @@ The simplest ports are analogous to Verilog module ports:
 ```
 fsm foo {
   in u7 p_in_a;
-  out u14 p_out_a;
+  out u14 p_out_b;
 
   ...
 }
 ```
 
-Is roughly equivalent to a Verilog module with the following interface:
+This is roughly equivalent to a Verilog module with the following interface:
 
 ```verilog
 module foo (
@@ -58,15 +60,15 @@ syntax is:
 
 One example where Alogic raises the abstraction level from Verilog is the use
 of ports with standard flow control signaling. A port should be thought of as
-a bundle of signals called **payload** going in a **forward** direction. In the
-case of input ports, the payload signals are being driven outside the entity,
-and are consumed (read) inside the entity that defines them, so 'forward' means
-incoming. With output ports, this is reversed. Output ports are driven by the
-entity that defines them, and are consumed outside the entity, so the 'forward'
-direction on output ports means outgoing. In addition to the payload, the port
-can have further **flow control** signals, which are either driven in the same
-direction as the payload if they are forward signals, or driven the opposite way
-if they are **backward** signals.
+a bundle of signals called the **payload** going in a **forward** direction. In
+the case of input ports, the payload signals are being driven (written0) outside
+the entity, and are consumed (read) inside the entity that defines them, so
+'forward' means incoming. With output ports, this is reversed. Output ports are
+driven by the entity that defines them, and are consumed outside the entity, so
+the 'forward' direction on output ports means outgoing. In addition to the
+payload, the port can have further **flow control** signals, which are either
+driven in the same direction as the payload if they are forward signals, or
+driven the opposite way if they are **backward** signals.
 
 The following flow control specifiers are supported:
 - `sync` results in an additional **valid** signal
@@ -143,7 +145,7 @@ an important distinction between `sync ready` and `sync accept` on who is
 considered the initiator of the data transfer. With `sync ready` ports, the
 producer is in charge of initiating transactions, while with `sync accept`
 ports, it is the consumer who initiates transactions. The producer can hold off
-a transfer by keeping _valid_ low. The consumer must guaranteed that if
+a transfer by keeping _valid_ low. The consumer must guarantee that if
 _accept_ is high, then valid data (indicated by _valid_ high) will be accepted
 at the rising edge of the clock. This distinction between `sync ready` and
 `sync accept` ports might seem subtle at this point, but the following sections
@@ -180,14 +182,15 @@ Or phrasing the same as permissive statements:
    the _accept_ signal.
 
 Important note: There is no requirement for the _ready_ signal to be low when
-the corresponding _valid_ signal is low. I.e.: A combinatorial dependence from
+the corresponding _valid_ signal is low. i.e.: A combinatorial dependence from
 _valid_ to _ready_ is permitted, but not necessary. Similarly, the _valid_
 signal is not required to be low whenever the corresponding _accept_ signal is
 low.
 
 ### Port access
 
-Expressions are able to access data from an input port using `.read()` method:
+Expressions are able to access data from an input port using the `.read()`
+method:
 
 ```
   in sync u4 p_in;
@@ -216,7 +219,7 @@ control signal semantics, by stalling FSMs and other ports as necessary.
 ### Direct port access
 
 It is possible to access input signals directly, by referencing the name of a
-port on its own, but this method does not take notice of flow control signal.
+port on its own, but this method does not take notice of flow control signals.
 It is usually reasonable to use direct port access only for ports without flow
 control.
 
@@ -246,9 +249,9 @@ is a register. The following output storage types are supported
 Without an explicit storage specifier in the port declaration, every output port
 has an associated register that drives the output payload signals. This means
 that there is a 1 cycle delay from inputs to outputs. Backward flow control
-signals are not registered by defaults, and in particular, there can be a
-combinatorial path from an output port _ready_ signals (which are input signals
-in the synthesized Verilog modules) to an input port _ready_ signal (which are
+signals are not registered by default, and in particular, there can be a
+combinatorial path from output port _ready_ signals (which are input signals
+in the synthesized Verilog modules) to input port _ready_ signals (which are
 output signals in the synthesized Verilog modules). The port can otherwise
 sustain 1 transfer per cycle and hence has full throughput.
 
@@ -273,7 +276,7 @@ TODO: Draw output stage
 
 #### Half throughput registered outputs
 
-The storage specifier `bubble` denotes a registered output similarly to the
+The storage specifier `bubble` denotes a registered output similar to the
 default registered storage. With `bubble` output ports, backward flow control
 signals are also registered, and therefore there are no combinatorial paths
 through any of the port interface signals (payload or any flow control signals).
@@ -298,6 +301,10 @@ TODO: Example 1 to 2 dispatcher with `sync accept`
 #### Tight coupling between entities
 
 TODO: Example for `sync ready` / `sync accept wire` between 2 entities
+
+### Summary or port methods
+
+TODO:
 
 <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/wavedrom/1.4.1/skins/default.js" type="text/javascript"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/wavedrom/1.4.1/wavedrom.min.js" type="text/javascript"></script>

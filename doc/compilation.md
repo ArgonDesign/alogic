@@ -1,3 +1,4 @@
+# Compilation model
 
 ### Alogic source files
 
@@ -15,9 +16,9 @@ single [design entity](entities.md) in curly braces:
 
 ### The built-in preprocessor
 
-When the compiler reads a source file, the first thing it does is applying the
-built-in preprocessor to it the source text. This is a purely text based
-operation. The preprocessor uses the syntax of the standard C preprocessor,
+When the compiler reads a source file, first it applies the built-in
+preprocessor to the source text. This is a purely text based transformation.
+The preprocessor uses the syntax of the standard C preprocessor,
 though with a significantly reduced feature set. The main intention is to allow
 sharing of type definitions using include files and to enable minimal
 conditional compilation for debugging, and compile time parametrization through
@@ -90,6 +91,6 @@ Given the medium level of abstraction between Alogic and the corresponding
 Verilog, mapping issues back from the Verilog source locations to the
 corresponding Alogic source should be relatively simple in most cases.
 Translations of various design entities are discussed in their own
-documentations. Where there is ambiguity due to reusing variable names in
+documentation. Where there is ambiguity due to reusing variable names in
 disjoint lexical scopes, the compiler tries to emit sensibly differentiated
 names, for example by appending the source line number to variable instances.

@@ -1,5 +1,6 @@
+# Finite State Machines
 
-### FSM as fundamental building blocks
+### FSMs as fundamental building blocks
 
 Finite State Machines are the fundamental abstraction Alogic uses to describe
 the sequential behaviour of digital logic. Every Alogic entity describing
@@ -34,10 +35,11 @@ fsm add2 {
 Note that functions do not return without an explicit `return` statement. If the
 execution reaches the end of the body, control is transferred to the beginning
 of the function, and conceptually proceeds in an infinite loop. This behaviour
-is distinctly different from common programming languages. The body the example
-FSM above takes 1 cycle to execute, and hence repeats on every clock cycle.
+is distinctly different from common programming languages. The body of the
+example FSM above takes 1 cycle to execute, and hence repeats on every clock
+cycle.
 
-An FSM that depending on the sate of an input port would do 2 different kinds of
+An FSM that depending on the state of an input port would do 2 different kinds of
 processing could follow the pattern:
 
 ```
@@ -60,7 +62,7 @@ fsm one_or_the_other {
   }
 
   void do_false() {
-    // Do soemthin else
+    // Do something else
     ...
     return;
   }
@@ -113,6 +115,8 @@ fsm rec {
       i += 1;
       foo();
     }
+    ...
+    return;
   }
 }
 ```
@@ -139,12 +143,17 @@ fsm static_storage {
   }
 
   void foo() {
-    u8 a = i; // The C equivalent of this would be 'static uint8_t a = i'
+    u8 a = i;
+    // The C equivalent of the declaration above would be a combination of
+    // a static declaration and an assignment statement:
+    //   static uint8_t a;
+    //   a = i;
     if (i < 3) {
       i += 1;
       foo();
     }
     b = a;
+    return;
   }
 }
 ```

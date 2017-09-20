@@ -1,3 +1,4 @@
+# Data types and simple variables
 
 ### About typing
 
@@ -48,7 +49,7 @@ The keyword `bool` can also be used as a synonym for `u1`.
 
 The `void` type can be used where no meaningful value is necessary. It is used
 as the return type of state functions in FSMs, and as the type of ports where
-the flow controls signals carry all required semantics.
+the flow control signals carry all required semantics.
 
 ### typedefs
 
@@ -128,7 +129,7 @@ or equivalently:
 ### Mapping to Verilog types
 
 All Alogic types (except arrays) map to packed Verilog types with descending
-range specifiers. I.e.: Alogic only ever emits `reg [9:0] foo` or similar, and
+range specifiers. i.e.: Alogic only ever emits `reg [9:0] foo` or similar, and
 never `reg [0:9] bar`.
 
 Variables with a structure type are emitted as multiple Verilog variables
@@ -150,7 +151,7 @@ An example of mappings using the definitions from above is as follows:
     <td><code>i5 c;</code></td><td><code>reg signed [4:0] c;</code></td>
   </tr>
   <tr>
-    <td><code>uint(N) d;</code></td><td><code>reg [N-1:0] a;</code></td>
+    <td><code>uint(N) d;</code></td><td><code>reg [N-1:0] d;</code></td>
   </tr>
   <tr>
     <td><code>point_t e;</code></td><td><code>reg [15:0] e_x;<br>

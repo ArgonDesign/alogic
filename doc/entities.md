@@ -1,11 +1,12 @@
+# Design entities
 
-### Design entities
+### Fundamental units
 
 In Verilog the fundamental design unit is a module. In Alogic the analogous
 fundamental unit is an design entity, which corresponds to a Verilog module
 with a particular kind of internal structure. A design entity compiles into
 one or more Verilog modules that form a hierarchy. There are 3 different types
-of design entities in the Verilog language:
+of design entities in the Alogic language:
 
 - [Finite State Machines](fsms.md) (FSMs)
 - [Networks](networks.md)
@@ -52,7 +53,7 @@ entities can contain [port](ports.md), and
 
 ```
 network bar {
-  <port/paremeter/constant decarations>
+  <port/parameter/constant declarations>
 
   <entity specific body>
 }
@@ -65,7 +66,7 @@ defined Verilog module that corresponds to the Verilog implementation of that
 design entity. The Verilog module emitted has the same name as the name of the
 design entity, and is output to a `.v` file with the same base name.
 
-For example `smap.alogic`:
+For example `spam.alogic`:
 ```
 network spam {
   ...

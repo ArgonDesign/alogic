@@ -1,3 +1,4 @@
+# Parameters and constants
 
 ### Entity Parameters
 
@@ -7,7 +8,7 @@ value:
 
 ```
 fsm foo {
-  param u8 PARAM_BYTE = 8h7f;
+  param u8 PARAM_BYTE = 8'h7f;
 }
 ```
 

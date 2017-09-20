@@ -1,3 +1,4 @@
+# Literal values
 
 ### Integer literals
 
@@ -42,9 +43,9 @@ counterparts:
 ### String literals
 
 The language accepts string literals enclosed in double quotes `"`. Alogic
-does not support string types, or interpreting strings as bit vector. String
-literals should only be used as arguments to Verilog system function that
-require a string argument like `$display`:
+does not support string types, or interpreting strings as a bit vector. String
+literals should only be used as arguments to Verilog system functions that
+require a string argument, e.g. `$display`:
 
 ```
 $display("Help!");

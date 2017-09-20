@@ -1,3 +1,4 @@
+# Basic concepts and examples
 
 ### Building blocks
 
@@ -40,7 +41,7 @@ divisible by 8 would proceed to do some further action.
 
 Communication between entities happens through well defined interfaces called
 [ports](ports.md). A port carries some (usually registered) payload signals,
-and optionally some flow control signals with well defined semantic.
+and optionally some flow control signals with well-defined semantics.
 
 A simple example of a module that, on every clock cycle, reads an 8 bit value
 from an input port using a valid-ready handshake and adds a quasi-static value

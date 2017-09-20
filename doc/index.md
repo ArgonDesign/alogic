@@ -10,7 +10,7 @@ concepts in Verilog are provided where appropriate.
 - [Basic concepts an examples](concepts.md)
 - [Compilation model](compilation.md)
 - [Design entities](entities.md)
-- [Data Types and simple variables](types.md)
+- [Data types and simple variables](types.md)
 - [Literal values](literals.md)
 - [Ports](ports.md)
 - [Parameters and constants](params.md)
