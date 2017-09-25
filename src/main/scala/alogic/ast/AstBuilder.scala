@@ -52,7 +52,7 @@ class CommonContext(root: ParserRuleContext, initialTypedefs: Map[String, Type])
     object LookUpName extends VScalarVisitor[DottedName] {
       override def visitDotted_name(ctx: Dotted_nameContext) = {
         val (head :: tail) = ctx.es.toList.map(_.text)
-        DottedName(symtab(ctx, head) :: tail)
+        DottedName(symtab(ctx, head).left.get.id :: tail)
       }
     }
     override def visitVarRef(ctx: VarRefContext) = LookUpName(ctx.dotted_name)
@@ -60,114 +60,20 @@ class CommonContext(root: ParserRuleContext, initialTypedefs: Map[String, Type])
   }
 
   object DeclVisitor extends VScalarVisitor[Declaration] {
-    object PortTypeVisitor extends VScalarVisitor[Type] {
-      override def visitPortTypeKnown(ctx: PortTypeKnownContext) = knownTypeVisitor(ctx)
-      override def visitPortTypeVoid(ctx: PortTypeVoidContext) = VoidType
+    object VarRefId extends VScalarVisitor[String] {
+      override def visitVarRef(ctx: VarRefContext) = ctx.dotted_name.text
+      override def visitVarRefIndex(ctx: VarRefIndexContext) = ctx.dotted_name.text
     }
 
-    object StorageTypeVisitor extends VScalarVisitor[StorageType] {
-      override def visitStorageTypeWire(ctx: StorageTypeWireContext) = StorageTypeWire
-      override def visitStorageTypeBubble(ctx: StorageTypeBubbleContext) = StorageTypeBubble
-      override val defaultResult = StorageTypeReg
-    }
-
-    object FlowControlTypeVisitor extends VScalarVisitor[FlowControlType] {
-      override def visitFlowControlTypeSync(ctx: FlowControlTypeSyncContext) = FlowControlTypeValid
-      override def visitFlowControlTypeSyncReady(ctx: FlowControlTypeSyncReadyContext) = FlowControlTypeReady
-      override def visitFlowControlTypeSyncAccept(ctx: FlowControlTypeSyncAcceptContext) = FlowControlTypeAccept
-      override val defaultResult = FlowControlTypeNone
-    }
-
-    override def visitTaskDeclOut(ctx: TaskDeclOutContext) = {
-      val fctype = FlowControlTypeVisitor(ctx.flow_control_type)
-      val kind = PortTypeVisitor(ctx.port_type)
-      val id = symtab(ctx, ctx.IDENTIFIER)
-      val stype = StorageTypeVisitor(ctx.storage_type)
-      OutDeclaration(fctype, kind, id, stype)
-    }
-
-    override def visitTaskDeclIn(ctx: TaskDeclInContext) = {
-      val fctype = FlowControlTypeVisitor(ctx.flow_control_type)
-      val kind = PortTypeVisitor(ctx.port_type)
-      val id = symtab(ctx, ctx.IDENTIFIER)
-      InDeclaration(fctype, kind, id)
-    }
-
-    override def visitTaskDeclConst(ctx: TaskDeclConstContext) = {
-      val name = symtab(ctx, ctx.IDENTIFIER)
-      val kind = knownTypeVisitor(ctx.known_type) match {
-        case x: ScalarType => x
-        case x             => Message.error(ctx, s"Constant '${name}' must be declared with scalar type"); IntType(false, 1);
-      }
-      ConstDeclaration(kind, name, exprVisitor(ctx.expr))
-    }
-
-    override def visitTaskDeclPipeline(ctx: TaskDeclPipelineContext) =
-      PipelineVarDeclaration(knownTypeVisitor(ctx.known_type), symtab(ctx, ctx.IDENTIFIER))
-
-    override def visitTaskDeclParam(ctx: TaskDeclParamContext) = {
-      val name = symtab(ctx, ctx.IDENTIFIER)
-      val kind = knownTypeVisitor(ctx.known_type) match {
-        case x: ScalarType => x
-        case x             => Message.error(ctx, s"Parameter '${name}' must be declared with scalar type"); IntType(false, 1);
-      }
-      val expr = exprVisitor(ctx.expr)
-      ParamDeclaration(kind, name, expr)
-    }
-
-    override def visitTaskDeclVerilog(ctx: TaskDeclVerilogContext) = {
-      val kind = knownTypeVisitor(ctx.known_type())
-      val vref = VarRefVisitor(ctx.var_ref)
-      vref match {
-        case DottedName(name :: Nil) => VerilogVarDeclaration(kind, name)
-        case ArrayLookup(DottedName(name :: Nil), index) => {
-          kind match {
-            case x: ScalarType => VerilogArrayDeclaration(x, name, index)
-            case s: Struct => {
-              Message.error(ctx, s"Arrays must be declared with scalar type, not struct '${s.name}'")
-              ArrayDeclaration(IntType(false, 1), name, index);
-            }
-            case VoidType => unreachable
-          }
-        }
-        case _ => unreachable
-      }
-    }
-
+    override def visitTaskDeclOut(ctx: TaskDeclOutContext) = symtab(ctx, ctx.IDENTIFIER).left.get
+    override def visitTaskDeclIn(ctx: TaskDeclInContext) = symtab(ctx, ctx.IDENTIFIER).left.get
+    override def visitTaskDeclConst(ctx: TaskDeclConstContext) = symtab(ctx, ctx.IDENTIFIER).left.get
+    override def visitTaskDeclPipeline(ctx: TaskDeclPipelineContext) = symtab(ctx, ctx.IDENTIFIER).left.get
+    override def visitTaskDeclParam(ctx: TaskDeclParamContext) = symtab(ctx, ctx.IDENTIFIER).left.get
+    override def visitTaskDeclVerilog(ctx: TaskDeclVerilogContext) = symtab(ctx, VarRefId(ctx.var_ref)).left.get
     override def visitTaskDecl(ctx: TaskDeclContext) = visit(ctx.decl)
-
-    override def visitDeclNoInit(ctx: DeclNoInitContext) = {
-      val kind = knownTypeVisitor(ctx.known_type())
-      val vref = VarRefVisitor(ctx.var_ref)
-      vref match {
-        case DottedName(name :: Nil) => VarDeclaration(kind, name, None)
-        case ArrayLookup(DottedName(name :: Nil), index) => {
-          kind match {
-            case x: ScalarType => ArrayDeclaration(x, name, index)
-            case s: Struct => {
-              Message.error(ctx, s"Arrays must be declared with scalar types, not struct '${s.name}'")
-              ArrayDeclaration(IntType(false, 1), name, index);
-            }
-            case VoidType => unreachable
-          }
-        }
-        case _ => unreachable
-      }
-    }
-
-    override def visitDeclInit(ctx: DeclInitContext) = {
-      val kind = knownTypeVisitor(ctx.known_type())
-      val vref = VarRefVisitor(ctx.var_ref)
-      val init = exprVisitor(ctx.expr)
-      vref match {
-        case DottedName(name :: Nil) => VarDeclaration(kind, name, Some(init))
-        case ArrayLookup(DottedName(name :: Nil), _) => {
-          Message.error(ctx, s"Cannot use initializer in declaration of array '${name}'")
-          VarDeclaration(kind, name, None)
-        }
-        case _ => unreachable
-      }
-    }
+    override def visitDeclNoInit(ctx: DeclNoInitContext) = symtab(ctx, VarRefId(ctx.var_ref)).left.get
+    override def visitDeclInit(ctx: DeclInitContext) = symtab(ctx, VarRefId(ctx.var_ref)).left.get
   }
 
   object VerilogFunctionVisitor extends VScalarVisitor[VerilogFunction] {
@@ -208,7 +114,7 @@ class FsmTaskBuilder(cc: CommonContext) {
         }
       }
 
-      override def visitDeclStmt(ctx: DeclStmtContext) = DeclVisitor(ctx.decl()) match {
+      override def visitDeclStmt(ctx: DeclStmtContext) = DeclVisitor(ctx.decl) match {
         case s: VarDeclaration => DeclarationStmt(s)
         case Declaration(decltype, id) => {
           Message.error(ctx, "Only variable declarations allowed inside functions"); ErrorStmt

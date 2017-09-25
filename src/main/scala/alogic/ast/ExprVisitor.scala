@@ -29,8 +29,11 @@ class ExprVisitor(symtab: Option[Symtab], typedefs: scala.collection.Map[String,
     override def visitDotted_name(ctx: Dotted_nameContext) = {
       val (head :: tail) = ctx.es.toList.map(_.text)
       symtab match {
-        case Some(st) => DottedName(st(ctx, head) :: tail)
-        case None     => unreachable
+        case Some(st) => st(ctx, head) match {
+          case Left(decl) => DottedName(decl.id :: tail)
+          case Right(id)  => DottedName(id :: tail)
+        }
+        case None => unreachable
       }
     }
   }
