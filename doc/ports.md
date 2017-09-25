@@ -237,7 +237,12 @@ Since `p_flag` has no flow control, the `if` statement in the previous example
 could have been written `if (p_flag.read())`, and would behave the same way,
 however this would not be true if `p_flag` had any other flow control type.
 
-TODO: `.lock()`/`.unlock()`
+### Waiting for transactions without consuming them
+
+The `.wait()` method can be used to wait for a valid transaction on a port. This
+effectively blocks state changes until the _valid_ signal on the corresponding
+port becomes high. When combined with direct port access, this is useful for
+saving area by not copying wide buses into local flops.
 
 ### Output storage
 
