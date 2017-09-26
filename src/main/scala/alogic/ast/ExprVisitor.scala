@@ -27,6 +27,11 @@ class ExprVisitor(symtab: Option[Symtab], typedefs: scala.collection.Map[String,
   // If applied to a commaexpr node, return a list of the constructed expressions
   def apply(ctx: CommaexprContext): List[Expr] = visit(ctx.expr)
 
+  private[this] lazy val st = symtab match {
+    case Some(x) => x
+    case None    => unreachable
+  }
+
   private[this] def const2Num(const: String) = Num(true, None, BigInt(const filter (_ != '_')))
   private[this] def tickn2Num(ctx: ParserRuleContext, tickn: String, width: Option[String]): Num = {
     assert(tickn(0) == '\'')
@@ -69,12 +74,9 @@ class ExprVisitor(symtab: Option[Symtab], typedefs: scala.collection.Map[String,
   override def visitExprConst(ctx: ExprConstContext) = const2Num(ctx.CONSTANT)
   override def visitExprLiteral(ctx: ExprLiteralContext) = Literal(ctx.LITERAL)
 
-  override def visitExprId(ctx: ExprIdContext) = symtab match {
-    case Some(st) => st(ctx, ctx.text) match {
-      case Left(decl) => DottedName(decl.id :: Nil)
-      case Right(id)  => DottedName(id :: Nil)
-    }
-    case None => unreachable
+  override def visitExprId(ctx: ExprIdContext) = st(ctx, ctx.text) match {
+    case Left(decl) => DottedName(decl.id :: Nil)
+    case Right(id)  => DottedName(id :: Nil)
   }
 
   override def visitExprDot(ctx: ExprDotContext) = visit(ctx.ref) match {
@@ -83,18 +85,36 @@ class ExprVisitor(symtab: Option[Symtab], typedefs: scala.collection.Map[String,
   }
 
   override def visitExprIndex(ctx: ExprIndexContext) = {
+    def fail = Message.fatal(ctx, s"Cannot index expression '${ctx.ref.sourceText}'")
+    val ref = visit(ctx.ref)
     val idx = visit(ctx.idx)
-    visit(ctx.ref) match {
-      case x: DottedName              => ArrayLookup(x, idx :: Nil)
-      case ArrayLookup(name, indices) => ArrayLookup(name, indices ::: idx :: Nil)
-      case _                          => Message.fatal(ctx, s"Cannot index expression '${ctx.ref.sourceText}'")
+    // TODO: Could do some checks in here for valid indexing
+    ref match {
+      case x @ DottedName(name :: Nil) => st(ctx, name).left.get match {
+        case (_: DeclArr | _: DeclVerilogArr) => ExprArrIndex(x, idx :: Nil)
+        case _                                => ExprVecIndex(x, idx :: Nil)
+      }
+      case _: DottedName => ExprVecIndex(ref, idx :: Nil)
+      case ExprArrIndex(DottedName(name :: Nil), indices) => st(ctx, name).left.get match {
+        case DeclArr(_, _, dims) => {
+          if (dims.size < indices.size) {
+            ExprArrIndex(DottedName(name :: Nil), indices ::: idx :: Nil)
+          } else {
+            ExprVecIndex(ref, idx :: Nil)
+          }
+        }
+        case _ => fail
+      }
+      //      case x: DottedName              => ArrayLookup(x, idx :: Nil)
+      //      case ArrayLookup(name, indices) => ArrayLookup(name, indices ::: idx :: Nil)
+      case _ => fail
     }
   }
 
   override def visitExprSlice(ctx: ExprSliceContext) = {
     visit(ctx.ref) match {
-      case x @ (_: DottedName | _: ArrayLookup) => Slice(x, visit(ctx.lidx), ctx.op, visit(ctx.ridx))
-      case _                                    => Message.fatal(ctx, s"Cannot slice expression '${ctx.ref.sourceText}'")
+      case x @ (_: DottedName | _: ExprArrIndex) => Slice(x, visit(ctx.lidx), ctx.op, visit(ctx.ridx))
+      case _                                     => Message.fatal(ctx, s"Cannot slice expression '${ctx.ref.sourceText}'")
     }
   }
 

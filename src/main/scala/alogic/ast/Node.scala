@@ -84,7 +84,8 @@ case class BitRep(count: Expr, value: Expr) extends Expr
 case class BitCat(parts: List[Expr]) extends Expr
 case class Slice(ref: Expr, lidx: Expr, op: String, ridx: Expr) extends Expr
 case class DottedName(names: List[String]) extends Expr
-case class ArrayLookup(name: DottedName, index: List[Expr]) extends Expr
+case class ExprArrIndex(name: DottedName, index: List[Expr]) extends Expr
+case class ExprVecIndex(ref: Expr, index: List[Expr]) extends Expr
 case object ErrorExpr extends Expr // Placeholder expression
 
 ///////////////////////////////////////////////////////////////////////////////

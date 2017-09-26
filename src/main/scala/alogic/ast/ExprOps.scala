@@ -46,8 +46,7 @@ trait ExprOps { this: Expr =>
 
   // Test it the expression is universally constant, i.e.: contains no unbound variables
   lazy val isConst: Boolean = isConst(Map.empty[String, Decl])
-  def isConst(symtab: mutable.Map[String, Decl]): Boolean = isConst(symtab.toMap)
-  def isConst(symtab: Map[String, Decl]): Boolean = this match {
+  def isConst(symtab: scala.collection.Map[String, Decl]): Boolean = this match {
     case DottedName(name :: Nil) => symtab get name match {
       case Some(_: DeclParam) => true
       case Some(_: DeclConst) => true
@@ -58,7 +57,8 @@ trait ExprOps { this: Expr =>
     case _: Literal                => true
 
     case _: DottedName             => false
-    case _: ArrayLookup            => false
+    case _: ExprArrIndex           => false
+    case _: ExprVecIndex           => false // TODO: const if CONST/PARAM decl
     case _: CallExpr               => false
     case _: DollarCall             => false // Could handle some defined ones like $clog2
     case _: ReadCall               => false
@@ -121,7 +121,8 @@ trait ExprOps { this: Expr =>
     case x: WaitCall                      => x
     case x: ValidCall                     => x
     case x: DottedName                    => x
-    case x: ArrayLookup                   => x // TODO: simplify
+    case x: ExprArrIndex                  => x // TODO: simplify
+    case x: ExprVecIndex                  => x // TODO: simplify
     case x: Num                           => x
     case x: Literal                       => x
     case PipelineRead                     => PipelineRead
@@ -129,7 +130,7 @@ trait ExprOps { this: Expr =>
     case ErrorExpr                        => ErrorExpr
   }
 
-  private[this] def widthOfName(symtab: Map[String, Decl], tree: DottedName): Option[Expr] = {
+  private[this] def widthOfName(symtab: scala.collection.Map[String, Decl], tree: DottedName): Option[Expr] = {
     val kind = {
       def lookUpField(names: List[String], kind: Type): Type = {
         val n :: ns = names
@@ -160,11 +161,11 @@ trait ExprOps { this: Expr =>
   // Compute a new expression representing the width of this expression.
   // Return None if it cannot be determined.
   lazy val widthExpr: Option[Expr] = widthExpr(Map.empty[String, Decl])
-  def widthExpr(symtab: mutable.Map[String, Decl]): Option[Expr] = widthExpr(symtab.toMap)
-  def widthExpr(symtab: Map[String, Decl]): Option[Expr] = {
+  def widthExpr(symtab: scala.collection.Map[String, Decl]): Option[Expr] = {
     this match {
       case name: DottedName          => widthOfName(symtab, name)
-      case ArrayLookup(name, _)      => widthOfName(symtab, name) // TODO: handle IntVType properly
+      case ExprArrIndex(name, _)     => widthOfName(symtab, name)
+      case _: ExprVecIndex           => ??? // TODO: handle IntVType properly
       case ReadCall(name)            => widthOfName(symtab, name)
       case Num(_, Some(width), _)    => Some(Expr(width))
       case Num(_, None, _)           => None
@@ -204,15 +205,15 @@ trait ExprOps { this: Expr =>
   // Compute a new expression representing the MSB of this expression.
   // Return None if it cannot be determined.
   def msbExpr: Option[Expr] = msbExpr(Map.empty[String, Decl])
-  def msbExpr(symtab: mutable.Map[String, Decl]): Option[Expr] = msbExpr(symtab.toMap)
-  def msbExpr(symtab: Map[String, Decl]): Option[Expr] = {
+  def msbExpr(symtab: scala.collection.Map[String, Decl]): Option[Expr] = {
     this match {
       case name: DottedName => widthOfName(symtab, name) map { width =>
         Slice(name, width - 1, "+:", Expr(1))
       }
-      case vref @ ArrayLookup(name, _) => widthOfName(symtab, name) map { width =>
+      case vref @ ExprArrIndex(name, _) => widthOfName(symtab, name) map { width =>
         Slice(vref, width - 1, "+:", Expr(1))
-      } // TODO: handle IntVType properly
+      }
+      case _: ExprVecIndex => ??? // TODO: handle IntVType properly
       case ReadCall(name) => widthOfName(symtab, name) map { width =>
         Slice(name, width - 1, "+:", Expr(1))
       }
@@ -244,30 +245,31 @@ trait ExprOps { this: Expr =>
   }
 
   def hasSideEffect: Boolean = this match {
-    case _: CallExpr             => true
-    case _: DollarCall           => true
-    case _: ReadCall             => true
-    case _: WriteCall            => true
-    case PipelineRead            => true
-    case PipelineWrite           => true
-    case _: WaitCall             => true
-    case ErrorExpr               => true
+    case _: CallExpr                => true
+    case _: DollarCall              => true
+    case _: ReadCall                => true
+    case _: WriteCall               => true
+    case PipelineRead               => true
+    case PipelineWrite              => true
+    case _: WaitCall                => true
+    case ErrorExpr                  => true
 
-    case _: DottedName           => false
-    case _: Num                  => false
-    case _: ValidCall            => false
-    case _: Literal              => false
+    case _: DottedName              => false
+    case _: Num                     => false
+    case _: ValidCall               => false
+    case _: Literal                 => false
 
-    case ArrayLookup(_, indices) => indices exists { _.hasSideEffect }
-    case Zxt(_, e)               => e.hasSideEffect
-    case Sxt(_, e)               => e.hasSideEffect
-    case BinaryOp(l, _, r)       => l.hasSideEffect || r.hasSideEffect
-    case UnaryOp(_, e)           => e.hasSideEffect
-    case Bracket(e)              => e.hasSideEffect
-    case TernaryOp(c, t, f)      => c.hasSideEffect || t.hasSideEffect || f.hasSideEffect
-    case BitRep(_, e)            => e.hasSideEffect
-    case BitCat(terms)           => terms exists { _.hasSideEffect }
-    case Slice(_, l, _, r)       => l.hasSideEffect || r.hasSideEffect
+    case ExprArrIndex(_, indices)   => indices exists { _.hasSideEffect }
+    case ExprVecIndex(ref, indices) => ref.hasSideEffect || (indices exists { _.hasSideEffect })
+    case Zxt(_, e)                  => e.hasSideEffect
+    case Sxt(_, e)                  => e.hasSideEffect
+    case BinaryOp(l, _, r)          => l.hasSideEffect || r.hasSideEffect
+    case UnaryOp(_, e)              => e.hasSideEffect
+    case Bracket(e)                 => e.hasSideEffect
+    case TernaryOp(c, t, f)         => c.hasSideEffect || t.hasSideEffect || f.hasSideEffect
+    case BitRep(_, e)               => e.hasSideEffect
+    case BitCat(terms)              => terms exists { _.hasSideEffect }
+    case Slice(_, l, _, r)          => l.hasSideEffect || r.hasSideEffect
   }
 
   def toVerilog: String = this match {
@@ -294,9 +296,36 @@ trait ExprOps { this: Expr =>
     case _: Slice                       => ???
     case DottedName(name :: Nil)        => name
     case x: DottedName                  => Message.ice(s"Cannot generate verilog for '$x'")
-    case _: ArrayLookup                 => ???
+    case _: ExprArrIndex                => ???
+    case _: ExprVecIndex                => ???
     case _: Literal                     => ???
     case ErrorExpr                      => "/*Error expression*/"
+  }
+
+  def kind(symtab: scala.collection.Map[String, Decl]): Option[Type] = this match {
+    case _: Num          => ???
+    case _: CallExpr     => ???
+    case _: Zxt          => ???
+    case _: Sxt          => ???
+    case _: DollarCall   => ???
+    case _: ReadCall     => ???
+    case PipelineRead    => ???
+    case PipelineWrite   => ???
+    case _: WaitCall     => ???
+    case _: ValidCall    => ???
+    case _: WriteCall    => ???
+    case _: BinaryOp     => ???
+    case _: UnaryOp      => ???
+    case _: Bracket      => ???
+    case _: TernaryOp    => ???
+    case _: BitRep       => ???
+    case _: BitCat       => ???
+    case _: Slice        => ???
+    case _: DottedName   => ???
+    case _: ExprArrIndex => ???
+    case _: ExprVecIndex => ???
+    case _: Literal      => ???
+    case ErrorExpr       => ???
   }
 }
 

@@ -23,9 +23,9 @@ import alogic.StrTree
 
 object AstOps {
   def ExtractName(tree: Node): String = tree match {
-    case DottedName(ns)    => ns.head
-    case ArrayLookup(a, _) => ExtractName(a)
-    case _                 => "Unknown"
+    case DottedName(ns)     => ns.head
+    case ExprArrIndex(a, _) => ExtractName(a)
+    case _                  => "Unknown"
   }
 
   // Does this sync type contain a valid line?

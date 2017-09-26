@@ -677,9 +677,13 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
   // Construct a string for an expression
   def MakeExpr(tree: Expr): StrTree = {
     tree match {
-      case ArrayLookup(name, index) => {
+      case ExprArrIndex(name, index) => {
         val indices = index map MakeExpr mkString ("[", "][", "]")
         StrList(List(MakeExpr(name), Str(indices)))
+      }
+      case ExprVecIndex(ref, index) => {
+        val indices = index map MakeExpr mkString ("[", "][", "]")
+        StrList(List(MakeExpr(ref), Str(indices)))
       }
       case Slice(ref, l, op, r) => StrList(List(MakeExpr(ref), "[", MakeExpr(l), op, MakeExpr(r), "]"))
       case ValidCall(DottedName(names)) => id2decl(names.head) match {
