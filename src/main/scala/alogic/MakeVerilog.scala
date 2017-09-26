@@ -830,7 +830,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     }
 
     tree match {
-      case Assign(ArrayLookup(DottedName(n :: _), index :: Nil), rhs) if (Arrays contains n) => AddStall(index, rhs) {
+      case Assign(LValArrayLookup(LValName(n :: _), index :: Nil), rhs) if (Arrays contains n) => AddStall(index, rhs) {
         Str(s"""|begin
                 |${i + i0}${n}_wr = 1'b1;
                 |${i + i0}${n}_wraddr = ${MakeExpr(index)};
@@ -838,7 +838,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
                 |${i}end""".stripMargin)
       }
       case Assign(lhs, rhs) => AddStall(lhs, rhs) {
-        Str(s"${MakeExpr(lhs)} = ${MakeExpr(rhs)};")
+        Str(s"${MakeExpr(lhs.toExpr)} = ${MakeExpr(rhs)};")
       }
 
       case CombinatorialBlock(cmds) => {
@@ -912,8 +912,8 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         Str(s"${MakeExpr(name)} = ${MakeExpr(arg)};")
       }
 
-      case DeclarationStmt(VarDeclaration(decltype, id, Some(rhs))) => MakeStmt(indent)(Assign(DottedName(id :: Nil), rhs))
-      case DeclarationStmt(VarDeclaration(decltype, id, None)) => MakeStmt(indent)(Assign(DottedName(id :: Nil), Num(false, None, 0))) // TODO: Why is this needed ?
+      case DeclarationStmt(VarDeclaration(decltype, id, Some(rhs))) => MakeStmt(indent)(Assign(LValName(id :: Nil), rhs))
+      case DeclarationStmt(VarDeclaration(decltype, id, None)) => MakeStmt(indent)(Assign(LValName(id :: Nil), Num(false, None, 0))) // TODO: Why is this needed ?
 
       case ExprStmt(DollarCall(name, args)) => StrList(List(name, "(", StrList(args.map(MakeExpr), ","), ");"))
       case AlogicComment(s) => s"// $s\n"
@@ -1041,7 +1041,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         Some(StrList(Str(i0 * indent) :: Str("begin\n") :: StrList(s2) :: Str(i0 * indent) :: Str("end\n") :: Nil))
     }
 
-    case DeclarationStmt(VarDeclaration(decltype, id, Some(rhs))) => AcceptStmt(indent, Assign(DottedName(id :: Nil), rhs))
+    case DeclarationStmt(VarDeclaration(decltype, id, Some(rhs))) => AcceptStmt(indent, Assign(LValName(id :: Nil), rhs))
     case StateBlock(state, cmds) => {
       // Clear sets used for tracking
       syncPortsFound.clear()

@@ -55,6 +55,15 @@ object MakeStages {
           }
           false
         }
+        case LValName(names) => {
+          val n = names.head
+          if (pipeVarSet contains n) {
+            lastUse(n) = sub
+            if (!firstUse.contains(n))
+              firstUse(n) = sub
+          }
+          false
+        }
         case _ => true
       }
       fns.map(_ visit v)
@@ -85,17 +94,18 @@ object MakeStages {
       activeSet --= mod2lastvars.getOrElse(sub, Nil)
       val outputs = activeSet.toList // Pipeline variables we need as outputs
 
-      def MakeVar(n: String) = DottedName(n :: Nil)
+      def MakeLVal(n: String) = LValName(n :: Nil)
+      def MakeExpr(n: String) = DottedName(n :: Nil)
 
       // Adjust calls to read and write
       var usesRead = false
       var usesWrite = false
       val inName = "p_in"
       val outName = "p_out"
-      val inPort = MakeVar(inName)
-      val outPort = MakeVar(outName)
-      val readCmd = Assign(BitCat(inputs map MakeVar), ReadCall(inPort))
-      val writeCmd = WriteCall(outPort, BitCat(outputs map MakeVar) :: Nil)
+      val inPort = MakeExpr(inName)
+      val outPort = MakeExpr(outName)
+      val readCmd = Assign(LValCat(inputs map MakeLVal), ReadCall(inPort))
+      val writeCmd = WriteCall(outPort, BitCat(outputs map MakeExpr) :: Nil)
       val usedPorts = mutable.Set[String]()
       def useport(name: DottedName) {
         usedPorts += name.names.head
@@ -109,7 +119,8 @@ object MakeStages {
           usesWrite = true;
           writeCmd
         }
-        case x: DottedName => useport(x); x
+        case x: DottedName       => { useport(x); x }
+        case x @ LValName(names) => { useport(DottedName(names)); x }
       }
 
       val fencefn2 = fencefn.map(_ rewrite r)

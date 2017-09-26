@@ -90,10 +90,21 @@ trait NodePrettyPrintOps { this: Node =>
       v(expr)
     }
 
+    def visitLVal(lval: LVal): String = {
+      def v(lval: LVal): String = lval match {
+        case LValName(names)              => names mkString "."
+        case LValArrayLookup(name, index) => s"${v(name)}${index map { _.toSource } mkString ("[", "][", "]")}"
+        case LValSlice(ref, l, op, r)     => s"${v(ref)}[${l.toSource}$op${r.toSource}]"
+        case LValCat(parts)               => s"{${parts map v mkString ", "}}"
+      }
+      v(lval)
+    }
+
     def v(indent: Int)(node: Node): String = {
       val i = "  " * indent
       node match {
         case expr: Expr => visitExpr(expr)
+        case lval: LVal => visitLVal(lval)
 
         case Instantiate(id, module, args) => {
           val pas = for ((lhs, rhs) <- args.toList) yield { s"${lhs} = ${v(indent)(rhs)}" }

@@ -161,6 +161,9 @@ task_content
   | verilog_function 
   ;
 
+unary_op : '+' | '-' | '!' | '~' | '&' | '~&' | '|' | '~|' | '^' | '~^' ;
+
+// All expressions
 expr
   : '(' expr ')'                                                # ExprBracket
   | ref=expr '(' commaexpr ')'                                  # ExprCall
@@ -196,7 +199,14 @@ expr
   | LITERAL                                                     # ExprLiteral
   ;
 
-unary_op : '+' | '-' | '!' | '~' | '&' | '~&' | '|' | '~|' | '^' | '~^' ;
+// Left value expressions
+lval
+  : ref=lval '[' idx=expr ']'                                   # LValIndex
+  | ref=lval '[' lidx=expr op=(':' | '-:' | '+:') ridx=expr ']' # LValSlice
+  | ref=lval '.' IDENTIFIER                                     # LValDot
+  | IDENTIFIER                                                  # LValId
+  | '{' lval (',' lval)+ '}'                                    # LValCat
+  ;
 
 var_ref
   : dotted_name ('[' es+=expr ']')+   # VarRefIndex
@@ -256,15 +266,9 @@ for_init
   | decl_init             #ForInitDecl
   ;
 
-leftvalue
-  : var_ref                                             # LValue
-  | var_ref '[' expr op=(':' | '-:' | '+:') expr ']'    # LValueSlice
-  | '{' refs+=leftvalue (',' refs+=leftvalue)+ '}'      # LValueCat
-  ;
-
 assignment_statement
-  : leftvalue '++'           # AssignInc
-  | leftvalue '--'           # AssignDec
-  | leftvalue '=' expr       # Assign
-  | leftvalue ASSIGNOP expr  # AssignUpdate
+  : lval '++'           # AssignInc
+  | lval '--'           # AssignDec
+  | lval '=' expr       # Assign
+  | lval ASSIGNOP expr  # AssignUpdate
   ;

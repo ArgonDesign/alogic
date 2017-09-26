@@ -44,6 +44,8 @@ class CommonContext(root: ParserRuleContext, initialTypedefs: Map[String, Type])
 
   val exprVisitor = new ExprVisitor(Some(symtab), typedefs)
 
+  val lvalVisitor = new LValVisitor(Some(symtab), typedefs)
+
   val knownTypeVisitor = new KnownTypeVisitor(Some(symtab), typedefs)
 
   // Construct tree for variable reference, looking up the variable name in the current scope
@@ -88,14 +90,6 @@ class FsmTaskBuilder(cc: CommonContext) {
   import cc._
 
   def apply(tree: TaskFSMContext): FsmTask = {
-
-    object LValueVisitor extends VScalarVisitor[Expr] {
-      override def visitLValue(ctx: LValueContext) = VarRefVisitor(ctx.var_ref)
-      override def visitLValueSlice(ctx: LValueSliceContext) =
-        Slice(VarRefVisitor(ctx.var_ref), exprVisitor(ctx.expr(0)), ctx.op, exprVisitor(ctx.expr(1)))
-      override def visitLValueCat(ctx: LValueCatContext) =
-        BitCat(visit(ctx.refs))
-    }
 
     object StatementVisitor extends VScalarVisitor[Stmt] {
       override def visitBlockStmt(ctx: BlockStmtContext) = {
@@ -240,7 +234,7 @@ class FsmTaskBuilder(cc: CommonContext) {
         }
         override def visitDeclInit(ctx: DeclInitContext) = {
           val varDecl = DeclVisitor(ctx).asInstanceOf[VarDeclaration]
-          val initExpr = Assign(VarRefVisitor(ctx.var_ref), exprVisitor(ctx.expr))
+          val initExpr = Assign(lvalVisitor(ctx.var_ref), exprVisitor(ctx.expr))
           (Some(varDecl), initExpr)
         }
       }
@@ -271,10 +265,10 @@ class FsmTaskBuilder(cc: CommonContext) {
 
       override def visitAssignmentStmt(ctx: AssignmentStmtContext) = visit(ctx.assignment_statement)
 
-      override def visitAssignInc(ctx: AssignIncContext) = Plusplus(LValueVisitor(ctx.leftvalue))
-      override def visitAssignDec(ctx: AssignDecContext) = Minusminus(LValueVisitor(ctx.leftvalue))
-      override def visitAssign(ctx: AssignContext) = Assign(LValueVisitor(ctx.leftvalue), exprVisitor(ctx.expr()))
-      override def visitAssignUpdate(ctx: AssignUpdateContext) = Update(LValueVisitor(ctx.leftvalue), ctx.ASSIGNOP, exprVisitor(ctx.expr()))
+      override def visitAssignInc(ctx: AssignIncContext) = Plusplus(lvalVisitor(ctx.lval))
+      override def visitAssignDec(ctx: AssignDecContext) = Minusminus(lvalVisitor(ctx.lval))
+      override def visitAssign(ctx: AssignContext) = Assign(lvalVisitor(ctx.lval), exprVisitor(ctx.expr()))
+      override def visitAssignUpdate(ctx: AssignUpdateContext) = Update(lvalVisitor(ctx.lval), ctx.ASSIGNOP, exprVisitor(ctx.expr()))
 
       override def visitExprStmt(ctx: ExprStmtContext) = exprVisitor(ctx.expr) match {
         case CallExpr(DottedName(target :: Nil), Nil) => CallStmt(target)

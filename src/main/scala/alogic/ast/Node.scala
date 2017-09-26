@@ -92,6 +92,15 @@ case class DottedName(names: List[String]) extends VarRef
 case class ArrayLookup(name: DottedName, index: List[Expr]) extends VarRef
 
 ///////////////////////////////////////////////////////////////////////////////
+// Left Value expressoins
+///////////////////////////////////////////////////////////////////////////////
+sealed trait LVal extends Node with LValOps
+case class LValName(names: List[String]) extends LVal
+case class LValArrayLookup(name: LValName, index: List[Expr]) extends LVal
+case class LValSlice(ref: LVal, lidx: Expr, op: String, ridx: Expr) extends LVal
+case class LValCat(parts: List[LVal]) extends LVal
+
+///////////////////////////////////////////////////////////////////////////////
 // Used where an expression is required but an error has previously occurred
 ///////////////////////////////////////////////////////////////////////////////
 case object ErrorExpr extends VarRef
@@ -110,10 +119,10 @@ sealed trait Stmt extends Node
 // Combinatorial statement nodes
 ///////////////////////////////////////////////////////////////////////////////
 sealed trait CombStmt extends Stmt
-case class Assign(lhs: Expr, rhs: Expr) extends CombStmt
-case class Update(lhs: Expr, op: String, rhs: Expr) extends CombStmt
-case class Plusplus(lhs: Expr) extends CombStmt
-case class Minusminus(lhs: Expr) extends CombStmt
+case class Assign(lhs: LVal, rhs: Expr) extends CombStmt
+case class Update(lhs: LVal, op: String, rhs: Expr) extends CombStmt
+case class Plusplus(lhs: LVal) extends CombStmt
+case class Minusminus(lhs: LVal) extends CombStmt
 case class ExprStmt(expr: Expr) extends CombStmt
 case class DeclarationStmt(decl: VarDeclaration) extends CombStmt
 case class AlogicComment(str: String) extends CombStmt

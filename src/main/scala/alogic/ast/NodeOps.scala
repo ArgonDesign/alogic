@@ -87,6 +87,10 @@ trait NodeOps extends NodePrettyPrintOps { this: Node =>
           case CallState(_, _)                                  =>
           case ReturnState                                      =>
           case ErrorStmt                                        =>
+          case LValName(names)                                  =>
+          case LValArrayLookup(name, index)                     => { v(name); index foreach v }
+          case LValSlice(ref, l, op, r)                         => { v(ref); v(l); v(r) }
+          case LValCat(parts)                                   => parts foreach v
         }
     }
 
@@ -114,10 +118,10 @@ trait NodeOps extends NodePrettyPrintOps { this: Node =>
             NetworkTask(name, decls, inst map r[Instantiate], conn map r[Connect], vfns map r[VerilogFunction], fsms map r[FsmTask])
           }
           case x: VerilogTask                        => x
-          case Assign(lhs, rhs)                      => Assign(r[Expr](lhs), r[Expr](rhs))
-          case Update(lhs, op, rhs)                  => Update(r[Expr](lhs), op, r[Expr](rhs))
-          case Plusplus(lhs)                         => Plusplus(r[Expr](lhs))
-          case Minusminus(lhs)                       => Minusminus(r[Expr](lhs))
+          case Assign(lhs, rhs)                      => Assign(r[LVal](lhs), r[Expr](rhs))
+          case Update(lhs, op, rhs)                  => Update(r[LVal](lhs), op, r[Expr](rhs))
+          case Plusplus(lhs)                         => Plusplus(r[LVal](lhs))
+          case Minusminus(lhs)                       => Minusminus(r[LVal](lhs))
           case CombinatorialBlock(cmds)              => CombinatorialBlock(cmds map r[CombStmt])
           case StateBlock(state, cmds)               => StateBlock(state, cmds map r[CombStmt])
           case DeclarationStmt(decl: VarDeclaration) => DeclarationStmt(decl.copy(init = (decl.init map r[Expr])))
@@ -168,6 +172,12 @@ trait NodeOps extends NodePrettyPrintOps { this: Node =>
           case x: Literal                            => x
           case x: Num                                => x
           case ErrorExpr                             => ErrorExpr
+
+          // LVals
+          case x: LValName                           => x
+          case LValArrayLookup(name, index)          => LValArrayLookup(r[LValName](name), index map r[Expr])
+          case LValSlice(ref, lidx, op, ridx)        => LValSlice(r[LVal](ref), r[Expr](lidx), op, r[Expr](ridx))
+          case LValCat(parts)                        => LValCat(parts map r[LVal])
         }
       }
       v.asInstanceOf[E]
@@ -245,6 +255,11 @@ trait NodeOps extends NodePrettyPrintOps { this: Node =>
         case ReturnState                                  => Nil
         case ErrorExpr                                    => Nil
         case ErrorStmt                                    => Nil
+
+        case _: LValName                                  => Nil
+        case LValArrayLookup(name, index)                 => c(name) ::: (index flatMap c)
+        case LValSlice(ref, l, _, r)                      => c(ref) ::: c(l) ::: c(r)
+        case LValCat(parts)                               => parts flatMap c
       }
 
       headOption match {
