@@ -16,11 +16,11 @@ package alogic.ast
 
 trait TaskOps { this: Task =>
   val name: String
-  val decls: List[Declaration]
+  val decls: List[Decl]
 
   lazy val defaultParams: Map[String, Expr] = {
     decls collect {
-      case ParamDeclaration(_, id, expr) => id -> expr
+      case DeclParam(_, id, expr) => id -> expr
     }
   }.toMap
 }

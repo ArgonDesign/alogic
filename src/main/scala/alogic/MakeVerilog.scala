@@ -30,7 +30,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
 
   val i0 = "  "; // Single indentation depth (2 spaces)
 
-  val id2decl = mutable.Map[String, Declaration]()
+  val id2decl = mutable.Map[String, Decl]()
 
   val nxMap = mutable.Map[String, String]() // Returns string to use when this identifier is accessed
   val regMap = mutable.Map[String, String]() // Map from name in alogic to name in Verilog
@@ -92,10 +92,10 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     // Collect all the declarations
     decls foreach { x => id2decl(x.id) = x }
     task visit {
-      // We remove the initializer from declaration statements
+      // We remove the initializer from Decl statements
       // These will be reset inline where they are declared.
-      case DeclarationStmt(VarDeclaration(decltype, id, _)) => { id2decl(id) = VarDeclaration(decltype, id, None); false }
-      case _ => true
+      case DeclarationStmt(DeclVar(kind, id, _)) => { id2decl(id) = DeclVar(kind, id, None); false }
+      case _                                     => true
     }
 
     // Emit header and combinatorial code
@@ -173,16 +173,16 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     }
 
     id2decl.values foreach {
-      case InDeclaration(_, decltype, name) => {
-        SetNxType(nxMap, decltype, name, "")
-        SetNxType(regMap, decltype, name, "")
+      case DeclIn(kind, name, _) => {
+        SetNxType(nxMap, kind, name, "")
+        SetNxType(regMap, kind, name, "")
       }
-      case OutDeclaration(fctype, decltype, name, stype) => {
+      case DeclOut(kind, name, fctype, stype) => {
         stype match {
-          case StorageTypeWire => SetNxType(nxMap, decltype, name, "")
-          case _               => SetNxType(nxMap, decltype, name, "_nxt")
+          case StorageTypeWire => SetNxType(nxMap, kind, name, "")
+          case _               => SetNxType(nxMap, kind, name, "_nxt")
         }
-        SetNxType(regMap, decltype, name, "")
+        SetNxType(regMap, kind, name, "")
         if (HasValid(fctype)) {
           SetNxType(regMap, IntType(false, 1), valid(name), "")
           if (stype == StorageTypeWire)
@@ -191,29 +191,29 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
             SetNxType(nxMap, IntType(false, 1), valid(name), "_nxt")
         }
       }
-      case ParamDeclaration(decltype, name, init) => {
-        SetNxType(nxMap, decltype, name, "")
-        SetNxType(regMap, decltype, name, "")
+      case DeclParam(kind, name, init) => {
+        SetNxType(nxMap, kind, name, "")
+        SetNxType(regMap, kind, name, "")
       }
-      case ConstDeclaration(decltype, name, init) => {
-        SetNxType(nxMap, decltype, name, "")
-        SetNxType(regMap, decltype, name, "")
+      case DeclConst(kind, name, init) => {
+        SetNxType(nxMap, kind, name, "")
+        SetNxType(regMap, kind, name, "")
       }
-      case VarDeclaration(decltype, name, _) => {
-        SetNxType(nxMap, decltype, name, "_nxt")
-        SetNxType(regMap, decltype, name, "")
+      case DeclVar(kind, name, _) => {
+        SetNxType(nxMap, kind, name, "_nxt")
+        SetNxType(regMap, kind, name, "")
       }
-      case ArrayDeclaration(decltype, name, _) => {
-        SetNxType(nxMap, decltype, name, "")
-        SetNxType(regMap, decltype, name, "")
+      case DeclArr(kind, name, _) => {
+        SetNxType(nxMap, kind, name, "")
+        SetNxType(regMap, kind, name, "")
       }
-      case VerilogVarDeclaration(decltype, name) => {
-        SetNxType(nxMap, decltype, name, "")
-        SetNxType(regMap, decltype, name, "")
+      case DeclVerilogVar(kind, name) => {
+        SetNxType(nxMap, kind, name, "")
+        SetNxType(regMap, kind, name, "")
       }
-      case VerilogArrayDeclaration(decltype, name, _) => {
-        SetNxType(nxMap, decltype, name, "")
-        SetNxType(regMap, decltype, name, "")
+      case DeclVerilogArr(kind, name, _) => {
+        SetNxType(nxMap, kind, name, "")
+        SetNxType(regMap, kind, name, "")
       }
       case x => Message.ice(s"Don't know how to handle ${x}") // TODO: turn this into ice
     }
@@ -226,7 +226,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     pw.print(s"module $modname ")
 
     val paramDecls = id2decl.values collect {
-      case x: ParamDeclaration => x
+      case x: DeclParam => x
     }
 
     if (paramDecls.isEmpty) {
@@ -234,8 +234,8 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     } else {
       pw.println(s"#(")
       // Emit parameter declarations
-      val s = for (ParamDeclaration(decltype, id, init) <- paramDecls) yield {
-        s"${i0}parameter " + Signal(id, decltype).declString + "=" + MakeExpr(init)
+      val s = for (DeclParam(kind, id, init) <- paramDecls) yield {
+        s"${i0}parameter " + Signal(id, kind).declString + "=" + MakeExpr(init)
       }
       pw.println(s mkString ",\n")
       pw.println(s") (")
@@ -243,7 +243,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
 
     // Emit port declarations
     id2decl.values foreach {
-      case OutDeclaration(fctype, decltype, name, stype) => {
+      case DeclOut(kind, name, fctype, stype) => {
         if (HasValid(fctype)) {
           pw.println("  output " + outtype + valid(name) + ",")
           if (stype == StorageTypeWire) {
@@ -263,7 +263,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         if (HasAccept(fctype)) {
           pw.println("  input wire " + accept(name) + ",")
         }
-        VisitType(decltype, name)(writeOut)
+        VisitType(kind, name)(writeOut)
         (fctype, stype) match {
           case (FlowControlTypeValid, StorageTypeReg) => clock_clears push Str("      " + valid(name) + " <= 1'b0;\n")
           case _                                      =>
@@ -292,20 +292,20 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         }
 
       }
-      case InDeclaration(synctype, decltype, name) => {
-        if (HasValid(synctype))
+      case DeclIn(kind, name, fctype) => {
+        if (HasValid(fctype))
           pw.println("  input wire " + valid(name) + ",")
-        if (HasReady(synctype)) {
+        if (HasReady(fctype)) {
           pw.println("  output " + outtype + ready(name) + ",")
           clears push Str("      " + ready(name) + " = 1'b0;\n")
           defaults push Str("    " + ready(name) + " = 1'b0;\n")
         }
-        if (HasAccept(synctype)) {
+        if (HasAccept(fctype)) {
           generateAccept = true;
           pw.println("  output " + outtype + accept(name) + ",")
           acceptdefaults push Str("    " + accept(name) + " = 1'b0;\n")
         }
-        VisitType(decltype, name)(writeIn)
+        VisitType(kind, name)(writeIn)
 
       }
       case _ =>
@@ -318,33 +318,33 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
 
     // Emit localparam (const) declaratoins
     id2decl.values foreach {
-      case ConstDeclaration(decltype, id, init) => {
-        pw.println(s"${i0}localparam " + Signal(id, decltype).declString + "=" + MakeExpr(init) + ";")
+      case DeclConst(kind, id, init) => {
+        pw.println(s"${i0}localparam " + Signal(id, kind).declString + "=" + MakeExpr(init) + ";")
       }
       case _ =>
     }
 
     // Emit remaining variable declarations
     id2decl.values foreach {
-      case OutDeclaration(fctype, decltype, name, stype) => {
+      case DeclOut(kind, name, fctype, stype) => {
         if (declareExtraOut && stype != StorageTypeWire) {
-          VisitType(decltype, name)(writeOutNxt) // declare nxt values for outputs
+          VisitType(kind, name)(writeOutNxt) // declare nxt values for outputs
           if (HasValid(fctype)) {
             pw.println("  reg " + nx(valid(name)) + ";")
           }
         }
       }
-      case ArrayDeclaration(decltype, name, index :: Nil) => {
+      case DeclArr(kind, name, index :: Nil) => {
         // TODO maybe figure out the number of bits in the type and declare as this many?
         // TODO maybe detect more than one write to the same array in the same cycle?
         Arrays.add(name)
         val depth = index.eval.toInt // TODO detect if this fails and fail gracefully
         val log2depth = ceillog2(depth) max 1 // TODO: handle degenerate case of depth == 1 better
-        //        val t = typeString(decltype)
+        //        val t = typeString(kind)
         pw.println(s"  reg ${name}_wr;")
-        pw.println(s"  reg ${Signal(name + "_wrdata", decltype).declString};")
+        pw.println(s"  reg ${Signal(name + "_wrdata", kind).declString};")
         pw.println(s"  reg [${log2depth - 1}:0] ${name}_wraddr;")
-        pw.println(s"  reg ${Signal(name, decltype).declString} [${depth - 1}:0];")
+        pw.println(s"  reg ${Signal(name, kind).declString} [${depth - 1}:0];")
         defaults push StrList(
           Str(s"    ${name}_wr = 1'b0;\n") ::
             Str(s"    ${name}_wraddr = 'b0;\n") ::
@@ -355,11 +355,11 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
                                          |${i0 * 3}end
                                          |""".stripMargin)
       }
-      case VarDeclaration(decltype, name, None) => {
-        VisitType(decltype, name)(writeVarWithReset)
+      case DeclVar(kind, name, None) => {
+        VisitType(kind, name)(writeVarWithReset)
       }
-      case VarDeclaration(decltype, name, Some(init)) => {
-        VisitType(decltype, name)(writeVarWithNoReset)
+      case DeclVar(kind, name, Some(init)) => {
+        VisitType(kind, name)(writeVarWithNoReset)
         resets push StrList(Str("      ") :: Str(reg(name)) :: Str(s" <= ") :: MakeExpr(init) :: Str(";\n") :: Nil)
       }
       case _ =>
@@ -674,18 +674,6 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
 
   implicit def string2StrTree(s: String): StrTree = Str(s)
 
-  implicit def Decl2Typ(decl: Declaration): Type = decl match {
-    case ParamDeclaration(decltype, _, _)        => decltype
-    case ConstDeclaration(decltype, _, _)        => decltype
-    case OutDeclaration(_, decltype, _, _)       => decltype
-    case InDeclaration(_, decltype, _)           => decltype
-    case VarDeclaration(decltype, _, _)          => decltype
-    case ArrayDeclaration(decltype, _, _)        => decltype
-    case VerilogVarDeclaration(decltype, _)      => decltype
-    case VerilogArrayDeclaration(decltype, _, _) => decltype
-    case _: PipelineVarDeclaration               => unreachable
-  }
-
   // Construct a string for an expression
   def MakeExpr(tree: Expr): StrTree = {
     tree match {
@@ -695,9 +683,9 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       }
       case Slice(ref, l, op, r) => StrList(List(MakeExpr(ref), "[", MakeExpr(l), op, MakeExpr(r), "]"))
       case ValidCall(DottedName(names)) => id2decl(names.head) match {
-        case OutDeclaration(fctype, decl, n, _) => if (HasValid(fctype)) valid(n) else { Message.fatal(s"Port $names does not use valid"); "" }
-        case InDeclaration(fctype, decl, n)     => if (HasValid(fctype)) valid(n) else { Message.fatal(s"Port $names does not use valid"); "" }
-        case _                                  => Message.fatal(s"Cannot access valid on $names"); ""
+        case DeclOut(decl, n, fctype, _) => if (HasValid(fctype)) valid(n) else { Message.fatal(s"Port $names does not use valid"); "" }
+        case DeclIn(decl, n, fctype)     => if (HasValid(fctype)) valid(n) else { Message.fatal(s"Port $names does not use valid"); "" }
+        case _                           => Message.fatal(s"Cannot access valid on $names"); ""
       }
       case Zxt(numbitsExpr, expr) => expr.widthExpr(id2decl) match {
         case None => Message.fatal(s"Cannot compute size of expression '${expr.toSource}' for '@zx'")
@@ -719,7 +707,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       }
       case DollarCall(name, args) => StrList(List(name, "(", StrList(args.map(MakeExpr), ","), ")"))
       case ReadCall(name) => id2decl(name.names.head) match {
-        case InDeclaration(_, VoidType, _) => {
+        case DeclIn(VoidType, _, _) => {
           Message.error(s"Cannot read 'void' port '${name.toSource}' in expression position"); Str("")
         }
         case _ => MakeExpr(name)
@@ -761,12 +749,12 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
 
       def AddRead(name: DottedName, isLock: Boolean): Boolean = {
         val n: String = ExtractName(name)
-        val d: Declaration = id2decl(n)
+        val d: Decl = id2decl(n)
         d match {
-          case InDeclaration(synctype, _, _) => {
-            if (HasValid(synctype))
+          case DeclIn(_, _, fctype) => {
+            if (HasValid(fctype))
               add(s"$go = $go && ${valid(n)};")
-            if (!isLock && HasReady(synctype))
+            if (!isLock && HasReady(fctype))
               add(ready(n) + " = 1'b1;")
           }
           case _ => Message.fatal(s"$name cannot be read"); false // TODO check this earlier?
@@ -784,9 +772,9 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         case WaitCall(name) => AddRead(name, true)
         case WriteCall(name, _) => {
           val n: String = ExtractName(name)
-          val d: Declaration = id2decl(n)
+          val d: Decl = id2decl(n)
           d match {
-            case OutDeclaration(fctype, _, _, stype) => {
+            case DeclOut(_, _, fctype, stype) => {
               (fctype, stype) match {
                 case (FlowControlTypeReady, StorageTypeBubble) => add(s"$go = $go && !${valid(n)};")
                 case (FlowControlTypeReady, StorageTypeReg)    => add(s"$go = $go && (!${valid(n)} || ${ready(n)});")
@@ -823,8 +811,8 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
 
     lazy val call_stack_addr_msb = { // MSB index of addrss into call_stack
       val css = id2decl("CALL_STACK_SIZE") match {
-        case ConstDeclaration(_, _, init: Expr) => init.eval.toInt
-        case _                                  => unreachable
+        case DeclConst(_, _, init: Expr) => init.eval.toInt
+        case _                           => unreachable
       }
       ceillog2(css - 1) - 1
     }
@@ -912,8 +900,8 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         Str(s"${MakeExpr(name)} = ${MakeExpr(arg)};")
       }
 
-      case DeclarationStmt(VarDeclaration(decltype, id, Some(rhs))) => MakeStmt(indent)(Assign(LValName(id :: Nil), rhs))
-      case DeclarationStmt(VarDeclaration(decltype, id, None)) => MakeStmt(indent)(Assign(LValName(id :: Nil), Num(false, None, 0))) // TODO: Why is this needed ?
+      case DeclarationStmt(DeclVar(kind, id, Some(rhs))) => MakeStmt(indent)(Assign(LValName(id :: Nil), rhs))
+      case DeclarationStmt(DeclVar(kind, id, None)) => MakeStmt(indent)(Assign(LValName(id :: Nil), Num(false, None, 0))) // TODO: Why is this needed ?
 
       case ExprStmt(DollarCall(name, args)) => StrList(List(name, "(", StrList(args.map(MakeExpr), ","), ");"))
       case AlogicComment(s) => s"// $s\n"
@@ -1041,7 +1029,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         Some(StrList(Str(i0 * indent) :: Str("begin\n") :: StrList(s2) :: Str(i0 * indent) :: Str("end\n") :: Nil))
     }
 
-    case DeclarationStmt(VarDeclaration(decltype, id, Some(rhs))) => AcceptStmt(indent, Assign(LValName(id :: Nil), rhs))
+    case DeclarationStmt(DeclVar(_, id, Some(rhs))) => AcceptStmt(indent, Assign(LValName(id :: Nil), rhs))
     case StateBlock(state, cmds) => {
       // Clear sets used for tracking
       syncPortsFound.clear()
@@ -1098,12 +1086,12 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     def AddRead(name: DottedName): Boolean = {
       val n: String = ExtractName(name)
       id2decl(n) match {
-        case InDeclaration(synctype, _, _) => {
-          if (HasAccept(synctype)) {
+        case DeclIn(_, _, fctype) => {
+          if (HasAccept(fctype)) {
             syncPortsFound.add(n)
             add(accept(n) + " = 1'b1;\n")
           }
-          if (HasReady(synctype))
+          if (HasReady(fctype))
             usesPort = Some(MakeExpr(name).toString)
         }
         case _ =>
@@ -1121,10 +1109,10 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       case WaitCall(name) => AddRead(name)
       case WriteCall(name, _) => {
         val n: String = ExtractName(name)
-        val d: Declaration = id2decl(n)
+        val d: Decl = id2decl(n)
         d match {
-          case OutDeclaration(synctype, _, _, _) => {
-            if (HasValid(synctype))
+          case DeclOut(_, _, fctype, _) => {
+            if (HasValid(fctype))
               usesPort = Some(MakeExpr(name).toString)
           }
           case _ => false

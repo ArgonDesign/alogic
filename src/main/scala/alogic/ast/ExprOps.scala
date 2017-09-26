@@ -45,13 +45,13 @@ trait ExprOps { this: Expr =>
   def >>>(rhs: Int) = BinaryOp(this, ">>>", Num(true, None, rhs))
 
   // Test it the expression is universally constant, i.e.: contains no unbound variables
-  lazy val isConst: Boolean = isConst(Map.empty[String, Declaration])
-  def isConst(symtab: mutable.Map[String, Declaration]): Boolean = isConst(symtab.toMap)
-  def isConst(symtab: Map[String, Declaration]): Boolean = this match {
+  lazy val isConst: Boolean = isConst(Map.empty[String, Decl])
+  def isConst(symtab: mutable.Map[String, Decl]): Boolean = isConst(symtab.toMap)
+  def isConst(symtab: Map[String, Decl]): Boolean = this match {
     case DottedName(name :: Nil) => symtab get name match {
-      case Some(_: ParamDeclaration) => true
-      case Some(_: ConstDeclaration) => true
-      case _                         => false
+      case Some(_: DeclParam) => true
+      case Some(_: DeclConst) => true
+      case _                  => false
     }
 
     case _: Num                    => true
@@ -129,7 +129,7 @@ trait ExprOps { this: Expr =>
     case ErrorExpr                        => ErrorExpr
   }
 
-  private[this] def widthOfName(symtab: Map[String, Declaration], tree: DottedName): Option[Expr] = {
+  private[this] def widthOfName(symtab: Map[String, Decl], tree: DottedName): Option[Expr] = {
     val kind = {
       def lookUpField(names: List[String], kind: Type): Type = {
         val n :: ns = names
@@ -149,8 +149,8 @@ trait ExprOps { this: Expr =>
       }
 
       tree match {
-        case DottedName(n :: Nil) => symtab.get(n) map { decl => decl.decltype }
-        case DottedName(n :: ns)  => symtab.get(n) map { decl => lookUpField(ns, decl.decltype) }
+        case DottedName(n :: Nil) => symtab.get(n) map { decl => decl.kind }
+        case DottedName(n :: ns)  => symtab.get(n) map { decl => lookUpField(ns, decl.kind) }
       }
     }
 
@@ -159,9 +159,9 @@ trait ExprOps { this: Expr =>
 
   // Compute a new expression representing the width of this expression.
   // Return None if it cannot be determined.
-  lazy val widthExpr: Option[Expr] = widthExpr(Map.empty[String, Declaration])
-  def widthExpr(symtab: mutable.Map[String, Declaration]): Option[Expr] = widthExpr(symtab.toMap)
-  def widthExpr(symtab: Map[String, Declaration]): Option[Expr] = {
+  lazy val widthExpr: Option[Expr] = widthExpr(Map.empty[String, Decl])
+  def widthExpr(symtab: mutable.Map[String, Decl]): Option[Expr] = widthExpr(symtab.toMap)
+  def widthExpr(symtab: Map[String, Decl]): Option[Expr] = {
     this match {
       case name: DottedName          => widthOfName(symtab, name)
       case ArrayLookup(name, _)      => widthOfName(symtab, name) // TODO: handle IntVType properly
@@ -203,9 +203,9 @@ trait ExprOps { this: Expr =>
 
   // Compute a new expression representing the MSB of this expression.
   // Return None if it cannot be determined.
-  def msbExpr: Option[Expr] = msbExpr(Map.empty[String, Declaration])
-  def msbExpr(symtab: mutable.Map[String, Declaration]): Option[Expr] = msbExpr(symtab.toMap)
-  def msbExpr(symtab: Map[String, Declaration]): Option[Expr] = {
+  def msbExpr: Option[Expr] = msbExpr(Map.empty[String, Decl])
+  def msbExpr(symtab: mutable.Map[String, Decl]): Option[Expr] = msbExpr(symtab.toMap)
+  def msbExpr(symtab: Map[String, Decl]): Option[Expr] = {
     this match {
       case name: DottedName => widthOfName(symtab, name) map { width =>
         Slice(name, width - 1, "+:", Expr(1))

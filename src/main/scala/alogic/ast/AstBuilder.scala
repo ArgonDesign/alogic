@@ -48,7 +48,7 @@ class CommonContext(root: ParserRuleContext, initialTypedefs: Map[String, Type])
 
   val knownTypeVisitor = new KnownTypeVisitor(Some(symtab), typedefs)
 
-  object LookUpDecl extends VScalarVisitor[Declaration] {
+  object LookUpDecl extends VScalarVisitor[Decl] {
     override def visitTaskDeclOut(ctx: TaskDeclOutContext) = symtab(ctx)
     override def visitTaskDeclIn(ctx: TaskDeclInContext) = symtab(ctx)
     override def visitTaskDeclConst(ctx: TaskDeclConstContext) = symtab(ctx)
@@ -92,8 +92,8 @@ class FsmTaskBuilder(cc: CommonContext) {
       }
 
       override def visitDeclStmt(ctx: DeclStmtContext) = LookUpDecl(ctx.decl) match {
-        case s: VarDeclaration => DeclarationStmt(s)
-        case Declaration(decltype, id) => {
+        case s: DeclVar => DeclarationStmt(s)
+        case s: Decl => {
           Message.error(ctx, "Only variable declarations allowed inside functions"); ErrorStmt
         }
       }
@@ -207,7 +207,7 @@ class FsmTaskBuilder(cc: CommonContext) {
         ControlDo(cond, body)
       }
 
-      object ForInitVisitor extends VScalarVisitor[(Option[VarDeclaration], CombStmt)] {
+      object ForInitVisitor extends VScalarVisitor[(Option[DeclVar], CombStmt)] {
         override def visitForInitNoDecl(ctx: ForInitNoDeclContext) = {
           val stmt = StatementVisitor(ctx.assignment_statement) match {
             case s: CombStmt => s
@@ -216,7 +216,7 @@ class FsmTaskBuilder(cc: CommonContext) {
           (None, stmt)
         }
         override def visitDeclVarInit(ctx: DeclVarInitContext) = {
-          val varDecl = LookUpDecl(ctx).asInstanceOf[VarDeclaration]
+          val varDecl = LookUpDecl(ctx).asInstanceOf[DeclVar]
           val initExpr = Assign(LValName(ctx.IDENTIFIER :: Nil), exprVisitor(ctx.expr))
           (Some(varDecl), initExpr)
         }

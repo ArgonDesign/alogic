@@ -14,18 +14,18 @@
 
 package alogic.ast
 
-trait DeclarationPrettyPrintOps { this: Declaration =>
+trait DeclarationPrettyPrintOps { this: Decl =>
   def toSource: String = this match {
-    case VarDeclaration(decltype, id, Some(init))    => s"${decltype.toSource} ${id} = ${init.toSource}"
-    case VarDeclaration(decltype, id, None)          => s"${decltype.toSource} ${id}"
-    case ArrayDeclaration(decltype, id, dims)        => s"${decltype.toSource} ${id}${dims map { _.toSource } mkString ("[", "][", "]")}"
-    case ParamDeclaration(decltype, id, init)        => s"param ${decltype.toSource} ${id} = ${init.toSource}"
-    case ConstDeclaration(decltype, id, init)        => s"const ${decltype.toSource} ${id} = ${init.toSource}"
-    case VerilogVarDeclaration(decltype, id)         => s"verilog ${decltype.toSource} ${id}"
-    case VerilogArrayDeclaration(decltype, id, dims) => s"verilog ${decltype.toSource} ${id}${id}${dims map { _.toSource } mkString ("[", "][", "]")}"
-    case OutDeclaration(fctype, decltype, id, stype) => s"out ${fctype.toSource} ${stype.toSource} ${decltype.toSource} ${id}"
-    case InDeclaration(fctype, decltype, id)         => s"in ${fctype.toSource} ${decltype.toSource} ${id}"
-    case PipelineVarDeclaration(decltype, id)        => s"pipeline ${decltype.toSource} ${id}"
+    case DeclVar(kind, id, Some(init))    => s"${kind.toSource} ${id} = ${init.toSource}"
+    case DeclVar(kind, id, None)          => s"${kind.toSource} ${id}"
+    case DeclArr(kind, id, dims)          => s"${kind.toSource} ${id}${dims map { _.toSource } mkString ("[", "][", "]")}"
+    case DeclParam(kind, id, init)        => s"param ${kind.toSource} ${id} = ${init.toSource}"
+    case DeclConst(kind, id, init)        => s"const ${kind.toSource} ${id} = ${init.toSource}"
+    case DeclVerilogVar(kind, id)         => s"verilog ${kind.toSource} ${id}"
+    case DeclVerilogArr(kind, id, dims)   => s"verilog ${kind.toSource} ${id}${id}${dims map { _.toSource } mkString ("[", "][", "]")}"
+    case DeclOut(kind, id, fctype, stype) => s"out ${fctype.toSource} ${stype.toSource} ${kind.toSource} ${id}"
+    case DeclIn(kind, id, fctype)         => s"in ${fctype.toSource} ${kind.toSource} ${id}"
+    case DeclPippeVar(kind, id)           => s"pipeline ${kind.toSource} ${id}"
   }
 }
 

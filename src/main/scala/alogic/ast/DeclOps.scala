@@ -14,7 +14,7 @@
 
 package alogic.ast
 
-trait DeclarationOps extends DeclarationPrettyPrintOps { this: Declaration =>
-  val decltype: Type
+trait DeclOps extends DeclarationPrettyPrintOps { this: Decl =>
+  val kind: Type
   val id: String
 }

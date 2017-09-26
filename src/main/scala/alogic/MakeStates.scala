@@ -74,7 +74,7 @@ final class MakeStates {
 
     // Find the value of the CALL_STACK_SIZE constant, if any
     val cssOpt: Option[Int] = {
-      val expr = decls collectFirst { case ConstDeclaration(_, "CALL_STACK_SIZE", value) => value }
+      val expr = decls collectFirst { case DeclConst(_, "CALL_STACK_SIZE", value) => value }
       expr map { e =>
         if (!e.isConst) {
           Message.error("The value of 'CALL_STACK_SIZE' must be a compile time constant"); 1
@@ -167,16 +167,16 @@ final class MakeStates {
       val stateSize = ceillog2(states.length)
       val stateType = IntType(false, stateSize)
 
-      // Add a declaration for the state variable if required (reset to the entry state of main)
+      // Add a Decl for the state variable if required (reset to the entry state of main)
       val stateDecl = if (states.length > 1) {
-        Some(VarDeclaration(stateType, "state", Some(Num(false, Some(stateSize), 0))))
+        Some(DeclVar(stateType, "state", Some(Num(false, Some(stateSize), 0))))
       } else {
         None
       }
 
-      // Add a declaration for the CALL_STACK_SIZE constant if required
+      // Add a Decl for the CALL_STACK_SIZE constant if required
       val cssDecl = if (!explicitCss && css > 1) {
-        Some(ConstDeclaration(IntType(false, 32), "CALL_STACK_SIZE", Expr(css)))
+        Some(DeclConst(IntType(false, 32), "CALL_STACK_SIZE", Expr(css)))
       } else {
         None
       }
@@ -185,10 +185,10 @@ final class MakeStates {
       val callStackDecls = if (css > 1) {
         // TODO: the depth of 'call_stack' should be "CALL_STACK_SIZE" but MakeVerilog does not support
         // parametrizable depth arrays yet
-        val csDecl = ArrayDeclaration(stateType, "call_stack", List(Expr(css - 1)))
+        val csDecl = DeclArr(stateType, "call_stack", List(Expr(css - 1)))
         val cdDecl = {
           val sz = ceillog2(css)
-          VarDeclaration(IntType(false, sz), "call_depth", Some(Num(false, Some(sz), 0)))
+          DeclVar(IntType(false, sz), "call_depth", Some(Num(false, Some(sz), 0)))
         }
         List(csDecl, cdDecl)
       } else {

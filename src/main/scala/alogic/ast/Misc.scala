@@ -16,24 +16,24 @@ package alogic.ast
 
 // Various representational case classes not descendant from ast.Node
 
-// // Declaration used for top-level and function declarations
-sealed trait Declaration extends DeclarationOps
+// Decl used for top-level and function declarations
+sealed trait Decl extends DeclOps
 
-object Declaration {
-  def unapply(decl: Declaration) = Some((decl.decltype, decl.id))
+object Decl {
+  def unapply(decl: Decl) = Some((decl.kind, decl.id))
 }
 
-case class VarDeclaration(decltype: Type, id: String, init: Option[Expr]) extends Declaration
-case class ArrayDeclaration(decltype: ScalarType, id: String, dims: List[Expr]) extends Declaration
-case class PipelineVarDeclaration(decltype: Type, id: String) extends Declaration
-case class ParamDeclaration(decltype: ScalarType, id: String, init: Expr) extends Declaration
-case class ConstDeclaration(decltype: ScalarType, id: String, init: Expr) extends Declaration
-case class InDeclaration(fctype: FlowControlType, decltype: Type, id: String) extends Declaration
-case class OutDeclaration(fctype: FlowControlType, decltype: Type, id: String, stype: StorageType) extends Declaration
+case class DeclVar(kind: Type, id: String, init: Option[Expr]) extends Decl
+case class DeclArr(kind: ScalarType, id: String, dims: List[Expr]) extends Decl
+case class DeclPippeVar(kind: Type, id: String) extends Decl
+case class DeclParam(kind: ScalarType, id: String, init: Expr) extends Decl
+case class DeclConst(kind: ScalarType, id: String, init: Expr) extends Decl
+case class DeclIn(kind: Type, id: String, fctype: FlowControlType) extends Decl
+case class DeclOut(kind: Type, id: String, fctype: FlowControlType, stype: StorageType) extends Decl
 
-sealed trait VerilogDeclaration extends Declaration
-case class VerilogVarDeclaration(decltype: Type, id: String) extends VerilogDeclaration
-case class VerilogArrayDeclaration(decltype: ScalarType, id: String, dims: List[Expr]) extends VerilogDeclaration
+sealed trait DeclVerilog extends Decl
+case class DeclVerilogVar(kind: Type, id: String) extends DeclVerilog
+case class DeclVerilogArr(kind: ScalarType, id: String, dims: List[Expr]) extends DeclVerilog
 
 // AlogicType used to define the allowed types
 sealed trait Type extends TypeOps

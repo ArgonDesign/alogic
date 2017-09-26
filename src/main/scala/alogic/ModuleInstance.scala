@@ -24,7 +24,7 @@ class ModuleInstance(val name: String, val task: Task, val paramAssigns: Map[Str
 
   // Check assigned parameters exist
   {
-    val paramNames = task.decls collect { case ParamDeclaration(_, id, _) => id }
+    val paramNames = task.decls collect { case DeclParam(_, id, _) => id }
 
     for (paramName <- paramAssigns.keys if !(paramNames contains paramName)) {
       Message.error(s"module instance '${name}' (module '${task.name}') has no parameter named '${paramName}'")
@@ -36,18 +36,18 @@ class ModuleInstance(val name: String, val task: Task, val paramAssigns: Map[Str
   // Map from portname to Port with internal name
   val iports: Map[String, Port] = {
     task.decls collect {
-      case InDeclaration(FlowControlTypeNone, kind, name)   => name -> PortNone(name, kind)
-      case InDeclaration(FlowControlTypeValid, kind, name)  => name -> PortValid(name, kind)
-      case InDeclaration(FlowControlTypeReady, kind, name)  => name -> PortReady(name, kind)
-      case InDeclaration(FlowControlTypeAccept, kind, name) => name -> PortAccept(name, kind)
+      case DeclIn(kind, name, FlowControlTypeNone)   => name -> PortNone(name, kind)
+      case DeclIn(kind, name, FlowControlTypeValid)  => name -> PortValid(name, kind)
+      case DeclIn(kind, name, FlowControlTypeReady)  => name -> PortReady(name, kind)
+      case DeclIn(kind, name, FlowControlTypeAccept) => name -> PortAccept(name, kind)
     }
   }.toMap
   val oports: Map[String, Port] = {
     task.decls collect {
-      case OutDeclaration(FlowControlTypeNone, kind, name, _)   => name -> PortNone(name, kind)
-      case OutDeclaration(FlowControlTypeValid, kind, name, _)  => name -> PortValid(name, kind)
-      case OutDeclaration(FlowControlTypeReady, kind, name, _)  => name -> PortReady(name, kind)
-      case OutDeclaration(FlowControlTypeAccept, kind, name, _) => name -> PortAccept(name, kind)
+      case DeclOut(kind, name, FlowControlTypeNone, _)   => name -> PortNone(name, kind)
+      case DeclOut(kind, name, FlowControlTypeValid, _)  => name -> PortValid(name, kind)
+      case DeclOut(kind, name, FlowControlTypeReady, _)  => name -> PortReady(name, kind)
+      case DeclOut(kind, name, FlowControlTypeAccept, _) => name -> PortAccept(name, kind)
     }
   }.toMap
 

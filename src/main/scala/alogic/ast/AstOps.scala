@@ -28,18 +28,6 @@ object AstOps {
     case _                 => "Unknown"
   }
 
-  def ExtractName(tree: Declaration): String = tree match {
-    case VarDeclaration(_, id, _)          => id
-    case ArrayDeclaration(_, id, _)        => id
-    case ConstDeclaration(_, id, _)        => id
-    case ParamDeclaration(_, id, _)        => id
-    case VerilogVarDeclaration(_, id)      => id
-    case VerilogArrayDeclaration(_, id, _) => id
-    case OutDeclaration(_, _, name, _)     => name
-    case InDeclaration(_, _, name)         => name
-    case PipelineVarDeclaration(_, id)     => unreachable
-  }
-
   // Does this sync type contain a valid line?
   def HasValid(s: FlowControlType): Boolean = s match {
     case FlowControlTypeNone => false

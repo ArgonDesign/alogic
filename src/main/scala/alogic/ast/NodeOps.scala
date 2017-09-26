@@ -56,7 +56,7 @@ trait NodeOps extends NodePrettyPrintOps { this: Node =>
           case TernaryOp(cond, lhs, rhs)                        => { v(cond); v(lhs); v(rhs) }
           case CombinatorialBlock(cmds)                         => cmds foreach v
           case StateBlock(state, cmds)                          => cmds foreach v
-          case DeclarationStmt(decl: VarDeclaration)            => decl.init foreach v
+          case DeclarationStmt(decl: DeclVar)            => decl.init foreach v
           case CombinatorialIf(cond, body, Some(e))             => { v(cond); v(body); v(e) }
           case CombinatorialIf(cond, body, None)                => { v(cond); v(body) }
           case BitRep(count, value)                             => { v(count); v(value) }
@@ -124,7 +124,7 @@ trait NodeOps extends NodePrettyPrintOps { this: Node =>
           case Minusminus(lhs)                       => Minusminus(r[LVal](lhs))
           case CombinatorialBlock(cmds)              => CombinatorialBlock(cmds map r[CombStmt])
           case StateBlock(state, cmds)               => StateBlock(state, cmds map r[CombStmt])
-          case DeclarationStmt(decl: VarDeclaration) => DeclarationStmt(decl.copy(init = (decl.init map r[Expr])))
+          case DeclarationStmt(decl: DeclVar) => DeclarationStmt(decl.copy(init = (decl.init map r[Expr])))
           case CombinatorialIf(cond, body, e)        => CombinatorialIf(r[Expr](cond), r[CombStmt](body), e map r[CombStmt])
           case x: AlogicComment                      => x
           case CombinatorialCaseStmt(value, c, d)    => CombinatorialCaseStmt(r[Expr](value), c map r[CombinatorialCaseLabel], d map r[CombStmt])
@@ -223,7 +223,7 @@ trait NodeOps extends NodePrettyPrintOps { this: Node =>
         case TernaryOp(cond, lhs, rhs)                    => c(cond) ::: c(lhs) ::: c(rhs)
         case CombinatorialBlock(cmds)                     => cmds flatMap c
         case StateBlock(state, cmds)                      => cmds flatMap c
-        case DeclarationStmt(VarDeclaration(_, _, init))  => init map c getOrElse Nil
+        case DeclarationStmt(DeclVar(_, _, init))  => init map c getOrElse Nil
         case CombinatorialIf(cond, t, e)                  => c(cond) ::: c(t) ::: (e map c getOrElse Nil)
         case BitRep(count, value)                         => c(count) ::: c(value)
         case BitCat(parts)                                => parts flatMap c

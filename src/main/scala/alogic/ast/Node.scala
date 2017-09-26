@@ -31,21 +31,21 @@ object Task {
 }
 
 case class FsmTask(name: String,
-                   decls: List[Declaration],
+                   decls: List[Decl],
                    fns: List[Function],
                    fencefn: Option[FenceFunction],
                    vfns: List[VerilogFunction],
                    makeNew: Boolean) extends Task
 case class StateTask(name: String,
-                     decls: List[Declaration],
+                     decls: List[Decl],
                      states: List[StateBlock],
                      fencefn: Option[FenceFunction],
                      vfns: List[VerilogFunction]) extends Task
 case class VerilogTask(name: String,
-                       decls: List[Declaration],
+                       decls: List[Decl],
                        vfns: List[VerilogFunction]) extends Task
 case class NetworkTask(name: String,
-                       decls: List[Declaration],
+                       decls: List[Decl],
                        instantiate: List[Instantiate],
                        connect: List[Connect],
                        vfns: List[VerilogFunction],
@@ -115,7 +115,7 @@ case class Update(lhs: LVal, op: String, rhs: Expr) extends CombStmt
 case class Plusplus(lhs: LVal) extends CombStmt
 case class Minusminus(lhs: LVal) extends CombStmt
 case class ExprStmt(expr: Expr) extends CombStmt
-case class DeclarationStmt(decl: VarDeclaration) extends CombStmt
+case class DeclarationStmt(decl: DeclVar) extends CombStmt
 case class AlogicComment(str: String) extends CombStmt
 case class CombinatorialBlock(cmds: List[CombStmt]) extends CombStmt
 case class CombinatorialIf(cond: Expr, body: CombStmt, elsebody: Option[CombStmt]) extends CombStmt

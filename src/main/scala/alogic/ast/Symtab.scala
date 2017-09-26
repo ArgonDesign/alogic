@@ -34,9 +34,9 @@ import alogic.VScalarVisitor
 // variable is declared.
 class Symtab(root: ParserRuleContext, typedefs: scala.collection.Map[String, Type]) { self =>
 
-  // A named pair of declaration and the location of the declaration. For data declarations,
-  // we use Left[Declaration], for function declarations, we use Right[Declaration]
-  private[this] case class Item(decl: Either[Declaration, String], ctx: ParserRuleContext)
+  // A named pair of Decl and the location of the Decl. For data declarations,
+  // we use Left[Decl], for function declarations, we use Right[Decl]
+  private[this] case class Item(decl: Either[Decl, String], ctx: ParserRuleContext)
 
   // This is a map to Option[_] as Map.get does not respect withDefault or withDefaultValue
   private[this]type NameMap = mutable.Map[String, Option[Item]]
@@ -64,7 +64,7 @@ class Symtab(root: ParserRuleContext, typedefs: scala.collection.Map[String, Typ
   }
 
   // Insert name into scope of node ctx
-  private[this] def insert(ctx: ParserRuleContext, decl: Either[Declaration, String]): Unit = {
+  private[this] def insert(ctx: ParserRuleContext, decl: Either[Decl, String]): Unit = {
     val name = decl match {
       case Left(d)   => d.id
       case Right(id) => id
@@ -73,11 +73,11 @@ class Symtab(root: ParserRuleContext, typedefs: scala.collection.Map[String, Typ
     if (scope contains name) {
       val Some(Item(_, pctx)) = scope(name)
       Message.error(ctx, s"Multiple declarations of name '$name' ...")
-      Message.error(ctx, s"... previous declaration at: ${pctx.loc}")
+      Message.error(ctx, s"... previous Decl at: ${pctx.loc}")
     } else {
       scope(name) match {
         case Some(Item(_, pctx)) => {
-          Message.warning(ctx, s"Declaration of '$name' hides previous declaration of same name at ...")
+          Message.warning(ctx, s"Decl of '$name' hides previous Decl of same name at ...")
           Message.warning(ctx, s"... ${pctx.loc}")
         }
         case None => ()
@@ -86,14 +86,14 @@ class Symtab(root: ParserRuleContext, typedefs: scala.collection.Map[String, Typ
     scope(name) = Some(Item(decl, ctx)) // Insert to 'scope'
     multiplicity(name) += {
       decl match {
-        case Left(_: VarDeclaration)   => 1
-        case Left(_: ArrayDeclaration) => 1
-        case _                         => 0
+        case Left(_: DeclVar) => 1
+        case Left(_: DeclArr) => 1
+        case _                => 0
       }
     }
   }
 
-  private[this] object DeclExtractor extends VScalarVisitor[Declaration] {
+  private[this] object DeclExtractor extends VScalarVisitor[Decl] {
     object PortTypeVisitor extends VScalarVisitor[Type] {
       override def visitPortTypeKnown(ctx: PortTypeKnownContext) = {
         val knownTypeVisitor = new KnownTypeVisitor(Some(self), typedefs)
@@ -120,13 +120,13 @@ class Symtab(root: ParserRuleContext, typedefs: scala.collection.Map[String, Typ
       val kind = PortTypeVisitor(ctx.port_type)
       val id = ctx.IDENTIFIER.text
       val stype = StorageTypeVisitor(ctx.storage_type)
-      OutDeclaration(fctype, kind, id, stype)
+      DeclOut(kind, id, fctype, stype)
     }
     override def visitTaskDeclIn(ctx: TaskDeclInContext) = {
       val fctype = FlowControlTypeVisitor(ctx.flow_control_type)
       val kind = PortTypeVisitor(ctx.port_type)
       val id = ctx.IDENTIFIER.text
-      InDeclaration(fctype, kind, id)
+      DeclIn(kind, id, fctype)
     }
     override def visitTaskDeclConst(ctx: TaskDeclConstContext) = {
       val id = ctx.IDENTIFIER.text
@@ -135,7 +135,7 @@ class Symtab(root: ParserRuleContext, typedefs: scala.collection.Map[String, Typ
         case x: ScalarType => x
         case x             => Message.error(ctx, s"Constant '${id}' must be declared with scalar type"); IntType(false, 1);
       }
-      ConstDeclaration(kind, id, ErrorExpr)
+      DeclConst(kind, id, ErrorExpr)
     }
     override def visitTaskDeclParam(ctx: TaskDeclParamContext) = {
       val id = ctx.IDENTIFIER.text
@@ -144,19 +144,19 @@ class Symtab(root: ParserRuleContext, typedefs: scala.collection.Map[String, Typ
         case x: ScalarType => x
         case x             => Message.error(ctx, s"Parameter '${id}' must be declared with scalar type"); IntType(false, 1);
       }
-      ParamDeclaration(kind, id, ErrorExpr)
+      DeclParam(kind, id, ErrorExpr)
     }
     override def visitTaskDeclPipeline(ctx: TaskDeclPipelineContext) = {
       val id = ctx.IDENTIFIER.text
       val knownTypeVisitor = new KnownTypeVisitor(Some(self), typedefs)
       val kind = knownTypeVisitor(ctx.known_type);
-      PipelineVarDeclaration(kind, id)
+      DeclPippeVar(kind, id)
     }
     override def visitTaskDeclVerilog(ctx: TaskDeclVerilogContext) = visit(ctx.decl) match {
-      case VarDeclaration(_, id, Some(_))   => Message.fatal(ctx, s"Declaration of Verilog variable '${id}' cannot use initializer")
-      case VarDeclaration(kind, id, None)   => VerilogVarDeclaration(kind, id)
-      case ArrayDeclaration(kind, id, dims) => VerilogArrayDeclaration(kind, id, dims)
-      case _                                => unreachable
+      case DeclVar(_, id, Some(_)) => Message.fatal(ctx, s"Decl of Verilog variable '${id}' cannot use initializer")
+      case DeclVar(kind, id, None) => DeclVerilogVar(kind, id)
+      case DeclArr(kind, id, dims) => DeclVerilogArr(kind, id, dims)
+      case _                       => unreachable
     }
     override def visitDeclArr(ctx: DeclArrContext) = {
       val knownTypeVisitor = new KnownTypeVisitor(Some(self), typedefs)
@@ -168,10 +168,10 @@ class Symtab(root: ParserRuleContext, typedefs: scala.collection.Map[String, Typ
       val indices = exprVisitor(ctx.es)
 
       kind match {
-        case x: ScalarType => ArrayDeclaration(x, id, indices)
+        case x: ScalarType => DeclArr(x, id, indices)
         case s: Struct => {
           Message.error(ctx, s"Arrays must be declared with scalar types, not struct '${s.name}'")
-          ArrayDeclaration(IntType(false, 1), id, indices);
+          DeclArr(IntType(false, 1), id, indices);
         }
         case VoidType => unreachable
       }
@@ -179,12 +179,12 @@ class Symtab(root: ParserRuleContext, typedefs: scala.collection.Map[String, Typ
     override def visitDeclVarNoInit(ctx: DeclVarNoInitContext) = {
       val knownTypeVisitor = new KnownTypeVisitor(Some(self), typedefs)
       val kind = knownTypeVisitor(ctx.known_type())
-      VarDeclaration(kind, ctx.IDENTIFIER, None)
+      DeclVar(kind, ctx.IDENTIFIER, None)
     }
     override def visitDeclVarInit(ctx: DeclVarInitContext) = {
       val knownTypeVisitor = new KnownTypeVisitor(Some(self), typedefs)
       val kind = knownTypeVisitor(ctx.known_type())
-      VarDeclaration(kind, ctx.IDENTIFIER, Some(ErrorExpr))
+      DeclVar(kind, ctx.IDENTIFIER, Some(ErrorExpr))
     }
   }
 
@@ -256,7 +256,7 @@ class Symtab(root: ParserRuleContext, typedefs: scala.collection.Map[String, Typ
     override def visitTaskDeclPipeline(ctx: TaskDeclPipelineContext) = insert(ctx, Left(DeclExtractor(ctx)))
     override def visitTaskDeclVerilog(ctx: TaskDeclVerilogContext) = insert(ctx, Left(DeclExtractor(ctx)))
 
-    // Insert ordinary declaration
+    // Insert ordinary Decl
     override def visitDeclVarNoInit(ctx: DeclVarNoInitContext) = insert(ctx, Left(DeclExtractor(ctx)))
     override def visitDeclVarInit(ctx: DeclVarInitContext) = insert(ctx, Left(DeclExtractor(ctx)))
     override def visitDeclArr(ctx: DeclArrContext) = insert(ctx, Left(DeclExtractor(ctx)))
@@ -286,9 +286,9 @@ class Symtab(root: ParserRuleContext, typedefs: scala.collection.Map[String, Typ
       case Some(Item(Left(decl), ctx)) if (name == decl.id) => {
         val newId = decl.id + s"_L${ctx.loc.line}"
         val newDecl = decl match {
-          case d: VarDeclaration   => d.copy(id = newId)
-          case d: ArrayDeclaration => d.copy(id = newId)
-          case _                   => unreachable
+          case d: DeclVar => d.copy(id = newId)
+          case d: DeclArr => d.copy(id = newId)
+          case _          => unreachable
         }
         nameMap(name) = Some(Item(Left(newDecl), ctx))
       }
@@ -302,13 +302,13 @@ class Symtab(root: ParserRuleContext, typedefs: scala.collection.Map[String, Typ
     item match {
       case Some(Item(Left(decl), ctx)) => {
         val newDecl = decl match {
-          case d @ VarDeclaration(_, _, Some(init)) => {
+          case d @ DeclVar(_, _, Some(init)) => {
             Some(d.copy(init = Some(exprVisitor(ctx.asInstanceOf[DeclVarInitContext].expr))))
           }
-          case d @ ParamDeclaration(_, _, init) => {
+          case d @ DeclParam(_, _, init) => {
             Some(d.copy(init = exprVisitor(ctx.asInstanceOf[TaskDeclParamContext].expr)))
           }
-          case d @ ConstDeclaration(_, _, init) => {
+          case d @ DeclConst(_, _, init) => {
             Some(d.copy(init = exprVisitor(ctx.asInstanceOf[TaskDeclConstContext].expr)))
           }
           case _ => None
@@ -322,7 +322,7 @@ class Symtab(root: ParserRuleContext, typedefs: scala.collection.Map[String, Typ
     }
   }
 
-  // Map from parse tree node to declaration, if the node is a declaration construct
+  // Map from parse tree node to Decl, if the node is a Decl construct
   private[this] val decls = {
     for {
       nameMap <- scopes.values
@@ -335,11 +335,11 @@ class Symtab(root: ParserRuleContext, typedefs: scala.collection.Map[String, Typ
     }
   }.toMap
 
-  // Look up declaration at this node
-  def apply(ctx: ParserRuleContext): Declaration = decls(ctx)
+  // Look up Decl at this node
+  def apply(ctx: ParserRuleContext): Decl = decls(ctx)
 
   // Look up name in scope of node ctx
-  def apply(ctx: ParserRuleContext, name: String): Either[Declaration, String] = {
+  def apply(ctx: ParserRuleContext, name: String): Either[Decl, String] = {
     find(ctx)(name) match {
       case Some(Item(decl, _)) => decl
       case None                => Message.fatal(ctx, s"Unknown identifier '$name'")
