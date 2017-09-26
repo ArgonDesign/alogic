@@ -151,7 +151,7 @@ trait NodeOps extends NodePrettyPrintOps { this: Node =>
 
           // Expressions
           case ArrayLookup(name, index)              => ArrayLookup(r[DottedName](name), index map r[Expr])
-          case Slice(ref, lidx, op, ridx)            => Slice(r[VarRef](ref), r[Expr](lidx), op, r[Expr](ridx))
+          case Slice(ref, lidx, op, ridx)            => Slice(r[Expr](ref), r[Expr](lidx), op, r[Expr](ridx))
           case CallExpr(name, args)                  => CallExpr(r[DottedName](name), args map r[Expr])
           case Zxt(numbits, expr)                    => Zxt(r[Expr](numbits), r[Expr](expr))
           case Sxt(numbits, expr)                    => Sxt(r[Expr](numbits), r[Expr](expr))

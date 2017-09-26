@@ -19,7 +19,7 @@ trait LValOps { this: LVal =>
   def toExpr: Expr = this match {
     case LValName(names)                         => DottedName(names)
     case LValArrayLookup(LValName(names), index) => ArrayLookup(DottedName(names), index)
-    case LValSlice(ref, lidx, op, ridx)          => Slice(ref.toExpr.asInstanceOf[VarRef], lidx, op, ridx)
+    case LValSlice(ref, lidx, op, ridx)          => Slice(ref.toExpr, lidx, op, ridx)
     case LValCat(parts)                          => BitCat(parts map { _.toExpr })
   }
 

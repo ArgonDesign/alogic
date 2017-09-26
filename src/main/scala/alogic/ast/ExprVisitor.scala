@@ -93,8 +93,8 @@ class ExprVisitor(symtab: Option[Symtab], typedefs: scala.collection.Map[String,
 
   override def visitExprSlice(ctx: ExprSliceContext) = {
     visit(ctx.ref) match {
-      case x: VarRef => Slice(x, visit(ctx.lidx), ctx.op, visit(ctx.ridx))
-      case _         => Message.fatal(ctx, s"Cannot slice expression '${ctx.ref.sourceText}'")
+      case x @ (_: DottedName | _: ArrayLookup) => Slice(x, visit(ctx.lidx), ctx.op, visit(ctx.ridx))
+      case _                                    => Message.fatal(ctx, s"Cannot slice expression '${ctx.ref.sourceText}'")
     }
   }
 

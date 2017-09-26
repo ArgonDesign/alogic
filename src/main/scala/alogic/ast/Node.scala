@@ -82,28 +82,19 @@ case class Bracket(content: Expr) extends Expr // TODO: This node is likely redu
 case class TernaryOp(cond: Expr, lhs: Expr, rhs: Expr) extends Expr
 case class BitRep(count: Expr, value: Expr) extends Expr
 case class BitCat(parts: List[Expr]) extends Expr
-case class Slice(ref: VarRef, lidx: Expr, op: String, ridx: Expr) extends Expr
+case class Slice(ref: Expr, lidx: Expr, op: String, ridx: Expr) extends Expr
+case class DottedName(names: List[String]) extends Expr
+case class ArrayLookup(name: DottedName, index: List[Expr]) extends Expr
+case object ErrorExpr extends Expr // Placeholder expression
 
 ///////////////////////////////////////////////////////////////////////////////
-// Variable reference nodes (also expressions)
-///////////////////////////////////////////////////////////////////////////////
-sealed trait VarRef extends Expr
-case class DottedName(names: List[String]) extends VarRef
-case class ArrayLookup(name: DottedName, index: List[Expr]) extends VarRef
-
-///////////////////////////////////////////////////////////////////////////////
-// Left Value expressoins
+// Left Value expressions
 ///////////////////////////////////////////////////////////////////////////////
 sealed trait LVal extends Node with LValOps
 case class LValName(names: List[String]) extends LVal
 case class LValArrayLookup(name: LValName, index: List[Expr]) extends LVal
 case class LValSlice(ref: LVal, lidx: Expr, op: String, ridx: Expr) extends LVal
 case class LValCat(parts: List[LVal]) extends LVal
-
-///////////////////////////////////////////////////////////////////////////////
-// Used where an expression is required but an error has previously occurred
-///////////////////////////////////////////////////////////////////////////////
-case object ErrorExpr extends VarRef
 
 ///////////////////////////////////////////////////////////////////////////////
 // String Literal - including " on both ends
@@ -153,7 +144,7 @@ case object BreakStmt extends CtrlStmt
 ///////////////////////////////////////////////////////////////////////////////
 // Used where a statement is required but an error has previously occurred
 ///////////////////////////////////////////////////////////////////////////////
-case object ErrorStmt extends CombStmt with CtrlStmt
+case object ErrorStmt extends CombStmt with CtrlStmt // Placeholder statement
 
 ///////////////////////////////////////////////////////////////////////////////
 // Case label nodes
