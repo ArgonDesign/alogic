@@ -162,35 +162,41 @@ task_content
   ;
 
 expr
-  : '(' expr ')'                                      # ExprBracket
-  | op=('+' | '-' | '!' | '~' | '&' |
-        '~&' | '|' | '~|' | '^' | '~^') expr          # ExprUnary
-  | expr op=('*' | '/' | '%') expr                    # ExprMulDiv
-  | expr op=('+' | '-') expr                          # ExprAddSub
-  | expr op=('<<' | '>>' | '>>>') expr                # ExprShift   // TODO: '<<<'
-  | expr op=('>' | '>=' | '<' | '<=') expr            # ExprCompare
-  | expr op=('==' | '!=') expr                        # ExprEqual
-  | expr op='&' expr                                  # ExprBAnd
-  | expr op=('^' | '~^') expr                         # ExprBXor
-  | expr op='|' expr                                  # ExprBOr
-  | expr op='&&' expr                                 # ExprAnd
-  | expr op='||' expr                                 # ExprOr
-  | expr '?' expr ':' expr                            # ExprTernary
-  | '{' expr '{' expr '}' '}'                         # ExprRep
-  | '{' commaexpr '}'                                 # ExprCat
-  | dotted_name '(' commaexpr ')'                     # ExprCall
-  | var_ref                                           # ExprVarRef
-  | var_ref '[' expr op=(':' | '-:' | '+:') expr ']'  # ExprSlice
-  | DOLLARID '(' commaexpr ')'                        # ExprDollar
-  | '@bits' '(' known_type ')'                        # ExprAtBits
-  | ATID '(' commaexpr ')'                            # ExprAt
-  | 'true'                                            # ExprTrue
-  | 'false'                                           # ExprFalse
-  | TICKNUM                                           # ExprTrickNum
-  | CONSTANT TICKNUM                                  # ExprConstTickNum
-  | CONSTANT                                          # ExprConst
-  | LITERAL                                           # ExprLiteral
+  : '(' expr ')'                                                # ExprBracket
+  | ref=expr '(' commaexpr ')'                                  # ExprCall
+  | ref=expr '[' idx=expr ']'                                   # ExprIndex
+  | ref=expr '[' lidx=expr op=(':' | '-:' | '+:') ridx=expr ']' # ExprSlice
+  | ref=expr '.' IDENTIFIER                                     # ExprDot
+  | IDENTIFIER                                                  # ExprId
+  // Operators
+  | unary_op expr                                               # ExprUnary
+  | expr op=('*' | '/' | '%') expr                              # ExprMulDiv
+  | expr op=('+' | '-') expr                                    # ExprAddSub
+  | expr op=('<<' | '>>' | '>>>') expr                          # ExprShift   // TODO: '<<<'
+  | expr op=('>' | '>=' | '<' | '<=') expr                      # ExprCompare
+  | expr op=('==' | '!=') expr                                  # ExprEqual
+  | expr op='&' expr                                            # ExprBAnd
+  | expr op=('^' | '~^') expr                                   # ExprBXor
+  | expr op='|' expr                                            # ExprBOr
+  | expr op='&&' expr                                           # ExprAnd
+  | expr op='||' expr                                           # ExprOr
+  | expr '?' expr ':' expr                                      # ExprTernary
+  | '{' expr '{' expr '}' '}'                                   # ExprRep
+  | '{' commaexpr '}'                                           # ExprCat
+  // Builtins
+  | DOLLARID '(' commaexpr ')'                                  # ExprDollar
+  | '@bits' '(' known_type ')'                                  # ExprAtBits
+  | ATID '(' commaexpr ')'                                      # ExprAt
+  // Literals
+  | 'true'                                                      # ExprTrue
+  | 'false'                                                     # ExprFalse
+  | TICKNUM                                                     # ExprTrickNum
+  | CONSTANT TICKNUM                                            # ExprConstTickNum
+  | CONSTANT                                                    # ExprConst
+  | LITERAL                                                     # ExprLiteral
   ;
+
+unary_op : '+' | '-' | '!' | '~' | '&' | '~&' | '|' | '~|' | '^' | '~^' ;
 
 var_ref
   : dotted_name ('[' es+=expr ']')+   # VarRefIndex

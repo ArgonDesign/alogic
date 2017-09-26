@@ -24,31 +24,11 @@ import alogic.Message
 class ExprVisitor(symtab: Option[Symtab], typedefs: scala.collection.Map[String, Type])
     extends VScalarVisitor[Expr] { self =>
 
-  // Construct tree for dotted name, looking up the variable name in the current scope
-  object LookUpName extends VScalarVisitor[DottedName] {
-    override def visitDotted_name(ctx: Dotted_nameContext) = {
-      val (head :: tail) = ctx.es.toList.map(_.text)
-      symtab match {
-        case Some(st) => st(ctx, head) match {
-          case Left(decl) => DottedName(decl.id :: tail)
-          case Right(id)  => DottedName(id :: tail)
-        }
-        case None => unreachable
-      }
-    }
-  }
-
-  // Construct tree for variable reference, looking up the variable name in the current scope
-  object VarRefVisitor extends VScalarVisitor[VarRef] {
-    override def visitVarRef(ctx: VarRefContext) = LookUpName(ctx.dotted_name)
-    override def visitVarRefIndex(ctx: VarRefIndexContext) = ArrayLookup(LookUpName(ctx.dotted_name), self(ctx.es))
-  }
-
   // If applied to a commaexpr node, return a list of the constructed expressions
   def apply(ctx: CommaexprContext): List[Expr] = visit(ctx.expr)
 
-  def const2Num(const: String) = Num(true, None, BigInt(const filter (_ != '_')))
-  def tickn2Num(ctx: ParserRuleContext, tickn: String, width: Option[String]): Num = {
+  private[this] def const2Num(const: String) = Num(true, None, BigInt(const filter (_ != '_')))
+  private[this] def tickn2Num(ctx: ParserRuleContext, tickn: String, width: Option[String]): Num = {
     assert(tickn(0) == '\'')
     val widthVal = width filter (_ != '_') map (BigInt(_))
     val signed = tickn(1) == 's'
@@ -67,7 +47,7 @@ class ExprVisitor(symtab: Option[Symtab], typedefs: scala.collection.Map[String,
   }
 
   override def visitExprBracket(ctx: ExprBracketContext) = Bracket(visit(ctx.expr))
-  override def visitExprUnary(ctx: ExprUnaryContext) = UnaryOp(ctx.op, visit(ctx.expr))
+  override def visitExprUnary(ctx: ExprUnaryContext) = UnaryOp(ctx.unary_op.text, visit(ctx.expr))
   override def visitExprMulDiv(ctx: ExprMulDivContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
   override def visitExprAddSub(ctx: ExprAddSubContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
   override def visitExprShift(ctx: ExprShiftContext) = BinaryOp(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
@@ -81,8 +61,6 @@ class ExprVisitor(symtab: Option[Symtab], typedefs: scala.collection.Map[String,
   override def visitExprTernary(ctx: ExprTernaryContext) = TernaryOp(visit(ctx.expr(0)), visit(ctx.expr(1)), visit(ctx.expr(2)))
   override def visitExprRep(ctx: ExprRepContext) = BitRep(visit(ctx.expr(0)), visit(ctx.expr(1)))
   override def visitExprCat(ctx: ExprCatContext) = BitCat(this(ctx.commaexpr))
-  override def visitExprVarRef(ctx: ExprVarRefContext) = VarRefVisitor(ctx)
-  override def visitExprSlice(ctx: ExprSliceContext) = Slice(VarRefVisitor(ctx.var_ref), visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
   override def visitExprDollar(ctx: ExprDollarContext) = DollarCall(ctx.DOLLARID, this(ctx.commaexpr))
   override def visitExprTrue(ctx: ExprTrueContext) = Num(false, Some(1), 1)
   override def visitExprFalse(ctx: ExprFalseContext) = Num(false, Some(1), 0)
@@ -91,12 +69,45 @@ class ExprVisitor(symtab: Option[Symtab], typedefs: scala.collection.Map[String,
   override def visitExprConst(ctx: ExprConstContext) = const2Num(ctx.CONSTANT)
   override def visitExprLiteral(ctx: ExprLiteralContext) = Literal(ctx.LITERAL)
 
-  override def visitExprCall(ctx: ExprCallContext) = ctx.dotted_name.text match {
+  override def visitExprId(ctx: ExprIdContext) = symtab match {
+    case Some(st) => st(ctx, ctx.text) match {
+      case Left(decl) => DottedName(decl.id :: Nil)
+      case Right(id)  => DottedName(id :: Nil)
+    }
+    case None => unreachable
+  }
+
+  override def visitExprDot(ctx: ExprDotContext) = visit(ctx.ref) match {
+    case DottedName(names) => DottedName(names ::: ctx.IDENTIFIER.text :: Nil)
+    case _                 => Message.fatal(ctx, s"Cannot access member of '${ctx.ref.sourceText}'")
+  }
+
+  override def visitExprIndex(ctx: ExprIndexContext) = {
+    val idx = visit(ctx.idx)
+    visit(ctx.ref) match {
+      case x: DottedName              => ArrayLookup(x, idx :: Nil)
+      case ArrayLookup(name, indices) => ArrayLookup(name, indices ::: idx :: Nil)
+      case _                          => Message.fatal(ctx, s"Cannot index expression '${ctx.ref.sourceText}'")
+    }
+  }
+
+  override def visitExprSlice(ctx: ExprSliceContext) = {
+    visit(ctx.ref) match {
+      case x: VarRef => Slice(x, visit(ctx.lidx), ctx.op, visit(ctx.ridx))
+      case _         => Message.fatal(ctx, s"Cannot slice expression '${ctx.ref.sourceText}'")
+    }
+  }
+
+  override def visitExprCall(ctx: ExprCallContext) = ctx.ref.text match {
     case "read"  => PipelineRead
     case "write" => PipelineWrite
     case _ => {
       val args = this(ctx.commaexpr)
-      val DottedName(names) = LookUpName(ctx.dotted_name)
+
+      val names = visit(ctx.ref) match {
+        case DottedName(names) => names
+        case _                 => Message.fatal(ctx, s"Cannot call '${ctx.sourceText}'")
+      }
 
       def checkargs(minArgs: Int, maxArgs: Int = 0, hint: String = "")(expr: => Expr) = {
         val minA = minArgs
