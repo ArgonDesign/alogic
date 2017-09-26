@@ -48,34 +48,17 @@ class CommonContext(root: ParserRuleContext, initialTypedefs: Map[String, Type])
 
   val knownTypeVisitor = new KnownTypeVisitor(Some(symtab), typedefs)
 
-  // Construct tree for variable reference, looking up the variable name in the current scope
-  object VarRefVisitor extends VScalarVisitor[VarRef] {
-    // Construct tree for dotted name, looking up the variable name in the current scope
-    object LookUpName extends VScalarVisitor[DottedName] {
-      override def visitDotted_name(ctx: Dotted_nameContext) = {
-        val (head :: tail) = ctx.es.toList.map(_.text)
-        DottedName(symtab(ctx, head).left.get.id :: tail)
-      }
-    }
-    override def visitVarRef(ctx: VarRefContext) = LookUpName(ctx.dotted_name)
-    override def visitVarRefIndex(ctx: VarRefIndexContext) = ArrayLookup(LookUpName(ctx.dotted_name), exprVisitor(ctx.es))
-  }
-
-  object DeclVisitor extends VScalarVisitor[Declaration] {
-    object VarRefId extends VScalarVisitor[String] {
-      override def visitVarRef(ctx: VarRefContext) = ctx.dotted_name.text
-      override def visitVarRefIndex(ctx: VarRefIndexContext) = ctx.dotted_name.text
-    }
-
-    override def visitTaskDeclOut(ctx: TaskDeclOutContext) = symtab(ctx, ctx.IDENTIFIER).left.get
-    override def visitTaskDeclIn(ctx: TaskDeclInContext) = symtab(ctx, ctx.IDENTIFIER).left.get
-    override def visitTaskDeclConst(ctx: TaskDeclConstContext) = symtab(ctx, ctx.IDENTIFIER).left.get
-    override def visitTaskDeclPipeline(ctx: TaskDeclPipelineContext) = symtab(ctx, ctx.IDENTIFIER).left.get
-    override def visitTaskDeclParam(ctx: TaskDeclParamContext) = symtab(ctx, ctx.IDENTIFIER).left.get
-    override def visitTaskDeclVerilog(ctx: TaskDeclVerilogContext) = symtab(ctx, VarRefId(ctx.var_ref)).left.get
+  object LookUpDecl extends VScalarVisitor[Declaration] {
+    override def visitTaskDeclOut(ctx: TaskDeclOutContext) = symtab(ctx)
+    override def visitTaskDeclIn(ctx: TaskDeclInContext) = symtab(ctx)
+    override def visitTaskDeclConst(ctx: TaskDeclConstContext) = symtab(ctx)
+    override def visitTaskDeclPipeline(ctx: TaskDeclPipelineContext) = symtab(ctx)
+    override def visitTaskDeclParam(ctx: TaskDeclParamContext) = symtab(ctx)
+    override def visitTaskDeclVerilog(ctx: TaskDeclVerilogContext) = symtab(ctx)
     override def visitTaskDecl(ctx: TaskDeclContext) = visit(ctx.decl)
-    override def visitDeclNoInit(ctx: DeclNoInitContext) = symtab(ctx, VarRefId(ctx.var_ref)).left.get
-    override def visitDeclInit(ctx: DeclInitContext) = symtab(ctx, VarRefId(ctx.var_ref)).left.get
+    override def visitDeclVarNoInit(ctx: DeclVarNoInitContext) = symtab(ctx)
+    override def visitDeclVarInit(ctx: DeclVarInitContext) = symtab(ctx)
+    override def visitDeclArr(ctx: DeclArrContext) = symtab(ctx)
   }
 
   object VerilogFunctionVisitor extends VScalarVisitor[VerilogFunction] {
@@ -108,7 +91,7 @@ class FsmTaskBuilder(cc: CommonContext) {
         }
       }
 
-      override def visitDeclStmt(ctx: DeclStmtContext) = DeclVisitor(ctx.decl) match {
+      override def visitDeclStmt(ctx: DeclStmtContext) = LookUpDecl(ctx.decl) match {
         case s: VarDeclaration => DeclarationStmt(s)
         case Declaration(decltype, id) => {
           Message.error(ctx, "Only variable declarations allowed inside functions"); ErrorStmt
@@ -232,9 +215,9 @@ class FsmTaskBuilder(cc: CommonContext) {
           }
           (None, stmt)
         }
-        override def visitDeclInit(ctx: DeclInitContext) = {
-          val varDecl = DeclVisitor(ctx).asInstanceOf[VarDeclaration]
-          val initExpr = Assign(lvalVisitor(ctx.var_ref), exprVisitor(ctx.expr))
+        override def visitDeclVarInit(ctx: DeclVarInitContext) = {
+          val varDecl = LookUpDecl(ctx).asInstanceOf[VarDeclaration]
+          val initExpr = Assign(LValName(ctx.IDENTIFIER :: Nil), exprVisitor(ctx.expr))
           (Some(varDecl), initExpr)
         }
       }
@@ -308,7 +291,7 @@ class FsmTaskBuilder(cc: CommonContext) {
 
       override def visitTaskFSM(ctx: TaskFSMContext) = {
         val name = ctx.IDENTIFIER.text
-        val decls = DeclVisitor(ctx.decls)
+        val decls = LookUpDecl(ctx.decls)
         val contents = FsmContentVisitor(ctx.contents)
         val fns = contents collect { case x: Function => x }
         val fencefns = contents collect { case x: FenceFunction => x }
@@ -339,7 +322,7 @@ class VerilogTaskBuilder(cc: CommonContext) {
         val vfns = ctx.contents.toList collect {
           case c: VerilogFunctionContext => VerilogFunctionVisitor(c)
         }
-        VerilogTask(ctx.IDENTIFIER.text, DeclVisitor(ctx.decls), vfns)
+        VerilogTask(ctx.IDENTIFIER.text, LookUpDecl(ctx.decls), vfns)
       }
     }
 
@@ -383,7 +366,7 @@ class NetworkTaskBuilder(cc: CommonContext) {
 
       override def visitNetwork(ctx: NetworkContext) = {
         val name = ctx.IDENTIFIER.text
-        val decls = DeclVisitor(ctx.decls)
+        val decls = LookUpDecl(ctx.decls)
         val contents = NetworkContentVisitor(ctx.contents)
         val inst = contents collect {
           case x: Instantiate                                 => x

@@ -64,7 +64,11 @@ class Symtab(root: ParserRuleContext, typedefs: scala.collection.Map[String, Typ
   }
 
   // Insert name into scope of node ctx
-  private[this] def insert(ctx: ParserRuleContext, name: String, decl: Either[Declaration, String]): Unit = {
+  private[this] def insert(ctx: ParserRuleContext, decl: Either[Declaration, String]): Unit = {
+    val name = decl match {
+      case Left(d)   => d.id
+      case Right(id) => id
+    }
     val scope = find(ctx)
     if (scope contains name) {
       val Some(Item(_, pctx)) = scope(name)
@@ -79,7 +83,7 @@ class Symtab(root: ParserRuleContext, typedefs: scala.collection.Map[String, Typ
         case None => ()
       }
     }
-    scope(name) = Some(Item(decl, ctx))
+    scope(name) = Some(Item(decl, ctx)) // Insert to 'scope'
     multiplicity(name) += {
       decl match {
         case Left(_: VarDeclaration)   => 1
@@ -89,22 +93,7 @@ class Symtab(root: ParserRuleContext, typedefs: scala.collection.Map[String, Typ
     }
   }
 
-  // Walk the parse tree, extract declared names and build the variable scopes.
-  // Note that initialiser expressions are not parsed just yet, as names will be
-  // re-mapped lated
-  private[this] object BuildScopes extends VScalarVisitor[Unit] {
-    // Get VarRef from parse tree
-    object VarRefVisitor extends VScalarVisitor[VarRef] {
-      object DottedNameVisitor extends VScalarVisitor[DottedName] {
-        override def visitDotted_name(ctx: Dotted_nameContext) = DottedName(ctx.es.toList.map(_.text))
-      }
-      override def visitVarRef(ctx: VarRefContext) = DottedNameVisitor(ctx.dotted_name)
-      override def visitVarRefIndex(ctx: VarRefIndexContext) = {
-        val exprVisitor = new ExprVisitor(Some(self), typedefs)
-        ArrayLookup(DottedNameVisitor(ctx.dotted_name), exprVisitor(ctx.es))
-      }
-    }
-
+  private[this] object DeclExtractor extends VScalarVisitor[Declaration] {
     object PortTypeVisitor extends VScalarVisitor[Type] {
       override def visitPortTypeKnown(ctx: PortTypeKnownContext) = {
         val knownTypeVisitor = new KnownTypeVisitor(Some(self), typedefs)
@@ -126,6 +115,83 @@ class Symtab(root: ParserRuleContext, typedefs: scala.collection.Map[String, Typ
       override val defaultResult = FlowControlTypeNone
     }
 
+    override def visitTaskDeclOut(ctx: TaskDeclOutContext) = {
+      val fctype = FlowControlTypeVisitor(ctx.flow_control_type)
+      val kind = PortTypeVisitor(ctx.port_type)
+      val id = ctx.IDENTIFIER.text
+      val stype = StorageTypeVisitor(ctx.storage_type)
+      OutDeclaration(fctype, kind, id, stype)
+    }
+    override def visitTaskDeclIn(ctx: TaskDeclInContext) = {
+      val fctype = FlowControlTypeVisitor(ctx.flow_control_type)
+      val kind = PortTypeVisitor(ctx.port_type)
+      val id = ctx.IDENTIFIER.text
+      InDeclaration(fctype, kind, id)
+    }
+    override def visitTaskDeclConst(ctx: TaskDeclConstContext) = {
+      val id = ctx.IDENTIFIER.text
+      val knownTypeVisitor = new KnownTypeVisitor(Some(self), typedefs)
+      val kind = knownTypeVisitor(ctx.known_type) match {
+        case x: ScalarType => x
+        case x             => Message.error(ctx, s"Constant '${id}' must be declared with scalar type"); IntType(false, 1);
+      }
+      ConstDeclaration(kind, id, ErrorExpr)
+    }
+    override def visitTaskDeclParam(ctx: TaskDeclParamContext) = {
+      val id = ctx.IDENTIFIER.text
+      val knownTypeVisitor = new KnownTypeVisitor(Some(self), typedefs)
+      val kind = knownTypeVisitor(ctx.known_type) match {
+        case x: ScalarType => x
+        case x             => Message.error(ctx, s"Parameter '${id}' must be declared with scalar type"); IntType(false, 1);
+      }
+      ParamDeclaration(kind, id, ErrorExpr)
+    }
+    override def visitTaskDeclPipeline(ctx: TaskDeclPipelineContext) = {
+      val id = ctx.IDENTIFIER.text
+      val knownTypeVisitor = new KnownTypeVisitor(Some(self), typedefs)
+      val kind = knownTypeVisitor(ctx.known_type);
+      PipelineVarDeclaration(kind, id)
+    }
+    override def visitTaskDeclVerilog(ctx: TaskDeclVerilogContext) = visit(ctx.decl) match {
+      case VarDeclaration(_, id, Some(_))   => Message.fatal(ctx, s"Declaration of Verilog variable '${id}' cannot use initializer")
+      case VarDeclaration(kind, id, None)   => VerilogVarDeclaration(kind, id)
+      case ArrayDeclaration(kind, id, dims) => VerilogArrayDeclaration(kind, id, dims)
+      case _                                => unreachable
+    }
+    override def visitDeclArr(ctx: DeclArrContext) = {
+      val knownTypeVisitor = new KnownTypeVisitor(Some(self), typedefs)
+      val kind = knownTypeVisitor(ctx.known_type())
+
+      val id = ctx.IDENTIFIER.text
+
+      val exprVisitor = new ExprVisitor(Some(self), typedefs)
+      val indices = exprVisitor(ctx.es)
+
+      kind match {
+        case x: ScalarType => ArrayDeclaration(x, id, indices)
+        case s: Struct => {
+          Message.error(ctx, s"Arrays must be declared with scalar types, not struct '${s.name}'")
+          ArrayDeclaration(IntType(false, 1), id, indices);
+        }
+        case VoidType => unreachable
+      }
+    }
+    override def visitDeclVarNoInit(ctx: DeclVarNoInitContext) = {
+      val knownTypeVisitor = new KnownTypeVisitor(Some(self), typedefs)
+      val kind = knownTypeVisitor(ctx.known_type())
+      VarDeclaration(kind, ctx.IDENTIFIER, None)
+    }
+    override def visitDeclVarInit(ctx: DeclVarInitContext) = {
+      val knownTypeVisitor = new KnownTypeVisitor(Some(self), typedefs)
+      val kind = knownTypeVisitor(ctx.known_type())
+      VarDeclaration(kind, ctx.IDENTIFIER, Some(ErrorExpr))
+    }
+  }
+
+  // Walk the parse tree, extract declared names and build the variable scopes.
+  // Note that initialiser expressions are not parsed just yet, as names will be
+  // re-mapped lated
+  private[this] object BuildScopes extends VScalarVisitor[Unit] {
     override def defaultResult = ()
 
     // Create new scope for blocks
@@ -182,110 +248,22 @@ class Symtab(root: ParserRuleContext, typedefs: scala.collection.Map[String, Typ
       visitChildren(ctx)
     }
 
-    // Insert special task declarations
-    override def visitTaskDeclOut(ctx: TaskDeclOutContext) = {
-      val fctype = FlowControlTypeVisitor(ctx.flow_control_type)
-      val kind = PortTypeVisitor(ctx.port_type)
-      val id = ctx.IDENTIFIER.text
-      val stype = StorageTypeVisitor(ctx.storage_type)
-      val decl = OutDeclaration(fctype, kind, id, stype)
-      insert(ctx, id, Left(decl))
-    }
-    override def visitTaskDeclIn(ctx: TaskDeclInContext) = {
-      val fctype = FlowControlTypeVisitor(ctx.flow_control_type)
-      val kind = PortTypeVisitor(ctx.port_type)
-      val id = ctx.IDENTIFIER.text
-      val decl = InDeclaration(fctype, kind, id)
-      insert(ctx, id, Left(decl))
-    }
-    override def visitTaskDeclConst(ctx: TaskDeclConstContext) = {
-      val id = ctx.IDENTIFIER.text
-      val knownTypeVisitor = new KnownTypeVisitor(Some(self), typedefs)
-      val kind = knownTypeVisitor(ctx.known_type) match {
-        case x: ScalarType => x
-        case x             => Message.error(ctx, s"Constant '${id}' must be declared with scalar type"); IntType(false, 1);
-      }
-      val decl = ConstDeclaration(kind, id, ErrorExpr)
-      insert(ctx, id, Left(decl))
-    }
-    override def visitTaskDeclParam(ctx: TaskDeclParamContext) = {
-      val id = ctx.IDENTIFIER.text
-      val knownTypeVisitor = new KnownTypeVisitor(Some(self), typedefs)
-      val kind = knownTypeVisitor(ctx.known_type) match {
-        case x: ScalarType => x
-        case x             => Message.error(ctx, s"Parameter '${id}' must be declared with scalar type"); IntType(false, 1);
-      }
-      val decl = ParamDeclaration(kind, id, ErrorExpr)
-      insert(ctx, id, Left(decl))
-    }
-    override def visitTaskDeclPipeline(ctx: TaskDeclPipelineContext) = {
-      val id = ctx.IDENTIFIER.text
-      val knownTypeVisitor = new KnownTypeVisitor(Some(self), typedefs)
-      val kind = knownTypeVisitor(ctx.known_type);
-      val decl = PipelineVarDeclaration(kind, id)
-      insert(ctx, id, Left(decl))
-    }
-    override def visitTaskDeclVerilog(ctx: TaskDeclVerilogContext) = {
-      val knownTypeVisitor = new KnownTypeVisitor(Some(self), typedefs)
-      val kind = knownTypeVisitor(ctx.known_type)
-      val vref = VarRefVisitor(ctx.var_ref)
-      val decl = vref match {
-        case DottedName(name :: Nil) => VerilogVarDeclaration(kind, name)
-        case ArrayLookup(DottedName(name :: Nil), index) => {
-          kind match {
-            case x: ScalarType => VerilogArrayDeclaration(x, name, index)
-            case s: Struct => {
-              Message.error(ctx, s"Arrays must be declared with scalar type, not struct '${s.name}'")
-              ArrayDeclaration(IntType(false, 1), name, index);
-            }
-            case VoidType => unreachable
-          }
-        }
-        case _ => unreachable
-      }
-      insert(ctx, decl.id, Left(decl))
-    }
+    // Insert task declarations
+    override def visitTaskDeclOut(ctx: TaskDeclOutContext) = insert(ctx, Left(DeclExtractor(ctx)))
+    override def visitTaskDeclIn(ctx: TaskDeclInContext) = insert(ctx, Left(DeclExtractor(ctx)))
+    override def visitTaskDeclConst(ctx: TaskDeclConstContext) = insert(ctx, Left(DeclExtractor(ctx)))
+    override def visitTaskDeclParam(ctx: TaskDeclParamContext) = insert(ctx, Left(DeclExtractor(ctx)))
+    override def visitTaskDeclPipeline(ctx: TaskDeclPipelineContext) = insert(ctx, Left(DeclExtractor(ctx)))
+    override def visitTaskDeclVerilog(ctx: TaskDeclVerilogContext) = insert(ctx, Left(DeclExtractor(ctx)))
 
-    // Insert regular declaration
-    override def visitDeclNoInit(ctx: DeclNoInitContext) = {
-      val knownTypeVisitor = new KnownTypeVisitor(Some(self), typedefs)
-      val kind = knownTypeVisitor(ctx.known_type())
-      val vref = VarRefVisitor(ctx.var_ref)
-      val decl = vref match {
-        case DottedName(name :: Nil) => VarDeclaration(kind, name, None)
-        case ArrayLookup(DottedName(name :: Nil), index) => {
-          kind match {
-            case x: ScalarType => ArrayDeclaration(x, name, index)
-            case s: Struct => {
-              Message.error(ctx, s"Arrays must be declared with scalar types, not struct '${s.name}'")
-              ArrayDeclaration(IntType(false, 1), name, index);
-            }
-            case VoidType => unreachable
-          }
-        }
-        case _ => unreachable
-      }
-      insert(ctx, decl.id, Left(decl))
-    }
-    override def visitDeclInit(ctx: DeclInitContext) = {
-      val knownTypeVisitor = new KnownTypeVisitor(Some(self), typedefs)
-      val kind = knownTypeVisitor(ctx.known_type())
-      val vref = VarRefVisitor(ctx.var_ref)
-      val decl = vref match {
-        case DottedName(name :: Nil) => VarDeclaration(kind, name, Some(ErrorExpr))
-        case ArrayLookup(DottedName(name :: Nil), _) => {
-          Message.error(ctx, s"Cannot use initializer in declaration of array '${name}'")
-          VarDeclaration(kind, name, None)
-        }
-        case _ => unreachable
-      }
-      insert(ctx, decl.id, Left(decl))
-    }
+    // Insert ordinary declaration
+    override def visitDeclVarNoInit(ctx: DeclVarNoInitContext) = insert(ctx, Left(DeclExtractor(ctx)))
+    override def visitDeclVarInit(ctx: DeclVarInitContext) = insert(ctx, Left(DeclExtractor(ctx)))
+    override def visitDeclArr(ctx: DeclArrContext) = insert(ctx, Left(DeclExtractor(ctx)))
 
     // Insert function names and create new scope
     override def visitFunction(ctx: FunctionContext) = {
-      val id = ctx.IDENTIFIER.text
-      insert(ctx, id, Right(id))
+      insert(ctx, Right(ctx.IDENTIFIER.text))
       create(ctx)
       visitChildren(ctx)
     }
@@ -308,15 +286,9 @@ class Symtab(root: ParserRuleContext, typedefs: scala.collection.Map[String, Typ
       case Some(Item(Left(decl), ctx)) if (name == decl.id) => {
         val newId = decl.id + s"_L${ctx.loc.line}"
         val newDecl = decl match {
-          case d: VarDeclaration          => d.copy(id = newId)
-          case d: ParamDeclaration        => d.copy(id = newId)
-          case d: ConstDeclaration        => d.copy(id = newId)
-          case d: ArrayDeclaration        => d.copy(id = newId)
-          case d: PipelineVarDeclaration  => d.copy(id = newId)
-          case d: InDeclaration           => d.copy(id = newId)
-          case d: OutDeclaration          => d.copy(id = newId)
-          case d: VerilogVarDeclaration   => d.copy(id = newId)
-          case d: VerilogArrayDeclaration => d.copy(id = newId)
+          case d: VarDeclaration   => d.copy(id = newId)
+          case d: ArrayDeclaration => d.copy(id = newId)
+          case _                   => unreachable
         }
         nameMap(name) = Some(Item(Left(newDecl), ctx))
       }
@@ -325,13 +297,13 @@ class Symtab(root: ParserRuleContext, typedefs: scala.collection.Map[String, Typ
   }
 
   // Parse initialiser expressions in the context of new names
-  val exprVisitor = new ExprVisitor(Some(self), typedefs)
+  private[this] val exprVisitor = new ExprVisitor(Some(self), typedefs)
   for (nameMap <- scopes.values; (name, item) <- nameMap) {
     item match {
       case Some(Item(Left(decl), ctx)) => {
         val newDecl = decl match {
           case d @ VarDeclaration(_, _, Some(init)) => {
-            Some(d.copy(init = Some(exprVisitor(ctx.asInstanceOf[DeclInitContext].expr))))
+            Some(d.copy(init = Some(exprVisitor(ctx.asInstanceOf[DeclVarInitContext].expr))))
           }
           case d @ ParamDeclaration(_, _, init) => {
             Some(d.copy(init = exprVisitor(ctx.asInstanceOf[TaskDeclParamContext].expr)))
@@ -349,6 +321,22 @@ class Symtab(root: ParserRuleContext, typedefs: scala.collection.Map[String, Typ
       case None                         =>
     }
   }
+
+  // Map from parse tree node to declaration, if the node is a declaration construct
+  private[this] val decls = {
+    for {
+      nameMap <- scopes.values
+      (name, itemOpt) <- nameMap
+      Some(item) = itemOpt
+      if (item.decl.isLeft)
+      Left(decl) = item.decl
+    } yield {
+      item.ctx -> decl
+    }
+  }.toMap
+
+  // Look up declaration at this node
+  def apply(ctx: ParserRuleContext): Declaration = decls(ctx)
 
   // Look up name in scope of node ctx
   def apply(ctx: ParserRuleContext, name: String): Either[Declaration, String] = {

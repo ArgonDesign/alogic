@@ -59,17 +59,22 @@ struct
     '}' ';'
   ;
 
-decl_noinit
-  : known_type var_ref            #DeclNoInit
+decl_var_noinit
+  : known_type IDENTIFIER            #DeclVarNoInit
   ;
 
-decl_init
-  : known_type var_ref '=' expr   #DeclInit
+decl_var_init
+  : known_type IDENTIFIER '=' expr   #DeclVarInit
+  ;
+
+decl_arr
+  : known_type IDENTIFIER ('[' es+=expr ']')+   #DeclArr
   ;
 
 decl
-  : decl_noinit
-  | decl_init
+  : decl_var_noinit
+  | decl_var_init
+  | decl_arr
   ;
 
 flow_control_type
@@ -98,7 +103,7 @@ network_decl
 
 task_decl
   : network_decl                        #DUMMYRULENAME
-  | 'verilog' known_type var_ref ';'    #TaskDeclVerilog
+  | 'verilog' decl ';'                  #TaskDeclVerilog
   | decl ';'                            #TaskDecl
   ;
 
@@ -208,11 +213,6 @@ lval
   | '{' lval (',' lval)+ '}'                                    # LValCat
   ;
 
-var_ref
-  : dotted_name ('[' es+=expr ']')+   # VarRefIndex
-  | dotted_name                       # VarRef
-  ;
-
 commaexpr : (expr)? (',' expr)* ;
 
 param_args : (param_assign (',' param_assign)*)? ;
@@ -263,7 +263,7 @@ statement
 
 for_init
   : assignment_statement  #ForInitNoDecl
-  | decl_init             #ForInitDecl
+  | decl_var_init         #ForInitDecl
   ;
 
 assignment_statement
