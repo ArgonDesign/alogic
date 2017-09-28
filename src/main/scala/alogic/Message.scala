@@ -16,6 +16,8 @@ package alogic
 
 import org.antlr.v4.runtime.ParserRuleContext
 import Antlr4Conversions._
+import alogic.ast.Node
+import alogic.ast.Attr
 
 object Message {
 
@@ -110,4 +112,31 @@ object Message {
   def fatal(ctx: ParserRuleContext, msg: String*): Nothing = fatal(ctx.loc, msg: _*)
 
   def ice(ctx: ParserRuleContext, msg: String*): Nothing = ice(ctx.loc, msg: _*)
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Versions that take an ast.Node for location info
+  //////////////////////////////////////////////////////////////////////////////
+  def info(node: Node, msg: String*): Unit = info(node.loc, msg: _*)
+
+  def warning(node: Node, msg: String*): Unit = warning(node.loc, msg: _*)
+
+  def error(node: Node, msg: String*): Unit = error(node.loc, msg: _*)
+
+  def fatal(node: Node, msg: String*): Nothing = fatal(node.loc, msg: _*)
+
+  def ice(node: Node, msg: String*): Nothing = ice(node.loc, msg: _*)
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Versions that take an ast.Attr for location info
+  //////////////////////////////////////////////////////////////////////////////
+  def info(attr: Attr, msg: String*): Unit = info(attr.loc, msg: _*)
+
+  def warning(attr: Attr, msg: String*): Unit = warning(attr.loc, msg: _*)
+
+  def error(attr: Attr, msg: String*): Unit = error(attr.loc, msg: _*)
+
+  def fatal(attr: Attr, msg: String*): Nothing = fatal(attr.loc, msg: _*)
+
+  def ice(attr: Attr, msg: String*): Nothing = ice(attr.loc, msg: _*)
+
 }

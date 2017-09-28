@@ -179,21 +179,20 @@ class FsmTaskBuilder(cc: CommonContext) {
         }
       }
 
-      def loopWarnings(cond: Expr, body: List[Stmt], condCtx: ParserRuleContext, stmtLastCtx: Option[ParserRuleContext]) = {
+      def loopWarnings(cond: Expr, body: List[Stmt]) = {
         if (cond.isConst) {
           if (cond.eval == 0) {
-            Message.warning(condCtx, "Condition of loop is always false")
+            Message.warning(cond, "Condition of loop is always false")
           } else {
-            Message.warning(condCtx, "Condition of loop is always true. Use 'loop' instead.")
+            Message.warning(cond, "Condition of loop is always true. Use 'loop' instead.")
           }
         }
 
-        stmtLastCtx match {
-          case Some(ctx) => body.last match {
-            case _: FenceStmt => Message.warning(ctx, "Redundant 'fence' at end of loop body")
+        body.lastOption foreach {
+          _ match {
+            case s: FenceStmt => Message.warning(s, "Redundant 'fence' at end of loop body")
             case _            =>
           }
-          case None =>
         }
       }
 
@@ -201,7 +200,7 @@ class FsmTaskBuilder(cc: CommonContext) {
         val cond = exprVisitor(ctx.expr)
         val body = visit(ctx.stmts)
 
-        loopWarnings(cond, body, ctx, ctx.stmts.lastOption)
+        loopWarnings(cond, body)
 
         ControlWhile(Attr(ctx.loc), cond, body)
       }
@@ -210,7 +209,7 @@ class FsmTaskBuilder(cc: CommonContext) {
         val cond = exprVisitor(ctx.expr)
         val body = visit(ctx.stmts)
 
-        loopWarnings(cond, body, ctx, ctx.stmts.lastOption)
+        loopWarnings(cond, body)
 
         ControlDo(Attr(ctx.loc), cond, body)
       }
@@ -240,7 +239,7 @@ class FsmTaskBuilder(cc: CommonContext) {
         val body = visit(ctx.stmts)
         val attr = Attr(ctx.loc)
 
-        loopWarnings(cond, body, ctx, ctx.stmts.lastOption)
+        loopWarnings(cond, body)
 
         val forAST = ControlFor(attr, initStmt, cond, stepStmt, body)
         optDecl match {
@@ -295,7 +294,7 @@ class FsmTaskBuilder(cc: CommonContext) {
 
           val body = StatementVisitor(ctx.stmts) collect {
             case stmt: CombStmt => stmt
-            case stmt: CtrlStmt => Message.error(ctx, "Body of 'fence' function must not contain control statements"); ErrorStmt(attr)
+            case stmt: CtrlStmt => Message.error(stmt, "Body of 'fence' function must not contain control statements"); ErrorStmt(attr)
           }
           FenceFunction(attr, CombinatorialBlock(attr, body))
         }

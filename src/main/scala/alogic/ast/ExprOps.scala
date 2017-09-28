@@ -83,7 +83,7 @@ trait ExprOps { this: Expr =>
 
   def eval: BigInt = this.simplify match {
     case Num(_, _, _, value) => value
-    case x                   => Message.ice(s"Don't know how to eval '${x.toSource}'")
+    case x                   => Message.ice(this, s"Don't know how to eval '${x.toSource}'")
   }
 
   def simplify: Expr = this match {
@@ -155,10 +155,10 @@ trait ExprOps { this: Expr =>
                 case _   => lookUpField(ns, fields(n))
               }
             } else {
-              Message.fatal(s"No field named '$n' in struct '$name'") // TODO: check earlier
+              Message.fatal(tree, s"No field named '$n' in struct '$name'") // TODO: check earlier
             }
           }
-          case _ => Message.fatal(s"Cannot find field '$n' in non-struct type '$kind'")
+          case _ => Message.fatal(tree, s"Cannot find field '$n' in non-struct type '$kind'")
         }
       }
 
@@ -201,13 +201,13 @@ trait ExprOps { this: Expr =>
       case _: ErrorExpr                 => None
       case BitRep(_, count, value) => value.widthExpr(symtab) match {
         case Some(w) => Some(count * w)
-        case None    => Message.fatal("Cannot compute width of bit repetion")
+        case None    => Message.fatal(value, "Cannot compute width of bit repetion")
       }
       case BitCat(_, terms) => {
         val exprs = for (term <- terms) yield {
           term.widthExpr(symtab) match {
             case Some(expr) => expr
-            case None       => Message.fatal("Cannot compute width of bit concatenation operand")
+            case None       => Message.fatal(term, "Cannot compute width of bit concatenation operand")
           }
         }
         Some(exprs.reduce(_ + _))
@@ -308,7 +308,7 @@ trait ExprOps { this: Expr =>
     case BitCat(_, terms)                  => ???
     case _: Slice                          => ???
     case DottedName(_, name :: Nil)        => name
-    case x: DottedName                     => Message.ice(s"Cannot generate verilog for '$x'")
+    case x: DottedName                     => Message.ice(x, s"Cannot generate verilog for '$x'")
     case _: ExprArrIndex                   => ???
     case _: ExprVecIndex                   => ???
     case _: Literal                        => ???

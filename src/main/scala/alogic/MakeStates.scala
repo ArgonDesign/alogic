@@ -73,18 +73,16 @@ final class MakeStates {
     val FsmTask(_, name, decls, fns, fencefn, vfns) = fsm
 
     // Find the value of the CALL_STACK_SIZE constant, if any
-    val cssOpt: Option[Int] = {
-      val expr = decls collectFirst { case DeclConst(_, "CALL_STACK_SIZE", value) => value }
-      expr map { e =>
-        if (!e.isConst) {
-          Message.error("The value of 'CALL_STACK_SIZE' must be a compile time constant"); 1
+    val cssExprOpt = decls collectFirst { case DeclConst(_, "CALL_STACK_SIZE", value) => value }
+    val cssOpt: Option[Int] = cssExprOpt map { e =>
+      if (!e.isConst) {
+        Message.error(e, "The value of 'CALL_STACK_SIZE' must be a compile time constant"); 1
+      } else {
+        val value = e.eval.toInt
+        if (value < 1) {
+          Message.error(e, "The value of 'CALL_STACK_SIZE' must be >= 1"); 1
         } else {
-          val value = e.eval.toInt
-          if (value < 1) {
-            Message.error("The value of 'CALL_STACK_SIZE' must be >= 1"); 1
-          } else {
-            value
-          }
+          value
         }
       }
     }
@@ -121,9 +119,9 @@ final class MakeStates {
           }
         }
       }
-      Message.error(msg: _*)
+      Message.error(fsm, msg: _*)
     } else if (!recursive && cssOpt.isDefined) {
-      Message.error(s"Non-recursive fsm '$name' must not define the 'CALL_STACK_SIZE' constant")
+      Message.error(cssExprOpt.get, s"Non-recursive fsm '$name' must not define the 'CALL_STACK_SIZE' constant")
     }
 
     // Get the value of CALL_STACK_SIZE if defined, or otherwise the length of the longest path in the call graph
@@ -202,10 +200,10 @@ final class MakeStates {
       // Create State Task
       Some(StateTask(attr, name, newDecls, states, fencefn, vfns))
     } else if (fencefn == None && fns == Nil) {
-      Message.error(s"fsm '$name' contains only 'verilog' functions. Use a 'verilog' task instead.")
+      Message.error(fsm, s"fsm '$name' contains only 'verilog' functions. Use a 'verilog' task instead.")
       None
     } else {
-      Message.error(s"No function named 'main' found in FSM '$name'")
+      Message.error(fsm, s"No function named 'main' found in FSM '$name'")
       None
     }
   }
