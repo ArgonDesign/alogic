@@ -35,8 +35,8 @@ import alogic.antlr.VParser._
 class CommonContext(root: ParserRuleContext, initialTypedefs: Map[String, Type]) {
   // Collect type definitions and entityContext
   val (typedefs, entityCtx) = root match {
-    case ctx: StartContext   => ExtractTypedefs(ctx, initialTypedefs)
-    case ctx: TaskFSMContext => (initialTypedefs, ctx)
+    case ctx: StartContext     => ExtractTypedefs(ctx, initialTypedefs)
+    case ctx: EntityFSMContext => (initialTypedefs, ctx)
   }
 
   // Build scopes and allocate static variable names
@@ -72,7 +72,7 @@ class CommonContext(root: ParserRuleContext, initialTypedefs: Map[String, Type])
 class FsmTaskBuilder(cc: CommonContext) {
   import cc._
 
-  def apply(tree: TaskFSMContext): FsmTask = {
+  def apply(tree: EntityFSMContext): FsmTask = {
 
     object StatementVisitor extends VScalarVisitor[Stmt] {
       override def visitBlockStmt(ctx: BlockStmtContext) = {
@@ -289,7 +289,7 @@ class FsmTaskBuilder(cc: CommonContext) {
         override def visitVerilogFunction(ctx: VerilogFunctionContext) = VerilogFunctionVisitor(ctx)
       }
 
-      override def visitTaskFSM(ctx: TaskFSMContext) = {
+      override def visitEntityFSM(ctx: EntityFSMContext) = {
         val name = ctx.IDENTIFIER.text
         val decls = LookUpDecl(ctx.decls)
         val contents = FsmContentVisitor(ctx.contents)
@@ -315,10 +315,10 @@ class FsmTaskBuilder(cc: CommonContext) {
 class VerilogTaskBuilder(cc: CommonContext) {
   import cc._
 
-  def apply(tree: TaskVerilogContext): VerilogTask = {
+  def apply(tree: EntityVerilogContext): VerilogTask = {
 
     object VerilogTaskVisitor extends VScalarVisitor[VerilogTask] {
-      override def visitTaskVerilog(ctx: TaskVerilogContext) = {
+      override def visitEntityVerilog(ctx: EntityVerilogContext) = {
         val vfns = ctx.contents.toList collect {
           case c: VerilogFunctionContext => VerilogFunctionVisitor(c)
         }
@@ -338,7 +338,7 @@ class NetworkTaskBuilder(cc: CommonContext) {
 
   lazy val fsmTaskBuilder = new FsmTaskBuilder(cc)
 
-  def apply(tree: NetworkContext): NetworkTask = {
+  def apply(tree: Network_entityContext): NetworkTask = {
 
     object DottedNameVisitor extends VScalarVisitor[DottedName] {
       override def visitDotted_name(ctx: Dotted_nameContext) = DottedName(ctx.es.toList map (_.text))
@@ -346,8 +346,8 @@ class NetworkTaskBuilder(cc: CommonContext) {
 
     object NetworkVisitor extends VScalarVisitor[NetworkTask] {
       object NetworkContentVisitor extends VScalarVisitor[Node] {
-        override def visitTaskFSM(ctx: TaskFSMContext) = fsmTaskBuilder(ctx) //, typedefs)
-        override def visitTaskVerilog(ctx: TaskVerilogContext) = ???
+        override def visitEntityFSM(ctx: EntityFSMContext) = fsmTaskBuilder(ctx) //, typedefs)
+        override def visitEntityVerilog(ctx: EntityVerilogContext) = ???
         override def visitConnect(ctx: ConnectContext) = {
           val lhs = DottedNameVisitor(ctx.lhs)
           val rhs = DottedNameVisitor(ctx.rhs)
@@ -364,7 +364,7 @@ class NetworkTaskBuilder(cc: CommonContext) {
         override def visitVerilogFunction(ctx: VerilogFunctionContext) = VerilogFunctionVisitor(ctx)
       }
 
-      override def visitNetwork(ctx: NetworkContext) = {
+      override def visitEntityNetwork(ctx: EntityNetworkContext) = {
         val name = ctx.IDENTIFIER.text
         val decls = LookUpDecl(ctx.decls)
         val contents = NetworkContentVisitor(ctx.contents)
@@ -393,9 +393,9 @@ object AstBuilder {
     lazy val networkTaskBuilder = new NetworkTaskBuilder(cc)
 
     object RootVisitor extends VScalarVisitor[Task] {
-      override def visitTaskFSM(ctx: TaskFSMContext) = fsmTaskBuilder(ctx)
-      override def visitTaskVerilog(ctx: TaskVerilogContext) = verilogTaskBuilder(ctx)
-      override def visitNetwork(ctx: NetworkContext) = networkTaskBuilder(ctx)
+      override def visitEntityFSM(ctx: EntityFSMContext) = fsmTaskBuilder(ctx)
+      override def visitEntityVerilog(ctx: EntityVerilogContext) = verilogTaskBuilder(ctx)
+      override def visitEntityNetwork(ctx: EntityNetworkContext) = networkTaskBuilder(ctx)
     }
 
     RootVisitor(cc.entityCtx)

@@ -324,47 +324,6 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       case _ =>
     }
 
-    // Emit remaining variable declarations
-    id2decl.values foreach {
-      case DeclOut(kind, name, fctype, stype) => {
-        if (declareExtraOut && stype != StorageTypeWire) {
-          VisitType(kind, name)(writeOutNxt) // declare nxt values for outputs
-          if (HasValid(fctype)) {
-            pw.println("  reg " + nx(valid(name)) + ";")
-          }
-        }
-      }
-      case DeclArr(kind, name, index :: Nil) => {
-        // TODO maybe figure out the number of bits in the type and declare as this many?
-        // TODO maybe detect more than one write to the same array in the same cycle?
-        Arrays.add(name)
-        val depth = index.eval.toInt // TODO detect if this fails and fail gracefully
-        val log2depth = ceillog2(depth) max 1 // TODO: handle degenerate case of depth == 1 better
-        //        val t = typeString(kind)
-        pw.println(s"  reg ${name}_wr;")
-        pw.println(s"  reg ${Signal(name + "_wrdata", kind).declString};")
-        pw.println(s"  reg [${log2depth - 1}:0] ${name}_wraddr;")
-        pw.println(s"  reg ${Signal(name, kind).declString} [${depth - 1}:0];")
-        defaults push StrList(
-          Str(s"    ${name}_wr = 1'b0;\n") ::
-            Str(s"    ${name}_wraddr = 'b0;\n") ::
-            Str(s"    ${name}_wrdata = 'b0;\n") :: Nil)
-        clears push Str(s"      ${name}_wr = 1'b0;\n")
-        clocks_no_reset push Str(s"""|${i0 * 3}if (${name}_wr) begin
-                                         |${i0 * 4}${name}[${name}_wraddr] <= ${name}_wrdata;
-                                         |${i0 * 3}end
-                                         |""".stripMargin)
-      }
-      case DeclVar(kind, name, None) => {
-        VisitType(kind, name)(writeVarWithReset)
-      }
-      case DeclVar(kind, name, Some(init)) => {
-        VisitType(kind, name)(writeVarWithNoReset)
-        resets push StrList(Str("      ") :: Str(reg(name)) :: Str(s" <= ") :: MakeExpr(init) :: Str(";\n") :: Nil)
-      }
-      case _ =>
-    }
-
     task match {
       case network: NetworkTask => {
         assert(network.fsms.isEmpty)
@@ -377,6 +336,47 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         }
       }
       case statetask: StateTask => {
+        // Emit remaining variable declarations
+        id2decl.values foreach {
+          case DeclOut(kind, name, fctype, stype) => {
+            if (declareExtraOut && stype != StorageTypeWire) {
+              VisitType(kind, name)(writeOutNxt) // declare nxt values for outputs
+              if (HasValid(fctype)) {
+                pw.println("  reg " + nx(valid(name)) + ";")
+              }
+            }
+          }
+          case DeclArr(kind, name, index :: Nil) => {
+            // TODO maybe figure out the number of bits in the type and declare as this many?
+            // TODO maybe detect more than one write to the same array in the same cycle?
+            Arrays.add(name)
+            val depth = index.eval.toInt // TODO detect if this fails and fail gracefully
+            val log2depth = ceillog2(depth) max 1 // TODO: handle degenerate case of depth == 1 better
+            //        val t = typeString(kind)
+            pw.println(s"  reg ${name}_wr;")
+            pw.println(s"  reg ${Signal(name + "_wrdata", kind).declString};")
+            pw.println(s"  reg [${log2depth - 1}:0] ${name}_wraddr;")
+            pw.println(s"  reg ${Signal(name, kind).declString} [${depth - 1}:0];")
+            defaults push StrList(
+              Str(s"    ${name}_wr = 1'b0;\n") ::
+                Str(s"    ${name}_wraddr = 'b0;\n") ::
+                Str(s"    ${name}_wrdata = 'b0;\n") :: Nil)
+            clears push Str(s"      ${name}_wr = 1'b0;\n")
+            clocks_no_reset push Str(s"""|${i0 * 3}if (${name}_wr) begin
+                                         |${i0 * 4}${name}[${name}_wraddr] <= ${name}_wrdata;
+                                         |${i0 * 3}end
+                                         |""".stripMargin)
+          }
+          case DeclVar(kind, name, None) => {
+            VisitType(kind, name)(writeVarWithReset)
+          }
+          case DeclVar(kind, name, Some(init)) => {
+            VisitType(kind, name)(writeVarWithNoReset)
+            resets push StrList(Str("      ") :: Str(reg(name)) :: Str(s" <= ") :: MakeExpr(init) :: Str(";\n") :: Nil)
+          }
+          case _ =>
+        }
+
         // Declare 'go'
         pw.println("  reg go;")
 

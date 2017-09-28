@@ -33,20 +33,23 @@ options {
 //   'verbatim' 'verilog' '{'...'}'
 //   (for when we would support multiple target languages???)
 
+///////////////////////////////////////////////////////////////////////////////
+// Start rule for whole source file
+///////////////////////////////////////////////////////////////////////////////
+
 start
   : typedefinition*
     entity
     EOF
   ;
 
+///////////////////////////////////////////////////////////////////////////////
+// Type specifiers
+///////////////////////////////////////////////////////////////////////////////
+
 typedefinition
   : typedef
   | struct
-  ;
-
-entity
-  : task
-  | network
   ;
 
 typedef
@@ -57,6 +60,111 @@ struct
   :  'struct' IDENTIFIER '{'
       (fields+=field)*
     '}' ';'
+  ;
+
+field: known_type IDENTIFIER SEMICOLON;
+
+known_type
+  : 'bool'                    # BoolType
+  | INTTYPE                   # IntType
+  | UINTTYPE                  # UintType
+  | IDENTIFIER                # IdentifierType
+  | 'int'  '(' commaexpr ')'  # IntVType
+  | 'uint' '(' commaexpr ')'  # UintVType
+  ;
+
+///////////////////////////////////////////////////////////////////////////////
+// Design entities
+///////////////////////////////////////////////////////////////////////////////
+
+entity
+  : fsm_entity
+  | verilog_entity
+  | network_entity
+  ;
+
+fsm_entity
+  : (autoinst='new')? 'fsm' IDENTIFIER '{'
+      (decls+=fsm_decl)*
+      (contents+=fsm_content)*
+    '}'                                 #EntityFSM
+  ;
+
+verilog_entity
+  : 'verilog' IDENTIFIER '{'
+      (decls+=entity_decl)*
+      (contents+=verilog_function)*
+    '}'                                 #EntityVerilog
+  ;
+
+network_entity
+  : 'network' IDENTIFIER '{'
+      (decls+=network_decl)*
+      (contents+=network_content)*
+    '}'                                 #EntityNetwork
+  ;
+
+///////////////////////////////////////////////////////////////////////////////
+// Entity declarations
+///////////////////////////////////////////////////////////////////////////////
+
+entity_decl
+  : 'out' flow_control_type? storage_type? port_type IDENTIFIER ';'   #TaskDeclOut
+  | 'in' flow_control_type? port_type IDENTIFIER ';'                  #TaskDeclIn
+  | 'param' known_type IDENTIFIER '=' expr ';'                        #TaskDeclParam
+  | 'const' known_type IDENTIFIER '=' expr ';'                        #TaskDeclConst
+  ;
+
+fsm_decl
+  : entity_decl                           #DUMMYRULENAME_FSM_DECL
+  | 'verilog' decl ';'                    #TaskDeclVerilog
+  | decl ';'                              #TaskDecl
+  ;
+
+network_decl
+  : entity_decl                           #DUMMYRULENAME_NETWORK_DECL
+  | 'pipeline' known_type IDENTIFIER ';'  #TaskDeclPipeline
+  ;
+
+///////////////////////////////////////////////////////////////////////////////
+// Entity Contents
+///////////////////////////////////////////////////////////////////////////////
+
+fsm_content
+  : function
+  | fence_function
+  | verilog_function
+  ;
+
+network_content
+  : fsm_entity
+  | connect
+  | instantiate
+  | verilog_function
+  ;
+
+///////////////////////////////////////////////////////////////////////////////
+// Content elements
+///////////////////////////////////////////////////////////////////////////////
+
+connect : lhs=dotted_name '->' rhs+=dotted_name (',' rhs+=dotted_name)* ';' ;
+
+instantiate : IDENTIFIER '=' 'new' IDENTIFIER '(' param_args ')' ';' ;
+
+function
+  : 'void' IDENTIFIER '(' ')' '{'
+      (stmts += statement)*
+    '}'
+  ;
+
+fence_function
+  : 'void' 'fence' '(' ')' '{'
+      (stmts += statement)*
+    '}'                             # FenceFunction
+  ;
+
+verilog_function
+  : VERILOGFUNC VERILOGBODY         # VerilogFunction
   ;
 
 decl_var_noinit
@@ -93,78 +201,9 @@ port_type
   | 'void'     #PortTypeVoid
   ;
 
-network_decl
-  : 'out' flow_control_type? storage_type? port_type IDENTIFIER ';'   #TaskDeclOut
-  | 'in' flow_control_type? port_type IDENTIFIER ';'                  #TaskDeclIn
-  | 'param' known_type IDENTIFIER '=' expr ';'                        #TaskDeclParam
-  | 'const' known_type IDENTIFIER '=' expr ';'                        #TaskDeclConst
-  | 'pipeline' known_type IDENTIFIER ';'                              #TaskDeclPipeline
-  ;
-
-task_decl
-  : network_decl                        #DUMMYRULENAME
-  | 'verilog' decl ';'                  #TaskDeclVerilog
-  | decl ';'                            #TaskDecl
-  ;
-
-task
-  : (autoinst='new')? 'fsm' IDENTIFIER '{'
-      (decls+=task_decl)*
-      (contents+=task_content)*
-    '}'                                 #TaskFSM
-  | 'verilog' IDENTIFIER '{'
-      (decls+=task_decl)*
-      (contents+=verilog_function)*
-    '}'                                 #TaskVerilog
-  ;
-
-network
-  : 'network' IDENTIFIER '{'
-      (decls+=network_decl)*
-      (contents+=network_content)*
-    '}';
-
-network_content
-  : task
-  | connect
-  | instantiate
-  | verilog_function
-  ;
-
-connect : lhs=dotted_name '->' rhs+=dotted_name (',' rhs+=dotted_name)* ';' ;
-
-instantiate : IDENTIFIER '=' 'new' IDENTIFIER '(' param_args ')' ';' ;
-
-known_type
-  : 'bool'                    # BoolType
-  | INTTYPE                   # IntType
-  | UINTTYPE                  # UintType
-  | IDENTIFIER                # IdentifierType
-  | 'int'  '(' commaexpr ')'  # IntVType
-  | 'uint' '(' commaexpr ')'  # UintVType
-  ;
-
-function
-  : 'void' IDENTIFIER '(' ')' '{'
-      (stmts += statement)*
-    '}'
-  ;
-
-fence_function
-  : 'void' 'fence' '(' ')' '{'
-      (stmts += statement)*
-    '}'                             # FenceFunction
-  ;
-
-verilog_function
-  : VERILOGFUNC VERILOGBODY         # VerilogFunction
-  ;
-
-task_content
-  : function
-  | fence_function
-  | verilog_function 
-  ;
+///////////////////////////////////////////////////////////////////////////////
+// Expressions
+///////////////////////////////////////////////////////////////////////////////
 
 unary_op : '+' | '-' | '!' | '~' | '&' | '~&' | '|' | '~|' | '^' | '~^' ;
 
@@ -204,7 +243,10 @@ expr
   | LITERAL                                                     # ExprLiteral
   ;
 
+///////////////////////////////////////////////////////////////////////////////
 // Left value expressions
+///////////////////////////////////////////////////////////////////////////////
+
 lval
   : ref=lval '[' idx=expr ']'                                   # LValIndex
   | ref=lval '[' lidx=expr op=(':' | '-:' | '+:') ridx=expr ']' # LValSlice
@@ -212,6 +254,10 @@ lval
   | IDENTIFIER                                                  # LValId
   | '{' lval (',' lval)+ '}'                                    # LValCat
   ;
+
+///////////////////////////////////////////////////////////////////////////////
+// Misc bits
+///////////////////////////////////////////////////////////////////////////////
 
 commaexpr : (expr)? (',' expr)* ;
 
@@ -221,12 +267,9 @@ param_assign : IDENTIFIER '=' expr ;
 
 dotted_name : (es+=IDENTIFIER) ('.' es+=IDENTIFIER)*;
 
-field : known_type IDENTIFIER SEMICOLON;
-
-case_stmt
-  : 'default' ':' statement # DefaultCase
-  | commaexpr ':' statement # NormalCase
-  ;
+///////////////////////////////////////////////////////////////////////////////
+// Statements
+///////////////////////////////////////////////////////////////////////////////
 
 statement
   : '{' (stmts+=statement)* '}'                 # BlockStmt
@@ -259,6 +302,11 @@ statement
   | 'goto' IDENTIFIER ';'                       # GotoStmt
   | assignment_statement ';'                    # AssignmentStmt
   | expr ';'                                    # ExprStmt
+  ;
+
+case_stmt
+  : 'default' ':' statement # DefaultCase
+  | commaexpr ':' statement # NormalCase
   ;
 
 for_init

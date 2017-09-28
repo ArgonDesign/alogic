@@ -231,19 +231,19 @@ class Symtab(root: ParserRuleContext, typedefs: scala.collection.Map[String, Typ
     }
 
     // Create new scope for fsm bodies
-    override def visitTaskFSM(ctx: TaskFSMContext) = {
+    override def visitEntityFSM(ctx: EntityFSMContext) = {
       create(ctx)
       visitChildren(ctx)
     }
 
     // Create new scope for verilog bodies
-    override def visitTaskVerilog(ctx: TaskVerilogContext) = {
+    override def visitEntityVerilog(ctx: EntityVerilogContext) = {
       create(ctx)
       visitChildren(ctx)
     }
 
     // Create new scope for network bodies
-    override def visitNetwork(ctx: NetworkContext) = {
+    override def visitEntityNetwork(ctx: EntityNetworkContext) = {
       create(ctx)
       visitChildren(ctx)
     }
