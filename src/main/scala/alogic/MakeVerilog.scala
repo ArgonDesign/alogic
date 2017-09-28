@@ -65,29 +65,77 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
 
   var makingAccept = false // We use this to decide how to emit expressions
 
-  def apply(task: Task, opath: Path): Unit = {
-    val Task(modname, decls) = task // Save the name of this module
+  def writeEntityHeader(entity: Task, pw: PrintWriter): Unit = {
+    val Task(modname, decls) = entity
 
-    val outtype = task match {
+    val outtype = entity match {
       case _: StateTask   => "reg "
       case _: NetworkTask => "wire "
       case _: VerilogTask => "reg "
       case _: FsmTask     => unreachable
     }
 
-    // This controls whether we will declare _nxt signals for relevant output ports
-    val declareExtraOut = task match {
-      case _: StateTask   => true
-      case _: NetworkTask => false
-      case _: VerilogTask => false
-      case _: FsmTask     => unreachable
+    pw.println(s"`default_nettype none")
+    pw.println()
+
+    pw.print(s"module $modname ")
+
+    val paramDecls = decls collect { case x: DeclParam => x }
+
+    if (paramDecls.isEmpty) {
+      pw.println(s"(")
+    } else {
+      pw.println(s"#(")
+      // Emit parameter declarations
+      val s = for (DeclParam(kind, id, init) <- paramDecls) yield {
+        s"${i0}parameter " + Signal(id, kind).declString + "=" + MakeExpr(init)
+      }
+      pw.println(s mkString ",\n")
+      pw.println(s") (")
     }
 
-    numstates = task match {
-      case StateTask(_, _, s, _, _) => s.length
-      case _                        => 0
+    def writeOut(typ: Type, name: StrTree): Unit = typ match {
+      case kind: ScalarType       => pw.println("  output " + outtype + Signal(name.toString, kind).declString + ",")
+      case (_: Struct | VoidType) => /* Nothing to do */
     }
-    log2numstates = ceillog2(numstates)
+    def writeIn(typ: Type, name: StrTree): Unit = typ match {
+      case kind: ScalarType       => pw.println("  input wire " + Signal(name.toString, kind).declString + ",")
+      case (_: Struct | VoidType) => /* Nothing to do */
+    }
+
+    // Emit port declarations
+    decls foreach {
+      case DeclOut(kind, name, fctype, stype) => {
+        if (fctype.hasValid) pw.println("  output " + outtype + valid(name) + ",")
+        if (fctype.hasReady) pw.println("  input wire " + ready(name) + ",")
+        if (fctype.hasAccept) pw.println("  input wire " + accept(name) + ",")
+        VisitType(kind, name)(writeOut)
+      }
+      case DeclIn(kind, name, fctype) => {
+        if (fctype.hasValid) pw.println("  input wire " + valid(name) + ",")
+        if (fctype.hasReady) pw.println("  output " + outtype + ready(name) + ",")
+        if (fctype.hasAccept) pw.println("  output " + outtype + accept(name) + ",")
+        VisitType(kind, name)(writeIn)
+      }
+      case _ =>
+    }
+
+    //Goes on bottom so we don't need to special case the lack of comma after the last port
+    pw.println("  input wire clk,")
+    pw.println("  input wire rst_n")
+    pw.println(");\n")
+
+    // Emit localparam (const) declaratoins
+    decls foreach {
+      case DeclConst(kind, id, init) => {
+        pw.println(s"${i0}localparam " + Signal(id, kind).declString + "=" + MakeExpr(init) + ";")
+      }
+      case _ =>
+    }
+  }
+
+  def apply(task: Task, opath: Path): Unit = {
+    val Task(modname, decls) = task
 
     // Collect all the declarations
     decls foreach { x => id2decl(x.id) = x }
@@ -97,60 +145,6 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       case DeclarationStmt(DeclVar(kind, id, _)) => { id2decl(id) = DeclVar(kind, id, None); false }
       case _                                     => true
     }
-
-    // Emit header and combinatorial code
-    val states = mutable.Map[Int, StrTree]() // Collection of state code
-    val clears = Stack[StrTree]() // Collection of outputs to clear if !go
-    val defaults = Stack[StrTree]() // Collection of things to set at start of each cycle
-    val acceptdefaults = Stack[StrTree]() // Collection of things to set at start of accept generation
-    val clocks = Stack[StrTree]() // Collection of things to clock if go
-    val clocks_no_reset = Stack[StrTree]() // Collection of things to clock if go but do not need reset
-    val resets = Stack[StrTree]() // Collection of things to reset
-    val clock_clears = Stack[StrTree]() // Collection of how to clear sync outputs
-    val acceptstates = mutable.Map[Int, StrTree]() // Collection of code to generate accept outputs for each state
-
-    opath.createFile(createParents = true, failIfExists = false)
-
-    val pw = new PrintWriter(new File(opath.path))
-
-    def writeOut(typ: Type, name: StrTree): Unit = typ match {
-      case kind: ScalarType => {
-        pw.println("  output " + outtype + Signal(name.toString, kind).declString + ",")
-      }
-      case (_: Struct | VoidType) => /* Nothing to do */
-    }
-    def writeOutNxt(typ: Type, name: StrTree): Unit = typ match {
-      case kind: ScalarType => {
-        val wstr = if (kind.widthExpr.isConst) s"${kind.widthExpr.eval}" else ""
-        pw.println(s"  reg " + Signal(nx(name), kind).declString + ";")
-        resets push StrList(Str("      ") :: Str(reg(name)) :: Str(s" <= ${wstr}'b0;\n") :: Nil)
-        clocks push StrList(Str("        ") :: Str(reg(name)) :: Str(" <= ") :: Str(nx(name)) :: Str(";\n") :: Nil)
-        defaults push StrList(Str("    ") :: Str(nx(name)) :: Str(" = ") :: Str(reg(name)) :: Str(";\n") :: Nil)
-      }
-      case (_: Struct | VoidType) => /* Nothing to do */
-    }
-    def writeIn(typ: Type, name: StrTree): Unit = typ match {
-      case kind: ScalarType       => pw.println("  input wire " + Signal(name.toString, kind).declString + ",")
-      case (_: Struct | VoidType) => /* Nothing to do */
-    }
-    def writeVarInternal(typ: Type, name: StrTree, resetToZero: Boolean): Unit = {
-      val nm = name.toString
-      typ match {
-        case kind: ScalarType => {
-          pw.println(s"  reg " + Signal(reg(nm), kind).declString + ";")
-          pw.println(s"  reg " + Signal(nx(nm), kind).declString + ";")
-          if (resetToZero) {
-            val wstr = if (kind.widthExpr.isConst) s"${kind.widthExpr.eval}" else ""
-            resets push StrList(Str("      ") :: Str(reg(name)) :: Str(s" <= ${wstr}'b0;\n") :: Nil)
-          }
-          clocks push StrList(Str("        ") :: Str(reg(name)) :: Str(" <= ") :: Str(nx(name)) :: Str(";\n") :: Nil)
-          defaults push StrList(Str("    ") :: Str(nx(name)) :: Str(" = ") :: Str(reg(name)) :: Str(";\n") :: Nil)
-        }
-        case _ =>
-      }
-    }
-    def writeVarWithReset(typ: Type, name: StrTree): Unit = writeVarInternal(typ, name, true)
-    def writeVarWithNoReset(typ: Type, name: StrTree): Unit = writeVarInternal(typ, name, false)
 
     // Prepare the mapping for the nx() map
     // Different types of variables need different suffices
@@ -183,7 +177,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
           case _               => SetNxType(nxMap, kind, name, "_nxt")
         }
         SetNxType(regMap, kind, name, "")
-        if (HasValid(fctype)) {
+        if (fctype.hasValid) {
           SetNxType(regMap, IntType(false, 1), valid(name), "")
           if (stype == StorageTypeWire)
             SetNxType(nxMap, IntType(false, 1), valid(name), "")
@@ -215,271 +209,31 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         SetNxType(nxMap, kind, name, "")
         SetNxType(regMap, kind, name, "")
       }
-      case x => Message.ice(s"Don't know how to handle ${x}") // TODO: turn this into ice
+      case x => Message.ice(s"Don't know how to handle ${x}")
     }
 
-    var generateAccept = false // As an optimization, don't bother generating accept for modules without any ports that require it
+    // Create output file
+    opath.createFile(createParents = true, failIfExists = false)
+    val pw = new PrintWriter(new File(opath.path))
 
-    pw.println(s"`default_nettype none")
-    pw.println()
+    ///////////////////////////////////////////////////////////////////////////
+    // Write entity header
+    ///////////////////////////////////////////////////////////////////////////
+    writeEntityHeader(task, pw)
 
-    pw.print(s"module $modname ")
-
-    val paramDecls = id2decl.values collect {
-      case x: DeclParam => x
-    }
-
-    if (paramDecls.isEmpty) {
-      pw.println(s"(")
-    } else {
-      pw.println(s"#(")
-      // Emit parameter declarations
-      val s = for (DeclParam(kind, id, init) <- paramDecls) yield {
-        s"${i0}parameter " + Signal(id, kind).declString + "=" + MakeExpr(init)
-      }
-      pw.println(s mkString ",\n")
-      pw.println(s") (")
-    }
-
-    // Emit port declarations
-    id2decl.values foreach {
-      case DeclOut(kind, name, fctype, stype) => {
-        if (HasValid(fctype)) {
-          pw.println("  output " + outtype + valid(name) + ",")
-          if (stype == StorageTypeWire) {
-            clears push Str("      " + nx(valid(name)) + " = 1'b0;\n")
-          }
-          if (stype == StorageTypeReg && fctype == FlowControlTypeReady) {
-            defaults push Str("    " + nx(valid(name)) + " = " + valid(name) + " && !" + ready(name) + ";\n")
-          } else {
-            defaults push Str("    " + nx(valid(name)) + " = 1'b0;\n")
-          }
-        }
-        if (stype == StorageTypeWire) {
-          defaults push Str("    " + nx(name) + " = 'b0;\n")
-        }
-        if (HasReady(fctype))
-          pw.println("  input wire " + ready(name) + ",")
-        if (HasAccept(fctype)) {
-          pw.println("  input wire " + accept(name) + ",")
-        }
-        VisitType(kind, name)(writeOut)
-        (fctype, stype) match {
-          case (FlowControlTypeValid, StorageTypeReg) => clock_clears push Str("      " + valid(name) + " <= 1'b0;\n")
-          case _                                      =>
-        }
-        if (HasReady(fctype)) {
-          clock_clears push StrList(
-            Str("      if (" + ready(name) + ") begin\n") ::
-              Str("        " + valid(name) + " <= 1'b0;\n") ::
-              Str("      end\n") :: Nil)
-          //StrList(Str("        ") :: Str(reg(name)) :: Str(" <= ") :: Str(nx(name)) :: Str(";\n") :: Nil)
-        }
-
-        (fctype, stype) match {
-          case (FlowControlTypeValid, StorageTypeReg) | (FlowControlTypeReady, StorageTypeReg) => {
-            val v = valid(name)
-            resets push StrList(Str("      ") :: Str(v) :: Str(" <= 1'b0;\n") :: Nil)
-            clocks push StrList(Str("        ") :: Str(v) :: Str(" <= ") :: Str(nx(v)) :: Str(";\n") :: Nil)
-          }
-          case (FlowControlTypeReady, StorageTypeBubble) => {
-            val v = valid(name)
-            resets push StrList(Str("      ") :: Str(v) :: Str(" <= 1'b0;\n") :: Nil)
-            clocks push StrList(Str("        ") :: Str(v) :: Str(" <= ") :: Str(nx(v)) ::
-              Str(" || (") :: Str(v) :: Str(" && !") :: Str(ready(name)) :: Str(");\n") :: Nil)
-          }
-          case _ =>
-        }
-
-      }
-      case DeclIn(kind, name, fctype) => {
-        if (HasValid(fctype))
-          pw.println("  input wire " + valid(name) + ",")
-        if (HasReady(fctype)) {
-          pw.println("  output " + outtype + ready(name) + ",")
-          clears push Str("      " + ready(name) + " = 1'b0;\n")
-          defaults push Str("    " + ready(name) + " = 1'b0;\n")
-        }
-        if (HasAccept(fctype)) {
-          generateAccept = true;
-          pw.println("  output " + outtype + accept(name) + ",")
-          acceptdefaults push Str("    " + accept(name) + " = 1'b0;\n")
-        }
-        VisitType(kind, name)(writeIn)
-
-      }
-      case _ =>
-    }
-
-    //Goes on bottom so we don't need to special case the lack of comma after the last port
-    pw.println("  input wire clk,")
-    pw.println("  input wire rst_n")
-    pw.println(");\n")
-
-    // Emit localparam (const) declaratoins
-    id2decl.values foreach {
-      case DeclConst(kind, id, init) => {
-        pw.println(s"${i0}localparam " + Signal(id, kind).declString + "=" + MakeExpr(init) + ";")
-      }
-      case _ =>
-    }
-
+    ///////////////////////////////////////////////////////////////////////////
+    // Write entity body
+    ///////////////////////////////////////////////////////////////////////////
     task match {
-      case network: NetworkTask => {
-        assert(network.fsms.isEmpty)
-        finishNetwork(network, pw)
-      }
-      case VerilogTask(_, _, vfns) => {
-        // Emit all verilog functions
-        vfns foreach { vfn =>
-          pw.print(vfn.body)
-        }
-      }
-      case statetask: StateTask => {
-        // Emit remaining variable declarations
-        id2decl.values foreach {
-          case DeclOut(kind, name, fctype, stype) => {
-            if (declareExtraOut && stype != StorageTypeWire) {
-              VisitType(kind, name)(writeOutNxt) // declare nxt values for outputs
-              if (HasValid(fctype)) {
-                pw.println("  reg " + nx(valid(name)) + ";")
-              }
-            }
-          }
-          case DeclArr(kind, name, index :: Nil) => {
-            // TODO maybe figure out the number of bits in the type and declare as this many?
-            // TODO maybe detect more than one write to the same array in the same cycle?
-            Arrays.add(name)
-            val depth = index.eval.toInt // TODO detect if this fails and fail gracefully
-            val log2depth = ceillog2(depth) max 1 // TODO: handle degenerate case of depth == 1 better
-            //        val t = typeString(kind)
-            pw.println(s"  reg ${name}_wr;")
-            pw.println(s"  reg ${Signal(name + "_wrdata", kind).declString};")
-            pw.println(s"  reg [${log2depth - 1}:0] ${name}_wraddr;")
-            pw.println(s"  reg ${Signal(name, kind).declString} [${depth - 1}:0];")
-            defaults push StrList(
-              Str(s"    ${name}_wr = 1'b0;\n") ::
-                Str(s"    ${name}_wraddr = 'b0;\n") ::
-                Str(s"    ${name}_wrdata = 'b0;\n") :: Nil)
-            clears push Str(s"      ${name}_wr = 1'b0;\n")
-            clocks_no_reset push Str(s"""|${i0 * 3}if (${name}_wr) begin
-                                         |${i0 * 4}${name}[${name}_wraddr] <= ${name}_wrdata;
-                                         |${i0 * 3}end
-                                         |""".stripMargin)
-          }
-          case DeclVar(kind, name, None) => {
-            VisitType(kind, name)(writeVarWithReset)
-          }
-          case DeclVar(kind, name, Some(init)) => {
-            VisitType(kind, name)(writeVarWithNoReset)
-            resets push StrList(Str("      ") :: Str(reg(name)) :: Str(s" <= ") :: MakeExpr(init) :: Str(";\n") :: Nil)
-          }
-          case _ =>
-        }
-
-        // Declare 'go'
-        pw.println("  reg go;")
-
-        // Construct always block contents
-        statetask.states foreach {
-          case blk @ StateBlock(n, _) => {
-            val indent = if (numstates == 1) 2 else 3
-            states(n) = MakeStmt(indent)(blk)
-            if (generateAccept) {
-              makingAccept = true
-              AcceptStmt(indent, blk) match {
-                case Some(x) => acceptstates(n) = x
-                case None    =>
-              }
-              makingAccept = false
-            }
-          }
-        }
-
-        val fencefn = statetask.fencefn map { f => MakeStmt(2)(f.body) }
-
-        // Emit all verilog functions
-        statetask.vfns foreach { vfn =>
-          pw.print(vfn.body)
-        }
-
-        // Start main combinatorial loop
-        pw.println()
-        pw.println("  always @* begin")
-        pw.println("    go = 1'b1;")
-        // Prepare defaults
-        if (defaults.length > 0)
-          pw.println(StrList(defaults))
-        fencefn foreach pw.println
-
-        if (numstates == 1) {
-          pw.println(s"    ${states(0)}")
-        } else if (numstates > 1) {
-          pw.println("    case (state)")
-          pw.println("      default: begin")
-          pw.println("      end")
-          for ((n, c) <- states.toList.sortBy(_._1)) {
-            pw.println(s"      ${MakeState(n)}: ${c}")
-          }
-          pw.println("    endcase")
-        }
-
-        pw.println()
-        if (clears.length > 0) {
-          pw.println(s"    if (!$go) begin")
-          pw.print(StrList(clears))
-          pw.println("    end")
-        }
-        pw.println("  end")
-
-        // Generate accept output if used
-        if (generateAccept) {
-          pw.println()
-          pw.println("  always @* begin")
-          if (acceptdefaults.length > 0)
-            pw.println(StrList(acceptdefaults))
-          if (numstates == 1) {
-            pw.println(s"    ${acceptstates(0)}")
-          } else if (numstates > 1) {
-            pw.println("    case (state)")
-            pw.println("      default: begin")
-            pw.println("      end")
-            for ((n, c) <- acceptstates.toList.sortBy(_._1)) {
-              pw.println(s"      ${MakeState(n)}: ${c}")
-            }
-            pw.println("    endcase")
-          }
-          pw.println("  end")
-          pw.println()
-        }
-
-        // Now emit clocked blocks
-        pw.println()
-        pw.println("  always @(posedge clk or negedge rst_n) begin")
-        pw.println("    if (!rst_n) begin")
-        pw.print(StrList(resets))
-        pw.println("    end else begin")
-        pw.print(StrList(clock_clears))
-        pw.println(s"      if ($go) begin")
-        pw.print(StrList(clocks))
-        pw.println("      end")
-        pw.println("    end")
-        pw.println("  end")
-
-        if (!clocks_no_reset.isEmpty) {
-          pw.println()
-          pw.println(s"  always @(posedge clk) begin")
-          pw.println(s"    if ($go) begin")
-          pw.print(StrList(clocks_no_reset.toList))
-          pw.println(s"    end")
-          pw.println(s"  end")
-        }
-        pw.println()
-
-      }
-      case _ => unreachable
+      case network: NetworkTask    => finishNetwork(network, pw)
+      case VerilogTask(_, _, vfns) => vfns foreach { vfn => pw.print(vfn.body) }
+      case statetask: StateTask    => finishState(statetask, pw)
+      case _                       => unreachable
     }
 
+    ///////////////////////////////////////////////////////////////////////////
+    // Write entity footer
+    ///////////////////////////////////////////////////////////////////////////
     pw.println("endmodule")
     pw.println()
     pw.println(s"`default_nettype wire")
@@ -487,6 +241,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
   }
 
   def finishNetwork(network: NetworkTask, pw: PrintWriter): Unit = {
+    assert(network.fsms.isEmpty)
 
     // Collect all instatiations
     val optInstances = for (Instantiate(id, module, args) <- network.instantiate) yield {
@@ -653,6 +408,251 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
 
   }
 
+  def finishState(task: StateTask, pw: PrintWriter): Unit = {
+    numstates = task match {
+      case StateTask(_, _, s, _, _) => s.length
+    }
+    log2numstates = ceillog2(numstates)
+
+    // Emit header and combinatorial code
+    val states = mutable.Map[Int, StrTree]() // Collection of state code
+    val clears = Stack[StrTree]() // Collection of outputs to clear if !go
+    val defaults = Stack[StrTree]() // Collection of things to set at start of each cycle
+    val acceptdefaults = Stack[StrTree]() // Collection of things to set at start of accept generation
+    val clocks = Stack[StrTree]() // Collection of things to clock if go
+    val clocks_no_reset = Stack[StrTree]() // Collection of things to clock if go but do not need reset
+    val resets = Stack[StrTree]() // Collection of things to reset
+    val clock_clears = Stack[StrTree]() // Collection of how to clear sync outputs
+    val acceptstates = mutable.Map[Int, StrTree]() // Collection of code to generate accept outputs for each state
+
+    def writeOutNxt(typ: Type, name: StrTree): Unit = typ match {
+      case kind: ScalarType => {
+        val wstr = if (kind.widthExpr.isConst) s"${kind.widthExpr.eval}" else ""
+        pw.println(s"  reg " + Signal(nx(name), kind).declString + ";")
+        resets push StrList(Str("      ") :: Str(reg(name)) :: Str(s" <= ${wstr}'b0;\n") :: Nil)
+        clocks push StrList(Str("        ") :: Str(reg(name)) :: Str(" <= ") :: Str(nx(name)) :: Str(";\n") :: Nil)
+        defaults push StrList(Str("    ") :: Str(nx(name)) :: Str(" = ") :: Str(reg(name)) :: Str(";\n") :: Nil)
+      }
+      case (_: Struct | VoidType) => /* Nothing to do */
+    }
+    def writeVarInternal(typ: Type, name: StrTree, resetToZero: Boolean): Unit = {
+      val nm = name.toString
+      typ match {
+        case kind: ScalarType => {
+          pw.println(s"  reg " + Signal(reg(nm), kind).declString + ";")
+          pw.println(s"  reg " + Signal(nx(nm), kind).declString + ";")
+          if (resetToZero) {
+            val wstr = if (kind.widthExpr.isConst) s"${kind.widthExpr.eval}" else ""
+            resets push StrList(Str("      ") :: Str(reg(name)) :: Str(s" <= ${wstr}'b0;\n") :: Nil)
+          }
+          clocks push StrList(Str("        ") :: Str(reg(name)) :: Str(" <= ") :: Str(nx(name)) :: Str(";\n") :: Nil)
+          defaults push StrList(Str("    ") :: Str(nx(name)) :: Str(" = ") :: Str(reg(name)) :: Str(";\n") :: Nil)
+        }
+        case _ =>
+      }
+    }
+    def writeVarWithReset(typ: Type, name: StrTree): Unit = writeVarInternal(typ, name, true)
+    def writeVarWithNoReset(typ: Type, name: StrTree): Unit = writeVarInternal(typ, name, false)
+
+    var generateAccept = false // As an optimization, don't bother generating accept for modules without any ports that require it
+
+    // Emit port declarations
+    id2decl.values foreach {
+      case DeclOut(kind, name, fctype, stype) => {
+        if (fctype.hasValid) {
+          if (stype == StorageTypeWire) {
+            clears push Str("      " + nx(valid(name)) + " = 1'b0;\n")
+          }
+          if (stype == StorageTypeReg && fctype == FlowControlTypeReady) {
+            defaults push Str("    " + nx(valid(name)) + " = " + valid(name) + " && !" + ready(name) + ";\n")
+          } else {
+            defaults push Str("    " + nx(valid(name)) + " = 1'b0;\n")
+          }
+        }
+        if (stype == StorageTypeWire) {
+          defaults push Str("    " + nx(name) + " = 'b0;\n")
+        }
+        (fctype, stype) match {
+          case (FlowControlTypeValid, StorageTypeReg) => clock_clears push Str("      " + valid(name) + " <= 1'b0;\n")
+          case _                                      =>
+        }
+        if (fctype.hasReady) {
+          clock_clears push StrList(
+            Str("      if (" + ready(name) + ") begin\n") ::
+              Str("        " + valid(name) + " <= 1'b0;\n") ::
+              Str("      end\n") :: Nil)
+          //StrList(Str("        ") :: Str(reg(name)) :: Str(" <= ") :: Str(nx(name)) :: Str(";\n") :: Nil)
+        }
+
+        (fctype, stype) match {
+          case (FlowControlTypeValid, StorageTypeReg) | (FlowControlTypeReady, StorageTypeReg) => {
+            val v = valid(name)
+            resets push StrList(Str("      ") :: Str(v) :: Str(" <= 1'b0;\n") :: Nil)
+            clocks push StrList(Str("        ") :: Str(v) :: Str(" <= ") :: Str(nx(v)) :: Str(";\n") :: Nil)
+          }
+          case (FlowControlTypeReady, StorageTypeBubble) => {
+            val v = valid(name)
+            resets push StrList(Str("      ") :: Str(v) :: Str(" <= 1'b0;\n") :: Nil)
+            clocks push StrList(Str("        ") :: Str(v) :: Str(" <= ") :: Str(nx(v)) ::
+              Str(" || (") :: Str(v) :: Str(" && !") :: Str(ready(name)) :: Str(");\n") :: Nil)
+          }
+          case _ =>
+        }
+
+      }
+      case DeclIn(kind, name, fctype) => {
+        if (fctype.hasReady) {
+          clears push Str("      " + ready(name) + " = 1'b0;\n")
+          defaults push Str("    " + ready(name) + " = 1'b0;\n")
+        }
+        if (fctype.hasAccept) {
+          generateAccept = true;
+          acceptdefaults push Str("    " + accept(name) + " = 1'b0;\n")
+        }
+      }
+      case _ =>
+    }
+    // Emit remaining variable declarations
+    id2decl.values foreach {
+      case DeclOut(kind, name, fctype, stype) => {
+        if (stype != StorageTypeWire) {
+          VisitType(kind, name)(writeOutNxt) // declare nxt values for outputs
+          if (fctype.hasValid) {
+            pw.println("  reg " + nx(valid(name)) + ";")
+          }
+        }
+      }
+      case DeclArr(kind, name, index :: Nil) => {
+        // TODO maybe figure out the number of bits in the type and declare as this many?
+        // TODO maybe detect more than one write to the same array in the same cycle?
+        Arrays.add(name)
+        val depth = index.eval.toInt // TODO detect if this fails and fail gracefully
+        val log2depth = ceillog2(depth) max 1 // TODO: handle degenerate case of depth == 1 better
+        //        val t = typeString(kind)
+        pw.println(s"  reg ${name}_wr;")
+        pw.println(s"  reg ${Signal(name + "_wrdata", kind).declString};")
+        pw.println(s"  reg [${log2depth - 1}:0] ${name}_wraddr;")
+        pw.println(s"  reg ${Signal(name, kind).declString} [${depth - 1}:0];")
+        defaults push StrList(
+          Str(s"    ${name}_wr = 1'b0;\n") ::
+            Str(s"    ${name}_wraddr = 'b0;\n") ::
+            Str(s"    ${name}_wrdata = 'b0;\n") :: Nil)
+        clears push Str(s"      ${name}_wr = 1'b0;\n")
+        clocks_no_reset push Str(s"""|${i0 * 3}if (${name}_wr) begin
+                                         |${i0 * 4}${name}[${name}_wraddr] <= ${name}_wrdata;
+                                         |${i0 * 3}end
+                                         |""".stripMargin)
+      }
+      case DeclVar(kind, name, None) => {
+        VisitType(kind, name)(writeVarWithReset)
+      }
+      case DeclVar(kind, name, Some(init)) => {
+        VisitType(kind, name)(writeVarWithNoReset)
+        resets push StrList(Str("      ") :: Str(reg(name)) :: Str(s" <= ") :: MakeExpr(init) :: Str(";\n") :: Nil)
+      }
+      case _ =>
+    }
+
+    // Declare 'go'
+    pw.println("  reg go;")
+
+    // Construct always block contents
+    task.states foreach {
+      case blk @ StateBlock(n, _) => {
+        val indent = if (numstates == 1) 2 else 3
+        states(n) = MakeStmt(indent)(blk)
+        if (generateAccept) {
+          makingAccept = true
+          AcceptStmt(indent, blk) match {
+            case Some(x) => acceptstates(n) = x
+            case None    =>
+          }
+          makingAccept = false
+        }
+      }
+    }
+
+    val fencefn = task.fencefn map { f => MakeStmt(2)(f.body) }
+
+    // Emit all verilog functions
+    task.vfns foreach { vfn =>
+      pw.print(vfn.body)
+    }
+
+    // Start main combinatorial loop
+    pw.println()
+    pw.println("  always @* begin")
+    pw.println("    go = 1'b1;")
+    // Prepare defaults
+    if (defaults.length > 0)
+      pw.println(StrList(defaults))
+    fencefn foreach pw.println
+
+    if (numstates == 1) {
+      pw.println(s"    ${states(0)}")
+    } else if (numstates > 1) {
+      pw.println("    case (state)")
+      pw.println("      default: begin")
+      pw.println("      end")
+      for ((n, c) <- states.toList.sortBy(_._1)) {
+        pw.println(s"      ${MakeState(n)}: ${c}")
+      }
+      pw.println("    endcase")
+    }
+
+    pw.println()
+    if (clears.length > 0) {
+      pw.println(s"    if (!$go) begin")
+      pw.print(StrList(clears))
+      pw.println("    end")
+    }
+    pw.println("  end")
+
+    // Generate accept output if used
+    if (generateAccept) {
+      pw.println()
+      pw.println("  always @* begin")
+      if (acceptdefaults.length > 0)
+        pw.println(StrList(acceptdefaults))
+      if (numstates == 1) {
+        pw.println(s"    ${acceptstates(0)}")
+      } else if (numstates > 1) {
+        pw.println("    case (state)")
+        pw.println("      default: begin")
+        pw.println("      end")
+        for ((n, c) <- acceptstates.toList.sortBy(_._1)) {
+          pw.println(s"      ${MakeState(n)}: ${c}")
+        }
+        pw.println("    endcase")
+      }
+      pw.println("  end")
+      pw.println()
+    }
+
+    // Now emit clocked blocks
+    pw.println()
+    pw.println("  always @(posedge clk or negedge rst_n) begin")
+    pw.println("    if (!rst_n) begin")
+    pw.print(StrList(resets))
+    pw.println("    end else begin")
+    pw.print(StrList(clock_clears))
+    pw.println(s"      if ($go) begin")
+    pw.print(StrList(clocks))
+    pw.println("      end")
+    pw.println("    end")
+    pw.println("  end")
+
+    if (!clocks_no_reset.isEmpty) {
+      pw.println()
+      pw.println(s"  always @(posedge clk) begin")
+      pw.println(s"    if ($go) begin")
+      pw.print(StrList(clocks_no_reset.toList))
+      pw.println(s"    end")
+      pw.println(s"  end")
+    }
+    pw.println()
+  }
+
   // We would prefer to use _d and _q, except that it is more useful
   // for mixing with verilog and for output ports to use the name without a suffix for direct access
 
@@ -687,8 +687,8 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       }
       case Slice(ref, l, op, r) => StrList(List(MakeExpr(ref), "[", MakeExpr(l), op, MakeExpr(r), "]"))
       case ValidCall(DottedName(names)) => id2decl(names.head) match {
-        case DeclOut(decl, n, fctype, _) => if (HasValid(fctype)) valid(n) else { Message.fatal(s"Port $names does not use valid"); "" }
-        case DeclIn(decl, n, fctype)     => if (HasValid(fctype)) valid(n) else { Message.fatal(s"Port $names does not use valid"); "" }
+        case DeclOut(decl, n, fctype, _) => if (fctype.hasValid) valid(n) else { Message.fatal(s"Port $names does not use valid"); "" }
+        case DeclIn(decl, n, fctype)     => if (fctype.hasValid) valid(n) else { Message.fatal(s"Port $names does not use valid"); "" }
         case _                           => Message.fatal(s"Cannot access valid on $names"); ""
       }
       case Zxt(numbitsExpr, expr) => expr.widthExpr(id2decl) match {
@@ -756,9 +756,9 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         val d: Decl = id2decl(n)
         d match {
           case DeclIn(_, _, fctype) => {
-            if (HasValid(fctype))
+            if (fctype.hasValid)
               add(s"$go = $go && ${valid(n)};")
-            if (!isLock && HasReady(fctype))
+            if (!isLock && fctype.hasReady)
               add(ready(n) + " = 1'b1;")
           }
           case _ => Message.fatal(s"$name cannot be read"); false // TODO check this earlier?
@@ -786,7 +786,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
                 case (FlowControlTypeAccept, StorageTypeWire)  => add(s"$go = $go && ${accept(n)};")
                 case _                                         =>
               }
-              if (HasValid(fctype))
+              if (fctype.hasValid)
                 add(s"${nx(valid(n))} = 1'b1;")
             }
             case _ => Message.fatal(s"$name cannot be written"); false // TODO check this earlier?
@@ -1091,11 +1091,11 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       val n: String = ExtractName(name)
       id2decl(n) match {
         case DeclIn(_, _, fctype) => {
-          if (HasAccept(fctype)) {
+          if (fctype.hasAccept) {
             syncPortsFound.add(n)
             add(accept(n) + " = 1'b1;\n")
           }
-          if (HasReady(fctype))
+          if (fctype.hasReady)
             usesPort = Some(MakeExpr(name).toString)
         }
         case _ =>
@@ -1116,7 +1116,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         val d: Decl = id2decl(n)
         d match {
           case DeclOut(_, _, fctype, _) => {
-            if (HasValid(fctype))
+            if (fctype.hasValid)
               usesPort = Some(MakeExpr(name).toString)
           }
           case _ => false

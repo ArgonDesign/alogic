@@ -28,24 +28,6 @@ object AstOps {
     case _                  => "Unknown"
   }
 
-  // Does this sync type contain a valid line?
-  def HasValid(s: FlowControlType): Boolean = s match {
-    case FlowControlTypeNone => false
-    case _                   => true
-  }
-
-  // Does this sync type contain a ready line?
-  def HasReady(s: FlowControlType): Boolean = s match {
-    case FlowControlTypeReady => true
-    case _                    => false
-  }
-
-  // Does this sync type contain an accept line?
-  def HasAccept(s: FlowControlType): Boolean = s match {
-    case FlowControlTypeAccept => true
-    case _                     => false
-  }
-
   // Call VisitType to get callback for each node
   def VisitType(typ: Type, name: StrTree)(callback: (Type, StrTree) => Unit): Unit = {
 

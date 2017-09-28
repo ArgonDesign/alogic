@@ -16,4 +16,21 @@ package alogic.ast
 
 trait FlowControlTypeOps extends FlowControlTypePrettyPrintOps { this: FlowControlType =>
 
+  // Does this sync type contain a valid line?
+  def hasValid = this match {
+    case FlowControlTypeNone => false
+    case _                   => true
+  }
+
+  // Does this sync type contain a ready line?
+  def hasReady = this match {
+    case FlowControlTypeReady => true
+    case _                    => false
+  }
+
+  // Does this sync type contain an accept line?
+  def hasAccept = this match {
+    case FlowControlTypeAccept => true
+    case _                     => false
+  }
 }
