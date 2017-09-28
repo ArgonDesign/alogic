@@ -152,15 +152,11 @@ connect : lhs=dotted_name '->' rhs+=dotted_name (',' rhs+=dotted_name)* ';' ;
 instantiate : IDENTIFIER '=' 'new' IDENTIFIER '(' param_args ')' ';' ;
 
 function
-  : 'void' IDENTIFIER '(' ')' '{'
-      (stmts += statement)*
-    '}'
+  : 'void' IDENTIFIER '(' ')' block
   ;
 
 fence_function
-  : 'void' 'fence' '(' ')' '{'
-      (stmts += statement)*
-    '}'                             # FenceFunction
+  : 'void' 'fence' '(' ')' block          # FenceFunction
   ;
 
 verilog_function
@@ -271,40 +267,36 @@ dotted_name : (es+=IDENTIFIER) ('.' es+=IDENTIFIER)*;
 // Statements
 ///////////////////////////////////////////////////////////////////////////////
 
+block
+  : '{' (stmts+=statement)* '}'
+  ;
+
 statement
-  : '{' (stmts+=statement)* '}'                 # BlockStmt
-  | decl ';'                                    # DeclStmt
-  | 'loop' '{'
-      (stmts += statement)*
-    '}'                                         # LoopStmt
-  | 'while' '(' expr ')' '{'
-      (stmts += statement)*
-    '}'                                         # WhileStmt
+  : block                                             # BlockStmt
+  | decl ';'                                          # DeclStmt
+  | 'loop' block                                      # LoopStmt
+  | 'while' '(' expr ')' block                        # WhileStmt
+  | 'for' '(' init=for_init ';'
+              cond=expr ';'
+              step=assignment_statement ')' block     # ForStmt
+  | 'do' block 'while' '(' expr ')' ';'               # DoStmt
   | 'if' '(' expr ')'
       thenStmt=statement
     ('else'
-      elseStmt=statement)?                      # IfStmt
+      elseStmt=statement)?                            # IfStmt
   | 'case' '(' expr ')' '{'
-      (cases+=case_stmt)+
-    '}'                                         # CaseStmt
-  | 'for' '(' init=for_init ';'
-              cond=expr ';'
-              step=assignment_statement ')' '{'
-      (stmts += statement)*
-    '}'                                         # ForStmt
-  | 'do' '{'
-      (stmts += statement)*
-    '}' 'while' '(' expr ')' ';'                # DoStmt
-  | 'fence' ';'                                 # FenceStmt
-  | 'break' ';'                                 # BreakStmt
-  | 'return' ';'                                # ReturnStmt
-  | '$' '(' LITERAL ')' ';'                     # DollarCommentStmt
-  | 'goto' IDENTIFIER ';'                       # GotoStmt
-  | assignment_statement ';'                    # AssignmentStmt
-  | expr ';'                                    # ExprStmt
+      (cases+=case_clause)+
+    '}'                                               # CaseStmt
+  | 'fence' ';'                                       # FenceStmt
+  | 'break' ';'                                       # BreakStmt
+  | 'return' ';'                                      # ReturnStmt
+  | '$' '(' LITERAL ')' ';'                           # DollarCommentStmt
+  | 'goto' IDENTIFIER ';'                             # GotoStmt
+  | assignment_statement ';'                          # AssignmentStmt
+  | expr ';'                                          # ExprStmt
   ;
 
-case_stmt
+case_clause
   : 'default' ':' statement # DefaultCase
   | commaexpr ':' statement # NormalCase
   ;

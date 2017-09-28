@@ -77,7 +77,7 @@ class FsmTaskBuilder(cc: CommonContext) {
 
     object StatementVisitor extends VScalarVisitor[Stmt] {
       override def visitBlockStmt(ctx: BlockStmtContext) = {
-        val stmts = visit(ctx.stmts)
+        val stmts = visit(ctx.block.stmts)
         val ctrlStmts = stmts collect { case s: CtrlStmt => s }
         val combStmts = stmts collect { case s: CombStmt => s }
         val attr = Attr(ctx)
@@ -169,7 +169,7 @@ class FsmTaskBuilder(cc: CommonContext) {
       }
 
       override def visitLoopStmt(ctx: LoopStmtContext) = {
-        val body = visit(ctx.stmts)
+        val body = visit(ctx.block.stmts)
         val attr = Attr(ctx)
 
         body.last match {
@@ -201,7 +201,7 @@ class FsmTaskBuilder(cc: CommonContext) {
 
       override def visitWhileStmt(ctx: WhileStmtContext) = {
         val cond = exprVisitor(ctx.expr)
-        val body = visit(ctx.stmts)
+        val body = visit(ctx.block.stmts)
 
         loopWarnings(cond, body)
 
@@ -210,7 +210,7 @@ class FsmTaskBuilder(cc: CommonContext) {
 
       override def visitDoStmt(ctx: DoStmtContext) = {
         val cond = exprVisitor(ctx.expr)
-        val body = visit(ctx.stmts)
+        val body = visit(ctx.block.stmts)
 
         loopWarnings(cond, body)
 
@@ -239,7 +239,7 @@ class FsmTaskBuilder(cc: CommonContext) {
           case s: CombStmt => s
           case _: CtrlStmt => unreachable
         }
-        val body = visit(ctx.stmts)
+        val body = visit(ctx.block.stmts)
         val attr = Attr(ctx)
 
         loopWarnings(cond, body)
@@ -282,7 +282,7 @@ class FsmTaskBuilder(cc: CommonContext) {
       object FsmContentVisitor extends VScalarVisitor[Node] {
         override def visitFunction(ctx: FunctionContext) = {
           val name = ctx.IDENTIFIER.text
-          val stmts = StatementVisitor(ctx.stmts)
+          val stmts = StatementVisitor(ctx.block.stmts)
           val attr = Attr(ctx)
           val body = stmts.last match {
             case _: CtrlStmt => ControlBlock(attr, stmts)
@@ -295,7 +295,7 @@ class FsmTaskBuilder(cc: CommonContext) {
         override def visitFenceFunction(ctx: FenceFunctionContext) = {
           val attr = Attr(ctx)
 
-          val body = StatementVisitor(ctx.stmts) collect {
+          val body = StatementVisitor(ctx.block.stmts) collect {
             case stmt: CombStmt => stmt
             case stmt: CtrlStmt => Message.error(stmt, "Body of 'fence' function must not contain control statements"); ErrorStmt(attr)
           }

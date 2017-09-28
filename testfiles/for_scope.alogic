@@ -1,0 +1,8 @@
+fsm for_scope {
+  void main() {
+    i3 n = 1;
+    for (i3 i = 0; i < 4; i += n) {
+      i3 n = 2;
+    }
+  }
+}

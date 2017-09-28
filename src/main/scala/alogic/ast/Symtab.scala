@@ -195,31 +195,13 @@ class Symtab(root: ParserRuleContext, typedefs: scala.collection.Map[String, Typ
     override def defaultResult = ()
 
     // Create new scope for blocks
-    override def visitBlockStmt(ctx: BlockStmtContext) = {
+    override def visitBlock(ctx: BlockContext) = {
       create(ctx)
       visitChildren(ctx)
     }
 
-    // Create new scope for 'loop' loop
-    override def visitLoopStmt(ctx: LoopStmtContext) = {
-      create(ctx)
-      visitChildren(ctx)
-    }
-
-    // Create new scope for 'while' loop
-    override def visitWhileStmt(ctx: WhileStmtContext) = {
-      create(ctx)
-      visitChildren(ctx)
-    }
-
-    // Create new scope for 'for' loop
+    // Create new scope for 'for' loop (for declarations)
     override def visitForStmt(ctx: ForStmtContext) = {
-      create(ctx)
-      visitChildren(ctx)
-    }
-
-    // Create new scope for 'do' loop
-    override def visitDoStmt(ctx: DoStmtContext) = {
       create(ctx)
       visitChildren(ctx)
     }
