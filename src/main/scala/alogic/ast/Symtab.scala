@@ -200,8 +200,14 @@ class Symtab(root: ParserRuleContext, typedefs: scala.collection.Map[String, Typ
       visitChildren(ctx)
     }
 
-    // Create new scope for 'for' loop (for declarations)
+    // Create new scope for 'for' loop (may contain declaration)
     override def visitForStmt(ctx: ForStmtContext) = {
+      create(ctx)
+      visitChildren(ctx)
+    }
+
+    // Create new scope for 'let' statement (contains declaration)
+    override def visitLetStmt(ctx: LetStmtContext) = {
       create(ctx)
       visitChildren(ctx)
     }

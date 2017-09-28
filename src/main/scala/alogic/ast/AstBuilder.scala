@@ -251,6 +251,26 @@ class FsmTaskBuilder(cc: CommonContext) {
         }
       }
 
+      override def visitLetStmt(ctx: LetStmtContext) = {
+        val declStmts = ctx.decls.toList map { c =>
+          DeclarationStmt(Attr(c), LookUpDecl(c).asInstanceOf[DeclVar])
+        }
+
+        val body = visit(ctx.statement) match {
+          case x: ControlBlock => x
+          case x: ControlLoop  => x
+          case x: ControlWhile => x
+          case x: ControlDo    => x
+          case x: ControlFor   => x
+          case _ => {
+            Message.error(ctx, "'let' construct must be followed by 'loop', 'while', 'do', 'for', or '{'")
+            ErrorStmt(Attr(ctx))
+          }
+        }
+
+        ControlBlock(Attr(ctx), declStmts ::: body :: Nil)
+      }
+
       override def visitFenceStmt(ctx: FenceStmtContext) = FenceStmt(Attr(ctx))
       override def visitBreakStmt(ctx: BreakStmtContext) = BreakStmt(Attr(ctx))
       override def visitReturnStmt(ctx: ReturnStmtContext) = ReturnStmt(Attr(ctx))

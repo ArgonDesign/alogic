@@ -1,0 +1,8 @@
+fsm let_stmt {
+  void main() {
+    i3 n = 5;
+    let (i3 m = 0, i3 k = 2) do {
+      m++;
+    } while (m + k < n);
+  }
+}

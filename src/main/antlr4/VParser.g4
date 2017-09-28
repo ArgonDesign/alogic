@@ -272,28 +272,30 @@ block
   ;
 
 statement
-  : block                                             # BlockStmt
-  | decl ';'                                          # DeclStmt
-  | 'loop' block                                      # LoopStmt
-  | 'while' '(' expr ')' block                        # WhileStmt
+  : block                                                 # BlockStmt
+  | decl ';'                                              # DeclStmt
+  | 'loop' block                                          # LoopStmt
+  | 'while' '(' expr ')' block                            # WhileStmt
   | 'for' '(' init=for_init ';'
               cond=expr ';'
-              step=assignment_statement ')' block     # ForStmt
-  | 'do' block 'while' '(' expr ')' ';'               # DoStmt
+              step=assignment_statement ')' block         # ForStmt
+  | 'do' block 'while' '(' expr ')' ';'                   # DoStmt
   | 'if' '(' expr ')'
       thenStmt=statement
     ('else'
-      elseStmt=statement)?                            # IfStmt
+      elseStmt=statement)?                                # IfStmt
   | 'case' '(' expr ')' '{'
       (cases+=case_clause)+
-    '}'                                               # CaseStmt
-  | 'fence' ';'                                       # FenceStmt
-  | 'break' ';'                                       # BreakStmt
-  | 'return' ';'                                      # ReturnStmt
-  | '$' '(' LITERAL ')' ';'                           # DollarCommentStmt
-  | 'goto' IDENTIFIER ';'                             # GotoStmt
-  | assignment_statement ';'                          # AssignmentStmt
-  | expr ';'                                          # ExprStmt
+    '}'                                                   # CaseStmt
+  | 'let' '(' decls+=decl_var_init
+              (',' decls+=decl_var_init)* ')' statement   # LetStmt
+  | 'fence' ';'                                           # FenceStmt
+  | 'break' ';'                                           # BreakStmt
+  | 'return' ';'                                          # ReturnStmt
+  | '$' '(' LITERAL ')' ';'                               # DollarCommentStmt
+  | 'goto' IDENTIFIER ';'                                 # GotoStmt
+  | assignment_statement ';'                              # AssignmentStmt
+  | expr ';'                                              # ExprStmt
   ;
 
 case_clause

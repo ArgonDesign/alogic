@@ -133,7 +133,7 @@ CASE    : 'case' ;
 DEFAULT : 'default' ;
 VERILOG : 'verilog' ;
 NEW     : 'new' ;
-
+LET     : 'let' ;
 
 SYNC        : 'sync';
 SYNC_READY  : 'sync' (WS|CMT)* 'ready';
