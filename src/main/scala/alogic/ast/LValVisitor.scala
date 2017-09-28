@@ -24,11 +24,13 @@ import alogic.Message
 class LValVisitor(symtab: Option[Symtab], typedefs: scala.collection.Map[String, Type])
     extends VScalarVisitor[LVal] { self =>
 
+  private[this] implicit val isymtab = symtab
+
   private[this] lazy val exprVisitor = new ExprVisitor(symtab, typedefs)
 
   override def visitLValIndex(ctx: LValIndexContext) = {
     val idx = exprVisitor(ctx.idx)
-    val attr = Attr(ctx.loc)
+    val attr = Attr(ctx)
     visit(ctx.ref) match {
       case x: LValName                       => LValArrayLookup(attr, x, idx :: Nil)
       case LValArrayLookup(a, name, indices) => LValArrayLookup(a, name, indices ::: idx :: Nil)
@@ -37,7 +39,7 @@ class LValVisitor(symtab: Option[Symtab], typedefs: scala.collection.Map[String,
   }
 
   override def visitLValSlice(ctx: LValSliceContext) = {
-    val attr = Attr(ctx.loc)
+    val attr = Attr(ctx)
     visit(ctx.ref) match {
       case x: LValName => LValSlice(attr, x, exprVisitor(ctx.lidx), ctx.op, exprVisitor(ctx.ridx))
       case _           => Message.fatal(ctx, s"Cannot slice lvalue '${ctx.ref.sourceText}'")
@@ -50,7 +52,7 @@ class LValVisitor(symtab: Option[Symtab], typedefs: scala.collection.Map[String,
   }
 
   override def visitLValId(ctx: LValIdContext) = {
-    val attr = Attr(ctx.loc)
+    val attr = Attr(ctx)
     symtab match {
       case Some(st) => st(ctx, ctx.text) match {
         case Left(decl) => LValName(attr, decl.id :: Nil)
@@ -60,5 +62,5 @@ class LValVisitor(symtab: Option[Symtab], typedefs: scala.collection.Map[String,
     }
   }
 
-  override def visitLValCat(ctx: LValCatContext) = LValCat(Attr(ctx.loc), visit(ctx.lval))
+  override def visitLValCat(ctx: LValCatContext) = LValCat(Attr(ctx), visit(ctx.lval))
 }

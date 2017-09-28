@@ -24,6 +24,8 @@ import alogic.Message
 class ExprVisitor(symtab: Option[Symtab], typedefs: scala.collection.Map[String, Type])
     extends VScalarVisitor[Expr] { self =>
 
+  private[this] implicit val isymtab = symtab
+
   // If applied to a commaexpr node, return a list of the constructed expressions
   def apply(ctx: CommaexprContext): List[Expr] = visit(ctx.expr)
 
@@ -32,7 +34,7 @@ class ExprVisitor(symtab: Option[Symtab], typedefs: scala.collection.Map[String,
     case None    => unreachable
   }
 
-  private[this] def const2Num(ctx: ParserRuleContext, const: String) = Num(Attr(ctx.loc), true, None, BigInt(const filter (_ != '_')))
+  private[this] def const2Num(ctx: ParserRuleContext, const: String) = Num(Attr(ctx), true, None, BigInt(const filter (_ != '_')))
   private[this] def tickn2Num(ctx: ParserRuleContext, tickn: String, width: Option[String]): Num = {
     assert(tickn(0) == '\'')
     val widthVal = width filter (_ != '_') map (BigInt(_))
@@ -48,39 +50,39 @@ class ExprVisitor(symtab: Option[Symtab], typedefs: scala.collection.Map[String,
     val digits = rest filter (_ != '_')
     val value = BigInt(digits, base)
     // TODO: check value fits in width
-    Num(Attr(ctx.loc), signed, widthVal, value)
+    Num(Attr(ctx), signed, widthVal, value)
   }
 
-  override def visitExprBracket(ctx: ExprBracketContext) = Bracket(Attr(ctx.loc), visit(ctx.expr))
-  override def visitExprUnary(ctx: ExprUnaryContext) = UnaryOp(Attr(ctx.loc), ctx.unary_op.text, visit(ctx.expr))
-  override def visitExprMulDiv(ctx: ExprMulDivContext) = BinaryOp(Attr(ctx.loc), visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
-  override def visitExprAddSub(ctx: ExprAddSubContext) = BinaryOp(Attr(ctx.loc), visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
-  override def visitExprShift(ctx: ExprShiftContext) = BinaryOp(Attr(ctx.loc), visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
-  override def visitExprCompare(ctx: ExprCompareContext) = BinaryOp(Attr(ctx.loc), visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
-  override def visitExprEqual(ctx: ExprEqualContext) = BinaryOp(Attr(ctx.loc), visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
-  override def visitExprBAnd(ctx: ExprBAndContext) = BinaryOp(Attr(ctx.loc), visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
-  override def visitExprBXor(ctx: ExprBXorContext) = BinaryOp(Attr(ctx.loc), visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
-  override def visitExprBOr(ctx: ExprBOrContext) = BinaryOp(Attr(ctx.loc), visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
-  override def visitExprAnd(ctx: ExprAndContext) = BinaryOp(Attr(ctx.loc), visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
-  override def visitExprOr(ctx: ExprOrContext) = BinaryOp(Attr(ctx.loc), visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
-  override def visitExprTernary(ctx: ExprTernaryContext) = TernaryOp(Attr(ctx.loc), visit(ctx.expr(0)), visit(ctx.expr(1)), visit(ctx.expr(2)))
-  override def visitExprRep(ctx: ExprRepContext) = BitRep(Attr(ctx.loc), visit(ctx.expr(0)), visit(ctx.expr(1)))
-  override def visitExprCat(ctx: ExprCatContext) = BitCat(Attr(ctx.loc), this(ctx.commaexpr))
-  override def visitExprDollar(ctx: ExprDollarContext) = DollarCall(Attr(ctx.loc), ctx.DOLLARID, this(ctx.commaexpr))
-  override def visitExprTrue(ctx: ExprTrueContext) = Num(Attr(ctx.loc), false, Some(1), 1)
-  override def visitExprFalse(ctx: ExprFalseContext) = Num(Attr(ctx.loc), false, Some(1), 0)
+  override def visitExprBracket(ctx: ExprBracketContext) = Bracket(Attr(ctx), visit(ctx.expr))
+  override def visitExprUnary(ctx: ExprUnaryContext) = UnaryOp(Attr(ctx), ctx.unary_op.text, visit(ctx.expr))
+  override def visitExprMulDiv(ctx: ExprMulDivContext) = BinaryOp(Attr(ctx), visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
+  override def visitExprAddSub(ctx: ExprAddSubContext) = BinaryOp(Attr(ctx), visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
+  override def visitExprShift(ctx: ExprShiftContext) = BinaryOp(Attr(ctx), visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
+  override def visitExprCompare(ctx: ExprCompareContext) = BinaryOp(Attr(ctx), visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
+  override def visitExprEqual(ctx: ExprEqualContext) = BinaryOp(Attr(ctx), visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
+  override def visitExprBAnd(ctx: ExprBAndContext) = BinaryOp(Attr(ctx), visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
+  override def visitExprBXor(ctx: ExprBXorContext) = BinaryOp(Attr(ctx), visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
+  override def visitExprBOr(ctx: ExprBOrContext) = BinaryOp(Attr(ctx), visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
+  override def visitExprAnd(ctx: ExprAndContext) = BinaryOp(Attr(ctx), visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
+  override def visitExprOr(ctx: ExprOrContext) = BinaryOp(Attr(ctx), visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1)))
+  override def visitExprTernary(ctx: ExprTernaryContext) = TernaryOp(Attr(ctx), visit(ctx.expr(0)), visit(ctx.expr(1)), visit(ctx.expr(2)))
+  override def visitExprRep(ctx: ExprRepContext) = BitRep(Attr(ctx), visit(ctx.expr(0)), visit(ctx.expr(1)))
+  override def visitExprCat(ctx: ExprCatContext) = BitCat(Attr(ctx), this(ctx.commaexpr))
+  override def visitExprDollar(ctx: ExprDollarContext) = DollarCall(Attr(ctx), ctx.DOLLARID, this(ctx.commaexpr))
+  override def visitExprTrue(ctx: ExprTrueContext) = Num(Attr(ctx), false, Some(1), 1)
+  override def visitExprFalse(ctx: ExprFalseContext) = Num(Attr(ctx), false, Some(1), 0)
   override def visitExprTrickNum(ctx: ExprTrickNumContext) = tickn2Num(ctx, ctx.TICKNUM, None)
   override def visitExprConstTickNum(ctx: ExprConstTickNumContext) = tickn2Num(ctx, ctx.TICKNUM, Some(ctx.CONSTANT))
   override def visitExprConst(ctx: ExprConstContext) = const2Num(ctx, ctx.CONSTANT)
-  override def visitExprLiteral(ctx: ExprLiteralContext) = Literal(Attr(ctx.loc), ctx.LITERAL)
+  override def visitExprLiteral(ctx: ExprLiteralContext) = Literal(Attr(ctx), ctx.LITERAL)
 
   override def visitExprId(ctx: ExprIdContext) = st(ctx, ctx.text) match {
-    case Left(decl) => DottedName(Attr(ctx.loc), decl.id :: Nil)
-    case Right(id)  => DottedName(Attr(ctx.loc), id :: Nil)
+    case Left(decl) => DottedName(Attr(ctx), decl.id :: Nil)
+    case Right(id)  => DottedName(Attr(ctx), id :: Nil)
   }
 
   override def visitExprDot(ctx: ExprDotContext) = visit(ctx.ref) match {
-    case DottedName(_, names) => DottedName(Attr(ctx.loc), names ::: ctx.IDENTIFIER.text :: Nil)
+    case DottedName(_, names) => DottedName(Attr(ctx), names ::: ctx.IDENTIFIER.text :: Nil)
     case _                    => Message.fatal(ctx, s"Cannot access member of '${ctx.ref.sourceText}'")
   }
 
@@ -88,7 +90,7 @@ class ExprVisitor(symtab: Option[Symtab], typedefs: scala.collection.Map[String,
     def fail = Message.fatal(ctx, s"Cannot index expression '${ctx.ref.sourceText}'")
     val ref = visit(ctx.ref)
     val idx = visit(ctx.idx)
-    val attr = Attr(ctx.loc)
+    val attr = Attr(ctx)
     // TODO: Could do some checks in here for valid indexing
     ref match {
       case x @ DottedName(_, name :: Nil) => st(ctx, name).left.get match {
@@ -114,13 +116,13 @@ class ExprVisitor(symtab: Option[Symtab], typedefs: scala.collection.Map[String,
 
   override def visitExprSlice(ctx: ExprSliceContext) = {
     visit(ctx.ref) match {
-      case x @ (_: DottedName | _: ExprArrIndex) => Slice(Attr(ctx.loc), x, visit(ctx.lidx), ctx.op, visit(ctx.ridx))
+      case x @ (_: DottedName | _: ExprArrIndex) => Slice(Attr(ctx), x, visit(ctx.lidx), ctx.op, visit(ctx.ridx))
       case _                                     => Message.fatal(ctx, s"Cannot slice expression '${ctx.ref.sourceText}'")
     }
   }
 
   override def visitExprCall(ctx: ExprCallContext) = {
-    val attr = Attr(ctx.loc)
+    val attr = Attr(ctx)
     ctx.ref.text match {
       case "read"  => PipelineRead(attr)
       case "write" => PipelineWrite(attr)
@@ -177,7 +179,7 @@ class ExprVisitor(symtab: Option[Symtab], typedefs: scala.collection.Map[String,
   override def visitExprAt(ctx: ExprAtContext) = {
     val name = ctx.ATID.text
     val args = this(ctx.commaexpr)
-    val attr = Attr(ctx.loc)
+    val attr = Attr(ctx)
 
     def checkargs(hint: String*)(expr: => Expr) = {
       val expected = hint.length

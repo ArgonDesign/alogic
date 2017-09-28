@@ -45,13 +45,13 @@ trait ExprOps { this: Expr =>
   def >>(rhs: Int) = BinaryOp(this.attr, this, ">>", Num(this.attr, true, None, rhs))
   def >>>(rhs: Int) = BinaryOp(this.attr, this, ">>>", Num(this.attr, true, None, rhs))
 
-  // Test it the expression is universally constant, i.e.: contains no unbound variables
-  lazy val isConst: Boolean = isConst(Map.empty[String, Decl])
-  def isConst(symtab: scala.collection.Map[String, Decl]): Boolean = this match {
-    case DottedName(_, name :: Nil) => symtab get name match {
-      case Some(_: DeclParam) => true
-      case Some(_: DeclConst) => true
-      case _                  => false
+  // Test if the expression is semantically constant. It may still contain parameters, so
+  // .isConst does not imply that .eval will yield a result.
+  lazy val isConst: Boolean = this match {
+    case DottedName(_, name :: Nil) => symtab(name) match {
+      case _: DeclParam => true
+      case _: DeclConst => true
+      case _            => false
     }
 
     case _: Num                       => true
@@ -70,15 +70,47 @@ trait ExprOps { this: Expr =>
     case _: WriteCall                 => false
     case _: ErrorExpr                 => false
 
-    case Zxt(_, numbits, expr)        => numbits.isConst(symtab) && expr.isConst(symtab)
-    case Sxt(_, numbits, expr)        => numbits.isConst(symtab) && expr.isConst(symtab)
-    case BinaryOp(_, lhs, _, rhs)     => lhs.isConst(symtab) && rhs.isConst(symtab)
-    case UnaryOp(_, _, lhs)           => lhs.isConst(symtab)
-    case Bracket(_, content)          => content.isConst(symtab)
-    case TernaryOp(_, cond, lhs, rhs) => cond.isConst(symtab) && lhs.isConst(symtab) && rhs.isConst(symtab) // Could loosen this
-    case BitRep(_, count, value)      => count.isConst(symtab) && value.isConst(symtab)
-    case BitCat(_, terms)             => terms forall (_.isConst(symtab))
-    case Slice(_, ref, lidx, _, ridx) => ref.isConst(symtab) && lidx.isConst(symtab) && ridx.isConst(symtab)
+    case Zxt(_, numbits, expr)        => numbits.isConst && expr.isConst
+    case Sxt(_, numbits, expr)        => numbits.isConst && expr.isConst
+    case BinaryOp(_, lhs, _, rhs)     => lhs.isConst && rhs.isConst
+    case UnaryOp(_, _, lhs)           => lhs.isConst
+    case Bracket(_, content)          => content.isConst
+    case TernaryOp(_, cond, lhs, rhs) => cond.isConst && lhs.isConst && rhs.isConst // Could loosen this
+    case BitRep(_, count, value)      => count.isConst && value.isConst
+    case BitCat(_, terms)             => terms forall (_.isConst)
+    case Slice(_, ref, lidx, _, ridx) => ref.isConst && lidx.isConst && ridx.isConst
+  }
+
+  // Test if the numerical value of the expression can be computed now.
+  // If .isKnown is true, then .eval will yield the value
+  lazy val isKnown: Boolean = this match {
+    case DottedName(_, name :: Nil)   => false // Could relax for CONSTs
+
+    case _: Num                       => true
+    case _: Literal                   => true
+
+    case _: DottedName                => false
+    case _: ExprArrIndex              => false
+    case _: ExprVecIndex              => false // TODO: const if CONST/PARAM decl
+    case _: CallExpr                  => false
+    case _: DollarCall                => false // Could handle some defined ones like $clog2
+    case _: ReadCall                  => false
+    case _: PipelineRead              => false
+    case _: PipelineWrite             => false
+    case _: WaitCall                  => false
+    case _: ValidCall                 => false
+    case _: WriteCall                 => false
+    case _: ErrorExpr                 => false
+
+    case Zxt(_, numbits, expr)        => numbits.isKnown && expr.isKnown
+    case Sxt(_, numbits, expr)        => numbits.isKnown && expr.isKnown
+    case BinaryOp(_, lhs, _, rhs)     => lhs.isKnown && rhs.isKnown
+    case UnaryOp(_, _, lhs)           => lhs.isKnown
+    case Bracket(_, content)          => content.isKnown
+    case TernaryOp(_, cond, lhs, rhs) => cond.isKnown && lhs.isKnown && rhs.isKnown // Could loosen this
+    case BitRep(_, count, value)      => count.isKnown && value.isKnown
+    case BitCat(_, terms)             => terms forall (_.isKnown)
+    case Slice(_, ref, lidx, _, ridx) => ref.isKnown && lidx.isKnown && ridx.isKnown
   }
 
   def eval: BigInt = this.simplify match {
@@ -143,43 +175,39 @@ trait ExprOps { this: Expr =>
     case x: ErrorExpr                        => x
   }
 
-  private[this] def widthOfName(symtab: scala.collection.Map[String, Decl], tree: DottedName): Option[Expr] = {
-    val kind = {
-      def lookUpField(names: List[String], kind: Type): Type = {
-        val n :: ns = names
-        kind match {
-          case Struct(name, fields) => {
-            if (fields contains n) {
-              ns match {
-                case Nil => fields(n)
-                case _   => lookUpField(ns, fields(n))
-              }
-            } else {
-              Message.fatal(tree, s"No field named '$n' in struct '$name'") // TODO: check earlier
-            }
-          }
-          case _ => Message.fatal(tree, s"Cannot find field '$n' in non-struct type '$kind'")
-        }
-      }
-
-      tree match {
-        case DottedName(_, n :: Nil) => symtab.get(n) map { decl => decl.kind }
-        case DottedName(_, n :: ns)  => symtab.get(n) map { decl => lookUpField(ns, decl.kind) }
-      }
-    }
-
-    kind map { x: Type => x.widthExpr }
-  }
-
   // Compute a new expression representing the width of this expression.
   // Return None if it cannot be determined.
-  lazy val widthExpr: Option[Expr] = widthExpr(Map.empty[String, Decl])
-  def widthExpr(symtab: scala.collection.Map[String, Decl]): Option[Expr] = {
+  lazy val widthExpr: Option[Expr] = {
     this match {
-      case name: DottedName             => widthOfName(symtab, name)
-      case ExprArrIndex(_, name, _)     => widthOfName(symtab, name)
+      case name: DottedName => {
+        val kind = {
+          def lookUpField(names: List[String], kind: Type): Type = {
+            val n :: ns = names
+            kind match {
+              case Struct(name, fields) => {
+                if (fields contains n) {
+                  ns match {
+                    case Nil => fields(n)
+                    case _   => lookUpField(ns, fields(n))
+                  }
+                } else {
+                  Message.fatal(this, s"No field named '$n' in struct '$name'") // TODO: check earlier
+                }
+              }
+              case _ => Message.fatal(this, s"Cannot find field '$n' in non-struct type '$kind'")
+            }
+          }
+
+          name match {
+            case DottedName(_, n :: Nil) => Some(symtab(n)) map { decl => decl.kind }
+            case DottedName(_, n :: ns)  => Some(symtab(n)) map { decl => lookUpField(ns, decl.kind) }
+          }
+        }
+        kind map { x: Type => x.widthExpr }
+      }
+      case ExprArrIndex(_, name, _)     => name.widthExpr
       case _: ExprVecIndex              => ??? // TODO: handle IntVType properly
-      case ReadCall(_, name)            => widthOfName(symtab, name)
+      case ReadCall(_, name)            => name.widthExpr
       case Num(_, _, Some(width), _)    => Some(Expr(width))
       case Num(_, _, None, _)           => None
       case _: CallExpr                  => Some(Expr(0))
@@ -192,20 +220,20 @@ trait ExprOps { this: Expr =>
       case _: ValidCall                 => Some(Expr(1))
       case _: WriteCall                 => Some(Expr(0))
       case _: BinaryOp                  => None
-      case UnaryOp(_, _, lhs)           => lhs.widthExpr(symtab)
-      case Bracket(_, content)          => content.widthExpr(symtab)
+      case UnaryOp(_, _, lhs)           => lhs.widthExpr
+      case Bracket(_, content)          => content.widthExpr
       case _: TernaryOp                 => None
       case Slice(_, _, lidx, ":", ridx) => Some(lidx - ridx + 1) // TODO: assert lidx >= ridx
       case Slice(_, _, _, _, width)     => Some(width)
       case _: Literal                   => None
       case _: ErrorExpr                 => None
-      case BitRep(_, count, value) => value.widthExpr(symtab) match {
+      case BitRep(_, count, value) => value.widthExpr match {
         case Some(w) => Some(count * w)
         case None    => Message.fatal(value, "Cannot compute width of bit repetion")
       }
       case BitCat(_, terms) => {
         val exprs = for (term <- terms) yield {
-          term.widthExpr(symtab) match {
+          term.widthExpr match {
             case Some(expr) => expr
             case None       => Message.fatal(term, "Cannot compute width of bit concatenation operand")
           }
@@ -217,17 +245,16 @@ trait ExprOps { this: Expr =>
 
   // Compute a new expression representing the MSB of this expression.
   // Return None if it cannot be determined.
-  def msbExpr: Option[Expr] = msbExpr(Map.empty[String, Decl])
-  def msbExpr(symtab: scala.collection.Map[String, Decl]): Option[Expr] = {
+  def msbExpr: Option[Expr] = {
     this match {
-      case name @ DottedName(a, _) => widthOfName(symtab, name) map { width =>
+      case name @ DottedName(a, _) => name.widthExpr map { width =>
         Slice(a, name, width - 1, "+:", Expr(1))
       }
-      case vref @ ExprArrIndex(a, name, _) => widthOfName(symtab, name) map { width =>
+      case vref @ ExprArrIndex(a, name, _) => name.widthExpr map { width =>
         Slice(a, vref, width - 1, "+:", Expr(1))
       }
       case _: ExprVecIndex => ??? // TODO: handle IntVType properly
-      case ReadCall(a, name) => widthOfName(symtab, name) map { width =>
+      case ReadCall(a, name) => name.widthExpr map { width =>
         Slice(a, name, width - 1, "+:", Expr(1))
       }
 
@@ -235,7 +262,7 @@ trait ExprOps { this: Expr =>
       case Num(_, _, None, _)               => None
       case _: CallExpr                      => None
       case Zxt(_, _, expr)                  => None // TODO: if (numbits == expr.widthExpr.eval) expr.msbExpr else 0
-      case Sxt(_, _, expr)                  => expr.msbExpr(symtab)
+      case Sxt(_, _, expr)                  => expr.msbExpr
       case _: DollarCall                    => None
       case _: PipelineRead                  => None
       case _: PipelineWrite                 => None
@@ -244,14 +271,14 @@ trait ExprOps { this: Expr =>
       case _: WriteCall                     => None
       case _: BinaryOp                      => None
       case UnaryOp(_, _, lhs)               => None // TODO: could handle ~
-      case Bracket(_, content)              => content.msbExpr(symtab)
+      case Bracket(_, content)              => content.msbExpr
       case _: TernaryOp                     => None
       case Slice(a, ref, lidx, ":", _)      => Some(Slice(a, ref, lidx, "+:", Expr(1)))
       case Slice(a, ref, base, "+:", width) => Some(Slice(a, ref, base + width - 1, "+:", Expr(1)))
       case Slice(a, ref, base, "-:", _)     => Some(Slice(a, ref, base, "+:", Expr(1)))
       case _: Slice                         => unreachable
-      case BitRep(_, _, value)              => value.msbExpr(symtab)
-      case BitCat(_, terms)                 => terms.head.msbExpr(symtab)
+      case BitRep(_, _, value)              => value.msbExpr
+      case BitCat(_, terms)                 => terms.head.msbExpr
       case _: Literal                       => None
       case _: ErrorExpr                     => None
     }
@@ -315,7 +342,7 @@ trait ExprOps { this: Expr =>
     case _: ErrorExpr                      => "/*Error expression*/"
   }
 
-  def kind(symtab: scala.collection.Map[String, Decl]): Option[Type] = this match {
+  def kind: Option[Type] = this match {
     case _: Num           => ???
     case _: CallExpr      => ???
     case _: Zxt           => ???
@@ -343,6 +370,6 @@ trait ExprOps { this: Expr =>
 }
 
 trait ExprObjOps {
-  def apply(n: Int) = Num(Attr(loc = Loc("INTERNAL", 0)), true, None, n)
-  def apply(n: BigInt) = Num(Attr(loc = Loc("INTERNAL", 0)), true, None, n)
+  def apply(n: Int) = Num(Attr.empty, true, None, n)
+  def apply(n: BigInt) = Num(Attr.empty, true, None, n)
 }

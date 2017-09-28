@@ -75,7 +75,7 @@ final class MakeStates {
     // Find the value of the CALL_STACK_SIZE constant, if any
     val cssExprOpt = decls collectFirst { case DeclConst(_, "CALL_STACK_SIZE", value) => value }
     val cssOpt: Option[Int] = cssExprOpt map { e =>
-      if (!e.isConst) {
+      if (!e.isKnown) {
         Message.error(e, "The value of 'CALL_STACK_SIZE' must be a compile time constant"); 1
       } else {
         val value = e.eval.toInt
@@ -165,11 +165,9 @@ final class MakeStates {
       val stateSize = ceillog2(states.length)
       val stateType = IntType(false, stateSize)
 
-      val dattr = Attr(Loc("INTERNAL", 0))
-
       // Add a Decl for the state variable if required (reset to the entry state of main)
       val stateDecl = if (states.length > 1) {
-        Some(DeclVar(stateType, "state", Some(Num(dattr, false, Some(stateSize), 0))))
+        Some(DeclVar(stateType, "state", Some(Num(Attr.empty, false, Some(stateSize), 0))))
       } else {
         None
       }
@@ -188,7 +186,7 @@ final class MakeStates {
         val csDecl = DeclArr(stateType, "call_stack", List(Expr(css - 1)))
         val cdDecl = {
           val sz = ceillog2(css)
-          DeclVar(IntType(false, sz), "call_depth", Some(Num(dattr, false, Some(sz), 0)))
+          DeclVar(IntType(false, sz), "call_depth", Some(Num(Attr.empty, false, Some(sz), 0)))
         }
         List(csDecl, cdDecl)
       } else {

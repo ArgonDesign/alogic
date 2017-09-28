@@ -424,7 +424,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
 
     def writeOutNxt(typ: Type, name: StrTree): Unit = typ match {
       case kind: ScalarType => {
-        val wstr = if (kind.widthExpr.isConst) s"${kind.widthExpr.eval}" else ""
+        val wstr = if (kind.widthExpr.isKnown) s"${kind.widthExpr.eval}" else ""
         pw.println(s"  reg " + Signal(nx(name), kind).declString + ";")
         resets push StrList(Str("      ") :: Str(reg(name)) :: Str(s" <= ${wstr}'b0;\n") :: Nil)
         clocks push StrList(Str("        ") :: Str(reg(name)) :: Str(" <= ") :: Str(nx(name)) :: Str(";\n") :: Nil)
@@ -439,7 +439,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
           pw.println(s"  reg " + Signal(reg(nm), kind).declString + ";")
           pw.println(s"  reg " + Signal(nx(nm), kind).declString + ";")
           if (resetToZero) {
-            val wstr = if (kind.widthExpr.isConst) s"${kind.widthExpr.eval}" else ""
+            val wstr = if (kind.widthExpr.isKnown) s"${kind.widthExpr.eval}" else ""
             resets push StrList(Str("      ") :: Str(reg(name)) :: Str(s" <= ${wstr}'b0;\n") :: Nil)
           }
           clocks push StrList(Str("        ") :: Str(reg(name)) :: Str(" <= ") :: Str(nx(name)) :: Str(";\n") :: Nil)
@@ -688,18 +688,18 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         case DeclIn(decl, n, fctype)     => if (fctype.hasValid) valid(n) else { Message.fatal(tree, s"Port '$names' does not use valid"); "" }
         case _                           => Message.fatal(tree, s"Cannot access valid on $names"); ""
       }
-      case Zxt(_, numbitsExpr, expr) => expr.widthExpr(id2decl) match {
+      case Zxt(_, numbitsExpr, expr) => expr.widthExpr match {
         case None => Message.fatal(expr, s"Cannot compute size of expression '${expr.toSource}' for '@zx'")
         case Some(widthExpr) => {
           val deltaExpr = (numbitsExpr - widthExpr).simplify
           StrList(List("{{", MakeExpr(deltaExpr), "{1'b0}},", MakeExpr(expr), "}"))
         }
       }
-      case Sxt(_, numbitsExpr, expr) => expr.widthExpr(id2decl) match {
+      case Sxt(_, numbitsExpr, expr) => expr.widthExpr match {
         case None => Message.fatal(expr, s"Cannot compute size of expression '${expr.toSource}' for '@sx'")
         case Some(widthExpr) => {
           val deltaExpr = (numbitsExpr - widthExpr).simplify
-          val msbExpr = expr.msbExpr(id2decl) match {
+          val msbExpr = expr.msbExpr match {
             case None       => Message.fatal(expr, s"Cannot compute msb of expression '${expr.toSource}' for '@sx'")
             case Some(expr) => expr.simplify
           }

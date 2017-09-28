@@ -21,7 +21,7 @@ case class Signal(name: String, kind: ScalarType) {
   def declString = {
     val signedStr = if (kind.signed) "signed " else ""
     val width = kind.widthExpr.simplify
-    if (width.isConst) {
+    if (width.isKnown) {
       val w = width.eval
       if (w < 1) {
         Message.fatal(s"Cannot declare signal with width ${w}")

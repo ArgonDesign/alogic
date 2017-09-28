@@ -135,7 +135,7 @@ class Symtab(root: ParserRuleContext, typedefs: scala.collection.Map[String, Typ
         case x: ScalarType => x
         case x             => Message.error(ctx, s"Constant '${id}' must be declared with scalar type"); IntType(false, 1);
       }
-      DeclConst(kind, id, ErrorExpr(Attr(ctx.loc)))
+      DeclConst(kind, id, ErrorExpr(Attr.empty))
     }
     override def visitTaskDeclParam(ctx: TaskDeclParamContext) = {
       val id = ctx.IDENTIFIER.text
@@ -144,7 +144,7 @@ class Symtab(root: ParserRuleContext, typedefs: scala.collection.Map[String, Typ
         case x: ScalarType => x
         case x             => Message.error(ctx, s"Parameter '${id}' must be declared with scalar type"); IntType(false, 1);
       }
-      DeclParam(kind, id, ErrorExpr(Attr(ctx.loc)))
+      DeclParam(kind, id, ErrorExpr(Attr.empty))
     }
     override def visitTaskDeclPipeline(ctx: TaskDeclPipelineContext) = {
       val id = ctx.IDENTIFIER.text
@@ -184,7 +184,7 @@ class Symtab(root: ParserRuleContext, typedefs: scala.collection.Map[String, Typ
     override def visitDeclVarInit(ctx: DeclVarInitContext) = {
       val knownTypeVisitor = new KnownTypeVisitor(Some(self), typedefs)
       val kind = knownTypeVisitor(ctx.known_type())
-      DeclVar(kind, ctx.IDENTIFIER, Some(ErrorExpr(Attr(ctx.loc))))
+      DeclVar(kind, ctx.IDENTIFIER, Some(ErrorExpr(Attr.empty)))
     }
   }
 
@@ -290,7 +290,10 @@ class Symtab(root: ParserRuleContext, typedefs: scala.collection.Map[String, Typ
           case d: DeclArr => d.copy(id = newId)
           case _          => unreachable
         }
-        nameMap(name) = Some(Item(Left(newDecl), ctx))
+        val newItem = Item(Left(newDecl), ctx)
+        nameMap(name) = Some(newItem)
+        // Also add under then new name, so it can be looked up using the re-mapped name
+        nameMap(newId) = Some(newItem)
       }
       case _ => ()
     }
@@ -343,6 +346,15 @@ class Symtab(root: ParserRuleContext, typedefs: scala.collection.Map[String, Typ
     find(ctx)(name) match {
       case Some(Item(decl, _)) => decl
       case None                => Message.fatal(ctx, s"Unknown identifier '$name'")
+    }
+  }
+
+  // Turn this into a local symbol table
+  def funcify(ctx: ParserRuleContext): String => Decl = { name =>
+    find(ctx)(name) match {
+      case Some(Item(Left(decl), _)) => decl
+      case Some(Item(Right(id), _))  => Message.ice(ctx, s"'$name' is a function")
+      case None                      => Message.ice(ctx, s"Unknown identifier '$name'")
     }
   }
 }

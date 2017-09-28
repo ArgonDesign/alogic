@@ -18,7 +18,8 @@ package alogic.ast
 
 trait NodeOps extends NodePrettyPrintOps { this: Node =>
   val attr: Attr
-  def loc = attr.loc
+  lazy val loc = attr.loc
+  lazy val symtab = attr.symtab
 
   // Recurse through the tree and apply function to all nodes in pre-order
   // Callback returns true to continue recursing, or false to stop processing children
