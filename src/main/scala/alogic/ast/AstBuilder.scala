@@ -72,7 +72,7 @@ class CommonContext(root: ParserRuleContext, initialTypedefs: Map[String, Type])
 class FsmTaskBuilder(cc: CommonContext) {
   import cc._
 
-  def apply(tree: EntityFSMContext): FsmTask = {
+  def apply(tree: Fsm_entityContext): FsmTask = {
 
     object StatementVisitor extends VScalarVisitor[Stmt] {
       override def visitBlockStmt(ctx: BlockStmtContext) = {
@@ -296,12 +296,11 @@ class FsmTaskBuilder(cc: CommonContext) {
         val fns = contents collect { case x: Function => x }
         val fencefns = contents collect { case x: FenceFunction => x }
         val vfns = contents collect { case x: VerilogFunction => x }
-        val hasNew = Option(ctx.autoinst).isDefined;
         if (fencefns.length > 1) {
           Message.error(ctx, s"fsm '$name' has more than 1 fence function defined")
         }
 
-        FsmTask(name, decls, fns, fencefns.headOption, vfns, hasNew)
+        FsmTask(name, decls, fns, fencefns.headOption, vfns)
       }
     }
 
@@ -345,13 +344,20 @@ class NetworkTaskBuilder(cc: CommonContext) {
     }
 
     object NetworkVisitor extends VScalarVisitor[NetworkTask] {
-      object NetworkContentVisitor extends VScalarVisitor[Node] {
-        override def visitEntityFSM(ctx: EntityFSMContext) = fsmTaskBuilder(ctx) //, typedefs)
-        override def visitEntityVerilog(ctx: EntityVerilogContext) = ???
+      object NetworkContentVisitor extends VScalarVisitor[List[Node]] {
+        override def visitNetworkContentFSM(ctx: NetworkContentFSMContext) = {
+          val fsm = fsmTaskBuilder(ctx.fsm_entity)
+
+          if (Option(ctx.autoinst).isDefined) {
+            fsm :: Instantiate(fsm.name, fsm.name, ListMap.empty) :: Nil
+          } else {
+            fsm :: Nil
+          }
+        }
         override def visitConnect(ctx: ConnectContext) = {
           val lhs = DottedNameVisitor(ctx.lhs)
           val rhs = DottedNameVisitor(ctx.rhs)
-          Connect(lhs, rhs)
+          Connect(lhs, rhs) :: Nil
         }
         override def visitInstantiate(ctx: InstantiateContext) = {
           val id = ctx.IDENTIFIER(0).text
@@ -359,19 +365,16 @@ class NetworkTaskBuilder(cc: CommonContext) {
           val pas = ctx.param_args.param_assign.toList map { pa =>
             pa.IDENTIFIER.text -> exprVisitor(pa.expr)
           }
-          Instantiate(id, module, ListMap(pas: _*))
+          Instantiate(id, module, ListMap(pas: _*)) :: Nil
         }
-        override def visitVerilogFunction(ctx: VerilogFunctionContext) = VerilogFunctionVisitor(ctx)
+        override def visitVerilogFunction(ctx: VerilogFunctionContext) = VerilogFunctionVisitor(ctx) :: Nil
       }
 
       override def visitEntityNetwork(ctx: EntityNetworkContext) = {
         val name = ctx.IDENTIFIER.text
         val decls = LookUpDecl(ctx.decls)
-        val contents = NetworkContentVisitor(ctx.contents)
-        val inst = contents collect {
-          case x: Instantiate                                 => x
-          case FsmTask(name, decls, fns, fencefn, vfns, true) => Instantiate(name, name, ListMap.empty)
-        }
+        val contents = NetworkContentVisitor(ctx.contents).flatten
+        val inst = contents collect { case x: Instantiate => x }
         val conn = contents collect { case x: Connect => x }
         val vfns = contents collect { case x: VerilogFunction => x }
         val fsms = contents collect { case x: FsmTask => x }

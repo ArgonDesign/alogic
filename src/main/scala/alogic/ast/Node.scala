@@ -34,8 +34,7 @@ case class FsmTask(name: String,
                    decls: List[Decl],
                    fns: List[Function],
                    fencefn: Option[FenceFunction],
-                   vfns: List[VerilogFunction],
-                   makeNew: Boolean) extends Task
+                   vfns: List[VerilogFunction]) extends Task
 case class StateTask(name: String,
                      decls: List[Decl],
                      states: List[StateBlock],

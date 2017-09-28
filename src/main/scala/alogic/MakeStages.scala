@@ -44,7 +44,7 @@ object MakeStages {
     val lastUse = mutable.Map[String, String]() // Map from name of pipeline variable to name of fsm where that variable last is used
 
     // Search each fsm for pipeline variables
-    for (FsmTask(sub, decls, fns, fencefn, vfns, hasnew) <- fsms) {
+    for (FsmTask(sub, decls, fns, fencefn, vfns) <- fsms) {
       def v(tree: Node): Boolean = tree match {
         case DottedName(names) => {
           val n = names.head
@@ -86,7 +86,7 @@ object MakeStages {
 
     // TODO this relies on toList returning the active elements in the same order for outputs and inputs - is this guaranteed?
     val activeSet = mutable.Set[String]() // Set of currently active pipeline variables
-    val fsms2 = for (FsmTask(sub, decls, fns, fencefn, vfns, hasnew) <- fsms) yield {
+    val fsms2 = for (FsmTask(sub, decls, fns, fencefn, vfns) <- fsms) yield {
       // Identify variables used here
       val inputs = activeSet.toList // Pipeline variables we need as inputs
       activeSet ++= mod2firstvars.getOrElse(sub, Nil)
@@ -153,13 +153,13 @@ object MakeStages {
         case _ => false
       }
 
-      val res = FsmTask(sub, decls2, fns2, fencefn2, vfns, false)
+      val res = FsmTask(sub, decls2, fns2, fencefn2, vfns)
       //println(res.toSource)
       res
     }
 
-    val stages = for (FsmTask(sub, decls, fns, fencefn, vfns, hasnew) <- fsms2) yield {
-      FsmTask(s"${name}_${sub}", decls, fns, fencefn, vfns, hasnew)
+    val stages = for (FsmTask(sub, decls, fns, fencefn, vfns) <- fsms2) yield {
+      FsmTask(s"${name}_${sub}", decls, fns, fencefn, vfns)
     }
 
     val newInsts = for (inst <- insts) yield inst rewrite {

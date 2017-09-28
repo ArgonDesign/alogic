@@ -84,7 +84,7 @@ entity
   ;
 
 fsm_entity
-  : (autoinst='new')? 'fsm' IDENTIFIER '{'
+  : 'fsm' IDENTIFIER '{'
       (decls+=fsm_decl)*
       (contents+=fsm_content)*
     '}'                                 #EntityFSM
@@ -137,10 +137,10 @@ fsm_content
   ;
 
 network_content
-  : fsm_entity
-  | connect
-  | instantiate
-  | verilog_function
+  : (autoinst='new')? fsm_entity  #NetworkContentFSM
+  | connect                       #DUMMYRULENAME_NETWORK_CONTENT
+  | instantiate                   #DUMMYRULENAME_NETWORK_CONTENT
+  | verilog_function              #DUMMYRULENAME_NETWORK_CONTENT
   ;
 
 ///////////////////////////////////////////////////////////////////////////////

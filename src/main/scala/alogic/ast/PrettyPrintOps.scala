@@ -115,7 +115,7 @@ trait NodePrettyPrintOps { this: Node =>
         case Function(name, body)  => s"void $name() ${v(indent)(body)}"
         case FenceFunction(body)   => s"void fence() ${v(indent)(body)}"
         case VerilogFunction(body) => s"void verilog() {$body}"
-        case FsmTask(name, decls, fns, fencefn, vfns, hasnew) =>
+        case FsmTask(name, decls, fns, fencefn, vfns) =>
           s"""|fsm $name {
               |${i}  /////////////////////////////////
               |${i}  // Declarations
