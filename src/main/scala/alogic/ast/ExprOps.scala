@@ -89,7 +89,19 @@ trait ExprOps { this: Expr =>
   def simplify: Expr = this match {
     case Bracket(_, content) => content.simplify
 
-    case UnaryOp(a, op, lhs) => UnaryOp(a, op, lhs.simplify)
+    case UnaryOp(a, op, rhs) => UnaryOp(a, op, rhs.simplify) match {
+      case x @ UnaryOp(_, op, rhs @ Num(_, true, None, rv)) => op match {
+        case "+" => rhs
+        case "-" => Num(a, true, None, -rv)
+        case _   => x
+      }
+      case x @ UnaryOp(_, op, rhs @ Num(_, false, None, rv)) => op match {
+        case "+" => rhs
+        case "-" => { Message.error(x, "Taking negative of unsigned constnat"); x }
+        case _   => x
+      }
+      case x => x
+    }
 
     case BinaryOp(a, lhs, op, rhs) => BinaryOp(a, lhs.simplify, op, rhs.simplify) match {
       case x @ BinaryOp(_, Num(_, true, None, lv), op, Num(_, true, None, rv)) => op match {
