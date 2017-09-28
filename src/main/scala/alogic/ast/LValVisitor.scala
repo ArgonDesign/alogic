@@ -28,32 +28,37 @@ class LValVisitor(symtab: Option[Symtab], typedefs: scala.collection.Map[String,
 
   override def visitLValIndex(ctx: LValIndexContext) = {
     val idx = exprVisitor(ctx.idx)
+    val attr = Attr(ctx.loc)
     visit(ctx.ref) match {
-      case x: LValName                    => LValArrayLookup(x, idx :: Nil)
-      case LValArrayLookup(name, indices) => LValArrayLookup(name, indices ::: idx :: Nil)
-      case _                              => Message.fatal(ctx, s"Cannot index lvalue '${ctx.ref.sourceText}'")
+      case x: LValName                       => LValArrayLookup(attr, x, idx :: Nil)
+      case LValArrayLookup(a, name, indices) => LValArrayLookup(a, name, indices ::: idx :: Nil)
+      case _                                 => Message.fatal(ctx, s"Cannot index lvalue '${ctx.ref.sourceText}'")
     }
   }
 
   override def visitLValSlice(ctx: LValSliceContext) = {
+    val attr = Attr(ctx.loc)
     visit(ctx.ref) match {
-      case x: LValName => LValSlice(x, exprVisitor(ctx.lidx), ctx.op, exprVisitor(ctx.ridx))
+      case x: LValName => LValSlice(attr, x, exprVisitor(ctx.lidx), ctx.op, exprVisitor(ctx.ridx))
       case _           => Message.fatal(ctx, s"Cannot slice lvalue '${ctx.ref.sourceText}'")
     }
   }
 
   override def visitLValDot(ctx: LValDotContext) = visit(ctx.ref) match {
-    case LValName(names) => LValName(names ::: ctx.IDENTIFIER.text :: Nil)
-    case _               => Message.fatal(ctx, s"Cannot access member of '${ctx.ref.sourceText}'")
+    case LValName(a, names) => LValName(a, names ::: ctx.IDENTIFIER.text :: Nil)
+    case _                  => Message.fatal(ctx, s"Cannot access member of '${ctx.ref.sourceText}'")
   }
 
-  override def visitLValId(ctx: LValIdContext) = symtab match {
-    case Some(st) => st(ctx, ctx.text) match {
-      case Left(decl) => LValName(decl.id :: Nil)
-      case Right(id)  => LValName(id :: Nil)
+  override def visitLValId(ctx: LValIdContext) = {
+    val attr = Attr(ctx.loc)
+    symtab match {
+      case Some(st) => st(ctx, ctx.text) match {
+        case Left(decl) => LValName(attr, decl.id :: Nil)
+        case Right(id)  => LValName(attr, id :: Nil)
+      }
+      case None => unreachable
     }
-    case None => unreachable
   }
 
-  override def visitLValCat(ctx: LValCatContext) = LValCat(visit(ctx.lval))
+  override def visitLValCat(ctx: LValCatContext) = LValCat(Attr(ctx.loc), visit(ctx.lval))
 }

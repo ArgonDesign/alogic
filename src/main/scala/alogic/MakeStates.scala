@@ -57,7 +57,7 @@ final class MakeStates {
 
   // Transfer a batch of instructions to the states list
   def emit(state: Int, insns: List[CombStmt]): Unit = {
-    extra.push(StateBlock(state, insns))
+    extra.push(StateBlock(insns.head.attr, state, insns))
   }
 
   // TODO: factor out to some common place
@@ -70,7 +70,7 @@ final class MakeStates {
 
   // Return the call stack size for this fsm and whether it is implicit or explicit
   def callStackSize(fsm: FsmTask): (Int, Boolean) = {
-    val FsmTask(name, decls, fns, fencefn, vfns) = fsm
+    val FsmTask(_, name, decls, fns, fencefn, vfns) = fsm
 
     // Find the value of the CALL_STACK_SIZE constant, if any
     val cssOpt: Option[Int] = {
@@ -92,10 +92,10 @@ final class MakeStates {
     // Collect the call graph
     val nodes = fns map { _.name }
     val edges = for {
-      Function(caller, body) <- fns
+      Function(_, caller, body) <- fns
       (callee, weight) <- body collect {
-        case CallStmt(name)                   => (name, 1)
-        case GotoStmt(name) if name != caller => (name, 0)
+        case CallStmt(_, name)                   => (name, 1)
+        case GotoStmt(_, name) if name != caller => (name, 0)
       }
     } yield {
       caller ~> callee % weight
@@ -148,7 +148,7 @@ final class MakeStates {
   }
 
   def apply(fsm: FsmTask): Option[StateTask] = {
-    val FsmTask(name, decls, fns, fencefn, vfns) = fsm
+    val FsmTask(attr, name, decls, fns, fencefn, vfns) = fsm
 
     if (fns exists (_.name == "main")) {
       // Figure out the call stack size
@@ -158,7 +158,7 @@ final class MakeStates {
       fn2state("main") = state_alloc.next
 
       // Allocate remaining function state numbers
-      for (Function(name, _) <- fns if name != "main") {
+      for (Function(_, name, _) <- fns if name != "main") {
         fn2state(name) = state_alloc.next
       }
 
@@ -167,9 +167,11 @@ final class MakeStates {
       val stateSize = ceillog2(states.length)
       val stateType = IntType(false, stateSize)
 
+      val dattr = Attr(Loc("INTERNAL", 0))
+
       // Add a Decl for the state variable if required (reset to the entry state of main)
       val stateDecl = if (states.length > 1) {
-        Some(DeclVar(stateType, "state", Some(Num(false, Some(stateSize), 0))))
+        Some(DeclVar(stateType, "state", Some(Num(dattr, false, Some(stateSize), 0))))
       } else {
         None
       }
@@ -188,7 +190,7 @@ final class MakeStates {
         val csDecl = DeclArr(stateType, "call_stack", List(Expr(css - 1)))
         val cdDecl = {
           val sz = ceillog2(css)
-          DeclVar(IntType(false, sz), "call_depth", Some(Num(false, Some(sz), 0)))
+          DeclVar(IntType(false, sz), "call_depth", Some(Num(dattr, false, Some(sz), 0)))
         }
         List(csDecl, cdDecl)
       } else {
@@ -198,7 +200,7 @@ final class MakeStates {
       val newDecls = stateDecl.toList ::: cssDecl.toList ::: callStackDecls ::: decls
 
       // Create State Task
-      Some(StateTask(name, newDecls, states, fencefn, vfns))
+      Some(StateTask(attr, name, newDecls, states, fencefn, vfns))
     } else if (fencefn == None && fns == Nil) {
       Message.error(s"fsm '$name' contains only 'verilog' functions. Use a 'verilog' task instead.")
       None
@@ -209,7 +211,7 @@ final class MakeStates {
   }
 
   def makeFnStates(fn: Function): List[StateBlock] = {
-    val Function(name, body) = fn
+    val Function(_, name, body) = fn
 
     val s = fn2state(name)
     val current = makeStates(s, s, body)
@@ -233,31 +235,31 @@ final class MakeStates {
     // Simple control transfer statements
     ///////////////////////////////////////////////////////////////////////////
 
-    case FenceStmt          => List(GotoState(finalState))
-    case BreakStmt          => List(GotoState(breakTargets.head))
-    case GotoStmt(t)        => List(GotoState(fn2state(t))) // TODO check targets exist in builder
-    case CallStmt(t)        => List(CallState(fn2state(t), finalState)) // TODO check target exists in builder
-    case ReturnStmt         => List(ReturnState)
+    case FenceStmt(a)          => List(GotoState(a, finalState))
+    case BreakStmt(a)          => List(GotoState(a, breakTargets.head))
+    case GotoStmt(a, t)        => List(GotoState(a, fn2state(t))) // TODO check targets exist in builder
+    case CallStmt(a, t)        => List(CallState(a, fn2state(t), finalState)) // TODO check target exists in builder
+    case ReturnStmt(a)         => List(ReturnState(a))
 
     ///////////////////////////////////////////////////////////////////////////
     // ControlBlock
     ///////////////////////////////////////////////////////////////////////////
 
-    case ControlBlock(cmds) => makeBlockStmts(startState, finalState, cmds)
+    case ControlBlock(_, cmds) => makeBlockStmts(startState, finalState, cmds)
 
     ///////////////////////////////////////////////////////////////////////////
     // Fundamental Loop
     ///////////////////////////////////////////////////////////////////////////
 
-    case ControlLoop(body) => {
+    case ControlLoop(a, body) => {
       val s = if (startState < 0) state_alloc.next else startState
       breakTargets push finalState
       val follow = makeStates(s, s, body)
       breakTargets.pop
-      val loop = CombinatorialBlock(follow)
+      val loop = CombinatorialBlock(a, follow)
       if (startState < 0) {
         emit(s, loop :: Nil)
-        List(GotoState(s))
+        List(GotoState(a, s))
       } else {
         List(loop)
       }
@@ -267,58 +269,58 @@ final class MakeStates {
     // Common Loops
     ///////////////////////////////////////////////////////////////////////////
 
-    case ControlWhile(cond, body) => {
+    case ControlWhile(a, cond, body) => {
       val entryState = state_alloc.next
       breakTargets push finalState
       val (lastState, lastStmts) = findLastStmts(entryState, finalState, body)
       breakTargets.pop
-      emit(lastState, lastStmts ::: CombinatorialIf(cond, GotoState(entryState), Some(GotoState(finalState))) :: Nil)
-      List(CombinatorialIf(cond, GotoState(entryState), Some(GotoState(finalState))))
+      emit(lastState, lastStmts ::: CombinatorialIf(a, cond, GotoState(a, entryState), Some(GotoState(a, finalState))) :: Nil)
+      List(CombinatorialIf(a, cond, GotoState(a, entryState), Some(GotoState(a, finalState))))
     }
-    case ControlDo(cond, body) => {
+    case ControlDo(a, cond, body) => {
       val entryState = state_alloc.next
       breakTargets push finalState
       val (lastState, lastStmts) = findLastStmts(entryState, finalState, body)
       breakTargets.pop
-      emit(lastState, lastStmts ::: CombinatorialIf(cond, GotoState(entryState), Some(GotoState(finalState))) :: Nil)
-      List(GotoState(entryState))
+      emit(lastState, lastStmts ::: CombinatorialIf(a, cond, GotoState(a, entryState), Some(GotoState(a, finalState))) :: Nil)
+      List(GotoState(a, entryState))
     }
-    case ControlFor(init, cond, incr, body) => {
+    case ControlFor(a, init, cond, incr, body) => {
       val entryState = state_alloc.next
       breakTargets push finalState
       val (lastState, lastStmts) = findLastStmts(entryState, finalState, body)
       breakTargets.pop
-      emit(lastState, lastStmts ::: incr :: CombinatorialIf(cond, GotoState(entryState), Some(GotoState(finalState))) :: Nil)
-      List(init, CombinatorialIf(cond, GotoState(entryState), Some(GotoState(finalState))))
+      emit(lastState, lastStmts ::: incr :: CombinatorialIf(a, cond, GotoState(a, entryState), Some(GotoState(a, finalState))) :: Nil)
+      List(init, CombinatorialIf(a, cond, GotoState(a, entryState), Some(GotoState(a, finalState))))
     }
 
     ///////////////////////////////////////////////////////////////////////////
     // Branches
     ///////////////////////////////////////////////////////////////////////////
 
-    case ControlIf(cond, body, None) => {
+    case ControlIf(a, cond, body, None) => {
       val current = makeStates(-1, finalState, body)
-      List(CombinatorialIf(cond, CombinatorialBlock(current), Some(GotoState(finalState))))
+      List(CombinatorialIf(a, cond, CombinatorialBlock(body.attr, current), Some(GotoState(a, finalState))))
     }
-    case ControlIf(cond, body, Some(elsebody)) => {
+    case ControlIf(a, cond, body, Some(elsebody)) => {
       val current = makeStates(-1, finalState, body)
       val current2 = makeStates(-1, finalState, elsebody)
-      List(CombinatorialIf(cond, CombinatorialBlock(current), Some(CombinatorialBlock(current2))))
+      List(CombinatorialIf(a, cond, CombinatorialBlock(body.attr, current), Some(CombinatorialBlock(elsebody.attr, current2))))
     }
 
-    case ControlCaseStmt(value, cases, default) => {
+    case ControlCaseStmt(a, value, cases, default) => {
       def makeBodyStmt(body: CtrlStmt) = makeStates(-1, finalState, body) match {
-        case a :: Nil => a
-        case as       => CombinatorialBlock(as)
+        case x :: Nil => x
+        case xs       => CombinatorialBlock(a, xs)
       }
 
       val combcases = cases map {
-        case ControlCaseLabel(cond, body) => CombinatorialCaseLabel(cond, makeBodyStmt(body))
+        case ControlCaseLabel(a, cond, body) => CombinatorialCaseLabel(a, cond, makeBodyStmt(body))
       }
 
       default match {
-        case Some(d) => List(CombinatorialCaseStmt(value, combcases, Some(makeBodyStmt(d))))
-        case None    => List(CombinatorialCaseStmt(value, combcases, Some(GotoState(finalState))))
+        case Some(d) => List(CombinatorialCaseStmt(a, value, combcases, Some(makeBodyStmt(d))))
+        case None    => List(CombinatorialCaseStmt(a, value, combcases, Some(GotoState(a, finalState))))
       }
     }
 

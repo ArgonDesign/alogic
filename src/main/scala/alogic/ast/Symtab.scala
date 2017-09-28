@@ -135,7 +135,7 @@ class Symtab(root: ParserRuleContext, typedefs: scala.collection.Map[String, Typ
         case x: ScalarType => x
         case x             => Message.error(ctx, s"Constant '${id}' must be declared with scalar type"); IntType(false, 1);
       }
-      DeclConst(kind, id, ErrorExpr)
+      DeclConst(kind, id, ErrorExpr(Attr(ctx.loc)))
     }
     override def visitTaskDeclParam(ctx: TaskDeclParamContext) = {
       val id = ctx.IDENTIFIER.text
@@ -144,7 +144,7 @@ class Symtab(root: ParserRuleContext, typedefs: scala.collection.Map[String, Typ
         case x: ScalarType => x
         case x             => Message.error(ctx, s"Parameter '${id}' must be declared with scalar type"); IntType(false, 1);
       }
-      DeclParam(kind, id, ErrorExpr)
+      DeclParam(kind, id, ErrorExpr(Attr(ctx.loc)))
     }
     override def visitTaskDeclPipeline(ctx: TaskDeclPipelineContext) = {
       val id = ctx.IDENTIFIER.text
@@ -184,7 +184,7 @@ class Symtab(root: ParserRuleContext, typedefs: scala.collection.Map[String, Typ
     override def visitDeclVarInit(ctx: DeclVarInitContext) = {
       val knownTypeVisitor = new KnownTypeVisitor(Some(self), typedefs)
       val kind = knownTypeVisitor(ctx.known_type())
-      DeclVar(kind, ctx.IDENTIFIER, Some(ErrorExpr))
+      DeclVar(kind, ctx.IDENTIFIER, Some(ErrorExpr(Attr(ctx.loc))))
     }
   }
 

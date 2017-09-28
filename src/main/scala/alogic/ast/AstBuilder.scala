@@ -62,7 +62,7 @@ class CommonContext(root: ParserRuleContext, initialTypedefs: Map[String, Type])
   }
 
   object VerilogFunctionVisitor extends VScalarVisitor[VerilogFunction] {
-    override def visitVerilogFunction(ctx: VerilogFunctionContext) = VerilogFunction(ctx.VERILOGBODY.text.drop(1).dropRight(1))
+    override def visitVerilogFunction(ctx: VerilogFunctionContext) = VerilogFunction(Attr(ctx.loc), ctx.VERILOGBODY.text.drop(1).dropRight(1))
   }
 }
 
@@ -79,22 +79,26 @@ class FsmTaskBuilder(cc: CommonContext) {
         val stmts = visit(ctx.stmts)
         val ctrlStmts = stmts collect { case s: CtrlStmt => s }
         val combStmts = stmts collect { case s: CombStmt => s }
+        val attr = Attr(ctx.loc)
 
         (ctrlStmts, combStmts) match { // TODO: Not sure this is the best way to write this
-          case (Nil, comb) => CombinatorialBlock(comb)
+          case (Nil, comb) => CombinatorialBlock(attr, comb)
           case (ctrl, comb) => {
             stmts.last match {
-              case s: CtrlStmt => ControlBlock(stmts)
-              case s: CombStmt => Message.error(ctx, "A control block must end with a control statement"); ErrorStmt
+              case s: CtrlStmt => ControlBlock(attr, stmts)
+              case s: CombStmt => Message.error(ctx, "A control block must end with a control statement"); ErrorStmt(Attr(ctx.loc))
             }
           }
         }
       }
 
-      override def visitDeclStmt(ctx: DeclStmtContext) = LookUpDecl(ctx.decl) match {
-        case s: DeclVar => DeclarationStmt(s)
-        case s: Decl => {
-          Message.error(ctx, "Only variable declarations allowed inside functions"); ErrorStmt
+      override def visitDeclStmt(ctx: DeclStmtContext) = {
+        val attr = Attr(ctx.loc)
+        LookUpDecl(ctx.decl) match {
+          case s: DeclVar => DeclarationStmt(attr, s)
+          case s: Decl => {
+            Message.error(ctx, "Only variable declarations allowed inside functions"); ErrorStmt(attr)
+          }
         }
       }
 
@@ -102,15 +106,16 @@ class FsmTaskBuilder(cc: CommonContext) {
         val cond = exprVisitor(ctx.expr())
         val thenStmt = visit(ctx.thenStmt)
         val elseStmt = visit(Option(ctx.elseStmt))
+        val attr = Attr(ctx.loc)
 
         (thenStmt, elseStmt) match {
-          case (t: CtrlStmt, None)              => ControlIf(cond, t, None)
-          case (t: CtrlStmt, Some(e: CtrlStmt)) => ControlIf(cond, t, Some(e))
-          case (t: CombStmt, None)              => CombinatorialIf(cond, t, None)
-          case (t: CombStmt, Some(e: CombStmt)) => CombinatorialIf(cond, t, Some(e))
+          case (t: CtrlStmt, None)              => ControlIf(attr, cond, t, None)
+          case (t: CtrlStmt, Some(e: CtrlStmt)) => ControlIf(attr, cond, t, Some(e))
+          case (t: CombStmt, None)              => CombinatorialIf(attr, cond, t, None)
+          case (t: CombStmt, Some(e: CombStmt)) => CombinatorialIf(attr, cond, t, Some(e))
           case _ => {
             Message.error(ctx, "Both branches of an if must be control statements, or both must be combinatorial statements");
-            ErrorStmt
+            ErrorStmt(attr)
           }
         }
       }
@@ -126,9 +131,10 @@ class FsmTaskBuilder(cc: CommonContext) {
           override val defaultResult = None
           override def visitNormalCase(ctx: NormalCaseContext) = {
             val args = exprVisitor(ctx.commaexpr)
+            val attr = Attr(ctx.loc)
             StatementVisitor(ctx.statement()) match {
-              case s: CtrlStmt => Some(ControlCaseLabel(args, s))
-              case s: CombStmt => Some(CombinatorialCaseLabel(args, s))
+              case s: CtrlStmt => Some(ControlCaseLabel(attr, args, s))
+              case s: CombStmt => Some(CombinatorialCaseLabel(attr, args, s))
             }
           }
         }
@@ -144,30 +150,32 @@ class FsmTaskBuilder(cc: CommonContext) {
         val cases = CaseVisitor(ctx.cases).flatten
         val ctrlCases = cases collect { case s: ControlCaseLabel => s }
         val combCases = cases collect { case s: CombinatorialCaseLabel => s }
+        val attr = Attr(ctx.loc)
 
         (ctrlCases, combCases, defaultCase) match {
-          case (Nil, Nil, None)               => CombinatorialCaseStmt(test, Nil, None)
-          case (Nil, Nil, Some(d: CombStmt))  => CombinatorialCaseStmt(test, Nil, Some(d))
-          case (Nil, Nil, Some(d: CtrlStmt))  => ControlCaseStmt(test, Nil, Some(d))
-          case (Nil, comb, None)              => CombinatorialCaseStmt(test, comb, None)
-          case (Nil, comb, Some(d: CombStmt)) => CombinatorialCaseStmt(test, comb, Some(d))
-          case (ctrl, Nil, None)              => ControlCaseStmt(test, ctrl, None)
-          case (ctrl, Nil, Some(d: CtrlStmt)) => ControlCaseStmt(test, ctrl, Some(d))
+          case (Nil, Nil, None)               => CombinatorialCaseStmt(attr, test, Nil, None)
+          case (Nil, Nil, Some(d: CombStmt))  => CombinatorialCaseStmt(attr, test, Nil, Some(d))
+          case (Nil, Nil, Some(d: CtrlStmt))  => ControlCaseStmt(attr, test, Nil, Some(d))
+          case (Nil, comb, None)              => CombinatorialCaseStmt(attr, test, comb, None)
+          case (Nil, comb, Some(d: CombStmt)) => CombinatorialCaseStmt(attr, test, comb, Some(d))
+          case (ctrl, Nil, None)              => ControlCaseStmt(attr, test, ctrl, None)
+          case (ctrl, Nil, Some(d: CtrlStmt)) => ControlCaseStmt(attr, test, ctrl, Some(d))
           case _ => {
             Message.error(ctx, "Either all or none of the case items must be control statements");
-            ErrorStmt
+            ErrorStmt(attr)
           }
         }
       }
 
       override def visitLoopStmt(ctx: LoopStmtContext) = {
         val body = visit(ctx.stmts)
+        val attr = Attr(ctx.loc)
 
         body.last match {
           case _: CombStmt => {
-            Message.error(ctx, "The body of a 'loop' must end with a control statement"); ErrorStmt
+            Message.error(ctx, "The body of a 'loop' must end with a control statement"); ErrorStmt(attr)
           }
-          case _ => ControlLoop(ControlBlock(body))
+          case _ => ControlLoop(attr, ControlBlock(attr, body))
         }
       }
 
@@ -182,8 +190,8 @@ class FsmTaskBuilder(cc: CommonContext) {
 
         stmtLastCtx match {
           case Some(ctx) => body.last match {
-            case FenceStmt => Message.warning(ctx, "Redundant 'fence' at end of loop body")
-            case _         =>
+            case _: FenceStmt => Message.warning(ctx, "Redundant 'fence' at end of loop body")
+            case _            =>
           }
           case None =>
         }
@@ -195,7 +203,7 @@ class FsmTaskBuilder(cc: CommonContext) {
 
         loopWarnings(cond, body, ctx, ctx.stmts.lastOption)
 
-        ControlWhile(cond, body)
+        ControlWhile(Attr(ctx.loc), cond, body)
       }
 
       override def visitDoStmt(ctx: DoStmtContext) = {
@@ -204,7 +212,7 @@ class FsmTaskBuilder(cc: CommonContext) {
 
         loopWarnings(cond, body, ctx, ctx.stmts.lastOption)
 
-        ControlDo(cond, body)
+        ControlDo(Attr(ctx.loc), cond, body)
       }
 
       object ForInitVisitor extends VScalarVisitor[(Option[DeclVar], CombStmt)] {
@@ -217,7 +225,7 @@ class FsmTaskBuilder(cc: CommonContext) {
         }
         override def visitDeclVarInit(ctx: DeclVarInitContext) = {
           val varDecl = LookUpDecl(ctx).asInstanceOf[DeclVar]
-          val initExpr = Assign(LValName(ctx.IDENTIFIER :: Nil), exprVisitor(ctx.expr))
+          val initExpr = Assign(Attr(ctx.loc), LValName(Attr(ctx.IDENTIFIER.loc), ctx.IDENTIFIER :: Nil), exprVisitor(ctx.expr))
           (Some(varDecl), initExpr)
         }
       }
@@ -230,37 +238,39 @@ class FsmTaskBuilder(cc: CommonContext) {
           case _: CtrlStmt => unreachable
         }
         val body = visit(ctx.stmts)
+        val attr = Attr(ctx.loc)
 
         loopWarnings(cond, body, ctx, ctx.stmts.lastOption)
 
-        val forAST = ControlFor(initStmt, cond, stepStmt, body)
+        val forAST = ControlFor(attr, initStmt, cond, stepStmt, body)
         optDecl match {
           case None       => forAST
-          case Some(decl) => ControlBlock(DeclarationStmt(decl) :: forAST :: Nil)
+          case Some(decl) => ControlBlock(attr, DeclarationStmt(attr, decl) :: forAST :: Nil)
         }
       }
 
-      override def visitFenceStmt(ctx: FenceStmtContext) = FenceStmt
-      override def visitBreakStmt(ctx: BreakStmtContext) = BreakStmt
-      override def visitReturnStmt(ctx: ReturnStmtContext) = ReturnStmt
-      override def visitDollarCommentStmt(ctx: DollarCommentStmtContext) = AlogicComment(ctx.LITERAL)
-      override def visitGotoStmt(ctx: GotoStmtContext) = GotoStmt(ctx.IDENTIFIER)
+      override def visitFenceStmt(ctx: FenceStmtContext) = FenceStmt(Attr(ctx.loc))
+      override def visitBreakStmt(ctx: BreakStmtContext) = BreakStmt(Attr(ctx.loc))
+      override def visitReturnStmt(ctx: ReturnStmtContext) = ReturnStmt(Attr(ctx.loc))
+      override def visitDollarCommentStmt(ctx: DollarCommentStmtContext) = AlogicComment(Attr(ctx.loc), ctx.LITERAL)
+      override def visitGotoStmt(ctx: GotoStmtContext) = GotoStmt(Attr(ctx.loc), ctx.IDENTIFIER)
 
       override def visitAssignmentStmt(ctx: AssignmentStmtContext) = visit(ctx.assignment_statement)
 
-      override def visitAssignInc(ctx: AssignIncContext) = Plusplus(lvalVisitor(ctx.lval))
-      override def visitAssignDec(ctx: AssignDecContext) = Minusminus(lvalVisitor(ctx.lval))
-      override def visitAssign(ctx: AssignContext) = Assign(lvalVisitor(ctx.lval), exprVisitor(ctx.expr()))
-      override def visitAssignUpdate(ctx: AssignUpdateContext) = Update(lvalVisitor(ctx.lval), ctx.ASSIGNOP, exprVisitor(ctx.expr()))
+      override def visitAssignInc(ctx: AssignIncContext) = Plusplus(Attr(ctx.loc), lvalVisitor(ctx.lval))
+      override def visitAssignDec(ctx: AssignDecContext) = Minusminus(Attr(ctx.loc), lvalVisitor(ctx.lval))
+      override def visitAssign(ctx: AssignContext) = Assign(Attr(ctx.loc), lvalVisitor(ctx.lval), exprVisitor(ctx.expr()))
+      override def visitAssignUpdate(ctx: AssignUpdateContext) = Update(Attr(ctx.loc), lvalVisitor(ctx.lval), ctx.ASSIGNOP, exprVisitor(ctx.expr()))
 
       override def visitExprStmt(ctx: ExprStmtContext) = exprVisitor(ctx.expr) match {
-        case CallExpr(DottedName(target :: Nil), Nil) => CallStmt(target)
-        case CallExpr(_, _)                           => unreachable
+        case CallExpr(a, DottedName(_, target :: Nil), Nil) => CallStmt(a, target)
+        case CallExpr(_, _, _)                              => unreachable
         case expr => {
+          val attr = Attr(ctx.loc)
           if (expr.hasSideEffect) {
-            ExprStmt(expr)
+            ExprStmt(attr, expr)
           } else {
-            Message.error(ctx, "A pure expression in statement position does nothing"); ErrorStmt
+            Message.error(ctx, "A pure expression in statement position does nothing"); ErrorStmt(attr)
           }
         }
       }
@@ -271,20 +281,23 @@ class FsmTaskBuilder(cc: CommonContext) {
         override def visitFunction(ctx: FunctionContext) = {
           val name = ctx.IDENTIFIER.text
           val stmts = StatementVisitor(ctx.stmts)
+          val attr = Attr(ctx.loc)
           val body = stmts.last match {
-            case _: CtrlStmt => ControlBlock(stmts)
+            case _: CtrlStmt => ControlBlock(attr, stmts)
             case _: CombStmt => {
-              Message.error(ctx, "A function body must end with a control statement"); ErrorStmt
+              Message.error(ctx, "A function body must end with a control statement"); ErrorStmt(attr)
             }
           }
-          Function(name, body)
+          Function(attr, name, body)
         }
         override def visitFenceFunction(ctx: FenceFunctionContext) = {
+          val attr = Attr(ctx.loc)
+
           val body = StatementVisitor(ctx.stmts) collect {
             case stmt: CombStmt => stmt
-            case stmt: CtrlStmt => Message.error(ctx, "Body of 'fence' function must not contain control statements"); ErrorStmt
+            case stmt: CtrlStmt => Message.error(ctx, "Body of 'fence' function must not contain control statements"); ErrorStmt(attr)
           }
-          FenceFunction(CombinatorialBlock(body))
+          FenceFunction(attr, CombinatorialBlock(attr, body))
         }
         override def visitVerilogFunction(ctx: VerilogFunctionContext) = VerilogFunctionVisitor(ctx)
       }
@@ -300,7 +313,7 @@ class FsmTaskBuilder(cc: CommonContext) {
           Message.error(ctx, s"fsm '$name' has more than 1 fence function defined")
         }
 
-        FsmTask(name, decls, fns, fencefns.headOption, vfns)
+        FsmTask(Attr(ctx.loc), name, decls, fns, fencefns.headOption, vfns)
       }
     }
 
@@ -321,7 +334,7 @@ class VerilogTaskBuilder(cc: CommonContext) {
         val vfns = ctx.contents.toList collect {
           case c: VerilogFunctionContext => VerilogFunctionVisitor(c)
         }
-        VerilogTask(ctx.IDENTIFIER.text, LookUpDecl(ctx.decls), vfns)
+        VerilogTask(Attr(ctx.loc), ctx.IDENTIFIER.text, LookUpDecl(ctx.decls), vfns)
       }
     }
 
@@ -340,7 +353,7 @@ class NetworkTaskBuilder(cc: CommonContext) {
   def apply(tree: Network_entityContext): NetworkTask = {
 
     object DottedNameVisitor extends VScalarVisitor[DottedName] {
-      override def visitDotted_name(ctx: Dotted_nameContext) = DottedName(ctx.es.toList map (_.text))
+      override def visitDotted_name(ctx: Dotted_nameContext) = DottedName(Attr(ctx.loc), ctx.es.toList map (_.text))
     }
 
     object NetworkVisitor extends VScalarVisitor[NetworkTask] {
@@ -349,7 +362,7 @@ class NetworkTaskBuilder(cc: CommonContext) {
           val fsm = fsmTaskBuilder(ctx.fsm_entity)
 
           if (Option(ctx.autoinst).isDefined) {
-            fsm :: Instantiate(fsm.name, fsm.name, ListMap.empty) :: Nil
+            fsm :: Instantiate(Attr(ctx.loc), fsm.name, fsm.name, ListMap.empty) :: Nil
           } else {
             fsm :: Nil
           }
@@ -357,7 +370,7 @@ class NetworkTaskBuilder(cc: CommonContext) {
         override def visitConnect(ctx: ConnectContext) = {
           val lhs = DottedNameVisitor(ctx.lhs)
           val rhs = DottedNameVisitor(ctx.rhs)
-          Connect(lhs, rhs) :: Nil
+          Connect(Attr(ctx.loc), lhs, rhs) :: Nil
         }
         override def visitInstantiate(ctx: InstantiateContext) = {
           val id = ctx.IDENTIFIER(0).text
@@ -365,7 +378,7 @@ class NetworkTaskBuilder(cc: CommonContext) {
           val pas = ctx.param_args.param_assign.toList map { pa =>
             pa.IDENTIFIER.text -> exprVisitor(pa.expr)
           }
-          Instantiate(id, module, ListMap(pas: _*)) :: Nil
+          Instantiate(Attr(ctx.loc), id, module, ListMap(pas: _*)) :: Nil
         }
         override def visitVerilogFunction(ctx: VerilogFunctionContext) = VerilogFunctionVisitor(ctx) :: Nil
       }
@@ -379,7 +392,7 @@ class NetworkTaskBuilder(cc: CommonContext) {
         val vfns = contents collect { case x: VerilogFunction => x }
         val fsms = contents collect { case x: FsmTask => x }
 
-        NetworkTask(name, decls, inst, conn, vfns, fsms)
+        NetworkTask(Attr(ctx.loc), name, decls, inst, conn, vfns, fsms)
       }
     }
     NetworkVisitor(tree)

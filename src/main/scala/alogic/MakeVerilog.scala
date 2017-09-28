@@ -66,7 +66,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
   var makingAccept = false // We use this to decide how to emit expressions
 
   def writeEntityHeader(entity: Task, pw: PrintWriter): Unit = {
-    val Task(modname, decls) = entity
+    val Task(_, modname, decls) = entity
 
     val outtype = entity match {
       case _: StateTask   => "reg "
@@ -135,15 +135,15 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
   }
 
   def apply(task: Task, opath: Path): Unit = {
-    val Task(modname, decls) = task
+    val Task(_, modname, decls) = task
 
     // Collect all the declarations
     decls foreach { x => id2decl(x.id) = x }
     task visit {
       // We remove the initializer from Decl statements
       // These will be reset inline where they are declared.
-      case DeclarationStmt(DeclVar(kind, id, _)) => { id2decl(id) = DeclVar(kind, id, None); false }
-      case _                                     => true
+      case DeclarationStmt(_, DeclVar(kind, id, _)) => { id2decl(id) = DeclVar(kind, id, None); false }
+      case _                                        => true
     }
 
     // Prepare the mapping for the nx() map
@@ -225,10 +225,10 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     // Write entity body
     ///////////////////////////////////////////////////////////////////////////
     task match {
-      case network: NetworkTask    => finishNetwork(network, pw)
-      case VerilogTask(_, _, vfns) => vfns foreach { vfn => pw.print(vfn.body) }
-      case statetask: StateTask    => finishState(statetask, pw)
-      case _                       => unreachable
+      case network: NetworkTask       => finishNetwork(network, pw)
+      case VerilogTask(_, _, _, vfns) => vfns foreach { vfn => pw.print(vfn.body) }
+      case statetask: StateTask       => finishState(statetask, pw)
+      case _                          => unreachable
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -244,7 +244,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     assert(network.fsms.isEmpty)
 
     // Collect all instatiations
-    val optInstances = for (Instantiate(id, module, args) <- network.instantiate) yield {
+    val optInstances = for (Instantiate(_, id, module, args) <- network.instantiate) yield {
       if (!(moduleCatalogue contains module)) {
         Message.error(s"Cannot instantiate undefined module '${module}' in module '${network.name}'")
         None
@@ -270,11 +270,11 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
 
     // Collect port connections
     val portConnections = network.connect flatMap {
-      case Connect(DottedName(fromName :: fromPortName :: Nil), to) => {
+      case Connect(_, DottedName(_, fromName :: fromPortName :: Nil), to) => {
         val fromInstance = modMap(fromName)
         val fromPort = if (fromName == "this") fromInstance.iwires(fromPortName) else fromInstance.owires(fromPortName)
         to flatMap {
-          case DottedName(toName :: toPortName :: Nil) => {
+          case DottedName(_, toName :: toPortName :: Nil) => {
             val toInstance = modMap(toName)
             val toPortOpt = if (toName == "this") toInstance.owires.get(toPortName) else toInstance.iwires.get(toPortName)
 
@@ -331,7 +331,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         // substitute formal parameters with actual parameters
         // TODO: This still cannot cope with dependent default parameters
         val actualWidth = kind.widthExpr rewrite {
-          case DottedName(name :: Nil) if (paramValues contains name) => paramValues(name)
+          case DottedName(_, name :: Nil) if (paramValues contains name) => paramValues(name)
         }
         val signal = Signal(name, IntVType(kind.signed, actualWidth :: Nil))
         pw.println(s"${i0}wire ${signal.declString};")
@@ -410,7 +410,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
 
   def finishState(task: StateTask, pw: PrintWriter): Unit = {
     numstates = task match {
-      case StateTask(_, _, s, _, _) => s.length
+      case StateTask(_, _, _, s, _, _) => s.length
     }
     log2numstates = ceillog2(numstates)
 
@@ -558,7 +558,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
 
     // Construct always block contents
     task.states foreach {
-      case blk @ StateBlock(n, _) => {
+      case blk @ StateBlock(_, n, _) => {
         val indent = if (numstates == 1) 2 else 3
         states(n) = MakeStmt(indent)(blk)
         if (generateAccept) {
@@ -677,28 +677,28 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
   // Construct a string for an expression
   def MakeExpr(tree: Expr): StrTree = {
     tree match {
-      case ExprArrIndex(name, index) => {
+      case ExprArrIndex(_, name, index) => {
         val indices = index map MakeExpr mkString ("[", "][", "]")
         StrList(List(MakeExpr(name), Str(indices)))
       }
-      case ExprVecIndex(ref, index) => {
+      case ExprVecIndex(_, ref, index) => {
         val indices = index map MakeExpr mkString ("[", "][", "]")
         StrList(List(MakeExpr(ref), Str(indices)))
       }
-      case Slice(ref, l, op, r) => StrList(List(MakeExpr(ref), "[", MakeExpr(l), op, MakeExpr(r), "]"))
-      case ValidCall(DottedName(names)) => id2decl(names.head) match {
+      case Slice(_, ref, l, op, r) => StrList(List(MakeExpr(ref), "[", MakeExpr(l), op, MakeExpr(r), "]"))
+      case ValidCall(_, DottedName(_, names)) => id2decl(names.head) match {
         case DeclOut(decl, n, fctype, _) => if (fctype.hasValid) valid(n) else { Message.fatal(s"Port $names does not use valid"); "" }
         case DeclIn(decl, n, fctype)     => if (fctype.hasValid) valid(n) else { Message.fatal(s"Port $names does not use valid"); "" }
         case _                           => Message.fatal(s"Cannot access valid on $names"); ""
       }
-      case Zxt(numbitsExpr, expr) => expr.widthExpr(id2decl) match {
+      case Zxt(_, numbitsExpr, expr) => expr.widthExpr(id2decl) match {
         case None => Message.fatal(s"Cannot compute size of expression '${expr.toSource}' for '@zx'")
         case Some(widthExpr) => {
           val deltaExpr = (numbitsExpr - widthExpr).simplify
           StrList(List("{{", MakeExpr(deltaExpr), "{1'b0}},", MakeExpr(expr), "}"))
         }
       }
-      case Sxt(numbitsExpr, expr) => expr.widthExpr(id2decl) match {
+      case Sxt(_, numbitsExpr, expr) => expr.widthExpr(id2decl) match {
         case None => Message.fatal(s"Cannot compute size of expression '${expr.toSource}' for '@sx'")
         case Some(widthExpr) => {
           val deltaExpr = (numbitsExpr - widthExpr).simplify
@@ -709,25 +709,25 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
           StrList(List("{{", MakeExpr(deltaExpr), "{", MakeExpr(msbExpr), "}},", MakeExpr(expr), "}"))
         }
       }
-      case DollarCall(name, args) => StrList(List(name, "(", StrList(args.map(MakeExpr), ","), ")"))
-      case ReadCall(name) => id2decl(name.names.head) match {
+      case DollarCall(_, name, args) => StrList(List(name, "(", StrList(args.map(MakeExpr), ","), ")"))
+      case ReadCall(_, name) => id2decl(name.names.head) match {
         case DeclIn(VoidType, _, _) => {
           Message.error(s"Cannot read 'void' port '${name.toSource}' in expression position"); Str("")
         }
         case _ => MakeExpr(name)
       }
 
-      case BinaryOp(lhs, op, rhs)    => StrList(List(MakeExpr(lhs), Str(" "), op, Str(" "), MakeExpr(rhs)))
-      case UnaryOp(op, lhs)          => StrList(List(op, MakeExpr(lhs)))
-      case Bracket(content)          => StrList(List("(", MakeExpr(content), ")"))
-      case TernaryOp(cond, lhs, rhs) => StrList(List(MakeExpr(cond), " ? ", MakeExpr(lhs), " : ", MakeExpr(rhs)))
-      case BitRep(count, value)      => StrList(List("{", MakeExpr(count), "{", MakeExpr(value), "}}"))
-      case BitCat(parts)             => StrList(List("{", StrList(parts.map(MakeExpr), ","), "}"))
-      case DottedName(names)         => nx(names)
-      case Literal(s)                => Str(s)
-      case n: Num                    => n.toVerilog
-      case ErrorExpr                 => ErrorExpr.toVerilog
-      case e                         => Message.ice(s"Unexpected expression '$e'"); ""
+      case BinaryOp(_, lhs, op, rhs)    => StrList(List(MakeExpr(lhs), Str(" "), op, Str(" "), MakeExpr(rhs)))
+      case UnaryOp(_, op, lhs)          => StrList(List(op, MakeExpr(lhs)))
+      case Bracket(_, content)          => StrList(List("(", MakeExpr(content), ")"))
+      case TernaryOp(_, cond, lhs, rhs) => StrList(List(MakeExpr(cond), " ? ", MakeExpr(lhs), " : ", MakeExpr(rhs)))
+      case BitRep(_, count, value)      => StrList(List("{", MakeExpr(count), "{", MakeExpr(value), "}}"))
+      case BitCat(_, parts)             => StrList(List("{", StrList(parts.map(MakeExpr), ","), "}"))
+      case DottedName(_, names)         => nx(names)
+      case Literal(_, s)                => Str(s)
+      case n: Num                       => n.toVerilog
+      case e: ErrorExpr                 => e.toVerilog
+      case e                            => Message.ice(s"Unexpected expression '$e'"); ""
     }
   }
 
@@ -767,14 +767,14 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       }
 
       def v(tree: Node): Boolean = tree match {
-        case CombinatorialCaseStmt(value, _, _) =>
+        case CombinatorialCaseStmt(_, value, _, _) =>
           value visit v; false
-        case CombinatorialBlock(_) => false
-        case CombinatorialIf(cond, _, _) =>
+        case CombinatorialBlock(_, _) => false
+        case CombinatorialIf(_, cond, _, _) =>
           cond visit v; false
-        case ReadCall(name) => AddRead(name, false)
-        case WaitCall(name) => AddRead(name, true)
-        case WriteCall(name, _) => {
+        case ReadCall(_, name) => AddRead(name, false)
+        case WaitCall(_, name) => AddRead(name, true)
+        case WriteCall(_, name, _) => {
           val n: String = ExtractName(name)
           val d: Decl = id2decl(n)
           d match {
@@ -822,56 +822,56 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     }
 
     tree match {
-      case Assign(LValArrayLookup(LValName(n :: _), index :: Nil), rhs) if (Arrays contains n) => AddStall(index, rhs) {
+      case Assign(_, LValArrayLookup(_, LValName(_, n :: _), index :: Nil), rhs) if (Arrays contains n) => AddStall(index, rhs) {
         Str(s"""|begin
                 |${i + i0}${n}_wr = 1'b1;
                 |${i + i0}${n}_wraddr = ${MakeExpr(index)};
                 |${i + i0}${n}_wrdata = ${MakeExpr(rhs)};
                 |${i}end""".stripMargin)
       }
-      case Assign(lhs, rhs) => AddStall(lhs, rhs) {
+      case Assign(_, lhs, rhs) => AddStall(lhs, rhs) {
         Str(s"${MakeExpr(lhs.toExpr)} = ${MakeExpr(rhs)};")
       }
 
-      case CombinatorialBlock(cmds) => {
+      case CombinatorialBlock(_, cmds) => {
         // TODO remove string interpolation/mkString and use StrTree for speed
         Str(s"""|begin
                 |${i + i0}${cmds map MakeStmt(indent + 1) mkString s"\n${i + i0}"}
                 |${i}end""".stripMargin)
       }
 
-      case StateBlock(_, cmds) => MakeStmt(indent)(CombinatorialBlock(cmds))
+      case StateBlock(a, _, cmds) => MakeStmt(indent)(CombinatorialBlock(a, cmds))
 
-      case CombinatorialIf(cond, thenBody, optElseBody) => AddStall(cond) {
+      case CombinatorialIf(_, cond, thenBody, optElseBody) => AddStall(cond) {
         // TODO remove string interpolation/mkString and use StrTree for speed
         val condPart = s"if (${MakeExpr(cond)}) "
         val thenPart = thenBody match {
           case block: CombinatorialBlock => MakeStmt(indent)(block)
-          case other                     => MakeStmt(indent)(CombinatorialBlock(other :: Nil))
+          case other                     => MakeStmt(indent)(CombinatorialBlock(other.attr, other :: Nil))
         }
         val elsePart = optElseBody match {
           case None                            => ""
           case Some(block: CombinatorialBlock) => s" else ${MakeStmt(indent)(block)}"
-          case Some(other)                     => s" else ${MakeStmt(indent)(CombinatorialBlock(other :: Nil))}"
+          case Some(other)                     => s" else ${MakeStmt(indent)(CombinatorialBlock(other.attr, other :: Nil))}"
         }
         Str(condPart + thenPart + elsePart)
       }
 
       // TODO: do the conds not need a stall expr to be precise?
-      case CombinatorialCaseStmt(value, cases, None) => AddStall(value) {
+      case CombinatorialCaseStmt(_, value, cases, None) => AddStall(value) {
         Str(s"""|case (${MakeExpr(value)})
                 |${i + i0}${cases map MakeStmt(indent + 1) mkString s"\n${i + i0}"}
                 |${i}endcase""".stripMargin)
       }
-      case CombinatorialCaseStmt(value, cases, Some(default)) => AddStall(value) {
+      case CombinatorialCaseStmt(_, value, cases, Some(default)) => AddStall(value) {
         Str(s"""|case (${MakeExpr(value)})
                 |${i + i0}${cases map MakeStmt(indent + 1) mkString s"\n${i + i0}"}
                 |${i + i0}default: ${MakeStmt(indent + 1)(default)}
                 |${i}endcase""".stripMargin)
       }
-      case CombinatorialCaseLabel(conds, body) => Str(s"${conds map MakeExpr mkString ", "}: ${MakeStmt(indent)(body)}")
+      case CombinatorialCaseLabel(_, conds, body) => Str(s"${conds map MakeExpr mkString ", "}: ${MakeStmt(indent)(body)}")
 
-      case GotoState(target) => {
+      case GotoState(_, target) => {
         if (numstates == 1) {
           Str("")
         } else {
@@ -879,7 +879,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         }
       }
 
-      case CallState(tgt, ret) => {
+      case CallState(_, tgt, ret) => {
         Str(s"""|begin
                 |${i + i0}call_stack_wr = 1'b1;
                 |${i + i0}call_stack_wraddr = call_depth[${call_stack_addr_msb}:0];
@@ -890,27 +890,27 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         // TODO: Add assertion for call_depth_nxt < CALL_STACK_SIZE
       }
 
-      case ReturnState => {
+      case _: ReturnState => {
         Str(s"""|begin
                 |${i + i0}call_depth_nxt = call_depth - 1'b1;
                 |${i + i0}${nx("state")} = call_stack[call_depth_nxt[${call_stack_addr_msb}:0]];
                 |${i}end""".stripMargin)
       }
 
-      case ExprStmt(WaitCall(_))       => AddStall(tree) { Str("") }
-      case ExprStmt(ReadCall(_))       => AddStall(tree) { Str("") }
-      case ExprStmt(WriteCall(_, Nil)) => AddStall(tree) { Str("") }
-      case ExprStmt(WriteCall(name, arg :: Nil)) => AddStall(tree) {
+      case ExprStmt(_, WaitCall(_, _))       => AddStall(tree) { Str("") }
+      case ExprStmt(_, ReadCall(_, _))       => AddStall(tree) { Str("") }
+      case ExprStmt(_, WriteCall(_, _, Nil)) => AddStall(tree) { Str("") }
+      case ExprStmt(_, WriteCall(_, name, arg :: Nil)) => AddStall(tree) {
         Str(s"${MakeExpr(name)} = ${MakeExpr(arg)};")
       }
 
-      case DeclarationStmt(DeclVar(kind, id, Some(rhs))) => MakeStmt(indent)(Assign(LValName(id :: Nil), rhs))
-      case DeclarationStmt(DeclVar(kind, id, None)) => MakeStmt(indent)(Assign(LValName(id :: Nil), Num(false, None, 0))) // TODO: Why is this needed ?
+      case DeclarationStmt(a, DeclVar(kind, id, Some(rhs))) => MakeStmt(indent)(Assign(a, LValName(a, id :: Nil), rhs))
+      case DeclarationStmt(a, DeclVar(kind, id, None)) => MakeStmt(indent)(Assign(a, LValName(a, id :: Nil), Num(a, false, None, 0))) // TODO: Why is this needed ?
 
-      case ExprStmt(DollarCall(name, args)) => StrList(List(name, "(", StrList(args.map(MakeExpr), ","), ");"))
-      case AlogicComment(s) => s"// $s\n"
+      case ExprStmt(_, DollarCall(_, name, args)) => StrList(List(name, "(", StrList(args.map(MakeExpr), ","), ");"))
+      case AlogicComment(_, s) => s"// $s\n"
 
-      case ErrorStmt | ExprStmt(ErrorExpr) => Str("/*Error statment*/")
+      case ErrorStmt(_) | ExprStmt(_, _: ErrorExpr) => Str("/*Error statment*/")
 
       case x => Message.ice(s"Don't know how to emit code for $x"); Str("")
     }
@@ -962,11 +962,11 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
   }
 
   def AcceptStmt(indent: Int, tree: Node): Option[StrTree] = tree match {
-    case Assign(lhs, rhs) => {
+    case Assign(_, lhs, rhs) => {
       IdsWritten.add(ExtractName(lhs))
       AddAccept(indent, AcceptExpr(lhs) ::: AcceptExpr(rhs), None)
     }
-    case CombinatorialCaseStmt(value, cases, Some(default)) => {
+    case CombinatorialCaseStmt(_, value, cases, Some(default)) => {
       // Take care to only use MakeExpr when we are sure the code needs to be emitted
       // This is because MakeExpr will track the used ids
 
@@ -982,7 +982,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
           StrList(s2) :: Str(i0 * indent) :: Str("endcase\n") :: Nil))
       AddAccept(indent, AcceptExpr(value), e)
     }
-    case CombinatorialIf(cond, body, Some(elsebody)) =>
+    case CombinatorialIf(_, cond, body, Some(elsebody)) =>
       {
         val initialIds = IdsWritten.clone()
         val b = AcceptStmt(indent + 1, body)
@@ -1007,7 +1007,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         IdsWritten = IdsWithBody union IdsWithElse
         AddAccept(indent, AcceptExpr(cond), e)
       }
-    case CombinatorialIf(cond, body, None) => {
+    case CombinatorialIf(_, cond, body, None) => {
       val initialIds = IdsWritten.clone()
       val b = AcceptStmt(indent + 1, body)
       val IdsWithBody = IdsWritten
@@ -1022,9 +1022,9 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       AddAccept(indent, AcceptExpr(cond), e)
     }
 
-    case WaitCall(name)                              => AddAccept(indent, AcceptExpr(name), None)
-    case WriteCall(name, args) if (args.length == 1) => AddAccept(indent, AcceptExpr(name) ::: AcceptExpr(args(0)), None)
-    case CombinatorialBlock(cmds) => {
+    case WaitCall(_, name)                              => AddAccept(indent, AcceptExpr(name), None)
+    case WriteCall(_, name, args) if (args.length == 1) => AddAccept(indent, AcceptExpr(name) ::: AcceptExpr(args(0)), None)
+    case CombinatorialBlock(_, cmds) => {
       val s: List[Option[StrTree]] = for (c <- cmds) yield AcceptStmt(indent + 1, c)
       val s2: List[StrTree] = s.flatten
       if (s2.length == 0)
@@ -1033,8 +1033,8 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         Some(StrList(Str(i0 * indent) :: Str("begin\n") :: StrList(s2) :: Str(i0 * indent) :: Str("end\n") :: Nil))
     }
 
-    case DeclarationStmt(DeclVar(_, id, Some(rhs))) => AcceptStmt(indent, Assign(LValName(id :: Nil), rhs))
-    case StateBlock(state, cmds) => {
+    case DeclarationStmt(a, DeclVar(_, id, Some(rhs))) => AcceptStmt(indent, Assign(a, LValName(a, id :: Nil), rhs))
+    case StateBlock(_, state, cmds) => {
       // Clear sets used for tracking
       syncPortsFound.clear()
       //IdsUsedToMakeAccept.clear()
@@ -1054,14 +1054,14 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       } else
         None
     }
-    case CombinatorialCaseLabel(Nil, body) => {
+    case CombinatorialCaseLabel(_, Nil, body) => {
       val b = AcceptStmt(indent + 1, body)
       b match {
         case None    => None
         case Some(a) => Some(StrList(Str(i0 * indent) :: Str("default:\n") :: a :: Nil))
       }
     }
-    case CombinatorialCaseLabel(conds, body) => {
+    case CombinatorialCaseLabel(_, conds, body) => {
       val b = AcceptStmt(indent + 1, body)
       val e = b match {
         case None => None
@@ -1104,14 +1104,14 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     }
 
     def v(tree: Node): Boolean = tree match {
-      case CombinatorialCaseStmt(value, _, _) =>
+      case CombinatorialCaseStmt(_, value, _, _) =>
         value visit v; false
-      case CombinatorialBlock(_) => false
-      case CombinatorialIf(cond, _, _) =>
+      case CombinatorialBlock(_, _) => false
+      case CombinatorialIf(_, cond, _, _) =>
         cond visit v; false
-      case ReadCall(name) => AddRead(name)
-      case WaitCall(name) => AddRead(name)
-      case WriteCall(name, _) => {
+      case ReadCall(_, name) => AddRead(name)
+      case WaitCall(_, name) => AddRead(name)
+      case WriteCall(_, name, _) => {
         val n: String = ExtractName(name)
         val d: Decl = id2decl(n)
         d match {

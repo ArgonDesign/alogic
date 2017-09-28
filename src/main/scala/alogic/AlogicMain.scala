@@ -154,7 +154,7 @@ object AlogicMain extends App {
     // Build catalogue of all modules
     // TODO: check for multiple definitions of same module
     val moduleCatalogue = {
-      astItems map { _.task } collect { case t @ ast.Task(name, _) => name -> t }
+      astItems map { _.task } collect { case t @ ast.Task(_, name, _) => name -> t }
     }.toList.toMap
 
     // Synthesise tasks
@@ -172,7 +172,7 @@ object AlogicMain extends App {
 
     // Generate verilog
     taskItems foreach {
-      case Item(task @ ast.Task(name, _), fpath) => {
+      case Item(task @ ast.Task(_, name, _), fpath) => {
         // Construct output file path
         val opath = {
           val subdirOpt: Option[Path] = {

@@ -23,9 +23,9 @@ import alogic.StrTree
 
 object AstOps {
   def ExtractName(tree: Node): String = tree match {
-    case DottedName(ns)     => ns.head
-    case ExprArrIndex(a, _) => ExtractName(a)
-    case _                  => "Unknown"
+    case DottedName(_, ns)     => ns.head
+    case ExprArrIndex(_, a, _) => ExtractName(a)
+    case _                     => "Unknown"
   }
 
   // Call VisitType to get callback for each node

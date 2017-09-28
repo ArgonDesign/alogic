@@ -19,8 +19,8 @@ import alogic.ast.AstOps._
 
 object Desugar {
   def RemoveAssigns(tree: Task): Task = tree rewrite {
-    case Update(lhs, op, rhs) => Assign(lhs, BinaryOp(Bracket(lhs.toExpr), op.init, Bracket(rhs)))
-    case Plusplus(lhs)        => Assign(lhs, BinaryOp(Bracket(lhs.toExpr), "+", Num(false, Some(1), 1)))
-    case Minusminus(lhs)      => Assign(lhs, BinaryOp(Bracket(lhs.toExpr), "-", Num(false, Some(1), 1)))
+    case Update(a, lhs, op, rhs) => Assign(a, lhs, BinaryOp(a, Bracket(a, lhs.toExpr), op.init, Bracket(a, rhs)))
+    case Plusplus(a, lhs)        => Assign(a, lhs, BinaryOp(a, Bracket(a, lhs.toExpr), "+", Num(a, false, Some(1), 1)))
+    case Minusminus(a, lhs)      => Assign(a, lhs, BinaryOp(a, Bracket(a, lhs.toExpr), "-", Num(a, false, Some(1), 1)))
   }
 }
