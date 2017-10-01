@@ -19,7 +19,6 @@ import org.antlr.v4.runtime.ParserRuleContext
 
 import alogic.Antlr4Conversions._
 import alogic.Loc
-import org.antlr.v4.runtime.Token
 
 class Attr(val loc: Loc, val symtab: String => Decl);
 

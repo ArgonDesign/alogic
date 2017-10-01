@@ -14,11 +14,9 @@
 
 package alogic.ast
 
-import scala.collection.mutable
 import scala.math.BigInt.int2bigInt
 
 import alogic.Message
-import alogic.Loc
 
 trait ExprOps { this: Expr =>
 
