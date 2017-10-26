@@ -1,0 +1,9 @@
+
+fsm reused_for_var {
+  void main() {
+    for (u4 i = 0; i < 10; i++) {
+    }
+    for (u4 i = 0; i < 10; i++) {
+    }
+  }
+}

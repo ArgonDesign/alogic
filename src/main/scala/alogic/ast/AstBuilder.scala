@@ -226,9 +226,10 @@ class FsmTaskBuilder(cc: CommonContext) {
           (None, stmt)
         }
         override def visitDeclVarInit(ctx: DeclVarInitContext) = {
-          val varDecl = LookUpDecl(ctx).asInstanceOf[DeclVar]
-          val initExpr = Assign(Attr(ctx), LValName(Attr(ctx), ctx.IDENTIFIER :: Nil), exprVisitor(ctx.expr))
-          (Some(varDecl), initExpr)
+          val DeclVar(kind, id, Some(init)) = LookUpDecl(ctx).asInstanceOf[DeclVar]
+          val varDecl = DeclVar(kind, id, None)
+          val initStmt = Assign(Attr(ctx), LValName(Attr(ctx), varDecl.id :: Nil), init)
+          (Some(varDecl), initStmt)
         }
       }
 
