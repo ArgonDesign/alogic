@@ -70,7 +70,7 @@ final class MakeStates {
 
   // Return the call stack size for this fsm and whether it is implicit or explicit
   def callStackSize(fsm: FsmTask): (Int, Boolean) = {
-    val FsmTask(_, name, decls, fns, fencefn, vfns) = fsm
+    val FsmTask(_, name, decls, fns, _, _) = fsm
 
     // Find the value of the CALL_STACK_SIZE constant, if any
     val cssExprOpt = decls collectFirst { case DeclConst(_, "CALL_STACK_SIZE", value) => value }
@@ -124,12 +124,25 @@ final class MakeStates {
       Message.error(cssExprOpt.get, s"Non-recursive fsm '$name' must not define the 'CALL_STACK_SIZE' constant")
     }
 
+    // Check that the call graph is connected (no unused functions)
+    val mainNode = callGraph.find("main").get
+    val unusedNodes = for (node <- callGraph.nodes if node != mainNode && !mainNode.hasSuccessor(node)) yield {
+      val ctx = fns.collectFirst {
+        case f @ Function(_, name, _) if name == node.toOuter => f
+
+      }.get
+      Message.error(ctx, s"Function '${node}' is unused")
+      node
+    }
+
     // Get the value of CALL_STACK_SIZE if defined, or otherwise the length of the longest path in the call graph
     val css = cssOpt getOrElse {
       val maxWeightSum = mutable.Map[String, Long]("main" -> 1)
 
-      callGraph.topologicalSort {
-        case n: callGraph.InnerNode if n.toOuter != "main" => {
+      val reachableCallGraph = callGraph filter callGraph.having(node = (n => !(unusedNodes contains n)))
+
+      reachableCallGraph.topologicalSort {
+        case n: reachableCallGraph.InnerNode if n.toOuter != "main" => {
           val weightSums = for (edge <- n.incoming) yield {
             maxWeightSum(edge.source.toOuter) + edge.weight
           }
