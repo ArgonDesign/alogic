@@ -810,12 +810,25 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       }
     }
 
-    lazy val call_stack_addr_msb = { // MSB index of addrss into call_stack
+    // Slice expression for call_depth to special case various values of CALL_STACK_SIZE
+    lazy val call_depth_slice = {
       val css = id2decl("CALL_STACK_SIZE") match {
         case DeclConst(_, _, init: Expr) => init.eval.toInt
         case _                           => unreachable
       }
-      ceillog2(css - 1) - 1
+      assert(css > 1)
+      if (css == 2) {
+        // CALL_STACK_SIZE == 2 means there is 1 stack storage location,
+        // in which case call_depth is declared as a plain reg,
+        // so no need to index it
+        ""
+      } else {
+        // Otherwise take the right number of bits. this is necesary
+        // as the call stack array has one less element than the maximum
+        // value of call_depth, so call_dapth might have 1 more bit
+        // than the array address requires (if CALL_STACK_SIZE = 2**N + 1
+        s"[${ceillog2(css - 1) - 1}:0]"
+      }
     }
 
     tree match {
@@ -879,7 +892,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       case CallState(_, tgt, ret) => {
         Str(s"""|begin
                 |${i + i0}call_stack_wr = 1'b1;
-                |${i + i0}call_stack_wraddr = call_depth[${call_stack_addr_msb}:0];
+                |${i + i0}call_stack_wraddr = call_depth${call_depth_slice};
                 |${i + i0}call_stack_wrdata = ${MakeState(ret)};
                 |${i + i0}call_depth_nxt = call_depth + 1'b1;
                 |${i + i0}${nx("state")} = ${MakeState(tgt)};
@@ -890,7 +903,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
       case _: ReturnState => {
         Str(s"""|begin
                 |${i + i0}call_depth_nxt = call_depth - 1'b1;
-                |${i + i0}${nx("state")} = call_stack[call_depth_nxt[${call_stack_addr_msb}:0]];
+                |${i + i0}${nx("state")} = call_stack[call_depth_nxt${call_depth_slice}];
                 |${i}end""".stripMargin)
       }
 
