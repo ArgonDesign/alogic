@@ -71,11 +71,24 @@ fsm one_or_the_other {
 
 ### Statements
 
-TODO: Comb vs Ctrl
+The body of functions is composed of a list of imperative statements.
+Statements execute sequentially, according to their execution semantics, which
+are analogous to similar statements in common imperative programming languages.
+Statements can be classed either as combinatorial statements, or control
+statements. For a comprehensive list of statements, see the
+[statements](statements.md) section of the documentation.
 
 ### Execution model and Control units
 
-TODO
+The statements in function bodies can be partitioned into control units. On
+every clock cycle (assuming no stalls due to synchronized ports), the FSM
+executes one control unit. In this section, we will not go into the details of
+where the precise control unit boundaries are, but we will mention the `fence`
+statement to aid with the examples. For now, let it suffice to say that the
+`fence` statement is used to delimit control unit boundaries in straight line
+code, so any simple statement between 2 `fence` statements executes in one
+clock cycle. For the details of FSM execution, see the section on
+[control units](control.md).
 
 ### Function call model
 
