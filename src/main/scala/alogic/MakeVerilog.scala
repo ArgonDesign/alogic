@@ -575,11 +575,38 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     task.vfns foreach { vfn =>
       pw.print(vfn.body)
     }
+    
+    // Automatic stall generation
+    val disable_name = "DISABLE_STALL_" + task.name.toUpperCase() + "_V"
+    pw.println(s"""`ifdef ENABLE_STALL
+`ifdef ${disable_name}
+`else
+reg [31:0] go_stall_prob;
+reg [31:0] go_rand;
+always @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+        go_stall_prob <= ($$unsigned($$random()) % 32'd90) + 5;
+        go_rand <= 32'd0;
+    end else begin
+        go_rand <= $$unsigned($$random()) % 32'd100;
+    end
+end
+`endif
+`endif""")
 
     // Start main combinatorial loop
     pw.println()
     pw.println("  always @* begin")
     pw.println("    go = 1'b1;")
+    
+    // Insert automatic stall generation
+    pw.println(s"""`ifdef ENABLE_STALL
+`ifdef ${disable_name}
+`else
+    go = go && (go_rand < go_stall_prob);
+`endif
+`endif""")
+    
     // Prepare defaults
     if (defaults.length > 0)
       pw.println(StrList(defaults))
@@ -622,6 +649,15 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         }
         pw.println("    endcase")
       }
+      // If using automatic stalls may need to cancel accept
+      pw.println(s"""`ifdef ENABLE_STALL
+`ifdef ${disable_name}
+`else
+    if ( !(go_rand < go_stall_prob) ) begin""")
+      pw.println(StrList(acceptdefaults))
+      pw.println("""    end
+`endif
+`endif""")
       pw.println("  end")
       pw.println()
     }
