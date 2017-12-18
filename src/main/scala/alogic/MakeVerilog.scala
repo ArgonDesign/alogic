@@ -1085,6 +1085,7 @@ end
       syncPortsFound.clear()
       //IdsUsedToMakeAccept.clear()
       IdsWritten.clear()
+      usesPort = None
       // See if there is anything to do for this state
       val s = for { cmd <- cmds } yield AcceptStmt(indent, cmd)
       val s2 = s.flatten
