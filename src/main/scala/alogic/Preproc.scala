@@ -23,6 +23,7 @@ import Antlr4Conversions._
 import alogic.antlr._
 import alogic.antlr.VPreprocParser._
 import scalax.file.Path
+import scala.util.Try
 
 object Preproc {
 
@@ -30,7 +31,7 @@ object Preproc {
   // from (path, initialDefines)
   // to (text, finalDefines, finalRemaps)
   private object PreprocCache
-      extends Cache[(Path, Map[String, String]), (String, Map[String, String], List[(Range, Path)])] {
+    extends Cache[(Path, Map[String, String]), (String, Map[String, String], List[(Range, Path)])] {
 
     // Canonicalise path and convert to string to compute the unique tag
     override type Tag = (String, Map[String, String])
@@ -44,9 +45,9 @@ object Preproc {
 
   // Private worker to use by recursive includes, returns defines as well
   private def process(
-    path: Path,
+    path:               Path,
     includeSearchPaths: List[Path],
-    initialDefines: immutable.Map[String, String]): (String, Map[String, String]) = {
+    initialDefines:     immutable.Map[String, String]): (String, Map[String, String]) = {
     // Cache the text, final defines and the remapping
     val (text, defines, remaps) = PreprocCache(path, initialDefines) {
       // Map of #define to substitution
@@ -83,31 +84,50 @@ object Preproc {
         override def visitAnything(ctx: AnythingContext): StrTree = Str(ctx.ANYTHING.text)
 
         override def visitHashIf(ctx: HashIfContext): StrTree = {
+          val valueCond = ctx.ifcond.text == "if"
           val ident = ctx.IDENTIFIER.text
-          if (defines contains ident) {
-            val cond = defines(ident)
-            val useElse = (cond.toInt == 0)
-            val useFirst = !useElse
-            val hasElse = ctx.entities.toList.length > 1
 
-            val first = if (useFirst)
-              visit(ctx.entities(0))
-            else
-              Str("\n" * ctx.entities(0).text.count(_ == '\n'))
-
-            val second = if (useElse && hasElse)
-              visit(ctx.entities(0))
-            else if (hasElse)
-              Str("\n" * ctx.entities(1).text.count(_ == '\n'))
-            else
-              Str("")
-
-            StrList(first :: second :: Nil)
-            // TODO catch exception if not an integer
-            // TODO check it is either 0 or 1
+          val useElseOpt = if (valueCond) {
+            if (defines contains ident) {
+              val defineValue = defines(ident)
+              Try(defineValue.toInt).toOption match {
+                case Some(0) => Some(true)
+                case Some(_) => Some(false)
+                case None => {
+                  Message.error(
+                    ctx,
+                    s"#if condition variabe '$ident' must be defined as a single integer,",
+                    s"not '$defineValue'")
+                  None
+                }
+              }
+            } else {
+              Message.error(ctx, s"#if condition variabe '$ident' is not defined")
+              None
+            }
           } else {
-            Message.error(ctx.loc, s"Unknown preprocessor symbol $ident")
-            Str("Unknown")
+            Some(!(defines contains ident))
+          }
+
+          useElseOpt match {
+            case Some(useElse) => {
+              val hasElse = ctx.entities.toList.length > 1
+
+              val first = if (!useElse)
+                visit(ctx.entities(0))
+              else
+                Str("\n" * ctx.entities(0).text.count(_ == '\n'))
+
+              val second = if (useElse && hasElse)
+                visit(ctx.entities(1))
+              else if (hasElse)
+                Str("\n" * ctx.entities(1).text.count(_ == '\n'))
+              else
+                Str("")
+
+              StrList(first :: second :: Nil)
+            }
+            case None => Str("/* Omitted due to error while preprocessing */")
           }
         }
 
@@ -130,7 +150,8 @@ object Preproc {
             searchPaths map (_ / includePath) find (_.exists) match {
               case Some(path) => path
               case None =>
-                Message.fatal(ctx,
+                Message.fatal(
+                  ctx,
                   s"""Cannot find include file "$includeSpec". Looked in:""" ::
                     (searchPaths map (path => s"""  "${path.path}"""")): _*)
             }
@@ -194,9 +215,9 @@ object Preproc {
 
   // Preprocess a file defined by path
   def apply(
-    path: Path,
+    path:               Path,
     includeSearchPaths: List[Path],
-    initialDefines: Map[String, String] = Map()): String = {
+    initialDefines:     Map[String, String] = Map()): String = {
     process(path, includeSearchPaths, immutable.Map() ++ initialDefines)._1
   }
 }

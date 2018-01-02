@@ -14,7 +14,7 @@
 
 lexer grammar VPreprocLexer;
 
-// This grammar handles #define/#if/#else/#endif
+// This grammar handles #define/#if/#ifdef/#else/#endif
 // Comments are not stripped in order to keep the line numbers accurate for error messages in later stages
 //
 
@@ -23,6 +23,8 @@ HASHINCLUDE: '#' [ \t]* 'include' [ \t]+;
 HASHDEFINE: '#' [ \t]* ('define' | 'def') [ \t]+ -> pushMode(VMODE);
 
 HASHIF: '#' [ \t]* 'if' [ \t]+;
+
+HASHIFDEF: '#' [ \t]* 'ifdef' [ \t]+;
 
 HASHELSE: '#' [ \t]* 'else';
 

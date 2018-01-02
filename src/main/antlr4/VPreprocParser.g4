@@ -23,12 +23,13 @@ start : entities EOF ;
 entities : (entity)*;
 
 entity
- : HASHINCLUDE LITERAL                                        # HashInclude
- | HASHDEFINE VIDENTIFIER VREST                               # HashDefine
- | IDENTIFIER                                                 # Identifier
- | LITERAL                                                    # Literal
- | HASHIF IDENTIFIER entities (HASHELSE entities)? HASHENDIF  # HashIf
- | ANYTHING                                                   # Anything
- | LINE_COMMENT                                               # LineComment
- | BLOCK_COMMENT                                              # BlockComment
+ : HASHINCLUDE LITERAL                        # HashInclude
+ | HASHDEFINE VIDENTIFIER VREST               # HashDefine
+ | IDENTIFIER                                 # Identifier
+ | LITERAL                                    # Literal
+ | ifcond=(HASHIF|HASHIFDEF) IDENTIFIER
+   entities (HASHELSE entities)? HASHENDIF    # HashIf
+ | ANYTHING                                   # Anything
+ | LINE_COMMENT                               # LineComment
+ | BLOCK_COMMENT                              # BlockComment
  ;
