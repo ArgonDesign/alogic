@@ -45,11 +45,11 @@ object Preproc {
 
   // Private worker to use by recursive includes, returns defines as well
   private def process(
-    path:               Path,
+    source:             Source,
     includeSearchPaths: List[Path],
     initialDefines:     immutable.Map[String, String]): (String, Map[String, String]) = {
     // Cache the text, final defines and the remapping
-    val (text, defines, remaps) = PreprocCache(path, initialDefines) {
+    val (text, defines, remaps) = PreprocCache(source.path, initialDefines) {
       // Map of #define to substitution
       val defines = mutable.Map[String, String]() ++ initialDefines
 
@@ -141,7 +141,7 @@ object Preproc {
             Message.fatal(ctx, s"""No absolute include paths allowed: "$includeSpec"""")
           } else {
             // Prepend the directory of the including file to the search path
-            val searchPaths = path.parent match {
+            val searchPaths = source.path.parent match {
               case Some(parent) => parent :: includeSearchPaths
               case None         => includeSearchPaths
             }
@@ -158,7 +158,7 @@ object Preproc {
           }
 
           // Process the include file in the current context
-          val (text, newDefines) = Preproc.process(resultPath, includeSearchPaths, immutable.Map() ++ defines)
+          val (text, newDefines) = Preproc.process(Source(resultPath), includeSearchPaths, immutable.Map() ++ defines)
 
           // Add the new #defines from the included file, there is no need
           // to warn for redefinitions here, as we have passed in 'defines'
@@ -177,12 +177,9 @@ object Preproc {
         }
       }
 
-      // Slurp the file contents
-      val text = path.lines(includeTerminator = true).mkString
-
       // Create ANTLR input stream
-      val inputStream = new ANTLRInputStream(text)
-      inputStream.name = path.path
+      val inputStream = new ANTLRInputStream(source.text)
+      inputStream.name = source.path.path
 
       // Create the lexer
       val lexer = new antlr.VPreprocLexer(inputStream)
@@ -206,8 +203,8 @@ object Preproc {
 
     // Apply the deferred remappings to the source location map for this processed file
     val remapCumSum = remaps.scanLeft(0)(_ + _._1.size)
-    for (((range, source), offset) <- remaps zip remapCumSum) {
-      Loc.remap(path, range.start + offset until range.end + offset, source)
+    for (((range, src), offset) <- remaps zip remapCumSum) {
+      Loc.remap(source.path, range.start + offset until range.end + offset, src)
     }
 
     (text, defines)
@@ -215,9 +212,9 @@ object Preproc {
 
   // Preprocess a file defined by path
   def apply(
-    path:               Path,
+    src:                Source,
     includeSearchPaths: List[Path],
     initialDefines:     Map[String, String] = Map()): String = {
-    process(path, includeSearchPaths, immutable.Map() ++ initialDefines)._1
+    process(src, includeSearchPaths, immutable.Map() ++ initialDefines)._1
   }
 }

@@ -27,7 +27,7 @@ object AParser {
     Message.info(s"Parsing ${path.path}")
 
     // First preprocess input file to deal with #define s
-    val preprocessed = Preproc(path, includeSearchPaths, initalDefines)
+    val preprocessed = Preproc(Source(path), includeSearchPaths, initalDefines)
 
     // Now parse the file, return None if syntax error
     val parseTree = {
