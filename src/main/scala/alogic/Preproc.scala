@@ -45,11 +45,11 @@ object Preproc {
 
   // Private worker to use by recursive includes, returns defines as well
   private def process(
-    source:             Source,
-    includeSearchPaths: List[Path],
-    initialDefines:     immutable.Map[String, String]): (String, Map[String, String]) = {
+    source:          Source,
+    includeResovler: (Source, String) => Either[List[String], Source],
+    initialDefines:  immutable.Map[String, String]): (String, Map[String, String]) = {
     // Cache the text, final defines and the remapping
-    val (text, defines, remaps) = PreprocCache(source.path, initialDefines) {
+    val (text, defines, remaps) = PreprocCache((source.path, initialDefines)) {
       // Map of #define to substitution
       val defines = mutable.Map[String, String]() ++ initialDefines
 
@@ -134,31 +134,15 @@ object Preproc {
         override def visitHashInclude(ctx: HashIncludeContext): StrTree = {
           // Get the include path specifier
           val includeSpec = ctx.LITERAL.text.drop(1).dropRight(1)
-          val includePath = Path.fromString(includeSpec)
 
           // Find the include file
-          val resultPath: Path = if (includePath.isAbsolute) {
-            Message.fatal(ctx, s"""No absolute include paths allowed: "$includeSpec"""")
-          } else {
-            // Prepend the directory of the including file to the search path
-            val searchPaths = source.path.parent match {
-              case Some(parent) => parent :: includeSearchPaths
-              case None         => includeSearchPaths
-            }
-
-            // Look for the file
-            searchPaths map (_ / includePath) find (_.exists) match {
-              case Some(path) => path
-              case None =>
-                Message.fatal(
-                  ctx,
-                  s"""Cannot find include file "$includeSpec". Looked in:""" ::
-                    (searchPaths map (path => s"""  "${path.path}"""")): _*)
-            }
+          val includeSource = includeResovler(source, includeSpec) match {
+            case Left(msgs)          => Message.fatal(ctx, msgs: _*)
+            case Right(resultSource) => resultSource
           }
 
           // Process the include file in the current context
-          val (text, newDefines) = Preproc.process(Source(resultPath), includeSearchPaths, immutable.Map() ++ defines)
+          val (text, newDefines) = Preproc.process(includeSource, includeResovler, immutable.Map() ++ defines)
 
           // Add the new #defines from the included file, there is no need
           // to warn for redefinitions here, as we have passed in 'defines'
@@ -170,7 +154,7 @@ object Preproc {
           // errors printed during preprocessing are still printed correctly
           val start = ctx.loc.line
           val end = start + text.count(_ == '\n')
-          remaps.push((start until end, resultPath))
+          remaps.push((start until end, includeSource.path))
 
           // Yield the preprocessed text
           Str(text)
@@ -210,11 +194,43 @@ object Preproc {
     (text, defines)
   }
 
-  // Preprocess a file defined by path
+  // Preprocess a source, given include resolver and initial defines
+  def apply(
+    src:             Source,
+    initialDefines:  Map[String, String],
+    includeResolver: (Source, String) => Either[List[String], Source]): String = {
+    process(src, includeResolver, initialDefines.toMap)._1
+  }
+
+  // Preprocess a source, given search paths and initial defines
   def apply(
     src:                Source,
-    includeSearchPaths: List[Path],
-    initialDefines:     Map[String, String] = Map()): String = {
-    process(src, includeSearchPaths, immutable.Map() ++ initialDefines)._1
+    initialDefines:     Map[String, String],
+    includeSearchPaths: List[Path]): String = {
+
+    // Include file resolver that looks up include files in the search paths, or the
+    // directory of the including file
+    def includeResolver(source: Source, includeSpec: String): Either[List[String], Source] = {
+      val includePath = Path.fromString(includeSpec)
+      // Find the include file
+      if (includePath.isAbsolute) {
+        Left(List(s"""No absolute include paths allowed: "$includeSpec""""))
+      } else {
+        // Prepend the directory of the including file to the search path
+        val searchPaths = source.path.parent match {
+          case Some(parent) => parent :: includeSearchPaths
+          case None         => includeSearchPaths
+        }
+
+        // Look for the file
+        searchPaths map (_ / includePath) find (_.exists) match {
+          case Some(path) => Right(Source(path))
+          case None => Left(s"""Cannot find include file "$includeSpec". Looked in:""" ::
+            (searchPaths map (path => s"""  "${path.path}"""")))
+        }
+      }
+    }
+
+    process(src, includeResolver, initialDefines.toMap)._1
   }
 }
