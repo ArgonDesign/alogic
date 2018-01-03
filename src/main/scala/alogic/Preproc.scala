@@ -84,7 +84,7 @@ class Preproc {
         override def visitAnything(ctx: AnythingContext): StrTree = Str(ctx.ANYTHING.text)
 
         override def visitHashIf(ctx: HashIfContext): StrTree = {
-          val valueCond = ctx.ifcond.text == "if"
+          val valueCond = ctx.ifcond.text.filterNot(_.isWhitespace) == "#if"
           val ident = ctx.IDENTIFIER.text
 
           val useElseOpt = if (valueCond) {
