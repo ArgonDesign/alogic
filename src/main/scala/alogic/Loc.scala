@@ -19,18 +19,19 @@ import scala.collection.concurrent.TrieMap
 import scalax.file.Path
 import scala.annotation.tailrec
 
-class Loc private (val file: String, val line: Int) {
+case class Loc(file: String, line: Int) {
   override def toString = s"${file}:${line}"
 }
 
-object Loc {
+trait LocationRemapping { self: CompilerContext =>
 
-  private[this]type LineMap = TrieMap[Range, String]
+  private[this] type LineMap = TrieMap[Range, String]
 
   // Global object and hence accessed from multiple threads
   private[this] val locMap = TrieMap[String, LineMap]()
 
-  def apply(path: Path, line: Int): Loc = {
+  // Construct Loc instance, applying remapping
+  def loc(path: Path, line: Int): Loc = {
 
     // Map modified location to canonical source location
     @tailrec def loop(file: String, line: Int): (String, Int) = {
@@ -60,7 +61,7 @@ object Loc {
     new Loc(f, l)
   }
 
-  def apply(path: String, line: Int): Loc = apply(Path.fromString(path), line)
+  def loc(path: String, line: Int): Loc = loc(Path.fromString(path), line)
 
   // Adjust map so that lines form 'file' that are in 'range'
   // will be printed as belonging to file 'source'

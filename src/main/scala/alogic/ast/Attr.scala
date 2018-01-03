@@ -19,13 +19,14 @@ import org.antlr.v4.runtime.ParserRuleContext
 
 import alogic.Antlr4Conversions._
 import alogic.Loc
+import alogic.CompilerContext
 
 class Attr(val loc: Loc, val symtab: String => Decl);
 
 object Attr {
   def apply(loc: Loc, symtab: String => Decl) = new Attr(loc, symtab)
 
-  def apply(ctx: ParserRuleContext)(implicit symtab: Option[Symtab]) = {
+  def apply(ctx: ParserRuleContext)(implicit cc: CompilerContext, symtab: Option[Symtab]) = {
     val loc = ctx.loc
     val sfn: String => Decl = symtab.map(_.funcify(ctx)).getOrElse(_ => unreachable)
     new Attr(loc, sfn)

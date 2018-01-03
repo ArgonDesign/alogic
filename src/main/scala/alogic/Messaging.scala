@@ -84,7 +84,9 @@ case class ICE(lop: Option[Loc], _msg: Seq[String]) extends Message {
 object FatalErrorException extends Exception
 object InternalCompilerErrorException extends RuntimeException("INTERNAL COMPILER ERROR")
 
-class Messaging { self: CompilerContext =>
+trait Messaging { self: CompilerContext =>
+
+  private[this] implicit val implicitThis: CompilerContext = this
 
   val messages = mutable.ListBuffer[Message]()
 

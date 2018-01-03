@@ -17,9 +17,11 @@
 
 package alogic
 
-class CompilerContext extends Messaging {
+class CompilerContext
+  extends Messaging
+  with LocationRemapping {
 
-  implicit val self = this
+  private[this] implicit val implicitThis: CompilerContext = this
 
   // The preprocessor uses caching, so it needs to live in cc
   lazy val preproc = new Preproc

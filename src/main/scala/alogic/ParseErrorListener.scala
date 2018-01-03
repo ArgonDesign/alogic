@@ -26,7 +26,7 @@ class ParserErrorListener(implicit cc: CompilerContext) extends BaseErrorListene
     charPositionInLine: Int,
     msg:                String,
     e:                  RecognitionException) = {
-    val loc = Loc(recognizer.getInputStream.getSourceName, line)
+    val loc = cc.loc(recognizer.getInputStream.getSourceName, line)
     cc.error(loc, s"Syntax error: $msg")
   }
 }

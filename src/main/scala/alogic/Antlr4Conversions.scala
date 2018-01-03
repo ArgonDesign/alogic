@@ -46,11 +46,11 @@ object Antlr4Conversions extends WrapAsScala with WrapAsJava {
 
     def text = ctx.getText
 
-    def loc = ctx.start.loc
+    def loc(implicit cc: CompilerContext) = ctx.start.loc
   }
 
   implicit class TokenWrapper(val token: Token) extends AnyVal {
-    def loc = Loc(token.getTokenSource.getSourceName, token.getLine)
+    def loc(implicit cc: CompilerContext) = cc.loc(token.getTokenSource.getSourceName, token.getLine)
 
     def text = token.getText
 
