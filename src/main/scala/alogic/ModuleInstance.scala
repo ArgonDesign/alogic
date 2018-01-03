@@ -20,14 +20,14 @@ import alogic.ast._
 
 // This class keeps track of the connections of a particular module instance
 
-class ModuleInstance(val attr: Attr, val name: String, val task: Task, val paramAssigns: Map[String, Expr]) {
+class ModuleInstance(val attr: Attr, val name: String, val task: Task, val paramAssigns: Map[String, Expr])(implicit cc: CompilerContext) {
 
   // Check assigned parameters exist
   {
     val paramNames = task.decls collect { case DeclParam(_, id, _) => id }
 
     for (paramName <- paramAssigns.keys if !(paramNames contains paramName)) {
-      Message.error(attr.loc, s"module instance '${name}' (module '${task.name}') has no parameter named '${paramName}'")
+      cc.error(attr.loc, s"module instance '${name}' (module '${task.name}') has no parameter named '${paramName}'")
     }
   }
 

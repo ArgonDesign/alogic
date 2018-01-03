@@ -16,7 +16,6 @@
 
 package alogic.ast
 
-import alogic.Message
 import alogic.Str
 import alogic.StrList
 import alogic.StrTree

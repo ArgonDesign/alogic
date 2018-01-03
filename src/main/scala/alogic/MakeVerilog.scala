@@ -26,7 +26,7 @@ import alogic.ast._
 import alogic.ast.AstOps._
 import scalax.file.Path
 
-final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
+final class MakeVerilog(moduleCatalogue: Map[String, Task])(implicit cc: CompilerContext) {
 
   val i0 = "  "; // Single indentation depth (2 spaces)
 
@@ -209,7 +209,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
         SetNxType(nxMap, kind, name, "")
         SetNxType(regMap, kind, name, "")
       }
-      case x => Message.ice(s"Don't know how to handle ${x}")
+      case x => cc.ice(s"Don't know how to handle ${x}")
     }
 
     // Create output file
@@ -246,7 +246,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     // Collect all instatiations
     val optInstances = for (Instantiate(attr, id, module, args) <- network.instantiate) yield {
       if (!(moduleCatalogue contains module)) {
-        Message.error(s"Cannot instantiate undefined module '${module}' in module '${network.name}'")
+        cc.error(s"Cannot instantiate undefined module '${module}' in module '${network.name}'")
         None
       } else {
         Some(new ModuleInstance(attr, id, moduleCatalogue(module), args))
@@ -268,39 +268,39 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     // Collect port connections
     val portConnections = network.connect flatMap {
       case Connect(_, DottedName(a, fromName :: fromPortName :: Nil), to) => {
-        val fromInstance = modMap.getOrElse(fromName, Message.fatal(a, s"Unknown module name '${fromName}'"))
+        val fromInstance = modMap.getOrElse(fromName, cc.fatal(a, s"Unknown module name '${fromName}'"))
         val fromPort = if (fromName == "this") fromInstance.iwires(fromPortName) else fromInstance.owires(fromPortName)
         to flatMap {
           case DottedName(a, toName :: toPortName :: Nil) => {
-            val toInstance = modMap.getOrElse(toName, Message.fatal(a, s"Unknown module name '${toName}'"))
+            val toInstance = modMap.getOrElse(toName, cc.fatal(a, s"Unknown module name '${toName}'"))
             val toPortOpt = if (toName == "this") toInstance.owires.get(toPortName) else toInstance.iwires.get(toPortName)
 
             toPortOpt match {
               case None => {
-                Message.error(a, s"No port named '${toPortName}' on instance '${toName}' (module '${toInstance.task.name}')")
+                cc.error(a, s"No port named '${toPortName}' on instance '${toName}' (module '${toInstance.task.name}')")
                 None
               }
               case Some(toPort) => {
                 lazy val msg = s"Flow control of port '${fromName}.${fromPortName}' is not compatible with port '${toName}.${toPortName}'"
                 (fromPort, toPort) match {
                   case (_: PortNone, _: PortNone)     => // OK
-                  case (_: PortNone, _: PortValid)    => Message.error(a, msg, "none -> sync")
-                  case (_: PortNone, _: PortReady)    => Message.error(a, msg, "none -> sync ready")
-                  case (_: PortNone, _: PortAccept)   => Message.error(a, msg, "none -> sync accept")
+                  case (_: PortNone, _: PortValid)    => cc.error(a, msg, "none -> sync")
+                  case (_: PortNone, _: PortReady)    => cc.error(a, msg, "none -> sync ready")
+                  case (_: PortNone, _: PortAccept)   => cc.error(a, msg, "none -> sync accept")
 
-                  case (_: PortValid, _: PortNone)    => Message.error(a, msg, "sync -> none")
+                  case (_: PortValid, _: PortNone)    => cc.error(a, msg, "sync -> none")
                   case (_: PortValid, _: PortValid)   => // OK
-                  case (_: PortValid, _: PortReady)   => Message.error(a, msg, "sync -> sync ready")
-                  case (_: PortValid, _: PortAccept)  => Message.error(a, msg, "sync -> sync accept")
+                  case (_: PortValid, _: PortReady)   => cc.error(a, msg, "sync -> sync ready")
+                  case (_: PortValid, _: PortAccept)  => cc.error(a, msg, "sync -> sync accept")
 
-                  case (_: PortReady, _: PortNone)    => Message.error(a, msg, "sync ready -> none")
-                  case (_: PortReady, _: PortValid)   => Message.error(a, msg, "sync ready -> sync")
+                  case (_: PortReady, _: PortNone)    => cc.error(a, msg, "sync ready -> none")
+                  case (_: PortReady, _: PortValid)   => cc.error(a, msg, "sync ready -> sync")
                   case (_: PortReady, _: PortReady)   => // OK
                   case (_: PortReady, _: PortAccept)  => // OK (accept can drive ready)
 
-                  case (_: PortAccept, _: PortNone)   => Message.error(a, msg, "sync accept -> none")
-                  case (_: PortAccept, _: PortValid)  => Message.error(a, msg, "sync accept -> sync")
-                  case (_: PortAccept, _: PortReady)  => Message.error(a, msg, "sync accept -> sync ready")
+                  case (_: PortAccept, _: PortNone)   => cc.error(a, msg, "sync accept -> none")
+                  case (_: PortAccept, _: PortValid)  => cc.error(a, msg, "sync accept -> sync")
+                  case (_: PortAccept, _: PortReady)  => cc.error(a, msg, "sync accept -> sync ready")
                   case (_: PortAccept, _: PortAccept) => // OK
                 }
 
@@ -575,7 +575,7 @@ final class MakeVerilog(moduleCatalogue: Map[String, Task]) {
     task.vfns foreach { vfn =>
       pw.print(vfn.body)
     }
-    
+
     // Automatic stall generation
     val disable_name = "DISABLE_STALL_" + task.name.toUpperCase() + "_V"
     pw.println(s"""`ifdef ENABLE_STALL
@@ -598,7 +598,7 @@ end
     pw.println()
     pw.println("  always @* begin")
     pw.println("    go = 1'b1;")
-    
+
     // Insert automatic stall generation
     pw.println(s"""`ifdef ENABLE_STALL
 `ifdef ${disable_name}
@@ -606,7 +606,7 @@ end
     go = go && (go_rand < go_stall_prob);
 `endif
 `endif""")
-    
+
     // Prepare defaults
     if (defaults.length > 0)
       pw.println(StrList(defaults))
@@ -693,7 +693,7 @@ end
   def nx(name: String): String = if (makingAccept) {
     // IdsUsedToMakeAccept.add(name)
     if (IdsWritten contains name) {
-      Message.fatal(s"Cannot have the use of an accept port conditional on $name because it is written in the same cycle.")
+      cc.fatal(s"Cannot have the use of an accept port conditional on $name because it is written in the same cycle.")
     }
     name
   } else nxMap(name)
@@ -720,23 +720,23 @@ end
       }
       case Slice(_, ref, l, op, r) => StrList(List(MakeExpr(ref), "[", MakeExpr(l), op, MakeExpr(r), "]"))
       case ValidCall(_, DottedName(_, names)) => id2decl(names.head) match {
-        case DeclOut(decl, n, fctype, _) => if (fctype.hasValid) valid(n) else { Message.fatal(tree, s"Port '$names' does not use valid"); "" }
-        case DeclIn(decl, n, fctype)     => if (fctype.hasValid) valid(n) else { Message.fatal(tree, s"Port '$names' does not use valid"); "" }
-        case _                           => Message.fatal(tree, s"Cannot access valid on $names"); ""
+        case DeclOut(decl, n, fctype, _) => if (fctype.hasValid) valid(n) else { cc.fatal(tree, s"Port '$names' does not use valid"); "" }
+        case DeclIn(decl, n, fctype)     => if (fctype.hasValid) valid(n) else { cc.fatal(tree, s"Port '$names' does not use valid"); "" }
+        case _                           => cc.fatal(tree, s"Cannot access valid on $names"); ""
       }
       case Zxt(_, numbitsExpr, expr) => expr.widthExpr match {
-        case None => Message.fatal(expr, s"Cannot compute size of expression '${expr.toSource}' for '@zx'")
+        case None => cc.fatal(expr, s"Cannot compute size of expression '${expr.toSource}' for '@zx'")
         case Some(widthExpr) => {
           val deltaExpr = (numbitsExpr - widthExpr).simplify
           StrList(List("{{", MakeExpr(deltaExpr), "{1'b0}},", MakeExpr(expr), "}"))
         }
       }
       case Sxt(_, numbitsExpr, expr) => expr.widthExpr match {
-        case None => Message.fatal(expr, s"Cannot compute size of expression '${expr.toSource}' for '@sx'")
+        case None => cc.fatal(expr, s"Cannot compute size of expression '${expr.toSource}' for '@sx'")
         case Some(widthExpr) => {
           val deltaExpr = (numbitsExpr - widthExpr).simplify
           val msbExpr = expr.msbExpr match {
-            case None       => Message.fatal(expr, s"Cannot compute msb of expression '${expr.toSource}' for '@sx'")
+            case None       => cc.fatal(expr, s"Cannot compute msb of expression '${expr.toSource}' for '@sx'")
             case Some(expr) => expr.simplify
           }
           StrList(List("{{", MakeExpr(deltaExpr), "{", MakeExpr(msbExpr), "}},", MakeExpr(expr), "}"))
@@ -745,7 +745,7 @@ end
       case DollarCall(_, name, args) => StrList(List(name, "(", StrList(args.map(MakeExpr), ","), ")"))
       case ReadCall(_, name) => id2decl(name.names.head) match {
         case DeclIn(VoidType, _, _) => {
-          Message.error(tree, s"Cannot read 'void' port '${name.toSource}' in expression position"); Str("")
+          cc.error(tree, s"Cannot read 'void' port '${name.toSource}' in expression position"); Str("")
         }
         case _ => MakeExpr(name)
       }
@@ -760,7 +760,7 @@ end
       case Literal(_, s)                => Str(s)
       case n: Num                       => n.toVerilog
       case e: ErrorExpr                 => e.toVerilog
-      case e                            => Message.ice(tree, s"Unexpected expression '$e'"); ""
+      case e                            => cc.ice(tree, s"Unexpected expression '$e'"); ""
     }
   }
 
@@ -794,7 +794,7 @@ end
             if (!isLock && fctype.hasReady)
               add(ready(n) + " = 1'b1;")
           }
-          case _ => Message.fatal(name, s"'$name' cannot be read"); false // TODO check this earlier?
+          case _ => cc.fatal(name, s"'$name' cannot be read"); false // TODO check this earlier?
         }
         false // No need to recurse
       }
@@ -815,14 +815,14 @@ end
               (fctype, stype) match {
                 case (FlowControlTypeReady, StorageTypeBubble) => add(s"$go = $go && !${valid(n)};")
                 case (FlowControlTypeReady, StorageTypeReg)    => add(s"$go = $go && (!${valid(n)} || ${ready(n)});")
-                case (FlowControlTypeAccept, StorageTypeReg)   => Message.fatal(tree, "sync accept only supported as wire output type") // TODO check this earlier
+                case (FlowControlTypeAccept, StorageTypeReg)   => cc.fatal(tree, "sync accept only supported as wire output type") // TODO check this earlier
                 case (FlowControlTypeAccept, StorageTypeWire)  => add(s"$go = $go && ${accept(n)};")
                 case _                                         =>
               }
               if (fctype.hasValid)
                 add(s"${nx(valid(n))} = 1'b1;")
             }
-            case _ => Message.fatal(name, s"'$name' cannot be written"); false // TODO check this earlier?
+            case _ => cc.fatal(name, s"'$name' cannot be written"); false // TODO check this earlier?
           }
           true // Recurse in case arguments use reads
         }
@@ -958,7 +958,7 @@ end
 
       case ErrorStmt(_) | ExprStmt(_, _: ErrorExpr) => Str("/*Error statment*/")
 
-      case x => Message.ice(x, s"Don't know how to emit code for $x"); Str("")
+      case x => cc.ice(x, s"Don't know how to emit code for $x"); Str("")
     }
   }
 
@@ -1092,9 +1092,9 @@ end
       if (s2.length > 0) {
         // Check for error conditions
         // TODO change sync ports into a set so only warn if different ports detected
-        if (syncPortsFound.size > 1) Message.fatal(tree, s"Cannot access multiple accept port reads in same cycle: $cmds")
-        if (usesPort.isDefined) Message.fatal(tree, s"Cannot access port $usesPort while generating accept: $cmds")
-        //if (!IdsUsedToMakeAccept.intersect(IdsWritten).isEmpty) Message.warning(s"Accept is based on registered signals: check condition does not depend on a written identifier: $cmds")
+        if (syncPortsFound.size > 1) cc.fatal(tree, s"Cannot access multiple accept port reads in same cycle: $cmds")
+        if (usesPort.isDefined) cc.fatal(tree, s"Cannot access port $usesPort while generating accept: $cmds")
+        //if (!IdsUsedToMakeAccept.intersect(IdsWritten).isEmpty) cc.warning(s"Accept is based on registered signals: check condition does not depend on a written identifier: $cmds")
         //It seems that now the state is emitted by higher level code?
         //Some(StrList(List(i0 * (indent - 1), MakeState(state), ": begin\n", StrList(s2), i0 * (indent - 1), "end\n")))
         Some(StrList(List("begin\n", StrList(s2), i0 * (indent), "end\n")))

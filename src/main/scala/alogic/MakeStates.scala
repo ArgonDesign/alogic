@@ -45,7 +45,7 @@ import scalax.collection.Graph
 import scalax.collection.GraphPredef._
 import scalax.collection.edge.Implicits._
 
-final class MakeStates {
+final class MakeStates(implicit cc: CompilerContext) {
 
   val state_alloc = Stream.from(0).toIterator; // Allocate sequential state numbers
 
@@ -76,11 +76,11 @@ final class MakeStates {
     val cssExprOpt = decls collectFirst { case DeclConst(_, "CALL_STACK_SIZE", value) => value }
     val cssOpt: Option[Int] = cssExprOpt map { e =>
       if (!e.isKnown) {
-        Message.error(e, "The value of 'CALL_STACK_SIZE' must be a compile time constant"); 1
+        cc.error(e, "The value of 'CALL_STACK_SIZE' must be a compile time constant"); 1
       } else {
         val value = e.eval.toInt
         if (value < 1) {
-          Message.error(e, "The value of 'CALL_STACK_SIZE' must be >= 1"); 1
+          cc.error(e, "The value of 'CALL_STACK_SIZE' must be >= 1"); 1
         } else {
           value
         }
@@ -119,9 +119,9 @@ final class MakeStates {
           }
         }
       }
-      Message.error(fsm, msg: _*)
+      cc.error(fsm, msg: _*)
     } else if (!recursive && cssOpt.isDefined) {
-      Message.error(cssExprOpt.get, s"Non-recursive fsm '$name' must not define the 'CALL_STACK_SIZE' constant")
+      cc.error(cssExprOpt.get, s"Non-recursive fsm '$name' must not define the 'CALL_STACK_SIZE' constant")
     }
 
     // Check that the call graph is connected (no unused functions)
@@ -131,7 +131,7 @@ final class MakeStates {
         case f @ Function(_, name, _) if name == node.toOuter => f
 
       }.get
-      Message.error(ctx, s"Function '${node}' is unused")
+      cc.error(ctx, s"Function '${node}' is unused")
       node
     }
 
@@ -211,10 +211,10 @@ final class MakeStates {
       // Create State Task
       Some(StateTask(attr, name, newDecls, states, fencefn, vfns))
     } else if (fencefn == None && fns == Nil) {
-      Message.error(fsm, s"fsm '$name' contains only 'verilog' functions. Use a 'verilog' task instead.")
+      cc.error(fsm, s"fsm '$name' contains only 'verilog' functions. Use a 'verilog' task instead.")
       None
     } else {
-      Message.error(fsm, s"No function named 'main' found in FSM '$name'")
+      cc.error(fsm, s"No function named 'main' found in FSM '$name'")
       None
     }
   }
@@ -377,7 +377,8 @@ final class MakeStates {
 }
 
 object MakeStates {
-  def apply(fsm: FsmTask): Option[StateTask] = {
-    new MakeStates()(fsm)
+  def apply(fsm: FsmTask)(implicit cc: CompilerContext): Option[StateTask] = {
+    val worker = new MakeStates
+    worker(fsm)
   }
 }

@@ -1,9 +1,10 @@
+
 ////////////////////////////////////////////////////////////////////////////////
 // Argon Design Ltd. Project P8009 Alogic
 // Copyright (c) 2017 Argon Design Ltd. All rights reserved.
 //
 // Module : Scala Alogic Compiler
-// Author : Peter de Rivaz/Geza Lore
+// Author : Geza Lore
 //
 // DESCRIPTION:
 //
@@ -13,5 +14,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 package object alogic {
-  def unreachable: Nothing = Message.ice("unreachable")
+  def unreachable: Nothing = {
+    println(ICE(None, Seq("unreachable")))
+    throw InternalCompilerErrorException
+  }
 }

@@ -17,7 +17,9 @@
 
 package alogic
 
-class CompilerContext {
+class CompilerContext extends Messaging {
+
+  implicit val self = this
 
   // The preprocessor uses caching, so it needs to live in cc
   lazy val preproc = new Preproc

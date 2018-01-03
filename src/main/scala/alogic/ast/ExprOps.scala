@@ -17,6 +17,7 @@ package alogic.ast
 import scala.math.BigInt.int2bigInt
 
 import alogic.Message
+import alogic.CompilerContext
 
 trait ExprOps { this: Expr =>
 
@@ -111,12 +112,12 @@ trait ExprOps { this: Expr =>
     case Slice(_, ref, lidx, _, ridx) => ref.isKnown && lidx.isKnown && ridx.isKnown
   }
 
-  def eval: BigInt = this.simplify match {
+  def eval(implicit cc: CompilerContext): BigInt = this.simplify match {
     case Num(_, _, _, value) => value
-    case x                   => Message.ice(this, s"Don't know how to eval '${x.toSource}'")
+    case x                   => cc.ice(this, s"Don't know how to eval '${x.toSource}'")
   }
 
-  def simplify: Expr = this match {
+  def simplify(implicit cc: CompilerContext): Expr = this match {
     case Bracket(_, content) => content.simplify
 
     case UnaryOp(a, op, rhs) => UnaryOp(a, op, rhs.simplify) match {
@@ -127,7 +128,7 @@ trait ExprOps { this: Expr =>
       }
       case x @ UnaryOp(_, op, rhs @ Num(_, false, None, rv)) => op match {
         case "+" => rhs
-        case "-" => { Message.error(x, "Taking negative of unsigned constnat"); x }
+        case "-" => { cc.error(x, "Taking negative of unsigned constnat"); x }
         case _   => x
       }
       case x => x
@@ -175,7 +176,7 @@ trait ExprOps { this: Expr =>
 
   // Compute a new expression representing the width of this expression.
   // Return None if it cannot be determined.
-  lazy val widthExpr: Option[Expr] = {
+  def widthExpr(implicit cc: CompilerContext): Option[Expr] = {
     this match {
       case name: DottedName => {
         val kind = {
@@ -189,10 +190,10 @@ trait ExprOps { this: Expr =>
                     case _   => lookUpField(ns, fields(n))
                   }
                 } else {
-                  Message.fatal(this, s"No field named '$n' in struct '$name'") // TODO: check earlier
+                  cc.fatal(this, s"No field named '$n' in struct '$name'") // TODO: check earlier
                 }
               }
-              case _ => Message.fatal(this, s"Cannot find field '$n' in non-struct type '$kind'")
+              case _ => cc.fatal(this, s"Cannot find field '$n' in non-struct type '$kind'")
             }
           }
 
@@ -227,13 +228,13 @@ trait ExprOps { this: Expr =>
       case _: ErrorExpr                 => None
       case BitRep(_, count, value) => value.widthExpr match {
         case Some(w) => Some(count * w)
-        case None    => Message.fatal(value, "Cannot compute width of bit repetion")
+        case None    => cc.fatal(value, "Cannot compute width of bit repetion")
       }
       case BitCat(_, terms) => {
         val exprs = for (term <- terms) yield {
           term.widthExpr match {
             case Some(expr) => expr
-            case None       => Message.fatal(term, "Cannot compute width of bit concatenation operand")
+            case None       => cc.fatal(term, "Cannot compute width of bit concatenation operand")
           }
         }
         Some(exprs.reduce(_ + _))
@@ -243,7 +244,7 @@ trait ExprOps { this: Expr =>
 
   // Compute a new expression representing the MSB of this expression.
   // Return None if it cannot be determined.
-  def msbExpr: Option[Expr] = {
+  def msbExpr(implicit cc: CompilerContext): Option[Expr] = {
     this match {
       case name @ DottedName(a, _) => name.widthExpr map { width =>
         Slice(a, name, width - 1, "+:", Expr(1))
@@ -310,7 +311,7 @@ trait ExprOps { this: Expr =>
     case Slice(_, _, l, _, r)          => l.hasSideEffect || r.hasSideEffect
   }
 
-  def toVerilog: String = this match {
+  def toVerilog(implicit cc: CompilerContext): String = this match {
     case Num(_, false, None, value)        => s"'d${value}"
     case Num(_, true, None, value)         => value.toString
     case Num(_, false, Some(width), value) => if (width == 1) s"1'b${value}" else s"${width}'d${value}"
@@ -333,7 +334,7 @@ trait ExprOps { this: Expr =>
     case BitCat(_, terms)                  => ???
     case _: Slice                          => ???
     case DottedName(_, name :: Nil)        => name
-    case x: DottedName                     => Message.ice(x, s"Cannot generate verilog for '$x'")
+    case x: DottedName                     => cc.ice(x, s"Cannot generate verilog for '$x'")
     case _: ExprArrIndex                   => ???
     case _: ExprVecIndex                   => ???
     case _: Literal                        => ???

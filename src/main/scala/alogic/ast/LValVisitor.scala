@@ -17,12 +17,11 @@ package alogic.ast
 
 import alogic.Antlr4Conversions._
 import alogic.VScalarVisitor
-import org.antlr.v4.runtime.ParserRuleContext
 import alogic.antlr.VParser._
-import alogic.Message
+import alogic.CompilerContext
 
-class LValVisitor(symtab: Option[Symtab], typedefs: scala.collection.Map[String, Type])
-    extends VScalarVisitor[LVal] { self =>
+class LValVisitor(symtab: Option[Symtab], typedefs: scala.collection.Map[String, Type])(implicit cc: CompilerContext)
+  extends VScalarVisitor[LVal] { self =>
 
   private[this] implicit val isymtab = symtab
 
@@ -34,7 +33,7 @@ class LValVisitor(symtab: Option[Symtab], typedefs: scala.collection.Map[String,
     visit(ctx.ref) match {
       case x: LValName                       => LValArrayLookup(attr, x, idx :: Nil)
       case LValArrayLookup(a, name, indices) => LValArrayLookup(a, name, indices ::: idx :: Nil)
-      case _                                 => Message.fatal(ctx, s"Cannot index lvalue '${ctx.ref.sourceText}'")
+      case _                                 => cc.fatal(ctx, s"Cannot index lvalue '${ctx.ref.sourceText}'")
     }
   }
 
@@ -42,13 +41,13 @@ class LValVisitor(symtab: Option[Symtab], typedefs: scala.collection.Map[String,
     val attr = Attr(ctx)
     visit(ctx.ref) match {
       case x: LValName => LValSlice(attr, x, exprVisitor(ctx.lidx), ctx.op, exprVisitor(ctx.ridx))
-      case _           => Message.fatal(ctx, s"Cannot slice lvalue '${ctx.ref.sourceText}'")
+      case _           => cc.fatal(ctx, s"Cannot slice lvalue '${ctx.ref.sourceText}'")
     }
   }
 
   override def visitLValDot(ctx: LValDotContext) = visit(ctx.ref) match {
     case LValName(a, names) => LValName(a, names ::: ctx.IDENTIFIER.text :: Nil)
-    case _                  => Message.fatal(ctx, s"Cannot access member of '${ctx.ref.sourceText}'")
+    case _                  => cc.fatal(ctx, s"Cannot access member of '${ctx.ref.sourceText}'")
   }
 
   override def visitLValId(ctx: LValIdContext) = {

@@ -21,6 +21,7 @@ import alogic.antlr.VParser._
 import alogic.Loc
 import alogic.Message
 import alogic.VScalarVisitor
+import alogic.CompilerContext
 
 // This class constructs the lexical scopes of the provided parse tree.
 // We use standard mutable.Map instances with the 'withDefault' extension
@@ -32,14 +33,16 @@ import alogic.VScalarVisitor
 // Variable instances with a multiplicity greater than 1 are renamed as
 // <name> -> <name>_L<lineno> where <lineno> is the line number where the
 // variable is declared.
-class Symtab(root: ParserRuleContext, typedefs: scala.collection.Map[String, Type]) { self =>
+class Symtab(
+  root:     ParserRuleContext,
+  typedefs: scala.collection.Map[String, Type])(implicit cc: CompilerContext) { self =>
 
   // A named pair of Decl and the location of the Decl. For data declarations,
   // we use Left[Decl], for function declarations, we use Right[Decl]
   private[this] case class Item(decl: Either[Decl, String], ctx: ParserRuleContext)
 
   // This is a map to Option[_] as Map.get does not respect withDefault or withDefaultValue
-  private[this]type NameMap = mutable.Map[String, Option[Item]]
+  private[this] type NameMap = mutable.Map[String, Option[Item]]
 
   // Map from parse tree node to containing scope
   private[this] val scopes = mutable.Map[RuleContext, NameMap]()
@@ -72,13 +75,13 @@ class Symtab(root: ParserRuleContext, typedefs: scala.collection.Map[String, Typ
     val scope = find(ctx)
     if (scope contains name) {
       val Some(Item(_, pctx)) = scope(name)
-      Message.error(ctx, s"Multiple declarations of name '$name' ...")
-      Message.error(ctx, s"... previous Decl at: ${pctx.loc}")
+      cc.error(ctx, s"Multiple declarations of name '$name'",
+          s"... previous Decl at: ${pctx.loc}")
     } else {
       scope(name) match {
         case Some(Item(_, pctx)) => {
-          Message.warning(ctx, s"Decl of '$name' hides previous Decl of same name at ...")
-          Message.warning(ctx, s"... ${pctx.loc}")
+          cc.warning(ctx, s"Decl of '$name' hides previous Decl of same name at ...", 
+              s"... ${pctx.loc}")
         }
         case None => ()
       }
@@ -133,7 +136,7 @@ class Symtab(root: ParserRuleContext, typedefs: scala.collection.Map[String, Typ
       val knownTypeVisitor = new KnownTypeVisitor(Some(self), typedefs)
       val kind = knownTypeVisitor(ctx.known_type) match {
         case x: ScalarType => x
-        case x             => Message.error(ctx, s"Constant '${id}' must be declared with scalar type"); IntType(false, 1);
+        case x             => cc.error(ctx, s"Constant '${id}' must be declared with scalar type"); IntType(false, 1);
       }
       DeclConst(kind, id, ErrorExpr(Attr.empty))
     }
@@ -142,7 +145,7 @@ class Symtab(root: ParserRuleContext, typedefs: scala.collection.Map[String, Typ
       val knownTypeVisitor = new KnownTypeVisitor(Some(self), typedefs)
       val kind = knownTypeVisitor(ctx.known_type) match {
         case x: ScalarType => x
-        case x             => Message.error(ctx, s"Parameter '${id}' must be declared with scalar type"); IntType(false, 1);
+        case x             => cc.error(ctx, s"Parameter '${id}' must be declared with scalar type"); IntType(false, 1);
       }
       DeclParam(kind, id, ErrorExpr(Attr.empty))
     }
@@ -153,7 +156,7 @@ class Symtab(root: ParserRuleContext, typedefs: scala.collection.Map[String, Typ
       DeclPippeVar(kind, id)
     }
     override def visitTaskDeclVerilog(ctx: TaskDeclVerilogContext) = visit(ctx.decl) match {
-      case DeclVar(_, id, Some(_)) => Message.fatal(ctx, s"Decl of Verilog variable '${id}' cannot use initializer")
+      case DeclVar(_, id, Some(_)) => cc.fatal(ctx, s"Decl of Verilog variable '${id}' cannot use initializer")
       case DeclVar(kind, id, None) => DeclVerilogVar(kind, id)
       case DeclArr(kind, id, dims) => DeclVerilogArr(kind, id, dims)
       case _                       => unreachable
@@ -170,7 +173,7 @@ class Symtab(root: ParserRuleContext, typedefs: scala.collection.Map[String, Typ
       kind match {
         case x: ScalarType => DeclArr(x, id, indices)
         case s: Struct => {
-          Message.error(ctx, s"Arrays must be declared with scalar types, not struct '${s.name}'")
+          cc.error(ctx, s"Arrays must be declared with scalar types, not struct '${s.name}'")
           DeclArr(IntType(false, 1), id, indices);
         }
         case VoidType => unreachable
@@ -333,7 +336,7 @@ class Symtab(root: ParserRuleContext, typedefs: scala.collection.Map[String, Typ
   def apply(ctx: ParserRuleContext, name: String): Either[Decl, String] = {
     find(ctx)(name) match {
       case Some(Item(decl, _)) => decl
-      case None                => Message.fatal(ctx, s"Unknown identifier '$name'")
+      case None                => cc.fatal(ctx, s"Unknown identifier '$name'")
     }
   }
 
@@ -341,8 +344,8 @@ class Symtab(root: ParserRuleContext, typedefs: scala.collection.Map[String, Typ
   def funcify(ctx: ParserRuleContext): String => Decl = { name =>
     find(ctx)(name) match {
       case Some(Item(Left(decl), _)) => decl
-      case Some(Item(Right(id), _))  => Message.ice(ctx, s"'$name' is a function")
-      case None                      => Message.ice(ctx, s"Unknown identifier '$name'")
+      case Some(Item(Right(id), _))  => cc.ice(ctx, s"'$name' is a function")
+      case None                      => cc.ice(ctx, s"Unknown identifier '$name'")
     }
   }
 }

@@ -23,7 +23,8 @@ class PreprocSpec extends FlatSpec with Matchers {
   val emptyDefines = Map.empty[String, String]
 
   trait Fixture {
-    val preproc = new Preproc
+    implicit val cc = new CompilerContext
+    val preproc = cc.preproc
   }
 
   /////////////////////////////////////////////////////////////////////////////

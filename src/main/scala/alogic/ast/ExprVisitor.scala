@@ -19,10 +19,10 @@ import alogic.Antlr4Conversions._
 import alogic.VScalarVisitor
 import org.antlr.v4.runtime.ParserRuleContext
 import alogic.antlr.VParser._
-import alogic.Message
+import alogic.CompilerContext
 
-class ExprVisitor(symtab: Option[Symtab], typedefs: scala.collection.Map[String, Type])
-    extends VScalarVisitor[Expr] { self =>
+class ExprVisitor(symtab: Option[Symtab], typedefs: scala.collection.Map[String, Type])(implicit cc: CompilerContext)
+  extends VScalarVisitor[Expr] { self =>
 
   private[this] implicit val isymtab = symtab
 
@@ -44,7 +44,7 @@ class ExprVisitor(symtab: Option[Symtab], typedefs: scala.collection.Map[String,
       case 'b' => 2
       case 'd' => 10
       case 'h' => 16
-      case c   => Message.error(ctx, s"Unknown base '$c'"); 16
+      case c   => cc.error(ctx, s"Unknown base '$c'"); 16
     }
     val rest = if (signed) tickn drop 3 else tickn drop 2
     val digits = rest filter (_ != '_')
@@ -83,11 +83,11 @@ class ExprVisitor(symtab: Option[Symtab], typedefs: scala.collection.Map[String,
 
   override def visitExprDot(ctx: ExprDotContext) = visit(ctx.ref) match {
     case DottedName(_, names) => DottedName(Attr(ctx), names ::: ctx.IDENTIFIER.text :: Nil)
-    case _                    => Message.fatal(ctx, s"Cannot access member of '${ctx.ref.sourceText}'")
+    case _                    => cc.fatal(ctx, s"Cannot access member of '${ctx.ref.sourceText}'")
   }
 
   override def visitExprIndex(ctx: ExprIndexContext) = {
-    def fail = Message.fatal(ctx, s"Cannot index expression '${ctx.ref.sourceText}'")
+    def fail = cc.fatal(ctx, s"Cannot index expression '${ctx.ref.sourceText}'")
     val ref = visit(ctx.ref)
     val idx = visit(ctx.idx)
     val attr = Attr(ctx)
@@ -117,7 +117,7 @@ class ExprVisitor(symtab: Option[Symtab], typedefs: scala.collection.Map[String,
   override def visitExprSlice(ctx: ExprSliceContext) = {
     visit(ctx.ref) match {
       case x @ (_: DottedName | _: ExprArrIndex) => Slice(Attr(ctx), x, visit(ctx.lidx), ctx.op, visit(ctx.ridx))
-      case _                                     => Message.fatal(ctx, s"Cannot slice expression '${ctx.ref.sourceText}'")
+      case _                                     => cc.fatal(ctx, s"Cannot slice expression '${ctx.ref.sourceText}'")
     }
   }
 
@@ -131,7 +131,7 @@ class ExprVisitor(symtab: Option[Symtab], typedefs: scala.collection.Map[String,
 
         val names = visit(ctx.ref) match {
           case DottedName(_, names) => names
-          case _                    => Message.fatal(ctx, s"Cannot call '${ctx.sourceText}'")
+          case _                    => cc.fatal(ctx, s"Cannot call '${ctx.sourceText}'")
         }
 
         def checkargs(minArgs: Int, maxArgs: Int = 0, hint: String = "")(expr: => Expr) = {
@@ -142,9 +142,9 @@ class ExprVisitor(symtab: Option[Symtab], typedefs: scala.collection.Map[String,
 
           if (!((minA to maxA) contains args.length)) {
             if (minA == maxA) {
-              Message.error(ctx, s"'$nstr' takes exactly ${minA} arguments: '$nstr($hint)'")
+              cc.error(ctx, s"'$nstr' takes exactly ${minA} arguments: '$nstr($hint)'")
             } else {
-              Message.error(ctx, s"'$nstr' takes between ${minA} and ${maxA} arguments: '$nstr($hint)'")
+              cc.error(ctx, s"'$nstr' takes between ${minA} and ${maxA} arguments: '$nstr($hint)'")
             }
             ErrorExpr(attr)
           } else {
@@ -169,7 +169,7 @@ class ExprVisitor(symtab: Option[Symtab], typedefs: scala.collection.Map[String,
             CallExpr(attr, DottedName(attr, name :: Nil), Nil)
           }
           case _ => {
-            Message.error(ctx, s"Call of unknown function '${names mkString "."}(...)'"); ErrorExpr(attr)
+            cc.error(ctx, s"Call of unknown function '${names mkString "."}(...)'"); ErrorExpr(attr)
           }
         }
       }
@@ -184,7 +184,7 @@ class ExprVisitor(symtab: Option[Symtab], typedefs: scala.collection.Map[String,
     def checkargs(hint: String*)(expr: => Expr) = {
       val expected = hint.length
       if (args.length != expected) {
-        Message.error(ctx, s"'$name' takes exactly ${expected} arguments: '$name(${hint mkString ", "})'")
+        cc.error(ctx, s"'$name' takes exactly ${expected} arguments: '$name(${hint mkString ", "})'")
         ErrorExpr(attr)
       } else {
         expr
@@ -199,7 +199,7 @@ class ExprVisitor(symtab: Option[Symtab], typedefs: scala.collection.Map[String,
         Sxt(attr, args(0), args(1))
       }
       case _ => {
-        Message.error(ctx, s"Unknown Alogic function '$name'")
+        cc.error(ctx, s"Unknown Alogic function '$name'")
         ErrorExpr(attr)
       }
     }

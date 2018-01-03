@@ -14,17 +14,17 @@
 
 package alogic.ast
 
-import alogic.Message
+import alogic.CompilerContext
 
 // Signals have a name, and a scalar type (which carries a width and a signedness)
 case class Signal(name: String, kind: ScalarType) {
-  def declString = {
+  def declString(implicit cc: CompilerContext) = {
     val signedStr = if (kind.signed) "signed " else ""
     val width = kind.widthExpr.simplify
     if (width.isKnown) {
       val w = width.eval
       if (w < 1) {
-        Message.fatal(s"Cannot declare signal with width ${w}")
+        cc.fatal(s"Cannot declare signal with width ${w}")
       } else if (w == 1) {
         s"${signedStr}${name}"
       } else {

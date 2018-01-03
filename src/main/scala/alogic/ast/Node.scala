@@ -34,29 +34,33 @@ object Task {
   def unapply(task: Task) = Some((task.attr, task.name, task.decls))
 }
 
-case class FsmTask(attr: Attr,
-                   name: String,
-                   decls: List[Decl],
-                   fns: List[Function],
-                   fencefn: Option[FenceFunction],
-                   vfns: List[VerilogFunction]) extends Task
-case class StateTask(attr: Attr,
-                     name: String,
-                     decls: List[Decl],
-                     states: List[StateBlock],
-                     fencefn: Option[FenceFunction],
-                     vfns: List[VerilogFunction]) extends Task
-case class VerilogTask(attr: Attr,
-                       name: String,
-                       decls: List[Decl],
-                       vfns: List[VerilogFunction]) extends Task
-case class NetworkTask(attr: Attr,
-                       name: String,
-                       decls: List[Decl],
-                       instantiate: List[Instantiate],
-                       connect: List[Connect],
-                       vfns: List[VerilogFunction],
-                       fsms: List[FsmTask]) extends Task
+case class FsmTask(
+  attr:    Attr,
+  name:    String,
+  decls:   List[Decl],
+  fns:     List[Function],
+  fencefn: Option[FenceFunction],
+  vfns:    List[VerilogFunction]) extends Task
+case class StateTask(
+  attr:    Attr,
+  name:    String,
+  decls:   List[Decl],
+  states:  List[StateBlock],
+  fencefn: Option[FenceFunction],
+  vfns:    List[VerilogFunction]) extends Task
+case class VerilogTask(
+  attr:  Attr,
+  name:  String,
+  decls: List[Decl],
+  vfns:  List[VerilogFunction]) extends Task
+case class NetworkTask(
+  attr:        Attr,
+  name:        String,
+  decls:       List[Decl],
+  instantiate: List[Instantiate],
+  connect:     List[Connect],
+  vfns:        List[VerilogFunction],
+  fsms:        List[FsmTask]) extends Task
 
 ///////////////////////////////////////////////////////////////////////////////
 // Function nodes

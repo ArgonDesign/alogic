@@ -18,10 +18,11 @@ package alogic.ast
 import alogic.Antlr4Conversions._
 import alogic.VScalarVisitor
 import alogic.antlr.VParser._
-import alogic.Message
+import alogic.CompilerContext
 
-class KnownTypeVisitor(symtab: Option[Symtab],
-                       typedefs: scala.collection.Map[String, Type]) extends VScalarVisitor[Type] {
+class KnownTypeVisitor(
+  symtab:   Option[Symtab],
+  typedefs: scala.collection.Map[String, Type])(implicit cc: CompilerContext) extends VScalarVisitor[Type] {
   override def visitBoolType(ctx: BoolTypeContext) = IntType(false, 1)
   override def visitIntType(ctx: IntTypeContext) = IntType(true, ctx.INTTYPE.text.tail.toInt)
   override def visitUintType(ctx: UintTypeContext) = IntType(false, ctx.UINTTYPE.text.tail.toInt)
@@ -36,7 +37,7 @@ class KnownTypeVisitor(symtab: Option[Symtab],
   override def visitIdentifierType(ctx: IdentifierTypeContext) = {
     val s = ctx.IDENTIFIER.text
     typedefs.getOrElse(s, {
-      Message.error(ctx, s"Unknown type '$s'")
+      cc.error(ctx, s"Unknown type '$s'")
       IntType(false, 1)
     })
   }

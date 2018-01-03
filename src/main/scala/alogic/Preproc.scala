@@ -25,7 +25,7 @@ import alogic.antlr.VPreprocParser._
 import scalax.file.Path
 import scala.util.Try
 
-class Preproc {
+class Preproc(implicit cc: CompilerContext) {
 
   // The same header files tend to be included many times, so we use caching of the preprocessing
   // results. The cache is a map
@@ -64,7 +64,7 @@ class Preproc {
         override def visitHashDefine(ctx: HashDefineContext): StrTree = {
           val s = ctx.VIDENTIFIER.text
           if (defines contains s) {
-            Message.warning(ctx.loc, s"Redefined preprocessor identifier '$s'")
+            cc.warning(ctx.loc, s"Redefined preprocessor identifier '$s'")
           }
           defines(s) = ctx.VREST.text.trim
           Str("")
@@ -94,7 +94,7 @@ class Preproc {
                 case Some(0) => Some(true)
                 case Some(_) => Some(false)
                 case None => {
-                  Message.error(
+                  cc.error(
                     ctx,
                     s"#if condition variabe '$ident' must be defined as a single integer,",
                     s"not '$defineValue'")
@@ -102,7 +102,7 @@ class Preproc {
                 }
               }
             } else {
-              Message.error(ctx, s"#if condition variabe '$ident' is not defined")
+              cc.error(ctx, s"#if condition variabe '$ident' is not defined")
               None
             }
           } else {
@@ -137,7 +137,7 @@ class Preproc {
 
           // Find the include file
           val includeSource = includeResovler(source, includeSpec) match {
-            case Left(msgs)          => Message.fatal(ctx, msgs: _*)
+            case Left(msgs)          => cc.fatal(ctx, msgs: _*)
             case Right(resultSource) => resultSource
           }
 
@@ -173,7 +173,7 @@ class Preproc {
       // Create the parser
       val parser = new antlr.VPreprocParser(tokenStream)
       parser.removeErrorListeners()
-      parser.addErrorListener(ParserErrorListener)
+      parser.addErrorListener(new ParserErrorListener)
 
       // Parse the the file
       val parseTree = parser.start()

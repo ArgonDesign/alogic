@@ -66,69 +66,17 @@ object AlogicMain extends App {
 
   val multiThreaded = conf.parallel()
 
-  Message.verbose = conf.verbose()
+  //  Message.verbose = conf.verbose()
 
   val includeSearchPaths = conf.incdir()
 
   val initalDefines = conf.defs.toMap
 
   //////////////////////////////////////////////////////////////////////////////
-  // Compile
+  // High level compilation flow
   //////////////////////////////////////////////////////////////////////////////
 
-  ///println("""python test.py""".!)  Example of how to run python code
-  // .!! gets output
-  // Process("").lines runs in background and provides a Stream[String] of output
-  // Throws exception if non-zero exit code
-
-  go
-
-  if (conf.time.isDefined) {
-    // Benchmark compilation time
-    val n = conf.time()
-    // run 'n' times an collect the runtimes
-    val dt = for (i <- 1 to n) yield {
-      Message.note(s"Benchmarking iteration $i")
-      val t0 = System.nanoTime()
-      go
-      (System.nanoTime() - t0) / 1e9
-    }
-    // Compute mean
-    val mean = dt.sum / n
-    // Compute 95% confidence interval using the normal distribution
-    // This really should be based on the t distribution, but we don't
-    // want a library dependency just for this ...
-    val sdev = dt.map(_ - mean).map(math.pow(_, 2)).sum / (n - 1)
-    val se = sdev / math.sqrt(n)
-    val me = 1.96 * se
-    Message.note("Compilation time: %.3fs +/- %.2f%% (%.3fs, %.3fs)" format (mean, me / mean * 100, mean - me, mean + me))
-  } else if (conf.monitor()) {
-    // Stay alive and wait for source changes
-    implicit val system = ActorSystem("actorSystem")
-    val fileMonitorActor = system.actorOf(MonitorActor(concurrency = 2))
-
-    def callback(path: Any): Unit = {
-      val t0 = System.nanoTime()
-      go
-      Message.note("Compilation time: %.3fs" format ((System.nanoTime() - t0) / 1e9))
-    }
-
-    // TODO: This is probably not safe if multiple paths change simultaneously
-    for (path <- ipaths) {
-      Message.note(s"Waiting for ${path.path} to be modified (press return to quit)...")
-      fileMonitorActor ! RegisterCallback(event = ENTRY_MODIFY, path = Paths get path.path, callback = callback)
-    }
-
-    io.StdIn.readLine()
-    Message.note("Quitting")
-    system.terminate()
-  }
-
-  sys exit (if (Message.fail) 1 else 0)
-
-  def go() {
-
-    implicit val cc = new CompilerContext
+  def go(implicit cc: CompilerContext): Unit = {
 
     case class Item(task: ast.Task, path: Path)
 
@@ -193,8 +141,90 @@ object AlogicMain extends App {
         }
 
         // Write Verilog
-        new MakeVerilog(moduleCatalogue)(task, opath)
+        val makeVerilog = new MakeVerilog(moduleCatalogue)
+        makeVerilog(task, opath)
       }
     }
+  }
+
+  /////////////////////////////////////////////////////////////////////////////
+  // Run compilation at least once
+  /////////////////////////////////////////////////////////////////////////////
+
+  val cc = new CompilerContext
+
+  go(cc)
+
+  for (message <- cc.messages) {
+    println(message)
+  }
+
+  /////////////////////////////////////////////////////////////////////////////
+  // Decide what to do when compilation is finished
+  /////////////////////////////////////////////////////////////////////////////
+
+  if (conf.time.isDefined) {
+    // Benchmark compilation time
+    val n = conf.time()
+    // run 'n' times an collect the runtimes
+    val dt = for (i <- 1 to n) yield {
+      val t0 = System.nanoTime()
+      val lcc = new CompilerContext
+      lcc.note(s"Benchmarking iteration $i")
+      go(lcc)
+      for (message <- lcc.messages) {
+        println(message)
+      }
+      (System.nanoTime() - t0) / 1e9
+    }
+    // Compute mean
+    val mean = dt.sum / n
+    // Compute 95% confidence interval using the normal distribution
+    // This really should be based on the t distribution, but we don't
+    // want a library dependency just for this ...
+    val sdev = dt.map(_ - mean).map(math.pow(_, 2)).sum / (n - 1)
+    val se = sdev / math.sqrt(n)
+    val me = 1.96 * se
+    println("Compilation time: %.3fs +/- %.2f%% (%.3fs, %.3fs)" format (mean, me / mean * 100, mean - me, mean + me))
+
+    sys exit 0
+  } else if (conf.monitor()) {
+    // Stay alive and wait for source changes
+    implicit val system = ActorSystem("actorSystem")
+    val fileMonitorActor = system.actorOf(MonitorActor(concurrency = 2))
+
+    def callback(path: Any): Unit = {
+      val t0 = System.nanoTime()
+      val lcc = new CompilerContext
+      go(lcc)
+      lcc.note("Compilation time: %.3fs" format ((System.nanoTime() - t0) / 1e9))
+      for (message <- lcc.messages) {
+        println(message)
+      }
+    }
+
+    // TODO: This is probably not safe if multiple paths change simultaneously
+    for (path <- ipaths) {
+      println(s"Waiting for ${path.path} to be modified (press return to quit)...")
+      fileMonitorActor ! RegisterCallback(event = ENTRY_MODIFY, path = Paths get path.path, callback = callback)
+    }
+
+    io.StdIn.readLine()
+    println("Quitting")
+    system.terminate()
+
+    sys exit 0
+  } else {
+    // Normal compilation
+
+    // TODO: only this should write output files
+
+    val exitWithError = cc.messages.exists {
+      case _: Fatal => true
+      case _: ICE   => true
+      case _        => false
+    }
+
+    sys exit (if (exitWithError) 1 else 0)
   }
 }

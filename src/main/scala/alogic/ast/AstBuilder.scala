@@ -17,9 +17,9 @@ package alogic.ast
 import scala.collection.immutable.ListMap
 import org.antlr.v4.runtime.ParserRuleContext
 import alogic.Antlr4Conversions._
-import alogic.Message
 import alogic.VScalarVisitor
 import alogic.antlr.VParser._
+import alogic.CompilerContext
 
 // The aim of the AstBuilder stage is:
 //   Build an abstract syntax tree
@@ -32,7 +32,7 @@ import alogic.antlr.VParser._
 ////////////////////////////////////////////////////////////////////////////////
 // Visitors and data structures required when parsing all kinds of source files
 ////////////////////////////////////////////////////////////////////////////////
-class CommonContext(root: ParserRuleContext, initialTypedefs: Map[String, Type]) {
+class CommonBuilder(root: ParserRuleContext, initialTypedefs: Map[String, Type])(implicit val cc: CompilerContext) {
   // Collect type definitions and entityContext
   val (typedefs, entityCtx) = root match {
     case ctx: StartContext     => ExtractTypedefs(ctx, initialTypedefs)
@@ -70,8 +70,8 @@ class CommonContext(root: ParserRuleContext, initialTypedefs: Map[String, Type])
 ////////////////////////////////////////////////////////////////////////////////
 // Builder to handle 'fsm' task definitions
 ////////////////////////////////////////////////////////////////////////////////
-class FsmTaskBuilder(cc: CommonContext) {
-  import cc._
+class FsmTaskBuilder(cb: CommonBuilder) {
+  import cb._
 
   def apply(tree: Fsm_entityContext): FsmTask = {
 
@@ -87,7 +87,7 @@ class FsmTaskBuilder(cc: CommonContext) {
           case (ctrl, comb) => {
             stmts.last match {
               case s: CtrlStmt => ControlBlock(attr, stmts)
-              case s: CombStmt => Message.error(ctx, "A control block must end with a control statement"); ErrorStmt(Attr(ctx))
+              case s: CombStmt => cc.error(ctx, "A control block must end with a control statement"); ErrorStmt(Attr(ctx))
             }
           }
         }
@@ -98,7 +98,7 @@ class FsmTaskBuilder(cc: CommonContext) {
         LookUpDecl(ctx.decl) match {
           case s: DeclVar => DeclarationStmt(attr, s)
           case s: Decl => {
-            Message.error(ctx, "Only variable declarations allowed inside functions"); ErrorStmt(attr)
+            cc.error(ctx, "Only variable declarations allowed inside functions"); ErrorStmt(attr)
           }
         }
       }
@@ -115,7 +115,7 @@ class FsmTaskBuilder(cc: CommonContext) {
           case (t: CombStmt, None)              => CombinatorialIf(attr, cond, t, None)
           case (t: CombStmt, Some(e: CombStmt)) => CombinatorialIf(attr, cond, t, Some(e))
           case _ => {
-            Message.error(ctx, "Both branches of an if must be control statements, or both must be combinatorial statements");
+            cc.error(ctx, "Both branches of an if must be control statements, or both must be combinatorial statements");
             ErrorStmt(attr)
           }
         }
@@ -145,7 +145,7 @@ class FsmTaskBuilder(cc: CommonContext) {
         val defaultCase = DefaultVisitor(ctx.cases).flatten match {
           case Nil      => None
           case d :: Nil => Some(d)
-          case _        => Message.error(ctx, "More than one 'default' case item specified"); None
+          case _        => cc.error(ctx, "More than one 'default' case item specified"); None
         }
 
         val cases = CaseVisitor(ctx.cases).flatten
@@ -162,7 +162,7 @@ class FsmTaskBuilder(cc: CommonContext) {
           case (ctrl, Nil, None)              => ControlCaseStmt(attr, test, ctrl, None)
           case (ctrl, Nil, Some(d: CtrlStmt)) => ControlCaseStmt(attr, test, ctrl, Some(d))
           case _ => {
-            Message.error(ctx, "Either all or none of the case items must be control statements");
+            cc.error(ctx, "Either all or none of the case items must be control statements");
             ErrorStmt(attr)
           }
         }
@@ -174,7 +174,7 @@ class FsmTaskBuilder(cc: CommonContext) {
 
         body.last match {
           case _: CombStmt => {
-            Message.error(ctx, "The body of a 'loop' must end with a control statement"); ErrorStmt(attr)
+            cc.error(ctx, "The body of a 'loop' must end with a control statement"); ErrorStmt(attr)
           }
           case _ => ControlLoop(attr, ControlBlock(attr, body))
         }
@@ -183,17 +183,17 @@ class FsmTaskBuilder(cc: CommonContext) {
       def loopWarnings(cond: Expr, body: List[Stmt]) = {
         if (cond.isKnown) {
           if (cond.eval == 0) {
-            Message.warning(cond, "Condition of loop is always false")
+            cc.warning(cond, "Condition of loop is always false")
           } else {
-            Message.warning(cond, "Condition of loop is always true. Use 'loop' instead.")
+            cc.warning(cond, "Condition of loop is always true. Use 'loop' instead.")
           }
         } else if (cond.isConst) {
-          Message.warning(cond, "Condition of loop is constant.")
+          cc.warning(cond, "Condition of loop is constant.")
         }
 
         body.lastOption foreach {
           _ match {
-            case s: FenceStmt => Message.warning(s, "Redundant 'fence' at end of loop body")
+            case s: FenceStmt => cc.warning(s, "Redundant 'fence' at end of loop body")
             case _            =>
           }
         }
@@ -264,7 +264,7 @@ class FsmTaskBuilder(cc: CommonContext) {
           case x: ControlDo    => x
           case x: ControlFor   => x
           case _ => {
-            Message.error(ctx, "'let' construct must be followed by 'loop', 'while', 'do', 'for', or '{'")
+            cc.error(ctx, "'let' construct must be followed by 'loop', 'while', 'do', 'for', or '{'")
             ErrorStmt(Attr(ctx))
           }
         }
@@ -293,7 +293,7 @@ class FsmTaskBuilder(cc: CommonContext) {
           if (expr.hasSideEffect) {
             ExprStmt(attr, expr)
           } else {
-            Message.error(ctx, "A pure expression in statement position does nothing"); ErrorStmt(attr)
+            cc.error(ctx, "A pure expression in statement position does nothing"); ErrorStmt(attr)
           }
         }
       }
@@ -308,7 +308,7 @@ class FsmTaskBuilder(cc: CommonContext) {
           val body = stmts.last match {
             case _: CtrlStmt => ControlBlock(attr, stmts)
             case _: CombStmt => {
-              Message.error(ctx, "A function body must end with a control statement"); ErrorStmt(attr)
+              cc.error(ctx, "A function body must end with a control statement"); ErrorStmt(attr)
             }
           }
           Function(attr, name, body)
@@ -318,7 +318,7 @@ class FsmTaskBuilder(cc: CommonContext) {
 
           val body = StatementVisitor(ctx.block.stmts) collect {
             case stmt: CombStmt => stmt
-            case stmt: CtrlStmt => Message.error(stmt, "Body of 'fence' function must not contain control statements"); ErrorStmt(attr)
+            case stmt: CtrlStmt => cc.error(stmt, "Body of 'fence' function must not contain control statements"); ErrorStmt(attr)
           }
           FenceFunction(attr, CombinatorialBlock(attr, body))
         }
@@ -333,7 +333,7 @@ class FsmTaskBuilder(cc: CommonContext) {
         val fencefns = contents collect { case x: FenceFunction => x }
         val vfns = contents collect { case x: VerilogFunction => x }
         if (fencefns.length > 1) {
-          Message.error(ctx, s"fsm '$name' has more than 1 fence function defined")
+          cc.error(ctx, s"fsm '$name' has more than 1 fence function defined")
         }
 
         FsmTask(Attr(ctx), name, decls, fns, fencefns.headOption, vfns)
@@ -347,8 +347,8 @@ class FsmTaskBuilder(cc: CommonContext) {
 ////////////////////////////////////////////////////////////////////////////////
 // Builder to handle 'verilog' task definitions
 ////////////////////////////////////////////////////////////////////////////////
-class VerilogTaskBuilder(cc: CommonContext) {
-  import cc._
+class VerilogTaskBuilder(cb: CommonBuilder) {
+  import cb._
 
   def apply(tree: EntityVerilogContext): VerilogTask = {
 
@@ -368,10 +368,10 @@ class VerilogTaskBuilder(cc: CommonContext) {
 ////////////////////////////////////////////////////////////////////////////////
 // Builder to handle 'network' definitions
 ////////////////////////////////////////////////////////////////////////////////
-class NetworkTaskBuilder(cc: CommonContext) {
-  import cc._
+class NetworkTaskBuilder(cb: CommonBuilder) {
+  import cb._
 
-  lazy val fsmTaskBuilder = new FsmTaskBuilder(cc)
+  lazy val fsmTaskBuilder = new FsmTaskBuilder(cb)
 
   def apply(tree: Network_entityContext): NetworkTask = {
 
@@ -423,13 +423,13 @@ class NetworkTaskBuilder(cc: CommonContext) {
 }
 
 object AstBuilder {
-  def apply(root: ParserRuleContext, initialTypedefs: Map[String, Type] = Map[String, Type]()): Task = {
+  def apply(root: ParserRuleContext, initialTypedefs: Map[String, Type] = Map[String, Type]())(implicit cc: CompilerContext): Task = {
 
-    val cc = new CommonContext(root, initialTypedefs)
+    val cb = new CommonBuilder(root, initialTypedefs)
 
-    lazy val fsmTaskBuilder = new FsmTaskBuilder(cc)
-    lazy val verilogTaskBuilder = new VerilogTaskBuilder(cc)
-    lazy val networkTaskBuilder = new NetworkTaskBuilder(cc)
+    lazy val fsmTaskBuilder = new FsmTaskBuilder(cb)
+    lazy val verilogTaskBuilder = new VerilogTaskBuilder(cb)
+    lazy val networkTaskBuilder = new NetworkTaskBuilder(cb)
 
     object RootVisitor extends VScalarVisitor[Task] {
       override def visitEntityFSM(ctx: EntityFSMContext) = fsmTaskBuilder(ctx)
@@ -437,6 +437,6 @@ object AstBuilder {
       override def visitEntityNetwork(ctx: EntityNetworkContext) = networkTaskBuilder(ctx)
     }
 
-    RootVisitor(cc.entityCtx)
+    RootVisitor(cb.entityCtx)
   }
 }

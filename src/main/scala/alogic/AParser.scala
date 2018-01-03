@@ -27,8 +27,6 @@ object AParser {
     includeSearchPaths: List[Path]          = Nil,
     initalDefines:      Map[String, String] = Map())(implicit cc: CompilerContext): Option[ast.Task] = {
 
-    Message.info(s"Parsing ${path.path}")
-
     // First run input file through the preprocessor
     val preprocessed = cc.preproc(Source(path), initalDefines, includeSearchPaths)
 
@@ -42,7 +40,7 @@ object AParser {
 
       val parser = new antlr.VParser(tokenStream)
       parser.removeErrorListeners()
-      parser.addErrorListener(ParserErrorListener)
+      parser.addErrorListener(new ParserErrorListener)
       val paseTree = parser.start()
       if (parser.getNumberOfSyntaxErrors == 0)
         Some(paseTree)
