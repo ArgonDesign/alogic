@@ -3,10 +3,11 @@
 // Copyright (c) 2017 Argon Design Ltd. All rights reserved.
 //
 // Module : Scala Alogic Compiler
-// Author : Peter de Rivaz/Geza Lore
+// Author : Geza Lore
 //
 // DESCRIPTION:
 //
+// A generic functional cache
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
@@ -17,10 +18,10 @@ package alogic
 import scala.collection.mutable
 
 // Generic Cache
+// Client code must define:
+// 1. type 'Tag', which is the unique identifier of cache entries,
+// 2. member function 'index', which maps a Key to a Tag.
 abstract class Cache[K, V] {
-
-  // Register cache in the list of all caches
-  Cache.register(this)
 
   // The type of the keys used to look up cache
   final type Key = K
@@ -38,17 +39,18 @@ abstract class Cache[K, V] {
   private[this] val storage = mutable.Map[Tag, Value]();
 
   // Look up or update cache
-  def apply(key: Key)(construct: => Value): Value = synchronized {
-    storage.getOrElseUpdate(index(key), construct)
+  def apply(key: Key)(construct: => Value): Value = {
+    val idx = index(key)
+    synchronized {
+      storage.getOrElseUpdate(idx, construct)
+    }
   }
-
-  // Clear cache
-  def clear() = storage.clear()
 
 }
 
-// Simple cache where the Tags are the Keys,
-// and the index is the identity function
+// Simple cache where:
+// 1. type 'Tag' is the same as type 'Key',
+// 2. The 'index' function is the identity.
 class SimpleCache[K, V] extends Cache[K, V] {
 
   // Tags are same as the keys
@@ -56,24 +58,5 @@ class SimpleCache[K, V] extends Cache[K, V] {
 
   // The index function is the identity function
   override def index(key: Key): Tag = key
-
-}
-
-// Cache object to keep track of all cache instances for maintenance
-object Cache {
-
-  // Note this is a Map using weak references, so items will
-  // be removed if a key is no longer strongly referenced
-  private val instances = mutable.WeakHashMap[Cache[_, _], Unit]()
-
-  // Register cache instance for tracking
-  private def register(cache: Cache[_, _]) = synchronized {
-    instances(cache) = ()
-  }
-
-  // Clear all caches
-  def clearAll() = synchronized {
-    instances.keys foreach (_.clear)
-  }
 
 }

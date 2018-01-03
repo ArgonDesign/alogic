@@ -25,9 +25,10 @@ import alogic.antlr.VPreprocParser._
 import scalax.file.Path
 import scala.util.Try
 
-object Preproc {
+class Preproc {
 
-  // The Cache maps
+  // The same header files tend to be included many times, so we use caching of the preprocessing
+  // results. The cache is a map
   // from (path, initialDefines)
   // to (text, finalDefines, finalRemaps)
   private object PreprocCache
@@ -40,7 +41,6 @@ object Preproc {
       val (path, initialDefines) = key;
       (path.toRealPath().path, initialDefines)
     }
-
   }
 
   // Private worker to use by recursive includes, returns defines as well
@@ -142,7 +142,7 @@ object Preproc {
           }
 
           // Process the include file in the current context
-          val (text, newDefines) = Preproc.process(includeSource, includeResovler, immutable.Map() ++ defines)
+          val (text, newDefines) = process(includeSource, includeResovler, immutable.Map() ++ defines)
 
           // Add the new #defines from the included file, there is no need
           // to warn for redefinitions here, as we have passed in 'defines'

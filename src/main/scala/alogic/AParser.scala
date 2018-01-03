@@ -22,12 +22,15 @@ import alogic.ast.AstBuilder
 
 object AParser {
 
-  def apply(path: Path, includeSearchPaths: List[Path] = Nil, initalDefines: Map[String, String] = Map()): Option[ast.Task] = {
+  def apply(
+    path:               Path,
+    includeSearchPaths: List[Path]          = Nil,
+    initalDefines:      Map[String, String] = Map())(implicit cc: CompilerContext): Option[ast.Task] = {
 
     Message.info(s"Parsing ${path.path}")
 
-    // First preprocess input file to deal with #define s
-    val preprocessed = Preproc(Source(path), initalDefines, includeSearchPaths)
+    // First run input file through the preprocessor
+    val preprocessed = cc.preproc(Source(path), initalDefines, includeSearchPaths)
 
     // Now parse the file, return None if syntax error
     val parseTree = {

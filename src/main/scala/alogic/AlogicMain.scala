@@ -127,8 +127,8 @@ object AlogicMain extends App {
   sys exit (if (Message.fail) 1 else 0)
 
   def go() {
-    // Clear caches
-    Cache.clearAll()
+
+    implicit val cc = new CompilerContext
 
     case class Item(task: ast.Task, path: Path)
 
