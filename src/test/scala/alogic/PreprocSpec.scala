@@ -17,6 +17,7 @@ package alogic
 
 import org.scalatest.FlatSpec
 import org.scalatest.Matchers
+import scalax.file.Path
 
 class PreprocSpec extends FlatSpec with Matchers {
 
@@ -164,7 +165,7 @@ class PreprocSpec extends FlatSpec with Matchers {
       cc.messages shouldBe empty
     }
 
-    it should "signal error for undefined #if condition" in new Fixture {
+    it should "error for undefined #if condition" in new Fixture {
       preproc(source, emptyDefines, Nil)
 
       cc.messages should have length 1
@@ -177,7 +178,7 @@ class PreprocSpec extends FlatSpec with Matchers {
       message.msg(0) should be { "#if condition variabe 'COND' is not defined" }
     }
 
-    it should "signal error for non-integer #if condition" in new Fixture {
+    it should "error for non-integer #if condition" in new Fixture {
       preproc(source, Map("COND" -> "?"), Nil)
 
       val message = cc.messages(0)
@@ -408,6 +409,52 @@ class PreprocSpec extends FlatSpec with Matchers {
       cc.messages(7).loc.line should be { 4 }
       cc.messages(8).loc.file should endWith { "test.alogic" }
       cc.messages(8).loc.line should be { 5 }
+    }
+
+    it should "fatal for absolute include paths" in new Fixture {
+      val source = Source(
+        "test.alogic",
+        """|#include "/abs.h"
+           |""".stripMargin)
+
+      a[FatalErrorException] should be thrownBy {
+        preproc(source, emptyDefines, Nil)
+      }
+
+      cc.messages should have length 1
+
+      val message = cc.messages(0)
+
+      message shouldBe a[Fatal]
+      message.loc.file should endWith { "test.alogic" }
+      message.loc.line should be { 1 }
+      message.msg(0) should be { "No absolute include paths allowed: \"/abs.h\"" }
+    }
+
+    it should "fatal for unsuccessful path search" in new Fixture {
+      val source = Source(
+        "test.alogic",
+        """|#include "missing.h"
+           |""".stripMargin)
+
+      val includeSearchPaths = List(
+        Path.fromString("/hopefully/nonexistent/path/where/alogic/will/look/for/header"),
+        Path.fromString("/another/hopefully/nonexistent/path/where/alogic/will/look/for/header"))
+
+      a[FatalErrorException] should be thrownBy {
+        preproc(source, emptyDefines, includeSearchPaths)
+      }
+
+      cc.messages should have length 1
+
+      val message = cc.messages(0)
+
+      message shouldBe a[Fatal]
+      message.loc.file should endWith { "test.alogic" }
+      message.loc.line should be { 1 }
+      message.msg(0) should be { "Cannot find include file \"missing.h\". Looked in:" }
+      message.msg(1) should be { includeSearchPaths(0).path }
+      message.msg(2) should be { includeSearchPaths(1).path }
     }
   }
 

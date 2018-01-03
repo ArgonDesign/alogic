@@ -222,7 +222,7 @@ object AlogicMain extends App {
   } else {
     // Normal compilation
 
-    // TODO: only this should write output files
+    // TODO: only this should write output files, and only if there are no errors
 
     val exitWithError = cc.messages.exists {
       case _: Fatal => true

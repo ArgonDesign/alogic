@@ -225,8 +225,9 @@ class Preproc(implicit cc: CompilerContext) {
         // Look for the file
         searchPaths map (_ / includePath) find (_.exists) match {
           case Some(path) => Right(Source(path))
-          case None => Left(s"""Cannot find include file "$includeSpec". Looked in:""" ::
-            (searchPaths map (path => s"""  "${path.path}"""")))
+          case None       => {
+            Left(s"""Cannot find include file "$includeSpec". Looked in:""" :: (searchPaths map (_.path)))
+          }
         }
       }
     }
