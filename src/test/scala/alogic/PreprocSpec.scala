@@ -32,53 +32,105 @@ class PreprocSpec extends FlatSpec with Matchers {
   /////////////////////////////////////////////////////////////////////////////
 
   "Preproc" should "not change plain text" in new Fixture {
-    val text = """|plain text should
-                  |be unchanged""".stripMargin
+    val source = Source(
+      "test.alogic",
+      """|plain text should
+         |be unchanged""".stripMargin)
 
-    val result = preproc(Source("test.alogic", text), emptyDefines, Nil)
+    preproc(source, emptyDefines, Nil) should be {
+      """|plain text should
+         |be unchanged""".stripMargin
+    }
 
-    result should be("""|plain text should
-                        |be unchanged""".stripMargin)
+    cc.messages shouldBe empty
   }
 
   it should "not affect comments by default" in new Fixture {
-    val text = """|// comments should
-                  |/* be unchanged*/""".stripMargin
+    val source = Source(
+      "test.alogic",
+      """|// comments should
+         |/* be unchanged*/""".stripMargin)
 
-    val result = preproc(Source("test.alogic", text), emptyDefines, Nil)
+    preproc(source, emptyDefines, Nil) should be {
+      """|// comments should
+         |/* be unchanged*/""".stripMargin
+    }
 
-    result should be("""|// comments should
-                        |/* be unchanged*/""".stripMargin)
+    cc.messages shouldBe empty
   }
 
   /////////////////////////////////////////////////////////////////////////////
-  // Macro replacement
+  // #define/#def
   /////////////////////////////////////////////////////////////////////////////
 
   it should "replace macro identifiers with definitions" in new Fixture {
-    val text = """|#define plain macro
-                  |#def unchanged changed
-                  |plain text should
-                  |be unchanged""".stripMargin
+    val source = Source(
+      "test.alogic",
+      """|#define plain macro
+         |#def unchanged changed
+         |plain text should
+         |be unchanged""".stripMargin)
 
-    val result = preproc(Source("test.alogic", text), emptyDefines, Nil)
+    preproc(source, emptyDefines, Nil) should be {
+      """|
+         |
+         |macro text should
+         |be changed""".stripMargin
+    }
 
-    result should be("""|
-                        |
-                        |macro text should
-                        |be changed""".stripMargin)
+    cc.messages shouldBe empty
   }
 
   it should "honour initial defines" in new Fixture {
-    val text = """|plain text should
-                  |be unchanged""".stripMargin
+    val source = Source(
+      "test.alogic",
+      """|plain text should
+         |be unchanged""".stripMargin)
 
     val initialDefines = Map("plain" -> "not so plain", "unchanged" -> "changed")
 
-    val result = preproc(Source("test.alogic", text), initialDefines, Nil)
+    preproc(source, initialDefines, Nil) should be {
+      """|not so plain text should
+         |be changed""".stripMargin
+    }
 
-    result should be("""|not so plain text should
-                        |be changed""".stripMargin)
+    cc.messages shouldBe empty
+  }
+
+  it should "warn for redefinition of previos #define" in new Fixture {
+    val source = Source(
+      "test.alogic",
+      """|#define foo first
+         |
+         |#define foo again""".stripMargin)
+
+    preproc(source, emptyDefines, Nil)
+
+    cc.messages should have length 1
+
+    val message = cc.messages(0)
+
+    message shouldBe a[Warning]
+    message.loc.file should endWith { "test.alogic" }
+    message.loc.line should be { 3 }
+    message.msg(0) should be { "Redefined preprocessor identifier 'foo'" }
+  }
+
+  it should "warn for redefinition of initial definition" in new Fixture {
+    val source = Source(
+      "test.alogic",
+      """|#define foo maybe first""".stripMargin)
+
+    preproc(source, Map("foo" -> "real first"), Nil)
+
+    cc.messages should have length 1
+
+    val message = cc.messages(0)
+
+    message shouldBe a[Warning]
+    message.loc.file should endWith { "test.alogic" }
+    message.loc.line should be { 1 }
+    message.msg(0) should be { "Redefined preprocessor identifier 'foo'" }
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -98,6 +150,8 @@ class PreprocSpec extends FlatSpec with Matchers {
            |  Yay!!
            |""".stripMargin
       }
+
+      cc.messages shouldBe empty
     }
 
     it should "handle false #if without #else" in new Fixture {
@@ -106,6 +160,33 @@ class PreprocSpec extends FlatSpec with Matchers {
            |
            |""".stripMargin
       }
+
+      cc.messages shouldBe empty
+    }
+
+    it should "signal error for undefined #if condition" in new Fixture {
+      preproc(source, emptyDefines, Nil)
+
+      cc.messages should have length 1
+
+      val message = cc.messages(0)
+
+      message shouldBe an[Error]
+      message.loc.file should endWith { "test.alogic" }
+      message.loc.line should be { 1 }
+      message.msg(0) should be { "#if condition variabe 'COND' is not defined" }
+    }
+
+    it should "signal error for non-integer #if condition" in new Fixture {
+      preproc(source, Map("COND" -> "?"), Nil)
+
+      val message = cc.messages(0)
+
+      message shouldBe an[Error]
+      message.loc.file should endWith { "test.alogic" }
+      message.loc.line should be { 1 }
+      message.msg(0) should be { "#if condition variabe 'COND' must be defined as a single integer," }
+      message.msg(1) should be { "not '?'" }
     }
   }
 
@@ -126,6 +207,8 @@ class PreprocSpec extends FlatSpec with Matchers {
            |  Yay!!
            |""".stripMargin
       }
+
+      cc.messages shouldBe empty
     }
 
     it should "handle false #ifdef without #else" in new Fixture {
@@ -134,6 +217,8 @@ class PreprocSpec extends FlatSpec with Matchers {
            |
            |""".stripMargin
       }
+
+      cc.messages shouldBe empty
     }
   }
 
@@ -158,6 +243,8 @@ class PreprocSpec extends FlatSpec with Matchers {
            |
            |""".stripMargin
       }
+
+      cc.messages shouldBe empty
     }
 
     it should "handle false #if with #else" in new Fixture {
@@ -168,6 +255,8 @@ class PreprocSpec extends FlatSpec with Matchers {
            |  Boo!
            |""".stripMargin
       }
+
+      cc.messages shouldBe empty
     }
   }
 
@@ -192,6 +281,8 @@ class PreprocSpec extends FlatSpec with Matchers {
            |
            |""".stripMargin
       }
+
+      cc.messages shouldBe empty
     }
 
     it should "handle false #ifdef with #else" in new Fixture {
@@ -202,6 +293,8 @@ class PreprocSpec extends FlatSpec with Matchers {
            |  Boo!
            |""".stripMargin
       }
+
+      cc.messages shouldBe empty
     }
   }
 
@@ -219,8 +312,17 @@ class PreprocSpec extends FlatSpec with Matchers {
                                            |#include "bar.h"
                                            |... and again
                                            |""".stripMargin)
-        case "bar.h" => Source("foo.h", """|--This is
+        case "bar.h" => Source("bar.h", """|--This is
                                            |--from bar.h""".stripMargin)
+        case "def1.h" => Source("def1.h", """|
+                                             |#define a def1
+                                             |#include "def2.h"
+                                             |#define b def1
+                                             |#include "def2.h"
+                                             |#define a def1
+                                             |""".stripMargin)
+        case "def2.h" => Source("def2.h", """|#define a def2
+                                             |#define b def2""".stripMargin)
       }
       Right(result)
     }
@@ -242,32 +344,70 @@ class PreprocSpec extends FlatSpec with Matchers {
            |
            |Post""".stripMargin
       }
+
+      cc.messages shouldBe empty
     }
 
     it should "handle recursive #include" in new Fixture {
       val source = Source(
         "test.alogic",
         """|Pre
-           |
-           |#include "foo.h"
-           |
-           |Post""".stripMargin)
+               |
+               |#include "foo.h"
+               |
+               |Post""".stripMargin)
 
       preproc(source, emptyDefines, includeResolver(_, _)) should be {
         """|Pre
-           |
-           |This is
-           |from foo.h
-           |--This is
-           |--from bar.h
-           |foo.h again ...
-           |--This is
-           |--from bar.h
-           |... and again
-           |
-           |
-           |Post""".stripMargin
+               |
+               |This is
+               |from foo.h
+               |--This is
+               |--from bar.h
+               |foo.h again ...
+               |--This is
+               |--from bar.h
+               |... and again
+               |
+               |
+               |Post""".stripMargin
       }
+
+      cc.messages shouldBe empty
+    }
+
+    it should "remap line numbers after resolving #include" in new Fixture {
+      val source = Source(
+        "test.alogic",
+        """|#define a root
+           |#define b root
+           |#include "def1.h"
+           |#define a root
+           |#define b root
+           |""".stripMargin)
+
+      preproc(source, emptyDefines, includeResolver(_, _)) should be { "\n" * 13 }
+
+      cc.messages should have length 9
+
+      cc.messages(0).loc.file should endWith { "def1.h" }
+      cc.messages(0).loc.line should be { 2 }
+      cc.messages(1).loc.file should endWith { "def2.h" }
+      cc.messages(1).loc.line should be { 1 }
+      cc.messages(2).loc.file should endWith { "def2.h" }
+      cc.messages(2).loc.line should be { 2 }
+      cc.messages(3).loc.file should endWith { "def1.h" }
+      cc.messages(3).loc.line should be { 4 }
+      cc.messages(4).loc.file should endWith { "def2.h" }
+      cc.messages(4).loc.line should be { 1 }
+      cc.messages(5).loc.file should endWith { "def2.h" }
+      cc.messages(5).loc.line should be { 2 }
+      cc.messages(6).loc.file should endWith { "def1.h" }
+      cc.messages(6).loc.line should be { 6 }
+      cc.messages(7).loc.file should endWith { "test.alogic" }
+      cc.messages(7).loc.line should be { 4 }
+      cc.messages(8).loc.file should endWith { "test.alogic" }
+      cc.messages(8).loc.line should be { 5 }
     }
   }
 
@@ -282,11 +422,14 @@ class PreprocSpec extends FlatSpec with Matchers {
         """|#   if COND
            |  Yay!!
            |#    endif""".stripMargin)
+
       preproc(source, Map("COND" -> "1"), Nil) should be {
         """|
            |  Yay!!
            |""".stripMargin
       }
+
+      cc.messages shouldBe empty
     }
 
     it should "handle false indented #if without #else" in new Fixture {
@@ -295,11 +438,14 @@ class PreprocSpec extends FlatSpec with Matchers {
         """|#   if COND
            |  Yay!!
            |#    endif""".stripMargin)
+
       preproc(source, Map("COND" -> "0"), Nil) should be {
         """|
            |
            |""".stripMargin
       }
+
+      cc.messages shouldBe empty
     }
   }
 

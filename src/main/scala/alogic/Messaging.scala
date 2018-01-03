@@ -27,6 +27,11 @@ sealed abstract trait Message {
   val cat: String
   val msg: Seq[String]
 
+  lazy val loc = lop match {
+    case Some(l) => l
+    case None    => unreachable
+  }
+
   override def toString = {
     val prefix = lop match {
       case Some(loc) => s"${loc}: ${cat}: "
