@@ -16,6 +16,6 @@
 package object alogic {
   def unreachable: Nothing = {
     println(ICE(None, Seq("unreachable")))
-    throw InternalCompilerErrorException
+    throw new InternalCompilerErrorException
   }
 }

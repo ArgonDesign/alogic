@@ -81,8 +81,8 @@ case class ICE(lop: Option[Loc], _msg: Seq[String]) extends Message {
   val msg = _msg ++ Seq("Please file a bug report")
 }
 
-object FatalErrorException extends Exception
-object InternalCompilerErrorException extends RuntimeException("INTERNAL COMPILER ERROR")
+class FatalErrorException extends Exception
+class InternalCompilerErrorException extends RuntimeException("INTERNAL COMPILER ERROR")
 
 trait Messaging { self: CompilerContext =>
 
@@ -104,12 +104,12 @@ trait Messaging { self: CompilerContext =>
 
   def fatal(msg: String*): Nothing = {
     messages append Fatal(None, msg)
-    throw FatalErrorException
+    throw new FatalErrorException
   }
 
   def ice(msg: String*): Nothing = {
     messages append ICE(None, msg)
-    throw InternalCompilerErrorException
+    throw new InternalCompilerErrorException
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -126,12 +126,12 @@ trait Messaging { self: CompilerContext =>
 
   def fatal(loc: Loc, msg: String*): Nothing = {
     messages append Fatal(Some(loc), msg)
-    throw FatalErrorException
+    throw new FatalErrorException
   }
 
   def ice(loc: Loc, msg: String*): Nothing = {
     messages append ICE(Some(loc), msg)
-    throw InternalCompilerErrorException
+    throw new InternalCompilerErrorException
   }
 
   //////////////////////////////////////////////////////////////////////////////

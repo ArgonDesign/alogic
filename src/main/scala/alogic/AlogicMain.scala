@@ -153,10 +153,15 @@ object AlogicMain extends App {
 
   val cc = new CompilerContext
 
-  go(cc)
-
-  for (message <- cc.messages) {
-    println(message)
+  try {
+    go(cc)
+  } catch {
+    case e: InternalCompilerErrorException => throw e
+    case _: FatalErrorException            => /* Swallow */
+  } finally {
+    for (message <- cc.messages) {
+      println(message)
+    }
   }
 
   /////////////////////////////////////////////////////////////////////////////
