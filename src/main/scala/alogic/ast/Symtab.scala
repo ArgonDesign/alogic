@@ -18,10 +18,9 @@ import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.RuleContext
 import alogic.Antlr4Conversions._
 import alogic.antlr.VParser._
-import alogic.Loc
-import alogic.Message
 import alogic.VScalarVisitor
 import alogic.CompilerContext
+import scala.util.control.Breaks
 
 // This class constructs the lexical scopes of the provided parse tree.
 // We use standard mutable.Map instances with the 'withDefault' extension
@@ -76,12 +75,12 @@ class Symtab(
     if (scope contains name) {
       val Some(Item(_, pctx)) = scope(name)
       cc.error(ctx, s"Multiple declarations of name '$name'",
-          s"... previous Decl at: ${pctx.loc}")
+        s"... previous Decl at: ${pctx.loc}")
     } else {
       scope(name) match {
         case Some(Item(_, pctx)) => {
-          cc.warning(ctx, s"Decl of '$name' hides previous Decl of same name at ...", 
-              s"... ${pctx.loc}")
+          cc.warning(ctx, s"Decl of '$name' hides previous Decl of same name at ...",
+            s"... ${pctx.loc}")
         }
         case None => ()
       }
@@ -292,27 +291,53 @@ class Symtab(
 
   // Parse initialiser expressions in the context of new names
   private[this] val exprVisitor = new ExprVisitor(Some(self), typedefs)
-  for (nameMap <- scopes.values; (name, item) <- nameMap) {
-    item match {
-      case Some(Item(Left(decl), ctx)) => {
-        val newDecl = decl match {
-          case d @ DeclVar(_, _, Some(init)) => {
-            Some(d.copy(init = Some(exprVisitor(ctx.asInstanceOf[DeclVarInitContext].expr))))
+
+  // There is some race here so we iterate while we still have error expressions left ...
+  // ... that's a prime example of mutable state for you ...
+  // ... embarrassing ...
+  // ... TODO: re-write
+  private[this] def bust: Boolean = scopes.values flatMap { _.values } exists {
+    case Some(Item(Left(DeclVar(_, _, Some(ErrorExpr(_)))), _)) => true
+    case Some(Item(Left(DeclParam(_, _, ErrorExpr(_))), _)) => true
+    case Some(Item(Left(DeclConst(_, _, ErrorExpr(_))), _)) => true
+    case _ => false
+  }
+
+  // Invoking the unholy construct
+  private[this] val breaks = new Breaks
+  import breaks.{ break, breakable }
+
+  breakable {
+    // Try no more than a 100 times ...
+    for (_ <- 0 to 100) {
+      for (nameMap <- scopes.values; (name, item) <- nameMap) {
+        item match {
+          case Some(Item(Left(decl), ctx)) => {
+            val newDecl = decl match {
+              case d @ DeclVar(_, _, Some(_)) => {
+                Some(d.copy(init = Some(exprVisitor(ctx.asInstanceOf[DeclVarInitContext].expr))))
+              }
+              case d @ DeclParam(_, _, _) => {
+                Some(d.copy(init = exprVisitor(ctx.asInstanceOf[TaskDeclParamContext].expr)))
+              }
+              case d @ DeclConst(_, _, _) => {
+                Some(d.copy(init = exprVisitor(ctx.asInstanceOf[TaskDeclConstContext].expr)))
+              }
+              case _ => None
+            }
+            if (newDecl.isDefined) {
+              nameMap(name) = Some(Item(Left(newDecl.get), ctx))
+            }
           }
-          case d @ DeclParam(_, _, init) => {
-            Some(d.copy(init = exprVisitor(ctx.asInstanceOf[TaskDeclParamContext].expr)))
-          }
-          case d @ DeclConst(_, _, init) => {
-            Some(d.copy(init = exprVisitor(ctx.asInstanceOf[TaskDeclConstContext].expr)))
-          }
-          case _ => None
-        }
-        if (newDecl.isDefined) {
-          nameMap(name) = Some(Item(Left(newDecl.get), ctx))
+          case Some(Item(Right(decl), loc)) => ()
+          case None                         =>
         }
       }
-      case Some(Item(Right(decl), loc)) => ()
-      case None                         =>
+
+      // stop if we got it right
+      if (!bust) {
+        break()
+      }
     }
   }
 

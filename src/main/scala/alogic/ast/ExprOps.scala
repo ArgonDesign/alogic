@@ -338,7 +338,7 @@ trait ExprOps { this: Expr =>
     case _: ExprArrIndex                   => ???
     case _: ExprVecIndex                   => ???
     case _: Literal                        => ???
-    case _: ErrorExpr                      => "/*Error expression*/"
+    case _: ErrorExpr                      => s"/* Error expression from ${this.loc} */"
   }
 
   def kind: Option[Type] = this match {
