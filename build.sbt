@@ -71,6 +71,8 @@ antlr4GenVisitor in Antlr4 := true
 
 enablePlugins(JavaAppPackaging)
 
+stage := (stage dependsOn (test in Test)).value
+
 // Prepend '--' to the command line arguments in the wrapper script.
 // This in fact causes the wrapper script to not consume any arguments,
 // in particular -D options
