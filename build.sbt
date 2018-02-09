@@ -28,7 +28,13 @@ version := "1"
 
 scalaVersion := "2.12.4"
 
-scalacOptions ++= Seq("-deprecation", "-feature", "-Xlint:_")
+scalacOptions ++= Seq("-deprecation",
+                      "-feature",
+                      "-explaintypes",
+                      "-unchecked",
+                      "-Xlint:_",
+                      "-Xfatal-warnings",
+                      "-Xstrict-inference")
 
 ////////////////////////////////////////////////////////////////////////////////
 // Library dependencies
