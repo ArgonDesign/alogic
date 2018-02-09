@@ -50,5 +50,5 @@ VIDENTIFIER: SIMPLEID -> Mode(DMODE);
 
 mode DMODE;
 
-VREST: ~[\r\n(//)(/*)]+ -> popMode;
+VREST: ~[\r\n/*()]+ -> popMode;
 
