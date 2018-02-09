@@ -13,7 +13,7 @@
 // Alogic compiler entry point
 ////////////////////////////////////////////////////////////////////////////////
 
-package alogic
+package com.argondesign.alogic
 
 object Main extends App {
 

@@ -200,7 +200,7 @@
 
  <check enabled="true" class="org.scalastyle.scalariform.UnderscoreImportChecker" level="error">
   <parameters>
-   <parameter name="ignoreRegex">alogic\.ast\._</parameter>
+   <parameter name="ignoreRegex">com\.argondesign\.alogic\.ast\._</parameter>
   </parameters>
  </check>
 

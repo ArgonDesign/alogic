@@ -65,7 +65,7 @@ enablePlugins(Antlr4Plugin)
 
 antlr4Version in Antlr4 := "4.7.1"
 
-antlr4PackageName in Antlr4 := Some("alogic.antlr")
+antlr4PackageName in Antlr4 := Some("com.argondesign.alogic.antlr")
 
 antlr4GenListener in Antlr4 := false
 
