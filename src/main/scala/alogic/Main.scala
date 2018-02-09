@@ -2,26 +2,28 @@
 // Argon Design Ltd. Project P8009 Alogic
 // Copyright (c) 2017 Argon Design Ltd. All rights reserved.
 //
-// Module : Scala Alogic Compiler
-// Author : Peter de Rivaz/Geza Lore
+// This file is covered by the BSD (with attribution) license.
+// See the LICENSE file for the precise wording of the license.
+//
+// Module: Alogic compiler
+// Author: Peter de Rivaz/Geza Lore
 //
 // DESCRIPTION:
 //
 // Alogic compiler entry point
-//
-// This file is covered by the BSD (with attribution) license.
-// See the LICENSE file for the precise wording of the license.
 ////////////////////////////////////////////////////////////////////////////////
 
 package alogic
 
 object Main extends App {
 
-  //////////////////////////////////////////////////////////////////////////////
-  // Parse arguments
-  //////////////////////////////////////////////////////////////////////////////
+  println("Hello")
 
-  //  val conf = new CLIConf(args)
+  //  //////////////////////////////////////////////////////////////////////////////
+  //  // Parse arguments
+  //  //////////////////////////////////////////////////////////////////////////////
+  //
+  //  val cnnf = new CLIConf(args)
   //
   //  // Note that the CLI argument validator checks that the input paths
   //  // and srcdir are consistent, so we can assume they are in the following.
@@ -181,7 +183,8 @@ object Main extends App {
   //    val sdev = dt.map(_ - mean).map(math.pow(_, 2)).sum / (n - 1)
   //    val se = sdev / math.sqrt(n)
   //    val me = 1.96 * se
-  //    println("Compilation time: %.3fs +/- %.2f%% (%.3fs, %.3fs)" format (mean, me / mean * 100, mean - me, mean + me))
+  //    println("Compilation time: %.3fs +/- %.2f%% (%.3fs, %.3fs)"
+  //      format (mean, me / mean * 100, mean - me, mean + me))
   //
   //    sys exit 0
   //  } else if (conf.monitor()) {
@@ -202,7 +205,7 @@ object Main extends App {
   //    // TODO: This is probably not safe if multiple paths change simultaneously
   //    for (path <- ipaths) {
   //      println(s"Waiting for ${path.path} to be modified (press return to quit)...")
-  //      fileMonitorActor ! RegisterCallback(event = ENTRY_MODIFY, path = Paths get path.path, callback = callback)
+  //      fileMonitorActor ! RegisterCallback(event    = ENTRY_MODIFY, path = Paths get path.path, callback = callback)
   //    }
   //
   //    io.StdIn.readLine()
