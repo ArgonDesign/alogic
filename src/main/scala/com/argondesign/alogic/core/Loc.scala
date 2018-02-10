@@ -1,23 +1,24 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2017 Argon Design Ltd. All rights reserved.
-//
-// Module : Scala Alogic Compiler
-// Author : Peter de Rivaz/Geza Lore
-//
-// DESCRIPTION:
-//
+// Copyright (c) 2017-2018 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
+//
+// Module: Alogic Compiler
+// Author: Geza Lore
+//
+// DESCRIPTION:
+//
+// Source location handling
 ////////////////////////////////////////////////////////////////////////////////
 
-package alogic
+package com.argondesign.alogic.core
 
-import scala.collection.concurrent.TrieMap
+import java.io.File
 
-import scalax.file.Path
 import scala.annotation.tailrec
+import scala.collection.concurrent.TrieMap
 
 case class Loc(file: String, line: Int) {
   override def toString = s"${file}:${line}"
@@ -25,14 +26,16 @@ case class Loc(file: String, line: Int) {
 
 trait LocationRemapping { self: CompilerContext =>
 
+  // Canonicalise file names so equivalent paths map to the same string
+  private[this] def canon(file: File): String = file.getCanonicalFile.toString
+
   private[this] type LineMap = TrieMap[Range, String]
 
   // Global object and hence accessed from multiple threads
   private[this] val locMap = TrieMap[String, LineMap]()
 
   // Construct Loc instance, applying remapping
-  def loc(path: Path, line: Int): Loc = {
-
+  def loc(file: File, line: Int): Loc = {
     // Map modified location to canonical source location
     @tailrec def loop(file: String, line: Int): (String, Int) = {
       if (!(locMap contains file)) {
@@ -56,21 +59,17 @@ trait LocationRemapping { self: CompilerContext =>
       }
     }
 
-    val (f, l) = loop(canon(path), line)
+    val (f, l) = loop(canon(file), line)
 
-    new Loc(f, l)
+    Loc(f, l)
   }
 
-  def loc(path: String, line: Int): Loc = loc(Path.fromString(path), line)
+  def loc(file: String, line: Int): Loc = loc(new File(file), line)
 
   // Adjust map so that lines form 'file' that are in 'range'
   // will be printed as belonging to file 'source'
-  def remap(path: Path, range: Range, source: Path) = {
-    val lineMap = locMap.getOrElseUpdate(canon(path), TrieMap[Range, String]())
+  def remap(file: File, range: Range, source: File): Unit = {
+    val lineMap = locMap.getOrElseUpdate(canon(file), new LineMap)
     lineMap(range) = canon(source)
   }
-
-  // Canonicalise file names so equivalent paths map to the same string
-  private[this] def canon(path: Path): String = path.toRealPath().path
-
 }

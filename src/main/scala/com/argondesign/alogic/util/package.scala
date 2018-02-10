@@ -10,13 +10,16 @@
 //
 // DESCRIPTION:
 //
-// The CompilerContext holds all mutable state of the compiler.
-// Throughout the compiler, the CompilerContext is held in a variable called
-// 'cc', which is often passed as an implicit parameter.
+// Very broadly used utility functions
 ////////////////////////////////////////////////////////////////////////////////
 
-package com.argondesign.alogic.core
+package com.argondesign.alogic
 
-class CompilerContext
-  extends Messaging
-  with LocationRemapping
+package object util {
+  def unreachable: Nothing = {
+    import com.argondesign.alogic.core.ICE
+    import com.argondesign.alogic.core.InternalCompilerErrorException
+    println(ICE(Seq("unreachable")))
+    throw new InternalCompilerErrorException(None)
+  }
+}

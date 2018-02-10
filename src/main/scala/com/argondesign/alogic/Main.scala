@@ -48,7 +48,7 @@ object Main extends App {
     val topFileOpt = FindFile(toplevel + ".alogic", moduleSeachDirs, maxDepth = 1)
 
     if (topFileOpt.isEmpty) {
-      cc.fatal(s"Cannot find top level module '${toplevel}', looked in:" :: moduleSeachDirs map { _.toString }: _*)
+      cc.fatal(s"Cannot find top level module '${toplevel}'. Looked in:" :: moduleSeachDirs map { _.toString }: _*)
     }
 
   } catch {
@@ -56,8 +56,8 @@ object Main extends App {
       cc.emitMessages()
       sys exit 1
     }
-    case exception @ InternalCompilerErrorException(cc) => {
-      cc.emitMessages()
+    case exception @ InternalCompilerErrorException(ccOpt) => {
+      ccOpt map { _.emitMessages() }
       throw exception
     }
   }

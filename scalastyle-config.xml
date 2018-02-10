@@ -105,7 +105,7 @@
 
  <check enabled="true" class="org.scalastyle.scalariform.EnsureSingleSpaceAfterTokenChecker" level="error">
   <parameters>
-   <parameter name="tokens">COLON, SEMI, COMMA, IF, ELSE, FOR, DO, WHILE, TRY, CATCH, FINALLY, EQUALS, LARROW</parameter>
+   <parameter name="tokens">SEMI, COMMA, IF, ELSE, FOR, DO, WHILE, TRY, CATCH, FINALLY, EQUALS, LARROW</parameter>
   </parameters>
  </check>
 
@@ -254,9 +254,10 @@
 
  <check enabled="true" class="org.scalastyle.scalariform.ImportOrderChecker" level="error">
   <parameters>
-   <parameter name="groups">java,scala,others</parameter>
+   <parameter name="groups">java,scala,alogic,others</parameter>
    <parameter name="group.java">javax?\..+</parameter>
    <parameter name="group.scala">scala\..+</parameter>
+   <parameter name="group.alogic">com.argondesign.alogic\..+</parameter>
    <parameter name="group.others">.+</parameter>
   </parameters>
  </check>
@@ -270,14 +271,14 @@
  <check enabled="true" class="org.scalastyle.scalariform.MultipleStringLiteralsChecker" level="error">
   <parameters>
    <parameter name="allowed">1</parameter>
-   <parameter name="ignoreRegex">^\&quot;(\\n)?\&quot;$</parameter>
+   <parameter name="ignoreRegex"><![CDATA[^(""|"\\n"|'|"|'")$]]></parameter>
   </parameters>
  </check>
 
- <check enabled="true" class="org.scalastyle.scalariform.NamedArgumentChecker" level="error">
+ <check enabled="false" class="org.scalastyle.scalariform.NamedArgumentChecker" level="error">
   <parameters>
    <parameter name="checkString">false</parameter>
-   <parameter name="ignoreMethod">^set[A-Z].*$</parameter>
+   <parameter name="ignoreMethod">^(?:set[A-Z].*|Some|Left|Right)$</parameter>
   </parameters>
  </check>
 
