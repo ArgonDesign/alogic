@@ -33,8 +33,7 @@ scalacOptions ++= Seq("-deprecation",
                       "-explaintypes",
                       "-unchecked",
                       "-Xlint:_",
-                      "-Xfatal-warnings",
-                      "-Xstrict-inference")
+                      "-Xfatal-warnings")
 
 ////////////////////////////////////////////////////////////////////////////////
 // Library dependencies
