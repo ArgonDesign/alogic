@@ -15,10 +15,22 @@
 
 package com.argondesign.alogic
 
+import com.argondesign.alogic.core.FatalErrorException
+import com.argondesign.alogic.core.InternalCompilerErrorException
+
 object Main extends App {
 
-  val cliConf = new CLIConf(args)
+  try {
 
+    val cliConf = new CLIConf(args)
+
+  } catch {
+    case FatalErrorException(cc) => cc.emitMessages()
+    case exception @ InternalCompilerErrorException(cc) => {
+      cc.emitMessages()
+      throw exception
+    }
+  }
   //  //////////////////////////////////////////////////////////////////////////////
   //  // Parse arguments
   //  //////////////////////////////////////////////////////////////////////////////
