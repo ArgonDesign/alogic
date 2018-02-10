@@ -15,6 +15,9 @@
 
 package com.argondesign.alogic
 
+import java.io.File
+
+import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FatalErrorException
 import com.argondesign.alogic.core.InternalCompilerErrorException
 
@@ -22,18 +25,43 @@ object Main extends App {
 
   try {
 
+    //////////////////////////////////////////////////////////////////////////////
+    // Create the compiler context
+    //////////////////////////////////////////////////////////////////////////////
+
+    val cc = new CompilerContext
+
+    //////////////////////////////////////////////////////////////////////////////
+    // Parse arguments
+    //////////////////////////////////////////////////////////////////////////////
+
     val cliConf = new CLIConf(args)
 
+    val toplevel = cliConf.toplevel()
+    //    val incDirs = cliConf.incdir()
+    val yDirs = cliConf.ydir()
+    //    val outDir = cliConf.odir()
+    //    val initalDefines = cliConf.defs.toMap
+
+    val moduleSeachDirs = (new File(".")).getCanonicalFile() :: yDirs
+
+    val topFileOpt = FindFile(toplevel + ".alogic", moduleSeachDirs, maxDepth = 1)
+
+    if (topFileOpt.isEmpty) {
+      cc.fatal(s"Cannot find top level module '${toplevel}', looked in:" :: moduleSeachDirs map { _.toString }: _*)
+    }
+
   } catch {
-    case FatalErrorException(cc) => cc.emitMessages()
+    case FatalErrorException(cc) => {
+      cc.emitMessages()
+      sys exit 1
+    }
     case exception @ InternalCompilerErrorException(cc) => {
       cc.emitMessages()
       throw exception
     }
   }
-  //  //////////////////////////////////////////////////////////////////////////////
-  //  // Parse arguments
-  //  //////////////////////////////////////////////////////////////////////////////
+
   //
   //  val cnnf = new CLIConf(args)
   //

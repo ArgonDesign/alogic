@@ -63,7 +63,7 @@ case class InternalCompilerErrorException(cc: CompilerContext) extends RuntimeEx
 trait Messaging { self: CompilerContext =>
 
   // buffer to store messages without source location information
-  val globalMessages = mutable.ListBuffer[Message]()
+  private val globalMessages = mutable.ListBuffer[Message]()
 
   //////////////////////////////////////////////////////////////////////////////
   // Versions without source location

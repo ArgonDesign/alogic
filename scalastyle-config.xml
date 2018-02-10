@@ -75,8 +75,8 @@
  <check enabled="true" class="org.scalastyle.file.IndentationChecker" level="error">
   <parameters>
    <parameter name="tabSize">2</parameter>
-   <parameter name="methodParamIndentSize">4</parameter>
-   <parameter name="classParamIndentSize">4</parameter>
+   <parameter name="methodParamIndentSize">2</parameter>
+   <parameter name="classParamIndentSize">2</parameter>
   </parameters>
  </check>
 
@@ -200,7 +200,7 @@
 
  <check enabled="true" class="org.scalastyle.scalariform.UnderscoreImportChecker" level="error">
   <parameters>
-   <parameter name="ignoreRegex">com\.argondesign\.alogic\.ast\._</parameter>
+   <parameter name="ignoreRegex">(com\.argondesign\.alogic\.ast\._|.*Converters._)</parameter>
   </parameters>
  </check>
 
@@ -283,7 +283,11 @@
 
  <check enabled="true" class="org.scalastyle.scalariform.NonASCIICharacterChecker" level="error"/>
 
- <check enabled="true" class="org.scalastyle.scalariform.PublicMethodsHaveTypeChecker" level="error"/>
+ <check enabled="true" class="org.scalastyle.scalariform.PublicMethodsHaveTypeChecker" level="error">
+  <parameters>
+   <parameter name="ignoreOverride">true</parameter>
+  </parameters>
+ </check>
 
  <check enabled="true" class="org.scalastyle.scalariform.RedundantIfChecker" level="error"/>
 

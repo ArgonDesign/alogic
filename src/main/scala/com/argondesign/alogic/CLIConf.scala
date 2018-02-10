@@ -21,13 +21,16 @@ import org.rogach.scallop.ArgType
 import org.rogach.scallop.ScallopConf
 import org.rogach.scallop.ScallopOption
 import org.rogach.scallop.ValueConverter
+import org.rogach.scallop.singleArgConverter
 
 // Option parser based on Scallop. See the Scallop wiki for usage:
 // https://github.com/scallop/scallop/wiki
 class CLIConf(args: Seq[String]) extends ScallopConf(args) {
+  private[this] implicit val fileConverter = singleArgConverter[File](path => (new File(path)).getCanonicalFile())
+
   // Ensures all option instances have only a single argument
   // eg -I foo -I bar -I baz, but not -I foo bar
-  private[this] val singlePathListConverter = new ValueConverter[List[File]] {
+  private[this] val singlefileListConverter = new ValueConverter[List[File]] {
     def parse(instances: List[(String, List[String])]) = {
       val bad = instances.filter(_._2.size > 1)
       if (!bad.isEmpty) {
@@ -35,13 +38,17 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) {
           s"instance of option '${bad.head._1}'. Provided:" :: (for ((_, r) <- bad) yield r mkString " ");
         Left(msg mkString "\n")
       } else {
-        Right(Some(instances.flatMap(_._2) map { new File(_) }))
+        Right(Some(instances.flatMap(_._2) map { path => (new File(path)).getCanonicalFile() }))
       }
     }
     val argType = ArgType.SINGLE
   }
 
-  private[this] def validateListOption[T](option: ScallopOption[List[T]])(check: PartialFunction[T, String]) = addValidation {
+  private[this] def validateListOption[T](
+    option: ScallopOption[List[T]]
+  )(
+    check: PartialFunction[T, String]
+  ) = addValidation {
     val msgs = option.toOption.getOrElse(Nil) collect check
     if (msgs.nonEmpty) {
       Left(msgs mkString ("\n", "\n", ""))
@@ -64,29 +71,34 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) {
 
   val ydir = opt[List[File]](
     short = 'y',
-    descr = "Directory to search for entities")(singlePathListConverter)
+    descr = "Directory to search for entities"
+  )(singlefileListConverter)
   validateFilesExist(ydir)
   validateFilesAreDirectories(ydir)
 
   val incdir = opt[List[File]](
     short = 'I',
-    descr = "Directory to search for includes")(singlePathListConverter)
+    descr = "Directory to search for includes"
+  )(singlefileListConverter)
   validateFilesExist(incdir)
   validateFilesAreDirectories(incdir)
 
   val odir = opt[File](
     short    = 'o',
     required = true,
-    descr    = "Output directory")
+    descr    = "Output directory"
+  )
 
   val defs = props[String](
     name    = 'D',
     keyName = "name",
-    descr   = "Predefine preprocessor macro")
+    descr   = "Predefine preprocessor macro"
+  )
 
   val toplevel = trailArg[String](
     required = true,
-    descr    = "Name of top level entity")
+    descr    = "Name of top level entity"
+  )
 
   verify()
 }
