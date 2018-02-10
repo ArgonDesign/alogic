@@ -270,7 +270,7 @@
  <check enabled="true" class="org.scalastyle.scalariform.MultipleStringLiteralsChecker" level="error">
   <parameters>
    <parameter name="allowed">1</parameter>
-   <parameter name="ignoreRegex">^\&quot;\&quot;$</parameter>
+   <parameter name="ignoreRegex">^\&quot;(\\n)?\&quot;$</parameter>
   </parameters>
  </check>
 
