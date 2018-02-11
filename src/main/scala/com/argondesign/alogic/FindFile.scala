@@ -33,6 +33,6 @@ object FindFile {
 
     val results = paths.toStream flatMap { Files.find(_, maxDepth, predicate).toScala[Stream] }
 
-    results.headOption map { _.toFile }
+    results.headOption map { _.toFile.getCanonicalFile }
   }
 }

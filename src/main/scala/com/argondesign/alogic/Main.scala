@@ -20,6 +20,7 @@ import java.io.File
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FatalErrorException
 import com.argondesign.alogic.core.InternalCompilerErrorException
+import com.argondesign.alogic.frontend.Frontend
 
 object Main extends App {
 
@@ -29,7 +30,7 @@ object Main extends App {
     // Create the compiler context
     //////////////////////////////////////////////////////////////////////////////
 
-    val cc = new CompilerContext
+    implicit val cc = new CompilerContext
 
     //////////////////////////////////////////////////////////////////////////////
     // Parse arguments
@@ -38,19 +39,19 @@ object Main extends App {
     val cliConf = new CLIConf(args)
 
     val toplevel = cliConf.toplevel()
-    //    val incDirs = cliConf.incdir()
-    val yDirs = cliConf.ydir()
     //    val outDir = cliConf.odir()
-    //    val initalDefines = cliConf.defs.toMap
 
-    val moduleSeachDirs = (new File(".")).getCanonicalFile() :: yDirs
+    val cwd = (new File(".")).getCanonicalFile()
 
-    val topFileOpt = FindFile(toplevel + ".alogic", moduleSeachDirs, maxDepth = 1)
+    val moduleSeachDirs = cwd :: cliConf.ydir()
+    val includeSeachDirs = cwd :: cliConf.incdir()
+    val initalDefines = cliConf.defs.toMap
 
-    if (topFileOpt.isEmpty) {
-      cc.fatal(s"Cannot find top level module '${toplevel}'. Looked in:" :: moduleSeachDirs map { _.toString }: _*)
-    }
+    val frontend = new Frontend(moduleSeachDirs, includeSeachDirs, initalDefines)
 
+    val asts = frontend(toplevel)
+
+    println(asts)
   } catch {
     case FatalErrorException(cc) => {
       cc.messages foreach Console.err.println

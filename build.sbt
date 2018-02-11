@@ -64,7 +64,7 @@ antlr4Version in Antlr4 := "4.7.1"
 
 antlr4PackageName in Antlr4 := Some("com.argondesign.alogic.antlr")
 
-antlr4GenListener in Antlr4 := false
+antlr4GenListener in Antlr4 := true
 
 antlr4GenVisitor in Antlr4 := true
 
