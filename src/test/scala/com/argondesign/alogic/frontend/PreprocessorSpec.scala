@@ -78,7 +78,7 @@ class PreprocessorSpec extends FlatSpec with Matchers {
     val source = Source(
       "test.alogic",
       """|#define plain macro
-         |#def unchanged changed
+         |#define unchanged changed
          |plain text should
          |be unchanged""".stripMargin
     )

@@ -21,7 +21,7 @@ lexer grammar PreprocLexer;
 
 HASHINCLUDE: '#' [ \t]* 'include' [ \t]+;
 
-HASHDEFINE: '#' [ \t]* ('define' | 'def') [ \t]+ -> pushMode(DEFINEMODE);
+HASHDEFINE: '#' [ \t]* 'define' [ \t]+ -> pushMode(DEFINEMODE);
 
 HASHIF: '#' [ \t]* 'if' [ \t]+;
 
