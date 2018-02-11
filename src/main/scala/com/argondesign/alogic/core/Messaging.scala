@@ -15,11 +15,9 @@
 
 package com.argondesign.alogic.core
 
-import java.io.PrintStream
-
 import scala.collection.mutable
 
-import com.argondesign.alogic.antlr.AntlrConverters._
+import com.argondesign.alogic.antlr.AntlrConverters.RichParserRuleContext
 import com.argondesign.alogic.util.unreachable
 
 import org.antlr.v4.runtime.ParserRuleContext
@@ -29,13 +27,16 @@ sealed abstract trait Message {
   protected val cat: String
   val msg: Seq[String]
 
-  lazy val loc = lop match {
+  lazy val loc: Loc = lop match {
     case Some(loc) => loc
     case None      => unreachable
   }
 
   override def toString = {
-    val prefix = s"${cat}: "
+    val prefix = lop match {
+      case Some(loc) => s"${loc}: ${cat}: "
+      case None      => s"${cat}: "
+    }
     msg mkString (prefix, "\n" + prefix + "... ", "")
   }
 }
@@ -75,33 +76,28 @@ trait Messaging { self: CompilerContext =>
 
   private[this] implicit val implicitThis: CompilerContext = this
 
-  private type MessageBuffer = mutable.ListBuffer[Message]
-
   // buffer to store messages without source location information
-  private val globalMessages = new MessageBuffer
-
-  // source to message buffer map
-  private val sourceMessages = mutable.ListMap[String, MessageBuffer]()
+  private[this] val messageBuffer = mutable.ListBuffer[Message]()
 
   //////////////////////////////////////////////////////////////////////////////
   // Versions without source location
   //////////////////////////////////////////////////////////////////////////////
 
   def warning(msg: String*): Unit = synchronized {
-    globalMessages append Warning(msg)
+    messageBuffer append Warning(msg)
   }
 
   def error(msg: String*): Unit = synchronized {
-    globalMessages append Error(msg)
+    messageBuffer append Error(msg)
   }
 
   def fatal(msg: String*): Nothing = synchronized {
-    globalMessages append Fatal(msg)
+    messageBuffer append Fatal(msg)
     throw FatalErrorException(this)
   }
 
   def ice(msg: String*): Nothing = synchronized {
-    globalMessages append ICE(msg)
+    messageBuffer append ICE(msg)
     throw InternalCompilerErrorException(Some(this))
   }
 
@@ -110,34 +106,28 @@ trait Messaging { self: CompilerContext =>
   //////////////////////////////////////////////////////////////////////////////
 
   def warning(loc: Loc, msg: String*): Unit = synchronized {
-    sourceMessages.getOrElseUpdate(loc.file, new MessageBuffer) append Warning(msg, Some(loc))
+    messageBuffer append Warning(msg, Some(loc))
   }
 
   def error(loc: Loc, msg: String*): Unit = synchronized {
-    sourceMessages.getOrElseUpdate(loc.file, new MessageBuffer) append Error(msg, Some(loc))
+    messageBuffer append Error(msg, Some(loc))
   }
 
   def fatal(loc: Loc, msg: String*): Nothing = synchronized {
-    sourceMessages.getOrElseUpdate(loc.file, new MessageBuffer) append Fatal(msg, Some(loc))
+    messageBuffer append Fatal(msg, Some(loc))
     throw FatalErrorException(this)
   }
 
   def ice(loc: Loc, msg: String*): Nothing = synchronized {
-    sourceMessages.getOrElseUpdate(loc.file, new MessageBuffer) append ICE(msg, Some(loc))
+    messageBuffer append ICE(msg, Some(loc))
     throw InternalCompilerErrorException(Some(this))
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  // Emit messages
+  // Get messages
   //////////////////////////////////////////////////////////////////////////////
 
-  def emitMessages(printStream: PrintStream = Console.err): Unit = synchronized {
-    globalMessages foreach printStream.println
-
-    for (messageBuffer <- sourceMessages.values) {
-      messageBuffer foreach printStream.println
-    }
-  }
+  def messages: List[Message] = messageBuffer.toList
 
   //////////////////////////////////////////////////////////////////////////////
   // Versions that take an Antlr4 token/parse tree node for location info

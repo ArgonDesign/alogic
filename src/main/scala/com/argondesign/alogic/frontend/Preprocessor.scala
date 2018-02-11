@@ -147,8 +147,8 @@ class Preprocessor(implicit cc: CompilerContext) {
 
           // Find the include file
           val includeSource = includeResovler(source, includeSpec) match {
-            case Left(msgs)          => cc.fatal(ctx, msgs: _*)
             case Right(resultSource) => resultSource
+            case Left(msgs)          => cc.fatal(ctx, msgs: _*)
           }
 
           // Process the include file in the current context

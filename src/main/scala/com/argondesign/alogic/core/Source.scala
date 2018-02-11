@@ -29,6 +29,6 @@ object Source {
     val text = new String(Files.readAllBytes(file.toPath), StandardCharsets.UTF_8)
     new Source(file, text)
   }
-  def apply(file: String, text: String): Source = Source((new File(file)).getCanonicalFile, text)
-  def apply(file: String): Source = Source((new File(file)).getCanonicalFile)
+  def apply(file: String, text: String): Source = Source(new File(file), text)
+  def apply(file: String): Source = Source(new File(file))
 }

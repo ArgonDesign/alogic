@@ -25,7 +25,7 @@ import scala.compat.java8.StreamConverters.RichStream
 
 object FindFile {
   def apply(tail: String, searchPaths: List[File], maxDepth: Int = Int.MaxValue): Option[File] = {
-    val paths = searchPaths map { _.toPath }
+    val paths = searchPaths filter { _.exists } map { _.toPath }
 
     val predicate = new BiPredicate[Path, BasicFileAttributes] {
       override def test(path: Path, attr: BasicFileAttributes) = path endsWith tail

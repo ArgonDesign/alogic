@@ -1,31 +1,39 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2017 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2018 Argon Design Ltd. All rights reserved.
 //
-// Module : Scala Alogic Compiler
-// Author : Geza Lore
+// This file is covered by the BSD (with attribution) license.
+// See the LICENSE file for the precise wording of the license.
+//
+// Module: Alogic Compiler
+// Author: Geza Lore
 //
 // DESCRIPTION:
 //
 // Preprocessor tests
-//
-// This file is covered by the BSD (with attribution) license.
-// See the LICENSE file for the precise wording of the license.
 ////////////////////////////////////////////////////////////////////////////////
 
-package alogic
+package com.argondesign.alogic.frontend
+
+import java.io.File
+
+import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Error
+import com.argondesign.alogic.core.Fatal
+import com.argondesign.alogic.core.FatalErrorException
+import com.argondesign.alogic.core.Source
+import com.argondesign.alogic.core.Warning
 
 import org.scalatest.FlatSpec
 import org.scalatest.Matchers
-import scalax.file.Path
 
-class PreprocSpec extends FlatSpec with Matchers {
+class PreprocessorSpec extends FlatSpec with Matchers {
 
   val emptyDefines = Map.empty[String, String]
 
   trait Fixture {
     implicit val cc = new CompilerContext
-    val preproc = cc.preproc
+    val preproc = new Preprocessor
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -36,7 +44,8 @@ class PreprocSpec extends FlatSpec with Matchers {
     val source = Source(
       "test.alogic",
       """|plain text should
-         |be unchanged""".stripMargin)
+         |be unchanged""".stripMargin
+    )
 
     preproc(source, emptyDefines, Nil) should be {
       """|plain text should
@@ -50,7 +59,8 @@ class PreprocSpec extends FlatSpec with Matchers {
     val source = Source(
       "test.alogic",
       """|// comments should
-         |/* be unchanged*/""".stripMargin)
+         |/* be unchanged*/""".stripMargin
+    )
 
     preproc(source, emptyDefines, Nil) should be {
       """|// comments should
@@ -70,7 +80,8 @@ class PreprocSpec extends FlatSpec with Matchers {
       """|#define plain macro
          |#def unchanged changed
          |plain text should
-         |be unchanged""".stripMargin)
+         |be unchanged""".stripMargin
+    )
 
     preproc(source, emptyDefines, Nil) should be {
       """|
@@ -86,7 +97,8 @@ class PreprocSpec extends FlatSpec with Matchers {
     val source = Source(
       "test.alogic",
       """|plain text should
-         |be unchanged""".stripMargin)
+         |be unchanged""".stripMargin
+    )
 
     val initialDefines = Map("plain" -> "not so plain", "unchanged" -> "changed")
 
@@ -103,7 +115,8 @@ class PreprocSpec extends FlatSpec with Matchers {
       "test.alogic",
       """|#define foo first
          |
-         |#define foo again""".stripMargin)
+         |#define foo again""".stripMargin
+    )
 
     preproc(source, emptyDefines, Nil)
 
@@ -120,7 +133,8 @@ class PreprocSpec extends FlatSpec with Matchers {
   it should "warn for redefinition of initial definition" in new Fixture {
     val source = Source(
       "test.alogic",
-      """|#define foo maybe first""".stripMargin)
+      """|#define foo maybe first""".stripMargin
+    )
 
     preproc(source, Map("foo" -> "real first"), Nil)
 
@@ -143,7 +157,8 @@ class PreprocSpec extends FlatSpec with Matchers {
       "test.alogic",
       """|#if COND
          |  Yay!!
-         |#endif""".stripMargin)
+         |#endif""".stripMargin
+    )
 
     it should "handle true #if without #else" in new Fixture {
       preproc(source, Map("COND" -> "1"), Nil) should be {
@@ -175,7 +190,7 @@ class PreprocSpec extends FlatSpec with Matchers {
       message shouldBe an[Error]
       message.loc.file should endWith { "test.alogic" }
       message.loc.line should be { 1 }
-      message.msg(0) should be { "#if condition variabe 'COND' is not defined" }
+      message.msg(0) should be { "#if condition macro 'COND' is not defined" }
     }
 
     it should "error for non-integer #if condition" in new Fixture {
@@ -186,7 +201,7 @@ class PreprocSpec extends FlatSpec with Matchers {
       message shouldBe an[Error]
       message.loc.file should endWith { "test.alogic" }
       message.loc.line should be { 1 }
-      message.msg(0) should be { "#if condition variabe 'COND' must be defined as a single integer," }
+      message.msg(0) should be { "#if condition macro 'COND' must be defined as a single integer," }
       message.msg(1) should be { "not '?'" }
     }
   }
@@ -200,7 +215,8 @@ class PreprocSpec extends FlatSpec with Matchers {
       "test.alogic",
       """|#ifdef COND
          |  Yay!!
-         |#endif""".stripMargin)
+         |#endif""".stripMargin
+    )
 
     it should "handle true #ifdef without #else" in new Fixture {
       preproc(source, Map("COND" -> "abc"), Nil) should be {
@@ -234,7 +250,8 @@ class PreprocSpec extends FlatSpec with Matchers {
          |  Yay!!
          |#else
          |  Boo!
-         |#endif""".stripMargin)
+         |#endif""".stripMargin
+    )
 
     it should "handle true #if with #else" in new Fixture {
       preproc(source, Map("COND" -> "1"), Nil) should be {
@@ -272,7 +289,8 @@ class PreprocSpec extends FlatSpec with Matchers {
          |  Yay!!
          |#else
          |  Boo!
-         |#endif""".stripMargin)
+         |#endif""".stripMargin
+    )
 
     it should "handle true #ifdef with #else" in new Fixture {
       preproc(source, Map("COND" -> "abc"), Nil) should be {
@@ -335,7 +353,8 @@ class PreprocSpec extends FlatSpec with Matchers {
            |
            |#include "bar.h"
            |
-           |Post""".stripMargin)
+           |Post""".stripMargin
+      )
 
       preproc(source, emptyDefines, includeResolver(_, _)) should be {
         """|Pre
@@ -356,7 +375,8 @@ class PreprocSpec extends FlatSpec with Matchers {
                |
                |#include "foo.h"
                |
-               |Post""".stripMargin)
+               |Post""".stripMargin
+      )
 
       preproc(source, emptyDefines, includeResolver(_, _)) should be {
         """|Pre
@@ -385,7 +405,8 @@ class PreprocSpec extends FlatSpec with Matchers {
            |#include "def1.h"
            |#define a root
            |#define b root
-           |""".stripMargin)
+           |""".stripMargin
+      )
 
       preproc(source, emptyDefines, includeResolver(_, _)) should be { "\n" * 13 }
 
@@ -415,7 +436,8 @@ class PreprocSpec extends FlatSpec with Matchers {
       val source = Source(
         "test.alogic",
         """|#include "/abs.h"
-           |""".stripMargin)
+           |""".stripMargin
+      )
 
       a[FatalErrorException] should be thrownBy {
         preproc(source, emptyDefines, Nil)
@@ -435,11 +457,13 @@ class PreprocSpec extends FlatSpec with Matchers {
       val source = Source(
         "test.alogic",
         """|#include "missing.h"
-           |""".stripMargin)
+           |""".stripMargin
+      )
 
       val includeSearchPaths = List(
-        Path.fromString("/hopefully/nonexistent/path/where/alogic/will/look/for/header"),
-        Path.fromString("/another/hopefully/nonexistent/path/where/alogic/will/look/for/header"))
+        new File("/hopefully/nonexistent/path/where/alogic/will/look/for/header"),
+        new File("/another/hopefully/nonexistent/path/where/alogic/will/look/for/header")
+      )
 
       a[FatalErrorException] should be thrownBy {
         preproc(source, emptyDefines, includeSearchPaths)
@@ -453,8 +477,8 @@ class PreprocSpec extends FlatSpec with Matchers {
       message.loc.file should endWith { "test.alogic" }
       message.loc.line should be { 1 }
       message.msg(0) should be { "Cannot find include file \"missing.h\". Looked in:" }
-      message.msg(1) should be { includeSearchPaths(0).path }
-      message.msg(2) should be { includeSearchPaths(1).path }
+      message.msg(1) should be { includeSearchPaths(0).getCanonicalPath }
+      message.msg(2) should be { includeSearchPaths(1).getCanonicalPath }
     }
   }
 
@@ -468,7 +492,8 @@ class PreprocSpec extends FlatSpec with Matchers {
         "test.alogic",
         """|#   if COND
            |  Yay!!
-           |#    endif""".stripMargin)
+           |#    endif""".stripMargin
+      )
 
       preproc(source, Map("COND" -> "1"), Nil) should be {
         """|
@@ -484,7 +509,8 @@ class PreprocSpec extends FlatSpec with Matchers {
         "test.alogic",
         """|#   if COND
            |  Yay!!
-           |#    endif""".stripMargin)
+           |#    endif""".stripMargin
+      )
 
       preproc(source, Map("COND" -> "0"), Nil) should be {
         """|

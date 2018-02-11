@@ -268,7 +268,7 @@
   </parameters>
  </check>
 
- <check enabled="true" class="org.scalastyle.scalariform.MultipleStringLiteralsChecker" level="error">
+ <check enabled="false" class="org.scalastyle.scalariform.MultipleStringLiteralsChecker" level="error">
   <parameters>
    <parameter name="allowed">1</parameter>
    <parameter name="ignoreRegex"><![CDATA[^(""|"\\n"|'|"|'")$]]></parameter>

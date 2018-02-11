@@ -53,11 +53,11 @@ object Main extends App {
 
   } catch {
     case FatalErrorException(cc) => {
-      cc.emitMessages()
+      cc.messages foreach Console.err.println
       sys exit 1
     }
     case exception @ InternalCompilerErrorException(ccOpt) => {
-      ccOpt map { _.emitMessages() }
+      ccOpt map { _.messages foreach Console.err.println }
       throw exception
     }
   }
