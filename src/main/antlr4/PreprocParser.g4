@@ -1,21 +1,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2017 Argon Design Ltd. All rights reserved.
-//
-// Module : Scala Alogic Compiler
-// Author : Peter de Rivaz/Geza Lore
-//
-// DESCRIPTION:
-//
+// Copyright (c) 2017-2018 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
+//
+// Module: Alogic Compiler
+// Author: Geza Lore
+//
+// DESCRIPTION:
+//
+// Antlr4 parser grammar for preprocessor
 ////////////////////////////////////////////////////////////////////////////////
 
-parser grammar VPreprocParser;
+parser grammar PreprocParser;
 
 options {
-  tokenVocab = VPreprocLexer;
+  tokenVocab = PreprocLexer;
 }
 
 start : entities EOF ;
@@ -24,7 +25,7 @@ entities : (entity)*;
 
 entity
  : HASHINCLUDE LITERAL                        # HashInclude
- | HASHDEFINE VIDENTIFIER VREST               # HashDefine
+ | HASHDEFINE IDENTIFIER REST                 # HashDefine
  | IDENTIFIER                                 # Identifier
  | LITERAL                                    # Literal
  | ifcond=(HASHIF|HASHIFDEF) IDENTIFIER

@@ -28,19 +28,19 @@ import com.argondesign.alogic.antlr.AntlrConverters.RichParserRuleContext
 import com.argondesign.alogic.antlr.AntlrConverters.RichToken
 import com.argondesign.alogic.antlr.AntlrConverters.terminalNodeToRichToken
 import com.argondesign.alogic.antlr.ParserErrorListener
-import com.argondesign.alogic.antlr.VPreprocLexer
-import com.argondesign.alogic.antlr.VPreprocParser
-import com.argondesign.alogic.antlr.VPreprocParser.AnythingContext
-import com.argondesign.alogic.antlr.VPreprocParser.BlockCommentContext
-import com.argondesign.alogic.antlr.VPreprocParser.EntitiesContext
-import com.argondesign.alogic.antlr.VPreprocParser.HashDefineContext
-import com.argondesign.alogic.antlr.VPreprocParser.HashIfContext
-import com.argondesign.alogic.antlr.VPreprocParser.HashIncludeContext
-import com.argondesign.alogic.antlr.VPreprocParser.IdentifierContext
-import com.argondesign.alogic.antlr.VPreprocParser.LineCommentContext
-import com.argondesign.alogic.antlr.VPreprocParser.LiteralContext
-import com.argondesign.alogic.antlr.VPreprocParser.StartContext
-import com.argondesign.alogic.antlr.VPreprocParserBaseVisitor
+import com.argondesign.alogic.antlr.PreprocLexer
+import com.argondesign.alogic.antlr.PreprocParser
+import com.argondesign.alogic.antlr.PreprocParser.AnythingContext
+import com.argondesign.alogic.antlr.PreprocParser.BlockCommentContext
+import com.argondesign.alogic.antlr.PreprocParser.EntitiesContext
+import com.argondesign.alogic.antlr.PreprocParser.HashDefineContext
+import com.argondesign.alogic.antlr.PreprocParser.HashIfContext
+import com.argondesign.alogic.antlr.PreprocParser.HashIncludeContext
+import com.argondesign.alogic.antlr.PreprocParser.IdentifierContext
+import com.argondesign.alogic.antlr.PreprocParser.LineCommentContext
+import com.argondesign.alogic.antlr.PreprocParser.LiteralContext
+import com.argondesign.alogic.antlr.PreprocParser.StartContext
+import com.argondesign.alogic.antlr.PreprocParserBaseVisitor
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Source
 
@@ -63,17 +63,17 @@ class Preprocessor(implicit cc: CompilerContext) {
       // Deferred line number remappings
       val remaps = mutable.Stack[(Range, File)]()
 
-      object PreprocVisitor extends VPreprocParserBaseVisitor[String] {
+      object PreprocVisitor extends PreprocParserBaseVisitor[String] {
         override def visitStart(ctx: StartContext) = visit(ctx.entities())
 
         override def visitEntities(ctx: EntitiesContext) = ctx.entity.asScala.map(visit) mkString ""
 
         override def visitHashDefine(ctx: HashDefineContext): String = {
-          val s = ctx.VIDENTIFIER.text
+          val s = ctx.IDENTIFIER.text
           if (defines contains s) {
             cc.warning(ctx.loc, s"Redefined preprocessor identifier '$s'")
           }
-          defines(s) = ctx.VREST.text.trim
+          defines(s) = ctx.REST.text.trim
           ""
         }
 
@@ -175,12 +175,12 @@ class Preprocessor(implicit cc: CompilerContext) {
       val inputStream = CharStreams.fromString(source.text, source.name)
 
       // Create the lexer
-      val lexer = new VPreprocLexer(inputStream)
+      val lexer = new PreprocLexer(inputStream)
       val tokenStream = new CommonTokenStream(lexer)
       tokenStream.fill()
 
       // Create the parser
-      val parser = new VPreprocParser(tokenStream)
+      val parser = new PreprocParser(tokenStream)
       parser.removeErrorListeners()
       parser.addErrorListener(new ParserErrorListener)
 
