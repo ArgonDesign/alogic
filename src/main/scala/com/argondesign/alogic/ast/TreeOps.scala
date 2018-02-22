@@ -17,6 +17,7 @@
 package com.argondesign.alogic.ast
 
 import Trees.Tree
+import scala.collection.GenTraversableOnce
 
 trait TreeOps { this: Tree =>
 
@@ -30,11 +31,15 @@ trait TreeOps { this: Tree =>
     childLists.flatten
   }
 
-  // Recurse through the tree with partial function
+  ////////////////////////////////////////////////////////////////////////////////
+  // visit methods
+  ////////////////////////////////////////////////////////////////////////////////
+
+  // Walk the tree with partial function
   // Wherever the partial function is not defined, we recurse.
   // Wherever the partial function is defined, we apply it and stop recursion.
   // To continue recursing after application, the client can invoke visit
-  // selectively, or visitChildren to visit all children
+  // selectively, or visitChildren to visit all children.
   def visit(visitor: PartialFunction[Tree, Unit]): Unit = {
     def v(tree: Tree): Unit = {
       if (visitor.isDefinedAt(tree)) {
@@ -60,6 +65,71 @@ trait TreeOps { this: Tree =>
       tree.children foreach v
     }
     v(this)
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // collect methods
+  ////////////////////////////////////////////////////////////////////////////////
+
+  // Collect results of walking the tree with partial function
+  // Wherever the partial function is not defined, we recurse.
+  // Wherever the partial function is defined, we apply it, collect the result and stop recursion.
+  def collect[E](pf: PartialFunction[Tree, E]): List[E] = {
+    def c(tree: Tree): Iterator[E] = {
+      if (pf.isDefinedAt(tree)) {
+        Iterator.single(pf(tree))
+      } else {
+        tree.children flatMap c
+      }
+    }
+    c(this).toList
+  }
+
+  // Collect all children of this tree
+  def collectChildren[E](pf: PartialFunction[Tree, E]): List[E] = {
+    (children flatMap { _ collect pf }).toList
+  }
+
+  // Same as collect but always recurse through the whole tree
+  def collectAll[E](pf: PartialFunction[Tree, E]): List[E] = {
+    def c(tree: Tree): Iterator[E] = {
+      if (pf.isDefinedAt(tree)) {
+        Iterator.single(pf(tree)) ++ (tree.children flatMap c)
+      } else {
+        tree.children flatMap c
+      }
+    }
+    c(this).toList
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // flatCollect methods
+  ////////////////////////////////////////////////////////////////////////////////
+
+  def flatCollect[E](pf: PartialFunction[Tree, GenTraversableOnce[E]]): List[E] = {
+    def c(tree: Tree): Iterator[E] = {
+      if (pf.isDefinedAt(tree)) {
+        pf(tree).toIterator
+      } else {
+        tree.children flatMap c
+      }
+    }
+    c(this).toList
+  }
+
+  def flatCollectChildren[E](pf: PartialFunction[Tree, GenTraversableOnce[E]]): List[E] = {
+    (children flatMap { _ flatCollect pf }).toList
+  }
+
+  def flatCollectAll[E](pf: PartialFunction[Tree, GenTraversableOnce[E]]): List[E] = {
+    def c(tree: Tree): Iterator[E] = {
+      if (pf.isDefinedAt(tree)) {
+        pf(tree).toIterator ++ (tree.children flatMap c)
+      } else {
+        tree.children flatMap c
+      }
+    }
+    c(this).toList
   }
 
   //
@@ -153,91 +223,6 @@ trait TreeOps { this: Tree =>
   //    r[T](this)
   //  }
   //
-  //  // Recurse through the tree and collect results of pf for all nodes where it is defined.
-  //  // This function is analogous to List.collect in the standard library
-  //  def collect[E](pf: PartialFunction[Node, E]): List[E] = {
-  //
-  //    val f = pf.lift
-  //
-  //    def c(node: Node): List[E] = {
-  //      val headOption: Option[E] = f(node)
-  //      val tail: List[E] = node match {
-  //        case Instantiate(_, _, _, args)                      => args.values.toList flatMap c
-  //        case Connect(_, start, end)                          => (start :: end) flatMap c
-  //        case Function(_, _, body)                            => c(body)
-  //        case FenceFunction(_, body)                          => c(body)
-  //        case FsmTask(_, _, _, fns, fencefn, vfns)            => (fns flatMap c) ::: (fencefn map c getOrElse Nil) ::: (vfns flatMap c)
-  //        case StateTask(_, _, _, sbs, fencefn, vfns)          => (sbs flatMap c) ::: (fencefn map c getOrElse Nil) ::: (vfns flatMap c)
-  //        case NetworkTask(_, _, _, inst, conn, vfns, fsms)    => (inst flatMap c) ::: (conn flatMap c) ::: (vfns flatMap c) ::: (fsms flatMap c)
-  //        case VerilogTask(_, _, _, vfns)                      => vfns flatMap c
-  //        case ExprArrIndex(_, name, index)                    => c(name) ::: (index flatMap c)
-  //        case ExprVecIndex(_, ref, index)                     => c(ref) ::: (index flatMap c)
-  //        case Slice(_, ref, l, _, r)                          => c(ref) ::: c(l) ::: c(r)
-  //        case CallExpr(_, name, args)                         => c(name) ::: (args flatMap c)
-  //        case Zxt(_, numbits, expr)                           => c(numbits) ::: c(expr)
-  //        case Sxt(_, numbits, expr)                           => c(numbits) ::: c(expr)
-  //        case DollarCall(_, name, args)                       => args flatMap c
-  //        case ReadCall(_, name)                               => c(name)
-  //        case WaitCall(_, name)                               => c(name)
-  //        case ValidCall(_, name)                              => c(name)
-  //        case WriteCall(_, name, args)                        => c(name) ::: (args flatMap c)
-  //        case Assign(_, lhs, rhs)                             => c(lhs) ::: c(rhs)
-  //        case Update(_, lhs, op, rhs)                         => c(lhs) ::: c(rhs)
-  //        case Plusplus(_, lhs)                                => c(lhs)
-  //        case Minusminus(_, lhs)                              => c(lhs)
-  //        case BinaryOp(_, lhs, op, rhs)                       => c(lhs) ::: c(rhs)
-  //        case UnaryOp(_, op, lhs)                             => c(lhs)
-  //        case Bracket(_, content)                             => c(content)
-  //        case TernaryOp(_, cond, lhs, rhs)                    => c(cond) ::: c(lhs) ::: c(rhs)
-  //        case CombinatorialBlock(_, cmds)                     => cmds flatMap c
-  //        case StateBlock(_, state, cmds)                      => cmds flatMap c
-  //        case DeclarationStmt(_, DeclVar(_, _, init))         => init map c getOrElse Nil
-  //        case CombinatorialIf(_, cond, t, e)                  => c(cond) ::: c(t) ::: (e map c getOrElse Nil)
-  //        case BitRep(_, count, value)                         => c(count) ::: c(value)
-  //        case BitCat(_, parts)                                => parts flatMap c
-  //        case _: AlogicComment                                => Nil
-  //        case CombinatorialCaseStmt(_, value, cases, default) => c(value) ::: (cases flatMap c) ::: (default map c getOrElse Nil)
-  //        case CombinatorialCaseLabel(_, cond, body)           => (cond flatMap c) ::: c(body)
-  //        case ControlCaseStmt(_, value, cases, default)       => c(value) ::: (cases flatMap c) ::: (default map c getOrElse Nil)
-  //        case ControlCaseLabel(_, cond, body)                 => (cond flatMap c) ::: c(body)
-  //        case ControlIf(_, cond, t, e)                        => c(cond) ::: c(t) ::: (e map c getOrElse Nil)
-  //        case ControlBlock(_, cmds)                           => cmds flatMap c
-  //        case ControlLoop(_, body)                            => c(body)
-  //        case ControlWhile(_, cond, body)                     => c(cond) ::: (body flatMap c)
-  //        case ControlFor(_, init, cond, incr, body)           => c(init) ::: c(cond) ::: c(incr) ::: (body flatMap c)
-  //        case ControlDo(_, cond, body)                        => c(cond) ::: (body flatMap c)
-  //        case _: FenceStmt                                    => Nil
-  //        case _: BreakStmt                                    => Nil
-  //        case _: ReturnStmt                                   => Nil
-  //        case _: PipelineRead                                 => Nil
-  //        case _: PipelineWrite                                => Nil
-  //        case _: GotoStmt                                     => Nil
-  //        case _: GotoState                                    => Nil
-  //        case DottedName(_, names)                            => Nil
-  //        case Literal(_, _)                                   => Nil
-  //        case Num(_, _, _, _)                                 => Nil
-  //        case VerilogFunction(_, _)                           => Nil
-  //        case ExprStmt(_, expr)                               => c(expr)
-  //        case _: CallStmt                                     => Nil
-  //        case _: CallState                                    => Nil
-  //        case _: ReturnState                                  => Nil
-  //        case _: ErrorExpr                                    => Nil
-  //        case _: ErrorStmt                                    => Nil
-  //
-  //        case _: LValName                                     => Nil
-  //        case LValArrayLookup(_, name, index)                 => c(name) ::: (index flatMap c)
-  //        case LValSlice(_, ref, l, _, r)                      => c(ref) ::: c(l) ::: c(r)
-  //        case LValCat(_, parts)                               => parts flatMap c
-  //      }
-  //
-  //      headOption match {
-  //        case Some(head) => head :: tail
-  //        case None       => tail
-  //      }
-  //    }
-  //
-  //    c(this)
-  //  }
 }
 
 // object NodeOps {
