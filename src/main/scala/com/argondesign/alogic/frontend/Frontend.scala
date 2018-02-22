@@ -24,8 +24,13 @@ import scala.concurrent.Future
 import scala.concurrent.duration.Duration.Inf
 
 import com.argondesign.alogic.FindFile
+import com.argondesign.alogic.antlr.AlogicParser.StartContext
+import com.argondesign.alogic.antlr.InstanceEntityNameExtractor
+import com.argondesign.alogic.antlr.RootBuilder
+import com.argondesign.alogic.ast.Trees.Root
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Source
+import com.argondesign.alogic.util.unreachable
 
 import org.antlr.v4.runtime.ParserRuleContext
 
@@ -64,14 +69,14 @@ class Frontend(
     }
   }
 
-  // Parse all files needed for 'entityName'. Returns map from entityNames -> ASTs
-  def apply(entityName: String): Map[String, ParserRuleContext] = {
+  // Parse all files needed for 'entityName'. Returns map from entityNames -> Root
+  def apply(entityName: String): Map[String, Root] = {
     // Cache of parses we already started workingon. We use this to to avoid
     // multiple parses of files that are instantiated multiple times
-    val inProgress = mutable.Map[String, Future[Map[String, ParserRuleContext]]]()
+    val inProgress = mutable.Map[String, Future[Map[String, Root]]]()
 
     // Recursive worker that builds a future yielding the map of all parse trees required for an entity
-    def parse(entityName: String): Future[Map[String, ParserRuleContext]] = {
+    def parse(entityName: String): Future[Map[String, Root]] = {
 
       // The actual future that builds all parse trees under the hierarchy of the given entity
       // note that this is only actually constructed if the inProgress map does not contain the
@@ -88,15 +93,23 @@ class Frontend(
         // Find all instance entity names
         val instantiatedEntityNamesFuture = parseTreeFuture map { InstanceEntityNameExtractor(_) }
 
-        // Get all their parse tree maps recursively
-        val childParseTreeMapsFuture = instantiatedEntityNamesFuture flatMap { Future.traverse(_)(parse) }
+        // Build AST from parseTree
+        val astFuture = parseTreeFuture map {
+          _ match {
+            case ctx: StartContext => RootBuilder(ctx)
+            case _                 => unreachable
+          }
+        }
+
+        // Get all their AST maps recursively
+        val childAstMapsFuture = instantiatedEntityNamesFuture flatMap { Future.traverse(_)(parse) }
 
         // Merge child parse tree maps and add this parse tree
         for {
-          childParseTreeMaps <- childParseTreeMapsFuture
-          parseTree <- parseTreeFuture
+          childAstMaps <- childAstMapsFuture
+          ast <- astFuture
         } yield {
-          (Map.empty[String, ParserRuleContext] /: childParseTreeMaps)(_ ++ _) + (entityName -> parseTree)
+          (Map.empty[String, Root] /: childAstMaps)(_ ++ _) + (entityName -> ast)
         }
       }
 
@@ -106,6 +119,7 @@ class Frontend(
       }
     }
 
+    // Yield the result of the future
     Await.result(parse(entityName), atMost = Inf)
   }
 

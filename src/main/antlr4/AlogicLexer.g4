@@ -1,18 +1,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2017 Argon Design Ltd. All rights reserved.
-//
-// Module : Scala Alogic Compiler
-// Author : Peter de Rivaz/Geza Lore
-//
-// DESCRIPTION:
-//
+// Copyright (c) 2017-2018 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
+//
+// Module: Alogic Compiler
+// Author: Peter de Rivaz/Geza Lore
+//
+// DESCRIPTION:
+//
+// Antlr4 lexer grammar for Alogic
 ////////////////////////////////////////////////////////////////////////////////
 
-lexer grammar VLexer;
+lexer grammar AlogicLexer;
 
 channels {
   WHITESPACE,
@@ -27,9 +28,8 @@ UINTTYPE: 'u' [0-9]+;
 
 INTTYPE: 'i' [0-9]+;
 
-TICKNUM: '\'' 's'? [bdhx] [0-9a-fA-F_]+ ; // TODO remove 'x' ?
+TICKNUM: '\'' 's'? [bdh] [0-9a-fA-F_]+ ;
 
-ATBITS  : '@bits'       ;
 ATID    : '@' SIMPLEID  ;
 
 DOLLARID: '$' SIMPLEID;
@@ -145,10 +145,14 @@ SYNC_ACCEPT : 'sync' (WS|CMT)* 'accept';
 
 WIRE        : 'wire';
 BUBBLE      : 'bubble';
+FREG        : 'freg';
+BREG        : 'breg';
 
-LITERAL: '"' ~["]* '"';
+STRING: '"' ~["]* '"';
 
-VERILOGFUNC: 'void' (WS|CMT)* 'verilog' (WS|CMT)* '(' (WS|CMT)* ')' (WS|CMT)* -> pushMode(VMODE);
+VERILOGFUNC: 'void' (WS|CMT)* 'verilog' (WS|CMT)* '(' (WS|CMT)* ')' (WS|CMT)* -> pushMode(VERBATIMMODE);
+
+VERBATIM: 'verbatim' -> pushMode(VERBATIMLANGMODE);
 
 CONSTANT: [0-9_]+;
 
@@ -168,7 +172,13 @@ ERRORCHAR : . ;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-mode VMODE;
+mode VERBATIMLANGMODE;
 
-VERILOGBODY:  '{' ( VERILOGBODY | ~[{}] )* '}'  -> popMode;
+VERBATIMIDENTIFIER: IDENTIFIER -> type(IDENTIFIER), Mode(VERBATIMMODE);
+
+////////////////////////////////////////////////////////////////////////////////
+
+mode VERBATIMMODE;
+
+VERBATIMBODY: '{' ( VERBATIMBODY | ~[{}] )* '}'  -> popMode;
 

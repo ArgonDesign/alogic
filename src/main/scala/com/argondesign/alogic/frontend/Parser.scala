@@ -16,9 +16,9 @@
 
 package com.argondesign.alogic.frontend
 
+import com.argondesign.alogic.antlr.AlogicLexer
+import com.argondesign.alogic.antlr.AlogicParser
 import com.argondesign.alogic.antlr.ParserErrorListener
-import com.argondesign.alogic.antlr.VLexer
-import com.argondesign.alogic.antlr.VParser
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Source
 
@@ -30,11 +30,11 @@ object Parser {
   def apply(source: Source)(implicit cc: CompilerContext): Option[ParserRuleContext] = {
     val inputStream = CharStreams.fromString(source.text, source.name)
 
-    val lexer = new VLexer(inputStream)
+    val lexer = new AlogicLexer(inputStream)
     val tokenStream = new CommonTokenStream(lexer)
     tokenStream.fill()
 
-    val parser = new VParser(tokenStream)
+    val parser = new AlogicParser(tokenStream)
     parser.removeErrorListeners()
     parser.addErrorListener(new ParserErrorListener)
 

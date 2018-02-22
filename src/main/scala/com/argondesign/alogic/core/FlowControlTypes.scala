@@ -10,14 +10,18 @@
 //
 // DESCRIPTION:
 //
-// The CompilerContext holds all mutable state of the compiler.
-// Throughout the compiler, the CompilerContext is held in a variable called
-// 'cc', which is often passed as an implicit parameter.
+// Representations of flow control types
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.core
 
-class CompilerContext
-  extends Messaging
-  with LocationRemapping
-  with Symbols
+object FlowControlTypes {
+
+  abstract sealed trait FlowControlType
+
+  case object FlowControlTypeNone extends FlowControlType
+  case object FlowControlTypeValid extends FlowControlType
+  case object FlowControlTypeReady extends FlowControlType
+  case object FlowControlTypeAccept extends FlowControlType
+
+}

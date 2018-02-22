@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2017-2018 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2018 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
@@ -10,14 +10,15 @@
 //
 // DESCRIPTION:
 //
-// The CompilerContext holds all mutable state of the compiler.
-// Throughout the compiler, the CompilerContext is held in a variable called
-// 'cc', which is often passed as an implicit parameter.
+// Generates sequence numbers in a thread-safe fashion.
 ////////////////////////////////////////////////////////////////////////////////
 
-package com.argondesign.alogic.core
+package com.argondesign.alogic.util
 
-class CompilerContext
-  extends Messaging
-  with LocationRemapping
-  with Symbols
+class SequenceNumbers {
+  private[this] val it = Stream.from(0).iterator
+
+  def next: Int = synchronized {
+    it.next()
+  }
+}

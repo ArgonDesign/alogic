@@ -20,6 +20,7 @@ import com.argondesign.alogic.core.Source
 
 import org.scalatest.FlatSpec
 import org.scalatest.Matchers
+import com.argondesign.alogic.antlr.InstanceEntityNameExtractor
 
 class InstanceEntityNameExtractorSpec extends FlatSpec with Matchers {
 

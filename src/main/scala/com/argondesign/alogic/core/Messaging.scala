@@ -17,7 +17,8 @@ package com.argondesign.alogic.core
 
 import scala.collection.mutable
 
-import com.argondesign.alogic.antlr.AntlrConverters.RichParserRuleContext
+import com.argondesign.alogic.antlr.AntlrConverters._
+import com.argondesign.alogic.ast.Locationed
 import com.argondesign.alogic.util.unreachable
 
 import org.antlr.v4.runtime.ParserRuleContext
@@ -141,21 +142,17 @@ trait Messaging { self: CompilerContext =>
 
   def ice(ctx: ParserRuleContext, msg: String*): Nothing = ice(ctx.loc, msg: _*)
 
-  //  //////////////////////////////////////////////////////////////////////////////
-  //  // Versions that take an ast.Node for location info
-  //  //////////////////////////////////////////////////////////////////////////////
-  //
-  //  def info(node: Node, msg: String*): Unit = info(node.loc, msg: _*)
-  //
-  //  def note(node: Node, msg: String*): Unit = note(node.loc, msg: _*)
-  //
-  //  def warning(node: Node, msg: String*): Unit = warning(node.loc, msg: _*)
-  //
-  //  def error(node: Node, msg: String*): Unit = error(node.loc, msg: _*)
-  //
-  //  def fatal(node: Node, msg: String*): Nothing = fatal(node.loc, msg: _*)
-  //
-  //  def ice(node: Node, msg: String*): Nothing = ice(node.loc, msg: _*)
+  //////////////////////////////////////////////////////////////////////////////
+  // Versions that anything that has a location
+  //////////////////////////////////////////////////////////////////////////////
+
+  def warning(item: Locationed, msg: String*): Unit = warning(item.loc, msg: _*)
+
+  def error(item: Locationed, msg: String*): Unit = error(item.loc, msg: _*)
+
+  def fatal(item: Locationed, msg: String*): Nothing = fatal(item.loc, msg: _*)
+
+  def ice(item: Locationed, msg: String*): Nothing = ice(item.loc, msg: _*)
   //
   //  //////////////////////////////////////////////////////////////////////////////
   //  // Versions that take an ast.Attr for location info

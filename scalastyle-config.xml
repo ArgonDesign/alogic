@@ -171,9 +171,9 @@
 
  <check enabled="true" class="org.scalastyle.scalariform.MethodNamesChecker" level="error">
   <parameters>
-   <parameter name="regex">^[a-z][A-Za-z0-9]*$</parameter>
+    <parameter name="regex"><![CDATA[^(?:[a-z][A-Za-z0-9]*|[*/%+-<>&|^]*)$]]></parameter>
   </parameters>
-  <customMessage>Method names should start with a lower case letter and not contain underscores</customMessage>
+  <customMessage>Method names should start with a lower case letter and not contain underscores, or be operator definitions</customMessage>
  </check>
 
  <check enabled="true" class="org.scalastyle.scalariform.ClassTypeParameterChecker" level="error">
