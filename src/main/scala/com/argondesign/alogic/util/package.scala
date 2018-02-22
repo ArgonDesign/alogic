@@ -20,6 +20,6 @@ package object util {
     import com.argondesign.alogic.core.ICE
     import com.argondesign.alogic.core.InternalCompilerErrorException
     println(ICE(Seq("unreachable")))
-    throw new InternalCompilerErrorException(None)
+    throw new InternalCompilerErrorException()
   }
 }

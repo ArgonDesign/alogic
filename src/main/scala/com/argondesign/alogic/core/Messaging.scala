@@ -70,8 +70,8 @@ case class ICE(initialMsg: Seq[String], lop: Option[Loc] = None) extends Message
   val msg = initialMsg ++ Seq("Please file a bug report")
 }
 
-case class FatalErrorException(cc: CompilerContext) extends Exception
-case class InternalCompilerErrorException(ccOpt: Option[CompilerContext]) extends RuntimeException
+case class FatalErrorException() extends Exception
+case class InternalCompilerErrorException() extends RuntimeException
 
 trait Messaging { self: CompilerContext =>
 
@@ -94,12 +94,12 @@ trait Messaging { self: CompilerContext =>
 
   def fatal(msg: String*): Nothing = synchronized {
     messageBuffer append Fatal(msg)
-    throw FatalErrorException(this)
+    throw FatalErrorException()
   }
 
   def ice(msg: String*): Nothing = synchronized {
     messageBuffer append ICE(msg)
-    throw InternalCompilerErrorException(Some(this))
+    throw InternalCompilerErrorException()
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -116,12 +116,12 @@ trait Messaging { self: CompilerContext =>
 
   def fatal(loc: Loc, msg: String*): Nothing = synchronized {
     messageBuffer append Fatal(msg, Some(loc))
-    throw FatalErrorException(this)
+    throw FatalErrorException()
   }
 
   def ice(loc: Loc, msg: String*): Nothing = synchronized {
     messageBuffer append ICE(msg, Some(loc))
-    throw InternalCompilerErrorException(Some(this))
+    throw InternalCompilerErrorException()
   }
 
   //////////////////////////////////////////////////////////////////////////////

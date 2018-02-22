@@ -19,18 +19,17 @@ import java.io.File
 
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FatalErrorException
-import com.argondesign.alogic.core.InternalCompilerErrorException
 import com.argondesign.alogic.frontend.Frontend
 
 object Main extends App {
 
+  //////////////////////////////////////////////////////////////////////////////
+  // Create the compiler context
+  //////////////////////////////////////////////////////////////////////////////
+
+  implicit val cc = new CompilerContext
+
   try {
-
-    //////////////////////////////////////////////////////////////////////////////
-    // Create the compiler context
-    //////////////////////////////////////////////////////////////////////////////
-
-    implicit val cc = new CompilerContext
 
     //////////////////////////////////////////////////////////////////////////////
     // Parse arguments
@@ -47,21 +46,26 @@ object Main extends App {
     val includeSeachDirs = cwd :: cliConf.incdir()
     val initalDefines = cliConf.defs.toMap
 
-    val frontend = new Frontend(moduleSeachDirs, includeSeachDirs, initalDefines)
+    //////////////////////////////////////////////////////////////////////////////
+    // Create the front end and built the ASTs
+    //////////////////////////////////////////////////////////////////////////////
 
-    val asts = frontend(toplevel)
+    val asts = {
+      val frontend = new Frontend(moduleSeachDirs, includeSeachDirs, initalDefines)
+      frontend(toplevel)
+    }
 
-    println(asts)
+    println(asts.size)
   } catch {
-    case FatalErrorException(cc) => {
+    case FatalErrorException() => {
       cc.messages foreach Console.err.println
       sys exit 1
     }
-    case exception @ InternalCompilerErrorException(ccOpt) => {
-      ccOpt map { _.messages foreach Console.err.println }
-      throw exception
-    }
+  } finally {
+    cc.messages foreach Console.err.println
   }
+
+  sys exit 0
 
   //
   //  val cnnf = new CLIConf(args)
