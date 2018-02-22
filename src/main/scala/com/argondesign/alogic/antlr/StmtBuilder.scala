@@ -33,10 +33,13 @@ import com.argondesign.alogic.antlr.AlogicParser.CtrlStmtLoopContext
 import com.argondesign.alogic.antlr.AlogicParser.CtrlStmtReturnContext
 import com.argondesign.alogic.antlr.AlogicParser.CtrlStmtWhileContext
 import com.argondesign.alogic.antlr.AlogicParser.DefaultCaseContext
+import com.argondesign.alogic.antlr.AlogicParser.LoopInitAssignContext
 import com.argondesign.alogic.antlr.AlogicParser.LoopInitDeclContext
 import com.argondesign.alogic.antlr.AlogicParser.NormalCaseContext
 import com.argondesign.alogic.antlr.AlogicParser.StmtBlockContext
 import com.argondesign.alogic.antlr.AlogicParser.StmtCaseContext
+import com.argondesign.alogic.antlr.AlogicParser.StmtCombContext
+import com.argondesign.alogic.antlr.AlogicParser.StmtCtrlContext
 import com.argondesign.alogic.antlr.AlogicParser.StmtExprContext
 import com.argondesign.alogic.antlr.AlogicParser.StmtIfContext
 import com.argondesign.alogic.antlr.AntlrConverters._
@@ -69,6 +72,15 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
 
   def apply(ctx: ParserRuleContext)(implicit cc: CompilerContext): Stmt = {
     object Visitor extends AlogicScalarVisitor[Stmt] { self =>
+      // Block
+      override def visitBlock(ctx: BlockContext) = {
+        StmtBlock(visit(ctx.statement)) withLoc ctx.loc
+      }
+
+      // Proxy nodes
+      override def visitStmtComb(ctx: StmtCombContext) = visit(ctx.comb_statement)
+      override def visitStmtCtrl(ctx: StmtCtrlContext) = visit(ctx.ctrl_statement)
+
       // Unambiguous combinatorial statements
       override def visitCombStmtDecl(ctx: CombStmtDeclContext) = {
         StmtDecl(DeclBuilder(ctx.decl)) withLoc ctx.loc
@@ -127,10 +139,6 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
       }
 
       // Ambiguous statements
-      override def visitBlock(ctx: BlockContext) = {
-        StmtBlock(visit(ctx.statement)) withLoc ctx.loc
-      }
-
       override def visitStmtBlock(ctx: StmtBlockContext) = visit(ctx.block)
 
       override def visitStmtIf(ctx: StmtIfContext) = {
@@ -177,11 +185,16 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
         StmtExpr(ExprBuilder(ctx.expr)) withLoc ctx.loc
       }
 
+      override def visitLoopInitAssign(ctx: LoopInitAssignContext) = {
+        StmtAssign(ExprBuilder(ctx.expr(0)), ExprBuilder(ctx.expr(1))) withLoc ctx.loc
+      }
+
       override def visitLoopInitDecl(ctx: LoopInitDeclContext) = {
         val name = ctx.IDENTIFIER.text
         val kind = TypeBuilder(ctx.kind)
         val init = ExprBuilder(ctx.expr)
-        StmtDecl(DeclIdent(name, kind, Some(init))) withLoc ctx.loc
+        val decl = DeclIdent(name, kind, Some(init)) withLoc ctx.loc
+        StmtDecl(decl) withLoc ctx.loc
       }
     }
 

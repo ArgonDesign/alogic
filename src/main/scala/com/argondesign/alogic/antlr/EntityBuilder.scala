@@ -16,7 +16,6 @@
 package com.argondesign.alogic.antlr
 
 import scala.collection.JavaConverters._
-import scala.collection.immutable.ListMap
 
 import com.argondesign.alogic.antlr.AlogicParser.EntityContentConnectContext
 import com.argondesign.alogic.antlr.AlogicParser.EntityContentEntityContext
@@ -53,9 +52,8 @@ object EntityBuilder extends BaseBuilder[EntityContext, EntityIdent] {
 
         val paramNames = c.param_assigns.IDENTIFIER.asScala.toList map { _.text }
         val paramExprs = ExprBuilder(c.param_assigns.expr)
-        val params = ListMap(paramNames zip paramExprs: _*)
 
-        InstanceIdent(name, module, params)
+        InstanceIdent(name, module, paramNames, paramExprs) withLoc ctx.loc
       }
 
       override def visitEntityContentConnect(ctx: EntityContentConnectContext) = {
@@ -64,13 +62,13 @@ object EntityBuilder extends BaseBuilder[EntityContext, EntityIdent] {
         val lhs = ExprBuilder(c.lhs)
         val rhss = ExprBuilder(c.rhs)
 
-        Connect(lhs, rhss)
+        Connect(lhs, rhss) withLoc ctx.loc
       }
 
       override def visitEntityContentEntity(ctx: EntityContentEntityContext) = {
         val entity = EntityBuilder(ctx.entity)
         if (Option(ctx.autoinst).isDefined) {
-          AutoInstanceIdent(entity)
+          AutoInstanceIdent(entity) withLoc ctx.loc
         } else {
           entity
         }
@@ -79,28 +77,28 @@ object EntityBuilder extends BaseBuilder[EntityContext, EntityIdent] {
       override def visitEntityContentFenceFunction(ctx: EntityContentFenceFunctionContext) = {
         cc.warning(ctx, "'void fence() {...}' function syntax is deprecated. Use a 'fence {...}' block instead")
         val stmts = StmtBuilder(ctx.block.statement)
-        FenceBlock(stmts)
+        FenceBlock(stmts) withLoc ctx.loc
       }
 
       override def visitEntityContentFenceBlock(ctx: EntityContentFenceBlockContext) = {
         val stmts = StmtBuilder(ctx.block.statement)
-        FenceBlock(stmts)
+        FenceBlock(stmts) withLoc ctx.loc
       }
 
       override def visitEntityContentFunction(ctx: EntityContentFunctionContext) = {
         val name = ctx.IDENTIFIER.text
         val stmts = StmtBuilder(ctx.block.statement)
-        FunctionIdent(name, stmts)
+        FunctionIdent(name, stmts) withLoc ctx.loc
       }
 
       override def visitEntityContentVerilogFuction(ctx: EntityContentVerilogFuctionContext) = {
-        cc.warning(ctx, "'void verilog() {...}' function syntax is deprecated." +
+        cc.warning(ctx, "'void verilog() {...}' function syntax is deprecated. " +
           "Use a 'verbatim verilog {...}' block instead")
-        VerbatimBlock("verilog", ctx.VERBATIMBODY)
+        VerbatimBlock("verilog", ctx.VERBATIMBODY) withLoc ctx.loc
       }
 
       override def visitEntityContentVerbatimBlock(ctx: EntityContentVerbatimBlockContext) = {
-        VerbatimBlock(ctx.IDENTIFIER, ctx.VERBATIMBODY)
+        VerbatimBlock(ctx.IDENTIFIER, ctx.VERBATIMBODY) withLoc ctx.loc
       }
     }
 
@@ -110,6 +108,7 @@ object EntityBuilder extends BaseBuilder[EntityContext, EntityIdent] {
         val decls = DeclBuilder(ctx.entity_decl)
         val contents = EntityContentVisitor(ctx.entity_content)
         val instances = contents collect { case x: InstanceIdent => x }
+        // TODO: autoinst
         val connects = contents collect { case x: Connect => x }
         val functions = contents collect { case x: FunctionIdent => x }
         val fenceStmts = {
@@ -130,7 +129,7 @@ object EntityBuilder extends BaseBuilder[EntityContext, EntityIdent] {
           blockMap mapValues { list => list map { _.text } mkString "\n" }
         }
         // TODO: check fsm/network/verilog variant subsets
-        EntityIdent(name, decls, instances, connects, functions, fenceStmts, entities, verbatim)
+        EntityIdent(name, decls, instances, connects, functions, fenceStmts, entities, verbatim) withLoc ctx.loc
       }
     }
 

@@ -10,7 +10,7 @@
 //
 // DESCRIPTION:
 //
-// Members of ast.Trees.Expr.
+// Common members of ast.Trees.Expr
 // These are factored out into a separate file to keep ast.Trees readable
 ////////////////////////////////////////////////////////////////////////////////
 

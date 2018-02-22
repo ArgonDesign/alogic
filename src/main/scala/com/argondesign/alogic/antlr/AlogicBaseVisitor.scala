@@ -30,7 +30,10 @@ abstract class AlogicBaseVisitor[T, L, O] extends AlogicParserBaseVisitor[T] {
   // scalastyle:off null
   override def visit(tree: ParseTree): T = {
     if (null == tree) defaultResult else super.visit(tree)
-  } ensuring (null != _)
+  } ensuring { res =>
+    if (res == null) println(tree.getText + tree.getClass)
+    null != res
+  }
   // scalastyle:on
 
   def visit[U <: RuleNode](ctxList: List[U]): L

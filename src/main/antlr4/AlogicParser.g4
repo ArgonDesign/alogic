@@ -159,7 +159,7 @@ statement
   | 'if' '(' expr ')' thenStmt=statement ('else' elseStmt=statement)? # StmtIf
   | 'case' '(' expr ')' '{' case_clause+ '}'                          # StmtCase
   | expr ';'                                                          # StmtExpr
-  | comb_statement                                                    # StmtComb
+  | comb_statement ';'                                                # StmtComb
   | ctrl_statement                                                    # StmtCtrl
   ;
 
@@ -169,9 +169,9 @@ case_clause
   ;
 
 comb_statement
-  : decl ';'                      # CombStmtDecl
-  | comb_statement_assignment ';' # DUMMYRULENAME_COMB_STATEMENT
-  | '$' '(' STRING ')' ';'       # CombStmtDollarComment
+  : decl                      # CombStmtDecl
+  | comb_statement_assignment # DUMMYRULENAME_COMB_STATEMENT
+  | '$' '(' STRING ')'        # CombStmtDollarComment
   ;
 
 comb_statement_assignment
@@ -201,7 +201,7 @@ loop_init
   ;
 
 loop_init_item
-  : comb_statement_assignment # LoopInitAssign
+  : expr '=' expr             # LoopInitAssign
   | kind IDENTIFIER '=' expr  # LoopInitDecl
   ;
 

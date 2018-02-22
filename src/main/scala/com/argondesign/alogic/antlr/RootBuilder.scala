@@ -16,6 +16,7 @@
 package com.argondesign.alogic.antlr
 
 import com.argondesign.alogic.antlr.AlogicParser.StartContext
+import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.ast.Trees.Root
 import com.argondesign.alogic.core.CompilerContext
 
@@ -25,7 +26,7 @@ object RootBuilder extends BaseBuilder[StartContext, Root] {
     val typeDefinitions = TypeDefinitionBuilder(ctx.type_definition)
     val entity = EntityBuilder(ctx.entity)
 
-    Root(typeDefinitions, entity)
+    Root(typeDefinitions, entity) withLoc ctx.loc
   }
 
 }

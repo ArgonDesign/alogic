@@ -32,13 +32,13 @@ trait TreeOps { this: Tree =>
 
   // Recurse through the tree with partial function
   // Wherever the partial function is not defined, we recurse.
-  // Wherever the partialfunction is defined, we apply it and stop recursion.
+  // Wherever the partial function is defined, we apply it and stop recursion.
   // To continue recursing after application, the client can invoke visit
   // selectively, or visitChildren to visit all children
-  def visit(callback: PartialFunction[Tree, Unit]): Unit = {
+  def visit(visitor: PartialFunction[Tree, Unit]): Unit = {
     def v(tree: Tree): Unit = {
-      if (callback.isDefinedAt(tree)) {
-        callback(tree)
+      if (visitor.isDefinedAt(tree)) {
+        visitor(tree)
       } else {
         tree.children foreach v
       }
@@ -47,15 +47,15 @@ trait TreeOps { this: Tree =>
   }
 
   // Visit all children of this tree
-  def visitChildren(callback: PartialFunction[Tree, Unit]): Unit = {
-    children foreach { _ visit callback }
+  def visitChildren(visitor: PartialFunction[Tree, Unit]): Unit = {
+    children foreach { _ visit visitor }
   }
 
   // Same as visit but always recurse through the whole tree
-  def visitAll(callback: PartialFunction[Tree, Unit]): Unit = {
+  def visitAll(visitor: PartialFunction[Tree, Unit]): Unit = {
     def v(tree: Tree): Unit = {
-      if (callback.isDefinedAt(tree)) {
-        callback(tree)
+      if (visitor.isDefinedAt(tree)) {
+        visitor(tree)
       }
       tree.children foreach v
     }

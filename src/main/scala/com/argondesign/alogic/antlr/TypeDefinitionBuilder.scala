@@ -16,7 +16,6 @@
 package com.argondesign.alogic.antlr
 
 import scala.collection.JavaConverters._
-import scala.collection.immutable.ListMap
 
 import com.argondesign.alogic.antlr.AlogicParser.Type_definitionContext
 import com.argondesign.alogic.antlr.AlogicParser.TypeDefinitionStructContext
@@ -32,14 +31,16 @@ object TypeDefinitionBuilder extends BaseBuilder[Type_definitionContext, TypeDef
   def apply(ctx: Type_definitionContext)(implicit cc: CompilerContext): TypeDefinition = {
     object Visitor extends AlogicScalarVisitor[TypeDefinition] {
       override def visitTypeDefinitionTypedef(ctx: TypeDefinitionTypedefContext) = {
-        TypeDefinitionTypedef(ctx.IDENTIFIER, TypeBuilder(ctx.kind))
+        TypeDefinitionTypedef(ctx.IDENTIFIER, TypeBuilder(ctx.kind)) withLoc ctx.loc
       }
 
       override def visitTypeDefinitionStruct(ctx: TypeDefinitionStructContext) = {
-        val fields = ctx.field.asScala.toList map { ctx =>
-          ctx.IDENTIFIER.text -> TypeBuilder(ctx.kind)
-        }
-        TypeDefinitionStruct(ctx.IDENTIFIER, ListMap(fields: _*))
+        val fields = ctx.field.asScala.toList
+
+        val fieldNames = fields map { _.IDENTIFIER.text }
+        val fieldKinds = fields map { ctx => TypeBuilder(ctx.kind) }
+
+        TypeDefinitionStruct(ctx.IDENTIFIER, fieldNames, fieldKinds) withLoc ctx.loc
       }
     }
 

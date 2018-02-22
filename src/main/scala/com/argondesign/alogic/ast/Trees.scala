@@ -15,8 +15,6 @@
 
 package com.argondesign.alogic.ast
 
-import scala.collection.immutable.ListMap
-
 import com.argondesign.alogic.core.Symbols.FuncSymbol
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Symbols.TermSymbol
@@ -31,7 +29,7 @@ object Trees {
   // AST root type
   ///////////////////////////////////////////////////////////////////////////////
 
-  abstract sealed trait Tree extends Product with Locationed
+  abstract sealed trait Tree extends Product with Locationed with TreeOps
 
   ///////////////////////////////////////////////////////////////////////////////
   // Root node for a file
@@ -45,7 +43,7 @@ object Trees {
 
   abstract sealed trait TypeDefinition extends Tree
 
-  case class TypeDefinitionStruct(name: String, fields: ListMap[String, Type]) extends TypeDefinition
+  case class TypeDefinitionStruct(name: String, fieldsNames: List[String], fieldKinds: List[Type]) extends TypeDefinition
   case class TypeDefinitionTypedef(name: String, kind: Type) extends TypeDefinition
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -85,7 +83,7 @@ object Trees {
   abstract sealed trait Decl extends Tree
   case class DeclIdent(name: String, kind: Type, init: Option[Expr]) extends Decl
   case class DeclSymbol(symbol: TermSymbol, kind: Type, init: Option[Expr]) extends Decl
-  case class InstanceIdent(name: String, module: String, params: ListMap[String, Expr]) extends Tree
+  case class InstanceIdent(name: String, module: String, paramName: List[String], paramExpr: List[Expr]) extends Tree
   case class Connect(lhs: Expr, rhs: List[Expr]) extends Tree
   case class FunctionIdent(name: String, body: List[Stmt]) extends Tree
   case class Function(symbol: FuncSymbol, body: List[CtrlStmt]) extends Tree

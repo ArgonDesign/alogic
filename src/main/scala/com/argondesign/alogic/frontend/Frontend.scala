@@ -28,6 +28,7 @@ import com.argondesign.alogic.antlr.AlogicParser.StartContext
 import com.argondesign.alogic.antlr.InstanceEntityNameExtractor
 import com.argondesign.alogic.antlr.RootBuilder
 import com.argondesign.alogic.ast.Trees.Root
+import com.argondesign.alogic.ast.Trees.Tree
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Source
 import com.argondesign.alogic.util.unreachable
@@ -71,7 +72,7 @@ class Frontend(
 
   // Parse all files needed for 'entityName'. Returns map from entityNames -> Root
   def apply(entityName: String): Map[String, Root] = {
-    // Cache of parses we already started workingon. We use this to to avoid
+    // Cache of parses we already started working on. We use this to to avoid
     // multiple parses of files that are instantiated multiple times
     val inProgress = mutable.Map[String, Future[Map[String, Root]]]()
 
@@ -119,8 +120,32 @@ class Frontend(
       }
     }
 
-    // Yield the result of the future
-    Await.result(parse(entityName), atMost = Inf)
+    // Compute the result
+    val astMap = Await.result(parse(entityName), atMost = Inf)
+
+    // Ensure all nodes have locations
+    // TODO: Optionally disable
+    astMap.values foreach {
+      _ visitAll {
+        case tree: Tree if !tree.hasLoc => cc.ice(s"Tree has no location $tree")
+      }
+    }
+
+    // Check that file names match entity definitions
+    val malformed = astMap filter {
+      case (name, Root(_, entity)) => name != entity.name
+    }
+
+    // Report any mismatches and stop
+    if (malformed.nonEmpty) {
+      for ((name, Root(_, entity)) <- malformed) {
+        cc.error(entity.loc, s"File name does not match entity name '${entity.name}'")
+      }
+      cc.fatal("Stopping due to previous errors")
+    }
+
+    // Return the AST map
+    astMap
   }
 
 }

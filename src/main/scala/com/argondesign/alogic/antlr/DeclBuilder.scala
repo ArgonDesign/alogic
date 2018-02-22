@@ -52,13 +52,13 @@ object DeclBuilder extends BaseBuilder[ParserRuleContext, DeclIdent] {
       override def visitDeclVar(ctx: DeclVarContext) = {
         val kind = TypeBuilder(ctx.kind)
         val init = Option(ctx.expr) map { ExprBuilder(_) }
-        DeclIdent(ctx.IDENTIFIER, kind, init)
+        DeclIdent(ctx.IDENTIFIER, kind, init) withLoc ctx.loc
       }
 
       override def visitDeclArr(ctx: DeclArrContext) = {
         val sizes = ExprBuilder(ctx.expr).reverse
         val kind = sizes.foldLeft[Type](TypeBuilder(ctx.kind)) { (elem, size) => TypeArray(elem, size) }
-        DeclIdent(ctx.IDENTIFIER, kind, None)
+        DeclIdent(ctx.IDENTIFIER, kind, None) withLoc ctx.loc
       }
 
       // Entity decls
@@ -85,34 +85,34 @@ object DeclBuilder extends BaseBuilder[ParserRuleContext, DeclIdent] {
           case (_, Some(storageType)) => storageType
         }
         val kind = TypeOut(underlying, fcType, storage)
-        DeclIdent(name, kind, None)
+        DeclIdent(name, kind, None) withLoc ctx.loc
       }
 
       override def visitEntityDeclIn(ctx: EntityDeclInContext) = {
         val underlying = TypeBuilder(ctx.kind)
         val fcType = FlowControlTypeBuilder(ctx.flow_control_type)
         val kind = TypeIn(underlying, fcType)
-        DeclIdent(ctx.IDENTIFIER, kind, None)
+        DeclIdent(ctx.IDENTIFIER, kind, None) withLoc ctx.loc
       }
 
       override def visitEntityDeclParam(ctx: EntityDeclParamContext) = {
         val underlying = TypeBuilder(ctx.kind)
         val kind = TypeParam(underlying)
         val init = ExprBuilder(ctx.expr)
-        DeclIdent(ctx.IDENTIFIER, kind, Some(init))
+        DeclIdent(ctx.IDENTIFIER, kind, Some(init)) withLoc ctx.loc
       }
 
       override def visitEntityDeclConst(ctx: EntityDeclConstContext) = {
         val underlying = TypeBuilder(ctx.kind)
         val kind = TypeConst(underlying)
         val init = ExprBuilder(ctx.expr)
-        DeclIdent(ctx.IDENTIFIER, kind, Some(init))
+        DeclIdent(ctx.IDENTIFIER, kind, Some(init)) withLoc ctx.loc
       }
 
       override def visitEntityDeclPipeline(ctx: EntityDeclPipelineContext) = {
         val underlying = TypeBuilder(ctx.kind)
         val kind = TypePipeline(underlying)
-        DeclIdent(ctx.IDENTIFIER, kind, None)
+        DeclIdent(ctx.IDENTIFIER, kind, None) withLoc ctx.loc
       }
 
       override def visitEntityDeclTerm(ctx: EntityDeclTermContext) = visit(ctx.decl)
@@ -125,7 +125,7 @@ object DeclBuilder extends BaseBuilder[ParserRuleContext, DeclIdent] {
         if (decl.init.isDefined) {
           cc.error(ctx, s"Verilog variable '${decl.name}' cannot have initializer")
         }
-        DeclIdent(decl.name, TypeVerilog(decl.kind), None)
+        DeclIdent(decl.name, TypeVerilog(decl.kind), None) withLoc ctx.loc
       }
     }
 
