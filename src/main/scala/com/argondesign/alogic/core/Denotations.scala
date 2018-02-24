@@ -18,8 +18,6 @@
 
 package com.argondesign.alogic.core
 
-import com.argondesign.alogic.core.Names.EntityName
-import com.argondesign.alogic.core.Names.FuncName
 import com.argondesign.alogic.core.Names.Name
 import com.argondesign.alogic.core.Names.TermName
 import com.argondesign.alogic.core.Names.TypeName
@@ -31,8 +29,6 @@ object Denotations {
   }
 
   case class TermDenotation(name: TermName) extends Denotation
-  case class FuncDenotation(name: FuncName) extends Denotation
   case class TypeDenotation(name: TypeName) extends Denotation
-  case class EntityDenotation(name: EntityName) extends Denotation
 
 }

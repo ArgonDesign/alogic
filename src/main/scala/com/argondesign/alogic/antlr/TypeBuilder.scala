@@ -28,8 +28,8 @@ import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.ast.Trees.Expr
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Types.Type
-import com.argondesign.alogic.core.Types.TypeIdent
 import com.argondesign.alogic.core.Types.TypeInt
+import com.argondesign.alogic.core.Types.TypeRef
 import com.argondesign.alogic.core.Types.TypeVector
 import com.argondesign.alogic.core.Types.TypeVoid
 
@@ -47,7 +47,7 @@ object TypeBuilder extends BaseBuilder[KindContext, Type] {
       override def visitTypeUInt(ctx: TypeUIntContext) = TypeInt(false, Expr(ctx.UINTTYPE.text.tail.toInt))
       override def visitTypeIntV(ctx: TypeIntVContext) = buildVector(signed = true, ctx.commaexpr)
       override def visitTypeUIntV(ctx: TypeUIntVContext) = buildVector(signed = false, ctx.commaexpr)
-      override def visitTypeIdent(ctx: TypeIdentContext) = TypeIdent(ctx.IDENTIFIER)
+      override def visitTypeIdent(ctx: TypeIdentContext) = TypeRef(ctx.IDENTIFIER.toIdent)
       override def visitTypeVoid(ctx: TypeVoidContext) = TypeVoid
     }
 

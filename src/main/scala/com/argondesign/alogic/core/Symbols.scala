@@ -21,16 +21,10 @@ import scala.collection.mutable
 import scala.language.implicitConversions
 
 import Denotations.Denotation
-import Denotations.EntityDenotation
-import Denotations.FuncDenotation
 import Denotations.TermDenotation
 import Denotations.TypeDenotation
-import Names.EntityName
-import Names.FuncName
 import Names.TermName
 import Names.TypeName
-import Symbols.EntitySymbol
-import Symbols.FuncSymbol
 import Symbols.Symbol
 import Symbols.TermSymbol
 import Symbols.TypeSymbol
@@ -53,25 +47,9 @@ trait Symbols { self: CompilerContext =>
     symbol
   }
 
-  def newSymbol(loc: Loc, name: FuncName): FuncSymbol = synchronized {
-    val symbol = new FuncSymbol(symbolSequenceNumbers.next)
-    val denot = FuncDenotation(name)
-    symbolLocations(symbol) = loc
-    symbolDenotations(symbol) = denot
-    symbol
-  }
-
   def newSymbol(loc: Loc, name: TypeName): TypeSymbol = synchronized {
     val symbol = new TypeSymbol(symbolSequenceNumbers.next)
     val denot = TypeDenotation(name)
-    symbolLocations(symbol) = loc
-    symbolDenotations(symbol) = denot
-    symbol
-  }
-
-  def newSymbol(loc: Loc, name: EntityName): EntitySymbol = synchronized {
-    val symbol = new EntitySymbol(symbolSequenceNumbers.next)
-    val denot = EntityDenotation(name)
     symbolLocations(symbol) = loc
     symbolDenotations(symbol) = denot
     symbol
@@ -92,14 +70,8 @@ object Symbols {
   class TermSymbol(val id: Int) extends AnyVal with Symbol {
     type ThisDenotation = TermDenotation
   }
-  class FuncSymbol(val id: Int) extends AnyVal with Symbol {
-    type ThisDenotation = FuncDenotation
-  }
   class TypeSymbol(val id: Int) extends AnyVal with Symbol {
     type ThisDenotation = TypeDenotation
-  }
-  class EntitySymbol(val id: Int) extends AnyVal with Symbol {
-    type ThisDenotation = EntityDenotation
   }
 
   implicit def toLoc(symbol: Symbol)(implicit cc: CompilerContext): Loc = cc.symbolLocations(symbol)

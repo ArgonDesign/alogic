@@ -18,38 +18,37 @@ package com.argondesign.alogic.antlr
 import scala.collection.JavaConverters._
 
 import com.argondesign.alogic.antlr.AlogicParser.BlockContext
-import com.argondesign.alogic.antlr.AlogicParser.CombStmtAssignContext
-import com.argondesign.alogic.antlr.AlogicParser.CombStmtDeclContext
-import com.argondesign.alogic.antlr.AlogicParser.CombStmtDollarCommentContext
-import com.argondesign.alogic.antlr.AlogicParser.CombStmtPostContext
-import com.argondesign.alogic.antlr.AlogicParser.CombStmtUpdateContext
-import com.argondesign.alogic.antlr.AlogicParser.CtrlStmtBreakContext
-import com.argondesign.alogic.antlr.AlogicParser.CtrlStmtDoContext
-import com.argondesign.alogic.antlr.AlogicParser.CtrlStmtFenceContext
-import com.argondesign.alogic.antlr.AlogicParser.CtrlStmtForContext
-import com.argondesign.alogic.antlr.AlogicParser.CtrlStmtGotoContext
-import com.argondesign.alogic.antlr.AlogicParser.CtrlStmtLetContext
-import com.argondesign.alogic.antlr.AlogicParser.CtrlStmtLoopContext
-import com.argondesign.alogic.antlr.AlogicParser.CtrlStmtReturnContext
-import com.argondesign.alogic.antlr.AlogicParser.CtrlStmtWhileContext
 import com.argondesign.alogic.antlr.AlogicParser.DefaultCaseContext
+import com.argondesign.alogic.antlr.AlogicParser.LetContext
 import com.argondesign.alogic.antlr.AlogicParser.LoopInitAssignContext
 import com.argondesign.alogic.antlr.AlogicParser.LoopInitDeclContext
 import com.argondesign.alogic.antlr.AlogicParser.NormalCaseContext
+import com.argondesign.alogic.antlr.AlogicParser.StmtAssignContext
+import com.argondesign.alogic.antlr.AlogicParser.StmtAssignmentContext
 import com.argondesign.alogic.antlr.AlogicParser.StmtBlockContext
+import com.argondesign.alogic.antlr.AlogicParser.StmtBreakContext
 import com.argondesign.alogic.antlr.AlogicParser.StmtCaseContext
-import com.argondesign.alogic.antlr.AlogicParser.StmtCombContext
-import com.argondesign.alogic.antlr.AlogicParser.StmtCtrlContext
+import com.argondesign.alogic.antlr.AlogicParser.StmtDeclContext
+import com.argondesign.alogic.antlr.AlogicParser.StmtDoContext
+import com.argondesign.alogic.antlr.AlogicParser.StmtDollarCommentContext
 import com.argondesign.alogic.antlr.AlogicParser.StmtExprContext
+import com.argondesign.alogic.antlr.AlogicParser.StmtFenceContext
+import com.argondesign.alogic.antlr.AlogicParser.StmtForContext
+import com.argondesign.alogic.antlr.AlogicParser.StmtGotoContext
 import com.argondesign.alogic.antlr.AlogicParser.StmtIfContext
+import com.argondesign.alogic.antlr.AlogicParser.StmtLoopContext
+import com.argondesign.alogic.antlr.AlogicParser.StmtPostContext
+import com.argondesign.alogic.antlr.AlogicParser.StmtReturnContext
+import com.argondesign.alogic.antlr.AlogicParser.StmtUpdateContext
+import com.argondesign.alogic.antlr.AlogicParser.StmtWhileContext
 import com.argondesign.alogic.antlr.AntlrConverters._
-import com.argondesign.alogic.ast.Trees.DeclIdent
+import com.argondesign.alogic.ast.Trees.CaseClause
+import com.argondesign.alogic.ast.Trees.Decl
 import com.argondesign.alogic.ast.Trees.Stmt
 import com.argondesign.alogic.ast.Trees.StmtAssign
 import com.argondesign.alogic.ast.Trees.StmtBlock
 import com.argondesign.alogic.ast.Trees.StmtBreak
 import com.argondesign.alogic.ast.Trees.StmtCase
-import com.argondesign.alogic.ast.Trees.StmtCaseClause
 import com.argondesign.alogic.ast.Trees.StmtDecl
 import com.argondesign.alogic.ast.Trees.StmtDo
 import com.argondesign.alogic.ast.Trees.StmtDollarComment
@@ -78,67 +77,78 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
       }
 
       // Proxy nodes
-      override def visitStmtComb(ctx: StmtCombContext) = visit(ctx.comb_statement)
-      override def visitStmtCtrl(ctx: StmtCtrlContext) = visit(ctx.ctrl_statement)
+      override def visitStmtAssignment(ctx: StmtAssignmentContext) = visit(ctx.assignment)
 
-      // Unambiguous combinatorial statements
-      override def visitCombStmtDecl(ctx: CombStmtDeclContext) = {
+      override def visitStmtDecl(ctx: StmtDeclContext) = {
         StmtDecl(DeclBuilder(ctx.decl)) withLoc ctx.loc
       }
-      override def visitCombStmtAssign(ctx: CombStmtAssignContext) = {
+
+      override def visitStmtAssign(ctx: StmtAssignContext) = {
         StmtAssign(ExprBuilder(ctx.expr(0)), ExprBuilder(ctx.expr(1))) withLoc ctx.loc
       }
-      override def visitCombStmtUpdate(ctx: CombStmtUpdateContext) = {
+
+      override def visitStmtUpdate(ctx: StmtUpdateContext) = {
         StmtUpdate(ExprBuilder(ctx.expr(0)), ctx.ASSIGNOP.text.init, ExprBuilder(ctx.expr(1))) withLoc ctx.loc
       }
-      override def visitCombStmtPost(ctx: CombStmtPostContext) = {
+
+      override def visitStmtPost(ctx: StmtPostContext) = {
         StmtPost(ExprBuilder(ctx.expr), ctx.op) withLoc ctx.loc
       }
-      override def visitCombStmtDollarComment(ctx: CombStmtDollarCommentContext) = {
+
+      override def visitStmtDollarComment(ctx: StmtDollarCommentContext) = {
         StmtDollarComment(ctx.STRING) withLoc ctx.loc
       }
 
-      // Unambiguous control statements
-      override def visitCtrlStmtLoop(ctx: CtrlStmtLoopContext) = {
-        val body = visit(ctx.block)
-        StmtLoop(body) withLoc ctx.loc
+      def buildLet(ctx: LetContext, body: Stmt) = {
+        if (ctx == null) { // scalastye:ignore null
+          body
+        } else {
+          val inits = visit(ctx.loop_init.loop_init_item)
+          StmtLet(inits, body) withLoc ctx.loc
+        }
       }
-      override def visitCtrlStmtDo(ctx: CtrlStmtDoContext) = {
+
+      override def visitStmtLoop(ctx: StmtLoopContext) = {
+        val body = visit(ctx.block)
+        buildLet(ctx.let, StmtLoop(body) withLoc ctx.loc)
+      }
+
+      override def visitStmtDo(ctx: StmtDoContext) = {
         val cond = ExprBuilder(ctx.expr)
         val body = visit(ctx.block)
-        StmtDo(cond, body) withLoc ctx.loc
+        buildLet(ctx.let, StmtDo(cond, body) withLoc ctx.loc)
       }
-      override def visitCtrlStmtWhile(ctx: CtrlStmtWhileContext) = {
+
+      override def visitStmtWhile(ctx: StmtWhileContext) = {
         val cond = ExprBuilder(ctx.expr)
         val body = visit(ctx.block)
-        StmtWhile(cond, body) withLoc ctx.loc
+        buildLet(ctx.let, StmtWhile(cond, body) withLoc ctx.loc)
       }
-      override def visitCtrlStmtFor(ctx: CtrlStmtForContext) = {
+
+      override def visitStmtFor(ctx: StmtForContext) = {
         val inits = visit(ctx.loop_init.loop_init_item)
         val cond = ExprBuilder(ctx.expr)
         val step = visit(ctx.step)
         val body = visit(ctx.block)
-        StmtFor(inits, cond, step, body) withLoc ctx.loc
+        buildLet(ctx.let, StmtFor(inits, cond, step, body) withLoc ctx.loc)
       }
-      override def visitCtrlStmtLet(ctx: CtrlStmtLetContext) = {
-        val inits = visit(ctx.loop_init.loop_init_item)
-        val body = visit(ctx.ctrl_statement_loop)
-        StmtLet(inits, body) withLoc ctx.loc
+
+      override def visitStmtGoto(ctx: StmtGotoContext) = {
+        StmtGoto(ctx.IDENTIFIER.toIdent) withLoc ctx.loc
       }
-      override def visitCtrlStmtGoto(ctx: CtrlStmtGotoContext) = {
-        StmtGoto(ctx.IDENTIFIER) withLoc ctx.loc
-      }
-      override def visitCtrlStmtFence(ctx: CtrlStmtFenceContext) = {
+
+      override def visitStmtFence(ctx: StmtFenceContext) = {
         StmtFence() withLoc ctx.loc
       }
-      override def visitCtrlStmtBreak(ctx: CtrlStmtBreakContext) = {
+
+      override def visitStmtBreak(ctx: StmtBreakContext) = {
         StmtBreak() withLoc ctx.loc
       }
-      override def visitCtrlStmtReturn(ctx: CtrlStmtReturnContext) = {
+
+      override def visitStmtReturn(ctx: StmtReturnContext) = {
         StmtReturn() withLoc ctx.loc
       }
 
-      // Ambiguous statements
       override def visitStmtBlock(ctx: StmtBlockContext) = visit(ctx.block)
 
       override def visitStmtIf(ctx: StmtIfContext) = {
@@ -154,12 +164,12 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
           override def visitDefaultCase(ctx: DefaultCaseContext) = Some(self(ctx.statement))
         }
 
-        object CaseVisitor extends AlogicScalarVisitor[Option[StmtCaseClause]] {
+        object CaseVisitor extends AlogicScalarVisitor[Option[CaseClause]] {
           override val defaultResult = None
           override def visitNormalCase(ctx: NormalCaseContext) = {
             val cond = ExprBuilder(ctx.commaexpr.expr)
             val stmt = self(ctx.statement)
-            Some(StmtCaseClause(cond, stmt) withLoc ctx.loc)
+            Some(CaseClause(cond, stmt) withLoc ctx.loc)
           }
         }
 
@@ -190,10 +200,10 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
       }
 
       override def visitLoopInitDecl(ctx: LoopInitDeclContext) = {
-        val name = ctx.IDENTIFIER.text
+        val ident = ctx.IDENTIFIER.toIdent
         val kind = TypeBuilder(ctx.kind)
         val init = ExprBuilder(ctx.expr)
-        val decl = DeclIdent(name, kind, Some(init)) withLoc ctx.loc
+        val decl = Decl(ident, kind, Some(init)) withLoc ctx.loc
         StmtDecl(decl) withLoc ctx.loc
       }
     }

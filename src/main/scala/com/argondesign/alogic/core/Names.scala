@@ -21,13 +21,8 @@ object Names {
     val string: String
   }
 
-  // Used for names that can participate in expressions e.g.: int i;
+  // Used for names that stand for terms
   case class TermName(string: String) extends Name
-  // Used for functions e.g.: void main() { ... }
-  case class FuncName(string: String) extends Name
-  // Used for type names e.g.: struct foo {} / typedef u8 bar;
+  // Used for names that stand for types
   case class TypeName(string: String) extends Name
-  // Used for design entities e.g.: fsm alu { ... }
-  case class EntityName(string: String) extends Name
-
 }

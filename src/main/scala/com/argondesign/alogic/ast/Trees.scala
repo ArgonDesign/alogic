@@ -15,9 +15,7 @@
 
 package com.argondesign.alogic.ast
 
-import com.argondesign.alogic.core.Symbols.FuncSymbol
 import com.argondesign.alogic.core.Symbols.Symbol
-import com.argondesign.alogic.core.Symbols.TermSymbol
 import com.argondesign.alogic.core.Types.Type
 
 // scalastyle:off number.of.types
@@ -29,75 +27,75 @@ object Trees {
   // AST root type
   ///////////////////////////////////////////////////////////////////////////////
 
-  abstract sealed trait Tree extends Product with Locationed with TreeOps
+  sealed trait Tree extends Product with Locationed with TreeOps
 
   ///////////////////////////////////////////////////////////////////////////////
   // Root node for a file
   ///////////////////////////////////////////////////////////////////////////////
 
-  case class Root(typeDefinitions: List[TypeDefinition], entiy: EntityIdent) extends Tree
+  case class Root(typeDefinitions: List[TypeDefinition], entity: Entity) extends Tree
+
+  ///////////////////////////////////////////////////////////////////////////////
+  // References refer to definitions
+  ///////////////////////////////////////////////////////////////////////////////
+
+  sealed trait Ref extends Tree
+  case class Ident(name: String) extends Ref
+  case class Sym(symbol: Symbol) extends Ref
 
   ///////////////////////////////////////////////////////////////////////////////
   // Type definition nodes
   ///////////////////////////////////////////////////////////////////////////////
 
-  abstract sealed trait TypeDefinition extends Tree
+  sealed trait TypeDefinition extends Tree
 
-  case class TypeDefinitionStruct(name: String, fieldsNames: List[String], fieldKinds: List[Type]) extends TypeDefinition
-  case class TypeDefinitionTypedef(name: String, kind: Type) extends TypeDefinition
+  case class TypeDefinitionStruct(ref: Ref, fieldsNames: List[String], fieldKinds: List[Type]) extends TypeDefinition
+  case class TypeDefinitionTypedef(ref: Ref, kind: Type) extends TypeDefinition
 
   ///////////////////////////////////////////////////////////////////////////////
   // Entity (module) nodes
   ///////////////////////////////////////////////////////////////////////////////
 
-  abstract sealed trait Entity extends Tree
-
-  case class EntityIdent(
+  case class Entity(
     // Entity being defined
-    name: String,
+    ref: Ref,
 
     // Declarations in entity scope
-    declarations: List[DeclIdent],
+    declarations: List[Decl],
 
     // Instantiations
-    instances: List[InstanceIdent],
+    instances: List[Instance],
     // Port connections
     connects: List[Connect],
 
     // Functions
-    functions: List[FunctionIdent],
+    functions: List[Function],
+    // Sates
+    states: List[State],
     // fence statements
     fenceStmts: List[Stmt],
 
     // Nested entity definitions
-    entities: List[EntityIdent],
+    entities: List[Entity],
 
     // Verbatim sections. Map from language to string to insert into output
     verbatim: Map[String, String]
-  ) extends Entity
+  ) extends Tree
 
   ///////////////////////////////////////////////////////////////////////////////
   // Entity contents
   ///////////////////////////////////////////////////////////////////////////////
 
-  abstract sealed trait Decl extends Tree
-  case class DeclIdent(name: String, kind: Type, init: Option[Expr]) extends Decl
-  case class DeclSymbol(symbol: TermSymbol, kind: Type, init: Option[Expr]) extends Decl
-  case class InstanceIdent(name: String, module: String, paramName: List[String], paramExpr: List[Expr]) extends Tree
+  case class Decl(ref: Ref, kind: Type, init: Option[Expr]) extends Tree
+  case class Instance(ref: Ref, module: Ref, paramName: List[String], paramExpr: List[Expr]) extends Tree
   case class Connect(lhs: Expr, rhs: List[Expr]) extends Tree
-  case class FunctionIdent(name: String, body: List[Stmt]) extends Tree
-  case class Function(symbol: FuncSymbol, body: List[CtrlStmt]) extends Tree
+  case class Function(ref: Ref, body: List[Stmt]) extends Tree
 
   ///////////////////////////////////////////////////////////////////////////////
   // Statements
-  //
-  // We have 3 kinds of statements. Eventually we want to end up with only
-  // CtrlStmt and CombStmt instances, but we cannot disambiguate calls without
-  // a symbol table during parsing, so we use plain Stmt nodes before we resolve
-  // symbols
   ///////////////////////////////////////////////////////////////////////////////
 
-  abstract sealed trait Stmt extends Tree
+  sealed trait Stmt extends Tree
 
   ///////////////////////////////////////////////////////////////////////////////
   // Source Statements
@@ -105,8 +103,8 @@ object Trees {
 
   case class StmtBlock(cmds: List[Stmt]) extends Stmt
   case class StmtIf(cond: Expr, body: Stmt, elsebody: Option[Stmt]) extends Stmt
-  case class StmtCase(value: Expr, cases: List[StmtCaseClause], default: Option[Stmt]) extends Stmt
-  case class StmtCaseClause(cond: List[Expr], body: Stmt) extends Tree
+  case class StmtCase(value: Expr, cases: List[CaseClause], default: Option[Stmt]) extends Stmt
+  case class CaseClause(cond: List[Expr], body: Stmt) extends Tree
 
   case class StmtLoop(body: Stmt) extends Stmt
   case class StmtWhile(cond: Expr, body: Stmt) extends Stmt
@@ -117,8 +115,7 @@ object Trees {
 
   case class StmtFence() extends Stmt
   case class StmtBreak() extends Stmt
-  case class StmtCall(name: String) extends Stmt
-  case class StmtGoto(name: String) extends Stmt
+  case class StmtGoto(ref: Ref) extends Stmt
   case class StmtReturn() extends Stmt
 
   case class StmtAssign(lhs: Expr, rhs: Expr) extends Stmt
@@ -129,68 +126,19 @@ object Trees {
 
   case class StmtDollarComment(str: String) extends Stmt // TODO: remove
 
-  ///////////////////////////////////////////////////////////////////////////////
-  // Combinatorial statements
-  ///////////////////////////////////////////////////////////////////////////////
-
-  abstract sealed trait CombStmt extends Stmt
-
-  case class CombBlock(cmds: List[CombStmt]) extends CombStmt
-  case class CombIf(cond: Expr, body: CombStmt, elsebody: Option[CombStmt]) extends CombStmt
-  case class CombCase(value: Expr, cases: List[CombCaseClause], default: Option[CombStmt]) extends CombStmt
-  case class CombGoto(tgt: Int) extends CombStmt
-  case class CombCall(tgt: Int, ret: Int) extends CombStmt
-  case class CombReturn() extends CombStmt
-
-  case class CombAssign(lhs: Expr, rhs: Expr) extends CombStmt
-  case class CombUpdate(lhs: Expr, op: String, rhs: Expr) extends CombStmt
-  case class CombPost(lhs: Expr, op: String) extends CombStmt
-  case class CombExpr(expr: Expr) extends CombStmt
-  case class CombDecl(decl: DeclSymbol) extends CombStmt
-
-  case class CombDollarComment(str: String) extends CombStmt // TODO: remove
-
-  case class CombCaseClause(cond: List[Expr], body: CombStmt) extends Tree
-
-  ///////////////////////////////////////////////////////////////////////////////
-  // Control statements
-  ///////////////////////////////////////////////////////////////////////////////
-
-  abstract sealed trait CtrlStmt extends Stmt
-
-  case class CtrlBlock(cmds: List[Stmt]) extends CtrlStmt
-  case class CtrlIf(cond: Expr, body: CtrlStmt, elsebody: Option[CtrlStmt]) extends CtrlStmt
-  case class CtrlCase(value: Expr, cases: List[CtrlCaseClause], default: Option[CtrlStmt]) extends CtrlStmt
-  case class CtrlGoto(symbol: FuncSymbol) extends CtrlStmt
-  case class CtrlCall(symbol: FuncSymbol) extends CtrlStmt
-  case class CtrlReturn() extends CtrlStmt
-
-  case class CtrlLoop(body: CtrlBlock) extends CtrlStmt
-  case class CtrlWhile(cond: Expr, body: List[Stmt]) extends CtrlStmt
-  case class CtrlFor(init: CombStmt, cond: Expr, incr: CombStmt, body: List[Stmt]) extends CtrlStmt
-  case class CtrlDo(cond: Expr, body: List[Stmt]) extends CtrlStmt
-  case class CtrlFence() extends CtrlStmt
-  case class CtrlBreak() extends CtrlStmt
-
-  case class CtrlCaseClause(cond: List[Expr], body: CtrlStmt) extends Tree
-
-  ///////////////////////////////////////////////////////////////////////////////
-  // Error statement - placeholder when errors happened
-  ///////////////////////////////////////////////////////////////////////////////
-
-  case class StmtError() extends CtrlStmt with CombStmt
+  case class StmtError() extends Stmt // placeholder when errors happened
 
   ///////////////////////////////////////////////////////////////////////////////
   // Expression nodes
   ///////////////////////////////////////////////////////////////////////////////
 
-  abstract sealed trait Expr extends Tree with ExprOps
+  sealed trait Expr extends Tree
   object Expr extends ObjectExprOps
 
   // TODO: Remove
   case class ExprBracket(content: Expr) extends Expr
 
-  case class ExprCall(ref: Expr, args: List[Expr]) extends Expr
+  case class ExprCall(expr: Expr, args: List[Expr]) extends Expr
 
   // Operators
   case class ExprUnary(op: String, lhs: Expr) extends Expr
@@ -207,12 +155,10 @@ object Trees {
   case class ExprDollarCall(name: String, args: List[Expr]) extends Expr
 
   // Literals
-  // Numbers have signedness and an optional width. If with is None, the number is considered un-sized
-  case class ExprNum(signed: Boolean, width: Option[BigInt], value: BigInt) extends Expr
+  case class ExprNum(signed: Boolean, width: Option[Int], value: BigInt) extends Expr
   case class ExprStr(value: String) extends Expr
 
-  case class ExprIdent(name: String) extends Expr // A name as it is represented in source
-  case class ExprSymbol(symbol: Symbol) extends Expr // ExprIdent after being resolved to a definition
+  case class ExprRef(ref: Ref) extends Expr
 
   case class ExprError() extends Expr // Placeholder when errors happened
 
@@ -220,17 +166,5 @@ object Trees {
   // Tree representing FSM states after control statement conversion
   ///////////////////////////////////////////////////////////////////////////////
 
-  case class State(state: Int, contents: List[CombStmt]) extends Tree
+  case class State(ref: Symbol, contents: List[Stmt]) extends Tree
 }
-
-// sealed trait DeclVerilog extends Decl
-// case class DeclVerilogVar(kind: Type, id: String) extends DeclVerilog
-// case class DeclVerilogArr(kind: ScalarType, id: String, dims: List[Expr]) extends DeclVerilog
-//
-//
-
-//
-// sealed trait StorageType extends StorageTypeOps
-// case object StorageTypeWire extends StorageType
-// case object StorageTypeBubble extends StorageType
-// case object StorageTypeReg extends StorageType

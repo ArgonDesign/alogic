@@ -10,7 +10,7 @@
 //
 // DESCRIPTION:
 //
-// Representations of various Alogic types
+// Representations of various internal types.
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.core
@@ -18,52 +18,63 @@ package com.argondesign.alogic.core
 import scala.collection.immutable.ListMap
 
 import com.argondesign.alogic.ast.Trees.Expr
+import com.argondesign.alogic.ast.Trees.Ref
 
 import FlowControlTypes.FlowControlType
 import StorageTypes.StorageType
-import Symbols.TypeSymbol
 
 object Types {
 
+  // The type system represents more than just  user facing types.
+  // Inside the compiler, every tree node has a type.
+
   // Root of all types
-  abstract sealed trait Type
+  sealed trait Type
+
+  // We have 2 basic kinds of types. GroundType are proper new types, wile
+  // ProxyTypes refer to underlying types but attach further semantics
+
+  sealed trait GroundType extends Type
+  sealed trait ProxyType extends Type
 
   ///////////////////////////////////////////////////////////////////////////////
-  // Basic type
+  // Ground types
   ///////////////////////////////////////////////////////////////////////////////
 
   // Simple integer types e.g.: i8 / u2 / int(N), analogous to Verilog packed arrays
-  case class TypeInt(signed: Boolean, size: Expr) extends Type
+  case class TypeInt(signed: Boolean, size: Expr) extends GroundType
   // Vector types (analogous to higher dimensions of SystemVerilog multi-dimensional packed arrays)
-  case class TypeVector(elementType: Type, size: Expr) extends Type
+  case class TypeVector(elementType: Type, size: Expr) extends GroundType
   // Array types (analogous to verilog unpacked arrays)
-  case class TypeArray(elementType: Type, size: Expr) extends Type
+  case class TypeArray(elementType: Type, size: Expr) extends GroundType
   // Structure type
-  case class TypeStruct(symbol: TypeSymbol, fields: ListMap[String, Type]) extends Type
+  case class TypeStruct(ref: Ref, fields: ListMap[String, Type]) extends GroundType
   // Void type
-  case object TypeVoid extends Type
+  case object TypeVoid extends GroundType
+  // Type reference e.g. 'foo_t foo;'
+  case class TypeRef(ref: Ref) extends GroundType
+  //
 
   ///////////////////////////////////////////////////////////////////////////////
-  // Qualified types with underlying types 'kind'
+  // Proxy types with underlying types 'kind'
   ///////////////////////////////////////////////////////////////////////////////
 
   // Input port type
-  case class TypeIn(kind: Type, fct: FlowControlType) extends Type
+  case class TypeIn(kind: Type, fct: FlowControlType) extends ProxyType
   // Output port type
-  case class TypeOut(kind: Type, fct: FlowControlType, storage: StorageType) extends Type
+  case class TypeOut(kind: Type, fct: FlowControlType, storage: StorageType) extends ProxyType
   // Pipeline variable type
-  case class TypePipeline(kind: Type) extends Type
+  case class TypePipeline(kind: Type) extends ProxyType
   // Parameter type
-  case class TypeParam(kind: Type) extends Type
+  case class TypeParam(kind: Type) extends ProxyType
   // Constant type
-  case class TypeConst(kind: Type) extends Type
+  case class TypeConst(kind: Type) extends ProxyType
   // Verilog type TODO: review use of this
-  case class TypeVerilog(kind: Type) extends Type
+  case class TypeVerilog(kind: Type) extends ProxyType
 
   ///////////////////////////////////////////////////////////////////////////////
   // Named type
   ///////////////////////////////////////////////////////////////////////////////
 
   // Named type (e.g.: foo_t a)
-  case class TypeIdent(ident: String) extends Type
 }

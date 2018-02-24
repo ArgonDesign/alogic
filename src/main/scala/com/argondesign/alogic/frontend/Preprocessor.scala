@@ -208,14 +208,17 @@ class Preprocessor(implicit cc: CompilerContext) {
     src:             Source,
     initialDefines:  Map[String, String],
     includeResolver: (Source, String) => Either[List[String], Source]
-  ): String = process(src, includeResolver, initialDefines.toMap)._1
+  ): Source = {
+    val preprocessed = process(src, includeResolver, initialDefines.toMap)._1
+    Source(src.file, preprocessed)
+  }
 
   // Preprocess a source, given search paths and initial defines
   def apply(
     src:                Source,
     initialDefines:     Map[String, String],
     includeSearchPaths: List[File]
-  ): String = {
+  ): Source = {
     // Include file resolver that looks up include files in the search paths, or the
     // directory of the including file
     def includeResolver(source: Source, includeSpec: String): Either[List[String], Source] = {
@@ -240,6 +243,7 @@ class Preprocessor(implicit cc: CompilerContext) {
       }
     }
 
-    process(src, includeResolver, initialDefines.toMap)._1
+    val preprocessed = process(src, includeResolver, initialDefines.toMap)._1
+    Source(src.file, preprocessed)
   }
 }

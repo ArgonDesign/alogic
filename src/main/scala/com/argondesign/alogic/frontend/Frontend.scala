@@ -24,9 +24,8 @@ import scala.concurrent.Future
 import scala.concurrent.duration.Duration.Inf
 
 import com.argondesign.alogic.FindFile
-import com.argondesign.alogic.antlr.AlogicParser.StartContext
-import com.argondesign.alogic.antlr.InstanceEntityNameExtractor
-import com.argondesign.alogic.antlr.RootBuilder
+import com.argondesign.alogic.ast.Trees.Ident
+import com.argondesign.alogic.ast.Trees.Instance
 import com.argondesign.alogic.ast.Trees.Root
 import com.argondesign.alogic.ast.Trees.Tree
 import com.argondesign.alogic.core.CompilerContext
@@ -35,8 +34,14 @@ import com.argondesign.alogic.util.unreachable
 
 import org.antlr.v4.runtime.ParserRuleContext
 
-// The frontend is responsible to preprocess, parse, and build ASTs for all entities including,
-// and below the hierarchy of a given toplevel entity.
+// The frontend is responsible to:
+// - locating sources (name -> source)
+// - preprocessing (source -> source)
+// - parsing (source -> parse tree)
+// - building (parse tree -> ast)
+// - naming (resolve identifiers to symbols)
+// - typing (compute types of all tree nodes)
+
 class Frontend(
   val moduleSeachDirs:  List[File],
   val includeSeachDirs: List[File],
@@ -46,7 +51,7 @@ class Frontend(
   cc: CompilerContext
 ) {
 
-  private[this] def findSource(entityName: String): Source = {
+  private[this] def locateIt(entityName: String): Source = {
     val sourceFileOpt = FindFile(entityName + ".alogic", moduleSeachDirs, maxDepth = 1)
 
     val sourceFile = sourceFileOpt.getOrElse {
@@ -56,93 +61,107 @@ class Frontend(
     Source(sourceFile)
   }
 
-  private[this] def parseSource(source: Source): ParserRuleContext = {
-    // Preprocessor
+  private[this] def preprocessIt(source: Source): Source = {
     val preprocessor = new Preprocessor
+    preprocessor(source, initialDefines, includeSeachDirs)
+  }
 
-    val preprocessed = preprocessor(source, initialDefines, includeSeachDirs)
-
-    val preprocessedSource = Source(source.file, preprocessed)
-
-    // Parser
-    Parser(preprocessedSource).getOrElse {
+  private[this] def parseIt(source: Source): ParserRuleContext = {
+    Parser(source).getOrElse {
       cc.fatal("Stopping due to syntax errors")
     }
   }
 
-  // Parse all files needed for 'entityName'. Returns map from entityNames -> Root
-  def apply(entityName: String): Map[String, Root] = {
-    // Cache of parses we already started working on. We use this to to avoid
-    // multiple parses of files that are instantiated multiple times
-    val inProgress = mutable.Map[String, Future[Map[String, Root]]]()
+  private[this] def buildIt(entityName: String, parseTree: ParserRuleContext): Root = {
+    val tree = Builder(parseTree) match {
+      case root: Root => root
+      case _          => unreachable
+    }
 
-    // Recursive worker that builds a future yielding the map of all parse trees required for an entity
-    def parse(entityName: String): Future[Map[String, Root]] = {
+    // Check that the entityName used for file search matches the actual name defined
+    // in the top level entity in the file
+    val Root(_, entity) = tree
+    val Ident(name) = entity.ref
 
-      // The actual future that builds all parse trees under the hierarchy of the given entity
-      // note that this is only actually constructed if the inProgress map does not contain the
-      // future already
-      lazy val future = {
-        // Fetch source
-        val sourceFuture = Future {
-          findSource(entityName)
-        }
+    if (name != entityName) {
+      cc.fatal(entity.loc, s"File name does not match entity name '${entityName}'")
+    }
 
-        // Parse it
-        val parseTreeFuture = sourceFuture map parseSource
+    tree
+  }
 
-        // Find all instance entity names
-        val instantiatedEntityNamesFuture = parseTreeFuture map { InstanceEntityNameExtractor(_) }
+  private[this] def nameIt(tree: Tree): Tree = tree
 
-        // Build AST from parseTree
-        val astFuture = parseTreeFuture map {
-          _ match {
-            case ctx: StartContext => RootBuilder(ctx)
-            case _                 => unreachable
+  private[this] def desugarIt(tree: Tree): Tree = tree
+
+  private[this] def typeIt(tree: Tree): Tree = tree
+
+  // Cache of trees we already started working on. We use this to to avoid
+  // multiple processing files that are instantiated multiple times
+  val inProgress = mutable.Map[String, Future[Map[String, Tree]]]()
+
+  // Recursive worker that builds a future yielding the map of all trees required for an entity
+  def doIt(entityName: String): Future[Map[String, Tree]] = {
+
+    // The actual future that builds all parse trees under the hierarchy of the given entity
+    // note that this is only actually constructed if the inProgress map does not contain the
+    // future already
+    lazy val future = {
+      // Fetch source
+      val sourceFuture = Future { locateIt(entityName) }
+
+      // Preproces it
+      val preprocessedFuture = sourceFuture map preprocessIt
+
+      // Parse it
+      val parseTreeFuture = preprocessedFuture map parseIt
+
+      // Build it
+      val astFuture = parseTreeFuture map { buildIt(entityName, _) }
+
+      // Name it
+      val namedAstFuture = astFuture map nameIt
+
+      // Desugar it
+      val desugaredAstFuture = namedAstFuture map desugarIt
+
+      // Type it
+      val typedAstFuture = desugaredAstFuture map typeIt
+
+      // Recursively process all instantiated nodes
+      val childAstMapsFuture = {
+        // Extract all instance entity names
+        val instantiatedEntityNamesFuture = astFuture map {
+          _.entity.instances map {
+            case Instance(_, Ident(entity), _, _) => entity
+            case _                                => unreachable
           }
         }
 
-        // Get all their AST maps recursively
-        val childAstMapsFuture = instantiatedEntityNamesFuture flatMap { Future.traverse(_)(parse) }
-
-        // Merge child parse tree maps and add this parse tree
-        for {
-          childAstMaps <- childAstMapsFuture
-          ast <- astFuture
-        } yield {
-          (Map.empty[String, Root] /: childAstMaps)(_ ++ _) + (entityName -> ast)
-        }
+        // process them recursively
+        instantiatedEntityNamesFuture flatMap { Future.traverse(_)(doIt) }
       }
 
-      // Now look up the result, or create the future if we have not started it yet
-      synchronized {
-        inProgress.getOrElseUpdate(entityName, future)
+      // Merge child tree maps and add this  tree
+      for {
+        childAstMaps <- childAstMapsFuture
+        ast <- typedAstFuture
+      } yield {
+        (Map.empty[String, Tree] /: childAstMaps)(_ ++ _) + (entityName -> ast)
       }
     }
+
+    // Now look up the result, or create the future if we have not started it yet
+    synchronized {
+      inProgress.getOrElseUpdate(entityName, future)
+    }
+  }
+
+  // Parse all files needed for 'entityName'. Returns map from entityNames -> Root
+  def apply(entityName: String): Map[String, Tree] = {
 
     // Compute the result
-    val astMap = Await.result(parse(entityName), atMost = Inf)
-
-    // Ensure all nodes have locations
-    // TODO: Optionally disable
-    astMap.values foreach {
-      _ visitAll {
-        case tree: Tree if !tree.hasLoc => cc.ice(s"Tree has no location $tree")
-      }
-    }
-
-    // Check that file names match entity definitions
-    val malformed = astMap filter {
-      case (name, Root(_, entity)) => name != entity.name
-    }
-
-    // Report any mismatches and stop
-    if (malformed.nonEmpty) {
-      for ((name, Root(_, entity)) <- malformed) {
-        cc.error(entity.loc, s"File name does not match entity name '${entity.name}'")
-      }
-      cc.fatal("Stopping due to previous errors")
-    }
+    val astMap = Await.result(doIt(entityName), atMost = Inf)
 
     // Return the AST map
     astMap

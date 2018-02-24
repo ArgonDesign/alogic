@@ -47,7 +47,7 @@ class PreprocessorSpec extends FlatSpec with Matchers {
          |be unchanged""".stripMargin
     )
 
-    preproc(source, emptyDefines, Nil) should be {
+    preproc(source, emptyDefines, Nil).text should be {
       """|plain text should
          |be unchanged""".stripMargin
     }
@@ -62,7 +62,7 @@ class PreprocessorSpec extends FlatSpec with Matchers {
          |/* be unchanged*/""".stripMargin
     )
 
-    preproc(source, emptyDefines, Nil) should be {
+    preproc(source, emptyDefines, Nil).text should be {
       """|// comments should
          |/* be unchanged*/""".stripMargin
     }
@@ -83,7 +83,7 @@ class PreprocessorSpec extends FlatSpec with Matchers {
          |be unchanged""".stripMargin
     )
 
-    preproc(source, emptyDefines, Nil) should be {
+    preproc(source, emptyDefines, Nil).text should be {
       """|
          |
          |macro text should
@@ -102,7 +102,7 @@ class PreprocessorSpec extends FlatSpec with Matchers {
 
     val initialDefines = Map("plain" -> "not so plain", "unchanged" -> "changed")
 
-    preproc(source, initialDefines, Nil) should be {
+    preproc(source, initialDefines, Nil).text should be {
       """|not so plain text should
          |be changed""".stripMargin
     }
@@ -161,7 +161,7 @@ class PreprocessorSpec extends FlatSpec with Matchers {
     )
 
     it should "handle true #if without #else" in new Fixture {
-      preproc(source, Map("COND" -> "1"), Nil) should be {
+      preproc(source, Map("COND" -> "1"), Nil).text should be {
         """|
            |  Yay!!
            |""".stripMargin
@@ -171,7 +171,7 @@ class PreprocessorSpec extends FlatSpec with Matchers {
     }
 
     it should "handle false #if without #else" in new Fixture {
-      preproc(source, Map("COND" -> "0"), Nil) should be {
+      preproc(source, Map("COND" -> "0"), Nil).text should be {
         """|
            |
            |""".stripMargin
@@ -219,7 +219,7 @@ class PreprocessorSpec extends FlatSpec with Matchers {
     )
 
     it should "handle true #ifdef without #else" in new Fixture {
-      preproc(source, Map("COND" -> "abc"), Nil) should be {
+      preproc(source, Map("COND" -> "abc"), Nil).text should be {
         """|
            |  Yay!!
            |""".stripMargin
@@ -229,7 +229,7 @@ class PreprocessorSpec extends FlatSpec with Matchers {
     }
 
     it should "handle false #ifdef without #else" in new Fixture {
-      preproc(source, Map("NotCOND" -> "abc"), Nil) should be {
+      preproc(source, Map("NotCOND" -> "abc"), Nil).text should be {
         """|
            |
            |""".stripMargin
@@ -254,7 +254,7 @@ class PreprocessorSpec extends FlatSpec with Matchers {
     )
 
     it should "handle true #if with #else" in new Fixture {
-      preproc(source, Map("COND" -> "1"), Nil) should be {
+      preproc(source, Map("COND" -> "1"), Nil).text should be {
         """|
            |  Yay!!
            |
@@ -266,7 +266,7 @@ class PreprocessorSpec extends FlatSpec with Matchers {
     }
 
     it should "handle false #if with #else" in new Fixture {
-      preproc(source, Map("COND" -> "0"), Nil) should be {
+      preproc(source, Map("COND" -> "0"), Nil).text should be {
         """|
            |
            |
@@ -293,7 +293,7 @@ class PreprocessorSpec extends FlatSpec with Matchers {
     )
 
     it should "handle true #ifdef with #else" in new Fixture {
-      preproc(source, Map("COND" -> "abc"), Nil) should be {
+      preproc(source, Map("COND" -> "abc"), Nil).text should be {
         """|
            |  Yay!!
            |
@@ -305,7 +305,7 @@ class PreprocessorSpec extends FlatSpec with Matchers {
     }
 
     it should "handle false #ifdef with #else" in new Fixture {
-      preproc(source, Map("NotCOND" -> "abc"), Nil) should be {
+      preproc(source, Map("NotCOND" -> "abc"), Nil).text should be {
         """|
            |
            |
@@ -356,7 +356,7 @@ class PreprocessorSpec extends FlatSpec with Matchers {
            |Post""".stripMargin
       )
 
-      preproc(source, emptyDefines, includeResolver(_, _)) should be {
+      preproc(source, emptyDefines, includeResolver(_, _)).text should be {
         """|Pre
            |
            |--This is
@@ -378,7 +378,7 @@ class PreprocessorSpec extends FlatSpec with Matchers {
                |Post""".stripMargin
       )
 
-      preproc(source, emptyDefines, includeResolver(_, _)) should be {
+      preproc(source, emptyDefines, includeResolver(_, _)).text should be {
         """|Pre
                |
                |This is
@@ -408,7 +408,7 @@ class PreprocessorSpec extends FlatSpec with Matchers {
            |""".stripMargin
       )
 
-      preproc(source, emptyDefines, includeResolver(_, _)) should be { "\n" * 13 }
+      preproc(source, emptyDefines, includeResolver(_, _)).text should be { "\n" * 13 }
 
       cc.messages should have length 9
 
@@ -495,7 +495,7 @@ class PreprocessorSpec extends FlatSpec with Matchers {
            |#    endif""".stripMargin
       )
 
-      preproc(source, Map("COND" -> "1"), Nil) should be {
+      preproc(source, Map("COND" -> "1"), Nil).text should be {
         """|
            |  Yay!!
            |""".stripMargin
@@ -512,7 +512,7 @@ class PreprocessorSpec extends FlatSpec with Matchers {
            |#    endif""".stripMargin
       )
 
-      preproc(source, Map("COND" -> "0"), Nil) should be {
+      preproc(source, Map("COND" -> "0"), Nil).text should be {
         """|
            |
            |""".stripMargin

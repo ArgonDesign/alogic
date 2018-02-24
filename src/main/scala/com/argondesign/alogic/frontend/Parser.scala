@@ -10,8 +10,9 @@
 //
 // DESCRIPTION:
 //
-// The parser is generated using Antlr4, this is just a small wrapper to
-// invoke it to build a parse tree.
+// The parser takes program source and returns a parse tree.
+// The parser itself is generated using Antlr4, this is just a small wrapper to
+// invoke it on some source to build a parse tree.
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.frontend

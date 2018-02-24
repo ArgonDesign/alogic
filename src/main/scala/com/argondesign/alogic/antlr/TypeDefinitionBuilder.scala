@@ -31,7 +31,7 @@ object TypeDefinitionBuilder extends BaseBuilder[Type_definitionContext, TypeDef
   def apply(ctx: Type_definitionContext)(implicit cc: CompilerContext): TypeDefinition = {
     object Visitor extends AlogicScalarVisitor[TypeDefinition] {
       override def visitTypeDefinitionTypedef(ctx: TypeDefinitionTypedefContext) = {
-        TypeDefinitionTypedef(ctx.IDENTIFIER, TypeBuilder(ctx.kind)) withLoc ctx.loc
+        TypeDefinitionTypedef(ctx.IDENTIFIER.toIdent, TypeBuilder(ctx.kind)) withLoc ctx.loc
       }
 
       override def visitTypeDefinitionStruct(ctx: TypeDefinitionStructContext) = {
@@ -40,7 +40,7 @@ object TypeDefinitionBuilder extends BaseBuilder[Type_definitionContext, TypeDef
         val fieldNames = fields map { _.IDENTIFIER.text }
         val fieldKinds = fields map { ctx => TypeBuilder(ctx.kind) }
 
-        TypeDefinitionStruct(ctx.IDENTIFIER, fieldNames, fieldKinds) withLoc ctx.loc
+        TypeDefinitionStruct(ctx.IDENTIFIER.toIdent, fieldNames, fieldKinds) withLoc ctx.loc
       }
     }
 

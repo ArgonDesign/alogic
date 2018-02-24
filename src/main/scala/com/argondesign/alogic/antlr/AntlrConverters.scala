@@ -17,6 +17,7 @@ package com.argondesign.alogic.antlr
 
 import scala.language.implicitConversions
 
+import com.argondesign.alogic.ast.Trees.Ident
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 
@@ -58,6 +59,11 @@ object AntlrConverters extends {
     def index: Int = token.getTokenIndex
 
     def isHidden: Boolean = token.getChannel != Token.DEFAULT_CHANNEL
+
+    def toIdent(implicit cc: CompilerContext): Ident = {
+      assert(token.getType == AlogicLexer.IDENTIFIER, "toIdent called on non-IDENTIFIER token")
+      Ident(text) withLoc loc
+    }
   }
 
   implicit class RichParseTree(val node: ParseTree) extends AnyVal {

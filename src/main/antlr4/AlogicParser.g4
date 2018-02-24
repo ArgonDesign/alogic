@@ -158,9 +158,22 @@ statement
   : block                                                             # StmtBlock
   | 'if' '(' expr ')' thenStmt=statement ('else' elseStmt=statement)? # StmtIf
   | 'case' '(' expr ')' '{' case_clause+ '}'                          # StmtCase
+  | let? 'loop' block                                                 # StmtLoop
+  | let? 'do' block 'while' '(' expr ')' ';'                          # StmtDo
+  | let? 'while' '(' expr ')' block                                   # StmtWhile
+  | let? 'for' '(' loop_init  ';' expr ';' step=assignment ')' block  # StmtFor
+  | 'goto' IDENTIFIER ';'                                             # StmtGoto
+  | 'fence' ';'                                                       # StmtFence
+  | 'break' ';'                                                       # StmtBreak
+  | 'return' ';'                                                      # StmtReturn
+  | decl ';'                                                          # StmtDecl
+  | assignment ';'                                                    # StmtAssignment
   | expr ';'                                                          # StmtExpr
-  | comb_statement ';'                                                # StmtComb
-  | ctrl_statement                                                    # StmtCtrl
+  | '$' '(' STRING ')' ';'                                            # StmtDollarComment
+  ;
+
+let
+  : 'let' '(' loop_init ')'
   ;
 
 case_clause
@@ -168,32 +181,10 @@ case_clause
   | commaexpr ':' statement # NormalCase
   ;
 
-comb_statement
-  : decl                      # CombStmtDecl
-  | comb_statement_assignment # DUMMYRULENAME_COMB_STATEMENT
-  | '$' '(' STRING ')'        # CombStmtDollarComment
-  ;
-
-comb_statement_assignment
-  : expr '=' expr       # CombStmtAssign
-  | expr ASSIGNOP expr  # CombStmtUpdate
-  | expr op=('++'|'--') # CombStmtPost
-  ;
-
-ctrl_statement
-  : ctrl_statement_loop                         # DUMMYRULENAME_CTRL_STATEMENT
-  | 'let' '(' loop_init ')' ctrl_statement_loop # CtrlStmtLet
-  | 'goto' IDENTIFIER ';'                       # CtrlStmtGoto
-  | 'fence' ';'                                 # CtrlStmtFence
-  | 'break' ';'                                 # CtrlStmtBreak
-  | 'return' ';'                                # CtrlStmtReturn
-  ;
-
-ctrl_statement_loop
-  : 'loop' block                                                                # CtrlStmtLoop
-  | 'do' block 'while' '(' expr ')' ';'                                         # CtrlStmtDo
-  | 'while' '(' expr ')' block                                                  # CtrlStmtWhile
-  | 'for' '(' loop_init  ';' expr ';' step=comb_statement_assignment ')' block  # CtrlStmtFor
+assignment
+  : expr '=' expr       # StmtAssign
+  | expr ASSIGNOP expr  # StmtUpdate
+  | expr op=('++'|'--') # StmtPost
   ;
 
 loop_init
@@ -211,7 +202,7 @@ loop_init_item
 
 expr
   : '(' expr ')'                                                            # ExprBracket
-  | ref=expr '(' commaexpr ')'                                              # ExprCall
+  | expr '(' commaexpr ')'                                                  # ExprCall
   // Operators
   | op=('+' | '-' | '!' | '~' | '&' | '~&' | '|' | '~|' | '^' | '~^') expr  # ExprUnary
   | expr op=('*' | '/' | '%') expr                                          # ExprBinary
@@ -227,10 +218,10 @@ expr
   | expr '?' expr ':' expr                                                  # ExprTernary
   | '{' expr '{' expr '}' '}'                                               # ExprRep
   | '{' commaexpr '}'                                                       # ExprCat
-  | ref=expr '[' idx=expr ']'                                               # ExprIndex
-  | ref=expr '[' lidx=expr op=(':' | '-:' | '+:') ridx=expr ']'             # ExprSlice
+  | expr '[' idx=expr ']'                                                   # ExprIndex
+  | expr '[' lidx=expr op=(':' | '-:' | '+:') ridx=expr ']'                 # ExprSlice
   // Select
-  | ref=expr '.' IDENTIFIER                                                 # ExprSelect
+  | expr '.' IDENTIFIER                                                     # ExprSelect
   // Builtins
   | ATID '(' commaexpr ')'                                                  # ExprAtCall
   | DOLLARID '(' commaexpr ')'                                              # ExprDollarCall

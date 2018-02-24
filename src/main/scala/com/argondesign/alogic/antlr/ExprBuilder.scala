@@ -47,9 +47,9 @@ import com.argondesign.alogic.ast.Trees.ExprBracket
 import com.argondesign.alogic.ast.Trees.ExprCall
 import com.argondesign.alogic.ast.Trees.ExprCat
 import com.argondesign.alogic.ast.Trees.ExprDollarCall
-import com.argondesign.alogic.ast.Trees.ExprIdent
 import com.argondesign.alogic.ast.Trees.ExprIndex
 import com.argondesign.alogic.ast.Trees.ExprNum
+import com.argondesign.alogic.ast.Trees.ExprRef
 import com.argondesign.alogic.ast.Trees.ExprRep
 import com.argondesign.alogic.ast.Trees.ExprSelect
 import com.argondesign.alogic.ast.Trees.ExprSlice
@@ -68,7 +68,7 @@ object ExprBuilder extends BaseBuilder[ParserRuleContext, Expr] {
 
   private def tickNum2Num(width: Option[String], tickNum: String): ExprNum = {
     assert(tickNum(0) == '\'')
-    val widthVal = width filter (_ != '_') map (BigInt(_))
+    val widthVal = width filter (_ != '_') map { _.toInt }
     val signed = tickNum(1) == 's'
     val baseChar = if (signed) tickNum(2) else tickNum(1)
     val base = baseMap(baseChar)
@@ -88,7 +88,7 @@ object ExprBuilder extends BaseBuilder[ParserRuleContext, Expr] {
 
       // Call
       override def visitExprCall(ctx: ExprCallContext) = {
-        ExprCall(visit(ctx.ref), this(ctx.commaexpr)) withLoc ctx.loc
+        ExprCall(visit(ctx.expr), this(ctx.commaexpr)) withLoc ctx.loc
       }
 
       // Operators
@@ -108,15 +108,15 @@ object ExprBuilder extends BaseBuilder[ParserRuleContext, Expr] {
         ExprCat(this(ctx.commaexpr)) withLoc ctx.loc
       }
       override def visitExprIndex(ctx: ExprIndexContext) = {
-        ExprIndex(visit(ctx.ref), visit(ctx.idx)) withLoc ctx.loc
+        ExprIndex(visit(ctx.expr(0)), visit(ctx.idx)) withLoc ctx.loc
       }
       override def visitExprSlice(ctx: ExprSliceContext) = {
-        ExprSlice(visit(ctx.ref), visit(ctx.lidx), ctx.op, visit(ctx.ridx)) withLoc ctx.loc
+        ExprSlice(visit(ctx.expr(0)), visit(ctx.lidx), ctx.op, visit(ctx.ridx)) withLoc ctx.loc
       }
 
       // Select
       override def visitExprSelect(ctx: ExprSelectContext) = {
-        ExprSelect(visit(ctx.ref), ctx.IDENTIFIER) withLoc ctx.loc
+        ExprSelect(visit(ctx.expr), ctx.IDENTIFIER) withLoc ctx.loc
       }
 
       // Builtins
@@ -149,7 +149,7 @@ object ExprBuilder extends BaseBuilder[ParserRuleContext, Expr] {
 
       // Identifier
       override def visitExprIdent(ctx: ExprIdentContext) = {
-        ExprIdent(ctx.IDENTIFIER) withLoc ctx.loc
+        ExprRef(ctx.IDENTIFIER.toIdent) withLoc ctx.loc
       }
 
       // Connect refs
@@ -158,7 +158,7 @@ object ExprBuilder extends BaseBuilder[ParserRuleContext, Expr] {
       }
 
       override def visitConnectRefIdent(ctx: ConnectRefIdentContext) = {
-        ExprIdent(ctx.IDENTIFIER) withLoc ctx.loc
+        ExprRef(ctx.IDENTIFIER.toIdent) withLoc ctx.loc
       }
     }
 
