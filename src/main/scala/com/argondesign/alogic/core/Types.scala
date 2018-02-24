@@ -69,8 +69,6 @@ object Types {
   case class TypeParam(kind: Type) extends ProxyType
   // Constant type
   case class TypeConst(kind: Type) extends ProxyType
-  // Verilog type TODO: review use of this
-  case class TypeVerilog(kind: Type) extends ProxyType
 
   ///////////////////////////////////////////////////////////////////////////////
   // Named type

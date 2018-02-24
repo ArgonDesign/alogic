@@ -89,7 +89,6 @@ entity_decl
   | 'const' kind IDENTIFIER '=' expr                        # EntityDeclConst
   | 'pipeline' kind IDENTIFIER                              # EntityDeclPipeline
   | decl                                                    # EntityDeclTerm
-  | 'verilog' decl                                          # EntityDeclVerilog
   ;
 
 ///////////////////////////////////////////////////////////////////////////////

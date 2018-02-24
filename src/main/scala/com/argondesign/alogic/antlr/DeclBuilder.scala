@@ -23,10 +23,8 @@ import com.argondesign.alogic.antlr.AlogicParser.EntityDeclOutContext
 import com.argondesign.alogic.antlr.AlogicParser.EntityDeclParamContext
 import com.argondesign.alogic.antlr.AlogicParser.EntityDeclPipelineContext
 import com.argondesign.alogic.antlr.AlogicParser.EntityDeclTermContext
-import com.argondesign.alogic.antlr.AlogicParser.EntityDeclVerilogContext
 import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.ast.Trees.Decl
-import com.argondesign.alogic.ast.Trees.Ident
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeValid
@@ -40,7 +38,6 @@ import com.argondesign.alogic.core.Types.TypeIn
 import com.argondesign.alogic.core.Types.TypeOut
 import com.argondesign.alogic.core.Types.TypeParam
 import com.argondesign.alogic.core.Types.TypePipeline
-import com.argondesign.alogic.core.Types.TypeVerilog
 
 import org.antlr.v4.runtime.ParserRuleContext
 
@@ -116,15 +113,6 @@ object DeclBuilder extends BaseBuilder[ParserRuleContext, Decl] {
       }
 
       override def visitEntityDeclTerm(ctx: EntityDeclTermContext) = visit(ctx.decl)
-
-      override def visitEntityDeclVerilog(ctx: EntityDeclVerilogContext) = {
-        val decl = visit(ctx.decl)
-        if (decl.init.isDefined) {
-          val Ident(name) = decl.ref
-          cc.error(ctx, s"Verilog variable '${name}' cannot have initializer")
-        }
-        Decl(decl.ref, TypeVerilog(decl.kind), None) withLoc ctx.loc
-      }
     }
 
     Visitor(ctx)
