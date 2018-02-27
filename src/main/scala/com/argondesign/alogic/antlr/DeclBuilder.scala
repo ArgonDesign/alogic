@@ -16,19 +16,19 @@
 package com.argondesign.alogic.antlr
 
 import com.argondesign.alogic.antlr.AlogicParser.DeclArrContext
+import com.argondesign.alogic.antlr.AlogicParser.DeclConstContext
+import com.argondesign.alogic.antlr.AlogicParser.DeclContext
+import com.argondesign.alogic.antlr.AlogicParser.DeclInContext
+import com.argondesign.alogic.antlr.AlogicParser.DeclOutContext
+import com.argondesign.alogic.antlr.AlogicParser.DeclParamContext
+import com.argondesign.alogic.antlr.AlogicParser.DeclPipelineContext
 import com.argondesign.alogic.antlr.AlogicParser.DeclVarContext
-import com.argondesign.alogic.antlr.AlogicParser.EntityDeclConstContext
-import com.argondesign.alogic.antlr.AlogicParser.EntityDeclInContext
-import com.argondesign.alogic.antlr.AlogicParser.EntityDeclOutContext
-import com.argondesign.alogic.antlr.AlogicParser.EntityDeclParamContext
-import com.argondesign.alogic.antlr.AlogicParser.EntityDeclPipelineContext
-import com.argondesign.alogic.antlr.AlogicParser.EntityDeclTermContext
 import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.ast.Trees.Decl
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeValid
-import com.argondesign.alogic.core.StorageTypes.StorageSliceFReg
+import com.argondesign.alogic.core.StorageTypes.StorageSliceFwd
 import com.argondesign.alogic.core.StorageTypes.StorageTypeReg
 import com.argondesign.alogic.core.StorageTypes.StorageTypeSlices
 import com.argondesign.alogic.core.Types.Type
@@ -39,11 +39,9 @@ import com.argondesign.alogic.core.Types.TypeOut
 import com.argondesign.alogic.core.Types.TypeParam
 import com.argondesign.alogic.core.Types.TypePipeline
 
-import org.antlr.v4.runtime.ParserRuleContext
+object DeclBuilder extends BaseBuilder[DeclContext, Decl] {
 
-object DeclBuilder extends BaseBuilder[ParserRuleContext, Decl] {
-
-  def apply(ctx: ParserRuleContext)(implicit cc: CompilerContext): Decl = {
+  def apply(ctx: DeclContext)(implicit cc: CompilerContext): Decl = {
     object Visitor extends AlogicScalarVisitor[Decl] {
       // Simple decls
       override def visitDeclVar(ctx: DeclVarContext) = {
@@ -59,7 +57,7 @@ object DeclBuilder extends BaseBuilder[ParserRuleContext, Decl] {
       }
 
       // Entity decls
-      override def visitEntityDeclOut(ctx: EntityDeclOutContext) = {
+      override def visitDeclOut(ctx: DeclOutContext) = {
         val ident = ctx.IDENTIFIER.toIdent
         val underlying = TypeBuilder(ctx.kind)
         val fcType = FlowControlTypeBuilder(ctx.flow_control_type)
@@ -68,14 +66,14 @@ object DeclBuilder extends BaseBuilder[ParserRuleContext, Decl] {
           // Defaults
           case (FlowControlTypeNone, None)  => StorageTypeReg
           case (FlowControlTypeValid, None) => StorageTypeReg
-          case (_, None)                    => StorageTypeSlices(List(StorageSliceFReg))
+          case (_, None)                    => StorageTypeSlices(List(StorageSliceFwd))
           // Error checks
           case (FlowControlTypeNone, Some(_: StorageTypeSlices)) => {
-            cc.error(ctx, s"Output port '${ident.name}' without flow control cannot use output slices")
+            cc.error(ctx, s"Output port '${ident.name}' without flow control specifier cannot use output slices")
             StorageTypeReg
           }
           case (FlowControlTypeValid, Some(_: StorageTypeSlices)) => {
-            cc.error(ctx, s"Output port '${ident.name}' with 'sync' flow control cannot use output slices")
+            cc.error(ctx, s"Output port '${ident.name}' with 'sync' flow control specifier cannot use output slices")
             StorageTypeReg
           }
           // Unbox
@@ -85,34 +83,32 @@ object DeclBuilder extends BaseBuilder[ParserRuleContext, Decl] {
         Decl(ident, kind, None) withLoc ctx.loc
       }
 
-      override def visitEntityDeclIn(ctx: EntityDeclInContext) = {
+      override def visitDeclIn(ctx: DeclInContext) = {
         val underlying = TypeBuilder(ctx.kind)
         val fcType = FlowControlTypeBuilder(ctx.flow_control_type)
         val kind = TypeIn(underlying, fcType)
         Decl(ctx.IDENTIFIER.toIdent, kind, None) withLoc ctx.loc
       }
 
-      override def visitEntityDeclParam(ctx: EntityDeclParamContext) = {
+      override def visitDeclParam(ctx: DeclParamContext) = {
         val underlying = TypeBuilder(ctx.kind)
         val kind = TypeParam(underlying)
         val init = ExprBuilder(ctx.expr)
         Decl(ctx.IDENTIFIER.toIdent, kind, Some(init)) withLoc ctx.loc
       }
 
-      override def visitEntityDeclConst(ctx: EntityDeclConstContext) = {
+      override def visitDeclConst(ctx: DeclConstContext) = {
         val underlying = TypeBuilder(ctx.kind)
         val kind = TypeConst(underlying)
         val init = ExprBuilder(ctx.expr)
         Decl(ctx.IDENTIFIER.toIdent, kind, Some(init)) withLoc ctx.loc
       }
 
-      override def visitEntityDeclPipeline(ctx: EntityDeclPipelineContext) = {
+      override def visitDeclPipeline(ctx: DeclPipelineContext) = {
         val underlying = TypeBuilder(ctx.kind)
         val kind = TypePipeline(underlying)
         Decl(ctx.IDENTIFIER.toIdent, kind, None) withLoc ctx.loc
       }
-
-      override def visitEntityDeclTerm(ctx: EntityDeclTermContext) = visit(ctx.decl)
     }
 
     Visitor(ctx)

@@ -17,14 +17,14 @@ package com.argondesign.alogic.antlr
 
 import scala.collection.JavaConverters._
 
-import com.argondesign.alogic.antlr.AlogicParser.Storage_typeContext
 import com.argondesign.alogic.antlr.AlogicParser.StorageTypeSlicesContext
 import com.argondesign.alogic.antlr.AlogicParser.StorageTypeWireContext
+import com.argondesign.alogic.antlr.AlogicParser.Storage_typeContext
 import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.StorageTypes.StorageSliceBReg
 import com.argondesign.alogic.core.StorageTypes.StorageSliceBubble
-import com.argondesign.alogic.core.StorageTypes.StorageSliceFReg
+import com.argondesign.alogic.core.StorageTypes.StorageSliceBwd
+import com.argondesign.alogic.core.StorageTypes.StorageSliceFwd
 import com.argondesign.alogic.core.StorageTypes.StorageType
 import com.argondesign.alogic.core.StorageTypes.StorageTypeSlices
 import com.argondesign.alogic.core.StorageTypes.StorageTypeWire
@@ -39,8 +39,8 @@ object StorageTypeBuilder extends BaseBuilder[Storage_typeContext, StorageType] 
         val kinds = ctx.slices.asScala.toList map {
           _.text match {
             case "bubble" => StorageSliceBubble
-            case "freg"   => StorageSliceFReg
-            case "breg"   => StorageSliceBReg
+            case "fslice" => StorageSliceFwd
+            case "bslice" => StorageSliceBwd
             case _        => unreachable
           }
         }

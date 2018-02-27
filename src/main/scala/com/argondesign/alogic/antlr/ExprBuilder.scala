@@ -121,10 +121,10 @@ object ExprBuilder extends BaseBuilder[ParserRuleContext, Expr] {
 
       // Builtins
       override def visitExprAtCall(ctx: ExprAtCallContext) = {
-        ExprAtCall(ctx.ATID, this(ctx.commaexpr)) withLoc ctx.loc
+        ExprAtCall(ctx.ATID.text.tail, this(ctx.commaexpr)) withLoc ctx.loc
       }
       override def visitExprDollarCall(ctx: ExprDollarCallContext) = {
-        ExprDollarCall(ctx.DOLLARID, this(ctx.commaexpr)) withLoc ctx.loc
+        ExprDollarCall(ctx.DOLLARID.text.tail, this(ctx.commaexpr)) withLoc ctx.loc
       }
 
       // Literals
@@ -135,7 +135,7 @@ object ExprBuilder extends BaseBuilder[ParserRuleContext, Expr] {
         ExprNum(false, Some(1), 0) withLoc ctx.loc
       }
       override def visitExprString(ctx: ExprStringContext) = {
-        ExprStr(ctx.STRING) withLoc ctx.loc
+        ExprStr(ctx.STRING.text.tail.init) withLoc ctx.loc
       }
       override def visitExprTickNum(ctx: ExprTickNumContext) = {
         tickNum2Num(None, ctx.TICKNUM) withLoc ctx.loc

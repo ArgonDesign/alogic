@@ -19,21 +19,6 @@ options {
   tokenVocab = AlogicLexer;
 }
 
-// TODO: syntax changes:
-//
-// PROPOSED: Change
-//   task ID '{' ports body '}'
-// to:
-//   task ID '('ports')' '{' body '}'
-//
-// PROPOSED: change
-//   'void' 'verilog' '(')' '{'...'}'
-// to:
-//   'verilog' {...}
-// or to something similar to:
-//   'verbatim' 'verilog' '{'...'}'
-//   (for when we would support multiple target languages???)
-
 ///////////////////////////////////////////////////////////////////////////////
 // Start rule for whole source file
 ///////////////////////////////////////////////////////////////////////////////
@@ -57,6 +42,10 @@ type_definition
 
 field: kind IDENTIFIER SEMICOLON;
 
+///////////////////////////////////////////////////////////////////////////////
+// Type names
+///////////////////////////////////////////////////////////////////////////////
+
 kind
   : 'bool'                    # TypeBool
   | INTTYPE                   # TypeInt
@@ -73,22 +62,34 @@ kind
 
 entity
   : variant=('fsm' | 'network' | 'verilog') IDENTIFIER '{'
-      (entity_decl ';')*
+      (decl ';')*
       (entity_content)*
     '}'
   ;
 
 ///////////////////////////////////////////////////////////////////////////////
-// Declarations in entity scope
+// Declarations
 ///////////////////////////////////////////////////////////////////////////////
 
-entity_decl
-  : 'out' flow_control_type? storage_type? kind IDENTIFIER  # EntityDeclOut
-  | 'in' flow_control_type? kind IDENTIFIER                 # EntityDeclIn
-  | 'param' kind IDENTIFIER '=' expr                        # EntityDeclParam
-  | 'const' kind IDENTIFIER '=' expr                        # EntityDeclConst
-  | 'pipeline' kind IDENTIFIER                              # EntityDeclPipeline
-  | decl                                                    # EntityDeclTerm
+decl
+  : kind IDENTIFIER ('=' expr)?                             # DeclVar
+  | kind IDENTIFIER ('[' expr ']')+                         # DeclArr
+  | 'out' flow_control_type? storage_type? kind IDENTIFIER  # DeclOut
+  | 'in' flow_control_type? kind IDENTIFIER                 # DeclIn
+  | 'param' kind IDENTIFIER '=' expr                        # DeclParam
+  | 'const' kind IDENTIFIER '=' expr                        # DeclConst
+  | 'pipeline' kind IDENTIFIER                              # DeclPipeline
+  ;
+
+flow_control_type
+  : 'sync'        # FlowControlTypeSync
+  | SYNC_READY    # FlowControlTypeSyncReady
+  | SYNC_ACCEPT   # FlowControlTypeSyncAccept
+  ;
+
+storage_type
+  : 'wire'                                      # StorageTypeWire
+  | (slices+=('bubble' | 'fslice' | 'bslice'))+ # StorageTypeSlices
   ;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -106,10 +107,6 @@ entity_content
   | 'verbatim' IDENTIFIER VERBATIMBODY  # EntityContentVerbatimBlock
   ;
 
-///////////////////////////////////////////////////////////////////////////////
-// Content elements
-///////////////////////////////////////////////////////////////////////////////
-
 connect : lhs=connect_ref '->' rhs+=connect_ref (',' rhs+=connect_ref)* ';' ;
 
 connect_ref
@@ -122,30 +119,6 @@ instance : IDENTIFIER '=' 'new' IDENTIFIER '(' param_assigns ')' ';' ;
 param_assigns : (IDENTIFIER '=' expr (','  IDENTIFIER '=' expr)*)? ;
 
 ///////////////////////////////////////////////////////////////////////////////
-// Declarations
-///////////////////////////////////////////////////////////////////////////////
-
-decl
-  : kind IDENTIFIER ('=' expr)?     # DeclVar
-  | kind IDENTIFIER ('[' expr ']')+ # DeclArr
-  ;
-
-///////////////////////////////////////////////////////////////////////////////
-// Port qualifiers
-///////////////////////////////////////////////////////////////////////////////
-
-flow_control_type
-  : 'sync'        # FlowControlTypeSync
-  | SYNC_READY    # FlowControlTypeSyncReady
-  | SYNC_ACCEPT   # FlowControlTypeSyncAccept
-  ;
-
-storage_type
-  : 'wire'                                  # StorageTypeWire
-  | (slices+=('bubble' | 'freg' | 'breg'))+ # StorageTypeSlices
-  ;
-
-///////////////////////////////////////////////////////////////////////////////
 // Statements
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -154,21 +127,26 @@ block
   ;
 
 statement
-  : block                                                             # StmtBlock
-  | 'if' '(' expr ')' thenStmt=statement ('else' elseStmt=statement)? # StmtIf
-  | 'case' '(' expr ')' '{' case_clause+ '}'                          # StmtCase
-  | let? 'loop' block                                                 # StmtLoop
-  | let? 'do' block 'while' '(' expr ')' ';'                          # StmtDo
-  | let? 'while' '(' expr ')' block                                   # StmtWhile
-  | let? 'for' '(' loop_init  ';' expr ';' step=assignment ')' block  # StmtFor
-  | 'goto' IDENTIFIER ';'                                             # StmtGoto
-  | 'fence' ';'                                                       # StmtFence
-  | 'break' ';'                                                       # StmtBreak
-  | 'return' ';'                                                      # StmtReturn
-  | decl ';'                                                          # StmtDecl
-  | assignment ';'                                                    # StmtAssignment
-  | expr ';'                                                          # StmtExpr
-  | '$' '(' STRING ')' ';'                                            # StmtDollarComment
+  : block                                                               # StmtBlock
+  | 'if' '(' expr ')' thenStmt=statement ('else' elseStmt=statement)?   # StmtIf
+  | 'case' '(' expr ')' '{' case_clause+ '}'                            # StmtCase
+  | let loop                                                            # StmtLet
+  | loop                                                                # StatementLoop
+  | 'goto' IDENTIFIER ';'                                               # StmtGoto
+  | 'fence' ';'                                                         # StmtFence
+  | 'break' ';'                                                         # StmtBreak
+  | 'return' ';'                                                        # StmtReturn
+  | decl ';'                                                            # StmtDecl
+  | assignment ';'                                                      # StatementAssignment
+  | expr ';'                                                            # StmtExpr
+  | '$' '(' STRING ')' ';'                                              # StmtDollarComment
+  ;
+
+loop
+  : 'loop' block                                                   # StmtLoop
+  | 'do' block 'while' '(' expr ')' ';'                            # StmtDo
+  | 'while' '(' expr ')' block                                     # StmtWhile
+  | 'for' '(' loop_init?  ';' expr? ';' for_steps? ')' block       # StmtFor
   ;
 
 let
@@ -193,6 +171,10 @@ loop_init
 loop_init_item
   : expr '=' expr             # LoopInitAssign
   | kind IDENTIFIER '=' expr  # LoopInitDecl
+  ;
+
+for_steps
+  : step+=assignment (',' step+=assignment)*
   ;
 
 ///////////////////////////////////////////////////////////////////////////////

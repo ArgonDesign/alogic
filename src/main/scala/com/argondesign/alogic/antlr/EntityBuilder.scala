@@ -32,13 +32,13 @@ import com.argondesign.alogic.ast.Trees.Connect
 import com.argondesign.alogic.ast.Trees.Entity
 import com.argondesign.alogic.ast.Trees.Function
 import com.argondesign.alogic.ast.Trees.Instance
-import com.argondesign.alogic.ast.Trees.Stmt
+import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 
 object EntityBuilder extends BaseBuilder[EntityContext, Entity] {
 
   // A few helper to use locally
-  private case class AutoInstanceIdent(entity: Entity) extends Locationed
+  private case class AutoInstance(entity: Entity) extends Locationed
   private case class FenceBlock(stmts: List[Stmt]) extends Locationed
   private case class VerbatimBlock(lang: String, text: String) extends Locationed
 
@@ -68,7 +68,7 @@ object EntityBuilder extends BaseBuilder[EntityContext, Entity] {
       override def visitEntityContentEntity(ctx: EntityContentEntityContext) = {
         val entity = EntityBuilder(ctx.entity)
         if (Option(ctx.autoinst).isDefined) {
-          AutoInstanceIdent(entity) withLoc ctx.loc
+          AutoInstance(entity) withLoc ctx.loc
         } else {
           entity
         }
@@ -105,10 +105,13 @@ object EntityBuilder extends BaseBuilder[EntityContext, Entity] {
     object EntityVisitor extends AlogicScalarVisitor[Entity] {
       override def visitEntity(ctx: EntityContext) = {
         val ident = ctx.IDENTIFIER.toIdent
-        val decls = DeclBuilder(ctx.entity_decl)
+        val decls = DeclBuilder(ctx.decl)
         val contents = EntityContentVisitor(ctx.entity_content)
-        val instances = contents collect { case x: Instance => x }
-        // TODO: autoinst
+        val instances = contents collect {
+          case x: Instance          => x
+          case AutoInstance(entity) => Instance(entity.ref, entity.ref, Nil, Nil) withLoc entity.loc
+
+        }
         val connects = contents collect { case x: Connect => x }
         val functions = contents collect { case x: Function => x }
         val fenceStmts = {
@@ -122,14 +125,52 @@ object EntityBuilder extends BaseBuilder[EntityContext, Entity] {
             blocks.head.stmts
           }
         }
-        val entities = contents collect { case x: Entity => x }
+        val entities = contents collect {
+          case x: Entity            => x
+          case AutoInstance(entity) => entity
+        }
         val verbatim = {
           val blocks = contents collect { case x: VerbatimBlock => x }
           val blockMap = blocks groupBy { case VerbatimBlock(lang, text) => lang }
-          blockMap mapValues { list => list map { _.text } mkString "\n" }
+          blockMap mapValues { list => list map { _.text.tail.init } mkString "\n" }
         }
-        // TODO: check fsm/network/verilog variant subsets
-        Entity(ident, decls, instances, connects, functions, Nil, fenceStmts, entities, verbatim) withLoc ctx.loc
+
+        val entity = Entity(
+          ident,
+          decls,
+          instances,
+          connects,
+          functions,
+          Nil,
+          fenceStmts,
+          entities,
+          verbatim
+        ) withLoc ctx.loc
+
+        ctx.variant.text match {
+          case "fsm" => contents collect {
+            case c: Instance     => cc.error(c, "'fsm' entity cannot contain instantiations")
+            case c: Connect      => cc.error(c, "'fsm' entity cannot contain connections")
+            case c: Entity       => cc.error(c, "'fsm' entity cannot contain nested entities")
+            case c: AutoInstance => cc.error(c, "'fsm' entity cannot contain nested entities")
+          }
+          case "network" => contents collect {
+            case c: Function   => cc.error(c, "'network' entity cannot contain function definitions")
+            case c: FenceBlock => cc.error(c, "'network' entity cannot contain fence blocks")
+          }
+          case "verilog" => {
+            contents collect {
+              case _: Decl                     =>
+              case VerbatimBlock("verilog", _) =>
+              case c: Locationed => {
+                cc.error(c, "'verilog' entity can only contain declarations and verbatim verilog blocks")
+              }
+            }
+          }
+          case other => cc.fatal(ctx, s"Unknown entity variant '$other'")
+        }
+
+        entity
       }
     }
 

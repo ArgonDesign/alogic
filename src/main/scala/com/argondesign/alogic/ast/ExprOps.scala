@@ -351,4 +351,10 @@ trait ObjectExprOps {
   // Helpers to easily create ExprNum from integers
   def apply(n: Int): ExprNum = ExprNum(true, None, n)
   def apply(n: BigInt): ExprNum = ExprNum(true, None, n)
+
+  // And extractor so we can match against the the same as above
+  def unapply(expr: Expr): Option[Int] = expr match {
+    case ExprNum(true, None, value) => Some(value.toInt)
+    case _                          => None
+  }
 }

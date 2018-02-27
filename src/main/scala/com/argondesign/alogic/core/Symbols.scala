@@ -35,19 +35,17 @@ trait Symbols { self: CompilerContext =>
 
   protected val symbolLocations = mutable.Map[Symbol, Loc]()
 
-  protected var symbolDenotationStack = List[mutable.Map[Symbol, Denotation]]() // scalastyle:ignore var.field
+  protected val symbolDenotations = mutable.Map[Symbol, Denotation]()
 
-  protected def symbolDenotations = symbolDenotationStack.head
-
-  def newSymbol(loc: Loc, name: TermName): TermSymbol = synchronized {
+  def newTermSymbol(loc: Loc, name: String): TermSymbol = synchronized {
     val symbol = new TermSymbol(symbolSequenceNumbers.next)
-    val denot = TermDenotation(name)
+    val denot = TermDenotation(TermName(name))
     symbolLocations(symbol) = loc
     symbolDenotations(symbol) = denot
     symbol
   }
 
-  def newSymbol(loc: Loc, name: TypeName): TypeSymbol = synchronized {
+  def newTermSymbol(loc: Loc, name: TypeName): TypeSymbol = synchronized {
     val symbol = new TypeSymbol(symbolSequenceNumbers.next)
     val denot = TypeDenotation(name)
     symbolLocations(symbol) = loc
@@ -60,10 +58,10 @@ trait Symbols { self: CompilerContext =>
 object Symbols {
 
   abstract trait Symbol extends Any {
-    type ThisDenotation
+    type ThisDenotation <: Denotation
     def id: Int
     def denot(implicit cc: CompilerContext): ThisDenotation = {
-      cc.symbolDenotations(this).asInstanceOf[ThisDenotation] // scalastyle:ignore
+      cc.symbolDenotations(this).asInstanceOf[ThisDenotation] // scalastyle:ignore token
     }
   }
 

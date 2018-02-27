@@ -19,12 +19,12 @@ import scala.collection.JavaConverters._
 
 import com.argondesign.alogic.antlr.AlogicParser.BlockContext
 import com.argondesign.alogic.antlr.AlogicParser.DefaultCaseContext
-import com.argondesign.alogic.antlr.AlogicParser.LetContext
 import com.argondesign.alogic.antlr.AlogicParser.LoopInitAssignContext
 import com.argondesign.alogic.antlr.AlogicParser.LoopInitDeclContext
 import com.argondesign.alogic.antlr.AlogicParser.NormalCaseContext
+import com.argondesign.alogic.antlr.AlogicParser.StatementAssignmentContext
+import com.argondesign.alogic.antlr.AlogicParser.StatementLoopContext
 import com.argondesign.alogic.antlr.AlogicParser.StmtAssignContext
-import com.argondesign.alogic.antlr.AlogicParser.StmtAssignmentContext
 import com.argondesign.alogic.antlr.AlogicParser.StmtBlockContext
 import com.argondesign.alogic.antlr.AlogicParser.StmtBreakContext
 import com.argondesign.alogic.antlr.AlogicParser.StmtCaseContext
@@ -36,6 +36,7 @@ import com.argondesign.alogic.antlr.AlogicParser.StmtFenceContext
 import com.argondesign.alogic.antlr.AlogicParser.StmtForContext
 import com.argondesign.alogic.antlr.AlogicParser.StmtGotoContext
 import com.argondesign.alogic.antlr.AlogicParser.StmtIfContext
+import com.argondesign.alogic.antlr.AlogicParser.StmtLetContext
 import com.argondesign.alogic.antlr.AlogicParser.StmtLoopContext
 import com.argondesign.alogic.antlr.AlogicParser.StmtPostContext
 import com.argondesign.alogic.antlr.AlogicParser.StmtReturnContext
@@ -77,7 +78,8 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
       }
 
       // Proxy nodes
-      override def visitStmtAssignment(ctx: StmtAssignmentContext) = visit(ctx.assignment)
+      override def visitStatementAssignment(ctx: StatementAssignmentContext) = visit(ctx.assignment)
+      override def visitStatementLoop(ctx: StatementLoopContext) = visit(ctx.loop)
 
       override def visitStmtDecl(ctx: StmtDeclContext) = {
         StmtDecl(DeclBuilder(ctx.decl)) withLoc ctx.loc
@@ -96,41 +98,38 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
       }
 
       override def visitStmtDollarComment(ctx: StmtDollarCommentContext) = {
-        StmtDollarComment(ctx.STRING) withLoc ctx.loc
+        StmtDollarComment(ctx.STRING.text.tail.init) withLoc ctx.loc
       }
 
-      def buildLet(ctx: LetContext, body: Stmt) = {
-        if (ctx == null) { // scalastye:ignore null
-          body
-        } else {
-          val inits = visit(ctx.loop_init.loop_init_item)
-          StmtLet(inits, body) withLoc ctx.loc
-        }
+      override def visitStmtLet(ctx: StmtLetContext) = {
+        val inits = visit(ctx.let.loop_init.loop_init_item)
+        val loop = visit(ctx.loop)
+        StmtLet(inits, loop) withLoc ctx.loc
       }
 
       override def visitStmtLoop(ctx: StmtLoopContext) = {
-        val body = visit(ctx.block)
-        buildLet(ctx.let, StmtLoop(body) withLoc ctx.loc)
+        val body = visit(ctx.block.statement)
+        StmtLoop(body) withLoc ctx.loc
       }
 
       override def visitStmtDo(ctx: StmtDoContext) = {
         val cond = ExprBuilder(ctx.expr)
-        val body = visit(ctx.block)
-        buildLet(ctx.let, StmtDo(cond, body) withLoc ctx.loc)
+        val body = visit(ctx.block.statement)
+        StmtDo(cond, body) withLoc ctx.loc
       }
 
       override def visitStmtWhile(ctx: StmtWhileContext) = {
         val cond = ExprBuilder(ctx.expr)
-        val body = visit(ctx.block)
-        buildLet(ctx.let, StmtWhile(cond, body) withLoc ctx.loc)
+        val body = visit(ctx.block.statement)
+        StmtWhile(cond, body) withLoc ctx.loc
       }
 
       override def visitStmtFor(ctx: StmtForContext) = {
-        val inits = visit(ctx.loop_init.loop_init_item)
-        val cond = ExprBuilder(ctx.expr)
-        val step = visit(ctx.step)
-        val body = visit(ctx.block)
-        buildLet(ctx.let, StmtFor(inits, cond, step, body) withLoc ctx.loc)
+        val inits = if (ctx.loop_init != null) visit(ctx.loop_init.loop_init_item) else Nil
+        val cond = Option(ctx.expr) map { ExprBuilder(_) }
+        val step = if (ctx.for_steps != null) visit(ctx.for_steps.step) else Nil
+        val body = visit(ctx.block.statement)
+        StmtFor(inits, cond, step, body) withLoc ctx.loc
       }
 
       override def visitStmtGoto(ctx: StmtGotoContext) = {
@@ -183,7 +182,7 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
           case Nil      => None
           case d :: Nil => Some(d)
           case _ => {
-            cc.error(ctx, "More than one 'default' case item specified")
+            cc.error(ctx, "More than one 'default' case clause specified")
             None
           }
         }

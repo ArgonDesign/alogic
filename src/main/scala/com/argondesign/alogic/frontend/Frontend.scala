@@ -24,6 +24,7 @@ import scala.concurrent.Future
 import scala.concurrent.duration.Duration.Inf
 
 import com.argondesign.alogic.FindFile
+import com.argondesign.alogic.antlr.AlogicParser.StartContext
 import com.argondesign.alogic.ast.Trees.Ident
 import com.argondesign.alogic.ast.Trees.Instance
 import com.argondesign.alogic.ast.Trees.Root
@@ -31,8 +32,6 @@ import com.argondesign.alogic.ast.Trees.Tree
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Source
 import com.argondesign.alogic.util.unreachable
-
-import org.antlr.v4.runtime.ParserRuleContext
 
 // The frontend is responsible to:
 // - locating sources (name -> source)
@@ -66,17 +65,14 @@ class Frontend(
     preprocessor(source, initialDefines, includeSeachDirs)
   }
 
-  private[this] def parseIt(source: Source): ParserRuleContext = {
-    Parser(source).getOrElse {
+  private[this] def parseIt(source: Source): StartContext = {
+    Parser[StartContext](source).getOrElse {
       cc.fatal("Stopping due to syntax errors")
     }
   }
 
-  private[this] def buildIt(entityName: String, parseTree: ParserRuleContext): Root = {
-    val tree = Builder(parseTree) match {
-      case root: Root => root
-      case _          => unreachable
-    }
+  private[this] def buildIt(entityName: String, parseTree: StartContext): Root = {
+    val tree = Builder(parseTree)
 
     // Check that the entityName used for file search matches the actual name defined
     // in the top level entity in the file
@@ -90,7 +86,10 @@ class Frontend(
     tree
   }
 
-  private[this] def nameIt(tree: Tree): Tree = tree
+  private[this] def nameIt(tree: Tree): Tree = {
+    tree.rewrite(new Namer)
+    //    tree
+  }
 
   private[this] def desugarIt(tree: Tree): Tree = tree
 

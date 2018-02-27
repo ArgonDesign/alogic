@@ -27,7 +27,7 @@ import com.argondesign.alogic.FindFile
 import com.argondesign.alogic.antlr.AntlrConverters.RichParserRuleContext
 import com.argondesign.alogic.antlr.AntlrConverters.RichToken
 import com.argondesign.alogic.antlr.AntlrConverters.terminalNodeToRichToken
-import com.argondesign.alogic.antlr.ParserErrorListener
+import com.argondesign.alogic.antlr.ParseErrorListener
 import com.argondesign.alogic.antlr.PreprocLexer
 import com.argondesign.alogic.antlr.PreprocParser
 import com.argondesign.alogic.antlr.PreprocParser.AnythingContext
@@ -182,7 +182,7 @@ class Preprocessor(implicit cc: CompilerContext) {
       // Create the parser
       val parser = new PreprocParser(tokenStream)
       parser.removeErrorListeners()
-      parser.addErrorListener(new ParserErrorListener)
+      parser.addErrorListener(new ParseErrorListener)
 
       // Parse the the file
       val parseTree = parser.start()

@@ -87,9 +87,15 @@ object Trees {
   ///////////////////////////////////////////////////////////////////////////////
 
   case class Decl(ref: Ref, kind: Type, init: Option[Expr]) extends Tree
-  case class Instance(ref: Ref, module: Ref, paramName: List[String], paramExpr: List[Expr]) extends Tree
+  case class Instance(ref: Ref, module: Ref, paramNames: List[String], paramExprs: List[Expr]) extends Tree
   case class Connect(lhs: Expr, rhs: List[Expr]) extends Tree
   case class Function(ref: Ref, body: List[Stmt]) extends Tree
+
+  ///////////////////////////////////////////////////////////////////////////////
+  // Tree representing FSM states after control statement conversion
+  ///////////////////////////////////////////////////////////////////////////////
+
+  case class State(ref: Ref, body: List[Stmt]) extends Tree
 
   ///////////////////////////////////////////////////////////////////////////////
   // Statements
@@ -101,15 +107,15 @@ object Trees {
   // Source Statements
   ///////////////////////////////////////////////////////////////////////////////
 
-  case class StmtBlock(cmds: List[Stmt]) extends Stmt
-  case class StmtIf(cond: Expr, body: Stmt, elsebody: Option[Stmt]) extends Stmt
-  case class StmtCase(value: Expr, cases: List[CaseClause], default: Option[Stmt]) extends Stmt
+  case class StmtBlock(body: List[Stmt]) extends Stmt
+  case class StmtIf(cond: Expr, thenStmt: Stmt, elseStmt: Option[Stmt]) extends Stmt
+  case class StmtCase(expr: Expr, cases: List[CaseClause], default: Option[Stmt]) extends Stmt
   case class CaseClause(cond: List[Expr], body: Stmt) extends Tree
 
-  case class StmtLoop(body: Stmt) extends Stmt
-  case class StmtWhile(cond: Expr, body: Stmt) extends Stmt
-  case class StmtFor(inits: List[Stmt], cond: Expr, incr: Stmt, body: Stmt) extends Stmt
-  case class StmtDo(cond: Expr, body: Stmt) extends Stmt
+  case class StmtLoop(body: List[Stmt]) extends Stmt
+  case class StmtWhile(cond: Expr, body: List[Stmt]) extends Stmt
+  case class StmtFor(inits: List[Stmt], cond: Option[Expr], step: List[Stmt], body: List[Stmt]) extends Stmt
+  case class StmtDo(cond: Expr, body: List[Stmt]) extends Stmt
 
   case class StmtLet(inits: List[Stmt], body: Stmt) extends Stmt
 
@@ -120,7 +126,7 @@ object Trees {
 
   case class StmtAssign(lhs: Expr, rhs: Expr) extends Stmt
   case class StmtUpdate(lhs: Expr, op: String, rhs: Expr) extends Stmt
-  case class StmtPost(lhs: Expr, op: String) extends Stmt
+  case class StmtPost(expr: Expr, op: String) extends Stmt
   case class StmtExpr(expr: Expr) extends Stmt
   case class StmtDecl(decl: Decl) extends Stmt
 
@@ -136,20 +142,20 @@ object Trees {
   object Expr extends ObjectExprOps
 
   // TODO: Remove
-  case class ExprBracket(content: Expr) extends Expr
+  case class ExprBracket(expr: Expr) extends Expr
 
   case class ExprCall(expr: Expr, args: List[Expr]) extends Expr
 
   // Operators
-  case class ExprUnary(op: String, lhs: Expr) extends Expr
+  case class ExprUnary(op: String, expr: Expr) extends Expr
   case class ExprBinary(lhs: Expr, op: String, rhs: Expr) extends Expr
-  case class ExprTernary(cond: Expr, lhs: Expr, rhs: Expr) extends Expr
-  case class ExprRep(count: Expr, value: Expr) extends Expr
+  case class ExprTernary(cond: Expr, thenExpr: Expr, elseExpr: Expr) extends Expr
+  case class ExprRep(count: Expr, expr: Expr) extends Expr
   case class ExprCat(parts: List[Expr]) extends Expr
-  case class ExprIndex(ref: Expr, index: Expr) extends Expr
-  case class ExprSlice(ref: Expr, lidx: Expr, op: String, ridx: Expr) extends Expr
+  case class ExprIndex(expr: Expr, index: Expr) extends Expr
+  case class ExprSlice(expr: Expr, lidx: Expr, op: String, ridx: Expr) extends Expr
 
-  case class ExprSelect(prefix: Expr, selector: String) extends Expr
+  case class ExprSelect(expr: Expr, selector: String) extends Expr
 
   case class ExprAtCall(name: String, args: List[Expr]) extends Expr
   case class ExprDollarCall(name: String, args: List[Expr]) extends Expr
@@ -161,10 +167,4 @@ object Trees {
   case class ExprRef(ref: Ref) extends Expr
 
   case class ExprError() extends Expr // Placeholder when errors happened
-
-  ///////////////////////////////////////////////////////////////////////////////
-  // Tree representing FSM states after control statement conversion
-  ///////////////////////////////////////////////////////////////////////////////
-
-  case class State(ref: Symbol, contents: List[Stmt]) extends Tree
 }

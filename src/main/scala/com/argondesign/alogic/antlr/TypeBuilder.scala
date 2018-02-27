@@ -38,7 +38,7 @@ object TypeBuilder extends BaseBuilder[KindContext, Type] {
   def apply(ctx: KindContext)(implicit cc: CompilerContext): Type = {
     object Visitor extends AlogicScalarVisitor[Type] {
       def buildVector(signed: Boolean, ctx: CommaexprContext): Type = {
-        val lastSize :: restSizes = ExprBuilder(ctx.expr)
+        val lastSize :: restSizes = ExprBuilder(ctx.expr).reverse
         restSizes.foldLeft[Type](TypeInt(signed, lastSize)) { (elem, size) => TypeVector(elem, size) }
       }
 

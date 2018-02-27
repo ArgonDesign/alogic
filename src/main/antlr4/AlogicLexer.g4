@@ -145,8 +145,8 @@ SYNC_ACCEPT : 'sync' (WS|CMT)* 'accept';
 
 WIRE        : 'wire';
 BUBBLE      : 'bubble';
-FREG        : 'freg';
-BREG        : 'breg';
+FSLICE      : 'fslice';
+BSLICE      : 'bslice';
 
 STRING: '"' ~["]* '"';
 
@@ -174,11 +174,15 @@ ERRORCHAR : . ;
 
 mode VERBATIMLANGMODE;
 
+VERBATIMLANGWS: WS -> channel(WHITESPACE);
+
 VERBATIMIDENTIFIER: IDENTIFIER -> type(IDENTIFIER), Mode(VERBATIMMODE);
 
 ////////////////////////////////////////////////////////////////////////////////
 
 mode VERBATIMMODE;
+
+VERBATIMWS: WS -> channel(WHITESPACE);
 
 VERBATIMBODY: '{' ( VERBATIMBODY | ~[{}] )* '}'  -> popMode;
 
