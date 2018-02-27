@@ -89,15 +89,7 @@ import org.scalatest.FreeSpec
 import org.scalatest.matchers.MatchResult
 import org.scalatest.matchers.Matcher
 
-import SourceTextConverters.AsTreeSyntaxErrorException
-import SourceTextConverters.String2Repr
-import SourceTextConverters.string2TreeAsTreeDispatcherBlock
-import SourceTextConverters.string2TreeAsTreeDispatcherDecl
-import SourceTextConverters.string2TreeAsTreeDispatcherEntity
-import SourceTextConverters.string2TreeAsTreeDispatcherExpr
-import SourceTextConverters.string2TreeAsTreeDispatcherRoot
-import SourceTextConverters.string2TreeAsTreeDispatcherStmt
-import SourceTextConverters.string2TreeAsTreeDispatcherTypeDefinition
+import com.argondesign.alogic.SourceTextConverters._
 
 class ParserSpec extends FreeSpec with AlogicTest {
 
@@ -115,14 +107,6 @@ class ParserSpec extends FreeSpec with AlogicTest {
       msg.isInstanceOf[Error] && matchesMessage,
       s"'${msg}' was not a Syntax error message matching 'Syntax error: ${text}'",
       s"'${msg}' was the correct Syntex error message"
-    )
-  }
-
-  def beTheError(text: String): Matcher[Message] = Matcher { (msg: Message) =>
-    MatchResult(
-      msg.isInstanceOf[Error] && msg.msg(0) == text,
-      s"'${msg}' was not the Error message: '${text}'",
-      s"'${msg}' was the correct Error message"
     )
   }
 
@@ -195,6 +179,8 @@ class ParserSpec extends FreeSpec with AlogicTest {
         cc.messages should not be empty
         cc.messages(0) should beSyntaxError("missing parameter list '()' after entity name in instantiation 'new c'")
       }
+
+      // TODO: Mandatory blocks
     }
 
     "should signal error for malformed input" - {
@@ -204,7 +190,7 @@ class ParserSpec extends FreeSpec with AlogicTest {
            |  fence {}
            |}""".asTree[Entity]
 
-        cc.messages.loneElement should beTheError("Multiple fence blocks specified in entity foo")
+        cc.messages.loneElement should beThe[Error]("Multiple fence blocks specified in entity foo")
         cc.messages(0).loc.line shouldBe 3
       }
 
@@ -214,7 +200,7 @@ class ParserSpec extends FreeSpec with AlogicTest {
              |  c = new d();
              |}""".asTree[Entity]
 
-          cc.messages.loneElement should beTheError("'fsm' entity cannot contain instantiations")
+          cc.messages.loneElement should beThe[Error]("'fsm' entity cannot contain instantiations")
           cc.messages(0).loc.line shouldBe 2
         }
 
@@ -223,7 +209,7 @@ class ParserSpec extends FreeSpec with AlogicTest {
              |  a -> b;
              |}""".asTree[Entity]
 
-          cc.messages.loneElement should beTheError("'fsm' entity cannot contain connections")
+          cc.messages.loneElement should beThe[Error]("'fsm' entity cannot contain connections")
           cc.messages(0).loc.line shouldBe 2
         }
 
@@ -232,7 +218,7 @@ class ParserSpec extends FreeSpec with AlogicTest {
              |  fsm d {}
              |}""".asTree[Entity]
 
-          cc.messages.loneElement should beTheError("'fsm' entity cannot contain nested entities")
+          cc.messages.loneElement should beThe[Error]("'fsm' entity cannot contain nested entities")
           cc.messages(0).loc.line shouldBe 2
         }
 
@@ -241,7 +227,7 @@ class ParserSpec extends FreeSpec with AlogicTest {
              |  new fsm d {}
              |}""".asTree[Entity]
 
-          cc.messages.loneElement should beTheError("'fsm' entity cannot contain nested entities")
+          cc.messages.loneElement should beThe[Error]("'fsm' entity cannot contain nested entities")
           cc.messages(0).loc.line shouldBe 2
         }
 
@@ -250,7 +236,7 @@ class ParserSpec extends FreeSpec with AlogicTest {
              |  void main() {}
              |}""".asTree[Entity]
 
-          cc.messages.loneElement should beTheError("'network' entity cannot contain function definitions")
+          cc.messages.loneElement should beThe[Error]("'network' entity cannot contain function definitions")
           cc.messages(0).loc.line shouldBe 2
         }
 
@@ -259,7 +245,7 @@ class ParserSpec extends FreeSpec with AlogicTest {
              |  fence {}
              |}""".asTree[Entity]
 
-          cc.messages.loneElement should beTheError("'network' entity cannot contain fence blocks")
+          cc.messages.loneElement should beThe[Error]("'network' entity cannot contain fence blocks")
           cc.messages(0).loc.line shouldBe 2
         }
 
@@ -288,7 +274,7 @@ class ParserSpec extends FreeSpec with AlogicTest {
           "out bubble i2 a".asTree[Decl]
 
           cc.messages.loneElement should {
-            beTheError("Output port 'a' without flow control specifier cannot use output slices")
+            beThe[Error]("Output port 'a' without flow control specifier cannot use output slices")
           }
         }
 
@@ -296,7 +282,7 @@ class ParserSpec extends FreeSpec with AlogicTest {
           "out sync bubble i2 a".asTree[Decl]
 
           cc.messages.loneElement should {
-            beTheError("Output port 'a' with 'sync' flow control specifier cannot use output slices")
+            beThe[Error]("Output port 'a' with 'sync' flow control specifier cannot use output slices")
           }
         }
       }
@@ -307,7 +293,7 @@ class ParserSpec extends FreeSpec with AlogicTest {
            | default: b;
            |}""".asTree[Stmt]
 
-        cc.messages.loneElement should beTheError("More than one 'default' case clause specified")
+        cc.messages.loneElement should beThe[Error]("More than one 'default' case clause specified")
       }
     }
 

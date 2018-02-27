@@ -138,7 +138,7 @@ trait TreeOps { this: Tree =>
   ////////////////////////////////////////////////////////////////////////////////
 
   def rewrite(tt: TreeTransformer): Tree = {
-    tt.walk(this)
+    tt(this)
   }
 
 }

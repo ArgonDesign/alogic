@@ -48,12 +48,16 @@ object Types {
   // Array types (analogous to verilog unpacked arrays)
   case class TypeArray(elementType: Type, size: Expr) extends GroundType
   // Structure type
-  case class TypeStruct(ref: Ref, fields: ListMap[String, Type]) extends GroundType
+  case class TypeStruct(field: ListMap[String, Type]) extends GroundType
   // Void type
   case object TypeVoid extends GroundType
   // Type reference e.g. 'foo_t foo;'
   case class TypeRef(ref: Ref) extends GroundType
-  //
+  // Function type e.g. 'void foo() {}'
+  case object TypeFunc extends GroundType
+  // Entity type e.g. 'fsm foo {}'
+  // TODO: add fields (ports)
+  case object TypeEntity extends GroundType
 
   ///////////////////////////////////////////////////////////////////////////////
   // Proxy types with underlying types 'kind'
@@ -69,10 +73,4 @@ object Types {
   case class TypeParam(kind: Type) extends ProxyType
   // Constant type
   case class TypeConst(kind: Type) extends ProxyType
-
-  ///////////////////////////////////////////////////////////////////////////////
-  // Named type
-  ///////////////////////////////////////////////////////////////////////////////
-
-  // Named type (e.g.: foo_t a)
 }

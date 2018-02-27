@@ -70,103 +70,91 @@ case class ICE(initialMsg: Seq[String], lop: Option[Loc] = None) extends Message
   val msg = initialMsg ++ Seq("Please file a bug report")
 }
 
-case class FatalErrorException() extends Exception
-case class InternalCompilerErrorException() extends RuntimeException
+case class FatalErrorException(cc: CompilerContext, message: Fatal) extends Exception
+case class InternalCompilerErrorException(cc: CompilerContext, message: ICE) extends Exception
 
 trait Messaging { self: CompilerContext =>
 
-  private[this] implicit val implicitThis: CompilerContext = this
+  final private[this] implicit val implicitThis: CompilerContext = this
 
   // buffer to store messages without source location information
-  private[this] val messageBuffer = mutable.ListBuffer[Message]()
+  final private[this] val messageBuffer = mutable.ListBuffer[Message]()
 
   //////////////////////////////////////////////////////////////////////////////
   // Versions without source location
   //////////////////////////////////////////////////////////////////////////////
 
-  def warning(msg: String*): Unit = synchronized {
+  final def warning(msg: String*): Unit = synchronized {
     messageBuffer append Warning(msg)
   }
 
-  def error(msg: String*): Unit = synchronized {
+  final def error(msg: String*): Unit = synchronized {
     messageBuffer append Error(msg)
   }
 
-  def fatal(msg: String*): Nothing = synchronized {
-    messageBuffer append Fatal(msg)
-    throw FatalErrorException()
+  final def fatal(msg: String*): Nothing = synchronized {
+    val message = Fatal(msg)
+    messageBuffer append message
+    throw FatalErrorException(this, message)
   }
 
-  def ice(msg: String*): Nothing = synchronized {
-    messageBuffer append ICE(msg)
-    throw InternalCompilerErrorException()
+  final def ice(msg: String*): Nothing = synchronized {
+    val message = ICE(msg)
+    messageBuffer append message
+    throw InternalCompilerErrorException(this, message)
   }
 
   //////////////////////////////////////////////////////////////////////////////
   // Versions that take a source location
   //////////////////////////////////////////////////////////////////////////////
 
-  def warning(loc: Loc, msg: String*): Unit = synchronized {
+  final def warning(loc: Loc, msg: String*): Unit = synchronized {
     messageBuffer append Warning(msg, Some(loc))
   }
 
-  def error(loc: Loc, msg: String*): Unit = synchronized {
+  final def error(loc: Loc, msg: String*): Unit = synchronized {
     messageBuffer append Error(msg, Some(loc))
   }
 
-  def fatal(loc: Loc, msg: String*): Nothing = synchronized {
-    messageBuffer append Fatal(msg, Some(loc))
-    throw FatalErrorException()
+  final def fatal(loc: Loc, msg: String*): Nothing = synchronized {
+    val message = Fatal(msg, Some(loc))
+    messageBuffer append message
+    throw FatalErrorException(this, message)
   }
 
-  def ice(loc: Loc, msg: String*): Nothing = synchronized {
-    messageBuffer append ICE(msg, Some(loc))
-    throw InternalCompilerErrorException()
+  final def ice(loc: Loc, msg: String*): Nothing = synchronized {
+    val message = ICE(msg, Some(loc))
+    messageBuffer append message
+    throw InternalCompilerErrorException(this, message)
   }
 
   //////////////////////////////////////////////////////////////////////////////
   // Get messages
   //////////////////////////////////////////////////////////////////////////////
 
-  def messages: List[Message] = messageBuffer.toList
+  final def messages: List[Message] = messageBuffer.toList
 
   //////////////////////////////////////////////////////////////////////////////
   // Versions that take an Antlr4 token/parse tree node for location info
   //////////////////////////////////////////////////////////////////////////////
 
-  def warning(ctx: ParserRuleContext, msg: String*): Unit = warning(ctx.loc, msg: _*)
+  final def warning(ctx: ParserRuleContext, msg: String*): Unit = warning(ctx.loc, msg: _*)
 
-  def error(ctx: ParserRuleContext, msg: String*): Unit = error(ctx.loc, msg: _*)
+  final def error(ctx: ParserRuleContext, msg: String*): Unit = error(ctx.loc, msg: _*)
 
-  def fatal(ctx: ParserRuleContext, msg: String*): Nothing = fatal(ctx.loc, msg: _*)
+  final def fatal(ctx: ParserRuleContext, msg: String*): Nothing = fatal(ctx.loc, msg: _*)
 
-  def ice(ctx: ParserRuleContext, msg: String*): Nothing = ice(ctx.loc, msg: _*)
+  final def ice(ctx: ParserRuleContext, msg: String*): Nothing = ice(ctx.loc, msg: _*)
 
   //////////////////////////////////////////////////////////////////////////////
   // Versions that anything that has a location
   //////////////////////////////////////////////////////////////////////////////
 
-  def warning(item: Locationed, msg: String*): Unit = warning(item.loc, msg: _*)
+  final def warning(item: Locationed, msg: String*): Unit = warning(item.loc, msg: _*)
 
-  def error(item: Locationed, msg: String*): Unit = error(item.loc, msg: _*)
+  final def error(item: Locationed, msg: String*): Unit = error(item.loc, msg: _*)
 
-  def fatal(item: Locationed, msg: String*): Nothing = fatal(item.loc, msg: _*)
+  final def fatal(item: Locationed, msg: String*): Nothing = fatal(item.loc, msg: _*)
 
-  def ice(item: Locationed, msg: String*): Nothing = ice(item.loc, msg: _*)
-  //
-  //  //////////////////////////////////////////////////////////////////////////////
-  //  // Versions that take an ast.Attr for location info
-  //  //////////////////////////////////////////////////////////////////////////////
-  //
-  //  def info(attr: Attr, msg: String*): Unit = info(attr.loc, msg: _*)
-  //
-  //  def note(attr: Attr, msg: String*): Unit = note(attr.loc, msg: _*)
-  //
-  //  def warning(attr: Attr, msg: String*): Unit = warning(attr.loc, msg: _*)
-  //
-  //  def error(attr: Attr, msg: String*): Unit = error(attr.loc, msg: _*)
-  //
-  //  def fatal(attr: Attr, msg: String*): Nothing = fatal(attr.loc, msg: _*)
-  //
-  //  def ice(attr: Attr, msg: String*): Nothing = ice(attr.loc, msg: _*)
+  final def ice(item: Locationed, msg: String*): Nothing = ice(item.loc, msg: _*)
 }

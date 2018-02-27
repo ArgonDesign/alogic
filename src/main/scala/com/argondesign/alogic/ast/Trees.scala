@@ -49,7 +49,7 @@ object Trees {
 
   sealed trait TypeDefinition extends Tree
 
-  case class TypeDefinitionStruct(ref: Ref, fieldsNames: List[String], fieldKinds: List[Type]) extends TypeDefinition
+  case class TypeDefinitionStruct(ref: Ref, fieldNames: List[String], fieldKinds: List[Type]) extends TypeDefinition
   case class TypeDefinitionTypedef(ref: Ref, kind: Type) extends TypeDefinition
 
   ///////////////////////////////////////////////////////////////////////////////

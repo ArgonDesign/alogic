@@ -10,25 +10,27 @@
 //
 // DESCRIPTION:
 //
-// Denotations are used to attach information to symbols. While symbols
-// are unique and never change. The Denotation attached to a symbol can change
+// Denotations are used to associate information to symbols. While symbols
+// are unique and never change. The Denotation associated to a symbol can change
 // from one compiler phase to another as the tree is being transformed.
 // Denotation instances are still immutable.
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.core
 
-import com.argondesign.alogic.core.Names.Name
-import com.argondesign.alogic.core.Names.TermName
-import com.argondesign.alogic.core.Names.TypeName
+import Names.Name
+import Names.TermName
+import Names.TypeName
+import Types.Type
 
 object Denotations {
 
   abstract sealed trait Denotation {
     val name: Name
+    val kind: Type
   }
 
-  case class TermDenotation(name: TermName) extends Denotation
-  case class TypeDenotation(name: TypeName) extends Denotation
+  case class TermDenotation(name: TermName, kind: Type) extends Denotation
+  case class TypeDenotation(name: TypeName, kind: Type) extends Denotation
 
 }

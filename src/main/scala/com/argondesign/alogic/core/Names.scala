@@ -18,11 +18,12 @@ package com.argondesign.alogic.core
 object Names {
 
   abstract sealed trait Name {
-    val string: String
+    val str: String
+    override def toString = str
   }
 
   // Used for names that stand for terms
-  case class TermName(string: String) extends Name
+  case class TermName(str: String) extends Name
   // Used for names that stand for types
-  case class TypeName(string: String) extends Name
+  case class TypeName(str: String) extends Name
 }

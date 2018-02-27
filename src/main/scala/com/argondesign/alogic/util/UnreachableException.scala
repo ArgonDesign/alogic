@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2017-2018 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2018 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
@@ -10,11 +10,9 @@
 //
 // DESCRIPTION:
 //
-// Very broadly used utility functions
+// Thrown when unreachable code is well, reached
 ////////////////////////////////////////////////////////////////////////////////
 
-package com.argondesign.alogic
+package com.argondesign.alogic.util
 
-package object util {
-  def unreachable: Nothing = throw UnreachableException()
-}
+case class UnreachableException() extends Exception("Unreacheble code was executed. Please file a bug report")

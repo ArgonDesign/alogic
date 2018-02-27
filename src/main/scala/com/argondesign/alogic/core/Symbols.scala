@@ -18,38 +18,81 @@
 package com.argondesign.alogic.core
 
 import scala.collection.mutable
-import scala.language.implicitConversions
+
+import com.argondesign.alogic.ast.Trees.Entity
+import com.argondesign.alogic.ast.Trees.Ident
+import com.argondesign.alogic.util.FollowedBy.any2FollowedByWord
 
 import Denotations.Denotation
 import Denotations.TermDenotation
 import Denotations.TypeDenotation
+import Names.Name
 import Names.TermName
 import Names.TypeName
 import Symbols.Symbol
 import Symbols.TermSymbol
 import Symbols.TypeSymbol
+import Types.Type
+import Types.TypeEntity
 
 trait Symbols { self: CompilerContext =>
 
-  private[this] val symbolSequenceNumbers = Stream.from(0).iterator
+  final private[this] implicit val implicitThis: CompilerContext = this
 
-  protected val symbolLocations = mutable.Map[Symbol, Loc]()
+  // The global scope only holds file level entity symbols
+  final private[this] var _globalScope: Option[mutable.HashMap[Name, Symbol]] = Some(mutable.HashMap())
 
-  protected val symbolDenotations = mutable.Map[Symbol, Denotation]()
+  // Can only hand out the final immutable copy
+  final lazy val globalScope: Map[Name, Symbol] = {
+    _globalScope.get.toMap
+  } followedBy {
+    _globalScope = None
+  }
 
-  def newTermSymbol(loc: Loc, name: String): TermSymbol = synchronized {
+  final def addGlobalEntities(entities: Iterable[Entity]): Unit = synchronized {
+    _globalScope match {
+      case None => ice("Global scope is already sealed")
+      case Some(scope) => {
+        assert(scope.isEmpty)
+
+        for (Entity(ident: Ident, _, _, _, _, _, _, _, _) <- entities) {
+          val symbol = newTypeSymbol(ident, TypeEntity)
+          scope(symbol.denot.name) = symbol
+        }
+
+        // Force value to seal global scope
+        globalScope
+      }
+    }
+  }
+
+  final def addGlobalEntity(entity: Entity): Unit = addGlobalEntities(List(entity))
+
+  final private[this] val symbolSequenceNumbers = Stream.from(0).iterator
+
+  final protected val symbolLocations = mutable.Map[Symbol, Loc]()
+
+  final protected val symbolDenotations = mutable.Map[Symbol, Denotation]()
+
+  final def newTermSymbol(ident: Ident, kind: Type): TermSymbol = synchronized {
     val symbol = new TermSymbol(symbolSequenceNumbers.next)
-    val denot = TermDenotation(TermName(name))
-    symbolLocations(symbol) = loc
+
+    val denot = TermDenotation(TermName(ident.name), kind)
+
+    symbolLocations(symbol) = ident.loc
     symbolDenotations(symbol) = denot
+
     symbol
   }
 
-  def newTermSymbol(loc: Loc, name: TypeName): TypeSymbol = synchronized {
+  final def newTypeSymbol(ident: Ident, kind: Type): TypeSymbol = synchronized {
     val symbol = new TypeSymbol(symbolSequenceNumbers.next)
-    val denot = TypeDenotation(name)
-    symbolLocations(symbol) = loc
+
+    val denot = TypeDenotation(TypeName(ident.name), kind)
+
+    symbolLocations(symbol) = ident.loc
     symbolDenotations(symbol) = denot
+
     symbol
   }
 
@@ -57,20 +100,59 @@ trait Symbols { self: CompilerContext =>
 
 object Symbols {
 
-  abstract trait Symbol extends Any {
+  abstract trait Symbol {
     type ThisDenotation <: Denotation
+
     def id: Int
-    def denot(implicit cc: CompilerContext): ThisDenotation = {
+
+    def isTermSymbol: Boolean
+
+    def isTypeSymbol: Boolean
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Common implementation
+    ////////////////////////////////////////////////////////////////////////////
+
+    final override def hashCode = id
+
+    final override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]
+
+    // Denotation of symbol
+    final def denot(implicit cc: CompilerContext): ThisDenotation = {
       cc.symbolDenotations(this).asInstanceOf[ThisDenotation] // scalastyle:ignore token
+    }
+
+    // Location of definition
+    final def loc(implicit cc: CompilerContext): Loc = {
+      cc.symbolLocations(this)
     }
   }
 
-  class TermSymbol(val id: Int) extends AnyVal with Symbol {
+  final class TermSymbol(val id: Int) extends Symbol {
     type ThisDenotation = TermDenotation
-  }
-  class TypeSymbol(val id: Int) extends AnyVal with Symbol {
-    type ThisDenotation = TypeDenotation
+
+    override def isTermSymbol = true
+    override def isTypeSymbol = false
+
+    override def toString = s"TermSymbol($id)"
   }
 
-  implicit def toLoc(symbol: Symbol)(implicit cc: CompilerContext): Loc = cc.symbolLocations(symbol)
+  final class TypeSymbol(val id: Int) extends Symbol {
+    type ThisDenotation = TypeDenotation
+
+    override def isTermSymbol = false
+    override def isTypeSymbol = true
+
+    override def toString = s"TypeSymbol($id)"
+  }
+
+  final object ErrorSymbol extends Symbol {
+    type ThisDenotation = Nothing
+    val id = -1
+
+    override def isTermSymbol = false
+    override def isTypeSymbol = false
+
+    override def toString = s"ErrorSymbol"
+  }
 }

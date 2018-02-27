@@ -13,16 +13,16 @@
 // Utility to be used in tests to build trees out of some text
 ////////////////////////////////////////////////////////////////////////////////
 
-package com.argondesign.alogic.frontend
+package com.argondesign.alogic
 
 import com.argondesign.alogic.core.Source
-
 import com.argondesign.alogic.ast.Trees._
-
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.antlr.AlogicParser._
 import com.argondesign.alogic.antlr.TypeBuilder
 import com.argondesign.alogic.core.Types.Type
+import com.argondesign.alogic.frontend.Parser
+import com.argondesign.alogic.frontend.Builder
 
 object SourceTextConverters {
 
@@ -89,5 +89,4 @@ object SourceTextConverters {
       TypeBuilder(ctx)
     }
   }
-
 }

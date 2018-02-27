@@ -29,7 +29,7 @@ object Main extends App {
 
   implicit val cc = new CompilerContext
 
-  try {
+  val success = try {
 
     //////////////////////////////////////////////////////////////////////////////
     // Parse arguments
@@ -55,17 +55,16 @@ object Main extends App {
       frontend(toplevel)
     }
 
-    println(asts.size)
+    println(asts.keys)
+
+    true
   } catch {
-    case FatalErrorException() => {
-      cc.messages foreach Console.err.println
-      sys exit 1
-    }
+    case _: FatalErrorException => false
   } finally {
     cc.messages foreach Console.err.println
   }
 
-  sys exit 0
+  sys exit (if (success) 0 else 1)
 
   //
   //  val cnnf = new CLIConf(args)

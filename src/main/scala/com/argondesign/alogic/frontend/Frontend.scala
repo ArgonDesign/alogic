@@ -28,7 +28,7 @@ import com.argondesign.alogic.antlr.AlogicParser.StartContext
 import com.argondesign.alogic.ast.Trees.Ident
 import com.argondesign.alogic.ast.Trees.Instance
 import com.argondesign.alogic.ast.Trees.Root
-import com.argondesign.alogic.ast.Trees.Tree
+import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Source
 import com.argondesign.alogic.util.unreachable
@@ -86,21 +86,23 @@ class Frontend(
     tree
   }
 
-  private[this] def nameIt(tree: Tree): Tree = {
-    tree.rewrite(new Namer)
-    //    tree
+  private[this] def nameIt(tree: Root): Root = {
+    tree.rewrite(new Namer) match {
+      case root: Root => root
+      case _          => unreachable
+    }
   }
 
-  private[this] def desugarIt(tree: Tree): Tree = tree
+  private[this] def desugarIt(tree: Root): Root = tree
 
-  private[this] def typeIt(tree: Tree): Tree = tree
+  private[this] def typeIt(tree: Root): Root = tree
 
   // Cache of trees we already started working on. We use this to to avoid
   // multiple processing files that are instantiated multiple times
-  val inProgress = mutable.Map[String, Future[Map[String, Tree]]]()
+  val inProgress = mutable.Map[String, Future[Map[String, Root]]]()
 
   // Recursive worker that builds a future yielding the map of all trees required for an entity
-  def doIt(entityName: String): Future[Map[String, Tree]] = {
+  def doIt(entityName: String): Future[Map[String, Root]] = {
 
     // The actual future that builds all parse trees under the hierarchy of the given entity
     // note that this is only actually constructed if the inProgress map does not contain the
@@ -118,35 +120,38 @@ class Frontend(
       // Build it
       val astFuture = parseTreeFuture map { buildIt(entityName, _) }
 
-      // Name it
-      val namedAstFuture = astFuture map nameIt
-
-      // Desugar it
-      val desugaredAstFuture = namedAstFuture map desugarIt
-
-      // Type it
-      val typedAstFuture = desugaredAstFuture map typeIt
-
       // Recursively process all instantiated nodes
       val childAstMapsFuture = {
-        // Extract all instance entity names
-        val instantiatedEntityNamesFuture = astFuture map {
-          _.entity.instances map {
-            case Instance(_, Ident(entity), _, _) => entity
-            case _                                => unreachable
+
+        // Extract all instance entity names (from the recursively nested entities as well)
+        val instantiatedEntityNamesFuture = astFuture map { root =>
+          def loop(entity: Entity): List[String] = {
+            val nestedEntities = entity.entities
+            val nestedNames = nestedEntities map {
+              _.ref match {
+                case Ident(name) => name
+                case _           => unreachable
+              }
+            }
+            val requiredExternalNames = entity.instances collect {
+              case Instance(_, Ident(name), _, _) if !(nestedNames contains name) => name
+            }
+            requiredExternalNames ::: (nestedEntities flatMap loop)
           }
+
+          loop(root.entity)
         }
 
-        // process them recursively
+        // process them extracted names recursively
         instantiatedEntityNamesFuture flatMap { Future.traverse(_)(doIt) }
       }
 
       // Merge child tree maps and add this  tree
       for {
         childAstMaps <- childAstMapsFuture
-        ast <- typedAstFuture
+        ast <- astFuture
       } yield {
-        (Map.empty[String, Tree] /: childAstMaps)(_ ++ _) + (entityName -> ast)
+        (Map.empty[String, Root] /: childAstMaps)(_ ++ _) + (entityName -> ast)
       }
     }
 
@@ -157,13 +162,28 @@ class Frontend(
   }
 
   // Parse all files needed for 'entityName'. Returns map from entityNames -> Root
-  def apply(entityName: String): Map[String, Tree] = {
+  def apply(entityName: String): Map[String, Root] = {
 
     // Compute the result
-    val astMap = Await.result(doIt(entityName), atMost = Inf)
+    val initialMap = Await.result(doIt(entityName), atMost = Inf)
+
+    // Insert entity symbols into the global scope
+    val globalEntities = initialMap.values map {
+      case Root(_, entity) => entity
+      case _               => unreachable
+    }
+    cc.addGlobalEntities(globalEntities)
+
+    val astMap = initialMap.par mapValues {
+      nameIt(_)
+    } mapValues {
+      desugarIt(_)
+    } mapValues {
+      typeIt(_)
+    }
 
     // Return the AST map
-    astMap
+    astMap.seq.toMap
   }
 
 }
