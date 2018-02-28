@@ -16,6 +16,7 @@
 package com.argondesign.alogic.frontend
 
 import com.argondesign.alogic.AlogicTest
+import com.argondesign.alogic.SourceTextConverters._
 import com.argondesign.alogic.ast.Trees.CaseClause
 import com.argondesign.alogic.ast.Trees.Connect
 import com.argondesign.alogic.ast.Trees.Decl
@@ -56,9 +57,11 @@ import com.argondesign.alogic.ast.Trees.StmtIf
 import com.argondesign.alogic.ast.Trees.StmtLet
 import com.argondesign.alogic.ast.Trees.StmtLoop
 import com.argondesign.alogic.ast.Trees.StmtPost
+import com.argondesign.alogic.ast.Trees.StmtRead
 import com.argondesign.alogic.ast.Trees.StmtReturn
 import com.argondesign.alogic.ast.Trees.StmtUpdate
 import com.argondesign.alogic.ast.Trees.StmtWhile
+import com.argondesign.alogic.ast.Trees.StmtWrite
 import com.argondesign.alogic.ast.Trees.TypeDefinition
 import com.argondesign.alogic.ast.Trees.TypeDefinitionStruct
 import com.argondesign.alogic.ast.Trees.TypeDefinitionTypedef
@@ -88,8 +91,6 @@ import com.argondesign.alogic.core.Types.TypeVoid
 import org.scalatest.FreeSpec
 import org.scalatest.matchers.MatchResult
 import org.scalatest.matchers.Matcher
-
-import com.argondesign.alogic.SourceTextConverters._
 
 class ParserSpec extends FreeSpec with AlogicTest {
 
@@ -960,6 +961,14 @@ class ParserSpec extends FreeSpec with AlogicTest {
 
         "$ comment" in {
           "$(\"hello\");".asTree[Stmt] shouldBe StmtDollarComment("hello")
+        }
+
+        "read statement" in {
+          "read;".asTree[Stmt] shouldBe StmtRead()
+        }
+
+        "write statement" in {
+          "write;".asTree[Stmt] shouldBe StmtWrite()
         }
 
       }

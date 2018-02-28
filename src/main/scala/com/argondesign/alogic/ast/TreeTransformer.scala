@@ -58,9 +58,11 @@ import Trees.StmtIf
 import Trees.StmtLet
 import Trees.StmtLoop
 import Trees.StmtPost
+import Trees.StmtRead
 import Trees.StmtReturn
 import Trees.StmtUpdate
 import Trees.StmtWhile
+import Trees.StmtWrite
 import Trees.Sym
 import Trees.Tree
 import Trees.TypeDefinitionStruct
@@ -265,6 +267,8 @@ abstract class TreeTransformer(implicit val cc: CompilerContext) {
         val decl = walk(node.decl)
         transform(TreeCopier(node)(decl))
       }
+      case node: StmtRead          => transform(node)
+      case node: StmtWrite         => transform(node)
       case node: StmtDollarComment => transform(node)
       case node: StmtError         => node
       case node: ExprBracket => {

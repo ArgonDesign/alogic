@@ -61,9 +61,11 @@ import com.argondesign.alogic.ast.Trees.StmtIf
 import com.argondesign.alogic.ast.Trees.StmtLet
 import com.argondesign.alogic.ast.Trees.StmtLoop
 import com.argondesign.alogic.ast.Trees.StmtPost
+import com.argondesign.alogic.ast.Trees.StmtRead
 import com.argondesign.alogic.ast.Trees.StmtReturn
 import com.argondesign.alogic.ast.Trees.StmtUpdate
 import com.argondesign.alogic.ast.Trees.StmtWhile
+import com.argondesign.alogic.ast.Trees.StmtWrite
 import com.argondesign.alogic.core.CompilerContext
 
 import org.antlr.v4.runtime.ParserRuleContext
@@ -191,7 +193,12 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
       }
 
       override def visitStmtExpr(ctx: StmtExprContext) = {
-        StmtExpr(ExprBuilder(ctx.expr)) withLoc ctx.loc
+        val stmt = ctx.expr.text match {
+          case "read"  => StmtRead()
+          case "write" => StmtWrite()
+          case _       => StmtExpr(ExprBuilder(ctx.expr))
+        }
+        stmt withLoc ctx.loc
       }
 
       override def visitLoopInitAssign(ctx: LoopInitAssignContext) = {

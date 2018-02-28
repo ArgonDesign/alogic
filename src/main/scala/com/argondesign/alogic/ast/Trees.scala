@@ -130,6 +130,9 @@ object Trees {
   case class StmtExpr(expr: Expr) extends Stmt
   case class StmtDecl(decl: Decl) extends Stmt
 
+  case class StmtRead() extends Stmt
+  case class StmtWrite() extends Stmt
+
   case class StmtDollarComment(str: String) extends Stmt // TODO: remove
 
   case class StmtError() extends Stmt // placeholder when errors happened
