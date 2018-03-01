@@ -16,17 +16,31 @@
 package com.argondesign.alogic.frontend
 
 import com.argondesign.alogic.AlogicTest
-import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.SourceTextConverters._
+import com.argondesign.alogic.ast.Trees.Decl
+import com.argondesign.alogic.ast.Trees.Entity
+import com.argondesign.alogic.ast.Trees.Expr
+import com.argondesign.alogic.ast.Trees.ExprCall
+import com.argondesign.alogic.ast.Trees.ExprRef
+import com.argondesign.alogic.ast.Trees.Function
+import com.argondesign.alogic.ast.Trees.Instance
+import com.argondesign.alogic.ast.Trees.Root
+import com.argondesign.alogic.ast.Trees.Stmt
+import com.argondesign.alogic.ast.Trees.StmtAssign
+import com.argondesign.alogic.ast.Trees.StmtBlock
+import com.argondesign.alogic.ast.Trees.StmtDecl
+import com.argondesign.alogic.ast.Trees.StmtExpr
+import com.argondesign.alogic.ast.Trees.StmtGoto
+import com.argondesign.alogic.ast.Trees.Sym
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Error
-import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.core.Names._
+import com.argondesign.alogic.core.Names.TypeName
+import com.argondesign.alogic.core.Types.TypeInt
+import com.argondesign.alogic.core.Types.TypeRef
+import com.argondesign.alogic.core.Types.TypeStruct
+import com.argondesign.alogic.core.Warning
 
 import org.scalatest.FlatSpec
-
-import com.argondesign.alogic.SourceTextConverters._
-import com.argondesign.alogic.core.Warning
-import scala.collection.immutable.ListMap
 
 class NamerSpec extends FlatSpec with AlogicTest {
 
@@ -156,27 +170,32 @@ class NamerSpec extends FlatSpec with AlogicTest {
                   |  i8 c;
                   |  e_t  d;
                   |};
-                  |fsm b {}""".stripMargin.asTree[Root]
+                  |fsm b { a f; }""".stripMargin.asTree[Root]
     cc.addGlobalEntity(root.entity)
 
     val tree = root rewrite namer
 
     inside(tree) {
-      case Root(List(
-        TypeDefinitionTypedef(Sym(eSym), _),
-        TypeDefinitionStruct(Sym(aSym), names, kind)
-        ), _) =>
-        aSym.loc.line shouldBe 2
-        aSym.denot.name shouldBe TypeName("a")
-        aSym shouldBe 'typeSymbol
+      case Entity(_, List(decl), _, _, _, _, _, _, _) =>
+        inside(decl) {
+          case Decl(Sym(_), TypeRef(Sym(sym)), _) =>
+            sym.loc.line shouldBe 2
+            sym.denot.name shouldBe TypeName("a")
+            sym shouldBe 'typeSymbol
+            inside(sym.denot.kind) {
+              case TypeStruct(fields) =>
+                fields should have size 3
+                fields("b") shouldBe TypeInt(false, Expr(1))
+                fields("c") shouldBe TypeInt(true, Expr(8))
+                inside(fields("d")) {
+                  case TypeRef(Sym(sym)) =>
+                    sym shouldBe 'typeSymbol
+                    sym.denot.name shouldBe TypeName("e_t")
+                    sym.denot.kind shouldBe TypeInt(false, Expr(1))
+                }
 
-        aSym.denot.kind shouldBe TypeStruct(
-          ListMap(
-            "b" -> TypeInt(false, Expr(1)),
-            "c" -> TypeInt(true, Expr(8)),
-            "d" -> TypeRef(Sym(eSym))
-          )
-        )
+            }
+        }
     }
 
     cc.messages shouldBe empty
@@ -227,19 +246,13 @@ class NamerSpec extends FlatSpec with AlogicTest {
     val tree = root rewrite namer
 
     inside(tree) {
-      case Root(List(typedef), entity) =>
-        inside(typedef) {
-          case TypeDefinitionTypedef(Sym(declSym), _) =>
-            declSym.loc.line shouldBe 1
-            declSym.denot.kind shouldBe TypeInt(false, Expr(1))
-            inside(entity) {
-              case Entity(_, _, _, _, _, _, List(_, stmt), _, _) =>
-                inside(stmt) {
-                  case StmtDecl(Decl(Sym(_), TypeRef(Sym(instSym)), _)) =>
-                    instSym should be theSameInstanceAs declSym
-                    instSym shouldBe 'typeSymbol
-                }
-            }
+      case Entity(_, _, _, _, _, _, List(_, stmt), _, _) =>
+        inside(stmt) {
+          case StmtDecl(Decl(Sym(_), TypeRef(Sym(instSym)), _)) =>
+            instSym shouldBe 'typeSymbol
+            instSym.loc.line shouldBe 1
+            instSym.denot.name shouldBe TypeName("foo_t")
+            instSym.denot.kind shouldBe TypeInt(false, Expr(1))
         }
     }
 
@@ -263,17 +276,16 @@ class NamerSpec extends FlatSpec with AlogicTest {
     val tree = root rewrite namer
 
     inside(tree) {
-      case Root(List(typedef), entity) =>
-        inside(typedef) {
-          case TypeDefinitionStruct(Sym(declSym), _, _) =>
-            declSym.loc.line shouldBe 1
-            inside(entity) {
-              case Entity(_, _, _, _, _, _, List(_, stmt), _, _) =>
-                inside(stmt) {
-                  case StmtDecl(Decl(Sym(_), TypeRef(Sym(instSym)), _)) =>
-                    instSym should be theSameInstanceAs declSym
-                    instSym shouldBe 'typeSymbol
-                }
+      case Entity(_, _, _, _, _, _, List(_, stmt), _, _) =>
+        inside(stmt) {
+          case StmtDecl(Decl(Sym(_), TypeRef(Sym(instSym)), _)) =>
+            instSym shouldBe 'typeSymbol
+            instSym.loc.line shouldBe 1
+            instSym.denot.name shouldBe TypeName("bar_t")
+            inside(instSym.denot.kind) {
+              case TypeStruct(fields) =>
+                fields should have size 1
+                fields("a") shouldBe TypeInt(false, Expr(1))
             }
         }
     }

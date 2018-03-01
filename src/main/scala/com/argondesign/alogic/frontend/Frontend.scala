@@ -86,16 +86,16 @@ class Frontend(
     tree
   }
 
-  private[this] def nameIt(tree: Root): Root = {
+  private[this] def nameIt(tree: Root): Entity = {
     tree.rewrite(new Namer) match {
-      case root: Root => root
-      case _          => unreachable
+      case entity: Entity => entity
+      case _              => unreachable
     }
   }
 
-  private[this] def desugarIt(tree: Root): Root = tree
+  private[this] def desugarIt(tree: Entity): Entity = tree
 
-  private[this] def typeIt(tree: Root): Root = tree
+  private[this] def typeIt(tree: Entity): Entity = tree
 
   // Cache of trees we already started working on. We use this to to avoid
   // multiple processing files that are instantiated multiple times
@@ -162,7 +162,7 @@ class Frontend(
   }
 
   // Parse all files needed for 'entityName'. Returns map from entityNames -> Root
-  def apply(entityName: String): Map[String, Root] = {
+  def apply(entityName: String): Map[String, Entity] = {
 
     // Compute the result
     val initialMap = Await.result(doIt(entityName), atMost = Inf)
