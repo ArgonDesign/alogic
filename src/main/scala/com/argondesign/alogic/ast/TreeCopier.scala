@@ -63,7 +63,7 @@ import Trees.TypeDefinitionTypedef
 // Given a tree and new child nodes, create new tree if children are not the same as
 // the current tree, otherwise reuse existing tree. Note that only fields containing
 // trees are checked as other fields are not transformed recursively in tree transformers
-private[ast] object TreeCopier {
+object TreeCopier {
 
   final def apply(tree: Root)(typeDefinitions: List[Tree], entity: Tree): Root = {
     if ((typeDefinitions eq tree.typeDefinitions) && (entity eq tree.entity)) {
@@ -130,7 +130,7 @@ private[ast] object TreeCopier {
         fenceStmts.asInstanceOf[List[Stmt]],
         entities.asInstanceOf[List[Entity]],
         tree.verbatim
-      ) withLoc tree.loc
+      ) withLoc tree.loc withVariant tree.variant
     }
   }
 
@@ -206,7 +206,7 @@ private[ast] object TreeCopier {
     }
   }
 
-  final def apply(tree: StmtCase)(expr: Tree, cases: List[Tree], default: Option[Tree]): StmtCase = {
+  final def apply(tree: StmtCase)(expr: Tree, cases: List[Tree], default: List[Tree]): StmtCase = {
     if ((expr eq tree.expr) && (cases eq tree.cases) && (default eq tree.default)) {
       tree
     } else {
@@ -215,7 +215,7 @@ private[ast] object TreeCopier {
       StmtCase(
         expr.asInstanceOf[Expr],
         cases.asInstanceOf[List[CaseClause]],
-        default.asInstanceOf[Option[Stmt]]
+        default.asInstanceOf[List[Stmt]]
       ) withLoc tree.loc
     }
   }

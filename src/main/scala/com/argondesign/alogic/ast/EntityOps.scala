@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2018 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2018 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
@@ -10,30 +10,29 @@
 //
 // DESCRIPTION:
 //
-// Base trait for things that have a location
+// Members of ast.Trees.Entity
+// These are factored out into a separate file to keep ast.Trees readable
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.ast
 
-import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.util.unreachable
 
-trait Locationed {
+import Trees.Entity
 
-  // Can only be set once, and cannot be observed as null
-  private[this] var _loc: Loc = _ // scalastyle:ignore var.field
+trait EntityOps { this: Entity =>
+  private[this] var _variant: String = _ // scalastyle:ignore var.field
 
-  def hasLoc: Boolean = _loc != null
+  def hasVariant: Boolean = _variant != null // scalastyle:ignore null
 
-  def loc: Loc = if (hasLoc) _loc else unreachable
+  def variant: String = if (hasVariant) _variant else unreachable
 
-  def withLoc(loc: Loc): this.type = {
-    if (hasLoc) {
+  def withVariant(variant: String): this.type = {
+    if (hasVariant) {
       unreachable
     } else {
-      _loc = loc
+      _variant = variant
     }
     this
   }
-
 }

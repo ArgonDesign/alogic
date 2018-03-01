@@ -80,7 +80,7 @@ object Trees {
 
     // Verbatim sections. Map from language to string to insert into output
     verbatim: Map[String, String]
-  ) extends Tree
+  ) extends Tree with EntityOps
 
   ///////////////////////////////////////////////////////////////////////////////
   // Entity contents
@@ -109,7 +109,7 @@ object Trees {
 
   case class StmtBlock(body: List[Stmt]) extends Stmt
   case class StmtIf(cond: Expr, thenStmt: Stmt, elseStmt: Option[Stmt]) extends Stmt
-  case class StmtCase(expr: Expr, cases: List[CaseClause], default: Option[Stmt]) extends Stmt
+  case class StmtCase(expr: Expr, cases: List[CaseClause], default: List[Stmt]) extends Stmt
   case class CaseClause(cond: List[Expr], body: Stmt) extends Tree
 
   case class StmtLoop(body: List[Stmt]) extends Stmt

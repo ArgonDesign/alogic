@@ -39,7 +39,7 @@ object EntityBuilder extends BaseBuilder[EntityContext, Entity] {
 
   // A few helper to use locally
   private case class AutoInstance(entity: Entity) extends Locationed
-  private case class FenceBlock(stmts: List[Stmt]) extends Locationed
+  private case class FenceBlock(stmts: StmtBlock) extends Locationed
   private case class VerbatimBlock(lang: String, text: String) extends Locationed
 
   def apply(ctx: EntityContext)(implicit cc: CompilerContext): Entity = {
@@ -76,13 +76,15 @@ object EntityBuilder extends BaseBuilder[EntityContext, Entity] {
 
       override def visitEntityContentFenceFunction(ctx: EntityContentFenceFunctionContext) = {
         cc.warning(ctx, "'void fence() {...}' function syntax is deprecated. Use a 'fence {...}' block instead")
-        val stmts = StmtBuilder(ctx.block.statement)
-        FenceBlock(stmts) withLoc ctx.loc
+        // We put the body in a block in case there are multiple fence blocks, which we will check later
+        val stmt = StmtBlock(StmtBuilder(ctx.block.statement)) withLoc ctx.loc
+        FenceBlock(stmt) withLoc ctx.loc
       }
 
       override def visitEntityContentFenceBlock(ctx: EntityContentFenceBlockContext) = {
-        val stmts = StmtBuilder(ctx.block.statement)
-        FenceBlock(stmts) withLoc ctx.loc
+        // We put the body in a block in case there are multiple fence blocks, which we will check later
+        val stmt = StmtBlock(StmtBuilder(ctx.block.statement)) withLoc ctx.loc
+        FenceBlock(stmt) withLoc ctx.loc
       }
 
       override def visitEntityContentFunction(ctx: EntityContentFunctionContext) = {
@@ -110,21 +112,10 @@ object EntityBuilder extends BaseBuilder[EntityContext, Entity] {
         val instances = contents collect {
           case x: Instance          => x
           case AutoInstance(entity) => Instance(entity.ref, entity.ref, Nil, Nil) withLoc entity.loc
-
         }
         val connects = contents collect { case x: Connect => x }
         val functions = contents collect { case x: Function => x }
-        val fenceStmts = {
-          val blocks = contents collect { case x: FenceBlock => x }
-          if (blocks.isEmpty) {
-            Nil
-          } else {
-            for (excess <- blocks.tail) {
-              cc.error(excess, s"Multiple fence blocks specified in entity ${ident.name}")
-            }
-            blocks.head.stmts
-          }
-        }
+        val fenceBlocks = contents collect { case FenceBlock(block) => block }
         val entities = contents collect {
           case x: Entity            => x
           case AutoInstance(entity) => entity
@@ -135,42 +126,17 @@ object EntityBuilder extends BaseBuilder[EntityContext, Entity] {
           blockMap mapValues { list => list map { _.text.tail.init } mkString "\n" }
         }
 
-        val entity = Entity(
+        Entity(
           ident,
           decls,
           instances,
           connects,
           functions,
           Nil,
-          fenceStmts,
+          fenceBlocks,
           entities,
           verbatim
-        ) withLoc ctx.loc
-
-        ctx.variant.text match {
-          case "fsm" => contents collect {
-            case c: Instance     => cc.error(c, "'fsm' entity cannot contain instantiations")
-            case c: Connect      => cc.error(c, "'fsm' entity cannot contain connections")
-            case c: Entity       => cc.error(c, "'fsm' entity cannot contain nested entities")
-            case c: AutoInstance => cc.error(c, "'fsm' entity cannot contain nested entities")
-          }
-          case "network" => contents collect {
-            case c: Function   => cc.error(c, "'network' entity cannot contain function definitions")
-            case c: FenceBlock => cc.error(c, "'network' entity cannot contain fence blocks")
-          }
-          case "verilog" => {
-            contents collect {
-              case _: Decl                     =>
-              case VerbatimBlock("verilog", _) =>
-              case c: Locationed => {
-                cc.error(c, "'verilog' entity can only contain declarations and verbatim verilog blocks")
-              }
-            }
-          }
-          case other => cc.fatal(ctx, s"Unknown entity variant '$other'")
-        }
-
-        entity
+        ) withLoc ctx.loc withVariant ctx.variant.text
       }
     }
 

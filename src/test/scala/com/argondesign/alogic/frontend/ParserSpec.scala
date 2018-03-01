@@ -185,117 +185,6 @@ class ParserSpec extends FreeSpec with AlogicTest {
     }
 
     "should signal error for malformed input" - {
-      "multiple fence blocks" in {
-        """|fsm foo {
-           |  fence {}
-           |  fence {}
-           |}""".asTree[Entity]
-
-        cc.messages.loneElement should beThe[Error]("Multiple fence blocks specified in entity foo")
-        cc.messages(0).loc.line shouldBe 3
-      }
-
-      "disallowed entity contents" - {
-        "fsm with instantiations" in {
-          """|fsm a {
-             |  c = new d();
-             |}""".asTree[Entity]
-
-          cc.messages.loneElement should beThe[Error]("'fsm' entity cannot contain instantiations")
-          cc.messages(0).loc.line shouldBe 2
-        }
-
-        "fsm with connections" in {
-          """|fsm a {
-             |  a -> b;
-             |}""".asTree[Entity]
-
-          cc.messages.loneElement should beThe[Error]("'fsm' entity cannot contain connections")
-          cc.messages(0).loc.line shouldBe 2
-        }
-
-        "fsm with nested entity without autoinst" in {
-          """|fsm a {
-             |  fsm d {}
-             |}""".asTree[Entity]
-
-          cc.messages.loneElement should beThe[Error]("'fsm' entity cannot contain nested entities")
-          cc.messages(0).loc.line shouldBe 2
-        }
-
-        "fsm with nested entity with autoinst" in {
-          """|fsm a {
-             |  new fsm d {}
-             |}""".asTree[Entity]
-
-          cc.messages.loneElement should beThe[Error]("'fsm' entity cannot contain nested entities")
-          cc.messages(0).loc.line shouldBe 2
-        }
-
-        "network with function" in {
-          """|network a {
-             |  void main() {}
-             |}""".asTree[Entity]
-
-          cc.messages.loneElement should beThe[Error]("'network' entity cannot contain function definitions")
-          cc.messages(0).loc.line shouldBe 2
-        }
-
-        "network with fence block" in {
-          """|network a {
-             |  fence {}
-             |}""".asTree[Entity]
-
-          cc.messages.loneElement should beThe[Error]("'network' entity cannot contain fence blocks")
-          cc.messages(0).loc.line shouldBe 2
-        }
-
-        "verbatim verilog entity" in {
-          """|verilog a {
-             | a = new a();
-             | a -> a;
-             | void main() {}
-             | fence {}
-             | fsm a {}
-             | new fsm a {}
-             | verbatim VHDL {}
-             |}""".asTree[Entity]
-          cc.messages should have length 7
-          forAll(cc.messages zip (2 to 8)) { item =>
-            val (msg, line) = item
-            msg shouldBe an[Error]
-            msg.msg(0) shouldBe "'verilog' entity can only contain declarations and verbatim verilog blocks"
-            msg.loc.line shouldBe line
-          }
-        }
-      }
-
-      "output slices without sync ready" - {
-        "slices with no flow control" in {
-          "out bubble i2 a".asTree[Decl]
-
-          cc.messages.loneElement should {
-            beThe[Error]("Output port 'a' without flow control specifier cannot use output slices")
-          }
-        }
-
-        "slices with valid flow control" in {
-          "out sync bubble i2 a".asTree[Decl]
-
-          cc.messages.loneElement should {
-            beThe[Error]("Output port 'a' with 'sync' flow control specifier cannot use output slices")
-          }
-        }
-      }
-
-      "case with multiple defaults" in {
-        """|case(1) {
-           | default: a;
-           | default: b;
-           |}""".asTree[Stmt]
-
-        cc.messages.loneElement should beThe[Error]("More than one 'default' case clause specified")
-      }
     }
 
     /////////////////////////////////////////////////////////////////////////////
@@ -632,7 +521,7 @@ class ParserSpec extends FreeSpec with AlogicTest {
                        |}""".asTree[Entity] shouldBe {
             Entity(
               Ident("g"), Nil, Nil, Nil, Nil, Nil,
-              List(StmtAssign(ExprRef(Ident("a")), Expr(1))),
+              List(StmtBlock(List(StmtAssign(ExprRef(Ident("a")), Expr(1))))),
               Nil, Map()
             )
           }
@@ -752,7 +641,7 @@ class ParserSpec extends FreeSpec with AlogicTest {
                   CaseClause(List(Expr(1)), StmtExpr(ExprRef(Ident("a")))),
                   CaseClause(List(Expr(2)), StmtExpr(ExprRef(Ident("b"))))
                 ),
-                None
+                List()
               )
             }
           }
@@ -765,7 +654,7 @@ class ParserSpec extends FreeSpec with AlogicTest {
               StmtCase(
                 Expr(1),
                 Nil,
-                Some(StmtExpr(ExprRef(Ident("c"))))
+                List(StmtBlock(List(StmtExpr(ExprRef(Ident("c"))))))
               )
             }
           }
@@ -782,7 +671,7 @@ class ParserSpec extends FreeSpec with AlogicTest {
                   CaseClause(List(Expr(1)), StmtExpr(ExprRef(Ident("c")))),
                   CaseClause(List(Expr(2), Expr(3)), StmtExpr(ExprRef(Ident("d"))))
                 ),
-                None
+                List()
               )
             }
           }

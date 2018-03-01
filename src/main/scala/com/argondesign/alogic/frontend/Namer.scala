@@ -326,7 +326,9 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       case node: TypeDefinition                     => cc.fatal(node, "Namer should have removed type definitions")
       case node: Ident                              => errIdent(node, node)
       case node @ Decl(_, TypeRef(ident: Ident), _) => errIdent(node, ident)
+      // TODO: type visitors
     }
+
   }
 
 }

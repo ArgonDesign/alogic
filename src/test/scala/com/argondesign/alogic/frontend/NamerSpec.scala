@@ -246,7 +246,7 @@ class NamerSpec extends FlatSpec with AlogicTest {
     val tree = root rewrite namer
 
     inside(tree) {
-      case Entity(_, _, _, _, _, _, List(_, stmt), _, _) =>
+      case Entity(_, _, _, _, _, _, List(StmtBlock(List(_, stmt))), _, _) =>
         inside(stmt) {
           case StmtDecl(Decl(Sym(_), TypeRef(Sym(instSym)), _)) =>
             instSym shouldBe 'typeSymbol
@@ -276,7 +276,7 @@ class NamerSpec extends FlatSpec with AlogicTest {
     val tree = root rewrite namer
 
     inside(tree) {
-      case Entity(_, _, _, _, _, _, List(_, stmt), _, _) =>
+      case Entity(_, _, _, _, _, _, List(StmtBlock(List(_, stmt))), _, _) =>
         inside(stmt) {
           case StmtDecl(Decl(Sym(_), TypeRef(Sym(instSym)), _)) =>
             instSym shouldBe 'typeSymbol
@@ -397,5 +397,8 @@ class NamerSpec extends FlatSpec with AlogicTest {
 
     cc.messages shouldBe empty
   }
+
+  // TODO: @bits
+  // TODO: recursive types like vec or array
 
 }

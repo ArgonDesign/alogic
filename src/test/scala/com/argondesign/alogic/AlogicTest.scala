@@ -47,6 +47,7 @@ trait AlogicTest
         failed.exception match {
           case FatalErrorException(cc, _)            => cc.messages foreach Console.err.println
           case InternalCompilerErrorException(cc, _) => cc.messages foreach Console.err.println
+          case _                                     =>
         }
       }
       case other => other

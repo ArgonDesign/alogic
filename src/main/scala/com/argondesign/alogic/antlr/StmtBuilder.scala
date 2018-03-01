@@ -162,7 +162,12 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
       override def visitStmtCase(ctx: StmtCaseContext) = {
         object DefaultVisitor extends AlogicScalarVisitor[Option[Stmt]] {
           override val defaultResult = None
-          override def visitDefaultCase(ctx: DefaultCaseContext) = Some(self(ctx.statement))
+          override def visitDefaultCase(ctx: DefaultCaseContext) = {
+            // We put the body in a block in case there are multiple defaults, which we will check later
+            val body = self(ctx.statement)
+            val block = StmtBlock(List(body)) withLoc ctx.loc
+            Some(block)
+          }
         }
 
         object CaseVisitor extends AlogicScalarVisitor[Option[CaseClause]] {
@@ -180,14 +185,7 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
 
         val caseClauses = clauseList flatMap { CaseVisitor(_) }
 
-        val defaultCase = clauseList flatMap { DefaultVisitor(_) } match {
-          case Nil      => None
-          case d :: Nil => Some(d)
-          case _ => {
-            cc.error(ctx, "More than one 'default' case clause specified")
-            None
-          }
-        }
+        val defaultCase = clauseList flatMap { DefaultVisitor(_) }
 
         StmtCase(value, caseClauses, defaultCase) withLoc ctx.loc
       }

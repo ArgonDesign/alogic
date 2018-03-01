@@ -63,22 +63,14 @@ object DeclBuilder extends BaseBuilder[DeclContext, Decl] {
         val fcType = FlowControlTypeBuilder(ctx.flow_control_type)
         val storageOpt = Option(ctx.storage_type) map { StorageTypeBuilder(_) }
         val storage = (fcType, storageOpt) match {
+          // Unbox
+          case (_, Some(storageType))       => storageType
           // Defaults
           case (FlowControlTypeNone, None)  => StorageTypeReg
           case (FlowControlTypeValid, None) => StorageTypeReg
           case (_, None)                    => StorageTypeSlices(List(StorageSliceFwd))
-          // Error checks
-          case (FlowControlTypeNone, Some(_: StorageTypeSlices)) => {
-            cc.error(ctx, s"Output port '${ident.name}' without flow control specifier cannot use output slices")
-            StorageTypeReg
-          }
-          case (FlowControlTypeValid, Some(_: StorageTypeSlices)) => {
-            cc.error(ctx, s"Output port '${ident.name}' with 'sync' flow control specifier cannot use output slices")
-            StorageTypeReg
-          }
-          // Unbox
-          case (_, Some(storageType)) => storageType
         }
+
         val kind = TypeOut(underlying, fcType, storage)
         Decl(ident, kind, None) withLoc ctx.loc
       }

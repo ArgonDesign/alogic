@@ -86,6 +86,13 @@ class Frontend(
     tree
   }
 
+  private[this] def checkIt(tree: Root): Root = {
+    tree.rewrite(new Checker) match {
+      case root: Root => root
+      case _          => unreachable
+    }
+  }
+
   private[this] def nameIt(tree: Root): Entity = {
     tree.rewrite(new Namer) match {
       case entity: Entity => entity
@@ -168,13 +175,17 @@ class Frontend(
     val initialMap = Await.result(doIt(entityName), atMost = Inf)
 
     // Insert entity symbols into the global scope
-    val globalEntities = initialMap.values map {
-      case Root(_, entity) => entity
-      case _               => unreachable
+    cc.addGlobalEntities {
+      initialMap.values.seq map {
+        case Root(_, entity) => entity
+        case _               => unreachable
+      }
     }
-    cc.addGlobalEntities(globalEntities)
 
+    // Apply the frontend passes
     val astMap = initialMap.par mapValues {
+      checkIt(_)
+    } mapValues {
       nameIt(_)
     } mapValues {
       desugarIt(_)
