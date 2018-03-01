@@ -10,18 +10,7 @@
 //
 // DESCRIPTION:
 //
-// The Namer creates new symbols for declarations and type definitions and
-// resolves Ident identifiers against their definitions, replacing them with
-// Sym references referring to the symbol allocated for that definition.
-// The Namer also discards all TypeDefinition nodes and replaces the Root
-// with the root Entity.
-// After the namer there should be none of these nodes left:
-// - Ident
-// - TypeDefinitionStruct
-// - TypeDefinitoinTypedef
-// - Root
-// There should also not be any TypeRef(Ident(_)) types left anywhere.
-// These are replaced with TypeRef(Sym(_)) after resolving the names.
+// The Namer resolves identifiers to symbols
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.frontend
@@ -47,7 +36,6 @@ import com.argondesign.alogic.ast.Trees.StmtLoop
 import com.argondesign.alogic.ast.Trees.StmtWhile
 import com.argondesign.alogic.ast.Trees.Sym
 import com.argondesign.alogic.ast.Trees.Tree
-import com.argondesign.alogic.ast.Trees.TypeDefinition
 import com.argondesign.alogic.ast.Trees.TypeDefinitionStruct
 import com.argondesign.alogic.ast.Trees.TypeDefinitionTypedef
 import com.argondesign.alogic.core.CompilerContext
@@ -201,9 +189,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
   }
 
   override def transform(tree: Tree): Tree = tree match {
-    case node: Root => {
-      node.entity
-    } followedBy {
+    case node: Root => node followedBy {
       Scope.pop()
     }
 
@@ -214,9 +200,10 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         case _                     => kind
       }
       // Insert new type
-      Scope.insert(cc.newTypeSymbol(ident, newKind))
-      // Don't bother rewriting node, it will be removed when rewriting Root
-      tree
+      val symbol = Scope.insert(cc.newTypeSymbol(ident, newKind))
+      // Rewrite node
+      val sym = Sym(symbol) withLoc ident.loc
+      TypeDefinitionTypedef(sym, newKind) withLoc tree.loc
     }
 
     case TypeDefinitionStruct(ident: Ident, fieldNames, fieldKinds) => {
@@ -227,9 +214,10 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       }
       val kind = TypeStruct(ListMap((fieldNames zip newFieldKinds): _*))
       // Insert new type
-      Scope.insert(cc.newTypeSymbol(ident, kind))
-      // Don't bother rewriting node, it will be removed when rewriting Root
-      tree
+      val symbol = Scope.insert(cc.newTypeSymbol(ident, kind))
+      // Rewrite node
+      val sym = Sym(symbol) withLoc ident.loc
+      TypeDefinitionStruct(sym, fieldNames, newFieldKinds) withLoc tree.loc
     }
 
     case entity: Entity => {
@@ -322,9 +310,12 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
     }
 
     tree visit {
-      case node: Root                               => cc.fatal(node, "Namer hould have removed root node")
-      case node: TypeDefinition                     => cc.fatal(node, "Namer should have removed type definitions")
-      case node: Ident                              => errIdent(node, node)
+      case node: Ident => errIdent(node, node)
+      case node @ TypeDefinitionTypedef(_, TypeRef(ident: Ident)) => errIdent(node, ident)
+      case node @ TypeDefinitionStruct(_, _, fieldKinds) => fieldKinds foreach {
+        case TypeRef(ident: Ident) => errIdent(node, ident)
+        case _                     =>
+      }
       case node @ Decl(_, TypeRef(ident: Ident), _) => errIdent(node, ident)
       // TODO: type visitors
     }
