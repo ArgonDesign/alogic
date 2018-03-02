@@ -10,88 +10,26 @@
 //
 // DESCRIPTION:
 //
-// A tree transformer used to modify trees
+// A Tree transformer used to modify Trees
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.ast
 
 import com.argondesign.alogic.core.CompilerContext
 
-import Trees.CaseClause
-import Trees.Connect
-import Trees.Decl
-import Trees.Entity
-import Trees.ExprAtCall
-import Trees.ExprBinary
-import Trees.ExprBracket
-import Trees.ExprCall
-import Trees.ExprCat
-import Trees.ExprDollarCall
-import Trees.ExprError
-import Trees.ExprIndex
-import Trees.ExprNum
-import Trees.ExprRef
-import Trees.ExprRep
-import Trees.ExprSelect
-import Trees.ExprSlice
-import Trees.ExprStr
-import Trees.ExprTernary
-import Trees.ExprUnary
-import Trees.Function
-import Trees.Ident
-import Trees.Instance
-import Trees.Root
-import Trees.State
-import Trees.StmtAssign
-import Trees.StmtBlock
-import Trees.StmtBreak
-import Trees.StmtCase
-import Trees.StmtDecl
-import Trees.StmtDo
-import Trees.StmtDollarComment
-import Trees.StmtError
-import Trees.StmtExpr
-import Trees.StmtFence
-import Trees.StmtFor
-import Trees.StmtGoto
-import Trees.StmtIf
-import Trees.StmtLet
-import Trees.StmtLoop
-import Trees.StmtPost
-import Trees.StmtRead
-import Trees.StmtReturn
-import Trees.StmtUpdate
-import Trees.StmtWhile
-import Trees.StmtWrite
-import Trees.Sym
-import Trees.Tree
-import Trees.TypeDefinitionStruct
-import Trees.TypeDefinitionTypedef
+import Trees._
+import com.argondesign.alogic.core.TreeLikeTransformer
 
-// Tree transformers are applied during a post-order traversal of a tree.
-abstract class TreeTransformer(implicit val cc: CompilerContext) {
-
-  // enter is called when entering a node, before visiting any children.
-  // enter is used to modify the state of the tree transformer or the context
-  // before transforming children.
-  protected def enter(tree: Tree): Unit = ()
-
-  // transform is called after all children have already been visited and transformed.
-  protected def transform(tree: Tree): Tree = tree
-
-  // finalCheck is invoked with the root of the transformed tree.
-  // This can be used to verify invariants introduced by this transform
-  protected def finalCheck(tree: Tree): Unit = ()
+// Tree transformers are applied during a post-order traversal of a Tree.
+abstract class TreeTransformer(implicit val cc: CompilerContext) extends TreeLikeTransformer[Tree] {
 
   ///////////////////////////////////////////////////////////////////////////////
   // Public API
   ///////////////////////////////////////////////////////////////////////////////
 
-  def apply(tree: Tree): Tree = {
-    // Walk the tree
-    val result = walk(tree)
-    // Apply final check
-    finalCheck(result)
+  final override def apply(tree: Tree): Tree = {
+    // Transform Tree
+    val result = super.apply(tree)
     // Ensure locations are present
     result visitAll {
       case node: Tree if !node.hasLoc => cc.fatal(s"Lost location for node '${node}'")
@@ -104,30 +42,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext) {
   // Internals
   ///////////////////////////////////////////////////////////////////////////////
 
-  // Walk list, but return the original list if nothing is transformed
-  private[this] def walk(trees: List[Tree]): List[Tree] = {
-    trees match {
-      case head :: tail => {
-        val newHead = walk(head)
-        val newTail = walk(tail)
-        if ((head eq newHead) && (tail eq newTail)) trees else newHead :: newTail
-      }
-      case Nil => Nil
-    }
-  }
-
-  // Walk option,but return the original option if value is not transformed
-  private[this] def walk(treeOpt: Option[Tree]): Option[Tree] = {
-    treeOpt match {
-      case Some(tree) => {
-        val newTree = walk(tree)
-        if (newTree eq tree) treeOpt else Some(newTree)
-      }
-      case None => treeOpt
-    }
-  }
-
-  private[this] def walk(tree: Tree): Tree = {
+  protected final override def walk(tree: Tree): Tree = {
     enter(tree)
     tree match {
       case node: Root => {

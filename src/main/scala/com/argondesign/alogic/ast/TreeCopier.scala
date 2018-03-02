@@ -10,59 +10,19 @@
 //
 // DESCRIPTION:
 //
-// A copy on write tree-copier used in tree tranformations
+// A copy on write Tree copier used in tree transformations
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.ast
 
-import Trees.CaseClause
-import Trees.Connect
-import Trees.Decl
-import Trees.Entity
-import Trees.Expr
-import Trees.ExprAtCall
-import Trees.ExprBinary
-import Trees.ExprBracket
-import Trees.ExprCall
-import Trees.ExprCat
-import Trees.ExprDollarCall
-import Trees.ExprIndex
-import Trees.ExprRef
-import Trees.ExprRep
-import Trees.ExprSelect
-import Trees.ExprSlice
-import Trees.ExprTernary
-import Trees.ExprUnary
-import Trees.Function
-import Trees.Instance
-import Trees.Ref
-import Trees.Root
-import Trees.State
-import Trees.Stmt
-import Trees.StmtAssign
-import Trees.StmtBlock
-import Trees.StmtCase
-import Trees.StmtDecl
-import Trees.StmtDo
-import Trees.StmtExpr
-import Trees.StmtFor
-import Trees.StmtGoto
-import Trees.StmtIf
-import Trees.StmtLet
-import Trees.StmtLoop
-import Trees.StmtPost
-import Trees.StmtUpdate
-import Trees.StmtWhile
-import Trees.Tree
-import Trees.TypeDefinition
-import Trees.TypeDefinitionStruct
-import Trees.TypeDefinitionTypedef
+import Trees._
 
 // scalastyle:off token
 
-// Given a tree and new child nodes, create new tree if children are not the same as
-// the current tree, otherwise reuse existing tree. Note that only fields containing
-// trees are checked as other fields are not transformed recursively in tree transformers
+// Given a Tree and new child nodes, create new Tree if children are not the same as
+// the children of the current Tree, otherwise reuse existing Tree. Note that only
+// fields containing Tree instances are checked as other fields are not transformed
+// recursively in TreeTransformer
 object TreeCopier {
 
   final def apply(tree: Root)(typeDefinitions: List[Tree], entity: Tree): Root = {
@@ -81,7 +41,7 @@ object TreeCopier {
     if (ref eq tree.ref) {
       tree
     } else {
-      TypeDefinitionStruct(ref.asInstanceOf[Ref], tree.fieldNames, tree.fieldKinds) withLoc tree.loc
+      TypeDefinitionStruct(ref.asInstanceOf[Ref], tree.fieldNames, tree.fieldTypes) withLoc tree.loc
     }
   }
 

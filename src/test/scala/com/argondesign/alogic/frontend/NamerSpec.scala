@@ -26,7 +26,7 @@ import org.scalatest.FlatSpec
 
 import com.argondesign.alogic.SourceTextConverters._
 import com.argondesign.alogic.core.Warning
-import scala.collection.immutable.ListMap
+import com.argondesign.alogic.core.Symbols.ErrorSymbol
 
 class NamerSpec extends FlatSpec with AlogicTest {
 
@@ -171,11 +171,8 @@ class NamerSpec extends FlatSpec with AlogicTest {
         aSym shouldBe 'typeSymbol
 
         aSym.denot.kind shouldBe TypeStruct(
-          ListMap(
-            "b" -> TypeInt(false, Expr(1)),
-            "c" -> TypeInt(true, Expr(8)),
-            "d" -> TypeRef(Sym(eSym))
-          )
+          List("b", "c", "d"),
+          List(TypeInt(false, Expr(1)), TypeInt(true, Expr(8)), TypeRef(Sym(eSym)))
         )
     }
 
@@ -386,7 +383,210 @@ class NamerSpec extends FlatSpec with AlogicTest {
     cc.messages shouldBe empty
   }
 
-  // TODO: @bits
-  // TODO: recursive types like vec or array
+  it should "resolve @bits arguments to plain term names" in {
+    val entity = """|fsm a {
+                    |  void main() {
+                    |    bool b;
+                    |    @bits(b);
+                    |  }
+                    |}""".stripMargin.asTree[Entity]
+
+    cc.addGlobalEntity(entity)
+
+    val tree = entity rewrite namer
+
+    inside(tree) {
+      case Entity(_, _, _, _, List(main), _, _, _, _) =>
+        inside(main) {
+          case Function(Sym(_), List(StmtDecl(decl), StmtExpr(expr))) =>
+            inside(decl) {
+              case Decl(Sym(dSym), TypeInt(false, Expr(1)), None) =>
+                inside(expr) {
+                  case ExprAtCall("bits", List(ExprRef(Sym(rSym)))) =>
+                    rSym should be theSameInstanceAs dSym
+                    rSym shouldBe 'termSymbol
+                    rSym.loc.line shouldBe 3
+                }
+            }
+        }
+    }
+
+    cc.messages shouldBe empty
+  }
+
+  it should "resolve @bits arguments to term names with select" in {
+    val entity = """|fsm a {
+                    |  void main() {
+                    |    bool b;
+                    |    @bits(b.c.d);
+                    |  }
+                    |}""".stripMargin.asTree[Entity]
+
+    cc.addGlobalEntity(entity)
+
+    val tree = entity rewrite namer
+
+    inside(tree) {
+      case Entity(_, _, _, _, List(main), _, _, _, _) =>
+        inside(main) {
+          case Function(Sym(_), List(StmtDecl(decl), StmtExpr(expr))) =>
+            inside(decl) {
+              case Decl(Sym(dSym), TypeInt(false, Expr(1)), None) =>
+                inside(expr) {
+                  case ExprAtCall("bits", List(ExprSelect(ExprSelect(ExprRef(Sym(rSym)), "c"), "d"))) =>
+                    rSym should be theSameInstanceAs dSym
+                    rSym shouldBe 'termSymbol
+                    rSym.loc.line shouldBe 3
+                }
+            }
+        }
+    }
+
+    cc.messages shouldBe empty
+  }
+
+  it should "resolve @bits arguments to plain type names" in {
+    val root = """|typedef bool a;
+                  |fsm b {
+                  |  void main() {
+                  |    @bits(a);
+                  |  }
+                  |}""".stripMargin.asTree[Root]
+
+    cc.addGlobalEntity(root.entity)
+
+    val tree = root rewrite namer
+
+    inside(tree) {
+      case Root(List(typedef), entity) =>
+        inside(typedef) {
+          case TypeDefinitionTypedef(Sym(dSym), TypeInt(false, Expr(1))) =>
+            inside(entity) {
+              case Entity(_, _, _, _, List(main), _, _, _, _) =>
+                inside(main) {
+                  case Function(Sym(_), List(StmtExpr(expr))) =>
+                    inside(expr) {
+                      case ExprAtCall("bits", List(ExprRef(Sym(rSym)))) =>
+                        rSym should be theSameInstanceAs dSym
+                        rSym shouldBe 'typeSymbol
+                        rSym.loc.line shouldBe 1
+                    }
+                }
+            }
+        }
+    }
+
+    cc.messages shouldBe empty
+  }
+
+  it should "resolve @bits arguments to type names with select" in {
+    val root = """|typedef bool a;
+                  |fsm b {
+                  |  void main() {
+                  |    @bits(a.c.d);
+                  |  }
+                  |}""".stripMargin.asTree[Root]
+
+    cc.addGlobalEntity(root.entity)
+
+    val tree = root rewrite namer
+
+    inside(tree) {
+      case Root(List(typedef), entity) =>
+        inside(typedef) {
+          case TypeDefinitionTypedef(Sym(dSym), TypeInt(false, Expr(1))) =>
+            inside(entity) {
+              case Entity(_, _, _, _, List(main), _, _, _, _) =>
+                inside(main) {
+                  case Function(Sym(_), List(StmtExpr(expr))) =>
+                    inside(expr) {
+                      case ExprAtCall("bits", List(ExprSelect(ExprSelect(ExprRef(Sym(rSym)), "c"), "d"))) =>
+                        rSym should be theSameInstanceAs dSym
+                        rSym shouldBe 'typeSymbol
+                        rSym.loc.line shouldBe 1
+                    }
+                }
+            }
+        }
+    }
+
+    cc.messages shouldBe empty
+  }
+
+  it should "issue error if both type and term names are available" in {
+    val root = """|typedef bool a;
+                  |fsm b {
+                  |  void main() {
+                  |    u1 a;
+                  |    @bits(a);
+                  |  }
+                  |}""".stripMargin.asTree[Root]
+
+    cc.addGlobalEntity(root.entity)
+
+    root rewrite namer
+
+    cc.messages.loneElement should beThe[Error](
+      "Name 'a' in this context can resolve to either of",
+      "term 'a' defined at .*:4",
+      "type 'a' defined at .*:1"
+    )
+  }
+
+  it should "not resolve other identifiers in expressions to type names" in {
+    val root = """|typedef bool a;
+                  |fsm b {
+                  |  void main() {
+                  |    bool c = a;
+                  |  }
+                  |}""".stripMargin.asTree[Root]
+
+    cc.addGlobalEntity(root.entity)
+
+    val tree = root rewrite namer
+
+    inside(tree) {
+      case Root(_, entity: Entity) =>
+        inside(entity.functions.head.body.head) {
+          case StmtDecl(Decl(_, _, Some(ExprRef(Sym(sym))))) =>
+            sym should be theSameInstanceAs ErrorSymbol
+        }
+    }
+
+    cc.messages.loneElement should beThe[Error]("Name 'a' is not defined")
+    cc.messages(0).loc.line shouldBe 4
+  }
+
+  it should "resovle names inside type arguments" in {
+    val block = """|{
+                   |  i8 a;
+                   |  i8 b;
+                   |  int(a, b) c;
+                   |}""".asTree[StmtBlock]
+
+    val tree = block rewrite namer
+
+    inside(tree) {
+      case StmtBlock(List(StmtDecl(declA), StmtDecl(declB), StmtDecl(declC))) =>
+        val Sym(symA) = declA.ref
+        val Sym(symB) = declB.ref
+        inside(declC) {
+          case Decl(_, TypeVector(elementType, size), _) =>
+            inside(size) {
+              case ExprRef(Sym(sym)) =>
+                sym should be theSameInstanceAs symA
+            }
+            inside(elementType) {
+              case TypeInt(true, ExprRef(Sym(sym))) =>
+                sym should be theSameInstanceAs symB
+            }
+        }
+    }
+
+    cc.messages shouldBe empty
+  }
+
+  // TODO: Array/Param/Const/Input/Output// ETC
+  // TODO: ensure denotations are correct
 
 }

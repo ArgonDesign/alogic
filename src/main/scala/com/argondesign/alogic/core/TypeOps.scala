@@ -10,18 +10,18 @@
 //
 // DESCRIPTION:
 //
-// Common members of ast.Trees.Tree
-// These are factored out into a separate file to keep ast.Trees readable
+// Common members of Types.Type
+// These are factored out into a separate file to keep Type.Types readable
 ////////////////////////////////////////////////////////////////////////////////
 
-package com.argondesign.alogic.ast
+package com.argondesign.alogic.core
 
-import Trees._
+import Types._
 
-trait TreeOps { this: Tree =>
+trait TypeOps { this: Type =>
   ////////////////////////////////////////////////////////////////////////////////
-  // Rewrie with TreeTransformer
+  // Rewrie with TypeTransformer
   ////////////////////////////////////////////////////////////////////////////////
 
-  def rewrite(tt: TreeTransformer): Tree = tt(this)
+  def rewrite(tt: TypeTransformer): Type = tt(this)
 }

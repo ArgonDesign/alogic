@@ -15,10 +15,7 @@
 
 package com.argondesign.alogic.core
 
-import scala.collection.immutable.ListMap
-
-import com.argondesign.alogic.ast.Trees.Expr
-import com.argondesign.alogic.ast.Trees.Ref
+import com.argondesign.alogic.ast.Trees._
 
 import FlowControlTypes.FlowControlType
 import StorageTypes.StorageType
@@ -29,7 +26,7 @@ object Types {
   // Inside the compiler, every tree node has a type.
 
   // Root of all types
-  sealed trait Type extends TreeLike
+  sealed trait Type extends TreeLike with TypeOps
 
   // We have 2 basic kinds of types. GroundType are proper new types, wile
   // ProxyTypes refer to underlying types but attach further semantics
@@ -48,7 +45,7 @@ object Types {
   // Array types (analogous to verilog unpacked arrays)
   case class TypeArray(elementType: Type, size: Expr) extends GroundType
   // Structure type
-  case class TypeStruct(field: ListMap[String, Type]) extends GroundType
+  case class TypeStruct(fieldNames: List[String], fieldTypes: List[Type]) extends GroundType
   // Void type
   case object TypeVoid extends GroundType
   // Type reference e.g. 'foo_t foo;'

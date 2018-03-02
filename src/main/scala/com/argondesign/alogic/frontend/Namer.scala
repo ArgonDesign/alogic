@@ -16,41 +16,22 @@
 package com.argondesign.alogic.frontend
 
 import scala.annotation.tailrec
-import scala.collection.immutable.ListMap
 import scala.collection.mutable
 
 import com.argondesign.alogic.ast.TreeTransformer
-import com.argondesign.alogic.ast.Trees.Decl
-import com.argondesign.alogic.ast.Trees.Entity
-import com.argondesign.alogic.ast.Trees.ExprRef
-import com.argondesign.alogic.ast.Trees.Function
-import com.argondesign.alogic.ast.Trees.Ident
-import com.argondesign.alogic.ast.Trees.Instance
-import com.argondesign.alogic.ast.Trees.Root
-import com.argondesign.alogic.ast.Trees.StmtBlock
-import com.argondesign.alogic.ast.Trees.StmtDo
-import com.argondesign.alogic.ast.Trees.StmtFor
-import com.argondesign.alogic.ast.Trees.StmtGoto
-import com.argondesign.alogic.ast.Trees.StmtLet
-import com.argondesign.alogic.ast.Trees.StmtLoop
-import com.argondesign.alogic.ast.Trees.StmtWhile
-import com.argondesign.alogic.ast.Trees.Sym
-import com.argondesign.alogic.ast.Trees.Tree
-import com.argondesign.alogic.ast.Trees.TypeDefinitionStruct
-import com.argondesign.alogic.ast.Trees.TypeDefinitionTypedef
+import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Names.Name
 import com.argondesign.alogic.core.Names.TermName
 import com.argondesign.alogic.core.Names.TypeName
 import com.argondesign.alogic.core.Symbols.ErrorSymbol
 import com.argondesign.alogic.core.Symbols.Symbol
-import com.argondesign.alogic.core.Types.TypeEntity
-import com.argondesign.alogic.core.Types.TypeFunc
-import com.argondesign.alogic.core.Types.TypeRef
-import com.argondesign.alogic.core.Types.TypeStruct
+import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.FollowedBy
+import com.argondesign.alogic.core.TypeTransformer
+import com.argondesign.alogic.util.unreachable
 
-final class Namer(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
+final class Namer(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy { namer =>
 
   private[this] object Scope {
     private type SymTab = mutable.HashMap[Name, Symbol]
@@ -134,7 +115,56 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
     }
   }
 
+  private[this] def lookupTermOrType(ident: Ident): Symbol = {
+    val termOpt = Scope.lookup(TermName(ident.name))
+    val typeOpt = Scope.lookup(TypeName(ident.name))
+
+    (termOpt, typeOpt) match {
+      case (Some(termSymbol), None) => termSymbol
+      case (None, Some(typeSymbol)) => typeSymbol
+      case (Some(termSymbol), Some(typeSymbol)) => {
+        cc.error(
+          ident,
+          s"Name '${ident.name}' in this context can resolve to either of",
+          s"term '${ident.name}' defined at ${termSymbol.loc}",
+          s"type '${ident.name}' defined at ${typeSymbol.loc}"
+        )
+        ErrorSymbol
+      }
+      case (None, None) => {
+        cc.error(ident, s"Name '${ident.name}' is undefined")
+        ErrorSymbol
+      }
+    }
+  }
+
+  private[this] object TypeNamer extends TypeTransformer {
+    override def transform(kind: Type) = kind match {
+      case TypeRef(ident: Ident) => {
+        TypeRef(Sym(lookupType(ident)) withLoc ident.loc)
+      }
+      case node @ TypeVector(_, size) => {
+        val newSize = namer walk size match {
+          case expr: Expr => expr
+          case _          => unreachable
+        }
+        if (newSize eq size) node else node.copy(size = newSize)
+      }
+      case node @ TypeInt(_, size) => {
+        val newSize = namer walk size match {
+          case expr: Expr => expr
+          case _          => unreachable
+        }
+        if (newSize eq size) node else node.copy(size = newSize)
+      }
+      // TODO:
+      case _ => kind
+    }
+  }
+
   private[this] var sawLet = false
+
+  private[this] var inAtBits = false
 
   override def enter(tree: Tree): Unit = tree match {
     case node: Root => {
@@ -185,6 +215,11 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       sawLet = false
     }
 
+    case ExprAtCall("bits", _) => {
+      assert(!inAtBits)
+      inAtBits = true
+    }
+
     case _ => ()
   }
 
@@ -195,10 +230,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
 
     case TypeDefinitionTypedef(ident: Ident, kind) => {
       // Lookup target type
-      val newKind = kind match {
-        case TypeRef(ident: Ident) => TypeRef(Sym(lookupType(ident)) withLoc ident.loc)
-        case _                     => kind
-      }
+      val newKind = kind rewrite TypeNamer
       // Insert new type
       val symbol = Scope.insert(cc.newTypeSymbol(ident, newKind))
       // Rewrite node
@@ -208,11 +240,8 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
 
     case TypeDefinitionStruct(ident: Ident, fieldNames, fieldKinds) => {
       // Lookup field types
-      val newFieldKinds = fieldKinds map {
-        case TypeRef(ident: Ident) => TypeRef(Sym(lookupType(ident)) withLoc ident.loc)
-        case other                 => other
-      }
-      val kind = TypeStruct(ListMap((fieldNames zip newFieldKinds): _*))
+      val newFieldKinds = fieldKinds map { _ rewrite TypeNamer }
+      val kind = TypeStruct(fieldNames, newFieldKinds)
       // Insert new type
       val symbol = Scope.insert(cc.newTypeSymbol(ident, kind))
       // Rewrite node
@@ -235,8 +264,9 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
 
     case Function(ident: Ident, body) => {
       // Lookup term (inserted in enter(Entity)
-      val sym = Sym(lookupTerm(ident)) withLoc ident.loc
+      val symbol = lookupTerm(ident)
       // Rewrite node
+      val sym = Sym(symbol) withLoc ident.loc
       Function(sym, body) withLoc tree.loc
     } followedBy {
       Scope.pop()
@@ -249,7 +279,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       // Insert term
       val iSymbol = Scope.insert(cc.newTermSymbol(iIdent, TypeRef(eSym)))
       val iSym = Sym(iSymbol) withLoc iIdent.loc
-      // Rewrite bnode
+      // Rewrite node
       Instance(iSym, eSym, paramNames, paramExprs) withLoc tree.loc
     }
 
@@ -272,29 +302,31 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
     case StmtGoto(ident: Ident) => {
       // Lookup term
       val symbol = lookupTerm(ident)
-      val sym = Sym(symbol) withLoc ident.loc
       // Rewrite node
+      val sym = Sym(symbol) withLoc ident.loc
       StmtGoto(sym) withLoc tree.loc
     }
 
     case Decl(ident: Ident, kind, init) => {
       // Lookup type
-      val newKind = kind match {
-        case TypeRef(ident: Ident) => TypeRef(Sym(lookupType(ident)) withLoc ident.loc)
-        case _                     => kind
-      }
+      val newKind = kind rewrite TypeNamer
       // Insert term
-      val symbol = Scope.insert(cc.newTermSymbol(ident, kind))
-      val sym = Sym(symbol) withLoc ident.loc
+      val symbol = Scope.insert(cc.newTermSymbol(ident, newKind))
       // Rewrite node
+      val sym = Sym(symbol) withLoc ident.loc
       Decl(sym, newKind, init) withLoc tree.loc
     }
 
     case ExprRef(ident: Ident) => {
-      // Lookup term
-      val sym = Sym(lookupTerm(ident)) withLoc ident.loc
+      // Lookup term (or type if inside @bits)
+      val symbol = if (!inAtBits) lookupTerm(ident) else lookupTermOrType(ident)
       // Rewrite node
+      val sym = Sym(symbol) withLoc ident.loc
       ExprRef(sym) withLoc tree.loc
+    }
+
+    case ExprAtCall("bits", _) => tree followedBy {
+      inAtBits = false
     }
 
     case _ => tree
@@ -304,20 +336,10 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
     Scope.finalCheck()
 
     assert(!sawLet)
-
-    def errIdent(node: Tree, ident: Ident) = {
-      cc.fatal(ident, s"Namer should have removed all identifiers, but '${ident}' remains in '${node}'")
-    }
+    assert(!inAtBits)
 
     tree visit {
-      case node: Ident => errIdent(node, node)
-      case node @ TypeDefinitionTypedef(_, TypeRef(ident: Ident)) => errIdent(node, ident)
-      case node @ TypeDefinitionStruct(_, _, fieldKinds) => fieldKinds foreach {
-        case TypeRef(ident: Ident) => errIdent(node, ident)
-        case _                     =>
-      }
-      case node @ Decl(_, TypeRef(ident: Ident), _) => errIdent(node, ident)
-      // TODO: type visitors
+      case node: Ident => cc.ice(node, s"Namer should have removed all identifiers, but '${node}' remains")
     }
 
   }
