@@ -267,7 +267,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
     }
 
     case Function(ident: Ident, body) => {
-      // Lookup term (inserted in enter(Entity)
+      // Lookup term (inserted in enter(Entity))
       val symbol = lookupTerm(ident)
       // Rewrite node
       val sym = Sym(symbol) withLoc ident.loc
