@@ -13,21 +13,19 @@
 // Base trait for any tree-like data structure.
 ////////////////////////////////////////////////////////////////////////////////
 
-package com.argondesign.alogic.core
+package com.argondesign.alogic.lib
 
 import scala.collection.GenTraversableOnce
 
+// A TreeLike is characterised by the possession of a collection of other
+// TreeLike objects called children. Note that it is *not* required that
+// the object graph is actually a tree. In particular, isomorphic subtrees
+// can be represented by multiple parents referring to the same child instance.
+// The object graph however *must* be a DAG.
 trait TreeLike extends Product {
 
-  // Iterate all children of this node, including ones that are held through a list or option member
-  def children: Iterator[TreeLike] = {
-    val childLists = productIterator collect {
-      case tree: TreeLike       => tree :: Nil
-      case xs: List[_]          => xs collect { case tree: TreeLike => tree }
-      case Some(tree: TreeLike) => tree :: Nil
-    }
-    childLists.flatten
-  }
+  // The children of the node
+  def children: Iterator[TreeLike]
 
   ////////////////////////////////////////////////////////////////////////////////
   // visit methods
@@ -37,8 +35,8 @@ trait TreeLike extends Product {
   // Wherever the partial function is not defined, we recurse.
   // Wherever the partial function is defined, we apply it and stop recursion.
   // To continue recursing after application, the client can invoke visit
-  // selectively, or visitChildren to visit all children.
-  def visit(visitor: PartialFunction[TreeLike, Unit]): Unit = {
+  // explicitly on the children
+  final def visit(visitor: PartialFunction[TreeLike, Unit]): Unit = {
     def v(tree: TreeLike): Unit = {
       if (visitor.isDefinedAt(tree)) {
         visitor(tree)
@@ -49,13 +47,8 @@ trait TreeLike extends Product {
     v(this)
   }
 
-  // Visit all children of this tree
-  def visitChildren(visitor: PartialFunction[TreeLike, Unit]): Unit = {
-    children foreach { _ visit visitor }
-  }
-
   // Same as visit but always recurse through the whole tree
-  def visitAll(visitor: PartialFunction[TreeLike, Unit]): Unit = {
+  final def visitAll(visitor: PartialFunction[TreeLike, Unit]): Unit = {
     def v(tree: TreeLike): Unit = {
       if (visitor.isDefinedAt(tree)) {
         visitor(tree)
@@ -72,7 +65,7 @@ trait TreeLike extends Product {
   // Collect results of walking the tree in pre-order with partial function
   // Wherever the partial function is not defined, we recurse.
   // Wherever the partial function is defined, we apply it, collect the result and stop recursion.
-  def collect[E](pf: PartialFunction[TreeLike, E]): List[E] = {
+  final def collect[E](pf: PartialFunction[TreeLike, E]): Iterator[E] = {
     def c(tree: TreeLike): Iterator[E] = {
       if (pf.isDefinedAt(tree)) {
         Iterator.single(pf(tree))
@@ -80,16 +73,11 @@ trait TreeLike extends Product {
         tree.children flatMap c
       }
     }
-    c(this).toList
-  }
-
-  // Collect all children of this tree
-  def collectChildren[E](pf: PartialFunction[TreeLike, E]): List[E] = {
-    (children flatMap { _ collect pf }).toList
+    c(this)
   }
 
   // Same as collect but always recurse through the whole tree
-  def collectAll[E](pf: PartialFunction[TreeLike, E]): List[E] = {
+  final def collectAll[E](pf: PartialFunction[TreeLike, E]): Iterator[E] = {
     def c(tree: TreeLike): Iterator[E] = {
       if (pf.isDefinedAt(tree)) {
         Iterator.single(pf(tree)) ++ (tree.children flatMap c)
@@ -97,14 +85,14 @@ trait TreeLike extends Product {
         tree.children flatMap c
       }
     }
-    c(this).toList
+    c(this)
   }
 
   ////////////////////////////////////////////////////////////////////////////////
   // flatCollect methods
   ////////////////////////////////////////////////////////////////////////////////
 
-  def flatCollect[E](pf: PartialFunction[TreeLike, GenTraversableOnce[E]]): List[E] = {
+  final def flatCollect[E](pf: PartialFunction[TreeLike, GenTraversableOnce[E]]): Iterator[E] = {
     def c(tree: TreeLike): Iterator[E] = {
       if (pf.isDefinedAt(tree)) {
         pf(tree).toIterator
@@ -112,14 +100,10 @@ trait TreeLike extends Product {
         tree.children flatMap c
       }
     }
-    c(this).toList
+    c(this)
   }
 
-  def flatCollectChildren[E](pf: PartialFunction[TreeLike, GenTraversableOnce[E]]): List[E] = {
-    (children flatMap { _ flatCollect pf }).toList
-  }
-
-  def flatCollectAll[E](pf: PartialFunction[TreeLike, GenTraversableOnce[E]]): List[E] = {
+  def flatCollectAll[E](pf: PartialFunction[TreeLike, GenTraversableOnce[E]]): Iterator[E] = {
     def c(tree: TreeLike): Iterator[E] = {
       if (pf.isDefinedAt(tree)) {
         pf(tree).toIterator ++ (tree.children flatMap c)
@@ -127,6 +111,22 @@ trait TreeLike extends Product {
         tree.children flatMap c
       }
     }
-    c(this).toList
+    c(this)
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // collectFirst methods
+  ////////////////////////////////////////////////////////////////////////////////
+
+  final def collectFirst[E](pf: PartialFunction[TreeLike, E]): Option[E] = {
+    def c(tree: TreeLike): Option[E] = {
+      if (pf.isDefinedAt(tree)) {
+        Some(pf(tree))
+      } else {
+        val a = tree.children flatMap c
+        if (a.hasNext) Some(a.next()) else None
+      }
+    }
+    c(this)
   }
 }

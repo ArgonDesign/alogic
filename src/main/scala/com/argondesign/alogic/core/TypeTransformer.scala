@@ -15,6 +15,8 @@
 
 package com.argondesign.alogic.core
 
+import com.argondesign.alogic.lib.TreeLikeTransformer
+
 import Types._
 
 // Type transformers are applied during a post-order traversal of a Type.

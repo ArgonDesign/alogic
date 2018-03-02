@@ -13,7 +13,7 @@
 // Base class of transformers of TreeLike structures
 ////////////////////////////////////////////////////////////////////////////////
 
-package com.argondesign.alogic.core
+package com.argondesign.alogic.lib
 
 // Tree transformers are applied during a post-order traversal of a Tree.
 abstract class TreeLikeTransformer[T <: TreeLike] {

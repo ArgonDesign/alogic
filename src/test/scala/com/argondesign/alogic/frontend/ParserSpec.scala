@@ -92,7 +92,7 @@ import org.scalatest.FreeSpec
 import org.scalatest.matchers.MatchResult
 import org.scalatest.matchers.Matcher
 
-class ParserSpec extends FreeSpec with AlogicTest {
+final class ParserSpec extends FreeSpec with AlogicTest {
 
   implicit val cc = new CompilerContext
 

@@ -16,9 +16,9 @@
 package com.argondesign.alogic.ast
 
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.lib.TreeLikeTransformer
 
 import Trees._
-import com.argondesign.alogic.core.TreeLikeTransformer
 
 // Tree transformers are applied during a post-order traversal of a Tree.
 abstract class TreeTransformer(implicit val cc: CompilerContext) extends TreeLikeTransformer[Tree] {

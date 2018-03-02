@@ -19,9 +19,9 @@ package com.argondesign.alogic.core
 
 import scala.collection.mutable
 
-import com.argondesign.alogic.ast.Trees.Entity
-import com.argondesign.alogic.ast.Trees.Ident
+import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.util.FollowedBy.any2FollowedByWord
+import com.argondesign.alogic.util.unreachable
 
 import Denotations.Denotation
 import Denotations.TermDenotation
@@ -32,12 +32,9 @@ import Names.TypeName
 import Symbols.Symbol
 import Symbols.TermSymbol
 import Symbols.TypeSymbol
-import Types.Type
-import Types.TypeEntity
+import Types._
 
 trait Symbols { self: CompilerContext =>
-
-  final private[this] implicit val implicitThis: CompilerContext = this
 
   // The global scope only holds file level entity symbols
   final private[this] var _globalScope: Option[mutable.HashMap[Name, Symbol]] = Some(mutable.HashMap())
@@ -70,32 +67,25 @@ trait Symbols { self: CompilerContext =>
 
   final private[this] val symbolSequenceNumbers = Stream.from(0).iterator
 
-  final protected val symbolLocations = mutable.Map[Symbol, Loc]()
-
-  final val symbolDenotations = mutable.Map[Symbol, Denotation]()
+  final protected val symbolLocations = mutable.HashMap[Symbol, Loc]()
 
   final def newTermSymbol(ident: Ident, kind: Type): TermSymbol = synchronized {
     val symbol = new TermSymbol(symbolSequenceNumbers.next)
-
     val denot = TermDenotation(symbol, TermName(ident.name), kind)
 
     symbolLocations(symbol) = ident.loc
-    symbolDenotations(symbol) = denot
 
-    symbol
+    symbol withDenot denot
   }
 
   final def newTypeSymbol(ident: Ident, kind: Type): TypeSymbol = synchronized {
     val symbol = new TypeSymbol(symbolSequenceNumbers.next)
-
     val denot = TypeDenotation(symbol, TypeName(ident.name), kind)
 
     symbolLocations(symbol) = ident.loc
-    symbolDenotations(symbol) = denot
 
-    symbol
+    symbol withDenot denot
   }
-
 }
 
 object Symbols {
@@ -110,6 +100,12 @@ object Symbols {
     def isTypeSymbol: Boolean
 
     ////////////////////////////////////////////////////////////////////////////
+    // The only mutable member of Symbol is the denotation attached to it
+    ////////////////////////////////////////////////////////////////////////////
+
+    private[this] final var _denot: ThisDenotation = _
+
+    ////////////////////////////////////////////////////////////////////////////
     // Common implementation
     ////////////////////////////////////////////////////////////////////////////
 
@@ -118,14 +114,16 @@ object Symbols {
     final override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]
 
     // Denotation of symbol
-    final def denot(implicit cc: CompilerContext): ThisDenotation = {
-      cc.symbolDenotations(this).asInstanceOf[ThisDenotation] // scalastyle:ignore token
+    final def denot: ThisDenotation = if (_denot == null) unreachable else _denot
+
+    // Set denotation
+    final def withDenot(denot: ThisDenotation): this.type = {
+      _denot = denot
+      this
     }
 
     // Location of definition
-    final def loc(implicit cc: CompilerContext): Loc = {
-      cc.symbolLocations(this)
-    }
+    final def loc(implicit cc: CompilerContext): Loc = cc.symbolLocations(this)
   }
 
   final class TermSymbol(val id: Int) extends Symbol {

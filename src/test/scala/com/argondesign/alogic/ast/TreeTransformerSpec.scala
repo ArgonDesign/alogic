@@ -25,7 +25,7 @@ import org.scalatest.FlatSpec
 import com.argondesign.alogic.util.FollowedBy
 import com.argondesign.alogic.core.Warning
 
-class TreeTransformerSpec extends FlatSpec with AlogicTest {
+final class TreeTransformerSpec extends FlatSpec with AlogicTest {
 
   implicit val cc = new CompilerContext
 

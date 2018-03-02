@@ -342,13 +342,19 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
     assert(!sawLet)
     assert(!inAtBits)
 
+    // Check tree does not contain any Ident nodes anymore
     tree visit {
       case node: Ident => {
         cc.ice(node, s"Namer should have removed all identifiers, but '${node}' remains")
       }
     }
 
-    cc.symbolDenotations.values foreach { denot =>
+    // Collect symbols used in this file
+    val symbols = (tree collectAll { case Sym(symbol) => symbol }).toSet
+
+    // Check that denotations do not contain any Ident nodes anymore
+    symbols filter { _ != ErrorSymbol } foreach  { symbol =>
+      val denot = symbol.denot
       denot.kind visit {
         case node: Ident => {
           cc.ice(node, s"Namer should have removed all identifiers, but '${node}' remains in denotation '${denot}'")

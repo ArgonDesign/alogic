@@ -28,7 +28,7 @@ import com.argondesign.alogic.SourceTextConverters._
 import com.argondesign.alogic.core.Warning
 import com.argondesign.alogic.core.Symbols.ErrorSymbol
 
-class NamerSpec extends FlatSpec with AlogicTest {
+final class NamerSpec extends FlatSpec with AlogicTest {
 
   implicit val cc = new CompilerContext
   val namer = new Namer
@@ -615,5 +615,13 @@ class NamerSpec extends FlatSpec with AlogicTest {
     cc.messages shouldBe empty
   }
 
-  // TODO: ensure denotations are correct
+  it should "attach correct types to symbol denotations - entity" in {
+    val root = """fsm a {}""".asTree[Root]
+    cc.addGlobalEntity(root.entity)
+    val tree = root rewrite namer
+
+    val symA = tree collectFirst { case Sym(symbol) if symbol.denot.name.str == "a" => symbol }
+    symA.value.denot.kind shouldBe TypeEntity
+  }
+
 }

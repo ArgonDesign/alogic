@@ -26,7 +26,7 @@ import com.argondesign.alogic.core.FlowControlTypes._
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.StorageTypes._
 
-class CheckerSpec extends FreeSpec with AlogicTest {
+final class CheckerSpec extends FreeSpec with AlogicTest {
 
   implicit val cc = new CompilerContext
   val checker = new Checker

@@ -16,6 +16,7 @@
 package com.argondesign.alogic.core
 
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.lib.StructuredTree
 
 import FlowControlTypes.FlowControlType
 import StorageTypes.StorageType
@@ -26,7 +27,7 @@ object Types {
   // Inside the compiler, every tree node has a type.
 
   // Root of all types
-  sealed trait Type extends TreeLike with TypeOps
+  sealed trait Type extends StructuredTree with TypeOps
 
   // We have 2 basic kinds of types. GroundType are proper new types, wile
   // ProxyTypes refer to underlying types but attach further semantics

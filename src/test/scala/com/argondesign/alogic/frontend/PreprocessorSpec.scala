@@ -27,7 +27,7 @@ import com.argondesign.alogic.core.Warning
 import org.scalatest.FlatSpec
 import org.scalatest.Matchers
 
-class PreprocessorSpec extends FlatSpec with Matchers {
+final class PreprocessorSpec extends FlatSpec with Matchers {
 
   val emptyDefines = Map.empty[String, String]
 

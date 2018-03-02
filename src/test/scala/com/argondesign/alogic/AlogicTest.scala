@@ -17,26 +17,27 @@ package com.argondesign.alogic
 
 import scala.reflect.ClassTag
 
+import com.argondesign.alogic.core.FatalErrorException
+import com.argondesign.alogic.core.InternalCompilerErrorException
 import com.argondesign.alogic.core.Message
+import com.argondesign.alogic.util.FollowedBy.any2FollowedByWord
 
+import org.scalatest.Failed
 import org.scalatest.Inside
 import org.scalatest.Inspectors
 import org.scalatest.LoneElement
 import org.scalatest.Matchers
 import org.scalatest.OneInstancePerTest
+import org.scalatest.OptionValues
 import org.scalatest.TestSuite
 import org.scalatest.matchers.MatchResult
 import org.scalatest.matchers.Matcher
-import com.argondesign.alogic.core.FatalErrorException
-import com.argondesign.alogic.core.InternalCompilerErrorException
-import org.scalatest.Failed
-
-import com.argondesign.alogic.util.FollowedBy._
 
 trait AlogicTest
   extends TestSuite
   with Matchers
   with LoneElement
+  with OptionValues
   with Inspectors
   with Inside
   with OneInstancePerTest {
