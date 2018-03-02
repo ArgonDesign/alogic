@@ -48,7 +48,7 @@ abstract class TreeLikeTransformer[T <: TreeLike] {
   ///////////////////////////////////////////////////////////////////////////////
 
   // Walk list, but return the original list if nothing is transformed
-  final protected def walk(trees: List[T]): List[T] = {
+  protected def walk(trees: List[T]): List[T] = {
     trees match {
       case head :: tail => {
         val newHead = walk(head)
@@ -60,7 +60,7 @@ abstract class TreeLikeTransformer[T <: TreeLike] {
   }
 
   // Walk option,but return the original option if value is not transformed
-  final protected def walk(treeOpt: Option[T]): Option[T] = {
+  protected def walk(treeOpt: Option[T]): Option[T] = {
     treeOpt match {
       case Some(tree) => {
         val newTree = walk(tree)

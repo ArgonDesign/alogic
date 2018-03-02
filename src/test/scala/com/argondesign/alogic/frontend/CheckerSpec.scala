@@ -218,9 +218,9 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
       }
 
       cc.messages should have length 2
-      cc.messages(0) should beThe[Error]("More than 1 fence blocks specified in entity 'foo'")
+      cc.messages(0) should beThe[Error]("Multiple fence blocks specified in entity 'foo'")
       cc.messages(0).loc.line shouldBe 2
-      cc.messages(1) should beThe[Error]("More than 1 fence blocks specified in entity 'foo'")
+      cc.messages(1) should beThe[Error]("Multiple fence blocks specified in entity 'foo'")
       cc.messages(1).loc.line shouldBe 3
     }
 

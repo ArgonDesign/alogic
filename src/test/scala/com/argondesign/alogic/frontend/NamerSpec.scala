@@ -756,4 +756,6 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     val symA = tree collectFirst { case Sym(symbol) if symbol.denot.name.str == "a" => symbol }
     symA.value.denot.kind shouldBe TypeRef(Sym(symB.value))
   }
+
+  // TODO: redo @bits
 }

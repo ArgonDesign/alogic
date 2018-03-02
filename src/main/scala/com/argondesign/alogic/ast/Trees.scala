@@ -142,7 +142,7 @@ object Trees {
   // Expression nodes
   ///////////////////////////////////////////////////////////////////////////////
 
-  sealed trait Expr extends Tree
+  sealed trait Expr extends Tree with ExprOps
   object Expr extends ObjectExprOps
 
   // TODO: Remove
@@ -171,4 +171,13 @@ object Trees {
   case class ExprRef(ref: Ref) extends Expr
 
   case class ExprError() extends Expr // Placeholder when errors happened
+
+  ///////////////////////////////////////////////////////////////////////////////
+  // Thicket
+  ///////////////////////////////////////////////////////////////////////////////
+
+  // Thicket is used where a node needs to be transformed into a list of nodes.
+  // Thickets are transient and are flattened into the receiving list during traversal.
+  case class Thicket(trees: List[Tree]) extends Tree
+
 }

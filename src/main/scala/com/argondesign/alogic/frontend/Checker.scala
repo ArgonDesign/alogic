@@ -89,7 +89,7 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
       val fenceStmts = if (fenceBlocks.length > 1) {
         val Ident(name) = entity.ref
         fenceBlocks foreach {
-          cc.error(_, s"More than 1 fence blocks specified in entity '${name}'")
+          cc.error(_, s"Multiple fence blocks specified in entity '${name}'")
         }
         Nil
       } else {

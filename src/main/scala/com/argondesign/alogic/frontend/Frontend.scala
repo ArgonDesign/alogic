@@ -100,7 +100,12 @@ class Frontend(
     }
   }
 
-  private[this] def desugarIt(tree: Root): Root = tree
+  private[this] def desugarIt(tree: Root): Root = {
+    tree.rewrite(new Desugar) match {
+      case root: Root => root
+      case _          => unreachable
+    }
+  }
 
   private[this] def typeIt(tree: Root): Root = tree
 

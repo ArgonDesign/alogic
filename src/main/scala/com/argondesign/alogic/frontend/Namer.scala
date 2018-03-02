@@ -219,6 +219,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       sawLet = false
     }
 
+    // TODO: fix using type(...) expressions
     case ExprAtCall("bits", _) => {
       assert(!inAtBits)
       inAtBits = true
@@ -261,7 +262,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       val symbol = lookupType(ident)
       // Rewrite node
       val sym = Sym(symbol) withLoc ident.loc
-      entity.copy(ref = sym) withLoc entity.loc
+      entity.copy(ref = sym) withLoc entity.loc withVariant entity.variant
     } followedBy {
       Scope.pop()
     }
