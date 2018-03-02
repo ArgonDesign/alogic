@@ -59,6 +59,57 @@ final class StructuredTreeSpec extends FreeSpec with AlogicTest {
   }
 
   "StructuredTree" - {
+
+    "preOrder should" - {
+      "yield the wole tree in pre-order" in {
+        val nodes = tree.preOrder.toList
+
+        nodes should have length 17
+        nodes(0) shouldBe a[TreeBin]
+        nodes(1) shouldBe a[TreeBin]
+        nodes(2) shouldBe TreeLeaf("0")
+        nodes(3) shouldBe a[TreeBin]
+        nodes(4) shouldBe TreeLeaf("1")
+        nodes(5) shouldBe TreeLeaf("2")
+        nodes(6) shouldBe a[TreeOpt]
+        nodes(7) shouldBe a[TreeList]
+        nodes(8) shouldBe TreeLeaf("3")
+        nodes(9) shouldBe a[TreeOpt]
+        nodes(10) shouldBe a[TreeBin]
+        nodes(11) shouldBe TreeLeaf("4")
+        nodes(12) shouldBe TreeLeaf("5")
+        nodes(13) shouldBe TreeLeaf("6")
+        nodes(14) shouldBe a[TreeOpt]
+        nodes(15) shouldBe TreeLeaf("7")
+        nodes(16) shouldBe TreeLeaf("8")
+      }
+    }
+
+    "postOrder should" - {
+      "yield the wole tree in post-order" in {
+        val nodes = tree.postOrder.toList
+
+        nodes should have length 17
+        nodes(0) shouldBe TreeLeaf("0")
+        nodes(1) shouldBe TreeLeaf("1")
+        nodes(2) shouldBe TreeLeaf("2")
+        nodes(3) shouldBe a[TreeBin]
+        nodes(4) shouldBe a[TreeBin]
+        nodes(5) shouldBe TreeLeaf("3")
+        nodes(6) shouldBe a[TreeOpt]
+        nodes(7) shouldBe TreeLeaf("4")
+        nodes(8) shouldBe TreeLeaf("5")
+        nodes(9) shouldBe a[TreeBin]
+        nodes(10) shouldBe TreeLeaf("6")
+        nodes(11) shouldBe TreeLeaf("7")
+        nodes(12) shouldBe a[TreeOpt]
+        nodes(13) shouldBe TreeLeaf("8")
+        nodes(14) shouldBe a[TreeList]
+        nodes(15) shouldBe a[TreeOpt]
+        nodes(16) shouldBe a[TreeBin]
+      }
+    }
+
     "visit should" - {
       "walk nodes in pre-order and stop when matching nodes are found" - {
         "1" in {

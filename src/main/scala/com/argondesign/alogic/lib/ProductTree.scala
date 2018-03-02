@@ -26,6 +26,4 @@ trait ProductTree extends TreeLike with Product {
     }
   }
 
-  override def productPrefix: String = "ProductTree"
-
 }

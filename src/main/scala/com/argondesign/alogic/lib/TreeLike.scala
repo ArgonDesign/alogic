@@ -28,6 +28,18 @@ trait TreeLike extends Product {
   def children: Iterator[TreeLike]
 
   ////////////////////////////////////////////////////////////////////////////////
+  // Enumerations of the tree
+  ////////////////////////////////////////////////////////////////////////////////
+
+  final def preOrder: Iterator[TreeLike] = {
+    Iterator.single(this) ++ (children flatMap { _.preOrder })
+  }
+
+  final def postOrder: Iterator[TreeLike] = {
+    (children flatMap { _.postOrder }) ++ Iterator.single(this)
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
   // visit methods
   ////////////////////////////////////////////////////////////////////////////////
 
@@ -36,26 +48,38 @@ trait TreeLike extends Product {
   // Wherever the partial function is defined, we apply it and stop recursion.
   // To continue recursing after application, the client can invoke visit
   // explicitly on the children
-  final def visit(visitor: PartialFunction[TreeLike, Unit]): Unit = {
-    def v(tree: TreeLike): Unit = {
-      if (visitor.isDefinedAt(tree)) {
-        visitor(tree)
-      } else {
-        tree.children foreach v
+  final def visit(pf: PartialFunction[TreeLike, Unit]): Unit = {
+    def iterate(it: Iterator[TreeLike]): Unit = {
+      if (it.hasNext) {
+        val next = it.next
+        if (pf.isDefinedAt(next)) {
+          pf(next)
+        } else {
+          iterate(next.children)
+        }
+        iterate(it)
       }
     }
-    v(this)
+    iterate(Iterator.single(this))
   }
 
   // Same as visit but always recurse through the whole tree
-  final def visitAll(visitor: PartialFunction[TreeLike, Unit]): Unit = {
-    def v(tree: TreeLike): Unit = {
-      if (visitor.isDefinedAt(tree)) {
-        visitor(tree)
+  // Note that this could be written as just:
+  //   preOrder foreach { node => if (pf.isDefinedAt(node)) pf(node) }
+  // Bit doing it directly as below avoids creating a lot of iterator
+  // instances on the heap making iteration faster
+  final def visitAll(pf: PartialFunction[TreeLike, Unit]): Unit = {
+    def iterate(it: Iterator[TreeLike]): Unit = {
+      if (it.hasNext) {
+        val next = it.next
+        if (pf.isDefinedAt(next)) {
+          pf(next)
+        }
+        iterate(next.children)
+        iterate(it)
       }
-      tree.children foreach v
     }
-    v(this)
+    iterate(Iterator.single(this))
   }
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -66,26 +90,36 @@ trait TreeLike extends Product {
   // Wherever the partial function is not defined, we recurse.
   // Wherever the partial function is defined, we apply it, collect the result and stop recursion.
   final def collect[E](pf: PartialFunction[TreeLike, E]): Iterator[E] = {
-    def c(tree: TreeLike): Iterator[E] = {
-      if (pf.isDefinedAt(tree)) {
-        Iterator.single(pf(tree))
+    def iterate(it: Iterator[TreeLike]): Iterator[E] = {
+      if (it.hasNext) {
+        val next = it.next
+        if (pf.isDefinedAt(next)) {
+          Iterator.single(pf(next)) ++ iterate(it)
+        } else {
+          iterate(next.children ++ it)
+        }
       } else {
-        tree.children flatMap c
+        Iterator.empty
       }
     }
-    c(this)
+    iterate(Iterator.single(this))
   }
 
   // Same as collect but always recurse through the whole tree
   final def collectAll[E](pf: PartialFunction[TreeLike, E]): Iterator[E] = {
-    def c(tree: TreeLike): Iterator[E] = {
-      if (pf.isDefinedAt(tree)) {
-        Iterator.single(pf(tree)) ++ (tree.children flatMap c)
+    def iterate(it: Iterator[TreeLike]): Iterator[E] = {
+      if (it.hasNext) {
+        val next = it.next
+        if (pf.isDefinedAt(next)) {
+          Iterator.single(pf(next)) ++ iterate(next.children ++ it)
+        } else {
+          iterate(next.children ++ it)
+        }
       } else {
-        tree.children flatMap c
+        Iterator.empty
       }
     }
-    c(this)
+    iterate(Iterator.single(this))
   }
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -93,25 +127,35 @@ trait TreeLike extends Product {
   ////////////////////////////////////////////////////////////////////////////////
 
   final def flatCollect[E](pf: PartialFunction[TreeLike, GenTraversableOnce[E]]): Iterator[E] = {
-    def c(tree: TreeLike): Iterator[E] = {
-      if (pf.isDefinedAt(tree)) {
-        pf(tree).toIterator
+    def iterate(it: Iterator[TreeLike]): Iterator[E] = {
+      if (it.hasNext) {
+        val next = it.next
+        if (pf.isDefinedAt(next)) {
+          pf(next).toIterator ++ iterate(it)
+        } else {
+          iterate(next.children ++ it)
+        }
       } else {
-        tree.children flatMap c
+        Iterator.empty
       }
     }
-    c(this)
+    iterate(Iterator.single(this))
   }
 
   def flatCollectAll[E](pf: PartialFunction[TreeLike, GenTraversableOnce[E]]): Iterator[E] = {
-    def c(tree: TreeLike): Iterator[E] = {
-      if (pf.isDefinedAt(tree)) {
-        pf(tree).toIterator ++ (tree.children flatMap c)
+    def iterate(it: Iterator[TreeLike]): Iterator[E] = {
+      if (it.hasNext) {
+        val next = it.next
+        if (pf.isDefinedAt(next)) {
+          pf(next).toIterator ++ iterate(next.children ++ it)
+        } else {
+          iterate(next.children ++ it)
+        }
       } else {
-        tree.children flatMap c
+        Iterator.empty
       }
     }
-    c(this)
+    iterate(Iterator.single(this))
   }
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -119,14 +163,21 @@ trait TreeLike extends Product {
   ////////////////////////////////////////////////////////////////////////////////
 
   final def collectFirst[E](pf: PartialFunction[TreeLike, E]): Option[E] = {
-    def c(tree: TreeLike): Option[E] = {
-      if (pf.isDefinedAt(tree)) {
-        Some(pf(tree))
+    def iterate(it: Iterator[TreeLike]): Option[E] = {
+      if (it.hasNext) {
+        val next = it.next
+        if (pf.isDefinedAt(next)) {
+          Some(pf(next))
+        } else {
+          iterate(next.children) match {
+            case None   => iterate(it)
+            case result => result
+          }
+        }
       } else {
-        val a = tree.children flatMap c
-        if (a.hasNext) Some(a.next()) else None
+        None
       }
     }
-    c(this)
+    iterate(Iterator.single(this))
   }
 }

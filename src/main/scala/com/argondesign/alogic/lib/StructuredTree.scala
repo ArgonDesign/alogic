@@ -32,6 +32,4 @@ trait StructuredTree extends TreeLike with Product {
     iterators.flatten
   }
 
-  override def productPrefix: String = "StructuredTree"
-
 }
