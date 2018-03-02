@@ -586,7 +586,34 @@ class NamerSpec extends FlatSpec with AlogicTest {
     cc.messages shouldBe empty
   }
 
-  // TODO: Array/Param/Const/Input/Output// ETC
-  // TODO: ensure denotations are correct
+  it should "resovle names inside array dimension" in {
+    val block = """|{
+                   |  i8 a;
+                   |  i8 b;
+                   |  bool c[a][b];
+                   |}""".asTree[StmtBlock]
 
+    val tree = block rewrite namer
+
+    inside(tree) {
+      case StmtBlock(List(StmtDecl(declA), StmtDecl(declB), StmtDecl(declC))) =>
+        val Sym(symA) = declA.ref
+        val Sym(symB) = declB.ref
+        inside(declC) {
+          case Decl(_, TypeArray(TypeArray(TypeInt(false, Expr(1)), size1), size2), _) =>
+            inside(size1) {
+              case ExprRef(Sym(sym)) =>
+                sym should be theSameInstanceAs symB
+            }
+            inside(size2) {
+              case ExprRef(Sym(sym)) =>
+                sym should be theSameInstanceAs symA
+            }
+        }
+    }
+
+    cc.messages shouldBe empty
+  }
+
+  // TODO: ensure denotations are correct
 }

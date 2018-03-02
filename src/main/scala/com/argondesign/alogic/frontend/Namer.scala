@@ -140,9 +140,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
 
   private[this] object TypeNamer extends TypeTransformer {
     override def transform(kind: Type) = kind match {
-      case TypeRef(ident: Ident) => {
-        TypeRef(Sym(lookupType(ident)) withLoc ident.loc)
-      }
+      case TypeRef(ident: Ident) => TypeRef(Sym(lookupType(ident)) withLoc ident.loc)
       case node @ TypeVector(_, size) => {
         val newSize = namer walk size match {
           case expr: Expr => expr
@@ -157,7 +155,13 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         }
         if (newSize eq size) node else node.copy(size = newSize)
       }
-      // TODO:
+      case node @ TypeArray(_, size) => {
+        val newSize = namer walk size match {
+          case expr: Expr => expr
+          case _          => unreachable
+        }
+        if (newSize eq size) node else node.copy(size = newSize)
+      }
       case _ => kind
     }
   }
@@ -341,7 +345,6 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
     tree visit {
       case node: Ident => cc.ice(node, s"Namer should have removed all identifiers, but '${node}' remains")
     }
-
   }
 
 }
