@@ -29,7 +29,7 @@ object Types {
   // Inside the compiler, every tree node has a type.
 
   // Root of all types
-  sealed trait Type
+  sealed trait Type extends TreeLike
 
   // We have 2 basic kinds of types. GroundType are proper new types, wile
   // ProxyTypes refer to underlying types but attach further semantics

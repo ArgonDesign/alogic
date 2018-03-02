@@ -17,6 +17,7 @@ package com.argondesign.alogic.ast
 
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types.Type
+import com.argondesign.alogic.core.TreeLike
 
 // scalastyle:off number.of.types
 // scalastyle:off number.of.methods
@@ -27,7 +28,7 @@ object Trees {
   // AST root type
   ///////////////////////////////////////////////////////////////////////////////
 
-  sealed trait Tree extends Product with Locationed with TreeOps
+  sealed trait Tree extends TreeLike with Locationed with TreeOps
 
   ///////////////////////////////////////////////////////////////////////////////
   // Root node for a file

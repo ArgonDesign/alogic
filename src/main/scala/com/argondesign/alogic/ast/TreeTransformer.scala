@@ -94,7 +94,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext) {
     finalCheck(result)
     // Ensure locations are present
     result visitAll {
-      case node if !node.hasLoc => cc.fatal(s"Lost location for node '${node}'")
+      case node: Tree if !node.hasLoc => cc.fatal(s"Lost location for node '${node}'")
     }
     // Yield result
     result

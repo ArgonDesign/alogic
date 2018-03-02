@@ -42,9 +42,15 @@ object TypeBuilder extends BaseBuilder[KindContext, Type] {
         restSizes.foldLeft[Type](TypeInt(signed, lastSize)) { (elem, size) => TypeVector(elem, size) }
       }
 
-      override def visitTypeBool(ctx: TypeBoolContext) = TypeInt(false, Expr(1))
-      override def visitTypeInt(ctx: TypeIntContext) = TypeInt(true, Expr(ctx.INTTYPE.text.tail.toInt))
-      override def visitTypeUInt(ctx: TypeUIntContext) = TypeInt(false, Expr(ctx.UINTTYPE.text.tail.toInt))
+      override def visitTypeBool(ctx: TypeBoolContext) = {
+        TypeInt(false, Expr(1) withLoc ctx.loc)
+      }
+      override def visitTypeInt(ctx: TypeIntContext) = {
+        TypeInt(true, Expr(ctx.INTTYPE.text.tail.toInt) withLoc ctx.loc)
+      }
+      override def visitTypeUInt(ctx: TypeUIntContext) = {
+        TypeInt(false, Expr(ctx.UINTTYPE.text.tail.toInt) withLoc ctx.loc)
+      }
       override def visitTypeIntV(ctx: TypeIntVContext) = buildVector(signed = true, ctx.commaexpr)
       override def visitTypeUIntV(ctx: TypeUIntVContext) = buildVector(signed = false, ctx.commaexpr)
       override def visitTypeIdent(ctx: TypeIdentContext) = TypeRef(ctx.IDENTIFIER.toIdent)
