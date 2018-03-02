@@ -21,16 +21,18 @@ package com.argondesign.alogic.core
 import Names.Name
 import Names.TermName
 import Names.TypeName
-import Types.Type
+import Symbols.Symbol
+import Symbols.TermSymbol
+import Symbols.TypeSymbol
+import Types._
 
 object Denotations {
-
   abstract sealed trait Denotation {
+    val symbol: Symbol
     val name: Name
     val kind: Type
   }
 
-  case class TermDenotation(name: TermName, kind: Type) extends Denotation
-  case class TypeDenotation(name: TypeName, kind: Type) extends Denotation
-
+  case class TermDenotation(symbol: TermSymbol, name: TermName, kind: Type) extends Denotation
+  case class TypeDenotation(symbol: TypeSymbol, name: TypeName, kind: Type) extends Denotation
 }

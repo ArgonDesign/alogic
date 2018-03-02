@@ -72,12 +72,12 @@ trait Symbols { self: CompilerContext =>
 
   final protected val symbolLocations = mutable.Map[Symbol, Loc]()
 
-  final protected val symbolDenotations = mutable.Map[Symbol, Denotation]()
+  final val symbolDenotations = mutable.Map[Symbol, Denotation]()
 
   final def newTermSymbol(ident: Ident, kind: Type): TermSymbol = synchronized {
     val symbol = new TermSymbol(symbolSequenceNumbers.next)
 
-    val denot = TermDenotation(TermName(ident.name), kind)
+    val denot = TermDenotation(symbol, TermName(ident.name), kind)
 
     symbolLocations(symbol) = ident.loc
     symbolDenotations(symbol) = denot
@@ -88,7 +88,7 @@ trait Symbols { self: CompilerContext =>
   final def newTypeSymbol(ident: Ident, kind: Type): TypeSymbol = synchronized {
     val symbol = new TypeSymbol(symbolSequenceNumbers.next)
 
-    val denot = TypeDenotation(TypeName(ident.name), kind)
+    val denot = TypeDenotation(symbol, TypeName(ident.name), kind)
 
     symbolLocations(symbol) = ident.loc
     symbolDenotations(symbol) = denot
