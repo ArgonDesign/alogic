@@ -24,21 +24,18 @@ import scala.concurrent.Future
 import scala.concurrent.duration.Duration.Inf
 
 import com.argondesign.alogic.FindFile
-import com.argondesign.alogic.antlr.AlogicParser.StartContext
-import com.argondesign.alogic.ast.Trees.Ident
-import com.argondesign.alogic.ast.Trees.Instance
-import com.argondesign.alogic.ast.Trees.Root
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Source
 import com.argondesign.alogic.util.unreachable
 
-// The frontend is responsible to:
+// The frontend is responsible for:
 // - locating sources (name -> source)
 // - preprocessing (source -> source)
-// - parsing (source -> parse tree)
-// - building (parse tree -> ast)
+// - parsing (source -> ast)
+// - checking (basic semantic checks on raw ast)
 // - naming (resolve identifiers to symbols)
+// - desugaring (desugar simple constructs and bring tree to a canonical form)
 // - typing (compute types of all tree nodes)
 
 class Frontend(
@@ -65,25 +62,10 @@ class Frontend(
     preprocessor(source, initialDefines, includeSeachDirs)
   }
 
-  private[this] def parseIt(source: Source): StartContext = {
-    Parser[StartContext](source).getOrElse {
+  private[this] def parseIt(source: Source, fileName: String): Root = {
+    Parser[Root](source).getOrElse {
       cc.fatal("Stopping due to syntax errors")
     }
-  }
-
-  private[this] def buildIt(entityName: String, parseTree: StartContext): Root = {
-    val tree = Builder(parseTree)
-
-    // Check that the entityName used for file search matches the actual name defined
-    // in the top level entity in the file
-    val Root(_, entity) = tree
-    val Ident(name) = entity.ref
-
-    if (name != entityName) {
-      cc.fatal(entity.loc, s"File name does not match entity name '${entityName}'")
-    }
-
-    tree
   }
 
   private[this] def checkIt(tree: Root): Root = {
@@ -127,10 +109,20 @@ class Frontend(
       val preprocessedFuture = sourceFuture map preprocessIt
 
       // Parse it
-      val parseTreeFuture = preprocessedFuture map parseIt
+      val astFuture = preprocessedFuture map { source =>
+        val root = parseIt(source, entityName)
 
-      // Build it
-      val astFuture = parseTreeFuture map { buildIt(entityName, _) }
+        // Check that the entityName used for file search matches the actual entity name
+        // defined in the top level entity in the file, we rely on this to find the
+        // source file of an instance, so there is no way forward if this is violated
+        val Ident(parsedName) = root.entity.ref
+
+        if (parsedName != entityName) {
+          cc.fatal(root.entity.loc, s"Entity name '${parsedName}' does not match file basename '${entityName}'")
+        }
+
+        root
+      }
 
       // Recursively process all instantiated nodes
       val childAstMapsFuture = {

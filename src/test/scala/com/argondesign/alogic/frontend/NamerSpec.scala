@@ -40,7 +40,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     """|{
        |  u1 foo;
        |  u2 foo;
-       |}""".asTree[StmtBlock] rewrite namer
+       |}""".asTree[Stmt] rewrite namer
 
     cc.messages.loneElement should beThe[Error](
       "Redefinition of name 'foo' with previous definition at",
@@ -67,7 +67,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     """|{
        |  u1 foo;
        |  { u2 foo; }
-       |}""".asTree[StmtBlock] rewrite namer
+       |}""".asTree[Stmt] rewrite namer
 
     cc.messages.loneElement should beThe[Warning](
       "Definition of name 'foo' hides previous definition at",
@@ -95,7 +95,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     """|{
        |  { u1 foo; }
        |  { u2 foo; }
-       |}""".asTree[StmtBlock] rewrite namer
+       |}""".asTree[Stmt] rewrite namer
 
     cc.messages shouldBe empty
   }
@@ -113,7 +113,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
   it should "issue error for undefined term names" in {
     """|{
        |  u1 foo = bar;
-       |}""".asTree[StmtBlock] rewrite namer
+       |}""".asTree[Stmt] rewrite namer
 
     cc.messages.loneElement should beThe[Error]("Name 'bar' is not defined")
     cc.messages(0).loc.line shouldBe 2
@@ -122,7 +122,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
   it should "issue error for undefined type names" in {
     """|{
        |  foo_t foo;
-       |}""".asTree[StmtBlock] rewrite namer
+       |}""".asTree[Stmt] rewrite namer
 
     cc.messages.loneElement should beThe[Error]("Type 'foo_t' is not defined")
     cc.messages(0).loc.line shouldBe 2
@@ -190,7 +190,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
                   |    a = false;
                   |  }
                   |  a = true;
-                  |}""".asTree[StmtBlock] rewrite namer
+                  |}""".asTree[Stmt] rewrite namer
 
     inside(tree) {
       case StmtBlock(List(StmtDecl(Decl(Sym(outer1), _, _)), block, StmtAssign(ExprRef(Sym(outer2)), _))) =>
@@ -536,7 +536,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
                    |  i8 a;
                    |  i8 b;
                    |  int(a, b) c;
-                   |}""".asTree[StmtBlock]
+                   |}""".asTree[Stmt]
 
     val tree = block rewrite namer
 
@@ -565,7 +565,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
                    |  i8 a;
                    |  i8 b;
                    |  bool c[a][b];
-                   |}""".asTree[StmtBlock]
+                   |}""".asTree[Stmt]
 
     val tree = block rewrite namer
 

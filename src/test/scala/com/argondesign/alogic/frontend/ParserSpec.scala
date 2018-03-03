@@ -10,7 +10,7 @@
 //
 // DESCRIPTION:
 //
-// Parser tests (really testing  parser + builder together)
+// Parser tests
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.frontend
@@ -321,57 +321,57 @@ final class ParserSpec extends FreeSpec with AlogicTest {
 
       "types" - {
         "bool" in {
-          "bool".asType shouldBe TypeInt(false, Expr(1))
+          "bool".asTree[Expr] shouldBe ExprType(TypeInt(false, Expr(1)))
         }
 
         "bool is same as u1" in {
-          "bool".asType shouldBe "u1".asType
+          "bool".asTree[Expr] shouldBe "u1".asTree[Expr]
         }
 
         "fixed unsigned ints" in {
           forAll(List("u1", "u2", "u3", "u44", "u128")) { str =>
-            str.asType shouldBe TypeInt(false, Expr(str.tail.toInt))
+            str.asTree[Expr] shouldBe ExprType(TypeInt(false, Expr(str.tail.toInt)))
           }
         }
 
         "fixed signed ints" in {
           forAll(List("i1", "i2", "i3", "i44", "i128")) { str =>
-            str.asType shouldBe TypeInt(true, Expr(str.tail.toInt))
+            str.asTree[Expr] shouldBe ExprType(TypeInt(true, Expr(str.tail.toInt)))
           }
         }
 
         "parametrized integers" - {
           "1D unsigned" in {
-            "uint(N)".asType shouldBe TypeInt(false, ExprRef(Ident("N")))
+            "uint(N)".asTree[Expr] shouldBe ExprType(TypeInt(false, ExprRef(Ident("N"))))
           }
 
           "2D unsigned" in {
-            "uint(8, 2)".asType shouldBe TypeVector(TypeInt(false, Expr(2)), Expr(8))
+            "uint(8, 2)".asTree[Expr] shouldBe ExprType(TypeVector(TypeInt(false, Expr(2)), Expr(8)))
           }
 
           "3D unsigned" in {
-            "uint(4, 8, 2)".asType shouldBe TypeVector(TypeVector(TypeInt(false, Expr(2)), Expr(8)), Expr(4))
+            "uint(4, 8, 2)".asTree[Expr] shouldBe {
+              ExprType(TypeVector(TypeVector(TypeInt(false, Expr(2)), Expr(8)), Expr(4)))
+            }
           }
 
           "1D signed" in {
-            "int(N)".asType shouldBe TypeInt(true, ExprRef(Ident("N")))
+            "int(N)".asTree[Expr] shouldBe ExprType(TypeInt(true, ExprRef(Ident("N"))))
           }
 
           "2D signed" in {
-            "int(8, 2)".asType shouldBe TypeVector(TypeInt(true, Expr(2)), Expr(8))
+            "int(8, 2)".asTree[Expr] shouldBe ExprType(TypeVector(TypeInt(true, Expr(2)), Expr(8)))
           }
 
           "3D signed" in {
-            "int(4, 8, 2)".asType shouldBe TypeVector(TypeVector(TypeInt(true, Expr(2)), Expr(8)), Expr(4))
+            "int(4, 8, 2)".asTree[Expr] shouldBe {
+              ExprType(TypeVector(TypeVector(TypeInt(true, Expr(2)), Expr(8)), Expr(4)))
+            }
           }
         }
 
-        "identifier" in {
-          "foo".asType shouldBe TypeRef(Ident("foo"))
-        }
-
         "void" in {
-          "void".asType shouldBe TypeVoid
+          "void".asTree[Expr] shouldBe ExprType(TypeVoid)
         }
       }
 
@@ -544,15 +544,15 @@ final class ParserSpec extends FreeSpec with AlogicTest {
 
       "blocks" - {
         "empty block" in {
-          "{}".asTree[StmtBlock] shouldBe StmtBlock(Nil)
+          "{}".asTree[Stmt] shouldBe StmtBlock(Nil)
         }
 
         "single statement block" in {
-          "{ 1; }".asTree[StmtBlock] shouldBe StmtBlock(List(StmtExpr(Expr(1))))
+          "{ 1; }".asTree[Stmt] shouldBe StmtBlock(List(StmtExpr(Expr(1))))
         }
 
         "multiple statement block" in {
-          "{ 1; 2; 3; }".asTree[StmtBlock] shouldBe {
+          "{ 1; 2; 3; }".asTree[Stmt] shouldBe {
             StmtBlock(List(StmtExpr(Expr(1)), StmtExpr(Expr(2)), StmtExpr(Expr(3))))
           }
         }

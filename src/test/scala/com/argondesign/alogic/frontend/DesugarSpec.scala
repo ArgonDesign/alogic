@@ -35,7 +35,7 @@ final class DesugarSpec extends FreeSpec with AlogicTest {
     "rewire postfix statements as assignments" - {
       for (op <- List("++", "--")) {
         op in {
-          val tree = s"{ i2 a; a${op}; }".asTree[StmtBlock] rewrite namer rewrite desugar
+          val tree = s"{ i2 a; a${op}; }".asTree[Stmt] rewrite namer rewrite desugar
 
           cc.messages shouldBe empty
 
@@ -64,7 +64,7 @@ final class DesugarSpec extends FreeSpec with AlogicTest {
     "rewire update statements as assignments" - {
       for (op <- List("*", "/", "%", "+", "-", "<<", ">>", ">>>", "&", "|", "^", "~^")) {
         s"${op}=" in {
-          val tree = s"{ i100 a; a ${op}= 2; }".asTree[StmtBlock] rewrite namer rewrite desugar
+          val tree = s"{ i100 a; a ${op}= 2; }".asTree[Stmt] rewrite namer rewrite desugar
 
           cc.messages shouldBe empty
 
@@ -94,7 +94,7 @@ final class DesugarSpec extends FreeSpec with AlogicTest {
         )
       } {
         name in {
-          val tree = s"{ i2 b; let (i2 a = 0, b = a) ${loop} }".asTree[StmtBlock] rewrite namer rewrite desugar
+          val tree = s"{ i2 b; let (i2 a = 0, b = a) ${loop} }".asTree[Stmt] rewrite namer rewrite desugar
 
           inside(tree) {
             case StmtBlock(List(StmtDecl(declB), declA, assignB, loop)) =>
@@ -136,7 +136,7 @@ final class DesugarSpec extends FreeSpec with AlogicTest {
         )
       } {
         name in {
-          val tree = s"{ { { { ${content} } } } }".asTree[StmtBlock] rewrite namer rewrite desugar
+          val tree = s"{ { { { ${content} } } } }".asTree[Stmt] rewrite namer rewrite desugar
           tree should matchPattern(pattern)
         }
       }
