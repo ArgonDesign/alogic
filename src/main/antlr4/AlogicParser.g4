@@ -97,8 +97,8 @@ storage_type
 ///////////////////////////////////////////////////////////////////////////////
 
 entity_content
-  : instance                            # EntityContentInstance
-  | connect                             # EntityContentConnect
+  : instance ';'                        # EntityContentInstance
+  | connect ';'                         # EntityContentConnect
   | (autoinst='new')? entity            # EntityContentEntity
   | 'void' 'fence' '(' ')' block        # EntityContentFenceFunction
   | 'fence' block                       # EntityContentFenceBlock
@@ -107,14 +107,9 @@ entity_content
   | 'verbatim' IDENTIFIER VERBATIMBODY  # EntityContentVerbatimBlock
   ;
 
-connect : lhs=connect_ref '->' rhs+=connect_ref (',' rhs+=connect_ref)* ';' ;
+connect : lhs=expr '->' rhs+=expr (',' rhs+=expr)* ;
 
-connect_ref
-  : ref=connect_ref '.' IDENTIFIER # ConnectRefSelect
-  | IDENTIFIER                     # ConnectRefIdent
-  ;
-
-instance : IDENTIFIER '=' 'new' IDENTIFIER '(' param_assigns ')' ';' ;
+instance : IDENTIFIER '=' 'new' IDENTIFIER '(' param_assigns ')' ;
 
 param_assigns : (IDENTIFIER '=' expr (','  IDENTIFIER '=' expr)*)? ;
 

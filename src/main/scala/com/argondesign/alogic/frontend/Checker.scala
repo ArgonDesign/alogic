@@ -40,6 +40,21 @@ import com.argondesign.alogic.ast.TreeCopier
 
 final class Checker(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
 
+  private[this] def checkLValue(expr: Expr): Boolean = expr forall {
+    case _: ExprRef               => true
+    case ExprIndex(expr, _)       => checkLValue(expr)
+    case ExprSlice(expr, _, _, _) => checkLValue(expr)
+    case ExprSelect(expr, _)      => checkLValue(expr)
+    case ExprCat(parts)           => parts forall checkLValue
+    case _                        => false
+  }
+
+  private[this] def checkConnectRef(expr: Expr): Boolean = expr match {
+    case _: ExprRef                => true
+    case ExprSelect(_: ExprRef, _) => true
+    case _                         => false
+  }
+
   private[this] var entityLevel = 0
 
   override def enter(tree: Tree): Unit = tree match {
@@ -190,6 +205,52 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
         cc.error(_, "Multiple 'default' clauses specified in case statement")
       }
       StmtCase(expr, cases, Nil) withLoc tree.loc
+    }
+
+    case StmtAssign(lhs, _) => {
+      if (checkLValue(lhs)) {
+        tree
+      } else {
+        cc.error(lhs, "Invalid expression on left hand side of '='")
+        StmtError() withLoc tree.loc
+      }
+    }
+
+    case StmtUpdate(lhs, op, _) => {
+      if (checkLValue(lhs)) {
+        tree
+      } else {
+        cc.error(lhs, s"Invalid expression on left hand side of '${op}='")
+        StmtError() withLoc tree.loc
+      }
+    }
+
+    case StmtPost(lhs, op) => {
+      if (checkLValue(lhs)) {
+        tree
+      } else {
+        cc.error(lhs, s"Invalid expression on left hand side of '${op}'")
+        StmtError() withLoc tree.loc
+      }
+    }
+
+    case connect @ Connect(lhs, rhss) => {
+      val newLhs = if (checkConnectRef(lhs)) {
+        lhs
+      } else {
+        cc.error(lhs, s"Invalid port reference on left hand side of '->'")
+        ExprError() withLoc lhs.loc
+      }
+
+      val (goodRhss, badRhss) = rhss partition { checkConnectRef(_) }
+
+      badRhss foreach {
+        cc.error(_, s"Invalid port reference on right hand side of '->'")
+      }
+
+      val newRhss = if (badRhss.isEmpty) rhss else goodRhss
+
+      TreeCopier(connect)(newLhs, newRhss)
     }
 
     case _ => tree

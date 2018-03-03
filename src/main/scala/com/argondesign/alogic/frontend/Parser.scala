@@ -23,7 +23,7 @@ import com.argondesign.alogic.antlr.AlogicParser
 import com.argondesign.alogic.antlr.AlogicParser.BlockContext
 import com.argondesign.alogic.antlr.AlogicParser.DeclContext
 import com.argondesign.alogic.antlr.AlogicParser.EntityContext
-import com.argondesign.alogic.antlr.AlogicParser.ExprContext
+import com.argondesign.alogic.antlr.AlogicParser._
 import com.argondesign.alogic.antlr.AlogicParser.KindContext
 import com.argondesign.alogic.antlr.AlogicParser.StartContext
 import com.argondesign.alogic.antlr.AlogicParser.StatementContext
@@ -59,6 +59,10 @@ object Parser {
 
   implicit val dispatcherDeclContext = new Dispatcher[DeclContext] {
     def dispatch(parser: AlogicParser): DeclContext = parser.decl()
+  }
+
+  implicit val dispatcherConnectContext = new Dispatcher[ConnectContext] {
+    def dispatch(parser: AlogicParser): ConnectContext = parser.connect()
   }
 
   implicit val dispatcherBlockContext = new Dispatcher[BlockContext] {

@@ -57,12 +57,7 @@ object EntityBuilder extends BaseBuilder[EntityContext, Entity] {
       }
 
       override def visitEntityContentConnect(ctx: EntityContentConnectContext) = {
-        val c = ctx.connect
-
-        val lhs = ExprBuilder(c.lhs)
-        val rhss = ExprBuilder(c.rhs)
-
-        Connect(lhs, rhss) withLoc ctx.loc
+        ConnectBuilder(ctx.connect)
       }
 
       override def visitEntityContentEntity(ctx: EntityContentEntityContext) = {

@@ -18,26 +18,21 @@
 package com.argondesign.alogic.frontend
 
 import com.argondesign.alogic.antlr.AlogicParser.BlockContext
+import com.argondesign.alogic.antlr.AlogicParser.ConnectContext
 import com.argondesign.alogic.antlr.AlogicParser.DeclContext
 import com.argondesign.alogic.antlr.AlogicParser.EntityContext
 import com.argondesign.alogic.antlr.AlogicParser.ExprContext
 import com.argondesign.alogic.antlr.AlogicParser.StartContext
 import com.argondesign.alogic.antlr.AlogicParser.StatementContext
 import com.argondesign.alogic.antlr.AlogicParser.Type_definitionContext
+import com.argondesign.alogic.antlr.ConnectBuilder
 import com.argondesign.alogic.antlr.DeclBuilder
 import com.argondesign.alogic.antlr.EntityBuilder
 import com.argondesign.alogic.antlr.ExprBuilder
 import com.argondesign.alogic.antlr.RootBuilder
 import com.argondesign.alogic.antlr.StmtBuilder
 import com.argondesign.alogic.antlr.TypeDefinitionBuilder
-import com.argondesign.alogic.ast.Trees.Decl
-import com.argondesign.alogic.ast.Trees.Entity
-import com.argondesign.alogic.ast.Trees.Expr
-import com.argondesign.alogic.ast.Trees.Root
-import com.argondesign.alogic.ast.Trees.Stmt
-import com.argondesign.alogic.ast.Trees.StmtBlock
-import com.argondesign.alogic.ast.Trees.Tree
-import com.argondesign.alogic.ast.Trees.TypeDefinition
+import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.util.unreachable
 
@@ -63,6 +58,10 @@ object Builder {
 
   implicit val dispatcherDecl = new Dispatcher[DeclContext, Decl] {
     def dispatch(ctx: DeclContext)(implicit cc: CompilerContext): Decl = DeclBuilder(ctx)
+  }
+
+  implicit val dispatcherConnect = new Dispatcher[ConnectContext, Connect] {
+    def dispatch(ctx: ConnectContext)(implicit cc: CompilerContext): Connect = ConnectBuilder(ctx)
   }
 
   implicit val dispatcherStmtBlock = new Dispatcher[BlockContext, StmtBlock] {

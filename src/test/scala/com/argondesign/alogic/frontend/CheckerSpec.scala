@@ -21,6 +21,8 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Error
 
+import scala.collection.immutable.ListMap
+
 import org.scalatest.FreeSpec
 import com.argondesign.alogic.core.FlowControlTypes._
 import com.argondesign.alogic.core.Types._
@@ -31,8 +33,8 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
   implicit val cc = new CompilerContext
   val checker = new Checker
 
-  "The Checker" - {
-    "should check @bits usage" - {
+  "The Checker should" - {
+    "check @bits usage" - {
       "accepting well formed arguments" - {
         "simple identifiers" in {
           val expr = "@bits(a)".asTree[Expr]
@@ -73,7 +75,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
       }
     }
 
-    "should check usage of read/write statements" - {
+    "check usage of read/write statements" - {
       "accepting them in nested entities" - {
         for (word <- List("read", "write")) {
           word in {
@@ -119,7 +121,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
       }
     }
 
-    "should ensure declaration statements" - {
+    "ensure declaration statements" - {
       "do not declare" - {
         "input ports" in {
           val tree = "in bool a;".asTree[Stmt]
@@ -207,7 +209,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
       }
     }
 
-    "should reject multiple fence blocks" in {
+    "reject multiple fence blocks" in {
       val tree = """|fsm foo {
                     |  fence {}
                     |  fence {}
@@ -224,7 +226,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
       cc.messages(1).loc.line shouldBe 3
     }
 
-    "should reject output slices on ports" - {
+    "reject output slices on ports" - {
       "with no flow control" in {
         val entity = """|network a {
                         |  out bubble i2 a;
@@ -268,7 +270,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
       }
     }
 
-    "should reject case statements with multiple defaults" in {
+    "reject case statements with multiple defaults" in {
       val tree = """|case(1) {
                     | default: a;
                     | default: b;
@@ -387,6 +389,156 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
 
             cc.messages.loneElement should beThe[Error](s"'${variant}' entity cannot contain fence blocks")
             cc.messages(0).loc.line shouldBe 2
+          }
+        }
+      }
+    }
+
+    "check lvalue expressions and" - {
+      "reject" - {
+        val badLvals = ListMap(
+          "bracket" -> "(a)",
+          "call" -> "a()",
+          "unary - " -> "-a",
+          "binary +" -> "a+b",
+          "ternary" -> "a ? b : c",
+          "rep" -> "{2{a}}",
+          "@ call" -> "@bits(a)",
+          "$ call" -> "$display(a)",
+          "integer literal" -> "1",
+          "string literal" -> """ "hello" """
+        )
+
+        for {
+          (name, assign, op) <- List(
+            ("assignment", "= 1", "="),
+            ("update", "+= 1", "\\+="),
+            ("postfix", "++", "\\+\\+")
+          )
+        } {
+          name - {
+            "simple invalid lvalues" - {
+              for ((name, lval) <- badLvals) {
+                name in {
+                  s"${lval} ${assign};".asTree[Stmt] rewrite checker shouldBe a[StmtError]
+                  cc.messages.loneElement should beThe[Error](s"Invalid expression on left hand side of '${op}'")
+                }
+              }
+            }
+            "invalid lvalues inside otherwise valid lvalue expressions" - {
+              for ((name, lval) <- badLvals) {
+                name in {
+                  s"{x, ${lval}} ${assign};".asTree[Stmt] rewrite checker shouldBe a[StmtError]
+                  cc.messages.loneElement should beThe[Error](s"Invalid expression on left hand side of '${op}'")
+                }
+              }
+            }
+          }
+        }
+      }
+
+      "accept" - {
+        val goodLvals = ListMap(
+          "identifier " -> "a",
+          "index" -> "a[2]",
+          "slice" -> "a[2:1]",
+          "select" -> "a.b",
+          "cat" -> "{b, a}"
+        )
+
+        for {
+          (name, assign) <- List(
+            ("assignment", "= 1"),
+            ("update", "+= 1"),
+            ("postfix", "++")
+          )
+        } {
+          name - {
+            "simple valid lvalues" - {
+              for ((name, lval) <- goodLvals) {
+                name in {
+                  s"${lval} ${assign};".asTree[Stmt] rewrite checker should not be a[StmtError]
+                  cc.messages shouldBe empty
+                }
+              }
+            }
+            "nested valid lvalues" - {
+              for ((name, lval) <- goodLvals) {
+                name in {
+                  s"{x, ${lval}} ${assign};".asTree[Stmt] rewrite checker should not be a[StmtError]
+                  cc.messages shouldBe empty
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    "check connect expressions and" - {
+      "reject invalid port references on" - {
+        def check(test: String => Unit) = {
+          "bracket" in test("(a)")
+          "call" in test("a()")
+          "unary - " in test("-a")
+          "binary +" in test("a+b")
+          "ternary" in test("a ? b : c")
+          "rep" in test("{2{a}}")
+          "@ call" in test("@bits(a)")
+          "$ call" in test("$display(a)")
+          "integer literal" in test("1")
+          "string literal" in test(""" "hello" """)
+          "index" in test("a[2]")
+          "slice" in test("a[2:1]")
+          "cat" in test("{b, a}")
+          "multi-select" in test("a.b.c")
+        }
+        "left hand side of ->" - {
+          check { ref =>
+            val tree = s"${ref} -> b".asTree[Connect] rewrite checker
+            tree should matchPattern {
+              case Connect(ExprError(), List(_)) =>
+            }
+            cc.messages.loneElement should beThe[Error](s"Invalid port reference on left hand side of '->'")
+          }
+        }
+        "right hand side of -> in first position" - {
+          check { ref =>
+            val tree = s"a -> ${ref}".asTree[Connect] rewrite checker
+            tree shouldBe Connect(ExprRef(Ident("a")), Nil)
+            cc.messages.loneElement should beThe[Error](s"Invalid port reference on right hand side of '->'")
+          }
+        }
+        "right hand side of -> in second position" - {
+          check { ref =>
+            val tree = s"a -> b, ${ref}".asTree[Connect] rewrite checker
+            tree shouldBe Connect(ExprRef(Ident("a")), List(ExprRef(Ident("b"))))
+            cc.messages.loneElement should beThe[Error](s"Invalid port reference on right hand side of '->'")
+          }
+        }
+      }
+
+      "accept valid port referencess on " - {
+        def check(test: String => Unit) = {
+          "identifier " in test("a")
+          "single-select" in test("a.b")
+        }
+        "left hand side of ->" - {
+          check { ref =>
+            s"${ref} -> b".asTree[Connect] rewrite checker shouldBe a[Connect]
+            cc.messages shouldBe empty
+          }
+        }
+        "right hand side of -> in first position" - {
+          check { ref =>
+            s"a -> ${ref}".asTree[Connect] rewrite checker shouldBe a[Connect]
+            cc.messages shouldBe empty
+          }
+        }
+        "right hand side of -> in second position" - {
+          check { ref =>
+            s"a -> b, ${ref}".asTree[Connect] rewrite checker shouldBe a[Connect]
+            cc.messages shouldBe empty
           }
         }
       }

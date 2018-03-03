@@ -56,6 +56,12 @@ object SourceTextConverters {
     }
   }
 
+  implicit val string2TreeAsTreeDispatcherConnect = new String2TreeAsTreeDispatcher[Connect] {
+    def dispatch(source: Source)(implicit cc: CompilerContext): Connect = {
+      Builder(Parser[ConnectContext](source) getOrElse { throw AsTreeSyntaxErrorException() })
+    }
+  }
+
   implicit val string2TreeAsTreeDispatcherBlock = new String2TreeAsTreeDispatcher[StmtBlock] {
     def dispatch(source: Source)(implicit cc: CompilerContext): StmtBlock = {
       Builder(Parser[BlockContext](source) getOrElse { throw AsTreeSyntaxErrorException() })
