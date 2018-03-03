@@ -51,9 +51,6 @@ final class Desugar(implicit cc: CompilerContext) extends TreeTransformer { name
     // Strip redundant blocks
     case StmtBlock(single :: Nil) => single
 
-    // TODO: Fence blocks
-    // TODO: Default Cases
-
     case _                        => tree
   }
 

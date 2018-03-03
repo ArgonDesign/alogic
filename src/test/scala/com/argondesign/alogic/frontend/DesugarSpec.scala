@@ -18,6 +18,7 @@ package com.argondesign.alogic.frontend
 import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.SourceTextConverters._
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.ast.Trees.Expr._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.Symbols._
@@ -128,7 +129,7 @@ final class DesugarSpec extends FreeSpec with AlogicTest {
           ("goto", "goto a;", { case StmtGoto(Sym(ErrorSymbol)) => }),
           ("return", "return;", { case StmtReturn() => }),
           ("=", "1 = 1;", { case StmtAssign(Expr(1), Expr(1)) => }),
-          ("expr", "1;", { case StmtExpr(Expr(1)) => }),
+          ("expr", "1 + 2;", { case StmtExpr(Expr(1) + Expr(2)) => }),
           ("decl", "i3 a;", { case StmtDecl(_) => }),
           ("read", "read;", { case StmtRead() => }),
           ("write", "write;", { case StmtWrite() => })
@@ -138,6 +139,25 @@ final class DesugarSpec extends FreeSpec with AlogicTest {
           val tree = s"{ { { { ${content} } } } }".asTree[StmtBlock] rewrite namer rewrite desugar
           tree should matchPattern(pattern)
         }
+      }
+    }
+
+    "strip blocks around default case body" in {
+      val tree = "case (1) {  default: 1; }".asTree[Stmt] rewrite desugar
+      inside(tree) {
+        case StmtCase(Expr(1), Nil, default) =>
+          default shouldBe List(StmtExpr(Expr(1)))
+      }
+    }
+
+    "strip blocks around fence block body" in {
+      val entity = "fsm a { fence { 2; } }".asTree[Entity]
+      cc.addGlobalEntity(entity)
+      val tree = entity rewrite namer rewrite desugar
+
+      inside(tree) {
+        case entity: Entity =>
+          entity.fenceStmts shouldBe List(StmtExpr(Expr(2)))
       }
     }
 
