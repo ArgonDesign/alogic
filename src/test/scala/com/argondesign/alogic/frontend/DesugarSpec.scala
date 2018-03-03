@@ -20,6 +20,7 @@ import com.argondesign.alogic.SourceTextConverters._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.core.Symbols._
 
 import org.scalatest.FreeSpec
 
@@ -84,14 +85,13 @@ final class DesugarSpec extends FreeSpec with AlogicTest {
 
     "lift 'let' initializers and drop 'let' statement" - {
       for {
-        (name, loop, pattern) <- List(
-          ("loop", "loop {}", { a: Any => a match { case StmtLoop(_) => () } }),
-          ("while", "while (b) {}", { a: Any => a match { case StmtWhile(_, _) => () } }),
-          ("do", "do {} while(b);", { a: Any => a match { case StmtDo(_, _) => () } }),
-          ("for", "for(;;) {}", { a: Any => a match { case StmtFor(_, _, _, _) => () } })
+        (name, loop, pattern) <- List[(String, String, PartialFunction[Any, Unit])](
+          ("loop", "loop {}", { case _: StmtLoop => }),
+          ("while", "while (b) {}", { case _: StmtWhile => }),
+          ("do", "do {} while(b);", { case _: StmtDo => }),
+          ("for", "for(;;) {}", { case _: StmtFor => })
         )
       } {
-
         name in {
           val tree = s"{ i2 b; let (i2 a = 0, b = a) ${loop} }".asTree[StmtBlock] rewrite namer rewrite desugar
 
@@ -106,12 +106,39 @@ final class DesugarSpec extends FreeSpec with AlogicTest {
                       symB.denot.name.str shouldBe "b";
                       symA should be theSameInstanceAs dSymA
                   }
-                  loop should matchPattern(PartialFunction(pattern))
+                  loop should matchPattern(pattern)
               }
           }
         }
       }
+    }
 
+    "stip redundant blocks around" - {
+      for {
+        (name, content, pattern) <- List[(String, String, PartialFunction[Any, Unit])](
+          ("block", "{}", { case StmtBlock(Nil) => }),
+          ("if", "if (1) {}", { case StmtIf(Expr(1), StmtBlock(Nil), None) => }),
+          ("case", "case (1) {1:1;}", { case StmtCase(Expr(1), List(_), Nil) => }),
+          ("loop", "loop {}", { case StmtLoop(Nil) => }),
+          ("while", "while(1) {}", { case StmtWhile(Expr(1), Nil) => }),
+          ("do", "do {} while(1);", { case StmtDo(Expr(1), Nil) => }),
+          ("for", "for (;;) {}", { case StmtFor(Nil, None, Nil, Nil) => }),
+          ("fence", "fence;", { case StmtFence() => }),
+          ("break", "break;", { case StmtBreak() => }),
+          ("goto", "goto a;", { case StmtGoto(Sym(ErrorSymbol)) => }),
+          ("return", "return;", { case StmtReturn() => }),
+          ("=", "1 = 1;", { case StmtAssign(Expr(1), Expr(1)) => }),
+          ("expr", "1;", { case StmtExpr(Expr(1)) => }),
+          ("decl", "i3 a;", { case StmtDecl(_) => }),
+          ("read", "read;", { case StmtRead() => }),
+          ("write", "write;", { case StmtWrite() => })
+        )
+      } {
+        name in {
+          val tree = s"{ { { { ${content} } } } }".asTree[StmtBlock] rewrite namer rewrite desugar
+          tree should matchPattern(pattern)
+        }
+      }
     }
 
   }

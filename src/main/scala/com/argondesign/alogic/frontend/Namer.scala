@@ -354,7 +354,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
     val symbols = (tree collectAll { case Sym(symbol) => symbol }).toSet
 
     // Check that denotations do not contain any Ident nodes anymore
-    symbols filter { _ != ErrorSymbol } foreach  { symbol =>
+    symbols filter { _ != ErrorSymbol } foreach { symbol =>
       val denot = symbol.denot
       denot.kind visit {
         case node: Ident => {

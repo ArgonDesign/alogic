@@ -48,11 +48,13 @@ final class Desugar(implicit cc: CompilerContext) extends TreeTransformer { name
       Thicket(inits ::: body :: Nil)
     }
 
+    // Strip redundant blocks
+    case StmtBlock(single :: Nil) => single
+
     // TODO: Fence blocks
     // TODO: Default Cases
-    // TODO: Strip blocks
 
-    case _ => tree
+    case _                        => tree
   }
 
   override def finalCheck(tree: Tree): Unit = {
