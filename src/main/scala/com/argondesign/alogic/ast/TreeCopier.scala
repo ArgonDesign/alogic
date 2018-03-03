@@ -297,14 +297,6 @@ object TreeCopier {
     }
   }
 
-  final def apply(tree: ExprBracket)(expr: Tree): ExprBracket = {
-    if (expr eq tree.expr) {
-      tree
-    } else {
-      ExprBracket(expr.asInstanceOf[Expr]) withLoc tree.loc
-    }
-  }
-
   final def apply(tree: ExprCall)(expr: Tree, args: List[Tree]): ExprCall = {
     if ((expr eq tree.expr) && (args eq tree.args)) {
       tree

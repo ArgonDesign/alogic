@@ -64,10 +64,8 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
 
   def apply(ctx: ExprContext)(implicit cc: CompilerContext): Expr = {
     object Visitor extends AlogicScalarVisitor[Expr] {
-      // TODO: remove
-      override def visitExprBracket(ctx: ExprBracketContext) = {
-        ExprBracket(visit(ctx.expr)) withLoc ctx.loc
-      }
+      // Bracket
+      override def visitExprBracket(ctx: ExprBracketContext) = visit(ctx.expr)
 
       // Call
       override def visitExprCall(ctx: ExprCallContext) = {

@@ -356,7 +356,6 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
     "check lvalue expressions and" - {
       "reject" - {
         val badLvals = ListMap(
-          "bracket" -> "(a)",
           "call" -> "a()",
           "unary - " -> "-a",
           "binary +" -> "a+b",
@@ -439,7 +438,6 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
     "check connect expressions and" - {
       "reject invalid port references on" - {
         def check(test: String => Unit) = {
-          "bracket" in test("(a)")
           "call" in test("a()")
           "unary - " in test("-a")
           "binary +" in test("a+b")

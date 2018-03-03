@@ -145,9 +145,6 @@ object Trees {
   sealed trait Expr extends Tree with ExprOps
   object Expr extends ObjectExprOps
 
-  // TODO: Remove
-  case class ExprBracket(expr: Expr) extends Expr
-
   case class ExprCall(expr: Expr, args: List[Expr]) extends Expr
 
   // Operators

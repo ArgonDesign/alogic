@@ -877,7 +877,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
         "simple" - {
 
           "bracket" in {
-            "(1)".asTree[Expr] shouldBe ExprBracket(Expr(1))
+            "(((1)))".asTree[Expr] shouldBe Expr(1)
           }
 
           "call with no arguments" in {
