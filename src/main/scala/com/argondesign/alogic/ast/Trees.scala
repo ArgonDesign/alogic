@@ -170,6 +170,8 @@ object Trees {
 
   case class ExprRef(ref: Ref) extends Expr
 
+  case class ExprType(kind: Type) extends Expr
+
   case class ExprError() extends Expr // Placeholder when errors happened
 
   ///////////////////////////////////////////////////////////////////////////////

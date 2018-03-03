@@ -17,54 +17,7 @@ package com.argondesign.alogic.frontend
 
 import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.SourceTextConverters._
-import com.argondesign.alogic.ast.Trees.CaseClause
-import com.argondesign.alogic.ast.Trees.Connect
-import com.argondesign.alogic.ast.Trees.Decl
-import com.argondesign.alogic.ast.Trees.Entity
-import com.argondesign.alogic.ast.Trees.Expr
-import com.argondesign.alogic.ast.Trees.ExprAtCall
-import com.argondesign.alogic.ast.Trees.ExprBinary
-import com.argondesign.alogic.ast.Trees.ExprBracket
-import com.argondesign.alogic.ast.Trees.ExprCall
-import com.argondesign.alogic.ast.Trees.ExprCat
-import com.argondesign.alogic.ast.Trees.ExprDollarCall
-import com.argondesign.alogic.ast.Trees.ExprIndex
-import com.argondesign.alogic.ast.Trees.ExprNum
-import com.argondesign.alogic.ast.Trees.ExprRef
-import com.argondesign.alogic.ast.Trees.ExprRep
-import com.argondesign.alogic.ast.Trees.ExprSelect
-import com.argondesign.alogic.ast.Trees.ExprSlice
-import com.argondesign.alogic.ast.Trees.ExprStr
-import com.argondesign.alogic.ast.Trees.ExprTernary
-import com.argondesign.alogic.ast.Trees.ExprUnary
-import com.argondesign.alogic.ast.Trees.Function
-import com.argondesign.alogic.ast.Trees.Ident
-import com.argondesign.alogic.ast.Trees.Instance
-import com.argondesign.alogic.ast.Trees.Root
-import com.argondesign.alogic.ast.Trees.Stmt
-import com.argondesign.alogic.ast.Trees.StmtAssign
-import com.argondesign.alogic.ast.Trees.StmtBlock
-import com.argondesign.alogic.ast.Trees.StmtBreak
-import com.argondesign.alogic.ast.Trees.StmtCase
-import com.argondesign.alogic.ast.Trees.StmtDecl
-import com.argondesign.alogic.ast.Trees.StmtDo
-import com.argondesign.alogic.ast.Trees.StmtDollarComment
-import com.argondesign.alogic.ast.Trees.StmtExpr
-import com.argondesign.alogic.ast.Trees.StmtFence
-import com.argondesign.alogic.ast.Trees.StmtFor
-import com.argondesign.alogic.ast.Trees.StmtGoto
-import com.argondesign.alogic.ast.Trees.StmtIf
-import com.argondesign.alogic.ast.Trees.StmtLet
-import com.argondesign.alogic.ast.Trees.StmtLoop
-import com.argondesign.alogic.ast.Trees.StmtPost
-import com.argondesign.alogic.ast.Trees.StmtRead
-import com.argondesign.alogic.ast.Trees.StmtReturn
-import com.argondesign.alogic.ast.Trees.StmtUpdate
-import com.argondesign.alogic.ast.Trees.StmtWhile
-import com.argondesign.alogic.ast.Trees.StmtWrite
-import com.argondesign.alogic.ast.Trees.TypeDefinition
-import com.argondesign.alogic.ast.Trees.TypeDefinitionStruct
-import com.argondesign.alogic.ast.Trees.TypeDefinitionTypedef
+import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Error
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
@@ -77,16 +30,7 @@ import com.argondesign.alogic.core.StorageTypes.StorageSliceFwd
 import com.argondesign.alogic.core.StorageTypes.StorageTypeReg
 import com.argondesign.alogic.core.StorageTypes.StorageTypeSlices
 import com.argondesign.alogic.core.StorageTypes.StorageTypeWire
-import com.argondesign.alogic.core.Types.TypeArray
-import com.argondesign.alogic.core.Types.TypeConst
-import com.argondesign.alogic.core.Types.TypeIn
-import com.argondesign.alogic.core.Types.TypeInt
-import com.argondesign.alogic.core.Types.TypeOut
-import com.argondesign.alogic.core.Types.TypeParam
-import com.argondesign.alogic.core.Types.TypePipeline
-import com.argondesign.alogic.core.Types.TypeRef
-import com.argondesign.alogic.core.Types.TypeVector
-import com.argondesign.alogic.core.Types.TypeVoid
+import com.argondesign.alogic.core.Types._
 
 import org.scalatest.FreeSpec
 import org.scalatest.matchers.MatchResult
@@ -1016,6 +960,10 @@ final class ParserSpec extends FreeSpec with AlogicTest {
 
           "identifier" in {
             "foo".asTree[Expr] shouldBe ExprRef(Ident("foo"))
+          }
+
+          "type" in {
+            "i8".asTree[Expr] shouldBe ExprType(TypeInt(true, Expr(8)))
           }
         }
 

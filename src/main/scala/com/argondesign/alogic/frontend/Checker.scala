@@ -28,32 +28,18 @@
 
 package com.argondesign.alogic.frontend
 
+import com.argondesign.alogic.ast.TreeCopier
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
+import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeValid
+import com.argondesign.alogic.core.StorageTypes.StorageTypeReg
+import com.argondesign.alogic.core.StorageTypes.StorageTypeSlices
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.core.FlowControlTypes._
-import com.argondesign.alogic.core.StorageTypes._
 import com.argondesign.alogic.util.FollowedBy
-import com.argondesign.alogic.ast.Trees.ExprAtCall
-import com.argondesign.alogic.ast.TreeCopier
 
 final class Checker(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
-
-  private[this] def checkLValue(expr: Expr): Boolean = expr forall {
-    case _: ExprRef               => true
-    case ExprIndex(expr, _)       => checkLValue(expr)
-    case ExprSlice(expr, _, _, _) => checkLValue(expr)
-    case ExprSelect(expr, _)      => checkLValue(expr)
-    case ExprCat(parts)           => parts forall checkLValue
-    case _                        => false
-  }
-
-  private[this] def checkConnectRef(expr: Expr): Boolean = expr match {
-    case _: ExprRef                => true
-    case ExprSelect(_: ExprRef, _) => true
-    case _                         => false
-  }
 
   private[this] var entityLevel = 0
 
@@ -147,24 +133,6 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
       }
     }
 
-    case ExprAtCall("bits", arg :: _) => {
-      def offender(expr: Expr): Option[Expr] = {
-        expr match {
-          case _: ExprRef          => None
-          case ExprSelect(from, _) => offender(from)
-          case node: Expr          => Some(node)
-        }
-      }
-      offender(arg) map { expr =>
-        cc.error(
-          expr,
-          "Invalid expression passed to '@bits'",
-          "Only identifiers, optionally followed by field lookups are allowed"
-        )
-        ExprError() withLoc tree.loc
-      } getOrElse tree
-    }
-
     case StmtRead() => {
       if (entityLevel <= 1) {
         cc.error(tree, "Read statements are only allowed inside nested entities")
@@ -194,8 +162,8 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
         case _               => None
       }
 
-      msg(decl.kind) map { line =>
-        cc.error(tree, "Only variables can be declared in declaration statements", line)
+      msg(decl.kind) map { hint =>
+        cc.error(tree, "Only variables can be declared in declaration statements", hint)
         StmtError() withLoc tree.loc
       } getOrElse tree
     }
@@ -208,7 +176,7 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
     }
 
     case StmtAssign(lhs, _) => {
-      if (checkLValue(lhs)) {
+      if (lhs.isLValueExpr) {
         tree
       } else {
         cc.error(lhs, "Invalid expression on left hand side of '='")
@@ -217,7 +185,7 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
     }
 
     case StmtUpdate(lhs, op, _) => {
-      if (checkLValue(lhs)) {
+      if (lhs.isLValueExpr) {
         tree
       } else {
         cc.error(lhs, s"Invalid expression on left hand side of '${op}='")
@@ -226,7 +194,7 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
     }
 
     case StmtPost(lhs, op) => {
-      if (checkLValue(lhs)) {
+      if (lhs.isLValueExpr) {
         tree
       } else {
         cc.error(lhs, s"Invalid expression on left hand side of '${op}'")
@@ -235,17 +203,19 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
     }
 
     case connect @ Connect(lhs, rhss) => {
-      val newLhs = if (checkConnectRef(lhs)) {
+      val hint = "Only identifiers, optionally followed by a single field selector are allowed"
+
+      val newLhs = if (lhs.isPortRefExpr) {
         lhs
       } else {
-        cc.error(lhs, s"Invalid port reference on left hand side of '->'")
+        cc.error(lhs, s"Invalid port reference on left hand side of '->'", hint)
         ExprError() withLoc lhs.loc
       }
 
-      val (goodRhss, badRhss) = rhss partition { checkConnectRef(_) }
+      val (goodRhss, badRhss) = rhss partition { _.isPortRefExpr }
 
       badRhss foreach {
-        cc.error(_, s"Invalid port reference on right hand side of '->'")
+        cc.error(_, s"Invalid port reference on right hand side of '->'", hint)
       }
 
       val newRhss = if (badRhss.isEmpty) rhss else goodRhss

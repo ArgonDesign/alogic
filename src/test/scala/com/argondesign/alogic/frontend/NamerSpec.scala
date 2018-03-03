@@ -17,6 +17,7 @@ package com.argondesign.alogic.frontend
 
 import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.ast.Trees.Expr._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Error
 import com.argondesign.alogic.core.Types._
@@ -385,7 +386,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     cc.messages shouldBe empty
   }
 
-  it should "resolve @bits arguments to plain term names" in {
+  it should "resolve @bits arguments to term names even if the argument is a valid type expression" in {
     val entity = """|fsm a {
                     |  void main() {
                     |    bool b;
@@ -416,38 +417,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     cc.messages shouldBe empty
   }
 
-  it should "resolve @bits arguments to term names with select" in {
-    val entity = """|fsm a {
-                    |  void main() {
-                    |    bool b;
-                    |    @bits(b.c.d);
-                    |  }
-                    |}""".stripMargin.asTree[Entity]
-
-    cc.addGlobalEntity(entity)
-
-    val tree = entity rewrite namer
-
-    inside(tree) {
-      case Entity(_, _, _, _, List(main), _, _, _, _) =>
-        inside(main) {
-          case Function(Sym(_), List(StmtDecl(decl), StmtExpr(expr))) =>
-            inside(decl) {
-              case Decl(Sym(dSym), TypeInt(false, Expr(1)), None) =>
-                inside(expr) {
-                  case ExprAtCall("bits", List(ExprSelect(ExprSelect(ExprRef(Sym(rSym)), "c"), "d"))) =>
-                    rSym should be theSameInstanceAs dSym
-                    rSym shouldBe 'termSymbol
-                    rSym.loc.line shouldBe 3
-                }
-            }
-        }
-    }
-
-    cc.messages shouldBe empty
-  }
-
-  it should "resolve @bits arguments to plain type names" in {
+  it should "resolve @bits arguments to type names if the argument is a valid type expression" in {
     val root = """|typedef bool a;
                   |fsm b {
                   |  void main() {
@@ -481,11 +451,12 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     cc.messages shouldBe empty
   }
 
-  it should "resolve @bits arguments to type names with select" in {
+  it should "not resolve @bits arguments to type names if the argument is not a type expression" in {
     val root = """|typedef bool a;
                   |fsm b {
                   |  void main() {
-                  |    @bits(a.c.d);
+                  |    i4 a;
+                  |    @bits(a + 2);
                   |  }
                   |}""".stripMargin.asTree[Root]
 
@@ -496,16 +467,17 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     inside(tree) {
       case Root(List(typedef), entity) =>
         inside(typedef) {
-          case TypeDefinitionTypedef(Sym(dSym), TypeInt(false, Expr(1))) =>
+          case TypeDefinitionTypedef(Sym(_), TypeInt(false, Expr(1))) =>
             inside(entity) {
               case Entity(_, _, _, _, List(main), _, _, _, _) =>
                 inside(main) {
-                  case Function(Sym(_), List(StmtExpr(expr))) =>
+                  case Function(Sym(_), List(StmtDecl(decl), StmtExpr(expr))) =>
+                    val Sym(dSym) = decl.ref
                     inside(expr) {
-                      case ExprAtCall("bits", List(ExprSelect(ExprSelect(ExprRef(Sym(rSym)), "c"), "d"))) =>
+                      case ExprAtCall("bits", List(ExprRef(Sym(rSym)) + Expr(2))) =>
                         rSym should be theSameInstanceAs dSym
-                        rSym shouldBe 'typeSymbol
-                        rSym.loc.line shouldBe 1
+                        rSym shouldBe 'termSymbol
+                        rSym.loc.line shouldBe 4
                     }
                 }
             }
@@ -515,7 +487,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     cc.messages shouldBe empty
   }
 
-  it should "issue error if both type and term names are available" in {
+  it should "issue error if @bits argument is ambiguous and can reslove to both type and term names" in {
     val root = """|typedef bool a;
                   |fsm b {
                   |  void main() {

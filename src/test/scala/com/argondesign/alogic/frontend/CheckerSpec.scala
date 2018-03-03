@@ -34,47 +34,6 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
   val checker = new Checker
 
   "The Checker should" - {
-    "check @bits usage" - {
-      "accepting well formed arguments" - {
-        "simple identifiers" in {
-          val expr = "@bits(a)".asTree[Expr]
-
-          expr rewrite checker shouldBe expr
-
-          cc.messages shouldBe empty
-        }
-
-        "single selects" in {
-          val expr = "@bits(a.b)".asTree[Expr]
-
-          expr rewrite checker shouldBe expr
-
-          cc.messages shouldBe empty
-        }
-
-        "multiple selects" in {
-          val expr = "@bits(a.b.c)".asTree[Expr]
-
-          expr rewrite checker shouldBe expr
-
-          cc.messages shouldBe empty
-        }
-      }
-
-      "issuing error for other expressions" - {
-        "binary" in {
-          val expr = "@bits(a + b)".asTree[Expr]
-
-          expr rewrite checker shouldBe ExprError()
-
-          cc.messages.loneElement should beThe[Error](
-            "Invalid expression passed to '@bits'",
-            "Only identifiers, optionally followed by field lookups are allowed"
-          )
-        }
-      }
-    }
-
     "check usage of read/write statements" - {
       "accepting them in nested entities" - {
         for (word <- List("read", "write")) {
@@ -457,7 +416,8 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
             "simple valid lvalues" - {
               for ((name, lval) <- goodLvals) {
                 name in {
-                  s"${lval} ${assign};".asTree[Stmt] rewrite checker should not be a[StmtError]
+                  val stmt = s"${lval} ${assign};".asTree[Stmt]
+                  stmt rewrite checker should be theSameInstanceAs stmt
                   cc.messages shouldBe empty
                 }
               }
@@ -465,7 +425,8 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
             "nested valid lvalues" - {
               for ((name, lval) <- goodLvals) {
                 name in {
-                  s"{x, ${lval}} ${assign};".asTree[Stmt] rewrite checker should not be a[StmtError]
+                  val stmt = s"{x, ${lval}} ${assign};".asTree[Stmt]
+                  stmt rewrite checker should be theSameInstanceAs stmt
                   cc.messages shouldBe empty
                 }
               }
@@ -499,21 +460,30 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
             tree should matchPattern {
               case Connect(ExprError(), List(_)) =>
             }
-            cc.messages.loneElement should beThe[Error](s"Invalid port reference on left hand side of '->'")
+            cc.messages.loneElement should beThe[Error](
+              s"Invalid port reference on left hand side of '->'",
+              "Only identifiers, optionally followed by a single field selector are allowed"
+            )
           }
         }
         "right hand side of -> in first position" - {
           check { ref =>
             val tree = s"a -> ${ref}".asTree[Connect] rewrite checker
             tree shouldBe Connect(ExprRef(Ident("a")), Nil)
-            cc.messages.loneElement should beThe[Error](s"Invalid port reference on right hand side of '->'")
+            cc.messages.loneElement should beThe[Error](
+              s"Invalid port reference on right hand side of '->'",
+              "Only identifiers, optionally followed by a single field selector are allowed"
+            )
           }
         }
         "right hand side of -> in second position" - {
           check { ref =>
             val tree = s"a -> b, ${ref}".asTree[Connect] rewrite checker
             tree shouldBe Connect(ExprRef(Ident("a")), List(ExprRef(Ident("b"))))
-            cc.messages.loneElement should beThe[Error](s"Invalid port reference on right hand side of '->'")
+            cc.messages.loneElement should beThe[Error](
+              s"Invalid port reference on right hand side of '->'",
+              "Only identifiers, optionally followed by a single field selector are allowed"
+            )
           }
         }
       }
@@ -525,19 +495,22 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         }
         "left hand side of ->" - {
           check { ref =>
-            s"${ref} -> b".asTree[Connect] rewrite checker shouldBe a[Connect]
+            val connect = s"${ref} -> b".asTree[Connect]
+            connect rewrite checker should be theSameInstanceAs connect
             cc.messages shouldBe empty
           }
         }
         "right hand side of -> in first position" - {
           check { ref =>
-            s"a -> ${ref}".asTree[Connect] rewrite checker shouldBe a[Connect]
+            val connect = s"a -> ${ref}".asTree[Connect]
+            connect rewrite checker should be theSameInstanceAs connect
             cc.messages shouldBe empty
           }
         }
         "right hand side of -> in second position" - {
           check { ref =>
-            s"a -> b, ${ref}".asTree[Connect] rewrite checker shouldBe a[Connect]
+            val connect = s"a -> b, ${ref}".asTree[Connect]
+            connect rewrite checker should be theSameInstanceAs connect
             cc.messages shouldBe empty
           }
         }

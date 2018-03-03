@@ -37,6 +37,7 @@ import com.argondesign.alogic.antlr.AlogicParser.ExprStringContext
 import com.argondesign.alogic.antlr.AlogicParser.ExprTernaryContext
 import com.argondesign.alogic.antlr.AlogicParser.ExprTickNumContext
 import com.argondesign.alogic.antlr.AlogicParser.ExprTrueContext
+import com.argondesign.alogic.antlr.AlogicParser.ExprTypeContext
 import com.argondesign.alogic.antlr.AlogicParser.ExprUnaryContext
 import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.ast.Trees._
@@ -132,6 +133,11 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
       // Identifier
       override def visitExprIdent(ctx: ExprIdentContext) = {
         ExprRef(ctx.IDENTIFIER.toIdent) withLoc ctx.loc
+      }
+
+      // Type
+      override def visitExprType(ctx: ExprTypeContext) = {
+        ExprType(TypeBuilder(ctx.kind)) withLoc ctx.loc
       }
     }
 

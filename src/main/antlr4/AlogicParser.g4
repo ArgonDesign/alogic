@@ -210,6 +210,8 @@ expr
   | STRING                                                                  # ExprString
   // Name
   | IDENTIFIER                                                              # ExprIdent
+  // Type
+  | kind                                                                    # ExprType
   ;
 
 commaexpr : (expr (',' expr)*)? ;

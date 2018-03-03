@@ -261,6 +261,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext) extends TreeLik
         val ref = walk(node.ref)
         transform(TreeCopier(node)(ref))
       }
+      case node: ExprType  => transform(node)
       case node: ExprError => node
       case node: Thicket   => cc.ice(node, "Thicket should have been flattened in 'walk(_: List[_]): List[_]'")
     }

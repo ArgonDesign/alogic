@@ -18,7 +18,7 @@ package com.argondesign.alogic.ast
 
 import scala.math.BigInt.int2bigInt
 
-import Trees.Expr
+import Trees._
 import Trees.ExprBinary
 import Trees.ExprNum
 
@@ -50,6 +50,31 @@ trait ExprOps { this: Expr =>
   final def <<(rhs: Int): Expr = addLoc(ExprBinary(this, "<<", addLoc(Expr(rhs))))
   final def >>(rhs: Int): Expr = addLoc(ExprBinary(this, ">>", addLoc(Expr(rhs))))
   final def >>>(rhs: Int): Expr = addLoc(ExprBinary(this, ">>>", addLoc(Expr(rhs))))
+
+  // Is this expression shaped as a valid type expression
+  final def isTypeExpr: Boolean = this forall {
+    case _: ExprType         => true
+    case _: ExprRef          => true
+    case ExprSelect(expr, _) => expr.isTypeExpr
+    case _                   => false
+  }
+
+  // Is this expression shaped as a valid lvalue expression
+  final def isLValueExpr: Boolean = this forall {
+    case _: ExprRef               => true
+    case ExprIndex(expr, _)       => expr.isLValueExpr
+    case ExprSlice(expr, _, _, _) => expr.isLValueExpr
+    case ExprSelect(expr, _)      => expr.isLValueExpr
+    case ExprCat(parts)           => parts forall { _.isLValueExpr }
+    case _                        => false
+  }
+
+  // Is this expression shaped as a valid port reference expression
+  final def isPortRefExpr: Boolean = this match {
+    case _: ExprRef                => true
+    case ExprSelect(_: ExprRef, _) => true
+    case _                         => false
+  }
 
   //  // Test if the expression is semantically constant. It may still contain parameters, so
   //  // .isConst does not imply that .eval will yield a result.

@@ -168,7 +168,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
 
   private[this] var sawLet = false
 
-  private[this] var inAtBits = false
+  private[this] var atBitsEitherTypeOrTerm = false
 
   override def enter(tree: Tree): Unit = tree match {
     case node: Root => {
@@ -220,9 +220,9 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
     }
 
     // TODO: fix using type(...) expressions
-    case ExprAtCall("bits", _) => {
-      assert(!inAtBits)
-      inAtBits = true
+    case ExprAtCall("bits", arg :: _) if arg.isTypeExpr => {
+      assert(!atBitsEitherTypeOrTerm)
+      atBitsEitherTypeOrTerm = true
     }
 
     case _ => ()
@@ -324,14 +324,14 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
 
     case ExprRef(ident: Ident) => {
       // Lookup term (or type if inside @bits)
-      val symbol = if (!inAtBits) lookupTerm(ident) else lookupTermOrType(ident)
+      val symbol = if (!atBitsEitherTypeOrTerm) lookupTerm(ident) else lookupTermOrType(ident)
       // Rewrite node
       val sym = Sym(symbol) withLoc ident.loc
       ExprRef(sym) withLoc tree.loc
     }
 
     case ExprAtCall("bits", _) => tree followedBy {
-      inAtBits = false
+      atBitsEitherTypeOrTerm = false
     }
 
     case _ => tree
@@ -341,7 +341,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
     Scope.finalCheck()
 
     assert(!sawLet)
-    assert(!inAtBits)
+    assert(!atBitsEitherTypeOrTerm)
 
     // Check tree does not contain any Ident nodes anymore
     tree visit {
