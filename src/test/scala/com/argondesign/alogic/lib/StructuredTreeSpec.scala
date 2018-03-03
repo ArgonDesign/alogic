@@ -60,9 +60,9 @@ final class StructuredTreeSpec extends FreeSpec with AlogicTest {
 
   "StructuredTree" - {
 
-    "preOrder should" - {
+    "preOrderIterator should" - {
       "yield the wole tree in pre-order" in {
-        val nodes = tree.preOrder.toList
+        val nodes = tree.preOrderIterator.toList
 
         nodes should have length 17
         nodes(0) shouldBe a[TreeBin]
@@ -85,9 +85,9 @@ final class StructuredTreeSpec extends FreeSpec with AlogicTest {
       }
     }
 
-    "postOrder should" - {
+    "postOrderIterator should" - {
       "yield the wole tree in post-order" in {
-        val nodes = tree.postOrder.toList
+        val nodes = tree.postOrderIterator.toList
 
         nodes should have length 17
         nodes(0) shouldBe TreeLeaf("0")
@@ -299,6 +299,71 @@ final class StructuredTreeSpec extends FreeSpec with AlogicTest {
         opt shouldBe None
       }
     }
+
+    "forall should" - {
+      "walk nodes in pre-order and stop when matching nodes are found" in {
+        val result = tree forall {
+          case TreeOpt(opt) => opt.isDefined
+        }
+        result shouldBe true
+      }
+
+      "return true when nothing matched" in {
+        val result = tree forall {
+          case TreeLeaf("99") => false
+        }
+        result shouldBe true
+      }
+    }
+
+    "forallAll should" - {
+      "walk nodes in any order and keep going, checking all nodes" in {
+        val result = tree forallAll {
+          case TreeOpt(opt) => opt.isDefined
+        }
+        result shouldBe false
+      }
+
+      "return true when nothing matched" in {
+        val result = tree forallAll {
+          case TreeLeaf("99") => false
+        }
+        result shouldBe true
+      }
+    }
+
+    "exists should" - {
+      "walk nodes in pre-order and stop when matching nodes are found" in {
+        val result = tree exists {
+          case TreeOpt(opt) => !opt.isDefined
+        }
+        result shouldBe false
+      }
+
+      "return false when nothing matched" in {
+        val result = tree exists {
+          case TreeLeaf("99") => true
+        }
+        result shouldBe false
+      }
+    }
+
+    "existsAll should" - {
+      "walk nodes in any order and keep going, checking all nodes" in {
+        val result = tree existsAll {
+          case TreeOpt(opt) => !opt.isDefined
+        }
+        result shouldBe true
+      }
+
+      "return false when nothing matched" in {
+        val result = tree existsAll {
+          case TreeLeaf("99") => true
+        }
+        result shouldBe false
+      }
+    }
+
   }
 
 }

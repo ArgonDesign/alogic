@@ -31,12 +31,12 @@ trait TreeLike extends Product {
   // Enumerations of the tree
   ////////////////////////////////////////////////////////////////////////////////
 
-  final def preOrder: Iterator[TreeLike] = {
-    Iterator.single(this) ++ (children flatMap { _.preOrder })
+  final def preOrderIterator: Iterator[TreeLike] = {
+    Iterator.single(this) ++ (children flatMap { _.preOrderIterator })
   }
 
-  final def postOrder: Iterator[TreeLike] = {
-    (children flatMap { _.postOrder }) ++ Iterator.single(this)
+  final def postOrderIterator: Iterator[TreeLike] = {
+    (children flatMap { _.postOrderIterator }) ++ Iterator.single(this)
   }
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -159,7 +159,7 @@ trait TreeLike extends Product {
   }
 
   ////////////////////////////////////////////////////////////////////////////////
-  // collectFirst methods
+  // collectFirst
   ////////////////////////////////////////////////////////////////////////////////
 
   final def collectFirst[E](pf: PartialFunction[TreeLike, E]): Option[E] = {
@@ -180,4 +180,82 @@ trait TreeLike extends Product {
     }
     iterate(Iterator.single(this))
   }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // forall predicate tests
+  ////////////////////////////////////////////////////////////////////////////////
+
+  // Note that these also use partial functions and do not check nodes where they do not apply
+
+  final def forall(pf: PartialFunction[TreeLike, Boolean]): Boolean = {
+    def iterate(it: Iterator[TreeLike]): Boolean = {
+      if (it.hasNext) {
+        val next = it.next
+        if (pf.isDefinedAt(next)) {
+          pf(next) && iterate(it)
+        } else {
+          iterate(next.children) && iterate(it)
+        }
+      } else {
+        true
+      }
+    }
+    iterate(Iterator.single(this))
+  }
+
+  final def forallAll(pf: PartialFunction[TreeLike, Boolean]): Boolean = {
+    def iterate(it: Iterator[TreeLike]): Boolean = {
+      if (it.hasNext) {
+        val next = it.next
+        if (pf.isDefinedAt(next)) {
+          pf(next) && iterate(next.children) && iterate(it)
+        } else {
+          iterate(next.children) && iterate(it)
+        }
+      } else {
+        true
+      }
+    }
+    iterate(Iterator.single(this))
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // exists predicate tests
+  ////////////////////////////////////////////////////////////////////////////////
+
+  // Note that these also use partial functions and do not check nodes where they do not apply
+
+  // Check in *some* order that predicate holds for at least one node
+  final def exists(pf: PartialFunction[TreeLike, Boolean]): Boolean = {
+    def iterate(it: Iterator[TreeLike]): Boolean = {
+      if (it.hasNext) {
+        val next = it.next
+        if (pf.isDefinedAt(next)) {
+          pf(next) || iterate(it)
+        } else {
+          iterate(next.children) || iterate(it)
+        }
+      } else {
+        false
+      }
+    }
+    iterate(Iterator.single(this))
+  }
+
+  final def existsAll(pf: PartialFunction[TreeLike, Boolean]): Boolean = {
+    def iterate(it: Iterator[TreeLike]): Boolean = {
+      if (it.hasNext) {
+        val next = it.next
+        if (pf.isDefinedAt(next)) {
+          pf(next) || iterate(next.children) || iterate(it)
+        } else {
+          iterate(next.children) || iterate(it)
+        }
+      } else {
+        false
+      }
+    }
+    iterate(Iterator.single(this))
+  }
+
 }
