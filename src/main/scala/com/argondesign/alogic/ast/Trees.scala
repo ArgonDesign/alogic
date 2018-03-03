@@ -18,6 +18,7 @@ package com.argondesign.alogic.ast
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.StructuredTree
+import com.argondesign.alogic.core.Locationed
 
 // scalastyle:off number.of.types
 // scalastyle:off number.of.methods

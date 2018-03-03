@@ -13,9 +13,8 @@
 // Base trait for things that have a location
 ////////////////////////////////////////////////////////////////////////////////
 
-package com.argondesign.alogic.ast
+package com.argondesign.alogic.core
 
-import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.util.unreachable
 
 trait Locationed {

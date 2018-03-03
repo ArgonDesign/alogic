@@ -16,11 +16,8 @@
 package com.argondesign.alogic.core
 
 import scala.collection.mutable
-
 import com.argondesign.alogic.antlr.AntlrConverters._
-import com.argondesign.alogic.ast.Locationed
 import com.argondesign.alogic.util.unreachable
-
 import org.antlr.v4.runtime.ParserRuleContext
 
 sealed abstract trait Message {

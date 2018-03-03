@@ -27,7 +27,7 @@ import com.argondesign.alogic.antlr.AlogicParser.EntityContentVerbatimBlockConte
 import com.argondesign.alogic.antlr.AlogicParser.EntityContentVerilogFuctionContext
 import com.argondesign.alogic.antlr.AlogicParser.EntityContext
 import com.argondesign.alogic.antlr.AntlrConverters._
-import com.argondesign.alogic.ast.Locationed
+import com.argondesign.alogic.core.Locationed
 import com.argondesign.alogic.ast.Trees.Connect
 import com.argondesign.alogic.ast.Trees.Entity
 import com.argondesign.alogic.ast.Trees.Function
