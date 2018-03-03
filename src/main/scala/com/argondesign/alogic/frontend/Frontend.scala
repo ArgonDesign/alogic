@@ -180,18 +180,20 @@ class Frontend(
     }
 
     // Apply the frontend passes
-    val astMap = initialMap.par mapValues {
-      checkIt(_)
+    val astMap = initialMap mapValues { tree =>
+      Future { checkIt(tree) }
     } mapValues {
-      nameIt(_)
+      _ map { nameIt(_) }
     } mapValues {
-      desugarIt(_)
+      _ map { desugarIt(_) }
     } mapValues {
-      typeIt(_)
+      _ map { typeIt(_) }
     }
 
-    // Return the AST map
-    astMap.seq.toMap
+    // Collect results and return the AST map
+    astMap mapValues {
+      Await.result(_, atMost = Inf)
+    }
   }
 
 }
