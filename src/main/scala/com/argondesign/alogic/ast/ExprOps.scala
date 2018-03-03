@@ -24,30 +24,32 @@ import Trees.ExprNum
 
 trait ExprOps { this: Expr =>
 
+  private final def addLoc(expr: Expr) = if (hasLoc) expr withLoc loc else expr
+
   // Helpers to easily combine expression trees manually with other expressions
-  def *(rhs: Expr): Expr = ExprBinary(this, "*", rhs) withLoc this.loc
-  def /(rhs: Expr): Expr = ExprBinary(this, "/", rhs) withLoc this.loc
-  def %(rhs: Expr): Expr = ExprBinary(this, "%", rhs) withLoc this.loc
-  def +(rhs: Expr): Expr = ExprBinary(this, "+", rhs) withLoc this.loc
-  def -(rhs: Expr): Expr = ExprBinary(this, "-", rhs) withLoc this.loc
-  def <<(rhs: Expr): Expr = ExprBinary(this, "<<", rhs) withLoc this.loc
-  def >>(rhs: Expr): Expr = ExprBinary(this, ">>", rhs) withLoc this.loc
-  def >>>(rhs: Expr): Expr = ExprBinary(this, ">>>", rhs) withLoc this.loc
-  def &(rhs: Expr): Expr = ExprBinary(this, "&", rhs) withLoc this.loc
-  def ^(rhs: Expr): Expr = ExprBinary(this, "^", rhs) withLoc this.loc
-  def |(rhs: Expr): Expr = ExprBinary(this, "|", rhs) withLoc this.loc
-  def &&(rhs: Expr): Expr = ExprBinary(this, "&&", rhs) withLoc this.loc
-  def ||(rhs: Expr): Expr = ExprBinary(this, "||", rhs) withLoc this.loc
+  final def *(rhs: Expr): Expr = addLoc(ExprBinary(this, "*", rhs))
+  final def /(rhs: Expr): Expr = addLoc(ExprBinary(this, "/", rhs))
+  final def %(rhs: Expr): Expr = addLoc(ExprBinary(this, "%", rhs))
+  final def +(rhs: Expr): Expr = addLoc(ExprBinary(this, "+", rhs))
+  final def -(rhs: Expr): Expr = addLoc(ExprBinary(this, "-", rhs))
+  final def <<(rhs: Expr): Expr = addLoc(ExprBinary(this, "<<", rhs))
+  final def >>(rhs: Expr): Expr = addLoc(ExprBinary(this, ">>", rhs))
+  final def >>>(rhs: Expr): Expr = addLoc(ExprBinary(this, ">>>", rhs))
+  final def &(rhs: Expr): Expr = addLoc(ExprBinary(this, "&", rhs))
+  final def ^(rhs: Expr): Expr = addLoc(ExprBinary(this, "^", rhs))
+  final def |(rhs: Expr): Expr = addLoc(ExprBinary(this, "|", rhs))
+  final def &&(rhs: Expr): Expr = addLoc(ExprBinary(this, "&&", rhs))
+  final def ||(rhs: Expr): Expr = addLoc(ExprBinary(this, "||", rhs))
 
   // Helpers to easily combine expression trees manually with integers
-  def *(rhs: Int): Expr = ExprBinary(this, "*", Expr(rhs) withLoc this.loc) withLoc this.loc
-  def /(rhs: Int): Expr = ExprBinary(this, "/", Expr(rhs) withLoc this.loc) withLoc this.loc
-  def %(rhs: Int): Expr = ExprBinary(this, "%", Expr(rhs) withLoc this.loc) withLoc this.loc
-  def +(rhs: Int): Expr = ExprBinary(this, "+", Expr(rhs) withLoc this.loc) withLoc this.loc
-  def -(rhs: Int): Expr = ExprBinary(this, "-", Expr(rhs) withLoc this.loc) withLoc this.loc
-  def <<(rhs: Int): Expr = ExprBinary(this, "<<", Expr(rhs) withLoc this.loc) withLoc this.loc
-  def >>(rhs: Int): Expr = ExprBinary(this, ">>", Expr(rhs) withLoc this.loc) withLoc this.loc
-  def >>>(rhs: Int): Expr = ExprBinary(this, ">>>", Expr(rhs) withLoc this.loc) withLoc this.loc
+  final def *(rhs: Int): Expr = addLoc(ExprBinary(this, "*", addLoc(Expr(rhs))))
+  final def /(rhs: Int): Expr = addLoc(ExprBinary(this, "/", addLoc(Expr(rhs))))
+  final def %(rhs: Int): Expr = addLoc(ExprBinary(this, "%", addLoc(Expr(rhs))))
+  final def +(rhs: Int): Expr = addLoc(ExprBinary(this, "+", addLoc(Expr(rhs))))
+  final def -(rhs: Int): Expr = addLoc(ExprBinary(this, "-", addLoc(Expr(rhs))))
+  final def <<(rhs: Int): Expr = addLoc(ExprBinary(this, "<<", addLoc(Expr(rhs))))
+  final def >>(rhs: Int): Expr = addLoc(ExprBinary(this, ">>", addLoc(Expr(rhs))))
+  final def >>>(rhs: Int): Expr = addLoc(ExprBinary(this, ">>>", addLoc(Expr(rhs))))
 
   //  // Test if the expression is semantically constant. It may still contain parameters, so
   //  // .isConst does not imply that .eval will yield a result.
@@ -349,12 +351,24 @@ trait ExprOps { this: Expr =>
 
 trait ObjectExprOps {
   // Helpers to easily create ExprNum from integers
-  def apply(n: Int): ExprNum = ExprNum(true, None, n)
-  def apply(n: BigInt): ExprNum = ExprNum(true, None, n)
+  final def apply(n: Int): ExprNum = ExprNum(true, None, n)
+  final def apply(n: BigInt): ExprNum = ExprNum(true, None, n)
 
   // And extractor so we can match against the the same as above
-  def unapply(expr: Expr): Option[Int] = expr match {
-    case ExprNum(true, None, value) => Some(value.toInt)
-    case _                          => None
-  }
+  final def unapply(num: ExprNum): Option[Int] = if (num.signed && num.width.isEmpty) Some(num.value.toInt) else None
+
+  // Extractors to match operators naturally
+  final object * { def unapply(expr: ExprBinary) = if (expr.op == "*") Some((expr.lhs, expr.rhs)) else None }
+  final object / { def unapply(expr: ExprBinary) = if (expr.op == "/") Some((expr.lhs, expr.rhs)) else None }
+  final object % { def unapply(expr: ExprBinary) = if (expr.op == "%") Some((expr.lhs, expr.rhs)) else None }
+  final object + { def unapply(expr: ExprBinary) = if (expr.op == "+") Some((expr.lhs, expr.rhs)) else None }
+  final object - { def unapply(expr: ExprBinary) = if (expr.op == "-") Some((expr.lhs, expr.rhs)) else None }
+  final object << { def unapply(expr: ExprBinary) = if (expr.op == "<<") Some((expr.lhs, expr.rhs)) else None }
+  final object >> { def unapply(expr: ExprBinary) = if (expr.op == ">>") Some((expr.lhs, expr.rhs)) else None }
+  final object >>> { def unapply(expr: ExprBinary) = if (expr.op == ">>>") Some((expr.lhs, expr.rhs)) else None }
+  final object & { def unapply(expr: ExprBinary) = if (expr.op == "&") Some((expr.lhs, expr.rhs)) else None }
+  final object ^ { def unapply(expr: ExprBinary) = if (expr.op == "^") Some((expr.lhs, expr.rhs)) else None }
+  final object | { def unapply(expr: ExprBinary) = if (expr.op == "|") Some((expr.lhs, expr.rhs)) else None }
+  final object && { def unapply(expr: ExprBinary) = if (expr.op == "&&") Some((expr.lhs, expr.rhs)) else None }
+  final object || { def unapply(expr: ExprBinary) = if (expr.op == "||") Some((expr.lhs, expr.rhs)) else None }
 }
