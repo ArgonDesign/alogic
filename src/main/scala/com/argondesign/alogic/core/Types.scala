@@ -36,7 +36,7 @@ object Types {
   // Tree types
   ///////////////////////////////////////////////////////////////////////////////
 
-  sealed trait TreeType
+  sealed trait TreeType extends Type
 
   // Type of expressions that represent types e.g. ExprType(_)
   case object TypeType extends TreeType
