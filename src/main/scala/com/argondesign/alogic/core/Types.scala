@@ -85,4 +85,6 @@ object Types {
   case class TypeParam(kind: Type) extends ProxyType
   // Constant type
   case class TypeConst(kind: Type) extends ProxyType
+  // Instance type
+  case object TypeInstance extends ProxyType
 }

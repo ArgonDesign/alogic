@@ -10,7 +10,10 @@
 //
 // DESCRIPTION:
 //
-// The Namer resolves identifiers to symbols
+// The Namer:
+// - Constructs types and symbols for definitions
+// - Resolves identifiers to symbols
+// - Checks for unused variables
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.frontend
@@ -33,19 +36,47 @@ import com.argondesign.alogic.util.unreachable
 
 final class Namer(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy { namer =>
 
-  private[this] object Scope {
+  final private[this] object Scopes {
     private type SymTab = mutable.HashMap[Name, Symbol]
 
     private var scopes = List[SymTab]()
 
     private def current = scopes.head
 
+    private val allSet = mutable.Set[Symbol]()
+
+    private val usedSet = mutable.Set[Symbol]()
+
+    def markUsed(symbol: Symbol) = usedSet add symbol
+
     def push() = {
       scopes = (new SymTab) :: scopes
     }
 
     def pop() = {
+      allSet ++= current.values
+
       scopes = scopes.tail
+
+      if (scopes.isEmpty) {
+        val unusedSymbols = (allSet diff usedSet).toList sortBy { _.loc.line }
+
+        for (symbol <- unusedSymbols) {
+          val hint = symbol.denot.kind match {
+            case _: TypeArray    => "Array"
+            case TypeFunc        => "Function"
+            case TypeEntity      => "Entity"
+            case _: TypeIn       => "Input port"
+            case _: TypeOut      => "Output port"
+            case _: TypeParam    => "Parameter"
+            case _: TypeConst    => "Constant"
+            case _: TypePipeline => "Pipeline variable"
+            case TypeInstance    => "Instance"
+            case _               => "Variable"
+          }
+          cc.warning(symbol.loc, s"${hint} '${symbol.denot.name}' is unused")
+        }
+      }
     }
 
     // Lookup name in symbol table
@@ -54,14 +85,14 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       def loop(name: Name, scopes: List[SymTab]): Option[Symbol] = scopes match {
         case Nil => cc.globalScope.get(name)
         case scope :: scopes => scope.get(name) match {
-          case Some(symbol) => Some(symbol)
-          case None         => loop(name, scopes)
+          case opt @ Some(symbol) => opt
+          case None               => loop(name, scopes)
         }
       }
       loop(name, scopes)
     }
 
-    // Insert Symbol into current scope
+    // Insert Symbol into current scope, and mark it unused
     def insert(symbol: Symbol): Symbol = {
       val name = symbol.denot.name
 
@@ -74,6 +105,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
             s"Redefinition of ${flavour} '${name}' with previous definition at",
             oldSymbol.loc.toString
           )
+          current(name) = symbol
         }
         case None => {
           lookup(name) map { oldSymbol =>
@@ -96,8 +128,10 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
   }
 
   private[this] def lookupTerm(ident: Ident): Symbol = {
-    Scope.lookup(TermName(ident.name)) match {
-      case Some(symbol) => symbol
+    Scopes.lookup(TermName(ident.name)) match {
+      case Some(symbol) => {
+        symbol
+      }
       case None => {
         cc.error(ident, s"Name '${ident.name}' is not defined")
         ErrorSymbol
@@ -106,8 +140,10 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
   }
 
   private[this] def lookupType(ident: Ident): Symbol = {
-    Scope.lookup(TypeName(ident.name)) match {
-      case Some(symbol) => symbol
+    Scopes.lookup(TypeName(ident.name)) match {
+      case Some(symbol) => {
+        symbol
+      }
       case None => {
         cc.error(ident, s"Type '${ident.name}' is not defined")
         ErrorSymbol
@@ -116,12 +152,16 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
   }
 
   private[this] def lookupTermOrType(ident: Ident): Symbol = {
-    val termOpt = Scope.lookup(TermName(ident.name))
-    val typeOpt = Scope.lookup(TypeName(ident.name))
+    val termOpt = Scopes.lookup(TermName(ident.name))
+    val typeOpt = Scopes.lookup(TypeName(ident.name))
 
     (termOpt, typeOpt) match {
-      case (Some(termSymbol), None) => termSymbol
-      case (None, Some(typeSymbol)) => typeSymbol
+      case (Some(termSymbol), None) => {
+        termSymbol
+      }
+      case (None, Some(typeSymbol)) => {
+        typeSymbol
+      }
       case (Some(termSymbol), Some(typeSymbol)) => {
         cc.error(
           ident,
@@ -129,6 +169,8 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
           s"term '${ident.name}' defined at ${termSymbol.loc}",
           s"type '${ident.name}' defined at ${typeSymbol.loc}"
         )
+        Scopes.markUsed(termSymbol)
+        Scopes.markUsed(typeSymbol)
         ErrorSymbol
       }
       case (None, None) => {
@@ -172,54 +214,57 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
 
   override def enter(tree: Tree): Unit = tree match {
     case node: Root => {
-      Scope.push()
+      Scopes.push()
     }
 
     case node: Entity => {
-      Scope.push()
+      Scopes.push()
 
       // Insert function names before descending an entity so they can be in arbitrary order
       for (Function(ident: Ident, _) <- node.functions) {
         val symbol = cc.newTermSymbol(ident, TypeFunc)
-        Scope.insert(symbol)
+        Scopes.insert(symbol)
+        // Always mark 'main' as used
+        if (ident.name == "main") {
+          Scopes.markUsed(symbol)
+        }
       }
 
-      // Insert nested entity names so instantiations can resolve them
+      // Insert nested entity names so instantiations can resolve them in arbitrary order
       for (Entity(ident: Ident, _, _, _, _, _, _, _, _) <- node.entities) {
         val symbol = cc.newTypeSymbol(ident, TypeEntity)
-        Scope.insert(symbol)
+        Scopes.insert(symbol)
       }
     }
 
     case node: Function => {
-      Scope.push()
+      Scopes.push()
     }
     case node: StmtBlock => {
-      Scope.push()
+      Scopes.push()
     }
     case node: StmtLet => {
       assert(!sawLet)
       sawLet = true
-      Scope.push()
+      Scopes.push()
     }
     case node: StmtLoop => {
-      if (!sawLet) Scope.push()
+      if (!sawLet) Scopes.push()
       sawLet = false
     }
     case node: StmtDo => {
-      if (!sawLet) Scope.push()
+      if (!sawLet) Scopes.push()
       sawLet = false
     }
     case node: StmtWhile => {
-      if (!sawLet) Scope.push()
+      if (!sawLet) Scopes.push()
       sawLet = false
     }
     case node: StmtFor => {
-      if (!sawLet) Scope.push()
+      if (!sawLet) Scopes.push()
       sawLet = false
     }
 
-    // TODO: fix using type(...) expressions
     case ExprAtCall("bits", arg :: _) if arg.isTypeExpr => {
       assert(!atBitsEitherTypeOrTerm)
       atBitsEitherTypeOrTerm = true
@@ -230,14 +275,16 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
 
   override def transform(tree: Tree): Tree = tree match {
     case node: Root => node followedBy {
-      Scope.pop()
+      Scopes.pop()
     }
 
     case TypeDefinitionTypedef(ident: Ident, kind) => {
       // Lookup target type
       val newKind = kind rewrite TypeNamer
       // Insert new type
-      val symbol = Scope.insert(cc.newTypeSymbol(ident, newKind))
+      val symbol = Scopes.insert(cc.newTypeSymbol(ident, newKind))
+      // Don't check use of type symbols TODO: check types defined in same file
+      Scopes.markUsed(symbol)
       // Rewrite node
       val sym = Sym(symbol) withLoc ident.loc
       TypeDefinitionTypedef(sym, newKind) withLoc tree.loc
@@ -248,7 +295,9 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       val newFieldKinds = fieldKinds map { _ rewrite TypeNamer }
       val kind = TypeStruct(fieldNames, newFieldKinds)
       // Insert new type
-      val symbol = Scope.insert(cc.newTypeSymbol(ident, kind))
+      val symbol = Scopes.insert(cc.newTypeSymbol(ident, kind))
+      // Don't check use of type symbols TODO: check types defined in same file
+      Scopes.markUsed(symbol)
       // Rewrite node
       val sym = Sym(symbol) withLoc ident.loc
       TypeDefinitionStruct(sym, fieldNames, newFieldKinds) withLoc tree.loc
@@ -264,7 +313,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       val sym = Sym(symbol) withLoc ident.loc
       entity.copy(ref = sym) withLoc entity.loc withVariant entity.variant
     } followedBy {
-      Scope.pop()
+      Scopes.pop()
     }
 
     case Function(ident: Ident, body) => {
@@ -274,39 +323,41 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       val sym = Sym(symbol) withLoc ident.loc
       Function(sym, body) withLoc tree.loc
     } followedBy {
-      Scope.pop()
+      Scopes.pop()
     }
 
     case Instance(iIdent: Ident, eIdent: Ident, paramNames, paramExprs) => {
       // Lookup type
       val eSymbol = lookupType(eIdent)
       val eSym = Sym(eSymbol) withLoc eIdent.loc
+      Scopes.markUsed(eSymbol)
       // Insert term
-      val iSymbol = Scope.insert(cc.newTermSymbol(iIdent, TypeRef(eSym)))
+      val iSymbol = Scopes.insert(cc.newTermSymbol(iIdent, TypeInstance))
       val iSym = Sym(iSymbol) withLoc iIdent.loc
       // Rewrite node
       Instance(iSym, eSym, paramNames, paramExprs) withLoc tree.loc
     }
 
     case node: StmtBlock => node followedBy {
-      Scope.pop()
+      Scopes.pop()
     }
     case node: StmtLoop => node followedBy {
-      Scope.pop()
+      Scopes.pop()
     }
     case node: StmtDo => node followedBy {
-      Scope.pop()
+      Scopes.pop()
     }
     case node: StmtWhile => node followedBy {
-      Scope.pop()
+      Scopes.pop()
     }
     case node: StmtFor => node followedBy {
-      Scope.pop()
+      Scopes.pop()
     }
 
     case StmtGoto(ident: Ident) => {
       // Lookup term
       val symbol = lookupTerm(ident)
+      Scopes.markUsed(symbol)
       // Rewrite node
       val sym = Sym(symbol) withLoc ident.loc
       StmtGoto(sym) withLoc tree.loc
@@ -316,7 +367,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       // Lookup type
       val newKind = kind rewrite TypeNamer
       // Insert term
-      val symbol = Scope.insert(cc.newTermSymbol(ident, newKind))
+      val symbol = Scopes.insert(cc.newTermSymbol(ident, newKind))
       // Rewrite node
       val sym = Sym(symbol) withLoc ident.loc
       Decl(sym, newKind, init) withLoc tree.loc
@@ -325,6 +376,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
     case ExprRef(ident: Ident) => {
       // Lookup term (or type if inside @bits)
       val symbol = if (!atBitsEitherTypeOrTerm) lookupTerm(ident) else lookupTermOrType(ident)
+      Scopes.markUsed(symbol)
       // Rewrite node
       val sym = Sym(symbol) withLoc ident.loc
       ExprRef(sym) withLoc tree.loc
@@ -338,7 +390,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
   }
 
   override def finalCheck(tree: Tree): Unit = {
-    Scope.finalCheck()
+    Scopes.finalCheck()
 
     assert(!sawLet)
     assert(!atBitsEitherTypeOrTerm)
