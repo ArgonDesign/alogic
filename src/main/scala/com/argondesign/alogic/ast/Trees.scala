@@ -107,10 +107,6 @@ object Trees {
 
   sealed trait Stmt extends Tree
 
-  ///////////////////////////////////////////////////////////////////////////////
-  // Source Statements
-  ///////////////////////////////////////////////////////////////////////////////
-
   case class StmtBlock(body: List[Stmt]) extends Stmt
   case class StmtIf(cond: Expr, thenStmt: Stmt, elseStmt: Option[Stmt]) extends Stmt
   case class StmtCase(expr: Expr, cases: List[CaseClause], default: List[Stmt]) extends Stmt

@@ -29,15 +29,27 @@ object Types {
   // Root of all types
   sealed trait Type extends StructuredTree with TypeOps
 
-  // We have 2 basic kinds of types. GroundType are proper new types, wile
-  // ProxyTypes refer to underlying types but attach further semantics
+  // Type representing a missing/unassigned type
+  case object NoType extends Type
 
-  sealed trait GroundType extends Type
-  sealed trait ProxyType extends Type
+  ///////////////////////////////////////////////////////////////////////////////
+  // Tree types
+  ///////////////////////////////////////////////////////////////////////////////
+
+  sealed trait TreeType
+
+  // Type of expressions that represent types e.g. ExprType(_)
+  case object TypeType extends TreeType
+  // Type of combinatorial statements
+  case object TypeComb extends TreeType
+  // Type of control statements
+  case object TypeCtrl extends TreeType
 
   ///////////////////////////////////////////////////////////////////////////////
   // Ground types
   ///////////////////////////////////////////////////////////////////////////////
+
+  sealed trait GroundType extends Type
 
   // Simple integer types e.g.: i8 / u2 / int(N), analogous to Verilog packed arrays
   case class TypeInt(signed: Boolean, size: Expr) extends GroundType
@@ -60,6 +72,8 @@ object Types {
   ///////////////////////////////////////////////////////////////////////////////
   // Proxy types with underlying types 'kind'
   ///////////////////////////////////////////////////////////////////////////////
+
+  sealed trait ProxyType extends Type
 
   // Input port type
   case class TypeIn(kind: Type, fct: FlowControlType) extends ProxyType
