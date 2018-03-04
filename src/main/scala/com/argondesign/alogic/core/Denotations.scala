@@ -27,7 +27,7 @@ import Symbols.TypeSymbol
 import Types._
 
 object Denotations {
-  abstract sealed trait Denotation {
+  abstract sealed trait Denotation extends Product {
     val symbol: Symbol
     val name: Name
     val kind: Type

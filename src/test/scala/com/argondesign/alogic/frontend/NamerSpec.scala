@@ -619,12 +619,21 @@ final class NamerSpec extends FlatSpec with AlogicTest {
   }
 
   it should "attach correct types to symbol denotations - entity" in {
-    val root = "fsm a {}".asTree[Root]
+    val root = """|fsm a {
+                  |  in bool a;
+                  |  out i3 b;
+                  |  param u8 P = 2;
+                  |}""".stripMargin.asTree[Root]
     cc.addGlobalEntity(root.entity)
     val tree = root rewrite namer
 
     val symA = tree collectFirst { case Sym(symbol) if symbol.denot.name.str == "a" => symbol }
-    symA.value.denot.kind shouldBe TypeEntity
+    inside(symA.value.denot.kind) {
+      case TypeEntity(List("a", "b"), List(typeA, typeB), List("P"), List(typeP)) =>
+        typeA shouldBe TypeIn(TypeInt(false, Expr(1)), FlowControlTypeNone)
+        typeB shouldBe TypeOut(TypeInt(true, Expr(3)), FlowControlTypeNone, StorageTypeReg)
+        typeP shouldBe TypeParam(TypeInt(false, Expr(8)))
+    }
   }
 
   it should "attach correct types to symbol denotations - typedef" in {
@@ -651,7 +660,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     val tree = entity rewrite namer
 
     val symA = tree collectFirst { case Sym(symbol) if symbol.denot.name.str == "a" => symbol }
-    symA.value.denot.kind shouldBe TypeFunc
+    symA.value.denot.kind shouldBe TypeFunc(Nil, TypeVoid)
   }
 
   it should "attach correct types to symbol denotations - instance" in {
@@ -661,9 +670,9 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     val tree = entityB rewrite namer
 
     val symA = tree collectFirst { case Sym(symbol) if symbol.denot.name.str == "a" => symbol }
-    symA.value.denot.kind shouldBe TypeEntity
+    symA.value.denot.kind shouldBe TypeEntity(Nil, Nil, Nil, Nil)
     val symC = tree collectFirst { case Sym(symbol) if symbol.denot.name.str == "c" => symbol }
-    symC.value.denot.kind shouldBe TypeInstance
+    symC.value.denot.kind shouldBe TypeRef(Sym(symA.value))
   }
 
   it should "attach correct types to symbol denotations - decl in" in {

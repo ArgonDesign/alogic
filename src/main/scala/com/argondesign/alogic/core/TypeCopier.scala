@@ -33,14 +33,36 @@ object TypeCopier {
     if (elementType eq tree.elementType) tree else TypeArray(elementType, tree.size)
   }
 
-  def apply(tree: TypeStruct)(fieldKinds: List[Type]): TypeStruct = ???
+  def apply(tree: TypeStruct)(fieldTypes: List[Type]): TypeStruct = {
+    if (fieldTypes eq tree.fieldTypes) {
+      tree
+    } else {
+      TypeStruct(tree.fieldNames, fieldTypes)
+    }
+  }
+
+  def apply(tree: TypeFunc)(argTypes: List[Type], retType: Type): TypeFunc = {
+    if ((argTypes eq tree.argTypes) && (retType eq tree.retType)) {
+      tree
+    } else {
+      TypeFunc(argTypes, retType);
+    }
+  }
+
+  def apply(tree: TypeEntity)(portTypes: List[Type], paramTypes: List[Type]): TypeEntity = {
+    if ((portTypes eq tree.portTypes) && (paramTypes eq tree.paramTypes)) {
+      tree
+    } else {
+      TypeEntity(tree.portNames, portTypes, tree.paramNames, paramTypes)
+    }
+  }
 
   def apply(tree: TypeIn)(kind: Type): TypeIn = {
     if (kind eq tree.kind) tree else TypeIn(kind, tree.fct)
   }
 
   def apply(tree: TypeOut)(kind: Type): TypeOut = {
-    if (kind eq tree.kind) tree else TypeOut(kind, tree.fct, tree.storage)
+    if (kind eq tree.kind) tree else TypeOut(kind, tree.fct, tree.st)
   }
 
   def apply(tree: TypePipeline)(kind: Type): TypePipeline = {

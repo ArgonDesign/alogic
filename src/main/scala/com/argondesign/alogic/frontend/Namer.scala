@@ -27,7 +27,7 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Names.Name
 import com.argondesign.alogic.core.Names.TermName
 import com.argondesign.alogic.core.Names.TypeName
-import com.argondesign.alogic.core.Symbols.ErrorSymbol
+import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.FollowedBy
@@ -64,15 +64,18 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         for (symbol <- unusedSymbols) {
           val hint = symbol.denot.kind match {
             case _: TypeArray    => "Array"
-            case TypeFunc        => "Function"
-            case TypeEntity      => "Entity"
+            case _: TypeFunc     => "Function"
+            case _: TypeEntity   => "Entity"
             case _: TypeIn       => "Input port"
             case _: TypeOut      => "Output port"
             case _: TypeParam    => "Parameter"
             case _: TypeConst    => "Constant"
             case _: TypePipeline => "Pipeline variable"
-            case TypeInstance    => "Instance"
-            case _               => "Variable"
+            case TypeRef(Sym(symbol)) if symbol != ErrorSymbol => symbol.denot.kind match {
+              case _: TypeEntity => "Instance"
+              case _             => "Variable"
+            }
+            case _ => "Variable"
           }
           cc.warning(symbol.loc, s"${hint} '${symbol.denot.name}' is unused")
         }
@@ -129,9 +132,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
 
   private[this] def lookupTerm(ident: Ident): Symbol = {
     Scopes.lookup(TermName(ident.name)) match {
-      case Some(symbol) => {
-        symbol
-      }
+      case Some(symbol) => symbol
       case None => {
         cc.error(ident, s"Name '${ident.name}' is not defined")
         ErrorSymbol
@@ -141,9 +142,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
 
   private[this] def lookupType(ident: Ident): Symbol = {
     Scopes.lookup(TypeName(ident.name)) match {
-      case Some(symbol) => {
-        symbol
-      }
+      case Some(symbol) => symbol
       case None => {
         cc.error(ident, s"Type '${ident.name}' is not defined")
         ErrorSymbol
@@ -222,7 +221,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
 
       // Insert function names before descending an entity so they can be in arbitrary order
       for (Function(ident: Ident, _) <- node.functions) {
-        val symbol = cc.newTermSymbol(ident, TypeFunc)
+        val symbol = cc.newTermSymbol(ident, TypeFunc(Nil, TypeVoid))
         Scopes.insert(symbol)
         // Always mark 'main' as used
         if (ident.name == "main") {
@@ -232,7 +231,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
 
       // Insert nested entity names so instantiations can resolve them in arbitrary order
       for (Entity(ident: Ident, _, _, _, _, _, _, _, _) <- node.entities) {
-        val symbol = cc.newTypeSymbol(ident, TypeEntity)
+        val symbol = cc.newTypeSymbol(ident, TypeEntity(Nil, Nil, Nil, Nil))
         Scopes.insert(symbol)
       }
     }
@@ -308,7 +307,24 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       val Some(ident) = entity.children collectFirst {
         case ident: Ident => ident
       }
-      val symbol = lookupType(ident)
+      val symbol = lookupType(ident) match {
+        case symbol: TypeSymbol => {
+          // Attach proper type
+          val portSymbols = entity.declarations collect {
+            case Decl(Sym(sym), _: TypeIn, _)  => sym
+            case Decl(Sym(sym), _: TypeOut, _) => sym
+          }
+          val paramSymbols = entity.declarations collect {
+            case Decl(Sym(sym), _: TypeParam, _) => sym
+          }
+          val portNames = portSymbols map { _.denot.name.str }
+          val portTypes = portSymbols map { _.denot.kind }
+          val paramNames = paramSymbols map { _.denot.name.str }
+          val paramTypes = paramSymbols map { _.denot.kind }
+          symbol withDenot symbol.denot.copy(kind = TypeEntity(portNames, portTypes, paramNames, paramTypes))
+        }
+        case other => other
+      }
       // Rewrite node
       val sym = Sym(symbol) withLoc ident.loc
       entity.copy(ref = sym) withLoc entity.loc withVariant entity.variant
@@ -332,7 +348,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       val eSym = Sym(eSymbol) withLoc eIdent.loc
       Scopes.markUsed(eSymbol)
       // Insert term
-      val iSymbol = Scopes.insert(cc.newTermSymbol(iIdent, TypeInstance))
+      val iSymbol = Scopes.insert(cc.newTermSymbol(iIdent, TypeRef(Sym(eSymbol))))
       val iSym = Sym(iSymbol) withLoc iIdent.loc
       // Rewrite node
       Instance(iSym, eSym, paramNames, paramExprs) withLoc tree.loc

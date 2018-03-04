@@ -53,7 +53,7 @@ trait Symbols { self: CompilerContext =>
         assert(scope.isEmpty)
 
         for (Entity(ident: Ident, _, _, _, _, _, _, _, _) <- entities) {
-          val symbol = newTypeSymbol(ident, TypeEntity)
+          val symbol = newTypeSymbol(ident, TypeEntity(Nil, Nil, Nil, Nil))
           scope(symbol.denot.name) = symbol
         }
 

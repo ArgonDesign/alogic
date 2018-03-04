@@ -29,7 +29,6 @@ abstract class TypeTransformer(implicit val cc: CompilerContext) extends TreeLik
   protected final override def walk(tree: Type): Type = {
     enter(tree)
     tree match {
-      case NoType        => transform(NoType)
       case TypeComb      => transform(TypeComb)
       case TypeCtrl      => transform(TypeType)
       case TypeType      => transform(TypeType)
@@ -48,8 +47,16 @@ abstract class TypeTransformer(implicit val cc: CompilerContext) extends TreeLik
       }
       case TypeVoid      => transform(TypeVoid)
       case node: TypeRef => transform(node)
-      case TypeFunc      => transform(TypeFunc)
-      case TypeEntity    => transform(TypeEntity)
+      case node: TypeFunc => {
+        val argTypes = walk(node.argTypes)
+        val retType = walk(node.retType)
+        transform(TypeCopier(node)(argTypes, retType))
+      }
+      case node: TypeEntity => {
+        val portTypes = walk(node.portTypes)
+        val paramTypes = walk(node.paramTypes)
+        transform(TypeCopier(node)(portTypes, paramTypes))
+      }
       case node: TypeIn => {
         val kind = walk(node.kind)
         transform(TypeCopier(node)(kind))
@@ -70,7 +77,6 @@ abstract class TypeTransformer(implicit val cc: CompilerContext) extends TreeLik
         val kind = walk(node.kind)
         transform(TypeCopier(node)(kind))
       }
-      case TypeInstance => transform(TypeInstance)
     }
   }
 }
