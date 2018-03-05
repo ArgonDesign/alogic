@@ -15,18 +15,19 @@
 
 package com.argondesign.alogic.frontend
 
+import scala.collection.immutable.ListMap
+
 import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.SourceTextConverters._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Error
-
-import scala.collection.immutable.ListMap
+import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
+import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeValid
+import com.argondesign.alogic.core.StorageTypes.StorageTypeReg
+import com.argondesign.alogic.core.Types._
 
 import org.scalatest.FreeSpec
-import com.argondesign.alogic.core.FlowControlTypes._
-import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.core.StorageTypes._
 
 final class CheckerSpec extends FreeSpec with AlogicTest {
 

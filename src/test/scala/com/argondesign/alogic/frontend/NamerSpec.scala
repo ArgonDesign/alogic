@@ -16,20 +16,19 @@
 package com.argondesign.alogic.frontend
 
 import com.argondesign.alogic.AlogicTest
+import com.argondesign.alogic.SourceTextConverters._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.ast.Trees.Expr._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Error
+import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
+import com.argondesign.alogic.core.Names.TypeName
+import com.argondesign.alogic.core.StorageTypes.StorageTypeReg
+import com.argondesign.alogic.core.Symbols.ErrorSymbol
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.core.Names._
+import com.argondesign.alogic.core.Warning
 
 import org.scalatest.FlatSpec
-
-import com.argondesign.alogic.SourceTextConverters._
-import com.argondesign.alogic.core.Warning
-import com.argondesign.alogic.core.Symbols.ErrorSymbol
-import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
-import com.argondesign.alogic.core.StorageTypes.StorageTypeReg
 
 final class NamerSpec extends FlatSpec with AlogicTest {
 
