@@ -34,6 +34,8 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer { namer 
     case _ => ()
   }
 
+  val reducingBinaryOps = Array(">", ">=", "<", "<=", "==", "!=", "&&", "||")
+
   override def transform(tree: Tree): Tree = tree match {
     case node: Root => node.entity
 
@@ -46,6 +48,34 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer { namer 
         case other                => other
       }
       tree withTpe kind
+    }
+
+    // Non-reducing unary ops
+    case ExprUnary(op, expr) if op == "+" || op == "-" || op == "~" => {
+      // TODO: Type check
+      tree withTpe expr.tpe
+    }
+
+    // Reducing unary ops
+    case ExprUnary(_, _) => {
+      // TODO: Type check
+      // TODO: Warn when reducing 1-bit quantity? Not good when it's parameterised
+      tree withTpe TypeUInt(1)
+    }
+
+    // Reducing binary ops
+    case ExprBinary(_, op, _) if reducingBinaryOps contains op => {
+      // TODO: Type check
+      // TODO: Width warning, promotion
+      tree withTpe TypeUInt(1)
+    }
+
+    // Non-Reducing binary ops
+    case ExprBinary(lhs, _, rhs) => {
+      // TODO: Type check
+      // TODO: Width warning, promotion, sizing of shift, etc, etc
+      val tpe = if (lhs.tpe.asInstanceOf[TypeInt].signed) rhs.tpe else lhs.tpe
+      tree withTpe tpe
     }
 
     case _ => tree

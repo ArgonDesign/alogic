@@ -44,12 +44,12 @@ object Types {
   // Type of control statements
   case object TypeCtrl extends Type
 
-  sealed trait TypeInt extends Type
+  sealed trait TypeInt extends Type with TypeIntImpl
 
   // Simple signed integer types e.g.: i8 / int(N), analogous to Verilog packed arrays
-  case class TypeSInt(size: Expr) extends TypeInt
+  case class TypeSInt(size: Expr) extends TypeInt with TypeSIntImpl
   // Simple unsigned integer types e.g.: u2 / uint(N), analogous to Verilog packed arrays
-  case class TypeUInt(size: Expr) extends TypeInt
+  case class TypeUInt(size: Expr) extends TypeInt with TypeUIntImpl
   // Vector types (analogous to higher dimensions of SystemVerilog multi-dimensional packed arrays)
   case class TypeVector(elementType: Type, size: Expr) extends Type
   // Array types (analogous to verilog unpacked arrays)
@@ -94,6 +94,18 @@ object Types {
   ///////////////////////////////////////////////////////////////////////////////
   // Implementations
   ///////////////////////////////////////////////////////////////////////////////
+
+  trait TypeIntImpl { this: TypeInt =>
+    def signed: Boolean
+  }
+
+  trait TypeSIntImpl { this: TypeSInt =>
+    final def signed = true
+  }
+
+  trait TypeUIntImpl { this: TypeUInt =>
+    final def signed = false
+  }
 
   // A base trait for types that have fields that can be looked up using dot notation
   trait CompoundType {

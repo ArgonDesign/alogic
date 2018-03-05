@@ -21,16 +21,13 @@ import com.argondesign.alogic.ast.Trees.Expr._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Error
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.core.Names._
 
 import org.scalatest.FreeSpec
 
 import com.argondesign.alogic.SourceTextConverters._
 import com.argondesign.alogic.core.Warning
-import com.argondesign.alogic.core.Symbols.ErrorSymbol
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
 import com.argondesign.alogic.core.StorageTypes.StorageTypeReg
-import com.argondesign.alogic.frontend.Namer
 
 final class TyperSpec extends FreeSpec with AlogicTest {
 
@@ -98,6 +95,169 @@ final class TyperSpec extends FreeSpec with AlogicTest {
                 }
               }
             }
+          }
+        }
+      }
+
+      "unary operators" - {
+        for {
+          (s, op, kind) <- List(
+            ("unsigned", "+", TypeUInt(32)),
+            ("unsigned", "-", TypeUInt(32)),
+            ("unsigned", "~", TypeUInt(32)),
+            ("unsigned", "!", TypeUInt(1)),
+            ("unsigned", "&", TypeUInt(1)),
+            ("unsigned", "~&", TypeUInt(1)),
+            ("unsigned", "|", TypeUInt(1)),
+            ("unsigned", "~|", TypeUInt(1)),
+            ("unsigned", "^", TypeUInt(1)),
+            ("unsigned", "~^", TypeUInt(1)),
+            ("signed", "+", TypeSInt(32)),
+            ("signed", "-", TypeSInt(32)),
+            ("signed", "~", TypeSInt(32)),
+            ("signed", "!", TypeUInt(1)),
+            ("signed", "&", TypeUInt(1)),
+            ("signed", "~&", TypeUInt(1)),
+            ("signed", "|", TypeUInt(1)),
+            ("signed", "~|", TypeUInt(1)),
+            ("signed", "^", TypeUInt(1)),
+            ("signed", "~^", TypeUInt(1))
+          )
+        } {
+          s"${s} ${op}" in {
+            val root = s"""|fsm thing {
+                           |  ${if (s == "signed") "i" else "u"}32 a;
+                           |  void main() {
+                           |    ${op}a;
+                           |  }
+                           |}""".stripMargin.asTree[Root]
+            val tree = xform(root)
+
+            inside(tree) {
+              case entity: Entity => {
+                inside(entity.functions(0)) {
+                  case Function(_, List(StmtExpr(expr))) =>
+                    expr should matchPattern { case ExprUnary(op, ExprRef(Sym(_))) => }
+                    expr.tpe shouldBe kind
+                }
+              }
+            }
+          }
+
+          cc.messages shouldBe empty
+        }
+      }
+
+      "binary operators" - {
+        for {
+          (sa, op, sb, kind) <- List(
+            // unsigned unsigned
+            ("unsigned", "*", "unsigned", TypeUInt(32)),
+            ("unsigned", "/", "unsigned", TypeUInt(32)),
+            ("unsigned", "%", "unsigned", TypeUInt(32)),
+            ("unsigned", "+", "unsigned", TypeUInt(32)),
+            ("unsigned", "-", "unsigned", TypeUInt(32)),
+            ("unsigned", "<<", "unsigned", TypeUInt(32)),
+            ("unsigned", ">>", "unsigned", TypeUInt(32)),
+            ("unsigned", ">>>", "unsigned", TypeUInt(32)),
+            ("unsigned", ">", "unsigned", TypeUInt(1)),
+            ("unsigned", ">=", "unsigned", TypeUInt(1)),
+            ("unsigned", "<", "unsigned", TypeUInt(1)),
+            ("unsigned", "<=", "unsigned", TypeUInt(1)),
+            ("unsigned", "==", "unsigned", TypeUInt(1)),
+            ("unsigned", "!=", "unsigned", TypeUInt(1)),
+            ("unsigned", "&", "unsigned", TypeUInt(32)),
+            ("unsigned", "^", "unsigned", TypeUInt(32)),
+            ("unsigned", "~^", "unsigned", TypeUInt(32)),
+            ("unsigned", "|", "unsigned", TypeUInt(32)),
+            ("unsigned", "&&", "unsigned", TypeUInt(1)),
+            ("unsigned", "||", "unsigned", TypeUInt(1)),
+            // unsigned signed
+            ("unsigned", "*", "signed", TypeUInt(32)),
+            ("unsigned", "/", "signed", TypeUInt(32)),
+            ("unsigned", "%", "signed", TypeUInt(32)),
+            ("unsigned", "+", "signed", TypeUInt(32)),
+            ("unsigned", "-", "signed", TypeUInt(32)),
+            ("unsigned", "<<", "signed", TypeUInt(32)),
+            ("unsigned", ">>", "signed", TypeUInt(32)),
+            ("unsigned", ">>>", "signed", TypeUInt(32)),
+            ("unsigned", ">", "signed", TypeUInt(1)),
+            ("unsigned", ">=", "signed", TypeUInt(1)),
+            ("unsigned", "<", "signed", TypeUInt(1)),
+            ("unsigned", "<=", "signed", TypeUInt(1)),
+            ("unsigned", "==", "signed", TypeUInt(1)),
+            ("unsigned", "!=", "signed", TypeUInt(1)),
+            ("unsigned", "&", "signed", TypeUInt(32)),
+            ("unsigned", "^", "signed", TypeUInt(32)),
+            ("unsigned", "~^", "signed", TypeUInt(32)),
+            ("unsigned", "|", "signed", TypeUInt(32)),
+            ("unsigned", "&&", "signed", TypeUInt(1)),
+            ("unsigned", "||", "signed", TypeUInt(1)),
+            // signed unsigned
+            ("signed", "*", "unsigned", TypeUInt(32)),
+            ("signed", "/", "unsigned", TypeUInt(32)),
+            ("signed", "%", "unsigned", TypeUInt(32)),
+            ("signed", "+", "unsigned", TypeUInt(32)),
+            ("signed", "-", "unsigned", TypeUInt(32)),
+            ("signed", "<<", "unsigned", TypeUInt(32)),
+            ("signed", ">>", "unsigned", TypeUInt(32)),
+            ("signed", ">>>", "unsigned", TypeUInt(32)),
+            ("signed", ">", "unsigned", TypeUInt(1)),
+            ("signed", ">=", "unsigned", TypeUInt(1)),
+            ("signed", "<", "unsigned", TypeUInt(1)),
+            ("signed", "<=", "unsigned", TypeUInt(1)),
+            ("signed", "==", "unsigned", TypeUInt(1)),
+            ("signed", "!=", "unsigned", TypeUInt(1)),
+            ("signed", "&", "unsigned", TypeUInt(32)),
+            ("signed", "^", "unsigned", TypeUInt(32)),
+            ("signed", "~^", "unsigned", TypeUInt(32)),
+            ("signed", "|", "unsigned", TypeUInt(32)),
+            ("signed", "&&", "unsigned", TypeUInt(1)),
+            ("signed", "||", "unsigned", TypeUInt(1)),
+            // signed signed
+            ("signed", "*", "signed", TypeSInt(32)),
+            ("signed", "/", "signed", TypeSInt(32)),
+            ("signed", "%", "signed", TypeSInt(32)),
+            ("signed", "+", "signed", TypeSInt(32)),
+            ("signed", "-", "signed", TypeSInt(32)),
+            ("signed", "<<", "signed", TypeSInt(32)),
+            ("signed", ">>", "signed", TypeSInt(32)),
+            ("signed", ">>>", "signed", TypeSInt(32)),
+            ("signed", ">", "signed", TypeUInt(1)),
+            ("signed", ">=", "signed", TypeUInt(1)),
+            ("signed", "<", "signed", TypeUInt(1)),
+            ("signed", "<=", "signed", TypeUInt(1)),
+            ("signed", "==", "signed", TypeUInt(1)),
+            ("signed", "!=", "signed", TypeUInt(1)),
+            ("signed", "&", "signed", TypeSInt(32)),
+            ("signed", "^", "signed", TypeSInt(32)),
+            ("signed", "~^", "signed", TypeSInt(32)),
+            ("signed", "|", "signed", TypeSInt(32)),
+            ("signed", "&&", "signed", TypeUInt(1)),
+            ("signed", "||", "signed", TypeUInt(1))
+          )
+        } {
+          s"${sa} ${op} ${sb}" in {
+            val root = s"""|fsm thing {
+                           |  ${if (sa == "signed") "i" else "u"}32 a;
+                           |  ${if (sb == "signed") "i" else "u"}32 b;
+                           |  void main() {
+                           |    a ${op} b;
+                           |  }
+                           |}""".stripMargin.asTree[Root]
+            val tree = xform(root)
+
+            inside(tree) {
+              case entity: Entity => {
+                inside(entity.functions(0)) {
+                  case Function(_, List(StmtExpr(expr))) =>
+                    expr should matchPattern { case ExprBinary(ExprRef(Sym(_)), op, ExprRef(Sym(_))) => }
+                    expr.tpe shouldBe kind
+                }
+              }
+            }
+
+            cc.messages shouldBe empty
           }
         }
       }
