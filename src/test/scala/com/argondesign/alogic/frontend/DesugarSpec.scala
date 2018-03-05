@@ -101,7 +101,7 @@ final class DesugarSpec extends FreeSpec with AlogicTest {
               val Sym(dSymB) = declB.ref
               dSymB.denot.name.str shouldBe "b"
               inside(declA) {
-                case StmtDecl(Decl(Sym(dSymA), TypeInt(true, Expr(2)), Some(Expr(0)))) =>
+                case StmtDecl(Decl(Sym(dSymA), TypeSInt(Expr(2)), Some(Expr(0)))) =>
                   inside(assignB) {
                     case StmtAssign(ExprRef(Sym(symB)), ExprRef(Sym(symA))) =>
                       symB.denot.name.str shouldBe "b";

@@ -53,20 +53,20 @@ final class TyperSpec extends FreeSpec with AlogicTest {
       "identifiers" - {
         for {
           (name, decl, kind) <- List(
-            ("bool", "bool a;", TypeInt(false, Expr(1))),
-            ("u8", "u8 a;", TypeInt(false, Expr(8))),
-            ("i1", "i1 a;", TypeInt(true, Expr(1))),
-            ("i8", "i8 a;", TypeInt(true, Expr(8))),
-            ("struct", "s a;", TypeStruct(List("b", "c"), List(TypeInt(false, Expr(1)), TypeInt(true, Expr(8))))),
-            ("typedef", "t a;", TypeInt(false, Expr(4))),
-            ("uint(2,8)", "uint(2,8) a;", TypeVector(TypeInt(false, Expr(8)), Expr(2))),
-            ("u8[2]", "u8 a[2];", TypeArray(TypeInt(false, Expr(8)), Expr(2))),
-            ("u8[2][4]", "u8 a[2][4];", TypeArray(TypeArray(TypeInt(false, Expr(8)), Expr(4)), Expr(2))),
-            ("param u8 ", "param u8 a = 8'd2;", TypeInt(false, Expr(8))),
-            ("const u8 ", "const u8 a = 8'd2;", TypeInt(false, Expr(8))),
-            ("pipeline u8 ", "pipeline u8 a;", TypeInt(false, Expr(8))),
-            ("in u8 ", "in u8 a;", TypeIn(TypeInt(false, Expr(8)), FlowControlTypeNone)),
-            ("out u8 ", "out u8 a;", TypeOut(TypeInt(false, Expr(8)), FlowControlTypeNone, StorageTypeReg)),
+            ("bool", "bool a;", TypeUInt(1)),
+            ("u8", "u8 a;", TypeUInt(8)),
+            ("i1", "i1 a;", TypeSInt(1)),
+            ("i8", "i8 a;", TypeSInt(8)),
+            ("struct", "s a;", TypeStruct(List("b", "c"), List(TypeUInt(1), TypeSInt(8)))),
+            ("typedef", "t a;", TypeUInt(4)),
+            ("uint(2,8)", "uint(2,8) a;", TypeVector(TypeUInt(8), 2)),
+            ("u8[2]", "u8 a[2];", TypeArray(TypeUInt(8), 2)),
+            ("u8[2][4]", "u8 a[2][4];", TypeArray(TypeArray(TypeUInt(8), 4), 2)),
+            ("param u8 ", "param u8 a = 8'd2;", TypeUInt(8)),
+            ("const u8 ", "const u8 a = 8'd2;", TypeUInt(8)),
+            ("pipeline u8 ", "pipeline u8 a;", TypeUInt(8)),
+            ("in u8 ", "in u8 a;", TypeIn(TypeUInt(8), FlowControlTypeNone)),
+            ("out u8 ", "out u8 a;", TypeOut(TypeUInt(8), FlowControlTypeNone, StorageTypeReg)),
             ("function", "void a() {}", TypeFunc(Nil, TypeVoid))
           )
         } {

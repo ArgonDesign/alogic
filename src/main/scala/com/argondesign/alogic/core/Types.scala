@@ -44,8 +44,12 @@ object Types {
   // Type of control statements
   case object TypeCtrl extends Type
 
-  // Simple integer types e.g.: i8 / u2 / int(N), analogous to Verilog packed arrays
-  case class TypeInt(signed: Boolean, size: Expr) extends Type
+  sealed trait TypeInt extends Type
+
+  // Simple signed integer types e.g.: i8 / int(N), analogous to Verilog packed arrays
+  case class TypeSInt(size: Expr) extends TypeInt
+  // Simple unsigned integer types e.g.: u2 / uint(N), analogous to Verilog packed arrays
+  case class TypeUInt(size: Expr) extends TypeInt
   // Vector types (analogous to higher dimensions of SystemVerilog multi-dimensional packed arrays)
   case class TypeVector(elementType: Type, size: Expr) extends Type
   // Array types (analogous to verilog unpacked arrays)
@@ -76,6 +80,16 @@ object Types {
   case class TypeParam(kind: Type) extends Type
   // Constant type
   case class TypeConst(kind: Type) extends Type
+
+  ///////////////////////////////////////////////////////////////////////////////
+  // base trait companions
+  ///////////////////////////////////////////////////////////////////////////////
+  object TypeInt {
+    def unapply(expr: TypeInt): Option[Expr] = expr match {
+      case TypeSInt(size) => Some(size)
+      case TypeUInt(size) => Some(size)
+    }
+  }
 
   ///////////////////////////////////////////////////////////////////////////////
   // Implementations
@@ -114,7 +128,7 @@ object Types {
       case FlowControlTypeValid | FlowControlTypeReady => {
         Map(
           "read" -> TypeFunc(Nil, kind),
-          "valid" -> TypeFunc(Nil, TypeInt(false, Expr(1))),
+          "valid" -> TypeFunc(Nil, TypeUInt(1)),
           "wait" -> TypeFunc(Nil, TypeVoid)
         )
       }
@@ -139,17 +153,17 @@ object Types {
         case FlowControlTypeValid => {
           Map(
             "write" -> writeFuncType,
-            "valid" -> TypeFunc(Nil, TypeInt(false, Expr(1))),
+            "valid" -> TypeFunc(Nil, TypeUInt(1)),
             "flush" -> TypeFunc(Nil, TypeVoid)
           )
         }
         case FlowControlTypeReady => {
           Map(
             "write" -> writeFuncType,
-            "valid" -> TypeFunc(Nil, TypeInt(false, Expr(1))),
+            "valid" -> TypeFunc(Nil, TypeUInt(1)),
             "flush" -> TypeFunc(Nil, TypeVoid),
-            "full" -> TypeFunc(Nil, TypeInt(false, Expr(1))),
-            "empty" -> TypeFunc(Nil, TypeInt(false, Expr(1)))
+            "full" -> TypeFunc(Nil, TypeUInt(1)),
+            "empty" -> TypeFunc(Nil, TypeUInt(1))
           )
         }
         case FlowControlTypeAccept => {

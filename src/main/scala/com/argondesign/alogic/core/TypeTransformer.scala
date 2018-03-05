@@ -29,10 +29,11 @@ abstract class TypeTransformer(implicit val cc: CompilerContext) extends TreeLik
   protected final override def walk(tree: Type): Type = {
     enter(tree)
     tree match {
-      case TypeComb      => transform(TypeComb)
-      case TypeCtrl      => transform(TypeType)
-      case TypeType      => transform(TypeType)
-      case node: TypeInt => transform(node)
+      case TypeComb       => transform(TypeComb)
+      case TypeCtrl       => transform(TypeType)
+      case TypeType       => transform(TypeType)
+      case node: TypeSInt => transform(node)
+      case node: TypeUInt => transform(node)
       case node: TypeVector => {
         val elementType = walk(node.elementType)
         transform(TypeCopier(node)(elementType))

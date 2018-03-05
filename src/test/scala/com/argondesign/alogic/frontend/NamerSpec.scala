@@ -198,7 +198,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
 
         aSym.denot.kind shouldBe TypeStruct(
           List("b", "c", "d"),
-          List(TypeInt(false, Expr(1)), TypeInt(true, Expr(8)), TypeRef(Sym(eSym)))
+          List(TypeUInt(Expr(1)), TypeSInt(Expr(8)), TypeRef(Sym(eSym)))
         )
     }
 
@@ -254,7 +254,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
         inside(typedef) {
           case TypeDefinitionTypedef(Sym(declSym), _) =>
             declSym.loc.line shouldBe 1
-            declSym.denot.kind shouldBe TypeInt(false, Expr(1))
+            declSym.denot.kind shouldBe TypeUInt(Expr(1))
             inside(entity) {
               case Entity(_, _, _, _, _, _, List(StmtBlock(List(_, stmt))), _, _) =>
                 inside(stmt) {
@@ -430,7 +430,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
         inside(main) {
           case Function(Sym(_), List(StmtDecl(decl), StmtExpr(expr))) =>
             inside(decl) {
-              case Decl(Sym(dSym), TypeInt(false, Expr(1)), None) =>
+              case Decl(Sym(dSym), TypeUInt(Expr(1)), None) =>
                 inside(expr) {
                   case ExprAtCall("bits", List(ExprRef(Sym(rSym)))) =>
                     rSym should be theSameInstanceAs dSym
@@ -459,7 +459,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     inside(tree) {
       case Root(List(typedef), entity) =>
         inside(typedef) {
-          case TypeDefinitionTypedef(Sym(dSym), TypeInt(false, Expr(1))) =>
+          case TypeDefinitionTypedef(Sym(dSym), TypeUInt(Expr(1))) =>
             inside(entity) {
               case Entity(_, _, _, _, List(main), _, _, _, _) =>
                 inside(main) {
@@ -494,7 +494,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     inside(tree) {
       case Root(List(typedef), entity) =>
         inside(typedef) {
-          case TypeDefinitionTypedef(Sym(_), TypeInt(false, Expr(1))) =>
+          case TypeDefinitionTypedef(Sym(_), TypeUInt(Expr(1))) =>
             inside(entity) {
               case Entity(_, _, _, _, List(main), _, _, _, _) =>
                 inside(main) {
@@ -580,7 +580,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
                 sym should be theSameInstanceAs symA
             }
             inside(elementType) {
-              case TypeInt(true, ExprRef(Sym(sym))) =>
+              case TypeSInt(ExprRef(Sym(sym))) =>
                 sym should be theSameInstanceAs symB
             }
         }
@@ -603,7 +603,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
         val Sym(symA) = declA.ref
         val Sym(symB) = declB.ref
         inside(declC) {
-          case Decl(_, TypeArray(TypeArray(TypeInt(false, Expr(1)), size1), size2), _) =>
+          case Decl(_, TypeArray(TypeArray(TypeUInt(Expr(1)), size1), size2), _) =>
             inside(size1) {
               case ExprRef(Sym(sym)) =>
                 sym should be theSameInstanceAs symB
@@ -630,9 +630,9 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     val symA = tree collectFirst { case Sym(symbol) if symbol.denot.name.str == "a" => symbol }
     inside(symA.value.denot.kind) {
       case TypeEntity(List("a", "b"), List(typeA, typeB), List("P"), List(typeP)) =>
-        typeA shouldBe TypeIn(TypeInt(false, Expr(1)), FlowControlTypeNone)
-        typeB shouldBe TypeOut(TypeInt(true, Expr(3)), FlowControlTypeNone, StorageTypeReg)
-        typeP shouldBe TypeParam(TypeInt(false, Expr(8)))
+        typeA shouldBe TypeIn(TypeUInt(Expr(1)), FlowControlTypeNone)
+        typeB shouldBe TypeOut(TypeSInt(Expr(3)), FlowControlTypeNone, StorageTypeReg)
+        typeP shouldBe TypeParam(TypeUInt(Expr(8)))
     }
   }
 
@@ -642,7 +642,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     val tree = root rewrite namer
 
     val symA = tree collectFirst { case Sym(symbol) if symbol.denot.name.str == "a" => symbol }
-    symA.value.denot.kind shouldBe TypeInt(false, Expr(1))
+    symA.value.denot.kind shouldBe TypeUInt(Expr(1))
   }
 
   it should "attach correct types to symbol denotations - struct" in {
@@ -651,7 +651,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     val tree = root rewrite namer
 
     val symA = tree collectFirst { case Sym(symbol) if symbol.denot.name.str == "a" => symbol }
-    symA.value.denot.kind shouldBe TypeStruct(List("a", "b"), List(TypeInt(false, Expr(1)), TypeInt(true, Expr(2))))
+    symA.value.denot.kind shouldBe TypeStruct(List("a", "b"), List(TypeUInt(Expr(1)), TypeSInt(Expr(2))))
   }
 
   it should "attach correct types to symbol denotations - function" in {
@@ -681,7 +681,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     val tree = entity rewrite namer
 
     val symA = tree collectFirst { case Sym(symbol) if symbol.denot.name.str == "a" => symbol }
-    symA.value.denot.kind shouldBe TypeIn(TypeInt(false, Expr(1)), FlowControlTypeNone)
+    symA.value.denot.kind shouldBe TypeIn(TypeUInt(Expr(1)), FlowControlTypeNone)
   }
 
   it should "attach correct types to symbol denotations - decl out" in {
@@ -690,7 +690,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     val tree = entity rewrite namer
 
     val symA = tree collectFirst { case Sym(symbol) if symbol.denot.name.str == "a" => symbol }
-    symA.value.denot.kind shouldBe TypeOut(TypeInt(false, Expr(1)), FlowControlTypeNone, StorageTypeReg)
+    symA.value.denot.kind shouldBe TypeOut(TypeUInt(Expr(1)), FlowControlTypeNone, StorageTypeReg)
   }
 
   it should "attach correct types to symbol denotations - decl param" in {
@@ -699,7 +699,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     val tree = entity rewrite namer
 
     val symA = tree collectFirst { case Sym(symbol) if symbol.denot.name.str == "a" => symbol }
-    symA.value.denot.kind shouldBe TypeParam(TypeInt(false, Expr(1)))
+    symA.value.denot.kind shouldBe TypeParam(TypeUInt(Expr(1)))
   }
 
   it should "attach correct types to symbol denotations - decl const" in {
@@ -708,7 +708,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     val tree = entity rewrite namer
 
     val symA = tree collectFirst { case Sym(symbol) if symbol.denot.name.str == "a" => symbol }
-    symA.value.denot.kind shouldBe TypeConst(TypeInt(false, Expr(1)))
+    symA.value.denot.kind shouldBe TypeConst(TypeUInt(Expr(1)))
   }
 
   it should "attach correct types to symbol denotations - decl pipeline" in {
@@ -717,7 +717,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     val tree = entity rewrite namer
 
     val symA = tree collectFirst { case Sym(symbol) if symbol.denot.name.str == "a" => symbol }
-    symA.value.denot.kind shouldBe TypePipeline(TypeInt(false, Expr(1)))
+    symA.value.denot.kind shouldBe TypePipeline(TypeUInt(Expr(1)))
   }
 
   it should "attach correct types to symbol denotations - decl array" in {
@@ -726,7 +726,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     val tree = entity rewrite namer
 
     val symA = tree collectFirst { case Sym(symbol) if symbol.denot.name.str == "a" => symbol }
-    symA.value.denot.kind shouldBe TypeArray(TypeArray(TypeInt(false, Expr(1)), Expr(3)), Expr(2))
+    symA.value.denot.kind shouldBe TypeArray(TypeArray(TypeUInt(Expr(1)), Expr(3)), Expr(2))
   }
 
   it should "attach correct types to symbol denotations - decl vec" in {
@@ -735,7 +735,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     val tree = entity rewrite namer
 
     val symA = tree collectFirst { case Sym(symbol) if symbol.denot.name.str == "a" => symbol }
-    symA.value.denot.kind shouldBe TypeVector(TypeVector(TypeInt(true, Expr(4)), Expr(2)), Expr(3))
+    symA.value.denot.kind shouldBe TypeVector(TypeVector(TypeSInt(Expr(4)), Expr(2)), Expr(3))
   }
 
   it should "attach correct types to symbol denotations - decl scalar" in {
@@ -744,7 +744,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     val tree = entity rewrite namer
 
     val symA = tree collectFirst { case Sym(symbol) if symbol.denot.name.str == "a" => symbol }
-    symA.value.denot.kind shouldBe TypeInt(false, Expr(2))
+    symA.value.denot.kind shouldBe TypeUInt(Expr(2))
   }
 
   it should "attach correct types to symbol denotations - decl void" in {

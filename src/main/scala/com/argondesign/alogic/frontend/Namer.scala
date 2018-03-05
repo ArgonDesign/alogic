@@ -189,12 +189,19 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         }
         if (newSize eq size) node else node.copy(size = newSize)
       }
-      case node @ TypeInt(_, size) => {
+      case node @ TypeInt(size) => {
         val newSize = namer walk size match {
           case expr: Expr => expr
           case _          => unreachable
         }
-        if (newSize eq size) node else node.copy(size = newSize)
+        if (newSize eq size) {
+          node
+        } else {
+          node match {
+            case sint: TypeSInt => sint.copy(size = newSize)
+            case uint: TypeUInt => uint.copy(size = newSize)
+          }
+        }
       }
       case node @ TypeArray(_, size) => {
         val newSize = namer walk size match {

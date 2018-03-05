@@ -16,40 +16,39 @@
 
 package com.argondesign.alogic.ast
 
+import scala.language.implicitConversions
 import scala.math.BigInt.int2bigInt
 
 import Trees._
-import Trees.ExprBinary
-import Trees.ExprNum
 
 trait ExprOps { this: Expr =>
 
-  private final def addLoc(expr: Expr) = if (hasLoc) expr withLoc loc else expr
+  private final def makeExprBinary(op: String, rhs: Expr) = {
+    val expr = ExprBinary(this, op, rhs)
+    if (hasLoc) {
+      if (!rhs.hasLoc) {
+        rhs withLoc loc
+      }
+      expr withLoc loc
+    } else {
+      expr
+    }
+  }
 
   // Helpers to easily combine expression trees manually with other expressions
-  final def *(rhs: Expr): Expr = addLoc(ExprBinary(this, "*", rhs))
-  final def /(rhs: Expr): Expr = addLoc(ExprBinary(this, "/", rhs))
-  final def %(rhs: Expr): Expr = addLoc(ExprBinary(this, "%", rhs))
-  final def +(rhs: Expr): Expr = addLoc(ExprBinary(this, "+", rhs))
-  final def -(rhs: Expr): Expr = addLoc(ExprBinary(this, "-", rhs))
-  final def <<(rhs: Expr): Expr = addLoc(ExprBinary(this, "<<", rhs))
-  final def >>(rhs: Expr): Expr = addLoc(ExprBinary(this, ">>", rhs))
-  final def >>>(rhs: Expr): Expr = addLoc(ExprBinary(this, ">>>", rhs))
-  final def &(rhs: Expr): Expr = addLoc(ExprBinary(this, "&", rhs))
-  final def ^(rhs: Expr): Expr = addLoc(ExprBinary(this, "^", rhs))
-  final def |(rhs: Expr): Expr = addLoc(ExprBinary(this, "|", rhs))
-  final def &&(rhs: Expr): Expr = addLoc(ExprBinary(this, "&&", rhs))
-  final def ||(rhs: Expr): Expr = addLoc(ExprBinary(this, "||", rhs))
-
-  // Helpers to easily combine expression trees manually with integers
-  final def *(rhs: Int): Expr = addLoc(ExprBinary(this, "*", addLoc(Expr(rhs))))
-  final def /(rhs: Int): Expr = addLoc(ExprBinary(this, "/", addLoc(Expr(rhs))))
-  final def %(rhs: Int): Expr = addLoc(ExprBinary(this, "%", addLoc(Expr(rhs))))
-  final def +(rhs: Int): Expr = addLoc(ExprBinary(this, "+", addLoc(Expr(rhs))))
-  final def -(rhs: Int): Expr = addLoc(ExprBinary(this, "-", addLoc(Expr(rhs))))
-  final def <<(rhs: Int): Expr = addLoc(ExprBinary(this, "<<", addLoc(Expr(rhs))))
-  final def >>(rhs: Int): Expr = addLoc(ExprBinary(this, ">>", addLoc(Expr(rhs))))
-  final def >>>(rhs: Int): Expr = addLoc(ExprBinary(this, ">>>", addLoc(Expr(rhs))))
+  final def *(rhs: Expr): Expr = makeExprBinary("*", rhs)
+  final def /(rhs: Expr): Expr = makeExprBinary("/", rhs)
+  final def %(rhs: Expr): Expr = makeExprBinary("%", rhs)
+  final def +(rhs: Expr): Expr = makeExprBinary("+", rhs)
+  final def -(rhs: Expr): Expr = makeExprBinary("-", rhs)
+  final def <<(rhs: Expr): Expr = makeExprBinary("<<", rhs)
+  final def >>(rhs: Expr): Expr = makeExprBinary(">>", rhs)
+  final def >>>(rhs: Expr): Expr = makeExprBinary(">>>", rhs)
+  final def &(rhs: Expr): Expr = makeExprBinary("&", rhs)
+  final def ^(rhs: Expr): Expr = makeExprBinary("^", rhs)
+  final def |(rhs: Expr): Expr = makeExprBinary("|", rhs)
+  final def &&(rhs: Expr): Expr = makeExprBinary("&&", rhs)
+  final def ||(rhs: Expr): Expr = makeExprBinary("||", rhs)
 
   // Is this expression shaped as a valid type expression
   final def isTypeExpr: Boolean = this forall {
@@ -378,6 +377,9 @@ trait ObjectExprOps {
   // Helpers to easily create ExprNum from integers
   final def apply(n: Int): ExprNum = ExprNum(true, None, n)
   final def apply(n: BigInt): ExprNum = ExprNum(true, None, n)
+
+  // Implicit conversion for Int to ExprNum
+  implicit final def int2ExprNum(n: Int): ExprNum = apply(n)
 
   // And extractor so we can match against the the same as above
   final def unapply(num: ExprNum): Option[Int] = if (num.signed && num.width.isEmpty) Some(num.value.toInt) else None
