@@ -375,14 +375,14 @@ trait ExprOps { this: Expr =>
 
 trait ObjectExprOps {
   // Helpers to easily create ExprNum from integers
-  final def apply(n: Int): ExprNum = ExprNum(true, None, n)
-  final def apply(n: BigInt): ExprNum = ExprNum(true, None, n)
+  final def apply(n: Int): ExprNum = ExprNum(true, n)
+  final def apply(n: BigInt): ExprNum = ExprNum(true, n)
 
   // Implicit conversion for Int to ExprNum
   implicit final def int2ExprNum(n: Int): ExprNum = apply(n)
 
   // And extractor so we can match against the the same as above
-  final def unapply(num: ExprNum): Option[Int] = if (num.signed && num.width.isEmpty) Some(num.value.toInt) else None
+  final def unapply(num: ExprNum): Option[Int] = if (num.signed) Some(num.value.toInt) else None
 
   // Extractors to match operators naturally
   final object * { def unapply(expr: ExprBinary) = if (expr.op == "*") Some((expr.lhs, expr.rhs)) else None }

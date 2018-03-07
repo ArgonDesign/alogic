@@ -28,7 +28,7 @@ final class Desugar(implicit cc: CompilerContext) extends TreeTransformer { name
     // "a++" rewritten as  "a = a + @zx(@bits(a), 1'b1)"
     case StmtPost(lhs, op) => {
       val width = ExprAtCall("bits", List(lhs)) withLoc tree.loc
-      val incr = ExprAtCall("zx", List(width, ExprNum(false, Some(1), 1) withLoc tree.loc)) withLoc tree.loc
+      val incr = ExprAtCall("zx", List(width, ExprInt(false, 1, 1) withLoc tree.loc)) withLoc tree.loc
       val rhs = op match {
         case "++" => lhs + incr
         case "--" => lhs - incr

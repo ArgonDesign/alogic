@@ -161,7 +161,8 @@ object Trees {
   case class ExprDollarCall(name: String, args: List[Expr]) extends Expr
 
   // Literals
-  case class ExprNum(signed: Boolean, width: Option[Int], value: BigInt) extends Expr
+  case class ExprInt(signed: Boolean, width: Int, value: BigInt) extends Expr
+  case class ExprNum(signed: Boolean, value: BigInt) extends Expr
   case class ExprStr(value: String) extends Expr
 
   case class ExprRef(ref: Ref) extends Expr

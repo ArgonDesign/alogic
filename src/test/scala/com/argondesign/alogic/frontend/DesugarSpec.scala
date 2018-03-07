@@ -52,7 +52,7 @@ final class DesugarSpec extends FreeSpec with AlogicTest {
                       inside(incr) {
                         case ExprAtCall("zx", List(width, value)) =>
                           width shouldBe ExprAtCall("bits", List(ExprRef(Sym(dSym))))
-                          value shouldBe ExprNum(false, Some(1), 1)
+                          value shouldBe ExprInt(false, 1, 1)
                       }
                   }
               }

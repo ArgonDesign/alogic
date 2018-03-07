@@ -515,6 +515,48 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         }
       }
     }
+
+    "check integer literals fit in the specified number of bits, and" - {
+      "signal error if they do not" - {
+        for {
+          literal <- List(
+            "1'b10",
+            "8'd256",
+            "64'h1_0000_0000_0000_0000",
+            "128'h1_0000_0000_0000_0000_0000_0000_0000_0000",
+            "1'sb1",
+            "8'sd128",
+            "64'sh8000_0000_0000_0000",
+            "128'sh8000_0000_0000_0000_0000_0000_0000_0000"
+          )
+        } {
+          literal in {
+            literal.asTree[Expr] rewrite checker shouldBe ExprError()
+            val bits = literal takeWhile { _ != '\'' }
+            cc.messages.loneElement should beThe[Error](s"Value '.*' does not fit in ${bits} bits")
+          }
+        }
+      }
+      "accept them if they do" - {
+        for {
+          literal <- List(
+            "1'b1",
+            "8'd255",
+            "64'hFFFF_FFFF_FFFF_FFFF",
+            "128'hFFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF",
+            "1'sb0",
+            "8'sd127",
+            "64'sh0FFF_FFFF_FFFF_FFFF",
+            "128'sh0FFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF"
+          )
+        } {
+          literal in {
+            literal.asTree[Expr] rewrite checker shouldBe a[ExprInt]
+            cc.messages shouldBe empty
+          }
+        }
+      }
+    }
   }
 
 }

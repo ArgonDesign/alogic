@@ -37,6 +37,7 @@ import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeValid
 import com.argondesign.alogic.core.StorageTypes.StorageTypeReg
 import com.argondesign.alogic.core.StorageTypes.StorageTypeSlices
 import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.lib.Math
 import com.argondesign.alogic.util.FollowedBy
 
 final class Checker(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
@@ -221,6 +222,17 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
       val newRhss = if (badRhss.isEmpty) rhss else goodRhss
 
       TreeCopier(connect)(newLhs, newRhss)
+    }
+
+    case ExprInt(signed, width, value) => {
+      assert(value >= 0)
+      val bits = if (signed) width - 1 else width
+      if (Math.clog2(value + 1) > bits) {
+        cc.error(tree, s"Value '${value}' does not fit in ${width} bits")
+        ExprError() withLoc tree.loc
+      } else {
+        tree
+      }
     }
 
     case _ => tree

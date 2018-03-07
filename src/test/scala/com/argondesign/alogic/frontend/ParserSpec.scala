@@ -165,7 +165,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
 
           "with initializer" in {
             "bool b = true".asTree[Decl] shouldBe {
-              Decl(Ident("b"), TypeUInt(Expr(1)), Some(ExprNum(false, Option(1), 1)))
+              Decl(Ident("b"), TypeUInt(Expr(1)), Some(ExprInt(false, 1, 1)))
             }
           }
         }
@@ -810,63 +810,63 @@ final class ParserSpec extends FreeSpec with AlogicTest {
 
         "literals" - {
           "true" in {
-            "true".asTree[Expr] shouldBe ExprNum(false, Some(1), 1)
+            "true".asTree[Expr] shouldBe ExprInt(false, 1, 1)
           }
 
           "false" in {
-            "false".asTree[Expr] shouldBe ExprNum(false, Some(1), 0)
+            "false".asTree[Expr] shouldBe ExprInt(false, 1, 0)
           }
 
           "integer" in {
-            "42".asTree[Expr] shouldBe ExprNum(true, None, 42)
+            "42".asTree[Expr] shouldBe ExprNum(true, 42)
           }
 
           "unsized unsigned binary integer" in {
-            "'b11".asTree[Expr] shouldBe ExprNum(false, None, 3)
+            "'b11".asTree[Expr] shouldBe ExprNum(false, 3)
           }
 
           "unsized unsigned decimal integer" in {
-            "'d11".asTree[Expr] shouldBe ExprNum(false, None, 11)
+            "'d11".asTree[Expr] shouldBe ExprNum(false, 11)
           }
 
           "unsized unsigned hex integer" in {
-            "'h11".asTree[Expr] shouldBe ExprNum(false, None, 17)
+            "'h11".asTree[Expr] shouldBe ExprNum(false, 17)
           }
 
           "unsized signed binary integer" in {
-            "'sb11".asTree[Expr] shouldBe ExprNum(true, None, 3)
+            "'sb11".asTree[Expr] shouldBe ExprNum(true, 3)
           }
 
           "unsized signed decimal integer" in {
-            "'sd11".asTree[Expr] shouldBe ExprNum(true, None, 11)
+            "'sd11".asTree[Expr] shouldBe ExprNum(true, 11)
           }
 
           "unsized signed hex integer" in {
-            "'sh11".asTree[Expr] shouldBe ExprNum(true, None, 17)
+            "'sh11".asTree[Expr] shouldBe ExprNum(true, 17)
           }
 
           "sized unsigned binary integer" in {
-            "12'b11".asTree[Expr] shouldBe ExprNum(false, Some(12), 3)
+            "12'b11".asTree[Expr] shouldBe ExprInt(false, 12, 3)
           }
 
           "sized unsigned decimal integer" in {
-            "13'd11".asTree[Expr] shouldBe ExprNum(false, Some(13), 11)
+            "13'd11".asTree[Expr] shouldBe ExprInt(false, 13, 11)
           }
 
           "sized unsigned hex integer" in {
-            "14'h11".asTree[Expr] shouldBe ExprNum(false, Some(14), 17)
+            "14'h11".asTree[Expr] shouldBe ExprInt(false, 14, 17)
           }
 
           "sized signed binary integer" in {
-            "15'sb11".asTree[Expr] shouldBe ExprNum(true, Some(15), 3)
+            "15'sb11".asTree[Expr] shouldBe ExprInt(true, 15, 3)
           }
 
           "sized signed decimal integer" in {
-            "16'sd11".asTree[Expr] shouldBe ExprNum(true, Some(16), 11)
+            "16'sd11".asTree[Expr] shouldBe ExprInt(true, 16, 11)
           }
 
           "sized signed hex integer" in {
-            "17'sh11".asTree[Expr] shouldBe ExprNum(true, Some(17), 17)
+            "17'sh11".asTree[Expr] shouldBe ExprInt(true, 17, 17)
           }
 
           "string" in {

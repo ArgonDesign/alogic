@@ -84,7 +84,7 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer { namer 
   override def finalCheck(tree: Tree): Unit = {
     tree visit {
       case _: Type => /* Don't recurse into types */
-      case node @ ExprNum(_, None, _) => {
+      case node: ExprNum => {
         cc.ice(node, s"Typer should have removed all unsized integer literals, but '${node}' remains")
       }
       case node: TypeDefinition => {

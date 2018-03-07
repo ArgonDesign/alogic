@@ -47,19 +47,12 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
 
   private val baseMap = Map('b' -> 2, 'd' -> 10, 'h' -> 16)
 
-  private def const2Num(const: String) = ExprNum(true, None, BigInt(const filter (_ != '_')))
-
-  private def tickNum2Num(width: Option[String], tickNum: String): ExprNum = {
-    assert(tickNum(0) == '\'')
-    val widthVal = width filter (_ != '_') map { _.toInt }
-    val signed = tickNum(1) == 's'
-    val baseChar = if (signed) tickNum(2) else tickNum(1)
-    val base = baseMap(baseChar)
-    val rest = if (signed) tickNum drop 3 else tickNum drop 2
-    val digits = rest filter (_ != '_')
-    val value = BigInt(digits, base)
-    // TODO: check value fits in width
-    ExprNum(signed, widthVal, value)
+  private def ticknum2SignValue(ticknum: String): (Boolean, BigInt) = {
+    val signed = ticknum(1) == 's'
+    val rest = if (signed) ticknum.drop(2) else ticknum.drop(1)
+    val base = baseMap(rest.head)
+    val digits = rest.tail filter (_ != '_')
+    (signed, BigInt(digits, base))
   }
 
   def apply(ctx: ExprContext)(implicit cc: CompilerContext): Expr = {
@@ -110,22 +103,26 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
 
       // Literals
       override def visitExprTrue(ctx: ExprTrueContext) = {
-        ExprNum(false, Some(1), 1) withLoc ctx.loc
+        ExprInt(false, 1, 1) withLoc ctx.loc
       }
       override def visitExprFalse(ctx: ExprFalseContext) = {
-        ExprNum(false, Some(1), 0) withLoc ctx.loc
+        ExprInt(false, 1, 0) withLoc ctx.loc
       }
       override def visitExprString(ctx: ExprStringContext) = {
         ExprStr(ctx.STRING.text.tail.init) withLoc ctx.loc
       }
+      override def visitExprConst(ctx: ExprConstContext) = {
+        val value = BigInt(ctx.CONSTANT.text filter (_ != '_'))
+        ExprNum(true, value) withLoc ctx.loc
+      }
       override def visitExprTickNum(ctx: ExprTickNumContext) = {
-        tickNum2Num(None, ctx.TICKNUM) withLoc ctx.loc
+        val (sign, value) = ticknum2SignValue(ctx.TICKNUM)
+        ExprNum(sign, value) withLoc ctx.loc
       }
       override def visitExprConstTickNum(ctx: ExprConstTickNumContext) = {
-        tickNum2Num(Some(ctx.CONSTANT), ctx.TICKNUM) withLoc ctx.loc
-      }
-      override def visitExprConst(ctx: ExprConstContext) = {
-        const2Num(ctx.CONSTANT) withLoc ctx.loc
+        val (sign, value) = ticknum2SignValue(ctx.TICKNUM)
+        val width = (ctx.CONSTANT.text filter (_ != '_')).toInt
+        ExprInt(sign, width, value) withLoc ctx.loc
       }
 
       // Identifier
