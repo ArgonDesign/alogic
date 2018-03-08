@@ -624,20 +624,20 @@ final class ParserSpec extends FreeSpec with AlogicTest {
         "loops" - {
           "loop" in {
             """|loop {
-                       |  1;
-                       |}""".asTree[Stmt] shouldBe StmtLoop(List(StmtExpr(Expr(1))))
+               |  1;
+               |}""".asTree[Stmt] shouldBe StmtLoop(List(StmtExpr(Expr(1))))
           }
 
           "while" in {
             """|while (a) {
-                       |  fence;
-                       |}""".asTree[Stmt] shouldBe StmtWhile(ExprRef(Ident("a")), List(StmtFence()))
+               |  fence;
+               |}""".asTree[Stmt] shouldBe StmtWhile(ExprRef(Ident("a")), List(StmtFence()))
           }
 
           "do" in {
             """|do {
-                       | fence;
-                       |} while(b);""".asTree[Stmt] shouldBe StmtDo(ExprRef(Ident("b")), List(StmtFence()))
+               | fence;
+               |} while(b);""".asTree[Stmt] shouldBe StmtDo(ExprRef(Ident("b")), List(StmtFence()))
           }
 
           "for" - {
@@ -647,8 +647,8 @@ final class ParserSpec extends FreeSpec with AlogicTest {
 
             "with single init assign" in {
               """|for (a=2;a;a--) {
-                         |  2;
-                         |}""".stripMargin.asTree[Stmt] shouldBe {
+                 |  2;
+                 |}""".asTree[Stmt] shouldBe {
                 StmtFor(
                   List(StmtAssign(ExprRef(Ident("a")), Expr(2))),
                   Some(ExprRef(Ident("a"))),
@@ -661,8 +661,8 @@ final class ParserSpec extends FreeSpec with AlogicTest {
 
             "with single init decl" in {
               """|for (i8 a=2;a;a--) {
-                         |  2;
-                         |}""".stripMargin.asTree[Stmt] shouldBe {
+                 |  2;
+                 |}""".stripMargin.asTree[Stmt] shouldBe {
                 StmtFor(
                   List(StmtDecl(Decl(Ident("a"), TypeSInt(Expr(8)), Some(Expr(2))))),
                   Some(ExprRef(Ident("a"))),
@@ -674,7 +674,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
 
             "with multiple init" in {
               """|for (i8 a=2, b=1;;) {
-                         |}""".stripMargin.asTree[Stmt] shouldBe {
+                 |}""".stripMargin.asTree[Stmt] shouldBe {
                 StmtFor(
                   List(
                     StmtDecl(Decl(Ident("a"), TypeSInt(Expr(8)), Some(Expr(2)))),
@@ -689,7 +689,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
 
             "with multiple step" in {
               """|for (;;a++, b--) {
-                         |}""".stripMargin.asTree[Stmt] shouldBe {
+                 |}""".stripMargin.asTree[Stmt] shouldBe {
                 StmtFor(
                   Nil,
                   None,
@@ -894,20 +894,16 @@ final class ParserSpec extends FreeSpec with AlogicTest {
             }
           }
 
-          "unary -" in {
-            "-2".asTree[Expr] shouldBe ExprUnary("-", Expr(2))
+          for (op <- List("+", "-", "~", "!", "&", "~&", "|", "~|", "^", "~^")) {
+            s"unary ${op}" in {
+              s"${op}2".asTree[Expr] shouldBe ExprUnary(op, Expr(2))
+            }
           }
 
-          "unary ~^" in {
-            "~^3".asTree[Expr] shouldBe ExprUnary("~^", Expr(3))
-          }
-
-          "binary +" in {
-            "1 + 0".asTree[Expr] shouldBe ExprBinary(Expr(1), "+", Expr(0))
-          }
-
-          "binary ^" in {
-            "3 ^ 4".asTree[Expr] shouldBe ExprBinary(Expr(3), "^", Expr(4))
+          for (op <- List("*", "/", "%", "+", "-", "<<", ">>", ">>>", "<<<", ">", ">=", "<", "<=", "==", "!=", "&", "^", "~^", "|", "&&", "||")) {
+            s"binary $op" in {
+              s"4 ${op} 3".asTree[Expr] shouldBe ExprBinary(Expr(4), op, Expr(3))
+            }
           }
 
           "ternary" in {
