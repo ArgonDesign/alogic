@@ -263,5 +263,82 @@ final class TyperSpec extends FreeSpec with AlogicTest {
       }
     }
 
+    "fold expressions containing only unsized literals" - {
+      "unary" - {
+        for {
+          (expr, result, msg) <- List(
+            ("+2", ExprNum(true, 2), ""),
+            ("-2", ExprNum(true, -2), ""),
+            ("+(+2)", ExprNum(true, 2), ""),
+            ("-(-2)", ExprNum(true, 2), ""),
+            ("!2", ExprNum(true, 0), ""),
+            ("!0", ExprNum(true, 1), ""),
+            ("!!2", ExprNum(true, 1), ""),
+            ("!!0", ExprNum(true, 0), ""),
+            ("~2", ExprError(), "Unary operator '~' is not well defined for unsized values"),
+            ("&2", ExprError(), "Unary operator '&' is not well defined for unsized values"),
+            ("~&2", ExprError(), "Unary operator '~&' is not well defined for unsized values"),
+            ("|2", ExprError(), "Unary operator '\\|' is not well defined for unsized values"),
+            ("~|2", ExprError(), "Unary operator '~\\|' is not well defined for unsized values"),
+            ("^2", ExprError(), "Unary operator '\\^' is not well defined for unsized values"),
+            ("~^2", ExprError(), "Unary operator '~\\^' is not well defined for unsized values"),
+            ("+'d2", ExprNum(false, 2), ""),
+            ("-'d2", ExprError(), "Unary operator '-' is not well defined for unsized unsigned values"),
+            ("+(+'d2)", ExprNum(false, 2), ""),
+            ("-(-'d2)", ExprError(), "Unary operator '-' is not well defined for unsized unsigned values"),
+            ("!'d2", ExprNum(false, 0), ""),
+            ("!'d0", ExprNum(false, 1), ""),
+            ("!!'d2", ExprNum(false, 1), ""),
+            ("!!'d0", ExprNum(false, 0), ""),
+            ("~'d2", ExprError(), "Unary operator '~' is not well defined for unsized values"),
+            ("&'d2", ExprError(), "Unary operator '&' is not well defined for unsized values"),
+            ("~&'d2", ExprError(), "Unary operator '~&' is not well defined for unsized values"),
+            ("|'d2", ExprError(), "Unary operator '\\|' is not well defined for unsized values"),
+            ("~|'d2", ExprError(), "Unary operator '~\\|' is not well defined for unsized values"),
+            ("^'d2", ExprError(), "Unary operator '\\^' is not well defined for unsized values"),
+            ("~^'d2", ExprError(), "Unary operator '~\\^' is not well defined for unsized values")
+          )
+        } {
+          expr in {
+            xform(expr.asTree[Expr]) shouldBe result
+            if (msg.isEmpty()) {
+              cc.messages shouldBe empty
+            } else {
+              cc.messages.loneElement should beThe[Error](msg)
+            }
+          }
+        }
+      }
+
+      //      "binary" - {
+      //        for {
+      //          (expr, result, msg) <- List(
+      //            ("3 + 2", ExprNum(true, 5), ""),
+      //            ("3 - 2", ExprNum(true, 1), ""),
+      //            ("3 * 2", ExprNum(true, 6), ""),
+      //            ("3 / 2", ExprNum(true, 1), ""),
+      //            ("3 % 2", ExprNum(true, 1), ""),
+      //
+      //            ("3 & 2", ExprNum(true, 2), ""),
+      //            ("3 | 2", ExprNum(true, 3), ""),
+      //            ("3 ^ 2", ExprNum(true, 1), ""),
+      //
+      //            ("3 ~^ 2", ExprError(), "Binary operator '~\\^' is not well defined between unsized values")
+      //
+      //          )
+      //        } {
+      //          expr in {
+      //            xform(expr.asTree[Expr]) shouldBe result
+      //            if (msg.isEmpty()) {
+      //              cc.messages shouldBe empty
+      //            } else {
+      //              cc.messages.loneElement should beThe[Error](msg)
+      //            }
+      //          }
+      //        }
+      //
+      //      }
+    }
+
   }
 }

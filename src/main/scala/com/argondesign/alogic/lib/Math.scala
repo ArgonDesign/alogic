@@ -15,22 +15,20 @@
 
 package com.argondesign.alogic.lib
 
-import scala.math.Integral.Implicits.infixIntegralOps
+import scala.annotation.tailrec
 
 final object Math {
 
   def clog2(value: BigInt): Int = {
     require(value >= 0)
-    if (value <= 1) {
-      0
-    } else {
-      var x = value - 1
-      var y = 0
-      while (x > 0) {
-        x = x / 2
-        y += 1
+    @tailrec
+    def loop(value: BigInt, acc: Int): Int = {
+      if (value > 0) {
+        loop(value >> 1, acc + 1)
+      } else {
+        acc
       }
-      y
     }
+    loop(value - 1, 0)
   }
 }
