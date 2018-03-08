@@ -57,6 +57,7 @@ XNOR:       '~^'  ;
 LSHIFT:     '<<'  ;
 URSHIFT:    '>>'  ;
 SRSHIFT:    '>>>' ;
+SLSHIFT:    '<<<' ;
 
 PLING:      '!'   ;
 ANDAND:     '&&'  ;

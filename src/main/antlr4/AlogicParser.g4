@@ -183,7 +183,7 @@ expr
   | op=('+' | '-' | '~' | '!' | '&' | '~&' | '|' | '~|' | '^' | '~^') expr  # ExprUnary
   | expr op=('*' | '/' | '%') expr                                          # ExprBinary
   | expr op=('+' | '-') expr                                                # ExprBinary
-  | expr op=('<<' | '>>' | '>>>') expr                                      # ExprBinary // TODO: '<<<'
+  | expr op=('<<' | '>>' | '>>>' | '<<<' ) expr                             # ExprBinary
   | expr op=('>' | '>=' | '<' | '<=') expr                                  # ExprBinary
   | expr op=('==' | '!=') expr                                              # ExprBinary
   | expr op='&' expr                                                        # ExprBinary
