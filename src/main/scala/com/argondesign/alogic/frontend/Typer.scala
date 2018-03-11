@@ -12,11 +12,11 @@
 //
 // The Typer:
 // - Type checks the tree
-// - Assigns types to all nodes
+// - Assigns types to all nodes using the TypeAssigner
 // - Infers widths of unsized constants
 // - Folds expressions with unsized constants where necessary for width inference
 // - Remove TypeDefinition nodes
-// - Replace the Root node with the root Entity nodes
+// - Replace the Root node with the root Entity node
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.frontend
@@ -46,11 +46,8 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       case node: Root => node.entity
 
       ////////////////////////////////////////////////////////////////////////////
-      // Fold expressions with only unsized literals
+      // Propagate errors
       ////////////////////////////////////////////////////////////////////////////
-
-      case ExprUnary(_, _: ExprNum)              => tree rewrite constantFold
-      case ExprBinary(_: ExprNum, _, _: ExprNum) => tree rewrite constantFold
 
       ////////////////////////////////////////////////////////////////////////////
       // Infer width of of unsized literals
@@ -59,24 +56,29 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       case ExprBinary(lhs @ ExprNum(signed, value), op, rhs) => {
         require(rhs.hasTpe)
 
-        // Type check and figure out width of rhs
-        val widthOpt = rhs.tpe match {
-          case kind if kind.isPacked => Some(kind.width) flatMap { _.value } map { _.toInt }
+        // Type check and get expected type
+        val kindOpt = rhs.tpe match {
+          case kind if kind.isPacked => Some(kind)
           case other => {
-            cc.error(
-              tree,
-              s"Operator '+' expects packed type on the right hand side, but got  type '${other}'")
+            cc.error(tree, s"'${op}' expects packed value on the right hand side")
             None
           }
         }
 
+        // Figure out width of rhs
+        val widthOpt = kindOpt flatMap { _.width.value } map { _.toInt }
+
+        if (kindOpt.isDefined && widthOpt.isEmpty) {
+          cc.error(rhs, s"Cannot infer width of left hand operand of '${op}'")
+        }
+
         // Convert lhs
         widthOpt map { width =>
+          // TODO: Check value fits width ...
           val newLhs = ExprInt(signed, width, value) withLoc lhs.loc
           TypeAssigner(newLhs)
           ExprBinary(newLhs, op, rhs)
         } getOrElse {
-          cc.error(rhs, s"Cannot infer width of right hand operand of operator '${op}'")
           ExprError()
         } withLoc lhs.loc
       }
@@ -84,30 +86,35 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       case ExprBinary(lhs, op, rhs @ ExprNum(signed, value)) => {
         require(lhs.hasTpe)
 
-        // Type check and figure out width of lhs
-        val widthOpt = lhs.tpe match {
-          case kind if kind.isPacked => Some(kind.width) flatMap { _.value } map { _.toInt }
+        // Type check and get expected type
+        val kindOpt = lhs.tpe match {
+          case kind if kind.isPacked => Some(kind)
           case other => {
-            cc.error(
-              tree,
-              s"Operator '+' expects packed type on the left hand side, but got  type '${other}'")
+            cc.error(tree, s"'${op}' expects packed value on the left hand side")
             None
           }
         }
 
+        // Figure out width of rhs
+        val widthOpt = kindOpt flatMap { _.width.value } map { _.toInt }
+
+        if (kindOpt.isDefined && widthOpt.isEmpty) {
+          cc.error(rhs, s"Cannot infer width of right hand operand of '${op}'")
+        }
+
         // Convert rhs
         widthOpt map { width =>
+          // TODO: Check value fits width ...
           val newRhs = ExprInt(signed, width, value) withLoc rhs.loc
           TypeAssigner(newRhs)
           ExprBinary(lhs, op, newRhs)
         } getOrElse {
-          cc.error(rhs, s"Cannot infer width of left hand operand of operator '${op}'")
           ExprError()
         } withLoc lhs.loc
       }
 
       ////////////////////////////////////////////////////////////////////////////
-      //
+      // Type check expressions
       ////////////////////////////////////////////////////////////////////////////
 
       // Non-reducing unary ops
@@ -131,26 +138,49 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       }
 
       // Non-Reducing binary ops
-      case ExprBinary(lhs, _, rhs) => {
-        // TODO: Type check
-        // TODO: Width warning, promotion, sizing of shift, etc, etc
-        tree
+      case ExprBinary(lhs, op, rhs) => {
+        require(lhs.hasTpe)
+        require(rhs.hasTpe)
+
+        // Check both sides are packed types
+        if (!lhs.tpe.isPacked || !rhs.tpe.isPacked) {
+          if (!lhs.tpe.isPacked) {
+            cc.error(tree, s"'${op}' expects packed value on the left hand side")
+          }
+          if (!rhs.tpe.isPacked) {
+            cc.error(tree, s"'${op}' expects packed value on the right hand side")
+          }
+          ExprError() withLoc tree.loc
+        } else {
+          // TODO: handle parametrized widths by solving 'lhsWidth != rhsWidth' SAT
+          val lhsWidthOpt = lhs.tpe.width.value
+          val rhsWidthOpt = rhs.tpe.width.value
+
+          for {
+            lhsWidth <- lhsWidthOpt
+            rhsWidth <- rhsWidthOpt
+          } {
+            if (lhsWidth != rhsWidth) {
+              cc.warning(
+                tree,
+                s"'${op}' expects both operands to have the same width, but",
+                s"left  operand is ${lhsWidth} bits wide, and",
+                s"right operand is ${rhsWidth} bits wide"
+              )
+            }
+
+          }
+
+          tree
+        }
+
       }
 
       case _ => tree
     }
 
-    // Assign type of result if relevant node
-    result match {
-      case _: TypeDefinition => result // Will be removed
-      case _: Entity => {
-        tree match {
-          case _: Root => result // Already typed the root entity
-          case _       => TypeAssigner(result)
-        }
-      }
-      case _ => TypeAssigner(result)
-    }
+    // Assign type if have not been assigned by now
+    if (result.hasTpe) result else TypeAssigner(result)
   }
 
   override def finalCheck(tree: Tree): Unit = {

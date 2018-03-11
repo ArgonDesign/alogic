@@ -21,11 +21,35 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.util.unreachable
 
 import scala.language.implicitConversions
-import com.argondesign.alogic.util.FollowedBy
 
-final class ConstantFold(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
+final class ConstantFold(implicit cc: CompilerContext) extends TreeTransformer {
 
   private implicit def boolean2BigInt(bool: Boolean) = if (bool) BigInt(1) else BigInt(0)
+
+  private val shiftOps = Set("<<", ">>", "<<<", ">>>")
+
+  private def foldShiftUnsized(expr: ExprBinary): Expr = {
+    val ExprBinary(ExprNum(ls, lv), op, rhs) = expr
+    val rv = rhs.value.get
+    val negl = lv < 0
+    val negr = rv < 0
+    val num = (ls, op) match {
+      case _ if negr => {
+        cc.error(expr, "Negative shift amount")
+        ExprError()
+      }
+      case (true, ">>") if negl => {
+        cc.error(expr, "'>>' is not well defined for negative unsized values")
+        ExprError()
+      }
+      case (signed, "<<")  => ExprNum(signed, lv << rv.toInt)
+      case (signed, ">>")  => ExprNum(signed, lv >> rv.toInt)
+      case (signed, "<<<") => ExprNum(signed, lv << rv.toInt)
+      case (signed, ">>>") => ExprNum(signed, lv >> rv.toInt)
+      case _               => unreachable
+    }
+    num withLoc expr.loc
+  }
 
   override def transform(tree: Tree): Tree = tree match {
 
@@ -41,7 +65,19 @@ final class ConstantFold(implicit cc: CompilerContext) extends TreeTransformer w
     case ExprTernary(_, _, expr: ExprError) => expr
 
     ////////////////////////////////////////////////////////////////////////////
-    // Fold expressions with only unsized literals
+    // Fold shifts with an unsized left hand side
+    ////////////////////////////////////////////////////////////////////////////
+
+    case expr @ ExprBinary(_: ExprNum, op, _: ExprNum) if shiftOps contains op => {
+      foldShiftUnsized(expr)
+    }
+
+    case expr @ ExprBinary(_: ExprNum, op, _: ExprInt) if shiftOps contains op => {
+      foldShiftUnsized(expr)
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Fold unary expressions with an unsized operand
     ////////////////////////////////////////////////////////////////////////////
 
     case ExprUnary(op, expr @ ExprNum(signed, value)) => {
@@ -51,15 +87,49 @@ final class ConstantFold(implicit cc: CompilerContext) extends TreeTransformer w
         case "-" if signed => ExprNum(true, -value)
         case "!"           => ExprNum(false, value == 0)
         // Invalid cases
-        case "-" if !signed => ExprError() followedBy {
-          cc.error(tree, "Unary operator '-' is not well defined for unsized unsigned values")
+        case "-" if !signed => {
+          cc.error(tree, "Unary '-' is not well defined for unsigned values")
+          ExprError()
         }
-        case op => ExprError() followedBy {
-          cc.error(tree, s"Unary operator '${op}' is not well defined for unsized values")
+        case op => {
+          cc.error(tree, s"Unary '${op}' is not well defined for unsized values")
+          ExprError()
         }
       }
       if (num.hasLoc) num else num withLoc tree.loc
     }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Fold unary expressions with a sized operand
+    ////////////////////////////////////////////////////////////////////////////
+
+    case ExprUnary(op, expr @ ExprInt(signed, width, value)) => {
+      lazy val mask = (BigInt(1) << width) - 1
+      val num = op match {
+        // Valid cases
+        case "+"           => expr
+        case "-" if signed => ExprInt(true, width, -value)
+        case "~" if signed => ExprInt(true, width, ~value)
+        case "~"           => ExprInt(false, width, ~value & mask)
+        case "!"           => ExprInt(false, 1, value == 0)
+        case "&"           => ExprInt(false, 1, (value & mask) == mask)
+        case "~&"          => ExprInt(false, 1, (value & mask) != mask)
+        case "|"           => ExprInt(false, 1, (value & mask) != 0)
+        case "~|"          => ExprInt(false, 1, (value & mask) == 0)
+        case "^"           => ExprInt(false, 1, ((value & mask).bitCount & 1) == 1)
+        case "~^"          => ExprInt(false, 1, ((value & mask).bitCount & 1) != 1)
+        // Invalid cases
+        case "-" if !signed => {
+          cc.error(tree, "Unary '-' is not well defined for unsigned values")
+          ExprError()
+        }
+      }
+      if (num.hasLoc) num else num withLoc tree.loc
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Fold other binary expressions with 2 unsized operands
+    ////////////////////////////////////////////////////////////////////////////
 
     case ExprBinary(ExprNum(ls, lv), op, ExprNum(rs, rv)) => {
       def makeUnsignedExprNum(value: BigInt) = {
@@ -75,14 +145,14 @@ final class ConstantFold(implicit cc: CompilerContext) extends TreeTransformer w
       val nege = negl || negr
       val num = (ls, op, rs) match {
         // Always valid
-        case (_, ">", _)       => ExprNum(false, lv > rv)
-        case (_, "<", _)       => ExprNum(false, lv < rv)
-        case (_, ">=", _)      => ExprNum(false, lv >= rv)
-        case (_, "<=", _)      => ExprNum(false, lv <= rv)
-        case (_, "==", _)      => ExprNum(false, lv == rv)
-        case (_, "!=", _)      => ExprNum(false, lv != rv)
-        case (_, "&&", _)      => ExprNum(false, (lv != 0) && (rv != 0))
-        case (_, "||", _)      => ExprNum(false, (lv != 0) || (rv != 0))
+        case (_, ">", _)  => ExprNum(false, lv > rv)
+        case (_, "<", _)  => ExprNum(false, lv < rv)
+        case (_, ">=", _) => ExprNum(false, lv >= rv)
+        case (_, "<=", _) => ExprNum(false, lv <= rv)
+        case (_, "==", _) => ExprNum(false, lv == rv)
+        case (_, "!=", _) => ExprNum(false, lv != rv)
+        case (_, "&&", _) => ExprNum(false, (lv != 0) && (rv != 0))
+        case (_, "||", _) => ExprNum(false, (lv != 0) || (rv != 0))
 
         // Arith
         case (true, "*", true) => ExprNum(true, lv * rv)
@@ -96,24 +166,15 @@ final class ConstantFold(implicit cc: CompilerContext) extends TreeTransformer w
         case (_, "+", _)       => makeUnsignedExprNum(lv + rv)
         case (_, "-", _)       => makeUnsignedExprNum(lv - rv)
 
-        // Shift
-        case (_, op @ ("<<" | ">>" | "<<<" | ">>>"), _) if negr => ExprError() followedBy {
-          cc.error(tree, "Negative shift amount")
-        }
-        case (true, ">>", _) if negl => ExprError() followedBy {
-          cc.error(tree, "Logical right shift '>>' is not well defined for negative unsized values")
-        }
-        case (signed, "<<", _)  => ExprNum(signed, lv << rv.toInt)
-        case (signed, ">>", _)  => ExprNum(signed, lv >> rv.toInt)
-        case (signed, "<<<", _) => ExprNum(signed, lv << rv.toInt)
-        case (signed, ">>>", _) => ExprNum(signed, lv >> rv.toInt)
-
         // Bitwise
-        case (_, op @ ("&" | "^" | "|"), _) if nege => ExprError() followedBy {
-          cc.error(tree, s"Bitwise '${op}' operator is not well defined for negative unsized values")
+        case (_, op @ ("&" | "^" | "|"), _) if nege => {
+          cc.error(tree,
+                   s"Bitwise '${op}' operator is not well defined for negative unsized values")
+          ExprError()
         }
-        case (_, "~^", _) => ExprError() followedBy {
+        case (_, "~^", _) => {
           cc.error(tree, "Bitwise '~^' operator is not well defined for unsized values")
+          ExprError()
         }
         case (true, "&", true) => ExprNum(true, lv & rv)
         case (true, "^", true) => ExprNum(true, lv ^ rv)
@@ -122,7 +183,7 @@ final class ConstantFold(implicit cc: CompilerContext) extends TreeTransformer w
         case (_, "^", _)       => ExprNum(false, lv ^ rv)
         case (_, "|", _)       => ExprNum(false, lv | rv)
 
-        case _                 => unreachable
+        case _ => unreachable
       }
       num withLoc tree.loc
     }

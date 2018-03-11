@@ -54,40 +54,40 @@ trait ExprOps { this: Expr =>
   }
 
   // Helpers to easily combine expression trees manually with other expressions
-  final def *(rhs: Expr): Expr   = makeExprBinary("*", rhs)
-  final def /(rhs: Expr): Expr   = makeExprBinary("/", rhs)
-  final def %(rhs: Expr): Expr   = makeExprBinary("%", rhs)
-  final def +(rhs: Expr): Expr   = makeExprBinary("+", rhs)
-  final def -(rhs: Expr): Expr   = makeExprBinary("-", rhs)
-  final def <<(rhs: Expr): Expr  = makeExprBinary("<<", rhs)
-  final def >>(rhs: Expr): Expr  = makeExprBinary(">>", rhs)
+  final def *(rhs: Expr): Expr = makeExprBinary("*", rhs)
+  final def /(rhs: Expr): Expr = makeExprBinary("/", rhs)
+  final def %(rhs: Expr): Expr = makeExprBinary("%", rhs)
+  final def +(rhs: Expr): Expr = makeExprBinary("+", rhs)
+  final def -(rhs: Expr): Expr = makeExprBinary("-", rhs)
+  final def <<(rhs: Expr): Expr = makeExprBinary("<<", rhs)
+  final def >>(rhs: Expr): Expr = makeExprBinary(">>", rhs)
   final def <<<(rhs: Expr): Expr = makeExprBinary("<<<", rhs)
   final def >>>(rhs: Expr): Expr = makeExprBinary(">>>", rhs)
-  final def &(rhs: Expr): Expr   = makeExprBinary("&", rhs)
-  final def ^(rhs: Expr): Expr   = makeExprBinary("^", rhs)
-  final def ~^(rhs: Expr): Expr  = makeExprBinary("~^", rhs)
-  final def |(rhs: Expr): Expr   = makeExprBinary("|", rhs)
-  final def &&(rhs: Expr): Expr  = makeExprBinary("&&", rhs)
-  final def ||(rhs: Expr): Expr  = makeExprBinary("||", rhs)
+  final def &(rhs: Expr): Expr = makeExprBinary("&", rhs)
+  final def ^(rhs: Expr): Expr = makeExprBinary("^", rhs)
+  final def ~^(rhs: Expr): Expr = makeExprBinary("~^", rhs)
+  final def |(rhs: Expr): Expr = makeExprBinary("|", rhs)
+  final def &&(rhs: Expr): Expr = makeExprBinary("&&", rhs)
+  final def ||(rhs: Expr): Expr = makeExprBinary("||", rhs)
 
-  final def *(rhs: Int): Expr   = makeExprBinary("*", Expr(rhs))
-  final def /(rhs: Int): Expr   = makeExprBinary("/", Expr(rhs))
-  final def %(rhs: Int): Expr   = makeExprBinary("%", Expr(rhs))
-  final def +(rhs: Int): Expr   = makeExprBinary("+", Expr(rhs))
-  final def -(rhs: Int): Expr   = makeExprBinary("-", Expr(rhs))
-  final def <<(rhs: Int): Expr  = makeExprBinary("<<", Expr(rhs))
-  final def >>(rhs: Int): Expr  = makeExprBinary(">>", Expr(rhs))
+  final def *(rhs: Int): Expr = makeExprBinary("*", Expr(rhs))
+  final def /(rhs: Int): Expr = makeExprBinary("/", Expr(rhs))
+  final def %(rhs: Int): Expr = makeExprBinary("%", Expr(rhs))
+  final def +(rhs: Int): Expr = makeExprBinary("+", Expr(rhs))
+  final def -(rhs: Int): Expr = makeExprBinary("-", Expr(rhs))
+  final def <<(rhs: Int): Expr = makeExprBinary("<<", Expr(rhs))
+  final def >>(rhs: Int): Expr = makeExprBinary(">>", Expr(rhs))
   final def <<<(rhs: Int): Expr = makeExprBinary("<<<", Expr(rhs))
   final def >>>(rhs: Int): Expr = makeExprBinary(">>>", Expr(rhs))
-  final def &(rhs: Int): Expr   = makeExprBinary("&", Expr(rhs))
-  final def ^(rhs: Int): Expr   = makeExprBinary("^", Expr(rhs))
-  final def ~^(rhs: Int): Expr  = makeExprBinary("~^", Expr(rhs))
-  final def |(rhs: Int): Expr   = makeExprBinary("|", Expr(rhs))
-  final def &&(rhs: Int): Expr  = makeExprBinary("&&", Expr(rhs))
-  final def ||(rhs: Int): Expr  = makeExprBinary("||", Expr(rhs))
+  final def &(rhs: Int): Expr = makeExprBinary("&", Expr(rhs))
+  final def ^(rhs: Int): Expr = makeExprBinary("^", Expr(rhs))
+  final def ~^(rhs: Int): Expr = makeExprBinary("~^", Expr(rhs))
+  final def |(rhs: Int): Expr = makeExprBinary("|", Expr(rhs))
+  final def &&(rhs: Int): Expr = makeExprBinary("&&", Expr(rhs))
+  final def ||(rhs: Int): Expr = makeExprBinary("||", Expr(rhs))
 
   final def max(rhs: Expr): Expr = makeExprAtCall("max", this, rhs)
-  final def max(rhs: Int): Expr  = makeExprAtCall("max", this, Expr(rhs))
+  final def max(rhs: Int): Expr = makeExprAtCall("max", this, Expr(rhs))
 
   // Is this expression shaped as a valid type expression
   lazy val isTypeExpr: Boolean = this forall {
@@ -148,6 +148,7 @@ trait ExprOps { this: Expr =>
 
   // Value of this expression if it can be determined right now, otherwise None
   def value(implicit cc: CompilerContext): Option[BigInt] = simplify match {
+    // TODO: follow constants
     case ExprNum(_, value)    => Some(value)
     case ExprInt(_, _, value) => Some(value)
     case _                    => None
@@ -157,7 +158,7 @@ trait ExprOps { this: Expr =>
 
 trait ObjectExprOps {
   // Helpers to easily create ExprNum from integers
-  final def apply(n: Int): ExprNum    = ExprNum(true, n)
+  final def apply(n: Int): ExprNum = ExprNum(true, n)
   final def apply(n: BigInt): ExprNum = ExprNum(true, n)
 
   object ImplicitConversions {

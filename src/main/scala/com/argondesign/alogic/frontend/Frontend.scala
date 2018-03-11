@@ -17,17 +17,18 @@ package com.argondesign.alogic.frontend
 
 import java.io.File
 
-import scala.collection.mutable
-import scala.concurrent.Await
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
-import scala.concurrent.duration.Duration.Inf
-
 import com.argondesign.alogic.FindFile
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Source
+import com.argondesign.alogic.transform.ConstantFold
 import com.argondesign.alogic.util.unreachable
+
+import scala.collection.mutable
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Await
+import scala.concurrent.Future
+import scala.concurrent.duration.Duration.Inf
 
 // The frontend is responsible for:
 // - locating sources (name -> source)
@@ -86,6 +87,13 @@ class Frontend(
 
   private[this] def desugarIt(tree: Root): Root = {
     tree.rewrite(new Desugar) match {
+      case root: Root => root
+      case _          => unreachable
+    }
+  }
+
+  private[this] def constantFoldIt(tree: Root): Root = {
+    tree.rewrite(new ConstantFold) match {
       case root: Root => root
       case _          => unreachable
     }
@@ -194,6 +202,8 @@ class Frontend(
       _ map { nameIt(_) }
     } mapValues {
       _ map { desugarIt(_) }
+    } mapValues {
+      _ map { constantFoldIt(_) }
     } mapValues {
       _ map { typeIt(_) }
     }

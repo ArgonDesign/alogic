@@ -26,17 +26,18 @@ object TypeAssigner {
   def apply(tree: Tree)(implicit cc: CompilerContext): Tree = {
     require(!tree.hasTpe)
     tree match {
-      case node: Expr       => apply(node)
-      case node: Stmt       => apply(node)
-      case node: CaseClause => apply(node)
-      case node: Entity     => apply(node)
-      case node: Decl       => apply(node)
-      case node: Instance   => apply(node)
-      case node: Connect    => apply(node)
-      case node: Function   => apply(node)
-      case node: State      => apply(node)
-      case node: Sym        => apply(node)
-      case _                => cc.ice(tree, s"Don't know how to type '${tree}")
+      case node: Expr           => apply(node)
+      case node: Stmt           => apply(node)
+      case node: CaseClause     => apply(node)
+      case node: Entity         => apply(node)
+      case node: Decl           => apply(node)
+      case node: Instance       => apply(node)
+      case node: Connect        => apply(node)
+      case node: Function       => apply(node)
+      case node: State          => apply(node)
+      case node: Sym            => apply(node)
+      case node: TypeDefinition => apply(node)
+      case _                    => cc.ice(tree, s"Don't know how to type '${tree}")
     }
     tree
   }
@@ -45,45 +46,20 @@ object TypeAssigner {
   // Typing Misc nodes
   //////////////////////////////////////////////////////////////////////////////
 
-  def apply(node: Entity): node.type = {
+  private def assignTypeMisc(node: Tree): node.type = {
     require(!node.hasTpe)
     node withTpe TypeMisc
   }
 
-  def apply(node: Decl): node.type = {
-    require(!node.hasTpe)
-    node withTpe TypeMisc
-  }
-
-  def apply(node: Instance): node.type = {
-    require(!node.hasTpe)
-    node withTpe TypeMisc
-  }
-
-  def apply(node: Connect): node.type = {
-    require(!node.hasTpe)
-    node withTpe TypeMisc
-  }
-
-  def apply(node: Function): node.type = {
-    require(!node.hasTpe)
-    node withTpe TypeMisc
-  }
-
-  def apply(node: CaseClause): node.type = {
-    require(!node.hasTpe)
-    node withTpe TypeMisc
-  }
-
-  def apply(node: State): node.type = {
-    require(!node.hasTpe)
-    node withTpe TypeMisc
-  }
-
-  def apply(node: Sym): node.type = {
-    require(!node.hasTpe)
-    node withTpe TypeMisc
-  }
+  def apply(node: Entity): node.type = assignTypeMisc(node)
+  def apply(node: Decl): node.type = assignTypeMisc(node)
+  def apply(node: Instance): node.type = assignTypeMisc(node)
+  def apply(node: Connect): node.type = assignTypeMisc(node)
+  def apply(node: Function): node.type = assignTypeMisc(node)
+  def apply(node: CaseClause): node.type = assignTypeMisc(node)
+  def apply(node: State): node.type = assignTypeMisc(node)
+  def apply(node: Sym): node.type = assignTypeMisc(node)
+  def apply(node: TypeDefinition): node.type = assignTypeMisc(node)
 
   //////////////////////////////////////////////////////////////////////////////
   // Typing Stmt nodes
