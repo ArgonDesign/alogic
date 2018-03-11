@@ -181,14 +181,14 @@ expr
   : '(' expr ')'                                                            # ExprBracket
   | expr '(' commaexpr ')'                                                  # ExprCall
   // Operators
-  | op=('+' | '-' | '~' | '!' | '&' | '~&' | '|' | '~|' | '^' | '~^') expr  # ExprUnary
+  | op=('+' | '-' | '~' | '!' | '&' | '|' | '^' ) expr  # ExprUnary
   | expr op=('*' | '/' | '%') expr                                          # ExprBinary
   | expr op=('+' | '-') expr                                                # ExprBinary
   | expr op=('<<' | '>>' | '>>>' | '<<<' ) expr                             # ExprBinary
   | expr op=('>' | '>=' | '<' | '<=') expr                                  # ExprBinary
   | expr op=('==' | '!=') expr                                              # ExprBinary
   | expr op='&' expr                                                        # ExprBinary
-  | expr op=('^' | '~^') expr                                               # ExprBinary
+  | expr op='^' expr                                                        # ExprBinary
   | expr op='|' expr                                                        # ExprBinary
   | expr op='&&' expr                                                       # ExprBinary
   | expr op='||' expr                                                       # ExprBinary

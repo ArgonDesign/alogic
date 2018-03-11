@@ -23,6 +23,7 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Error
 import com.argondesign.alogic.core.Warning
+import com.argondesign.alogic.transform.ConstantFold
 import org.scalatest.FreeSpec
 
 final class TyperSpec extends FreeSpec with AlogicTest {
@@ -30,6 +31,7 @@ final class TyperSpec extends FreeSpec with AlogicTest {
   implicit val cc = new CompilerContext
   val namer = new Namer
   val desugar = new Desugar
+  val constantFold = new ConstantFold
   val typer = new Typer
 
   def xform(tree: Tree) = {
@@ -38,38 +40,35 @@ final class TyperSpec extends FreeSpec with AlogicTest {
       case entity: Entity => cc.addGlobalEntity(entity)
       case _              =>
     }
-    tree rewrite namer rewrite desugar rewrite typer
+    tree rewrite namer rewrite desugar rewrite constantFold rewrite typer
   }
 
   "The Typer should" - {
     "infer sizes of unsized literals for" - {
       "binary operator operands" - {
-        for (op <- List("*", "/", "%", "+", "-", "&", "|", "^", "~^")) {
+        for (op <- List("*", "/", "%", "+", "-", "&", "|", "^")) {
           val qop = Pattern.quote(op)
           for {
-            (expr, result, msg) <- List(
-              (s"8'd3 ${op} 2", ExprBinary(ExprInt(false, 8, 3), op, ExprInt(true, 8, 2)), ""),
-              (s"2 ${op} 8'd3", ExprBinary(ExprInt(true, 8, 2), op, ExprInt(false, 8, 3)), ""),
-              (s"{N{1'b1}} ${op} 2",
-               ExprError(),
-               s"Cannot infer width of right hand operand of '${qop}'"),
-              (s"2 ${op} {N{1'b1}}",
-               ExprError(),
-               s"Cannot infer width of left hand operand of '${qop}'"),
-              (s"bool ${op} 2",
-               ExprError(),
-               s"'${qop}' expects packed value on the left hand side"),
-              (s"2 ${op} bool",
-               ExprError(),
-               s"'${qop}' expects packed value on the right hand side")
+            (expr, resultWidth, msg) <- List(
+              (s"8'd3 ${op} 2", Some(8), ""),
+              (s"2 ${op} 8'd3", Some(8), ""),
+              (s"8'd3 ${op} 2 ${op} 4", Some(8), ""),
+              (s"4 ${op} 2 ${op} 8'd3", Some(8), ""),
+              (s"{N{1'b1}} ${op} 2", None, s"Cannot infer width of right hand operand of '${qop}'"),
+              (s"2 ${op} {N{1'b1}}", None, s"Cannot infer width of left hand operand of '${qop}'"),
+              (s"bool ${op} 2", None, s"'${qop}' expects packed value on the left hand side"),
+              (s"2 ${op} bool", None, s"'${qop}' expects packed value on the right hand side")
             )
           } {
             val text = expr.trim.replaceAll(" +", " ")
             text in {
-              xform(text.asTree[Expr]) shouldBe result
-              if (msg.isEmpty) {
+              val tree = xform(text.asTree[Expr])
+              if (resultWidth.isDefined) {
+                cc.messages foreach println
+                tree.tpe.width.value.value shouldBe resultWidth.value
                 cc.messages shouldBe empty
               } else {
+                tree shouldBe ExprError()
                 cc.messages.last should beThe[Error](msg)
               }
             }
@@ -80,7 +79,7 @@ final class TyperSpec extends FreeSpec with AlogicTest {
 
     "type check" - {
       "binary operators" - {
-        for (op <- List("*", "/", "%", "+", "-", "&", "|", "^", "~^")) {
+        for (op <- List("*", "/", "%", "+", "-", "&", "|", "^")) {
           val qop = Pattern.quote(op)
           for {
             (expr, pattern, msg) <- List[(String, PartialFunction[Any, Unit], String)](
@@ -108,7 +107,7 @@ final class TyperSpec extends FreeSpec with AlogicTest {
 
     "warn mismatching operand widths" - {
       "binary operators" - {
-        for (op <- List("*", "/", "%", "+", "-", "&", "|", "^", "~^")) {
+        for (op <- List("*", "/", "%", "+", "-", "&", "|", "^")) {
           val qop = Pattern.quote(op)
           val text = s"8'd1 ${op} 7'd0"
           text in {

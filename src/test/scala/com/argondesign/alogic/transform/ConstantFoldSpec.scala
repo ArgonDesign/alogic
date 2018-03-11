@@ -15,12 +15,13 @@
 
 package com.argondesign.alogic.transform
 
+import java.util.regex.Pattern
+
 import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.SourceTextConverters._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Error
-
 import org.scalatest.FreeSpec
 
 final class ConstantFoldSpec extends FreeSpec with AlogicTest {
@@ -32,47 +33,64 @@ final class ConstantFoldSpec extends FreeSpec with AlogicTest {
     "fold expressions containing only unsized literals" - {
       "unary" - {
         for {
-          (expr, result, msg) <- List(
-            // signed operand
+          (text, result, msg) <- List(
+            // signed positive operand
             ("+2", ExprNum(true, 2), ""),
             ("-2", ExprNum(true, -2), ""),
-            ("+(+2)", ExprNum(true, 2), ""),
+            ("~2", ExprNum(true, -3), ""),
+            ("!2", ExprInt(false, 1, 0), ""),
+            ("&2", ExprInt(false, 1, 0), ""),
+            ("|2", ExprInt(false, 1, 1), ""),
+            ("^2", ExprInt(false, 1, 1), ""),
+            // signed negative operand
+            ("+(-2)", ExprNum(true, -2), ""),
             ("-(-2)", ExprNum(true, 2), ""),
-            ("!2", ExprNum(false, 0), ""),
-            ("!0", ExprNum(false, 1), ""),
-            ("!!2", ExprNum(false, 1), ""),
-            ("!!0", ExprNum(false, 0), ""),
-            ("~2", ExprError(), "Unary '~' is not well defined for unsized values"),
-            ("&2", ExprError(), "Unary '&' is not well defined for unsized values"),
-            ("~&2", ExprError(), "Unary '~&' is not well defined for unsized values"),
-            ("|2", ExprError(), "Unary '\\|' is not well defined for unsized values"),
-            ("~|2", ExprError(), "Unary '~\\|' is not well defined for unsized values"),
-            ("^2", ExprError(), "Unary '\\^' is not well defined for unsized values"),
-            ("~^2", ExprError(), "Unary '~\\^' is not well defined for unsized values"),
-            // unsigned operand
+            ("~(-2)", ExprNum(true, 1), ""),
+            ("!(-2)", ExprInt(false, 1, 0), ""),
+            ("&(-2)", ExprInt(false, 1, 0), ""),
+            ("|(-2)", ExprInt(false, 1, 1), ""),
+            ("^(-2)", ExprError(), "Unary '^' is not well defined for unsized negative values"),
+            // signed 0 operand
+            ("+0", ExprNum(true, 0), ""),
+            ("-0", ExprNum(true, 0), ""),
+            ("~0", ExprNum(true, -1), ""),
+            ("!0", ExprInt(false, 1, 1), ""),
+            ("&0", ExprInt(false, 1, 0), ""),
+            ("|0", ExprInt(false, 1, 0), ""),
+            ("^0", ExprInt(false, 1, 0), ""),
+            // signed -1 operand
+            ("+(-1)", ExprNum(true, -1), ""),
+            ("-(-1)", ExprNum(true, 1), ""),
+            ("~(-1)", ExprNum(true, 0), ""),
+            ("!(-1)", ExprInt(false, 1, 0), ""),
+            ("&(-1)", ExprInt(false, 1, 1), ""),
+            ("|(-1)", ExprInt(false, 1, 1), ""),
+            ("^(-1)", ExprError(), "Unary '^' is not well defined for unsized negative values"),
+            // unsigned non-0 operand
             ("+'d2", ExprNum(false, 2), ""),
             ("-'d2", ExprError(), "Unary '-' is not well defined for unsigned values"),
-            ("+(+'d2)", ExprNum(false, 2), ""),
-            ("-(-'d2)", ExprError(), "Unary '-' is not well defined for unsigned values"),
-            ("!'d2", ExprNum(false, 0), ""),
-            ("!'d0", ExprNum(false, 1), ""),
-            ("!!'d2", ExprNum(false, 1), ""),
-            ("!!'d0", ExprNum(false, 0), ""),
-            ("~'d2", ExprError(), "Unary '~' is not well defined for unsized values"),
-            ("&'d2", ExprError(), "Unary '&' is not well defined for unsized values"),
-            ("~&'d2", ExprError(), "Unary '~&' is not well defined for unsized values"),
-            ("|'d2", ExprError(), "Unary '\\|' is not well defined for unsized values"),
-            ("~|'d2", ExprError(), "Unary '~\\|' is not well defined for unsized values"),
-            ("^'d2", ExprError(), "Unary '\\^' is not well defined for unsized values"),
-            ("~^'d2", ExprError(), "Unary '~\\^' is not well defined for unsized values")
+            ("~'d2", ExprError(), "Unary '~' is not well defined for unsized unsigned values"),
+            ("!'d2", ExprInt(false, 1, 0), ""),
+            ("&'d2", ExprInt(false, 1, 0), ""),
+            ("|'d2", ExprInt(false, 1, 1), ""),
+            ("^'d2", ExprInt(false, 1, 1), ""),
+            // unsigned 0 operand
+            ("+'d0", ExprNum(false, 0), ""),
+            ("-'d0", ExprNum(false, 0), ""),
+            ("~'d0", ExprError(), "Unary '~' is not well defined for unsized unsigned values"),
+            ("!'d0", ExprInt(false, 1, 1), ""),
+            ("&'d0", ExprInt(false, 1, 0), ""),
+            ("|'d0", ExprInt(false, 1, 0), ""),
+            ("^'d0", ExprInt(false, 1, 0), "")
           )
         } {
+          val expr = text.trim
           expr in {
             expr.asTree[Expr] rewrite constantFold shouldBe result
             if (msg.isEmpty) {
               cc.messages shouldBe empty
             } else {
-              cc.messages.loneElement should beThe[Error](msg)
+              cc.messages.loneElement should beThe[Error](Pattern.quote(msg))
             }
           }
         }
@@ -119,9 +137,6 @@ final class ConstantFoldSpec extends FreeSpec with AlogicTest {
             // Bitwise
             (" 3 &   2", ExprNum(true, 2), ""),
             (" 3 ^   2", ExprNum(true, 1), ""),
-            (" 3 ~^  2",
-             ExprError(),
-             "Bitwise '~\\^' operator is not well defined for unsized values"),
             (" 3 |   2", ExprNum(true, 3), ""),
             (" 3 &  -2",
              ExprError(),
@@ -129,9 +144,6 @@ final class ConstantFoldSpec extends FreeSpec with AlogicTest {
             (" 3 ^  -2",
              ExprError(),
              "Bitwise '\\^' operator is not well defined for negative unsized values"),
-            (" 3 ~^ -2",
-             ExprError(),
-             "Bitwise '~\\^' operator is not well defined for unsized values"),
             (" 3 |  -2",
              ExprError(),
              "Bitwise '\\|' operator is not well defined for negative unsized values"),
@@ -141,9 +153,6 @@ final class ConstantFoldSpec extends FreeSpec with AlogicTest {
             ("-3 ^   2",
              ExprError(),
              "Bitwise '\\^' operator is not well defined for negative unsized values"),
-            ("-3 ~^  2",
-             ExprError(),
-             "Bitwise '~\\^' operator is not well defined for unsized values"),
             ("-3 |   2",
              ExprError(),
              "Bitwise '\\|' operator is not well defined for negative unsized values"),
@@ -153,9 +162,6 @@ final class ConstantFoldSpec extends FreeSpec with AlogicTest {
             ("-3 ^  -2",
              ExprError(),
              "Bitwise '\\^' operator is not well defined for negative unsized values"),
-            ("-3 ~^ -2",
-             ExprError(),
-             "Bitwise '~\\^' operator is not well defined for unsized values"),
             ("-3 |  -2",
              ExprError(),
              "Bitwise '\\|' operator is not well defined for negative unsized values"),
@@ -200,9 +206,6 @@ final class ConstantFoldSpec extends FreeSpec with AlogicTest {
             // Bitwise
             (" 3 &  'd2", ExprNum(false, 2), ""),
             (" 3 ^  'd2", ExprNum(false, 1), ""),
-            (" 3 ~^ 'd2",
-             ExprError(),
-             "Bitwise '~\\^' operator is not well defined for unsized values"),
             (" 3 |  'd2", ExprNum(false, 3), ""),
             ("-3 &  'd2",
              ExprError(),
@@ -210,9 +213,6 @@ final class ConstantFoldSpec extends FreeSpec with AlogicTest {
             ("-3 ^  'd2",
              ExprError(),
              "Bitwise '\\^' operator is not well defined for negative unsized values"),
-            ("-3 ~^ 'd2",
-             ExprError(),
-             "Bitwise '~\\^' operator is not well defined for unsized values"),
             ("-3 |  'd2",
              ExprError(),
              "Bitwise '\\|' operator is not well defined for negative unsized values"),
@@ -257,9 +257,6 @@ final class ConstantFoldSpec extends FreeSpec with AlogicTest {
             // Bitwise
             ("'d3 &  2", ExprNum(false, 2), ""),
             ("'d3 ^  2", ExprNum(false, 1), ""),
-            ("'d3 ~^ 2",
-             ExprError(),
-             "Bitwise '~\\^' operator is not well defined for unsized values"),
             ("'d3 |  2", ExprNum(false, 3), ""),
             ("'d3 &  -2",
              ExprError(),
@@ -267,9 +264,6 @@ final class ConstantFoldSpec extends FreeSpec with AlogicTest {
             ("'d3 ^  -2",
              ExprError(),
              "Bitwise '\\^' operator is not well defined for negative unsized values"),
-            ("'d3 ~^ -2",
-             ExprError(),
-             "Bitwise '~\\^' operator is not well defined for unsized values"),
             ("'d3 |  -2",
              ExprError(),
              "Bitwise '\\|' operator is not well defined for negative unsized values"),
@@ -300,9 +294,6 @@ final class ConstantFoldSpec extends FreeSpec with AlogicTest {
             // Bitwise
             ("'d3 &  'd2", ExprNum(false, 2), ""),
             ("'d3 ^  'd2", ExprNum(false, 1), ""),
-            ("'d3 ~^ 'd2",
-             ExprError(),
-             "Bitwise '~\\^' operator is not well defined for unsized values"),
             ("'d3 |  'd2", ExprNum(false, 3), "")
           )
         } {
@@ -397,7 +388,7 @@ final class ConstantFoldSpec extends FreeSpec with AlogicTest {
           ("'d3 <<  8'd2", ExprNum(false, 12), ""),
           ("'d3 >>  8'd2", ExprNum(false, 0), ""),
           ("'d3 <<< 8'd2", ExprNum(false, 12), ""),
-          ("'d3 >>> 8'd2", ExprNum(false, 0), ""),
+          ("'d3 >>> 8'd2", ExprNum(false, 0), "")
         )
       } {
         val e = expr.trim.replaceAll(" +", " ")
@@ -414,55 +405,66 @@ final class ConstantFoldSpec extends FreeSpec with AlogicTest {
 
     "fold unary operators with a sized operand" - {
       for {
-        (expr, result, msg) <- List(
-          // signed operand
+        (text, result, msg) <- List(
+          // signed positive operand
           ("+8'sd2", ExprInt(true, 8, 2), ""),
           ("-8'sd2", ExprInt(true, 8, -2), ""),
-          ("+(+8'sd2)", ExprInt(true, 8, 2), ""),
-          ("-(-8'sd2)", ExprInt(true, 8, 2), ""),
-          ("!8'sd2", ExprInt(false, 1, 0), ""),
-          ("!8'sd0", ExprInt(false, 1, 1), ""),
-          ("!!8'sd2", ExprInt(false, 1, 1), ""),
-          ("!!8'sd0", ExprInt(false, 1, 0), ""),
           ("~8'sd2", ExprInt(true, 8, -3), ""),
+          ("!8'sd2", ExprInt(false, 1, 0), ""),
           ("&8'sd2", ExprInt(false, 1, 0), ""),
-          ("~&8'sd2", ExprInt(false, 1, 1), ""),
           ("|8'sd2", ExprInt(false, 1, 1), ""),
-          ("~|8'sd2", ExprInt(false, 1, 0), ""),
           ("^8'sd2", ExprInt(false, 1, 1), ""),
-          ("~^8'sd2", ExprInt(false, 1, 0), ""),
-          // unsigned operand
+          // signed negative operand
+          ("+(-8'sd2)", ExprInt(true, 8, -2), ""),
+          ("-(-8'sd2)", ExprInt(true, 8, 2), ""),
+          ("~(-8'sd2)", ExprInt(true, 8, 1), ""),
+          ("!(-8'sd2)", ExprInt(false, 1, 0), ""),
+          ("&(-8'sd2)", ExprInt(false, 1, 0), ""),
+          ("|(-8'sd2)", ExprInt(false, 1, 1), ""),
+          ("^(-8'sd2)", ExprInt(false, 1, 1), ""),
+          // signed 0 operand
+          ("+8'sd0", ExprInt(true, 8, 0), ""),
+          ("-8'sd0", ExprInt(true, 8, 0), ""),
+          ("~8'sd0", ExprInt(true, 8, -1), ""),
+          ("!8'sd0", ExprInt(false, 1, 1), ""),
+          ("&8'sd0", ExprInt(false, 1, 0), ""),
+          ("|8'sd0", ExprInt(false, 1, 0), ""),
+          ("^8'sd0", ExprInt(false, 1, 0), ""),
+          // signed -1 operand
+          ("+(-8'sd1)", ExprInt(true, 8, -1), ""),
+          ("-(-8'sd1)", ExprInt(true, 8, 1), ""),
+          ("~(-8'sd1)", ExprInt(true, 8, 0), ""),
+          ("!(-8'sd1)", ExprInt(false, 1, 0), ""),
+          ("&(-8'sd1)", ExprInt(false, 1, 1), ""),
+          ("|(-8'sd1)", ExprInt(false, 1, 1), ""),
+          ("^(-8'sd1)", ExprInt(false, 1, 0), ""),
+          // unsigned non-0 operand
           ("+8'd2", ExprInt(false, 8, 2), ""),
           ("-8'd2", ExprError(), "Unary '-' is not well defined for unsigned values"),
-          ("+(+8'd2)", ExprInt(false, 8, 2), ""),
-          ("-(-8'd2)", ExprError(), "Unary '-' is not well defined for unsigned values"),
-          ("!8'd2", ExprInt(false, 1, 0), ""),
-          ("!8'd0", ExprInt(false, 1, 1), ""),
-          ("!!8'd2", ExprInt(false, 1, 1), ""),
-          ("!!8'd0", ExprInt(false, 1, 0), ""),
           ("~8'd2", ExprInt(false, 8, 253), ""),
+          ("!8'd2", ExprInt(false, 1, 0), ""),
           ("&8'd2", ExprInt(false, 1, 0), ""),
-          ("~&8'd2", ExprInt(false, 1, 1), ""),
           ("|8'd2", ExprInt(false, 1, 1), ""),
-          ("~|8'd2", ExprInt(false, 1, 0), ""),
           ("^8'd2", ExprInt(false, 1, 1), ""),
-          ("~^8'd2", ExprInt(false, 1, 0), ""),
+          // unsigned 0 operand
+          ("+8'd0", ExprInt(false, 8, 0), ""),
+          ("-8'd0", ExprInt(false, 8, 0), ""),
+          ("~8'd0", ExprInt(false, 8, 255), ""),
+          ("!8'd0", ExprInt(false, 1, 1), ""),
+          ("&8'd0", ExprInt(false, 1, 0), ""),
+          ("|8'd0", ExprInt(false, 1, 0), ""),
+          ("^8'd0", ExprInt(false, 1, 0), ""),
           // reductions ff
           ("&8'hff", ExprInt(false, 1, 1), ""),
-          ("~&8'hff", ExprInt(false, 1, 0), ""),
           ("|8'hff", ExprInt(false, 1, 1), ""),
-          ("~|8'hff", ExprInt(false, 1, 0), ""),
           ("^8'hff", ExprInt(false, 1, 0), ""),
-          ("~^8'hff", ExprInt(false, 1, 1), ""),
           // reductions 0
           ("&8'h0", ExprInt(false, 1, 0), ""),
-          ("~&8'h0", ExprInt(false, 1, 1), ""),
           ("|8'h0", ExprInt(false, 1, 0), ""),
-          ("~|8'h0", ExprInt(false, 1, 1), ""),
-          ("^8'h0", ExprInt(false, 1, 0), ""),
-          ("~^8'h0", ExprInt(false, 1, 1), "")
+          ("^8'h0", ExprInt(false, 1, 0), "")
         )
       } {
+        val expr = text.trim
         expr in {
           expr.asTree[Expr] rewrite constantFold shouldBe result
           if (msg.isEmpty) {

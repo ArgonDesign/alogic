@@ -82,19 +82,27 @@ final class ConstantFold(implicit cc: CompilerContext) extends TreeTransformer {
 
     case ExprUnary(op, expr @ ExprNum(signed, value)) => {
       val num = op match {
-        // Valid cases
-        case "+"           => expr
-        case "-" if signed => ExprNum(true, -value)
-        case "!"           => ExprNum(false, value == 0)
         // Invalid cases
-        case "-" if !signed => {
+        case "-" if !signed && value > 0 => {
           cc.error(tree, "Unary '-' is not well defined for unsigned values")
           ExprError()
         }
-        case op => {
-          cc.error(tree, s"Unary '${op}' is not well defined for unsized values")
+        case "^" if value < 0 => {
+          cc.error(tree, "Unary '^' is not well defined for unsized negative values")
           ExprError()
         }
+        case "~" if !signed => {
+          cc.error(tree, "Unary '~' is not well defined for unsized unsigned values")
+          ExprError()
+        }
+        // Valid cases
+        case "+" => expr
+        case "-" => ExprNum(signed, -value)
+        case "~" => ExprNum(true, ~value)
+        case "!" => ExprInt(false, 1, value == 0)
+        case "&" => ExprInt(false, 1, value == -1)
+        case "|" => ExprInt(false, 1, value != 0)
+        case "^" => ExprInt(false, 1, value.bitCount & 1)
       }
       if (num.hasLoc) num else num withLoc tree.loc
     }
@@ -106,23 +114,20 @@ final class ConstantFold(implicit cc: CompilerContext) extends TreeTransformer {
     case ExprUnary(op, expr @ ExprInt(signed, width, value)) => {
       lazy val mask = (BigInt(1) << width) - 1
       val num = op match {
+        // Invalid cases
+        case "-" if !signed && value > 0 => {
+          cc.error(tree, "Unary '-' is not well defined for unsigned values")
+          ExprError()
+        }
         // Valid cases
         case "+"           => expr
-        case "-" if signed => ExprInt(true, width, -value)
+        case "-"           => ExprInt(signed, width, -value)
         case "~" if signed => ExprInt(true, width, ~value)
         case "~"           => ExprInt(false, width, ~value & mask)
         case "!"           => ExprInt(false, 1, value == 0)
         case "&"           => ExprInt(false, 1, (value & mask) == mask)
-        case "~&"          => ExprInt(false, 1, (value & mask) != mask)
-        case "|"           => ExprInt(false, 1, (value & mask) != 0)
-        case "~|"          => ExprInt(false, 1, (value & mask) == 0)
-        case "^"           => ExprInt(false, 1, ((value & mask).bitCount & 1) == 1)
-        case "~^"          => ExprInt(false, 1, ((value & mask).bitCount & 1) != 1)
-        // Invalid cases
-        case "-" if !signed => {
-          cc.error(tree, "Unary '-' is not well defined for unsigned values")
-          ExprError()
-        }
+        case "|"           => ExprInt(false, 1, value != 0)
+        case "^"           => ExprInt(false, 1, (value & mask).bitCount & 1)
       }
       if (num.hasLoc) num else num withLoc tree.loc
     }

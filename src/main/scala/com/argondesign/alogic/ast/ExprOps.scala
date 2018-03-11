@@ -65,7 +65,6 @@ trait ExprOps { this: Expr =>
   final def >>>(rhs: Expr): Expr = makeExprBinary(">>>", rhs)
   final def &(rhs: Expr): Expr = makeExprBinary("&", rhs)
   final def ^(rhs: Expr): Expr = makeExprBinary("^", rhs)
-  final def ~^(rhs: Expr): Expr = makeExprBinary("~^", rhs)
   final def |(rhs: Expr): Expr = makeExprBinary("|", rhs)
   final def &&(rhs: Expr): Expr = makeExprBinary("&&", rhs)
   final def ||(rhs: Expr): Expr = makeExprBinary("||", rhs)
@@ -81,7 +80,6 @@ trait ExprOps { this: Expr =>
   final def >>>(rhs: Int): Expr = makeExprBinary(">>>", Expr(rhs))
   final def &(rhs: Int): Expr = makeExprBinary("&", Expr(rhs))
   final def ^(rhs: Int): Expr = makeExprBinary("^", Expr(rhs))
-  final def ~^(rhs: Int): Expr = makeExprBinary("~^", Expr(rhs))
   final def |(rhs: Int): Expr = makeExprBinary("|", Expr(rhs))
   final def &&(rhs: Int): Expr = makeExprBinary("&&", Expr(rhs))
   final def ||(rhs: Int): Expr = makeExprBinary("||", Expr(rhs))
@@ -193,6 +191,9 @@ trait ObjectExprOps {
   }
   final object >>> {
     def unapply(expr: ExprBinary) = if (expr.op == ">>>") Some((expr.lhs, expr.rhs)) else None
+  }
+  final object <<< {
+    def unapply(expr: ExprBinary) = if (expr.op == "<<<") Some((expr.lhs, expr.rhs)) else None
   }
   final object & {
     def unapply(expr: ExprBinary) = if (expr.op == "&") Some((expr.lhs, expr.rhs)) else None

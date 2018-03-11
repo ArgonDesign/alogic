@@ -122,14 +122,14 @@ final class ParserSpec extends FreeSpec with AlogicTest {
           "network a { b = new c; }".asTree[Entity]
         }
         cc.messages should not be empty
-        cc.messages(0) should beSyntaxError("missing parameter list '()' after entity name in instantiation 'new c'")
+        cc.messages(0) should beSyntaxError(
+          "missing parameter list '()' after entity name in instantiation 'new c'")
       }
 
       // TODO: Mandatory blocks
     }
 
-    "should signal error for malformed input" - {
-    }
+    "should signal error for malformed input" - {}
 
     /////////////////////////////////////////////////////////////////////////////
     // AST representations
@@ -198,13 +198,17 @@ final class ParserSpec extends FreeSpec with AlogicTest {
           "no flow control" - {
             "default" in {
               "out i2 a".asTree[Decl] shouldBe {
-                Decl(Ident("a"), TypeOut(TypeSInt(Expr(2)), FlowControlTypeNone, StorageTypeReg), None)
+                Decl(Ident("a"),
+                     TypeOut(TypeSInt(Expr(2)), FlowControlTypeNone, StorageTypeReg),
+                     None)
               }
             }
 
             "wire" in {
               "out wire u2 a".asTree[Decl] shouldBe {
-                Decl(Ident("a"), TypeOut(TypeUInt(Expr(2)), FlowControlTypeNone, StorageTypeWire), None)
+                Decl(Ident("a"),
+                     TypeOut(TypeUInt(Expr(2)), FlowControlTypeNone, StorageTypeWire),
+                     None)
               }
             }
           }
@@ -212,13 +216,17 @@ final class ParserSpec extends FreeSpec with AlogicTest {
           "valid flow control" - {
             "default" in {
               "out sync i2 a".asTree[Decl] shouldBe {
-                Decl(Ident("a"), TypeOut(TypeSInt(Expr(2)), FlowControlTypeValid, StorageTypeReg), None)
+                Decl(Ident("a"),
+                     TypeOut(TypeSInt(Expr(2)), FlowControlTypeValid, StorageTypeReg),
+                     None)
               }
             }
 
             "wire" in {
               "out sync wire i2 a".asTree[Decl] shouldBe {
-                Decl(Ident("a"), TypeOut(TypeSInt(Expr(2)), FlowControlTypeValid, StorageTypeWire), None)
+                Decl(Ident("a"),
+                     TypeOut(TypeSInt(Expr(2)), FlowControlTypeValid, StorageTypeWire),
+                     None)
               }
             }
           }
@@ -228,7 +236,9 @@ final class ParserSpec extends FreeSpec with AlogicTest {
               "out sync ready i2 a".asTree[Decl] shouldBe {
                 Decl(
                   Ident("a"),
-                  TypeOut(TypeSInt(Expr(2)), FlowControlTypeReady, StorageTypeSlices(List(StorageSliceFwd))),
+                  TypeOut(TypeSInt(Expr(2)),
+                          FlowControlTypeReady,
+                          StorageTypeSlices(List(StorageSliceFwd))),
                   None
                 )
               }
@@ -238,7 +248,9 @@ final class ParserSpec extends FreeSpec with AlogicTest {
               "out sync ready fslice i2 a".asTree[Decl] shouldBe {
                 Decl(
                   Ident("a"),
-                  TypeOut(TypeSInt(Expr(2)), FlowControlTypeReady, StorageTypeSlices(List(StorageSliceFwd))),
+                  TypeOut(TypeSInt(Expr(2)),
+                          FlowControlTypeReady,
+                          StorageTypeSlices(List(StorageSliceFwd))),
                   None
                 )
               }
@@ -248,7 +260,9 @@ final class ParserSpec extends FreeSpec with AlogicTest {
               "out sync ready bslice i2 a".asTree[Decl] shouldBe {
                 Decl(
                   Ident("a"),
-                  TypeOut(TypeSInt(Expr(2)), FlowControlTypeReady, StorageTypeSlices(List(StorageSliceBwd))),
+                  TypeOut(TypeSInt(Expr(2)),
+                          FlowControlTypeReady,
+                          StorageTypeSlices(List(StorageSliceBwd))),
                   None
                 )
               }
@@ -258,7 +272,9 @@ final class ParserSpec extends FreeSpec with AlogicTest {
               "out sync ready bubble i2 a".asTree[Decl] shouldBe {
                 Decl(
                   Ident("a"),
-                  TypeOut(TypeSInt(Expr(2)), FlowControlTypeReady, StorageTypeSlices(List(StorageSliceBubble))),
+                  TypeOut(TypeSInt(Expr(2)),
+                          FlowControlTypeReady,
+                          StorageTypeSlices(List(StorageSliceBubble))),
                   None
                 )
               }
@@ -389,7 +405,13 @@ final class ParserSpec extends FreeSpec with AlogicTest {
             Entity(
               Ident("b"),
               List(Decl(Ident("p_in"), TypeIn(TypeUInt(Expr(1)), FlowControlTypeNone), None)),
-              Nil, Nil, Nil, Nil, Nil, Nil, Map()
+              Nil,
+              Nil,
+              Nil,
+              Nil,
+              Nil,
+              Nil,
+              Map()
             )
           }
         }
@@ -399,9 +421,15 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                        |  i = new j();
                        |}""".asTree[Entity] shouldBe {
             Entity(
-              Ident("c"), Nil,
+              Ident("c"),
+              Nil,
               List(Instance(Ident("i"), Ident("j"), Nil, Nil)),
-              Nil, Nil, Nil, Nil, Nil, Map()
+              Nil,
+              Nil,
+              Nil,
+              Nil,
+              Nil,
+              Map()
             )
           }
         }
@@ -411,9 +439,15 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                        |  i = new j(A=2, B=3);
                        |}""".asTree[Entity] shouldBe {
             Entity(
-              Ident("d"), Nil,
+              Ident("d"),
+              Nil,
               List(Instance(Ident("i"), Ident("j"), List("A", "B"), List(Expr(2), Expr(3)))),
-              Nil, Nil, Nil, Nil, Nil, Map()
+              Nil,
+              Nil,
+              Nil,
+              Nil,
+              Nil,
+              Map()
             )
           }
         }
@@ -423,9 +457,16 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                        |  i.a -> j.b;
                        |}""".asTree[Entity] shouldBe {
             Entity(
-              Ident("e"), Nil, Nil,
-              List(Connect(ExprSelect(ExprRef(Ident("i")), "a"), List(ExprSelect(ExprRef(Ident("j")), "b")))),
-              Nil, Nil, Nil, Nil, Map()
+              Ident("e"),
+              Nil,
+              Nil,
+              List(Connect(ExprSelect(ExprRef(Ident("i")), "a"),
+                           List(ExprSelect(ExprRef(Ident("j")), "b")))),
+              Nil,
+              Nil,
+              Nil,
+              Nil,
+              Map()
             )
           }
         }
@@ -435,12 +476,19 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                        |  i.a -> j.b, k.c;
                        |}""".asTree[Entity] shouldBe {
             Entity(
-              Ident("f"), Nil, Nil,
-              List(Connect(
-                ExprSelect(ExprRef(Ident("i")), "a"),
-                List(ExprSelect(ExprRef(Ident("j")), "b"), ExprSelect(ExprRef(Ident("k")), "c"))
-              )),
-              Nil, Nil, Nil, Nil, Map()
+              Ident("f"),
+              Nil,
+              Nil,
+              List(
+                Connect(
+                  ExprSelect(ExprRef(Ident("i")), "a"),
+                  List(ExprSelect(ExprRef(Ident("j")), "b"), ExprSelect(ExprRef(Ident("k")), "c"))
+                )),
+              Nil,
+              Nil,
+              Nil,
+              Nil,
+              Map()
             )
           }
         }
@@ -450,9 +498,15 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                        |  void main() {}
                        |}""".asTree[Entity] shouldBe {
             Entity(
-              Ident("g"), Nil, Nil, Nil,
+              Ident("g"),
+              Nil,
+              Nil,
+              Nil,
               List(Function(Ident("main"), Nil)),
-              Nil, Nil, Nil, Map()
+              Nil,
+              Nil,
+              Nil,
+              Map()
             )
           }
         }
@@ -464,9 +518,15 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                        |  }
                        |}""".asTree[Entity] shouldBe {
             Entity(
-              Ident("g"), Nil, Nil, Nil, Nil, Nil,
+              Ident("g"),
+              Nil,
+              Nil,
+              Nil,
+              Nil,
+              Nil,
               List(StmtBlock(List(StmtAssign(ExprRef(Ident("a")), Expr(1))))),
-              Nil, Map()
+              Nil,
+              Map()
             )
           }
         }
@@ -476,7 +536,13 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                        |  fsm i {}
                        |}""".asTree[Entity] shouldBe {
             Entity(
-              Ident("h"), Nil, Nil, Nil, Nil, Nil, Nil,
+              Ident("h"),
+              Nil,
+              Nil,
+              Nil,
+              Nil,
+              Nil,
+              Nil,
               List(Entity(Ident("i"), Nil, Nil, Nil, Nil, Nil, Nil, Nil, Map())),
               Map()
             )
@@ -488,9 +554,13 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                        |  new fsm i {}
                        |}""".asTree[Entity] shouldBe {
             Entity(
-              Ident("h2"), Nil,
+              Ident("h2"),
+              Nil,
               List(Instance(Ident("i"), Ident("i"), Nil, Nil)),
-              Nil, Nil, Nil, Nil,
+              Nil,
+              Nil,
+              Nil,
+              Nil,
               List(Entity(Ident("i"), Nil, Nil, Nil, Nil, Nil, Nil, Nil, Map())),
               Map()
             )
@@ -504,7 +574,14 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                        |  }
                        |}""".asTree[Entity] shouldBe {
             Entity(
-              Ident("i"), Nil, Nil, Nil, Nil, Nil, Nil, Nil,
+              Ident("i"),
+              Nil,
+              Nil,
+              Nil,
+              Nil,
+              Nil,
+              Nil,
+              Nil,
               Map("verilog" -> "\n    +-/* comment */ {{{}}}\n  ")
             )
           }
@@ -517,7 +594,14 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                        |  }
                        |}""".asTree[Entity] shouldBe {
             Entity(
-              Ident("j"), Nil, Nil, Nil, Nil, Nil, Nil, Nil,
+              Ident("j"),
+              Nil,
+              Nil,
+              Nil,
+              Nil,
+              Nil,
+              Nil,
+              Nil,
               Map("other" -> "\n    +-/* comment */ {{{}}}\n  ")
             )
           }
@@ -534,7 +618,14 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                        |  }
                        |}""".asTree[Entity] shouldBe {
             Entity(
-              Ident("k"), Nil, Nil, Nil, Nil, Nil, Nil, Nil,
+              Ident("k"),
+              Nil,
+              Nil,
+              Nil,
+              Nil,
+              Nil,
+              Nil,
+              Nil,
               Map("verilog" -> "\n    first\n  \n\nsecond\n  ")
             )
           }
@@ -570,15 +661,17 @@ final class ParserSpec extends FreeSpec with AlogicTest {
           }
 
           "if with else" in {
-            "if (1) fence; else return;".asTree[Stmt] shouldBe StmtIf(Expr(1), StmtFence(), Some(StmtReturn()))
+            "if (1) fence; else return;".asTree[Stmt] shouldBe StmtIf(Expr(1),
+                                                                      StmtFence(),
+                                                                      Some(StmtReturn()))
           }
 
           "case without default" in {
             """|case (1) {
-                       | 1: a;
-                       | 2: b;
-                       |}
-                       |""".stripMargin.asTree[Stmt] shouldBe {
+               | 1: a;
+               | 2: b;
+               |}
+               |""".stripMargin.asTree[Stmt] shouldBe {
               StmtCase(
                 Expr(1),
                 List(
@@ -592,9 +685,9 @@ final class ParserSpec extends FreeSpec with AlogicTest {
 
           "case with default" in {
             """|case (1) {
-                       | default: c;
-                       |}
-                       |""".stripMargin.asTree[Stmt] shouldBe {
+               | default: c;
+               |}
+               |""".stripMargin.asTree[Stmt] shouldBe {
               StmtCase(
                 Expr(1),
                 Nil,
@@ -605,10 +698,10 @@ final class ParserSpec extends FreeSpec with AlogicTest {
 
           "case with multiple labels" in {
             """|case (1) {
-                       | 1: c;
-                       | 2, 3: d;
-                       |}
-                       |""".stripMargin.asTree[Stmt] shouldBe {
+               | 1: c;
+               | 2, 3: d;
+               |}
+               |""".stripMargin.asTree[Stmt] shouldBe {
               StmtCase(
                 Expr(1),
                 List(
@@ -713,7 +806,8 @@ final class ParserSpec extends FreeSpec with AlogicTest {
 
           "single declaration" in {
             "let (i2 a=1) loop {}".asTree[Stmt] shouldBe {
-              StmtLet(List(StmtDecl(Decl(Ident("a"), TypeSInt(Expr(2)), Some(Expr(1))))), StmtLoop(Nil))
+              StmtLet(List(StmtDecl(Decl(Ident("a"), TypeSInt(Expr(2)), Some(Expr(1))))),
+                      StmtLoop(Nil))
             }
           }
 
@@ -894,13 +988,32 @@ final class ParserSpec extends FreeSpec with AlogicTest {
             }
           }
 
-          for (op <- List("+", "-", "~", "!", "&", "~&", "|", "~|", "^", "~^")) {
+          for (op <- List("+", "-", "~", "!", "&", "|", "^")) {
             s"unary ${op}" in {
               s"${op}2".asTree[Expr] shouldBe ExprUnary(op, Expr(2))
             }
           }
 
-          for (op <- List("*", "/", "%", "+", "-", "<<", ">>", ">>>", "<<<", ">", ">=", "<", "<=", "==", "!=", "&", "^", "~^", "|", "&&", "||")) {
+          for (op <- List("*",
+                          "/",
+                          "%",
+                          "+",
+                          "-",
+                          "<<",
+                          ">>",
+                          ">>>",
+                          "<<<",
+                          ">",
+                          ">=",
+                          "<",
+                          "<=",
+                          "==",
+                          "!=",
+                          "&",
+                          "^",
+                          "|",
+                          "&&",
+                          "||")) {
             s"binary $op" in {
               s"4 ${op} 3".asTree[Expr] shouldBe ExprBinary(Expr(4), op, Expr(3))
             }
@@ -934,7 +1047,10 @@ final class ParserSpec extends FreeSpec with AlogicTest {
 
           "slice 2x" in {
             "b[2+:0][1-:1]".asTree[Expr] should matchPattern {
-              case ExprSlice(ExprSlice(ExprRef(Ident("b")), Expr(2), "+:", Expr(0)), Expr(1), "-:", Expr(1)) =>
+              case ExprSlice(ExprSlice(ExprRef(Ident("b")), Expr(2), "+:", Expr(0)),
+                             Expr(1),
+                             "-:",
+                             Expr(1)) =>
             }
           }
 
@@ -965,10 +1081,14 @@ final class ParserSpec extends FreeSpec with AlogicTest {
 
         "horouring precedence" - {
           "1 + 2 * 3" in {
-            "1 + 2 * 3".asTree[Expr] shouldBe ExprBinary(Expr(1), "+", ExprBinary(Expr(2), "*", Expr(3)))
+            "1 + 2 * 3".asTree[Expr] shouldBe ExprBinary(Expr(1),
+                                                         "+",
+                                                         ExprBinary(Expr(2), "*", Expr(3)))
           }
           "1 + 2 + 3" in {
-            "1 + 2 + 3".asTree[Expr] shouldBe ExprBinary(ExprBinary(Expr(1), "+", Expr(2)), "+", Expr(3))
+            "1 + 2 + 3".asTree[Expr] shouldBe ExprBinary(ExprBinary(Expr(1), "+", Expr(2)),
+                                                         "+",
+                                                         Expr(3))
           }
           // TODO: complete all precedence checks
         }
