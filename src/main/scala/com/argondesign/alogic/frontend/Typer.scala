@@ -11,10 +11,9 @@
 // DESCRIPTION:
 //
 // The Typer:
-// - Type checks the tree
-// - Assigns types to all nodes using the TypeAssigner
+// - Type checks all tree nodes
 // - Infers widths of unsized constants
-// - Folds expressions with unsized constants where necessary for width inference
+// - Assigns types to all nodes using the TypeAssigner
 // - Remove TypeDefinition nodes
 // - Replace the Root node with the root Entity node
 ////////////////////////////////////////////////////////////////////////////////
@@ -27,17 +26,23 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.transform.ConstantFold
-import com.argondesign.alogic.util.FollowedBy
+import com.argondesign.alogic.util.unreachable
 
-final class Typer(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
+final class Typer(implicit cc: CompilerContext) extends TreeTransformer {
 
   val constantFold = new ConstantFold
 
   val reducingBinaryOps = Array(">", ">=", "<", "<=", "==", "!=", "&&", "||")
 
-  override def transform(tree: Tree): Tree = {
-    require(!tree.hasTpe)
+  private def hasError(tree: Tree) = {
+    tree.children exists {
+      case child: Tree => child.tpe == TypeError
+      case _: Type     => false
+      case _           => unreachable
+    }
+  }
 
+  override def transform(tree: Tree): Tree = {
     // TODO: warn for field hiding by extension types
 
     val result: Tree = tree match {
@@ -50,6 +55,9 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       ////////////////////////////////////////////////////////////////////////////
       // Propagate errors
       ////////////////////////////////////////////////////////////////////////////
+
+      case expr: Expr if hasError(expr) => ExprError() withLoc expr.loc
+      case stmt: Stmt if hasError(stmt) => StmtError() withLoc stmt.loc
 
       ////////////////////////////////////////////////////////////////////////////
       // Infer width of of unsized literals
@@ -185,7 +193,6 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
                 s"right operand is ${rhsWidth} bits wide"
               )
             }
-
           }
 
           tree
