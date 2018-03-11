@@ -125,6 +125,24 @@ object Types {
     def apply(field: String): Option[Type]
   }
 
+  // Base trait of types that add fields to existing types
+  trait ExtensionType extends CompoundType {
+    // The underlying type
+    def kind: Type
+
+    // The extensions
+    def extensions: Map[String, Type]
+
+    def apply(name: String): Option[Type] = {
+      extensions.get(name) orElse {
+        kind match {
+          case comp: CompoundType => comp(name)
+          case _                  => None
+        }
+      }
+    }
+  }
+
   trait TypeStructImpl extends CompoundType { this: TypeStruct =>
 
     private[this] lazy val fieldMap = (fieldNames zip fieldTypes).toMap
@@ -143,9 +161,8 @@ object Types {
     def param(name: String) = paramMap.get(name)
   }
 
-  trait TypeInImpl extends CompoundType { this: TypeIn =>
-
-    lazy val fieldMap = fct match {
+  trait TypeInImpl extends ExtensionType { this: TypeIn =>
+    lazy val extensions = fct match {
       case FlowControlTypeNone => {
         Map.empty[String, Type]
       }
@@ -162,15 +179,15 @@ object Types {
         )
       }
     }
-
-    def apply(name: String) = fieldMap.get(name)
   }
 
-  trait TypeOutImpl extends CompoundType { this: TypeOut =>
-
-    lazy val fieldMap = {
-      val writeFuncType =
-        if (kind == TypeVoid) TypeCombFunc(Nil, TypeVoid) else TypeCombFunc(List(kind), TypeVoid)
+  trait TypeOutImpl extends ExtensionType { this: TypeOut =>
+    lazy val extensions = {
+      val writeFuncType = if (kind == TypeVoid) {
+        TypeCombFunc(Nil, TypeVoid)
+      } else {
+        TypeCombFunc(List(kind), TypeVoid)
+      }
       fct match {
         case FlowControlTypeNone => {
           Map.empty[String, Type]
@@ -198,7 +215,5 @@ object Types {
         }
       }
     }
-
-    def apply(name: String) = fieldMap.get(name)
   }
 }

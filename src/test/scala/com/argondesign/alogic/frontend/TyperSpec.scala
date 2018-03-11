@@ -19,7 +19,9 @@ import java.util.regex.Pattern
 
 import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.SourceTextConverters._
+import com.argondesign.alogic.ast.Trees.Expr.ImplicitConversions._
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Error
 import com.argondesign.alogic.core.Warning
@@ -101,7 +103,62 @@ final class TyperSpec extends FreeSpec with AlogicTest {
             }
           }
         }
+      }
 
+      "select" - {
+        for {
+          (text, kind, msg) <- List(
+            ("d.x", TypeSInt(8), ""),
+            ("e.y", TypeStruct(List("x"), List(TypeSInt(8))), ""),
+            ("e.y.x", TypeSInt(8), ""),
+            ("d.z", TypeError, "No field named 'z' in '.*'"),
+            ("e.z", TypeError, "No field named 'z' in '.*'"),
+            ("e.y.z", TypeError, "No field named 'z' in '.*'"),
+            ("f.x", TypeSInt(8), ""),
+            ("g.y", TypeStruct(List("x"), List(TypeSInt(8))), ""),
+            ("g.y.x", TypeSInt(8), ""),
+            ("f.valid", TypeCombFunc(Nil, TypeUInt(1)), ""),
+            ("g.valid", TypeCombFunc(Nil, TypeUInt(1)), ""),
+//            ("@bits(d.x)", TypeSInt(8), ""),
+//            ("@bits(e.y)", TypeStruct(List("x"), List(TypeSInt(8))), ""),
+//            ("@bits(e.y.x)", TypeSInt(8), ""),
+//            ("@bits(f.x)", TypeSInt(8), ""),
+//            ("@bits(g.y)", TypeStruct(List("x"), List(TypeSInt(8))), ""),
+//            ("@bits(g.y.x)", TypeSInt(8), ""),
+//            ("@bits(a.x)", TypeType(TypeSInt(8)), ""),
+//            ("@bits(b.y)", TypeType(TypeStruct(List("x"), List(TypeSInt(8)))), ""),
+//            ("@bits(b.y.x)", TypeType(TypeSInt(8)), "")
+          )
+        } {
+          text in {
+            val root = s"""|struct a {
+                           |  i8 x;
+                           |};
+                           |
+                           |struct b {
+                           |  a y;
+                           |};
+                           |
+                           |fsm c {
+                           |  a d;
+                           |  b e;
+                           |  in sync a f;
+                           |  out sync b g;
+                           |  void main() {
+                           |    d; e; f; g;
+                           |    ${text};
+                           |  }
+                           |}""".stripMargin.asTree[Root]
+            val tree = xform(root)
+            if (msg.isEmpty) {
+              val expr = (tree collectFirst { case e: ExprSelect => e }).value
+              expr.tpe shouldBe kind
+              cc.messages shouldBe empty
+            } else {
+              cc.messages.loneElement should beThe[Error](msg)
+            }
+          }
+        }
       }
     }
 

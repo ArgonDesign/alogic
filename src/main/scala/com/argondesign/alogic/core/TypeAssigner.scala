@@ -325,8 +325,9 @@ object TypeAssigner {
   def apply(node: ExprSelect)(implicit cc: CompilerContext): node.type = {
     require(!node.hasTpe)
     val tpe = node.expr.tpe.chase match {
-      case tpe: CompoundType => tpe(node.selector).get
-      case _                 => unreachable
+      case TypeType(kind: CompoundType) => TypeType(kind(node.selector).get)
+      case tpe: CompoundType            => tpe(node.selector).get
+      case _                            => unreachable
     }
     node withTpe tpe.chase
   }

@@ -551,6 +551,29 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
         }
       }
 
+      "select from type" in {
+        val tree = """|struct a {
+                      | i8 b;
+                      |};
+                      |
+                      |fsm c {
+                      |  void main() {
+                      |    @bits(a.b);
+                      |  }
+                      |}""".stripMargin.asTree[Root]
+        val expr = (xform(tree) collectFirst { case e: ExprSelect => e }).value
+
+        expr.postOrderIterator collect {
+          case e: Expr => e
+        } foreach {
+          TypeAssigner(_)
+        }
+
+        expr.tpe shouldBe TypeType(TypeSInt(8))
+
+        cc.messages shouldBe empty
+      }
+
       "sized integer literals" - {
         for {
           (expr, kind) <- List(

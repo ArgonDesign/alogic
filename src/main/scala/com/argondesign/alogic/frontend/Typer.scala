@@ -38,6 +38,8 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
   override def transform(tree: Tree): Tree = {
     require(!tree.hasTpe)
 
+    // TODO: warn for field hiding by extension types
+
     val result: Tree = tree match {
       ////////////////////////////////////////////////////////////////////////////
       // Remove root node
@@ -116,6 +118,21 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       ////////////////////////////////////////////////////////////////////////////
       // Type check expressions
       ////////////////////////////////////////////////////////////////////////////
+
+      case ExprSelect(expr, selector) => {
+        val field = expr.tpe match {
+          case TypeType(kind: CompoundType) => kind(selector)
+          case kind: CompoundType           => kind(selector)
+          case _                            => None
+        }
+
+        if (field.isDefined) {
+          tree
+        } else {
+          cc.error(tree, s"No field named '${selector}' in '${expr}'")
+          ExprError() withLoc tree.loc
+        }
+      }
 
       // Non-reducing unary ops
       case ExprUnary(op, expr) if op == "+" || op == "-" || op == "~" => {
