@@ -22,7 +22,7 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.util.unreachable
 
-final class Desugar(implicit cc: CompilerContext) extends TreeTransformer { namer =>
+final class Desugar(implicit cc: CompilerContext) extends TreeTransformer {
 
   override def transform(tree: Tree): Tree = tree match {
     // "a++" rewritten as  "a = a + @zx(@bits(a), 1'b1)"

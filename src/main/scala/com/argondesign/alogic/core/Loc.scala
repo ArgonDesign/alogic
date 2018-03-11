@@ -24,6 +24,10 @@ case class Loc(file: String, line: Int) {
   override def toString = s"${file}:${line}"
 }
 
+object Loc {
+  final val synthetic = Loc("<synthetic>", 0)
+}
+
 trait LocationRemapping { self: CompilerContext =>
 
   // Canonicalise file names so equivalent paths map to the same string

@@ -64,17 +64,19 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         for (symbol <- unusedSymbols) {
           val hint = symbol.denot.kind match {
             case _: TypeArray    => "Array"
-            case _: TypeFunc     => "Function"
+            case _: TypeCtrlFunc => "Function"
+            case _: TypeCombFunc => "Function"
             case _: TypeEntity   => "Entity"
             case _: TypeIn       => "Input port"
             case _: TypeOut      => "Output port"
             case _: TypeParam    => "Parameter"
             case _: TypeConst    => "Constant"
             case _: TypePipeline => "Pipeline variable"
-            case TypeRef(Sym(symbol)) if symbol != ErrorSymbol => symbol.denot.kind match {
-              case _: TypeEntity => "Instance"
-              case _             => "Variable"
-            }
+            case TypeRef(Sym(symbol)) if symbol != ErrorSymbol =>
+              symbol.denot.kind match {
+                case _: TypeEntity => "Instance"
+                case _             => "Variable"
+              }
             case _ => "Variable"
           }
           cc.warning(symbol.loc, s"${hint} '${symbol.denot.name}' is unused")
@@ -87,10 +89,11 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       @tailrec
       def loop(name: Name, scopes: List[SymTab]): Option[Symbol] = scopes match {
         case Nil => cc.globalScope.get(name)
-        case scope :: scopes => scope.get(name) match {
-          case opt @ Some(symbol) => opt
-          case None               => loop(name, scopes)
-        }
+        case scope :: scopes =>
+          scope.get(name) match {
+            case opt @ Some(symbol) => opt
+            case None               => loop(name, scopes)
+          }
       }
       loop(name, scopes)
     }
@@ -200,6 +203,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
           node match {
             case sint: TypeSInt => sint.copy(size = newSize)
             case uint: TypeUInt => uint.copy(size = newSize)
+            case _              => unreachable
           }
         }
       }
@@ -228,7 +232,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
 
       // Insert function names before descending an entity so they can be in arbitrary order
       for (Function(ident: Ident, _) <- node.functions) {
-        val symbol = cc.newTermSymbol(ident, TypeFunc(Nil, TypeVoid))
+        val symbol = cc.newTermSymbol(ident, TypeCtrlFunc(Nil, TypeVoid))
         Scopes.insert(symbol)
         // Always mark 'main' as used
         if (ident.name == "main") {
@@ -280,9 +284,10 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
   }
 
   override def transform(tree: Tree): Tree = tree match {
-    case node: Root => node followedBy {
-      Scopes.pop()
-    }
+    case node: Root =>
+      node followedBy {
+        Scopes.pop()
+      }
 
     case TypeDefinitionTypedef(ident: Ident, kind) => {
       // Lookup target type
@@ -299,7 +304,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
     case TypeDefinitionStruct(ident: Ident, fieldNames, fieldKinds) => {
       // Lookup field types
       val newFieldKinds = fieldKinds map { _ rewrite TypeNamer }
-      val kind = TypeStruct(fieldNames, newFieldKinds)
+      val kind          = TypeStruct(fieldNames, newFieldKinds)
       // Insert new type
       val symbol = Scopes.insert(cc.newTypeSymbol(ident, kind))
       // Don't check use of type symbols TODO: check types defined in same file
@@ -324,11 +329,12 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
           val paramSymbols = entity.declarations collect {
             case Decl(Sym(sym), _: TypeParam, _) => sym
           }
-          val portNames = portSymbols map { _.denot.name.str }
-          val portTypes = portSymbols map { _.denot.kind }
+          val portNames  = portSymbols map { _.denot.name.str }
+          val portTypes  = portSymbols map { _.denot.kind }
           val paramNames = paramSymbols map { _.denot.name.str }
           val paramTypes = paramSymbols map { _.denot.kind }
-          symbol withDenot symbol.denot.copy(kind = TypeEntity(portNames, portTypes, paramNames, paramTypes))
+          symbol withDenot symbol.denot.copy(
+            kind = TypeEntity(portNames, portTypes, paramNames, paramTypes))
         }
         case other => other
       }
@@ -352,30 +358,35 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
     case Instance(iIdent: Ident, eIdent: Ident, paramNames, paramExprs) => {
       // Lookup type
       val eSymbol = lookupType(eIdent)
-      val eSym = Sym(eSymbol) withLoc eIdent.loc
+      val eSym    = Sym(eSymbol) withLoc eIdent.loc
       Scopes.markUsed(eSymbol)
       // Insert term
       val iSymbol = Scopes.insert(cc.newTermSymbol(iIdent, TypeRef(Sym(eSymbol))))
-      val iSym = Sym(iSymbol) withLoc iIdent.loc
+      val iSym    = Sym(iSymbol) withLoc iIdent.loc
       // Rewrite node
       Instance(iSym, eSym, paramNames, paramExprs) withLoc tree.loc
     }
 
-    case node: StmtBlock => node followedBy {
-      Scopes.pop()
-    }
-    case node: StmtLoop => node followedBy {
-      Scopes.pop()
-    }
-    case node: StmtDo => node followedBy {
-      Scopes.pop()
-    }
-    case node: StmtWhile => node followedBy {
-      Scopes.pop()
-    }
-    case node: StmtFor => node followedBy {
-      Scopes.pop()
-    }
+    case node: StmtBlock =>
+      node followedBy {
+        Scopes.pop()
+      }
+    case node: StmtLoop =>
+      node followedBy {
+        Scopes.pop()
+      }
+    case node: StmtDo =>
+      node followedBy {
+        Scopes.pop()
+      }
+    case node: StmtWhile =>
+      node followedBy {
+        Scopes.pop()
+      }
+    case node: StmtFor =>
+      node followedBy {
+        Scopes.pop()
+      }
 
     case StmtGoto(ident: Ident) => {
       // Lookup term
@@ -405,9 +416,10 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       ExprRef(sym) withLoc tree.loc
     }
 
-    case ExprAtCall("bits", _) => tree followedBy {
-      atBitsEitherTypeOrTerm = false
-    }
+    case ExprAtCall("bits", _) =>
+      tree followedBy {
+        atBitsEitherTypeOrTerm = false
+      }
 
     case _ => tree
   }
@@ -433,7 +445,9 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       val denot = symbol.denot
       denot.kind visit {
         case node: Ident => {
-          cc.ice(node, s"Namer should have removed all identifiers, but '${node}' remains in denotation '${denot}'")
+          cc.ice(
+            node,
+            s"Namer should have removed all identifiers, but '${node}' remains in denotation '${denot}'")
         }
       }
     }

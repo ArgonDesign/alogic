@@ -37,43 +37,50 @@ object Types {
   // All possible types
   ///////////////////////////////////////////////////////////////////////////////
 
-  // Type of expressions that represent types e.g. ExprType(_)
-  case object TypeType extends Type
   // Type of combinatorial statements
-  case object TypeComb extends Type
+  case object TypeCombStmt extends Type
   // Type of control statements
-  case object TypeCtrl extends Type
+  case object TypeCtrlStmt extends Type
 
-  sealed trait TypeInt extends Type with TypeIntImpl
+  sealed trait TypeInt extends Type
 
   // Simple signed integer types e.g.: i8 / int(N), analogous to Verilog packed arrays
-  case class TypeSInt(size: Expr) extends TypeInt with TypeSIntImpl
+  case class TypeSInt(size: Expr) extends TypeInt
   // Simple unsigned integer types e.g.: u2 / uint(N), analogous to Verilog packed arrays
-  case class TypeUInt(size: Expr) extends TypeInt with TypeUIntImpl
+  case class TypeUInt(size: Expr) extends TypeInt
   // Vector types (analogous to higher dimensions of SystemVerilog multi-dimensional packed arrays)
   case class TypeVector(elementType: Type, size: Expr) extends Type
   // Array types (analogous to verilog unpacked arrays)
   case class TypeArray(elementType: Type, size: Expr) extends Type
   // Structure type
-  case class TypeStruct(fieldNames: List[String], fieldTypes: List[Type]) extends Type with TypeStructImpl
+  case class TypeStruct(fieldNames: List[String], fieldTypes: List[Type])
+      extends Type
+      with TypeStructImpl
   // Void type
   case object TypeVoid extends Type
   // Type reference e.g. 'foo_t foo;'
   case class TypeRef(ref: Ref) extends Type
-  // Function type e.g. 'void foo() {}'
-  case class TypeFunc(argTypes: List[Type], retType: Type) extends Type
+  // Combinatorial function type e.g. 'port.read'
+  case class TypeCombFunc(argTypes: List[Type], retType: Type) extends Type
+  // State function type e.g. 'void foo() {}'
+  case class TypeCtrlFunc(argTypes: List[Type], retType: Type) extends Type
   // Entity type e.g. 'fsm foo {}'
   case class TypeEntity(
-    portNames:  List[String],
-    portTypes:  List[Type],
-    paramNames: List[String],
-    paramTypes: List[Type]
-  ) extends Type with TypeEntityImpl
+      portNames: List[String],
+      portTypes: List[Type],
+      paramNames: List[String],
+      paramTypes: List[Type]
+  ) extends Type
+      with TypeEntityImpl
+  // Strings
+  case object TypeStr extends Type
 
   // Input port type
   case class TypeIn(kind: Type, fct: FlowControlType) extends Type with TypeInImpl
   // Output port type
-  case class TypeOut(kind: Type, fct: FlowControlType, st: StorageType) extends Type with TypeOutImpl
+  case class TypeOut(kind: Type, fct: FlowControlType, st: StorageType)
+      extends Type
+      with TypeOutImpl
   // Pipeline variable type
   case class TypePipeline(kind: Type) extends Type
   // Parameter type
@@ -81,13 +88,28 @@ object Types {
   // Constant type
   case class TypeConst(kind: Type) extends Type
 
+  // Type of expressions that represent types, with underlying type kind e.g. ExprType(_)
+  case class TypeType(kind: Type) extends Type
+
+  // Type of other tree nodes where type is not important or meaningful
+  case object TypeMisc extends Type
+
+  // Placeholder if error happened and a valid type cannot be computed
+  case object TypeError extends Type
+  // Placeholder if type cannot be computed
+  case object TypeUnknown extends Type
+
   ///////////////////////////////////////////////////////////////////////////////
   // base trait companions
   ///////////////////////////////////////////////////////////////////////////////
+
   object TypeInt {
-    def unapply(expr: TypeInt): Option[Expr] = expr match {
+    def apply(signed: Boolean, size: Expr): TypeInt = if (signed) TypeSInt(size) else TypeUInt(size)
+
+    def unapply(expr: Type): Option[Expr] = expr match {
       case TypeSInt(size) => Some(size)
       case TypeUInt(size) => Some(size)
+      case _              => None
     }
   }
 
@@ -95,17 +117,7 @@ object Types {
   // Implementations
   ///////////////////////////////////////////////////////////////////////////////
 
-  trait TypeIntImpl { this: TypeInt =>
-    def signed: Boolean
-  }
-
-  trait TypeSIntImpl { this: TypeSInt =>
-    final def signed = true
-  }
-
-  trait TypeUIntImpl { this: TypeUInt =>
-    final def signed = false
-  }
+  private val oneExpr = Expr(1) withLoc Loc.synthetic
 
   // A base trait for types that have fields that can be looked up using dot notation
   trait CompoundType {
@@ -139,14 +151,14 @@ object Types {
       }
       case FlowControlTypeValid | FlowControlTypeReady => {
         Map(
-          "read" -> TypeFunc(Nil, kind),
-          "valid" -> TypeFunc(Nil, TypeUInt(1)),
-          "wait" -> TypeFunc(Nil, TypeVoid)
+          "read" -> TypeCombFunc(Nil, kind),
+          "valid" -> TypeCombFunc(Nil, TypeUInt(oneExpr)),
+          "wait" -> TypeCombFunc(Nil, TypeVoid)
         )
       }
       case FlowControlTypeAccept => {
         Map(
-          "read" -> TypeFunc(Nil, kind)
+          "read" -> TypeCombFunc(Nil, kind)
         )
       }
     }
@@ -157,7 +169,8 @@ object Types {
   trait TypeOutImpl extends CompoundType { this: TypeOut =>
 
     lazy val fieldMap = {
-      val writeFuncType = if (kind == TypeVoid) TypeFunc(Nil, TypeVoid) else TypeFunc(List(kind), TypeVoid)
+      val writeFuncType =
+        if (kind == TypeVoid) TypeCombFunc(Nil, TypeVoid) else TypeCombFunc(List(kind), TypeVoid)
       fct match {
         case FlowControlTypeNone => {
           Map.empty[String, Type]
@@ -165,17 +178,17 @@ object Types {
         case FlowControlTypeValid => {
           Map(
             "write" -> writeFuncType,
-            "valid" -> TypeFunc(Nil, TypeUInt(1)),
-            "flush" -> TypeFunc(Nil, TypeVoid)
+            "valid" -> TypeCombFunc(Nil, TypeUInt(oneExpr)),
+            "flush" -> TypeCombFunc(Nil, TypeVoid)
           )
         }
         case FlowControlTypeReady => {
           Map(
             "write" -> writeFuncType,
-            "valid" -> TypeFunc(Nil, TypeUInt(1)),
-            "flush" -> TypeFunc(Nil, TypeVoid),
-            "full" -> TypeFunc(Nil, TypeUInt(1)),
-            "empty" -> TypeFunc(Nil, TypeUInt(1))
+            "valid" -> TypeCombFunc(Nil, TypeUInt(oneExpr)),
+            "flush" -> TypeCombFunc(Nil, TypeVoid),
+            "full" -> TypeCombFunc(Nil, TypeUInt(oneExpr)),
+            "empty" -> TypeCombFunc(Nil, TypeUInt(oneExpr))
           )
         }
         case FlowControlTypeAccept => {

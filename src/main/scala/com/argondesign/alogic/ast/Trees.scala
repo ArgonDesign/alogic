@@ -53,7 +53,8 @@ object Trees {
 
   sealed trait TypeDefinition extends Tree
 
-  case class TypeDefinitionStruct(ref: Ref, fieldNames: List[String], fieldTypes: List[Type]) extends TypeDefinition
+  case class TypeDefinitionStruct(ref: Ref, fieldNames: List[String], fieldTypes: List[Type])
+      extends TypeDefinition
   case class TypeDefinitionTypedef(ref: Ref, kind: Type) extends TypeDefinition
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -61,37 +62,34 @@ object Trees {
   ///////////////////////////////////////////////////////////////////////////////
 
   case class Entity(
-    // Entity being defined
-    ref: Ref,
-
-    // Declarations in entity scope
-    declarations: List[Decl],
-
-    // Instantiations
-    instances: List[Instance],
-    // Port connections
-    connects: List[Connect],
-
-    // Functions
-    functions: List[Function],
-    // Sates
-    states: List[State],
-    // fence statements
-    fenceStmts: List[Stmt],
-
-    // Nested entity definitions
-    entities: List[Entity],
-
-    // Verbatim sections. Map from language to string to insert into output
-    verbatim: Map[String, String]
-  ) extends Tree with EntityOps
+      // Entity being defined
+      ref: Ref,
+      // Declarations in entity scope
+      declarations: List[Decl],
+      // Instantiations
+      instances: List[Instance],
+      // Port connections
+      connects: List[Connect],
+      // Functions
+      functions: List[Function],
+      // Sates
+      states: List[State],
+      // fence statements
+      fenceStmts: List[Stmt],
+      // Nested entity definitions
+      entities: List[Entity],
+      // Verbatim sections. Map from language to string to insert into output
+      verbatim: Map[String, String]
+  ) extends Tree
+      with EntityOps
 
   ///////////////////////////////////////////////////////////////////////////////
   // Entity contents
   ///////////////////////////////////////////////////////////////////////////////
 
   case class Decl(ref: Ref, kind: Type, init: Option[Expr]) extends Tree
-  case class Instance(ref: Ref, module: Ref, paramNames: List[String], paramExprs: List[Expr]) extends Tree
+  case class Instance(ref: Ref, module: Ref, paramNames: List[String], paramExprs: List[Expr])
+      extends Tree
   case class Connect(lhs: Expr, rhs: List[Expr]) extends Tree
   case class Function(ref: Ref, body: List[Stmt]) extends Tree
 
@@ -114,7 +112,8 @@ object Trees {
 
   case class StmtLoop(body: List[Stmt]) extends Stmt
   case class StmtWhile(cond: Expr, body: List[Stmt]) extends Stmt
-  case class StmtFor(inits: List[Stmt], cond: Option[Expr], step: List[Stmt], body: List[Stmt]) extends Stmt
+  case class StmtFor(inits: List[Stmt], cond: Option[Expr], step: List[Stmt], body: List[Stmt])
+      extends Stmt
   case class StmtDo(cond: Expr, body: List[Stmt]) extends Stmt
 
   case class StmtLet(inits: List[Stmt], body: Stmt) extends Stmt
@@ -161,8 +160,12 @@ object Trees {
   case class ExprDollarCall(name: String, args: List[Expr]) extends Expr
 
   // Literals
-  case class ExprInt(signed: Boolean, width: Int, value: BigInt) extends Expr
-  case class ExprNum(signed: Boolean, value: BigInt) extends Expr
+  case class ExprInt(signed: Boolean, width: Int, value: BigInt) extends Expr {
+    require(signed || value >= 0)
+  }
+  case class ExprNum(signed: Boolean, value: BigInt) extends Expr {
+    require(signed || value >= 0)
+  }
   case class ExprStr(value: String) extends Expr
 
   case class ExprRef(ref: Ref) extends Expr

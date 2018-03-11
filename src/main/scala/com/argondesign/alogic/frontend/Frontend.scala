@@ -39,19 +39,21 @@ import com.argondesign.alogic.util.unreachable
 // - typing (compute types of all tree nodes)
 
 class Frontend(
-  val moduleSeachDirs:  List[File],
-  val includeSeachDirs: List[File],
-  val initialDefines:   Map[String, String]
+    val moduleSeachDirs: List[File],
+    val includeSeachDirs: List[File],
+    val initialDefines: Map[String, String]
 )(
-  implicit
-  cc: CompilerContext
+    implicit
+    cc: CompilerContext
 ) {
 
   private[this] def locateIt(entityName: String): Source = {
     val sourceFileOpt = FindFile(entityName + ".alogic", moduleSeachDirs, maxDepth = 1)
 
     val sourceFile = sourceFileOpt.getOrElse {
-      cc.fatal(s"Cannot find entity '${entityName}'. Looked in:" :: moduleSeachDirs map { _.toString }: _*)
+      cc.fatal(s"Cannot find entity '${entityName}'. Looked in:" :: moduleSeachDirs map {
+        _.toString
+      }: _*)
     }
 
     Source(sourceFile)
@@ -89,7 +91,12 @@ class Frontend(
     }
   }
 
-  private[this] def typeIt(tree: Root): Root = tree
+  private[this] def typeIt(tree: Root): Entity = {
+    tree.rewrite(new Typer) match {
+      case entity: Entity => entity
+      case _              => unreachable
+    }
+  }
 
   // Cache of trees we already started working on. We use this to to avoid
   // multiple processing files that are instantiated multiple times
@@ -118,7 +125,8 @@ class Frontend(
         val Ident(parsedName) = root.entity.ref
 
         if (parsedName != entityName) {
-          cc.fatal(root.entity.loc, s"Entity name '${parsedName}' does not match file basename '${entityName}'")
+          cc.fatal(root.entity.loc,
+                   s"Entity name '${parsedName}' does not match file basename '${entityName}'")
         }
 
         root
@@ -166,7 +174,7 @@ class Frontend(
   }
 
   // Parse all files needed for 'entityName'. Returns map from entityNames -> Root
-  def apply(entityName: String): Map[String, Root] = {
+  def apply(entityName: String): Map[String, Entity] = {
 
     // Compute the result
     val initialMap = Await.result(doIt(entityName), atMost = Inf)

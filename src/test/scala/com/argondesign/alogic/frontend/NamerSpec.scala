@@ -188,9 +188,10 @@ final class NamerSpec extends FlatSpec with AlogicTest {
 
     inside(tree) {
       case Root(List(
-        TypeDefinitionTypedef(Sym(eSym), _),
-        TypeDefinitionStruct(Sym(aSym), names, kind)
-        ), _) =>
+                  TypeDefinitionTypedef(Sym(eSym), _),
+                  TypeDefinitionStruct(Sym(aSym), names, kind)
+                ),
+                _) =>
         aSym.loc.line shouldBe 2
         aSym.denot.name shouldBe TypeName("a")
         aSym shouldBe 'typeSymbol
@@ -215,12 +216,14 @@ final class NamerSpec extends FlatSpec with AlogicTest {
                   |}""".asTree[Stmt] rewrite namer
 
     inside(tree) {
-      case StmtBlock(List(StmtDecl(Decl(Sym(outer1), _, _)), block, StmtAssign(ExprRef(Sym(outer2)), _))) =>
+      case StmtBlock(
+          List(StmtDecl(Decl(Sym(outer1), _, _)), block, StmtAssign(ExprRef(Sym(outer2)), _))) =>
         outer1.loc.line shouldBe 2
         outer1 should be theSameInstanceAs outer2
         outer1 shouldBe 'termSymbol
         inside(block) {
-          case StmtBlock(List(StmtDecl(Decl(Sym(inner1), _, _)), StmtAssign(ExprRef(Sym(inner2)), _))) =>
+          case StmtBlock(
+              List(StmtDecl(Decl(Sym(inner1), _, _)), StmtAssign(ExprRef(Sym(inner2)), _))) =>
             inner1.loc.line shouldBe 4
             inner1 should be theSameInstanceAs inner2
             inner1 shouldNot be theSameInstanceAs outer1
@@ -345,7 +348,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
 
     val aSym = treeA match {
       case Entity(Sym(symbol), _, _, _, _, _, _, _, _) => symbol
-      case _ => fail
+      case _                                           => fail
     }
 
     aSym shouldBe 'typeSymbol
@@ -650,7 +653,8 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     val tree = root rewrite namer
 
     val symA = tree collectFirst { case Sym(symbol) if symbol.denot.name.str == "a" => symbol }
-    symA.value.denot.kind shouldBe TypeStruct(List("a", "b"), List(TypeUInt(Expr(1)), TypeSInt(Expr(2))))
+    symA.value.denot.kind shouldBe TypeStruct(List("a", "b"),
+                                              List(TypeUInt(Expr(1)), TypeSInt(Expr(2))))
   }
 
   it should "attach correct types to symbol denotations - function" in {
@@ -659,7 +663,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     val tree = entity rewrite namer
 
     val symA = tree collectFirst { case Sym(symbol) if symbol.denot.name.str == "a" => symbol }
-    symA.value.denot.kind shouldBe TypeFunc(Nil, TypeVoid)
+    symA.value.denot.kind shouldBe TypeCtrlFunc(Nil, TypeVoid)
   }
 
   it should "attach correct types to symbol denotations - instance" in {

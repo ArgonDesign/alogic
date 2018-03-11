@@ -533,7 +533,8 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
           literal in {
             literal.asTree[Expr] rewrite checker shouldBe ExprError()
             val bits = literal takeWhile { _ != '\'' }
-            cc.messages.loneElement should beThe[Error](s"Value '.*' does not fit in ${bits} bits")
+            val prefix = if (literal contains 's') "Signed" else "Unsigned"
+            cc.messages.loneElement should beThe[Error](s"${prefix} value '.*' does not fit in ${bits} bits")
           }
         }
       }

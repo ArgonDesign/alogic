@@ -228,7 +228,8 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
       assert(value >= 0)
       val bits = if (signed) width - 1 else width
       if (Math.clog2(value + 1) > bits) {
-        cc.error(tree, s"Value '${value}' does not fit in ${width} bits")
+        val prefix = if (signed) "Signed" else "Unsigned"
+        cc.error(tree, s"${prefix} value '${value}' does not fit in ${width} bits")
         ExprError() withLoc tree.loc
       } else {
         tree

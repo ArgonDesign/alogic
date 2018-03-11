@@ -24,144 +24,133 @@ package com.argondesign.alogic.frontend
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Symbols._
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.util.unreachable
-
-import scala.language.implicitConversions
+import com.argondesign.alogic.transform.ConstantFold
 import com.argondesign.alogic.util.FollowedBy
 
-final class Typer(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy { namer =>
+final class Typer(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
 
-  private implicit def boolean2BigInt(bool: Boolean) = if (bool) BigInt(1) else BigInt(0)
-
-  override def enter(tree: Tree): Unit = tree match {
-
-    case _ => ()
-  }
+  val constantFold = new ConstantFold
 
   val reducingBinaryOps = Array(">", ">=", "<", "<=", "==", "!=", "&&", "||")
 
-  override def transform(tree: Tree): Tree = tree match {
-    case node: Root => node.entity
+  override def transform(tree: Tree): Tree = {
+    require(!tree.hasTpe)
 
-    ////////////////////////////////////////////////////////////////////////////
-    // Type references based on symbol
-    ////////////////////////////////////////////////////////////////////////////
+    val result: Tree = tree match {
+      ////////////////////////////////////////////////////////////////////////////
+      // Remove root node
+      ////////////////////////////////////////////////////////////////////////////
 
-    case ExprRef(Sym(symbol)) if symbol != ErrorSymbol =>
-      {
-        val kind = symbol.denot.kind match {
-          case TypeParam(kind)      => kind
-          case TypeConst(kind)      => kind
-          case TypePipeline(kind)   => kind
-          case TypeRef(Sym(symbol)) => symbol.denot.kind
-          case other                => other
-        }
-        tree withTpe kind
-      }
+      case node: Root => node.entity
 
-    ////////////////////////////////////////////////////////////////////////////
-    // Propagate error expressions
-    ////////////////////////////////////////////////////////////////////////////
+      ////////////////////////////////////////////////////////////////////////////
+      // Fold expressions with only unsized literals
+      ////////////////////////////////////////////////////////////////////////////
 
-    case ExprUnary(_, expr: ExprError)      => expr
-    case ExprBinary(expr: ExprError, _, _)  => expr
-    case ExprBinary(_, _, expr: ExprError)  => expr
-    case ExprTernary(expr: ExprError, _, _) => expr
-    case ExprTernary(_, expr: ExprError, _) => expr
-    case ExprTernary(_, _, expr: ExprError) => expr
+      case ExprUnary(_, _: ExprNum)              => tree rewrite constantFold
+      case ExprBinary(_: ExprNum, _, _: ExprNum) => tree rewrite constantFold
 
-    ////////////////////////////////////////////////////////////////////////////
-    // Fold expressions with only unsized constants
-    ////////////////////////////////////////////////////////////////////////////
+      ////////////////////////////////////////////////////////////////////////////
+      // Infer width of of unsized literals
+      ////////////////////////////////////////////////////////////////////////////
 
-    case ExprUnary(op, expr @ ExprNum(signed, value)) => op match {
-      // Valid cases
-      case "+"           => expr
-      case "-" if signed => ExprNum(true, -value) withLoc tree.loc
-      case "!"           => ExprNum(signed, value == 0) withLoc tree.loc
-      // Invalid cases
-      case "-" if !signed => ExprError() withLoc tree.loc followedBy {
-        cc.error(tree, "Unary operator '-' is not well defined for unsized unsigned values")
-      }
-      case op => ExprError() withLoc tree.loc followedBy {
-        cc.error(tree, s"Unary operator '${op}' is not well defined for unsized values")
-      }
-    }
+      case ExprBinary(lhs @ ExprNum(signed, value), op, rhs) => {
+        require(rhs.hasTpe)
 
-    case ExprBinary(ExprNum(ls, lv), op, ExprNum(rs, rv)) => {
-      val negl = lv < 0
-      val negr = rv < 0
-      val nege = negl || negr
-      val num = (ls, op, rs) match {
-        case (true, "*", true)          => ExprNum(true, lv * rv)
-        case (true, "/", true)          => ExprNum(true, lv / rv)
-        case (true, "%", true)          => ExprNum(true, lv % rv)
-        case (true, "+", true)          => ExprNum(true, lv + rv)
-        case (true, "-", true)          => ExprNum(true, lv - rv)
-        case (true, "&", true) if !nege => ExprNum(true, lv & rv)
-        case (true, "^", true) if !nege => ExprNum(true, lv ^ rv)
-        case (true, "|", true) if !nege => ExprNum(true, lv | rv)
-
-        case (true, op @ ("&" | "^" | "|"), true) => ExprError() followedBy {
-          cc.error(tree, s"Binary operator '${op}' is not well defined for negative unsized values")
-        }
-        case (true, "~^", true) => ExprError() followedBy {
-          cc.error(tree, "Binary operator '~^' is not well defined between unsized values")
+        // Type check and figure out width of rhs
+        val widthOpt = rhs.tpe match {
+          case kind if kind.isPacked => Some(kind.width) flatMap { _.value } map { _.toInt }
+          case other => {
+            cc.error(
+              tree,
+              s"Operator '+' expects packed type on the right hand side, but got  type '${other}'")
+            None
+          }
         }
 
-        case (true, "<<", _)  => ???
-        case (true, ">>", _)  => ???
-        case (true, ">>>", _) => ???
-        case (true, "<<<", _) => ???
-        case (_, ">", _)      => ExprNum(false, lv > rv)
-        case (_, "<", _)      => ExprNum(false, lv < rv)
-        case (_, ">=", _)     => ExprNum(false, lv >= rv)
-        case (_, "<=", _)     => ExprNum(false, lv <= rv)
-        case (_, "==", _)     => ExprNum(false, lv == rv)
-        case (_, "!=", _)     => ExprNum(false, lv != rv)
-        case (true, "&&", _)  => ???
-        case (true, "||", _)  => ???
-
-        case _                => unreachable
+        // Convert lhs
+        widthOpt map { width =>
+          val newLhs = ExprInt(signed, width, value) withLoc lhs.loc
+          TypeAssigner(newLhs)
+          ExprBinary(newLhs, op, rhs)
+        } getOrElse {
+          cc.error(rhs, s"Cannot infer width of right hand operand of operator '${op}'")
+          ExprError()
+        } withLoc lhs.loc
       }
-      num withLoc tree.loc
+
+      case ExprBinary(lhs, op, rhs @ ExprNum(signed, value)) => {
+        require(lhs.hasTpe)
+
+        // Type check and figure out width of lhs
+        val widthOpt = lhs.tpe match {
+          case kind if kind.isPacked => Some(kind.width) flatMap { _.value } map { _.toInt }
+          case other => {
+            cc.error(
+              tree,
+              s"Operator '+' expects packed type on the left hand side, but got  type '${other}'")
+            None
+          }
+        }
+
+        // Convert rhs
+        widthOpt map { width =>
+          val newRhs = ExprInt(signed, width, value) withLoc rhs.loc
+          TypeAssigner(newRhs)
+          ExprBinary(lhs, op, newRhs)
+        } getOrElse {
+          cc.error(rhs, s"Cannot infer width of left hand operand of operator '${op}'")
+          ExprError()
+        } withLoc lhs.loc
+      }
+
+      ////////////////////////////////////////////////////////////////////////////
+      //
+      ////////////////////////////////////////////////////////////////////////////
+
+      // Non-reducing unary ops
+      case ExprUnary(op, expr) if op == "+" || op == "-" || op == "~" => {
+        // TODO: Type check
+        tree
+      }
+
+      // Reducing unary ops
+      case ExprUnary(_, _) => {
+        // TODO: Type check
+        // TODO: Warn when reducing 1-bit quantity? Not good when it's parameterised
+        tree
+      }
+
+      // Reducing binary ops
+      case ExprBinary(lhs, op, rhs) if reducingBinaryOps contains op => {
+        // TODO: Type check
+        // TODO: Width warning, promotion
+        tree
+      }
+
+      // Non-Reducing binary ops
+      case ExprBinary(lhs, _, rhs) => {
+        // TODO: Type check
+        // TODO: Width warning, promotion, sizing of shift, etc, etc
+        tree
+      }
+
+      case _ => tree
     }
 
-    ////////////////////////////////////////////////////////////////////////////
-    //
-    ////////////////////////////////////////////////////////////////////////////
-
-    // Non-reducing unary ops
-    case ExprUnary(op, expr) if op == "+" || op == "-" || op == "~" => {
-      // TODO: Type check
-      tree withTpe expr.tpe
+    // Assign type of result if relevant node
+    result match {
+      case _: TypeDefinition => result // Will be removed
+      case _: Entity => {
+        tree match {
+          case _: Root => result // Already typed the root entity
+          case _       => TypeAssigner(result)
+        }
+      }
+      case _ => TypeAssigner(result)
     }
-
-    // Reducing unary ops
-    case ExprUnary(_, _) => {
-      // TODO: Type check
-      // TODO: Warn when reducing 1-bit quantity? Not good when it's parameterised
-      tree withTpe TypeUInt(1)
-    }
-
-    // Reducing binary ops
-    case ExprBinary(lhs, op, rhs) if reducingBinaryOps contains op => {
-      // TODO: Type check
-      // TODO: Width warning, promotion
-      tree withTpe TypeUInt(1)
-    }
-
-    // Non-Reducing binary ops
-    case ExprBinary(lhs, _, rhs) => {
-      // TODO: Type check
-      // TODO: Width warning, promotion, sizing of shift, etc, etc
-      val tpe = if (lhs.tpe.asInstanceOf[TypeInt].signed) rhs.tpe else lhs.tpe
-      tree withTpe tpe
-    }
-
-    case _ => tree
   }
 
   override def finalCheck(tree: Tree): Unit = {
@@ -169,20 +158,37 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       case _: Entity => true
       case _         => false
     }
-    tree visit {
-      case _: Type => /* Don't recurse into types */
-      case node: ExprNum if isEntity => {
-        cc.ice(node, s"Typer should have removed all unsized integer literals, but '${node}' remains")
+
+    if (isEntity) {
+      tree visit {
+        case _: Type => /* Don't recurse into types */
+        case node: ExprNum => {
+          cc.ice(
+            node,
+            "Typer should have removed all unsized integer literals, but the following remains",
+            node.toString
+          )
+        }
+        case node: Tree if !node.hasTpe => {
+          cc.ice(
+            node,
+            "Typer should have assigned type for all node, but the following is untyped",
+            node.toString
+          )
+        }
+        case node: Tree if node.tpe == TypeUnknown => {
+          cc.ice(node, s"Could not compute type of ${node}")
+        }
       }
+    }
+
+    tree visit {
       case node: TypeDefinition => {
         cc.ice(node, s"Typer should have removed type definitions, but '${node}' remains")
       }
       case node: Root => {
         cc.ice(node, s"Typer should have removed the Root node")
       }
-      //      case node: Tree if !node.hasTpe && isEntity => {
-      //        cc.ice(node, s"Type shuld have assigned type for node ${node}")
-      //      }
     }
   }
 

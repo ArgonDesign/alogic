@@ -18,6 +18,7 @@ package com.argondesign.alogic.frontend
 import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.ast.Trees.Expr._
+import com.argondesign.alogic.ast.Trees.Expr.ImplicitConversions._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Error
 import com.argondesign.alogic.core.Types._
@@ -46,297 +47,90 @@ final class TyperSpec extends FreeSpec with AlogicTest {
   }
 
   "The Typer should" - {
-    "assign correct types to" - {
-      "identifiers" - {
-        for {
-          (name, decl, kind) <- List(
-            ("bool", "bool a;", TypeUInt(1)),
-            ("u8", "u8 a;", TypeUInt(8)),
-            ("i1", "i1 a;", TypeSInt(1)),
-            ("i8", "i8 a;", TypeSInt(8)),
-            ("struct", "s a;", TypeStruct(List("b", "c"), List(TypeUInt(1), TypeSInt(8)))),
-            ("typedef", "t a;", TypeUInt(4)),
-            ("uint(2,8)", "uint(2,8) a;", TypeVector(TypeUInt(8), 2)),
-            ("u8[2]", "u8 a[2];", TypeArray(TypeUInt(8), 2)),
-            ("u8[2][4]", "u8 a[2][4];", TypeArray(TypeArray(TypeUInt(8), 4), 2)),
-            ("param u8 ", "param u8 a = 8'd2;", TypeUInt(8)),
-            ("const u8 ", "const u8 a = 8'd2;", TypeUInt(8)),
-            ("pipeline u8 ", "pipeline u8 a;", TypeUInt(8)),
-            ("in u8 ", "in u8 a;", TypeIn(TypeUInt(8), FlowControlTypeNone)),
-            ("out u8 ", "out u8 a;", TypeOut(TypeUInt(8), FlowControlTypeNone, StorageTypeReg)),
-            ("function", "void a() {}", TypeFunc(Nil, TypeVoid))
-          )
-        } {
-          name in {
-            val root = s"""|typedef u4 t;
-                           |
-                           |struct s {
-                           |  bool b;
-                           |  i8 c;
-                           |};
-                           |
-                           |fsm thing {
-                           |  ${decl}
-                           |  void main() {
-                           |    a;
-                           |  }
-                           |}""".stripMargin.asTree[Root]
-            val tree = xform(root)
-
-            inside(tree) {
-              case entity: Entity => {
-                val Some(main) = entity.functions collectFirst {
-                  case func @ Function(Sym(sym), _) if sym.denot.name.str == "main" => func
-                }
-                inside(main) {
-                  case Function(_, List(StmtExpr(expr))) =>
-                    expr should matchPattern { case ExprRef(Sym(_)) => }
-                    expr.tpe shouldBe kind
-                }
-              }
-            }
-          }
-        }
-      }
-
-      "unary operators" - {
-        for {
-          (s, op, kind) <- List(
-            ("unsigned", "+", TypeUInt(32)),
-            ("unsigned", "-", TypeUInt(32)),
-            ("unsigned", "~", TypeUInt(32)),
-            ("unsigned", "!", TypeUInt(1)),
-            ("unsigned", "&", TypeUInt(1)),
-            ("unsigned", "~&", TypeUInt(1)),
-            ("unsigned", "|", TypeUInt(1)),
-            ("unsigned", "~|", TypeUInt(1)),
-            ("unsigned", "^", TypeUInt(1)),
-            ("unsigned", "~^", TypeUInt(1)),
-            ("signed", "+", TypeSInt(32)),
-            ("signed", "-", TypeSInt(32)),
-            ("signed", "~", TypeSInt(32)),
-            ("signed", "!", TypeUInt(1)),
-            ("signed", "&", TypeUInt(1)),
-            ("signed", "~&", TypeUInt(1)),
-            ("signed", "|", TypeUInt(1)),
-            ("signed", "~|", TypeUInt(1)),
-            ("signed", "^", TypeUInt(1)),
-            ("signed", "~^", TypeUInt(1))
-          )
-        } {
-          s"${s} ${op}" in {
-            val root = s"""|fsm thing {
-                           |  ${if (s == "signed") "i" else "u"}32 a;
-                           |  void main() {
-                           |    ${op}a;
-                           |  }
-                           |}""".stripMargin.asTree[Root]
-            val tree = xform(root)
-
-            inside(tree) {
-              case entity: Entity => {
-                inside(entity.functions(0)) {
-                  case Function(_, List(StmtExpr(expr))) =>
-                    expr should matchPattern { case ExprUnary(op, ExprRef(Sym(_))) => }
-                    expr.tpe shouldBe kind
-                }
-              }
-            }
-          }
-
-          cc.messages shouldBe empty
-        }
-      }
-
-      "binary operators" - {
-        for {
-          (sa, op, sb, kind) <- List(
-            // unsigned unsigned
-            ("unsigned", "*", "unsigned", TypeUInt(32)),
-            ("unsigned", "/", "unsigned", TypeUInt(32)),
-            ("unsigned", "%", "unsigned", TypeUInt(32)),
-            ("unsigned", "+", "unsigned", TypeUInt(32)),
-            ("unsigned", "-", "unsigned", TypeUInt(32)),
-            ("unsigned", "<<", "unsigned", TypeUInt(32)),
-            ("unsigned", ">>", "unsigned", TypeUInt(32)),
-            ("unsigned", ">>>", "unsigned", TypeUInt(32)),
-            ("unsigned", ">", "unsigned", TypeUInt(1)),
-            ("unsigned", ">=", "unsigned", TypeUInt(1)),
-            ("unsigned", "<", "unsigned", TypeUInt(1)),
-            ("unsigned", "<=", "unsigned", TypeUInt(1)),
-            ("unsigned", "==", "unsigned", TypeUInt(1)),
-            ("unsigned", "!=", "unsigned", TypeUInt(1)),
-            ("unsigned", "&", "unsigned", TypeUInt(32)),
-            ("unsigned", "^", "unsigned", TypeUInt(32)),
-            ("unsigned", "~^", "unsigned", TypeUInt(32)),
-            ("unsigned", "|", "unsigned", TypeUInt(32)),
-            ("unsigned", "&&", "unsigned", TypeUInt(1)),
-            ("unsigned", "||", "unsigned", TypeUInt(1)),
-            // unsigned signed
-            ("unsigned", "*", "signed", TypeUInt(32)),
-            ("unsigned", "/", "signed", TypeUInt(32)),
-            ("unsigned", "%", "signed", TypeUInt(32)),
-            ("unsigned", "+", "signed", TypeUInt(32)),
-            ("unsigned", "-", "signed", TypeUInt(32)),
-            ("unsigned", "<<", "signed", TypeUInt(32)),
-            ("unsigned", ">>", "signed", TypeUInt(32)),
-            ("unsigned", ">>>", "signed", TypeUInt(32)),
-            ("unsigned", ">", "signed", TypeUInt(1)),
-            ("unsigned", ">=", "signed", TypeUInt(1)),
-            ("unsigned", "<", "signed", TypeUInt(1)),
-            ("unsigned", "<=", "signed", TypeUInt(1)),
-            ("unsigned", "==", "signed", TypeUInt(1)),
-            ("unsigned", "!=", "signed", TypeUInt(1)),
-            ("unsigned", "&", "signed", TypeUInt(32)),
-            ("unsigned", "^", "signed", TypeUInt(32)),
-            ("unsigned", "~^", "signed", TypeUInt(32)),
-            ("unsigned", "|", "signed", TypeUInt(32)),
-            ("unsigned", "&&", "signed", TypeUInt(1)),
-            ("unsigned", "||", "signed", TypeUInt(1)),
-            // signed unsigned
-            ("signed", "*", "unsigned", TypeUInt(32)),
-            ("signed", "/", "unsigned", TypeUInt(32)),
-            ("signed", "%", "unsigned", TypeUInt(32)),
-            ("signed", "+", "unsigned", TypeUInt(32)),
-            ("signed", "-", "unsigned", TypeUInt(32)),
-            ("signed", "<<", "unsigned", TypeUInt(32)),
-            ("signed", ">>", "unsigned", TypeUInt(32)),
-            ("signed", ">>>", "unsigned", TypeUInt(32)),
-            ("signed", ">", "unsigned", TypeUInt(1)),
-            ("signed", ">=", "unsigned", TypeUInt(1)),
-            ("signed", "<", "unsigned", TypeUInt(1)),
-            ("signed", "<=", "unsigned", TypeUInt(1)),
-            ("signed", "==", "unsigned", TypeUInt(1)),
-            ("signed", "!=", "unsigned", TypeUInt(1)),
-            ("signed", "&", "unsigned", TypeUInt(32)),
-            ("signed", "^", "unsigned", TypeUInt(32)),
-            ("signed", "~^", "unsigned", TypeUInt(32)),
-            ("signed", "|", "unsigned", TypeUInt(32)),
-            ("signed", "&&", "unsigned", TypeUInt(1)),
-            ("signed", "||", "unsigned", TypeUInt(1)),
-            // signed signed
-            ("signed", "*", "signed", TypeSInt(32)),
-            ("signed", "/", "signed", TypeSInt(32)),
-            ("signed", "%", "signed", TypeSInt(32)),
-            ("signed", "+", "signed", TypeSInt(32)),
-            ("signed", "-", "signed", TypeSInt(32)),
-            ("signed", "<<", "signed", TypeSInt(32)),
-            ("signed", ">>", "signed", TypeSInt(32)),
-            ("signed", ">>>", "signed", TypeSInt(32)),
-            ("signed", ">", "signed", TypeUInt(1)),
-            ("signed", ">=", "signed", TypeUInt(1)),
-            ("signed", "<", "signed", TypeUInt(1)),
-            ("signed", "<=", "signed", TypeUInt(1)),
-            ("signed", "==", "signed", TypeUInt(1)),
-            ("signed", "!=", "signed", TypeUInt(1)),
-            ("signed", "&", "signed", TypeSInt(32)),
-            ("signed", "^", "signed", TypeSInt(32)),
-            ("signed", "~^", "signed", TypeSInt(32)),
-            ("signed", "|", "signed", TypeSInt(32)),
-            ("signed", "&&", "signed", TypeUInt(1)),
-            ("signed", "||", "signed", TypeUInt(1))
-          )
-        } {
-          s"${sa} ${op} ${sb}" in {
-            val root = s"""|fsm thing {
-                           |  ${if (sa == "signed") "i" else "u"}32 a;
-                           |  ${if (sb == "signed") "i" else "u"}32 b;
-                           |  void main() {
-                           |    a ${op} b;
-                           |  }
-                           |}""".stripMargin.asTree[Root]
-            val tree = xform(root)
-
-            inside(tree) {
-              case entity: Entity => {
-                inside(entity.functions(0)) {
-                  case Function(_, List(StmtExpr(expr))) =>
-                    expr should matchPattern { case ExprBinary(ExprRef(Sym(_)), op, ExprRef(Sym(_))) => }
-                    expr.tpe shouldBe kind
-                }
-              }
-            }
-
-            cc.messages shouldBe empty
-          }
-        }
-      }
-    }
-
-    "fold expressions containing only unsized literals" - {
-      "unary" - {
+    "infer sizes of unsized literals for" - {
+      "binary operator operands" - {
         for {
           (expr, result, msg) <- List(
-            ("+2", ExprNum(true, 2), ""),
-            ("-2", ExprNum(true, -2), ""),
-            ("+(+2)", ExprNum(true, 2), ""),
-            ("-(-2)", ExprNum(true, 2), ""),
-            ("!2", ExprNum(true, 0), ""),
-            ("!0", ExprNum(true, 1), ""),
-            ("!!2", ExprNum(true, 1), ""),
-            ("!!0", ExprNum(true, 0), ""),
-            ("~2", ExprError(), "Unary operator '~' is not well defined for unsized values"),
-            ("&2", ExprError(), "Unary operator '&' is not well defined for unsized values"),
-            ("~&2", ExprError(), "Unary operator '~&' is not well defined for unsized values"),
-            ("|2", ExprError(), "Unary operator '\\|' is not well defined for unsized values"),
-            ("~|2", ExprError(), "Unary operator '~\\|' is not well defined for unsized values"),
-            ("^2", ExprError(), "Unary operator '\\^' is not well defined for unsized values"),
-            ("~^2", ExprError(), "Unary operator '~\\^' is not well defined for unsized values"),
-            ("+'d2", ExprNum(false, 2), ""),
-            ("-'d2", ExprError(), "Unary operator '-' is not well defined for unsized unsigned values"),
-            ("+(+'d2)", ExprNum(false, 2), ""),
-            ("-(-'d2)", ExprError(), "Unary operator '-' is not well defined for unsized unsigned values"),
-            ("!'d2", ExprNum(false, 0), ""),
-            ("!'d0", ExprNum(false, 1), ""),
-            ("!!'d2", ExprNum(false, 1), ""),
-            ("!!'d0", ExprNum(false, 0), ""),
-            ("~'d2", ExprError(), "Unary operator '~' is not well defined for unsized values"),
-            ("&'d2", ExprError(), "Unary operator '&' is not well defined for unsized values"),
-            ("~&'d2", ExprError(), "Unary operator '~&' is not well defined for unsized values"),
-            ("|'d2", ExprError(), "Unary operator '\\|' is not well defined for unsized values"),
-            ("~|'d2", ExprError(), "Unary operator '~\\|' is not well defined for unsized values"),
-            ("^'d2", ExprError(), "Unary operator '\\^' is not well defined for unsized values"),
-            ("~^'d2", ExprError(), "Unary operator '~\\^' is not well defined for unsized values")
+            ("8'd3 * 2", ExprInt(false, 8, 3) * ExprInt(true, 8, 2), ""),
+            ("2 * 8'd3", ExprInt(true, 8, 2) * ExprInt(false, 8, 3), ""),
+            ("8'd3 / 2", ExprInt(false, 8, 3) / ExprInt(true, 8, 2), ""),
+            ("2 / 8'd3", ExprInt(true, 8, 2) / ExprInt(false, 8, 3), ""),
+            ("8'd3 % 2", ExprInt(false, 8, 3) % ExprInt(true, 8, 2), ""),
+            ("2 % 8'd3", ExprInt(true, 8, 2) % ExprInt(false, 8, 3), ""),
+            ("8'd3 + 2", ExprInt(false, 8, 3) + ExprInt(true, 8, 2), ""),
+            ("2 + 8'd3", ExprInt(true, 8, 2) + ExprInt(false, 8, 3), ""),
+            ("8'd3 - 2", ExprInt(false, 8, 3) - ExprInt(true, 8, 2), ""),
+            ("2 - 8'd3", ExprInt(true, 8, 2) - ExprInt(false, 8, 3), ""),
+            ("8'd3 & 2", ExprInt(false, 8, 3) & ExprInt(true, 8, 2), ""),
+            ("2 & 8'd3", ExprInt(true, 8, 2) & ExprInt(false, 8, 3), ""),
+            ("8'd3 | 2", ExprInt(false, 8, 3) | ExprInt(true, 8, 2), ""),
+            ("2 | 8'd3", ExprInt(true, 8, 2) | ExprInt(false, 8, 3), ""),
+            ("8'd3 ^ 2", ExprInt(false, 8, 3) ^ ExprInt(true, 8, 2), ""),
+            ("2 ^ 8'd3", ExprInt(true, 8, 2) ^ ExprInt(false, 8, 3), ""),
+            ("8'd3 ~^ 2", ExprInt(false, 8, 3) ~^ ExprInt(true, 8, 2), ""),
+            ("2 ~^ 8'd3", ExprInt(true, 8, 2) ~^ ExprInt(false, 8, 3), "")
           )
         } {
-          expr in {
-            xform(expr.asTree[Expr]) shouldBe result
-            if (msg.isEmpty()) {
+          val e = expr.trim.replaceAll(" +", " ")
+          e in {
+            xform(e.asTree[Expr]) shouldBe result
+            if (msg.isEmpty) {
               cc.messages shouldBe empty
             } else {
               cc.messages.loneElement should beThe[Error](msg)
             }
           }
         }
+
       }
 
-      //      "binary" - {
-      //        for {
-      //          (expr, result, msg) <- List(
-      //            ("3 + 2", ExprNum(true, 5), ""),
-      //            ("3 - 2", ExprNum(true, 1), ""),
-      //            ("3 * 2", ExprNum(true, 6), ""),
-      //            ("3 / 2", ExprNum(true, 1), ""),
-      //            ("3 % 2", ExprNum(true, 1), ""),
-      //
-      //            ("3 & 2", ExprNum(true, 2), ""),
-      //            ("3 | 2", ExprNum(true, 3), ""),
-      //            ("3 ^ 2", ExprNum(true, 1), ""),
-      //
-      //            ("3 ~^ 2", ExprError(), "Binary operator '~\\^' is not well defined between unsized values")
-      //
-      //          )
-      //        } {
-      //          expr in {
-      //            xform(expr.asTree[Expr]) shouldBe result
-      //            if (msg.isEmpty()) {
+      //      "where possible" - {
+      //        "binary ops" - {
+      //          def check(str: String, eTree: Tree, eType: Type) = {
+      //            str in {
+      //              val tree = xform(str.asTree[Expr])
+      //              tree shouldBe eTree
+      //              tree.tpe shouldBe eType
       //              cc.messages shouldBe empty
-      //            } else {
-      //              cc.messages.loneElement should beThe[Error](msg)
       //            }
+      //          }
+      //
+      //          for (op <- List("+", "-", "*", "/", "%", "&", "|", "^", "~^")) {
+      //            check(s"8'd3 ${op} 2", ))
+      //            check(s"2 ${op} 8'd3", ExprBinary(ExprInt(true, 8, 2), op, ExprInt(false, 8, 3)), TypeUInt(8))
+      //          }
+      //
+      //          for (op <- List(">", ">=", "<", "<=", "==", "!=")) {
+      //            check(s"8'd3 ${op} 2", ExprBinary(ExprInt(false, 8, 3), op, ExprInt(true, 8, 2)), TypeUInt(1))
+      //            check(s"2 ${op} 8'd3", ExprBinary(ExprInt(true, 8, 2), op, ExprInt(false, 8, 3)), TypeUInt(1))
+      //          }
+      //
+      //          for (op <- List("||", "&&")) {
+      //            check(s"8'd3 ${op} 2", ExprBinary(ExprInt(false, 8, 3), op, ExprInt(true, 3, 2)), TypeUInt(1))
+      //            check(s"2 ${op} 8'd3", ExprBinary(ExprInt(true, 3, 2), op, ExprInt(false, 2, 3)), TypeUInt(1))
+      //            check(s"8'd3 ${op} 'd2", ExprBinary(ExprInt(false, 8, 3), op, ExprInt(false, 2, 2)), TypeUInt(1))
+      //            check(s"'d2 ${op} 8'd3", ExprBinary(ExprInt(false, 2, 2), op, ExprInt(false, 8, 3)), TypeUInt(1))
+      //          }
+      //
+      //          for (op <- List("<<", ">>", "<<<", ">>>")) {
+      //            check(s"8'd3 ${op} 2", ExprBinary(ExprInt(false, 8, 3), op, ExprInt(true, 3, 2)), TypeUInt(8))
+      //            check(s"8'd3 ${op} 'd2", ExprBinary(ExprInt(false, 8, 3), op, ExprInt(false, 2, 2)), TypeUInt(8))
+      //          }
+      //        }
+      //      }
+      //      "error where not possible" - {
+      //        def check(str: String) = {
+      //          str in {
+      //            val tree = xform(str.asTree[Expr])
+      //            tree shouldBe ExprError()
+      //            cc.messages.loneElement should beThe[Error]("Cannot infer width of usized constant .*")
       //          }
       //        }
       //
+      //        for (op <- List("<<", ">>", "<<<", ">>>")) {
+      //          check(s"2 ${op} 8'd3")
+      //          check(s"'d2 ${op} 8'd3")
+      //        }
       //      }
     }
 

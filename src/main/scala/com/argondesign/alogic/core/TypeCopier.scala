@@ -41,11 +41,19 @@ object TypeCopier {
     }
   }
 
-  def apply(tree: TypeFunc)(argTypes: List[Type], retType: Type): TypeFunc = {
+  def apply(tree: TypeCombFunc)(argTypes: List[Type], retType: Type): TypeCombFunc = {
     if ((argTypes eq tree.argTypes) && (retType eq tree.retType)) {
       tree
     } else {
-      TypeFunc(argTypes, retType);
+      TypeCombFunc(argTypes, retType);
+    }
+  }
+
+  def apply(tree: TypeCtrlFunc)(argTypes: List[Type], retType: Type): TypeCtrlFunc = {
+    if ((argTypes eq tree.argTypes) && (retType eq tree.retType)) {
+      tree
+    } else {
+      TypeCtrlFunc(argTypes, retType);
     }
   }
 
@@ -75,6 +83,10 @@ object TypeCopier {
 
   def apply(tree: TypeConst)(kind: Type): TypeConst = {
     if (kind eq tree.kind) tree else TypeConst(kind)
+  }
+
+  def apply(tree: TypeType)(kind: Type): TypeType = {
+    if (kind eq tree.kind) tree else TypeType(kind)
   }
 
 }
