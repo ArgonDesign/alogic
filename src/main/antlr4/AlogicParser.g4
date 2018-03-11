@@ -180,6 +180,11 @@ for_steps
 expr
   : '(' expr ')'                                                            # ExprBracket
   | expr '(' commaexpr ')'                                                  # ExprCall
+  // Index/Slice
+  | expr '[' idx=expr ']'                                                   # ExprIndex
+  | expr '[' lidx=expr op=(':' | '-:' | '+:') ridx=expr ']'                 # ExprSlice
+  // Select
+  | expr '.' IDENTIFIER                                                     # ExprSelect
   // Operators
   | op=('+' | '-' | '~' | '!' | '&' | '|' | '^' ) expr  # ExprUnary
   | expr op=('*' | '/' | '%') expr                                          # ExprBinary
@@ -195,10 +200,6 @@ expr
   | expr '?' expr ':' expr                                                  # ExprTernary
   | '{' expr '{' expr '}' '}'                                               # ExprRep
   | '{' commaexpr '}'                                                       # ExprCat
-  | expr '[' idx=expr ']'                                                   # ExprIndex
-  | expr '[' lidx=expr op=(':' | '-:' | '+:') ridx=expr ']'                 # ExprSlice
-  // Select
-  | expr '.' IDENTIFIER                                                     # ExprSelect
   // Builtins
   | ATID '(' commaexpr ')'                                                  # ExprAtCall
   | DOLLARID '(' commaexpr ')'                                              # ExprDollarCall

@@ -18,6 +18,7 @@ package com.argondesign.alogic.frontend
 import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.SourceTextConverters._
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.ast.Trees.Expr.ImplicitConversions._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Error
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
@@ -1079,16 +1080,47 @@ final class ParserSpec extends FreeSpec with AlogicTest {
           }
         }
 
-        "horouring precedence" - {
+        "honouring precedence" - {
           "1 + 2 * 3" in {
-            "1 + 2 * 3".asTree[Expr] shouldBe ExprBinary(Expr(1),
-                                                         "+",
-                                                         ExprBinary(Expr(2), "*", Expr(3)))
+            "1 + 2 * 3".asTree[Expr] shouldBe {
+              Expr(1) + ExprBinary(Expr(2), "*", Expr(3))
+            }
           }
           "1 + 2 + 3" in {
-            "1 + 2 + 3".asTree[Expr] shouldBe ExprBinary(ExprBinary(Expr(1), "+", Expr(2)),
-                                                         "+",
-                                                         Expr(3))
+            "1 + 2 + 3".asTree[Expr] shouldBe {
+              ExprBinary(Expr(1), "+", Expr(2)) + Expr(3)
+            }
+          }
+
+          "a.b && a.c" in {
+            "a.b && a.c".asTree[Expr] shouldBe {
+              ExprSelect(ExprRef(Ident("a")), "b") && ExprSelect(ExprRef(Ident("a")), "c")
+            }
+          }
+
+          "a.b && a.c == 1" in {
+            "a.b && a.c == 1".asTree[Expr] shouldBe {
+              ExprSelect(ExprRef(Ident("a")), "b") &&
+              ExprBinary(ExprSelect(ExprRef(Ident("a")), "c"), "==", Expr(1))
+            }
+          }
+
+          "a.b && a[0]" in {
+            "a.b && a[0]".asTree[Expr] shouldBe {
+              ExprSelect(ExprRef(Ident("a")), "b") && ExprIndex(ExprRef(Ident("a")), 0)
+            }
+          }
+
+          "a.b && a[1:0]" in {
+            "a.b && a[1:0]".asTree[Expr] shouldBe {
+              ExprSelect(ExprRef(Ident("a")), "b") && ExprSlice(ExprRef(Ident("a")), 1, ":", 0)
+            }
+          }
+
+          "a.b[1]" in {
+            "a.b[1]".asTree[Expr] shouldBe {
+              ExprIndex(ExprSelect(ExprRef(Ident("a")), "b"), 1)
+            }
           }
           // TODO: complete all precedence checks
         }
