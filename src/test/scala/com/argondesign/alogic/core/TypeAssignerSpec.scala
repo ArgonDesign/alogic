@@ -741,7 +741,6 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
                 stmt should matchPattern(pattern)
                 TypeAssigner(stmt).tpe shouldBe TypeCtrlStmt
             }
-
           }
         }
       }

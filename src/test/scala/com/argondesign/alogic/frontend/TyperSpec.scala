@@ -119,15 +119,15 @@ final class TyperSpec extends FreeSpec with AlogicTest {
             ("g.y.x", TypeSInt(8), ""),
             ("f.valid", TypeCombFunc(Nil, TypeUInt(1)), ""),
             ("g.valid", TypeCombFunc(Nil, TypeUInt(1)), ""),
-//            ("@bits(d.x)", TypeSInt(8), ""),
-//            ("@bits(e.y)", TypeStruct(List("x"), List(TypeSInt(8))), ""),
-//            ("@bits(e.y.x)", TypeSInt(8), ""),
-//            ("@bits(f.x)", TypeSInt(8), ""),
-//            ("@bits(g.y)", TypeStruct(List("x"), List(TypeSInt(8))), ""),
-//            ("@bits(g.y.x)", TypeSInt(8), ""),
-//            ("@bits(a.x)", TypeType(TypeSInt(8)), ""),
-//            ("@bits(b.y)", TypeType(TypeStruct(List("x"), List(TypeSInt(8)))), ""),
-//            ("@bits(b.y.x)", TypeType(TypeSInt(8)), "")
+            ("@bits(d.x)", TypeSInt(8), ""),
+            ("@bits(e.y)", TypeStruct(List("x"), List(TypeSInt(8))), ""),
+            ("@bits(e.y.x)", TypeSInt(8), ""),
+            ("@bits(f.x)", TypeSInt(8), ""),
+            ("@bits(g.y)", TypeStruct(List("x"), List(TypeSInt(8))), ""),
+            ("@bits(g.y.x)", TypeSInt(8), ""),
+            ("@bits(a.x)", TypeType(TypeSInt(8)), ""),
+            ("@bits(b.y)", TypeType(TypeStruct(List("x"), List(TypeSInt(8)))), ""),
+            ("@bits(b.y.x)", TypeType(TypeSInt(8)), "")
           )
         } {
           text in {
@@ -152,6 +152,53 @@ final class TyperSpec extends FreeSpec with AlogicTest {
             val tree = xform(root)
             if (msg.isEmpty) {
               val expr = (tree collectFirst { case e: ExprSelect => e }).value
+              expr.tpe shouldBe kind
+              cc.messages shouldBe empty
+            } else {
+              cc.messages.loneElement should beThe[Error](msg)
+            }
+          }
+        }
+      }
+
+      "call" - {
+        for {
+          (text, kind, msg) <- List(
+            ("a.valid()", TypeUInt(1), ""),
+            ("a()", TypeError, "'.*' is not callable"),
+            ("a.valid(1'b1)",
+             TypeError,
+             s"Too many arguments to function call, expected 0, have 1"),
+            ("a.write()", TypeError, "Too few arguments to function call, expected 1, have 0"),
+            ("a.write(1'b1, 1'b1)",
+             TypeError,
+             "Too many arguments to function call, expected 1, have 2"),
+            ("bar()", TypeVoid, ""),
+            ("bar(1, 2, 3, 4, 5)",
+             TypeError,
+             "Too many arguments to function call, expected 0, have 5"),
+            ("@bits(a)", TypeUInt(32), ""),
+            ("@bits(a.valid)",
+             TypeError,
+             "Builtin function '.*' cannot be applied to arguments '.*'")
+          )
+        } {
+          text in {
+            val root = s"""|fsm c {
+                           |  out sync bool a;
+                           |
+                           |  void bar() {
+                           |
+                           |  }
+                           |
+                           |  void main() {
+                           |    bar; a;
+                           |    ${text};
+                           |  }
+                           |}""".stripMargin.asTree[Root]
+            val tree = xform(root)
+            if (msg.isEmpty) {
+              val expr = (tree collectFirst { case e: ExprCall => e }).value
               expr.tpe shouldBe kind
               cc.messages shouldBe empty
             } else {

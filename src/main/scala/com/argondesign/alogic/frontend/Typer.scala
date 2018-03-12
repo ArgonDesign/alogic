@@ -142,6 +142,55 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer {
         }
       }
 
+      case ExprCall(expr, args) => {
+        require(expr.hasTpe)
+        require(args forall { _.hasTpe })
+
+        def checkFunc(argTypes: List[Type]) = {
+          val eLen = argTypes.length
+          val gLen = args.length
+          if (eLen != gLen) {
+            if (eLen > gLen) {
+              cc.error(tree, s"Too few arguments to function call, expected ${eLen}, have ${gLen}")
+            } else {
+              cc.error(tree, s"Too many arguments to function call, expected ${eLen}, have ${gLen}")
+            }
+            ExprError() withLoc tree.loc
+          } else {
+            tree
+          }
+        }
+
+        expr.tpe match {
+          // Nothing to do for ordinary functions
+          case tpe: TypeCombFunc => checkFunc(tpe.argTypes)
+          case tpe: TypeCtrlFunc => checkFunc(tpe.argTypes)
+          // Resolve calls to polymorphic builtins with the provided arguments
+          // and rewrite as reference to the overloaded symbol
+          case polyFunc: TypePolyFunc => {
+            polyFunc.resolve(args) match {
+              case Some(symbol) => {
+                val sym = Sym(symbol) withLoc expr.loc
+                TypeAssigner(sym)
+                val ref = ExprRef(sym) withLoc expr.loc
+                TypeAssigner(ref)
+                ExprCall(ref, args) withLoc tree.loc
+              }
+              case None => {
+                cc.error(tree,
+                         s"Builtin function '${expr}' cannot be applied to arguments '${args}'")
+                ExprError() withLoc tree.loc
+              }
+            }
+          }
+          // Anything else is not callable
+          case _ => {
+            cc.error(tree, s"'${expr}' is not callable")
+            ExprError() withLoc tree.loc
+          }
+        }
+      }
+
       // Non-reducing unary ops
       case ExprUnary(op, expr) if op == "+" || op == "-" || op == "~" => {
         // TODO: Type check
