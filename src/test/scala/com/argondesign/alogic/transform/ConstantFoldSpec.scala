@@ -22,11 +22,13 @@ import com.argondesign.alogic.SourceTextConverters._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Error
+import com.argondesign.alogic.frontend.Namer
 import org.scalatest.FreeSpec
 
 final class ConstantFoldSpec extends FreeSpec with AlogicTest {
 
   implicit val cc = new CompilerContext
+  val namer = new Namer
   val constantFold = new ConstantFold
 
   "ConstantFold should" - {
@@ -327,7 +329,7 @@ final class ConstantFoldSpec extends FreeSpec with AlogicTest {
         } {
           val e = expr.trim.replaceAll(" +", " ")
           e in {
-            e.asTree[Expr] rewrite constantFold shouldBe result
+            e.asTree[Expr] rewrite namer rewrite constantFold shouldBe result
             if (msg.isEmpty) {
               cc.messages shouldBe empty
             } else {

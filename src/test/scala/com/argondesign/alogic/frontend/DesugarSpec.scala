@@ -37,6 +37,9 @@ final class DesugarSpec extends FreeSpec with AlogicTest {
         op in {
           val tree = s"{ i2 a; a${op}; }".asTree[Stmt] rewrite namer rewrite desugar
 
+          val atZx = cc.getGlobalTermSymbolRef("@zx")
+          val atBits = cc.getGlobalTermSymbolRef("@bits")
+
           cc.messages shouldBe empty
 
           inside(tree) {
@@ -50,8 +53,8 @@ final class DesugarSpec extends FreeSpec with AlogicTest {
                       opStr shouldBe op.init
                       sym should be theSameInstanceAs dSym
                       inside(incr) {
-                        case ExprAtCall("zx", List(width, value)) =>
-                          width shouldBe ExprAtCall("bits", List(ExprRef(Sym(dSym))))
+                        case ExprCall(`atZx`, List(width, value)) =>
+                          width shouldBe ExprCall(atBits, List(ExprRef(Sym(dSym))))
                           value shouldBe ExprInt(false, 1, 1)
                       }
                   }

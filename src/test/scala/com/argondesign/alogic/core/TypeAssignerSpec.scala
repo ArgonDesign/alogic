@@ -132,7 +132,7 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
               val result = (tree collectFirst {
                 case Function(_, List(StmtExpr(e))) => e
               }).value
-              val ExprAtCall(_, List(arg)) = result
+              val ExprCall(_, List(arg)) = result
 
               TypeAssigner(arg).tpe shouldBe TypeType(kind)
             }

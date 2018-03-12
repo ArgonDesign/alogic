@@ -27,8 +27,10 @@ final class Desugar(implicit cc: CompilerContext) extends TreeTransformer {
   override def transform(tree: Tree): Tree = tree match {
     // "a++" rewritten as  "a = a + @zx(@bits(a), 1'b1)"
     case StmtPost(lhs, op) => {
-      val width = ExprAtCall("bits", List(lhs)) withLoc tree.loc
-      val incr = ExprAtCall("zx", List(width, ExprInt(false, 1, 1) withLoc tree.loc)) withLoc tree.loc
+      val refAtBits = cc.getGlobalTermSymbolRef("@bits", tree.loc)
+      val refAtZx = cc.getGlobalTermSymbolRef("@zx", tree.loc)
+      val width = ExprCall(refAtBits, List(lhs)) withLoc tree.loc
+      val incr = ExprCall(refAtZx, List(width, ExprInt(false, 1, 1) withLoc tree.loc)) withLoc tree.loc
       val rhs = op match {
         case "++" => lhs + incr
         case "--" => lhs - incr
@@ -51,7 +53,7 @@ final class Desugar(implicit cc: CompilerContext) extends TreeTransformer {
     // Strip redundant blocks
     case StmtBlock(single :: Nil) => single
 
-    case _                        => tree
+    case _ => tree
   }
 
   override def finalCheck(tree: Tree): Unit = {
@@ -61,10 +63,12 @@ final class Desugar(implicit cc: CompilerContext) extends TreeTransformer {
         cc.ice(node, s"Desugar should have removed all 'let' statements, but '${node}' remains")
       }
       case node: StmtUpdate => {
-        cc.ice(node, s"Desugar should have removed all op = update statements, but '${node}' remains")
+        cc.ice(node,
+               s"Desugar should have removed all op = update statements, but '${node}' remains")
       }
       case node: StmtPost => {
-        cc.ice(node, s"Desugar should have removed all postfix update statements, but '${node}' remains")
+        cc.ice(node,
+               s"Desugar should have removed all postfix update statements, but '${node}' remains")
       }
     }
   }

@@ -54,23 +54,23 @@ object TreeCopier {
   }
 
   final def apply(tree: Entity)(
-    ref:          Tree,
-    declarations: List[Tree],
-    instances:    List[Tree],
-    connects:     List[Tree],
-    functions:    List[Tree],
-    states:       List[Tree],
-    fenceStmts:   List[Tree],
-    entities:     List[Tree]
+      ref: Tree,
+      declarations: List[Tree],
+      instances: List[Tree],
+      connects: List[Tree],
+      functions: List[Tree],
+      states: List[Tree],
+      fenceStmts: List[Tree],
+      entities: List[Tree]
   ): Entity = {
     if ((ref eq tree.ref) &&
-      (declarations eq tree.declarations) &&
-      (instances eq tree.instances) &&
-      (connects eq tree.connects) &&
-      (functions eq tree.functions) &&
-      (states eq tree.states) &&
-      (fenceStmts eq tree.fenceStmts) &&
-      (entities eq tree.entities)) {
+        (declarations eq tree.declarations) &&
+        (instances eq tree.instances) &&
+        (connects eq tree.connects) &&
+        (functions eq tree.functions) &&
+        (states eq tree.states) &&
+        (fenceStmts eq tree.fenceStmts) &&
+        (entities eq tree.entities)) {
       tree
     } else {
       assert(declarations forall { _.isInstanceOf[Decl] })
@@ -208,12 +208,12 @@ object TreeCopier {
   }
 
   final def apply(
-    tree: StmtFor
+      tree: StmtFor
   )(
-    inits: List[Tree],
-    cond:  Option[Tree],
-    step:  List[Tree],
-    body:  List[Tree]
+      inits: List[Tree],
+      cond: Option[Tree],
+      step: List[Tree],
+      body: List[Tree]
   ): StmtFor = {
     if ((inits eq tree.inits) && (cond eq tree.cond) && (step eq tree.step) && (body eq tree.body)) {
       tree
@@ -368,24 +368,6 @@ object TreeCopier {
       tree
     } else {
       ExprSelect(expr.asInstanceOf[Expr], tree.selector) withLoc tree.loc
-    }
-  }
-
-  final def apply(tree: ExprAtCall)(args: List[Tree]): ExprAtCall = {
-    if (args eq tree.args) {
-      tree
-    } else {
-      assert(args forall { _.isInstanceOf[Expr] })
-      ExprAtCall(tree.name, args.asInstanceOf[List[Expr]]) withLoc tree.loc
-    }
-  }
-
-  final def apply(tree: ExprDollarCall)(args: List[Tree]): ExprDollarCall = {
-    if (args eq tree.args) {
-      tree
-    } else {
-      assert(args forall { _.isInstanceOf[Expr] })
-      ExprDollarCall(tree.name, args.asInstanceOf[List[Expr]]) withLoc tree.loc
     }
   }
 

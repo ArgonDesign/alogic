@@ -222,11 +222,10 @@ object TypeAssigner {
       case node: ExprType    => apply(node)
       case node: ExprError   => apply(node)
       case _: ExprNum        => tree withTpe TypeUnknown
-      case _: ExprAtCall     => ???
-      case _: ExprDollarCall => ???
     }
     tree
   }
+
   def apply(node: ExprError): node.type = node withTpe TypeError
 
   def apply(node: ExprInt): node.type = {

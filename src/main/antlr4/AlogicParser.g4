@@ -200,9 +200,6 @@ expr
   | expr '?' expr ':' expr                                                  # ExprTernary
   | '{' expr '{' expr '}' '}'                                               # ExprRep
   | '{' commaexpr '}'                                                       # ExprCat
-  // Builtins
-  | ATID '(' commaexpr ')'                                                  # ExprAtCall
-  | DOLLARID '(' commaexpr ')'                                              # ExprDollarCall
   // Literals
   | 'true'                                                                  # ExprTrue
   | 'false'                                                                 # ExprFalse
@@ -212,6 +209,8 @@ expr
   | STRING                                                                  # ExprString
   // Name
   | IDENTIFIER                                                              # ExprIdent
+  | ATID                                                                    # ExprAtid
+  | DOLLARID                                                                # ExprDollarid
   // Type
   | kind                                                                    # ExprType
   ;

@@ -1063,12 +1063,24 @@ final class ParserSpec extends FreeSpec with AlogicTest {
             "a.b.c".asTree[Expr] shouldBe ExprSelect(ExprSelect(ExprRef(Ident("a")), "b"), "c")
           }
 
+          "@id" in {
+            "@zx".asTree[Expr] shouldBe ExprRef(Ident("@zx"))
+          }
+
+          "$id" in {
+            "$clog2".asTree[Expr] shouldBe ExprRef(Ident("$clog2"))
+          }
+
           "@ call" in {
-            "@zx(0, a)".asTree[Expr] shouldBe ExprAtCall("zx", List(Expr(0), ExprRef(Ident("a"))))
+            "@zx(0, a)".asTree[Expr] shouldBe {
+              ExprCall(ExprRef(Ident("@zx")), List(Expr(0), ExprRef(Ident("a"))))
+            }
           }
 
           "$ call" in {
-            "$clog2(a)".asTree[Expr] shouldBe ExprDollarCall("clog2", List(ExprRef(Ident("a"))))
+            "$clog2(a)".asTree[Expr] shouldBe {
+              ExprCall(ExprRef(Ident("$clog2")), List(ExprRef(Ident("a"))))
+            }
           }
 
           "identifier" in {

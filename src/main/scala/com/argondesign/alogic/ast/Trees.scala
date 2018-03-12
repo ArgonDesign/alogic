@@ -155,9 +155,8 @@ object Trees {
   case class ExprSlice(expr: Expr, lidx: Expr, op: String, ridx: Expr) extends Expr
 
   case class ExprSelect(expr: Expr, selector: String) extends Expr
-
-  case class ExprAtCall(name: String, args: List[Expr]) extends Expr
-  case class ExprDollarCall(name: String, args: List[Expr]) extends Expr
+  case class ExprRef(ref: Ref) extends Expr
+  case class ExprType(kind: Type) extends Expr
 
   // Literals
   case class ExprInt(signed: Boolean, width: Int, value: BigInt) extends Expr {
@@ -167,10 +166,6 @@ object Trees {
     require(signed || value >= 0)
   }
   case class ExprStr(value: String) extends Expr
-
-  case class ExprRef(ref: Ref) extends Expr
-
-  case class ExprType(kind: Type) extends Expr
 
   case class ExprError() extends Expr // Placeholder when errors happened
 

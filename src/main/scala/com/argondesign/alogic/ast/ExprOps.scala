@@ -16,16 +16,15 @@
 
 package com.argondesign.alogic.ast
 
-import scala.language.implicitConversions
-import scala.math.BigInt.int2bigInt
-
+import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.transform.ConstantFold
-
 import com.argondesign.alogic.util.unreachable
 
-import Trees._
+import scala.language.implicitConversions
+import scala.math.BigInt.int2bigInt
 
 trait ExprOps { this: Expr =>
 
@@ -41,12 +40,14 @@ trait ExprOps { this: Expr =>
     }
   }
 
-  private final def makeExprAtCall(name: String, args: Expr*) = {
-    val expr = ExprAtCall(name, args.toList)
+  private final def makeExprCall(symbol: Symbol, args: Expr*) = {
+    val sym = Sym(symbol)
+    val expr = ExprCall(ExprRef(sym), args.toList)
     if (hasLoc) {
       for (arg <- args if !arg.hasLoc) {
         arg withLoc loc
       }
+      sym withLoc loc
       expr withLoc loc
     } else {
       expr
@@ -84,8 +85,12 @@ trait ExprOps { this: Expr =>
   final def &&(rhs: Int): Expr = makeExprBinary("&&", Expr(rhs))
   final def ||(rhs: Int): Expr = makeExprBinary("||", Expr(rhs))
 
-  final def max(rhs: Expr): Expr = makeExprAtCall("max", this, rhs)
-  final def max(rhs: Int): Expr = makeExprAtCall("max", this, Expr(rhs))
+  final def max(rhs: Expr)(implicit cc: CompilerContext): Expr = {
+    makeExprCall(cc.lookupGlobalTerm("@max"), this, rhs)
+  }
+  final def max(rhs: Int)(implicit cc: CompilerContext): Expr = {
+    makeExprCall(cc.lookupGlobalTerm("@max"), this, Expr(rhs))
+  }
 
   // Is this expression shaped as a valid type expression
   lazy val isTypeExpr: Boolean = this forall {

@@ -17,7 +17,6 @@
 
 package com.argondesign.alogic.core
 
-class CompilerContext
-  extends Messaging
-  with LocationRemapping
-  with Symbols
+import com.argondesign.alogic.builtins.Builtins
+
+class CompilerContext extends Messaging with LocationRemapping with Symbols with Builtins

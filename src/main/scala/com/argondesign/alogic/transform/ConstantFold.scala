@@ -197,17 +197,8 @@ final class ConstantFold(implicit cc: CompilerContext) extends TreeTransformer {
     // Fold built-in functions
     ////////////////////////////////////////////////////////////////////////////
 
-    // TODO: generalise handling of these somewhat
-    case ExprAtCall("max", args) if args forall { _.isInstanceOf[ExprNum] } => {
-      if (args.length >= 2) {
-        val (s, v) = (args collect { case ExprNum(signed, value) => (signed, value) }).unzip
-        ExprNum(s reduceLeft { _ && _ }, v reduceLeft { _ max _ }) withLoc tree.loc
-      } else if (args.length == 1) {
-        args.head
-      } else {
-        cc.error(tree, "Reslt of '@max()' is not well defined")
-        ExprError() withLoc tree.loc
-      }
+    case call @ ExprCall(ExprRef(Sym(symbol)), _) if symbol.isBuiltin => {
+      cc.foldBuiltinCall(call)
     }
 
     ////////////////////////////////////////////////////////////////////////////

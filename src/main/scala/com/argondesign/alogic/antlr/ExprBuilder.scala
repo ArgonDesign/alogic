@@ -15,33 +15,12 @@
 
 package com.argondesign.alogic.antlr
 
-import scala.BigInt
-import scala.math.BigInt.int2bigInt
-
-import com.argondesign.alogic.antlr.AlogicParser.ExprAtCallContext
-import com.argondesign.alogic.antlr.AlogicParser.ExprBinaryContext
-import com.argondesign.alogic.antlr.AlogicParser.ExprBracketContext
-import com.argondesign.alogic.antlr.AlogicParser.ExprCallContext
-import com.argondesign.alogic.antlr.AlogicParser.ExprCatContext
-import com.argondesign.alogic.antlr.AlogicParser.ExprConstContext
-import com.argondesign.alogic.antlr.AlogicParser.ExprConstTickNumContext
-import com.argondesign.alogic.antlr.AlogicParser.ExprContext
-import com.argondesign.alogic.antlr.AlogicParser.ExprDollarCallContext
-import com.argondesign.alogic.antlr.AlogicParser.ExprFalseContext
-import com.argondesign.alogic.antlr.AlogicParser.ExprIdentContext
-import com.argondesign.alogic.antlr.AlogicParser.ExprIndexContext
-import com.argondesign.alogic.antlr.AlogicParser.ExprRepContext
-import com.argondesign.alogic.antlr.AlogicParser.ExprSelectContext
-import com.argondesign.alogic.antlr.AlogicParser.ExprSliceContext
-import com.argondesign.alogic.antlr.AlogicParser.ExprStringContext
-import com.argondesign.alogic.antlr.AlogicParser.ExprTernaryContext
-import com.argondesign.alogic.antlr.AlogicParser.ExprTickNumContext
-import com.argondesign.alogic.antlr.AlogicParser.ExprTrueContext
-import com.argondesign.alogic.antlr.AlogicParser.ExprTypeContext
-import com.argondesign.alogic.antlr.AlogicParser.ExprUnaryContext
+import com.argondesign.alogic.antlr.AlogicParser._
 import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+
+import scala.math.BigInt.int2bigInt
 
 object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
 
@@ -93,14 +72,6 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
         ExprSelect(visit(ctx.expr), ctx.IDENTIFIER) withLoc ctx.loc
       }
 
-      // Builtins
-      override def visitExprAtCall(ctx: ExprAtCallContext) = {
-        ExprAtCall(ctx.ATID.text.tail, this(ctx.commaexpr)) withLoc ctx.loc
-      }
-      override def visitExprDollarCall(ctx: ExprDollarCallContext) = {
-        ExprDollarCall(ctx.DOLLARID.text.tail, this(ctx.commaexpr)) withLoc ctx.loc
-      }
-
       // Literals
       override def visitExprTrue(ctx: ExprTrueContext) = {
         ExprInt(false, 1, 1) withLoc ctx.loc
@@ -125,9 +96,17 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
         ExprInt(sign, width, value) withLoc ctx.loc
       }
 
-      // Identifier
+      // Identifiers
       override def visitExprIdent(ctx: ExprIdentContext) = {
         ExprRef(ctx.IDENTIFIER.toIdent) withLoc ctx.loc
+      }
+      override def visitExprAtid(ctx: ExprAtidContext) = {
+        val ident = Ident(ctx.ATID.text) withLoc ctx.ATID.loc
+        ExprRef(ident) withLoc ctx.loc
+      }
+      override def visitExprDollarid(ctx: ExprDollaridContext) = {
+        val ident = Ident(ctx.DOLLARID.text) withLoc ctx.DOLLARID.loc
+        ExprRef(ident) withLoc ctx.loc
       }
 
       // Type

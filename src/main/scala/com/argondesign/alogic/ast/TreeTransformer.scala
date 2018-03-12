@@ -82,16 +82,17 @@ abstract class TreeTransformer(implicit val cc: CompilerContext) extends TreeLik
         val states = walk(node.states)
         val fenceStmts = walk(node.fenceStmts)
         val entities = walk(node.entities)
-        transform(TreeCopier(node)(
-          ref,
-          declarations,
-          instances,
-          connects,
-          functions,
-          states,
-          fenceStmts,
-          entities
-        ))
+        transform(
+          TreeCopier(node)(
+            ref,
+            declarations,
+            instances,
+            connects,
+            functions,
+            states,
+            fenceStmts,
+            entities
+          ))
       }
       case node: Decl => {
         val ref = walk(node.ref)
@@ -243,14 +244,6 @@ abstract class TreeTransformer(implicit val cc: CompilerContext) extends TreeLik
         val expr = walk(node.expr)
         transform(TreeCopier(node)(expr))
       }
-      case node: ExprAtCall => {
-        val args = walk(node.args)
-        transform(TreeCopier(node)(args))
-      }
-      case node: ExprDollarCall => {
-        val args = walk(node.args)
-        transform(TreeCopier(node)(args))
-      }
       case node: ExprInt => transform(node)
       case node: ExprNum => transform(node)
       case node: ExprStr => transform(node)
@@ -260,7 +253,8 @@ abstract class TreeTransformer(implicit val cc: CompilerContext) extends TreeLik
       }
       case node: ExprType  => transform(node)
       case node: ExprError => node
-      case node: Thicket   => cc.ice(node, "Thicket should have been flattened in 'walk(_: List[_]): List[_]'")
+      case node: Thicket =>
+        cc.ice(node, "Thicket should have been flattened in 'walk(_: List[_]): List[_]'")
     }
   }
 }

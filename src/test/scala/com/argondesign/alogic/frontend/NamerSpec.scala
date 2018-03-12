@@ -35,6 +35,8 @@ final class NamerSpec extends FlatSpec with AlogicTest {
   implicit val cc = new CompilerContext
   val namer = new Namer
 
+  lazy val atBits = cc.getGlobalTermSymbolRef("@bits")
+
   "The Namer" should "issue error for redefinition of variable" in {
     """|{
        |  u1 foo;
@@ -237,6 +239,13 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     )
   }
 
+  it should "resolve term names to their correct definitions - builtin" in {
+    val tree = "@bits".asTree[Expr] rewrite namer
+
+    tree shouldBe cc.getGlobalTermSymbolRef("@bits")
+    cc.messages shouldBe empty
+  }
+
   it should "resolve type names to their correct definitions - typedef" in {
     val root = """|typedef bool foo_t;
                   |
@@ -434,7 +443,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
             inside(decl) {
               case Decl(Sym(dSym), TypeUInt(Expr(1)), None) =>
                 inside(expr) {
-                  case ExprAtCall("bits", List(ExprRef(Sym(rSym)))) =>
+                  case ExprCall(`atBits`, List(ExprRef(Sym(rSym)))) =>
                     rSym should be theSameInstanceAs dSym
                     rSym shouldBe 'termSymbol
                     rSym.loc.line shouldBe 3
@@ -467,7 +476,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
                 inside(main) {
                   case Function(Sym(_), List(StmtExpr(expr))) =>
                     inside(expr) {
-                      case ExprAtCall("bits", List(ExprRef(Sym(rSym)))) =>
+                      case ExprCall(`atBits`, List(ExprRef(Sym(rSym)))) =>
                         rSym should be theSameInstanceAs dSym
                         rSym shouldBe 'typeSymbol
                         rSym.loc.line shouldBe 1
@@ -503,7 +512,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
                   case Function(Sym(_), List(StmtDecl(decl), StmtExpr(expr))) =>
                     val Sym(dSym) = decl.ref
                     inside(expr) {
-                      case ExprAtCall("bits", List(ExprRef(Sym(rSym)) + Expr(2))) =>
+                      case ExprCall(`atBits`, List(ExprRef(Sym(rSym)) + Expr(2))) =>
                         rSym should be theSameInstanceAs dSym
                         rSym shouldBe 'termSymbol
                         rSym.loc.line shouldBe 4

@@ -222,6 +222,8 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
 
   private[this] var atBitsEitherTypeOrTerm = false
 
+  private[this] lazy val atBitsSymbol = cc.lookupGlobalTerm("@bits")
+
   override def enter(tree: Tree): Unit = tree match {
     case node: Root => {
       Scopes.push()
@@ -275,7 +277,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       sawLet = false
     }
 
-    case ExprAtCall("bits", arg :: _) if arg.isTypeExpr => {
+    case ExprCall(ExprRef(Ident("@bits")), arg :: _) if arg.isTypeExpr => {
       assert(!atBitsEitherTypeOrTerm)
       atBitsEitherTypeOrTerm = true
     }
@@ -303,8 +305,10 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
 
     case TypeDefinitionStruct(ident: Ident, fieldNames, fieldKinds) => {
       // Lookup field types
-      val newFieldKinds = fieldKinds map { _ rewrite TypeNamer }
-      val kind          = TypeStruct(fieldNames, newFieldKinds)
+      val newFieldKinds = fieldKinds map {
+        _ rewrite TypeNamer
+      }
+      val kind = TypeStruct(fieldNames, newFieldKinds)
       // Insert new type
       val symbol = Scopes.insert(cc.newTypeSymbol(ident, kind))
       // Don't check use of type symbols TODO: check types defined in same file
@@ -329,10 +333,18 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
           val paramSymbols = entity.declarations collect {
             case Decl(Sym(sym), _: TypeParam, _) => sym
           }
-          val portNames  = portSymbols map { _.denot.name.str }
-          val portTypes  = portSymbols map { _.denot.kind }
-          val paramNames = paramSymbols map { _.denot.name.str }
-          val paramTypes = paramSymbols map { _.denot.kind }
+          val portNames = portSymbols map {
+            _.denot.name.str
+          }
+          val portTypes = portSymbols map {
+            _.denot.kind
+          }
+          val paramNames = paramSymbols map {
+            _.denot.name.str
+          }
+          val paramTypes = paramSymbols map {
+            _.denot.kind
+          }
           symbol withDenot symbol.denot.copy(
             kind = TypeEntity(portNames, portTypes, paramNames, paramTypes))
         }
@@ -358,11 +370,11 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
     case Instance(iIdent: Ident, eIdent: Ident, paramNames, paramExprs) => {
       // Lookup type
       val eSymbol = lookupType(eIdent)
-      val eSym    = Sym(eSymbol) withLoc eIdent.loc
+      val eSym = Sym(eSymbol) withLoc eIdent.loc
       Scopes.markUsed(eSymbol)
       // Insert term
       val iSymbol = Scopes.insert(cc.newTermSymbol(iIdent, TypeRef(Sym(eSymbol))))
-      val iSym    = Sym(iSymbol) withLoc iIdent.loc
+      val iSym = Sym(iSymbol) withLoc iIdent.loc
       // Rewrite node
       Instance(iSym, eSym, paramNames, paramExprs) withLoc tree.loc
     }
@@ -416,10 +428,11 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       ExprRef(sym) withLoc tree.loc
     }
 
-    case ExprAtCall("bits", _) =>
+    case ExprCall(ExprRef(Sym(symbol)), _) if symbol == atBitsSymbol => {
       tree followedBy {
         atBitsEitherTypeOrTerm = false
       }
+    }
 
     case _ => tree
   }

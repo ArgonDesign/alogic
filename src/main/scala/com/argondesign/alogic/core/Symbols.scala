@@ -37,7 +37,8 @@ import Types._
 trait Symbols { self: CompilerContext =>
 
   // The global scope only holds file level entity symbols
-  final private[this] var _globalScope: Option[mutable.HashMap[Name, Symbol]] = Some(mutable.HashMap())
+  final private[this] var _globalScope: Option[mutable.HashMap[Name, Symbol]] = Some(
+    mutable.HashMap())
 
   // Can only hand out the final immutable copy
   final lazy val globalScope: Map[Name, Symbol] = {
@@ -46,24 +47,51 @@ trait Symbols { self: CompilerContext =>
     _globalScope = None
   }
 
-  final def addGlobalEntities(entities: Iterable[Entity]): Unit = synchronized {
+  // Add a symbol to the global scope, assuming it is still open
+  final def addGlobalSymbol(symbol: Symbol): Unit = synchronized {
     _globalScope match {
       case None => ice("Global scope is already sealed")
       case Some(scope) => {
-        assert(scope.isEmpty)
-
-        for (Entity(ident: Ident, _, _, _, _, _, _, _, _) <- entities) {
-          val symbol = newTypeSymbol(ident, TypeEntity(Nil, Nil, Nil, Nil))
-          scope(symbol.denot.name) = symbol
+        val name = symbol.denot.name
+        if (scope contains name) {
+          ice(s"Global scope already contains '${name}'")
         }
-
-        // Force value to seal global scope
-        globalScope
+        scope(name) = symbol
       }
     }
   }
 
+  final def addGlobalEntities(entities: Iterable[Entity]): Unit = synchronized {
+    for (Entity(ident: Ident, _, _, _, _, _, _, _, _) <- entities) {
+      val symbol = newTypeSymbol(ident, TypeEntity(Nil, Nil, Nil, Nil))
+      addGlobalSymbol(symbol)
+    }
+
+    // Force value to seal global scope
+    globalScope
+  }
+
   final def addGlobalEntity(entity: Entity): Unit = addGlobalEntities(List(entity))
+
+  final def lookupGlobalTerm(name: String): Symbol = synchronized {
+    globalScope.get(TermName(name)) match {
+      case Some(symbol) => symbol
+      case None         => ice(s"Cannot find global term '${name}'")
+    }
+  }
+
+  // Used to look up builtin symbols
+  final def getGlobalTermSymbolRef(name: String): ExprRef = {
+    val symbol = lookupGlobalTerm(name)
+    val sym = Sym(symbol)
+    ExprRef(sym)
+  }
+
+  final def getGlobalTermSymbolRef(name: String, loc: Loc): ExprRef = {
+    val ref = getGlobalTermSymbolRef(name)
+    ref visitAll { case node: Tree => node withLoc loc }
+    ref
+  }
 
   final private[this] val symbolSequenceNumbers = Stream.from(0).iterator
 
@@ -124,6 +152,11 @@ object Symbols {
 
     // Location of definition
     final def loc(implicit cc: CompilerContext): Loc = cc.symbolLocations(this)
+
+    // Is this a builtin symbol
+    def isBuiltin(implicit cc: CompilerContext): Boolean = {
+      cc.builtins exists { _ contains this }
+    }
   }
 
   final class TermSymbol(val id: Int) extends Symbol {

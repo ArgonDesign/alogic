@@ -18,12 +18,12 @@ package com.argondesign.alogic.core
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
 import com.argondesign.alogic.lib.StructuredTree
-
 import FlowControlTypes.FlowControlType
 import FlowControlTypes.FlowControlTypeAccept
 import FlowControlTypes.FlowControlTypeReady
 import FlowControlTypes.FlowControlTypeValid
 import StorageTypes.StorageType
+import com.argondesign.alogic.core.Symbols.TermSymbol
 
 object Types {
 
@@ -98,6 +98,16 @@ object Types {
   case object TypeError extends Type
   // Placeholder if type cannot be computed
   case object TypeUnknown extends Type
+
+  // Polymorphic function. Used to handle overloaded builtin functions
+  case class TypePolyFunc(resolver: List[Expr] => CompilerContext => Option[TermSymbol])
+      extends Type {
+
+    // Resolve based on argument types to the correct overload of the symbol
+    def resolve(argTypes: List[Expr])(implicit cc: CompilerContext): Option[TermSymbol] = {
+      resolver(argTypes)(cc)
+    }
+  }
 
   ///////////////////////////////////////////////////////////////////////////////
   // base trait companions
