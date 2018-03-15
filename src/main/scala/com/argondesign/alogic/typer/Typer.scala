@@ -59,6 +59,18 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer {
     }
   }
 
+  private def checkBlock(stmts: List[Stmt]): Option[StmtError] = {
+    val hasCtrl = stmts exists { _.tpe == TypeCtrlStmt }
+    val lstCtrl = stmts.nonEmpty && stmts.last.tpe == TypeCtrlStmt
+    if (hasCtrl && !lstCtrl) {
+      cc.error(stmts.last,
+               "Block must contain only combinatorial statements, or end with a control statement")
+      Some(StmtError() withLoc stmts.last.loc)
+    } else {
+      None
+    }
+  }
+
   override def transform(tree: Tree): Tree = {
     // TODO: warn for field hiding by extension types
 
@@ -77,7 +89,7 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer {
       case stmt: Stmt if hasError(stmt) => StmtError() withLoc stmt.loc
 
       ////////////////////////////////////////////////////////////////////////////
-      // Infer width of of unsized literals
+      // Infer width of of unsized literals in expressions
       ////////////////////////////////////////////////////////////////////////////
 
       case ExprBinary(lhs @ ExprNum(signed, value), op, rhs) => {
@@ -138,6 +150,82 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer {
         } getOrElse {
           ExprError()
         } withLoc lhs.loc
+      }
+
+      ////////////////////////////////////////////////////////////////////////////
+      // Type check other nodes
+      ////////////////////////////////////////////////////////////////////////////
+
+      case entity: Entity => {
+        if (entity.fenceStmts exists { _.tpe == TypeCtrlStmt }) {
+          cc.error("'fence' block must contain only combinatorial statements")
+          entity.copy(fenceStmts = Nil) withLoc tree.loc
+        } else {
+          tree
+        }
+      }
+
+      case Function(ref, body) => {
+        if (body.nonEmpty && body.last.tpe == TypeCtrlStmt) {
+          tree
+        } else {
+          cc.error(tree, "Body of function must end in a control statement")
+          val err = StmtError() withLoc tree.loc
+          TypeAssigner(err)
+          Function(ref, List(err)) withLoc tree.loc
+        }
+      }
+
+      ////////////////////////////////////////////////////////////////////////////
+      // Type check statements
+      ////////////////////////////////////////////////////////////////////////////
+
+      case StmtBlock(body) => {
+        checkBlock(body) getOrElse tree
+      }
+
+      case StmtIf(_, thenStmt, Some(elseStmt)) => {
+        (thenStmt.tpe, elseStmt.tpe) match {
+          case (TypeCombStmt, TypeCombStmt) => tree
+          case (TypeCtrlStmt, TypeCtrlStmt) => tree
+          case _ => {
+            cc.error(tree, "Either both or neither branches of if-else must be control statements")
+            StmtError() withLoc tree.loc
+          }
+        }
+      }
+
+      case StmtCase(_, cases, default) => {
+        checkBlock(default) getOrElse {
+          val allCtrl = {
+            val casesCtrl = cases forall { _.body.tpe == TypeCtrlStmt }
+            val defaultCtrl = default.isEmpty || default.last.tpe == TypeCtrlStmt
+            casesCtrl && defaultCtrl
+          }
+          val allComb = {
+            val casesComb = cases forall { _.body.tpe == TypeCombStmt }
+            val defaultComb = default.isEmpty || default.last.tpe == TypeCombStmt
+            casesComb && defaultComb
+          }
+          if (!allComb && !allCtrl) {
+            cc.error(tree, "Either all or no cases of a case statement must be control statements")
+            StmtError() withLoc tree.loc
+          } else {
+            tree
+          }
+        }
+      }
+
+      case StmtLoop(body) => {
+        if (body.nonEmpty && body.last.tpe == TypeCtrlStmt) {
+          tree
+        } else if (body exists { _.tpe == TypeCtrlStmt }) {
+          cc.error(tree, "Body of 'loop' must end in a control statement")
+          StmtError() withLoc tree.loc
+        } else {
+          cc.error(tree, "Body of 'loop' must be a control statement")
+          StmtError() withLoc tree.loc
+        }
       }
 
       ////////////////////////////////////////////////////////////////////////////

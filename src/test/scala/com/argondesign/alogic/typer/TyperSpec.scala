@@ -67,10 +67,11 @@ final class TyperSpec extends FreeSpec with AlogicTest {
             val text = expr.trim.replaceAll(" +", " ")
             text in {
               val root = s"""|fsm a {
-                             | param u8 N = 2;
-                             | void main() {
-                             |   ${text};
-                             |   N;
+                             |  param u8 N = 2;
+                             |  void main() {
+                             |    ${text};
+                             |    N;
+                             |    fence;
                              |  }
                              |}""".stripMargin.asTree[Root]
               val tree = xform(root)
@@ -105,10 +106,11 @@ final class TyperSpec extends FreeSpec with AlogicTest {
             val text = expr.trim.replaceAll(" +", " ")
             text in {
               val root = s"""|fsm a {
-                             | param u8 N = 2;
-                             | void main() {
-                             |   ${text};
-                             |   N;
+                             |  param u8 N = 2;
+                             |  void main() {
+                             |    ${text};
+                             |    N;
+                             |    fence;
                              |  }
                              |}""".stripMargin.asTree[Root]
               val tree = xform(root)
@@ -148,10 +150,11 @@ final class TyperSpec extends FreeSpec with AlogicTest {
           val text = expr.trim.replaceAll(" +", " ")
           text in {
             val root = s"""|fsm a {
-                           | param u8 N = 2;
-                           | void main() {
-                           |   ${text};
-                           |   N;
+                           |  param u8 N = 2;
+                           |  void main() {
+                           |    ${text};
+                           |    N;
+                           |    fence;
                            |  }
                            |}""".stripMargin.asTree[Root]
             val tree = xform(root)
@@ -198,10 +201,11 @@ final class TyperSpec extends FreeSpec with AlogicTest {
             val text = expr.trim.replaceAll(" +", " ")
             text in {
               val root = s"""|fsm a {
-                             | param u8 N = 2;
-                             | void main() {
-                             |   ${text};
-                             |   N;
+                             |  param u8 N = 2;
+                             |  void main() {
+                             |    ${text};
+                             |    N;
+                             |    fence;
                              |  }
                              |}""".stripMargin.asTree[Root]
               xform(root)
@@ -257,6 +261,7 @@ final class TyperSpec extends FreeSpec with AlogicTest {
                            |  void main() {
                            |    d; e; f; g;
                            |    ${text};
+                           |    fence;
                            |  }
                            |}""".stripMargin.asTree[Root]
             val tree = xform(root)
@@ -306,12 +311,13 @@ final class TyperSpec extends FreeSpec with AlogicTest {
                            |  out sync u2 a;
                            |
                            |  void bar() {
-                           |
+                           |    fence;
                            |  }
                            |
                            |  void main() {
                            |    bar; a;
                            |    ${text};
+                           |    fence;
                            |  }
                            |}""".stripMargin.asTree[Root]
             val tree = xform(root)
@@ -341,6 +347,7 @@ final class TyperSpec extends FreeSpec with AlogicTest {
                            |  void main() {
                            |    a;
                            |    ${text};
+                           |    fence;
                            |  }
                            |}""".stripMargin.asTree[Root]
             val tree = xform(root)
@@ -371,6 +378,7 @@ final class TyperSpec extends FreeSpec with AlogicTest {
                            |  void main() {
                            |    a;
                            |    ${text};
+                           |    fence;
                            |  }
                            |}""".stripMargin.asTree[Root]
             val tree = xform(root)
@@ -412,6 +420,7 @@ final class TyperSpec extends FreeSpec with AlogicTest {
                            |  void main() {
                            |    a; b; c;
                            |    ${text};
+                           |    fence;
                            |  }
                            |}""".stripMargin.asTree[Root]
             xform(root)
@@ -423,97 +432,208 @@ final class TyperSpec extends FreeSpec with AlogicTest {
           }
         }
       }
-    }
 
-    "slice" - {
-      for {
-        (text, msg) <- List(
-          ("a[1:0]", ""),
-          ("b[1:0]", ""),
-          ("b[0][1:0]", ""),
-          ("b[0][0][1:0]", ""),
-          ("c[1:0]", "Target of slice is of non-packed type"),
-          ("c[0][1:0]", "Target of slice is of non-packed type"),
-          ("c[0][0][1:0]", "Target of slice is of non-packed type"),
-          ("c[0][0][0][1:0]", ""),
-          ("c[0][0][0][0][1:0]", ""),
-          ("c[0][0][0][0][0][1:0]", ""),
-          ("bool[1:0]", "Target of slice is of non-packed type"),
-          ("main[1:0]", "Target of slice is of non-packed type"),
-          ("a[1:bool]", "Right index of slice is of non-numeric type"),
-          ("a[1:b[0]]", "Right index of slice is of non-numeric type"),
-          ("a[bool:0]", "Left index of slice is of non-numeric type"),
-          ("a[b[0]:0]", "Left index of slice is of non-numeric type")
-        )
-      } {
-        text in {
-          val root = s"""|fsm f {
-                         |  out sync u2 a;
-                         |  int(1, 2, 3) b;
-                         |  int(1, 2, 3) c[4][5][6];
-                         |  void main() {
-                         |    a; b; c;
-                         |    ${text};
-                         |  }
-                         |}""".stripMargin.asTree[Root]
-          xform(root)
-          if (msg.isEmpty) {
-            cc.messages shouldBe empty
-          } else {
-            cc.messages.loneElement should beThe[Error](msg)
-          }
-        }
-      }
-    }
-
-    "ternary" - {
-      for {
-        (text, msg) <- List(
-          ("a ? b : c[0][0][0]", ""),
-          ("c[0] ? b : c[0][0][0]", "Condition of ternary operator ?: is of non-packed type"),
-          ("a ? c[0] : b", "True part of ternary operator ?: is of non-packed type"),
-          ("a ? b : c[0]", "False part of ternary operator ?: is of non-packed type")
-        )
-      } {
-        text in {
-          val root = s"""|fsm f {
-                         |  out sync u2 a;
-                         |  int(1, 2, 3) b;
-                         |  int(1, 2, 3) c[4][5][6];
-                         |  void main() {
-                         |    a; b; c;
-                         |    ${text};
-                         |  }
-                         |}""".stripMargin.asTree[Root]
-          xform(root)
-          if (msg.isEmpty) {
-            cc.messages shouldBe empty
-          } else {
-            cc.messages.loneElement should beThe[Error](Pattern.quote(msg))
-          }
-        }
-      }
-    }
-  }
-
-  "warn mismatching operand widths" - {
-    "binary operators" - {
-      for (op <- List("*", "/", "%", "+", "-", "&", "|", "^", ">", ">=", "<", "<=", "==", "!=")) {
-        val qop = Pattern.quote(op)
-        val text = s"8'd1 ${op} 7'd0"
-        text in {
-          xform(text.asTree[Expr]) should matchPattern {
-            case ExprBinary(_, `op`, _) =>
-          }
-          cc.messages.loneElement should beThe[Warning](
-            s"'${qop}' expects both operands to have the same width, but",
-            "left  operand is 8 bits wide, and",
-            "right operand is 7 bits wide"
+      "slice" - {
+        for {
+          (text, msg) <- List(
+            ("a[1:0]", ""),
+            ("b[1:0]", ""),
+            ("b[0][1:0]", ""),
+            ("b[0][0][1:0]", ""),
+            ("c[1:0]", "Target of slice is of non-packed type"),
+            ("c[0][1:0]", "Target of slice is of non-packed type"),
+            ("c[0][0][1:0]", "Target of slice is of non-packed type"),
+            ("c[0][0][0][1:0]", ""),
+            ("c[0][0][0][0][1:0]", ""),
+            ("c[0][0][0][0][0][1:0]", ""),
+            ("bool[1:0]", "Target of slice is of non-packed type"),
+            ("main[1:0]", "Target of slice is of non-packed type"),
+            ("a[1:bool]", "Right index of slice is of non-numeric type"),
+            ("a[1:b[0]]", "Right index of slice is of non-numeric type"),
+            ("a[bool:0]", "Left index of slice is of non-numeric type"),
+            ("a[b[0]:0]", "Left index of slice is of non-numeric type")
           )
+        } {
+          text in {
+            val root = s"""|fsm f {
+                           |  out sync u2 a;
+                           |  int(1, 2, 3) b;
+                           |  int(1, 2, 3) c[4][5][6];
+                           |  void main() {
+                           |    a; b; c;
+                           |    ${text};
+                           |    fence;
+                           |  }
+                           |}""".stripMargin.asTree[Root]
+            xform(root)
+            if (msg.isEmpty) {
+              cc.messages shouldBe empty
+            } else {
+              cc.messages.loneElement should beThe[Error](msg)
+            }
+          }
         }
+      }
 
+      "ternary" - {
+        for {
+          (text, msg) <- List(
+            ("a ? b : c[0][0][0]", ""),
+            ("c[0] ? b : c[0][0][0]", "Condition of ternary operator ?: is of non-packed type"),
+            ("a ? c[0] : b", "True part of ternary operator ?: is of non-packed type"),
+            ("a ? b : c[0]", "False part of ternary operator ?: is of non-packed type")
+          )
+        } {
+          text in {
+            val root = s"""|fsm f {
+                           |  out sync u2 a;
+                           |  int(1, 2, 3) b;
+                           |  int(1, 2, 3) c[4][5][6];
+                           |  void main() {
+                           |    a; b; c;
+                           |    ${text};
+                           |    fence;
+                           |  }
+                           |}""".stripMargin.asTree[Root]
+            xform(root)
+            if (msg.isEmpty) {
+              cc.messages shouldBe empty
+            } else {
+              cc.messages.loneElement should beThe[Error](Pattern.quote(msg))
+            }
+          }
+        }
+      }
+
+      "blocks" - {
+        for {
+          (stmt, msg) <- List(
+            ("{ 0; }", ""),
+            ("{ fence; }", ""),
+            ("{ 0; fence; }", ""),
+            ("{ 0; fence; 0; fence; }", ""),
+            ("{ fence; 0;}",
+             "Block must contain only combinatorial statements, or end with a control statement")
+          )
+        } {
+          stmt in {
+            xform(stmt.asTree[Stmt])
+            if (msg.isEmpty) {
+              cc.messages shouldBe empty
+            } else {
+              cc.messages.loneElement should beThe[Error](msg)
+            }
+          }
+        }
+      }
+
+      "statements" - {
+        for {
+          (stmt, msg) <- List(
+            ("if (1) 0;", ""),
+            ("if (1) 0; else 1;", ""),
+            ("if (1) fence;", ""),
+            ("if (1) fence; else fence;", ""),
+            ("if (1) fence; else 1;",
+             "Either both or neither branches of if-else must be control statements"),
+            ("if (1) 0; else fence;",
+             "Either both or neither branches of if-else must be control statements"),
+            ("case(1) { 1: 0; }", ""),
+            ("case(1) { 1: fence; }", ""),
+            ("case(1) { default: 0; }", ""),
+            ("case(1) { default: fence; }", ""),
+            ("case(1) { 1: 0; 2: 0; }", ""),
+            ("case(1) { 1: fence; 2: fence; }", ""),
+            ("case(1) { 1: 0; default: 0; }", ""),
+            ("case(1) { 1: fence; default: fence; }", ""),
+            ("case(1) { 1: 0; 2: fence; }",
+             "Either all or no cases of a case statement must be control statements"),
+            ("case(1) { 1: fence; 2: 0; }",
+             "Either all or no cases of a case statement must be control statements"),
+            ("case(1) { 1: 0; default: fence; }",
+             "Either all or no cases of a case statement must be control statements"),
+            ("case(1) { 1: fence; default: 0; }",
+             "Either all or no cases of a case statement must be control statements"),
+            ("loop { fence; }", ""),
+            ("loop { 0; }", "Body of 'loop' must be a control statement"),
+            ("loop { fence; 0; }", "Body of 'loop' must end in a control statement")
+          )
+        } {
+          stmt in {
+            xform(stmt.asTree[Stmt])
+            if (msg.isEmpty) {
+              cc.messages shouldBe empty
+            } else {
+              cc.messages.loneElement should beThe[Error](msg)
+            }
+          }
+        }
+      }
+
+      "function bodies" - {
+        for {
+          (func, msg) <- List(
+            ("void main () { fence; }", ""),
+            ("void main () { 0; }", "Body of function must end in a control statement"),
+            ("void main () { fence; 0; }", "Body of function must end in a control statement")
+          )
+        } {
+          func in {
+            val tree = s"""|fsm a {
+                           | ${func}
+                           |}""".stripMargin.asTree[Entity]
+            xform(tree)
+            if (msg.isEmpty) {
+              cc.messages shouldBe empty
+            } else {
+              cc.messages.loneElement should beThe[Error](msg)
+            }
+          }
+        }
+      }
+
+      "fence blocks bodies" - {
+        for {
+          (fb, msg) <- List(
+            ("fence { 0; }", ""),
+            ("fence { 0; fence; }", "'fence' block must contain only combinatorial statements"),
+            ("fence { 0; fence; 0; }", "'fence' block must contain only combinatorial statements")
+          )
+        } {
+          fb in {
+            val tree = s"""|fsm a {
+                           | ${fb}
+                           |}""".stripMargin.asTree[Entity]
+            xform(tree)
+            if (msg.isEmpty) {
+              cc.messages shouldBe empty
+            } else {
+              cc.messages.loneElement should beThe[Error](msg)
+            }
+          }
+        }
       }
     }
-  }
 
+    "warn mismatching operand widths" - {
+      "binary operators" - {
+        for (op <- List("*", "/", "%", "+", "-", "&", "|", "^", ">", ">=", "<", "<=", "==", "!=")) {
+          val qop = Pattern.quote(op)
+          val text = s"8'd1 ${op} 7'd0"
+          text in {
+            xform(text.asTree[Expr]) should matchPattern {
+              case ExprBinary(_, `op`, _) =>
+            }
+            cc.messages.loneElement should beThe[Warning](
+              s"'${qop}' expects both operands to have the same width, but",
+              "left  operand is 8 bits wide, and",
+              "right operand is 7 bits wide"
+            )
+          }
+
+        }
+      }
+    }
+
+  }
 }
