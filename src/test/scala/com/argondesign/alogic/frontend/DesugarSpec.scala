@@ -147,21 +147,21 @@ final class DesugarSpec extends FreeSpec with AlogicTest {
     }
 
     "strip blocks around default case body" in {
-      val tree = "case (1) {  default: 1; }".asTree[Stmt] rewrite desugar
+      val tree = "case (1) {  default: { 1; 2; } }".asTree[Stmt] rewrite desugar
       inside(tree) {
         case StmtCase(Expr(1), Nil, default) =>
-          default shouldBe List(StmtExpr(Expr(1)))
+          default shouldBe List(StmtExpr(Expr(1)), StmtExpr(Expr(2)))
       }
     }
 
     "strip blocks around fence block body" in {
-      val entity = "fsm a { fence { 2; } }".asTree[Entity]
+      val entity = "fsm a { fence { 2; 3; } }".asTree[Entity]
       cc.addGlobalEntity(entity)
       val tree = entity rewrite namer rewrite desugar
 
       inside(tree) {
         case entity: Entity =>
-          entity.fenceStmts shouldBe List(StmtExpr(Expr(2)))
+          entity.fenceStmts shouldBe List(StmtExpr(Expr(2)), StmtExpr(Expr(3)))
       }
     }
 
