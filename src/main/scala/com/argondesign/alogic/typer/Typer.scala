@@ -25,9 +25,10 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.transform.ConstantFold
+import com.argondesign.alogic.util.FollowedBy
 import com.argondesign.alogic.util.unreachable
 
-final class Typer(implicit cc: CompilerContext) extends TreeTransformer {
+final class Typer(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
 
   val constantFold = new ConstantFold
 
@@ -69,6 +70,15 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer {
     } else {
       None
     }
+  }
+
+  private var inConnect = false
+
+  override def enter(tree: Tree): Unit = tree match {
+    case _: Connect => {
+      inConnect = true
+    }
+    case _ => ()
   }
 
   override def transform(tree: Tree): Tree = {
@@ -176,6 +186,14 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer {
         }
       }
 
+      case Connect(lhs, rhss) => {
+        // TODO: check widths
+
+        tree
+      } followedBy {
+        inConnect = false
+      }
+
       ////////////////////////////////////////////////////////////////////////////
       // Type check statements
       ////////////////////////////////////////////////////////////////////////////
@@ -242,7 +260,8 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer {
         if (field.isDefined) {
           tree
         } else {
-          cc.error(tree, s"No field named '${selector}' in '${expr}'")
+          val thing = if (inConnect) "port" else "field"
+          cc.error(tree, s"No ${thing} named '${selector}' in '${expr}'")
           ExprError() withLoc tree.loc
         }
       }

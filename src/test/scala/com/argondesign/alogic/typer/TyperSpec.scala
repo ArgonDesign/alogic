@@ -613,6 +613,98 @@ final class TyperSpec extends FreeSpec with AlogicTest {
           }
         }
       }
+
+      "port select" - {
+        for {
+          (expr, msg) <- List(
+            ("a.b", ""),
+            ("a.c", "No port named 'c' in '.*'"),
+            ("a.N", "No port named 'N' in '.*'")
+          )
+        } {
+          expr in {
+            val tree = s"""|network n {
+                           |  in bool p;
+                           |  new fsm a {
+                           |    param u8 N = 2;
+                           |    in bool b;
+                           |    void main() {
+                           |      b;
+                           |      N;
+                           |      fence;
+                           |    }
+                           |  }
+                           |  p -> ${expr};
+                           |}""".stripMargin.asTree[Entity]
+            xform(tree)
+            if (msg.isEmpty) {
+              cc.messages shouldBe empty
+            } else {
+              cc.messages.loneElement should beThe[Error](msg)
+            }
+          }
+        }
+      }
+
+//      "port" - {
+//        "directions" - {
+//          for {
+//            (expr, msg) <- List(
+//              ("op -> op", "Output port of current entity used as driver"),
+//              ("op -> ip", "Output port of current entity used as driver"),
+//              ("ip -> op", ""),
+//              ("ip -> ip", "Driving input port of current entity"),
+//              //
+//              ("op -> x.ox", "Output port of current entity used as driver"),
+//              ("op -> x.ix", "Output port of current entity used as driver"),
+//              ("ip -> x.ox", "Driving output port of child entity"),
+//              ("ip -> x.ix", ""),
+//              //
+//              ("x.ox -> op", ""),
+//              ("x.ox -> ip", "Driving input port of current entity"),
+//              ("x.ix -> op", "Input port of child entity used as driver"),
+//              ("x.ix -> ip", "Input port of child entity used as driver"),
+//              //
+//              ("x.ox -> x.ox", "Driving output port of child entity"),
+//              ("x.ox -> x.ix", ""),
+//              ("x.ix -> x.ox", "Input port of child entity used as driver"),
+//              ("x.ix -> x.ix", "Input port of child entity used as driver")
+//            )
+//          } {
+//            expr in {
+//              val tree = s"""|network p {
+//                             |  in bool ip;
+//                             |  out bool op;
+//                             |
+//                             |  new fsm x {
+//                             |    in bool ix;
+//                             |    out bool ox;
+//                             |
+//                             |    void main() {
+//                             |      ix;
+//                             |      ox;
+//                             |      fence;
+//                             |    }
+//                             |  }
+//                             |
+//                             |  fence {
+//                             |    ip;
+//                             |    op;
+//                             |    x;
+//                             |  }
+//                             |
+//                             |  ${expr};
+//                             |}""".stripMargin.asTree[Entity]
+//              xform(tree)
+//              if (msg.isEmpty) {
+//                cc.messages shouldBe empty
+//              } else {
+//                cc.messages.loneElement should beThe[Error](msg)
+//              }
+//            }
+//          }
+//        }
+//      }
     }
 
     "warn mismatching operand widths" - {

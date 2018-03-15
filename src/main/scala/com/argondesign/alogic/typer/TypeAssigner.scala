@@ -310,7 +310,7 @@ object TypeAssigner {
     node withTpe TypeUInt(width.simplify)
   }
 
-  def apply(node: ExprIndex)(implicit cc: CompilerContext): node.type = {
+  def apply(node: ExprIndex): node.type = {
     require(!node.hasTpe)
     val tpe = node.expr.tpe.underlying match {
       case _: TypeInt          => TypeUInt(Expr(1) withLoc node.index.loc)

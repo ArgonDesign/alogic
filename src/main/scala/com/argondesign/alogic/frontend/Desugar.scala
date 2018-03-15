@@ -56,8 +56,9 @@ final class Desugar(implicit cc: CompilerContext) extends TreeTransformer {
     // Strip block around fence statements
     case entity: Entity => {
       entity.fenceStmts match {
-        case List(StmtBlock(body)) => entity.copy(fenceStmts = body) withLoc entity.loc
-        case _                     => tree
+        case List(StmtBlock(body)) =>
+          entity.copy(fenceStmts = body) withLoc entity.loc withVariant entity.variant
+        case _ => tree
       }
     }
 
