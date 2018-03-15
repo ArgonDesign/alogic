@@ -18,12 +18,11 @@
 // - Replace the Root node with the root Entity node
 ////////////////////////////////////////////////////////////////////////////////
 
-package com.argondesign.alogic.frontend
+package com.argondesign.alogic.typer
 
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.transform.ConstantFold
 import com.argondesign.alogic.util.unreachable
@@ -39,6 +38,24 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer {
       case child: Tree => child.tpe == TypeError
       case _: Type     => false
       case _           => unreachable
+    }
+  }
+
+  private def checkPacked(expr: Expr, msg: String): Option[ExprError] = {
+    if (expr.tpe.isPacked) {
+      None
+    } else {
+      cc.error(expr, s"${msg} is of non-packed type")
+      Some(ExprError() withLoc expr.loc)
+    }
+  }
+
+  private def checkNumeric(expr: Expr, msg: String): Option[ExprError] = {
+    if (expr.tpe.isNumeric) {
+      None
+    } else {
+      cc.error(expr, s"${msg} is of non-numeric type")
+      Some(ExprError() withLoc expr.loc)
     }
   }
 
@@ -146,18 +163,48 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer {
         require(expr.hasTpe)
         require(args forall { _.hasTpe })
 
+        def checkArg(expected: Type, arg: Expr, i: Int): Tree = {
+          assert(expected.isPacked)
+
+          checkPacked(arg, s"Parameter ${i} to function call") getOrElse {
+            val argWidthOpt = arg.tpe.width.value
+            val expWidthOpt = expected.width.value
+            // TODO: solve for parametrized
+            val errOpt = for {
+              argWidth <- argWidthOpt
+              expWidth <- expWidthOpt
+            } yield {
+              if (argWidth != expWidth) {
+                val cmp = if (argWidth > expWidth) "greater" else "less"
+                cc.error(
+                  arg,
+                  s"Width ${argWidth} of parameter ${i} passed to function call is ${cmp} than expected width ${expWidth}")
+                ExprError() withLoc expr.loc
+              } else {
+                tree
+              }
+            }
+            errOpt getOrElse tree
+          }
+        }
+
         def checkFunc(argTypes: List[Type]) = {
           val eLen = argTypes.length
           val gLen = args.length
           if (eLen != gLen) {
-            if (eLen > gLen) {
-              cc.error(tree, s"Too few arguments to function call, expected ${eLen}, have ${gLen}")
-            } else {
-              cc.error(tree, s"Too many arguments to function call, expected ${eLen}, have ${gLen}")
-            }
+            val cmp = if (eLen > gLen) "few" else "many"
+            cc.error(tree, s"Too ${cmp} arguments to function call, expected ${eLen}, have ${gLen}")
             ExprError() withLoc tree.loc
           } else {
-            tree
+            val errOpt = {
+              val tmp = for (((e, a), i) <- (argTypes zip args).zipWithIndex) yield {
+                checkArg(e, a, i + 1)
+              }
+              tmp collectFirst {
+                case e: ExprError => e
+              }
+            }
+            errOpt getOrElse tree
           }
         }
 
@@ -191,41 +238,55 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer {
         }
       }
 
-      // Non-reducing unary ops
-      case ExprUnary(op, expr) if op == "+" || op == "-" || op == "~" => {
-        // TODO: Type check
-        tree
+      case ExprCat(parts) => {
+        val errors = for ((part, i) <- parts.zipWithIndex) yield {
+          checkPacked(part, s"Part ${i + 1} of bit concatenation")
+        }
+        errors.flatten.headOption getOrElse tree
       }
 
-      // Reducing unary ops
-      case ExprUnary(_, _) => {
-        // TODO: Type check
-        // TODO: Warn when reducing 1-bit quantity? Not good when it's parameterised
-        tree
+      case ExprRep(count, expr) => {
+        val errCount = checkNumeric(count, "Count of bit repetition")
+        val errExpr = checkPacked(expr, "Value of bit repetition")
+        errCount orElse errExpr getOrElse tree
       }
 
-      // Reducing binary ops
-      case ExprBinary(lhs, op, rhs) if reducingBinaryOps contains op => {
-        // TODO: Type check
-        // TODO: Width warning, promotion
-        tree
+      case ExprIndex(expr, index) => {
+        val errExpr = expr.tpe match {
+          case _: TypeArray          => None
+          case kind if kind.isPacked => None
+          case _ => {}
+          cc.error(expr, "Target of index is neither a packed value, nor an array")
+          Some(ExprError() withLoc expr.loc)
+        }
+
+        val errIndex = checkNumeric(index, "Index")
+
+        errExpr orElse errIndex getOrElse tree
       }
 
-      // Non-Reducing binary ops
+      case ExprSlice(expr, lidx, _, ridx) => {
+        val errExpr = checkPacked(expr, "Target of slice")
+        val errLidx = checkNumeric(lidx, "Left index of slice")
+        val errRidx = checkNumeric(ridx, "Right index of slice")
+        errExpr orElse errLidx orElse errRidx getOrElse tree
+      }
+
+      // unary ops
+      case ExprUnary(op, expr) => {
+        checkPacked(expr, s"Operand of unary '${op}'") getOrElse tree
+      }
+
+      // Binary ops
       case ExprBinary(lhs, op, rhs) => {
         require(lhs.hasTpe)
         require(rhs.hasTpe)
 
         // Check both sides are packed types
-        if (!lhs.tpe.isPacked || !rhs.tpe.isPacked) {
-          if (!lhs.tpe.isPacked) {
-            cc.error(tree, s"'${op}' expects packed value on the left hand side")
-          }
-          if (!rhs.tpe.isPacked) {
-            cc.error(tree, s"'${op}' expects packed value on the right hand side")
-          }
-          ExprError() withLoc tree.loc
-        } else {
+        val errLhs = checkPacked(lhs, s"Left hand operand of '${op}'")
+        val errRhs = checkPacked(rhs, s"Right hand operand of '${op}'")
+
+        errLhs orElse errRhs getOrElse {
           // TODO: handle parametrized widths by solving 'lhsWidth != rhsWidth' SAT
           val lhsWidthOpt = lhs.tpe.width.value
           val rhsWidthOpt = rhs.tpe.width.value
@@ -249,6 +310,13 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer {
 
       }
 
+      case ExprTernary(cond, thenExpr, elseExpr) => {
+        val errCondOpt = checkPacked(cond, "Condition of ternary operator ?:")
+        val errThenOpt = checkPacked(thenExpr, "True part of ternary operator ?:")
+        val errElseOpt = checkPacked(elseExpr, "False part of ternary operator ?:")
+        errCondOpt orElse errThenOpt orElse errElseOpt getOrElse tree
+      }
+
       case _ => tree
     }
 
@@ -265,13 +333,6 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer {
     if (isEntity) {
       tree visit {
         case _: Type => /* Don't recurse into types */
-        case node: ExprNum => {
-          cc.ice(
-            node,
-            "Typer should have removed all unsized integer literals, but the following remains",
-            node.toString
-          )
-        }
         case node: Tree if !node.hasTpe => {
           cc.ice(
             node,

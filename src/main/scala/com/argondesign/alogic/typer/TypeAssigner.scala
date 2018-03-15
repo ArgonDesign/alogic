@@ -14,9 +14,10 @@
 // note that the TypeAssigner assumes that the node is correctly typed
 ////////////////////////////////////////////////////////////////////////////////
 
-package com.argondesign.alogic.core
+package com.argondesign.alogic.typer
 
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.ErrorSymbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.unreachable
@@ -221,7 +222,7 @@ object TypeAssigner {
       case node: ExprRef     => apply(node)
       case node: ExprType    => apply(node)
       case node: ExprError   => apply(node)
-      case _: ExprNum        => tree withTpe TypeUnknown
+      case node: ExprNum     => apply(node)
     }
     tree
   }
@@ -232,6 +233,11 @@ object TypeAssigner {
     require(!node.hasTpe)
     val widthExpr = Expr(node.width) withLoc node.loc
     node withTpe TypeInt(node.signed, widthExpr)
+  }
+
+  def apply(node: ExprNum): node.type = {
+    require(!node.hasTpe)
+    node withTpe TypeNum(node.signed)
   }
 
   def apply(node: ExprStr): node.type = node withTpe TypeStr
@@ -304,9 +310,9 @@ object TypeAssigner {
     node withTpe TypeUInt(width.simplify)
   }
 
-  def apply(node: ExprIndex): node.type = {
+  def apply(node: ExprIndex)(implicit cc: CompilerContext): node.type = {
     require(!node.hasTpe)
-    val tpe = node.expr.tpe match {
+    val tpe = node.expr.tpe.underlying match {
       case _: TypeInt          => TypeUInt(Expr(1) withLoc node.index.loc)
       case TypeArray(kind, _)  => kind
       case TypeVector(kind, _) => kind

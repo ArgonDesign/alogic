@@ -15,4 +15,5 @@
 
 package com.argondesign.alogic.util
 
-case class UnreachableException() extends Exception("Unreacheble code was executed. Please file a bug report")
+case class UnreachableException()
+    extends Exception("Unreachable code was executed. Please file a bug report")

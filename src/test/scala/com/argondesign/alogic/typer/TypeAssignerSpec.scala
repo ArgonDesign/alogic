@@ -13,12 +13,13 @@
 // Namer tests
 ////////////////////////////////////////////////////////////////////////////////
 
-package com.argondesign.alogic.core
+package com.argondesign.alogic.typer
 
 import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.SourceTextConverters._
-import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.ast.Trees.Expr.ImplicitConversions.int2ExprNum
+import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
 import com.argondesign.alogic.core.StorageTypes.StorageTypeReg
 import com.argondesign.alogic.core.Symbols.ErrorSymbol
@@ -427,7 +428,9 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
             ("f[0][0][0][0][0]", TypeSInt(7)),
             ("f[0][0][0][0][1]", TypeSInt(7)),
             ("f[0][0][0][0][0][0]", TypeUInt(1)),
-            ("f[0][0][0][0][0][1]", TypeUInt(1))
+            ("f[0][0][0][0][0][1]", TypeUInt(1)),
+            ("g[0]", TypeUInt(1)),
+            ("g[1]", TypeUInt(1))
           )
         } {
           val text = expr.trim.replaceAll(" +", " ")
@@ -439,8 +442,9 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
                             |  i7 d[2];
                             |  i7 e[2][8];
                             |  int(4, 2, 7) f[3][5][6];
+                            |  in i7 g;
                             |
-                            |  a; b; c; d; e; f; // Suppress unused warnings
+                            |  a; b; c; d; e; f; g; // Suppress unused warnings
                             |
                             |  ${text};
                             |}""".stripMargin.asTree[Stmt]
@@ -581,6 +585,24 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
             ("2'd1", TypeUInt(2)),
             ("3'sd2", TypeSInt(3)),
             ("4'sd3", TypeSInt(4))
+          )
+        } {
+          val text = expr.trim.replaceAll(" +", " ")
+          text in {
+            val expr = text.asTree[Expr]
+            TypeAssigner(expr).tpe shouldBe kind
+            cc.messages shouldBe empty
+          }
+        }
+      }
+
+      "unsized integer literals" - {
+        for {
+          (expr, kind) <- List(
+            ("0", TypeNum(true)),
+            ("1", TypeNum(true)),
+            ("'d0", TypeNum(false)),
+            ("'d1", TypeNum(false))
           )
         } {
           val text = expr.trim.replaceAll(" +", " ")

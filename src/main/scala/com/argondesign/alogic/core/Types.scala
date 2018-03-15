@@ -48,6 +48,8 @@ object Types {
   case class TypeSInt(size: Expr) extends TypeInt
   // Simple unsigned integer types e.g.: u2 / uint(N), analogous to Verilog packed arrays
   case class TypeUInt(size: Expr) extends TypeInt
+  // Unsized numbers e.g: 1
+  case class TypeNum(signed: Boolean) extends Type
   // Vector types (analogous to higher dimensions of SystemVerilog multi-dimensional packed arrays)
   case class TypeVector(elementType: Type, size: Expr) extends Type
   // Array types (analogous to verilog unpacked arrays)

@@ -24,7 +24,17 @@ import Types._
 
 trait TypeOps { this: Type =>
 
-  // Is this a 'packed' type, i.e.: does it have a well defined representation as a bit-vector?
+  // Is this a primitive numeric type
+  final lazy val isNumeric: Boolean = this match {
+    case _: TypeInt         => true
+    case _: TypeNum         => true
+    case TypeParam(kind)    => kind.isNumeric
+    case TypeConst(kind)    => kind.isNumeric
+    case TypePipeline(kind) => kind.isNumeric
+    case _                  => false
+  }
+
+  // Is this a 'packed' type, i.e.: does it have a finite bit-vector representation?
   final lazy val isPacked: Boolean = this match {
     case _: TypeSInt        => true
     case _: TypeUInt        => true
@@ -65,13 +75,24 @@ trait TypeOps { this: Type =>
   final lazy val isSigned: Boolean = {
     assert(isPacked)
     this match {
-      case _: TypeSInt => true
-      case _           => false
+      case _: TypeSInt     => true
+      case TypeNum(signed) => signed
+      case _               => false
     }
   }
 
   // Follow TypeRef instances to the underlying types
   final def chase(implicit cc: CompilerContext): Type = this rewrite (new ChaseTypeRefs)
+
+  // If this is a proxy type, get the underlying type, otherwise get this type
+  final lazy val underlying: Type = this match {
+    case TypeIn(kind, _)     => kind
+    case TypeOut(kind, _, _) => kind
+    case TypePipeline(kind)  => kind
+    case TypeParam(kind)     => kind
+    case TypeConst(kind)     => kind
+    case other               => other
+  }
 
   ////////////////////////////////////////////////////////////////////////////////
   // Rewrie with TypeTransformer

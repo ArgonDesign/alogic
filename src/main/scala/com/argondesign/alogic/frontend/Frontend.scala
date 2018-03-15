@@ -22,6 +22,7 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Source
 import com.argondesign.alogic.transform.ConstantFold
+import com.argondesign.alogic.typer.Typer
 import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable

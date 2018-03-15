@@ -88,9 +88,6 @@ private[builtins] trait BuiltinPolyFunc {
         val kind = TypeCombFunc(argTypes, retType(args))
         cc.newTermSymbol(ident, kind)
       }
-      if (overloads contains args) {
-        println(s"Reusing ${name} symbol")
-      }
       overloads.getOrElseUpdate(args, newSymbol)
     }
   }
