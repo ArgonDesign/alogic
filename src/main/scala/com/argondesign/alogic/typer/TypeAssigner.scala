@@ -98,7 +98,8 @@ object TypeAssigner {
 
   def apply(node: StmtBlock): node.type = {
     require(!node.hasTpe)
-    node withTpe node.body.last.tpe
+    val tpe = if (node.body.nonEmpty) node.body.last.tpe else TypeCombStmt
+    node withTpe tpe
   }
 
   def apply(node: StmtIf): node.type = {
