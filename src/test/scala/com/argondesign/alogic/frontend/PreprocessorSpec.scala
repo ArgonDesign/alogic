@@ -41,6 +41,7 @@ final class PreprocessorSpec extends FlatSpec with Matchers {
   /////////////////////////////////////////////////////////////////////////////
 
   "Preproc" should "not change plain text" in new Fixture {
+
     val source = Source(
       "test.alogic",
       """|plain text should
@@ -56,6 +57,7 @@ final class PreprocessorSpec extends FlatSpec with Matchers {
   }
 
   it should "not affect comments by default" in new Fixture {
+
     val source = Source(
       "test.alogic",
       """|// comments should
@@ -75,6 +77,7 @@ final class PreprocessorSpec extends FlatSpec with Matchers {
   /////////////////////////////////////////////////////////////////////////////
 
   it should "replace macro identifiers with definitions" in new Fixture {
+
     val source = Source(
       "test.alogic",
       """|#define plain macro
@@ -94,6 +97,7 @@ final class PreprocessorSpec extends FlatSpec with Matchers {
   }
 
   it should "honour initial defines" in new Fixture {
+
     val source = Source(
       "test.alogic",
       """|plain text should
@@ -111,6 +115,7 @@ final class PreprocessorSpec extends FlatSpec with Matchers {
   }
 
   it should "warn for redefinition of previos #define" in new Fixture {
+
     val source = Source(
       "test.alogic",
       """|#define foo first
@@ -125,12 +130,13 @@ final class PreprocessorSpec extends FlatSpec with Matchers {
     val message = cc.messages(0)
 
     message shouldBe a[Warning]
-    message.loc.file should endWith { "test.alogic" }
+    message.loc.source should be { source }
     message.loc.line should be { 3 }
     message.msg(0) should be { "Redefined preprocessor identifier 'foo'" }
   }
 
   it should "warn for redefinition of initial definition" in new Fixture {
+
     val source = Source(
       "test.alogic",
       """|#define foo maybe first""".stripMargin
@@ -143,7 +149,7 @@ final class PreprocessorSpec extends FlatSpec with Matchers {
     val message = cc.messages(0)
 
     message shouldBe a[Warning]
-    message.loc.file should endWith { "test.alogic" }
+    message.loc.source should be { source }
     message.loc.line should be { 1 }
     message.msg(0) should be { "Redefined preprocessor identifier 'foo'" }
   }
@@ -188,7 +194,7 @@ final class PreprocessorSpec extends FlatSpec with Matchers {
       val message = cc.messages(0)
 
       message shouldBe an[Error]
-      message.loc.file should endWith { "test.alogic" }
+      message.loc.source should be { source }
       message.loc.line should be { 1 }
       message.msg(0) should be { "#if condition macro 'COND' is not defined" }
     }
@@ -199,7 +205,7 @@ final class PreprocessorSpec extends FlatSpec with Matchers {
       val message = cc.messages(0)
 
       message shouldBe an[Error]
-      message.loc.file should endWith { "test.alogic" }
+      message.loc.source should be { source }
       message.loc.line should be { 1 }
       message.msg(0) should be { "#if condition macro 'COND' must be defined as a single integer," }
       message.msg(1) should be { "not '?'" }
@@ -324,24 +330,36 @@ final class PreprocessorSpec extends FlatSpec with Matchers {
   {
     def includeResolver(source: Source, spec: String) = {
       val result = spec match {
-        case "foo.h" => Source("foo.h", """|This is
-                                           |from foo.h
-                                           |#include "bar.h"
-                                           |foo.h again ...
-                                           |#include "bar.h"
-                                           |... and again
-                                           |""".stripMargin)
-        case "bar.h" => Source("bar.h", """|--This is
-                                           |--from bar.h""".stripMargin)
-        case "def1.h" => Source("def1.h", """|
-                                             |#define a def1
-                                             |#include "def2.h"
-                                             |#define b def1
-                                             |#include "def2.h"
-                                             |#define a def1
-                                             |""".stripMargin)
-        case "def2.h" => Source("def2.h", """|#define a def2
-                                             |#define b def2""".stripMargin)
+        case "foo.h" =>
+          Source(
+            "foo.h",
+            """|This is
+               |from foo.h
+               |#include "bar.h"
+               |foo.h again ...
+               |#include "bar.h"
+               |... and again
+               |""".stripMargin
+          )
+        case "bar.h" =>
+          Source("bar.h",
+                 """|--This is
+                    |--from bar.h""".stripMargin)
+        case "def1.h" =>
+          Source(
+            "def1.h",
+            """|
+               |#define a def1
+               |#include "def2.h"
+               |#define b def1
+               |#include "def2.h"
+               |#define a def1
+               |""".stripMargin
+          )
+        case "def2.h" =>
+          Source("def2.h",
+                 """|#define a def2
+                    |#define b def2""".stripMargin)
       }
       Right(result)
     }
@@ -372,26 +390,26 @@ final class PreprocessorSpec extends FlatSpec with Matchers {
       val source = Source(
         "test.alogic",
         """|Pre
-               |
-               |#include "foo.h"
-               |
-               |Post""".stripMargin
+           |
+           |#include "foo.h"
+           |
+           |Post""".stripMargin
       )
 
       preproc(source, emptyDefines, includeResolver(_, _)).text should be {
         """|Pre
-               |
-               |This is
-               |from foo.h
-               |--This is
-               |--from bar.h
-               |foo.h again ...
-               |--This is
-               |--from bar.h
-               |... and again
-               |
-               |
-               |Post""".stripMargin
+           |
+           |This is
+           |from foo.h
+           |--This is
+           |--from bar.h
+           |foo.h again ...
+           |--This is
+           |--from bar.h
+           |... and again
+           |
+           |
+           |Post""".stripMargin
       }
 
       cc.messages shouldBe empty
@@ -412,23 +430,23 @@ final class PreprocessorSpec extends FlatSpec with Matchers {
 
       cc.messages should have length 9
 
-      cc.messages(0).loc.file should endWith { "def1.h" }
+      cc.messages(0).loc.source.name should endWith { "def1.h" }
       cc.messages(0).loc.line should be { 2 }
-      cc.messages(1).loc.file should endWith { "def2.h" }
+      cc.messages(1).loc.source.name should endWith { "def2.h" }
       cc.messages(1).loc.line should be { 1 }
-      cc.messages(2).loc.file should endWith { "def2.h" }
+      cc.messages(2).loc.source.name should endWith { "def2.h" }
       cc.messages(2).loc.line should be { 2 }
-      cc.messages(3).loc.file should endWith { "def1.h" }
+      cc.messages(3).loc.source.name should endWith { "def1.h" }
       cc.messages(3).loc.line should be { 4 }
-      cc.messages(4).loc.file should endWith { "def2.h" }
+      cc.messages(4).loc.source.name should endWith { "def2.h" }
       cc.messages(4).loc.line should be { 1 }
-      cc.messages(5).loc.file should endWith { "def2.h" }
+      cc.messages(5).loc.source.name should endWith { "def2.h" }
       cc.messages(5).loc.line should be { 2 }
-      cc.messages(6).loc.file should endWith { "def1.h" }
+      cc.messages(6).loc.source.name should endWith { "def1.h" }
       cc.messages(6).loc.line should be { 6 }
-      cc.messages(7).loc.file should endWith { "test.alogic" }
+      cc.messages(7).loc.source.name should endWith { "test.alogic" }
       cc.messages(7).loc.line should be { 4 }
-      cc.messages(8).loc.file should endWith { "test.alogic" }
+      cc.messages(8).loc.source.name should endWith { "test.alogic" }
       cc.messages(8).loc.line should be { 5 }
     }
 
@@ -448,7 +466,7 @@ final class PreprocessorSpec extends FlatSpec with Matchers {
       val message = cc.messages(0)
 
       message shouldBe a[Fatal]
-      message.loc.file should endWith { "test.alogic" }
+      message.loc.source should be { source }
       message.loc.line should be { 1 }
       message.msg(0) should be { "No absolute include paths allowed: \"/abs.h\"" }
     }
@@ -474,7 +492,7 @@ final class PreprocessorSpec extends FlatSpec with Matchers {
       val message = cc.messages(0)
 
       message shouldBe a[Fatal]
-      message.loc.file should endWith { "test.alogic" }
+      message.loc.source should be { source }
       message.loc.line should be { 1 }
       message.msg(0) should be { "Cannot find include file \"missing.h\". Looked in:" }
       message.msg(1) should be { includeSearchPaths(0).getCanonicalPath }

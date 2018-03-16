@@ -20,6 +20,7 @@ import com.argondesign.alogic.ast.Trees.ExprCall
 import com.argondesign.alogic.ast.Trees.Ident
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
+import com.argondesign.alogic.core.Source
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Symbols.TermSymbol
 import com.argondesign.alogic.core.Types.Type
@@ -72,7 +73,7 @@ private[builtins] trait BuiltinPolyFunc {
   private[this] final var _symbol: TermSymbol = _
 
   // Synthetic location of this builtin
-  protected[this] final val loc = Loc(s"builtin ${name}", 0)
+  protected[this] final val loc = Loc(Source(s"builtin ${name}", ""), 0)
 
   // Synthetic identifier
   private[builtins] final val ident = Ident(name) withLoc loc

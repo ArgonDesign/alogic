@@ -29,13 +29,15 @@ import org.antlr.v4.runtime.tree.TerminalNode
 
 object AntlrConverters extends {
   implicit class RichParserRuleContext(val ctx: ParserRuleContext) extends AnyVal {
+
     def sourceText: String = {
       val inputStream = ctx.start.getInputStream
       val startIdx = ctx.start.getStartIndex
       val stopIdx = ctx.stop.getStopIndex
 
       val leadingLen = ctx.start.getCharPositionInLine
-      val trailingLen = inputStream.getText(Interval.of(stopIdx + 1, stopIdx + 200)).takeWhile(_ != '\n').length
+      val trailingLen =
+        inputStream.getText(Interval.of(stopIdx + 1, stopIdx + 200)).takeWhile(_ != '\n').length
 
       val filler = "_"
 
@@ -52,7 +54,11 @@ object AntlrConverters extends {
   }
 
   implicit class RichToken(val token: Token) extends AnyVal {
-    def loc(implicit cc: CompilerContext): Loc = cc.loc(token.getTokenSource.getSourceName, token.getLine)
+
+    def loc(implicit cc: CompilerContext): Loc = {
+      val source = token.getTokenSource.asInstanceOf[SourceMixin].source
+      cc.loc(source, token.getLine)
+    }
 
     def text: String = token.getText
 
@@ -77,7 +83,8 @@ object AntlrConverters extends {
 
   implicit def terminalNodeToString(node: TerminalNode): String = node.text
   implicit def terminalNodeToToken(node: TerminalNode): Token = node.getSymbol
-  implicit def terminalNodeToRichToken(node: TerminalNode): RichToken = new RichToken(node.getSymbol)
+  implicit def terminalNodeToRichToken(node: TerminalNode): RichToken =
+    new RichToken(node.getSymbol)
 
   implicit def parserRuleContextToString(ctx: ParserRuleContext): String = ctx.text
 

@@ -17,13 +17,10 @@
 
 package com.argondesign.alogic.frontend
 
-import com.argondesign.alogic.antlr.AlogicLexer
-import com.argondesign.alogic.antlr.AlogicParseErrorListener
-import com.argondesign.alogic.antlr.AlogicParser
+import com.argondesign.alogic.antlr._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Source
-
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 import org.antlr.v4.runtime.ParserRuleContext
@@ -42,11 +39,13 @@ object Parser {
     // Build Antlr4 parse tree
     val inputStream = CharStreams.fromString(source.text, source.name)
 
-    val lexer = new AlogicLexer(inputStream)
+    val src = source
+
+    val lexer = new AlogicLexer(inputStream) with SourceMixin { val source: Source = src }
     val tokenStream = new CommonTokenStream(lexer)
     tokenStream.fill()
 
-    val parser = new AlogicParser(tokenStream)
+    val parser = new AlogicParser(tokenStream) with SourceMixin { val source: Source = src }
     parser.removeErrorListeners()
     parser.addErrorListener(new AlogicParseErrorListener)
 
@@ -70,4 +69,3 @@ object Parser {
     }
   }
 }
- 

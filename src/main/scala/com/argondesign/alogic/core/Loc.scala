@@ -15,37 +15,32 @@
 
 package com.argondesign.alogic.core
 
-import java.io.File
-
 import scala.annotation.tailrec
 import scala.collection.concurrent.TrieMap
 
-case class Loc(file: String, line: Int) {
-  override def toString = s"${file}:${line}"
+case class Loc(source: Source, line: Int) {
+  override def toString = s"${source.name}:${line}"
 }
 
 object Loc {
-  final val synthetic = Loc("<synthetic>", 0)
+  final val synthetic = Loc(Source("<synthetic>", ""), 0)
 }
 
 trait LocationRemapping { self: CompilerContext =>
 
-  // Canonicalise file names so equivalent paths map to the same string
-  private[this] def canon(file: File): String = file.getCanonicalFile.toString
-
-  private[this] type LineMap = TrieMap[Range, String]
+  private[this] type LineMap = TrieMap[Range, Source]
 
   // Global object and hence accessed from multiple threads
-  private[this] val locMap = TrieMap[String, LineMap]()
+  private[this] val locMap = TrieMap[Source, LineMap]()
 
   // Construct Loc instance, applying remapping
-  def loc(file: File, line: Int): Loc = {
+  def loc(source: Source, line: Int): Loc = {
     // Map modified location to canonical source location
-    @tailrec def loop(file: String, line: Int): (String, Int) = {
-      if (!(locMap contains file)) {
-        (file, line)
+    @tailrec def loop(source: Source, line: Int): (Source, Int) = {
+      if (!(locMap contains source)) {
+        (source, line)
       } else {
-        val lineMap = locMap(file)
+        val lineMap = locMap(source)
 
         // Find the mapping that contains this line
         lineMap.find(_._1 contains line) match {
@@ -57,23 +52,23 @@ trait LocationRemapping { self: CompilerContext =>
           // how many lines were added by the mappings preceding this line
           case None => {
             val addedLines = (0 /: lineMap.keys.filter(_.end < line))(_ + _.size)
-            (file, line - addedLines)
+            (source, line - addedLines)
           }
         }
       }
     }
 
-    val (f, l) = loop(canon(file), line)
+    val (s, l) = loop(source, line)
 
-    Loc(f, l)
+    Loc(s, l)
   }
 
-  def loc(file: String, line: Int): Loc = loc(new File(file), line)
+//  def loc(file: String, line: Int): Loc = loc(new File(file), line)
 
-  // Adjust map so that lines form 'file' that are in 'range'
-  // will be printed as belonging to file 'source'
-  def remap(file: File, range: Range, source: File): Unit = {
-    val lineMap = locMap.getOrElseUpdate(canon(file), new LineMap)
-    lineMap(range) = canon(source)
+  // Adjust map so that lines form 'source' that are in 'range'
+  // will be printed as belonging to 'origSource'
+  def remap(source: Source, range: Range, origSource: Source): Unit = {
+    val lineMap = locMap.getOrElseUpdate(source, new LineMap)
+    lineMap(range) = origSource
   }
 }

@@ -17,23 +17,22 @@
 package com.argondesign.alogic.antlr
 
 import com.argondesign.alogic.core.CompilerContext
-
 import org.antlr.v4.runtime.BaseErrorListener
 import org.antlr.v4.runtime.RecognitionException
 import org.antlr.v4.runtime.Recognizer
 
 class ParseErrorListener(implicit cc: CompilerContext) extends BaseErrorListener {
   override def syntaxError(
-    recogniser:         Recognizer[_, _],
-    offendingSymbol:    Object,
-    line:               Int,
-    charPositionInLine: Int,
-    defaultMessage:     String,
-    e:                  RecognitionException
+      recogniser: Recognizer[_, _],
+      offendingSymbol: Object,
+      line: Int,
+      charPositionInLine: Int,
+      defaultMessage: String,
+      e: RecognitionException
   ) = {
-    val tokenStream = recogniser.getInputStream
+    val source = recogniser.asInstanceOf[SourceMixin].source
 
-    val loc = cc.loc(tokenStream.getSourceName, line)
+    val loc = cc.loc(source, line)
 
     cc.error(loc, s"Syntax error: ${defaultMessage}")
   }

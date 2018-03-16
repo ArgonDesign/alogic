@@ -17,43 +17,30 @@ package com.argondesign.alogic.frontend
 
 import java.io.File
 
+import com.argondesign.alogic.FindFile
+import com.argondesign.alogic.antlr.AntlrConverters.RichParserRuleContext
+import com.argondesign.alogic.antlr.AntlrConverters.RichToken
+import com.argondesign.alogic.antlr.AntlrConverters.terminalNodeToRichToken
+import com.argondesign.alogic.antlr.PreprocParser._
+import com.argondesign.alogic.antlr._
+import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Source
+import org.antlr.v4.runtime.CharStreams
+import org.antlr.v4.runtime.CommonTokenStream
+
 import scala.collection.JavaConverters.asScalaBufferConverter
 import scala.collection.Map
 import scala.collection.immutable
 import scala.collection.mutable
 import scala.util.Try
 
-import com.argondesign.alogic.FindFile
-import com.argondesign.alogic.antlr.AntlrConverters.RichParserRuleContext
-import com.argondesign.alogic.antlr.AntlrConverters.RichToken
-import com.argondesign.alogic.antlr.AntlrConverters.terminalNodeToRichToken
-import com.argondesign.alogic.antlr.ParseErrorListener
-import com.argondesign.alogic.antlr.PreprocLexer
-import com.argondesign.alogic.antlr.PreprocParser
-import com.argondesign.alogic.antlr.PreprocParser.AnythingContext
-import com.argondesign.alogic.antlr.PreprocParser.BlockCommentContext
-import com.argondesign.alogic.antlr.PreprocParser.EntitiesContext
-import com.argondesign.alogic.antlr.PreprocParser.HashDefineContext
-import com.argondesign.alogic.antlr.PreprocParser.HashIfContext
-import com.argondesign.alogic.antlr.PreprocParser.HashIncludeContext
-import com.argondesign.alogic.antlr.PreprocParser.IdentifierContext
-import com.argondesign.alogic.antlr.PreprocParser.LineCommentContext
-import com.argondesign.alogic.antlr.PreprocParser.LiteralContext
-import com.argondesign.alogic.antlr.PreprocParser.StartContext
-import com.argondesign.alogic.antlr.PreprocParserBaseVisitor
-import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Source
-
-import org.antlr.v4.runtime.CharStreams
-import org.antlr.v4.runtime.CommonTokenStream
-
 class Preprocessor(implicit cc: CompilerContext) {
 
   // Private worker to use by recursive includes, returns defines as well
   private[this] def process(
-    source:          Source,
-    includeResovler: (Source, String) => Either[List[String], Source],
-    initialDefines:  immutable.Map[String, String]
+      source: Source,
+      includeResovler: (Source, String) => Either[List[String], Source],
+      initialDefines: immutable.Map[String, String]
   ): (String, Map[String, String]) = {
     // text, final defines and the remappings
     val (text, defines, remaps) = {
@@ -61,7 +48,7 @@ class Preprocessor(implicit cc: CompilerContext) {
       val defines = mutable.Map[String, String]() ++ initialDefines
 
       // Deferred line number remappings
-      val remaps = mutable.Stack[(Range, File)]()
+      val remaps = mutable.Stack[(Range, Source)]()
 
       object PreprocVisitor extends PreprocParserBaseVisitor[String] {
         override def visitStart(ctx: StartContext) = visit(ctx.entities())
@@ -152,7 +139,8 @@ class Preprocessor(implicit cc: CompilerContext) {
           }
 
           // Process the include file in the current context
-          val (text, newDefines) = process(includeSource, includeResovler, immutable.Map() ++ defines)
+          val (text, newDefines) =
+            process(includeSource, includeResovler, immutable.Map() ++ defines)
 
           // Add the new #defines from the included file, there is no need
           // to warn for redefinitions here, as we have passed in 'defines'
@@ -164,7 +152,7 @@ class Preprocessor(implicit cc: CompilerContext) {
           // errors printed during preprocessing are still printed correctly
           val start = ctx.loc.line
           val end = start + text.count(_ == '\n')
-          remaps.push((start until end, includeSource.file))
+          remaps.push((start until end, includeSource))
 
           // Yield the preprocessed text
           text
@@ -174,13 +162,15 @@ class Preprocessor(implicit cc: CompilerContext) {
       // Create ANTLR input stream
       val inputStream = CharStreams.fromString(source.text, source.name)
 
+      val src = source
+
       // Create the lexer
-      val lexer = new PreprocLexer(inputStream)
+      val lexer = new PreprocLexer(inputStream) with SourceMixin { val source: Source = src }
       val tokenStream = new CommonTokenStream(lexer)
       tokenStream.fill()
 
       // Create the parser
-      val parser = new PreprocParser(tokenStream)
+      val parser = new PreprocParser(tokenStream) with SourceMixin { val source: Source = src }
       parser.removeErrorListeners()
       parser.addErrorListener(new ParseErrorListener)
 
@@ -197,7 +187,7 @@ class Preprocessor(implicit cc: CompilerContext) {
     // Apply the deferred remappings to the source location map for this processed file
     val remapCumSum = remaps.scanLeft(0)(_ + _._1.size)
     for (((range, src), offset) <- remaps zip remapCumSum) {
-      cc.remap(source.file, range.start + offset until range.end + offset, src)
+      cc.remap(source, range.start + offset until range.end + offset, src)
     }
 
     (text, defines)
@@ -205,9 +195,9 @@ class Preprocessor(implicit cc: CompilerContext) {
 
   // Preprocess a source, given include resolver and initial defines
   def apply(
-    src:             Source,
-    initialDefines:  Map[String, String],
-    includeResolver: (Source, String) => Either[List[String], Source]
+      src: Source,
+      initialDefines: Map[String, String],
+      includeResolver: (Source, String) => Either[List[String], Source]
   ): Source = {
     val preprocessed = process(src, includeResolver, initialDefines.toMap)._1
     Source(src.file, preprocessed)
@@ -215,9 +205,9 @@ class Preprocessor(implicit cc: CompilerContext) {
 
   // Preprocess a source, given search paths and initial defines
   def apply(
-    src:                Source,
-    initialDefines:     Map[String, String],
-    includeSearchPaths: List[File]
+      src: Source,
+      initialDefines: Map[String, String],
+      includeSearchPaths: List[File]
   ): Source = {
     // Include file resolver that looks up include files in the search paths, or the
     // directory of the including file
@@ -237,7 +227,9 @@ class Preprocessor(implicit cc: CompilerContext) {
         FindFile(includeSpec, searchPaths) match {
           case Some(file) => Right(Source(file))
           case None => {
-            Left(s"""Cannot find include file "$includeSpec". Looked in:""" :: (searchPaths map { _.toString }))
+            Left(s"""Cannot find include file "$includeSpec". Looked in:""" :: (searchPaths map {
+              _.toString
+            }))
           }
         }
       }
