@@ -42,12 +42,14 @@ trait ExprOps { this: Expr =>
 
   private final def makeExprCall(symbol: Symbol, args: Expr*) = {
     val sym = Sym(symbol)
-    val expr = ExprCall(ExprRef(sym), args.toList)
+    val ref = ExprRef(sym)
+    val expr = ExprCall(ref, args.toList)
     if (hasLoc) {
       for (arg <- args if !arg.hasLoc) {
         arg withLoc loc
       }
       sym withLoc loc
+      ref withLoc loc
       expr withLoc loc
     } else {
       expr

@@ -35,7 +35,7 @@ object AtMax extends BuiltinPolyFunc {
     } else {
       if (args.length >= 2) {
         val (s, v) = (args collect { case ExprNum(signed, value) => (signed, value) }).unzip
-        ExprNum(s reduceLeft { _ && _ }, v reduceLeft { _ max _ }) withLoc call.loc
+        ExprNum(s reduceLeft { _ && _ }, v.max) withLoc call.loc
       } else if (args.length == 1) {
         args.head
       } else {
