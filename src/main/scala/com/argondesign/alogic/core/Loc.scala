@@ -19,6 +19,7 @@ import scala.annotation.tailrec
 import scala.collection.concurrent.TrieMap
 
 case class Loc(source: Source, line: Int) {
+  def context = source.text.split("\n")(line - 1)
   override def toString = s"${source.name}:${line}"
 }
 

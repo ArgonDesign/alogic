@@ -35,7 +35,11 @@ sealed abstract trait Message {
       case Some(loc) => s"${loc}: ${cat}: "
       case None      => s"${cat}: "
     }
-    msg mkString (prefix, "\n" + prefix + "... ", "")
+    val context = lop match {
+      case Some(loc) => "\n" + loc.context
+      case None      => ""
+    }
+    (msg mkString (prefix, "\n" + prefix + "... ", "")) + context
   }
 }
 
