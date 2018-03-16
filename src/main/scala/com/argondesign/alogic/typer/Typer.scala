@@ -179,8 +179,9 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         if (body.nonEmpty && body.last.tpe == TypeCtrlStmt) {
           tree
         } else {
-          cc.error(tree, "Body of function must end in a control statement")
-          val err = StmtError() withLoc tree.loc
+          val loc = if (body.isEmpty) tree.loc else { body.last.loc }
+          val err = StmtError() withLoc loc
+          cc.error(err, "Body of function must end in a control statement")
           TypeAssigner(err)
           Function(ref, List(err)) withLoc tree.loc
         }

@@ -49,7 +49,8 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
         ExprUnary(ctx.op, visit(ctx.expr)) withLoc ctx.loc
       }
       override def visitExprBinary(ctx: ExprBinaryContext) = {
-        ExprBinary(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1))) withLoc ctx.loc
+        val loc = ctx.loc.copy(point = ctx.op.getStartIndex)
+        ExprBinary(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1))) withLoc loc
       }
       override def visitExprTernary(ctx: ExprTernaryContext) = {
         ExprTernary(visit(ctx.expr(0)), visit(ctx.expr(1)), visit(ctx.expr(2))) withLoc ctx.loc
@@ -69,7 +70,8 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
 
       // Select
       override def visitExprSelect(ctx: ExprSelectContext) = {
-        ExprSelect(visit(ctx.expr), ctx.IDENTIFIER) withLoc ctx.loc
+        val loc = ctx.loc.copy(point = ctx.IDENTIFIER.getStartIndex - 1)
+        ExprSelect(visit(ctx.expr), ctx.IDENTIFIER) withLoc loc
       }
 
       // Literals

@@ -23,31 +23,30 @@ case class Loc(source: Source, start: Int, end: Int, point: Int) {
 
   def context = {
     val startLine = source.lineFor(start)
-    val endLine = source.lineFor(start)
+    val endLine = source.lineFor(end)
     val lines = source.lines.slice(startLine - 1, endLine)
     val startLineOffset = source.offsetFor(startLine)
     val s = start - startLineOffset
     val e = end - startLineOffset
     val p = point - startLineOffset
-    val squiggle = for (line <- lines) yield {
-      val chars = 0 to line.length map {
-        case c if c == p => '^'
-        case c if c < s  => ' '
-        case c if c < e  => '~'
-        case _           => ' '
-      }
-      chars mkString ""
-    }
     val text = lines mkString "\n"
+    val squiggle = text.zipWithIndex map {
+      case ('\n', _)        => '\n'
+      case (_, i) if i == p => '^'
+      case (_, i) if i < s  => ' '
+      case (_, i) if i < e  => '~'
+      case _                => ' '
+    } mkString ""
+
     val colorText = text.slice(0, s) + AnsiColor.RED + AnsiColor.BOLD +
       text.slice(s, e) + AnsiColor.RESET +
       text.slice(e, text.length)
 
-    val combed = for ((line, squiggle) <- colorText.split("\n") zip squiggle) yield {
+    val combed = for ((line, squiggle) <- colorText.split("\n") zip squiggle.split("\n")) yield {
       line + "\n" + squiggle
     }
 
-    combed mkString ""
+    combed mkString "\n"
   }
   def line(implicit cc: CompilerContext): Int = cc.remapLine(source, source.lineFor(start))._2
   def prefix(implicit cc: CompilerContext): String = s"${source.name}:${line}"

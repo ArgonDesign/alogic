@@ -48,7 +48,11 @@ object AntlrConverters extends {
 
     def text: String = ctx.getText
 
-    def loc: Loc = ctx.start.loc
+    def loc: Loc = {
+      val sLoc = ctx.start.loc
+      val eLoc = ctx.stop.loc
+      Loc(sLoc.source, sLoc.start, eLoc.end, sLoc.point)
+    }
   }
 
   implicit class RichToken(val token: Token) extends AnyVal {
