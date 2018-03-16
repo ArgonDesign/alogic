@@ -199,7 +199,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext) extends TreeLik
       case node: StmtRead          => transform(node)
       case node: StmtWrite         => transform(node)
       case node: StmtDollarComment => transform(node)
-      case node: StmtError         => node
+      case node: StmtError         => transform(node)
       case node: ExprCall => {
         val expr = walk(node.expr)
         val args = walk(node.args)
@@ -252,7 +252,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext) extends TreeLik
         transform(TreeCopier(node)(ref))
       }
       case node: ExprType  => transform(node)
-      case node: ExprError => node
+      case node: ExprError => transform(node)
       case node: Thicket =>
         cc.ice(node, "Thicket should have been flattened in 'walk(_: List[_]): List[_]'")
     }

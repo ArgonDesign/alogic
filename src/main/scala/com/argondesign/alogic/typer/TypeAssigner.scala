@@ -24,7 +24,7 @@ import com.argondesign.alogic.util.unreachable
 
 object TypeAssigner {
 
-  def apply(tree: Tree)(implicit cc: CompilerContext): Tree = {
+  def apply(tree: Tree)(implicit cc: CompilerContext): tree.type = {
     require(!tree.hasTpe)
     tree match {
       case node: Expr           => apply(node)
