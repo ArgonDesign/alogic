@@ -15,17 +15,15 @@
 
 package com.argondesign.alogic.antlr
 
-import scala.language.implicitConversions
-
 import com.argondesign.alogic.ast.Trees.Ident
-import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
-
 import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.Token
 import org.antlr.v4.runtime.misc.Interval
 import org.antlr.v4.runtime.tree.ParseTree
 import org.antlr.v4.runtime.tree.TerminalNode
+
+import scala.language.implicitConversions
 
 object AntlrConverters extends {
   implicit class RichParserRuleContext(val ctx: ParserRuleContext) extends AnyVal {
@@ -50,14 +48,14 @@ object AntlrConverters extends {
 
     def text: String = ctx.getText
 
-    def loc(implicit cc: CompilerContext): Loc = ctx.start.loc
+    def loc: Loc = ctx.start.loc
   }
 
   implicit class RichToken(val token: Token) extends AnyVal {
 
-    def loc(implicit cc: CompilerContext): Loc = {
+    def loc: Loc = {
       val source = token.getTokenSource.asInstanceOf[SourceMixin].source
-      cc.loc(source, token.getLine)
+      Loc(source, token.getStartIndex, token.getStopIndex + 1, token.getStartIndex)
     }
 
     def text: String = token.getText
@@ -66,7 +64,7 @@ object AntlrConverters extends {
 
     def isHidden: Boolean = token.getChannel != Token.DEFAULT_CHANNEL
 
-    def toIdent(implicit cc: CompilerContext): Ident = {
+    def toIdent: Ident = {
       assert(token.getType == AlogicLexer.IDENTIFIER, "toIdent called on non-IDENTIFIER token")
       Ident(text) withLoc loc
     }

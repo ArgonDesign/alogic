@@ -17,6 +17,7 @@
 package com.argondesign.alogic.antlr
 
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Loc
 import org.antlr.v4.runtime.BaseErrorListener
 import org.antlr.v4.runtime.RecognitionException
 import org.antlr.v4.runtime.Recognizer
@@ -32,7 +33,9 @@ class ParseErrorListener(implicit cc: CompilerContext) extends BaseErrorListener
   ) = {
     val source = recogniser.asInstanceOf[SourceMixin].source
 
-    val loc = cc.loc(source, line)
+    val offset = source.offsetFor(line) + charPositionInLine
+
+    val loc = Loc(source, offset, offset, offset)
 
     cc.error(loc, s"Syntax error: ${defaultMessage}")
   }

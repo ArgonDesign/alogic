@@ -73,7 +73,7 @@ private[builtins] trait BuiltinPolyFunc {
   private[this] final var _symbol: TermSymbol = _
 
   // Synthetic location of this builtin
-  protected[this] final val loc = Loc(Source(s"builtin ${name}", ""), 0)
+  protected[this] final val loc = Loc(Source(s"builtin ${name}", ""), 0, 0, 0)
 
   // Synthetic identifier
   private[builtins] final val ident = Ident(name) withLoc loc

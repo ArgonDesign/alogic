@@ -41,7 +41,7 @@ class Preprocessor(implicit cc: CompilerContext) {
       source: Source,
       includeResovler: (Source, String) => Either[List[String], Source],
       initialDefines: immutable.Map[String, String]
-  ): (String, Map[String, String]) = {
+  ): (Source, Map[String, String]) = {
     // text, final defines and the remappings
     val (text, defines, remaps) = {
       // Map of #define to substitution
@@ -139,8 +139,10 @@ class Preprocessor(implicit cc: CompilerContext) {
           }
 
           // Process the include file in the current context
-          val (text, newDefines) =
+          val (result, newDefines) =
             process(includeSource, includeResovler, immutable.Map() ++ defines)
+
+          val text = result.text
 
           // Add the new #defines from the included file, there is no need
           // to warn for redefinitions here, as we have passed in 'defines'
@@ -184,13 +186,15 @@ class Preprocessor(implicit cc: CompilerContext) {
       (text, defines.toMap, remaps.toList.reverse)
     }
 
+    val result = Source(source.file, text)
+
     // Apply the deferred remappings to the source location map for this processed file
     val remapCumSum = remaps.scanLeft(0)(_ + _._1.size)
     for (((range, src), offset) <- remaps zip remapCumSum) {
-      cc.remap(source, range.start + offset until range.end + offset, src)
+      cc.remap(result, range.start + offset until range.end + offset, src)
     }
 
-    (text, defines)
+    (result, defines)
   }
 
   // Preprocess a source, given include resolver and initial defines
@@ -199,8 +203,7 @@ class Preprocessor(implicit cc: CompilerContext) {
       initialDefines: Map[String, String],
       includeResolver: (Source, String) => Either[List[String], Source]
   ): Source = {
-    val preprocessed = process(src, includeResolver, initialDefines.toMap)._1
-    Source(src.file, preprocessed)
+    process(src, includeResolver, initialDefines.toMap)._1
   }
 
   // Preprocess a source, given search paths and initial defines
@@ -235,7 +238,6 @@ class Preprocessor(implicit cc: CompilerContext) {
       }
     }
 
-    val preprocessed = process(src, includeResolver, initialDefines.toMap)._1
-    Source(src.file, preprocessed)
+    process(src, includeResolver, initialDefines.toMap)._1
   }
 }

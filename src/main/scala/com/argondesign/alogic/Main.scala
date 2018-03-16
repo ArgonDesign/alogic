@@ -61,7 +61,7 @@ object Main extends App {
   } catch {
     case _: FatalErrorException => false
   } finally {
-    cc.messages foreach Console.err.println
+    cc.messages map { _.string } foreach Console.err.println
   }
 
   sys exit (if (success) 0 else 1)

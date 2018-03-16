@@ -109,7 +109,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
           cc.error(
             symbol.loc,
             s"Redefinition of ${flavour} '${name}' with previous definition at",
-            oldSymbol.loc.toString
+            oldSymbol.loc.prefix
           )
           current(name) = symbol
         }
@@ -118,7 +118,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
             cc.warning(
               symbol.loc,
               s"Definition of ${flavour} '${name}' hides previous definition at",
-              oldSymbol.loc.toString
+              oldSymbol.loc.prefix
             )
           }
           current(name) = symbol
@@ -168,8 +168,8 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         cc.error(
           ident,
           s"Name '${ident.name}' in this context can resolve to either of",
-          s"term '${ident.name}' defined at ${termSymbol.loc}",
-          s"type '${ident.name}' defined at ${typeSymbol.loc}"
+          s"term '${ident.name}' defined at ${termSymbol.loc.prefix}",
+          s"type '${ident.name}' defined at ${typeSymbol.loc.prefix}"
         )
         Scopes.markUsed(termSymbol)
         Scopes.markUsed(typeSymbol)

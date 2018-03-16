@@ -30,9 +30,9 @@ sealed abstract trait Message {
     case None      => unreachable
   }
 
-  override def toString = {
+  def string(implicit cc: CompilerContext): String = {
     val prefix = lop match {
-      case Some(loc) => s"${loc}: ${cat}: "
+      case Some(loc) => s"${loc.prefix}: ${cat}: "
       case None      => s"${cat}: "
     }
     val context = lop match {
@@ -75,8 +75,6 @@ case class FatalErrorException(cc: CompilerContext, message: Fatal) extends Exce
 case class InternalCompilerErrorException(cc: CompilerContext, message: ICE) extends Exception
 
 trait Messaging { self: CompilerContext =>
-
-  final private[this] implicit val implicitThis: CompilerContext = this
 
   // buffer to store messages without source location information
   final private[this] val messageBuffer = mutable.ListBuffer[Message]()
