@@ -32,7 +32,9 @@ abstract class TreeTransformer(implicit val cc: CompilerContext) extends TreeLik
     val result = super.apply(tree)
     // Ensure locations are present
     result visitAll {
-      case node: Tree if !node.hasLoc => cc.fatal(s"Lost location for node '${node}'")
+      case node: Tree if !node.hasLoc => {
+        cc.ice(s"Lost location for node:", node.toString, node.toSource)
+      }
     }
     // Yield result
     result

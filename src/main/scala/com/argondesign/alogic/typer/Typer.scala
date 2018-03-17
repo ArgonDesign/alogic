@@ -340,8 +340,12 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
                 ExprCall(ref, args) withLoc tree.loc
               }
               case None => {
-                cc.error(tree,
-                         s"Builtin function '${expr}' cannot be applied to arguments '${args}'")
+                val funcStr = expr.toSource
+                val argsStr = args map { _.toSource } mkString ", "
+                val typeStr = args map { _.tpe.toSource } mkString ", "
+                cc.error(
+                  tree,
+                  s"Builtin function '${funcStr}' cannot be applied to arguments '${argsStr}' of type '${typeStr}'")
                 ExprError() withLoc tree.loc
               }
             }

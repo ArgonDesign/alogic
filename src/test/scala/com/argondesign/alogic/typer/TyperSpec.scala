@@ -300,10 +300,10 @@ final class TyperSpec extends FreeSpec with AlogicTest {
             ("a.write(1'b1)",
              TypeError,
              "Width 1 of parameter 1 passed to function call is less than expected width 2"),
-            ("@bits(a)", TypeUInt(32), ""),
+            ("@bits(a)", TypeNum(false), ""),
             ("@bits(a.valid)",
              TypeError,
-             "Builtin function '.*' cannot be applied to arguments '.*'")
+             "Builtin function '@bits' cannot be applied to arguments 'a.valid' of type '.*'")
           )
         } {
           text in {

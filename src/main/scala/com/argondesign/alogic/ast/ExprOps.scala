@@ -31,29 +31,20 @@ trait ExprOps { this: Expr =>
   private final def makeExprBinary(op: String, rhs: Expr) = {
     val expr = ExprBinary(this, op, rhs)
     if (hasLoc) {
-      if (!rhs.hasLoc) {
-        rhs withLoc loc
-      }
+      if (!rhs.hasLoc) { rhs withLoc loc }
       expr withLoc loc
-    } else {
-      expr
     }
+    expr
   }
 
   private final def makeExprCall(symbol: Symbol, args: Expr*) = {
-    val sym = Sym(symbol)
-    val ref = ExprRef(sym)
-    val expr = ExprCall(ref, args.toList)
+    val expr = ExprCall(ExprRef(Sym(symbol)), args.toList)
     if (hasLoc) {
-      for (arg <- args if !arg.hasLoc) {
-        arg withLoc loc
-      }
-      sym withLoc loc
-      ref withLoc loc
+      for (arg <- args if !arg.hasLoc) { arg withLoc loc }
+      expr.expr visitAll { case tree: Tree => tree withLoc loc }
       expr withLoc loc
-    } else {
-      expr
     }
+    expr
   }
 
   // Helpers to easily combine expression trees manually with other expressions
@@ -120,7 +111,7 @@ trait ExprOps { this: Expr =>
   }
 
   // Is this expression a known constant
-  def isKnownConst: Boolean = this match {
+  def isKnownConst(implicit cc: CompilerContext): Boolean = this match {
     case _: ExprNum  => true
     case _: ExprInt  => true
     case _: ExprStr  => true
@@ -140,7 +131,9 @@ trait ExprOps { this: Expr =>
     case ExprSlice(expr, lidx, op, ridx) =>
       expr.isKnownConst && lidx.isKnownConst && ridx.isKnownConst
     case ExprSelect(expr, _) => expr.isKnownConst
-    case _                   => false
+    case call @ ExprCall(ExprRef(Sym(symbol)), _) if symbol.isBuiltin =>
+      cc.isKnownConstBuiltinCall(call)
+    case _ => false
   }
 
   // Simplify this expression

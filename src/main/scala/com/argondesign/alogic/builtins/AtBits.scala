@@ -16,16 +16,16 @@
 package com.argondesign.alogic.builtins
 
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Types._
 
 object AtBits extends BuiltinPolyFunc {
 
   protected def name = "@bits"
 
-  // TODO: return TypeNum
-  protected def retType(args: List[Expr]): Type = TypeUInt(Expr(32) withLoc loc)
+  protected def retType(args: List[Expr], cc: CompilerContext): Type = TypeNum(false)
 
-  protected def validArgs(args: List[Expr]) = {
+  protected def validArgs(args: List[Expr], cc: CompilerContext) = {
     args.lengthCompare(1) == 0 && {
       args.head.tpe match {
         case TypeType(kind) if kind.isPacked => true
@@ -35,5 +35,5 @@ object AtBits extends BuiltinPolyFunc {
     }
   }
 
-  // TODO: implement fold
+  private[builtins] override def isKnownConst(call: ExprCall, cc: CompilerContext): Boolean = true
 }

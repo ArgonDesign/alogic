@@ -40,7 +40,7 @@ import com.argondesign.alogic.core.Types._
 
 import Trees._
 
-trait TreeOps { this: Tree =>
+trait TreeOps extends TreePrintOps { this: Tree =>
 
   // Trees nodes have a type 'tpe' which can be set once
   final private[this] var _tpe: Type = null // scalastyle:ignore var.field
@@ -81,7 +81,9 @@ trait ObjectTreeOps {
   implicit final val parseableTypeDefinition = new Parser.Parseable[TypeDefinition] {
     type C = Type_definitionContext
     def parse(parser: AlogicParser): Type_definitionContext = parser.type_definition()
-    def build(ctx: Type_definitionContext)(implicit cc: CompilerContext): TypeDefinition = TypeDefinitionBuilder(ctx)
+
+    def build(ctx: Type_definitionContext)(implicit cc: CompilerContext): TypeDefinition =
+      TypeDefinitionBuilder(ctx)
   }
 
   implicit final val parseableEntity = new Parser.Parseable[Entity] {

@@ -22,7 +22,7 @@ import com.argondesign.alogic.util.unreachable
 
 import Types._
 
-trait TypeOps { this: Type =>
+trait TypeOps extends TypePrintOps { this: Type =>
 
   // Is this a primitive numeric type
   final lazy val isNumeric: Boolean = this match {
