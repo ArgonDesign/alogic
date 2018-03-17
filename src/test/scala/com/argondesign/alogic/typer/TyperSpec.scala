@@ -77,7 +77,6 @@ final class TyperSpec extends FreeSpec with AlogicTest {
               val tree = xform(root)
               if (resultWidth.isDefined) {
                 val expr = (tree collectFirst { case StmtExpr(expr) => expr }).value
-                cc.messages foreach println
                 expr.tpe.width.value.value shouldBe resultWidth.value
                 cc.messages shouldBe empty
               } else {
@@ -121,6 +120,37 @@ final class TyperSpec extends FreeSpec with AlogicTest {
               } else {
                 cc.messages.last should beThe[Error](msg)
               }
+            }
+          }
+        }
+      }
+
+      "initializer expressions" - {
+        for {
+          (decl, expr, msg) <- List(
+            ("i8 a = 2", ExprInt(true, 8, 2), ""),
+            ("u8 a = 2", ExprInt(false, 8, 2), ""),
+            ("i8 a = 'd2", ExprInt(true, 8, 2), ""),
+            ("u8 a = 'd2", ExprInt(false, 8, 2), ""),
+            ("int(N) a = 2", ExprError(), "Cannot infer width of initializer")
+          )
+        } {
+          val text = decl.trim.replaceAll(" +", " ")
+          text in {
+            val entity = s"""|fsm a {
+                             |  param u8 N = 8'd2;
+                             |  ${decl};
+                             |  void main() { a; N; fence; }
+                             |}""".stripMargin.asTree[Entity]
+            val tree = xform(entity)
+            if (msg.isEmpty) {
+              val decls = tree collect { case d: Decl => d }
+              val decl = decls.toList(1)
+              val Some(init) = decl.init
+              init shouldBe expr
+              cc.messages shouldBe empty
+            } else {
+              cc.messages.last should beThe[Error](msg)
             }
           }
         }

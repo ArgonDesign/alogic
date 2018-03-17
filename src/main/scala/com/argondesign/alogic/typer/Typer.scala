@@ -164,6 +164,29 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       }
 
       ////////////////////////////////////////////////////////////////////////////
+      // Infer width of of unsized literals in initializations
+      ////////////////////////////////////////////////////////////////////////////
+
+      case decl @ Decl(_, kind, Some(init: ExprNum)) => {
+        require(kind.isPacked)
+        // Figure out width of lhs
+        val widthOpt = kind.width.value map { _.toInt }
+
+        // Convert init
+        val newInit = widthOpt map { width =>
+          // TODO: Check value fits width ...
+          ExprInt(kind.isSigned, width, init.value)
+        } getOrElse {
+          cc.error(init, s"Cannot infer width of initializer")
+          ExprError()
+        }
+        newInit withLoc init.loc
+        TypeAssigner(newInit)
+
+        decl.copy(init = Some(newInit)) withLoc tree.loc
+      }
+
+      ////////////////////////////////////////////////////////////////////////////
       // Type check other nodes
       ////////////////////////////////////////////////////////////////////////////
 
