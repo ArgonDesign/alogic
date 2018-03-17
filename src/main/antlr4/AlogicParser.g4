@@ -101,10 +101,8 @@ entity_content
   : instance ';'                        # EntityContentInstance
   | connect ';'                         # EntityContentConnect
   | (autoinst='new')? entity            # EntityContentEntity
-  | 'void' 'fence' '(' ')' block        # EntityContentFenceFunction
   | 'fence' block                       # EntityContentFenceBlock
   | 'void' IDENTIFIER '(' ')' block     # EntityContentFunction
-  | VERILOGFUNC VERBATIMBODY            # EntityContentVerilogFuction
   | 'verbatim' IDENTIFIER VERBATIMBODY  # EntityContentVerbatimBlock
   ;
 

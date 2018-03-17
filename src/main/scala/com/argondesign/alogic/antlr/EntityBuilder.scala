@@ -15,25 +15,17 @@
 
 package com.argondesign.alogic.antlr
 
-import scala.collection.JavaConverters._
-
-import com.argondesign.alogic.antlr.AlogicParser.EntityContentConnectContext
-import com.argondesign.alogic.antlr.AlogicParser.EntityContentEntityContext
-import com.argondesign.alogic.antlr.AlogicParser.EntityContentFenceBlockContext
-import com.argondesign.alogic.antlr.AlogicParser.EntityContentFenceFunctionContext
-import com.argondesign.alogic.antlr.AlogicParser.EntityContentFunctionContext
-import com.argondesign.alogic.antlr.AlogicParser.EntityContentInstanceContext
-import com.argondesign.alogic.antlr.AlogicParser.EntityContentVerbatimBlockContext
-import com.argondesign.alogic.antlr.AlogicParser.EntityContentVerilogFuctionContext
-import com.argondesign.alogic.antlr.AlogicParser.EntityContext
+import com.argondesign.alogic.antlr.AlogicParser._
 import com.argondesign.alogic.antlr.AntlrConverters._
-import com.argondesign.alogic.core.Locationed
 import com.argondesign.alogic.ast.Trees.Connect
 import com.argondesign.alogic.ast.Trees.Entity
 import com.argondesign.alogic.ast.Trees.Function
 import com.argondesign.alogic.ast.Trees.Instance
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Locationed
+
+import scala.collection.JavaConverters._
 
 object EntityBuilder extends BaseBuilder[EntityContext, Entity] {
 
@@ -69,15 +61,6 @@ object EntityBuilder extends BaseBuilder[EntityContext, Entity] {
         }
       }
 
-      override def visitEntityContentFenceFunction(ctx: EntityContentFenceFunctionContext) = {
-        cc.warning(
-          ctx,
-          "'void fence() {...}' function syntax is deprecated. Use a 'fence {...}' block instead")
-        // We put the body in a block in case there are multiple fence blocks, which we will check later
-        val stmt = StmtBlock(StmtBuilder(ctx.block.statement)) withLoc ctx.loc
-        FenceBlock(stmt) withLoc ctx.loc
-      }
-
       override def visitEntityContentFenceBlock(ctx: EntityContentFenceBlockContext) = {
         // We put the body in a block in case there are multiple fence blocks, which we will check later
         val stmt = StmtBlock(StmtBuilder(ctx.block.statement)) withLoc ctx.loc
@@ -88,13 +71,6 @@ object EntityBuilder extends BaseBuilder[EntityContext, Entity] {
         val ident = ctx.IDENTIFIER.toIdent
         val stmts = StmtBuilder(ctx.block.statement)
         Function(ident, stmts) withLoc ctx.loc
-      }
-
-      override def visitEntityContentVerilogFuction(ctx: EntityContentVerilogFuctionContext) = {
-        cc.warning(ctx,
-                   "'void verilog() {...}' function syntax is deprecated. " +
-                     "Use a 'verbatim verilog {...}' block instead")
-        VerbatimBlock("verilog", ctx.VERBATIMBODY) withLoc ctx.loc
       }
 
       override def visitEntityContentVerbatimBlock(ctx: EntityContentVerbatimBlockContext) = {
