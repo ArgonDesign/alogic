@@ -265,6 +265,7 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         }
 
         packedErrOpt orElse widthErrOpt map { newInit =>
+          TypeAssigner(newInit)
           decl.copy(init = Some(newInit)) withLoc tree.loc
         } getOrElse tree
       }
