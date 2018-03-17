@@ -226,6 +226,27 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         inConnect = false
       }
 
+      case decl @ Decl(_, kind, Some(init)) => {
+        checkPacked(init, "Initializer expression") orElse {
+          // TODO: solve for parametrized
+          val kindWidthOpt = kind.width.value
+          val initWidthOpt = init.tpe.width.value
+          for {
+            kindWidth <- kindWidthOpt
+            initWidth <- initWidthOpt
+            if kindWidth != initWidth
+          } yield {
+            cc.error(
+              init,
+              s"Initializer expression yields ${initWidth} bits, but ${kindWidth} bits are expected"
+            )
+            ExprError() withLoc init.loc
+          }
+        } map { newInit =>
+          decl.copy(init = Some(newInit)) withLoc tree.loc
+        } getOrElse tree
+      }
+
       ////////////////////////////////////////////////////////////////////////////
       // Type check statements
       ////////////////////////////////////////////////////////////////////////////
