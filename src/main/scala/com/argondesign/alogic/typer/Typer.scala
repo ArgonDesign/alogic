@@ -32,7 +32,7 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
 
   val constantFold = new ConstantFold
 
-  val reducingBinaryOps = Array(">", ">=", "<", "<=", "==", "!=", "&&", "||")
+  val mixedWidthBinaryOps = Set("<<", ">>", "<<<", ">>>", "&&", "||")
 
   private def hasError(tree: Tree) = {
     tree.children exists {
@@ -395,27 +395,27 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         val errRhs = checkPacked(rhs, s"Right hand operand of '${op}'")
 
         errLhs orElse errRhs getOrElse {
-          // TODO: handle parametrized widths by solving 'lhsWidth != rhsWidth' SAT
-          val lhsWidthOpt = lhs.tpe.width.value
-          val rhsWidthOpt = rhs.tpe.width.value
+          if (!(mixedWidthBinaryOps contains op)) {
+            // TODO: handle parametrized widths by solving 'lhsWidth != rhsWidth' SAT
+            val lhsWidthOpt = lhs.tpe.width.value
+            val rhsWidthOpt = rhs.tpe.width.value
 
-          for {
-            lhsWidth <- lhsWidthOpt
-            rhsWidth <- rhsWidthOpt
-          } {
-            if (lhsWidth != rhsWidth) {
-              cc.warning(
-                tree,
-                s"'${op}' expects both operands to have the same width, but",
-                s"left  operand is ${lhsWidth} bits wide, and",
-                s"right operand is ${rhsWidth} bits wide"
-              )
+            for {
+              lhsWidth <- lhsWidthOpt
+              rhsWidth <- rhsWidthOpt
+            } {
+              if (lhsWidth != rhsWidth) {
+                cc.warning(
+                  tree,
+                  s"'${op}' expects both operands to have the same width, but",
+                  s"left  operand is ${lhsWidth} bits wide, and",
+                  s"right operand is ${rhsWidth} bits wide"
+                )
+              }
             }
           }
-
           tree
         }
-
       }
 
       case ExprTernary(cond, thenExpr, elseExpr) => {

@@ -707,22 +707,48 @@ final class TyperSpec extends FreeSpec with AlogicTest {
 //      }
     }
 
-    "warn mismatching operand widths" - {
+    "warn mismatching operand widths where applicable" - {
       "binary operators" - {
-        for (op <- List("*", "/", "%", "+", "-", "&", "|", "^", ">", ">=", "<", "<=", "==", "!=")) {
+        for {
+          (op, warn) <- List(
+            ("*", true),
+            ("/", true),
+            ("%", true),
+            ("+", true),
+            ("-", true),
+            ("&", true),
+            ("|", true),
+            ("^", true),
+            (">", true),
+            (">=", true),
+            ("<", true),
+            ("<=", true),
+            ("==", true),
+            ("!=", true),
+            ("<<", false),
+            (">>", false),
+            ("<<<", false),
+            (">>>", false),
+            ("&&", false),
+            ("||", false)
+          )
+        } {
           val qop = Pattern.quote(op)
           val text = s"8'd1 ${op} 7'd0"
           text in {
             xform(text.asTree[Expr]) should matchPattern {
               case ExprBinary(_, `op`, _) =>
             }
-            cc.messages.loneElement should beThe[Warning](
-              s"'${qop}' expects both operands to have the same width, but",
-              "left  operand is 8 bits wide, and",
-              "right operand is 7 bits wide"
-            )
+            if (warn) {
+              cc.messages.loneElement should beThe[Warning](
+                s"'${qop}' expects both operands to have the same width, but",
+                "left  operand is 8 bits wide, and",
+                "right operand is 7 bits wide"
+              )
+            } else {
+              cc.messages shouldBe empty
+            }
           }
-
         }
       }
     }
