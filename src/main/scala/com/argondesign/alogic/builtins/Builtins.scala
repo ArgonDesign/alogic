@@ -29,7 +29,9 @@ trait Builtins { this: CompilerContext =>
   val builtins = Set[BuiltinPolyFunc](
     register(AtBits),
     register(AtMax),
-    register(AtZx)
+    register(AtZx),
+    register(DollarSigned),
+    register(DollarUnigned)
   )
 
   // Fold call to builtin function
