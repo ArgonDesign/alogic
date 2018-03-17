@@ -47,7 +47,9 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
     if (expr.tpe.isPacked) {
       None
     } else {
-      cc.error(expr, s"${msg} is of non-packed type")
+      if (expr.tpe != TypeError) {
+        cc.error(expr, s"${msg} is of non-packed type")
+      }
       Some(ExprError() withLoc expr.loc)
     }
   }
@@ -56,7 +58,9 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
     if (expr.tpe.isNumeric) {
       None
     } else {
-      cc.error(expr, s"${msg} is of non-numeric type")
+      if (expr.tpe != TypeError) {
+        cc.error(expr, s"${msg} is of non-numeric type")
+      }
       Some(ExprError() withLoc expr.loc)
     }
   }
