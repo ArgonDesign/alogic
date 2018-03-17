@@ -62,6 +62,7 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
   }
 
   private def checkWidth(kind: Type, expr: Expr, msg: String): Option[Loc] = {
+    require(kind.isPacked)
     // TODO: solve for parametrized
     val kindWidthOpt = kind.width.value
     val exprWidthOpt = expr.tpe.width.value

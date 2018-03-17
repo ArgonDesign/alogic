@@ -39,13 +39,13 @@ trait Builtins { this: CompilerContext =>
   def foldBuiltinCall(call: ExprCall): Expr = {
     val ExprRef(Sym(symbol)) = call.expr
     val Some(builtin) = builtins find { _ contains symbol }
-    builtin.fold(call, this)
+    builtin.fold(call)(this)
   }
 
   // Fold call to builtin function
   def isKnownConstBuiltinCall(call: ExprCall): Boolean = {
     val ExprRef(Sym(symbol)) = call.expr
     val Some(builtin) = builtins find { _ contains symbol }
-    builtin.isKnownConst(call, this)
+    builtin.isKnownConst(call)(this)
   }
 }

@@ -25,7 +25,7 @@ import Types._
 trait TypeOps extends TypePrintOps { this: Type =>
 
   // Is this a primitive numeric type
-  final lazy val isNumeric: Boolean = this match {
+  final def isNumeric(implicit cc: CompilerContext): Boolean = this.chase match {
     case _: TypeInt         => true
     case _: TypeNum         => true
     case TypeParam(kind)    => kind.isNumeric
@@ -35,7 +35,7 @@ trait TypeOps extends TypePrintOps { this: Type =>
   }
 
   // Is this a 'packed' type, i.e.: does it have a finite bit-vector representation?
-  final lazy val isPacked: Boolean = this match {
+  final def isPacked(implicit cc: CompilerContext): Boolean = this.chase match {
     case _: TypeSInt        => true
     case _: TypeUInt        => true
     case _: TypeStruct      => true
@@ -49,9 +49,9 @@ trait TypeOps extends TypePrintOps { this: Type =>
   }
 
   // Width of this type, assuming it is a packed type
-  final lazy val width: Expr = {
+  final def width(implicit cc: CompilerContext): Expr = {
     assert(isPacked)
-    this match {
+    this.chase match {
       case self: TypeSInt => self.size
       case self: TypeUInt => self.size
       case self: TypeStruct => {
@@ -72,9 +72,9 @@ trait TypeOps extends TypePrintOps { this: Type =>
   } ensuring { _.hasLoc }
 
   // Signedness of this type (as far as expressions are concerned), assuming it is a packed type
-  final lazy val isSigned: Boolean = {
+  final def isSigned(implicit cc: CompilerContext): Boolean = {
     assert(isPacked)
-    this match {
+    this.chase match {
       case _: TypeSInt     => true
       case TypeNum(signed) => signed
       case _               => false

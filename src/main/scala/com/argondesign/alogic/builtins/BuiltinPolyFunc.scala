@@ -50,9 +50,13 @@ private[builtins] trait BuiltinPolyFunc {
   }
 
   // Fold calls to this function
-  private[builtins] def fold(call: ExprCall, cc: CompilerContext): Expr = call
+  private[builtins] def fold(call: ExprCall)(implicit cc: CompilerContext): Expr = {
+    call
+  }
 
-  private[builtins] def isKnownConst(call: ExprCall, cc: CompilerContext): Boolean = false
+  private[builtins] def isKnownConst(call: ExprCall)(implicit cc: CompilerContext): Boolean = {
+    false
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   // Abstract methods
@@ -62,11 +66,11 @@ private[builtins] trait BuiltinPolyFunc {
   protected[this] def name: String
 
   // Type of return value for the given arguments
-  protected[this] def retType(args: List[Expr], cc: CompilerContext): Type
+  protected[this] def retType(args: List[Expr])(implicit cc: CompilerContext): Type
 
   // Predicate that checks whether this BuiltinPolyFunc can be applied to these
   // arguments. Assumes args _.hasTpe
-  protected[this] def validArgs(args: List[Expr], cc: CompilerContext): Boolean
+  protected[this] def validArgs(args: List[Expr])(implicit cc: CompilerContext): Boolean
 
   //////////////////////////////////////////////////////////////////////////////
   // Implementation
@@ -84,11 +88,12 @@ private[builtins] trait BuiltinPolyFunc {
   private[this] final val overloads = mutable.Map[List[Expr], TermSymbol]()
 
   // Return the overloaded symbol for these arguments
-  private[this] final def getOverload(args: List[Expr], cc: CompilerContext): TermSymbol = {
+  private[this] final def getOverload(args: List[Expr])(
+      implicit cc: CompilerContext): TermSymbol = {
     synchronized {
       lazy val newSymbol = {
         val argTypes = args map { _.tpe }
-        val kind = TypeCombFunc(argTypes, retType(args, cc))
+        val kind = TypeCombFunc(argTypes, retType(args))
         cc.newTermSymbol(ident, kind)
       }
       overloads.getOrElseUpdate(args, newSymbol)
@@ -96,8 +101,8 @@ private[builtins] trait BuiltinPolyFunc {
   }
 
   // The resolver for TypePolyFunc
-  private[builtins] final def resolver(args: List[Expr])(cc: CompilerContext) = {
-    if (validArgs(args, cc)) Some(getOverload(args, cc)) else None
+  private[this] final def resolver(args: List[Expr])(cc: CompilerContext) = {
+    if (validArgs(args)(cc)) Some(getOverload(args)(cc)) else None
   }
 
 }

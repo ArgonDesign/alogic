@@ -24,15 +24,15 @@ object AtMax extends BuiltinPolyFunc {
   protected def name = "@max"
 
   // TODO: return properly computed type
-  protected def retType(args: List[Expr], cc: CompilerContext): Type = {
+  protected def retType(args: List[Expr])(implicit cc: CompilerContext): Type = {
     TypeUInt(Expr(32) withLoc loc)
   }
 
-  protected def validArgs(args: List[Expr], cc: CompilerContext) = {
+  protected def validArgs(args: List[Expr])(implicit cc: CompilerContext) = {
     args forall { _.tpe.isPacked }
   }
 
-  private[builtins] override def fold(call: ExprCall, cc: CompilerContext): Expr = {
+  private[builtins] override def fold(call: ExprCall)(implicit cc: CompilerContext): Expr = {
     val args = call.args
     if (args exists { !_.isInstanceOf[ExprNum] }) {
       call

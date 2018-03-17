@@ -23,12 +23,12 @@ object AtSx extends BuiltinPolyFunc {
 
   protected def name = "@sx"
 
-  protected def retType(args: List[Expr], cc: CompilerContext): Type = {
+  protected def retType(args: List[Expr])(implicit cc: CompilerContext): Type = {
     TypeInt(args(1).tpe.isSigned, args(0))
   }
 
-  protected def validArgs(args: List[Expr], cc: CompilerContext) = {
-    args.lengthCompare(2) == 0 && args(0).isKnownConst(cc) && args(1).tpe.isPacked
+  protected def validArgs(args: List[Expr])(implicit cc: CompilerContext) = {
+    args.lengthCompare(2) == 0 && args(0).isKnownConst && args(1).tpe.isPacked
   }
 
 }

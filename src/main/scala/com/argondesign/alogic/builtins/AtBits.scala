@@ -23,9 +23,9 @@ object AtBits extends BuiltinPolyFunc {
 
   protected def name = "@bits"
 
-  protected def retType(args: List[Expr], cc: CompilerContext): Type = TypeNum(false)
+  protected def retType(args: List[Expr])(implicit cc: CompilerContext): Type = TypeNum(false)
 
-  protected def validArgs(args: List[Expr], cc: CompilerContext) = {
+  protected def validArgs(args: List[Expr])(implicit cc: CompilerContext) = {
     args.lengthCompare(1) == 0 && {
       args.head.tpe match {
         case TypeType(kind) if kind.isPacked => true
@@ -35,5 +35,6 @@ object AtBits extends BuiltinPolyFunc {
     }
   }
 
-  private[builtins] override def isKnownConst(call: ExprCall, cc: CompilerContext): Boolean = true
+  private[builtins] override def isKnownConst(call: ExprCall)(
+      implicit cc: CompilerContext): Boolean = true
 }

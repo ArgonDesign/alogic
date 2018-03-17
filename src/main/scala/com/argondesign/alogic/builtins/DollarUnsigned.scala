@@ -23,11 +23,11 @@ object DollarUnigned extends BuiltinPolyFunc {
 
   protected def name = "$unsigned"
 
-  protected def retType(args: List[Expr], cc: CompilerContext): Type = {
+  protected def retType(args: List[Expr])(implicit cc: CompilerContext): Type = {
     TypeUInt(args.head.tpe.width)
   }
 
-  protected def validArgs(args: List[Expr], cc: CompilerContext) = {
+  protected def validArgs(args: List[Expr])(implicit cc: CompilerContext) = {
     args.lengthCompare(1) == 0 && args.head.tpe.isPacked
   }
 }
