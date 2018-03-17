@@ -151,7 +151,9 @@ object Symbols {
     }
 
     // Location of definition
-    final def loc(implicit cc: CompilerContext): Loc = cc.symbolLocations(this)
+    final def loc(implicit cc: CompilerContext): Loc = cc synchronized {
+      cc.symbolLocations(this)
+    }
 
     // Is this a builtin symbol
     def isBuiltin(implicit cc: CompilerContext): Boolean = {
