@@ -88,11 +88,15 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
       }
 
       override def visitStmtAssign(ctx: StmtAssignContext) = {
-        StmtAssign(ExprBuilder(ctx.expr(0)), ExprBuilder(ctx.expr(1))) withLoc ctx.loc
+        StmtAssign(ExprBuilder(ctx.expr(0)), ExprBuilder(ctx.expr(1))) withLoc {
+          ctx.loc.copy(point = ctx.op.getStartIndex)
+        }
       }
 
       override def visitStmtUpdate(ctx: StmtUpdateContext) = {
-        StmtUpdate(ExprBuilder(ctx.expr(0)), ctx.ASSIGNOP.text.init, ExprBuilder(ctx.expr(1))) withLoc ctx.loc
+        StmtUpdate(ExprBuilder(ctx.expr(0)), ctx.ASSIGNOP.text.init, ExprBuilder(ctx.expr(1))) withLoc {
+          ctx.loc.copy(point = ctx.ASSIGNOP.getStartIndex)
+        }
       }
 
       override def visitStmtPost(ctx: StmtPostContext) = {

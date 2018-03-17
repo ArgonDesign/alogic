@@ -155,7 +155,7 @@ case_clause
   ;
 
 assignment
-  : expr '=' expr       # StmtAssign
+  : expr op='=' expr    # StmtAssign
   | expr ASSIGNOP expr  # StmtUpdate
   | expr op=('++'|'--') # StmtPost
   ;

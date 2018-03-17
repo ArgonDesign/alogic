@@ -682,12 +682,42 @@ final class TyperSpec extends FreeSpec with AlogicTest {
             ("i8 a = 2", ""),
             ("i8 a = 8'd2", ""),
             ("i8 a = bool", "Initializer expression is of non-packed type"),
-            ("i8 a = 9'd2", "Initializer expression yields 9 bits, but 8 bits are expected"),
-            ("i8 a = 7'd2", "Initializer expression yields 7 bits, but 8 bits are expected")
+            ("i8 a = 9'd2", "Initializer expression yields 9 bits, 8 bits are expected"),
+            ("i8 a = 7'd2", "Initializer expression yields 7 bits, 8 bits are expected")
           )
         } {
           decl in {
             val tree = s"{ ${decl}; a; }".asTree[Stmt]
+            xform(tree)
+            if (msg.isEmpty) {
+              cc.messages shouldBe empty
+            } else {
+              cc.messages.loneElement should beThe[Error](msg)
+            }
+          }
+
+        }
+      }
+
+      "assignments " - {
+        for {
+          (assignment, msg) <- List(
+            ("a = 2", ""),
+            ("a = 8'd2", ""),
+            ("a = bool", "Right hand side of assignment is of non-packed type"),
+            ("bool = 8'd2", "Left hand side of assignment is of non-packed type"),
+            ("a = 9'd2", "Right hand side of assignment yields 9 bits, 8 bits are expected"),
+            ("a = 7'd2", "Right hand side of assignment yields 7 bits, 8 bits are expected")
+          )
+        } {
+          assignment in {
+            val tree = s"""|fsm x {
+                           |  void main() {
+                           |    i8 a; a;
+                           |    ${assignment};
+                           |    fence;
+                           |  }
+                           |}""".stripMargin.asTree[Entity]
             xform(tree)
             if (msg.isEmpty) {
               cc.messages shouldBe empty

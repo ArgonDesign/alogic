@@ -23,6 +23,7 @@ package com.argondesign.alogic.typer
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.transform.ConstantFold
 import com.argondesign.alogic.util.FollowedBy
@@ -57,6 +58,20 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
     } else {
       cc.error(expr, s"${msg} is of non-numeric type")
       Some(ExprError() withLoc expr.loc)
+    }
+  }
+
+  private def checkWidth(kind: Type, expr: Expr, msg: String): Option[Loc] = {
+    // TODO: solve for parametrized
+    val kindWidthOpt = kind.width.value
+    val exprWidthOpt = expr.tpe.width.value
+    for {
+      kindWidth <- kindWidthOpt
+      exprWidth <- exprWidthOpt
+      if kindWidth != exprWidth
+    } yield {
+      cc.error(expr, s"${msg} yields ${exprWidth} bits, ${kindWidth} bits are expected")
+      expr.loc
     }
   }
 
@@ -227,22 +242,12 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       }
 
       case decl @ Decl(_, kind, Some(init)) => {
-        checkPacked(init, "Initializer expression") orElse {
-          // TODO: solve for parametrized
-          val kindWidthOpt = kind.width.value
-          val initWidthOpt = init.tpe.width.value
-          for {
-            kindWidth <- kindWidthOpt
-            initWidth <- initWidthOpt
-            if kindWidth != initWidth
-          } yield {
-            cc.error(
-              init,
-              s"Initializer expression yields ${initWidth} bits, but ${kindWidth} bits are expected"
-            )
-            ExprError() withLoc init.loc
-          }
-        } map { newInit =>
+        val packedErrOpt = checkPacked(init, "Initializer expression")
+        lazy val widthErrOpt = checkWidth(kind, init, "Initializer expression") map {
+          ExprError() withLoc _
+        }
+
+        packedErrOpt orElse widthErrOpt map { newInit =>
           decl.copy(init = Some(newInit)) withLoc tree.loc
         } getOrElse tree
       }
@@ -297,6 +302,18 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
           cc.error(tree, "Body of 'loop' must be a control statement")
           StmtError() withLoc tree.loc
         }
+      }
+
+      case StmtAssign(lhs, rhs) => {
+        val lhsErrOpt = checkPacked(lhs, "Left hand side of assignment")
+        val rhsErrOpt = checkPacked(rhs, "Right hand side of assignment")
+        lazy val widthErrOpt = checkWidth(lhs.tpe, rhs, "Right hand side of assignment") map {
+          ExprError() withLoc _
+        }
+
+        lhsErrOpt orElse rhsErrOpt orElse widthErrOpt map { err =>
+          StmtError() withLoc err.loc
+        } getOrElse tree
       }
 
       ////////////////////////////////////////////////////////////////////////////
