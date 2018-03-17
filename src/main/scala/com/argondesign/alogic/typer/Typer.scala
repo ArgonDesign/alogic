@@ -25,13 +25,10 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.transform.ConstantFold
 import com.argondesign.alogic.util.FollowedBy
 import com.argondesign.alogic.util.unreachable
 
 final class Typer(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
-
-  val constantFold = new ConstantFold
 
   val mixedWidthBinaryOps = Set("<<", ">>", "<<<", ">>>", "&&", "||")
 
