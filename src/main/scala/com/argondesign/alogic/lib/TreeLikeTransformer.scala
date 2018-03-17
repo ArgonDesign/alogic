@@ -16,7 +16,7 @@
 package com.argondesign.alogic.lib
 
 // Tree transformers are applied during a post-order traversal of a Tree.
-abstract class TreeLikeTransformer[T <: TreeLike] {
+abstract class TreeLikeTransformer[T <: TreeLike] extends (T => T) {
 
   // enter is called when entering a node, before visiting any children.
   // enter is used to modify the state of the tree transformer or the context

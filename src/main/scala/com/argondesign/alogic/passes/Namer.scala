@@ -16,23 +16,23 @@
 // - Checks for unused variables
 ////////////////////////////////////////////////////////////////////////////////
 
-package com.argondesign.alogic.frontend
-
-import scala.annotation.tailrec
-import scala.collection.mutable
+package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Names.Name
 import com.argondesign.alogic.core.Names.TermName
 import com.argondesign.alogic.core.Names.TypeName
-import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.Symbols._
+import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.TypeTransformer
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.FollowedBy
-import com.argondesign.alogic.core.TypeTransformer
 import com.argondesign.alogic.util.unreachable
+
+import scala.annotation.tailrec
+import scala.collection.mutable
 
 final class Namer(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy { namer =>
 

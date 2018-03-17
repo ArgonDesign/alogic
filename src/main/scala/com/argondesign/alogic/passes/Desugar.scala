@@ -15,7 +15,7 @@
 // they are redundant/disallowed.
 ////////////////////////////////////////////////////////////////////////////////
 
-package com.argondesign.alogic.frontend
+package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._

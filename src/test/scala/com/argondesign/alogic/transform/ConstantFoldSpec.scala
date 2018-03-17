@@ -22,7 +22,7 @@ import com.argondesign.alogic.SourceTextConverters._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Error
-import com.argondesign.alogic.frontend.Namer
+import com.argondesign.alogic.passes.Namer
 import org.scalatest.FreeSpec
 
 final class ConstantFoldSpec extends FreeSpec with AlogicTest {

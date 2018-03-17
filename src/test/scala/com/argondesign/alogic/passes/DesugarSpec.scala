@@ -13,16 +13,15 @@
 // Namer tests
 ////////////////////////////////////////////////////////////////////////////////
 
-package com.argondesign.alogic.frontend
+package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.SourceTextConverters._
-import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.ast.Trees.Expr._
+import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.ErrorSymbol
 import com.argondesign.alogic.core.Types._
-
 import org.scalatest.FreeSpec
 
 final class DesugarSpec extends FreeSpec with AlogicTest {

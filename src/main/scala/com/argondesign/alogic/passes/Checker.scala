@@ -26,7 +26,7 @@
 // to proceed as far as possible in order to allow reporting of further issues.
 ////////////////////////////////////////////////////////////////////////////////
 
-package com.argondesign.alogic.frontend
+package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.TreeCopier
 import com.argondesign.alogic.ast.TreeTransformer
@@ -117,11 +117,14 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
 
       val newSt = (fc, st) match {
         case (FlowControlTypeNone, _: StorageTypeSlices) => {
-          cc.error(tree, s"Output port '${name}' without flow control specifier cannot use output slices")
+          cc.error(tree,
+                   s"Output port '${name}' without flow control specifier cannot use output slices")
           StorageTypeReg
         }
         case (FlowControlTypeValid, _: StorageTypeSlices) => {
-          cc.error(tree, s"Output port '${name}' with 'sync' flow control specifier cannot use output slices")
+          cc.error(
+            tree,
+            s"Output port '${name}' with 'sync' flow control specifier cannot use output slices")
           StorageTypeReg
         }
         case _ => st

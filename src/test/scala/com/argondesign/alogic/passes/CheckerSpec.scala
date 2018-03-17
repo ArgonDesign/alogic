@@ -13,9 +13,7 @@
 // Namer tests
 ////////////////////////////////////////////////////////////////////////////////
 
-package com.argondesign.alogic.frontend
-
-import scala.collection.immutable.ListMap
+package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.SourceTextConverters._
@@ -26,8 +24,9 @@ import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeValid
 import com.argondesign.alogic.core.StorageTypes.StorageTypeReg
 import com.argondesign.alogic.core.Types._
-
 import org.scalatest.FreeSpec
+
+import scala.collection.immutable.ListMap
 
 final class CheckerSpec extends FreeSpec with AlogicTest {
 
@@ -40,12 +39,12 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         for (word <- List("read", "write")) {
           word in {
             val tree = s"""|network a {
-                           |  new fsm b {
-                           |    void main() {
-                           |      ${word};
-                           |    }
-                           |  }
-                           |}""".asTree[Entity]
+             |  new fsm b {
+             |    void main() {
+             |      ${word};
+             |    }
+             |  }
+             |}""".asTree[Entity]
 
             tree rewrite checker shouldBe tree
 
@@ -58,10 +57,10 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         for (word <- List("read", "write")) {
           word in {
             val tree = s"""|fsm b {
-                           |  void main() {
-                           |    ${word};
-                           |  }
-                           |}""".asTree[Entity]
+             |  void main() {
+             |    ${word};
+             |  }
+             |}""".asTree[Entity]
 
             val node = tree rewrite checker
 
@@ -225,7 +224,8 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         }
 
         cc.messages.loneElement should {
-          beThe[Error]("Output port 'a' with 'sync' flow control specifier cannot use output slices")
+          beThe[Error](
+            "Output port 'a' with 'sync' flow control specifier cannot use output slices")
         }
       }
     }
@@ -252,14 +252,15 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         for (variant <- List("fsm", "verilog")) {
           variant in {
             val tree = s"""|${variant} a {
-                           |  c = new d();
-                           |}""".asTree[Entity]
+             |  c = new d();
+             |}""".asTree[Entity]
 
             tree rewrite checker should matchPattern {
               case Entity(_, Nil, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
             }
 
-            cc.messages.loneElement should beThe[Error](s"'${variant}' entity cannot contain instantiations")
+            cc.messages.loneElement should beThe[Error](
+              s"'${variant}' entity cannot contain instantiations")
             cc.messages(0).loc.line shouldBe 2
           }
         }
@@ -269,14 +270,15 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         for (variant <- List("fsm", "verilog")) {
           variant in {
             val tree = s"""|${variant} a {
-                           |  a -> b;
-                           |}""".asTree[Entity]
+             |  a -> b;
+             |}""".asTree[Entity]
 
             tree rewrite checker should matchPattern {
               case Entity(_, Nil, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
             }
 
-            cc.messages.loneElement should beThe[Error](s"'${variant}' entity cannot contain connections")
+            cc.messages.loneElement should beThe[Error](
+              s"'${variant}' entity cannot contain connections")
             cc.messages(0).loc.line shouldBe 2
           }
         }
@@ -286,14 +288,15 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         for (variant <- List("fsm", "verilog")) {
           variant in {
             val tree = s"""|${variant} a {
-                           |  fsm d {}
-                           |}""".asTree[Entity]
+             |  fsm d {}
+             |}""".asTree[Entity]
 
             tree rewrite checker should matchPattern {
               case Entity(_, Nil, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
             }
 
-            cc.messages.loneElement should beThe[Error](s"'${variant}' entity cannot contain nested entities")
+            cc.messages.loneElement should beThe[Error](
+              s"'${variant}' entity cannot contain nested entities")
             cc.messages(0).loc.line shouldBe 2
           }
         }
@@ -303,8 +306,8 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         for (variant <- List("fsm", "verilog")) {
           variant in {
             val tree = s"""|${variant} a {
-                           |  new fsm d {}
-                           |}""".asTree[Entity]
+             |  new fsm d {}
+             |}""".asTree[Entity]
 
             tree rewrite checker should matchPattern {
               case Entity(_, Nil, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
@@ -313,7 +316,8 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
             cc.messages should have length 2
             cc.messages(0) should beThe[Error](s"'${variant}' entity cannot contain instantiations")
             cc.messages(0).loc.line shouldBe 2
-            cc.messages(1) should beThe[Error](s"'${variant}' entity cannot contain nested entities")
+            cc.messages(1) should beThe[Error](
+              s"'${variant}' entity cannot contain nested entities")
             cc.messages(1).loc.line shouldBe 2
           }
         }
@@ -323,14 +327,15 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         for (variant <- List("network", "verilog")) {
           variant in {
             val tree = s"""|${variant} a {
-                           |  void main() {}
-                           |}""".asTree[Entity]
+             |  void main() {}
+             |}""".asTree[Entity]
 
             tree rewrite checker should matchPattern {
               case Entity(_, Nil, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
             }
 
-            cc.messages.loneElement should beThe[Error](s"'${variant}' entity cannot contain function definitions")
+            cc.messages.loneElement should beThe[Error](
+              s"'${variant}' entity cannot contain function definitions")
             cc.messages(0).loc.line shouldBe 2
           }
         }
@@ -340,14 +345,15 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         for (variant <- List("network", "verilog")) {
           variant in {
             val tree = s"""|${variant} a {
-                           |  fence {}
-                           |}""".asTree[Entity]
+             |  fence {}
+             |}""".asTree[Entity]
 
             tree rewrite checker should matchPattern {
               case Entity(_, Nil, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
             }
 
-            cc.messages.loneElement should beThe[Error](s"'${variant}' entity cannot contain fence blocks")
+            cc.messages.loneElement should beThe[Error](
+              s"'${variant}' entity cannot contain fence blocks")
             cc.messages(0).loc.line shouldBe 2
           }
         }
@@ -380,7 +386,8 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
               for ((name, lval) <- badLvals) {
                 name in {
                   s"${lval} ${assign};".asTree[Stmt] rewrite checker shouldBe a[StmtError]
-                  cc.messages.loneElement should beThe[Error](s"Invalid expression on left hand side of '${op}'")
+                  cc.messages.loneElement should beThe[Error](
+                    s"Invalid expression on left hand side of '${op}'")
                 }
               }
             }
@@ -388,7 +395,8 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
               for ((name, lval) <- badLvals) {
                 name in {
                   s"{x, ${lval}} ${assign};".asTree[Stmt] rewrite checker shouldBe a[StmtError]
-                  cc.messages.loneElement should beThe[Error](s"Invalid expression on left hand side of '${op}'")
+                  cc.messages.loneElement should beThe[Error](
+                    s"Invalid expression on left hand side of '${op}'")
                 }
               }
             }
@@ -534,7 +542,8 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
             literal.asTree[Expr] rewrite checker shouldBe ExprError()
             val bits = literal takeWhile { _ != '\'' }
             val prefix = if (literal contains 's') "Signed" else "Unsigned"
-            cc.messages.loneElement should beThe[Error](s"${prefix} value '.*' does not fit in ${bits} bits")
+            cc.messages.loneElement should beThe[Error](
+              s"${prefix} value '.*' does not fit in ${bits} bits")
           }
         }
       }

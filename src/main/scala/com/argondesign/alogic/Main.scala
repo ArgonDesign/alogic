@@ -17,9 +17,12 @@ package com.argondesign.alogic
 
 import java.io.File
 
+import com.argondesign.alogic.ast.Trees.Root
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FatalErrorException
 import com.argondesign.alogic.frontend.Frontend
+import com.argondesign.alogic.passes.Passes
+import com.argondesign.alogic.util.unreachable
 
 object Main extends App {
 
@@ -50,13 +53,22 @@ object Main extends App {
     // Create the front end and built the ASTs
     //////////////////////////////////////////////////////////////////////////////
 
-    val asts = {
+    val frontEndTrees = {
       val frontend = new Frontend(moduleSeachDirs, includeSeachDirs, initalDefines)
       frontend(toplevel)
     }
 
-    println(asts.keys)
+    // Insert entity symbols into the global scope
+    cc.addGlobalEntities {
+      frontEndTrees map {
+        case Root(_, entity) => entity
+        case _               => unreachable
+      }
+    }
 
+    val trees = Passes(frontEndTrees)
+
+    println(trees.size)
     true
   } catch {
     case _: FatalErrorException => false

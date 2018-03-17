@@ -21,8 +21,6 @@ import com.argondesign.alogic.FindFile
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Source
-import com.argondesign.alogic.transform.ConstantFold
-import com.argondesign.alogic.typer.Typer
 import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
@@ -35,10 +33,6 @@ import scala.concurrent.duration.Duration.Inf
 // - locating sources (name -> source)
 // - preprocessing (source -> source)
 // - parsing (source -> ast)
-// - checking (basic semantic checks on raw ast)
-// - naming (resolve identifiers to symbols)
-// - desugaring (desugar simple constructs and bring tree to a canonical form)
-// - typing (compute types of all tree nodes)
 
 class Frontend(
     val moduleSeachDirs: List[File],
@@ -69,41 +63,6 @@ class Frontend(
   private[this] def parseIt(source: Source, fileName: String): Root = {
     Parser[Root](source).getOrElse {
       cc.fatal("Stopping due to syntax errors")
-    }
-  }
-
-  private[this] def checkIt(tree: Root): Root = {
-    tree.rewrite(new Checker) match {
-      case root: Root => root
-      case _          => unreachable
-    }
-  }
-
-  private[this] def nameIt(tree: Root): Root = {
-    tree.rewrite(new Namer) match {
-      case root: Root => root
-      case _          => unreachable
-    }
-  }
-
-  private[this] def desugarIt(tree: Root): Root = {
-    tree.rewrite(new Desugar) match {
-      case root: Root => root
-      case _          => unreachable
-    }
-  }
-
-  private[this] def constantFoldIt(tree: Root): Root = {
-    tree.rewrite(new ConstantFold) match {
-      case root: Root => root
-      case _          => unreachable
-    }
-  }
-
-  private[this] def typeIt(tree: Root): Entity = {
-    tree.rewrite(new Typer) match {
-      case entity: Entity => entity
-      case _              => unreachable
     }
   }
 
@@ -182,37 +141,13 @@ class Frontend(
     }
   }
 
-  // Parse all files needed for 'entityName'. Returns map from entityNames -> Root
-  def apply(entityName: String): Map[String, Entity] = {
+  // Parse all files needed for 'entityName'. Returns list of Root nodes
+  def apply(entityName: String): List[Root] = {
 
     // Compute the result
-    val initialMap = Await.result(doIt(entityName), atMost = Inf)
+    val treeMap = Await.result(doIt(entityName), atMost = Inf)
 
-    // Insert entity symbols into the global scope
-    cc.addGlobalEntities {
-      initialMap.values.seq map {
-        case Root(_, entity) => entity
-        case _               => unreachable
-      }
-    }
-
-    // Apply the frontend passes
-    val astMap = initialMap mapValues { tree =>
-      Future { checkIt(tree) }
-    } mapValues {
-      _ map { nameIt(_) }
-    } mapValues {
-      _ map { desugarIt(_) }
-    } mapValues {
-      _ map { constantFoldIt(_) }
-    } mapValues {
-      _ map { typeIt(_) }
-    }
-
-    // Collect results and return the AST map
-    astMap mapValues {
-      Await.result(_, atMost = Inf)
-    }
+    // Return the trees
+    return treeMap.values.toList
   }
-
 }

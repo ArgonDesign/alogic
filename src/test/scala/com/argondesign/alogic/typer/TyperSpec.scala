@@ -25,8 +25,8 @@ import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Error
 import com.argondesign.alogic.core.Warning
-import com.argondesign.alogic.frontend.Desugar
-import com.argondesign.alogic.frontend.Namer
+import com.argondesign.alogic.passes.Desugar
+import com.argondesign.alogic.passes.Namer
 import com.argondesign.alogic.transform.ConstantFold
 import org.scalatest.FreeSpec
 

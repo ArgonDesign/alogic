@@ -24,8 +24,8 @@ import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
 import com.argondesign.alogic.core.StorageTypes.StorageTypeReg
 import com.argondesign.alogic.core.Symbols.ErrorSymbol
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.frontend.Desugar
-import com.argondesign.alogic.frontend.Namer
+import com.argondesign.alogic.passes.Desugar
+import com.argondesign.alogic.passes.Namer
 import org.scalatest.FreeSpec
 
 final class TypeAssignerSpec extends FreeSpec with AlogicTest {
