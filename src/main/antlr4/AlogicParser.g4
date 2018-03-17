@@ -72,13 +72,15 @@ entity
 // Declarations
 ///////////////////////////////////////////////////////////////////////////////
 
-decl
-  : kind IDENTIFIER ('=' expr)?                             # DeclVar
+decl: declbase ('=' expr)? ;
+
+declbase
+  : kind IDENTIFIER                                         # DeclVar
   | kind IDENTIFIER ('[' expr ']')+                         # DeclArr
   | 'out' flow_control_type? storage_type? kind IDENTIFIER  # DeclOut
   | 'in' flow_control_type? kind IDENTIFIER                 # DeclIn
-  | 'param' kind IDENTIFIER '=' expr                        # DeclParam
-  | 'const' kind IDENTIFIER '=' expr                        # DeclConst
+  | 'param' kind IDENTIFIER                                 # DeclParam
+  | 'const' kind IDENTIFIER                                 # DeclConst
   | 'pipeline' kind IDENTIFIER                              # DeclPipeline
   ;
 

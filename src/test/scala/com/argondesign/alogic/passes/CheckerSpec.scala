@@ -622,6 +622,76 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
       }
 
     }
+
+    "Check initializer expressions" - {
+      "are not present in declarations where disallowed" - {
+        for {
+          (decl, msg) <- List(
+            ("i8 a = 0", ""),
+            ("param i8 a = 0", ""),
+            ("const i8 a = 0", ""),
+            ("int(8, 2) a = 0", ""),
+            ("s a = 0", ""),
+            ("i8 a[2] = 0", "Array"),
+            ("in i8 a = 0", "Input port"),
+            ("out i8 a = 0", "Output port"),
+            ("pipeline i8 a = 0", "Pipeline variable")
+          )
+        } {
+          decl in {
+            val tree = s"""|struct s {
+                           |  i8 b;
+                           |};
+                           |
+                           |fsm x {
+                           |  ${decl};
+                           |}""".stripMargin.asTree[Root]
+            tree rewrite checker shouldBe a[Root]
+            if (msg.nonEmpty) {
+              cc.messages.loneElement should beThe[Error](
+                s"${msg} declarations cannot have an initializer"
+              )
+            } else {
+              cc.messages shouldBe empty
+            }
+          }
+        }
+      }
+
+      "are present in declarations where required" - {
+        for {
+          (decl, msg) <- List(
+            ("i8 a ", ""),
+            ("param i8 a", "Parameter"),
+            ("const i8 a", "Constant"),
+            ("int(8, 2) a", ""),
+            ("s a", ""),
+            ("i8 a[2]", ""),
+            ("in i8 a", ""),
+            ("out i8 a", ""),
+            ("pipeline i8 a", "")
+          )
+        } {
+          decl in {
+            val tree = s"""|struct s {
+                           |  i8 b;
+                           |};
+                           |
+                           |fsm x {
+                           |  ${decl};
+                           |}""".stripMargin.asTree[Root]
+            tree rewrite checker shouldBe a[Root]
+            if (msg.nonEmpty) {
+              cc.messages.loneElement should beThe[Error](
+                s"${msg} declarations must have an initializer"
+              )
+            } else {
+              cc.messages shouldBe empty
+            }
+          }
+        }
+      }
+    }
   }
 
 }

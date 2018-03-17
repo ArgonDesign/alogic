@@ -150,7 +150,7 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
       entityLevel -= 1
     }
 
-    case decl @ Decl(_, TypeOut(kind, fc, st), _) => {
+    case decl @ Decl(_, TypeOut(kind, fc, st), None) => {
       lazy val Ident(name) = decl.ref
 
       val newSt = (fc, st) match {
@@ -173,6 +173,35 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
       } else {
         decl.copy(kind = TypeOut(kind, fc, newSt)) withLoc tree.loc
       }
+    }
+
+    case decl @ Decl(_, kind, Some(init)) => {
+      val hintOpt = kind match {
+        case _: TypeIn       => Some("Input port")
+        case _: TypeOut      => Some("Output port")
+        case _: TypePipeline => Some("Pipeline variable")
+        case _: TypeArray    => Some("Array")
+        case _               => None
+      }
+
+      hintOpt map { hint =>
+        cc.error(init, s"${hint} declarations cannot have an initializer")
+        decl.copy(init = None) withLoc decl.loc
+      } getOrElse decl
+    }
+
+    case decl @ Decl(_, kind, None) => {
+      val hintOpt = kind match {
+        case _: TypeParam => Some("Parameter")
+        case _: TypeConst => Some("Constant")
+        case _            => None
+      }
+
+      hintOpt map { hint =>
+        cc.error(decl, s"${hint} declarations must have an initializer")
+        val num = ExprNum(true, 0) withLoc decl.loc
+        decl.copy(init = Some(num)) withLoc decl.loc
+      } getOrElse decl
     }
 
     case StmtRead() => {

@@ -43,16 +43,29 @@ object DeclBuilder extends BaseBuilder[DeclContext, Decl] {
 
   def apply(ctx: DeclContext)(implicit cc: CompilerContext): Decl = {
     object Visitor extends AlogicScalarVisitor[Decl] {
+
+      // Attach initializers
+      override def visitDecl(ctx: DeclContext) = {
+        val init = Option(ctx.expr) map { ExprBuilder(_) }
+        val decl = visit(ctx.declbase)
+        if (init.isDefined) {
+          decl.copy(init = init) withLoc decl.loc
+        } else {
+          decl
+        }
+      }
+
       // Simple decls
       override def visitDeclVar(ctx: DeclVarContext) = {
         val kind = TypeBuilder(ctx.kind)
-        val init = Option(ctx.expr) map { ExprBuilder(_) }
-        Decl(ctx.IDENTIFIER.toIdent, kind, init) withLoc ctx.loc
+        Decl(ctx.IDENTIFIER.toIdent, kind, None) withLoc ctx.loc
       }
 
       override def visitDeclArr(ctx: DeclArrContext) = {
         val sizes = ExprBuilder(ctx.expr).reverse
-        val kind = sizes.foldLeft[Type](TypeBuilder(ctx.kind)) { (elem, size) => TypeArray(elem, size) }
+        val kind = sizes.foldLeft[Type](TypeBuilder(ctx.kind)) { (elem, size) =>
+          TypeArray(elem, size)
+        }
         Decl(ctx.IDENTIFIER.toIdent, kind, None) withLoc ctx.loc
       }
 
@@ -64,7 +77,7 @@ object DeclBuilder extends BaseBuilder[DeclContext, Decl] {
         val storageOpt = Option(ctx.storage_type) map { StorageTypeBuilder(_) }
         val storage = (fcType, storageOpt) match {
           // Unbox
-          case (_, Some(storageType))       => storageType
+          case (_, Some(storageType)) => storageType
           // Defaults
           case (FlowControlTypeNone, None)  => StorageTypeReg
           case (FlowControlTypeValid, None) => StorageTypeReg
@@ -85,15 +98,13 @@ object DeclBuilder extends BaseBuilder[DeclContext, Decl] {
       override def visitDeclParam(ctx: DeclParamContext) = {
         val underlying = TypeBuilder(ctx.kind)
         val kind = TypeParam(underlying)
-        val init = ExprBuilder(ctx.expr)
-        Decl(ctx.IDENTIFIER.toIdent, kind, Some(init)) withLoc ctx.loc
+        Decl(ctx.IDENTIFIER.toIdent, kind, None) withLoc ctx.loc
       }
 
       override def visitDeclConst(ctx: DeclConstContext) = {
         val underlying = TypeBuilder(ctx.kind)
         val kind = TypeConst(underlying)
-        val init = ExprBuilder(ctx.expr)
-        Decl(ctx.IDENTIFIER.toIdent, kind, Some(init)) withLoc ctx.loc
+        Decl(ctx.IDENTIFIER.toIdent, kind, None) withLoc ctx.loc
       }
 
       override def visitDeclPipeline(ctx: DeclPipelineContext) = {
