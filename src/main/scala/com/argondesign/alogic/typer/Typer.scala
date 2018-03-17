@@ -95,8 +95,9 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       // Propagate errors
       ////////////////////////////////////////////////////////////////////////////
 
-      case expr: Expr if hasError(expr) => ExprError() withLoc expr.loc
-      case stmt: Stmt if hasError(stmt) => StmtError() withLoc stmt.loc
+      case _: Expr if hasError(tree)          => ExprError() withLoc tree.loc
+      case _: Stmt if hasError(tree)          => StmtError() withLoc tree.loc
+      case Function(ref, _) if hasError(tree) => Function(ref, Nil) withLoc tree.loc
 
       ////////////////////////////////////////////////////////////////////////////
       // Infer width of of unsized literals in expressions
@@ -179,9 +180,16 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         if (body.nonEmpty && body.last.tpe == TypeCtrlStmt) {
           tree
         } else {
-          val loc = if (body.isEmpty) tree.loc else { body.last.loc }
-          val err = StmtError() withLoc loc
-          cc.error(err, "Body of function must end in a control statement")
+          val offender = if (body.isEmpty) {
+            ref
+          } else {
+            val combStmts = body.last collect {
+              case tree: Tree if tree.tpe == TypeCombStmt => tree
+            }
+            combStmts.toList.last
+          }
+          cc.error(offender, "Body of function must end in a control statement")
+          val err = StmtError() withLoc offender.loc
           TypeAssigner(err)
           Function(ref, List(err)) withLoc tree.loc
         }

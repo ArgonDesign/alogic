@@ -57,10 +57,17 @@ object TypeAssigner {
   def apply(node: Instance): node.type = assignTypeMisc(node)
   def apply(node: Connect): node.type = assignTypeMisc(node)
   def apply(node: Function): node.type = assignTypeMisc(node)
-  def apply(node: CaseClause): node.type = assignTypeMisc(node)
   def apply(node: State): node.type = assignTypeMisc(node)
   def apply(node: Sym): node.type = assignTypeMisc(node)
   def apply(node: TypeDefinition): node.type = assignTypeMisc(node)
+
+  def apply(node: CaseClause): node.type = {
+    if (node.body.tpe == TypeError || (node.cond exists { _.tpe == TypeError })) {
+      node withTpe TypeError
+    } else {
+      assignTypeMisc(node)
+    }
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   // Typing Stmt nodes

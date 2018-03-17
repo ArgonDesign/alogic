@@ -75,8 +75,8 @@ final class TyperSpec extends FreeSpec with AlogicTest {
                              |  }
                              |}""".stripMargin.asTree[Root]
               val tree = xform(root)
-              val expr = (tree collectFirst { case StmtExpr(expr) => expr }).value
               if (resultWidth.isDefined) {
+                val expr = (tree collectFirst { case StmtExpr(expr) => expr }).value
                 cc.messages foreach println
                 expr.tpe.width.value.value shouldBe resultWidth.value
                 cc.messages shouldBe empty
@@ -114,8 +114,8 @@ final class TyperSpec extends FreeSpec with AlogicTest {
                              |  }
                              |}""".stripMargin.asTree[Root]
               val tree = xform(root)
-              val expr = (tree collectFirst { case StmtExpr(expr) => expr }).value
               if (resultWidth.isDefined) {
+                val expr = (tree collectFirst { case StmtExpr(expr) => expr }).value
                 expr.tpe.width.value.value shouldBe resultWidth.value
                 cc.messages shouldBe empty
               } else {
