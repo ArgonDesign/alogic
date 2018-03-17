@@ -25,9 +25,9 @@ import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Error
 import com.argondesign.alogic.core.Warning
+import com.argondesign.alogic.lib.TreeLike
 import com.argondesign.alogic.passes.Desugar
 import com.argondesign.alogic.passes.Namer
-import com.argondesign.alogic.transform.ConstantFold
 import org.scalatest.FreeSpec
 
 final class TyperSpec extends FreeSpec with AlogicTest {
@@ -35,7 +35,6 @@ final class TyperSpec extends FreeSpec with AlogicTest {
   implicit val cc = new CompilerContext
   val namer = new Namer
   val desugar = new Desugar
-  val constantFold = new ConstantFold
   val typer = new Typer
 
   def xform(tree: Tree) = {
@@ -44,7 +43,7 @@ final class TyperSpec extends FreeSpec with AlogicTest {
       case entity: Entity => cc.addGlobalEntity(entity)
       case _              =>
     }
-    tree rewrite namer rewrite desugar rewrite constantFold rewrite typer
+    tree rewrite namer rewrite desugar rewrite typer
   }
 
   "The Typer should" - {
@@ -56,18 +55,20 @@ final class TyperSpec extends FreeSpec with AlogicTest {
             (expr, resultWidth, msg) <- List(
               (s"8'd3 ${op} 2", Some(8), ""),
               (s"2 ${op} 8'd3", Some(8), ""),
+              (s"8'd3 ${op} -2", Some(8), ""),
+              (s"-2 ${op} 8'd3", Some(8), ""),
+              (s"8'd3 ${op} (N ? 2 : 3)", Some(8), ""),
+              (s"(N ? 2 : 3) ${op} 8'd3", Some(8), ""),
               (s"8'd3 ${op} 2 ${op} 4", Some(8), ""),
               (s"4 ${op} 2 ${op} 8'd3", Some(8), ""),
               (s"{N{1'b1}} ${op} 2", None, s"Cannot infer width of right hand operand of '${qop}'"),
-              (s"2 ${op} {N{1'b1}}", None, s"Cannot infer width of left hand operand of '${qop}'"),
-              (s"bool ${op} 2", None, s"'${qop}' expects packed value on the left hand side"),
-              (s"2 ${op} bool", None, s"'${qop}' expects packed value on the right hand side")
+              (s"2 ${op} {N{1'b1}}", None, s"Cannot infer width of left hand operand of '${qop}'")
             )
           } {
             val text = expr.trim.replaceAll(" +", " ")
             text in {
               val root = s"""|fsm a {
-                             |  param u8 N = 2;
+                             |  param u4 N = 2;
                              |  void main() {
                              |    ${text};
                              |    N;
@@ -77,7 +78,17 @@ final class TyperSpec extends FreeSpec with AlogicTest {
               val tree = xform(root)
               if (resultWidth.isDefined) {
                 val expr = (tree collectFirst { case StmtExpr(expr) => expr }).value
-                expr.tpe.width.value.value shouldBe resultWidth.value
+                lazy val visitor: PartialFunction[TreeLike, Unit] = {
+                  case ExprTernary(_, t, e) => {
+                    t visit visitor
+                    e visit visitor
+                  }
+                  case node: Expr => {
+                    node.tpe.width.value.value shouldBe resultWidth.value
+                    node.children foreach { _ visit visitor }
+                  }
+                }
+                expr visit visitor
                 cc.messages shouldBe empty
               } else {
                 cc.messages.last should beThe[Error](msg)
@@ -94,12 +105,12 @@ final class TyperSpec extends FreeSpec with AlogicTest {
             (expr, resultWidth, msg) <- List(
               (s"8'd3 ${op} 2", Some(1), ""),
               (s"2 ${op} 8'd3", Some(1), ""),
-              (s"8'd3 ${op} 2 ${op} 4", Some(1), ""),
-              (s"4 ${op} 2 ${op} 8'd3", Some(1), ""),
+              (s"8'd3 ${op} -2", Some(1), ""),
+              (s"-2 ${op} 8'd3", Some(1), ""),
+              (s"8'd3 ${op} (N ? 2 : 3)", Some(1), ""),
+              (s"(N ? 2 : 3) ${op} 8'd3", Some(1), ""),
               (s"{N{1'b1}} ${op} 2", None, s"Cannot infer width of right hand operand of '${qop}'"),
-              (s"2 ${op} {N{1'b1}}", None, s"Cannot infer width of left hand operand of '${qop}'"),
-              (s"bool ${op} 2", None, s"'${qop}' expects packed value on the left hand side"),
-              (s"2 ${op} bool", None, s"'${qop}' expects packed value on the right hand side")
+              (s"2 ${op} {N{1'b1}}", None, s"Cannot infer width of left hand operand of '${qop}'")
             )
           } {
             val text = expr.trim.replaceAll(" +", " ")
@@ -114,8 +125,21 @@ final class TyperSpec extends FreeSpec with AlogicTest {
                              |}""".stripMargin.asTree[Root]
               val tree = xform(root)
               if (resultWidth.isDefined) {
+                cc.messages foreach println
                 val expr = (tree collectFirst { case StmtExpr(expr) => expr }).value
                 expr.tpe.width.value.value shouldBe resultWidth.value
+                lazy val visitor: PartialFunction[TreeLike, Unit] = {
+                  case ExprTernary(_, t, e) => {
+                    t visit visitor
+                    e visit visitor
+                  }
+                  case node: Expr => {
+                    node.tpe.width.value.value shouldBe 8
+                    node.children foreach { _ visit visitor }
+                  }
+                }
+                expr.children foreach { _ visit visitor }
+
                 cc.messages shouldBe empty
               } else {
                 cc.messages.last should beThe[Error](msg)
@@ -125,12 +149,58 @@ final class TyperSpec extends FreeSpec with AlogicTest {
         }
       }
 
+      "ternary operator operands" - {
+        for {
+          (expr, resultWidth, msg) <- List(
+            (s"N ? 0 : 2'd1", Some(2), ""),
+            (s"N ? 2'd1 : 0", Some(2), ""),
+            (s"0 ? 0 : 2'd1", Some(2), ""),
+            (s"0 ? 2'd1 : 0", Some(2), ""),
+            (s"1 ? 0 : 2'd1", Some(2), ""),
+            (s"1 ? 2'd1 : 0", Some(2), ""),
+            (s"N ? 0 + 1 : 2'd1", Some(2), ""),
+            (s"N ? 2'd1 : 0 + 1", Some(2), ""),
+            (s"0 ? 0 + 1 : 2'd1", Some(2), ""),
+            (s"0 ? 2'd1 : 0 + 1", Some(2), ""),
+            (s"1 ? 0 + 1 : 2'd1", Some(2), ""),
+            (s"1 ? 2'd1 : 0 + 1", Some(2), ""),
+            (s"N ? 0 : {N{1'b1}}", None, "Cannot infer width of 'then' operand of '?:'"),
+            (s"0 ? 0 : {N{1'b1}}", None, "Cannot infer width of 'then' operand of '?:'"),
+            (s"1 ? 0 : {N{1'b1}}", None, "Cannot infer width of 'then' operand of '?:'"),
+            (s"N ? {N{1'b1}} : 0", None, "Cannot infer width of 'else' operand of '?:'"),
+            (s"0 ? {N{1'b1}} : 0", None, "Cannot infer width of 'else' operand of '?:'"),
+            (s"1 ? {N{1'b1}} : 0", None, "Cannot infer width of 'else' operand of '?:'")
+          )
+        } {
+          val text = expr.trim.replaceAll(" +", " ")
+          text in {
+            val root = s"""|fsm a {
+                           |  param u8 N = 2;
+                           |  void main() {
+                           |    ${text};
+                           |    N;
+                           |    fence;
+                           |  }
+                           |}""".stripMargin.asTree[Root]
+            val tree = xform(root)
+            if (resultWidth.isDefined) {
+              cc.messages foreach println
+              val expr = (tree collectFirst { case StmtExpr(expr) => expr }).value
+              expr.tpe.width.value.value shouldBe resultWidth.value
+              cc.messages shouldBe empty
+            } else {
+              cc.messages.last should beThe[Error](Pattern.quote(msg))
+            }
+          }
+        }
+      }
+
       "initializer expressions" - {
         for {
           (decl, expr, msg) <- List(
             ("i8 a = 2", ExprInt(true, 8, 2), ""),
-            ("u8 a = 2", ExprInt(false, 8, 2), ""),
-            ("i8 a = 'd2", ExprInt(true, 8, 2), ""),
+            ("u8 a = 2", ExprInt(true, 8, 2), ""),
+            ("i8 a = 'd2", ExprInt(false, 8, 2), ""),
             ("u8 a = 'd2", ExprInt(false, 8, 2), ""),
             ("int(N) a = 2", ExprError(), "Cannot infer width of initializer")
           )
@@ -160,8 +230,8 @@ final class TyperSpec extends FreeSpec with AlogicTest {
         for {
           (assign, expr, msg) <- List(
             ("i8 a; a = 2", ExprInt(true, 8, 2), ""),
-            ("u8 a; a = 2", ExprInt(false, 8, 2), ""),
-            ("i8 a; a = 'd2", ExprInt(true, 8, 2), ""),
+            ("u8 a; a = 2", ExprInt(true, 8, 2), ""),
+            ("i8 a; a = 'd2", ExprInt(false, 8, 2), ""),
             ("u8 a; a = 'd2", ExprInt(false, 8, 2), ""),
             ("int(N) a; a = 2", ExprError(), "Cannot infer width of right hand side of assignment")
           )
@@ -541,9 +611,9 @@ final class TyperSpec extends FreeSpec with AlogicTest {
         for {
           (text, msg) <- List(
             ("a ? b : c[0][0][0]", ""),
-            ("c[0] ? b : c[0][0][0]", "Condition of ternary operator ?: is of non-packed type"),
-            ("a ? c[0] : b", "True part of ternary operator ?: is of non-packed type"),
-            ("a ? b : c[0]", "False part of ternary operator ?: is of non-packed type")
+            ("c[0] ? b : c[0][0][0]", "Condition of '?:' is of neither numeric nor packed type"),
+            ("a ? c[0] : b", "'then' operand of '?:' is of non-packed type"),
+            ("a ? b : c[0]", "'else' operand of '?:' is of non-packed type")
           )
         } {
           text in {

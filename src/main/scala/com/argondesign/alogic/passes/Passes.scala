@@ -18,7 +18,6 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.transform.ConstantFold
 import com.argondesign.alogic.typer.Typer
 
 object Passes {
@@ -45,8 +44,7 @@ object Passes {
         List(
           new Checker,
           new Namer,
-          new Desugar,
-          new ConstantFold
+          new Desugar
       ),
       () =>
         List(

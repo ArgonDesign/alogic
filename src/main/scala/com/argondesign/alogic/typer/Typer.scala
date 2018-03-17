@@ -62,6 +62,17 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
     }
   }
 
+  private def checkNumericOrPacked(expr: Expr, msg: String): Option[ExprError] = {
+    if (expr.tpe.isNumeric || expr.tpe.isPacked) {
+      None
+    } else {
+      if (expr.tpe != TypeError) {
+        cc.error(expr, s"${msg} is of neither numeric nor packed type")
+      }
+      Some(ExprError() withLoc expr.loc)
+    }
+  }
+
   private def checkWidth(kind: Type, expr: Expr, msg: String): Option[Loc] = {
     require(kind.isPacked)
     // TODO: solve for parametrized
@@ -117,109 +128,6 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       case Function(ref, _) if hasError(tree) => Function(ref, Nil) withLoc tree.loc
 
       ////////////////////////////////////////////////////////////////////////////
-      // Infer width of of unsized literals where applicable
-      ////////////////////////////////////////////////////////////////////////////
-
-      case ExprBinary(lhs @ ExprNum(signed, value), op, rhs) => {
-        require(rhs.hasTpe)
-
-        // Type check and get expected type
-        val kindOpt = rhs.tpe match {
-          case kind if kind.isPacked => Some(kind)
-          case other => {
-            cc.error(tree, s"'${op}' expects packed value on the right hand side")
-            None
-          }
-        }
-
-        // Figure out width of rhs
-        val widthOpt = kindOpt flatMap { _.width.value } map { _.toInt }
-
-        if (kindOpt.isDefined && widthOpt.isEmpty) {
-          cc.error(rhs, s"Cannot infer width of left hand operand of '${op}'")
-        }
-
-        // Convert lhs
-        widthOpt map { width =>
-          // TODO: Check value fits width ...
-          val newLhs = ExprInt(signed, width, value) withLoc lhs.loc
-          TypeAssigner(newLhs)
-          ExprBinary(newLhs, op, rhs)
-        } getOrElse {
-          ExprError()
-        } withLoc lhs.loc
-      }
-
-      case ExprBinary(lhs, op, rhs @ ExprNum(signed, value)) => {
-        require(lhs.hasTpe)
-
-        // Type check and get expected type
-        val kindOpt = lhs.tpe match {
-          case kind if kind.isPacked => Some(kind)
-          case other => {
-            cc.error(tree, s"'${op}' expects packed value on the left hand side")
-            None
-          }
-        }
-
-        // Figure out width of lhs
-        val widthOpt = kindOpt flatMap { _.width.value } map { _.toInt }
-
-        if (kindOpt.isDefined && widthOpt.isEmpty) {
-          cc.error(rhs, s"Cannot infer width of right hand operand of '${op}'")
-        }
-
-        // Convert rhs
-        widthOpt map { width =>
-          // TODO: Check value fits width ...
-          val newRhs = ExprInt(signed, width, value) withLoc rhs.loc
-          TypeAssigner(newRhs)
-          ExprBinary(lhs, op, newRhs)
-        } getOrElse {
-          ExprError()
-        } withLoc lhs.loc
-      }
-
-      case decl @ Decl(_, kind, Some(init @ ExprNum(_, value))) => {
-        require(kind.isPacked)
-        // Figure out width of lhs
-        val widthOpt = kind.width.value map { _.toInt }
-
-        // Convert init
-        val newInit = widthOpt map { width =>
-          // TODO: Check value fits width ...
-          ExprInt(kind.isSigned, width, value)
-        } getOrElse {
-          cc.error(init, s"Cannot infer width of initializer")
-          ExprError()
-        }
-        newInit withLoc init.loc
-        TypeAssigner(newInit)
-
-        decl.copy(init = Some(newInit)) withLoc tree.loc
-      }
-
-      case stmt @ StmtAssign(lhs, rhs @ ExprNum(_, value)) => {
-        checkPacked(lhs, "Left hand side of assignment") map {
-          StmtError() withLoc _.loc
-        } getOrElse {
-          // Figure out width of lhs
-          val widthOpt = lhs.tpe.width.value map { _.toInt }
-
-          // Convert rhs
-          widthOpt map { width =>
-            // TODO: Check value fits width ...
-            val newRhs = ExprInt(lhs.tpe.isSigned, width, value) withLoc rhs.loc
-            TypeAssigner(newRhs)
-            stmt.copy(rhs = newRhs) withLoc stmt.loc
-          } getOrElse {
-            cc.error(rhs, s"Cannot infer width of right hand side of assignment")
-            StmtError() withLoc lhs.loc
-          }
-        }
-      }
-
-      ////////////////////////////////////////////////////////////////////////////
       // Type check other nodes
       ////////////////////////////////////////////////////////////////////////////
 
@@ -253,22 +161,34 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
 
       case Connect(lhs, rhss) => {
         // TODO: check widths
-
         tree
       } followedBy {
         inConnect = false
       }
 
       case decl @ Decl(_, kind, Some(init)) => {
-        val packedErrOpt = checkPacked(init, "Initializer expression")
-        lazy val widthErrOpt = checkWidth(kind, init, "Initializer expression") map {
-          ExprError() withLoc _
-        }
-
-        packedErrOpt orElse widthErrOpt map { newInit =>
-          TypeAssigner(newInit)
+        require(kind.isPacked)
+        if (init.tpe.isNum) {
+          // Infer width of init
+          val newInit = kind.width.value map { CoerceWidth(init, _) } map {
+            case e: Expr => e
+            case _       => unreachable
+          } getOrElse {
+            cc.error(init, s"Cannot infer width of initializer")
+            TypeAssigner(ExprError() withLoc tree.loc)
+          }
           decl.copy(init = Some(newInit)) withLoc tree.loc
-        } getOrElse tree
+        } else {
+          val packedErrOpt = checkPacked(init, "Initializer expression")
+          lazy val widthErrOpt = checkWidth(kind, init, "Initializer expression") map {
+            ExprError() withLoc _
+          }
+
+          packedErrOpt orElse widthErrOpt map { newInit =>
+            TypeAssigner(newInit)
+            decl.copy(init = Some(newInit)) withLoc tree.loc
+          } getOrElse tree
+        }
       }
 
       ////////////////////////////////////////////////////////////////////////////
@@ -323,16 +243,32 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         }
       }
 
-      case StmtAssign(lhs, rhs) => {
-        val lhsErrOpt = checkPacked(lhs, "Left hand side of assignment")
-        val rhsErrOpt = checkPacked(rhs, "Right hand side of assignment")
-        lazy val widthErrOpt = checkWidth(lhs.tpe, rhs, "Right hand side of assignment") map {
-          ExprError() withLoc _
-        }
-
-        lhsErrOpt orElse rhsErrOpt orElse widthErrOpt map { err =>
+      case stmt @ StmtAssign(lhs, rhs) => {
+        checkPacked(lhs, "Left hand side of assignment") map { err =>
           StmtError() withLoc err.loc
-        } getOrElse tree
+        } getOrElse {
+          if (rhs.tpe.isNum) {
+            // Infer width of rhs
+            lhs.tpe.width.value map { CoerceWidth(rhs, _) } map {
+              case e: Expr => e
+              case _       => unreachable
+            } map { newRhs =>
+              stmt.copy(rhs = newRhs) withLoc stmt.loc
+            } getOrElse {
+              cc.error(rhs, s"Cannot infer width of right hand side of assignment")
+              StmtError() withLoc lhs.loc
+            }
+          } else {
+            val rhsErrOpt = checkPacked(rhs, "Right hand side of assignment")
+            lazy val widthErrOpt = checkWidth(lhs.tpe, rhs, "Right hand side of assignment") map {
+              ExprError() withLoc _
+            }
+
+            rhsErrOpt orElse widthErrOpt map { err =>
+              StmtError() withLoc err.loc
+            } getOrElse tree
+          }
+        }
       }
 
       ////////////////////////////////////////////////////////////////////////////
@@ -476,47 +412,111 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
 
       // unary ops
       case ExprUnary(op, expr) => {
-        checkPacked(expr, s"Operand of unary '${op}'") getOrElse tree
+        if (expr.tpe.isNum) {
+          tree // Do nothing, we will coerce later if possible
+        } else {
+          checkPacked(expr, s"Operand of unary '${op}'") getOrElse tree
+        }
       }
 
       // Binary ops
       case ExprBinary(lhs, op, rhs) => {
-        require(lhs.hasTpe)
-        require(rhs.hasTpe)
+        lazy val errLhs = checkPacked(lhs, s"Left hand operand of '${op}'")
+        lazy val errRhs = checkPacked(rhs, s"Right hand operand of '${op}'")
 
-        // Check both sides are packed types
-        val errLhs = checkPacked(lhs, s"Left hand operand of '${op}'")
-        val errRhs = checkPacked(rhs, s"Right hand operand of '${op}'")
-
-        errLhs orElse errRhs getOrElse {
-          if (!(mixedWidthBinaryOps contains op)) {
-            // TODO: handle parametrized widths by solving 'lhsWidth != rhsWidth' SAT
-            val lhsWidthOpt = lhs.tpe.width.value
-            val rhsWidthOpt = rhs.tpe.width.value
-
-            for {
-              lhsWidth <- lhsWidthOpt
-              rhsWidth <- rhsWidthOpt
-            } {
-              if (lhsWidth != rhsWidth) {
-                cc.warning(
-                  tree,
-                  s"'${op}' expects both operands to have the same width, but",
-                  s"left  operand is ${lhsWidth} bits wide, and",
-                  s"right operand is ${rhsWidth} bits wide"
-                )
-              }
+        (lhs.tpe.isNum, rhs.tpe.isNum) match {
+          case (true, true) => tree // Do nothing, we will coerce later if possible
+          case (false, true) => { // Infer with of rhs
+            errLhs orElse {
+              lhs.tpe.width.value map { CoerceWidth(rhs, _) }
+            } map {
+              case err: ExprError => err
+              case rhs: Expr      => ExprBinary(lhs, op, rhs) withLoc tree.loc
+              case _              => unreachable
+            } getOrElse {
+              cc.error(rhs, s"Cannot infer width of right hand operand of '${op}'")
+              ExprError() withLoc tree.loc
             }
           }
-          tree
+          case (true, false) => {
+            // Infer with of lhs
+            errRhs orElse {
+              rhs.tpe.width.value map { CoerceWidth(lhs, _) }
+            } map {
+              case err: ExprError => err
+              case lhs: Expr      => ExprBinary(lhs, op, rhs) withLoc tree.loc
+              case _              => unreachable
+            } getOrElse {
+              cc.error(lhs, s"Cannot infer width of left hand operand of '${op}'")
+              ExprError() withLoc tree.loc
+            }
+          }
+          case _ => {
+            errLhs orElse errRhs getOrElse {
+              if (!(mixedWidthBinaryOps contains op)) {
+                // TODO: handle parametrized widths by solving 'lhsWidth != rhsWidth' SAT
+                val lhsWidthOpt = lhs.tpe.width.value
+                val rhsWidthOpt = rhs.tpe.width.value
+
+                for {
+                  lhsWidth <- lhsWidthOpt
+                  rhsWidth <- rhsWidthOpt
+                } {
+                  if (lhsWidth != rhsWidth) {
+                    cc.warning(
+                      tree,
+                      s"'${op}' expects both operands to have the same width, but",
+                      s"left  operand is ${lhsWidth} bits wide, and",
+                      s"right operand is ${rhsWidth} bits wide"
+                    )
+                  }
+                }
+              }
+              tree
+            }
+          }
         }
       }
 
       case ExprTernary(cond, thenExpr, elseExpr) => {
-        val errCondOpt = checkPacked(cond, "Condition of ternary operator ?:")
-        val errThenOpt = checkPacked(thenExpr, "True part of ternary operator ?:")
-        val errElseOpt = checkPacked(elseExpr, "False part of ternary operator ?:")
-        errCondOpt orElse errThenOpt orElse errElseOpt getOrElse tree
+        checkNumericOrPacked(cond, "Condition of '?:'") getOrElse {
+          lazy val errThen = checkPacked(thenExpr, "'then' operand of '?:'")
+          lazy val errElse = checkPacked(elseExpr, "'else' operand of '?:'")
+
+          (thenExpr.tpe.isNum, elseExpr.tpe.isNum) match {
+            case (true, true) => tree // Do nothing, we will coerce later if possible
+
+            case (false, true) => { // Infer with of 'else' operand
+              errThen orElse {
+                thenExpr.tpe.width.value map {
+                  CoerceWidth(elseExpr, _)
+                }
+              } map {
+                case err: ExprError => err
+                case elseExpr: Expr => ExprTernary(cond, thenExpr, elseExpr) withLoc tree.loc
+                case _              => unreachable
+              } getOrElse {
+                cc.error(elseExpr, s"Cannot infer width of 'else' operand of '?:'")
+                ExprError() withLoc tree.loc
+              }
+            }
+            case (true, false) => { // Infer with of 'then' operand
+              errElse orElse {
+                elseExpr.tpe.width.value map {
+                  CoerceWidth(thenExpr, _)
+                }
+              } map {
+                case err: ExprError => err
+                case thenExpr: Expr => ExprTernary(cond, thenExpr, elseExpr) withLoc tree.loc
+                case _              => unreachable
+              } getOrElse {
+                cc.error(thenExpr, s"Cannot infer width of 'then' operand of '?:'")
+                ExprError() withLoc tree.loc
+              }
+            }
+            case _ => errThen orElse errElse getOrElse tree
+          }
+        }
       }
 
       case _ => tree

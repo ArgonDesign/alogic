@@ -288,8 +288,12 @@ object TypeAssigner {
         val lTpe = node.lhs.tpe
         val rTpe = node.rhs.tpe
         val signed = lTpe.isSigned && rTpe.isSigned
-        val width = lTpe.width max rTpe.width
-        TypeInt(signed, width.simplify)
+        if (lTpe.isNum && rTpe.isNum) {
+          TypeNum(signed)
+        } else {
+          val width = lTpe.width max rTpe.width
+          TypeInt(signed, width.simplify)
+        }
       }
     }
     node withTpe tpe
@@ -300,8 +304,13 @@ object TypeAssigner {
     val tTpe = node.thenExpr.tpe
     val eTpe = node.elseExpr.tpe
     val signed = tTpe.isSigned && eTpe.isSigned
-    val width = tTpe.width max eTpe.width
-    node withTpe TypeInt(signed, width.simplify)
+    val tpe = if (tTpe.isNum && eTpe.isNum) {
+      TypeNum(signed)
+    } else {
+      val width = tTpe.width max eTpe.width
+      TypeInt(signed, width.simplify)
+    }
+    node withTpe tpe
   }
 
   def apply(node: ExprCat)(implicit cc: CompilerContext): node.type = {
