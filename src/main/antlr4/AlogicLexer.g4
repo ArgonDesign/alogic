@@ -136,6 +136,7 @@ DEFAULT : 'default' ;
 VERILOG : 'verilog' ;
 NEW     : 'new' ;
 LET     : 'let' ;
+ENTITY  : 'entity' ;
 
 SYNC        : 'sync';
 SYNC_READY  : 'sync' (WS|CMT)* 'ready';
@@ -171,6 +172,8 @@ ERRORCHAR : . ;
 ////////////////////////////////////////////////////////////////////////////////
 
 mode VERBATIMLANGMODE;
+
+VERBATIMENTITY: ENTITY -> type(ENTITY), popMode;
 
 VERBATIMLANGWS: WS -> channel(WHITESPACE);
 

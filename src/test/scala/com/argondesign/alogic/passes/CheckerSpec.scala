@@ -248,12 +248,18 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
     }
 
     "reject disallowed entity contents" - {
+      val kwmap = Map(
+        "fsm" -> "fsm",
+        "network" -> "network",
+        "verbatim" -> "verbatim entity"
+      )
+
       "instantiations in" - {
-        for (variant <- List("fsm", "verilog")) {
+        for (variant <- List("fsm", "verbatim")) {
           variant in {
-            val tree = s"""|${variant} a {
-             |  c = new d();
-             |}""".asTree[Entity]
+            val tree = s"""|${kwmap(variant)} a {
+                           |  c = new d();
+                           |}""".stripMargin.asTree[Entity]
 
             tree rewrite checker should matchPattern {
               case Entity(_, Nil, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
@@ -267,11 +273,11 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
       }
 
       "connections in" - {
-        for (variant <- List("fsm", "verilog")) {
+        for (variant <- List("fsm", "verbatim")) {
           variant in {
-            val tree = s"""|${variant} a {
-             |  a -> b;
-             |}""".asTree[Entity]
+            val tree = s"""|${kwmap(variant)} a {
+                           |  a -> b;
+                           |}""".stripMargin.asTree[Entity]
 
             tree rewrite checker should matchPattern {
               case Entity(_, Nil, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
@@ -285,11 +291,11 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
       }
 
       "nested entities without autoinst in" - {
-        for (variant <- List("fsm", "verilog")) {
+        for (variant <- List("fsm", "verbatim")) {
           variant in {
-            val tree = s"""|${variant} a {
-             |  fsm d {}
-             |}""".asTree[Entity]
+            val tree = s"""|${kwmap(variant)} a {
+                           |  fsm d {}
+                           |}""".stripMargin.asTree[Entity]
 
             tree rewrite checker should matchPattern {
               case Entity(_, Nil, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
@@ -303,11 +309,11 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
       }
 
       "nested entities with autoinst in" - {
-        for (variant <- List("fsm", "verilog")) {
+        for (variant <- List("fsm", "verbatim")) {
           variant in {
-            val tree = s"""|${variant} a {
-             |  new fsm d {}
-             |}""".asTree[Entity]
+            val tree = s"""|${kwmap(variant)} a {
+                           |  new fsm d {}
+                           |}""".stripMargin.asTree[Entity]
 
             tree rewrite checker should matchPattern {
               case Entity(_, Nil, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
@@ -324,11 +330,11 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
       }
 
       "functions in" - {
-        for (variant <- List("network", "verilog")) {
+        for (variant <- List("network", "verbatim")) {
           variant in {
-            val tree = s"""|${variant} a {
-             |  void main() {}
-             |}""".asTree[Entity]
+            val tree = s"""|${kwmap(variant)} a {
+                           |  void main() {}
+                           |}""".stripMargin.asTree[Entity]
 
             tree rewrite checker should matchPattern {
               case Entity(_, Nil, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
@@ -342,11 +348,11 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
       }
 
       s"fence blocks in" - {
-        for (variant <- List("network", "verilog")) {
+        for (variant <- List("network", "verbatim")) {
           variant in {
-            val tree = s"""|${variant} a {
-             |  fence {}
-             |}""".asTree[Entity]
+            val tree = s"""|${kwmap(variant)} a {
+                           |  fence {}
+                           |}""".stripMargin.asTree[Entity]
 
             tree rewrite checker should matchPattern {
               case Entity(_, Nil, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
@@ -356,6 +362,32 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
               s"'${variant}' entity cannot contain fence blocks")
             cc.messages(0).loc.line shouldBe 2
           }
+        }
+      }
+
+      s"declarations in verbatim" - {
+        for {
+          (decl, msg) <- List(
+            ("i8 a", "variable"),
+            ("i8 a[2]", "array"),
+            ("const i8 a = 2", "constant"),
+            ("pipeline i8 a", "pipeline variable")
+          )
+        } {
+          decl in {
+            val tree = s"""|verbatim entity a {
+                           |  ${decl};
+                           |}""".stripMargin.asTree[Entity]
+
+            tree rewrite checker should matchPattern {
+              case entity: Entity =>
+            }
+
+            cc.messages.loneElement should beThe[Error](
+              s"'verbatim' entity cannot contain ${msg} declarations")
+            cc.messages(0).loc.line shouldBe 2
+          }
+
         }
       }
     }

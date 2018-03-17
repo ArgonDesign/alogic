@@ -52,10 +52,10 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
   override def transform(tree: Tree): Tree = tree match {
     case entity: Entity => {
       val variant = entity.variant match {
-        case "fsm"     => "fsm"
-        case "network" => "network"
-        case "verilog" => "verilog"
-        case other     => cc.ice(entity, s"Unknown entity variant '$other'")
+        case "fsm"      => "fsm"
+        case "network"  => "network"
+        case "verbatim" => "verbatim"
+        case other      => cc.ice(entity, s"Unknown entity variant '$other'")
       }
 
       def err(nodes: List[Tree], content: String) = {
@@ -98,9 +98,35 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
         fenceBlocks
       }
 
+      val declarations = variant match {
+        case "verbatim" => {
+          val (goodDecls, badDecls) = entity.declarations.partition { decl =>
+            decl.kind match {
+              case _: TypeIn    => true
+              case _: TypeOut   => true
+              case _: TypeParam => true
+              case _            => false
+            }
+          }
+
+          badDecls foreach { decl =>
+            val hint = decl.kind match {
+              case _: TypeConst    => "constant"
+              case _: TypeArray    => "array"
+              case _: TypePipeline => "pipeline variable"
+              case _               => "variable"
+            }
+            err(List(decl), s"${hint} declarations")
+          }
+
+          goodDecls
+        }
+        case _ => entity.declarations
+      }
+
       TreeCopier(entity)(
         entity.ref,
-        entity.declarations,
+        declarations,
         instances,
         connects,
         functions,

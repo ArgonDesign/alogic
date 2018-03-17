@@ -70,7 +70,9 @@ object EntityBuilder extends BaseBuilder[EntityContext, Entity] {
       }
 
       override def visitEntityContentFenceFunction(ctx: EntityContentFenceFunctionContext) = {
-        cc.warning(ctx, "'void fence() {...}' function syntax is deprecated. Use a 'fence {...}' block instead")
+        cc.warning(
+          ctx,
+          "'void fence() {...}' function syntax is deprecated. Use a 'fence {...}' block instead")
         // We put the body in a block in case there are multiple fence blocks, which we will check later
         val stmt = StmtBlock(StmtBuilder(ctx.block.statement)) withLoc ctx.loc
         FenceBlock(stmt) withLoc ctx.loc
@@ -89,8 +91,9 @@ object EntityBuilder extends BaseBuilder[EntityContext, Entity] {
       }
 
       override def visitEntityContentVerilogFuction(ctx: EntityContentVerilogFuctionContext) = {
-        cc.warning(ctx, "'void verilog() {...}' function syntax is deprecated. " +
-          "Use a 'verbatim verilog {...}' block instead")
+        cc.warning(ctx,
+                   "'void verilog() {...}' function syntax is deprecated. " +
+                     "Use a 'verbatim verilog {...}' block instead")
         VerbatimBlock("verilog", ctx.VERBATIMBODY) withLoc ctx.loc
       }
 
@@ -108,17 +111,19 @@ object EntityBuilder extends BaseBuilder[EntityContext, Entity] {
           case x: Instance          => x
           case AutoInstance(entity) => Instance(entity.ref, entity.ref, Nil, Nil) withLoc entity.loc
         }
-        val connects = contents collect { case x: Connect => x }
-        val functions = contents collect { case x: Function => x }
+        val connects = contents collect { case x: Connect           => x }
+        val functions = contents collect { case x: Function         => x }
         val fenceBlocks = contents collect { case FenceBlock(block) => block }
         val entities = contents collect {
           case x: Entity            => x
           case AutoInstance(entity) => entity
         }
         val verbatim = {
-          val blocks = contents collect { case x: VerbatimBlock => x }
+          val blocks = contents collect { case x: VerbatimBlock          => x }
           val blockMap = blocks groupBy { case VerbatimBlock(lang, text) => lang }
-          blockMap mapValues { list => list map { _.text.tail.init } mkString "\n" }
+          blockMap mapValues { list =>
+            list map { _.text.tail.init } mkString "\n"
+          }
         }
 
         Entity(

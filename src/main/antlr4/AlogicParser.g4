@@ -62,7 +62,7 @@ kind
 ///////////////////////////////////////////////////////////////////////////////
 
 entity
-  : variant=('fsm' | 'network' | 'verilog') IDENTIFIER '{'
+  : (variant='fsm' | variant='network' | variant='verbatim' 'entity') IDENTIFIER '{'
       (decl ';')*
       (entity_content)*
     '}'

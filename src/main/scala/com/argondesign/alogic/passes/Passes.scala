@@ -10,7 +10,7 @@
 //
 // DESCRIPTION:
 //
-// Driver to apply compiler passes to trees
+// Driver to apply all compiler passes to trees
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.passes
