@@ -30,6 +30,7 @@ trait Builtins { this: CompilerContext =>
     register(AtBits),
     register(AtMax),
     register(AtZx),
+    register(AtSx),
     register(DollarSigned),
     register(DollarUnigned)
   )
