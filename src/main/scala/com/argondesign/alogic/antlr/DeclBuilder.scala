@@ -49,7 +49,7 @@ object DeclBuilder extends BaseBuilder[DeclContext, Decl] {
         val init = Option(ctx.expr) map { ExprBuilder(_) }
         val decl = visit(ctx.declbase)
         if (init.isDefined) {
-          decl.copy(init = init) withLoc decl.loc
+          decl.copy(init = init) withLoc ctx.loc.copy(point = decl.loc.point)
         } else {
           decl
         }
@@ -66,7 +66,9 @@ object DeclBuilder extends BaseBuilder[DeclContext, Decl] {
         val kind = sizes.foldLeft[Type](TypeBuilder(ctx.kind)) { (elem, size) =>
           TypeArray(elem, size)
         }
-        Decl(ctx.IDENTIFIER.toIdent, kind, None) withLoc ctx.loc
+        Decl(ctx.IDENTIFIER.toIdent, kind, None) withLoc {
+          ctx.loc.copy(point = ctx.IDENTIFIER.getStartIndex)
+        }
       }
 
       // Entity decls
@@ -85,32 +87,42 @@ object DeclBuilder extends BaseBuilder[DeclContext, Decl] {
         }
 
         val kind = TypeOut(underlying, fcType, storage)
-        Decl(ident, kind, None) withLoc ctx.loc
+        Decl(ident, kind, None) withLoc {
+          ctx.loc.copy(point = ctx.IDENTIFIER.getStartIndex)
+        }
       }
 
       override def visitDeclIn(ctx: DeclInContext) = {
         val underlying = TypeBuilder(ctx.kind)
         val fcType = FlowControlTypeBuilder(ctx.flow_control_type)
         val kind = TypeIn(underlying, fcType)
-        Decl(ctx.IDENTIFIER.toIdent, kind, None) withLoc ctx.loc
+        Decl(ctx.IDENTIFIER.toIdent, kind, None) withLoc {
+          ctx.loc.copy(point = ctx.IDENTIFIER.getStartIndex)
+        }
       }
 
       override def visitDeclParam(ctx: DeclParamContext) = {
         val underlying = TypeBuilder(ctx.kind)
         val kind = TypeParam(underlying)
-        Decl(ctx.IDENTIFIER.toIdent, kind, None) withLoc ctx.loc
+        Decl(ctx.IDENTIFIER.toIdent, kind, None) withLoc {
+          ctx.loc.copy(point = ctx.IDENTIFIER.getStartIndex)
+        }
       }
 
       override def visitDeclConst(ctx: DeclConstContext) = {
         val underlying = TypeBuilder(ctx.kind)
         val kind = TypeConst(underlying)
-        Decl(ctx.IDENTIFIER.toIdent, kind, None) withLoc ctx.loc
+        Decl(ctx.IDENTIFIER.toIdent, kind, None) withLoc {
+          ctx.loc.copy(point = ctx.IDENTIFIER.getStartIndex)
+        }
       }
 
       override def visitDeclPipeline(ctx: DeclPipelineContext) = {
         val underlying = TypeBuilder(ctx.kind)
         val kind = TypePipeline(underlying)
-        Decl(ctx.IDENTIFIER.toIdent, kind, None) withLoc ctx.loc
+        Decl(ctx.IDENTIFIER.toIdent, kind, None) withLoc {
+          ctx.loc.copy(point = ctx.IDENTIFIER.getStartIndex)
+        }
       }
     }
 
