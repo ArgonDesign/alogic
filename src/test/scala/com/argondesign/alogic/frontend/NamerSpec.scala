@@ -199,6 +199,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
         aSym shouldBe 'typeSymbol
 
         aSym.denot.kind shouldBe TypeStruct(
+          "a",
           List("b", "c", "d"),
           List(TypeUInt(Expr(1)), TypeSInt(Expr(8)), TypeRef(Sym(eSym)))
         )
@@ -640,7 +641,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
 
     val symA = tree collectFirst { case Sym(symbol) if symbol.denot.name.str == "a" => symbol }
     inside(symA.value.denot.kind) {
-      case TypeEntity(List("a", "b"), List(typeA, typeB), List("P"), List(typeP)) =>
+      case TypeEntity("a", List("a", "b"), List(typeA, typeB), List("P"), List(typeP)) =>
         typeA shouldBe TypeIn(TypeUInt(Expr(1)), FlowControlTypeNone)
         typeB shouldBe TypeOut(TypeSInt(Expr(3)), FlowControlTypeNone, StorageTypeReg)
         typeP shouldBe TypeParam(TypeUInt(Expr(8)))
@@ -662,8 +663,11 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     val tree = root rewrite namer
 
     val symA = tree collectFirst { case Sym(symbol) if symbol.denot.name.str == "a" => symbol }
-    symA.value.denot.kind shouldBe TypeStruct(List("a", "b"),
-                                              List(TypeUInt(Expr(1)), TypeSInt(Expr(2))))
+    symA.value.denot.kind shouldBe TypeStruct(
+      "a",
+      List("a", "b"),
+      List(TypeUInt(Expr(1)), TypeSInt(Expr(2)))
+    )
   }
 
   it should "attach correct types to symbol denotations - function" in {
@@ -679,10 +683,11 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     val entityA = "fsm a {}".asTree[Entity]
     val entityB = "fsm b { c = new a(); }".asTree[Entity]
     cc.addGlobalEntities(List(entityA, entityB))
+    entityA rewrite namer
     val tree = entityB rewrite namer
 
     val symA = tree collectFirst { case Sym(symbol) if symbol.denot.name.str == "a" => symbol }
-    symA.value.denot.kind shouldBe TypeEntity(Nil, Nil, Nil, Nil)
+    symA.value.denot.kind shouldBe TypeEntity("a", Nil, Nil, Nil, Nil)
     val symC = tree collectFirst { case Sym(symbol) if symbol.denot.name.str == "c" => symbol }
     symC.value.denot.kind shouldBe TypeRef(Sym(symA.value))
   }

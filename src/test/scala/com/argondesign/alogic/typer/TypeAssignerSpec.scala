@@ -53,7 +53,7 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
               ("u8", "u8 a;", TypeUInt(8)),
               ("i1", "i1 a;", TypeSInt(1)),
               ("i8", "i8 a;", TypeSInt(8)),
-              ("struct", "s a;", TypeStruct(List("b", "c"), List(TypeUInt(1), TypeSInt(8)))),
+              ("struct", "s a;", TypeStruct("s", List("b", "c"), List(TypeUInt(1), TypeSInt(8)))),
               ("typedef", "t a;", TypeUInt(4)),
               ("uint(2,8)", "uint(2,8) a;", TypeVector(TypeUInt(8), 2)),
               ("u8[2]", "u8 a[2];", TypeArray(TypeUInt(8), 2)),
@@ -111,7 +111,7 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
               ("int(6, 3)", TypeVector(TypeSInt(3), 6)),
               ("void", TypeVoid),
               ("t /* typedef */", TypeUInt(4)),
-              ("s /* struct */", TypeStruct(List("b", "c"), List(TypeUInt(1), TypeSInt(8))))
+              ("s /* struct */", TypeStruct("s", List("b", "c"), List(TypeUInt(1), TypeSInt(8))))
             )
           } {
             expr in {
@@ -489,7 +489,7 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
         for {
           (expr, kind) <- List(
             ("a.a", TypeSInt(6)),
-            ("a.b", TypeStruct(List("a", "b"), List(TypeUInt(1), TypeUInt(8)))),
+            ("a.b", TypeStruct("s", List("a", "b"), List(TypeUInt(1), TypeUInt(8)))),
             ("a.b.a", TypeUInt(1)),
             ("a.b.b", TypeUInt(8)),
             ("pi0.valid", TypeCombFunc(Nil, TypeUInt(1))),

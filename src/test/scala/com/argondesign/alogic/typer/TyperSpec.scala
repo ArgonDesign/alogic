@@ -223,24 +223,24 @@ final class TyperSpec extends FreeSpec with AlogicTest {
         for {
           (text, kind, msg) <- List(
             ("d.x", TypeSInt(8), ""),
-            ("e.y", TypeStruct(List("x"), List(TypeSInt(8))), ""),
+            ("e.y", TypeStruct("a", List("x"), List(TypeSInt(8))), ""),
             ("e.y.x", TypeSInt(8), ""),
             ("d.z", TypeError, "No field named 'z' in '.*'"),
             ("e.z", TypeError, "No field named 'z' in '.*'"),
             ("e.y.z", TypeError, "No field named 'z' in '.*'"),
             ("f.x", TypeSInt(8), ""),
-            ("g.y", TypeStruct(List("x"), List(TypeSInt(8))), ""),
+            ("g.y", TypeStruct("a", List("x"), List(TypeSInt(8))), ""),
             ("g.y.x", TypeSInt(8), ""),
             ("f.valid", TypeCombFunc(Nil, TypeUInt(1)), ""),
             ("g.valid", TypeCombFunc(Nil, TypeUInt(1)), ""),
             ("@bits(d.x)", TypeSInt(8), ""),
-            ("@bits(e.y)", TypeStruct(List("x"), List(TypeSInt(8))), ""),
+            ("@bits(e.y)", TypeStruct("a", List("x"), List(TypeSInt(8))), ""),
             ("@bits(e.y.x)", TypeSInt(8), ""),
             ("@bits(f.x)", TypeSInt(8), ""),
-            ("@bits(g.y)", TypeStruct(List("x"), List(TypeSInt(8))), ""),
+            ("@bits(g.y)", TypeStruct("a", List("x"), List(TypeSInt(8))), ""),
             ("@bits(g.y.x)", TypeSInt(8), ""),
             ("@bits(a.x)", TypeType(TypeSInt(8)), ""),
-            ("@bits(b.y)", TypeType(TypeStruct(List("x"), List(TypeSInt(8)))), ""),
+            ("@bits(b.y)", TypeType(TypeStruct("a", List("x"), List(TypeSInt(8)))), ""),
             ("@bits(b.y.x)", TypeType(TypeSInt(8)), "")
           )
         } {

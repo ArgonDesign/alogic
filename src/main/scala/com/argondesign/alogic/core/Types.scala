@@ -55,7 +55,7 @@ object Types {
   // Array types (analogous to verilog unpacked arrays)
   case class TypeArray(elementType: Type, size: Expr) extends Type
   // Structure type
-  case class TypeStruct(fieldNames: List[String], fieldTypes: List[Type])
+  case class TypeStruct(name: String, fieldNames: List[String], fieldTypes: List[Type])
       extends Type
       with TypeStructImpl
   // Void type
@@ -68,6 +68,7 @@ object Types {
   case class TypeCtrlFunc(argTypes: List[Type], retType: Type) extends Type
   // Entity type e.g. 'fsm foo {}'
   case class TypeEntity(
+      name: String,
       portNames: List[String],
       portTypes: List[Type],
       paramNames: List[String],

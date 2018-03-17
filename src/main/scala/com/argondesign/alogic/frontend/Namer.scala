@@ -244,7 +244,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
 
       // Insert nested entity names so instantiations can resolve them in arbitrary order
       for (Entity(ident: Ident, _, _, _, _, _, _, _, _) <- node.entities) {
-        val symbol = cc.newTypeSymbol(ident, TypeEntity(Nil, Nil, Nil, Nil))
+        val symbol = cc.newTypeSymbol(ident, TypeEntity("", Nil, Nil, Nil, Nil))
         Scopes.insert(symbol)
       }
     }
@@ -308,7 +308,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       val newFieldKinds = fieldKinds map {
         _ rewrite TypeNamer
       }
-      val kind = TypeStruct(fieldNames, newFieldKinds)
+      val kind = TypeStruct(ident.name, fieldNames, newFieldKinds)
       // Insert new type
       val symbol = Scopes.insert(cc.newTypeSymbol(ident, kind))
       // Don't check use of type symbols TODO: check types defined in same file
@@ -319,10 +319,9 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
     }
 
     case entity: Entity => {
+      // Get Ident
+      val ident @ Ident(name) = entity.ref
       // Lookup type
-      val Some(ident) = entity.children collectFirst {
-        case ident: Ident => ident
-      }
       val symbol = lookupType(ident) match {
         case symbol: TypeSymbol => {
           // Attach proper type
@@ -346,7 +345,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
             _.denot.kind
           }
           symbol withDenot symbol.denot.copy(
-            kind = TypeEntity(portNames, portTypes, paramNames, paramTypes))
+            kind = TypeEntity(name, portNames, portTypes, paramNames, paramTypes))
         }
         case other => other
       }

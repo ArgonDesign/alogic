@@ -37,7 +37,7 @@ object TypeCopier {
     if (fieldTypes eq tree.fieldTypes) {
       tree
     } else {
-      TypeStruct(tree.fieldNames, fieldTypes)
+      TypeStruct(tree.name, tree.fieldNames, fieldTypes)
     }
   }
 
@@ -61,7 +61,7 @@ object TypeCopier {
     if ((portTypes eq tree.portTypes) && (paramTypes eq tree.paramTypes)) {
       tree
     } else {
-      TypeEntity(tree.portNames, portTypes, tree.paramNames, paramTypes)
+      TypeEntity(tree.name, tree.portNames, portTypes, tree.paramNames, paramTypes)
     }
   }
 
