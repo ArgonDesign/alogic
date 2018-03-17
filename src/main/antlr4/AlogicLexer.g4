@@ -137,6 +137,10 @@ VERILOG : 'verilog' ;
 NEW     : 'new' ;
 LET     : 'let' ;
 ENTITY  : 'entity' ;
+STATIC  : 'static' ;
+STALL   : 'stall' ;
+COMB    : 'comb'  ;
+STACK   : 'stack' ;
 
 SYNC        : 'sync';
 SYNC_READY  : 'sync' (WS|CMT)* 'ready';
