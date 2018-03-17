@@ -124,6 +124,18 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
         case _ => entity.declarations
       }
 
+      if (variant != "verbatim" &&
+          entity.verbatim.nonEmpty &&
+          instances.isEmpty &&
+          connects.isEmpty &&
+          functions.isEmpty &&
+          fenceStmts.isEmpty &&
+          entities.isEmpty) {
+        cc.warning(
+          entity.ref,
+          s"Entity '${entity.ref.toSource}' contains only verbatim blocks, use a 'verbatim entity' instead")
+      }
+
       TreeCopier(entity)(
         entity.ref,
         declarations,

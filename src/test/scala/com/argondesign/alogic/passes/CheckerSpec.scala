@@ -20,6 +20,7 @@ import com.argondesign.alogic.SourceTextConverters._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Error
+import com.argondesign.alogic.core.Warning
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeValid
 import com.argondesign.alogic.core.StorageTypes.StorageTypeReg
@@ -598,6 +599,28 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
           }
         }
       }
+    }
+
+    "warn for non-verbatim entities with only verbatim contents" - {
+      for (entity <- List("fsm", "network")) {
+        entity in {
+          val tree = s"""|${entity} a {
+                         | in bool b;
+                         | out bool c;
+                         | i8 d;
+                         | param i8 e = 2;
+                         | const i8 f = 2;
+                         | i8 g[2];
+                         |
+                         | verbatim verilog {}
+                         |}""".stripMargin.asTree[Entity]
+          tree rewrite checker shouldBe a[Entity]
+          cc.messages.loneElement should beThe[Warning](
+            s"Entity 'a' contains only verbatim blocks, use a 'verbatim entity' instead"
+          )
+        }
+      }
+
     }
   }
 

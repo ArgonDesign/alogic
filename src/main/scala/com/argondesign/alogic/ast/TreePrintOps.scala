@@ -70,7 +70,6 @@ import com.argondesign.alogic.ast.Trees._
 trait TreePrintOps { this: Tree =>
 
   private[this] final def toSource(expr: Expr): String = expr match {
-
     case ExprCall(expr, args)     => s"${toSource(expr)}(${args map toSource mkString ", "})"
     case ExprUnary(op, expr)      => s"${op}${toSource(expr)}"
     case ExprBinary(lhs, op, rhs) => s"${toSource(lhs)} $op ${toSource(rhs)}"
@@ -82,8 +81,7 @@ trait TreePrintOps { this: Tree =>
     case ExprSlice(expr, lidx, op, ridx) =>
       s"${toSource(expr)}[${toSource(lidx)}${op}${toSource(ridx)}]"
     case ExprSelect(expr, selector)   => s"${toSource(expr)}.${selector}"
-    case ExprRef(Ident(name))         => name
-    case ExprRef(Sym(symbol))         => symbol.denot.name.str
+    case ExprRef(ref)                 => ref.toSource
     case ExprType(kind)               => s"type(${kind.toSource})"
     case ExprInt(true, width, value)  => s"${width}'sd${value}"
     case ExprInt(false, width, value) => s"${width}'d${value}"
@@ -201,9 +199,11 @@ trait TreePrintOps { this: Tree =>
   //        case _: ErrorStmt => "/*Error statement*/"
 
   def toSource: String = this match {
-    case expr: Expr => toSource(expr)
-    case stmt: Stmt => toSource(stmt)
-    case other      => ???
+    case expr: Expr  => toSource(expr)
+    case stmt: Stmt  => toSource(stmt)
+    case Ident(name) => name
+    case Sym(symbol) => symbol.denot.name.str
+    case _           => ???
   }
 //
 //    def v(indent: Int)(node: Node): String = {
