@@ -828,6 +828,27 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     cc.messages.loneElement should beThe[Warning]("Parameter 'b' is unused")
   }
 
+  it should "issue warning for unused input ports - but not in verbatim entity" in {
+    val entity = "verbatim entity a { in i8 b; }".asTree[Entity]
+    cc.addGlobalEntity(entity)
+    entity rewrite namer
+    cc.messages shouldBe empty
+  }
+
+  it should "issue warning for unused output ports - but not in verbatim entity" in {
+    val entity = "verbatim entity a { out i8 b; }".asTree[Entity]
+    cc.addGlobalEntity(entity)
+    entity rewrite namer
+    cc.messages shouldBe empty
+  }
+
+  it should "issue warning for unused parameters - but not in verbatim entity" in {
+    val entity = "verbatim entity a { param i8 b = 8'd9; }".asTree[Entity]
+    cc.addGlobalEntity(entity)
+    entity rewrite namer
+    cc.messages shouldBe empty
+  }
+
   it should "issue warning for unused constants" in {
     val entity = "fsm a { const i8 b = 8'd9; }".asTree[Entity]
     cc.addGlobalEntity(entity)

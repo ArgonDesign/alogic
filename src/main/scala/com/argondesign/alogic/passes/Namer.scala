@@ -349,6 +349,12 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         }
         case _ => unreachable
       }
+      // Mark all declarations used if verbatim entity
+      if (entity.variant == "verbatim") {
+        for (Decl(Sym(symbol), _, _) <- entity.declarations) {
+          Scopes.markUsed(symbol)
+        }
+      }
       // Rewrite node
       val sym = Sym(symbol) withLoc ident.loc
       entity.copy(ref = sym) withLoc entity.loc withVariant entity.variant
