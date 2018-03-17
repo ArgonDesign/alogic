@@ -155,6 +155,38 @@ final class TyperSpec extends FreeSpec with AlogicTest {
           }
         }
       }
+
+      "right hand sides of assignments" - {
+        for {
+          (assign, expr, msg) <- List(
+            ("i8 a; a = 2", ExprInt(true, 8, 2), ""),
+            ("u8 a; a = 2", ExprInt(false, 8, 2), ""),
+            ("i8 a; a = 'd2", ExprInt(true, 8, 2), ""),
+            ("u8 a; a = 'd2", ExprInt(false, 8, 2), ""),
+            ("int(N) a; a = 2", ExprError(), "Cannot infer width of right hand side of assignment")
+          )
+        } {
+          val text = assign.trim.replaceAll(" +", " ")
+          text in {
+            val entity = s"""|fsm a {
+                             |  param u8 N = 8'd2;
+                             |  void main() {
+                             |    ${text};
+                             |    N;
+                             |    fence;
+                             |  }
+                             |}""".stripMargin.asTree[Entity]
+            val tree = xform(entity)
+            if (msg.isEmpty) {
+              val stmt = (tree collectFirst { case a: StmtAssign => a }).value
+              stmt.rhs shouldBe expr
+              cc.messages shouldBe empty
+            } else {
+              cc.messages.last should beThe[Error](msg)
+            }
+          }
+        }
+      }
     }
 
     "type check" - {

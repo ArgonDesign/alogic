@@ -115,7 +115,7 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       case Function(ref, _) if hasError(tree) => Function(ref, Nil) withLoc tree.loc
 
       ////////////////////////////////////////////////////////////////////////////
-      // Infer width of of unsized literals in expressions
+      // Infer width of of unsized literals where applicable
       ////////////////////////////////////////////////////////////////////////////
 
       case ExprBinary(lhs @ ExprNum(signed, value), op, rhs) => {
@@ -160,7 +160,7 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
           }
         }
 
-        // Figure out width of rhs
+        // Figure out width of lhs
         val widthOpt = kindOpt flatMap { _.width.value } map { _.toInt }
 
         if (kindOpt.isDefined && widthOpt.isEmpty) {
@@ -178,11 +178,7 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         } withLoc lhs.loc
       }
 
-      ////////////////////////////////////////////////////////////////////////////
-      // Infer width of of unsized literals in initializations
-      ////////////////////////////////////////////////////////////////////////////
-
-      case decl @ Decl(_, kind, Some(init: ExprNum)) => {
+      case decl @ Decl(_, kind, Some(init @ ExprNum(_, value))) => {
         require(kind.isPacked)
         // Figure out width of lhs
         val widthOpt = kind.width.value map { _.toInt }
@@ -190,7 +186,7 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         // Convert init
         val newInit = widthOpt map { width =>
           // TODO: Check value fits width ...
-          ExprInt(kind.isSigned, width, init.value)
+          ExprInt(kind.isSigned, width, value)
         } getOrElse {
           cc.error(init, s"Cannot infer width of initializer")
           ExprError()
@@ -199,6 +195,26 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         TypeAssigner(newInit)
 
         decl.copy(init = Some(newInit)) withLoc tree.loc
+      }
+
+      case stmt @ StmtAssign(lhs, rhs @ ExprNum(_, value)) => {
+        checkPacked(lhs, "Left hand side of assignment") map {
+          StmtError() withLoc _.loc
+        } getOrElse {
+          // Figure out width of lhs
+          val widthOpt = lhs.tpe.width.value map { _.toInt }
+
+          // Convert rhs
+          widthOpt map { width =>
+            // TODO: Check value fits width ...
+            val newRhs = ExprInt(lhs.tpe.isSigned, width, value) withLoc rhs.loc
+            TypeAssigner(newRhs)
+            stmt.copy(rhs = newRhs) withLoc stmt.loc
+          } getOrElse {
+            cc.error(rhs, s"Cannot infer width of right hand side of assignment")
+            StmtError() withLoc lhs.loc
+          }
+        }
       }
 
       ////////////////////////////////////////////////////////////////////////////
