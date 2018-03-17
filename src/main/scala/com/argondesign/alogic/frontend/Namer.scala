@@ -347,7 +347,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
           symbol withDenot symbol.denot.copy(
             kind = TypeEntity(name, portNames, portTypes, paramNames, paramTypes))
         }
-        case other => other
+        case _ => unreachable
       }
       // Rewrite node
       val sym = Sym(symbol) withLoc ident.loc

@@ -270,7 +270,9 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
           tree
         } else {
           val thing = if (inConnect) "port" else "field"
-          cc.error(tree, s"No ${thing} named '${selector}' in '${expr}'")
+          cc.error(
+            tree,
+            s"No ${thing} named '${selector}' in '${expr.toSource}' of type '${expr.tpe.toSource}'")
           ExprError() withLoc tree.loc
         }
       }

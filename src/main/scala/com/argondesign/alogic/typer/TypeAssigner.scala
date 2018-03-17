@@ -40,6 +40,8 @@ object TypeAssigner {
       case node: TypeDefinition => apply(node)
       case _                    => cc.ice(tree, s"Don't know how to type '${tree}")
     }
+    assert(tree.hasTpe)
+    assert(!tree.tpe.isInstanceOf[TypeRef])
     tree
   }
 
@@ -256,7 +258,7 @@ object TypeAssigner {
     val tpe = if (symbol == ErrorSymbol) {
       TypeError
     } else {
-      symbol.denot.kind match {
+      symbol.denot.kind.chase match {
         case TypeParam(kind)    => kind
         case TypeConst(kind)    => kind
         case TypePipeline(kind) => kind
