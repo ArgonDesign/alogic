@@ -167,23 +167,37 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       }
 
       case Connect(lhs, rhss) => {
-        val lhsWidthOpt = lhs.tpe.width.value
-        val errLoc = for {
-          rhs <- rhss
-          lhsWidth <- lhsWidthOpt
-          rhsWidth <- rhs.tpe.width.value
-          if lhsWidth != rhsWidth
-        } yield {
-          val loc = tree.loc.copy(point = rhs.loc.start)
-          cc.error(loc, s"Port widths do not match, ${lhsWidth} -> ${rhsWidth}")
-          loc
-        }
-
-        errLoc.headOption map { loc =>
+        def mkErrConnect(loc: Loc): Tree = {
           val err = ExprError() withLoc loc
           TypeAssigner(err)
           Connect(err, List(err)) withLoc loc
-        } getOrElse tree
+        }
+
+        (lhs.tpe, rhss.head.tpe) match {
+          case (_: TypeEntity, _: TypeEntity) => tree
+          case (_: TypeEntity, _) => {
+            cc.error(rhss.head, "Cannot connect pipeline port to non-pipeline port")
+            mkErrConnect(rhss.head.loc)
+          }
+          case (_, _: TypeEntity) => {
+            cc.error(lhs, "Cannot connect non-pipeline port to pipeline port")
+            mkErrConnect(lhs.loc)
+          }
+          case _ => {
+            val lhsWidthOpt = lhs.tpe.width.value
+            val errLoc = for {
+              rhs <- rhss
+              lhsWidth <- lhsWidthOpt
+              rhsWidth <- rhs.tpe.width.value
+              if lhsWidth != rhsWidth
+            } yield {
+              val loc = tree.loc.copy(point = rhs.loc.start)
+              cc.error(loc, s"Port widths do not match, ${lhsWidth} -> ${rhsWidth}")
+              loc
+            }
+            errLoc.headOption map { mkErrConnect(_) } getOrElse tree
+          }
+        }
       } followedBy {
         inConnect = false
       }

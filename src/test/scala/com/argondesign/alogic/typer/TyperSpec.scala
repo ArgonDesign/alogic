@@ -835,22 +835,32 @@ final class TyperSpec extends FreeSpec with AlogicTest {
         "widths" - {
           for {
             (expr, widths) <- List(
+              ("pi0 -> po0", Nil),
               ("pi1 -> po1", Nil),
               ("pi2 -> po2", Nil),
               ("pi3 -> po3", Nil),
+              ("pi0 -> po1", List(0, 1)),
+              ("pi0 -> po2", List(0, 2)),
+              ("pi0 -> po3", List(0, 3)),
+              ("pi1 -> po0", List(1, 0)),
               ("pi1 -> po2", List(1, 2)),
               ("pi1 -> po3", List(1, 3)),
+              ("pi2 -> po0", List(2, 0)),
               ("pi2 -> po1", List(2, 1)),
               ("pi2 -> po3", List(2, 3)),
+              ("pi3 -> po0", List(3, 0)),
               ("pi3 -> po1", List(3, 1)),
               ("pi3 -> po2", List(3, 2)),
-              ("pi1 -> po1, po2, po3", List(1, 2, 3)),
-              ("pi2 -> po1, po2, po3", List(2, 1, 3)),
-              ("pi3 -> po1, po2, po3", List(3, 1, 2))
+              ("pi0 -> po0, po1, po2, po3", List(0, 1, 2, 3)),
+              ("pi1 -> po0, po1, po2, po3", List(1, 0, 2, 3)),
+              ("pi2 -> po0, po1, po2, po3", List(2, 0, 1, 3)),
+              ("pi3 -> po0, po1, po2, po3", List(3, 0, 1, 2))
             )
           } {
             expr in {
               val tree = s"""|network p {
+                             |  in void pi0;
+                             |  out void po0;
                              |  in u1 pi1;
                              |  out u1 po1;
                              |  in u2 pi2;
@@ -859,6 +869,8 @@ final class TyperSpec extends FreeSpec with AlogicTest {
                              |  out u3 po3;
                              |
                              |  fence {
+                             |    pi0;
+                             |    po0;
                              |    pi1;
                              |    po1;
                              |    pi2;
@@ -878,6 +890,48 @@ final class TyperSpec extends FreeSpec with AlogicTest {
                 for ((msg, rw) <- cc.messages zip rws) {
                   msg should beThe[Error](s"Port widths do not match, ${lw} -> ${rw}")
                 }
+              }
+            }
+          }
+        }
+
+        "nested entities" - {
+          for {
+            (expr, msg) <- List(
+              ("pipea -> pipeb", ""),
+              ("pipea -> pipec", ""),
+              ("pipeb -> pipea", ""),
+              ("pipeb -> pipec", ""),
+              ("pipec -> pipea", ""),
+              ("pipec -> pipeb", ""),
+              ("pipea -> po1", "Cannot connect pipeline port to non-pipeline port"),
+              ("pi1 -> pipea", "Cannot connect non-pipeline port to pipeline port")
+            )
+          } {
+            expr in {
+              val tree = s"""|network p {
+                             |  in u1 pi1;
+                             |  out u1 po1;
+                             |
+                             |  new fsm pipea {}
+                             |  new fsm pipeb {}
+                             |  new fsm pipec {}
+                             |
+                             |  fence {
+                             |    pi1;
+                             |    po1;
+                             |    pipea;
+                             |    pipeb;
+                             |    pipec;
+                             |  }
+                             |
+                             |  ${expr};
+                             |}""".stripMargin.asTree[Entity]
+              xform(tree)
+              if (msg.isEmpty) {
+                cc.messages shouldBe empty
+              } else {
+                cc.messages.loneElement should beThe[Error](msg)
               }
             }
           }

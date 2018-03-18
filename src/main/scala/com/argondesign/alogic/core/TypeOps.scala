@@ -34,12 +34,14 @@ trait TypeOps extends TypePrintOps { this: Type =>
     case _                  => false
   }
 
-  // Is this a 'packed' type, i.e.: does it have a finite bit-vector representation?
+  // Is this a 'packed' type, i.e.: does it have a finite, possible 0 width
+  // bit-vector representation?
   final def isPacked(implicit cc: CompilerContext): Boolean = this.chase match {
     case _: TypeSInt        => true
     case _: TypeUInt        => true
     case _: TypeStruct      => true
     case _: TypeVector      => true
+    case TypeVoid           => true
     case self: TypeIn       => self.kind.isPacked
     case self: TypeOut      => self.kind.isPacked
     case self: TypePipeline => self.kind.isPacked
@@ -61,6 +63,7 @@ trait TypeOps extends TypePrintOps { this: Type =>
           Expr(0) withLoc Loc.synthetic
         }
       }
+      case TypeVoid           => Expr(0) withLoc Loc.synthetic
       case self: TypeVector   => self.size * self.elementType.width
       case self: TypeIn       => self.kind.width
       case self: TypeOut      => self.kind.width
