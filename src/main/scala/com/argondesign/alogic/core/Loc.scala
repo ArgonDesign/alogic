@@ -21,7 +21,7 @@ import scala.io.AnsiColor
 
 case class Loc(source: Source, start: Int, end: Int, point: Int) {
 
-  def context = {
+  def context(ansiColor: String) = {
     val startLine = source.lineFor(start)
     val endLine = source.lineFor(end)
     val lines = source.lines.slice(startLine - 1, endLine)
@@ -38,7 +38,7 @@ case class Loc(source: Source, start: Int, end: Int, point: Int) {
       case _                => ' '
     } mkString ""
 
-    val colorText = text.slice(0, s) + AnsiColor.RED + AnsiColor.BOLD +
+    val colorText = text.slice(0, s) + ansiColor + AnsiColor.BOLD +
       text.slice(s, e) + AnsiColor.RESET +
       text.slice(e, text.length)
 

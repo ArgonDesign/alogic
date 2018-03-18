@@ -20,9 +20,12 @@ import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.util.unreachable
 import org.antlr.v4.runtime.ParserRuleContext
 
+import scala.io.AnsiColor
+
 sealed abstract trait Message {
   protected val lop: Option[Loc]
   protected val cat: String
+  protected val color: String
   val msg: Seq[String]
 
   lazy val loc: Loc = lop match {
@@ -36,7 +39,7 @@ sealed abstract trait Message {
       case None      => s"${cat}: "
     }
     val context = lop match {
-      case Some(loc) => "\n" + loc.context
+      case Some(loc) => "\n" + loc.context(color)
       case None      => ""
     }
     (msg mkString (prefix, "\n" + prefix + "... ", "")) + context
@@ -47,6 +50,7 @@ sealed abstract trait Message {
 // can recover from, and still produce functional output.
 case class Warning(msg: Seq[String], lop: Option[Loc] = None) extends Message {
   val cat = "WARNING"
+  val color = AnsiColor.MAGENTA
 }
 
 // Errors indicate situations where the compiler can still make
@@ -56,12 +60,14 @@ case class Warning(msg: Seq[String], lop: Option[Loc] = None) extends Message {
 // will indicate failure.
 case class Error(msg: Seq[String], lop: Option[Loc] = None) extends Message {
   val cat = "ERROR"
+  val color = AnsiColor.RED
 }
 
 // Fatal indicates situations where the compiler cannot make forward
 // progress. The first fatal message will cause the program to exit.
 case class Fatal(msg: Seq[String], lop: Option[Loc] = None) extends Message {
   val cat = "FATAL"
+  val color = AnsiColor.RED
 }
 
 // Internal compiler error indicates a programming error in the compiler
@@ -69,6 +75,7 @@ case class Fatal(msg: Seq[String], lop: Option[Loc] = None) extends Message {
 case class ICE(initialMsg: Seq[String], lop: Option[Loc] = None) extends Message {
   val cat = "INTERNAL COMPILER ERROR"
   val msg = initialMsg ++ Seq("Please file a bug report")
+  val color = AnsiColor.CYAN
 }
 
 case class FatalErrorException(cc: CompilerContext, message: Fatal) extends Exception
