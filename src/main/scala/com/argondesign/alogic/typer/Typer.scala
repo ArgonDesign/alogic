@@ -112,6 +112,7 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
 
   override def transform(tree: Tree): Tree = {
     // TODO: warn for field hiding by extension types
+    // TODO: reduction of 1 bit value is error
 
     val result: Tree = tree match {
       ////////////////////////////////////////////////////////////////////////////

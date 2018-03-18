@@ -1349,6 +1349,47 @@ final class ParserSpec extends FreeSpec with AlogicTest {
           }
           // TODO: complete all precedence checks
         }
+
+        "honouring associativity" - {
+          for {
+            (expr, equiv) <- List(
+              ("a()()", "(a())()"),
+              ("a[0][0]", "(a[0])[0]"),
+              ("a[1:0][1:0]", "(a[1:0])[1:0]"),
+              ("a.b.c", "(a.b).c"),
+              ("+ + (a)", "+ (+ (a))"),
+              ("- - (a)", "- (- (a))"),
+              ("~ ~ (a)", "~ (~ (a))"),
+              ("! ! (a)", "! (! (a))"),
+              ("& & (a)", "& (& (a))"),
+              ("| | (a)", "| (| (a))"),
+              ("^ ^ (a)", "^ (^ (a))"),
+              ("a * b * c", "(a * b) * c"),
+              ("a / b / c", "(a / b) / c"),
+              ("a % b % c", "(a % b) % c"),
+              ("a + b + c", "(a + b) + c"),
+              ("a - b - c", "(a - b) - c"),
+              ("a << b << c", "(a << b) << c"),
+              ("a >> b >> c", "(a >> b) >> c"),
+              ("a <<< b <<< c", "(a <<< b) <<< c"),
+              ("a >>> b >>> c", "(a >>> b) >>> c"),
+              ("a > b > c", "(a > b) > c"),
+              ("a >= b >= c", "(a >= b) >= c"),
+              ("a < b < c", "(a < b) < c"),
+              ("a <= b <= c", "(a <= b) <= c"),
+              ("a == b == c", "(a == b) == c"),
+              ("a != b != c", "(a != b) != c"),
+              ("a & b & c", "(a & b) & c"),
+              ("a ^ b ^ c", "(a ^ b) ^ c"),
+              ("a | b | c", "(a | b) | c"),
+              ("a && b && c", "(a && b) && c"),
+              ("a || b || c", "(a || b) || c"),
+              ("a ? b : c ? d : e", "a ? b : (c ? d : e)")
+            )
+          } {
+            expr in { expr.asTree[Expr] shouldBe equiv.asTree[Expr] }
+          }
+        }
       }
 
     }

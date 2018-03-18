@@ -73,7 +73,8 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
         ExprBinary(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1))) withLoc loc
       }
       override def visitExprTernary(ctx: ExprTernaryContext) = {
-        ExprTernary(visit(ctx.expr(0)), visit(ctx.expr(1)), visit(ctx.expr(2))) withLoc ctx.loc
+        val loc = ctx.loc.copy(point = ctx.op.getStartIndex)
+        ExprTernary(visit(ctx.expr(0)), visit(ctx.expr(1)), visit(ctx.expr(2))) withLoc loc
       }
       override def visitExprRep(ctx: ExprRepContext) = {
         ExprRep(visit(ctx.expr(0)), visit(ctx.expr(1))) withLoc ctx.loc
