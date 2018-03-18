@@ -17,22 +17,17 @@ package com.argondesign.alogic.frontend
 
 import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.SourceTextConverters._
-import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.ast.Trees.Expr.ImplicitConversions._
-import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Error
+import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeReady
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeValid
+import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Error
 import com.argondesign.alogic.core.Message
-import com.argondesign.alogic.core.StorageTypes.StorageSliceBubble
-import com.argondesign.alogic.core.StorageTypes.StorageSliceBwd
-import com.argondesign.alogic.core.StorageTypes.StorageSliceFwd
-import com.argondesign.alogic.core.StorageTypes.StorageTypeReg
-import com.argondesign.alogic.core.StorageTypes.StorageTypeSlices
-import com.argondesign.alogic.core.StorageTypes.StorageTypeWire
+import com.argondesign.alogic.core.Warning
+import com.argondesign.alogic.core.StorageTypes._
 import com.argondesign.alogic.core.Types._
-
 import org.scalatest.FreeSpec
 import org.scalatest.matchers.MatchResult
 import org.scalatest.matchers.Matcher
@@ -904,6 +899,10 @@ final class ParserSpec extends FreeSpec with AlogicTest {
       "expressions" - {
 
         "literals" - {
+          "string" in {
+            "\"foo\"".asTree[Expr] shouldBe ExprStr("foo")
+          }
+
           "true" in {
             "true".asTree[Expr] shouldBe ExprInt(false, 1, 1)
           }
@@ -912,61 +911,275 @@ final class ParserSpec extends FreeSpec with AlogicTest {
             "false".asTree[Expr] shouldBe ExprInt(false, 1, 0)
           }
 
-          "integer" in {
-            "42".asTree[Expr] shouldBe ExprNum(true, 42)
+          "unsized integers" - {
+            for {
+              (literal, result, msg) <- List(
+                ("      17 ", ExprNum(false, 17), ""),
+                ("      17s", ExprNum(true, 17), ""),
+                ("     +17 ", ExprNum(false, 17), ""),
+                ("     +17s", ExprNum(true, 17), ""),
+                ("     -17 ", ExprError(), "Negative unsigned literal"),
+                ("     -17s", ExprNum(true, -17), ""),
+                ("    'd17 ", ExprNum(false, 17), ""),
+                ("    'd17s", ExprNum(true, 17), ""),
+                ("   +'d17 ", ExprNum(false, 17), ""),
+                ("   +'d17s", ExprNum(true, 17), ""),
+                ("   -'d17 ", ExprError(), "Negative unsigned literal"),
+                ("   -'d17s", ExprNum(true, -17), ""),
+                (" 'b10001 ", ExprNum(false, 17), ""),
+                (" 'b10001s", ExprNum(true, 17), ""),
+                ("+'b10001 ", ExprNum(false, 17), ""),
+                ("+'b10001s", ExprNum(true, 17), ""),
+                ("-'b10001 ", ExprError(), "Negative unsigned literal"),
+                ("-'b10001s", ExprNum(true, -17), ""),
+                ("    'h11 ", ExprNum(false, 17), ""),
+                ("    'h11s", ExprNum(true, 17), ""),
+                ("   +'h11 ", ExprNum(false, 17), ""),
+                ("   +'h11s", ExprNum(true, 17), ""),
+                ("   -'h11 ", ExprError(), "Negative unsigned literal"),
+                ("   -'h11s", ExprNum(true, -17), ""),
+                ("       0 ", ExprNum(false, 0), ""),
+                ("       0s", ExprNum(true, 0), ""),
+                ("      +0 ", ExprNum(false, 0), ""),
+                ("      +0s", ExprNum(true, 0), ""),
+                ("      -0 ", ExprNum(false, 0), ""),
+                ("      -0s", ExprNum(true, 0), ""),
+                // Whitespace after sign
+                ("     + 17 ", ExprNum(false, 17), ""),
+                ("     + 17s", ExprNum(true, 17), ""),
+                ("     - 17 ", ExprError(), "Negative unsigned literal"),
+                ("     - 17s", ExprNum(true, -17), ""),
+                ("   + 'd17 ", ExprNum(false, 17), ""),
+                ("   + 'd17s", ExprNum(true, 17), ""),
+                ("   - 'd17 ", ExprError(), "Negative unsigned literal"),
+                ("   - 'd17s", ExprNum(true, -17), ""),
+                ("+ 'b10001 ", ExprNum(false, 17), ""),
+                ("+ 'b10001s", ExprNum(true, 17), ""),
+                ("- 'b10001 ", ExprError(), "Negative unsigned literal"),
+                ("- 'b10001s", ExprNum(true, -17), ""),
+                ("   + 'h11 ", ExprNum(false, 17), ""),
+                ("   + 'h11s", ExprNum(true, 17), ""),
+                ("   - 'h11 ", ExprError(), "Negative unsigned literal"),
+                ("   - 'h11s", ExprNum(true, -17), ""),
+                ("      + 0 ", ExprNum(false, 0), ""),
+                ("      + 0s", ExprNum(true, 0), ""),
+                ("      - 0 ", ExprNum(false, 0), ""),
+                ("      - 0s", ExprNum(true, 0), ""),
+                // Underscores
+                ("         1_7 ", ExprNum(false, 17), ""),
+                ("         1_7s", ExprNum(true, 17), ""),
+                ("        -1_7 ", ExprError(), "Negative unsigned literal"),
+                ("        -1_7s", ExprNum(true, -17), ""),
+                ("       'd1_7 ", ExprNum(false, 17), ""),
+                ("       'd1_7s", ExprNum(true, 17), ""),
+                ("      -'d1_7 ", ExprError(), "Negative unsigned literal"),
+                ("      -'d1_7s", ExprNum(true, -17), ""),
+                (" 'b1_0_0_0_1 ", ExprNum(false, 17), ""),
+                (" 'b1_0_0_0_1s", ExprNum(true, 17), ""),
+                ("-'b1_0_0_0_1 ", ExprError(), "Negative unsigned literal"),
+                ("-'b1_0_0_0_1s", ExprNum(true, -17), ""),
+                ("       'h1_1 ", ExprNum(false, 17), ""),
+                ("       'h1_1s", ExprNum(true, 17), ""),
+                ("      -'h1_1 ", ExprError(), "Negative unsigned literal"),
+                ("      -'h1_1s", ExprNum(true, -17), ""),
+                // Malformed cases
+                ("     'b2 ", ExprError(), "Invalid digit for base 2 value"),
+                ("     'da ", ExprError(), "Invalid digit for base 10 value")
+              )
+            } {
+              literal in {
+                literal.asTree[Expr] shouldBe result
+                if (msg.nonEmpty) {
+                  cc.messages.loneElement should beThe[Error](msg)
+                } else {
+                  cc.messages shouldBe empty
+                }
+              }
+            }
           }
 
-          "unsized unsigned binary integer" in {
-            "'b11".asTree[Expr] shouldBe ExprNum(false, 3)
+          "sized integers" - {
+            for {
+              (literal, result, msg) <- List(
+                (" 4'd3     ", ExprInt(false, 4, 3), ""),
+                (" 4'd3s    ", ExprInt(true, 4, 3), ""),
+                ("+4'd3     ", ExprInt(false, 4, 3), ""),
+                ("+4'd3s    ", ExprInt(true, 4, 3), ""),
+                ("-4'd3     ", ExprError(), "Negative unsigned literal"),
+                ("-4'd3s    ", ExprInt(true, 4, -3), ""),
+                (" 4'd0     ", ExprInt(false, 4, 0), ""),
+                (" 4'd0s    ", ExprInt(true, 4, 0), ""),
+                ("+4'd0     ", ExprInt(false, 4, 0), ""),
+                ("+4'd0s    ", ExprInt(true, 4, 0), ""),
+                ("-4'd0     ", ExprInt(false, 4, 0), ""),
+                ("-4'd0s    ", ExprInt(true, 4, 0), ""),
+                (" 4'd1     ", ExprInt(false, 4, 1), ""),
+                (" 4'd1s    ", ExprInt(true, 4, 1), ""),
+                ("+4'd1     ", ExprInt(false, 4, 1), ""),
+                ("+4'd1s    ", ExprInt(true, 4, 1), ""),
+                ("-4'd1     ", ExprError(), "Negative unsigned literal"),
+                ("-4'd1s    ", ExprInt(true, 4, -1), ""),
+                (" 4'd15    ", ExprInt(false, 4, 15), ""),
+                (" 4'd15s   ",
+                 ExprInt(true, 4, -1),
+                 "Apparently positive literal stands for negative value -1"),
+                ("+4'd15    ", ExprInt(false, 4, 15), ""),
+                ("+4'd15s   ",
+                 ExprInt(true, 4, -1),
+                 "Apparently positive literal stands for negative value -1"),
+                ("-4'd15    ", ExprError(), "Negative unsigned literal"),
+                ("-4'd15s   ",
+                 ExprInt(true, 4, 1),
+                 "Apparently negative literal stands for positive value 1"),
+                (" 4'd7     ", ExprInt(false, 4, 7), ""),
+                (" 4'd7s    ", ExprInt(true, 4, 7), ""),
+                ("+4'd7     ", ExprInt(false, 4, 7), ""),
+                ("+4'd7s    ", ExprInt(true, 4, 7), ""),
+                ("-4'd7     ", ExprError(), "Negative unsigned literal"),
+                ("-4'd7s    ", ExprInt(true, 4, -7), ""),
+                (" 4'd8     ", ExprInt(false, 4, 8), ""),
+                (" 4'd8s    ",
+                 ExprInt(true, 4, -8),
+                 "Apparently positive literal stands for negative value -8"),
+                ("+4'd8     ", ExprInt(false, 4, 8), ""),
+                ("+4'd8s    ",
+                 ExprInt(true, 4, -8),
+                 "Apparently positive literal stands for negative value -8"),
+                ("-4'd8     ", ExprError(), "Negative unsigned literal"),
+                ("-4'd8s    ", ExprInt(true, 4, -8), ""),
+                (" 4'd16    ", ExprError(), "Value specifier for 4 bit literal requires 5 bits"),
+                (" 4'd16s   ", ExprError(), "Value specifier for 4 bit literal requires 5 bits"),
+                ("+4'd16    ", ExprError(), "Value specifier for 4 bit literal requires 5 bits"),
+                ("+4'd16s   ", ExprError(), "Value specifier for 4 bit literal requires 5 bits"),
+                ("-4'd16    ", ExprError(), "Value specifier for 4 bit literal requires 5 bits"),
+                ("-4'd16s   ", ExprError(), "Value specifier for 4 bit literal requires 5 bits"),
+                (" 4'b11    ", ExprInt(false, 4, 3), ""),
+                (" 4'b11s   ", ExprInt(true, 4, 3), ""),
+                ("+4'b11    ", ExprInt(false, 4, 3), ""),
+                ("+4'b11s   ", ExprInt(true, 4, 3), ""),
+                ("-4'b11    ", ExprError(), "Negative unsigned literal"),
+                ("-4'b11s   ", ExprInt(true, 4, -3), ""),
+                (" 4'b0     ", ExprInt(false, 4, 0), ""),
+                (" 4'b0s    ", ExprInt(true, 4, 0), ""),
+                ("+4'b0     ", ExprInt(false, 4, 0), ""),
+                ("+4'b0s    ", ExprInt(true, 4, 0), ""),
+                ("-4'b0     ", ExprInt(false, 4, 0), ""),
+                ("-4'b0s    ", ExprInt(true, 4, 0), ""),
+                (" 4'b1     ", ExprInt(false, 4, 1), ""),
+                (" 4'b1s    ", ExprInt(true, 4, 1), ""),
+                ("+4'b1     ", ExprInt(false, 4, 1), ""),
+                ("+4'b1s    ", ExprInt(true, 4, 1), ""),
+                ("-4'b1     ", ExprError(), "Negative unsigned literal"),
+                ("-4'b1s    ", ExprInt(true, 4, -1), ""),
+                (" 4'b1111  ", ExprInt(false, 4, 15), ""),
+                (" 4'b1111s ",
+                 ExprInt(true, 4, -1),
+                 "Apparently positive literal stands for negative value -1"),
+                ("+4'b1111  ", ExprInt(false, 4, 15), ""),
+                ("+4'b1111s ",
+                 ExprInt(true, 4, -1),
+                 "Apparently positive literal stands for negative value -1"),
+                ("-4'b1111  ", ExprError(), "Negative unsigned literal"),
+                ("-4'b1111s ",
+                 ExprInt(true, 4, 1),
+                 "Apparently negative literal stands for positive value 1"),
+                (" 4'b111   ", ExprInt(false, 4, 7), ""),
+                (" 4'b111s  ", ExprInt(true, 4, 7), ""),
+                ("+4'b111   ", ExprInt(false, 4, 7), ""),
+                ("+4'b111s  ", ExprInt(true, 4, 7), ""),
+                ("-4'b111   ", ExprError(), "Negative unsigned literal"),
+                ("-4'b111s  ", ExprInt(true, 4, -7), ""),
+                (" 4'b1000  ", ExprInt(false, 4, 8), ""),
+                (" 4'b1000s ",
+                 ExprInt(true, 4, -8),
+                 "Apparently positive literal stands for negative value -8"),
+                ("+4'b1000  ", ExprInt(false, 4, 8), ""),
+                ("+4'b1000s ",
+                 ExprInt(true, 4, -8),
+                 "Apparently positive literal stands for negative value -8"),
+                ("-4'b1000  ", ExprError(), "Negative unsigned literal"),
+                ("-4'b1000s ", ExprInt(true, 4, -8), ""),
+                (" 4'b10000 ", ExprError(), "Value specifier for 4 bit literal requires 5 bits"),
+                (" 4'b10000s", ExprError(), "Value specifier for 4 bit literal requires 5 bits"),
+                ("+4'b10000 ", ExprError(), "Value specifier for 4 bit literal requires 5 bits"),
+                ("+4'b10000s", ExprError(), "Value specifier for 4 bit literal requires 5 bits"),
+                ("-4'b10000 ", ExprError(), "Value specifier for 4 bit literal requires 5 bits"),
+                ("-4'b10000s", ExprError(), "Value specifier for 4 bit literal requires 5 bits"),
+                (" 4'h3     ", ExprInt(false, 4, 3), ""),
+                (" 4'h3s    ", ExprInt(true, 4, 3), ""),
+                ("+4'h3     ", ExprInt(false, 4, 3), ""),
+                ("+4'h3s    ", ExprInt(true, 4, 3), ""),
+                ("-4'h3     ", ExprError(), "Negative unsigned literal"),
+                ("-4'h3s    ", ExprInt(true, 4, -3), ""),
+                (" 4'h0     ", ExprInt(false, 4, 0), ""),
+                (" 4'h0s    ", ExprInt(true, 4, 0), ""),
+                ("+4'h0     ", ExprInt(false, 4, 0), ""),
+                ("+4'h0s    ", ExprInt(true, 4, 0), ""),
+                ("-4'h0     ", ExprInt(false, 4, 0), ""),
+                ("-4'h0s    ", ExprInt(true, 4, 0), ""),
+                (" 4'h1     ", ExprInt(false, 4, 1), ""),
+                (" 4'h1s    ", ExprInt(true, 4, 1), ""),
+                ("+4'h1     ", ExprInt(false, 4, 1), ""),
+                ("+4'h1s    ", ExprInt(true, 4, 1), ""),
+                ("-4'h1     ", ExprError(), "Negative unsigned literal"),
+                ("-4'h1s    ", ExprInt(true, 4, -1), ""),
+                (" 4'hf     ", ExprInt(false, 4, 15), ""),
+                (" 4'hfs    ",
+                 ExprInt(true, 4, -1),
+                 "Apparently positive literal stands for negative value -1"),
+                ("+4'hf     ", ExprInt(false, 4, 15), ""),
+                ("+4'hfs    ",
+                 ExprInt(true, 4, -1),
+                 "Apparently positive literal stands for negative value -1"),
+                ("-4'hf     ", ExprError(), "Negative unsigned literal"),
+                ("-4'hfs    ",
+                 ExprInt(true, 4, 1),
+                 "Apparently negative literal stands for positive value 1"),
+                (" 4'h7     ", ExprInt(false, 4, 7), ""),
+                (" 4'h7s    ", ExprInt(true, 4, 7), ""),
+                ("+4'h7     ", ExprInt(false, 4, 7), ""),
+                ("+4'h7s    ", ExprInt(true, 4, 7), ""),
+                ("-4'h7     ", ExprError(), "Negative unsigned literal"),
+                ("-4'h7s    ", ExprInt(true, 4, -7), ""),
+                (" 4'h8     ", ExprInt(false, 4, 8), ""),
+                (" 4'h8s    ",
+                 ExprInt(true, 4, -8),
+                 "Apparently positive literal stands for negative value -8"),
+                ("+4'h8     ", ExprInt(false, 4, 8), ""),
+                ("+4'h8s    ",
+                 ExprInt(true, 4, -8),
+                 "Apparently positive literal stands for negative value -8"),
+                ("-4'h8     ", ExprError(), "Negative unsigned literal"),
+                ("-4'h8s    ", ExprInt(true, 4, -8), ""),
+                (" 4'h10    ", ExprError(), "Value specifier for 4 bit literal requires 5 bits"),
+                (" 4'h10s   ", ExprError(), "Value specifier for 4 bit literal requires 5 bits"),
+                ("+4'h10s   ", ExprError(), "Value specifier for 4 bit literal requires 5 bits"),
+                ("+4'h10    ", ExprError(), "Value specifier for 4 bit literal requires 5 bits"),
+                ("-4'h10    ", ExprError(), "Value specifier for 4 bit literal requires 5 bits"),
+                ("-4'h10s   ", ExprError(), "Value specifier for 4 bit literal requires 5 bits"),
+                // Malformed cases
+                (" 4'b2     ", ExprError(), "Invalid digit for base 2 value"),
+                (" 4'da     ", ExprError(), "Invalid digit for base 10 value"),
+                (" 0'b0     ", ExprError(), "0 width integer literal"),
+                (" 0'd0     ", ExprError(), "0 width integer literal"),
+                (" 0'h0     ", ExprError(), "0 width integer literal")
+              )
+            } {
+              literal in {
+                literal.asTree[Expr] shouldBe result
+                if (msg.nonEmpty) {
+                  result match {
+                    case _: ExprError => cc.messages.loneElement should beThe[Error](msg)
+                    case _            => cc.messages.loneElement should beThe[Warning](msg)
+                  }
+                } else {
+                  cc.messages shouldBe empty
+                }
+              }
+
+            }
           }
 
-          "unsized unsigned decimal integer" in {
-            "'d11".asTree[Expr] shouldBe ExprNum(false, 11)
-          }
-
-          "unsized unsigned hex integer" in {
-            "'h11".asTree[Expr] shouldBe ExprNum(false, 17)
-          }
-
-          "unsized signed binary integer" in {
-            "'sb11".asTree[Expr] shouldBe ExprNum(true, 3)
-          }
-
-          "unsized signed decimal integer" in {
-            "'sd11".asTree[Expr] shouldBe ExprNum(true, 11)
-          }
-
-          "unsized signed hex integer" in {
-            "'sh11".asTree[Expr] shouldBe ExprNum(true, 17)
-          }
-
-          "sized unsigned binary integer" in {
-            "12'b11".asTree[Expr] shouldBe ExprInt(false, 12, 3)
-          }
-
-          "sized unsigned decimal integer" in {
-            "13'd11".asTree[Expr] shouldBe ExprInt(false, 13, 11)
-          }
-
-          "sized unsigned hex integer" in {
-            "14'h11".asTree[Expr] shouldBe ExprInt(false, 14, 17)
-          }
-
-          "sized signed binary integer" in {
-            "15'sb11".asTree[Expr] shouldBe ExprInt(true, 15, 3)
-          }
-
-          "sized signed decimal integer" in {
-            "16'sd11".asTree[Expr] shouldBe ExprInt(true, 16, 11)
-          }
-
-          "sized signed hex integer" in {
-            "17'sh11".asTree[Expr] shouldBe ExprInt(true, 17, 17)
-          }
-
-          "string" in {
-            "\"foo\"".asTree[Expr] shouldBe ExprStr("foo")
-          }
         }
 
         "simple" - {
@@ -991,7 +1204,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
 
           for (op <- List("+", "-", "~", "!", "&", "|", "^")) {
             s"unary ${op}" in {
-              s"${op}2".asTree[Expr] shouldBe ExprUnary(op, Expr(2))
+              s"${op}(2)".asTree[Expr] shouldBe ExprUnary(op, Expr(2))
             }
           }
 

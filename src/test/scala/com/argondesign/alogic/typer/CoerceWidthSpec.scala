@@ -62,12 +62,12 @@ final class CoerceWidthSpec extends FreeSpec with AlogicTest {
     "unary operators over unsized constants" - {
       for {
         (expr, width, result) <- List(
-          (s"+  0", 8, ExprUnary("+", ExprInt(true, 8, 0))),
-          (s"-  0", 8, ExprUnary("-", ExprInt(true, 8, 0))),
-          (s"~  0", 8, ExprUnary("~", ExprInt(true, 8, 0))),
-          (s"+'d0", 8, ExprUnary("+", ExprInt(false, 8, 0))),
-          (s"-'d0", 8, ExprUnary("-", ExprInt(false, 8, 0))),
-          (s"~'d0", 8, ExprUnary("~", ExprInt(false, 8, 0)))
+          (s"+(0)", 8, ExprUnary("+", ExprInt(false, 8, 0))),
+          (s"-(0)", 8, ExprUnary("-", ExprInt(false, 8, 0))),
+          (s"~(0)", 8, ExprUnary("~", ExprInt(false, 8, 0))),
+          (s"+(0s)", 8, ExprUnary("+", ExprInt(true, 8, 0))),
+          (s"-(0s)", 8, ExprUnary("-", ExprInt(true, 8, 0))),
+          (s"~(0s)", 8, ExprUnary("~", ExprInt(true, 8, 0)))
         )
       } {
         val text = expr.trim.replaceAll(" +", " ")
@@ -81,58 +81,58 @@ final class CoerceWidthSpec extends FreeSpec with AlogicTest {
     "binary operators over unsized constants" - {
       for {
         (expr, width, result) <- List(
-          // signed signed
-          ("1   * 2", 8, ExprInt(true, 8, 1) * ExprInt(true, 8, 2)),
-          ("1   / 2", 8, ExprInt(true, 8, 1) / ExprInt(true, 8, 2)),
-          ("1   % 2", 8, ExprInt(true, 8, 1) % ExprInt(true, 8, 2)),
-          ("1   + 2", 8, ExprInt(true, 8, 1) + ExprInt(true, 8, 2)),
-          ("1   - 2", 8, ExprInt(true, 8, 1) - ExprInt(true, 8, 2)),
-          ("1  << 2", 8, ExprInt(true, 8, 1) << ExprNum(true, 2)),
-          ("1  >> 2", 8, ExprInt(true, 8, 1) >> ExprNum(true, 2)),
-          ("1 <<< 2", 8, ExprInt(true, 8, 1) <<< ExprNum(true, 2)),
-          ("1 >>> 2", 8, ExprInt(true, 8, 1) >>> ExprNum(true, 2)),
-          ("1   & 2", 8, ExprInt(true, 8, 1) & ExprInt(true, 8, 2)),
-          ("1   ^ 2", 8, ExprInt(true, 8, 1) ^ ExprInt(true, 8, 2)),
-          ("1   | 2", 8, ExprInt(true, 8, 1) | ExprInt(true, 8, 2)),
-          // signed unsigned
-          ("1   * 'd2", 8, ExprInt(true, 8, 1) * ExprInt(false, 8, 2)),
-          ("1   / 'd2", 8, ExprInt(true, 8, 1) / ExprInt(false, 8, 2)),
-          ("1   % 'd2", 8, ExprInt(true, 8, 1) % ExprInt(false, 8, 2)),
-          ("1   + 'd2", 8, ExprInt(true, 8, 1) + ExprInt(false, 8, 2)),
-          ("1   - 'd2", 8, ExprInt(true, 8, 1) - ExprInt(false, 8, 2)),
-          ("1  << 'd2", 8, ExprInt(true, 8, 1) << ExprNum(false, 2)),
-          ("1  >> 'd2", 8, ExprInt(true, 8, 1) >> ExprNum(false, 2)),
-          ("1 <<< 'd2", 8, ExprInt(true, 8, 1) <<< ExprNum(false, 2)),
-          ("1 >>> 'd2", 8, ExprInt(true, 8, 1) >>> ExprNum(false, 2)),
-          ("1   & 'd2", 8, ExprInt(true, 8, 1) & ExprInt(false, 8, 2)),
-          ("1   ^ 'd2", 8, ExprInt(true, 8, 1) ^ ExprInt(false, 8, 2)),
-          ("1   | 'd2", 8, ExprInt(true, 8, 1) | ExprInt(false, 8, 2)),
-          // unsigned signed
-          ("'d1   * 2", 8, ExprInt(false, 8, 1) * ExprInt(true, 8, 2)),
-          ("'d1   / 2", 8, ExprInt(false, 8, 1) / ExprInt(true, 8, 2)),
-          ("'d1   % 2", 8, ExprInt(false, 8, 1) % ExprInt(true, 8, 2)),
-          ("'d1   + 2", 8, ExprInt(false, 8, 1) + ExprInt(true, 8, 2)),
-          ("'d1   - 2", 8, ExprInt(false, 8, 1) - ExprInt(true, 8, 2)),
-          ("'d1  << 2", 8, ExprInt(false, 8, 1) << ExprNum(true, 2)),
-          ("'d1  >> 2", 8, ExprInt(false, 8, 1) >> ExprNum(true, 2)),
-          ("'d1 <<< 2", 8, ExprInt(false, 8, 1) <<< ExprNum(true, 2)),
-          ("'d1 >>> 2", 8, ExprInt(false, 8, 1) >>> ExprNum(true, 2)),
-          ("'d1   & 2", 8, ExprInt(false, 8, 1) & ExprInt(true, 8, 2)),
-          ("'d1   ^ 2", 8, ExprInt(false, 8, 1) ^ ExprInt(true, 8, 2)),
-          ("'d1   | 2", 8, ExprInt(false, 8, 1) | ExprInt(true, 8, 2)),
           // unsigned unsigned
-          ("'d1   * 'd2", 8, ExprInt(false, 8, 1) * ExprInt(false, 8, 2)),
-          ("'d1   / 'd2", 8, ExprInt(false, 8, 1) / ExprInt(false, 8, 2)),
-          ("'d1   % 'd2", 8, ExprInt(false, 8, 1) % ExprInt(false, 8, 2)),
-          ("'d1   + 'd2", 8, ExprInt(false, 8, 1) + ExprInt(false, 8, 2)),
-          ("'d1   - 'd2", 8, ExprInt(false, 8, 1) - ExprInt(false, 8, 2)),
-          ("'d1  << 'd2", 8, ExprInt(false, 8, 1) << ExprNum(false, 2)),
-          ("'d1  >> 'd2", 8, ExprInt(false, 8, 1) >> ExprNum(false, 2)),
-          ("'d1 <<< 'd2", 8, ExprInt(false, 8, 1) <<< ExprNum(false, 2)),
-          ("'d1 >>> 'd2", 8, ExprInt(false, 8, 1) >>> ExprNum(false, 2)),
-          ("'d1   & 'd2", 8, ExprInt(false, 8, 1) & ExprInt(false, 8, 2)),
-          ("'d1   ^ 'd2", 8, ExprInt(false, 8, 1) ^ ExprInt(false, 8, 2)),
-          ("'d1   | 'd2", 8, ExprInt(false, 8, 1) | ExprInt(false, 8, 2))
+          ("1   * 2", 8, ExprInt(false, 8, 1) * ExprInt(false, 8, 2)),
+          ("1   / 2", 8, ExprInt(false, 8, 1) / ExprInt(false, 8, 2)),
+          ("1   % 2", 8, ExprInt(false, 8, 1) % ExprInt(false, 8, 2)),
+          ("1   + 2", 8, ExprInt(false, 8, 1) + ExprInt(false, 8, 2)),
+          ("1   - 2", 8, ExprInt(false, 8, 1) - ExprInt(false, 8, 2)),
+          ("1  << 2", 8, ExprInt(false, 8, 1) << ExprNum(false, 2)),
+          ("1  >> 2", 8, ExprInt(false, 8, 1) >> ExprNum(false, 2)),
+          ("1 <<< 2", 8, ExprInt(false, 8, 1) <<< ExprNum(false, 2)),
+          ("1 >>> 2", 8, ExprInt(false, 8, 1) >>> ExprNum(false, 2)),
+          ("1   & 2", 8, ExprInt(false, 8, 1) & ExprInt(false, 8, 2)),
+          ("1   ^ 2", 8, ExprInt(false, 8, 1) ^ ExprInt(false, 8, 2)),
+          ("1   | 2", 8, ExprInt(false, 8, 1) | ExprInt(false, 8, 2)),
+          // unsigned signed
+          ("1   * 2s", 8, ExprInt(false, 8, 1) * ExprInt(true, 8, 2)),
+          ("1   / 2s", 8, ExprInt(false, 8, 1) / ExprInt(true, 8, 2)),
+          ("1   % 2s", 8, ExprInt(false, 8, 1) % ExprInt(true, 8, 2)),
+          ("1   + 2s", 8, ExprInt(false, 8, 1) + ExprInt(true, 8, 2)),
+          ("1   - 2s", 8, ExprInt(false, 8, 1) - ExprInt(true, 8, 2)),
+          ("1  << 2s", 8, ExprInt(false, 8, 1) << ExprNum(true, 2)),
+          ("1  >> 2s", 8, ExprInt(false, 8, 1) >> ExprNum(true, 2)),
+          ("1 <<< 2s", 8, ExprInt(false, 8, 1) <<< ExprNum(true, 2)),
+          ("1 >>> 2s", 8, ExprInt(false, 8, 1) >>> ExprNum(true, 2)),
+          ("1   & 2s", 8, ExprInt(false, 8, 1) & ExprInt(true, 8, 2)),
+          ("1   ^ 2s", 8, ExprInt(false, 8, 1) ^ ExprInt(true, 8, 2)),
+          ("1   | 2s", 8, ExprInt(false, 8, 1) | ExprInt(true, 8, 2)),
+          // signed unsigned
+          ("1s   * 2", 8, ExprInt(true, 8, 1) * ExprInt(false, 8, 2)),
+          ("1s   / 2", 8, ExprInt(true, 8, 1) / ExprInt(false, 8, 2)),
+          ("1s   % 2", 8, ExprInt(true, 8, 1) % ExprInt(false, 8, 2)),
+          ("1s   + 2", 8, ExprInt(true, 8, 1) + ExprInt(false, 8, 2)),
+          ("1s   - 2", 8, ExprInt(true, 8, 1) - ExprInt(false, 8, 2)),
+          ("1s  << 2", 8, ExprInt(true, 8, 1) << ExprNum(false, 2)),
+          ("1s  >> 2", 8, ExprInt(true, 8, 1) >> ExprNum(false, 2)),
+          ("1s <<< 2", 8, ExprInt(true, 8, 1) <<< ExprNum(false, 2)),
+          ("1s >>> 2", 8, ExprInt(true, 8, 1) >>> ExprNum(false, 2)),
+          ("1s   & 2", 8, ExprInt(true, 8, 1) & ExprInt(false, 8, 2)),
+          ("1s   ^ 2", 8, ExprInt(true, 8, 1) ^ ExprInt(false, 8, 2)),
+          ("1s   | 2", 8, ExprInt(true, 8, 1) | ExprInt(false, 8, 2)),
+          // signed signed
+          ("1s   * 2s", 8, ExprInt(true, 8, 1) * ExprInt(true, 8, 2)),
+          ("1s   / 2s", 8, ExprInt(true, 8, 1) / ExprInt(true, 8, 2)),
+          ("1s   % 2s", 8, ExprInt(true, 8, 1) % ExprInt(true, 8, 2)),
+          ("1s   + 2s", 8, ExprInt(true, 8, 1) + ExprInt(true, 8, 2)),
+          ("1s   - 2s", 8, ExprInt(true, 8, 1) - ExprInt(true, 8, 2)),
+          ("1s  << 2s", 8, ExprInt(true, 8, 1) << ExprNum(true, 2)),
+          ("1s  >> 2s", 8, ExprInt(true, 8, 1) >> ExprNum(true, 2)),
+          ("1s <<< 2s", 8, ExprInt(true, 8, 1) <<< ExprNum(true, 2)),
+          ("1s >>> 2s", 8, ExprInt(true, 8, 1) >>> ExprNum(true, 2)),
+          ("1s   & 2s", 8, ExprInt(true, 8, 1) & ExprInt(true, 8, 2)),
+          ("1s   ^ 2s", 8, ExprInt(true, 8, 1) ^ ExprInt(true, 8, 2)),
+          ("1s   | 2s", 8, ExprInt(true, 8, 1) | ExprInt(true, 8, 2))
         )
       } {
         val text = expr.trim.replaceAll(" +", " ")
@@ -146,11 +146,10 @@ final class CoerceWidthSpec extends FreeSpec with AlogicTest {
     "ternary operator over unsized constants" - {
       for {
         (expr, width, result) <- List(
-          // signed signed
-          ("0 ? 1 : 2", 8, ExprTernary(Expr(0), ExprInt(true, 8, 1), ExprInt(true, 8, 2))),
+          ("0 ? 1 : 2", 8, ExprTernary(Expr(0), ExprInt(false, 8, 1), ExprInt(false, 8, 2))),
           ("bool ? 1 : 2",
            8,
-           ExprTernary(ExprType(TypeUInt(1)), ExprInt(true, 8, 1), ExprInt(true, 8, 2)))
+           ExprTernary(ExprType(TypeUInt(1)), ExprInt(false, 8, 1), ExprInt(false, 8, 2)))
         )
       } {
         val text = expr.trim.replaceAll(" +", " ")

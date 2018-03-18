@@ -160,6 +160,7 @@ object Trees {
 
   // Literals
   case class ExprInt(signed: Boolean, width: Int, value: BigInt) extends Expr {
+    require(width > 0)
     require(signed || value >= 0)
   }
   case class ExprNum(signed: Boolean, value: BigInt) extends Expr {

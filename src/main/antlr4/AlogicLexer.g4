@@ -28,7 +28,29 @@ UINTTYPE: 'u' [0-9]+;
 
 INTTYPE: 'i' [0-9]+;
 
-TICKNUM: '\'' 's'? [bdh] [0-9a-fA-F_]+ ;
+
+// Literals
+STRING: '"' ~["]* '"';
+
+fragment DECIMALDIGIT: [0-9] ;
+fragment DECIMALVALUE
+  : DECIMALDIGIT
+  | DECIMALDIGIT (DECIMALDIGIT|'_')* DECIMALDIGIT
+  ;
+
+fragment HEXDIGIT: (DECIMALDIGIT|[a-fA-F]) ;
+fragment HEXVALUE
+  : HEXDIGIT
+  | HEXDIGIT (HEXDIGIT|'_')* HEXDIGIT
+  ;
+
+UNSIZEDINT
+  :                          DECIMALVALUE 's'?
+  |               '\'' [bdh] HEXVALUE     's'?
+  ;
+SIZEDINT
+  : DECIMALDIGIT+ '\'' [bdh] HEXVALUE     's'?
+  ;
 
 ATID    : '@' SIMPLEID  ;
 
@@ -151,13 +173,9 @@ BUBBLE      : 'bubble';
 FSLICE      : 'fslice';
 BSLICE      : 'bslice';
 
-STRING: '"' ~["]* '"';
-
 VERILOGFUNC: 'void' (WS|CMT)* 'verilog' (WS|CMT)* '(' (WS|CMT)* ')' (WS|CMT)* -> pushMode(VERBATIMMODE);
 
 VERBATIM: 'verbatim' -> pushMode(VERBATIMLANGMODE);
-
-CONSTANT: [0-9_]+;
 
 IDENTIFIER: SIMPLEID;
 

@@ -156,8 +156,8 @@ trait ExprOps { this: Expr =>
 
 trait ObjectExprOps {
   // Helpers to easily create ExprNum from integers
-  final def apply(n: Int): ExprNum = ExprNum(true, n)
-  final def apply(n: BigInt): ExprNum = ExprNum(true, n)
+  final def apply(n: Int): ExprNum = ExprNum(false, n)
+  final def apply(n: BigInt): ExprNum = ExprNum(false, n)
 
   object ImplicitConversions {
     // Implicit conversion for Int to ExprNum
@@ -165,7 +165,7 @@ trait ObjectExprOps {
   }
 
   // And extractor so we can match against the the same as above
-  final def unapply(num: ExprNum): Option[Int] = if (num.signed) Some(num.value.toInt) else None
+  final def unapply(num: ExprNum): Option[Int] = if (!num.signed) Some(num.value.toInt) else None
 
   // Extractors to match operators naturally
   final object * {

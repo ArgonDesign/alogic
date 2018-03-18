@@ -179,6 +179,17 @@ for_steps
 
 expr
   : '(' expr ')'                                                            # ExprBracket
+  // Literals
+  | 'true'                                                                  # ExprTrue
+  | 'false'                                                                 # ExprFalse
+  | sign=('+' | '-')? SIZEDINT                                              # ExprSizedInt
+  | sign=('+' | '-')? UNSIZEDINT                                            # ExprUnsizedInt
+  | STRING                                                                  # ExprString
+  // Names
+  | IDENTIFIER                                                              # ExprIdent
+  | ATID                                                                    # ExprAtid
+  | DOLLARID                                                                # ExprDollarid
+  // Call
   | expr '(' commaexpr ')'                                                  # ExprCall
   // Index/Slice
   | expr '[' idx=expr ']'                                                   # ExprIndex
@@ -200,17 +211,6 @@ expr
   | expr '?' expr ':' expr                                                  # ExprTernary
   | '{' expr '{' expr '}' '}'                                               # ExprRep
   | '{' commaexpr '}'                                                       # ExprCat
-  // Literals
-  | 'true'                                                                  # ExprTrue
-  | 'false'                                                                 # ExprFalse
-  | TICKNUM                                                                 # ExprTickNum
-  | CONSTANT TICKNUM                                                        # ExprConstTickNum
-  | CONSTANT                                                                # ExprConst
-  | STRING                                                                  # ExprString
-  // Name
-  | IDENTIFIER                                                              # ExprIdent
-  | ATID                                                                    # ExprAtid
-  | DOLLARID                                                                # ExprDollarid
   // Type
   | kind                                                                    # ExprType
   ;

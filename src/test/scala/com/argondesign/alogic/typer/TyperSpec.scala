@@ -55,8 +55,8 @@ final class TyperSpec extends FreeSpec with AlogicTest {
             (expr, resultWidth, msg) <- List(
               (s"8'd3 ${op} 2", Some(8), ""),
               (s"2 ${op} 8'd3", Some(8), ""),
-              (s"8'd3 ${op} -2", Some(8), ""),
-              (s"-2 ${op} 8'd3", Some(8), ""),
+              (s"8'd3 ${op} -2s", Some(8), ""),
+              (s"-2s ${op} 8'd3", Some(8), ""),
               (s"8'd3 ${op} (N ? 2 : 3)", Some(8), ""),
               (s"(N ? 2 : 3) ${op} 8'd3", Some(8), ""),
               (s"8'd3 ${op} 2 ${op} 4", Some(8), ""),
@@ -105,8 +105,8 @@ final class TyperSpec extends FreeSpec with AlogicTest {
             (expr, resultWidth, msg) <- List(
               (s"8'd3 ${op} 2", Some(1), ""),
               (s"2 ${op} 8'd3", Some(1), ""),
-              (s"8'd3 ${op} -2", Some(1), ""),
-              (s"-2 ${op} 8'd3", Some(1), ""),
+              (s"8'd3 ${op} -2s", Some(1), ""),
+              (s"-2s ${op} 8'd3", Some(1), ""),
               (s"8'd3 ${op} (N ? 2 : 3)", Some(1), ""),
               (s"(N ? 2 : 3) ${op} 8'd3", Some(1), ""),
               (s"{N{1'b1}} ${op} 2", None, s"Cannot infer width of right hand operand of '${qop}'"),
@@ -198,10 +198,10 @@ final class TyperSpec extends FreeSpec with AlogicTest {
       "initializer expressions" - {
         for {
           (decl, expr, msg) <- List(
-            ("i8 a = 2", ExprInt(true, 8, 2), ""),
-            ("u8 a = 2", ExprInt(true, 8, 2), ""),
-            ("i8 a = 'd2", ExprInt(false, 8, 2), ""),
-            ("u8 a = 'd2", ExprInt(false, 8, 2), ""),
+            ("i8 a = 2s", ExprInt(true, 8, 2), ""),
+            ("u8 a = 2s", ExprInt(true, 8, 2), ""),
+            ("i8 a = 2", ExprInt(false, 8, 2), ""),
+            ("u8 a = 2", ExprInt(false, 8, 2), ""),
             ("int(N) a = 2", ExprError(), "Cannot infer width of initializer")
           )
         } {
@@ -229,10 +229,10 @@ final class TyperSpec extends FreeSpec with AlogicTest {
       "right hand sides of assignments" - {
         for {
           (assign, expr, msg) <- List(
-            ("i8 a; a = 2", ExprInt(true, 8, 2), ""),
-            ("u8 a; a = 2", ExprInt(true, 8, 2), ""),
-            ("i8 a; a = 'd2", ExprInt(false, 8, 2), ""),
-            ("u8 a; a = 'd2", ExprInt(false, 8, 2), ""),
+            ("i8 a; a = 2s", ExprInt(true, 8, 2), ""),
+            ("u8 a; a = 2s", ExprInt(true, 8, 2), ""),
+            ("i8 a; a = 2", ExprInt(false, 8, 2), ""),
+            ("u8 a; a = 2", ExprInt(false, 8, 2), ""),
             ("int(N) a; a = 2", ExprError(), "Cannot infer width of right hand side of assignment")
           )
         } {
@@ -263,20 +263,20 @@ final class TyperSpec extends FreeSpec with AlogicTest {
       "unary operators" - {
         for {
           (expr, kind, msg) <- List(
-            (s"+N", TypeUInt(8), ""),
-            (s"-N", TypeUInt(8), ""),
-            (s"~N", TypeUInt(8), ""),
-            (s"!N", TypeUInt(1), ""),
-            (s"&N", TypeUInt(1), ""),
-            (s"|N", TypeUInt(1), ""),
-            (s"^N", TypeUInt(1), ""),
-            (s"+main", TypeError, "Operand of unary '+' is of non-packed type"),
-            (s"-main", TypeError, "Operand of unary '-' is of non-packed type"),
-            (s"~main", TypeError, "Operand of unary '~' is of non-packed type"),
-            (s"!main", TypeError, "Operand of unary '!' is of non-packed type"),
-            (s"&main", TypeError, "Operand of unary '&' is of non-packed type"),
-            (s"|main", TypeError, "Operand of unary '|' is of non-packed type"),
-            (s"^main", TypeError, "Operand of unary '^' is of non-packed type")
+            (s"+(N)", TypeUInt(8), ""),
+            (s"-(N)", TypeUInt(8), ""),
+            (s"~(N)", TypeUInt(8), ""),
+            (s"!(N)", TypeUInt(1), ""),
+            (s"&(N)", TypeUInt(1), ""),
+            (s"|(N)", TypeUInt(1), ""),
+            (s"^(N)", TypeUInt(1), ""),
+            (s"+(main)", TypeError, "Operand of unary '+' is of non-packed type"),
+            (s"-(main)", TypeError, "Operand of unary '-' is of non-packed type"),
+            (s"~(main)", TypeError, "Operand of unary '~' is of non-packed type"),
+            (s"!(main)", TypeError, "Operand of unary '!' is of non-packed type"),
+            (s"&(main)", TypeError, "Operand of unary '&' is of non-packed type"),
+            (s"|(main)", TypeError, "Operand of unary '|' is of non-packed type"),
+            (s"^(main)", TypeError, "Operand of unary '^' is of non-packed type")
           )
         } {
           val text = expr.trim.replaceAll(" +", " ")

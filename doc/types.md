@@ -18,6 +18,17 @@ the type of the variable followed by the name of the variable.
 
 ### Integer types
 
+Alogic supports 2 kinds of integer literals:
+ - *Sized integers* are represented in a finite, defined number of bits
+ - *Unsized integers* are infinite precision
+
+Both kind of integers are further divided into signed and unsigned types,
+yielding a total of 4 possible integer types:
+ - Unsized unsigned
+ - Unsized signed
+ - Sized unsigned
+ - Sized signed
+
 The fundamental data types are signed or unsigned integers introduced with
 the `int` or `uint` keywords, with the number of bits used to represent them
 specified in parentheses. The representation can depend on parameters or
