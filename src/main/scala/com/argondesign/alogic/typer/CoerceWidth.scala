@@ -19,6 +19,8 @@ package com.argondesign.alogic.typer
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Types.Type
+import com.argondesign.alogic.core.Types.TypeError
 import com.argondesign.alogic.util.FollowedBy
 import com.argondesign.alogic.util.unreachable
 
@@ -113,8 +115,18 @@ final class CoerceWidth(width: Int)(implicit cc: CompilerContext)
     }
   }
 
+  private def hasError(tree: Tree) = {
+    tree.children exists {
+      case child: Tree => child.tpe == TypeError
+      case _: Type     => false
+      case _           => unreachable
+    }
+  }
+
   override def transform(tree: Tree): Tree = {
     val result: Tree = tree match {
+      case _: ExprError                  => tree
+      case expr if hasError(expr)        => ExprError() withLoc tree.loc
       case num: ExprNum if coerceCurrent => coerceNum(num)
       case tree                          => tree
     }
