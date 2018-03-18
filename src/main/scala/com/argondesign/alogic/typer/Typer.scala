@@ -40,36 +40,36 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
     }
   }
 
-  private def checkPacked(expr: Expr, msg: String): Option[ExprError] = {
+  private def checkPacked(expr: Expr, msg: String): Option[Loc] = {
     if (expr.tpe.isPacked) {
       None
     } else {
       if (expr.tpe != TypeError) {
         cc.error(expr, s"${msg} is of non-packed type")
       }
-      Some(ExprError() withLoc expr.loc)
+      Some(expr.loc)
     }
   }
 
-  private def checkNumeric(expr: Expr, msg: String): Option[ExprError] = {
+  private def checkNumeric(expr: Expr, msg: String): Option[Loc] = {
     if (expr.tpe.isNumeric) {
       None
     } else {
       if (expr.tpe != TypeError) {
         cc.error(expr, s"${msg} is of non-numeric type")
       }
-      Some(ExprError() withLoc expr.loc)
+      Some(expr.loc)
     }
   }
 
-  private def checkNumericOrPacked(expr: Expr, msg: String): Option[ExprError] = {
+  private def checkNumericOrPacked(expr: Expr, msg: String): Option[Loc] = {
     if (expr.tpe.isNumeric || expr.tpe.isPacked) {
       None
     } else {
       if (expr.tpe != TypeError) {
         cc.error(expr, s"${msg} is of neither numeric nor packed type")
       }
-      Some(ExprError() withLoc expr.loc)
+      Some(expr.loc)
     }
   }
 
@@ -88,13 +88,13 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
     }
   }
 
-  private def checkBlock(stmts: List[Stmt]): Option[StmtError] = {
+  private def checkBlock(stmts: List[Stmt]): Option[Loc] = {
     val hasCtrl = stmts exists { _.tpe == TypeCtrlStmt }
     val lstCtrl = stmts.nonEmpty && stmts.last.tpe == TypeCtrlStmt
     if (hasCtrl && !lstCtrl) {
       cc.error(stmts.last,
                "Block must contain only combinatorial statements, or end with a control statement")
-      Some(StmtError() withLoc stmts.last.loc)
+      Some(stmts.last.loc)
     } else {
       None
     }
@@ -180,11 +180,10 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
           decl.copy(init = Some(newInit)) withLoc tree.loc
         } else {
           val packedErrOpt = checkPacked(init, "Initializer expression")
-          lazy val widthErrOpt = checkWidth(kind, init, "Initializer expression") map {
-            ExprError() withLoc _
-          }
+          lazy val widthErrOpt = checkWidth(kind, init, "Initializer expression")
 
-          packedErrOpt orElse widthErrOpt map { newInit =>
+          packedErrOpt orElse widthErrOpt map { errLoc =>
+            val newInit = ExprError() withLoc errLoc
             TypeAssigner(newInit)
             decl.copy(init = Some(newInit)) withLoc tree.loc
           } getOrElse tree
@@ -196,7 +195,7 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       ////////////////////////////////////////////////////////////////////////////
 
       case StmtBlock(body) => {
-        checkBlock(body) getOrElse tree
+        checkBlock(body) map { ExprError() withLoc _ } getOrElse tree
       }
 
       case StmtIf(_, thenStmt, Some(elseStmt)) => {
@@ -211,7 +210,7 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       }
 
       case StmtCase(_, cases, default) => {
-        checkBlock(default) getOrElse {
+        checkBlock(default) map { StmtError() withLoc _ } getOrElse {
           val allCtrl = {
             val casesCtrl = cases forall { _.body.tpe == TypeCtrlStmt }
             val defaultCtrl = default.isEmpty || default.last.tpe == TypeCtrlStmt
@@ -244,8 +243,8 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       }
 
       case stmt @ StmtAssign(lhs, rhs) => {
-        checkPacked(lhs, "Left hand side of assignment") map { err =>
-          StmtError() withLoc err.loc
+        checkPacked(lhs, "Left hand side of assignment") map { errLoc =>
+          StmtError() withLoc errLoc
         } getOrElse {
           if (rhs.tpe.isNum) {
             // Infer width of rhs
@@ -260,13 +259,8 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
             }
           } else {
             val rhsErrOpt = checkPacked(rhs, "Right hand side of assignment")
-            lazy val widthErrOpt = checkWidth(lhs.tpe, rhs, "Right hand side of assignment") map {
-              ExprError() withLoc _
-            }
-
-            rhsErrOpt orElse widthErrOpt map { err =>
-              StmtError() withLoc err.loc
-            } getOrElse tree
+            lazy val widthErrOpt = checkWidth(lhs.tpe, rhs, "Right hand side of assignment")
+            rhsErrOpt orElse widthErrOpt map { StmtError() withLoc _ } getOrElse tree
           }
         }
       }
@@ -299,8 +293,9 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
 
         def checkArg(expected: Type, arg: Expr, i: Int): Tree = {
           assert(expected.isPacked)
-
-          checkPacked(arg, s"Parameter ${i} to function call") getOrElse {
+          checkPacked(arg, s"Parameter ${i} to function call") map {
+            ExprError() withLoc _
+          } getOrElse {
             val argWidthOpt = arg.tpe.width.value
             val expWidthOpt = expected.width.value
             // TODO: solve for parametrized
@@ -334,9 +329,7 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
               val tmp = for (((e, a), i) <- (argTypes zip args).zipWithIndex) yield {
                 checkArg(e, a, i + 1)
               }
-              tmp collectFirst {
-                case e: ExprError => e
-              }
+              tmp collectFirst { case e: ExprError => e }
             }
             errOpt getOrElse tree
           }
@@ -380,34 +373,35 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         val errors = for ((part, i) <- parts.zipWithIndex) yield {
           checkPacked(part, s"Part ${i + 1} of bit concatenation")
         }
-        errors.flatten.headOption getOrElse tree
+        errors.flatten.headOption map { ExprError() withLoc _ } getOrElse tree
       }
 
       case ExprRep(count, expr) => {
         val errCount = checkNumeric(count, "Count of bit repetition")
         val errExpr = checkPacked(expr, "Value of bit repetition")
-        errCount orElse errExpr getOrElse tree
+        errCount orElse errExpr map { ExprError() withLoc _ } getOrElse tree
       }
 
       case ExprIndex(expr, index) => {
         val errExpr = expr.tpe match {
           case _: TypeArray          => None
           case kind if kind.isPacked => None
-          case _ => {}
-          cc.error(expr, "Target of index is neither a packed value, nor an array")
-          Some(ExprError() withLoc expr.loc)
+          case _ => {
+            cc.error(expr, "Target of index is neither a packed value, nor an array")
+            Some(expr.loc)
+          }
         }
 
         val errIndex = checkNumeric(index, "Index")
 
-        errExpr orElse errIndex getOrElse tree
+        errExpr orElse errIndex map { ExprError() withLoc _ } getOrElse tree
       }
 
       case ExprSlice(expr, lidx, _, ridx) => {
         val errExpr = checkPacked(expr, "Target of slice")
         val errLidx = checkNumeric(lidx, "Left index of slice")
         val errRidx = checkNumeric(ridx, "Right index of slice")
-        errExpr orElse errLidx orElse errRidx getOrElse tree
+        errExpr orElse errLidx orElse errRidx map { ExprError() withLoc _ } getOrElse tree
       }
 
       // unary ops
@@ -415,7 +409,9 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         if (expr.tpe.isNum) {
           tree // Do nothing, we will coerce later if possible
         } else {
-          checkPacked(expr, s"Operand of unary '${op}'") getOrElse tree
+          checkPacked(expr, s"Operand of unary '${op}'") map {
+            ExprError() withLoc _
+          } getOrElse tree
         }
       }
 
@@ -452,7 +448,7 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
             }
           }
           case _ => {
-            errLhs orElse errRhs getOrElse {
+            errLhs orElse errRhs map { ExprError() withLoc _ } getOrElse {
               if (!(mixedWidthBinaryOps contains op)) {
                 // TODO: handle parametrized widths by solving 'lhsWidth != rhsWidth' SAT
                 val lhsWidthOpt = lhs.tpe.width.value
@@ -478,15 +474,14 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       }
 
       case ExprTernary(cond, thenExpr, elseExpr) => {
-        checkNumericOrPacked(cond, "Condition of '?:'") getOrElse {
+        checkNumericOrPacked(cond, "Condition of '?:'") map { ExprError() withLoc _ } getOrElse {
           lazy val errThen = checkPacked(thenExpr, "'then' operand of '?:'")
           lazy val errElse = checkPacked(elseExpr, "'else' operand of '?:'")
 
           (thenExpr.tpe.isNum, elseExpr.tpe.isNum) match {
             case (true, true) => tree // Do nothing, we will coerce later if possible
-
             case (false, true) => { // Infer with of 'else' operand
-              errThen orElse {
+              errThen map { ExprError() withLoc _ } orElse {
                 thenExpr.tpe.width.value map {
                   CoerceWidth(elseExpr, _)
                 }
@@ -500,7 +495,7 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
               }
             }
             case (true, false) => { // Infer with of 'then' operand
-              errElse orElse {
+              errElse map { ExprError() withLoc _ } orElse {
                 elseExpr.tpe.width.value map {
                   CoerceWidth(thenExpr, _)
                 }
@@ -513,8 +508,8 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
                 ExprError() withLoc tree.loc
               }
             }
-            case _ =>
-              errThen orElse errElse getOrElse {
+            case _ => {
+              errThen orElse errElse map { ExprError() withLoc _ } getOrElse {
                 // TODO: handle parametrized widths by solving 'lhsWidth != rhsWidth' SAT
                 val thenWidthOpt = thenExpr.tpe.width.value
                 val elseWidthOpt = elseExpr.tpe.width.value
@@ -535,6 +530,7 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
                 }
                 tree
               }
+            }
           }
         }
       }
