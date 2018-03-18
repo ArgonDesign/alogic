@@ -461,15 +461,14 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
                 for {
                   lhsWidth <- lhsWidthOpt
                   rhsWidth <- rhsWidthOpt
+                  if lhsWidth != rhsWidth
                 } {
-                  if (lhsWidth != rhsWidth) {
-                    cc.warning(
-                      tree,
-                      s"'${op}' expects both operands to have the same width, but",
-                      s"left  operand is ${lhsWidth} bits wide, and",
-                      s"right operand is ${rhsWidth} bits wide"
-                    )
-                  }
+                  cc.warning(
+                    tree,
+                    s"'${op}' expects both operands to have the same width, but",
+                    s"left  operand is ${lhsWidth} bits wide, and",
+                    s"right operand is ${rhsWidth} bits wide"
+                  )
                 }
               }
               tree
@@ -514,7 +513,28 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
                 ExprError() withLoc tree.loc
               }
             }
-            case _ => errThen orElse errElse getOrElse tree
+            case _ =>
+              errThen orElse errElse getOrElse {
+                // TODO: handle parametrized widths by solving 'lhsWidth != rhsWidth' SAT
+                val thenWidthOpt = thenExpr.tpe.width.value
+                val elseWidthOpt = elseExpr.tpe.width.value
+
+                for {
+                  thenWidth <- thenWidthOpt
+                  elseWidth <- elseWidthOpt
+                  if thenWidth != elseWidth
+                } {
+
+                  cc.warning(
+                    tree,
+                    s"'?:' expects both the 'then' and 'else' operands to have the same width, but",
+                    s"'then' operand is ${thenWidth} bits wide, and",
+                    s"'else' operand is ${elseWidth} bits wide"
+                  )
+
+                }
+                tree
+              }
           }
         }
       }

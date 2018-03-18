@@ -935,6 +935,16 @@ final class TyperSpec extends FreeSpec with AlogicTest {
           }
         }
       }
+
+      "ternary operator" in {
+        val tree = "0 ? 2'd0 : 3'd1".asTree[Expr]
+        xform(tree)
+        cc.messages.loneElement should beThe[Warning](
+          s"'\\?:' expects both the 'then' and 'else' operands to have the same width, but",
+          "'then' operand is 2 bits wide, and",
+          "'else' operand is 3 bits wide"
+        )
+      }
     }
 
   }
