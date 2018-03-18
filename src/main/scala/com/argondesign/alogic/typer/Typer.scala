@@ -22,6 +22,7 @@ package com.argondesign.alogic.typer
 
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
@@ -279,12 +280,41 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       }
 
       case stmt @ StmtAssign(lhs, rhs) => {
-        checkPacked(lhs, "Left hand side of assignment") map { errLoc =>
+        lazy val errNotAssignable: Option[Loc] = {
+          def stripToRefs(expr: Expr): List[ExprRef] = expr match {
+            case ref: ExprRef                => List(ref)
+            case ExprIndex(expr, _)          => stripToRefs(expr)
+            case ExprSlice(expr, _, _, _)    => stripToRefs(expr)
+            case ExprSelect(expr, _)         => stripToRefs(expr)
+            case ExprCat(parts)              => parts flatMap stripToRefs
+            case other if other.isLValueExpr => cc.ice(expr)
+            case _                           => unreachable
+          }
+
+          val locs = for (ref @ ExprRef(Sym(symbol)) <- stripToRefs(lhs)) yield {
+            symbol.denot.kind.chase match {
+              case _: TypeParam => cc.error(ref, "Parameter cannot be assigned")
+              case _: TypeConst => cc.error(ref, "Constant cannot be assigned")
+              case _: TypeIn    => cc.error(ref, "Input port cannot be assigned")
+              case TypeOut(_, fct, _) if fct != FlowControlTypeNone => {
+                val msg = "Output port with flow control cannot be assigned directly, use '.write'"
+                cc.error(ref, msg)
+              }
+              case _ => None
+            }
+          }
+
+          locs.flatten.headOption
+        }
+
+        checkPacked(lhs, "Left hand side of assignment") orElse errNotAssignable map { errLoc =>
           StmtError() withLoc errLoc
         } getOrElse {
           if (rhs.tpe.isNum) {
             // Infer width of rhs
-            lhs.tpe.width.value map { CoerceWidth(rhs, _) } map {
+            lhs.tpe.width.value map {
+              CoerceWidth(rhs, _)
+            } map {
               case e: Expr => e
               case _       => unreachable
             } map { newRhs =>
@@ -296,9 +326,12 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
           } else {
             val rhsErrOpt = checkPacked(rhs, "Right hand side of assignment")
             lazy val widthErrOpt = checkWidth(lhs.tpe, rhs, "Right hand side of assignment")
-            rhsErrOpt orElse widthErrOpt map { StmtError() withLoc _ } getOrElse tree
+            rhsErrOpt orElse widthErrOpt map {
+              StmtError() withLoc _
+            } getOrElse tree
           }
         }
+
       }
 
       ////////////////////////////////////////////////////////////////////////////

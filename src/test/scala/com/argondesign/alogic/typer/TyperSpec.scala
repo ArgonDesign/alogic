@@ -801,7 +801,7 @@ final class TyperSpec extends FreeSpec with AlogicTest {
         }
       }
 
-      "assignments " - {
+      "assignments" - {
         for {
           (assignment, msg) <- List(
             ("a = 2", ""),
@@ -816,6 +816,75 @@ final class TyperSpec extends FreeSpec with AlogicTest {
             val tree = s"""|fsm x {
                            |  void main() {
                            |    i8 a; a;
+                           |    ${assignment};
+                           |    fence;
+                           |  }
+                           |}""".stripMargin.asTree[Entity]
+            xform(tree)
+            if (msg.isEmpty) {
+              cc.messages shouldBe empty
+            } else {
+              cc.messages.loneElement should beThe[Error](msg)
+            }
+          }
+
+        }
+      }
+
+      "assignments to illegal lhs" - {
+        for {
+          (assignment, msg) <- List(
+            ("a = 0", "Input port cannot be assigned"),
+            ("b = 0", ""),
+            ("c = 0", "Input port cannot be assigned"),
+            ("d = 0", "Output port with flow control cannot be assigned directly, use '.write'"),
+            ("e = 0", "Input port cannot be assigned"),
+            ("f = 0", "Output port with flow control cannot be assigned directly, use '.write'"),
+            ("g = 0", "Parameter cannot be assigned"),
+            ("h = 0", "Constant cannot be assigned"),
+            ("a[0] = 0", "Input port cannot be assigned"),
+            ("b[0] = 0", ""),
+            ("c[0] = 0", "Input port cannot be assigned"),
+            ("d[0] = 0", "Output port with flow control cannot be assigned directly, use '.write'"),
+            ("e[0] = 0", "Input port cannot be assigned"),
+            ("f[0] = 0", "Output port with flow control cannot be assigned directly, use '.write'"),
+            ("g[0] = 0", "Parameter cannot be assigned"),
+            ("h[0] = 0", "Constant cannot be assigned"),
+            ("a[1:0] = 0", "Input port cannot be assigned"),
+            ("b[1:0] = 0", ""),
+            ("c[1:0] = 0", "Input port cannot be assigned"),
+            ("d[1:0] = 0",
+             "Output port with flow control cannot be assigned directly, use '.write'"),
+            ("e[1:0] = 0", "Input port cannot be assigned"),
+            ("f[1:0] = 0",
+             "Output port with flow control cannot be assigned directly, use '.write'"),
+            ("g[1:0] = 0", "Parameter cannot be assigned"),
+            ("h[1:0] = 0", "Constant cannot be assigned"),
+            ("{b[1], a[0]} = 0", "Input port cannot be assigned"),
+            ("{b[1], b[0]} = 0", ""),
+            ("{b[1], c[0]} = 0", "Input port cannot be assigned"),
+            ("{b[1], d[0]} = 0",
+             "Output port with flow control cannot be assigned directly, use '.write'"),
+            ("{b[1], e[0]} = 0", "Input port cannot be assigned"),
+            ("{b[1], f[0]} = 0",
+             "Output port with flow control cannot be assigned directly, use '.write'"),
+            ("{b[1], g[0]} = 0", "Parameter cannot be assigned"),
+            ("{b[1], h[0]} = 0", "Constant cannot be assigned")
+          )
+        } {
+          assignment in {
+            val tree = s"""|fsm x {
+                           |  in i8 a;
+                           |  out i8 b;
+                           |  in sync i8 c;
+                           |  out sync i8 d;
+                           |  in sync ready i8 e;
+                           |  out sync ready i8 f;
+                           |  param i8 g = 2;
+                           |  const i8 h = 2;
+                           |
+                           |  void main() {
+                           |    a; b; c; d; e; f; g; h;
                            |    ${assignment};
                            |    fence;
                            |  }
