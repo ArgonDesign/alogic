@@ -113,6 +113,8 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
   override def transform(tree: Tree): Tree = {
     // TODO: warn for field hiding by extension types
     // TODO: reduction of 1 bit value is error
+    // TODO: Check bit select widths vs dimension
+    // TODO: Warn for non power of 2 dimensions
 
     val result: Tree = tree match {
       ////////////////////////////////////////////////////////////////////////////
