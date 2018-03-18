@@ -830,7 +830,59 @@ final class TyperSpec extends FreeSpec with AlogicTest {
 
         }
       }
-//      "port" - {
+
+      "port" - {
+        "widths" - {
+          for {
+            (expr, widths) <- List(
+              ("pi1 -> po1", Nil),
+              ("pi2 -> po2", Nil),
+              ("pi3 -> po3", Nil),
+              ("pi1 -> po2", List(1, 2)),
+              ("pi1 -> po3", List(1, 3)),
+              ("pi2 -> po1", List(2, 1)),
+              ("pi2 -> po3", List(2, 3)),
+              ("pi3 -> po1", List(3, 1)),
+              ("pi3 -> po2", List(3, 2)),
+              ("pi1 -> po1, po2, po3", List(1, 2, 3)),
+              ("pi2 -> po1, po2, po3", List(2, 1, 3)),
+              ("pi3 -> po1, po2, po3", List(3, 1, 2))
+            )
+          } {
+            expr in {
+              val tree = s"""|network p {
+                             |  in u1 pi1;
+                             |  out u1 po1;
+                             |  in u2 pi2;
+                             |  out u2 po2;
+                             |  in u3 pi3;
+                             |  out u3 po3;
+                             |
+                             |  fence {
+                             |    pi1;
+                             |    po1;
+                             |    pi2;
+                             |    po2;
+                             |    pi3;
+                             |    po3;
+                             |  }
+                             |
+                             |  ${expr};
+                             |}""".stripMargin.asTree[Entity]
+              xform(tree)
+              if (widths.isEmpty) {
+                cc.messages shouldBe empty
+              } else {
+                val lw :: rws = widths
+                cc.messages.length shouldBe rws.length
+                for ((msg, rw) <- cc.messages zip rws) {
+                  msg should beThe[Error](s"Port widths do not match, ${lw} -> ${rw}")
+                }
+              }
+            }
+          }
+        }
+
 //        "directions" - {
 //          for {
 //            (expr, msg) <- List(
@@ -888,7 +940,7 @@ final class TyperSpec extends FreeSpec with AlogicTest {
 //            }
 //          }
 //        }
-//      }
+      }
     }
 
     "warn mismatching operand widths where applicable" - {

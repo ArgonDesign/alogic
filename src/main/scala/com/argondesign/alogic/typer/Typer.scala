@@ -126,6 +126,13 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       case _: Expr if hasError(tree)          => ExprError() withLoc tree.loc
       case _: Stmt if hasError(tree)          => StmtError() withLoc tree.loc
       case Function(ref, _) if hasError(tree) => Function(ref, Nil) withLoc tree.loc
+      case _: Connect if hasError(tree) => {
+        val err = ExprError() withLoc tree.loc
+        TypeAssigner(err)
+        Connect(err, List(err)) withLoc tree.loc
+      } followedBy {
+        inConnect = false
+      }
 
       ////////////////////////////////////////////////////////////////////////////
       // Type check other nodes
@@ -160,8 +167,23 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       }
 
       case Connect(lhs, rhss) => {
-        // TODO: check widths
-        tree
+        val lhsWidthOpt = lhs.tpe.width.value
+        val errLoc = for {
+          rhs <- rhss
+          lhsWidth <- lhsWidthOpt
+          rhsWidth <- rhs.tpe.width.value
+          if lhsWidth != rhsWidth
+        } yield {
+          val loc = tree.loc.copy(point = rhs.loc.start)
+          cc.error(loc, s"Port widths do not match, ${lhsWidth} -> ${rhsWidth}")
+          loc
+        }
+
+        errLoc.headOption map { loc =>
+          val err = ExprError() withLoc loc
+          TypeAssigner(err)
+          Connect(err, List(err)) withLoc loc
+        } getOrElse tree
       } followedBy {
         inConnect = false
       }
