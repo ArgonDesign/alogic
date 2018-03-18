@@ -111,8 +111,9 @@ trait Messaging { self: CompilerContext =>
     messageBuffer append Warning(msg, Some(loc))
   }
 
-  final def error(loc: Loc, msg: String*): Unit = synchronized {
+  final def error(loc: Loc, msg: String*): Option[Loc] = synchronized {
     messageBuffer append Error(msg, Some(loc))
+    Some(loc)
   }
 
   final def fatal(loc: Loc, msg: String*): Nothing = synchronized {
@@ -139,7 +140,7 @@ trait Messaging { self: CompilerContext =>
 
   final def warning(ctx: ParserRuleContext, msg: String*): Unit = warning(ctx.loc, msg: _*)
 
-  final def error(ctx: ParserRuleContext, msg: String*): Unit = error(ctx.loc, msg: _*)
+  final def error(ctx: ParserRuleContext, msg: String*): Option[Loc] = error(ctx.loc, msg: _*)
 
   final def fatal(ctx: ParserRuleContext, msg: String*): Nothing = fatal(ctx.loc, msg: _*)
 
@@ -151,7 +152,7 @@ trait Messaging { self: CompilerContext =>
 
   final def warning(item: Locationed, msg: String*): Unit = warning(item.loc, msg: _*)
 
-  final def error(item: Locationed, msg: String*): Unit = error(item.loc, msg: _*)
+  final def error(item: Locationed, msg: String*): Option[Loc] = error(item.loc, msg: _*)
 
   final def fatal(item: Locationed, msg: String*): Nothing = fatal(item.loc, msg: _*)
 
