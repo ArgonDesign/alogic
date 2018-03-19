@@ -20,6 +20,7 @@
 
 package com.argondesign.alogic.typer
 
+import com.argondesign.alogic.Config
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
@@ -28,7 +29,6 @@ import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.FollowedBy
 import com.argondesign.alogic.util.unreachable
-
 import com.argondesign.alogic.Config.allowWidthInference
 
 final class Typer(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
@@ -77,17 +77,21 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
   }
 
   private def checkWidth(kind: Type, expr: Expr, msg: String): Option[Loc] = {
-    require(kind.isPacked)
-    // TODO: solve for parametrized
-    val kindWidthOpt = kind.width.value
-    val exprWidthOpt = expr.tpe.width.value
-    for {
-      kindWidth <- kindWidthOpt
-      exprWidth <- exprWidthOpt
-      if kindWidth != exprWidth
-    } yield {
-      cc.error(expr, s"${msg} yields ${exprWidth} bits, ${kindWidth} bits are expected")
-      expr.loc
+    if (!Config.checkAssignWidth) {
+      None
+    } else {
+      require(kind.isPacked)
+      // TODO: solve for parametrized
+      val kindWidthOpt = kind.width.value
+      val exprWidthOpt = expr.tpe.width.value
+      for {
+        kindWidth <- kindWidthOpt
+        exprWidth <- exprWidthOpt
+        if kindWidth != exprWidth
+      } yield {
+        cc.error(expr, s"${msg} yields ${exprWidth} bits, ${kindWidth} bits are expected")
+        expr.loc
+      }
     }
   }
 
