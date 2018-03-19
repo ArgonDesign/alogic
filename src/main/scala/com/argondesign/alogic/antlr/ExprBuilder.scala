@@ -28,7 +28,7 @@ import scala.math.BigInt.int2bigInt
 object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
 
   private def signedRest(text: String): (Boolean, String) = {
-    if (text.last == 's') (true, text.init) else (false, text)
+    if (text contains 's') (true, text filter { _ != 's' }) else (false, text)
   }
 
   private def parseBaseValue(ctx: ParserRuleContext, text: String)(

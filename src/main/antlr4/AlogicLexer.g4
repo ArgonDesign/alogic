@@ -45,11 +45,11 @@ fragment HEXVALUE
   ;
 
 UNSIZEDINT
-  :                          DECIMALVALUE 's'?
-  |               '\'' [bdh] HEXVALUE     's'?
+  :                          DECIMALVALUE
+  |               '\'' 's'? [bdh] HEXVALUE
   ;
 SIZEDINT
-  : DECIMALDIGIT+ '\'' [bdh] HEXVALUE     's'?
+  : DECIMALDIGIT+ '\'' 's'? [bdh] HEXVALUE
   ;
 
 ATID    : '@' SIMPLEID  ;
