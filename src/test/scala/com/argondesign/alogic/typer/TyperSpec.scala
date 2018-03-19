@@ -47,7 +47,7 @@ final class TyperSpec extends FreeSpec with AlogicTest {
   }
 
   "The Typer should" - {
-    "infer sizes of unsized literals for" - {
+    "infer sizes of unsized literals for" ignore {
       "non-reducing binary operator operands" - {
         for (op <- List("*", "/", "%", "+", "-", "&", "|", "^")) {
           val qop = Pattern.quote(op)
@@ -68,7 +68,7 @@ final class TyperSpec extends FreeSpec with AlogicTest {
             val text = expr.trim.replaceAll(" +", " ")
             text in {
               val root = s"""|fsm a {
-                             |  param u4 N = 2;
+                             |  param u4 N = 8'd2;
                              |  void main() {
                              |    ${text};
                              |    N;
@@ -116,7 +116,7 @@ final class TyperSpec extends FreeSpec with AlogicTest {
             val text = expr.trim.replaceAll(" +", " ")
             text in {
               val root = s"""|fsm a {
-                             |  param u8 N = 2;
+                             |  param u8 N = 8'd2;
                              |  void main() {
                              |    ${text};
                              |    N;
@@ -175,7 +175,7 @@ final class TyperSpec extends FreeSpec with AlogicTest {
           val text = expr.trim.replaceAll(" +", " ")
           text in {
             val root = s"""|fsm a {
-                           |  param u8 N = 2;
+                           |  param u8 N = 8'd2;
                            |  void main() {
                            |    ${text};
                            |    N;
@@ -282,7 +282,7 @@ final class TyperSpec extends FreeSpec with AlogicTest {
           val text = expr.trim.replaceAll(" +", " ")
           text in {
             val root = s"""|fsm a {
-                           |  param u8 N = 2;
+                           |  param u8 N = 8'd2;
                            |  void main() {
                            |    ${text};
                            |    N;
@@ -333,7 +333,7 @@ final class TyperSpec extends FreeSpec with AlogicTest {
             val text = expr.trim.replaceAll(" +", " ")
             text in {
               val root = s"""|fsm a {
-                             |  param u8 N = 2;
+                             |  param u8 N = 8'd2;
                              |  void main() {
                              |    ${text};
                              |    N;
@@ -758,7 +758,7 @@ final class TyperSpec extends FreeSpec with AlogicTest {
             val tree = s"""|network n {
                            |  in bool p;
                            |  new fsm a {
-                           |    param u8 N = 2;
+                           |    param u8 N = 8'd2;
                            |    in bool b;
                            |    void main() {
                            |      b;
@@ -781,7 +781,7 @@ final class TyperSpec extends FreeSpec with AlogicTest {
       "declaration initializers" - {
         for {
           (decl, msg) <- List(
-            ("i8 a = 2", ""),
+//            ("i8 a = 2", ""),
             ("i8 a = 8'd2", ""),
             ("i8 a = bool", "Initializer expression is of non-packed type"),
             ("i8 a = 9'd2", "Initializer expression yields 9 bits, 8 bits are expected"),
@@ -804,7 +804,7 @@ final class TyperSpec extends FreeSpec with AlogicTest {
       "assignments" - {
         for {
           (assignment, msg) <- List(
-            ("a = 2", ""),
+//            ("a = 2", ""),
             ("a = 8'd2", ""),
             ("a = bool", "Right hand side of assignment is of non-packed type"),
             ("bool = 8'd2", "Left hand side of assignment is of non-packed type"),
@@ -834,42 +834,44 @@ final class TyperSpec extends FreeSpec with AlogicTest {
       "assignments to illegal lhs" - {
         for {
           (assignment, msg) <- List(
-            ("a = 0", "Input port cannot be assigned"),
-            ("b = 0", ""),
-            ("c = 0", "Input port cannot be assigned"),
-            ("d = 0", "Output port with flow control cannot be assigned directly, use '.write'"),
-            ("e = 0", "Input port cannot be assigned"),
-            ("f = 0", "Output port with flow control cannot be assigned directly, use '.write'"),
-            ("g = 0", "Parameter cannot be assigned"),
-            ("h = 0", "Constant cannot be assigned"),
-            ("a[0] = 0", "Input port cannot be assigned"),
-            ("b[0] = 0", ""),
-            ("c[0] = 0", "Input port cannot be assigned"),
-            ("d[0] = 0", "Output port with flow control cannot be assigned directly, use '.write'"),
-            ("e[0] = 0", "Input port cannot be assigned"),
-            ("f[0] = 0", "Output port with flow control cannot be assigned directly, use '.write'"),
-            ("g[0] = 0", "Parameter cannot be assigned"),
-            ("h[0] = 0", "Constant cannot be assigned"),
-            ("a[1:0] = 0", "Input port cannot be assigned"),
-            ("b[1:0] = 0", ""),
-            ("c[1:0] = 0", "Input port cannot be assigned"),
-            ("d[1:0] = 0",
+            ("a = 8'd0", "Input port cannot be assigned"),
+            ("b = 8'd0", ""),
+            ("c = 8'd0", "Input port cannot be assigned"),
+            ("d = 8'd0", "Output port with flow control cannot be assigned directly, use '.write'"),
+            ("e = 8'd0", "Input port cannot be assigned"),
+            ("f = 8'd0", "Output port with flow control cannot be assigned directly, use '.write'"),
+            ("g = 8'd0", "Parameter cannot be assigned"),
+            ("h = 8'd0", "Constant cannot be assigned"),
+            ("a[0] = 1'b0", "Input port cannot be assigned"),
+            ("b[0] = 1'b0", ""),
+            ("c[0] = 1'b0", "Input port cannot be assigned"),
+            ("d[0] = 1'b0",
              "Output port with flow control cannot be assigned directly, use '.write'"),
-            ("e[1:0] = 0", "Input port cannot be assigned"),
-            ("f[1:0] = 0",
+            ("e[0] = 1'b0", "Input port cannot be assigned"),
+            ("f[0] = 1'b0",
              "Output port with flow control cannot be assigned directly, use '.write'"),
-            ("g[1:0] = 0", "Parameter cannot be assigned"),
-            ("h[1:0] = 0", "Constant cannot be assigned"),
-            ("{b[1], a[0]} = 0", "Input port cannot be assigned"),
-            ("{b[1], b[0]} = 0", ""),
-            ("{b[1], c[0]} = 0", "Input port cannot be assigned"),
-            ("{b[1], d[0]} = 0",
+            ("g[0] = 1'b0", "Parameter cannot be assigned"),
+            ("h[0] = 1'b0", "Constant cannot be assigned"),
+            ("a[1:0] = 2'b0", "Input port cannot be assigned"),
+            ("b[1:0] = 2'b0", ""),
+            ("c[1:0] = 2'b0", "Input port cannot be assigned"),
+            ("d[1:0] = 2'b0",
              "Output port with flow control cannot be assigned directly, use '.write'"),
-            ("{b[1], e[0]} = 0", "Input port cannot be assigned"),
-            ("{b[1], f[0]} = 0",
+            ("e[1:0] = 2'b0", "Input port cannot be assigned"),
+            ("f[1:0] = 2'b0",
              "Output port with flow control cannot be assigned directly, use '.write'"),
-            ("{b[1], g[0]} = 0", "Parameter cannot be assigned"),
-            ("{b[1], h[0]} = 0", "Constant cannot be assigned")
+            ("g[1:0] = 2'b0", "Parameter cannot be assigned"),
+            ("h[1:0] = 2'b0", "Constant cannot be assigned"),
+            ("{b[1], a[0]} = 2'b0", "Input port cannot be assigned"),
+            ("{b[1], b[0]} = 2'b0", ""),
+            ("{b[1], c[0]} = 2'b0", "Input port cannot be assigned"),
+            ("{b[1], d[0]} = 2'b0",
+             "Output port with flow control cannot be assigned directly, use '.write'"),
+            ("{b[1], e[0]} = 2'b0", "Input port cannot be assigned"),
+            ("{b[1], f[0]} = 2'b0",
+             "Output port with flow control cannot be assigned directly, use '.write'"),
+            ("{b[1], g[0]} = 2'b0", "Parameter cannot be assigned"),
+            ("{b[1], h[0]} = 2'b0", "Constant cannot be assigned")
           )
         } {
           assignment in {
@@ -880,8 +882,8 @@ final class TyperSpec extends FreeSpec with AlogicTest {
                            |  out sync i8 d;
                            |  in sync ready i8 e;
                            |  out sync ready i8 f;
-                           |  param i8 g = 2;
-                           |  const i8 h = 2;
+                           |  param i8 g = 8'd2;
+                           |  const i8 h = 8'd2;
                            |
                            |  void main() {
                            |    a; b; c; d; e; f; g; h;

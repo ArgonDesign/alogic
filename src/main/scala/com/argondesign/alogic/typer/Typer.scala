@@ -29,6 +29,8 @@ import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.FollowedBy
 import com.argondesign.alogic.util.unreachable
 
+import com.argondesign.alogic.Config.allowWidthInference
+
 final class Typer(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
 
   val mixedWidthBinaryOps = Set("<<", ">>", "<<<", ">>>", "&&", "||")
@@ -208,7 +210,7 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
 
       case decl @ Decl(_, kind, Some(init)) => {
         require(kind.isPacked)
-        if (init.tpe.isNum) {
+        if (allowWidthInference && init.tpe.isNum) {
           // Infer width of init
           val newInit = kind.width.value map { CoerceWidth(init, _) } map {
             case e: Expr => e
@@ -313,7 +315,7 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         checkPacked(lhs, "Left hand side of assignment") orElse errNotAssignable map { errLoc =>
           StmtError() withLoc errLoc
         } getOrElse {
-          if (rhs.tpe.isNum) {
+          if (allowWidthInference && rhs.tpe.isNum) {
             // Infer width of rhs
             lhs.tpe.width.value map {
               CoerceWidth(rhs, _)
@@ -492,7 +494,7 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         lazy val errLhs = checkPacked(lhs, s"Left hand operand of '${op}'")
         lazy val errRhs = checkPacked(rhs, s"Right hand operand of '${op}'")
 
-        (lhs.tpe.isNum, rhs.tpe.isNum) match {
+        (allowWidthInference && lhs.tpe.isNum, allowWidthInference && rhs.tpe.isNum) match {
           case (true, true) => tree // Do nothing, we will coerce later if possible
           case (false, true) => { // Infer with of rhs
             errLhs orElse {
@@ -550,7 +552,7 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
           lazy val errThen = checkPacked(thenExpr, "'then' operand of '?:'")
           lazy val errElse = checkPacked(elseExpr, "'else' operand of '?:'")
 
-          (thenExpr.tpe.isNum, elseExpr.tpe.isNum) match {
+          (allowWidthInference && thenExpr.tpe.isNum, allowWidthInference && elseExpr.tpe.isNum) match {
             case (true, true) => tree // Do nothing, we will coerce later if possible
             case (false, true) => { // Infer with of 'else' operand
               errThen map { ExprError() withLoc _ } orElse {
