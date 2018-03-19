@@ -124,24 +124,21 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
             if (reqWidth > width) {
               cc.error(ctx, s"Value specifier for ${width} bit literal requires ${reqWidth} bits")
               errorExpr
-            } else if (neg && abs > 0 && !signed) {
-              cc.error(ctx, "Negative unsigned literal")
-              errorExpr
             } else {
+              val mask = (BigInt(1) << width) - 1
+              val bits = (if (neg) -abs else abs) & mask
               val value = if (!signed) {
-                abs
+                bits
               } else {
-                val mask = (BigInt(1) << width) - 1
-                val bits = (if (neg) -abs else abs) & mask
                 val offset = (BigInt(-1) << width)
-                val value = if (bits.testBit(width - 1)) bits + offset else bits
-                if (neg && value > 0) {
-                  cc.warning(ctx, s"Apparently negative literal stands for positive value ${value}")
-                } else if (!neg && value < 0) {
-                  cc.warning(ctx, s"Apparently positive literal stands for negative value ${value}")
-                }
-                value
+                if (bits.testBit(width - 1)) bits + offset else bits
               }
+              if (neg && value > 0) {
+                cc.warning(ctx, s"Apparently negative literal stands for positive value ${value}")
+              } else if (!neg && value < 0) {
+                cc.warning(ctx, s"Apparently positive literal stands for negative value ${value}")
+              }
+              value
               ExprInt(signed, width, value) withLoc ctx.loc
             }
           } getOrElse {

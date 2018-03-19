@@ -23,8 +23,6 @@ Common rules for integer literals:
 whitespace is illegal elsewhere
 - Integer literals that do not have a `s` suffix are of an unsigned type, while
 those with an `s` suffix are signed
-- Using a `-` sign with an unsigned literal (without the `s` suffix) is illegal,
-unless the value is 0.
 - Digits standing for the value must conform to the specified base
     - `0-1` can be used with binary base `b`
     - `0-9` can be used with decimal base `d`
@@ -40,7 +38,8 @@ The generic syntax of unsized integer literals is composed of:
 - Required list of digits standing for the value of the literal
 - Optional `s` signed suffix
 
-If the base specifier is omitted, decimal base is implied. The value of a
+If the base specifier is omitted, decimal base is implied. Using a `-` sign with
+an unsigned unsized literal is illegal, unless the value is 0. The value of a
 literal with a `-` sign is always the negative of the value of the literal
 without the `-` sign.
 
@@ -84,8 +83,9 @@ value. It is important to understand the meaning of the previous sentence. In
 particular, observe that for signed literals, the syntax can yield a negative
 value for a seemingly positive literal, e.g. in `4'd15s`, which is numerically
 equivalent to the decimal `-1`, or `4'd8s`, which is actually equivalent to
-`-8`. The compiler will warn if the sign of the literal is different from the
-sign of the value it represents.
+`-8`. Similarly for unsigned literals, applying a `-` sign will still yield a
+positive value, as the result is of unsigned type. The compiler will warn if the
+sign of the literal is different from the sign of the value it represents.
 
 The value of a sized literal can always be derived by taking the binary bit
 pattern of the digits standing for the value (as an unsigned number in the
@@ -101,12 +101,12 @@ the specified number of bits.
 
 The following table provides an exhaustive set of examples:
 
-|      literal | bit pattern | value in 4 bit binary | equivalent decimal | type | note                                             |
+|      literal | bit pattern | value in 4 bit binary | equivalent decimal | type | note                     |
 |-------------:|--------:|---------:|---------:|-----:|:----------------------------------------------------|
 | decimal base |         |          |          |      |                                                     |
 |    4'd3      |    0011 |     0011 |        3 |   u4 |                                                     |
 |    4'd3s     |    0011 |     0011 |        3 |   i4 |                                                     |
-|   -4'd3      |   -0011 |      N/A |      N/A |   u4 | Error - negative unsigned                           |
+|   -4'd3      |   -0011 |     1101 |       13 |   u4 | Warning - sign of literal and value do not match    |
 |   -4'd3s     |   -0011 |     1101 |       -3 |   i4 |                                                     |
 |    4'd0      |    0000 |     0000 |        0 |   u4 |                                                     |
 |    4'd0s     |    0000 |     0000 |        0 |   i4 |                                                     |
@@ -114,19 +114,19 @@ The following table provides an exhaustive set of examples:
 |   -4'd0s     |   -0000 |     0000 |        0 |   i4 |                                                     |
 |    4'd1      |    0001 |     0001 |        1 |   u4 |                                                     |
 |    4'd1s     |    0001 |     0001 |        1 |   i4 |                                                     |
-|   -4'd1      |   -0001 |      N/A |      N/A |   u4 | Error - negative unsigned                           |
+|   -4'd1      |   -0001 |     1111 |       15 |   u4 | Warning - sign of literal and value do not match    |
 |   -4'd1s     |   -0001 |     1111 |       -1 |   i4 |                                                     |
 |    4'd15     |    1111 |     1111 |       15 |   u4 |                                                     |
 |    4'd15s    |    1111 |     1111 |       -1 |   i4 | Warning - sign of literal and value do not match    |
-|   -4'd15     |   -1111 |      N/A |      N/A |   u4 | Error - negative unsigned                           |
+|   -4'd15     |   -1111 |     0001 |        1 |   u4 | Warning - sign of literal and value do not match    |
 |   -4'd15s    |   -1111 |     0001 |        1 |   i4 | Warning - sign of literal and value do not match    |
 |    4'd7      |    0111 |     0111 |        7 |   u4 |                                                     |
 |    4'd7s     |    0111 |     0111 |        7 |   i4 |                                                     |
-|   -4'd7      |   -0111 |      N/A |      N/A |   u4 | Error - negative unsigned                           |
+|   -4'd7      |   -0111 |     1001 |        9 |   u4 | Warning - sign of literal and value do not match    |
 |   -4'd7s     |   -0111 |     1001 |       -7 |   i4 |                                                     |
 |    4'd8      |    1000 |     1000 |        8 |   u4 |                                                     |
 |    4'd8s     |    1000 |     1000 |       -8 |   i4 | Warning - sign of literal and value do not match    |
-|   -4'd8      |   -1000 |      N/A |      N/A |   u4 | Error - negative unsigned                           |
+|   -4'd8      |   -1000 |     1000 |        8 |   u4 | Warning - sign of literal and value do not match    |
 |   -4'd8s     |   -1000 |     1000 |       -8 |   i4 |                                                     |
 |    4'd16     |     N/A |      N/A |      N/A |   u4 | Error - too many bits specified                     |
 |    4'd16s    |     N/A |      N/A |      N/A |   i4 | Error - too many bits specified                     |
@@ -135,7 +135,7 @@ The following table provides an exhaustive set of examples:
 |  binary base |         |          |          |      |                                                     |
 |    4'b11     |    0011 |     0011 |        3 |   u4 |                                                     |
 |    4'b11s    |    0011 |     0011 |        3 |   i4 |                                                     |
-|   -4'b11     |   -0011 |      N/A |      N/A |   u4 | Error - negative unsigned                           |
+|   -4'b11     |   -0011 |     1101 |       13 |   u4 | Warning - sign of literal and value do not match    |
 |   -4'b11s    |   -0011 |     1101 |       -3 |   i4 |                                                     |
 |    4'b0      |    0000 |     0000 |        0 |   u4 |                                                     |
 |    4'b0s     |    0000 |     0000 |        0 |   i4 |                                                     |
@@ -143,19 +143,19 @@ The following table provides an exhaustive set of examples:
 |   -4'b0s     |   -0000 |     0000 |        0 |   i4 |                                                     |
 |    4'b1      |    0001 |     0001 |        1 |   u4 |                                                     |
 |    4'b1s     |    0001 |     0001 |        1 |   i4 |                                                     |
-|   -4'b1      |   -0001 |      N/A |      N/A |   u4 | Error - negative unsigned                           |
+|   -4'b1      |   -0001 |     1111 |       15 |   u4 | Warning - sign of literal and value do not match    |
 |   -4'b1s     |   -0001 |     1111 |       -1 |   i4 |                                                     |
 |    4'b1111   |    1111 |     1111 |       15 |   u4 |                                                     |
 |    4'b1111s  |    1111 |     1111 |       -1 |   i4 | Warning - sign of literal and value do not match    |
-|   -4'b1111   |   -1111 |      N/A |      N/A |   u4 | Error - negative unsigned                           |
+|   -4'b1111   |   -1111 |     0001 |        1 |   u4 | Warning - sign of literal and value do not match    |
 |   -4'b1111s  |   -1111 |     0001 |        1 |   i4 | Warning - sign of literal and value do not match    |
 |    4'b111    |    0111 |     0111 |        7 |   u4 |                                                     |
 |    4'b111s   |    0111 |     0111 |        7 |   i4 |                                                     |
-|   -4'b111    |   -0111 |      N/A |      N/A |   u4 | Error - negative unsigned                           |
+|   -4'b111    |   -0111 |     1001 |        9 |   u4 | Warning - sign of literal and value do not match    |
 |   -4'b111s   |   -0111 |     1001 |       -7 |   i4 |                                                     |
 |    4'b1000   |    1000 |     1000 |        8 |   u4 |                                                     |
 |    4'b1000s  |    1000 |     1000 |       -8 |   i4 | Warning - sign of literal and value do not match    |
-|   -4'b1000   |   -1000 |      N/A |      N/A |   u4 | Error - negative unsigned                           |
+|   -4'b1000   |   -1000 |     1000 |        8 |   u4 | Warning - sign of literal and value do not match    |
 |   -4'b1000s  |   -1000 |     1000 |       -8 |   i4 |                                                     |
 |    4'b10000  |     N/A |      N/A |      N/A |   u4 | Error - too many bits specified                     |
 |    4'b10000s |     N/A |      N/A |      N/A |   i4 | Error - too many bits specified                     |
@@ -164,7 +164,7 @@ The following table provides an exhaustive set of examples:
 |     hex base |         |          |          |      |                                                     |
 |    4'h3      |    0011 |     0011 |        3 |   u4 |                                                     |
 |    4'h3s     |    0011 |     0011 |        3 |   i4 |                                                     |
-|   -4'h3      |   -0011 |      N/A |      N/A |   u4 | Error - negative unsigned                           |
+|   -4'h3      |   -0011 |     1101 |       13 |   u4 | Warning - sign of literal and value do not match    |
 |   -4'h3s     |   -0011 |     1101 |       -3 |   i4 |                                                     |
 |    4'h0      |    0000 |     0000 |        0 |   u4 |                                                     |
 |    4'h0s     |    0000 |     0000 |        0 |   i4 |                                                     |
@@ -172,19 +172,19 @@ The following table provides an exhaustive set of examples:
 |   -4'h0s     |   -0000 |     0000 |        0 |   i4 |                                                     |
 |    4'h1      |    0001 |     0001 |        1 |   u4 |                                                     |
 |    4'h1s     |    0001 |     0001 |        1 |   i4 |                                                     |
-|   -4'h1      |   -0001 |      N/A |      N/A |   u4 | Error - negative unsigned                           |
+|   -4'h1      |   -0001 |     1111 |       15 |   u4 | Warning - sign of literal and value do not match    |
 |   -4'h1s     |   -0001 |     1111 |       -1 |   i4 |                                                     |
 |    4'hf      |    1111 |     1111 |       15 |   u4 |                                                     |
 |    4'hfs     |    1111 |     1111 |       -1 |   i4 | Warning - sign of literal and value do not match    |
-|   -4'hf      |   -1111 |      N/A |      N/A |   u4 | Error - negative unsigned                           |
+|   -4'hf      |   -1111 |     0001 |        1 |   u4 | Warning - sign of literal and value do not match    |
 |   -4'hfs     |   -1111 |     0001 |        1 |   i4 | Warning - sign of literal and value do not match    |
 |    4'h7      |    0111 |     0111 |        7 |   u4 |                                                     |
 |    4'h7s     |    0111 |     0111 |        7 |   i4 |                                                     |
-|   -4'h7      |   -0111 |      N/A |      N/A |   u4 | Error - negative unsigned                           |
+|   -4'h7      |   -0111 |     1001 |        9 |   u4 | Warning - sign of literal and value do not match    |
 |   -4'h7s     |   -0111 |     1001 |       -7 |   i4 |                                                     |
 |    4'h8      |    1000 |     1000 |        8 |   u4 |                                                     |
 |    4'h8s     |    1000 |     1000 |       -8 |   i4 | Warning - sign of literal and value do not match    |
-|   -4'h8      |   -1000 |      N/A |      N/A |   u4 | Error - negative unsigned                           |
+|   -4'h8      |   -1000 |     1000 |        8 |   u4 | Warning - sign of literal and value do not match    |
 |   -4'h8s     |   -1000 |     1000 |       -8 |   i4 |                                                     |
 |    4'h10     |     N/A |      N/A |      N/A |   u4 | Error - too many bits specified                     |
 |    4'h10s    |     N/A |      N/A |      N/A |   i4 | Error - too many bits specified                     |
