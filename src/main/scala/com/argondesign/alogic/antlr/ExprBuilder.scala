@@ -138,7 +138,6 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
               } else if (!neg && value < 0) {
                 cc.warning(ctx, s"Apparently positive literal stands for negative value ${value}")
               }
-              value
               ExprInt(signed, width, value) withLoc ctx.loc
             }
           } getOrElse {
