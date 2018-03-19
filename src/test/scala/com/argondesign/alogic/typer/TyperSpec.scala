@@ -469,7 +469,7 @@ final class TyperSpec extends FreeSpec with AlogicTest {
           (text, kind, msg) <- List(
             ("{1'b1, 1'b0}", TypeUInt(2), ""),
             ("{a, a}", TypeUInt(4), ""),
-            ("{a, 1}", TypeError, s"Part 2 of bit concatenation is of non-packed type"),
+//            ("{a, 1}", TypeError, s"Part 2 of bit concatenation is of non-packed type"),
             ("{a, bool}", TypeError, s"Part 2 of bit concatenation is of non-packed type")
           )
         } {
@@ -499,7 +499,7 @@ final class TyperSpec extends FreeSpec with AlogicTest {
           (text, kind, msg) <- List(
             ("{4{1'b1}}", TypeUInt(4), ""),
             ("{4{a}}", TypeUInt(8), ""),
-            ("{4{1}}", TypeError, s"Value of bit repetition is of non-packed type"),
+//            ("{4{1}}", TypeError, s"Value of bit repetition is of non-packed type"),
             ("{4{bool}}", TypeError, s"Value of bit repetition is of non-packed type"),
             ("{bool{1'b1}}", TypeError, s"Count of bit repetition is of non-numeric type")
           )

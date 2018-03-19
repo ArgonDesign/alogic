@@ -23,4 +23,6 @@ object Config {
 
   val binaryOpWidthWarnings = false
 
+  val treatNumAs32Wide = true
+
 }

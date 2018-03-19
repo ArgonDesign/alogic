@@ -19,8 +19,8 @@ package com.argondesign.alogic.core
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.transform.ChaseTypeRefs
 import com.argondesign.alogic.util.unreachable
-
 import Types._
+import com.argondesign.alogic.Config
 
 trait TypeOps extends TypePrintOps { this: Type =>
 
@@ -47,6 +47,7 @@ trait TypeOps extends TypePrintOps { this: Type =>
     case self: TypePipeline => self.kind.isPacked
     case self: TypeParam    => self.kind.isPacked
     case self: TypeConst    => self.kind.isPacked
+    case _: TypeNum         => Config.treatNumAs32Wide
     case _                  => false
   }
 
@@ -63,14 +64,15 @@ trait TypeOps extends TypePrintOps { this: Type =>
           Expr(0) withLoc Loc.synthetic
         }
       }
-      case TypeVoid           => Expr(0) withLoc Loc.synthetic
-      case self: TypeVector   => self.size * self.elementType.width
-      case self: TypeIn       => self.kind.width
-      case self: TypeOut      => self.kind.width
-      case self: TypePipeline => self.kind.width
-      case self: TypeParam    => self.kind.width
-      case self: TypeConst    => self.kind.width
-      case _                  => unreachable
+      case TypeVoid                              => Expr(0) withLoc Loc.synthetic
+      case self: TypeVector                      => self.size * self.elementType.width
+      case self: TypeIn                          => self.kind.width
+      case self: TypeOut                         => self.kind.width
+      case self: TypePipeline                    => self.kind.width
+      case self: TypeParam                       => self.kind.width
+      case self: TypeConst                       => self.kind.width
+      case _: TypeNum if Config.treatNumAs32Wide => Expr(32) withLoc Loc.synthetic
+      case _                                     => unreachable
     }
   } ensuring { _.hasLoc }
 
