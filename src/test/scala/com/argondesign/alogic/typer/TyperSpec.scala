@@ -1069,7 +1069,7 @@ final class TyperSpec extends FreeSpec with AlogicTest {
     }
 
     "warn mismatching operand widths where applicable" - {
-      "binary operators" - {
+      "binary operators" ignore {
         for {
           (op, warn) <- List(
             ("*", true),

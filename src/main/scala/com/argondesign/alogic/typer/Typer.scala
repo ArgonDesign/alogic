@@ -527,7 +527,7 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
           }
           case _ => {
             errLhs orElse errRhs map { ExprError() withLoc _ } getOrElse {
-              if (!(mixedWidthBinaryOps contains op)) {
+              if (Config.binaryOpWidthWarnings && !(mixedWidthBinaryOps contains op)) {
                 // TODO: handle parametrized widths by solving 'lhsWidth != rhsWidth' SAT
                 val lhsWidthOpt = lhs.tpe.width.value
                 val rhsWidthOpt = rhs.tpe.width.value

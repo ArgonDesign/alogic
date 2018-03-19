@@ -21,4 +21,6 @@ object Config {
 
   val checkAssignWidth = false
 
+  val binaryOpWidthWarnings = false
+
 }
