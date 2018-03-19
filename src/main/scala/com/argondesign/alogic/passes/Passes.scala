@@ -31,8 +31,11 @@ object Passes {
       }
     }
 
-    // Collect the results
-    results.seq.toList
+    // Collect the results and flatten Thickets
+    results.seq.toList flatMap {
+      case Thicket(trees) => trees
+      case other          => List(other)
+    }
   }
 
   def apply(trees: List[Tree])(implicit cc: CompilerContext): List[Tree] = {

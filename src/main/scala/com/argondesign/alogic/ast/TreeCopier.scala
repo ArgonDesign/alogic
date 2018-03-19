@@ -379,4 +379,12 @@ object TreeCopier {
     }
   }
 
+  final def apply(tree: Thicket)(trees: List[Tree]): Thicket = {
+    if (trees eq tree.trees) {
+      tree
+    } else {
+      Thicket(trees) withLoc tree.loc
+    }
+  }
+
 }
