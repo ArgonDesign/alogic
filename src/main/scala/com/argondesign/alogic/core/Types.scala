@@ -177,7 +177,9 @@ object Types {
   trait TypeInImpl extends ExtensionType { this: TypeIn =>
     lazy val extensions = fct match {
       case FlowControlTypeNone => {
-        Map.empty[String, Type]
+        Map(
+          "read" -> TypeCombFunc(Nil, kind)
+        )
       }
       case FlowControlTypeValid | FlowControlTypeReady => {
         Map(
@@ -203,7 +205,9 @@ object Types {
       }
       fct match {
         case FlowControlTypeNone => {
-          Map.empty[String, Type]
+          Map(
+            "write" -> writeFuncType
+          )
         }
         case FlowControlTypeValid => {
           Map(
