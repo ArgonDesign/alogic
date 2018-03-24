@@ -129,7 +129,7 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
           val kind = psymbol.denot.kind.underlying
           val ident = Ident(name) withLoc inner.loc
           val vsymbol = cc.newTermSymbol(ident, kind)
-          (name, vsymbol)
+          (name -> vsymbol)
         }
         ListMap(pairs: _*)
       }

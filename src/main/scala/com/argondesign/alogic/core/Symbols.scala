@@ -97,23 +97,40 @@ trait Symbols { self: CompilerContext =>
 
   final protected val symbolLocations = mutable.HashMap[Symbol, Loc]()
 
-  final def newTermSymbol(ident: Ident, kind: Type): TermSymbol = synchronized {
+  final def newTermSymbol(name: String, loc: Loc, kind: Type): TermSymbol = synchronized {
     val symbol = new TermSymbol(symbolSequenceNumbers.next)
-    val denot = TermDenotation(symbol, TermName(ident.name), kind)
+    val denot = TermDenotation(symbol, TermName(name), kind)
 
-    symbolLocations(symbol) = ident.loc
+    symbolLocations(symbol) = loc
 
     symbol withDenot denot
+  }
+
+  final def newTypeSymbol(name: String, loc: Loc, kind: Type): TypeSymbol = synchronized {
+    val symbol = new TypeSymbol(symbolSequenceNumbers.next)
+    val denot = TypeDenotation(symbol, TypeName(name), kind)
+
+    symbolLocations(symbol) = loc
+
+    symbol withDenot denot
+  }
+
+  final def newTermSymbol(ident: Ident, kind: Type): TermSymbol = synchronized {
+    newTermSymbol(ident.name, ident.loc, kind)
   }
 
   final def newTypeSymbol(ident: Ident, kind: Type): TypeSymbol = synchronized {
-    val symbol = new TypeSymbol(symbolSequenceNumbers.next)
-    val denot = TypeDenotation(symbol, TypeName(ident.name), kind)
-
-    symbolLocations(symbol) = ident.loc
-
-    symbol withDenot denot
+    newTypeSymbol(ident.name, ident.loc, kind)
   }
+
+  final def newSymbolLike(symbol: TermSymbol): TermSymbol = synchronized {
+    newTermSymbol(symbol.denot.name.str, symbol.loc(this), symbol.denot.kind)
+  }
+
+  final def newSymbolLike(symbol: TypeSymbol): TypeSymbol = synchronized {
+    newTypeSymbol(symbol.denot.name.str, symbol.loc(this), symbol.denot.kind)
+  }
+
 }
 
 object Symbols {
