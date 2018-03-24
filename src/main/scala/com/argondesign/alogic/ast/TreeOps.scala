@@ -16,33 +16,22 @@
 
 package com.argondesign.alogic.ast
 
-import com.argondesign.alogic.util.unreachable
-
-import com.argondesign.alogic.antlr.AlogicParser
-import com.argondesign.alogic.antlr.AlogicParser.ConnectContext
-import com.argondesign.alogic.antlr.AlogicParser.DeclContext
-import com.argondesign.alogic.antlr.AlogicParser.EntityContext
-import com.argondesign.alogic.antlr.AlogicParser.ExprContext
-import com.argondesign.alogic.antlr.AlogicParser.StartContext
-import com.argondesign.alogic.antlr.AlogicParser.StatementContext
-import com.argondesign.alogic.antlr.AlogicParser.Type_definitionContext
-import com.argondesign.alogic.antlr.ConnectBuilder
-import com.argondesign.alogic.antlr.DeclBuilder
-import com.argondesign.alogic.antlr.EntityBuilder
-import com.argondesign.alogic.antlr.ExprBuilder
-import com.argondesign.alogic.antlr.RootBuilder
-import com.argondesign.alogic.antlr.StmtBuilder
-import com.argondesign.alogic.antlr.TypeDefinitionBuilder
+import com.argondesign.alogic.antlr.AlogicParser._
+import com.argondesign.alogic.antlr._
+import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.frontend.Parser
-
+import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
-
-import Trees._
+import com.argondesign.alogic.frontend.Parser
+import com.argondesign.alogic.transform.Regularize
+import com.argondesign.alogic.util.unreachable
 
 trait TreeOps extends TreePrintOps { this: Tree =>
 
+  //////////////////////////////////////////////////////////////////////////////
   // Trees nodes have a type 'tpe' which can be set once
+  //////////////////////////////////////////////////////////////////////////////
+
   final private[this] var _tpe: Type = null // scalastyle:ignore var.field
 
   final def hasTpe: Boolean = _tpe != null
@@ -64,9 +53,18 @@ trait TreeOps extends TreePrintOps { this: Tree =>
 
   final def rewrite(tt: TreeTransformer): Tree = tt(this)
 
+  ////////////////////////////////////////////////////////////////////////////////
+  // Assign loc where missing and apply TypeAssigner to all nodes
+  ////////////////////////////////////////////////////////////////////////////////
+
+  def regularize(loc: Loc)(implicit cc: CompilerContext): this.type = {
+    val result = this rewrite (new Regularize(loc))
+    assert(result == this)
+    this
+  }
 }
 
-trait ObjectTreeOps {
+trait ObjectTreeOps extends TreeUntype {
 
   ////////////////////////////////////////////////////////////////////////////////
   // Implicit dispatchers for any Tree that can be directly parsed by the parser

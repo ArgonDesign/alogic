@@ -16,37 +16,47 @@
 package com.argondesign.alogic.core
 
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.core.FlowControlTypes._
 import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.util.unreachable
 
 trait TypePrintOps { this: Type =>
 
-  def toSource: String = this match {
+  def toSource(implicit cc: CompilerContext): String = this.chase match {
     case TypeCombStmt                  => "type-comb-statement"
     case TypeCtrlStmt                  => "type-ctrl-statement"
+    case TypeSInt(ExprNum(_, value))   => s"i${value}"
+    case TypeUInt(ExprNum(_, value))   => s"u${value}"
     case TypeSInt(size)                => s"int(${size.toSource})"
     case TypeUInt(size)                => s"uint(${size.toSource})"
-    case TypeNum(true)                 => "signed-number"
-    case TypeNum(false)                => "unsigned-number"
+    case TypeNum(true)                 => "int"
+    case TypeNum(false)                => "uint"
     case TypeVector(elementType, size) => s"vec(${elementType.toString}, ${size.toSource})"
     case TypeArray(elementType, size)  => s"${elementType.toString}[${size.toSource}]"
     case TypeStruct(name, _, _)        => s"struct ${name}"
     case TypeVoid                      => "void"
-    case TypeRef(ref: Ref)             => s"ref ${ref.toSource}"
     case TypeCombFunc(argTypes, retType) =>
       s"comb ${argTypes map { _.toSource } mkString ", "} -> ${retType.toSource}"
     case TypeCtrlFunc(argTypes, retType) =>
       s"ctrl ${argTypes map { _.toSource } mkString ", "} -> ${retType.toSource}"
-    case TypeEntity(name, _, _, _, _) => s"entity ${name}"
-    case TypeStr                      => "string"
-    case TypeIn(kind, fct)            => s"in ${fct} ${kind.toSource}"
-    case TypeOut(kind, fct, st)       => s"out ${fct} ${st} ${kind.toSource}"
-    case TypePipeline(kind)           => s"pipeline ${kind.toSource}"
-    case TypeParam(kind)              => s"param ${kind.toSource}"
-    case TypeConst(kind)              => s"const ${kind.toSource}"
-    case TypeType(kind)               => s"type ${kind.toSource}"
-    case TypeMisc                     => "type-misc"
-    case TypeError                    => "type-error"
-    case TypeUnknown                  => "type-unknown"
-    case _: TypePolyFunc              => "type-poly-func"
+    case TypeEntity(name, _, _, _, _)             => s"entity ${name}"
+    case TypeStr                                  => "string"
+    case TypeIn(kind, FlowControlTypeNone)        => s"in ${kind.toSource}"
+    case TypeIn(kind, FlowControlTypeValid)       => s"in sync ${kind.toSource}"
+    case TypeIn(kind, FlowControlTypeReady)       => s"in sync ready ${kind.toSource}"
+    case TypeIn(kind, FlowControlTypeAccept)      => s"in sync accept ${kind.toSource}"
+    case TypeOut(kind, FlowControlTypeNone, st)   => s"out ${st} ${kind.toSource}"
+    case TypeOut(kind, FlowControlTypeValid, st)  => s"out sync ${st} ${kind.toSource}"
+    case TypeOut(kind, FlowControlTypeReady, st)  => s"out sync ready ${st} ${kind.toSource}"
+    case TypeOut(kind, FlowControlTypeAccept, st) => s"out sync accept ${st} ${kind.toSource}"
+    case TypePipeline(kind)                       => s"pipeline ${kind.toSource}"
+    case TypeParam(kind)                          => s"param ${kind.toSource}"
+    case TypeConst(kind)                          => s"const ${kind.toSource}"
+    case TypeType(kind)                           => s"type ${kind.toSource}"
+    case TypeMisc                                 => "type-misc"
+    case TypeError                                => "type-error"
+    case TypeUnknown                              => "type-unknown"
+    case _: TypePolyFunc                          => "type-poly-func"
+    case _: TypeRef                               => unreachable
   }
 }

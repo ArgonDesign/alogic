@@ -621,28 +621,18 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
   }
 
   override def finalCheck(tree: Tree): Unit = {
-    val isEntity = tree match {
-      case _: Entity => true
-      case _         => false
-    }
-
-    if (isEntity) {
-      tree visit {
-        case _: Type => /* Don't recurse into types */
-        case node: Tree if !node.hasTpe => {
-          cc.ice(
-            node,
-            "Typer should have assigned type for all node, but the following is untyped",
-            node.toString
-          )
-        }
-        case node: Tree if node.tpe == TypeUnknown => {
-          cc.ice(node, s"Could not compute type of ${node}")
-        }
-      }
-    }
-
     tree visit {
+      case _: Type => /* Don't recurse into types */
+      case node: Tree if !node.hasTpe => {
+        cc.ice(
+          node,
+          "Typer should have assigned type for all node, but the following is untyped",
+          node.toString
+        )
+      }
+      case node: Tree if node.tpe == TypeUnknown => {
+        cc.ice(node, s"Could not compute type of ${node}")
+      }
       case node: TypeDefinition => {
         cc.ice(node, s"Typer should have removed type definitions, but '${node}' remains")
       }

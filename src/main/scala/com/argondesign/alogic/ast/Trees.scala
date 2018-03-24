@@ -100,6 +100,14 @@ object Trees {
   case class State(ref: Ref, body: List[Stmt]) extends Tree
 
   ///////////////////////////////////////////////////////////////////////////////
+  // Thicket
+  ///////////////////////////////////////////////////////////////////////////////
+
+  // Thicket is used where a node needs to be transformed into a list of nodes.
+  // Thickets are transient and are flattened into the receiving list during traversal.
+  case class Thicket(trees: List[Tree]) extends Tree
+
+  ///////////////////////////////////////////////////////////////////////////////
   // Statements
   ///////////////////////////////////////////////////////////////////////////////
 
@@ -169,13 +177,5 @@ object Trees {
   case class ExprStr(value: String) extends Expr
 
   case class ExprError() extends Expr // Placeholder when errors happened
-
-  ///////////////////////////////////////////////////////////////////////////////
-  // Thicket
-  ///////////////////////////////////////////////////////////////////////////////
-
-  // Thicket is used where a node needs to be transformed into a list of nodes.
-  // Thickets are transient and are flattened into the receiving list during traversal.
-  case class Thicket(trees: List[Tree]) extends Tree
 
 }

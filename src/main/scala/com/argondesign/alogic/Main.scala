@@ -68,7 +68,7 @@ object Main extends App {
 
     val trees = Passes(frontEndTrees)
 
-    println(trees.size)
+    trees map { _.toSource } foreach println
     true
   } catch {
     case _: FatalErrorException => false

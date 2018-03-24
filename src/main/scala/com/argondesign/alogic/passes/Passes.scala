@@ -52,6 +52,10 @@ object Passes {
       () =>
         List(
           new Typer
+      ),
+      () =>
+        List(
+          new LowerPipeline
       )
     )
 
