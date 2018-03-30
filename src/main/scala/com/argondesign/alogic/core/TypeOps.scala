@@ -59,7 +59,8 @@ trait TypeOps extends TypePrintOps { this: Type =>
       case self: TypeUInt => self.size
       case self: TypeStruct => {
         if (self.fieldTypes.nonEmpty) {
-          self.fieldTypes map { _.width } reduceLeft { _ + _ }
+          val sumExpr = self.fieldTypes map { _.width } reduceLeft { _ + _ }
+          sumExpr.simplify
         } else {
           Expr(0) withLoc Loc.synthetic
         }

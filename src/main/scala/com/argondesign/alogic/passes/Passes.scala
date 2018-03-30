@@ -55,6 +55,7 @@ object Passes {
       ),
       () =>
         List(
+          new FoldExpr(assignTypes = true)(cc),
           new LowerPipeline,
           new LiftEntities,
           new LowerLoops

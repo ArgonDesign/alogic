@@ -20,7 +20,7 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.transform.ConstantFold
+import com.argondesign.alogic.passes.FoldExpr
 import com.argondesign.alogic.util.unreachable
 
 import scala.language.implicitConversions
@@ -138,7 +138,7 @@ trait ExprOps { this: Expr =>
 
   // Simplify this expression
   def simplify(implicit cc: CompilerContext): Expr = {
-    this rewrite { new ConstantFold } match {
+    this rewrite { new FoldExpr(false) } match {
       case expr: Expr => expr
       case _          => unreachable
     }

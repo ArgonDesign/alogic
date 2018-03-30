@@ -28,6 +28,7 @@ object AtBits extends BuiltinPolyFunc {
   protected def validArgs(args: List[Expr])(implicit cc: CompilerContext) = {
     args.lengthCompare(1) == 0 && {
       args.head.tpe match {
+        case _: TypeNum                      => false
         case TypeType(kind) if kind.isPacked => true
         case kind if kind.isPacked           => true
         case _                               => false
@@ -37,4 +38,11 @@ object AtBits extends BuiltinPolyFunc {
 
   private[builtins] override def isKnownConst(call: ExprCall)(
       implicit cc: CompilerContext): Boolean = true
+
+  private[builtins] override def fold(call: ExprCall)(implicit cc: CompilerContext): Expr = {
+    call.args(0).tpe match {
+      case TypeType(kind) => kind.width
+      case kind           => kind.width
+    }
+  }
 }

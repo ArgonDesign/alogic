@@ -31,4 +31,31 @@ object AtZx extends BuiltinPolyFunc {
     args.lengthCompare(2) == 0 && args(0).isKnownConst && args(1).tpe.isPacked
   }
 
+  private[builtins] override def fold(call: ExprCall)(implicit cc: CompilerContext): Expr = {
+    val folded = call.args match {
+      case List(width: ExprNum, value: ExprInt) => foldNumInt(call, width, value)
+      case _                                    => None
+    }
+
+    folded map { expr =>
+      if (!expr.hasLoc) expr withLoc call.loc else expr
+    } getOrElse call
+  }
+
+  private def foldNumInt(call: ExprCall, width: ExprNum, value: ExprInt)(
+      implicit cc: CompilerContext): Option[Expr] = {
+    if (width.value > value.width) {
+      val mask = (BigInt(1) << value.width) - 1
+      Some(ExprInt(value.signed, width.value.toInt, value.value & mask))
+    } else if (width.value == value.width) {
+      Some(value)
+    } else {
+      cc.error(
+        call,
+        s"Result width (${width.value}) of ${name} is less than argument width (${value.width})"
+      )
+      Some(ExprError())
+    }
+  }
+
 }
