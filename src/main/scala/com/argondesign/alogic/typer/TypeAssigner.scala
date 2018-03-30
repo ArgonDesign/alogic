@@ -38,6 +38,7 @@ object TypeAssigner {
       case node: State          => apply(node)
       case node: Sym            => apply(node)
       case node: TypeDefinition => apply(node)
+      case node: Thicket        => apply(node)
       case _                    => cc.ice(tree, s"Don't know how to type '${tree}")
     }
     assert(tree.hasTpe)
@@ -62,6 +63,11 @@ object TypeAssigner {
   def apply(node: State): node.type = assignTypeMisc(node)
   def apply(node: Sym): node.type = assignTypeMisc(node)
   def apply(node: TypeDefinition): node.type = assignTypeMisc(node)
+
+  def apply(node: Thicket): node.type = {
+    assert(node.trees forall { _.isInstanceOf[Entity] })
+    assignTypeMisc(node)
+  }
 
   def apply(node: CaseClause): node.type = {
     if (node.body.tpe == TypeError || (node.cond exists { _.tpe == TypeError })) {

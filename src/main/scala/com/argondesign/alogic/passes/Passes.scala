@@ -56,7 +56,8 @@ object Passes {
       () =>
         List(
           new LowerPipeline,
-          new LiftEntities
+          new LiftEntities,
+          new LowerLoops
       )
     )
 

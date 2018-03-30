@@ -11,6 +11,7 @@
 // DESCRIPTION:
 //
 // Regularize tree by assigning loc where missing, and applying type assigner
+// where tpe is missing
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.transform
@@ -24,10 +25,12 @@ import com.argondesign.alogic.typer.TypeAssigner
 final class Regularize(loc: Loc)(implicit cc: CompilerContext) extends TreeTransformer {
 
   override def transform(tree: Tree): Tree = {
-    assert(!tree.hasTpe)
     if (!tree.hasLoc) {
       tree withLoc loc
     }
-    TypeAssigner(tree)
+    if (!tree.hasTpe) {
+      TypeAssigner(tree)
+    }
+    tree
   }
 }

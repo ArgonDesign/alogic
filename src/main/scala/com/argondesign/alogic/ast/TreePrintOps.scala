@@ -90,6 +90,18 @@ trait TreePrintOps { this: Tree =>
     case ExprError()                           => "/* Error expression */"
   }
 
+  private[this] def ensureBlock(indent: Int, stmt: Stmt)(implicit cc: CompilerContext) = {
+    stmt match {
+      case block: StmtBlock => v(indent)(block)
+      case other => {
+        val i = "  " * indent
+        s"""|{
+            |${i}  ${v(indent + 1)(other)}
+            |${i}}""".stripMargin
+      }
+    }
+  }
+
   private[this] def v(indent: Int)(tree: Tree)(implicit cc: CompilerContext): String = {
     val i = "  " * indent
     tree match {
@@ -188,7 +200,9 @@ trait TreePrintOps { this: Tree =>
       case Decl(ref, kind, Some(init)) => s"${kind.toSource} ${v(indent)(ref)} = ${v(init)};"
 
       case Instance(ref, module, paramNames, paramArgs) => {
-        val pas = for ((pn, pa) <- paramNames zip paramArgs) yield { s"${pn} = ${v(indent)(pa)}" }
+        val pas = for ((pn, pa) <- paramNames zip paramArgs) yield {
+          s"${pn} = ${v(indent)(pa)}"
+        }
         s"new ${v(indent)(ref)} = ${v(indent)(module)}(${pas mkString ", "});"
       }
       case Connect(lhs, rhs) => s"${v(lhs)} -> ${rhs map v mkString ", "};"
@@ -212,11 +226,12 @@ trait TreePrintOps { this: Tree =>
             |${i}}""".stripMargin
       }
       case StmtIf(cond, thenStmt, Some(elseStmt)) => {
-        s"if (${v(cond)}) ${v(indent)(thenStmt)} else ${v(indent)(elseStmt)}"
+        s"if (${v(cond)}) ${ensureBlock(indent, thenStmt)} else ${ensureBlock(indent, elseStmt)}"
       }
       case StmtIf(cond, thenStmt, None) => {
-        s"if (${v(cond)}) ${v(indent)(thenStmt)}"
+        s"if (${v(cond)}) ${ensureBlock(indent, thenStmt)}"
       }
+
       case StmtCase(expr, cases, Nil) => {
         s"""|case (${v(expr)}) {
             |${i}  ${cases map v(indent + 1) mkString s"\n${i}  "}
@@ -247,7 +262,7 @@ trait TreePrintOps { this: Tree =>
         val initsStr = inits map v(indent) mkString s", "
         val condStr = cond map v getOrElse ""
         val stepsStr = steps map v(indent) mkString s", "
-        s"""|for (${initsStr}; ${condStr} ; ${stepsStr}) {
+        s"""|for (${initsStr} ; ${condStr} ; ${stepsStr}) {
             |${i}  ${body map v(indent + 1) mkString s"\n${i}  "}
             |${i}}""".stripMargin
       }
@@ -277,13 +292,14 @@ trait TreePrintOps { this: Tree =>
   }
 
   def toSource(implicit cc: CompilerContext): String = v(0)(this)
-//
-//    def v(indent: Int)(node: Node): String = {
-//      val i = "  " * indent
-//      node match {
-//        case expr: Expr => visitExpr(expr)
-//        case lval: LVal => visitLVal(lval)
-//
-//        case FsmTask(_, name, decls, fns, fencefn, vfns) =>
-//
+  //
+  //    def v(indent: Int)(node: Node): String = {
+  //      val i = "  " * indent
+  //      node match {
+  //        case expr: Expr => visitExpr(expr)
+  //        case lval: LVal => visitLVal(lval)
+  //
+  //        case FsmTask(_, name, decls, fns, fencefn, vfns) =>
+  //
+
 }
