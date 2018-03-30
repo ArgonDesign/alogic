@@ -43,7 +43,7 @@ object Main extends App {
   val cliConf = new CLIConf(args)
 
   val results = try {
-    val toplevel = cliConf.toplevel()
+    val toplevels = cliConf.toplevel()
 
     lazy val cwd = (new File(".")).getCanonicalFile()
 
@@ -59,7 +59,7 @@ object Main extends App {
 
     val frontEndTrees = {
       val frontend = new Frontend(moduleSeachDirs, includeSeachDirs, initalDefines)
-      frontend(toplevel)
+      frontend(toplevels)
     }
 
     // Insert entity symbols into the global scope

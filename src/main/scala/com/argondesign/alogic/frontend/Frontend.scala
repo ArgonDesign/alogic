@@ -141,11 +141,19 @@ class Frontend(
     }
   }
 
-  // Parse all files needed for 'entityName'. Returns list of Root nodes
-  def apply(entityName: String): List[Root] = {
+  // Parse all files needed for 'topLevelNames'. Returns list of Root nodes
+  def apply(topLevelNames: List[String]): List[Root] = {
 
-    // Compute the result
-    val treeMap = Await.result(doIt(entityName), atMost = Inf)
+    // Process all specified entities
+    val treeMapFutures = Future.traverse(topLevelNames)(doIt)
+
+    // Merge all maps
+    val treeMapFuture = treeMapFutures map { maps =>
+      (Map.empty[String, Root] /: maps) { _ ++ _ }
+    }
+
+    // Wait for the result
+    val treeMap = Await.result(treeMapFuture, atMost = Inf)
 
     // Return the trees
     return treeMap.values.toList

@@ -128,9 +128,9 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) {
     case _ => Right(Unit)
   }
 
-  val toplevel = trailArg[String](
+  val toplevel = trailArg[List[String]](
     required = true,
-    descr = "Name of top level entity"
+    descr = "List of top level entity names"
   )
 
   verify()
