@@ -23,6 +23,7 @@ import com.argondesign.alogic.ast.Trees.Entity
 import com.argondesign.alogic.ast.Trees.Root
 import com.argondesign.alogic.ast.Trees.Sym
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Error
 import com.argondesign.alogic.core.FatalErrorException
 import com.argondesign.alogic.frontend.Frontend
 import com.argondesign.alogic.passes.Passes
@@ -108,16 +109,17 @@ object Main extends App {
     pw.close()
   }
 
-  results match {
-    case None => sys exit 1
-    case Some(trees) => {
-      for (tree <- trees) {
-        val entity = tree.asInstanceOf[Entity]
-        writeEntity(entity, oPathFor(entity))
-      }
-      sys exit 0
-    }
+  if (results.isEmpty) {
+    sys exit 2
   }
+
+  for (tree <- results.get) {
+    val entity = tree.asInstanceOf[Entity]
+    writeEntity(entity, oPathFor(entity))
+  }
+
+  val ret = if (cc.messages exists { _.isInstanceOf[Error] }) 1 else 0
+  sys exit ret
 
   //
   //  val cnnf = new CLIConf(args)
