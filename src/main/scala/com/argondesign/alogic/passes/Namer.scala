@@ -26,7 +26,7 @@ import com.argondesign.alogic.core.Names.TypeName
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.TypeTransformer
+import com.argondesign.alogic.core.TreeInTypeTransformer
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.FollowedBy
 import com.argondesign.alogic.util.unreachable
@@ -182,39 +182,10 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
     }
   }
 
-  private[this] object TypeNamer extends TypeTransformer {
+  private[this] object TypeNamer extends TreeInTypeTransformer(this) {
     override def transform(kind: Type) = kind match {
       case TypeRef(ident: Ident) => TypeRef(Sym(lookupType(ident)) withLoc ident.loc)
-      case node @ TypeVector(_, size) => {
-        val newSize = namer walk size match {
-          case expr: Expr => expr
-          case _          => unreachable
-        }
-        if (newSize eq size) node else node.copy(size = newSize)
-      }
-      case node @ TypeInt(size) => {
-        val newSize = namer walk size match {
-          case expr: Expr => expr
-          case _          => unreachable
-        }
-        if (newSize eq size) {
-          node
-        } else {
-          node match {
-            case sint: TypeSInt => sint.copy(size = newSize)
-            case uint: TypeUInt => uint.copy(size = newSize)
-            case _              => unreachable
-          }
-        }
-      }
-      case node @ TypeArray(_, size) => {
-        val newSize = namer walk size match {
-          case expr: Expr => expr
-          case _          => unreachable
-        }
-        if (newSize eq size) node else node.copy(size = newSize)
-      }
-      case _ => kind
+      case _                     => super.transform(kind)
     }
   }
 

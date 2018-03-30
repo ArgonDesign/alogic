@@ -268,12 +268,10 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
     assert(rewriteEntity.isEmpty)
 
     tree visit {
-      case _: Type                    =>
       case node: Tree if !node.hasTpe => cc.ice(node, "Lost node.tpe", node.toString)
     }
 
     tree visit {
-      case _: Type         =>
       case node: StmtRead  => cc.ice(node, "read statement remains after LowerPipeline")
       case node: StmtWrite => cc.ice(node, "write statement remains after LowerPipeline")
       case node @ Decl(_, _: TypePipeline, _) => {

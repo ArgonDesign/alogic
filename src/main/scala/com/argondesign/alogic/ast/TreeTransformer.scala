@@ -45,7 +45,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext) extends TreeLik
   ///////////////////////////////////////////////////////////////////////////////
 
   // Walk list, flatten Thickets
-  protected final override def walk(trees: List[Tree]): List[Tree] = {
+  final override def walk(trees: List[Tree]): List[Tree] = {
     val newTrees = super.walk(trees)
     if (newTrees eq trees) {
       trees
@@ -57,7 +57,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext) extends TreeLik
     }
   }
 
-  protected final override def walk(tree: Tree): Tree = {
+  final override def walk(tree: Tree): Tree = {
     enter(tree)
     tree match {
       case node: Root => {

@@ -21,15 +21,16 @@
 package com.argondesign.alogic.typer
 
 import com.argondesign.alogic.Config
+import com.argondesign.alogic.Config.allowWidthInference
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
+import com.argondesign.alogic.core.TreeInTypeTransformer
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.FollowedBy
 import com.argondesign.alogic.util.unreachable
-import com.argondesign.alogic.Config.allowWidthInference
 
 final class Typer(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
 
@@ -105,6 +106,10 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
     } else {
       None
     }
+  }
+
+  private[this] object TypeTyper extends TreeInTypeTransformer(this) {
+    // TODO: implement checks
   }
 
   private var inConnect = false
@@ -212,7 +217,8 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         inConnect = false
       }
 
-      case decl @ Decl(_, kind, Some(init)) => {
+      case decl @ Decl(_, origKind, Some(init)) => {
+        val kind = origKind rewrite TypeTyper
         require(kind.isPacked)
         if (allowWidthInference && init.tpe.isNum) {
           // Infer width of init
@@ -223,7 +229,7 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
             cc.error(init, s"Cannot infer width of initializer")
             TypeAssigner(ExprError() withLoc tree.loc)
           }
-          decl.copy(init = Some(newInit)) withLoc tree.loc
+          decl.copy(kind = kind, init = Some(newInit)) withLoc tree.loc
         } else {
           val packedErrOpt = checkPacked(init, "Initializer expression")
           lazy val widthErrOpt = checkWidth(kind, init, "Initializer expression")
@@ -231,9 +237,16 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
           packedErrOpt orElse widthErrOpt map { errLoc =>
             val newInit = ExprError() withLoc errLoc
             TypeAssigner(newInit)
-            decl.copy(init = Some(newInit)) withLoc tree.loc
-          } getOrElse tree
+            decl.copy(kind = kind, init = Some(newInit)) withLoc tree.loc
+          } getOrElse {
+            if (kind eq origKind) decl else decl.copy(kind = kind) withLoc tree.loc
+          }
         }
+      }
+
+      case decl @ Decl(_, origKind, None) => {
+        val kind = origKind rewrite TypeTyper
+        if (kind eq origKind) decl else decl.copy(kind = kind) withLoc tree.loc
       }
 
       ////////////////////////////////////////////////////////////////////////////
@@ -613,6 +626,11 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         }
       }
 
+      case expr @ ExprType(origKind) => {
+        val kind = origKind rewrite TypeTyper
+        if (kind eq origKind) expr else expr.copy(kind = kind) withLoc tree.loc
+      }
+
       case _ => tree
     }
 
@@ -622,7 +640,6 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
 
   override def finalCheck(tree: Tree): Unit = {
     tree visit {
-      case _: Type => /* Don't recurse into types */
       case node: Tree if !node.hasTpe => {
         cc.ice(
           node,
