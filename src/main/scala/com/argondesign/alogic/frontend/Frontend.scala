@@ -67,11 +67,11 @@ class Frontend(
   }
 
   // Cache of trees we already started working on. We use this to to avoid
-  // multiple processing files that are instantiated multiple times
-  val inProgress = mutable.Map[String, Future[Map[String, Root]]]()
+  // repeated processing of entities that are instantiated multiple times
+  val inProgress = mutable.Map[String, Future[Set[Root]]]()
 
-  // Recursive worker that builds a future yielding the map of all trees required for an entity
-  def doIt(entityName: String): Future[Map[String, Root]] = {
+  // Recursive worker that builds a future yielding the set of all trees required for an entity
+  def doIt(entityName: String): Future[Set[Root]] = {
 
     // The actual future that builds all parse trees under the hierarchy of the given entity
     // note that this is only actually constructed if the inProgress map does not contain the
@@ -101,7 +101,7 @@ class Frontend(
       }
 
       // Recursively process all instantiated nodes
-      val childAstMapsFuture = {
+      val childAstsFuture = {
 
         // Extract all instance entity names (from the recursively nested entities as well)
         val instantiatedEntityNamesFuture = astFuture map { root =>
@@ -126,12 +126,12 @@ class Frontend(
         instantiatedEntityNamesFuture flatMap { Future.traverse(_)(doIt) }
       }
 
-      // Merge child tree maps and add this  tree
+      // Merge child tree sets and add this tree
       for {
-        childAstMaps <- childAstMapsFuture
+        childAsts <- childAstsFuture
         ast <- astFuture
       } yield {
-        (Map.empty[String, Root] /: childAstMaps)(_ ++ _) + (entityName -> ast)
+        (Set.empty[Root] /: childAsts)(_ union _) + ast
       }
     }
 
@@ -144,18 +144,18 @@ class Frontend(
   // Parse all files needed for 'topLevelNames'. Returns list of Root nodes
   def apply(topLevelNames: List[String]): List[Root] = {
 
-    // Process all specified entities
-    val treeMapFutures = Future.traverse(topLevelNames)(doIt)
+    // Process all specified top level entities
+    val treeSetFutures = Future.traverse(topLevelNames)(doIt)
 
-    // Merge all maps
-    val treeMapFuture = treeMapFutures map { maps =>
-      (Map.empty[String, Root] /: maps) { _ ++ _ }
+    // Merge all sets
+    val treeSetFuture = treeSetFutures map { sets =>
+      (Set.empty[Root] /: sets) { _ union _ }
     }
 
     // Wait for the result
-    val treeMap = Await.result(treeMapFuture, atMost = Inf)
+    val treeSet = Await.result(treeSetFuture, atMost = Inf)
 
     // Return the trees
-    return treeMap.values.toList
+    treeSet.toList
   }
 }
