@@ -16,8 +16,12 @@
 package com.argondesign.alogic
 
 import java.io.File
+import java.io.PrintWriter
+import java.nio.file.Path
 
+import com.argondesign.alogic.ast.Trees.Entity
 import com.argondesign.alogic.ast.Trees.Root
+import com.argondesign.alogic.ast.Trees.Sym
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FatalErrorException
 import com.argondesign.alogic.frontend.Frontend
@@ -32,21 +36,21 @@ object Main extends App {
 
   implicit val cc = new CompilerContext
 
-  val success = try {
+  //////////////////////////////////////////////////////////////////////////////
+  // Parse arguments
+  //////////////////////////////////////////////////////////////////////////////
 
-    //////////////////////////////////////////////////////////////////////////////
-    // Parse arguments
-    //////////////////////////////////////////////////////////////////////////////
+  val cliConf = new CLIConf(args)
 
-    val cliConf = new CLIConf(args)
-
+  val results = try {
     val toplevel = cliConf.toplevel()
-    //    val outDir = cliConf.odir()
 
-    val cwd = (new File(".")).getCanonicalFile()
+    lazy val cwd = (new File(".")).getCanonicalFile()
 
-    val moduleSeachDirs = cwd :: cliConf.ydir()
-    val includeSeachDirs = cwd :: cliConf.incdir()
+    val defaultToCWD = cliConf.ydir.isEmpty && cliConf.incdir.isEmpty && cliConf.srcbase.isEmpty
+    val moduleSeachDirs = if (defaultToCWD) List(cwd) else cliConf.ydir()
+    val includeSeachDirs = if (defaultToCWD) List(cwd) else cliConf.incdir()
+
     val initalDefines = cliConf.defs.toMap
 
     //////////////////////////////////////////////////////////////////////////////
@@ -68,15 +72,52 @@ object Main extends App {
 
     val trees = Passes(frontEndTrees)
 
-    trees map { _.toSource } foreach println
-    true
+    Some(trees)
   } catch {
-    case _: FatalErrorException => false
+    case _: FatalErrorException => None
   } finally {
     cc.messages map { _.string } foreach Console.err.println
   }
 
-  sys exit (if (success) 0 else 1)
+  val oDirBase = cliConf.odir().toPath
+  val baseOpt = cliConf.srcbase.toOption map { _.toPath }
+
+  def oPathFor(entity: Entity): Path = {
+    val oDir = baseOpt match {
+      case None => oDirBase
+      case Some(base) => {
+        val dirPath = entity.loc.source.file.toPath.toRealPath().getParent
+        assert(dirPath startsWith base)
+        val relPath = base relativize dirPath
+        oDirBase resolve relPath
+      }
+    }
+    val Sym(symbol) = entity.ref
+    val name = symbol.denot.name.str + ".v"
+    oDir resolve name
+  }
+
+  def writeEntity(entity: Entity, oPath: Path): Unit = {
+    val oFile = oPath.toFile
+    if (!oFile.exists) {
+      oFile.getParentFile.mkdirs()
+      oFile.createNewFile()
+    }
+    val pw = new PrintWriter(oFile)
+    pw.write(entity.toSource)
+    pw.close()
+  }
+
+  results match {
+    case None => sys exit 1
+    case Some(trees) => {
+      for (tree <- trees) {
+        val entity = tree.asInstanceOf[Entity]
+        writeEntity(entity, oPathFor(entity))
+      }
+      sys exit 0
+    }
+  }
 
   //
   //  val cnnf = new CLIConf(args)
