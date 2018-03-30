@@ -93,7 +93,7 @@ object Main extends App {
       }
     }
     val Sym(symbol) = entity.ref
-    val name = symbol.denot.name.str + ".v"
+    val name = symbol.denot.name.str + ".alogic"
     oDir resolve name
   }
 
