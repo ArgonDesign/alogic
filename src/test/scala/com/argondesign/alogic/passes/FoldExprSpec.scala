@@ -452,14 +452,21 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
 
     "ternary operator" - {
       for {
-        (text, result, msg) <- List(
-          ("0 ? 1 : 2", ExprNum(false, 2), ""),
-          ("1 ? 1 : 2", ExprNum(false, 1), "")
+        (text, pattern, msg) <- List[(String, PartialFunction[Any, Unit], String)](
+          ("0 ? 1 : 2", { case ExprNum(false, v) if v == 2                                     => }, ""),
+          ("1 ? 1 : 2", { case ExprNum(false, v) if v == 1                                     => }, ""),
+          ("@randbit() ? 1 : 1", { case ExprNum(false, v) if v == 1                            => }, ""),
+          ("@randbit() ? 2 : 2", { case ExprNum(false, v) if v == 2                            => }, ""),
+          ("@randbit() ? 8'd0 : 8'd0", { case ExprInt(false, 8, v) if v == 0                   => }, ""),
+          ("@randbit() ? 8'd0 : 8'd1", { case ExprTernary(_: ExprCall, _: ExprInt, _: ExprInt) => },
+           ""),
+          ("@randbit() ? 8'd0 : 8'sd0", { case ExprTernary(_: ExprCall, _: ExprInt, _: ExprInt) => },
+           "")
         )
       } {
         val expr = text.trim
         expr in {
-          expr.asTree[Expr] rewrite fold shouldBe result
+          xform(expr.asTree[Expr]) should matchPattern(pattern)
           if (msg.isEmpty) {
             cc.messages shouldBe empty
           } else {

@@ -200,7 +200,7 @@ final class FoldExpr(assignTypes: Boolean)(implicit cc: CompilerContext) extends
       }
 
       ////////////////////////////////////////////////////////////////////////////
-      // Fold bianry expressions with a sized operand
+      // Fold binary expressions with a sized operand
       ////////////////////////////////////////////////////////////////////////////
 
       // TODO
@@ -210,9 +210,16 @@ final class FoldExpr(assignTypes: Boolean)(implicit cc: CompilerContext) extends
       ////////////////////////////////////////////////////////////////////////////
 
       case ExprTernary(cond, thenExpr, elseExpr) => {
-        cond.value match {
-          case Some(v) => if (v != 0) thenExpr else elseExpr
-          case None    => tree
+        cond.value map { value =>
+          if (value != 0) thenExpr else elseExpr
+        } getOrElse {
+          if (!thenExpr.hasTpe || !elseExpr.hasTpe) {
+            tree
+          } else if (thenExpr == elseExpr && thenExpr.tpe == elseExpr.tpe) {
+            thenExpr
+          } else {
+            tree
+          }
         }
       }
 
