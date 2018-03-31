@@ -196,7 +196,7 @@ trait TreeUntype {
 
   def untype(node: StmtGoto): StmtGoto =
     node.copy(
-      ref = untype(node.ref.asInstanceOf[Sym])
+      expr = untype(node.expr)
     ) withLoc node.loc
 
   def untype(node: StmtReturn): StmtReturn = StmtReturn() withLoc node.loc

@@ -15,60 +15,13 @@
 
 package com.argondesign.alogic.antlr
 
-import scala.collection.JavaConverters._
-
-import com.argondesign.alogic.antlr.AlogicParser.BlockContext
-import com.argondesign.alogic.antlr.AlogicParser.DefaultCaseContext
-import com.argondesign.alogic.antlr.AlogicParser.LoopInitAssignContext
-import com.argondesign.alogic.antlr.AlogicParser.LoopInitDeclContext
-import com.argondesign.alogic.antlr.AlogicParser.NormalCaseContext
-import com.argondesign.alogic.antlr.AlogicParser.StatementAssignmentContext
-import com.argondesign.alogic.antlr.AlogicParser.StatementLoopContext
-import com.argondesign.alogic.antlr.AlogicParser.StmtAssignContext
-import com.argondesign.alogic.antlr.AlogicParser.StmtBlockContext
-import com.argondesign.alogic.antlr.AlogicParser.StmtBreakContext
-import com.argondesign.alogic.antlr.AlogicParser.StmtCaseContext
-import com.argondesign.alogic.antlr.AlogicParser.StmtDeclContext
-import com.argondesign.alogic.antlr.AlogicParser.StmtDoContext
-import com.argondesign.alogic.antlr.AlogicParser.StmtDollarCommentContext
-import com.argondesign.alogic.antlr.AlogicParser.StmtExprContext
-import com.argondesign.alogic.antlr.AlogicParser.StmtFenceContext
-import com.argondesign.alogic.antlr.AlogicParser.StmtForContext
-import com.argondesign.alogic.antlr.AlogicParser.StmtGotoContext
-import com.argondesign.alogic.antlr.AlogicParser.StmtIfContext
-import com.argondesign.alogic.antlr.AlogicParser.StmtLetContext
-import com.argondesign.alogic.antlr.AlogicParser.StmtLoopContext
-import com.argondesign.alogic.antlr.AlogicParser.StmtPostContext
-import com.argondesign.alogic.antlr.AlogicParser.StmtReturnContext
-import com.argondesign.alogic.antlr.AlogicParser.StmtUpdateContext
-import com.argondesign.alogic.antlr.AlogicParser.StmtWhileContext
+import com.argondesign.alogic.antlr.AlogicParser._
 import com.argondesign.alogic.antlr.AntlrConverters._
-import com.argondesign.alogic.ast.Trees.CaseClause
-import com.argondesign.alogic.ast.Trees.Decl
-import com.argondesign.alogic.ast.Trees.Stmt
-import com.argondesign.alogic.ast.Trees.StmtAssign
-import com.argondesign.alogic.ast.Trees.StmtBlock
-import com.argondesign.alogic.ast.Trees.StmtBreak
-import com.argondesign.alogic.ast.Trees.StmtCase
-import com.argondesign.alogic.ast.Trees.StmtDecl
-import com.argondesign.alogic.ast.Trees.StmtDo
-import com.argondesign.alogic.ast.Trees.StmtDollarComment
-import com.argondesign.alogic.ast.Trees.StmtExpr
-import com.argondesign.alogic.ast.Trees.StmtFence
-import com.argondesign.alogic.ast.Trees.StmtFor
-import com.argondesign.alogic.ast.Trees.StmtGoto
-import com.argondesign.alogic.ast.Trees.StmtIf
-import com.argondesign.alogic.ast.Trees.StmtLet
-import com.argondesign.alogic.ast.Trees.StmtLoop
-import com.argondesign.alogic.ast.Trees.StmtPost
-import com.argondesign.alogic.ast.Trees.StmtRead
-import com.argondesign.alogic.ast.Trees.StmtReturn
-import com.argondesign.alogic.ast.Trees.StmtUpdate
-import com.argondesign.alogic.ast.Trees.StmtWhile
-import com.argondesign.alogic.ast.Trees.StmtWrite
+import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-
 import org.antlr.v4.runtime.ParserRuleContext
+
+import scala.collection.JavaConverters._
 
 object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
 
@@ -139,7 +92,8 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
       }
 
       override def visitStmtGoto(ctx: StmtGotoContext) = {
-        StmtGoto(ctx.IDENTIFIER.toIdent) withLoc ctx.loc
+        val ref = ExprRef(ctx.IDENTIFIER.toIdent) withLoc ctx.loc
+        StmtGoto(ref) withLoc ctx.loc
       }
 
       override def visitStmtFence(ctx: StmtFenceContext) = {

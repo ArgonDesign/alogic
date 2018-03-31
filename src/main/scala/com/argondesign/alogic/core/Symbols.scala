@@ -199,6 +199,15 @@ object Symbols {
     override def isTypeSymbol = false
 
     override def toString = s"TermSymbol($id)"
+
+    // Add an attribute
+    final def addAttr(pair: (String, Expr)): this.type = {
+      this withDenot denot.copy(attr = denot.attr + pair)
+    }
+
+    final def addAttr(pair: (String, Int))(implicit cc: CompilerContext): this.type = {
+      this addAttr (pair._1 -> (Expr(pair._2) withLoc loc))
+    }
   }
 
   final class TypeSymbol(val id: Int) extends Symbol {

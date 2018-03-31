@@ -20,6 +20,7 @@ import com.argondesign.alogic.SourceTextConverters._
 import com.argondesign.alogic.ast.Trees.Expr.ImplicitConversions.int2ExprNum
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
 import com.argondesign.alogic.core.StorageTypes.StorageTypeReg
 import com.argondesign.alogic.core.Symbols.ErrorSymbol
@@ -865,7 +866,8 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
             inside(stmts.last) {
               case stmt: Stmt =>
                 stmt should matchPattern(pattern)
-                TypeAssigner(stmt).tpe shouldBe TypeCtrlStmt
+                stmt.postOrderIterator foreach { case tree: Tree => TypeAssigner(tree) }
+                stmt.tpe shouldBe TypeCtrlStmt
             }
           }
         }
@@ -954,7 +956,8 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
     }
 
     "Sym" in {
-      TypeAssigner(Sym(ErrorSymbol)).tpe shouldBe TypeMisc
+      val symbol = cc.newTermSymbol("foo", Loc.synthetic, TypeUInt(4))
+      TypeAssigner(Sym(symbol)).tpe shouldBe TypeUInt(4)
     }
   }
 }

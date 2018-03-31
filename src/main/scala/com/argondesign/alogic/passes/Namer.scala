@@ -210,9 +210,11 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
           cc.newTermSymbolWithAttr(ident.name, ident.loc, TypeCtrlFunc(Nil, TypeVoid), attr)
         }
         Scopes.insert(symbol)
-        // Always mark 'main' as used
         if (ident.name == "main") {
+          // Always mark 'main' as used
           Scopes.markUsed(symbol)
+          // Mark main as an entry point
+          symbol addAttr ("entry" -> 1)
         }
       }
 
@@ -378,15 +380,6 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       node followedBy {
         Scopes.pop()
       }
-
-    case StmtGoto(ident: Ident) => {
-      // Lookup term
-      val symbol = lookupTerm(ident)
-      Scopes.markUsed(symbol)
-      // Rewrite node
-      val sym = Sym(symbol) withLoc ident.loc
-      StmtGoto(sym) withLoc tree.loc
-    }
 
     case Decl(ident: Ident, kind, init) => {
       // Lookup type

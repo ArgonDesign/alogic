@@ -129,7 +129,7 @@ final class DesugarSpec extends FreeSpec with AlogicTest {
           ("for", "for (;;) {}", { case StmtFor(Nil, None, Nil, Nil)         => }),
           ("fence", "fence;", { case StmtFence()                             => }),
           ("break", "break;", { case StmtBreak()                             => }),
-          ("goto", "goto a;", { case StmtGoto(Sym(ErrorSymbol))              => }),
+          ("goto", "goto a;", { case StmtGoto(ExprRef(Sym(ErrorSymbol)))     => }),
           ("return", "return;", { case StmtReturn()                          => }),
           ("=", "1 = 1;", { case StmtAssign(Expr(1), Expr(1))                => }),
           ("expr", "1 + 2;", { case StmtExpr(Expr(1) + Expr(2))              => }),

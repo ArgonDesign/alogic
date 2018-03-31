@@ -61,7 +61,6 @@ object TypeAssigner {
   def apply(node: Connect): node.type = assignTypeMisc(node)
   def apply(node: Function): node.type = assignTypeMisc(node)
   def apply(node: State): node.type = assignTypeMisc(node)
-  def apply(node: Sym): node.type = assignTypeMisc(node)
   def apply(node: TypeDefinition): node.type = assignTypeMisc(node)
 
   def apply(node: Thicket): node.type = {
@@ -75,6 +74,11 @@ object TypeAssigner {
     } else {
       assignTypeMisc(node)
     }
+  }
+
+  def apply(node: Sym)(implicit cc: CompilerContext): node.type = {
+    require(!node.hasTpe)
+    node withTpe node.symbol.denot.kind.chase
   }
 
   //////////////////////////////////////////////////////////////////////////////

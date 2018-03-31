@@ -413,7 +413,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     inside(tree) {
       case Entity(_, _, _, _, List(main, foo), _, _, _, _) =>
         inside(main) {
-          case Function(Sym(_), List(StmtGoto(Sym(sym)))) =>
+          case Function(Sym(_), List(StmtGoto(ExprRef(Sym(sym))))) =>
             sym shouldBe 'termSymbol
             inside(foo) {
               case Function(Sym(fooSym), Nil) =>

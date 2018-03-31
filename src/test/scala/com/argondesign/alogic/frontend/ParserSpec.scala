@@ -863,7 +863,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
         }
 
         "goto" in {
-          "goto foo;".asTree[Stmt] shouldBe StmtGoto(Ident("foo"))
+          "goto foo;".asTree[Stmt] shouldBe StmtGoto(ExprRef(Ident("foo")))
         }
 
         // TODO: assignments

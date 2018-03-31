@@ -58,7 +58,12 @@ object Passes {
           new FoldExpr(assignTypes = true)(cc),
           new LowerPipeline,
           new LiftEntities,
-          new LowerLoops
+          new LowerLoops,
+          new AllocateReturnStack
+      ),
+      () =>
+        List(
+          new ConvertControl
       )
     )
 

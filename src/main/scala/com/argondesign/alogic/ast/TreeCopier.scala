@@ -249,11 +249,11 @@ object TreeCopier {
     }
   }
 
-  final def apply(tree: StmtGoto)(ref: Tree): StmtGoto = {
-    if (ref eq tree.ref) {
+  final def apply(tree: StmtGoto)(expr: Tree): StmtGoto = {
+    if (expr eq tree.expr) {
       tree
     } else {
-      StmtGoto(ref.asInstanceOf[Ref]) withLoc tree.loc
+      StmtGoto(expr.asInstanceOf[Expr]) withLoc tree.loc
     }
   }
 

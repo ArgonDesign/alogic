@@ -85,6 +85,9 @@ trait ExprOps { this: Expr =>
     makeExprCall(cc.lookupGlobalTerm("@max"), this, Expr(rhs))
   }
 
+  final def select(name: String): ExprSelect = ExprSelect(this, name)
+  final def call(args: List[Expr]): ExprCall = ExprCall(this, args)
+
   // Is this expression shaped as a valid type expression
   lazy val isTypeExpr: Boolean = this forall {
     case _: ExprType         => true

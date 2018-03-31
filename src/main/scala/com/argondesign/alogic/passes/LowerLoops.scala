@@ -23,10 +23,6 @@ import com.argondesign.alogic.util.FollowedBy
 
 final class LowerLoops(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
 
-//  override def enter(tree: Tree): Unit = tree match {
-//    case _ =>
-//  }
-
   override def transform(tree: Tree): Tree = tree match {
 
     case StmtDo(cond, body) => {
@@ -58,9 +54,10 @@ final class LowerLoops(implicit cc: CompilerContext) extends TreeTransformer wit
 
   override def finalCheck(tree: Tree): Unit = {
     tree visit {
-      case node: StmtFor   => cc.ice(node, "for statement remains after LowerLoops")
-      case node: StmtDo    => cc.ice(node, "do statement remains after LowerLoops")
-      case node: StmtWhile => cc.ice(node, "while statement remains after LowerLoops")
+      case node: Tree if !node.hasTpe => cc.ice(node, "lost type")
+      case node: StmtFor              => cc.ice(node, "for statement remains after LowerLoops")
+      case node: StmtDo               => cc.ice(node, "do statement remains after LowerLoops")
+      case node: StmtWhile            => cc.ice(node, "while statement remains after LowerLoops")
     }
   }
 
