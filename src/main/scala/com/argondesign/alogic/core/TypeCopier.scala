@@ -33,6 +33,10 @@ object TypeCopier {
     if (elementType eq tree.elementType) tree else TypeArray(elementType, tree.size)
   }
 
+  def apply(tree: TypeStack)(elementType: Type): TypeStack = {
+    if (elementType eq tree.elementType) tree else TypeStack(elementType, tree.size)
+  }
+
   def apply(tree: TypeStruct)(fieldTypes: List[Type]): TypeStruct = {
     if (fieldTypes eq tree.fieldTypes) {
       tree
@@ -45,7 +49,7 @@ object TypeCopier {
     if ((argTypes eq tree.argTypes) && (retType eq tree.retType)) {
       tree
     } else {
-      TypeCombFunc(argTypes, retType);
+      TypeCombFunc(argTypes, retType)
     }
   }
 
@@ -53,7 +57,7 @@ object TypeCopier {
     if ((argTypes eq tree.argTypes) && (retType eq tree.retType)) {
       tree
     } else {
-      TypeCtrlFunc(argTypes, retType);
+      TypeCtrlFunc(argTypes, retType)
     }
   }
 

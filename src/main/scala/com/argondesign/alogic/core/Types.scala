@@ -56,6 +56,8 @@ object Types {
   case class TypeVector(elementType: Type, size: Expr) extends Type
   // Array types (analogous to verilog unpacked arrays)
   case class TypeArray(elementType: Type, size: Expr) extends Type
+  // Stack types
+  case class TypeStack(elementType: Type, size: Expr) extends Type with TypeStackImpl
   // Structure type
   case class TypeStruct(name: String, fieldNames: List[String], fieldTypes: List[Type])
       extends Type
@@ -233,4 +235,68 @@ object Types {
       }
     }
   }
+
+  trait TypeStackImpl extends CompoundType { this: TypeStack =>
+
+    val fieldMap = Map(
+      "push" -> TypeCombFunc(List(elementType), TypeVoid),
+      "pop" -> TypeCombFunc(Nil, elementType),
+      "set" -> TypeCombFunc(List(elementType), TypeVoid),
+      "top" -> elementType,
+      "full" -> TypeUInt(oneExpr),
+      "empty" -> TypeUInt(oneExpr)
+    )
+
+    def apply(field: String): Option[Type] = fieldMap get field
+  }
 }
+
+/*
+
+// Generic stack
+
+stack<i8>(10) s;
+
+s.push(addr); // i8 => void
+s.pop();      // void => i8
+s.set(addr);  // i8 => void // Same as 's = addr' if s is an automatic variable
+s.top;        // i8 // Same as 's' if s is an automatic variable
+s.full;       // bool
+s.empty;      // bool
+
+restrictions:
+ - Can only do a single push, pop, or set in the same cycle, compiler should err otherwise
+ - .push() when full is error
+ - .pop() when empty is error
+ - .top when empty is error
+
+// Function call/return handling ('rs' is for 'return-stack':
+
+foo();    // maps to rs.push(return-state); goto foo;
+goto foo; // nothing to do here, just goto foo;
+return;   // maps to goto rs.pop();
+
+// Function argument handling
+
+At call site: arg.push(value)
+At exit: arg.pop()
+
+// Function local variable handling
+
+At definition of variable: local.push(initializer)
+At death/exit from function: local.pop()
+
+// Hardware interface:
+
+_d
+_q
+
+_push
+_pop
+_full
+_empty
+
+at beginning:
+_d = _q
+
+ */
