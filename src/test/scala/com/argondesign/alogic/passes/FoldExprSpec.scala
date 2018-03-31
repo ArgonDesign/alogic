@@ -450,6 +450,25 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
       }
     }
 
+    "ternary operator" - {
+      for {
+        (text, result, msg) <- List(
+          ("0 ? 1 : 2", ExprNum(false, 2), ""),
+          ("1 ? 1 : 2", ExprNum(false, 1), "")
+        )
+      } {
+        val expr = text.trim
+        expr in {
+          expr.asTree[Expr] rewrite fold shouldBe result
+          if (msg.isEmpty) {
+            cc.messages shouldBe empty
+          } else {
+            cc.messages.loneElement should beThe[Error](msg)
+          }
+        }
+      }
+    }
+
     "builtin functions" - {
       "@max" - {
         for {
