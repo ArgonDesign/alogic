@@ -55,7 +55,6 @@ trait TypePrintOps { this: Type =>
     case TypeType(kind)                           => s"type ${kind.toSource}"
     case TypeMisc                                 => "type-misc"
     case TypeError                                => "type-error"
-    case TypeUnknown                              => "type-unknown"
     case _: TypePolyFunc                          => "type-poly-func"
     case _: TypeRef                               => unreachable
   }

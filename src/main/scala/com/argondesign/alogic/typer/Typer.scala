@@ -647,9 +647,6 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
           node.toString
         )
       }
-      case node: Tree if node.tpe == TypeUnknown => {
-        cc.ice(node, s"Could not compute type of ${node}")
-      }
       case node: TypeDefinition => {
         cc.ice(node, s"Typer should have removed type definitions, but '${node}' remains")
       }

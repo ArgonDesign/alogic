@@ -99,8 +99,6 @@ object Types {
 
   // Placeholder if error happened and a valid type cannot be computed
   case object TypeError extends Type
-  // Placeholder if type cannot be computed
-  case object TypeUnknown extends Type
 
   // Polymorphic function. Used to handle overloaded builtin functions
   case class TypePolyFunc(resolver: List[Expr] => CompilerContext => Option[TermSymbol])
