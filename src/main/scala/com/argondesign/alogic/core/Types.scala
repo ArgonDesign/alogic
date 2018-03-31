@@ -41,6 +41,8 @@ object Types {
   case object TypeCombStmt extends Type
   // Type of control statements
   case object TypeCtrlStmt extends Type
+  // Type of states
+  case object TypeState extends Type
 
   sealed trait TypeInt extends Type
 

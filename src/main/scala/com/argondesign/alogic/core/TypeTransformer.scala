@@ -31,6 +31,7 @@ abstract class TypeTransformer(implicit val cc: CompilerContext) extends TreeLik
     tree match {
       case TypeCombStmt   => transform(TypeCombStmt)
       case TypeCtrlStmt   => transform(TypeCtrlStmt)
+      case TypeState      => transform(TypeState)
       case node: TypeSInt => transform(node)
       case node: TypeUInt => transform(node)
       case node: TypeNum  => transform(node)

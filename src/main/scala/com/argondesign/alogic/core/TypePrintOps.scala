@@ -25,6 +25,7 @@ trait TypePrintOps { this: Type =>
   def toSource(implicit cc: CompilerContext): String = this.chase match {
     case TypeCombStmt                  => "type-comb-statement"
     case TypeCtrlStmt                  => "type-ctrl-statement"
+    case TypeState                     => "type-state"
     case TypeSInt(ExprNum(_, value))   => s"i${value}"
     case TypeUInt(ExprNum(_, value))   => s"u${value}"
     case TypeSInt(size)                => s"int(${size.toSource})"
