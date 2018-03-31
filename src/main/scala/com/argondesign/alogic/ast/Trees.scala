@@ -18,6 +18,7 @@ package com.argondesign.alogic.ast
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.StructuredTree
+import com.argondesign.alogic.core.Attributes
 import com.argondesign.alogic.core.Locationed
 
 // scalastyle:off number.of.types
@@ -44,7 +45,7 @@ object Trees {
   ///////////////////////////////////////////////////////////////////////////////
 
   sealed trait Ref extends Tree
-  case class Ident(name: String) extends Ref
+  case class Ident(name: String) extends Ref with Attributes
   case class Sym(symbol: Symbol) extends Ref
 
   ///////////////////////////////////////////////////////////////////////////////

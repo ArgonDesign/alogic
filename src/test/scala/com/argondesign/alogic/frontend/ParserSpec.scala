@@ -491,8 +491,8 @@ final class ParserSpec extends FreeSpec with AlogicTest {
 
         "function" in {
           """|fsm g {
-                       |  void main() {}
-                       |}""".asTree[Entity] shouldBe {
+             |  void main() {}
+             |}""".stripMargin.asTree[Entity] shouldBe {
             Entity(
               Ident("g"),
               Nil,
@@ -503,6 +503,35 @@ final class ParserSpec extends FreeSpec with AlogicTest {
               Nil,
               Nil,
               Map()
+            )
+          }
+        }
+
+        "function with attributes" in {
+          val tree = """|fsm g {
+                        |  (* foo, bar=2, baz = 1 + 2 *)
+                        |  void main() {}
+                        |}""".stripMargin.asTree[Entity]
+          tree shouldBe {
+            Entity(
+              Ident("g"),
+              Nil,
+              Nil,
+              Nil,
+              List(Function(Ident("main"), Nil)),
+              Nil,
+              Nil,
+              Nil,
+              Map()
+            )
+          }
+          val ident = (tree collectFirst { case Function(i: Ident, _) => i }).value
+          ident.hasAttr shouldBe true
+          ident.attr shouldBe {
+            Map(
+              "foo" -> Expr(1),
+              "bar" -> Expr(2),
+              "baz" -> ExprBinary(Expr(1), "+", Expr(2))
             )
           }
         }

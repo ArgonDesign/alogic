@@ -100,12 +100,12 @@ storage_type
 ///////////////////////////////////////////////////////////////////////////////
 
 entity_content
-  : instance ';'                        # EntityContentInstance
-  | connect ';'                         # EntityContentConnect
-  | (autoinst='new')? entity            # EntityContentEntity
-  | 'fence' block                       # EntityContentFenceBlock
-  | 'void' IDENTIFIER '(' ')' block     # EntityContentFunction
-  | 'verbatim' IDENTIFIER VERBATIMBODY  # EntityContentVerbatimBlock
+  : instance ';'                            # EntityContentInstance
+  | connect ';'                             # EntityContentConnect
+  | (autoinst='new')? entity                # EntityContentEntity
+  | 'fence' block                           # EntityContentFenceBlock
+  | attr? 'void' IDENTIFIER '(' ')' block   # EntityContentFunction
+  | 'verbatim' IDENTIFIER VERBATIMBODY      # EntityContentVerbatimBlock
   ;
 
 connect : lhs=expr '->' rhs+=expr (',' rhs+=expr)* ;
@@ -215,5 +215,11 @@ expr
   | kind                                                    # ExprType
   ;
 
-commaexpr : (expr (',' expr)*)? ;
+commaexpr: (expr (',' expr)*)? ;
 
+///////////////////////////////////////////////////////////////////////////////
+// Attributes
+///////////////////////////////////////////////////////////////////////////////
+
+attr: '(*' attrspec (',' attrspec)* '*)' ;
+attrspec: IDENTIFIER ('=' expr)? ;

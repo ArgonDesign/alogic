@@ -25,6 +25,7 @@ import Symbols.Symbol
 import Symbols.TermSymbol
 import Symbols.TypeSymbol
 import Types._
+import com.argondesign.alogic.ast.Trees.Expr
 
 object Denotations {
   abstract sealed trait Denotation extends Product {
@@ -33,6 +34,16 @@ object Denotations {
     val kind: Type
   }
 
-  case class TermDenotation(symbol: TermSymbol, name: TermName, kind: Type) extends Denotation
-  case class TypeDenotation(symbol: TypeSymbol, name: TypeName, kind: Type) extends Denotation
+  case class TermDenotation(
+      symbol: TermSymbol,
+      name: TermName,
+      kind: Type,
+      attr: Map[String, Expr]
+  ) extends Denotation
+
+  case class TypeDenotation(
+      symbol: TypeSymbol,
+      name: TypeName,
+      kind: Type
+  ) extends Denotation
 }

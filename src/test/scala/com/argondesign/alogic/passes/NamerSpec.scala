@@ -23,6 +23,7 @@ import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
 import com.argondesign.alogic.core.Names.TypeName
 import com.argondesign.alogic.core.StorageTypes.StorageTypeReg
 import com.argondesign.alogic.core.Symbols.ErrorSymbol
+import com.argondesign.alogic.core.Symbols.TermSymbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Error
@@ -916,6 +917,18 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     cc.messages(1).loc.line shouldBe 4
     cc.messages(2) should beThe[Warning]("Variable 'c' is unused")
     cc.messages(2).loc.line shouldBe 6
+  }
+
+  it should "attach source attributes to symbol denotations - function" in {
+    val entity = "fsm foo { (* bar *) void a() {} }".asTree[Entity]
+    cc.addGlobalEntity(entity)
+    val tree = entity rewrite namer
+
+    val symA = tree collectFirst {
+      case Sym(symbol: TermSymbol) if symbol.denot.name.str == "a" => symbol
+    }
+    symA.value.denot.kind shouldBe TypeCtrlFunc(Nil, TypeVoid)
+    symA.value.denot.attr shouldBe Map("bar" -> Expr(1))
   }
 
 }

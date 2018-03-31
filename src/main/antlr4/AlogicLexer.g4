@@ -123,6 +123,9 @@ RIGHTSQUARE:  ']' ;
 LEFTBRACKET:  '(' ;
 RIGHTBRACKET: ')' ;
 
+LEFTATTR:  '(*' ;
+RIGHTATTR: '*)' ;
+
 COLON: ':';
 MINUSCOLON: '-:';
 PLUSCOLON: '+:';

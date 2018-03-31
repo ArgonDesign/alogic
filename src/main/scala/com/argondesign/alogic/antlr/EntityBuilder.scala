@@ -70,6 +70,9 @@ object EntityBuilder extends BaseBuilder[EntityContext, Entity] {
       override def visitEntityContentFunction(ctx: EntityContentFunctionContext) = {
         val ident = ctx.IDENTIFIER.toIdent
         val stmts = StmtBuilder(ctx.block.statement)
+        if (ctx.attr != null) {
+          ident withAttr AttrBuilder(ctx.attr)
+        }
         Function(ident, stmts) withLoc ctx.loc
       }
 
