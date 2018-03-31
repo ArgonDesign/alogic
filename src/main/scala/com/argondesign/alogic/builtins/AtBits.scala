@@ -40,9 +40,13 @@ object AtBits extends BuiltinPolyFunc {
       implicit cc: CompilerContext): Boolean = true
 
   private[builtins] override def fold(call: ExprCall)(implicit cc: CompilerContext): Expr = {
-    call.args(0).tpe match {
-      case TypeType(kind) => kind.width
-      case kind           => kind.width
+    if (!call.args(0).hasTpe) {
+      call
+    } else {
+      call.args(0).tpe match {
+        case TypeType(kind) => kind.width
+        case kind           => kind.width
+      }
     }
   }
 }

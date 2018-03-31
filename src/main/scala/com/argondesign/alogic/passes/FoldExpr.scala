@@ -18,6 +18,7 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.TreeInTypeTransformer
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.unreachable
 
@@ -51,6 +52,8 @@ final class FoldExpr(assignTypes: Boolean)(implicit cc: CompilerContext) extends
     }
     num withLoc expr.loc
   }
+
+  private object TypeFoldExpr extends TreeInTypeTransformer(this)
 
   override def transform(tree: Tree): Tree = {
     val result = tree match {
@@ -202,6 +205,20 @@ final class FoldExpr(assignTypes: Boolean)(implicit cc: CompilerContext) extends
 
       case call @ ExprCall(ExprRef(Sym(symbol)), _) if symbol.isBuiltin => {
         cc.foldBuiltinCall(call)
+      }
+
+      ////////////////////////////////////////////////////////////////////////////
+      // Fold expressions inside Type instances
+      ////////////////////////////////////////////////////////////////////////////
+
+      case decl @ Decl(_, kind, _) => {
+        val newKind = kind rewrite TypeFoldExpr
+        if (kind eq newKind) decl else decl.copy(kind = newKind) withLoc tree.loc
+      }
+
+      case expr @ ExprType(kind) => {
+        val newKind = kind rewrite TypeFoldExpr
+        if (kind eq newKind) expr else ExprType(newKind) withLoc tree.loc
       }
 
       ////////////////////////////////////////////////////////////////////////////
