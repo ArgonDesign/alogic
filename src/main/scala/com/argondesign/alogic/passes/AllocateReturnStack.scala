@@ -19,6 +19,7 @@ import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.TermSymbol
+import com.argondesign.alogic.core.Symbols.TypeSymbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Matrix
 import com.argondesign.alogic.typer.TypeAssigner
@@ -30,6 +31,9 @@ import scala.collection.mutable
 final class AllocateReturnStack(implicit cc: CompilerContext)
     extends TreeTransformer
     with FollowedBy {
+
+  // The entity processed in this instance
+  private[this] var theEntity: Entity = _
 
   //////////////////////////////////////////////////////////////////////////
   // State for collecting information in the enter section
@@ -133,16 +137,21 @@ final class AllocateReturnStack(implicit cc: CompilerContext)
     }
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  // The actual return stack depth required
-  //////////////////////////////////////////////////////////////////////////////
-  private[this] lazy val returnStackDepth: Int = {
+  private[this] def warnIgnoredStacklimitAttribute(): Unit = {
+    val Sym(symbol: TypeSymbol) = theEntity.ref
+    if (symbol.denot.attr contains "stacklimit") {
+      cc.warning(symbol.loc, s"'stacklimit' attribute ignored on entity '${symbol.denot.name.str}'")
+    }
+  }
 
+  //////////////////////////////////////////////////////////////////////////////
+  // Collect 'reclimit' values and check that they are sensible
+  //////////////////////////////////////////////////////////////////////////////
+  private[this] lazy val recLimits: Option[List[Int]] = {
     val directlyRecursive = adjMat.diagonal map { _ != 0 }
     val indirectlyRecursive = indMat.diagonal map { _ != 0 }
 
-    // Collect 'reclimit' values and check that they are sensible
-    val recLimits = for {
+    val result = for {
       (symbol, isRecD, isRecI) <- (functionSymbols, directlyRecursive, indirectlyRecursive).zipped
     } yield {
       lazy val loc = symbol.loc
@@ -181,66 +190,133 @@ final class AllocateReturnStack(implicit cc: CompilerContext)
       }
     }
 
+    val list = result.toList
+
+    // 0 is only possible if there was an error so yield None in that case
+    if (list contains 0) None else Some(list)
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Computes the value of the 'stacklimit' attribute of the entity
+  //////////////////////////////////////////////////////////////////////////////
+  private[this] lazy val stackLimit: Option[Int] = {
+    val Sym(entitySymbol: TypeSymbol) = theEntity.ref
+    entitySymbol.denot.attr.get("stacklimit") flatMap { expr =>
+      lazy val loc = entitySymbol.loc
+      lazy val name = entitySymbol.denot.name.str
+      expr.value match {
+        case Some(value) if value < 1 => {
+          cc.error(loc, s"Entity '${name}' has 'stacklimit' attribute equal to ${value}")
+          None
+        }
+        case None => {
+          cc.error(loc, s"Cannot compute value of 'stacklimit' attribute of entity '${name}'")
+          None
+        }
+        case Some(value) => Some(value.toInt)
+      }
+    }
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Computes the length of the longest static path in the call graphs
+  //////////////////////////////////////////////////////////////////////////////
+  private[this] def computeLongestPathLength(cost: Map[TermSymbol, Int]): Int = {
+    // Find the longest simple (non-cyclic) path in the call graph
+    // Note strictly this is only an upper bound on the required
+    // return stack depth if there is recursion
+    val (length, path) = {
+      // Longest path from 'node' that goes through only vertices that are in 'nodes'
+      def longestPathFrom(node: TermSymbol, nodes: Set[TermSymbol]): (Int, List[TermSymbol]) = {
+        assert(!(nodes contains node))
+        // Candidate successors are the vertices which are callees of this node and are in 'nodes'
+        val candidates = calleeMap(node) intersect nodes
+        // Find longest paths from each of these candidates
+        val paths = for (cand <- candidates) yield longestPathFrom(cand, nodes - cand)
+
+        if (paths.isEmpty) {
+          // If no further paths, we are done
+          (cost(node), node :: Nil)
+        } else {
+          // Find the one that is the longest among all candidates
+          val (len, longest) = paths maxBy { _._1 }
+          // Prepend this node
+          (cost(node) + len, node :: longest)
+        }
+      }
+
+      val funcSet = functionSymbols.toSet
+
+      // Get the longest of the longest paths originating from any function
+      functionSymbols map { symbol =>
+        longestPathFrom(symbol, funcSet - symbol)
+      } maxBy { _._1 }
+    }
+
+    println(s"longest path has length ${length}")
+    for (symbol <- path) {
+      println(s"  ${symbol.denot.name.str} ${cost(symbol)}")
+    }
+
+    (adjMat + indMat).printWithHeaders(functionSymbols map {
+      _.denot.name.str
+    })
+
+    length
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  // The actual return stack depth required
+  //////////////////////////////////////////////////////////////////////////////
+  private[this] lazy val returnStackDepth: Int = {
     println(functionSymbols.head.loc.prefix)
 
-    val weights = recLimits.toList
+    // Compute if the entity uses any recursion
+    val hasRecursion = adjMat.diagonal.sum + indMat.diagonal.sum != 0
 
-    if (weights contains 0) {
-      // If any of the weights is 0, we had an error, so don't bother trying,
-      // but emit a return stack of size 1 to allow later passes to proceed
-      1
-    } else {
-      // Map from symbol -> reclimit
-      val cost = (functionSymbols zip weights).toMap
-
-      // Find the longest simple (non-cyclic) path in the call graph
-      // Note strictly this is only an upper bound on the required
-      // return stack depth if there is recursion
-      val (length, path) = {
-        // Longest path from 'node' that goes through only vertices that are in 'nodes'
-        def longestPathFrom(node: TermSymbol, nodes: Set[TermSymbol]): (Int, List[TermSymbol]) = {
-          assert(!(nodes contains node))
-          // Candidate successors are the vertices which are callees of this node and are in 'nodes'
-          val candidates = calleeMap(node) intersect nodes
-          // Find longest paths from each of these candidates
-          val paths = for (cand <- candidates) yield longestPathFrom(cand, nodes - cand)
-
-          if (paths.isEmpty) {
-            // If no further paths, we are done
-            (cost(node), node :: Nil)
-          } else {
-            // Find the one that is the longest among all candidates
-            val (len, longest) = paths maxBy { _._1 }
-            // Prepend this node
-            (cost(node) + len, node :: longest)
-          }
-        }
-
-        val funcSet = functionSymbols.toSet
-
-        // Get the longest of the longest paths originating from any function
-        functionSymbols map { symbol =>
-          longestPathFrom(symbol, funcSet - symbol)
-        } maxBy { _._1 }
-      }
-
-      println(s"longest path has length ${length}")
-      for (symbol <- path) {
-        println(s"  ${symbol.denot.name.str} ${cost(symbol)}")
-      }
-
-      (adjMat + indMat).printWithHeaders(functionSymbols map { _.denot.name.str })
-
-      // The actual stack depth required for handling return from N active
-      // functions is N - 1 as the root function does not return anywhere
-      length - 1
+    if (!hasRecursion) {
+      warnIgnoredStacklimitAttribute()
     }
+
+    // Compute the maximum number of active functions
+    val maxActive = if (hasRecursion && stackLimit.isDefined) {
+      // If the entity uses recursion and has a sane
+      // 'stacklimit' attribute, use the value of that
+      stackLimit.get
+    } else {
+      recLimits map { weights =>
+        // Map from symbol -> reclimit
+        val cost = (functionSymbols zip weights).toMap
+
+        // Find the longest path in the static call graph
+        computeLongestPathLength(cost)
+      } getOrElse {
+        // If we don't have sane recLimits, emit a return stack of size 1
+        // (by using maxActive == 2) to allow later passes to proceed
+        2
+      }
+    }
+
+    // The actual stack depth required for handling return from N active
+    // functions is N - 1 as the root function does not return anywhere
+    maxActive - 1
   }
 
   override def enter(tree: Tree): Unit = tree match {
     case entity: Entity => {
+      // Hold on to the entity
+      assert(theEntity == null)
+      theEntity = entity
+
       // Gather all function symbols from entity
+      assert(functionSymbols == null)
       functionSymbols = for (Function(Sym(symbol: TermSymbol), _) <- entity.functions) yield symbol
+
+      // Warn early if there are no functions at all, as
+      // we will not have an opportunity to do it later
+      if (functionSymbols.isEmpty) {
+        warnIgnoredStacklimitAttribute()
+      }
     }
 
     //////////////////////////////////////////////////////////////////////////

@@ -32,7 +32,7 @@ import scala.collection.mutable.ListBuffer
 
 final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
 
-  // The entity in the pass
+  // The entity processed in this instance
   private[this] var theEntity: Entity = _
 
   // The return stack symbol

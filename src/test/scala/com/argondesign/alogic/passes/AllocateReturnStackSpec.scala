@@ -284,5 +284,56 @@ final class AllocateReturnStackSpec extends FreeSpec with AlogicTest {
       }
 
     }
+
+    "error for non-computable stacklimit attribute" in {
+      val tree = """|(* stacklimit = @randbit() *) fsm a {
+                    |   (*reclimit = 2 *) void main() { main(); }
+                    |}""".stripMargin.asTree[Root]
+
+      xform(tree)
+
+      cc.messages.loneElement should beThe[Error](
+        "Cannot compute value of 'stacklimit' attribute of entity 'a'"
+      )
+    }
+
+    "error for stacklimit 0" in {
+      val tree = """|(* stacklimit = 0 *) fsm a {
+                    |   (*reclimit = 2 *) void main() { main(); }
+                    |}""".stripMargin.asTree[Root]
+
+      xform(tree)
+
+      cc.messages.loneElement should beThe[Error](
+        "Entity 'a' has 'stacklimit' attribute equal to 0"
+      )
+    }
+
+    "warn for ignored stacklimit attribute " - {
+      "non-recursive fsm" in {
+        val tree = """|(* stacklimit = 2 *) fsm a {
+                      |  void main() { foo(); }
+                      |  void foo() { fence; }
+                      |}""".stripMargin.asTree[Root]
+
+        xform(tree)
+
+        cc.messages.loneElement should beThe[Warning](
+          "'stacklimit' attribute ignored on entity 'a'"
+        )
+      }
+
+      "no functions" in {
+        val tree = """|(* stacklimit = 2 *) network a {
+                      |}""".stripMargin.asTree[Root]
+
+        xform(tree)
+
+        cc.messages.loneElement should beThe[Warning](
+          "'stacklimit' attribute ignored on entity 'a'"
+        )
+      }
+    }
+
   }
 }

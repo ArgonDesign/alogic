@@ -49,18 +49,24 @@ object Passes {
           new Namer,
           new Desugar
       ),
-      () =>
-        List(
-          new Typer
-      ),
+      // Typer needs cross entity information to resolve instances, and later
+      // stages may need forward type information so run it in it's own phase
+      () => List(new Typer),
       () =>
         List(
           new FoldExpr(assignTypes = true)(cc),
           new LowerPipeline,
           new LiftEntities,
-          new LowerLoops,
+          new LowerLoops
+      ),
+      // Lift Entities generates Thickets from some Entities, but later
+      // stages assume they only deal with a single entity
+      () =>
+        List(
           new AllocateReturnStack
       ),
+      // ConvertControl requires the return stack allocated in
+      // AllocateReturnStack early
       () =>
         List(
           new ConvertControl
