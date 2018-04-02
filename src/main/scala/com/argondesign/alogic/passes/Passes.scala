@@ -64,7 +64,8 @@ object Passes {
       // stages assume they only deal with a single entity
       () =>
         List(
-          new AnalyseCallGraph
+          new AnalyseCallGraph,
+          new LowerFlowControl
       ),
       // ConvertControl requires the return stack allocated in
       // AllocateReturnStack early

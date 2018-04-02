@@ -143,6 +143,8 @@ object Trees {
 
   case class StmtDollarComment(str: String) extends Stmt // TODO: remove
 
+  case class StmtStall() extends Stmt
+
   case class StmtError() extends Stmt // placeholder when errors happened
 
   ///////////////////////////////////////////////////////////////////////////////

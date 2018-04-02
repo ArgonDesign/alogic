@@ -64,7 +64,7 @@ object TypeAssigner {
   def apply(node: TypeDefinition): node.type = assignTypeMisc(node)
 
   def apply(node: Thicket): node.type = {
-    assert(node.trees forall { _.isInstanceOf[Entity] })
+    require(!node.hasTpe)
     assignTypeMisc(node)
   }
 
@@ -78,7 +78,11 @@ object TypeAssigner {
 
   def apply(node: Sym)(implicit cc: CompilerContext): node.type = {
     require(!node.hasTpe)
-    node withTpe node.symbol.denot.kind.chase
+    if (node.symbol == ErrorSymbol) {
+      node withTpe TypeError
+    } else {
+      node withTpe node.symbol.denot.kind.chase
+    }
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -107,6 +111,7 @@ object TypeAssigner {
       case node: StmtRead          => apply(node)
       case node: StmtWrite         => apply(node)
       case node: StmtDollarComment => apply(node)
+      case node: StmtStall         => apply(node)
       //
       case node: StmtError => apply(node)
       //
@@ -212,6 +217,11 @@ object TypeAssigner {
   }
 
   def apply(node: StmtDollarComment): node.type = {
+    require(!node.hasTpe)
+    node withTpe TypeCombStmt
+  }
+
+  def apply(node: StmtStall): node.type = {
     require(!node.hasTpe)
     node withTpe TypeCombStmt
   }

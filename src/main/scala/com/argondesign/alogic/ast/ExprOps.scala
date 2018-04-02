@@ -28,6 +28,10 @@ import scala.math.BigInt.int2bigInt
 
 trait ExprOps { this: Expr =>
 
+  private final def addLoc(expr: Expr): expr.type = {
+    if (hasLoc) expr withLoc loc else expr
+  }
+
   private final def makeExprBinary(op: String, rhs: Expr) = {
     val expr = ExprBinary(this, op, rhs)
     if (hasLoc) {
@@ -85,8 +89,13 @@ trait ExprOps { this: Expr =>
     makeExprCall(cc.lookupGlobalTerm("@max"), this, Expr(rhs))
   }
 
-  final def select(name: String): ExprSelect = ExprSelect(this, name)
-  final def call(args: List[Expr]): ExprCall = ExprCall(this, args)
+  final def select(name: String): ExprSelect = addLoc(ExprSelect(this, name))
+  final def call(args: List[Expr]): ExprCall = addLoc(ExprCall(this, args))
+
+  final def unary_+ : this.type = this
+  final def unary_- : ExprUnary = addLoc(ExprUnary("-", this))
+  final def unary_~ : ExprUnary = addLoc(ExprUnary("~", this))
+  final def unary_! : ExprUnary = addLoc(ExprUnary("!", this))
 
   // Is this expression shaped as a valid type expression
   lazy val isTypeExpr: Boolean = this forall {

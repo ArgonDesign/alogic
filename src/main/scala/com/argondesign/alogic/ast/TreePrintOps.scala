@@ -287,6 +287,7 @@ trait TreePrintOps { this: Tree =>
       case StmtRead()               => "read;"
       case StmtWrite()              => "write;"
       case StmtDollarComment(str)   => "$" + s"""("${str}")"""
+      case StmtStall()              => "stall;"
       case StmtError()              => "/* Error statement */"
     }
   }

@@ -58,6 +58,7 @@ trait TreeUntype {
     case node: StmtRead          => untype(node)
     case node: StmtWrite         => untype(node)
     case node: StmtDollarComment => untype(node)
+    case node: StmtStall         => untype(node)
     case node: StmtError         => untype(node)
     case node: StmtLet           => unreachable
     case node: StmtUpdate        => unreachable
@@ -222,6 +223,8 @@ trait TreeUntype {
   def untype(node: StmtWrite): StmtWrite = StmtWrite() withLoc node.loc
 
   def untype(node: StmtDollarComment): StmtDollarComment = node.copy() withLoc node.loc
+
+  def untype(node: StmtStall): StmtStall = StmtStall() withLoc node.loc
 
   def untype(node: StmtError): StmtError = StmtError() withLoc node.loc
 
