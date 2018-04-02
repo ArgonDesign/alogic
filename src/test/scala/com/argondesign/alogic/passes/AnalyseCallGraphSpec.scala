@@ -24,14 +24,14 @@ import com.argondesign.alogic.core.Warning
 import com.argondesign.alogic.typer.Typer
 import org.scalatest.FreeSpec
 
-final class AllocateReturnStackSpec extends FreeSpec with AlogicTest {
+final class AnalyseCallGraphSpec extends FreeSpec with AlogicTest {
 
   implicit val cc = new CompilerContext
   val namer = new Namer
   val typer = new Typer
   val fold = new FoldExpr(true)
   val lowerLoops = new LowerLoops
-  val allocReturnStack = new AllocateReturnStack
+  val analyseCallGraph = new AnalyseCallGraph
 
   def xform(tree: Tree): Tree = {
     tree match {
@@ -39,21 +39,36 @@ final class AllocateReturnStackSpec extends FreeSpec with AlogicTest {
       case entity: Entity => cc.addGlobalEntity(entity)
       case _              =>
     }
-    tree rewrite namer rewrite typer rewrite fold rewrite lowerLoops rewrite allocReturnStack
+    tree rewrite namer rewrite typer rewrite fold rewrite lowerLoops rewrite analyseCallGraph
   }
 
-  "AllocateReturnStack should" - {
-    "error for directly recursive functions without reclimit attribute" in {
-      val tree = """|fsm a {
-                    |  void main() { foo(); }
-                    |  void foo() { foo(); }
-                    |}""".stripMargin.asTree[Root]
+  "AnalyseCallGraph should" - {
+    "error for directly recursive functions without reclimit attribute" - {
+      "simple" in {
+        val tree = """|fsm a {
+                      |  void main() { foo(); }
+                      |  void foo() { foo(); }
+                      |}""".stripMargin.asTree[Root]
 
-      xform(tree)
+        xform(tree)
 
-      cc.messages.loneElement should beThe[Error](
-        "Recursive function 'foo' requires 'reclimit' attribute"
-      )
+        cc.messages.loneElement should beThe[Error](
+          "Recursive function 'foo' requires 'reclimit' attribute"
+        )
+      }
+
+      "even if stacklimit of enclosed entity is provided" in {
+        val tree = """|(* stacklimit = 2 *) fsm a {
+                      |  void main() { foo(); }
+                      |  void foo() { foo(); }
+                      |}""".stripMargin.asTree[Root]
+
+        xform(tree)
+
+        cc.messages.loneElement should beThe[Error](
+          "Recursive function 'foo' requires 'reclimit' attribute"
+        )
+      }
     }
 
     "do not error for directly recursive functions with reclimit attribute" in {
@@ -281,6 +296,19 @@ final class AllocateReturnStackSpec extends FreeSpec with AlogicTest {
             "'reclimit' attribute ignored on function 'bar'"
           )
         }
+      }
+
+      "even if stacklimit is provided" in {
+        val tree = """|(* stacklimit = 1 *) fsm a {
+                      |  (* reclimit = 2 *) void main() { foo(); main(); }
+                      |  (* reclimit = 2 *) void foo() { fence; }
+                      |}""".stripMargin.asTree[Root]
+
+        xform(tree)
+
+        cc.messages.loneElement should beThe[Warning](
+          "'reclimit' attribute ignored on function 'foo'"
+        )
       }
 
     }

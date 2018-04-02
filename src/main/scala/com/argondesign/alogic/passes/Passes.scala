@@ -63,7 +63,7 @@ object Passes {
       // stages assume they only deal with a single entity
       () =>
         List(
-          new AllocateReturnStack
+          new AnalyseCallGraph
       ),
       // ConvertControl requires the return stack allocated in
       // AllocateReturnStack early

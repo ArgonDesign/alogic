@@ -10,7 +10,11 @@
 //
 // DESCRIPTION:
 //
-// Allocated return stack with required depth
+// Analyse call graph and:
+//  - Check reclimit attributes
+//  - Ensure reclimit attributes exist on all functions
+//  - Check stacklimit attributes
+//  - Allocate return stack with required depth
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.passes
@@ -28,9 +32,7 @@ import com.argondesign.alogic.util.FollowedBy
 import scala.annotation.tailrec
 import scala.collection.mutable
 
-final class AllocateReturnStack(implicit cc: CompilerContext)
-    extends TreeTransformer
-    with FollowedBy {
+final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
 
   // The entity processed in this instance
   private[this] var theEntity: Entity = _
@@ -253,15 +255,6 @@ final class AllocateReturnStack(implicit cc: CompilerContext)
       } maxBy { _._1 }
     }
 
-    println(s"longest path has length ${length}")
-    for (symbol <- path) {
-      println(s"  ${symbol.denot.name.str} ${cost(symbol)}")
-    }
-
-    (adjMat + indMat).printWithHeaders(functionSymbols map {
-      _.denot.name.str
-    })
-
     length
   }
 
@@ -269,8 +262,6 @@ final class AllocateReturnStack(implicit cc: CompilerContext)
   // The actual return stack depth required
   //////////////////////////////////////////////////////////////////////////////
   private[this] lazy val returnStackDepth: Int = {
-    println(functionSymbols.head.loc.prefix)
-
     // Compute if the entity uses any recursion
     val hasRecursion = adjMat.diagonal.sum + indMat.diagonal.sum != 0
 
@@ -341,6 +332,14 @@ final class AllocateReturnStack(implicit cc: CompilerContext)
 
   override def transform(tree: Tree): Tree = tree match {
     case entity: Entity => {
+      // Ensure 'reclimit' attributes exist on all functions
+      if (entity.functions.nonEmpty) {
+        val values = recLimits.getOrElse(List.fill(nFunctions)(1))
+        for ((symbol, value) <- functionSymbols zip values) {
+          symbol addAttr ("reclimit" -> value)
+        }
+      }
+
       val stackDepth = if (entity.functions.isEmpty) 0 else returnStackDepth
 
       if (stackDepth == 0) {
