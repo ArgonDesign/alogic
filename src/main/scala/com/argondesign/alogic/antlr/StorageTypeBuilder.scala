@@ -16,18 +16,12 @@
 package com.argondesign.alogic.antlr
 
 import scala.collection.JavaConverters._
-
 import com.argondesign.alogic.antlr.AlogicParser.StorageTypeSlicesContext
 import com.argondesign.alogic.antlr.AlogicParser.StorageTypeWireContext
 import com.argondesign.alogic.antlr.AlogicParser.Storage_typeContext
 import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.StorageTypes.StorageSliceBubble
-import com.argondesign.alogic.core.StorageTypes.StorageSliceBwd
-import com.argondesign.alogic.core.StorageTypes.StorageSliceFwd
-import com.argondesign.alogic.core.StorageTypes.StorageType
-import com.argondesign.alogic.core.StorageTypes.StorageTypeSlices
-import com.argondesign.alogic.core.StorageTypes.StorageTypeWire
+import com.argondesign.alogic.core.StorageTypes._
 import com.argondesign.alogic.util.unreachable
 
 object StorageTypeBuilder extends BaseBuilder[Storage_typeContext, StorageType] {
@@ -48,7 +42,7 @@ object StorageTypeBuilder extends BaseBuilder[Storage_typeContext, StorageType] 
       }
     }
 
-    Visitor(ctx)
+    if (ctx != null) Visitor(ctx) else StorageTypeDefault
   }
 
 }

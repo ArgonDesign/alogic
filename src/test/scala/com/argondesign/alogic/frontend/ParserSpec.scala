@@ -195,7 +195,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
             "default" in {
               "out i2 a".asTree[Decl] shouldBe {
                 Decl(Ident("a"),
-                     TypeOut(TypeSInt(Expr(2)), FlowControlTypeNone, StorageTypeReg),
+                     TypeOut(TypeSInt(Expr(2)), FlowControlTypeNone, StorageTypeDefault),
                      None)
               }
             }
@@ -213,7 +213,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
             "default" in {
               "out sync i2 a".asTree[Decl] shouldBe {
                 Decl(Ident("a"),
-                     TypeOut(TypeSInt(Expr(2)), FlowControlTypeValid, StorageTypeReg),
+                     TypeOut(TypeSInt(Expr(2)), FlowControlTypeValid, StorageTypeDefault),
                      None)
               }
             }
@@ -232,9 +232,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
               "out sync ready i2 a".asTree[Decl] shouldBe {
                 Decl(
                   Ident("a"),
-                  TypeOut(TypeSInt(Expr(2)),
-                          FlowControlTypeReady,
-                          StorageTypeSlices(List(StorageSliceFwd))),
+                  TypeOut(TypeSInt(Expr(2)), FlowControlTypeReady, StorageTypeDefault),
                   None
                 )
               }

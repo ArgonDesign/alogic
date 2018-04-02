@@ -21,8 +21,8 @@ import com.argondesign.alogic.ast.Trees.Expr.ImplicitConversions.int2ExprNum
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
-import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
-import com.argondesign.alogic.core.StorageTypes.StorageTypeReg
+import com.argondesign.alogic.core.FlowControlTypes._
+import com.argondesign.alogic.core.StorageTypes._
 import com.argondesign.alogic.core.Symbols.ErrorSymbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.passes.Desugar
@@ -63,7 +63,9 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
               ("const u8", " const u8 a = 8'd2;", TypeUInt(8)),
               ("pipeline u8", "pipeline u8 a;", TypeUInt(8)),
               ("in u8", "in u8 a;", TypeIn(TypeUInt(8), FlowControlTypeNone)),
-              ("out u8", "out u8 a;", TypeOut(TypeUInt(8), FlowControlTypeNone, StorageTypeReg)),
+              ("out u8",
+               "out u8 a;",
+               TypeOut(TypeUInt(8), FlowControlTypeNone, StorageTypeDefault)),
               ("function", "void a() {}", TypeCtrlFunc(Nil, TypeVoid))
             )
           } {

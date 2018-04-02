@@ -25,6 +25,7 @@ object StorageTypes {
 
   abstract sealed trait StorageType
 
+  case object StorageTypeDefault extends StorageType
   case object StorageTypeWire extends StorageType
   case object StorageTypeReg extends StorageType
   case class StorageTypeSlices(kinds: List[StorageSliceType]) extends StorageType

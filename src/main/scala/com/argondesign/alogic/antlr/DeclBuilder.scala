@@ -15,29 +15,11 @@
 
 package com.argondesign.alogic.antlr
 
-import com.argondesign.alogic.antlr.AlogicParser.DeclArrContext
-import com.argondesign.alogic.antlr.AlogicParser.DeclConstContext
-import com.argondesign.alogic.antlr.AlogicParser.DeclContext
-import com.argondesign.alogic.antlr.AlogicParser.DeclInContext
-import com.argondesign.alogic.antlr.AlogicParser.DeclOutContext
-import com.argondesign.alogic.antlr.AlogicParser.DeclParamContext
-import com.argondesign.alogic.antlr.AlogicParser.DeclPipelineContext
-import com.argondesign.alogic.antlr.AlogicParser.DeclVarContext
+import com.argondesign.alogic.antlr.AlogicParser._
 import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.ast.Trees.Decl
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
-import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeValid
-import com.argondesign.alogic.core.StorageTypes.StorageSliceFwd
-import com.argondesign.alogic.core.StorageTypes.StorageTypeReg
-import com.argondesign.alogic.core.StorageTypes.StorageTypeSlices
-import com.argondesign.alogic.core.Types.Type
-import com.argondesign.alogic.core.Types.TypeArray
-import com.argondesign.alogic.core.Types.TypeConst
-import com.argondesign.alogic.core.Types.TypeIn
-import com.argondesign.alogic.core.Types.TypeOut
-import com.argondesign.alogic.core.Types.TypeParam
-import com.argondesign.alogic.core.Types.TypePipeline
+import com.argondesign.alogic.core.Types._
 
 object DeclBuilder extends BaseBuilder[DeclContext, Decl] {
 
@@ -76,16 +58,7 @@ object DeclBuilder extends BaseBuilder[DeclContext, Decl] {
         val ident = ctx.IDENTIFIER.toIdent
         val underlying = TypeBuilder(ctx.kind)
         val fcType = FlowControlTypeBuilder(ctx.flow_control_type)
-        val storageOpt = Option(ctx.storage_type) map { StorageTypeBuilder(_) }
-        val storage = (fcType, storageOpt) match {
-          // Unbox
-          case (_, Some(storageType)) => storageType
-          // Defaults
-          case (FlowControlTypeNone, None)  => StorageTypeReg
-          case (FlowControlTypeValid, None) => StorageTypeReg
-          case (_, None)                    => StorageTypeSlices(List(StorageSliceFwd))
-        }
-
+        val storage = StorageTypeBuilder(ctx.storage_type)
         val kind = TypeOut(underlying, fcType, storage)
         Decl(ident, kind, None) withLoc {
           ctx.loc.copy(point = ctx.IDENTIFIER.getStartIndex)

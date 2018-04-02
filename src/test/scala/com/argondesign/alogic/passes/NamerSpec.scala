@@ -19,9 +19,9 @@ import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.SourceTextConverters._
 import com.argondesign.alogic.ast.Trees.Expr._
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
+import com.argondesign.alogic.core.FlowControlTypes._
 import com.argondesign.alogic.core.Names.TypeName
-import com.argondesign.alogic.core.StorageTypes.StorageTypeReg
+import com.argondesign.alogic.core.StorageTypes._
 import com.argondesign.alogic.core.Symbols.ErrorSymbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.CompilerContext
@@ -642,7 +642,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     inside(symA.value.denot.kind) {
       case TypeEntity("a", List("a", "b"), List(typeA, typeB), List("P"), List(typeP)) =>
         typeA shouldBe TypeIn(TypeUInt(Expr(1)), FlowControlTypeNone)
-        typeB shouldBe TypeOut(TypeSInt(Expr(3)), FlowControlTypeNone, StorageTypeReg)
+        typeB shouldBe TypeOut(TypeSInt(Expr(3)), FlowControlTypeNone, StorageTypeDefault)
         typeP shouldBe TypeParam(TypeUInt(Expr(8)))
     }
   }
@@ -706,7 +706,9 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     val tree = entity rewrite namer
 
     val symA = tree collectFirst { case Sym(symbol) if symbol.denot.name.str == "a" => symbol }
-    symA.value.denot.kind shouldBe TypeOut(TypeUInt(Expr(1)), FlowControlTypeNone, StorageTypeReg)
+    symA.value.denot.kind shouldBe TypeOut(TypeUInt(Expr(1)),
+                                           FlowControlTypeNone,
+                                           StorageTypeDefault)
   }
 
   it should "attach correct types to symbol denotations - decl param" in {

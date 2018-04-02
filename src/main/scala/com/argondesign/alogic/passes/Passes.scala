@@ -57,6 +57,7 @@ object Passes {
           new FoldExpr(assignTypes = true)(cc),
           new LowerPipeline,
           new LiftEntities,
+          new DefaultStorage,
           new LowerLoops
       ),
       // Lift Entities generates Thickets from some Entities, but later
