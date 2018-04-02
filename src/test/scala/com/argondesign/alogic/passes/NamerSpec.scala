@@ -23,7 +23,6 @@ import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
 import com.argondesign.alogic.core.Names.TypeName
 import com.argondesign.alogic.core.StorageTypes.StorageTypeReg
 import com.argondesign.alogic.core.Symbols.ErrorSymbol
-import com.argondesign.alogic.core.Symbols.TermSymbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Error
@@ -925,10 +924,33 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     val tree = entity rewrite namer
 
     val symA = tree collectFirst {
-      case Sym(symbol: TermSymbol) if symbol.denot.name.str == "a" => symbol
+      case Sym(symbol) if symbol.denot.name.str == "a" => symbol
     }
     symA.value.denot.kind shouldBe TypeCtrlFunc(Nil, TypeVoid)
     symA.value.denot.attr shouldBe Map("bar" -> Expr(1))
   }
 
+  it should "attach source attributes to symbol denotations - entity" in {
+    val entity = "(* bar *) fsm foo { }".asTree[Entity]
+    cc.addGlobalEntity(entity)
+    val tree = entity rewrite namer
+
+    val symA = tree collectFirst {
+      case Sym(symbol) if symbol.denot.name.str == "foo" => symbol
+    }
+    symA.value.denot.kind shouldBe TypeEntity("foo", Nil, Nil, Nil, Nil)
+    symA.value.denot.attr shouldBe Map("bar" -> Expr(1))
+  }
+
+  it should "attach source attributes to symbol denotations - nested entity" in {
+    val entity = "network foo { (* baz *) fsm bar {} }".asTree[Entity]
+    cc.addGlobalEntity(entity)
+    val tree = entity rewrite namer
+
+    val symA = tree collectFirst {
+      case Sym(symbol) if symbol.denot.name.str == "bar" => symbol
+    }
+    symA.value.denot.kind shouldBe TypeEntity("bar", Nil, Nil, Nil, Nil)
+    symA.value.denot.attr shouldBe Map("baz" -> Expr(1))
+  }
 }

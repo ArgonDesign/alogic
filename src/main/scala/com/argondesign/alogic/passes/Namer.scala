@@ -220,7 +220,9 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
 
       // Insert nested entity names so instantiations can resolve them in arbitrary order
       for (Entity(ident: Ident, _, _, _, _, _, _, _, _) <- node.entities) {
-        val symbol = cc.newTypeSymbol(ident, TypeEntity("", Nil, Nil, Nil, Nil))
+        val attr = if (ident.hasAttr) ident.attr else Map.empty[String, Expr]
+        val kind = TypeEntity("", Nil, Nil, Nil, Nil)
+        val symbol = cc.newTypeSymbolWithAttr(ident.name, ident.loc, kind, attr)
         Scopes.insert(symbol)
       }
     }

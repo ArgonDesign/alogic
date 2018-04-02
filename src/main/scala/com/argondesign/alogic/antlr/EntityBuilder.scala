@@ -105,6 +105,10 @@ object EntityBuilder extends BaseBuilder[EntityContext, Entity] {
           }
         }
 
+        if (ctx.attr != null) {
+          ident withAttr AttrBuilder(ctx.attr)
+        }
+
         Entity(
           ident,
           decls,

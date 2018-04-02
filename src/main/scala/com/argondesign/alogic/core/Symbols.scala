@@ -63,7 +63,9 @@ trait Symbols { self: CompilerContext =>
 
   final def addGlobalEntities(entities: Iterable[Entity]): Unit = synchronized {
     for (Entity(ident: Ident, _, _, _, _, _, _, _, _) <- entities) {
-      val symbol = newTypeSymbol(ident, TypeEntity("", Nil, Nil, Nil, Nil))
+      val attr = if (ident.hasAttr) ident.attr else Map.empty[String, Expr]
+      val kind = TypeEntity("", Nil, Nil, Nil, Nil)
+      val symbol = newTypeSymbolWithAttr(ident.name, ident.loc, kind, attr)
       addGlobalSymbol(symbol)
     }
 
@@ -97,6 +99,10 @@ trait Symbols { self: CompilerContext =>
 
   final protected val symbolLocations = mutable.HashMap[Symbol, Loc]()
 
+  //////////////////////////////////////////////////////////////////////////////
+  // Creating TermSymbol instances
+  //////////////////////////////////////////////////////////////////////////////
+
   final def newTermSymbolWithAttr(
       name: String,
       loc: Loc,
@@ -115,21 +121,8 @@ trait Symbols { self: CompilerContext =>
     newTermSymbolWithAttr(name, loc, kind, Map.empty)
   }
 
-  final def newTypeSymbol(name: String, loc: Loc, kind: Type): TypeSymbol = synchronized {
-    val symbol = new TypeSymbol(symbolSequenceNumbers.next)
-    val denot = TypeDenotation(symbol, TypeName(name), kind)
-
-    symbolLocations(symbol) = loc
-
-    symbol withDenot denot
-  }
-
   final def newTermSymbol(ident: Ident, kind: Type): TermSymbol = {
     newTermSymbol(ident.name, ident.loc, kind)
-  }
-
-  final def newTypeSymbol(ident: Ident, kind: Type): TypeSymbol = {
-    newTypeSymbol(ident.name, ident.loc, kind)
   }
 
   final def newSymbolLike(symbol: TermSymbol): TermSymbol = {
@@ -141,10 +134,40 @@ trait Symbols { self: CompilerContext =>
     )
   }
 
-  final def newSymbolLike(symbol: TypeSymbol): TypeSymbol = {
-    newTypeSymbol(symbol.denot.name.str, symbol.loc(this), symbol.denot.kind)
+  //////////////////////////////////////////////////////////////////////////////
+  // Creating TypeSymbol instances
+  //////////////////////////////////////////////////////////////////////////////
+
+  final def newTypeSymbolWithAttr(
+      name: String,
+      loc: Loc,
+      kind: Type,
+      attr: Map[String, Expr]
+  ): TypeSymbol = synchronized {
+    val symbol = new TypeSymbol(symbolSequenceNumbers.next)
+    val denot = TypeDenotation(symbol, TypeName(name), kind, attr)
+
+    symbolLocations(symbol) = loc
+
+    symbol withDenot denot
   }
 
+  final def newTypeSymbol(name: String, loc: Loc, kind: Type): TypeSymbol = {
+    newTypeSymbolWithAttr(name, loc, kind, Map.empty)
+  }
+
+  final def newTypeSymbol(ident: Ident, kind: Type): TypeSymbol = {
+    newTypeSymbol(ident.name, ident.loc, kind)
+  }
+
+  final def newSymbolLike(symbol: TypeSymbol): TypeSymbol = {
+    newTypeSymbolWithAttr(
+      symbol.denot.name.str,
+      symbol.loc(this),
+      symbol.denot.kind,
+      symbol.denot.attr
+    )
+  }
 }
 
 object Symbols {

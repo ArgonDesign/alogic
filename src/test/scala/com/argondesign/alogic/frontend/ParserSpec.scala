@@ -592,6 +592,28 @@ final class ParserSpec extends FreeSpec with AlogicTest {
           }
         }
 
+        "nested fsm with attribute" in {
+          val tree = """|network  h2 {
+                        |  (*foo*) fsm i {}
+                        |}""".stripMargin.asTree[Entity]
+          tree shouldBe {
+            Entity(
+              Ident("h2"),
+              Nil,
+              Nil,
+              Nil,
+              Nil,
+              Nil,
+              Nil,
+              List(Entity(Ident("i"), Nil, Nil, Nil, Nil, Nil, Nil, Nil, Map())),
+              Map()
+            )
+          }
+          val ident = (tree collectFirst { case ident @ Ident("i") => ident }).value
+          ident.hasAttr shouldBe true
+          ident.attr shouldBe Map("foo" -> Expr(1))
+        }
+
         "verbatim verilog" in {
           """|fsm i {
                        |  verbatim verilog {

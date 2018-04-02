@@ -32,6 +32,7 @@ object Denotations {
     val symbol: Symbol
     val name: Name
     val kind: Type
+    val attr: Map[String, Expr]
   }
 
   case class TermDenotation(
@@ -44,6 +45,7 @@ object Denotations {
   case class TypeDenotation(
       symbol: TypeSymbol,
       name: TypeName,
-      kind: Type
+      kind: Type,
+      attr: Map[String, Expr]
   ) extends Denotation
 }

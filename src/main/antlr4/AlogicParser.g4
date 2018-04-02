@@ -62,7 +62,8 @@ kind
 ///////////////////////////////////////////////////////////////////////////////
 
 entity
-  : (variant='fsm' | variant='network' | variant='verbatim' 'entity') IDENTIFIER '{'
+  : attr?
+    (variant='fsm' | variant='network' | variant='verbatim' 'entity') IDENTIFIER '{'
       (decl ';')*
       (entity_content)*
     '}'
