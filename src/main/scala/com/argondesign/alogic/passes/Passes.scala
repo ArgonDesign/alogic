@@ -49,9 +49,9 @@ object Passes {
           new Namer,
           new Desugar
       ),
-      // Typer needs cross entity information to resolve instances, and later
-      // stages may need forward type information so run it in it's own phase
+      // - Typer needs cross entity information to resolve instances
       () => List(new Typer),
+      // - Later stages may need forward type information
       () =>
         List(
           new FoldExpr(assignTypes = true)(cc),
@@ -60,17 +60,18 @@ object Passes {
           new DefaultStorage,
           new LowerLoops
       ),
-      // Lift Entities generates Thickets from some Entities, but later
-      // stages assume they only deal with a single entity
+      // - Need to flatten Thickets for AnalyseCallGraph
       () =>
         List(
           new AnalyseCallGraph,
           new LowerFlowControl
       ),
-      // ConvertControl requires the return stack allocated in
-      // AllocateReturnStack early
+      // - Need to flatten Thickets for LowerRegPorts
+      // - ConvertControl requires the return stack allocated in
+      //   AllocateReturnStack early
       () =>
         List(
+          new LowerRegPorts,
           new ConvertControl
       )
     )
