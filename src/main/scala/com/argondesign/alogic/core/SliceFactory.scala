@@ -252,8 +252,7 @@ object SliceFactory {
       voidBody(ss, uVRef, uRRef, dVRef, dRRef, eRef, fRef, pRef, vRef)
     }
 
-    val stateSymbol = cc.newTermSymbol("main", loc, TypeState)
-    val state = State(ExprRef(Sym(stateSymbol)), body)
+    val state = State(ExprInt(false, 1, 0), body)
 
     val ports = {
       val rest = List(

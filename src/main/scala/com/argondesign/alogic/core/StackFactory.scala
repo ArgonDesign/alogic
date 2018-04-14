@@ -43,14 +43,8 @@ object StackFactory {
   //     empty = ~valid;
   //     full = valid;
   //     q = storage;
-  //
-  //     if (pop) {
-  //       valid = false;
-  //     } else {
-  //       storage = d;
-  //       valid = valid | push;
-  //     }
-  //
+  //     storage = d;
+  //     valid = ~pop & (valid | push);
   //     fence;
   //   }
   // }
@@ -94,22 +88,12 @@ object StackFactory {
       StmtAssign(empRef, ~valRef),
       StmtAssign(fulRef, valRef),
       StmtAssign(qRef, stoRef),
-      StmtIf(
-        popRef,
-        StmtAssign(valRef, ExprInt(false, 1, 0)),
-        Some(
-          StmtBlock(
-            List(
-              StmtAssign(stoRef, dRef),
-              StmtAssign(valRef, valRef | pusRef)
-            ))
-        )
-      ),
+      StmtAssign(stoRef, dRef),
+      StmtAssign(valRef, ~popRef & (valRef | pusRef)),
       StmtFence()
     )
 
-    val stateSymbol = cc.newTermSymbol("main", loc, TypeState)
-    val state = State(ExprRef(Sym(stateSymbol)), body)
+    val state = State(ExprInt(false, 1, 0), body)
 
     val ports = List(
       dSymbol,
@@ -259,8 +243,7 @@ object StackFactory {
       StmtFence()
     )
 
-    val stateSymbol = cc.newTermSymbol("main", loc, TypeState)
-    val state = State(ExprRef(Sym(stateSymbol)), body)
+    val state = State(ExprInt(false, 1, 0), body)
 
     val ports = List(
       dSymbol,
