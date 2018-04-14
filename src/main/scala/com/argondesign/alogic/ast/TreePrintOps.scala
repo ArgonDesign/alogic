@@ -18,57 +18,17 @@ package com.argondesign.alogic.ast
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 
-//trait DeclarationPrettyPrintOps { this: Decl =>
-//
-//  def toSource: String = this match {
-//    case DeclVar(kind, id, Some(init)) => s"${kind.toSource} ${id} = ${init.toSource}"
-//    case DeclVar(kind, id, None)       => s"${kind.toSource} ${id}"
-//    case DeclArr(kind, id, dims) =>
-//      s"${kind.toSource} ${id}${dims map { _.toSource } mkString ("[", "][", "]")}"
-//    case DeclParam(kind, id, init) => s"param ${kind.toSource} ${id} = ${init.toSource}"
-//    case DeclConst(kind, id, init) => s"const ${kind.toSource} ${id} = ${init.toSource}"
-//    case DeclVerilogVar(kind, id)  => s"verilog ${kind.toSource} ${id}"
-//    case DeclVerilogArr(kind, id, dims) =>
-//      s"verilog ${kind.toSource} ${id}${id}${dims map { _.toSource } mkString ("[", "][", "]")}"
-//    case DeclOut(kind, id, fctype, stype) =>
-//      s"out ${fctype.toSource} ${stype.toSource} ${kind.toSource} ${id}"
-//    case DeclIn(kind, id, fctype) => s"in ${fctype.toSource} ${kind.toSource} ${id}"
-//    case DeclPippeVar(kind, id)   => s"pipeline ${kind.toSource} ${id}"
-//  }
-//}
-//
-//trait FlowControlTypePrettyPrintOps { this: FlowControlType =>
-//
-//  def toSource: String = this match {
-//    case FlowControlTypeNone   => ""
-//    case FlowControlTypeValid  => "sync"
-//    case FlowControlTypeReady  => "sync ready"
-//    case FlowControlTypeAccept => "sync accept"
-//  }
-//}
-//
-//trait StorageTypePrettyPrintOps { this: StorageType =>
-//
-//  def toSource: String = this match {
-//    case StorageTypeWire   => "wire"
-//    case StorageTypeBubble => "bubble"
-//    case StorageTypeReg    => ""
-//  }
-//}
-//
-//trait TypePrettyPrintOps { this: Type =>
-//
-//  def toSource: String = this match {
-//    case IntType(true, size)   => s"i${size}"
-//    case IntType(false, size)  => s"u${size}"
-//    case IntVType(true, args)  => s"int(${args map (_.toSource) mkString ", "})"
-//    case IntVType(false, args) => s"uint(${args map (_.toSource) mkString ", "})"
-//    case Struct(name, _)       => s"struct $name"
-//    case VoidType              => "void"
-//  }
-//}
-
 trait TreePrintOps { this: Tree =>
+
+  private[this] final def attrStr(indent: Int, ref: Ref)(implicit cc: CompilerContext): String = {
+    ref match {
+      case Sym(symbol) if symbol.denot.attr.nonEmpty => {
+        val parts = for ((key, value) <- symbol.denot.attr) yield s"${key} = ${value.toSource}"
+        parts.mkString("(* ", ", ", " *)\n" + "  " * indent)
+      }
+      case _ => ""
+    }
+  }
 
   private[this] final def v(expr: Expr)(implicit cc: CompilerContext): String = expr match {
     case ExprCall(expr, args)                  => s"${v(expr)}(${args map v mkString ", "})"
@@ -115,14 +75,14 @@ trait TreePrintOps { this: Tree =>
       }
 
       case TypeDefinitionTypedef(ref, kind) => {
-        s"typedef ${kind.toSource} ${v(indent)(ref)}"
+        s"${attrStr(indent, ref)}typedef ${kind.toSource} ${v(indent)(ref)}"
       }
 
       case TypeDefinitionStruct(ref, fieldNames, fieldTypes) => {
         val fields = for ((fn, ft) <- fieldNames zip fieldTypes) yield {
           s"${ft.toSource} ${fn};"
         }
-        s"""|struct ${v(indent)(ref)} {
+        s"""|${attrStr(indent, ref)}struct ${v(indent)(ref)} {
             |${i}  ${fields mkString s"\n${i}  "}
             |${i}};""".stripMargin
       }
@@ -136,7 +96,7 @@ trait TreePrintOps { this: Tree =>
                            fenceStmts,
                            entities,
                            verbatim) => {
-        s"""|${entity.variant} ${v(indent)(ref)} {
+        s"""|${attrStr(indent, entity.ref)}${entity.variant} ${v(indent)(ref)} {
             |${i}  /////////////////////////////////
             |${i}  // Declarations
             |${i}  /////////////////////////////////
@@ -196,24 +156,34 @@ trait TreePrintOps { this: Tree =>
       case Ident(name) => name
       case Sym(symbol) => symbol.denot.name.str
 
-      case Decl(ref, kind, None)       => s"${kind.toSource} ${v(indent)(ref)};"
-      case Decl(ref, kind, Some(init)) => s"${kind.toSource} ${v(indent)(ref)} = ${v(init)};"
+      case Decl(ref, kind, None) => {
+        s"${attrStr(indent, ref)}${kind.toSource} ${v(indent)(ref)};"
+      }
+      case Decl(ref, kind, Some(init)) => {
+        s"${attrStr(indent, ref)}${kind.toSource} ${v(indent)(ref)} = ${v(init)};"
+      }
 
       case Instance(ref, module, paramNames, paramArgs) => {
         val pas = for ((pn, pa) <- paramNames zip paramArgs) yield {
           s"${pn} = ${v(indent)(pa)}"
         }
-        s"new ${v(indent)(ref)} = ${v(indent)(module)}(${pas mkString ", "});"
+        s"${attrStr(indent, ref)}new ${v(indent)(ref)} = ${v(indent)(module)}(${pas mkString ", "});"
       }
       case Connect(lhs, rhs) => s"${v(lhs)} -> ${rhs map v mkString ", "};"
       case Function(ref, body) => {
-        s"""|void ${v(indent)(ref)}() {
+        s"""|${attrStr(indent, ref)}void ${v(indent)(ref)}() {
             |${i}  ${body map v(indent + 1) mkString s"\n${i}  "}
             |${i}}""".stripMargin
       }
 
-      case State(ref, body) => {
-        s"""|@state ${v(indent)(ref)} {
+      case State(ExprRef(ref), body) => {
+        s"""|${attrStr(indent, ref)}state ${v(indent)(ref)} {
+            |${i}  ${body map v(indent + 1) mkString s"\n${i}  "}
+            |${i}}""".stripMargin
+      }
+
+      case State(expr, body) => {
+        s"""|state ${v(indent)(expr)} {
             |${i}  ${body map v(indent + 1) mkString s"\n${i}  "}
             |${i}}""".stripMargin
       }

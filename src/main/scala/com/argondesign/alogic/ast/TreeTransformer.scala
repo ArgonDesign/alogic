@@ -118,9 +118,9 @@ abstract class TreeTransformer(implicit val cc: CompilerContext) extends TreeLik
         transform(TreeCopier(node)(ref, body))
       }
       case node: State => {
-        val ref = walk(node.ref)
+        val expr = walk(node.expr)
         val body = walk(node.body)
-        transform(TreeCopier(node)(ref, body))
+        transform(TreeCopier(node)(expr, body))
       }
       case node: StmtBlock => {
         val body = walk(node.body)

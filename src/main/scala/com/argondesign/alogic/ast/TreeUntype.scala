@@ -128,7 +128,7 @@ trait TreeUntype {
 
   def untype(node: State): State =
     node.copy(
-      ref = untype(node.ref.asInstanceOf[Sym]),
+      expr = untype(node.expr),
       body = untype(node.body)
     ) withLoc node.loc
 

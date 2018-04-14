@@ -953,7 +953,7 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
       }
 
       "state" in {
-        TypeAssigner(State(Sym(ErrorSymbol), Nil)).tpe shouldBe TypeMisc
+        TypeAssigner(State(ExprRef(Sym(ErrorSymbol)), Nil)).tpe shouldBe TypeMisc
       }
     }
 

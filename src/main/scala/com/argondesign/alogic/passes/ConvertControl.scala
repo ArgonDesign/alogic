@@ -125,11 +125,16 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
         // resolved in an arbitrary order, also add them to the entryStmts map
         val pairs = for (function <- entity.functions) yield {
           val Sym(functionSymbol: TermSymbol) = function.ref
+          val attr = functionSymbol.denot.attr.get("entry") map { value =>
+            Map("entry" -> value)
+          } getOrElse {
+            Map.empty
+          }
           val stateSymbol = cc.newTermSymbolWithAttr(
             s"l${functionSymbol.loc.line}_function_${functionSymbol.denot.name.str}",
             functionSymbol.loc,
             TypeState,
-            functionSymbol.denot.attr
+            attr
           )
           entryStmts(function.body.head.id) = stateSymbol
           functionSymbol -> stateSymbol
@@ -243,9 +248,8 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
     if (symOpt.isDefined) {
       val loc = body.head.loc
       val Some(symbol) = symOpt
-      val sym = Sym(symbol) withLoc loc
-      TypeAssigner(sym)
-      val state = State(sym, body) withLoc loc
+      val ref = ExprRef(Sym(symbol)) regularize loc
+      val state = State(ref, body) withLoc loc
       TypeAssigner(state)
 
       emittedStates append state

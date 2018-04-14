@@ -135,12 +135,12 @@ object TreeCopier {
     }
   }
 
-  final def apply(tree: State)(ref: Tree, body: List[Tree]): State = {
-    if ((ref eq tree.ref) && (body eq tree.body)) {
+  final def apply(tree: State)(expr: Tree, body: List[Tree]): State = {
+    if ((expr eq tree.expr) && (body eq tree.body)) {
       tree
     } else {
       assert(body forall { _.isInstanceOf[Stmt] })
-      State(ref.asInstanceOf[Ref], body.asInstanceOf[List[Stmt]]) withLoc tree.loc
+      State(expr.asInstanceOf[Expr], body.asInstanceOf[List[Stmt]]) withLoc tree.loc
     }
   }
 

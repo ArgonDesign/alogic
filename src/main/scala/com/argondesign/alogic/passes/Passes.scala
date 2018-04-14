@@ -48,12 +48,13 @@ object Passes {
       () => new FoldExpr(assignTypes = true)(cc),
       () => new LowerPipeline,
       () => new LiftEntities,
-      () => new DefaultStorage,
       () => new LowerLoops,
-      () => new LowerFlowControl,
-      () => new LowerRegPorts,
       () => new AnalyseCallGraph,
-      () => new ConvertControl
+      () => new ConvertControl,
+      () => new AllocStates,
+      () => new DefaultStorage,
+      () => new LowerFlowControl,
+      () => new LowerRegPorts
     )
 
     // Fold passes over the trees

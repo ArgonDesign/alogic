@@ -98,7 +98,7 @@ object Trees {
   // Tree representing FSM states after control statement conversion
   ///////////////////////////////////////////////////////////////////////////////
 
-  case class State(ref: Ref, body: List[Stmt]) extends Tree
+  case class State(expr: Expr, body: List[Stmt]) extends Tree
 
   ///////////////////////////////////////////////////////////////////////////////
   // Thicket
