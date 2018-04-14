@@ -10,7 +10,8 @@
 //
 // DESCRIPTION:
 //
-// Allocate state numbers
+// - Allocate state numbers
+// - Introduce state variable
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.passes
@@ -27,10 +28,20 @@ import scala.collection.mutable
 
 final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
 
+  // The entity processed in this instance
+  private[this] var theEntity: Entity = _
+
   // Number of states
-  private[this] var nStates: Int = _
+  private[this] lazy val nStates: Int = theEntity.states.length
   // Number of bits in state variable
   private[this] lazy val stateBits = Math.clog2(nStates)
+  // The state variable symbol
+  private[this] lazy val stateVarSymbol: TermSymbol = {
+    val loc = theEntity.loc
+    val kind = TypeAssigner(Expr(stateBits) withLoc loc)
+    cc.newTermSymbolWithAttr("state", loc, TypeUInt(kind), Map("statevar" -> Expr(1)))
+  }
+
   // The return stack symbol
   private[this] var rsSymbol: TermSymbol = _
   // The number of the current state being processed
@@ -40,7 +51,7 @@ final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
 
   override def enter(tree: Tree): Unit = tree match {
     case entity: Entity => {
-      nStates = entity.states.length
+      theEntity = entity
 
       if (nStates > 1) {
         // For now, just allocate state numbers linearly as binary coded
@@ -55,26 +66,21 @@ final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
         assert(entryStates.length == 1)
 
         val State(ExprRef(Sym(entrySymbol: TermSymbol)), _) = entryStates.head
-        val num = it.next()
-        entrySymbol.addAttr("statenumber" -> ExprInt(false, stateBits, num))
-        stateMap(entrySymbol) = num
+        stateMap(entrySymbol) = it.next()
 
         for (State(ExprRef(Sym(symbol: TermSymbol)), _) <- otherStates) {
-          val num = it.next()
-          symbol.addAttr("statenumber" -> ExprInt(false, stateBits, num))
-          stateMap(symbol) = num
+          stateMap(symbol) = it.next()
         }
       }
 
       // Gather the return stack symbol if exists and update it's type
-      entity.declarations.headOption foreach { decl =>
-        val Sym(symbol: TermSymbol) = decl.ref
-        if (symbol.denot.name.str == "return_stack") {
-          val TypeStack(_, depth) = symbol.denot.kind
-          val width = Expr(stateBits) regularize symbol.loc
-          symbol withDenot symbol.denot.copy(kind = TypeStack(TypeUInt(width), depth))
-          rsSymbol = symbol
-        }
+      entity.declarations map { _.ref } collectFirst {
+        case Sym(symbol: TermSymbol) if symbol.denot.attr contains "returnstack" => symbol
+      } map { symbol =>
+        val TypeStack(_, depth) = symbol.denot.kind
+        val width = Expr(stateBits) regularize symbol.loc
+        symbol withDenot symbol.denot.copy(kind = TypeStack(TypeUInt(width), depth))
+        rsSymbol = symbol
       }
     }
 
@@ -95,6 +101,11 @@ final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
       // If there is only 1 state, optimize the design by
       // omitting the state variable altogether
       tree match {
+        // Replace references to states with the state numbers
+        case ExprRef(Sym(symbol: TermSymbol)) if stateMap contains symbol => {
+          ExprInt(false, 1, 0)
+        }
+
         // Convert goto to fence
         case StmtGoto(_) => {
           StmtFence() withLoc tree.loc
@@ -114,7 +125,7 @@ final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
 
         case _ => tree
       }
-    } else {
+    } else if (nStates > 1) {
       tree match {
         // Replace references to states with the state numbers
         case ExprRef(Sym(symbol: TermSymbol)) if stateMap contains symbol => {
@@ -122,8 +133,18 @@ final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
         }
 
         // Convert goto <current state> to fence
-        case StmtGoto(ExprInt(false, `stateBits`, value)) if value == currStateNum => {
+        case StmtGoto(ExprInt(false, _, value)) if value == currStateNum => {
           StmtFence() withLoc tree.loc
+        }
+
+        // Convert goto <other state> to state assignment and fence
+        case StmtGoto(expr) => {
+          StmtBlock(
+            List(
+              StmtAssign(ExprRef(Sym(stateVarSymbol)), expr) regularize tree.loc,
+              StmtFence() regularize tree.loc
+            )
+          ) withLoc tree.loc
         }
 
         // Update the type of the return stack decl
@@ -131,8 +152,19 @@ final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
           decl.copy(kind = symbol.denot.kind) withLoc tree.loc
         }
 
+        // Emit state variable declaration
+        case entity: Entity => {
+          val decl = Decl(Sym(stateVarSymbol), stateVarSymbol.denot.kind, None)
+          decl regularize stateVarSymbol.loc
+          entity.copy(
+            declarations = decl :: entity.declarations
+          ) withVariant entity.variant withLoc entity.loc
+        }
+
         case _ => tree
       }
+    } else {
+      tree
     }
 
     if (result != tree) {

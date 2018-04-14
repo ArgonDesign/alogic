@@ -350,7 +350,12 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
         // in a later pass when the state numbers are allocated
         val depth = Expr(stackDepth) regularize entity.loc
         val kind = TypeStack(TypeState, depth)
-        val symbol = cc.newTermSymbol("return_stack", entity.loc, kind)
+        val symbol = cc.newTermSymbolWithAttr(
+          if (stackDepth > 1) "return_stack" else "return_state",
+          entity.loc,
+          kind,
+          Map("returnstack" -> Expr(1))
+        )
         val decl = Decl(Sym(symbol), kind, None) regularize entity.loc
 
         // Add declaration
