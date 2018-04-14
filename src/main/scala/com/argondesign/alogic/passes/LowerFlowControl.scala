@@ -12,6 +12,7 @@
 //
 // - Convert port flow control to stall statements
 // - Split ports with flow control into constituent signals
+// - Lower output storage slices into output slice instances
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.passes

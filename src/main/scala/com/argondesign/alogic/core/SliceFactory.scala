@@ -252,8 +252,8 @@ object SliceFactory {
       voidBody(ss, uVRef, uRRef, dVRef, dRRef, eRef, fRef, pRef, vRef)
     }
 
-    val mainSymbol = cc.newTermSymbol("main", loc, TypeCtrlFunc(Nil, TypeVoid))
-    val main = Function(Sym(mainSymbol), body)
+    val stateSymbol = cc.newTermSymbol("main", loc, TypeState)
+    val state = State(ExprRef(Sym(stateSymbol)), body)
 
     val ports = {
       val rest = List(
@@ -283,7 +283,7 @@ object SliceFactory {
     )
 
     val entitySymbol = cc.newTypeSymbol(name, loc, entityType)
-    val entity = Entity(Sym(entitySymbol), decls, Nil, Nil, List(main), Nil, Nil, Nil, Map())
+    val entity = Entity(Sym(entitySymbol), decls, Nil, Nil, Nil, List(state), Nil, Nil, Map())
     entity withVariant "fsm" regularize loc
   }
 

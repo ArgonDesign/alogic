@@ -54,8 +54,10 @@ object Passes {
       () => new AllocStates,
       () => new DefaultStorage,
       () => new LowerFlowControl,
-      () => new LowerRegPorts
+      () => new LowerRegPorts,
+      () => new LowerStacks
     )
+    // TODO: replace 1 deep stack without full/empty access with flops
 
     // Fold passes over the trees
     (trees /: passes) { doPhase(_, _) }
