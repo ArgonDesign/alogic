@@ -164,21 +164,25 @@ object Types {
 
     private[this] lazy val portMap = {
       val pairs = for (symbol <- portSymbols) yield {
-        symbol.denot.name.str -> symbol.denot.kind
+        symbol.denot.name.str -> symbol
       }
       pairs.toMap
     }
 
     private[this] lazy val paramMap = {
       val pairs = for (symbol <- paramSymbols) yield {
-        symbol.denot.name.str -> symbol.denot.kind
+        symbol.denot.name.str -> symbol
       }
       pairs.toMap
     }
 
-    def apply(name: String) = portMap.get(name)
+    def apply(name: String) = portMap.get(name) map { _.denot.kind }
 
-    def param(name: String) = paramMap.get(name)
+    def param(name: String) = paramMap.get(name) map { _.denot.kind }
+
+    def portSymbol(name: String) = portMap.get(name)
+
+    def paramSymbol(name: String) = paramMap.get(name)
   }
 
   trait TypeInImpl extends ExtensionType { this: TypeIn =>

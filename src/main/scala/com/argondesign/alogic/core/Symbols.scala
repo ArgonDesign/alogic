@@ -217,7 +217,10 @@ object Symbols {
     // Shorthand for often accessed name
     def name: String = denot.name.str
 
-    // Attributes
+    ////////////////////////////////////////////////////////////////////////////
+    // Attribute handling
+    ////////////////////////////////////////////////////////////////////////////
+
     final def attr[R](name: String): R = denot.attr(name).asInstanceOf[R]
 
     final def getAttr[R](name: String): Option[R] = denot.attr.get(name).asInstanceOf[Option[R]]
@@ -229,6 +232,14 @@ object Symbols {
     final def hasAttr(name: String): Boolean = denot.attr contains name
 
     def delAttr(name: String): this.type
+
+    final def appendAttr[T](name: String, value: T): this.type = {
+      this.getAttr[List[T]](name) match {
+        case Some(values: List[T]) => this.setAttr(name, value :: values)
+        case None                  => this.setAttr(name, List(value))
+        case _                     => unreachable
+      }
+    }
   }
 
   final class TermSymbol(val id: Int) extends Symbol {
@@ -245,7 +256,7 @@ object Symbols {
       this withDenot denot.copy(attr = denot.attr - name)
     }
 
-    override def toString = s"TermSymbol($id)"
+    override def toString = s"TermSymbol(id=$id, name=${name})"
   }
 
   final class TypeSymbol(val id: Int) extends Symbol {
@@ -262,7 +273,7 @@ object Symbols {
       this withDenot denot.copy(attr = denot.attr - name)
     }
 
-    override def toString = s"TypeSymbol($id)"
+    override def toString = s"TypeSymbol(id=$id, name=${name})"
   }
 
   final object ErrorSymbol extends Symbol {

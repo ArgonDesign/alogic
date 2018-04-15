@@ -27,7 +27,7 @@ trait TreePrintOps { this: Tree =>
           value match {
             case true       => s"${key}"
             case expr: Expr => s"${key} = ${expr.toSource}"
-            case _          => s"${key} = ..."
+            case other      => s"${key} = ${other.toString}"
           }
         }
         parts.mkString("(* ", ", ", " *)\n" + "  " * indent)
