@@ -28,22 +28,28 @@ import scala.collection.mutable
 
 final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
 
-  // The entity processed in this instance
-  private[this] var theEntity: Entity = _
-
   // Number of states
-  private[this] lazy val nStates: Int = theEntity.states.length
+  private[this] var nStates: Int = _
   // Number of bits in state variable
   private[this] lazy val stateBits = Math.clog2(nStates)
   // The state variable symbol
   private[this] lazy val stateVarSymbol: TermSymbol = {
-    val loc = theEntity.loc
+    val loc = entitySymbol.loc
     val kind = TypeAssigner(Expr(stateBits) withLoc loc)
-    cc.newTermSymbolWithAttr("state", loc, TypeUInt(kind), Map("statevar" -> Expr(1)))
+    val symbol = cc.newTermSymbol("state", loc, TypeUInt(kind))
+    entitySymbol.setAttr("state-var", symbol)
+    symbol
   }
 
   // The return stack symbol
-  private[this] var rsSymbol: TermSymbol = _
+  private[this] lazy val rsSymbol: TermSymbol = {
+    val opt = entitySymbol.getAttr[TermSymbol]("return-stack") map { symbol =>
+      val TypeStack(_, depth) = symbol.denot.kind
+      val width = Expr(stateBits) regularize symbol.loc
+      symbol withDenot symbol.denot.copy(kind = TypeStack(TypeUInt(width), depth))
+    }
+    opt.orNull
+  }
   // The number of the current state being processed
   private[this] var currStateNum: Int = _
   // Map from state symbol to state number
@@ -51,7 +57,7 @@ final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
 
   override def enter(tree: Tree): Unit = tree match {
     case entity: Entity => {
-      theEntity = entity
+      nStates = entity.states.length
 
       if (nStates > 1) {
         // For now, just allocate state numbers linearly as binary coded
@@ -73,15 +79,8 @@ final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
         }
       }
 
-      // Gather the return stack symbol if exists and update it's type
-      entity.declarations map { _.ref } collectFirst {
-        case Sym(symbol: TermSymbol) if symbol.denot.attr contains "returnstack" => symbol
-      } map { symbol =>
-        val TypeStack(_, depth) = symbol.denot.kind
-        val width = Expr(stateBits) regularize symbol.loc
-        symbol withDenot symbol.denot.copy(kind = TypeStack(TypeUInt(width), depth))
-        rsSymbol = symbol
-      }
+      // force lazy val to gather the return stack symbol if exists and update it's type
+      rsSymbol
     }
 
     case State(ExprRef(Sym(symbol: TermSymbol)), _) if nStates > 1 => {
@@ -92,11 +91,6 @@ final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
   }
 
   override def transform(tree: Tree): Tree = {
-    // Nodes with children that have been rewritten need their types assigned
-    if (!tree.hasTpe) {
-      TypeAssigner(tree)
-    }
-
     val result = if (nStates == 1) {
       // If there is only 1 state, optimize the design by
       // omitting the state variable altogether
@@ -167,17 +161,11 @@ final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
       tree
     }
 
-    if (result != tree) {
+    if (result ne tree) {
       TypeAssigner(result)
     }
 
     result
-  }
-
-  override def finalCheck(tree: Tree): Unit = {
-    tree visit {
-      case node: Tree if !node.hasTpe => cc.ice(node, "Lost node.tpe", node.toString)
-    }
   }
 
 }

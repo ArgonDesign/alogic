@@ -18,7 +18,6 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.FollowedBy
 
 final class LowerLoops(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
@@ -45,9 +44,6 @@ final class LowerLoops(implicit cc: CompilerContext) extends TreeTransformer wit
     case StmtFor(inits, None, steps, body) => {
       StmtBlock(inits :+ StmtLoop(body ::: steps)) regularize tree.loc
     }
-
-    // Nodes who have rewritten children need types
-    case node if !node.hasTpe => TypeAssigner(node)
 
     case _ => tree
   }

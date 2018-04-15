@@ -34,6 +34,7 @@ final class TreeTransformerSpec extends FlatSpec with AlogicTest {
                   |  u1 foo;
                   |  u2 foo;
                   |}""".asTree[Stmt] rewrite new TreeTransformer {
+      override val typed = false
       override def transform(tree: Tree) = tree match {
         case _: Ident => Sym(new TermSymbol(0)) withLoc tree.loc
         case other    => other
@@ -48,13 +49,16 @@ final class TreeTransformerSpec extends FlatSpec with AlogicTest {
   it should "return the same tree instance if it is not rewritten" in {
     val oldTree = "{ a = b; bool c = a; }".asTree[Stmt]
     val newTree = oldTree rewrite new TreeTransformer with FollowedBy {
+      override val typed = false
       override def transform(tree: Tree) = tree followedBy { cc.warning(tree, "Saw it") }
     }
 
     newTree should be theSameInstanceAs oldTree
 
     cc.messages should have length 11
-    forAll(cc.messages) { msg => msg should beThe[Warning]("Saw it") }
+    forAll(cc.messages) { msg =>
+      msg should beThe[Warning]("Saw it")
+    }
   }
 
 }

@@ -65,7 +65,7 @@ trait TreeOps extends TreePrintOps { this: Tree =>
 
   def regularize(loc: Loc)(implicit cc: CompilerContext): this.type = {
     val result = this rewrite (new Regularize(loc))
-    assert(result == this)
+    assert(result eq this)
     this
   }
 }

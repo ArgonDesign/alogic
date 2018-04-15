@@ -56,11 +56,6 @@ final class DefaultStorage(implicit cc: CompilerContext) extends TreeTransformer
   }
 
   override def transform(tree: Tree): Tree = {
-    // Nodes with children that have been rewritten need their types assigned
-    if (!tree.hasTpe) {
-      TypeAssigner(tree)
-    }
-
     tree match {
       case _: Connect => {
         tree
@@ -108,7 +103,6 @@ final class DefaultStorage(implicit cc: CompilerContext) extends TreeTransformer
   override def finalCheck(tree: Tree): Unit = {
     assert(!inConnect)
     tree visit {
-      case node: Tree if !node.hasTpe        => cc.ice(node, "Lost node.tpe", node.toString)
       case TypeOut(_, _, StorageTypeDefault) => cc.ice(tree, "Default storage type remains")
     }
   }

@@ -22,7 +22,6 @@ import com.argondesign.alogic.core.StackFactory
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Stack
-import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.FollowedBy
 
 import scala.collection.mutable
@@ -76,11 +75,6 @@ final class LowerStacks(implicit cc: CompilerContext) extends TreeTransformer wi
   private[this] def assignFalse(expr: Expr) = StmtAssign(expr, ExprInt(false, 1, 0))
 
   override def transform(tree: Tree): Tree = {
-    // Nodes with children that have been rewritten need their types assigned
-    if (!tree.hasTpe) {
-      TypeAssigner(tree)
-    }
-
     val result: Tree = tree match {
 
       //////////////////////////////////////////////////////////////////////////
@@ -207,7 +201,7 @@ final class LowerStacks(implicit cc: CompilerContext) extends TreeTransformer wi
     }
 
     // If we did modify the node, regularize it
-    if (result2 != tree) {
+    if (result2 ne tree) {
       result2 regularize tree.loc
     }
 
@@ -219,7 +213,6 @@ final class LowerStacks(implicit cc: CompilerContext) extends TreeTransformer wi
     assert(extraStmts.isEmpty)
 
     tree visit {
-      case node: Tree if !node.hasTpe => cc.ice(node, "Lost node.tpe", node.toString)
       case node @ ExprCall(ExprSelect(ref, sel), _) if ref.tpe.isInstanceOf[TypeStack] => {
         cc.ice(node, s"Stack .${sel} remains")
       }

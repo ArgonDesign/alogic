@@ -26,6 +26,8 @@ import scala.language.implicitConversions
 
 final class FoldExpr(assignTypes: Boolean)(implicit cc: CompilerContext) extends TreeTransformer {
 
+  override val typed: Boolean = assignTypes
+
   private implicit def boolean2BigInt(bool: Boolean) = if (bool) BigInt(1) else BigInt(0)
 
   private val shiftOps = Set("<<", ">>", "<<<", ">>>")

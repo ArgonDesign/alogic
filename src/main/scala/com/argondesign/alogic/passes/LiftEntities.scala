@@ -139,7 +139,10 @@ final class LiftEntities(implicit cc: CompilerContext)
           }
           symbol withDenot symbol.denot.copy(kind = newKind)
 
-          entity.copy(declarations = newDecls.toList) withLoc entity.loc withVariant entity.variant
+          val newEntity = entity.copy(
+            declarations = newDecls.toList
+          ) withLoc entity.loc withVariant entity.variant
+          TypeAssigner(newEntity)
         }
       } valueMap { entity =>
         ////////////////////////////////////////////////////////////////////////
@@ -187,7 +190,10 @@ final class LiftEntities(implicit cc: CompilerContext)
 
           val newConns = freshIConns ++ freshOConns ++ entity.connects
 
-          entity.copy(connects = newConns.toList) withLoc entity.loc withVariant entity.variant
+          val newEntity = entity.copy(
+            connects = newConns.toList
+          ) withLoc entity.loc withVariant entity.variant
+          TypeAssigner(newEntity)
         }
       } valueMap { entity =>
         ////////////////////////////////////////////////////////////////////////
@@ -198,6 +204,7 @@ final class LiftEntities(implicit cc: CompilerContext)
         } else {
           val children = entity.entities
           val parent = entity.copy(entities = Nil) withLoc entity.loc withVariant entity.variant
+          TypeAssigner(parent)
 
           val Sym(parentSymbol: TypeSymbol) = entity.ref
           val parentName = parentSymbol.denot.name.str
@@ -210,7 +217,7 @@ final class LiftEntities(implicit cc: CompilerContext)
             childSymbol withDenot childSymbol.denot.copy(name = newName)
           }
 
-          Thicket(parent :: children) withLoc entity.loc
+          TypeAssigner(Thicket(parent :: children) withLoc entity.loc)
         }
       }
     } followedBy {
@@ -251,9 +258,6 @@ final class LiftEntities(implicit cc: CompilerContext)
     case node @ ExprRef(Sym(symbol: TermSymbol)) if freshOPortSymbols.top contains symbol => {
       ExprRef(Sym(freshOPortSymbols.top(symbol))) regularize node.loc
     }
-
-    // Nodes who have rewritten children need types
-    case node if !node.hasTpe => TypeAssigner(node)
 
     case _ => tree
   }

@@ -34,6 +34,8 @@ import com.argondesign.alogic.util.unreachable
 
 final class Typer(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
 
+  override val typed: Boolean = false
+
   val mixedWidthBinaryOps = Set("<<", ">>", "<<<", ">>>", "&&", "||")
 
   private def hasError(tree: Tree) = {
@@ -643,7 +645,7 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       case node: Tree if !node.hasTpe => {
         cc.ice(
           node,
-          "Typer should have assigned type for all node, but the following is untyped",
+          "Typer should have assigned type for all nodes, but the following remains untyped",
           node.toString
         )
       }
@@ -652,6 +654,9 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       }
       case node: Root => {
         cc.ice(node, s"Typer should have removed the Root node")
+      }
+      case node: Tree if tree.tpe.isInstanceOf[TypePolyFunc] => {
+        cc.ice(node, s"Tree of type TypePolyFunc remains")
       }
     }
   }

@@ -24,6 +24,8 @@ import com.argondesign.alogic.typer.TypeAssigner
 
 final class Regularize(loc: Loc)(implicit cc: CompilerContext) extends TreeTransformer {
 
+  override val typed: Boolean = false
+
   override def transform(tree: Tree): Tree = {
     if (!tree.hasLoc) {
       tree withLoc loc

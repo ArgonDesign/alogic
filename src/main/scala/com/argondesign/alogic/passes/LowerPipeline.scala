@@ -252,19 +252,12 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
       ExprRef(Sym(freshSymbols(symbol.denot.name.str))) regularize node.loc
     }
 
-    // Nodes who have rewritten children need types
-    case node if !node.hasTpe => TypeAssigner(node)
-
     case _ => tree
   }
 
   override def finalCheck(tree: Tree): Unit = {
     assert(actSets.isEmpty)
     assert(rewriteEntity.isEmpty)
-
-    tree visit {
-      case node: Tree if !node.hasTpe => cc.ice(node, "Lost node.tpe", node.toString)
-    }
 
     tree visit {
       case node: StmtRead  => cc.ice(node, "read statement remains after LowerPipeline")

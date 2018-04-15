@@ -26,6 +26,10 @@ abstract class TreeLikeTransformer[T <: TreeLike] extends (T => T) {
   // transform is called after all children have already been visited and transformed.
   protected def transform(tree: T): T = tree
 
+  // defaultCheck is invoked with the root of the transformed tree.
+  // This can be used to verify invariants introduced by this transform
+  protected def defaultCheck(orig: T, tree: T): Unit = ()
+
   // finalCheck is invoked with the root of the transformed tree.
   // This can be used to verify invariants introduced by this transform
   protected def finalCheck(tree: T): Unit = ()
@@ -37,6 +41,8 @@ abstract class TreeLikeTransformer[T <: TreeLike] extends (T => T) {
   def apply(tree: T): T = {
     // Walk the tree
     val result = walk(tree)
+    // Apply default check
+    defaultCheck(tree, result)
     // Apply final check
     finalCheck(result)
     // Yield result

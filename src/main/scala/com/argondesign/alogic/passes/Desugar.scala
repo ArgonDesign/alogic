@@ -24,6 +24,8 @@ import com.argondesign.alogic.util.unreachable
 
 final class Desugar(implicit cc: CompilerContext) extends TreeTransformer {
 
+  override val typed: Boolean = false
+
   override def transform(tree: Tree): Tree = tree match {
     // "a++" rewritten as  "a = a + @zx(@bits(a), 1'b1)"
     case StmtPost(lhs, op) => {
@@ -47,7 +49,7 @@ final class Desugar(implicit cc: CompilerContext) extends TreeTransformer {
 
     // "let(<init>) <loop>" rewritten as "<init> <loop>"
     case StmtLet(inits, body) => {
-      Thicket(inits ::: body :: Nil)
+      Thicket(inits ::: body :: Nil) withLoc tree.loc
     }
 
     // Strip redundant blocks

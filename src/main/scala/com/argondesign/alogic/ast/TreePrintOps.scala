@@ -23,7 +23,13 @@ trait TreePrintOps { this: Tree =>
   private[this] final def attrStr(indent: Int, ref: Ref)(implicit cc: CompilerContext): String = {
     ref match {
       case Sym(symbol) if symbol.denot.attr.nonEmpty => {
-        val parts = for ((key, value) <- symbol.denot.attr) yield s"${key} = ${value.toSource}"
+        val parts = for ((key, value) <- symbol.denot.attr) yield {
+          value match {
+            case true       => s"${key}"
+            case expr: Expr => s"${key} = ${expr.toSource}"
+            case _          => s"${key} = ..."
+          }
+        }
         parts.mkString("(* ", ", ", " *)\n" + "  " * indent)
       }
       case _ => ""

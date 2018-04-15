@@ -20,7 +20,6 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.FollowedBy
 
 import scala.collection.mutable
@@ -44,11 +43,6 @@ final class Replace1Stacks(implicit cc: CompilerContext) extends TreeTransformer
   }
 
   override def transform(tree: Tree): Tree = {
-    // Nodes with children that have been rewritten need their types assigned
-    if (!tree.hasTpe) {
-      TypeAssigner(tree)
-    }
-
     val result: Tree = tree match {
 
       //////////////////////////////////////////////////////////////////////////
@@ -86,18 +80,12 @@ final class Replace1Stacks(implicit cc: CompilerContext) extends TreeTransformer
     }
 
     // If we did modify the node, regularize it
-    if (result != tree) {
+    if (result ne tree) {
       result regularize tree.loc
     }
 
     // Done
     result
-  }
-
-  override def finalCheck(tree: Tree): Unit = {
-    tree visit {
-      case node: Tree if !node.hasTpe => cc.ice(node, "Lost node.tpe", node.toString)
-    }
   }
 
 }

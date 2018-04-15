@@ -41,6 +41,8 @@ import com.argondesign.alogic.util.FollowedBy
 
 final class Checker(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
 
+  override val typed: Boolean = false
+
   private[this] var entityLevel = 0
 
   override def enter(tree: Tree): Unit = tree match {

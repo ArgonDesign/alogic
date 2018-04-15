@@ -46,48 +46,40 @@ final class LowerRegPorts(implicit cc: CompilerContext) extends TreeTransformer 
     case _ =>
   }
 
-  override def transform(tree: Tree): Tree = {
-    // Nodes with children that have been rewritten need their types assigned
-    if (!tree.hasTpe) {
-      TypeAssigner(tree)
+  override def transform(tree: Tree): Tree = tree match {
+    case ExprRef(Sym(symbol: TermSymbol)) => {
+      // Rewrite all references to the registered output
+      // port as references to the local reg
+      rMap.get(symbol) map { rSymbol =>
+        ExprRef(Sym(rSymbol)) regularize tree.loc
+      } getOrElse {
+        tree
+      }
     }
 
-    tree match {
-      case ExprRef(Sym(symbol: TermSymbol)) => {
-        // Rewrite all references to the registered output
-        // port as references to the local reg
-        rMap.get(symbol) map { rSymbol =>
-          ExprRef(Sym(rSymbol)) regularize tree.loc
-        } getOrElse {
-          tree
-        }
-      }
-
-      case decl @ Decl(Sym(symbol: TermSymbol), TypeOut(kind, _, _), _) if rMap contains symbol => {
-        // Change storage type to wire
-        val result = decl.copy(kind = TypeOut(kind, FlowControlTypeNone, StorageTypeWire))
-        TypeAssigner(result withLoc tree.loc)
-      }
-
-      case entity: Entity if rMap.nonEmpty => {
-        // Add assignments to outputs in the beginning of the fence block
-        val assignments = for ((oSymbol, rSymbol) <- rMap) yield {
-          StmtAssign(ExprRef(Sym(oSymbol)), ExprRef(Sym(rSymbol))) regularize oSymbol.loc
-        }
-
-        val result = entity.copy(
-          fenceStmts = assignments.toList ::: entity.fenceStmts
-        ) withVariant entity.variant
-        TypeAssigner(result withLoc tree.loc)
-      }
-
-      case _ => tree
+    case decl @ Decl(Sym(symbol: TermSymbol), TypeOut(kind, _, _), _) if rMap contains symbol => {
+      // Change storage type to wire
+      val result = decl.copy(kind = TypeOut(kind, FlowControlTypeNone, StorageTypeWire))
+      TypeAssigner(result withLoc tree.loc)
     }
+
+    case entity: Entity if rMap.nonEmpty => {
+      // Add assignments to outputs in the beginning of the fence block
+      val assignments = for ((oSymbol, rSymbol) <- rMap) yield {
+        StmtAssign(ExprRef(Sym(oSymbol)), ExprRef(Sym(rSymbol))) regularize oSymbol.loc
+      }
+
+      val result = entity.copy(
+        fenceStmts = assignments.toList ::: entity.fenceStmts
+      ) withVariant entity.variant
+      TypeAssigner(result withLoc tree.loc)
+    }
+
+    case _ => tree
   }
 
   override def finalCheck(tree: Tree): Unit = {
     tree visit {
-      case node: Tree if !node.hasTpe => cc.ice(node, "Lost node.tpe", node.toString)
       case node @ ExprCall(ExprSelect(ref, sel), _) if ref.tpe.isInstanceOf[TypeOut] => {
         cc.ice(node, s"Output port .${sel} remains")
       }

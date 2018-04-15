@@ -36,6 +36,8 @@ import scala.collection.mutable
 
 final class Namer(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy { namer =>
 
+  override val typed: Boolean = false
+
   final private[this] object Scopes {
     private type SymTab = mutable.HashMap[Name, Symbol]
 
@@ -214,7 +216,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
           // Always mark 'main' as used
           Scopes.markUsed(symbol)
           // Mark main as an entry point
-          symbol addAttr ("entry" -> 1)
+          symbol.setAttr("entry")
         }
       }
 

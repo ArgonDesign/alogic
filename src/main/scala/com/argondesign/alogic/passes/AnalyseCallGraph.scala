@@ -23,7 +23,6 @@ import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.TermSymbol
-import com.argondesign.alogic.core.Symbols.TypeSymbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Matrix
 import com.argondesign.alogic.typer.TypeAssigner
@@ -33,9 +32,6 @@ import scala.annotation.tailrec
 import scala.collection.mutable
 
 final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
-
-  // The entity processed in this instance
-  private[this] var theEntity: Entity = _
 
   //////////////////////////////////////////////////////////////////////////
   // State for collecting information in the enter section
@@ -140,9 +136,10 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
   }
 
   private[this] def warnIgnoredStacklimitAttribute(): Unit = {
-    val Sym(symbol: TypeSymbol) = theEntity.ref
-    if (symbol.denot.attr contains "stacklimit") {
-      cc.warning(symbol.loc, s"'stacklimit' attribute ignored on entity '${symbol.denot.name.str}'")
+    if (entitySymbol hasAttr "stacklimit") {
+      val loc = entitySymbol.loc
+      val name = entitySymbol.name
+      cc.warning(loc, s"'stacklimit' attribute ignored on entity '${name}'")
     }
   }
 
@@ -158,7 +155,7 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
     } yield {
       lazy val loc = symbol.loc
       lazy val name = symbol.denot.name.str
-      val exprOpt = symbol.denot.attr.get("reclimit")
+      val exprOpt = symbol.getAttr[Expr]("reclimit")
       if (!isRecD && !isRecI) {
         if (exprOpt.isDefined) {
           cc.warning(loc, s"'reclimit' attribute ignored on function '${name}'")
@@ -181,7 +178,7 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
                 0
               }
               case None => {
-                symbol addAttr ("reclimit" -> 2)
+                symbol.setAttr("reclimit", 2)
                 cc.error(loc, s"Cannot compute value of 'reclimit' attribute of function '${name}'")
                 0
               }
@@ -202,8 +199,7 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
   // Computes the value of the 'stacklimit' attribute of the entity
   //////////////////////////////////////////////////////////////////////////////
   private[this] lazy val stackLimit: Option[Int] = {
-    val Sym(entitySymbol: TypeSymbol) = theEntity.ref
-    entitySymbol.denot.attr.get("stacklimit") flatMap { expr =>
+    entitySymbol.getAttr[Expr]("stacklimit") flatMap { expr =>
       lazy val loc = entitySymbol.loc
       lazy val name = entitySymbol.denot.name.str
       expr.value match {
@@ -295,10 +291,6 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
 
   override def enter(tree: Tree): Unit = tree match {
     case entity: Entity => {
-      // Hold on to the entity
-      assert(theEntity == null)
-      theEntity = entity
-
       // Gather all function symbols from entity
       assert(functionSymbols == null)
       functionSymbols = for (Function(Sym(symbol: TermSymbol), _) <- entity.functions) yield symbol
@@ -336,7 +328,7 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
       if (entity.functions.nonEmpty) {
         val values = recLimits.getOrElse(List.fill(nFunctions)(1))
         for ((symbol, value) <- functionSymbols zip values) {
-          symbol addAttr ("reclimit" -> value)
+          symbol.setAttr("reclimit", value)
         }
       }
 
@@ -350,13 +342,12 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
         // in a later pass when the state numbers are allocated
         val depth = Expr(stackDepth) regularize entity.loc
         val kind = TypeStack(TypeState, depth)
-        val symbol = cc.newTermSymbolWithAttr(
-          if (stackDepth > 1) "return_stack" else "return_state",
-          entity.loc,
-          kind,
-          Map("returnstack" -> Expr(1))
-        )
+        val name = if (stackDepth > 1) "return_stack" else "return_state"
+        val symbol = cc.newTermSymbol(name, entity.loc, kind)
         val decl = Decl(Sym(symbol), kind, None) regularize entity.loc
+
+        val Sym(entitySymbol) = entity.ref
+        entitySymbol.setAttr("return-stack", symbol)
 
         // Add declaration
         val result = entity.copy(

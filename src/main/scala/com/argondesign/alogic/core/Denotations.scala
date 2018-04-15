@@ -18,34 +18,29 @@
 
 package com.argondesign.alogic.core
 
-import Names.Name
-import Names.TermName
-import Names.TypeName
-import Symbols.Symbol
-import Symbols.TermSymbol
-import Symbols.TypeSymbol
-import Types._
-import com.argondesign.alogic.ast.Trees.Expr
+import com.argondesign.alogic.core.Names._
+import com.argondesign.alogic.core.Symbols._
+import com.argondesign.alogic.core.Types._
 
 object Denotations {
   abstract sealed trait Denotation extends Product {
     val symbol: Symbol
     val name: Name
     val kind: Type
-    val attr: Map[String, Expr]
+    val attr: Map[String, Any]
   }
 
   case class TermDenotation(
       symbol: TermSymbol,
       name: TermName,
       kind: Type,
-      attr: Map[String, Expr]
+      attr: Map[String, Any]
   ) extends Denotation
 
   case class TypeDenotation(
       symbol: TypeSymbol,
       name: TypeName,
       kind: Type,
-      attr: Map[String, Expr]
+      attr: Map[String, Any]
   ) extends Denotation
 }

@@ -32,16 +32,10 @@ import scala.collection.mutable.ListBuffer
 
 final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
 
-  // The entity processed in this instance
-  private[this] var theEntity: Entity = _
-
   // The return stack symbol
   private[this] lazy val rsSymbol: TermSymbol = {
-    assert(theEntity != null)
-    theEntity.declarations map { _.ref } collectFirst {
-      case Sym(symbol: TermSymbol) if symbol.denot.attr contains "returnstack" => symbol
-    } getOrElse {
-      cc.ice(theEntity.ref, "Entity requires a return stack, but none was allocated")
+    entitySymbol.getAttr[TermSymbol]("return-stack") getOrElse {
+      cc.ice(entitySymbol.loc, "Entity requires a return stack, but none was allocated")
     }
   }
 
@@ -117,10 +111,6 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
       //////////////////////////////////////////////////////////////////////////
 
       case entity: Entity => {
-        // Hold on to the entity
-        assert(theEntity == null)
-        theEntity = entity
-
         // Allocate function entry state symbols up front so they can be
         // resolved in an arbitrary order, also add them to the entryStmts map
         val pairs = for (function <- entity.functions) yield {
@@ -259,11 +249,6 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
   }
 
   override def transform(tree: Tree): Tree = {
-    // Nodes with children that have been rewritten need their types assigned
-    if (!tree.hasTpe) {
-      TypeAssigner(tree)
-    }
-
     val result = tree match {
       //////////////////////////////////////////////////////////////////////////
       // Leave combinatorial statements alone

@@ -107,7 +107,7 @@ trait Symbols { self: CompilerContext =>
       name: String,
       loc: Loc,
       kind: Type,
-      attr: Map[String, Expr]
+      attr: Map[String, Any]
   ): TermSymbol = synchronized {
     val symbol = new TermSymbol(symbolSequenceNumbers.next)
     val denot = TermDenotation(symbol, TermName(name), kind, attr)
@@ -142,7 +142,7 @@ trait Symbols { self: CompilerContext =>
       name: String,
       loc: Loc,
       kind: Type,
-      attr: Map[String, Expr]
+      attr: Map[String, Any]
   ): TypeSymbol = synchronized {
     val symbol = new TypeSymbol(symbolSequenceNumbers.next)
     val denot = TypeDenotation(symbol, TypeName(name), kind, attr)
@@ -213,6 +213,22 @@ object Symbols {
     def isBuiltin(implicit cc: CompilerContext): Boolean = {
       cc.builtins exists { _ contains this }
     }
+
+    // Shorthand for often accessed name
+    def name: String = denot.name.str
+
+    // Attributes
+    final def attr[R](name: String): R = denot.attr(name).asInstanceOf[R]
+
+    final def getAttr[R](name: String): Option[R] = denot.attr.get(name).asInstanceOf[Option[R]]
+
+    def setAttr(name: String, value: Any): this.type
+
+    final def setAttr(name: String): this.type = this.setAttr(name, true)
+
+    final def hasAttr(name: String): Boolean = denot.attr contains name
+
+    def delAttr(name: String): this.type
   }
 
   final class TermSymbol(val id: Int) extends Symbol {
@@ -221,16 +237,15 @@ object Symbols {
     override def isTermSymbol = true
     override def isTypeSymbol = false
 
+    override def setAttr(name: String, value: Any): this.type = {
+      this withDenot denot.copy(attr = denot.attr + (name -> value))
+    }
+
+    override def delAttr(name: String): this.type = {
+      this withDenot denot.copy(attr = denot.attr - name)
+    }
+
     override def toString = s"TermSymbol($id)"
-
-    // Add an attribute
-    final def addAttr(pair: (String, Expr)): this.type = {
-      this withDenot denot.copy(attr = denot.attr + pair)
-    }
-
-    final def addAttr(pair: (String, Int))(implicit cc: CompilerContext): this.type = {
-      this addAttr (pair._1 -> (Expr(pair._2) withLoc loc))
-    }
   }
 
   final class TypeSymbol(val id: Int) extends Symbol {
@@ -238,6 +253,14 @@ object Symbols {
 
     override def isTermSymbol = false
     override def isTypeSymbol = true
+
+    override def setAttr(name: String, value: Any): this.type = {
+      this withDenot denot.copy(attr = denot.attr + (name -> value))
+    }
+
+    override def delAttr(name: String): this.type = {
+      this withDenot denot.copy(attr = denot.attr - name)
+    }
 
     override def toString = s"TypeSymbol($id)"
   }
@@ -248,6 +271,9 @@ object Symbols {
 
     override def isTermSymbol = false
     override def isTypeSymbol = false
+
+    override def setAttr(name: String, value: Any): this.type = unreachable
+    override def delAttr(name: String): this.type = unreachable
 
     override def toString = s"ErrorSymbol"
   }

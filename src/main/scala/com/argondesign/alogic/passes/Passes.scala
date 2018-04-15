@@ -56,8 +56,8 @@ object Passes {
       () => new DefaultStorage,
       () => new LowerFlowControlA,
 //      () => new LowerFlowControlB,
-      () => new LowerRegPorts,
-      () => new LowerStacks
+//      () => new LowerRegPorts,
+//      () => new LowerStacks
       // Cleanup
       // Split structs
       // TypeFlop ???

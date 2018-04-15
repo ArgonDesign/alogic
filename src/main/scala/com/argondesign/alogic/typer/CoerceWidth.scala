@@ -28,6 +28,8 @@ final class CoerceWidth(width: Int)(implicit cc: CompilerContext)
     extends TreeTransformer
     with FollowedBy {
 
+  override val typed = false
+
   lazy val minSig = -(BigInt(1) << (width - 1))
   lazy val maxSig = (BigInt(1) << (width - 1)) - 1
   lazy val minUns = BigInt(0)
