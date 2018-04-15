@@ -61,14 +61,6 @@ object TypeCopier {
     }
   }
 
-  def apply(tree: TypeEntity)(portTypes: List[Type], paramTypes: List[Type]): TypeEntity = {
-    if ((portTypes eq tree.portTypes) && (paramTypes eq tree.paramTypes)) {
-      tree
-    } else {
-      TypeEntity(tree.name, tree.portNames, portTypes, tree.paramNames, paramTypes)
-    }
-  }
-
   def apply(tree: TypeIn)(kind: Type): TypeIn = {
     if (kind eq tree.kind) tree else TypeIn(kind, tree.fct)
   }

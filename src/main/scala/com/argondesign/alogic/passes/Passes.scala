@@ -54,9 +54,17 @@ object Passes {
       () => new AllocStates,
       () => new Replace1Stacks,
       () => new DefaultStorage,
-      () => new LowerFlowControl,
+      () => new LowerFlowControlA,
+//      () => new LowerFlowControlB,
       () => new LowerRegPorts,
       () => new LowerStacks
+      // Cleanup
+      // Split structs
+      // TypeFlop ???
+      // Lower Array ???
+      // oreg naming
+      // name mangling
+      // output
     )
 
     // Fold passes over the trees

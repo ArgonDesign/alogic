@@ -221,7 +221,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       // Insert nested entity names so instantiations can resolve them in arbitrary order
       for (Entity(ident: Ident, _, _, _, _, _, _, _, _) <- node.entities) {
         val attr = if (ident.hasAttr) ident.attr else Map.empty[String, Expr]
-        val kind = TypeEntity("", Nil, Nil, Nil, Nil)
+        val kind = TypeEntity("", Nil, Nil)
         val symbol = cc.newTypeSymbolWithAttr(ident.name, ident.loc, kind, attr)
         Scopes.insert(symbol)
       }
@@ -304,26 +304,15 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         case symbol: TypeSymbol => {
           // Attach proper type
           val portSymbols = entity.declarations collect {
-            case Decl(Sym(sym), _: TypeIn, _)  => sym
-            case Decl(Sym(sym), _: TypeOut, _) => sym
+            case Decl(Sym(sym: TermSymbol), _: TypeIn, _)  => sym
+            case Decl(Sym(sym: TermSymbol), _: TypeOut, _) => sym
           }
           val paramSymbols = entity.declarations collect {
-            case Decl(Sym(sym), _: TypeParam, _) => sym
-          }
-          val portNames = portSymbols map {
-            _.denot.name.str
-          }
-          val portTypes = portSymbols map {
-            _.denot.kind
-          }
-          val paramNames = paramSymbols map {
-            _.denot.name.str
-          }
-          val paramTypes = paramSymbols map {
-            _.denot.kind
+            case Decl(Sym(sym: TermSymbol), _: TypeParam, _) => sym
           }
           symbol withDenot symbol.denot.copy(
-            kind = TypeEntity(name, portNames, portTypes, paramNames, paramTypes))
+            kind = TypeEntity(name, portSymbols, paramSymbols)
+          )
         }
         case _ => unreachable
       }

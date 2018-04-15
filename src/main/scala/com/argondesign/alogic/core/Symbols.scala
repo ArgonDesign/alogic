@@ -64,7 +64,7 @@ trait Symbols { self: CompilerContext =>
   final def addGlobalEntities(entities: Iterable[Entity]): Unit = synchronized {
     for (Entity(ident: Ident, _, _, _, _, _, _, _, _) <- entities) {
       val attr = if (ident.hasAttr) ident.attr else Map.empty[String, Expr]
-      val kind = TypeEntity("", Nil, Nil, Nil, Nil)
+      val kind = TypeEntity("", Nil, Nil)
       val symbol = newTypeSymbolWithAttr(ident.name, ident.loc, kind, attr)
       addGlobalSymbol(symbol)
     }

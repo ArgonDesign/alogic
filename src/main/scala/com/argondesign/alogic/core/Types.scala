@@ -71,13 +71,8 @@ object Types {
   // State function type e.g. 'void foo() {}'
   case class TypeCtrlFunc(argTypes: List[Type], retType: Type) extends Type
   // Entity type e.g. 'fsm foo {}'
-  case class TypeEntity(
-      name: String,
-      portNames: List[String],
-      portTypes: List[Type],
-      paramNames: List[String],
-      paramTypes: List[Type]
-  ) extends Type
+  case class TypeEntity(name: String, portSymbols: List[TermSymbol], paramSymbols: List[TermSymbol])
+      extends Type
       with TypeEntityImpl
   // Strings
   case object TypeStr extends Type
@@ -167,9 +162,19 @@ object Types {
 
   trait TypeEntityImpl extends CompoundType { this: TypeEntity =>
 
-    private[this] lazy val portMap = (portNames zip portTypes).toMap
+    private[this] lazy val portMap = {
+      val pairs = for (symbol <- portSymbols) yield {
+        symbol.denot.name.str -> symbol.denot.kind
+      }
+      pairs.toMap
+    }
 
-    private[this] lazy val paramMap = (paramNames zip paramTypes).toMap
+    private[this] lazy val paramMap = {
+      val pairs = for (symbol <- paramSymbols) yield {
+        symbol.denot.name.str -> symbol.denot.kind
+      }
+      pairs.toMap
+    }
 
     def apply(name: String) = portMap.get(name)
 

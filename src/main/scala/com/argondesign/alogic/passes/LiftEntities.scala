@@ -127,26 +127,13 @@ final class LiftEntities(implicit cc: CompilerContext)
           val newDecls = freshIPortDecls ++ freshOPortDecls ++ entity.declarations
 
           // Update type of entity to include new ports
-          val freshIPortNames = for (symbol <- freshIPortSymbols.top.values) yield {
-            symbol.denot.name.str
-          }
-          val freshIPortTypes = for (symbol <- freshIPortSymbols.top.values) yield {
-            symbol.denot.kind
-          }
-
-          val freshOPortNames = for (symbol <- freshOPortSymbols.top.values) yield {
-            symbol.denot.name.str
-          }
-          val freshOPortTypes = for (symbol <- freshOPortSymbols.top.values) yield {
-            symbol.denot.kind
-          }
-
           val Sym(symbol: TypeSymbol) = entity.ref
           val newKind = symbol.denot.kind match {
             case kind: TypeEntity => {
-              val newPortNames = freshIPortNames ++ freshOPortNames ++ kind.portNames
-              val newPortTypes = freshIPortTypes ++ freshOPortTypes ++ kind.portTypes
-              kind.copy(portNames = newPortNames.toList, portTypes = newPortTypes.toList)
+              val newPortSymbols = {
+                freshIPortSymbols.top.values ++ freshOPortSymbols.top.values ++ kind.portSymbols
+              }
+              kind.copy(portSymbols = newPortSymbols.toList)
             }
             case _ => unreachable
           }

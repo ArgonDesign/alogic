@@ -206,13 +206,8 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
       val Sym(symbol: TypeSymbol) = entity.ref
       val newKind = symbol.denot.kind match {
         case kind: TypeEntity => {
-          val iPortName = if (iPortOpt.isDefined) List("pipeline_i") else Nil
-          val oPortName = if (oPortOpt.isDefined) List("pipeline_o") else Nil
-          val newPortNames = iPortName ::: oPortName ::: kind.portNames
-          val iPortType = if (iPortOpt.isDefined) List(iPortOpt.get.kind) else Nil
-          val oPortType = if (oPortOpt.isDefined) List(oPortOpt.get.kind) else Nil
-          val newPortTypes = iPortType ::: oPortType ::: kind.portTypes
-          kind.copy(portNames = newPortNames, portTypes = newPortTypes)
+          val newPortSymbols = iPortSymbolOpt.toList ::: oPortSymbolOpt.toList ::: kind.portSymbols
+          kind.copy(portSymbols = newPortSymbols)
         }
         case _ => unreachable
       }

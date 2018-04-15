@@ -110,15 +110,7 @@ object StackFactory {
       Decl(Sym(symbol), symbol.denot.kind, None)
     }
 
-    val entityType = TypeEntity(
-      name,
-      ports map { _.denot.name.str },
-      ports map { _.denot.kind },
-      Nil,
-      Nil
-    )
-
-    val entitySymbol = cc.newTypeSymbol(name, loc, entityType)
+    val entitySymbol = cc.newTypeSymbol(name, loc, TypeEntity(name, ports, Nil))
     val entity = Entity(Sym(entitySymbol), decls, Nil, Nil, Nil, List(state), Nil, Nil, Map())
     entity withVariant "fsm" regularize loc
   }
@@ -261,15 +253,7 @@ object StackFactory {
       Decl(Sym(symbol), symbol.denot.kind, init)
     }
 
-    val entityType = TypeEntity(
-      name,
-      ports map { _.denot.name.str },
-      ports map { _.denot.kind },
-      Nil,
-      Nil
-    )
-
-    val entitySymbol = cc.newTypeSymbol(name, loc, entityType)
+    val entitySymbol = cc.newTypeSymbol(name, loc, TypeEntity(name, ports, Nil))
     val entity = Entity(Sym(entitySymbol), decls, Nil, Nil, Nil, List(state), Nil, Nil, Map())
     entity withVariant "fsm" regularize loc
   }

@@ -640,10 +640,10 @@ final class NamerSpec extends FlatSpec with AlogicTest {
 
     val symA = tree collectFirst { case Sym(symbol) if symbol.denot.name.str == "a" => symbol }
     inside(symA.value.denot.kind) {
-      case TypeEntity("a", List("a", "b"), List(typeA, typeB), List("P"), List(typeP)) =>
-        typeA shouldBe TypeIn(TypeUInt(Expr(1)), FlowControlTypeNone)
-        typeB shouldBe TypeOut(TypeSInt(Expr(3)), FlowControlTypeNone, StorageTypeDefault)
-        typeP shouldBe TypeParam(TypeUInt(Expr(8)))
+      case TypeEntity("a", List(symA, symB), List(symP)) =>
+        symA.denot.kind shouldBe TypeIn(TypeUInt(Expr(1)), FlowControlTypeNone)
+        symB.denot.kind shouldBe TypeOut(TypeSInt(Expr(3)), FlowControlTypeNone, StorageTypeDefault)
+        symP.denot.kind shouldBe TypeParam(TypeUInt(Expr(8)))
     }
   }
 
@@ -686,7 +686,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     val tree = entityB rewrite namer
 
     val symA = tree collectFirst { case Sym(symbol) if symbol.denot.name.str == "a" => symbol }
-    symA.value.denot.kind shouldBe TypeEntity("a", Nil, Nil, Nil, Nil)
+    symA.value.denot.kind shouldBe TypeEntity("a", Nil, Nil)
     val symC = tree collectFirst { case Sym(symbol) if symbol.denot.name.str == "c" => symbol }
     symC.value.denot.kind shouldBe TypeRef(Sym(symA.value))
   }
@@ -940,7 +940,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     val symA = tree collectFirst {
       case Sym(symbol) if symbol.denot.name.str == "foo" => symbol
     }
-    symA.value.denot.kind shouldBe TypeEntity("foo", Nil, Nil, Nil, Nil)
+    symA.value.denot.kind shouldBe TypeEntity("foo", Nil, Nil)
     symA.value.denot.attr shouldBe Map("bar" -> Expr(1))
   }
 
@@ -952,7 +952,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     val symA = tree collectFirst {
       case Sym(symbol) if symbol.denot.name.str == "bar" => symbol
     }
-    symA.value.denot.kind shouldBe TypeEntity("bar", Nil, Nil, Nil, Nil)
+    symA.value.denot.kind shouldBe TypeEntity("bar", Nil, Nil)
     symA.value.denot.attr shouldBe Map("baz" -> Expr(1))
   }
 }

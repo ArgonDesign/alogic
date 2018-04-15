@@ -10,9 +10,14 @@
 //
 // DESCRIPTION:
 //
+// Do:
 // - Convert port flow control to stall statements
 // - Split ports with flow control into constituent signals
 // - Lower output storage slices into output slice instances
+//
+// Do not:
+// - Update Connects yet
+// - Replace naked port references yet
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.passes
@@ -33,7 +38,9 @@ import com.argondesign.alogic.util.FollowedBy
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-final class LowerFlowControl(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
+final class LowerFlowControlA(implicit cc: CompilerContext)
+    extends TreeTransformer
+    with FollowedBy {
 
   // Set of original symbols with FlowControlTypeNone
   private[this] val fcnSet = mutable.Set[TermSymbol]()
@@ -102,7 +109,8 @@ final class LowerFlowControl(implicit cc: CompilerContext) extends TreeTransform
       lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeIn(kind, fcn))
       val vSymbol = cc.newTermSymbol(vName, loc, TypeIn(boolType(loc), fcn))
       // Add them to the map
-      fcvMap(symbol) = if (kind != TypeVoid) (pSymbol, vSymbol) else (ErrorSymbol, vSymbol)
+      val newSymbols = if (kind != TypeVoid) (pSymbol, vSymbol) else (ErrorSymbol, vSymbol)
+      fcvMap(symbol) = newSymbols
     }
 
     case Decl(Sym(symbol: TermSymbol), TypeOut(kind, FlowControlTypeValid, st), _) => {
@@ -113,7 +121,8 @@ final class LowerFlowControl(implicit cc: CompilerContext) extends TreeTransform
       lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeOut(kind, fcn, st))
       val vSymbol = cc.newTermSymbol(vName, loc, TypeOut(boolType(loc), fcn, st))
       // Add them to the map
-      fcvMap(symbol) = if (kind != TypeVoid) (pSymbol, vSymbol) else (ErrorSymbol, vSymbol)
+      val newSymbols = if (kind != TypeVoid) (pSymbol, vSymbol) else (ErrorSymbol, vSymbol)
+      fcvMap(symbol) = newSymbols
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -130,11 +139,12 @@ final class LowerFlowControl(implicit cc: CompilerContext) extends TreeTransform
       val vSymbol = cc.newTermSymbol(vName, loc, TypeIn(boolType(loc), fcn))
       val rSymbol = cc.newTermSymbol(rName, loc, TypeOut(boolType(loc), fcn, stw))
       // Add them to the map
-      fcrIMap(symbol) = if (kind != TypeVoid) {
+      val newSymbols = if (kind != TypeVoid) {
         (pSymbol, vSymbol, rSymbol)
       } else {
         (ErrorSymbol, vSymbol, rSymbol)
       }
+      fcrIMap(symbol) = newSymbols
     }
 
     case Decl(Sym(symbol: TermSymbol), TypeOut(kind, FlowControlTypeReady, st), _) => {
@@ -147,11 +157,12 @@ final class LowerFlowControl(implicit cc: CompilerContext) extends TreeTransform
       val vSymbol = cc.newTermSymbol(vName, loc, TypeOut(boolType(loc), fcn, stw))
       val rSymbol = cc.newTermSymbol(rName, loc, TypeIn(boolType(loc), fcn))
       // Add them to the map
-      fcrOMap(symbol) = if (kind != TypeVoid) {
+      val newSymbols = if (kind != TypeVoid) {
         (pSymbol, vSymbol, rSymbol)
       } else {
         (ErrorSymbol, vSymbol, rSymbol)
       }
+      fcrOMap(symbol) = newSymbols
       // If output slices are required, construct them
       if (st != StorageTypeWire) {
         val StorageTypeSlices(slices) = st
@@ -181,11 +192,12 @@ final class LowerFlowControl(implicit cc: CompilerContext) extends TreeTransform
       val vSymbol = cc.newTermSymbol(vName, loc, TypeIn(boolType(loc), fcn))
       val aSymbol = cc.newTermSymbol(aName, loc, TypeOut(boolType(loc), fcn, stw))
       // Add them to the map
-      fcaMap(symbol) = if (kind != TypeVoid) {
+      val newSymbols = if (kind != TypeVoid) {
         (pSymbol, vSymbol, aSymbol)
       } else {
         (ErrorSymbol, vSymbol, aSymbol)
       }
+      fcaMap(symbol) = newSymbols
     }
 
     case Decl(Sym(symbol: TermSymbol), TypeOut(kind, FlowControlTypeAccept, st), _) => {
@@ -199,11 +211,12 @@ final class LowerFlowControl(implicit cc: CompilerContext) extends TreeTransform
       val vSymbol = cc.newTermSymbol(vName, loc, TypeOut(boolType(loc), fcn, stw))
       val aSymbol = cc.newTermSymbol(aName, loc, TypeIn(boolType(loc), fcn))
       // Add them to the map
-      fcaMap(symbol) = if (kind != TypeVoid) {
+      val newSymbols = if (kind != TypeVoid) {
         (pSymbol, vSymbol, aSymbol)
       } else {
         (ErrorSymbol, vSymbol, aSymbol)
       }
+      fcaMap(symbol) = newSymbols
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -357,53 +370,112 @@ final class LowerFlowControl(implicit cc: CompilerContext) extends TreeTransform
       }
 
       //////////////////////////////////////////////////////////////////////////
-      // Replace declarations with declarations of the expanded symbols
+      // Add declarations of the expanded symbols
       //////////////////////////////////////////////////////////////////////////
 
-      case Decl(Sym(symbol: TermSymbol), _, _) => {
+      case decl @ Decl(Sym(symbol: TermSymbol), _, _) => {
+        // Note: We also leave the declaration of the original symbol, as
+        // Connect instances have not been rewritten yet. These will be fixed
+        // up in a later pass as they required all entities to have been
+        // converted before we can type port references
         if (fcvMap contains symbol) {
           val (pSymbol, vSymbol) = fcvMap(symbol)
           val vDecl = Decl(Sym(vSymbol), vSymbol.denot.kind, None)
-          if (pSymbol != ErrorSymbol) {
+          val newDecls = if (pSymbol != ErrorSymbol) {
             val pDecl = Decl(Sym(pSymbol), pSymbol.denot.kind, None)
-            Thicket(List(pDecl, vDecl))
+            List(pDecl, vDecl)
           } else {
-            vDecl
+            List(vDecl)
           }
+          Thicket(decl :: newDecls)
         } else if (fcrIMap contains symbol) {
           val (pSymbol, vSymbol, rSymbol) = fcrIMap(symbol)
           val vDecl = Decl(Sym(vSymbol), vSymbol.denot.kind, None)
           val rDecl = Decl(Sym(rSymbol), rSymbol.denot.kind, None)
-          if (pSymbol != ErrorSymbol) {
+          val newDecls = if (pSymbol != ErrorSymbol) {
             val pDecl = Decl(Sym(pSymbol), pSymbol.denot.kind, None)
-            Thicket(List(pDecl, vDecl, rDecl))
+            List(pDecl, vDecl, rDecl)
           } else {
-            Thicket(List(vDecl, rDecl))
+            List(vDecl, rDecl)
           }
+          Thicket(decl :: newDecls)
         } else if (fcrOMap contains symbol) {
           val (pSymbol, vSymbol, rSymbol) = fcrOMap(symbol)
           val vDecl = Decl(Sym(vSymbol), vSymbol.denot.kind, None)
           val rDecl = Decl(Sym(rSymbol), rSymbol.denot.kind, None)
-          if (pSymbol != ErrorSymbol) {
+          val newDecls = if (pSymbol != ErrorSymbol) {
             val pDecl = Decl(Sym(pSymbol), pSymbol.denot.kind, None)
-            Thicket(List(pDecl, vDecl, rDecl))
+            List(pDecl, vDecl, rDecl)
           } else {
-            Thicket(List(vDecl, rDecl))
+            List(vDecl, rDecl)
           }
+          Thicket(decl :: newDecls)
         } else if (fcaMap contains symbol) {
           val (pSymbol, vSymbol, aSymbol) = fcaMap(symbol)
           val vDecl = Decl(Sym(vSymbol), vSymbol.denot.kind, None)
           val aDecl = Decl(Sym(aSymbol), aSymbol.denot.kind, None)
-          if (pSymbol != ErrorSymbol) {
+          val newDecls = if (pSymbol != ErrorSymbol) {
             val pDecl = Decl(Sym(pSymbol), pSymbol.denot.kind, None)
-            Thicket(List(pDecl, vDecl, aDecl))
+            List(pDecl, vDecl, aDecl)
           } else {
-            Thicket(List(vDecl, aDecl))
+            List(vDecl, aDecl)
           }
+          Thicket(decl :: newDecls)
         } else {
           tree
         }
       }
+
+      //////////////////////////////////////////////////////////////////////////
+      // Expand connects
+      //////////////////////////////////////////////////////////////////////////
+
+//      case Connect(ExprReflhs, List(rhs)) => {}
+
+//      case Decl(Sym(symbol: TermSymbol), _, _) => {
+//        if (fcvMap contains symbol) {
+//          val (pSymbol, vSymbol) = fcvMap(symbol)
+//          val vDecl = Decl(Sym(vSymbol), vSymbol.denot.kind, None)
+//          if (pSymbol != ErrorSymbol) {
+//            val pDecl = Decl(Sym(pSymbol), pSymbol.denot.kind, None)
+//            Thicket(List(pDecl, vDecl))
+//          } else {
+//            vDecl
+//          }
+//        } else if (fcrIMap contains symbol) {
+//          val (pSymbol, vSymbol, rSymbol) = fcrIMap(symbol)
+//          val vDecl = Decl(Sym(vSymbol), vSymbol.denot.kind, None)
+//          val rDecl = Decl(Sym(rSymbol), rSymbol.denot.kind, None)
+//          if (pSymbol != ErrorSymbol) {
+//            val pDecl = Decl(Sym(pSymbol), pSymbol.denot.kind, None)
+//            Thicket(List(pDecl, vDecl, rDecl))
+//          } else {
+//            Thicket(List(vDecl, rDecl))
+//          }
+//        } else if (fcrOMap contains symbol) {
+//          val (pSymbol, vSymbol, rSymbol) = fcrOMap(symbol)
+//          val vDecl = Decl(Sym(vSymbol), vSymbol.denot.kind, None)
+//          val rDecl = Decl(Sym(rSymbol), rSymbol.denot.kind, None)
+//          if (pSymbol != ErrorSymbol) {
+//            val pDecl = Decl(Sym(pSymbol), pSymbol.denot.kind, None)
+//            Thicket(List(pDecl, vDecl, rDecl))
+//          } else {
+//            Thicket(List(vDecl, rDecl))
+//          }
+//        } else if (fcaMap contains symbol) {
+//          val (pSymbol, vSymbol, aSymbol) = fcaMap(symbol)
+//          val vDecl = Decl(Sym(vSymbol), vSymbol.denot.kind, None)
+//          val aDecl = Decl(Sym(aSymbol), aSymbol.denot.kind, None)
+//          if (pSymbol != ErrorSymbol) {
+//            val pDecl = Decl(Sym(pSymbol), pSymbol.denot.kind, None)
+//            Thicket(List(pDecl, vDecl, aDecl))
+//          } else {
+//            Thicket(List(vDecl, aDecl))
+//          }
+//        } else {
+//          tree
+//        }
+//      }
 
       //////////////////////////////////////////////////////////////////////////
       // Add storage slice entities
@@ -427,6 +499,18 @@ final class LowerFlowControl(implicit cc: CompilerContext) extends TreeTransform
               List(vConn, rConn)
             }
         }
+
+        // Update type of entity to include new ports. We also leave the old
+        // un-converted port for now, as Connect instances have not been updated
+        // yet. These need to be done in a separate pass as it requires
+        // cross-entity info
+
+//        val newPortSymbols = {
+//          fcvMap.valuesIterator flatMap { case (a, b)       => List(a, b) } ++
+//            fcrIMap.valuesIterator flatMap { case (a, b, c) => List(a, b, c) } ++
+//            fcrOMap.valuesIterator flatMap { case (a, b, c) => List(a, b, c) } ++
+//            fcaMap.valuesIterator flatMap { case (a, b, c)  => List(a, b, c) }
+//        }
 
         val entities = fcrSMap.values map { _._1 }
         val thisEntity = entity.copy(
@@ -467,6 +551,16 @@ final class LowerFlowControl(implicit cc: CompilerContext) extends TreeTransform
   override def finalCheck(tree: Tree): Unit = {
     assert(extraStmts.isEmpty)
 
+    val declaredSymbols = {
+      val it = tree collectAll {
+        case Decl(Sym(symbol: TermSymbol), _, _)        => symbol
+        case Instance(Sym(symbol: TermSymbol), _, _, _) => symbol
+        case Function(Sym(symbol: TermSymbol), _)       => symbol
+        case State(ExprRef(Sym(symbol: TermSymbol)), _) => symbol
+      }
+      it.toSet
+    }
+
     tree visit {
       case node: Tree if !node.hasTpe => cc.ice(node, "Lost node.tpe", node.toString)
       case node @ ExprCall(ExprSelect(ref, sel), _) if ref.tpe.isInstanceOf[TypeOut] => {
@@ -475,11 +569,21 @@ final class LowerFlowControl(implicit cc: CompilerContext) extends TreeTransform
       case node @ ExprCall(ExprSelect(ref, sel), _) if ref.tpe.isInstanceOf[TypeIn] => {
         cc.ice(node, s"Input port .${sel} remains")
       }
-      case node @ Decl(_, TypeOut(_, fc, _), _) if fc != FlowControlTypeNone => {
-        cc.ice(node, s"Port with flow control remains")
-      }
-      case node @ Decl(_, TypeOut(_, _, _: StorageTypeSlices), _) => {
-        cc.ice(node, s"Port with output slices remains")
+//      case node @ Decl(_, TypeOut(_, fc, _), _) if fc != FlowControlTypeNone => {
+//        cc.ice(node, "Port with flow control remains")
+//      }
+//      case node @ Decl(_, TypeOut(_, _, _: StorageTypeSlices), _) => {
+//        cc.ice(node, "Port with output slices remains")
+//      }
+      case node: Connect => ()
+      case node @ Sym(symbol: TermSymbol)
+          if !(declaredSymbols contains symbol) && !symbol.isBuiltin => {
+        println(tree.toSource)
+        cc.ice(
+          node,
+          s"reference to undeclared symbol '${symbol.denot.name.str}'",
+          s"of type '${symbol.denot.kind.toSource}'"
+        )
       }
     }
   }
