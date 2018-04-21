@@ -82,6 +82,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       val newSymbols = if (kind != TypeVoid) (pSymbol, vSymbol) else (ErrorSymbol, vSymbol)
       // Add new Symbols as attributes
       symbol.setAttr("fcv", newSymbols)
+      symbol.setAttr("expanded-port")
     }
 
     case Decl(Sym(symbol: TermSymbol), TypeOut(kind, FlowControlTypeValid, st), _) => {
@@ -94,6 +95,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       val newSymbols = if (kind != TypeVoid) (pSymbol, vSymbol) else (ErrorSymbol, vSymbol)
       // Add new Symbols as attributes
       symbol.setAttr("fcv", newSymbols)
+      symbol.setAttr("expanded-port")
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -116,6 +118,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       }
       // Add new Symbols as attributes
       symbol.setAttr("fcr", newSymbols)
+      symbol.setAttr("expanded-port")
     }
 
     case Decl(Sym(symbol: TermSymbol), TypeOut(kind, FlowControlTypeReady, st), _) => {
@@ -134,6 +137,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       }
       // Add new Symbols as attributes
       symbol.setAttr("fcr", newSymbols)
+      symbol.setAttr("expanded-port")
       // If output slices are required, construct them
       if (st != StorageTypeWire) {
         val StorageTypeSlices(slices) = st
@@ -170,6 +174,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       }
       // Add new Symbols as attributes
       symbol.setAttr("fca", newSymbols)
+      symbol.setAttr("expanded-port")
     }
 
     case Decl(Sym(symbol: TermSymbol), TypeOut(kind, FlowControlTypeAccept, st), _) => {
@@ -189,6 +194,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       }
       // Add new Symbols as attributes
       symbol.setAttr("fca", newSymbols)
+      symbol.setAttr("expanded-port")
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -421,23 +427,13 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
         // Update type of entity to include the new ports. We also leave the old
         // un-converted port for now, as Connect instances have not been updated
         // yet.
-        val newPortSymbols = entity.declarations flatMap {
-          case Decl(Sym(symbol), _, _) => {
-            symbol.getAttr[(Symbol, TermSymbol)]("fcv").map {
-              case (pSymbol, vSymbol) => List(pSymbol, vSymbol)
-            } orElse symbol.getAttr[(Symbol, TermSymbol, TermSymbol)]("fcr").map {
-              case (pSymbol, vSymbol, rSymbol) => List(pSymbol, vSymbol, rSymbol)
-            } orElse symbol.getAttr[(Symbol, TermSymbol, TermSymbol)]("fca").map {
-              case (pSymbol, vSymbol, aSymbol) => List(pSymbol, vSymbol, aSymbol)
-            } getOrElse Nil
-          }
-          case _ => unreachable
-        } collect {
-          case symbol: TermSymbol => symbol
+        val portSymbols = entity.declarations collect {
+          case Decl(Sym(symbol: TermSymbol), _: TypeIn, _)  => symbol
+          case Decl(Sym(symbol: TermSymbol), _: TypeOut, _) => symbol
         }
 
-        val oldKind @ TypeEntity(_, portSymbols, _) = entitySymbol.denot.kind
-        val newKind = oldKind.copy(portSymbols = newPortSymbols ::: portSymbols)
+        val TypeEntity(name, _, Nil) = entitySymbol.denot.kind
+        val newKind = TypeEntity(name, portSymbols, Nil)
         entitySymbol withDenot entitySymbol.denot.copy(kind = newKind)
 
         val entities = pairs map { _._2._1 }
@@ -445,6 +441,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
           instances = instances ::: entity.instances,
           connects = connects ::: entity.connects
         ) withVariant entity.variant
+
         Thicket(thisEntity :: entities)
       }
 

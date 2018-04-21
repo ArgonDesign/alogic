@@ -33,14 +33,11 @@ final class LowerRegPorts(implicit cc: CompilerContext) extends TreeTransformer 
   private[this] val rMap = mutable.Map[TermSymbol, TermSymbol]()
 
   override def enter(tree: Tree): Unit = tree match {
-    case Decl(Sym(symbol: TermSymbol), TypeOut(kind, FlowControlTypeNone, StorageTypeReg), _) => {
+    case Decl(Sym(symbol: TermSymbol), TypeOut(kind, FlowControlTypeNone, StorageTypeReg), None) => {
       // Allocate local register
       val loc = tree.loc
       val rName = "oreg__" + symbol.denot.name.str
-      val fcn = FlowControlTypeNone
-      val stw = StorageTypeWire
-      val rSymbol = cc.newTermSymbol(rName, loc, TypeOut(kind, fcn, stw))
-      rMap(symbol) = rSymbol
+      rMap(symbol) = cc.newTermSymbol(rName, loc, kind)
     }
 
     case _ =>
@@ -57,10 +54,15 @@ final class LowerRegPorts(implicit cc: CompilerContext) extends TreeTransformer 
       }
     }
 
-    case decl @ Decl(Sym(symbol: TermSymbol), TypeOut(kind, _, _), _) if rMap contains symbol => {
-      // Change storage type to wire
-      val result = decl.copy(kind = TypeOut(kind, FlowControlTypeNone, StorageTypeWire))
-      TypeAssigner(result withLoc tree.loc)
+    case Decl(Sym(oSymbol: TermSymbol), TypeOut(kind, FlowControlTypeNone, StorageTypeReg), None) => {
+      // Change storage type to wire and add register declaration
+      rMap get oSymbol map { rSymbol =>
+        val declOut = Decl(Sym(oSymbol), TypeOut(kind, FlowControlTypeNone, StorageTypeWire), None)
+        val declReg = Decl(Sym(rSymbol), kind, None)
+        Thicket(List(declOut, declReg)) regularize tree.loc
+      } getOrElse {
+        tree
+      }
     }
 
     case entity: Entity if rMap.nonEmpty => {
@@ -80,11 +82,8 @@ final class LowerRegPorts(implicit cc: CompilerContext) extends TreeTransformer 
 
   override def finalCheck(tree: Tree): Unit = {
     tree visit {
-      case node @ ExprCall(ExprSelect(ref, sel), _) if ref.tpe.isInstanceOf[TypeOut] => {
-        cc.ice(node, s"Output port .${sel} remains")
-      }
-      case node @ ExprCall(ExprSelect(ref, sel), _) if ref.tpe.isInstanceOf[TypeIn] => {
-        cc.ice(node, s"Input port .${sel} remains")
+      case node @ Decl(_, TypeOut(_, _, StorageTypeReg), _) => {
+        cc.ice(node, s"Output port with non-wire storage remains")
       }
     }
   }

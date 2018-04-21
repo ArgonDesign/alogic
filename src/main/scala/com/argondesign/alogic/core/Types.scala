@@ -16,14 +16,10 @@
 package com.argondesign.alogic.core
 
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
-import com.argondesign.alogic.lib.StructuredTree
-import FlowControlTypes.FlowControlType
-import FlowControlTypes.FlowControlTypeAccept
-import FlowControlTypes.FlowControlTypeReady
-import FlowControlTypes.FlowControlTypeValid
-import StorageTypes.StorageType
+import com.argondesign.alogic.core.FlowControlTypes._
+import com.argondesign.alogic.core.StorageTypes.StorageType
 import com.argondesign.alogic.core.Symbols.TermSymbol
+import com.argondesign.alogic.lib.StructuredTree
 
 object Types {
 
