@@ -48,6 +48,7 @@ object Passes {
       () => new FoldExpr(assignTypes = true)(cc),
       () => new AnalyseParamConst,
       () => new SpecializeParam,
+      () => new SpecializeInstance,
       () => new InlineConst,
       () => new FoldExpr(assignTypes = true)(cc),
       () => new LowerPipeline,

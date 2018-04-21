@@ -42,19 +42,27 @@ final class AnalyseParamConst(implicit cc: CompilerContext) extends TreeTransfor
       }
     }
 
-    case Instance(_, Sym(entitySymbol), paramNames, paramExprs) => {
-      val entityKind = entitySymbol.denot.kind.asInstanceOf[TypeEntity]
+    case Instance(Sym(iSymbol), Sym(eSymbol), paramNames, paramExprs) => {
+      val entityKind = eSymbol.denot.kind.asInstanceOf[TypeEntity]
 
       if (entityKind.paramSymbols.nonEmpty) {
         // Gather particular parameter bindings
         val paramMap = (paramNames zip paramExprs).toMap
 
-        val paramBindings = for (symbol <- entityKind.paramSymbols) yield {
-          symbol -> paramMap.get(symbol.name)
+        val paramBindings = {
+          val pairs = for (symbol <- entityKind.paramSymbols) yield {
+            symbol -> paramMap.get(symbol.name)
+          }
+          pairs.toMap
         }
-        entitySymbol synchronized {
-          entitySymbol.appendAttr("param-bindings", paramBindings.toMap)
+
+        // Append attribute to entity so we can specialize it
+        eSymbol synchronized {
+          eSymbol.appendAttr("param-bindings", paramBindings)
         }
+
+        // Append attribute to instance so we can replace the entity with the specialized version
+        iSymbol.setAttr("param-bindings", paramBindings)
       }
     }
 

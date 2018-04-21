@@ -32,7 +32,7 @@ final class SpecializeParam(implicit cc: CompilerContext) extends TreeTransforme
       // of other parameters, but are always constants
       val bindings = entitySymbol.attr[List[Map[Symbol, Option[Expr]]]]("param-bindings")
 
-      val newEntities = for (binding <- bindings) yield {
+      val pairs = for (binding <- bindings) yield {
         val actual = binding filter { _._2.isDefined } mapValues { _.get }
         val newEntity = entity rewrite (new InlineParam(actual)) match {
           case entity: Entity => entity
@@ -42,8 +42,13 @@ final class SpecializeParam(implicit cc: CompilerContext) extends TreeTransforme
         val Sym(newSymbol) = newEntity.ref
         newSymbol.delAttr("param-bindings")
 
-        newEntity
+        binding -> newEntity
       }
+
+      val specMap = pairs.toMap
+      entitySymbol.setAttr("spec-map", specMap)
+
+      val newEntities = pairs map { _._2 }
 
       TypeAssigner(Thicket(newEntities) withLoc tree.loc)
     }
