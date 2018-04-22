@@ -10,8 +10,8 @@
 //
 // DESCRIPTION:
 //
-// Do:
-// - Remove expanded ports
+// Split structures to constituent signals
+//   - Remove struct ports
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.passes
@@ -19,21 +19,19 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
-import com.argondesign.alogic.core.StorageTypes.StorageTypeSlices
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.unreachable
 
-final class LowerFlowControlC(implicit cc: CompilerContext) extends TreeTransformer {
+final class SplitStructsC(implicit cc: CompilerContext) extends TreeTransformer {
 
   override def enter(tree: Tree): Unit = tree match {
     case entity: Entity => {
       // Update instance types to reflect ports about to be removed
       for (Instance(Sym(iSymbol: TermSymbol), Sym(eSymbol), _, _) <- entity.instances) {
         val TypeEntity(name, portSymbols, Nil) = eSymbol.denot.kind
-        val newPortSymbols = portSymbols filterNot { _.attr.expandedPort.isSet }
+        val newPortSymbols = portSymbols filterNot { _.attr.fieldSymbols.isSet }
         iSymbol withDenot iSymbol.denot.copy(kind = TypeEntity(name, newPortSymbols, Nil))
       }
     }
@@ -49,7 +47,7 @@ final class LowerFlowControlC(implicit cc: CompilerContext) extends TreeTransfor
     case entity: Entity => {
       // Drop original port declarations
       val declarations = entity.declarations filterNot {
-        case Decl(Sym(symbol), _, _) => symbol.attr.expandedPort.isSet
+        case Decl(Sym(symbol), _, _) => symbol.attr.fieldSymbols.isSet
         case _                       => unreachable
       }
 
@@ -79,11 +77,11 @@ final class LowerFlowControlC(implicit cc: CompilerContext) extends TreeTransfor
 
   override def finalCheck(tree: Tree): Unit = {
     tree visit {
-      case node @ Decl(_, TypeOut(_, fc, _), _) if fc != FlowControlTypeNone => {
-        cc.ice(node, "Port with flow control remains")
+      case node @ Decl(_, kind, _) if kind.chase.underlying.isInstanceOf[TypeStruct] => {
+        cc.ice(node, "Struct declaration remains")
       }
-      case node @ Decl(_, TypeOut(_, _, _: StorageTypeSlices), _) => {
-        cc.ice(node, "Port with output slices remains")
+      case node: Tree if node.tpe.chase.underlying.isInstanceOf[TypeStruct] => {
+        cc.ice(node, "Tree of type struct remains")
       }
     }
   }

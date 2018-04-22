@@ -151,9 +151,11 @@ object Types {
 
   trait TypeStructImpl extends CompoundType { this: TypeStruct =>
 
-    private[this] lazy val fieldMap = (fieldNames zip fieldTypes).toMap
+    lazy val fields = fieldNames zip fieldTypes
 
-    def apply(name: String) = fieldMap.get(name)
+    private[this] lazy val fieldMap = fields.toMap
+
+    def apply(name: String): Option[Type] = fieldMap.get(name)
   }
 
   trait TypeEntityImpl extends CompoundType { this: TypeEntity =>
@@ -172,13 +174,13 @@ object Types {
       pairs.toMap
     }
 
-    def apply(name: String) = portMap.get(name) map { _.denot.kind }
+    def apply(name: String): Option[Type] = portMap.get(name) map { _.denot.kind }
 
-    def param(name: String) = paramMap.get(name) map { _.denot.kind }
+    def param(name: String): Option[Type] = paramMap.get(name) map { _.denot.kind }
 
-    def portSymbol(name: String) = portMap.get(name)
+    def portSymbol(name: String): Option[TermSymbol] = portMap.get(name)
 
-    def paramSymbol(name: String) = paramMap.get(name)
+    def paramSymbol(name: String): Option[TermSymbol] = paramMap.get(name)
   }
 
   trait TypeInImpl extends ExtensionType { this: TypeIn =>

@@ -63,9 +63,12 @@ object Passes {
       () => new LowerFlowControlB,
       () => new LowerFlowControlC,
       () => new LowerRegPorts,
-      () => new LowerStacks
+      () => new LowerStacks,
+      () => new SplitStructsA,
+      () => new SplitStructsB,
+      () => new SplitStructsC
+      // Unpack cat assigns
       // Cleanup
-      // Split structs
       // TypeFlop ???
       // Lower Array ???
       // oreg naming

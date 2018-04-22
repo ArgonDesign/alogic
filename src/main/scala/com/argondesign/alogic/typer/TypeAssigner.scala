@@ -371,7 +371,7 @@ object TypeAssigner {
     val tpe = node.expr.tpe.chase match {
       case TypeType(kind: CompoundType) => TypeType(kind(node.selector).get)
       case tpe: CompoundType            => tpe(node.selector).get
-      case _                            => unreachable
+      case _                            => TypeError
     }
     node withTpe tpe.chase
   }

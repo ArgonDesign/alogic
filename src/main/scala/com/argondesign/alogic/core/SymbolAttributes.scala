@@ -57,6 +57,9 @@ class SymbolAttributes {
   // Is this a port that has been expanded to multiple signals?
   val expandedPort = new Attribute[Boolean]()
 
+  // The expanded field symbols of a struct symbol
+  val fieldSymbols = new Attribute[List[TermSymbol]]()
+
   // Iterator that enumerates all fields above
   private def attrIterator = Iterator(
     entry,
@@ -72,7 +75,8 @@ class SymbolAttributes {
     fcr,
     fca,
     oSlice,
-    expandedPort
+    expandedPort,
+    fieldSymbols
   )
 
   // Iterator that enumerates names of fields above
@@ -90,7 +94,8 @@ class SymbolAttributes {
     "fcr",
     "fca",
     "oSlice",
-    "expandedPor"
+    "expandedPor",
+    "fieldSymbols"
   )
 
   // Copy values of attributes from another instance

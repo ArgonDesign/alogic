@@ -21,6 +21,7 @@ import com.argondesign.alogic.lib.TreeLikeTransformer
 import Trees._
 import com.argondesign.alogic.core.Symbols.TermSymbol
 import com.argondesign.alogic.core.Symbols.TypeSymbol
+import com.argondesign.alogic.core.Types.TypeError
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.FollowedBy
 
@@ -308,10 +309,15 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
       }
     }
 
-    // Ensure types are present at all nodes
+    // Ensure types are present and correct at all nodes
     if (typed) {
       tree visit {
-        case node: Tree if !node.hasTpe => cc.ice(node, "Lost type of node:", node.toString)
+        case node: Tree if !node.hasTpe => {
+          cc.ice(node, "Lost type of node:", node.toString)
+        }
+        case node: Tree if node.tpe == TypeError => {
+          cc.ice(node, "Transformed tree has type error:", node.toString)
+        }
       }
     }
 

@@ -17,14 +17,17 @@
 package com.argondesign.alogic.transform
 
 import com.argondesign.alogic.ast.TreeTransformer
-import com.argondesign.alogic.ast.Trees.Tree
+import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
+import com.argondesign.alogic.core.TreeInTypeTransformer
 import com.argondesign.alogic.typer.TypeAssigner
 
 final class Regularize(loc: Loc)(implicit cc: CompilerContext) extends TreeTransformer {
 
   override val typed: Boolean = false
+
+  private[this] object TypeRegularize extends TreeInTypeTransformer(this)
 
   override def transform(tree: Tree): Tree = {
     if (!tree.hasLoc) {
@@ -33,6 +36,13 @@ final class Regularize(loc: Loc)(implicit cc: CompilerContext) extends TreeTrans
     if (!tree.hasTpe) {
       TypeAssigner(tree)
     }
+
+    tree match {
+      case Decl(_, kind, _) => TypeRegularize(kind)
+      case ExprType(kind)   => TypeRegularize(kind)
+      case _                => ()
+    }
+
     tree
   }
 }
