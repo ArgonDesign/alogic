@@ -36,7 +36,9 @@ object TypeBuilder extends BaseBuilder[KindContext, Type] {
       def buildVector(signed: Boolean, ctx: CommaexprContext): Type = {
         val lastSize :: restSizes = ExprBuilder(ctx.expr).reverse
         val base = if (signed) TypeSInt(lastSize) else TypeUInt(lastSize)
-        restSizes.foldLeft[Type](base) { (elem, size) => TypeVector(elem, size) }
+        restSizes.foldLeft[Type](base) { (elem, size) =>
+          TypeVector(elem, size)
+        }
       }
 
       override def visitTypeBool(ctx: TypeBoolContext) = {
@@ -49,8 +51,9 @@ object TypeBuilder extends BaseBuilder[KindContext, Type] {
         TypeUInt(Expr(ctx.UINTTYPE.text.tail.toInt) withLoc ctx.loc)
       }
       override def visitTypeIntV(ctx: TypeIntVContext) = buildVector(signed = true, ctx.commaexpr)
-      override def visitTypeUIntV(ctx: TypeUIntVContext) = buildVector(signed = false, ctx.commaexpr)
-      override def visitTypeIdent(ctx: TypeIdentContext) = TypeRef(ctx.IDENTIFIER.toIdent)
+      override def visitTypeUIntV(ctx: TypeUIntVContext) =
+        buildVector(signed = false, ctx.commaexpr)
+      override def visitTypeIdent(ctx: TypeIdentContext) = TypeIdent(ctx.IDENTIFIER.toIdent)
       override def visitTypeVoid(ctx: TypeVoidContext) = TypeVoid
     }
 

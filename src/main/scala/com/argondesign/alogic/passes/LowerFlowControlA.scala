@@ -144,10 +144,10 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
         // TODO: mark inline
         val eName = entitySymbol.name + "__oslice__" + pName
         val sliceEntity: Entity = SliceFactory(slices, eName, loc, kind)
-        val Sym(sliceEntitySymbol) = sliceEntity.ref
+        val Sym(sliceEntitySymbol: TypeSymbol) = sliceEntity.ref
         val instanceSymbol = {
           val iName = "oslice__" + pName
-          cc.newTermSymbol(iName, loc, sliceEntitySymbol.denot.kind)
+          cc.newTermSymbol(iName, loc, TypeInstance(sliceEntitySymbol))
         }
         // Add slice entity and instance symbol as attributes
         symbol.attr.oSlice.set((sliceEntity, instanceSymbol))

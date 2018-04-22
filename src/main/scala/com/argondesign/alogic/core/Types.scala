@@ -19,6 +19,7 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.FlowControlTypes._
 import com.argondesign.alogic.core.StorageTypes.StorageType
 import com.argondesign.alogic.core.Symbols.TermSymbol
+import com.argondesign.alogic.core.Symbols.TypeSymbol
 import com.argondesign.alogic.lib.StructuredTree
 
 object Types {
@@ -60,8 +61,8 @@ object Types {
       with TypeStructImpl
   // Void type
   case object TypeVoid extends Type
-  // Type reference e.g. 'foo_t foo;'
-  case class TypeRef(ref: Ref) extends Type
+  // Named type e.g. 'foo_t foo;'
+  case class TypeIdent(ident: Ident) extends Type
   // Combinatorial function type e.g. 'port.read'
   case class TypeCombFunc(argTypes: List[Type], retType: Type) extends Type
   // State function type e.g. 'void foo() {}'
@@ -70,6 +71,8 @@ object Types {
   case class TypeEntity(name: String, portSymbols: List[TermSymbol], paramSymbols: List[TermSymbol])
       extends Type
       with TypeEntityImpl
+  // Instance type
+  case class TypeInstance(entitySymbol: TypeSymbol) extends Type with TypeInstanceImpl
   // Strings
   case object TypeStr extends Type
 
@@ -181,6 +184,17 @@ object Types {
     def portSymbol(name: String): Option[TermSymbol] = portMap.get(name)
 
     def paramSymbol(name: String): Option[TermSymbol] = paramMap.get(name)
+  }
+
+  trait TypeInstanceImpl extends CompoundType { this: TypeInstance =>
+
+    private[this] def entityType = entitySymbol.denot.kind.asInstanceOf[TypeEntity]
+
+    def portSymbols = entityType.portSymbols
+
+    def apply(name: String): Option[Type] = entityType(name)
+
+    def portSymbol(name: String): Option[TermSymbol] = entityType.portSymbol(name)
   }
 
   trait TypeInImpl extends ExtensionType { this: TypeIn =>

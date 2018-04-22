@@ -28,19 +28,6 @@ import com.argondesign.alogic.util.unreachable
 
 final class LowerFlowControlC(implicit cc: CompilerContext) extends TreeTransformer {
 
-  override def enter(tree: Tree): Unit = tree match {
-    case entity: Entity => {
-      // Update instance types to reflect ports about to be removed
-      for (Instance(Sym(iSymbol: TermSymbol), Sym(eSymbol), _, _) <- entity.instances) {
-        val TypeEntity(name, portSymbols, Nil) = eSymbol.denot.kind
-        val newPortSymbols = portSymbols filterNot { _.attr.expandedPort.isSet }
-        iSymbol withDenot iSymbol.denot.copy(kind = TypeEntity(name, newPortSymbols, Nil))
-      }
-    }
-
-    case _ => ()
-  }
-
   override def transform(tree: Tree): Tree = tree match {
     //////////////////////////////////////////////////////////////////////////
     // Entity

@@ -40,8 +40,7 @@ final class SplitStructsA(implicit cc: CompilerContext) extends TreeTransformer 
   }
 
   override def enter(tree: Tree) = tree match {
-    case Decl(Sym(symbol), dKind, _) => {
-      val oKind = dKind.chase
+    case Decl(Sym(symbol), oKind, _) => {
       oKind.underlying match {
         case struct: TypeStruct => {
           val newSymbols = for ((fName, fKind) <- flattenStruct(symbol.name, struct)) yield {
@@ -61,7 +60,7 @@ final class SplitStructsA(implicit cc: CompilerContext) extends TreeTransformer 
     }
 
     case ExprSelect(expr, sel) => {
-      expr.tpe.chase.underlying match {
+      expr.tpe.underlying match {
         case kind: TypeStruct => fieldIndexStack.push(kind.fieldNames.takeWhile(_ != sel).length)
         case _                => fieldIndexStack.push(-1)
       }
@@ -111,7 +110,7 @@ final class SplitStructsA(implicit cc: CompilerContext) extends TreeTransformer 
               }
             }
           }
-          cat(symbol.denot.kind.chase.underlying.asInstanceOf[TypeStruct])
+          cat(symbol.denot.kind.underlying.asInstanceOf[TypeStruct])
         } getOrElse {
           tree
         }

@@ -15,13 +15,13 @@
 
 package com.argondesign.alogic.ast
 
+import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.lib.Stack
-import com.argondesign.alogic.lib.TreeLikeTransformer
-import Trees._
 import com.argondesign.alogic.core.Symbols.TermSymbol
 import com.argondesign.alogic.core.Symbols.TypeSymbol
-import com.argondesign.alogic.core.Types.TypeError
+import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.lib.Stack
+import com.argondesign.alogic.lib.TreeLikeTransformer
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.FollowedBy
 
@@ -317,6 +317,14 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
         }
         case node: Tree if node.tpe == TypeError => {
           cc.ice(node, "Transformed tree has type error:", node.toString)
+        }
+        case node @ Instance(Sym(iSymbol), Sym(eSymbol: TypeSymbol), _, _)
+            if iSymbol.denot.kind != TypeInstance(eSymbol) => {
+          cc.ice(node, "Bad type for instance symbol", iSymbol.denot.kind.toString)
+        }
+        case node @ Entity(Sym(eSymbol), _, _, _, _, _, _, _, _)
+            if !eSymbol.denot.kind.isInstanceOf[TypeEntity] => {
+          cc.ice(node, "Bad type for entity symbol", eSymbol.denot.kind.toString)
         }
       }
     }

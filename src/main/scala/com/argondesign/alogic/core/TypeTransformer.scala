@@ -51,8 +51,8 @@ abstract class TypeTransformer(implicit val cc: CompilerContext) extends TreeLik
         val fieldTypes = walk(node.fieldTypes)
         transform(TypeCopier(node)(fieldTypes))
       }
-      case TypeVoid      => transform(TypeVoid)
-      case node: TypeRef => transform(node)
+      case TypeVoid        => transform(TypeVoid)
+      case node: TypeIdent => transform(node)
       case node: TypeCombFunc => {
         val argTypes = walk(node.argTypes)
         val retType = walk(node.retType)
@@ -63,8 +63,9 @@ abstract class TypeTransformer(implicit val cc: CompilerContext) extends TreeLik
         val retType = walk(node.retType)
         transform(TypeCopier(node)(argTypes, retType))
       }
-      case node: TypeEntity => transform(node)
-      case TypeStr          => transform(TypeStr)
+      case node: TypeEntity   => transform(node)
+      case node: TypeInstance => transform(node)
+      case TypeStr            => transform(TypeStr)
       case node: TypeIn => {
         val kind = walk(node.kind)
         transform(TypeCopier(node)(kind))

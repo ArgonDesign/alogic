@@ -29,16 +29,7 @@ final class LowerFlowControlB(implicit cc: CompilerContext) extends TreeTransfor
   private[this] var inConnect = false
 
   override def enter(tree: Tree): Unit = tree match {
-    case entity: Entity => {
-      // Update instance types to reflect added ports
-      for (Instance(Sym(iSymbol: TermSymbol), Sym(eSymbol), _, _) <- entity.instances) {
-        iSymbol withDenot iSymbol.denot.copy(kind = eSymbol.denot.kind)
-      }
-    }
-
-    case _: Connect => {
-      inConnect = true
-    }
+    case _: Connect => inConnect = true
 
     case _ => ()
   }
@@ -89,7 +80,7 @@ final class LowerFlowControlB(implicit cc: CompilerContext) extends TreeTransfor
       }
     }
     case ExprSelect(ExprRef(Sym(iSymbol)), sel) => {
-      val kind = iSymbol.denot.kind.asInstanceOf[TypeEntity]
+      val kind = iSymbol.denot.kind.asInstanceOf[TypeInstance]
       val pSymbolOpt = kind.portSymbols collectFirst {
         case symbol if symbol.name == sel && symbol.attr.expandedPort.isSet => symbol
       }

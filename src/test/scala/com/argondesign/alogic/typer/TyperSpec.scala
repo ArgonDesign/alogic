@@ -750,8 +750,8 @@ final class TyperSpec extends FreeSpec with AlogicTest {
         for {
           (expr, msg) <- List(
             ("a.b", ""),
-            ("a.c", "No port named 'c' in 'a' of type 'entity a'"),
-            ("a.N", "No port named 'N' in 'a' of type 'entity a'")
+            ("a.c", "No port named 'c' in 'a' of type 'instance a'"),
+            ("a.N", "No port named 'N' in 'a' of type 'instance a'")
           )
         } {
           expr in {

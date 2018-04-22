@@ -20,6 +20,7 @@ import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols._
+import com.argondesign.alogic.core.Types._
 
 final class SpecializeInstance(implicit cc: CompilerContext) extends TreeTransformer {
 
@@ -27,12 +28,12 @@ final class SpecializeInstance(implicit cc: CompilerContext) extends TreeTransfo
     case Instance(Sym(iSymbol: TermSymbol), Sym(eSymbol), _, _)
         if iSymbol.attr.paramBinding.isSet => {
       // Find the specialized entity
-      val Sym(sSymbol) = {
+      val Sym(sSymbol: TypeSymbol) = {
         val sEntity = eSymbol.attr.specMap.value(iSymbol.attr.paramBinding.value)
         sEntity.ref
       }
       // Update type of instance
-      iSymbol withDenot iSymbol.denot.copy(kind = sSymbol.denot.kind)
+      iSymbol withDenot iSymbol.denot.copy(kind = TypeInstance(sSymbol))
       // Remove attribute
       iSymbol.attr.paramBinding.clear
       // Rewrite tree

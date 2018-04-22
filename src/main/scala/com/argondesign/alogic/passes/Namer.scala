@@ -74,12 +74,8 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
             case _: TypeParam    => "Parameter"
             case _: TypeConst    => "Constant"
             case _: TypePipeline => "Pipeline variable"
-            case TypeRef(Sym(symbol)) if symbol != ErrorSymbol =>
-              symbol.denot.kind match {
-                case _: TypeEntity => "Instance"
-                case _             => "Variable"
-              }
-            case _ => "Variable"
+            case _: TypeInstance => "Instance"
+            case _               => "Variable"
           }
           cc.warning(symbol.loc, s"${hint} '${symbol.denot.name}' is unused")
         }
@@ -186,8 +182,13 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
 
   private[this] object TypeNamer extends TreeInTypeTransformer(this) {
     override def transform(kind: Type) = kind match {
-      case TypeRef(ident: Ident) => TypeRef(Sym(lookupType(ident)) withLoc ident.loc)
-      case _                     => super.transform(kind)
+      case TypeIdent(ident: Ident) => {
+        lookupType(ident) match {
+          case symbol: TypeSymbol => symbol.denot.kind
+          case ErrorSymbol        => TypeError
+        }
+      }
+      case _ => super.transform(kind)
     }
   }
 
@@ -345,7 +346,12 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       val eSym = Sym(eSymbol) withLoc eIdent.loc
       Scopes.markUsed(eSymbol)
       // Insert term
-      val iSymbol = Scopes.insert(cc.newTermSymbol(iIdent, TypeRef(Sym(eSymbol))))
+      val iKind = eSymbol match {
+        case ErrorSymbol        => TypeError
+        case symbol: TypeSymbol => TypeInstance(symbol)
+        case _                  => unreachable
+      }
+      val iSymbol = Scopes.insert(cc.newTermSymbol(iIdent, iKind))
       val iSym = Sym(iSymbol) withLoc iIdent.loc
       // Rewrite node
       Instance(iSym, eSym, paramNames, paramExprs) withLoc tree.loc
@@ -408,9 +414,8 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
 
     // Check tree does not contain any Ident nodes anymore
     tree visit {
-      case node: Ident => {
-        cc.ice(node, s"Namer should have removed all identifiers, but '${node}' remains")
-      }
+      case node: Ident     => cc.ice(node, s"Ident remains")
+      case node: TypeIdent => cc.ice(node.ident, "TypeIdent remains")
     }
 
     // Collect symbols used in this file

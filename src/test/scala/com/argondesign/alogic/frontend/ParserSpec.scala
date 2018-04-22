@@ -22,12 +22,12 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeReady
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeValid
+import com.argondesign.alogic.core.StorageTypes._
+import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Error
 import com.argondesign.alogic.core.Message
 import com.argondesign.alogic.core.Warning
-import com.argondesign.alogic.core.StorageTypes._
-import com.argondesign.alogic.core.Types._
 import org.scalatest.FreeSpec
 import org.scalatest.matchers.MatchResult
 import org.scalatest.matchers.Matcher
@@ -1490,7 +1490,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                   stmtDecl.decl.loc.line shouldBe 3
                   stmtDecl.decl.ref.loc.line shouldBe 3
                   inside(stmtDecl.decl.kind) {
-                    case TypeRef(ident: Ident) =>
+                    case TypeIdent(ident: Ident) =>
                       ident.loc.line shouldBe 3
                   }
               }

@@ -42,7 +42,6 @@ object TypeAssigner {
       case _                    => cc.ice(tree, s"Don't know how to type '${tree}")
     }
     assert(tree.hasTpe)
-    assert(!tree.tpe.isInstanceOf[TypeRef])
     tree
   }
 
@@ -76,12 +75,12 @@ object TypeAssigner {
     }
   }
 
-  def apply(node: Sym)(implicit cc: CompilerContext): node.type = {
+  def apply(node: Sym): node.type = {
     require(!node.hasTpe)
     if (node.symbol == ErrorSymbol) {
       node withTpe TypeError
     } else {
-      node withTpe node.symbol.denot.kind.chase
+      node withTpe node.symbol.denot.kind
     }
   }
 
@@ -272,13 +271,13 @@ object TypeAssigner {
 
   def apply(node: ExprStr): node.type = node withTpe TypeStr
 
-  def apply(node: ExprRef)(implicit cc: CompilerContext): node.type = {
+  def apply(node: ExprRef): node.type = {
     require(!node.hasTpe)
     val ExprRef(Sym(symbol)) = node
     val tpe = if (symbol == ErrorSymbol) {
       TypeError
     } else {
-      symbol.denot.kind.chase match {
+      symbol.denot.kind match {
         case TypeParam(kind)    => kind
         case TypeConst(kind)    => kind
         case TypePipeline(kind) => kind
@@ -286,7 +285,7 @@ object TypeAssigner {
       }
     }
     val finalTpe = if (symbol.isTermSymbol) tpe else TypeType(tpe)
-    node withTpe finalTpe.chase
+    node withTpe finalTpe
   }
 
   def apply(node: ExprUnary): node.type = {
@@ -366,14 +365,14 @@ object TypeAssigner {
     node withTpe TypeUInt(width.simplify)
   }
 
-  def apply(node: ExprSelect)(implicit cc: CompilerContext): node.type = {
+  def apply(node: ExprSelect): node.type = {
     require(!node.hasTpe)
-    val tpe = node.expr.tpe.chase match {
+    val tpe = node.expr.tpe match {
       case TypeType(kind: CompoundType) => TypeType(kind(node.selector).get)
       case tpe: CompoundType            => tpe(node.selector).get
       case _                            => TypeError
     }
-    node withTpe tpe.chase
+    node withTpe tpe
   }
 
   def apply(node: ExprType): node.type = {

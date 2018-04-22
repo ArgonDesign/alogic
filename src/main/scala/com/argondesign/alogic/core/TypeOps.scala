@@ -16,16 +16,15 @@
 
 package com.argondesign.alogic.core
 
-import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.transform.ChaseTypeRefs
-import com.argondesign.alogic.util.unreachable
-import Types._
 import com.argondesign.alogic.Config
+import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.util.unreachable
 
 trait TypeOps extends TypePrintOps { this: Type =>
 
   // Is this a primitive numeric type
-  final def isNumeric(implicit cc: CompilerContext): Boolean = this.chase match {
+  final def isNumeric(implicit cc: CompilerContext): Boolean = this match {
     case _: TypeInt         => true
     case _: TypeNum         => true
     case TypeParam(kind)    => kind.isNumeric
@@ -36,7 +35,7 @@ trait TypeOps extends TypePrintOps { this: Type =>
 
   // Is this a 'packed' type, i.e.: does it have a finite, possible 0 width
   // bit-vector representation?
-  final def isPacked(implicit cc: CompilerContext): Boolean = this.chase match {
+  final def isPacked(implicit cc: CompilerContext): Boolean = this match {
     case _: TypeSInt        => true
     case _: TypeUInt        => true
     case _: TypeStruct      => true
@@ -54,7 +53,7 @@ trait TypeOps extends TypePrintOps { this: Type =>
   // Width of this type, assuming it is a packed type
   final def width(implicit cc: CompilerContext): Expr = {
     assert(isPacked)
-    this.chase match {
+    this match {
       case self: TypeSInt => self.size
       case self: TypeUInt => self.size
       case self: TypeStruct => {
@@ -80,7 +79,7 @@ trait TypeOps extends TypePrintOps { this: Type =>
   // Signedness of this type (as far as expressions are concerned), assuming it is a packed type
   final def isSigned(implicit cc: CompilerContext): Boolean = {
     assert(isNum || isPacked)
-    this.chase match {
+    this match {
       case _: TypeSInt     => true
       case TypeNum(signed) => signed
       case _               => false
@@ -92,9 +91,6 @@ trait TypeOps extends TypePrintOps { this: Type =>
     case _: TypeNum => true
     case _          => false
   }
-
-  // Follow TypeRef instances to the underlying types
-  final def chase(implicit cc: CompilerContext): Type = this rewrite (new ChaseTypeRefs)
 
   // If this is a proxy type, get the underlying type, otherwise get this type
   final lazy val underlying: Type = this match {

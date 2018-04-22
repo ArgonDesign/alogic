@@ -191,12 +191,12 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         }
 
         (lhs.tpe, rhss.head.tpe) match {
-          case (_: TypeEntity, _: TypeEntity) => tree
-          case (_: TypeEntity, _) => {
+          case (_: TypeInstance, _: TypeInstance) => tree
+          case (_: TypeInstance, _) => {
             cc.error(rhss.head, "Cannot connect pipeline port to non-pipeline port")
             mkErrConnect(rhss.head.loc)
           }
-          case (_, _: TypeEntity) => {
+          case (_, _: TypeInstance) => {
             cc.error(lhs, "Cannot connect non-pipeline port to pipeline port")
             mkErrConnect(lhs.loc)
           }
@@ -316,7 +316,7 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
           }
 
           val locs = for (ref @ ExprRef(Sym(symbol)) <- stripToRefs(lhs)) yield {
-            symbol.denot.kind.chase match {
+            symbol.denot.kind match {
               case _: TypeParam => cc.error(ref, "Parameter cannot be assigned")
               case _: TypeConst => cc.error(ref, "Constant cannot be assigned")
               case _: TypeIn    => cc.error(ref, "Input port cannot be assigned")

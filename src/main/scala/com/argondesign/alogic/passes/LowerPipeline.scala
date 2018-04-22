@@ -160,8 +160,8 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
       val newConns = entity.connects map {
         case conn @ Connect(lhs, List(rhs)) => {
           (lhs.tpe, rhs.tpe) match {
-            // If its an entity -> entity connection, select the new pipeline ports
-            case (lTpe: TypeEntity, rTpe: TypeEntity) => {
+            // If its an instance -> instance connection, select the new pipeline ports
+            case (_: TypeInstance, _: TypeInstance) => {
               val newLhs = ExprSelect(Tree.untype(lhs), "pipeline_o") withLoc lhs.loc
               val newRhs = ExprSelect(Tree.untype(rhs), "pipeline_i") withLoc rhs.loc
               val newConn = Connect(newLhs, List(newRhs))

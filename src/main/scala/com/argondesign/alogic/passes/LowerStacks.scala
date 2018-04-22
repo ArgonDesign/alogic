@@ -51,9 +51,9 @@ final class LowerStacks(implicit cc: CompilerContext) extends TreeTransformer wi
       // TODO: mark inline
       val eName = entityName + "__stack__" + pName
       val stackEntity: Entity = StackFactory(eName, loc, kind, depth)
-      val Sym(entitySymbol) = stackEntity.ref
+      val Sym(stackEntitySymbol: TypeSymbol) = stackEntity.ref
       val instanceSymbol = {
-        cc.newTermSymbol(pName, loc, entitySymbol.denot.kind)
+        cc.newTermSymbol(pName, loc, TypeInstance(stackEntitySymbol))
       }
       stackMap(symbol) = (stackEntity, instanceSymbol)
     }

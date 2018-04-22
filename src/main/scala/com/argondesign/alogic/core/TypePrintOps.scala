@@ -43,7 +43,7 @@ trait TypePrintOps { this: Type =>
     }
   }
 
-  final def toSource(implicit cc: CompilerContext): String = this.chase match {
+  final def toSource(implicit cc: CompilerContext): String = this match {
     case TypeCombStmt                   => "type-comb-statement"
     case TypeCtrlStmt                   => "type-ctrl-statement"
     case TypeState                      => "type-state"
@@ -64,17 +64,18 @@ trait TypePrintOps { this: Type =>
       s"comb ${argTypes map { _.toSource } mkString ", "} -> ${retType.toSource}"
     case TypeCtrlFunc(argTypes, retType) =>
       s"ctrl ${argTypes map { _.toSource } mkString ", "} -> ${retType.toSource}"
-    case TypeEntity(name, _, _) => s"entity ${name}"
-    case TypeStr                => "string"
-    case TypeIn(kind, fct)      => s"in ${fct2String(fct)}${kind.toSource}"
-    case TypeOut(kind, fct, st) => s"out ${fct2String(fct)}${st2String(st)}${kind.toSource}"
-    case TypePipeline(kind)     => s"pipeline ${kind.toSource}"
-    case TypeParam(kind)        => s"param ${kind.toSource}"
-    case TypeConst(kind)        => s"const ${kind.toSource}"
-    case TypeType(kind)         => s"type ${kind.toSource}"
-    case TypeMisc               => "type-misc"
-    case TypeError              => "type-error"
-    case _: TypePolyFunc        => "type-poly-func"
-    case _: TypeRef             => unreachable
+    case TypeEntity(name, _, _)     => s"entity ${name}"
+    case TypeInstance(entitySymbol) => s"instance ${entitySymbol.name}"
+    case TypeStr                    => "string"
+    case TypeIn(kind, fct)          => s"in ${fct2String(fct)}${kind.toSource}"
+    case TypeOut(kind, fct, st)     => s"out ${fct2String(fct)}${st2String(st)}${kind.toSource}"
+    case TypePipeline(kind)         => s"pipeline ${kind.toSource}"
+    case TypeParam(kind)            => s"param ${kind.toSource}"
+    case TypeConst(kind)            => s"const ${kind.toSource}"
+    case TypeType(kind)             => s"type ${kind.toSource}"
+    case TypeMisc                   => "type-misc"
+    case TypeError                  => "type-error"
+    case _: TypePolyFunc            => "type-poly-func"
+    case _: TypeIdent               => unreachable
   }
 }

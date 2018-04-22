@@ -23,6 +23,8 @@ import com.argondesign.alogic.core.FlowControlTypes._
 import com.argondesign.alogic.core.Names.TypeName
 import com.argondesign.alogic.core.StorageTypes._
 import com.argondesign.alogic.core.Symbols.ErrorSymbol
+import com.argondesign.alogic.core.Symbols.TermSymbol
+import com.argondesign.alogic.core.Symbols.TypeSymbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Error
@@ -200,7 +202,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
         aSym.denot.kind shouldBe TypeStruct(
           "a",
           List("b", "c", "d"),
-          List(TypeUInt(Expr(1)), TypeSInt(Expr(8)), TypeRef(Sym(eSym)))
+          List(TypeUInt(Expr(1)), TypeSInt(Expr(8)), eSym.denot.kind)
         )
     }
 
@@ -269,9 +271,8 @@ final class NamerSpec extends FlatSpec with AlogicTest {
             inside(entity) {
               case Entity(_, _, _, _, _, _, List(StmtBlock(List(_, stmt))), _, _) =>
                 inside(stmt) {
-                  case StmtDecl(Decl(Sym(_), TypeRef(Sym(instSym)), _)) =>
-                    instSym should be theSameInstanceAs declSym
-                    instSym shouldBe 'typeSymbol
+                  case StmtDecl(Decl(Sym(_), kind, _)) =>
+                    kind shouldBe declSym.denot.kind
                 }
             }
         }
@@ -306,9 +307,8 @@ final class NamerSpec extends FlatSpec with AlogicTest {
             inside(entity) {
               case Entity(_, _, _, _, _, _, List(StmtBlock(List(_, stmt))), _, _) =>
                 inside(stmt) {
-                  case StmtDecl(Decl(Sym(_), TypeRef(Sym(instSym)), _)) =>
-                    instSym should be theSameInstanceAs declSym
-                    instSym shouldBe 'typeSymbol
+                  case StmtDecl(Decl(Sym(_), kind, _)) =>
+                    kind shouldBe declSym.denot.kind
                 }
             }
         }
@@ -685,10 +685,14 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     entityA rewrite namer
     val tree = entityB rewrite namer
 
-    val symA = tree collectFirst { case Sym(symbol) if symbol.denot.name.str == "a" => symbol }
+    val symA = tree collectFirst {
+      case Sym(symbol: TypeSymbol) if symbol.denot.name.str == "a" => symbol
+    }
     symA.value.denot.kind shouldBe TypeEntity("a", Nil, Nil)
-    val symC = tree collectFirst { case Sym(symbol) if symbol.denot.name.str == "c" => symbol }
-    symC.value.denot.kind shouldBe TypeRef(Sym(symA.value))
+    val symC = tree collectFirst {
+      case Sym(symbol: TermSymbol) if symbol.denot.name.str == "c" => symbol
+    }
+    symC.value.denot.kind shouldBe TypeInstance(symA.value)
   }
 
   it should "attach correct types to symbol denotations - decl in" in {
@@ -782,7 +786,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     val symB = tree collectFirst { case Sym(symbol) if symbol.denot.name.str == "b" => symbol }
     symB.value shouldBe 'typeSymbol
     val symA = tree collectFirst { case Sym(symbol) if symbol.denot.name.str == "a" => symbol }
-    symA.value.denot.kind shouldBe TypeRef(Sym(symB.value))
+    symA.value.denot.kind shouldBe symB.value.denot.kind
   }
 
   it should "issue warning for unused local variables" in {

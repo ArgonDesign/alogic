@@ -25,9 +25,9 @@ abstract class TreeInTypeTransformer(treeTransformer: TreeTransformer)(implicit 
     extends TypeTransformer {
 
   override def transform(kind: Type) = kind match {
-    case node @ TypeRef(ref) => {
-      val newRef = treeTransformer.walk(ref).asInstanceOf[Ref]
-      if (newRef eq ref) node else TypeRef(newRef)
+    case node @ TypeIdent(ident) => {
+      val newIdent = treeTransformer.walk(ident).asInstanceOf[Ident]
+      if (newIdent eq ident) node else TypeIdent(newIdent)
     }
     case node @ TypeSInt(size) => {
       val newSize = treeTransformer.walk(size).asInstanceOf[Expr]
