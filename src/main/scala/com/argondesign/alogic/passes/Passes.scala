@@ -71,10 +71,11 @@ object Passes {
       () => new SplitStructsC,
       () => new SimplifyCat,
       () => new RemoveNestedBlocks,
+      () => new RenameClashingTerms
+      // TODO: final check pass to make sure everything is well-formed
       // TypeFlop ???
       // Lower Array ???
       // oreg naming
-      // name mangling
       // output
     )
 
