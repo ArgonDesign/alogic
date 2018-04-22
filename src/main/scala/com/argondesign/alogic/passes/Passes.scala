@@ -45,6 +45,8 @@ object Passes {
       () => new Namer,
       () => new Desugar,
       () => new Typer,
+      () => new ConvertMultiConnect,
+      () => new ConvertDeclInit,
       () => new FoldExpr(assignTypes = true)(cc),
       () => new AnalyseParamConst,
       () => new SpecializeParam,
@@ -66,7 +68,8 @@ object Passes {
       () => new LowerStacks,
       () => new SplitStructsA,
       () => new SplitStructsB,
-      () => new SplitStructsC
+      () => new SplitStructsC,
+      () => new RemoveNestedBlocks
       // Unpack cat assigns
       // Cleanup
       // TypeFlop ???

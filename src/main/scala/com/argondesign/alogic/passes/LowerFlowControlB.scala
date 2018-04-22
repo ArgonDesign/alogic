@@ -117,29 +117,28 @@ final class LowerFlowControlB(implicit cc: CompilerContext) extends TreeTransfor
       // Connect
       //////////////////////////////////////////////////////////////////////////
 
-      case Connect(lhs, rhss) => {
+      case Connect(lhs, List(rhs)) => {
         // Expand inter-entity connections
         val pLhs = partExpr(lhs, payloadSymbol)
-        val pRhss = rhss flatMap { partExpr(_, payloadSymbol) }
-        assert(if (pLhs.isEmpty) pRhss.isEmpty else pRhss.length == rhss.length)
+        val pRhs = partExpr(rhs, payloadSymbol)
+        assert(pLhs.isDefined == pRhs.isDefined)
 
         val vLhs = partExpr(lhs, validSymbol)
-        val vRhss = rhss flatMap { partExpr(_, validSymbol) }
-        assert(if (vLhs.isEmpty) vRhss.isEmpty else vRhss.length == rhss.length)
+        val vRhs = partExpr(rhs, validSymbol)
+        assert(vLhs.isDefined == vRhs.isDefined)
 
         val bLhs = partExpr(lhs, backSymbol)
-        val bRhss = rhss flatMap { partExpr(_, backSymbol) }
-        assert(if (bLhs.isEmpty) bRhss.isEmpty else bRhss.length == rhss.length)
-        assert(bLhs.isEmpty || rhss.length == 1)
+        val bRhs = partExpr(rhs, backSymbol)
+        assert(bLhs.isDefined == bRhs.isDefined)
 
         val pConn = pLhs map { lhs =>
-          Connect(lhs, pRhss)
+          Connect(lhs, pRhs.toList)
         }
         val vConn = vLhs map { lhs =>
-          Connect(lhs, vRhss)
+          Connect(lhs, vRhs.toList)
         }
-        val bConn = bLhs map { rhs =>
-          Connect(bRhss.head, List(rhs))
+        val bConn = bRhs map { rhs =>
+          Connect(bLhs.get, List(rhs))
         }
 
         val newConns = {
