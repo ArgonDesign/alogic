@@ -27,8 +27,6 @@ import com.argondesign.alogic.util.unreachable
 
 final class SplitStructsA(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
 
-  private[this] var inStmtDecl = false
-
   private[this] val fieldIndexStack = Stack[Int]()
 
   private[this] def flattenStruct(prefix: String, kind: TypeStruct): List[(String, Type)] = {
@@ -67,10 +65,6 @@ final class SplitStructsA(implicit cc: CompilerContext) extends TreeTransformer 
         case kind: TypeStruct => fieldIndexStack.push(kind.fieldNames.takeWhile(_ != sel).length)
         case _                => fieldIndexStack.push(-1)
       }
-    }
-
-    case _: StmtDecl => {
-      inStmtDecl = true
     }
 
     case _ => ()
@@ -139,27 +133,10 @@ final class SplitStructsA(implicit cc: CompilerContext) extends TreeTransformer 
       }
 
       //////////////////////////////////////////////////////////////////////////
-      // StmtDecl
-      //////////////////////////////////////////////////////////////////////////
-
-      case stmt @ StmtDecl(Decl(Sym(symbol: TermSymbol), _, init)) => {
-        // Add field declarations
-        symbol.attr.fieldSymbols.get map { fSymbols =>
-          val fDecls = fieldDecls(fSymbols, init)
-          // Turn them into statements
-          Thicket(fDecls map { StmtDecl(_) }) regularize tree.loc
-        } getOrElse {
-          tree
-        }
-      } followedBy {
-        inStmtDecl = false
-      }
-
-      //////////////////////////////////////////////////////////////////////////
       // Decl
       //////////////////////////////////////////////////////////////////////////
 
-      case decl @ Decl(Sym(symbol: TermSymbol), kind, init) if !inStmtDecl => {
+      case decl @ Decl(Sym(symbol: TermSymbol), kind, init) => {
         // Add field declarations
         symbol.attr.fieldSymbols.get map { fSymbols =>
           val fDecls = fieldDecls(fSymbols, init)
@@ -208,7 +185,6 @@ final class SplitStructsA(implicit cc: CompilerContext) extends TreeTransformer 
   }
 
   override def finalCheck(tree: Tree): Unit = {
-    assert(!inStmtDecl)
     assert(fieldIndexStack.isEmpty)
   }
 
