@@ -230,7 +230,7 @@ object SliceFactory {
     val fSymbol = cc.newTermSymbol("full", loc, TypeOut(bool, fcn, stw))
 
     val pSymbol = cc.newTermSymbol("payload", loc, kind)
-    val vSymbol = cc.newTermSymbol("valid", loc, kind)
+    val vSymbol = cc.newTermSymbol("valid", loc, bool)
 
     lazy val uPRef = ExprRef(Sym(uPSymbol))
     val uVRef = ExprRef(Sym(uVSymbol))
