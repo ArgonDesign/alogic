@@ -57,6 +57,9 @@ class SymbolAttributes {
   // Is this a port that has been expanded to multiple signals?
   val expandedPort = new Attribute[Boolean]()
 
+  // The output register symbol if this is a registered output port
+  val oReg = new Attribute[TermSymbol]()
+
   // The expanded field symbols of a struct symbol
   val fieldSymbols = new Attribute[List[TermSymbol]]()
 
@@ -76,6 +79,7 @@ class SymbolAttributes {
     fca,
     oSlice,
     expandedPort,
+    oReg,
     fieldSymbols
   )
 
@@ -95,6 +99,7 @@ class SymbolAttributes {
     "fca",
     "oSlice",
     "expandedPor",
+    "oReg",
     "fieldSymbols"
   )
 
