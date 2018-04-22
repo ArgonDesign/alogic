@@ -63,9 +63,9 @@ trait Symbols { self: CompilerContext =>
 
   final def addGlobalEntities(entities: Iterable[Entity]): Unit = synchronized {
     for (Entity(ident: Ident, _, _, _, _, _, _, _, _) <- entities) {
-      val attr = if (ident.hasAttr) ident.attr else Map.empty[String, Expr]
       val kind = TypeEntity("", Nil, Nil)
-      val symbol = newTypeSymbolWithAttr(ident.name, ident.loc, kind, attr)
+      val symbol = newTypeSymbol(ident.name, ident.loc, kind)
+      symbol.attr.update(ident)
       addGlobalSymbol(symbol)
     }
 
@@ -103,22 +103,17 @@ trait Symbols { self: CompilerContext =>
   // Creating TermSymbol instances
   //////////////////////////////////////////////////////////////////////////////
 
-  final def newTermSymbolWithAttr(
+  final def newTermSymbol(
       name: String,
       loc: Loc,
-      kind: Type,
-      attr: Map[String, Any]
+      kind: Type
   ): TermSymbol = synchronized {
     val symbol = new TermSymbol(symbolSequenceNumbers.next)
-    val denot = TermDenotation(symbol, TermName(name), kind, attr)
+    val denot = TermDenotation(symbol, TermName(name), kind)
 
     symbolLocations(symbol) = loc
 
     symbol withDenot denot
-  }
-
-  final def newTermSymbol(name: String, loc: Loc, kind: Type): TermSymbol = {
-    newTermSymbolWithAttr(name, loc, kind, Map.empty)
   }
 
   final def newTermSymbol(ident: Ident, kind: Type): TermSymbol = {
@@ -126,34 +121,26 @@ trait Symbols { self: CompilerContext =>
   }
 
   final def newSymbolLike(symbol: TermSymbol): TermSymbol = {
-    newTermSymbolWithAttr(
-      symbol.denot.name.str,
-      symbol.loc(this),
-      symbol.denot.kind,
-      symbol.denot.attr
-    )
+    val newSymbol = newTermSymbol(symbol.denot.name.str, symbol.loc(this), symbol.denot.kind)
+    newSymbol.attr.update(symbol.attr)
+    newSymbol
   }
 
   //////////////////////////////////////////////////////////////////////////////
   // Creating TypeSymbol instances
   //////////////////////////////////////////////////////////////////////////////
 
-  final def newTypeSymbolWithAttr(
+  final def newTypeSymbol(
       name: String,
       loc: Loc,
-      kind: Type,
-      attr: Map[String, Any]
+      kind: Type
   ): TypeSymbol = synchronized {
     val symbol = new TypeSymbol(symbolSequenceNumbers.next)
-    val denot = TypeDenotation(symbol, TypeName(name), kind, attr)
+    val denot = TypeDenotation(symbol, TypeName(name), kind)
 
     symbolLocations(symbol) = loc
 
     symbol withDenot denot
-  }
-
-  final def newTypeSymbol(name: String, loc: Loc, kind: Type): TypeSymbol = {
-    newTypeSymbolWithAttr(name, loc, kind, Map.empty)
   }
 
   final def newTypeSymbol(ident: Ident, kind: Type): TypeSymbol = {
@@ -161,12 +148,9 @@ trait Symbols { self: CompilerContext =>
   }
 
   final def newSymbolLike(symbol: TypeSymbol): TypeSymbol = {
-    newTypeSymbolWithAttr(
-      symbol.denot.name.str,
-      symbol.loc(this),
-      symbol.denot.kind,
-      symbol.denot.attr
-    )
+    val newSymbol = newTypeSymbol(symbol.denot.name.str, symbol.loc(this), symbol.denot.kind)
+    newSymbol.attr.update(symbol.attr)
+    newSymbol
   }
 }
 
@@ -195,6 +179,14 @@ object Symbols {
 
     final override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]
 
+    ////////////////////////////////////////////////////////////////////////////
+    // Attributes
+    ////////////////////////////////////////////////////////////////////////////
+
+    final val attr: SymbolAttributes = new SymbolAttributes()
+
+    ////////////////////////////////////////////////////////////////////////////
+
     // Denotation of symbol
     final def denot: ThisDenotation = if (_denot == null) unreachable else _denot
 
@@ -216,30 +208,6 @@ object Symbols {
 
     // Shorthand for often accessed name
     def name: String = denot.name.str
-
-    ////////////////////////////////////////////////////////////////////////////
-    // Attribute handling
-    ////////////////////////////////////////////////////////////////////////////
-
-    final def attr[R](name: String): R = denot.attr(name).asInstanceOf[R]
-
-    final def getAttr[R](name: String): Option[R] = denot.attr.get(name).asInstanceOf[Option[R]]
-
-    def setAttr(name: String, value: Any): this.type
-
-    final def setAttr(name: String): this.type = this.setAttr(name, true)
-
-    final def hasAttr(name: String): Boolean = denot.attr contains name
-
-    def delAttr(name: String): this.type
-
-    final def appendAttr[T](name: String, value: T): this.type = {
-      this.getAttr[List[T]](name) match {
-        case Some(values: List[T]) => this.setAttr(name, value :: values)
-        case None                  => this.setAttr(name, List(value))
-        case _                     => unreachable
-      }
-    }
   }
 
   final class TermSymbol(val id: Int) extends Symbol {
@@ -247,14 +215,6 @@ object Symbols {
 
     override def isTermSymbol = true
     override def isTypeSymbol = false
-
-    override def setAttr(name: String, value: Any): this.type = {
-      this withDenot denot.copy(attr = denot.attr + (name -> value))
-    }
-
-    override def delAttr(name: String): this.type = {
-      this withDenot denot.copy(attr = denot.attr - name)
-    }
 
     override def toString = s"TermSymbol(id=$id, name=${name})"
   }
@@ -265,14 +225,6 @@ object Symbols {
     override def isTermSymbol = false
     override def isTypeSymbol = true
 
-    override def setAttr(name: String, value: Any): this.type = {
-      this withDenot denot.copy(attr = denot.attr + (name -> value))
-    }
-
-    override def delAttr(name: String): this.type = {
-      this withDenot denot.copy(attr = denot.attr - name)
-    }
-
     override def toString = s"TypeSymbol(id=$id, name=${name})"
   }
 
@@ -282,9 +234,6 @@ object Symbols {
 
     override def isTermSymbol = false
     override def isTypeSymbol = false
-
-    override def setAttr(name: String, value: Any): this.type = unreachable
-    override def delAttr(name: String): this.type = unreachable
 
     override def toString = s"ErrorSymbol"
   }

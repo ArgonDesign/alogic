@@ -27,7 +27,7 @@ import com.argondesign.alogic.typer.TypeAssigner
 
 import scala.collection.mutable
 
-final class InlineParam(bindings: Map[Symbol, Expr])(implicit cc: CompilerContext)
+final class InlineParam(bindings: Map[TermSymbol, Expr])(implicit cc: CompilerContext)
     extends TreeTransformer {
 
   // Map from original parameter symbol to the new const symbol
@@ -58,7 +58,8 @@ final class InlineParam(bindings: Map[Symbol, Expr])(implicit cc: CompilerContex
     case decl @ Decl(Sym(symbol: TermSymbol), kind, _) => {
       // Create the new symbol
       val newKind = kind rewrite TypeSpecializeParams
-      val newSymbol = cc.newTermSymbolWithAttr(symbol.name, symbol.loc, newKind, symbol.denot.attr)
+      val newSymbol = cc.newTermSymbol(symbol.name, symbol.loc, newKind)
+      newSymbol.attr update symbol.attr
       symbolMap(symbol) = newSymbol
     }
 
@@ -122,9 +123,8 @@ final class InlineParam(bindings: Map[Symbol, Expr])(implicit cc: CompilerContex
 
       val oldKind = entitySymbol.denot.kind.asInstanceOf[TypeEntity]
       val newKind = TypeEntity(newName, oldKind.portSymbols, Nil)
-      val newSymbol = {
-        cc.newTypeSymbolWithAttr(newName, tree.loc, newKind, entitySymbol.denot.attr)
-      }
+      val newSymbol = cc.newTypeSymbol(newName, tree.loc, newKind)
+      newSymbol.attr update entitySymbol.attr
 
       val sym = TypeAssigner(Sym(newSymbol) withLoc tree.loc)
 

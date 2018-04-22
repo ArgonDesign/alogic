@@ -33,7 +33,7 @@ final class LowerFlowControlC(implicit cc: CompilerContext) extends TreeTransfor
       // Update instance types to reflect ports about to be removes
       for (Instance(Sym(iSymbol: TermSymbol), Sym(eSymbol), _, _) <- entity.instances) {
         val TypeEntity(name, portSymbols, Nil) = eSymbol.denot.kind
-        val newPortSymbols = portSymbols filterNot { _.hasAttr("expanded-port") }
+        val newPortSymbols = portSymbols filterNot { _.attr.expandedPort.isSet }
         iSymbol withDenot iSymbol.denot.copy(kind = TypeEntity(name, newPortSymbols, Nil))
       }
     }
@@ -49,7 +49,7 @@ final class LowerFlowControlC(implicit cc: CompilerContext) extends TreeTransfor
     case entity: Entity => {
       // Drop original port declarations
       val declarations = entity.declarations filterNot {
-        case Decl(Sym(symbol), _, _) => symbol hasAttr "expanded-port"
+        case Decl(Sym(symbol), _, _) => symbol.attr.expandedPort.isSet
         case _                       => unreachable
       }
 

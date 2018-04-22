@@ -37,13 +37,13 @@ final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
     val loc = entitySymbol.loc
     val kind = TypeAssigner(Expr(stateBits) withLoc loc)
     val symbol = cc.newTermSymbol("state", loc, TypeUInt(kind))
-    entitySymbol.setAttr("state-var", symbol)
+    entitySymbol.attr.stateVar set symbol
     symbol
   }
 
   // The return stack symbol
   private[this] lazy val rsSymbol: TermSymbol = {
-    val opt = entitySymbol.getAttr[TermSymbol]("return-stack") map { symbol =>
+    val opt = entitySymbol.attr.returnStack.get map { symbol =>
       val TypeStack(_, depth) = symbol.denot.kind
       val width = Expr(stateBits) regularize symbol.loc
       symbol withDenot symbol.denot.copy(kind = TypeStack(TypeUInt(width), depth))
@@ -66,7 +66,7 @@ final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
         // Ensure the entry symbol is allocated number 0
         val (entryStates, otherStates) = entity.states partition { state =>
           val State(ExprRef(Sym(symbol: TermSymbol)), _) = state
-          symbol.denot.attr contains "entry"
+          symbol.attr.entry.isSet
         }
 
         assert(entryStates.length == 1)

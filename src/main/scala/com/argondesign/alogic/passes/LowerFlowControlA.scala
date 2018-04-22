@@ -52,7 +52,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
     TypeUInt(one)
   }
 
-  private[this] val fcn = FlowControlTypeNone
+  private[this] val fctn = FlowControlTypeNone
   private[this] val stw = StorageTypeWire
 
   override def enter(tree: Tree): Unit = tree match {
@@ -61,11 +61,11 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
     ////////////////////////////////////////////////////////////////////////////
 
     case Decl(Sym(symbol: TermSymbol), TypeIn(_, FlowControlTypeNone), _) => {
-      symbol setAttr "fcn"
+      symbol.attr.fcn set true
     }
 
     case Decl(Sym(symbol: TermSymbol), TypeOut(_, FlowControlTypeNone, _), _) => {
-      symbol setAttr "fcn"
+      symbol.attr.fcn set true
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -77,12 +77,12 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       val loc = tree.loc
       val pName = symbol.denot.name.str
       val vName = pName + "_valid"
-      lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeIn(kind, fcn))
-      val vSymbol = cc.newTermSymbol(vName, loc, TypeIn(boolType(loc), fcn))
+      lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeIn(kind, fctn))
+      val vSymbol = cc.newTermSymbol(vName, loc, TypeIn(boolType(loc), fctn))
       val newSymbols = if (kind != TypeVoid) (pSymbol, vSymbol) else (ErrorSymbol, vSymbol)
       // Add new Symbols as attributes
-      symbol.setAttr("fcv", newSymbols)
-      symbol.setAttr("expanded-port")
+      symbol.attr.fcv set newSymbols
+      symbol.attr.expandedPort set true
     }
 
     case Decl(Sym(symbol: TermSymbol), TypeOut(kind, FlowControlTypeValid, st), _) => {
@@ -90,12 +90,12 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       val loc = tree.loc
       val pName = symbol.denot.name.str
       val vName = pName + "_valid"
-      lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeOut(kind, fcn, st))
-      val vSymbol = cc.newTermSymbol(vName, loc, TypeOut(boolType(loc), fcn, st))
+      lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeOut(kind, fctn, st))
+      val vSymbol = cc.newTermSymbol(vName, loc, TypeOut(boolType(loc), fctn, st))
       val newSymbols = if (kind != TypeVoid) (pSymbol, vSymbol) else (ErrorSymbol, vSymbol)
       // Add new Symbols as attributes
-      symbol.setAttr("fcv", newSymbols)
-      symbol.setAttr("expanded-port")
+      symbol.attr.fcv set newSymbols
+      symbol.attr.expandedPort set true
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -108,17 +108,17 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       val pName = symbol.denot.name.str
       val vName = pName + "_valid"
       val rName = pName + "_ready"
-      lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeIn(kind, fcn))
-      val vSymbol = cc.newTermSymbol(vName, loc, TypeIn(boolType(loc), fcn))
-      val rSymbol = cc.newTermSymbol(rName, loc, TypeOut(boolType(loc), fcn, stw))
+      lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeIn(kind, fctn))
+      val vSymbol = cc.newTermSymbol(vName, loc, TypeIn(boolType(loc), fctn))
+      val rSymbol = cc.newTermSymbol(rName, loc, TypeOut(boolType(loc), fctn, stw))
       val newSymbols = if (kind != TypeVoid) {
         (pSymbol, vSymbol, rSymbol)
       } else {
         (ErrorSymbol, vSymbol, rSymbol)
       }
       // Add new Symbols as attributes
-      symbol.setAttr("fcr", newSymbols)
-      symbol.setAttr("expanded-port")
+      symbol.attr.fcr set newSymbols
+      symbol.attr.expandedPort set true
     }
 
     case Decl(Sym(symbol: TermSymbol), TypeOut(kind, FlowControlTypeReady, st), _) => {
@@ -127,17 +127,17 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       val pName = symbol.denot.name.str
       val vName = pName + "_valid"
       val rName = pName + "_ready"
-      lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeOut(kind, fcn, stw))
-      val vSymbol = cc.newTermSymbol(vName, loc, TypeOut(boolType(loc), fcn, stw))
-      val rSymbol = cc.newTermSymbol(rName, loc, TypeIn(boolType(loc), fcn))
+      lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeOut(kind, fctn, stw))
+      val vSymbol = cc.newTermSymbol(vName, loc, TypeOut(boolType(loc), fctn, stw))
+      val rSymbol = cc.newTermSymbol(rName, loc, TypeIn(boolType(loc), fctn))
       val newSymbols = if (kind != TypeVoid) {
         (pSymbol, vSymbol, rSymbol)
       } else {
         (ErrorSymbol, vSymbol, rSymbol)
       }
       // Add new Symbols as attributes
-      symbol.setAttr("fcr", newSymbols)
-      symbol.setAttr("expanded-port")
+      symbol.attr.fcr set newSymbols
+      symbol.attr.expandedPort set true
       // If output slices are required, construct them
       if (st != StorageTypeWire) {
         val StorageTypeSlices(slices) = st
@@ -150,7 +150,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
           cc.newTermSymbol(iName, loc, sliceEntitySymbol.denot.kind)
         }
         // Add slice entity and instance symbol as attributes
-        symbol.setAttr("oslice", (sliceEntity, instanceSymbol))
+        symbol.attr.oSlice.set((sliceEntity, instanceSymbol))
       }
     }
 
@@ -164,17 +164,17 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       val pName = symbol.denot.name.str
       val vName = pName + "_valid"
       val aName = pName + "_accept"
-      lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeIn(kind, fcn))
-      val vSymbol = cc.newTermSymbol(vName, loc, TypeIn(boolType(loc), fcn))
-      val aSymbol = cc.newTermSymbol(aName, loc, TypeOut(boolType(loc), fcn, stw))
+      lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeIn(kind, fctn))
+      val vSymbol = cc.newTermSymbol(vName, loc, TypeIn(boolType(loc), fctn))
+      val aSymbol = cc.newTermSymbol(aName, loc, TypeOut(boolType(loc), fctn, stw))
       val newSymbols = if (kind != TypeVoid) {
         (pSymbol, vSymbol, aSymbol)
       } else {
         (ErrorSymbol, vSymbol, aSymbol)
       }
       // Add new Symbols as attributes
-      symbol.setAttr("fca", newSymbols)
-      symbol.setAttr("expanded-port")
+      symbol.attr.fca set newSymbols
+      symbol.attr.expandedPort set true
     }
 
     case Decl(Sym(symbol: TermSymbol), TypeOut(kind, FlowControlTypeAccept, st), _) => {
@@ -184,17 +184,17 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       val pName = symbol.denot.name.str
       val vName = pName + "_valid"
       val aName = pName + "_accept"
-      lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeOut(kind, fcn, stw))
-      val vSymbol = cc.newTermSymbol(vName, loc, TypeOut(boolType(loc), fcn, stw))
-      val aSymbol = cc.newTermSymbol(aName, loc, TypeIn(boolType(loc), fcn))
+      lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeOut(kind, fctn, stw))
+      val vSymbol = cc.newTermSymbol(vName, loc, TypeOut(boolType(loc), fctn, stw))
+      val aSymbol = cc.newTermSymbol(aName, loc, TypeIn(boolType(loc), fctn))
       val newSymbols = if (kind != TypeVoid) {
         (pSymbol, vSymbol, aSymbol)
       } else {
         (ErrorSymbol, vSymbol, aSymbol)
       }
       // Add new Symbols as attributes
-      symbol.setAttr("fca", newSymbols)
-      symbol.setAttr("expanded-port")
+      symbol.attr.fca set newSymbols
+      symbol.attr.expandedPort set true
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -225,9 +225,9 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       case StmtExpr(ExprRef(Sym(ErrorSymbol))) => StmtBlock(Nil)
 
       case StmtExpr(ExprCall(ExprSelect(ref @ ExprRef(Sym(symbol: TermSymbol)), "write"), args)) => {
-        symbol.getAttr[Boolean]("fcn").map { _ =>
+        symbol.attr.fcn.get.map { _ =>
           StmtAssign(ref, args.head)
-        } orElse symbol.getAttr[(Symbol, TermSymbol)]("fcv").map {
+        } orElse symbol.attr.fcv.get.map {
           case (pSymbol, vSymbol) =>
             val vAssign = assignTrue(ExprRef(Sym(vSymbol)))
             if (pSymbol != ErrorSymbol) {
@@ -236,9 +236,9 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
             } else {
               vAssign
             }
-        } orElse symbol.getAttr[(Entity, TermSymbol)]("oslice").map {
+        } orElse symbol.attr.oSlice.get.map {
           case (_, iSymbol) =>
-            val pSymbol = symbol.attr[(Symbol, TermSymbol, TermSymbol)]("fcr")._1
+            val pSymbol = symbol.attr.fcr.value._1
             val iRef = ExprRef(Sym(iSymbol))
             val vAssign = assignTrue(iRef select "u_valid")
             val rStall = stall(~(iRef select "u_ready"))
@@ -248,7 +248,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
             } else {
               StmtBlock(List(vAssign, rStall))
             }
-        } orElse symbol.getAttr[(Symbol, TermSymbol, TermSymbol)]("fca").map {
+        } orElse symbol.attr.fca.get.map {
           case (pSymbol, vSymbol, aSymbol) =>
             val vAssign = assignTrue(ExprRef(Sym(vSymbol)))
             val aStall = stall(!ExprRef(Sym(aSymbol)))
@@ -264,10 +264,10 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       }
 
       case StmtExpr(ExprCall(ExprSelect(ref @ ExprRef(Sym(symbol: TermSymbol)), "wait"), args)) => {
-        symbol.getAttr[(Symbol, TermSymbol)]("fcv").map {
+        symbol.attr.fcv.get.map {
           case (_, vSymbol) =>
             stall(!ExprRef(Sym(vSymbol)))
-        } orElse symbol.getAttr[(Symbol, TermSymbol, TermSymbol)]("fcr").map {
+        } orElse symbol.attr.fcr.get.map {
           case (_, vSymbol, _) =>
             stall(!ExprRef(Sym(vSymbol)))
         } getOrElse {
@@ -276,10 +276,10 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       }
 
       case StmtExpr(ExprCall(ExprSelect(ref @ ExprRef(Sym(symbol: TermSymbol)), "flush"), args)) => {
-        symbol.getAttr[(Symbol, TermSymbol)]("fcv").map {
+        symbol.attr.fcv.get.map {
           case (_, vSymbol) =>
             stall(ExprRef(Sym(vSymbol)))
-        } orElse symbol.getAttr[(Entity, TermSymbol)]("oslice").map {
+        } orElse symbol.attr.oSlice.get.map {
           case (_, iSymbol) =>
             val iRef = ExprRef(Sym(iSymbol))
             stall(~(iRef select "empty"))
@@ -293,18 +293,18 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       //////////////////////////////////////////////////////////////////////////
 
       case ExprCall(ExprSelect(ref @ ExprRef(Sym(symbol: TermSymbol)), "read"), Nil) => {
-        symbol.getAttr[Boolean]("fcn").map { _ =>
+        symbol.attr.fcn.get.map { _ =>
           ref
-        } orElse symbol.getAttr[(Symbol, TermSymbol)]("fcv").map {
+        } orElse symbol.attr.fcv.get.map {
           case (pSymbol, vSymbol) =>
             extraStmts.top append stall(!ExprRef(Sym(vSymbol)))
             ExprRef(Sym(pSymbol))
-        } orElse symbol.getAttr[(Symbol, TermSymbol, TermSymbol)]("fcr").map {
+        } orElse symbol.attr.fcr.get.map {
           case (pSymbol, vSymbol, rSymbol) =>
             extraStmts.top append stall(!ExprRef(Sym(vSymbol)))
             extraStmts.top append assignTrue(ExprRef(Sym(rSymbol)))
             ExprRef(Sym(pSymbol))
-        } orElse symbol.getAttr[(Symbol, TermSymbol, TermSymbol)]("fca").map {
+        } orElse symbol.attr.fca.get.map {
           case (pSymbol, vSymbol, aSymbol) =>
             extraStmts.top append stall(!ExprRef(Sym(vSymbol)))
             extraStmts.top append assignTrue(ExprRef(Sym(aSymbol)))
@@ -315,9 +315,9 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       }
 
       case ExprCall(ExprSelect(ExprRef(Sym(symbol: TermSymbol)), "valid"), Nil) => {
-        symbol.getAttr[(Symbol, TermSymbol)]("fcv").map {
+        symbol.attr.fcv.get.map {
           case (_, vSymbol) => ExprRef(Sym(vSymbol))
-        } orElse symbol.getAttr[(Symbol, TermSymbol, TermSymbol)]("fcr").map {
+        } orElse symbol.attr.fcr.get.map {
           case (_, vSymbol, _) => ExprRef(Sym(vSymbol))
         } getOrElse {
           tree
@@ -325,7 +325,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       }
 
       case ExprCall(ExprSelect(ExprRef(Sym(symbol: TermSymbol)), "empty"), Nil) => {
-        symbol.getAttr[(Entity, TermSymbol)]("oslice").map {
+        symbol.attr.oSlice.get.map {
           case (_, iSymbol) => ExprRef(Sym(iSymbol)) select "empty"
         } getOrElse {
           tree
@@ -333,7 +333,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       }
 
       case ExprCall(ExprSelect(ExprRef(Sym(symbol: TermSymbol)), "full"), Nil) => {
-        symbol.getAttr[(Entity, TermSymbol)]("oslice").map {
+        symbol.attr.oSlice.get.map {
           case (_, iSymbol) => ExprRef(Sym(iSymbol)) select "full"
         } getOrElse {
           tree
@@ -349,7 +349,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
         // Connect instances have not been rewritten yet. These will be fixed
         // up in a later pass as they required all entities to have been
         // converted before we can type port references
-        symbol.getAttr[(Symbol, TermSymbol)]("fcv").map {
+        symbol.attr.fcv.get.map {
           case (pSymbol, vSymbol) =>
             val vDecl = Decl(Sym(vSymbol), vSymbol.denot.kind, None)
             val newDecls = if (pSymbol != ErrorSymbol) {
@@ -359,7 +359,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
               List(vDecl)
             }
             Thicket(decl :: newDecls)
-        } orElse symbol.getAttr[(Symbol, TermSymbol, TermSymbol)]("fcr").map {
+        } orElse symbol.attr.fcr.get.map {
           case (pSymbol, vSymbol, rSymbol) =>
             val vDecl = Decl(Sym(vSymbol), vSymbol.denot.kind, None)
             val rDecl = Decl(Sym(rSymbol), rSymbol.denot.kind, None)
@@ -370,7 +370,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
               List(vDecl, rDecl)
             }
             Thicket(decl :: newDecls)
-        } orElse symbol.getAttr[(Symbol, TermSymbol, TermSymbol)]("fca").map {
+        } orElse symbol.attr.fca.get.map {
           case (pSymbol, vSymbol, aSymbol) =>
             val vDecl = Decl(Sym(vSymbol), vSymbol.denot.kind, None)
             val aDecl = Decl(Sym(aSymbol), aSymbol.denot.kind, None)
@@ -391,35 +391,36 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       //////////////////////////////////////////////////////////////////////////
 
       case entity: Entity => {
-        val pairs = entity.declarations collect {
-          case Decl(Sym(symbol), _, _) if symbol.hasAttr("oslice") => {
-            (symbol, symbol.attr[(Entity, TermSymbol)]("oslice"))
-          }
+        val ospSymbols = entity.declarations collect {
+          case Decl(Sym(symbol), _, _) if symbol.attr.oSlice.isSet => symbol
         }
 
-        val instances = for ((_, (entity, instance)) <- pairs) yield {
+        val instances = for (symbol <- ospSymbols) yield {
+          val (entity, instance) = symbol.attr.oSlice.value
           Instance(Sym(instance), entity.ref, Nil, Nil)
         }
 
-        val connects = pairs flatMap {
-          case (symbol, (_, iSymbol)) =>
-            val (pSymbol, vSymbol, rSymbol) = symbol.attr[(Symbol, TermSymbol, TermSymbol)]("fcr")
-            val iRef = ExprRef(Sym(iSymbol))
-            lazy val pConn = Connect(iRef select "d_payload", List(ExprRef(Sym(pSymbol))))
-            val vConn = Connect(iRef select "d_valid", List(ExprRef(Sym(vSymbol))))
-            val rConn = Connect(ExprRef(Sym(rSymbol)), List(iRef select "d_ready"))
-            if (pSymbol != ErrorSymbol) {
-              List(pConn, vConn, rConn)
-            } else {
-              List(vConn, rConn)
-            }
+        val connects = ospSymbols flatMap { symbol =>
+          val iSymbol = symbol.attr.oSlice.value._2
+          val (pSymbol, vSymbol, rSymbol) = symbol.attr.fcr.value
+          val iRef = ExprRef(Sym(iSymbol))
+          lazy val pConn = Connect(iRef select "d_payload", List(ExprRef(Sym(pSymbol))))
+          val vConn = Connect(iRef select "d_valid", List(ExprRef(Sym(vSymbol))))
+          val rConn = Connect(ExprRef(Sym(rSymbol)), List(iRef select "d_ready"))
+          if (pSymbol != ErrorSymbol) {
+            List(pConn, vConn, rConn)
+          } else {
+            List(vConn, rConn)
+          }
         }
 
-        // Remove fcn and oslice attributes, they are no longer needed
+        val newEntities = ospSymbols map { _.attr.oSlice.value._1 }
+
+        // Remove fcn and oSlice attributes, they are no longer needed
         entity.declarations foreach {
           case Decl(Sym(symbol), _, _) => {
-            symbol delAttr "fcn"
-            symbol delAttr "oslice"
+            symbol.attr.fcn.clear
+            symbol.attr.oSlice.clear
           }
           case _ => unreachable
         }
@@ -436,13 +437,12 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
         val newKind = TypeEntity(name, portSymbols, Nil)
         entitySymbol withDenot entitySymbol.denot.copy(kind = newKind)
 
-        val entities = pairs map { _._2._1 }
         val thisEntity = entity.copy(
           instances = instances ::: entity.instances,
           connects = connects ::: entity.connects
         ) withVariant entity.variant
 
-        Thicket(thisEntity :: entities)
+        Thicket(thisEntity :: newEntities)
       }
 
       case _ => tree

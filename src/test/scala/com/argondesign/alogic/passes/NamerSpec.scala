@@ -921,7 +921,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
   }
 
   it should "attach source attributes to symbol denotations - function" in {
-    val entity = "fsm foo { (* bar *) void a() {} }".asTree[Entity]
+    val entity = "fsm foo { (* reclimit = 1 *) void a() {} }".asTree[Entity]
     cc.addGlobalEntity(entity)
     val tree = entity rewrite namer
 
@@ -929,11 +929,11 @@ final class NamerSpec extends FlatSpec with AlogicTest {
       case Sym(symbol) if symbol.denot.name.str == "a" => symbol
     }
     symA.value.denot.kind shouldBe TypeCtrlFunc(Nil, TypeVoid)
-    symA.value.denot.attr shouldBe Map("bar" -> Expr(1))
+    symA.value.attr.recLimit.get.value shouldBe Expr(1)
   }
 
   it should "attach source attributes to symbol denotations - entity" in {
-    val entity = "(* bar *) fsm foo { }".asTree[Entity]
+    val entity = "(* stacklimit = 2 *) fsm foo { }".asTree[Entity]
     cc.addGlobalEntity(entity)
     val tree = entity rewrite namer
 
@@ -941,11 +941,11 @@ final class NamerSpec extends FlatSpec with AlogicTest {
       case Sym(symbol) if symbol.denot.name.str == "foo" => symbol
     }
     symA.value.denot.kind shouldBe TypeEntity("foo", Nil, Nil)
-    symA.value.denot.attr shouldBe Map("bar" -> Expr(1))
+    symA.value.attr.stackLimit.get.value shouldBe Expr(2)
   }
 
   it should "attach source attributes to symbol denotations - nested entity" in {
-    val entity = "network foo { (* baz *) fsm bar {} }".asTree[Entity]
+    val entity = "network foo { (* stacklimit = 3 *) fsm bar {} }".asTree[Entity]
     cc.addGlobalEntity(entity)
     val tree = entity rewrite namer
 
@@ -953,6 +953,6 @@ final class NamerSpec extends FlatSpec with AlogicTest {
       case Sym(symbol) if symbol.denot.name.str == "bar" => symbol
     }
     symA.value.denot.kind shouldBe TypeEntity("bar", Nil, Nil)
-    symA.value.denot.attr shouldBe Map("baz" -> Expr(1))
+    symA.value.attr.stackLimit.get.value shouldBe Expr(3)
   }
 }

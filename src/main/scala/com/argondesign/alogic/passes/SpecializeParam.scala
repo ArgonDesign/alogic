@@ -18,7 +18,6 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.transform.InlineParam
 import com.argondesign.alogic.typer.TypeAssigner
@@ -27,12 +26,10 @@ import com.argondesign.alogic.util.unreachable
 final class SpecializeParam(implicit cc: CompilerContext) extends TreeTransformer {
 
   override def transform(tree: Tree): Tree = tree match {
-    case entity: Entity if entitySymbol.hasAttr("param-bindings") => {
+    case entity: Entity if entitySymbol.attr.paramBindings.isSet => {
       // TODO: This now assumes that Parameters are not specified as expressions
       // of other parameters, but are always constants
-      val bindings = entitySymbol.attr[List[Map[Symbol, Option[Expr]]]]("param-bindings")
-
-      val pairs = for (binding <- bindings) yield {
+      val pairs = for (binding <- entitySymbol.attr.paramBindings.value) yield {
         val actual = binding filter { _._2.isDefined } mapValues { _.get }
         val newEntity = entity rewrite (new InlineParam(actual)) match {
           case entity: Entity => entity
@@ -40,13 +37,12 @@ final class SpecializeParam(implicit cc: CompilerContext) extends TreeTransforme
         }
 
         val Sym(newSymbol) = newEntity.ref
-        newSymbol.delAttr("param-bindings")
+        newSymbol.attr.paramBindings.clear
 
         binding -> newEntity
       }
 
-      val specMap = pairs.toMap
-      entitySymbol.setAttr("spec-map", specMap)
+      entitySymbol.attr.specMap set pairs.toMap
 
       val newEntities = pairs map { _._2 }
 

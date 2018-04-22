@@ -25,18 +25,16 @@ final class SpecializeInstance(implicit cc: CompilerContext) extends TreeTransfo
 
   override def transform(tree: Tree): Tree = tree match {
     case Instance(Sym(iSymbol: TermSymbol), Sym(eSymbol), _, _)
-        if iSymbol.hasAttr("param-bindings") => {
+        if iSymbol.attr.paramBinding.isSet => {
       // Find the specialized entity
       val Sym(sSymbol) = {
-        val sEntity = eSymbol.attr[Map[Map[Symbol, Option[Expr]], Entity]]("spec-map")(
-          iSymbol.attr[Map[Symbol, Option[Expr]]]("param-bindings")
-        )
+        val sEntity = eSymbol.attr.specMap.value(iSymbol.attr.paramBinding.value)
         sEntity.ref
       }
       // Update type of instance
       iSymbol withDenot iSymbol.denot.copy(kind = sSymbol.denot.kind)
       // Remove attribute
-      iSymbol delAttr "param-bindings"
+      iSymbol.attr.paramBinding.clear
       // Rewrite tree
       Instance(Sym(iSymbol), Sym(sSymbol), Nil, Nil) regularize tree.loc
     }

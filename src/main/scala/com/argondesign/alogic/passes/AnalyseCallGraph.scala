@@ -136,7 +136,7 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
   }
 
   private[this] def warnIgnoredStacklimitAttribute(): Unit = {
-    if (entitySymbol hasAttr "stacklimit") {
+    if (entitySymbol.attr.stackLimit.isSet) {
       val loc = entitySymbol.loc
       val name = entitySymbol.name
       cc.warning(loc, s"'stacklimit' attribute ignored on entity '${name}'")
@@ -155,7 +155,7 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
     } yield {
       lazy val loc = symbol.loc
       lazy val name = symbol.denot.name.str
-      val exprOpt = symbol.getAttr[Expr]("reclimit")
+      val exprOpt = symbol.attr.recLimit.get
       if (!isRecD && !isRecI) {
         if (exprOpt.isDefined) {
           cc.warning(loc, s"'reclimit' attribute ignored on function '${name}'")
@@ -178,7 +178,7 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
                 0
               }
               case None => {
-                symbol.setAttr("reclimit", 2)
+                symbol.attr.recLimit set Expr(2)
                 cc.error(loc, s"Cannot compute value of 'reclimit' attribute of function '${name}'")
                 0
               }
@@ -199,7 +199,7 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
   // Computes the value of the 'stacklimit' attribute of the entity
   //////////////////////////////////////////////////////////////////////////////
   private[this] lazy val stackLimit: Option[Int] = {
-    entitySymbol.getAttr[Expr]("stacklimit") flatMap { expr =>
+    entitySymbol.attr.stackLimit.get flatMap { expr =>
       lazy val loc = entitySymbol.loc
       lazy val name = entitySymbol.denot.name.str
       expr.value match {
@@ -328,7 +328,7 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
       if (entity.functions.nonEmpty) {
         val values = recLimits.getOrElse(List.fill(nFunctions)(1))
         for ((symbol, value) <- functionSymbols zip values) {
-          symbol.setAttr("reclimit", value)
+          symbol.attr.recLimit set Expr(value)
         }
       }
 
@@ -347,7 +347,7 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
         val decl = Decl(Sym(symbol), kind, None) regularize entity.loc
 
         val Sym(entitySymbol) = entity.ref
-        entitySymbol.setAttr("return-stack", symbol)
+        entitySymbol.attr.returnStack set symbol
 
         // Add declaration
         val result = entity.copy(

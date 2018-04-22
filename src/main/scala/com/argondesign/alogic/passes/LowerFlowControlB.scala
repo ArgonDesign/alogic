@@ -45,11 +45,11 @@ final class LowerFlowControlB(implicit cc: CompilerContext) extends TreeTransfor
 
   // Given a symbol, return the corresponding payload symbol, if any
   private[this] def payloadSymbol(symbol: TermSymbol): Option[TermSymbol] = {
-    symbol.getAttr[(Symbol, TermSymbol)]("fcv").map {
+    symbol.attr.fcv.get.map {
       case (pSymbol, _) => pSymbol
-    } orElse symbol.getAttr[(Symbol, TermSymbol, TermSymbol)]("fcr").map {
+    } orElse symbol.attr.fcr.get.map {
       case (pSymbol, _, _) => pSymbol
-    } orElse symbol.getAttr[(Symbol, TermSymbol, TermSymbol)]("fca").map {
+    } orElse symbol.attr.fca.get.map {
       case (pSymbol, _, _) => pSymbol
     } flatMap {
       case symbol: TermSymbol => Some(symbol)
@@ -59,20 +59,20 @@ final class LowerFlowControlB(implicit cc: CompilerContext) extends TreeTransfor
 
   // Given a symbol, return the corresponding valid symbol, if any
   private[this] def validSymbol(symbol: TermSymbol): Option[TermSymbol] = {
-    symbol.getAttr[(Symbol, TermSymbol)]("fcv").map {
+    symbol.attr.fcv.get.map {
       case (_, vSymbol) => vSymbol
-    } orElse symbol.getAttr[(Symbol, TermSymbol, TermSymbol)]("fcr").map {
+    } orElse symbol.attr.fcr.get.map {
       case (_, vSymbol, _) => vSymbol
-    } orElse symbol.getAttr[(Symbol, TermSymbol, TermSymbol)]("fca").map {
+    } orElse symbol.attr.fca.get.map {
       case (_, vSymbol, _) => vSymbol
     }
   }
 
   // Given a symbol, return the corresponding ready/accept symbol, if any
   private[this] def backSymbol(symbol: TermSymbol): Option[TermSymbol] = {
-    symbol.getAttr[(Symbol, TermSymbol, TermSymbol)]("fcr").map {
+    symbol.attr.fcr.get.map {
       case (_, _, rSymbol) => rSymbol
-    } orElse symbol.getAttr[(Symbol, TermSymbol, TermSymbol)]("fca").map {
+    } orElse symbol.attr.fca.get.map {
       case (_, _, aSymbol) => aSymbol
     }
   }
@@ -91,7 +91,7 @@ final class LowerFlowControlB(implicit cc: CompilerContext) extends TreeTransfor
     case ExprSelect(ExprRef(Sym(iSymbol)), sel) => {
       val kind = iSymbol.denot.kind.asInstanceOf[TypeEntity]
       val pSymbolOpt = kind.portSymbols collectFirst {
-        case symbol if symbol.name == sel && symbol.hasAttr("expanded-port") => symbol
+        case symbol if symbol.name == sel && symbol.attr.expandedPort.isSet => symbol
       }
       pSymbolOpt flatMap partSymbol map { symbol =>
         assert(kind(symbol.name).isDefined)

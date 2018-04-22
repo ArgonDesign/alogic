@@ -18,7 +18,7 @@ package com.argondesign.alogic.core
 import com.argondesign.alogic.ast.Trees.Expr
 import com.argondesign.alogic.util.unreachable
 
-trait Attributes {
+trait SourceAttributes {
 
   // Can only be set once, and cannot be observed as null
   private[this] var _attr: Map[String, Expr] = _ // scalastyle:ignore var.field

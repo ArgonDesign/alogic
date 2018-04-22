@@ -31,14 +31,14 @@ final class AnalyseParamConst(implicit cc: CompilerContext) extends TreeTransfor
 
   override def enter(tree: Tree): Unit = tree match {
     case Decl(Sym(symbol: TermSymbol), _: TypeConst, Some(expr)) => {
-      symbol.setAttr("default", expr)
-      symbol.setAttr("owner", entitySymbol)
+//      symbol.setAttr("default", expr)
+//      symbol.setAttr("owner", entitySymbol)
     }
 
     case Decl(Sym(symbol: TermSymbol), _: TypeParam, Some(expr)) => {
       symbol synchronized {
-        symbol.setAttr("default", expr)
-        symbol.setAttr("owner", entitySymbol)
+//        symbol.setAttr("default", expr)
+//        symbol.setAttr("owner", entitySymbol)
       }
     }
 
@@ -58,11 +58,11 @@ final class AnalyseParamConst(implicit cc: CompilerContext) extends TreeTransfor
 
         // Append attribute to entity so we can specialize it
         eSymbol synchronized {
-          eSymbol.appendAttr("param-bindings", paramBindings)
+          eSymbol.attr.paramBindings append paramBindings
         }
 
         // Append attribute to instance so we can replace the entity with the specialized version
-        iSymbol.setAttr("param-bindings", paramBindings)
+        iSymbol.attr.paramBinding set paramBindings
       }
     }
 

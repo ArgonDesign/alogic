@@ -34,7 +34,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
 
   // The return stack symbol
   private[this] lazy val rsSymbol: TermSymbol = {
-    entitySymbol.getAttr[TermSymbol]("return-stack") getOrElse {
+    entitySymbol.attr.returnStack.get getOrElse {
       cc.ice(entitySymbol.loc, "Entity requires a return stack, but none was allocated")
     }
   }
@@ -115,17 +115,13 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
         // resolved in an arbitrary order, also add them to the entryStmts map
         val pairs = for (function <- entity.functions) yield {
           val Sym(functionSymbol: TermSymbol) = function.ref
-          val attr = functionSymbol.denot.attr.get("entry") map { value =>
-            Map("entry" -> value)
-          } getOrElse {
-            Map.empty
-          }
-          val stateSymbol = cc.newTermSymbolWithAttr(
+          val stateSymbol = cc.newTermSymbol(
             s"l${functionSymbol.loc.line}_function_${functionSymbol.denot.name.str}",
             functionSymbol.loc,
-            TypeState,
-            attr
+            TypeState
           )
+          stateSymbol.attr.update(functionSymbol.attr)
+          stateSymbol.attr.recLimit.clear
           entryStmts(function.body.head.id) = stateSymbol
           functionSymbol -> stateSymbol
         }
