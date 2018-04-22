@@ -69,9 +69,8 @@ object Passes {
       () => new SplitStructsA,
       () => new SplitStructsB,
       () => new SplitStructsC,
-      () => new RemoveNestedBlocks
-      // Unpack cat assigns
-      // Cleanup
+      () => new SimplifyCat,
+      () => new RemoveNestedBlocks,
       // TypeFlop ???
       // Lower Array ???
       // oreg naming
