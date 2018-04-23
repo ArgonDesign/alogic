@@ -27,26 +27,28 @@ import com.argondesign.alogic.util.FollowedBy
 import com.argondesign.alogic.util.ValueMap
 import com.argondesign.alogic.util.unreachable
 
+import scala.collection.mutable
+
 final class LiftEntities(implicit cc: CompilerContext)
     extends TreeTransformer
     with FollowedBy
     with ValueMap {
 
-  // TODO: only works for single nesting
-  // TODO: Pass down params
+  // TODO: Only works for single nesting
+  // TODO: Rewrite without collectAll
   // TODO: Pass down consts
 
   // ports declared in outer entities
-  val outerIPortSymbols: Stack[Set[TermSymbol]] = Stack(Set())
-  val outerOPortSymbols: Stack[Set[TermSymbol]] = Stack(Set())
+  val outerIPortSymbols: Stack[Set[TermSymbol]] = Stack()
+  val outerOPortSymbols: Stack[Set[TermSymbol]] = Stack()
 
   // new ports that need to be created to connect up to directly accessed outer port
-  val freshIPortSymbols: Stack[Map[TermSymbol, TermSymbol]] = Stack()
-  val freshOPortSymbols: Stack[Map[TermSymbol, TermSymbol]] = Stack()
+  val freshIPortSymbols: Stack[mutable.LinkedHashMap[TermSymbol, TermSymbol]] = Stack()
+  val freshOPortSymbols: Stack[mutable.LinkedHashMap[TermSymbol, TermSymbol]] = Stack()
 
   // new ports that need to be connected in this entity
-  val freshIConnSymbols: Stack[Set[(TermSymbol, TypeSymbol)]] = Stack(Set())
-  val freshOConnSymbols: Stack[Set[(TypeSymbol, TermSymbol)]] = Stack(Set())
+  val freshIConnSymbols: Stack[mutable.LinkedHashSet[(TermSymbol, TypeSymbol)]] = Stack()
+  val freshOConnSymbols: Stack[mutable.LinkedHashSet[(TypeSymbol, TermSymbol)]] = Stack()
 
   override def enter(tree: Tree): Unit = tree match {
     case entity: Entity => {
@@ -58,30 +60,26 @@ final class LiftEntities(implicit cc: CompilerContext)
         val it = entity collectAll {
           case ExprRef(Sym(symbol: TermSymbol)) => symbol
         }
-        it.toSet
+        it.toList
       }
 
-      val newIPortSymbols = {
-        val pairs = for {
-          outerSymbol <- referencedSymbols if outerIPortSymbols.top contains outerSymbol
-        } yield {
-          val innerSymbol = cc.newSymbolLike(outerSymbol)
-          (outerSymbol -> innerSymbol)
-        }
-        pairs.toMap
+      val newIPortSymbols = for {
+        outerSymbol <- referencedSymbols
+        if outerIPortSymbols.toList.exists(_ contains outerSymbol)
+      } yield {
+        val innerSymbol = cc.newSymbolLike(outerSymbol)
+        outerSymbol -> innerSymbol
       }
-      freshIPortSymbols.push(newIPortSymbols)
+      freshIPortSymbols.push(mutable.LinkedHashMap(newIPortSymbols: _*))
 
-      val newOPortSymbols = {
-        val pairs = for {
-          outerSymbol <- referencedSymbols if outerOPortSymbols.top contains outerSymbol
-        } yield {
-          val innerSymbol = cc.newSymbolLike(outerSymbol)
-          (outerSymbol -> innerSymbol)
-        }
-        pairs.toMap
+      val newOPortSymbols = for {
+        outerSymbol <- referencedSymbols
+        if outerOPortSymbols.toList.exists(_ contains outerSymbol)
+      } yield {
+        val innerSymbol = cc.newSymbolLike(outerSymbol)
+        outerSymbol -> innerSymbol
       }
-      freshOPortSymbols.push(newOPortSymbols)
+      freshOPortSymbols.push(mutable.LinkedHashMap(newOPortSymbols: _*))
 
       //////////////////////////////////////////////////////////////////////////
       // Push ports declared by us
@@ -90,19 +88,19 @@ final class LiftEntities(implicit cc: CompilerContext)
       val newISymbols = entity.declarations collect {
         case Decl(Sym(symbol: TermSymbol), _: TypeIn, _) => symbol
       }
-      outerIPortSymbols.push(newISymbols.toSet | outerIPortSymbols.top)
+      outerIPortSymbols.push(newISymbols.toSet)
 
       val newOSymbols = entity.declarations collect {
         case Decl(Sym(symbol: TermSymbol), _: TypeOut, _) => symbol
       }
-      outerOPortSymbols.push(newOSymbols.toSet | outerOPortSymbols.top)
+      outerOPortSymbols.push(newOSymbols.toSet)
 
       //////////////////////////////////////////////////////////////////////////
       // Push placeholder empty map for fresh connections
       //////////////////////////////////////////////////////////////////////////
 
-      freshIConnSymbols.push(Set())
-      freshOConnSymbols.push(Set())
+      freshIConnSymbols.push(mutable.LinkedHashSet())
+      freshOConnSymbols.push(mutable.LinkedHashSet())
     }
 
     case _ =>
@@ -151,47 +149,32 @@ final class LiftEntities(implicit cc: CompilerContext)
         if (freshIConnSymbols.top.isEmpty && freshOConnSymbols.top.isEmpty) {
           entity
         } else {
-          def instanceSymbolsOfTypes(symbols: Set[TypeSymbol]): List[TermSymbol] = {
-            for {
-              instance <- entity.instances
-              if symbols contains instance.module.asInstanceOf[Sym].symbol.asInstanceOf[TypeSymbol]
-            } yield {
-              val Sym(termSymbol: TermSymbol) = instance.ref
-              termSymbol
+          def instanceSymbolsOfType(eSymbol: TypeSymbol): List[TermSymbol] = {
+            entity.instances collect {
+              case Instance(Sym(iSymbol: TermSymbol), Sym(`eSymbol`), _, _) => iSymbol
             }
           }
 
-          freshIConnSymbols.top
-
           val freshIConns = for {
-            (srcTermSym, group) <- freshIConnSymbols.top groupBy { _._1 }
+            (srcPortSymbol, dstEntitySymbol) <- freshIConnSymbols.top
+            dstInstanceSymbol <- instanceSymbolsOfType(dstEntitySymbol)
           } yield {
-            val dstTypeSyms = group map { _._2 }
-            val dstInstances = instanceSymbolsOfTypes(dstTypeSyms)
-            // TODO: Check multi conn is allowed for flow control type
-            val lhs = ExprRef(Sym(srcTermSym))
-            val rhss = for (dstInstSym <- dstInstances) yield {
-              ExprSelect(ExprRef(Sym(dstInstSym)), srcTermSym.denot.name.str)
-            }
-            Connect(lhs, rhss) regularize entity.loc
+            val lhs = ExprRef(Sym(srcPortSymbol))
+            val rhs = ExprSelect(ExprRef(Sym(dstInstanceSymbol)), srcPortSymbol.name)
+            Connect(lhs, List(rhs)) regularize entity.loc
           }
 
           val freshOConns = for {
-            (dstTermSym, group) <- freshOConnSymbols.top groupBy { _._2 }
+            (srcEntitySymbol, dstPortSymbol) <- freshOConnSymbols.top
+            srcInstanceSymbol <- instanceSymbolsOfType(srcEntitySymbol)
           } yield {
-            val srcTypeSyms = group map { _._1 }
-            val srcInstances = instanceSymbolsOfTypes(srcTypeSyms)
-            // TODO: Check there is only 1 such instance properly
-            assert(srcInstances.length == 1)
-            val lhs = ExprSelect(ExprRef(Sym(srcInstances.head)), dstTermSym.denot.name.str)
-            val rhss = List(ExprRef(Sym(dstTermSym)))
-            Connect(lhs, rhss) regularize entity.loc
+            val lhs = ExprSelect(ExprRef(Sym(srcInstanceSymbol)), dstPortSymbol.name)
+            val rhs = ExprRef(Sym(dstPortSymbol))
+            Connect(lhs, List(rhs)) regularize entity.loc
           }
 
-          val newConns = freshIConns ++ freshOConns ++ entity.connects
-
           val newEntity = entity.copy(
-            connects = newConns.toList
+            connects = entity.connects ++ freshIConns ++ freshOConns
           ) withLoc entity.loc withVariant entity.variant
           TypeAssigner(newEntity)
         }
@@ -207,12 +190,12 @@ final class LiftEntities(implicit cc: CompilerContext)
           TypeAssigner(parent)
 
           val Sym(parentSymbol: TypeSymbol) = entity.ref
-          val parentName = parentSymbol.denot.name.str
+          val parentName = parentSymbol.name
 
           // Prefix child names with parent name
           for (child <- children) {
             val Sym(childSymbol: TypeSymbol) = child.ref
-            val childName = childSymbol.denot.name.str
+            val childName = childSymbol.name
             val newName = TypeName(parentName + "__" + childName)
             childSymbol withDenot childSymbol.denot.copy(name = newName)
           }
@@ -225,23 +208,25 @@ final class LiftEntities(implicit cc: CompilerContext)
       freshOConnSymbols.pop()
 
       // Add ports created in this entity to connections required in the outer entity
-      val iConns = for {
-        iPortSymbol <- freshIPortSymbols.top.keys
-      } yield {
-        val Sym(typeSymbol: TypeSymbol) = entity.ref
-        (iPortSymbol, typeSymbol)
+      if (freshIConnSymbols.nonEmpty) {
+        val iConns = for {
+          (iPortSymbol, _) <- freshIPortSymbols.top
+        } yield {
+          val Sym(typeSymbol: TypeSymbol) = entity.ref
+          (iPortSymbol, typeSymbol)
+        }
+        freshIConnSymbols.top ++= iConns
       }
-      val iTop = freshIConnSymbols.top
-      freshIConnSymbols.pop().push(iTop | iConns.toSet)
 
-      val oConns = for {
-        oPortSymbol <- freshOPortSymbols.top.keys
-      } yield {
-        val Sym(typeSymbol: TypeSymbol) = entity.ref
-        (typeSymbol, oPortSymbol)
+      if (freshOConnSymbols.nonEmpty) {
+        val oConns = for {
+          (oPortSymbol, _) <- freshOPortSymbols.top
+        } yield {
+          val Sym(typeSymbol: TypeSymbol) = entity.ref
+          (typeSymbol, oPortSymbol)
+        }
+        freshOConnSymbols.top ++= oConns
       }
-      val oTop = freshOConnSymbols.top
-      freshOConnSymbols.pop().push(oTop | oConns.toSet)
 
       freshIPortSymbols.pop()
       freshOPortSymbols.pop()
@@ -249,26 +234,26 @@ final class LiftEntities(implicit cc: CompilerContext)
       outerOPortSymbols.pop()
     }
 
-    // Rewrite references to outer input ports as references to the newly created inner ports
-    case node @ ExprRef(Sym(symbol: TermSymbol)) if freshIPortSymbols.top contains symbol => {
-      ExprRef(Sym(freshIPortSymbols.top(symbol))) regularize node.loc
-    }
-
-    // Rewrite references to outer output ports as references to the newly created inner ports
-    case node @ ExprRef(Sym(symbol: TermSymbol)) if freshOPortSymbols.top contains symbol => {
-      ExprRef(Sym(freshOPortSymbols.top(symbol))) regularize node.loc
+    // Rewrite references to outer ports as references to the newly created inner ports
+    case ExprRef(Sym(symbol: TermSymbol)) => {
+      (freshIPortSymbols.top.get(symbol) orElse freshOPortSymbols.top.get(symbol)) map {
+        innerSymbol =>
+          ExprRef(Sym(innerSymbol)) regularize tree.loc
+      } getOrElse {
+        tree
+      }
     }
 
     case _ => tree
   }
 
   override def finalCheck(tree: Tree): Unit = {
-    assert(outerIPortSymbols.depth == 1)
-    assert(outerOPortSymbols.depth == 1)
+    assert(outerIPortSymbols.isEmpty)
+    assert(outerOPortSymbols.isEmpty)
     assert(freshIPortSymbols.isEmpty)
     assert(freshOPortSymbols.isEmpty)
-    assert(freshIConnSymbols.depth == 1)
-    assert(freshOConnSymbols.depth == 1)
+    assert(freshIConnSymbols.isEmpty)
+    assert(freshOConnSymbols.isEmpty)
 
     tree visit {
       case node: Entity if node.entities.nonEmpty => {

@@ -36,6 +36,8 @@ class Stack[T] {
   def nonEmpty: Boolean = _stack.nonEmpty
 
   def depth: Int = _stack.length
+
+  def toList: List[T] = _stack
 }
 
 object Stack {
