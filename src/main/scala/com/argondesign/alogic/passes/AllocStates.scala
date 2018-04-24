@@ -95,9 +95,9 @@ final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
       // If there is only 1 state, optimize the design by
       // omitting the state variable altogether
       tree match {
-        // Replace references to states with the state numbers
-        case ExprRef(Sym(symbol: TermSymbol)) if stateMap contains symbol => {
-          ExprInt(false, 1, 0)
+        // Replace references to states with the state numbers (there is only 1 state)
+        case ExprRef(Sym(symbol: TermSymbol)) if symbol.denot.kind == TypeState => {
+          ExprInt(false, 1, 0) withLoc tree.loc
         }
 
         // Convert goto to fence
@@ -166,6 +166,15 @@ final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
     }
 
     result
+  }
+
+  override protected def finalCheck(tree: Tree): Unit = {
+    tree visit {
+      case State(_: ExprInt, _) => ()
+      case node @ State(expr, _) => {
+        cc.ice(node, "Unallocated state remains")
+      }
+    }
   }
 
 }
