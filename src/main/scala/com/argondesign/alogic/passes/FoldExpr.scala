@@ -206,6 +206,37 @@ final class FoldExpr(assignTypes: Boolean)(implicit cc: CompilerContext) extends
       ////////////////////////////////////////////////////////////////////////////
 
       // TODO
+      case ExprBinary(ExprInt(false, 32, lv), op, ExprInt(false, 32, rv)) => {
+        op match {
+          case "+" => ExprInt(false, 32, lv + rv) withLoc tree.loc
+          case "-" => ExprInt(false, 32, lv - rv) withLoc tree.loc
+          case "*" => ExprInt(false, 32, lv * rv) withLoc tree.loc
+          case _   => tree
+        }
+      }
+
+      ////////////////////////////////////////////////////////////////////////////
+      // Fold binary expressions with a mixed operand
+      ////////////////////////////////////////////////////////////////////////////
+
+      // TODO: get rid of these once unsized integers are better checked
+      case ExprBinary(ExprInt(false, 32, lv), op, ExprNum(false, rv)) => {
+        op match {
+          case "+" => ExprInt(false, 32, lv + rv) withLoc tree.loc
+          case "-" => ExprInt(false, 32, lv - rv) withLoc tree.loc
+          case "*" => ExprInt(false, 32, lv * rv) withLoc tree.loc
+          case _   => tree
+        }
+      }
+
+      case ExprBinary(ExprNum(false, lv), op, ExprInt(false, 32, rv)) => {
+        op match {
+          case "+" => ExprInt(false, 32, lv + rv) withLoc tree.loc
+          case "-" => ExprInt(false, 32, lv - rv) withLoc tree.loc
+          case "*" => ExprInt(false, 32, lv * rv) withLoc tree.loc
+          case _   => tree
+        }
+      }
 
       ////////////////////////////////////////////////////////////////////////////
       // Fold ternary expressions
