@@ -25,12 +25,12 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.FlowControlTypes._
-import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Loc
-import com.argondesign.alogic.core.SliceFactory
 import com.argondesign.alogic.core.StorageTypes._
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Loc
+import com.argondesign.alogic.core.SliceFactory
 import com.argondesign.alogic.lib.Stack
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.FollowedBy
@@ -80,7 +80,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeIn(kind, fctn))
       val vSymbol = cc.newTermSymbol(vName, loc, TypeIn(boolType(loc), fctn))
       val newSymbols = if (kind != TypeVoid) (pSymbol, vSymbol) else (ErrorSymbol, vSymbol)
-      // Add new Symbols as attributes
+      // Set attributes
       symbol.attr.fcv set newSymbols
       symbol.attr.expandedPort set true
     }
@@ -93,9 +93,10 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeOut(kind, fctn, st))
       val vSymbol = cc.newTermSymbol(vName, loc, TypeOut(boolType(loc), fctn, st))
       val newSymbols = if (kind != TypeVoid) (pSymbol, vSymbol) else (ErrorSymbol, vSymbol)
-      // Add new Symbols as attributes
+      // Set attributes
       symbol.attr.fcv set newSymbols
       symbol.attr.expandedPort set true
+      vSymbol.attr.clearOnStall set true
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -116,9 +117,10 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       } else {
         (ErrorSymbol, vSymbol, rSymbol)
       }
-      // Add new Symbols as attributes
+      // Set attributes
       symbol.attr.fcr set newSymbols
       symbol.attr.expandedPort set true
+      rSymbol.attr.clearOnStall set true
     }
 
     case Decl(Sym(symbol: TermSymbol), TypeOut(kind, FlowControlTypeReady, st), _) => {
@@ -135,9 +137,10 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       } else {
         (ErrorSymbol, vSymbol, rSymbol)
       }
-      // Add new Symbols as attributes
+      // Set attributes
       symbol.attr.fcr set newSymbols
       symbol.attr.expandedPort set true
+      vSymbol.attr.clearOnStall set true
       // If output slices are required, construct them
       if (st != StorageTypeWire) {
         val StorageTypeSlices(slices) = st
@@ -172,7 +175,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       } else {
         (ErrorSymbol, vSymbol, aSymbol)
       }
-      // Add new Symbols as attributes
+      // Set attributes
       symbol.attr.fca set newSymbols
       symbol.attr.expandedPort set true
     }
@@ -192,9 +195,10 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       } else {
         (ErrorSymbol, vSymbol, aSymbol)
       }
-      // Add new Symbols as attributes
+      // Set attributes
       symbol.attr.fca set newSymbols
       symbol.attr.expandedPort set true
+      vSymbol.attr.clearOnStall set true
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -212,6 +216,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
 
   private[this] def stall(expr: Expr) = StmtIf(expr, StmtStall(), None)
   private[this] def assignTrue(expr: Expr) = StmtAssign(expr, ExprInt(false, 1, 1))
+  private[this] def assignFalse(expr: Expr) = StmtAssign(expr, ExprInt(false, 1, 0))
 
   override def transform(tree: Tree): Tree = {
     val result: Tree = tree match {
@@ -425,6 +430,27 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
           case _ => unreachable
         }
 
+        // Set default values of output flow control signals in the fence block
+        val fenceStmts = entity.declarations flatMap {
+          case Decl(Sym(symbol), _: TypeIn, _) => {
+            symbol.attr.fcr.get.map {
+              case (_, _, rSymbol) => assignFalse(ExprRef(Sym(rSymbol)))
+            } orElse symbol.attr.fca.get.map {
+              case (_, _, aSymbol) => assignFalse(ExprRef(Sym(aSymbol)))
+            }
+          }
+          case Decl(Sym(symbol), _: TypeOut, _) => {
+            symbol.attr.fcv.get.map {
+              case (_, vSymbol) => assignFalse(ExprRef(Sym(vSymbol)))
+            } orElse symbol.attr.fcr.get.map {
+              case (_, vSymbol, _) => assignFalse(ExprRef(Sym(vSymbol)))
+            } orElse symbol.attr.fca.get.map {
+              case (_, vSymbol, _) => assignFalse(ExprRef(Sym(vSymbol)))
+            }
+          }
+          case _ => None
+        }
+
         // Update type of entity to include the new ports. We also leave the old
         // un-converted port for now, as Connect instances have not been updated
         // yet.
@@ -439,7 +465,8 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
 
         val thisEntity = entity.copy(
           instances = instances ::: entity.instances,
-          connects = connects ::: entity.connects
+          connects = connects ::: entity.connects,
+          fenceStmts = fenceStmts ::: entity.fenceStmts
         ) withVariant entity.variant
 
         Thicket(thisEntity :: newEntities)

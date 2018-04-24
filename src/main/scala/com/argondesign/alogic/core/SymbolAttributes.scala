@@ -57,6 +57,9 @@ class SymbolAttributes {
   // Is this a port that has been expanded to multiple signals?
   val expandedPort = new Attribute[Boolean]()
 
+  // If the state system stalls, set this signal to all zeros
+  val clearOnStall = new Attribute[Boolean]()
+
   // The output register symbol if this is a registered output port
   val oReg = new Attribute[TermSymbol]()
 
