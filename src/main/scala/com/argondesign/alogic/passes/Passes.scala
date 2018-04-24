@@ -70,7 +70,7 @@ object Passes {
       () => new SplitStructsB,
       () => new SplitStructsC,
       () => new SimplifyCat,
-      () => new RemoveNestedBlocks,
+      () => new RemoveRedundantBlocks,
       () => new RenameClashingTerms
       // TODO: final check pass to make sure everything is well-formed
       // TypeFlop ???
