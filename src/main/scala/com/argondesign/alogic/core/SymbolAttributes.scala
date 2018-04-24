@@ -63,6 +63,12 @@ class SymbolAttributes {
   // The output register symbol if this is a registered output port
   val oReg = new Attribute[TermSymbol]()
 
+  // If this is flop _q symbol, the corresponding _d symbol
+  val flop = new Attribute[TermSymbol]()
+
+  // If this is an array _q symbol, the corresponding we, waddr and wdata symbols
+  val arr = new Attribute[(TermSymbol, TermSymbol, TermSymbol)]()
+
   // The expanded field symbols of a struct symbol
   val fieldSymbols = new Attribute[List[TermSymbol]]()
 
@@ -82,7 +88,10 @@ class SymbolAttributes {
     fca,
     oSlice,
     expandedPort,
+    clearOnStall,
     oReg,
+    flop,
+    arr,
     fieldSymbols
   )
 
@@ -101,8 +110,11 @@ class SymbolAttributes {
     "fcr",
     "fca",
     "oSlice",
-    "expandedPor",
+    "expandedPort",
+    "clearOnStall",
     "oReg",
+    "flop",
+    "arr",
     "fieldSymbols"
   )
 

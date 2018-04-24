@@ -60,6 +60,7 @@ object Passes {
       () => new ConvertControl,
       () => new AllocStates,
       () => new Replace1Stacks,
+      // Replace1Arrays
       () => new DefaultStorage,
       () => new LowerFlowControlA,
       () => new LowerFlowControlB,
@@ -70,11 +71,14 @@ object Passes {
       () => new SplitStructsB,
       () => new SplitStructsC,
       () => new SimplifyCat,
+      // StripTermPrefixes
+      () => new LowerFlops,
+      () => new LowerArrays,
       () => new RemoveRedundantBlocks,
       () => new RenameClashingTerms
+      // TODO: RenameKeywords
       // TODO: final check pass to make sure everything is well-formed
-      // TypeFlop ???
-      // Lower Array ???
+      // LowerGo...
       // oreg naming
       // output
     )
