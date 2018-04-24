@@ -254,17 +254,10 @@ object SliceFactory {
 
     val state = State(ExprInt(false, 1, 0), body)
 
-    val ports = {
-      val rest = List(
-        uVSymbol,
-        uRSymbol,
-        dVSymbol,
-        dRSymbol,
-        eSymbol,
-        fSymbol
-      )
-
-      if (kind != TypeVoid) uPSymbol :: dPSymbol :: rest else rest
+    val ports = if (kind != TypeVoid) {
+      List(uPSymbol, uVSymbol, uRSymbol, dPSymbol, dVSymbol, dRSymbol, eSymbol, fSymbol)
+    } else {
+      List(uVSymbol, uRSymbol, dVSymbol, dRSymbol, eSymbol, fSymbol)
     }
 
     val symbols = if (kind != TypeVoid) pSymbol :: vSymbol :: ports else vSymbol :: ports
