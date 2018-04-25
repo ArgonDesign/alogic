@@ -129,7 +129,7 @@ final class LowerFlowControlB(implicit cc: CompilerContext) extends TreeTransfor
           Connect(lhs, vRhs.toList)
         }
         val bConn = bRhs map { rhs =>
-          Connect(bLhs.get, List(rhs))
+          Connect(rhs, bLhs.toList)
         }
 
         val newConns = {
