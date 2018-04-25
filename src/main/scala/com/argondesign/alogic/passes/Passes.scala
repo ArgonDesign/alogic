@@ -70,6 +70,7 @@ object Passes {
       () => new SplitStructsA,
       () => new SplitStructsB,
       () => new SplitStructsC,
+      () => new OutputDefault,
       () => new SimplifyCat,
       // StripTermPrefixes
       () => new LowerFlops,

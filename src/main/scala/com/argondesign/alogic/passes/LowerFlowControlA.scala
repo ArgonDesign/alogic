@@ -216,7 +216,6 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
 
   private[this] def stall(expr: Expr) = StmtIf(expr, StmtStall(), None)
   private[this] def assignTrue(expr: Expr) = StmtAssign(expr, ExprInt(false, 1, 1))
-  private[this] def assignFalse(expr: Expr) = StmtAssign(expr, ExprInt(false, 1, 0))
 
   override def transform(tree: Tree): Tree = {
     val result: Tree = tree match {
@@ -430,39 +429,8 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
           case _ => unreachable
         }
 
-        val fenceStmts = if (entity.variant == "verbatim") {
-          Nil
-        } else {
-          // Set default values of output flow control signals in the fence
-          // block, unless the port is driven through a connect
-
-          lazy val usedInConnect = entity.connects flatMap {
-            case Connect(ExprRef(Sym(l)), List(ExprRef(Sym(r)))) => List(l, r)
-            case Connect(_, List(ExprRef(Sym(r))))               => List(r)
-            case Connect(ExprRef(Sym(l)), _)                     => List(l)
-            case _                                               => Nil
-          }
-
-          entity.declarations flatMap {
-            case Decl(Sym(symbol), _: TypeIn, _) if !(usedInConnect contains symbol) => {
-              symbol.attr.fcr.get.map {
-                case (_, _, rSymbol) => assignFalse(ExprRef(Sym(rSymbol)))
-              } orElse symbol.attr.fca.get.map {
-                case (_, _, aSymbol) => assignFalse(ExprRef(Sym(aSymbol)))
-              }
-            }
-            case Decl(Sym(symbol), _: TypeOut, _) if !(usedInConnect contains symbol) => {
-              symbol.attr.fcv.get.map {
-                case (_, vSymbol) => assignFalse(ExprRef(Sym(vSymbol)))
-              } orElse symbol.attr.fcr.get.map {
-                case (_, vSymbol, _) => assignFalse(ExprRef(Sym(vSymbol)))
-              } orElse symbol.attr.fca.get.map {
-                case (_, vSymbol, _) => assignFalse(ExprRef(Sym(vSymbol)))
-              }
-            }
-            case _ => None
-          }
-        }
+        // Note: Output port defaults, including for flow control signals will
+        // be set in the OutputDefault pass
 
         // Update type of entity to include the new ports. We also leave the old
         // un-converted port for now, as Connect instances have not been updated
@@ -479,7 +447,6 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
         val thisEntity = entity.copy(
           instances = instances ::: entity.instances,
           connects = connects ::: entity.connects,
-          fenceStmts = fenceStmts ::: entity.fenceStmts
         ) withVariant entity.variant
 
         Thicket(thisEntity :: newEntities)
