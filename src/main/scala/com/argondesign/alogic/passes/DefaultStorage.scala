@@ -71,12 +71,12 @@ final class DefaultStorage(implicit cc: CompilerContext) extends TreeTransformer
           case _                                             => false
         }
 
-        // Reqrite them
+        // Rewrite them
         val newOuts = for {
           decl @ Decl(Sym(symbol: TermSymbol), kind: TypeOut, _) <- outs
         } yield {
           // Compute the appropriate default storage type
-          val newSt = if (connectedSet contains symbol) {
+          val newSt = if ((connectedSet contains symbol) || entity.variant == "verbatim") {
             StorageTypeWire
           } else {
             kind.fct match {
