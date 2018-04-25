@@ -140,7 +140,6 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       // Set attributes
       symbol.attr.fcr set newSymbols
       symbol.attr.expandedPort set true
-      vSymbol.attr.clearOnStall set true
       // If output slices are required, construct them
       if (st != StorageTypeWire) {
         val StorageTypeSlices(slices) = st
