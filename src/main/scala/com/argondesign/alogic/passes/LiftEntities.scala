@@ -39,16 +39,16 @@ final class LiftEntities(implicit cc: CompilerContext)
   // TODO: Pass down consts
 
   // ports declared in outer entities
-  val outerIPortSymbols: Stack[Set[TermSymbol]] = Stack()
-  val outerOPortSymbols: Stack[Set[TermSymbol]] = Stack()
+  private val outerIPortSymbols: Stack[Set[TermSymbol]] = Stack()
+  private val outerOPortSymbols: Stack[Set[TermSymbol]] = Stack()
 
   // new ports that need to be created to connect up to directly accessed outer port
-  val freshIPortSymbols: Stack[mutable.LinkedHashMap[TermSymbol, TermSymbol]] = Stack()
-  val freshOPortSymbols: Stack[mutable.LinkedHashMap[TermSymbol, TermSymbol]] = Stack()
+  private val freshIPortSymbols: Stack[mutable.LinkedHashMap[TermSymbol, TermSymbol]] = Stack()
+  private val freshOPortSymbols: Stack[mutable.LinkedHashMap[TermSymbol, TermSymbol]] = Stack()
 
   // new ports that need to be connected in this entity
-  val freshIConnSymbols: Stack[mutable.LinkedHashSet[(TermSymbol, TypeSymbol)]] = Stack()
-  val freshOConnSymbols: Stack[mutable.LinkedHashSet[(TypeSymbol, TermSymbol)]] = Stack()
+  private val freshIConnSymbols: Stack[mutable.LinkedHashSet[(TermSymbol, TypeSymbol)]] = Stack()
+  private val freshOConnSymbols: Stack[mutable.LinkedHashSet[(TypeSymbol, TermSymbol)]] = Stack()
 
   override def enter(tree: Tree): Unit = tree match {
     case entity: Entity => {
@@ -56,28 +56,36 @@ final class LiftEntities(implicit cc: CompilerContext)
       // Collect outer ports we are referencing
       //////////////////////////////////////////////////////////////////////////
 
-      val referencedSymbols = {
+      lazy val referencedSymbols = {
         val it = entity collectAll {
           case ExprRef(Sym(symbol: TermSymbol)) => symbol
         }
         it.toList
       }
 
-      val newIPortSymbols = for {
-        outerSymbol <- referencedSymbols
-        if outerIPortSymbols.toList.exists(_ contains outerSymbol)
-      } yield {
-        val innerSymbol = cc.newSymbolLike(outerSymbol)
-        outerSymbol -> innerSymbol
+      val newIPortSymbols = if (outerIPortSymbols.isEmpty) {
+        Nil
+      } else {
+        for {
+          outerSymbol <- referencedSymbols
+          if outerIPortSymbols.toList.exists(_ contains outerSymbol)
+        } yield {
+          val innerSymbol = cc.newSymbolLike(outerSymbol)
+          outerSymbol -> innerSymbol
+        }
       }
       freshIPortSymbols.push(mutable.LinkedHashMap(newIPortSymbols: _*))
 
-      val newOPortSymbols = for {
-        outerSymbol <- referencedSymbols
-        if outerOPortSymbols.toList.exists(_ contains outerSymbol)
-      } yield {
-        val innerSymbol = cc.newSymbolLike(outerSymbol)
-        outerSymbol -> innerSymbol
+      val newOPortSymbols = if (outerOPortSymbols.isEmpty) {
+        Nil
+      } else {
+        for {
+          outerSymbol <- referencedSymbols
+          if outerOPortSymbols.toList.exists(_ contains outerSymbol)
+        } yield {
+          val innerSymbol = cc.newSymbolLike(outerSymbol)
+          outerSymbol -> innerSymbol
+        }
       }
       freshOPortSymbols.push(mutable.LinkedHashMap(newOPortSymbols: _*))
 
@@ -98,7 +106,6 @@ final class LiftEntities(implicit cc: CompilerContext)
       //////////////////////////////////////////////////////////////////////////
       // Push placeholder empty map for fresh connections
       //////////////////////////////////////////////////////////////////////////
-
       freshIConnSymbols.push(mutable.LinkedHashSet())
       freshOConnSymbols.push(mutable.LinkedHashSet())
     }
@@ -209,23 +216,17 @@ final class LiftEntities(implicit cc: CompilerContext)
 
       // Add ports created in this entity to connections required in the outer entity
       if (freshIConnSymbols.nonEmpty) {
-        val iConns = for {
-          (iPortSymbol, _) <- freshIPortSymbols.top
-        } yield {
+        for ((iPortSymbol, _) <- freshIPortSymbols.top) {
           val Sym(typeSymbol: TypeSymbol) = entity.ref
-          (iPortSymbol, typeSymbol)
+          freshIConnSymbols.top.add((iPortSymbol, typeSymbol))
         }
-        freshIConnSymbols.top ++= iConns
       }
 
       if (freshOConnSymbols.nonEmpty) {
-        val oConns = for {
-          (oPortSymbol, _) <- freshOPortSymbols.top
-        } yield {
+        for ((oPortSymbol, _) <- freshOPortSymbols.top) {
           val Sym(typeSymbol: TypeSymbol) = entity.ref
-          (typeSymbol, oPortSymbol)
+          freshOConnSymbols.top.add((typeSymbol, oPortSymbol))
         }
-        freshOConnSymbols.top ++= oConns
       }
 
       freshIPortSymbols.pop()
