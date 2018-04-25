@@ -61,6 +61,12 @@ final class LowerArrays(implicit cc: CompilerContext) extends TreeTransformer wi
     case _ =>
   }
 
+  private def makeExprInt(symbol: TermSymbol, value: Int): ExprInt = {
+    val kind = symbol.denot.kind
+    val width = kind.width.value.get.toInt
+    ExprInt(kind.isSigned, width, value)
+  }
+
   override def transform(tree: Tree): Tree = tree match {
 
     //////////////////////////////////////////////////////////////////////////
@@ -72,7 +78,7 @@ final class LowerArrays(implicit cc: CompilerContext) extends TreeTransformer wi
       symbol.attr.arr.get map {
         case (weSymbol, waSymbol, wdSymbol) => {
           val stmts = List(
-            StmtAssign(ExprRef(Sym(weSymbol)), ExprInt(false, 1, 1)),
+            StmtAssign(ExprRef(Sym(weSymbol)), makeExprInt(weSymbol, 1)),
             StmtAssign(ExprRef(Sym(waSymbol)), idx),
             StmtAssign(ExprRef(Sym(wdSymbol)), rhs)
           )
@@ -104,14 +110,20 @@ final class LowerArrays(implicit cc: CompilerContext) extends TreeTransformer wi
     }
 
     //////////////////////////////////////////////////////////////////////////
-    // Add _we = 1'b0 fence statements
+    // Add _we/_waddr/_wdata = 'b0 fence statements
     //////////////////////////////////////////////////////////////////////////
 
     case entity: Entity => {
       val fenceStmts = entity.declarations collect {
         case decl @ Decl(Sym(symbol), _, _) if symbol.attr.arr.isSet => {
-          val (weSymbol, _, _) = symbol.attr.arr.value
-          StmtAssign(ExprRef(Sym(weSymbol)), ExprInt(false, 1, 0)) regularize decl.loc
+          val (weSymbol, waSymbol, wdSymbol) = symbol.attr.arr.value
+          StmtBlock(
+            List(
+              StmtAssign(ExprRef(Sym(weSymbol)), makeExprInt(weSymbol, 0)),
+              StmtAssign(ExprRef(Sym(waSymbol)), makeExprInt(waSymbol, 0)),
+              StmtAssign(ExprRef(Sym(wdSymbol)), makeExprInt(wdSymbol, 0))
+            )
+          ) regularize decl.loc
         }
       }
 
