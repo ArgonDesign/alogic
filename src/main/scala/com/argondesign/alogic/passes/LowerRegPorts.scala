@@ -60,21 +60,21 @@ final class LowerRegPorts(implicit cc: CompilerContext) extends TreeTransformer 
     }
 
     case entity: Entity => {
-      // Add assignments to outputs in the beginning of the fence block
-      val assignments = for {
+      // Add connects to outputs
+      val connects = for {
         Decl(Sym(oSymbol), _, _) <- entity.declarations
         if oSymbol.attr.oReg.isSet
       } yield {
         val rSymbol = oSymbol.attr.oReg.value
         oSymbol.attr.oReg.clear()
-        StmtAssign(ExprRef(Sym(oSymbol)), ExprRef(Sym(rSymbol))) regularize oSymbol.loc
+        Connect(ExprRef(Sym(rSymbol)), List(ExprRef(Sym(oSymbol)))) regularize oSymbol.loc
       }
 
-      if (assignments.isEmpty) {
+      if (connects.isEmpty) {
         tree
       } else {
         val result = entity.copy(
-          fenceStmts = assignments ::: entity.fenceStmts
+          connects = connects ::: entity.connects
         ) withVariant entity.variant
         TypeAssigner(result withLoc tree.loc)
       }
