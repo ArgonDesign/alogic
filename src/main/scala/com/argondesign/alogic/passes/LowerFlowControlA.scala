@@ -430,16 +430,24 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
           case _ => unreachable
         }
 
-        // Set default values of output flow control signals in the fence block
+        lazy val usedInConnect = entity.connects flatMap {
+          case Connect(ExprRef(Sym(l)), List(ExprRef(Sym(r)))) => List(l, r)
+          case Connect(_, List(ExprRef(Sym(r))))               => List(r)
+          case Connect(ExprRef(Sym(l)), _)                     => List(l)
+          case _                                               => Nil
+        }
+
+        // Set default values of output flow control signals in the fence block,
+        // unless the port is driven through a connect
         val fenceStmts = entity.declarations flatMap {
-          case Decl(Sym(symbol), _: TypeIn, _) => {
+          case Decl(Sym(symbol), _: TypeIn, _) if !(usedInConnect contains symbol) => {
             symbol.attr.fcr.get.map {
               case (_, _, rSymbol) => assignFalse(ExprRef(Sym(rSymbol)))
             } orElse symbol.attr.fca.get.map {
               case (_, _, aSymbol) => assignFalse(ExprRef(Sym(aSymbol)))
             }
           }
-          case Decl(Sym(symbol), _: TypeOut, _) => {
+          case Decl(Sym(symbol), _: TypeOut, _) if !(usedInConnect contains symbol) => {
             symbol.attr.fcv.get.map {
               case (_, vSymbol) => assignFalse(ExprRef(Sym(vSymbol)))
             } orElse symbol.attr.fcr.get.map {
