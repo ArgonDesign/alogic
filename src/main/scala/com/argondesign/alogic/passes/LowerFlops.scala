@@ -29,6 +29,8 @@ final class LowerFlops(implicit cc: CompilerContext) extends TreeTransformer wit
 
   // TODO: Generate clock enables
 
+  private var inConnect = false
+
   override def enter(tree: Tree): Unit = tree match {
 
     case Decl(Sym(symbol: TermSymbol), kind: TypeInt, _) => {
@@ -42,6 +44,8 @@ final class LowerFlops(implicit cc: CompilerContext) extends TreeTransformer wit
       symbol.attr.flop set dSymbol
     }
 
+    case _: Connect => inConnect = true
+
     case _ =>
   }
 
@@ -51,8 +55,9 @@ final class LowerFlops(implicit cc: CompilerContext) extends TreeTransformer wit
     // Rewrite references
     //////////////////////////////////////////////////////////////////////////
 
-    case ExprRef(Sym(qSymbol)) => {
-      // Rewrite references to flops as references to the _d
+    case ExprRef(Sym(qSymbol)) if !inConnect => {
+      // Rewrite references to flops as references to the _d,
+      // but not in connect expressions, connects always use the _q
       qSymbol.attr.flop.get map { dSymbol =>
         ExprRef(Sym(dSymbol)) regularize tree.loc
       } getOrElse {
@@ -74,6 +79,16 @@ final class LowerFlops(implicit cc: CompilerContext) extends TreeTransformer wit
       } getOrElse {
         tree
       }
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    // Exit connect
+    //////////////////////////////////////////////////////////////////////////
+
+    case _: Connect => {
+      tree
+    } followedBy {
+      inConnect = false
     }
 
     //////////////////////////////////////////////////////////////////////////
