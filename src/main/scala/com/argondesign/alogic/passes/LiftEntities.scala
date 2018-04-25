@@ -19,6 +19,7 @@ import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Names.TypeName
+import com.argondesign.alogic.core.StorageTypes.StorageTypeWire
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Stack
@@ -49,6 +50,10 @@ final class LiftEntities(implicit cc: CompilerContext)
   // new ports that need to be connected in this entity
   private val freshIConnSymbols: Stack[mutable.LinkedHashSet[(TermSymbol, TypeSymbol)]] = Stack()
   private val freshOConnSymbols: Stack[mutable.LinkedHashSet[(TypeSymbol, TermSymbol)]] = Stack()
+
+  // Output ports with storage that have been pushed into nested entities need
+  // to loose their storage and turn into wire ports, we collect these in a set
+  private val stripStorageSymbols = mutable.Set[TermSymbol]()
 
   override def enter(tree: Tree): Unit = tree match {
     case entity: Entity => {
@@ -88,6 +93,14 @@ final class LiftEntities(implicit cc: CompilerContext)
         }
       }
       freshOPortSymbols.push(mutable.LinkedHashMap(newOPortSymbols: _*))
+
+      //////////////////////////////////////////////////////////////////////////
+      // Mark output ports to strip storage from
+      //////////////////////////////////////////////////////////////////////////
+
+      for ((outerSymbol, _) <- newOPortSymbols) {
+        stripStorageSymbols add outerSymbol
+      }
 
       //////////////////////////////////////////////////////////////////////////
       // Push ports declared by us
@@ -144,10 +157,36 @@ final class LiftEntities(implicit cc: CompilerContext)
           }
           symbol withDenot symbol.denot.copy(kind = newKind)
 
-          val newEntity = entity.copy(
-            declarations = newDecls.toList
-          ) withLoc entity.loc withVariant entity.variant
-          TypeAssigner(newEntity)
+          TypeAssigner {
+            entity.copy(
+              declarations = newDecls.toList
+            ) withLoc entity.loc withVariant entity.variant
+          }
+        }
+      } valueMap { entity =>
+        ////////////////////////////////////////////////////////////////////////
+        // Strip storage from output ports where needed
+        ////////////////////////////////////////////////////////////////////////
+        if (stripStorageSymbols.isEmpty) {
+          entity
+        } else {
+          val newDecls = entity.declarations map {
+            case decl @ Decl(Sym(symbol: TermSymbol), TypeOut(kind, fc, st), _)
+                if (st != StorageTypeWire) && (stripStorageSymbols contains symbol) => {
+              val newKind = TypeOut(kind, fc, StorageTypeWire)
+              symbol withDenot symbol.denot.copy(kind = newKind)
+              TypeAssigner {
+                decl.copy(kind = newKind) withLoc tree.loc
+              }
+            }
+            case decl => decl
+          }
+
+          TypeAssigner {
+            entity.copy(
+              declarations = newDecls.toList
+            ) withLoc entity.loc withVariant entity.variant
+          }
         }
       } valueMap { entity =>
         ////////////////////////////////////////////////////////////////////////
@@ -180,10 +219,11 @@ final class LiftEntities(implicit cc: CompilerContext)
             Connect(lhs, List(rhs)) regularize entity.loc
           }
 
-          val newEntity = entity.copy(
-            connects = entity.connects ++ freshIConns ++ freshOConns
-          ) withLoc entity.loc withVariant entity.variant
-          TypeAssigner(newEntity)
+          TypeAssigner {
+            entity.copy(
+              connects = entity.connects ++ freshIConns ++ freshOConns
+            ) withLoc entity.loc withVariant entity.variant
+          }
         }
       } valueMap { entity =>
         ////////////////////////////////////////////////////////////////////////
