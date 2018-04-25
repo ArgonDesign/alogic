@@ -23,6 +23,56 @@ import com.argondesign.alogic.typer.TypeAssigner
 
 object StackFactory {
 
+  /*
+
+  // Hardware stack interface
+
+  stack<i8>(10) s;
+
+  s.push(addr); // i8 => void
+  s.pop();      // void => i8
+  s.set(addr);  // i8 => void // Same as 's = addr' if s is an automatic variable
+  s.top;        // i8 // Same as 's' if s is an automatic variable
+  s.full;       // bool
+  s.empty;      // bool
+
+  restrictions:
+   - Can only do a single push, pop, or set in the same cycle, compiler should err otherwise
+   - .push() when full is error
+   - .pop() when empty is error
+   - .top when empty is error
+
+  // Function call/return handling ('rs' is for 'return-stack':
+
+  foo();    // maps to rs.push(return-state); goto foo;
+  goto foo; // nothing to do here, just goto foo;
+  return;   // maps to goto rs.pop();
+
+  // Function argument handling
+
+  At call site: arg.push(value)
+  At exit: arg.pop()
+
+  // Function local variable handling
+
+  At definition of variable: local.push(initializer)
+  At death/exit from function: local.pop()
+
+  // Hardware interface:
+
+  _d
+  _q
+
+  _push
+  _pop
+  _full
+  _empty
+
+  at beginning:
+  _d = _q
+
+   */
+
   // Build an entity similar to the following Alogic FSM to be used as a
   // 1 entry stack implementation.
   //
@@ -40,13 +90,14 @@ object StackFactory {
   //   TYPE storage;
   //
   //   void main() {
-  //     empty = ~valid;
-  //     full = valid;
-  //     q = storage;
   //     storage = d;
   //     valid = ~pop & (valid | push);
   //     fence;
   //   }
+  //
+  //  ~valid -> empty;
+  //  valid -> full;
+  //  storage -> q;
   // }
   private def buildStack1(
       name: String,
@@ -85,9 +136,6 @@ object StackFactory {
     val stoRef = ExprRef(Sym(stoSymbol))
 
     val body = List(
-      StmtAssign(empRef, ~valRef),
-      StmtAssign(fulRef, valRef),
-      StmtAssign(qRef, stoRef),
       StmtAssign(stoRef, dRef),
       StmtAssign(valRef, ~popRef & (valRef | pusRef)),
       StmtFence()
@@ -110,8 +158,14 @@ object StackFactory {
       Decl(Sym(symbol), symbol.denot.kind, None)
     }
 
+    val connects = List(
+      Connect(~valRef, List(empRef)),
+      Connect(valRef, List(fulRef)),
+      Connect(stoRef, List(qRef))
+    )
+
     val entitySymbol = cc.newTypeSymbol(name, loc, TypeEntity(name, ports, Nil))
-    val entity = Entity(Sym(entitySymbol), decls, Nil, Nil, Nil, List(state), Nil, Nil, Map())
+    val entity = Entity(Sym(entitySymbol), decls, Nil, connects, Nil, List(state), Nil, Nil, Map())
     entity withVariant "fsm" regularize loc
   }
 
@@ -137,10 +191,6 @@ object StackFactory {
   //   uint($clog2(DEPTH)) ptr = 0; // Ptr to current entry
   //
   //   state main {
-  //     empty = oreg_empty;
-  //     full = oreg_full;
-  //     q = storage[ptr];
-  //
   //     if (pop) {
   //       oreg_empty = ptr == 0;
   //       oreg_full = false;
@@ -151,9 +201,12 @@ object StackFactory {
   //       oreg_empty = oreg_empty & ~push;
   //       oreg_full = ptr == DEPTH - 1;
   //     }
-  //
   //     fence;
   //   }
+  //
+  //   oreg_empty -> empty;
+  //   oreg_full -> full;
+  //   storage[ptr] -> q;
   // }
   private def buildStackN(
       name: String,
@@ -211,9 +264,6 @@ object StackFactory {
     }
 
     val body = List(
-      StmtAssign(empRef, oreRef),
-      StmtAssign(fulRef, orfRef),
-      StmtAssign(qRef, ExprIndex(stoRef, ptrRef)),
       StmtIf(
         popRef,
         StmtBlock(
@@ -253,8 +303,14 @@ object StackFactory {
       Decl(Sym(symbol), symbol.denot.kind, init)
     }
 
+    val connects = List(
+      Connect(oreRef, List(empRef)),
+      Connect(orfRef, List(fulRef)),
+      Connect(ExprIndex(stoRef, ptrRef), List(qRef))
+    )
+
     val entitySymbol = cc.newTypeSymbol(name, loc, TypeEntity(name, ports, Nil))
-    val entity = Entity(Sym(entitySymbol), decls, Nil, Nil, Nil, List(state), Nil, Nil, Map())
+    val entity = Entity(Sym(entitySymbol), decls, Nil, connects, Nil, List(state), Nil, Nil, Map())
     entity withVariant "fsm" regularize loc
   }
 
