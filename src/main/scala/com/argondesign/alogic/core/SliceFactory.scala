@@ -84,8 +84,116 @@ object SliceFactory {
     }
   }
 
+  // slice connects for void payload:
+  private def voidConnects(
+      ss: StorageSlice,
+      uVRef: ExprRef,
+      uRRef: ExprRef,
+      dVRef: ExprRef,
+      dRRef: ExprRef,
+      eRef: ExprRef,
+      fRef: ExprRef,
+      vRef: ExprRef
+  ): List[Connect] = ss match {
+    case StorageSliceBubble => {
+      // valid -> d_valid;
+      // ~valid -> u_ready;
+      // ~valid -> empty;
+      // valid -> full;
+      List(
+        Connect(vRef, List(dVRef)),
+        Connect(~vRef, List(uRRef)),
+        Connect(~vRef, List(eRef)),
+        Connect(vRef, List(fRef))
+      )
+    }
+    case StorageSliceFwd => {
+      // valid -> d_valid;
+      // ~valid | d_ready -> u_ready;
+      // ~valid -> empty;
+      // valid -> full;
+      List(
+        Connect(vRef, List(dVRef)),
+        Connect(~vRef | dRRef, List(uRRef)),
+        Connect(~vRef, List(eRef)),
+        Connect(vRef, List(fRef))
+      )
+    }
+    case StorageSliceBwd => {
+      // valid | u_valid -> d_valid;
+      // ~valid -> u_ready;
+      // ~valid -> empty;
+      // valid -> full;
+      List(
+        Connect(vRef | uVRef, List(dVRef)),
+        Connect(~vRef, List(uRRef)),
+        Connect(~vRef, List(eRef)),
+        Connect(vRef, List(fRef))
+      )
+    }
+  }
+
   // slice logic for non-void payload:
   private def nonVoidBody(
+      ss: StorageSlice,
+      uPRef: ExprRef,
+      uVRef: ExprRef,
+      dRRef: ExprRef,
+      pRef: ExprRef,
+      vRef: ExprRef
+  ): List[Stmt] = ss match {
+    case StorageSliceBubble => {
+      // if (u_valid & ~valid) {
+      //   payload = u_payload;
+      // }
+      // valid = ~valid & u_valid | valid & ~d_ready;
+      // fence;
+      List(
+        StmtIf(
+          uVRef & ~vRef,
+          StmtAssign(pRef, uPRef),
+          None
+        ),
+        StmtAssign(vRef, ~vRef & uVRef | vRef & ~dRRef),
+        StmtFence()
+      )
+    }
+    case StorageSliceFwd => {
+      // if (u_valid & (~valid | d_ready)) {
+      //   payload = u_payload;
+      // }
+      // valid = u_valid | valid & ~d_ready;
+      // fence;
+      List(
+        StmtIf(
+          uVRef & (~vRef | dRRef),
+          StmtAssign(pRef, uPRef),
+          None
+        ),
+        StmtAssign(vRef, uVRef | vRef & ~dRRef),
+        StmtFence()
+      )
+    }
+    case StorageSliceBwd => {
+      // if (u_valid & ~valid & ~d_ready) {
+      //   payload = u_payload;
+      // }
+      // valid = (valid | u_valid) & ~d_ready;
+      // fence;
+      List(
+        StmtIf(
+          uVRef & ~vRef & ~dRRef,
+          StmtAssign(pRef, uPRef),
+          None
+        ),
+        StmtAssign(vRef, (vRef | uVRef) & ~dRRef),
+        StmtFence()
+      )
+    }
+  }
+
+  // slice connects for non-void payload:
+  private def nonVoidConnects(
       ss: StorageSlice,
       uPRef: ExprRef,
       dPRef: ExprRef,
@@ -97,83 +205,47 @@ object SliceFactory {
       fRef: ExprRef,
       pRef: ExprRef,
       vRef: ExprRef
-  ): List[Stmt] = ss match {
+  ): List[Connect] = ss match {
     case StorageSliceBubble => {
-      // d_payload = payload;
-      // d_valid = valid;
-      // u_ready = ~valid;
-      // empty = ~valid;
-      // full = valid;
-      // if (u_valid & ~valid) {
-      //   payload = u_payload;
-      // }
-      // valid = ~valid & u_valid | valid & ~d_ready;
-      // fence;
+      // payload -> d_payload ;
+      // valid -> d_valid;
+      // ~valid -> u_ready;
+      // ~valid -> empty;
+      // valid -> full;
       List(
-        StmtAssign(dPRef, pRef),
-        StmtAssign(dVRef, vRef),
-        StmtAssign(uRRef, ~vRef),
-        StmtAssign(eRef, ~vRef),
-        StmtAssign(fRef, vRef),
-        StmtIf(
-          uVRef & ~vRef,
-          StmtAssign(pRef, uPRef),
-          None
-        ),
-        StmtAssign(vRef, ~vRef & uVRef | vRef & ~dRRef),
-        StmtFence()
+        Connect(vRef, List(dVRef)),
+        Connect(pRef, List(dPRef)),
+        Connect(~vRef, List(uRRef)),
+        Connect(~vRef, List(eRef)),
+        Connect(vRef, List(fRef))
       )
     }
     case StorageSliceFwd => {
-      // d_payload = payload;
-      // d_valid = valid;
-      // u_ready = ~valid | d_ready;
-      // empty = ~valid;
-      // full = valid;
-      // if (u_valid & (~valid | d_ready)) {
-      //   payload = u_payload;
-      // }
-      // valid = u_valid | valid & ~d_ready;
-      // fence;
+      // payload -> d_payload;
+      // valid -> d_valid;
+      // ~valid | d_ready -> u_ready;
+      // ~valid -> empty;
+      // valid -> full;
       List(
-        StmtAssign(dPRef, pRef),
-        StmtAssign(dVRef, vRef),
-        StmtAssign(uRRef, ~vRef | dRRef),
-        StmtAssign(eRef, ~vRef),
-        StmtAssign(fRef, vRef),
-        StmtIf(
-          uVRef & (~vRef | dRRef),
-          StmtAssign(pRef, uPRef),
-          None
-        ),
-        StmtAssign(vRef, uVRef | vRef & ~dRRef),
-        StmtFence()
+        Connect(pRef, List(dPRef)),
+        Connect(vRef, List(dVRef)),
+        Connect(~vRef | dRRef, List(uRRef)),
+        Connect(~vRef, List(eRef)),
+        Connect(vRef, List(fRef))
       )
     }
     case StorageSliceBwd => {
-      // d_payload = valid ? payload : u_payload;
-      // d_valid = valid | u_valid;
-      // u_ready = ~valid;
-      // empty = ~valid;
-      // full = valid;
-      // if (u_valid & ~valid & ~d_ready) {
-      //   payload = u_payload;
-      // }
-      // valid = (valid | u_valid) & ~d_ready;
-      // fence;
+      // valid ? payload : u_payload -> d_payload;
+      // valid | u_valid -> d_valid;
+      // ~valid -> u_ready;
+      // ~valid -> empty;
+      // valid -> full;
       List(
-        StmtAssign(dPRef, ExprTernary(vRef, pRef, uPRef)),
-        StmtAssign(dVRef, vRef | uVRef),
-        StmtAssign(uRRef, ~vRef),
-        StmtAssign(eRef, ~vRef),
-        StmtAssign(fRef, vRef),
-        StmtIf(
-          uVRef & ~vRef & ~dRRef,
-          StmtAssign(pRef, uPRef),
-          None
-        ),
-        StmtAssign(vRef, (vRef | uVRef) & ~dRRef),
-        StmtFence()
+        Connect(ExprTernary(vRef, pRef, uPRef), List(dPRef)),
+        Connect(vRef | uVRef, List(dVRef)),
+        Connect(~vRef, List(uRRef)),
+        Connect(~vRef, List(eRef)),
+        Connect(vRef, List(fRef))
       )
     }
   }
@@ -204,6 +276,8 @@ object SliceFactory {
   //   void main() {
   //      <BODY>
   //   }
+  //
+  //   <CONNECTS>
   // }
   private def buildSlice(
       ss: StorageSlice,
@@ -247,7 +321,7 @@ object SliceFactory {
     val vRef = ExprRef(Sym(vSymbol))
 
     val body = if (kind != TypeVoid) {
-      nonVoidBody(ss, uPRef, dPRef, uVRef, uRRef, dVRef, dRRef, eRef, fRef, pRef, vRef)
+      nonVoidBody(ss, uPRef, uVRef, dRRef, pRef, vRef)
     } else {
       voidBody(ss, uVRef, uRRef, dVRef, dRRef, eRef, fRef, pRef, vRef)
     }
@@ -266,8 +340,14 @@ object SliceFactory {
       Decl(Sym(symbol), symbol.denot.kind, None)
     }
 
+    val connects = if (kind != TypeVoid) {
+      nonVoidConnects(ss, uPRef, dPRef, uVRef, uRRef, dVRef, dRRef, eRef, fRef, pRef, vRef)
+    } else {
+      voidConnects(ss, uVRef, uRRef, dVRef, dRRef, eRef, fRef, vRef)
+    }
+
     val entitySymbol = cc.newTypeSymbol(name, loc, TypeEntity(name, ports, Nil))
-    val entity = Entity(Sym(entitySymbol), decls, Nil, Nil, Nil, List(state), Nil, Nil, Map())
+    val entity = Entity(Sym(entitySymbol), decls, Nil, connects, Nil, List(state), Nil, Nil, Map())
     entity withVariant "fsm" regularize loc
   }
 

@@ -22,7 +22,6 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.util.unreachable
 
 final class LowerFlowControlB(implicit cc: CompilerContext) extends TreeTransformer {
 
@@ -89,7 +88,7 @@ final class LowerFlowControlB(implicit cc: CompilerContext) extends TreeTransfor
         ExprSelect(ExprRef(Sym(iSymbol)), symbol.name)
       }
     }
-    case _ => unreachable
+    case _ => None
   }
 
   override def transform(tree: Tree): Tree = {
