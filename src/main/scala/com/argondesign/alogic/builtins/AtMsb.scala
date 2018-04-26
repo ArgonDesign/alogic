@@ -10,7 +10,7 @@
 //
 // DESCRIPTION:
 //
-// Builtin '@sx'
+// Builtin '@msb'
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.builtins
@@ -20,22 +20,27 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
 
-private[builtins] class AtSx(implicit cc: CompilerContext) extends BuiltinPolyFunc {
+private[builtins] class AtMsb(implicit cc: CompilerContext) extends BuiltinPolyFunc {
 
-  val name = "@sx"
+  val name = "@msb"
 
   def returnType(args: List[Expr]) = args partialMatch {
-    case List(width, expr) if width.isKnownConst && expr.tpe.isPacked => {
-      TypeInt(expr.tpe.isSigned, width)
-    }
+    case List(expr) if expr.tpe.isPacked => TypeInt(expr.tpe.isSigned, Expr(1) withLoc expr.loc)
   }
 
-  def isKnownConst(args: List[Expr]) = args(1).isKnownConst
+  def isKnownConst(args: List[Expr]) = args.head.isKnownConst
 
-  def fold(loc: Loc, args: List[Expr]) = {
-    val List(width, expr) = args
-    AtMsb.fold(loc, expr) flatMap { msb =>
-      AtEx.fold(loc, msb, width, expr)
+  def fold(loc: Loc, args: List[Expr]) = AtMsb.fold(loc, args(0))
+
+}
+
+private[builtins] object AtMsb {
+
+  def fold(loc: Loc, expr: Expr)(implicit cc: CompilerContext): Option[Expr] = {
+    expr.width map { width =>
+      expr index (width - 1)
+    } map {
+      _.simplify
     }
   }
 }

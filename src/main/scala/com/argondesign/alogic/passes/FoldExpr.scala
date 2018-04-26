@@ -257,11 +257,26 @@ final class FoldExpr(assignTypes: Boolean)(implicit cc: CompilerContext) extends
       }
 
       ////////////////////////////////////////////////////////////////////////////
+      // Fold index into sized integers
+      ////////////////////////////////////////////////////////////////////////////
+
+      case ExprIndex(ExprInt(_, _, value), ExprNum(_, idx)) => {
+        ExprInt(false, 1, (value >> idx.toInt) & 1) withLoc tree.loc
+      }
+
+      ////////////////////////////////////////////////////////////////////////////
       // Fold built-in functions
       ////////////////////////////////////////////////////////////////////////////
 
       case call @ ExprCall(ExprRef(Sym(symbol)), _) if symbol.isBuiltin => {
-        cc.foldBuiltinCall(call)
+        val result = cc.foldBuiltinCall(call)
+        if (result eq call) {
+          call
+        } else if (assignTypes) {
+          result regularize tree.loc
+        } else {
+          result
+        }
       }
 
       ////////////////////////////////////////////////////////////////////////////

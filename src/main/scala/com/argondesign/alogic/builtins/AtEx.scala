@@ -1,0 +1,95 @@
+////////////////////////////////////////////////////////////////////////////////
+// Argon Design Ltd. Project P8009 Alogic
+// Copyright (c) 2018 Argon Design Ltd. All rights reserved.
+//
+// This file is covered by the BSD (with attribution) license.
+// See the LICENSE file for the precise wording of the license.
+//
+// Module: Alogic Compiler
+// Author: Geza Lore
+//
+// DESCRIPTION:
+//
+// Builtin '@ex(bit, width, expr)'
+////////////////////////////////////////////////////////////////////////////////
+
+package com.argondesign.alogic.builtins
+
+import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Loc
+import com.argondesign.alogic.core.Types._
+
+private[builtins] class AtEx(implicit cc: CompilerContext) extends BuiltinPolyFunc {
+
+  val name = "@ex"
+
+  def validArgs(args: List[Expr]) = args match {
+    case List(bit, width, expr) => {
+      (bit.tpe.width.value contains 1) && width.isKnownConst && expr.tpe.isPacked
+    }
+    case _ => false
+  }
+
+  def returnType(args: List[Expr]) = Some {
+    TypeInt(args(2).tpe.isSigned, args(1))
+  }
+
+  def isKnownConst(args: List[Expr]) = {
+    args(0).isKnownConst && args(2).isKnownConst
+  }
+
+  def fold(loc: Loc, args: List[Expr]) = AtEx.fold(loc, args(0), args(1), args(2))
+
+}
+
+private[builtins] object AtEx {
+
+  def fold(
+      loc: Loc,
+      bitExpr: Expr,
+      width: Expr,
+      expr: Expr
+  )(
+      implicit cc: CompilerContext
+  ): Option[Expr] = {
+    // TODO: result should always be signed if expr is signed
+    for {
+      dstWidth <- width.value map { _.toInt }
+      srcWidth <- expr.width flatMap { _.value } map { _.toInt }
+    } yield {
+      val d = dstWidth - srcWidth
+      if (d < 0) {
+        val msg = s"Result width ${dstWidth} of extension is less than argument width ${srcWidth}"
+        cc.error(loc, msg)
+        ExprError()
+      } else if (d == 0) {
+        expr
+      } else {
+        bitExpr.value map { _.abs } map { bit =>
+          // Known bit value
+          assert(bit == 0 || bit == 1)
+          lazy val msbs = (bit << d) - bit
+          lazy val bits = msbs << srcWidth
+          lazy val mask = (BigInt(1) << srcWidth) - 1
+          expr match {
+            case ExprInt(true, _, v) if v >= 0 && bit == 0 => ExprInt(true, dstWidth, v)
+            case ExprInt(true, _, v) if v >= 0 && bit == 1 => ExprInt(true, dstWidth, bits | v)
+            case ExprInt(true, _, v) if v < 0 && bit == 0  => ExprInt(true, dstWidth, mask & v)
+            case ExprInt(true, _, v) if v < 0 && bit == 1  => ExprInt(true, dstWidth, v)
+            case ExprInt(false, _, v)                      => ExprInt(false, dstWidth, bits | v)
+            case _                                         => ExprInt(false, d, msbs) cat expr
+          }
+        } getOrElse {
+          // Variable bit value
+          if (d == 1) {
+            bitExpr cat expr
+          } else {
+            bitExpr rep d cat expr
+          }
+        }
+      }
+    }
+  }
+
+}

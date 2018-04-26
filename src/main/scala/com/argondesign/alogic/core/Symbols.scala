@@ -20,7 +20,7 @@ package com.argondesign.alogic.core
 import scala.collection.mutable
 
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.util.FollowedBy.any2FollowedByWord
+import com.argondesign.alogic.util.FollowedBy._
 import com.argondesign.alogic.util.unreachable
 
 import Denotations.Denotation

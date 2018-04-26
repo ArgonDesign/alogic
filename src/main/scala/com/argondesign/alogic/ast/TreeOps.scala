@@ -38,6 +38,8 @@ trait TreeOps extends TreePrintOps { this: Tree =>
 
   final def tpe: Type = if (hasTpe) _tpe else unreachable
 
+  final def tpeOpt: Option[Type] = Option(_tpe)
+
   final def withTpe(kind: Type): this.type = {
     if (hasTpe) {
       unreachable
@@ -60,11 +62,21 @@ trait TreeOps extends TreePrintOps { this: Tree =>
   final def rewrite(tt: TreeTransformer): Tree = tt(this)
 
   ////////////////////////////////////////////////////////////////////////////////
-  // Assign loc where missing and apply TypeAssigner to all nodes
+  // Assign loc where missing
+  ////////////////////////////////////////////////////////////////////////////////
+
+  def assignLocs(loc: Loc)(implicit cc: CompilerContext): this.type = {
+    val result = this rewrite new Regularize(loc, assignTypes = false)
+    assert(result eq this)
+    this
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // Assign loc where missing and apply TypeAssigner were no type is set
   ////////////////////////////////////////////////////////////////////////////////
 
   def regularize(loc: Loc)(implicit cc: CompilerContext): this.type = {
-    val result = this rewrite (new Regularize(loc))
+    val result = this rewrite new Regularize(loc, assignTypes = true)
     assert(result eq this)
     this
   }

@@ -173,6 +173,7 @@ object Trees {
   case class ExprInt(signed: Boolean, width: Int, value: BigInt) extends Expr {
     require(width > 0)
     require(signed || value >= 0)
+    require(if (value >= 0) (value >> width) == 0 else (value >> width) == -1)
   }
   case class ExprNum(signed: Boolean, value: BigInt) extends Expr {
     require(signed || value >= 0)

@@ -476,11 +476,38 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
       }
     }
 
+    "index into sized integer literals" - {
+      for {
+        (text, result, msg) <- List(
+          // signed operand
+          ("4'sd2[0]", ExprInt(false, 1, 0), ""),
+          ("4'sd2[1]", ExprInt(false, 1, 1), ""),
+          ("4'sd2[2]", ExprInt(false, 1, 0), ""),
+          ("4'sd2[3]", ExprInt(false, 1, 0), ""),
+          // unsigned operand
+          ("4'd2[0]", ExprInt(false, 1, 0), ""),
+          ("4'd2[1]", ExprInt(false, 1, 1), ""),
+          ("4'd2[2]", ExprInt(false, 1, 0), ""),
+          ("4'd2[3]", ExprInt(false, 1, 0), "")
+        )
+      } {
+        val expr = text.trim
+        expr in {
+          expr.asTree[Expr] rewrite fold shouldBe result
+          if (msg.isEmpty) {
+            cc.messages shouldBe empty
+          } else {
+            cc.messages.loneElement should beThe[Error](msg)
+          }
+        }
+      }
+    }
+
     "builtin functions" - {
       "@max" - {
         for {
           (expr, result, msg) <- List(
-            ("@max()", ExprError(), "Reslt of '@max\\(\\)' is not well defined"),
+            ("@max()", ExprError(), "'@max' called with empty parameter list"),
             ("@max('sd1)", ExprNum(true, 1), ""),
             ("@max(1)", ExprNum(false, 1), ""),
             ("@max('sd1, 'sd2)", ExprNum(true, 2), ""),
@@ -505,6 +532,10 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
         }
       }
 
+      // TODO: @ex
+
+      // TODO: @msb
+
       "@zx" - {
         for {
           (expr, result, msg) <- List(
@@ -526,28 +557,28 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
             ("@zx(2, 2'sb11)", ExprInt(true, 2, -1), ""),
             ("@zx(1, 2'b00)",
              ExprError(),
-             "Result width (1) of @zx is less than argument width (2)"),
+             "Result width 1 of extension is less than argument width 2"),
             ("@zx(1, 2'b01)",
              ExprError(),
-             "Result width (1) of @zx is less than argument width (2)"),
+             "Result width 1 of extension is less than argument width 2"),
             ("@zx(1, 2'b10)",
              ExprError(),
-             "Result width (1) of @zx is less than argument width (2)"),
+             "Result width 1 of extension is less than argument width 2"),
             ("@zx(1, 2'b11)",
              ExprError(),
-             "Result width (1) of @zx is less than argument width (2)"),
+             "Result width 1 of extension is less than argument width 2"),
             ("@zx(1, 2'sb00)",
              ExprError(),
-             "Result width (1) of @zx is less than argument width (2)"),
+             "Result width 1 of extension is less than argument width 2"),
             ("@zx(1, 2'sb01)",
              ExprError(),
-             "Result width (1) of @zx is less than argument width (2)"),
+             "Result width 1 of extension is less than argument width 2"),
             ("@zx(1, 2'sb10)",
              ExprError(),
-             "Result width (1) of @zx is less than argument width (2)"),
+             "Result width 1 of extension is less than argument width 2"),
             ("@zx(1, 2'sb11)",
              ExprError(),
-             "Result width (1) of @zx is less than argument width (2)")
+             "Result width 1 of extension is less than argument width 2")
           )
         } {
           val e = expr.trim.replaceAll(" +", " ")
@@ -584,28 +615,28 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
             ("@sx(2, 2'sb11)", ExprInt(true, 2, -1), ""),
             ("@sx(1, 2'b00)",
              ExprError(),
-             "Result width (1) of @sx is less than argument width (2)"),
+             "Result width 1 of extension is less than argument width 2"),
             ("@sx(1, 2'b01)",
              ExprError(),
-             "Result width (1) of @sx is less than argument width (2)"),
+             "Result width 1 of extension is less than argument width 2"),
             ("@sx(1, 2'b10)",
              ExprError(),
-             "Result width (1) of @sx is less than argument width (2)"),
+             "Result width 1 of extension is less than argument width 2"),
             ("@sx(1, 2'b11)",
              ExprError(),
-             "Result width (1) of @sx is less than argument width (2)"),
+             "Result width 1 of extension is less than argument width 2"),
             ("@sx(1, 2'sb00)",
              ExprError(),
-             "Result width (1) of @sx is less than argument width (2)"),
+             "Result width 1 of extension is less than argument width 2"),
             ("@sx(1, 2'sb01)",
              ExprError(),
-             "Result width (1) of @sx is less than argument width (2)"),
+             "Result width 1 of extension is less than argument width 2"),
             ("@sx(1, 2'sb10)",
              ExprError(),
-             "Result width (1) of @sx is less than argument width (2)"),
+             "Result width 1 of extension is less than argument width 2"),
             ("@sx(1, 2'sb11)",
              ExprError(),
-             "Result width (1) of @sx is less than argument width (2)")
+             "Result width 1 of extension is less than argument width 2")
           )
         } {
           val e = expr.trim.replaceAll(" +", " ")

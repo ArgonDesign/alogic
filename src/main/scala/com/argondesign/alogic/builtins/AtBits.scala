@@ -17,36 +17,31 @@ package com.argondesign.alogic.builtins
 
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
 
-object AtBits extends BuiltinPolyFunc {
+private[builtins] class AtBits(implicit cc: CompilerContext) extends BuiltinPolyFunc {
 
-  protected def name = "@bits"
+  val name = "@bits"
 
-  protected def retType(args: List[Expr])(implicit cc: CompilerContext): Type = TypeNum(false)
-
-  protected def validArgs(args: List[Expr])(implicit cc: CompilerContext) = {
-    args.lengthCompare(1) == 0 && {
-      args.head.tpe match {
-        case _: TypeNum                      => false
-        case TypeType(kind) if kind.isPacked => true
-        case kind if kind.isPacked           => true
-        case _                               => false
+  def returnType(args: List[Expr]) = args match {
+    case List(arg) => {
+      arg.tpe match {
+        case _: TypeNum                      => None
+        case TypeType(kind) if kind.isPacked => Some(TypeNum(false))
+        case kind if kind.isPacked           => Some(TypeNum(false))
+        case _                               => None
       }
     }
+    case _ => None
   }
 
-  private[builtins] override def isKnownConst(call: ExprCall)(
-      implicit cc: CompilerContext): Boolean = true
+  def isKnownConst(args: List[Expr]) = true
 
-  private[builtins] override def fold(call: ExprCall)(implicit cc: CompilerContext): Expr = {
-    if (!call.args(0).hasTpe) {
-      call
-    } else {
-      call.args(0).tpe match {
-        case TypeType(kind) => kind.width
-        case kind           => kind.width
-      }
+  def fold(loc: Loc, args: List[Expr]) = {
+    args.head.tpeOpt map {
+      case TypeType(kind) => kind.width
+      case kind           => kind.width
     }
   }
 }

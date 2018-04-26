@@ -99,13 +99,9 @@ object Types {
   case object TypeError extends Type
 
   // Polymorphic function. Used to handle overloaded builtin functions
-  case class TypePolyFunc(resolver: List[Expr] => CompilerContext => Option[TermSymbol])
-      extends Type {
-
-    // Resolve based on argument types to the correct overload of the symbol
-    def resolve(argTypes: List[Expr])(implicit cc: CompilerContext): Option[TermSymbol] = {
-      resolver(argTypes)(cc)
-    }
+  case class TypePolyFunc(resolver: List[Expr] => Option[TermSymbol]) extends Type {
+    // Resolve based on arguments to the correct overload of the symbol
+    def resolve(args: List[Expr]): Option[TermSymbol] = resolver(args)
   }
 
   ///////////////////////////////////////////////////////////////////////////////

@@ -17,36 +17,35 @@ package com.argondesign.alogic.builtins
 
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
 
-object AtMax extends BuiltinPolyFunc {
+private[builtins] class AtMax(implicit cc: CompilerContext) extends BuiltinPolyFunc {
 
-  protected def name = "@max"
+  val name = "@max"
 
-  // TODO: return properly computed type
-  protected def retType(args: List[Expr])(implicit cc: CompilerContext): Type = {
-    TypeUInt(Expr(32) withLoc loc)
-  }
-
-  protected def validArgs(args: List[Expr])(implicit cc: CompilerContext) = {
-    args forall { _.tpe.isPacked }
-  }
-
-  private[builtins] override def fold(call: ExprCall)(implicit cc: CompilerContext): Expr = {
-    val args = call.args
-    if (args exists { !_.isInstanceOf[ExprNum] }) {
-      call
-    } else {
-      if (args.length >= 2) {
-        val (s, v) = (args collect { case ExprNum(signed, value) => (signed, value) }).unzip
-        ExprNum(s reduceLeft { _ && _ }, v.max) withLoc call.loc
-      } else if (args.length == 1) {
-        args.head
-      } else {
-        cc.error(call, "Reslt of '@max()' is not well defined")
-        ExprError() withLoc call.loc
-      }
+  def returnType(args: List[Expr]) = args partialMatch {
+    case args if args.nonEmpty && (args forall { _.tpe.isPacked }) => {
+      // TODO: return properly computed type (max width)
+      TypeUInt(Expr(32))
     }
   }
 
+  def isKnownConst(args: List[Expr]) = args forall { _.isKnownConst }
+
+  def fold(loc: Loc, args: List[Expr]) = {
+    (args forall { _.isInstanceOf[ExprNum] }) option {
+      args match {
+        case Nil => {
+          cc.error(loc, "'@max' called with empty parameter list")
+          ExprError()
+        }
+        case List(arg) => arg
+        case args => {
+          val (s, v) = (args collect { case ExprNum(signed, value) => (signed, value) }).unzip
+          ExprNum(s reduceLeft { _ && _ }, v.max)
+        }
+      }
+    }
+  }
 }

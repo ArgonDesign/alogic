@@ -17,14 +17,18 @@ package com.argondesign.alogic.builtins
 
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
 
-object AtRandbit extends BuiltinPolyFunc {
+private[builtins] class AtRandbit(implicit cc: CompilerContext) extends BuiltinPolyFunc {
 
-  protected def name = "@randbit"
+  val name = "@randbit"
 
-  protected def retType(args: List[Expr])(implicit cc: CompilerContext): Type = TypeUInt(Expr(1))
+  def returnType(args: List[Expr]) = args partialMatch {
+    case Nil => TypeUInt(Expr(1))
+  }
 
-  protected def validArgs(args: List[Expr])(implicit cc: CompilerContext) = args.isEmpty
+  def isKnownConst(args: List[Expr]) = false
 
+  def fold(loc: Loc, args: List[Expr]) = None
 }

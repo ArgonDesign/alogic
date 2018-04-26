@@ -23,7 +23,12 @@ import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.TreeInTypeTransformer
 import com.argondesign.alogic.typer.TypeAssigner
 
-final class Regularize(loc: Loc)(implicit cc: CompilerContext) extends TreeTransformer {
+final class Regularize(
+    loc: Loc,
+    assignTypes: Boolean
+)(
+    implicit cc: CompilerContext
+) extends TreeTransformer {
 
   override val typed: Boolean = false
 
@@ -33,7 +38,8 @@ final class Regularize(loc: Loc)(implicit cc: CompilerContext) extends TreeTrans
     if (!tree.hasLoc) {
       tree withLoc loc
     }
-    if (!tree.hasTpe) {
+
+    if (assignTypes && !tree.hasTpe) {
       TypeAssigner(tree)
     }
 

@@ -17,17 +17,18 @@ package com.argondesign.alogic.builtins
 
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
 
-object DollarSigned extends BuiltinPolyFunc {
+private[builtins] class DollarSigned(implicit cc: CompilerContext) extends BuiltinPolyFunc {
 
-  protected def name = "$signed"
+  val name = "$signed"
 
-  protected def retType(args: List[Expr])(implicit cc: CompilerContext): Type = {
-    TypeSInt(args.head.tpe.width)
+  def returnType(args: List[Expr]) = args partialMatch {
+    case List(arg) => TypeSInt(arg.tpe.width)
   }
 
-  protected def validArgs(args: List[Expr])(implicit cc: CompilerContext) = {
-    args.lengthCompare(1) == 0 && args.head.tpe.isPacked
-  }
+  def isKnownConst(args: List[Expr]) = args(0).isKnownConst
+
+  def fold(loc: Loc, args: List[Expr]) = None
 }

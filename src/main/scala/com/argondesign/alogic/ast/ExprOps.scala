@@ -89,8 +89,16 @@ trait ExprOps { this: Expr =>
     makeExprCall(cc.lookupGlobalTerm("@max"), this, Expr(rhs))
   }
 
+  final def index(idx: Expr): ExprIndex = addLoc(ExprIndex(this, idx))
+  final def index(idx: Int): ExprIndex = addLoc(ExprIndex(this, addLoc(Expr(idx))))
+
   final def select(name: String): ExprSelect = addLoc(ExprSelect(this, name))
   final def call(args: List[Expr]): ExprCall = addLoc(ExprCall(this, args))
+
+  final def cat(rhs: Expr): ExprCat = addLoc(ExprCat(List(this, rhs)))
+
+  final def rep(cnt: Expr): ExprRep = addLoc(ExprRep(cnt, this))
+  final def rep(cnt: Int): ExprRep = addLoc(ExprRep(addLoc(Expr(cnt)), this))
 
   final def unary_+ : this.type = this
   final def unary_- : ExprUnary = addLoc(ExprUnary("-", this))
@@ -162,6 +170,14 @@ trait ExprOps { this: Expr =>
     case ExprNum(_, value)    => Some(value)
     case ExprInt(_, _, value) => Some(value)
     case _                    => None
+  }
+
+  // Width of this expression if can be computed, note that this does not
+  // necessarily need type info ...
+  def width(implicit cc: CompilerContext): Option[Expr] = simplify match {
+    // TODO: more possible cases
+    case ExprInt(_, width, _) => Some(addLoc(Expr(width)))
+    case _                    => tpeOpt map { _.width }
   }
 
 }

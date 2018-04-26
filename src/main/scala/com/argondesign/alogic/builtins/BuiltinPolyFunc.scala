@@ -16,7 +16,6 @@
 package com.argondesign.alogic.builtins
 
 import com.argondesign.alogic.ast.Trees.Expr
-import com.argondesign.alogic.ast.Trees.ExprCall
 import com.argondesign.alogic.ast.Trees.Ident
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
@@ -26,36 +25,30 @@ import com.argondesign.alogic.core.Symbols.TermSymbol
 import com.argondesign.alogic.core.Types.Type
 import com.argondesign.alogic.core.Types.TypeCombFunc
 import com.argondesign.alogic.core.Types.TypePolyFunc
+import com.argondesign.alogic.util.BooleanOps
+import com.argondesign.alogic.util.PartialMatch
 
-import scala.collection.mutable
+import scala.collection.concurrent.TrieMap
 
-private[builtins] trait BuiltinPolyFunc {
+private[builtins] abstract class BuiltinPolyFunc(implicit cc: CompilerContext)
+    extends BooleanOps
+    with PartialMatch {
 
   //////////////////////////////////////////////////////////////////////////////
   // Public interface
   //////////////////////////////////////////////////////////////////////////////
 
-  final def symbol(implicit cc: CompilerContext): TermSymbol = {
+  final def symbol: TermSymbol = {
     if (_symbol == null) {
-      val kind = TypePolyFunc(resolver)
-      _symbol = cc.newTermSymbol(ident, kind)
+      _symbol = cc.newTermSymbol(ident, TypePolyFunc(resolver))
     }
     _symbol
   }
 
   // Check if symbol is referring to this BuiltinPolyFunc, or is an
   // overload of this BuiltinPolyFunc
-  final def contains(symbol: Symbol): Boolean = synchronized {
-    (_symbol == symbol) || (overloads.values.iterator contains symbol)
-  }
-
-  // Fold calls to this function
-  private[builtins] def fold(call: ExprCall)(implicit cc: CompilerContext): Expr = {
-    call
-  }
-
-  private[builtins] def isKnownConst(call: ExprCall)(implicit cc: CompilerContext): Boolean = {
-    false
+  final def contains(symbol: Symbol): Boolean = {
+    (_symbol == symbol) || (overloads.values.iterator.flatten contains symbol)
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -63,14 +56,16 @@ private[builtins] trait BuiltinPolyFunc {
   //////////////////////////////////////////////////////////////////////////////
 
   // Name of builtin function
-  protected[this] def name: String
+  protected[this] val name: String
 
-  // Type of return value for the given arguments
-  protected[this] def retType(args: List[Expr])(implicit cc: CompilerContext): Type
+  // Type of return value for the given arguments, or None if these arguments are invalid
+  protected[this] def returnType(args: List[Expr]): Option[Type]
 
-  // Predicate that checks whether this BuiltinPolyFunc can be applied to these
-  // arguments. Assumes args _.hasTpe
-  protected[this] def validArgs(args: List[Expr])(implicit cc: CompilerContext): Boolean
+  // Is this a known compile time constant?
+  private[builtins] def isKnownConst(args: List[Expr]): Boolean
+
+  // Fold calls to this function
+  private[builtins] def fold(loc: Loc, args: List[Expr]): Option[Expr]
 
   //////////////////////////////////////////////////////////////////////////////
   // Implementation
@@ -79,30 +74,19 @@ private[builtins] trait BuiltinPolyFunc {
   private[this] final var _symbol: TermSymbol = _
 
   // Synthetic location of this builtin
-  protected[this] final val loc = Loc(Source(s"builtin ${name}", ""), 0, 0, 0)
+  protected[this] final lazy val loc = Loc(Source(s"builtin ${name}", ""), 0, 0, 0)
 
   // Synthetic identifier
-  private[builtins] final val ident = Ident(name) withLoc loc
+  private[this] final lazy val ident = Ident(name) withLoc loc
 
-  // Collection of overloaded symbols for given arguments
-  private[this] final val overloads = mutable.Map[List[Expr], TermSymbol]()
-
-  // Return the overloaded symbol for these arguments
-  private[this] final def getOverload(args: List[Expr])(
-      implicit cc: CompilerContext): TermSymbol = {
-    synchronized {
-      lazy val newSymbol = {
-        val argTypes = args map { _.tpe }
-        val kind = TypeCombFunc(argTypes, retType(args))
-        cc.newTermSymbol(ident, kind)
-      }
-      overloads.getOrElseUpdate(args, newSymbol)
-    }
-  }
+  // Collection of overloaded symbols (if any) for given arguments
+  // TODO: This map should be in cc to avoid a space leak
+  private[this] final val overloads = TrieMap[List[Expr], Option[TermSymbol]]()
 
   // The resolver for TypePolyFunc
-  private[this] final def resolver(args: List[Expr])(cc: CompilerContext) = {
-    if (validArgs(args)(cc)) Some(getOverload(args)(cc)) else None
+  private[this] final def resolver(args: List[Expr]) = {
+    overloads.getOrElseUpdate(args, returnType(args).map { kind =>
+      cc.newTermSymbol(ident, TypeCombFunc(args map { _.tpe }, kind))
+    })
   }
-
 }
