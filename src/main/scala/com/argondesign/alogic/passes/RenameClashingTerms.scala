@@ -49,7 +49,7 @@ final class RenameClashingTerms(implicit cc: CompilerContext) extends TreeTransf
               case _: TypeIn    => name
               case _: TypeOut   => name
               case _: TypeConst => name
-              case _            => s"${name}__l${symbol.loc.line}"
+              case _            => name + cc.sep + s"l${symbol.loc.line}"
             }
           }
 

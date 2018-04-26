@@ -81,7 +81,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       // Allocate payload and valid signals
       val loc = tree.loc
       val pName = symbol.denot.name.str
-      val vName = pName + "_valid"
+      val vName = pName + cc.sep + "valid"
       lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeIn(kind, fctn))
       val vSymbol = cc.newTermSymbol(vName, loc, TypeIn(boolType(loc), fctn))
       val newSymbols = if (kind != TypeVoid) (pSymbol, vSymbol) else (ErrorSymbol, vSymbol)
@@ -94,7 +94,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       // Allocate payload and valid signals
       val loc = tree.loc
       val pName = symbol.denot.name.str
-      val vName = pName + "_valid"
+      val vName = pName + cc.sep + "valid"
       lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeOut(kind, fctn, st))
       val vSymbol = cc.newTermSymbol(vName, loc, TypeOut(boolType(loc), fctn, st))
       val newSymbols = if (kind != TypeVoid) (pSymbol, vSymbol) else (ErrorSymbol, vSymbol)
@@ -112,8 +112,8 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       // Allocate payload, valid and ready signals
       val loc = tree.loc
       val pName = symbol.denot.name.str
-      val vName = pName + "_valid"
-      val rName = pName + "_ready"
+      val vName = pName + cc.sep + "valid"
+      val rName = pName + cc.sep + "ready"
       lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeIn(kind, fctn))
       val vSymbol = cc.newTermSymbol(vName, loc, TypeIn(boolType(loc), fctn))
       val rSymbol = cc.newTermSymbol(rName, loc, TypeOut(boolType(loc), fctn, stw))
@@ -132,8 +132,8 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       // Allocate payload, valid and ready signals
       val loc = tree.loc
       val pName = symbol.denot.name.str
-      val vName = pName + "_valid"
-      val rName = pName + "_ready"
+      val vName = pName + cc.sep + "valid"
+      val rName = pName + cc.sep + "ready"
       lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeOut(kind, fctn, stw))
       val vSymbol = cc.newTermSymbol(vName, loc, TypeOut(boolType(loc), fctn, stw))
       val rSymbol = cc.newTermSymbol(rName, loc, TypeIn(boolType(loc), fctn))
@@ -149,11 +149,11 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       if (st != StorageTypeWire) {
         val StorageTypeSlices(slices) = st
         // TODO: mark inline
-        val eName = entitySymbol.name + "__oslice__" + pName
+        val eName = entitySymbol.name + cc.sep + "oslice" + cc.sep + pName
         val sliceEntity: Entity = SliceFactory(slices, eName, loc, kind)
         val Sym(sliceEntitySymbol: TypeSymbol) = sliceEntity.ref
         val instanceSymbol = {
-          val iName = "oslice__" + pName
+          val iName = "oslice" + cc.sep + pName
           cc.newTermSymbol(iName, loc, TypeInstance(sliceEntitySymbol))
         }
         // Add slice entity and instance symbol as attributes
@@ -169,8 +169,8 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       // Allocate payload, valid and accept signals
       val loc = tree.loc
       val pName = symbol.denot.name.str
-      val vName = pName + "_valid"
-      val aName = pName + "_accept"
+      val vName = pName + cc.sep + "valid"
+      val aName = pName + cc.sep + "accept"
       lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeIn(kind, fctn))
       val vSymbol = cc.newTermSymbol(vName, loc, TypeIn(boolType(loc), fctn))
       val aSymbol = cc.newTermSymbol(aName, loc, TypeOut(boolType(loc), fctn, stw))
@@ -189,8 +189,8 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       // Allocate payload, valid and ready signals
       val loc = tree.loc
       val pName = symbol.denot.name.str
-      val vName = pName + "_valid"
-      val aName = pName + "_accept"
+      val vName = pName + cc.sep + "valid"
+      val aName = pName + cc.sep + "accept"
       lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeOut(kind, fctn, stw))
       val vSymbol = cc.newTermSymbol(vName, loc, TypeOut(boolType(loc), fctn, stw))
       val aSymbol = cc.newTermSymbol(aName, loc, TypeIn(boolType(loc), fctn))

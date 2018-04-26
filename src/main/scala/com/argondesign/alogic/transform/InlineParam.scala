@@ -116,7 +116,7 @@ final class InlineParam(bindings: Map[TermSymbol, Expr])(implicit cc: CompilerCo
         val parts = for ((symbol, expr) <- bindings) yield {
           s"${symbol.name}_${expr.value.get}"
         }
-        s"${entitySymbol.name}__${parts mkString "__"}"
+        entitySymbol.name + cc.sep + (parts mkString cc.sep)
       } else {
         entitySymbol.name
       }

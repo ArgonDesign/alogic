@@ -30,7 +30,7 @@ final class LowerRegPorts(implicit cc: CompilerContext) extends TreeTransformer 
     case Decl(Sym(symbol: TermSymbol), TypeOut(kind, FlowControlTypeNone, StorageTypeReg), None) => {
       // Allocate local register
       val loc = tree.loc
-      val rName = "oreg__" + symbol.denot.name.str
+      val rName = "oreg" + cc.sep + symbol.denot.name.str
       symbol.attr.oReg set cc.newTermSymbol(rName, loc, kind)
     }
 

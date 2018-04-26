@@ -33,8 +33,8 @@ final class SplitStructsA(implicit cc: CompilerContext) extends TreeTransformer 
     kind.fields flatMap {
       case (fName, fKind) =>
         fKind match {
-          case k: TypeStruct => flattenStruct(s"${prefix}__${fName}", k)
-          case other         => List((s"${prefix}__${fName}", other))
+          case k: TypeStruct => flattenStruct(s"${prefix}${cc.sep}${fName}", k)
+          case other         => List((s"${prefix}${cc.sep}${fName}", other))
         }
     }
   }

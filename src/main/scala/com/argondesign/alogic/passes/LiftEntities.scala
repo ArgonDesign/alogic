@@ -243,7 +243,7 @@ final class LiftEntities(implicit cc: CompilerContext)
           for (child <- children) {
             val Sym(childSymbol: TypeSymbol) = child.ref
             val childName = childSymbol.name
-            val newName = TypeName(parentName + "__" + childName)
+            val newName = TypeName(parentName + cc.sep + childName)
             childSymbol withDenot childSymbol.denot.copy(name = newName)
           }
 

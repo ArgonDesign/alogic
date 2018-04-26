@@ -19,4 +19,12 @@ package com.argondesign.alogic.core
 
 import com.argondesign.alogic.builtins.Builtins
 
-class CompilerContext extends Messaging with LocationRemapping with Symbols with Builtins
+class CompilerContext(val settings: Settings = Settings())
+    extends Messaging
+    with LocationRemapping
+    with Symbols
+    with Builtins {
+
+  // Shorthand for frequently accessed settings
+  val sep = settings.sep
+}
