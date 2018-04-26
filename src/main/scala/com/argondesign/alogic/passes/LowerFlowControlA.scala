@@ -43,6 +43,8 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
     extends TreeTransformer
     with FollowedBy {
 
+  // TODO: rework without using ErrorSymbol, use removeStmt instead
+
   // Stack of extra statements to emit when finished with a statement
   private[this] val extraStmts = Stack[mutable.ListBuffer[Stmt]]()
 
@@ -54,6 +56,9 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
 
   private[this] val fctn = FlowControlTypeNone
   private[this] val stw = StorageTypeWire
+
+  // Some statements can be completely removed, this flag marks them
+  private[this] var removeStmt = false
 
   override def enter(tree: Tree): Unit = tree match {
     ////////////////////////////////////////////////////////////////////////////
@@ -201,8 +206,17 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
     }
 
     ////////////////////////////////////////////////////////////////////////////
-    // FlowControlTypeReady
+    // Statements
     ////////////////////////////////////////////////////////////////////////////
+
+    case StmtExpr(ExprCall(ExprSelect(ExprRef(Sym(symbol: TermSymbol)), "read"), _)) => {
+      extraStmts.push(ListBuffer())
+
+      val attr = symbol.attr
+
+      // We can remove 'port.read();' statements altogether
+      removeStmt = attr.fcn.isSet || attr.fcv.isSet || attr.fcr.isSet || attr.fca.isSet
+    }
 
     case _: Stmt => {
       // Whenever we enter a new statement, add a new buffer to
@@ -222,6 +236,12 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       //////////////////////////////////////////////////////////////////////////
       // Rewrite statements
       //////////////////////////////////////////////////////////////////////////
+
+      case _: Stmt if removeStmt => {
+        StmtBlock(Nil)
+      } followedBy {
+        removeStmt = false
+      }
 
       // We used the Error symbol for void port payloads, now replace
       // the corresponding statement with an empty statement

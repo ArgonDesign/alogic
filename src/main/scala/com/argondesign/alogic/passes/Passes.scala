@@ -65,6 +65,7 @@ object Passes {
       () => new LowerFlowControlA,
       () => new LowerFlowControlB,
       () => new LowerFlowControlC,
+      // CheckPureExpressionInStatementPosition
       () => new LowerRegPorts,
       () => new LowerStacks,
       () => new SplitStructsA,
