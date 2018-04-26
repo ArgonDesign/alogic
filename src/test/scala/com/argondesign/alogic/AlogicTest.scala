@@ -15,22 +15,16 @@
 
 package com.argondesign.alogic
 
-import scala.reflect.ClassTag
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FatalErrorException
 import com.argondesign.alogic.core.InternalCompilerErrorException
 import com.argondesign.alogic.core.Message
-import com.argondesign.alogic.util.FollowedBy.any2FollowedByWord
-import org.scalatest.Failed
-import org.scalatest.Inside
-import org.scalatest.Inspectors
-import org.scalatest.LoneElement
-import org.scalatest.Matchers
-import org.scalatest.OneInstancePerTest
-import org.scalatest.OptionValues
-import org.scalatest.TestSuite
+import com.argondesign.alogic.util.FollowedBy._
+import org.scalatest._
 import org.scalatest.matchers.MatchResult
 import org.scalatest.matchers.Matcher
+
+import scala.reflect.ClassTag
 
 trait AlogicTest
     extends TestSuite

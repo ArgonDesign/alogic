@@ -10,31 +10,24 @@
 //
 // DESCRIPTION:
 //
-// Trait providing the 'valueMap' word
-//
-// The 'valueMap' word can be used apply a closure to a single value
-// e.g.: :
-//  1 valueMap {
-//    _ + 2
-//  } valueMap {
-//    _ * 3
-//  }
-// is the same as (1 + 2) * 3
+// Provide 'bool option { a }', instead of 'if (bool) Some(a) else None'
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.util
 
 import scala.language.implicitConversions
 
-// For importing with ValueMap._
-object ValueMap {
-  implicit final class ValueMapImpl[T](private val value: T) extends AnyVal {
-    def valueMap[R](f: T => R): R = f(value)
+// For importing with BooleanOps._
+object BooleanOps {
+  implicit final class BooleanOpsImpl(val bool: Boolean) extends AnyVal {
+    def option[T](v: => T): Option[T] = if (bool) Some(v) else None
   }
 }
 
 // For mixing into classes
-trait ValueMap {
-  import ValueMap.ValueMapImpl
-  implicit final def any2ValueMapImpl[T](value: T): ValueMapImpl[T] = new ValueMapImpl(value)
+trait BooleanOps {
+  import BooleanOps.BooleanOpsImpl
+  implicit final def boolean2BooleanOpsImpl(bool: Boolean): BooleanOpsImpl = {
+    new BooleanOpsImpl(bool)
+  }
 }

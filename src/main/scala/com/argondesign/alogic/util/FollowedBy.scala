@@ -11,28 +11,30 @@
 // DESCRIPTION:
 //
 // Trait providing the 'followedBy' word
+//
+// The 'followedBy' word can be used to execute some side-effecting action
+// after computing some value. The canonical example being:
+//  def transform(tree:Tree): Tree = {
+//    ...
+//    newTree
+//  } followedBy {
+//    popScope()
+//  }
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.util
 
 import scala.language.implicitConversions
 
-final class FollowedByWord[T](private val value: T) extends AnyVal {
-  // The 'followedBy' word can be used to execute some side-effecting action
-  // after computing some value. The canonical example being:
-  //  def transform(tree:Tree): Tree = {
-  //    ...
-  //    newTree
-  //  } followedBy {
-  //    popScope()
-  //  }
-  final def followedBy(block: => Unit): T = { block; value }
+// For importing with FollowedBy._
+object FollowedBy {
+  implicit final class FollowedByImpl[T](val value: T) extends AnyVal {
+    def followedBy(block: => Unit): T = { block; value }
+  }
 }
 
 // For mixing into classes
-trait FollowedBy extends Any {
-  final implicit def any2FollowedByWord[T](value: T): FollowedByWord[T] = new FollowedByWord(value)
+trait FollowedBy {
+  import FollowedBy.FollowedByImpl
+  implicit final def any2FollowedByImpl[T](value: T): FollowedByImpl[T] = new FollowedByImpl(value)
 }
-
-// For importing with FollowedBy._
-final object FollowedBy extends FollowedBy
