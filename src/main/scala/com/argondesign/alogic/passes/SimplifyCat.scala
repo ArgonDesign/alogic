@@ -22,20 +22,40 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.util.unreachable
+
+import scala.annotation.tailrec
+import scala.collection.mutable.ListBuffer
 
 final class SimplifyCat(implicit cc: CompilerContext) extends TreeTransformer {
 
   // Return a list of pairwise equal-length sub-lists that can be assigned to each other
   private[this] def pairUp(as: List[Expr], bs: List[Expr]): List[(List[Expr], List[Expr])] = {
-    val aScan = as.scanLeft(0)(_ + _.tpe.width.value.get.toInt).tail
-    val bScan = as.scanLeft(0)(_ + _.tpe.width.value.get.toInt).tail
-    if (aScan == bScan) {
-      // This is the most important case arising from structure assignments
-      (as map { List(_) }) zip (bs map { List(_) })
-    } else {
-      // TODO: could do partial pairing, but is currently rarely if ever used
-      List((as, bs))
+    def width(es: List[Expr]) = (es map { _.tpe.width.value.get.toInt }).sum
+
+    val pairs = ListBuffer[(List[Expr], List[Expr])]()
+
+    @tailrec
+    def loop(suba: List[Expr], subb: List[Expr], as: List[Expr], bs: List[Expr]): Unit = {
+      val aw = width(suba)
+      val bw = width(subb)
+      if (aw == bw) {
+        pairs.append((suba.reverse, subb.reverse))
+        (as, bs) match {
+          case (Nil, Nil)         => ()
+          case (a :: at, b :: bt) => loop(List(a), List(b), at, bt)
+          case _                  => unreachable
+        }
+      } else if (aw < bw) {
+        loop(as.head :: suba, subb, as.tail, bs)
+      } else {
+        loop(suba, bs.head :: subb, as, bs.tail)
+      }
     }
+
+    loop(List(as.head), List(bs.head), as.tail, bs.tail)
+
+    pairs.toList
   }
 
   override def transform(tree: Tree): Tree = {
