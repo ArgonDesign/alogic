@@ -24,12 +24,15 @@ class SymbolAttributes {
   val entry = new Attribute[Boolean]()
 
   // All possible parameter bindings of an entity symbol
-  val paramBindings = new Attribute[List[Map[TermSymbol, Option[Expr]]]]()
+  val paramBindings = new Attribute[List[Map[TermSymbol, Expr]]]()
   // The actual parameter bindings of an instance symbol
-  val paramBinding = new Attribute[Map[TermSymbol, Option[Expr]]]()
+  val paramBinding = new Attribute[Map[TermSymbol, Expr]]()
   // If this is a parametrized entity symbol,
   // a map from parameter bindings to the specialized entity
-  val specMap = new Attribute[Map[Map[TermSymbol, Option[Expr]], Entity]]()
+  val specMap = new Attribute[Map[Map[TermSymbol, Expr], Entity]]()
+
+  // If this is a constant symbol, then this is its value
+  val constValue = new Attribute[Expr]()
 
   // Entity call stack limit
   val stackLimit = new Attribute[Expr]()
@@ -78,6 +81,7 @@ class SymbolAttributes {
     paramBinding,
     paramBinding,
     specMap,
+    constValue,
     stackLimit,
     recLimit,
     returnStack,
@@ -101,6 +105,7 @@ class SymbolAttributes {
     "paramBinding",
     "paramBinding",
     "specMap",
+    "constValue",
     "stackLimit",
     "recLimit",
     "returnStack",

@@ -37,21 +37,19 @@ object Passes {
   }
 
   def apply(trees: List[Tree])(implicit cc: CompilerContext): List[Tree] = {
-    // Each phase is applied in parallel to all trees,
-    // but all trees are transformed with the given phase
-    // before the next phase started
+    // Each phase is applied in parallel to all trees, but all trees
+    // are transformed with the given phase before the next phase begins
     val passes = List(
       () => new Checker,
       () => new Namer,
       () => new Desugar,
       () => new Typer,
       () => new ConvertMultiConnect,
-      () => new FoldExpr(assignTypes = true)(cc),
-      () => new AnalyseParamConst,
-      () => new SpecializeParam,
-      () => new SpecializeInstance,
-      () => new InlineConst,
-      () => new FoldExpr(assignTypes = true)(cc),
+      () => new FoldExpr(assignTypes = true, foldRefs = false)(cc),
+      () => new SpecializeParamA,
+      () => new SpecializeParamB,
+      () => new SpecializeParamC,
+      () => new FoldExpr(assignTypes = true, foldRefs = false)(cc),
       () => new LowerPipeline,
       () => new LiftEntities,
       () => new LowerLoops,
@@ -60,30 +58,28 @@ object Passes {
       () => new ConvertControl,
       () => new AllocStates,
       () => new Replace1Stacks,
-      // Replace1Arrays
+      // TODO: Replace1Arrays
       () => new DefaultStorage,
       () => new LowerFlowControlA,
       () => new LowerFlowControlB,
       () => new LowerFlowControlC,
-      // CheckPureExpressionInStatementPosition
+      // TODO: CheckPureExpressionInStatementPosition
       () => new LowerRegPorts,
       () => new LowerStacks,
       () => new SplitStructsA,
       () => new SplitStructsB,
       () => new SplitStructsC,
-      () => new FoldExpr(assignTypes = true)(cc),
+      () => new FoldExpr(assignTypes = true, foldRefs = false)(cc),
       () => new OutputDefault,
       () => new SimplifyCat,
-      // StripTermPrefixes
+      // TODO: StripTermPrefixes
       () => new LowerFlops,
       () => new LowerArrays,
+      // TODO: LowerGo
       () => new RemoveRedundantBlocks,
       () => new RenameClashingTerms
       // TODO: RenameKeywords
       // TODO: final check pass to make sure everything is well-formed
-      // LowerGo...
-      // oreg naming
-      // output
     )
 
     // Fold passes over the trees

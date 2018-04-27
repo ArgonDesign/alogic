@@ -24,7 +24,12 @@ import com.argondesign.alogic.util.unreachable
 
 import scala.language.implicitConversions
 
-final class FoldExpr(assignTypes: Boolean)(implicit cc: CompilerContext) extends TreeTransformer {
+final class FoldExpr(
+    assignTypes: Boolean, // Ensure results have type assigned
+    foldRefs: Boolean // Replace references to known constant symbols with their value
+)(
+    implicit cc: CompilerContext
+) extends TreeTransformer {
 
   override val typed: Boolean = assignTypes
 
@@ -55,7 +60,9 @@ final class FoldExpr(assignTypes: Boolean)(implicit cc: CompilerContext) extends
     num withLoc expr.loc
   }
 
-  private object TypeFoldExpr extends TreeInTypeTransformer(this)
+  // In types we always fold refs so that widths are always computable
+  private val typeFoldExpr = if (foldRefs) this else new FoldExpr(assignTypes, foldRefs = true)
+  private object TypeFoldExpr extends TreeInTypeTransformer(typeFoldExpr)
 
   override def transform(tree: Tree): Tree = {
     val result = tree match {
@@ -70,6 +77,14 @@ final class FoldExpr(assignTypes: Boolean)(implicit cc: CompilerContext) extends
       case ExprTernary(expr: ExprError, _, _) => expr
       case ExprTernary(_, expr: ExprError, _) => expr
       case ExprTernary(_, _, expr: ExprError) => expr
+
+      ////////////////////////////////////////////////////////////////////////////
+      // Fold refs
+      ////////////////////////////////////////////////////////////////////////////
+
+      case expr @ ExprRef(Sym(symbol)) if foldRefs => {
+        symbol.attr.constValue.get map { walk(_) } getOrElse expr
+      }
 
       ////////////////////////////////////////////////////////////////////////////
       // Fold shifts with an unsized left hand side

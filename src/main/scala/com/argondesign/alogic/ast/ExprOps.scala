@@ -158,7 +158,7 @@ trait ExprOps { this: Expr =>
 
   // Simplify this expression
   def simplify(implicit cc: CompilerContext): Expr = {
-    this rewrite { new FoldExpr(false) } match {
+    this rewrite { new FoldExpr(assignTypes = hasTpe, foldRefs = true) } match {
       case expr: Expr => expr
       case _          => unreachable
     }

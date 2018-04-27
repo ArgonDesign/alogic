@@ -13,7 +13,7 @@
 // For each param and const symbol, gather all expressions they can evaluate
 // to and attach them as attributes to the symbols. Furthermore, attach all
 // combinations of parameter instantiations to the entity symbol that defines
-// the parameters. This is used in a second pass to inline all values and clone
+// the parameters. This is used in a second pass to specialize values and clone
 // modules with multiple parameter instantiations. Note that multiple threads
 // might be working on separate entities and they are updating the attributes
 // in external symbols, so we need to synchronize on them.
@@ -27,7 +27,7 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
 
-final class AnalyseParamConst(implicit cc: CompilerContext) extends TreeTransformer {
+final class SpecializeParamA(implicit cc: CompilerContext) extends TreeTransformer {
 
   override def enter(tree: Tree): Unit = tree match {
     case Decl(Sym(symbol: TermSymbol), _: TypeConst, Some(expr)) => {
@@ -50,8 +50,11 @@ final class AnalyseParamConst(implicit cc: CompilerContext) extends TreeTransfor
         val paramMap = (paramNames zip paramExprs).toMap
 
         val paramBindings = {
-          val pairs = for (symbol <- entityKind.paramSymbols) yield {
-            symbol -> paramMap.get(symbol.name)
+          val pairs = for {
+            symbol <- entityKind.paramSymbols
+            expr <- paramMap.get(symbol.name)
+          } yield {
+            symbol -> expr
           }
           pairs.toMap
         }

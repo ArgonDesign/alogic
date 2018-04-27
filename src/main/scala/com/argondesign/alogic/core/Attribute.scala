@@ -22,6 +22,8 @@ class Attribute[T] {
 
   def get: Option[T] = store
 
+  def getOrElse(default: => T): T = store getOrElse default
+
   def set(v: T): Unit = store = Some(v)
 
   def append[E](v: E)(implicit a: Attribute.Appendable[E, T]): Unit = store match {

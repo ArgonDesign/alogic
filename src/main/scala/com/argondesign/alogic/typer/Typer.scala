@@ -219,7 +219,11 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         inConnect = false
       }
 
-      case decl @ Decl(_, origKind, Some(init)) => {
+      case decl @ Decl(Sym(symbol), origKind, Some(init)) => {
+        symbol.denot.kind match {
+          case _: TypeConst => symbol.attr.constValue set init
+          case _            => ()
+        }
         val kind = origKind rewrite TypeTyper
         require(kind.isPacked)
         if (allowWidthInference && init.tpe.isNum) {
