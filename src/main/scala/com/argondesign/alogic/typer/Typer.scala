@@ -25,10 +25,12 @@ import com.argondesign.alogic.Config.allowWidthInference
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
+import com.argondesign.alogic.core.Symbols.TermSymbol
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.TreeInTypeTransformer
 import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.lib.TreeLike
 import com.argondesign.alogic.util.FollowedBy
 import com.argondesign.alogic.util.unreachable
 
@@ -219,12 +221,16 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         inConnect = false
       }
 
-      case decl @ Decl(Sym(symbol), origKind, Some(init)) => {
-        symbol.denot.kind match {
+      case decl @ Decl(Sym(symbol: TermSymbol), _, Some(init)) => {
+        val origKind = symbol.denot.kind
+        val kind = origKind rewrite TypeTyper
+        if (kind ne origKind) {
+          symbol withDenot symbol.denot.copy(kind = kind)
+        }
+        kind match {
           case _: TypeConst => symbol.attr.constValue set init
           case _            => ()
         }
-        val kind = origKind rewrite TypeTyper
         require(kind.isPacked)
         if (allowWidthInference && init.tpe.isNum) {
           // Infer width of init
@@ -245,14 +251,18 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
             TypeAssigner(newInit)
             decl.copy(kind = kind, init = Some(newInit)) withLoc tree.loc
           } getOrElse {
-            if (kind eq origKind) decl else decl.copy(kind = kind) withLoc tree.loc
+            decl.copy(kind = kind) withLoc tree.loc
           }
         }
       }
 
-      case decl @ Decl(_, origKind, None) => {
+      case decl @ Decl(Sym(symbol: TermSymbol), _, None) => {
+        val origKind = symbol.denot.kind
         val kind = origKind rewrite TypeTyper
-        if (kind eq origKind) decl else decl.copy(kind = kind) withLoc tree.loc
+        if (kind ne origKind) {
+          symbol withDenot symbol.denot.copy(kind = kind)
+        }
+        decl.copy(kind = kind) withLoc tree.loc
       }
 
       ////////////////////////////////////////////////////////////////////////////
@@ -645,24 +655,26 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
   }
 
   override def finalCheck(tree: Tree): Unit = {
-    tree visit {
-      case node: Tree if !node.hasTpe => {
-        cc.ice(
-          node,
-          "Typer should have assigned type for all nodes, but the following remains untyped",
-          node.toString
-        )
-      }
-      case node: TypeDefinition => {
-        cc.ice(node, s"Typer should have removed type definitions, but '${node}' remains")
-      }
-      case node: Root => {
-        cc.ice(node, s"Typer should have removed the Root node")
-      }
-      case node: Tree if tree.tpe.isInstanceOf[TypePolyFunc] => {
-        cc.ice(node, s"Tree of type TypePolyFunc remains")
+
+    def check(tree: TreeLike) {
+      tree visitAll {
+        case node: Tree if !node.hasTpe => {
+          cc.ice(node, "Typer: untyped node remains", node.toString)
+        }
+        case node: TypeDefinition => {
+          cc.ice(node, s"Typer: type definition remains", node.toString)
+        }
+        case node: Root => {
+          cc.ice(node, s"Typer: root node remains")
+        }
+        case node: Tree if node.tpe.isInstanceOf[TypePolyFunc] => {
+          cc.ice(node, s"Typer: node of type TypePolyFunc remains")
+        }
+        case Decl(Sym(symbol), _, _) => check(symbol.denot.kind)
       }
     }
+
+    check(tree)
   }
 
 }
