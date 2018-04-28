@@ -15,9 +15,11 @@
 //    is not an 'instance.port' (or concatenations of such), but a
 //    proper expression
 //  - Allocate intermediate variables for instance port access in states
+//  - Ensure an 'instance.port' is only present in a single Connect
 // After this stage, the only place where an 'instance.port' reference can
 // remain is on either side of a Connect, and only one side of a connect
-// can be such an reference.
+// can be such an reference. Furthermore, there is only one Connect which
+// to any one 'instance.port'.
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.passes
@@ -138,9 +140,9 @@ final class LowerInterconnect(implicit cc: CompilerContext)
 
   override def transform(tree: Tree): Tree = {
     tree match {
-      ////////////////////////////////////////////////////////////////////////////
+      //////////////////////////////////////////////////////////////////////////
       // Rewrite references, allocating if enabled and necessary
-      ////////////////////////////////////////////////////////////////////////////
+      //////////////////////////////////////////////////////////////////////////
 
       case select @ ExprSelect(ExprRef(Sym(iSymbol: TermSymbol)), _)
           if iSymbol.denot.kind.isInstanceOf[TypeInstance] => {
@@ -151,9 +153,9 @@ final class LowerInterconnect(implicit cc: CompilerContext)
         }
       }
 
-      ////////////////////////////////////////////////////////////////////////////
+      //////////////////////////////////////////////////////////////////////////
       // Emit any new connections created under a Connect
-      ////////////////////////////////////////////////////////////////////////////
+      //////////////////////////////////////////////////////////////////////////
 
       case conn: Connect if newConnects.nonEmpty => {
         newConnects append conn
@@ -164,11 +166,61 @@ final class LowerInterconnect(implicit cc: CompilerContext)
         newConnects.clear()
       }
 
-      ////////////////////////////////////////////////////////////////////////////
-      // Add newly allocated symbols and connections
-      ////////////////////////////////////////////////////////////////////////////
+      //////////////////////////////////////////////////////////////////////////
+      // Add new symbols and connections, ensure single sink for 'instance.port'
+      //////////////////////////////////////////////////////////////////////////
 
-      case entity: Entity if newSymbols.nonEmpty => {
+      case entity: Entity => {
+
+        // Ensure that any 'instance.port' is only present on the left
+        // of a single Connect instance (i.e.: there is only 1 sink variable)
+        val newConn = {
+          // Collect the sinks of all 'instance.port'
+          val sinks: Map[ExprSelect, List[Expr]] = {
+            val pairs = entity.connects collect {
+              case Connect(select @ ExprSelect(ExprRef(Sym(symbol)), _), List(sink))
+                  if symbol.denot.kind.isInstanceOf[TypeInstance] => {
+                select -> sink
+              }
+            }
+            pairs groupBy { _._1 } mapValues { _ map { _._2 } }
+          }
+
+          // For ports with multiple sinks, compute the map from
+          // 'instance.port' to the interconnect symbol, allocating
+          // it if necessary (have not been allocated already)
+          val nMap = {
+            for {
+              (select, exprs) <- sinks
+              if exprs.lengthCompare(1) > 0
+            } yield {
+              select -> handlePortSelect(select, alloc = true).get
+            }
+          }
+
+          // Update all connect instances that reference on the left hand side
+          // a port with multiple sinks, and the right hand side is not the
+          // interconnect symbol
+          for (conn @ Connect(lhs, List(rhs)) <- entity.connects) yield {
+            lhs match {
+              case expr: ExprSelect => {
+                nMap get expr map { nSymbol =>
+                  rhs match {
+                    case ExprRef(Sym(`nSymbol`)) => conn // Already the nSymbol, leave it alone
+                    case _ => {
+                      Connect(ExprRef(Sym(nSymbol)), List(rhs)) regularize rhs.loc
+                    }
+                  }
+                } getOrElse {
+                  conn
+                }
+              }
+              case _ => conn
+            }
+          }
+        }
+
+        // Add declarations for the newly defined symbols
         val newDecls = for ((_, symbol) <- newSymbols) yield {
           Decl(symbol, None) regularize symbol.loc
         }
@@ -176,7 +228,7 @@ final class LowerInterconnect(implicit cc: CompilerContext)
         TypeAssigner {
           entity.copy(
             declarations = newDecls.toList ::: entity.declarations,
-            connects = newConnects.toList ::: entity.connects
+            connects = newConnects.toList ::: newConn
           ) withVariant entity.variant withLoc tree.loc
         }
       } followedBy {
