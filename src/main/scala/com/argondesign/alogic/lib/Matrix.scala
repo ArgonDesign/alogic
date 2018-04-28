@@ -41,27 +41,7 @@ case class Matrix[T: Numeric](elements: List[List[T]]) {
 
   lazy val cols = transpose.rows
 
-  lazy val transpose: Matrix[T] = {
-    val cols = ListBuffer[List[T]]()
-
-    @tailrec
-    def loop(rows: List[List[T]]): List[List[T]] = {
-      if (rows.head.lengthCompare(1) == 0) {
-        val col = rows map { _.head }
-        cols append col
-        cols.toList
-      } else {
-        val zipped = rows map { row =>
-          (row.head, row.tail)
-        }
-        val (col, rest) = zipped.unzip
-        cols append col
-        loop(rest)
-      }
-    }
-
-    Matrix(loop(rows))
-  }
+  lazy val transpose: Matrix[T] = Matrix(elements.transpose)
 
   def +(other: Matrix[T]): Matrix[T] = {
     require(size == other.size, s"Incompatible matrix sizes ${size} + ${other.size}")
