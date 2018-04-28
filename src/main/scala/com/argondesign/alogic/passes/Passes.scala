@@ -75,6 +75,8 @@ object Passes {
       // TODO: StripTermPrefixes
       () => new LowerFlops,
       () => new LowerArrays,
+      () => new LowerInterconnect,
+//      () => new RemoveUnusedA,
       // TODO: LowerGo
       () => new RemoveRedundantBlocks,
       () => new RenameClashingTerms

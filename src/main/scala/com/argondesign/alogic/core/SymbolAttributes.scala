@@ -72,6 +72,9 @@ class SymbolAttributes {
   // If this is an array _q symbol, the corresponding we, waddr and wdata symbols
   val arr = new Attribute[(TermSymbol, TermSymbol, TermSymbol)]()
 
+  // If this is an interconnect signal, the corresponding instance symbol and port name
+  val interconnect = new Attribute[(TermSymbol, String)]()
+
   // The expanded field symbols of a struct symbol
   val fieldSymbols = new Attribute[List[TermSymbol]]()
 
@@ -96,6 +99,7 @@ class SymbolAttributes {
     oReg,
     flop,
     arr,
+    interconnect,
     fieldSymbols
   )
 
@@ -120,6 +124,7 @@ class SymbolAttributes {
     "oReg",
     "flop",
     "arr",
+    "interconnect",
     "fieldSymbols"
   )
 
