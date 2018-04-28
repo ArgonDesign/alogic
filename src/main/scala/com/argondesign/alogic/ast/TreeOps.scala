@@ -108,10 +108,10 @@ trait ObjectTreeOps extends TreeUntype {
     def build(ctx: EntityContext)(implicit cc: CompilerContext): Entity = EntityBuilder(ctx)
   }
 
-  implicit final val parseableDecl = new Parser.Parseable[Decl] {
+  implicit final val parseableDeclIdent = new Parser.Parseable[DeclIdent] {
     type C = DeclContext
     def parse(parser: AlogicParser): DeclContext = parser.decl()
-    def build(ctx: DeclContext)(implicit cc: CompilerContext): Decl = DeclBuilder(ctx)
+    def build(ctx: DeclContext)(implicit cc: CompilerContext): DeclIdent = DeclBuilder(ctx)
   }
 
   implicit final val parseableConnect = new Parser.Parseable[Connect] {

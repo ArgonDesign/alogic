@@ -26,11 +26,11 @@ import scala.collection.mutable.ListBuffer
 
 final class ConvertLocalDecls(implicit cc: CompilerContext) extends TreeTransformer {
 
-  private[this] val localDecls = ListBuffer[Decl]()
+  private[this] val localDecls = ListBuffer[Declaration]()
 
   override def transform(tree: Tree): Tree = tree match {
 
-    case StmtDecl(decl @ Decl(Sym(symbol), kind, initOpt)) => {
+    case StmtDecl(decl @ Decl(symbol, initOpt)) => {
       localDecls.append(decl.copy(init = None) regularize decl.loc)
       val stmt = initOpt match {
         case None       => StmtBlock(Nil)

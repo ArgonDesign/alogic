@@ -24,23 +24,11 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
 
 final class SpecializeParamA(implicit cc: CompilerContext) extends TreeTransformer {
 
   override def enter(tree: Tree): Unit = tree match {
-    case Decl(Sym(symbol: TermSymbol), _: TypeConst, Some(expr)) => {
-//      symbol.setAttr("default", expr)
-//      symbol.setAttr("owner", entitySymbol)
-    }
-
-    case Decl(Sym(symbol: TermSymbol), _: TypeParam, Some(expr)) => {
-      symbol synchronized {
-//        symbol.setAttr("default", expr)
-//        symbol.setAttr("owner", entitySymbol)
-      }
-    }
 
     case Instance(Sym(iSymbol), Sym(eSymbol), paramNames, paramExprs) => {
       val entityKind = eSymbol.denot.kind.asInstanceOf[TypeEntity]

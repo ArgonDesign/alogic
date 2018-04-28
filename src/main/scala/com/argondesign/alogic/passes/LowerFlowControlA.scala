@@ -60,16 +60,30 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
   // Some statements can be completely removed, this flag marks them
   private[this] var removeStmt = false
 
+  private[this] def isIn(symbol: TermSymbol, fc: FlowControlType): Boolean = {
+    symbol.denot.kind match {
+      case TypeIn(_, `fc`) => true
+      case _               => false
+    }
+  }
+
+  private[this] def isOut(symbol: TermSymbol, fc: FlowControlType): Boolean = {
+    symbol.denot.kind match {
+      case TypeOut(_, `fc`, _) => true
+      case _                   => false
+    }
+  }
+
   override def enter(tree: Tree): Unit = tree match {
     ////////////////////////////////////////////////////////////////////////////
     // FlowControlTypeNone
     ////////////////////////////////////////////////////////////////////////////
 
-    case Decl(Sym(symbol: TermSymbol), TypeIn(_, FlowControlTypeNone), _) => {
+    case Decl(symbol, _) if isIn(symbol, FlowControlTypeNone) => {
       symbol.attr.fcn set true
     }
 
-    case Decl(Sym(symbol: TermSymbol), TypeOut(_, FlowControlTypeNone, _), _) => {
+    case Decl(symbol, _) if isOut(symbol, FlowControlTypeNone) => {
       symbol.attr.fcn set true
     }
 
@@ -77,8 +91,9 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
     // FlowControlTypeValid
     ////////////////////////////////////////////////////////////////////////////
 
-    case Decl(Sym(symbol: TermSymbol), TypeIn(kind, FlowControlTypeValid), _) => {
+    case Decl(symbol, _) if isIn(symbol, FlowControlTypeValid) => {
       // Allocate payload and valid signals
+      val kind = symbol.denot.kind.underlying
       val loc = tree.loc
       val pName = symbol.denot.name.str
       val vName = pName + cc.sep + "valid"
@@ -90,8 +105,9 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       symbol.attr.expandedPort set true
     }
 
-    case Decl(Sym(symbol: TermSymbol), TypeOut(kind, FlowControlTypeValid, st), _) => {
+    case Decl(symbol, _) if isOut(symbol, FlowControlTypeValid) => {
       // Allocate payload and valid signals
+      val TypeOut(kind, _, st) = symbol.denot.kind
       val loc = tree.loc
       val pName = symbol.denot.name.str
       val vName = pName + cc.sep + "valid"
@@ -108,8 +124,9 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
     // FlowControlTypeReady
     ////////////////////////////////////////////////////////////////////////////
 
-    case Decl(Sym(symbol: TermSymbol), TypeIn(kind, FlowControlTypeReady), _) => {
+    case Decl(symbol, _) if isIn(symbol, FlowControlTypeReady) => {
       // Allocate payload, valid and ready signals
+      val kind = symbol.denot.kind.underlying
       val loc = tree.loc
       val pName = symbol.denot.name.str
       val vName = pName + cc.sep + "valid"
@@ -128,8 +145,9 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       rSymbol.attr.clearOnStall set true
     }
 
-    case Decl(Sym(symbol: TermSymbol), TypeOut(kind, FlowControlTypeReady, st), _) => {
+    case Decl(symbol, _) if isOut(symbol, FlowControlTypeReady) => {
       // Allocate payload, valid and ready signals
+      val TypeOut(kind, _, st) = symbol.denot.kind
       val loc = tree.loc
       val pName = symbol.denot.name.str
       val vName = pName + cc.sep + "valid"
@@ -165,8 +183,9 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
     // FlowControlTypeAccept
     ////////////////////////////////////////////////////////////////////////////
 
-    case Decl(Sym(symbol: TermSymbol), TypeIn(kind, FlowControlTypeAccept), _) => {
+    case Decl(symbol, _) if isIn(symbol, FlowControlTypeAccept) => {
       // Allocate payload, valid and accept signals
+      val kind = symbol.denot.kind.underlying
       val loc = tree.loc
       val pName = symbol.denot.name.str
       val vName = pName + cc.sep + "valid"
@@ -184,9 +203,9 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       symbol.attr.expandedPort set true
     }
 
-    case Decl(Sym(symbol: TermSymbol), TypeOut(kind, FlowControlTypeAccept, st), _) => {
-      assert(st == StorageTypeWire)
+    case Decl(symbol, _) if isOut(symbol, FlowControlTypeAccept) => {
       // Allocate payload, valid and ready signals
+      val kind = symbol.denot.kind.underlying
       val loc = tree.loc
       val pName = symbol.denot.name.str
       val vName = pName + cc.sep + "valid"
@@ -367,41 +386,47 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       // Add declarations of the expanded symbols
       //////////////////////////////////////////////////////////////////////////
 
-      case decl @ Decl(Sym(symbol: TermSymbol), _, _) => {
+      case decl @ Decl(symbol, _) => {
         // Note: We also leave the declaration of the original symbol, as
         // Connect instances have not been rewritten yet. These will be fixed
         // up in a later pass as they required all entities to have been
         // converted before we can type port references
         symbol.attr.fcv.get.map {
-          case (pSymbol, vSymbol) =>
-            val vDecl = Decl(Sym(vSymbol), vSymbol.denot.kind, None)
-            val newDecls = if (pSymbol != ErrorSymbol) {
-              val pDecl = Decl(Sym(pSymbol), pSymbol.denot.kind, None)
-              List(pDecl, vDecl)
-            } else {
-              List(vDecl)
+          case (pSym, vSymbol) =>
+            val vDecl = Decl(vSymbol, None)
+            val newDecls = pSym match {
+              case ErrorSymbol => List(vDecl)
+              case pSymbol: TermSymbol => {
+                val pDecl = Decl(pSymbol, None)
+                List(pDecl, vDecl)
+              }
+              case _ => unreachable
             }
             Thicket(decl :: newDecls)
         } orElse symbol.attr.fcr.get.map {
-          case (pSymbol, vSymbol, rSymbol) =>
-            val vDecl = Decl(Sym(vSymbol), vSymbol.denot.kind, None)
-            val rDecl = Decl(Sym(rSymbol), rSymbol.denot.kind, None)
-            val newDecls = if (pSymbol != ErrorSymbol) {
-              val pDecl = Decl(Sym(pSymbol), pSymbol.denot.kind, None)
-              List(pDecl, vDecl, rDecl)
-            } else {
-              List(vDecl, rDecl)
+          case (pSym, vSymbol, rSymbol) =>
+            val vDecl = Decl(vSymbol, None)
+            val rDecl = Decl(rSymbol, None)
+            val newDecls = pSym match {
+              case ErrorSymbol => List(vDecl, rDecl)
+              case pSymbol: TermSymbol => {
+                val pDecl = Decl(pSymbol, None)
+                List(pDecl, vDecl, rDecl)
+              }
+              case _ => unreachable
             }
             Thicket(decl :: newDecls)
         } orElse symbol.attr.fca.get.map {
-          case (pSymbol, vSymbol, aSymbol) =>
-            val vDecl = Decl(Sym(vSymbol), vSymbol.denot.kind, None)
-            val aDecl = Decl(Sym(aSymbol), aSymbol.denot.kind, None)
-            val newDecls = if (pSymbol != ErrorSymbol) {
-              val pDecl = Decl(Sym(pSymbol), pSymbol.denot.kind, None)
-              List(pDecl, vDecl, aDecl)
-            } else {
-              List(vDecl, aDecl)
+          case (pSym, vSymbol, aSymbol) =>
+            val vDecl = Decl(vSymbol, None)
+            val aDecl = Decl(aSymbol, None)
+            val newDecls = pSym match {
+              case ErrorSymbol => List(vDecl, aDecl)
+              case pSymbol: TermSymbol => {
+                val pDecl = Decl(pSymbol, None)
+                List(pDecl, vDecl, aDecl)
+              }
+              case _ => unreachable
             }
             Thicket(decl :: newDecls)
         } getOrElse {
@@ -415,7 +440,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
 
       case entity: Entity => {
         val ospSymbols = entity.declarations collect {
-          case Decl(Sym(symbol), _, _) if symbol.attr.oSlice.isSet => symbol
+          case Decl(symbol, _) if symbol.attr.oSlice.isSet => symbol
         }
 
         val instances = for (symbol <- ospSymbols) yield {
@@ -441,7 +466,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
 
         // Remove fcn and oSlice attributes, they are no longer needed
         entity.declarations foreach {
-          case Decl(Sym(symbol), _, _) => {
+          case Decl(symbol, _) => {
             symbol.attr.fcn.clear
             symbol.attr.oSlice.clear
           }
@@ -455,8 +480,8 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
         // un-converted port for now, as Connect instances have not been updated
         // yet.
         val portSymbols = entity.declarations collect {
-          case Decl(Sym(symbol: TermSymbol), _: TypeIn, _)  => symbol
-          case Decl(Sym(symbol: TermSymbol), _: TypeOut, _) => symbol
+          case Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypeIn]  => symbol
+          case Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypeOut] => symbol
         }
 
         val TypeEntity(name, _, Nil) = entitySymbol.denot.kind

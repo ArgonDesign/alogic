@@ -80,7 +80,6 @@ object Passes {
 //      () => new RemoveUnusedA,
       // TODO: LowerGo
       () => new RemoveRedundantBlocks,
-      // TODO: OrderPortsByLoc
       () => new RenameClashingTerms
       // TODO: RenameKeywords
       // TODO: final check pass to make sure everything is well-formed

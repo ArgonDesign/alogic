@@ -63,7 +63,7 @@ final class OutputDefault(implicit cc: CompilerContext) extends TreeTransformer 
 
     case entity: Entity => {
       val assignments = entity.declarations collect {
-        case decl @ Decl(Sym(symbol: TermSymbol), _, _) if defaultedSet contains symbol => {
+        case decl @ Decl(symbol, _) if defaultedSet contains symbol => {
           val kind = symbol.denot.kind
           val width = kind.width.value.get.toInt
           StmtAssign(ExprRef(Sym(symbol)), ExprInt(kind.isSigned, width, 0)) regularize decl.loc

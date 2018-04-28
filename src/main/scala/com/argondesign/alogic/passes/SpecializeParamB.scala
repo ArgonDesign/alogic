@@ -18,7 +18,6 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Symbols.TermSymbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.transform.CloneEntity
 import com.argondesign.alogic.typer.TypeAssigner
@@ -35,7 +34,7 @@ final class SpecializeParamB(implicit cc: CompilerContext) extends TreeTransform
 
       // Pairs of param symbols and the corresponding default values
       lazy val pSymbolsAndDefaults = for {
-        Decl(Sym(symbol: TermSymbol), _, initOpt) <- entity.declarations
+        Decl(symbol, initOpt) <- entity.declarations
         if symbol.denot.kind.isInstanceOf[TypeParam]
         init <- initOpt
       } yield {
@@ -84,7 +83,7 @@ final class SpecializeParamB(implicit cc: CompilerContext) extends TreeTransform
 
   override def finalCheck(tree: Tree): Unit = {
     tree visit {
-      case node @ Decl(_, _: TypeParam, _) => {
+      case node @ Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypeParam] => {
         cc.ice(node, "param remains")
       }
     }

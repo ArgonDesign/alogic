@@ -20,6 +20,7 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.StackFactory
 import com.argondesign.alogic.core.Symbols._
+import com.argondesign.alogic.core.Types.TypeStack
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Stack
 import com.argondesign.alogic.util.FollowedBy
@@ -44,8 +45,9 @@ final class LowerStacks(implicit cc: CompilerContext) extends TreeTransformer wi
       entityName = symbol.denot.name.str
     }
 
-    case Decl(Sym(symbol: TermSymbol), TypeStack(kind, depth), _) => {
+    case Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypeStack] => {
       // Construct the stack entity
+      val TypeStack(kind, depth) = symbol.denot.kind
       val loc = tree.loc
       val pName = symbol.denot.name.str
       // TODO: mark inline
@@ -148,9 +150,9 @@ final class LowerStacks(implicit cc: CompilerContext) extends TreeTransformer wi
 
       case entity: Entity if stackMap.nonEmpty => {
         // Drop stack declarations
-        val declarations = entity.declarations filter {
-          case Decl(_, _: TypeStack, _) => false
-          case _                        => true
+        val declarations = entity.declarations filterNot {
+          case Decl(symbol, _) => symbol.denot.kind.isInstanceOf[TypeStack]
+          case _               => false
         }
 
         // Add instances

@@ -165,7 +165,7 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
         val ident = ctx.IDENTIFIER.toIdent
         val kind = TypeBuilder(ctx.kind)
         val init = ExprBuilder(ctx.expr)
-        val decl = Decl(ident, kind, Some(init)) withLoc ctx.loc
+        val decl = DeclIdent(ident, kind, Some(init)) withLoc ctx.loc
         StmtDecl(decl) withLoc ctx.loc
       }
     }

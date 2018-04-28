@@ -19,7 +19,6 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.unreachable
@@ -34,8 +33,8 @@ final class SplitStructsC(implicit cc: CompilerContext) extends TreeTransformer 
     case entity: Entity => {
       // Drop original port declarations
       val declarations = entity.declarations filterNot {
-        case Decl(Sym(symbol), _, _) => symbol.attr.fieldSymbols.isSet
-        case _                       => unreachable
+        case Decl(symbol, _) => symbol.attr.fieldSymbols.isSet
+        case _               => unreachable
       }
 
       if (declarations == entity.declarations) {
@@ -43,8 +42,8 @@ final class SplitStructsC(implicit cc: CompilerContext) extends TreeTransformer 
       } else {
         // Update type of entity to drop new ports.
         val portSymbols = declarations collect {
-          case Decl(Sym(symbol: TermSymbol), _: TypeIn, _)  => symbol
-          case Decl(Sym(symbol: TermSymbol), _: TypeOut, _) => symbol
+          case Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypeIn]  => symbol
+          case Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypeOut] => symbol
         }
 
         val newKind = entitySymbol.denot.kind match {
@@ -64,7 +63,7 @@ final class SplitStructsC(implicit cc: CompilerContext) extends TreeTransformer 
 
   override def finalCheck(tree: Tree): Unit = {
     tree visit {
-      case node @ Decl(_, kind, _) if kind.underlying.isInstanceOf[TypeStruct] => {
+      case node @ Decl(symbol, _) if symbol.denot.kind.underlying.isInstanceOf[TypeStruct] => {
         cc.ice(node, "Struct declaration remains")
       }
       case node: Tree if node.tpe.underlying.isInstanceOf[TypeStruct] => {

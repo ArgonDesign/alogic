@@ -197,7 +197,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         inside(tree) {
           case Entity(_, List(decl), Nil, Nil, Nil, Nil, Nil, Nil, _) =>
             inside(decl) {
-              case Decl(_, TypeOut(_, fc, st), _) =>
+              case DeclIdent(_, TypeOut(_, fc, st), _) =>
                 fc shouldBe FlowControlTypeNone
                 st shouldBe StorageTypeReg
             }
@@ -218,7 +218,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         inside(tree) {
           case Entity(_, List(decl), Nil, Nil, Nil, Nil, Nil, Nil, _) =>
             inside(decl) {
-              case Decl(_, TypeOut(_, fc, st), _) =>
+              case DeclIdent(_, TypeOut(_, fc, st), _) =>
                 fc shouldBe FlowControlTypeValid
                 st shouldBe StorageTypeReg
             }

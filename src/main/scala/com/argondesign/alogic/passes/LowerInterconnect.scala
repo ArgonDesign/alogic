@@ -170,7 +170,7 @@ final class LowerInterconnect(implicit cc: CompilerContext)
 
       case entity: Entity if newSymbols.nonEmpty => {
         val newDecls = for ((_, symbol) <- newSymbols) yield {
-          Decl(Sym(symbol), symbol.denot.kind, None) regularize symbol.loc
+          Decl(symbol, None) regularize symbol.loc
         }
 
         TypeAssigner {

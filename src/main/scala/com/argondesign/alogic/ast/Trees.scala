@@ -16,6 +16,7 @@
 package com.argondesign.alogic.ast
 
 import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.Symbols.TermSymbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.StructuredTree
 import com.argondesign.alogic.core.SourceAttributes
@@ -66,7 +67,7 @@ object Trees {
       // Entity being defined
       ref: Ref,
       // Declarations in entity scope
-      declarations: List[Decl],
+      declarations: List[Declaration],
       // Instantiations
       instances: List[Instance],
       // Port connections
@@ -88,7 +89,10 @@ object Trees {
   // Entity contents
   ///////////////////////////////////////////////////////////////////////////////
 
-  case class Decl(ref: Ref, kind: Type, init: Option[Expr]) extends Tree
+  sealed trait Declaration extends Tree
+  case class DeclIdent(ident: Ident, kind: Type, init: Option[Expr]) extends Declaration
+  case class Decl(symbol: TermSymbol, init: Option[Expr]) extends Declaration
+
   case class Instance(ref: Ref, module: Ref, paramNames: List[String], paramExprs: List[Expr])
       extends Tree
   case class Connect(lhs: Expr, rhs: List[Expr]) extends Tree
@@ -136,7 +140,7 @@ object Trees {
   case class StmtUpdate(lhs: Expr, op: String, rhs: Expr) extends Stmt
   case class StmtPost(expr: Expr, op: String) extends Stmt
   case class StmtExpr(expr: Expr) extends Stmt
-  case class StmtDecl(decl: Decl) extends Stmt
+  case class StmtDecl(decl: Declaration) extends Stmt
 
   case class StmtRead() extends Stmt
   case class StmtWrite() extends Stmt

@@ -130,10 +130,14 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
       } followedBy {
         entityStack.pop()
       }
-      case node: Decl => {
-        val ref = walk(node.ref)
+      case node: DeclIdent => {
+        val ident = walk(node.ident)
         val init = walk(node.init)
-        doTransform(TreeCopier(node)(ref, init))
+        doTransform(TreeCopier(node)(ident, init))
+      }
+      case node: Decl => {
+        val init = walk(node.init)
+        doTransform(TreeCopier(node)(init))
       }
       case node: Instance => {
         val ref = walk(node.ref)
@@ -340,7 +344,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
       for (tree <- trees) {
         val declaredSymbols = {
           val it = tree collectAll {
-            case Decl(Sym(symbol: TermSymbol), _, _)        => symbol
+            case Decl(symbol, _)                            => symbol
             case Instance(Sym(symbol: TermSymbol), _, _, _) => symbol
             case Function(Sym(symbol: TermSymbol), _)       => symbol
             case State(ExprRef(Sym(symbol: TermSymbol)), _) => symbol

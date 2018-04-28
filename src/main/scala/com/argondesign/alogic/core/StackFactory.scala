@@ -155,7 +155,7 @@ object StackFactory {
     val symbols = valSymbol :: stoSymbol :: ports
 
     val decls = symbols map { symbol =>
-      Decl(Sym(symbol), symbol.denot.kind, None)
+      Decl(symbol, None)
     }
 
     val connects = List(
@@ -300,7 +300,7 @@ object StackFactory {
 
     val decls = symbols map { symbol =>
       val init = if (symbol == oreSymbol) Some(ExprInt(false, 1, 1)) else None
-      Decl(Sym(symbol), symbol.denot.kind, init)
+      Decl(symbol, init)
     }
 
     val connects = List(

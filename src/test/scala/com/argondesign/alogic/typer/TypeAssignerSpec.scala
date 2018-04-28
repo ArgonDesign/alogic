@@ -932,11 +932,13 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
     "entity contents" - {
       for {
         (name, text, pattern) <- List[(String, String, PartialFunction[Any, Tree])](
-          ("entity", "fsm e {}", { case c: Entity                              => c }),
-          ("decl", "param bool e = true;", { case c @ Decl(_, _: TypeParam, _) => c }),
-          ("instance", "d = new a();", { case c: Instance                      => c }),
-          ("connect", "b -> c;", { case c: Connect                             => c }),
-          ("function", "void main() {}", { case c: Function                    => c })
+          ("entity", "fsm e {}", { case c: Entity => c }),
+          ("decl", "param bool e = true;", {
+            case c @ Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypeParam] => c
+          }),
+          ("instance", "d = new a();", { case c: Instance   => c }),
+          ("connect", "b -> c;", { case c: Connect          => c }),
+          ("function", "void main() {}", { case c: Function => c })
         )
       } {
         name in {

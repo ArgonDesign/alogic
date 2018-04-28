@@ -42,8 +42,7 @@ final class DesugarSpec extends FreeSpec with AlogicTest {
           cc.messages shouldBe empty
 
           inside(tree) {
-            case StmtBlock(List(StmtDecl(decl), stmt)) =>
-              val Sym(dSym) = decl.ref
+            case StmtBlock(List(StmtDecl(Decl(dSym, _)), stmt)) =>
               inside(stmt) {
                 case StmtAssign(lhs, rhs) =>
                   lhs shouldBe ExprRef(Sym(dSym))
@@ -71,8 +70,7 @@ final class DesugarSpec extends FreeSpec with AlogicTest {
           cc.messages shouldBe empty
 
           inside(tree) {
-            case StmtBlock(List(StmtDecl(decl), stmt)) =>
-              val Sym(dSym) = decl.ref
+            case StmtBlock(List(StmtDecl(Decl(dSym, _)), stmt)) =>
               inside(stmt) {
                 case StmtAssign(lhs, rhs) =>
                   lhs shouldBe ExprRef(Sym(dSym))
@@ -100,11 +98,12 @@ final class DesugarSpec extends FreeSpec with AlogicTest {
             .asTree[Stmt] rewrite namer rewrite desugar
 
           inside(tree) {
-            case StmtBlock(List(StmtDecl(declB), declA, assignB, loop)) =>
-              val Sym(dSymB) = declB.ref
+            case StmtBlock(List(StmtDecl(declB: Decl), declA: StmtDecl, assignB, loop)) =>
+              val dSymB = declB.symbol
               dSymB.denot.name.str shouldBe "b"
               inside(declA) {
-                case StmtDecl(Decl(Sym(dSymA), TypeSInt(Expr(2)), Some(Expr(0)))) =>
+                case StmtDecl(Decl(dSymA, Some(Expr(0)))) =>
+                  dSymA.denot.kind shouldBe TypeSInt(Expr(2))
                   inside(assignB) {
                     case StmtAssign(ExprRef(Sym(symB)), ExprRef(Sym(symA))) =>
                       symB.denot.name.str shouldBe "b";

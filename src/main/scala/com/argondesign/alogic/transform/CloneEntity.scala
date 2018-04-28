@@ -56,7 +56,7 @@ final class CloneEntity(parameterBindings: ListMap[TermSymbol, Expr])(implicit c
     // Clone the symbols in declaration
     ////////////////////////////////////////////////////////////////////////////
 
-    case Decl(Sym(symbol: TermSymbol), _, init) => {
+    case Decl(symbol, init) => {
       // Change parameters that have a binding into constants
       val (newKind, newInit) = parameterBindings.get(symbol) map { expr =>
         val TypeParam(kind) = symbol.denot.kind
@@ -77,7 +77,7 @@ final class CloneEntity(parameterBindings: ListMap[TermSymbol, Expr])(implicit c
         case _            => ()
       }
       // Rewrite with new symbol and init
-      Decl(Sym(newSymbol), newKind, newInit) regularize tree.loc
+      Decl(newSymbol, newInit) regularize tree.loc
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -115,14 +115,14 @@ final class CloneEntity(parameterBindings: ListMap[TermSymbol, Expr])(implicit c
 
       val newKind = {
         val portSymbols = for {
-          Decl(Sym(symbol: TermSymbol), _, _) <- entity.declarations
+          Decl(symbol, _) <- entity.declarations
           if symbol.denot.kind.isInstanceOf[TypeIn] || symbol.denot.kind.isInstanceOf[TypeOut]
         } yield {
           symbol
         }
 
         val paramSymbols = for {
-          Decl(Sym(symbol: TermSymbol), _, _) <- entity.declarations
+          Decl(symbol, _) <- entity.declarations
           if symbol.denot.kind.isInstanceOf[TypeParam]
         } yield {
           symbol
@@ -145,7 +145,7 @@ final class CloneEntity(parameterBindings: ListMap[TermSymbol, Expr])(implicit c
 
   override protected def finalCheck(tree: Tree): Unit = {
     tree visitAll {
-      case decl @ Decl(Sym(symbol), _, Some(init)) => {
+      case decl @ Decl(symbol, Some(init)) => {
         symbol.denot.kind partialMatch {
           case _: TypeConst if symbol.attr.constValue.value != init => {
             cc.ice(decl, "Const symbol with wrong constValue")

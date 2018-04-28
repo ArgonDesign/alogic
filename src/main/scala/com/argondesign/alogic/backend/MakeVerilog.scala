@@ -43,35 +43,40 @@ final class MakeVerilog(entity: Entity)(implicit cc: CompilerContext) {
 
   assert {
     decls forall {
-      case Decl(_, _: TypeConst, Some(_)) => true
-      case Decl(_, _: TypeIn, None)       => true
-      case Decl(_, _: TypeOut, None)      => true
-      case Decl(_, _: TypeArray, None)    => true
-      case Decl(_, _: TypeInt, _)         => true
-      case _                              => false
+      case Decl(symbol, _) => {
+        symbol.denot.kind match {
+          case _: TypeConst => true
+          case _: TypeIn    => true
+          case _: TypeOut   => true
+          case _: TypeArray => true
+          case _: TypeInt   => true
+          case _            => false
+        }
+      }
+      case _ => unreachable
     }
   }
 
   assert(states.nonEmpty || fenceStmts.isEmpty)
 
   private val hasConsts = decls exists {
-    case Decl(Sym(symbol), _, _) => symbol.denot.kind.isInstanceOf[TypeConst]
-    case _                       => false
+    case Decl(symbol, _) => symbol.denot.kind.isInstanceOf[TypeConst]
+    case _               => false
   }
 
   private val hasFlops = decls exists {
-    case Decl(Sym(symbol), _, _) => symbol.attr.flop.isSet
-    case _                       => false
+    case Decl(symbol, _) => symbol.attr.flop.isSet
+    case _               => false
   }
 
   private val hasArrays = decls exists {
-    case Decl(Sym(symbol), _, _) => symbol.attr.arr.isSet
-    case _                       => false
+    case Decl(symbol, _) => symbol.attr.arr.isSet
+    case _               => false
   }
 
   private val hasInterconnect = decls exists {
-    case Decl(Sym(symbol), _, _) => symbol.attr.interconnect.isSet
-    case _                       => false
+    case Decl(symbol, _) => symbol.attr.interconnect.isSet
+    case _               => false
   }
 
   private val canStall = entity.preOrderIterator exists {
@@ -93,7 +98,7 @@ final class MakeVerilog(entity: Entity)(implicit cc: CompilerContext) {
   lazy val groupedInterconnectSymbols: List[(TermSymbol, List[TermSymbol])] = {
     // Calculate (instance symbol, port name, interconnect symbol) triplets
     val trip = for {
-      Decl(Sym(nSymbol: TermSymbol), _, _) <- decls
+      Decl(nSymbol, _) <- decls
       (iSymbol, sel) <- nSymbol.attr.interconnect.get
     } yield {
       (iSymbol, sel, nSymbol)
@@ -236,7 +241,9 @@ final class MakeVerilog(entity: Entity)(implicit cc: CompilerContext) {
           // Emit const declarations
           body.emitBlock(1, "Local parameter declarations") {
             decls collect {
-              case Decl(Sym(symbol: TermSymbol), _: TypeConst, Some(init)) => (symbol, init)
+              case Decl(symbol, Some(init)) if symbol.denot.kind.isInstanceOf[TypeConst] => {
+                (symbol, init)
+              }
             } foreach {
               case (symbol, init) =>
                 body.emit(1)(s"localparam ${vdecl(symbol)} = ${vexpr(init)};")
@@ -252,7 +259,7 @@ final class MakeVerilog(entity: Entity)(implicit cc: CompilerContext) {
           // Emit flop declarations
           body.emitBlock(1, "Flop declarations") {
             for {
-              Decl(Sym(qSymbol: TermSymbol), _, _) <- decls
+              Decl(qSymbol, _) <- decls
               dSymbol <- qSymbol.attr.flop.get
             } {
               emitVarDecl(qSymbol)
@@ -265,7 +272,7 @@ final class MakeVerilog(entity: Entity)(implicit cc: CompilerContext) {
           // Emit array declarations
           body.emitBlock(1, "Array declarations") {
             for {
-              Decl(Sym(qSymbol: TermSymbol), _, _) <- decls
+              Decl(qSymbol, _) <- decls
               (weSymbol, waSymbol, wdSymbol) <- qSymbol.attr.arr.get
             } yield {
               emitVarDecl(qSymbol)
@@ -315,7 +322,7 @@ final class MakeVerilog(entity: Entity)(implicit cc: CompilerContext) {
 
             body.emit(3) {
               for {
-                Decl(Sym(qSymbol), _, initOpt) <- decls
+                Decl(qSymbol, initOpt) <- decls
                 if qSymbol.attr.flop.isSet
               } yield {
                 val id = qSymbol.name
@@ -342,7 +349,7 @@ final class MakeVerilog(entity: Entity)(implicit cc: CompilerContext) {
 
             body.emit(3) {
               for {
-                Decl(Sym(qSymbol), _, initOpt) <- decls
+                Decl(qSymbol, initOpt) <- decls
                 dSymbol <- qSymbol.attr.flop.get
               } yield {
                 s"${qSymbol.name} <= ${dSymbol.name};"
@@ -358,7 +365,7 @@ final class MakeVerilog(entity: Entity)(implicit cc: CompilerContext) {
         if (hasArrays) {
           body.emitBlock(1, "Array storage") {
             for {
-              Decl(Sym(qSymbol: TermSymbol), _, _) <- decls
+              Decl(qSymbol, _) <- decls
               (weSymbol, waSymbol, wdSymbol) <- qSymbol.attr.arr.get
             } {
               body.emit(1) {
@@ -505,7 +512,7 @@ final class MakeVerilog(entity: Entity)(implicit cc: CompilerContext) {
         }
 
         val cSymbols = decls collect {
-          case Decl(Sym(symbol), _, _) if symbol.attr.clearOnStall.get contains true => symbol
+          case Decl(symbol, _) if symbol.attr.clearOnStall.get contains true => symbol
         }
 
         if (cSymbols.nonEmpty && canStall) {
@@ -611,7 +618,7 @@ final class MakeVerilog(entity: Entity)(implicit cc: CompilerContext) {
     body.emit(0)(s"module ${eSymbol.name} (")
 
     // Emit port declarations
-    for (Decl(Sym(symbol: TermSymbol), _, _) <- decls) {
+    for (Decl(symbol, _) <- decls) {
       symbol.denot.kind match {
         case _: TypeIn => body.emit(1)(s"input  wire ${vdecl(symbol)},")
         case _: TypeOut => {

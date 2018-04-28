@@ -30,10 +30,7 @@ final class RenameClashingTerms(implicit cc: CompilerContext) extends TreeTransf
   private[this] val nameMap = mutable.Map[String, List[TermSymbol]]() withDefaultValue Nil
 
   override def enter(tree: Tree): Unit = tree match {
-    case Decl(Sym(symbol: TermSymbol), kind, _) => {
-      symbol withDenot symbol.denot.copy(kind = kind) // FIXME: this should not be necessary
-      nameMap(symbol.name) ::= symbol
-    }
+    case Decl(symbol, _) => nameMap(symbol.name) ::= symbol
 
     case _ => ()
   }

@@ -21,6 +21,7 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Names.TypeName
 import com.argondesign.alogic.core.StorageTypes.StorageTypeWire
 import com.argondesign.alogic.core.Symbols._
+import com.argondesign.alogic.core.Types.TypeOut
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Stack
 import com.argondesign.alogic.typer.TypeAssigner
@@ -107,12 +108,12 @@ final class LiftEntities(implicit cc: CompilerContext)
       //////////////////////////////////////////////////////////////////////////
 
       val newISymbols = entity.declarations collect {
-        case Decl(Sym(symbol: TermSymbol), _: TypeIn, _) => symbol
+        case Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypeIn] => symbol
       }
       outerIPortSymbols.push(newISymbols.toSet)
 
       val newOSymbols = entity.declarations collect {
-        case Decl(Sym(symbol: TermSymbol), _: TypeOut, _) => symbol
+        case Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypeOut] => symbol
       }
       outerOPortSymbols.push(newOSymbols.toSet)
 
@@ -136,10 +137,10 @@ final class LiftEntities(implicit cc: CompilerContext)
           entity
         } else {
           val freshIPortDecls = for (symbol <- freshIPortSymbols.top.values) yield {
-            Decl(Sym(symbol), symbol.denot.kind, None) regularize symbol.loc
+            Decl(symbol, None) regularize symbol.loc
           }
           val freshOPortDecls = for (symbol <- freshOPortSymbols.top.values) yield {
-            Decl(Sym(symbol), symbol.denot.kind, None) regularize symbol.loc
+            Decl(symbol, None) regularize symbol.loc
           }
 
           val newDecls = freshIPortDecls ++ freshOPortDecls ++ entity.declarations
@@ -167,27 +168,19 @@ final class LiftEntities(implicit cc: CompilerContext)
         ////////////////////////////////////////////////////////////////////////
         // Strip storage from output ports where needed
         ////////////////////////////////////////////////////////////////////////
-        if (stripStorageSymbols.isEmpty) {
-          entity
-        } else {
-          val newDecls = entity.declarations map {
-            case decl @ Decl(Sym(symbol: TermSymbol), TypeOut(kind, fc, st), _)
-                if (st != StorageTypeWire) && (stripStorageSymbols contains symbol) => {
-              val newKind = TypeOut(kind, fc, StorageTypeWire)
-              symbol withDenot symbol.denot.copy(kind = newKind)
-              TypeAssigner {
-                decl.copy(kind = newKind) withLoc tree.loc
+        if (stripStorageSymbols.nonEmpty) {
+          entity.declarations foreach {
+            case Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypeOut] => {
+              val TypeOut(kind, fc, st) = symbol.denot.kind
+              if (st != StorageTypeWire && (stripStorageSymbols contains symbol)) {
+                val newKind = TypeOut(kind, fc, StorageTypeWire)
+                symbol withDenot symbol.denot.copy(kind = newKind)
               }
             }
-            case decl => decl
-          }
-
-          TypeAssigner {
-            entity.copy(
-              declarations = newDecls.toList
-            ) withLoc entity.loc withVariant entity.variant
+            case _ => ()
           }
         }
+        entity
       } valueMap { entity =>
         ////////////////////////////////////////////////////////////////////////
         // Connect fresh inner ports to outer port

@@ -298,7 +298,7 @@ final class FoldExpr(
       // Fold expressions inside Type instances
       ////////////////////////////////////////////////////////////////////////////
 
-      case decl @ Decl(_, kind, _) => {
+      case decl @ DeclIdent(_, kind, _) => {
         val newKind = kind rewrite TypeFoldExpr
         if (kind eq newKind) decl else decl.copy(kind = newKind) withLoc tree.loc
       }

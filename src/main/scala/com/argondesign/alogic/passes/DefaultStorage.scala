@@ -22,7 +22,6 @@ import com.argondesign.alogic.core.FlowControlTypes._
 import com.argondesign.alogic.core.StorageTypes._
 import com.argondesign.alogic.core.Symbols.TermSymbol
 import com.argondesign.alogic.core.Types.TypeOut
-import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.FollowedBy
 
 import scala.collection.mutable
@@ -67,14 +66,15 @@ final class DefaultStorage(implicit cc: CompilerContext) extends TreeTransformer
       case entity: Entity => {
         // Collect all output declarations that use the default storage type
         val (outs, rest) = entity.declarations.partition {
-          case Decl(_, TypeOut(_, _, StorageTypeDefault), _) => true
-          case _                                             => false
+          case Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypeOut] => {
+            symbol.denot.kind.asInstanceOf[TypeOut].st == StorageTypeDefault
+          }
+          case _ => false
         }
 
-        // Rewrite them
-        val newOuts = for {
-          decl @ Decl(Sym(symbol: TermSymbol), kind: TypeOut, _) <- outs
-        } yield {
+        // Update symbol types them
+        for (Decl(symbol, _) <- outs) {
+          val kind = symbol.denot.kind.asInstanceOf[TypeOut]
           // Compute the appropriate default storage type
           val newSt = if ((connectedSet contains symbol) || entity.variant == "verbatim") {
             StorageTypeWire
@@ -87,13 +87,9 @@ final class DefaultStorage(implicit cc: CompilerContext) extends TreeTransformer
           }
           val newKind = kind.copy(st = newSt)
           symbol withDenot symbol.denot.copy(kind = newKind)
-          TypeAssigner(decl.copy(kind = newKind) withLoc decl.loc)
         }
 
-        val result = entity.copy(
-          declarations = newOuts ::: rest
-        ) withLoc entity.loc withVariant entity.variant
-        TypeAssigner(result)
+        tree
       }
 
       case _ => tree
@@ -102,8 +98,12 @@ final class DefaultStorage(implicit cc: CompilerContext) extends TreeTransformer
 
   override def finalCheck(tree: Tree): Unit = {
     assert(!inConnect)
-    tree visit {
-      case TypeOut(_, _, StorageTypeDefault) => cc.ice(tree, "Default storage type remains")
+    tree visitAll {
+      case Decl(symbol, _) => {
+        symbol.denot.kind visit {
+          case TypeOut(_, _, StorageTypeDefault) => cc.ice(tree, "Default storage type remains")
+        }
+      }
     }
   }
 

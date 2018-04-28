@@ -41,9 +41,10 @@ final class LowerArrays(implicit cc: CompilerContext) extends TreeTransformer wi
 
   override def enter(tree: Tree): Unit = tree match {
 
-    case Decl(Sym(symbol: TermSymbol), TypeArray(kind, size), _) => {
+    case Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypeArray] => {
       val loc = tree.loc
       val name = symbol.name
+      val TypeArray(kind, size) = symbol.denot.kind
       // Append _q to array name symbol
       symbol withDenot symbol.denot.copy(name = TermName(s"${name}_q"))
       // Create we symbol
@@ -93,14 +94,14 @@ final class LowerArrays(implicit cc: CompilerContext) extends TreeTransformer wi
     // Add declarations
     //////////////////////////////////////////////////////////////////////////
 
-    case decl @ Decl(Sym(symbol: TermSymbol), _, _) => {
+    case decl @ Decl(symbol, _) => {
       symbol.attr.arr.get map {
         case (weSymbol, waSymbol, wdSymbol) => {
           val decls = List(
             decl,
-            Decl(Sym(weSymbol), weSymbol.denot.kind, None),
-            Decl(Sym(waSymbol), waSymbol.denot.kind, None),
-            Decl(Sym(wdSymbol), wdSymbol.denot.kind, None)
+            Decl(weSymbol, None),
+            Decl(waSymbol, None),
+            Decl(wdSymbol, None)
           )
           Thicket(decls) regularize tree.loc
         }
@@ -115,7 +116,7 @@ final class LowerArrays(implicit cc: CompilerContext) extends TreeTransformer wi
 
     case entity: Entity => {
       val fenceStmts = entity.declarations collect {
-        case decl @ Decl(Sym(symbol), _, _) if symbol.attr.arr.isSet => {
+        case decl @ Decl(symbol, _) if symbol.attr.arr.isSet => {
           val (weSymbol, waSymbol, wdSymbol) = symbol.attr.arr.value
           StmtBlock(
             List(

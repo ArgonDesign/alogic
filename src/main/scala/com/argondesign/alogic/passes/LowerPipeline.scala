@@ -152,8 +152,8 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
 
       // loose pipeline variable declarations
       val newDecls = entity.declarations filter {
-        case Decl(_, _: TypePipeline, _) => false
-        case _                           => true
+        case Decl(symbol, _) => !symbol.denot.kind.isInstanceOf[TypePipeline]
+        case _               => true
       }
 
       // rewrite pipeline connections
@@ -188,15 +188,15 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
 
       // Construct pipeline port declarations
       val iPortOpt = iPortSymbolOpt map { symbol =>
-        Decl(Sym(symbol), symbol.denot.kind, None) regularize entity.loc
+        Decl(symbol, None) regularize entity.loc
       }
       val oPortOpt = oPortSymbolOpt map { symbol =>
-        Decl(Sym(symbol), symbol.denot.kind, None) regularize entity.loc
+        Decl(symbol, None) regularize entity.loc
       }
 
       // Construct declarations for pipeline variables
       val freshDecls = for { symbol <- freshSymbols.values.toList } yield {
-        Decl(Sym(symbol), symbol.denot.kind, None) regularize entity.loc
+        Decl(symbol, None) regularize entity.loc
       }
 
       // List of new decls
@@ -262,7 +262,7 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
     tree visit {
       case node: StmtRead  => cc.ice(node, "read statement remains after LowerPipeline")
       case node: StmtWrite => cc.ice(node, "write statement remains after LowerPipeline")
-      case node @ Decl(_, _: TypePipeline, _) => {
+      case node @ Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypePipeline] => {
         cc.ice(node, "Pipeline variable declaration remains after LowerPipeline")
       }
       case node @ Sym(symbol) => {

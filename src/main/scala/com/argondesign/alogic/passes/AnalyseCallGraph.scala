@@ -344,7 +344,7 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
         val kind = TypeStack(TypeState, depth)
         val name = if (stackDepth > 1) "return_stack" else "return_state"
         val symbol = cc.newTermSymbol(name, entity.loc, kind)
-        val decl = Decl(Sym(symbol), kind, None) regularize entity.loc
+        val decl = Decl(symbol, None) regularize entity.loc
 
         val Sym(entitySymbol) = entity.ref
         entitySymbol.attr.returnStack set symbol

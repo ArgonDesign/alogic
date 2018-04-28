@@ -73,7 +73,7 @@ object TreeCopier {
         (entities eq tree.entities)) {
       tree
     } else {
-      assert(declarations forall { _.isInstanceOf[Decl] })
+      assert(declarations forall { _.isInstanceOf[Declaration] })
       assert(instances forall { _.isInstanceOf[Instance] })
       assert(connects forall { _.isInstanceOf[Connect] })
       assert(functions forall { _.isInstanceOf[Function] })
@@ -82,7 +82,7 @@ object TreeCopier {
       assert(entities forall { _.isInstanceOf[Entity] })
       Entity(
         ref.asInstanceOf[Ref],
-        declarations.asInstanceOf[List[Decl]],
+        declarations.asInstanceOf[List[Declaration]],
         instances.asInstanceOf[List[Instance]],
         connects.asInstanceOf[List[Connect]],
         functions.asInstanceOf[List[Function]],
@@ -94,12 +94,21 @@ object TreeCopier {
     }
   }
 
-  final def apply(tree: Decl)(ref: Tree, init: Option[Tree]): Decl = {
-    if ((ref eq tree.ref) && (tree.init eq init)) {
+  final def apply(tree: DeclIdent)(ident: Tree, init: Option[Tree]): DeclIdent = {
+    if ((ident eq tree.ident) && (tree.init eq init)) {
       tree
     } else {
       assert(init forall { _.isInstanceOf[Expr] })
-      Decl(ref.asInstanceOf[Ref], tree.kind, init.asInstanceOf[Option[Expr]]) withLoc tree.loc
+      DeclIdent(ident.asInstanceOf[Ident], tree.kind, init.asInstanceOf[Option[Expr]]) withLoc tree.loc
+    }
+  }
+
+  final def apply(tree: Decl)(init: Option[Tree]): Decl = {
+    if (tree.init eq init) {
+      tree
+    } else {
+      assert(init forall { _.isInstanceOf[Expr] })
+      Decl(tree.symbol, init.asInstanceOf[Option[Expr]]) withLoc tree.loc
     }
   }
 
@@ -293,7 +302,7 @@ object TreeCopier {
     if (decl eq tree.decl) {
       tree
     } else {
-      StmtDecl(decl.asInstanceOf[Decl]) withLoc tree.loc
+      StmtDecl(decl.asInstanceOf[Declaration]) withLoc tree.loc
     }
   }
 

@@ -30,13 +30,15 @@ final class Replace1Stacks(implicit cc: CompilerContext) extends TreeTransformer
   private[this] val stackSet = mutable.Set[TermSymbol]()
 
   override def enter(tree: Tree): Unit = tree match {
-    case Decl(Sym(symbol: TermSymbol), TypeStack(kind, depth), _)
-        if depth.value contains BigInt(1) => {
-      // TODO: iff no access to empty/full ports
-      // Add to set of symbols to replace
-      stackSet add symbol
-      // Change type to element type
-      symbol withDenot symbol.denot.copy(kind = kind)
+    case Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypeStack] => {
+      val TypeStack(kind, depth) = symbol.denot.kind
+      if (depth.value contains BigInt(1)) {
+        // TODO: iff no access to empty/full ports
+        // Add to set of symbols to replace
+        stackSet add symbol
+        // Change type to element type
+        symbol withDenot symbol.denot.copy(kind = kind)
+      }
     }
 
     case _ =>
@@ -66,14 +68,6 @@ final class Replace1Stacks(implicit cc: CompilerContext) extends TreeTransformer
       case ExprSelect(ExprRef(Sym(symbol: TermSymbol)), "full" | "empty")
           if stackSet contains symbol => {
         cc.ice(tree, "Replacing 1 deep steck with full access")
-      }
-
-      //////////////////////////////////////////////////////////////////////////
-      // Update declaration type
-      //////////////////////////////////////////////////////////////////////////
-
-      case decl @ Decl(Sym(symbol: TermSymbol), _, _) if stackSet contains symbol => {
-        decl.copy(kind = symbol.denot.kind)
       }
 
       case _ => tree

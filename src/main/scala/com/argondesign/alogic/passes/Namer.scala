@@ -97,7 +97,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
     }
 
     // Insert Symbol into current scope, and mark it unused
-    def insert(symbol: Symbol): Symbol = {
+    private def insertSymbol(symbol: Symbol): Unit = {
       val name = symbol.denot.name
 
       lazy val flavour = if (symbol.isTermSymbol) "name" else "type"
@@ -112,7 +112,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
           current(name) = symbol
         }
         case None => {
-          lookup(name) map { oldSymbol =>
+          lookup(name) foreach { oldSymbol =>
             cc.warning(
               symbol.loc,
               s"Definition of ${flavour} '${name}' hides previous definition at",
@@ -122,7 +122,10 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
           current(name) = symbol
         }
       }
+    }
 
+    def insert[T <: Symbol](symbol: T): symbol.type = {
+      insertSymbol(symbol)
       symbol
     }
 
@@ -305,11 +308,11 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         case symbol: TypeSymbol => {
           // Attach proper type
           val portSymbols = entity.declarations collect {
-            case Decl(Sym(sym: TermSymbol), _: TypeIn, _)  => sym
-            case Decl(Sym(sym: TermSymbol), _: TypeOut, _) => sym
+            case Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypeIn]  => symbol
+            case Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypeOut] => symbol
           }
           val paramSymbols = entity.declarations collect {
-            case Decl(Sym(sym: TermSymbol), _: TypeParam, _) => sym
+            case Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypeParam] => symbol
           }
           symbol withDenot symbol.denot.copy(
             kind = TypeEntity(name, portSymbols, paramSymbols)
@@ -319,7 +322,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       }
       // Mark all declarations used if verbatim entity
       if (entity.variant == "verbatim") {
-        for (Decl(Sym(symbol), _, _) <- entity.declarations) {
+        for (Decl(symbol, _) <- entity.declarations) {
           Scopes.markUsed(symbol)
         }
       }
@@ -378,14 +381,13 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         Scopes.pop()
       }
 
-    case Decl(ident: Ident, kind, init) => {
+    case DeclIdent(ident: Ident, kind, init) => {
       // Lookup type
       val newKind = kind rewrite TypeNamer
       // Insert term
       val symbol = Scopes.insert(cc.newTermSymbol(ident, newKind))
       // Rewrite node
-      val sym = Sym(symbol) withLoc ident.loc
-      Decl(sym, newKind, init) withLoc tree.loc
+      Decl(symbol, init) withLoc tree.loc
     }
 
     case ExprRef(ident: Ident) => {

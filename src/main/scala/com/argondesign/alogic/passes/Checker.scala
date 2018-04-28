@@ -38,6 +38,7 @@ import com.argondesign.alogic.core.StorageTypes.StorageTypeReg
 import com.argondesign.alogic.core.StorageTypes.StorageTypeSlices
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.FollowedBy
+import com.argondesign.alogic.util.unreachable
 
 final class Checker(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
 
@@ -101,23 +102,29 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
 
       val declarations = variant match {
         case "verbatim" => {
-          val (goodDecls, badDecls) = entity.declarations.partition { decl =>
-            decl.kind match {
-              case _: TypeIn    => true
-              case _: TypeOut   => true
-              case _: TypeParam => true
-              case _            => false
+          val (goodDecls, badDecls) = entity.declarations.partition {
+            case decl: DeclIdent => {
+              decl.kind match {
+                case _: TypeIn    => true
+                case _: TypeOut   => true
+                case _: TypeParam => true
+                case _            => false
+              }
             }
+            case _ => unreachable
           }
 
-          badDecls foreach { decl =>
-            val hint = decl.kind match {
-              case _: TypeConst    => "constant"
-              case _: TypeArray    => "array"
-              case _: TypePipeline => "pipeline variable"
-              case _               => "variable"
+          badDecls foreach {
+            case decl: DeclIdent => {
+              val hint = decl.kind match {
+                case _: TypeConst    => "constant"
+                case _: TypeArray    => "array"
+                case _: TypePipeline => "pipeline variable"
+                case _               => "variable"
+              }
+              err(List(decl), s"${hint} declarations")
             }
-            err(List(decl), s"${hint} declarations")
+            case _ => unreachable
           }
 
           goodDecls
@@ -151,8 +158,7 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
       entityLevel -= 1
     }
 
-    case decl @ Decl(_, TypeOut(kind, fc, st), None) => {
-      lazy val Ident(name) = decl.ref
+    case decl @ DeclIdent(Ident(name), TypeOut(kind, fc, st), None) => {
 
       val newSt = (fc, st) match {
         case (FlowControlTypeNone, _: StorageTypeSlices) => {
@@ -176,7 +182,7 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
       }
     }
 
-    case decl @ Decl(_, kind, Some(init)) => {
+    case decl @ DeclIdent(_, kind, Some(init)) => {
       val hintOpt = kind match {
         case _: TypeIn       => Some("Input port")
         case _: TypeOut      => Some("Output port")
@@ -191,7 +197,7 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
       } getOrElse decl
     }
 
-    case decl @ Decl(_, kind, None) => {
+    case decl @ DeclIdent(_, kind, None) => {
       val hintOpt = kind match {
         case _: TypeParam => Some("Parameter")
         case _: TypeConst => Some("Constant")
@@ -223,7 +229,7 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
       }
     }
 
-    case StmtDecl(decl) => {
+    case StmtDecl(decl: DeclIdent) => {
       def msg(kind: Type) = kind match {
         case _: TypeIn       => Some("Input ports must be declared in the entity")
         case _: TypeOut      => Some("Output ports must be declared in the entity")

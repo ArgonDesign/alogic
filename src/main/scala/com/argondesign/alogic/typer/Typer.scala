@@ -25,7 +25,6 @@ import com.argondesign.alogic.Config.allowWidthInference
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
-import com.argondesign.alogic.core.Symbols.TermSymbol
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.TreeInTypeTransformer
@@ -221,7 +220,7 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         inConnect = false
       }
 
-      case decl @ Decl(Sym(symbol: TermSymbol), _, Some(init)) => {
+      case decl @ Decl(symbol, Some(init)) => {
         val origKind = symbol.denot.kind
         val kind = origKind rewrite TypeTyper
         if (kind ne origKind) {
@@ -241,7 +240,7 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
             cc.error(init, s"Cannot infer width of initializer")
             TypeAssigner(ExprError() withLoc tree.loc)
           }
-          decl.copy(kind = kind, init = Some(newInit)) withLoc tree.loc
+          decl.copy(init = Some(newInit)) withLoc tree.loc
         } else {
           val packedErrOpt = checkPacked(init, "Initializer expression")
           lazy val widthErrOpt = checkWidth(kind, init, "Initializer expression")
@@ -249,20 +248,20 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
           packedErrOpt orElse widthErrOpt map { errLoc =>
             val newInit = ExprError() withLoc errLoc
             TypeAssigner(newInit)
-            decl.copy(kind = kind, init = Some(newInit)) withLoc tree.loc
+            decl.copy(init = Some(newInit)) withLoc tree.loc
           } getOrElse {
-            decl.copy(kind = kind) withLoc tree.loc
+            decl
           }
         }
       }
 
-      case decl @ Decl(Sym(symbol: TermSymbol), _, None) => {
+      case decl @ Decl(symbol, None) => {
         val origKind = symbol.denot.kind
         val kind = origKind rewrite TypeTyper
         if (kind ne origKind) {
           symbol withDenot symbol.denot.copy(kind = kind)
         }
-        decl.copy(kind = kind) withLoc tree.loc
+        decl
       }
 
       ////////////////////////////////////////////////////////////////////////////
@@ -670,7 +669,7 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         case node: Tree if node.tpe.isInstanceOf[TypePolyFunc] => {
           cc.ice(node, s"Typer: node of type TypePolyFunc remains")
         }
-        case Decl(Sym(symbol), _, _) => check(symbol.denot.kind)
+        case Decl(symbol, _) => check(symbol.denot.kind)
       }
     }
 

@@ -20,7 +20,6 @@ import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Names.TermName
-import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.FollowedBy
@@ -33,13 +32,13 @@ final class LowerFlops(implicit cc: CompilerContext) extends TreeTransformer wit
 
   override def enter(tree: Tree): Unit = tree match {
 
-    case Decl(Sym(symbol: TermSymbol), kind: TypeInt, _) => {
+    case Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypeInt] => {
       val loc = tree.loc
       val name = symbol.name
       // Append _q to the name of the symbol
       symbol withDenot symbol.denot.copy(name = TermName(s"${name}_q"))
       // Create the _d symbol
-      val dSymbol = cc.newTermSymbol(s"${name}_d", loc, kind)
+      val dSymbol = cc.newTermSymbol(s"${name}_d", loc, symbol.denot.kind)
       // Set attributes
       symbol.attr.flop set dSymbol
     }
@@ -69,11 +68,11 @@ final class LowerFlops(implicit cc: CompilerContext) extends TreeTransformer wit
     // Add declarations
     //////////////////////////////////////////////////////////////////////////
 
-    case decl @ Decl(Sym(qSymbol: TermSymbol), _, _) => {
+    case decl @ Decl(qSymbol, _) => {
       qSymbol.attr.flop.get map { dSymbol =>
         val decls = List(
           decl,
-          Decl(Sym(dSymbol), dSymbol.denot.kind, None)
+          Decl(dSymbol, None)
         )
         Thicket(decls) regularize tree.loc
       } getOrElse {
@@ -97,7 +96,7 @@ final class LowerFlops(implicit cc: CompilerContext) extends TreeTransformer wit
 
     case entity: Entity => {
       val fenceStmts = entity.declarations collect {
-        case decl @ Decl(Sym(qSymbol), _, _) if qSymbol.attr.flop.isSet => {
+        case decl @ Decl(qSymbol, _) if qSymbol.attr.flop.isSet => {
           val dSymbol = qSymbol.attr.flop.value
           StmtAssign(ExprRef(Sym(dSymbol)), ExprRef(Sym(qSymbol))) regularize decl.loc
         }

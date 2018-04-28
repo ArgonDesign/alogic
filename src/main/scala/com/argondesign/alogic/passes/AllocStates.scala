@@ -141,15 +141,9 @@ final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
           ) withLoc tree.loc
         }
 
-        // Update the type of the return stack decl
-        case decl @ Decl(Sym(symbol), _, _) if symbol == rsSymbol => {
-          decl.copy(kind = symbol.denot.kind) withLoc tree.loc
-        }
-
         // Emit state variable declaration
         case entity: Entity => {
-          val decl = Decl(Sym(stateVarSymbol), stateVarSymbol.denot.kind, None)
-          decl regularize stateVarSymbol.loc
+          val decl = Decl(stateVarSymbol, None) regularize stateVarSymbol.loc
           entity.copy(
             declarations = decl :: entity.declarations
           ) withVariant entity.variant withLoc entity.loc

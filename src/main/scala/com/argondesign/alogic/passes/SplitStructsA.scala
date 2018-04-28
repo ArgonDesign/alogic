@@ -40,7 +40,8 @@ final class SplitStructsA(implicit cc: CompilerContext) extends TreeTransformer 
   }
 
   override def enter(tree: Tree) = tree match {
-    case Decl(Sym(symbol), oKind, _) => {
+    case Decl(symbol, _) => {
+      val oKind = symbol.denot.kind
       oKind.underlying match {
         case struct: TypeStruct => {
           val newSymbols = for ((fName, fKind) <- flattenStruct(symbol.name, struct)) yield {
@@ -78,13 +79,13 @@ final class SplitStructsA(implicit cc: CompilerContext) extends TreeTransformer 
           val msb = lsb + width - 1
           val expr = ExprSlice(init, Expr(msb), ":", Expr(lsb)) regularize init.loc
           // TODO: teach simplify to simplify more things as necesary
-          Decl(Sym(symbol), symbol.denot.kind, Some(expr.simplify))
+          Decl(symbol, Some(expr.simplify))
         }
         t.toList
       }
       case None => {
         for (symbol <- fSymbols) yield {
-          Decl(Sym(symbol), symbol.denot.kind, None)
+          Decl(symbol, None)
         }
       }
     }
@@ -135,13 +136,13 @@ final class SplitStructsA(implicit cc: CompilerContext) extends TreeTransformer 
       // Decl
       //////////////////////////////////////////////////////////////////////////
 
-      case decl @ Decl(Sym(symbol: TermSymbol), kind, init) => {
+      case decl @ Decl(symbol, init) => {
         // Add field declarations
         symbol.attr.fieldSymbols.get map { fSymbols =>
           val fDecls = fieldDecls(fSymbols, init)
           // Keep original declarations of ports. These are used to resolve
           // inter-entity connections in a second pass
-          kind match {
+          symbol.denot.kind match {
             case _: TypeIn  => Thicket(decl :: fDecls) regularize tree.loc
             case _: TypeOut => Thicket(decl :: fDecls) regularize tree.loc
             case _          => Thicket(fDecls) regularize tree.loc
@@ -158,8 +159,8 @@ final class SplitStructsA(implicit cc: CompilerContext) extends TreeTransformer 
       case entity: Entity => {
         // Update type of entity with new ports.
         val portSymbols = entity.declarations collect {
-          case Decl(Sym(symbol: TermSymbol), _: TypeIn, _)  => symbol
-          case Decl(Sym(symbol: TermSymbol), _: TypeOut, _) => symbol
+          case Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypeIn]  => symbol
+          case Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypeOut] => symbol
         }
 
         val newKind = entitySymbol.denot.kind match {

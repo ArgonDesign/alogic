@@ -27,11 +27,16 @@ import com.argondesign.alogic.typer.TypeAssigner
 final class LowerRegPorts(implicit cc: CompilerContext) extends TreeTransformer {
 
   override def enter(tree: Tree): Unit = tree match {
-    case Decl(Sym(symbol: TermSymbol), TypeOut(kind, FlowControlTypeNone, StorageTypeReg), None) => {
-      // Allocate local register
-      val loc = tree.loc
-      val rName = "oreg" + cc.sep + symbol.denot.name.str
-      symbol.attr.oReg set cc.newTermSymbol(rName, loc, kind)
+    case Decl(symbol, _) => {
+      symbol.denot.kind match {
+        case TypeOut(kind, FlowControlTypeNone, StorageTypeReg) => {
+          // Allocate local register
+          val loc = tree.loc
+          val rName = "oreg" + cc.sep + symbol.denot.name.str
+          symbol.attr.oReg set cc.newTermSymbol(rName, loc, kind)
+        }
+        case _ =>
+      }
     }
 
     case _ =>
@@ -48,12 +53,18 @@ final class LowerRegPorts(implicit cc: CompilerContext) extends TreeTransformer 
       }
     }
 
-    case Decl(Sym(oSymbol: TermSymbol), TypeOut(kind, FlowControlTypeNone, StorageTypeReg), None) => {
+    case decl @ Decl(oSymbol, _) => {
       // Change storage type to wire and add register declaration
       oSymbol.attr.oReg.get map { rSymbol =>
-        val declOut = Decl(Sym(oSymbol), TypeOut(kind, FlowControlTypeNone, StorageTypeWire), None)
-        val declReg = Decl(Sym(rSymbol), kind, None)
-        Thicket(List(declOut, declReg)) regularize tree.loc
+        oSymbol withDenot oSymbol.denot.copy(
+          kind = oSymbol.denot.kind
+            .asInstanceOf[TypeOut]
+            .copy(
+              fct = FlowControlTypeNone,
+              st = StorageTypeWire
+            ))
+        val declReg = Decl(rSymbol, None)
+        Thicket(List(decl, declReg)) regularize tree.loc
       } getOrElse {
         tree
       }
@@ -62,7 +73,7 @@ final class LowerRegPorts(implicit cc: CompilerContext) extends TreeTransformer 
     case entity: Entity => {
       // Add connects to outputs
       val connects = for {
-        Decl(Sym(oSymbol), _, _) <- entity.declarations
+        Decl(oSymbol, _) <- entity.declarations
         if oSymbol.attr.oReg.isSet
       } yield {
         val rSymbol = oSymbol.attr.oReg.value
@@ -84,10 +95,16 @@ final class LowerRegPorts(implicit cc: CompilerContext) extends TreeTransformer 
   }
 
   override def finalCheck(tree: Tree): Unit = {
-    tree visit {
-      case node @ Decl(_, TypeOut(_, _, StorageTypeReg), _) => {
-        cc.ice(node, s"Output port with non-wire storage remains")
+    def check(node: Tree, kind: Type) = {
+      kind visit {
+        case TypeOut(_, _, StorageTypeReg) => {
+          cc.ice(node, s"Output port with non-wire storage remains")
+        }
       }
+    }
+
+    tree visit {
+      case node @ Decl(symbol, _) => check(node, symbol.denot.kind)
     }
   }
 

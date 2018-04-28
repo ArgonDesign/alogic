@@ -36,6 +36,7 @@ trait TreeUntype {
     case node: TypeDefinitionTypedef => unreachable
     case node: TypeDefinitionStruct  => unreachable
     case node: Ident                 => unreachable
+    case node: DeclIdent             => unreachable
     case node: Root                  => unreachable
   }
 
@@ -99,11 +100,12 @@ trait TreeUntype {
       entities = untype(node.entities)
     ) withLoc node.loc withVariant node.variant
 
+  def untype(node: Ident): Ident = node.copy() withLoc node.loc
+
   def untype(node: Sym): Sym = node.copy() withLoc node.loc
 
   def untype(node: Decl): Decl =
     node.copy(
-      ref = untype(node.ref.asInstanceOf[Sym]),
       init = untype(node.init)
     ) withLoc node.loc
 
@@ -215,7 +217,7 @@ trait TreeUntype {
 
   def untype(node: StmtDecl): StmtDecl =
     node.copy(
-      decl = untype(node.decl)
+      decl = untype(node.decl.asInstanceOf[Decl])
     ) withLoc node.loc
 
   def untype(node: StmtRead): StmtRead = StmtRead() withLoc node.loc

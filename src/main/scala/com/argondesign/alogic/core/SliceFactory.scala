@@ -337,7 +337,7 @@ object SliceFactory {
     val symbols = if (kind != TypeVoid) pSymbol :: vSymbol :: ports else vSymbol :: ports
 
     val decls = symbols map { symbol =>
-      Decl(Sym(symbol), symbol.denot.kind, None)
+      Decl(symbol, None)
     }
 
     val connects = if (kind != TypeVoid) {

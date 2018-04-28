@@ -44,9 +44,9 @@ final class Regularize(
     }
 
     tree match {
-      case Decl(_, kind, _) => TypeRegularize(kind)
-      case ExprType(kind)   => TypeRegularize(kind)
-      case _                => ()
+      case DeclIdent(_, kind, _) => TypeRegularize(kind)
+      case ExprType(kind)        => TypeRegularize(kind)
+      case _                     => ()
     }
 
     tree

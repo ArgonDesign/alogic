@@ -19,11 +19,9 @@ import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.SourceTextConverters._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Symbols._
-
-import org.scalatest.FlatSpec
-import com.argondesign.alogic.util.FollowedBy
 import com.argondesign.alogic.core.Warning
+import com.argondesign.alogic.util.FollowedBy
+import org.scalatest.FlatSpec
 
 final class TreeTransformerSpec extends FlatSpec with AlogicTest {
 
@@ -36,13 +34,17 @@ final class TreeTransformerSpec extends FlatSpec with AlogicTest {
                   |}""".asTree[Stmt] rewrite new TreeTransformer {
       override val typed = false
       override def transform(tree: Tree) = tree match {
-        case _: Ident => Sym(new TermSymbol(0)) withLoc tree.loc
+        case _: Ident => Ident("bar") withLoc tree.loc
         case other    => other
       }
     }
 
     tree should matchPattern {
-      case StmtBlock(List(StmtDecl(Decl(Sym(_), _, _)), StmtDecl(Decl(Sym(_), _, _)))) =>
+      case StmtBlock(
+          List(
+            StmtDecl(DeclIdent(Ident("bar"), _, _)),
+            StmtDecl(DeclIdent(Ident("bar"), _, _))
+          )) =>
     }
   }
 
