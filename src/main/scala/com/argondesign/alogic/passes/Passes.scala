@@ -60,6 +60,7 @@ object Passes {
       () => new Replace1Stacks,
       // TODO: Replace1Arrays
       () => new DefaultStorage,
+      // TODO: CheckAcceptUsage
       () => new LowerFlowControlA,
       () => new LowerFlowControlB,
       () => new LowerFlowControlC,
@@ -79,6 +80,7 @@ object Passes {
 //      () => new RemoveUnusedA,
       // TODO: LowerGo
       () => new RemoveRedundantBlocks,
+      // TODO: OrderPortsByLoc
       () => new RenameClashingTerms
       // TODO: RenameKeywords
       // TODO: final check pass to make sure everything is well-formed

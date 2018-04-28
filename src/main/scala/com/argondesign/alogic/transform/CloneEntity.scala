@@ -136,6 +136,8 @@ final class CloneEntity(parameterBindings: ListMap[TermSymbol, Expr])(implicit c
 
       val sym = TypeAssigner(Sym(newSymbol) withLoc tree.loc)
       TypeAssigner(entity.copy(ref = sym) withVariant entity.variant withLoc tree.loc)
+
+      // TODO: Apply Typer to specialized result (iff parameterBindings.nonEmpty)
     }
 
     case _ => tree
