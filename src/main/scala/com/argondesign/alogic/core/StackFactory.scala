@@ -60,6 +60,7 @@ object StackFactory {
 
   // Hardware interface:
 
+  _en
   _d
   _q
 
@@ -69,7 +70,7 @@ object StackFactory {
   _empty
 
   at beginning:
-  _d = _q
+  _en = 1'b0
 
    */
 
@@ -77,6 +78,8 @@ object StackFactory {
   // 1 entry stack implementation.
   //
   // fsm stack_1 {
+  //   in bool en;
+  //
   //   in TYPE d;
   //   in bool push;
   //   in bool pop;
@@ -90,8 +93,10 @@ object StackFactory {
   //   TYPE storage;
   //
   //   void main() {
-  //     storage = d;
-  //     valid = ~pop & (valid | push);
+  //     if (en) {
+  //       storage = d;
+  //       valid = ~pop & (valid | push);
+  //     }
   //     fence;
   //   }
   //
@@ -111,6 +116,8 @@ object StackFactory {
 
     val bool = TypeUInt(TypeAssigner(Expr(1) withLoc loc))
 
+    val enSymbol = cc.newTermSymbol("en", loc, TypeIn(bool, fcn))
+
     val pusSymbol = cc.newTermSymbol("push", loc, TypeIn(bool, fcn))
     val popSymbol = cc.newTermSymbol("pop", loc, TypeIn(bool, fcn))
     val dSymbol = cc.newTermSymbol("d", loc, TypeIn(kind, fcn))
@@ -120,8 +127,9 @@ object StackFactory {
     val qSymbol = cc.newTermSymbol("q", loc, TypeOut(kind, fcn, stw))
 
     val valSymbol = cc.newTermSymbol("valid", loc, bool)
-
     val stoSymbol = cc.newTermSymbol("storage", loc, kind)
+
+    val enRef = ExprRef(Sym(enSymbol))
 
     val pusRef = ExprRef(Sym(pusSymbol))
     val popRef = ExprRef(Sym(popSymbol))
@@ -136,14 +144,20 @@ object StackFactory {
     val stoRef = ExprRef(Sym(stoSymbol))
 
     val body = List(
-      StmtAssign(stoRef, dRef),
-      StmtAssign(valRef, ~popRef & (valRef | pusRef)),
+      StmtIf(enRef,
+             StmtBlock(
+               List(
+                 StmtAssign(stoRef, dRef),
+                 StmtAssign(valRef, ~popRef & (valRef | pusRef))
+               )),
+             None),
       StmtFence()
     )
 
     val state = State(ExprInt(false, 1, 0), body)
 
     val ports = List(
+      enSymbol,
       dSymbol,
       pusSymbol,
       popSymbol,
@@ -175,6 +189,8 @@ object StackFactory {
   // fsm stack_N {
   //   const DEPTH; // > 1
   //
+  //   in bool en;
+  //
   //   in TYPE d;
   //   in bool push;
   //   in bool pop;
@@ -191,15 +207,17 @@ object StackFactory {
   //   uint($clog2(DEPTH)) ptr = 0; // Ptr to current entry
   //
   //   state main {
-  //     if (pop) {
-  //       oreg_empty = ptr == 0;
-  //       oreg_full = false;
-  //       ptr = ptr - ~oreg_empty;
-  //     } else {
-  //       ptr = ptr + (~oreg_full & push);
-  //       storage[ptr] = d;
-  //       oreg_empty = oreg_empty & ~push;
-  //       oreg_full = ptr == DEPTH - 1;
+  //     if (en) {
+  //       if (pop) {
+  //         oreg_empty = ptr == 0;
+  //         oreg_full = false;
+  //         ptr = ptr - ~oreg_empty;
+  //       } else {
+  //         ptr = ptr + (~oreg_full & push);
+  //         storage[ptr] = d;
+  //         oreg_empty = oreg_empty & ~push;
+  //         oreg_full = ptr == DEPTH - 1;
+  //       }
   //     }
   //     fence;
   //   }
@@ -225,6 +243,8 @@ object StackFactory {
 
     val ptrWidth = Math.clog2(depth)
 
+    val enSymbol = cc.newTermSymbol("en", loc, TypeIn(bool, fcn))
+
     val pusSymbol = cc.newTermSymbol("push", loc, TypeIn(bool, fcn))
     val popSymbol = cc.newTermSymbol("pop", loc, TypeIn(bool, fcn))
     val dSymbol = cc.newTermSymbol("d", loc, TypeIn(kind, fcn))
@@ -240,6 +260,8 @@ object StackFactory {
     val stoSymbol = cc.newTermSymbol("storage", loc, stoKind)
     val ptrKind = TypeUInt(Expr(ptrWidth) regularize loc)
     val ptrSymbol = cc.newTermSymbol("ptr", loc, ptrKind)
+
+    val enRef = ExprRef(Sym(enSymbol))
 
     val pusRef = ExprRef(Sym(pusSymbol))
     val popRef = ExprRef(Sym(popSymbol))
@@ -265,22 +287,27 @@ object StackFactory {
 
     val body = List(
       StmtIf(
-        popRef,
+        enRef,
         StmtBlock(
           List(
-            StmtAssign(oreRef, ExprBinary(ptrRef, "==", ExprInt(false, ptrWidth, 0))),
-            StmtAssign(orfRef, ExprInt(false, 1, 0)),
-            StmtAssign(ptrRef, ptrRef - zextPtrWidth(~oreRef))
+            StmtIf(
+              popRef,
+              StmtBlock(List(
+                StmtAssign(oreRef, ExprBinary(ptrRef, "==", ExprInt(false, ptrWidth, 0))),
+                StmtAssign(orfRef, ExprInt(false, 1, 0)),
+                StmtAssign(ptrRef, ptrRef - zextPtrWidth(~oreRef))
+              )),
+              Some(
+                StmtBlock(List(
+                  StmtAssign(ptrRef, ptrRef + zextPtrWidth(~orfRef & pusRef)),
+                  StmtAssign(ExprIndex(stoRef, ptrRef), dRef),
+                  StmtAssign(oreRef, oreRef & ~pusRef),
+                  StmtAssign(orfRef, ExprBinary(ptrRef, "==", ExprInt(false, ptrWidth, depth - 1)))
+                ))
+              )
+            )
           )),
-        Some(
-          StmtBlock(
-            List(
-              StmtAssign(ptrRef, ptrRef + zextPtrWidth(~orfRef & pusRef)),
-              StmtAssign(ExprIndex(stoRef, ptrRef), dRef),
-              StmtAssign(oreRef, oreRef & ~pusRef),
-              StmtAssign(orfRef, ExprBinary(ptrRef, "==", ExprInt(false, ptrWidth, depth - 1)))
-            ))
-        )
+        None
       ),
       StmtFence()
     )
@@ -288,6 +315,7 @@ object StackFactory {
     val state = State(ExprInt(false, 1, 0), body)
 
     val ports = List(
+      enSymbol,
       dSymbol,
       pusSymbol,
       popSymbol,

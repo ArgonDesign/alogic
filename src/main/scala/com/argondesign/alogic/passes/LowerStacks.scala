@@ -58,6 +58,8 @@ final class LowerStacks(implicit cc: CompilerContext) extends TreeTransformer wi
         cc.newTermSymbol(pName, loc, TypeInstance(stackEntitySymbol))
       }
       stackMap(symbol) = (stackEntity, instanceSymbol)
+      // Clear enabel when the entity stalls
+      entitySymbol.attr.interconnectClearOnStall.append((instanceSymbol, "en"))
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -88,6 +90,7 @@ final class LowerStacks(implicit cc: CompilerContext) extends TreeTransformer wi
           case (_, iSymbol) => {
             StmtBlock(
               List(
+                assignTrue(ExprRef(Sym(iSymbol)) select "en"),
                 assignTrue(ExprRef(Sym(iSymbol)) select "push"),
                 StmtAssign(ExprRef(Sym(iSymbol)) select "d", args.head)
               ))
@@ -99,7 +102,13 @@ final class LowerStacks(implicit cc: CompilerContext) extends TreeTransformer wi
 
       case StmtExpr(ExprCall(ExprSelect(ExprRef(Sym(symbol: TermSymbol)), "set"), args)) => {
         stackMap.get(symbol) map {
-          case (_, iSymbol) => StmtAssign(ExprRef(Sym(iSymbol)) select "d", args.head)
+          case (_, iSymbol) => {
+            StmtBlock(
+              List(
+                assignTrue(ExprRef(Sym(iSymbol)) select "en"),
+                StmtAssign(ExprRef(Sym(iSymbol)) select "d", args.head)
+              ))
+          }
         } getOrElse {
           tree
         }
@@ -112,6 +121,7 @@ final class LowerStacks(implicit cc: CompilerContext) extends TreeTransformer wi
       case ExprCall(ExprSelect(ExprRef(Sym(symbol: TermSymbol)), "pop"), Nil) => {
         stackMap.get(symbol) map {
           case (_, iSymbol) => {
+            extraStmts.top append assignTrue(ExprRef(Sym(iSymbol)) select "en")
             extraStmts.top append assignTrue(ExprRef(Sym(iSymbol)) select "pop")
             ExprRef(Sym(iSymbol)) select "q"
           }
@@ -165,9 +175,10 @@ final class LowerStacks(implicit cc: CompilerContext) extends TreeTransformer wi
           val iRef = ExprRef(Sym(iSymbol))
           StmtBlock(
             List(
-              StmtAssign(iRef select "d", iRef select "q"),
-              assignFalse(iRef select "push"),
-              assignFalse(iRef select "pop")
+              assignFalse(iRef select "en"),
+              StmtAssign(iRef select "d", iRef select "q"), // TODO: redundant
+              assignFalse(iRef select "push"), // TODO: redundant
+              assignFalse(iRef select "pop") // TODO: redundant
             )
           )
         }
