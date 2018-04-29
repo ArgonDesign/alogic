@@ -33,7 +33,13 @@ final class LowerRegPorts(implicit cc: CompilerContext) extends TreeTransformer 
           // Allocate local register
           val loc = tree.loc
           val rName = "oreg" + cc.sep + symbol.denot.name.str
-          symbol.attr.oReg set cc.newTermSymbol(rName, loc, kind)
+          val rSymbol = cc.newTermSymbol(rName, loc, kind)
+          // Move the clearOnStall attribute to the register symbol
+          symbol.attr.clearOnStall.get foreach { attr =>
+            rSymbol.attr.clearOnStall set attr
+            symbol.attr.clearOnStall.clear()
+          }
+          symbol.attr.oReg set rSymbol
         }
         case _ =>
       }

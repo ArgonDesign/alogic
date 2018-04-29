@@ -39,6 +39,11 @@ final class LowerFlops(implicit cc: CompilerContext) extends TreeTransformer wit
       symbol withDenot symbol.denot.copy(name = TermName(s"${name}_q"))
       // Create the _d symbol
       val dSymbol = cc.newTermSymbol(s"${name}_d", loc, symbol.denot.kind)
+      // Move the clearOnStall attribute to the _d symbol
+      symbol.attr.clearOnStall.get foreach { attr =>
+        dSymbol.attr.clearOnStall set attr
+        symbol.attr.clearOnStall.clear()
+      }
       // Set attributes
       symbol.attr.flop set dSymbol
     }
