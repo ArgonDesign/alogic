@@ -26,58 +26,29 @@ object SliceFactory {
   private def voidBody(
       ss: StorageSlice,
       uVRef: ExprRef,
-      uRRef: ExprRef,
-      dVRef: ExprRef,
       dRRef: ExprRef,
-      eRef: ExprRef,
-      fRef: ExprRef,
-      pRef: ExprRef,
       vRef: ExprRef
   ): List[Stmt] = ss match {
     case StorageSliceBubble => {
-      // d_valid = valid;
-      // u_ready = ~valid;
-      // empty = ~valid;
-      // full = valid;
       // valid = ~valid & u_valid | valid & ~d_ready;
       // fence;
       List(
-        StmtAssign(dVRef, vRef),
-        StmtAssign(uRRef, ~vRef),
-        StmtAssign(eRef, ~vRef),
-        StmtAssign(fRef, vRef),
         StmtAssign(vRef, ~vRef & uVRef | vRef & ~dRRef),
         StmtFence()
       )
     }
     case StorageSliceFwd => {
-      // d_valid = valid;
-      // u_ready = ~valid | d_ready;
-      // empty = ~valid;
-      // full = valid;
       // valid = u_valid | valid & ~d_ready;
       // fence;
       List(
-        StmtAssign(dVRef, vRef),
-        StmtAssign(uRRef, ~vRef | dRRef),
-        StmtAssign(eRef, ~vRef),
-        StmtAssign(fRef, vRef),
         StmtAssign(vRef, uVRef | vRef & ~dRRef),
         StmtFence()
       )
     }
     case StorageSliceBwd => {
-      // d_valid = valid | u_valid;
-      // u_ready = ~valid;
-      // empty = ~valid;
-      // full = valid;
       // valid = (valid | u_valid) & ~d_ready;
       // fence;
       List(
-        StmtAssign(dVRef, vRef | uVRef),
-        StmtAssign(uRRef, ~vRef),
-        StmtAssign(eRef, ~vRef),
-        StmtAssign(fRef, vRef),
         StmtAssign(vRef, (vRef | uVRef) & ~dRRef),
         StmtFence()
       )
@@ -323,7 +294,7 @@ object SliceFactory {
     val body = if (kind != TypeVoid) {
       nonVoidBody(ss, uPRef, uVRef, dRRef, pRef, vRef)
     } else {
-      voidBody(ss, uVRef, uRRef, dVRef, dRRef, eRef, fRef, pRef, vRef)
+      voidBody(ss, uVRef, dRRef, vRef)
     }
 
     val state = State(ExprInt(false, 1, 0), body)
