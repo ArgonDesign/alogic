@@ -543,16 +543,15 @@ final class MakeVerilog(entity: Entity)(implicit cc: CompilerContext) {
           val TypeInstance(eSymbol) = iSymbol.denot.kind
           body.ensureBlankLine()
           body.emit(1)(s"${eSymbol.name} ${iSymbol.name} (")
-          body.emitTable(2, " ") {
-            val buf = new ListBuffer[List[String]]
 
-            val TypeEntity(_, pSymbols, _) = eSymbol.denot.kind
-            val pSymbolCount = pSymbols.length
+          body.emitTable(1, " ") {
+            val items = new ListBuffer[(Boolean, String, String)]
 
             // TODO: omit if not needed
-            val comma = if (pSymbolCount > 0) "," else ""
-            buf append List(".clk", "         (clk),")
-            buf append List(".rst_n", s"         (rst_n)${comma}")
+            items append { (true, ".clk", "         (clk)") }
+            items append { (true, ".rst_n", s"         (rst_n)") }
+
+            val TypeEntity(_, pSymbols, _) = eSymbol.denot.kind
 
             for ((pSymbol, i) <- pSymbols.zipWithIndex) {
               val dir = pSymbol.denot.kind match {
@@ -560,20 +559,27 @@ final class MakeVerilog(entity: Entity)(implicit cc: CompilerContext) {
                 case _         => "->"
               }
 
-              val pExpr = instancePortExpr.get(iSymbol) flatMap {
+              val (required, pStr) = instancePortExpr.get(iSymbol) flatMap {
                 _.get(pSymbol.name)
-              } map {
-                vexpr(_, wrapCat = true, indent = 2)
+              } map { expr =>
+                (true, vexpr(expr, wrapCat = true, indent = 2))
               } getOrElse {
-                "/* unconnected */"
+                (false, "")
               }
 
-              val comma = if (i < pSymbolCount - 1) "," else ""
-              buf append List(s".${pSymbol.name}", s"/* ${dir} */ (${pExpr})${comma}")
+              items append { (required, s".${pSymbol.name}", s"/* ${dir} */ (${pStr})") }
             }
 
-            buf.toList
+            val lastRequied = items lastIndexWhere { _._1 }
+            val lastIndex = items.length - 1
+
+            for (((required, l, r), index) <- items.toList.zipWithIndex) yield {
+              val nl = if (required) s"  ${l}" else s"//${l}"
+              val nr = if (index == lastRequied || index == lastIndex) s"${r}" else s"${r},"
+              List(nl, nr)
+            }
           }
+
           body.emit(1)(");")
         }
       }
