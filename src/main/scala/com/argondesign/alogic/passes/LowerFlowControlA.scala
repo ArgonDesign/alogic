@@ -45,6 +45,8 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
 
   // TODO: rework without using ErrorSymbol, use removeStmt instead
 
+  private val sep = cc.sep
+
   // Stack of extra statements to emit when finished with a statement
   private[this] val extraStmts = Stack[mutable.ListBuffer[Stmt]]()
 
@@ -96,7 +98,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       val kind = symbol.denot.kind.underlying
       val loc = tree.loc
       val pName = symbol.denot.name.str
-      val vName = pName + cc.sep + "valid"
+      val vName = pName + sep + "valid"
       lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeIn(kind, fctn))
       val vSymbol = cc.newTermSymbol(vName, loc, TypeIn(boolType(loc), fctn))
       val newSymbols = if (kind != TypeVoid) (pSymbol, vSymbol) else (ErrorSymbol, vSymbol)
@@ -110,7 +112,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       val TypeOut(kind, _, st) = symbol.denot.kind
       val loc = tree.loc
       val pName = symbol.denot.name.str
-      val vName = pName + cc.sep + "valid"
+      val vName = pName + sep + "valid"
       lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeOut(kind, fctn, st))
       val vSymbol = cc.newTermSymbol(vName, loc, TypeOut(boolType(loc), fctn, st))
       val newSymbols = if (kind != TypeVoid) (pSymbol, vSymbol) else (ErrorSymbol, vSymbol)
@@ -129,8 +131,8 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       val kind = symbol.denot.kind.underlying
       val loc = tree.loc
       val pName = symbol.denot.name.str
-      val vName = pName + cc.sep + "valid"
-      val rName = pName + cc.sep + "ready"
+      val vName = pName + sep + "valid"
+      val rName = pName + sep + "ready"
       lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeIn(kind, fctn))
       val vSymbol = cc.newTermSymbol(vName, loc, TypeIn(boolType(loc), fctn))
       val rSymbol = cc.newTermSymbol(rName, loc, TypeOut(boolType(loc), fctn, stw))
@@ -150,8 +152,8 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       val TypeOut(kind, _, st) = symbol.denot.kind
       val loc = tree.loc
       val pName = symbol.denot.name.str
-      val vName = pName + cc.sep + "valid"
-      val rName = pName + cc.sep + "ready"
+      val vName = pName + sep + "valid"
+      val rName = pName + sep + "ready"
       lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeOut(kind, fctn, stw))
       val vSymbol = cc.newTermSymbol(vName, loc, TypeOut(boolType(loc), fctn, stw))
       val rSymbol = cc.newTermSymbol(rName, loc, TypeIn(boolType(loc), fctn))
@@ -167,16 +169,16 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       if (st != StorageTypeWire) {
         val StorageTypeSlices(slices) = st
         // TODO: mark inline
-        val eName = entitySymbol.name + cc.sep + "oslice" + cc.sep + pName
+        val eName = entitySymbol.name + sep + "oslice" + sep + pName
         val sliceEntity: Entity = SliceFactory(slices, eName, loc, kind)
         val Sym(sliceEntitySymbol: TypeSymbol) = sliceEntity.ref
         val instanceSymbol = {
-          val iName = "oslice" + cc.sep + pName
+          val iName = "oslice" + sep + pName
           cc.newTermSymbol(iName, loc, TypeInstance(sliceEntitySymbol))
         }
         // Set attributes
         symbol.attr.oSlice.set((sliceEntity, instanceSymbol))
-        entitySymbol.attr.interconnectClearOnStall.append((instanceSymbol, "ip_valid"))
+        entitySymbol.attr.interconnectClearOnStall.append((instanceSymbol, s"ip${sep}valid"))
       }
     }
 
@@ -189,8 +191,8 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       val kind = symbol.denot.kind.underlying
       val loc = tree.loc
       val pName = symbol.denot.name.str
-      val vName = pName + cc.sep + "valid"
-      val aName = pName + cc.sep + "accept"
+      val vName = pName + sep + "valid"
+      val aName = pName + sep + "accept"
       lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeIn(kind, fctn))
       val vSymbol = cc.newTermSymbol(vName, loc, TypeIn(boolType(loc), fctn))
       val aSymbol = cc.newTermSymbol(aName, loc, TypeOut(boolType(loc), fctn, stw))
@@ -209,8 +211,8 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       val kind = symbol.denot.kind.underlying
       val loc = tree.loc
       val pName = symbol.denot.name.str
-      val vName = pName + cc.sep + "valid"
-      val aName = pName + cc.sep + "accept"
+      val vName = pName + sep + "valid"
+      val aName = pName + sep + "accept"
       lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeOut(kind, fctn, stw))
       val vSymbol = cc.newTermSymbol(vName, loc, TypeOut(boolType(loc), fctn, stw))
       val aSymbol = cc.newTermSymbol(aName, loc, TypeIn(boolType(loc), fctn))
@@ -283,8 +285,8 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
           case (_, iSymbol) =>
             val pSymbol = symbol.attr.fcr.value._1
             val iRef = ExprRef(Sym(iSymbol))
-            val vAssign = assignTrue(iRef select "ip_valid")
-            val rStall = stall(~(iRef select "ip_ready"))
+            val vAssign = assignTrue(iRef select s"ip${sep}valid")
+            val rStall = stall(~(iRef select s"ip${sep}ready"))
             if (pSymbol != ErrorSymbol) {
               val pAssign = StmtAssign(iRef select "ip", args.head)
               StmtBlock(List(pAssign, vAssign, rStall))
@@ -454,8 +456,8 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
           val (pSymbol, vSymbol, rSymbol) = symbol.attr.fcr.value
           val iRef = ExprRef(Sym(iSymbol))
           lazy val pConn = Connect(iRef select "op", List(ExprRef(Sym(pSymbol))))
-          val vConn = Connect(iRef select "op_valid", List(ExprRef(Sym(vSymbol))))
-          val rConn = Connect(ExprRef(Sym(rSymbol)), List(iRef select "op_ready"))
+          val vConn = Connect(iRef select s"op${sep}valid", List(ExprRef(Sym(vSymbol))))
+          val rConn = Connect(ExprRef(Sym(rSymbol)), List(iRef select s"op${sep}ready"))
           if (pSymbol != ErrorSymbol) {
             List(pConn, vConn, rConn)
           } else {

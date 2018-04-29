@@ -272,7 +272,8 @@ object SliceFactory {
       ss: StorageSlice,
       name: String,
       loc: Loc,
-      kind: Type
+      kind: Type,
+      sep: String
   )(
       implicit cc: CompilerContext
   ): Entity = {
@@ -282,12 +283,12 @@ object SliceFactory {
     val bool = TypeUInt(TypeAssigner(Expr(1) withLoc loc))
 
     lazy val ipSymbol = cc.newTermSymbol("ip", loc, TypeIn(kind, fcn))
-    val ipvSymbol = cc.newTermSymbol("ip_valid", loc, TypeIn(bool, fcn))
-    val iprSymbol = cc.newTermSymbol("ip_ready", loc, TypeOut(bool, fcn, stw))
+    val ipvSymbol = cc.newTermSymbol(s"ip${sep}valid", loc, TypeIn(bool, fcn))
+    val iprSymbol = cc.newTermSymbol(s"ip${sep}ready", loc, TypeOut(bool, fcn, stw))
 
     lazy val opSymbol = cc.newTermSymbol("op", loc, TypeOut(kind, fcn, stw))
-    val opvSymbol = cc.newTermSymbol("op_valid", loc, TypeOut(bool, fcn, stw))
-    val oprSymbol = cc.newTermSymbol("op_ready", loc, TypeIn(bool, fcn))
+    val opvSymbol = cc.newTermSymbol(s"op${sep}valid", loc, TypeOut(bool, fcn, stw))
+    val oprSymbol = cc.newTermSymbol(s"op${sep}ready", loc, TypeIn(bool, fcn))
 
     val eSymbol = cc.newTermSymbol("empty", loc, TypeOut(bool, fcn, stw))
     val fSymbol = cc.newTermSymbol("full", loc, TypeOut(bool, fcn, stw))
@@ -350,7 +351,7 @@ object SliceFactory {
   ): Entity = {
     require(kind.isPacked)
     // TODO: handle sequence of slices
-    buildSlice(slices.head, name, loc, kind)
+    buildSlice(slices.head, name, loc, kind, cc.sep)
   }
 
 }
