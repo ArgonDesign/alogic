@@ -62,6 +62,9 @@ class SymbolAttributes {
 
   // If the state system stalls, set this signal to all zeros
   val clearOnStall = new Attribute[Boolean]()
+  // If this is an entity symbol, then these are further (instance, portname)
+  // pairs (driven from the state system) that need to be cleared on a stall
+  val interconnectClearOnStall = new Attribute[List[(TermSymbol, String)]]()
 
   // The output register symbol if this is a registered output port
   val oReg = new Attribute[TermSymbol]()
@@ -96,6 +99,7 @@ class SymbolAttributes {
     oSlice,
     expandedPort,
     clearOnStall,
+    interconnectClearOnStall,
     oReg,
     flop,
     arr,
@@ -121,6 +125,7 @@ class SymbolAttributes {
     "oSlice",
     "expandedPort",
     "clearOnStall",
+    "interconnectClearOnStall",
     "oReg",
     "flop",
     "arr",

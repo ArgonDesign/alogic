@@ -54,6 +54,11 @@ final class LowerInterconnect(implicit cc: CompilerContext)
   // Keep track of whether we are in a connect expression
   private[this] var inConnect = false
 
+  // Convert interconnectClearOnStall attribute to a set
+  private[this] lazy val interconnectClearOnStall = {
+    entitySymbol.attr.interconnectClearOnStall.getOrElse(Nil).toSet
+  }
+
   // We need to fold const references in interconnect symbol types,
   // as these consts are defined in the entity being instantiated,
   // and not the entity being processed (which does the instantiation)
@@ -76,6 +81,12 @@ final class LowerInterconnect(implicit cc: CompilerContext)
         val nKind = pKind.underlying rewrite TypeFoldExpr
         val symbol = cc.newTermSymbol(name, iSymbol.loc, nKind)
         symbol.attr.interconnect.set((iSymbol, sel))
+
+        // If this is an interconnect symbol that is in the entity
+        // interconnectClearOnStall attribute, then set clearOnStall on it
+        if (interconnectClearOnStall contains key) {
+          symbol.attr.clearOnStall set true
+        }
 
         // Build connection
         val loc = select.loc

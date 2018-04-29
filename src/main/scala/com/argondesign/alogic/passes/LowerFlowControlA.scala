@@ -174,8 +174,9 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
           val iName = "oslice" + cc.sep + pName
           cc.newTermSymbol(iName, loc, TypeInstance(sliceEntitySymbol))
         }
-        // Add slice entity and instance symbol as attributes
+        // Set attributes
         symbol.attr.oSlice.set((sliceEntity, instanceSymbol))
+        entitySymbol.attr.interconnectClearOnStall.append((instanceSymbol, "u_valid"))
       }
     }
 
