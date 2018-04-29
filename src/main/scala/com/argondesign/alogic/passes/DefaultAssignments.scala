@@ -35,8 +35,6 @@ final class DefaultAssignments(implicit cc: CompilerContext)
     extends TreeTransformer
     with FollowedBy {
 
-  // TODO: skip early for verbatim entities
-
   private val needsDefault = mutable.Set[TermSymbol]()
 
   // Given an expression, return an iterable of symbols that would be assigned
@@ -102,7 +100,8 @@ final class DefaultAssignments(implicit cc: CompilerContext)
   }
 
   override def transform(tree: Tree): Tree = tree match {
-    case entity: Entity if entity.variant != "verbatim" => {
+    // TODO: skip early for verbatim entities
+    case entity: Entity if needsDefault.nonEmpty && entity.variant != "verbatim" => {
       // Remove any nets driven through a connect
       for (Connect(_, List(rhs)) <- entity.connects) {
         rhs.visit {
@@ -112,8 +111,7 @@ final class DefaultAssignments(implicit cc: CompilerContext)
         }
       }
 
-      // Remove any symbols that are assigned through all
-      // code paths through the state system
+      // Remove symbols that are assigned through all paths in the state system
       needsDefault retain { symbol =>
         val assignedInFence = isAssignedOnAllPaths(symbol, entity.fenceStmts)
 
@@ -124,19 +122,36 @@ final class DefaultAssignments(implicit cc: CompilerContext)
         !assignedInFence && !assignedInAllStates
       }
 
-      val newFenceStms = for {
-        Decl(symbol, _) <- entity.declarations
-        if needsDefault contains symbol
-      } yield {
-        val kind = symbol.denot.kind
-        val signed = kind.isSigned
-        val width = kind.width.value.get.toInt
-        StmtAssign(ExprRef(Sym(symbol)), ExprInt(signed, width, 0)) regularize symbol.loc
-      }
-
-      if (newFenceStms.isEmpty) {
+      if (needsDefault.isEmpty) {
         tree
       } else {
+        // Collect the _d -> _q default map for flops
+        val flopQ = {
+          val pairs = for {
+            Decl(symbol, _) <- entity.declarations
+            if symbol.attr.flop.isSet
+          } yield {
+            symbol.attr.flop.value -> symbol
+          }
+          pairs.toMap
+        }
+
+        val newFenceStms = for {
+          Decl(symbol, _) <- entity.declarations
+          if needsDefault contains symbol
+        } yield {
+          // Initialize flop _d to _q, anything else to zeros
+          val init = flopQ.get(symbol) map { qSymbol =>
+            ExprRef(Sym(qSymbol))
+          } getOrElse {
+            val kind = symbol.denot.kind
+            val signed = kind.isSigned
+            val width = kind.width.value.get.toInt
+            ExprInt(signed, width, 0)
+          }
+          StmtAssign(ExprRef(Sym(symbol)), init) regularize symbol.loc
+        }
+
         TypeAssigner {
           entity.copy(
             fenceStmts = newFenceStms ::: entity.fenceStmts

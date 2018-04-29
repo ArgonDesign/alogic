@@ -21,7 +21,6 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Names.TermName
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.FollowedBy
 
 final class LowerFlops(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
@@ -96,23 +95,9 @@ final class LowerFlops(implicit cc: CompilerContext) extends TreeTransformer wit
     }
 
     //////////////////////////////////////////////////////////////////////////
-    // Add _d = _q fence statements
+    // Note: Initial _d = _q fence statements will be added in
+    // DefaultAssignments as required
     //////////////////////////////////////////////////////////////////////////
-
-    case entity: Entity => {
-      val fenceStmts = entity.declarations collect {
-        case decl @ Decl(qSymbol, _) if qSymbol.attr.flop.isSet => {
-          val dSymbol = qSymbol.attr.flop.value
-          StmtAssign(ExprRef(Sym(dSymbol)), ExprRef(Sym(qSymbol))) regularize decl.loc
-        }
-      }
-
-      TypeAssigner {
-        entity.copy(
-          fenceStmts = fenceStmts ::: entity.fenceStmts
-        ) withVariant entity.variant withLoc tree.loc
-      }
-    }
 
     case _ => tree
   }
