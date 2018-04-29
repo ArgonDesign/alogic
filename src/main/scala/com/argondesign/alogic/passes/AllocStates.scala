@@ -143,6 +143,7 @@ final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
 
         // Emit state variable declaration
         case entity: Entity => {
+          // TODO: initialize to entry state
           val decl = Decl(stateVarSymbol, None) regularize stateVarSymbol.loc
           entity.copy(
             declarations = decl :: entity.declarations
