@@ -176,7 +176,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
         }
         // Set attributes
         symbol.attr.oSlice.set((sliceEntity, instanceSymbol))
-        entitySymbol.attr.interconnectClearOnStall.append((instanceSymbol, "u_valid"))
+        entitySymbol.attr.interconnectClearOnStall.append((instanceSymbol, "ip_valid"))
       }
     }
 
@@ -283,10 +283,10 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
           case (_, iSymbol) =>
             val pSymbol = symbol.attr.fcr.value._1
             val iRef = ExprRef(Sym(iSymbol))
-            val vAssign = assignTrue(iRef select "u_valid")
-            val rStall = stall(~(iRef select "u_ready"))
+            val vAssign = assignTrue(iRef select "ip_valid")
+            val rStall = stall(~(iRef select "ip_ready"))
             if (pSymbol != ErrorSymbol) {
-              val pAssign = StmtAssign(iRef select "u_payload", args.head)
+              val pAssign = StmtAssign(iRef select "ip", args.head)
               StmtBlock(List(pAssign, vAssign, rStall))
             } else {
               StmtBlock(List(vAssign, rStall))
@@ -453,9 +453,9 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
           val iSymbol = symbol.attr.oSlice.value._2
           val (pSymbol, vSymbol, rSymbol) = symbol.attr.fcr.value
           val iRef = ExprRef(Sym(iSymbol))
-          lazy val pConn = Connect(iRef select "d_payload", List(ExprRef(Sym(pSymbol))))
-          val vConn = Connect(iRef select "d_valid", List(ExprRef(Sym(vSymbol))))
-          val rConn = Connect(ExprRef(Sym(rSymbol)), List(iRef select "d_ready"))
+          lazy val pConn = Connect(iRef select "op", List(ExprRef(Sym(pSymbol))))
+          val vConn = Connect(iRef select "op_valid", List(ExprRef(Sym(vSymbol))))
+          val rConn = Connect(ExprRef(Sym(rSymbol)), List(iRef select "op_ready"))
           if (pSymbol != ErrorSymbol) {
             List(pConn, vConn, rConn)
           } else {
