@@ -59,6 +59,8 @@ final class MakeVerilog(entity: Entity)(implicit cc: CompilerContext) {
 
   assert(states.nonEmpty || fenceStmts.isEmpty)
 
+  private val isVerbatim = entity.variant == "verbatim"
+
   private val hasConsts = decls exists {
     case Decl(symbol, _) => symbol.denot.kind.isInstanceOf[TypeConst]
     case _               => false
@@ -547,6 +549,7 @@ final class MakeVerilog(entity: Entity)(implicit cc: CompilerContext) {
             val TypeEntity(_, pSymbols, _) = eSymbol.denot.kind
             val pSymbolCount = pSymbols.length
 
+            // TODO: omit if not needed
             val comma = if (pSymbolCount > 0) "," else ""
             buf append List(".clk", "         (clk),")
             buf append List(".rst_n", s"         (rst_n)${comma}")
@@ -617,14 +620,14 @@ final class MakeVerilog(entity: Entity)(implicit cc: CompilerContext) {
     body.emit(0)("`default_nettype none")
     body.ensureBlankLine()
 
-    body.emit(0)(s"module ${eSymbol.name} (")
+    body.emit(0)(s"module ${eSymbol.name}(")
 
     // Emit port declarations
     for (Decl(symbol, _) <- decls) {
       symbol.denot.kind match {
         case _: TypeIn => body.emit(1)(s"input  wire ${vdecl(symbol)},")
         case _: TypeOut => {
-          if (netSymbols contains symbol) {
+          if (isVerbatim || (netSymbols contains symbol)) {
             body.emit(1)(s"output wire ${vdecl(symbol)},")
           } else {
             body.emit(1)(s"output reg  ${vdecl(symbol)},")
@@ -634,6 +637,7 @@ final class MakeVerilog(entity: Entity)(implicit cc: CompilerContext) {
       }
     }
     body.ensureBlankLine()
+    // TODO: omit if not needed
     body.emit(1)("input  wire clk,")
     body.emit(1)("input  wire rst_n")
     body.emit(0)(");")
