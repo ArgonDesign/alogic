@@ -40,10 +40,16 @@ object Passes {
     // Each phase is applied in parallel to all trees, but all trees
     // are transformed with the given phase before the next phase begins
     val passes = List(
+      ////////////////////////////////////////////////////////////////////////
+      // Front-end
+      ////////////////////////////////////////////////////////////////////////
       () => new Checker,
       () => new Namer,
       () => new Desugar,
       () => new Typer,
+      ////////////////////////////////////////////////////////////////////////
+      // Middle-end
+      ////////////////////////////////////////////////////////////////////////
       () => new ConvertMultiConnect,
       () => new FoldExpr(assignTypes = true, foldRefs = false)(cc),
       () => new SpecializeParamA,
@@ -71,13 +77,15 @@ object Passes {
       () => new SplitStructsB,
       () => new SplitStructsC,
       () => new FoldExpr(assignTypes = true, foldRefs = false)(cc),
-      () => new OutputDefault,
       () => new SimplifyCat,
       // TODO: StripTermPrefixes
+      ////////////////////////////////////////////////////////////////////////
+      // Back-end
+      ////////////////////////////////////////////////////////////////////////
       () => new LowerFlops,
       () => new LowerArrays,
       () => new LowerInterconnect,
-//      () => new RemoveUnusedA,
+      () => new DefaultAssignments,
       // TODO: LowerGo
       () => new RemoveRedundantBlocks,
       () => new RenameClashingTerms
