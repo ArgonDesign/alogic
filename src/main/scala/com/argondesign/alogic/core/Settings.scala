@@ -17,5 +17,5 @@ package com.argondesign.alogic.core
 
 case class Settings(
     // The field separator sequence
-    sep: String = "__"
+    sep: String = "_"
 )
