@@ -122,11 +122,14 @@ object Main extends App {
     sys exit 2
   }
 
+  if (cc.hasError) {
+    sys exit 1
+  }
+
   for (tree <- results.get) {
     val entity = tree.asInstanceOf[Entity]
     writeEntity(entity, oPathFor(entity))
   }
 
-  val ret = if (cc.messages exists { _.isInstanceOf[Error] }) 1 else 0
-  sys exit ret
+  sys exit 0
 }

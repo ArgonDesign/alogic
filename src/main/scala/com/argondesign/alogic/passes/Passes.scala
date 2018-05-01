@@ -22,17 +22,27 @@ import com.argondesign.alogic.typer.Typer
 
 object Passes {
 
-  private def doPhase(trees: List[Tree], factory: () => TreeTransformer): List[Tree] = {
-    // Apply phase to all trees in parallel
-    val results = trees.par map { tree =>
-      val phase = factory()
-      phase(tree)
-    }
+  private def doPhase(
+      trees: List[Tree],
+      factory: () => TreeTransformer
+  )(
+      implicit cc: CompilerContext
+  ): List[Tree] = {
+    if (cc.hasError) {
+      // If we have encountered errors in an earlier pass, skip any later passes
+      trees
+    } else {
+      // Apply phase to all trees in parallel
+      val results = trees.par map { tree =>
+        val phase = factory()
+        phase(tree)
+      }
 
-    // Collect the results and flatten Thickets
-    results.seq.toList flatMap {
-      case Thicket(trees) => trees
-      case other          => List(other)
+      // Collect the results and flatten Thickets
+      results.seq.toList flatMap {
+        case Thicket(trees) => trees
+        case other          => List(other)
+      }
     }
   }
 

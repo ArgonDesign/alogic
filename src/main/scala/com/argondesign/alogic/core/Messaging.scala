@@ -84,7 +84,9 @@ case class InternalCompilerErrorException(cc: CompilerContext, message: ICE) ext
 trait Messaging { self: CompilerContext =>
 
   // buffer to store messages without source location information
-  final private[this] val messageBuffer = mutable.ListBuffer[Message]()
+  private[this] final val messageBuffer = mutable.ListBuffer[Message]()
+
+  private[this] final var errorCount = 0
 
   //////////////////////////////////////////////////////////////////////////////
   // Versions without source location
@@ -96,17 +98,20 @@ trait Messaging { self: CompilerContext =>
 
   final def error(msg: String*): Unit = synchronized {
     messageBuffer append Error(msg)
+    errorCount += 1
   }
 
   final def fatal(msg: String*): Nothing = synchronized {
     val message = Fatal(msg)
     messageBuffer append message
+    errorCount += 1
     throw FatalErrorException(this, message)
   }
 
   final def ice(msg: String*): Nothing = synchronized {
     val message = ICE(msg)
     messageBuffer append message
+    errorCount += 1
     throw InternalCompilerErrorException(this, message)
   }
 
@@ -120,26 +125,31 @@ trait Messaging { self: CompilerContext =>
 
   final def error(loc: Loc, msg: String*): Option[Loc] = synchronized {
     messageBuffer append Error(msg, Some(loc))
+    errorCount += 1
     Some(loc)
   }
 
   final def fatal(loc: Loc, msg: String*): Nothing = synchronized {
     val message = Fatal(msg, Some(loc))
     messageBuffer append message
+    errorCount += 1
     throw FatalErrorException(this, message)
   }
 
   final def ice(loc: Loc, msg: String*): Nothing = synchronized {
     val message = ICE(msg, Some(loc))
     messageBuffer append message
+    errorCount += 1
     throw InternalCompilerErrorException(this, message)
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  // Get messages
+  // Get messages/status
   //////////////////////////////////////////////////////////////////////////////
 
   final def messages: List[Message] = messageBuffer.toList
+
+  final def hasError: Boolean = errorCount > 0
 
   //////////////////////////////////////////////////////////////////////////////
   // Versions that take an Antlr4 token/parse tree node for location info
