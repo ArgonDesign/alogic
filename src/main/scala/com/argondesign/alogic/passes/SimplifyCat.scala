@@ -72,6 +72,16 @@ final class SimplifyCat(implicit cc: CompilerContext) extends TreeTransformer {
         }
       }
 
+      case StmtAssign(lhs @ ExprCat(parts), ExprInt(_, width, value))
+          if value == 0 && (lhs.tpe.width.value contains width) => {
+        StmtBlock {
+          for (expr <- parts) yield {
+            val kind = expr.tpe
+            StmtAssign(expr, ExprInt(kind.isSigned, kind.width.value.get.toInt, 0))
+          }
+        }
+      }
+
       case StmtAssign(ExprCat(oLhss), ExprCat(oRhss)) => {
         val pairs = pairUp(oLhss, oRhss)
         if (pairs.lengthCompare(1) == 0) {
