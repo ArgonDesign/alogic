@@ -363,8 +363,8 @@ final class TyperSpec extends FreeSpec with AlogicTest {
             ("f.x", TypeSInt(8), ""),
             ("g.y", TypeStruct("a", List("x"), List(TypeSInt(8))), ""),
             ("g.y.x", TypeSInt(8), ""),
-            ("f.valid", TypeCombFunc(Nil, TypeUInt(1)), ""),
-            ("g.valid", TypeCombFunc(Nil, TypeUInt(1)), ""),
+            ("f.valid", TypeUInt(1), ""),
+            ("g.valid", TypeUInt(1), ""),
             ("@bits(d.x)", TypeSInt(8), ""),
             ("@bits(e.y)", TypeStruct("a", List("x"), List(TypeSInt(8))), ""),
             ("@bits(e.y.x)", TypeSInt(8), ""),
@@ -411,11 +411,9 @@ final class TyperSpec extends FreeSpec with AlogicTest {
       "call" - {
         for {
           (text, kind, msg) <- List(
-            ("a.valid()", TypeUInt(1), ""),
             ("a()", TypeError, "'.*' is not callable"),
-            ("a.valid(1'b1)",
-             TypeError,
-             s"Too many arguments to function call, expected 0, have 1"),
+            ("a.valid()", TypeError, s"'.*' is not callable"),
+            ("a.valid(1'b1)", TypeError, s"'.*' is not callable"),
             ("a.write()", TypeError, "Too few arguments to function call, expected 1, have 0"),
             ("a.write(2'b1)", TypeVoid, ""),
             ("a.write(1'b1, 1'b1)",
@@ -433,9 +431,7 @@ final class TyperSpec extends FreeSpec with AlogicTest {
              TypeError,
              "Width 1 of parameter 1 passed to function call is less than expected width 2"),
             ("@bits(a)", TypeNum(false), ""),
-            ("@bits(a.valid)",
-             TypeError,
-             "Builtin function '@bits' cannot be applied to arguments 'a.valid' of type '.*'")
+            ("@bits(a.valid)", TypeNum(false), "")
           )
         } {
           text in {

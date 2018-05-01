@@ -599,22 +599,22 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
             ("a.b", TypeStruct("s", List("a", "b"), List(TypeUInt(1), TypeUInt(8)))),
             ("a.b.a", TypeUInt(1)),
             ("a.b.b", TypeUInt(8)),
-            ("pi0.valid", TypeCombFunc(Nil, TypeUInt(1))),
+            ("pi0.valid", TypeUInt(1)),
             ("pi0.read", TypeCombFunc(Nil, TypeSInt(8))),
             ("pi0.wait", TypeCombFunc(Nil, TypeVoid)),
-            ("pi1.valid", TypeCombFunc(Nil, TypeUInt(1))),
+            ("pi1.valid", TypeUInt(1)),
             ("pi1.read", TypeCombFunc(Nil, TypeVoid)),
             ("pi1.wait", TypeCombFunc(Nil, TypeVoid)),
-            ("po0.valid", TypeCombFunc(Nil, TypeUInt(1))),
+            ("po0.valid", TypeUInt(1)),
             ("po0.write", TypeCombFunc(List(TypeSInt(8)), TypeVoid)),
             ("po0.flush", TypeCombFunc(Nil, TypeVoid)),
-            ("po0.full", TypeCombFunc(Nil, TypeUInt(1))),
-            ("po0.empty", TypeCombFunc(Nil, TypeUInt(1))),
-            ("po1.valid", TypeCombFunc(Nil, TypeUInt(1))),
+            ("po0.full", TypeUInt(1)),
+            ("po0.empty", TypeUInt(1)),
+            ("po1.valid", TypeUInt(1)),
             ("po1.write", TypeCombFunc(Nil, TypeVoid)),
             ("po1.flush", TypeCombFunc(Nil, TypeVoid)),
-            ("po1.full", TypeCombFunc(Nil, TypeUInt(1))),
-            ("po1.empty", TypeCombFunc(Nil, TypeUInt(1)))
+            ("po1.full", TypeUInt(1)),
+            ("po1.empty", TypeUInt(1))
           )
         } {
           val text = expr.trim.replaceAll(" +", " ")
@@ -740,22 +740,14 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
       "call" - {
         for {
           (expr, kind) <- List(
-            ("pi0.valid", TypeUInt(1)),
             ("pi0.read", TypeSInt(8)),
             ("pi0.wait", TypeVoid),
-            ("pi1.valid", TypeUInt(1)),
             ("pi1.read", TypeVoid),
             ("pi1.wait", TypeVoid),
-            ("po0.valid", TypeUInt(1)),
             ("po0.write", TypeVoid),
             ("po0.flush", TypeVoid),
-            ("po0.full", TypeUInt(1)),
-            ("po0.empty", TypeUInt(1)),
-            ("po1.valid", TypeUInt(1)),
             ("po1.write", TypeVoid),
-            ("po1.flush", TypeVoid),
-            ("po1.full", TypeUInt(1)),
-            ("po1.empty", TypeUInt(1))
+            ("po1.flush", TypeVoid)
           )
         } {
           val text = expr.trim.replaceAll(" +", " ")

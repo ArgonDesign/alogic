@@ -382,7 +382,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
         }
       }
 
-      case ExprCall(ExprSelect(ExprRef(Sym(symbol: TermSymbol)), "valid"), Nil) => {
+      case ExprSelect(ExprRef(Sym(symbol: TermSymbol)), "valid") => {
         symbol.attr.fcv.get.map {
           case (_, vSymbol) => ExprRef(Sym(vSymbol))
         } orElse symbol.attr.fcr.get.map {
@@ -392,7 +392,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
         }
       }
 
-      case ExprCall(ExprSelect(ExprRef(Sym(symbol: TermSymbol)), "empty"), Nil) => {
+      case ExprSelect(ExprRef(Sym(symbol: TermSymbol)), "empty") => {
         symbol.attr.oStorage.get.map {
           case (_, iSymbol) => ExprRef(Sym(iSymbol)) select "empty"
         } getOrElse {
@@ -400,7 +400,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
         }
       }
 
-      case ExprCall(ExprSelect(ExprRef(Sym(symbol: TermSymbol)), "full"), Nil) => {
+      case ExprSelect(ExprRef(Sym(symbol: TermSymbol)), "full") => {
         symbol.attr.oStorage.get.map {
           case (_, iSymbol) => ExprRef(Sym(iSymbol)) select "full"
         } getOrElse {

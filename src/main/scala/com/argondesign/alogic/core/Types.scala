@@ -122,7 +122,7 @@ object Types {
   // Implementations
   ///////////////////////////////////////////////////////////////////////////////
 
-  private val oneExpr = Expr(1) withLoc Loc.synthetic
+  private val boolType = TypeUInt(Expr(1) withLoc Loc.synthetic)
 
   // A base trait for types that have fields that can be looked up using dot notation
   trait CompoundType {
@@ -203,7 +203,7 @@ object Types {
       case FlowControlTypeValid | FlowControlTypeReady => {
         Map(
           "read" -> TypeCombFunc(Nil, kind),
-          "valid" -> TypeCombFunc(Nil, TypeUInt(oneExpr)),
+          "valid" -> boolType,
           "wait" -> TypeCombFunc(Nil, TypeVoid)
         )
       }
@@ -231,17 +231,17 @@ object Types {
         case FlowControlTypeValid => {
           Map(
             "write" -> writeFuncType,
-            "valid" -> TypeCombFunc(Nil, TypeUInt(oneExpr)),
+            "valid" -> boolType,
             "flush" -> TypeCombFunc(Nil, TypeVoid)
           )
         }
         case FlowControlTypeReady => {
           Map(
             "write" -> writeFuncType,
-            "valid" -> TypeCombFunc(Nil, TypeUInt(oneExpr)),
+            "valid" -> boolType,
             "flush" -> TypeCombFunc(Nil, TypeVoid),
-            "full" -> TypeCombFunc(Nil, TypeUInt(oneExpr)),
-            "empty" -> TypeCombFunc(Nil, TypeUInt(oneExpr))
+            "full" -> boolType,
+            "empty" -> boolType
           )
         }
         case FlowControlTypeAccept => {
@@ -260,8 +260,8 @@ object Types {
       "pop" -> TypeCombFunc(Nil, elementType),
       "set" -> TypeCombFunc(List(elementType), TypeVoid),
       "top" -> elementType,
-      "full" -> TypeUInt(oneExpr),
-      "empty" -> TypeUInt(oneExpr)
+      "full" -> boolType,
+      "empty" -> boolType
     )
 
     def apply(field: String): Option[Type] = fieldMap get field
