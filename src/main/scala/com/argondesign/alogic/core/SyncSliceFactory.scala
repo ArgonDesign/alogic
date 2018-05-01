@@ -20,7 +20,7 @@ import com.argondesign.alogic.core.StorageTypes._
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.typer.TypeAssigner
 
-object SliceFactory {
+object SyncSliceFactory {
 
   /*
 
@@ -293,7 +293,7 @@ object SliceFactory {
     val eSymbol = cc.newTermSymbol("empty", loc, TypeOut(bool, fcn, stw))
     val fSymbol = cc.newTermSymbol("full", loc, TypeOut(bool, fcn, stw))
 
-    val pSymbol = cc.newTermSymbol("payload", loc, kind)
+    lazy val pSymbol = cc.newTermSymbol("payload", loc, kind)
     val vSymbol = cc.newTermSymbol("valid", loc, bool)
 
     lazy val ipRef = ExprRef(Sym(ipSymbol))
@@ -307,7 +307,7 @@ object SliceFactory {
     val eRef = ExprRef(Sym(eSymbol))
     val fRef = ExprRef(Sym(fSymbol))
 
-    val pRef = ExprRef(Sym(pSymbol))
+    lazy val pRef = ExprRef(Sym(pSymbol))
     val vRef = ExprRef(Sym(vSymbol))
 
     val body = if (kind != TypeVoid) {

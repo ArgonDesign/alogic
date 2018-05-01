@@ -54,9 +54,11 @@ class SymbolAttributes {
   // If this is a FlowControlTypeAccept port,
   // the corresponding payload, valid and accept symbols
   val fca = new Attribute[(Symbol, TermSymbol, TermSymbol)]()
-  // If this is an output port with StorageTypeSlices, the
-  // corresponding output slice entity and instance symbol
-  val oSlice = new Attribute[(Entity, TermSymbol)]()
+  // If this is an output port with a synchronous output register, the
+  // corresponding synchronous output register entity and instance symbol
+  // If this is an output port with a synchronous output slice, the
+  // corresponding synchronous output slice entity and instance symbol
+  val oStorage = new Attribute[(Entity, TermSymbol)]()
   // Is this a port that has been expanded to multiple signals?
   val expandedPort = new Attribute[Boolean]()
 
@@ -99,7 +101,7 @@ class SymbolAttributes {
     fcv,
     fcr,
     fca,
-    oSlice,
+    oStorage,
     expandedPort,
     clearOnStall,
     interconnectClearOnStall,
@@ -126,7 +128,7 @@ class SymbolAttributes {
     "fcv",
     "fcr",
     "fca",
-    "oSlice",
+    "oStorage",
     "expandedPort",
     "clearOnStall",
     "interconnectClearOnStall",

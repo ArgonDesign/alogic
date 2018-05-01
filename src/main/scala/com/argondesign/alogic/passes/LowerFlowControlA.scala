@@ -30,7 +30,8 @@ import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
-import com.argondesign.alogic.core.SliceFactory
+import com.argondesign.alogic.core.SyncSliceFactory
+import com.argondesign.alogic.core.SyncRegFactory
 import com.argondesign.alogic.lib.Stack
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.FollowedBy
@@ -113,14 +114,29 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       val loc = tree.loc
       val pName = symbol.denot.name.str
       val vName = pName + sep + "valid"
-      lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeOut(kind, fctn, st))
-      val vSymbol = cc.newTermSymbol(vName, loc, TypeOut(boolType(loc), fctn, st))
+      lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeOut(kind, fctn, stw))
+      val vSymbol = cc.newTermSymbol(vName, loc, TypeOut(boolType(loc), fctn, stw))
       val newSymbols = if (kind != TypeVoid) (pSymbol, vSymbol) else (ErrorSymbol, vSymbol)
       // Set attributes
       symbol.attr.fcv set newSymbols
       symbol.attr.expandedPort set true
-      vSymbol.attr.default set (ExprInt(false, 1, 0) withLoc loc)
-      vSymbol.attr.clearOnStall set true
+      if (st == StorageTypeWire) {
+        vSymbol.attr.default set (ExprInt(false, 1, 0) withLoc loc)
+        vSymbol.attr.clearOnStall set true
+      } else {
+        // If a synchronous output register is required, construct it
+        // TODO: mark inline
+        val eName = entitySymbol.name + sep + "or" + sep + pName
+        val sregEntity: Entity = SyncRegFactory(eName, loc, kind)
+        val Sym(sregEntitySymbol: TypeSymbol) = sregEntity.ref
+        val iSymbol = {
+          val iName = "or" + sep + pName
+          cc.newTermSymbol(iName, loc, TypeInstance(sregEntitySymbol))
+        }
+        // Set attributes
+        symbol.attr.oStorage.set((sregEntity, iSymbol))
+        entitySymbol.attr.interconnectClearOnStall.append((iSymbol, s"ip${sep}valid"))
+      }
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -171,16 +187,16 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       if (st != StorageTypeWire) {
         val StorageTypeSlices(slices) = st
         // TODO: mark inline
-        val eName = entitySymbol.name + sep + "oslice" + sep + pName
-        val sliceEntity: Entity = SliceFactory(slices, eName, loc, kind)
+        val eName = entitySymbol.name + sep + "os" + sep + pName
+        val sliceEntity: Entity = SyncSliceFactory(slices, eName, loc, kind)
         val Sym(sliceEntitySymbol: TypeSymbol) = sliceEntity.ref
-        val instanceSymbol = {
-          val iName = "oslice" + sep + pName
+        val iSymbol = {
+          val iName = "os" + sep + pName
           cc.newTermSymbol(iName, loc, TypeInstance(sliceEntitySymbol))
         }
         // Set attributes
-        symbol.attr.oSlice.set((sliceEntity, instanceSymbol))
-        entitySymbol.attr.interconnectClearOnStall.append((instanceSymbol, s"ip${sep}valid"))
+        symbol.attr.oStorage.set((sliceEntity, iSymbol))
+        entitySymbol.attr.interconnectClearOnStall.append((iSymbol, s"ip${sep}valid"))
       }
     }
 
@@ -276,6 +292,21 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       case StmtExpr(ExprCall(ExprSelect(ref @ ExprRef(Sym(symbol: TermSymbol)), "write"), args)) => {
         symbol.attr.fcn.get.map { _ =>
           StmtAssign(ref, args.head)
+        } orElse symbol.attr.oStorage.get.map {
+          case (_, iSymbol) =>
+            lazy val iRef = ExprRef(Sym(iSymbol))
+            lazy val pAssign = StmtAssign(iRef select "ip", args.head)
+            lazy val vAssign = assignTrue(iRef select s"ip${sep}valid")
+            lazy val rStall = stall(~(iRef select s"ip${sep}ready"))
+            symbol.attr.fcv.get.map {
+              case (ErrorSymbol, _) => vAssign
+              case _                => StmtBlock(List(pAssign, vAssign))
+            } orElse symbol.attr.fcr.get.map {
+              case (ErrorSymbol, _, _) => StmtBlock(List(vAssign, rStall))
+              case _                   => StmtBlock(List(pAssign, vAssign, rStall))
+            } getOrElse {
+              unreachable
+            }
         } orElse symbol.attr.fcv.get.map {
           case (pSymbol, vSymbol) =>
             val vAssign = assignTrue(ExprRef(Sym(vSymbol)))
@@ -284,18 +315,6 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
               StmtBlock(List(pAssign, vAssign))
             } else {
               vAssign
-            }
-        } orElse symbol.attr.oSlice.get.map {
-          case (_, iSymbol) =>
-            val pSymbol = symbol.attr.fcr.value._1
-            val iRef = ExprRef(Sym(iSymbol))
-            val vAssign = assignTrue(iRef select s"ip${sep}valid")
-            val rStall = stall(~(iRef select s"ip${sep}ready"))
-            if (pSymbol != ErrorSymbol) {
-              val pAssign = StmtAssign(iRef select "ip", args.head)
-              StmtBlock(List(pAssign, vAssign, rStall))
-            } else {
-              StmtBlock(List(vAssign, rStall))
             }
         } orElse symbol.attr.fca.get.map {
           case (pSymbol, vSymbol, aSymbol) =>
@@ -328,7 +347,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
         symbol.attr.fcv.get.map {
           case (_, vSymbol) =>
             stall(ExprRef(Sym(vSymbol)))
-        } orElse symbol.attr.oSlice.get.map {
+        } orElse symbol.attr.oStorage.get.map {
           case (_, iSymbol) =>
             val iRef = ExprRef(Sym(iSymbol))
             stall(~(iRef select "empty"))
@@ -374,7 +393,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       }
 
       case ExprCall(ExprSelect(ExprRef(Sym(symbol: TermSymbol)), "empty"), Nil) => {
-        symbol.attr.oSlice.get.map {
+        symbol.attr.oStorage.get.map {
           case (_, iSymbol) => ExprRef(Sym(iSymbol)) select "empty"
         } getOrElse {
           tree
@@ -382,7 +401,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       }
 
       case ExprCall(ExprSelect(ExprRef(Sym(symbol: TermSymbol)), "full"), Nil) => {
-        symbol.attr.oSlice.get.map {
+        symbol.attr.oStorage.get.map {
           case (_, iSymbol) => ExprRef(Sym(iSymbol)) select "full"
         } getOrElse {
           tree
@@ -447,35 +466,46 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
 
       case entity: Entity => {
         val ospSymbols = entity.declarations collect {
-          case Decl(symbol, _) if symbol.attr.oSlice.isSet => symbol
+          case Decl(symbol, _) if symbol.attr.oStorage.isSet => symbol
         }
 
         val instances = for (symbol <- ospSymbols) yield {
-          val (entity, instance) = symbol.attr.oSlice.value
-          Instance(Sym(instance), entity.ref, Nil, Nil)
+          val (entity, iSymbol) = symbol.attr.oStorage.value
+          Instance(Sym(iSymbol), entity.ref, Nil, Nil)
         }
 
         val connects = ospSymbols flatMap { symbol =>
-          val iSymbol = symbol.attr.oSlice.value._2
-          val (pSymbol, vSymbol, rSymbol) = symbol.attr.fcr.value
+          val iSymbol = symbol.attr.oStorage.value._2
           val iRef = ExprRef(Sym(iSymbol))
-          lazy val pConn = Connect(iRef select "op", List(ExprRef(Sym(pSymbol))))
-          val vConn = Connect(iRef select s"op${sep}valid", List(ExprRef(Sym(vSymbol))))
-          val rConn = Connect(ExprRef(Sym(rSymbol)), List(iRef select s"op${sep}ready"))
-          if (pSymbol != ErrorSymbol) {
-            List(pConn, vConn, rConn)
-          } else {
-            List(vConn, rConn)
+
+          val (pSymbolOpt, vSymbol, rSymbolOpt) = symbol.attr.fcv.get.map {
+            case (ErrorSymbol, vSymbol) => (None, vSymbol, None)
+            case (pSymbol, vSymbol)     => (Some(pSymbol), vSymbol, None)
+          } orElse symbol.attr.fcr.get.map {
+            case (ErrorSymbol, vSymbol, rSymbol) => (None, vSymbol, Some(rSymbol))
+            case (pSymbol, vSymbol, rSymbol)     => (Some(pSymbol), vSymbol, Some(rSymbol))
+          } getOrElse {
+            unreachable
           }
+
+          val pConnOpt = pSymbolOpt map { pSymbol =>
+            Connect(iRef select "op", List(ExprRef(Sym(pSymbol))))
+          }
+          val vConn = Connect(iRef select s"op${sep}valid", List(ExprRef(Sym(vSymbol))))
+          val rConnOpt = rSymbolOpt map { rSymbol =>
+            Connect(ExprRef(Sym(rSymbol)), List(iRef select s"op${sep}ready"))
+          }
+
+          pConnOpt.toList ::: vConn :: rConnOpt.toList
         }
 
-        val newEntities = ospSymbols map { _.attr.oSlice.value._1 }
+        val newEntities = ospSymbols map { _.attr.oStorage.value._1 }
 
-        // Remove fcn and oSlice attributes, they are no longer needed
+        // Remove fcn and oStorage attributes, they are no longer needed
         entity.declarations foreach {
           case Decl(symbol, _) => {
             symbol.attr.fcn.clear
-            symbol.attr.oSlice.clear
+            symbol.attr.oStorage.clear
           }
           case _ => unreachable
         }
