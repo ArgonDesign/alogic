@@ -24,8 +24,8 @@ import com.argondesign.alogic.ast.Trees.Root
 import com.argondesign.alogic.ast.Trees.Sym
 import com.argondesign.alogic.backend.MakeVerilog
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Error
 import com.argondesign.alogic.core.FatalErrorException
+import com.argondesign.alogic.core.Settings
 import com.argondesign.alogic.frontend.Frontend
 import com.argondesign.alogic.passes.Passes
 import com.argondesign.alogic.util.unreachable
@@ -33,16 +33,24 @@ import com.argondesign.alogic.util.unreachable
 object Main extends App {
 
   //////////////////////////////////////////////////////////////////////////////
-  // Create the compiler context
-  //////////////////////////////////////////////////////////////////////////////
-
-  implicit val cc = new CompilerContext
-
-  //////////////////////////////////////////////////////////////////////////////
   // Parse arguments
   //////////////////////////////////////////////////////////////////////////////
 
   val cliConf = new CLIConf(args)
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Create the compiler context
+  //////////////////////////////////////////////////////////////////////////////
+
+  val settings = Settings(
+    sep = cliConf.sep()
+  )
+
+  implicit val cc = new CompilerContext(settings)
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Do the work
+  //////////////////////////////////////////////////////////////////////////////
 
   val results = try {
     val toplevels = cliConf.toplevel()

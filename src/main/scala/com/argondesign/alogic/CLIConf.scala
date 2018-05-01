@@ -128,6 +128,13 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) {
     case _ => Right(Unit)
   }
 
+  val sep = opt[String](
+    noshort = true,
+    required = false,
+    descr = "Structure field separator sequence used in the output. Default is '__'.",
+    default = Some("__")
+  )
+
   val toplevel = trailArg[List[String]](
     required = true,
     descr = "List of top level entity names"
