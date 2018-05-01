@@ -31,6 +31,22 @@ final class LowerFlops(implicit cc: CompilerContext) extends TreeTransformer wit
 
   override def enter(tree: Tree): Unit = tree match {
 
+    case entity: Entity => {
+      // Drop the oreg prefix from the flops allocated for registered outputs,
+      // These will now gain _d and _q, so the names will become unique.
+      val prefix = s"oreg${cc.sep}"
+      val prefixLen = prefix.length
+      for {
+        Decl(oSymbol, _) <- entity.declarations
+        rSymbol <- oSymbol.attr.oReg.get
+      } {
+        val name = rSymbol.name
+        assert(name startsWith prefix)
+        rSymbol withDenot rSymbol.denot.copy(name = TermName(name drop prefixLen))
+        oSymbol.attr.oReg.clear()
+      }
+    }
+
     case Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypeInt] => {
       val loc = tree.loc
       val name = symbol.name

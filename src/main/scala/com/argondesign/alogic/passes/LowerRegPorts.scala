@@ -88,7 +88,6 @@ final class LowerRegPorts(implicit cc: CompilerContext) extends TreeTransformer 
         if oSymbol.attr.oReg.isSet
       } yield {
         val rSymbol = oSymbol.attr.oReg.value
-        oSymbol.attr.oReg.clear()
         Connect(ExprRef(Sym(rSymbol)), List(ExprRef(Sym(oSymbol)))) regularize oSymbol.loc
       }
 

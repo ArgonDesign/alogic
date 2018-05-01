@@ -88,7 +88,6 @@ object Passes {
       () => new SplitStructsC,
       () => new FoldExpr(assignTypes = true, foldRefs = false)(cc),
       () => new SimplifyCat,
-      // TODO: StripTermPrefixes
       ////////////////////////////////////////////////////////////////////////
       // Back-end
       ////////////////////////////////////////////////////////////////////////
