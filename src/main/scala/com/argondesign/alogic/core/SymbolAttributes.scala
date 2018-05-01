@@ -81,6 +81,9 @@ class SymbolAttributes {
   // The expanded field symbols of a struct symbol
   val fieldSymbols = new Attribute[List[TermSymbol]]()
 
+  // The default value of this symbol, if required
+  val default = new Attribute[Expr]()
+
   // Iterator that enumerates all fields above
   private def attrIterator = Iterator(
     entry,
@@ -104,7 +107,8 @@ class SymbolAttributes {
     flop,
     arr,
     interconnect,
-    fieldSymbols
+    fieldSymbols,
+    default
   )
 
   // Iterator that enumerates names of fields above
@@ -130,7 +134,8 @@ class SymbolAttributes {
     "flop",
     "arr",
     "interconnect",
-    "fieldSymbols"
+    "fieldSymbols",
+    "default"
   )
 
   // Copy values of attributes from another instance

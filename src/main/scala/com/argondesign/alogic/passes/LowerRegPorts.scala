@@ -39,6 +39,11 @@ final class LowerRegPorts(implicit cc: CompilerContext) extends TreeTransformer 
             rSymbol.attr.clearOnStall set attr
             symbol.attr.clearOnStall.clear()
           }
+          // Move the default attribute to the register symbol
+          symbol.attr.default.get foreach { attr =>
+            rSymbol.attr.default set attr
+            symbol.attr.default.clear()
+          }
           symbol.attr.oReg set rSymbol
         }
         case _ =>

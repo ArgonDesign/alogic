@@ -119,6 +119,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       // Set attributes
       symbol.attr.fcv set newSymbols
       symbol.attr.expandedPort set true
+      vSymbol.attr.default set (ExprInt(false, 1, 0) withLoc loc)
       vSymbol.attr.clearOnStall set true
     }
 
@@ -144,6 +145,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       // Set attributes
       symbol.attr.fcr set newSymbols
       symbol.attr.expandedPort set true
+      rSymbol.attr.default set (ExprInt(false, 1, 0) withLoc loc)
       rSymbol.attr.clearOnStall set true
     }
 
@@ -204,6 +206,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       // Set attributes
       symbol.attr.fca set newSymbols
       symbol.attr.expandedPort set true
+      aSymbol.attr.default set (ExprInt(false, 1, 0) withLoc loc)
     }
 
     case Decl(symbol, _) if isOut(symbol, FlowControlTypeAccept) => {
@@ -224,6 +227,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       // Set attributes
       symbol.attr.fca set newSymbols
       symbol.attr.expandedPort set true
+      vSymbol.attr.default set (ExprInt(false, 1, 0) withLoc loc)
       vSymbol.attr.clearOnStall set true
     }
 

@@ -43,6 +43,13 @@ final class LowerFlops(implicit cc: CompilerContext) extends TreeTransformer wit
         dSymbol.attr.clearOnStall set attr
         symbol.attr.clearOnStall.clear()
       }
+      // If the symbol has a default attribute, move that to the _d,
+      // otherwise use the _q as the default initializer
+      val default = symbol.attr.default.getOrElse {
+        ExprRef(Sym(symbol)) regularize loc
+      }
+      dSymbol.attr.default set default
+      symbol.attr.default.clear()
       // Set attributes
       symbol.attr.flop set dSymbol
     }

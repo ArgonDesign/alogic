@@ -228,25 +228,12 @@ final class DefaultAssignments(implicit cc: CompilerContext)
       if (needsDefault.isEmpty) {
         tree
       } else {
-        // Collect the _d -> _q default map for flops
-        val flopQ = {
-          val pairs = for {
-            Decl(symbol, _) <- entity.declarations
-            if symbol.attr.flop.isSet
-          } yield {
-            symbol.attr.flop.value -> symbol
-          }
-          pairs.toMap
-        }
-
         val newFenceStms = for {
           Decl(symbol, _) <- entity.declarations
           if needsDefault contains symbol
         } yield {
-          // Initialize flop _d to _q, anything else to zeros
-          val init = flopQ.get(symbol) map { qSymbol =>
-            ExprRef(Sym(qSymbol))
-          } getOrElse {
+          // Initialize items to their default values, otherwise zero
+          val init = symbol.attr.default.getOrElse {
             val kind = symbol.denot.kind
             val signed = kind.isSigned
             val width = kind.width.value.get.toInt
