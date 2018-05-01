@@ -32,12 +32,14 @@ final class ConvertLocalDecls(implicit cc: CompilerContext) extends TreeTransfor
 
     case StmtDecl(decl @ Decl(symbol, initOpt)) => {
       localDecls.append(decl.copy(init = None) regularize decl.loc)
-      val stmt = initOpt match {
-        case None       => StmtBlock(Nil)
-        case Some(init) => StmtAssign(ExprRef(Sym(symbol)), init)
-
+      val init = initOpt match {
+        case Some(init) => init
+        case None => {
+          val kind = symbol.denot.kind
+          ExprInt(kind.isSigned, kind.width.value.get.toInt, 0)
+        }
       }
-      stmt regularize tree.loc
+      StmtAssign(ExprRef(Sym(symbol)), init) regularize tree.loc
     }
 
     case entity: Entity if localDecls.nonEmpty => {

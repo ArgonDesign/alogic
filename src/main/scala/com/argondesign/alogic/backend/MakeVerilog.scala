@@ -334,11 +334,7 @@ final class MakeVerilog(entity: Entity)(implicit cc: CompilerContext) {
                   case Some(expr) => expr
                   case None => {
                     val kind = qSymbol.denot.kind
-                    kind match {
-                      case _: TypeUInt => ExprInt(false, kind.width.value.get.toInt, 0)
-                      case _: TypeSInt => ExprInt(true, kind.width.value.get.toInt, 0)
-                      case _           => unreachable
-                    }
+                    ExprInt(kind.isSigned, kind.width.value.get.toInt, 0)
                   }
                 }
                 s"${id} <= ${vexpr(init)};"
