@@ -36,6 +36,7 @@ trait Builtins { this: CompilerContext =>
     register(new AtRandbit),
     register(new AtSx),
     register(new AtZx),
+    register(new DollarClog2),
     register(new DollarSigned),
     register(new DollarUnigned)
   )
