@@ -113,17 +113,10 @@ object Main extends App {
       oFile.getParentFile.mkdirs()
       oFile.createNewFile()
     }
-    {
-      val pw = new PrintWriter(oFile + ".alogic")
-      pw.write(entity.toSource)
-      pw.close()
-    }
-    {
-      val pw = new PrintWriter(oFile)
-      val mk = new MakeVerilog(entity)
-      pw.write(mk.moduleSource)
-      pw.close()
-    }
+    val pw = new PrintWriter(oFile)
+    val mk = new MakeVerilog(entity)
+    pw.write(mk.moduleSource)
+    pw.close()
   }
 
   if (results.isEmpty) {
