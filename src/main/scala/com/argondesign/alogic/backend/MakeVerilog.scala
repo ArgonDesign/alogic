@@ -202,7 +202,7 @@ final class MakeVerilog(entity: Entity)(implicit cc: CompilerContext) {
     def loop(expr: Expr) = {
       expr match {
         case ExprCall(e, args)         => s"${vexpr(e)}${args map vexpr mkString ("(", ", ", ")")}"
-        case ExprUnary(op, e)          => s"${op}${vexpr(e)}"
+        case ExprUnary(op, e)          => s"(${op}${vexpr(e)})"
         case ExprBinary(l, op, r)      => s"(${vexpr(l)} ${op} ${vexpr(r)})"
         case ExprTernary(cond, te, ee) => s"(${vexpr(cond)} ? ${vexpr(te)} : ${vexpr(ee)})"
         case ExprRep(count, e)         => s"{${vexpr(count)}{${vexpr(e)}}}"
