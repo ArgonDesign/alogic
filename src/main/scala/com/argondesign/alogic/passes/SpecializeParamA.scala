@@ -75,10 +75,7 @@ final class SpecializeParamA(implicit cc: CompilerContext) extends TreeTransform
 
         // Flatten the default bindings
         @tailrec
-        def flattenBindings(
-            bindings: ListMap[TermSymbol, Expr],
-            limit: Int
-        ): ListMap[TermSymbol, Expr] = {
+        def flattenBindings(bindings: ListMap[TermSymbol, Expr]): ListMap[TermSymbol, Expr] = {
           // Simplify the expressions
           val simplified = bindings map { case (symbol, expr) => symbol -> expr.simplify }
 
@@ -96,21 +93,16 @@ final class SpecializeParamA(implicit cc: CompilerContext) extends TreeTransform
               cc.error(expr, "Parameter initializer is not a compile time constant")
             }
             simplified
-          } else if (limit == 0) {
-            // Recursion limit reached, the remaining parameters mut be circular
-            val names = referenced.toList map { _.name }
-            cc.error(entity, "Circular initializer between parameters:" :: names: _*)
-            ListMap.empty
           } else {
             // Otherwise expand the bindings them using themselves
             val replace = new ReplaceTermRefs(bindings)
             val flattened = bindings map {
               case (symbol, expr) => symbol -> expr.rewrite(replace).asInstanceOf[Expr]
             }
-            flattenBindings(flattened, limit - 1)
+            flattenBindings(flattened)
           }
         }
-        val flattenedBindings = flattenBindings(defaultBindings, defaultBindings.size - 1)
+        val flattenedBindings = flattenBindings(defaultBindings)
 
         // Assign the defaultParamBindings attribute
         entitySymbol.attr.defaultParamBindings set flattenedBindings

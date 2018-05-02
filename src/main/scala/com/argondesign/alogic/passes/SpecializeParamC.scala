@@ -51,9 +51,6 @@ final class SpecializeParamC(implicit cc: CompilerContext) extends TreeTransform
             pairs.toMap
           }
           // Complete them with the default bindings
-          if (!eSymbol.attr.defaultParamBindings.isSet) {
-            println(entitySymbol.name, eSymbol.name)
-          }
           val completeBindings = eSymbol.attr.defaultParamBindings.value map {
             case (symbol, expr) => symbol -> paramBindings.getOrElse(symbol, expr)
           }
