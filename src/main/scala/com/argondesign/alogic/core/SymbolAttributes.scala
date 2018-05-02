@@ -19,6 +19,8 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.util.unreachable
 
+import scala.collection.immutable.ListMap
+
 class SymbolAttributes {
   // Is this a toplevel entity
   val topLevel = new Attribute[Boolean]()
@@ -29,9 +31,13 @@ class SymbolAttributes {
   val paramBindings = new Attribute[List[Map[TermSymbol, Expr]]]()
   // The actual parameter bindings of an instance symbol
   val paramBinding = new Attribute[Map[TermSymbol, Expr]]()
+  // The default parameter bindings, in definition order
+  val defaultParamBindings = new Attribute[ListMap[TermSymbol, Expr]]()
+  // The entity that owns the definition of this symbol
+  val owner = new Attribute[Entity]()
   // If this is a parametrized entity symbol,
   // a map from parameter bindings to the specialized entity
-  val specMap = new Attribute[Map[Map[TermSymbol, Expr], Entity]]()
+  val specMap = new Attribute[Map[ListMap[TermSymbol, Expr], Entity]]()
 
   // If this is a constant symbol, then this is its value
   val constValue = new Attribute[Expr]()
@@ -93,6 +99,8 @@ class SymbolAttributes {
     entry,
     paramBinding,
     paramBinding,
+    defaultParamBindings,
+    owner,
     specMap,
     constValue,
     stackLimit,
@@ -120,6 +128,8 @@ class SymbolAttributes {
     "entry",
     "paramBinding",
     "paramBinding",
+    "defaultParamBindings",
+    "owner",
     "specMap",
     "constValue",
     "stackLimit",

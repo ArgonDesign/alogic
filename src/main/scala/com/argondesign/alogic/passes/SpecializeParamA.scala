@@ -10,13 +10,8 @@
 //
 // DESCRIPTION:
 //
-// For each param and const symbol, gather all expressions they can evaluate
-// to and attach them as attributes to the symbols. Furthermore, attach all
-// combinations of parameter instantiations to the entity symbol that defines
-// the parameters. This is used in a second pass to specialize values and clone
-// modules with multiple parameter instantiations. Note that multiple threads
-// might be working on separate entities and they are updating the attributes
-// in external symbols, so we need to synchronize on them.
+// Gather all parameter bindings from instances, and the default parameter
+// bindings from entities. Specialize top level entities.
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.passes
@@ -24,12 +19,16 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Symbols.TermSymbol
 import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.transform.ReplaceTermRefs
+
+import scala.annotation.tailrec
+import scala.collection.immutable.ListMap
 
 final class SpecializeParamA(implicit cc: CompilerContext) extends TreeTransformer {
 
   override def enter(tree: Tree): Unit = tree match {
-
     case Instance(Sym(iSymbol), Sym(eSymbol), paramNames, paramExprs) => {
       val entityKind = eSymbol.denot.kind.asInstanceOf[TypeEntity]
 
@@ -40,9 +39,9 @@ final class SpecializeParamA(implicit cc: CompilerContext) extends TreeTransform
         val paramBindings = {
           val pairs = for {
             symbol <- entityKind.paramSymbols
-            expr <- paramMap.get(symbol.name) map { _.simplify }
+            expr <- paramMap.get(symbol.name)
           } yield {
-            symbol -> expr
+            symbol -> expr.simplify
           }
           pairs.toMap
         }
@@ -58,26 +57,73 @@ final class SpecializeParamA(implicit cc: CompilerContext) extends TreeTransform
     }
 
     case entity: Entity => {
-      // Specialize top level entities with default parameters
-      val Sym(eSymbol) = entity.ref
-
-      lazy val paramDecls = entity.declarations filter {
-        case Decl(symbol, _) => symbol.denot.kind.isInstanceOf[TypeParam]
-      }
-
-      if (eSymbol.attr.topLevel.isSet && paramDecls.nonEmpty) {
-        val paramBindings = {
-          val pairs = for (decl @ Decl(symbol, Some(init)) <- paramDecls) yield {
-            cc.warning(decl,
-                       s"Parameter '${symbol.name}' of top level module '${eSymbol.name}' will " +
-                         "be specialized with the default initializer")
+      // Collect the default parameter bindings
+      val defaultBindings = {
+        val pairs = entity.declarations collect {
+          case Decl(symbol, Some(init)) if symbol.denot.kind.isInstanceOf[TypeParam] => {
             symbol -> init
           }
-          pairs.toMap
+        }
+        ListMap(pairs: _*)
+      }
+
+      if (defaultBindings.nonEmpty) {
+        // Assign owner of each parameter symbol
+        defaultBindings.keysIterator foreach {
+          _.attr.owner set entity
         }
 
-        eSymbol synchronized {
-          eSymbol.attr.paramBindings append paramBindings
+        // Flatten the default bindings
+        @tailrec
+        def flattenBindings(
+            bindings: ListMap[TermSymbol, Expr],
+            limit: Int
+        ): ListMap[TermSymbol, Expr] = {
+          // Simplify the expressions
+          val simplified = bindings map { case (symbol, expr) => symbol -> expr.simplify }
+
+          // Collect any referenced parameters
+          val referenced = simplified.valuesIterator flatMap { expr =>
+            expr collect {
+              case ExprRef(Sym(symbol)) if symbol.denot.kind.isInstanceOf[TypeParam] => symbol
+            }
+          }
+
+          if (referenced.isEmpty) {
+            // If no parameters are referenced, we are done, but check
+            // we know all parameters values by now
+            for (expr <- simplified.valuesIterator if expr.value.isEmpty) {
+              cc.error(expr, "Parameter initializer is not a compile time constant")
+            }
+            simplified
+          } else if (limit == 0) {
+            // Recursion limit reached, the remaining parameters mut be circular
+            val names = referenced.toList map { _.name }
+            cc.error(entity, "Circular initializer between parameters:" :: names: _*)
+            ListMap.empty
+          } else {
+            // Otherwise expand the bindings them using themselves
+            val replace = new ReplaceTermRefs(bindings)
+            val flattened = bindings map {
+              case (symbol, expr) => symbol -> expr.rewrite(replace).asInstanceOf[Expr]
+            }
+            flattenBindings(flattened, limit - 1)
+          }
+        }
+        val flattenedBindings = flattenBindings(defaultBindings, defaultBindings.size - 1)
+
+        // Assign the defaultParamBindings attribute
+        entitySymbol.attr.defaultParamBindings set flattenedBindings
+
+        // Specialize top level entities with default parameters
+        if (entitySymbol.attr.topLevel.isSet) {
+          cc.warning(entity.ref,
+                     s"Parameters of top level module '${entitySymbol.name}' will " +
+                       "be specialized using default initializers")
+
+          entitySymbol synchronized {
+            entitySymbol.attr.paramBindings append Map.empty[TermSymbol, Expr]
+          }
         }
       }
     }
