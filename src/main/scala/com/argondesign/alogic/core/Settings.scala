@@ -17,5 +17,7 @@ package com.argondesign.alogic.core
 
 case class Settings(
     // The field separator sequence
-    sep: String = "_"
+    sep: String = "_",
+    // The strategy for handling uninitialized local variables
+    uninitialized: String = "none"
 )

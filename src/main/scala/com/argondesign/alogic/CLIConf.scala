@@ -135,6 +135,29 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) {
     default = Some("__")
   )
 
+  val uninitialized = opt[String](
+    noshort = true,
+    required = false,
+    descr = """|Specify whether to default initialize local variables declared
+               |without an explicit initializer expression. Possible values
+               |are: 'none' meaning leave them un-initialized, 'zeros' means
+               |initialize them to zero. 'ones' means initialize them to all
+               |ones, 'random' means initialize them to a compile time constant,
+               |deterministic, but otherwise arbitrary bit pattern. Default is
+               |'none'
+               |""".stripMargin.replace('\n', ' '),
+    default = Some("none")
+  )
+
+  validate(uninitialized) { value =>
+    val valid = List("none", "zeros", "ones", "random")
+    if (valid contains value) {
+      Right(Unit)
+    } else {
+      Left("Option 'uninitialized' must be one of: " + (valid mkString " "))
+    }
+  }
+
   val toplevel = trailArg[List[String]](
     required = true,
     descr = "List of top level entity names"

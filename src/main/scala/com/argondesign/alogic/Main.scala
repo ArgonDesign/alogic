@@ -43,7 +43,8 @@ object Main extends App {
   //////////////////////////////////////////////////////////////////////////////
 
   val settings = Settings(
-    sep = cliConf.sep()
+    sep = cliConf.sep(),
+    uninitialized = cliConf.uninitialized()
   )
 
   implicit val cc = new CompilerContext(settings)

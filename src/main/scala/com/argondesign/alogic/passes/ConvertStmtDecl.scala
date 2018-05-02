@@ -20,26 +20,55 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Types.Type
 import com.argondesign.alogic.typer.TypeAssigner
+import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable.ListBuffer
+import scala.util.Random
 
 final class ConvertLocalDecls(implicit cc: CompilerContext) extends TreeTransformer {
 
   private[this] val localDecls = ListBuffer[Declaration]()
 
+  private[this] lazy val rng = new Random((0 /: entitySymbol.name)(_ ^ _))
+
+  private[this] def getDefaultInitializer(kind: Type): Option[Expr] = {
+    lazy val signed = kind.isSigned
+    lazy val width = kind.width.value.get.toInt
+    cc.settings.uninitialized match {
+      case "none"  => None
+      case "zeros" => Some(ExprInt(signed, width, 0))
+      case "ones" => {
+        val expr = if (signed) {
+          ExprInt(signed = true, width, -1)
+        } else {
+          ExprInt(signed = false, width, (BigInt(1) << width) - 1)
+        }
+        Some(expr)
+      }
+      case "random" => {
+        val expr = (width, signed) match {
+          case (1, true)  => ExprInt(signed = true, 1, -BigInt(1, rng))
+          case (1, false) => ExprInt(signed = false, 1, BigInt(1, rng))
+          case (n, true)  => ExprInt(signed = true, n, BigInt(n, rng) - (BigInt(1) << (n - 1)))
+          case (n, false) => ExprInt(signed = false, n, BigInt(n, rng))
+        }
+        Some(expr)
+      }
+      case _ => unreachable
+    }
+  }
+
   override def transform(tree: Tree): Tree = tree match {
 
     case StmtDecl(decl @ Decl(symbol, initOpt)) => {
       localDecls.append(decl.copy(init = None) regularize decl.loc)
-      val init = initOpt match {
-        case Some(init) => init
-        case None => {
-          val kind = symbol.denot.kind
-          ExprInt(kind.isSigned, kind.width.value.get.toInt, 0)
-        }
+      initOpt orElse getDefaultInitializer(symbol.denot.kind) map { init =>
+        StmtAssign(ExprRef(Sym(symbol)), init) regularize tree.loc
+      } getOrElse {
+        StmtBlock(Nil) regularize tree.loc
       }
-      StmtAssign(ExprRef(Sym(symbol)), init) regularize tree.loc
     }
 
     case entity: Entity if localDecls.nonEmpty => {
