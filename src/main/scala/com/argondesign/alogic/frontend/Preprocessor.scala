@@ -227,7 +227,7 @@ class Preprocessor(implicit cc: CompilerContext) {
         }
 
         // Look for the file
-        FindFile(includeSpec, searchPaths) match {
+        FindFile(includeSpec, searchPaths, maxDepth = 1) match {
           case Some(file) => Right(Source(file))
           case None => {
             Left(s"""Cannot find include file "$includeSpec". Looked in:""" :: (searchPaths map {
