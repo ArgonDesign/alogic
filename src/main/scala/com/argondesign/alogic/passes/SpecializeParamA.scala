@@ -40,7 +40,7 @@ final class SpecializeParamA(implicit cc: CompilerContext) extends TreeTransform
         val paramBindings = {
           val pairs = for {
             symbol <- entityKind.paramSymbols
-            expr <- paramMap.get(symbol.name)
+            expr <- paramMap.get(symbol.name) map { _.simplify }
           } yield {
             symbol -> expr
           }
