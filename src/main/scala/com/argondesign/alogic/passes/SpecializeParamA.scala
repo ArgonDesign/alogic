@@ -57,6 +57,31 @@ final class SpecializeParamA(implicit cc: CompilerContext) extends TreeTransform
       }
     }
 
+    case entity: Entity => {
+      // Specialize top level entities with default parameters
+      val Sym(eSymbol) = entity.ref
+
+      lazy val paramDecls = entity.declarations filter {
+        case Decl(symbol, _) => symbol.denot.kind.isInstanceOf[TypeParam]
+      }
+
+      if (eSymbol.attr.topLevel.isSet && paramDecls.nonEmpty) {
+        val paramBindings = {
+          val pairs = for (decl @ Decl(symbol, Some(init)) <- paramDecls) yield {
+            cc.warning(decl,
+                       s"Parameter '${symbol.name}' of top level module '${eSymbol.name}' will " +
+                         "be specialized with the default initializer")
+            symbol -> init
+          }
+          pairs.toMap
+        }
+
+        eSymbol synchronized {
+          eSymbol.attr.paramBindings append paramBindings
+        }
+      }
+    }
+
     case _ =>
   }
 

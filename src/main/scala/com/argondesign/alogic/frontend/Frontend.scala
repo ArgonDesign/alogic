@@ -155,6 +155,18 @@ class Frontend(
     // Wait for the result
     val treeSet = Await.result(treeSetFuture, atMost = Inf)
 
+    // Mark top level entities as such
+    for (tree <- treeSet) {
+      val Root(_, entity) = tree
+      val ident @ Ident(name) = entity.ref
+      if (topLevelNames contains name) {
+        val newAttr = Map("toplevel" -> (Expr(1) withLoc entity.loc))
+        ident withAttr {
+          if (ident.hasAttr) (ident.attr ++ newAttr) else newAttr
+        }
+      }
+    }
+
     // Return the trees
     treeSet.toList
   }

@@ -28,11 +28,7 @@ trait SourceAttributes {
   def attr: Map[String, Expr] = if (hasAttr) _attr else unreachable
 
   def withAttr(attr: Map[String, Expr]): this.type = {
-    if (hasAttr) {
-      unreachable
-    } else {
-      _attr = attr
-    }
+    _attr = attr
     this
   }
 }

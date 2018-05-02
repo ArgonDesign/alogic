@@ -20,6 +20,8 @@ import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.util.unreachable
 
 class SymbolAttributes {
+  // Is this a toplevel entity
+  val topLevel = new Attribute[Boolean]()
   // Is this an entry point function
   val entry = new Attribute[Boolean]()
 
@@ -153,6 +155,7 @@ class SymbolAttributes {
       name match {
         case "stacklimit" => stackLimit set expr
         case "reclimit"   => recLimit set expr
+        case "toplevel"   => topLevel set true
         case _            => unreachable
       }
     }
