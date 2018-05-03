@@ -85,11 +85,14 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
     }
   }
 
-  printedName = BuildInfo.name
-
   version(BuildInfo.version)
 
   banner("Alogic compiler")
+
+  errorMessageHandler = { message =>
+    Console.err.println(s"FATAL: %s" format message)
+    sys.exit(1)
+  }
 
   val ydir = opt[List[File]](
     short = 'y',
