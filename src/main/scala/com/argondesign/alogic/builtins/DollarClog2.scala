@@ -37,6 +37,9 @@ private[builtins] class DollarClog2(implicit cc: CompilerContext) extends Builti
         cc.error(loc, s"'${name}' invoked on negative value ${value}")
         ExprError()
       } else {
+        if (value == 0) {
+          cc.warning(loc, s"'${name}' invoked on value 0")
+        }
         ExprNum(false, Math.clog2(value))
       }
     }
