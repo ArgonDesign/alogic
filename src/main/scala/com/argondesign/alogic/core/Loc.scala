@@ -21,7 +21,7 @@ import scala.io.AnsiColor
 
 case class Loc(source: Source, start: Int, end: Int, point: Int) {
 
-  def context(ansiColor: String) = {
+  def context(ansiColor: String)(implicit cc: CompilerContext) = {
     val startLine = source.lineFor(start)
     val endLine = source.lineFor(end)
     val lines = source.lines.slice(startLine - 1, endLine)
@@ -38,22 +38,23 @@ case class Loc(source: Source, start: Int, end: Int, point: Int) {
       case _                => ' '
     } mkString ""
 
-    val colorText = if (s == e) {
-      text
-    } else {
-      text.take(s) + ansiColor + text.slice(s, e) + AnsiColor.RESET + text.drop(e)
-    }
+    val useColours = cc.settings.colourize && s != e
+    val colourOn = if (useColours) ansiColor else ""
+    val colourOff = if (useColours) AnsiColor.RESET else ""
+    val colourBold = if (useColours) AnsiColor.BOLD else ""
+
+    val colorText = text.take(s) + colourOn + text.slice(s, e) + colourOff + text.drop(e)
 
     // Zip the lines with the squiggles line by line
     // (but not the color escapes), and join them
     val sb = new StringBuilder()
     for ((line, squiggle) <- colorText.linesWithSeparators zip squiggle.linesWithSeparators) {
-      if ((line contains ansiColor) || (sb endsWith ansiColor)) {
+      if (useColours && (line contains colourOn) || (sb endsWith colourOn)) {
         sb append line
-        sb append AnsiColor.RESET
+        sb append colourOff
         sb append squiggle
-        if (!(line contains AnsiColor.RESET)) {
-          sb append ansiColor
+        if (!(line contains colourOff)) {
+          sb append colourOn
         }
       } else {
         sb append line
@@ -66,13 +67,7 @@ case class Loc(source: Source, start: Int, end: Int, point: Int) {
       sb.toString
     } else {
       (txt.take(4) ++
-        Vector(
-          AnsiColor.RESET,
-          AnsiColor.BOLD,
-          "  ... omitted ...\n",
-          AnsiColor.RESET,
-          ansiColor
-        ) ++
+        Vector(colourOff, colourBold, "  ... omitted ...\n", colourOff, colourOn) ++
         txt.takeRight(4)) mkString ""
     }
   }

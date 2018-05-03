@@ -17,6 +17,7 @@ package com.argondesign.alogic
 
 import java.io.File
 
+import com.argondesign.alogic.util.PartialMatch
 import org.rogach.scallop.ArgType
 import org.rogach.scallop.ScallopConf
 import org.rogach.scallop.ScallopOption
@@ -25,9 +26,7 @@ import org.rogach.scallop.singleArgConverter
 
 // Option parser based on Scallop. See the Scallop wiki for usage:
 // https://github.com/scallop/scallop/wiki
-class CLIConf(args: Seq[String]) extends ScallopConf(args) {
-  version(BuildInfo.version)
-
+class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
   private[this] implicit val fileConverter =
     singleArgConverter[File](path => (new File(path)).getCanonicalFile())
 
@@ -60,21 +59,35 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) {
     if (msgs.nonEmpty) {
       Left(msgs mkString ("\n", "\n", ""))
     } else {
-      Right(())
+      Right(Unit)
     }
   }
 
-  private[this] def validateFilesExist(option: ScallopOption[List[File]]) =
+  private[this] def validateFilesExist(option: ScallopOption[List[File]]) = {
     validateListOption(option) {
       case path: File if !path.exists() => s"'${path}' does not exist"
     }
+  }
 
-  private[this] def validateFilesAreDirectories(option: ScallopOption[List[File]]) =
+  private[this] def validateFilesAreDirectories(option: ScallopOption[List[File]]) = {
     validateListOption(option) {
       case path: File if !path.isDirectory() => s"'${path}' is not a directory"
     }
+  }
 
-  printedName = "alogic"
+  private[this] def validateOneOf[T](option: ScallopOption[T])(choices: T*) = addValidation {
+    option.toOption partialMatch {
+      case Some(value) if !(choices contains value) => {
+        Left(s"Option '${option.name}' must be one of: " + (choices mkString " "))
+      }
+    } getOrElse {
+      Right(Unit)
+    }
+  }
+
+  printedName = BuildInfo.name
+
+  version(BuildInfo.version)
 
   banner("Alogic compiler")
 
@@ -150,15 +163,22 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) {
                |""".stripMargin.replace('\n', ' '),
     default = Some("none")
   )
+  validateOneOf(uninitialized)("none", "zeros", "ones", "random")
 
-  validate(uninitialized) { value =>
-    val valid = List("none", "zeros", "ones", "random")
-    if (valid contains value) {
-      Right(Unit)
-    } else {
-      Left("Option 'uninitialized' must be one of: " + (valid mkString " "))
-    }
-  }
+  val color = opt[String](
+    noshort = true,
+    required = false,
+    descr = """|Colorize diagnostic messages, one of: 'always|never|auto'.
+               |Default is 'auto' which uses colors only if the output is
+               |to a terminal
+               |""".stripMargin.replace('\n', ' '),
+    default = Some("auto")
+  )
+  validateOneOf(color)("always", "never", "auto")
+
+  // There is no standard library call to check if the console is a terminal,
+  // so we pass this hidden option from the wrapper script to help ourselves out
+  val stderrisatty = toggle(noshort = true, hidden = true)
 
   val toplevel = trailArg[List[String]](
     required = true,

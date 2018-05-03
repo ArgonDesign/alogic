@@ -19,5 +19,7 @@ case class Settings(
     // The field separator sequence
     sep: String = "_",
     // The strategy for handling uninitialized local variables
-    uninitialized: String = "none"
+    uninitialized: String = "none",
+    // Colourize diagnostic messages
+    colourize: Boolean = false
 )

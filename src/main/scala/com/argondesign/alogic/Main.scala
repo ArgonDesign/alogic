@@ -44,7 +44,12 @@ object Main extends App {
 
   val settings = Settings(
     sep = cliConf.sep(),
-    uninitialized = cliConf.uninitialized()
+    uninitialized = cliConf.uninitialized(),
+    colourize = cliConf.color() match {
+      case "always" => true
+      case "never"  => false
+      case _        => cliConf.stderrisatty.toOption contains true
+    }
   )
 
   implicit val cc = new CompilerContext(settings)

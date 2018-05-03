@@ -76,10 +76,16 @@ enablePlugins(JavaAppPackaging)
 
 stage := (stage dependsOn (test in Test)).value
 
-// Prepend '--' to the command line arguments in the wrapper script.
-// This in fact causes the wrapper script to not consume any arguments,
-// in particular -D options
-bashScriptExtraDefines += """set -- -- "$@""""
+bashScriptExtraDefines += """
+# Pass a secret option if stderr is tty
+if [[ -t 2 ]]; then
+  stderrisatty="--stderrisatty"
+fi
+
+# Prepend '--' to the command line arguments. This in fact causes the wrapper
+# to not consume any arguments, in particular -D options
+set -- -- ${stderrisatty} "$@"
+"""
 
 ////////////////////////////////////////////////////////////////////////////////
 // SBT git
