@@ -92,7 +92,7 @@ object Main extends App {
   } catch {
     case _: FatalErrorException => None
   } finally {
-    cc.messages map { _.string } foreach Console.err.println
+    cc.emitMessages(Console.err)
   }
 
   val oDirBase = cliConf.odir().toPath

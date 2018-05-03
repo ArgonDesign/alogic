@@ -19,6 +19,7 @@ import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.typer.Typer
+import com.argondesign.alogic.util.FollowedBy._
 
 object Passes {
 
@@ -44,6 +45,8 @@ object Passes {
         case other          => List(other)
       }
     }
+  } followedBy {
+    cc.emitMessages(Console.err)
   }
 
   def apply(trees: List[Tree])(implicit cc: CompilerContext): List[Tree] = {
