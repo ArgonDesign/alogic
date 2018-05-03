@@ -50,7 +50,7 @@ sealed abstract trait Message {
 // can recover from, and still produce functional output.
 case class Warning(msg: Seq[String], lop: Option[Loc] = None) extends Message {
   val cat = "WARNING"
-  val color = AnsiColor.MAGENTA
+  val color = AnsiColor.MAGENTA + AnsiColor.BOLD
 }
 
 // Errors indicate situations where the compiler can still make
@@ -60,14 +60,14 @@ case class Warning(msg: Seq[String], lop: Option[Loc] = None) extends Message {
 // will indicate failure.
 case class Error(msg: Seq[String], lop: Option[Loc] = None) extends Message {
   val cat = "ERROR"
-  val color = AnsiColor.RED
+  val color = AnsiColor.RED + AnsiColor.BOLD
 }
 
 // Fatal indicates situations where the compiler cannot make forward
 // progress. The first fatal message will cause the program to exit.
 case class Fatal(msg: Seq[String], lop: Option[Loc] = None) extends Message {
   val cat = "FATAL"
-  val color = AnsiColor.RED
+  val color = AnsiColor.RED + AnsiColor.BOLD
 }
 
 // Internal compiler error indicates a programming error in the compiler
@@ -75,7 +75,7 @@ case class Fatal(msg: Seq[String], lop: Option[Loc] = None) extends Message {
 case class ICE(initialMsg: Seq[String], lop: Option[Loc] = None) extends Message {
   val cat = "INTERNAL COMPILER ERROR"
   val msg = initialMsg ++ Seq("Please file a bug report")
-  val color = AnsiColor.CYAN
+  val color = AnsiColor.CYAN + AnsiColor.BOLD
 }
 
 case class FatalErrorException(cc: CompilerContext, message: Fatal) extends Exception

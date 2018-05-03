@@ -29,7 +29,7 @@ case class Loc(source: Source, start: Int, end: Int, point: Int) {
     val s = start - startLineOffset
     val e = end - startLineOffset
     val p = point - startLineOffset
-    val text = lines mkString "\n"
+    val text = lines mkString ""
     val squiggle = text.zipWithIndex map {
       case ('\n', _)        => '\n'
       case (_, i) if i == p => '^'
@@ -38,15 +38,43 @@ case class Loc(source: Source, start: Int, end: Int, point: Int) {
       case _                => ' '
     } mkString ""
 
-    val colorText = text.slice(0, s) + ansiColor + AnsiColor.BOLD +
-      text.slice(s, e) + AnsiColor.RESET +
-      text.slice(e, text.length)
-
-    val combed = for ((line, squiggle) <- colorText.split("\n") zip squiggle.split("\n")) yield {
-      line + "\n" + squiggle
+    val colorText = if (s == e) {
+      text
+    } else {
+      text.take(s) + ansiColor + text.slice(s, e) + AnsiColor.RESET + text.drop(e)
     }
 
-    combed mkString "\n"
+    // Zip the lines with the squiggles line by line
+    // (but not the color escapes), and join them
+    val sb = new StringBuilder()
+    for ((line, squiggle) <- colorText.linesWithSeparators zip squiggle.linesWithSeparators) {
+      if ((line contains ansiColor) || (sb endsWith ansiColor)) {
+        sb append line
+        sb append AnsiColor.RESET
+        sb append squiggle
+        if (!(line contains AnsiColor.RESET)) {
+          sb append ansiColor
+        }
+      } else {
+        sb append line
+        sb append squiggle
+      }
+    }
+
+    val txt = sb.linesWithSeparators.toVector
+    if (txt.lengthCompare(8) <= 0) {
+      sb.toString
+    } else {
+      (txt.take(4) ++
+        Vector(
+          AnsiColor.RESET,
+          AnsiColor.BOLD,
+          "  ... omitted ...\n",
+          AnsiColor.RESET,
+          ansiColor
+        ) ++
+        txt.takeRight(4)) mkString ""
+    }
   }
   def line(implicit cc: CompilerContext): Int = cc.remapLine(source, source.lineFor(start))._2
   def prefix(implicit cc: CompilerContext): String = s"${source.name}:${line}"

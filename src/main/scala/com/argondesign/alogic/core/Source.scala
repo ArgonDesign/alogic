@@ -22,18 +22,13 @@ import java.nio.file.Files
 class Source(val file: File, val text: String) {
   val name = file.toString
 
-  // Return line number this offset belongs to
-  def lineFor(offset: Int) = {
-    val init = text.slice(0, offset + 1) + "\nX"
-    init.split("\n").length - 1
-  }
+  lazy val lines: List[String] = text.linesWithSeparators.toList
 
-  lazy val lines = (text + "\nX").split("\n").init.toList
+  // Return line number (1 based) offset belongs to
+  def lineFor(offset: Int): Int = text.slice(0, offset + 1).linesWithSeparators.length
 
-  // Return offset of this line
-  def offsetFor(line: Int) = {
-    (lines.slice(0, line - 1) mkString "\n").length + 1
-  }
+  // Return offset of line number (1 based)
+  def offsetFor(line: Int): Int = (0 /: lines.slice(0, line - 1)) { _ + _.length }
 }
 
 object Source {
