@@ -20,8 +20,6 @@ name := "alogic"
 
 organization := "Argon Design"
 
-version := "1"
-
 ////////////////////////////////////////////////////////////////////////////////
 // Scala compiler
 ////////////////////////////////////////////////////////////////////////////////
@@ -40,7 +38,7 @@ scalacOptions ++= Seq("-deprecation",
 
 libraryDependencies += "org.scala-lang.modules" % "scala-java8-compat_2.12" % "0.8.0"
 
-libraryDependencies += "org.rogach" %% "scallop" % "3.1.1"
+libraryDependencies += "org.rogach" %% "scallop" % "3.1.2"
 
 ////////////////////////////////////////////////////////////////////////////////
 // Testing dependencies
@@ -82,3 +80,21 @@ stage := (stage dependsOn (test in Test)).value
 // This in fact causes the wrapper script to not consume any arguments,
 // in particular -D options
 bashScriptExtraDefines += """set -- -- "$@""""
+
+////////////////////////////////////////////////////////////////////////////////
+// SBT git
+////////////////////////////////////////////////////////////////////////////////
+
+enablePlugins(GitVersioning)
+
+git.useGitDescribe := true
+
+////////////////////////////////////////////////////////////////////////////////
+// SBT buildinfo
+////////////////////////////////////////////////////////////////////////////////
+
+enablePlugins(BuildInfoPlugin)
+
+buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion)
+
+buildInfoPackage := "com.argondesign.alogic"

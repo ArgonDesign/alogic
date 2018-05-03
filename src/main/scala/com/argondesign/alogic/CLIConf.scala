@@ -26,6 +26,8 @@ import org.rogach.scallop.singleArgConverter
 // Option parser based on Scallop. See the Scallop wiki for usage:
 // https://github.com/scallop/scallop/wiki
 class CLIConf(args: Seq[String]) extends ScallopConf(args) {
+  version(BuildInfo.version)
+
   private[this] implicit val fileConverter =
     singleArgConverter[File](path => (new File(path)).getCanonicalFile())
 
