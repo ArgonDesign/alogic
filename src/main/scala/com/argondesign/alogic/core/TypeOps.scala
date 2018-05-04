@@ -33,8 +33,8 @@ trait TypeOps extends TypePrintOps { this: Type =>
     case _                  => false
   }
 
-  // Is this a 'packed' type, i.e.: does it have a finite, possible 0 width
-  // bit-vector representation?
+  // Is this a 'packed' type, i.e.: does it have a finite,
+  // possibly 0 width bit-vector representation?
   final def isPacked(implicit cc: CompilerContext): Boolean = this match {
     case _: TypeSInt        => true
     case _: TypeUInt        => true

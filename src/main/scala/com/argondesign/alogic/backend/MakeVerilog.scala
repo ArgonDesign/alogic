@@ -451,6 +451,9 @@ final class MakeVerilog(entity: Entity)(implicit cc: CompilerContext) {
       // Fence statement
       case _: StmtFence => ()
 
+      // Expression statements like $display();
+      case StmtExpr(expr) => body.emit(indent)(s"${vexpr(expr)};")
+
       // Alogic comment
       case StmtDollarComment(str) => body.emit(indent)("// " + str)
 
