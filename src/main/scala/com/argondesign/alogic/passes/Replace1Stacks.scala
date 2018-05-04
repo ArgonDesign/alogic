@@ -83,3 +83,8 @@ final class Replace1Stacks(implicit cc: CompilerContext) extends TreeTransformer
   }
 
 }
+
+object Replace1Stacks extends TreeTransformerPass {
+  val name = "replace-1-stacks"
+  def create(implicit cc: CompilerContext) = new Replace1Stacks
+}

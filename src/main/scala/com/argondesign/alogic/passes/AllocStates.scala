@@ -173,3 +173,8 @@ final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
   }
 
 }
+
+object AllocStates extends TreeTransformerPass {
+  val name = "alloc-states"
+  def create(implicit cc: CompilerContext) = new AllocStates
+}

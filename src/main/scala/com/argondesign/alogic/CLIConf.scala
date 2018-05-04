@@ -183,6 +183,9 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
   // so we pass this hidden option from the wrapper script to help ourselves out
   val stderrisatty = toggle(noshort = true, hidden = true)
 
+  // Dump entities after each pass
+  val dumpTrees = toggle(name = "dump-trees", noshort = true, hidden = true)
+
   val toplevel = trailArg[List[String]](
     required = true,
     descr = "List of top level entity names"

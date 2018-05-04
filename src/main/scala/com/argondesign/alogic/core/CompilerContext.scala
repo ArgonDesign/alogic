@@ -23,8 +23,11 @@ class CompilerContext(val settings: Settings = Settings())
     extends Messaging
     with LocationRemapping
     with Symbols
-    with Builtins {
+    with Builtins
+    with Output {
 
   // Shorthand for frequently accessed settings
   val sep = settings.sep
+
+  var passNumber = 0
 }

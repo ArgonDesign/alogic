@@ -417,3 +417,8 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
     }
   }
 }
+
+object ConvertControl extends TreeTransformerPass {
+  val name = "convert-control"
+  def create(implicit cc: CompilerContext) = new ConvertControl
+}

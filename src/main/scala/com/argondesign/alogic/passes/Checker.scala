@@ -309,3 +309,8 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
   }
 
 }
+
+object Checker extends TreeTransformerPass {
+  val name = "checker"
+  def create(implicit cc: CompilerContext) = new Checker
+}

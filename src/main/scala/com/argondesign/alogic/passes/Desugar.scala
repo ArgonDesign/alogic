@@ -90,3 +90,8 @@ final class Desugar(implicit cc: CompilerContext) extends TreeTransformer {
   }
 
 }
+
+object Desugar extends TreeTransformerPass {
+  val name = "desugar"
+  def create(implicit cc: CompilerContext) = new Desugar
+}

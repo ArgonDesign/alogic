@@ -298,3 +298,8 @@ final class LowerInterconnect(implicit cc: CompilerContext)
   }
 
 }
+
+object LowerInterconnect extends TreeTransformerPass {
+  val name = "lower-interconnect"
+  def create(implicit cc: CompilerContext) = new LowerInterconnect
+}

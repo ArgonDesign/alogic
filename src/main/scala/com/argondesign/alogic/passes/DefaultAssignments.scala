@@ -105,3 +105,8 @@ final class DefaultAssignments(implicit cc: CompilerContext)
   }
 
 }
+
+object DefaultAssignments extends TreeTransformerPass {
+  val name = "default-assignments"
+  def create(implicit cc: CompilerContext) = new DefaultAssignments
+}

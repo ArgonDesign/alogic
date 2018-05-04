@@ -72,3 +72,8 @@ final class RenameClashingTerms(implicit cc: CompilerContext) extends TreeTransf
   }
 
 }
+
+object RenameClashingTerms extends TreeTransformerPass {
+  val name = "rename-clashing-terms"
+  def create(implicit cc: CompilerContext) = new RenameClashingTerms
+}

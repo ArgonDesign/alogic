@@ -139,3 +139,8 @@ final class LowerArrays(implicit cc: CompilerContext) extends TreeTransformer wi
   }
 
 }
+
+object LowerArrays extends TreeTransformerPass {
+  val name = "lower-arrays"
+  def create(implicit cc: CompilerContext) = new LowerArrays
+}

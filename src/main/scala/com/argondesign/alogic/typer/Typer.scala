@@ -30,6 +30,7 @@ import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.TreeInTypeTransformer
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.TreeLike
+import com.argondesign.alogic.passes.TreeTransformerPass
 import com.argondesign.alogic.util.FollowedBy
 import com.argondesign.alogic.util.unreachable
 
@@ -676,4 +677,9 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
     check(tree)
   }
 
+}
+
+object Typer extends TreeTransformerPass {
+  val name = "typer"
+  def create(implicit cc: CompilerContext) = new Typer
 }

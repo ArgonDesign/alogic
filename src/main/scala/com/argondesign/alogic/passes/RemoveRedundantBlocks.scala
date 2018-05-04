@@ -75,3 +75,8 @@ final class RemoveRedundantBlocks(implicit cc: CompilerContext) extends TreeTran
   }
 
 }
+
+object RemoveRedundantBlocks extends TreeTransformerPass {
+  val name = "remove-redundant-blocks"
+  def create(implicit cc: CompilerContext) = new RemoveRedundantBlocks
+}

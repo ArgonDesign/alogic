@@ -368,3 +368,8 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
     }
   }
 }
+
+object AnalyseCallGraph extends TreeTransformerPass {
+  val name = "analyse-call-graph"
+  def create(implicit cc: CompilerContext) = new AnalyseCallGraph
+}

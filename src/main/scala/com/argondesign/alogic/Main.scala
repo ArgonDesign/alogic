@@ -43,13 +43,16 @@ object Main extends App {
   //////////////////////////////////////////////////////////////////////////////
 
   val settings = Settings(
+    odir = Some(cliConf.odir().toPath),
+    srcbase = cliConf.srcbase.toOption map { _.toPath },
     sep = cliConf.sep(),
     uninitialized = cliConf.uninitialized(),
     colourize = cliConf.color() match {
       case "always" => true
       case "never"  => false
       case _        => cliConf.stderrisatty.toOption contains true
-    }
+    },
+    dumpTrees = cliConf.dumpTrees.toOption contains true
   )
 
   implicit val cc = new CompilerContext(settings)

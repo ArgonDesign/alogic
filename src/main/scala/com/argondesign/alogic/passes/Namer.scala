@@ -437,3 +437,8 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
   }
 
 }
+
+object Namer extends TreeTransformerPass {
+  val name = "namer"
+  def create(implicit cc: CompilerContext) = new Namer
+}

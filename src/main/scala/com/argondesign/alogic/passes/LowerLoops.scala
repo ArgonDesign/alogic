@@ -58,3 +58,8 @@ final class LowerLoops(implicit cc: CompilerContext) extends TreeTransformer wit
   }
 
 }
+
+object LowerLoops extends TreeTransformerPass {
+  val name = "lower-loops"
+  def create(implicit cc: CompilerContext) = new LowerLoops
+}

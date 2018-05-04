@@ -575,3 +575,8 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
   }
 
 }
+
+object LowerFlowControlA extends TreeTransformerPass {
+  val name = "lower-flow-control-a"
+  def create(implicit cc: CompilerContext) = new LowerFlowControlA
+}

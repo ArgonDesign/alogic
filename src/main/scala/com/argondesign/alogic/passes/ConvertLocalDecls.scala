@@ -88,3 +88,8 @@ final class ConvertLocalDecls(implicit cc: CompilerContext) extends TreeTransfor
   }
 
 }
+
+object ConvertLocalDecls extends TreeTransformerPass {
+  val name = "convert-local-decls"
+  def create(implicit cc: CompilerContext) = new ConvertLocalDecls
+}

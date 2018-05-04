@@ -323,3 +323,15 @@ final class FoldExpr(
   }
 
 }
+
+object FoldExpr {
+
+  class FoldExprPass(assignTypes: Boolean, foldRefs: Boolean) extends TreeTransformerPass {
+    val name = "fold-expr"
+    def create(implicit cc: CompilerContext) = new FoldExpr(assignTypes, foldRefs)(cc)
+  }
+
+  def apply(assignTypes: Boolean, foldRefs: Boolean): Pass = {
+    new FoldExprPass(assignTypes, foldRefs)
+  }
+}

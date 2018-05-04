@@ -108,3 +108,8 @@ final class DefaultStorage(implicit cc: CompilerContext) extends TreeTransformer
   }
 
 }
+
+object DefaultStorage extends TreeTransformerPass {
+  val name = "default-storages"
+  def create(implicit cc: CompilerContext) = new DefaultStorage
+}

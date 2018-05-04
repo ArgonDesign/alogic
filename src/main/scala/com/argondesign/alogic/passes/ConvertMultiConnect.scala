@@ -44,3 +44,8 @@ final class ConvertMultiConnect(implicit cc: CompilerContext) extends TreeTransf
   }
 
 }
+
+object ConvertMultiConnect extends TreeTransformerPass {
+  val name = "convert-multi-connect"
+  def create(implicit cc: CompilerContext) = new ConvertMultiConnect
+}

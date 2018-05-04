@@ -189,3 +189,8 @@ final class SplitStructsA(implicit cc: CompilerContext) extends TreeTransformer 
   }
 
 }
+
+object SplitStructsA extends TreeTransformerPass {
+  val name = "split-structs-a"
+  def create(implicit cc: CompilerContext) = new SplitStructsA
+}

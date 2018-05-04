@@ -131,3 +131,8 @@ final class SpecializeParamB(implicit cc: CompilerContext) extends TreeTransform
   }
 
 }
+
+object SpecializeParamB extends TreeTransformerPass {
+  val name = "specialize-param-b"
+  def create(implicit cc: CompilerContext) = new SpecializeParamB
+}

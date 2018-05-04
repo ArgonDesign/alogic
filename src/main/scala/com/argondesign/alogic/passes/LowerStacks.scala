@@ -233,3 +233,8 @@ final class LowerStacks(implicit cc: CompilerContext) extends TreeTransformer wi
   }
 
 }
+
+object LowerStacks extends TreeTransformerPass {
+  val name = "lower-stacks"
+  def create(implicit cc: CompilerContext) = new LowerStacks
+}

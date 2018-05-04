@@ -15,11 +15,19 @@
 
 package com.argondesign.alogic.core
 
+import java.nio.file.Path
+
 case class Settings(
+    // Output directory
+    odir: Option[Path] = None,
+    // Source base path
+    srcbase: Option[Path] = None,
     // The field separator sequence
     sep: String = "_",
     // The strategy for handling uninitialized local variables
     uninitialized: String = "none",
     // Colourize diagnostic messages
-    colourize: Boolean = false
+    colourize: Boolean = false,
+    // Dump trees after each pass
+    dumpTrees: Boolean = true
 )

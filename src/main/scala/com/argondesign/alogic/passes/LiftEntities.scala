@@ -297,3 +297,8 @@ final class LiftEntities(implicit cc: CompilerContext)
   }
 
 }
+
+object LiftEntities extends TreeTransformerPass {
+  val name = "lift-entities"
+  def create(implicit cc: CompilerContext) = new LiftEntities
+}

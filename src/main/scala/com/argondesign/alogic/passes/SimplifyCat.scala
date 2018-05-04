@@ -121,3 +121,8 @@ final class SimplifyCat(implicit cc: CompilerContext) extends TreeTransformer {
   }
 
 }
+
+object SimplifyCat extends TreeTransformerPass {
+  val name = "simplify-cat"
+  def create(implicit cc: CompilerContext) = new SimplifyCat
+}

@@ -288,3 +288,8 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
   }
 
 }
+
+object LowerPipeline extends TreeTransformerPass {
+  val name = "lower-pipeline"
+  def create(implicit cc: CompilerContext) = new LowerPipeline
+}

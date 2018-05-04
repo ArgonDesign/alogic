@@ -119,3 +119,8 @@ final class LowerRegPorts(implicit cc: CompilerContext) extends TreeTransformer 
   }
 
 }
+
+object LowerRegPorts extends TreeTransformerPass {
+  val name = "lower-reg-ports"
+  def create(implicit cc: CompilerContext) = new LowerRegPorts
+}
