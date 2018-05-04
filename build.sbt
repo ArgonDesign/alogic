@@ -74,11 +74,11 @@ antlr4GenVisitor in Antlr4 := true
 
 enablePlugins(JavaAppPackaging)
 
-stage := (stage dependsOn (test in Test)).value
+// stage := (stage dependsOn (test in Test)).value
 
 bashScriptExtraDefines += """
-# Pass a secret option if stderr is tty
-if [[ -t 2 ]]; then
+# Pass a secret option if stderr is tty, but only if not asking for --help
+if [[ "$*" != "-h" && "$*" != "--help" && -t 2 ]]; then
   stderrisatty="--stderrisatty"
 fi
 
