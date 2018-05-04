@@ -36,9 +36,9 @@ trait TypePrintOps { this: Type =>
     case StorageTypeWire    => "wire "
     case StorageTypeSlices(slices) => {
       slices map {
-        case StorageSliceFwd    => "fslice"
-        case StorageSliceBwd    => "bslice"
-        case StorageSliceBubble => "bubble"
+        case StorageSliceFwd => "fslice"
+        case StorageSliceBwd => "bslice"
+        case StorageSliceBub => "bubble"
       } mkString ("", " ", " ")
     }
   }

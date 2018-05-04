@@ -21,7 +21,7 @@ object StorageTypes {
 
   case object StorageSliceFwd extends StorageSlice
   case object StorageSliceBwd extends StorageSlice
-  case object StorageSliceBubble extends StorageSlice
+  case object StorageSliceBub extends StorageSlice
 
   abstract sealed trait StorageType
 

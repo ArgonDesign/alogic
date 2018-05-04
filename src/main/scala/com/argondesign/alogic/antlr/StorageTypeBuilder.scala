@@ -32,7 +32,7 @@ object StorageTypeBuilder extends BaseBuilder[Storage_typeContext, StorageType] 
       override def visitStorageTypeSlices(ctx: StorageTypeSlicesContext) = {
         val kinds = ctx.slices.asScala.toList map {
           _.text match {
-            case "bubble" => StorageSliceBubble
+            case "bubble" => StorageSliceBub
             case "fslice" => StorageSliceFwd
             case "bslice" => StorageSliceBwd
             case _        => unreachable

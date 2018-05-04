@@ -268,7 +268,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                   Ident("a"),
                   TypeOut(TypeSInt(Expr(2)),
                           FlowControlTypeReady,
-                          StorageTypeSlices(List(StorageSliceBubble))),
+                          StorageTypeSlices(List(StorageSliceBub))),
                   None
                 )
               }
@@ -281,7 +281,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                   TypeOut(
                     TypeSInt(Expr(2)),
                     FlowControlTypeReady,
-                    StorageTypeSlices(List(StorageSliceBwd, StorageSliceBubble, StorageSliceFwd))
+                    StorageTypeSlices(List(StorageSliceBwd, StorageSliceBub, StorageSliceFwd))
                   ),
                   None
                 )

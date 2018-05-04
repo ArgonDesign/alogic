@@ -63,6 +63,9 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
   // Some statements can be completely removed, this flag marks them
   private[this] var removeStmt = false
 
+  // New entities created in this pass
+  private[this] val extraEntities = new ListBuffer[Entity]
+
   private[this] def isIn(symbol: TermSymbol, fc: FlowControlType): Boolean = {
     symbol.denot.kind match {
       case TypeIn(_, `fc`) => true
@@ -128,6 +131,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
         // TODO: mark inline
         val eName = entitySymbol.name + sep + "or" + sep + pName
         val sregEntity: Entity = SyncRegFactory(eName, loc, kind)
+        extraEntities append sregEntity
         val Sym(sregEntitySymbol: TypeSymbol) = sregEntity.ref
         val iSymbol = {
           val iName = "or" + sep + pName
@@ -187,15 +191,16 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       if (st != StorageTypeWire) {
         val StorageTypeSlices(slices) = st
         // TODO: mark inline
-        val eName = entitySymbol.name + sep + "os" + sep + pName
-        val sliceEntity: Entity = SyncSliceFactory(slices, eName, loc, kind)
-        val Sym(sliceEntitySymbol: TypeSymbol) = sliceEntity.ref
+        val ePrefix = entitySymbol.name + sep + pName
+        val sliceEntities = SyncSliceFactory(slices, ePrefix, loc, kind)
+        extraEntities appendAll sliceEntities
+        val Sym(sliceEntitySymbol: TypeSymbol) = sliceEntities.head.ref
         val iSymbol = {
           val iName = "os" + sep + pName
           cc.newTermSymbol(iName, loc, TypeInstance(sliceEntitySymbol))
         }
         // Set attributes
-        symbol.attr.oStorage.set((sliceEntity, iSymbol))
+        symbol.attr.oStorage.set((sliceEntities.head, iSymbol))
         entitySymbol.attr.interconnectClearOnStall.append((iSymbol, s"ip${sep}valid"))
       }
     }
@@ -499,8 +504,6 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
           pConnOpt.toList ::: vConn :: rConnOpt.toList
         }
 
-        val newEntities = ospSymbols map { _.attr.oStorage.value._1 }
-
         // Remove fcn and oStorage attributes, they are no longer needed
         entity.declarations foreach {
           case Decl(symbol, _) => {
@@ -530,7 +533,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
           connects = connects ::: entity.connects,
         ) withVariant entity.variant
 
-        Thicket(thisEntity :: newEntities)
+        Thicket(thisEntity :: extraEntities.toList)
       }
 
       case _ => tree

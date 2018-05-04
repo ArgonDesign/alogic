@@ -17,8 +17,11 @@ package com.argondesign.alogic.core
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
 import com.argondesign.alogic.core.StorageTypes._
+import com.argondesign.alogic.core.Symbols.TypeSymbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.typer.TypeAssigner
+
+import scala.collection.mutable.ListBuffer
 
 object SyncSliceFactory {
 
@@ -47,7 +50,7 @@ object SyncSliceFactory {
       oprRef: ExprRef,
       vRef: ExprRef
   ): List[Stmt] = ss match {
-    case StorageSliceBubble => {
+    case StorageSliceBub => {
       // valid = ~valid & ip_valid | valid & ~op_ready;
       // fence;
       List(
@@ -84,7 +87,7 @@ object SyncSliceFactory {
       fRef: ExprRef,
       vRef: ExprRef
   ): List[Connect] = ss match {
-    case StorageSliceBubble => {
+    case StorageSliceBub => {
       // valid -> op_valid;
       // ~valid -> ip_ready;
       // ~valid -> empty;
@@ -131,7 +134,7 @@ object SyncSliceFactory {
       pRef: ExprRef,
       vRef: ExprRef
   ): List[Stmt] = ss match {
-    case StorageSliceBubble => {
+    case StorageSliceBub => {
       // if (ip_valid & ~valid) {
       //   payload = ip;
       // }
@@ -195,7 +198,7 @@ object SyncSliceFactory {
       pRef: ExprRef,
       vRef: ExprRef
   ): List[Connect] = ss match {
-    case StorageSliceBubble => {
+    case StorageSliceBub => {
       // payload -> op ;
       // valid -> op_valid;
       // ~valid -> ip_ready;
@@ -341,17 +344,142 @@ object SyncSliceFactory {
     entity withVariant "fsm" regularize loc
   }
 
+  // Given a list of slice instances, build an entity that
+  // instantiates each and connects them back to back
+  private def buildCompoundSlice(
+      slices: List[Entity],
+      name: String,
+      loc: Loc,
+      kind: Type,
+      sep: String
+  )(
+      implicit cc: CompilerContext
+  ): Entity = {
+    require(slices.length >= 2)
+
+    val fcn = FlowControlTypeNone
+    val stw = StorageTypeWire
+
+    val bool = TypeUInt(TypeAssigner(Expr(1) withLoc loc))
+
+    val ipName = "ip"
+    val ipvName = s"${ipName}${sep}valid"
+    val iprName = s"${ipName}${sep}ready"
+
+    val opName = "op"
+    val opvName = s"${opName}${sep}valid"
+    val oprName = s"${opName}${sep}ready"
+
+    lazy val ipSymbol = cc.newTermSymbol(ipName, loc, TypeIn(kind, fcn))
+    val ipvSymbol = cc.newTermSymbol(ipvName, loc, TypeIn(bool, fcn))
+    val iprSymbol = cc.newTermSymbol(iprName, loc, TypeOut(bool, fcn, stw))
+
+    lazy val opSymbol = cc.newTermSymbol(opName, loc, TypeOut(kind, fcn, stw))
+    val opvSymbol = cc.newTermSymbol(opvName, loc, TypeOut(bool, fcn, stw))
+    val oprSymbol = cc.newTermSymbol(oprName, loc, TypeIn(bool, fcn))
+
+    val eSymbol = cc.newTermSymbol("empty", loc, TypeOut(bool, fcn, stw))
+    val fSymbol = cc.newTermSymbol("full", loc, TypeOut(bool, fcn, stw))
+
+    lazy val ipRef = ExprRef(Sym(ipSymbol))
+    val ipvRef = ExprRef(Sym(ipvSymbol))
+    val iprRef = ExprRef(Sym(iprSymbol))
+
+    lazy val opRef = ExprRef(Sym(opSymbol))
+    val opvRef = ExprRef(Sym(opvSymbol))
+    val oprRef = ExprRef(Sym(oprSymbol))
+
+    val eRef = ExprRef(Sym(eSymbol))
+    val fRef = ExprRef(Sym(fSymbol))
+
+    val instances = slices.zipWithIndex map {
+      case (entity, index) =>
+        val Sym(eSymbol: TypeSymbol) = entity.ref
+        val iSymbol = cc.newTermSymbol(s"slice_${index}", loc, TypeInstance(eSymbol))
+        Instance(Sym(iSymbol), Sym(eSymbol), Nil, Nil)
+    }
+
+    val iRefs = for (Instance(Sym(iSymbol), _, _, _) <- instances) yield { ExprRef(Sym(iSymbol)) }
+
+    val connects = new ListBuffer[Connect]()
+
+    // Create the cascade connection
+    if (kind != TypeVoid) {
+      // Payload
+      connects append Connect(ipRef, List(iRefs.head select ipName))
+      for ((aRef, bRef) <- iRefs zip iRefs.tail) {
+        connects append Connect(aRef select opName, List(bRef select ipName))
+      }
+      connects append Connect(iRefs.last select opName, List(opRef))
+    }
+
+    // Valid
+    connects append Connect(ipvRef, List(iRefs.head select ipvName))
+    for ((aRef, bRef) <- iRefs zip iRefs.tail) {
+      connects append Connect(aRef select opvName, List(bRef select ipvName))
+    }
+    connects append Connect(iRefs.last select opvName, List(opvRef))
+
+    // Ready
+    connects append Connect(oprRef, List(iRefs.last select oprName))
+    for ((aRef, bRef) <- (iRefs zip iRefs.tail).reverse) {
+      connects append Connect(bRef select iprName, List(aRef select oprName))
+    }
+    connects append Connect(iRefs.head select iprName, List(iprRef))
+
+    // 'and' reduce the empty and full signals
+    connects append Connect(ExprUnary("&", ExprCat(iRefs map { _ select "empty" })), List(eRef))
+    connects append Connect(ExprUnary("&", ExprCat(iRefs map { _ select "full" })), List(fRef))
+
+    // Put it all together
+    val ports = if (kind != TypeVoid) {
+      List(ipSymbol, ipvSymbol, iprSymbol, opSymbol, opvSymbol, oprSymbol, eSymbol, fSymbol)
+    } else {
+      List(ipvSymbol, iprSymbol, opvSymbol, oprSymbol, eSymbol, fSymbol)
+    }
+
+    val decls = ports map { symbol =>
+      Decl(symbol, None)
+    }
+
+    val entitySymbol = cc.newTypeSymbol(name, loc, TypeEntity(name, ports, Nil))
+    val entity = {
+      Entity(Sym(entitySymbol), decls, instances, connects.toList, Nil, Nil, Nil, Nil, Map())
+    }
+    entity withVariant "network" regularize loc
+  }
+
   def apply(
       slices: List[StorageSlice],
-      name: String,
+      prefix: String,
       loc: Loc,
       kind: Type
   )(
       implicit cc: CompilerContext
-  ): Entity = {
+  ): List[Entity] = {
+    require(slices.nonEmpty)
     require(kind.isPacked)
-    // TODO: handle sequence of slices
-    buildSlice(slices.head, name, loc, kind, cc.sep)
+
+    lazy val fslice = buildSlice(StorageSliceFwd, s"${prefix}${cc.sep}fslice", loc, kind, cc.sep)
+    lazy val bslice = buildSlice(StorageSliceBwd, s"${prefix}${cc.sep}bslice", loc, kind, cc.sep)
+    lazy val bubble = buildSlice(StorageSliceBub, s"${prefix}${cc.sep}bubble", loc, kind, cc.sep)
+
+    val sliceEntities = slices map {
+      case StorageSliceFwd => fslice
+      case StorageSliceBwd => bslice
+      case StorageSliceBub => bubble
+    }
+
+    if (sliceEntities.lengthCompare(1) == 0) {
+      // If just one, we are done
+      sliceEntities
+    } else {
+      // Otherwise build the compound entity
+      val compoundName = s"${prefix}${cc.sep}slices"
+      val compoundEntity = buildCompoundSlice(sliceEntities, compoundName, loc, kind, cc.sep)
+      // The compound entity must be first, and add the distinct slices
+      compoundEntity :: sliceEntities.distinct
+    }
   }
 
 }
