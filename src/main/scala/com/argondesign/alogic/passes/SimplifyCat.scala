@@ -23,6 +23,7 @@ import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.util.unreachable
+import com.argondesign.alogic.util.BigIntOps._
 
 import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
@@ -72,12 +73,17 @@ final class SimplifyCat(implicit cc: CompilerContext) extends TreeTransformer {
         }
       }
 
-      case StmtAssign(lhs @ ExprCat(parts), ExprInt(_, width, value))
-          if value == 0 && (lhs.tpe.width.value contains width) => {
-        StmtBlock {
-          for (expr <- parts) yield {
-            val kind = expr.tpe
-            StmtAssign(expr, ExprInt(kind.isSigned, kind.width.value.get.toInt, 0))
+      case StmtAssign(lhs @ ExprCat(parts), ExprInt(_, width, value)) => {
+        val widths = parts map { _.tpe.width.value.get.toInt }
+        if (widths.sum != width) {
+          tree
+        } else {
+          val lsbs = widths.scanRight(0)(_ + _).tail
+          StmtBlock {
+            for ((expr, width, lsb) <- (parts, widths, lsbs).zipped.toList) yield {
+              val signed = expr.tpe.isSigned
+              StmtAssign(expr, ExprInt(signed, width, value.extract(lsb, width, signed)))
+            }
           }
         }
       }
