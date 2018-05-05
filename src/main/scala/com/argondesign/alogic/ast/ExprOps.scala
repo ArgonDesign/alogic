@@ -92,6 +92,19 @@ trait ExprOps { this: Expr =>
   final def index(idx: Expr): ExprIndex = addLoc(ExprIndex(this, idx))
   final def index(idx: Int): ExprIndex = addLoc(ExprIndex(this, addLoc(Expr(idx))))
 
+  final def slice(lidx: Expr, op: String, ridx: Expr): ExprSlice = {
+    addLoc(ExprSlice(this, lidx, op, ridx))
+  }
+  final def slice(lidx: Expr, op: String, ridx: Int): ExprSlice = {
+    addLoc(ExprSlice(this, lidx, op, addLoc(Expr(ridx))))
+  }
+  final def slice(lidx: Int, op: String, ridx: Expr): ExprSlice = {
+    addLoc(ExprSlice(this, addLoc(Expr(lidx)), op, ridx))
+  }
+  final def slice(lidx: Int, op: String, ridx: Int): ExprSlice = {
+    addLoc(ExprSlice(this, addLoc(Expr(lidx)), op, addLoc(Expr(ridx))))
+  }
+
   final def select(name: String): ExprSelect = addLoc(ExprSelect(this, name))
   final def call(args: List[Expr]): ExprCall = addLoc(ExprCall(this, args))
 
