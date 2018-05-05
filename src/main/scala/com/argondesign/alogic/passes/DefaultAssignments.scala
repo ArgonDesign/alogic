@@ -20,6 +20,7 @@
 
 package com.argondesign.alogic.passes
 
+import com.argondesign.alogic.analysis.Liveness
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
@@ -73,6 +74,41 @@ final class DefaultAssignments(implicit cc: CompilerContext)
           case ExprRef(Sym(symbol: TermSymbol)) => {
             needsDefault remove symbol
           }
+        }
+      }
+
+      if (needsDefault.nonEmpty) {
+        assert(entity.states.nonEmpty)
+
+        // Remove symbols that are dead at the beginning of the cycle. To do
+        // this, we build the case statement representing the state dispatch
+        // (together with the fence statements), and do liveness analysis on it
+        val deadSymbols = {
+          val stateSystem = if (entity.states.lengthCompare(1) == 0) {
+            entity.fenceStmts ::: entity.states.head.body
+          } else {
+            entity.fenceStmts :+ StmtCase(
+              ExprRef(Sym(entitySymbol.attr.stateVar.value)),
+              entity.states.tail map {
+                case State(expr, body) => CaseClause(List(expr), StmtBlock(body))
+              },
+              entity.states.head.body
+            )
+          }
+
+          // Perform the liveness analysis
+          val deadSymbolBits = Liveness(stateSystem)._2
+
+          // Keep only the symbols with all bits dead
+          val it = deadSymbolBits collect {
+            case (symbol, set) if set.size == symbol.denot.kind.width.value.get => symbol
+          }
+          it.toSet
+        }
+
+        // Now retain only the symbols that are not dead
+        needsDefault retain { symbol =>
+          !(deadSymbols contains symbol)
         }
       }
 
