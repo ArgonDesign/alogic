@@ -40,23 +40,38 @@ final class SplitStructsA(implicit cc: CompilerContext) extends TreeTransformer 
   }
 
   override def enter(tree: Tree) = tree match {
-    case Decl(symbol, _) => {
-      val oKind = symbol.denot.kind
-      oKind.underlying match {
-        case struct: TypeStruct => {
-          val newSymbols = for ((fName, fKind) <- flattenStruct(symbol.name, struct)) yield {
-            val nKind = oKind match {
-              case k: TypeIn     => k.copy(kind = fKind)
-              case k: TypeOut    => k.copy(kind = fKind)
-              case k: TypeConst  => k.copy(kind = fKind)
-              case _: TypeStruct => fKind
-              case _             => unreachable
+    case entity: Entity => {
+      for (Decl(symbol, _) <- entity.declarations) {
+        val oKind = symbol.denot.kind
+        oKind.underlying match {
+          case struct: TypeStruct => {
+            val newSymbols = for ((fName, fKind) <- flattenStruct(symbol.name, struct)) yield {
+              val nKind = oKind match {
+                case k: TypeIn     => k.copy(kind = fKind)
+                case k: TypeOut    => k.copy(kind = fKind)
+                case k: TypeConst  => k.copy(kind = fKind)
+                case _: TypeStruct => fKind
+                case _             => unreachable
+              }
+              cc.newTermSymbol(fName, tree.loc, nKind)
             }
-            cc.newTermSymbol(fName, tree.loc, nKind)
+            symbol.attr.fieldSymbols set newSymbols
           }
-          symbol.attr.fieldSymbols set newSymbols
+          case _ => ()
         }
-        case _ => ()
+      }
+
+      // Transfer the oReg attributes
+      for {
+        Decl(symbol, _) <- entity.declarations
+        if symbol.attr.fieldSymbols.isSet
+        rSymbol <- symbol.attr.oReg.get
+      } {
+        val oFieldSymbols = symbol.attr.fieldSymbols.value
+        val rFieldSymbols = rSymbol.attr.fieldSymbols.value
+        for ((oFieldSymbol, rFieldSymbol) <- oFieldSymbols zip rFieldSymbols) {
+          oFieldSymbol.attr.oReg set rFieldSymbol
+        }
       }
     }
 
