@@ -24,7 +24,7 @@ trait Output { this: CompilerContext =>
 
   private implicit val implicitThis = this
 
-  private def oPathFor(entity: Entity, suffix: String): Path = {
+  def oPathFor(entity: Entity, suffix: String): Path = {
     val oDir = settings.srcbase match {
       case None => settings.odir.get
       case Some(base) => {

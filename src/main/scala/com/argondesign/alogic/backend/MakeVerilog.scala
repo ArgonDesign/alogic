@@ -17,177 +17,19 @@ package com.argondesign.alogic.backend
 import alogic.backend.CodeWriter
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Symbols.TermSymbol
+import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable.ListBuffer
 
-final class MakeVerilog(entity: Entity)(implicit cc: CompilerContext) {
+final class MakeVerilog(
+    presentDetails: EntityDetails,
+    details: => Map[TypeSymbol, EntityDetails]
+)(
+    implicit cc: CompilerContext
+) {
 
-  //////////////////////////////////////////////////////////////////////////////
-  // Compute necessary values
-  //////////////////////////////////////////////////////////////////////////////
-
-  private val Entity(
-    Sym(eSymbol),
-    decls,
-    instances,
-    connects,
-    Nil,
-    states,
-    fenceStmts,
-    Nil,
-    verbatim
-  ) = entity
-
-  assert {
-    decls forall {
-      case Decl(symbol, _) => {
-        symbol.denot.kind match {
-          case _: TypeConst => true
-          case _: TypeIn    => true
-          case _: TypeOut   => true
-          case _: TypeArray => true
-          case _: TypeInt   => true
-          case _            => false
-        }
-      }
-      case _ => unreachable
-    }
-  }
-
-  assert(states.nonEmpty || fenceStmts.isEmpty)
-
-  private val isVerbatim = entity.variant == "verbatim"
-
-  private val hasConsts = decls exists {
-    case Decl(symbol, _) => symbol.denot.kind.isInstanceOf[TypeConst]
-    case _               => false
-  }
-
-  private val hasFlops = decls exists {
-    case Decl(symbol, _) => symbol.attr.flop.isSet
-    case _               => false
-  }
-
-  private val hasCombSignals = decls exists {
-    case Decl(symbol, _) => symbol.attr.combSignal.isSet
-    case _               => false
-  }
-
-  private val hasArrays = decls exists {
-    case Decl(symbol, _) => symbol.attr.arr.isSet
-    case _               => false
-  }
-
-  private val hasInterconnect = decls exists {
-    case Decl(symbol, _) => symbol.attr.interconnect.isSet
-    case _               => false
-  }
-
-  private val canStall = entity.preOrderIterator exists {
-    case _: StmtStall => true
-    case _            => false
-  }
-
-  // Any symbol that is driven by a connect must be a net
-  private val netSymbols = connects flatMap {
-    case Connect(_, rhs :: Nil) => {
-      rhs collect {
-        case ExprRef(Sym(symbol)) => symbol
-      }
-    }
-    case _ => Nil
-  }
-
-  // Group and sort interconnect symbols by instance, then by port declaration order
-  lazy val groupedInterconnectSymbols: List[(TermSymbol, List[TermSymbol])] = {
-    // Calculate (instance symbol, port name, interconnect symbol) triplets
-    val trip = for {
-      Decl(nSymbol, _) <- decls
-      (iSymbol, sel) <- nSymbol.attr.interconnect.get
-    } yield {
-      (iSymbol, sel, nSymbol)
-    }
-
-    // Group by instance, loose instance symbol from values
-    val groups = trip groupBy { _._1 } mapValues { _ map { case (_, s, n) => (s, n) } }
-
-    // Sort by groups by instance order
-    val sortedInstances = {
-      // Sorting map for instance symbols
-      val ordering = {
-        val pairs = for {
-          (Instance(Sym(symbol: TermSymbol), _, _, _), i) <- instances.zipWithIndex
-        } yield {
-          symbol -> i
-        }
-        pairs.toMap
-      }
-      // Sort by instance
-      groups.toList sortBy { case (i, _) => ordering(i) }
-    }
-
-    // Sort within group by port definition order
-    sortedInstances map {
-      case (iSymbol, list) =>
-        // Sorting map for port selectors
-        val ordering = {
-          val pairs = for {
-            (symbol, i) <- iSymbol.denot.kind.asInstanceOf[TypeInstance].portSymbols.zipWithIndex
-          } yield {
-            symbol.name -> i
-          }
-          pairs.toMap
-        }
-        // Sort by port selector, then loose them, note that some interconnect
-        // symbols can remain as placeholders in concatenations while their
-        // corresponding ports have ben removed. We put these at the end sorted
-        // lexically.
-        val sortedSymbols = list sortWith {
-          case ((a, _), (b, _)) => {
-            (ordering.get(a), ordering.get(b)) match {
-              case (Some(oa), Some(ob)) => oa < ob
-              case (Some(_), None)      => true
-              case (None, Some(_))      => false
-              case (None, None)         => a < b
-            }
-          }
-        } map { _._2 }
-        (iSymbol, sortedSymbols)
-    }
-  }
-
-  // Function from 'instance symbol => port selector => connected expression'
-  lazy val instancePortExpr: Map[TermSymbol, Map[String, Expr]] = {
-    val trip = connects collect {
-      case Connect(ExprSelect(ExprRef(Sym(iSymbol: TermSymbol)), sel), rhs :: Nil) => {
-        (iSymbol, sel, rhs)
-      }
-      case Connect(lhs, ExprSelect(ExprRef(Sym(iSymbol: TermSymbol)), sel) :: Nil) => {
-        (iSymbol, sel, lhs)
-      }
-    }
-
-    val groupped = trip groupBy { _._1 } mapValues { _ map { case (_, s, e) => (s, e) } }
-
-    groupped mapValues { pairs =>
-      pairs.toMap ensuring { _.size == pairs.length }
-    }
-  }
-
-  // Connects that are not of the form 'a.b -> SOMETHING' or 'SOMETHING -> a.b'
-  // where a is an instance
-  val nonPortConnects = connects filter {
-    case Connect(ExprSelect(ExprRef(Sym(symbol)), _), _) => {
-      !symbol.denot.kind.isInstanceOf[TypeInstance]
-    }
-    case Connect(_, ExprSelect(ExprRef(Sym(symbol)), _) :: Nil) => {
-      !symbol.denot.kind.isInstanceOf[TypeInstance]
-    }
-    case _ => true
-  }
+  import presentDetails._
 
   // Render Verilog declaration List(signed, packed, id) strings for term symbol
   private def vdecl(symbol: TermSymbol): String = {
@@ -566,7 +408,7 @@ final class MakeVerilog(entity: Entity)(implicit cc: CompilerContext) {
   private def emitInstances(body: CodeWriter): Unit = {
     if (instances.nonEmpty) {
       body.emitSection(1, "Instances") {
-        for (Instance(Sym(iSymbol: TermSymbol), _, Nil, Nil) <- instances) {
+        for (Instance(Sym(iSymbol: TermSymbol), Sym(mSymbol: TypeSymbol), Nil, Nil) <- instances) {
           val TypeInstance(eSymbol) = iSymbol.denot.kind
           body.ensureBlankLine()
           body.emit(1)(s"${eSymbol.name} ${iSymbol.name} (")
@@ -574,9 +416,10 @@ final class MakeVerilog(entity: Entity)(implicit cc: CompilerContext) {
           body.emitTable(1, " ") {
             val items = new ListBuffer[(Boolean, String, String)]
 
-            // TODO: omit if not needed
-            items append { (true, ".clk", "         (clk)") }
-            items append { (true, ".rst_n", s"         (rst_n)") }
+            if (details(mSymbol).needsClock) {
+              items append { (true, ".clk", "         (clk)") }
+              items append { (true, ".rst_n", s"         (rst_n)") }
+            }
 
             val TypeEntity(_, pSymbols, _) = eSymbol.denot.kind
 
@@ -647,6 +490,31 @@ final class MakeVerilog(entity: Entity)(implicit cc: CompilerContext) {
     emitVerbatimSection(body)
   }
 
+  def emitPortDeclarations(body: CodeWriter): Unit = {
+    val items = new ListBuffer[String]
+
+    if (needsClock) {
+      items append "input  wire clk"
+      items append "input  wire rst_n"
+    }
+
+    for (Decl(symbol, _) <- decls) {
+      symbol.denot.kind match {
+        case _: TypeIn => items append s"input  wire ${vdecl(symbol)}"
+        case _: TypeOut => {
+          val word = if (isVerbatim || (netSymbols contains symbol)) "wire" else "reg "
+          items append s"output ${word} ${vdecl(symbol)}"
+        }
+        case _ => ()
+      }
+    }
+
+    items.init foreach { line =>
+      body.emit(1)(line + ",")
+    }
+    body.emit(1)(items.last)
+  }
+
   def moduleSource: String = {
     val body = new CodeWriter
 
@@ -654,25 +522,7 @@ final class MakeVerilog(entity: Entity)(implicit cc: CompilerContext) {
     body.ensureBlankLine()
 
     body.emit(0)(s"module ${eSymbol.name}(")
-
-    // Emit port declarations
-    for (Decl(symbol, _) <- decls) {
-      symbol.denot.kind match {
-        case _: TypeIn => body.emit(1)(s"input  wire ${vdecl(symbol)},")
-        case _: TypeOut => {
-          if (isVerbatim || (netSymbols contains symbol)) {
-            body.emit(1)(s"output wire ${vdecl(symbol)},")
-          } else {
-            body.emit(1)(s"output reg  ${vdecl(symbol)},")
-          }
-        }
-        case _ => ()
-      }
-    }
-    body.ensureBlankLine()
-    // TODO: omit if not needed
-    body.emit(1)("input  wire clk,")
-    body.emit(1)("input  wire rst_n")
+    emitPortDeclarations(body)
     body.emit(0)(");")
     body.ensureBlankLine()
 

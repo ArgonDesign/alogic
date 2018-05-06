@@ -16,6 +16,7 @@
 package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.backend.CodeGeneration
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.typer.Typer
 import com.argondesign.alogic.util.FollowedBy._
@@ -73,9 +74,10 @@ object Passes {
       DefaultAssignments,
       RemoveUnused,
       RemoveRedundantBlocks,
-      RenameClashingTerms
+      RenameClashingTerms,
       // TODO: RenameKeywords
       // TODO: final check pass to make sure everything is well-formed
+      CodeGeneration
     )
 
     // Fold passes over the trees

@@ -16,13 +16,8 @@
 package com.argondesign.alogic
 
 import java.io.File
-import java.io.PrintWriter
-import java.nio.file.Path
 
-import com.argondesign.alogic.ast.Trees.Entity
 import com.argondesign.alogic.ast.Trees.Root
-import com.argondesign.alogic.ast.Trees.Sym
-import com.argondesign.alogic.backend.MakeVerilog
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FatalErrorException
 import com.argondesign.alogic.core.Settings
@@ -61,10 +56,10 @@ object Main extends App {
   // Do the work
   //////////////////////////////////////////////////////////////////////////////
 
-  val results = try {
+  try {
     val toplevels = cliConf.toplevel()
 
-    lazy val cwd = (new File(".")).getCanonicalFile()
+    lazy val cwd = new File(".").getCanonicalFile
 
     val defaultToCWD = cliConf.ydir.isEmpty && cliConf.incdir.isEmpty && cliConf.srcbase.isEmpty
     val moduleSeachDirs = if (defaultToCWD) List(cwd) else cliConf.ydir()
@@ -89,56 +84,19 @@ object Main extends App {
       }
     }
 
-    val trees = Passes(frontEndTrees)
+    //////////////////////////////////////////////////////////////////////////////
+    // Compile the trees
+    //////////////////////////////////////////////////////////////////////////////
 
-    Some(trees)
+    Passes(frontEndTrees)
   } catch {
-    case _: FatalErrorException => None
+    case _: FatalErrorException => ()
   } finally {
     cc.emitMessages(Console.err)
   }
 
-  val oDirBase = cliConf.odir().toPath
-  val baseOpt = cliConf.srcbase.toOption map { _.toPath }
-
-  def oPathFor(entity: Entity): Path = {
-    val oDir = baseOpt match {
-      case None => oDirBase
-      case Some(base) => {
-        val dirPath = entity.loc.source.file.toPath.toRealPath().getParent
-        assert(dirPath startsWith base)
-        val relPath = base relativize dirPath
-        oDirBase resolve relPath
-      }
-    }
-    val Sym(symbol) = entity.ref
-    val name = symbol.denot.name.str + ".v"
-    oDir resolve name
-  }
-
-  def writeEntity(entity: Entity, oPath: Path): Unit = {
-    val oFile = oPath.toFile
-    if (!oFile.exists) {
-      oFile.getParentFile.mkdirs()
-      oFile.createNewFile()
-    }
-    val pw = new PrintWriter(oFile)
-    val mk = new MakeVerilog(entity)
-    pw.write(mk.moduleSource)
-    pw.close()
-  }
-
-  if (results.isEmpty) {
-    sys exit 2
-  }
-
   if (cc.hasError) {
     sys exit 1
-  }
-
-  for (tree <- results.get) {
-    val entity = tree.asInstanceOf[Entity]
-    writeEntity(entity, oPathFor(entity))
   }
 
   sys exit 0
