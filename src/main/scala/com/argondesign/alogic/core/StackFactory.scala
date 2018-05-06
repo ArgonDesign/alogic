@@ -256,6 +256,10 @@ object StackFactory {
     val oreSymbol = cc.newTermSymbol("oreg_empty", loc, bool)
     val orfSymbol = cc.newTermSymbol("oreg_full", loc, bool)
 
+    // Set oRef attributes so oreg_ prefixes are stripped later
+    empSymbol.attr.oReg set oreSymbol
+    fulSymbol.attr.oReg set orfSymbol
+
     val stoKind = TypeArray(kind, ExprNum(false, depth) regularize loc)
     val stoSymbol = cc.newTermSymbol("storage", loc, stoKind)
     val ptrKind = TypeUInt(Expr(ptrWidth) regularize loc)
