@@ -64,6 +64,24 @@ final class DefaultStorage(implicit cc: CompilerContext) extends TreeTransformer
       }
 
       case entity: Entity => {
+        // TODO: move this to a post-Typer check pass
+        // Check that output ports driven by a connect use default storage
+        for {
+          Decl(symbol, _) <- entity.declarations
+          if connectedSet contains symbol
+        } {
+          symbol.denot.kind match {
+            case TypeOut(_, _, StorageTypeDefault) => ()
+            // Generate error for those ports driven through a connect
+            // that have an explicit storage specifier and fix them
+            case TypeOut(kind, fct, _) => {
+              cc.error(symbol.loc, "Port driven by '->' must not specify output storage")
+              symbol withDenot symbol.denot.copy(kind = TypeOut(kind, fct, StorageTypeDefault))
+            }
+            case _ => ()
+          }
+        }
+
         // Collect all output declarations that use the default storage type
         val (outs, rest) = entity.declarations.partition {
           case Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypeOut] => {
@@ -72,7 +90,7 @@ final class DefaultStorage(implicit cc: CompilerContext) extends TreeTransformer
           case _ => false
         }
 
-        // Update symbol types them
+        // Update their types
         for (Decl(symbol, _) <- outs) {
           val kind = symbol.denot.kind.asInstanceOf[TypeOut]
           // Compute the appropriate default storage type
