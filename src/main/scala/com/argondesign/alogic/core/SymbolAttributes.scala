@@ -88,6 +88,9 @@ class SymbolAttributes {
   // If this is an interconnect signal, the corresponding instance symbol and port name
   val interconnect = new Attribute[(TermSymbol, String)]()
 
+  // If this signal is a combinatorically driven local signal
+  val combSignal = new Attribute[Boolean]()
+
   // The expanded field symbols of a struct symbol
   val fieldSymbols = new Attribute[List[TermSymbol]]()
 
@@ -119,6 +122,7 @@ class SymbolAttributes {
     flop,
     arr,
     interconnect,
+    combSignal,
     fieldSymbols,
     default
   )
@@ -148,6 +152,7 @@ class SymbolAttributes {
     "flop",
     "arr",
     "interconnect",
+    "combSignal",
     "fieldSymbols",
     "default"
   )

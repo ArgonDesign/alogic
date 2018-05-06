@@ -71,6 +71,11 @@ final class MakeVerilog(entity: Entity)(implicit cc: CompilerContext) {
     case _               => false
   }
 
+  private val hasCombSignals = decls exists {
+    case Decl(symbol, _) => symbol.attr.combSignal.isSet
+    case _               => false
+  }
+
   private val hasArrays = decls exists {
     case Decl(symbol, _) => symbol.attr.arr.isSet
     case _               => false
@@ -136,8 +141,20 @@ final class MakeVerilog(entity: Entity)(implicit cc: CompilerContext) {
           }
           pairs.toMap
         }
-        // Sort by port selector, then loose them
-        val sortedSymbols = list sortBy { case (s, _) => ordering(s) } map { _._2 }
+        // Sort by port selector, then loose them, note that some interconnect
+        // symbols can remain as placeholders in concatenations while their
+        // corresponding ports have ben removed. We put these at the end sorted
+        // lexically.
+        val sortedSymbols = list sortWith {
+          case ((a, _), (b, _)) => {
+            (ordering.get(a), ordering.get(b)) match {
+              case (Some(oa), Some(ob)) => oa < ob
+              case (Some(_), None)      => true
+              case (None, Some(_))      => false
+              case (None, None)         => a < b
+            }
+          }
+        } map { _._2 }
         (iSymbol, sortedSymbols)
     }
   }
@@ -239,7 +256,7 @@ final class MakeVerilog(entity: Entity)(implicit cc: CompilerContext) {
   //////////////////////////////////////////////////////////////////////////////
 
   private def emitDeclarationSection(body: CodeWriter): Unit = {
-    if (hasConsts || hasFlops || hasArrays || hasInterconnect || canStall) {
+    if (hasConsts || hasFlops || hasCombSignals || hasArrays || hasInterconnect || canStall) {
       body.emitSection(1, "Declaration section") {
         if (hasConsts) {
           // Emit const declarations
@@ -268,6 +285,17 @@ final class MakeVerilog(entity: Entity)(implicit cc: CompilerContext) {
             } {
               emitVarDecl(qSymbol)
               emitVarDecl(dSymbol)
+            }
+          }
+        }
+
+        if (hasCombSignals) {
+          body.emitBlock(1, "Combinatorial signal declarations") {
+            for {
+              Decl(symbol, _) <- decls
+              if symbol.attr.combSignal.get contains true
+            } {
+              emitVarDecl(symbol)
             }
           }
         }

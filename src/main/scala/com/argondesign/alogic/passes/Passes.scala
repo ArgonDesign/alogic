@@ -69,8 +69,9 @@ object Passes {
       LowerFlops,
       LowerArrays,
       LowerInterconnect,
-      DefaultAssignments,
       // TODO: LowerGo
+      DefaultAssignments,
+      RemoveUnused,
       RemoveRedundantBlocks,
       RenameClashingTerms
       // TODO: RenameKeywords
