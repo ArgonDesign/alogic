@@ -372,6 +372,14 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
 
       }
 
+      // TODO: Some function call are pure e.g.: @zx(10, 1'b1);
+      case StmtExpr(_: ExprCall) => tree
+
+      case StmtExpr(expr) => {
+        cc.warning(tree, "A pure expression in statement position does nothing")
+        StmtBlock(Nil) withLoc tree.loc
+      }
+
       ////////////////////////////////////////////////////////////////////////////
       // Type check expressions
       ////////////////////////////////////////////////////////////////////////////

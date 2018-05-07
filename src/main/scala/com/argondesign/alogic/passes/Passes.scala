@@ -56,7 +56,6 @@ object Passes {
       LowerFlowControlA,
       LowerFlowControlB,
       LowerFlowControlC,
-      // TODO: CheckPureExpressionInStatementPosition
       LowerRegPorts,
       LowerStacks,
       SplitStructsA,
