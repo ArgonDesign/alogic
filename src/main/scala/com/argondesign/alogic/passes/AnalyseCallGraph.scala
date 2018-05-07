@@ -289,17 +289,21 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
     maxActive - 1
   }
 
+  override protected def skip(tree: Tree): Boolean = tree match {
+    case entity: Entity if entity.functions.isEmpty => {
+      // Warn early if there are no functions at all, as
+      // we will not have an opportunity to do it later
+      warnIgnoredStacklimitAttribute()
+      true
+    }
+    case _ => false
+  }
+
   override def enter(tree: Tree): Unit = tree match {
     case entity: Entity => {
       // Gather all function symbols from entity
       assert(functionSymbols == null)
       functionSymbols = for (Function(Sym(symbol: TermSymbol), _) <- entity.functions) yield symbol
-
-      // Warn early if there are no functions at all, as
-      // we will not have an opportunity to do it later
-      if (functionSymbols.isEmpty) {
-        warnIgnoredStacklimitAttribute()
-      }
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -325,14 +329,12 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
   override def transform(tree: Tree): Tree = tree match {
     case entity: Entity => {
       // Ensure 'reclimit' attributes exist on all functions
-      if (entity.functions.nonEmpty) {
-        val values = recLimits.getOrElse(List.fill(nFunctions)(1))
-        for ((symbol, value) <- functionSymbols zip values) {
-          symbol.attr.recLimit set Expr(value)
-        }
+      val values = recLimits.getOrElse(List.fill(nFunctions)(1))
+      for ((symbol, value) <- functionSymbols zip values) {
+        symbol.attr.recLimit set Expr(value)
       }
 
-      val stackDepth = if (entity.functions.isEmpty) 0 else returnStackDepth
+      val stackDepth = returnStackDepth
 
       if (stackDepth == 0) {
         entity

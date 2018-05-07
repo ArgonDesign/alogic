@@ -24,6 +24,13 @@ import com.argondesign.alogic.core.Types._
 
 final class SpecializeParamC(implicit cc: CompilerContext) extends TreeTransformer {
 
+  override def skip(tree: Tree): Boolean = tree match {
+    case _: Entity   => false
+    case _: Decl     => false
+    case _: Instance => false
+    case _           => true
+  }
+
   override def enter(tree: Tree): Unit = tree match {
     case Decl(symbol, _) => symbol.attr.owner.clear()
 

@@ -23,12 +23,11 @@ import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types.TypeStack
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Stack
-import com.argondesign.alogic.util.FollowedBy
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-final class LowerStacks(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
+final class LowerStacks(implicit cc: CompilerContext) extends TreeTransformer {
 
   // Map from original stack variable symbol to the
   // corresponding stack entity and instance symbols
@@ -38,6 +37,11 @@ final class LowerStacks(implicit cc: CompilerContext) extends TreeTransformer wi
   private[this] val extraStmts = Stack[mutable.ListBuffer[Stmt]]()
 
   private[this] var entityName: String = _
+
+  override def skip(tree: Tree): Boolean = tree match {
+    case entity: Entity => entity.variant == "network"
+    case _              => false
+  }
 
   override def enter(tree: Tree): Unit = tree match {
     case entity: Entity => {

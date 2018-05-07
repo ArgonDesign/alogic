@@ -30,6 +30,11 @@ final class LowerArrays(implicit cc: CompilerContext) extends TreeTransformer wi
   // TODO: Does not work if array is assigned in a concatenation on the left.
   //       Need to teach SimplifyCat to handle more cases if this is a problem
 
+  override def skip(tree: Tree): Boolean = tree match {
+    case entity: Entity => entity.variant == "network"
+    case _              => false
+  }
+
   private[this] def intType(loc: Loc, signed: Boolean, width: Int): TypeUInt = {
     TypeUInt {
       TypeAssigner {

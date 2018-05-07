@@ -28,6 +28,12 @@ import scala.collection.immutable.ListMap
 
 final class SpecializeParamA(implicit cc: CompilerContext) extends TreeTransformer {
 
+  override def skip(tree: Tree): Boolean = tree match {
+    case _: Entity   => false
+    case _: Instance => false
+    case _           => true
+  }
+
   override def enter(tree: Tree): Unit = tree match {
     case Instance(Sym(iSymbol), Sym(eSymbol), paramNames, paramExprs) => {
       val entityKind = eSymbol.kind.asInstanceOf[TypeEntity]

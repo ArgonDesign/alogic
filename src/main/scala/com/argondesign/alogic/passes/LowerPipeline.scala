@@ -53,6 +53,17 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
   // Stack of booleans to indicate whether to rewrite this entity
   val rewriteEntity: Stack[Boolean] = Stack()
 
+  override def skip(tree: Tree): Boolean = tree match {
+    // Skip entities without any pipeline declarations
+    case entity: Entity => {
+      entity.declarations forall {
+        case Decl(symbol, _) => !symbol.kind.isInstanceOf[TypePipeline]
+        case _               => unreachable
+      }
+    }
+    case _ => false
+  }
+
   override def enter(tree: Tree): Unit = tree match {
     case outer: Entity if outer.entities.nonEmpty => {
       rewriteEntity.push(true)

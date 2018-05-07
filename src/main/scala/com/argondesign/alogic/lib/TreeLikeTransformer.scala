@@ -26,6 +26,12 @@ abstract class TreeLikeTransformer[T <: TreeLike] extends (T => T) {
   // transform is called after all children have already been visited and transformed.
   protected def transform(tree: T): T = tree
 
+  // skip is a predicate that can be used to mark subtrees that should not be
+  // visited. If skip returns true for a node, that node will not be visited,
+  // i.e.: enter and transform will not be called on that node, or any of their
+  // children, leaving the subtree unmodified
+  protected def skip(tree: T): Boolean = false
+
   // defaultCheck is invoked with the root of the transformed tree.
   // This can be used to verify invariants introduced by this transform
   protected def defaultCheck(orig: T, tree: T): Unit = ()

@@ -64,6 +64,11 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
   // in part, this is used to avoid emitting empty states for loop entry points.
   private[this] val pendingStates = Stack[Option[TermSymbol]]()
 
+  override def skip(tree: Tree): Boolean = tree match {
+    case entity: Entity => entity.functions.isEmpty
+    case _              => false
+  }
+
   // Allocate all intermediate states that are introduced
   // by a list of statements
   private[this] def allocateStates(stmts: List[Stmt]): Unit = {

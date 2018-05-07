@@ -56,6 +56,11 @@ final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
   // Map from state symbol to state number
   private[this] val stateMap: mutable.Map[TermSymbol, Int] = mutable.Map()
 
+  override def skip(tree: Tree): Boolean = tree match {
+    case entity: Entity => entity.states.isEmpty
+    case _              => false
+  }
+
   override def enter(tree: Tree): Unit = tree match {
     case entity: Entity => {
       nStates = entity.states.length

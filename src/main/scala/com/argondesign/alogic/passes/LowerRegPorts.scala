@@ -26,6 +26,11 @@ import com.argondesign.alogic.typer.TypeAssigner
 
 final class LowerRegPorts(implicit cc: CompilerContext) extends TreeTransformer {
 
+  override def skip(tree: Tree): Boolean = tree match {
+    case entity: Entity => entity.variant == "network"
+    case _              => false
+  }
+
   override def enter(tree: Tree): Unit = tree match {
     case Decl(symbol, _) => {
       symbol.kind match {

@@ -27,72 +27,76 @@ abstract class TypeTransformer(implicit val cc: CompilerContext) extends TreeLik
   ///////////////////////////////////////////////////////////////////////////////
 
   protected final override def walk(tree: Type): Type = {
-    enter(tree)
-    tree match {
-      case TypeCombStmt   => transform(TypeCombStmt)
-      case TypeCtrlStmt   => transform(TypeCtrlStmt)
-      case TypeState      => transform(TypeState)
-      case node: TypeSInt => transform(node)
-      case node: TypeUInt => transform(node)
-      case node: TypeNum  => transform(node)
-      case node: TypeVector => {
-        val elementType = walk(node.elementType)
-        transform(TypeCopier(node)(elementType))
+    if (skip(tree)) {
+      tree
+    } else {
+      enter(tree)
+      tree match {
+        case TypeCombStmt   => transform(TypeCombStmt)
+        case TypeCtrlStmt   => transform(TypeCtrlStmt)
+        case TypeState      => transform(TypeState)
+        case node: TypeSInt => transform(node)
+        case node: TypeUInt => transform(node)
+        case node: TypeNum  => transform(node)
+        case node: TypeVector => {
+          val elementType = walk(node.elementType)
+          transform(TypeCopier(node)(elementType))
+        }
+        case node: TypeArray => {
+          val elementType = walk(node.elementType)
+          transform(TypeCopier(node)(elementType))
+        }
+        case node: TypeStack => {
+          val elementType = walk(node.elementType)
+          transform(TypeCopier(node)(elementType))
+        }
+        case node: TypeStruct => {
+          val fieldTypes = walk(node.fieldTypes)
+          transform(TypeCopier(node)(fieldTypes))
+        }
+        case TypeVoid        => transform(TypeVoid)
+        case node: TypeIdent => transform(node)
+        case node: TypeCombFunc => {
+          val argTypes = walk(node.argTypes)
+          val retType = walk(node.retType)
+          transform(TypeCopier(node)(argTypes, retType))
+        }
+        case node: TypeCtrlFunc => {
+          val argTypes = walk(node.argTypes)
+          val retType = walk(node.retType)
+          transform(TypeCopier(node)(argTypes, retType))
+        }
+        case node: TypeEntity   => transform(node)
+        case node: TypeInstance => transform(node)
+        case TypeStr            => transform(TypeStr)
+        case node: TypeIn => {
+          val kind = walk(node.kind)
+          transform(TypeCopier(node)(kind))
+        }
+        case node: TypeOut => {
+          val kind = walk(node.kind)
+          transform(TypeCopier(node)(kind))
+        }
+        case node: TypePipeline => {
+          val kind = walk(node.kind)
+          transform(TypeCopier(node)(kind))
+        }
+        case node: TypeParam => {
+          val kind = walk(node.kind)
+          transform(TypeCopier(node)(kind))
+        }
+        case node: TypeConst => {
+          val kind = walk(node.kind)
+          transform(TypeCopier(node)(kind))
+        }
+        case node: TypeType => {
+          val kind = walk(node.kind)
+          transform(TypeCopier(node)(kind))
+        }
+        case TypeMisc           => transform(TypeMisc)
+        case node: TypePolyFunc => transform(node)
+        case TypeError          => transform(TypeError)
       }
-      case node: TypeArray => {
-        val elementType = walk(node.elementType)
-        transform(TypeCopier(node)(elementType))
-      }
-      case node: TypeStack => {
-        val elementType = walk(node.elementType)
-        transform(TypeCopier(node)(elementType))
-      }
-      case node: TypeStruct => {
-        val fieldTypes = walk(node.fieldTypes)
-        transform(TypeCopier(node)(fieldTypes))
-      }
-      case TypeVoid        => transform(TypeVoid)
-      case node: TypeIdent => transform(node)
-      case node: TypeCombFunc => {
-        val argTypes = walk(node.argTypes)
-        val retType = walk(node.retType)
-        transform(TypeCopier(node)(argTypes, retType))
-      }
-      case node: TypeCtrlFunc => {
-        val argTypes = walk(node.argTypes)
-        val retType = walk(node.retType)
-        transform(TypeCopier(node)(argTypes, retType))
-      }
-      case node: TypeEntity   => transform(node)
-      case node: TypeInstance => transform(node)
-      case TypeStr            => transform(TypeStr)
-      case node: TypeIn => {
-        val kind = walk(node.kind)
-        transform(TypeCopier(node)(kind))
-      }
-      case node: TypeOut => {
-        val kind = walk(node.kind)
-        transform(TypeCopier(node)(kind))
-      }
-      case node: TypePipeline => {
-        val kind = walk(node.kind)
-        transform(TypeCopier(node)(kind))
-      }
-      case node: TypeParam => {
-        val kind = walk(node.kind)
-        transform(TypeCopier(node)(kind))
-      }
-      case node: TypeConst => {
-        val kind = walk(node.kind)
-        transform(TypeCopier(node)(kind))
-      }
-      case node: TypeType => {
-        val kind = walk(node.kind)
-        transform(TypeCopier(node)(kind))
-      }
-      case TypeMisc           => transform(TypeMisc)
-      case node: TypePolyFunc => transform(node)
-      case TypeError          => transform(TypeError)
     }
   }
 }

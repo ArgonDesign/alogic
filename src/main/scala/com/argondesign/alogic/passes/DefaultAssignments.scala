@@ -37,6 +37,11 @@ final class DefaultAssignments(implicit cc: CompilerContext)
 
   private val needsDefault = mutable.Set[TermSymbol]()
 
+  override def skip(tree: Tree): Boolean = tree match {
+    case entity: Entity => entity.states.isEmpty
+    case _              => false
+  }
+
   // Given an expression, return an iterable of symbols that would be assigned
   // should this expression be used on the left hand side of an assignment
   private def writtenSymbols(expr: Expr): Iterator[TermSymbol] = {

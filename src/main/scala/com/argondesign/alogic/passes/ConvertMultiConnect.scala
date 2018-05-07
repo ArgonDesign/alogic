@@ -22,6 +22,12 @@ import com.argondesign.alogic.core.CompilerContext
 
 final class ConvertMultiConnect(implicit cc: CompilerContext) extends TreeTransformer {
 
+  override def skip(tree: Tree): Boolean = tree match {
+    case _: Entity  => false
+    case _: Connect => false
+    case _          => true
+  }
+
   override def transform(tree: Tree): Tree = tree match {
 
     case Connect(lhs, rhss) if rhss.length > 1 => {

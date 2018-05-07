@@ -55,6 +55,18 @@ final class LiftEntities(implicit cc: CompilerContext)
   // to loose their storage and turn into wire ports, we collect these in a set
   private val stripStorageSymbols = mutable.Set[TermSymbol]()
 
+  private var entityCount = 0
+
+  override def skip(tree: Tree): Boolean = tree match {
+    // Skip root entities without any nested entities
+    case entity: Entity => {
+      entityCount == 0 && entity.entities.isEmpty
+    } followedBy {
+      entityCount += 1
+    }
+    case _ => false
+  }
+
   override def enter(tree: Tree): Unit = tree match {
     case entity: Entity => {
       //////////////////////////////////////////////////////////////////////////

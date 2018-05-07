@@ -27,6 +27,11 @@ import com.argondesign.alogic.util.unreachable
 
 final class LowerFlowControlC(implicit cc: CompilerContext) extends TreeTransformer {
 
+  override def skip(tree: Tree): Boolean = tree match {
+    case _: Entity => false
+    case _         => true
+  }
+
   override def transform(tree: Tree): Tree = tree match {
     //////////////////////////////////////////////////////////////////////////
     // Entity
@@ -60,7 +65,7 @@ final class LowerFlowControlC(implicit cc: CompilerContext) extends TreeTransfor
       }
     }
 
-    case _ => tree
+    case _ => unreachable
   }
 
   override def finalCheck(tree: Tree): Unit = {

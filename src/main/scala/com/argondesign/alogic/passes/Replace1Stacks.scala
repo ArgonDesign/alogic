@@ -29,6 +29,11 @@ final class Replace1Stacks(implicit cc: CompilerContext) extends TreeTransformer
   // Set of stack symbols to replace
   private[this] val stackSet = mutable.Set[TermSymbol]()
 
+  override def skip(tree: Tree): Boolean = tree match {
+    case entity: Entity => entity.declarations.isEmpty
+    case _              => false
+  }
+
   override def enter(tree: Tree): Unit = tree match {
     case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeStack] => {
       val TypeStack(kind, depth) = symbol.kind

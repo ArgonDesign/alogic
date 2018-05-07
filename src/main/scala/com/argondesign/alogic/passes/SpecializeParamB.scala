@@ -81,6 +81,11 @@ final class SpecializeParamB(implicit cc: CompilerContext) extends TreeTransform
     }
   }
 
+  override def skip(tree: Tree): Boolean = tree match {
+    case _: Entity => false
+    case _         => true
+  }
+
   override def transform(tree: Tree): Tree = tree match {
     case entity: Entity if entitySymbol.attr.paramBindings.isSet => {
       // Create the specialized entities and build the map from

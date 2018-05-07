@@ -88,215 +88,223 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
       case entity: Entity => entityStack.push(entity)
       case _              => ()
     }
-    // Call enter in pre order
-    enter(tree)
-    // Call transform in post order
-    tree match {
-      case node: Root => {
-        val typeDefinitions = walk(node.typeDefinitions)
-        val entity = walk(node.entity)
-        doTransform(TreeCopier(node)(typeDefinitions, entity))
+    if (skip(tree)) {
+      tree match {
+        case entity: Entity => entityStack.pop()
+        case _              => ()
       }
-      case node: Ident => doTransform(node)
-      case node: Sym   => doTransform(node)
-      case node: TypeDefinitionStruct => {
-        val ref = walk(node.ref)
-        doTransform(TreeCopier(node)(ref))
-      }
-      case node: TypeDefinitionTypedef => {
-        val ref = walk(node.ref)
-        doTransform(TreeCopier(node)(ref))
-      }
-      case node: Entity => {
-        val ref = walk(node.ref)
-        val declarations = walk(node.declarations)
-        val instances = walk(node.instances)
-        val connects = walk(node.connects)
-        val functions = walk(node.functions)
-        val states = walk(node.states)
-        val fenceStmts = walk(node.fenceStmts)
-        val entities = walk(node.entities)
-        doTransform(
-          TreeCopier(node)(
-            ref,
-            declarations,
-            instances,
-            connects,
-            functions,
-            states,
-            fenceStmts,
-            entities
-          ))
-      } followedBy {
-        entityStack.pop()
-      }
-      case node: DeclIdent => {
-        val ident = walk(node.ident)
-        val init = walk(node.init)
-        doTransform(TreeCopier(node)(ident, init))
-      }
-      case node: Decl => {
-        val init = walk(node.init)
-        doTransform(TreeCopier(node)(init))
-      }
-      case node: Instance => {
-        val ref = walk(node.ref)
-        val module = walk(node.module)
-        val paramExprs = walk(node.paramExprs)
-        doTransform(TreeCopier(node)(ref, module, paramExprs))
-      }
-      case node: Connect => {
-        val lhs = walk(node.lhs)
-        val rhs = walk(node.rhs)
-        doTransform(TreeCopier(node)(lhs, rhs))
-      }
-      case node: Function => {
-        val ref = walk(node.ref)
-        val body = walk(node.body)
-        doTransform(TreeCopier(node)(ref, body))
-      }
-      case node: State => {
-        val expr = walk(node.expr)
-        val body = walk(node.body)
-        doTransform(TreeCopier(node)(expr, body))
-      }
-      case node: StmtBlock => {
-        val body = walk(node.body)
-        doTransform(TreeCopier(node)(body))
-      }
-      case node: StmtIf => {
-        val cond = walk(node.cond)
-        val thenStmt = walk(node.thenStmt)
-        val elseStmt = walk(node.elseStmt)
-        doTransform(TreeCopier(node)(cond, thenStmt, elseStmt))
-      }
-      case node: StmtCase => {
-        val expr = walk(node.expr)
-        val cases = walk(node.cases)
-        val default = walk(node.default)
-        doTransform(TreeCopier(node)(expr, cases, default))
-      }
-      case node: CaseClause => {
-        val cond = walk(node.cond)
-        val body = walk(node.body)
-        doTransform(TreeCopier(node)(cond, body))
-      }
-      case node: StmtLoop => {
-        val body = walk(node.body)
-        doTransform(TreeCopier(node)(body))
-      }
-      case node: StmtWhile => {
-        val cond = walk(node.cond)
-        val body = walk(node.body)
-        doTransform(TreeCopier(node)(cond, body))
-      }
-      case node: StmtFor => {
-        val inits = walk(node.inits)
-        val cond = walk(node.cond)
-        val incr = walk(node.step)
-        val body = walk(node.body)
-        doTransform(TreeCopier(node)(inits, cond, incr, body))
-      }
-      case node: StmtDo => {
-        val cond = walk(node.cond)
-        val body = walk(node.body)
-        doTransform(TreeCopier(node)(cond, body))
-      }
-      case node: StmtLet => {
-        val inits = walk(node.inits)
-        val body = walk(node.body)
-        doTransform(TreeCopier(node)(inits, body))
-      }
-      case node: StmtFence => doTransform(node)
-      case node: StmtBreak => doTransform(node)
-      case node: StmtGoto => {
-        val expr = walk(node.expr)
-        doTransform(TreeCopier(node)(expr))
-      }
-      case node: StmtReturn => doTransform(node)
-      case node: StmtAssign => {
-        val lhs = walk(node.lhs)
-        val rhs = walk(node.rhs)
-        doTransform(TreeCopier(node)(lhs, rhs))
-      }
-      case node: StmtUpdate => {
-        val lhs = walk(node.lhs)
-        val rhs = walk(node.rhs)
-        doTransform(TreeCopier(node)(lhs, rhs))
-      }
-      case node: StmtPost => {
-        val expr = walk(node.expr)
-        doTransform(TreeCopier(node)(expr))
-      }
-      case node: StmtExpr => {
-        val expr = walk(node.expr)
-        doTransform(TreeCopier(node)(expr))
-      }
-      case node: StmtDecl => {
-        val decl = walk(node.decl)
-        doTransform(TreeCopier(node)(decl))
-      }
-      case node: StmtRead          => doTransform(node)
-      case node: StmtWrite         => doTransform(node)
-      case node: StmtDollarComment => doTransform(node)
-      case node: StmtStall         => doTransform(node)
-      case node: StmtError         => doTransform(node)
-      case node: ExprCall => {
-        val expr = walk(node.expr)
-        val args = walk(node.args)
-        doTransform(TreeCopier(node)(expr, args))
-      }
-      case node: ExprUnary => {
-        val expr = walk(node.expr)
-        doTransform(TreeCopier(node)(expr))
-      }
-      case node: ExprBinary => {
-        val lhs = walk(node.lhs)
-        val rhs = walk(node.rhs)
-        doTransform(TreeCopier(node)(lhs, rhs))
-      }
-      case node: ExprTernary => {
-        val cond = walk(node.cond)
-        val thenExpr = walk(node.thenExpr)
-        val elseExpr = walk(node.elseExpr)
-        doTransform(TreeCopier(node)(cond, thenExpr, elseExpr))
-      }
-      case node: ExprRep => {
-        val count = walk(node.count)
-        val expr = walk(node.expr)
-        doTransform(TreeCopier(node)(count, expr))
-      }
-      case node: ExprCat => {
-        val parts = walk(node.parts)
-        doTransform(TreeCopier(node)(parts))
-      }
-      case node: ExprIndex => {
-        val expr = walk(node.expr)
-        val index = walk(node.index)
-        doTransform(TreeCopier(node)(expr, index))
-      }
-      case node: ExprSlice => {
-        val expr = walk(node.expr)
-        val lidx = walk(node.lidx)
-        val ridx = walk(node.ridx)
-        doTransform(TreeCopier(node)(expr, lidx, ridx))
-      }
-      case node: ExprSelect => {
-        val expr = walk(node.expr)
-        doTransform(TreeCopier(node)(expr))
-      }
-      case node: ExprInt => doTransform(node)
-      case node: ExprNum => doTransform(node)
-      case node: ExprStr => doTransform(node)
-      case node: ExprRef => {
-        val ref = walk(node.ref)
-        doTransform(TreeCopier(node)(ref))
-      }
-      case node: ExprType  => doTransform(node)
-      case node: ExprError => doTransform(node)
-      case node: Thicket => {
-        val trees = walk(node.trees)
-        doTransform(TreeCopier(node)(trees))
+      tree
+    } else {
+      // Call enter in pre order
+      enter(tree)
+      // Call transform in post order
+      tree match {
+        case node: Root => {
+          val typeDefinitions = walk(node.typeDefinitions)
+          val entity = walk(node.entity)
+          doTransform(TreeCopier(node)(typeDefinitions, entity))
+        }
+        case node: Ident => doTransform(node)
+        case node: Sym   => doTransform(node)
+        case node: TypeDefinitionStruct => {
+          val ref = walk(node.ref)
+          doTransform(TreeCopier(node)(ref))
+        }
+        case node: TypeDefinitionTypedef => {
+          val ref = walk(node.ref)
+          doTransform(TreeCopier(node)(ref))
+        }
+        case node: Entity => {
+          val ref = walk(node.ref)
+          val declarations = walk(node.declarations)
+          val instances = walk(node.instances)
+          val connects = walk(node.connects)
+          val functions = walk(node.functions)
+          val states = walk(node.states)
+          val fenceStmts = walk(node.fenceStmts)
+          val entities = walk(node.entities)
+          doTransform(
+            TreeCopier(node)(
+              ref,
+              declarations,
+              instances,
+              connects,
+              functions,
+              states,
+              fenceStmts,
+              entities
+            ))
+        } followedBy {
+          entityStack.pop()
+        }
+        case node: DeclIdent => {
+          val ident = walk(node.ident)
+          val init = walk(node.init)
+          doTransform(TreeCopier(node)(ident, init))
+        }
+        case node: Decl => {
+          val init = walk(node.init)
+          doTransform(TreeCopier(node)(init))
+        }
+        case node: Instance => {
+          val ref = walk(node.ref)
+          val module = walk(node.module)
+          val paramExprs = walk(node.paramExprs)
+          doTransform(TreeCopier(node)(ref, module, paramExprs))
+        }
+        case node: Connect => {
+          val lhs = walk(node.lhs)
+          val rhs = walk(node.rhs)
+          doTransform(TreeCopier(node)(lhs, rhs))
+        }
+        case node: Function => {
+          val ref = walk(node.ref)
+          val body = walk(node.body)
+          doTransform(TreeCopier(node)(ref, body))
+        }
+        case node: State => {
+          val expr = walk(node.expr)
+          val body = walk(node.body)
+          doTransform(TreeCopier(node)(expr, body))
+        }
+        case node: StmtBlock => {
+          val body = walk(node.body)
+          doTransform(TreeCopier(node)(body))
+        }
+        case node: StmtIf => {
+          val cond = walk(node.cond)
+          val thenStmt = walk(node.thenStmt)
+          val elseStmt = walk(node.elseStmt)
+          doTransform(TreeCopier(node)(cond, thenStmt, elseStmt))
+        }
+        case node: StmtCase => {
+          val expr = walk(node.expr)
+          val cases = walk(node.cases)
+          val default = walk(node.default)
+          doTransform(TreeCopier(node)(expr, cases, default))
+        }
+        case node: CaseClause => {
+          val cond = walk(node.cond)
+          val body = walk(node.body)
+          doTransform(TreeCopier(node)(cond, body))
+        }
+        case node: StmtLoop => {
+          val body = walk(node.body)
+          doTransform(TreeCopier(node)(body))
+        }
+        case node: StmtWhile => {
+          val cond = walk(node.cond)
+          val body = walk(node.body)
+          doTransform(TreeCopier(node)(cond, body))
+        }
+        case node: StmtFor => {
+          val inits = walk(node.inits)
+          val cond = walk(node.cond)
+          val incr = walk(node.step)
+          val body = walk(node.body)
+          doTransform(TreeCopier(node)(inits, cond, incr, body))
+        }
+        case node: StmtDo => {
+          val cond = walk(node.cond)
+          val body = walk(node.body)
+          doTransform(TreeCopier(node)(cond, body))
+        }
+        case node: StmtLet => {
+          val inits = walk(node.inits)
+          val body = walk(node.body)
+          doTransform(TreeCopier(node)(inits, body))
+        }
+        case node: StmtFence => doTransform(node)
+        case node: StmtBreak => doTransform(node)
+        case node: StmtGoto => {
+          val expr = walk(node.expr)
+          doTransform(TreeCopier(node)(expr))
+        }
+        case node: StmtReturn => doTransform(node)
+        case node: StmtAssign => {
+          val lhs = walk(node.lhs)
+          val rhs = walk(node.rhs)
+          doTransform(TreeCopier(node)(lhs, rhs))
+        }
+        case node: StmtUpdate => {
+          val lhs = walk(node.lhs)
+          val rhs = walk(node.rhs)
+          doTransform(TreeCopier(node)(lhs, rhs))
+        }
+        case node: StmtPost => {
+          val expr = walk(node.expr)
+          doTransform(TreeCopier(node)(expr))
+        }
+        case node: StmtExpr => {
+          val expr = walk(node.expr)
+          doTransform(TreeCopier(node)(expr))
+        }
+        case node: StmtDecl => {
+          val decl = walk(node.decl)
+          doTransform(TreeCopier(node)(decl))
+        }
+        case node: StmtRead          => doTransform(node)
+        case node: StmtWrite         => doTransform(node)
+        case node: StmtDollarComment => doTransform(node)
+        case node: StmtStall         => doTransform(node)
+        case node: StmtError         => doTransform(node)
+        case node: ExprCall => {
+          val expr = walk(node.expr)
+          val args = walk(node.args)
+          doTransform(TreeCopier(node)(expr, args))
+        }
+        case node: ExprUnary => {
+          val expr = walk(node.expr)
+          doTransform(TreeCopier(node)(expr))
+        }
+        case node: ExprBinary => {
+          val lhs = walk(node.lhs)
+          val rhs = walk(node.rhs)
+          doTransform(TreeCopier(node)(lhs, rhs))
+        }
+        case node: ExprTernary => {
+          val cond = walk(node.cond)
+          val thenExpr = walk(node.thenExpr)
+          val elseExpr = walk(node.elseExpr)
+          doTransform(TreeCopier(node)(cond, thenExpr, elseExpr))
+        }
+        case node: ExprRep => {
+          val count = walk(node.count)
+          val expr = walk(node.expr)
+          doTransform(TreeCopier(node)(count, expr))
+        }
+        case node: ExprCat => {
+          val parts = walk(node.parts)
+          doTransform(TreeCopier(node)(parts))
+        }
+        case node: ExprIndex => {
+          val expr = walk(node.expr)
+          val index = walk(node.index)
+          doTransform(TreeCopier(node)(expr, index))
+        }
+        case node: ExprSlice => {
+          val expr = walk(node.expr)
+          val lidx = walk(node.lidx)
+          val ridx = walk(node.ridx)
+          doTransform(TreeCopier(node)(expr, lidx, ridx))
+        }
+        case node: ExprSelect => {
+          val expr = walk(node.expr)
+          doTransform(TreeCopier(node)(expr))
+        }
+        case node: ExprInt => doTransform(node)
+        case node: ExprNum => doTransform(node)
+        case node: ExprStr => doTransform(node)
+        case node: ExprRef => {
+          val ref = walk(node.ref)
+          doTransform(TreeCopier(node)(ref))
+        }
+        case node: ExprType  => doTransform(node)
+        case node: ExprError => doTransform(node)
+        case node: Thicket => {
+          val trees = walk(node.trees)
+          doTransform(TreeCopier(node)(trees))
+        }
       }
     }
   }
@@ -306,6 +314,8 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
   //////////////////////////////////////////////////////////////////////////////
 
   override def defaultCheck(orig: Tree, tree: Tree): Unit = {
+    assert(entityStack.isEmpty)
+
     // Ensure locations are present
     tree visitAll {
       case node: Tree if !node.hasLoc => {
