@@ -246,8 +246,11 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
         case node: StmtRead          => doTransform(node)
         case node: StmtWrite         => doTransform(node)
         case node: StmtDollarComment => doTransform(node)
-        case node: StmtStall         => doTransform(node)
-        case node: StmtError         => doTransform(node)
+        case node: StmtStall => {
+          val cond = walk(node.cond)
+          doTransform(TreeCopier(node)(cond))
+        }
+        case node: StmtError => doTransform(node)
         case node: ExprCall => {
           val expr = walk(node.expr)
           val args = walk(node.args)

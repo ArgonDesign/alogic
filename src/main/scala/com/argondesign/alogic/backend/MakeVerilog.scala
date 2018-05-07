@@ -316,7 +316,11 @@ final class MakeVerilog(
       case stmts: StmtError => body.emit(indent)(s"/* Error statement from ${stmt.loc.prefix} */")
 
       // Stall statement
-      case _: StmtStall => body.emit(indent)("go = 1'b0;")
+      case StmtStall(cond) => {
+        body.emit(indent)(s"if (!${vexpr(cond)}) begin")
+        body.emit(indent + 1)("go = 1'b0;")
+        body.emit(indent)(s"end")
+      }
 
       // Fence statement
       case _: StmtFence => ()

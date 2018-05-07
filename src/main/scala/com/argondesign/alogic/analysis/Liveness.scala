@@ -224,8 +224,13 @@ object Liveness {
             (live, dead)
           }
 
+          case StmtStall(cond) => {
+            val born = usedRv(cond) diff cDead
+            val live = cLive union born
+            (live, cDead)
+          }
+
           case StmtBlock(body) => analyse(cLive, cDead, body)
-          case _: StmtStall    => (cLive, cDead)
           case _: StmtFence    => (cLive, cDead)
           case _               => unreachable
         }

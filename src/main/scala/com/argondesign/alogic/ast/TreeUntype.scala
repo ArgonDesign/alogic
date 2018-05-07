@@ -226,7 +226,8 @@ trait TreeUntype {
 
   def untype(node: StmtDollarComment): StmtDollarComment = node.copy() withLoc node.loc
 
-  def untype(node: StmtStall): StmtStall = StmtStall() withLoc node.loc
+  def untype(node: StmtStall): StmtStall =
+    node.copy(cond = untype(node.cond)) withLoc node.loc
 
   def untype(node: StmtError): StmtError = StmtError() withLoc node.loc
 

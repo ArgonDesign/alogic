@@ -306,6 +306,14 @@ object TreeCopier {
     }
   }
 
+  final def apply(tree: StmtStall)(cond: Tree): StmtStall = {
+    if (cond eq tree.cond) {
+      tree
+    } else {
+      StmtStall(cond.asInstanceOf[Expr]) withLoc tree.loc
+    }
+  }
+
   final def apply(tree: ExprCall)(expr: Tree, args: List[Tree]): ExprCall = {
     if ((expr eq tree.expr) && (args eq tree.args)) {
       tree

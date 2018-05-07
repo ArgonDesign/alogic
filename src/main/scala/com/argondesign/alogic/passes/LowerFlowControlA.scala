@@ -274,7 +274,6 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
     case _ =>
   }
 
-  private[this] def stall(expr: Expr) = StmtIf(expr, StmtStall(), None)
   private[this] def assignTrue(expr: Expr) = StmtAssign(expr, ExprInt(false, 1, 1))
 
   override def transform(tree: Tree): Tree = {
@@ -302,7 +301,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
             lazy val iRef = ExprRef(Sym(iSymbol))
             lazy val pAssign = StmtAssign(iRef select "ip", args.head)
             lazy val vAssign = assignTrue(iRef select s"ip${sep}valid")
-            lazy val rStall = stall(~(iRef select s"ip${sep}ready"))
+            lazy val rStall = StmtStall(iRef select s"ip${sep}ready")
             symbol.attr.fcv.get.map {
               case (ErrorSymbol, _) => vAssign
               case _                => StmtBlock(List(pAssign, vAssign))
@@ -324,7 +323,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
         } orElse symbol.attr.fca.get.map {
           case (pSymbol, vSymbol, aSymbol) =>
             val vAssign = assignTrue(ExprRef(Sym(vSymbol)))
-            val aStall = stall(!ExprRef(Sym(aSymbol)))
+            val aStall = StmtStall(ExprRef(Sym(aSymbol)))
             if (pSymbol != ErrorSymbol) {
               val pAssign = StmtAssign(ExprRef(Sym(pSymbol)), args.head)
               StmtBlock(List(pAssign, vAssign, aStall))
@@ -338,11 +337,9 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
 
       case StmtExpr(ExprCall(ExprSelect(ref @ ExprRef(Sym(symbol: TermSymbol)), "wait"), args)) => {
         symbol.attr.fcv.get.map {
-          case (_, vSymbol) =>
-            stall(!ExprRef(Sym(vSymbol)))
+          case (_, vSymbol) => StmtStall(ExprRef(Sym(vSymbol)))
         } orElse symbol.attr.fcr.get.map {
-          case (_, vSymbol, _) =>
-            stall(!ExprRef(Sym(vSymbol)))
+          case (_, vSymbol, _) => StmtStall(ExprRef(Sym(vSymbol)))
         } getOrElse {
           tree
         }
@@ -350,12 +347,9 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
 
       case StmtExpr(ExprCall(ExprSelect(ref @ ExprRef(Sym(symbol: TermSymbol)), "flush"), args)) => {
         symbol.attr.fcv.get.map {
-          case (_, vSymbol) =>
-            stall(ExprRef(Sym(vSymbol)))
+          case (_, vSymbol) => StmtStall(!ExprRef(Sym(vSymbol)))
         } orElse symbol.attr.oStorage.get.map {
-          case (_, iSymbol) =>
-            val iRef = ExprRef(Sym(iSymbol))
-            stall(~(iRef select "empty"))
+          case (_, iSymbol) => StmtStall(ExprRef(Sym(iSymbol)) select "empty")
         } getOrElse {
           tree
         }
@@ -370,16 +364,16 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
           ref
         } orElse symbol.attr.fcv.get.map {
           case (pSymbol, vSymbol) =>
-            extraStmts.top append stall(!ExprRef(Sym(vSymbol)))
+            extraStmts.top append StmtStall(ExprRef(Sym(vSymbol)))
             ExprRef(Sym(pSymbol))
         } orElse symbol.attr.fcr.get.map {
           case (pSymbol, vSymbol, rSymbol) =>
-            extraStmts.top append stall(!ExprRef(Sym(vSymbol)))
+            extraStmts.top append StmtStall(ExprRef(Sym(vSymbol)))
             extraStmts.top append assignTrue(ExprRef(Sym(rSymbol)))
             ExprRef(Sym(pSymbol))
         } orElse symbol.attr.fca.get.map {
           case (pSymbol, vSymbol, aSymbol) =>
-            extraStmts.top append stall(!ExprRef(Sym(vSymbol)))
+            extraStmts.top append StmtStall(ExprRef(Sym(vSymbol)))
             extraStmts.top append assignTrue(ExprRef(Sym(aSymbol)))
             ExprRef(Sym(pSymbol))
         } getOrElse {
