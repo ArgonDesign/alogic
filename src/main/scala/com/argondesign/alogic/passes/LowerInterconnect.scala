@@ -236,6 +236,21 @@ final class LowerInterconnect(implicit cc: CompilerContext)
           Decl(symbol, None) regularize symbol.loc
         }
 
+        // If we have lowered a signal with a dontCareUnless attribute, inside
+        // an entity with a state system, transfer the attribute. At the
+        // moment, we don't need this in entities without a state system, if we
+        // do, we can do it by building a complete map based on the connections
+        // we ended up with.
+        if (entity.states.nonEmpty) {
+          for {
+            ((iSymbol, sel), symbol) <- newSymbols
+            pSymbol = iSymbol.kind.asInstanceOf[TypeInstance].portSymbol(sel).get
+            gSymbol <- pSymbol.attr.dontCareUnless.get
+          } {
+            symbol.attr.dontCareUnless set newSymbols((iSymbol, gSymbol.name))
+          }
+        }
+
         TypeAssigner {
           entity.copy(
             declarations = newDecls.toList ::: entity.declarations,

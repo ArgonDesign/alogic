@@ -30,6 +30,10 @@ final class Regularize(
     implicit cc: CompilerContext
 ) extends TreeTransformer {
 
+  // TODO: This always walks the whole tree, which is very inefficient.
+  // Rework such that it does not descend nodes which already have loc/tpe
+  // This needs fixing the passes which are sloppy in assigning loc/tpe
+
   override val typed: Boolean = false
 
   private[this] object TypeRegularize extends TreeInTypeTransformer(this)

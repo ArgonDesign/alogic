@@ -288,10 +288,14 @@ object SyncSliceFactory {
     lazy val ipSymbol = cc.newTermSymbol("ip", loc, TypeIn(kind, fcn))
     val ipvSymbol = cc.newTermSymbol(s"ip${sep}valid", loc, TypeIn(bool, fcn))
     val iprSymbol = cc.newTermSymbol(s"ip${sep}ready", loc, TypeOut(bool, fcn, stw))
+    iprSymbol.attr.dontCareUnless set ipvSymbol
+    ipvSymbol.attr.dontCareUnless set iprSymbol
 
     lazy val opSymbol = cc.newTermSymbol("op", loc, TypeOut(kind, fcn, stw))
     val opvSymbol = cc.newTermSymbol(s"op${sep}valid", loc, TypeOut(bool, fcn, stw))
     val oprSymbol = cc.newTermSymbol(s"op${sep}ready", loc, TypeIn(bool, fcn))
+    oprSymbol.attr.dontCareUnless set opvSymbol
+    opvSymbol.attr.dontCareUnless set oprSymbol
 
     val eSymbol = cc.newTermSymbol("empty", loc, TypeOut(bool, fcn, stw))
     val fSymbol = cc.newTermSymbol("full", loc, TypeOut(bool, fcn, stw))
@@ -373,10 +377,14 @@ object SyncSliceFactory {
     lazy val ipSymbol = cc.newTermSymbol(ipName, loc, TypeIn(kind, fcn))
     val ipvSymbol = cc.newTermSymbol(ipvName, loc, TypeIn(bool, fcn))
     val iprSymbol = cc.newTermSymbol(iprName, loc, TypeOut(bool, fcn, stw))
+    iprSymbol.attr.dontCareUnless set ipvSymbol
+    ipvSymbol.attr.dontCareUnless set iprSymbol
 
     lazy val opSymbol = cc.newTermSymbol(opName, loc, TypeOut(kind, fcn, stw))
     val opvSymbol = cc.newTermSymbol(opvName, loc, TypeOut(bool, fcn, stw))
     val oprSymbol = cc.newTermSymbol(oprName, loc, TypeIn(bool, fcn))
+    oprSymbol.attr.dontCareUnless set opvSymbol
+    opvSymbol.attr.dontCareUnless set oprSymbol
 
     val eSymbol = cc.newTermSymbol("empty", loc, TypeOut(bool, fcn, stw))
     val fSymbol = cc.newTermSymbol("full", loc, TypeOut(bool, fcn, stw))

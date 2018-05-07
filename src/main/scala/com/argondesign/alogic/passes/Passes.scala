@@ -69,6 +69,7 @@ object Passes {
       LowerFlops,
       LowerArrays,
       LowerInterconnect,
+      OptimizeClearOnStall,
       // TODO: LowerGo
       DefaultAssignments,
       RemoveUnused,

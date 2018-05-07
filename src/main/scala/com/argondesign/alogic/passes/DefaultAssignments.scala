@@ -89,6 +89,7 @@ final class DefaultAssignments(implicit cc: CompilerContext)
         // this, we build the case statement representing the state dispatch
         // (together with the fence statements), and do liveness analysis on it
         val deadSymbols = {
+          // TODO factor out this construction
           val stateSystem = if (entity.states.lengthCompare(1) == 0) {
             entity.fenceStmts ::: entity.states.head.body
           } else {

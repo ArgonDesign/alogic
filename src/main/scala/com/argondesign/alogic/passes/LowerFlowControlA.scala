@@ -167,6 +167,8 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       symbol.attr.expandedPort set true
       rSymbol.attr.default set (ExprInt(false, 1, 0) withLoc loc)
       rSymbol.attr.clearOnStall set true
+      rSymbol.attr.dontCareUnless set vSymbol
+      vSymbol.attr.dontCareUnless set rSymbol
     }
 
     case Decl(symbol, _) if isOut(symbol, FlowControlTypeReady) => {
@@ -187,6 +189,8 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       // Set attributes
       symbol.attr.fcr set newSymbols
       symbol.attr.expandedPort set true
+      rSymbol.attr.dontCareUnless set vSymbol
+      vSymbol.attr.dontCareUnless set rSymbol
       // If output slices are required, construct them
       if (st != StorageTypeWire) {
         val StorageTypeSlices(slices) = st
@@ -250,6 +254,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       symbol.attr.expandedPort set true
       vSymbol.attr.default set (ExprInt(false, 1, 0) withLoc loc)
       vSymbol.attr.clearOnStall set true
+      vSymbol.attr.dontCareUnless set aSymbol
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -368,13 +373,13 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
             ExprRef(Sym(pSymbol))
         } orElse symbol.attr.fcr.get.map {
           case (pSymbol, vSymbol, rSymbol) =>
-            extraStmts.top append StmtStall(ExprRef(Sym(vSymbol)))
             extraStmts.top append assignTrue(ExprRef(Sym(rSymbol)))
+            extraStmts.top append StmtStall(ExprRef(Sym(vSymbol)))
             ExprRef(Sym(pSymbol))
         } orElse symbol.attr.fca.get.map {
           case (pSymbol, vSymbol, aSymbol) =>
-            extraStmts.top append StmtStall(ExprRef(Sym(vSymbol)))
             extraStmts.top append assignTrue(ExprRef(Sym(aSymbol)))
+            extraStmts.top append StmtStall(ExprRef(Sym(vSymbol)))
             ExprRef(Sym(pSymbol))
         } getOrElse {
           tree

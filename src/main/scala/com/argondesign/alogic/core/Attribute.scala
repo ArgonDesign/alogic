@@ -24,6 +24,8 @@ class Attribute[T] {
 
   def getOrElse(default: => T): T = store getOrElse default
 
+  def contains(v: T): Boolean = store contains v
+
   def set(v: T): Unit = store = Some(v)
 
   def append[E](v: E)(implicit a: Attribute.Appendable[E, T]): Unit = store match {
