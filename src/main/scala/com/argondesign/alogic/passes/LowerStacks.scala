@@ -42,14 +42,14 @@ final class LowerStacks(implicit cc: CompilerContext) extends TreeTransformer wi
   override def enter(tree: Tree): Unit = tree match {
     case entity: Entity => {
       val Sym(symbol: TypeSymbol) = entity.ref
-      entityName = symbol.denot.name.str
+      entityName = symbol.name
     }
 
-    case Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypeStack] => {
+    case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeStack] => {
       // Construct the stack entity
-      val TypeStack(kind, depth) = symbol.denot.kind
+      val TypeStack(kind, depth) = symbol.kind
       val loc = tree.loc
-      val pName = symbol.denot.name.str
+      val pName = symbol.name
       // TODO: mark inline
       val eName = entityName + cc.sep + "stack" + cc.sep + pName
       val stackEntity: Entity = StackFactory(eName, loc, kind, depth)
@@ -161,7 +161,7 @@ final class LowerStacks(implicit cc: CompilerContext) extends TreeTransformer wi
       case entity: Entity if stackMap.nonEmpty => {
         // Drop stack declarations
         val declarations = entity.declarations filterNot {
-          case Decl(symbol, _) => symbol.denot.kind.isInstanceOf[TypeStack]
+          case Decl(symbol, _) => symbol.kind.isInstanceOf[TypeStack]
           case _               => false
         }
 

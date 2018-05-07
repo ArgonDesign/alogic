@@ -161,21 +161,21 @@ object Types {
 
     private[this] lazy val portMap = {
       val pairs = for (symbol <- portSymbols) yield {
-        symbol.denot.name.str -> symbol
+        symbol.name -> symbol
       }
       pairs.toMap
     }
 
     private[this] lazy val paramMap = {
       val pairs = for (symbol <- paramSymbols) yield {
-        symbol.denot.name.str -> symbol
+        symbol.name -> symbol
       }
       pairs.toMap
     }
 
-    def apply(name: String): Option[Type] = portMap.get(name) map { _.denot.kind }
+    def apply(name: String): Option[Type] = portMap.get(name) map { _.kind }
 
-    def param(name: String): Option[Type] = paramMap.get(name) map { _.denot.kind }
+    def param(name: String): Option[Type] = paramMap.get(name) map { _.kind }
 
     def portSymbol(name: String): Option[TermSymbol] = portMap.get(name)
 
@@ -184,7 +184,7 @@ object Types {
 
   trait TypeInstanceImpl extends CompoundType { this: TypeInstance =>
 
-    private[this] def entityType = entitySymbol.denot.kind.asInstanceOf[TypeEntity]
+    private[this] def entityType = entitySymbol.kind.asInstanceOf[TypeEntity]
 
     def portSymbols = entityType.portSymbols
 

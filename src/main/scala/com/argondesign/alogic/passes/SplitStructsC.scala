@@ -42,15 +42,15 @@ final class SplitStructsC(implicit cc: CompilerContext) extends TreeTransformer 
       } else {
         // Update type of entity to drop new ports.
         val portSymbols = declarations collect {
-          case Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypeIn]  => symbol
-          case Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypeOut] => symbol
+          case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeIn]  => symbol
+          case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeOut] => symbol
         }
 
-        val newKind = entitySymbol.denot.kind match {
+        val newKind = entitySymbol.kind match {
           case kind: TypeEntity => kind.copy(portSymbols = portSymbols)
           case _                => unreachable
         }
-        entitySymbol withDenot entitySymbol.denot.copy(kind = newKind)
+        entitySymbol.kind = newKind
 
         TypeAssigner {
           entity.copy(declarations = declarations) withVariant entity.variant withLoc tree.loc
@@ -63,7 +63,7 @@ final class SplitStructsC(implicit cc: CompilerContext) extends TreeTransformer 
 
   override def finalCheck(tree: Tree): Unit = {
     tree visit {
-      case node @ Decl(symbol, _) if symbol.denot.kind.underlying.isInstanceOf[TypeStruct] => {
+      case node @ Decl(symbol, _) if symbol.kind.underlying.isInstanceOf[TypeStruct] => {
         cc.ice(node, "Struct declaration remains")
       }
       case node: Tree if node.tpe.underlying.isInstanceOf[TypeStruct] => {

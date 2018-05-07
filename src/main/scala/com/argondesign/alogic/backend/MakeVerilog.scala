@@ -51,7 +51,7 @@ final class MakeVerilog(
       }
     }
 
-    decl(symbol.name, symbol.denot.kind.underlying)
+    decl(symbol.name, symbol.kind.underlying)
   }
 
   // Render expression to Verilog
@@ -104,7 +104,7 @@ final class MakeVerilog(
           // Emit const declarations
           body.emitBlock(1, "Local parameter declarations") {
             decls collect {
-              case Decl(symbol, Some(init)) if symbol.denot.kind.isInstanceOf[TypeConst] => {
+              case Decl(symbol, Some(init)) if symbol.kind.isInstanceOf[TypeConst] => {
                 (symbol, init)
               }
             } foreach {
@@ -203,7 +203,7 @@ final class MakeVerilog(
                 val init = initOpt match {
                   case Some(expr) => expr
                   case None => {
-                    val kind = qSymbol.denot.kind
+                    val kind = qSymbol.kind
                     ExprInt(kind.isSigned, kind.width.value.get.toInt, 0)
                   }
                 }
@@ -393,8 +393,8 @@ final class MakeVerilog(
           body.emit(2)("// Clears")
           body.emit(2)("if (!go) begin")
           for (symbol <- cSymbols) {
-            val width = symbol.denot.kind.width.value.get
-            val s = if (symbol.denot.kind.isSigned) "s" else ""
+            val width = symbol.kind.width.value.get
+            val s = if (symbol.kind.isSigned) "s" else ""
             body.emit(3)(s"${symbol.name} = ${width}'${s}b0;")
           }
           body.emit(2)("end")
@@ -409,7 +409,7 @@ final class MakeVerilog(
     if (instances.nonEmpty) {
       body.emitSection(1, "Instances") {
         for (Instance(Sym(iSymbol: TermSymbol), Sym(mSymbol: TypeSymbol), Nil, Nil) <- instances) {
-          val TypeInstance(eSymbol) = iSymbol.denot.kind
+          val TypeInstance(eSymbol) = iSymbol.kind
           body.ensureBlankLine()
           body.emit(1)(s"${eSymbol.name} ${iSymbol.name} (")
 
@@ -421,10 +421,10 @@ final class MakeVerilog(
               items append { (true, ".rst_n", s"         (rst_n)") }
             }
 
-            val TypeEntity(_, pSymbols, _) = eSymbol.denot.kind
+            val TypeEntity(_, pSymbols, _) = eSymbol.kind
 
             for ((pSymbol, i) <- pSymbols.zipWithIndex) {
-              val dir = pSymbol.denot.kind match {
+              val dir = pSymbol.kind match {
                 case _: TypeIn => "<-"
                 case _         => "->"
               }
@@ -499,7 +499,7 @@ final class MakeVerilog(
     }
 
     for (Decl(symbol, _) <- decls) {
-      symbol.denot.kind match {
+      symbol.kind match {
         case _: TypeIn => items append s"input  wire ${vdecl(symbol)}"
         case _: TypeOut => {
           val word = if (isVerbatim || (netSymbols contains symbol)) "wire" else "reg "

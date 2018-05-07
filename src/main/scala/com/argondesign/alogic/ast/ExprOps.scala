@@ -150,7 +150,7 @@ trait ExprOps { this: Expr =>
     case _: ExprStr  => true
     case _: ExprType => true
     case ExprRef(Sym(symbol)) =>
-      symbol.denot.kind match {
+      symbol.kind match {
         case _: TypeConst => true
         case _            => false
       }

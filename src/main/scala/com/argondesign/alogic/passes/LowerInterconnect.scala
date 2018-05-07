@@ -77,7 +77,7 @@ final class LowerInterconnect(implicit cc: CompilerContext)
       lazy val newSymbol = {
         // Allocate interconnect symbol
         val name = iSymbol.name + cc.sep + sel
-        val pKind = iSymbol.denot.kind.asInstanceOf[TypeInstance](sel).get
+        val pKind = iSymbol.kind.asInstanceOf[TypeInstance](sel).get
         val nKind = pKind.underlying rewrite TypeFoldExpr
         val symbol = cc.newTermSymbol(name, iSymbol.loc, nKind)
         symbol.attr.interconnect.set((iSymbol, sel))
@@ -116,8 +116,8 @@ final class LowerInterconnect(implicit cc: CompilerContext)
     // a.b -> c.d, allocate on left hand side only
     case Connect(ExprSelect(ExprRef(Sym(lSymbol: TermSymbol)), _),
                  List(ExprSelect(ExprRef(Sym(rSymbol: TermSymbol)), _)))
-        if lSymbol.denot.kind.isInstanceOf[TypeInstance] &&
-          rSymbol.denot.kind.isInstanceOf[TypeInstance] => {
+        if lSymbol.kind.isInstanceOf[TypeInstance] &&
+          rSymbol.kind.isInstanceOf[TypeInstance] => {
       assert(enableStack.isEmpty)
       enableStack push false push true
       inConnect = true
@@ -125,7 +125,7 @@ final class LowerInterconnect(implicit cc: CompilerContext)
 
     // a.b -> SOMETHING, allocate on right hand side only
     case Connect(ExprSelect(ExprRef(Sym(lSymbol: TermSymbol)), _), _)
-        if lSymbol.denot.kind.isInstanceOf[TypeInstance] => {
+        if lSymbol.kind.isInstanceOf[TypeInstance] => {
       assert(enableStack.isEmpty)
       enableStack push true push false
       inConnect = true
@@ -133,7 +133,7 @@ final class LowerInterconnect(implicit cc: CompilerContext)
 
     // SOMETHING -> a.b, allocate on left hand side only
     case Connect(_, List(ExprSelect(ExprRef(Sym(rSymbol: TermSymbol)), _)))
-        if rSymbol.denot.kind.isInstanceOf[TypeInstance] => {
+        if rSymbol.kind.isInstanceOf[TypeInstance] => {
       assert(enableStack.isEmpty)
       enableStack push false push true
       inConnect = true
@@ -156,7 +156,7 @@ final class LowerInterconnect(implicit cc: CompilerContext)
       //////////////////////////////////////////////////////////////////////////
 
       case select @ ExprSelect(ExprRef(Sym(iSymbol: TermSymbol)), _)
-          if iSymbol.denot.kind.isInstanceOf[TypeInstance] => {
+          if iSymbol.kind.isInstanceOf[TypeInstance] => {
         handlePortSelect(select, !inConnect || enableStack.top) map { nSymbol =>
           ExprRef(Sym(nSymbol)) regularize tree.loc
         } getOrElse {
@@ -190,7 +190,7 @@ final class LowerInterconnect(implicit cc: CompilerContext)
           val sinks: Map[ExprSelect, List[Expr]] = {
             val pairs = entity.connects collect {
               case Connect(select @ ExprSelect(ExprRef(Sym(symbol)), _), List(sink))
-                  if symbol.denot.kind.isInstanceOf[TypeInstance] => {
+                  if symbol.kind.isInstanceOf[TypeInstance] => {
                 select -> sink
               }
             }
@@ -284,7 +284,7 @@ final class LowerInterconnect(implicit cc: CompilerContext)
     def check(tree: Tree) = {
       tree visit {
         case node @ ExprSelect(ExprRef(Sym(symbol: TermSymbol)), _)
-            if symbol.denot.kind.isInstanceOf[TypeInstance] => {
+            if symbol.kind.isInstanceOf[TypeInstance] => {
           cc.ice(node, "Direct port access remains")
         }
       }

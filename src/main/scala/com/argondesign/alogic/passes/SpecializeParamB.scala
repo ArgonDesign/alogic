@@ -53,7 +53,7 @@ final class SpecializeParamB(implicit cc: CompilerContext) extends TreeTransform
     // Iterator of all parameters referenced in the bindings
     val referenced = simplified.iterator flatMap { _.valuesIterator } flatMap { expr =>
       expr collectFirst {
-        case ExprRef(Sym(symbol)) if symbol.denot.kind.isInstanceOf[TypeParam] => symbol
+        case ExprRef(Sym(symbol)) if symbol.kind.isInstanceOf[TypeParam] => symbol
       }
     }
 
@@ -124,7 +124,7 @@ final class SpecializeParamB(implicit cc: CompilerContext) extends TreeTransform
 
   override def finalCheck(tree: Tree): Unit = {
     tree visit {
-      case node @ Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypeParam] => {
+      case node @ Decl(symbol, _) if symbol.kind.isInstanceOf[TypeParam] => {
         cc.ice(node, "param remains")
       }
     }

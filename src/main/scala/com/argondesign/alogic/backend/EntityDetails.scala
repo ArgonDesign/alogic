@@ -36,7 +36,7 @@ final class EntityDetails(val entity: Entity, details: => Map[TypeSymbol, Entity
   assert {
     decls forall {
       case Decl(symbol, _) => {
-        symbol.denot.kind match {
+        symbol.kind match {
           case _: TypeConst => true
           case _: TypeIn    => true
           case _: TypeOut   => true
@@ -54,7 +54,7 @@ final class EntityDetails(val entity: Entity, details: => Map[TypeSymbol, Entity
   lazy val isVerbatim: Boolean = entity.variant == "verbatim"
 
   lazy val hasConsts: Boolean = decls exists {
-    case Decl(symbol, _) => symbol.denot.kind.isInstanceOf[TypeConst]
+    case Decl(symbol, _) => symbol.kind.isInstanceOf[TypeConst]
     case _               => false
   }
 
@@ -136,7 +136,7 @@ final class EntityDetails(val entity: Entity, details: => Map[TypeSymbol, Entity
         // Sorting map for port selectors
         val ordering = {
           val pairs = for {
-            (symbol, i) <- iSymbol.denot.kind.asInstanceOf[TypeInstance].portSymbols.zipWithIndex
+            (symbol, i) <- iSymbol.kind.asInstanceOf[TypeInstance].portSymbols.zipWithIndex
           } yield {
             symbol.name -> i
           }
@@ -182,10 +182,10 @@ final class EntityDetails(val entity: Entity, details: => Map[TypeSymbol, Entity
   // where a is an instance
   lazy val nonPortConnects: List[Connect] = connects filter {
     case Connect(ExprSelect(ExprRef(Sym(symbol)), _), _) => {
-      !symbol.denot.kind.isInstanceOf[TypeInstance]
+      !symbol.kind.isInstanceOf[TypeInstance]
     }
     case Connect(_, ExprSelect(ExprRef(Sym(symbol)), _) :: Nil) => {
-      !symbol.denot.kind.isInstanceOf[TypeInstance]
+      !symbol.kind.isInstanceOf[TypeInstance]
     }
     case _ => true
   }

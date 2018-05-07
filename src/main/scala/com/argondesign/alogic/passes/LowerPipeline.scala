@@ -61,7 +61,7 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
         inner <- outer.entities
       } yield {
         val it = inner collect {
-          case Sym(symbol: TermSymbol) if symbol.denot.kind.isInstanceOf[TypePipeline] => symbol
+          case Sym(symbol: TermSymbol) if symbol.kind.isInstanceOf[TypePipeline] => symbol
         }
         it.toSet
       }
@@ -106,8 +106,8 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
           val ident = Ident(name) withLoc inner.loc
           val struct = TypeStruct(
             s"${name}_t",
-            act map { _.denot.name.str },
-            act map { _.denot.kind.underlying }
+            act map { _.name },
+            act map { _.kind.underlying }
           )
           val kind = if (in) {
             TypeIn(struct, FlowControlTypeReady)
@@ -125,8 +125,8 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
 
       freshSymbols = {
         val pairs = for (psymbol <- actCurr.toList sortWith { _.id < _.id }) yield {
-          val name = psymbol.denot.name.str
-          val kind = psymbol.denot.kind.underlying
+          val name = psymbol.name
+          val kind = psymbol.kind.underlying
           val ident = Ident(name) withLoc inner.loc
           val vsymbol = cc.newTermSymbol(ident, kind)
           (name -> vsymbol)
@@ -152,7 +152,7 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
 
       // loose pipeline variable declarations
       val newDecls = entity.declarations filter {
-        case Decl(symbol, _) => !symbol.denot.kind.isInstanceOf[TypePipeline]
+        case Decl(symbol, _) => !symbol.kind.isInstanceOf[TypePipeline]
         case _               => true
       }
 
@@ -204,14 +204,14 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
 
       // Update type of entity to include new ports
       val Sym(symbol: TypeSymbol) = entity.ref
-      val newKind = symbol.denot.kind match {
+      val newKind = symbol.kind match {
         case kind: TypeEntity => {
           val newPortSymbols = iPortSymbolOpt.toList ::: oPortSymbolOpt.toList ::: kind.portSymbols
           kind.copy(portSymbols = newPortSymbols)
         }
         case _ => unreachable
       }
-      symbol withDenot symbol.denot.copy(kind = newKind)
+      symbol.kind = newKind
 
       val result = entity.copy(
         declarations = newDecls
@@ -231,7 +231,7 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
 
     // Rewrite 'read;' statement to '{....} = pipeline_i.read();'
     case node: StmtRead => {
-      val TypeIn(iPortKind: TypeStruct, _) = iPortSymbolOpt.get.denot.kind
+      val TypeIn(iPortKind: TypeStruct, _) = iPortSymbolOpt.get.kind
       val lhsRefs = for (name <- iPortKind.fieldNames) yield ExprRef(Sym(freshSymbols(name)))
       val lhs = ExprCat(lhsRefs)
       val rhs = ExprCall(ExprSelect(ExprRef(Sym(iPortSymbolOpt.get)), "read"), Nil)
@@ -240,7 +240,7 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
 
     // Rewrite 'write;' statement to 'pipeline_o.write({....});'
     case node: StmtWrite => {
-      val TypeOut(oPortKind: TypeStruct, _, _) = oPortSymbolOpt.get.denot.kind
+      val TypeOut(oPortKind: TypeStruct, _, _) = oPortSymbolOpt.get.kind
       val rhsRefs = for (name <- oPortKind.fieldNames) yield ExprRef(Sym(freshSymbols(name)))
       val rhs = ExprCat(rhsRefs)
       val call = ExprCall(ExprSelect(ExprRef(Sym(oPortSymbolOpt.get)), "write"), List(rhs))
@@ -248,8 +248,8 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
     }
 
     // Rewrite references to pipeline variables to references to the newly declared symbols
-    case node @ ExprRef(Sym(symbol)) if symbol.denot.kind.isInstanceOf[TypePipeline] => {
-      ExprRef(Sym(freshSymbols(symbol.denot.name.str))) regularize node.loc
+    case node @ ExprRef(Sym(symbol)) if symbol.kind.isInstanceOf[TypePipeline] => {
+      ExprRef(Sym(freshSymbols(symbol.name))) regularize node.loc
     }
 
     case _ => tree
@@ -262,11 +262,11 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
     tree visit {
       case node: StmtRead  => cc.ice(node, "read statement remains after LowerPipeline")
       case node: StmtWrite => cc.ice(node, "write statement remains after LowerPipeline")
-      case node @ Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypePipeline] => {
+      case node @ Decl(symbol, _) if symbol.kind.isInstanceOf[TypePipeline] => {
         cc.ice(node, "Pipeline variable declaration remains after LowerPipeline")
       }
       case node @ Sym(symbol) => {
-        symbol.denot.kind match {
+        symbol.kind match {
           case _: TypePipeline => {
             cc.ice(node, "Pipeline variable reference remains after LowerPipeline")
           }

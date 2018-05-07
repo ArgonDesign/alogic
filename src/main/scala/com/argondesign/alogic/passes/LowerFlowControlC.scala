@@ -44,15 +44,15 @@ final class LowerFlowControlC(implicit cc: CompilerContext) extends TreeTransfor
       } else {
         // Update type of entity to drop new ports.
         val portSymbols = declarations collect {
-          case Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypeIn]  => symbol
-          case Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypeOut] => symbol
+          case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeIn]  => symbol
+          case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeOut] => symbol
         }
 
-        val newKind = entitySymbol.denot.kind match {
+        val newKind = entitySymbol.kind match {
           case kind: TypeEntity => kind.copy(portSymbols = portSymbols)
           case _                => unreachable
         }
-        entitySymbol withDenot entitySymbol.denot.copy(kind = newKind)
+        entitySymbol.kind = newKind
 
         TypeAssigner {
           entity.copy(declarations = declarations) withVariant entity.variant withLoc tree.loc
@@ -77,7 +77,7 @@ final class LowerFlowControlC(implicit cc: CompilerContext) extends TreeTransfor
     }
 
     tree visit {
-      case node @ Decl(symbol, _) => check(node, symbol.denot.kind)
+      case node @ Decl(symbol, _) => check(node, symbol.kind)
     }
   }
 

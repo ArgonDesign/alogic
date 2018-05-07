@@ -100,13 +100,13 @@ final class DesugarSpec extends FreeSpec with AlogicTest {
           inside(tree) {
             case StmtBlock(List(StmtDecl(declB: Decl), declA: StmtDecl, assignB, loop)) =>
               val dSymB = declB.symbol
-              dSymB.denot.name.str shouldBe "b"
+              dSymB.name shouldBe "b"
               inside(declA) {
                 case StmtDecl(Decl(dSymA, Some(Expr(0)))) =>
-                  dSymA.denot.kind shouldBe TypeSInt(Expr(2))
+                  dSymA.kind shouldBe TypeSInt(Expr(2))
                   inside(assignB) {
                     case StmtAssign(ExprRef(Sym(symB)), ExprRef(Sym(symA))) =>
-                      symB.denot.name.str shouldBe "b";
+                      symB.name shouldBe "b";
                       symA should be theSameInstanceAs dSymA
                   }
                   loop should matchPattern(pattern)

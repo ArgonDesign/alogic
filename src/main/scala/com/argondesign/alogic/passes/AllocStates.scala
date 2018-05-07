@@ -44,9 +44,10 @@ final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
   // The return stack symbol
   private[this] lazy val rsSymbol: TermSymbol = {
     val opt = entitySymbol.attr.returnStack.get map { symbol =>
-      val TypeStack(_, depth) = symbol.denot.kind
+      val TypeStack(_, depth) = symbol.kind
       val width = Expr(stateBits) regularize symbol.loc
-      symbol withDenot symbol.denot.copy(kind = TypeStack(TypeUInt(width), depth))
+      symbol.kind = TypeStack(TypeUInt(width), depth)
+      symbol
     }
     opt.orNull
   }
@@ -96,7 +97,7 @@ final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
       // omitting the state variable altogether
       tree match {
         // Replace references to states with the state numbers (there is only 1 state)
-        case ExprRef(Sym(symbol: TermSymbol)) if symbol.denot.kind == TypeState => {
+        case ExprRef(Sym(symbol: TermSymbol)) if symbol.kind == TypeState => {
           ExprInt(false, 1, 0) withLoc tree.loc
         }
 

@@ -20,7 +20,6 @@ import com.argondesign.alogic.analysis.WrittenSymbols
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Names.TermName
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.typer.TypeAssigner
@@ -90,7 +89,7 @@ final class RemoveUnused(unusedSymbols: Set[Symbol])(implicit cc: CompilerContex
         dSymbol <- qSymbol.attr.flop.get
       } {
         assert(dSymbol.name endsWith "_d")
-        dSymbol withDenot dSymbol.denot.copy(name = TermName(dSymbol.name.dropRight(2)))
+        dSymbol rename dSymbol.name.dropRight(2)
         dSymbol.attr.combSignal set true
       }
 
@@ -136,7 +135,7 @@ object RemoveUnused extends Pass {
   // an instance.name reference
   private def instancePortSymbols(expr: ExprSelect): Iterator[Symbol] = {
     val ExprSelect(ExprRef(Sym(iSymbol)), name) = expr
-    Iterator(iSymbol, iSymbol.denot.kind.asInstanceOf[TypeInstance].portSymbol(name).get)
+    Iterator(iSymbol, iSymbol.kind.asInstanceOf[TypeInstance].portSymbol(name).get)
   }
 
   private def gather(trees: List[Tree])(f: Entity => Iterator[Symbol]): Set[Symbol] = {
@@ -175,7 +174,7 @@ object RemoveUnused extends Pass {
           // Retain the state variables if they exist
           (stateVarQ contains symbol) || (stateVarD contains symbol)
         } filter { // Retain inputs and outputs of top level entities
-          _.denot.kind match {
+          _.kind match {
             case _: TypeIn  => !isTopLevel
             case _: TypeOut => !isTopLevel
             case _          => true
@@ -268,15 +267,15 @@ object RemoveUnused extends Pass {
       // Update type of the entities for removed ports
       results foreach { entity =>
         val portSymbols = entity.declarations collect {
-          case Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypeIn]  => symbol
-          case Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypeOut] => symbol
+          case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeIn]  => symbol
+          case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeOut] => symbol
         }
         val Sym(entitySymbol: TypeSymbol) = entity.ref
-        val newKind = entitySymbol.denot.kind match {
+        val newKind = entitySymbol.kind match {
           case kind: TypeEntity => kind.copy(portSymbols = portSymbols)
           case _                => unreachable
         }
-        entitySymbol withDenot entitySymbol.denot.copy(kind = newKind)
+        entitySymbol.kind = newKind
       }
 
       // Dump entities if required

@@ -323,12 +323,12 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
           cc.ice(node, "Transformed tree has type error:", node.toString)
         }
         case node @ Instance(Sym(iSymbol), Sym(eSymbol: TypeSymbol), _, _)
-            if iSymbol.denot.kind != TypeInstance(eSymbol) => {
-          cc.ice(node, "Bad type for instance symbol", iSymbol.denot.kind.toString)
+            if iSymbol.kind != TypeInstance(eSymbol) => {
+          cc.ice(node, "Bad type for instance symbol", iSymbol.kind.toString)
         }
         case node @ Entity(Sym(eSymbol), _, _, _, _, _, _, _, _)
-            if !eSymbol.denot.kind.isInstanceOf[TypeEntity] => {
-          cc.ice(node, "Bad type for entity symbol", eSymbol.denot.kind.toString)
+            if !eSymbol.kind.isInstanceOf[TypeEntity] => {
+          cc.ice(node, "Bad type for entity symbol", eSymbol.kind.toString)
         }
       }
     }
@@ -357,8 +357,8 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
             println(tree.toSource)
             cc.ice(
               node,
-              s"reference to undeclared symbol '${symbol.denot.name.str}'",
-              s"of type '${symbol.denot.kind.toSource}'"
+              s"reference to undeclared symbol '${symbol.name}'",
+              s"of type '${symbol.kind.toSource}'"
             )
           }
         }

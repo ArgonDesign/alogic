@@ -197,13 +197,13 @@ final class NamerSpec extends FlatSpec with AlogicTest {
                 ),
                 _) =>
         aSym.loc.line shouldBe 2
-        aSym.denot.name shouldBe TypeName("a")
+        aSym.uniqueName shouldBe TypeName("a")
         aSym shouldBe 'typeSymbol
 
-        aSym.denot.kind shouldBe TypeStruct(
+        aSym.kind shouldBe TypeStruct(
           "a",
           List("b", "c", "d"),
-          List(TypeUInt(Expr(1)), TypeSInt(Expr(8)), eSym.denot.kind)
+          List(TypeUInt(Expr(1)), TypeSInt(Expr(8)), eSym.kind)
         )
     }
 
@@ -266,12 +266,12 @@ final class NamerSpec extends FlatSpec with AlogicTest {
         inside(typedef) {
           case TypeDefinitionTypedef(Sym(declSym), _) =>
             declSym.loc.line shouldBe 1
-            declSym.denot.kind shouldBe TypeUInt(Expr(1))
+            declSym.kind shouldBe TypeUInt(Expr(1))
             inside(entity) {
               case Entity(_, _, _, _, _, _, List(StmtBlock(List(_, stmt))), _, _) =>
                 inside(stmt) {
                   case StmtDecl(Decl(symbol, _)) =>
-                    symbol.denot.kind shouldBe declSym.denot.kind
+                    symbol.kind shouldBe declSym.kind
                 }
             }
         }
@@ -307,7 +307,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
               case Entity(_, _, _, _, _, _, List(StmtBlock(List(_, stmt))), _, _) =>
                 inside(stmt) {
                   case StmtDecl(Decl(symbol, _)) =>
-                    symbol.denot.kind shouldBe declSym.denot.kind
+                    symbol.kind shouldBe declSym.kind
                 }
             }
         }
@@ -441,7 +441,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
           case Function(Sym(_), List(StmtDecl(decl), StmtExpr(expr))) =>
             inside(decl) {
               case Decl(dSym, None) =>
-                dSym.denot.kind shouldBe TypeUInt(Expr(1))
+                dSym.kind shouldBe TypeUInt(Expr(1))
                 inside(expr) {
                   case ExprCall(`atBits`, List(ExprRef(Sym(rSym)))) =>
                     rSym should be theSameInstanceAs dSym
@@ -586,7 +586,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
         val symB = declB.symbol
         inside(declC) {
           case Decl(symbol, _) =>
-            val TypeVector(elementType, size) = symbol.denot.kind
+            val TypeVector(elementType, size) = symbol.kind
             inside(size) {
               case ExprRef(Sym(sym)) =>
                 sym should be theSameInstanceAs symA
@@ -616,7 +616,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
         val symB = declB.symbol
         inside(declC) {
           case Decl(symbol, _) =>
-            val TypeArray(TypeArray(TypeUInt(Expr(1)), size1), size2) = symbol.denot.kind
+            val TypeArray(TypeArray(TypeUInt(Expr(1)), size1), size2) = symbol.kind
             inside(size1) {
               case ExprRef(Sym(sym)) =>
                 sym should be theSameInstanceAs symB
@@ -631,7 +631,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     cc.messages.loneElement should beThe[Warning]("Array 'c' is unused")
   }
 
-  it should "attach correct types to symbol denotations - entity" in {
+  it should "attach correct types to symbols - entity" in {
     val root = """|fsm a {
                   |  in bool a;
                   |  out i3 b;
@@ -640,47 +640,47 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     cc.addGlobalEntity(root.entity)
     val tree = root rewrite namer
 
-    val symA = tree collectFirst { case Sym(symbol) if symbol.denot.name.str == "a" => symbol }
-    inside(symA.value.denot.kind) {
+    val symA = tree collectFirst { case Sym(symbol) if symbol.name == "a" => symbol }
+    inside(symA.value.kind) {
       case TypeEntity("a", List(symA, symB), List(symP)) =>
-        symA.denot.kind shouldBe TypeIn(TypeUInt(Expr(1)), FlowControlTypeNone)
-        symB.denot.kind shouldBe TypeOut(TypeSInt(Expr(3)), FlowControlTypeNone, StorageTypeDefault)
-        symP.denot.kind shouldBe TypeParam(TypeUInt(Expr(8)))
+        symA.kind shouldBe TypeIn(TypeUInt(Expr(1)), FlowControlTypeNone)
+        symB.kind shouldBe TypeOut(TypeSInt(Expr(3)), FlowControlTypeNone, StorageTypeDefault)
+        symP.kind shouldBe TypeParam(TypeUInt(Expr(8)))
     }
   }
 
-  it should "attach correct types to symbol denotations - typedef" in {
+  it should "attach correct types to symbols - typedef" in {
     val root = "typedef bool a; fsm b {}".asTree[Root]
     cc.addGlobalEntity(root.entity)
     val tree = root rewrite namer
 
-    val symA = tree collectFirst { case Sym(symbol) if symbol.denot.name.str == "a" => symbol }
-    symA.value.denot.kind shouldBe TypeUInt(Expr(1))
+    val symA = tree collectFirst { case Sym(symbol) if symbol.name == "a" => symbol }
+    symA.value.kind shouldBe TypeUInt(Expr(1))
   }
 
-  it should "attach correct types to symbol denotations - struct" in {
+  it should "attach correct types to symbols - struct" in {
     val root = "struct a { bool a; i2 b; }; fsm b {}".asTree[Root]
     cc.addGlobalEntity(root.entity)
     val tree = root rewrite namer
 
-    val symA = tree collectFirst { case Sym(symbol) if symbol.denot.name.str == "a" => symbol }
-    symA.value.denot.kind shouldBe TypeStruct(
+    val symA = tree collectFirst { case Sym(symbol) if symbol.name == "a" => symbol }
+    symA.value.kind shouldBe TypeStruct(
       "a",
       List("a", "b"),
       List(TypeUInt(Expr(1)), TypeSInt(Expr(2)))
     )
   }
 
-  it should "attach correct types to symbol denotations - function" in {
+  it should "attach correct types to symbols - function" in {
     val entity = "fsm foo { void a() {} }".asTree[Entity]
     cc.addGlobalEntity(entity)
     val tree = entity rewrite namer
 
-    val symA = tree collectFirst { case Sym(symbol) if symbol.denot.name.str == "a" => symbol }
-    symA.value.denot.kind shouldBe TypeCtrlFunc(Nil, TypeVoid)
+    val symA = tree collectFirst { case Sym(symbol) if symbol.name == "a" => symbol }
+    symA.value.kind shouldBe TypeCtrlFunc(Nil, TypeVoid)
   }
 
-  it should "attach correct types to symbol denotations - instance" in {
+  it should "attach correct types to symbols - instance" in {
     val entityA = "fsm a {}".asTree[Entity]
     val entityB = "fsm b { c = new a(); }".asTree[Entity]
     cc.addGlobalEntities(List(entityA, entityB))
@@ -688,107 +688,105 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     val tree = entityB rewrite namer
 
     val symA = tree collectFirst {
-      case Sym(symbol: TypeSymbol) if symbol.denot.name.str == "a" => symbol
+      case Sym(symbol: TypeSymbol) if symbol.name == "a" => symbol
     }
-    symA.value.denot.kind shouldBe TypeEntity("a", Nil, Nil)
+    symA.value.kind shouldBe TypeEntity("a", Nil, Nil)
     val symC = tree collectFirst {
-      case Sym(symbol: TermSymbol) if symbol.denot.name.str == "c" => symbol
+      case Sym(symbol: TermSymbol) if symbol.name == "c" => symbol
     }
-    symC.value.denot.kind shouldBe TypeInstance(symA.value)
+    symC.value.kind shouldBe TypeInstance(symA.value)
   }
 
-  it should "attach correct types to symbol denotations - decl in" in {
+  it should "attach correct types to symbols - decl in" in {
     val entity = "fsm foo { in bool a; }".asTree[Entity]
     cc.addGlobalEntity(entity)
     val tree = entity rewrite namer
 
-    val symA = tree collectFirst { case Decl(symbol, _) if symbol.denot.name.str == "a" => symbol }
-    symA.value.denot.kind shouldBe TypeIn(TypeUInt(Expr(1)), FlowControlTypeNone)
+    val symA = tree collectFirst { case Decl(symbol, _) if symbol.name == "a" => symbol }
+    symA.value.kind shouldBe TypeIn(TypeUInt(Expr(1)), FlowControlTypeNone)
   }
 
-  it should "attach correct types to symbol denotations - decl out" in {
+  it should "attach correct types to symbols - decl out" in {
     val entity = "fsm foo { out bool a; }".asTree[Entity]
     cc.addGlobalEntity(entity)
     val tree = entity rewrite namer
 
-    val symA = tree collectFirst { case Decl(symbol, _) if symbol.denot.name.str == "a" => symbol }
-    symA.value.denot.kind shouldBe TypeOut(TypeUInt(Expr(1)),
-                                           FlowControlTypeNone,
-                                           StorageTypeDefault)
+    val symA = tree collectFirst { case Decl(symbol, _) if symbol.name == "a" => symbol }
+    symA.value.kind shouldBe TypeOut(TypeUInt(Expr(1)), FlowControlTypeNone, StorageTypeDefault)
   }
 
-  it should "attach correct types to symbol denotations - decl param" in {
+  it should "attach correct types to symbols - decl param" in {
     val entity = "fsm foo { param bool a = false; }".asTree[Entity]
     cc.addGlobalEntity(entity)
     val tree = entity rewrite namer
 
-    val symA = tree collectFirst { case Decl(symbol, _) if symbol.denot.name.str == "a" => symbol }
-    symA.value.denot.kind shouldBe TypeParam(TypeUInt(Expr(1)))
+    val symA = tree collectFirst { case Decl(symbol, _) if symbol.name == "a" => symbol }
+    symA.value.kind shouldBe TypeParam(TypeUInt(Expr(1)))
   }
 
-  it should "attach correct types to symbol denotations - decl const" in {
+  it should "attach correct types to symbols - decl const" in {
     val entity = "fsm foo { const bool a = false; }".asTree[Entity]
     cc.addGlobalEntity(entity)
     val tree = entity rewrite namer
 
-    val symA = tree collectFirst { case Decl(symbol, _) if symbol.denot.name.str == "a" => symbol }
-    symA.value.denot.kind shouldBe TypeConst(TypeUInt(Expr(1)))
+    val symA = tree collectFirst { case Decl(symbol, _) if symbol.name == "a" => symbol }
+    symA.value.kind shouldBe TypeConst(TypeUInt(Expr(1)))
   }
 
-  it should "attach correct types to symbol denotations - decl pipeline" in {
+  it should "attach correct types to symbols - decl pipeline" in {
     val entity = "fsm foo { pipeline bool a; }".asTree[Entity]
     cc.addGlobalEntity(entity)
     val tree = entity rewrite namer
 
-    val symA = tree collectFirst { case Decl(symbol, _) if symbol.denot.name.str == "a" => symbol }
-    symA.value.denot.kind shouldBe TypePipeline(TypeUInt(Expr(1)))
+    val symA = tree collectFirst { case Decl(symbol, _) if symbol.name == "a" => symbol }
+    symA.value.kind shouldBe TypePipeline(TypeUInt(Expr(1)))
   }
 
-  it should "attach correct types to symbol denotations - decl array" in {
+  it should "attach correct types to symbols - decl array" in {
     val entity = "fsm foo { bool a[2][3]; }".asTree[Entity]
     cc.addGlobalEntity(entity)
     val tree = entity rewrite namer
 
-    val symA = tree collectFirst { case Decl(symbol, _) if symbol.denot.name.str == "a" => symbol }
-    symA.value.denot.kind shouldBe TypeArray(TypeArray(TypeUInt(Expr(1)), Expr(3)), Expr(2))
+    val symA = tree collectFirst { case Decl(symbol, _) if symbol.name == "a" => symbol }
+    symA.value.kind shouldBe TypeArray(TypeArray(TypeUInt(Expr(1)), Expr(3)), Expr(2))
   }
 
-  it should "attach correct types to symbol denotations - decl vec" in {
+  it should "attach correct types to symbols - decl vec" in {
     val entity = "fsm foo { int(3, 2, 4) a; }".asTree[Entity]
     cc.addGlobalEntity(entity)
     val tree = entity rewrite namer
 
-    val symA = tree collectFirst { case Decl(symbol, _) if symbol.denot.name.str == "a" => symbol }
-    symA.value.denot.kind shouldBe TypeVector(TypeVector(TypeSInt(Expr(4)), Expr(2)), Expr(3))
+    val symA = tree collectFirst { case Decl(symbol, _) if symbol.name == "a" => symbol }
+    symA.value.kind shouldBe TypeVector(TypeVector(TypeSInt(Expr(4)), Expr(2)), Expr(3))
   }
 
-  it should "attach correct types to symbol denotations - decl scalar" in {
+  it should "attach correct types to symbols - decl scalar" in {
     val entity = "fsm foo { u2 a; }".asTree[Entity]
     cc.addGlobalEntity(entity)
     val tree = entity rewrite namer
 
-    val symA = tree collectFirst { case Decl(symbol, _) if symbol.denot.name.str == "a" => symbol }
-    symA.value.denot.kind shouldBe TypeUInt(Expr(2))
+    val symA = tree collectFirst { case Decl(symbol, _) if symbol.name == "a" => symbol }
+    symA.value.kind shouldBe TypeUInt(Expr(2))
   }
 
-  it should "attach correct types to symbol denotations - decl void" in {
+  it should "attach correct types to symbols - decl void" in {
     val entity = "fsm foo { void a; }".asTree[Entity]
     cc.addGlobalEntity(entity)
     val tree = entity rewrite namer
 
-    val symA = tree collectFirst { case Decl(symbol, _) if symbol.denot.name.str == "a" => symbol }
-    symA.value.denot.kind shouldBe TypeVoid
+    val symA = tree collectFirst { case Decl(symbol, _) if symbol.name == "a" => symbol }
+    symA.value.kind shouldBe TypeVoid
   }
 
-  it should "attach correct types to symbol denotations - decl ref" in {
+  it should "attach correct types to symbols - decl ref" in {
     val root = "typedef bool b; fsm foo { b a; }".asTree[Root]
     cc.addGlobalEntity(root.entity)
     val tree = root rewrite namer
 
-    val symB = tree collectFirst { case Sym(symbol) if symbol.denot.name.str == "b" => symbol }
+    val symB = tree collectFirst { case Sym(symbol) if symbol.name == "b" => symbol }
     symB.value shouldBe 'typeSymbol
-    val symA = tree collectFirst { case Decl(symbol, _) if symbol.denot.name.str == "a" => symbol }
-    symA.value.denot.kind shouldBe symB.value.denot.kind
+    val symA = tree collectFirst { case Decl(symbol, _) if symbol.name == "a" => symbol }
+    symA.value.kind shouldBe symB.value.kind
   }
 
   it should "issue warning for unused local variables" in {
@@ -926,39 +924,39 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     cc.messages(2).loc.line shouldBe 6
   }
 
-  it should "attach source attributes to symbol denotations - function" in {
+  it should "attach source attributes to symbols - function" in {
     val entity = "fsm foo { (* reclimit = 1 *) void a() {} }".asTree[Entity]
     cc.addGlobalEntity(entity)
     val tree = entity rewrite namer
 
     val symA = tree collectFirst {
-      case Sym(symbol) if symbol.denot.name.str == "a" => symbol
+      case Sym(symbol) if symbol.name == "a" => symbol
     }
-    symA.value.denot.kind shouldBe TypeCtrlFunc(Nil, TypeVoid)
+    symA.value.kind shouldBe TypeCtrlFunc(Nil, TypeVoid)
     symA.value.attr.recLimit.get.value shouldBe Expr(1)
   }
 
-  it should "attach source attributes to symbol denotations - entity" in {
+  it should "attach source attributes to symbols - entity" in {
     val entity = "(* stacklimit = 2 *) fsm foo { }".asTree[Entity]
     cc.addGlobalEntity(entity)
     val tree = entity rewrite namer
 
     val symA = tree collectFirst {
-      case Sym(symbol) if symbol.denot.name.str == "foo" => symbol
+      case Sym(symbol) if symbol.name == "foo" => symbol
     }
-    symA.value.denot.kind shouldBe TypeEntity("foo", Nil, Nil)
+    symA.value.kind shouldBe TypeEntity("foo", Nil, Nil)
     symA.value.attr.stackLimit.get.value shouldBe Expr(2)
   }
 
-  it should "attach source attributes to symbol denotations - nested entity" in {
+  it should "attach source attributes to symbols - nested entity" in {
     val entity = "network foo { (* stacklimit = 3 *) fsm bar {} }".asTree[Entity]
     cc.addGlobalEntity(entity)
     val tree = entity rewrite namer
 
     val symA = tree collectFirst {
-      case Sym(symbol) if symbol.denot.name.str == "bar" => symbol
+      case Sym(symbol) if symbol.name == "bar" => symbol
     }
-    symA.value.denot.kind shouldBe TypeEntity("bar", Nil, Nil)
+    symA.value.kind shouldBe TypeEntity("bar", Nil, Nil)
     symA.value.attr.stackLimit.get.value shouldBe Expr(3)
   }
 }

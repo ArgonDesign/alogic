@@ -30,7 +30,7 @@ final class SpecializeParamA(implicit cc: CompilerContext) extends TreeTransform
 
   override def enter(tree: Tree): Unit = tree match {
     case Instance(Sym(iSymbol), Sym(eSymbol), paramNames, paramExprs) => {
-      val entityKind = eSymbol.denot.kind.asInstanceOf[TypeEntity]
+      val entityKind = eSymbol.kind.asInstanceOf[TypeEntity]
 
       if (entityKind.paramSymbols.nonEmpty) {
         // Gather particular parameter bindings
@@ -60,7 +60,7 @@ final class SpecializeParamA(implicit cc: CompilerContext) extends TreeTransform
       // Collect the default parameter bindings
       val defaultBindings = {
         val pairs = entity.declarations collect {
-          case Decl(symbol, Some(init)) if symbol.denot.kind.isInstanceOf[TypeParam] => {
+          case Decl(symbol, Some(init)) if symbol.kind.isInstanceOf[TypeParam] => {
             symbol -> init
           }
         }
@@ -82,7 +82,7 @@ final class SpecializeParamA(implicit cc: CompilerContext) extends TreeTransform
           // Collect any referenced parameters
           val referenced = simplified.valuesIterator flatMap { expr =>
             expr collect {
-              case ExprRef(Sym(symbol)) if symbol.denot.kind.isInstanceOf[TypeParam] => symbol
+              case ExprRef(Sym(symbol)) if symbol.kind.isInstanceOf[TypeParam] => symbol
             }
           }
 

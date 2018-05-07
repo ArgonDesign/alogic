@@ -116,7 +116,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
         val pairs = for (function <- entity.functions) yield {
           val Sym(functionSymbol: TermSymbol) = function.ref
           val stateSymbol = cc.newTermSymbol(
-            s"l${functionSymbol.loc.line}_function_${functionSymbol.denot.name.str}",
+            s"l${functionSymbol.loc.line}_function_${functionSymbol.name}",
             functionSymbol.loc,
             TypeState
           )

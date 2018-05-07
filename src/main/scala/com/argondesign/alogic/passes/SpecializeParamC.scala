@@ -32,7 +32,7 @@ final class SpecializeParamC(implicit cc: CompilerContext) extends TreeTransform
 
   override def transform(tree: Tree): Tree = tree match {
     case Instance(Sym(iSymbol: TermSymbol), Sym(eSymbol), paramNames, paramExprs) => {
-      val eKind = eSymbol.denot.kind.asInstanceOf[TypeEntity]
+      val eKind = eSymbol.kind.asInstanceOf[TypeEntity]
       if (eKind.paramSymbols.isEmpty) {
         // Instantiated entity has no parameters
         tree
@@ -59,7 +59,7 @@ final class SpecializeParamC(implicit cc: CompilerContext) extends TreeTransform
         }
 
         // Update type of instance
-        iSymbol withDenot iSymbol.denot.copy(kind = TypeInstance(sSymbol))
+        iSymbol.kind = TypeInstance(sSymbol)
         // Remove attribute
         iSymbol.attr.paramBinding.clear()
         // Rewrite tree

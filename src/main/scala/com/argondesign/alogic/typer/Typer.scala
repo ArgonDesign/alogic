@@ -222,10 +222,10 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       }
 
       case decl @ Decl(symbol, Some(init)) => {
-        val origKind = symbol.denot.kind
+        val origKind = symbol.kind
         val kind = origKind rewrite TypeTyper
         if (kind ne origKind) {
-          symbol withDenot symbol.denot.copy(kind = kind)
+          symbol.kind = kind
         }
         kind match {
           case _: TypeConst => symbol.attr.constValue set init
@@ -257,10 +257,10 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       }
 
       case decl @ Decl(symbol, None) => {
-        val origKind = symbol.denot.kind
+        val origKind = symbol.kind
         val kind = origKind rewrite TypeTyper
         if (kind ne origKind) {
-          symbol withDenot symbol.denot.copy(kind = kind)
+          symbol.kind = kind
         }
         decl
       }
@@ -330,7 +330,7 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
           }
 
           val locs = for (ref @ ExprRef(Sym(symbol)) <- stripToRefs(lhs)) yield {
-            symbol.denot.kind match {
+            symbol.kind match {
               case _: TypeParam => cc.error(ref, "Parameter cannot be assigned")
               case _: TypeConst => cc.error(ref, "Constant cannot be assigned")
               case _: TypeIn    => cc.error(ref, "Input port cannot be assigned")
@@ -670,7 +670,7 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         case node: Tree if node.tpe.isInstanceOf[TypePolyFunc] => {
           cc.ice(node, s"Typer: node of type TypePolyFunc remains")
         }
-        case Decl(symbol, _) => check(symbol.denot.kind)
+        case Decl(symbol, _) => check(symbol.kind)
       }
     }
 

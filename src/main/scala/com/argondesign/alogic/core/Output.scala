@@ -35,7 +35,7 @@ trait Output { this: CompilerContext =>
       }
     }
     val Sym(symbol) = entity.ref
-    val name = symbol.denot.name.str + suffix
+    val name = symbol.name + suffix
     oDir resolve name
   }
 

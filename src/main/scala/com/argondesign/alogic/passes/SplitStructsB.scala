@@ -27,7 +27,7 @@ final class SplitStructsB(implicit cc: CompilerContext) extends TreeTransformer 
 
     case ExprSelect(ExprRef(Sym(isymbol)), sel) => {
       // Rewrite selects of form instance.port
-      val kind = isymbol.denot.kind.asInstanceOf[TypeInstance]
+      val kind = isymbol.kind.asInstanceOf[TypeInstance]
       val pSymbol = kind.portSymbol(sel).get
       pSymbol.attr.fieldSymbols.get map { fSymbols =>
         val it = fSymbols.toIterator
@@ -39,7 +39,7 @@ final class SplitStructsB(implicit cc: CompilerContext) extends TreeTransformer 
             }
           }
         }
-        cat(pSymbol.denot.kind.underlying.asInstanceOf[TypeStruct]) regularize tree.loc
+        cat(pSymbol.kind.underlying.asInstanceOf[TypeStruct]) regularize tree.loc
       } getOrElse {
         tree
       }

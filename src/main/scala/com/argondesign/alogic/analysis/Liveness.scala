@@ -29,15 +29,14 @@ object Liveness {
       implicit cc: CompilerContext
   ): Iterator[Map[TermSymbol, BigInt]] = expr collect {
     // TODO: Deal better with arrays when necessary, currently simply ignored
-    case ExprIndex(ExprRef(Sym(symbol: TermSymbol)), idx) if symbol.denot.kind.isPacked => {
+    case ExprIndex(ExprRef(Sym(symbol: TermSymbol)), idx) if symbol.kind.isPacked => {
       idx.value map { bit =>
         Map(symbol -> BigInt.oneHot(bit))
       } getOrElse {
-        Map(symbol -> BigInt.mask(symbol.denot.kind.width.value.get))
+        Map(symbol -> BigInt.mask(symbol.kind.width.value.get))
       }
     }
-    case ExprSlice(ExprRef(Sym(symbol: TermSymbol)), lidx, op, ridx)
-        if symbol.denot.kind.isPacked => {
+    case ExprSlice(ExprRef(Sym(symbol: TermSymbol)), lidx, op, ridx) if symbol.kind.isPacked => {
       lidx.value flatMap { l =>
         ridx.value map { r =>
           val (width, lsb) = op match {
@@ -49,11 +48,11 @@ object Liveness {
           Map(symbol -> (BigInt.mask(width) << lsb.toInt))
         }
       } getOrElse {
-        Map(symbol -> BigInt.mask(symbol.denot.kind.width.value.get))
+        Map(symbol -> BigInt.mask(symbol.kind.width.value.get))
       }
     }
-    case ExprRef(Sym(symbol: TermSymbol)) if symbol.denot.kind.isPacked => {
-      Map(symbol -> BigInt.mask(symbol.denot.kind.width.value.get))
+    case ExprRef(Sym(symbol: TermSymbol)) if symbol.kind.isPacked => {
+      Map(symbol -> BigInt.mask(symbol.kind.width.value.get))
     }
   }
 
@@ -110,7 +109,7 @@ object Liveness {
     def loop(expr: Expr): Map[TermSymbol, BigInt] = {
       expr match {
         case ExprRef(Sym(symbol: TermSymbol)) => {
-          val width = symbol.denot.kind.width.value.get
+          val width = symbol.kind.width.value.get
           Map(symbol -> BigInt.mask(width))
         }
         case ExprIndex(ExprRef(Sym(symbol: TermSymbol)), idx) => {

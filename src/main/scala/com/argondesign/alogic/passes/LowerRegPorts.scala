@@ -28,11 +28,11 @@ final class LowerRegPorts(implicit cc: CompilerContext) extends TreeTransformer 
 
   override def enter(tree: Tree): Unit = tree match {
     case Decl(symbol, _) => {
-      symbol.denot.kind match {
+      symbol.kind match {
         case TypeOut(kind, FlowControlTypeNone, StorageTypeReg) => {
           // Allocate local register
           val loc = tree.loc
-          val rName = "oreg" + cc.sep + symbol.denot.name.str
+          val rName = "oreg" + cc.sep + symbol.name
           val rSymbol = cc.newTermSymbol(rName, loc, kind)
           // Move the clearOnStall attribute to the register symbol
           symbol.attr.clearOnStall.get foreach { attr =>
@@ -67,13 +67,9 @@ final class LowerRegPorts(implicit cc: CompilerContext) extends TreeTransformer 
     case decl @ Decl(oSymbol, _) => {
       // Change storage type to wire and add register declaration
       oSymbol.attr.oReg.get map { rSymbol =>
-        oSymbol withDenot oSymbol.denot.copy(
-          kind = oSymbol.denot.kind
-            .asInstanceOf[TypeOut]
-            .copy(
-              fct = FlowControlTypeNone,
-              st = StorageTypeWire
-            ))
+        oSymbol.kind = {
+          oSymbol.kind.asInstanceOf[TypeOut].copy(fct = FlowControlTypeNone, st = StorageTypeWire)
+        }
         val declReg = Decl(rSymbol, None)
         Thicket(List(decl, declReg)) regularize tree.loc
       } getOrElse {
@@ -114,7 +110,7 @@ final class LowerRegPorts(implicit cc: CompilerContext) extends TreeTransformer 
     }
 
     tree visit {
-      case node @ Decl(symbol, _) => check(node, symbol.denot.kind)
+      case node @ Decl(symbol, _) => check(node, symbol.kind)
     }
   }
 

@@ -18,7 +18,6 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Names.TypeName
 import com.argondesign.alogic.core.StorageTypes.StorageTypeWire
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types.TypeOut
@@ -108,12 +107,12 @@ final class LiftEntities(implicit cc: CompilerContext)
       //////////////////////////////////////////////////////////////////////////
 
       val newISymbols = entity.declarations collect {
-        case Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypeIn] => symbol
+        case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeIn] => symbol
       }
       outerIPortSymbols.push(newISymbols.toSet)
 
       val newOSymbols = entity.declarations collect {
-        case Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypeOut] => symbol
+        case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeOut] => symbol
       }
       outerOPortSymbols.push(newOSymbols.toSet)
 
@@ -147,7 +146,7 @@ final class LiftEntities(implicit cc: CompilerContext)
 
           // Update type of entity to include new ports
           val Sym(symbol: TypeSymbol) = entity.ref
-          val newKind = symbol.denot.kind match {
+          val newKind = symbol.kind match {
             case kind: TypeEntity => {
               val newPortSymbols = {
                 freshIPortSymbols.top.values ++ freshOPortSymbols.top.values ++ kind.portSymbols
@@ -156,7 +155,7 @@ final class LiftEntities(implicit cc: CompilerContext)
             }
             case _ => unreachable
           }
-          symbol withDenot symbol.denot.copy(kind = newKind)
+          symbol.kind = newKind
 
           TypeAssigner {
             entity.copy(
@@ -170,11 +169,11 @@ final class LiftEntities(implicit cc: CompilerContext)
         ////////////////////////////////////////////////////////////////////////
         if (stripStorageSymbols.nonEmpty) {
           entity.declarations foreach {
-            case Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypeOut] => {
-              val TypeOut(kind, fc, st) = symbol.denot.kind
+            case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeOut] => {
+              val TypeOut(kind, fc, st) = symbol.kind
               if (st != StorageTypeWire && (stripStorageSymbols contains symbol)) {
                 val newKind = TypeOut(kind, fc, StorageTypeWire)
-                symbol withDenot symbol.denot.copy(kind = newKind)
+                symbol.kind = newKind
               }
             }
             case _ => ()
@@ -236,8 +235,7 @@ final class LiftEntities(implicit cc: CompilerContext)
           for (child <- children) {
             val Sym(childSymbol: TypeSymbol) = child.ref
             val childName = childSymbol.name
-            val newName = TypeName(parentName + cc.sep + childName)
-            childSymbol withDenot childSymbol.denot.copy(name = newName)
+            childSymbol rename (parentName + cc.sep + childName)
           }
 
           TypeAssigner(Thicket(parent :: children) withLoc entity.loc)

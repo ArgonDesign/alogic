@@ -80,7 +80,7 @@ object TypeAssigner {
     if (node.symbol == ErrorSymbol) {
       node withTpe TypeError
     } else {
-      node withTpe node.symbol.denot.kind
+      node withTpe node.symbol.kind
     }
   }
 
@@ -277,7 +277,7 @@ object TypeAssigner {
     val tpe = if (symbol == ErrorSymbol) {
       TypeError
     } else {
-      symbol.denot.kind match {
+      symbol.kind match {
         case TypeParam(kind)    => kind
         case TypeConst(kind)    => kind
         case TypePipeline(kind) => kind

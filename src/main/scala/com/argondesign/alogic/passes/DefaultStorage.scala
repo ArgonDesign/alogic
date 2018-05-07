@@ -43,7 +43,7 @@ final class DefaultStorage(implicit cc: CompilerContext) extends TreeTransformer
       inConnect = true
     }
 
-    case ExprRef(Sym(symbol: TermSymbol)) if symbol.denot.kind.isInstanceOf[TypeOut] => {
+    case ExprRef(Sym(symbol: TermSymbol)) if symbol.kind.isInstanceOf[TypeOut] => {
       if (inConnect) {
         connectedSet add symbol
       } else {
@@ -70,13 +70,13 @@ final class DefaultStorage(implicit cc: CompilerContext) extends TreeTransformer
           Decl(symbol, _) <- entity.declarations
           if connectedSet contains symbol
         } {
-          symbol.denot.kind match {
+          symbol.kind match {
             case TypeOut(_, _, StorageTypeDefault) => ()
             // Generate error for those ports driven through a connect
             // that have an explicit storage specifier and fix them
             case TypeOut(kind, fct, _) => {
               cc.error(symbol.loc, "Port driven by '->' must not specify output storage")
-              symbol withDenot symbol.denot.copy(kind = TypeOut(kind, fct, StorageTypeDefault))
+              symbol.kind = TypeOut(kind, fct, StorageTypeDefault)
             }
             case _ => ()
           }
@@ -84,15 +84,15 @@ final class DefaultStorage(implicit cc: CompilerContext) extends TreeTransformer
 
         // Collect all output declarations that use the default storage type
         val (outs, rest) = entity.declarations.partition {
-          case Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypeOut] => {
-            symbol.denot.kind.asInstanceOf[TypeOut].st == StorageTypeDefault
+          case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeOut] => {
+            symbol.kind.asInstanceOf[TypeOut].st == StorageTypeDefault
           }
           case _ => false
         }
 
         // Update their types
         for (Decl(symbol, _) <- outs) {
-          val kind = symbol.denot.kind.asInstanceOf[TypeOut]
+          val kind = symbol.kind.asInstanceOf[TypeOut]
           // Compute the appropriate default storage type
           val newSt = if ((connectedSet contains symbol) || entity.variant == "verbatim") {
             StorageTypeWire
@@ -103,8 +103,7 @@ final class DefaultStorage(implicit cc: CompilerContext) extends TreeTransformer
               case _                     => StorageTypeReg
             }
           }
-          val newKind = kind.copy(st = newSt)
-          symbol withDenot symbol.denot.copy(kind = newKind)
+          symbol.kind = kind.copy(st = newSt)
         }
 
         tree
@@ -118,7 +117,7 @@ final class DefaultStorage(implicit cc: CompilerContext) extends TreeTransformer
     assert(!inConnect)
     tree visitAll {
       case Decl(symbol, _) => {
-        symbol.denot.kind visit {
+        symbol.kind visit {
           case TypeOut(_, _, StorageTypeDefault) => cc.ice(tree, "Default storage type remains")
         }
       }

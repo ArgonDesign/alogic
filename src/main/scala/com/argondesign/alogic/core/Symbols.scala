@@ -17,22 +17,18 @@
 
 package com.argondesign.alogic.core
 
-import scala.collection.mutable
-
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.core.Names.Name
+import com.argondesign.alogic.core.Names.TermName
+import com.argondesign.alogic.core.Names.TypeName
+import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.Symbols.TermSymbol
+import com.argondesign.alogic.core.Symbols.TypeSymbol
+import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.FollowedBy._
 import com.argondesign.alogic.util.unreachable
 
-import Denotations.Denotation
-import Denotations.TermDenotation
-import Denotations.TypeDenotation
-import Names.Name
-import Names.TermName
-import Names.TypeName
-import Symbols.Symbol
-import Symbols.TermSymbol
-import Symbols.TypeSymbol
-import Types._
+import scala.collection.mutable
 
 trait Symbols { self: CompilerContext =>
 
@@ -52,7 +48,7 @@ trait Symbols { self: CompilerContext =>
     _globalScope match {
       case None => ice("Global scope is already sealed")
       case Some(scope) => {
-        val name = symbol.denot.name
+        val name = symbol.uniqueName
         if (scope contains name) {
           ice(s"Global scope already contains '${name}'")
         }
@@ -108,12 +104,9 @@ trait Symbols { self: CompilerContext =>
       loc: Loc,
       kind: Type
   ): TermSymbol = synchronized {
-    val symbol = new TermSymbol(symbolSequenceNumbers.next)
-    val denot = TermDenotation(symbol, TermName(name), kind)
-
+    val symbol = new TermSymbol(symbolSequenceNumbers.next, kind, name)
     symbolLocations(symbol) = loc
-
-    symbol withDenot denot
+    symbol
   }
 
   final def newTermSymbol(ident: Ident, kind: Type): TermSymbol = {
@@ -121,7 +114,7 @@ trait Symbols { self: CompilerContext =>
   }
 
   final def newSymbolLike(symbol: TermSymbol): TermSymbol = {
-    val newSymbol = newTermSymbol(symbol.denot.name.str, symbol.loc(this), symbol.denot.kind)
+    val newSymbol = newTermSymbol(symbol.name, symbol.loc(this), symbol.kind)
     newSymbol.attr.update(symbol.attr)
     newSymbol
   }
@@ -135,12 +128,9 @@ trait Symbols { self: CompilerContext =>
       loc: Loc,
       kind: Type
   ): TypeSymbol = synchronized {
-    val symbol = new TypeSymbol(symbolSequenceNumbers.next)
-    val denot = TypeDenotation(symbol, TypeName(name), kind)
-
+    val symbol = new TypeSymbol(symbolSequenceNumbers.next, kind, name)
     symbolLocations(symbol) = loc
-
-    symbol withDenot denot
+    symbol
   }
 
   final def newTypeSymbol(ident: Ident, kind: Type): TypeSymbol = {
@@ -148,7 +138,7 @@ trait Symbols { self: CompilerContext =>
   }
 
   final def newSymbolLike(symbol: TypeSymbol): TypeSymbol = {
-    val newSymbol = newTypeSymbol(symbol.denot.name.str, symbol.loc(this), symbol.denot.kind)
+    val newSymbol = newTypeSymbol(symbol.name, symbol.loc(this), symbol.kind)
     newSymbol.attr.update(symbol.attr)
     newSymbol
   }
@@ -156,20 +146,12 @@ trait Symbols { self: CompilerContext =>
 
 object Symbols {
 
-  abstract trait Symbol {
-    type ThisDenotation <: Denotation
-
+  abstract class Symbol(initialType: Type, initialName: Name) {
     def id: Int
 
     def isTermSymbol: Boolean
 
     def isTypeSymbol: Boolean
-
-    ////////////////////////////////////////////////////////////////////////////
-    // The only mutable member of Symbol is the denotation attached to it
-    ////////////////////////////////////////////////////////////////////////////
-
-    private[this] final var _denot: ThisDenotation = _
 
     ////////////////////////////////////////////////////////////////////////////
     // Common implementation
@@ -179,6 +161,16 @@ object Symbols {
 
     final override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]
 
+    final var kind: Type = initialType
+
+    protected final var _uniqueName: Name = initialName
+
+    def uniqueName: Name = _uniqueName
+
+    def name: String = _uniqueName.str
+
+    def rename(name: String): this.type
+
     ////////////////////////////////////////////////////////////////////////////
     // Attributes
     ////////////////////////////////////////////////////////////////////////////
@@ -186,15 +178,6 @@ object Symbols {
     final val attr: SymbolAttributes = new SymbolAttributes()
 
     ////////////////////////////////////////////////////////////////////////////
-
-    // Denotation of symbol
-    final def denot: ThisDenotation = if (_denot == null) unreachable else _denot
-
-    // Set denotation
-    final def withDenot(denot: ThisDenotation): this.type = {
-      _denot = denot
-      this
-    }
 
     // Location of definition
     final def loc(implicit cc: CompilerContext): Loc = cc synchronized {
@@ -206,34 +189,41 @@ object Symbols {
       cc.builtins exists { _ contains this }
     }
 
-    // Shorthand for often accessed name
-    def name: String = denot.name.str
   }
 
-  final class TermSymbol(val id: Int) extends Symbol {
-    type ThisDenotation = TermDenotation
-
+  final class TermSymbol(val id: Int, kind: Type, name: String)
+      extends Symbol(kind, TermName(name)) {
     override def isTermSymbol = true
     override def isTypeSymbol = false
+
+    override def rename(name: String): this.type = {
+      _uniqueName = TermName(name)
+      this
+    }
 
     override def toString = s"TermSymbol(id=$id, name=${name})"
   }
 
-  final class TypeSymbol(val id: Int) extends Symbol {
-    type ThisDenotation = TypeDenotation
-
+  final class TypeSymbol(val id: Int, kind: Type, name: String)
+      extends Symbol(kind, TypeName(name)) {
     override def isTermSymbol = false
     override def isTypeSymbol = true
+
+    override def rename(name: String): this.type = {
+      _uniqueName = TypeName(name)
+      this
+    }
 
     override def toString = s"TypeSymbol(id=$id, name=${name})"
   }
 
-  final object ErrorSymbol extends Symbol {
-    type ThisDenotation = Nothing
+  final object ErrorSymbol extends Symbol(TypeError, TermName("@error-symbol@")) {
     val id = -1
 
     override def isTermSymbol = false
     override def isTypeSymbol = false
+
+    override def rename(name: String): this.type = unreachable
 
     override def toString = s"ErrorSymbol"
   }

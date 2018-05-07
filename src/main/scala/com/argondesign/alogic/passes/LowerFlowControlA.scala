@@ -67,14 +67,14 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
   private[this] val extraEntities = new ListBuffer[Entity]
 
   private[this] def isIn(symbol: TermSymbol, fc: FlowControlType): Boolean = {
-    symbol.denot.kind match {
+    symbol.kind match {
       case TypeIn(_, `fc`) => true
       case _               => false
     }
   }
 
   private[this] def isOut(symbol: TermSymbol, fc: FlowControlType): Boolean = {
-    symbol.denot.kind match {
+    symbol.kind match {
       case TypeOut(_, `fc`, _) => true
       case _                   => false
     }
@@ -99,9 +99,9 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
 
     case Decl(symbol, _) if isIn(symbol, FlowControlTypeValid) => {
       // Allocate payload and valid signals
-      val kind = symbol.denot.kind.underlying
+      val kind = symbol.kind.underlying
       val loc = tree.loc
-      val pName = symbol.denot.name.str
+      val pName = symbol.name
       val vName = pName + sep + "valid"
       lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeIn(kind, fctn))
       val vSymbol = cc.newTermSymbol(vName, loc, TypeIn(boolType(loc), fctn))
@@ -113,9 +113,9 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
 
     case Decl(symbol, _) if isOut(symbol, FlowControlTypeValid) => {
       // Allocate payload and valid signals
-      val TypeOut(kind, _, st) = symbol.denot.kind
+      val TypeOut(kind, _, st) = symbol.kind
       val loc = tree.loc
-      val pName = symbol.denot.name.str
+      val pName = symbol.name
       val vName = pName + sep + "valid"
       lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeOut(kind, fctn, stw))
       val vSymbol = cc.newTermSymbol(vName, loc, TypeOut(boolType(loc), fctn, stw))
@@ -149,9 +149,9 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
 
     case Decl(symbol, _) if isIn(symbol, FlowControlTypeReady) => {
       // Allocate payload, valid and ready signals
-      val kind = symbol.denot.kind.underlying
+      val kind = symbol.kind.underlying
       val loc = tree.loc
-      val pName = symbol.denot.name.str
+      val pName = symbol.name
       val vName = pName + sep + "valid"
       val rName = pName + sep + "ready"
       lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeIn(kind, fctn))
@@ -171,9 +171,9 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
 
     case Decl(symbol, _) if isOut(symbol, FlowControlTypeReady) => {
       // Allocate payload, valid and ready signals
-      val TypeOut(kind, _, st) = symbol.denot.kind
+      val TypeOut(kind, _, st) = symbol.kind
       val loc = tree.loc
-      val pName = symbol.denot.name.str
+      val pName = symbol.name
       val vName = pName + sep + "valid"
       val rName = pName + sep + "ready"
       lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeOut(kind, fctn, stw))
@@ -211,9 +211,9 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
 
     case Decl(symbol, _) if isIn(symbol, FlowControlTypeAccept) => {
       // Allocate payload, valid and accept signals
-      val kind = symbol.denot.kind.underlying
+      val kind = symbol.kind.underlying
       val loc = tree.loc
-      val pName = symbol.denot.name.str
+      val pName = symbol.name
       val vName = pName + sep + "valid"
       val aName = pName + sep + "accept"
       lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeIn(kind, fctn))
@@ -232,9 +232,9 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
 
     case Decl(symbol, _) if isOut(symbol, FlowControlTypeAccept) => {
       // Allocate payload, valid and ready signals
-      val kind = symbol.denot.kind.underlying
+      val kind = symbol.kind.underlying
       val loc = tree.loc
-      val pName = symbol.denot.name.str
+      val pName = symbol.name
       val vName = pName + sep + "valid"
       val aName = pName + sep + "accept"
       lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeOut(kind, fctn, stw))
@@ -520,13 +520,12 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
         // un-converted port for now, as Connect instances have not been updated
         // yet.
         val portSymbols = entity.declarations collect {
-          case Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypeIn]  => symbol
-          case Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypeOut] => symbol
+          case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeIn]  => symbol
+          case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeOut] => symbol
         }
 
-        val TypeEntity(name, _, Nil) = entitySymbol.denot.kind
-        val newKind = TypeEntity(name, portSymbols, Nil)
-        entitySymbol withDenot entitySymbol.denot.copy(kind = newKind)
+        val TypeEntity(name, _, Nil) = entitySymbol.kind
+        entitySymbol.kind = TypeEntity(name, portSymbols, Nil)
 
         val thisEntity = entity.copy(
           instances = instances ::: entity.instances,

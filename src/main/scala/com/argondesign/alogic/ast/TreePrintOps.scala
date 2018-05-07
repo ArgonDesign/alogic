@@ -154,7 +154,7 @@ trait TreePrintOps { this: Tree =>
       }
 
       case Ident(name) => name
-      case Sym(symbol) => symbol.denot.name.str
+      case Sym(symbol) => symbol.name
 
       case DeclIdent(ident, kind, None) => {
         s"${kind.toSource} ${v(indent)(ident)};"
@@ -163,10 +163,10 @@ trait TreePrintOps { this: Tree =>
         s"${kind.toSource} ${v(indent)(ident)} = ${v(init)};"
       }
       case Decl(symbol, None) => {
-        s"${attrStr(indent, Sym(symbol))}${symbol.denot.kind.toSource} ${symbol.name};"
+        s"${attrStr(indent, Sym(symbol))}${symbol.kind.toSource} ${symbol.name};"
       }
       case Decl(symbol, Some(init)) => {
-        s"${attrStr(indent, Sym(symbol))}${symbol.denot.kind.toSource} ${symbol.name} = ${v(init)};"
+        s"${attrStr(indent, Sym(symbol))}${symbol.kind.toSource} ${symbol.name} = ${v(init)};"
       }
 
       case Instance(ref, module, paramNames, paramArgs) => {

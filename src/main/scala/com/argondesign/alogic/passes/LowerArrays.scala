@@ -19,7 +19,6 @@ import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
-import com.argondesign.alogic.core.Names.TermName
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Math
@@ -41,12 +40,12 @@ final class LowerArrays(implicit cc: CompilerContext) extends TreeTransformer wi
 
   override def enter(tree: Tree): Unit = tree match {
 
-    case Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypeArray] => {
+    case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeArray] => {
       val loc = tree.loc
       val name = symbol.name
-      val TypeArray(kind, size) = symbol.denot.kind
+      val TypeArray(kind, size) = symbol.kind
       // Append _q to array name symbol
-      symbol withDenot symbol.denot.copy(name = TermName(s"${name}_q"))
+      symbol rename s"${name}_q"
       // Create we symbol
       val weSymbol = cc.newTermSymbol(s"${name}_we", loc, intType(loc, false, 1))
       // Create waddr symbol
@@ -63,7 +62,7 @@ final class LowerArrays(implicit cc: CompilerContext) extends TreeTransformer wi
   }
 
   private def makeExprInt(symbol: TermSymbol, value: Int): ExprInt = {
-    val kind = symbol.denot.kind
+    val kind = symbol.kind
     val width = kind.width.value.get.toInt
     ExprInt(kind.isSigned, width, value)
   }

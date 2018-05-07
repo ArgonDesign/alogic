@@ -79,7 +79,7 @@ final class LowerFlowControlB(implicit cc: CompilerContext) extends TreeTransfor
       }
     }
     case ExprSelect(ExprRef(Sym(iSymbol)), sel) => {
-      val kind = iSymbol.denot.kind.asInstanceOf[TypeInstance]
+      val kind = iSymbol.kind.asInstanceOf[TypeInstance]
       val pSymbolOpt = kind.portSymbols collectFirst {
         case symbol if symbol.name == sel && symbol.attr.expandedPort.isSet => symbol
       }

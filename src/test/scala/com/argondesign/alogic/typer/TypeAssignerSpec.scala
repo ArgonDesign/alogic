@@ -88,7 +88,7 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
               inside(tree) {
                 case Root(_, entity) => {
                   val Some(main) = entity.functions collectFirst {
-                    case func @ Function(Sym(sym), _) if sym.denot.name.str == "main" =>
+                    case func @ Function(Sym(sym), _) if sym.name == "main" =>
                       func
                   }
                   inside(main) {
@@ -926,7 +926,7 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
         (name, text, pattern) <- List[(String, String, PartialFunction[Any, Tree])](
           ("entity", "fsm e {}", { case c: Entity => c }),
           ("decl", "param bool e = true;", {
-            case c @ Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypeParam] => c
+            case c @ Decl(symbol, _) if symbol.kind.isInstanceOf[TypeParam] => c
           }),
           ("instance", "d = new a();", { case c: Instance   => c }),
           ("connect", "b -> c;", { case c: Connect          => c }),

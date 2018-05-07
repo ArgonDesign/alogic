@@ -64,7 +64,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         val unusedSymbols = (allSet diff usedSet).toList sortBy { _.loc.line }
 
         for (symbol <- unusedSymbols) {
-          val hint = symbol.denot.kind match {
+          val hint = symbol.kind match {
             case _: TypeArray    => "Array"
             case _: TypeCtrlFunc => "Function"
             case _: TypeCombFunc => "Function"
@@ -77,7 +77,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
             case _: TypeInstance => "Instance"
             case _               => "Variable"
           }
-          cc.warning(symbol.loc, s"${hint} '${symbol.denot.name}' is unused")
+          cc.warning(symbol.loc, s"${hint} '${symbol.name}' is unused")
         }
       }
     }
@@ -98,7 +98,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
 
     // Insert Symbol into current scope, and mark it unused
     private def insertSymbol(symbol: Symbol): Unit = {
-      val name = symbol.denot.name
+      val name = symbol.uniqueName
 
       lazy val flavour = if (symbol.isTermSymbol) "name" else "type"
 
@@ -187,7 +187,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
     override def transform(kind: Type) = kind match {
       case TypeIdent(ident: Ident) => {
         lookupType(ident) match {
-          case symbol: TypeSymbol => symbol.denot.kind
+          case symbol: TypeSymbol => symbol.kind
           case ErrorSymbol        => TypeError
         }
       }
@@ -308,15 +308,14 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         case symbol: TypeSymbol => {
           // Attach proper type
           val portSymbols = entity.declarations collect {
-            case Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypeIn]  => symbol
-            case Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypeOut] => symbol
+            case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeIn]  => symbol
+            case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeOut] => symbol
           }
           val paramSymbols = entity.declarations collect {
-            case Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypeParam] => symbol
+            case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeParam] => symbol
           }
-          symbol withDenot symbol.denot.copy(
-            kind = TypeEntity(name, portSymbols, paramSymbols)
-          )
+          symbol.kind = TypeEntity(name, portSymbols, paramSymbols)
+          symbol
         }
         case _ => unreachable
       }
@@ -418,21 +417,6 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
     tree visit {
       case node: Ident     => cc.ice(node, s"Ident remains")
       case node: TypeIdent => cc.ice(node.ident, "TypeIdent remains")
-    }
-
-    // Collect symbols used in this file
-    val symbols = (tree collectAll { case Sym(symbol) => symbol }).toSet
-
-    // Check that denotations do not contain any Ident nodes anymore
-    symbols filter { _ != ErrorSymbol } foreach { symbol =>
-      val denot = symbol.denot
-      denot.kind visit {
-        case node: Ident => {
-          cc.ice(
-            node,
-            s"Namer should have removed all identifiers, but '${node}' remains in denotation '${denot}'")
-        }
-      }
     }
   }
 

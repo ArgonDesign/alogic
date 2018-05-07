@@ -54,7 +54,7 @@ final class DefaultAssignments(implicit cc: CompilerContext)
       needsDefault ++= writtenSymbols(lhs)
     }
 
-    case Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypeOut] => {
+    case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeOut] => {
       needsDefault += symbol
     }
 
@@ -101,7 +101,7 @@ final class DefaultAssignments(implicit cc: CompilerContext)
 
           // Keep only the symbols with all bits dead
           val it = deadSymbolBits collect {
-            case (symbol, set) if set.size == symbol.denot.kind.width.value.get => symbol
+            case (symbol, set) if set.size == symbol.kind.width.value.get => symbol
           }
           it.toSet
         }
@@ -121,7 +121,7 @@ final class DefaultAssignments(implicit cc: CompilerContext)
         } yield {
           // Initialize items to their default values, otherwise zero
           val init = symbol.attr.default.getOrElse {
-            val kind = symbol.denot.kind
+            val kind = symbol.kind
             val signed = kind.isSigned
             val width = kind.width.value.get.toInt
             ExprInt(signed, width, 0)

@@ -19,7 +19,6 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Names.TermName
 import com.argondesign.alogic.core.Symbols.TermSymbol
 import com.argondesign.alogic.core.Types._
 
@@ -42,7 +41,7 @@ final class RenameClashingTerms(implicit cc: CompilerContext) extends TreeTransf
         for ((name, symbols) <- nameMap if symbols.size > 1) {
           val sortedSymbols = symbols sortBy { _.loc.start }
           val newNames = for (symbol <- sortedSymbols) yield {
-            symbol.denot.kind match {
+            symbol.kind match {
               case _: TypeIn    => name
               case _: TypeOut   => name
               case _: TypeConst => name
@@ -60,7 +59,7 @@ final class RenameClashingTerms(implicit cc: CompilerContext) extends TreeTransf
               newName
             }
 
-            symbol withDenot symbol.denot.copy(name = TermName(finalName))
+            symbol rename finalName
           }
         }
       }

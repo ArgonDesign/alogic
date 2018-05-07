@@ -19,7 +19,6 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Names.TermName
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.FollowedBy
 
@@ -42,18 +41,18 @@ final class LowerFlops(implicit cc: CompilerContext) extends TreeTransformer wit
       } {
         val name = rSymbol.name
         assert(name startsWith prefix)
-        rSymbol withDenot rSymbol.denot.copy(name = TermName(name drop prefixLen))
+        rSymbol rename (name drop prefixLen)
         oSymbol.attr.oReg.clear()
       }
     }
 
-    case Decl(symbol, _) if symbol.denot.kind.isInstanceOf[TypeInt] => {
+    case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeInt] => {
       val loc = tree.loc
       val name = symbol.name
       // Append _q to the name of the symbol
-      symbol withDenot symbol.denot.copy(name = TermName(s"${name}_q"))
+      symbol rename s"${name}_q"
       // Create the _d symbol
-      val dSymbol = cc.newTermSymbol(s"${name}_d", loc, symbol.denot.kind)
+      val dSymbol = cc.newTermSymbol(s"${name}_d", loc, symbol.kind)
       // Move the clearOnStall attribute to the _d symbol
       symbol.attr.clearOnStall.get foreach { attr =>
         dSymbol.attr.clearOnStall set attr

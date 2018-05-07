@@ -154,7 +154,7 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
       (symbol, isRecD, isRecI) <- (functionSymbols, directlyRecursive, indirectlyRecursive).zipped
     } yield {
       lazy val loc = symbol.loc
-      lazy val name = symbol.denot.name.str
+      lazy val name = symbol.name
       val exprOpt = symbol.attr.recLimit.get
       if (!isRecD && !isRecI) {
         if (exprOpt.isDefined) {
@@ -201,7 +201,7 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
   private[this] lazy val stackLimit: Option[Int] = {
     entitySymbol.attr.stackLimit.get flatMap { expr =>
       lazy val loc = entitySymbol.loc
-      lazy val name = entitySymbol.denot.name.str
+      lazy val name = entitySymbol.name
       expr.value match {
         case Some(value) if value < 1 => {
           cc.error(loc, s"Entity '${name}' has 'stacklimit' attribute equal to ${value}")
