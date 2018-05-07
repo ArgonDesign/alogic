@@ -93,8 +93,6 @@ trait Symbols { self: CompilerContext =>
 
   final private[this] val symbolSequenceNumbers = Stream.from(0).iterator
 
-  final protected val symbolLocations = mutable.HashMap[Symbol, Loc]()
-
   //////////////////////////////////////////////////////////////////////////////
   // Creating TermSymbol instances
   //////////////////////////////////////////////////////////////////////////////
@@ -104,9 +102,7 @@ trait Symbols { self: CompilerContext =>
       loc: Loc,
       kind: Type
   ): TermSymbol = synchronized {
-    val symbol = new TermSymbol(symbolSequenceNumbers.next, kind, name)
-    symbolLocations(symbol) = loc
-    symbol
+    new TermSymbol(symbolSequenceNumbers.next, loc, kind, name)
   }
 
   final def newTermSymbol(ident: Ident, kind: Type): TermSymbol = {
@@ -114,7 +110,7 @@ trait Symbols { self: CompilerContext =>
   }
 
   final def newSymbolLike(symbol: TermSymbol): TermSymbol = {
-    val newSymbol = newTermSymbol(symbol.name, symbol.loc(this), symbol.kind)
+    val newSymbol = newTermSymbol(symbol.name, symbol.loc, symbol.kind)
     newSymbol.attr.update(symbol.attr)
     newSymbol
   }
@@ -128,9 +124,7 @@ trait Symbols { self: CompilerContext =>
       loc: Loc,
       kind: Type
   ): TypeSymbol = synchronized {
-    val symbol = new TypeSymbol(symbolSequenceNumbers.next, kind, name)
-    symbolLocations(symbol) = loc
-    symbol
+    new TypeSymbol(symbolSequenceNumbers.next, loc, kind, name)
   }
 
   final def newTypeSymbol(ident: Ident, kind: Type): TypeSymbol = {
@@ -138,7 +132,7 @@ trait Symbols { self: CompilerContext =>
   }
 
   final def newSymbolLike(symbol: TypeSymbol): TypeSymbol = {
-    val newSymbol = newTypeSymbol(symbol.name, symbol.loc(this), symbol.kind)
+    val newSymbol = newTypeSymbol(symbol.name, symbol.loc, symbol.kind)
     newSymbol.attr.update(symbol.attr)
     newSymbol
   }
@@ -146,9 +140,12 @@ trait Symbols { self: CompilerContext =>
 
 object Symbols {
 
-  abstract class Symbol(initialType: Type, initialName: Name) {
-    def id: Int
-
+  abstract class Symbol(
+      final val id: Int,
+      final val loc: Loc,
+      initialType: Type,
+      initialName: Name
+  ) {
     def isTermSymbol: Boolean
 
     def isTypeSymbol: Boolean
@@ -179,20 +176,14 @@ object Symbols {
 
     ////////////////////////////////////////////////////////////////////////////
 
-    // Location of definition
-    final def loc(implicit cc: CompilerContext): Loc = cc synchronized {
-      cc.symbolLocations(this)
-    }
-
     // Is this a builtin symbol
     def isBuiltin(implicit cc: CompilerContext): Boolean = {
       cc.builtins exists { _ contains this }
     }
-
   }
 
-  final class TermSymbol(val id: Int, kind: Type, name: String)
-      extends Symbol(kind, TermName(name)) {
+  final class TermSymbol(id: Int, loc: Loc, kind: Type, name: String)
+      extends Symbol(id, loc, kind, TermName(name)) {
     override def isTermSymbol = true
     override def isTypeSymbol = false
 
@@ -204,8 +195,8 @@ object Symbols {
     override def toString = s"TermSymbol(id=$id, name=${name})"
   }
 
-  final class TypeSymbol(val id: Int, kind: Type, name: String)
-      extends Symbol(kind, TypeName(name)) {
+  final class TypeSymbol(id: Int, loc: Loc, kind: Type, name: String)
+      extends Symbol(id, loc, kind, TypeName(name)) {
     override def isTermSymbol = false
     override def isTypeSymbol = true
 
@@ -217,9 +208,8 @@ object Symbols {
     override def toString = s"TypeSymbol(id=$id, name=${name})"
   }
 
-  final object ErrorSymbol extends Symbol(TypeError, TermName("@error-symbol@")) {
-    val id = -1
-
+  final object ErrorSymbol
+      extends Symbol(-1, Loc.synthetic, TypeError, TermName("@error-symbol@")) {
     override def isTermSymbol = false
     override def isTypeSymbol = false
 
