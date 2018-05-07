@@ -15,6 +15,8 @@
 
 package com.argondesign.alogic.lib
 
+import com.argondesign.alogic.Config
+
 // Tree transformers are applied during a post-order traversal of a Tree.
 abstract class TreeLikeTransformer[T <: TreeLike] extends (T => T) {
 
@@ -47,10 +49,12 @@ abstract class TreeLikeTransformer[T <: TreeLike] extends (T => T) {
   def apply(tree: T): T = {
     // Walk the tree
     val result = walk(tree)
-    // Apply default check
-    defaultCheck(tree, result)
-    // Apply final check
-    finalCheck(result)
+    if (Config.applyTransformChecks) {
+      // Apply default check
+      defaultCheck(tree, result)
+      // Apply final check
+      finalCheck(result)
+    }
     // Yield result
     result
   }
