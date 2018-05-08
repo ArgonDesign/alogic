@@ -513,10 +513,12 @@ final class MakeVerilog(
       }
     }
 
-    items.init foreach { line =>
-      body.emit(1)(line + ",")
+    if (items.nonEmpty) {
+      items.init foreach { line =>
+        body.emit(1)(line + ",")
+      }
+      body.emit(1)(items.last)
     }
-    body.emit(1)(items.last)
   }
 
   def moduleSource: String = {
