@@ -38,24 +38,27 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
   // TODO: special case the empty pipe stage (with body 'read; write; fence;') to avoid packing
 
   // List of active pipeline symbols, for each stage
-  var actSets: List[Set[TermSymbol]] = Nil
+  private var actSets: List[Set[TermSymbol]] = Nil
 
   // Previous stage active list
-  var prevActSet: Set[TermSymbol] = Set()
+  private var prevActSet: Set[TermSymbol] = Set()
 
   // Pipeline input and output port symbols for current stage
-  var iPortSymbolOpt: Option[TermSymbol] = None
-  var oPortSymbolOpt: Option[TermSymbol] = None
+  private var iPortSymbolOpt: Option[TermSymbol] = None
+  private var oPortSymbolOpt: Option[TermSymbol] = None
 
   // Pipelined variable symbols declared in this stage
-  var freshSymbols: ListMap[String, TermSymbol] = ListMap()
+  private var freshSymbols: ListMap[String, TermSymbol] = ListMap()
 
   // Stack of booleans to indicate whether to rewrite this entity
-  val rewriteEntity: Stack[Boolean] = Stack()
+  private val rewriteEntity: Stack[Boolean] = Stack()
+
+  private var firstEntity = true
 
   override def skip(tree: Tree): Boolean = tree match {
-    // Skip entities without any pipeline declarations
-    case entity: Entity => {
+    // If this is the root entity, skip it if it has no pipeline declarations
+    case entity: Entity if firstEntity => {
+      firstEntity = false
       entity.declarations forall {
         case Decl(symbol, _) => !symbol.kind.isInstanceOf[TypePipeline]
         case _               => unreachable
