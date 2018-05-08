@@ -18,7 +18,7 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.StorageTypes.StorageTypeWire
+import com.argondesign.alogic.core.StorageTypes.StorageTypeDefault
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types.TypeOut
 import com.argondesign.alogic.core.Types._
@@ -183,8 +183,8 @@ final class LiftEntities(implicit cc: CompilerContext)
           entity.declarations foreach {
             case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeOut] => {
               val TypeOut(kind, fc, st) = symbol.kind
-              if (st != StorageTypeWire && (stripStorageSymbols contains symbol)) {
-                val newKind = TypeOut(kind, fc, StorageTypeWire)
+              if (st != StorageTypeDefault && (stripStorageSymbols contains symbol)) {
+                val newKind = TypeOut(kind, fc, StorageTypeDefault)
                 symbol.kind = newKind
               }
             }
