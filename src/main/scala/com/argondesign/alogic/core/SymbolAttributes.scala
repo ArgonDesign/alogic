@@ -103,6 +103,7 @@ class SymbolAttributes {
 
   // Iterator that enumerates all fields above
   private def attrIterator = Iterator(
+    topLevel,
     entry,
     paramBinding,
     paramBinding,
@@ -134,6 +135,7 @@ class SymbolAttributes {
 
   // Iterator that enumerates names of fields above
   private def nameIterator = Iterator(
+    "topLevel",
     "entry",
     "paramBinding",
     "paramBinding",
