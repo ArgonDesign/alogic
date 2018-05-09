@@ -29,7 +29,10 @@ object DeclBuilder extends BaseBuilder[DeclContext, DeclIdent] {
       // Attach initializers
       override def visitDecl(ctx: DeclContext) = {
         val init = Option(ctx.expr) map { ExprBuilder(_) }
-        val decl = visit(ctx.declbase)
+        val decl @ DeclIdent(ident, _, _) = visit(ctx.declbase)
+        if (ctx.attr != null) {
+          ident withAttr AttrBuilder(ctx.attr)
+        }
         if (init.isDefined) {
           decl.copy(init = init) withLoc ctx.loc.copy(point = decl.loc.point)
         } else {

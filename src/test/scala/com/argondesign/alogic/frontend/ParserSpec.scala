@@ -171,6 +171,14 @@ final class ParserSpec extends FreeSpec with AlogicTest {
               DeclIdent(Ident("b"), TypeUInt(Expr(1)), Some(ExprInt(false, 1, 1)))
             }
           }
+
+          "with attribute" in {
+            inside("(* foo *) bool b".asTree[DeclIdent]) {
+              case DeclIdent(ident @ Ident("b"), TypeUInt(Expr(1)), None) =>
+                ident.hasAttr shouldBe true
+                ident.attr shouldBe Map("foo" -> Expr(1))
+            }
+          }
         }
 
         "array" - {
@@ -193,6 +201,14 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                 TypeArray(TypeArray(TypeVector(TypeSInt(Expr(2)), Expr(8)), Expr(4)), Expr(5)),
                 None
               )
+            }
+          }
+
+          "1D with attribute" in {
+            inside("(* foo *) i8 c[2]".asTree[DeclIdent]) {
+              case DeclIdent(ident @ Ident("c"), TypeArray(TypeSInt(Expr(8)), Expr(2)), None) =>
+                ident.hasAttr shouldBe true
+                ident.attr shouldBe Map("foo" -> Expr(1))
             }
           }
         }
@@ -294,6 +310,16 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                 )
               }
             }
+
+            "with attribute" in {
+              inside("(* foo *) out i2 a".asTree[DeclIdent]) {
+                case DeclIdent(ident @ Ident("a"),
+                               TypeOut(TypeSInt(Expr(2)), FlowControlTypeNone, StorageTypeDefault),
+                               None) =>
+                  ident.hasAttr shouldBe true
+                  ident.attr shouldBe Map("foo" -> Expr(1))
+              }
+            }
           }
         }
 
@@ -315,11 +341,29 @@ final class ParserSpec extends FreeSpec with AlogicTest {
               DeclIdent(Ident("a"), TypeIn(TypeSInt(Expr(2)), FlowControlTypeReady), None)
             }
           }
+
+          "with attribute" in {
+            inside("(* foo *) in i2 a".asTree[DeclIdent]) {
+              case DeclIdent(ident @ Ident("a"),
+                             TypeIn(TypeSInt(Expr(2)), FlowControlTypeNone),
+                             None) =>
+                ident.hasAttr shouldBe true
+                ident.attr shouldBe Map("foo" -> Expr(1))
+            }
+          }
         }
 
         "parameter" in {
           "param i2 a = 2".asTree[DeclIdent] shouldBe {
             DeclIdent(Ident("a"), TypeParam(TypeSInt(Expr(2))), Some(Expr(2)))
+          }
+        }
+
+        "parameter with attribute" in {
+          inside("(* foo *) param i2 a = 2".asTree[DeclIdent]) {
+            case DeclIdent(ident @ Ident("a"), TypeParam(TypeSInt(Expr(2))), Some(Expr(2))) =>
+              ident.hasAttr shouldBe true
+              ident.attr shouldBe Map("foo" -> Expr(1))
           }
         }
 
@@ -329,9 +373,25 @@ final class ParserSpec extends FreeSpec with AlogicTest {
           }
         }
 
+        "constant with attribute" in {
+          inside("(* foo *) const i2 a = 2".asTree[DeclIdent]) {
+            case DeclIdent(ident @ Ident("a"), TypeConst(TypeSInt(Expr(2))), Some(Expr(2))) =>
+              ident.hasAttr shouldBe true
+              ident.attr shouldBe Map("foo" -> Expr(1))
+          }
+        }
+
         "pipeline variable" in {
           "pipeline u8 a".asTree[DeclIdent] shouldBe {
             DeclIdent(Ident("a"), TypePipeline(TypeUInt(Expr(8))), None)
+          }
+        }
+
+        "pipeline variable with attribute" in {
+          inside("(* foo *) pipeline u8 a".asTree[DeclIdent]) {
+            case DeclIdent(ident @ Ident("a"), TypePipeline(TypeUInt(Expr(8))), None) =>
+              ident.hasAttr shouldBe true
+              ident.attr shouldBe Map("foo" -> Expr(1))
           }
         }
       }
@@ -451,6 +511,29 @@ final class ParserSpec extends FreeSpec with AlogicTest {
               Map()
             )
           }
+        }
+
+        "instance without attribue" in {
+          val tree = """|network d2 {
+                        |  (* foo *)
+                        |  i = new j();
+                        |}""".stripMargin.asTree[Entity]
+          tree shouldBe {
+            Entity(
+              Ident("d2"),
+              Nil,
+              List(Instance(Ident("i"), Ident("j"), Nil, Nil)),
+              Nil,
+              Nil,
+              Nil,
+              Nil,
+              Nil,
+              Map()
+            )
+          }
+          val ident = (tree collectFirst { case Instance(i: Ident, _, _, _) => i }).value
+          ident.hasAttr shouldBe true
+          ident.attr shouldBe Map("foo" -> Expr(1))
         }
 
         "single connection" in {
@@ -579,27 +662,9 @@ final class ParserSpec extends FreeSpec with AlogicTest {
           }
         }
 
-        "nested fsm with auto instantiation" in {
-          """|network  h2 {
-                       |  new fsm i {}
-                       |}""".asTree[Entity] shouldBe {
-            Entity(
-              Ident("h2"),
-              Nil,
-              List(Instance(Ident("i"), Ident("i"), Nil, Nil)),
-              Nil,
-              Nil,
-              Nil,
-              Nil,
-              List(Entity(Ident("i"), Nil, Nil, Nil, Nil, Nil, Nil, Nil, Map())),
-              Map()
-            )
-          }
-        }
-
         "nested fsm with attribute" in {
           val tree = """|network  h2 {
-                        |  (*foo*) fsm i {}
+                        |  (* foo *) fsm i {}
                         |}""".stripMargin.asTree[Entity]
           tree shouldBe {
             Entity(
@@ -617,6 +682,114 @@ final class ParserSpec extends FreeSpec with AlogicTest {
           val ident = (tree collectFirst { case ident @ Ident("i") => ident }).value
           ident.hasAttr shouldBe true
           ident.attr shouldBe Map("foo" -> Expr(1))
+        }
+
+        "nested fsm with auto instantiation" in {
+          """|network  h3 {
+                       |  new fsm i {}
+                       |}""".asTree[Entity] shouldBe {
+            Entity(
+              Ident("h3"),
+              Nil,
+              List(Instance(Ident("i"), Ident("i"), Nil, Nil)),
+              Nil,
+              Nil,
+              Nil,
+              Nil,
+              List(Entity(Ident("i"), Nil, Nil, Nil, Nil, Nil, Nil, Nil, Map())),
+              Map()
+            )
+          }
+        }
+        "nested fsm with auto instantiation and attributes on instance" in {
+          val tree = """|network  h4 {
+                        |  (* foo *) new fsm i {}
+                        |}""".stripMargin.asTree[Entity]
+          tree shouldBe {
+            Entity(
+              Ident("h4"),
+              Nil,
+              List(Instance(Ident("i"), Ident("i"), Nil, Nil)),
+              Nil,
+              Nil,
+              Nil,
+              Nil,
+              List(Entity(Ident("i"), Nil, Nil, Nil, Nil, Nil, Nil, Nil, Map())),
+              Map()
+            )
+          }
+
+          val Some(iIdent) = tree collectFirst {
+            case Instance(ident: Ident, _, _, _) => ident
+          }
+          iIdent.hasAttr shouldBe true
+          iIdent.attr shouldBe Map("foo" -> Expr(1))
+
+          val Some(eIdent) = tree collectFirst {
+            case Entity(ident @ Ident("i"), _, _, _, _, _, _, _, _) => ident
+          }
+          eIdent.hasAttr shouldBe false
+        }
+
+        "nested fsm with auto instantiation and attributes on entity" in {
+          val tree = """|network  h4 {
+                        |  new (* bar *) fsm i {}
+                        |}""".stripMargin.asTree[Entity]
+          tree shouldBe {
+            Entity(
+              Ident("h4"),
+              Nil,
+              List(Instance(Ident("i"), Ident("i"), Nil, Nil)),
+              Nil,
+              Nil,
+              Nil,
+              Nil,
+              List(Entity(Ident("i"), Nil, Nil, Nil, Nil, Nil, Nil, Nil, Map())),
+              Map()
+            )
+          }
+
+          val Some(iIdent) = tree collectFirst {
+            case Instance(ident: Ident, _, _, _) => ident
+          }
+          iIdent.hasAttr shouldBe false
+
+          val Some(eIdent) = tree collectFirst {
+            case Entity(ident @ Ident("i"), _, _, _, _, _, _, _, _) => ident
+          }
+          eIdent.hasAttr shouldBe true
+          eIdent.attr shouldBe Map("bar" -> Expr(1))
+        }
+
+        "nested fsm with auto instantiation and attributes on both" in {
+          val tree = """|network  h4 {
+                        |  (* foo *) new (* bar *) fsm i {}
+                        |}""".stripMargin.asTree[Entity]
+          tree shouldBe {
+            Entity(
+              Ident("h4"),
+              Nil,
+              List(Instance(Ident("i"), Ident("i"), Nil, Nil)),
+              Nil,
+              Nil,
+              Nil,
+              Nil,
+              List(Entity(Ident("i"), Nil, Nil, Nil, Nil, Nil, Nil, Nil, Map())),
+              Map()
+            )
+          }
+
+          val Some(iIdent) = tree collectFirst {
+            case Instance(ident: Ident, _, _, _) => ident
+          }
+          iIdent.hasAttr shouldBe true
+          iIdent.attr shouldBe Map("foo" -> Expr(1))
+
+          val Some(eIdent) = tree collectFirst {
+            case Entity(ident @ Ident("i"), _, _, _, _, _, _, _, _) => ident
+          }
+          eIdent.hasAttr shouldBe true
+          eIdent.attr shouldBe Map("bar" -> Expr(1))
         }
 
         "verbatim verilog" in {

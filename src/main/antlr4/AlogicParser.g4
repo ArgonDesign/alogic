@@ -73,7 +73,7 @@ entity
 // Declarations
 ///////////////////////////////////////////////////////////////////////////////
 
-decl: declbase ('=' expr)? ;
+decl: attr? declbase ('=' expr)? ;
 
 declbase
   : kind IDENTIFIER                                         # DeclVar
@@ -101,9 +101,9 @@ storage_type
 ///////////////////////////////////////////////////////////////////////////////
 
 entity_content
-  : instance ';'                            # EntityContentInstance
+  : attr? instance ';'                      # EntityContentInstance
   | connect ';'                             # EntityContentConnect
-  | (autoinst='new')? entity                # EntityContentEntity
+  | (attr? autoinst='new')? entity          # EntityContentEntity
   | 'fence' block                           # EntityContentFenceBlock
   | attr? 'void' IDENTIFIER '(' ')' block   # EntityContentFunction
   | 'verbatim' IDENTIFIER VERBATIMBODY      # EntityContentVerbatimBlock

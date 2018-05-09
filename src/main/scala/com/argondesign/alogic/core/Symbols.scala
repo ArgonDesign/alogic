@@ -106,7 +106,9 @@ trait Symbols { self: CompilerContext =>
   }
 
   final def newTermSymbol(ident: Ident, kind: Type): TermSymbol = {
-    newTermSymbol(ident.name, ident.loc, kind)
+    val symbol = newTermSymbol(ident.name, ident.loc, kind)
+    symbol.attr update ident
+    symbol
   }
 
   final def newSymbolLike(symbol: TermSymbol): TermSymbol = {
@@ -128,7 +130,9 @@ trait Symbols { self: CompilerContext =>
   }
 
   final def newTypeSymbol(ident: Ident, kind: Type): TypeSymbol = {
-    newTypeSymbol(ident.name, ident.loc, kind)
+    val symbol = newTypeSymbol(ident.name, ident.loc, kind)
+    symbol.attr update ident
+    symbol
   }
 
   final def newSymbolLike(symbol: TypeSymbol): TypeSymbol = {

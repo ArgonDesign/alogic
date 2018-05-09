@@ -211,8 +211,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
 
       // Insert function names before descending an entity so they can be in arbitrary order
       for (Function(ident: Ident, _) <- node.functions) {
-        val symbol = cc.newTermSymbol(ident.name, ident.loc, TypeCtrlFunc(Nil, TypeVoid))
-        symbol.attr update ident
+        val symbol = cc.newTermSymbol(ident, TypeCtrlFunc(Nil, TypeVoid))
         Scopes.insert(symbol)
         if (ident.name == "main") {
           // Always mark 'main' as used
@@ -224,9 +223,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
 
       // Insert nested entity names so instantiations can resolve them in arbitrary order
       for (Entity(ident: Ident, _, _, _, _, _, _, _, _) <- node.entities) {
-        val kind = TypeEntity("", Nil, Nil)
-        val symbol = cc.newTypeSymbol(ident.name, ident.loc, kind)
-        symbol.attr update ident
+        val symbol = cc.newTypeSymbol(ident, TypeEntity("", Nil, Nil))
         Scopes.insert(symbol)
       }
     }

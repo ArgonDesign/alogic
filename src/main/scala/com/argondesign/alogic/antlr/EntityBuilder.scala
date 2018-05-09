@@ -30,7 +30,8 @@ import scala.collection.JavaConverters._
 object EntityBuilder extends BaseBuilder[EntityContext, Entity] {
 
   // A few helper to use locally
-  private case class AutoInstance(entity: Entity) extends Locationed
+  private case class AutoInstance(entity: Entity, attributes: Option[Map[String, Expr]])
+      extends Locationed
   private case class FenceBlock(stmts: StmtBlock) extends Locationed
   private case class VerbatimBlock(lang: String, text: String) extends Locationed
 
@@ -45,6 +46,10 @@ object EntityBuilder extends BaseBuilder[EntityContext, Entity] {
         val paramNames = c.param_assigns.IDENTIFIER.asScala.toList map { _.text }
         val paramExprs = ExprBuilder(c.param_assigns.expr)
 
+        if (ctx.attr != null) {
+          name withAttr AttrBuilder(ctx.attr)
+        }
+
         Instance(name, module, paramNames, paramExprs) withLoc ctx.loc
       }
 
@@ -54,8 +59,9 @@ object EntityBuilder extends BaseBuilder[EntityContext, Entity] {
 
       override def visitEntityContentEntity(ctx: EntityContentEntityContext) = {
         val entity = EntityBuilder(ctx.entity)
-        if (Option(ctx.autoinst).isDefined) {
-          AutoInstance(entity) withLoc ctx.loc
+        if (ctx.autoinst != null) {
+          val attr = Option(ctx.attr) map { AttrBuilder(_) }
+          AutoInstance(entity, attr) withLoc ctx.loc
         } else {
           entity
         }
@@ -87,15 +93,24 @@ object EntityBuilder extends BaseBuilder[EntityContext, Entity] {
         val decls = DeclBuilder(ctx.decl)
         val contents = EntityContentVisitor(ctx.entity_content)
         val instances = contents collect {
-          case x: Instance          => x
-          case AutoInstance(entity) => Instance(entity.ref, entity.ref, Nil, Nil) withLoc entity.loc
+          case x: Instance => x
+          case AutoInstance(entity, None) => {
+            val Ident(name) = entity.ref
+            val ident = Ident(name) withLoc entity.ref.loc
+            Instance(ident, entity.ref, Nil, Nil) withLoc entity.loc
+          }
+          case AutoInstance(entity, Some(attr)) => {
+            val Ident(name) = entity.ref
+            val ident = Ident(name) withLoc entity.ref.loc withAttr attr
+            Instance(ident, entity.ref, Nil, Nil) withLoc entity.loc
+          }
         }
         val connects = contents collect { case x: Connect           => x }
         val functions = contents collect { case x: Function         => x }
         val fenceBlocks = contents collect { case FenceBlock(block) => block }
         val entities = contents collect {
-          case x: Entity            => x
-          case AutoInstance(entity) => entity
+          case x: Entity               => x
+          case AutoInstance(entity, _) => entity
         }
         val verbatim = {
           val blocks = contents collect { case x: VerbatimBlock          => x }
