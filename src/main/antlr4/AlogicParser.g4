@@ -191,7 +191,7 @@ expr
   | ATID                                                    # ExprAtid
   | DOLLARID                                                # ExprDollarid
   // Call
-  | expr '(' commaexpr ')'                                  # ExprCall
+  | expr '(' commaexpr? ')'                                 # ExprCall
   // Index/Slice
   | expr '[' idx=expr ']'                                   # ExprIndex
   | expr '[' lidx=expr op=(':' | '-:' | '+:') ridx=expr ']' # ExprSlice
@@ -216,7 +216,7 @@ expr
   | kind                                                    # ExprType
   ;
 
-commaexpr: (expr (',' expr)*)? ;
+commaexpr: expr (',' expr)* ;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Attributes

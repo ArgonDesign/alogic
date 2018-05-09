@@ -61,7 +61,8 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
 
       // Call
       override def visitExprCall(ctx: ExprCallContext) = {
-        ExprCall(visit(ctx.expr), this(ctx.commaexpr)) withLoc ctx.loc
+        val args = Option(ctx.commaexpr) map { this(_) } getOrElse Nil
+        ExprCall(visit(ctx.expr), args) withLoc ctx.loc
       }
 
       // Operators

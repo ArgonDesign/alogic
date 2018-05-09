@@ -122,6 +122,13 @@ final class ParserSpec extends FreeSpec with AlogicTest {
           "missing parameter list '()' after entity name in instantiation 'new c'")
       }
 
+      "empty concatenation" in {
+        a[AsTreeSyntaxErrorException] should be thrownBy {
+          "{}".asTree[Expr]
+        }
+        cc.messages should not be empty
+      }
+
       // TODO: Mandatory blocks
     }
 
