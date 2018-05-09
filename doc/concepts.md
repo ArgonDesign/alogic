@@ -9,8 +9,8 @@ interest of the adopter.
 ### Design entities
 
 The fundamental design unit is called a [design entity](entities.md).
-Entities are analogous to Verilog modules. They can be instantiated inside other
-entities to build a design hierarchy.
+Entities are analogous to Verilog modules in that they can be instantiated
+inside other entities to build a design hierarchy.
 
 A fundamental entity would be a [Finite State Machine](fsms.md), which is
 described using code with locally sequential semantics similar to common

@@ -7,7 +7,7 @@ concepts in Verilog are provided where appropriate.
 
 ## Sections
 
-- [Basic concepts an examples](concepts.md)
+- [Basic concepts and examples](concepts.md)
 - [Compilation model](compilation.md)
 - [Design entities](entities.md)
 - [Data types and simple variables](types.md)

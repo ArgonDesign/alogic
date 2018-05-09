@@ -14,6 +14,10 @@ single [design entity](entities.md) in curly braces:
 }
 ```
 
+It is a requirement that the basename of the source file without the `.alogic`
+suffix is the same as the design entity it defines. The compiler relies on this
+to find entity definitions.
+
 ### The built-in preprocessor
 
 When the compiler reads a source file, first it applies the built-in
@@ -28,21 +32,26 @@ directives.
 ### Compilation process
 
 The compilation of a complete Alogic design into it's Verilog representation is
-done in one step, with a single invocation of the Alogic compiler, using roughly
-the following steps:
- 1. Read in all `.alogic` source files from a specified list of input paths
- 1. Apply the built-in preprocessor to all input sources
- 1. Translate all design entities into FSMs and Networks
- 1. Resolve all instantiations and port connections
- 1. Emit Verilog modules for each entity into the output directory
+done in one step, with a single invocation of the Alogic compiler. The compiler
+is typically invoked with a list of top level entity names, together with a list
+of search directories specified with the `-y` option. At this point the compiler
+will read in, preprocess and parse all source files required for the design,
+based on the entities instantiated by the design hierarchy below the specified
+top level entities. The design then undergoes a successive list of
+transformations, at the end of which a set of output files are written into
+the output directory specified with the `-o` option.
 
-As an example, in order to compile all `.alogic` files under `src` into `.v`
-files under `rtl`, one would invoke the Alogic compiler with the following
-command line:
+As an example, in order to compile a design, with a top level entity called
+`foo`, and souce files located in directory `src`, one can invoke the compiler
+as:
 
-	alogic -o rtl src
+  alogic -o rtl -y src foo
 
-See `alogic --help` for command line options.
+This will read in all required entities to compile the design hierercy below
+the top level `foo`, searching for souce files in directory `src`, and
+producing the compiled output in the output directory `rtl`.
+
+See `alogic --help` for more command line options.
 
 ### Downstream flow
 
