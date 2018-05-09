@@ -22,6 +22,9 @@ import com.argondesign.alogic.util.unreachable
 import scala.collection.immutable.ListMap
 
 class SymbolAttributes {
+  // Symbol is meant to be unused, do not warn
+  val unused = new Attribute[Boolean]()
+
   // Is this a toplevel entity
   val topLevel = new Attribute[Boolean]()
   // Is this an entry point function
@@ -103,6 +106,7 @@ class SymbolAttributes {
 
   // Iterator that enumerates all fields above
   private def attrIterator = Iterator(
+    unused,
     topLevel,
     entry,
     paramBinding,
@@ -135,6 +139,7 @@ class SymbolAttributes {
 
   // Iterator that enumerates names of fields above
   private def nameIterator = Iterator(
+    "unused",
     "topLevel",
     "entry",
     "paramBinding",
@@ -176,6 +181,7 @@ class SymbolAttributes {
   def update(that: SourceAttributes): Unit = if (that.hasAttr) {
     for ((name, expr) <- that.attr) {
       name match {
+        case "unused"     => unused set true
         case "stacklimit" => stackLimit set expr
         case "reclimit"   => recLimit set expr
         case "toplevel"   => topLevel set true

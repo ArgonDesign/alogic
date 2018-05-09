@@ -794,6 +794,11 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     cc.messages.loneElement should beThe[Warning]("Variable 'b' is unused")
   }
 
+  it should "issue warning for unused local variables - but not with 'unused' attribute" in {
+    "{ (* unused *) i8 b; }".asTree[Stmt] rewrite namer
+    cc.messages shouldBe empty
+  }
+
   it should "not issue warning for variable used in nested scope" in {
     "{ i8 b; { b; } }".asTree[Stmt] rewrite namer
     cc.messages shouldBe empty
@@ -806,11 +811,25 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     cc.messages.loneElement should beThe[Warning]("Variable 'b' is unused")
   }
 
+  it should "issue warning for unused entity variables - but not with 'unused' attribute" in {
+    val entity = "fsm a { (* unused *) i8 b; }".asTree[Entity]
+    cc.addGlobalEntity(entity)
+    entity rewrite namer
+    cc.messages shouldBe empty
+  }
+
   it should "issue warning for unused arrays" in {
     val entity = "fsm a { i8 b[2]; }".asTree[Entity]
     cc.addGlobalEntity(entity)
     entity rewrite namer
     cc.messages.loneElement should beThe[Warning]("Array 'b' is unused")
+  }
+
+  it should "issue warning for unused arrays - but not with 'unused' attribute" in {
+    val entity = "fsm a { (* unused *) i8 b[2]; }".asTree[Entity]
+    cc.addGlobalEntity(entity)
+    entity rewrite namer
+    cc.messages shouldBe empty
   }
 
   it should "issue warning for unused input ports" in {
@@ -820,18 +839,11 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     cc.messages.loneElement should beThe[Warning]("Input port 'b' is unused")
   }
 
-  it should "issue warning for unused output ports" in {
-    val entity = "fsm a { out i8 b; }".asTree[Entity]
+  it should "issue warning for unused input ports - but not with 'unused' attribute" in {
+    val entity = "fsm a { (* unused *) in i8 b; }".asTree[Entity]
     cc.addGlobalEntity(entity)
     entity rewrite namer
-    cc.messages.loneElement should beThe[Warning]("Output port 'b' is unused")
-  }
-
-  it should "issue warning for unused parameters" in {
-    val entity = "fsm a { param i8 b = 8'd9; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
-    entity rewrite namer
-    cc.messages.loneElement should beThe[Warning]("Parameter 'b' is unused")
+    cc.messages shouldBe empty
   }
 
   it should "issue warning for unused input ports - but not in verbatim entity" in {
@@ -841,8 +853,36 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     cc.messages shouldBe empty
   }
 
+  it should "issue warning for unused output ports" in {
+    val entity = "fsm a { out i8 b; }".asTree[Entity]
+    cc.addGlobalEntity(entity)
+    entity rewrite namer
+    cc.messages.loneElement should beThe[Warning]("Output port 'b' is unused")
+  }
+
+  it should "issue warning for unused output ports - but not with 'unused' attribute" in {
+    val entity = "fsm a { (* unused *) out i8 b; }".asTree[Entity]
+    cc.addGlobalEntity(entity)
+    entity rewrite namer
+    cc.messages shouldBe empty
+  }
+
   it should "issue warning for unused output ports - but not in verbatim entity" in {
     val entity = "verbatim entity a { out i8 b; }".asTree[Entity]
+    cc.addGlobalEntity(entity)
+    entity rewrite namer
+    cc.messages shouldBe empty
+  }
+
+  it should "issue warning for unused parameters" in {
+    val entity = "fsm a { param i8 b = 8'd9; }".asTree[Entity]
+    cc.addGlobalEntity(entity)
+    entity rewrite namer
+    cc.messages.loneElement should beThe[Warning]("Parameter 'b' is unused")
+  }
+
+  it should "issue warning for unused parameters - but not with 'unused' attribute" in {
+    val entity = "fsm a { (* unused *) param i8 b = 8'd9; }".asTree[Entity]
     cc.addGlobalEntity(entity)
     entity rewrite namer
     cc.messages shouldBe empty
@@ -862,11 +902,25 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     cc.messages.loneElement should beThe[Warning]("Constant 'b' is unused")
   }
 
+  it should "issue warning for unused constants - but not with 'unused' attribute" in {
+    val entity = "fsm a { (* unused *) const i8 b = 8'd9; }".asTree[Entity]
+    cc.addGlobalEntity(entity)
+    entity rewrite namer
+    cc.messages shouldBe empty
+  }
+
   it should "issue warning for unused pipeline variables" in {
     val entity = "fsm a { pipeline i8 b; }".asTree[Entity]
     cc.addGlobalEntity(entity)
     entity rewrite namer
     cc.messages.loneElement should beThe[Warning]("Pipeline variable 'b' is unused")
+  }
+
+  it should "issue warning for unused pipeline variables - but not with 'unused' attribute" in {
+    val entity = "fsm a { (* unused *) pipeline i8 b; }".asTree[Entity]
+    cc.addGlobalEntity(entity)
+    entity rewrite namer
+    cc.messages shouldBe empty
   }
 
   it should "issue warning for unused functions" in {
@@ -883,6 +937,13 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     cc.messages shouldBe empty
   }
 
+  it should "issue warning for unused functions - but not with 'unused' attribute" in {
+    val entity = "fsm a { (* unused *) void foo() {} }".asTree[Entity]
+    cc.addGlobalEntity(entity)
+    entity rewrite namer
+    cc.messages shouldBe empty
+  }
+
   it should "issue warning for unused entities" in {
     val entity = "network a { fsm bar {} }".asTree[Entity]
     cc.addGlobalEntity(entity)
@@ -890,11 +951,25 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     cc.messages.loneElement should beThe[Warning]("Entity 'bar' is unused")
   }
 
+  it should "issue warning for unused entities - but not with 'unused' attribute" in {
+    val entity = "network a { (* unused *) fsm bar {} }".asTree[Entity]
+    cc.addGlobalEntity(entity)
+    entity rewrite namer
+    cc.messages shouldBe empty
+  }
+
   it should "issue warning for unused instances" in {
     val entity = "network a { new fsm bar {} }".asTree[Entity]
     cc.addGlobalEntity(entity)
     entity rewrite namer
     cc.messages.loneElement should beThe[Warning]("Instance 'bar' is unused")
+  }
+
+  it should "issue warning for unused instances - but not with 'unused' attribute" in {
+    val entity = "network a { (* unused *) new fsm bar {} }".asTree[Entity]
+    cc.addGlobalEntity(entity)
+    entity rewrite namer
+    cc.messages shouldBe empty
   }
 
   it should "not issue warning for unused type definitions" in {
@@ -958,5 +1033,29 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     }
     symA.value.kind shouldBe TypeEntity("bar", Nil, Nil)
     symA.value.attr.stackLimit.get.value shouldBe Expr(3)
+  }
+
+  it should "attach source attributes to symbols - instance" in {
+    val entity = "fsm foo { (* unused *) new (* stacklimit = 3 *) fsm bar {} }".asTree[Entity]
+    cc.addGlobalEntity(entity)
+    val tree = entity rewrite namer
+
+    val Some((iSymbol, eSymbol)) = tree collectFirst {
+      case Instance(Sym(iSymbol: TermSymbol), Sym(eSymbol: TypeSymbol), _, _) => (iSymbol, eSymbol)
+    }
+    iSymbol.kind shouldBe TypeInstance(eSymbol)
+    iSymbol.attr.unused.get.value shouldBe true
+    eSymbol.kind shouldBe TypeEntity("bar", Nil, Nil)
+    eSymbol.attr.stackLimit.get.value shouldBe Expr(3)
+  }
+
+  it should "attach source attributes to symbols - declaration" in {
+    val entity = "fsm foo { (* unused *) i8 a; }".asTree[Entity]
+    cc.addGlobalEntity(entity)
+    val tree = entity rewrite namer
+
+    val Some(symbol) = tree collectFirst { case Decl(symbol: TermSymbol, _) => symbol }
+    symbol.kind shouldBe TypeSInt(Expr(8))
+    symbol.attr.unused.get.value shouldBe true
   }
 }

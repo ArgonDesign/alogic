@@ -63,7 +63,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       if (scopes.isEmpty) {
         val unusedSymbols = (allSet diff usedSet).toList sortBy { _.loc.line }
 
-        for (symbol <- unusedSymbols) {
+        for (symbol <- unusedSymbols if !(symbol.attr.unused.get contains true)) {
           val hint = symbol.kind match {
             case _: TypeArray    => "Array"
             case _: TypeCtrlFunc => "Function"
