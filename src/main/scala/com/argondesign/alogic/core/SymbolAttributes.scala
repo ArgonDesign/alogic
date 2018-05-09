@@ -17,7 +17,6 @@ package com.argondesign.alogic.core
 
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Symbols._
-import com.argondesign.alogic.util.unreachable
 
 import scala.collection.immutable.ListMap
 
@@ -178,17 +177,18 @@ class SymbolAttributes {
   }
 
   // Copy values from source attributes
-  def update(that: SourceAttributes): Unit = if (that.hasAttr) {
-    for ((name, expr) <- that.attr) {
-      name match {
-        case "unused"     => unused set true
-        case "stacklimit" => stackLimit set expr
-        case "reclimit"   => recLimit set expr
-        case "toplevel"   => topLevel set true
-        case _            => unreachable
+  def update(symbol: Symbol, that: SourceAttributes)(implicit cc: CompilerContext): Unit =
+    if (that.hasAttr) {
+      for ((name, expr) <- that.attr) {
+        name match {
+          case "unused"     => unused set true
+          case "stacklimit" => stackLimit set expr
+          case "reclimit"   => recLimit set expr
+          case "toplevel"   => topLevel set true
+          case _            => cc.error(symbol.loc, s"Unknown attribute '${name}'")
+        }
       }
     }
-  }
 
   // Render in some human readable form
   def toSource(implicit cc: CompilerContext): String = {

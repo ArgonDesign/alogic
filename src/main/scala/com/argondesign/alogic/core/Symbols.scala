@@ -105,7 +105,7 @@ trait Symbols { self: CompilerContext =>
 
   final def newTermSymbol(ident: Ident, kind: Type): TermSymbol = {
     val symbol = newTermSymbol(ident.name, ident.loc, kind)
-    symbol.attr update ident
+    symbol.attr.update(symbol, ident)(this)
     symbol
   }
 
@@ -129,7 +129,7 @@ trait Symbols { self: CompilerContext =>
 
   final def newTypeSymbol(ident: Ident, kind: Type): TypeSymbol = {
     val symbol = newTypeSymbol(ident.name, ident.loc, kind)
-    symbol.attr update ident
+    symbol.attr.update(symbol, ident)(this)
     symbol
   }
 
