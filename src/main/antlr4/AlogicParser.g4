@@ -210,7 +210,7 @@ expr
   | expr op='&&' expr                                       # ExprBinary
   | expr op='||' expr                                       # ExprBinary
   |<assoc=right> expr op='?' expr ':' expr                  # ExprTernary
-  | '{' expr '{' expr '}' '}'                               # ExprRep
+  | '{' expr '{' commaexpr '}' '}'                          # ExprRep
   | '{' commaexpr '}'                                       # ExprCat
   // Type
   | kind                                                    # ExprType

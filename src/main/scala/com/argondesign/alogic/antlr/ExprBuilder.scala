@@ -78,7 +78,13 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
         ExprTernary(visit(ctx.expr(0)), visit(ctx.expr(1)), visit(ctx.expr(2))) withLoc loc
       }
       override def visitExprRep(ctx: ExprRepContext) = {
-        ExprRep(visit(ctx.expr(0)), visit(ctx.expr(1))) withLoc ctx.loc
+        val rep = visit(ctx.expr)
+        val parts = this(ctx.commaexpr)
+        lazy val cat = ExprCat(parts) withLoc ctx.commaexpr.loc
+        parts match {
+          case one :: Nil => ExprRep(rep, one) withLoc ctx.loc
+          case _          => ExprRep(rep, cat) withLoc ctx.loc
+        }
       }
       override def visitExprCat(ctx: ExprCatContext) = {
         ExprCat(this(ctx.commaexpr)) withLoc ctx.loc

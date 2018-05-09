@@ -1323,6 +1323,12 @@ final class ParserSpec extends FreeSpec with AlogicTest {
             "{0, 1, 2}".asTree[Expr] shouldBe ExprCat(List(Expr(0), Expr(1), Expr(2)))
           }
 
+          "multiple concatenation " in {
+            "{N{a, b}}".asTree[Expr] shouldBe {
+              ExprRep(ExprRef(Ident("N")), ExprCat(List(ExprRef(Ident("a")), ExprRef(Ident("b")))))
+            }
+          }
+
           "index 1x" in {
             "a[0]".asTree[Expr] shouldBe ExprIndex(ExprRef(Ident("a")), Expr(0))
           }
