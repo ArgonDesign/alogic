@@ -648,6 +648,26 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         }
       }
     }
+
+    "warn for concatenations" - {
+      "containing only a single expression" in {
+        val tree = "{1'b1}".asTree[Expr]
+
+        tree rewrite checker shouldBe tree
+
+        cc.messages.loneElement should beThe[Warning](
+          s"Single expression concatenation"
+        )
+      }
+
+      "but not for 2 or more expressions" in {
+        val tree = "{1'b1, 1'b1}".asTree[Expr]
+
+        tree rewrite checker shouldBe tree
+
+        cc.messages shouldBe empty
+      }
+    }
   }
 
 }

@@ -301,6 +301,11 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
       TreeCopier(connect)(newLhs, newRhss)
     }
 
+    case ExprCat(List(_)) => {
+      cc.warning(tree, "Single expression concatenation")
+      tree
+    }
+
     case _ => tree
   }
 
