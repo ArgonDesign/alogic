@@ -35,7 +35,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
   // The return stack symbol
   private[this] lazy val rsSymbol: TermSymbol = {
     entitySymbol.attr.returnStack.get getOrElse {
-      cc.ice(entitySymbol.loc, "Entity requires a return stack, but none was allocated")
+      cc.ice(entitySymbol, "Entity requires a return stack, but none was allocated")
     }
   }
 

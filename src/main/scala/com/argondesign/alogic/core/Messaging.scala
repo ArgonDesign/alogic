@@ -17,11 +17,12 @@ package com.argondesign.alogic.core
 
 import java.io.PrintStream
 
-import scala.collection.mutable
 import com.argondesign.alogic.antlr.AntlrConverters._
+import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.util.unreachable
 import org.antlr.v4.runtime.ParserRuleContext
 
+import scala.collection.mutable
 import scala.io.AnsiColor
 
 sealed abstract trait Message {
@@ -173,7 +174,7 @@ trait Messaging { self: CompilerContext =>
   final def ice(ctx: ParserRuleContext, msg: String*): Nothing = ice(ctx.loc, msg: _*)
 
   //////////////////////////////////////////////////////////////////////////////
-  // Versions that anything that has a location
+  // Versions that take anything that has a location
   //////////////////////////////////////////////////////////////////////////////
 
   final def warning(item: Locationed, msg: String*): Unit = warning(item.loc, msg: _*)
@@ -183,4 +184,16 @@ trait Messaging { self: CompilerContext =>
   final def fatal(item: Locationed, msg: String*): Nothing = fatal(item.loc, msg: _*)
 
   final def ice(item: Locationed, msg: String*): Nothing = ice(item.loc, msg: _*)
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Versions that take a symbol
+  //////////////////////////////////////////////////////////////////////////////
+
+  final def warning(symbol: Symbol, msg: String*): Unit = warning(symbol.loc, msg: _*)
+
+  final def error(symbol: Symbol, msg: String*): Option[Loc] = error(symbol.loc, msg: _*)
+
+  final def fatal(symbol: Symbol, msg: String*): Nothing = fatal(symbol.loc, msg: _*)
+
+  final def ice(symbol: Symbol, msg: String*): Nothing = ice(symbol.loc, msg: _*)
 }

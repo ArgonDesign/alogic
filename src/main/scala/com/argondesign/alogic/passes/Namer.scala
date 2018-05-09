@@ -77,7 +77,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
             case _: TypeInstance => "Instance"
             case _               => "Variable"
           }
-          cc.warning(symbol.loc, s"${hint} '${symbol.name}' is unused")
+          cc.warning(symbol, s"${hint} '${symbol.name}' is unused")
         }
       }
     }

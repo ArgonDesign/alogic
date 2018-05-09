@@ -58,7 +58,7 @@ class Preprocessor(implicit cc: CompilerContext) {
         override def visitHashDefine(ctx: HashDefineContext): String = {
           val s = ctx.IDENTIFIER.text
           if (defines contains s) {
-            cc.warning(ctx.loc, s"Redefined preprocessor identifier '$s'")
+            cc.warning(ctx, s"Redefined preprocessor identifier '$s'")
           }
           defines(s) = ctx.REST.text.trim
           ""

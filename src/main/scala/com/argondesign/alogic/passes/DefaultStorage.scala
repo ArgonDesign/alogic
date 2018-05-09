@@ -75,7 +75,7 @@ final class DefaultStorage(implicit cc: CompilerContext) extends TreeTransformer
             // Generate error for those ports driven through a connect
             // that have an explicit storage specifier and fix them
             case TypeOut(kind, fct, _) => {
-              cc.error(symbol.loc, "Port driven by '->' must not specify output storage")
+              cc.error(symbol, "Port driven by '->' must not specify output storage")
               symbol.kind = TypeOut(kind, fct, StorageTypeDefault)
             }
             case _ => ()

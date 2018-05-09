@@ -185,7 +185,7 @@ class SymbolAttributes {
           case "stacklimit" => stackLimit set expr
           case "reclimit"   => recLimit set expr
           case "toplevel"   => topLevel set true
-          case _            => cc.error(symbol.loc, s"Unknown attribute '${name}'")
+          case _            => cc.error(symbol, s"Unknown attribute '${name}'")
         }
       }
     }
