@@ -31,14 +31,6 @@ import scala.collection.mutable
 
 final class PortCheck(implicit cc: CompilerContext) extends TreeTransformer {
 
-  private[this] def multipleSourceError(lhs: Expr, loc: Loc): Unit = {
-    cc.error(
-      lhs,
-      s"'${lhs.toSource}' appears on the left of more than one '->'",
-      s"Previous '->' is at: ${loc.prefix}"
-    )
-  }
-
   private[this] def multipleDriverError(rhs: Expr, loc: Loc): Unit = {
     cc.error(rhs, s"'${rhs.toSource}' has multiple drivers", s"Previous '->' is at: ${loc.prefix}")
   }
@@ -51,13 +43,6 @@ final class PortCheck(implicit cc: CompilerContext) extends TreeTransformer {
   override def enter(tree: Tree): Unit = tree match {
 
     case entity: Entity => {
-      // Map of symbols appearing on the left of a connect that is declared by
-      // us to the location of the connect
-      val sourceOurs = mutable.Map[TermSymbol, Loc]()
-      // Map of instance/port symbol pairs on the left of a connect to the
-      // location of the connect
-      val sourceInst = mutable.Map[(TermSymbol, TermSymbol), Loc]()
-
       // Map of symbols appearing on the right of a connect that is declared by
       // us to the location of the connect
       val sinkOurs = mutable.Map[TermSymbol, Loc]()
@@ -65,33 +50,21 @@ final class PortCheck(implicit cc: CompilerContext) extends TreeTransformer {
       // location of the connect
       val sinkInst = mutable.Map[(TermSymbol, TermSymbol), Loc]()
 
-      for (Connect(lhs, rhss) <- entity.connects) {
-        lhs match {
+      for {
+        Connect(_, rhss) <- entity.connects
+        rhs <- rhss
+      } {
+        rhs match {
           case rhs @ ExprRef(symbol: TermSymbol) => {
-            sourceOurs.get(symbol) foreach { multipleSourceError(rhs, _) }
-            sourceOurs(symbol) = tree.loc
+            sinkOurs.get(symbol) foreach { multipleDriverError(rhs, _) }
+            sinkOurs(symbol) = tree.loc
           }
           case InstancePortRef(iSymbol, pSymbol) => {
             val key = (iSymbol, pSymbol)
-            sourceInst.get(key) foreach { multipleSourceError(lhs, _) }
-            sourceInst(key) = tree.loc
+            sinkInst.get(key) foreach { multipleDriverError(rhs, _) }
+            sinkInst(key) = tree.loc
           }
           case _ => unreachable
-        }
-
-        for (rhs <- rhss) {
-          rhs match {
-            case rhs @ ExprRef(symbol: TermSymbol) => {
-              sinkOurs.get(symbol) foreach { multipleDriverError(rhs, _) }
-              sinkOurs(symbol) = tree.loc
-            }
-            case InstancePortRef(iSymbol, pSymbol) => {
-              val key = (iSymbol, pSymbol)
-              sinkInst.get(key) foreach { multipleDriverError(rhs, _) }
-              sinkInst(key) = tree.loc
-            }
-            case _ => unreachable
-          }
         }
       }
 

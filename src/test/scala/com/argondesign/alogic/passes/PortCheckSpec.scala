@@ -97,47 +97,6 @@ final class PortCheckSpec extends FreeSpec with AlogicTest {
       }
     }
 
-    "error for source appearing on multiple left hand sides" - {
-      for {
-        (conn, msg) <- List(
-          ("pia -> po, n.pin;", ""),
-          ("pib -> po, n.pin;", ""),
-          ("k.pok -> po, n.pin;", ""),
-          ("pia -> po; pib -> n.pin;", ""),
-          ("pia -> po; pia -> n.pin;", "pia"),
-          ("pib -> po; pib -> n.pin;", "pib"),
-          ("k.pok -> po; k.pok -> n.pin;", "k.pok")
-        )
-      } {
-        conn in {
-          val tree = s"""|network a {
-                         |  (* unused *) in bool pia;
-                         |  (* unused *) in bool pib;
-                         |  (* unused *) out bool po;
-                         |
-                         |  (* unused *) new fsm n {
-                         |    (* unused *) in bool pin;
-                         |  }
-                         |
-                         |  (* unused *) new fsm k {
-                         |    (* unused *) out bool pok;
-                         |  }
-                         |
-                         |  ${conn}
-                         |}""".stripMargin.asTree[Entity]
-          xform(tree)
-          if (msg.isEmpty) {
-            cc.messages shouldBe empty
-          } else {
-            cc.messages.loneElement should beThe[Error](
-              Pattern.quote(s"'${msg}' appears on the left of more than one '->'"),
-              "Previous '->' is at: .*"
-            )
-          }
-        }
-      }
-    }
-
     "error for invalid storage specifiers" - {
       for {
         (fc, st, msg) <- List(
