@@ -20,10 +20,12 @@ import com.argondesign.alogic.ast.Trees.Expr.InstancePortRef
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.FlowControlTypes._
-
+import com.argondesign.alogic.core.StorageTypes.StorageTypeDefault
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.PartialMatch._
 import com.argondesign.alogic.util.unreachable
+
+import scala.language.postfixOps
 
 object ConnectChecks {
 
@@ -52,7 +54,7 @@ object ConnectChecks {
     lhs match {
       case ExprRef(symbol) if symbol.kind.isInstance => true
       case other => {
-        val opt = other partialMatch {
+        other partialMatch {
           case ExprRef(symbol) if symbol.kind.isOut => {
             cc.error(lhs, "Left hand side of '->' is an output from enclosing entity")
           }
@@ -62,8 +64,7 @@ object ConnectChecks {
           case InstancePortRef(iSymbol, symbol) if symbol.kind.isIn => {
             cc.error(lhs, s"Left hand side of '->' is an input to instance '${iSymbol.name}'")
           }
-        }
-        opt.isEmpty
+        } isEmpty
       }
     }
   }
@@ -72,7 +73,7 @@ object ConnectChecks {
     rhs match {
       case ExprRef(symbol) if symbol.kind.isInstance => true
       case other => {
-        val opt = other partialMatch {
+        other partialMatch {
           case ExprRef(symbol) if symbol.kind.isIn => {
             cc.error(rhs, "Right hand side of '->' is an input to enclosing entity")
           }
@@ -82,8 +83,7 @@ object ConnectChecks {
           case InstancePortRef(iSymbol, symbol) if symbol.kind.isOut => {
             cc.error(rhs, s"Right hand side of '->' is an output from instance '${iSymbol.name}'")
           }
-        }
-        opt.isEmpty
+        } isEmpty
       }
     }
   }
@@ -158,6 +158,19 @@ object ConnectChecks {
     }
   }
 
+  private def validStorage(loc: Loc, rhs: Expr)(implicit cc: CompilerContext): Boolean = {
+    Some(rhs) collect {
+      case ExprRef(symbol) => (symbol, symbol.kind)
+    } collect {
+      case (symbol, TypeOut(_, _, st)) if st != StorageTypeDefault =>
+        cc.error(
+          symbol,
+          "Port driven by '->' must not specify output storage",
+          s"'->' is at: ${loc.prefix}"
+        )
+    } isEmpty
+  }
+
   // Return true if this is a well formed and typed Connect instance
   def apply(conn: Connect)(implicit cc: CompilerContext): Boolean = {
     // TODO: error on connect same thing on multiple lhss
@@ -178,8 +191,15 @@ object ConnectChecks {
     lazy val flowControlOk = rhss map { compatibleFlowControl(lhs, _) } reduce { _ && _ }
 
     // Check number of right hand sides is legal
-    lazy val sinkCountOK = sinkCountLegal(conn.loc, lhs, rhss)
+    lazy val sinkCountOk = sinkCountLegal(conn.loc, lhs, rhss)
 
-    lhsOk && rhssOk && typeOk && flowControlOk && sinkCountOK
+    // Check storage specifier of rhs is default
+    lazy val storageOk = rhss map { validStorage(conn.loc, _) } reduce { _ && _ }
+
+    // Force some value to yield more errors if they makes sense
+    lhsOk && rhssOk && storageOk
+
+    // Everything needs to be OK
+    lhsOk && rhssOk && typeOk && flowControlOk && sinkCountOk && storageOk
   }
 }

@@ -333,5 +333,41 @@ final class TyperConnectSpec extends FreeSpec with AlogicTest {
       }
     }
 
+    "error for storage specifier on ports driven by '->'" - {
+      for {
+        (fc, st, ok) <- List(
+          ("", "", true),
+          ("", "wire", false),
+          ("sync", "", true),
+          ("sync", "wire", false),
+          ("sync ready", "", true),
+          ("sync ready", "fslice", false),
+          ("sync ready", "bslice", false),
+          ("sync ready", "bubble", false),
+          ("sync ready", "bubble bubble", false),
+          ("sync accept", "", true),
+          ("sync accept", "wire", false)
+        )
+      } {
+
+        s"'${fc}' with '${st}'" in {
+          val tree = s"""|network a {
+                         |   in  ${fc}       bool pi;
+                         |   out ${fc} ${st} bool po;
+                         |   pi -> po;
+                         |}""".stripMargin.asTree[Entity]
+          xform(tree)
+          if (ok) {
+            cc.messages shouldBe empty
+          } else {
+            cc.messages.loneElement should beThe[Error](
+              "Port driven by '->' must not specify output storage",
+              "'->' is at:.*"
+            )
+          }
+        }
+      }
+    }
+
   }
 }
