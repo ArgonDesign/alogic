@@ -60,6 +60,6 @@ designed using direct Verilog description.
 
 ## Further information
 
-* [Documentation](https://github.com/ArgonDesign/alogic/blob/master/doc/index.md)
-* [Installation](https://github.com/ArgonDesign/alogic/blob/master/doc/install.md)
-* [License](https://github.com/ArgonDesign/alogic/blob/master/LICENSE)
+* [Documentation](doc/index.md)
+* [Installation](doc/install.md)
+* [License](LICENSE)
