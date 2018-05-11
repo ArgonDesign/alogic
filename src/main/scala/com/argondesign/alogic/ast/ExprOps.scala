@@ -19,9 +19,11 @@ package com.argondesign.alogic.ast
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.Symbols.TermSymbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.passes.FoldExpr
 import com.argondesign.alogic.util.unreachable
+import com.argondesign.alogic.util.PartialMatch._
 
 import scala.language.implicitConversions
 import scala.math.BigInt.int2bigInt
@@ -250,5 +252,14 @@ trait ObjectExprOps {
   }
   final object || {
     def unapply(expr: ExprBinary) = if (expr.op == "||") Some((expr.lhs, expr.rhs)) else None
+  }
+
+  // Extractor for instance port references
+  final object InstancePortRef {
+
+    def unapply(expr: Expr): Option[(TermSymbol, String, Option[TermSymbol])] = expr partialMatch {
+      case ExprSelect(ExprRef(Sym(iSymbol: TermSymbol)), sel) if iSymbol.kind.isInstance =>
+        (iSymbol, sel, iSymbol.kind.asInstanceOf[TypeInstance].portSymbol(sel))
+    }
   }
 }

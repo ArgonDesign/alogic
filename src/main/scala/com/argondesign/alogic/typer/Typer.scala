@@ -130,6 +130,7 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
     // TODO: reduction of 1 bit value is error
     // TODO: Check bit select widths vs dimension
     // TODO: Warn for non power of 2 dimensions
+    // TODO: check parameter assignments
 
     val result: Tree = tree match {
       ////////////////////////////////////////////////////////////////////////////
@@ -185,37 +186,13 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         }
       }
 
-      case Connect(lhs, rhss) => {
-        def mkErrConnect(loc: Loc): Tree = {
-          val err = ExprError() withLoc loc
+      case conn @ Connect(lhs, rhss) => {
+        if (ConnectChecks(conn)) {
+          tree
+        } else {
+          val err = ExprError() withLoc tree.loc
           TypeAssigner(err)
-          Connect(err, List(err)) withLoc loc
-        }
-
-        (lhs.tpe, rhss.head.tpe) match {
-          case (_: TypeInstance, _: TypeInstance) => tree
-          case (_: TypeInstance, _) => {
-            cc.error(rhss.head, "Cannot connect pipeline port to non-pipeline port")
-            mkErrConnect(rhss.head.loc)
-          }
-          case (_, _: TypeInstance) => {
-            cc.error(lhs, "Cannot connect non-pipeline port to pipeline port")
-            mkErrConnect(lhs.loc)
-          }
-          case _ => {
-            val lhsWidthOpt = lhs.tpe.width.value
-            val errLoc = for {
-              rhs <- rhss
-              lhsWidth <- lhsWidthOpt
-              rhsWidth <- rhs.tpe.width.value
-              if lhsWidth != rhsWidth
-            } yield {
-              val loc = tree.loc.copy(point = rhs.loc.start)
-              cc.error(loc, s"Port widths do not match, ${lhsWidth} -> ${rhsWidth}")
-              loc
-            }
-            errLoc.headOption map { mkErrConnect(_) } getOrElse tree
-          }
+          Connect(err, List(err)) withLoc tree.loc
         }
       } followedBy {
         inConnect = false

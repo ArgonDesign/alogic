@@ -23,6 +23,35 @@ import com.argondesign.alogic.util.unreachable
 
 trait TypeOps extends TypePrintOps { this: Type =>
 
+  // Primitive but common type tests
+  final def isCombStmt = this eq TypeCombStmt
+  final def isCtrlStmt = this eq TypeCtrlStmt
+  final def isState = this eq TypeState
+  final def isInt = this.isInstanceOf[TypeInt]
+  final def isSInt = this.isInstanceOf[TypeSInt]
+  final def isUInt = this.isInstanceOf[TypeUInt]
+  final def isNum = this.isInstanceOf[TypeNum]
+  final def isVector = this.isInstanceOf[TypeVector]
+  final def isArray = this.isInstanceOf[TypeArray]
+  final def isStack = this.isInstanceOf[TypeStack]
+  final def isStruct = this.isInstanceOf[TypeStruct]
+  final def isVoid = this eq TypeVoid
+  final def isIdent = this.isInstanceOf[TypeIdent]
+  final def isCombFunc = this.isInstanceOf[TypeCombFunc]
+  final def isCtrlFunc = this.isInstanceOf[TypeCtrlFunc]
+  final def isEntity = this.isInstanceOf[TypeEntity]
+  final def isInstance = this.isInstanceOf[TypeInstance]
+  final def isStr = this eq TypeStr
+  final def isIn = this.isInstanceOf[TypeIn]
+  final def isOut = this.isInstanceOf[TypeOut]
+  final def isPipeline = this.isInstanceOf[TypePipeline]
+  final def isParam = this.isInstanceOf[TypeParam]
+  final def isConst = this.isInstanceOf[TypeConst]
+  final def isType = this.isInstanceOf[TypeType]
+  final def isMisc = this eq TypeMisc
+  final def isError = this eq TypeError
+  final def isPolyFunc = this.isInstanceOf[TypePolyFunc]
+
   // Is this a primitive numeric type
   final def isNumeric(implicit cc: CompilerContext): Boolean = this match {
     case _: TypeInt         => true
@@ -84,12 +113,6 @@ trait TypeOps extends TypePrintOps { this: Type =>
       case TypeNum(signed) => signed
       case _               => false
     }
-  }
-
-  // is this a TypeNum ?
-  final def isNum: Boolean = this match {
-    case _: TypeNum => true
-    case _          => false
   }
 
   // If this is a proxy type, get the underlying type, otherwise get this type

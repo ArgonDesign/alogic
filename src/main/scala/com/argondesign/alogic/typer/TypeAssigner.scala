@@ -278,6 +278,7 @@ object TypeAssigner {
       TypeError
     } else {
       symbol.kind match {
+        // TODO: lose these
         case TypeParam(kind)    => kind
         case TypeConst(kind)    => kind
         case TypePipeline(kind) => kind
