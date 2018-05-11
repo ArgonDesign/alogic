@@ -44,7 +44,9 @@ final class StatementFilter(p: PartialFunction[Stmt, Boolean])(implicit cc: Comp
         cases forall { case CaseClause(_, body) => emptyStmt(body) }
       }
     }
-    case _ => false
+    case _: StmtExpr          => true
+    case _: StmtDollarComment => true
+    case _                    => false
   }
 
   override def transform(tree: Tree): Tree = tree match {
