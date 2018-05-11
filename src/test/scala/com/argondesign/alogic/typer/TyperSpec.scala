@@ -282,10 +282,9 @@ final class TyperSpec extends FreeSpec with AlogicTest {
           val text = expr.trim.replaceAll(" +", " ")
           text in {
             val root = s"""|fsm a {
-                           |  param u8 N = 8'd2;
+                           |  (* unused *) param u8 N = 8'd2;
                            |  void main() {
-                           |    ${text};
-                           |    N;
+                           |    $$display("", ${text});
                            |    fence;
                            |  }
                            |}""".stripMargin.asTree[Root]
@@ -333,10 +332,9 @@ final class TyperSpec extends FreeSpec with AlogicTest {
             val text = expr.trim.replaceAll(" +", " ")
             text in {
               val root = s"""|fsm a {
-                             |  param u8 N = 8'd2;
+                             |  (* unused *) param u8 N = 8'd2;
                              |  void main() {
-                             |    ${text};
-                             |    N;
+                             |    $$display("", ${text});
                              |    fence;
                              |  }
                              |}""".stripMargin.asTree[Root]
@@ -386,13 +384,12 @@ final class TyperSpec extends FreeSpec with AlogicTest {
                            |};
                            |
                            |fsm c {
-                           |  a d;
-                           |  b e;
-                           |  in sync a f;
-                           |  out sync b g;
+                           |  (* unused *) a d;
+                           |  (* unused *) b e;
+                           |  (* unused *) in sync a f;
+                           |  (* unused *) out sync b g;
                            |  void main() {
-                           |    d; e; f; g;
-                           |    ${text};
+                           |    $$display("", ${text});
                            |    fence;
                            |  }
                            |}""".stripMargin.asTree[Root]
@@ -436,14 +433,14 @@ final class TyperSpec extends FreeSpec with AlogicTest {
         } {
           text in {
             val root = s"""|fsm c {
-                           |  out sync u2 a;
+                           |  (* unused *) out sync u2 a;
                            |
+                           |  (* unused *)
                            |  void bar() {
                            |    fence;
                            |  }
                            |
                            |  void main() {
-                           |    bar; a;
                            |    ${text};
                            |    fence;
                            |  }
@@ -471,10 +468,9 @@ final class TyperSpec extends FreeSpec with AlogicTest {
         } {
           text in {
             val root = s"""|fsm c {
-                           |  out sync u2 a;
+                           |  (* unused *) out sync u2 a;
                            |  void main() {
-                           |    a;
-                           |    ${text};
+                           |    $$display("", ${text});
                            |    fence;
                            |  }
                            |}""".stripMargin.asTree[Root]
@@ -494,6 +490,7 @@ final class TyperSpec extends FreeSpec with AlogicTest {
         for {
           (text, kind, msg) <- List(
             ("{4{1'b1}}", TypeUInt(4), ""),
+            ("{4{2'b0, 1'b1}}", TypeUInt(12), ""),
             ("{4{a}}", TypeUInt(8), ""),
 //            ("{4{1}}", TypeError, s"Value of bit repetition is of non-packed type"),
             ("{4{bool}}", TypeError, s"Value of bit repetition is of non-packed type"),
@@ -502,10 +499,9 @@ final class TyperSpec extends FreeSpec with AlogicTest {
         } {
           text in {
             val root = s"""|fsm c {
-                           |  out sync u2 a;
+                           |  (* unused *) out sync u2 a;
                            |  void main() {
-                           |    a;
-                           |    ${text};
+                           |    $$display("", ${text});
                            |    fence;
                            |  }
                            |}""".stripMargin.asTree[Root]
@@ -542,18 +538,17 @@ final class TyperSpec extends FreeSpec with AlogicTest {
         } {
           text in {
             val root = s"""|fsm f {
-                           |  out sync u2 a;
-                           |  int(1, 2, 3) b;
-                           |  int(1, 2, 3) c[4][5][6];
+                           |  (* unused *) out sync u2 a;
+                           |  (* unused *) int(1, 2, 3) b;
+                           |  (* unused *) int(1, 2, 3) c[4][5][6];
                            |  void main() {
-                           |    a; b; c;
                            |    ${text};
                            |    fence;
                            |  }
                            |}""".stripMargin.asTree[Root]
             xform(root)
             if (msg.isEmpty) {
-              cc.messages shouldBe empty
+              cc.messages collect { case error: Error => error } shouldBe empty
             } else {
               cc.messages.loneElement should beThe[Error](msg)
             }
@@ -584,12 +579,11 @@ final class TyperSpec extends FreeSpec with AlogicTest {
         } {
           text in {
             val root = s"""|fsm f {
-                           |  out sync u2 a;
-                           |  int(1, 2, 3) b;
-                           |  int(1, 2, 3) c[4][5][6];
+                           |  (* unused *) out sync u2 a;
+                           |  (* unused *) int(1, 2, 3) b;
+                           |  (* unused *) int(1, 2, 3) c[4][5][6];
                            |  void main() {
-                           |    a; b; c;
-                           |    ${text};
+                           |    $$display("", ${text});
                            |    fence;
                            |  }
                            |}""".stripMargin.asTree[Root]
@@ -614,12 +608,11 @@ final class TyperSpec extends FreeSpec with AlogicTest {
         } {
           text in {
             val root = s"""|fsm f {
-                           |  out sync u2 a;
-                           |  int(1, 2, 3) b;
-                           |  int(1, 2, 3) c[4][5][6];
+                           |  (* unused *) out sync u2 a;
+                           |  (* unused *) int(1, 2, 3) b;
+                           |  (* unused *) int(1, 2, 3) c[4][5][6];
                            |  void main() {
-                           |    a; b; c;
-                           |    ${text};
+                           |    $$display("", ${text});
                            |    fence;
                            |  }
                            |}""".stripMargin.asTree[Root]
@@ -636,11 +629,11 @@ final class TyperSpec extends FreeSpec with AlogicTest {
       "blocks" - {
         for {
           (stmt, msg) <- List(
-            ("{ 0; }", ""),
+            ("{ $display(); }", ""),
             ("{ fence; }", ""),
-            ("{ 0; fence; }", ""),
-            ("{ 0; fence; 0; fence; }", ""),
-            ("{ fence; 0;}",
+            ("{ $display(); fence; }", ""),
+            ("{ $display(); fence; $display(); fence; }", ""),
+            ("{ fence; $display();}",
              "Block must contain only combinatorial statements, or end with a control statement")
           )
         } {
@@ -658,33 +651,33 @@ final class TyperSpec extends FreeSpec with AlogicTest {
       "statements" - {
         for {
           (stmt, msg) <- List(
-            ("if (1) 0;", ""),
-            ("if (1) 0; else 1;", ""),
+            ("if (1) $display();", ""),
+            ("if (1) $display(); else $display();", ""),
             ("if (1) fence;", ""),
             ("if (1) fence; else fence;", ""),
-            ("if (1) fence; else 1;",
+            ("if (1) fence; else $display();",
              "Either both or neither branches of if-else must be control statements"),
-            ("if (1) 0; else fence;",
+            ("if (1) $display(); else fence;",
              "Either both or neither branches of if-else must be control statements"),
-            ("case(1) { 1: 0; }", ""),
+            ("case(1) { 1: $display(); }", ""),
             ("case(1) { 1: fence; }", ""),
-            ("case(1) { default: 0; }", ""),
+            ("case(1) { default: $display(); }", ""),
             ("case(1) { default: fence; }", ""),
-            ("case(1) { 1: 0; 2: 0; }", ""),
+            ("case(1) { 1: $display(); 2: $display(); }", ""),
             ("case(1) { 1: fence; 2: fence; }", ""),
-            ("case(1) { 1: 0; default: 0; }", ""),
+            ("case(1) { 1: $display(); default: $display(); }", ""),
             ("case(1) { 1: fence; default: fence; }", ""),
-            ("case(1) { 1: 0; 2: fence; }",
+            ("case(1) { 1: $display(); 2: fence; }",
              "Either all or no cases of a case statement must be control statements"),
-            ("case(1) { 1: fence; 2: 0; }",
+            ("case(1) { 1: fence; 2: $display(); }",
              "Either all or no cases of a case statement must be control statements"),
-            ("case(1) { 1: 0; default: fence; }",
+            ("case(1) { 1: $display(); default: fence; }",
              "Either all or no cases of a case statement must be control statements"),
-            ("case(1) { 1: fence; default: 0; }",
+            ("case(1) { 1: fence; default: $display(); }",
              "Either all or no cases of a case statement must be control statements"),
             ("loop { fence; }", ""),
-            ("loop { 0; }", "Body of 'loop' must be a control statement"),
-            ("loop { fence; 0; }", "Body of 'loop' must end in a control statement")
+            ("loop { $display(); }", "Body of 'loop' must be a control statement"),
+            ("loop { fence; $display(); }", "Body of 'loop' must end in a control statement")
           )
         } {
           stmt in {
@@ -702,8 +695,9 @@ final class TyperSpec extends FreeSpec with AlogicTest {
         for {
           (func, msg) <- List(
             ("void main () { fence; }", ""),
-            ("void main () { 0; }", "Body of function must end in a control statement"),
-            ("void main () { fence; 0; }", "Body of function must end in a control statement")
+            ("void main () { $display(); }", "Body of function must end in a control statement"),
+            ("void main () { fence; $display(); }",
+             "Body of function must end in a control statement")
           )
         } {
           func in {
@@ -723,9 +717,11 @@ final class TyperSpec extends FreeSpec with AlogicTest {
       "fence blocks bodies" - {
         for {
           (fb, msg) <- List(
-            ("fence { 0; }", ""),
-            ("fence { 0; fence; }", "'fence' block must contain only combinatorial statements"),
-            ("fence { 0; fence; 0; }", "'fence' block must contain only combinatorial statements")
+            ("fence { $display(); }", ""),
+            ("fence { $display(); fence; }",
+             "'fence' block must contain only combinatorial statements"),
+            ("fence { $display(); fence; $display(); }",
+             "'fence' block must contain only combinatorial statements")
           )
         } {
           fb in {
@@ -752,15 +748,10 @@ final class TyperSpec extends FreeSpec with AlogicTest {
         } {
           expr in {
             val tree = s"""|network n {
-                           |  in bool p;
-                           |  new fsm a {
-                           |    param u8 N = 8'd2;
-                           |    in bool b;
-                           |    void main() {
-                           |      b;
-                           |      N;
-                           |      fence;
-                           |    }
+                           |  (* unused *) in bool p;
+                           |  (* unused *) new fsm a {
+                           |    (* unused *) param u8 N = 8'd2;
+                           |    (* unused *) in bool b;
                            |  }
                            |  p -> ${expr};
                            |}""".stripMargin.asTree[Entity]
@@ -785,7 +776,7 @@ final class TyperSpec extends FreeSpec with AlogicTest {
           )
         } {
           decl in {
-            val tree = s"{ ${decl}; a; }".asTree[Stmt]
+            val tree = s"{ (* unused *) ${decl}; }".asTree[Stmt]
             xform(tree)
             if (msg.isEmpty) {
               cc.messages shouldBe empty
@@ -811,7 +802,7 @@ final class TyperSpec extends FreeSpec with AlogicTest {
           assignment in {
             val tree = s"""|fsm x {
                            |  void main() {
-                           |    i8 a; a;
+                           |    (* unused *) i8 a;
                            |    ${assignment};
                            |    fence;
                            |  }
@@ -872,17 +863,16 @@ final class TyperSpec extends FreeSpec with AlogicTest {
         } {
           assignment in {
             val tree = s"""|fsm x {
-                           |  in i8 a;
-                           |  out i8 b;
-                           |  in sync i8 c;
-                           |  out sync i8 d;
-                           |  in sync ready i8 e;
-                           |  out sync ready i8 f;
-                           |  param i8 g = 8'd2;
-                           |  const i8 h = 8'd2;
+                           |  (* unused *) in i8 a;
+                           |  (* unused *) out i8 b;
+                           |  (* unused *) in sync i8 c;
+                           |  (* unused *) out sync i8 d;
+                           |  (* unused *) in sync ready i8 e;
+                           |  (* unused *) out sync ready i8 f;
+                           |  (* unused *) param i8 g = 8'd2;
+                           |  (* unused *) const i8 h = 8'd2;
                            |
                            |  void main() {
-                           |    a; b; c; d; e; f; g; h;
                            |    ${assignment};
                            |    fence;
                            |  }
