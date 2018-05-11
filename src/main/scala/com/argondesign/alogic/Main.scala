@@ -61,7 +61,7 @@ object Main extends App {
 
     lazy val cwd = new File(".").getCanonicalFile
 
-    val defaultToCWD = cliConf.ydir.isEmpty && cliConf.incdir.isEmpty && cliConf.srcbase.isEmpty
+    val defaultToCWD = cliConf.ydir().isEmpty && cliConf.incdir().isEmpty && cliConf.srcbase.isEmpty
     val moduleSeachDirs = if (defaultToCWD) List(cwd) else cliConf.ydir()
     val includeSeachDirs = if (defaultToCWD) List(cwd) else cliConf.incdir()
 
