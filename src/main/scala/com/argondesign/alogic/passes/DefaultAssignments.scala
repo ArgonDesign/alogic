@@ -46,11 +46,11 @@ final class DefaultAssignments(implicit cc: CompilerContext)
   // should this expression be used on the left hand side of an assignment
   private def writtenSymbols(expr: Expr): Iterator[TermSymbol] = {
     expr match {
-      case ExprRef(Sym(symbol: TermSymbol)) => Iterator.single(symbol)
-      case ExprCat(parts)                   => parts.toIterator flatMap writtenSymbols
-      case ExprIndex(expr, _)               => writtenSymbols(expr)
-      case ExprSlice(expr, _, _, _)         => writtenSymbols(expr)
-      case _                                => Iterator.empty
+      case ExprRef(symbol: TermSymbol) => Iterator.single(symbol)
+      case ExprCat(parts)              => parts.toIterator flatMap writtenSymbols
+      case ExprIndex(expr, _)          => writtenSymbols(expr)
+      case ExprSlice(expr, _, _, _)    => writtenSymbols(expr)
+      case _                           => Iterator.empty
     }
   }
 
@@ -76,7 +76,7 @@ final class DefaultAssignments(implicit cc: CompilerContext)
       // Remove any nets driven through a connect
       for (Connect(_, List(rhs)) <- entity.connects) {
         rhs.visit {
-          case ExprRef(Sym(symbol: TermSymbol)) => {
+          case ExprRef(symbol: TermSymbol) => {
             needsDefault remove symbol
           }
         }
@@ -94,7 +94,7 @@ final class DefaultAssignments(implicit cc: CompilerContext)
             entity.fenceStmts ::: entity.states.head.body
           } else {
             entity.fenceStmts :+ StmtCase(
-              ExprRef(Sym(entitySymbol.attr.stateVar.value)),
+              ExprRef(entitySymbol.attr.stateVar.value),
               entity.states.tail map {
                 case State(expr, body) => CaseClause(List(expr), StmtBlock(body))
               },
@@ -132,7 +132,7 @@ final class DefaultAssignments(implicit cc: CompilerContext)
             val width = kind.width.value.get.toInt
             ExprInt(signed, width, 0)
           }
-          StmtAssign(ExprRef(Sym(symbol)), init) regularize symbol.loc
+          StmtAssign(ExprRef(symbol), init) regularize symbol.loc
         }
 
         TypeAssigner {

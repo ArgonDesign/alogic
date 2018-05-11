@@ -303,19 +303,19 @@ object SyncSliceFactory {
     lazy val pSymbol = cc.newTermSymbol("payload", loc, kind)
     val vSymbol = cc.newTermSymbol("valid", loc, bool)
 
-    lazy val ipRef = ExprRef(Sym(ipSymbol))
-    val ipvRef = ExprRef(Sym(ipvSymbol))
-    val iprRef = ExprRef(Sym(iprSymbol))
+    lazy val ipRef = ExprRef(ipSymbol)
+    val ipvRef = ExprRef(ipvSymbol)
+    val iprRef = ExprRef(iprSymbol)
 
-    lazy val opRef = ExprRef(Sym(opSymbol))
-    val opvRef = ExprRef(Sym(opvSymbol))
-    val oprRef = ExprRef(Sym(oprSymbol))
+    lazy val opRef = ExprRef(opSymbol)
+    val opvRef = ExprRef(opvSymbol)
+    val oprRef = ExprRef(oprSymbol)
 
-    val eRef = ExprRef(Sym(eSymbol))
-    val fRef = ExprRef(Sym(fSymbol))
+    val eRef = ExprRef(eSymbol)
+    val fRef = ExprRef(fSymbol)
 
-    lazy val pRef = ExprRef(Sym(pSymbol))
-    val vRef = ExprRef(Sym(vSymbol))
+    lazy val pRef = ExprRef(pSymbol)
+    val vRef = ExprRef(vSymbol)
 
     val body = if (kind != TypeVoid) {
       nonVoidBody(ss, ipRef, ipvRef, oprRef, pRef, vRef)
@@ -389,16 +389,16 @@ object SyncSliceFactory {
     val eSymbol = cc.newTermSymbol("empty", loc, TypeOut(bool, fcn, stw))
     val fSymbol = cc.newTermSymbol("full", loc, TypeOut(bool, fcn, stw))
 
-    lazy val ipRef = ExprRef(Sym(ipSymbol))
-    val ipvRef = ExprRef(Sym(ipvSymbol))
-    val iprRef = ExprRef(Sym(iprSymbol))
+    lazy val ipRef = ExprRef(ipSymbol)
+    val ipvRef = ExprRef(ipvSymbol)
+    val iprRef = ExprRef(iprSymbol)
 
-    lazy val opRef = ExprRef(Sym(opSymbol))
-    val opvRef = ExprRef(Sym(opvSymbol))
-    val oprRef = ExprRef(Sym(oprSymbol))
+    lazy val opRef = ExprRef(opSymbol)
+    val opvRef = ExprRef(opvSymbol)
+    val oprRef = ExprRef(oprSymbol)
 
-    val eRef = ExprRef(Sym(eSymbol))
-    val fRef = ExprRef(Sym(fSymbol))
+    val eRef = ExprRef(eSymbol)
+    val fRef = ExprRef(fSymbol)
 
     val instances = slices.zipWithIndex map {
       case (entity, index) =>
@@ -407,7 +407,7 @@ object SyncSliceFactory {
         Instance(Sym(iSymbol), Sym(eSymbol), Nil, Nil)
     }
 
-    val iRefs = for (Instance(Sym(iSymbol), _, _, _) <- instances) yield { ExprRef(Sym(iSymbol)) }
+    val iRefs = for (Instance(Sym(iSymbol), _, _, _) <- instances) yield { ExprRef(iSymbol) }
 
     val connects = new ListBuffer[Connect]()
 

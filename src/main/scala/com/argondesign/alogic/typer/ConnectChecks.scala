@@ -29,7 +29,7 @@ object ConnectChecks {
 
   private def flowControlType(expr: Expr): FlowControlType = {
     val portSymbol = expr match {
-      case ExprRef(Sym(symbol))       => symbol
+      case ExprRef(symbol)            => symbol
       case InstancePortRef(_, symbol) => symbol
       case _                          => unreachable
     }
@@ -50,13 +50,13 @@ object ConnectChecks {
 
   private def lhsIsLegal(lhs: Expr)(implicit cc: CompilerContext): Boolean = {
     lhs match {
-      case ExprRef(Sym(symbol)) if symbol.kind.isInstance => true
+      case ExprRef(symbol) if symbol.kind.isInstance => true
       case other => {
         val opt = other partialMatch {
-          case ExprRef(Sym(symbol)) if symbol.kind.isOut => {
+          case ExprRef(symbol) if symbol.kind.isOut => {
             cc.error(lhs, "Left hand side of '->' is an output from enclosing entity")
           }
-          case ExprRef(Sym(symbol)) if !symbol.kind.isIn => {
+          case ExprRef(symbol) if !symbol.kind.isIn => {
             cc.error(lhs, s"Left hand side of '->' is of non-port type: ${symbol.kind.toSource}")
           }
           case InstancePortRef(iSymbol, symbol) if symbol.kind.isIn => {
@@ -70,13 +70,13 @@ object ConnectChecks {
 
   private def rhsIsLegal(rhs: Expr)(implicit cc: CompilerContext): Boolean = {
     rhs match {
-      case ExprRef(Sym(symbol)) if symbol.kind.isInstance => true
+      case ExprRef(symbol) if symbol.kind.isInstance => true
       case other => {
         val opt = other partialMatch {
-          case ExprRef(Sym(symbol)) if symbol.kind.isIn => {
+          case ExprRef(symbol) if symbol.kind.isIn => {
             cc.error(rhs, "Right hand side of '->' is an input to enclosing entity")
           }
-          case ExprRef(Sym(symbol)) if !symbol.kind.isOut => {
+          case ExprRef(symbol) if !symbol.kind.isOut => {
             cc.error(rhs, s"Right hand side of '->' is of non-port type: ${symbol.kind.toSource}")
           }
           case InstancePortRef(iSymbol, symbol) if symbol.kind.isOut => {

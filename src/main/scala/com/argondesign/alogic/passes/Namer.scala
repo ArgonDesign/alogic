@@ -26,6 +26,7 @@ import com.argondesign.alogic.core.Names.TypeName
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.TreeInTypeTransformer
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.FollowedBy
@@ -134,29 +135,35 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
     }
   }
 
-  private[this] def lookupTerm(ident: Ident): Symbol = {
-    Scopes.lookup(TermName(ident.name)) match {
-      case Some(symbol) => symbol
+  private[this] def lookupTerm(loc: Loc, name: String): Symbol = {
+    Scopes.lookup(TermName(name)) match {
+      case Some(symbol: TermSymbol) => symbol
+      case Some(_)                  => unreachable
       case None => {
-        cc.error(ident, s"Name '${ident.name}' is not defined")
+        cc.error(loc, s"Name '${name}' is not defined")
         ErrorSymbol
       }
     }
   }
 
-  private[this] def lookupType(ident: Ident): Symbol = {
-    Scopes.lookup(TypeName(ident.name)) match {
-      case Some(symbol) => symbol
+  private[this] def lookupTerm(ident: Ident): Symbol = lookupTerm(ident.loc, ident.name)
+
+  private[this] def lookupType(loc: Loc, name: String): Symbol = {
+    Scopes.lookup(TypeName(name)) match {
+      case Some(symbol: TypeSymbol) => symbol
+      case Some(_)                  => unreachable
       case None => {
-        cc.error(ident, s"Type '${ident.name}' is not defined")
+        cc.error(loc, s"Type '${name}' is not defined")
         ErrorSymbol
       }
     }
   }
 
-  private[this] def lookupTermOrType(ident: Ident): Symbol = {
-    val termOpt = Scopes.lookup(TermName(ident.name))
-    val typeOpt = Scopes.lookup(TypeName(ident.name))
+  private[this] def lookupType(ident: Ident): Symbol = lookupType(ident.loc, ident.name)
+
+  private[this] def lookupTermOrType(loc: Loc, name: String): Symbol = {
+    val termOpt = Scopes.lookup(TermName(name))
+    val typeOpt = Scopes.lookup(TypeName(name))
 
     (termOpt, typeOpt) match {
       case (Some(termSymbol), None) => {
@@ -167,17 +174,17 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       }
       case (Some(termSymbol), Some(typeSymbol)) => {
         cc.error(
-          ident,
-          s"Name '${ident.name}' in this context can resolve to either of",
-          s"term '${ident.name}' defined at ${termSymbol.loc.prefix}",
-          s"type '${ident.name}' defined at ${typeSymbol.loc.prefix}"
+          loc,
+          s"Name '${name}' in this context can resolve to either of",
+          s"term '${name}' defined at ${termSymbol.loc.prefix}",
+          s"type '${name}' defined at ${typeSymbol.loc.prefix}"
         )
         Scopes.markUsed(termSymbol)
         Scopes.markUsed(typeSymbol)
         ErrorSymbol
       }
       case (None, None) => {
-        cc.error(ident, s"Name '${ident.name}' is undefined")
+        cc.error(loc, s"Name '${name}' is undefined")
         ErrorSymbol
       }
     }
@@ -256,7 +263,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       sawLet = false
     }
 
-    case ExprCall(ExprRef(Ident("@bits")), arg :: _) if arg.isTypeExpr => {
+    case ExprCall(ExprIdent("@bits"), arg :: _) if arg.isTypeExpr => {
       assert(!atBitsEitherTypeOrTerm)
       atBitsEitherTypeOrTerm = true
     }
@@ -386,16 +393,19 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       Decl(symbol, init) withLoc tree.loc
     }
 
-    case ExprRef(ident: Ident) => {
+    case ExprIdent(name) => {
       // Lookup term (or type if inside @bits)
-      val symbol = if (!atBitsEitherTypeOrTerm) lookupTerm(ident) else lookupTermOrType(ident)
+      val symbol = if (!atBitsEitherTypeOrTerm) {
+        lookupTerm(tree.loc, name)
+      } else {
+        lookupTermOrType(tree.loc, name)
+      }
       Scopes.markUsed(symbol)
       // Rewrite node
-      val sym = Sym(symbol) withLoc ident.loc
-      ExprRef(sym) withLoc tree.loc
+      ExprRef(symbol) withLoc tree.loc
     }
 
-    case ExprCall(ExprRef(Sym(symbol)), _) if symbol == atBitsSymbol => {
+    case ExprCall(ExprRef(symbol), _) if symbol == atBitsSymbol => {
       tree followedBy {
         atBitsEitherTypeOrTerm = false
       }

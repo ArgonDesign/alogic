@@ -296,6 +296,7 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
 
       case stmt @ StmtAssign(lhs, rhs) => {
         lazy val errNotAssignable: Option[Loc] = {
+          // TODO: Use WrittenSymbols
           def stripToRefs(expr: Expr): List[ExprRef] = expr match {
             case ref: ExprRef                => List(ref)
             case ExprIndex(expr, _)          => stripToRefs(expr)
@@ -306,7 +307,7 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
             case _                           => unreachable
           }
 
-          val locs = for (ref @ ExprRef(Sym(symbol)) <- stripToRefs(lhs)) yield {
+          val locs = for (ref @ ExprRef(symbol) <- stripToRefs(lhs)) yield {
             symbol.kind match {
               case _: TypeParam => cc.error(ref, "Parameter cannot be assigned")
               case _: TypeConst => cc.error(ref, "Constant cannot be assigned")
@@ -436,9 +437,7 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
           case polyFunc: TypePolyFunc => {
             polyFunc.resolve(args) match {
               case Some(symbol) => {
-                val sym = Sym(symbol) withLoc expr.loc
-                TypeAssigner(sym)
-                val ref = ExprRef(sym) withLoc expr.loc
+                val ref = ExprRef(symbol) withLoc expr.loc
                 TypeAssigner(ref)
                 ExprCall(ref, args) withLoc tree.loc
               }

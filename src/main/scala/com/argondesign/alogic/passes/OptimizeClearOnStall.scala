@@ -99,7 +99,7 @@ final class OptimizeClearOnStall(implicit cc: CompilerContext) extends TreeTrans
             entity.fenceStmts ::: entity.states.head.body
           } else {
             val dispatch = StmtCase(
-              ExprRef(Sym(entitySymbol.attr.stateVar.value)),
+              ExprRef(entitySymbol.attr.stateVar.value),
               entity.states.tail map {
                 case State(expr, body) => CaseClause(List(expr), StmtBlock(body))
               },
@@ -114,10 +114,10 @@ final class OptimizeClearOnStall(implicit cc: CompilerContext) extends TreeTrans
         // Now discard everything that is not a StallStmt
         // or an assignment to one of our candidates
         val trimmed = block rewrite StatementFilter {
-          case _: StmtFence                        => false
-          case _: StmtStall                        => true
-          case StmtAssign(ExprRef(Sym(symbol)), _) => symbol.attr.clearOnStall contains true
-          case _: StmtAssign                       => false
+          case _: StmtFence                   => false
+          case _: StmtStall                   => true
+          case StmtAssign(ExprRef(symbol), _) => symbol.attr.clearOnStall contains true
+          case _: StmtAssign                  => false
         }
 
         // Get the list of statements
@@ -135,7 +135,7 @@ final class OptimizeClearOnStall(implicit cc: CompilerContext) extends TreeTrans
             case Nil => {
               // No stall conditions through this path, we are safe
             }
-            case (cond @ ExprRef(Sym(sSymbol))) :: Nil => {
+            case (cond @ ExprRef(sSymbol)) :: Nil => {
               // There is a single stall condition. Remove candidates that are
               // neither gated by this signal nor are assigned this signal.
               // The point being is that if the signal is gated by the stall
@@ -143,32 +143,32 @@ final class OptimizeClearOnStall(implicit cc: CompilerContext) extends TreeTrans
               // required, hence the signal in question can be anything when we
               // stall, no need to clear it on stall.
               path filterNot {
-                case StmtAssign(ExprRef(Sym(cand)), rhs) => {
+                case StmtAssign(ExprRef(cand), rhs) => {
                   (cand.attr.dontCareUnless.get contains sSymbol) || (rhs == cond)
                 }
                 case _ => false
               } foreach {
-                case StmtAssign(ExprRef(Sym(s: TermSymbol)), _) => candidateSymbols remove s
-                case _                                          =>
+                case StmtAssign(ExprRef(s: TermSymbol), _) => candidateSymbols remove s
+                case _                                     =>
               }
             }
             case cond :: Nil => {
               // There is a single generic stall condition on this path, remove
               // all candidates that are not assigned this condition.
               path filter {
-                case StmtAssign(ExprRef(_), `cond`) => false
+                case StmtAssign(_: ExprRef, `cond`) => false
                 case _                              => true
               } foreach {
-                case StmtAssign(ExprRef(Sym(s: TermSymbol)), _) => candidateSymbols remove s
-                case _                                          =>
+                case StmtAssign(ExprRef(s: TermSymbol), _) => candidateSymbols remove s
+                case _                                     =>
               }
             }
             case _ => {
               // There are 2 or more stall conditions on this path, remove all
               // candidates that are assigned anything on this path
               path foreach {
-                case StmtAssign(ExprRef(Sym(s: TermSymbol)), _) => candidateSymbols remove s
-                case _                                          =>
+                case StmtAssign(ExprRef(s: TermSymbol), _) => candidateSymbols remove s
+                case _                                     =>
               }
             }
           }

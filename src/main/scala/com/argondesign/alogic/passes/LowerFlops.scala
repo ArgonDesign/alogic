@@ -66,7 +66,7 @@ final class LowerFlops(implicit cc: CompilerContext) extends TreeTransformer wit
       // If the symbol has a default attribute, move that to the _d,
       // otherwise use the _q as the default initializer
       val default = symbol.attr.default.getOrElse {
-        ExprRef(Sym(symbol)) regularize loc
+        ExprRef(symbol) regularize loc
       }
       dSymbol.attr.default set default
       symbol.attr.default.clear()
@@ -83,10 +83,10 @@ final class LowerFlops(implicit cc: CompilerContext) extends TreeTransformer wit
     // Rewrite references
     //////////////////////////////////////////////////////////////////////////
 
-    case ExprRef(Sym(qSymbol)) => {
+    case ExprRef(qSymbol) => {
       // Rewrite references to flops as references to the _d,
       qSymbol.attr.flop.get map { dSymbol =>
-        ExprRef(Sym(dSymbol)) regularize tree.loc
+        ExprRef(dSymbol) regularize tree.loc
       } getOrElse {
         tree
       }

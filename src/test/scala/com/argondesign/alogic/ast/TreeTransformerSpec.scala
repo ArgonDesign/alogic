@@ -57,7 +57,7 @@ final class TreeTransformerSpec extends FlatSpec with AlogicTest {
 
     newTree should be theSameInstanceAs oldTree
 
-    cc.messages should have length 11
+    cc.messages should have length 8
     forAll(cc.messages) { msg =>
       msg should beThe[Warning]("Saw it")
     }

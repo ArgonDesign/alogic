@@ -69,18 +69,18 @@ trait Symbols { self: CompilerContext =>
 
   final def addGlobalEntity(entity: Entity): Unit = addGlobalEntities(List(entity))
 
-  final def lookupGlobalTerm(name: String): Symbol = synchronized {
+  final def lookupGlobalTerm(name: String): TermSymbol = synchronized {
     globalScope.get(TermName(name)) match {
-      case Some(symbol) => symbol
-      case None         => ice(s"Cannot find global term '${name}'")
+      case Some(symbol: TermSymbol) => symbol
+      case Some(_)                  => unreachable
+      case None                     => ice(s"Cannot find global term '${name}'")
     }
   }
 
   // Used to look up builtin symbols
   final def getGlobalTermSymbolRef(name: String): ExprRef = {
     val symbol = lookupGlobalTerm(name)
-    val sym = Sym(symbol)
-    ExprRef(sym)
+    ExprRef(symbol)
   }
 
   final def getGlobalTermSymbolRef(name: String, loc: Loc): ExprRef = {

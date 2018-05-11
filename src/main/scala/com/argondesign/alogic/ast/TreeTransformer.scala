@@ -295,13 +295,11 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
           val expr = walk(node.expr)
           doTransform(TreeCopier(node)(expr))
         }
-        case node: ExprInt => doTransform(node)
-        case node: ExprNum => doTransform(node)
-        case node: ExprStr => doTransform(node)
-        case node: ExprRef => {
-          val ref = walk(node.ref)
-          doTransform(TreeCopier(node)(ref))
-        }
+        case node: ExprInt   => doTransform(node)
+        case node: ExprNum   => doTransform(node)
+        case node: ExprStr   => doTransform(node)
+        case node: ExprIdent => doTransform(node)
+        case node: ExprRef   => doTransform(node)
         case node: ExprType  => doTransform(node)
         case node: ExprError => doTransform(node)
         case node: Thicket => {
@@ -360,7 +358,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
             case Decl(symbol, _)                            => symbol
             case Instance(Sym(symbol: TermSymbol), _, _, _) => symbol
             case Function(Sym(symbol: TermSymbol), _)       => symbol
-            case State(ExprRef(Sym(symbol: TermSymbol)), _) => symbol
+            case State(ExprRef(symbol: TermSymbol), _)      => symbol
           }
           it.toSet
         }

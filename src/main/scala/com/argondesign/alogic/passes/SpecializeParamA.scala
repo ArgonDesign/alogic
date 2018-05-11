@@ -88,7 +88,7 @@ final class SpecializeParamA(implicit cc: CompilerContext) extends TreeTransform
           // Collect any referenced parameters
           val referenced = simplified.valuesIterator flatMap { expr =>
             expr collect {
-              case ExprRef(Sym(symbol)) if symbol.kind.isInstanceOf[TypeParam] => symbol
+              case ExprRef(symbol) if symbol.kind.isInstanceOf[TypeParam] => symbol
             }
           }
 

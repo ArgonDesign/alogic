@@ -29,14 +29,14 @@ object Liveness {
       implicit cc: CompilerContext
   ): Iterator[Map[TermSymbol, BigInt]] = expr collect {
     // TODO: Deal better with arrays when necessary, currently simply ignored
-    case ExprIndex(ExprRef(Sym(symbol: TermSymbol)), idx) if symbol.kind.isPacked => {
+    case ExprIndex(ExprRef(symbol: TermSymbol), idx) if symbol.kind.isPacked => {
       idx.value map { bit =>
         Map(symbol -> BigInt.oneHot(bit))
       } getOrElse {
         Map(symbol -> BigInt.mask(symbol.kind.width.value.get))
       }
     }
-    case ExprSlice(ExprRef(Sym(symbol: TermSymbol)), lidx, op, ridx) if symbol.kind.isPacked => {
+    case ExprSlice(ExprRef(symbol: TermSymbol), lidx, op, ridx) if symbol.kind.isPacked => {
       lidx.value flatMap { l =>
         ridx.value map { r =>
           val (width, lsb) = op match {
@@ -51,7 +51,7 @@ object Liveness {
         Map(symbol -> BigInt.mask(symbol.kind.width.value.get))
       }
     }
-    case ExprRef(Sym(symbol: TermSymbol)) if symbol.kind.isPacked => {
+    case ExprRef(symbol: TermSymbol) if symbol.kind.isPacked => {
       Map(symbol -> BigInt.mask(symbol.kind.width.value.get))
     }
   }
@@ -82,11 +82,11 @@ object Liveness {
     val acc = mutable.Map[TermSymbol, BigInt]() withDefaultValue BigInt(0)
 
     def gather(expr: Expr): Unit = expr match {
-      case ExprRef(Sym(symbol: TermSymbol)) => ()
-      case ExprIndex(ExprRef(_: Sym), idx) => {
+      case ExprRef(symbol: TermSymbol) => ()
+      case ExprIndex(_: ExprRef, idx) => {
         incorporate(acc, usedRvalMaps(idx))
       }
-      case ExprSlice(ExprRef(_: Sym), lidx, _, ridx) => {
+      case ExprSlice(_: ExprRef, lidx, _, ridx) => {
         incorporate(acc, usedRvalMaps(lidx))
         incorporate(acc, usedRvalMaps(ridx))
       }
@@ -108,16 +108,16 @@ object Liveness {
 
     def loop(expr: Expr): Map[TermSymbol, BigInt] = {
       expr match {
-        case ExprRef(Sym(symbol: TermSymbol)) => {
+        case ExprRef(symbol: TermSymbol) => {
           val width = symbol.kind.width.value.get
           Map(symbol -> BigInt.mask(width))
         }
-        case ExprIndex(ExprRef(Sym(symbol: TermSymbol)), idx) => {
+        case ExprIndex(ExprRef(symbol: TermSymbol), idx) => {
           idx.value map { bit =>
             Map(symbol -> BigInt.oneHot(bit))
           } getOrElse Map.empty
         }
-        case ExprSlice(ExprRef(Sym(symbol: TermSymbol)), lidx, op, ridx) => {
+        case ExprSlice(ExprRef(symbol: TermSymbol), lidx, op, ridx) => {
           lidx.value flatMap { l =>
             ridx.value map { r =>
               val (width, lsb) = op match {

@@ -92,7 +92,7 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
       }
 
       override def visitStmtGoto(ctx: StmtGotoContext) = {
-        val ref = ExprRef(ctx.IDENTIFIER.toIdent) withLoc ctx.loc
+        val ref = ExprIdent(ctx.IDENTIFIER) withLoc ctx.IDENTIFIER.loc
         StmtGoto(ref) withLoc ctx.loc
       }
 

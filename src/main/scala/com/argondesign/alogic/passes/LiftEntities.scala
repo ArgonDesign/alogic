@@ -75,7 +75,7 @@ final class LiftEntities(implicit cc: CompilerContext)
 
       lazy val referencedSymbols = {
         val it = entity collectAll {
-          case ExprRef(Sym(symbol: TermSymbol)) => symbol
+          case ExprRef(symbol: TermSymbol) => symbol
         }
         it.toList
       }
@@ -209,8 +209,8 @@ final class LiftEntities(implicit cc: CompilerContext)
             (srcPortSymbol, dstEntitySymbol) <- freshIConnSymbols.top
             dstInstanceSymbol <- instanceSymbolsOfType(dstEntitySymbol)
           } yield {
-            val lhs = ExprRef(Sym(srcPortSymbol))
-            val rhs = ExprSelect(ExprRef(Sym(dstInstanceSymbol)), srcPortSymbol.name)
+            val lhs = ExprRef(srcPortSymbol)
+            val rhs = ExprSelect(ExprRef(dstInstanceSymbol), srcPortSymbol.name)
             Connect(lhs, List(rhs)) regularize entity.loc
           }
 
@@ -218,8 +218,8 @@ final class LiftEntities(implicit cc: CompilerContext)
             (srcEntitySymbol, dstPortSymbol) <- freshOConnSymbols.top
             srcInstanceSymbol <- instanceSymbolsOfType(srcEntitySymbol)
           } yield {
-            val lhs = ExprSelect(ExprRef(Sym(srcInstanceSymbol)), dstPortSymbol.name)
-            val rhs = ExprRef(Sym(dstPortSymbol))
+            val lhs = ExprSelect(ExprRef(srcInstanceSymbol), dstPortSymbol.name)
+            val rhs = ExprRef(dstPortSymbol)
             Connect(lhs, List(rhs)) regularize entity.loc
           }
 
@@ -279,10 +279,10 @@ final class LiftEntities(implicit cc: CompilerContext)
     }
 
     // Rewrite references to outer ports as references to the newly created inner ports
-    case ExprRef(Sym(symbol: TermSymbol)) => {
+    case ExprRef(symbol: TermSymbol) => {
       (freshIPortSymbols.top.get(symbol) orElse freshOPortSymbols.top.get(symbol)) map {
         innerSymbol =>
-          ExprRef(Sym(innerSymbol)) regularize tree.loc
+          ExprRef(innerSymbol) regularize tree.loc
       } getOrElse {
         tree
       }

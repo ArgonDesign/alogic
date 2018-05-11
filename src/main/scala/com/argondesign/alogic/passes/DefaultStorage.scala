@@ -43,7 +43,7 @@ final class DefaultStorage(implicit cc: CompilerContext) extends TreeTransformer
       inConnect = true
     }
 
-    case ExprRef(Sym(symbol: TermSymbol)) if symbol.kind.isInstanceOf[TypeOut] => {
+    case ExprRef(symbol: TermSymbol) if symbol.kind.isInstanceOf[TypeOut] => {
       if (inConnect) {
         connectedSet add symbol
       } else {

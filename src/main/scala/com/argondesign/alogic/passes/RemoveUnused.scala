@@ -134,7 +134,7 @@ object RemoveUnused extends Pass {
   // Extract the instance symbol and port symbol from
   // an instance.name reference
   private def instancePortSymbols(expr: ExprSelect): Iterator[Symbol] = {
-    val ExprSelect(ExprRef(Sym(iSymbol)), name) = expr
+    val ExprSelect(ExprRef(iSymbol), name) = expr
     Iterator(iSymbol, iSymbol.kind.asInstanceOf[TypeInstance].portSymbol(name).get)
   }
 
@@ -205,7 +205,7 @@ object RemoveUnused extends Pass {
             case select: ExprSelect => instancePortSymbols(select)
             case other              => ReadSymbols.rval(lhs)
           }
-          val rSymbols = rhs collect { case ExprRef(Sym(symbol)) => symbol }
+          val rSymbols = rhs collect { case ExprRef(symbol) => symbol }
           lSymbols ++ rSymbols
         }
         case Connect(lhs: ExprSelect, List(rhs)) => {
@@ -223,7 +223,7 @@ object RemoveUnused extends Pass {
         case stmt @ StmtAssign(_: ExprCat, _) => {
           // Concatenation on the left, everything is used, if only as a placeholder
           // TODO: if any symbol in the concatenation is used, then all are used
-          stmt collect { case ExprRef(Sym(symbol)) => symbol }
+          stmt collect { case ExprRef(symbol) => symbol }
         }
         case StmtAssign(lhs, rhs) => {
           // Everything on the right, but on the left only stuff that is read
@@ -238,7 +238,7 @@ object RemoveUnused extends Pass {
           val (we, waddr, wdata) = symbol.attr.arr.value
           Iterator(we, waddr, wdata)
         }
-        case ExprRef(Sym(symbol)) => {
+        case ExprRef(symbol) => {
           // Any other reference is used
           Iterator.single(symbol)
         }

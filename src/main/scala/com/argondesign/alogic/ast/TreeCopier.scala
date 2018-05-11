@@ -388,14 +388,6 @@ object TreeCopier {
     }
   }
 
-  final def apply(tree: ExprRef)(ref: Tree): ExprRef = {
-    if (ref eq tree.ref) {
-      tree
-    } else {
-      ExprRef(ref.asInstanceOf[Ref]) withLoc tree.loc
-    }
-  }
-
   final def apply(tree: Thicket)(trees: List[Tree]): Thicket = {
     if (trees eq tree.trees) {
       tree

@@ -261,7 +261,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
     // Statements
     ////////////////////////////////////////////////////////////////////////////
 
-    case StmtExpr(ExprCall(ExprSelect(ExprRef(Sym(symbol: TermSymbol)), "read"), _)) => {
+    case StmtExpr(ExprCall(ExprSelect(ExprRef(symbol: TermSymbol), "read"), _)) => {
       extraStmts.push(ListBuffer())
 
       val attr = symbol.attr
@@ -296,14 +296,14 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
 
       // We used the Error symbol for void port payloads, now replace
       // the corresponding statement with an empty statement
-      case StmtExpr(ExprRef(Sym(ErrorSymbol))) => StmtBlock(Nil)
+      case StmtExpr(ExprRef(ErrorSymbol)) => StmtBlock(Nil)
 
-      case StmtExpr(ExprCall(ExprSelect(ref @ ExprRef(Sym(symbol: TermSymbol)), "write"), args)) => {
+      case StmtExpr(ExprCall(ExprSelect(ref @ ExprRef(symbol: TermSymbol), "write"), args)) => {
         symbol.attr.fcn.get.map { _ =>
           StmtAssign(ref, args.head)
         } orElse symbol.attr.oStorage.get.map {
           case (_, iSymbol) =>
-            lazy val iRef = ExprRef(Sym(iSymbol))
+            lazy val iRef = ExprRef(iSymbol)
             lazy val pAssign = StmtAssign(iRef select "ip", args.head)
             lazy val vAssign = assignTrue(iRef select s"ip${sep}valid")
             lazy val rStall = StmtStall(iRef select s"ip${sep}ready")
@@ -318,19 +318,19 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
             }
         } orElse symbol.attr.fcv.get.map {
           case (pSymbol, vSymbol) =>
-            val vAssign = assignTrue(ExprRef(Sym(vSymbol)))
+            val vAssign = assignTrue(ExprRef(vSymbol))
             if (pSymbol != ErrorSymbol) {
-              val pAssign = StmtAssign(ExprRef(Sym(pSymbol)), args.head)
+              val pAssign = StmtAssign(ExprRef(pSymbol), args.head)
               StmtBlock(List(pAssign, vAssign))
             } else {
               vAssign
             }
         } orElse symbol.attr.fca.get.map {
           case (pSymbol, vSymbol, aSymbol) =>
-            val vAssign = assignTrue(ExprRef(Sym(vSymbol)))
-            val aStall = StmtStall(ExprRef(Sym(aSymbol)))
+            val vAssign = assignTrue(ExprRef(vSymbol))
+            val aStall = StmtStall(ExprRef(aSymbol))
             if (pSymbol != ErrorSymbol) {
-              val pAssign = StmtAssign(ExprRef(Sym(pSymbol)), args.head)
+              val pAssign = StmtAssign(ExprRef(pSymbol), args.head)
               StmtBlock(List(pAssign, vAssign, aStall))
             } else {
               StmtBlock(List(vAssign, aStall))
@@ -340,21 +340,21 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
         }
       }
 
-      case StmtExpr(ExprCall(ExprSelect(ref @ ExprRef(Sym(symbol: TermSymbol)), "wait"), args)) => {
+      case StmtExpr(ExprCall(ExprSelect(ref @ ExprRef(symbol: TermSymbol), "wait"), args)) => {
         symbol.attr.fcv.get.map {
-          case (_, vSymbol) => StmtStall(ExprRef(Sym(vSymbol)))
+          case (_, vSymbol) => StmtStall(ExprRef(vSymbol))
         } orElse symbol.attr.fcr.get.map {
-          case (_, vSymbol, _) => StmtStall(ExprRef(Sym(vSymbol)))
+          case (_, vSymbol, _) => StmtStall(ExprRef(vSymbol))
         } getOrElse {
           tree
         }
       }
 
-      case StmtExpr(ExprCall(ExprSelect(ref @ ExprRef(Sym(symbol: TermSymbol)), "flush"), args)) => {
+      case StmtExpr(ExprCall(ExprSelect(ref @ ExprRef(symbol: TermSymbol), "flush"), args)) => {
         symbol.attr.fcv.get.map {
-          case (_, vSymbol) => StmtStall(!ExprRef(Sym(vSymbol)))
+          case (_, vSymbol) => StmtStall(!ExprRef(vSymbol))
         } orElse symbol.attr.oStorage.get.map {
-          case (_, iSymbol) => StmtStall(ExprRef(Sym(iSymbol)) select "empty")
+          case (_, iSymbol) => StmtStall(ExprRef(iSymbol) select "empty")
         } getOrElse {
           tree
         }
@@ -364,49 +364,49 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       // Rewrite expressions
       //////////////////////////////////////////////////////////////////////////
 
-      case ExprCall(ExprSelect(ref @ ExprRef(Sym(symbol: TermSymbol)), "read"), Nil) => {
+      case ExprCall(ExprSelect(ref @ ExprRef(symbol: TermSymbol), "read"), Nil) => {
         symbol.attr.fcn.get.map { _ =>
           ref
         } orElse symbol.attr.fcv.get.map {
           case (pSymbol, vSymbol) =>
-            extraStmts.top append StmtStall(ExprRef(Sym(vSymbol)))
-            ExprRef(Sym(pSymbol))
+            extraStmts.top append StmtStall(ExprRef(vSymbol))
+            ExprRef(pSymbol)
         } orElse symbol.attr.fcr.get.map {
           case (pSymbol, vSymbol, rSymbol) =>
-            extraStmts.top append assignTrue(ExprRef(Sym(rSymbol)))
-            extraStmts.top append StmtStall(ExprRef(Sym(vSymbol)))
-            ExprRef(Sym(pSymbol))
+            extraStmts.top append assignTrue(ExprRef(rSymbol))
+            extraStmts.top append StmtStall(ExprRef(vSymbol))
+            ExprRef(pSymbol)
         } orElse symbol.attr.fca.get.map {
           case (pSymbol, vSymbol, aSymbol) =>
-            extraStmts.top append assignTrue(ExprRef(Sym(aSymbol)))
-            extraStmts.top append StmtStall(ExprRef(Sym(vSymbol)))
-            ExprRef(Sym(pSymbol))
+            extraStmts.top append assignTrue(ExprRef(aSymbol))
+            extraStmts.top append StmtStall(ExprRef(vSymbol))
+            ExprRef(pSymbol)
         } getOrElse {
           tree
         }
       }
 
-      case ExprSelect(ExprRef(Sym(symbol: TermSymbol)), "valid") => {
+      case ExprSelect(ExprRef(symbol: TermSymbol), "valid") => {
         symbol.attr.fcv.get.map {
-          case (_, vSymbol) => ExprRef(Sym(vSymbol))
+          case (_, vSymbol) => ExprRef(vSymbol)
         } orElse symbol.attr.fcr.get.map {
-          case (_, vSymbol, _) => ExprRef(Sym(vSymbol))
+          case (_, vSymbol, _) => ExprRef(vSymbol)
         } getOrElse {
           tree
         }
       }
 
-      case ExprSelect(ExprRef(Sym(symbol: TermSymbol)), "empty") => {
+      case ExprSelect(ExprRef(symbol: TermSymbol), "empty") => {
         symbol.attr.oStorage.get.map {
-          case (_, iSymbol) => ExprRef(Sym(iSymbol)) select "empty"
+          case (_, iSymbol) => ExprRef(iSymbol) select "empty"
         } getOrElse {
           tree
         }
       }
 
-      case ExprSelect(ExprRef(Sym(symbol: TermSymbol)), "full") => {
+      case ExprSelect(ExprRef(symbol: TermSymbol), "full") => {
         symbol.attr.oStorage.get.map {
-          case (_, iSymbol) => ExprRef(Sym(iSymbol)) select "full"
+          case (_, iSymbol) => ExprRef(iSymbol) select "full"
         } getOrElse {
           tree
         }
@@ -480,7 +480,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
 
         val connects = ospSymbols flatMap { symbol =>
           val iSymbol = symbol.attr.oStorage.value._2
-          val iRef = ExprRef(Sym(iSymbol))
+          val iRef = ExprRef(iSymbol)
 
           val (pSymbolOpt, vSymbol, rSymbolOpt) = symbol.attr.fcv.get.map {
             case (ErrorSymbol, vSymbol) => (None, vSymbol, None)
@@ -493,11 +493,11 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
           }
 
           val pConnOpt = pSymbolOpt map { pSymbol =>
-            Connect(iRef select "op", List(ExprRef(Sym(pSymbol))))
+            Connect(iRef select "op", List(ExprRef(pSymbol)))
           }
-          val vConn = Connect(iRef select s"op${sep}valid", List(ExprRef(Sym(vSymbol))))
+          val vConn = Connect(iRef select s"op${sep}valid", List(ExprRef(vSymbol)))
           val rConnOpt = rSymbolOpt map { rSymbol =>
-            Connect(ExprRef(Sym(rSymbol)), List(iRef select s"op${sep}ready"))
+            Connect(ExprRef(rSymbol), List(iRef select s"op${sep}ready"))
           }
 
           pConnOpt.toList ::: vConn :: rConnOpt.toList
@@ -528,7 +528,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
 
         val thisEntity = entity.copy(
           instances = instances ::: entity.instances,
-          connects = connects ::: entity.connects,
+          connects = connects ::: entity.connects
         ) withVariant entity.variant
 
         Thicket(thisEntity :: extraEntities.toList)

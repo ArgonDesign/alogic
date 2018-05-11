@@ -75,7 +75,7 @@ final class MakeVerilog(
         case ExprIndex(e, index)           => s"${vexpr(e)}[${vexpr(index)}]"
         case ExprSlice(e, lidx, op, ridx)  => s"${vexpr(e)}[${vexpr(lidx)}${op}${vexpr(ridx)}]"
         case ExprSelect(e, sel)            => s"${vexpr(e)}${cc.sep}${sel}"
-        case ExprRef(Sym(symbol))          => symbol.name
+        case ExprRef(symbol)               => symbol.name
         case ExprInt(false, w, v)          => s"${w}'d${v}"
         case ExprInt(true, w, v) if v >= 0 => s"${w}'sd${v}"
         case ExprInt(true, w, v)           => s"-${w}'sd${-v}"

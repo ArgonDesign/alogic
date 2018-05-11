@@ -113,7 +113,7 @@ final class SplitStructsA(implicit cc: CompilerContext) extends TreeTransformer 
       // ExprRef
       //////////////////////////////////////////////////////////////////////////
 
-      case ExprRef(Sym(symbol)) => {
+      case ExprRef(symbol) => {
         // Rewrite reference to struct symbol as a nested
         // concatenation of references to the field symbols
         symbol.attr.fieldSymbols.get map { fSymbols =>
@@ -122,7 +122,7 @@ final class SplitStructsA(implicit cc: CompilerContext) extends TreeTransformer 
             for (fType <- struct.fieldTypes) yield {
               fType match {
                 case struct: TypeStruct => cat(struct)
-                case _                  => ExprRef(Sym(it.next()))
+                case _                  => ExprRef(it.next())
               }
             }
           }

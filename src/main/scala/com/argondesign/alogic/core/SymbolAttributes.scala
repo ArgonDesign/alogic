@@ -78,7 +78,7 @@ class SymbolAttributes {
   // pairs (driven from the state system) that need to be cleared on a stall
   val interconnectClearOnStall = new Attribute[List[(TermSymbol, String)]]()
 
-  // If the value of ExprRef(Sym(symbol)) in this attribute is 0,
+  // If the value of ExprSym(symbol) in this attribute is 0,
   // then the value of this signal is known to be don't care
   val dontCareUnless = new Attribute[TermSymbol]()
 

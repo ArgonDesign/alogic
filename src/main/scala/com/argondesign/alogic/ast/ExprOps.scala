@@ -18,12 +18,11 @@ package com.argondesign.alogic.ast
 
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Symbols.TermSymbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.passes.FoldExpr
-import com.argondesign.alogic.util.unreachable
 import com.argondesign.alogic.util.PartialMatch._
+import com.argondesign.alogic.util.unreachable
 
 import scala.language.implicitConversions
 import scala.math.BigInt.int2bigInt
@@ -43,8 +42,8 @@ trait ExprOps { this: Expr =>
     expr
   }
 
-  private final def makeExprCall(symbol: Symbol, args: Expr*) = {
-    val expr = ExprCall(ExprRef(Sym(symbol)), args.toList)
+  private final def makeExprCall(symbol: TermSymbol, args: Expr*) = {
+    val expr = ExprCall(ExprRef(symbol), args.toList)
     if (hasLoc) {
       for (arg <- args if !arg.hasLoc) { arg withLoc loc }
       expr.expr visitAll { case tree: Tree => tree withLoc loc }
@@ -122,14 +121,16 @@ trait ExprOps { this: Expr =>
 
   // Is this expression shaped as a valid type expression
   lazy val isTypeExpr: Boolean = this forall {
-    case _: ExprType         => true
+    case _: ExprIdent        => true
     case _: ExprRef          => true
+    case _: ExprType         => true
     case ExprSelect(expr, _) => expr.isTypeExpr
     case _                   => false
   }
 
   // Is this expression shaped as a valid lvalue expression
   lazy val isLValueExpr: Boolean = this forall {
+    case _: ExprIdent             => true
     case _: ExprRef               => true
     case ExprIndex(expr, _)       => expr.isLValueExpr
     case ExprSlice(expr, _, _, _) => expr.isLValueExpr
@@ -140,9 +141,11 @@ trait ExprOps { this: Expr =>
 
   // Is this expression shaped as a valid port reference expression
   lazy val isPortRefExpr: Boolean = this match {
-    case _: ExprRef                => true
-    case ExprSelect(_: ExprRef, _) => true
-    case _                         => false
+    case _: ExprIdent                => true
+    case _: ExprRef                  => true
+    case ExprSelect(_: ExprIdent, _) => true
+    case ExprSelect(_: ExprRef, _)   => true
+    case _                           => false
   }
 
   // Is this expression a known constant
@@ -151,7 +154,7 @@ trait ExprOps { this: Expr =>
     case _: ExprInt  => true
     case _: ExprStr  => true
     case _: ExprType => true
-    case ExprRef(Sym(symbol)) =>
+    case ExprRef(symbol) =>
       symbol.kind match {
         case _: TypeConst => true
         case _            => false
@@ -166,7 +169,7 @@ trait ExprOps { this: Expr =>
     case ExprSlice(expr, lidx, op, ridx) =>
       expr.isKnownConst && lidx.isKnownConst && ridx.isKnownConst
     case ExprSelect(expr, _) => expr.isKnownConst
-    case call @ ExprCall(ExprRef(Sym(symbol)), _) if symbol.isBuiltin =>
+    case call @ ExprCall(ExprRef(symbol), _) if symbol.isBuiltin =>
       cc.isKnownConstBuiltinCall(call)
     case _ => false
   }
@@ -258,7 +261,7 @@ trait ObjectExprOps {
   final object InstancePortRef {
 
     def unapply(expr: Expr): Option[(TermSymbol, TermSymbol)] = expr partialMatch {
-      case ExprSelect(ExprRef(Sym(iSymbol: TermSymbol)), sel) if iSymbol.kind.isInstance =>
+      case ExprSelect(ExprRef(iSymbol: TermSymbol), sel) if iSymbol.kind.isInstance =>
         (iSymbol, iSymbol.kind.asInstanceOf[TypeInstance].portSymbol(sel).get)
     }
   }

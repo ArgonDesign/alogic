@@ -96,6 +96,10 @@ final class CloneEntity(parameterBindings: ListMap[TermSymbol, Expr])(implicit c
     // Update references
     ////////////////////////////////////////////////////////////////////////////
 
+    case ExprRef(symbol: TermSymbol) => {
+      symbolMap.get(symbol) map { ExprRef(_) regularize tree.loc } getOrElse tree
+    }
+
     case Sym(symbol: TermSymbol) => {
       symbolMap.get(symbol) map { Sym(_) regularize tree.loc } getOrElse tree
     }

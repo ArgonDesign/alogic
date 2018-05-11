@@ -93,7 +93,7 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
                   }
                   inside(main) {
                     case Function(_, List(StmtExpr(expr))) =>
-                      expr should matchPattern { case ExprRef(Sym(_)) => }
+                      expr should matchPattern { case ExprRef(_) => }
                       TypeAssigner(expr).tpe shouldBe kind
                   }
                 }
@@ -947,7 +947,7 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
       }
 
       "state" in {
-        TypeAssigner(State(ExprRef(Sym(ErrorSymbol)), Nil)).tpe shouldBe TypeMisc
+        TypeAssigner(State(ExprRef(ErrorSymbol), Nil)).tpe shouldBe TypeMisc
       }
     }
 

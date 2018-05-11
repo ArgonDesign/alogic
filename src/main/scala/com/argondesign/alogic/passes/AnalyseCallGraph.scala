@@ -311,11 +311,11 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
     //////////////////////////////////////////////////////////////////////////
 
     case ExprCall(ref, _) if ref.tpe.isInstanceOf[TypeCtrlFunc] => {
-      val ExprRef(Sym(callee: TermSymbol)) = ref
+      val ExprRef(callee: TermSymbol) = ref
       callArcs add (currentFunction -> callee)
     }
 
-    case StmtGoto(ExprRef(Sym(callee: TermSymbol))) => {
+    case StmtGoto(ExprRef(callee: TermSymbol)) => {
       gotoArcs add (currentFunction -> callee)
     }
 

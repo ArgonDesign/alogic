@@ -17,16 +17,20 @@ package com.argondesign.alogic.ast
 
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Symbols.Symbol
 
 trait TreePrintOps { this: Tree =>
 
+  private[this] final def attrStr(indent: Int, symbol: Symbol)(
+      implicit cc: CompilerContext): String = {
+    val str = symbol.attr.toSource
+    if (str.isEmpty) str else str + "\n" + "  " * indent
+  }
+
   private[this] final def attrStr(indent: Int, ref: Ref)(implicit cc: CompilerContext): String = {
     ref match {
-      case Sym(symbol) => {
-        val str = symbol.attr.toSource
-        if (str.isEmpty) str else str + "\n" + "  " * indent
-      }
-      case _ => ""
+      case Sym(symbol) => attrStr(indent, symbol)
+      case _           => ""
     }
   }
 
@@ -40,7 +44,8 @@ trait TreePrintOps { this: Tree =>
     case ExprIndex(expr, index)                => s"${v(expr)}[${v(index)}]"
     case ExprSlice(expr, lidx, op, ridx)       => s"${v(expr)}[${v(lidx)}${op}${v(ridx)}]"
     case ExprSelect(expr, selector)            => s"${v(expr)}.${selector}"
-    case ExprRef(ref)                          => ref.toSource
+    case ExprIdent(name)                       => name
+    case ExprRef(symbol)                       => symbol.name
     case ExprType(kind)                        => s"type(${kind.toSource})"
     case ExprInt(true, width, value)           => s"${width}'sd${value}"
     case ExprInt(false, width, value)          => s"${width}'d${value}"
@@ -163,10 +168,10 @@ trait TreePrintOps { this: Tree =>
         s"${kind.toSource} ${v(indent)(ident)} = ${v(init)};"
       }
       case Decl(symbol, None) => {
-        s"${attrStr(indent, Sym(symbol))}${symbol.kind.toSource} ${symbol.name};"
+        s"${attrStr(indent, symbol)}${symbol.kind.toSource} ${symbol.name};"
       }
       case Decl(symbol, Some(init)) => {
-        s"${attrStr(indent, Sym(symbol))}${symbol.kind.toSource} ${symbol.name} = ${v(init)};"
+        s"${attrStr(indent, symbol)}${symbol.kind.toSource} ${symbol.name} = ${v(init)};"
       }
 
       case Instance(ref, module, paramNames, paramArgs) => {
@@ -182,8 +187,8 @@ trait TreePrintOps { this: Tree =>
             |${i}}""".stripMargin
       }
 
-      case State(ExprRef(ref), body) => {
-        s"""|${attrStr(indent, ref)}state ${v(indent)(ref)} {
+      case State(ExprRef(symbol), body) => {
+        s"""|${attrStr(indent, symbol)}state ${symbol.name} {
             |${i}  ${body map v(indent + 1) mkString s"\n${i}  "}
             |${i}}""".stripMargin
       }

@@ -129,19 +129,19 @@ object StackFactory {
     val valSymbol = cc.newTermSymbol("valid", loc, bool)
     val stoSymbol = cc.newTermSymbol("storage", loc, kind)
 
-    val enRef = ExprRef(Sym(enSymbol))
+    val enRef = ExprRef(enSymbol)
 
-    val pusRef = ExprRef(Sym(pusSymbol))
-    val popRef = ExprRef(Sym(popSymbol))
-    val dRef = ExprRef(Sym(dSymbol))
+    val pusRef = ExprRef(pusSymbol)
+    val popRef = ExprRef(popSymbol)
+    val dRef = ExprRef(dSymbol)
 
-    val empRef = ExprRef(Sym(empSymbol))
-    val fulRef = ExprRef(Sym(fulSymbol))
-    val qRef = ExprRef(Sym(qSymbol))
+    val empRef = ExprRef(empSymbol)
+    val fulRef = ExprRef(fulSymbol)
+    val qRef = ExprRef(qSymbol)
 
-    val valRef = ExprRef(Sym(valSymbol))
+    val valRef = ExprRef(valSymbol)
 
-    val stoRef = ExprRef(Sym(stoSymbol))
+    val stoRef = ExprRef(stoSymbol)
 
     val body = List(
       StmtIf(enRef,
@@ -265,21 +265,21 @@ object StackFactory {
     val ptrKind = TypeUInt(Expr(ptrWidth) regularize loc)
     val ptrSymbol = cc.newTermSymbol("ptr", loc, ptrKind)
 
-    val enRef = ExprRef(Sym(enSymbol))
+    val enRef = ExprRef(enSymbol)
 
-    val pusRef = ExprRef(Sym(pusSymbol))
-    val popRef = ExprRef(Sym(popSymbol))
-    val dRef = ExprRef(Sym(dSymbol))
+    val pusRef = ExprRef(pusSymbol)
+    val popRef = ExprRef(popSymbol)
+    val dRef = ExprRef(dSymbol)
 
-    val empRef = ExprRef(Sym(empSymbol))
-    val fulRef = ExprRef(Sym(fulSymbol))
-    val qRef = ExprRef(Sym(qSymbol))
+    val empRef = ExprRef(empSymbol)
+    val fulRef = ExprRef(fulSymbol)
+    val qRef = ExprRef(qSymbol)
 
-    val oreRef = ExprRef(Sym(oreSymbol))
-    val orfRef = ExprRef(Sym(orfSymbol))
+    val oreRef = ExprRef(oreSymbol)
+    val orfRef = ExprRef(orfSymbol)
 
-    val stoRef = ExprRef(Sym(stoSymbol))
-    val ptrRef = ExprRef(Sym(ptrSymbol))
+    val stoRef = ExprRef(stoSymbol)
+    val ptrRef = ExprRef(ptrSymbol)
 
     def zextPtrWidth(bool: Expr): Expr = {
       if (ptrWidth == 1) {

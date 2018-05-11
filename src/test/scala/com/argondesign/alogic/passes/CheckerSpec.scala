@@ -509,7 +509,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         "right hand side of -> in first position" - {
           check { ref =>
             val tree = s"a -> ${ref}".asTree[Connect] rewrite checker
-            tree shouldBe Connect(ExprRef(Ident("a")), Nil)
+            tree shouldBe Connect(ExprIdent("a"), Nil)
             cc.messages.loneElement should beThe[Error](
               s"Invalid port reference on right hand side of '->'",
               "Only identifiers, optionally followed by a single field selector are allowed"
@@ -519,7 +519,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         "right hand side of -> in second position" - {
           check { ref =>
             val tree = s"a -> b, ${ref}".asTree[Connect] rewrite checker
-            tree shouldBe Connect(ExprRef(Ident("a")), List(ExprRef(Ident("b"))))
+            tree shouldBe Connect(ExprIdent("a"), List(ExprIdent("b")))
             cc.messages.loneElement should beThe[Error](
               s"Invalid port reference on right hand side of '->'",
               "Only identifiers, optionally followed by a single field selector are allowed"

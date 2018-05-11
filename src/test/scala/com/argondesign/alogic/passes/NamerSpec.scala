@@ -221,12 +221,12 @@ final class NamerSpec extends FlatSpec with AlogicTest {
                   |}""".asTree[Stmt] rewrite namer
 
     inside(tree) {
-      case StmtBlock(List(StmtDecl(Decl(outer1, _)), block, StmtAssign(ExprRef(Sym(outer2)), _))) =>
+      case StmtBlock(List(StmtDecl(Decl(outer1, _)), block, StmtAssign(ExprRef(outer2), _))) =>
         outer1.loc.line shouldBe 2
         outer1 should be theSameInstanceAs outer2
         outer1 shouldBe 'termSymbol
         inside(block) {
-          case StmtBlock(List(StmtDecl(Decl(inner1, _)), StmtAssign(ExprRef(Sym(inner2)), _))) =>
+          case StmtBlock(List(StmtDecl(Decl(inner1, _)), StmtAssign(ExprRef(inner2), _))) =>
             inner1.loc.line shouldBe 4
             inner1 should be theSameInstanceAs inner2
             inner1 shouldNot be theSameInstanceAs outer1
@@ -331,7 +331,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
         inside(entity.functions) {
           case List(main, foo) =>
             inside(main) {
-              case Function(_, List(StmtExpr(ExprCall(ExprRef(Sym(fooInMain)), _)))) =>
+              case Function(_, List(StmtExpr(ExprCall(ExprRef(fooInMain), _)))) =>
                 inside(foo) {
                   case Function(Sym(fooInDef), _) =>
                     fooInMain should be theSameInstanceAs fooInDef
@@ -411,7 +411,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     inside(tree) {
       case Entity(_, _, _, _, List(main, foo), _, _, _, _) =>
         inside(main) {
-          case Function(Sym(_), List(StmtGoto(ExprRef(Sym(sym))))) =>
+          case Function(Sym(_), List(StmtGoto(ExprRef(sym)))) =>
             sym shouldBe 'termSymbol
             inside(foo) {
               case Function(Sym(fooSym), Nil) =>
@@ -443,7 +443,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
               case Decl(dSym, None) =>
                 dSym.kind shouldBe TypeUInt(Expr(1))
                 inside(expr) {
-                  case ExprCall(`atBits`, List(ExprRef(Sym(rSym)))) =>
+                  case ExprCall(`atBits`, List(ExprRef(rSym))) =>
                     rSym should be theSameInstanceAs dSym
                     rSym shouldBe 'termSymbol
                     rSym.loc.line shouldBe 3
@@ -476,7 +476,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
                 inside(main) {
                   case Function(Sym(_), List(StmtExpr(expr))) =>
                     inside(expr) {
-                      case ExprCall(`atBits`, List(ExprRef(Sym(rSym)))) =>
+                      case ExprCall(`atBits`, List(ExprRef(rSym))) =>
                         rSym should be theSameInstanceAs dSym
                         rSym shouldBe 'typeSymbol
                         rSym.loc.line shouldBe 1
@@ -512,7 +512,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
                   case Function(Sym(_), List(StmtDecl(decl: Decl), StmtExpr(expr))) =>
                     val dSym = decl.symbol
                     inside(expr) {
-                      case ExprCall(`atBits`, List(ExprRef(Sym(rSym)) + Expr(2))) =>
+                      case ExprCall(`atBits`, List(ExprRef(rSym) + Expr(2))) =>
                         rSym should be theSameInstanceAs dSym
                         rSym shouldBe 'termSymbol
                         rSym.loc.line shouldBe 4
@@ -560,7 +560,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     inside(tree) {
       case Root(_, entity: Entity) =>
         inside(entity.functions.head.body.head) {
-          case StmtDecl(Decl(_, Some(ExprRef(Sym(sym))))) =>
+          case StmtDecl(Decl(_, Some(ExprRef(sym)))) =>
             sym should be theSameInstanceAs ErrorSymbol
         }
     }
@@ -588,11 +588,11 @@ final class NamerSpec extends FlatSpec with AlogicTest {
           case Decl(symbol, _) =>
             val TypeVector(elementType, size) = symbol.kind
             inside(size) {
-              case ExprRef(Sym(sym)) =>
+              case ExprRef(sym) =>
                 sym should be theSameInstanceAs symA
             }
             inside(elementType) {
-              case TypeSInt(ExprRef(Sym(sym))) =>
+              case TypeSInt(ExprRef(sym)) =>
                 sym should be theSameInstanceAs symB
             }
         }
@@ -618,11 +618,11 @@ final class NamerSpec extends FlatSpec with AlogicTest {
           case Decl(symbol, _) =>
             val TypeArray(TypeArray(TypeUInt(Expr(1)), size1), size2) = symbol.kind
             inside(size1) {
-              case ExprRef(Sym(sym)) =>
+              case ExprRef(sym) =>
                 sym should be theSameInstanceAs symB
             }
             inside(size2) {
-              case ExprRef(Sym(sym)) =>
+              case ExprRef(sym) =>
                 sym should be theSameInstanceAs symA
             }
         }

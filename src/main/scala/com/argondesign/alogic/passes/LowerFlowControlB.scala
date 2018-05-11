@@ -73,19 +73,19 @@ final class LowerFlowControlB(implicit cc: CompilerContext) extends TreeTransfor
       expr: Expr,
       partSymbol: TermSymbol => Option[TermSymbol]
   ): Option[Expr] = expr match {
-    case ExprRef(Sym(pSymbol: TermSymbol)) => {
+    case ExprRef(pSymbol: TermSymbol) => {
       partSymbol(pSymbol) map { symbol =>
-        ExprRef(Sym(symbol))
+        ExprRef(symbol)
       }
     }
-    case ExprSelect(ExprRef(Sym(iSymbol)), sel) => {
+    case ExprSelect(ExprRef(iSymbol), sel) => {
       val kind = iSymbol.kind.asInstanceOf[TypeInstance]
       val pSymbolOpt = kind.portSymbols collectFirst {
         case symbol if symbol.name == sel && symbol.attr.expandedPort.isSet => symbol
       }
       pSymbolOpt flatMap partSymbol map { symbol =>
         assert(kind(symbol.name).isDefined)
-        ExprSelect(ExprRef(Sym(iSymbol)), symbol.name)
+        ExprSelect(ExprRef(iSymbol), symbol.name)
       }
     }
     case _ => None

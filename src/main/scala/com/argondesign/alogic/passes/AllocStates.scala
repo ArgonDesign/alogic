@@ -71,16 +71,16 @@ final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
 
         // Ensure the entry symbol is allocated number 0
         val (entryStates, otherStates) = entity.states partition { state =>
-          val State(ExprRef(Sym(symbol: TermSymbol)), _) = state
+          val State(ExprRef(symbol: TermSymbol), _) = state
           symbol.attr.entry.isSet
         }
 
         assert(entryStates.length == 1)
 
-        val State(ExprRef(Sym(entrySymbol: TermSymbol)), _) = entryStates.head
+        val State(ExprRef(entrySymbol: TermSymbol), _) = entryStates.head
         stateMap(entrySymbol) = it.next()
 
-        for (State(ExprRef(Sym(symbol: TermSymbol)), _) <- otherStates) {
+        for (State(ExprRef(symbol: TermSymbol), _) <- otherStates) {
           stateMap(symbol) = it.next()
         }
       }
@@ -89,7 +89,7 @@ final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
       rsSymbol
     }
 
-    case State(ExprRef(Sym(symbol: TermSymbol)), _) if nStates > 1 => {
+    case State(ExprRef(symbol: TermSymbol), _) if nStates > 1 => {
       currStateNum = stateMap(symbol)
     }
 
@@ -102,7 +102,7 @@ final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
       // omitting the state variable altogether
       tree match {
         // Replace references to states with the state numbers (there is only 1 state)
-        case ExprRef(Sym(symbol: TermSymbol)) if symbol.kind == TypeState => {
+        case ExprRef(symbol: TermSymbol) if symbol.kind == TypeState => {
           ExprInt(false, 1, 0) withLoc tree.loc
         }
 
@@ -112,7 +112,7 @@ final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
         }
 
         // Drop push to return stack
-        case StmtExpr(ExprCall(ExprSelect(ExprRef(Sym(symbol)), _), _)) if symbol == rsSymbol => {
+        case StmtExpr(ExprCall(ExprSelect(ExprRef(symbol), _), _)) if symbol == rsSymbol => {
           StmtBlock(Nil) withLoc tree.loc
         }
 
@@ -128,7 +128,7 @@ final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
     } else if (nStates > 1) {
       tree match {
         // Replace references to states with the state numbers
-        case ExprRef(Sym(symbol: TermSymbol)) if stateMap contains symbol => {
+        case ExprRef(symbol: TermSymbol) if stateMap contains symbol => {
           ExprInt(false, stateBits, stateMap(symbol)) withLoc tree.loc
         }
 
@@ -141,7 +141,7 @@ final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
         case StmtGoto(expr) => {
           StmtBlock(
             List(
-              StmtAssign(ExprRef(Sym(stateVarSymbol)), expr) regularize tree.loc,
+              StmtAssign(ExprRef(stateVarSymbol), expr) regularize tree.loc,
               StmtFence() regularize tree.loc
             )
           ) withLoc tree.loc

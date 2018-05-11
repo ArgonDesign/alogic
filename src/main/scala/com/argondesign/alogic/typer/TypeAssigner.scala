@@ -39,7 +39,7 @@ object TypeAssigner {
       case node: Sym            => apply(node)
       case node: TypeDefinition => apply(node)
       case node: Thicket        => apply(node)
-      case _                    => cc.ice(tree, s"Don't know how to type '${tree}")
+      case _                    => unreachable
     }
     assert(tree.hasTpe)
     tree
@@ -252,6 +252,7 @@ object TypeAssigner {
       case node: ExprType    => apply(node)
       case node: ExprError   => apply(node)
       case node: ExprNum     => apply(node)
+      case _                 => unreachable
     }
     tree
   }
@@ -273,7 +274,7 @@ object TypeAssigner {
 
   def apply(node: ExprRef): node.type = {
     require(!node.hasTpe)
-    val ExprRef(Sym(symbol)) = node
+    val ExprRef(symbol) = node
     val tpe = if (symbol == ErrorSymbol) {
       TypeError
     } else {

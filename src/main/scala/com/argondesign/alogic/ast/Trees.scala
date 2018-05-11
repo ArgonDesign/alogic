@@ -170,7 +170,8 @@ object Trees {
   case class ExprSlice(expr: Expr, lidx: Expr, op: String, ridx: Expr) extends Expr
 
   case class ExprSelect(expr: Expr, selector: String) extends Expr
-  case class ExprRef(ref: Ref) extends Expr
+  case class ExprIdent(name: String) extends Expr
+  case class ExprRef(symbol: Symbol) extends Expr
   case class ExprType(kind: Type) extends Expr
 
   // Literals

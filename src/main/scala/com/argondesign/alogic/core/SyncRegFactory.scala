@@ -87,14 +87,14 @@ object SyncRegFactory {
     lazy val pSymbol = cc.newTermSymbol("payload", loc, kind)
     val vSymbol = cc.newTermSymbol("valid", loc, bool)
 
-    lazy val ipRef = ExprRef(Sym(ipSymbol))
-    val ipvRef = ExprRef(Sym(ipvSymbol))
+    lazy val ipRef = ExprRef(ipSymbol)
+    val ipvRef = ExprRef(ipvSymbol)
 
-    lazy val opRef = ExprRef(Sym(opSymbol))
-    val opvRef = ExprRef(Sym(opvSymbol))
+    lazy val opRef = ExprRef(opSymbol)
+    val opvRef = ExprRef(opvSymbol)
 
-    lazy val pRef = ExprRef(Sym(pSymbol))
-    val vRef = ExprRef(Sym(vSymbol))
+    lazy val pRef = ExprRef(pSymbol)
+    val vRef = ExprRef(vSymbol)
 
     val body = if (kind != TypeVoid) {
       List(

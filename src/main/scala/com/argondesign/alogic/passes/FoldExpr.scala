@@ -82,8 +82,8 @@ final class FoldExpr(
       // Fold refs
       ////////////////////////////////////////////////////////////////////////////
 
-      case expr @ ExprRef(Sym(symbol)) if foldRefs => {
-        symbol.attr.constValue.get map { walk(_) } getOrElse expr
+      case ExprRef(symbol) if foldRefs => {
+        symbol.attr.constValue.get map { walk(_) } getOrElse tree
       }
 
       ////////////////////////////////////////////////////////////////////////////
@@ -283,7 +283,7 @@ final class FoldExpr(
       // Fold built-in functions
       ////////////////////////////////////////////////////////////////////////////
 
-      case call @ ExprCall(ExprRef(Sym(symbol)), _) if symbol.isBuiltin => {
+      case call @ ExprCall(ExprRef(symbol), _) if symbol.isBuiltin => {
         val result = cc.foldBuiltinCall(call)
         if (result eq call) {
           call

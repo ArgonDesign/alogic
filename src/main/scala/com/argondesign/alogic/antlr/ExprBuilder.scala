@@ -173,15 +173,13 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
 
       // Identifiers
       override def visitExprIdent(ctx: ExprIdentContext) = {
-        ExprRef(ctx.IDENTIFIER.toIdent) withLoc ctx.loc
+        ExprIdent(ctx.IDENTIFIER) withLoc ctx.loc
       }
       override def visitExprAtid(ctx: ExprAtidContext) = {
-        val ident = Ident(ctx.ATID.text) withLoc ctx.ATID.loc
-        ExprRef(ident) withLoc ctx.loc
+        ExprIdent(ctx.ATID) withLoc ctx.loc
       }
       override def visitExprDollarid(ctx: ExprDollaridContext) = {
-        val ident = Ident(ctx.DOLLARID.text) withLoc ctx.DOLLARID.loc
-        ExprRef(ident) withLoc ctx.loc
+        ExprIdent(ctx.DOLLARID) withLoc ctx.loc
       }
 
       // Type

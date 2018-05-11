@@ -89,14 +89,14 @@ final class LowerStacks(implicit cc: CompilerContext) extends TreeTransformer {
       // Rewrite statements
       //////////////////////////////////////////////////////////////////////////
 
-      case StmtExpr(ExprCall(ExprSelect(ExprRef(Sym(symbol: TermSymbol)), "push"), args)) => {
+      case StmtExpr(ExprCall(ExprSelect(ExprRef(symbol: TermSymbol), "push"), args)) => {
         stackMap.get(symbol) map {
           case (_, iSymbol) => {
             StmtBlock(
               List(
-                assignTrue(ExprRef(Sym(iSymbol)) select "en"),
-                assignTrue(ExprRef(Sym(iSymbol)) select "push"),
-                StmtAssign(ExprRef(Sym(iSymbol)) select "d", args.head)
+                assignTrue(ExprRef(iSymbol) select "en"),
+                assignTrue(ExprRef(iSymbol) select "push"),
+                StmtAssign(ExprRef(iSymbol) select "d", args.head)
               ))
           }
         } getOrElse {
@@ -104,13 +104,13 @@ final class LowerStacks(implicit cc: CompilerContext) extends TreeTransformer {
         }
       }
 
-      case StmtExpr(ExprCall(ExprSelect(ExprRef(Sym(symbol: TermSymbol)), "set"), args)) => {
+      case StmtExpr(ExprCall(ExprSelect(ExprRef(symbol: TermSymbol), "set"), args)) => {
         stackMap.get(symbol) map {
           case (_, iSymbol) => {
             StmtBlock(
               List(
-                assignTrue(ExprRef(Sym(iSymbol)) select "en"),
-                StmtAssign(ExprRef(Sym(iSymbol)) select "d", args.head)
+                assignTrue(ExprRef(iSymbol) select "en"),
+                StmtAssign(ExprRef(iSymbol) select "d", args.head)
               ))
           }
         } getOrElse {
@@ -122,37 +122,37 @@ final class LowerStacks(implicit cc: CompilerContext) extends TreeTransformer {
       // Rewrite expressions
       //////////////////////////////////////////////////////////////////////////
 
-      case ExprCall(ExprSelect(ExprRef(Sym(symbol: TermSymbol)), "pop"), Nil) => {
+      case ExprCall(ExprSelect(ExprRef(symbol: TermSymbol), "pop"), Nil) => {
         stackMap.get(symbol) map {
           case (_, iSymbol) => {
-            extraStmts.top append assignTrue(ExprRef(Sym(iSymbol)) select "en")
-            extraStmts.top append assignTrue(ExprRef(Sym(iSymbol)) select "pop")
-            ExprRef(Sym(iSymbol)) select "q"
+            extraStmts.top append assignTrue(ExprRef(iSymbol) select "en")
+            extraStmts.top append assignTrue(ExprRef(iSymbol) select "pop")
+            ExprRef(iSymbol) select "q"
           }
         } getOrElse {
           tree
         }
       }
 
-      case ExprSelect(ExprRef(Sym(symbol: TermSymbol)), "top") => {
+      case ExprSelect(ExprRef(symbol: TermSymbol), "top") => {
         stackMap.get(symbol) map {
-          case (_, iSymbol) => ExprRef(Sym(iSymbol)) select "q"
+          case (_, iSymbol) => ExprRef(iSymbol) select "q"
         } getOrElse {
           tree
         }
       }
 
-      case ExprSelect(ExprRef(Sym(symbol: TermSymbol)), "full") => {
+      case ExprSelect(ExprRef(symbol: TermSymbol), "full") => {
         stackMap.get(symbol) map {
-          case (_, iSymbol) => ExprRef(Sym(iSymbol)) select "full"
+          case (_, iSymbol) => ExprRef(iSymbol) select "full"
         } getOrElse {
           tree
         }
       }
 
-      case ExprSelect(ExprRef(Sym(symbol: TermSymbol)), "empty") => {
+      case ExprSelect(ExprRef(symbol: TermSymbol), "empty") => {
         stackMap.get(symbol) map {
-          case (_, iSymbol) => ExprRef(Sym(iSymbol)) select "empty"
+          case (_, iSymbol) => ExprRef(iSymbol) select "empty"
         } getOrElse {
           tree
         }
@@ -176,7 +176,7 @@ final class LowerStacks(implicit cc: CompilerContext) extends TreeTransformer {
 
         // Add fence statemetns
         val fenceStmts = stackMap.values map { _._2 } map { iSymbol =>
-          val iRef = ExprRef(Sym(iSymbol))
+          val iRef = ExprRef(iSymbol)
           StmtBlock(
             List(
               assignFalse(iRef select "en"),

@@ -53,7 +53,7 @@ final class SpecializeParamB(implicit cc: CompilerContext) extends TreeTransform
     // Iterator of all parameters referenced in the bindings
     val referenced = simplified.iterator flatMap { _.valuesIterator } flatMap { expr =>
       expr collectFirst {
-        case ExprRef(Sym(symbol)) if symbol.kind.isInstanceOf[TypeParam] => symbol
+        case ExprRef(symbol) if symbol.kind.isInstanceOf[TypeParam] => symbol
       }
     }
 

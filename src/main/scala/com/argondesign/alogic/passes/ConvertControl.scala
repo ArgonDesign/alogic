@@ -239,7 +239,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
     if (symOpt.isDefined) {
       val loc = body.head.loc
       val Some(symbol) = symOpt
-      val ref = ExprRef(Sym(symbol)) regularize loc
+      val ref = ExprRef(symbol) regularize loc
       val state = State(ref, body) withLoc loc
       TypeAssigner(state)
 
@@ -262,29 +262,29 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
       //////////////////////////////////////////////////////////////////////////
 
       case _: StmtFence => {
-        val ref = ExprRef(Sym(followingState.top))
+        val ref = ExprRef(followingState.top)
         StmtGoto(ref) regularize tree.loc
       }
 
       case _: StmtBreak => {
-        val ref = ExprRef(Sym(breakTargets.top))
+        val ref = ExprRef(breakTargets.top)
         StmtGoto(ref) regularize tree.loc
       }
 
-      case StmtGoto(ExprRef(Sym(symbol: TermSymbol))) => {
-        val ref = ExprRef(Sym(func2state(symbol)))
+      case StmtGoto(ExprRef(symbol: TermSymbol)) => {
+        val ref = ExprRef(func2state(symbol))
         StmtGoto(ref) regularize tree.loc
       }
 
       case _: StmtReturn => {
-        val pop = ExprRef(Sym(rsSymbol)) select "pop" call Nil
+        val pop = ExprRef(rsSymbol) select "pop" call Nil
         StmtGoto(pop) regularize tree.loc
       }
 
-      case StmtExpr(ExprCall(ExprRef(Sym(symbol: TermSymbol)), Nil)) => {
-        val ret = ExprRef(Sym(followingState.top))
-        val push = ExprRef(Sym(rsSymbol)) select "push" call List(ret)
-        val ref = ExprRef(Sym(func2state(symbol)))
+      case StmtExpr(ExprCall(ExprRef(symbol: TermSymbol), Nil)) => {
+        val ret = ExprRef(followingState.top)
+        val push = ExprRef(rsSymbol) select "push" call List(ret)
+        val ref = ExprRef(func2state(symbol))
         StmtBlock(List(StmtExpr(push), StmtGoto(ref))) regularize tree.loc
       }
 
@@ -294,7 +294,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
 
       case stmt @ StmtIf(_, _, None) => {
         // Omitted else goes to the following state
-        val ref = ExprRef(Sym(followingState.top))
+        val ref = ExprRef(followingState.top)
         stmt.copy(elseStmt = Some(StmtGoto(ref))) regularize tree.loc
       }
 
@@ -306,7 +306,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
 
       case stmt @ StmtCase(_, _, Nil) => {
         // Omitted default goes to the following state
-        val ref = ExprRef(Sym(followingState.top))
+        val ref = ExprRef(followingState.top)
         stmt.copy(default = List(StmtGoto(ref))) regularize tree.loc
       }
 
@@ -338,7 +338,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
           case Some(symbol) => {
             // Loop entry state was emitted, so the containing state
             // needs to go to the emitted state
-            val ref = ExprRef(Sym(symbol)) regularize symbol.loc
+            val ref = ExprRef(symbol) regularize symbol.loc
             StmtGoto(ref)
           }
           case None => {

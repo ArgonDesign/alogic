@@ -29,7 +29,7 @@ final class ReplaceTermRefs(
   override val typed: Boolean = true
 
   override def transform(tree: Tree): Tree = tree match {
-    case ExprRef(Sym(symbol: TermSymbol)) => bindings.getOrElse(symbol, tree)
+    case ExprRef(symbol: TermSymbol) => bindings.getOrElse(symbol, tree)
 
     case _ => tree
   }

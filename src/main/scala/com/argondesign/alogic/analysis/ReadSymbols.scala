@@ -24,7 +24,7 @@ object ReadSymbols {
   // Given an expression, return an Iterable of Symbols that would be read
   // if this expression is not used on the left hand side of an assignment
   def rval(expr: Expr): Iterator[TermSymbol] = {
-    expr collect { case ExprRef(Sym(symbol: TermSymbol)) => symbol }
+    expr collect { case ExprRef(symbol: TermSymbol) => symbol }
   }
 
   // Given an expression, return an Iterable of Symbols that would be read

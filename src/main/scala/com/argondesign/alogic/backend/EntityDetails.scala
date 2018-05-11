@@ -96,7 +96,7 @@ final class EntityDetails(val entity: Entity, details: => Map[TypeSymbol, Entity
   lazy val netSymbols: List[TermSymbol] = connects flatMap {
     case Connect(_, rhs :: Nil) => {
       rhs collect {
-        case ExprRef(Sym(symbol: TermSymbol)) => symbol
+        case ExprRef(symbol: TermSymbol) => symbol
       }
     }
     case _ => Nil
@@ -163,10 +163,10 @@ final class EntityDetails(val entity: Entity, details: => Map[TypeSymbol, Entity
   // Function from 'instance symbol => port selector => connected expression'
   lazy val instancePortExpr: Map[TermSymbol, Map[String, Expr]] = {
     val trip = connects collect {
-      case Connect(ExprSelect(ExprRef(Sym(iSymbol: TermSymbol)), sel), rhs :: Nil) => {
+      case Connect(ExprSelect(ExprRef(iSymbol: TermSymbol), sel), rhs :: Nil) => {
         (iSymbol, sel, rhs)
       }
-      case Connect(lhs, ExprSelect(ExprRef(Sym(iSymbol: TermSymbol)), sel) :: Nil) => {
+      case Connect(lhs, ExprSelect(ExprRef(iSymbol: TermSymbol), sel) :: Nil) => {
         (iSymbol, sel, lhs)
       }
     }
@@ -181,10 +181,10 @@ final class EntityDetails(val entity: Entity, details: => Map[TypeSymbol, Entity
   // Connects that are not of the form 'a.b -> SOMETHING' or 'SOMETHING -> a.b'
   // where a is an instance
   lazy val nonPortConnects: List[Connect] = connects filter {
-    case Connect(ExprSelect(ExprRef(Sym(symbol)), _), _) => {
+    case Connect(ExprSelect(ExprRef(symbol), _), _) => {
       !symbol.kind.isInstanceOf[TypeInstance]
     }
-    case Connect(_, ExprSelect(ExprRef(Sym(symbol)), _) :: Nil) => {
+    case Connect(_, ExprSelect(ExprRef(symbol), _) :: Nil) => {
       !symbol.kind.isInstanceOf[TypeInstance]
     }
     case _ => true

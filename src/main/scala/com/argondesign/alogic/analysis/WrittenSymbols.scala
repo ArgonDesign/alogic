@@ -25,11 +25,11 @@ object WrittenSymbols {
   // should this expression be used on the left hand side of an assignment
   def apply(expr: Expr): Iterator[TermSymbol] = {
     expr match {
-      case ExprRef(Sym(symbol: TermSymbol)) => Iterator.single(symbol)
-      case ExprCat(parts)                   => parts.toIterator flatMap apply
-      case ExprIndex(expr, _)               => apply(expr)
-      case ExprSlice(expr, _, _, _)         => apply(expr)
-      case _                                => unreachable
+      case ExprRef(symbol: TermSymbol) => Iterator.single(symbol)
+      case ExprCat(parts)              => parts.toIterator flatMap apply
+      case ExprIndex(expr, _)          => apply(expr)
+      case ExprSlice(expr, _, _, _)    => apply(expr)
+      case _                           => unreachable
     }
   }
 
