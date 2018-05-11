@@ -230,9 +230,17 @@ object Liveness {
             (live, cDead)
           }
 
+          case StmtExpr(expr) => {
+            val born = usedRv(expr) diff cDead
+            val live = cLive union born
+            (live, cDead)
+          }
+
           case StmtBlock(body) => analyse(cLive, cDead, body)
-          case _: StmtFence    => (cLive, cDead)
-          case _               => unreachable
+
+          case _: StmtFence         => (cLive, cDead)
+          case _: StmtDollarComment => (cLive, cDead)
+          case _                    => unreachable
         }
 
         analyse(nLive, nDead, tail)
