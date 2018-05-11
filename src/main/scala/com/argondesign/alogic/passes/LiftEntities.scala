@@ -37,15 +37,17 @@ final class LiftEntities(implicit cc: CompilerContext)
 
   // TODO: Only works for single nesting
   // TODO: Rewrite without collectAll
-  // TODO: Pass down consts
 
-  // ports declared in outer entities
+  // ports and consts declared in outer entities
   private val outerIPortSymbols: Stack[Set[TermSymbol]] = Stack()
   private val outerOPortSymbols: Stack[Set[TermSymbol]] = Stack()
+  private val outerConstSymbols: Stack[Set[TermSymbol]] = Stack()
 
   // new ports that need to be created to connect up to directly accessed outer port
   private val freshIPortSymbols: Stack[mutable.LinkedHashMap[TermSymbol, TermSymbol]] = Stack()
   private val freshOPortSymbols: Stack[mutable.LinkedHashMap[TermSymbol, TermSymbol]] = Stack()
+  // new costs that need to be created
+  private val freshConstSymbols: Stack[mutable.LinkedHashMap[TermSymbol, TermSymbol]] = Stack()
 
   // new ports that need to be connected in this entity
   private val freshIConnSymbols: Stack[mutable.LinkedHashSet[(TermSymbol, TypeSymbol)]] = Stack()
@@ -70,7 +72,7 @@ final class LiftEntities(implicit cc: CompilerContext)
   override def enter(tree: Tree): Unit = tree match {
     case entity: Entity => {
       //////////////////////////////////////////////////////////////////////////
-      // Collect outer ports we are referencing
+      // Collect outer ports and consts we are referencing
       //////////////////////////////////////////////////////////////////////////
 
       lazy val referencedSymbols = {
@@ -106,6 +108,18 @@ final class LiftEntities(implicit cc: CompilerContext)
       }
       freshOPortSymbols.push(mutable.LinkedHashMap(newOPortSymbols: _*))
 
+      val newConstSymbols = if (outerConstSymbols.isEmpty) {
+        Nil
+      } else {
+        for {
+          outerSymbol <- referencedSymbols
+          if outerConstSymbols.toList.exists(_ contains outerSymbol)
+        } yield {
+          outerSymbol -> cc.newSymbolLike(outerSymbol)
+        }
+      }
+      freshConstSymbols.push(mutable.LinkedHashMap(newConstSymbols: _*))
+
       //////////////////////////////////////////////////////////////////////////
       // Mark output ports to strip storage from
       //////////////////////////////////////////////////////////////////////////
@@ -115,18 +129,23 @@ final class LiftEntities(implicit cc: CompilerContext)
       }
 
       //////////////////////////////////////////////////////////////////////////
-      // Push ports declared by us
+      // Push ports and consts declared by us
       //////////////////////////////////////////////////////////////////////////
 
       val newISymbols = entity.declarations collect {
-        case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeIn] => symbol
+        case Decl(symbol, _) if symbol.kind.isIn => symbol
       }
       outerIPortSymbols.push(newISymbols.toSet)
 
       val newOSymbols = entity.declarations collect {
-        case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeOut] => symbol
+        case Decl(symbol, _) if symbol.kind.isOut => symbol
       }
       outerOPortSymbols.push(newOSymbols.toSet)
+
+      val newCSymbols = entity.declarations collect {
+        case Decl(symbol, _) if symbol.kind.isConst => symbol
+      }
+      outerConstSymbols.push(newCSymbols.toSet)
 
       //////////////////////////////////////////////////////////////////////////
       // Push placeholder empty map for fresh connections
@@ -168,6 +187,25 @@ final class LiftEntities(implicit cc: CompilerContext)
             case _ => unreachable
           }
           symbol.kind = newKind
+
+          TypeAssigner {
+            entity.copy(
+              declarations = newDecls.toList
+            ) withLoc entity.loc withVariant entity.variant
+          }
+        }
+      } valueMap { entity =>
+        ////////////////////////////////////////////////////////////////////////
+        // Create declarations for fresh consts
+        ////////////////////////////////////////////////////////////////////////
+        if (freshConstSymbols.top.isEmpty) {
+          entity
+        } else {
+          val freshConstDecls = for (symbol <- freshConstSymbols.top.values) yield {
+            Decl(symbol, symbol.attr.constValue.get) regularize symbol.loc
+          }
+
+          val newDecls = freshConstDecls ++ entity.declarations
 
           TypeAssigner {
             entity.copy(
@@ -256,6 +294,7 @@ final class LiftEntities(implicit cc: CompilerContext)
     } followedBy {
       freshIConnSymbols.pop()
       freshOConnSymbols.pop()
+      freshConstSymbols.pop()
 
       // Add ports created in this entity to connections required in the outer entity
       if (freshIConnSymbols.nonEmpty) {
@@ -276,13 +315,15 @@ final class LiftEntities(implicit cc: CompilerContext)
       freshOPortSymbols.pop()
       outerIPortSymbols.pop()
       outerOPortSymbols.pop()
+      outerConstSymbols.pop()
     }
 
     // Rewrite references to outer ports as references to the newly created inner ports
     case ExprRef(symbol: TermSymbol) => {
-      (freshIPortSymbols.top.get(symbol) orElse freshOPortSymbols.top.get(symbol)) map {
-        innerSymbol =>
-          ExprRef(innerSymbol) regularize tree.loc
+      freshIPortSymbols.top.get(symbol) orElse
+        freshOPortSymbols.top.get(symbol) orElse
+        freshConstSymbols.top.get(symbol) map { innerSymbol =>
+        ExprRef(innerSymbol) regularize tree.loc
       } getOrElse {
         tree
       }
@@ -294,8 +335,10 @@ final class LiftEntities(implicit cc: CompilerContext)
   override def finalCheck(tree: Tree): Unit = {
     assert(outerIPortSymbols.isEmpty)
     assert(outerOPortSymbols.isEmpty)
+    assert(outerConstSymbols.isEmpty)
     assert(freshIPortSymbols.isEmpty)
     assert(freshOPortSymbols.isEmpty)
+    assert(freshConstSymbols.isEmpty)
     assert(freshIConnSymbols.isEmpty)
     assert(freshOConnSymbols.isEmpty)
 
