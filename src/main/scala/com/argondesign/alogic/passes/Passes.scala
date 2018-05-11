@@ -36,12 +36,12 @@ object Passes {
       ////////////////////////////////////////////////////////////////////////
       // Middle-end
       ////////////////////////////////////////////////////////////////////////
-      ConvertMultiConnect,
       FoldExpr(assignTypes = true, foldRefs = false),
       SpecializeParamA,
       SpecializeParamB,
       SpecializeParamC,
       FoldExpr(assignTypes = true, foldRefs = false),
+      ConvertMultiConnect,
       LowerPipeline,
       LiftEntities,
       LowerLoops,
