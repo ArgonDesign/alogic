@@ -257,9 +257,9 @@ trait ObjectExprOps {
   // Extractor for instance port references
   final object InstancePortRef {
 
-    def unapply(expr: Expr): Option[(TermSymbol, String, Option[TermSymbol])] = expr partialMatch {
+    def unapply(expr: Expr): Option[(TermSymbol, TermSymbol)] = expr partialMatch {
       case ExprSelect(ExprRef(Sym(iSymbol: TermSymbol)), sel) if iSymbol.kind.isInstance =>
-        (iSymbol, sel, iSymbol.kind.asInstanceOf[TypeInstance].portSymbol(sel))
+        (iSymbol, iSymbol.kind.asInstanceOf[TypeInstance].portSymbol(sel).get)
     }
   }
 }

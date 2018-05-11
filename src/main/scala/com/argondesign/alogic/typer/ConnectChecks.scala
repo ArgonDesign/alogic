@@ -29,9 +29,9 @@ object ConnectChecks {
 
   private def flowControlType(expr: Expr): FlowControlType = {
     val portSymbol = expr match {
-      case ExprRef(Sym(symbol))                => symbol
-      case InstancePortRef(_, _, Some(symbol)) => symbol
-      case _                                   => unreachable
+      case ExprRef(Sym(symbol))       => symbol
+      case InstancePortRef(_, symbol) => symbol
+      case _                          => unreachable
     }
     portSymbol.kind match {
       case TypeIn(_, fct)     => fct
@@ -59,7 +59,7 @@ object ConnectChecks {
           case ExprRef(Sym(symbol)) if !symbol.kind.isIn => {
             cc.error(lhs, s"Left hand side of '->' is of non-port type: ${symbol.kind.toSource}")
           }
-          case InstancePortRef(iSymbol, _, Some(symbol)) if symbol.kind.isIn => {
+          case InstancePortRef(iSymbol, symbol) if symbol.kind.isIn => {
             cc.error(lhs, s"Left hand side of '->' is an input to instance '${iSymbol.name}'")
           }
         }
@@ -79,7 +79,7 @@ object ConnectChecks {
           case ExprRef(Sym(symbol)) if !symbol.kind.isOut => {
             cc.error(rhs, s"Right hand side of '->' is of non-port type: ${symbol.kind.toSource}")
           }
-          case InstancePortRef(iSymbol, _, Some(symbol)) if symbol.kind.isOut => {
+          case InstancePortRef(iSymbol, symbol) if symbol.kind.isOut => {
             cc.error(rhs, s"Right hand side of '->' is an output from instance '${iSymbol.name}'")
           }
         }
