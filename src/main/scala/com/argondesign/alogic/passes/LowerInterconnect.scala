@@ -26,6 +26,7 @@ package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.ast.Trees.Expr.InstancePortRef
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.TreeInTypeTransformer
 import com.argondesign.alogic.core.Symbols._
@@ -114,26 +115,21 @@ final class LowerInterconnect(implicit cc: CompilerContext)
     }
 
     // a.b -> c.d, allocate on left hand side only
-    case Connect(ExprSelect(ExprRef(lSymbol: TermSymbol), _),
-                 List(ExprSelect(ExprRef(rSymbol: TermSymbol), _)))
-        if lSymbol.kind.isInstanceOf[TypeInstance] &&
-          rSymbol.kind.isInstanceOf[TypeInstance] => {
+    case Connect(InstancePortRef(_, _), List(InstancePortRef(_, _))) => {
       assert(enableStack.isEmpty)
       enableStack push false push true
       inConnect = true
     }
 
     // a.b -> SOMETHING, allocate on right hand side only
-    case Connect(ExprSelect(ExprRef(lSymbol: TermSymbol), _), _)
-        if lSymbol.kind.isInstanceOf[TypeInstance] => {
+    case Connect(InstancePortRef(_, _), _) => {
       assert(enableStack.isEmpty)
       enableStack push true push false
       inConnect = true
     }
 
     // SOMETHING -> a.b, allocate on left hand side only
-    case Connect(_, List(ExprSelect(ExprRef(rSymbol: TermSymbol), _)))
-        if rSymbol.kind.isInstanceOf[TypeInstance] => {
+    case Connect(_, List(InstancePortRef(_, _))) => {
       assert(enableStack.isEmpty)
       enableStack push false push true
       inConnect = true
@@ -155,8 +151,7 @@ final class LowerInterconnect(implicit cc: CompilerContext)
       // Rewrite references, allocating if enabled and necessary
       //////////////////////////////////////////////////////////////////////////
 
-      case select @ ExprSelect(ExprRef(iSymbol: TermSymbol), _)
-          if iSymbol.kind.isInstanceOf[TypeInstance] => {
+      case select @ InstancePortRef(_, _) => {
         handlePortSelect(select, !inConnect || enableStack.top) map { nSymbol =>
           ExprRef(nSymbol) regularize tree.loc
         } getOrElse {
@@ -189,8 +184,7 @@ final class LowerInterconnect(implicit cc: CompilerContext)
           // Collect the sinks of all 'instance.port'
           val sinks: Map[ExprSelect, List[Expr]] = {
             val pairs = entity.connects collect {
-              case Connect(select @ ExprSelect(ExprRef(symbol), _), List(sink))
-                  if symbol.kind.isInstanceOf[TypeInstance] => {
+              case Connect(select @ InstancePortRef(_, _), List(sink)) => {
                 select -> sink
               }
             }
@@ -306,9 +300,9 @@ final class LowerInterconnect(implicit cc: CompilerContext)
     }
 
     tree visit {
-      case node @ Connect(_: ExprSelect, List(rhs)) => check(rhs)
-      case node @ Connect(lhs, List(_: ExprSelect)) => check(lhs)
-      case node: Expr                               => check(node)
+      case node @ Connect(InstancePortRef(_, _), List(rhs)) => check(rhs)
+      case node @ Connect(lhs, List(InstancePortRef(_, _))) => check(lhs)
+      case node: Expr                                       => check(node)
     }
   }
 

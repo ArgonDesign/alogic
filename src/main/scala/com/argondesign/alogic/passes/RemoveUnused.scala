@@ -19,6 +19,7 @@ import com.argondesign.alogic.analysis.ReadSymbols
 import com.argondesign.alogic.analysis.WrittenSymbols
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.ast.Trees.Expr.InstancePortRef
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
@@ -107,8 +108,8 @@ final class RemoveUnused(unusedSymbols: Set[Symbol])(implicit cc: CompilerContex
 
       // Remove connects driving only unused symbols
       val conns = entity.connects filterNot {
-        case Connect(_, List(rhs: ExprSelect)) => {
-          RemoveUnused.instancePortSymbols(rhs) exists unusedSymbols.contains
+        case Connect(_, List(InstancePortRef(iSymbol, pSymbol))) => {
+          unusedSymbols.contains(iSymbol) || unusedSymbols.contains(pSymbol)
         }
         case Connect(_, List(rhs)) => WrittenSymbols(rhs) forall ourUnused.contains
         case _                     => false
@@ -130,13 +131,6 @@ final class RemoveUnused(unusedSymbols: Set[Symbol])(implicit cc: CompilerContex
 
 object RemoveUnused extends Pass {
   val name = "remove-unused"
-
-  // Extract the instance symbol and port symbol from
-  // an instance.name reference
-  private def instancePortSymbols(expr: ExprSelect): Iterator[Symbol] = {
-    val ExprSelect(ExprRef(iSymbol), name) = expr
-    Iterator(iSymbol, iSymbol.kind.asInstanceOf[TypeInstance].portSymbol(name).get)
-  }
 
   private def gather(trees: List[Tree])(f: Entity => Iterator[Symbol]): Set[Symbol] = {
     HashSet() ++ {
@@ -202,17 +196,17 @@ object RemoveUnused extends Pass {
           // Concatenation on the right, everything is used, if only as a placeholder
           // TODO: if any symbol in the concatenation is used, then all are used
           val lSymbols = lhs match {
-            case select: ExprSelect => instancePortSymbols(select)
-            case other              => ReadSymbols.rval(lhs)
+            case InstancePortRef(iSymbol, pSymbol) => Iterator(iSymbol, pSymbol)
+            case other                             => ReadSymbols.rval(lhs)
           }
           val rSymbols = rhs collect { case ExprRef(symbol) => symbol }
           lSymbols ++ rSymbols
         }
-        case Connect(lhs: ExprSelect, List(rhs)) => {
+        case Connect(InstancePortRef(iSymbol, pSymbol), List(rhs)) => {
           // instance.port on left hand side
-          instancePortSymbols(lhs) ++ ReadSymbols.lval(rhs)
+          Iterator(iSymbol, pSymbol) ++ ReadSymbols.lval(rhs)
         }
-        case Connect(lhs, List(_: ExprSelect)) => {
+        case Connect(lhs, List(InstancePortRef(_, _))) => {
           // instance.port on right hand side
           ReadSymbols.rval(lhs)
         }

@@ -15,6 +15,7 @@
 package com.argondesign.alogic.backend
 
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.ast.Trees.Expr.InstancePortRef
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.unreachable
@@ -163,11 +164,11 @@ final class EntityDetails(val entity: Entity, details: => Map[TypeSymbol, Entity
   // Function from 'instance symbol => port selector => connected expression'
   lazy val instancePortExpr: Map[TermSymbol, Map[String, Expr]] = {
     val trip = connects collect {
-      case Connect(ExprSelect(ExprRef(iSymbol: TermSymbol), sel), rhs :: Nil) => {
-        (iSymbol, sel, rhs)
+      case Connect(InstancePortRef(iSymbol, pSymbol), rhs :: Nil) => {
+        (iSymbol, pSymbol.name, rhs)
       }
-      case Connect(lhs, ExprSelect(ExprRef(iSymbol: TermSymbol), sel) :: Nil) => {
-        (iSymbol, sel, lhs)
+      case Connect(lhs, List(InstancePortRef(iSymbol, pSymbol))) => {
+        (iSymbol, pSymbol.name, lhs)
       }
     }
 
@@ -181,13 +182,9 @@ final class EntityDetails(val entity: Entity, details: => Map[TypeSymbol, Entity
   // Connects that are not of the form 'a.b -> SOMETHING' or 'SOMETHING -> a.b'
   // where a is an instance
   lazy val nonPortConnects: List[Connect] = connects filter {
-    case Connect(ExprSelect(ExprRef(symbol), _), _) => {
-      !symbol.kind.isInstanceOf[TypeInstance]
-    }
-    case Connect(_, ExprSelect(ExprRef(symbol), _) :: Nil) => {
-      !symbol.kind.isInstanceOf[TypeInstance]
-    }
-    case _ => true
+    case Connect(InstancePortRef(_, _), _)       => false
+    case Connect(_, List(InstancePortRef(_, _))) => false
+    case _                                       => true
   }
 
 }
