@@ -42,6 +42,7 @@ object Passes {
       SpecializeParamB,
       SpecializeParamC,
       FoldExpr(assignTypes = true, foldRefs = false),
+      FoldSymbolTypes,
       ConvertMultiConnect,
       LowerPipeline,
       LiftEntities,
