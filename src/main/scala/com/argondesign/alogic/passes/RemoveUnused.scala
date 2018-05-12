@@ -272,14 +272,6 @@ object RemoveUnused extends Pass {
         entitySymbol.kind = newKind
       }
 
-      // Dump entities if required
-      if (cc.settings.dumpTrees) {
-        results foreach { entity =>
-          cc.dumpEntity(entity, s".${cc.passNumber}.${name}")
-        }
-      }
-
-      cc.passNumber += 1
       // Iterate until we no longer have any unused ports
       loop(results)
     }

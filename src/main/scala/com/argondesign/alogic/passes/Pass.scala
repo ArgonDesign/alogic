@@ -42,25 +42,12 @@ trait TreeTransformerPass extends Pass {
 
   override def apply(trees: List[Tree])(implicit cc: CompilerContext): List[Tree] = {
     // Apply pass to all trees in parallel
-    val transformed = trees.par map { tree =>
-      create(cc)(tree)
-    }
+    val transformed = trees.par map { _ rewrite create }
 
     // Collect the results and flatten Thickets
-    val results = transformed.seq.toList flatMap {
+    transformed.seq.toList flatMap {
       case Thicket(trees) => trees
       case other          => List(other)
     }
-
-    // Dump entities if required
-    if (cc.settings.dumpTrees) {
-      results foreach {
-        case entity: Entity => cc.dumpEntity(entity, s".${cc.passNumber}.${name}")
-        case _              => ()
-      }
-    }
-
-    // Return the resulting trees
-    results
   }
 }

@@ -85,12 +85,28 @@ object Passes {
     )
 
     // Fold passes over the trees
-    (trees /: passes) { doPhase(_, _) }
+    (trees /: passes) { applyPass(_, _) }
   }
 
-  private def doPhase(trees: List[Tree], pass: Pass)(implicit cc: CompilerContext): List[Tree] = {
-    // If we have encountered errors in an earlier pass, skip any later passes
-    if (cc.hasError) trees else pass(trees)
+  private def applyPass(trees: List[Tree], pass: Pass)(implicit cc: CompilerContext): List[Tree] = {
+    if (cc.hasError) {
+      // If we have encountered errors in an earlier pass, skip any later passes
+      trees
+    } else {
+      // Apply the pass
+      val results = pass(trees)
+
+      // Dump entities if required
+      if (cc.settings.dumpTrees) {
+        results foreach {
+          case entity: Entity => cc.dumpEntity(entity, s".${cc.passNumber}.${pass.name}")
+          case _              => ()
+        }
+      }
+
+      // Return the results
+      results
+    }
   } followedBy {
     // Increment the pass index
     cc.passNumber += 1
