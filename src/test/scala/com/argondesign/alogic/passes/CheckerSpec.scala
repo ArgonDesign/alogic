@@ -90,7 +90,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
 
           cc.messages.loneElement should beThe[Error](
             "Only variables can be declared in declaration statements",
-            "Input ports must be declared in the entity"
+            "Input ports must be declared in the enclosing entity"
           )
         }
 
@@ -101,7 +101,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
 
           cc.messages.loneElement should beThe[Error](
             "Only variables can be declared in declaration statements",
-            "Output ports must be declared in the entity"
+            "Output ports must be declared in the enclosing entity"
           )
         }
 
@@ -112,7 +112,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
 
           cc.messages.loneElement should beThe[Error](
             "Only variables can be declared in declaration statements",
-            "Parameters must be declared in the entity"
+            "Parameters must be declared in the enclosing entity"
           )
         }
 
@@ -123,7 +123,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
 
           cc.messages.loneElement should beThe[Error](
             "Only variables can be declared in declaration statements",
-            "Constants must be declared in the entity"
+            "Constants must be declared in the enclosing entity"
           )
         }
 
@@ -134,7 +134,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
 
           cc.messages.loneElement should beThe[Error](
             "Only variables can be declared in declaration statements",
-            "Arrays must be declared in the entity"
+            "Arrays must be declared in the enclosing entity"
           )
         }
 
@@ -146,6 +146,17 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
           cc.messages.loneElement should beThe[Error](
             "Only variables can be declared in declaration statements",
             "Pipeline variables must be declared in the outer entity"
+          )
+        }
+
+        "srams" in {
+          val tree = "sram ő bool ő 1 ő a;".asTree[Stmt]
+
+          tree rewrite checker shouldBe StmtError()
+
+          cc.messages.loneElement should beThe[Error](
+            "Only variables can be declared in declaration statements",
+            "SRAMs must be declared in the enclosing entity"
           )
         }
       }

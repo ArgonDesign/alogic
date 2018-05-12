@@ -58,8 +58,10 @@ trait TypePrintOps { this: Type =>
     case TypeVector(elementType, size)  => s"vec<${elementType.toSource}>(${size.toSource})"
     case TypeArray(elementType, size)   => s"${elementType.toSource}[${size.toSource}]"
     case TypeStack(elementType, size)   => s"stack<${elementType.toSource}>(${size.toSource})"
-    case TypeStruct(name, _, _)         => s"struct ${name}"
-    case TypeVoid                       => "void"
+    case TypeSram(elementType, size, st) =>
+      s"sram ${st2String(st)}${elementType.toSource} ${size.toSource}"
+    case TypeStruct(name, _, _) => s"struct ${name}"
+    case TypeVoid               => "void"
     case TypeCombFunc(argTypes, retType) =>
       s"comb ${argTypes map { _.toSource } mkString ", "} -> ${retType.toSource}"
     case TypeCtrlFunc(argTypes, retType) =>

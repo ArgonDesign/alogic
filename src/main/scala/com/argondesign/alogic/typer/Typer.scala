@@ -296,15 +296,13 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
 
       case stmt @ StmtAssign(lhs, rhs) => {
         lazy val errNotAssignable: Option[Loc] = {
-          // TODO: Use WrittenSymbols
           def stripToRefs(expr: Expr): List[ExprRef] = expr match {
-            case ref: ExprRef                => List(ref)
-            case ExprIndex(expr, _)          => stripToRefs(expr)
-            case ExprSlice(expr, _, _, _)    => stripToRefs(expr)
-            case ExprSelect(expr, _)         => stripToRefs(expr)
-            case ExprCat(parts)              => parts flatMap stripToRefs
-            case other if other.isLValueExpr => cc.ice(expr)
-            case _                           => unreachable
+            case ref: ExprRef             => List(ref)
+            case ExprIndex(expr, _)       => stripToRefs(expr)
+            case ExprSlice(expr, _, _, _) => stripToRefs(expr)
+            case ExprSelect(expr, _)      => stripToRefs(expr)
+            case ExprCat(parts)           => parts flatMap stripToRefs
+            case _                        => unreachable
           }
 
           val locs = for (ref @ ExprRef(symbol) <- stripToRefs(lhs)) yield {

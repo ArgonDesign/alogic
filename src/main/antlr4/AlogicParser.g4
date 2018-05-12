@@ -83,6 +83,7 @@ declbase
   | 'param' kind IDENTIFIER                                 # DeclParam
   | 'const' kind IDENTIFIER                                 # DeclConst
   | 'pipeline' kind IDENTIFIER                              # DeclPipeline
+  | 'sram' (wire='wire')? 'ő' kind 'ő' expr 'ő' IDENTIFIER  # DeclSram
   ;
 
 flow_control_type

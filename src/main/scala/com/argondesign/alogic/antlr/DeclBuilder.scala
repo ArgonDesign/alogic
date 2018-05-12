@@ -19,6 +19,8 @@ import com.argondesign.alogic.antlr.AlogicParser._
 import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.ast.Trees.DeclIdent
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.StorageTypes.StorageTypeReg
+import com.argondesign.alogic.core.StorageTypes.StorageTypeWire
 import com.argondesign.alogic.core.Types._
 
 object DeclBuilder extends BaseBuilder[DeclContext, DeclIdent] {
@@ -96,6 +98,16 @@ object DeclBuilder extends BaseBuilder[DeclContext, DeclIdent] {
       override def visitDeclPipeline(ctx: DeclPipelineContext) = {
         val underlying = TypeBuilder(ctx.kind)
         val kind = TypePipeline(underlying)
+        DeclIdent(ctx.IDENTIFIER.toIdent, kind, None) withLoc {
+          ctx.loc.copy(point = ctx.IDENTIFIER.getStartIndex)
+        }
+      }
+
+      override def visitDeclSram(ctx: DeclSramContext) = {
+        val elem = TypeBuilder(ctx.kind)
+        val size = ExprBuilder(ctx.expr)
+        val st = if (ctx.wire != null) StorageTypeWire else StorageTypeReg
+        val kind = TypeSram(elem, size, st)
         DeclIdent(ctx.IDENTIFIER.toIdent, kind, None) withLoc {
           ctx.loc.copy(point = ctx.IDENTIFIER.getStartIndex)
         }

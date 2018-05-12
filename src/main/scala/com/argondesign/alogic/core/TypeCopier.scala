@@ -37,6 +37,10 @@ object TypeCopier {
     if (elementType eq tree.elementType) tree else TypeStack(elementType, tree.size)
   }
 
+  def apply(tree: TypeSram)(elementType: Type)(implicit cc: CompilerContext): TypeSram = {
+    if (elementType eq tree.elementType) tree else TypeSram(elementType, tree.size, tree.st)
+  }
+
   def apply(tree: TypeStruct)(fieldTypes: List[Type]): TypeStruct = {
     if (fieldTypes eq tree.fieldTypes) {
       tree

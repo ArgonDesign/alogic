@@ -34,6 +34,7 @@ trait TypeOps extends TypePrintOps { this: Type =>
   final def isVector = this.isInstanceOf[TypeVector]
   final def isArray = this.isInstanceOf[TypeArray]
   final def isStack = this.isInstanceOf[TypeStack]
+  final def isSram = this.isInstanceOf[TypeSram]
   final def isStruct = this.isInstanceOf[TypeStruct]
   final def isVoid = this eq TypeVoid
   final def isIdent = this.isInstanceOf[TypeIdent]

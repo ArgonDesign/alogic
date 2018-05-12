@@ -231,12 +231,13 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
 
     case StmtDecl(decl: DeclIdent) => {
       def msg(kind: Type) = kind match {
-        case _: TypeIn       => Some("Input ports must be declared in the entity")
-        case _: TypeOut      => Some("Output ports must be declared in the entity")
-        case _: TypeParam    => Some("Parameters must be declared in the entity")
-        case _: TypeConst    => Some("Constants must be declared in the entity")
-        case _: TypeArray    => Some("Arrays must be declared in the entity")
+        case _: TypeIn       => Some("Input ports must be declared in the enclosing entity")
+        case _: TypeOut      => Some("Output ports must be declared in the enclosing entity")
+        case _: TypeParam    => Some("Parameters must be declared in the enclosing entity")
+        case _: TypeConst    => Some("Constants must be declared in the enclosing entity")
+        case _: TypeArray    => Some("Arrays must be declared in the enclosing entity")
         case _: TypePipeline => Some("Pipeline variables must be declared in the outer entity")
+        case _: TypeSram     => Some("SRAMs must be declared in the enclosing entity")
         case _               => None
       }
 

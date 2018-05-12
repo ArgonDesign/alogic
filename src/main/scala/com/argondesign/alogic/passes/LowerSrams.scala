@@ -10,7 +10,7 @@
 //
 // DESCRIPTION:
 //
-// - Lower stack variables into stack instances
+// - Lower sram variables into sram instances
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.passes
@@ -18,26 +18,22 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.StackFactory
+import com.argondesign.alogic.core.SramFactory
 import com.argondesign.alogic.core.Symbols._
-import com.argondesign.alogic.core.Types.TypeStack
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Stack
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-final class LowerStacks(implicit cc: CompilerContext) extends TreeTransformer {
+final class LowerSrams(implicit cc: CompilerContext) extends TreeTransformer {
 
-  // Map from original stack variable symbol to the
-  // corresponding stack entity and instance symbols
-  private[this] val stackMap = mutable.Map[TermSymbol, (Entity, TermSymbol)]()
+  // Map from original sram variable symbol to the
+  // corresponding sram entity and instance symbols
+  private[this] val sramMap = mutable.Map[TermSymbol, (Entity, TermSymbol)]()
 
   // Stack of extra statements to emit when finished with a statement
   private[this] val extraStmts = Stack[mutable.ListBuffer[Stmt]]()
-
-  // TODO: entitySymbol.name
-  private[this] var entityName: String = _
 
   override def skip(tree: Tree): Boolean = tree match {
     case entity: Entity => entity.variant == "network"
@@ -45,26 +41,23 @@ final class LowerStacks(implicit cc: CompilerContext) extends TreeTransformer {
   }
 
   override def enter(tree: Tree): Unit = tree match {
-    case entity: Entity => {
-      val Sym(symbol: TypeSymbol) = entity.ref
-      entityName = symbol.name
-    }
 
-    case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeStack] => {
-      // Construct the stack entity
-      val TypeStack(kind, depth) = symbol.kind
+    case Decl(symbol, _) if symbol.kind.isSram => {
+      // Construct the sram entity
+      val TypeSram(kind, depth, st) = symbol.kind
+      // TODO: handle registered output
+      // TODO: always non-struct data ports
       val loc = tree.loc
-      val pName = symbol.name
-      // TODO: mark inline
-      val eName = entityName + cc.sep + "stack" + cc.sep + pName
-      val stackEntity: Entity = StackFactory(eName, loc, kind, depth)
-      val Sym(stackEntitySymbol: TypeSymbol) = stackEntity.ref
+      val sName = symbol.name
+      val eName = entitySymbol.name + cc.sep + "sram" + cc.sep + sName
+      val sramEntity: Entity = SramFactory(eName, loc, kind, depth)
+      val Sym(sramEntitySymbol: TypeSymbol) = sramEntity.ref
       val instanceSymbol = {
-        cc.newTermSymbol(pName, loc, TypeInstance(stackEntitySymbol))
+        cc.newTermSymbol(sName, loc, TypeInstance(sramEntitySymbol))
       }
-      stackMap(symbol) = (stackEntity, instanceSymbol)
-      // Clear enabel when the entity stalls
-      entitySymbol.attr.interconnectClearOnStall.append((instanceSymbol, "en"))
+      sramMap(symbol) = (sramEntity, instanceSymbol)
+      // Clear ce when the entity stalls
+      entitySymbol.attr.interconnectClearOnStall.append((instanceSymbol, "ce"))
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -90,14 +83,15 @@ final class LowerStacks(implicit cc: CompilerContext) extends TreeTransformer {
       // Rewrite statements
       //////////////////////////////////////////////////////////////////////////
 
-      case StmtExpr(ExprCall(ExprSelect(ExprRef(symbol: TermSymbol), "push"), args)) => {
-        stackMap.get(symbol) map {
+      case StmtExpr(ExprCall(ExprSelect(ExprRef(symbol: TermSymbol), "read"), List(addr))) => {
+        sramMap.get(symbol) map {
           case (_, iSymbol) => {
+            val iRef = ExprRef(iSymbol)
             StmtBlock(
               List(
-                assignTrue(ExprRef(iSymbol) select "en"),
-                assignTrue(ExprRef(iSymbol) select "push"),
-                StmtAssign(ExprRef(iSymbol) select "d", args.head)
+                assignTrue(iRef select "ce"),
+                assignFalse(iRef select "we"),
+                StmtAssign(iRef select "addr", addr)
               ))
           }
         } getOrElse {
@@ -105,13 +99,16 @@ final class LowerStacks(implicit cc: CompilerContext) extends TreeTransformer {
         }
       }
 
-      case StmtExpr(ExprCall(ExprSelect(ExprRef(symbol: TermSymbol), "set"), args)) => {
-        stackMap.get(symbol) map {
+      case StmtExpr(ExprCall(ExprSelect(ExprRef(symbol: TermSymbol), "write"), List(addr, data))) => {
+        sramMap.get(symbol) map {
           case (_, iSymbol) => {
+            val iRef = ExprRef(iSymbol)
             StmtBlock(
               List(
-                assignTrue(ExprRef(iSymbol) select "en"),
-                StmtAssign(ExprRef(iSymbol) select "d", args.head)
+                assignTrue(iRef select "ce"),
+                assignTrue(iRef select "we"),
+                StmtAssign(iRef select "addr", addr),
+                StmtAssign(iRef select "wdata", data)
               ))
           }
         } getOrElse {
@@ -123,69 +120,33 @@ final class LowerStacks(implicit cc: CompilerContext) extends TreeTransformer {
       // Rewrite expressions
       //////////////////////////////////////////////////////////////////////////
 
-      case ExprCall(ExprSelect(ExprRef(symbol: TermSymbol), "pop"), Nil) => {
-        stackMap.get(symbol) map {
-          case (_, iSymbol) => {
-            extraStmts.top append assignTrue(ExprRef(iSymbol) select "en")
-            extraStmts.top append assignTrue(ExprRef(iSymbol) select "pop")
-            ExprRef(iSymbol) select "q"
-          }
-        } getOrElse {
-          tree
-        }
-      }
-
-      case ExprSelect(ExprRef(symbol: TermSymbol), "top") => {
-        stackMap.get(symbol) map {
-          case (_, iSymbol) => ExprRef(iSymbol) select "q"
-        } getOrElse {
-          tree
-        }
-      }
-
-      case ExprSelect(ExprRef(symbol: TermSymbol), "full") => {
-        stackMap.get(symbol) map {
-          case (_, iSymbol) => ExprRef(iSymbol) select "full"
-        } getOrElse {
-          tree
-        }
-      }
-
-      case ExprSelect(ExprRef(symbol: TermSymbol), "empty") => {
-        stackMap.get(symbol) map {
-          case (_, iSymbol) => ExprRef(iSymbol) select "empty"
+      case ExprSelect(ExprRef(symbol: TermSymbol), "rdata") => {
+        sramMap.get(symbol) map {
+          case (_, iSymbol) => ExprRef(iSymbol) select "rdata"
         } getOrElse {
           tree
         }
       }
 
       //////////////////////////////////////////////////////////////////////////
-      // Add stack entities
+      // Add sram entities
       //////////////////////////////////////////////////////////////////////////
 
-      case entity: Entity if stackMap.nonEmpty => {
-        // Drop stack declarations
+      case entity: Entity if sramMap.nonEmpty => {
+        // Drop sram, declarations
         val declarations = entity.declarations filterNot {
-          case Decl(symbol, _) => symbol.kind.isInstanceOf[TypeStack]
+          case Decl(symbol, _) => symbol.kind.isSram
           case _               => false
         }
 
         // Add instances
-        val instances = for ((entity, instance) <- stackMap.values) yield {
+        val instances = for ((entity, instance) <- sramMap.values) yield {
           Instance(Sym(instance), entity.ref, Nil, Nil)
         }
 
-        // Add fence statemetns
-        val fenceStmts = stackMap.values map { _._2 } map { iSymbol =>
-          val iRef = ExprRef(iSymbol)
-          StmtBlock(
-            List(
-              assignFalse(iRef select "en"),
-              StmtAssign(iRef select "d", iRef select "q"), // TODO: redundant
-              assignFalse(iRef select "push"), // TODO: redundant
-              assignFalse(iRef select "pop") // TODO: redundant
-            )
-          )
+        // Add fence statements
+        val fenceStmts = sramMap.values map { _._2 } map { iSymbol =>
+          assignFalse(ExprRef(iSymbol) select "ce")
         }
 
         val newEntity = entity.copy(
@@ -194,9 +155,9 @@ final class LowerStacks(implicit cc: CompilerContext) extends TreeTransformer {
           fenceStmts = fenceStmts.toList ::: entity.fenceStmts
         ) withVariant entity.variant
 
-        val stackEntities = stackMap.values map { _._1 }
+        val sramEntities = sramMap.values map { _._1 }
 
-        Thicket(newEntity :: stackEntities.toList)
+        Thicket(newEntity :: sramEntities.toList)
       }
 
       case _ => tree
@@ -231,15 +192,15 @@ final class LowerStacks(implicit cc: CompilerContext) extends TreeTransformer {
     assert(extraStmts.isEmpty)
 
     tree visit {
-      case node @ ExprCall(ExprSelect(ref, sel), _) if ref.tpe.isInstanceOf[TypeStack] => {
-        cc.ice(node, s"Stack .${sel} remains")
+      case node @ ExprCall(ExprSelect(ref, sel), _) if ref.tpe.isSram => {
+        cc.ice(node, s"SRAM .${sel} remains")
       }
     }
   }
 
 }
 
-object LowerStacks extends TreeTransformerPass {
-  val name = "lower-stacks"
-  def create(implicit cc: CompilerContext) = new LowerStacks
+object LowerSrams extends TreeTransformerPass {
+  val name = "lower-srams"
+  def create(implicit cc: CompilerContext) = new LowerSrams
 }

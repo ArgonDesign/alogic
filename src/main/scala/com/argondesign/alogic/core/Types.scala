@@ -55,6 +55,20 @@ object Types {
   case class TypeArray(elementType: Type, size: Expr) extends Type
   // Stack types
   case class TypeStack(elementType: Type, size: Expr) extends Type with TypeStackImpl
+  // SRAM types
+  case class TypeSram(elementType: Type, size: Expr, st: StorageType)(implicit cc: CompilerContext)
+      extends Type
+      with TypeSramImpl {
+
+    protected[this] lazy val addrType = {
+      // TODO: This needs to be lazy to avoid sealing the global scope by looking up $clog2
+      // while constructing this in the parser. Fix...
+      if (!size.hasLoc) {
+        size withLoc Loc.synthetic
+      }
+      TypeUInt((cc.getGlobalTermSymbolRef("$clog2", size.loc) call List(size)).simplify)
+    }
+  }
   // Structure type
   case class TypeStruct(name: String, fieldNames: List[String], fieldTypes: List[Type])
       extends Type
@@ -262,6 +276,17 @@ object Types {
       "top" -> elementType,
       "full" -> boolType,
       "empty" -> boolType
+    )
+
+    def apply(field: String): Option[Type] = fieldMap get field
+  }
+
+  trait TypeSramImpl extends CompoundType { this: TypeSram =>
+
+    private[this] lazy val fieldMap = Map(
+      "read" -> TypeCombFunc(List(addrType), TypeVoid),
+      "write" -> TypeCombFunc(List(addrType, elementType), TypeVoid),
+      "rdata" -> elementType,
     )
 
     def apply(field: String): Option[Type] = fieldMap get field

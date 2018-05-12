@@ -29,6 +29,7 @@ object WrittenSymbols {
       case ExprCat(parts)              => parts.toIterator flatMap apply
       case ExprIndex(expr, _)          => apply(expr)
       case ExprSlice(expr, _, _, _)    => apply(expr)
+      case ExprSelect(expr, _)         => apply(expr)
       case _                           => unreachable
     }
   }
