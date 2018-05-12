@@ -10,19 +10,20 @@
 //
 // DESCRIPTION:
 //
-// Lower flops (anything that is TypeInt at this stage)
-// to constituent _q and _d signals
+// Lower variables into flops and combinatorial nets. At this stage, anything
+// that is of TypeInt is a flop, unless it is driven through a connect, in
+// which case it is a net.
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.passes
 
+import com.argondesign.alogic.analysis.WrittenSymbols
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.FollowedBy
 
-final class LowerFlops(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
+final class LowerVariables(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
 
   // TODO: Generate clock enables
 
@@ -49,9 +50,18 @@ final class LowerFlops(implicit cc: CompilerContext) extends TreeTransformer wit
         rSymbol rename (name drop prefixLen)
         oSymbol.attr.oReg.clear()
       }
+
+      // Mark local symbols driven by Connect as combinatorial nets
+      for {
+        Connect(_, List(rhs)) <- entity.connects
+        symbol <- WrittenSymbols(rhs)
+        if symbol.kind.isInt
+      } {
+        symbol.attr.combSignal set true
+      }
     }
 
-    case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeInt] => {
+    case Decl(symbol, _) if symbol.kind.isInt && !(symbol.attr.combSignal contains true) => {
       val loc = tree.loc
       val name = symbol.name
       // Append _q to the name of the symbol
@@ -118,7 +128,7 @@ final class LowerFlops(implicit cc: CompilerContext) extends TreeTransformer wit
 
 }
 
-object LowerFlops extends TreeTransformerPass {
+object LowerVariables extends TreeTransformerPass {
   val name = "lower-flops"
-  def create(implicit cc: CompilerContext) = new LowerFlops
+  def create(implicit cc: CompilerContext) = new LowerVariables
 }
