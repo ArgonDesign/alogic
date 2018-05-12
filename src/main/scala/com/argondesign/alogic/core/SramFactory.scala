@@ -28,11 +28,11 @@ object SramFactory {
     fsm sram {
       in bool ce;
       in bool we;
-      in ADDR addr;
-      in TYPE wdata;
-      out TYPE rdata;
+      in uint($clog2(DEPTH)) addr;
+      in uint(WIDTH) wdata;
+      out uint(WIDTH) rdata;
 
-      TYPE storage[DEPTH];
+      uint(WIDTH) storage[DEPTH];
 
       void main() {
         if (ce) {
@@ -49,29 +49,29 @@ object SramFactory {
 
    */
 
-  private def build(
+  def apply(
       name: String,
       loc: Loc,
-      kind: Type,
+      width: Int,
       depth: Int
   )(
       implicit cc: CompilerContext
   ): Entity = {
-    require(depth >= 2)
 
     val fcn = FlowControlTypeNone
 
     val bool = TypeUInt(TypeAssigner(Expr(1) withLoc loc))
 
-    val adKind = TypeUInt(Expr(Math.clog2(depth)) regularize loc)
-    val stKind = TypeArray(kind, Expr(depth) regularize loc)
+    val addrKind = TypeUInt(Expr(Math.clog2(depth)) regularize loc)
+    val dataKind = TypeUInt(Expr(width) regularize loc)
+    val storKind = TypeArray(dataKind, Expr(depth) regularize loc)
 
     val ceSymbol = cc.newTermSymbol("ce", loc, TypeIn(bool, fcn))
     val weSymbol = cc.newTermSymbol("we", loc, TypeIn(bool, fcn))
-    val adSymbol = cc.newTermSymbol("addr", loc, TypeIn(adKind, fcn))
-    val wdSymbol = cc.newTermSymbol("wdata", loc, TypeIn(kind, fcn))
-    val rdSymbol = cc.newTermSymbol("rdata", loc, TypeOut(kind, fcn, StorageTypeReg))
-    val stSymbol = cc.newTermSymbol("storage", loc, stKind)
+    val adSymbol = cc.newTermSymbol("addr", loc, TypeIn(addrKind, fcn))
+    val wdSymbol = cc.newTermSymbol("wdata", loc, TypeIn(dataKind, fcn))
+    val rdSymbol = cc.newTermSymbol("rdata", loc, TypeOut(dataKind, fcn, StorageTypeReg))
+    val stSymbol = cc.newTermSymbol("storage", loc, storKind)
 
     val ceRef = ExprRef(ceSymbol)
     val weRef = ExprRef(weSymbol)
@@ -88,7 +88,7 @@ object SramFactory {
           StmtBlock(
             List(
               StmtAssign(stRef index adRef, wdRef),
-              StmtAssign(rdRef, ExprInt(false, kind.width.value.get.toInt, 0))
+              StmtAssign(rdRef, ExprInt(false, width, 0))
             )),
           Some(StmtAssign(rdRef, stRef index adRef))
         ),
@@ -108,23 +108,6 @@ object SramFactory {
     val entitySymbol = cc.newTypeSymbol(name, loc, TypeEntity(name, ports, Nil))
     val entity = Entity(Sym(entitySymbol), decls, Nil, Nil, Nil, List(state), Nil, Nil, Map())
     entity withVariant "fsm" regularize loc
-  }
-
-  def apply(
-      name: String,
-      loc: Loc,
-      kind: Type,
-      depth: Expr
-  )(
-      implicit cc: CompilerContext
-  ): Entity = {
-    require(kind.isPacked)
-    require(kind != TypeVoid)
-
-    depth.value match {
-      case Some(v) => build(name, loc, kind, v.toInt)
-      case None    => cc.ice(loc, "SRAM with non-computable dept")
-    }
   }
 
 }
