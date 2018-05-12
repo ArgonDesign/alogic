@@ -61,6 +61,7 @@ object Passes {
       LowerSrams,
       LowerRegPorts,
       LowerStacks,
+      LiftSrams,
       SplitStructsA,
       SplitStructsB,
       SplitStructsC,

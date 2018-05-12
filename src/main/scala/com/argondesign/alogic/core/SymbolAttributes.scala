@@ -103,6 +103,12 @@ class SymbolAttributes {
   // The default value of this symbol, if required
   val default = new Attribute[Expr]()
 
+  // Is this an SRAM entity?
+  val sram = new Attribute[Boolean]()
+
+  // Denotes that SRAM instances should be lifted from the hierarchy below this entity
+  val liftSrams = new Attribute[Boolean]()
+
   // Iterator that enumerates all fields above
   private def attrIterator = Iterator(
     unused,
@@ -133,7 +139,9 @@ class SymbolAttributes {
     interconnect,
     combSignal,
     fieldSymbols,
-    default
+    default,
+    sram,
+    liftSrams
   )
 
   // Iterator that enumerates names of fields above
@@ -166,7 +174,9 @@ class SymbolAttributes {
     "interconnect",
     "combSignal",
     "fieldSymbols",
-    "default"
+    "default",
+    "sram",
+    "liftSrams"
   )
 
   // Copy values of attributes from another instance
@@ -185,6 +195,7 @@ class SymbolAttributes {
           case "stacklimit" => stackLimit set expr
           case "reclimit"   => recLimit set expr
           case "toplevel"   => topLevel set true
+          case "liftsrams"  => liftSrams set true
           case _            => cc.error(symbol, s"Unknown attribute '${name}'")
         }
       }

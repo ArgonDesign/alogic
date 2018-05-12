@@ -106,6 +106,7 @@ object SramFactory {
     val decls = symbols map { Decl(_, None) }
 
     val entitySymbol = cc.newTypeSymbol(name, loc, TypeEntity(name, ports, Nil))
+    entitySymbol.attr.sram set true
     val entity = Entity(Sym(entitySymbol), decls, Nil, Nil, Nil, List(state), Nil, Nil, Map())
     entity withVariant "fsm" regularize loc
   }
