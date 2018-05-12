@@ -363,18 +363,22 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
           it.toSet
         }
 
+        def errIfUndeclared(node: Tree, symbol: TermSymbol) = {
+          if (!(declaredSymbols contains symbol) && !symbol.isBuiltin) {
+            cc.ice(
+              node,
+              s"reference to undeclared symbol '${symbol.name}'",
+              s"of type '${symbol.kind.toSource}'",
+              tree.toSource
+            )
+          }
+        }
+
         def check(tree: Tree): Unit = {
           tree visitAll {
-            case node @ Sym(symbol: TermSymbol)
-                if !(declaredSymbols contains symbol) && !symbol.isBuiltin => {
-              println(tree.toSource)
-              cc.ice(
-                node,
-                s"reference to undeclared symbol '${symbol.name}'",
-                s"of type '${symbol.kind.toSource}'"
-              )
-            }
-            case Decl(symbol, _) => symbol.kind visit { case tree: Tree => check(tree) }
+            case node @ Sym(symbol: TermSymbol)     => errIfUndeclared(node, symbol)
+            case node @ ExprRef(symbol: TermSymbol) => errIfUndeclared(node, symbol)
+            case Decl(symbol, _)                    => symbol.kind visit { case tree: Tree => check(tree) }
           }
         }
 
