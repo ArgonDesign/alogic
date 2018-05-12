@@ -464,8 +464,8 @@ final class MakeVerilog(
     if (nonPortConnects.nonEmpty) {
       body.emitSection(1, "Connections") {
         for (Connect(lhs, rhs :: Nil) <- nonPortConnects) {
-          val assignLhs = vexpr(rhs, wrapCat = true, indent = 2)
-          val assignRhs = vexpr(lhs, wrapCat = true, indent = 2)
+          val assignLhs = vexpr(rhs, wrapCat = true, indent = 1)
+          val assignRhs = vexpr(lhs, wrapCat = true, indent = 1)
           body.emit(1)(s"assign ${assignLhs} = ${assignRhs};")
         }
       }
