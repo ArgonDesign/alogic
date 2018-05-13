@@ -21,6 +21,7 @@ import com.argondesign.alogic.core.StorageTypes.StorageTypeReg
 import com.argondesign.alogic.core.StorageTypes.StorageTypeWire
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.SramFactory
 import com.argondesign.alogic.core.SyncRegFactory
 import com.argondesign.alogic.core.Types._
@@ -30,7 +31,20 @@ import com.argondesign.alogic.util.unreachable
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-final class LowerSrams(implicit cc: CompilerContext) extends TreeTransformer {
+final class SramBuilder {
+  // Re-use SRAM entities of identical sizes
+  val store = mutable.Map[(Int, Int), Entity]()
+
+  def apply(width: Int, depth: Int)(implicit cc: CompilerContext): Entity = synchronized {
+    lazy val sram = SramFactory(s"sram_${depth}x${width}", Loc.synthetic, width, depth)
+    store.getOrElseUpdate((width, depth), sram)
+  }
+}
+
+final class LowerSrams(
+    sramBuilder: SramBuilder
+)(implicit cc: CompilerContext)
+    extends TreeTransformer {
 
   private val sep = cc.sep
 
@@ -125,7 +139,6 @@ final class LowerSrams(implicit cc: CompilerContext) extends TreeTransformer {
 
       // Build the sram entity
       val sEntity = {
-        val eName = entitySymbol.name + sep + "sram" + sep + name
         val width = kind.width.value match {
           case Some(v) => v.toInt
           case None    => cc.fatal(symbol, "Width of SRAM is not a compile time constant")
@@ -134,9 +147,8 @@ final class LowerSrams(implicit cc: CompilerContext) extends TreeTransformer {
           case Some(v) => v.toInt
           case None    => cc.fatal(symbol, "Depth of SRAM is not a compile time constant")
         }
-        // TODO: reuse same shape entities
         // TODO: signed/unsigned
-        SramFactory(eName, loc, width, depth)
+        sramBuilder(width, depth)
       }
 
       // Create the instance
@@ -334,9 +346,10 @@ final class LowerSrams(implicit cc: CompilerContext) extends TreeTransformer {
           connects = (newConnects ++ entity.connects).toList
         ) withVariant entity.variant
 
-        val extraEntities = sramMap.valuesIterator flatMap {
-          case SramWire(sEntity, _)            => Iterator.single(sEntity)
-          case SramReg(sEntity, _, oEntity, _) => Iterator(sEntity, oEntity)
+        // Note that we only collect register slices here,
+        // SRAMs are added in the Pass dispatcher below
+        val extraEntities = sramMap.valuesIterator collect {
+          case SramReg(_, _, oEntity, _) => oEntity
         }
 
         Thicket(newEntity :: extraEntities.toList)
@@ -382,7 +395,21 @@ final class LowerSrams(implicit cc: CompilerContext) extends TreeTransformer {
 
 }
 
-object LowerSrams extends TreeTransformerPass {
-  val name = "lower-srams"
-  def create(implicit cc: CompilerContext) = new LowerSrams
+object LowerSrams {
+  class LowerSramsPass extends TreeTransformerPass {
+    val name = "lower-srams"
+
+    val sramBuilder = new SramBuilder
+
+    def create(implicit cc: CompilerContext) = new LowerSrams(sramBuilder)
+
+    override def apply(trees: List[Tree])(implicit cc: CompilerContext): List[Tree] = {
+      // Transform all trees
+      val results = super.apply(trees)
+      // Add all SRAMs as well
+      sramBuilder.store.values.toList ::: results
+    }
+  }
+
+  def apply(): Pass = new LowerSramsPass
 }

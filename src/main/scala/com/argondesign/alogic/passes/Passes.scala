@@ -58,7 +58,7 @@ object Passes {
       LowerFlowControlA,
       LowerFlowControlB,
       LowerFlowControlC,
-      LowerSrams,
+      LowerSrams(),
       LowerRegPorts,
       LowerStacks,
       LiftSrams,
