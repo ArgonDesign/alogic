@@ -152,7 +152,9 @@ final class LiftSramsTo(
           lSymbols <- (liftFromMap get eSymbol).toList
           lSymbol <- lSymbols
         } yield {
-          val name = iSymbol.name + cc.sep + lSymbol.name
+          val prefix = "sram" + cc.sep
+          assert(lSymbol.name startsWith prefix)
+          val name = prefix + iSymbol.name + cc.sep + lSymbol.name.drop(prefix.length)
           val lKind = lSymbol.kind.asInstanceOf[TypeInstance]
           // Create the local instance
           val nSymbol = cc.newTermSymbol(name, iSymbol.loc, lKind)
