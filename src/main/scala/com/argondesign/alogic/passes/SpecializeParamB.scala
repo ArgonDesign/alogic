@@ -87,41 +87,58 @@ final class SpecializeParamB(implicit cc: CompilerContext) extends TreeTransform
   }
 
   override def transform(tree: Tree): Tree = tree match {
-    case entity: Entity if entitySymbol.attr.paramBindings.isSet => {
-      // Create the specialized entities and build the map from
-      // bindings -> specialized entity symbol
-      val specializations = {
-        // Get the fully expanded parameter binding sets
-        val paramBindingsSet = {
-          // Get all parameter bindings of this entity
-          val bindingsSet = entitySymbol.attr.paramBindings.value.toSet
-          // Get the default parameter bindings of this entity
-          val defaultBindings = entitySymbol.attr.defaultParamBindings.value
-          // Ensure all bindings are complete
-          val completedBindingsSet = bindingsSet map { completeBindings(_, defaultBindings) }
-          // Expand the bindings with bindings of the outer parameters (if any)
-          expandBindings(completedBindingsSet)
-        }
+    case entity: Entity
+        if entitySymbol.attr.paramBindings.isSet || entitySymbol.attr.topLevel.isSet => {
 
-        // Create the specialized entities and build the map
-        val pairs = for (bindings <- paramBindingsSet) yield {
-          // Create specialized entity
-          val newEntity = entity.rewrite(new CloneEntity(bindings)).asInstanceOf[Entity]
+      lazy val hasParams = entitySymbol.kind.asInstanceOf[TypeEntity].paramSymbols.nonEmpty
 
-          // Nuke the inherited paramBindings and defaultBindings attributes
-          val Sym(newSymbol) = newEntity.ref
-          newSymbol.attr.paramBindings.clear()
-          newSymbol.attr.defaultParamBindings.clear()
-
-          // Create the map
-          bindings -> newEntity
-        }
-        pairs.toMap
+      // If top level entities have no instances but have parameters,
+      // specialize them with default parameters
+      if (entitySymbol.attr.topLevel.isSet && !entitySymbol.attr.paramBindings.isSet && hasParams) {
+        cc.warning(entity.ref,
+                   s"Parameters of top level module '${entitySymbol.name}' will " +
+                     "be specialized using default initializers")
+        entitySymbol.attr.paramBindings append Map.empty[TermSymbol, Expr]
       }
 
-      entitySymbol.attr.specMap set specializations
+      if (!entitySymbol.attr.paramBindings.isSet) {
+        tree
+      } else {
+        // Create the specialized entities and build the map from
+        // bindings -> specialized entity symbol
+        val specializations = {
+          // Get the fully expanded parameter binding sets
+          val paramBindingsSet = {
+            // Get all parameter bindings of this entity
+            val bindingsSet = entitySymbol.attr.paramBindings.value.toSet
+            // Get the default parameter bindings of this entity
+            val defaultBindings = entitySymbol.attr.defaultParamBindings.value
+            // Ensure all bindings are complete
+            val completedBindingsSet = bindingsSet map { completeBindings(_, defaultBindings) }
+            // Expand the bindings with bindings of the outer parameters (if any)
+            expandBindings(completedBindingsSet)
+          }
 
-      TypeAssigner(Thicket(specializations.values.toList) withLoc tree.loc)
+          // Create the specialized entities and build the map
+          val pairs = for (bindings <- paramBindingsSet) yield {
+            // Create specialized entity
+            val newEntity = entity.rewrite(new CloneEntity(bindings)).asInstanceOf[Entity]
+
+            // Nuke the inherited paramBindings and defaultBindings attributes
+            val Sym(newSymbol) = newEntity.ref
+            newSymbol.attr.paramBindings.clear()
+            newSymbol.attr.defaultParamBindings.clear()
+
+            // Create the map
+            bindings -> newEntity
+          }
+          pairs.toMap
+        }
+
+        entitySymbol.attr.specMap set specializations
+
+        TypeAssigner(Thicket(specializations.values.toList) withLoc tree.loc)
+      }
     }
 
     case _ => tree

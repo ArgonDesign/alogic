@@ -112,17 +112,6 @@ final class SpecializeParamA(implicit cc: CompilerContext) extends TreeTransform
 
         // Assign the defaultParamBindings attribute
         entitySymbol.attr.defaultParamBindings set flattenedBindings
-
-        // Specialize top level entities with default parameters
-        if (entitySymbol.attr.topLevel.isSet) {
-          cc.warning(entity.ref,
-                     s"Parameters of top level module '${entitySymbol.name}' will " +
-                       "be specialized using default initializers")
-
-          entitySymbol synchronized {
-            entitySymbol.attr.paramBindings append Map.empty[TermSymbol, Expr]
-          }
-        }
       }
     }
 
