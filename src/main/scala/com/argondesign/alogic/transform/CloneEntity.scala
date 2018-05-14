@@ -12,7 +12,8 @@
 //
 // Clone an entity that is identical in structure but uses newly allocated
 // symbols. Any parameters that are provided in parameterBindings are converted
-// to constants with the given value.
+// to constants with the given value. parameterBindings must only contain
+// bindings for the parameter of the root entity, and not any nested entities.
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.transform
@@ -25,6 +26,7 @@ import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.PartialMatch
+import com.argondesign.alogic.util.unreachable
 
 import scala.collection.immutable.ListMap
 import scala.collection.mutable
@@ -34,13 +36,16 @@ final class CloneEntity(parameterBindings: ListMap[TermSymbol, Expr])(implicit c
     with PartialMatch {
 
   // Map from original symbol to the new symbol
-  private[this] val symbolMap = mutable.Map[TermSymbol, TermSymbol]()
+  private[this] val symbolMap = mutable.Map[Symbol, Symbol]()
 
   private[this] object TypeCloneEntity extends TreeInTypeTransformer(this)
+
+  private[this] var entityLevel = 0
 
   override def enter(tree: Tree): Unit = tree match {
 
     case entity: Entity => {
+      entityLevel += 1
       // Clone new functions up front, as they can be referenced before definition
       for (Function(Sym(symbol: TermSymbol), _) <- entity.functions) {
         symbolMap(symbol) = cc.newSymbolLike(symbol)
@@ -59,6 +64,7 @@ final class CloneEntity(parameterBindings: ListMap[TermSymbol, Expr])(implicit c
     case Decl(symbol, init) => {
       // Change parameters that have a binding into constants
       val (newKind, newInit) = parameterBindings.get(symbol) map { expr =>
+        assert(entityLevel == 1)
         val TypeParam(kind) = symbol.kind
         val newKind: Type = TypeConst(kind rewrite TypeCloneEntity)
         val newInit: Option[Expr] = Some(expr)
@@ -109,12 +115,26 @@ final class CloneEntity(parameterBindings: ListMap[TermSymbol, Expr])(implicit c
     ////////////////////////////////////////////////////////////////////////////
 
     case entity: Entity => {
-      val newName = {
+      val newName = if (entityLevel > 1) {
+        entitySymbol.name
+      } else {
         val suffixes = for ((symbol, expr) <- parameterBindings) yield {
           s"${symbol.name}_${expr.value.get}"
         }
-
         (entitySymbol.name :: suffixes.toList) mkString cc.sep
+      }
+
+      // Update instances of nested entities to instantiate the cloned entity
+      val instances = entity.instances map {
+        case inst @ Instance(Sym(iSymbol), Sym(eSymbol), _, _) => {
+          symbolMap get eSymbol map { nSymbol =>
+            iSymbol.kind = TypeInstance(nSymbol.asInstanceOf[TypeSymbol])
+            inst.copy(module = Sym(nSymbol)) regularize inst.loc
+          } getOrElse {
+            inst
+          }
+        }
+        case _ => unreachable
       }
 
       val newKind = {
@@ -137,17 +157,26 @@ final class CloneEntity(parameterBindings: ListMap[TermSymbol, Expr])(implicit c
 
       val newSymbol = cc.newTypeSymbol(newName, tree.loc, newKind)
       newSymbol.attr update entitySymbol.attr
+      symbolMap(entitySymbol) = newSymbol
 
       val sym = TypeAssigner(Sym(newSymbol) withLoc tree.loc)
-      TypeAssigner(entity.copy(ref = sym) withVariant entity.variant withLoc tree.loc)
+      TypeAssigner(
+        entity.copy(
+          ref = sym,
+          instances = instances
+        ) withVariant entity.variant withLoc tree.loc)
 
       // TODO: Apply Typer to specialized result (iff parameterBindings.nonEmpty)
+    } followedBy {
+      entityLevel -= 1
     }
 
     case _ => tree
   }
 
   override protected def finalCheck(tree: Tree): Unit = {
+    assert(entityLevel == 0)
+
     tree visitAll {
       case decl @ Decl(symbol, Some(init)) => {
         symbol.kind partialMatch {
