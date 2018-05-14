@@ -19,6 +19,7 @@ concepts in Verilog are provided where appropriate.
 - [Control units](control.md)
 - [Expressions]()
 - [Arrays]()
+- [SRAMs](srams.md)
 - [Built-in functions]()
 - [Networks]()
 - [Nested state machines aka Pipelines]()
