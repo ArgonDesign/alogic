@@ -34,6 +34,8 @@ final class SpecializeParamA(implicit cc: CompilerContext) extends TreeTransform
     case _           => true
   }
 
+  private[this] var rootEntity = true
+
   override def enter(tree: Tree): Unit = tree match {
     case Instance(Sym(iSymbol), Sym(eSymbol), paramNames, paramExprs) => {
       val entityKind = eSymbol.kind.asInstanceOf[TypeEntity]
@@ -62,7 +64,9 @@ final class SpecializeParamA(implicit cc: CompilerContext) extends TreeTransform
       }
     }
 
-    case entity: Entity => {
+    case entity: Entity if rootEntity => {
+      rootEntity = false
+
       // Collect the default parameter bindings
       val defaultBindings = {
         val pairs = entity.declarations collect {

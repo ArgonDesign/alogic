@@ -81,9 +81,11 @@ final class SpecializeParamB(implicit cc: CompilerContext) extends TreeTransform
     }
   }
 
+  private[this] var rootEntity = true
+
   override def skip(tree: Tree): Boolean = tree match {
-    case _: Entity => false
-    case _         => true
+    case _: Entity if rootEntity => { rootEntity = false; false }
+    case _                       => true
   }
 
   override def transform(tree: Tree): Tree = tree match {
