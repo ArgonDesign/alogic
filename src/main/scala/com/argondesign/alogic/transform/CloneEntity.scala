@@ -20,18 +20,20 @@ package com.argondesign.alogic.transform
 
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.TreeInTypeTransformer
-import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.PartialMatch
 import com.argondesign.alogic.util.unreachable
 
-import scala.collection.immutable.ListMap
 import scala.collection.mutable
 
-final class CloneEntity(parameterBindings: ListMap[TermSymbol, Expr])(implicit cc: CompilerContext)
+final class CloneEntity(
+    parameterBindings: Map[TermSymbol, Expr],
+    cloneName: String
+)(implicit cc: CompilerContext)
     extends TreeTransformer
     with PartialMatch {
 
@@ -115,14 +117,7 @@ final class CloneEntity(parameterBindings: ListMap[TermSymbol, Expr])(implicit c
     ////////////////////////////////////////////////////////////////////////////
 
     case entity: Entity => {
-      val newName = if (entityLevel > 1) {
-        entitySymbol.name
-      } else {
-        val suffixes = for ((symbol, expr) <- parameterBindings) yield {
-          s"${symbol.name}_${expr.value.get}"
-        }
-        (entitySymbol.name :: suffixes.toList) mkString cc.sep
-      }
+      val newName = if (entityLevel > 1) entitySymbol.name else cloneName
 
       // Update instances of nested entities to instantiate the cloned entity
       val instances = entity.instances map {

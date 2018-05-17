@@ -38,9 +38,7 @@ object Passes {
       // Middle-end
       ////////////////////////////////////////////////////////////////////////
       FoldExpr(assignTypes = true, foldRefs = false),
-      SpecializeParamA,
-      SpecializeParamB,
-      SpecializeParamC,
+      SpecializeParam,
       FoldExpr(assignTypes = true, foldRefs = false),
       FoldSymbolTypes,
       ConvertMultiConnect,

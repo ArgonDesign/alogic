@@ -18,8 +18,6 @@ package com.argondesign.alogic.core
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Symbols._
 
-import scala.collection.immutable.ListMap
-
 class SymbolAttributes {
   // Symbol is meant to be unused, do not warn
   val unused = new Attribute[Boolean]()
@@ -29,17 +27,17 @@ class SymbolAttributes {
   // Is this an entry point function
   val entry = new Attribute[Boolean]()
 
-  // All possible parameter bindings of an entity symbol
-  val paramBindings = new Attribute[List[Map[TermSymbol, Expr]]]()
-  // The actual parameter bindings of an instance symbol
-  val paramBinding = new Attribute[Map[TermSymbol, Expr]]()
-  // The default parameter bindings, in definition order
-  val defaultParamBindings = new Attribute[ListMap[TermSymbol, Expr]]()
+//  // All possible parameter bindings of an entity symbol
+//  val paramBindings = new Attribute[List[Map[TermSymbol, Expr]]]()
+//  // The actual parameter bindings of an instance symbol
+//  val paramBinding = new Attribute[Map[TermSymbol, Expr]]()
+//  // The default parameter bindings, in definition order
+//  val defaultParamBindings = new Attribute[ListMap[TermSymbol, Expr]]()
   // The entity that owns the definition of this symbol
   val owner = new Attribute[Entity]()
-  // If this is a parametrized entity symbol,
-  // a map from parameter bindings to the specialized entity
-  val specMap = new Attribute[Map[ListMap[TermSymbol, Expr], Entity]]()
+//  // If this is a parametrized entity symbol,
+//  // a map from parameter bindings to the specialized entity
+//  val specMap = new Attribute[Map[ListMap[TermSymbol, Expr], Entity]]()
 
   // If this is a constant symbol, then this is its value
   val constValue = new Attribute[Expr]()
@@ -114,11 +112,11 @@ class SymbolAttributes {
     unused,
     topLevel,
     entry,
-    paramBinding,
-    paramBinding,
-    defaultParamBindings,
+//    paramBinding,
+//    paramBinding,
+//    defaultParamBindings,
     owner,
-    specMap,
+//    specMap,
     constValue,
     stackLimit,
     recLimit,
@@ -149,11 +147,11 @@ class SymbolAttributes {
     "unused",
     "topLevel",
     "entry",
-    "paramBinding",
-    "paramBinding",
-    "defaultParamBindings",
+//    "paramBinding",
+//    "paramBinding",
+//    "defaultParamBindings",
     "owner",
-    "specMap",
+//    "specMap",
     "constValue",
     "stackLimit",
     "recLimit",
