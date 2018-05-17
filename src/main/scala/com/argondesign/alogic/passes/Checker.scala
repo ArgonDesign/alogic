@@ -108,6 +108,7 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
                 case _: TypeIn    => true
                 case _: TypeOut   => true
                 case _: TypeParam => true
+                case _: TypeConst => true
                 case _            => false
               }
             }
@@ -117,7 +118,6 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
           badDecls foreach {
             case decl: DeclIdent => {
               val hint = decl.kind match {
-                case _: TypeConst    => "constant"
                 case _: TypeArray    => "array"
                 case _: TypePipeline => "pipeline variable"
                 case _               => "variable"

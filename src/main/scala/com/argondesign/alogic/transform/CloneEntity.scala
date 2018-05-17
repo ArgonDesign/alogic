@@ -37,6 +37,8 @@ final class CloneEntity(
     extends TreeTransformer
     with PartialMatch {
 
+  override val checkRefs = false
+
   // Map from original symbol to the new symbol
   private[this] val symbolMap = mutable.Map[Symbol, Symbol]()
 

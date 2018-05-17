@@ -314,6 +314,8 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
   // Default checks to run after each pass
   //////////////////////////////////////////////////////////////////////////////
 
+  val checkRefs = true
+
   override def defaultCheck(orig: Tree, tree: Tree): Unit = {
     assert(entityStack.isEmpty)
 
@@ -346,7 +348,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
 
     // Ensure references are only present to TermSymbols
     // declared within the root entity scope
-    if (orig.isInstanceOf[Entity] || orig.isInstanceOf[Root]) {
+    if (checkRefs && orig.isInstanceOf[Entity] || orig.isInstanceOf[Root]) {
       val trees = tree match {
         case Thicket(trees) => trees
         case tree           => List(tree)

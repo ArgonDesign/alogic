@@ -38,6 +38,8 @@ final class SpecializeParam(
 )(implicit cc: CompilerContext)
     extends TreeTransformer {
 
+  override val checkRefs = false
+
   override def skip(tree: Tree): Boolean = tree match {
     case _: Entity   => false
     case _: Instance => false
