@@ -25,13 +25,18 @@ trait Output { this: CompilerContext =>
   private implicit val implicitThis = this
 
   def oPathFor(entity: Entity, suffix: String): Path = {
-    val oDir = settings.srcbase match {
-      case None => settings.odir.get
-      case Some(base) => {
-        val dirPath = entity.loc.source.file.toPath.toRealPath().getParent
-        assert(dirPath startsWith base)
-        val relPath = base relativize dirPath
-        settings.odir.get resolve relPath
+    val oDir = if (entity.loc eq Loc.synthetic) {
+      // Emit synthetic entities to the root output directory
+      settings.odir.get
+    } else {
+      settings.srcbase match {
+        case None => settings.odir.get
+        case Some(base) => {
+          val dirPath = entity.loc.source.file.toPath.toRealPath().getParent
+          assert(dirPath startsWith base)
+          val relPath = base relativize dirPath
+          settings.odir.get resolve relPath
+        }
       }
     }
     val Sym(symbol) = entity.ref
