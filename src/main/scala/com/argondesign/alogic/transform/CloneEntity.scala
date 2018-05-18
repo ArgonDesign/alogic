@@ -21,6 +21,7 @@ package com.argondesign.alogic.transform
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Symbols._
+import com.argondesign.alogic.core.Bindings
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.TreeInTypeTransformer
 import com.argondesign.alogic.core.Types._
@@ -31,7 +32,7 @@ import com.argondesign.alogic.util.unreachable
 import scala.collection.mutable
 
 final class CloneEntity(
-    parameterBindings: Map[TermSymbol, Expr],
+    parameterBindings: Bindings,
     cloneName: String
 )(implicit cc: CompilerContext)
     extends TreeTransformer
@@ -181,6 +182,16 @@ final class CloneEntity(
             cc.ice(decl, "Const symbol with wrong constValue")
           }
         }
+      }
+
+      case node @ ExprRef(symbol: TermSymbol) if parameterBindings contains symbol => {
+        cc.ice(node, "Reference to bound parameter remains")
+      }
+      case node @ Sym(symbol: TermSymbol) if parameterBindings contains symbol => {
+        cc.ice(node, "Sym to bound parameter remains")
+      }
+      case node @ Decl(symbol, _) if parameterBindings contains symbol => {
+        cc.ice(node, "Decl of bound parameter remains")
       }
     }
   }

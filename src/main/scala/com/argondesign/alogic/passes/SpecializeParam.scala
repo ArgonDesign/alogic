@@ -53,7 +53,7 @@ final class SpecializeParam(
         // Instantiated entity has no parameters
         tree
       } else {
-        // Find the specialized entity
+        // Find the specialized entity, if any
         val sSymbol = specializationMap.get(eSymbol) map { bindingsMap =>
           // Gather (now specialized) particular parameter bindings
           val paramBindings = Bindings {
@@ -67,7 +67,6 @@ final class SpecializeParam(
           }
           // Complete them with the default bindings
           val completeBindings = defaultBindingsMap(eSymbol) ++ paramBindings
-          // Find the specialized entity, it any
           val Sym(sSymbol: TypeSymbol) = bindingsMap(completeBindings).ref
           sSymbol
         } getOrElse {
@@ -94,6 +93,13 @@ object SpecializeParam extends Pass {
 
   // Recursively specialize entities directly nested within this entity
   def specialize(entity: Entity)(implicit cc: CompilerContext): Entity = {
+    assert {
+      entity.declarations forall {
+        case Decl(s, _) => !s.kind.isParam
+        case _          => unreachable
+      }
+    }
+
     // Gather the 'entity symbol' -> 'default bindings' map
     val defaultBindingsMap: Map[TypeSymbol, Bindings] = {
       val pairs = entity.entities.par map { entity =>
@@ -265,23 +271,25 @@ object SpecializeParam extends Pass {
     // Gather all resulting entities
     val specialized = specializationMap.values flatMap { _.values } toList
 
-    // Rewrite instantiations both in the original entity and the specialized
-    // entities
-    val entity2 :: specialized2 = {
-      val par = (entity :: specialized).par map { entity =>
+    // Rewrite instantiations in specialized entities and then recursively
+    // specialize their nested entities
+    val specialized2 = {
+      val par = specialized.par map { entity =>
         val tt = new SpecializeParam(defaultBindingsMap, specializationMap)
         (entity rewrite tt).asInstanceOf[Entity]
+      } map {
+        specialize
       }
       par.seq.toList
     }
 
-    // Recursively specialize nested entities
-    val specialized3 = specialized2 map specialize
+    // Update and rewrite instantiations in the original entity
+    val result = TypeAssigner {
+      entity.copy(entities = specialized2) withLoc entity.loc withVariant entity.variant
+    } rewrite new SpecializeParam(defaultBindingsMap, specializationMap)
 
-    // Update and return the original entity
-    TypeAssigner {
-      entity2.copy(entities = specialized3) withLoc entity2.loc withVariant entity2.variant
-    }
+    // Done
+    result.asInstanceOf[Entity]
   }
 
   def apply(trees: List[Tree])(implicit cc: CompilerContext): List[Tree] = {
