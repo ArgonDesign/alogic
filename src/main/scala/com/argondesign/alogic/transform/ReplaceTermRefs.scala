@@ -17,11 +17,12 @@ package com.argondesign.alogic.transform
 
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.core.Bindings
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.TermSymbol
 
 final class ReplaceTermRefs(
-    bindings: Map[TermSymbol, Expr]
+    bindings: Bindings
 )(
     implicit cc: CompilerContext
 ) extends TreeTransformer {

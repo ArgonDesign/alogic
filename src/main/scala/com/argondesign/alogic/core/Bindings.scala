@@ -72,6 +72,10 @@ object Bindings {
     new Bindings(pairs.toMap)
   }
 
+  implicit def apply(map: scala.collection.Map[TermSymbol, Expr]): Bindings = {
+    new Bindings(map.toMap)
+  }
+
   implicit def apply(underlying: Map[TermSymbol, Expr]): Bindings = {
     new Bindings(underlying)
   }

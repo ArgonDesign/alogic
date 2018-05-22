@@ -23,6 +23,7 @@ import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types.TypeOut
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Stack
+import com.argondesign.alogic.transform.ReplaceTermRefs
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.FollowedBy
 import com.argondesign.alogic.util.ValueMap
@@ -119,6 +120,21 @@ final class LiftEntities(implicit cc: CompilerContext)
         }
       }
       freshConstSymbols.push(mutable.LinkedHashMap(newConstSymbols: _*))
+
+      //////////////////////////////////////////////////////////////////////////
+      // Update the constValue attributes of the new symbols
+      //////////////////////////////////////////////////////////////////////////
+
+      lazy val rewrite: Expr => Expr = {
+        val bindings = freshConstSymbols.top mapValues { innerSymbol =>
+          ExprRef(innerSymbol) regularize innerSymbol.loc
+        }
+        val tt = new ReplaceTermRefs(bindings)
+        tt(_).asInstanceOf[Expr]
+      }
+      for (innerSymbol <- freshConstSymbols.top.values) {
+        innerSymbol.attr.constValue set rewrite(innerSymbol.attr.constValue.value)
+      }
 
       //////////////////////////////////////////////////////////////////////////
       // Mark output ports to strip storage from
