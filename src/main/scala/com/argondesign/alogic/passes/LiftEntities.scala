@@ -112,10 +112,18 @@ final class LiftEntities(implicit cc: CompilerContext)
       val newConstSymbols = if (outerConstSymbols.isEmpty) {
         Nil
       } else {
-        for {
+        val referenced = for {
           outerSymbol <- referencedSymbols
           if outerConstSymbols.toList.exists(_ contains outerSymbol)
         } yield {
+          outerSymbol
+        }
+        val initializer = referenced flatMap { outerSymbol =>
+          outerSymbol.attr.constValue.value collect {
+            case ExprRef(s: TermSymbol) if outerConstSymbols.toList.exists(_ contains s) => s
+          }
+        }
+        (referenced ::: initializer).distinct map { outerSymbol =>
           outerSymbol -> cc.newSymbolLike(outerSymbol)
         }
       }
