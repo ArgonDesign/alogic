@@ -48,6 +48,10 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
 
   private val sep = cc.sep
 
+  // Map from output port symbol to output storage entity, instance symbol,
+  // and a boolean that is true if the storage is multiple output slices
+  private val oStorage = mutable.Map[TermSymbol, (Entity, TermSymbol, Boolean)]()
+
   // Stack of extra statements to emit when finished with a statement
   private[this] val extraStmts = Stack[mutable.ListBuffer[Stmt]]()
 
@@ -138,7 +142,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
           cc.newTermSymbol(iName, loc, TypeInstance(sregEntitySymbol))
         }
         // Set attributes
-        symbol.attr.oStorage.set((sregEntity, iSymbol))
+        oStorage(symbol) = (sregEntity, iSymbol, false)
         entitySymbol.attr.interconnectClearOnStall.append((iSymbol, s"ip${sep}valid"))
       }
     }
@@ -204,7 +208,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
           cc.newTermSymbol(iName, loc, TypeInstance(sliceEntitySymbol))
         }
         // Set attributes
-        symbol.attr.oStorage.set((sliceEntities.head, iSymbol))
+        oStorage(symbol) = (sliceEntities.head, iSymbol, sliceEntities.tail.nonEmpty)
         entitySymbol.attr.interconnectClearOnStall.append((iSymbol, s"ip${sep}valid"))
       }
     }
@@ -301,8 +305,8 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       case StmtExpr(ExprCall(ExprSelect(ref @ ExprRef(symbol: TermSymbol), "write"), args)) => {
         symbol.attr.fcn.get.map { _ =>
           StmtAssign(ref, args.head)
-        } orElse symbol.attr.oStorage.get.map {
-          case (_, iSymbol) =>
+        } orElse oStorage.get(symbol).map {
+          case (_, iSymbol, _) =>
             lazy val iRef = ExprRef(iSymbol)
             lazy val pAssign = StmtAssign(iRef select "ip", args.head)
             lazy val vAssign = assignTrue(iRef select s"ip${sep}valid")
@@ -353,8 +357,8 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       case StmtExpr(ExprCall(ExprSelect(ref @ ExprRef(symbol: TermSymbol), "flush"), args)) => {
         symbol.attr.fcv.get.map {
           case (_, vSymbol) => StmtStall(!ExprRef(vSymbol))
-        } orElse symbol.attr.oStorage.get.map {
-          case (_, iSymbol) => StmtStall(ExprRef(iSymbol) select "empty")
+        } orElse oStorage.get(symbol).map {
+          case (_, iSymbol, _) => StmtStall(ExprRef(iSymbol) select "empty")
         } getOrElse {
           tree
         }
@@ -396,17 +400,26 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
         }
       }
 
+      case ExprSelect(ExprRef(symbol: TermSymbol), "space") => {
+        oStorage.get(symbol) map {
+          case (_, iSymbol, true)  => ExprRef(iSymbol) select "space"
+          case (_, iSymbol, false) => ExprRef(iSymbol) select "empty"
+        } getOrElse {
+          tree
+        }
+      }
+
       case ExprSelect(ExprRef(symbol: TermSymbol), "empty") => {
-        symbol.attr.oStorage.get.map {
-          case (_, iSymbol) => ExprRef(iSymbol) select "empty"
+        oStorage.get(symbol) map {
+          case (_, iSymbol, _) => ExprRef(iSymbol) select "empty"
         } getOrElse {
           tree
         }
       }
 
       case ExprSelect(ExprRef(symbol: TermSymbol), "full") => {
-        symbol.attr.oStorage.get.map {
-          case (_, iSymbol) => ExprRef(iSymbol) select "full"
+        oStorage.get(symbol) map {
+          case (_, iSymbol, _) => ExprRef(iSymbol) select "full"
         } getOrElse {
           tree
         }
@@ -470,16 +483,16 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
 
       case entity: Entity => {
         val ospSymbols = entity.declarations collect {
-          case Decl(symbol, _) if symbol.attr.oStorage.isSet => symbol
+          case Decl(symbol, _) if oStorage contains symbol => symbol
         }
 
         val instances = for (symbol <- ospSymbols) yield {
-          val (entity, iSymbol) = symbol.attr.oStorage.value
+          val (entity, iSymbol, _) = oStorage(symbol)
           Instance(Sym(iSymbol), entity.ref, Nil, Nil)
         }
 
         val connects = ospSymbols flatMap { symbol =>
-          val iSymbol = symbol.attr.oStorage.value._2
+          val iSymbol = oStorage(symbol)._2
           val iRef = ExprRef(iSymbol)
 
           val (pSymbolOpt, vSymbol, rSymbolOpt) = symbol.attr.fcv.get.map {
@@ -506,8 +519,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
         // Remove fcn and oStorage attributes, they are no longer needed
         entity.declarations foreach {
           case Decl(symbol, _) => {
-            symbol.attr.fcn.clear
-            symbol.attr.oStorage.clear
+            symbol.attr.fcn.clear()
           }
           case _ => unreachable
         }

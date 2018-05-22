@@ -359,7 +359,8 @@ object SyncSliceFactory {
   )(
       implicit cc: CompilerContext
   ): Entity = {
-    require(slices.length >= 2)
+    val nSlices = slices.length
+    require(nSlices >= 2)
 
     val fcn = FlowControlTypeNone
     val stw = StorageTypeWire
@@ -386,6 +387,8 @@ object SyncSliceFactory {
     oprSymbol.attr.dontCareUnless set opvSymbol
     opvSymbol.attr.dontCareUnless set oprSymbol
 
+    val sKind = TypeOut(TypeUInt(Expr(nSlices) regularize loc), fcn, stw)
+    val sSymbol = cc.newTermSymbol("space", loc, sKind)
     val eSymbol = cc.newTermSymbol("empty", loc, TypeOut(bool, fcn, stw))
     val fSymbol = cc.newTermSymbol("full", loc, TypeOut(bool, fcn, stw))
 
@@ -397,6 +400,7 @@ object SyncSliceFactory {
     val opvRef = ExprRef(opvSymbol)
     val oprRef = ExprRef(oprSymbol)
 
+    val sRef = ExprRef(sSymbol)
     val eRef = ExprRef(eSymbol)
     val fRef = ExprRef(fSymbol)
 
@@ -435,15 +439,34 @@ object SyncSliceFactory {
     }
     connects append Connect(iRefs.head select iprName, List(iprRef))
 
-    // 'and' reduce the empty and full signals
+    // Build the space, empty and full signals
+    connects append Connect(ExprCat(iRefs.reverse map { _ select "empty" }), List(sRef))
     connects append Connect(ExprUnary("&", ExprCat(iRefs map { _ select "empty" })), List(eRef))
     connects append Connect(ExprUnary("&", ExprCat(iRefs map { _ select "full" })), List(fRef))
 
     // Put it all together
     val ports = if (kind != TypeVoid) {
-      List(ipSymbol, ipvSymbol, iprSymbol, opSymbol, opvSymbol, oprSymbol, eSymbol, fSymbol)
+      List(
+        ipSymbol,
+        ipvSymbol,
+        iprSymbol,
+        opSymbol,
+        opvSymbol,
+        oprSymbol,
+        sSymbol,
+        eSymbol,
+        fSymbol
+      )
     } else {
-      List(ipvSymbol, iprSymbol, opvSymbol, oprSymbol, eSymbol, fSymbol)
+      List(
+        ipvSymbol,
+        iprSymbol,
+        opvSymbol,
+        oprSymbol,
+        sSymbol,
+        eSymbol,
+        fSymbol
+      )
     }
 
     val decls = ports map { symbol =>

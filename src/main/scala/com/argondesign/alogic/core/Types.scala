@@ -17,7 +17,7 @@ package com.argondesign.alogic.core
 
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.FlowControlTypes._
-import com.argondesign.alogic.core.StorageTypes.StorageType
+import com.argondesign.alogic.core.StorageTypes._
 import com.argondesign.alogic.core.Symbols.TermSymbol
 import com.argondesign.alogic.core.Symbols.TypeSymbol
 import com.argondesign.alogic.lib.StructuredTree
@@ -250,12 +250,17 @@ object Types {
           )
         }
         case FlowControlTypeReady => {
+          val nSlices = st match {
+            case StorageTypeSlices(slices) => slices.length
+            case _                         => 1
+          }
           Map(
             "write" -> writeFuncType,
             "valid" -> boolType,
             "flush" -> TypeCombFunc(Nil, TypeVoid),
             "full" -> boolType,
-            "empty" -> boolType
+            "empty" -> boolType,
+            "space" -> TypeUInt(Expr(nSlices) withLoc Loc.synthetic)
           )
         }
         case FlowControlTypeAccept => {
