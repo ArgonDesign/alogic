@@ -243,7 +243,8 @@ final class LowerSrams(
           }
           case SramReg(_, _, _, oSymbol) => {
             val oRef = ExprRef(oSymbol)
-            val data = ExprInt(false, symbol.kind.width.value.get.toInt, 0) // Don't care
+            val TypeSram(kind, _, _) = symbol.kind
+            val data = ExprInt(false, kind.width.value.get.toInt, 0) // Don't care
             StmtBlock(
               List(
                 assignTrue(oRef select s"ip${sep}valid"),
