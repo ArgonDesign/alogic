@@ -310,6 +310,7 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
               case _: TypeParam => cc.error(ref, "Parameter cannot be assigned")
               case _: TypeConst => cc.error(ref, "Constant cannot be assigned")
               case _: TypeIn    => cc.error(ref, "Input port cannot be assigned")
+              case _: TypeArray => cc.error(ref, "Memory cannot be assigned directly, use '.write'")
               case TypeOut(_, fct, _) if fct != FlowControlTypeNone => {
                 val msg = "Output port with flow control cannot be assigned directly, use '.write'"
                 cc.error(ref, msg)
@@ -476,7 +477,7 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
           case _: TypeArray          => None
           case kind if kind.isPacked => None
           case _ => {
-            cc.error(expr, "Target of index is neither a packed value, nor an array")
+            cc.error(expr, "Target of index is neither a packed value, nor a memory")
             Some(expr.loc)
           }
         }

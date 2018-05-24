@@ -11,8 +11,8 @@
 // DESCRIPTION:
 //
 // Lower variables into flops and combinatorial nets. At this stage, anything
-// that is of TypeInt is a flop, unless it is driven through a connect, in
-// which case it is a net.
+// that is of TypeInt is a flop, unless it is driven through a connect, or is
+// one of the control signals of a memory, in which case it is a net.
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.passes
@@ -58,6 +58,16 @@ final class LowerVariables(implicit cc: CompilerContext) extends TreeTransformer
         if symbol.kind.isInt
       } {
         symbol.attr.combSignal set true
+      }
+
+      // Mark memory control signals as combinatorial nets
+      for {
+        Decl(mSymbol, _) <- entity.declarations
+        (weSymbol, waSymbol, wdSymbol) <- mSymbol.attr.memory.get
+      } {
+        weSymbol.attr.combSignal set true
+        waSymbol.attr.combSignal set true
+        wdSymbol.attr.combSignal set true
       }
     }
 

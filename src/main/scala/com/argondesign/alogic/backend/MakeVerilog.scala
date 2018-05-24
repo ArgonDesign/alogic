@@ -143,16 +143,13 @@ final class MakeVerilog(
         }
 
         if (hasArrays) {
-          // Emit array declarations
-          body.emitBlock(1, "Array declarations") {
+          // Emit memory declarations
+          body.emitBlock(1, "Memory declarations") {
             for {
               Decl(qSymbol, _) <- decls
-              (weSymbol, waSymbol, wdSymbol) <- qSymbol.attr.arr.get
+              if qSymbol.attr.memory.isSet
             } yield {
               emitVarDecl(qSymbol)
-              emitVarDecl(weSymbol)
-              emitVarDecl(waSymbol)
-              emitVarDecl(wdSymbol)
             }
           }
         }
@@ -236,7 +233,7 @@ final class MakeVerilog(
           body.emitBlock(1, "Array storage") {
             for {
               Decl(qSymbol, _) <- decls
-              (weSymbol, waSymbol, wdSymbol) <- qSymbol.attr.arr.get
+              (weSymbol, waSymbol, wdSymbol) <- qSymbol.attr.memory.get
             } {
               body.emit(1) {
                 List(

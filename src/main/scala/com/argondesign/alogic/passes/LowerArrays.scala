@@ -27,9 +27,6 @@ import com.argondesign.alogic.util.FollowedBy
 
 final class LowerArrays(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
 
-  // TODO: Does not work if array is assigned in a concatenation on the left.
-  //       Need to teach SimplifyCat to handle more cases if this is a problem
-
   override def skip(tree: Tree): Boolean = tree match {
     case entity: Entity => entity.variant == "network"
     case _              => false
@@ -60,7 +57,7 @@ final class LowerArrays(implicit cc: CompilerContext) extends TreeTransformer wi
       val dbits = kind.width.value.get.toInt
       val wdSymbol = cc.newTermSymbol(s"${name}_wdata", loc, intType(loc, kind.isSigned, dbits))
       // Set attributes
-      symbol.attr.arr.set((weSymbol, waSymbol, wdSymbol))
+      symbol.attr.memory.set((weSymbol, waSymbol, wdSymbol))
     }
 
     case _ =>
@@ -75,17 +72,17 @@ final class LowerArrays(implicit cc: CompilerContext) extends TreeTransformer wi
   override def transform(tree: Tree): Tree = tree match {
 
     //////////////////////////////////////////////////////////////////////////
-    // Rewrite Assignments
+    // Rewrite .write calls
     //////////////////////////////////////////////////////////////////////////
 
-    case StmtAssign(ExprIndex(ExprRef(symbol), idx), rhs) => {
+    case StmtExpr(ExprCall(ExprSelect(ExprRef(symbol: TermSymbol), "write"), List(addr, data))) => {
       // Rewrite assignments to array elements
-      symbol.attr.arr.get map {
+      symbol.attr.memory.get map {
         case (weSymbol, waSymbol, wdSymbol) => {
           val stmts = List(
             StmtAssign(ExprRef(weSymbol), makeExprInt(weSymbol, 1)),
-            StmtAssign(ExprRef(waSymbol), idx),
-            StmtAssign(ExprRef(wdSymbol), rhs)
+            StmtAssign(ExprRef(waSymbol), addr),
+            StmtAssign(ExprRef(wdSymbol), data)
           )
           StmtBlock(stmts) regularize tree.loc
         }
@@ -99,7 +96,7 @@ final class LowerArrays(implicit cc: CompilerContext) extends TreeTransformer wi
     //////////////////////////////////////////////////////////////////////////
 
     case decl @ Decl(symbol, _) => {
-      symbol.attr.arr.get map {
+      symbol.attr.memory.get map {
         case (weSymbol, waSymbol, wdSymbol) => {
           val decls = List(
             decl,
@@ -120,8 +117,8 @@ final class LowerArrays(implicit cc: CompilerContext) extends TreeTransformer wi
 
     case entity: Entity => {
       val fenceStmts = entity.declarations collect {
-        case decl @ Decl(symbol, _) if symbol.attr.arr.isSet => {
-          val (weSymbol, waSymbol, wdSymbol) = symbol.attr.arr.value
+        case decl @ Decl(symbol, _) if symbol.attr.memory.isSet => {
+          val (weSymbol, waSymbol, wdSymbol) = symbol.attr.memory.value
           StmtBlock(
             List(
               StmtAssign(ExprRef(weSymbol), makeExprInt(weSymbol, 0)),

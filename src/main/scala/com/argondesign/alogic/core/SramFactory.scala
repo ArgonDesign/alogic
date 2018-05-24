@@ -37,7 +37,7 @@ object SramFactory {
       void main() {
         if (ce) {
           if (we) {
-            stroage[addr] = wdata;
+            stroage.write(addr, wdata);
             rdata = 0; // Or anything really
           } else {
             rdata = storage[addr];
@@ -87,7 +87,7 @@ object SramFactory {
           weRef,
           StmtBlock(
             List(
-              StmtAssign(stRef index adRef, wdRef),
+              StmtExpr(ExprCall(stRef select "write", List(adRef, wdRef))),
               StmtAssign(rdRef, ExprInt(false, width, 0))
             )),
           Some(StmtAssign(rdRef, stRef index adRef))

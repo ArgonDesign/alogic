@@ -45,11 +45,11 @@ abstract class TreeInTypeTransformer(treeTransformer: TreeTransformer)(implicit 
       val newSize = treeTransformer.walk(size).asInstanceOf[Expr]
       if (newSize eq size) node else node.copy(size = newSize)
     }
-    case node @ TypeStack(_, size) => {
+    case node @ TypeSram(_, size, _) => {
       val newSize = treeTransformer.walk(size).asInstanceOf[Expr]
       if (newSize eq size) node else node.copy(size = newSize)
     }
-    case node @ TypeSram(_, size, _) => {
+    case node @ TypeStack(_, size) => {
       val newSize = treeTransformer.walk(size).asInstanceOf[Expr]
       if (newSize eq size) node else node.copy(size = newSize)
     }

@@ -227,9 +227,9 @@ object RemoveUnused extends Pass {
           // Flop _d
           symbol.attr.flop.get.iterator
         }
-        case Decl(symbol, _) if symbol.attr.arr.isSet => {
+        case Decl(symbol, _) if symbol.attr.memory.isSet => {
           // Array _we/_waddr/_wdata
-          val (we, waddr, wdata) = symbol.attr.arr.value
+          val (we, waddr, wdata) = symbol.attr.memory.value
           Iterator(we, waddr, wdata)
         }
         case ExprRef(symbol) => {

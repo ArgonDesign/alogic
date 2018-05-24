@@ -81,8 +81,8 @@ class SymbolAttributes {
   // If this is flop _q symbol, the corresponding _d symbol
   val flop = new Attribute[TermSymbol]()
 
-  // If this is an array _q symbol, the corresponding we, waddr and wdata symbols
-  val arr = new Attribute[(TermSymbol, TermSymbol, TermSymbol)]()
+  // If this is a memory _q symbol, the corresponding we, waddr and wdata symbols
+  val memory = new Attribute[(TermSymbol, TermSymbol, TermSymbol)]()
 
   // If this is an interconnect signal, the corresponding instance symbol and port name
   val interconnect = new Attribute[(TermSymbol, String)]()
@@ -123,7 +123,7 @@ class SymbolAttributes {
     dontCareUnless,
     oReg,
     flop,
-    arr,
+    memory,
     interconnect,
     combSignal,
     fieldSymbols,
@@ -153,7 +153,7 @@ class SymbolAttributes {
     "dontCareUnless",
     "oReg",
     "flop",
-    "arr",
+    "memory",
     "interconnect",
     "combSignal",
     "fieldSymbols",

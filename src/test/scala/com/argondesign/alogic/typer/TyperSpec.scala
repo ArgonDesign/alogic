@@ -530,8 +530,8 @@ final class TyperSpec extends FreeSpec with AlogicTest {
             ("c[0][0][0][0]", ""),
             ("c[0][0][0][0][0]", ""),
             ("c[0][0][0][0][0][0]", ""),
-            ("bool[0]", "Target of index is neither a packed value, nor an array"),
-            ("main[0]", "Target of index is neither a packed value, nor an array"),
+            ("bool[0]", "Target of index is neither a packed value, nor a memory"),
+            ("main[0]", "Target of index is neither a packed value, nor a memory"),
             ("a[bool]", "Index is of non-numeric type"),
             ("a[b[0]]", "Index is of non-numeric type")
           )
@@ -841,6 +841,7 @@ final class TyperSpec extends FreeSpec with AlogicTest {
              "Output port with flow control cannot be assigned directly, use '.write'"),
             ("g[0] = 1'b0", "Parameter cannot be assigned"),
             ("h[0] = 1'b0", "Constant cannot be assigned"),
+            ("i[0] = 4'b0", "Memory cannot be assigned directly, use '.write'"),
             ("a[1:0] = 2'b0", "Input port cannot be assigned"),
             ("b[1:0] = 2'b0", ""),
             ("c[1:0] = 2'b0", "Input port cannot be assigned"),
@@ -851,6 +852,7 @@ final class TyperSpec extends FreeSpec with AlogicTest {
              "Output port with flow control cannot be assigned directly, use '.write'"),
             ("g[1:0] = 2'b0", "Parameter cannot be assigned"),
             ("h[1:0] = 2'b0", "Constant cannot be assigned"),
+            ("i[0][1:0] = 2'b0", "Memory cannot be assigned directly, use '.write'"),
             ("{b[1], a[0]} = 2'b0", "Input port cannot be assigned"),
             ("{b[1], b[0]} = 2'b0", ""),
             ("{b[1], c[0]} = 2'b0", "Input port cannot be assigned"),
@@ -860,7 +862,8 @@ final class TyperSpec extends FreeSpec with AlogicTest {
             ("{b[1], f[0]} = 2'b0",
              "Output port with flow control cannot be assigned directly, use '.write'"),
             ("{b[1], g[0]} = 2'b0", "Parameter cannot be assigned"),
-            ("{b[1], h[0]} = 2'b0", "Constant cannot be assigned")
+            ("{b[1], h[0]} = 2'b0", "Constant cannot be assigned"),
+            ("{b[1], i[0]} = 9'b0", "Memory cannot be assigned directly, use '.write'"),
           )
         } {
           assignment in {
@@ -873,6 +876,7 @@ final class TyperSpec extends FreeSpec with AlogicTest {
                            |  (* unused *) out sync ready i8 f;
                            |  (* unused *) param i8 g = 8'd2;
                            |  (* unused *) const i8 h = 8'd2;
+                           |  (* unused *) u8 i[4];
                            |
                            |  void main() {
                            |    ${assignment};

@@ -70,7 +70,7 @@ final class EntityDetails(val entity: Entity, details: => Map[TypeSymbol, Entity
   }
 
   lazy val hasArrays: Boolean = decls exists {
-    case Decl(symbol, _) => symbol.attr.arr.isSet
+    case Decl(symbol, _) => symbol.attr.memory.isSet
     case _               => false
   }
 

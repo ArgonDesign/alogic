@@ -52,23 +52,16 @@ object Types {
   // Vector types (analogous to higher dimensions of SystemVerilog multi-dimensional packed arrays)
   case class TypeVector(elementType: Type, size: Expr) extends Type
   // Array types (analogous to verilog unpacked arrays)
-  case class TypeArray(elementType: Type, size: Expr) extends Type
+  case class TypeArray(elementType: Type, size: Expr)(implicit val cc: CompilerContext)
+      extends Type
+      with TypeArrayImpl
+  // SRAM types
+  case class TypeSram(elementType: Type, size: Expr, st: StorageType)(
+      implicit val cc: CompilerContext)
+      extends Type
+      with TypeSramImpl
   // Stack types
   case class TypeStack(elementType: Type, size: Expr) extends Type with TypeStackImpl
-  // SRAM types
-  case class TypeSram(elementType: Type, size: Expr, st: StorageType)(implicit cc: CompilerContext)
-      extends Type
-      with TypeSramImpl {
-
-    protected[this] lazy val addrType = {
-      // TODO: This needs to be lazy to avoid sealing the global scope by looking up $clog2
-      // while constructing this in the parser. Fix...
-      if (!size.hasLoc) {
-        size withLoc Loc.synthetic
-      }
-      TypeUInt((cc.getGlobalTermSymbolRef("$clog2", size.loc) call List(size)).simplify)
-    }
-  }
   // Structure type
   case class TypeStruct(name: String, fieldNames: List[String], fieldTypes: List[Type])
       extends Type
@@ -286,7 +279,29 @@ object Types {
     def apply(field: String): Option[Type] = fieldMap get field
   }
 
-  trait TypeSramImpl extends CompoundType { this: TypeSram =>
+  trait Addressable { this: Type =>
+    val cc: CompilerContext
+    val size: Expr
+
+    protected[this] lazy val addrType = {
+      // TODO: This needs to be lazy to avoid sealing the global scope by looking up $clog2
+      // while constructing this in the parser. Fix...
+      if (!size.hasLoc) {
+        size withLoc Loc.synthetic
+      }
+      TypeUInt((cc.getGlobalTermSymbolRef("$clog2", size.loc) call List(size)).simplify(cc))
+    }
+  }
+
+  trait TypeArrayImpl extends CompoundType with Addressable { this: TypeArray =>
+    private[this] lazy val fieldMap = Map(
+      "write" -> TypeCombFunc(List(addrType, elementType), TypeVoid),
+    )
+
+    def apply(field: String): Option[Type] = fieldMap get field
+  }
+
+  trait TypeSramImpl extends CompoundType with Addressable { this: TypeSram =>
 
     private[this] lazy val fieldMap = Map(
       "read" -> TypeCombFunc(List(addrType), TypeVoid),

@@ -29,16 +29,16 @@ object TypeCopier {
     if (elementType eq tree.elementType) tree else TypeVector(elementType, tree.size)
   }
 
-  def apply(tree: TypeArray)(elementType: Type): TypeArray = {
+  def apply(tree: TypeArray)(elementType: Type)(implicit cc: CompilerContext): TypeArray = {
     if (elementType eq tree.elementType) tree else TypeArray(elementType, tree.size)
-  }
-
-  def apply(tree: TypeStack)(elementType: Type): TypeStack = {
-    if (elementType eq tree.elementType) tree else TypeStack(elementType, tree.size)
   }
 
   def apply(tree: TypeSram)(elementType: Type)(implicit cc: CompilerContext): TypeSram = {
     if (elementType eq tree.elementType) tree else TypeSram(elementType, tree.size, tree.st)
+  }
+
+  def apply(tree: TypeStack)(elementType: Type): TypeStack = {
+    if (elementType eq tree.elementType) tree else TypeStack(elementType, tree.size)
   }
 
   def apply(tree: TypeStruct)(fieldTypes: List[Type]): TypeStruct = {

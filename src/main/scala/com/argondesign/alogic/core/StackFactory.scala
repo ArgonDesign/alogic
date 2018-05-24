@@ -214,7 +214,7 @@ object StackFactory {
   //         ptr = ptr - ~oreg_empty;
   //       } else {
   //         ptr = ptr + (~oreg_empty & ~oreg_full & push);
-  //         storage[ptr] = d;
+  //         storage.write(ptr, d);
   //         oreg_empty = oreg_empty & ~push;
   //         oreg_full = ptr == DEPTH - 1;
   //       }
@@ -304,7 +304,7 @@ object StackFactory {
               Some(
                 StmtBlock(List(
                   StmtAssign(ptrRef, ptrRef + zextPtrWidth(~oreRef & ~orfRef & pusRef)),
-                  StmtAssign(ExprIndex(stoRef, ptrRef), dRef),
+                  StmtExpr(ExprCall(stoRef select "write", List(ptrRef, dRef))),
                   StmtAssign(oreRef, oreRef & ~pusRef),
                   StmtAssign(orfRef, ExprBinary(ptrRef, "==", ExprInt(false, ptrWidth, depth - 1)))
                 ))

@@ -59,6 +59,7 @@ object Passes {
       LowerSrams(),
       LowerRegPorts,
       LowerStacks,
+      LowerArrays,
       LiftSrams,
       SplitStructsA,
       SplitStructsB,
@@ -69,7 +70,6 @@ object Passes {
       // Back-end
       ////////////////////////////////////////////////////////////////////////
       LowerVariables,
-      LowerArrays,
       LowerInterconnect,
       OptimizeClearOnStall,
       // TODO: LowerGo
