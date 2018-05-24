@@ -638,11 +638,12 @@ final class TyperSpec extends FreeSpec with AlogicTest {
           )
         } {
           stmt in {
-            xform(stmt.asTree[Stmt])
+            val result = xform(stmt.asTree[Stmt])
             if (msg.isEmpty) {
               cc.messages shouldBe empty
             } else {
               cc.messages.loneElement should beThe[Error](msg)
+              result shouldBe StmtError()
             }
           }
         }
@@ -681,11 +682,12 @@ final class TyperSpec extends FreeSpec with AlogicTest {
           )
         } {
           stmt in {
-            xform(stmt.asTree[Stmt])
+            val result = xform(stmt.asTree[Stmt])
             if (msg.isEmpty) {
               cc.messages shouldBe empty
             } else {
               cc.messages.loneElement should beThe[Error](msg)
+              result shouldBe StmtError()
             }
           }
         }

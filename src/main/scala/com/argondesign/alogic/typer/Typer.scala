@@ -247,7 +247,7 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       ////////////////////////////////////////////////////////////////////////////
 
       case StmtBlock(body) => {
-        checkBlock(body) map { ExprError() withLoc _ } getOrElse tree
+        checkBlock(body) map { StmtError() withLoc _ } getOrElse tree
       }
 
       case StmtIf(_, thenStmt, Some(elseStmt)) => {
