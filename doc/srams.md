@@ -13,10 +13,10 @@ SRAMs can be declared with the following syntax:
 
 ```
 // SRAM driven by registers
-sram ő <type> ő <depth> ő <identifier>;
+sram <type> <identifier>[<depth>];
 
 // SRAM driven combinatorially
-sram wire ő <type> ő <depth> ő <identifier>;
+sram wire <type> <identifier>[<depth>];
 ```
 
 The `type` of an SRAM determines the element type, and therefore the width,
@@ -27,7 +27,7 @@ A combinatorially driven 1024 entry deep SRAM of 16 bit unsigned integers
 called `storage` could be declared as:
 
 ```
-sram wire ő u16 ő 1024 ő storage;
+sram wire u16 storage[1024];
 ```
 
 ### SRAM semantics
@@ -201,7 +201,7 @@ fsm sfifo {
   const u32 MAXPTR = DEPTH - 1;
 
   // The actual storage SRAM
-  sram wire ő uint(WIDTH) ő DEPTH ő storage;
+  sram wire uint(WIDTH) storage[DEPTH];
 
   // Give priority to reads
   const bool RDPRI = true;

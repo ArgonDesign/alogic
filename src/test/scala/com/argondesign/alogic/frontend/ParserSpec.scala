@@ -396,13 +396,13 @@ final class ParserSpec extends FreeSpec with AlogicTest {
         }
 
         "sram" in {
-          "sram ő u8 ő 10 ő a".asTree[DeclIdent] shouldBe {
+          "sram u8 a[10]".asTree[DeclIdent] shouldBe {
             DeclIdent(Ident("a"), TypeSram(TypeUInt(Expr(8)), Expr(10), StorageTypeReg), None)
           }
         }
 
         "sram with attribute" in {
-          inside("(* foo *) sram ő u8 ő 10 ő a".asTree[DeclIdent]) {
+          inside("(* foo *) sram u8 a[10]".asTree[DeclIdent]) {
             case DeclIdent(ident @ Ident("a"),
                            TypeSram(TypeUInt(Expr(8)), Expr(10), StorageTypeReg),
                            None) =>
@@ -412,13 +412,13 @@ final class ParserSpec extends FreeSpec with AlogicTest {
         }
 
         "sram wire" in {
-          "sram wire ő u8 ő 10 ő a".asTree[DeclIdent] shouldBe {
+          "sram wire u8 a[10]".asTree[DeclIdent] shouldBe {
             DeclIdent(Ident("a"), TypeSram(TypeUInt(Expr(8)), Expr(10), StorageTypeWire), None)
           }
         }
 
         "sram wire with attribute" in {
-          inside("(* foo *) sram wire ő u8 ő 10 ő a".asTree[DeclIdent]) {
+          inside("(* foo *) sram wire u8 a[10]".asTree[DeclIdent]) {
             case DeclIdent(ident @ Ident("a"),
                            TypeSram(TypeUInt(Expr(8)), Expr(10), StorageTypeWire),
                            None) =>

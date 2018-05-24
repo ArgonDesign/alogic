@@ -150,7 +150,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         }
 
         "srams" in {
-          val tree = "sram ő bool ő 1 ő a;".asTree[Stmt]
+          val tree = "sram bool a[1];".asTree[Stmt]
 
           tree rewrite checker shouldBe StmtError()
 
