@@ -382,7 +382,6 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
           (decl, msg) <- List(
             ("i8 a", "variable"),
             ("i8 a[2]", "array"),
-            ("const i8 a = 2", "constant"),
             ("pipeline i8 a", "pipeline variable")
           )
         } {
