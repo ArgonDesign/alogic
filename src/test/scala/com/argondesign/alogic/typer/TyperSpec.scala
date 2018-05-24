@@ -530,7 +530,6 @@ final class TyperSpec extends FreeSpec with AlogicTest {
             ("c[0][0][0][0]", ""),
             ("c[0][0][0][0][0]", ""),
             ("c[0][0][0][0][0][0]", ""),
-            ("bool[0]", "Target of index is neither a packed value, nor a memory"),
             ("main[0]", "Target of index is neither a packed value, nor a memory"),
             ("a[bool]", "Index is of non-numeric type"),
             ("a[b[0]]", "Index is of non-numeric type")
@@ -539,8 +538,8 @@ final class TyperSpec extends FreeSpec with AlogicTest {
           text in {
             val root = s"""|fsm f {
                            |  (* unused *) out sync u2 a;
-                           |  (* unused *) int(1, 2, 3) b;
-                           |  (* unused *) int(1, 2, 3) c[4][5][6];
+                           |  (* unused *) i3[1][2] b;
+                           |  (* unused *) i3[1][2] c[4][5][6];
                            |  void main() {
                            |    ${text};
                            |    fence;
@@ -580,8 +579,8 @@ final class TyperSpec extends FreeSpec with AlogicTest {
           text in {
             val root = s"""|fsm f {
                            |  (* unused *) out sync u2 a;
-                           |  (* unused *) int(1, 2, 3) b;
-                           |  (* unused *) int(1, 2, 3) c[4][5][6];
+                           |  (* unused *) i3[1][2] b;
+                           |  (* unused *) i3[1][2] c[4][5][6];
                            |  void main() {
                            |    $$display("", ${text});
                            |    fence;
@@ -609,8 +608,8 @@ final class TyperSpec extends FreeSpec with AlogicTest {
           text in {
             val root = s"""|fsm f {
                            |  (* unused *) out sync u2 a;
-                           |  (* unused *) int(1, 2, 3) b;
-                           |  (* unused *) int(1, 2, 3) c[4][5][6];
+                           |  (* unused *) i3[1][2] b;
+                           |  (* unused *) i3[1][2] c[4][5][6];
                            |  void main() {
                            |    $$display("", ${text});
                            |    fence;

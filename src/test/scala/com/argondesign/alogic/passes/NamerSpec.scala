@@ -575,7 +575,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     val block = """|{
                    |  i8 a;
                    |  i8 b;
-                   |  int(a, b) c;
+                   |  int(b)[a] c;
                    |}""".asTree[Stmt]
 
     val tree = block rewrite namer
@@ -752,7 +752,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
   }
 
   it should "attach correct types to symbols - decl vec" in {
-    val entity = "fsm foo { int(3, 2, 4) a; }".asTree[Entity]
+    val entity = "fsm foo { i4[3][2] a; }".asTree[Entity]
     cc.addGlobalEntity(entity)
     val tree = entity rewrite namer
 

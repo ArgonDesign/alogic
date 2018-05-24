@@ -56,9 +56,9 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
               ("i8", "i8 a;", TypeSInt(8)),
               ("struct", "s a;", TypeStruct("s", List("b", "c"), List(TypeUInt(1), TypeSInt(8)))),
               ("typedef", "t a;", TypeUInt(4)),
-              ("uint(2,8)", "uint(2,8) a;", TypeVector(TypeUInt(8), 2)),
-              ("u8[2]", "u8 a[2];", TypeArray(TypeUInt(8), 2)),
-              ("u8[2][4]", "u8 a[2][4];", TypeArray(TypeArray(TypeUInt(8), 4), 2)),
+              ("u8[2]", "u8[2] a;", TypeVector(TypeUInt(8), 2)),
+              ("memory u8[2]", "u8 a[2];", TypeArray(TypeUInt(8), 2)),
+              ("memory u8[2][4]", "u8 a[2][4];", TypeArray(TypeArray(TypeUInt(8), 4), 2)),
               ("param u8", " param u8 a = 8'd2;", TypeUInt(8)),
               ("const u8", " const u8 a = 8'd2;", TypeUInt(8)),
               ("pipeline u8", "pipeline u8 a;", TypeUInt(8)),
@@ -108,10 +108,10 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
               ("bool", TypeUInt(1)),
               ("u2", TypeUInt(2)),
               ("uint(3)", TypeUInt(3)),
-              ("uint(6, 3)", TypeVector(TypeUInt(3), 6)),
+              ("uint(3)[6]", TypeVector(TypeUInt(3), 6)),
               ("i2", TypeSInt(2)),
               ("int(3)", TypeSInt(3)),
-              ("int(6, 3)", TypeVector(TypeSInt(3), 6)),
+              ("int(3)[6]", TypeVector(TypeSInt(3), 6)),
               ("void", TypeVoid),
               ("t /* typedef */", TypeUInt(4)),
               ("s /* struct */", TypeStruct("s", List("b", "c"), List(TypeUInt(1), TypeSInt(8))))
@@ -544,11 +544,11 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
           text in {
             val block = s"""|{
                             |  i7 a;
-                            |  int(2, 7) b;
-                            |  int(4, 2, 7) c;
+                            |  i7[2] b;
+                            |  i7[4][2] c;
                             |  i7 d[2];
                             |  i7 e[2][8];
-                            |  int(4, 2, 7) f[3][5][6];
+                            |  i7[4][2] f[3][5][6];
                             |  in i7 g;
                             |
                             |  a; b; c; d; e; f; g; // Suppress unused warnings

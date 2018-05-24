@@ -195,7 +195,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
           }
 
           "2D array of 2D vector" in {
-            "int(8,2) e[5][4]".asTree[DeclIdent] shouldBe {
+            "i2[8] e[5][4]".asTree[DeclIdent] shouldBe {
               DeclIdent(
                 Ident("e"),
                 TypeArray(TypeArray(TypeVector(TypeSInt(Expr(2)), Expr(8)), Expr(4)), Expr(5)),
@@ -451,31 +451,63 @@ final class ParserSpec extends FreeSpec with AlogicTest {
         }
 
         "parametrized integers" - {
-          "1D unsigned" in {
+          "unsigned" in {
             "uint(N)".asTree[Expr] shouldBe ExprType(TypeUInt(ExprIdent("N")))
           }
 
-          "2D unsigned" in {
-            "uint(8, 2)".asTree[Expr] shouldBe ExprType(TypeVector(TypeUInt(Expr(2)), Expr(8)))
+          "signed" in {
+            "int(N)".asTree[Expr] shouldBe ExprType(TypeSInt(ExprIdent("N")))
+          }
+        }
+
+        "vectors" - {
+          "1D u2" in {
+            "u2[8]".asTree[Expr] shouldBe ExprType(TypeVector(TypeUInt(Expr(2)), Expr(8)))
           }
 
-          "3D unsigned" in {
-            "uint(4, 8, 2)".asTree[Expr] shouldBe {
+          "2D u2" in {
+            "u2[4][8]".asTree[Expr] shouldBe {
               ExprType(TypeVector(TypeVector(TypeUInt(Expr(2)), Expr(8)), Expr(4)))
             }
           }
 
-          "1D signed" in {
-            "int(N)".asTree[Expr] shouldBe ExprType(TypeSInt(ExprIdent("N")))
+          "1D i2" in {
+            "i2[8]".asTree[Expr] shouldBe ExprType(TypeVector(TypeSInt(Expr(2)), Expr(8)))
           }
 
-          "2D signed" in {
-            "int(8, 2)".asTree[Expr] shouldBe ExprType(TypeVector(TypeSInt(Expr(2)), Expr(8)))
-          }
-
-          "3D signed" in {
-            "int(4, 8, 2)".asTree[Expr] shouldBe {
+          "2D i2" in {
+            "i2[4][8]".asTree[Expr] shouldBe {
               ExprType(TypeVector(TypeVector(TypeSInt(Expr(2)), Expr(8)), Expr(4)))
+            }
+          }
+
+          "1D uint(3)" in {
+            "uint(3)[8]".asTree[Expr] shouldBe ExprType(TypeVector(TypeUInt(Expr(3)), Expr(8)))
+          }
+
+          "2D uint(3)" in {
+            "uint(3)[4][8]".asTree[Expr] shouldBe {
+              ExprType(TypeVector(TypeVector(TypeUInt(Expr(3)), Expr(8)), Expr(4)))
+            }
+          }
+
+          "1D int(3)" in {
+            "int(3)[8]".asTree[Expr] shouldBe ExprType(TypeVector(TypeSInt(Expr(3)), Expr(8)))
+          }
+
+          "2D int(3)" in {
+            "int(3)[4][8]".asTree[Expr] shouldBe {
+              ExprType(TypeVector(TypeVector(TypeSInt(Expr(3)), Expr(8)), Expr(4)))
+            }
+          }
+
+          "1D bool" in {
+            "bool[8]".asTree[Expr] shouldBe ExprType(TypeVector(TypeUInt(Expr(1)), Expr(8)))
+          }
+
+          "2D bool" in {
+            "bool[4][8]".asTree[Expr] shouldBe {
+              ExprType(TypeVector(TypeVector(TypeUInt(Expr(1)), Expr(8)), Expr(4)))
             }
           }
         }

@@ -48,13 +48,14 @@ field: kind IDENTIFIER SEMICOLON;
 ///////////////////////////////////////////////////////////////////////////////
 
 kind
-  : 'bool'                    # TypeBool
-  | INTTYPE                   # TypeInt
-  | UINTTYPE                  # TypeUInt
-  | 'int'  '(' commaexpr ')'  # TypeIntV
-  | 'uint' '(' commaexpr ')'  # TypeUIntV
-  | IDENTIFIER                # TypeIdent
-  | 'void'                    # TypeVoid
+  : kind ('[' expr ']')+ # TypeVec
+  | 'bool'               # TypeBool
+  | INTTYPE              # TypeInt
+  | UINTTYPE             # TypeUInt
+  | 'int'  '(' expr ')'  # TypeIntN
+  | 'uint' '(' expr ')'  # TypeUIntN
+  | IDENTIFIER           # TypeIdent
+  | 'void'               # TypeVoid
   ;
 
 ///////////////////////////////////////////////////////////////////////////////

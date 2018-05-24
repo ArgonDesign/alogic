@@ -171,7 +171,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         }
 
         "vectors" in {
-          val tree = "int(2, 3) a;".asTree[Stmt]
+          val tree = "i3[2] a;".asTree[Stmt]
 
           tree rewrite checker should not be StmtError()
 
@@ -596,7 +596,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
             ("i8 a = 0", ""),
             ("param i8 a = 0", ""),
             ("const i8 a = 0", ""),
-            ("int(8, 2) a = 0", ""),
+            ("i2[8] a = 0", ""),
             ("s a = 0", ""),
             ("i8 a[2] = 0", "Array"),
             ("in i8 a = 0", "Input port"),
@@ -630,7 +630,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
             ("i8 a ", ""),
             ("param i8 a", "Parameter"),
             ("const i8 a", "Constant"),
-            ("int(8, 2) a", ""),
+            ("i2[8] a", ""),
             ("s a", ""),
             ("i8 a[2]", ""),
             ("in i8 a", ""),
