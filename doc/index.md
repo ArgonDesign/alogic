@@ -25,8 +25,5 @@ concepts in Verilog are provided where appropriate.
 - [Pipelines](pipelines.md)
 - [Verilog interoperability]()
 - [Preprocessor]()
-- [List of reserved words]()
-- [Formal grammar]()
-
-## Roadmap
- TODO
+- [List of keywords](../src/main/antlr4/AlogicLexer.g4#L133)
+- [Formal grammar](../src/main/antlr4/AlogicParser.g4#L27)
