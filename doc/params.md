@@ -1,54 +1,9 @@
-# Parameters and constants
-
-### Entity Parameters
-
-Entities can declare typed parameters, introduced with the `param` keyword,
-which can be specified at instantiation time. Parameters must have a default
-value:
-
-```
-fsm foo {
-  param u8 PARAM_BYTE = 8'h7f;
-}
-```
-
-Port declarations can depend on parameters:
-
-```
-fsm bar {
-  param i32 WIDTH = 8;
-  in sync uint(WIDTH) p_in;
-  out sync uint(2*WIDTH) p_out;
-  ...
-}
-```
-
-Parameters translate directly into Verilog parameters, so the above definition
-of `fsm bar` would compile into a Verilog module with the following interface:
-
-```verilog
-module bar #(
-  parameter signed [31:0] WIDTH = 8
-) (
-  input wire clk,
-  input wire rst_n,
-
-  input wire [WIDTH-1:0] p_in,
-  input wire p_in_valid,
-
-  output wire [(2*WIDTH)-1:0] p_out,
-  output wire p_out_valid
-);
- ...
-endmodule
-```
+# Constants and Parameters
 
 ### Constants
 
 Constants are local aliases for values introduced with the `const` keyword. They
-are stronger than text macros by having an associated type and hence bit width.
-They translate directly into Verilog _localparam_ constructs. Port declarations
-cannot depend on constants.
+are stronger than text macros by having an associated type and hence bit width:
 
 ```
 fsm baz {
@@ -57,7 +12,7 @@ fsm baz {
 }
 ```
 
-Would translate into:
+Constants are emitted in the generated Verilog as _localparam_ decalartions:
 
 ```verilog
 module baz (
@@ -69,3 +24,60 @@ module baz (
   ...
 endmodule
 ```
+
+Note however, that even though `const` declarations are emitted in the target
+language, the compiler will inline the value of `const` declarations where it
+deems necessary, especially in declarations of signals.
+
+### Entity Parameters
+
+Entities can declare typed parameters, introduced with the `param` keyword.
+Parameters must have a default value, which can be overridden at instantiation
+time:
+
+```
+fsm foo {
+  param u8 MARKER = 8'h7f;
+}
+
+network bar {
+  foo_i = new foo(MARKER = 8'hf7);
+}
+```
+
+Alogic performs parameter specialization, meaning the compiler will emit
+specific implementations of a parametrized module, based on the particular
+parameter values it is instantiated with. This means that Verilog modules output
+by the Alogic compiler will never contain _parameter_ declarations. Specialized
+parameters are emitted as _localparam_ declarations in the output Verilog. For
+the above example, the compiler would emit the following specialization of
+entity `foo`:
+
+```verilog
+module foo__MARKER_247 (
+  input wire clk,
+  input wire rst_n,
+  ...
+);
+  localparam [7:0] MARKER = 8'd247;
+  ...
+endmodule
+```
+
+One benefit of parameter specialization is that as opposed to Verilog, port
+declarations in Alogic can depend on `const` values:
+
+```
+fsm bar {
+  param u32 WIDTH_L2 = 8;
+  const u32 WIDTH = 1<<WIDTH_L2;
+  in sync uint(WIDTH) p_in;
+  out sync uint(2*WIDTH) p_out;
+  ...
+}
+```
+
+Further benefits of parameter specialization include the possibility of further
+compile time optimization of the specialized entities and elimination of Verilog
+instance based code coverage holes arising from use of constant parameter values
+in expressions.
