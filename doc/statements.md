@@ -10,17 +10,18 @@ control statements. This distinction is used to determine control unit
 boundaries for the purposes of determining which statements execute together in
 a single clock cycle. Let it suffice for now that a linear sequence of
 combinatorial statements, followed by a single control statement is executed in
-a single clock cycle. See the section on [control units](control.md) for
-details.
+a single clock cycle. See the section on [control flow conversion](control.md)
+for details.
 
 Simple statements that do not contain nested statements can be lexically classed
-either as control statements of combinatorial statements. Compound statements
+either as control statements or combinatorial statements. Compound statements
 that do contain other statements can be either combinatorial statements, if they
 only contain other combinatorial statements, or control statements if they
 contain a mix of combinatorial and control statements. If a compound statement
 contains a mix of combinatorial and control statements, then the last nested
-statement must be a control statement. FSM function bodies must end with a
-control statement.
+statement must be a control statement.
+
+FSM function bodies must end with a control statement.
 
 ## Simple statements
 
@@ -327,6 +328,39 @@ Case clauses can contain arbitrarily complex statements using a block:
     default: {
       // Otherwise
     }
+  }
+```
+
+Similarly to the control `if` statement without an `else` clause, an implicit
+`fence` statement is inserted by the compiler if the `default` clause is omitted
+from a control `case` statement:
+
+```
+  case (foo) {
+    bar: {
+      a++;
+      fence;
+    }
+    baz: {
+      b++;
+      fence;
+    }
+  }
+```
+
+is compiled as:
+
+```
+  case (foo) {
+    bar: {
+      a++;
+      fence;
+    }
+    baz: {
+      b++;
+      fence;
+    }
+    default: fence;
   }
 ```
 
