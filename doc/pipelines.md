@@ -1,3 +1,9 @@
+<p align="center">
+<a href="networks.md">Previous</a> |
+<a href="index.md">Index</a> |
+<a href="memories.md">Next</a>
+</p>
+
 # Pipelines
 
 ### Networks for describing pipelines
@@ -260,3 +266,9 @@ multiple states, perform function calls, or declare local storage and further
 explicit ports. The same way as any other FSM. The `read;` and
 `write;` statements can be invoked in multiple states, making more complex
 pipelines possible.
+
+<p align="center">
+<a href="networks.md">Previous</a> |
+<a href="index.md">Index</a> |
+<a href="memories.md">Next</a>
+</p>

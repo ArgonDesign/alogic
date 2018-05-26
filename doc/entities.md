@@ -1,3 +1,9 @@
+<p align="center">
+<a href="compilation.md">Previous</a> |
+<a href="index.md">Index</a> |
+<a href="types.md">Next</a>
+</p>
+
 # Design entities
 
 ### Fundamental units
@@ -96,3 +102,9 @@ Note also that Alogic performs [parameter
 specialization](params.md#entity-parameters), which will cause additional
 suffixes to be added to the name of the output Verilog module corresponding to
 the design entity.
+
+<p align="center">
+<a href="compilation.md">Previous</a> |
+<a href="index.md">Index</a> |
+<a href="types.md">Next</a>
+</p>

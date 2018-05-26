@@ -1,3 +1,9 @@
+<p align="center">
+<a href="concepts.md">Previous</a> |
+<a href="index.md">Index</a> |
+<a href="entities.md">Next</a>
+</p>
+
 # Compilation model
 
 ### Alogic source files
@@ -102,3 +108,9 @@ corresponding Alogic source should be relatively simple in most cases. Where
 there is ambiguity due to reusing variable names in disjoint lexical scopes, the
 compiler tries to emit sensibly differentiated names, for example by appending
 the source line number to variable instances.
+
+<p align="center">
+<a href="concepts.md">Previous</a> |
+<a href="index.md">Index</a> |
+<a href="entities.md">Next</a>
+</p>

@@ -1,3 +1,9 @@
+<p align="center">
+<a href="builtins.md">Previous</a> |
+<a href="index.md">Index</a> |
+<a href="preproc.md">Next</a>
+</p>
+
 # Interoperability with low level HDLs
 
 The aim of Alogic is not to be a replacement for a lower level HDL. There are
@@ -458,3 +464,9 @@ network inc2 {
 The example is deliberately simple, but the wrapped module can be arbitrarily
 complex, its interface signals simply need to be mapped to Alogic ports by the
 designer.
+
+<p align="center">
+<a href="builtins.md">Previous</a> |
+<a href="index.md">Index</a> |
+<a href="preproc.md">Next</a>
+</p>

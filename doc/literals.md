@@ -1,3 +1,9 @@
+<p align="center">
+<a href="types.md">Previous</a> |
+<a href="index.md">Index</a> |
+<a href="ports.md">Next</a>
+</p>
+
 # Literal values
 
 ### Integer literals
@@ -205,3 +211,9 @@ e.g. `$display`:
 ```
 $display("Help!");
 ```
+
+<p align="center">
+<a href="types.md">Previous</a> |
+<a href="index.md">Index</a> |
+<a href="ports.md">Next</a>
+</p>

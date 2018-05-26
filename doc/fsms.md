@@ -1,3 +1,9 @@
+<p align="center">
+<a href="params.md">Previous</a> |
+<a href="index.md">Index</a> |
+<a href="statements.md">Next</a>
+</p>
+
 # Finite State Machines
 
 ### FSMs as fundamental building blocks
@@ -252,3 +258,9 @@ dependent on local state. In the above example, as variable `s` is always
 assigned at the beginning of every cycle (it is assigned in the `fence` block
 and is not under a conditional), it can be implemented as a combinatorial
 signal, with no flip-flop allocated for storing it's value.
+
+<p align="center">
+<a href="params.md">Previous</a> |
+<a href="index.md">Index</a> |
+<a href="statements.md">Next</a>
+</p>

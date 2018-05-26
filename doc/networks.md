@@ -1,3 +1,9 @@
+<p align="center">
+<a href="expr.md">Previous</a> |
+<a href="index.md">Index</a> |
+<a href="pipelines.md">Next</a>
+</p>
+
 # Networks
 
 ### Networks for defining a design hierarchy
@@ -202,3 +208,9 @@ network foo {
 
 `param` and `const` values declared in the enclosing entity and referenced in a
 nested entity will be copied into the nested entity.
+
+<p align="center">
+<a href="expr.md">Previous</a> |
+<a href="index.md">Index</a> |
+<a href="pipelines.md">Next</a>
+</p>

@@ -1,3 +1,9 @@
+<p align="center">
+<a href="entities.md">Previous</a> |
+<a href="index.md">Index</a> |
+<a href="literals.md">Next</a>
+</p>
+
 # Data types and simple variables
 
 ### About typing
@@ -175,3 +181,9 @@ An example of mappings using the definitions from above is as follows:
                                              reg [7:0] f_height;</code></td>
   </tr>
 </table>
+
+<p align="center">
+<a href="entities.md">Previous</a> |
+<a href="index.md">Index</a> |
+<a href="literals.md">Next</a>
+</p>

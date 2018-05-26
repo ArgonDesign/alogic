@@ -1,3 +1,9 @@
+<p align="center">
+<a href="srams.md">Previous</a> |
+<a href="index.md">Index</a> |
+<a href="interop.md">Next</a>
+</p>
+
 # Built-in functions
 
 Alogic provides a set of built-in functions, this section is a comprehensive
@@ -134,3 +140,9 @@ inserting the bit value given as the first argument into the MSBs of the result.
 The second argument must be a constant expression. The third argument can be any
 packed type with a width no greater than N. The result is unsigned if the second
 argument is unsigned, and the result is signed if the second argument is signed.
+
+<p align="center">
+<a href="srams.md">Previous</a> |
+<a href="index.md">Index</a> |
+<a href="interop.md">Next</a>
+</p>

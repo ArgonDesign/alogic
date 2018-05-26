@@ -1,3 +1,9 @@
+<p align="center">
+<a href="control.md">Previous</a> |
+<a href="index.md">Index</a> |
+<a href="networks.md">Next</a>
+</p>
+
 # Expressions
 
 Alogic supports the same kind of expressions, using the same syntax as Verilog,
@@ -99,3 +105,9 @@ u8 a = @zx(8, b[1:0]);
 ### Operator precedence
 
 The precedence of Alogic operators is the same as in the Verilog language.
+
+<p align="center">
+<a href="control.md">Previous</a> |
+<a href="index.md">Index</a> |
+<a href="networks.md">Next</a>
+</p>

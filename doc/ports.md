@@ -1,3 +1,9 @@
+<p align="center">
+<a href="literals.md">Previous</a> |
+<a href="index.md">Index</a> |
+<a href="params.md">Next</a>
+</p>
+
 # Ports
 
 ### Communication between entities
@@ -594,3 +600,8 @@ output slices instantiated for the output port:
 | `out`     | `sync ready` | `.full`         | bool         | True if and only if all output slices are occupied                              |
 | `out`     | `sync ready` | `.space`        | bool[N]      | Indicating occupancy of each output slice                                       |
 
+<p align="center">
+<a href="literals.md">Previous</a> |
+<a href="index.md">Index</a> |
+<a href="params.md">Next</a>
+</p>

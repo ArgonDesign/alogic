@@ -1,3 +1,9 @@
+<p align="center">
+<a href="ports.md">Previous</a> |
+<a href="index.md">Index</a> |
+<a href="fsms.md">Next</a>
+</p>
+
 # Constants and Parameters
 
 ### Constants
@@ -81,3 +87,9 @@ Further benefits of parameter specialization include the possibility of further
 compile time optimization of the specialized entities and elimination of Verilog
 instance based code coverage holes arising from use of constant parameter values
 in expressions.
+
+<p align="center">
+<a href="ports.md">Previous</a> |
+<a href="index.md">Index</a> |
+<a href="fsms.md">Next</a>
+</p>

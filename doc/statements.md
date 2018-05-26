@@ -1,3 +1,9 @@
+<p align="center">
+<a href="fsms.md">Previous</a> |
+<a href="index.md">Index</a> |
+<a href="control.md">Next</a>
+</p>
+
 # FSM statements
 
 This is a comprehensive reference of all statements available in `fsm`
@@ -604,3 +610,9 @@ This is equivalent to:
     } while (i);
   }
 ```
+
+<p align="center">
+<a href="fsms.md">Previous</a> |
+<a href="index.md">Index</a> |
+<a href="control.md">Next</a>
+</p>

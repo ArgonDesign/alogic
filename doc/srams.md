@@ -1,3 +1,9 @@
+<p align="center">
+<a href="memories.md">Previous</a> |
+<a href="index.md">Index</a> |
+<a href="builtins.md">Next</a>
+</p>
+
 # SRAMs
 
 SRAMs are a commonly used building block. To aid designer productivity, Alogic
@@ -313,3 +319,9 @@ compiler is invoked on the testbench, the SRAM instances will be lifted past
 the FIFO, and put down in the testbench itself, as the testbench is the lowest
 entity in the hierarchy that does not have the `liftsrams` attribute, nor is it
 instantiated by any entities with the `liftsrams` attribute.
+
+<p align="center">
+<a href="memories.md">Previous</a> |
+<a href="index.md">Index</a> |
+<a href="builtins.md">Next</a>
+</p>

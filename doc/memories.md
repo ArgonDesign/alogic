@@ -1,3 +1,9 @@
+<p align="center">
+<a href="pipelines.md">Previous</a> |
+<a href="index.md">Index</a> |
+<a href="srams.md">Next</a>
+</p>
+
 # Distributed memories
 
 Alogic has native language support for working with distributed memories. Alogic
@@ -144,3 +150,9 @@ fsm dfifo {
   }
 }
 ```
+
+<p align="center">
+<a href="pipelines.md">Previous</a> |
+<a href="index.md">Index</a> |
+<a href="srams.md">Next</a>
+</p>

@@ -1,9 +1,8 @@
 # Alogic Reference
 
 This documentation intends to describe both the Alogic language and the Alogic
-compiler which translates the Alogic language to Verilog. A goal of Alogic is to
-be smoothly interoperable with Verilog, therefore analogies or equivalences to
-concepts in Verilog are provided where appropriate.
+compiler which translates the Alogic language to Verilog. The sections can be
+read in linear order to provide an introduction to Alogic.
 
 ## Sections
 
@@ -18,11 +17,11 @@ concepts in Verilog are provided where appropriate.
 - [Statements](statements.md)
 - [Control flow conversion](control.md)
 - [Expressions](expr.md)
+- [Networks](networks.md)
+- [Pipelines](pipelines.md)
 - [Distributed memories](memories.md)
 - [SRAMs](srams.md)
 - [Built-in functions](builtins.md)
-- [Networks](networks.md)
-- [Pipelines](pipelines.md)
 - [Verilog interoperability](interop.md)
 - [Preprocessor](preproc.md)
 - [List of keywords](../src/main/antlr4/AlogicLexer.g4#L133)

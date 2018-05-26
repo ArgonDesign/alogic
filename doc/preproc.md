@@ -1,3 +1,9 @@
+<p align="center">
+<a href="interop.md">Previous</a> |
+<a href="index.md">Index</a> |
+Next
+</p>
+
 # Preprocessor
 
 Alogic implements a preprocessor which uses the syntax of the C preprocessor,
@@ -57,3 +63,9 @@ it has been pre-defined on teh compiler command line.
 
 The macro name following `#if` must be defined, and evaluate to a simple
 integer. `#if` is true if the subject macro evaluates to a non-zero value.
+
+<p align="center">
+<a href="interop.md">Previous</a> |
+<a href="index.md">Index</a> |
+Next
+</p>

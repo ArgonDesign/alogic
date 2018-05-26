@@ -1,3 +1,9 @@
+<p align="center">
+Previous |
+<a href="index.md">Index</a> |
+<a href="compilation.md">Next</a>
+</p>
+
 # Basic concepts and examples
 
 ### Building blocks
@@ -61,3 +67,9 @@ fsm add {
   }
 }
 ```
+
+<p align="center">
+Previous |
+<a href="index.md">Index</a> |
+<a href="compilation.md">Next</a>
+</p>

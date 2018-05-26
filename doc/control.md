@@ -1,3 +1,9 @@
+<p align="center">
+<a href="statements.md">Previous</a> |
+<a href="index.md">Index</a> |
+<a href="expr.md">Next</a>
+</p>
+
 # Control flow conversion
 
 One of the major features of Alogic is the ability to describe the behaviour of
@@ -348,3 +354,9 @@ void main() {
 For front-testing loops, this optimization is never possible, as they require
 combinatorial statements before the loop header in order to perform conditional
 entry.
+
+<p align="center">
+<a href="statements.md">Previous</a> |
+<a href="index.md">Index</a> |
+<a href="expr.md">Next</a>
+</p>
