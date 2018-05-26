@@ -230,7 +230,7 @@ final class MakeVerilog(
         }
 
         if (hasArrays) {
-          body.emitBlock(1, "Array storage") {
+          body.emitBlock(1, "Distributed memory section") {
             for {
               Decl(qSymbol, _) <- decls
               (weSymbol, waSymbol, wdSymbol) <- qSymbol.attr.memory.get

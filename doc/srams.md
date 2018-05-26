@@ -90,7 +90,7 @@ To write the value `16'h0123` to address `87` in  the `storage` SRAM
 declared earlier, one can use:
 
 ```
-  storage.write(87, 16'h0123);
+  storage.write(10'd87, 16'h0123);
 ```
 
 Given that the read data of an SRAM is registered, reading data from SRAMs
@@ -109,7 +109,7 @@ A simple read from the `storage` SRAM could be performed like this:
 
 ```
   // Issue read access
-  storage.read(87);
+  storage.read(10'd87);
   fence;
   // Given that storage was declared as combinatorially driven, stroage.rdata
   // is available on the following cycle. x should now be incremented by

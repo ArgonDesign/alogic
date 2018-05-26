@@ -18,7 +18,7 @@ concepts in Verilog are provided where appropriate.
 - [Statements](statements.md)
 - [Control units](control.md)
 - [Expressions]()
-- [Arrays]()
+- [Distributed memories](memories.md)
 - [SRAMs](srams.md)
 - [Built-in functions]()
 - [Networks](networks.md)

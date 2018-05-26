@@ -1,7 +1,7 @@
 # FSM statements
 
-functions.
 This is a comprehensive reference of all statements available in `fsm`
+functions.
 
 ## Combinatorial vs Control statements
 
