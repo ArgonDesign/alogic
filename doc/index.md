@@ -20,7 +20,7 @@ concepts in Verilog are provided where appropriate.
 - [Expressions]()
 - [Distributed memories](memories.md)
 - [SRAMs](srams.md)
-- [Built-in functions]()
+- [Built-in functions](builtins.md)
 - [Networks](networks.md)
 - [Pipelines](pipelines.md)
 - [Verilog interoperability]()
