@@ -17,7 +17,7 @@ concepts in Verilog are provided where appropriate.
 - [Finite State Machines](fsms.md)
 - [Statements](statements.md)
 - [Control flow conversion](control.md)
-- [Expressions]()
+- [Expressions](expr.md)
 - [Distributed memories](memories.md)
 - [SRAMs](srams.md)
 - [Built-in functions](builtins.md)
