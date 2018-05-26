@@ -23,7 +23,7 @@ concepts in Verilog are provided where appropriate.
 - [Built-in functions](builtins.md)
 - [Networks](networks.md)
 - [Pipelines](pipelines.md)
-- [Verilog interoperability]()
+- [Verilog interoperability](interop.md)
 - [Preprocessor]()
 - [List of keywords](../src/main/antlr4/AlogicLexer.g4#L133)
 - [Formal grammar](../src/main/antlr4/AlogicParser.g4#L27)

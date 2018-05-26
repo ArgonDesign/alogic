@@ -42,7 +42,7 @@ transformations, at the end of which a set of output files are written into
 the output directory specified with the `-o` option.
 
 As an example, in order to compile a design, with a top level entity called
-`foo`, and souce files located in directory `src`, one can invoke the compiler
+`foo`, and source files located in directory `src`, one can invoke the compiler
 as:
 
   alogic -o rtl -y src foo
@@ -77,29 +77,28 @@ The only reset style currently supported by the compiler is active low
 asynchronous reset. The name of the reset signal in the emitted Verilog is
 `rst_n`.
 
-Note that Alogic supports including arbitrary
-[verbatim Verilog](interop.md#verbatim), in any design entity. These verbatim
-contents are of course not required to follow the restrictions about clocking
-and reset described above.
+Note that Alogic supports including arbitrary target language source text in any
+design entity using [verbatim blocks](interop.md#verbatim-blocks). These
+verbatim contents are of course not required to follow the restrictions about
+clocking and reset described above.
 
 ### Integration with other Verilog sources and testbenches
 
 The aim of Alogic is not to replace Verilog as the sole design language. There
 are cases where a direct Verilog description of a component is more appropriate,
-and therefore interfacing modules synthesized from an Alogic language description
-with other Verilog modules should be straight forward. Every Alogic port on a
-design entity has a well defined translation into usually multiple ports on the
-corresponding generated Verilog module. These translations and other Verilog
-interoperability considerations are described in their own page on
-[Verilog interoperability](interop.md)
+and therefore interfacing modules synthesized from an Alogic language
+description with other Verilog modules should be straight forward. Every Alogic
+port on a design entity has a well defined translation into usually multiple
+interface signals on the corresponding generated Verilog module. These
+translations and other Verilog interoperability considerations are described in
+their own page on [Verilog interoperability](interop.md)
 
 ### Debugging
 
 During development, the designer runs RTL simulations of the generated Verilog.
 Given the medium level of abstraction between Alogic and the corresponding
 Verilog, mapping issues back from the Verilog source locations to the
-corresponding Alogic source should be relatively simple in most cases.
-Translations of various design entities are discussed in their own
-documentation. Where there is ambiguity due to reusing variable names in
-disjoint lexical scopes, the compiler tries to emit sensibly differentiated
-names, for example by appending the source line number to variable instances.
+corresponding Alogic source should be relatively simple in most cases. Where
+there is ambiguity due to reusing variable names in disjoint lexical scopes, the
+compiler tries to emit sensibly differentiated names, for example by appending
+the source line number to variable instances.

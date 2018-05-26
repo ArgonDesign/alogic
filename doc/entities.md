@@ -10,7 +10,7 @@ of design entities in the Alogic language:
 
 - [Finite State Machines](fsms.md) (FSMs)
 - [Networks](networks.md)
-- [Verbatim Verilog entities](interop.md#verbatim)
+- [Verbatim entities](interop.md#verbatim-entities)
 
 Of these, FSMs and Networks are fundamental types used to construct a design
 hierarchy. If one thinks of a design hierarchy as a tree of instantiated
@@ -29,13 +29,13 @@ to facilitate integration with other Alogic language modules.
 ### Entity definitions
 
 Each Alogic source file contains the definition of a design entity. FSM
-definitions can be nested inside Networks (see [pipelines](pipelines.md)),
-but otherwise a single source file must contain a single entity definition at
-the root file scope.
+definitions can be nested inside Networks as described in the documentation on
+[networks](networks.md#nested-fsms), but otherwise a single source file must
+contain a single entity definition at the root file scope.
 
-Entity definitions are introduced with one of the entity keywords `fsm`,
-`network`, or `verilog` to define their type, which is followed by the name of
-the entity, and the body of the entity in curly braces:
+Entity definitions are introduced with one of the entity header terms `fsm`,
+`network`, or `verbatim entity` to define their type, which is followed by the
+name of the entity, and the body of the entity in curly braces:
 
 ```
 fsm foo {
@@ -86,7 +86,13 @@ endmodule
 
 If the compiler needs to emit multiple Verilog modules to synthesize a design
 entity, then all other modules will be instantiated under this unique module
-corresponding to the design entity itself, and will have a module name (and
-file name) of the form `<entity name>_<suffix>`. As in the above example,
-additional modules would be emitted as `spam_<suffix>` into correspondingly
-named `.v` files.
+corresponding to the design entity itself, and will have a module name (and file
+name) of the form `<entity name><sep><suffix>`, where _\<sep>_ is the separator
+string provided by the `--sep` compiler option, which defaults to `__`. In the
+above example, assuming the default separator string is used, additional modules
+would be emitted as `spam__<suffix>` into correspondingly named `.v` files.
+
+Note also that Alogic performs [parameter
+specialization](params.md#entity-parameters), which will cause additional
+suffixes to be added to the name of the output Verilog module corresponding to
+the design entity.
