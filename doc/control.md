@@ -69,8 +69,10 @@ context of other statements.
 
 ### Which statements executes together in a single cycle
 
-Working out which statements execute together in a single cycle is simple using
-only a small number of rules. These are demonstrated through examples here.
+Statements that executes with the same clock cycle are referred to as a control
+unit. Working out which statements belong to the same control unit is simple
+using only a small number of rules. These are demonstrated through examples
+here.
 
 #### Simple straight-line statements
 

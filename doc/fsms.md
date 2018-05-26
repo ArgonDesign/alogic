@@ -90,8 +90,8 @@ unit boundaries are, but we will mention the `fence` statement to aid with the
 examples. For now, let it suffice to say that the `fence` statement is used to
 delimit control unit boundaries in straight line code, so any combinatorial
 statement between 2 `fence` statements executes in one clock cycle. For the
-details of where control unit boundaries are, see the section on [control
-units](control.md).
+details of where control unit boundaries are, see the section on [control flow
+conversion](control.md).
 
 Under various circumstances, the FSM can stall. When a stall occurs, no internal
 state of the FSM is updated. Internal state includes.
