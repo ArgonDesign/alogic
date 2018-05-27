@@ -26,3 +26,9 @@ read in linear order to provide an introduction to Alogic.
 - [Preprocessor](preproc.md)
 - [List of keywords](../src/main/antlr4/AlogicLexer.g4#L133)
 - [Formal grammar](../src/main/antlr4/AlogicParser.g4#L27)
+
+<p align="center">
+Previous |
+Index |
+<a href="concepts.md">Next</a>
+</p>
