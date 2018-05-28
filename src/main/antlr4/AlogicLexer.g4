@@ -167,6 +167,7 @@ STALL   : 'stall' ;
 COMB    : 'comb'  ;
 STACK   : 'stack' ;
 SRAM    : 'sram' ;
+REG     : 'reg' ;
 
 SYNC        : 'sync';
 SYNC_READY  : 'sync' (WS|CMT)* 'ready';
