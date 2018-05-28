@@ -503,6 +503,43 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
       }
     }
 
+    "slice into sized integer literals" - {
+      for {
+        (text, result, msg) <- List(
+          // signed operand
+          ("4'sb0101[1 :0]", ExprInt(false, 2, 1), ""),
+          ("4'sb0101[2 :0]", ExprInt(false, 3, 5), ""),
+          ("4'sb0101[3 :0]", ExprInt(false, 4, 5), ""),
+          ("4'sb0101[1+:1]", ExprInt(false, 1, 0), ""),
+          ("4'sb0101[1+:2]", ExprInt(false, 2, 2), ""),
+          ("4'sb0101[1+:3]", ExprInt(false, 3, 2), ""),
+          ("4'sb0101[3-:1]", ExprInt(false, 1, 0), ""),
+          ("4'sb0101[3-:2]", ExprInt(false, 2, 1), ""),
+          ("4'sb0101[3-:3]", ExprInt(false, 3, 2), ""),
+          // unsigned operand
+          ("4'b0101[1 :0]", ExprInt(false, 2, 1), ""),
+          ("4'b0101[2 :0]", ExprInt(false, 3, 5), ""),
+          ("4'b0101[3 :0]", ExprInt(false, 4, 5), ""),
+          ("4'b0101[1+:1]", ExprInt(false, 1, 0), ""),
+          ("4'b0101[1+:2]", ExprInt(false, 2, 2), ""),
+          ("4'b0101[1+:3]", ExprInt(false, 3, 2), ""),
+          ("4'b0101[3-:1]", ExprInt(false, 1, 0), ""),
+          ("4'b0101[3-:2]", ExprInt(false, 2, 1), ""),
+          ("4'b0101[3-:3]", ExprInt(false, 3, 2), "")
+        )
+      } {
+        val expr = text.trim
+        expr in {
+          expr.asTree[Expr] rewrite fold shouldBe result
+          if (msg.isEmpty) {
+            cc.messages shouldBe empty
+          } else {
+            cc.messages.loneElement should beThe[Error](msg)
+          }
+        }
+      }
+    }
+
     "index over a slice" - {
       for {
         (text, result, msg) <- List(
@@ -542,6 +579,53 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
           ("a[4 -: 1]", ExprIndex(ExprIdent("a"), Expr(4)), ""),
           ("a[3 -: 1]", ExprIndex(ExprIdent("a"), Expr(3)), ""),
           ("a[2:1]", ExprSlice(ExprIdent("a"), Expr(2), ":", Expr(1)), "")
+        )
+      } {
+        val expr = text.trim
+        expr in {
+          expr.asTree[Expr] rewrite fold shouldBe result
+          if (msg.isEmpty) {
+            cc.messages shouldBe empty
+          } else {
+            cc.messages.loneElement should beThe[Error](msg)
+          }
+        }
+      }
+    }
+
+    "concatenation of sized integer literals" - {
+      for {
+        (text, result, msg) <- List(
+          ("{4'd2, 4'd2}", ExprInt(false, 8, 34), ""),
+          ("{4'd2, 4'sd2}", ExprInt(false, 8, 34), ""),
+          ("{4'sd2, 4'd2}", ExprInt(false, 8, 34), ""),
+          ("{4'sd2, 4'sd2}", ExprInt(false, 8, 34), ""),
+          ("{1'b1, 2'b11, 3'b111, 4'b1111}", ExprInt(false, 10, 1023), ""),
+          ("{-1'sd1, -2'sd1, -3'sd1, -4'sd1}", ExprInt(false, 10, 1023), "")
+        )
+      } {
+        val expr = text.trim
+        expr in {
+          expr.asTree[Expr] rewrite fold shouldBe result
+          if (msg.isEmpty) {
+            cc.messages shouldBe empty
+          } else {
+            cc.messages.loneElement should beThe[Error](msg)
+          }
+        }
+      }
+    }
+
+    "repetition of sized integer literals" - {
+      for {
+        (text, result, msg) <- List(
+          ("{4{1'b1}}", ExprInt(false, 4, 15), ""),
+          ("{4{1'b0}}", ExprInt(false, 4, 0), ""),
+          ("{4{-1'sb1}}", ExprInt(false, 4, 15), ""),
+          ("{2{2'b1}}", ExprInt(false, 4, 5), ""),
+          ("{2{2'b0}}", ExprInt(false, 4, 0), ""),
+          ("{2{-4'sb1}}", ExprInt(false, 8, 255), ""),
+          ("{4{2'b10}}", ExprInt(false, 8, 170), "")
         )
       } {
         val expr = text.trim

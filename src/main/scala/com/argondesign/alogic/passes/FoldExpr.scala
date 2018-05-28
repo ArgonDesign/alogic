@@ -21,6 +21,7 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.TreeInTypeTransformer
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.unreachable
+import com.argondesign.alogic.util.BigIntOps._
 
 import scala.language.implicitConversions
 
@@ -280,6 +281,26 @@ final class FoldExpr(
       }
 
       ////////////////////////////////////////////////////////////////////////////
+      // Fold slice into sized integers
+      ////////////////////////////////////////////////////////////////////////////
+
+      case ExprSlice(ExprInt(_, _, value), ExprNum(_, blidx), op, ExprNum(_, bridx)) => {
+        val lidx = blidx.toInt
+        val ridx = bridx.toInt
+        val lsb = op match {
+          case ":"  => ridx
+          case "+:" => lidx
+          case "-:" => lidx - ridx + 1
+          case _    => unreachable
+        }
+        val width = op match {
+          case ":" => lidx - ridx + 1
+          case _   => ridx
+        }
+        ExprInt(false, width, value.extract(lsb, width)) withLoc tree.loc
+      }
+
+      ////////////////////////////////////////////////////////////////////////////
       // Fold index over a slice
       ////////////////////////////////////////////////////////////////////////////
 
@@ -288,6 +309,7 @@ final class FoldExpr(
           case ":"  => ridx
           case "+:" => lidx
           case "-:" => lidx - ridx + 1
+          case _    => unreachable
         }
         ExprIndex(expr, walk(base + idx).asInstanceOf[Expr]) withLoc tree.loc
       }
@@ -302,6 +324,33 @@ final class FoldExpr(
 
       case ExprSlice(expr, lidx, ("-:" | "+:"), ridx) if ridx.value contains BigInt(1) => {
         ExprIndex(expr, lidx) withLoc tree.loc
+      }
+
+      ////////////////////////////////////////////////////////////////////////////
+      // Fold concatenations of sized integers
+      ////////////////////////////////////////////////////////////////////////////
+
+      case ExprCat(parts) if parts forall { _.isInstanceOf[ExprInt] } => {
+        val start = (0, BigInt(0))
+        val (width, value) = (parts :\ start) {
+          case (ExprInt(_, w, v), (aw, av)) => (w.toInt + aw, (v.extract(0, w.toInt) << aw) | av)
+          case _                            => unreachable
+        }
+        ExprInt(signed = false, width, value) withLoc tree.loc
+      }
+
+      ////////////////////////////////////////////////////////////////////////////
+      // Fold repetitions of sized integers
+      ////////////////////////////////////////////////////////////////////////////
+
+      case ExprRep(count, ExprInt(_, width, value)) => {
+        count.value map { cnt =>
+          val c = cnt.toInt
+          val w = width.toInt
+          val b = value.extract(0, w)
+          val v = (BigInt(0) /: (0 until c)) { case (a, _) => (a << w) | b }
+          ExprInt(signed = false, c * w, v) withLoc tree.loc
+        } getOrElse tree
       }
 
       ////////////////////////////////////////////////////////////////////////////
