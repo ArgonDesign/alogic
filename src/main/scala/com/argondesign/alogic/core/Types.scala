@@ -207,7 +207,13 @@ object Types {
           "read" -> TypeCombFunc(Nil, kind)
         )
       }
-      case FlowControlTypeValid | FlowControlTypeReady => {
+      case FlowControlTypeValid => {
+        Map(
+          "read" -> TypeCombFunc(Nil, kind),
+          "valid" -> boolType
+        )
+      }
+      case FlowControlTypeReady => {
         Map(
           "read" -> TypeCombFunc(Nil, kind),
           "valid" -> boolType,
@@ -238,8 +244,7 @@ object Types {
         case FlowControlTypeValid => {
           Map(
             "write" -> writeFuncType,
-            "valid" -> boolType,
-            "flush" -> TypeCombFunc(Nil, TypeVoid)
+            "valid" -> boolType
           )
         }
         case FlowControlTypeReady => {

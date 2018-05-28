@@ -345,9 +345,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       }
 
       case StmtExpr(ExprCall(ExprSelect(ref @ ExprRef(symbol: TermSymbol), "wait"), args)) => {
-        symbol.attr.fcv.get.map {
-          case (_, vSymbol) => StmtStall(ExprRef(vSymbol))
-        } orElse symbol.attr.fcr.get.map {
+        symbol.attr.fcr.get.map {
           case (_, vSymbol, _) => StmtStall(ExprRef(vSymbol))
         } getOrElse {
           tree
@@ -355,9 +353,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       }
 
       case StmtExpr(ExprCall(ExprSelect(ref @ ExprRef(symbol: TermSymbol), "flush"), args)) => {
-        symbol.attr.fcv.get.map {
-          case (_, vSymbol) => StmtStall(!ExprRef(vSymbol))
-        } orElse oStorage.get(symbol).map {
+        oStorage.get(symbol).map {
           case (_, iSymbol, _) => StmtStall(ExprRef(iSymbol) select "empty")
         } getOrElse {
           tree
