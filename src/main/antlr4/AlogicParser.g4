@@ -78,12 +78,12 @@ decl: attr? declbase ('=' expr)? ;
 
 declbase
   : kind IDENTIFIER                                         # DeclVar
-  | kind IDENTIFIER ('[' expr ']')+                         # DeclArr
   | 'out' flow_control_type? storage_type? kind IDENTIFIER  # DeclOut
   | 'in' flow_control_type? kind IDENTIFIER                 # DeclIn
   | 'param' kind IDENTIFIER                                 # DeclParam
   | 'const' kind IDENTIFIER                                 # DeclConst
   | 'pipeline' kind IDENTIFIER                              # DeclPipeline
+  | kind IDENTIFIER '[' expr ']'                            # DeclArr
   | 'sram' (wire='wire')? kind IDENTIFIER '[' expr ']'      # DeclSram
   ;
 

@@ -48,16 +48,6 @@ object DeclBuilder extends BaseBuilder[DeclContext, DeclIdent] {
         DeclIdent(ctx.IDENTIFIER.toIdent, kind, None) withLoc ctx.loc
       }
 
-      override def visitDeclArr(ctx: DeclArrContext) = {
-        val sizes = ExprBuilder(ctx.expr).reverse
-        val kind = sizes.foldLeft[Type](TypeBuilder(ctx.kind)) { (elem, size) =>
-          TypeArray(elem, size)
-        }
-        DeclIdent(ctx.IDENTIFIER.toIdent, kind, None) withLoc {
-          ctx.loc.copy(point = ctx.IDENTIFIER.getStartIndex)
-        }
-      }
-
       // Entity decls
       override def visitDeclOut(ctx: DeclOutContext) = {
         val ident = ctx.IDENTIFIER.toIdent
@@ -98,6 +88,15 @@ object DeclBuilder extends BaseBuilder[DeclContext, DeclIdent] {
       override def visitDeclPipeline(ctx: DeclPipelineContext) = {
         val underlying = TypeBuilder(ctx.kind)
         val kind = TypePipeline(underlying)
+        DeclIdent(ctx.IDENTIFIER.toIdent, kind, None) withLoc {
+          ctx.loc.copy(point = ctx.IDENTIFIER.getStartIndex)
+        }
+      }
+
+      override def visitDeclArr(ctx: DeclArrContext) = {
+        val elem = TypeBuilder(ctx.kind)
+        val size = ExprBuilder(ctx.expr)
+        val kind = TypeArray(elem, size)
         DeclIdent(ctx.IDENTIFIER.toIdent, kind, None) withLoc {
           ctx.loc.copy(point = ctx.IDENTIFIER.getStartIndex)
         }

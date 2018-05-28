@@ -58,7 +58,6 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
               ("typedef", "t a;", TypeUInt(4)),
               ("u8[2]", "u8[2] a;", TypeVector(TypeUInt(8), 2)),
               ("memory u8[2]", "u8 a[2];", TypeArray(TypeUInt(8), 2)),
-              ("memory u8[2][4]", "u8 a[2][4];", TypeArray(TypeArray(TypeUInt(8), 4), 2)),
               ("param u8", " param u8 a = 8'd2;", TypeUInt(8)),
               ("const u8", " const u8 a = 8'd2;", TypeUInt(8)),
               ("pipeline u8", "pipeline u8 a;", TypeUInt(8)),
@@ -518,24 +517,18 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
             ("d[1]", TypeSInt(7)),
             ("d[0][0]", TypeUInt(1)),
             ("d[0][1]", TypeUInt(1)),
-            ("e[0]", TypeArray(TypeSInt(7), 8)),
-            ("e[1]", TypeArray(TypeSInt(7), 8)),
-            ("e[0][0]", TypeSInt(7)),
-            ("e[0][1]", TypeSInt(7)),
-            ("e[0][0][0]", TypeUInt(1)),
-            ("e[0][0][1]", TypeUInt(1)),
-            ("f[0]", TypeArray(TypeArray(TypeVector(TypeVector(TypeSInt(7), 2), 4), 6), 5)),
-            ("f[1]", TypeArray(TypeArray(TypeVector(TypeVector(TypeSInt(7), 2), 4), 6), 5)),
-            ("f[0][0]", TypeArray(TypeVector(TypeVector(TypeSInt(7), 2), 4), 6)),
-            ("f[0][1]", TypeArray(TypeVector(TypeVector(TypeSInt(7), 2), 4), 6)),
-            ("f[0][0][0]", TypeVector(TypeVector(TypeSInt(7), 2), 4)),
-            ("f[0][0][1]", TypeVector(TypeVector(TypeSInt(7), 2), 4)),
-            ("f[0][0][0][0]", TypeVector(TypeSInt(7), 2)),
-            ("f[0][0][0][1]", TypeVector(TypeSInt(7), 2)),
-            ("f[0][0][0][0][0]", TypeSInt(7)),
-            ("f[0][0][0][0][1]", TypeSInt(7)),
-            ("f[0][0][0][0][0][0]", TypeUInt(1)),
-            ("f[0][0][0][0][0][1]", TypeUInt(1)),
+            ("e[0]", TypeSInt(7)),
+            ("e[1]", TypeSInt(7)),
+            ("e[0][0]", TypeUInt(1)),
+            ("e[0][1]", TypeUInt(1)),
+            ("f[0]", TypeVector(TypeVector(TypeSInt(7), 2), 4)),
+            ("f[1]", TypeVector(TypeVector(TypeSInt(7), 2), 4)),
+            ("f[0][0]", TypeVector(TypeSInt(7), 2)),
+            ("f[0][1]", TypeVector(TypeSInt(7), 2)),
+            ("f[0][0][0]", TypeSInt(7)),
+            ("f[0][0][1]", TypeSInt(7)),
+            ("f[0][0][0][0]", TypeUInt(1)),
+            ("f[0][0][0][1]", TypeUInt(1)),
             ("g[0]", TypeUInt(1)),
             ("g[1]", TypeUInt(1))
           )
@@ -547,8 +540,8 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
                             |  i7[2] b;
                             |  i7[4][2] c;
                             |  i7 d[2];
-                            |  i7 e[2][8];
-                            |  i7[4][2] f[3][5][6];
+                            |  i7 e[2];
+                            |  i7[4][2] f[3];
                             |  in i7 g;
                             |
                             |  a; b; c; d; e; f; g; // Suppress unused warnings

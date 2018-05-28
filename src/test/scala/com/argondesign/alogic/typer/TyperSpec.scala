@@ -528,8 +528,6 @@ final class TyperSpec extends FreeSpec with AlogicTest {
             ("c[0][0]", ""),
             ("c[0][0][0]", ""),
             ("c[0][0][0][0]", ""),
-            ("c[0][0][0][0][0]", ""),
-            ("c[0][0][0][0][0][0]", ""),
             ("main[0]", "Target of index is neither a packed value, nor a memory"),
             ("a[bool]", "Index is of non-numeric type"),
             ("a[b[0]]", "Index is of non-numeric type")
@@ -539,7 +537,7 @@ final class TyperSpec extends FreeSpec with AlogicTest {
             val root = s"""|fsm f {
                            |  (* unused *) out sync u2 a;
                            |  (* unused *) i3[1][2] b;
-                           |  (* unused *) i3[1][2] c[4][5][6];
+                           |  (* unused *) i3[1][2] c[4];
                            |  void main() {
                            |    ${text};
                            |    fence;
@@ -563,11 +561,9 @@ final class TyperSpec extends FreeSpec with AlogicTest {
             ("b[0][1:0]", ""),
             ("b[0][0][1:0]", ""),
             ("c[1:0]", "Target of slice is of non-packed type"),
-            ("c[0][1:0]", "Target of slice is of non-packed type"),
-            ("c[0][0][1:0]", "Target of slice is of non-packed type"),
+            ("c[0][1:0]", ""),
+            ("c[0][0][1:0]", ""),
             ("c[0][0][0][1:0]", ""),
-            ("c[0][0][0][0][1:0]", ""),
-            ("c[0][0][0][0][0][1:0]", ""),
             ("bool[1:0]", "Target of slice is of non-packed type"),
             ("main[1:0]", "Target of slice is of non-packed type"),
             ("a[1:bool]", "Right index of slice is of non-numeric type"),
@@ -580,7 +576,7 @@ final class TyperSpec extends FreeSpec with AlogicTest {
             val root = s"""|fsm f {
                            |  (* unused *) out sync u2 a;
                            |  (* unused *) i3[1][2] b;
-                           |  (* unused *) i3[1][2] c[4][5][6];
+                           |  (* unused *) i3[1][2] c[4];
                            |  void main() {
                            |    $$display("", ${text});
                            |    fence;
@@ -599,17 +595,17 @@ final class TyperSpec extends FreeSpec with AlogicTest {
       "ternary" - {
         for {
           (text, msg) <- List(
-            ("a ? b : c[0][0][0]", ""),
-            ("c[0] ? b : c[0][0][0]", "Condition of '?:' is of neither numeric nor packed type"),
-            ("a ? c[0] : b", "'then' operand of '?:' is of non-packed type"),
-            ("a ? b : c[0]", "'else' operand of '?:' is of non-packed type")
+            ("a ? b[0][0] : c[0][0][0]", ""),
+            ("c ? b : c[0][0][0]", "Condition of '?:' is of neither numeric nor packed type"),
+            ("a ? c : b", "'then' operand of '?:' is of non-packed type"),
+            ("a ? b : c", "'else' operand of '?:' is of non-packed type")
           )
         } {
           text in {
             val root = s"""|fsm f {
                            |  (* unused *) out sync u2 a;
-                           |  (* unused *) i3[1][2] b;
-                           |  (* unused *) i3[1][2] c[4][5][6];
+                           |  (* unused *) i2[1][2] b;
+                           |  (* unused *) i2[1][2] c[4];
                            |  void main() {
                            |    $$display("", ${text});
                            |    fence;

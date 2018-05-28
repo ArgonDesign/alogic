@@ -188,13 +188,13 @@ final class ParserSpec extends FreeSpec with AlogicTest {
             }
           }
 
-          "2D" in {
+          "2D" ignore {
             "i8 d[2][3]".asTree[DeclIdent] shouldBe {
               DeclIdent(Ident("d"), TypeArray(TypeArray(TypeSInt(Expr(8)), Expr(3)), Expr(2)), None)
             }
           }
 
-          "2D array of 2D vector" in {
+          "2D array of 2D vector" ignore {
             "i2[8] e[5][4]".asTree[DeclIdent] shouldBe {
               DeclIdent(
                 Ident("e"),

@@ -604,31 +604,25 @@ final class NamerSpec extends FlatSpec with AlogicTest {
   it should "resolve names inside array dimension" in {
     val block = """|{
                    |  i8 a;
-                   |  i8 b;
-                   |  bool c[a][b];
+                   |  (* unused *) bool b[a];
                    |}""".asTree[Stmt]
 
     val tree = block rewrite namer
 
     inside(tree) {
-      case StmtBlock(List(StmtDecl(declA: Decl), StmtDecl(declB: Decl), StmtDecl(declC: Decl))) =>
+      case StmtBlock(List(StmtDecl(declA: Decl), StmtDecl(declB: Decl))) =>
         val symA = declA.symbol
-        val symB = declB.symbol
-        inside(declC) {
+        inside(declB) {
           case Decl(symbol, _) =>
-            val TypeArray(TypeArray(TypeUInt(Expr(1)), size1), size2) = symbol.kind
-            inside(size1) {
-              case ExprRef(sym) =>
-                sym should be theSameInstanceAs symB
-            }
-            inside(size2) {
+            val TypeArray(TypeUInt(Expr(1)), size) = symbol.kind
+            inside(size) {
               case ExprRef(sym) =>
                 sym should be theSameInstanceAs symA
             }
         }
     }
 
-    cc.messages.loneElement should beThe[Warning]("Array 'c' is unused")
+    cc.messages shouldBe empty
   }
 
   it should "attach correct types to symbols - entity" in {
@@ -743,12 +737,12 @@ final class NamerSpec extends FlatSpec with AlogicTest {
   }
 
   it should "attach correct types to symbols - decl array" in {
-    val entity = "fsm foo { bool a[2][3]; }".asTree[Entity]
+    val entity = "fsm foo { bool a[2]; }".asTree[Entity]
     cc.addGlobalEntity(entity)
     val tree = entity rewrite namer
 
     val symA = tree collectFirst { case Decl(symbol, _) if symbol.name == "a" => symbol }
-    symA.value.kind shouldBe TypeArray(TypeArray(TypeUInt(Expr(1)), Expr(3)), Expr(2))
+    symA.value.kind shouldBe TypeArray(TypeUInt(Expr(1)), Expr(2))
   }
 
   it should "attach correct types to symbols - decl vec" in {
