@@ -88,7 +88,7 @@ object StackFactory {
   //   out wire bool empty;
   //   out wire bool full;
   //
-  //   bool valid;
+  //   bool valid = false;
   //
   //   TYPE storage;
   //
@@ -169,7 +169,11 @@ object StackFactory {
     val symbols = valSymbol :: stoSymbol :: ports
 
     val decls = symbols map { symbol =>
-      Decl(symbol, None)
+      val init = symbol match {
+        case `valSymbol` => Some(ExprInt(false, 1, 0))
+        case _           => None
+      }
+      Decl(symbol, init)
     }
 
     val connects = List(
@@ -196,11 +200,8 @@ object StackFactory {
   //   in bool pop;
   //
   //   out wire TYPE q;
-  //   out wire bool empty;
-  //   out wire bool full;
-  //
-  //   bool oreg_empty = true;
-  //   bool oreg_full  = false;
+  //   out bool empty = true;
+  //   out bool full = false;
   //
   //   TYPE storage[DEPTH];
   //
@@ -209,21 +210,19 @@ object StackFactory {
   //   state main {
   //     if (en) {
   //       if (pop) {
-  //         oreg_empty = ptr == 0;
-  //         oreg_full = false;
-  //         ptr = ptr - ~oreg_empty;
+  //         empty = ptr == 0;
+  //         full = false;
+  //         ptr = ptr - ~empty;
   //       } else {
-  //         ptr = ptr + (~oreg_empty & ~oreg_full & push);
+  //         ptr = ptr + (~empty & ~full & push);
   //         storage.write(ptr, d);
-  //         oreg_empty = oreg_empty & ~push;
-  //         oreg_full = ptr == DEPTH - 1;
+  //         empty = empty & ~push;
+  //         full = ptr == DEPTH - 1;
   //       }
   //     }
   //     fence;
   //   }
   //
-  //   oreg_empty -> empty;
-  //   oreg_full -> full;
   //   storage[ptr] -> q;
   // }
   private def buildStackN(
@@ -238,6 +237,7 @@ object StackFactory {
 
     val fcn = FlowControlTypeNone
     val stw = StorageTypeWire
+    val str = StorageTypeReg
 
     val bool = TypeUInt(TypeAssigner(Expr(1) withLoc loc))
 
@@ -249,16 +249,9 @@ object StackFactory {
     val popSymbol = cc.newTermSymbol("pop", loc, TypeIn(bool, fcn))
     val dSymbol = cc.newTermSymbol("d", loc, TypeIn(kind, fcn))
 
-    val empSymbol = cc.newTermSymbol("empty", loc, TypeOut(bool, fcn, stw))
-    val fulSymbol = cc.newTermSymbol("full", loc, TypeOut(bool, fcn, stw))
+    val empSymbol = cc.newTermSymbol("empty", loc, TypeOut(bool, fcn, str))
+    val fulSymbol = cc.newTermSymbol("full", loc, TypeOut(bool, fcn, str))
     val qSymbol = cc.newTermSymbol("q", loc, TypeOut(kind, fcn, stw))
-
-    val oreSymbol = cc.newTermSymbol("oreg_empty", loc, bool)
-    val orfSymbol = cc.newTermSymbol("oreg_full", loc, bool)
-
-    // Set oRef attributes so oreg_ prefixes are stripped later
-    empSymbol.attr.oReg set oreSymbol
-    fulSymbol.attr.oReg set orfSymbol
 
     val stoKind = TypeArray(kind, ExprNum(false, depth) regularize loc)
     val stoSymbol = cc.newTermSymbol("storage", loc, stoKind)
@@ -274,9 +267,6 @@ object StackFactory {
     val empRef = ExprRef(empSymbol)
     val fulRef = ExprRef(fulSymbol)
     val qRef = ExprRef(qSymbol)
-
-    val oreRef = ExprRef(oreSymbol)
-    val orfRef = ExprRef(orfSymbol)
 
     val stoRef = ExprRef(stoSymbol)
     val ptrRef = ExprRef(ptrSymbol)
@@ -297,16 +287,16 @@ object StackFactory {
             StmtIf(
               popRef,
               StmtBlock(List(
-                StmtAssign(oreRef, ExprBinary(ptrRef, "==", ExprInt(false, ptrWidth, 0))),
-                StmtAssign(orfRef, ExprInt(false, 1, 0)),
-                StmtAssign(ptrRef, ptrRef - zextPtrWidth(~oreRef))
+                StmtAssign(empRef, ExprBinary(ptrRef, "==", ExprInt(false, ptrWidth, 0))),
+                StmtAssign(fulRef, ExprInt(false, 1, 0)),
+                StmtAssign(ptrRef, ptrRef - zextPtrWidth(~empRef))
               )),
               Some(
                 StmtBlock(List(
-                  StmtAssign(ptrRef, ptrRef + zextPtrWidth(~oreRef & ~orfRef & pusRef)),
+                  StmtAssign(ptrRef, ptrRef + zextPtrWidth(~empRef & ~fulRef & pusRef)),
                   StmtExpr(ExprCall(stoRef select "write", List(ptrRef, dRef))),
-                  StmtAssign(oreRef, oreRef & ~pusRef),
-                  StmtAssign(orfRef, ExprBinary(ptrRef, "==", ExprInt(false, ptrWidth, depth - 1)))
+                  StmtAssign(empRef, empRef & ~pusRef),
+                  StmtAssign(fulRef, ExprBinary(ptrRef, "==", ExprInt(false, ptrWidth, depth - 1)))
                 ))
               )
             )
@@ -328,16 +318,19 @@ object StackFactory {
       fulSymbol
     )
 
-    val symbols = oreSymbol :: orfSymbol :: stoSymbol :: ptrSymbol :: ports
+    val symbols = stoSymbol :: ptrSymbol :: ports
 
     val decls = symbols map { symbol =>
-      val init = if (symbol == oreSymbol) Some(ExprInt(false, 1, 1)) else None
+      val init = symbol match {
+        case `empSymbol` => Some(ExprInt(false, 1, 1))
+        case `fulSymbol` => Some(ExprInt(false, 1, 0))
+        case `ptrSymbol` => Some(ExprInt(false, ptrWidth, 0))
+        case _           => None
+      }
       Decl(symbol, init)
     }
 
     val connects = List(
-      Connect(oreRef, List(empRef)),
-      Connect(orfRef, List(fulRef)),
       Connect(ExprIndex(stoRef, ptrRef), List(qRef))
     )
 
