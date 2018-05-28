@@ -178,7 +178,7 @@ BUBBLE      : 'bubble';
 FSLICE      : 'fslice';
 BSLICE      : 'bslice';
 
-VERBATIM: 'verbatim' -> pushMode(VERBATIMLANGMODE);
+VERBATIM: 'verbatim' -> pushMode(VERBATIMENTRY_MODE);
 
 IDENTIFIER: SIMPLEID;
 
@@ -196,19 +196,26 @@ ERRORCHAR : . ;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-mode VERBATIMLANGMODE;
+mode VERBATIMENTRY_MODE;
 
-VERBATIMENTITY: ENTITY -> type(ENTITY), popMode;
+VERBATIMENTRY_ENTITY: ENTITY -> type(ENTITY), popMode;
 
-VERBATIMLANGWS: WS -> channel(WHITESPACE);
+VERBATIMENTRY_WS: WS -> channel(WHITESPACE);
 
-VERBATIMIDENTIFIER: IDENTIFIER -> type(IDENTIFIER), Mode(VERBATIMMODE);
+VERBATIMENTRY_CMT: CMT -> channel(COMMENT);
+
+VERBATIMENTRY_IDENTIFIER: IDENTIFIER -> type(IDENTIFIER), Mode(VERBATIM_MODE);
+
+VERBATIMENTRY_ERRORCHAR : . ;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-mode VERBATIMMODE;
+mode VERBATIM_MODE;
 
-VERBATIMWS: WS -> channel(WHITESPACE);
+VERBATIM_WS: WS -> channel(WHITESPACE);
 
-VERBATIMBODY: '{' ( VERBATIMBODY | ~[{}] )* '}'  -> popMode;
+VERBATIM_CMT: CMT -> channel(COMMENT);
 
+VERBATIM_BODY: '{' ( VERBATIM_BODY | ~[{}] )* '}'  -> popMode;
+
+VERBATIM_ERRORCHAR : . ;

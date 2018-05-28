@@ -83,7 +83,7 @@ object EntityBuilder extends BaseBuilder[EntityContext, Entity] {
       }
 
       override def visitEntityContentVerbatimBlock(ctx: EntityContentVerbatimBlockContext) = {
-        VerbatimBlock(ctx.IDENTIFIER, ctx.VERBATIMBODY) withLoc ctx.loc
+        VerbatimBlock(ctx.IDENTIFIER, ctx.VERBATIM_BODY) withLoc ctx.loc
       }
     }
 

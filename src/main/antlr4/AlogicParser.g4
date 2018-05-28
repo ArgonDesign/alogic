@@ -35,10 +35,10 @@ start
 ///////////////////////////////////////////////////////////////////////////////
 
 type_definition
-  : 'typedef' kind IDENTIFIER   #TypeDefinitionTypedef
+  : 'typedef' kind IDENTIFIER   # TypeDefinitionTypedef
   | 'struct' IDENTIFIER '{'
       field+
-    '}'                         #TypeDefinitionStruct
+    '}'                         # TypeDefinitionStruct
   ;
 
 field: kind IDENTIFIER SEMICOLON;
@@ -108,7 +108,7 @@ entity_content
   | (attr? autoinst='new')? entity          # EntityContentEntity
   | 'fence' block                           # EntityContentFenceBlock
   | attr? 'void' IDENTIFIER '(' ')' block   # EntityContentFunction
-  | 'verbatim' IDENTIFIER VERBATIMBODY      # EntityContentVerbatimBlock
+  | 'verbatim' IDENTIFIER VERBATIM_BODY     # EntityContentVerbatimBlock
   ;
 
 connect : lhs=expr '->' rhs+=expr (',' rhs+=expr)* ;
