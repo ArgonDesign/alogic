@@ -177,8 +177,6 @@ BUBBLE      : 'bubble';
 FSLICE      : 'fslice';
 BSLICE      : 'bslice';
 
-VERILOGFUNC: 'void' (WS|CMT)* 'verilog' (WS|CMT)* '(' (WS|CMT)* ')' (WS|CMT)* -> pushMode(VERBATIMMODE);
-
 VERBATIM: 'verbatim' -> pushMode(VERBATIMLANGMODE);
 
 IDENTIFIER: SIMPLEID;
