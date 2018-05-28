@@ -6,38 +6,33 @@
 
 # Data types and simple variables
 
-### About typing
+Alogic makes a distinction between packed types and unpacked (or non-packed)
+types. Packed types are those that are used to specify the bit level
+representation of variables. Every packed type maps to a one dimensional
+sequence of bits in a well defines way. The number of bits in the binary
+representation of a packed type is called the **width** of the type, and can be
+retrieved using the `@bits` built-in function.
 
-Similarly to Verilog, Alogic is a weakly typed language. Data types are used
-to specify the binary representations of variables, but are otherwise loosely
-checked. A value of any data type can be assigned to a variable of any other,
-type, though semantically the assignment might still be invalid.
+Similarly to Verilog, Alogic is a weakly typed language in that any variable of
+a packed type can be assigned to any variable of another packed type, as long as
+the width of the 2 types are the same.
 
-### Simple variables
+### Declarations of simple variable of packed types
 
-Simple variables are declared in the C style, with a word denoting
-the type of the variable followed by the name of the variable.
+Simple variables are declared in the usual style, using a type specifier denoting
+the type of the variable followed by the name of the variable:
 
 ```
   foo_t bar; // A variable called 'bar' with type 'foo_t'
 ```
 
-### Integer types
+### Supported packed types
 
-Alogic supports 2 kinds of integer literals:
- - *Sized integers* are represented in a finite, defined number of bits
- - *Unsized integers* are infinite precision
+#### Sized integer types
 
-Both kind of integers are further divided into signed and unsigned types,
-yielding a total of 4 possible integer types:
- - Unsized unsigned
- - Unsized signed
- - Sized unsigned
- - Sized signed
-
-The fundamental data types are signed or unsigned integers introduced with
-the `int` or `uint` keywords, with the number of bits used to represent them
-specified in parentheses. The representation can depend on parameters or
+The fundamental data type in Alogic are signed or unsigned integers introduced
+with the `int` or `uint` keywords, with the number of bits used to represent
+them specified in parentheses. The representation can depend on parameters or
 constants:
 
 ```
@@ -47,9 +42,9 @@ constants:
 ```
 
 Since integer types of widely varying length are the norm in digital design,
-there is a shorthand for their writing. A word starting with the letter
-`u` followed by the number of bits can be used to denote an unsigned integer
-type with that amount of bits. Similarly, the letter `i` can be used for signed
+there is a shorthand for writing them. A word starting with the letter `u`
+followed by the number of bits can be used to denote an unsigned integer type
+with that amount of bits. Similarly, the letter `i` can be used for signed
 integers.
 
 ```
@@ -60,25 +55,12 @@ integers.
 The canonical parenthesized format is usually only used if the width
 of the type is computed based on values of parameters or constants.
 
-The keyword `bool` can also be used as a synonym for `u1`.
+#### Bool type
 
-### Void type
+The keyword `bool` can also be used to represent a boolean type, and is simply a
+synonym for `u1`.
 
-The `void` type can be used where no meaningful value is necessary. It is used
-as the return type of state functions in FSMs, and as the type of ports where
-the flow control signals carry all required semantics.
-
-### typedefs
-
-A `typedef` declaration can be used to alias an integer type to a new name,
-similarly to the C language:
-
-```
-  typedef u19 mytype_t; // 'mytype_t' is equivalent to u19
-  mytype_t a; // A variable 'a' of type 'mytype_t'
-```
-
-### Struct types
+#### Struct types
 
 Alogic support grouping related values into structures. A structure type is
 defined with the `struct` keyword, followed by the name of the structure type,
@@ -143,14 +125,97 @@ or equivalently:
   rect_t rect = {some_point, 8'd9, 8'd1};
 ```
 
+#### Vector types
+
+Alogic supports multi-dimensional packed vectors of integer types. Variables of
+a vector type can be declared by adding the vector sizes following the type
+specifier in a declaration:
+
+```
+  u4[8] va;  // A vector of 8 4-bit unsigned integers
+
+  u3[6][9] vb; // A 6-vector of 9-vectors of 3-bit integers (or a 6x9 matrix of 3-bit integers)
+```
+
+Vectors can be indexed (indices are 0 based), or used as a whole.
+Multi-dimensional vectors can be used after partial indexing, which yield
+vectors of lower dimensions. Assuming the definitions from above:
+
+```
+  va = 32'd0;    // 'va' is a 32-bit variable
+  va[0] = 4'd0;  // [_] indexing yields the underlying element type, here the u4
+
+  va <<= 1;             // 'va' can be used as a whole;
+  va[1] = va[0] << 1;   // Or as elements
+
+  vb = 162'd0;      // 'vb' is 162 bit variable
+  vb[0] = 27'd0;    // The elements of 'vb' are vectors of type u3[9]
+  vb[0][0] = 3'd0;  // They can be further index to get to the primitive element
+
+  // All of the following is allowed
+  vb++;         // Incremet 'vb' as a 169 bit variable
+  vb[0]++;      // Increment 'vb[0]' as a 27 bit variable
+  vb[0][0]++;   // Increment the 3-bit underlying element 
+```
+
+Vectors are linearized to a bit-string using row-major order, with lower order
+indices packed towards the LSBs, observe:
+
+```
+  u2[3][4] x = ...;
+
+  u24 y = x;
+
+  // Now the following equivalencies hold
+
+  x[0][0][0] == y[0];   // LSB
+  x[2][3][1] == y[31];  // MSB
+
+  x[0][0] == y[1:0];    // Lowest element
+  x[2][3] == y[31:30];  // Highest element
+
+  x[0] == y[7:0];
+  x[1] == y[15:8];
+  x[2] == y[23:16];
+
+  x[0][0] == y[1:0];
+  x[0][1] == y[3:2];
+  x[0][2] == y[5:4];
+  x[0][3] == y[7:6];
+  x[1][0] == y[9:8];
+  x[1][1] == y[11:10];
+  x[1][2] == y[13:12];
+  x[1][3] == y[15:14];
+  x[2][0] == y[17:16];
+  x[2][1] == y[19:18];
+  x[2][2] == y[21:20];
+  x[2][3] == y[23:22];
+```
+
+### Void type
+
+The `void` type can be used where no meaningful value is necessary. It is used
+as the return type of state functions in FSMs, and as the type of ports where
+the flow control signals carry all required information.
+
+### typedefs
+
+Similarly to the C language, a `typedef` declaration can be used to create an
+alias for packed type, giving it a new name:
+
+```
+  typedef u19 mytype_t; // 'mytype_t' is equivalent to u19
+  mytype_t a; // A variable 'a' of type 'mytype_t'
+```
+
 ### Mapping to Verilog types
 
-All Alogic types (except arrays) map to packed Verilog types with descending
-range specifiers. i.e.: Alogic only ever emits `reg [9:0] foo` or similar, and
-never `reg [0:9] bar`.
+All packed Alogic types map to packed Verilog types with descending range
+specifiers. i.e.: Alogic only ever emits `reg [9:0] foo` or similar, and never
+`reg [0:9] bar`.
 
-Variables with a structure type are emitted as multiple Verilog variables
-with field names adjoined with an `_`.
+Variables with a structure type are emitted as multiple Verilog variables with
+field names adjoined with an `_`.
 
 An example of mappings using the definitions from above is as follows:
 
@@ -179,6 +244,12 @@ An example of mappings using the definitions from above is as follows:
                                              reg [15:0] f_topleft_y;<br>
                                              reg [7:0] f_width;<br>
                                              reg [7:0] f_height;</code></td>
+  </tr>
+  <tr>
+    <td><code>u4[8] va;</code></td><td><code>reg [31:0] va;</code></td>
+  </tr>
+  <tr>
+    <td><code>u3[6][9] vb;</code></td><td><code>reg [161:0] vb;</code></td>
   </tr>
 </table>
 
