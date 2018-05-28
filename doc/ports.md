@@ -576,6 +576,25 @@ entity until the output slices of the port become empty, and can be used to
 ensure all output produced up to that point have been consumed be the reader of
 the output port.
 
+### Initial state of output ports.
+
+At reset, all flops driving an output _valid_ signal are initialized such that
+the _valid_ signal on output ports will be low. Note that _valid_ signals of
+output ports that are driven combinatorially from an FSM (i.e.: a `sync wire`
+output port, or a `sync ready` output port with only `bslice` instances) might
+still be high after reset, if the FSM entry state writes to those ports.
+
+Ports without flow control that use the default register storage may have an
+initializer expression to define their reset values, the same way as for
+variables declared in entity scope:
+
+```
+  out u8 simple = 8'd5;
+```
+
+No initializer expression is allowed in the declarations of any other kinds of
+ports.
+
 ### Summary of port methods and properties
 
 The following table summarizes the methods and properties available on various

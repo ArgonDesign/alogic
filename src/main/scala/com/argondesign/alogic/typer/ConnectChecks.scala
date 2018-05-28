@@ -171,6 +171,18 @@ object ConnectChecks {
     } isEmpty
   }
 
+  private def noInitializer(loc: Loc, rhs: Expr)(implicit cc: CompilerContext): Boolean = {
+    Some(rhs) collect {
+      case ExprRef(symbol) if symbol.attr.init.isSet =>
+        cc.error(
+          symbol,
+          "Port driven by '->' must not have an initializer",
+          s"'->' is at: ${loc.prefix}"
+        )
+
+    } isEmpty
+  }
+
   // Return true if this is a well formed and typed Connect instance
   def apply(conn: Connect)(implicit cc: CompilerContext): Boolean = {
     // TODO: error on connect same thing on multiple lhss
@@ -196,10 +208,14 @@ object ConnectChecks {
     // Check storage specifier of rhs is default
     lazy val storageOk = rhss map { validStorage(conn.loc, _) } reduce { _ && _ }
 
+    // Check rhs does not have an initializer
+    lazy val initOk = rhss map { noInitializer(conn.loc, _) } reduce { _ && _ }
+
     // Force some value to yield more errors if they makes sense
     lhsOk && rhssOk && storageOk
+    lhsOk && rhssOk && initOk
 
     // Everything needs to be OK
-    lhsOk && rhssOk && typeOk && flowControlOk && sinkCountOk && storageOk
+    lhsOk && rhssOk && typeOk && flowControlOk && sinkCountOk && storageOk && initOk
   }
 }

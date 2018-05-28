@@ -369,5 +369,31 @@ final class TyperConnectSpec extends FreeSpec with AlogicTest {
       }
     }
 
+    "error for initializer expression on port driven by '->'" - {
+      for {
+        (init, ok) <- List(
+          ("/* noinit */", true),
+          ("= false", false)
+        )
+      } {
+        init in {
+          val tree = s"""|network a {
+                         |   in  bool pi;
+                         |   out bool po ${init};
+                         |   pi -> po;
+                         |}""".stripMargin.asTree[Entity]
+          xform(tree)
+          if (ok) {
+            cc.messages shouldBe empty
+          } else {
+            cc.messages.loneElement should beThe[Error](
+              "Port driven by '->' must not have an initializer",
+              "'->' is at:.*"
+            )
+          }
+        }
+      }
+    }
+
   }
 }

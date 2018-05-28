@@ -82,8 +82,8 @@ final class FoldExpr(
       // Fold refs
       ////////////////////////////////////////////////////////////////////////////
 
-      case ExprRef(symbol) if foldRefs => {
-        symbol.attr.constValue.get map { walk(_) } getOrElse tree
+      case ExprRef(symbol) if foldRefs && symbol.kind.isConst => {
+        symbol.attr.init.get map { walk(_) } getOrElse tree
       }
 
       ////////////////////////////////////////////////////////////////////////////

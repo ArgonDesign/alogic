@@ -598,10 +598,16 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
             ("const i8 a = 0", ""),
             ("i2[8] a = 0", ""),
             ("s a = 0", ""),
-            ("i8 a[2] = 0", "Array"),
-            ("in i8 a = 0", "Input port"),
-            ("out i8 a = 0", "Output port"),
-            ("pipeline i8 a = 0", "Pipeline variable")
+            ("i8 a[2] = 0", "Array declarations"),
+            ("sram i8 a[2] = 0", "SRAM declarations"),
+            ("in i8 a = 0", "Input port declarations"),
+            ("out i8 a = 0", ""),
+            ("out wire i8 a = 0", "Output port with 'wire' storage specifier"),
+            ("out sync i8 a = 0", "Output port declarations with 'sync' flow control"),
+            ("out sync ready i8 a = 0", "Output port declarations with 'sync ready' flow control"),
+            ("out sync accept i8 a = 0",
+             "Output port declarations with 'sync accept' flow control"),
+            ("pipeline i8 a = 0", "Pipeline variable declarations")
           )
         } {
           decl in {
@@ -615,7 +621,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
             tree rewrite checker shouldBe a[Root]
             if (msg.nonEmpty) {
               cc.messages.loneElement should beThe[Error](
-                s"${msg} declarations cannot have an initializer"
+                s"${msg} cannot have an initializer"
               )
             } else {
               cc.messages shouldBe empty

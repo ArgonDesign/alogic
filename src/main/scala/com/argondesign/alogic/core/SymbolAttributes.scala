@@ -39,8 +39,8 @@ class SymbolAttributes {
 //  // a map from parameter bindings to the specialized entity
 //  val specMap = new Attribute[Map[ListMap[TermSymbol, Expr], Entity]]()
 
-  // If this is a constant symbol, then this is its value
-  val constValue = new Attribute[Expr]()
+  // The initializer expression, from the declaration, if there was one
+  val init = new Attribute[Expr]()
 
   // Entity call stack limit
   val stackLimit = new Attribute[Expr]()
@@ -108,7 +108,7 @@ class SymbolAttributes {
     topLevel,
     entry,
     owner,
-    constValue,
+    init,
     stackLimit,
     recLimit,
     returnStack,
@@ -138,7 +138,7 @@ class SymbolAttributes {
     "topLevel",
     "entry",
     "owner",
-    "constValue",
+    "init",
     "stackLimit",
     "recLimit",
     "returnStack",

@@ -119,7 +119,7 @@ final class LiftEntities(implicit cc: CompilerContext)
           outerSymbol
         }
         val initializer = referenced flatMap { outerSymbol =>
-          outerSymbol.attr.constValue.value collect {
+          outerSymbol.attr.init.value collect {
             case ExprRef(s: TermSymbol) if outerConstSymbols.toList.exists(_ contains s) => s
           }
         }
@@ -130,7 +130,7 @@ final class LiftEntities(implicit cc: CompilerContext)
       freshConstSymbols.push(mutable.LinkedHashMap(newConstSymbols: _*))
 
       //////////////////////////////////////////////////////////////////////////
-      // Update the constValue attributes of the new symbols
+      // Update the init attributes of the new symbols
       //////////////////////////////////////////////////////////////////////////
 
       lazy val rewrite: Expr => Expr = {
@@ -141,7 +141,7 @@ final class LiftEntities(implicit cc: CompilerContext)
         tt(_).asInstanceOf[Expr]
       }
       for (innerSymbol <- freshConstSymbols.top.values) {
-        innerSymbol.attr.constValue set rewrite(innerSymbol.attr.constValue.value)
+        innerSymbol.attr.init set rewrite(innerSymbol.attr.init.value)
       }
 
       //////////////////////////////////////////////////////////////////////////
@@ -226,7 +226,7 @@ final class LiftEntities(implicit cc: CompilerContext)
           entity
         } else {
           val freshConstDecls = for (symbol <- freshConstSymbols.top.values) yield {
-            Decl(symbol, symbol.attr.constValue.get) regularize symbol.loc
+            Decl(symbol, symbol.attr.init.get) regularize symbol.loc
           }
 
           val newDecls = freshConstDecls ++ entity.declarations

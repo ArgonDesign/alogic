@@ -204,10 +204,7 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         if (kind ne origKind) {
           symbol.kind = kind
         }
-        kind match {
-          case _: TypeConst => symbol.attr.constValue set init
-          case _            => ()
-        }
+        symbol.attr.init set init
         require(kind.isPacked)
         if (allowWidthInference && init.tpe.isNum) {
           // Infer width of init

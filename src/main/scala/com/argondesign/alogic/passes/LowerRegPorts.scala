@@ -69,14 +69,15 @@ final class LowerRegPorts(implicit cc: CompilerContext) extends TreeTransformer 
       }
     }
 
-    case decl @ Decl(oSymbol, _) => {
+    case decl @ Decl(oSymbol, init) => {
       // Change storage type to wire and add register declaration
       oSymbol.attr.oReg.get map { rSymbol =>
         oSymbol.kind = {
           oSymbol.kind.asInstanceOf[TypeOut].copy(fct = FlowControlTypeNone, st = StorageTypeWire)
         }
-        val declReg = Decl(rSymbol, None)
-        Thicket(List(decl, declReg)) regularize tree.loc
+        val declO = Decl(oSymbol, None)
+        val declR = Decl(rSymbol, init)
+        Thicket(List(declO, declR)) regularize tree.loc
       } getOrElse {
         tree
       }

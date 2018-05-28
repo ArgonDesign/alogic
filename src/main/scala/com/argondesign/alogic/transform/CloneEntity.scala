@@ -82,11 +82,8 @@ final class CloneEntity(
       val newSymbol = cc.newTermSymbol(symbol.name, symbol.loc, newKind)
       newSymbol.attr update symbol.attr
       symbolMap(symbol) = newSymbol
-      // Update the constValue if its a constant
-      newKind match {
-        case _: TypeConst => newSymbol.attr.constValue set newInit.get
-        case _            => ()
-      }
+      // Update the init attributes
+      newInit foreach newSymbol.attr.init.set
       // Rewrite with new symbol and init
       Decl(newSymbol, newInit) regularize tree.loc
     }
@@ -178,8 +175,8 @@ final class CloneEntity(
     tree visitAll {
       case decl @ Decl(symbol, Some(init)) => {
         symbol.kind partialMatch {
-          case _: TypeConst if symbol.attr.constValue.value != init => {
-            cc.ice(decl, "Const symbol with wrong constValue")
+          case _: TypeConst if symbol.attr.init.value != init => {
+            cc.ice(decl, "Const symbol with wrong init")
           }
         }
       }

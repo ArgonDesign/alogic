@@ -32,10 +32,13 @@ import com.argondesign.alogic.ast.TreeCopier
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeAccept
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
+import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeReady
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeValid
 import com.argondesign.alogic.core.StorageTypes.StorageTypeReg
 import com.argondesign.alogic.core.StorageTypes.StorageTypeSlices
+import com.argondesign.alogic.core.StorageTypes.StorageTypeWire
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.FollowedBy
 import com.argondesign.alogic.util.unreachable
@@ -184,15 +187,27 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
 
     case decl @ DeclIdent(_, kind, Some(init)) => {
       val hintOpt = kind match {
-        case _: TypeIn       => Some("Input port")
-        case _: TypeOut      => Some("Output port")
-        case _: TypePipeline => Some("Pipeline variable")
-        case _: TypeArray    => Some("Array")
+        case _: TypeIn => Some("Input port declarations")
+        case TypeOut(_, FlowControlTypeNone, StorageTypeWire) => {
+          Some("Output port with 'wire' storage specifier")
+        }
+        case TypeOut(_, FlowControlTypeValid, _) => {
+          Some("Output port declarations with 'sync' flow control")
+        }
+        case TypeOut(_, FlowControlTypeReady, _) => {
+          Some("Output port declarations with 'sync ready' flow control")
+        }
+        case TypeOut(_, FlowControlTypeAccept, _) => {
+          Some("Output port declarations with 'sync accept' flow control")
+        }
+        case _: TypePipeline => Some("Pipeline variable declarations")
+        case _: TypeArray    => Some("Array declarations")
+        case _: TypeSram     => Some("SRAM declarations")
         case _               => None
       }
 
       hintOpt map { hint =>
-        cc.error(init, s"${hint} declarations cannot have an initializer")
+        cc.error(init, s"${hint} cannot have an initializer")
         decl.copy(init = None) withLoc decl.loc
       } getOrElse decl
     }
