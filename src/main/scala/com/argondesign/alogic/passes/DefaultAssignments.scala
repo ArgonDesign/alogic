@@ -10,12 +10,9 @@
 //
 // DESCRIPTION:
 //
-// Any symbol that is either:
-//  - On the left hand side of an assignment statement
-//  - Is an output not driven through a connect
-//  - Is an interconnect symbol not driven through a connect
-// must be assigned a value on all code paths to avoid latches. In this phase
-// we mark all such symbols.
+// Any symbol driven combinatorially through the FSM logic must be assigned a
+// value on all code paths to avoid latches. In this phase we add all such
+// default assignments.
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.passes
@@ -25,7 +22,6 @@ import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols._
-import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.FollowedBy
 
@@ -42,32 +38,14 @@ final class DefaultAssignments(implicit cc: CompilerContext)
     case _              => false
   }
 
-  // Given an expression, return an iterable of symbols that would be assigned
-  // should this expression be used on the left hand side of an assignment
-  private def writtenSymbols(expr: Expr): Iterator[TermSymbol] = {
-    expr match {
-      case ExprRef(symbol: TermSymbol) => Iterator.single(symbol)
-      case ExprCat(parts)              => parts.toIterator flatMap writtenSymbols
-      case ExprIndex(expr, _)          => writtenSymbols(expr)
-      case ExprSlice(expr, _, _, _)    => writtenSymbols(expr)
-      case _                           => Iterator.empty
-    }
-  }
-
   override def enter(tree: Tree): Unit = tree match {
-    case StmtAssign(lhs, _) => {
-      needsDefault ++= writtenSymbols(lhs)
-    }
+    case Decl(symbol, _) if symbol.kind.isIn || symbol.kind.isConst => ()
 
-    case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeOut] => {
+    case Decl(symbol, _) if !symbol.attr.flop.isSet && !symbol.attr.memory.isSet => {
       needsDefault += symbol
     }
 
-    case Decl(symbol, _) if symbol.attr.interconnect.isSet => {
-      needsDefault += symbol
-    }
-
-    case _ =>
+    case _ => ()
   }
 
   override def transform(tree: Tree): Tree = tree match {

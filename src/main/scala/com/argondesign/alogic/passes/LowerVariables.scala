@@ -139,6 +139,6 @@ final class LowerVariables(implicit cc: CompilerContext) extends TreeTransformer
 }
 
 object LowerVariables extends TreeTransformerPass {
-  val name = "lower-flops"
+  val name = "lower-variables"
   def create(implicit cc: CompilerContext) = new LowerVariables
 }
