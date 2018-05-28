@@ -538,7 +538,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         }
       }
 
-      "accept valid port referencess on " - {
+      "accept valid port references on " - {
         def check(test: String => Unit) = {
           "identifier " in test("a")
           "single-select" in test("a.b")

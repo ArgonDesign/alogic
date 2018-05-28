@@ -387,6 +387,16 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
     case DeclIdent(ident: Ident, kind, init) => {
       // Lookup type
       val newKind = kind rewrite TypeNamer
+      // TODO: implement memory of struct, vector of struct, and multi dimenstional memory/sram
+      newKind match {
+        case TypeVector(_: TypeStruct, _) => {
+          cc.error(tree, "Vector element cannot have a struct type")
+        }
+        case TypeArray(_: TypeStruct, _) => {
+          cc.error(tree, "Memory element cannot have a struct type")
+        }
+        case _ => ()
+      }
       // Insert term
       val symbol = Scopes.insert(cc.newTermSymbol(ident, newKind))
       // Rewrite node

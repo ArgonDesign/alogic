@@ -64,6 +64,7 @@ object Passes {
       SplitStructsA,
       SplitStructsB,
       SplitStructsC,
+      LowerVectors,
       FoldExpr(assignTypes = true, foldRefs = false),
       SimplifyCat,
       ////////////////////////////////////////////////////////////////////////

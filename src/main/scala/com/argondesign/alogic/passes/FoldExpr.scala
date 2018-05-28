@@ -280,6 +280,31 @@ final class FoldExpr(
       }
 
       ////////////////////////////////////////////////////////////////////////////
+      // Fold index over a slice
+      ////////////////////////////////////////////////////////////////////////////
+
+      case ExprIndex(ExprSlice(expr, lidx, op, ridx), idx) => {
+        val base = op match {
+          case ":"  => ridx
+          case "+:" => lidx
+          case "-:" => lidx - ridx + 1
+        }
+        ExprIndex(expr, walk(base + idx).asInstanceOf[Expr]) withLoc tree.loc
+      }
+
+      ////////////////////////////////////////////////////////////////////////////
+      // Fold width 1 slices
+      ////////////////////////////////////////////////////////////////////////////
+
+      case ExprSlice(expr, lidx, ":", ridx) if lidx == ridx => {
+        ExprIndex(expr, lidx) withLoc tree.loc
+      }
+
+      case ExprSlice(expr, lidx, ("-:" | "+:"), ridx) if ridx.value contains BigInt(1) => {
+        ExprIndex(expr, lidx) withLoc tree.loc
+      }
+
+      ////////////////////////////////////////////////////////////////////////////
       // Fold built-in functions
       ////////////////////////////////////////////////////////////////////////////
 

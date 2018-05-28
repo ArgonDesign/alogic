@@ -503,6 +503,59 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
       }
     }
 
+    "index over a slice" - {
+      for {
+        (text, result, msg) <- List(
+          ("a[8 : 3][0]", ExprIndex(ExprIdent("a"), Expr(3)), ""),
+          ("a[9 : 3][0]", ExprIndex(ExprIdent("a"), Expr(3)), ""),
+          ("a[8 : 3][2]", ExprIndex(ExprIdent("a"), Expr(5)), ""),
+          ("a[9 : 3][2]", ExprIndex(ExprIdent("a"), Expr(5)), ""),
+          ("a[8 +: 3][0]", ExprIndex(ExprIdent("a"), Expr(8)), ""),
+          ("a[9 +: 3][0]", ExprIndex(ExprIdent("a"), Expr(9)), ""),
+          ("a[8 +: 3][2]", ExprIndex(ExprIdent("a"), Expr(10)), ""),
+          ("a[9 +: 3][2]", ExprIndex(ExprIdent("a"), Expr(11)), ""),
+          ("a[8 -: 3][0]", ExprIndex(ExprIdent("a"), Expr(6)), ""),
+          ("a[9 -: 3][0]", ExprIndex(ExprIdent("a"), Expr(7)), ""),
+          ("a[8 -: 3][2]", ExprIndex(ExprIdent("a"), Expr(8)), ""),
+          ("a[9 -: 3][2]", ExprIndex(ExprIdent("a"), Expr(9)), "")
+        )
+      } {
+        val expr = text.trim
+        expr in {
+          expr.asTree[Expr] rewrite fold shouldBe result
+          if (msg.isEmpty) {
+            cc.messages shouldBe empty
+          } else {
+            cc.messages.loneElement should beThe[Error](msg)
+          }
+        }
+      }
+    }
+
+    "width 1 slices" - {
+      for {
+        (text, result, msg) <- List(
+          ("a[8:8]", ExprIndex(ExprIdent("a"), Expr(8)), ""),
+          ("a[7:7]", ExprIndex(ExprIdent("a"), Expr(7)), ""),
+          ("a[6 +: 1]", ExprIndex(ExprIdent("a"), Expr(6)), ""),
+          ("a[5 +: 1]", ExprIndex(ExprIdent("a"), Expr(5)), ""),
+          ("a[4 -: 1]", ExprIndex(ExprIdent("a"), Expr(4)), ""),
+          ("a[3 -: 1]", ExprIndex(ExprIdent("a"), Expr(3)), ""),
+          ("a[2:1]", ExprSlice(ExprIdent("a"), Expr(2), ":", Expr(1)), "")
+        )
+      } {
+        val expr = text.trim
+        expr in {
+          expr.asTree[Expr] rewrite fold shouldBe result
+          if (msg.isEmpty) {
+            cc.messages shouldBe empty
+          } else {
+            cc.messages.loneElement should beThe[Error](msg)
+          }
+        }
+      }
+    }
+
     "builtin functions" - {
       "@max" - {
         for {

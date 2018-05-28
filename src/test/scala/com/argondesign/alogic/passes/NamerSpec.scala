@@ -178,7 +178,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     cc.messages(1).loc.line shouldBe 2
   }
 
-  it should "counstruct struct types" in {
+  it should "construct struct types" in {
     val root = """|typedef bool e_t;
                   |struct a {
                   |  bool b;
@@ -318,7 +318,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     cc.messages(1) should beThe[Warning]("Variable 'b' is unused")
   }
 
-  it should "resovle function references to later definitions" in {
+  it should "resolve function references to later definitions" in {
     val entity = """|fsm a {
                     |  void main () { foo(); }
                     |  void foo () {}
@@ -525,7 +525,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     cc.messages shouldBe empty
   }
 
-  it should "issue error if @bits argument is ambiguous and can reslove to both type and term names" in {
+  it should "issue error if @bits argument is ambiguous and can resolve to both type and term names" in {
     val root = """|typedef bool a;
                   |fsm b {
                   |  void main() {
@@ -571,7 +571,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     cc.messages(1) should beThe[Warning]("Variable 'c' is unused")
   }
 
-  it should "resovle names inside type arguments" in {
+  it should "resolve names inside type arguments" in {
     val block = """|{
                    |  i8 a;
                    |  i8 b;
@@ -601,7 +601,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     cc.messages.loneElement should beThe[Warning]("Variable 'c' is unused")
   }
 
-  it should "resovle names inside array dimension" in {
+  it should "resolve names inside array dimension" in {
     val block = """|{
                    |  i8 a;
                    |  i8 b;
@@ -1057,5 +1057,21 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     val Some(symbol) = tree collectFirst { case Decl(symbol: TermSymbol, _) => symbol }
     symbol.kind shouldBe TypeSInt(Expr(8))
     symbol.attr.unused.get.value shouldBe true
+  }
+
+  it should "issue error for a vector of structs definition" in {
+    val root = "struct s { bool a; }; fsm foo { (* unused *) s[2] b; }".asTree[Root]
+    cc.addGlobalEntity(root.entity)
+    root rewrite namer
+
+    cc.messages.loneElement should beThe[Error]("Vector element cannot have a struct type")
+  }
+
+  it should "issue error for a memory of structs definition" in {
+    val root = "struct s { bool a; }; fsm foo { (* unused *) s b[2]; }".asTree[Root]
+    cc.addGlobalEntity(root.entity)
+    root rewrite namer
+
+    cc.messages.loneElement should beThe[Error]("Memory element cannot have a struct type")
   }
 }

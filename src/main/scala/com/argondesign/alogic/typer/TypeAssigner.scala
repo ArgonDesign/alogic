@@ -362,6 +362,7 @@ object TypeAssigner {
   }
 
   def apply(node: ExprSlice)(implicit cc: CompilerContext): node.type = {
+    // TODO: implement vector slicing properly
     require(!node.hasTpe)
     val width = if (node.op == ":") node.lidx - node.ridx + 1 else node.ridx
     node withTpe TypeUInt(width.simplify)
