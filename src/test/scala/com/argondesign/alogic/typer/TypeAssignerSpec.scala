@@ -874,7 +874,7 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
             ("case(a) {default: {read; fence;}}", { case _: StmtCase   => }, TypeCtrlStmt),
             ("a;", { case StmtExpr(_: ExprRef)                         => }, TypeCombStmt),
             ("a + a;", { case StmtExpr(_: ExprBinary)                  => }, TypeCombStmt),
-            ("a.wait();", { case StmtExpr(_: ExprCall)                 => }, TypeCombStmt),
+            ("a.read();", { case StmtExpr(_: ExprCall)                 => }, TypeCombStmt),
             ("main();", { case StmtExpr(_: ExprCall)                   => }, TypeCtrlStmt),
             ("{ }", { case _: StmtBlock                                => }, TypeCombStmt),
             ("{ a; fence; }", { case _: StmtBlock                      => }, TypeCtrlStmt),
