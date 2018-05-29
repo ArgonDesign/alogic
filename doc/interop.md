@@ -37,7 +37,7 @@ mapping of input and output interface ports from Alogic to the target language.
 
 #### Alogic ports with non-`struct` type
 
-Any interface port of a non-`struct` type will be emitted as a n interface
+Any interface port of a non-`struct` type will be emitted as an interface
 signal with a packed width equal to the width of the Alogic port. Ports of width
 1 are emitted as a plain signal. The name of the interface signal in the
 compiled output is the same as the name of the port in the Alogic source code,

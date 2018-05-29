@@ -41,12 +41,12 @@ name, followed by the variable identifier, optionally followed by `=` and and
 initializer expression, and end in `;`:
 
 ```
-  u8 a;       // Declare 8 bit unsigned integer variable 'a',
-              // but do not initialize it.
-  i16 b = -2; // Declare 16 bit signed integer variable 'b',
-              // and initialize it to -2;
-  foo_t bar;  // Declare variable 'bar' of type 'foo_t', where 'foo_t' is either
-              // a typedef or the name of a struct
+  u8 a;          // Declare 8 bit unsigned integer variable 'a',
+                 // but do not initialize it.
+  i16 b = -'sd2; // Declare 16 bit signed integer variable 'b',
+                 // and initialize it to -2;
+  foo_t bar;     // Declare variable 'bar' of type 'foo_t', where 'foo_t' is either
+                 // a typedef or the name of a struct
 ```
 
 Note that while this looks like a local variable, the storage is in fact
