@@ -38,7 +38,7 @@ constants:
 ```
   int(5)    b; // A 5 bit signed integer
   uint(8)   a; // An 8 bit unsigned integer
-  uint(N+2) c; // Unsigne integer, with width depending on a parameter.
+  uint(N+2) c; // Unsigned integer, with width depending on a parameter.
 ```
 
 Since integer types of widely varying length are the norm in digital design,
