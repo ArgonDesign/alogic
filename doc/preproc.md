@@ -59,7 +59,7 @@ to the C preprocessor in that both `#if` and `#ifdef` must be followed by the
 name of a macro (i.e.: this is not valid `#if 0`).
 
 `#ifdef` is true if the macro has been previously defined using `#define`, or if
-it has been pre-defined on teh compiler command line.
+it has been pre-defined on the compiler command line.
 
 The macro name following `#if` must be defined, and evaluate to a simple
 integer. `#if` is true if the subject macro evaluates to a non-zero value.
