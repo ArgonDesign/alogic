@@ -28,7 +28,7 @@ Common rules for integer literals:
 - Omitting the sign is the same as writing `+`
 - Whitespace is allowed between the sign and the rest of the literal, but
 whitespace is illegal elsewhere
-- Integer literals that do use `s` modifier are of an unsigned type, while
+- Integer literals without an `s` modifier are of an unsigned type, while
 those with an `s` modifier are signed
 - Digits standing for the value must conform to the specified base
     - `0-1` can be used with binary base `b`
@@ -199,13 +199,13 @@ The following table provides an exhaustive set of examples:
 
 The literal `true` can be used as a synonym for `1'b1`, and the literal `false`
 can be used as a synonym for `1'b0`, but otherwise `true` and `false` have no
-no special meaning.
+special meaning.
 
 ### String literals
 
 The language accepts string literals enclosed in double quotes `"`. Alogic
 does not support interpreting strings as a bit vector. String literals should
-only be used as arguments to builtin function that require a string argument,
+only be used as arguments to builtin functions that require a string argument,
 e.g. `$display`:
 
 ```
