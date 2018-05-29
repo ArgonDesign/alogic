@@ -53,7 +53,7 @@ int(N) $signed(expr);
 Cast argument to a signed integer. The result is the same width as the argument.
 The argument can have any packed type.
 
-#### Built-in `$unigned`
+#### Built-in `$unsigned`
 
 Signature:
 

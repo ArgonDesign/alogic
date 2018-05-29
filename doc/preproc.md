@@ -7,7 +7,7 @@ Next
 # Preprocessor
 
 Alogic implements a preprocessor which uses the syntax of the C preprocessor,
-but has a significantly smaller feature set compered to the C preprocessor. The
+but has a significantly smaller feature set compared to the C preprocessor. The
 main use of the preprocessor is to allow sharing type definitions through
 include files.
 

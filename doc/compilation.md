@@ -53,8 +53,8 @@ as:
 
   alogic -o rtl -y src foo
 
-This will read in all required entities to compile the design hierercy below
-the top level `foo`, searching for souce files in directory `src`, and
+This will read in all required entities to compile the design hierarchy below
+the top level `foo`, searching for source files in directory `src`, and
 producing the compiled output in the output directory `rtl`.
 
 See `alogic --help` for more command line options.

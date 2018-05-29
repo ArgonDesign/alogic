@@ -123,7 +123,7 @@ A simple read from the `storage` SRAM could be performed like this:
   x += storage.rdata;
 ```
 
-### Combinatorially driven vs registered SRAMS
+### Combinatorially driven vs registered SRAMs
 
 The difference between combinatorially driven SRAMs and registered SRAMs is
 important.
@@ -162,7 +162,7 @@ driven by registers:
      port to the enclosing entity.
   1. Connect the `valid` signal of the created output register to the SRAM
      instance `ce` signal, and connect the other signals from the output
-     register to the corresponging SRAM instance ports.
+     register to the corresponding SRAM instance ports.
 
 ### Lifting SRAMs
 

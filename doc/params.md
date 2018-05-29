@@ -18,7 +18,7 @@ fsm baz {
 }
 ```
 
-Constants are emitted in the generated Verilog as _localparam_ decalartions:
+Constants are emitted in the generated Verilog as _localparam_ declarations:
 
 ```verilog
 module baz (
