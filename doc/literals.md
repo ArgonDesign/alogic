@@ -68,19 +68,19 @@ The following table provides an exhaustive set of examples:
 |    -'h11  |   N/A |  N/A | Error - negative unsigned                           |
 |    -'sh11 |   -17 |  int |                                                     |
 |        0  |     0 | uint |                                                     |
-|        0s |     0 |  int |                                                     |
+|      'sd0 |     0 |  int |                                                     |
 |       -0  |     0 | uint | OK - special case of negative unsigned with value 0 |
-|       -0s |     0 |  int |                                                     |
+|     -'sd0 |     0 |  int |                                                     |
 
 #### Sized integer literals
 
 The generic syntax of sized integer literals is composed of:
 - Optional `+` or `-` sign
 - Required list of decimal digits standing for the width of the literal
-- Required `'` followed by the base specifier `b`, `d` or `h`
+- Required `'` followed by the base specifier `b`, `d` or `h` followed by
+optional `s` signed modifier
 - Required list of digits standing for the value of the literal (see about
 interpretation below)
-- Optional `s` signed suffix
 
 The list of digits standing for the value specifies the bit pattern of the
 value. It is important to understand the meaning of the previous sentence. In
@@ -94,7 +94,7 @@ sign of the literal is different from the sign of the value it represents.
 The value of a sized literal can always be derived by taking the binary bit
 pattern of the digits standing for the value (as an unsigned number in the
 specified base), and interpreting this bit pattern as an unsigned or 2's
-complement signed value (depending on the presence of the `s` suffix), on the
+complement signed value (depending on the presence of the `s` modifier), on the
 specified number of bits. It is illegal for the digits standing for the value
 to specify a bit pattern than does not fit in the specified width as an
 unsigned number.
