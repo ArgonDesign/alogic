@@ -84,7 +84,7 @@ final class LowerVectors(implicit cc: CompilerContext) extends TreeTransformer {
         val TypeVector(eKind, _) = tgtTpe.top
         val eSize = eKind.width.value.get.toInt
         val sExpr = Expr(eSize) regularize tgt.loc
-        ExprSlice(expr, sExpr * (lidx + index), "+:", sExpr)
+        ExprSlice(expr, lidx + sExpr * index, "+:", sExpr)
       }
 
       // Index over something else
