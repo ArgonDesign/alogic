@@ -27,17 +27,8 @@ class SymbolAttributes {
   // Is this an entry point function
   val entry = new Attribute[Boolean]()
 
-//  // All possible parameter bindings of an entity symbol
-//  val paramBindings = new Attribute[List[Map[TermSymbol, Expr]]]()
-//  // The actual parameter bindings of an instance symbol
-//  val paramBinding = new Attribute[Map[TermSymbol, Expr]]()
-//  // The default parameter bindings, in definition order
-//  val defaultParamBindings = new Attribute[ListMap[TermSymbol, Expr]]()
   // The entity that owns the definition of this symbol
   val owner = new Attribute[Entity]()
-//  // If this is a parametrized entity symbol,
-//  // a map from parameter bindings to the specialized entity
-//  val specMap = new Attribute[Map[ListMap[TermSymbol, Expr], Entity]]()
 
   // The initializer expression, from the declaration, if there was one
   val init = new Attribute[Expr]()
