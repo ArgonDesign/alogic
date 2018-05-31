@@ -295,9 +295,9 @@ fsm v {
 
   verbatim verilog {
     // Tick away
-    always @(posedge clk) {
+    always @(posedge clk) begin
       $display("tick");
-    }
+    end
   }
 }
 ```
@@ -308,9 +308,9 @@ The Verilog module output for the above would end as:
   ...
 
     // Tick away
-    always @(posedge clk) {
+    always @(posedge clk) begin
       $display("tick");
-    }
+    end
 
 endmodule
 ```
