@@ -60,6 +60,8 @@ class Bindings(val underlying: Map[TermSymbol, Expr]) extends AnyVal {
   def map(f: ((TermSymbol, Expr)) => (TermSymbol, Expr)): Bindings = {
     underlying map f
   }
+
+  def +(pair: (TermSymbol, Expr)): Bindings = underlying + pair
 }
 
 object Bindings {
