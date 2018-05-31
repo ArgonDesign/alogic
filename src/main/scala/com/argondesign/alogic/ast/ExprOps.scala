@@ -266,10 +266,17 @@ trait ObjectExprOps {
 
   // Extractor for instance port references
   final object InstancePortRef {
-
     def unapply(expr: ExprSelect): Option[(TermSymbol, TermSymbol)] = expr partialMatch {
       case ExprSelect(ExprRef(iSymbol: TermSymbol), sel) if iSymbol.kind.isInstance =>
         (iSymbol, iSymbol.kind.asInstanceOf[TypeInstance].portSymbol(sel).get)
+    }
+  }
+
+  // Extractor for integral values (ExprInt or ExprNum)
+  final object Integral {
+    def unapply(expr: Expr): Option[(Boolean, Option[Int], BigInt)] = expr partialMatch {
+      case ExprNum(signed, value)        => (signed, None, value)
+      case ExprInt(signed, width, value) => (signed, Some(width), value)
     }
   }
 }

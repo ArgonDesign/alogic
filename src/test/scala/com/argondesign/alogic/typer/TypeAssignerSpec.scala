@@ -530,21 +530,21 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
             ("f[0][0][0][0]", TypeUInt(1)),
             ("f[0][0][0][1]", TypeUInt(1)),
             ("g[0]", TypeUInt(1)),
-            ("g[1]", TypeUInt(1))
+            ("g[1]", TypeUInt(1)),
+            ("1[0]", TypeUInt(1)),
+            ("1[1]", TypeUInt(1))
           )
         } {
           val text = expr.trim.replaceAll(" +", " ")
           text in {
             val block = s"""|{
-                            |  i7 a;
-                            |  i7[2] b;
-                            |  i7[4][2] c;
-                            |  i7 d[2];
-                            |  i7 e[2];
-                            |  i7[4][2] f[3];
-                            |  in i7 g;
-                            |
-                            |  a; b; c; d; e; f; g; // Suppress unused warnings
+                            |  (* unused *) i7 a;
+                            |  (* unused *) i7[2] b;
+                            |  (* unused *) i7[4][2] c;
+                            |  (* unused *) i7 d[2];
+                            |  (* unused *) i7 e[2];
+                            |  (* unused *) i7[4][2] f[3];
+                            |  (* unused *) in i7 g;
                             |
                             |  ${text};
                             |}""".stripMargin.asTree[Stmt]
@@ -573,7 +573,10 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
             ("a[3:2]", TypeUInt(2)),
             ("a[0:0]", TypeUInt(1)),
             ("a[4+:3]", TypeUInt(3)),
-            ("a[4-:3]", TypeUInt(3))
+            ("a[4-:3]", TypeUInt(3)),
+            ("1[3:0]", TypeUInt(4)),
+            ("1[3+:2]", TypeUInt(2)),
+            ("1[3-:2]", TypeUInt(2))
           )
         } {
           val text = expr.trim.replaceAll(" +", " ")

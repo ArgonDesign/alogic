@@ -540,6 +540,83 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
       }
     }
 
+    "index into unsized integer literals" - {
+      for {
+        (text, result, msg) <- List(
+          // signed operand
+          ("'sd2[0]", ExprInt(false, 1, 0), ""),
+          ("'sd2[1]", ExprInt(false, 1, 1), ""),
+          ("'sd2[2]", ExprInt(false, 1, 0), ""),
+          ("'sd2[3]", ExprInt(false, 1, 0), ""),
+          ("-'sd2[0]", ExprInt(false, 1, 0), ""),
+          ("-'sd2[1]", ExprInt(false, 1, 1), ""),
+          ("-'sd2[2]", ExprInt(false, 1, 1), ""),
+          ("-'sd2[3]", ExprInt(false, 1, 1), ""),
+          // unsigned operand
+          ("'d2[0]", ExprInt(false, 1, 0), ""),
+          ("'d2[1]", ExprInt(false, 1, 1), ""),
+          ("'d2[2]", ExprInt(false, 1, 0), ""),
+          ("'d2[3]", ExprInt(false, 1, 0), "")
+        )
+      } {
+        val expr = text.trim
+        expr in {
+          expr.asTree[Expr] rewrite fold shouldBe result
+          if (msg.isEmpty) {
+            cc.messages shouldBe empty
+          } else {
+            cc.messages.loneElement should beThe[Error](msg)
+          }
+        }
+      }
+    }
+
+    "slice into unsized integer literals" - {
+      for {
+        (text, result, msg) <- List(
+          // signed operand
+          ("'sd5[1 :0]", ExprInt(false, 2, 1), ""),
+          ("'sd5[2 :0]", ExprInt(false, 3, 5), ""),
+          ("'sd5[3 :0]", ExprInt(false, 4, 5), ""),
+          ("'sd5[1+:1]", ExprInt(false, 1, 0), ""),
+          ("'sd5[1+:2]", ExprInt(false, 2, 2), ""),
+          ("'sd5[1+:3]", ExprInt(false, 3, 2), ""),
+          ("'sd5[3-:1]", ExprInt(false, 1, 0), ""),
+          ("'sd5[3-:2]", ExprInt(false, 2, 1), ""),
+          ("'sd5[3-:3]", ExprInt(false, 3, 2), ""),
+          ("-'sd5[1 :0]", ExprInt(false, 2, 3), ""),
+          ("-'sd5[2 :0]", ExprInt(false, 3, 3), ""),
+          ("-'sd5[3 :0]", ExprInt(false, 4, 11), ""),
+          ("-'sd5[1+:1]", ExprInt(false, 1, 1), ""),
+          ("-'sd5[1+:2]", ExprInt(false, 2, 1), ""),
+          ("-'sd5[1+:3]", ExprInt(false, 3, 5), ""),
+          ("-'sd5[3-:1]", ExprInt(false, 1, 1), ""),
+          ("-'sd5[3-:2]", ExprInt(false, 2, 2), ""),
+          ("-'sd5[3-:3]", ExprInt(false, 3, 5), ""),
+          // unsigned operand
+          ("'d5[1 :0]", ExprInt(false, 2, 1), ""),
+          ("'d5[2 :0]", ExprInt(false, 3, 5), ""),
+          ("'d5[3 :0]", ExprInt(false, 4, 5), ""),
+          ("'d5[1+:1]", ExprInt(false, 1, 0), ""),
+          ("'d5[1+:2]", ExprInt(false, 2, 2), ""),
+          ("'d5[1+:3]", ExprInt(false, 3, 2), ""),
+          ("'d5[3-:1]", ExprInt(false, 1, 0), ""),
+          ("'d5[3-:2]", ExprInt(false, 2, 1), ""),
+          ("'d5[3-:3]", ExprInt(false, 3, 2), "")
+        )
+      } {
+        val expr = text.trim
+        expr in {
+          expr.asTree[Expr] rewrite fold shouldBe result
+          if (msg.isEmpty) {
+            cc.messages shouldBe empty
+          } else {
+            cc.messages.loneElement should beThe[Error](msg)
+          }
+        }
+      }
+    }
+
     "index over a slice" - {
       for {
         (text, result, msg) <- List(

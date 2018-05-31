@@ -17,6 +17,7 @@ package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.ast.Trees.Expr.Integral
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.TreeInTypeTransformer
 import com.argondesign.alogic.typer.TypeAssigner
@@ -273,18 +274,20 @@ final class FoldExpr(
       }
 
       ////////////////////////////////////////////////////////////////////////////
-      // Fold index into sized integers
+      // Fold index into sized/unsized integers
       ////////////////////////////////////////////////////////////////////////////
 
-      case ExprIndex(ExprInt(_, _, value), ExprNum(_, idx)) => {
+      case ExprIndex(Integral(_, _, value), Integral(_, _, idx)) => {
+        // TODO: error on out of range
         ExprInt(false, 1, (value >> idx.toInt) & 1) withLoc tree.loc
       }
 
       ////////////////////////////////////////////////////////////////////////////
-      // Fold slice into sized integers
+      // Fold slice into sized/unsized integers
       ////////////////////////////////////////////////////////////////////////////
 
-      case ExprSlice(ExprInt(_, _, value), ExprNum(_, blidx), op, ExprNum(_, bridx)) => {
+      case ExprSlice(Integral(_, _, value), Integral(_, _, blidx), op, Integral(_, _, bridx)) => {
+        // TODO: error on out of range
         val lidx = blidx.toInt
         val ridx = bridx.toInt
         val lsb = op match {
