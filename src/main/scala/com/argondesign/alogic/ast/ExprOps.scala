@@ -17,10 +17,12 @@
 package com.argondesign.alogic.ast
 
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.core.Bindings
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.TermSymbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.passes.FoldExpr
+import com.argondesign.alogic.transform.ReplaceTermRefs
 import com.argondesign.alogic.util.PartialMatch._
 import com.argondesign.alogic.util.unreachable
 
@@ -196,6 +198,11 @@ trait ExprOps { this: Expr =>
     // TODO: more possible cases
     case ExprInt(_, width, _) => Some(addLoc(Expr(width)))
     case _                    => tpeOpt map { _.width }
+  }
+
+  // Rewrite expression using bindings provided
+  def given(bindings: Bindings)(implicit cc: CompilerContext): Expr = {
+    (this rewrite new ReplaceTermRefs(bindings)).asInstanceOf[Expr]
   }
 
 }
