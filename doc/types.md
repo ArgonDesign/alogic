@@ -7,11 +7,15 @@
 # Data types and simple variables
 
 Alogic makes a distinction between packed types and unpacked (or non-packed)
-types. Packed types are those that are used to specify the bit level
-representation of variables. Every packed type maps to a one dimensional
-sequence of bits in a well defines way. The number of bits in the binary
-representation of a packed type is called the **width** of the type, and can be
-retrieved using the `@bits` built-in function.
+types. This page is about packed types. 
+
+## Packed Types
+
+Packed types are those that are used to specify the bit level representation of
+variables. For example, a 6-bit number would be a packed variable. Every packed
+type maps to a one dimensional sequence of bits in a well defined way. The
+number of bits in the binary representation of a packed type is called the
+**width** of the type, and can be retrieved using the `@bits` built-in function.
 
 Similarly to Verilog, Alogic is a weakly typed language in that any variable of
 a packed type can be assigned to any variable of another packed type, as long as
@@ -30,7 +34,7 @@ the type of the variable followed by the name of the variable:
 
 #### Sized integer types
 
-The fundamental data type in Alogic are signed or unsigned integers introduced
+The fundamental data types in Alogic are signed or unsigned integers introduced
 with the `int` or `uint` keywords, with the number of bits used to represent
 them specified in parentheses. The representation can depend on parameters or
 constants:
@@ -62,15 +66,15 @@ synonym for `u1`.
 
 #### Struct types
 
-Alogic support grouping related values into structures. A structure type is
+Alogic supports grouping related values into structures. A structure type is
 defined with the `struct` keyword, followed by the name of the structure type,
-and the structure fields in curly braces:
+and the structure fields in curly braces, ending with a semicolon:
 
 ```
 struct point_t {
   u16 x;
   u16 y;
-}
+};
 
 struct rect_t {
   point_t topleft;
@@ -132,65 +136,63 @@ a vector type can be declared by adding the vector sizes following the type
 specifier in a declaration:
 
 ```
-  u4[8] va;  // A vector of 8 4-bit unsigned integers
+// Vectors can be defined with one or more dimensions:
 
-  u3[6][9] vb; // A 6-vector of 9-vectors of 3-bit integers (or a 6x9 matrix of 3-bit integers)
-```
+  u4[8] va;
+  u3[6][9] vb;
+   
+// Vectors can be used as a whole:
+   
+  va = 32'd0; // 'va' is a 32-bit variable
+  va <<= 1;
+  
+// Vectors can be indexed and used as elements:
+  
+  va[0] = 4'd0;  // [_] indexing yields the underlying element type (u4)
+  va[1] = (va[0] << 1);
 
-Vectors can be indexed (indices are 0 based), or used as a whole.
-Multi-dimensional vectors can be used after partial indexing, which yield
-vectors of lower dimensions. Assuming the definitions from above:
+// Vectors can be partially indexed:
 
-```
-  va = 32'd0;    // 'va' is a 32-bit variable
-  va[0] = 4'd0;  // [_] indexing yields the underlying element type, here the u4
+  vb = 162'd0;      // 'vb' is a 162 bit variable
+  vb[0] = 27'd0;    // Partial indexing yields vectors of type u3[9]
+  vb[0][0] = 3'd0;  // Full indexing yields primitive elements of type u3
 
-  va <<= 1;             // 'va' can be used as a whole;
-  va[1] = va[0] << 1;   // Or as elements
+// All of the following are allowed
 
-  vb = 162'd0;      // 'vb' is 162 bit variable
-  vb[0] = 27'd0;    // The elements of 'vb' are vectors of type u3[9]
-  vb[0][0] = 3'd0;  // They can be further index to get to the primitive element
-
-  // All of the following is allowed
-  vb++;         // Incremet 'vb' as a 169 bit variable
+  vb++;         // Increment 'vb' as a 162 bit variable
   vb[0]++;      // Increment 'vb[0]' as a 27 bit variable
-  vb[0][0]++;   // Increment the 3-bit underlying element 
+  vb[0][0]++;   // Increment the 3-bit primitive element 
 ```
 
-Vectors are linearized to a bit-string using row-major order, with lower order
-indices packed towards the LSBs, observe:
+Note that indices are 0 based. Multi-dimensional vectors can be used after partial indexing, which yield
+vectors of lower dimensions. Vectors are linearized to a bit-string using row-major order, with lower order
+indices packed towards the LSBs. For example, if we defined x and y as:
 
 ```
   u2[3][4] x = ...;
-
   u24 y = x;
+```
+Then the vector x is unpacked as follows:
 
-  // Now the following equivalencies hold
+ ![Vectors](vectors.svg)
 
-  x[0][0][0] == y[0];   // LSB
-  x[2][3][1] == y[31];  // MSB
+And the following equivalencies hold:
 
-  x[0][0] == y[1:0];    // Lowest element
-  x[2][3] == y[31:30];  // Highest element
-
+```
   x[0] == y[7:0];
   x[1] == y[15:8];
   x[2] == y[23:16];
 
-  x[0][0] == y[1:0];
-  x[0][1] == y[3:2];
-  x[0][2] == y[5:4];
-  x[0][3] == y[7:6];
-  x[1][0] == y[9:8];
-  x[1][1] == y[11:10];
-  x[1][2] == y[13:12];
-  x[1][3] == y[15:14];
-  x[2][0] == y[17:16];
-  x[2][1] == y[19:18];
-  x[2][2] == y[21:20];
-  x[2][3] == y[23:22];
+  x[0][0] == y[1:0];    // Lowest element
+  x[1][2] == y[13:12];  // A middle element
+  x[2][3] == y[31:30];  // Highest element
+  
+  x[0][0][0] == y[0];   // LSB
+  x[2][3][1] == y[31];  // MSB
+  x[i][j][k] = y[8i + 2j + k];
 ```
+
+
 
 ### Void type
 
@@ -204,14 +206,16 @@ Similarly to the C language, a `typedef` declaration can be used to create an
 alias for packed type, giving it a new name:
 
 ```
-  typedef u19 mytype_t; // 'mytype_t' is equivalent to u19
+  typedef <existing type> <new type>;
+  
+  typedef u19 mytype_t; // 'mytype_t' is defined to be equivalent to u19
   mytype_t a; // A variable 'a' of type 'mytype_t'
 ```
 
 ### Mapping to Verilog types
 
 All packed Alogic types map to packed Verilog types with descending range
-specifiers. i.e.: Alogic only ever emits `reg [9:0] foo` or similar, and never
+specifiers. Alogic only ever emits `reg [9:0] foo` or similar, and never
 `reg [0:9] bar`.
 
 Variables with a structure type are emitted as multiple Verilog variables with
