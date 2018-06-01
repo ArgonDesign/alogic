@@ -8,9 +8,9 @@
 
 ### Networks for defining a design hierarchy
 
-In contrast to FSMs, which are the abstraction for describing the behaviour of
-sequential logic, networks are used to define design hierarchies by declaring
-instances of entities and the interconnections between them.
+In contrast to FSMs, which describe the behaviour of sequential logic, networks
+are used to define design hierarchies by declaring instances of entities and the
+connections between them.
 
 Networks can be declared similar to other entities, using the `network` keyword,
 followed by the name of the network, followed by the description of the network
@@ -18,30 +18,36 @@ in curly braces.
 
 ```
 network a {
-  ...
+  <description>
 }
 ```
 
 ### Network contents
 
 As the purpose of networks is to define hierarchies of instances and their
-interconnections, they can only contain the following contents.
+interconnections, they can only contain:
+
+ - Network variable declarations
+ - Instantiations of other entities
+ - Port connections
+
+These are now discussed in more detail.
 
 #### Network variable declarations
 
 A network can contain a list of declarations at the beginning of the network
-body. Given that there is no state system associated with a network, local
-variables or memories cannot be declared in networks. A network can
-fundamentally only declare the following:
+body. A network can fundamentally only declare the following:
 
 - input ports
 - output ports
 - parameters
 - constants
 
+Local variables or memories cannot be declared in networks because it does not have an associated state system. 
+
 Networks can also declare `pipeline` variables, which are used as an abstraction
-for describing pipelined data paths. These are described in their on
-[chapter](pipelines.md).
+for describing pipelined data paths. These are described in their own chapter on 
+[pipelines](pipelines.md).
 
 #### Instantiations
 
@@ -49,55 +55,61 @@ Instantiating an entity can be done using the `new` keyword, with the following
 assignment style syntax:
 
 ```
-<name-of-instance> = new <name-of-entity>(<paremeter-assignments>);
+<name-of-instance> = new <name-of-entity>(<optional paremeter assignments>);
 ```
 
-_\<name-of-instance>_ and _\<name-of-entity>_ are identifiers specifying the
-name of the instance being created, and the name of the entity being
-instantiated.
+- _\<name-of-instance>_ can be chosen by the designed
 
-_\<parameter-assignemts>_ is a comma separated list of `<parameter-name> =
-<expression>` concrete parameter specifications, which is used to override the
-default parameter values declared in the entity being instantiated. See the the
-documentation of [parameters](params.md) as well.
+- _\<name-of-entity>_ must match the name of the entity being instantiated
 
-An example instantiation that creates an instance named `bar` of an entity named
-`foo` would be simply:
+- _\<parameter-assignmets>_ is a comma-separated list of parameter specifications. 
+    - They take the form `<parameter-name> = <expression>`
+    - They override any default parameter values declared in the entity being instantiated.
+    - See the the documentation of [parameters](params.md).
 
-```
-bar = new foo();
-```
+- An example instantiation that creates an instance named `bar` of an entity
+named `foo` would be simply:
 
-Similarly, to instantiate a parametrized entity called `fifo` with a particular
-width an depth, one would write:
+    ```
+    bar = new foo();
+    ```
 
-```
-fifo_i = new fifo(WIDTH=32, DEPTH=512);
-```
+- Similarly, one could instantiate a parametrized entity called `fifo` with a
+particular width and depth. WIDTH and DEPTH must match the names of the
+parameters defined in `fifo`.
 
-### Port connections
+    ```
+    fifo_i = new fifo(WIDTH=32, DEPTH=512);
+    ```
 
-Ports of instances created as described in the previous section are connected
-using the `->` operator:
+#### Port connections
+
+Once instances of entities have been created, the ports on these instances can
+be connected using the `->` operator:
 
 ```
 a.p_out -> b.p_in;
 ```
 
-This creates a combinatorial connection between the left and right hand sides,
+This creates a combinatorial connection between the left and right hand sides
 of the `->`, with the left hand side port being the driver of the right hand
 side port. Alogic takes care of connecting flow control signals in the
 appropriate direction.
 
-Ports of the enclosing network are connected using the same syntax:
+Ports on entity instances can also be connected to ports on the network using
+the same syntax:
 
 ```
-a.p_out -> p_out;
+foo -> a.p_in;
+b.p_out -> bar;
 ```
 
-In the above `a` is an instance, `p_out` is the output port declared in the
-entity of which `a` is an instance of, and `p_out` is a port declared in the
-same entity that contains the `->` connection.
+In the above:
+ - `a_i` and `b_i` are instances or `a` and `b` respectively
+ - `p_in` is an input port declared inside `a`
+ - `p_out` is an output port declared inside `b`
+ - `foo` is an input port declared in the current network
+ - `bar` is an output port declared in the current network
 
 Ports connected using `->` must use matching flow control. This means that ports
 without flow control can only be connected to ports also not using flow control,
@@ -166,9 +178,9 @@ network foo {
 
 Nested FSMs can directly access the input and output ports of the enclosing
 entity, as well the `param` and `const` values declared in the enclosing entity.
-While nested entities will be emitted by the compiler as separate modules,
-external ports referenced by the nested entity will be automatically wired
-through to the nested entity:
+The compiler will emit nested entitues as separate modules, and if there are
+external ports referenced by the nested entity, these will be automatically
+wired through to the nested entity:
 
 ```
 network foo {
