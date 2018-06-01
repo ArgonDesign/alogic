@@ -8,45 +8,52 @@
 
 ### Integer literals
 
-As described in the chapter on [types](types.md), Alogic supports both sized,
-and unsized integers, both of which can further be split in to signed and
-unsigned variants.
+Alogic supports both sized and unsized integers, both of which can further be
+split in to signed and unsigned variants.
 
-There is literal syntax to write values of either of the 4 integer type
-variants.
+### Writing Literal Values
 
-The syntax for sized and unsized integer literals is similar, with the following
-commonalities:
-- Literals start with an optional `+` or `-` sign
-- Base is denoted by one of the characters `b`, `d`, or `h` following the `'`,
-for binary, decimal, or hexadecimal bases respectively
-- An optional `s` signed modifier can be used between the `'` and the base
-specifier character
+The following syntax is used to write literal values where the size of the value
+is specified:
 
-Common rules for integer literals:
-- A leading `+` does nothing, and is allowed to improve clarity where required
-- Omitting the sign is the same as writing `+`
-- Whitespace is allowed between the sign and the rest of the literal, but
+```
+<sign> <W> <size identifier> ' <base> <value>;
+
+// Examples:
+8'd7;
+14'd536;
+-14'sh5F6;
+14'sd5_36;
+-  14'b101;
+'d17; // unsized
+17; // unsized, with default base d
+```
+
+- `sign`: Literals start with an optional `+` or `-` sign. If no sign is
+present, it is assumed to be positive. Therefore `+` is unnecessary, but can be
+used for clarity if desired.
+- `W`: Whitespace is allowed between the sign and the rest of the literal, but
 whitespace is illegal elsewhere
-- Integer literals without an `s` modifier are of an unsigned type, while
-those with an `s` modifier are signed
-- Digits standing for the value must conform to the specified base
-    - `0-1` can be used with binary base `b`
-    - `0-9` can be used with decimal base `d`
-    - `0-9`, `a-f`, `A-F` can be used with hexadecimal base `h`
-- Sequences of digits standing for the value can further contain `_` delimiter
-character, except as the first or last digit.
+- `base`: The base must be one of the following, and the digits used in the
+value must conform to the chosen base:
+- `value`: Sequences of digits standing for the value can further contain the `_` delimiter
+character, except as the first or last digit. 
+
+| base | data type | allowed digits |
+|:---:|:---:|:---:|
+| b | unsigned binary | 0-1 |
+| sb | signed binary | 0-1 |
+| d | signed binary | 0-9 |
+| sd | unsigned binary | 0-9 |
+| h | signed binary | 0-9, a-f, A-F |
+| sh | unsigned binary | 0-9, a-f, A-F |
 
 #### Unsized integer literals
 
-The generic syntax of unsized integer literals is composed of:
-- Optional `+` or `-` sign
-- Optional `'` followed by optional `s` and the base specifier `b`, `d` or `h`
-- Required list of digits standing for the value of the literal
-
-If the base specifier is omitted, decimal base is implied. Using a `-` sign with
-an unsigned unsized literal is illegal, unless the value is 0. The value of a
-literal with a `-` sign is always the negative of the value of the literal
+The `<size identifier> '` can be left off to write an unsized integer literal.
+These literals will remain unsized in the compiled verilog. Using a `-` sign
+with an unsigned unsized literal is illegal, unless the value is 0. The value of
+a literal with a `-` sign is always the negative of the value of the literal
 without the `-` sign.
 
 The following table provides an exhaustive set of examples:
@@ -74,20 +81,18 @@ The following table provides an exhaustive set of examples:
 
 #### Sized integer literals
 
-The generic syntax of sized integer literals is composed of:
-- Optional `+` or `-` sign
-- Required list of decimal digits standing for the width of the literal
-- Required `'` followed by the base specifier `b`, `d` or `h` followed by
-optional `s` signed modifier
-- Required list of digits standing for the value of the literal (see about
-interpretation below)
-
 The list of digits standing for the value specifies the bit pattern of the
 value. It is important to understand the meaning of the previous sentence. In
 particular, observe that for signed literals, the syntax can yield a negative
-value for a seemingly positive literal, e.g. in `4'sd15`, which is numerically
-equivalent to the decimal `-1`, or `4'sd8`, which is actually equivalent to
-`-8`. Similarly for unsigned literals, applying a `-` sign will still yield a
+value for a seemingly positive literal. For example:
+
+- `4'sd15`: 'sd15 would be `0..01111`, so taking it as a 4-bit number gives
+`4'sb1111`, which is numerically equivalent to the decimal `-1`
+
+- `4'sd8`: 'sd8 would be `0..01000`, so taking it as a 4-bit number gives
+`4'sb1000`, which is actually equivalent to the decimal `-8`.
+
+For unsigned literals, applying a `-` sign will still yield a
 positive value, as the result is of unsigned type. The compiler will warn if the
 sign of the literal is different from the sign of the value it represents.
 
