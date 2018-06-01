@@ -7,33 +7,33 @@
 # Interoperability with low level HDLs
 
 The aim of Alogic is not to be a replacement for a lower level HDL. There are
-important design opportunities, which require the use of the precise control and
-lower abstraction provides by a low level HDL such as Verilog. Alogic is
+important design opportunities which require the precise control and
+lower abstraction provided by a low level HDL such as Verilog. Alogic is
 designed to be fully and easily interoperable with entities written natively in
 Verilog.
 
-Interoperability is achieved through 2 mechanisms:
+Interoperability is achieved through two mechanisms:
 
-There is a well defined translation of interface signals from Alogic to the
+1. There is a well defined translation of interface signals from Alogic to the
 target language. This allows Alogic generated modules to be easily instantiated
 in the target language.
 
-Alogic also provides syntax to include arbitrary target language source text in
-the generated output. This can be used either to write the implementation of an
-Alogic entity entirely in the target language, relying on the Alogic compiler
-only to generate the interface signals. The same mechanism can also be used to
-write an Alogic wrapper around a module written in the target language, by
-simply instantiating the native module in the Alogic wrapper, again relying on
-the Alogic compiler to generate the interface signals.
+1. Alogic provides syntax to include arbitrary target-language source text in
+the generated output. Therefore, the implementation of an Alogic entity can be
+written entirely in the target language, relying on the Alogic compiler only to
+generate the interface signals. Alternatively, an Alogic wrapper can be created
+around a module written in the target language, by simply instantiating the
+native module in the Alogic wrapper, again relying on the Alogic compiler to
+generate the interface signals.
 
-These interoperability mechanisms are described in this chapter.
+These interoperability mechanisms are described one at a time in this chapter.
 
 ### Translation of interface signals from Alogic to Verilog
 
 As described in the documentation of [parameters](params.md), Alogic performs
 parameter specialization, and as a result will never emit a Verilog module which
-has a parametrized interface. This leaves us to have to consider only the
-mapping of input and output interface ports from Alogic to the target language.
+has a parametrized interface. Therefore the only interface mapping that needs to
+be considered is input and output ports between Alogic and the target language.
 
 #### Alogic ports with non-`struct` type
 
@@ -56,7 +56,7 @@ fsm foo {
 }
 ```
 
-The above FSM translates into a Verilog module with the following interface:
+This translates into a Verilog module with the following interface:
 
 ```verilog
 module foo(
@@ -88,9 +88,9 @@ emitted output.
 
 #### Ports with flow control
 
-Alogic ports with `sync` flow control have an associate _valid_ signal, and
-Alogic port with `sync ready` flow control have an associated _valid_ and
-_ready_ signal, which are added by the Alogic compiler, as shown in the
+Alogic ports with `sync` flow control have an associated _valid_ signal, and
+Alogic ports with `sync ready` flow control have associated _valid_ and _ready_
+signals. These signals are added by the Alogic compiler, as shown in the
 following example:
 
 ```
@@ -105,7 +105,7 @@ fsm foo {
 }
 ```
 
-Which translates into:
+This translates into:
 
 ```verilog
 module foo(
@@ -158,7 +158,7 @@ module foo(
 endmodule
 ```
 
-Alogic ports with flow control, but with `void` type have their payload signals,
+Alogic ports with flow control, but with `void` type, have no payload signals,
 and generate only _valid_ and _ready_ signals:
 
 ```
@@ -173,7 +173,7 @@ fsm foo {
 }
 ```
 
-Yielding:
+This yields:
 
 ```verilog
 module foo(
@@ -264,7 +264,7 @@ fsm foo {
 }
 ```
 
-Resulting in the following Verilog interface:
+This results in the following Verilog interface:
 
 ```verilog
 module foo(
@@ -331,7 +331,7 @@ A list of:
 - `param` declarations
 - `const` declarations
 
-Followed by an arbitrary number of `verbatim` blocks.
+Followed by an arbitrary number of `verbatim` blocks. For example:
 
 ```
 verbatim entity increment {
@@ -349,13 +349,13 @@ usual way. Output ports have no associated storage elements.
 `param` and `const` declarations are emitted as Verilog `localparam`
 declarations after undergoing parameter specialization.
 
-Verbatim entities can otherwise be instantiated in other Alogic entities without
+Verbatim entities can be instantiated in other Alogic entities without
 restrictions.
 
 #### Alogic entity implemented in Verilog
 
 One use of verbatim entities is to implement Alogic entities, whose behaviour is
-easier described using the target language. A good example is a purely
+more easily described using the target language. A good example is a purely
 combinatorial arbiter:
 
 ```
@@ -417,8 +417,8 @@ The other major use of verbatim entities is to write an Alogic wrapper around a
 Verilog module, so that it can be instantiated in other Alogic entities. This is
 done by defining the interface ports of the verbatim entity as Alogic ports, and
 then instantiating the subject Verilog module in a `verbatim` block, connecting
-the interface signals as appropriate. Imagine we want to instantiate following
-simple Verilog module in an Alogic module:
+the interface signals as appropriate. Imagine we want to instantiate the
+following simple Verilog module in an Alogic module:
 
 ```verilog
 module inc(
@@ -462,7 +462,7 @@ network inc2 {
 ```
 
 The example is deliberately simple, but the wrapped module can be arbitrarily
-complex, its interface signals simply need to be mapped to Alogic ports by the
+complex; its interface signals simply need to be mapped to Alogic ports by the
 designer.
 
 <p align="center">
