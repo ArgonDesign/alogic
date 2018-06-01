@@ -13,37 +13,51 @@ the sequential behaviour of digital logic. Every Alogic entity describing
 sequential logic is eventually emitted as some Verilog modules implementing
 FSMs.
 
+### FSM syntax
+
 FSMs are introduced with the `fsm` keyword, followed by the name of the FSM,
 followed by the description of the FSM in curly brackets. The behaviour of an
 FSM is described using code with sequential semantics, portions of which
-executes on every clock cycle.
+execute on every clock cycle.
 
-### Using functions for encapsulation
-
-FSM code is partitioned into functions. After reset, execution starts in the
-`main` function. The description of an FSM that reads a byte from an input port
-on every clock cycle, increments its value by 2 and writes the result to an
-output port would look as follows:
+This FSM reads a byte from an input port on every clock cycle, increments its
+value by 2 and writes the result to an output port:
 
 ```
 fsm add2 {
+
+  // port declarations:
   in sync u8 p_in;
   out sync u8 p_out;
 
+  // optional entity variables
+  u10 a;
+  u3 b = 3'd6; // after reset, b will be initialised to 6
+
+  // all FSMs must contain a main function:
   void main() {
     u8 x = p_in.read();
     p_out.wire(x + 8'd2);
-    fence;
+    fence; // All functions must end with a control statement
   }
 }
 ```
 
-Note that functions do not return without an explicit `return` statement. If the
-execution reaches the end of the body, control is transferred to the beginning
-of the function, and conceptually proceeds in an infinite loop. This behaviour
-is distinctly different from common programming languages. The body of the
-example FSM above takes 1 cycle to execute, and hence repeats on every clock
-cycle.
+Note that variables declared in the FSM entity and variables declared in `void
+main()` are all static variables. Within `void main()` there would be no
+difference between using `a` and `b`, and using `x`. However, `x` is only
+available inside `void main()` and would not be accessible by another function.
+
+### Using functions for encapsulation
+
+All FSMs must contain a `main` function. Execution starts at the beginning of
+`main` after reset. FSM code also be partitioned into multiple functions. Note
+that functions do not return without an explicit `return` statement. If the
+execution reaches the end of the body of a function, control is transferred to
+the beginning of the function, and conceptually proceeds in an infinite loop.
+This behaviour is distinctly different from common programming languages. The
+body of the example FSM above takes 1 cycle to execute, and hence repeats on
+every clock cycle.
 
 An FSM that, depending on the state of an input port, would apply one of 2
 different kinds of processing could be defined using the following pattern:
@@ -75,32 +89,32 @@ fsm one_or_the_other {
 }
 ```
 
-### Statements
+### Control Units
 
-The body of functions is composed of a list of imperative style statements.
-Statements execute sequentially, according to their execution semantics, which
-are analogous to similar statements in common imperative programming languages.
-Statements can be classed either as combinatorial statements, or control
-statements. For a comprehensive list of statements, see the
-[statements](statements.md) section of the documentation.
+An FSM is partitioned into one or more control units. Each control unit
+corresponds to an FSM state. On every clock cycle, the FSM executes the control
+unit corresponding to the current state, and moves on to a new state, which may
+be the same as the current state. The control unit will consist of a list of
+imperative-style statements. Statements execute sequentially, according to their
+execution semantics, which are analogous to similar statements in common
+imperative programming languages. Statements can be classed either as
+combinatorial statements, or control. In a single control unit, there will be a
+series of combinatorial statements (such as `a += 3'b1;`) followed by a single
+control statement (such as `fence`). For a comprehensive list of statements, see
+the [statements](statements.md) section of the documentation.
 
 ### Execution model
-
-The statements in imperative function bodies can be partitioned into control
-units. Each control unit corresponds to an FSM state. On every clock cycle, the
-FSM executes the control unit corresponding to the current state, and moves on
-to a new state, which may be the same as the current state.
 
 In this section, we will not go into the details of where the precise control
 unit boundaries are, but we will mention the `fence` statement to aid with the
 examples. For now, let it suffice to say that the `fence` statement is used to
 delimit control unit boundaries in straight line code, so any combinatorial
-statement between 2 `fence` statements executes in one clock cycle. For the
+statement between two `fence` statements executes in one clock cycle. For the
 details of where control unit boundaries are, see the section on [control flow
 conversion](control.md).
 
 Under various circumstances, the FSM can stall. When a stall occurs, no internal
-state of the FSM is updated. Internal state includes.
+state of the FSM is updated.
 
 ### Function call model
 
@@ -109,7 +123,7 @@ This ensures that any function can be called from an arbitrary number of call
 sites, and the compiler will take care of resuming execution of the correct code
 when a function returns. The required size of the return stack is determined
 automatically by the compiler, unless the FSM is recursive, as described below.
-The theoretically minded reader will note that this function call model means
+The theoretically-minded reader will note that this function call model means
 that Alogic FSMs actually are more akin to pushdown automata in their
 capabilities than traditional finite state machines.
 
@@ -164,9 +178,11 @@ fsm rec {
 It is very important to note that all variables declared in a function body use
 statically allocated storage. This means that there is only 1 instance of every
 variable name declared in the function, even if a function is invoked multiple
-times in a recursive call stack. For example, on return to the `main` function,
-the following will have `b == 3`, and not `b == 0` as it would be using stack
-allocated variables:
+times in a recursive call stack. In the following example, there is only one
+copy of `a` and `i`, so when they are overwritten by subsequent calls to the
+function they will keep their latest value. This means that on return to the
+`main` function, we will have `b == 3`. (If a new local variable was used for
+every new recursion, then on return to `main` we would have `b == 0`.)
 
 ```
 fsm static_storage {
