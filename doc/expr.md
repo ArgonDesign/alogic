@@ -6,8 +6,8 @@
 
 # Expressions
 
-Alogic supports the same kind of expressions, using the same syntax as Verilog,
-with a few restrictions. These are documented in this section.
+Alogic supports the same kind of expressions (and using the same syntax) as
+Verilog, with a few restrictions. These are documented in this section.
 
 ### Unary operators
 
@@ -53,7 +53,7 @@ their Verilog equivalent:
 Alogic supports the usual ternary conditional `?:` operator:
 
 ```
-  cond ? thenExpr : elseExpre
+  cond ? thenExpr : elseExpre ;
 ```
 
 ### Indexing and slicing
@@ -74,7 +74,7 @@ the `[_:_]` slice syntax:
  u2 d = c[2:1];
 ```
 
-In an Alogic `[_:_]` slice expression, the left hand side index must greater
+In an Alogic `[_:_]` slice expression, the left hand side index must be greater
 than or equal to the right hand side index.
 
 `[_+:_]` and `[_-:_]` are also supported, with the same meaning as in Verilog.
@@ -82,7 +82,7 @@ than or equal to the right hand side index.
 ### Bit concatenations and repetition
 
 Alogic supports the Verilog bit concatenation `{a, b, c}`, and repetition
-`{4{d}}` operators. The combination syntax is also supported `{8{e,f}}`.
+`{4{d}}` operators. A combination of the two is also supported: `{8{e,f}}`.
 
 ### Attribute selection
 
@@ -96,7 +96,8 @@ width = rectangle.bottom_right.x - rectangle.top_left.x;
 ### Function call expressions
 
 Function calls are performed using the usual postfix `()` syntax. No named
-parameter assignment is allowed.
+parameter assignment is allowed. For example, to call the `@zx()` function to
+zero-extend a variable:
 
 ```
 u8 a = @zx(8, b[1:0]);
