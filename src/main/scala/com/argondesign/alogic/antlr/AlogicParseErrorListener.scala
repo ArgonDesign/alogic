@@ -25,12 +25,12 @@ import com.argondesign.alogic.antlr.AlogicLexer._
 
 class AlogicParseErrorListener(implicit cc: CompilerContext) extends ParseErrorListener {
   override def syntaxError(
-    recogniser:         Recognizer[_, _],
-    offendingSymbol:    Object,
-    line:               Int,
-    charPositionInLine: Int,
-    defaultMessage:     String,
-    e:                  RecognitionException
+      recogniser: Recognizer[_, _],
+      offendingSymbol: Object,
+      line: Int,
+      charPositionInLine: Int,
+      defaultMessage: String,
+      e: RecognitionException
   ) = {
     val parser = recogniser.asInstanceOf[AlogicParser]
 
@@ -38,7 +38,7 @@ class AlogicParseErrorListener(implicit cc: CompilerContext) extends ParseErrorL
 
     parser.getTokenFactory
 
-    val message = if (tokenStream.index > 1) {
+    val message = if (tokenStream.LT(-2) != null) {
       List(-2, -1, 1) map { tokenStream.LA(_) } match {
         case List(`LET`, `LEFTBRACKET`, `RIGHTBRACKET`)   => "empty 'let ()' statement"
         case List(`WHILE`, `LEFTBRACKET`, `RIGHTBRACKET`) => "empty 'while ()' condition"
