@@ -19,26 +19,29 @@ combinatorial statements, followed by a single control statement is executed in
 a single clock cycle. See the section on [control flow conversion](control.md)
 for details.
 
-Simple statements that do not contain nested statements can be lexically classed
-either as control statements or combinatorial statements. Compound statements
-that do contain other statements can be either combinatorial statements, if they
-only contain other combinatorial statements, or control statements if they
-contain a mix of combinatorial and control statements. If a compound statement
-contains a mix of combinatorial and control statements, then the last nested
-statement must be a control statement.
+- Simple statements (i.e. statements that do not contain nested statements) can
+be lexically classed either as control statements or combinatorial statements.
+
+- Compound statements (i.e. statements containing other nested statements) can
+be either combinatorial or control statements.
+
+    - If they only contain other combinatorial statements they will be
+    combinatorial statements.
+    
+    - If they contain a mix of combinatorial and control statements, they will
+    be control statements. In this case, the last nested statement must be a
+    control statement.
 
 FSM function bodies must end with a control statement.
 
-## Simple statements
-
-The simples statements, which do not influence control flow are as follows.
-
-### Declaration statement
+### Declaration statement (combinatorial)
 
 A declaration statement can be used to introduce a new variable to be used
-within the surrounding lexical scope. Declaration statements start with a type
-name, followed by the variable identifier, optionally followed by `=` and and
-initializer expression, and end in `;`:
+within the surrounding lexical scope. It could be declared in the entity scope
+and used by all functions, or declared within an individual function.
+Declaration statements start with a type name, followed by the variable
+identifier, optionally followed by `=` and an initializer expression, and end in
+`;`:
 
 ```
   u8 a;          // Declare 8 bit unsigned integer variable 'a',
@@ -64,7 +67,7 @@ declared in the design entity scope.
 
 Declaration statements are always combinatorial statements.
 
-### Block statement
+### Block statement (combinatorial or control)
 
 A `{}` block can be used to introduce a new lexical scope at any time. This can
 be useful to scope local variable declarations, of group statements together for
@@ -82,18 +85,18 @@ clarity.
 A block statement is either a combinatorial statement or a control statement,
 depending on its contents.
 
-### Expression statements
+### Expression statements (combinatorial)
 
-Any expression can be used as a statement when followed by a `;`. Expressions in
-statement position can only achieve anything through heir side-effect. The
-compiler will signal an error if a pure expression is used in statement
-position.
+Expressions can be used as statements when ending in `;`. Since expression
+statements do not return a value, they should only be used for their
+side-effects (see examples below). The compiler will signal an error if a pure
+expression (i.e. one with no side-effects) is used in statement position.
 
 ```
-  p_in.read();        // Valid, as '.read()' has a side-effect of reading
-                      // the input port. The read value is discarded.
+  p_in.read();        // Legal, as '.read()' has a side-effect of reading
+                      // the input port, although the read value is discarded.
 
-  p_out.write(1'b1);  // Valid, writing to a port is a side-effect
+  p_out.write(1'b1);  // Legal, writing to a port is a side-effect
 
   a + b;              // Compiler error: This is a pure expression with no
                       // side-effects.
@@ -103,37 +106,38 @@ Expression statements are always combinatorial statements. Note that function
 calls in statement positions are not expression statements and are described
 below.
 
-## Assignment statements
+### Assignment statements (combinatorial)
 
 An assignment statement updates the value of some storage location. All
 assignment statements are combinatorial statements.
 
-### Simple assignments
+#### Simple assignments (combinatorial)
 
 The simplest assignment statements have the usual form, using the `=` sign to
 delimit the target of the assignment (lvalue), and the expression that yields
 the value to be assigned. Similarly to the Verilog language, the left hand side
 of an assignment can be either one of:
 
-- Simple identifier: `foo`
-- Indexed identifier: `foo[idx]`
-- Identifier with range (a slice): `foo[msb:lsb]` (`foo[msb -: width]` and 
-  `foo[lsb +: width]` are also supported)
-- Structure member access: `foo.bar`
-- Concatenation formed from other valid lvalues (also known as unpacking
-  assignment): `{foo, {bar[idx], baz.x}}`
+- Simple identifier, e.g. `foo = 2'd2;`
 
-Here are some examples:
+- Indexed identifier: `foo[idx]` e.g. `foo[3] = 1'b1;` or `foo[a] = 3'd2;` 
 
-```
-  a = 2'd2;
-  b[a] = 3'd2;
-  c[a+:4] = 8'd42;
-  d.bar = 4'd9;
-  {a, b[1], c[3]} = 13'h1abc;
-```
+- Identifier with range (a slice):
+    - `foo[msb:lsb]` e.g. `foo[10+:7] = 4'd3;`
+    - `foo[msb -: width]` e.g. `c[10 -: 4] = 4'd3;`
+    - `foo[lsb +: width]` e.g. `c[7 +: 4] = 4'd10;` 
+  
+- Structure member access, e.g. `foo.bar = 4'd9;`
 
-### Shorthand assignments
+- Unpacking assignment (concatenation of lvalues): `{foo, {bar[idx], baz.x}}`
+    ```
+    u10 a;
+    u2[3] b;
+    bool[3] c;
+    {a, b[1], c[3]} = 13'h1abc; // 10 bits + 2 bits + 1 bit
+    ```
+
+#### Shorthand assignments (combinatorial)
 
 All binary operators are available in the shorthand assignment form, including
 when the target is a concatenation or other compound lvalue:
@@ -144,7 +148,7 @@ when the target is a concatenation or other compound lvalue:
   {sign, abs} += 1;
 ```
 
-### Increment/Decrement statements
+#### Increment/Decrement statements (combinatorial)
 
 As a further shorthand, increment or decrement by 1 can be expressed using the
 `++` and `--` notation. Note however that these operations are not expressions,
@@ -156,7 +160,7 @@ when standing alone in statement position. All lvalues are valid.
   {sign, abs}--;
 ```
 
-## The `fence` statement
+## The `fence` statement (control)
 
 The `fence` statement is the simplest control statement, and is used to indicate
 the end of a control unit. All combinatorial statements before a `fence`
@@ -172,19 +176,16 @@ statement. The following example takes 2 cycles to execute:
   fence;
 ```
 
-## Branching statements
+### Branching statements (combinatorial or control)
 
 Control flow branches can be achieved with the `if` and `case` statements. These
 branching statements are combinatorial statements if all branches contain only
 combinatorial statements, and they are control statements if all branches
-contain control statements. Mixing combinatorial and control branches in the
-same statement is invalid and yields a compile time error. That is to say that
-either all branches must be combinatorial statement or all branches must be
-control statements. In the case of a control `if` and control `case` statements,
-all branches must end in a control statement (this is the same as with control
-`{}` blocks).
+contain (and in particular, end in) control statements. If one or more branches
+contains a control statement, but not all branches end in a control statement,
+the branch statement is invalid and yields a compile time error.
 
-### `if` statement
+#### `if` statement (combinatorial or control)
 
 The common `if` statement can be used to perform a 2-way branch:
 
@@ -192,9 +193,8 @@ The common `if` statement can be used to perform a 2-way branch:
   if (condition) <then-statement> else <else-statement>
 ```
 
-The else clause is optional. If a control `if` statement does not contain an
-else clause, then the compiler automatically inserts a single `fence` statement.
-Which is to say that:
+The else clause is optional, and omitting the else clause results in an implicit
+fence, as follows:
 
 ```
   if (cond) {
@@ -243,7 +243,7 @@ Some legal examples are:
   }
   fence;
 
-  // But the following does not have a simple equivalent:
+  // Different branches can contain different numbers of control units
   if (a) {
     b = p_in_0.read();
     fence;
@@ -253,14 +253,13 @@ Some legal examples are:
     c = p_in_0.read();
     fence;
   }
-  fence;
 
-  // Combinatorial if without else clause:
+  // This if statement has an implicit else where nothing happens
   if (a) {
     b = 2;
   }
 
-  // Control if without else clause:
+  // This if statement has an implicit else containing a single fence
   if (a) {
     b = p_in_0.read();
     fence;
@@ -272,7 +271,7 @@ Some legal examples are:
 Some invalid examples are:
 
 ```
-  // Invalid due to mismatched combinatorial/control branches
+  // Invalid because 'if' is control and 'else' is combinatorial
   if (a) {
     b = 2;
     fence;
@@ -280,7 +279,7 @@ Some invalid examples are:
     c = 2;
   }
 
-  // Invalid: Control block must end in a control statement
+  // Invalid because control block must end in a control statement
   if (a) {
     b = p_in_0.read();
     fence;
@@ -288,7 +287,7 @@ Some invalid examples are:
   }
 ```
 
-### `case` statement
+#### `case` statement (combinatorial or control)
 
 Multi-way branches can be constructed using the `case` statement. This multi-way
 branch is more similar to the analogous Verilog `case` statement, and less
@@ -306,40 +305,45 @@ Where each case clause is of the form:
   <selector> : <statement>
 ```
 
-There can be a single `default` selector. Other selectors are comma separated
-lists of expressions, which are evaluated in a top to bottom order, and the
-statements of the first clause with a selector equal to the condition expression
-are executed. As opposed to the C `switch` statement, the selectors do not need
-to be constant expressions:
+The selectors can be:
+- single selectors or comma-separated lists
+- values, constant expressions or variable-expressions (unlike the C `switch`)
+- `default`
+
+The selectors are considered in a top-to-bottom order, and if the condition
+expression is equal to the selector, the statement is executed and no further
+selectors are checked. This means overlapping selectors are legal. For example:
 
 ```
   // Assume foo is an u3
   case (foo) {
     3'd0, 3'd1, 3'd2: a = 0;
     bar + 3'd1: a = 1;
-    default: a = 2;
+    default: a = 2; // could be placed anywhere in the list
   }
 ```
 
-Case clauses can contain arbitrarily complex statements using a block:
+Case clauses can contain arbitrarily complex statements using a `{}` block:
 
 ```
   case (foo) {
     bar: {
-      // If foo == bar
+      // code to execute if foo == bar
     }
     baz: {
-      // If foo == baz
+      // code to execute if foo == baz
     }
     default: {
-      // Otherwise
+      // code to execute otherwise
     }
   }
 ```
 
-Similarly to the control `if` statement without an `else` clause, an implicit
-`fence` statement is inserted by the compiler if the `default` clause is omitted
-from a control `case` statement:
+The case statement can either have an explicit or implicit `default` case to
+catch remaining cases. If used explicitly, it can be placed anywhere in the
+selector list and is always evaluated last (this is the same as verilog). If
+used implicitly, it can be omitted and the compiler will insert a default empty
+combinatorial block or `fence;` control block, as appropriate. For example:
 
 ```
   case (foo) {
@@ -370,12 +374,12 @@ is compiled as:
   }
 ```
 
-## Function calls
+### Function calls (control)
 
 Functions are used to encapsulate repetitive portions of FSM behaviour. All
 statements relating to function call handling are control statements.
 
-### The call statement
+#### The call statement (control)
 
 To end the current control unit, and transfer control to a function on the next
 clock cycle, simply call it in statement position:
@@ -393,7 +397,7 @@ clock cycle, simply call it in statement position:
   }
 ```
 
-### `return` statement
+#### `return` statement (control)
 
 The `return` statement can be used to end the control unit and transfer control
 back to the call site for the next clock cycle. As mentioned in the description
@@ -411,7 +415,7 @@ back to the top of the function.
   }
 ```
 
-### `goto` statement
+### `goto` statement (control)
 
 The `goto` statement can be used to perform a tail call to a function. This
 statement ends the current control unit, transfers control to the target
@@ -446,12 +450,12 @@ call site of _b_ inside _a_:
   }
 ```
 
-## Looping statements
+### Looping statements (control)
 
 All statements in this section are control statements. The bodies of all loops
 must be `{}` blocks, even if they contain only a single statement.
 
-### The fundamental `loop` statement
+### The fundamental `loop` statement (control)
 
 The fundamental looping construct is the infinite loop, introduced with the
 `loop` keyword. The body of a `loop` must end in a control statement. To exit
@@ -463,7 +467,7 @@ u8 acc = 0;
 loop {
   acc ^= p_in.read();
   if (acc == 0)
-    break;
+    break; // an implicit 'else fence;' is inserted by the compiler
 }
 ```
 
@@ -472,15 +476,15 @@ so the above code would take 1 clock cycle to perform the initialization of
 _acc_ and enter the loop, and from then on the loop body would execute once
 every cycle (assuming no flow control stalls on p_in), until _acc_ becomes 0.
 
-### Structured loops
+### Structured loops (control)
 
 Structured `do`, `while`, and `for` loops are syntactic sugar and are rewritten
 by the compiler in terms of the primitive `loop` statement. When determining the
-cycle behaviour of these structured loops, consider their rewriting. Given that
-the rewritings introduce control statements after the loop body, structured
-loops need not have a control statement at the end of their body.
+cycle behaviour of these structured loops, consider their rewriting. Note in
+particular that an implicit `fence` is always inserted at the end of the loop
+body and so does not need to be written.
 
-#### `do` loop
+#### `do` loop (control)
 
 The common rear testing `do` loop is written as:
 
@@ -504,7 +508,7 @@ This is rewritten by the compiler to:
   }
 ```
 
-#### `while` loop
+#### `while` loop (control)
 
 The syntax of the front testing `while` loop is as follows:
 
@@ -530,7 +534,7 @@ This is rewritten by the compiler to:
   }
 ```
 
-#### `for` loop
+#### `for` loop (control)
 
 For loops follow the common syntax:
 
@@ -562,13 +566,13 @@ rewriting of a `for` loop in terms of `loop` is:
   }
 ```
 
-### `break` statement
+### `break` statement (control)
 
 The `break` statement can be used to immediately terminate the innermost active
 loop and transfer control to the statement following the loop on the next clock
 cycle.
 
-### `let` headers
+### `let` headers (control)
 
 The `let` keyword can be used to introduce a list of variable declarations
 together with initializers (separated by `,`) to a new scope established by a
@@ -589,7 +593,7 @@ statement. The `let` statement is syntactic sugar for:
 ```
 
 The canonical use case is to aid with `do` loops to construct the equivalent of
-a rear testing `for` loop:
+a rear-testing `for` loop:
 
 ```
   // Loop 8 times using a 3 bit loop variable
