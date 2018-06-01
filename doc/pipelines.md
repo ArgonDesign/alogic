@@ -9,9 +9,7 @@
 ### Networks for describing pipelines
 
 Networks combined with nested FSMs are also used as the abstraction to describe
-pipelines.
-
-This is achieved using `pipeline` variable declarations and the `read;` and
+pipelines. This is achieved using `pipeline` variable declarations and the `read;` and
 `write;` statements available in nested FSMs.
 
 #### Pipeline variable declarations
@@ -28,24 +26,33 @@ FSMs through automatically inserted pipeline ports.
 
 #### Nested FSMs as pipeline stages
 
-Pipeline stages are defined as nested FSMs, which must be singletons (have only
-a single instance), and defined in pipeline order in the enclosing network. The
-nested FSMs can use `pipeline` variables declared in the enclosing network as if
-they were declared as variables in the nested FSM.
+The following points explain how to create a pipeline in Alogic. The example
+afterwards will also help to clarify.
 
-Pipeline stage FSMs must be connected instance to instance using `->`, without
-providing a port selector. This tells the compiler to connect the automatically
-inserted pipeline ports of the FSMs. See the example below.
+- To create a pipeline entity, the designer will need to create a `network` entity
+with nested FSMs which will act as the pipeline stages. The nested FSMs must be
+singletons (have only a single instance), and must be defined in pipeline order
+in the enclosing network.
 
-The `read;` statement can be used to read in the pipeline variables from the
-previous pipeline stage, and the `write;` statement is used to write the
-pipeline variables to the subsequent pipeline stage. The first stage in a
-pipeline cannot contain a `read;` statement, and the last stage in the pipeline
-cannot contain a `write;` statement. These statements are operating on the
-automatically inserted pipeline input and output ports.
+- In the enclosing network, any variables that need to be passed between stages
+should be declared as `pipeline` variables. These can then be used inside the
+nested FSMs.
+
+- All pipeline stages must be connected instance to instance using `<stage-0-name>
+-> <stage-1-name>`. Ports should not be used as the compiler will automatically
+connect the required pipeline ports.
+
+- All pipeline stages (except for the first) must begin with a `read;` statement
+to read in the pipeline variables from the previous pipeline stage.
+
+- All pipeline stages (except for the last) must end with a `write;` statement to
+write the pipeline variables to the subsequent pipeline stage.
+
+ - The `read;` and `write;` statements operate on the pipeline variables that have
+ been automatically connected by the compiler
 
 Here is an example of a 3 stage pipeline that computes the dot product of two
-4-element vectors, and has a 1 dot product per cycle throughput. The example
+4-element vectors, and has a 1-dot-product per cycle throughput. The example
 deliberately handles each vector element as a separate scalar variable to
 demonstrate how pipeline variables are handled. The pipeline uses 4 multipliers
 in parallel in the 1st stage, and performs a radix-2 sum of the element-wise
@@ -133,7 +140,7 @@ network dotprod {
 
 To implement a pipeline, the compiler will automatically insert pipeline input
 and output ports into the stages, and pass all required pipeline variables where
-they are needed. Pipeline ports always use `sync ready` flow control and a
+they are needed. Pipeline ports always use `sync ready` flow control and an
 `fslice` as storage. The compiler turns the above definition of the `dotprod`
 pipeline into the following, before compilation proceeds as for other Alogic
 networks:
@@ -209,7 +216,7 @@ network dotprod {
     void main() {
       // The 'read;' statement is turned into a '.read()' call on the
       // automatically inserted pipeline input port, carrying the pipeline
-      // variables referenced be this or any subsequent stage. The reasult
+      // variables referenced be this or any subsequent stage. The result
       // of the `.read()' is assigned to the now local pipeline variables
       {mul0, mul1, mul2, mul3} = pipeline_i.read();
 
@@ -258,14 +265,14 @@ network dotprod {
 While it is common to build pipelines that sustain a single operation every
 cycle, note that the `read;` and `write;` statements simply turn into common
 `.read()` and `.write()` calls on the inserted pipeline ports, and as such can
-be used at any place in the stage FSM where a combinatorial statement is
+be used at any place in the pipeline stage where a combinatorial statement is
 permitted.
 
-Note further that the stage FSMs really are fully capable FSMs and can have
+Note further that the pipeline stages really are fully capable FSMs and can have
 multiple states, perform function calls, or declare local storage and further
-explicit ports. The same way as any other FSM. The `read;` and
-`write;` statements can be invoked in multiple states, making more complex
-pipelines possible.
+explicit ports, the same way as any other FSM. The `read;` and `write;`
+statements can be invoked in multiple states, making more complex pipelines
+possible.
 
 <p align="center">
 <a href="networks.md">Previous</a> |
