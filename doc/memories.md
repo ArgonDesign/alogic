@@ -13,21 +13,24 @@ cycle.
 
 ### Declaring distributed memories
 
-Distributed memories are declared using an array style syntax:
+Distributed memories are declared using an array-style syntax:
 
 ```
 <type> <identifier>[<depth>];
 ```
 
-The _\<type>_ of a memory determines the type of its elements, and therefore the
-width, of the memory. _\<type>_ must be an integer type. The _\<depth>_ of the
-memory must be a constant expression.
+- _\<type>_ is the data type of each individual element, i.e. the memory width.
+It must be an integer type.
 
-A 32 entry memory of 16 bit unsigned integers called `mem` could be declared as:
+-  _\<depth>_ is how many elements are stored, i.e. the memory depth. It must be
+a constant expression.
 
-```
-u16 storage[32];
-```
+- A 32-entry memory of 16-bit unsigned integers called `storage` could be declared
+as `u16 storage[32];`
+
+Note that a distributed memory (`u16 storage[32]`) is different from a of a
+vector (`u16[32] storage`). The distributed memory evaluates to an unpacked
+array whereas the vector evaluates to a packed array.
 
 ### Working with distributed memories
 
@@ -40,7 +43,7 @@ To get the value at a memory location, use the indexing syntax:
 Reading a distributed memory by indexing is a combinatorial operation and the
 index expression evaluates to the value stored at the addressed location. There
 is no limit imposed by Alogic on the number of look-ups that can be performed
-simultaneously. The designer however should keep in mind the implications of
+simultaneously. However, the designer should keep in mind the implications of
 multiple parallel accesses in terms of circuit timing and area.
 
 Distributed memories can be updated (written) one entry per cycle. Writing to a
@@ -52,7 +55,7 @@ following signature:
 ```
 
 Writing the value `16'habcd` to address `9` in the distributed memory called
-`storage` declared earlier, is performed with:
+`storage` (declared earlier) is performed with:
 
 ```
   storage.write(9, 16'habcd);
@@ -79,8 +82,8 @@ Writes take effect only on the subsequent clock cycle:
 In the Verilog implementation emitted by the compiler, distributed memories are
 implemented using unpacked arrays. Direct indexing is used for look-ups, but
 additional write enable (`we`), write data (`wdata`) and write address (`waddr`)
-signals are used to handle writes. The `storage` distributed memory declared
-earlier would be implemented in the generated Verilog as:
+signals are used to handle writes. The distributed memory `storage` (declared
+as `u16 storage[32]`) would be implemented in the generated Verilog as:
 
 ```verilog
   // Memory
@@ -99,9 +102,9 @@ earlier would be implemented in the generated Verilog as:
   end
 ```
 
-### A simple distributed memory based FIFO example
+### Example: FIFO with distributed memory
 
-As an example, a simple 32 entry deep, 8-bit wide distributed memory backed fifo
+As an example, a fifo with a simple 32 entry deep, 8-bit wide distributed memory
 could be written in Alogic as:
 
 ```
@@ -137,7 +140,7 @@ fsm dfifo {
       wrptr++;
     }
 
-    // Check the pointers are equal
+    // Check if the pointers are equal
     bool eq = rdptr == wrptr;
 
     // full/empty only change if reading or writing on a cycle but not both
