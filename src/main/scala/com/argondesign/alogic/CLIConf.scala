@@ -168,6 +168,18 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
   )
   validateOneOf(uninitialized)("none", "zeros", "ones", "random")
 
+  val ensurePrefix = opt[String](
+    name = "ensure-prefix",
+    noshort = true,
+    required = false,
+    descr = """|Ensure all output module names start with the prefix provided.
+               |If the name of an Alogic entity already starts with a suffix of
+               |the given prefix, only the remaining initial part of the prefix
+               |will be applied.
+               |""".stripMargin.replace('\n', ' '),
+    default = Some("")
+  )
+
   val color = opt[String](
     noshort = true,
     required = false,

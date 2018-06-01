@@ -42,6 +42,7 @@ object Main extends App {
     srcbase = cliConf.srcbase.toOption map { _.toPath },
     sep = cliConf.sep(),
     uninitialized = cliConf.uninitialized(),
+    ensurePrefix = cliConf.ensurePrefix(),
     colourize = cliConf.color() match {
       case "always" => true
       case "never"  => false
