@@ -13,12 +13,12 @@ entity behaviour into a state system implemented as a traditional FSM extended
 with a return stack to handle [function calls](statements.md#function-calls).
 
 This section provides details of how the Alogic compiler translates sequential
-code to the state system, that implements the design entity.
+code to the state system.
 
 ### Summary of statement types
 
 As described in the documentation of [statements](statements.md), every Alogic
-statement can be one of 2 types: A control statement, or a combinatorial
+statement can be one of two types: A control statement, or a combinatorial
 statement.
 
 Some statements are unambiguously control statements. These are listed here for
@@ -33,7 +33,7 @@ reference:
 - `while` loop statement
 - `loop` loop statement
 
-Loops with a `let` clause are control statements the same way as the loops
+Loops with a `let` clause are control statements in the same way as the loops
 themselves.
 
 Some statements are unambiguously combinatorial statements. These are listed
@@ -48,8 +48,8 @@ here:
 The remaining statements can be either of a combinatorial or control type,
 depending on circumstance.
 
-A function call to a control functions defined in an entity is always a control
-statements. Any other expression when used in a statement position is a
+Within an entity, a function call to another control function is always a
+control statement. Any other expression when used in a statement position is a
 combinatorial statement, including calls to built-in functions, port methods and
 similar accessors:
 
@@ -292,12 +292,12 @@ executes twice:
   fence;                // V Cycle 4
 ```
 
-Only for loops that are not front-testing (i.e.: for `do` and `loop` loops), an
-optimization is possible if the statement immediately preceding the loop is a
-control statement. In this case, the loopback can target the state beginning
-after the preceding control statement, as there are no combinatorial statements
-in that sate at that point. The Alogic compiler performs this optimization,
-meaning that the following executes in 3 cycles, rather than 4:
+For rear-testing loops (i.e.: for `do` and `loop` loops), an optimization is
+possible if the statement immediately preceding the loop is a control statement.
+In this case, the loopback can target the state beginning after the preceding
+control statement, as there are no combinatorial statements in that sate at that
+point. The Alogic compiler performs this optimization, meaning that the
+following executes in 3 cycles, rather than 4:
 
 ```
 void main() {
@@ -334,7 +334,7 @@ void main() {
 
 This optimization is not possible if there is any combinatorial statement
 between the loop statement and the preceding control statement, so the `fence`
-in this is not redundant:
+in this is executed, and the new cycle then ends on loop entry.
 
 ```
 void main() {
