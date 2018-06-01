@@ -52,7 +52,7 @@ The generic syntax for an input port declaration is:
 Output ports are declared with the same syntax as input port, but using the
 `out` keyword, and can additionally provide a storage specifier. The generic
 syntax is:
-- `out` keyword
+- `out` keyword (or `out wire`)
 - optionally followed by a flow control specifier
 - optionally followed by a storage specifier
 - followed by a data type
@@ -64,8 +64,7 @@ syntax is:
 ```
 
 In the following sections, we describe the flow control semantics used by
-Alogic. After this discussion, we will introduce the syntax used to work with
-Alogic ports.
+Alogic, and then we introduce the syntax used to work with Alogic ports.
 
 ### Flow control signals
 
@@ -85,12 +84,12 @@ The following flow control specifiers are supported:
 - `sync` results in an additional **valid** signal
 - `sync ready` results in additional **valid** and **ready** signals
 
-The _valid_ signals are driven in the forward direction, while _ready_ signals
+The `valid` signals are driven in the forward direction, while `ready` signals
 are driven in the backward direction of the port.
 
 ### Flow control semantics
 
-The semantics of flow control signals, are of prime importance to designers
+The semantics of flow control signals are of prime importance to designers
 wanting to integrate compiled Alogic entities with native Verilog modules. While
 the Alogic compiler takes care of synthesizing the necessary signaling to
 respect flow control semantics, it is important that the designer understands
@@ -106,12 +105,12 @@ on Output Storage below), and can change their values arbitrarily at any cycle.
 
 #### Immediate single cycle transactions using `sync` ports
 
-`sync` ports have an additional forward going _valid_ signal that is active high
+`sync` ports have an additional forward going `valid` signal that is active high
 for a single clock cycle when there is a valid datum on the payload signals. It
 is the responsibility of the consumer of the payload to handle the data as
-necessary whenever the _valid_ signal is high. The data transfer is complete
-immediately after the rising edge of the clock, if the _valid_ signal is high.
-Consecutive clock cycles with _valid_ high indicate the transfer of multiple
+necessary whenever the `valid` signal is high. The data transfer is complete
+immediately after the rising edge of the clock, if the `valid` signal is high.
+Consecutive clock cycles with `valid` high indicate the transfer of multiple
 data items.
 
 <!--
@@ -128,12 +127,12 @@ data items.
 #### Back pressure using `sync ready`
 
 To provide back pressure from the consumer, `sync ready` flow control can be
-used. This results in both a forward going _valid_ and a backward going _ready_
+used. This results in both a forward going `valid` and a backward going `ready`
 signal being generated for the port. Data is valid on the payload signals,
-whenever the _valid_ signal is high, but data transfer is completed only if
-_valid_ & _ready_ are both high on the same clock cycle. The consumer can
-**stall** a transfer by keeping _ready_ low. It is a requirement for payload
-signals to stay stable across clock cycles whenever _valid_ is high but _ready_
+whenever the `valid` signal is high, but data transfer is completed only if
+`valid` & `ready` are both high on the same clock cycle. The consumer can
+**stall** a transfer by keeping `ready` low. It is a requirement for payload
+signals to stay stable across clock cycles whenever `valid` is high but `ready`
 is low.
 
 <!--
@@ -150,26 +149,26 @@ is low.
 
 ### Flow control signal dependencies
 
-When thinking about combinatorial logic used to generate the _valid_ and
-_ready_ signals, the following convention must be adhered to:
+When thinking about combinatorial logic used to generate the `valid` and
+`ready` signals, the following convention must be adhered to:
 
-For any interface using _valid_/_ready_ flow control, as in a `sync ready` port,
-the _valid_ signal cannot depend combinatorially on the _ready_ signal of the
+For any interface using `valid`/`ready` flow control, as in a `sync ready` port,
+the `valid` signal cannot depend combinatorially on the `ready` signal of the
 same interface.
 
 Or phrasing the same as a permissive statement:
 
-For any interface using _valid_/_ready_ flow control, as in a `sync ready` port,
-the _ready_ signal can depend combinatorially on the _valid_ signal.
+For any interface using `valid`/`ready` flow control, as in a `sync ready` port,
+the `ready` signal can depend combinatorially on the `valid` signal.
 
 The purpose of this convention is to avoid combinatorial loops, where a circuit
-is computing a _ready_ signal based on a _valid_ signal, and a connected circuit
-is trying to compute the same _valid_ signal based on the same _ready_ signal,
+is computing a `ready` signal based on a `valid` signal, and a connected circuit
+is trying to compute the same `valid` signal based on the same `ready` signal,
 yielding a combinatorial loop which might or might not settle.
 
-Important note: There is no requirement for the _ready_ signal to be low when
-the corresponding _valid_ signal is low. i.e.: A combinatorial dependence from
-_valid_ to _ready_ is permitted, but not necessary.
+Important note: There is no requirement for the `ready` signal to be low when
+the corresponding `valid` signal is low. i.e.: A combinatorial dependence from
+`valid` to `ready` is permitted, but not necessary.
 
 ### Input port access
 
@@ -183,13 +182,18 @@ method:
 ```
 
 The `.read()` method can be used in sequential code, and returns the value of
-the payload signals.
+the payload signals. On a single clock cycle, a port could be read multiple
+times and will keep returning the same value.
 
-For ports with flow control, the `.read()` method has the side effect of
-stalling the entity when the _valid_ signal is low, and with `sync ready` ports,
-raising the _read_ signal when required. This means that `.read()` methods on
-ports with flow control are blocking in the sense that they will stall the
-entity until a transaction is available.
+For ports with flow control:
+
+- If the `valid` signal is low, the `.read()` method has the side effect of
+stalling the entity. This means that `.read()` methods on ports with flow
+control are blocking in the sense that they will stall the entity until a
+transaction is available.
+
+- If the port is `sync ready`, the `.read()` method will raise the `ready`
+signal to high, thus allowing the data to be consumed.
 
 ### Output port access
 
@@ -204,13 +208,20 @@ no arguments):
 ```
 
 The `.write()` method has the return type `void`, and as such must be used in
-statement position (i.e.: it cannot be part of an expression).
+statement position (i.e.: it cannot be part of an expression). On a single clock
+cycle, it could be used more than once and would simply overwrite the previous
+value. The value will not be committed until the end of the clock cycle.
 
-For ports with flow control, the `.write()` method has the side effect of
-setting the _valid_ signal high when appropriate. Similarly to the `.read()`
-method, on ports with `sync ready` flow control, the `.write()` method is
-blocking in the sense that the FSM will stall if a transaction is already
-present in the output slice (see sections below about Output storage).
+For ports with flow control:
+
+- The `.write()` method has the side effect of setting the `valid` signal high
+when appropriate.
+
+- If the port is `sync ready`, if `ready` is low, the `.write()` transaction can
+still occur and the entity is not blocked. However, when the entity returns to
+this state and attempts a further `.write()` transaction, it will then stall
+until the previous transaction is no longer present in the output slice (see
+sections below about Output storage).
 
 Output ports without flow control can also be assigned directly, which is
 equivalent to the corresponding `.write()` call.
@@ -241,7 +252,8 @@ For ports without flow control, using the `.read()` method has the exact same
 effect as using direct port access. In the above example, as `p_flag` has no
 flow control, the `if` statement could have been written `if (p_flag.read())`,
 and would behave the same way, however this would not be true if `p_flag` had
-any other flow control type.
+any other flow control type. However, the statement `p_flag.read()` could only
+be used once per clock cycle.
 
 Similarly to input ports, it is also possible to reference the payload signals
 of output ports directly, which evaluates to the current value of the output
@@ -261,9 +273,9 @@ signals:
 ### Checking port state
 
 Ports with `sync` and `sync ready` flow control provide the `.valid` property
-to check the state of the _valid_ signal of the port. This can be used both on
-input ports, where it evaluates to the state of the _valid_ signal coming into
-the entity, and on output ports, where it resolves to the _valid_ signal being
+to check the state of the `valid` signal of the port. This can be used both on
+input ports, where it evaluates to the state of the `valid` signal coming into
+the entity, and on output ports, where it resolves to the `valid` signal being
 driven from the entity.
 
 One important use of testing port state is non-blocking read/write from ports
@@ -297,7 +309,7 @@ including `cycles`.
 ### Waiting for transactions without consuming them
 
 The `.wait()` method can be used on `sync ready` input ports to wait for an
-incoming transaction. This stalls state machines until the _valid_ signal on the
+incoming transaction. This stalls state machines until the `valid` signal on the
 corresponding port becomes high.
 
 ```
@@ -311,9 +323,11 @@ corresponding port becomes high.
   }
 ```
 
-When combined with direct port access, this is useful for saving area by
-not copying wide buses into local flops when processing them over multiple
-cycles:
+Using `a = p_in.read();` requires replicating the contents of `p_in` to create
+the local flops for `a`. If a is very wide and the data will be used over
+multiple cycles, it is more efficient (in area) to use `p_in.wait()`, following by direct
+port access to `p_in`. When the entity has finished using the data in `p_in`,
+`p_in.read();` can then be used (as a statement).
 
 ```
 fsm stepdown {
@@ -339,7 +353,11 @@ fsm stepdown {
 
 Every output port has an associated output storage element. The possible storage
 elements depend on the flow control type of the output port. The following
-combinations are possible.
+combinations are possible:
+
+![output storage](output-storage.svg)
+
+Each of these options is now discussed in detail:
 
 #### Output ports without flow control
 
@@ -406,9 +424,9 @@ This would result in the following behaviour:
 
 #### Output storage with `sync` ports
 
-Similarly to ports without flow control, `sync` ports are driven from registers
-by default, and can be declared combinatorial using the `wire` storage
-specifier:
+Similarly to ports without flow control, `sync` ports (and their `valid`
+signals) are also driven from registers (local flops in the FSM) by default.
+They can also be declared combinatorial using the `wire` storage specifier:
 
 ```
 fsm syncports {
@@ -442,25 +460,29 @@ fsm syncports {
 
 #### Output slices with `sync ready` ports
 
-`sync ready` output ports that use _valid_/_ready_ flow control are somewhat
-different from ports without flow control and `sync` ports using only a _valid_
-signal. `sync ready` ports use **output slices** as storage elements. The
-purpose of output slices is twofold. Firstly, they provide a single transaction
-worth of storage space, similar to registers on other output ports. Secondly,
-and just as importantly they ensure there is no combinatorial dependency between
-the internal _valid_ and _ready_ signals generated by the FSM. To help
-understand the second purpose, consider the following illustration of the
-implementation of FSMs:
+Unlike `sync` ports and ports with no flow control, `sync ready` output ports
+are more complex and so the logic and storage for these is contained in
+additional **output slices**. These contain a mixture of registers and
+combinatorial logic connecting `valid` and `ready`. These are necessary to
+ensure there is no combinatorial dependency between the internal `valid` and
+`ready` signals generated by the FSM. Similarly to other registered output
+ports, each output slice has space to store one payload item. This means a write
+can occur even if the receiving module is not ready.  This means .write() can
+sometimes be done without stalling the module.
+
+Consider the following illustration of the implementation of FSMs:
 
 ![output slices in FSMs](output-slice-signal-dependencies.svg)
 
 In a general FSM, there can be a combinatorial data-path from any of the signals
-incoming to any of the signals outgoing from the combinatorial logic cloud, this
-includes _ready_ and _valid_ signals on ports. As we discussed earlier, a
-combinatorial loop between the _valid_ and _ready_ signals of an interface must
-be avoided. Output slices aid in this by ensuring that the _ready_ signal going
+incoming to any of the signals outgoing from the combinatorial logic cloud. This
+includes `ready` and `valid` signals on ports. As we discussed earlier, a
+combinatorial loop between the `valid` and `ready` signals of an interface must
+be avoided. Output slices aid in this by ensuring that the `ready` signal going
 to the combinatorial cloud is itself not combinatorially dependent on the
-corresponding _valid_ signal emanating from the combinatorial cloud.
+corresponding `valid` signal emanating from the combinatorial cloud. This is
+achieved through the use of registers and combinatorial logic within the
+output slice.
 
 Alogic supports 3 kinds of output slices:
 - A forward slice can be defined using the `fslice` storage specifier
@@ -481,46 +503,51 @@ fsm slices {
 
 The forward and backward slices can sustain a peak throughput of 1 transaction
 per cycle. They are named after the direction of signals that are driven from
-registers. In an `fslice`, all forward going signals (that is the _payload_ and
-_valid_ signals) are driven from registers. The structure of an `fslice` is
+registers. In an `fslice`, all forward going signals (that is the `payload` and
+`valid` signals) are driven from registers. The structure of an `fslice` is
 shown below:
 
 ![forward slice](fslice.svg)
 
-The noteworthy properties of the `fslice` are that the output _payload_ and
-_valid_ signals are driven from registers, and that there is a combinatorial
-path from the incoming _ready_ signal to the _ready_ signal going to the
-combinatorial cloud.
+There is a storage register for the payload. Therefore, if the `valid` output is
+low, then the storage register must be empty and so the `ready` output can be
+raised (even if the `ready` input is low). Hence there is a combinatorial path
+from the `ready` input signal to the `ready` output signal.
 
 A backward register slice drives the backward flowing signals, namely the
-_ready_ signal from registers. The structure of a `bslice` is show on the
+`ready` signal from registers. The structure of a `bslice` is show on the
 following:
 
 ![backward slice](bslice.svg)
 
-Most important, the _ready_ signal driven to the FSM combinatorial logic is
-coming from a register, and as such there is no combinatorial path between the
-incoming _ready_ and the outgoing _ready_ signals. If the local payload storage
-is empty, then the forward going _payload_ is driven combinatorially from the
-_payload_ incoming from the FSM combinatorial cloud. This means that a `bslice`
-can be used for combinatorial output ports using `sync ready` flow control,
-similarly to how the `wire` storage type can be used for ports without flow
-control, or ports with `sync` flow control. If the local payload storage is
-occupied, the datum in the local storage takes precedence over the payload
-incoming from the FSM, and as such transaction ordering is maintained. The FSM
-cannot push a new item into the `bslice`, until the local storage in is emptied
-by being accepted by the reader of the output port. This means that there can be
-a stall due to the local storage in a `bslice` being occupied, even if the
-reader of the output port is accepting the transaction on the same cycle.
+This time, the `ready` signal driven to the FSM combinatorial logic is coming
+from a register, so there is no combinatorial path between the `ready` input
+and the `ready` output signals.
+
+Similarly to the `fslice`, there is a storage register for the payload, but this
+can be bypassed if `ready` input is high. Hence the output `payload` can be
+driven combinatorially, similarly to how the `wire` storage type can be used for
+ports without flow control, or ports with `sync` flow control. If `ready` input
+is low, the payload is transferred to the storage register.
+
+If the local payload storage is occupied, the datum in the local
+storage takes precedence over the payload incoming from the FSM, and as such
+transaction ordering is maintained. The FSM cannot push a new item into the
+`bslice`, until the local storage is emptied by being accepted by the reader
+of the output port. This means that there can be a stall due to the local
+storage in a `bslice` being occupied, even if the reader of the output port is
+accepting the transaction on the same cycle.
 
 Note that the full throughput `fslice` and `bslice` break the combinatorial
 dependency between the input and output interfaces in only the forward and
-backward directions respectively. The half throughput `bubble` slice shown on
-the figure below can sustain only a 50% utilization, i.e.: a transaction is only
-possible on every other cycle, but has the benefit that both the forwards and
-backward signals are driven from registers, breaking the combinatorial path in
-both directions. For this reason, wherever an output port does not need to
-sustain more than 50% utilization, use of a `bubble` slice is recommended.
+backward directions respectively. The half-throughput `bubble` slice shown on
+the figure below can sustain only a 50% utilization, i.e. a transaction is only
+possible on every other cycle. This is because `valid` high on one cycle forces
+the next cycle to be `valid` low. However, it has the benefit that both the
+forwards and backwards signals are driven from registers, breaking the
+combinatorial path in both directions. For this reason, wherever an output port
+does not need to sustain more than 50% utilization, use of a `bubble` slice is
+recommended.
 
 ![bubble slice](bubble.svg)
 
@@ -573,47 +600,43 @@ in that slice is not occupied. For output ports using a single output slice,
 
 The `.flush()` method can be used on `sync ready` output ports. This stalls the
 entity until the output slices of the port become empty, and can be used to
-ensure all output produced up to that point have been consumed be the reader of
+ensure all outputs produced up to that point have been consumed be the reader of
 the output port.
 
 ### Initial state of output ports.
 
-At reset, all flops driving an output _valid_ signal are initialized such that
-the _valid_ signal on output ports will be low. Note that _valid_ signals of
+At reset, all flops driving an output `valid` signal are initialized such that
+the `valid` signal on output ports will be low. Note that `valid` signals of
 output ports that are driven combinatorially from an FSM (i.e.: a `sync wire`
 output port, or a `sync ready` output port with only `bslice` instances) might
 still be high after reset, if the FSM entry state writes to those ports.
 
 Ports without flow control that use the default register storage may have an
-initializer expression to define their reset values, the same way as for
-variables declared in entity scope:
+initializer expression to define their reset values. No initializer expression
+is allowed in the declarations of any other kinds of ports.
 
 ```
   out u8 simple = 8'd5;
 ```
 
-No initializer expression is allowed in the declarations of any other kinds of
-ports.
+The same can be done for variables declared in entity scope - see
+[FSMs](fsms.md).
 
 ### Summary of port methods and properties
 
 The following table summarizes the methods and properties available on various
-ports. `T` stands for the declared type of the port, and `N` is the number of
-output slices instantiated for the output port:
+ports. `N` is the number of output slices instantiated for the output port:
 
-| Direction | Flow control | Method/property | Type         | Notes                                                                           |
+| Direction | Flow control | Method / property | Type         | Notes                                                                           |
 |:----------|:-------------|:----------------|:-------------|---------------------------------------------------------------------------------|
-| `in`      |              | `.read()`       | void => T    | Same as referencing the port directly                                           |
-| `in`      | `sync`       | `.read()`       | void => T    | Stalls if _valid_ is low                                                        |
-| `in`      | `sync`       | `.valid`        | bool         | Evaluates to state of the input _valid_ signal                                  |
-| `in`      | `sync ready` | `.read()`       | void => T    | Stalls if _valid_ is low, raises _ready_                                        |
-| `in`      | `sync ready` | `.valid`        | bool         | Evaluates to state of the input _valid_ signal                                  |
-| `in`      | `sync ready` | `.wait()`       | void => void | Stalls if _valid_ is low                                                        |
-| `out`     |              | `.write(_)`     | T => void    | Same as direct assignment to the port                                           |
-| `out`     | `sync`       | `.write(_)`     | T => void    | Sets _valid_ high                                                               |
-| `out`     | `sync`       | `.valid`        | bool         | Evaluates to state of the output _valid_ signal                                 |
-| `out`     | `sync ready` | `.write(_)`     | T => void    | Push transaction to output slice, stalls if first output slice is not available |
-| `out`     | `sync ready` | `.valid`        | bool         | Evaluates to state of the output _valid_ signal                                 |
+| `in`      |              | `.read()`       | void => port type    | Same as referencing the port directly                                           |
+| `in`      | `sync`       | `.read()`       | void => port type    | Stalls if `valid` is low                                                        |
+| `in`      | `sync ready` | `.read()`       | void => port type    | Stalls if `valid` is low, raises `ready`                                        |
+| `in`      | `sync` or `sync ready` | `.wait()` | void => void | Stalls if `valid` is low                                                        |
+| `out`     |              | `.write(_)`     | port type => void    | Same as direct assignment to the port                                           |
+| `out`     | `sync`       | `.write(_)`     | port type => void    | Sets `valid` high                                                               |
+| `out`     | `sync ready` | `.write(_)`     | port type => void    | Push transaction to output slice, stalls if first output slice is not available |
+| `out`     | `sync` or `sync ready` | `.valid` | bool      | Evaluates to state of the output `valid` signal                                 |
 | `out`     | `sync ready` | `.flush()`      | void => void | Stalls if the output slices are not empty                                       |
 | `out`     | `sync ready` | `.empty`        | bool         | True if and only if all output slices are empty                                 |
 | `out`     | `sync ready` | `.full`         | bool         | True if and only if all output slices are occupied                              |
