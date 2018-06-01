@@ -39,31 +39,30 @@ definitions can be nested inside Networks as described in the documentation on
 [networks](networks.md#nested-fsms), but otherwise a single source file must
 contain a single entity definition at the root file scope.
 
-Entity definitions are introduced with one of the entity header terms `fsm`,
-`network`, or `verbatim entity` to define their type, which is followed by the
-name of the entity, and the body of the entity in curly braces:
+The Alogic entity source code must have the following structure:
+```
+<optional type definitions>
+
+<entity keyword> <entity name> {
+  <entity description>
+}
+```
+
+The entity keyword must be one of `fsm`, `network`, or `verbatim entity`. For
+example:
 
 ```
 fsm foo {
-  <body>
+  <body: port/parameter/constant declarations>
+  <body: entity-specific body>
 }
 ```
 
-The name of the entity should match the base name of the source file containing
-it's definition, so `fsm foo {...}` should be contained in file `foo.alogic`.
-
-The contents of the body of an entity definition depends on it's type, and is
-discussed in detail in the sections on the particular kinds of entities, but all
-entities can contain [port](ports.md), and
-[parameter / constant definitions](params.md) (in arbitrary order):
-
-```
-network bar {
-  <port/parameter/constant declarations>
-
-  <entity specific body>
-}
-```
+If the entity name is foo, the Alogic source file must be called `foo.alogic`.
+Within the body, all entities can contain [port](ports.md), and [parameter /
+constant definitions](params.md) (in arbitrary order). The remainder of the body
+depends on the type of entity and is discussed in detail in [FSMs](fsms.md),
+[Networks](networks.md) and [Verbatim Entities](interop.md#Verbatim entities).
 
 ### Output Verilog modules
 
