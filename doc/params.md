@@ -31,27 +31,29 @@ module baz (
 endmodule
 ```
 
-Note however, that even though `const` declarations are emitted in the target
+Note however, that even though `const` declarations may be emitted in the target
 language, the compiler will inline the value of `const` declarations where it
 deems necessary, especially in declarations of signals.
 
 ### Entity Parameters
 
 Entities can declare typed parameters, introduced with the `param` keyword.
-Parameters must have a default value, which can be overridden at instantiation
-time:
+These parameters must have a default value. However, it is then possible to
+overwrite this at instantiation time by defining an instantiated module to have
+a specific parameter value:
 
 ```
 fsm foo {
-  param u8 MARKER = 8'h7f;
+  param u8 MARKER = 8'd10;
 }
 
 network bar {
-  foo_i = new foo(MARKER = 8'hf7);
+  foo_i = new foo(MARKER = 8'd247);
+  // creates an instance of foo which overwrites the default value of MARKER.
 }
 ```
 
-Alogic performs parameter specialization, meaning the compiler will emit
+In this way, Alogic performs parameter specialization, meaning the compiler will emit
 specific implementations of a parametrized module, based on the particular
 parameter values it is instantiated with. This means that Verilog modules output
 by the Alogic compiler will never contain _parameter_ declarations. Specialized
