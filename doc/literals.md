@@ -80,7 +80,7 @@ The following table provides an exhaustive set of examples:
 #### Sized integer literals
 
 The list of digits standing for the value specifies the bit pattern of the value
-as oppose to the numerical value, which can sometimes give unexpected results.
+as opposed to the numerical value, which can sometimes give unexpected results.
 In particular, observe that for signed literals, the syntax can yield a negative
 value for a seemingly positive literal. For example:
 
