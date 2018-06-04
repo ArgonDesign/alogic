@@ -98,7 +98,7 @@ be the same as the current state. The control unit will consist of a list of
 imperative-style statements. Statements execute sequentially, according to their
 execution semantics, which are analogous to similar statements in common
 imperative programming languages. Statements can be classed either as
-combinatorial statements, or control. In a single control unit, there will be a
+combinatorial statements, or control statements. In a single control unit, there will be a
 series of combinatorial statements (such as `a += 3'b1;`) followed by a single
 control statement (such as `fence`). For a comprehensive list of statements, see
 the [statements](statements.md) section of the documentation.

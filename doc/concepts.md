@@ -36,6 +36,7 @@ linear way and appear similar to common software programming languages.
 ### Alogic Prerequisites
 
 The designer will need knowledge of:
+- Flow control
 - The difference between combinatorial and registered logic
 - Software languages such as C
 

@@ -73,7 +73,7 @@ that simply group other statements, and conditional `if` and `case` statement.
 We will leave these for later as it makes more sense to consider them in the
 context of other statements.
 
-### Which statements executes together in a single cycle
+### Which statements execute together in a single cycle
 
 Statements that executes with the same clock cycle are referred to as a control
 unit. Working out which statements belong to the same control unit is simple

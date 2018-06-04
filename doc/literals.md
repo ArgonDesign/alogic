@@ -13,11 +13,11 @@ split in to signed and unsigned variants.
 
 ### Writing Literal Values
 
-The following syntax is used to write literal values where the size of the value
-is specified:
+The following syntax is used to write literal values:
 
 ```
-<sign> <W> <size identifier> ' <base> <value>;
+<sign> <size identifier> ' <base> <value>;
+// Whitespace is only legal between the sign and the rest of the literal
 
 // Examples:
 8'd7;
@@ -32,21 +32,19 @@ is specified:
 - `sign`: Literals start with an optional `+` or `-` sign. If no sign is
 present, it is assumed to be positive. Therefore `+` is unnecessary, but can be
 used for clarity if desired.
-- `W`: Whitespace is allowed between the sign and the rest of the literal, but
-whitespace is illegal elsewhere
-- `base`: The base must be one of the following, and the digits used in the
-value must conform to the chosen base:
-- `value`: Sequences of digits standing for the value can further contain the `_` delimiter
-character, except as the first or last digit. 
+- `base`: This indicates the number base system (see table below).
+- `value`: The value must be given using digits that conform to the base (see
+table below). Sequences of digits standing for the value can further contain the
+`_` delimiter character, except as the first or last digit.
 
 | base | data type | allowed digits |
 |:---:|:---:|:---:|
 | b | unsigned binary | 0-1 |
 | sb | signed binary | 0-1 |
-| d | signed binary | 0-9 |
-| sd | unsigned binary | 0-9 |
-| h | signed binary | 0-9, a-f, A-F |
-| sh | unsigned binary | 0-9, a-f, A-F |
+| d | unsigned decimal | 0-9 |
+| sd | signed decimal | 0-9 |
+| h | unsigned hexadecimal | 0-9, a-f, A-F |
+| sh | signed hexadecimal | 0-9, a-f, A-F |
 
 #### Unsized integer literals
 
@@ -81,16 +79,16 @@ The following table provides an exhaustive set of examples:
 
 #### Sized integer literals
 
-The list of digits standing for the value specifies the bit pattern of the
-value. It is important to understand the meaning of the previous sentence. In
-particular, observe that for signed literals, the syntax can yield a negative
+The list of digits standing for the value specifies the bit pattern of the value
+as oppose to the numerical value, which can sometimes give unexpected results.
+In particular, observe that for signed literals, the syntax can yield a negative
 value for a seemingly positive literal. For example:
 
 - `4'sd15`: 'sd15 would be `0..01111`, so taking it as a 4-bit number gives
 `4'sb1111`, which is numerically equivalent to the decimal `-1`
 
 - `4'sd8`: 'sd8 would be `0..01000`, so taking it as a 4-bit number gives
-`4'sb1000`, which is actually equivalent to the decimal `-8`.
+`4'sb1000`, which is numerically equivalent to the decimal `-8`.
 
 For unsigned literals, applying a `-` sign will still yield a
 positive value, as the result is of unsigned type. The compiler will warn if the

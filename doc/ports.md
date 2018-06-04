@@ -252,8 +252,7 @@ For ports without flow control, using the `.read()` method has the exact same
 effect as using direct port access. In the above example, as `p_flag` has no
 flow control, the `if` statement could have been written `if (p_flag.read())`,
 and would behave the same way, however this would not be true if `p_flag` had
-any other flow control type. However, the statement `p_flag.read()` could only
-be used once per clock cycle.
+any other flow control type.
 
 Similarly to input ports, it is also possible to reference the payload signals
 of output ports directly, which evaluates to the current value of the output
@@ -426,7 +425,7 @@ This would result in the following behaviour:
 
 Similarly to ports without flow control, `sync` ports (and their `valid`
 signals) are also driven from registers (local flops in the FSM) by default.
-They can also be declared combinatorial using the `wire` storage specifier:
+They can also be declared combinatorially using the `wire` storage specifier:
 
 ```
 fsm syncports {

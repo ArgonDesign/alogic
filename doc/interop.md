@@ -334,7 +334,7 @@ A list of:
 Followed by an arbitrary number of `verbatim` blocks. For example:
 
 ```
-verbatim entity increment {
+verbatim entity foo {
   <declarations>
 
   verbatim verilog {

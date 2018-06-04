@@ -33,7 +33,7 @@ interconnections, they can only contain:
 
 These are now discussed in more detail.
 
-#### Network variable declarations
+### Network variable declarations
 
 A network can contain a list of declarations at the beginning of the network
 body. A network can fundamentally only declare the following:
@@ -49,7 +49,7 @@ Networks can also declare `pipeline` variables, which are used as an abstraction
 for describing pipelined data paths. These are described in their own chapter on 
 [pipelines](pipelines.md).
 
-#### Instantiations
+### Instantiations
 
 Instantiating an entity can be done using the `new` keyword, with the following
 assignment style syntax:
@@ -65,7 +65,7 @@ assignment style syntax:
 - _\<parameter-assignmets>_ is a comma-separated list of parameter specifications. 
     - They take the form `<parameter-name> = <expression>`
     - They override any default parameter values declared in the entity being instantiated.
-    - See the the documentation of [parameters](params.md).
+    - See the the documentation on [parameters](params.md).
 
 - An example instantiation that creates an instance named `bar` of an entity
 named `foo` would be simply:
@@ -82,7 +82,7 @@ parameters defined in `fifo`.
     fifo_i = new fifo(WIDTH=32, DEPTH=512);
     ```
 
-#### Port connections
+### Port connections
 
 Once instances of entities have been created, the ports on these instances can
 be connected using the `->` operator:
@@ -105,7 +105,7 @@ b.p_out -> bar;
 ```
 
 In the above:
- - `a_i` and `b_i` are instances or `a` and `b` respectively
+ - `a_i` and `b_i` are instances of `a` and `b` respectively
  - `p_in` is an input port declared inside `a`
  - `p_out` is an output port declared inside `b`
  - `foo` is an input port declared in the current network
@@ -128,7 +128,7 @@ settings.width -> b.width, c.width, d.width;
 Connections of `sync ready` ports must be one to one, otherwise the compiler
 will issue an error.
 
-#### Nested FSMs
+### Nested FSMs
 
 Networks can also contain nested `fsm` definitions, which can be instantiated in
 the enclosing network:

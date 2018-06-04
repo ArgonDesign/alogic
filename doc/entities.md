@@ -62,7 +62,7 @@ If the entity name is foo, the Alogic source file must be called `foo.alogic`.
 Within the body, all entities can contain [port](ports.md), and [parameter /
 constant definitions](params.md) (in arbitrary order). The remainder of the body
 depends on the type of entity and is discussed in detail in [FSMs](fsms.md),
-[Networks](networks.md) and [Verbatim Entities](interop.md#Verbatim entities).
+[Networks](networks.md) and [Verbatim Entities](interop.md#verbatim-entities).
 
 ### Output Verilog modules
 

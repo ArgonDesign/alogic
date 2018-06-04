@@ -99,9 +99,11 @@ declared earlier, one can use:
   storage.write(10'd87, 16'h0123);
 ```
 
-Given that the read data of an SRAM is registered, reading data from SRAMs
-is slightly more involved. The `.read` method is provided the initiate a read
-access. This has the following signature:
+Given that the read data of an SRAM is registered, initiating a read and
+accessing the data must be done as separate instructions.
+
+The `.read` method is provided to initiate a read access. This has the following
+signature:
 
 ```
   void read(uint($clog2(<depth>)) addr);
@@ -143,12 +145,12 @@ accesses take effect.
 ### Generated SRAM models and instances
 
 To implement combinatorially driven SRAMs, the compiler does the following:
-  1. Construct an SRAM model similar to the one describe previously, but with
+  1. Construct an SRAM model similar to the one described previously, but with
      specific width and depth values. If an SRAM of the same shape already
-     exist anywhere in the design, that model is resued.
+     exists anywhere in the design, that model is reused.
   1. Instantiate the SRAM model just constructed in the entity containing the
      `sram` declaration.
-  1. Translate interface methods and properties to the appropriate signal values
+  1. Translate interface methods and properties to the appropriate signal values.
 
 Generated SRAM models are emitted together with the compiled design. These can
 be used for simulation purposes.

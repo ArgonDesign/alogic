@@ -15,16 +15,17 @@ Packed types are those that are used to specify the bit level representation of
 variables. For example, a 6-bit number would be a packed variable. Every packed
 type maps to a one dimensional sequence of bits in a well defined way. The
 number of bits in the binary representation of a packed type is called the
-**width** of the type, and can be retrieved using the `@bits` built-in function.
+*width** of the type, and can be retrieved using the `@bits` [built-in
+function](builtins.md).
 
 Similarly to Verilog, Alogic is a weakly typed language in that any variable of
 a packed type can be assigned to any variable of another packed type, as long as
 the width of the 2 types are the same.
 
-### Declarations of simple variable of packed types
+### Declarations
 
-Simple variables are declared in the usual style, using a type specifier denoting
-the type of the variable followed by the name of the variable:
+Variables are declared in the usual style, using a type specifier denoting the
+type of the variable followed by the name of the variable:
 
 ```
   foo_t bar; // A variable called 'bar' with type 'foo_t'
@@ -45,7 +46,7 @@ constants:
   uint(N+2) c; // Unsigned integer, with width depending on a parameter.
 ```
 
-Since integer types of widely varying length are the norm in digital design,
+Since integer types of varying length are the norm in digital design,
 there is a shorthand for writing them. A word starting with the letter `u`
 followed by the number of bits can be used to denote an unsigned integer type
 with that amount of bits. Similarly, the letter `i` can be used for signed
