@@ -55,7 +55,7 @@ SRAMs are expected to behave as described by the following Verilog model:
 ```
 module sram #(
   parameter WIDTH,
-  parameter DEPT
+  parameter DEPTH
 ) (
   input wire clk,
   input wire ce,
