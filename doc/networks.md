@@ -189,7 +189,7 @@ network foo {
 
   new fsm bar {
     void main() {
-      p_o.write(p_in.read());
+      p_o.write(p_i.read());
       fence;
     }
   }
@@ -208,7 +208,7 @@ network foo {
     out sync ready bool p_o;
 
     void main() {
-      p_o.write(p_in.read());
+      p_o.write(p_i.read());
       fence;
     }
   }

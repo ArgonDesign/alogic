@@ -25,7 +25,6 @@ import com.argondesign.alogic.core.Symbols.TermSymbol
 import com.argondesign.alogic.core.Symbols.TypeSymbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.transform.CloneEntity
-import com.argondesign.alogic.transform.ReplaceTermRefs
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.unreachable
 
@@ -204,11 +203,10 @@ object SpecializeParam extends Pass {
         // For each specialization of the entity defining the referenced
         // parameter, specialize the current bindings
         val expanded = oBindingsSet flatMap { oBindings =>
-          val completedOBindings = oDefaultBindings ++ oBindings
-          val replace = new ReplaceTermRefs(completedOBindings)
+          val completedOBindings = Bindings(oDefaultBindings ++ oBindings)
           simplified map { bindings =>
             bindings map {
-              case (symbol, expr) => symbol -> expr.rewrite(replace).asInstanceOf[Expr]
+              case (symbol, expr) => symbol -> (expr given completedOBindings)
             }
           }
         }

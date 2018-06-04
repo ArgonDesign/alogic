@@ -19,7 +19,6 @@ package com.argondesign.alogic.core
 import com.argondesign.alogic.ast.Trees.Expr
 import com.argondesign.alogic.ast.Trees.ExprRef
 import com.argondesign.alogic.core.Symbols.TermSymbol
-import com.argondesign.alogic.transform.ReplaceTermRefs
 
 import scala.annotation.tailrec
 import scala.language.implicitConversions
@@ -46,9 +45,8 @@ class Bindings(val underlying: Map[TermSymbol, Expr]) extends AnyVal {
       simplified
     } else {
       // Otherwise expand the bindings using themselves
-      val replace = new ReplaceTermRefs(this)
       val expanded = this map {
-        case (symbol, expr) => symbol -> expr.rewrite(replace).asInstanceOf[Expr]
+        case (symbol, expr) => symbol -> (expr given this)
       }
       // Go again until the bindings are flat
       expanded.expand
@@ -62,6 +60,8 @@ class Bindings(val underlying: Map[TermSymbol, Expr]) extends AnyVal {
   def map(f: ((TermSymbol, Expr)) => (TermSymbol, Expr)): Bindings = {
     underlying map f
   }
+
+  def +(pair: (TermSymbol, Expr)): Bindings = underlying + pair
 }
 
 object Bindings {

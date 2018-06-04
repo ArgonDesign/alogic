@@ -353,6 +353,7 @@ object TypeAssigner {
   def apply(node: ExprIndex): node.type = {
     require(!node.hasTpe)
     val tpe = node.expr.tpe.underlying match {
+      case _: TypeNum          => TypeUInt(Expr(1) withLoc node.index.loc)
       case _: TypeInt          => TypeUInt(Expr(1) withLoc node.index.loc)
       case TypeArray(kind, _)  => kind
       case TypeVector(kind, _) => kind

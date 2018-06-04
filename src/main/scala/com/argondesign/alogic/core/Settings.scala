@@ -26,6 +26,8 @@ case class Settings(
     sep: String = "_",
     // The strategy for handling uninitialized local variables
     uninitialized: String = "none",
+    // Output prefix to use
+    ensurePrefix: String = "",
     // Colourize diagnostic messages
     colourize: Boolean = false,
     // Dump trees after each pass

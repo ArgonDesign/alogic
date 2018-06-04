@@ -10,8 +10,7 @@
 //
 // DESCRIPTION:
 //
-// Mangle symbol names that have multiple declarations.
-// Do not touch ports or consts.
+// Make symbol names unique, and rename them if necessary.
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.passes
@@ -24,7 +23,13 @@ import com.argondesign.alogic.core.Types._
 
 import scala.collection.mutable
 
-final class RenameClashingTerms(implicit cc: CompilerContext) extends TreeTransformer {
+final class RenameSymbols(implicit cc: CompilerContext) extends TreeTransformer {
+
+  override protected def skip(tree: Tree): Boolean = tree match {
+    case _: Entity => false
+    case _: Decl   => false
+    case _         => true
+  }
 
   private[this] val nameMap = mutable.Map[String, List[TermSymbol]]() withDefaultValue Nil
 
@@ -36,8 +41,8 @@ final class RenameClashingTerms(implicit cc: CompilerContext) extends TreeTransf
 
   override def transform(tree: Tree): Tree = {
     tree match {
-      case _: Entity => {
-        // Process symbols that map to the same name
+      case entity: Entity => {
+        // Rename symbol with the same name
         for ((name, symbols) <- nameMap if symbols.size > 1) {
           val sortedSymbols = symbols sortBy { _.loc.start }
           val newNames = for (symbol <- sortedSymbols) yield {
@@ -62,6 +67,13 @@ final class RenameClashingTerms(implicit cc: CompilerContext) extends TreeTransf
             symbol rename finalName
           }
         }
+
+        // Add entity prefix
+        val ep = cc.settings.ensurePrefix
+        val prefix = (0 to ep.length) collectFirst {
+          case n if entitySymbol.name startsWith ep.drop(n) => ep.take(n)
+        }
+        entitySymbol rename (prefix.get + entitySymbol.name)
       }
 
       case _ => ()
@@ -72,7 +84,7 @@ final class RenameClashingTerms(implicit cc: CompilerContext) extends TreeTransf
 
 }
 
-object RenameClashingTerms extends TreeTransformerPass {
-  val name = "rename-clashing-terms"
-  def create(implicit cc: CompilerContext) = new RenameClashingTerms
+object RenameSymbols extends TreeTransformerPass {
+  val name = "rename-symbols"
+  def create(implicit cc: CompilerContext) = new RenameSymbols
 }

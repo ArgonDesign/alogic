@@ -17,10 +17,12 @@
 package com.argondesign.alogic.ast
 
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.core.Bindings
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.TermSymbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.passes.FoldExpr
+import com.argondesign.alogic.transform.ReplaceTermRefs
 import com.argondesign.alogic.util.PartialMatch._
 import com.argondesign.alogic.util.unreachable
 
@@ -53,35 +55,35 @@ trait ExprOps { this: Expr =>
   }
 
   // Helpers to easily combine expression trees manually with other expressions
-  final def *(rhs: Expr): Expr = makeExprBinary("*", rhs)
-  final def /(rhs: Expr): Expr = makeExprBinary("/", rhs)
-  final def %(rhs: Expr): Expr = makeExprBinary("%", rhs)
-  final def +(rhs: Expr): Expr = makeExprBinary("+", rhs)
-  final def -(rhs: Expr): Expr = makeExprBinary("-", rhs)
-  final def <<(rhs: Expr): Expr = makeExprBinary("<<", rhs)
-  final def >>(rhs: Expr): Expr = makeExprBinary(">>", rhs)
-  final def <<<(rhs: Expr): Expr = makeExprBinary("<<<", rhs)
-  final def >>>(rhs: Expr): Expr = makeExprBinary(">>>", rhs)
-  final def &(rhs: Expr): Expr = makeExprBinary("&", rhs)
-  final def ^(rhs: Expr): Expr = makeExprBinary("^", rhs)
-  final def |(rhs: Expr): Expr = makeExprBinary("|", rhs)
-  final def &&(rhs: Expr): Expr = makeExprBinary("&&", rhs)
-  final def ||(rhs: Expr): Expr = makeExprBinary("||", rhs)
+  final def *(rhs: Expr): ExprBinary = makeExprBinary("*", rhs)
+  final def /(rhs: Expr): ExprBinary = makeExprBinary("/", rhs)
+  final def %(rhs: Expr): ExprBinary = makeExprBinary("%", rhs)
+  final def +(rhs: Expr): ExprBinary = makeExprBinary("+", rhs)
+  final def -(rhs: Expr): ExprBinary = makeExprBinary("-", rhs)
+  final def <<(rhs: Expr): ExprBinary = makeExprBinary("<<", rhs)
+  final def >>(rhs: Expr): ExprBinary = makeExprBinary(">>", rhs)
+  final def <<<(rhs: Expr): ExprBinary = makeExprBinary("<<<", rhs)
+  final def >>>(rhs: Expr): ExprBinary = makeExprBinary(">>>", rhs)
+  final def &(rhs: Expr): ExprBinary = makeExprBinary("&", rhs)
+  final def ^(rhs: Expr): ExprBinary = makeExprBinary("^", rhs)
+  final def |(rhs: Expr): ExprBinary = makeExprBinary("|", rhs)
+  final def &&(rhs: Expr): ExprBinary = makeExprBinary("&&", rhs)
+  final def ||(rhs: Expr): ExprBinary = makeExprBinary("||", rhs)
 
-  final def *(rhs: Int): Expr = makeExprBinary("*", Expr(rhs))
-  final def /(rhs: Int): Expr = makeExprBinary("/", Expr(rhs))
-  final def %(rhs: Int): Expr = makeExprBinary("%", Expr(rhs))
-  final def +(rhs: Int): Expr = makeExprBinary("+", Expr(rhs))
-  final def -(rhs: Int): Expr = makeExprBinary("-", Expr(rhs))
-  final def <<(rhs: Int): Expr = makeExprBinary("<<", Expr(rhs))
-  final def >>(rhs: Int): Expr = makeExprBinary(">>", Expr(rhs))
-  final def <<<(rhs: Int): Expr = makeExprBinary("<<<", Expr(rhs))
-  final def >>>(rhs: Int): Expr = makeExprBinary(">>>", Expr(rhs))
-  final def &(rhs: Int): Expr = makeExprBinary("&", Expr(rhs))
-  final def ^(rhs: Int): Expr = makeExprBinary("^", Expr(rhs))
-  final def |(rhs: Int): Expr = makeExprBinary("|", Expr(rhs))
-  final def &&(rhs: Int): Expr = makeExprBinary("&&", Expr(rhs))
-  final def ||(rhs: Int): Expr = makeExprBinary("||", Expr(rhs))
+  final def *(rhs: Int): ExprBinary = makeExprBinary("*", Expr(rhs))
+  final def /(rhs: Int): ExprBinary = makeExprBinary("/", Expr(rhs))
+  final def %(rhs: Int): ExprBinary = makeExprBinary("%", Expr(rhs))
+  final def +(rhs: Int): ExprBinary = makeExprBinary("+", Expr(rhs))
+  final def -(rhs: Int): ExprBinary = makeExprBinary("-", Expr(rhs))
+  final def <<(rhs: Int): ExprBinary = makeExprBinary("<<", Expr(rhs))
+  final def >>(rhs: Int): ExprBinary = makeExprBinary(">>", Expr(rhs))
+  final def <<<(rhs: Int): ExprBinary = makeExprBinary("<<<", Expr(rhs))
+  final def >>>(rhs: Int): ExprBinary = makeExprBinary(">>>", Expr(rhs))
+  final def &(rhs: Int): ExprBinary = makeExprBinary("&", Expr(rhs))
+  final def ^(rhs: Int): ExprBinary = makeExprBinary("^", Expr(rhs))
+  final def |(rhs: Int): ExprBinary = makeExprBinary("|", Expr(rhs))
+  final def &&(rhs: Int): ExprBinary = makeExprBinary("&&", Expr(rhs))
+  final def ||(rhs: Int): ExprBinary = makeExprBinary("||", Expr(rhs))
 
   final def max(rhs: Expr)(implicit cc: CompilerContext): Expr = {
     makeExprCall(cc.lookupGlobalTerm("@max"), this, rhs)
@@ -198,6 +200,11 @@ trait ExprOps { this: Expr =>
     case _                    => tpeOpt map { _.width }
   }
 
+  // Rewrite expression using bindings provided
+  def given(bindings: Bindings)(implicit cc: CompilerContext): Expr = {
+    (this rewrite new ReplaceTermRefs(bindings)).asInstanceOf[Expr]
+  }
+
 }
 
 trait ObjectExprOps {
@@ -259,10 +266,17 @@ trait ObjectExprOps {
 
   // Extractor for instance port references
   final object InstancePortRef {
-
     def unapply(expr: ExprSelect): Option[(TermSymbol, TermSymbol)] = expr partialMatch {
       case ExprSelect(ExprRef(iSymbol: TermSymbol), sel) if iSymbol.kind.isInstance =>
         (iSymbol, iSymbol.kind.asInstanceOf[TypeInstance].portSymbol(sel).get)
+    }
+  }
+
+  // Extractor for integral values (ExprInt or ExprNum)
+  final object Integral {
+    def unapply(expr: Expr): Option[(Boolean, Option[Int], BigInt)] = expr partialMatch {
+      case ExprNum(signed, value)        => (signed, None, value)
+      case ExprInt(signed, width, value) => (signed, Some(width), value)
     }
   }
 }

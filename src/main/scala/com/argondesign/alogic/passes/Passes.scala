@@ -67,6 +67,7 @@ object Passes {
       LowerVectors,
       FoldExpr(assignTypes = true, foldRefs = false),
       SimplifyCat,
+      FoldStmt,
       ////////////////////////////////////////////////////////////////////////
       // Back-end
       ////////////////////////////////////////////////////////////////////////
@@ -77,7 +78,7 @@ object Passes {
       DefaultAssignments,
       RemoveUnused,
       RemoveRedundantBlocks,
-      RenameClashingTerms,
+      RenameSymbols,
       // TODO: RenameKeywords
       // TODO: final check pass to make sure everything is well-formed
       CodeGeneration
