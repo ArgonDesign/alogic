@@ -22,6 +22,7 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.util.unreachable
 import com.argondesign.alogic.util.BigIntOps._
 
@@ -31,32 +32,48 @@ import scala.collection.mutable.ListBuffer
 final class SimplifyCat(implicit cc: CompilerContext) extends TreeTransformer {
 
   // Return a list of pairwise equal-length sub-lists that can be assigned to each other
-  private[this] def pairUp(as: List[Expr], bs: List[Expr]): List[(List[Expr], List[Expr])] = {
+  private[this] def pairUp(
+      loc: Loc,
+      as: List[Expr],
+      bs: List[Expr]
+  ): List[(List[Expr], List[Expr])] = {
     def width(es: List[Expr]) = (es map { _.tpe.width.value.get.toInt }).sum
 
-    val pairs = ListBuffer[(List[Expr], List[Expr])]()
+    if (width(as) != width(bs)) {
+      // TODO: this check should be performed in the Typer,
+      // when we have agreed on proper widths semantics
+      cc.error(
+        loc,
+        "Widths do not match",
+        s"left hand side is ${width(as)}-bits wide",
+        s"right hand side is ${width(bs)}-bits wide"
+      )
+      List((as, bs))
+    } else {
+      val pairs = ListBuffer[(List[Expr], List[Expr])]()
 
-    @tailrec
-    def loop(suba: List[Expr], subb: List[Expr], as: List[Expr], bs: List[Expr]): Unit = {
-      val aw = width(suba)
-      val bw = width(subb)
-      if (aw == bw) {
-        pairs.append((suba.reverse, subb.reverse))
-        (as, bs) match {
-          case (Nil, Nil)         => ()
-          case (a :: at, b :: bt) => loop(List(a), List(b), at, bt)
-          case _                  => unreachable
+      @tailrec
+      def loop(suba: List[Expr], subb: List[Expr], as: List[Expr], bs: List[Expr]): Unit = {
+        val aw = width(suba)
+        val bw = width(subb)
+        if (aw == bw) {
+          pairs.append((suba.reverse, subb.reverse))
+          (as, bs) match {
+            case (Nil, Nil)         => ()
+            case (a :: at, b :: bt) => loop(List(a), List(b), at, bt)
+            case _                  => unreachable
+          }
+        } else if (aw < bw) {
+          loop(as.head :: suba, subb, as.tail, bs)
+        } else {
+          loop(suba, bs.head :: subb, as, bs.tail)
         }
-      } else if (aw < bw) {
-        loop(as.head :: suba, subb, as.tail, bs)
-      } else {
-        loop(suba, bs.head :: subb, as, bs.tail)
       }
+
+      loop(List(as.head), List(bs.head), as.tail, bs.tail)
+
+      pairs.toList
     }
-
-    loop(List(as.head), List(bs.head), as.tail, bs.tail)
-
-    pairs.toList
   }
 
   override def transform(tree: Tree): Tree = {
@@ -89,7 +106,7 @@ final class SimplifyCat(implicit cc: CompilerContext) extends TreeTransformer {
       }
 
       case StmtAssign(ExprCat(oLhss), ExprCat(oRhss)) => {
-        val pairs = pairUp(oLhss, oRhss)
+        val pairs = pairUp(tree.loc, oLhss, oRhss)
         if (pairs.lengthCompare(1) == 0) {
           tree
         } else {
@@ -103,7 +120,7 @@ final class SimplifyCat(implicit cc: CompilerContext) extends TreeTransformer {
       }
 
       case Connect(ExprCat(oLhss), List(ExprCat(oRhss))) => {
-        val pairs = pairUp(oLhss, oRhss)
+        val pairs = pairUp(tree.loc, oLhss, oRhss)
         if (pairs.lengthCompare(1) == 0) {
           tree
         } else {
