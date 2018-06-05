@@ -103,36 +103,66 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
         fenceBlocks
       }
 
-      val declarations = variant match {
-        case "verbatim" => {
-          val (goodDecls, badDecls) = entity.declarations.partition {
-            case decl: DeclIdent => {
-              decl.kind match {
-                case _: TypeIn    => true
-                case _: TypeOut   => true
-                case _: TypeParam => true
-                case _: TypeConst => true
-                case _            => false
+      val declarations = {
+        val (goodDecls, badDecls) = variant match {
+          case "fsm" => {
+            entity.declarations.partition {
+              case decl: DeclIdent => {
+                decl.kind match {
+                  case _: TypePipeline => false
+                  case _               => true
+                }
               }
+              case _ => unreachable
             }
-            case _ => unreachable
           }
-
-          badDecls foreach {
-            case decl: DeclIdent => {
-              val hint = decl.kind match {
-                case _: TypeArray    => "array"
-                case _: TypePipeline => "pipeline variable"
-                case _               => "variable"
+          case "network" => {
+            entity.declarations.partition {
+              case decl: DeclIdent => {
+                decl.kind match {
+                  case _: TypeIn       => true
+                  case _: TypeOut      => true
+                  case _: TypeParam    => true
+                  case _: TypeConst    => true
+                  case _: TypePipeline => true
+                  case _               => false
+                }
               }
-              err(List(decl), s"${hint} declarations")
+              case _ => unreachable
             }
-            case _ => unreachable
           }
-
-          goodDecls
+          case "verbatim" => {
+            entity.declarations.partition {
+              case decl: DeclIdent => {
+                decl.kind match {
+                  case _: TypeIn    => true
+                  case _: TypeOut   => true
+                  case _: TypeParam => true
+                  case _: TypeConst => true
+                  case _: TypeSram  => true
+                  case _            => false
+                }
+              }
+              case _ => unreachable
+            }
+          }
+          case _ => unreachable
         }
-        case _ => entity.declarations
+
+        badDecls foreach {
+          case decl: DeclIdent => {
+            val hint = decl.kind match {
+              case _: TypeArray    => "distributed memory"
+              case _: TypePipeline => "pipeline variable"
+              case _: TypeSram     => "SRAM"
+              case _               => "variable"
+            }
+            err(List(decl), s"${hint} declarations")
+          }
+          case _ => unreachable
+        }
+
+        goodDecls
       }
 
       if (variant != "verbatim" &&
