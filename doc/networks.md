@@ -43,7 +43,8 @@ body. A network can fundamentally only declare the following:
 - parameters
 - constants
 
-Local variables or memories cannot be declared in networks because it does not have an associated state system. 
+Local variables or memories cannot be declared in networks because it does not
+have an associated state system.
 
 Networks can also declare `pipeline` variables, which are used as an abstraction
 for describing pipelined data paths. These are described in their own chapter on 
@@ -178,9 +179,9 @@ network foo {
 
 Nested FSMs can directly access the input and output ports of the enclosing
 entity, as well the `param` and `const` values declared in the enclosing entity.
-The compiler will emit nested entitues as separate modules, and if there are
-external ports referenced by the nested entity, these will be automatically
-wired through to the nested entity:
+The compiler will emit nested entities as separate modules, and if there are
+outer ports referenced by the nested entity, these will be automatically wired
+through to the nested entity:
 
 ```
 network foo {

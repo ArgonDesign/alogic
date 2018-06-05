@@ -292,12 +292,12 @@ executes twice:
   fence;                // V Cycle 4
 ```
 
-For rear-testing loops (i.e.: for `do` and `loop` loops), an optimization is
-possible if the statement immediately preceding the loop is a control statement.
-In this case, the loopback can target the state beginning after the preceding
-control statement, as there are no combinatorial statements in that sate at that
-point. The Alogic compiler performs this optimization, meaning that the
-following executes in 3 cycles, rather than 4:
+For non-front-testing loops (i.e.: for `do` and `loop` loops), an optimization
+is possible if the statement immediately preceding the loop is a control
+statement. In this case, the loopback can target the state beginning after the
+preceding control statement, as there are no combinatorial statements in that
+sate at that point. The Alogic compiler performs this optimization, meaning that
+the following executes in 3 cycles, rather than 4:
 
 ```
 void main() {

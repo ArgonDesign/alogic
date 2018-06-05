@@ -51,8 +51,8 @@ available inside `void main()` and would not be accessible by another function.
 ### Using functions for encapsulation
 
 All FSMs must contain a `main` function. Execution starts at the beginning of
-`main` after reset. FSM code also be partitioned into multiple functions. Note
-that functions do not return without an explicit `return` statement. If the
+`main` after reset. FSM code can also be partitioned into multiple functions.
+Note that functions do not return without an explicit `return` statement. If the
 execution reaches the end of the body of a function, control is transferred to
 the beginning of the function, and conceptually proceeds in an infinite loop.
 This behaviour is distinctly different from common programming languages. The

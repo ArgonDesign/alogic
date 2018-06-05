@@ -165,9 +165,10 @@ specifier in a declaration:
   vb[0][0]++;   // Increment the 3-bit primitive element 
 ```
 
-Note that indices are 0 based. Multi-dimensional vectors can be used after partial indexing, which yield
-vectors of lower dimensions. Vectors are linearized to a bit-string using row-major order, with lower order
-indices packed towards the LSBs. For example, if we defined x and y as:
+Note that indices are 0 based. Multi-dimensional vectors can be used after
+partial indexing, which yield vectors of lower dimensions. Vectors are
+linearized to a bit-string using row-major order, with lower order indices
+packed towards the LSBs. For example, if we defined x and y as:
 
 ```
   u2[3][4] x = ...;
@@ -190,7 +191,7 @@ And the following equivalencies hold:
   
   x[0][0][0] == y[0];   // LSB
   x[2][3][1] == y[31];  // MSB
-  x[i][j][k] = y[8i + 2j + k];
+  x[i][j][k] == y[8i + 2j + k];
 ```
 
 
