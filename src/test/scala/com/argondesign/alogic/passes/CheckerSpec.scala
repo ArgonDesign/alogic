@@ -406,20 +406,25 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
             ("i8 a", "variable"),
             ("i8 a[2]", "distributed memory"),
             ("sram i8 a[2]", "SRAM"),
+            ("sram wire i8 a[2]", "SRAM"),
+            ("sram s_t a[2]", "SRAM"),
+            ("sram wire s_t a[2]", "SRAM")
           )
         } {
           decl in {
-            val tree = s"""|network a {
+            val tree = s"""|struct s_t {
+                           |  bool s;
+                           |};
+                           |
+                           |network a {
                            |  ${decl};
-                           |}""".stripMargin.asTree[Entity]
+                           |}""".stripMargin.asTree[Root]
 
-            tree rewrite checker should matchPattern {
-              case entity: Entity =>
-            }
+            tree rewrite checker
 
             cc.messages.loneElement should beThe[Error](
               s"'network' entity cannot contain ${msg} declarations")
-            cc.messages(0).loc.line shouldBe 2
+            cc.messages(0).loc.line shouldBe 6
           }
 
         }
@@ -430,21 +435,25 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
           (decl, msg) <- List(
             ("i8 a", "variable"),
             ("i8 a[2]", "distributed memory"),
-            ("pipeline i8 a", "pipeline variable")
+            ("pipeline i8 a", "pipeline variable"),
+            ("sram s_t a[2]", "registered SRAM"),
+            ("sram i8 a[2]", "registered SRAM"),
           )
         } {
           decl in {
-            val tree = s"""|verbatim entity a {
+            val tree = s"""|struct s_t {
+                           |  bool s;
+                           |};
+                           |
+                           |verbatim entity a {
                            |  ${decl};
-                           |}""".stripMargin.asTree[Entity]
+                           |}""".stripMargin.asTree[Root]
 
-            tree rewrite checker should matchPattern {
-              case entity: Entity =>
-            }
+            tree rewrite checker
 
             cc.messages.loneElement should beThe[Error](
               s"'verbatim' entity cannot contain ${msg} declarations")
-            cc.messages(0).loc.line shouldBe 2
+            cc.messages(0).loc.line shouldBe 6
           }
         }
       }

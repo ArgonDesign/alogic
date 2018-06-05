@@ -63,34 +63,38 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
         case other      => cc.ice(entity, s"Unknown entity variant '$other'")
       }
 
-      def err(nodes: List[Tree], content: String) = {
-        nodes foreach { cc.error(_, s"'${variant}' entity cannot contain ${content}") }
+      def err(node: Tree, content: String): Unit = {
+        cc.error(node, s"'${variant}' entity cannot contain ${content}")
+      }
+
+      def errs(nodes: List[Tree], content: String) = {
+        nodes foreach { err(_, content) }
         Nil
       }
 
       val instances = variant match {
         case "network" => entity.instances
-        case _         => err(entity.instances, "instantiations")
+        case _         => errs(entity.instances, "instantiations")
       }
 
       val connects = variant match {
         case "network" => entity.connects
-        case _         => err(entity.connects, "connections")
+        case _         => errs(entity.connects, "connections")
       }
 
       val functions = variant match {
         case "fsm" => entity.functions
-        case _     => err(entity.functions, "function definitions")
+        case _     => errs(entity.functions, "function definitions")
       }
 
       val fenceBlocks = variant match {
         case "fsm" => entity.fenceStmts
-        case _     => err(entity.fenceStmts, "fence blocks")
+        case _     => errs(entity.fenceStmts, "fence blocks")
       }
 
       val entities = variant match {
         case "network" => entity.entities
-        case _         => err(entity.entities, "nested entities")
+        case _         => errs(entity.entities, "nested entities")
       }
 
       val fenceStmts = if (fenceBlocks.length > 1) {
@@ -104,20 +108,27 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
       }
 
       val declarations = {
-        val (goodDecls, badDecls) = variant match {
+
+        def derr(node: Tree, content: String): Boolean = {
+          err(node, content + " declarations")
+          false
+        }
+
+        variant match {
           case "fsm" => {
-            entity.declarations.partition {
+            entity.declarations.filter {
               case decl: DeclIdent => {
                 decl.kind match {
-                  case _: TypePipeline => false
+                  case _: TypePipeline => derr(decl, "pipeline variable")
                   case _               => true
                 }
               }
               case _ => unreachable
             }
           }
+
           case "network" => {
-            entity.declarations.partition {
+            entity.declarations.filter {
               case decl: DeclIdent => {
                 decl.kind match {
                   case _: TypeIn       => true
@@ -125,22 +136,28 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
                   case _: TypeParam    => true
                   case _: TypeConst    => true
                   case _: TypePipeline => true
-                  case _               => false
+                  case _: TypeArray    => derr(decl, "distributed memory")
+                  case _: TypeSram     => derr(decl, "SRAM")
+                  case _               => derr(decl, "variable")
                 }
               }
               case _ => unreachable
             }
           }
+
           case "verbatim" => {
-            entity.declarations.partition {
+            entity.declarations.filter {
               case decl: DeclIdent => {
                 decl.kind match {
-                  case _: TypeIn    => true
-                  case _: TypeOut   => true
-                  case _: TypeParam => true
-                  case _: TypeConst => true
-                  case _: TypeSram  => true
-                  case _            => false
+                  case _: TypeIn                       => true
+                  case _: TypeOut                      => true
+                  case _: TypeParam                    => true
+                  case _: TypeConst                    => true
+                  case _: TypeArray                    => derr(decl, "distributed memory")
+                  case _: TypePipeline                 => derr(decl, "pipeline variable")
+                  case TypeSram(_, _, StorageTypeWire) => true
+                  case TypeSram(_, _, _)               => derr(decl, "registered SRAM")
+                  case _                               => derr(decl, "variable")
                 }
               }
               case _ => unreachable
@@ -148,21 +165,6 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
           }
           case _ => unreachable
         }
-
-        badDecls foreach {
-          case decl: DeclIdent => {
-            val hint = decl.kind match {
-              case _: TypeArray    => "distributed memory"
-              case _: TypePipeline => "pipeline variable"
-              case _: TypeSram     => "SRAM"
-              case _               => "variable"
-            }
-            err(List(decl), s"${hint} declarations")
-          }
-          case _ => unreachable
-        }
-
-        goodDecls
       }
 
       if (variant != "verbatim" &&
