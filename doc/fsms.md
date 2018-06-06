@@ -37,7 +37,7 @@ fsm add2 {
   // all FSMs must contain a main function:
   void main() {
     u8 x = p_in.read();
-    p_out.wire(x + 8'd2);
+    p_out.write(x + 8'd2);
     fence; // All functions must end with a control statement
   }
 }
