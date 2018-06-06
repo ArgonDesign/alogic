@@ -561,7 +561,7 @@ output signals of the entity. This can be used to add small amount of extra
 buffering on output ports as required:
 
 ```
-  out sync ready u8 fslice fslice a; 
+  out sync ready fslice fslice u8 a; 
 ```
 
 Another important use of multiple output slices is the combination of a `bslice`
@@ -569,7 +569,7 @@ and a `fslice` in order to break the combinatorial paths in both the forward and
 backward directions, while maintaining the possibility of 100% utilization:
 
 ```
-  out sync ready u8 bslice fslice a;
+  out sync ready bslice fslice u8 a;
 ```
 
 There is no restriction on the number of register slices a `sync ready` output
