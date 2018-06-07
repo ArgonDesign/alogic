@@ -28,6 +28,7 @@ import com.argondesign.alogic.util.FollowedBy
 import com.argondesign.alogic.util.ValueMap
 import com.argondesign.alogic.util.unreachable
 
+import scala.annotation.tailrec
 import scala.collection.mutable
 
 final class LiftEntities(implicit cc: CompilerContext)
@@ -111,18 +112,31 @@ final class LiftEntities(implicit cc: CompilerContext)
       val newConstSymbols = if (outerConstSymbols.isEmpty) {
         Nil
       } else {
+        // Find all referenced constants
         val referenced = for {
           outerSymbol <- referencedSymbols
           if outerConstSymbols.toList.exists(_ contains outerSymbol)
         } yield {
           outerSymbol
         }
-        val initializer = referenced flatMap { outerSymbol =>
-          outerSymbol.attr.init.value collect {
-            case ExprRef(s: TermSymbol) if outerConstSymbols.toList.exists(_ contains s) => s
+
+        // Recursively find all constants used in initializers of referenced constants
+        @tailrec
+        def loop(prev: List[TermSymbol], curr: List[TermSymbol]): List[TermSymbol] = {
+          if (prev == curr) {
+            curr
+          } else {
+            val referenced = curr flatMap { outerSymbol =>
+              outerSymbol.attr.init.value collect {
+                case ExprRef(s: TermSymbol) if outerConstSymbols.toList.exists(_ contains s) => s
+              }
+            }
+            loop(curr, (curr ::: referenced).distinct)
           }
         }
-        (referenced ::: initializer).distinct map { outerSymbol =>
+
+        // Sort the symbols in source order and create new symbols
+        loop(Nil, referenced) sortBy { _.loc.start } map { outerSymbol =>
           outerSymbol -> cc.newSymbolLike(outerSymbol)
         }
       }
