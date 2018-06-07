@@ -54,6 +54,7 @@ object CodeGeneration extends Pass {
 
         new PrintWriter(oFile)
       }
+      pw.write(cc.settings.header)
       pw.write(verilog)
       pw.close()
     }

@@ -50,6 +50,14 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
     val argType = ArgType.SINGLE
   }
 
+  private[this] def validateOption[T](
+      option: ScallopOption[T]
+  )(
+      check: PartialFunction[T, String]
+  ) = addValidation {
+    option.toOption flatMap check.lift map { Left(_) } getOrElse Right(Unit)
+  }
+
   private[this] def validateListOption[T](
       option: ScallopOption[List[T]]
   )(
@@ -60,6 +68,18 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
       Left(msgs mkString ("\n", "\n", ""))
     } else {
       Right(Unit)
+    }
+  }
+
+  private[this] def validateFileExist(option: ScallopOption[File]) = {
+    validateOption(option) {
+      case path: File if !path.exists() => s"'${path}' does not exist"
+    }
+  }
+
+  private[this] def validateFileIsRegular(option: ScallopOption[File]) = {
+    validateOption(option) {
+      case path: File if !path.isFile() => s"'${path}' is not a regular file"
     }
   }
 
@@ -179,6 +199,14 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
                |""".stripMargin.replace('\n', ' '),
     default = Some("")
   )
+
+  val header = opt[File](
+    noshort = true,
+    required = false,
+    descr = "File containing text that will be prepended to every output file"
+  )
+  validateFileExist(header)
+  validateFileIsRegular(header)
 
   val color = opt[String](
     noshort = true,
