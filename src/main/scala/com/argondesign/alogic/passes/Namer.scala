@@ -424,6 +424,10 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       }
     }
 
+    case ExprType(kind) => {
+      ExprType(kind rewrite TypeNamer) withLoc tree.loc
+    }
+
     case _ => tree
   }
 
@@ -433,11 +437,25 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
     assert(!sawLet)
     assert(!atBitsEitherTypeOrTerm)
 
-    // Check tree does not contain any Ident nodes anymore
-    tree visit {
-      case node: Ident     => cc.ice(node, s"Ident remains")
-      case node: TypeIdent => cc.ice(node.ident, "TypeIdent remains")
+    // Check tree does not contain any Ident related nodes anymore
+    def check(tree: Tree): Unit = {
+      tree visitAll {
+        case node: DeclIdent => cc.ice(node, "DeclIdent remains")
+        case node: ExprIdent => cc.ice(node, "ExprIdent remains")
+        case node: Ident     => cc.ice(node, "Ident remains")
+        case Decl(symbol, _) => symbol.kind visit { case tree: Tree => check(tree) }
+        case Sym(symbol)     => symbol.kind visit { case tree: Tree => check(tree) }
+        case ExprRef(symbol) => symbol.kind visit { case tree: Tree => check(tree) }
+        case ExprType(kind)  => kind visit { case tree: Tree => check(tree) }
+        case TypeDefinitionStruct(_, _, fieldTypes) => {
+          fieldTypes foreach { _ visit { case tree: Tree => check(tree) } }
+        }
+        case TypeDefinitionTypedef(_, kind) => kind visit { case tree: Tree => check(tree) }
+        case node: TypeIdent                => cc.ice(node.ident, "TypeIdent remains")
+      }
     }
+
+    check(tree)
   }
 
 }

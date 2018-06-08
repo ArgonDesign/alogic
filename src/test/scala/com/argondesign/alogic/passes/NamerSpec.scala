@@ -625,6 +625,17 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     cc.messages shouldBe empty
   }
 
+  it should "resolve names inside type expressions" in {
+    val block = "uint($clog2(1368))".asTree[Expr]
+
+    val tree = block rewrite namer
+
+    tree should matchPattern {
+      case ExprType(TypeUInt(ExprCall(_: ExprRef, List(_: ExprNum)))) =>
+    }
+    cc.messages shouldBe empty
+  }
+
   it should "attach correct types to symbols - entity" in {
     val root = """|fsm a {
                   |  in bool a;
