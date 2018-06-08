@@ -196,8 +196,10 @@ trait ExprOps { this: Expr =>
   // necessarily need type info ...
   def width(implicit cc: CompilerContext): Option[Expr] = simplify match {
     // TODO: more possible cases
-    case ExprInt(_, width, _) => Some(addLoc(Expr(width)))
-    case _                    => tpeOpt map { _.width }
+    case ExprInt(_, width, _) => {
+      Some(if (hasTpe) Expr(width) regularize loc else Expr(width) withLoc loc)
+    }
+    case _ => tpeOpt map { _.width }
   }
 
   // Rewrite expression using bindings provided
