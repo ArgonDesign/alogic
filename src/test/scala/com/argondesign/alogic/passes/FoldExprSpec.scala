@@ -620,10 +620,10 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
     "index over a slice" - {
       for {
         (text, result, msg) <- List(
-          ("a[8 : 3][0]", ExprIndex(ExprIdent("a"), Expr(3)), ""),
-          ("a[9 : 3][0]", ExprIndex(ExprIdent("a"), Expr(3)), ""),
-          ("a[8 : 3][2]", ExprIndex(ExprIdent("a"), Expr(5)), ""),
-          ("a[9 : 3][2]", ExprIndex(ExprIdent("a"), Expr(5)), ""),
+          ("a[8  : 3][0]", ExprIndex(ExprIdent("a"), Expr(3)), ""),
+          ("a[9  : 3][0]", ExprIndex(ExprIdent("a"), Expr(3)), ""),
+          ("a[8  : 3][2]", ExprIndex(ExprIdent("a"), Expr(5)), ""),
+          ("a[9  : 3][2]", ExprIndex(ExprIdent("a"), Expr(5)), ""),
           ("a[8 +: 3][0]", ExprIndex(ExprIdent("a"), Expr(8)), ""),
           ("a[9 +: 3][0]", ExprIndex(ExprIdent("a"), Expr(9)), ""),
           ("a[8 +: 3][2]", ExprIndex(ExprIdent("a"), Expr(10)), ""),
@@ -632,6 +632,59 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
           ("a[9 -: 3][0]", ExprIndex(ExprIdent("a"), Expr(7)), ""),
           ("a[8 -: 3][2]", ExprIndex(ExprIdent("a"), Expr(8)), ""),
           ("a[9 -: 3][2]", ExprIndex(ExprIdent("a"), Expr(9)), "")
+        )
+      } {
+        val expr = text.trim
+        expr in {
+          expr.asTree[Expr] rewrite fold shouldBe result
+          if (msg.isEmpty) {
+            cc.messages shouldBe empty
+          } else {
+            cc.messages.loneElement should beThe[Error](msg)
+          }
+        }
+      }
+    }
+
+    "slice over a slice" - {
+      for {
+        (text, result, msg) <- List(
+          ("a[8  : 4][1  : 0]", ExprSlice(ExprIdent("a"), Expr(5), ":", Expr(4)), ""),
+          ("a[9  : 4][1  : 0]", ExprSlice(ExprIdent("a"), Expr(5), ":", Expr(4)), ""),
+          ("a[8  : 4][2  : 1]", ExprSlice(ExprIdent("a"), Expr(6), ":", Expr(5)), ""),
+          ("a[9  : 4][2  : 1]", ExprSlice(ExprIdent("a"), Expr(6), ":", Expr(5)), ""),
+          ("a[8  : 4][1 +: 2]", ExprSlice(ExprIdent("a"), Expr(5), "+:", Expr(2)), ""),
+          ("a[9  : 4][1 +: 2]", ExprSlice(ExprIdent("a"), Expr(5), "+:", Expr(2)), ""),
+          ("a[8  : 4][2 +: 2]", ExprSlice(ExprIdent("a"), Expr(6), "+:", Expr(2)), ""),
+          ("a[9  : 4][2 +: 2]", ExprSlice(ExprIdent("a"), Expr(6), "+:", Expr(2)), ""),
+          ("a[8  : 4][1 -: 2]", ExprSlice(ExprIdent("a"), Expr(5), "-:", Expr(2)), ""),
+          ("a[9  : 4][1 -: 2]", ExprSlice(ExprIdent("a"), Expr(5), "-:", Expr(2)), ""),
+          ("a[8  : 4][2 -: 2]", ExprSlice(ExprIdent("a"), Expr(6), "-:", Expr(2)), ""),
+          ("a[9  : 4][2 -: 2]", ExprSlice(ExprIdent("a"), Expr(6), "-:", Expr(2)), ""),
+          ("a[8 +: 4][1  : 0]", ExprSlice(ExprIdent("a"), Expr(9), ":", Expr(8)), ""),
+          ("a[9 +: 4][1  : 0]", ExprSlice(ExprIdent("a"), Expr(10), ":", Expr(9)), ""),
+          ("a[8 +: 4][2  : 1]", ExprSlice(ExprIdent("a"), Expr(10), ":", Expr(9)), ""),
+          ("a[9 +: 4][2  : 1]", ExprSlice(ExprIdent("a"), Expr(11), ":", Expr(10)), ""),
+          ("a[8 +: 4][1 +: 2]", ExprSlice(ExprIdent("a"), Expr(9), "+:", Expr(2)), ""),
+          ("a[9 +: 4][1 +: 2]", ExprSlice(ExprIdent("a"), Expr(10), "+:", Expr(2)), ""),
+          ("a[8 +: 4][2 +: 2]", ExprSlice(ExprIdent("a"), Expr(10), "+:", Expr(2)), ""),
+          ("a[9 +: 4][2 +: 2]", ExprSlice(ExprIdent("a"), Expr(11), "+:", Expr(2)), ""),
+          ("a[8 +: 4][1 -: 2]", ExprSlice(ExprIdent("a"), Expr(9), "-:", Expr(2)), ""),
+          ("a[9 +: 4][1 -: 2]", ExprSlice(ExprIdent("a"), Expr(10), "-:", Expr(2)), ""),
+          ("a[8 +: 4][2 -: 2]", ExprSlice(ExprIdent("a"), Expr(10), "-:", Expr(2)), ""),
+          ("a[9 +: 4][2 -: 2]", ExprSlice(ExprIdent("a"), Expr(11), "-:", Expr(2)), ""),
+          ("a[8 -: 4][1  : 0]", ExprSlice(ExprIdent("a"), Expr(6), ":", Expr(5)), ""),
+          ("a[9 -: 4][1  : 0]", ExprSlice(ExprIdent("a"), Expr(7), ":", Expr(6)), ""),
+          ("a[8 -: 4][2  : 1]", ExprSlice(ExprIdent("a"), Expr(7), ":", Expr(6)), ""),
+          ("a[9 -: 4][2  : 1]", ExprSlice(ExprIdent("a"), Expr(8), ":", Expr(7)), ""),
+          ("a[8 -: 4][1 +: 2]", ExprSlice(ExprIdent("a"), Expr(6), "+:", Expr(2)), ""),
+          ("a[9 -: 4][1 +: 2]", ExprSlice(ExprIdent("a"), Expr(7), "+:", Expr(2)), ""),
+          ("a[8 -: 4][2 +: 2]", ExprSlice(ExprIdent("a"), Expr(7), "+:", Expr(2)), ""),
+          ("a[9 -: 4][2 +: 2]", ExprSlice(ExprIdent("a"), Expr(8), "+:", Expr(2)), ""),
+          ("a[8 -: 4][1 -: 2]", ExprSlice(ExprIdent("a"), Expr(6), "-:", Expr(2)), ""),
+          ("a[9 -: 4][1 -: 2]", ExprSlice(ExprIdent("a"), Expr(7), "-:", Expr(2)), ""),
+          ("a[8 -: 4][2 -: 2]", ExprSlice(ExprIdent("a"), Expr(7), "-:", Expr(2)), ""),
+          ("a[9 -: 4][2 -: 2]", ExprSlice(ExprIdent("a"), Expr(8), "-:", Expr(2)), "")
         )
       } {
         val expr = text.trim

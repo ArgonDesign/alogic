@@ -308,13 +308,49 @@ final class FoldExpr(
       ////////////////////////////////////////////////////////////////////////////
 
       case ExprIndex(ExprSlice(expr, lidx, op, ridx), idx) => {
-        val base = op match {
+        // TODO: error on out of range
+        val lsb = op match {
           case ":"  => ridx
           case "+:" => lidx
           case "-:" => lidx - ridx + 1
           case _    => unreachable
         }
-        ExprIndex(expr, walk(base + idx).asInstanceOf[Expr]) withLoc tree.loc
+        ExprIndex(expr, walk(lsb + idx).asInstanceOf[Expr]) withLoc tree.loc
+      }
+
+      ////////////////////////////////////////////////////////////////////////////
+      // Fold Slice over a slice
+      ////////////////////////////////////////////////////////////////////////////
+
+      case ExprSlice(ExprSlice(expr, aLidx, aOp, aRidx), bLidx, bOp, bRidx) => {
+        // TODO: error on out of range
+        val aLsb = aOp match {
+          case ":"  => aRidx
+          case "+:" => aLidx
+          case "-:" => aLidx - aRidx + 1
+          case _    => unreachable
+        }
+        val bLsb = bOp match {
+          case ":"  => bRidx
+          case "+:" => bLidx
+          case "-:" => bLidx - bRidx + 1
+          case _    => unreachable
+        }
+        val bMsb = bOp match {
+          case ":"  => bLidx
+          case "+:" => bLidx + bRidx - 1
+          case "-:" => bRidx
+          case _    => unreachable
+        }
+        if (bOp == ":") {
+          val newLidx = walk(aLsb + bMsb).asInstanceOf[Expr]
+          val newRidx = walk(aLsb + bLsb).asInstanceOf[Expr]
+          ExprSlice(expr, newLidx, bOp, newRidx) withLoc tree.loc
+        } else {
+          val newLidx = walk(aLsb + bLidx).asInstanceOf[Expr]
+          val newRidx = bRidx
+          ExprSlice(expr, newLidx, bOp, newRidx) withLoc tree.loc
+        }
       }
 
       ////////////////////////////////////////////////////////////////////////////
