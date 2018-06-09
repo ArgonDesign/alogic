@@ -708,7 +708,10 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
           ("a[5 +: 1]", ExprIndex(ExprIdent("a"), Expr(5)), ""),
           ("a[4 -: 1]", ExprIndex(ExprIdent("a"), Expr(4)), ""),
           ("a[3 -: 1]", ExprIndex(ExprIdent("a"), Expr(3)), ""),
-          ("a[2:1]", ExprSlice(ExprIdent("a"), Expr(2), ":", Expr(1)), "")
+          ("a[2  : 1]", ExprSlice(ExprIdent("a"), Expr(2), ":", Expr(1)), ""),
+          ("a[b  : b]", ExprIndex(ExprIdent("a"), ExprIdent("b")), ""),
+          ("a[b +: 1]", ExprIndex(ExprIdent("a"), ExprIdent("b")), ""),
+          ("a[b -: 1]", ExprIndex(ExprIdent("a"), ExprIdent("b")), "")
         )
       } {
         val expr = text.trim

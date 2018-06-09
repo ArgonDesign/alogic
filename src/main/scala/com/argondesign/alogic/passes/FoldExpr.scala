@@ -358,6 +358,7 @@ final class FoldExpr(
       ////////////////////////////////////////////////////////////////////////////
 
       case ExprSlice(expr, lidx, ":", ridx) if lidx == ridx => {
+        // TODO: strictly, lidx/ridx could be stuff like @randbit, or other non-pure function
         ExprIndex(expr, lidx) withLoc tree.loc
       }
 
