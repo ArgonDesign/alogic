@@ -27,7 +27,6 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
-import com.argondesign.alogic.core.Symbols.TypeSymbol
 import com.argondesign.alogic.core.TreeInTypeTransformer
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.TreeLike
@@ -628,26 +627,6 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         if (kind eq origKind) expr else expr.copy(kind = kind) withLoc tree.loc
       }
 
-      //////////////////////////////////////////////////////////////////////////
-      // Type the types of TypeSymbols introduced by TypeDefinitions
-      //////////////////////////////////////////////////////////////////////////
-
-      case TypeDefinitionStruct(Sym(symbol: TypeSymbol), _, _) => {
-        val kind = symbol.kind rewrite TypeTyper
-        if (kind ne symbol.kind) {
-          symbol.kind = kind
-        }
-        tree
-      }
-
-      case TypeDefinitionTypedef(Sym(symbol: TypeSymbol), _) => {
-        val kind = symbol.kind rewrite TypeTyper
-        if (kind ne symbol.kind) {
-          symbol.kind = kind
-        }
-        tree
-      }
-
       case _ => tree
     }
 
@@ -672,9 +651,6 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
           cc.ice(node, s"Typer: node of type TypePolyFunc remains")
         }
         case Decl(symbol, _) => check(symbol.kind)
-        case Sym(symbol)     => check(symbol.kind)
-        case ExprRef(symbol) => check(symbol.kind)
-        case ExprType(kind)  => check(kind)
       }
     }
 

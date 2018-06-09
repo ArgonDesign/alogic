@@ -25,7 +25,7 @@ private[builtins] class AtRandbit(implicit cc: CompilerContext) extends BuiltinP
   val name = "@randbit"
 
   def returnType(args: List[Expr]) = args partialMatch {
-    case Nil => TypeUInt(Expr(1) regularize Loc.synthetic)
+    case Nil => TypeUInt(Expr(1))
   }
 
   def isKnownConst(args: List[Expr]) = false
