@@ -31,14 +31,13 @@ object Passes {
       ////////////////////////////////////////////////////////////////////////
       Checker,
       Namer,
+      SpecializeParam,
       Desugar,
       Typer,
       PortCheck,
       ////////////////////////////////////////////////////////////////////////
       // Middle-end
       ////////////////////////////////////////////////////////////////////////
-      FoldExpr(assignTypes = true, foldRefs = false),
-      SpecializeParam,
       FoldExpr(assignTypes = true, foldRefs = false),
       FoldSymbolTypes,
       ConvertMultiConnect,

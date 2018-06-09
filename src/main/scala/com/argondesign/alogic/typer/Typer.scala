@@ -662,4 +662,6 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
 object Typer extends TreeTransformerPass {
   val name = "typer"
   def create(implicit cc: CompilerContext) = new Typer
+
+  def apply(tree: Tree)(implicit cc: CompilerContext): Tree = tree rewrite create
 }
