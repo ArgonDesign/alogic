@@ -167,7 +167,6 @@ final class CloneEntity(
           ref = fixup(Sym(newSymbol), tree.loc),
           instances = instances
         ) withVariant entity.variant
-        // TODO: Apply Typer to specialized result (iff parameterBindings.nonEmpty)
       } followedBy {
         entityLevel -= 1
       }

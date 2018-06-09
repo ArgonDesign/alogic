@@ -72,12 +72,12 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
     val result = transform(tree)
 
     if (!result.hasLoc) {
-      cc.ice(s"Lost location of transformed node:", result.toString)
+      cc.ice(s"Lost location of transformed node:", result.toString, this.getClass.getName)
     }
 
     // Check it has type
     if (typed && !result.hasTpe) {
-      cc.ice(result, "Lost type of transformed node", result.toString)
+      cc.ice(result, "Lost type of transformed node", result.toString, this.getClass.getName)
     }
 
     result
@@ -322,7 +322,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
     // Ensure locations are present
     tree visitAll {
       case node: Tree if !node.hasLoc => {
-        cc.ice(s"Lost location of node:", node.toString)
+        cc.ice(s"Lost location of node:", node.toString, this.getClass.getName)
       }
     }
 
@@ -330,18 +330,18 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
     if (typed) {
       tree visit {
         case node: Tree if !node.hasTpe => {
-          cc.ice(node, "Lost type of node:", node.toString)
+          cc.ice(node, "Lost type of node:", node.toString, this.getClass.getName)
         }
         case node: Tree if node.tpe == TypeError => {
-          cc.ice(node, "Transformed tree has type error:", node.toString)
+          cc.ice(node, "Transformed tree has type error:", node.toString, this.getClass.getName)
         }
         case node @ Instance(Sym(iSymbol), Sym(eSymbol: TypeSymbol), _, _)
             if iSymbol.kind != TypeInstance(eSymbol) => {
-          cc.ice(node, "Bad type for instance symbol", iSymbol.kind.toString)
+          cc.ice(node, "Bad type for instance symbol", iSymbol.kind.toString, this.getClass.getName)
         }
         case node @ Entity(Sym(eSymbol), _, _, _, _, _, _, _, _)
             if !eSymbol.kind.isInstanceOf[TypeEntity] => {
-          cc.ice(node, "Bad type for entity symbol", eSymbol.kind.toString)
+          cc.ice(node, "Bad type for entity symbol", eSymbol.kind.toString, this.getClass.getName)
         }
       }
     }
@@ -371,6 +371,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
               node,
               s"reference to undeclared symbol '${symbol.name}'",
               s"of type '${symbol.kind.toSource}'",
+              this.getClass.getName,
               tree.toSource
             )
           }

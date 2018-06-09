@@ -294,7 +294,7 @@ object Types {
       if (!size.hasLoc) {
         size withLoc Loc.synthetic
       }
-      TypeUInt((cc.getGlobalTermSymbolRef("$clog2", size.loc) call List(size)).simplify(cc))
+      TypeUInt(cc.makeBuiltinCall("$clog2", size.loc, List(size)).simplify(cc))
     }
   }
 

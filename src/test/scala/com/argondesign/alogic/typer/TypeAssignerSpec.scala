@@ -19,13 +19,12 @@ import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.SourceTextConverters._
 import com.argondesign.alogic.ast.Trees.Expr.ImplicitConversions.int2ExprNum
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.core.FlowControlTypes._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
-import com.argondesign.alogic.core.FlowControlTypes._
 import com.argondesign.alogic.core.StorageTypes._
 import com.argondesign.alogic.core.Symbols.ErrorSymbol
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.passes.Desugar
 import com.argondesign.alogic.passes.Namer
 import org.scalatest.FreeSpec
 
@@ -33,7 +32,6 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
 
   implicit val cc: CompilerContext = new CompilerContext
   lazy val namer = new Namer
-  lazy val desugar = new Desugar
 
   private def xform(tree: Tree) = {
     tree match {
@@ -41,7 +39,7 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
       case entity: Entity => cc.addGlobalEntity(entity)
       case _              =>
     }
-    tree rewrite namer rewrite desugar
+    tree rewrite namer
   }
 
   "The TypeAssigner should assign correct types to" - {
@@ -798,8 +796,8 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
         for {
           (text, pattern) <- List[(String, PartialFunction[Any, Unit])](
             ("a = a + 1;", { case _: StmtAssign         => }),
-            ("a++;", { case _: StmtAssign               => }),
-            ("a += 1;", { case _: StmtAssign            => }),
+            ("a++;", { case _: StmtPost                 => }),
+            ("a += 1;", { case _: StmtUpdate            => }),
             ("bool c;", { case _: StmtDecl              => }),
             ("read;", { case _: StmtRead                => }),
             ("write;", { case _: StmtWrite              => }),
@@ -829,18 +827,18 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
       "unambiguous crtl statements" - {
         for {
           (text, pattern) <- List[(String, PartialFunction[Any, Unit])](
-            ("goto a;", { case _: StmtGoto                        => }),
-            ("return;", { case _: StmtReturn                      => }),
-            ("fence;", { case _: StmtFence                        => }),
-            ("break;", { case _: StmtBreak                        => }),
-            ("for(;;) {}", { case _: StmtFor                      => }),
-            ("do {} while(1);", { case _: StmtDo                  => }),
-            ("while (1) {}", { case _: StmtWhile                  => }),
-            ("loop {}", { case _: StmtLoop                        => }),
-            ("let (bool b = 1) for(;;) {}", { case _: StmtFor     => }),
-            ("let (bool b = 1) do {} while(1);", { case _: StmtDo => }),
-            ("let (bool b = 1) while (1) {}", { case _: StmtWhile => }),
-            ("let (bool b = 1) loop {}", { case _: StmtLoop       => })
+            ("goto a;", { case _: StmtGoto                                    => }),
+            ("return;", { case _: StmtReturn                                  => }),
+            ("fence;", { case _: StmtFence                                    => }),
+            ("break;", { case _: StmtBreak                                    => }),
+            ("for(;;) {}", { case _: StmtFor                                  => }),
+            ("do {} while(1);", { case _: StmtDo                              => }),
+            ("while (1) {}", { case _: StmtWhile                              => }),
+            ("loop {}", { case _: StmtLoop                                    => }),
+            ("let (bool b = 1) for(;;) {}", { case StmtLet(_, _: StmtFor)     => }),
+            ("let (bool b = 1) do {} while(1);", { case StmtLet(_, _: StmtDo) => }),
+            ("let (bool b = 1) while (1) {}", { case StmtLet(_, _: StmtWhile) => }),
+            ("let (bool b = 1) loop {}", { case StmtLet(_, _: StmtLoop)       => })
           )
         } {
           text in {

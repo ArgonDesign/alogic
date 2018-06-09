@@ -37,7 +37,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
   implicit val cc = new CompilerContext
   val namer = new Namer
 
-  lazy val atBits = cc.getGlobalTermSymbolRef("@bits")
+  lazy val atBits = ExprRef(cc.lookupGlobalTerm("@bits"))
 
   "The Namer" should "issue error for redefinition of variable" in {
     """|{
@@ -243,7 +243,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
   it should "resolve term names to their correct definitions - builtin" in {
     val tree = "@bits".asTree[Expr] rewrite namer
 
-    tree shouldBe cc.getGlobalTermSymbolRef("@bits")
+    tree shouldBe atBits
     cc.messages shouldBe empty
   }
 

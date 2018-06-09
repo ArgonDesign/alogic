@@ -80,6 +80,16 @@ trait TypeOps extends TypePrintOps { this: Type =>
     case _                  => false
   }
 
+  // Signedness of this type (as far as expressions are concerned), assuming it is a packed type
+  final def isSigned(implicit cc: CompilerContext): Boolean = {
+    assert(isNum || isPacked, println(this))
+    this match {
+      case _: TypeSInt     => true
+      case TypeNum(signed) => signed
+      case _               => false
+    }
+  }
+
   // Width of this type, assuming it is a packed type
   final def width(implicit cc: CompilerContext): Expr = {
     assert(isPacked)
@@ -105,16 +115,6 @@ trait TypeOps extends TypePrintOps { this: Type =>
       case _                                     => unreachable
     }
   } ensuring { _.hasLoc }
-
-  // Signedness of this type (as far as expressions are concerned), assuming it is a packed type
-  final def isSigned(implicit cc: CompilerContext): Boolean = {
-    assert(isNum || isPacked, println(this))
-    this match {
-      case _: TypeSInt     => true
-      case TypeNum(signed) => signed
-      case _               => false
-    }
-  }
 
   // If this is a proxy type, get the underlying type, otherwise get this type
   final lazy val underlying: Type = this match {

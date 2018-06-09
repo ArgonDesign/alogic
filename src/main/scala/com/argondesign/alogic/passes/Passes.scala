@@ -32,12 +32,12 @@ object Passes {
       Checker,
       Namer,
       SpecializeParam,
-      Desugar,
       Typer,
       PortCheck,
       ////////////////////////////////////////////////////////////////////////
       // Middle-end
       ////////////////////////////////////////////////////////////////////////
+      Desugar,
       FoldExpr(assignTypes = true, foldRefs = false),
       FoldSymbolTypes,
       ConvertMultiConnect,

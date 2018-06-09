@@ -100,12 +100,15 @@ object TypeAssigner {
       case node: StmtWhile  => apply(node)
       case node: StmtFor    => apply(node)
       case node: StmtDo     => apply(node)
+      case node: StmtLet    => apply(node)
       case node: StmtFence  => apply(node)
       case node: StmtBreak  => apply(node)
       case node: StmtGoto   => apply(node)
       case node: StmtReturn => apply(node)
       // Unambiguous comb stmts
       case node: StmtAssign        => apply(node)
+      case node: StmtUpdate        => apply(node)
+      case node: StmtPost          => apply(node)
       case node: StmtDecl          => apply(node)
       case node: StmtRead          => apply(node)
       case node: StmtWrite         => apply(node)
@@ -175,6 +178,11 @@ object TypeAssigner {
     node withTpe TypeCtrlStmt
   }
 
+  def apply(node: StmtLet): node.type = {
+    require(!node.hasTpe)
+    node withTpe TypeCtrlStmt
+  }
+
   def apply(node: StmtFence): node.type = {
     require(!node.hasTpe)
     node withTpe TypeCtrlStmt
@@ -196,6 +204,16 @@ object TypeAssigner {
   }
 
   def apply(node: StmtAssign): node.type = {
+    require(!node.hasTpe)
+    node withTpe TypeCombStmt
+  }
+
+  def apply(node: StmtUpdate): node.type = {
+    require(!node.hasTpe)
+    node withTpe TypeCombStmt
+  }
+
+  def apply(node: StmtPost): node.type = {
     require(!node.hasTpe)
     node withTpe TypeCombStmt
   }

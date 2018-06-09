@@ -23,7 +23,6 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Error
 import com.argondesign.alogic.passes.Checker
-import com.argondesign.alogic.passes.Desugar
 import com.argondesign.alogic.passes.Namer
 import com.argondesign.alogic.util.unreachable
 import org.scalatest.FreeSpec
@@ -47,8 +46,6 @@ final class TyperConnectSpec extends FreeSpec with AlogicTest {
       _ rewrite new Checker
     } map {
       _ rewrite new Namer
-    } map {
-      _ rewrite new Desugar
     } foreach {
       _ rewrite new Typer
     }

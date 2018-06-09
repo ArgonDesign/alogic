@@ -22,6 +22,7 @@ package com.argondesign.alogic.typer
 
 import com.argondesign.alogic.Config
 import com.argondesign.alogic.Config.allowWidthInference
+import com.argondesign.alogic.analysis.WrittenRefs
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
@@ -110,6 +111,23 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
     } else {
       None
     }
+  }
+
+  private def checkModifiable(expr: Expr): Option[Loc] = {
+    val it = WrittenRefs(expr) flatMap {
+      case ref @ ExprRef(symbol) =>
+        symbol.kind match {
+          case _: TypeParam => cc.error(ref, "Parameter cannot be modified")
+          case _: TypeConst => cc.error(ref, "Constant cannot be modified")
+          case _: TypeIn    => cc.error(ref, "Input port cannot be modified")
+          case _: TypeArray => cc.error(ref, "Memory can only be modified using .write()")
+          case TypeOut(_, fct, _) if fct != FlowControlTypeNone => {
+            cc.error(ref, "Output port with flow control can only be modified using .write()")
+          }
+          case _ => None
+        }
+    }
+    it.toList.headOption
   }
 
   private[this] object TypeTyper extends TreeInTypeTransformer(this) {
@@ -292,34 +310,7 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       }
 
       case stmt @ StmtAssign(lhs, rhs) => {
-        lazy val errNotAssignable: Option[Loc] = {
-          def stripToRefs(expr: Expr): List[ExprRef] = expr match {
-            case ref: ExprRef             => List(ref)
-            case ExprIndex(expr, _)       => stripToRefs(expr)
-            case ExprSlice(expr, _, _, _) => stripToRefs(expr)
-            case ExprSelect(expr, _)      => stripToRefs(expr)
-            case ExprCat(parts)           => parts flatMap stripToRefs
-            case _                        => unreachable
-          }
-
-          val locs = for (ref @ ExprRef(symbol) <- stripToRefs(lhs)) yield {
-            symbol.kind match {
-              case _: TypeParam => cc.error(ref, "Parameter cannot be assigned")
-              case _: TypeConst => cc.error(ref, "Constant cannot be assigned")
-              case _: TypeIn    => cc.error(ref, "Input port cannot be assigned")
-              case _: TypeArray => cc.error(ref, "Memory cannot be assigned directly, use '.write'")
-              case TypeOut(_, fct, _) if fct != FlowControlTypeNone => {
-                val msg = "Output port with flow control cannot be assigned directly, use '.write'"
-                cc.error(ref, msg)
-              }
-              case _ => None
-            }
-          }
-
-          locs.flatten.headOption
-        }
-
-        checkPacked(lhs, "Left hand side of assignment") orElse errNotAssignable map { errLoc =>
+        checkPacked(lhs, "Left hand side of assignment") orElse checkModifiable(lhs) map { errLoc =>
           StmtError() withLoc errLoc
         } getOrElse {
           if (allowWidthInference && rhs.tpe.isNum) {
@@ -343,7 +334,39 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
             } getOrElse tree
           }
         }
+      }
 
+      case stmt @ StmtUpdate(lhs, _, rhs) => {
+        checkPacked(lhs, "Left hand side of assignment") orElse checkModifiable(lhs) map { errLoc =>
+          StmtError() withLoc errLoc
+        } getOrElse {
+          if (allowWidthInference && rhs.tpe.isNum) {
+            // Infer width of rhs
+            lhs.tpe.width.value map {
+              CoerceWidth(rhs, _)
+            } map {
+              case e: Expr => e
+              case _       => unreachable
+            } map { newRhs =>
+              stmt.copy(rhs = newRhs) withLoc stmt.loc
+            } getOrElse {
+              cc.error(rhs, s"Cannot infer width of right hand side of assignment")
+              StmtError() withLoc lhs.loc
+            }
+          } else {
+            val rhsErrOpt = checkPacked(rhs, "Right hand side of assignment")
+            lazy val widthErrOpt = checkWidth(lhs.tpe, rhs, "Right hand side of assignment")
+            rhsErrOpt orElse widthErrOpt map {
+              StmtError() withLoc _
+            } getOrElse tree
+          }
+        }
+      }
+
+      case StmtPost(expr, op) => {
+        checkPacked(expr, s"Target of postfix '${op}'") orElse
+          checkModifiable(expr) map { StmtError() withLoc _ } getOrElse
+          tree
       }
 
       // TODO: Some function call are pure e.g.: @zx(10, 1'b1);

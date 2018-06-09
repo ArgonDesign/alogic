@@ -77,16 +77,11 @@ trait Symbols { self: CompilerContext =>
     }
   }
 
-  // Used to look up builtin symbols
-  final def getGlobalTermSymbolRef(name: String): ExprRef = {
-    val symbol = lookupGlobalTerm(name)
-    ExprRef(symbol)
-  }
-
-  final def getGlobalTermSymbolRef(name: String, loc: Loc): ExprRef = {
-    val ref = getGlobalTermSymbolRef(name)
-    ref visitAll { case node: Tree => node withLoc loc }
-    ref
+  final def makeBuiltinCall(name: String, loc: Loc, args: List[Expr]): ExprCall = {
+    val polySymbol = lookupGlobalTerm(name)
+    assert(polySymbol.isBuiltin(this))
+    val symbol = polySymbol.kind.asInstanceOf[TypePolyFunc].resolve(args).get
+    (ExprRef(symbol) call args).regularize(loc)(this)
   }
 
   final private[this] val symbolSequenceNumbers = Stream.from(0).iterator
