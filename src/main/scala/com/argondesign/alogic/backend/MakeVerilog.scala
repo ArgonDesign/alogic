@@ -37,11 +37,9 @@ final class MakeVerilog(
       kind match {
         case intKind: TypeInt => {
           val signedStr = if (kind.isSigned) "signed " else ""
-          val width = intKind.width.value.get
-          if (width == 1) {
-            s"${signedStr}${id}"
-          } else {
-            s"${signedStr}[${width - 1}:0] ${id}"
+          intKind.width match {
+            case 1 => s"${signedStr}${id}"
+            case n => s"${signedStr}[${n - 1}:0] ${id}"
           }
         }
         case TypeArray(elemKind, sizeExpr) => {
@@ -201,7 +199,7 @@ final class MakeVerilog(
                   case Some(expr) => expr
                   case None => {
                     val kind = qSymbol.kind
-                    ExprInt(kind.isSigned, kind.width.value.get.toInt, 0)
+                    ExprInt(kind.isSigned, kind.width, 0)
                   }
                 }
                 s"${id} <= ${vexpr(init)};"
@@ -394,9 +392,8 @@ final class MakeVerilog(
           body.emit(2)("// Clears")
           body.emit(2)("if (!go) begin")
           for (symbol <- cSymbols) {
-            val width = symbol.kind.width.value.get
             val s = if (symbol.kind.isSigned) "s" else ""
-            body.emit(3)(s"${symbol.name} = ${width}'${s}b0;")
+            body.emit(3)(s"${symbol.name} = ${symbol.kind.width}'${s}b0;")
           }
           body.emit(2)("end")
         }

@@ -85,7 +85,7 @@ final class DefaultAssignments(implicit cc: CompilerContext)
 
           // Keep only the symbols with all bits dead
           val it = deadSymbolBits collect {
-            case (symbol, set) if set.size == symbol.kind.width.value.get => symbol
+            case (symbol, set) if set.size == symbol.kind.width => symbol
           }
           it.toSet
         }
@@ -106,9 +106,7 @@ final class DefaultAssignments(implicit cc: CompilerContext)
           // Initialize items to their default values, otherwise zero
           val init = symbol.attr.default.getOrElse {
             val kind = symbol.kind
-            val signed = kind.isSigned
-            val width = kind.width.value.get.toInt
-            ExprInt(signed, width, 0)
+            ExprInt(kind.isSigned, kind.width, 0)
           }
           StmtAssign(ExprRef(symbol), init) regularize symbol.loc
         }

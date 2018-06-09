@@ -35,12 +35,7 @@ private[builtins] class AtMsb(implicit cc: CompilerContext) extends BuiltinPolyF
 }
 
 private[builtins] object AtMsb {
-
   def fold(loc: Loc, expr: Expr)(implicit cc: CompilerContext): Option[Expr] = {
-    expr.width map { width =>
-      expr index (width - 1)
-    } map {
-      _.simplify
-    }
+    Some((expr index (expr.width - 1)).simplify)
   }
 }

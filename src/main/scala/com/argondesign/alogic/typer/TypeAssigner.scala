@@ -22,6 +22,8 @@ import com.argondesign.alogic.core.Symbols.ErrorSymbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.unreachable
 
+import scala.language.postfixOps
+
 object TypeAssigner {
 
   def apply(tree: Tree)(implicit cc: CompilerContext): tree.type = {
@@ -331,7 +333,7 @@ object TypeAssigner {
           TypeNum(signed)
         } else {
           val width = lTpe.width max rTpe.width
-          TypeInt(signed, width.simplify)
+          TypeInt(signed, Expr(width) regularize node.loc)
         }
       }
     }
@@ -347,7 +349,7 @@ object TypeAssigner {
       TypeNum(signed)
     } else {
       val width = tTpe.width max eTpe.width
-      TypeInt(signed, width.simplify)
+      TypeInt(signed, Expr(width) regularize node.loc)
     }
     node withTpe tpe
   }
@@ -355,11 +357,11 @@ object TypeAssigner {
   def apply(node: ExprCat)(implicit cc: CompilerContext): node.type = {
     require(!node.hasTpe)
     val width = if (node.parts.lengthCompare(2) >= 0) {
-      node.parts map { _.tpe.width } reduceLeft { _ + _ }
+      node.parts map { _.tpe.width } sum
     } else {
       node.parts.head.tpe.width
     }
-    node withTpe TypeUInt(width.simplify)
+    node withTpe TypeUInt(Expr(width) regularize node.loc)
   }
 
   def apply(node: ExprRep)(implicit cc: CompilerContext): node.type = {

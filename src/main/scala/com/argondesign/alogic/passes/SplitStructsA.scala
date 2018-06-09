@@ -88,7 +88,7 @@ final class SplitStructsA(implicit cc: CompilerContext) extends TreeTransformer 
   private[this] def fieldDecls(fSymbols: List[TermSymbol], initOpt: Option[Expr]): List[Decl] = {
     initOpt match {
       case Some(init) => {
-        val widths = fSymbols map { _.kind.width.value.get.toInt }
+        val widths = fSymbols map { _.kind.width }
         val lsbs = widths.scanRight(0)(_ + _).tail
         val t = for ((symbol, lsb, width) <- (fSymbols, lsbs, widths).zipped) yield {
           val msb = lsb + width - 1

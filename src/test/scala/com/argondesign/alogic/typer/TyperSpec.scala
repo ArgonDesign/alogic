@@ -82,7 +82,7 @@ final class TyperSpec extends FreeSpec with AlogicTest {
                     e visit visitor
                   }
                   case node: Expr => {
-                    node.tpe.width.value.value shouldBe resultWidth.value
+                    node.tpe.width shouldBe resultWidth.value
                     node.children foreach { _ visit visitor }
                   }
                 }
@@ -125,14 +125,14 @@ final class TyperSpec extends FreeSpec with AlogicTest {
               if (resultWidth.isDefined) {
                 cc.messages foreach println
                 val expr = (tree collectFirst { case StmtExpr(expr) => expr }).value
-                expr.tpe.width.value.value shouldBe resultWidth.value
+                expr.tpe.width shouldBe resultWidth.value
                 lazy val visitor: PartialFunction[TreeLike, Unit] = {
                   case ExprTernary(_, t, e) => {
                     t visit visitor
                     e visit visitor
                   }
                   case node: Expr => {
-                    node.tpe.width.value.value shouldBe 8
+                    node.tpe.width shouldBe 8
                     node.children foreach { _ visit visitor }
                   }
                 }
@@ -184,7 +184,7 @@ final class TyperSpec extends FreeSpec with AlogicTest {
             if (resultWidth.isDefined) {
               cc.messages foreach println
               val expr = (tree collectFirst { case StmtExpr(expr) => expr }).value
-              expr.tpe.width.value.value shouldBe resultWidth.value
+              expr.tpe.width shouldBe resultWidth.value
               cc.messages shouldBe empty
             } else {
               cc.messages.last should beThe[Error](Pattern.quote(msg))

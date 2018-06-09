@@ -35,7 +35,7 @@ final class ConvertLocalDecls(implicit cc: CompilerContext) extends TreeTransfor
 
   private[this] def getDefaultInitializer(kind: Type): Option[Expr] = {
     lazy val signed = kind.isSigned
-    lazy val width = kind.width.value.get.toInt
+    lazy val width = kind.width
     cc.settings.uninitialized match {
       case "none"  => None
       case "zeros" => Some(ExprInt(signed, width, 0))

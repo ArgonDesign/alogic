@@ -150,12 +150,12 @@ final class CoerceWidth(width: Int)(implicit cc: CompilerContext)
 
 object CoerceWidth {
 
-  def apply(tree: Tree, width: Int)(implicit cc: CompilerContext): Tree = {
-    tree rewrite (new CoerceWidth(width))
+  def apply(expr: Expr, width: Int)(implicit cc: CompilerContext): Expr = {
+    (expr rewrite new CoerceWidth(width)).asInstanceOf[Expr]
   }
 
-  def apply(tree: Tree, width: BigInt)(implicit cc: CompilerContext): Tree = {
-    apply(tree, width.toInt)
+  def apply(expr: Expr, width: BigInt)(implicit cc: CompilerContext): Expr = {
+    apply(expr, width.toInt)
   }
 
 }

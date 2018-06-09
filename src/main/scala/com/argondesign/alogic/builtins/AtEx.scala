@@ -26,7 +26,7 @@ private[builtins] class AtEx(implicit cc: CompilerContext) extends BuiltinPolyFu
 
   def validArgs(args: List[Expr]) = args match {
     case List(bit, width, expr) => {
-      (bit.tpe.width.value contains 1) && width.isKnownConst && expr.tpe.isPacked
+      (bit.width == 1) && width.isKnownConst && expr.isPacked
     }
     case _ => false
   }
@@ -56,8 +56,8 @@ private[builtins] object AtEx {
     // TODO: result should always be signed if expr is signed
     for {
       dstWidth <- width.value map { _.toInt }
-      srcWidth <- expr.width flatMap { _.value } map { _.toInt }
     } yield {
+      val srcWidth = expr.width
       val d = dstWidth - srcWidth
       if (d < 0) {
         val msg = s"Result width ${dstWidth} of extension is less than argument width ${srcWidth}"

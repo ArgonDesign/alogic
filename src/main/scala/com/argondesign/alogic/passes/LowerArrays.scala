@@ -54,7 +54,7 @@ final class LowerArrays(implicit cc: CompilerContext) extends TreeTransformer wi
       val abits = Math.clog2(size.value.get) ensuring { _ > 0 }
       val waSymbol = cc.newTermSymbol(s"${name}_waddr", loc, intType(loc, false, abits))
       // Create wdata symbol
-      val dbits = kind.width.value.get.toInt
+      val dbits = kind.width
       val wdSymbol = cc.newTermSymbol(s"${name}_wdata", loc, intType(loc, kind.isSigned, dbits))
       // Set attributes
       symbol.attr.memory.set((weSymbol, waSymbol, wdSymbol))
@@ -65,8 +65,7 @@ final class LowerArrays(implicit cc: CompilerContext) extends TreeTransformer wi
 
   private def makeExprInt(symbol: TermSymbol, value: Int): ExprInt = {
     val kind = symbol.kind
-    val width = kind.width.value.get.toInt
-    ExprInt(kind.isSigned, width, value)
+    ExprInt(kind.isSigned, kind.width, value)
   }
 
   override def transform(tree: Tree): Tree = tree match {

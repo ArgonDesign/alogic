@@ -218,10 +218,10 @@ trait ExprOps { this: Expr =>
     case _                     => tpe.isSigned
   }
 
-  final def width(implicit cc: CompilerContext): Option[Expr] = simplify match {
-    case ExprInt(_, width, _) => Some(Expr(width) regularize loc)
-    case ExprRef(symbol)      => Some(symbol.kind.width)
-    case _                    => tpeOpt map { _.width }
+  final def width(implicit cc: CompilerContext): Int = simplify match {
+    case ExprInt(_, width, _) => width
+    case ExprRef(symbol)      => symbol.kind.width
+    case _                    => tpe.width
   }
 
 }

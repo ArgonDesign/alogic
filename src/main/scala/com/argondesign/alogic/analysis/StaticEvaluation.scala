@@ -32,7 +32,7 @@ object StaticEvaluation {
   // Given an expression that is known to be true, return a set
   // of bindings that can be inferred
   private def inferTrue(expr: Expr)(implicit cc: CompilerContext): Bindings = {
-    if (expr.tpe.width.value.get == 1) {
+    if (expr.tpe.width == 1) {
       expr match {
         case ExprRef(symbol: TermSymbol) => {
           Map(symbol -> (ExprInt(symbol.kind.isSigned, 1, 1) regularize expr.loc))
@@ -51,7 +51,7 @@ object StaticEvaluation {
   // Given an expression that is known to be false, return a set
   // of bindings that can be inferred
   private def inferFalse(expr: Expr)(implicit cc: CompilerContext): Bindings = {
-    val eWidth = expr.tpe.width.value.get.toInt
+    val eWidth = expr.tpe.width
     if (eWidth == 1) {
       expr match {
         case ExprRef(symbol: TermSymbol) => {

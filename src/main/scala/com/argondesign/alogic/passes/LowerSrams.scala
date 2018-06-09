@@ -139,10 +139,7 @@ final class LowerSrams(
 
       // Build the sram entity
       val sEntity = {
-        val width = kind.width.value match {
-          case Some(v) => v.toInt
-          case None    => cc.fatal(symbol, "Width of SRAM is not a compile time constant")
-        }
+        val width = kind.width
         val depth = depthExpr.value match {
           case Some(v) => v.toInt
           case None    => cc.fatal(symbol, "Depth of SRAM is not a compile time constant")
@@ -244,7 +241,7 @@ final class LowerSrams(
           case SramReg(_, _, _, oSymbol) => {
             val oRef = ExprRef(oSymbol)
             val TypeSram(kind, _, _) = symbol.kind
-            val data = ExprInt(false, kind.width.value.get.toInt, 0) // Don't care
+            val data = ExprInt(false, kind.width, 0) // Don't care
             StmtBlock(
               List(
                 assignTrue(oRef select s"ip${sep}valid"),

@@ -44,18 +44,18 @@ class LivenessSpec extends FreeSpec with AlogicTest {
   }
 
   def killed(expr: Expr) = {
-    val regular = (expr regularize Loc.synthetic).asInstanceOf[Expr]
-    Liveness.killed(regular)
+    expr regularize Loc.synthetic
+    Liveness.killed(expr)
   }
 
   def usedLval(expr: Expr) = {
-    val regular = (expr regularize Loc.synthetic).asInstanceOf[Expr]
-    Liveness.usedLv(regular)
+    expr regularize Loc.synthetic
+    Liveness.usedLv(expr)
   }
 
   def usedRval(expr: Expr) = {
-    val regular = (expr regularize Loc.synthetic).asInstanceOf[Expr]
-    Liveness.usedRv(regular)
+    expr regularize Loc.synthetic
+    Liveness.usedRv(expr)
   }
 
   "Liveness" - {
@@ -290,13 +290,13 @@ class LivenessSpec extends FreeSpec with AlogicTest {
         }
 
         "should concatentations" - {
-          "{b, a[0], a[b[1]], c[b[4]:b[3]]}" in {
+          "{b, a[0], a[b[1]], c[b[4] + b[3] +: 3]}" in {
             val cat = ExprCat(
               List(
                 bRef,
                 aRef index 0,
                 aRef index (bRef index 1),
-                cRef.slice(bRef index 4, ":", bRef index 3)
+                cRef.slice((bRef index 4) + (bRef index 3), "+:", Expr(3))
               ))
             usedLval(cat) shouldBe SymbolBitSet(Map(bSymbol -> BitSet(4, 3, 1)))
           }

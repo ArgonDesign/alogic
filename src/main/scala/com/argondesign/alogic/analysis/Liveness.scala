@@ -33,7 +33,7 @@ object Liveness {
       idx.value map { bit =>
         Map(symbol -> BigInt.oneHot(bit))
       } getOrElse {
-        Map(symbol -> BigInt.mask(symbol.kind.width.value.get))
+        Map(symbol -> BigInt.mask(symbol.kind.width))
       }
     }
     case ExprSlice(ExprRef(symbol: TermSymbol), lidx, op, ridx) if symbol.kind.isPacked => {
@@ -48,11 +48,11 @@ object Liveness {
           Map(symbol -> (BigInt.mask(width) << lsb.toInt))
         }
       } getOrElse {
-        Map(symbol -> BigInt.mask(symbol.kind.width.value.get))
+        Map(symbol -> BigInt.mask(symbol.kind.width))
       }
     }
     case ExprRef(symbol: TermSymbol) if symbol.kind.isPacked => {
-      Map(symbol -> BigInt.mask(symbol.kind.width.value.get))
+      Map(symbol -> BigInt.mask(symbol.kind.width))
     }
   }
 
@@ -109,8 +109,7 @@ object Liveness {
     def loop(expr: Expr): Map[TermSymbol, BigInt] = {
       expr match {
         case ExprRef(symbol: TermSymbol) => {
-          val width = symbol.kind.width.value.get
-          Map(symbol -> BigInt.mask(width))
+          Map(symbol -> BigInt.mask(symbol.kind.width))
         }
         case ExprIndex(ExprRef(symbol: TermSymbol), idx) => {
           idx.value map { bit =>

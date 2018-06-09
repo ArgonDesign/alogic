@@ -17,9 +17,10 @@
 package com.argondesign.alogic.core
 
 import com.argondesign.alogic.Config
-import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.unreachable
+
+import scala.language.postfixOps
 
 trait TypeOps extends TypePrintOps { this: Type =>
 
@@ -91,30 +92,23 @@ trait TypeOps extends TypePrintOps { this: Type =>
   }
 
   // Width of this type, assuming it is a packed type
-  final def width(implicit cc: CompilerContext): Expr = {
+  final def width(implicit cc: CompilerContext): Int = {
     assert(isPacked)
     this match {
-      case self: TypeSInt => self.size
-      case self: TypeUInt => self.size
-      case self: TypeStruct => {
-        if (self.fieldTypes.nonEmpty) {
-          val sumExpr = self.fieldTypes map { _.width } reduceLeft { _ + _ }
-          sumExpr.simplify
-        } else {
-          Expr(0) withLoc Loc.synthetic
-        }
-      }
-      case TypeVoid                              => Expr(0) withLoc Loc.synthetic
-      case self: TypeVector                      => self.size * self.elementType.width
+      case self: TypeSInt                        => self.size.value.get.toInt
+      case self: TypeUInt                        => self.size.value.get.toInt
+      case self: TypeStruct                      => self.fieldTypes map { _.width } sum
+      case TypeVoid                              => 0
+      case self: TypeVector                      => self.size.value.get.toInt * self.elementType.width
       case self: TypeIn                          => self.kind.width
       case self: TypeOut                         => self.kind.width
       case self: TypePipeline                    => self.kind.width
       case self: TypeParam                       => self.kind.width
       case self: TypeConst                       => self.kind.width
-      case _: TypeNum if Config.treatNumAs32Wide => Expr(32) withLoc Loc.synthetic
+      case _: TypeNum if Config.treatNumAs32Wide => 32
       case _                                     => unreachable
     }
-  } ensuring { _.hasLoc }
+  }
 
   // If this is a proxy type, get the underlying type, otherwise get this type
   final lazy val underlying: Type = this match {

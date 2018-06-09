@@ -104,17 +104,17 @@ object ConnectChecks {
         false
       }
       case _ => {
-        val opt = for {
-          lhsWidth <- lhs.tpe.width.value
-          rhsWidth <- rhs.tpe.width.value
-          if lhsWidth != rhsWidth
-        } yield {
+        val lhsWidth = lhs.tpe.width
+        val rhsWidth = rhs.tpe.width
+
+        if (lhsWidth != rhsWidth) {
           cc.error(
             loc.copy(point = rhs.loc.start),
             s"Port widths do not match: ${lhsWidth} -> ${rhsWidth}"
           )
         }
-        opt.isEmpty
+
+        lhsWidth == rhsWidth
       }
     }
   }

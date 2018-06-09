@@ -37,7 +37,7 @@ final class SimplifyCat(implicit cc: CompilerContext) extends TreeTransformer {
       as: List[Expr],
       bs: List[Expr]
   ): List[(List[Expr], List[Expr])] = {
-    def width(es: List[Expr]) = (es map { _.tpe.width.value.get.toInt }).sum
+    def width(es: List[Expr]) = (es map { _.tpe.width }).sum
 
     if (width(as) != width(bs)) {
       // TODO: this check should be performed in the Typer,
@@ -91,7 +91,7 @@ final class SimplifyCat(implicit cc: CompilerContext) extends TreeTransformer {
       }
 
       case StmtAssign(lhs @ ExprCat(parts), ExprInt(_, width, value)) => {
-        val widths = parts map { _.tpe.width.value.get.toInt }
+        val widths = parts map { _.tpe.width }
         if (widths.sum != width) {
           tree
         } else {
