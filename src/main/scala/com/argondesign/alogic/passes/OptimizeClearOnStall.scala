@@ -95,7 +95,6 @@ final class OptimizeClearOnStall(implicit cc: CompilerContext) extends TreeTrans
         // Discard everything that is not a StallStmt
         // or an assignment to one of our candidates
         val trimmed = block rewrite StatementFilter {
-          case _: StmtFence                   => false
           case _: StmtStall                   => true
           case StmtAssign(ExprRef(symbol), _) => symbol.attr.clearOnStall contains true
           case _: StmtAssign                  => false

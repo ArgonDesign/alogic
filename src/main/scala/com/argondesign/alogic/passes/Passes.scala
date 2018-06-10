@@ -31,6 +31,7 @@ object Passes {
       ////////////////////////////////////////////////////////////////////////
       Checker,
       Namer,
+      // All entities are EntityNamed from here on
       SpecializeParam,
       Typer,
       PortCheck,
@@ -49,6 +50,7 @@ object Passes {
       ConvertControl,
       AllocStates,
       CreateStateSystem,
+      // All entities are EntityLowered from here on
       Replace1Stacks,
       // TODO: Replace1Arrays
       DefaultStorage,

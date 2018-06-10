@@ -143,18 +143,15 @@ object StackFactory {
 
     val stoRef = ExprRef(stoSymbol)
 
-    val body = List(
+    val statements = List(
       StmtIf(enRef,
              StmtBlock(
                List(
                  StmtAssign(stoRef, dRef),
                  StmtAssign(valRef, ~popRef & (valRef | pusRef))
                )),
-             None),
-      StmtFence()
+             None)
     )
-
-    val stateSystem = StmtBlock(body)
 
     val ports = List(
       enSymbol,
@@ -184,7 +181,7 @@ object StackFactory {
 
     val entitySymbol = cc.newTypeSymbol(name, loc, TypeEntity(name, ports, Nil))
     entitySymbol.attr.variant set "fsm"
-    val entity = EntityLowered(entitySymbol, decls, Nil, connects, List(stateSystem), Map())
+    val entity = EntityLowered(entitySymbol, decls, Nil, connects, statements, Map())
     entity regularize loc
   }
 
@@ -280,7 +277,7 @@ object StackFactory {
       }
     }
 
-    val body = List(
+    val statements = List(
       StmtIf(
         enRef,
         StmtBlock(
@@ -303,11 +300,8 @@ object StackFactory {
             )
           )),
         None
-      ),
-      StmtFence()
+      )
     )
-
-    val stateSystem = StmtBlock(body)
 
     val ports = List(
       enSymbol,
@@ -337,7 +331,7 @@ object StackFactory {
 
     val entitySymbol = cc.newTypeSymbol(name, loc, TypeEntity(name, ports, Nil))
     entitySymbol.attr.variant set "fsm"
-    val entity = EntityLowered(entitySymbol, decls, Nil, connects, List(stateSystem), Map())
+    val entity = EntityLowered(entitySymbol, decls, Nil, connects, statements, Map())
     entity regularize loc
   }
 

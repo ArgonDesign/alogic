@@ -200,7 +200,6 @@ object StaticEvaluation {
         }
 
         case _: StmtStall   => curr // TODO: can we do better here?
-        case _: StmtFence   => curr
         case _: StmtExpr    => curr
         case _: StmtComment => curr
         case _              => Bindings.empty

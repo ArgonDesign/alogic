@@ -96,24 +96,18 @@ object SyncRegFactory {
     lazy val pRef = ExprRef(pSymbol)
     val vRef = ExprRef(vSymbol)
 
-    val body = if (kind != TypeVoid) {
+    val statements = if (kind != TypeVoid) {
       List(
         StmtIf(
           ipvRef,
           StmtAssign(pRef, ipRef),
           None
         ),
-        StmtAssign(vRef, ipvRef),
-        StmtFence()
+        StmtAssign(vRef, ipvRef)
       )
     } else {
-      List(
-        StmtAssign(vRef, ipvRef),
-        StmtFence()
-      )
+      List(StmtAssign(vRef, ipvRef))
     }
-
-    val stateSystem = StmtBlock(body)
 
     val ports = if (kind != TypeVoid) {
       List(ipSymbol, ipvSymbol, opSymbol, opvSymbol)
@@ -140,7 +134,7 @@ object SyncRegFactory {
 
     val entitySymbol = cc.newTypeSymbol(name, loc, TypeEntity(name, ports, Nil))
     entitySymbol.attr.variant set "fsm"
-    val entity = EntityLowered(entitySymbol, decls, Nil, connects, List(stateSystem), Map())
+    val entity = EntityLowered(entitySymbol, decls, Nil, connects, statements, Map())
     entity regularize loc
   }
 

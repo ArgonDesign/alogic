@@ -10,7 +10,8 @@
 //
 // DESCRIPTION:
 //
-// Convert EntityNamed to EntityLowered
+// - Convert EntityNamed to EntityLowered by constructing the state dispatch
+// - Drop all StmtFence
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.passes
@@ -25,11 +26,18 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends TreeTransfor
   override def skip(tree: Tree): Boolean = tree match {
     case _: EntityNamed => false
     case _: State       => false
+    case _: Stmt        => false
+    case _: Case        => false
     case _              => true
   }
 
-  // TODO: Strip all fences
   override def transform(tree: Tree): Tree = tree match {
+
+    case _: StmtFence => StmtBlock(Nil) regularize tree.loc
+
+    case State(expr @ ExprInt(_, _, value), body) => {
+      State(expr, StmtComment(s"State ${value}") :: body) regularize tree.loc
+    }
 
     case entity: EntityNamed => {
       // TODO: polish off entry state handling (currently always state 0 and first in the list)
@@ -69,16 +77,13 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends TreeTransfor
       }
     }
 
-    case State(expr @ ExprInt(_, _, value), body) => {
-      State(expr, StmtComment(s"State ${value}") :: body) regularize tree.loc
-    }
-
     case _ => tree
   }
 
   override protected def finalCheck(tree: Tree): Unit = {
     tree visit {
       case node: EntityNamed => cc.ice(node, "EntityNamed remains")
+      case node: StmtFence   => cc.ice(node, "StmtFence remains")
     }
   }
 }

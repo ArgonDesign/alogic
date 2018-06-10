@@ -319,9 +319,6 @@ final class MakeVerilog(
         body.emit(indent)(s"end")
       }
 
-      // Fence statement
-      case _: StmtFence => ()
-
       // Expression statements like $display();
       case StmtExpr(expr) => body.emit(indent)(s"${vexpr(expr)};")
 

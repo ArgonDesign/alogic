@@ -47,7 +47,6 @@ final class RemoveUnused(unusedSymbols: Set[Symbol])(implicit cc: CompilerContex
 
   def emptyStmt(stmt: Stmt): Boolean = stmt match {
     case StmtBlock(Nil)                => true
-    case _: StmtFence                  => true // TODO: Strip fences earlier
     case StmtBlock(body)               => body forall emptyStmt
     case StmtIf(_, eBody, None)        => emptyStmt(eBody)
     case StmtIf(_, eBody, Some(tBody)) => emptyStmt(eBody) && emptyStmt(tBody)

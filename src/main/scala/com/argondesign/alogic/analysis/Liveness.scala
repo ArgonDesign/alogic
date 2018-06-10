@@ -240,7 +240,6 @@ object Liveness {
 
           case StmtBlock(body) => analyse(cLive, cDead, body)
 
-          case _: StmtFence   => (cLive, cDead)
           case _: StmtComment => (cLive, cDead)
           case _              => unreachable
         }

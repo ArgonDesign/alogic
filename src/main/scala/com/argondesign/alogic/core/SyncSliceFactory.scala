@@ -51,27 +51,15 @@ object SyncSliceFactory {
   ): List[Stmt] = ss match {
     case StorageSliceBub => {
       // valid = ~valid & ip_valid | valid & ~op_ready;
-      // fence;
-      List(
-        StmtAssign(vRef, ~vRef & ipvRef | vRef & ~oprRef),
-        StmtFence()
-      )
+      List(StmtAssign(vRef, ~vRef & ipvRef | vRef & ~oprRef))
     }
     case StorageSliceFwd => {
       // valid = ip_valid | valid & ~op_ready;
-      // fence;
-      List(
-        StmtAssign(vRef, ipvRef | vRef & ~oprRef),
-        StmtFence()
-      )
+      List(StmtAssign(vRef, ipvRef | vRef & ~oprRef))
     }
     case StorageSliceBwd => {
       // valid = (valid | ip_valid) & ~op_ready;
-      // fence;
-      List(
-        StmtAssign(vRef, (vRef | ipvRef) & ~oprRef),
-        StmtFence()
-      )
+      List(StmtAssign(vRef, (vRef | ipvRef) & ~oprRef))
     }
   }
 
@@ -138,15 +126,13 @@ object SyncSliceFactory {
       //   payload = ip;
       // }
       // valid = ~valid & ip_valid | valid & ~op_ready;
-      // fence;
       List(
         StmtIf(
           ipvRef & ~vRef,
           StmtAssign(pRef, ipRef),
           None
         ),
-        StmtAssign(vRef, ~vRef & ipvRef | vRef & ~oprRef),
-        StmtFence()
+        StmtAssign(vRef, ~vRef & ipvRef | vRef & ~oprRef)
       )
     }
     case StorageSliceFwd => {
@@ -154,15 +140,13 @@ object SyncSliceFactory {
       //   payload = ip;
       // }
       // valid = ip_valid | valid & ~op_ready;
-      // fence;
       List(
         StmtIf(
           ipvRef & (~vRef | oprRef),
           StmtAssign(pRef, ipRef),
           None
         ),
-        StmtAssign(vRef, ipvRef | vRef & ~oprRef),
-        StmtFence()
+        StmtAssign(vRef, ipvRef | vRef & ~oprRef)
       )
     }
     case StorageSliceBwd => {
@@ -170,15 +154,13 @@ object SyncSliceFactory {
       //   payload = ip;
       // }
       // valid = (valid | ip_valid) & ~op_ready;
-      // fence;
       List(
         StmtIf(
           ipvRef & ~vRef & ~oprRef,
           StmtAssign(pRef, ipRef),
           None
         ),
-        StmtAssign(vRef, (vRef | ipvRef) & ~oprRef),
-        StmtFence()
+        StmtAssign(vRef, (vRef | ipvRef) & ~oprRef)
       )
     }
   }
@@ -316,10 +298,10 @@ object SyncSliceFactory {
     lazy val pRef = ExprRef(pSymbol)
     val vRef = ExprRef(vSymbol)
 
-    val stateSystem = if (kind != TypeVoid) {
-      StmtBlock(nonVoidBody(ss, ipRef, ipvRef, oprRef, pRef, vRef))
+    val statements = if (kind != TypeVoid) {
+      nonVoidBody(ss, ipRef, ipvRef, oprRef, pRef, vRef)
     } else {
-      StmtBlock(voidBody(ss, ipvRef, oprRef, vRef))
+      voidBody(ss, ipvRef, oprRef, vRef)
     }
 
     val ports = if (kind != TypeVoid) {
@@ -342,7 +324,7 @@ object SyncSliceFactory {
 
     val entitySymbol = cc.newTypeSymbol(name, loc, TypeEntity(name, ports, Nil))
     entitySymbol.attr.variant set "fsm"
-    val entity = EntityLowered(entitySymbol, decls, Nil, connects, List(stateSystem), Map())
+    val entity = EntityLowered(entitySymbol, decls, Nil, connects, statements, Map())
     entity regularize loc
   }
 

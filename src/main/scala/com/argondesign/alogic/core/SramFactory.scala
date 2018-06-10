@@ -80,7 +80,7 @@ object SramFactory {
     val rdRef = ExprRef(rdSymbol)
     val stRef = ExprRef(stSymbol)
 
-    val body = List(
+    val statements = List(
       StmtIf(
         ceRef,
         StmtIf(
@@ -93,11 +93,8 @@ object SramFactory {
           Some(StmtAssign(rdRef, stRef index adRef))
         ),
         None
-      ),
-      StmtFence()
+      )
     )
-
-    val stateSystem = StmtBlock(body)
 
     val ports = List(ceSymbol, weSymbol, adSymbol, wdSymbol, rdSymbol)
 
@@ -108,7 +105,7 @@ object SramFactory {
     val entitySymbol = cc.newTypeSymbol(name, loc, TypeEntity(name, ports, Nil))
     entitySymbol.attr.variant set "fsm"
     entitySymbol.attr.sram set true
-    val entity = EntityLowered(entitySymbol, decls, Nil, Nil, List(stateSystem), Map())
+    val entity = EntityLowered(entitySymbol, decls, Nil, Nil, statements, Map())
     entity regularize loc
   }
 
