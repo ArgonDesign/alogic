@@ -608,8 +608,8 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         }
         case Decl(symbol, _) => check(symbol.kind)
         case Sym(symbol)     => check(symbol.kind)
-        case ExprRef(symbol) => check(symbol.kind)
-        case ExprType(kind)  => check(kind)
+//        case ExprRef(symbol) => check(symbol.kind) // TODO: fix this
+        case ExprType(kind) => check(kind)
       }
     }
 
