@@ -165,6 +165,8 @@ COMB    : 'comb'  ;
 STACK   : 'stack' ;
 SRAM    : 'sram' ;
 REG     : 'reg' ;
+SIGNED  : 'signed' ;
+UNSIGNED: 'unsigned' ;
 
 SYNC        : 'sync';
 SYNC_READY  : 'sync' (WS|CMT)* 'ready';
