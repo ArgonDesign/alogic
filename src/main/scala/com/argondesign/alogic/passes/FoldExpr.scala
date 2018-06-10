@@ -256,6 +256,32 @@ final class FoldExpr(
       }
 
       ////////////////////////////////////////////////////////////////////////////
+      // Fold binary operators with one known operand if possible
+      ////////////////////////////////////////////////////////////////////////////
+
+      case ExprBinary(Integral(_, _, lv), op, rhs) => {
+        val res = op match {
+          case "&&" if lv == 0                                         => ExprInt(false, 1, 0)
+          case "&&" if rhs.isPacked && !rhs.isSigned && rhs.width == 1 => rhs
+          case "||" if lv != 0                                         => ExprInt(false, 1, 1)
+          case "||" if rhs.isPacked && !rhs.isSigned && rhs.width == 1 => rhs
+          case _                                                       => tree
+        }
+        if (res.hasLoc) res else res withLoc tree.loc
+      }
+
+      case ExprBinary(lhs, op, Integral(_, _, rv)) => {
+        val res = op match {
+          case "&&" if rv == 0                                         => ExprInt(false, 1, 0)
+          case "&&" if lhs.isPacked && !lhs.isSigned && lhs.width == 1 => lhs
+          case "||" if rv != 0                                         => ExprInt(false, 1, 1)
+          case "||" if lhs.isPacked && !lhs.isSigned && lhs.width == 1 => lhs
+          case _                                                       => tree
+        }
+        if (res.hasLoc) res else res withLoc tree.loc
+      }
+
+      ////////////////////////////////////////////////////////////////////////////
       // Fold binary expressions with a mixed operand
       ////////////////////////////////////////////////////////////////////////////
 
