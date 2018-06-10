@@ -283,17 +283,19 @@ final class MakeVerilog(
       }
 
       // Case statement
-      case StmtCase(cond, caseClauses, defaultStmts) => {
+      case StmtCase(cond, cases) => {
         body.emit(indent)(s"case (${vexpr(cond)})")
-        for (CaseClause(conds, stmt) <- caseClauses) {
-          body.emit(indent + 1)(s"${conds map vexpr mkString ", "}: begin")
-          emitWithoutBeginEndIfBlock(indent + 2, stmt)
-          body.emit(indent + 1)("end")
-        }
-        if (defaultStmts.nonEmpty) {
-          body.emit(indent + 1)("default: begin")
-          defaultStmts foreach { emitStatement(body, indent + 2, _) }
-          body.emit(indent + 1)("end")
+        cases foreach {
+          case RegularCase(conds, stmt) => {
+            body.emit(indent + 1)(s"${conds map vexpr mkString ", "}: begin")
+            emitWithoutBeginEndIfBlock(indent + 2, stmt)
+            body.emit(indent + 1)("end")
+          }
+          case DefaultCase(stmt) => {
+            body.emit(indent + 1)("default: begin")
+            emitWithoutBeginEndIfBlock(indent + 2, stmt)
+            body.emit(indent + 1)("end")
+          }
         }
         body.emit(indent)(s"endcase")
       }

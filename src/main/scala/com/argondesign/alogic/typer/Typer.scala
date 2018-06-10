@@ -266,24 +266,14 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         }
       }
 
-      case StmtCase(_, cases, default) => {
-        checkBlock(default) map { StmtError() withLoc _ } getOrElse {
-          val allCtrl = {
-            val casesCtrl = cases forall { _.body.tpe == TypeCtrlStmt }
-            val defaultCtrl = default.isEmpty || default.last.tpe == TypeCtrlStmt
-            casesCtrl && defaultCtrl
-          }
-          val allComb = {
-            val casesComb = cases forall { _.body.tpe == TypeCombStmt }
-            val defaultComb = default.isEmpty || default.last.tpe == TypeCombStmt
-            casesComb && defaultComb
-          }
-          if (!allComb && !allCtrl) {
-            cc.error(tree, "Either all or no cases of a case statement must be control statements")
-            StmtError() withLoc tree.loc
-          } else {
-            tree
-          }
+      case StmtCase(_, cases) => {
+        val allCtrl = cases forall { _.stmt.tpe == TypeCtrlStmt }
+        val allComb = cases forall { _.stmt.tpe == TypeCombStmt }
+        if (!allComb && !allCtrl) {
+          cc.error(tree, "Either all or no cases of a case statement must be control statements")
+          StmtError() withLoc tree.loc
+        } else {
+          tree
         }
       }
 

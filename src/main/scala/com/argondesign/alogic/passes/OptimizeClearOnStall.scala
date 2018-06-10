@@ -59,11 +59,10 @@ final class OptimizeClearOnStall(implicit cc: CompilerContext) extends TreeTrans
           val elseStmt = elseStmtOpt getOrElse StmtBlock(Nil)
           enumeratePaths(List(thenStmt)) ::: enumeratePaths(List(elseStmt))
         }
-        case StmtCase(_, cases, default) => {
-          enumeratePaths(default) ::: {
-            cases flatMap {
-              case CaseClause(_, body) => enumeratePaths(List(body))
-            }
+        case StmtCase(_, cases) => {
+          cases flatMap {
+            case RegularCase(_, stmt) => enumeratePaths(List(stmt))
+            case DefaultCase(stmt)    => enumeratePaths(List(stmt))
           }
         }
         case _ => unreachable
@@ -100,10 +99,11 @@ final class OptimizeClearOnStall(implicit cc: CompilerContext) extends TreeTrans
           } else {
             val dispatch = StmtCase(
               ExprRef(entitySymbol.attr.stateVar.value),
-              entity.states.tail map {
-                case State(expr, body) => CaseClause(List(expr), StmtBlock(body))
-              },
-              entity.states.head.body
+              DefaultCase(StmtBlock(entity.states.head.body)) :: {
+                entity.states.tail map {
+                  case State(expr, body) => RegularCase(List(expr), StmtBlock(body))
+                }
+              }
             )
             entity.fenceStmts :+ (dispatch regularize entity.loc)
           }

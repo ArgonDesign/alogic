@@ -119,8 +119,13 @@ object Trees {
 
   case class StmtBlock(body: List[Stmt]) extends Stmt
   case class StmtIf(cond: Expr, thenStmt: Stmt, elseStmt: Option[Stmt]) extends Stmt
-  case class StmtCase(expr: Expr, cases: List[CaseClause], default: List[Stmt]) extends Stmt
-  case class CaseClause(cond: List[Expr], body: Stmt) extends Tree
+  case class StmtCase(expr: Expr, cases: List[Case]) extends Stmt
+
+  sealed trait Case extends Tree {
+    val stmt: Stmt
+  }
+  case class RegularCase(cond: List[Expr], stmt: Stmt) extends Case
+  case class DefaultCase(stmt: Stmt) extends Case
 
   case class StmtLoop(body: List[Stmt]) extends Stmt
   case class StmtWhile(cond: Expr, body: List[Stmt]) extends Stmt

@@ -153,8 +153,8 @@ let
   ;
 
 case_clause
-  : 'default' ':' statement # DefaultCase
-  | commaexpr ':' statement # NormalCase
+  : commaexpr ':' statement # RegularCase
+  | 'default' ':' statement # DefaultCase
   ;
 
 assignment

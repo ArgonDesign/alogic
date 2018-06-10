@@ -295,11 +295,16 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
       } getOrElse tree
     }
 
-    case StmtCase(expr, cases, default) if default.length > 1 => {
-      default foreach {
-        cc.error(_, "Multiple 'default' clauses specified in case statement")
+    case StmtCase(_, cases) => {
+      val defaults = cases collect { case c: DefaultCase => c }
+      if (defaults.lengthCompare(1) <= 0) {
+        tree
+      } else {
+        defaults foreach {
+          cc.error(_, "Multiple 'default' clauses specified in case statement")
+        }
+        StmtError() withLoc tree.loc
       }
-      StmtCase(expr, cases, Nil) withLoc tree.loc
     }
 
     case StmtAssign(lhs, _) => {

@@ -214,21 +214,14 @@ trait TreePrintOps { this: Tree =>
         s"if (${v(cond)}) ${ensureBlock(indent, thenStmt)}"
       }
 
-      case StmtCase(expr, cases, Nil) => {
+      case StmtCase(expr, cases) => {
         s"""|case (${v(expr)}) {
             |${i}  ${cases map v(indent + 1) mkString s"\n${i}  "}
-            |${i}}""".stripMargin
-      }
-      case StmtCase(expr, cases, default) => {
-        s"""|case (${v(expr)}) {
-            |${i}  ${cases map v(indent + 1) mkString s"\n${i}  "}
-            |${i}  default: {
-            |${i}    ${default map v(indent + 2) mkString s"\n${i}    "}
-            |${i}  }
             |${i}}""".stripMargin
       }
 
-      case CaseClause(cond, body) => s"${cond map v mkString ", "} : ${v(indent)(body)}"
+      case RegularCase(cond, stmt) => s"${cond map v mkString ", "} : ${v(indent)(stmt)}"
+      case DefaultCase(stmt)       => s"default : ${v(indent)(stmt)}"
 
       case StmtLoop(body) => {
         s"""|loop {

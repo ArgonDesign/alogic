@@ -139,11 +139,6 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
       // Allocate states where any List[Stmt] is involved
       //////////////////////////////////////////////////////////////////////////
 
-      case StmtCase(_, _, default) if default.nonEmpty => {
-        // Allocate states for default block body
-        allocateStates(default)
-      }
-
       case StmtBlock(body) => {
         // Allocate states for body
         allocateStates(body)
@@ -292,28 +287,32 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
       // Convert if
       //////////////////////////////////////////////////////////////////////////
 
-      case stmt @ StmtIf(_, _, None) => {
-        // Omitted else goes to the following state
-        val ref = ExprRef(followingState.top)
-        stmt.copy(elseStmt = Some(StmtGoto(ref))) regularize tree.loc
+      case stmt @ StmtIf(_, _, elseStmtOpt) => {
+        if (elseStmtOpt.nonEmpty) {
+          tree
+        } else {
+          // Omitted else goes to the following state (i.e.: implicit fence)
+          val ref = ExprRef(followingState.top)
+          stmt.copy(elseStmt = Some(StmtGoto(ref))) regularize tree.loc
+        }
       }
-
-      case _: StmtIf => tree
 
       //////////////////////////////////////////////////////////////////////////
       // Convert case
       //////////////////////////////////////////////////////////////////////////
 
-      case stmt @ StmtCase(_, _, Nil) => {
-        // Omitted default goes to the following state
-        val ref = ExprRef(followingState.top)
-        stmt.copy(default = List(StmtGoto(ref))) regularize tree.loc
-      }
-
-      case stmt @ StmtCase(_, _, default) => {
-        val head :: tail = splitControlUnits(default)
-        tail foreach emitState
-        TypeAssigner(stmt.copy(default = head) withLoc tree.loc)
+      case stmt @ StmtCase(_, cases) => {
+        val hasDefault = cases exists {
+          case _: DefaultCase => true
+          case _              => false
+        }
+        if (hasDefault) {
+          tree
+        } else {
+          // Omitted default goes to the following state (i.e.: implicit fence)
+          val ref = ExprRef(followingState.top)
+          stmt.copy(cases = DefaultCase(StmtGoto(ref)) :: cases) regularize tree.loc
+        }
       }
 
       //////////////////////////////////////////////////////////////////////////

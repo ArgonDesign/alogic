@@ -897,9 +897,9 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
             val stmt = (tree collectFirst { case Function(_, stmts) => stmts.last }).value
 
             stmt.postOrderIterator collect {
-              case node: Stmt       => node
-              case node: CaseClause => node
-              case node: Expr       => node
+              case node: Stmt => node
+              case node: Case => node
+              case node: Expr => node
             } foreach {
               TypeAssigner(_)
             }

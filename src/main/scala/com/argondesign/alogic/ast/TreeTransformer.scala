@@ -180,13 +180,16 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
         case node: StmtCase => {
           val expr = walk(node.expr)
           val cases = walk(node.cases)
-          val default = walk(node.default)
-          doTransform(TreeCopier(node)(expr, cases, default))
+          doTransform(TreeCopier(node)(expr, cases))
         }
-        case node: CaseClause => {
+        case node: RegularCase => {
           val cond = walk(node.cond)
-          val body = walk(node.body)
-          doTransform(TreeCopier(node)(cond, body))
+          val stmt = walk(node.stmt)
+          doTransform(TreeCopier(node)(cond, stmt))
+        }
+        case node: DefaultCase => {
+          val stmt = walk(node.stmt)
+          doTransform(TreeCopier(node)(stmt))
         }
         case node: StmtLoop => {
           val body = walk(node.body)

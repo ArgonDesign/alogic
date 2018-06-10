@@ -965,10 +965,9 @@ final class ParserSpec extends FreeSpec with AlogicTest {
               StmtCase(
                 Expr(1),
                 List(
-                  CaseClause(List(Expr(1)), StmtExpr(ExprIdent("a"))),
-                  CaseClause(List(Expr(2)), StmtExpr(ExprIdent("b")))
-                ),
-                List()
+                  RegularCase(List(Expr(1)), StmtExpr(ExprIdent("a"))),
+                  RegularCase(List(Expr(2)), StmtExpr(ExprIdent("b")))
+                )
               )
             }
           }
@@ -980,8 +979,9 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                |""".stripMargin.asTree[Stmt] shouldBe {
               StmtCase(
                 Expr(1),
-                Nil,
-                List(StmtBlock(List(StmtExpr(ExprIdent("c")))))
+                List(
+                  DefaultCase(StmtExpr(ExprIdent("c")))
+                )
               )
             }
           }
@@ -995,10 +995,45 @@ final class ParserSpec extends FreeSpec with AlogicTest {
               StmtCase(
                 Expr(1),
                 List(
-                  CaseClause(List(Expr(1)), StmtExpr(ExprIdent("c"))),
-                  CaseClause(List(Expr(2), Expr(3)), StmtExpr(ExprIdent("d")))
-                ),
-                List()
+                  RegularCase(List(Expr(1)), StmtExpr(ExprIdent("c"))),
+                  RegularCase(List(Expr(2), Expr(3)), StmtExpr(ExprIdent("d")))
+                )
+              )
+            }
+          }
+
+          "case with multiple defaults" in {
+            """|case (1) {
+               | default: c;
+               | default: d;
+               |}
+               |""".stripMargin.asTree[Stmt] shouldBe {
+              StmtCase(
+                Expr(1),
+                List(
+                  DefaultCase(StmtExpr(ExprIdent("c"))),
+                  DefaultCase(StmtExpr(ExprIdent("d")))
+                )
+              )
+            }
+          }
+
+          "case ordering" in {
+            """|case (1) {
+               | 1: a;
+               | default: b;
+               | 3: c;
+               | default: d;
+               |}
+               |""".stripMargin.asTree[Stmt] shouldBe {
+              StmtCase(
+                Expr(1),
+                List(
+                  RegularCase(List(Expr(1)), StmtExpr(ExprIdent("a"))),
+                  DefaultCase(StmtExpr(ExprIdent("b"))),
+                  RegularCase(List(Expr(3)), StmtExpr(ExprIdent("c"))),
+                  DefaultCase(StmtExpr(ExprIdent("d")))
+                )
               )
             }
           }

@@ -72,10 +72,11 @@ final class DefaultAssignments(implicit cc: CompilerContext)
           } else {
             entity.fenceStmts :+ StmtCase(
               ExprRef(entitySymbol.attr.stateVar.value),
-              entity.states.tail map {
-                case State(expr, body) => CaseClause(List(expr), StmtBlock(body))
-              },
-              entity.states.head.body
+              DefaultCase(StmtBlock(entity.states.head.body)) :: {
+                entity.states.tail map {
+                  case State(expr, body) => RegularCase(List(expr), StmtBlock(body))
+                }
+              }
             )
           }
 

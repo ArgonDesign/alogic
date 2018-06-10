@@ -203,16 +203,19 @@ object Liveness {
             (live, dead)
           }
 
-          case StmtCase(expr, cases, default) => {
-            val readers = expr :: (cases flatMap { case CaseClause(cond, _) => cond })
+          case StmtCase(expr, cases) => {
+            val caseReaders = cases flatMap {
+              case RegularCase(cond, _) => cond
+              case _: DefaultCase       => Nil
+            }
+            val readers = expr :: caseReaders
             val reads = readers map { usedRv }
             val dLive = reads reduce { _ union _ } diff cDead
 
             val (bLive, bDead) = {
-              val sets = analyse(dLive, cDead, default) :: {
-                cases map {
-                  case CaseClause(_, body) => analyse(dLive, cDead, List(body))
-                }
+              val sets = cases map {
+                case RegularCase(_, stmt) => analyse(dLive, cDead, List(stmt))
+                case DefaultCase(stmt)    => analyse(dLive, cDead, List(stmt))
               }
               sets.unzip
             }

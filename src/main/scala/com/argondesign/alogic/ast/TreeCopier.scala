@@ -175,26 +175,32 @@ object TreeCopier {
     }
   }
 
-  final def apply(tree: StmtCase)(expr: Tree, cases: List[Tree], default: List[Tree]): StmtCase = {
-    if ((expr eq tree.expr) && (cases eq tree.cases) && (default eq tree.default)) {
+  final def apply(tree: StmtCase)(expr: Tree, cases: List[Tree]): StmtCase = {
+    if ((expr eq tree.expr) && (cases eq tree.cases)) {
       tree
     } else {
-      assert(cases forall { _.isInstanceOf[CaseClause] })
-      assert(default forall { _.isInstanceOf[Stmt] })
+      assert(cases forall { _.isInstanceOf[Case] })
       StmtCase(
         expr.asInstanceOf[Expr],
-        cases.asInstanceOf[List[CaseClause]],
-        default.asInstanceOf[List[Stmt]]
+        cases.asInstanceOf[List[Case]],
       ) withLoc tree.loc
     }
   }
 
-  final def apply(tree: CaseClause)(cond: List[Tree], body: Tree): CaseClause = {
-    if ((cond eq tree.cond) && (body eq tree.body)) {
+  final def apply(tree: RegularCase)(cond: List[Tree], stmt: Tree): RegularCase = {
+    if ((cond eq tree.cond) && (stmt eq tree.stmt)) {
       tree
     } else {
       assert(cond forall { _.isInstanceOf[Expr] })
-      CaseClause(cond.asInstanceOf[List[Expr]], body.asInstanceOf[Stmt]) withLoc tree.loc
+      RegularCase(cond.asInstanceOf[List[Expr]], stmt.asInstanceOf[Stmt]) withLoc tree.loc
+    }
+  }
+
+  final def apply(tree: DefaultCase)(stmt: Tree): DefaultCase = {
+    if (stmt eq tree.stmt) {
+      tree
+    } else {
+      DefaultCase(stmt.asInstanceOf[Stmt]) withLoc tree.loc
     }
   }
 

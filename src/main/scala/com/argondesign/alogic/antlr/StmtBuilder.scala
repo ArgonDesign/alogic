@@ -118,34 +118,23 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
       }
 
       override def visitStmtCase(ctx: StmtCaseContext) = {
-        object DefaultVisitor extends AlogicScalarVisitor[Option[Stmt]] {
-          override val defaultResult = None
-          override def visitDefaultCase(ctx: DefaultCaseContext) = {
-            // We put the body in a block in case there are multiple defaults, which we will check later
-            val body = self(ctx.statement)
-            val block = StmtBlock(List(body)) withLoc ctx.loc
-            Some(block)
-          }
-        }
-
-        object CaseVisitor extends AlogicScalarVisitor[Option[CaseClause]] {
-          override val defaultResult = None
-          override def visitNormalCase(ctx: NormalCaseContext) = {
+        object CaseVisitor extends AlogicScalarVisitor[Case] {
+          override def visitRegularCase(ctx: RegularCaseContext) = {
             val cond = ExprBuilder(ctx.commaexpr.expr)
             val stmt = self(ctx.statement)
-            Some(CaseClause(cond, stmt) withLoc ctx.loc)
+            RegularCase(cond, stmt) withLoc ctx.loc
+          }
+          override def visitDefaultCase(ctx: DefaultCaseContext) = {
+            val stmt = self(ctx.statement)
+            DefaultCase(stmt) withLoc ctx.loc
           }
         }
 
         val value = ExprBuilder(ctx.expr)
 
-        val clauseList = ctx.case_clause.asScala.toList
+        val cases = ctx.case_clause.asScala.toList map { CaseVisitor(_) }
 
-        val caseClauses = clauseList flatMap { CaseVisitor(_) }
-
-        val defaultCase = clauseList flatMap { DefaultVisitor(_) }
-
-        StmtCase(value, caseClauses, defaultCase) withLoc ctx.loc
+        StmtCase(value, cases) withLoc ctx.loc
       }
 
       override def visitStmtExpr(ctx: StmtExprContext) = {

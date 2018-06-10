@@ -39,9 +39,10 @@ final class StatementFilter(p: PartialFunction[Stmt, Boolean])(implicit cc: Comp
     case StmtBlock(body)               => body forall emptyStmt
     case StmtIf(_, eBody, None)        => emptyStmt(eBody)
     case StmtIf(_, eBody, Some(tBody)) => emptyStmt(eBody) && emptyStmt(tBody)
-    case StmtCase(_, cases, defaults) => {
-      (defaults forall emptyStmt) && {
-        cases forall { case CaseClause(_, body) => emptyStmt(body) }
+    case StmtCase(_, cases) => {
+      cases forall {
+        case RegularCase(_, stmt) => emptyStmt(stmt)
+        case DefaultCase(stmt)    => emptyStmt(stmt)
       }
     }
     case _: StmtExpr          => true

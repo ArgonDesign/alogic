@@ -161,12 +161,20 @@ object StaticEvaluation {
           (afterThen.toSet intersect afterElse.toSet).toMap
         }
 
-        case StmtCase(value, cases, defaults) => {
-          val stmts = StmtBlock(defaults) :: (cases map { _.body })
+        case StmtCase(value, cases) => {
+          // Ensure default comes at the front, as that's
+          // how we are computing the 'befores' below
+          val defaultStmt = cases.collectFirst {
+            case DefaultCase(stmt) => stmt
+          } getOrElse StmtBlock(Nil)
+          val regularStmts = cases collect {
+            case RegularCase(_, stmt) => stmt
+          }
+          val stmts = defaultStmt :: regularStmts
 
           val befores = {
-            val constraints = cases map {
-              case node @ CaseClause(conds, _) =>
+            val constraints = cases collect {
+              case node @ RegularCase(conds, _) =>
                 conds map { ExprBinary(_, "==", value) } reduce { _ || _ } regularize node.loc
             }
 

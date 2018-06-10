@@ -248,9 +248,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
                     | default: b;
                     |}""".asTree[Stmt]
 
-      tree rewrite checker should matchPattern {
-        case StmtCase(_, _, Nil) =>
-      }
+      tree rewrite checker shouldBe StmtError()
 
       cc.messages should have length 2
       cc.messages(0) should beThe[Error]("Multiple 'default' clauses specified in case statement")

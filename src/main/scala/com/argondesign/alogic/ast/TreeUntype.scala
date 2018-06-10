@@ -30,7 +30,8 @@ trait TreeUntype {
     case node: Function              => untype(node)
     case node: State                 => untype(node)
     case node: Thicket               => untype(node)
-    case node: CaseClause            => untype(node)
+    case node: RegularCase           => untype(node)
+    case node: DefaultCase           => untype(node)
     case node: Expr                  => untype(node)
     case node: Stmt                  => untype(node)
     case node: TypeDefinitionTypedef => unreachable
@@ -44,7 +45,6 @@ trait TreeUntype {
     case node: StmtBlock         => untype(node)
     case node: StmtIf            => untype(node)
     case node: StmtCase          => untype(node)
-    case node: CaseClause        => untype(node)
     case node: StmtLoop          => untype(node)
     case node: StmtWhile         => untype(node)
     case node: StmtFor           => untype(node)
@@ -135,10 +135,15 @@ trait TreeUntype {
       body = untype(node.body)
     ) withLoc node.loc
 
-  def untype(node: CaseClause): CaseClause =
+  def untype(node: RegularCase): RegularCase =
     node.copy(
       cond = untype(node.cond),
-      body = untype(node.body)
+      stmt = untype(node.stmt)
+    ) withLoc node.loc
+
+  def untype(node: DefaultCase): DefaultCase =
+    node.copy(
+      stmt = untype(node.stmt)
     ) withLoc node.loc
 
   def untype(node: Thicket): Thicket =
@@ -165,8 +170,7 @@ trait TreeUntype {
   def untype(node: StmtCase): StmtCase =
     node.copy(
       expr = untype(node.expr),
-      cases = untype(node.cases),
-      default = untype(node.default)
+      cases = untype(node.cases)
     ) withLoc node.loc
 
   def untype(node: StmtLoop): StmtLoop =

@@ -31,7 +31,8 @@ object TypeAssigner {
     tree match {
       case node: Expr           => apply(node)
       case node: Stmt           => apply(node)
-      case node: CaseClause     => apply(node)
+      case node: RegularCase    => apply(node)
+      case node: DefaultCase    => apply(node)
       case node: Entity         => apply(node)
       case node: Decl           => apply(node)
       case node: Instance       => apply(node)
@@ -69,8 +70,16 @@ object TypeAssigner {
     assignTypeMisc(node)
   }
 
-  def apply(node: CaseClause): node.type = {
-    if (node.body.tpe == TypeError || (node.cond exists { _.tpe == TypeError })) {
+  def apply(node: RegularCase): node.type = {
+    if (node.stmt.tpe == TypeError || (node.cond exists { _.tpe == TypeError })) {
+      node withTpe TypeError
+    } else {
+      assignTypeMisc(node)
+    }
+  }
+
+  def apply(node: DefaultCase): node.type = {
+    if (node.stmt.tpe == TypeError) {
       node withTpe TypeError
     } else {
       assignTypeMisc(node)
@@ -137,12 +146,7 @@ object TypeAssigner {
 
   def apply(node: StmtCase): node.type = {
     require(!node.hasTpe)
-    val child = if (node.cases.nonEmpty) {
-      node.cases.head.body
-    } else {
-      node.default.last
-    }
-    node withTpe child.tpe
+    node withTpe node.cases.head.stmt.tpe
   }
 
   def apply(node: StmtExpr): node.type = {
