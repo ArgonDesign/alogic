@@ -537,7 +537,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
         val thisEntity = entity.copy(
           instances = instances ::: entity.instances,
           connects = connects ::: entity.connects
-        ) withVariant entity.variant
+        )
 
         Thicket(thisEntity :: extraEntities.toList)
       }

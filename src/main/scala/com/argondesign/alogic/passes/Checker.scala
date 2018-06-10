@@ -56,7 +56,8 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
 
   override def transform(tree: Tree): Tree = tree match {
     case entity: Entity => {
-      val variant = entity.variant match {
+      val variantExpr = entity.ref.asInstanceOf[Ident].attr("//variant")
+      val variant = variantExpr.asInstanceOf[ExprStr].value match {
         case "fsm"      => "fsm"
         case "network"  => "network"
         case "verbatim" => "verbatim"

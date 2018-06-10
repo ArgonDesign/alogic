@@ -192,7 +192,7 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
       val result = entity.copy(
         declarations = newDecls,
         connects = newConns
-      ) withLoc entity.loc withVariant entity.variant
+      ) withLoc entity.loc
       TypeAssigner(result)
     }
 
@@ -230,7 +230,7 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
 
       val result = entity.copy(
         declarations = newDecls
-      ) withLoc entity.loc withVariant entity.variant
+      ) withLoc entity.loc
       TypeAssigner(result)
     }
 

@@ -330,7 +330,7 @@ object SpecializeParam extends Pass {
 
     // Update and rewrite instantiations in the original entity
     val result = TypeAssigner {
-      entity.copy(entities = specialized2) withLoc entity.loc withVariant entity.variant
+      entity.copy(entities = specialized2) withLoc entity.loc
     } rewrite new SpecializeParam(defaultBindingsMap, specializationMap)
 
     // Done
@@ -354,13 +354,14 @@ object SpecializeParam extends Pass {
     val rootSymbol = {
       cc.newTypeSymbol("@@@root@@@", loc, TypeEntity("@@@root@@@", Nil, Nil))
     }
+    rootSymbol.attr.variant set "network"
 
     val ref = TypeAssigner {
       Sym(rootSymbol) withLoc loc
     }
 
     val root = TypeAssigner {
-      Entity(ref, Nil, Nil, Nil, Nil, Nil, Nil, entities, Map()) withLoc loc withVariant "network"
+      Entity(ref, Nil, Nil, Nil, Nil, Nil, Nil, entities, Map()) withLoc loc
     }
 
     specialize(root).entities

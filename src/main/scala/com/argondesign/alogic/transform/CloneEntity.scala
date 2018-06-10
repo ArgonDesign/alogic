@@ -166,7 +166,7 @@ final class CloneEntity(
         entity.copy(
           ref = fixup(Sym(newSymbol), tree.loc),
           instances = instances
-        ) withVariant entity.variant
+        )
       } followedBy {
         entityLevel -= 1
       }

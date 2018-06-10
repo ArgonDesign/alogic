@@ -227,7 +227,7 @@ final class LiftEntities(implicit cc: CompilerContext)
           TypeAssigner {
             entity.copy(
               declarations = newDecls.toList
-            ) withLoc entity.loc withVariant entity.variant
+            ) withLoc entity.loc
           }
         }
       } valueMap { entity =>
@@ -246,7 +246,7 @@ final class LiftEntities(implicit cc: CompilerContext)
           TypeAssigner {
             entity.copy(
               declarations = newDecls.toList
-            ) withLoc entity.loc withVariant entity.variant
+            ) withLoc entity.loc
           }
         }
       } valueMap { entity =>
@@ -300,7 +300,7 @@ final class LiftEntities(implicit cc: CompilerContext)
           TypeAssigner {
             entity.copy(
               connects = entity.connects ++ freshIConns ++ freshOConns
-            ) withLoc entity.loc withVariant entity.variant
+            ) withLoc entity.loc
           }
         }
       } valueMap { entity =>
@@ -311,7 +311,7 @@ final class LiftEntities(implicit cc: CompilerContext)
           entity
         } else {
           val children = entity.entities
-          val parent = entity.copy(entities = Nil) withLoc entity.loc withVariant entity.variant
+          val parent = entity.copy(entities = Nil) withLoc entity.loc
           TypeAssigner(parent)
 
           val Sym(parentSymbol: TypeSymbol) = entity.ref

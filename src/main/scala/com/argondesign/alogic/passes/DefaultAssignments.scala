@@ -49,8 +49,7 @@ final class DefaultAssignments(implicit cc: CompilerContext)
   }
 
   override def transform(tree: Tree): Tree = tree match {
-    // TODO: skip early for verbatim entities
-    case entity: Entity if needsDefault.nonEmpty && entity.variant != "verbatim" => {
+    case entity: Entity if needsDefault.nonEmpty => {
       // Remove any nets driven through a connect
       for (Connect(_, List(rhs)) <- entity.connects) {
         rhs.visit {
@@ -114,7 +113,7 @@ final class DefaultAssignments(implicit cc: CompilerContext)
         TypeAssigner {
           entity.copy(
             fenceStmts = newFenceStms ::: entity.fenceStmts
-          ) withVariant entity.variant withLoc tree.loc
+          ) withLoc tree.loc
         }
       }
     }

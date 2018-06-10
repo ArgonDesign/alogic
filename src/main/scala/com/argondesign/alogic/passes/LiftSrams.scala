@@ -121,7 +121,7 @@ final class LiftSramsFrom(
         entity.copy(
           declarations = decls,
           instances = instances
-        ) withVariant entity.variant withLoc tree.loc
+        ) withLoc tree.loc
       }
     }
 
@@ -187,7 +187,7 @@ final class LiftSramsTo(
           entity.copy(
             instances = newInstances ::: entity.instances,
             connects = newConnects.flatten ::: entity.connects
-          ) withVariant entity.variant withLoc tree.loc
+          ) withLoc tree.loc
         }
       }
     }

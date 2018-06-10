@@ -73,7 +73,7 @@ final class RemoveRedundantBlocks(implicit cc: CompilerContext) extends TreeTran
       TypeAssigner {
         entity.copy(
           fenceStmts = flatten(entity.fenceStmts)
-        ) withVariant entity.variant withLoc tree.loc
+        ) withLoc tree.loc
       }
     }
 

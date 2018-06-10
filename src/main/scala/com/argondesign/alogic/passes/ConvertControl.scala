@@ -377,7 +377,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
         val result = entity.copy(
           functions = Nil,
           states = states
-        ) withLoc entity.loc withVariant entity.variant
+        ) withLoc entity.loc
         TypeAssigner(result)
       }
 

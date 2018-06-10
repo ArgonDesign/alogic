@@ -183,8 +183,9 @@ object StackFactory {
     )
 
     val entitySymbol = cc.newTypeSymbol(name, loc, TypeEntity(name, ports, Nil))
+    entitySymbol.attr.variant set "fsm"
     val entity = Entity(Sym(entitySymbol), decls, Nil, connects, Nil, List(state), Nil, Nil, Map())
-    entity withVariant "fsm" regularize loc
+    entity regularize loc
   }
 
   // Build an entity similar to the following Alogic FSM to be used as an
@@ -335,8 +336,9 @@ object StackFactory {
     )
 
     val entitySymbol = cc.newTypeSymbol(name, loc, TypeEntity(name, ports, Nil))
+    entitySymbol.attr.variant set "fsm"
     val entity = Entity(Sym(entitySymbol), decls, Nil, connects, Nil, List(state), Nil, Nil, Map())
-    entity withVariant "fsm" regularize loc
+    entity regularize loc
   }
 
   def apply(

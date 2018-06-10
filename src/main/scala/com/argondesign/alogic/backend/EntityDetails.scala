@@ -52,7 +52,7 @@ final class EntityDetails(val entity: Entity, details: => Map[TypeSymbol, Entity
 
   assert(states.nonEmpty || fenceStmts.isEmpty)
 
-  lazy val isVerbatim: Boolean = entity.variant == "verbatim"
+  lazy val isVerbatim: Boolean = eSymbol.attr.variant.value == "verbatim"
 
   lazy val hasConsts: Boolean = decls exists {
     case Decl(symbol, _) => symbol.kind.isInstanceOf[TypeConst]

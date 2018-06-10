@@ -40,7 +40,7 @@ final class LowerStacks(implicit cc: CompilerContext) extends TreeTransformer {
   private[this] var entityName: String = _
 
   override def skip(tree: Tree): Boolean = tree match {
-    case entity: Entity => entity.variant == "network"
+    case entity: Entity => entitySymbol.attr.variant.value == "network"
     case _              => false
   }
 
@@ -192,7 +192,7 @@ final class LowerStacks(implicit cc: CompilerContext) extends TreeTransformer {
           declarations = declarations,
           instances = instances.toList ::: entity.instances,
           fenceStmts = fenceStmts.toList ::: entity.fenceStmts
-        ) withVariant entity.variant
+        )
 
         val stackEntities = stackMap.values map { _._1 }
 

@@ -101,7 +101,8 @@ trait TreePrintOps { this: Tree =>
                            fenceStmts,
                            entities,
                            verbatim) => {
-        s"""|${attrStr(indent, entity.ref)}${entity.variant} ${v(indent)(ref)} {
+        val Sym(eSymbol) = ref
+        s"""|${attrStr(indent, entity.ref)}${eSymbol.attr.variant.value} ${v(indent)(ref)} {
             |${i}  /////////////////////////////////
             |${i}  // Declarations
             |${i}  /////////////////////////////////

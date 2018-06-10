@@ -344,8 +344,9 @@ object SyncSliceFactory {
     }
 
     val entitySymbol = cc.newTypeSymbol(name, loc, TypeEntity(name, ports, Nil))
+    entitySymbol.attr.variant set "fsm"
     val entity = Entity(Sym(entitySymbol), decls, Nil, connects, Nil, List(state), Nil, Nil, Map())
-    entity withVariant "fsm" regularize loc
+    entity regularize loc
   }
 
   // Given a list of slice instances, build an entity that
@@ -474,10 +475,11 @@ object SyncSliceFactory {
     }
 
     val entitySymbol = cc.newTypeSymbol(name, loc, TypeEntity(name, ports, Nil))
+    entitySymbol.attr.variant set "network"
     val entity = {
       Entity(Sym(entitySymbol), decls, instances, connects.toList, Nil, Nil, Nil, Nil, Map())
     }
-    entity withVariant "network" regularize loc
+    entity regularize loc
   }
 
   def apply(

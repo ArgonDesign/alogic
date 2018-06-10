@@ -710,8 +710,8 @@ final class ParserSpec extends FreeSpec with AlogicTest {
 
         "nested fsm without auto instantiation" in {
           """|network  h {
-                       |  fsm i {}
-                       |}""".asTree[Entity] shouldBe {
+             |  fsm i {}
+             |}""".stripMargin.asTree[Entity] shouldBe {
             Entity(
               Ident("h"),
               Nil,
@@ -745,13 +745,13 @@ final class ParserSpec extends FreeSpec with AlogicTest {
           }
           val ident = (tree collectFirst { case ident @ Ident("i") => ident }).value
           ident.hasAttr shouldBe true
-          ident.attr shouldBe Map("foo" -> Expr(1))
+          ident.attr shouldBe Map("foo" -> Expr(1), "//variant" -> ExprStr("fsm"))
         }
 
         "nested fsm with auto instantiation" in {
           """|network  h3 {
-                       |  new fsm i {}
-                       |}""".asTree[Entity] shouldBe {
+             |  new fsm i {}
+             |}""".stripMargin.asTree[Entity] shouldBe {
             Entity(
               Ident("h3"),
               Nil,
@@ -792,7 +792,8 @@ final class ParserSpec extends FreeSpec with AlogicTest {
           val Some(eIdent) = tree collectFirst {
             case Entity(ident @ Ident("i"), _, _, _, _, _, _, _, _) => ident
           }
-          eIdent.hasAttr shouldBe false
+          eIdent.hasAttr shouldBe true
+          eIdent.attr shouldBe Map("//variant" -> ExprStr("fsm"))
         }
 
         "nested fsm with auto instantiation and attributes on entity" in {
@@ -822,7 +823,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
             case Entity(ident @ Ident("i"), _, _, _, _, _, _, _, _) => ident
           }
           eIdent.hasAttr shouldBe true
-          eIdent.attr shouldBe Map("bar" -> Expr(1))
+          eIdent.attr shouldBe Map("bar" -> Expr(1), "//variant" -> ExprStr("fsm"))
         }
 
         "nested fsm with auto instantiation and attributes on both" in {
@@ -853,7 +854,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
             case Entity(ident @ Ident("i"), _, _, _, _, _, _, _, _) => ident
           }
           eIdent.hasAttr shouldBe true
-          eIdent.attr shouldBe Map("bar" -> Expr(1))
+          eIdent.attr shouldBe Map("bar" -> Expr(1), "//variant" -> ExprStr("fsm"))
         }
 
         "verbatim verilog" in {

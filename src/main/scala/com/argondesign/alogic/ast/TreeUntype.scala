@@ -99,7 +99,7 @@ trait TreeUntype {
       states = untype(node.states),
       fenceStmts = untype(node.fenceStmts),
       entities = untype(node.entities)
-    ) withLoc node.loc withVariant node.variant
+    ) withLoc node.loc
 
   def untype(node: Ident): Ident = node.copy() withLoc node.loc
 

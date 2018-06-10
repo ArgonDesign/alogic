@@ -82,7 +82,7 @@ final class ConvertLocalDecls(implicit cc: CompilerContext) extends TreeTransfor
     case entity: Entity if localDecls.nonEmpty => {
       localDecls.prependAll(entity.declarations)
       TypeAssigner {
-        entity.copy(declarations = localDecls.toList) withLoc tree.loc withVariant entity.variant
+        entity.copy(declarations = localDecls.toList) withLoc tree.loc
       }
     }
 

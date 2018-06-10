@@ -58,7 +58,7 @@ final class SplitStructsC(implicit cc: CompilerContext) extends TreeTransformer 
         entitySymbol.kind = newKind
 
         TypeAssigner {
-          entity.copy(declarations = declarations) withVariant entity.variant withLoc tree.loc
+          entity.copy(declarations = declarations) withLoc tree.loc
         }
       }
     }

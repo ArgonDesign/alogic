@@ -28,7 +28,7 @@ import com.argondesign.alogic.util.FollowedBy
 final class LowerArrays(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
 
   override def skip(tree: Tree): Boolean = tree match {
-    case entity: Entity => entity.variant == "network"
+    case entity: Entity => entitySymbol.attr.variant.value == "network"
     case _              => false
   }
 
@@ -131,7 +131,7 @@ final class LowerArrays(implicit cc: CompilerContext) extends TreeTransformer wi
       TypeAssigner {
         entity.copy(
           fenceStmts = fenceStmts ::: entity.fenceStmts
-        ) withVariant entity.variant withLoc tree.loc
+        ) withLoc tree.loc
       }
     }
 

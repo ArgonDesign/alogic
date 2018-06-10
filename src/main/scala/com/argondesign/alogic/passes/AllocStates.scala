@@ -120,7 +120,7 @@ final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
         case entity: Entity if rsSymbol != null => {
           entity.copy(
             declarations = entity.declarations.tail
-          ) withVariant entity.variant withLoc entity.loc
+          ) withLoc entity.loc
         }
 
         case _ => tree
@@ -153,7 +153,7 @@ final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
           val decl = Decl(stateVarSymbol, None) regularize stateVarSymbol.loc
           entity.copy(
             declarations = decl :: entity.declarations
-          ) withVariant entity.variant withLoc entity.loc
+          ) withLoc entity.loc
         }
 
         case _ => tree

@@ -120,7 +120,7 @@ final class RemoveUnused(unusedSymbols: Set[Symbol])(implicit cc: CompilerContex
           declarations = decls,
           instances = insts,
           connects = conns
-        ) withVariant entity.variant withLoc tree.loc
+        ) withLoc tree.loc
       }
     }
 
@@ -152,7 +152,7 @@ object RemoveUnused extends Pass {
     val candidateSymbols = gather(trees) { entity =>
       val Sym(eSymbol) = entity.ref
       val isTopLevel = eSymbol.attr.topLevel.get contains true
-      val isVerbatim = entity.variant == "verbatim"
+      val isVerbatim = eSymbol.attr.variant.value == "verbatim"
 
       val eSymbols = if (isTopLevel) Iterator.empty else Iterator.single(eSymbol)
 

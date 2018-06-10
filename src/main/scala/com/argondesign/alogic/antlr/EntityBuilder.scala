@@ -120,8 +120,11 @@ object EntityBuilder extends BaseBuilder[EntityContext, Entity] {
           }
         }
 
+        val variantAttr = Map("//variant" -> ExprStr(ctx.variant.text))
         if (ctx.attr != null) {
-          ident withAttr AttrBuilder(ctx.attr)
+          ident withAttr AttrBuilder(ctx.attr) ++ variantAttr
+        } else {
+          ident withAttr variantAttr
         }
 
         Entity(
@@ -134,7 +137,7 @@ object EntityBuilder extends BaseBuilder[EntityContext, Entity] {
           fenceBlocks,
           entities,
           verbatim
-        ) withLoc ctx.loc withVariant ctx.variant.text
+        ) withLoc ctx.loc
       }
     }
 

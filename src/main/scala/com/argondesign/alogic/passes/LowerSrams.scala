@@ -126,7 +126,7 @@ final class LowerSrams(
   private[this] val extraStmts = Stack[mutable.ListBuffer[Stmt]]()
 
   override def skip(tree: Tree): Boolean = tree match {
-    case entity: Entity => entity.variant == "network"
+    case entity: Entity => entitySymbol.attr.variant.value == "network"
     case _              => false
   }
 
@@ -342,7 +342,7 @@ final class LowerSrams(
           declarations = decls.toList,
           instances = (newInstances ++ entity.instances).toList,
           connects = (newConnects ++ entity.connects).toList
-        ) withVariant entity.variant
+        )
 
         // Note that we only collect register slices here,
         // SRAMs are added in the Pass dispatcher below

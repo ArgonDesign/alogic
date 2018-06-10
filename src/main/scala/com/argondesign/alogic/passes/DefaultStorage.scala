@@ -76,15 +76,16 @@ final class DefaultStorage(implicit cc: CompilerContext) extends TreeTransformer
         for (Decl(symbol, _) <- outs) {
           val kind = symbol.kind.asInstanceOf[TypeOut]
           // Compute the appropriate default storage type
-          val newSt = if ((connectedSet contains symbol) || entity.variant == "verbatim") {
-            StorageTypeWire
-          } else {
-            kind.fct match {
-              case FlowControlTypeReady  => StorageTypeSlices(List(StorageSliceFwd))
-              case FlowControlTypeAccept => StorageTypeWire
-              case _                     => StorageTypeReg
+          val newSt =
+            if ((connectedSet contains symbol) || entitySymbol.attr.variant.value == "verbatim") {
+              StorageTypeWire
+            } else {
+              kind.fct match {
+                case FlowControlTypeReady  => StorageTypeSlices(List(StorageSliceFwd))
+                case FlowControlTypeAccept => StorageTypeWire
+                case _                     => StorageTypeReg
+              }
             }
-          }
           symbol.kind = kind.copy(st = newSt)
         }
 

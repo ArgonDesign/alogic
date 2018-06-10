@@ -28,7 +28,7 @@ final class LowerVariables(implicit cc: CompilerContext) extends TreeTransformer
   // TODO: Generate clock enables
 
   override def skip(tree: Tree): Boolean = tree match {
-    case entity: Entity => entity.variant == "network"
+    case entity: Entity => entitySymbol.attr.variant.value == "network"
     // We do not replace _q with _d in connects, connects always use the _q
     case _: Connect => true
     case _          => false

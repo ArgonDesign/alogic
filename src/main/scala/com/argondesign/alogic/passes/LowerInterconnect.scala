@@ -249,7 +249,7 @@ final class LowerInterconnect(implicit cc: CompilerContext)
           entity.copy(
             declarations = newDecls.toList ::: entity.declarations,
             connects = newConnects.toList ::: newConn
-          ) withVariant entity.variant withLoc tree.loc
+          ) withLoc tree.loc
         }
       } followedBy {
         newConnects.clear()

@@ -354,7 +354,7 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
         // Add declaration
         val result = entity.copy(
           declarations = decl :: entity.declarations
-        ) withLoc entity.loc withVariant entity.variant
+        ) withLoc entity.loc
 
         // Assign type
         TypeAssigner(result)

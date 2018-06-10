@@ -90,7 +90,7 @@ object TreeCopier {
         fenceStmts.asInstanceOf[List[Stmt]],
         entities.asInstanceOf[List[Entity]],
         tree.verbatim
-      ) withLoc tree.loc withVariant tree.variant
+      ) withLoc tree.loc
     }
   }
 

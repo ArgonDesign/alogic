@@ -83,7 +83,6 @@ object Trees {
       // Verbatim sections. Map from language to string to insert into output
       verbatim: Map[String, String]
   ) extends Tree
-      with EntityOps
 
   ///////////////////////////////////////////////////////////////////////////////
   // Entity contents
