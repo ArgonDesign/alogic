@@ -56,10 +56,7 @@ ATID    : '@' SIMPLEID  ;
 
 DOLLARID: '$' SIMPLEID;
 
-DOLLAR: '$';
-
 GOESTO: '->';
-
 
 MUL:        '*'   ;
 DIV:        '/'   ;

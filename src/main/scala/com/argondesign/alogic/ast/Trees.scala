@@ -149,9 +149,9 @@ object Trees {
   case class StmtRead() extends Stmt
   case class StmtWrite() extends Stmt
 
-  case class StmtDollarComment(str: String) extends Stmt // TODO: remove
-
   case class StmtStall(cond: Expr) extends Stmt
+
+  case class StmtComment(str: String) extends Stmt
 
   case class StmtError() extends Stmt // placeholder when errors happened
 

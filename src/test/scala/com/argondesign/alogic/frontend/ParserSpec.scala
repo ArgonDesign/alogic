@@ -1211,10 +1211,6 @@ final class ParserSpec extends FreeSpec with AlogicTest {
           }
         }
 
-        "$ comment" in {
-          "$(\"hello\");".asTree[Stmt] shouldBe StmtDollarComment("hello")
-        }
-
         "read statement" in {
           "read;".asTree[Stmt] shouldBe StmtRead()
         }

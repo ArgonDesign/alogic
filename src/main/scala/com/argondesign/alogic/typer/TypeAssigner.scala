@@ -117,14 +117,14 @@ object TypeAssigner {
       case node: StmtGoto   => apply(node)
       case node: StmtReturn => apply(node)
       // Unambiguous comb stmts
-      case node: StmtAssign        => apply(node)
-      case node: StmtUpdate        => apply(node)
-      case node: StmtPost          => apply(node)
-      case node: StmtDecl          => apply(node)
-      case node: StmtRead          => apply(node)
-      case node: StmtWrite         => apply(node)
-      case node: StmtDollarComment => apply(node)
-      case node: StmtStall         => apply(node)
+      case node: StmtAssign  => apply(node)
+      case node: StmtUpdate  => apply(node)
+      case node: StmtPost    => apply(node)
+      case node: StmtDecl    => apply(node)
+      case node: StmtRead    => apply(node)
+      case node: StmtWrite   => apply(node)
+      case node: StmtComment => apply(node)
+      case node: StmtStall   => apply(node)
       //
       case node: StmtError => apply(node)
       //
@@ -239,7 +239,7 @@ object TypeAssigner {
     node withTpe TypeCombStmt
   }
 
-  def apply(node: StmtDollarComment): node.type = {
+  def apply(node: StmtComment): node.type = {
     require(!node.hasTpe)
     node withTpe TypeCombStmt
   }

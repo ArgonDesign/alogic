@@ -56,10 +56,6 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
         StmtPost(ExprBuilder(ctx.expr), ctx.op) withLoc ctx.loc
       }
 
-      override def visitStmtDollarComment(ctx: StmtDollarCommentContext) = {
-        StmtDollarComment(ctx.STRING.text.tail.init) withLoc ctx.loc
-      }
-
       override def visitStmtLet(ctx: StmtLetContext) = {
         val inits = visit(ctx.let.loop_init.loop_init_item)
         val loop = visit(ctx.loop)

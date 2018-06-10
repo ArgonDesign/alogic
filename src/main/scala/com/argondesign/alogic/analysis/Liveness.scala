@@ -240,9 +240,9 @@ object Liveness {
 
           case StmtBlock(body) => analyse(cLive, cDead, body)
 
-          case _: StmtFence         => (cLive, cDead)
-          case _: StmtDollarComment => (cLive, cDead)
-          case _                    => unreachable
+          case _: StmtFence   => (cLive, cDead)
+          case _: StmtComment => (cLive, cDead)
+          case _              => unreachable
         }
 
         analyse(nLive, nDead, tail)

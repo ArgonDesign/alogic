@@ -261,7 +261,7 @@ trait TreePrintOps { this: Tree =>
       case StmtDecl(decl)           => s"${v(indent)(decl)};"
       case StmtRead()               => "read;"
       case StmtWrite()              => "write;"
-      case StmtDollarComment(str)   => "$" + s"""("${str}")"""
+      case StmtComment(str)         => s"// ${str}"
       case StmtStall(cond)          => s"stall(${v(cond)});"
       case StmtError()              => "/* Error statement */"
     }

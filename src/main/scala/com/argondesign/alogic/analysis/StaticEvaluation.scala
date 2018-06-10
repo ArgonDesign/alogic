@@ -199,11 +199,11 @@ object StaticEvaluation {
           (afters map { _.toSet } reduce { _ intersect _ }).toMap
         }
 
-        case _: StmtStall         => curr // TODO: can we do better here?
-        case _: StmtFence         => curr
-        case _: StmtExpr          => curr
-        case _: StmtDollarComment => curr
-        case _                    => Bindings.empty
+        case _: StmtStall   => curr // TODO: can we do better here?
+        case _: StmtFence   => curr
+        case _: StmtExpr    => curr
+        case _: StmtComment => curr
+        case _              => Bindings.empty
       }
     }
 

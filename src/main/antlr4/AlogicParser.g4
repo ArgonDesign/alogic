@@ -138,7 +138,6 @@ statement
   | decl ';'                                                            # StmtDecl
   | assignment ';'                                                      # StatementAssignment
   | expr ';'                                                            # StmtExpr
-  | '$' '(' STRING ')' ';'                                              # StmtDollarComment
   ;
 
 loop
