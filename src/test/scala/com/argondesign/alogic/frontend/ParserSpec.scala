@@ -1140,6 +1140,10 @@ final class ParserSpec extends FreeSpec with AlogicTest {
           "break;".asTree[Stmt] shouldBe StmtBreak()
         }
 
+        "continue" in {
+          "continue;".asTree[Stmt] shouldBe StmtContinue()
+        }
+
         "return" in {
           "return;".asTree[Stmt] shouldBe StmtReturn()
         }

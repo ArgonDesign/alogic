@@ -830,6 +830,7 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
             ("return;", { case _: StmtReturn                                  => }),
             ("fence;", { case _: StmtFence                                    => }),
             ("break;", { case _: StmtBreak                                    => }),
+            ("continue;", { case _: StmtContinue                              => }),
             ("for(;;) {}", { case _: StmtFor                                  => }),
             ("do {} while(1);", { case _: StmtDo                              => }),
             ("while (1) {}", { case _: StmtWhile                              => }),

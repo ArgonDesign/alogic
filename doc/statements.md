@@ -572,6 +572,17 @@ The `break` statement can be used to immediately terminate the innermost active
 loop and transfer control to the statement following the loop on the next clock
 cycle.
 
+#### `continue` statement (control)
+
+The `continue` statement can be used similarly to the C language equivalent to
+continue at the end of the loop body. This means that inside a `do` or `while`
+loop, the `continue` statement performs the condition check, and on the next
+clock cycle transfers control either to the beginning of the loop body, or the
+statement after the loop. Inside a `for` loop, the `continue` statement also
+executes the _\<step>_ statements before performing the condition check. Inside
+a `loop` loop, `continue` unconditionally transfers control to the beginning of
+the loop body on the next cycle.
+
 #### `let` headers (control)
 
 The `let` keyword can be used to introduce a list of variable declarations

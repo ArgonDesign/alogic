@@ -28,6 +28,7 @@ reference:
 - `goto` statement
 - `return` statement
 - `break` statement
+- `continue` statement
 - `for` loop statement
 - `do` loop statement
 - `while` loop statement

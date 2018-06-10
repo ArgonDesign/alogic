@@ -255,8 +255,9 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
           val body = walk(node.body)
           doTransform(TreeCopier(node)(inits, body))
         }
-        case node: StmtFence => doTransform(node)
-        case node: StmtBreak => doTransform(node)
+        case node: StmtFence    => doTransform(node)
+        case node: StmtBreak    => doTransform(node)
+        case node: StmtContinue => doTransform(node)
         case node: StmtGoto => {
           val expr = walk(node.expr)
           doTransform(TreeCopier(node)(expr))

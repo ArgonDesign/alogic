@@ -182,6 +182,7 @@ object Trees {
 
   case class StmtFence() extends Stmt
   case class StmtBreak() extends Stmt
+  case class StmtContinue() extends Stmt
   case class StmtGoto(expr: Expr) extends Stmt
   case class StmtReturn() extends Stmt
 

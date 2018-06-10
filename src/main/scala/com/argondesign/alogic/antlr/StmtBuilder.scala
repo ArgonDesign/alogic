@@ -100,6 +100,10 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
         StmtBreak() withLoc ctx.loc
       }
 
+      override def visitStmtContinue(ctx: StmtContinueContext) = {
+        StmtContinue() withLoc ctx.loc
+      }
+
       override def visitStmtReturn(ctx: StmtReturnContext) = {
         StmtReturn() withLoc ctx.loc
       }

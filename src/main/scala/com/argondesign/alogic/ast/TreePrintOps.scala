@@ -298,6 +298,7 @@ trait TreePrintOps { this: Tree =>
 
       case StmtFence()              => "fence;"
       case StmtBreak()              => "break;"
+      case StmtContinue()           => "continue;"
       case StmtGoto(ref)            => s"goto ${v(indent)(ref)};"
       case StmtReturn()             => "return;"
       case StmtAssign(lhs, rhs)     => s"${v(lhs)} = ${v(rhs)};"

@@ -134,6 +134,7 @@ statement
   | 'goto' IDENTIFIER ';'                                               # StmtGoto
   | 'fence' ';'                                                         # StmtFence
   | 'break' ';'                                                         # StmtBreak
+  | 'continue' ';'                                                      # StmtContinue
   | 'return' ';'                                                        # StmtReturn
   | decl ';'                                                            # StmtDecl
   | assignment ';'                                                      # StatementAssignment

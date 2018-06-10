@@ -107,15 +107,16 @@ object TypeAssigner {
       case node: StmtCase  => apply(node)
       case node: StmtExpr  => apply(node)
       // Unambiguous ctrl stmts
-      case node: StmtLoop   => apply(node)
-      case node: StmtWhile  => apply(node)
-      case node: StmtFor    => apply(node)
-      case node: StmtDo     => apply(node)
-      case node: StmtLet    => apply(node)
-      case node: StmtFence  => apply(node)
-      case node: StmtBreak  => apply(node)
-      case node: StmtGoto   => apply(node)
-      case node: StmtReturn => apply(node)
+      case node: StmtLoop     => apply(node)
+      case node: StmtWhile    => apply(node)
+      case node: StmtFor      => apply(node)
+      case node: StmtDo       => apply(node)
+      case node: StmtLet      => apply(node)
+      case node: StmtFence    => apply(node)
+      case node: StmtBreak    => apply(node)
+      case node: StmtContinue => apply(node)
+      case node: StmtGoto     => apply(node)
+      case node: StmtReturn   => apply(node)
       // Unambiguous comb stmts
       case node: StmtAssign  => apply(node)
       case node: StmtUpdate  => apply(node)
@@ -195,6 +196,11 @@ object TypeAssigner {
   }
 
   def apply(node: StmtBreak): node.type = {
+    require(!node.hasTpe)
+    node withTpe TypeCtrlStmt
+  }
+
+  def apply(node: StmtContinue): node.type = {
     require(!node.hasTpe)
     node withTpe TypeCtrlStmt
   }

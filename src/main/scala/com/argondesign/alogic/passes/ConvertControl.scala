@@ -58,6 +58,9 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
   // Stack of break statement target state symbols
   private[this] val breakTargets = Stack[TermSymbol]()
 
+  // Stack of continue statement target state symbols
+  private[this] val continueTargets = Stack[TermSymbol]()
+
   // Stack of states symbols in the order they are emitted. We keep these
   // as Options. A None indicates that the state does not actually needs
   // to be emitted, as it will be emitted by an enclosing list (which is empty),
@@ -169,6 +172,9 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
         // Ensure loop body loops back to the loop entry
         followingState.push(symbol)
 
+        // Set up the continue target
+        continueTargets.push(symbol)
+
         // Allocate states for body
         allocateStates(body)
       }
@@ -266,6 +272,11 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
         StmtGoto(ref) regularize tree.loc
       }
 
+      case _: StmtContinue => {
+        val ref = ExprRef(continueTargets.top)
+        StmtGoto(ref) regularize tree.loc
+      }
+
       case StmtGoto(ExprRef(symbol: TermSymbol)) => {
         val ref = ExprRef(func2state(symbol))
         StmtGoto(ref) regularize tree.loc
@@ -351,6 +362,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
       } followedBy {
         breakTargets.pop()
         followingState.pop()
+        continueTargets.pop()
       }
 
       //////////////////////////////////////////////////////////////////////////
@@ -406,6 +418,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
   override def finalCheck(tree: Tree): Unit = {
     assert(followingState.isEmpty)
     assert(breakTargets.isEmpty)
+    assert(continueTargets.isEmpty)
     assert(pendingStates.isEmpty)
 
     tree visit {

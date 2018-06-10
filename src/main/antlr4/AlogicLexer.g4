@@ -152,6 +152,7 @@ IF      : 'if' ;
 GOTO    : 'goto' ;
 ELSE    : 'else' ;
 BREAK   : 'break' ;
+CONTINUE: 'continue' ;
 RETURN  : 'return' ;
 CASE    : 'case' ;
 DEFAULT : 'default' ;

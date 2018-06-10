@@ -44,28 +44,29 @@ trait TreeUntype {
   }
 
   def untype(tree: Stmt): Stmt = tree match {
-    case node: StmtBlock   => untype(node)
-    case node: StmtIf      => untype(node)
-    case node: StmtCase    => untype(node)
-    case node: StmtLoop    => untype(node)
-    case node: StmtWhile   => untype(node)
-    case node: StmtFor     => untype(node)
-    case node: StmtDo      => untype(node)
-    case node: StmtFence   => untype(node)
-    case node: StmtBreak   => untype(node)
-    case node: StmtGoto    => untype(node)
-    case node: StmtReturn  => untype(node)
-    case node: StmtAssign  => untype(node)
-    case node: StmtExpr    => untype(node)
-    case node: StmtDecl    => untype(node)
-    case node: StmtRead    => untype(node)
-    case node: StmtWrite   => untype(node)
-    case node: StmtComment => untype(node)
-    case node: StmtStall   => untype(node)
-    case node: StmtError   => untype(node)
-    case node: StmtLet     => unreachable
-    case node: StmtUpdate  => unreachable
-    case node: StmtPost    => unreachable
+    case node: StmtBlock    => untype(node)
+    case node: StmtIf       => untype(node)
+    case node: StmtCase     => untype(node)
+    case node: StmtLoop     => untype(node)
+    case node: StmtWhile    => untype(node)
+    case node: StmtFor      => untype(node)
+    case node: StmtDo       => untype(node)
+    case node: StmtFence    => untype(node)
+    case node: StmtBreak    => untype(node)
+    case node: StmtContinue => untype(node)
+    case node: StmtGoto     => untype(node)
+    case node: StmtReturn   => untype(node)
+    case node: StmtAssign   => untype(node)
+    case node: StmtExpr     => untype(node)
+    case node: StmtDecl     => untype(node)
+    case node: StmtRead     => untype(node)
+    case node: StmtWrite    => untype(node)
+    case node: StmtComment  => untype(node)
+    case node: StmtStall    => untype(node)
+    case node: StmtError    => untype(node)
+    case node: StmtLet      => unreachable
+    case node: StmtUpdate   => unreachable
+    case node: StmtPost     => unreachable
   }
 
   def untype(tree: Expr): Expr = tree match {
@@ -210,6 +211,8 @@ trait TreeUntype {
   def untype(node: StmtFence): StmtFence = StmtFence() withLoc node.loc
 
   def untype(node: StmtBreak): StmtBreak = StmtBreak() withLoc node.loc
+
+  def untype(node: StmtContinue): StmtContinue = StmtContinue() withLoc node.loc
 
   def untype(node: StmtGoto): StmtGoto =
     node.copy(
