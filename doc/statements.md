@@ -544,9 +544,10 @@ For loops follow the common syntax:
   }
 ```
 
-where _\<init>_ is either a single assignment statement or a single variable
-declaration with an initializer expression, _\<cond>_ is an expression,
-_\<step>_ is an assignment statement, and _\<body>_ is a list of statements. The
+where _\<init>_ can be a list of zero or more instances of either assignment
+statements or simple variable declarations with initializers separated by comma,
+_\<cond>_ is an optional expression, _\<step>_ is a list of zero or more comma
+separated assignment statements, and _\<body>_ is a list of statements. The
 rewriting of a `for` loop in terms of `loop` is:
 
 ```
@@ -590,15 +591,16 @@ together with initializers (separated by `,`) to a new scope established by a
 following loop statement:
 
 ```
-  let (declarations-with-initializers>) <stmt>
+  let (<init>) <stmt>
 ```
 
-The `<stmt>` following the `let` header must be a `loop`, `do`,`while` or `for`
+The form of _\<init>_ is the same as in the case of the `for` loop. The
+_\<stmt>_ following the `let` header must be a `loop`, `do`,`while` or `for`
 statement. The `let` statement is syntactic sugar for:
 
 ```
   {
-    <declarations-with-initializers>
+    <init>
     <body>
   }
 ```
