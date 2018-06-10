@@ -155,7 +155,6 @@ BREAK   : 'break' ;
 RETURN  : 'return' ;
 CASE    : 'case' ;
 DEFAULT : 'default' ;
-VERILOG : 'verilog' ;
 NEW     : 'new' ;
 LET     : 'let' ;
 ENTITY  : 'entity' ;
