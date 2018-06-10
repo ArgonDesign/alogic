@@ -132,6 +132,19 @@ final class FoldExpr(
       }
 
       ////////////////////////////////////////////////////////////////////////////
+      // Fold some special unary over unary combinations
+      ////////////////////////////////////////////////////////////////////////////
+
+      case ExprUnary(aOp, ExprUnary(bOp, expr)) => {
+        val res = (aOp, bOp) match {
+          case ("!", "!") if expr.isPacked && !expr.isSigned && expr.width == 1 => expr
+          case ("~", "~")                                                       => expr
+          case _                                                                => tree
+        }
+        if (res.hasLoc) res else res withLoc tree.loc
+      }
+
+      ////////////////////////////////////////////////////////////////////////////
       // Fold other binary expressions with 2 unsized operands
       ////////////////////////////////////////////////////////////////////////////
 
