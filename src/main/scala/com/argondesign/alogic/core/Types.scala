@@ -21,6 +21,7 @@ import com.argondesign.alogic.core.StorageTypes._
 import com.argondesign.alogic.core.Symbols.TermSymbol
 import com.argondesign.alogic.core.Symbols.TypeSymbol
 import com.argondesign.alogic.lib.StructuredTree
+import com.argondesign.alogic.typer.TypeAssigner
 
 object Types {
 
@@ -129,7 +130,7 @@ object Types {
   // Implementations
   ///////////////////////////////////////////////////////////////////////////////
 
-  private val boolType = TypeUInt(Expr(1) withLoc Loc.synthetic)
+  private val boolType = TypeUInt(TypeAssigner(Expr(1) withLoc Loc.synthetic))
 
   // A base trait for types that have fields that can be looked up using dot notation
   trait CompoundType {

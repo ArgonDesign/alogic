@@ -289,9 +289,9 @@ object TypeAssigner {
 
   def apply(node: ExprError): node.type = node withTpe TypeError
 
-  def apply(node: ExprInt): node.type = {
+  def apply(node: ExprInt)(implicit cc: CompilerContext): node.type = {
     require(!node.hasTpe)
-    val widthExpr = Expr(node.width) withLoc node.loc
+    val widthExpr = Expr(node.width) regularize node.loc
     node withTpe TypeInt(node.signed, widthExpr)
   }
 
@@ -320,11 +320,11 @@ object TypeAssigner {
     node withTpe finalTpe
   }
 
-  def apply(node: ExprUnary): node.type = {
+  def apply(node: ExprUnary)(implicit cc: CompilerContext): node.type = {
     require(!node.hasTpe)
     val tpe = node.op match {
       case "+" | "-" | "~" => node.expr.tpe
-      case _               => TypeUInt(Expr(1) withLoc node.loc)
+      case _               => TypeUInt(Expr(1) regularize node.loc)
     }
     node withTpe tpe
   }
@@ -333,7 +333,7 @@ object TypeAssigner {
     require(!node.hasTpe)
     val tpe = node.op match {
       case ">" | ">=" | "<" | "<=" | "==" | "!=" | "&&" | "||" =>
-        TypeUInt(Expr(1) withLoc node.loc)
+        TypeUInt(Expr(1) regularize node.loc)
       case "<<" | ">>" | "<<<" | ">>>" => node.lhs.tpe
       case _ => {
         val lTpe = node.lhs.tpe
@@ -377,14 +377,14 @@ object TypeAssigner {
   def apply(node: ExprRep)(implicit cc: CompilerContext): node.type = {
     require(!node.hasTpe)
     val width = node.count * node.expr.tpe.width
-    node withTpe TypeUInt(width.simplify)
+    node withTpe TypeUInt(width.simplify regularize node.loc)
   }
 
-  def apply(node: ExprIndex): node.type = {
+  def apply(node: ExprIndex)(implicit cc: CompilerContext): node.type = {
     require(!node.hasTpe)
     val tpe = node.expr.tpe.underlying match {
-      case _: TypeNum          => TypeUInt(Expr(1) withLoc node.index.loc)
-      case _: TypeInt          => TypeUInt(Expr(1) withLoc node.index.loc)
+      case _: TypeNum          => TypeUInt(Expr(1) regularize node.index.loc)
+      case _: TypeInt          => TypeUInt(Expr(1) regularize node.index.loc)
       case TypeArray(kind, _)  => kind
       case TypeVector(kind, _) => kind
       case _                   => unreachable
@@ -396,7 +396,7 @@ object TypeAssigner {
     // TODO: implement vector slicing properly
     require(!node.hasTpe)
     val width = if (node.op == ":") node.lidx - node.ridx + 1 else node.ridx
-    node withTpe TypeUInt(width.simplify)
+    node withTpe TypeUInt(width.simplify regularize node.loc)
   }
 
   def apply(node: ExprSelect): node.type = {

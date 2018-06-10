@@ -138,9 +138,6 @@ class LivenessSpec extends FreeSpec with AlogicTest {
       }
 
       "should ignore variable slices of ref" - {
-        "a[@randbit():0]" in {
-          killed(aRef.slice(randBitCall, ":", 0)) shouldBe SymbolBitSet.empty
-        }
         "a[@randbit()+:1]" in {
           killed(aRef.slice(randBitCall, "+:", 1)) shouldBe SymbolBitSet.empty
         }
@@ -237,11 +234,6 @@ class LivenessSpec extends FreeSpec with AlogicTest {
         }
 
         "should be pessimistic for variable slices of ref" - {
-          "a[@randbit():0]" in {
-            usedRval(aRef.slice(randBitCall, ":", 0)) shouldBe {
-              SymbolBitSet(Map(aSymbol -> BitSet(0 to 3: _*)))
-            }
-          }
           "a[@randbit()+:1]" in {
             usedRval(aRef.slice(randBitCall, "+:", 1)) shouldBe {
               SymbolBitSet(Map(aSymbol -> BitSet(0 to 3: _*)))
@@ -277,14 +269,14 @@ class LivenessSpec extends FreeSpec with AlogicTest {
         }
 
         "should handle slice" - {
-          "a[b:0]" in {
-            usedLval(aRef.slice(bRef, ":", 0)) shouldBe {
+          "a[b +: 1]" in {
+            usedLval(aRef.slice(bRef, "+:", 1)) shouldBe {
               SymbolBitSet(Map(bSymbol -> BitSet(0 to 7: _*)))
             }
           }
-          "a[c[2]:b[3]]" in {
-            usedLval(aRef.slice(cRef index 2, ":", bRef index 3)) shouldBe {
-              SymbolBitSet(Map(bSymbol -> BitSet(3), cSymbol -> BitSet(2)))
+          "a[b[2] +: 1]" in {
+            usedLval(aRef.slice(bRef index 2, "+:", 1)) shouldBe {
+              SymbolBitSet(Map(bSymbol -> BitSet(2)))
             }
           }
         }

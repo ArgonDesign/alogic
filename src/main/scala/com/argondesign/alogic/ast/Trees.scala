@@ -226,12 +226,13 @@ object Trees {
 
   // Literals
   case class ExprInt(signed: Boolean, width: Int, value: BigInt) extends Expr {
-    require(width > 0)
-    require(signed || value >= 0)
-    require(if (value >= 0) (value >> width) == 0 else (value >> width) == -1)
+    require(width > 0, s"widht=${width}")
+    require(signed || value >= 0, s"signed=${signed}, value=${value}")
+    require(if (value >= 0) (value >> width) == 0 else (value >> width) == -1,
+            s"width=${width}, value=${value}")
   }
   case class ExprNum(signed: Boolean, value: BigInt) extends Expr {
-    require(signed || value >= 0)
+    require(signed || value >= 0, s"signed=${signed}, value=${value}")
   }
   case class ExprStr(value: String) extends Expr
 

@@ -450,6 +450,182 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
       }
     }
 
+    "binary operators applied to equally sized integer literals" - {
+      for {
+        (expr, result, msg) <- List(
+          //////////////////////////////////////////////
+          // signed signed
+          //////////////////////////////////////////////
+          // Always valid
+          ("4'sd3 >  4'sd2", ExprInt(false, 1, 1), ""),
+          ("4'sd3 >= 4'sd2", ExprInt(false, 1, 1), ""),
+          ("4'sd3 <  4'sd2", ExprInt(false, 1, 0), ""),
+          ("4'sd3 <= 4'sd2", ExprInt(false, 1, 0), ""),
+          ("4'sd3 == 4'sd2", ExprInt(false, 1, 0), ""),
+          ("4'sd3 != 4'sd2", ExprInt(false, 1, 1), ""),
+          ("4'sd3 && 4'sd2", ExprInt(false, 1, 1), ""),
+          ("4'sd3 || 4'sd2", ExprInt(false, 1, 1), ""),
+          // Arith
+          ("4'sd3 * 4'sd2", ExprInt(true, 4, 6), ""),
+          ("4'sd3 / 4'sd2", ExprInt(true, 4, 1), ""),
+          ("4'sd3 % 4'sd2", ExprInt(true, 4, 1), ""),
+          ("4'sd3 + 4'sd2", ExprInt(true, 4, 5), ""),
+          ("4'sd3 - 4'sd2", ExprInt(true, 4, 1), ""),
+          ("4'sd3 - 4'sd4", ExprInt(true, 4, -1), ""),
+//          // Shifts
+//          (" 'sd3 <<   'sd2", ExprNum(true, 12), ""),
+//          (" 'sd3 >>   'sd2", ExprNum(true, 0), ""),
+//          (" 'sd3 <<<  'sd2", ExprNum(true, 12), ""),
+//          (" 'sd3 >>>  'sd2", ExprNum(true, 0), ""),
+//          (" 'sd3 <<  -'sd2", ExprError(), "Negative shift amount"),
+//          (" 'sd3 >>  -'sd2", ExprError(), "Negative shift amount"),
+//          (" 'sd3 <<< -'sd2", ExprError(), "Negative shift amount"),
+//          (" 'sd3 >>> -'sd2", ExprError(), "Negative shift amount"),
+//          ("-'sd3 <<   'sd2", ExprNum(true, -12), ""),
+//          ("-'sd3 >>   'sd2", ExprError(), "'>>' is not well defined for negative unsized values"),
+//          ("-'sd3 <<<  'sd2", ExprNum(true, -12), ""),
+//          ("-'sd3 >>>  'sd2", ExprNum(true, -1), ""),
+//          ("-'sd3 <<  -'sd2", ExprError(), "Negative shift amount"),
+//          ("-'sd3 >>  -'sd2", ExprError(), "Negative shift amount"), // ***
+//          ("-'sd3 <<< -'sd2", ExprError(), "Negative shift amount"),
+//          ("-'sd3 >>> -'sd2", ExprError(), "Negative shift amount"),
+          // Bitwise
+          (" 4'sd3 &   4'sd2", ExprInt(true, 4, 2), ""),
+          (" 4'sd3 ^   4'sd2", ExprInt(true, 4, 1), ""),
+          (" 4'sd3 |   4'sd2", ExprInt(true, 4, 3), ""),
+          (" 4'sd3 &  -4'sd2", ExprInt(true, 4, 2), ""),
+          (" 4'sd3 ^  -4'sd2", ExprInt(true, 4, -3), ""),
+          (" 4'sd3 |  -4'sd2", ExprInt(true, 4, -1), ""),
+          ("-4'sd3 &   4'sd2", ExprInt(true, 4, 0), ""),
+          ("-4'sd3 ^   4'sd2", ExprInt(true, 4, -1), ""),
+          ("-4'sd3 |   4'sd2", ExprInt(true, 4, -1), ""),
+          ("-4'sd3 &  -4'sd2", ExprInt(true, 4, -4), ""),
+          ("-4'sd3 ^  -4'sd2", ExprInt(true, 4, 3), ""),
+          ("-4'sd3 |  -4'sd2", ExprInt(true, 4, -1), ""),
+          //////////////////////////////////////////////
+          // signed unsigned
+          //////////////////////////////////////////////
+          // Always valid
+          ("4'sd3 >  4'd2", ExprInt(false, 1, 1), ""),
+          ("4'sd3 >= 4'd2", ExprInt(false, 1, 1), ""),
+          ("4'sd3 <  4'd2", ExprInt(false, 1, 0), ""),
+          ("4'sd3 <= 4'd2", ExprInt(false, 1, 0), ""),
+          ("4'sd3 == 4'd2", ExprInt(false, 1, 0), ""),
+          ("4'sd3 != 4'd2", ExprInt(false, 1, 1), ""),
+          ("4'sd3 && 4'd2", ExprInt(false, 1, 1), ""),
+          ("4'sd3 || 4'd2", ExprInt(false, 1, 1), ""),
+//          // Arith
+//          ("'sd3 * 2", ExprNum(false, 6), ""),
+//          ("'sd3 / 2", ExprNum(false, 1), ""),
+//          ("'sd3 % 2", ExprNum(false, 1), ""),
+//          ("'sd3 + 2", ExprNum(false, 5), ""),
+//          ("'sd3 - 2", ExprNum(false, 1), ""),
+//          ("'sd3 - 4", ExprError(), "Result of operator '-' is unsigned, but value is negative"),
+//          ("-'sd3 * 2", ExprError(), "Result of operator '\\*' is unsigned, but value is negative"),
+//          ("-'sd3 / 2", ExprError(), "Result of operator '/' is unsigned, but value is negative"),
+//          ("-'sd3 % 2", ExprError(), "Result of operator '%' is unsigned, but value is negative"),
+//          ("-'sd3 + 2", ExprError(), "Result of operator '\\+' is unsigned, but value is negative"),
+//          ("-'sd3 - 2", ExprError(), "Result of operator '-' is unsigned, but value is negative"),
+//          ("-'sd3 + 4", ExprNum(false, 1), ""),
+//          // Shifts
+//          (" 'sd3 <<  2", ExprNum(true, 12), ""),
+//          (" 'sd3 >>  2", ExprNum(true, 0), ""),
+//          (" 'sd3 <<< 2", ExprNum(true, 12), ""),
+//          (" 'sd3 >>> 2", ExprNum(true, 0), ""),
+//          ("-'sd3 <<  2", ExprNum(true, -12), ""),
+//          ("-'sd3 >>  2", ExprError(), "'>>' is not well defined for negative unsized values"),
+//          ("-'sd3 <<< 2", ExprNum(true, -12), ""),
+//          ("-'sd3 >>> 2", ExprNum(true, -1), ""),
+          // Bitwise
+          (" 4'sd3 &  4'd2", ExprInt(false, 4, 2), ""),
+          (" 4'sd3 ^  4'd2", ExprInt(false, 4, 1), ""),
+          (" 4'sd3 |  4'd2", ExprInt(false, 4, 3), ""),
+          ("-4'sd3 &  4'd2", ExprInt(false, 4, 0), ""),
+          ("-4'sd3 ^  4'd2", ExprInt(false, 4, 15), ""),
+          ("-4'sd3 |  4'd2", ExprInt(false, 4, 15), ""),
+          //////////////////////////////////////////////
+          // unsigned signed
+          //////////////////////////////////////////////
+          // Always valid
+          ("4'd3 >  4'sd2", ExprInt(false, 1, 1), ""),
+          ("4'd3 >= 4'sd2", ExprInt(false, 1, 1), ""),
+          ("4'd3 <  4'sd2", ExprInt(false, 1, 0), ""),
+          ("4'd3 <= 4'sd2", ExprInt(false, 1, 0), ""),
+          ("4'd3 == 4'sd2", ExprInt(false, 1, 0), ""),
+          ("4'd3 != 4'sd2", ExprInt(false, 1, 1), ""),
+          ("4'd3 && 4'sd2", ExprInt(false, 1, 1), ""),
+          ("4'd3 || 4'sd2", ExprInt(false, 1, 1), ""),
+//          // Arith
+//          ("3 * 'sd2", ExprNum(false, 6), ""),
+//          ("3 / 'sd2", ExprNum(false, 1), ""),
+//          ("3 % 'sd2", ExprNum(false, 1), ""),
+//          ("3 + 'sd2", ExprNum(false, 5), ""),
+//          ("3 - 'sd2", ExprNum(false, 1), ""),
+//          ("3 - 'sd4", ExprError(), "Result of operator '-' is unsigned, but value is negative"),
+//          ("3 * -'sd2", ExprError(), "Result of operator '\\*' is unsigned, but value is negative"),
+//          ("3 / -'sd2", ExprError(), "Result of operator '/' is unsigned, but value is negative"),
+//          ("3 % -'sd2", ExprNum(false, 1), ""),
+//          ("3 + -'sd2", ExprNum(false, 1), ""),
+//          ("3 - -'sd2", ExprNum(false, 5), ""),
+//          ("3 + -'sd4", ExprError(), "Result of operator '\\+' is unsigned, but value is negative"),
+//          // Shifts
+//          ("3 <<  'sd2", ExprNum(false, 12), ""),
+//          ("3 >>  'sd2", ExprNum(false, 0), ""),
+//          ("3 <<< 'sd2", ExprNum(false, 12), ""),
+//          ("3 >>> 'sd2", ExprNum(false, 0), ""),
+//          ("3 <<  -'sd2", ExprError(), "Negative shift amount"),
+//          ("3 >>  -'sd2", ExprError(), "Negative shift amount"),
+//          ("3 <<< -'sd2", ExprError(), "Negative shift amount"),
+//          ("3 >>> -'sd2", ExprError(), "Negative shift amount"),
+          // Bitwise
+          ("4'd3 &  4'sd2", ExprInt(false, 4, 2), ""),
+          ("4'd3 ^  4'sd2", ExprInt(false, 4, 1), ""),
+          ("4'd3 |  4'sd2", ExprInt(false, 4, 3), ""),
+          ("4'd3 & -4'sd2", ExprInt(false, 4, 2), ""),
+          ("4'd3 ^ -4'sd2", ExprInt(false, 4, 13), ""),
+          ("4'd3 | -4'sd2", ExprInt(false, 4, 15), ""),
+          //////////////////////////////////////////////
+          // unsigned unsigned
+          //////////////////////////////////////////////
+          // Always valid
+          ("4'd3 >  4'd2", ExprInt(false, 1, 1), ""),
+          ("4'd3 >= 4'd2", ExprInt(false, 1, 1), ""),
+          ("4'd3 <  4'd2", ExprInt(false, 1, 0), ""),
+          ("4'd3 <= 4'd2", ExprInt(false, 1, 0), ""),
+          ("4'd3 == 4'd2", ExprInt(false, 1, 0), ""),
+          ("4'd3 != 4'd2", ExprInt(false, 1, 1), ""),
+          ("4'd3 && 4'd2", ExprInt(false, 1, 1), ""),
+          ("4'd3 || 4'd2", ExprInt(false, 1, 1), ""),
+          // Arith
+          ("4'd3 * 4'd2", ExprInt(false, 4, 6), ""),
+          ("4'd3 / 4'd2", ExprInt(false, 4, 1), ""),
+          ("4'd3 % 4'd2", ExprInt(false, 4, 1), ""),
+          ("4'd3 + 4'd2", ExprInt(false, 4, 5), ""),
+          ("4'd3 - 4'd2", ExprInt(false, 4, 1), ""),
+          ("4'd3 - 4'd4", ExprInt(false, 4, 15), ""),
+//          // Shifts
+//          ("3 <<  2", ExprNum(false, 12), ""),
+//          ("3 >>  2", ExprNum(false, 0), ""),
+//          ("3 <<< 2", ExprNum(false, 12), ""),
+//          ("3 >>> 2", ExprNum(false, 0), ""),
+          // Bitwise
+          ("4'd3 &  4'd2", ExprInt(false, 4, 2), ""),
+          ("4'd3 ^  4'd2", ExprInt(false, 4, 1), ""),
+          ("4'd3 |  4'd2", ExprInt(false, 4, 3), "")
+        )
+      } {
+        val e = expr.trim.replaceAll(" +", " ")
+        e in {
+          e.asTree[Expr] rewrite fold shouldBe result
+          if (msg.isEmpty) {
+            cc.messages shouldBe empty
+          } else {
+            cc.messages.loneElement should beThe[Error](msg)
+          }
+        }
+      }
+    }
+
     "ternary operator" - {
       for {
         (text, pattern, msg) <- List[(String, PartialFunction[Any, Unit], String)](

@@ -219,17 +219,40 @@ final class FoldExpr(
       }
 
       ////////////////////////////////////////////////////////////////////////////
-      // Fold binary expressions with a sized operand
+      // Fold binary expressions with equally sized operands
       ////////////////////////////////////////////////////////////////////////////
 
-      // TODO
-      case ExprBinary(ExprInt(false, 32, lv), op, ExprInt(false, 32, rv)) => {
-        op match {
-          case "+" => ExprInt(false, 32, lv + rv) withLoc tree.loc
-          case "-" => ExprInt(false, 32, lv - rv) withLoc tree.loc
-          case "*" => ExprInt(false, 32, lv * rv) withLoc tree.loc
-          case _   => tree
+      case ExprBinary(ExprInt(ls, lw, lv), op, ExprInt(rs, rw, rv)) if lw == rw => {
+        val w = lw
+        val s = ls && rs
+        val sm = ls == rs
+        val num = op match {
+          // Always valid
+          case ">"  => ExprInt(false, 1, lv > rv)
+          case "<"  => ExprInt(false, 1, lv < rv)
+          case ">=" => ExprInt(false, 1, lv >= rv)
+          case "<=" => ExprInt(false, 1, lv <= rv)
+          case "==" => ExprInt(false, 1, lv == rv)
+          case "!=" => ExprInt(false, 1, lv != rv)
+          case "&&" => ExprInt(false, 1, (lv != 0) && (rv != 0))
+          case "||" => ExprInt(false, 1, (lv != 0) || (rv != 0))
+
+          // Arith with matching sign
+          case "+" if sm => ExprInt(s, w, (lv + rv).extract(0, w, s))
+          case "-" if sm => ExprInt(s, w, (lv - rv).extract(0, w, s))
+          case "*" if sm => ExprInt(s, w, (lv * rv).extract(0, w, s))
+          case "/" if sm => ExprInt(s, w, (lv / rv).extract(0, w, s))
+          case "%" if sm => ExprInt(s, w, (lv % rv).extract(0, w, s))
+
+          // Bitwise
+          case "&" => ExprInt(s, w, (lv & rv).extract(0, w, s))
+          case "^" => ExprInt(s, w, (lv ^ rv).extract(0, w, s))
+          case "|" => ExprInt(s, w, (lv | rv).extract(0, w, s))
+
+          // TODO: handle
+          case _ => tree
         }
+        if (num.hasLoc) num else num withLoc tree.loc
       }
 
       ////////////////////////////////////////////////////////////////////////////
