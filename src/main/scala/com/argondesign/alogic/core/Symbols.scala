@@ -57,9 +57,9 @@ trait Symbols { self: CompilerContext =>
     }
   }
 
-  final def addGlobalEntities(entities: Iterable[Entity]): Unit = synchronized {
-    for (Entity(ident: Ident, _, _, _, _, _, _, _, _) <- entities) {
-      val symbol = newTypeSymbol(ident, TypeEntity("", Nil, Nil))
+  final def addGlobalEntities(entities: Iterable[EntityIdent]): Unit = synchronized {
+    for (entity <- entities) {
+      val symbol = newTypeSymbol(entity.ident, TypeEntity("", Nil, Nil))
       addGlobalSymbol(symbol)
     }
 
@@ -67,7 +67,7 @@ trait Symbols { self: CompilerContext =>
     globalScope
   }
 
-  final def addGlobalEntity(entity: Entity): Unit = addGlobalEntities(List(entity))
+  final def addGlobalEntity(entity: EntityIdent): Unit = addGlobalEntities(List(entity))
 
   final def lookupGlobalTerm(name: String): TermSymbol = synchronized {
     globalScope.get(TermName(name)) match {

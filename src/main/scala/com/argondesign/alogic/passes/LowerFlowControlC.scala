@@ -37,7 +37,7 @@ final class LowerFlowControlC(implicit cc: CompilerContext) extends TreeTransfor
     // Entity
     //////////////////////////////////////////////////////////////////////////
 
-    case entity: Entity => {
+    case entity: EntityLowered => {
       // Drop original port declarations
       val declarations = entity.declarations filterNot {
         case Decl(symbol, _) => symbol.attr.expandedPort.isSet

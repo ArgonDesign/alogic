@@ -19,6 +19,7 @@ import java.io.File
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 
+import com.argondesign.alogic.ast.Trees.EntityIdent
 import com.argondesign.alogic.ast.Trees.Root
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FatalErrorException
@@ -86,8 +87,8 @@ object Main extends App {
     // Insert entity symbols into the global scope
     cc.addGlobalEntities {
       frontEndTrees map {
-        case Root(_, entity) => entity
-        case _               => unreachable
+        case Root(_, entity: EntityIdent) => entity
+        case _                            => unreachable
       }
     }
 

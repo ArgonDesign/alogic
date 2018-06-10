@@ -34,9 +34,9 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
 
   def xform(tree: Tree): Tree = {
     tree match {
-      case root: Root     => cc.addGlobalEntity(root.entity)
-      case entity: Entity => cc.addGlobalEntity(entity)
-      case _              =>
+      case Root(_, entity: EntityIdent) => cc.addGlobalEntity(entity)
+      case entity: EntityIdent          => cc.addGlobalEntity(entity)
+      case _                            =>
     }
     tree rewrite namer rewrite typer rewrite fold
   }

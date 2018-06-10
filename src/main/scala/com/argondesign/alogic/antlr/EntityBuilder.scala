@@ -27,15 +27,15 @@ import com.argondesign.alogic.core.Locationed
 
 import scala.collection.JavaConverters._
 
-object EntityBuilder extends BaseBuilder[EntityContext, Entity] {
+object EntityBuilder extends BaseBuilder[EntityContext, EntityIdent] {
 
   // A few helper to use locally
-  private case class AutoInstance(entity: Entity, attributes: Option[Map[String, Expr]])
+  private case class AutoInstance(entity: EntityIdent, attributes: Option[Map[String, Expr]])
       extends Locationed
   private case class FenceBlock(stmts: StmtBlock) extends Locationed
   private case class VerbatimBlock(lang: String, text: String) extends Locationed
 
-  def apply(ctx: EntityContext)(implicit cc: CompilerContext): Entity = {
+  def apply(ctx: EntityContext)(implicit cc: CompilerContext): EntityIdent = {
     object EntityContentVisitor extends AlogicScalarVisitor[AnyRef] {
       override def visitEntityContentInstance(ctx: EntityContentInstanceContext) = {
         val c = ctx.instance
@@ -87,7 +87,7 @@ object EntityBuilder extends BaseBuilder[EntityContext, Entity] {
       }
     }
 
-    object EntityVisitor extends AlogicScalarVisitor[Entity] {
+    object EntityVisitor extends AlogicScalarVisitor[EntityIdent] {
       override def visitEntity(ctx: EntityContext) = {
         val ident = ctx.IDENTIFIER.toIdent
         val decls = DeclBuilder(ctx.decl)
@@ -95,14 +95,14 @@ object EntityBuilder extends BaseBuilder[EntityContext, Entity] {
         val instances = contents collect {
           case x: Instance => x
           case AutoInstance(entity, None) => {
-            val Ident(name) = entity.ref
-            val ident = Ident(name) withLoc entity.ref.loc
-            Instance(ident, entity.ref, Nil, Nil) withLoc entity.loc
+            val Ident(name) = entity.ident
+            val ident = Ident(name) withLoc entity.ident.loc
+            Instance(ident, entity.ident, Nil, Nil) withLoc entity.loc
           }
           case AutoInstance(entity, Some(attr)) => {
-            val Ident(name) = entity.ref
-            val ident = Ident(name) withLoc entity.ref.loc withAttr attr
-            Instance(ident, entity.ref, Nil, Nil) withLoc entity.loc
+            val Ident(name) = entity.ident
+            val ident = Ident(name) withLoc entity.ident.loc withAttr attr
+            Instance(ident, entity.ident, Nil, Nil) withLoc entity.loc
           }
         }
         val connects = contents collect { case x: Connect           => x }
@@ -127,14 +127,13 @@ object EntityBuilder extends BaseBuilder[EntityContext, Entity] {
           ident withAttr variantAttr
         }
 
-        Entity(
+        EntityIdent(
           ident,
           decls,
           instances,
           connects,
-          functions,
-          Nil,
           fenceBlocks,
+          functions,
           entities,
           verbatim
         ) withLoc ctx.loc

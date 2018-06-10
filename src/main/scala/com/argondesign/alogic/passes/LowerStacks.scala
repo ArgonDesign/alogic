@@ -31,13 +31,10 @@ final class LowerStacks(implicit cc: CompilerContext) extends TreeTransformer {
 
   // Map from original stack variable symbol to the
   // corresponding stack entity and instance symbols
-  private[this] val stackMap = mutable.Map[TermSymbol, (Entity, TermSymbol)]()
+  private[this] val stackMap = mutable.Map[TermSymbol, (EntityLowered, TermSymbol)]()
 
   // Stack of extra statements to emit when finished with a statement
   private[this] val extraStmts = Stack[mutable.ListBuffer[Stmt]]()
-
-  // TODO: entitySymbol.name
-  private[this] var entityName: String = _
 
   override def skip(tree: Tree): Boolean = tree match {
     case entity: Entity => entitySymbol.attr.variant.value == "network"
@@ -45,23 +42,15 @@ final class LowerStacks(implicit cc: CompilerContext) extends TreeTransformer {
   }
 
   override def enter(tree: Tree): Unit = tree match {
-    case entity: Entity => {
-      val Sym(symbol: TypeSymbol) = entity.ref
-      entityName = symbol.name
-    }
-
     case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeStack] => {
       // Construct the stack entity
       val TypeStack(kind, depth) = symbol.kind
       val loc = tree.loc
       val pName = symbol.name
       // TODO: mark inline
-      val eName = entityName + cc.sep + "stack" + cc.sep + pName
-      val stackEntity: Entity = StackFactory(eName, loc, kind, depth)
-      val Sym(stackEntitySymbol: TypeSymbol) = stackEntity.ref
-      val instanceSymbol = {
-        cc.newTermSymbol(pName, loc, TypeInstance(stackEntitySymbol))
-      }
+      val eName = entitySymbol.name + cc.sep + "stack" + cc.sep + pName
+      val stackEntity = StackFactory(eName, loc, kind, depth)
+      val instanceSymbol = cc.newTermSymbol(pName, loc, TypeInstance(stackEntity.symbol))
       stackMap(symbol) = (stackEntity, instanceSymbol)
       // Clear enabel when the entity stalls
       entitySymbol.attr.interconnectClearOnStall.append((instanceSymbol, "en"))
@@ -163,7 +152,7 @@ final class LowerStacks(implicit cc: CompilerContext) extends TreeTransformer {
       // Add stack entities
       //////////////////////////////////////////////////////////////////////////
 
-      case entity: Entity if stackMap.nonEmpty => {
+      case entity: EntityLowered if stackMap.nonEmpty => {
         // Drop stack declarations
         val declarations = entity.declarations filterNot {
           case Decl(symbol, _) => symbol.kind.isInstanceOf[TypeStack]
@@ -172,11 +161,11 @@ final class LowerStacks(implicit cc: CompilerContext) extends TreeTransformer {
 
         // Add instances
         val instances = for ((entity, instance) <- stackMap.values) yield {
-          Instance(Sym(instance), entity.ref, Nil, Nil)
+          Instance(Sym(instance), Sym(entity.symbol), Nil, Nil)
         }
 
-        // Add fence statemetns
-        val fenceStmts = stackMap.values map { _._2 } map { iSymbol =>
+        // Add leading statements to the state system
+        val leading = stackMap.values map { _._2 } map { iSymbol =>
           val iRef = ExprRef(iSymbol)
           StmtBlock(
             List(
@@ -191,7 +180,7 @@ final class LowerStacks(implicit cc: CompilerContext) extends TreeTransformer {
         val newEntity = entity.copy(
           declarations = declarations,
           instances = instances.toList ::: entity.instances,
-          fenceStmts = fenceStmts.toList ::: entity.fenceStmts
+          statements = leading.toList ::: entity.statements
         )
 
         val stackEntities = stackMap.values map { _._1 }

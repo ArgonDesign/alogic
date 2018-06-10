@@ -63,7 +63,7 @@ final class DefaultStorage(implicit cc: CompilerContext) extends TreeTransformer
         inConnect = false
       }
 
-      case entity: Entity => {
+      case entity: EntityLowered => {
         // Collect all output declarations that use the default storage type
         val (outs, rest) = entity.declarations.partition {
           case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeOut] => {

@@ -20,17 +20,14 @@ import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.unreachable
 
-final class EntityDetails(val entity: Entity, details: => Map[TypeSymbol, EntityDetails]) {
+final class EntityDetails(val entity: EntityLowered, details: => Map[TypeSymbol, EntityDetails]) {
 
-  val Entity(
-    Sym(eSymbol: TypeSymbol),
+  val EntityLowered(
+    eSymbol,
     decls,
     instances,
     connects,
-    Nil,
-    states,
-    fenceStmts,
-    Nil,
+    statements,
     verbatim
   ) = entity
 
@@ -49,8 +46,6 @@ final class EntityDetails(val entity: Entity, details: => Map[TypeSymbol, Entity
       case _ => unreachable
     }
   }
-
-  assert(states.nonEmpty || fenceStmts.isEmpty)
 
   lazy val isVerbatim: Boolean = eSymbol.attr.variant.value == "verbatim"
 

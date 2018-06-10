@@ -28,7 +28,7 @@ final class LowerVariables(implicit cc: CompilerContext) extends TreeTransformer
   // TODO: Generate clock enables
 
   override def skip(tree: Tree): Boolean = tree match {
-    case entity: Entity => entitySymbol.attr.variant.value == "network"
+    case entity: EntityLowered => entity.symbol.attr.variant.value == "network"
     // We do not replace _q with _d in connects, connects always use the _q
     case _: Connect => true
     case _          => false
@@ -36,7 +36,7 @@ final class LowerVariables(implicit cc: CompilerContext) extends TreeTransformer
 
   override def enter(tree: Tree): Unit = tree match {
 
-    case entity: Entity => {
+    case entity: EntityLowered => {
       // Drop the oreg prefix from the flops allocated for registered outputs,
       // These will now gain _d and _q, so the names will become unique.
       val prefix = s"oreg${cc.sep}"

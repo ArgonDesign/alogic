@@ -26,8 +26,8 @@ import com.argondesign.alogic.util.unreachable
 final class SplitStructsC(implicit cc: CompilerContext) extends TreeTransformer {
 
   override def skip(tree: Tree): Boolean = tree match {
-    case _: Entity => false
-    case _         => true
+    case _: EntityLowered => false
+    case _                => true
   }
 
   override def transform(tree: Tree): Tree = tree match {
@@ -35,7 +35,7 @@ final class SplitStructsC(implicit cc: CompilerContext) extends TreeTransformer 
     // Entity
     //////////////////////////////////////////////////////////////////////////
 
-    case entity: Entity => {
+    case entity: EntityLowered => {
       // Drop original port declarations
       val declarations = entity.declarations filterNot {
         case Decl(symbol, _) => symbol.attr.fieldSymbols.isSet

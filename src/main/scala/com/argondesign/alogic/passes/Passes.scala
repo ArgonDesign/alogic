@@ -48,6 +48,7 @@ object Passes {
       ConvertLocalDecls,
       ConvertControl,
       AllocStates,
+      CreateStateSystem,
       Replace1Stacks,
       // TODO: Replace1Arrays
       DefaultStorage,

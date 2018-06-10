@@ -290,7 +290,7 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
   }
 
   override protected def skip(tree: Tree): Boolean = tree match {
-    case entity: Entity if entity.functions.isEmpty => {
+    case entity: EntityNamed if entity.functions.isEmpty => {
       // Warn early if there are no functions at all, as
       // we will not have an opportunity to do it later
       warnIgnoredStacklimitAttribute()
@@ -300,7 +300,7 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
   }
 
   override def enter(tree: Tree): Unit = tree match {
-    case entity: Entity => {
+    case entity: EntityNamed => {
       // Gather all function symbols from entity
       assert(functionSymbols == null)
       functionSymbols = for (Function(Sym(symbol: TermSymbol), _) <- entity.functions) yield symbol
@@ -327,7 +327,7 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
   }
 
   override def transform(tree: Tree): Tree = tree match {
-    case entity: Entity => {
+    case entity: EntityNamed => {
       // Ensure 'reclimit' attributes exist on all functions
       val values = recLimits.getOrElse(List.fill(nFunctions)(1))
       for ((symbol, value) <- functionSymbols zip values) {
@@ -348,8 +348,7 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
         val symbol = cc.newTermSymbol(name, entity.loc, kind)
         val decl = Decl(symbol, None) regularize entity.loc
 
-        val Sym(entitySymbol) = entity.ref
-        entitySymbol.attr.returnStack set symbol
+        entity.symbol.attr.returnStack set symbol
 
         // Add declaration
         val result = entity.copy(

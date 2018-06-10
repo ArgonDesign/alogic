@@ -51,13 +51,15 @@ final class CloneEntity(
 
   override def enter(tree: Tree): Unit = tree match {
 
-    case entity: Entity => {
+    case entity: EntityNamed => {
       entityLevel += 1
       // Clone new functions up front, as they can be referenced before definition
       for (Function(Sym(symbol: TermSymbol), _) <- entity.functions) {
         symbolMap(symbol) = cc.newSymbolLike(symbol)
       }
     }
+
+    case _: EntityLowered => ???
 
     case _ =>
   }
@@ -125,7 +127,7 @@ final class CloneEntity(
       // Create the new entity
       ////////////////////////////////////////////////////////////////////////////
 
-      case entity: Entity => {
+      case entity: EntityNamed => {
         val newName = if (entityLevel > 1) entitySymbol.name else cloneName
 
         // Update instances of nested entities to instantiate the cloned entity
@@ -164,12 +166,14 @@ final class CloneEntity(
         symbolMap(entitySymbol) = newSymbol
 
         entity.copy(
-          ref = fixup(Sym(newSymbol), tree.loc),
+          symbol = newSymbol,
           instances = instances
         )
       } followedBy {
         entityLevel -= 1
       }
+
+      case _: EntityLowered => ???
 
       case _ => tree
     }

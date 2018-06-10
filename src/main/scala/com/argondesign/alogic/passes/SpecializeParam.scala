@@ -34,7 +34,7 @@ import scala.language.postfixOps
 
 final class SpecializeParam(
     val defaultBindingsMap: Map[TypeSymbol, Bindings],
-    val specializationMap: Map[TypeSymbol, Map[Bindings, Entity]]
+    val specializationMap: Map[TypeSymbol, Map[Bindings, EntityNamed]]
 )(implicit cc: CompilerContext)
     extends TreeTransformer {
 
@@ -69,8 +69,7 @@ final class SpecializeParam(
           }
           // Complete them with the default bindings
           val completeBindings = defaultBindingsMap(eSymbol) ++ paramBindings
-          val Sym(sSymbol: TypeSymbol) = bindingsMap(completeBindings).ref
-          sSymbol
+          bindingsMap(completeBindings).symbol
         } getOrElse {
           eSymbol
         }
@@ -94,7 +93,7 @@ object SpecializeParam extends Pass {
   val name = "specialize-param"
 
   // Recursively specialize entities directly nested within this entity
-  def specialize(entity: Entity)(implicit cc: CompilerContext): Entity = {
+  def specialize(entity: EntityNamed)(implicit cc: CompilerContext): EntityNamed = {
     assert {
       entity.declarations forall {
         case Decl(s, _) => !s.kind.isParam
@@ -103,7 +102,7 @@ object SpecializeParam extends Pass {
     }
 
     // Gather the entity symbols we are specializing on this round
-    val eSymbols = entity.entities map { _.ref.asInstanceOf[Sym].symbol }
+    val eSymbols = entity.entities map { _.symbol }
 
     // Since we need the values of const and param symbols for parameter
     // specialization, we type check their declarations here. This also has
@@ -117,7 +116,7 @@ object SpecializeParam extends Pass {
     }
 
     // Similarly, type check parameter assignments in instantiations
-    def checkParamAssigns(entity: Entity): Unit = {
+    def checkParamAssigns(entity: EntityNamed): Unit = {
       for {
         Instance(_, Sym(eSymbol: TypeSymbol), pNames, pExprs) <- entity.instances
         if eSymbols contains eSymbol
@@ -147,8 +146,6 @@ object SpecializeParam extends Pass {
     // Gather the 'entity symbol' -> 'default bindings' map
     val defaultBindingsMap: Map[TypeSymbol, Bindings] = {
       val pairs = entity.entities.par map { entity =>
-        val Sym(eSymbol: TypeSymbol) = entity.ref
-
         // Build the default bindings for this entity
         val bindings = Bindings {
           entity.declarations collect {
@@ -160,7 +157,7 @@ object SpecializeParam extends Pass {
         bindings.keysIterator foreach { _.attr.owner set entity }
 
         // Make pair with expanded the bindings
-        eSymbol -> bindings.expand
+        entity.symbol -> bindings.expand
       } filter {
         // Drop non-parametrized entities
         _._2.nonEmpty
@@ -183,7 +180,7 @@ object SpecializeParam extends Pass {
       // used for any instance created under and including the given entity.
       // Ensure these are complete bindings by using default parameter values
       // when needed
-      def gatherInstantiationBindings(entity: Entity): Map[TermSymbol, Bindings] = {
+      def gatherInstantiationBindings(entity: EntityNamed): Map[TermSymbol, Bindings] = {
         // Build the map of instances in this entity
         val thisMap = entity.instances collect {
           case Instance(Sym(iSymbol: TermSymbol), Sym(eSymbol: TypeSymbol), pNames, pExprs)
@@ -242,7 +239,7 @@ object SpecializeParam extends Pass {
         simplified
       } else {
         // Expand based on the owner of the first parameter we encounter
-        val Sym(oEntitySymbol: TypeSymbol) = referenced.next().attr.owner.value.ref
+        val oEntitySymbol = referenced.next().attr.owner.value.symbol
         val oBindingsSet = entityBindingsMap(oEntitySymbol)
         val oDefaultBindings = defaultBindingsMap(oEntitySymbol)
 
@@ -265,15 +262,15 @@ object SpecializeParam extends Pass {
     // Specialize all entities by cloning them, substituting all relevant
     // instance bindings for parameters. Build a map from
     // 'entity symbol' -> 'bindings' -> 'specialized entity'
-    val specializationMap: Map[TypeSymbol, Map[Bindings, Entity]] = {
+    val specializationMap: Map[TypeSymbol, Map[Bindings, EntityNamed]] = {
       val pairs = entity.entities.par map { entity =>
-        val Sym(eSymbol: TypeSymbol) = entity.ref
+        val eSymbol = entity.symbol
         val eKind = eSymbol.kind.asInstanceOf[TypeEntity]
 
         // If an entity without instances (i.e.: a top-level) have
         // parameters, specialize them with default parameters
         lazy val fallBack = if (eKind.paramSymbols.nonEmpty) {
-          cc.warning(entity.ref,
+          cc.warning(eSymbol.loc,
                      s"Parameters of top level module '${eSymbol.name}' will " +
                        "be specialized using default initializers")
           Set(defaultBindingsMap(eSymbol))
@@ -303,7 +300,7 @@ object SpecializeParam extends Pass {
               }
               val cloneName = (eSymbol.name :: suffixes) mkString cc.sep
               val cloner = new CloneEntity(typed = false, bindings, cloneName)
-              bindings -> entity.rewrite(cloner).asInstanceOf[Entity]
+              bindings -> entity.rewrite(cloner).asInstanceOf[EntityNamed]
             } toMap
           }
 
@@ -321,7 +318,7 @@ object SpecializeParam extends Pass {
     val specialized2 = {
       val par = specialized.par map { entity =>
         val tt = new SpecializeParam(defaultBindingsMap, specializationMap)
-        (entity rewrite tt).asInstanceOf[Entity]
+        (entity rewrite tt).asInstanceOf[EntityNamed]
       } map {
         specialize
       }
@@ -334,7 +331,7 @@ object SpecializeParam extends Pass {
     } rewrite new SpecializeParam(defaultBindingsMap, specializationMap)
 
     // Done
-    result.asInstanceOf[Entity]
+    result.asInstanceOf[EntityNamed]
   }
 
   def apply(trees: List[Tree])(implicit cc: CompilerContext): List[Tree] = {
@@ -345,8 +342,8 @@ object SpecializeParam extends Pass {
     // nested inside it, but is otherwise empty.
 
     val entities = trees map {
-      case Root(_, entity) => entity
-      case _               => unreachable
+      case Root(_, entity: EntityNamed) => entity
+      case _                            => unreachable
     }
 
     val loc = Loc.synthetic
@@ -356,12 +353,8 @@ object SpecializeParam extends Pass {
     }
     rootSymbol.attr.variant set "network"
 
-    val ref = TypeAssigner {
-      Sym(rootSymbol) withLoc loc
-    }
-
     val root = TypeAssigner {
-      Entity(ref, Nil, Nil, Nil, Nil, Nil, Nil, entities, Map()) withLoc loc
+      EntityNamed(rootSymbol, Nil, Nil, Nil, Nil, Nil, Nil, entities, Map()) withLoc loc
     }
 
     specialize(root).entities

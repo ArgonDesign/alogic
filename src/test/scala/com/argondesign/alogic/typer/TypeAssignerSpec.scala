@@ -35,9 +35,9 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
 
   private def xform(tree: Tree) = {
     tree match {
-      case root: Root     => cc.addGlobalEntity(root.entity)
-      case entity: Entity => cc.addGlobalEntity(entity)
-      case _              =>
+      case Root(_, entity: EntityIdent) => cc.addGlobalEntity(entity)
+      case entity: EntityIdent          => cc.addGlobalEntity(entity)
+      case _                            =>
     }
     tree rewrite namer
   }
@@ -83,7 +83,7 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
               val tree = xform(root)
 
               inside(tree) {
-                case Root(_, entity) => {
+                case Root(_, entity: EntityNamed) => {
                   val Some(main) = entity.functions collectFirst {
                     case func @ Function(Sym(sym), _) if sym.name == "main" =>
                       func

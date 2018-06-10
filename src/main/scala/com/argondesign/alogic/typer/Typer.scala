@@ -172,7 +172,7 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       // Type check other nodes
       ////////////////////////////////////////////////////////////////////////////
 
-      case entity: Entity => {
+      case entity: EntityNamed => {
         if (entity.fenceStmts exists { _.tpe == TypeCtrlStmt }) {
           cc.error("'fence' block must contain only combinatorial statements")
           entity.copy(fenceStmts = Nil) withLoc tree.loc

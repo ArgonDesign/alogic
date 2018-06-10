@@ -92,22 +92,37 @@ trait TreePrintOps { this: Tree =>
             |${i}};""".stripMargin
       }
 
-      case entity @ Entity(ref,
-                           declarations,
-                           instances,
-                           connects,
-                           functions,
-                           states,
-                           fenceStmts,
-                           entities,
-                           verbatim) => {
-        val Sym(eSymbol) = ref
-        s"""|${attrStr(indent, entity.ref)}${eSymbol.attr.variant.value} ${v(indent)(ref)} {
+      case _: EntityIdent => ???
+
+      case entity @ EntityNamed(
+            symbol,
+            declarations,
+            instances,
+            connects,
+            fenceStmts,
+            functions,
+            states,
+            entities,
+            verbatim
+          ) => {
+        s"""|${attrStr(indent, symbol)}${symbol.attr.variant.value} ${symbol.name} {
             |${i}  /////////////////////////////////
             |${i}  // Declarations
             |${i}  /////////////////////////////////
             |
             |${i}  ${declarations map v(indent + 1) mkString s"\n${i}  "}
+            |
+            |${i}  /////////////////////////////////
+            |${i}  // Instances
+            |${i}  /////////////////////////////////
+            |
+            |${i}  ${instances map v(indent + 1) mkString s"\n\n${i}  "}
+            |
+            |${i}  /////////////////////////////////
+            |${i}  // Connections
+            |${i}  /////////////////////////////////
+            |
+            |${i}  ${connects map v(indent + 1) mkString s"\n${i}  "}
             |
             |${i}  /////////////////////////////////
             |${i}  // Fence block
@@ -136,6 +151,32 @@ trait TreePrintOps { this: Tree =>
             |${i}  ${entities map v(indent + 1) mkString s"\n\n${i}  "}
             |
             |${i}  /////////////////////////////////
+            |${i}  // verbatim blocks
+            |${i}  /////////////////////////////////
+            |
+            |${i}  ${verbatim map {
+             case (lang, body) => s"verbatim ${lang} {${body}}"
+           } mkString s"\n\n${i}  "}
+            |
+            |${i}}""".stripMargin
+      }
+
+      case entity @ EntityLowered(
+            symbol,
+            declarations,
+            instances,
+            connects,
+            stateSystems,
+            verbatim
+          ) => {
+        s"""|${attrStr(indent, symbol)}${symbol.attr.variant.value} ${symbol.name} {
+            |${i}  /////////////////////////////////
+            |${i}  // Declarations
+            |${i}  /////////////////////////////////
+            |
+            |${i}  ${declarations map v(indent + 1) mkString s"\n${i}  "}
+            |
+            |${i}  /////////////////////////////////
             |${i}  // Instances
             |${i}  /////////////////////////////////
             |
@@ -148,6 +189,12 @@ trait TreePrintOps { this: Tree =>
             |${i}  ${connects map v(indent + 1) mkString s"\n${i}  "}
             |
             |${i}  /////////////////////////////////
+            |${i}  // State systems
+            |${i}  /////////////////////////////////
+            |
+            |${i}  ${stateSystems map v(indent + 1) mkString s"\n${i}  "}
+            |
+            |${i}  /////////////////////////////////
             |${i}  // verbatim blocks
             |${i}  /////////////////////////////////
             |
@@ -156,7 +203,6 @@ trait TreePrintOps { this: Tree =>
            } mkString s"\n\n${i}  "}
             |
             |${i}}""".stripMargin
-
       }
 
       case Ident(name) => name
@@ -261,7 +307,7 @@ trait TreePrintOps { this: Tree =>
       case StmtDecl(decl)           => s"${v(indent)(decl)};"
       case StmtRead()               => "read;"
       case StmtWrite()              => "write;"
-      case StmtComment(str)         => s"// ${str}"
+      case StmtComment(str)         => "$" + s"""("${str}")"""
       case StmtStall(cond)          => s"stall(${v(cond)});"
       case StmtError()              => "/* Error statement */"
     }

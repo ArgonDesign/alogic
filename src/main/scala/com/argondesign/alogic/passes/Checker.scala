@@ -50,14 +50,13 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
   private[this] var entityLevel = 0
 
   override def enter(tree: Tree): Unit = tree match {
-    case _: Entity => entityLevel += 1
-    case _         =>
+    case _: EntityIdent => entityLevel += 1
+    case _              =>
   }
 
   override def transform(tree: Tree): Tree = tree match {
-    case entity: Entity => {
-      val variantExpr = entity.ref.asInstanceOf[Ident].attr("//variant")
-      val variant = variantExpr.asInstanceOf[ExprStr].value match {
+    case entity: EntityIdent => {
+      val variant = entity.ident.attr("//variant").asInstanceOf[ExprStr].value match {
         case "fsm"      => "fsm"
         case "network"  => "network"
         case "verbatim" => "verbatim"
@@ -99,9 +98,8 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
       }
 
       val fenceStmts = if (fenceBlocks.length > 1) {
-        val Ident(name) = entity.ref
         fenceBlocks foreach {
-          cc.error(_, s"Multiple fence blocks specified in entity '${name}'")
+          cc.error(_, s"Multiple fence blocks specified in entity '${entity.ident.name}'")
         }
         Nil
       } else {
@@ -176,18 +174,17 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
           fenceStmts.isEmpty &&
           entities.isEmpty) {
         cc.warning(
-          entity.ref,
-          s"Entity '${entity.ref.toSource}' contains only verbatim blocks, use a 'verbatim entity' instead")
+          entity.ident,
+          s"Entity '${entity.ident.name}' contains only verbatim blocks, use a 'verbatim entity' instead")
       }
 
       TreeCopier(entity)(
-        entity.ref,
+        entity.ident,
         declarations,
         instances,
         connects,
-        functions,
-        entity.states,
         fenceStmts,
+        functions,
         entities
       )
     } followedBy {

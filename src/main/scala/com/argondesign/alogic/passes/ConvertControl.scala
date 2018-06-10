@@ -65,8 +65,8 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
   private[this] val pendingStates = Stack[Option[TermSymbol]]()
 
   override def skip(tree: Tree): Boolean = tree match {
-    case entity: Entity => entity.functions.isEmpty
-    case _              => false
+    case entity: EntityNamed => entity.functions.isEmpty
+    case _                   => false
   }
 
   // Allocate all intermediate states that are introduced
@@ -115,7 +115,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
       // Entity
       //////////////////////////////////////////////////////////////////////////
 
-      case entity: Entity => {
+      case entity: EntityNamed => {
         // Allocate function entry state symbols up front so they can be
         // resolved in an arbitrary order, also add them to the entryStmts map
         val pairs = for (function <- entity.functions) yield {
@@ -369,7 +369,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
       // Convert entity
       //////////////////////////////////////////////////////////////////////////
 
-      case entity: Entity => {
+      case entity: EntityNamed => {
         // Sort states by source location (for ease of debugging)
         val states = emittedStates.toList sortBy { _.loc.start }
 

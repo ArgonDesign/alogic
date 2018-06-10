@@ -14,6 +14,7 @@
 // - Constructs types and symbols for definitions
 // - Resolves identifiers to symbols
 // - Checks for unused variables
+// - Converts EntityIdent to EntityNamed
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.passes
@@ -213,7 +214,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       Scopes.push()
     }
 
-    case node: Entity => {
+    case node: EntityIdent => {
       Scopes.push()
 
       // Insert function names before descending an entity so they can be in arbitrary order
@@ -229,7 +230,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       }
 
       // Insert nested entity names so instantiations can resolve them in arbitrary order
-      for (Entity(ident: Ident, _, _, _, _, _, _, _, _) <- node.entities) {
+      for (EntityIdent(ident, _, _, _, _, _, _, _) <- node.entities) {
         val symbol = cc.newTypeSymbol(ident, TypeEntity("", Nil, Nil))
         Scopes.insert(symbol)
       }
@@ -304,9 +305,9 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       TypeDefinitionStruct(sym, fieldNames, newFieldKinds) withLoc tree.loc
     }
 
-    case entity: Entity => {
+    case entity: EntityIdent => {
       // Get Ident
-      val ident @ Ident(name) = entity.ref
+      val ident @ Ident(name) = entity.ident
       // Lookup type
       val symbol = lookupType(ident) match {
         case symbol: TypeSymbol => {
@@ -332,9 +333,20 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         // Always lift srams
         symbol.attr.liftSrams set true
       }
+
       // Rewrite node
-      val sym = Sym(symbol) withLoc ident.loc
-      entity.copy(ref = sym) withLoc entity.loc
+      assert(entity.entities forall { _.isInstanceOf[EntityNamed] })
+      EntityNamed(
+        symbol,
+        entity.declarations,
+        entity.instances,
+        entity.connects,
+        entity.fenceStmts,
+        entity.functions,
+        Nil,
+        entity.entities.asInstanceOf[List[EntityNamed]],
+        entity.verbatim
+      ) withLoc entity.loc
     } followedBy {
       Scopes.pop()
     }
@@ -440,13 +452,14 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
     // Check tree does not contain any Ident related nodes anymore
     def check(tree: Tree): Unit = {
       tree visitAll {
-        case node: DeclIdent => cc.ice(node, "DeclIdent remains")
-        case node: ExprIdent => cc.ice(node, "ExprIdent remains")
-        case node: Ident     => cc.ice(node, "Ident remains")
-        case Decl(symbol, _) => symbol.kind visit { case tree: Tree => check(tree) }
-        case Sym(symbol)     => symbol.kind visit { case tree: Tree => check(tree) }
-        case ExprRef(symbol) => symbol.kind visit { case tree: Tree => check(tree) }
-        case ExprType(kind)  => kind visit { case tree: Tree => check(tree) }
+        case node: EntityIdent => cc.ice(node, "EntityIdent remains")
+        case node: DeclIdent   => cc.ice(node, "DeclIdent remains")
+        case node: ExprIdent   => cc.ice(node, "ExprIdent remains")
+        case node: Ident       => cc.ice(node, "Ident remains")
+        case Decl(symbol, _)   => symbol.kind visit { case tree: Tree => check(tree) }
+        case Sym(symbol)       => symbol.kind visit { case tree: Tree => check(tree) }
+        case ExprRef(symbol)   => symbol.kind visit { case tree: Tree => check(tree) }
+        case ExprType(kind)    => kind visit { case tree: Tree => check(tree) }
         case TypeDefinitionStruct(_, _, fieldTypes) => {
           fieldTypes foreach { _ visit { case tree: Tree => check(tree) } }
         }

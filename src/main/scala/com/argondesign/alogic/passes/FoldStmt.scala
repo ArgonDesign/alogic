@@ -26,11 +26,11 @@ import com.argondesign.alogic.util.FollowedBy
 final class FoldStmt(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
 
   override def skip(tree: Tree): Boolean = tree match {
-    case entity: Entity => entity.states.isEmpty
-    case _: Expr        => true
-    case _: Connect     => true
-    case _: Instance    => true
-    case _              => false
+    case entity: EntityLowered => entity.statements.isEmpty
+    case _: Expr               => true
+    case _: Connect            => true
+    case _: Instance           => true
+    case _                     => false
   }
 
   private[this] var bindingsMap: Map[Int, Bindings] = _
@@ -38,22 +38,8 @@ final class FoldStmt(implicit cc: CompilerContext) extends TreeTransformer with 
   private[this] val bindings = Stack[Bindings]()
 
   override def enter(tree: Tree): Unit = tree match {
-    case entity: Entity => {
-      // TODO factor out this construction
-      val stateSystem = if (entity.states.lengthCompare(1) == 0) {
-        entity.fenceStmts ::: entity.states.head.body
-      } else {
-        entity.fenceStmts :+ StmtCase(
-          ExprRef(entitySymbol.attr.stateVar.value),
-          DefaultCase(StmtBlock(entity.states.head.body)) :: {
-            entity.states.tail map {
-              case State(expr, body) => RegularCase(List(expr), StmtBlock(body))
-            }
-          }
-        )
-      }
-
-      bindingsMap = StaticEvaluation(StmtBlock(stateSystem) regularize tree.loc)._1
+    case entity: EntityLowered => {
+      bindingsMap = StaticEvaluation(StmtBlock(entity.statements))._1
     }
 
     case stmt: Stmt => {

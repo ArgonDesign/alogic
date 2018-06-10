@@ -28,8 +28,8 @@ import com.argondesign.alogic.util.FollowedBy
 final class LowerArrays(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
 
   override def skip(tree: Tree): Boolean = tree match {
-    case entity: Entity => entitySymbol.attr.variant.value == "network"
-    case _              => false
+    case entity: EntityLowered => entity.statements.isEmpty
+    case _                     => false
   }
 
   private[this] def intType(loc: Loc, signed: Boolean, width: Int): TypeUInt = {
@@ -114,8 +114,8 @@ final class LowerArrays(implicit cc: CompilerContext) extends TreeTransformer wi
     // Add _we/_waddr/_wdata = 'b0 fence statements
     //////////////////////////////////////////////////////////////////////////
 
-    case entity: Entity => {
-      val fenceStmts = entity.declarations collect {
+    case entity: EntityLowered => {
+      val leading = entity.declarations collect {
         case decl @ Decl(symbol, _) if symbol.attr.memory.isSet => {
           val (weSymbol, waSymbol, wdSymbol) = symbol.attr.memory.value
           StmtBlock(
@@ -130,7 +130,7 @@ final class LowerArrays(implicit cc: CompilerContext) extends TreeTransformer wi
 
       TypeAssigner {
         entity.copy(
-          fenceStmts = fenceStmts ::: entity.fenceStmts
+          statements = leading ::: entity.statements
         ) withLoc tree.loc
       }
     }

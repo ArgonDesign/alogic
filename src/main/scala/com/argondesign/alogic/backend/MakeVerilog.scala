@@ -332,16 +332,8 @@ final class MakeVerilog(
     }
   }
 
-  private def emitState(body: CodeWriter, indent: Int, stmts: List[Stmt]): Unit = {
-    body.emit(0)("begin")
-    stmts foreach {
-      emitStatement(body, indent + 1, _)
-    }
-    body.emit(indent)("end")
-  }
-
   private def emitStateSystem(body: CodeWriter): Unit = {
-    if (states.nonEmpty) {
+    if (statements.nonEmpty) {
       body.emitSection(1, "State system") {
         body.emit(1)("always @* begin")
 
@@ -351,38 +343,8 @@ final class MakeVerilog(
           body.ensureBlankLine()
         }
 
-        // Emit the fence statements, if any
-        if (fenceStmts.nonEmpty) {
-          body.emitBlock(2, "Fence statements") {
-            for (stmt <- fenceStmts) {
-              emitStatement(body, 2, stmt)
-            }
-          }
-        }
-
-        // Emit state system case statement
-        if (states.length == 1) {
-          val State(expr, stmts) = states.head
-          val n = expr.value.get
-          body.ensureBlankLine()
-          body.emit(2)(s"// State ${n}")
-          body.append(s"    ")
-          emitState(body, 2, stmts)
-        } else {
-          body.emit(2)(s"case (${eSymbol.attr.stateVar.value.name})")
-          for ((state, i) <- states.sortBy(_.expr.value.get).zipWithIndex) {
-            val State(expr, stmts) = state
-            val n = expr.value.get
-            val e = vexpr(expr)
-            val selector = if (n == 0) s"default /* $e */" else s"$e"
-            if (i > 0) {
-              body.ensureBlankLine()
-            }
-            body.emit(3)(s"// State ${n}")
-            body.append(s"      ${selector}: ")
-            emitState(body, 3, stmts)
-          }
-          body.emit(2)("endcase")
+        statements foreach { stmt =>
+          emitStatement(body, 2, stmt)
         }
 
         val cSymbols = decls collect {

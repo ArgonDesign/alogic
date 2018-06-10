@@ -66,7 +66,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
             val node = tree rewrite checker
 
             inside(node) {
-              case Entity(_, _, _, _, List(main), _, _, _, _) =>
+              case EntityIdent(_, _, _, _, _, List(main), _, _) =>
                 inside(main) {
                   case Function(_, List(stmt)) =>
                     stmt shouldBe StmtError()
@@ -187,7 +187,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
                     |}""".asTree[Entity]
 
       tree rewrite checker should matchPattern {
-        case Entity(_, Nil, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
+        case EntityIdent(_, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
       }
 
       cc.messages should have length 2
@@ -206,7 +206,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         val tree = entity rewrite checker
 
         inside(tree) {
-          case Entity(_, List(decl), Nil, Nil, Nil, Nil, Nil, Nil, _) =>
+          case EntityIdent(_, List(decl), Nil, Nil, Nil, Nil, Nil, _) =>
             inside(decl) {
               case DeclIdent(_, TypeOut(_, fc, st), _) =>
                 fc shouldBe FlowControlTypeNone
@@ -227,7 +227,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         val tree = entity rewrite checker
 
         inside(tree) {
-          case Entity(_, List(decl), Nil, Nil, Nil, Nil, Nil, Nil, _) =>
+          case EntityIdent(_, List(decl), Nil, Nil, Nil, Nil, Nil, _) =>
             inside(decl) {
               case DeclIdent(_, TypeOut(_, fc, st), _) =>
                 fc shouldBe FlowControlTypeValid
@@ -272,7 +272,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
                            |}""".stripMargin.asTree[Entity]
 
             tree rewrite checker should matchPattern {
-              case Entity(_, Nil, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
+              case EntityIdent(_, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
             }
 
             cc.messages.loneElement should beThe[Error](
@@ -290,7 +290,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
                            |}""".stripMargin.asTree[Entity]
 
             tree rewrite checker should matchPattern {
-              case Entity(_, Nil, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
+              case EntityIdent(_, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
             }
 
             cc.messages.loneElement should beThe[Error](
@@ -308,7 +308,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
                            |}""".stripMargin.asTree[Entity]
 
             tree rewrite checker should matchPattern {
-              case Entity(_, Nil, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
+              case EntityIdent(_, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
             }
 
             cc.messages.loneElement should beThe[Error](
@@ -326,7 +326,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
                            |}""".stripMargin.asTree[Entity]
 
             tree rewrite checker should matchPattern {
-              case Entity(_, Nil, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
+              case EntityIdent(_, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
             }
 
             cc.messages should have length 2
@@ -347,7 +347,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
                            |}""".stripMargin.asTree[Entity]
 
             tree rewrite checker should matchPattern {
-              case Entity(_, Nil, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
+              case EntityIdent(_, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
             }
 
             cc.messages.loneElement should beThe[Error](
@@ -365,7 +365,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
                            |}""".stripMargin.asTree[Entity]
 
             tree rewrite checker should matchPattern {
-              case Entity(_, Nil, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
+              case EntityIdent(_, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
             }
 
             cc.messages.loneElement should beThe[Error](
@@ -387,7 +387,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
                            |}""".stripMargin.asTree[Entity]
 
             tree rewrite checker should matchPattern {
-              case entity: Entity =>
+              case entity: EntityIdent =>
             }
 
             cc.messages.loneElement should beThe[Error](

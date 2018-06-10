@@ -90,7 +90,10 @@ class Frontend(
         // Check that the entityName used for file search matches the actual entity name
         // defined in the top level entity in the file, we rely on this to find the
         // source file of an instance, so there is no way forward if this is violated
-        val Ident(parsedName) = root.entity.ref
+        val parsedName = root.entity match {
+          case entity: EntityIdent => entity.ident.name
+          case _                   => unreachable
+        }
 
         if (parsedName != entityName) {
           cc.fatal(root.entity,
@@ -105,21 +108,22 @@ class Frontend(
 
         // Extract all instance entity names (from the recursively nested entities as well)
         val instantiatedEntityNamesFuture = astFuture map { root =>
-          def loop(entity: Entity): List[String] = {
-            val nestedEntities = entity.entities
-            val nestedNames = nestedEntities map {
-              _.ref match {
-                case Ident(name) => name
-                case _           => unreachable
-              }
+          def loop(entity: EntityIdent): List[String] = {
+            val nestedEntities = entity.entities map {
+              case entity: EntityIdent => entity
+              case _                   => unreachable
             }
+            val nestedNames = nestedEntities map { _.ident.name }
             val requiredExternalNames = entity.instances collect {
               case Instance(_, Ident(name), _, _) if !(nestedNames contains name) => name
             }
             requiredExternalNames ::: (nestedEntities flatMap loop)
           }
 
-          loop(root.entity)
+          root.entity match {
+            case entity: EntityIdent => loop(entity)
+            case _                   => unreachable
+          }
         }
 
         // process them extracted names recursively
@@ -157,12 +161,12 @@ class Frontend(
 
     // Mark top level entities as such
     for (tree <- treeSet) {
-      val Root(_, entity) = tree
-      val ident @ Ident(name) = entity.ref
+      val Root(_, entity: EntityIdent) = tree
+      val ident @ Ident(name) = entity.ident
       if (topLevelNames contains name) {
         val newAttr = Map("toplevel" -> (Expr(1) withLoc entity.loc))
         ident withAttr {
-          if (ident.hasAttr) (ident.attr ++ newAttr) else newAttr
+          if (ident.hasAttr) ident.attr ++ newAttr else newAttr
         }
       }
     }

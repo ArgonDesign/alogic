@@ -110,7 +110,7 @@ object StackFactory {
       kind: Type
   )(
       implicit cc: CompilerContext
-  ): Entity = {
+  ): EntityLowered = {
     val fcn = FlowControlTypeNone
     val stw = StorageTypeWire
 
@@ -154,7 +154,7 @@ object StackFactory {
       StmtFence()
     )
 
-    val state = State(ExprInt(false, 1, 0), body)
+    val stateSystem = StmtBlock(body)
 
     val ports = List(
       enSymbol,
@@ -184,7 +184,7 @@ object StackFactory {
 
     val entitySymbol = cc.newTypeSymbol(name, loc, TypeEntity(name, ports, Nil))
     entitySymbol.attr.variant set "fsm"
-    val entity = Entity(Sym(entitySymbol), decls, Nil, connects, Nil, List(state), Nil, Nil, Map())
+    val entity = EntityLowered(entitySymbol, decls, Nil, connects, List(stateSystem), Map())
     entity regularize loc
   }
 
@@ -233,7 +233,7 @@ object StackFactory {
       depth: Int
   )(
       implicit cc: CompilerContext
-  ): Entity = {
+  ): EntityLowered = {
     require(depth >= 2)
 
     val fcn = FlowControlTypeNone
@@ -307,7 +307,7 @@ object StackFactory {
       StmtFence()
     )
 
-    val state = State(ExprInt(false, 1, 0), body)
+    val stateSystem = StmtBlock(body)
 
     val ports = List(
       enSymbol,
@@ -337,7 +337,7 @@ object StackFactory {
 
     val entitySymbol = cc.newTypeSymbol(name, loc, TypeEntity(name, ports, Nil))
     entitySymbol.attr.variant set "fsm"
-    val entity = Entity(Sym(entitySymbol), decls, Nil, connects, Nil, List(state), Nil, Nil, Map())
+    val entity = EntityLowered(entitySymbol, decls, Nil, connects, List(stateSystem), Map())
     entity regularize loc
   }
 
@@ -348,7 +348,7 @@ object StackFactory {
       depth: Expr
   )(
       implicit cc: CompilerContext
-  ): Entity = {
+  ): EntityLowered = {
     require(kind.isPacked)
     require(kind != TypeVoid)
 

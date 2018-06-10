@@ -17,7 +17,6 @@ package com.argondesign.alogic.core
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
 import com.argondesign.alogic.core.StorageTypes._
-import com.argondesign.alogic.core.Symbols.TypeSymbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.typer.TypeAssigner
 
@@ -279,7 +278,7 @@ object SyncSliceFactory {
       sep: String
   )(
       implicit cc: CompilerContext
-  ): Entity = {
+  ): EntityLowered = {
     val fcn = FlowControlTypeNone
     val stw = StorageTypeWire
 
@@ -317,13 +316,11 @@ object SyncSliceFactory {
     lazy val pRef = ExprRef(pSymbol)
     val vRef = ExprRef(vSymbol)
 
-    val body = if (kind != TypeVoid) {
-      nonVoidBody(ss, ipRef, ipvRef, oprRef, pRef, vRef)
+    val stateSystem = if (kind != TypeVoid) {
+      StmtBlock(nonVoidBody(ss, ipRef, ipvRef, oprRef, pRef, vRef))
     } else {
-      voidBody(ss, ipvRef, oprRef, vRef)
+      StmtBlock(voidBody(ss, ipvRef, oprRef, vRef))
     }
-
-    val state = State(ExprInt(false, 1, 0), body)
 
     val ports = if (kind != TypeVoid) {
       List(ipSymbol, ipvSymbol, iprSymbol, opSymbol, opvSymbol, oprSymbol, eSymbol, fSymbol)
@@ -345,21 +342,21 @@ object SyncSliceFactory {
 
     val entitySymbol = cc.newTypeSymbol(name, loc, TypeEntity(name, ports, Nil))
     entitySymbol.attr.variant set "fsm"
-    val entity = Entity(Sym(entitySymbol), decls, Nil, connects, Nil, List(state), Nil, Nil, Map())
+    val entity = EntityLowered(entitySymbol, decls, Nil, connects, List(stateSystem), Map())
     entity regularize loc
   }
 
   // Given a list of slice instances, build an entity that
   // instantiates each and connects them back to back
   private def buildCompoundSlice(
-      slices: List[Entity],
+      slices: List[EntityLowered],
       name: String,
       loc: Loc,
       kind: Type,
       sep: String
   )(
       implicit cc: CompilerContext
-  ): Entity = {
+  ): EntityLowered = {
     val nSlices = slices.length
     require(nSlices >= 2)
 
@@ -407,9 +404,8 @@ object SyncSliceFactory {
 
     val instances = slices.zipWithIndex map {
       case (entity, index) =>
-        val Sym(eSymbol: TypeSymbol) = entity.ref
-        val iSymbol = cc.newTermSymbol(s"slice_${index}", loc, TypeInstance(eSymbol))
-        Instance(Sym(iSymbol), Sym(eSymbol), Nil, Nil)
+        val iSymbol = cc.newTermSymbol(s"slice_${index}", loc, TypeInstance(entity.symbol))
+        Instance(Sym(iSymbol), Sym(entity.symbol), Nil, Nil)
     }
 
     val iRefs = for (Instance(Sym(iSymbol), _, _, _) <- instances) yield { ExprRef(iSymbol) }
@@ -476,9 +472,7 @@ object SyncSliceFactory {
 
     val entitySymbol = cc.newTypeSymbol(name, loc, TypeEntity(name, ports, Nil))
     entitySymbol.attr.variant set "network"
-    val entity = {
-      Entity(Sym(entitySymbol), decls, instances, connects.toList, Nil, Nil, Nil, Nil, Map())
-    }
+    val entity = EntityLowered(entitySymbol, decls, instances, connects.toList, Nil, Map())
     entity regularize loc
   }
 
@@ -489,7 +483,7 @@ object SyncSliceFactory {
       kind: Type
   )(
       implicit cc: CompilerContext
-  ): List[Entity] = {
+  ): List[EntityLowered] = {
     require(slices.nonEmpty)
     require(kind.isPacked)
 

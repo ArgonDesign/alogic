@@ -42,7 +42,7 @@ final class PortCheck(implicit cc: CompilerContext) extends TreeTransformer {
 
   override def enter(tree: Tree): Unit = tree match {
 
-    case entity: Entity => {
+    case entity: EntityNamed => {
       // Map of symbols appearing on the right of a connect that is declared by
       // us to the location of the connect
       val sinkOurs = mutable.Map[TermSymbol, Loc]()

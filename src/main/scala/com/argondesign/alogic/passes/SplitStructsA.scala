@@ -40,7 +40,7 @@ final class SplitStructsA(implicit cc: CompilerContext) extends TreeTransformer 
   }
 
   override def enter(tree: Tree) = tree match {
-    case entity: Entity => {
+    case entity: EntityLowered => {
       for (Decl(symbol, _) <- entity.declarations) {
         val oKind = symbol.kind
         oKind.underlying match {
@@ -171,7 +171,7 @@ final class SplitStructsA(implicit cc: CompilerContext) extends TreeTransformer 
       // Entity
       //////////////////////////////////////////////////////////////////////////
 
-      case entity: Entity => {
+      case entity: EntityLowered => {
         // Update type of entity with new ports.
         val portSymbols = entity.declarations collect {
           case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeIn]  => symbol

@@ -24,6 +24,7 @@ import com.argondesign.alogic.lib.Stack
 import com.argondesign.alogic.lib.TreeLikeTransformer
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.FollowedBy
+import com.argondesign.alogic.util.unreachable
 
 // Tree transformers are applied during a post-order traversal of a Tree.
 abstract class TreeTransformer(implicit val cc: CompilerContext)
@@ -38,8 +39,11 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
 
   // The TypeSymbol representing the currently processed entity
   protected[this] def entitySymbol: TypeSymbol = {
-    val Sym(symbol: TypeSymbol) = entityStack.top.ref
-    symbol
+    entityStack.top match {
+      case _: EntityIdent        => unreachable
+      case entity: EntityNamed   => entity.symbol
+      case entity: EntityLowered => entity.symbol
+    }
   }
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -114,25 +118,59 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
           val ref = walk(node.ref)
           doTransform(TreeCopier(node)(ref))
         }
-        case node: Entity => {
-          val ref = walk(node.ref)
+        case node: EntityIdent => {
+          val ident = walk(node.ident)
           val declarations = walk(node.declarations)
           val instances = walk(node.instances)
           val connects = walk(node.connects)
-          val functions = walk(node.functions)
-          val states = walk(node.states)
           val fenceStmts = walk(node.fenceStmts)
+          val functions = walk(node.functions)
           val entities = walk(node.entities)
           doTransform(
             TreeCopier(node)(
-              ref,
+              ident,
               declarations,
               instances,
               connects,
+              fenceStmts,
+              functions,
+              entities
+            ))
+        } followedBy {
+          entityStack.pop()
+        }
+        case node: EntityNamed => {
+          val declarations = walk(node.declarations)
+          val instances = walk(node.instances)
+          val connects = walk(node.connects)
+          val fenceStmts = walk(node.fenceStmts)
+          val functions = walk(node.functions)
+          val states = walk(node.states)
+          val entities = walk(node.entities)
+          doTransform(
+            TreeCopier(node)(
+              declarations,
+              instances,
+              connects,
+              fenceStmts,
               functions,
               states,
-              fenceStmts,
               entities
+            ))
+        } followedBy {
+          entityStack.pop()
+        }
+        case node: EntityLowered => {
+          val declarations = walk(node.declarations)
+          val instances = walk(node.instances)
+          val connects = walk(node.connects)
+          val statements = walk(node.statements)
+          doTransform(
+            TreeCopier(node)(
+              declarations,
+              instances,
+              connects,
+              statements
             ))
         } followedBy {
           entityStack.pop()
@@ -342,7 +380,11 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
             if iSymbol.kind != TypeInstance(eSymbol) => {
           cc.ice(node, "Bad type for instance symbol", iSymbol.kind.toString, this.getClass.getName)
         }
-        case node @ Entity(Sym(eSymbol), _, _, _, _, _, _, _, _)
+        case node @ EntityNamed(eSymbol, _, _, _, _, _, _, _, _)
+            if !eSymbol.kind.isInstanceOf[TypeEntity] => {
+          cc.ice(node, "Bad type for entity symbol", eSymbol.kind.toString, this.getClass.getName)
+        }
+        case node @ EntityLowered(eSymbol, _, _, _, _, _)
             if !eSymbol.kind.isInstanceOf[TypeEntity] => {
           cc.ice(node, "Bad type for entity symbol", eSymbol.kind.toString, this.getClass.getName)
         }

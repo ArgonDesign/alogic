@@ -62,7 +62,7 @@ final class LiftEntities(implicit cc: CompilerContext)
 
   override def skip(tree: Tree): Boolean = tree match {
     // Skip root entities without any nested entities
-    case entity: Entity => {
+    case entity: EntityNamed => {
       entityCount == 0 && entity.entities.isEmpty
     } followedBy {
       entityCount += 1
@@ -71,7 +71,7 @@ final class LiftEntities(implicit cc: CompilerContext)
   }
 
   override def enter(tree: Tree): Unit = tree match {
-    case entity: Entity => {
+    case entity: EntityNamed => {
       //////////////////////////////////////////////////////////////////////////
       // Collect outer ports and consts we are referencing
       //////////////////////////////////////////////////////////////////////////
@@ -194,7 +194,7 @@ final class LiftEntities(implicit cc: CompilerContext)
   }
 
   override def transform(tree: Tree): Tree = tree match {
-    case entity: Entity => {
+    case entity: EntityNamed => {
       entity valueMap { entity =>
         ////////////////////////////////////////////////////////////////////////
         // Create declarations for fresh ports
@@ -212,8 +212,7 @@ final class LiftEntities(implicit cc: CompilerContext)
           val newDecls = freshIPortDecls ++ freshOPortDecls ++ entity.declarations
 
           // Update type of entity to include new ports
-          val Sym(symbol: TypeSymbol) = entity.ref
-          val newKind = symbol.kind match {
+          val newKind = entity.symbol.kind match {
             case kind: TypeEntity => {
               val newPortSymbols = {
                 freshIPortSymbols.top.values ++ freshOPortSymbols.top.values ++ kind.portSymbols
@@ -222,7 +221,7 @@ final class LiftEntities(implicit cc: CompilerContext)
             }
             case _ => unreachable
           }
-          symbol.kind = newKind
+          entity.symbol.kind = newKind
 
           TypeAssigner {
             entity.copy(
@@ -314,14 +313,11 @@ final class LiftEntities(implicit cc: CompilerContext)
           val parent = entity.copy(entities = Nil) withLoc entity.loc
           TypeAssigner(parent)
 
-          val Sym(parentSymbol: TypeSymbol) = entity.ref
-          val parentName = parentSymbol.name
+          val parentName = entity.symbol.name
 
           // Prefix child names with parent name
           for (child <- children) {
-            val Sym(childSymbol: TypeSymbol) = child.ref
-            val childName = childSymbol.name
-            childSymbol rename (parentName + cc.sep + childName)
+            child.symbol rename (parentName + cc.sep + child.symbol.name)
           }
 
           TypeAssigner(Thicket(parent :: children) withLoc entity.loc)
@@ -335,15 +331,13 @@ final class LiftEntities(implicit cc: CompilerContext)
       // Add ports created in this entity to connections required in the outer entity
       if (freshIConnSymbols.nonEmpty) {
         for ((iPortSymbol, _) <- freshIPortSymbols.top) {
-          val Sym(typeSymbol: TypeSymbol) = entity.ref
-          freshIConnSymbols.top.add((iPortSymbol, typeSymbol))
+          freshIConnSymbols.top.add((iPortSymbol, entity.symbol))
         }
       }
 
       if (freshOConnSymbols.nonEmpty) {
         for ((oPortSymbol, _) <- freshOPortSymbols.top) {
-          val Sym(typeSymbol: TypeSymbol) = entity.ref
-          freshOConnSymbols.top.add((typeSymbol, oPortSymbol))
+          freshOConnSymbols.top.add((entity.symbol, oPortSymbol))
         }
       }
 
@@ -379,7 +373,7 @@ final class LiftEntities(implicit cc: CompilerContext)
     assert(freshOConnSymbols.isEmpty)
 
     tree visit {
-      case node: Entity if node.entities.nonEmpty => {
+      case node: EntityNamed if node.entities.nonEmpty => {
         cc.ice(node, s"Nested entities remain after LiftEntities")
       }
     }

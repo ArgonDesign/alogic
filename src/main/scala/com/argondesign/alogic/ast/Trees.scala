@@ -17,6 +17,7 @@ package com.argondesign.alogic.ast
 
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Symbols.TermSymbol
+import com.argondesign.alogic.core.Symbols.TypeSymbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.StructuredTree
 import com.argondesign.alogic.core.SourceAttributes
@@ -63,26 +64,70 @@ object Trees {
   // Entity (module) nodes
   ///////////////////////////////////////////////////////////////////////////////
 
-  case class Entity(
+  // There are multiple flavours of Entity nodes. They are successively being
+  // replaced with later kinds during lowering through the compiler passes,
+  // but at any given pass all input entities are always the same, and all
+  // output entities are always the same flavour.
+
+  sealed trait Entity extends Tree
+
+  // Introduced by Parser
+  case class EntityIdent(
       // Entity being defined
-      ref: Ref,
+      ident: Ident,
       // Declarations in entity scope
       declarations: List[Declaration],
       // Instantiations
       instances: List[Instance],
       // Port connections
       connects: List[Connect],
-      // Functions
-      functions: List[Function],
-      // Sates
-      states: List[State],
       // fence statements
       fenceStmts: List[Stmt],
+      // Functions
+      functions: List[Function],
       // Nested entity definitions
       entities: List[Entity],
       // Verbatim sections. Map from language to string to insert into output
       verbatim: Map[String, String]
-  ) extends Tree
+  ) extends Entity
+
+  // Introduced by Namer
+  case class EntityNamed(
+      // Entity being defined
+      symbol: TypeSymbol,
+      // Declarations in entity scope
+      declarations: List[Declaration],
+      // Instantiations
+      instances: List[Instance],
+      // Port connections
+      connects: List[Connect],
+      // fence statements
+      fenceStmts: List[Stmt],
+      // Functions
+      functions: List[Function],
+      // Sates
+      states: List[State],
+      // Nested entity definitions
+      entities: List[EntityNamed],
+      // Verbatim sections. Map from language to string to insert into output
+      verbatim: Map[String, String]
+  ) extends Entity
+
+  // Introduced by CreateStateSystem
+  case class EntityLowered(
+      // Entity being defined
+      symbol: TypeSymbol,
+      // Declarations in entity scope
+      declarations: List[Declaration],
+      // Instantiations
+      instances: List[Instance],
+      // Port connections
+      connects: List[Connect],
+      // The list of combinatorial statements to apply every cycle
+      statements: List[Stmt],
+      // Verbatim sections. Map from language to string to insert into output
+      verbatim: Map[String, String]
+  ) extends Entity
 
   ///////////////////////////////////////////////////////////////////////////////
   // Entity contents

@@ -34,8 +34,8 @@ final class DefaultAssignments(implicit cc: CompilerContext)
   private val needsDefault = mutable.Set[TermSymbol]()
 
   override def skip(tree: Tree): Boolean = tree match {
-    case entity: Entity => entity.states.isEmpty
-    case _              => false
+    case entity: EntityLowered => entity.statements.isEmpty
+    case _                     => false
   }
 
   override def enter(tree: Tree): Unit = tree match {
@@ -49,7 +49,7 @@ final class DefaultAssignments(implicit cc: CompilerContext)
   }
 
   override def transform(tree: Tree): Tree = tree match {
-    case entity: Entity if needsDefault.nonEmpty => {
+    case entity: EntityLowered if needsDefault.nonEmpty => {
       // Remove any nets driven through a connect
       for (Connect(_, List(rhs)) <- entity.connects) {
         rhs.visit {
@@ -60,28 +60,14 @@ final class DefaultAssignments(implicit cc: CompilerContext)
       }
 
       if (needsDefault.nonEmpty) {
-        assert(entity.states.nonEmpty)
+        assert(entity.statements.nonEmpty)
 
         // Remove symbols that are dead at the beginning of the cycle. To do
         // this, we build the case statement representing the state dispatch
         // (together with the fence statements), and do liveness analysis on it
         val deadSymbols = {
-          // TODO factor out this construction
-          val stateSystem = if (entity.states.lengthCompare(1) == 0) {
-            entity.fenceStmts ::: entity.states.head.body
-          } else {
-            entity.fenceStmts :+ StmtCase(
-              ExprRef(entitySymbol.attr.stateVar.value),
-              DefaultCase(StmtBlock(entity.states.head.body)) :: {
-                entity.states.tail map {
-                  case State(expr, body) => RegularCase(List(expr), StmtBlock(body))
-                }
-              }
-            )
-          }
-
           // Perform the liveness analysis
-          val deadSymbolBits = Liveness(stateSystem)._2
+          val deadSymbolBits = Liveness(entity.statements)._2
 
           // Keep only the symbols with all bits dead
           val it = deadSymbolBits collect {
@@ -99,7 +85,7 @@ final class DefaultAssignments(implicit cc: CompilerContext)
       if (needsDefault.isEmpty) {
         tree
       } else {
-        val newFenceStms = for {
+        val leading = for {
           Decl(symbol, _) <- entity.declarations
           if needsDefault contains symbol
         } yield {
@@ -113,7 +99,7 @@ final class DefaultAssignments(implicit cc: CompilerContext)
 
         TypeAssigner {
           entity.copy(
-            fenceStmts = newFenceStms ::: entity.fenceStmts
+            statements = leading ::: entity.statements
           ) withLoc tree.loc
         }
       }

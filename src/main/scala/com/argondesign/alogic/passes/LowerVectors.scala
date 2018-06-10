@@ -32,7 +32,7 @@ final class LowerVectors(implicit cc: CompilerContext) extends TreeTransformer {
   private[this] val tgtTpe = Stack[Type]()
 
   override def enter(tree: Tree): Unit = tree match {
-    case entity: Entity => {
+    case entity: EntityLowered => {
       // Change types of all vectors to plain TypeUInt
       // TODO: arrays as well
       for {

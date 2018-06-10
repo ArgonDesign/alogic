@@ -30,7 +30,7 @@ class SymbolAttributes {
   val entry = new Attribute[Boolean]()
 
   // The entity that owns the definition of this symbol
-  val owner = new Attribute[Entity]()
+  val owner = new Attribute[EntityNamed]() // TODO: move to SpecializeParam
 
   // The initializer expression, from the declaration, if there was one
   val init = new Attribute[Expr]()
