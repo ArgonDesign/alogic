@@ -16,13 +16,13 @@
 package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.TreeTransformer
-import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.ast.Trees.Expr.Integral
+import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.TreeInTypeTransformer
 import com.argondesign.alogic.typer.TypeAssigner
-import com.argondesign.alogic.util.unreachable
 import com.argondesign.alogic.util.BigIntOps._
+import com.argondesign.alogic.util.unreachable
 
 import scala.language.implicitConversions
 
@@ -401,18 +401,26 @@ final class FoldExpr(
         val bMsb = bOp match {
           case ":"  => bLidx
           case "+:" => bLidx + bRidx - 1
-          case "-:" => bRidx
+          case "-:" => bLidx
           case _    => unreachable
         }
-        if (bOp == ":") {
-          val newLidx = walk(aLsb + bMsb).asInstanceOf[Expr]
-          val newRidx = walk(aLsb + bLsb).asInstanceOf[Expr]
-          ExprSlice(expr, newLidx, bOp, newRidx) withLoc tree.loc
-        } else {
-          val newLidx = walk(aLsb + bLidx).asInstanceOf[Expr]
-          val newRidx = bRidx
-          ExprSlice(expr, newLidx, bOp, newRidx) withLoc tree.loc
+        lazy val bWidth = bOp match {
+          case ":" => bLidx - bRidx + 1
+          case _   => bRidx
         }
+
+        val (nLidx, nOp, nRidx) = (aOp, bOp) match {
+          case (_, "+:") => (aLsb + bLsb, "+:", bWidth)
+          case (_, "-:") => (aLsb + bMsb, "-:", bWidth)
+          case ("+:", _) => (aLsb + bLsb, "+:", bWidth)
+          case ("-:", _) => (aLsb + bMsb, "-:", bWidth)
+          case _         => (aLsb + bMsb, ":", aLsb + bLsb)
+        }
+
+        val sLidx = walk(nLidx).asInstanceOf[Expr]
+        val sRidx = walk(nRidx).asInstanceOf[Expr]
+
+        ExprSlice(expr, sLidx, nOp, sRidx) withLoc tree.loc
       }
 
       ////////////////////////////////////////////////////////////////////////////
