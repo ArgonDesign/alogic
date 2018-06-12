@@ -26,7 +26,7 @@ there is a mismatch.
 
 ### Compilation Stages
 
-Compilation of a complete Alogic design (one or more entities) into it's Verilog
+Compilation of a complete Alogic design (one or more entities) into its Verilog
 representation is done in one step, with a single invocation of the Alogic
 compiler. Internally, there are 2 stages (although no intermediate files are
 created), as follows:
