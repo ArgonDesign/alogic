@@ -57,9 +57,9 @@ trait Symbols { self: CompilerContext =>
     }
   }
 
-  final def addGlobalEntities(entities: Iterable[Entity]): Unit = synchronized {
-    for (Entity(ident: Ident, _, _, _, _, _, _, _, _) <- entities) {
-      val symbol = newTypeSymbol(ident, TypeEntity("", Nil, Nil))
+  final def addGlobalEntities(entities: Iterable[EntityIdent]): Unit = synchronized {
+    for (entity <- entities) {
+      val symbol = newTypeSymbol(entity.ident, TypeEntity("", Nil, Nil))
       addGlobalSymbol(symbol)
     }
 
@@ -67,7 +67,7 @@ trait Symbols { self: CompilerContext =>
     globalScope
   }
 
-  final def addGlobalEntity(entity: Entity): Unit = addGlobalEntities(List(entity))
+  final def addGlobalEntity(entity: EntityIdent): Unit = addGlobalEntities(List(entity))
 
   final def lookupGlobalTerm(name: String): TermSymbol = synchronized {
     globalScope.get(TermName(name)) match {
@@ -77,16 +77,11 @@ trait Symbols { self: CompilerContext =>
     }
   }
 
-  // Used to look up builtin symbols
-  final def getGlobalTermSymbolRef(name: String): ExprRef = {
-    val symbol = lookupGlobalTerm(name)
-    ExprRef(symbol)
-  }
-
-  final def getGlobalTermSymbolRef(name: String, loc: Loc): ExprRef = {
-    val ref = getGlobalTermSymbolRef(name)
-    ref visitAll { case node: Tree => node withLoc loc }
-    ref
+  final def makeBuiltinCall(name: String, loc: Loc, args: List[Expr]): ExprCall = {
+    val polySymbol = lookupGlobalTerm(name)
+    assert(polySymbol.isBuiltin(this))
+    val symbol = polySymbol.kind.asInstanceOf[TypePolyFunc].resolve(args).get
+    (ExprRef(symbol) call args).regularize(loc)(this)
   }
 
   final private[this] val symbolSequenceNumbers = Stream.from(0).iterator

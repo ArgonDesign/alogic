@@ -25,7 +25,7 @@ private[builtins] class DollarUnigned(implicit cc: CompilerContext) extends Buil
   val name = "$unsigned"
 
   def returnType(args: List[Expr]) = args partialMatch {
-    case List(arg) if arg.tpe.isPacked => TypeUInt(arg.tpe.width)
+    case List(arg) if arg.isPacked => TypeUInt(ExprNum(false, arg.width) regularize arg.loc)
   }
 
   def isKnownConst(args: List[Expr]) = args(0).isKnownConst

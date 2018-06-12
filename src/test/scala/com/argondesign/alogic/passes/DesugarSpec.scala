@@ -17,27 +17,33 @@ package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.SourceTextConverters._
-import com.argondesign.alogic.ast.Trees.Expr._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Symbols.ErrorSymbol
 import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.typer.Typer
 import org.scalatest.FreeSpec
 
 final class DesugarSpec extends FreeSpec with AlogicTest {
 
   implicit val cc = new CompilerContext
   val namer = new Namer
+  val typer = new Typer
   val desugar = new Desugar
+
+  def xform(tree: Tree) = {
+    tree match {
+      case Root(_, entity: EntityIdent) => cc.addGlobalEntity(entity)
+      case entity: EntityIdent          => cc.addGlobalEntity(entity)
+      case _                            =>
+    }
+    tree rewrite namer rewrite typer rewrite desugar
+  }
 
   "Desugar should" - {
     "rewire postfix statements as assignments" - {
       for (op <- List("++", "--")) {
         op in {
-          val tree = s"{ i2 a; a${op}; }".asTree[Stmt] rewrite namer rewrite desugar
-
-          val atZx = cc.getGlobalTermSymbolRef("@zx")
-          val atBits = cc.getGlobalTermSymbolRef("@bits")
+          val tree = xform(s"{ i2 a; a${op}; }".asTree[Stmt])
 
           cc.messages shouldBe empty
 
@@ -51,9 +57,13 @@ final class DesugarSpec extends FreeSpec with AlogicTest {
                       opStr shouldBe op.init
                       sym should be theSameInstanceAs dSym
                       inside(incr) {
-                        case ExprCall(`atZx`, List(width, value)) =>
-                          width shouldBe ExprCall(atBits, List(ExprRef(dSym)))
+                        case ExprCall(ExprRef(symbol), List(width, value))
+                            if symbol.name == "@zx" =>
                           value shouldBe ExprInt(false, 1, 1)
+                          inside(width) {
+                            case ExprCall(ExprRef(symbol), List(ExprRef(dSym)))
+                                if symbol.name == "@bits" =>
+                          }
                       }
                   }
               }
@@ -65,7 +75,7 @@ final class DesugarSpec extends FreeSpec with AlogicTest {
     "rewire update statements as assignments" - {
       for (op <- List("*", "/", "%", "+", "-", "<<", ">>", ">>>", "&", "|", "^")) {
         s"${op}=" in {
-          val tree = s"{ i100 a; a ${op}= 2; }".asTree[Stmt] rewrite namer rewrite desugar
+          val tree = xform(s"{ i100 a; a ${op}= 2; }".asTree[Stmt])
 
           cc.messages shouldBe empty
 
@@ -87,15 +97,14 @@ final class DesugarSpec extends FreeSpec with AlogicTest {
     "lift 'let' initializers and drop 'let' statement" - {
       for {
         (name, loop, pattern) <- List[(String, String, PartialFunction[Any, Unit])](
-          ("loop", "loop {}", { case _: StmtLoop        => }),
-          ("while", "while (b) {}", { case _: StmtWhile => }),
-          ("do", "do {} while(b);", { case _: StmtDo    => }),
-          ("for", "for(;;) {}", { case _: StmtFor       => })
+          ("loop", "loop { fence; }", { case _: StmtLoop => }),
+          ("while", "while (b) {}", { case _: StmtWhile  => }),
+          ("do", "do {} while(b);", { case _: StmtDo     => }),
+          ("for", "for(;;) {}", { case _: StmtFor        => })
         )
       } {
         name in {
-          val tree = s"{ i2 b; let (i2 a = 0, b = a) ${loop} }"
-            .asTree[Stmt] rewrite namer rewrite desugar
+          val tree = xform(s"{ i2 b; let (i2 a = 0, b = a) ${loop} }".asTree[Stmt])
 
           inside(tree) {
             case StmtBlock(List(StmtDecl(declB: Decl), declA: StmtDecl, assignB, loop)) =>
@@ -115,53 +124,5 @@ final class DesugarSpec extends FreeSpec with AlogicTest {
         }
       }
     }
-
-    "stip redundant blocks around" - {
-      for {
-        (name, content, pattern) <- List[(String, String, PartialFunction[Any, Unit])](
-          ("block", "{}", { case StmtBlock(Nil)                              => }),
-          ("if", "if (1) {}", { case StmtIf(Expr(1), StmtBlock(Nil), None)   => }),
-          ("case", "case (1) {1:1;}", { case StmtCase(Expr(1), List(_), Nil) => }),
-          ("loop", "loop {}", { case StmtLoop(Nil)                           => }),
-          ("while", "while(1) {}", { case StmtWhile(Expr(1), Nil)            => }),
-          ("do", "do {} while(1);", { case StmtDo(Expr(1), Nil)              => }),
-          ("for", "for (;;) {}", { case StmtFor(Nil, None, Nil, Nil)         => }),
-          ("fence", "fence;", { case StmtFence()                             => }),
-          ("break", "break;", { case StmtBreak()                             => }),
-          ("goto", "goto a;", { case StmtGoto(ExprRef(ErrorSymbol))          => }),
-          ("return", "return;", { case StmtReturn()                          => }),
-          ("=", "1 = 1;", { case StmtAssign(Expr(1), Expr(1))                => }),
-          ("expr", "1 + 2;", { case StmtExpr(Expr(1) + Expr(2))              => }),
-          ("decl", "i3 a;", { case StmtDecl(_)                               => }),
-          ("read", "read;", { case StmtRead()                                => }),
-          ("write", "write;", { case StmtWrite()                             => })
-        )
-      } {
-        name in {
-          val tree = s"{ { { { ${content} } } } }".asTree[Stmt] rewrite namer rewrite desugar
-          tree should matchPattern(pattern)
-        }
-      }
-    }
-
-    "strip blocks around default case body" in {
-      val tree = "case (1) {  default: { 1; 2; } }".asTree[Stmt] rewrite desugar
-      inside(tree) {
-        case StmtCase(Expr(1), Nil, default) =>
-          default shouldBe List(StmtExpr(Expr(1)), StmtExpr(Expr(2)))
-      }
-    }
-
-    "strip blocks around fence block body" in {
-      val entity = "fsm a { fence { 2; 3; } }".asTree[Entity]
-      cc.addGlobalEntity(entity)
-      val tree = entity rewrite namer rewrite desugar
-
-      inside(tree) {
-        case entity: Entity =>
-          entity.fenceStmts shouldBe List(StmtExpr(Expr(2)), StmtExpr(Expr(3)))
-      }
-    }
-
   }
 }

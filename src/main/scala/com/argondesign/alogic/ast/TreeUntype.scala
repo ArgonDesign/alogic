@@ -22,7 +22,8 @@ import com.argondesign.alogic.util.unreachable
 trait TreeUntype {
 
   def untype(tree: Tree): Tree = tree match {
-    case node: Entity                => untype(node)
+    case node: EntityNamed           => untype(node)
+    case node: EntityLowered         => untype(node)
     case node: Sym                   => untype(node)
     case node: Decl                  => untype(node)
     case node: Instance              => untype(node)
@@ -30,7 +31,8 @@ trait TreeUntype {
     case node: Function              => untype(node)
     case node: State                 => untype(node)
     case node: Thicket               => untype(node)
-    case node: CaseClause            => untype(node)
+    case node: RegularCase           => untype(node)
+    case node: DefaultCase           => untype(node)
     case node: Expr                  => untype(node)
     case node: Stmt                  => untype(node)
     case node: TypeDefinitionTypedef => unreachable
@@ -38,32 +40,33 @@ trait TreeUntype {
     case node: Ident                 => unreachable
     case node: DeclIdent             => unreachable
     case node: Root                  => unreachable
+    case node: EntityIdent           => unreachable
   }
 
   def untype(tree: Stmt): Stmt = tree match {
-    case node: StmtBlock         => untype(node)
-    case node: StmtIf            => untype(node)
-    case node: StmtCase          => untype(node)
-    case node: CaseClause        => untype(node)
-    case node: StmtLoop          => untype(node)
-    case node: StmtWhile         => untype(node)
-    case node: StmtFor           => untype(node)
-    case node: StmtDo            => untype(node)
-    case node: StmtFence         => untype(node)
-    case node: StmtBreak         => untype(node)
-    case node: StmtGoto          => untype(node)
-    case node: StmtReturn        => untype(node)
-    case node: StmtAssign        => untype(node)
-    case node: StmtExpr          => untype(node)
-    case node: StmtDecl          => untype(node)
-    case node: StmtRead          => untype(node)
-    case node: StmtWrite         => untype(node)
-    case node: StmtDollarComment => untype(node)
-    case node: StmtStall         => untype(node)
-    case node: StmtError         => untype(node)
-    case node: StmtLet           => unreachable
-    case node: StmtUpdate        => unreachable
-    case node: StmtPost          => unreachable
+    case node: StmtBlock    => untype(node)
+    case node: StmtIf       => untype(node)
+    case node: StmtCase     => untype(node)
+    case node: StmtLoop     => untype(node)
+    case node: StmtWhile    => untype(node)
+    case node: StmtFor      => untype(node)
+    case node: StmtDo       => untype(node)
+    case node: StmtFence    => untype(node)
+    case node: StmtBreak    => untype(node)
+    case node: StmtContinue => untype(node)
+    case node: StmtGoto     => untype(node)
+    case node: StmtReturn   => untype(node)
+    case node: StmtAssign   => untype(node)
+    case node: StmtExpr     => untype(node)
+    case node: StmtDecl     => untype(node)
+    case node: StmtRead     => untype(node)
+    case node: StmtWrite    => untype(node)
+    case node: StmtComment  => untype(node)
+    case node: StmtStall    => untype(node)
+    case node: StmtError    => untype(node)
+    case node: StmtLet      => unreachable
+    case node: StmtUpdate   => unreachable
+    case node: StmtPost     => unreachable
   }
 
   def untype(tree: Expr): Expr = tree match {
@@ -89,17 +92,24 @@ trait TreeUntype {
   // Other
   //////////////////////////////////////////////////////////////////////////////
 
-  def untype(node: Entity): Entity =
+  def untype(node: EntityNamed): EntityNamed =
     node.copy(
-      ref = untype(node.ref.asInstanceOf[Sym]),
       declarations = untype(node.declarations),
       instances = untype(node.instances),
       connects = untype(node.connects),
+      fenceStmts = untype(node.fenceStmts),
       functions = untype(node.functions),
       states = untype(node.states),
-      fenceStmts = untype(node.fenceStmts),
       entities = untype(node.entities)
-    ) withLoc node.loc withVariant node.variant
+    ) withLoc node.loc
+
+  def untype(node: EntityLowered): EntityLowered =
+    node.copy(
+      declarations = untype(node.declarations),
+      instances = untype(node.instances),
+      connects = untype(node.connects),
+      statements = untype(node.statements)
+    ) withLoc node.loc
 
   def untype(node: Ident): Ident = node.copy() withLoc node.loc
 
@@ -135,10 +145,15 @@ trait TreeUntype {
       body = untype(node.body)
     ) withLoc node.loc
 
-  def untype(node: CaseClause): CaseClause =
+  def untype(node: RegularCase): RegularCase =
     node.copy(
       cond = untype(node.cond),
-      body = untype(node.body)
+      stmt = untype(node.stmt)
+    ) withLoc node.loc
+
+  def untype(node: DefaultCase): DefaultCase =
+    node.copy(
+      stmt = untype(node.stmt)
     ) withLoc node.loc
 
   def untype(node: Thicket): Thicket =
@@ -165,8 +180,7 @@ trait TreeUntype {
   def untype(node: StmtCase): StmtCase =
     node.copy(
       expr = untype(node.expr),
-      cases = untype(node.cases),
-      default = untype(node.default)
+      cases = untype(node.cases)
     ) withLoc node.loc
 
   def untype(node: StmtLoop): StmtLoop =
@@ -198,6 +212,8 @@ trait TreeUntype {
 
   def untype(node: StmtBreak): StmtBreak = StmtBreak() withLoc node.loc
 
+  def untype(node: StmtContinue): StmtContinue = StmtContinue() withLoc node.loc
+
   def untype(node: StmtGoto): StmtGoto =
     node.copy(
       expr = untype(node.expr)
@@ -225,7 +241,7 @@ trait TreeUntype {
 
   def untype(node: StmtWrite): StmtWrite = StmtWrite() withLoc node.loc
 
-  def untype(node: StmtDollarComment): StmtDollarComment = node.copy() withLoc node.loc
+  def untype(node: StmtComment): StmtComment = node.copy() withLoc node.loc
 
   def untype(node: StmtStall): StmtStall =
     node.copy(cond = untype(node.cond)) withLoc node.loc

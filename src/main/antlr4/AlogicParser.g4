@@ -134,11 +134,11 @@ statement
   | 'goto' IDENTIFIER ';'                                               # StmtGoto
   | 'fence' ';'                                                         # StmtFence
   | 'break' ';'                                                         # StmtBreak
+  | 'continue' ';'                                                      # StmtContinue
   | 'return' ';'                                                        # StmtReturn
   | decl ';'                                                            # StmtDecl
   | assignment ';'                                                      # StatementAssignment
   | expr ';'                                                            # StmtExpr
-  | '$' '(' STRING ')' ';'                                              # StmtDollarComment
   ;
 
 loop
@@ -153,8 +153,8 @@ let
   ;
 
 case_clause
-  : 'default' ':' statement # DefaultCase
-  | commaexpr ':' statement # NormalCase
+  : commaexpr ':' statement # RegularCase
+  | 'default' ':' statement # DefaultCase
   ;
 
 assignment

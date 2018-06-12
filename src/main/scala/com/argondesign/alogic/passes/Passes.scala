@@ -31,14 +31,14 @@ object Passes {
       ////////////////////////////////////////////////////////////////////////
       Checker,
       Namer,
-      Desugar,
+      // All entities are EntityNamed from here on
+      SpecializeParam,
       Typer,
       PortCheck,
       ////////////////////////////////////////////////////////////////////////
       // Middle-end
       ////////////////////////////////////////////////////////////////////////
-      FoldExpr(assignTypes = true, foldRefs = false),
-      SpecializeParam,
+      Desugar,
       FoldExpr(assignTypes = true, foldRefs = false),
       FoldSymbolTypes,
       ConvertMultiConnect,
@@ -49,6 +49,8 @@ object Passes {
       ConvertLocalDecls,
       ConvertControl,
       AllocStates,
+      CreateStateSystem,
+      // All entities are EntityLowered from here on
       Replace1Stacks,
       // TODO: Replace1Arrays
       DefaultStorage,
@@ -68,6 +70,7 @@ object Passes {
       FoldExpr(assignTypes = true, foldRefs = false),
       SimplifyCat,
       FoldStmt,
+      SimplifyConditionals,
       ////////////////////////////////////////////////////////////////////////
       // Back-end
       ////////////////////////////////////////////////////////////////////////

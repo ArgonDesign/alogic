@@ -23,7 +23,6 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Error
 import com.argondesign.alogic.passes.Checker
-import com.argondesign.alogic.passes.Desugar
 import com.argondesign.alogic.passes.Namer
 import com.argondesign.alogic.util.unreachable
 import org.scalatest.FreeSpec
@@ -35,9 +34,9 @@ final class TyperConnectSpec extends FreeSpec with AlogicTest {
   def xform(trees: Tree*): Unit = {
     val entities = trees map {
       _ match {
-        case root: Root     => root.entity
-        case entity: Entity => entity
-        case _              => unreachable
+        case Root(_, entity: EntityIdent) => entity
+        case entity: EntityIdent          => entity
+        case _                            => unreachable
       }
     }
 
@@ -47,8 +46,6 @@ final class TyperConnectSpec extends FreeSpec with AlogicTest {
       _ rewrite new Checker
     } map {
       _ rewrite new Namer
-    } map {
-      _ rewrite new Desugar
     } foreach {
       _ rewrite new Typer
     }

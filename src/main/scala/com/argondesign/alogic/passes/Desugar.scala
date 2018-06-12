@@ -24,49 +24,28 @@ import com.argondesign.alogic.util.unreachable
 
 final class Desugar(implicit cc: CompilerContext) extends TreeTransformer {
 
-  override val typed: Boolean = false
-
   override def transform(tree: Tree): Tree = tree match {
     // "a++" rewritten as  "a = a + @zx(@bits(a), 1'b1)"
     case StmtPost(lhs, op) => {
-      val refAtBits = cc.getGlobalTermSymbolRef("@bits", tree.loc)
-      val refAtZx = cc.getGlobalTermSymbolRef("@zx", tree.loc)
-      val width = ExprCall(refAtBits, List(lhs)) withLoc tree.loc
-      val incr = ExprCall(refAtZx, List(width, ExprInt(false, 1, 1) withLoc tree.loc)) withLoc tree.loc
+      val width = cc.makeBuiltinCall("@bits", tree.loc, List(lhs)) regularize tree.loc
+      val bit1 = ExprInt(false, 1, 1) regularize tree.loc
+      val incr = cc.makeBuiltinCall("@zx", tree.loc, List(width, bit1))
       val rhs = op match {
         case "++" => lhs + incr
         case "--" => lhs - incr
         case _    => unreachable
       }
-      StmtAssign(lhs, rhs) withLoc tree.loc
+      StmtAssign(lhs, rhs) regularize tree.loc
     }
 
     // "a += b" rewritten as "a = a + b"
     case StmtUpdate(lhs, op, expr) => {
-      val rhs = ExprBinary(lhs, op, expr) withLoc expr.loc
-      StmtAssign(lhs, rhs) withLoc tree.loc
+      StmtAssign(lhs, ExprBinary(lhs, op, expr)) regularize tree.loc
     }
 
     // "let(<init>) <loop>" rewritten as "<init> <loop>"
     case StmtLet(inits, body) => {
-      Thicket(inits ::: body :: Nil) withLoc tree.loc
-    }
-
-    // Strip redundant blocks
-    case StmtBlock(single :: Nil) => single
-
-    // Strip block around fence statements
-    case entity: Entity => {
-      entity.fenceStmts match {
-        case List(StmtBlock(body)) =>
-          entity.copy(fenceStmts = body) withLoc entity.loc withVariant entity.variant
-        case _ => tree
-      }
-    }
-
-    // Strip block around default case
-    case StmtCase(cond, cases, List(StmtBlock(default))) => {
-      StmtCase(cond, cases, default) withLoc tree.loc
+      Thicket(inits ::: body :: Nil) regularize tree.loc
     }
 
     case _ => tree
@@ -75,17 +54,9 @@ final class Desugar(implicit cc: CompilerContext) extends TreeTransformer {
   override def finalCheck(tree: Tree): Unit = {
     // Should have removed all StmtLet, StmtUpdate, StmtPost
     tree visit {
-      case node: StmtLet => {
-        cc.ice(node, s"Desugar should have removed all 'let' statements, but '${node}' remains")
-      }
-      case node: StmtUpdate => {
-        cc.ice(node,
-               s"Desugar should have removed all op = update statements, but '${node}' remains")
-      }
-      case node: StmtPost => {
-        cc.ice(node,
-               s"Desugar should have removed all postfix update statements, but '${node}' remains")
-      }
+      case node: StmtLet    => cc.ice(node, s"StmtLet remains")
+      case node: StmtUpdate => cc.ice(node, s"StmtUpdate remains")
+      case node: StmtPost   => cc.ice(node, s"StmtPost remains")
     }
   }
 

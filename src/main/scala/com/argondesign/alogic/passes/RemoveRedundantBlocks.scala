@@ -57,23 +57,17 @@ final class RemoveRedundantBlocks(implicit cc: CompilerContext) extends TreeTran
       }
     }
 
-    case StmtCase(expr, cases, default) => {
-      TypeAssigner {
-        StmtCase(expr, cases, flatten(default)) withLoc tree.loc
-      }
-    }
-
     case StmtIf(cond, thenStmt, Some(StmtBlock(Nil))) => {
       TypeAssigner {
         StmtIf(cond, thenStmt, None) withLoc tree.loc
       }
     }
 
-    case entity: Entity => {
+    case entity: EntityLowered => {
       TypeAssigner {
         entity.copy(
-          fenceStmts = flatten(entity.fenceStmts)
-        ) withVariant entity.variant withLoc tree.loc
+          statements = flatten(entity.statements)
+        ) withLoc tree.loc
       }
     }
 

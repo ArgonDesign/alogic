@@ -16,6 +16,7 @@
 
 package com.argondesign.alogic.ast
 
+import com.argondesign.alogic.Config
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Bindings
 import com.argondesign.alogic.core.CompilerContext
@@ -184,6 +185,11 @@ trait ExprOps { this: Expr =>
     }
   }
 
+  // Rewrite expression using bindings provided
+  def given(bindings: Bindings)(implicit cc: CompilerContext): Expr = {
+    (this rewrite new ReplaceTermRefs(bindings)).asInstanceOf[Expr]
+  }
+
   // Value of this expression if it can be determined right now, otherwise None
   def value(implicit cc: CompilerContext): Option[BigInt] = simplify match {
     // TODO: follow constants
@@ -192,17 +198,30 @@ trait ExprOps { this: Expr =>
     case _                    => None
   }
 
-  // Width of this expression if can be computed, note that this does not
-  // necessarily need type info ...
-  def width(implicit cc: CompilerContext): Option[Expr] = simplify match {
-    // TODO: more possible cases
-    case ExprInt(_, width, _) => Some(addLoc(Expr(width)))
-    case _                    => tpeOpt map { _.width }
+  //////////////////////////////////////////////////////////////////////////////
+  // The following are the same ase the similarly named functions from TypeOps,
+  // but refrain from accessing the type if not necessary. This simplifies some
+  // client code by avoiding having to assign types early.
+  //////////////////////////////////////////////////////////////////////////////
+
+  final def isPacked(implicit cc: CompilerContext): Boolean = simplify match {
+    case _: ExprInt      => true
+    case _: ExprNum      => Config.treatNumAs32Wide
+    case ExprRef(symbol) => symbol.kind.isPacked
+    case _               => tpe.isPacked
   }
 
-  // Rewrite expression using bindings provided
-  def given(bindings: Bindings)(implicit cc: CompilerContext): Expr = {
-    (this rewrite new ReplaceTermRefs(bindings)).asInstanceOf[Expr]
+  final def isSigned(implicit cc: CompilerContext): Boolean = simplify match {
+    case ExprInt(signed, _, _) => signed
+    case ExprNum(signed, _)    => signed
+    case ExprRef(symbol)       => symbol.kind.isSigned
+    case _                     => tpe.isSigned
+  }
+
+  final def width(implicit cc: CompilerContext): Int = simplify match {
+    case ExprInt(_, width, _) => width
+    case ExprRef(symbol)      => symbol.kind.width
+    case _                    => tpe.width
   }
 
 }

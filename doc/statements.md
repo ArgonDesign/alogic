@@ -9,7 +9,7 @@
 This is a comprehensive reference of all statements available in `fsm`
 functions.
 
-## Combinatorial vs Control statements
+### Combinatorial vs Control statements
 
 Statements can broadly be categorized as either combinatorial statements, or
 control statements. This distinction is used to determine control unit
@@ -106,7 +106,7 @@ Expression statements are always combinatorial statements. Note that function
 calls in statement positions are not expression statements and are described
 below.
 
-### Assignment statements (combinatorial)
+### Assignment statements
 
 An assignment statement updates the value of some storage location. All
 assignment statements are combinatorial statements.
@@ -160,7 +160,7 @@ when standing alone in statement position. All lvalues are valid.
   {sign, abs}--;
 ```
 
-## The `fence` statement (control)
+### The `fence` statement (control)
 
 The `fence` statement is the simplest control statement, and is used to indicate
 the end of a control unit. All combinatorial statements before a `fence`
@@ -176,7 +176,7 @@ statement. The following example takes 2 cycles to execute:
   fence;
 ```
 
-### Branching statements (combinatorial or control)
+### Branching statements
 
 Control flow branches can be achieved with the `if` and `case` statements. These
 branching statements are combinatorial statements if all branches contain only
@@ -374,7 +374,7 @@ is compiled as:
   }
 ```
 
-### Function calls (control)
+### Function calls
 
 Functions are used to encapsulate repetitive portions of FSM behaviour. All
 statements relating to function call handling are control statements.
@@ -415,7 +415,7 @@ back to the top of the function.
   }
 ```
 
-### `goto` statement (control)
+#### `goto` statement (control)
 
 The `goto` statement can be used to perform a tail call to a function. This
 statement ends the current control unit, transfers control to the target
@@ -450,12 +450,12 @@ call site of _b_ inside _a_:
   }
 ```
 
-### Looping statements (control)
+### Looping statements
 
 All statements in this section are control statements. The bodies of all loops
 must be `{}` blocks, even if they contain only a single statement.
 
-### The fundamental `loop` statement (control)
+#### The fundamental `loop` statement (control)
 
 The fundamental looping construct is the infinite loop, introduced with the
 `loop` keyword. The body of a `loop` must end in a control statement. To exit
@@ -476,7 +476,7 @@ so the above code would take 1 clock cycle to perform the initialization of
 _acc_ and enter the loop, and from then on the loop body would execute once
 every cycle (assuming no flow control stalls on p_in), until _acc_ becomes 0.
 
-### Structured loops (control)
+#### Structured loops
 
 Structured `do`, `while`, and `for` loops are syntactic sugar and are rewritten
 by the compiler in terms of the primitive `loop` statement. When determining the
@@ -544,9 +544,10 @@ For loops follow the common syntax:
   }
 ```
 
-where _\<init>_ is either a single assignment statement or a single variable
-declaration with an initializer expression, _\<cond>_ is an expression,
-_\<step>_ is an assignment statement, and _\<body>_ is a list of statements. The
+where _\<init>_ can be a list of zero or more instances of either assignment
+statements or simple variable declarations with initializers separated by comma,
+_\<cond>_ is an optional expression, _\<step>_ is a list of zero or more comma
+separated assignment statements, and _\<body>_ is a list of statements. The
 rewriting of a `for` loop in terms of `loop` is:
 
 ```
@@ -566,28 +567,40 @@ rewriting of a `for` loop in terms of `loop` is:
   }
 ```
 
-### `break` statement (control)
+#### `break` statement (control)
 
 The `break` statement can be used to immediately terminate the innermost active
 loop and transfer control to the statement following the loop on the next clock
 cycle.
 
-### `let` headers (control)
+#### `continue` statement (control)
+
+The `continue` statement can be used similarly to the C language equivalent to
+continue at the end of the loop body. This means that inside a `do` or `while`
+loop, the `continue` statement performs the condition check, and on the next
+clock cycle transfers control either to the beginning of the loop body, or the
+statement after the loop. Inside a `for` loop, the `continue` statement also
+executes the _\<step>_ statements before performing the condition check. Inside
+a `loop` loop, `continue` unconditionally transfers control to the beginning of
+the loop body on the next cycle.
+
+#### `let` headers (control)
 
 The `let` keyword can be used to introduce a list of variable declarations
 together with initializers (separated by `,`) to a new scope established by a
 following loop statement:
 
 ```
-  let (declarations-with-initializers>) <stmt>
+  let (<init>) <stmt>
 ```
 
-The `<stmt>` following the `let` header must be a `loop`, `do`,`while` or `for`
+The form of _\<init>_ is the same as in the case of the `for` loop. The
+_\<stmt>_ following the `let` header must be a `loop`, `do`,`while` or `for`
 statement. The `let` statement is syntactic sugar for:
 
 ```
   {
-    <declarations-with-initializers>
+    <init>
     <body>
   }
 ```

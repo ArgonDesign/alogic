@@ -17,7 +17,6 @@ package com.argondesign.alogic.core
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
 import com.argondesign.alogic.core.StorageTypes._
-import com.argondesign.alogic.core.Symbols.TypeSymbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.typer.TypeAssigner
 
@@ -52,27 +51,15 @@ object SyncSliceFactory {
   ): List[Stmt] = ss match {
     case StorageSliceBub => {
       // valid = ~valid & ip_valid | valid & ~op_ready;
-      // fence;
-      List(
-        StmtAssign(vRef, ~vRef & ipvRef | vRef & ~oprRef),
-        StmtFence()
-      )
+      List(StmtAssign(vRef, ~vRef & ipvRef | vRef & ~oprRef))
     }
     case StorageSliceFwd => {
       // valid = ip_valid | valid & ~op_ready;
-      // fence;
-      List(
-        StmtAssign(vRef, ipvRef | vRef & ~oprRef),
-        StmtFence()
-      )
+      List(StmtAssign(vRef, ipvRef | vRef & ~oprRef))
     }
     case StorageSliceBwd => {
       // valid = (valid | ip_valid) & ~op_ready;
-      // fence;
-      List(
-        StmtAssign(vRef, (vRef | ipvRef) & ~oprRef),
-        StmtFence()
-      )
+      List(StmtAssign(vRef, (vRef | ipvRef) & ~oprRef))
     }
   }
 
@@ -139,15 +126,13 @@ object SyncSliceFactory {
       //   payload = ip;
       // }
       // valid = ~valid & ip_valid | valid & ~op_ready;
-      // fence;
       List(
         StmtIf(
           ipvRef & ~vRef,
           StmtAssign(pRef, ipRef),
           None
         ),
-        StmtAssign(vRef, ~vRef & ipvRef | vRef & ~oprRef),
-        StmtFence()
+        StmtAssign(vRef, ~vRef & ipvRef | vRef & ~oprRef)
       )
     }
     case StorageSliceFwd => {
@@ -155,15 +140,13 @@ object SyncSliceFactory {
       //   payload = ip;
       // }
       // valid = ip_valid | valid & ~op_ready;
-      // fence;
       List(
         StmtIf(
           ipvRef & (~vRef | oprRef),
           StmtAssign(pRef, ipRef),
           None
         ),
-        StmtAssign(vRef, ipvRef | vRef & ~oprRef),
-        StmtFence()
+        StmtAssign(vRef, ipvRef | vRef & ~oprRef)
       )
     }
     case StorageSliceBwd => {
@@ -171,15 +154,13 @@ object SyncSliceFactory {
       //   payload = ip;
       // }
       // valid = (valid | ip_valid) & ~op_ready;
-      // fence;
       List(
         StmtIf(
           ipvRef & ~vRef & ~oprRef,
           StmtAssign(pRef, ipRef),
           None
         ),
-        StmtAssign(vRef, (vRef | ipvRef) & ~oprRef),
-        StmtFence()
+        StmtAssign(vRef, (vRef | ipvRef) & ~oprRef)
       )
     }
   }
@@ -279,7 +260,7 @@ object SyncSliceFactory {
       sep: String
   )(
       implicit cc: CompilerContext
-  ): Entity = {
+  ): EntityLowered = {
     val fcn = FlowControlTypeNone
     val stw = StorageTypeWire
 
@@ -317,13 +298,11 @@ object SyncSliceFactory {
     lazy val pRef = ExprRef(pSymbol)
     val vRef = ExprRef(vSymbol)
 
-    val body = if (kind != TypeVoid) {
+    val statements = if (kind != TypeVoid) {
       nonVoidBody(ss, ipRef, ipvRef, oprRef, pRef, vRef)
     } else {
       voidBody(ss, ipvRef, oprRef, vRef)
     }
-
-    val state = State(ExprInt(false, 1, 0), body)
 
     val ports = if (kind != TypeVoid) {
       List(ipSymbol, ipvSymbol, iprSymbol, opSymbol, opvSymbol, oprSymbol, eSymbol, fSymbol)
@@ -344,21 +323,22 @@ object SyncSliceFactory {
     }
 
     val entitySymbol = cc.newTypeSymbol(name, loc, TypeEntity(name, ports, Nil))
-    val entity = Entity(Sym(entitySymbol), decls, Nil, connects, Nil, List(state), Nil, Nil, Map())
-    entity withVariant "fsm" regularize loc
+    entitySymbol.attr.variant set "fsm"
+    val entity = EntityLowered(entitySymbol, decls, Nil, connects, statements, Map())
+    entity regularize loc
   }
 
   // Given a list of slice instances, build an entity that
   // instantiates each and connects them back to back
   private def buildCompoundSlice(
-      slices: List[Entity],
+      slices: List[EntityLowered],
       name: String,
       loc: Loc,
       kind: Type,
       sep: String
   )(
       implicit cc: CompilerContext
-  ): Entity = {
+  ): EntityLowered = {
     val nSlices = slices.length
     require(nSlices >= 2)
 
@@ -406,9 +386,8 @@ object SyncSliceFactory {
 
     val instances = slices.zipWithIndex map {
       case (entity, index) =>
-        val Sym(eSymbol: TypeSymbol) = entity.ref
-        val iSymbol = cc.newTermSymbol(s"slice_${index}", loc, TypeInstance(eSymbol))
-        Instance(Sym(iSymbol), Sym(eSymbol), Nil, Nil)
+        val iSymbol = cc.newTermSymbol(s"slice_${index}", loc, TypeInstance(entity.symbol))
+        Instance(Sym(iSymbol), Sym(entity.symbol), Nil, Nil)
     }
 
     val iRefs = for (Instance(Sym(iSymbol), _, _, _) <- instances) yield { ExprRef(iSymbol) }
@@ -474,10 +453,9 @@ object SyncSliceFactory {
     }
 
     val entitySymbol = cc.newTypeSymbol(name, loc, TypeEntity(name, ports, Nil))
-    val entity = {
-      Entity(Sym(entitySymbol), decls, instances, connects.toList, Nil, Nil, Nil, Nil, Map())
-    }
-    entity withVariant "network" regularize loc
+    entitySymbol.attr.variant set "network"
+    val entity = EntityLowered(entitySymbol, decls, instances, connects.toList, Nil, Map())
+    entity regularize loc
   }
 
   def apply(
@@ -487,7 +465,7 @@ object SyncSliceFactory {
       kind: Type
   )(
       implicit cc: CompilerContext
-  ): List[Entity] = {
+  ): List[EntityLowered] = {
     require(slices.nonEmpty)
     require(kind.isPacked)
 

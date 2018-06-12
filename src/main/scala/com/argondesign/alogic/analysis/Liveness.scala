@@ -33,7 +33,7 @@ object Liveness {
       idx.value map { bit =>
         Map(symbol -> BigInt.oneHot(bit))
       } getOrElse {
-        Map(symbol -> BigInt.mask(symbol.kind.width.value.get))
+        Map(symbol -> BigInt.mask(symbol.kind.width))
       }
     }
     case ExprSlice(ExprRef(symbol: TermSymbol), lidx, op, ridx) if symbol.kind.isPacked => {
@@ -48,11 +48,11 @@ object Liveness {
           Map(symbol -> (BigInt.mask(width) << lsb.toInt))
         }
       } getOrElse {
-        Map(symbol -> BigInt.mask(symbol.kind.width.value.get))
+        Map(symbol -> BigInt.mask(symbol.kind.width))
       }
     }
     case ExprRef(symbol: TermSymbol) if symbol.kind.isPacked => {
-      Map(symbol -> BigInt.mask(symbol.kind.width.value.get))
+      Map(symbol -> BigInt.mask(symbol.kind.width))
     }
   }
 
@@ -109,8 +109,7 @@ object Liveness {
     def loop(expr: Expr): Map[TermSymbol, BigInt] = {
       expr match {
         case ExprRef(symbol: TermSymbol) => {
-          val width = symbol.kind.width.value.get
-          Map(symbol -> BigInt.mask(width))
+          Map(symbol -> BigInt.mask(symbol.kind.width))
         }
         case ExprIndex(ExprRef(symbol: TermSymbol), idx) => {
           idx.value map { bit =>
@@ -204,16 +203,19 @@ object Liveness {
             (live, dead)
           }
 
-          case StmtCase(expr, cases, default) => {
-            val readers = expr :: (cases flatMap { case CaseClause(cond, _) => cond })
+          case StmtCase(expr, cases) => {
+            val caseReaders = cases flatMap {
+              case RegularCase(cond, _) => cond
+              case _: DefaultCase       => Nil
+            }
+            val readers = expr :: caseReaders
             val reads = readers map { usedRv }
             val dLive = reads reduce { _ union _ } diff cDead
 
             val (bLive, bDead) = {
-              val sets = analyse(dLive, cDead, default) :: {
-                cases map {
-                  case CaseClause(_, body) => analyse(dLive, cDead, List(body))
-                }
+              val sets = cases map {
+                case RegularCase(_, stmt) => analyse(dLive, cDead, List(stmt))
+                case DefaultCase(stmt)    => analyse(dLive, cDead, List(stmt))
               }
               sets.unzip
             }
@@ -238,9 +240,8 @@ object Liveness {
 
           case StmtBlock(body) => analyse(cLive, cDead, body)
 
-          case _: StmtFence         => (cLive, cDead)
-          case _: StmtDollarComment => (cLive, cDead)
-          case _                    => unreachable
+          case _: StmtComment => (cLive, cDead)
+          case _              => unreachable
         }
 
         analyse(nLive, nDead, tail)

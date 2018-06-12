@@ -56,7 +56,7 @@ object SramFactory {
       depth: Int
   )(
       implicit cc: CompilerContext
-  ): Entity = {
+  ): EntityLowered = {
 
     val fcn = FlowControlTypeNone
 
@@ -80,7 +80,7 @@ object SramFactory {
     val rdRef = ExprRef(rdSymbol)
     val stRef = ExprRef(stSymbol)
 
-    val body = List(
+    val statements = List(
       StmtIf(
         ceRef,
         StmtIf(
@@ -93,11 +93,8 @@ object SramFactory {
           Some(StmtAssign(rdRef, stRef index adRef))
         ),
         None
-      ),
-      StmtFence()
+      )
     )
-
-    val state = State(ExprInt(false, 1, 0), body)
 
     val ports = List(ceSymbol, weSymbol, adSymbol, wdSymbol, rdSymbol)
 
@@ -106,9 +103,10 @@ object SramFactory {
     val decls = symbols map { Decl(_, None) }
 
     val entitySymbol = cc.newTypeSymbol(name, loc, TypeEntity(name, ports, Nil))
+    entitySymbol.attr.variant set "fsm"
     entitySymbol.attr.sram set true
-    val entity = Entity(Sym(entitySymbol), decls, Nil, Nil, Nil, List(state), Nil, Nil, Map())
-    entity withVariant "fsm" regularize loc
+    val entity = EntityLowered(entitySymbol, decls, Nil, Nil, statements, Map())
+    entity regularize loc
   }
 
 }

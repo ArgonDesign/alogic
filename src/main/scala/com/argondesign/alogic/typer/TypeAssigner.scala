@@ -22,6 +22,8 @@ import com.argondesign.alogic.core.Symbols.ErrorSymbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.unreachable
 
+import scala.language.postfixOps
+
 object TypeAssigner {
 
   def apply(tree: Tree)(implicit cc: CompilerContext): tree.type = {
@@ -29,7 +31,8 @@ object TypeAssigner {
     tree match {
       case node: Expr           => apply(node)
       case node: Stmt           => apply(node)
-      case node: CaseClause     => apply(node)
+      case node: RegularCase    => apply(node)
+      case node: DefaultCase    => apply(node)
       case node: Entity         => apply(node)
       case node: Decl           => apply(node)
       case node: Instance       => apply(node)
@@ -67,8 +70,16 @@ object TypeAssigner {
     assignTypeMisc(node)
   }
 
-  def apply(node: CaseClause): node.type = {
-    if (node.body.tpe == TypeError || (node.cond exists { _.tpe == TypeError })) {
+  def apply(node: RegularCase): node.type = {
+    if (node.stmt.tpe == TypeError || (node.cond exists { _.tpe == TypeError })) {
+      node withTpe TypeError
+    } else {
+      assignTypeMisc(node)
+    }
+  }
+
+  def apply(node: DefaultCase): node.type = {
+    if (node.stmt.tpe == TypeError) {
       node withTpe TypeError
     } else {
       assignTypeMisc(node)
@@ -96,21 +107,25 @@ object TypeAssigner {
       case node: StmtCase  => apply(node)
       case node: StmtExpr  => apply(node)
       // Unambiguous ctrl stmts
-      case node: StmtLoop   => apply(node)
-      case node: StmtWhile  => apply(node)
-      case node: StmtFor    => apply(node)
-      case node: StmtDo     => apply(node)
-      case node: StmtFence  => apply(node)
-      case node: StmtBreak  => apply(node)
-      case node: StmtGoto   => apply(node)
-      case node: StmtReturn => apply(node)
+      case node: StmtLoop     => apply(node)
+      case node: StmtWhile    => apply(node)
+      case node: StmtFor      => apply(node)
+      case node: StmtDo       => apply(node)
+      case node: StmtLet      => apply(node)
+      case node: StmtFence    => apply(node)
+      case node: StmtBreak    => apply(node)
+      case node: StmtContinue => apply(node)
+      case node: StmtGoto     => apply(node)
+      case node: StmtReturn   => apply(node)
       // Unambiguous comb stmts
-      case node: StmtAssign        => apply(node)
-      case node: StmtDecl          => apply(node)
-      case node: StmtRead          => apply(node)
-      case node: StmtWrite         => apply(node)
-      case node: StmtDollarComment => apply(node)
-      case node: StmtStall         => apply(node)
+      case node: StmtAssign  => apply(node)
+      case node: StmtUpdate  => apply(node)
+      case node: StmtPost    => apply(node)
+      case node: StmtDecl    => apply(node)
+      case node: StmtRead    => apply(node)
+      case node: StmtWrite   => apply(node)
+      case node: StmtComment => apply(node)
+      case node: StmtStall   => apply(node)
       //
       case node: StmtError => apply(node)
       //
@@ -132,12 +147,7 @@ object TypeAssigner {
 
   def apply(node: StmtCase): node.type = {
     require(!node.hasTpe)
-    val child = if (node.cases.nonEmpty) {
-      node.cases.head.body
-    } else {
-      node.default.last
-    }
-    node withTpe child.tpe
+    node withTpe node.cases.head.stmt.tpe
   }
 
   def apply(node: StmtExpr): node.type = {
@@ -175,12 +185,22 @@ object TypeAssigner {
     node withTpe TypeCtrlStmt
   }
 
+  def apply(node: StmtLet): node.type = {
+    require(!node.hasTpe)
+    node withTpe TypeCtrlStmt
+  }
+
   def apply(node: StmtFence): node.type = {
     require(!node.hasTpe)
     node withTpe TypeCtrlStmt
   }
 
   def apply(node: StmtBreak): node.type = {
+    require(!node.hasTpe)
+    node withTpe TypeCtrlStmt
+  }
+
+  def apply(node: StmtContinue): node.type = {
     require(!node.hasTpe)
     node withTpe TypeCtrlStmt
   }
@@ -200,6 +220,16 @@ object TypeAssigner {
     node withTpe TypeCombStmt
   }
 
+  def apply(node: StmtUpdate): node.type = {
+    require(!node.hasTpe)
+    node withTpe TypeCombStmt
+  }
+
+  def apply(node: StmtPost): node.type = {
+    require(!node.hasTpe)
+    node withTpe TypeCombStmt
+  }
+
   def apply(node: StmtDecl): node.type = {
     require(!node.hasTpe)
     node withTpe TypeCombStmt
@@ -215,7 +245,7 @@ object TypeAssigner {
     node withTpe TypeCombStmt
   }
 
-  def apply(node: StmtDollarComment): node.type = {
+  def apply(node: StmtComment): node.type = {
     require(!node.hasTpe)
     node withTpe TypeCombStmt
   }
@@ -259,9 +289,9 @@ object TypeAssigner {
 
   def apply(node: ExprError): node.type = node withTpe TypeError
 
-  def apply(node: ExprInt): node.type = {
+  def apply(node: ExprInt)(implicit cc: CompilerContext): node.type = {
     require(!node.hasTpe)
-    val widthExpr = Expr(node.width) withLoc node.loc
+    val widthExpr = Expr(node.width) regularize node.loc
     node withTpe TypeInt(node.signed, widthExpr)
   }
 
@@ -290,11 +320,11 @@ object TypeAssigner {
     node withTpe finalTpe
   }
 
-  def apply(node: ExprUnary): node.type = {
+  def apply(node: ExprUnary)(implicit cc: CompilerContext): node.type = {
     require(!node.hasTpe)
     val tpe = node.op match {
       case "+" | "-" | "~" => node.expr.tpe
-      case _               => TypeUInt(Expr(1) withLoc node.loc)
+      case _               => TypeUInt(Expr(1) regularize node.loc)
     }
     node withTpe tpe
   }
@@ -303,7 +333,7 @@ object TypeAssigner {
     require(!node.hasTpe)
     val tpe = node.op match {
       case ">" | ">=" | "<" | "<=" | "==" | "!=" | "&&" | "||" =>
-        TypeUInt(Expr(1) withLoc node.loc)
+        TypeUInt(Expr(1) regularize node.loc)
       case "<<" | ">>" | "<<<" | ">>>" => node.lhs.tpe
       case _ => {
         val lTpe = node.lhs.tpe
@@ -313,7 +343,7 @@ object TypeAssigner {
           TypeNum(signed)
         } else {
           val width = lTpe.width max rTpe.width
-          TypeInt(signed, width.simplify)
+          TypeInt(signed, Expr(width) regularize node.loc)
         }
       }
     }
@@ -329,7 +359,7 @@ object TypeAssigner {
       TypeNum(signed)
     } else {
       val width = tTpe.width max eTpe.width
-      TypeInt(signed, width.simplify)
+      TypeInt(signed, Expr(width) regularize node.loc)
     }
     node withTpe tpe
   }
@@ -337,24 +367,24 @@ object TypeAssigner {
   def apply(node: ExprCat)(implicit cc: CompilerContext): node.type = {
     require(!node.hasTpe)
     val width = if (node.parts.lengthCompare(2) >= 0) {
-      node.parts map { _.tpe.width } reduceLeft { _ + _ }
+      node.parts map { _.tpe.width } sum
     } else {
       node.parts.head.tpe.width
     }
-    node withTpe TypeUInt(width.simplify)
+    node withTpe TypeUInt(Expr(width) regularize node.loc)
   }
 
   def apply(node: ExprRep)(implicit cc: CompilerContext): node.type = {
     require(!node.hasTpe)
     val width = node.count * node.expr.tpe.width
-    node withTpe TypeUInt(width.simplify)
+    node withTpe TypeUInt(width.simplify regularize node.loc)
   }
 
-  def apply(node: ExprIndex): node.type = {
+  def apply(node: ExprIndex)(implicit cc: CompilerContext): node.type = {
     require(!node.hasTpe)
     val tpe = node.expr.tpe.underlying match {
-      case _: TypeNum          => TypeUInt(Expr(1) withLoc node.index.loc)
-      case _: TypeInt          => TypeUInt(Expr(1) withLoc node.index.loc)
+      case _: TypeNum          => TypeUInt(Expr(1) regularize node.index.loc)
+      case _: TypeInt          => TypeUInt(Expr(1) regularize node.index.loc)
       case TypeArray(kind, _)  => kind
       case TypeVector(kind, _) => kind
       case _                   => unreachable
@@ -366,7 +396,7 @@ object TypeAssigner {
     // TODO: implement vector slicing properly
     require(!node.hasTpe)
     val width = if (node.op == ":") node.lidx - node.ridx + 1 else node.ridx
-    node withTpe TypeUInt(width.simplify)
+    node withTpe TypeUInt(width.simplify regularize node.loc)
   }
 
   def apply(node: ExprSelect): node.type = {

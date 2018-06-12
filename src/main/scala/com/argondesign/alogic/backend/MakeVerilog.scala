@@ -37,11 +37,9 @@ final class MakeVerilog(
       kind match {
         case intKind: TypeInt => {
           val signedStr = if (kind.isSigned) "signed " else ""
-          val width = intKind.width.value.get
-          if (width == 1) {
-            s"${signedStr}${id}"
-          } else {
-            s"${signedStr}[${width - 1}:0] ${id}"
+          intKind.width match {
+            case 1 => s"${signedStr}${id}"
+            case n => s"${signedStr}[${n - 1}:0] ${id}"
           }
         }
         case TypeArray(elemKind, sizeExpr) => {
@@ -201,7 +199,7 @@ final class MakeVerilog(
                   case Some(expr) => expr
                   case None => {
                     val kind = qSymbol.kind
-                    ExprInt(kind.isSigned, kind.width.value.get.toInt, 0)
+                    ExprInt(kind.isSigned, kind.width, 0)
                   }
                 }
                 s"${id} <= ${vexpr(init)};"
@@ -285,17 +283,19 @@ final class MakeVerilog(
       }
 
       // Case statement
-      case StmtCase(cond, caseClauses, defaultStmts) => {
+      case StmtCase(cond, cases) => {
         body.emit(indent)(s"case (${vexpr(cond)})")
-        for (CaseClause(conds, stmt) <- caseClauses) {
-          body.emit(indent + 1)(s"${conds map vexpr mkString ", "}: begin")
-          emitWithoutBeginEndIfBlock(indent + 2, stmt)
-          body.emit(indent + 1)("end")
-        }
-        if (defaultStmts.nonEmpty) {
-          body.emit(indent + 1)("default: begin")
-          defaultStmts foreach { emitStatement(body, indent + 2, _) }
-          body.emit(indent + 1)("end")
+        cases foreach {
+          case RegularCase(conds, stmt) => {
+            body.emit(indent + 1)(s"${conds map vexpr mkString ", "}: begin")
+            emitWithoutBeginEndIfBlock(indent + 2, stmt)
+            body.emit(indent + 1)("end")
+          }
+          case DefaultCase(stmt) => {
+            body.emit(indent + 1)("default: begin")
+            emitWithoutBeginEndIfBlock(indent + 2, stmt)
+            body.emit(indent + 1)("end")
+          }
         }
         body.emit(indent)(s"endcase")
       }
@@ -319,29 +319,18 @@ final class MakeVerilog(
         body.emit(indent)(s"end")
       }
 
-      // Fence statement
-      case _: StmtFence => ()
-
       // Expression statements like $display();
       case StmtExpr(expr) => body.emit(indent)(s"${vexpr(expr)};")
 
-      // Alogic comment
-      case StmtDollarComment(str) => body.emit(indent)("// " + str)
+      // Comment
+      case StmtComment(str) => body.emit(indent)("// " + str)
 
       case other => cc.ice(other, "Don't know how to emit Verilog for statement", other.toString)
     }
   }
 
-  private def emitState(body: CodeWriter, indent: Int, stmts: List[Stmt]): Unit = {
-    body.emit(0)("begin")
-    stmts foreach {
-      emitStatement(body, indent + 1, _)
-    }
-    body.emit(indent)("end")
-  }
-
   private def emitStateSystem(body: CodeWriter): Unit = {
-    if (states.nonEmpty) {
+    if (statements.nonEmpty) {
       body.emitSection(1, "State system") {
         body.emit(1)("always @* begin")
 
@@ -351,38 +340,8 @@ final class MakeVerilog(
           body.ensureBlankLine()
         }
 
-        // Emit the fence statements, if any
-        if (fenceStmts.nonEmpty) {
-          body.emitBlock(2, "Fence statements") {
-            for (stmt <- fenceStmts) {
-              emitStatement(body, 2, stmt)
-            }
-          }
-        }
-
-        // Emit state system case statement
-        if (states.length == 1) {
-          val State(expr, stmts) = states.head
-          val n = expr.value.get
-          body.ensureBlankLine()
-          body.emit(2)(s"// State ${n}")
-          body.append(s"    ")
-          emitState(body, 2, stmts)
-        } else {
-          body.emit(2)(s"case (${eSymbol.attr.stateVar.value.name})")
-          for ((state, i) <- states.sortBy(_.expr.value.get).zipWithIndex) {
-            val State(expr, stmts) = state
-            val n = expr.value.get
-            val e = vexpr(expr)
-            val selector = if (n == 0) s"default /* $e */" else s"$e"
-            if (i > 0) {
-              body.ensureBlankLine()
-            }
-            body.emit(3)(s"// State ${n}")
-            body.append(s"      ${selector}: ")
-            emitState(body, 3, stmts)
-          }
-          body.emit(2)("endcase")
+        statements foreach { stmt =>
+          emitStatement(body, 2, stmt)
         }
 
         val cSymbols = decls collect {
@@ -394,9 +353,8 @@ final class MakeVerilog(
           body.emit(2)("// Clears")
           body.emit(2)("if (!go) begin")
           for (symbol <- cSymbols) {
-            val width = symbol.kind.width.value.get
             val s = if (symbol.kind.isSigned) "s" else ""
-            body.emit(3)(s"${symbol.name} = ${width}'${s}b0;")
+            body.emit(3)(s"${symbol.name} = ${symbol.kind.width}'${s}b0;")
           }
           body.emit(2)("end")
         }

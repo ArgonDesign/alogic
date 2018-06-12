@@ -50,7 +50,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
 
   // Map from output port symbol to output storage entity, instance symbol,
   // and a boolean that is true if the storage is multiple output slices
-  private val oStorage = mutable.Map[TermSymbol, (Entity, TermSymbol, Boolean)]()
+  private val oStorage = mutable.Map[TermSymbol, (EntityLowered, TermSymbol, Boolean)]()
 
   // Stack of extra statements to emit when finished with a statement
   private[this] val extraStmts = Stack[mutable.ListBuffer[Stmt]]()
@@ -68,7 +68,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
   private[this] var removeStmt = false
 
   // New entities created in this pass
-  private[this] val extraEntities = new ListBuffer[Entity]
+  private[this] val extraEntities = new ListBuffer[EntityLowered]
 
   private[this] def isIn(symbol: TermSymbol, fc: FlowControlType): Boolean = {
     symbol.kind match {
@@ -134,12 +134,11 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
         // If a synchronous output register is required, construct it
         // TODO: mark inline
         val eName = entitySymbol.name + sep + "or" + sep + pName
-        val sregEntity: Entity = SyncRegFactory(eName, loc, kind)
+        val sregEntity = SyncRegFactory(eName, loc, kind)
         extraEntities append sregEntity
-        val Sym(sregEntitySymbol: TypeSymbol) = sregEntity.ref
         val iSymbol = {
           val iName = "or" + sep + pName
-          cc.newTermSymbol(iName, loc, TypeInstance(sregEntitySymbol))
+          cc.newTermSymbol(iName, loc, TypeInstance(sregEntity.symbol))
         }
         // Set attributes
         oStorage(symbol) = (sregEntity, iSymbol, false)
@@ -202,10 +201,9 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
         val ePrefix = entitySymbol.name + sep + pName
         val sliceEntities = SyncSliceFactory(slices, ePrefix, loc, kind)
         extraEntities appendAll sliceEntities
-        val Sym(sliceEntitySymbol: TypeSymbol) = sliceEntities.head.ref
         val iSymbol = {
           val iName = "os" + sep + pName
-          cc.newTermSymbol(iName, loc, TypeInstance(sliceEntitySymbol))
+          cc.newTermSymbol(iName, loc, TypeInstance(sliceEntities.head.symbol))
         }
         // Set attributes
         oStorage(symbol) = (sliceEntities.head, iSymbol, sliceEntities.tail.nonEmpty)
@@ -477,14 +475,14 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
       // Add storage slice entities
       //////////////////////////////////////////////////////////////////////////
 
-      case entity: Entity => {
+      case entity: EntityLowered => {
         val ospSymbols = entity.declarations collect {
           case Decl(symbol, _) if oStorage contains symbol => symbol
         }
 
         val instances = for (symbol <- ospSymbols) yield {
           val (entity, iSymbol, _) = oStorage(symbol)
-          Instance(Sym(iSymbol), entity.ref, Nil, Nil)
+          Instance(Sym(iSymbol), Sym(entity.symbol), Nil, Nil)
         }
 
         val connects = ospSymbols flatMap { symbol =>
@@ -537,7 +535,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
         val thisEntity = entity.copy(
           instances = instances ::: entity.instances,
           connects = connects ::: entity.connects
-        ) withVariant entity.variant
+        )
 
         Thicket(thisEntity :: extraEntities.toList)
       }

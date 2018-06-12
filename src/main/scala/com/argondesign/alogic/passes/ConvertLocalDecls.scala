@@ -35,7 +35,7 @@ final class ConvertLocalDecls(implicit cc: CompilerContext) extends TreeTransfor
 
   private[this] def getDefaultInitializer(kind: Type): Option[Expr] = {
     lazy val signed = kind.isSigned
-    lazy val width = kind.width.value.get.toInt
+    lazy val width = kind.width
     cc.settings.uninitialized match {
       case "none"  => None
       case "zeros" => Some(ExprInt(signed, width, 0))
@@ -61,11 +61,11 @@ final class ConvertLocalDecls(implicit cc: CompilerContext) extends TreeTransfor
   }
 
   override def skip(tree: Tree): Boolean = tree match {
-    case _: Entity     => false
-    case _: Function   => false
-    case _: Stmt       => false
-    case _: CaseClause => false
-    case _             => true
+    case _: Entity   => false
+    case _: Function => false
+    case _: Stmt     => false
+    case _: Case     => false
+    case _           => true
   }
 
   override def transform(tree: Tree): Tree = tree match {
@@ -79,10 +79,10 @@ final class ConvertLocalDecls(implicit cc: CompilerContext) extends TreeTransfor
       }
     }
 
-    case entity: Entity if localDecls.nonEmpty => {
+    case entity: EntityNamed if localDecls.nonEmpty => {
       localDecls.prependAll(entity.declarations)
       TypeAssigner {
-        entity.copy(declarations = localDecls.toList) withLoc tree.loc withVariant entity.variant
+        entity.copy(declarations = localDecls.toList) withLoc tree.loc
       }
     }
 

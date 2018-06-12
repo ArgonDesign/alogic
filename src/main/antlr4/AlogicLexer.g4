@@ -56,10 +56,7 @@ ATID    : '@' SIMPLEID  ;
 
 DOLLARID: '$' SIMPLEID;
 
-DOLLAR: '$';
-
 GOESTO: '->';
-
 
 MUL:        '*'   ;
 DIV:        '/'   ;
@@ -155,10 +152,10 @@ IF      : 'if' ;
 GOTO    : 'goto' ;
 ELSE    : 'else' ;
 BREAK   : 'break' ;
+CONTINUE: 'continue' ;
 RETURN  : 'return' ;
 CASE    : 'case' ;
 DEFAULT : 'default' ;
-VERILOG : 'verilog' ;
 NEW     : 'new' ;
 LET     : 'let' ;
 ENTITY  : 'entity' ;
@@ -168,6 +165,8 @@ COMB    : 'comb'  ;
 STACK   : 'stack' ;
 SRAM    : 'sram' ;
 REG     : 'reg' ;
+SIGNED  : 'signed' ;
+UNSIGNED: 'unsigned' ;
 
 SYNC        : 'sync';
 SYNC_READY  : 'sync' (WS|CMT)* 'ready';

@@ -53,7 +53,9 @@ network bar {
 }
 ```
 
-In this way, Alogic performs parameter specialization, meaning the compiler will emit
+### Parameter specialization
+
+Alogic performs parameter specialization, meaning the compiler will emit
 specific implementations of a parametrized module, based on the particular
 parameter values it is instantiated with. This means that Verilog modules output
 by the Alogic compiler will never contain _parameter_ declarations. Specialized

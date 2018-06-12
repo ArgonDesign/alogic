@@ -110,7 +110,7 @@ object StackFactory {
       kind: Type
   )(
       implicit cc: CompilerContext
-  ): Entity = {
+  ): EntityLowered = {
     val fcn = FlowControlTypeNone
     val stw = StorageTypeWire
 
@@ -143,18 +143,15 @@ object StackFactory {
 
     val stoRef = ExprRef(stoSymbol)
 
-    val body = List(
+    val statements = List(
       StmtIf(enRef,
              StmtBlock(
                List(
                  StmtAssign(stoRef, dRef),
                  StmtAssign(valRef, ~popRef & (valRef | pusRef))
                )),
-             None),
-      StmtFence()
+             None)
     )
-
-    val state = State(ExprInt(false, 1, 0), body)
 
     val ports = List(
       enSymbol,
@@ -183,8 +180,9 @@ object StackFactory {
     )
 
     val entitySymbol = cc.newTypeSymbol(name, loc, TypeEntity(name, ports, Nil))
-    val entity = Entity(Sym(entitySymbol), decls, Nil, connects, Nil, List(state), Nil, Nil, Map())
-    entity withVariant "fsm" regularize loc
+    entitySymbol.attr.variant set "fsm"
+    val entity = EntityLowered(entitySymbol, decls, Nil, connects, statements, Map())
+    entity regularize loc
   }
 
   // Build an entity similar to the following Alogic FSM to be used as an
@@ -232,7 +230,7 @@ object StackFactory {
       depth: Int
   )(
       implicit cc: CompilerContext
-  ): Entity = {
+  ): EntityLowered = {
     require(depth >= 2)
 
     val fcn = FlowControlTypeNone
@@ -279,7 +277,7 @@ object StackFactory {
       }
     }
 
-    val body = List(
+    val statements = List(
       StmtIf(
         enRef,
         StmtBlock(
@@ -302,11 +300,8 @@ object StackFactory {
             )
           )),
         None
-      ),
-      StmtFence()
+      )
     )
-
-    val state = State(ExprInt(false, 1, 0), body)
 
     val ports = List(
       enSymbol,
@@ -335,8 +330,9 @@ object StackFactory {
     )
 
     val entitySymbol = cc.newTypeSymbol(name, loc, TypeEntity(name, ports, Nil))
-    val entity = Entity(Sym(entitySymbol), decls, Nil, connects, Nil, List(state), Nil, Nil, Map())
-    entity withVariant "fsm" regularize loc
+    entitySymbol.attr.variant set "fsm"
+    val entity = EntityLowered(entitySymbol, decls, Nil, connects, statements, Map())
+    entity regularize loc
   }
 
   def apply(
@@ -346,7 +342,7 @@ object StackFactory {
       depth: Expr
   )(
       implicit cc: CompilerContext
-  ): Entity = {
+  ): EntityLowered = {
     require(kind.isPacked)
     require(kind != TypeVoid)
 

@@ -58,6 +58,9 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
   // Stack of break statement target state symbols
   private[this] val breakTargets = Stack[TermSymbol]()
 
+  // Stack of continue statement target state symbols
+  private[this] val continueTargets = Stack[TermSymbol]()
+
   // Stack of states symbols in the order they are emitted. We keep these
   // as Options. A None indicates that the state does not actually needs
   // to be emitted, as it will be emitted by an enclosing list (which is empty),
@@ -65,8 +68,8 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
   private[this] val pendingStates = Stack[Option[TermSymbol]]()
 
   override def skip(tree: Tree): Boolean = tree match {
-    case entity: Entity => entity.functions.isEmpty
-    case _              => false
+    case entity: EntityNamed => entity.functions.isEmpty
+    case _                   => false
   }
 
   // Allocate all intermediate states that are introduced
@@ -115,7 +118,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
       // Entity
       //////////////////////////////////////////////////////////////////////////
 
-      case entity: Entity => {
+      case entity: EntityNamed => {
         // Allocate function entry state symbols up front so they can be
         // resolved in an arbitrary order, also add them to the entryStmts map
         val pairs = for (function <- entity.functions) yield {
@@ -138,11 +141,6 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
       //////////////////////////////////////////////////////////////////////////
       // Allocate states where any List[Stmt] is involved
       //////////////////////////////////////////////////////////////////////////
-
-      case StmtCase(_, _, default) if default.nonEmpty => {
-        // Allocate states for default block body
-        allocateStates(default)
-      }
 
       case StmtBlock(body) => {
         // Allocate states for body
@@ -173,6 +171,9 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
 
         // Ensure loop body loops back to the loop entry
         followingState.push(symbol)
+
+        // Set up the continue target
+        continueTargets.push(symbol)
 
         // Allocate states for body
         allocateStates(body)
@@ -271,6 +272,11 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
         StmtGoto(ref) regularize tree.loc
       }
 
+      case _: StmtContinue => {
+        val ref = ExprRef(continueTargets.top)
+        StmtGoto(ref) regularize tree.loc
+      }
+
       case StmtGoto(ExprRef(symbol: TermSymbol)) => {
         val ref = ExprRef(func2state(symbol))
         StmtGoto(ref) regularize tree.loc
@@ -292,28 +298,32 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
       // Convert if
       //////////////////////////////////////////////////////////////////////////
 
-      case stmt @ StmtIf(_, _, None) => {
-        // Omitted else goes to the following state
-        val ref = ExprRef(followingState.top)
-        stmt.copy(elseStmt = Some(StmtGoto(ref))) regularize tree.loc
+      case stmt @ StmtIf(_, _, elseStmtOpt) => {
+        if (elseStmtOpt.nonEmpty) {
+          tree
+        } else {
+          // Omitted else goes to the following state (i.e.: implicit fence)
+          val ref = ExprRef(followingState.top)
+          stmt.copy(elseStmt = Some(StmtGoto(ref))) regularize tree.loc
+        }
       }
-
-      case _: StmtIf => tree
 
       //////////////////////////////////////////////////////////////////////////
       // Convert case
       //////////////////////////////////////////////////////////////////////////
 
-      case stmt @ StmtCase(_, _, Nil) => {
-        // Omitted default goes to the following state
-        val ref = ExprRef(followingState.top)
-        stmt.copy(default = List(StmtGoto(ref))) regularize tree.loc
-      }
-
-      case stmt @ StmtCase(_, _, default) => {
-        val head :: tail = splitControlUnits(default)
-        tail foreach emitState
-        TypeAssigner(stmt.copy(default = head) withLoc tree.loc)
+      case stmt @ StmtCase(_, cases) => {
+        val hasDefault = cases exists {
+          case _: DefaultCase => true
+          case _              => false
+        }
+        if (hasDefault) {
+          tree
+        } else {
+          // Omitted default goes to the following state (i.e.: implicit fence)
+          val ref = ExprRef(followingState.top)
+          stmt.copy(cases = DefaultCase(StmtGoto(ref)) :: cases) regularize tree.loc
+        }
       }
 
       //////////////////////////////////////////////////////////////////////////
@@ -352,6 +362,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
       } followedBy {
         breakTargets.pop()
         followingState.pop()
+        continueTargets.pop()
       }
 
       //////////////////////////////////////////////////////////////////////////
@@ -370,14 +381,14 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
       // Convert entity
       //////////////////////////////////////////////////////////////////////////
 
-      case entity: Entity => {
+      case entity: EntityNamed => {
         // Sort states by source location (for ease of debugging)
         val states = emittedStates.toList sortBy { _.loc.start }
 
         val result = entity.copy(
           functions = Nil,
           states = states
-        ) withLoc entity.loc withVariant entity.variant
+        ) withLoc entity.loc
         TypeAssigner(result)
       }
 
@@ -407,6 +418,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
   override def finalCheck(tree: Tree): Unit = {
     assert(followingState.isEmpty)
     assert(breakTargets.isEmpty)
+    assert(continueTargets.isEmpty)
     assert(pendingStates.isEmpty)
 
     tree visit {

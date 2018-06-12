@@ -72,7 +72,7 @@ object SyncRegFactory {
       sep: String
   )(
       implicit cc: CompilerContext
-  ): Entity = {
+  ): EntityLowered = {
     val fcn = FlowControlTypeNone
     val stw = StorageTypeWire
 
@@ -96,24 +96,18 @@ object SyncRegFactory {
     lazy val pRef = ExprRef(pSymbol)
     val vRef = ExprRef(vSymbol)
 
-    val body = if (kind != TypeVoid) {
+    val statements = if (kind != TypeVoid) {
       List(
         StmtIf(
           ipvRef,
           StmtAssign(pRef, ipRef),
           None
         ),
-        StmtAssign(vRef, ipvRef),
-        StmtFence()
+        StmtAssign(vRef, ipvRef)
       )
     } else {
-      List(
-        StmtAssign(vRef, ipvRef),
-        StmtFence()
-      )
+      List(StmtAssign(vRef, ipvRef))
     }
-
-    val state = State(ExprInt(false, 1, 0), body)
 
     val ports = if (kind != TypeVoid) {
       List(ipSymbol, ipvSymbol, opSymbol, opvSymbol)
@@ -139,8 +133,9 @@ object SyncRegFactory {
     }
 
     val entitySymbol = cc.newTypeSymbol(name, loc, TypeEntity(name, ports, Nil))
-    val entity = Entity(Sym(entitySymbol), decls, Nil, connects, Nil, List(state), Nil, Nil, Map())
-    entity withVariant "fsm" regularize loc
+    entitySymbol.attr.variant set "fsm"
+    val entity = EntityLowered(entitySymbol, decls, Nil, connects, statements, Map())
+    entity regularize loc
   }
 
   def apply(
@@ -149,7 +144,7 @@ object SyncRegFactory {
       kind: Type
   )(
       implicit cc: CompilerContext
-  ): Entity = {
+  ): EntityLowered = {
     require(kind.isPacked)
     buildSyncReg(name, loc, kind, cc.sep)
   }

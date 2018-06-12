@@ -34,8 +34,8 @@ final class DefaultAssignments(implicit cc: CompilerContext)
   private val needsDefault = mutable.Set[TermSymbol]()
 
   override def skip(tree: Tree): Boolean = tree match {
-    case entity: Entity => entity.states.isEmpty
-    case _              => false
+    case entity: EntityLowered => entity.statements.isEmpty
+    case _                     => false
   }
 
   override def enter(tree: Tree): Unit = tree match {
@@ -49,8 +49,7 @@ final class DefaultAssignments(implicit cc: CompilerContext)
   }
 
   override def transform(tree: Tree): Tree = tree match {
-    // TODO: skip early for verbatim entities
-    case entity: Entity if needsDefault.nonEmpty && entity.variant != "verbatim" => {
+    case entity: EntityLowered if needsDefault.nonEmpty => {
       // Remove any nets driven through a connect
       for (Connect(_, List(rhs)) <- entity.connects) {
         rhs.visit {
@@ -61,31 +60,18 @@ final class DefaultAssignments(implicit cc: CompilerContext)
       }
 
       if (needsDefault.nonEmpty) {
-        assert(entity.states.nonEmpty)
+        assert(entity.statements.nonEmpty)
 
         // Remove symbols that are dead at the beginning of the cycle. To do
         // this, we build the case statement representing the state dispatch
         // (together with the fence statements), and do liveness analysis on it
         val deadSymbols = {
-          // TODO factor out this construction
-          val stateSystem = if (entity.states.lengthCompare(1) == 0) {
-            entity.fenceStmts ::: entity.states.head.body
-          } else {
-            entity.fenceStmts :+ StmtCase(
-              ExprRef(entitySymbol.attr.stateVar.value),
-              entity.states.tail map {
-                case State(expr, body) => CaseClause(List(expr), StmtBlock(body))
-              },
-              entity.states.head.body
-            )
-          }
-
           // Perform the liveness analysis
-          val deadSymbolBits = Liveness(stateSystem)._2
+          val deadSymbolBits = Liveness(entity.statements)._2
 
           // Keep only the symbols with all bits dead
           val it = deadSymbolBits collect {
-            case (symbol, set) if set.size == symbol.kind.width.value.get => symbol
+            case (symbol, set) if set.size == symbol.kind.width => symbol
           }
           it.toSet
         }
@@ -99,24 +85,22 @@ final class DefaultAssignments(implicit cc: CompilerContext)
       if (needsDefault.isEmpty) {
         tree
       } else {
-        val newFenceStms = for {
+        val leading = for {
           Decl(symbol, _) <- entity.declarations
           if needsDefault contains symbol
         } yield {
           // Initialize items to their default values, otherwise zero
           val init = symbol.attr.default.getOrElse {
             val kind = symbol.kind
-            val signed = kind.isSigned
-            val width = kind.width.value.get.toInt
-            ExprInt(signed, width, 0)
+            ExprInt(kind.isSigned, kind.width, 0)
           }
           StmtAssign(ExprRef(symbol), init) regularize symbol.loc
         }
 
         TypeAssigner {
           entity.copy(
-            fenceStmts = newFenceStms ::: entity.fenceStmts
-          ) withVariant entity.variant withLoc tree.loc
+            statements = leading ::: entity.statements
+          ) withLoc tree.loc
         }
       }
     }

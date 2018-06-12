@@ -32,7 +32,7 @@ object StaticEvaluation {
   // Given an expression that is known to be true, return a set
   // of bindings that can be inferred
   private def inferTrue(expr: Expr)(implicit cc: CompilerContext): Bindings = {
-    if (expr.tpe.width.value.get == 1) {
+    if (expr.tpe.width == 1) {
       expr match {
         case ExprRef(symbol: TermSymbol) => {
           Map(symbol -> (ExprInt(symbol.kind.isSigned, 1, 1) regularize expr.loc))
@@ -51,7 +51,7 @@ object StaticEvaluation {
   // Given an expression that is known to be false, return a set
   // of bindings that can be inferred
   private def inferFalse(expr: Expr)(implicit cc: CompilerContext): Bindings = {
-    val eWidth = expr.tpe.width.value.get.toInt
+    val eWidth = expr.tpe.width
     if (eWidth == 1) {
       expr match {
         case ExprRef(symbol: TermSymbol) => {
@@ -161,12 +161,20 @@ object StaticEvaluation {
           (afterThen.toSet intersect afterElse.toSet).toMap
         }
 
-        case StmtCase(value, cases, defaults) => {
-          val stmts = StmtBlock(defaults) :: (cases map { _.body })
+        case StmtCase(value, cases) => {
+          // Ensure default comes at the front, as that's
+          // how we are computing the 'befores' below
+          val defaultStmt = cases.collectFirst {
+            case DefaultCase(stmt) => stmt
+          } getOrElse StmtBlock(Nil)
+          val regularStmts = cases collect {
+            case RegularCase(_, stmt) => stmt
+          }
+          val stmts = defaultStmt :: regularStmts
 
           val befores = {
-            val constraints = cases map {
-              case node @ CaseClause(conds, _) =>
+            val constraints = cases collect {
+              case node @ RegularCase(conds, _) =>
                 conds map { ExprBinary(_, "==", value) } reduce { _ || _ } regularize node.loc
             }
 
@@ -191,11 +199,10 @@ object StaticEvaluation {
           (afters map { _.toSet } reduce { _ intersect _ }).toMap
         }
 
-        case _: StmtStall         => curr // TODO: can we do better here?
-        case _: StmtFence         => curr
-        case _: StmtExpr          => curr
-        case _: StmtDollarComment => curr
-        case _                    => Bindings.empty
+        case _: StmtStall   => curr // TODO: can we do better here?
+        case _: StmtExpr    => curr
+        case _: StmtComment => curr
+        case _              => Bindings.empty
       }
     }
 

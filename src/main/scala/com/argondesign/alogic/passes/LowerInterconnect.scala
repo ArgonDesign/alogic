@@ -176,7 +176,7 @@ final class LowerInterconnect(implicit cc: CompilerContext)
       // Add new symbols and connections, ensure single sink for 'instance.port'
       //////////////////////////////////////////////////////////////////////////
 
-      case entity: Entity => {
+      case entity: EntityLowered => {
 
         // Ensure that any 'instance.port' is only present on the left
         // of a single Connect instance (i.e.: there is only 1 sink variable)
@@ -235,7 +235,7 @@ final class LowerInterconnect(implicit cc: CompilerContext)
         // moment, we don't need this in entities without a state system, if we
         // do, we can do it by building a complete map based on the connections
         // we ended up with.
-        if (entity.states.nonEmpty) {
+        if (entity.statements.nonEmpty) {
           for {
             ((iSymbol, sel), symbol) <- newSymbols
             pSymbol = iSymbol.kind.asInstanceOf[TypeInstance].portSymbol(sel).get
@@ -249,7 +249,7 @@ final class LowerInterconnect(implicit cc: CompilerContext)
           entity.copy(
             declarations = newDecls.toList ::: entity.declarations,
             connects = newConnects.toList ::: newConn
-          ) withVariant entity.variant withLoc tree.loc
+          ) withLoc tree.loc
         }
       } followedBy {
         newConnects.clear()

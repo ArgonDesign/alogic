@@ -161,6 +161,8 @@ trait Messaging { self: CompilerContext =>
 
   final def hasError: Boolean = errorCount > 0
 
+  final def stopIfError(): Unit = if (hasError) fatal("Stopping due to earlier errors")
+
   //////////////////////////////////////////////////////////////////////////////
   // Versions that take an Antlr4 token/parse tree node for location info
   //////////////////////////////////////////////////////////////////////////////

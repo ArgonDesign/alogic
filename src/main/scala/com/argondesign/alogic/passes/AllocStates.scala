@@ -57,12 +57,12 @@ final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
   private[this] val stateMap: mutable.Map[TermSymbol, Int] = mutable.Map()
 
   override def skip(tree: Tree): Boolean = tree match {
-    case entity: Entity => entity.states.isEmpty
-    case _              => false
+    case entity: EntityNamed => entity.states.isEmpty
+    case _                   => false
   }
 
   override def enter(tree: Tree): Unit = tree match {
-    case entity: Entity => {
+    case entity: EntityNamed => {
       nStates = entity.states.length
 
       if (nStates > 1) {
@@ -117,10 +117,10 @@ final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
         }
 
         // Drop the return stack definition if exists
-        case entity: Entity if rsSymbol != null => {
+        case entity: EntityNamed if rsSymbol != null => {
           entity.copy(
             declarations = entity.declarations.tail
-          ) withVariant entity.variant withLoc entity.loc
+          ) withLoc entity.loc
         }
 
         case _ => tree
@@ -148,12 +148,12 @@ final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
         }
 
         // Emit state variable declaration
-        case entity: Entity => {
+        case entity: EntityNamed => {
           // TODO: initialize to entry state
           val decl = Decl(stateVarSymbol, None) regularize stateVarSymbol.loc
           entity.copy(
             declarations = decl :: entity.declarations
-          ) withVariant entity.variant withLoc entity.loc
+          ) withLoc entity.loc
         }
 
         case _ => tree

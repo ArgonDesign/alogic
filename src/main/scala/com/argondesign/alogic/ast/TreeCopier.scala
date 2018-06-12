@@ -53,44 +53,106 @@ object TreeCopier {
     }
   }
 
-  final def apply(tree: Entity)(
-      ref: Tree,
+  final def apply(tree: EntityIdent)(
+      ident: Tree,
       declarations: List[Tree],
       instances: List[Tree],
       connects: List[Tree],
-      functions: List[Tree],
-      states: List[Tree],
       fenceStmts: List[Tree],
+      functions: List[Tree],
       entities: List[Tree]
   ): Entity = {
-    if ((ref eq tree.ref) &&
+    if ((ident eq tree.ident) &&
         (declarations eq tree.declarations) &&
         (instances eq tree.instances) &&
         (connects eq tree.connects) &&
-        (functions eq tree.functions) &&
-        (states eq tree.states) &&
         (fenceStmts eq tree.fenceStmts) &&
+        (functions eq tree.functions) &&
         (entities eq tree.entities)) {
       tree
     } else {
       assert(declarations forall { _.isInstanceOf[Declaration] })
       assert(instances forall { _.isInstanceOf[Instance] })
       assert(connects forall { _.isInstanceOf[Connect] })
-      assert(functions forall { _.isInstanceOf[Function] })
-      assert(states forall { _.isInstanceOf[State] })
       assert(fenceStmts forall { _.isInstanceOf[Stmt] })
+      assert(functions forall { _.isInstanceOf[Function] })
       assert(entities forall { _.isInstanceOf[Entity] })
-      Entity(
-        ref.asInstanceOf[Ref],
+      EntityIdent(
+        ident.asInstanceOf[Ident],
         declarations.asInstanceOf[List[Declaration]],
         instances.asInstanceOf[List[Instance]],
         connects.asInstanceOf[List[Connect]],
-        functions.asInstanceOf[List[Function]],
-        states.asInstanceOf[List[State]],
         fenceStmts.asInstanceOf[List[Stmt]],
+        functions.asInstanceOf[List[Function]],
         entities.asInstanceOf[List[Entity]],
         tree.verbatim
-      ) withLoc tree.loc withVariant tree.variant
+      ) withLoc tree.loc
+    }
+  }
+
+  final def apply(tree: EntityNamed)(
+      declarations: List[Tree],
+      instances: List[Tree],
+      connects: List[Tree],
+      fenceStmts: List[Tree],
+      functions: List[Tree],
+      states: List[Tree],
+      entities: List[Tree]
+  ): Entity = {
+    if ((declarations eq tree.declarations) &&
+        (instances eq tree.instances) &&
+        (connects eq tree.connects) &&
+        (fenceStmts eq tree.fenceStmts) &&
+        (functions eq tree.functions) &&
+        (states eq tree.states) &&
+        (entities eq tree.entities)) {
+      tree
+    } else {
+      assert(declarations forall { _.isInstanceOf[Declaration] })
+      assert(instances forall { _.isInstanceOf[Instance] })
+      assert(connects forall { _.isInstanceOf[Connect] })
+      assert(fenceStmts forall { _.isInstanceOf[Stmt] })
+      assert(functions forall { _.isInstanceOf[Function] })
+      assert(states forall { _.isInstanceOf[State] })
+      assert(entities forall { _.isInstanceOf[EntityNamed] })
+      EntityNamed(
+        tree.symbol,
+        declarations.asInstanceOf[List[Declaration]],
+        instances.asInstanceOf[List[Instance]],
+        connects.asInstanceOf[List[Connect]],
+        fenceStmts.asInstanceOf[List[Stmt]],
+        functions.asInstanceOf[List[Function]],
+        states.asInstanceOf[List[State]],
+        entities.asInstanceOf[List[EntityNamed]],
+        tree.verbatim
+      ) withLoc tree.loc
+    }
+  }
+
+  final def apply(tree: EntityLowered)(
+      declarations: List[Tree],
+      instances: List[Tree],
+      connects: List[Tree],
+      statements: List[Tree]
+  ): Entity = {
+    if ((declarations eq tree.declarations) &&
+        (instances eq tree.instances) &&
+        (connects eq tree.connects) &&
+        (statements eq tree.statements)) {
+      tree
+    } else {
+      assert(declarations forall { _.isInstanceOf[Declaration] })
+      assert(instances forall { _.isInstanceOf[Instance] })
+      assert(connects forall { _.isInstanceOf[Connect] })
+      assert(statements forall { _.isInstanceOf[Stmt] })
+      EntityLowered(
+        tree.symbol,
+        declarations.asInstanceOf[List[Declaration]],
+        instances.asInstanceOf[List[Instance]],
+        connects.asInstanceOf[List[Connect]],
+        statements.asInstanceOf[List[Stmt]],
+        tree.verbatim
+      ) withLoc tree.loc
     }
   }
 
@@ -175,26 +237,32 @@ object TreeCopier {
     }
   }
 
-  final def apply(tree: StmtCase)(expr: Tree, cases: List[Tree], default: List[Tree]): StmtCase = {
-    if ((expr eq tree.expr) && (cases eq tree.cases) && (default eq tree.default)) {
+  final def apply(tree: StmtCase)(expr: Tree, cases: List[Tree]): StmtCase = {
+    if ((expr eq tree.expr) && (cases eq tree.cases)) {
       tree
     } else {
-      assert(cases forall { _.isInstanceOf[CaseClause] })
-      assert(default forall { _.isInstanceOf[Stmt] })
+      assert(cases forall { _.isInstanceOf[Case] })
       StmtCase(
         expr.asInstanceOf[Expr],
-        cases.asInstanceOf[List[CaseClause]],
-        default.asInstanceOf[List[Stmt]]
+        cases.asInstanceOf[List[Case]],
       ) withLoc tree.loc
     }
   }
 
-  final def apply(tree: CaseClause)(cond: List[Tree], body: Tree): CaseClause = {
-    if ((cond eq tree.cond) && (body eq tree.body)) {
+  final def apply(tree: RegularCase)(cond: List[Tree], stmt: Tree): RegularCase = {
+    if ((cond eq tree.cond) && (stmt eq tree.stmt)) {
       tree
     } else {
       assert(cond forall { _.isInstanceOf[Expr] })
-      CaseClause(cond.asInstanceOf[List[Expr]], body.asInstanceOf[Stmt]) withLoc tree.loc
+      RegularCase(cond.asInstanceOf[List[Expr]], stmt.asInstanceOf[Stmt]) withLoc tree.loc
+    }
+  }
+
+  final def apply(tree: DefaultCase)(stmt: Tree): DefaultCase = {
+    if (stmt eq tree.stmt) {
+      tree
+    } else {
+      DefaultCase(stmt.asInstanceOf[Stmt]) withLoc tree.loc
     }
   }
 

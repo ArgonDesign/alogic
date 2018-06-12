@@ -29,27 +29,29 @@ FSMs through automatically inserted pipeline ports.
 The following points explain how to create a pipeline in Alogic. The example
 afterwards will also help to clarify.
 
-- To create a pipeline entity, the designer will need to create a `network` entity
-with nested FSMs which will act as the pipeline stages. The nested FSMs must be
-singletons (have only a single instance), and must be defined in pipeline order
-in the enclosing network.
+- To create a pipeline entity, the designer will need to create a `network`
+entity with nested FSMs which will act as the pipeline stages. The nested FSMs
+must be singletons (have only a single instance), and must be defined in
+pipeline order in the enclosing network.
 
 - In the enclosing network, any variables that need to be passed between stages
 should be declared as `pipeline` variables. These can then be used inside the
 nested FSMs.
 
-- All pipeline stages must be connected instance to instance using `<stage-0-name>
--> <stage-1-name>`. Ports should not be used as the compiler will automatically
-connect the required pipeline ports.
+- All pipeline stages must be connected instance to instance using
+`<stage-0-name> -> <stage-1-name>`. Ports should not be used as the compiler
+will automatically connect the required pipeline ports.
 
-- All pipeline stages (except for the first) must begin with a `read;` statement
-to read in the pipeline variables from the previous pipeline stage.
+- All pipeline stages (except for the first) can use the `read;` statement to
+read in the pipeline variables from the previous pipeline stage. The `read;`
+statement can appear anywhere where a control statement is valid.
 
-- All pipeline stages (except for the last) must end with a `write;` statement to
-write the pipeline variables to the subsequent pipeline stage.
+- All pipeline stages (except for the last) can use the `write;` statement to
+write the pipeline variables to the subsequent pipeline stage. The `write;`
+statement can appear anywhere where a control statement is valid.
 
- - The `read;` and `write;` statements operate on the pipeline variables that have
- been automatically connected by the compiler
+- The `read;` and `write;` statements operate on the pipeline variables that
+have been automatically connected by the compiler
 
 Here is an example of a 3 stage pipeline that computes the dot product of two
 4-element vectors, and has a 1-dot-product per cycle throughput. The example

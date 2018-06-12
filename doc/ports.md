@@ -52,7 +52,7 @@ The generic syntax for an input port declaration is:
 Output ports are declared with the same syntax as input port, but using the
 `out` keyword, and can additionally provide a storage specifier. The generic
 syntax is:
-- `out` keyword (or `out wire`)
+- `out` keyword
 - optionally followed by a flow control specifier
 - optionally followed by a storage specifier
 - followed by a data type
@@ -324,9 +324,9 @@ corresponding port becomes high.
 
 Using `a = p_in.read();` requires replicating the contents of `p_in` to create
 the local flops for `a`. If a is very wide and the data will be used over
-multiple cycles, it is more efficient (in area) to use `p_in.wait()`, following by direct
-port access to `p_in`. When the entity has finished using the data in `p_in`,
-`p_in.read();` can then be used (as a statement).
+multiple cycles, it is more efficient (in area) to use `p_in.wait()`, following
+by direct port access to `p_in`. When the entity has finished using the data in
+`p_in`, `p_in.read();` can then be used (as a statement).
 
 ```
 fsm stepdown {
@@ -561,7 +561,7 @@ output signals of the entity. This can be used to add small amount of extra
 buffering on output ports as required:
 
 ```
-  out sync ready u8 fslice fslice a; 
+  out sync ready fslice fslice u8 a; 
 ```
 
 Another important use of multiple output slices is the combination of a `bslice`
@@ -569,7 +569,7 @@ and a `fslice` in order to break the combinatorial paths in both the forward and
 backward directions, while maintaining the possibility of 100% utilization:
 
 ```
-  out sync ready u8 bslice fslice a;
+  out sync ready bslice fslice u8 a;
 ```
 
 There is no restriction on the number of register slices a `sync ready` output

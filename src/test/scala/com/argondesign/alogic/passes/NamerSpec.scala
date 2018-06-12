@@ -37,7 +37,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
   implicit val cc = new CompilerContext
   val namer = new Namer
 
-  lazy val atBits = cc.getGlobalTermSymbolRef("@bits")
+  lazy val atBits = ExprRef(cc.lookupGlobalTerm("@bits"))
 
   "The Namer" should "issue error for redefinition of variable" in {
     """|{
@@ -59,7 +59,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     val root = """|typedef u1 foo;
                   |typedef u2 foo;
                   |fsm a {}""".asTree[Root]
-    cc.addGlobalEntity(root.entity)
+    cc.addGlobalEntity(root.entity.asInstanceOf[EntityIdent])
     root rewrite namer
 
     cc.messages.loneElement should beThe[Error](
@@ -92,7 +92,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
                     |  void main() { bool foo; }
                     |  void foo() {}
                     |}""".asTree[Entity]
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
     entity rewrite namer
 
     cc.messages should have length 3
@@ -120,7 +120,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     val root = """|typedef bool a;
                   |typedef a b;
                   |fsm c {}""".asTree[Root]
-    cc.addGlobalEntity(root.entity)
+    cc.addGlobalEntity(root.entity.asInstanceOf[EntityIdent])
     root rewrite namer
 
     cc.messages shouldBe empty
@@ -186,7 +186,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
                   |  e_t  d;
                   |};
                   |fsm b {}""".stripMargin.asTree[Root]
-    cc.addGlobalEntity(root.entity)
+    cc.addGlobalEntity(root.entity.asInstanceOf[EntityIdent])
 
     val tree = root rewrite namer
 
@@ -243,7 +243,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
   it should "resolve term names to their correct definitions - builtin" in {
     val tree = "@bits".asTree[Expr] rewrite namer
 
-    tree shouldBe cc.getGlobalTermSymbolRef("@bits")
+    tree shouldBe atBits
     cc.messages shouldBe empty
   }
 
@@ -257,7 +257,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
                   |  }
                   |}""".stripMargin.asTree[Root]
 
-    cc.addGlobalEntity(root.entity)
+    cc.addGlobalEntity(root.entity.asInstanceOf[EntityIdent])
 
     val tree = root rewrite namer
 
@@ -268,7 +268,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
             declSym.loc.line shouldBe 1
             declSym.kind shouldBe TypeUInt(Expr(1))
             inside(entity) {
-              case Entity(_, _, _, _, _, _, List(StmtBlock(List(_, stmt))), _, _) =>
+              case EntityNamed(_, _, _, _, List(StmtBlock(List(_, stmt))), _, _, _, _) =>
                 inside(stmt) {
                   case StmtDecl(Decl(symbol, _)) =>
                     symbol.kind shouldBe declSym.kind
@@ -294,7 +294,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
                   |  }
                   |}""".stripMargin.asTree[Root]
 
-    cc.addGlobalEntity(root.entity)
+    cc.addGlobalEntity(root.entity.asInstanceOf[EntityIdent])
 
     val tree = root rewrite namer
 
@@ -304,7 +304,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
           case TypeDefinitionStruct(Sym(declSym), _, _) =>
             declSym.loc.line shouldBe 1
             inside(entity) {
-              case Entity(_, _, _, _, _, _, List(StmtBlock(List(_, stmt))), _, _) =>
+              case EntityNamed(_, _, _, _, List(StmtBlock(List(_, stmt))), _, _, _, _) =>
                 inside(stmt) {
                   case StmtDecl(Decl(symbol, _)) =>
                     symbol.kind shouldBe declSym.kind
@@ -323,11 +323,11 @@ final class NamerSpec extends FlatSpec with AlogicTest {
                     |  void main () { foo(); }
                     |  void foo () {}
                     |}""".asTree[Entity]
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
     val tree = entity rewrite namer
 
     inside(tree) {
-      case entity: Entity =>
+      case entity: EntityNamed =>
         inside(entity.functions) {
           case List(main, foo) =>
             inside(main) {
@@ -344,10 +344,10 @@ final class NamerSpec extends FlatSpec with AlogicTest {
   }
 
   it should "resolve entity symbols in instantiations" in {
-    val entityA = """fsm a {}""".asTree[Entity]
+    val entityA = """fsm a {}""".asTree[Entity].asInstanceOf[EntityIdent]
     val entityB = """|network b {
                      |  a = new a();
-                     |}""".asTree[Entity]
+                     |}""".asTree[Entity].asInstanceOf[EntityIdent]
 
     cc.addGlobalEntities(List(entityA, entityB))
 
@@ -355,14 +355,14 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     val treeB = entityB rewrite (new Namer)
 
     val aSym = treeA match {
-      case Entity(Sym(symbol), _, _, _, _, _, _, _, _) => symbol
+      case EntityNamed(symbol, _, _, _, _, _, _, _, _) => symbol
       case _                                           => fail
     }
 
     aSym shouldBe 'typeSymbol
 
     inside(treeB) {
-      case Entity(_, _, instances, _, _, _, _, _, _) =>
+      case EntityNamed(_, _, instances, _, _, _, _, _, _) =>
         inside(instances.head) {
           case Instance(Sym(_), Sym(sym), Nil, Nil) =>
             sym should be theSameInstanceAs aSym
@@ -377,18 +377,18 @@ final class NamerSpec extends FlatSpec with AlogicTest {
                     |  new fsm b { }
                     |}""".asTree[Entity]
 
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
 
     val tree = entity rewrite namer
 
     inside(tree) {
-      case Entity(_, _, List(bInstance), _, _, _, _, List(bEntity), _) =>
+      case EntityNamed(_, _, List(bInstance), _, _, _, _, List(bEntity), _) =>
         inside(bInstance) {
           case Instance(Sym(iSym), Sym(eSym), _, _) =>
             iSym shouldBe 'termSymbol
             eSym shouldBe 'typeSymbol
             inside(bEntity) {
-              case Entity(Sym(sym), _, _, _, _, _, _, _, _) =>
+              case EntityNamed(sym, _, _, _, _, _, _, _, _) =>
                 eSym should be theSameInstanceAs sym
                 iSym shouldNot be theSameInstanceAs sym
             }
@@ -404,12 +404,12 @@ final class NamerSpec extends FlatSpec with AlogicTest {
                     |  void foo() {}
                     |}""".asTree[Entity]
 
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
 
     val tree = entity rewrite namer
 
     inside(tree) {
-      case Entity(_, _, _, _, List(main, foo), _, _, _, _) =>
+      case EntityNamed(_, _, _, _, _, List(main, foo), _, _, _) =>
         inside(main) {
           case Function(Sym(_), List(StmtGoto(ExprRef(sym)))) =>
             sym shouldBe 'termSymbol
@@ -431,12 +431,12 @@ final class NamerSpec extends FlatSpec with AlogicTest {
                     |  }
                     |}""".stripMargin.asTree[Entity]
 
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
 
     val tree = entity rewrite namer
 
     inside(tree) {
-      case Entity(_, _, _, _, List(main), _, _, _, _) =>
+      case EntityNamed(_, _, _, _, _, List(main), _, _, _) =>
         inside(main) {
           case Function(Sym(_), List(StmtDecl(decl), StmtExpr(expr))) =>
             inside(decl) {
@@ -463,7 +463,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
                   |  }
                   |}""".stripMargin.asTree[Root]
 
-    cc.addGlobalEntity(root.entity)
+    cc.addGlobalEntity(root.entity.asInstanceOf[EntityIdent])
 
     val tree = root rewrite namer
 
@@ -472,7 +472,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
         inside(typedef) {
           case TypeDefinitionTypedef(Sym(dSym), TypeUInt(Expr(1))) =>
             inside(entity) {
-              case Entity(_, _, _, _, List(main), _, _, _, _) =>
+              case EntityNamed(_, _, _, _, _, List(main), _, _, _) =>
                 inside(main) {
                   case Function(Sym(_), List(StmtExpr(expr))) =>
                     inside(expr) {
@@ -498,7 +498,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
                   |  }
                   |}""".stripMargin.asTree[Root]
 
-    cc.addGlobalEntity(root.entity)
+    cc.addGlobalEntity(root.entity.asInstanceOf[EntityIdent])
 
     val tree = root rewrite namer
 
@@ -507,7 +507,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
         inside(typedef) {
           case TypeDefinitionTypedef(Sym(_), TypeUInt(Expr(1))) =>
             inside(entity) {
-              case Entity(_, _, _, _, List(main), _, _, _, _) =>
+              case EntityNamed(_, _, _, _, _, List(main), _, _, _) =>
                 inside(main) {
                   case Function(Sym(_), List(StmtDecl(decl: Decl), StmtExpr(expr))) =>
                     val dSym = decl.symbol
@@ -534,7 +534,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
                   |  }
                   |}""".stripMargin.asTree[Root]
 
-    cc.addGlobalEntity(root.entity)
+    cc.addGlobalEntity(root.entity.asInstanceOf[EntityIdent])
 
     root rewrite namer
 
@@ -553,12 +553,12 @@ final class NamerSpec extends FlatSpec with AlogicTest {
                   |  }
                   |}""".stripMargin.asTree[Root]
 
-    cc.addGlobalEntity(root.entity)
+    cc.addGlobalEntity(root.entity.asInstanceOf[EntityIdent])
 
     val tree = root rewrite namer
 
     inside(tree) {
-      case Root(_, entity: Entity) =>
+      case Root(_, entity: EntityNamed) =>
         inside(entity.functions.head.body.head) {
           case StmtDecl(Decl(_, Some(ExprRef(sym)))) =>
             sym should be theSameInstanceAs ErrorSymbol
@@ -625,16 +625,27 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     cc.messages shouldBe empty
   }
 
+  it should "resolve names inside type expressions" in {
+    val block = "uint($clog2(1368))".asTree[Expr]
+
+    val tree = block rewrite namer
+
+    tree should matchPattern {
+      case ExprType(TypeUInt(ExprCall(_: ExprRef, List(_: ExprNum)))) =>
+    }
+    cc.messages shouldBe empty
+  }
+
   it should "attach correct types to symbols - entity" in {
     val root = """|fsm a {
                   |  in bool a;
                   |  out i3 b;
                   |  param u8 P = 2;
                   |}""".stripMargin.asTree[Root]
-    cc.addGlobalEntity(root.entity)
+    cc.addGlobalEntity(root.entity.asInstanceOf[EntityIdent])
     val tree = root rewrite namer
 
-    val symA = tree collectFirst { case Sym(symbol) if symbol.name == "a" => symbol }
+    val symA = tree collectFirst { case entity: EntityNamed => entity.symbol }
     inside(symA.value.kind) {
       case TypeEntity("a", List(symA, symB), List(symP)) =>
         symA.kind shouldBe TypeIn(TypeUInt(Expr(1)), FlowControlTypeNone)
@@ -645,7 +656,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
 
   it should "attach correct types to symbols - typedef" in {
     val root = "typedef bool a; fsm b {}".asTree[Root]
-    cc.addGlobalEntity(root.entity)
+    cc.addGlobalEntity(root.entity.asInstanceOf[EntityIdent])
     val tree = root rewrite namer
 
     val symA = tree collectFirst { case Sym(symbol) if symbol.name == "a" => symbol }
@@ -654,7 +665,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
 
   it should "attach correct types to symbols - struct" in {
     val root = "struct a { bool a; i2 b; }; fsm b {}".asTree[Root]
-    cc.addGlobalEntity(root.entity)
+    cc.addGlobalEntity(root.entity.asInstanceOf[EntityIdent])
     val tree = root rewrite namer
 
     val symA = tree collectFirst { case Sym(symbol) if symbol.name == "a" => symbol }
@@ -667,7 +678,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
 
   it should "attach correct types to symbols - function" in {
     val entity = "fsm foo { void a() {} }".asTree[Entity]
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
     val tree = entity rewrite namer
 
     val symA = tree collectFirst { case Sym(symbol) if symbol.name == "a" => symbol }
@@ -675,8 +686,8 @@ final class NamerSpec extends FlatSpec with AlogicTest {
   }
 
   it should "attach correct types to symbols - instance" in {
-    val entityA = "fsm a {}".asTree[Entity]
-    val entityB = "fsm b { c = new a(); }".asTree[Entity]
+    val entityA = "fsm a {}".asTree[Entity].asInstanceOf[EntityIdent]
+    val entityB = "fsm b { c = new a(); }".asTree[Entity].asInstanceOf[EntityIdent]
     cc.addGlobalEntities(List(entityA, entityB))
     entityA rewrite namer
     val tree = entityB rewrite namer
@@ -693,7 +704,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
 
   it should "attach correct types to symbols - decl in" in {
     val entity = "fsm foo { in bool a; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
     val tree = entity rewrite namer
 
     val symA = tree collectFirst { case Decl(symbol, _) if symbol.name == "a" => symbol }
@@ -702,7 +713,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
 
   it should "attach correct types to symbols - decl out" in {
     val entity = "fsm foo { out bool a; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
     val tree = entity rewrite namer
 
     val symA = tree collectFirst { case Decl(symbol, _) if symbol.name == "a" => symbol }
@@ -711,7 +722,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
 
   it should "attach correct types to symbols - decl param" in {
     val entity = "fsm foo { param bool a = false; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
     val tree = entity rewrite namer
 
     val symA = tree collectFirst { case Decl(symbol, _) if symbol.name == "a" => symbol }
@@ -720,7 +731,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
 
   it should "attach correct types to symbols - decl const" in {
     val entity = "fsm foo { const bool a = false; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
     val tree = entity rewrite namer
 
     val symA = tree collectFirst { case Decl(symbol, _) if symbol.name == "a" => symbol }
@@ -729,7 +740,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
 
   it should "attach correct types to symbols - decl pipeline" in {
     val entity = "fsm foo { pipeline bool a; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
     val tree = entity rewrite namer
 
     val symA = tree collectFirst { case Decl(symbol, _) if symbol.name == "a" => symbol }
@@ -738,7 +749,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
 
   it should "attach correct types to symbols - decl array" in {
     val entity = "fsm foo { bool a[2]; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
     val tree = entity rewrite namer
 
     val symA = tree collectFirst { case Decl(symbol, _) if symbol.name == "a" => symbol }
@@ -747,7 +758,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
 
   it should "attach correct types to symbols - decl vec" in {
     val entity = "fsm foo { i4[3][2] a; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
     val tree = entity rewrite namer
 
     val symA = tree collectFirst { case Decl(symbol, _) if symbol.name == "a" => symbol }
@@ -756,7 +767,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
 
   it should "attach correct types to symbols - decl scalar" in {
     val entity = "fsm foo { u2 a; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
     val tree = entity rewrite namer
 
     val symA = tree collectFirst { case Decl(symbol, _) if symbol.name == "a" => symbol }
@@ -765,7 +776,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
 
   it should "attach correct types to symbols - decl void" in {
     val entity = "fsm foo { void a; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
     val tree = entity rewrite namer
 
     val symA = tree collectFirst { case Decl(symbol, _) if symbol.name == "a" => symbol }
@@ -774,7 +785,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
 
   it should "attach correct types to symbols - decl ref" in {
     val root = "typedef bool b; fsm foo { b a; }".asTree[Root]
-    cc.addGlobalEntity(root.entity)
+    cc.addGlobalEntity(root.entity.asInstanceOf[EntityIdent])
     val tree = root rewrite namer
 
     val symB = tree collectFirst { case Sym(symbol) if symbol.name == "b" => symbol }
@@ -800,175 +811,175 @@ final class NamerSpec extends FlatSpec with AlogicTest {
 
   it should "issue warning for unused entity variables" in {
     val entity = "fsm a { i8 b; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
     entity rewrite namer
     cc.messages.loneElement should beThe[Warning]("Variable 'b' is unused")
   }
 
   it should "issue warning for unused entity variables - but not with 'unused' attribute" in {
     val entity = "fsm a { (* unused *) i8 b; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
     entity rewrite namer
     cc.messages shouldBe empty
   }
 
   it should "issue warning for unused arrays" in {
     val entity = "fsm a { i8 b[2]; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
     entity rewrite namer
     cc.messages.loneElement should beThe[Warning]("Array 'b' is unused")
   }
 
   it should "issue warning for unused arrays - but not with 'unused' attribute" in {
     val entity = "fsm a { (* unused *) i8 b[2]; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
     entity rewrite namer
     cc.messages shouldBe empty
   }
 
   it should "issue warning for unused input ports" in {
     val entity = "fsm a { in i8 b; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
     entity rewrite namer
     cc.messages.loneElement should beThe[Warning]("Input port 'b' is unused")
   }
 
   it should "issue warning for unused input ports - but not with 'unused' attribute" in {
     val entity = "fsm a { (* unused *) in i8 b; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
     entity rewrite namer
     cc.messages shouldBe empty
   }
 
   it should "issue warning for unused input ports - but not in verbatim entity" in {
     val entity = "verbatim entity a { in i8 b; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
     entity rewrite namer
     cc.messages shouldBe empty
   }
 
   it should "issue warning for unused output ports" in {
     val entity = "fsm a { out i8 b; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
     entity rewrite namer
     cc.messages.loneElement should beThe[Warning]("Output port 'b' is unused")
   }
 
   it should "issue warning for unused output ports - but not with 'unused' attribute" in {
     val entity = "fsm a { (* unused *) out i8 b; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
     entity rewrite namer
     cc.messages shouldBe empty
   }
 
   it should "issue warning for unused output ports - but not in verbatim entity" in {
     val entity = "verbatim entity a { out i8 b; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
     entity rewrite namer
     cc.messages shouldBe empty
   }
 
   it should "issue warning for unused parameters" in {
     val entity = "fsm a { param i8 b = 8'd9; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
     entity rewrite namer
     cc.messages.loneElement should beThe[Warning]("Parameter 'b' is unused")
   }
 
   it should "issue warning for unused parameters - but not with 'unused' attribute" in {
     val entity = "fsm a { (* unused *) param i8 b = 8'd9; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
     entity rewrite namer
     cc.messages shouldBe empty
   }
 
   it should "issue warning for unused parameters - but not in verbatim entity" in {
     val entity = "verbatim entity a { param i8 b = 8'd9; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
     entity rewrite namer
     cc.messages shouldBe empty
   }
 
   it should "issue warning for unused constants" in {
     val entity = "fsm a { const i8 b = 8'd9; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
     entity rewrite namer
     cc.messages.loneElement should beThe[Warning]("Constant 'b' is unused")
   }
 
   it should "issue warning for unused constants - but not with 'unused' attribute" in {
     val entity = "fsm a { (* unused *) const i8 b = 8'd9; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
     entity rewrite namer
     cc.messages shouldBe empty
   }
 
   it should "issue warning for unused pipeline variables" in {
     val entity = "fsm a { pipeline i8 b; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
     entity rewrite namer
     cc.messages.loneElement should beThe[Warning]("Pipeline variable 'b' is unused")
   }
 
   it should "issue warning for unused pipeline variables - but not with 'unused' attribute" in {
     val entity = "fsm a { (* unused *) pipeline i8 b; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
     entity rewrite namer
     cc.messages shouldBe empty
   }
 
   it should "issue warning for unused functions" in {
     val entity = "fsm a { void foo() {} }".asTree[Entity]
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
     entity rewrite namer
     cc.messages.loneElement should beThe[Warning]("Function 'foo' is unused")
   }
 
   it should "issue warning for unused functions - but not for main" in {
     val entity = "fsm a { void main() {} }".asTree[Entity]
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
     entity rewrite namer
     cc.messages shouldBe empty
   }
 
   it should "issue warning for unused functions - but not with 'unused' attribute" in {
     val entity = "fsm a { (* unused *) void foo() {} }".asTree[Entity]
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
     entity rewrite namer
     cc.messages shouldBe empty
   }
 
   it should "issue warning for unused entities" in {
     val entity = "network a { fsm bar {} }".asTree[Entity]
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
     entity rewrite namer
     cc.messages.loneElement should beThe[Warning]("Entity 'bar' is unused")
   }
 
   it should "issue warning for unused entities - but not with 'unused' attribute" in {
     val entity = "network a { (* unused *) fsm bar {} }".asTree[Entity]
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
     entity rewrite namer
     cc.messages shouldBe empty
   }
 
   it should "issue warning for unused instances" in {
     val entity = "network a { new fsm bar {} }".asTree[Entity]
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
     entity rewrite namer
     cc.messages.loneElement should beThe[Warning]("Instance 'bar' is unused")
   }
 
   it should "issue warning for unused instances - but not with 'unused' attribute" in {
     val entity = "network a { (* unused *) new fsm bar {} }".asTree[Entity]
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
     entity rewrite namer
     cc.messages shouldBe empty
   }
 
   it should "not issue warning for unused type definitions" in {
     val root = "typedef bool b; network a { }".asTree[Root]
-    cc.addGlobalEntity(root.entity)
+    cc.addGlobalEntity(root.entity.asInstanceOf[EntityIdent])
     root rewrite namer
     cc.messages shouldBe empty
   }
@@ -995,7 +1006,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
 
   it should "attach source attributes to symbols - function" in {
     val entity = "fsm foo { (* reclimit = 1 *) void a() {} }".asTree[Entity]
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
     val tree = entity rewrite namer
 
     val symA = tree collectFirst {
@@ -1007,23 +1018,21 @@ final class NamerSpec extends FlatSpec with AlogicTest {
 
   it should "attach source attributes to symbols - entity" in {
     val entity = "(* stacklimit = 2 *) fsm foo { }".asTree[Entity]
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
     val tree = entity rewrite namer
 
-    val symA = tree collectFirst {
-      case Sym(symbol) if symbol.name == "foo" => symbol
-    }
+    val symA = tree collectFirst { case entity: EntityNamed => entity.symbol }
     symA.value.kind shouldBe TypeEntity("foo", Nil, Nil)
     symA.value.attr.stackLimit.get.value shouldBe Expr(2)
   }
 
   it should "attach source attributes to symbols - nested entity" in {
     val entity = "network foo { (* stacklimit = 3 *) fsm bar {} }".asTree[Entity]
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
     val tree = entity rewrite namer
 
     val symA = tree collectFirst {
-      case Sym(symbol) if symbol.name == "bar" => symbol
+      case entity: EntityNamed if entity.symbol.name == "bar" => entity.symbol
     }
     symA.value.kind shouldBe TypeEntity("bar", Nil, Nil)
     symA.value.attr.stackLimit.get.value shouldBe Expr(3)
@@ -1031,7 +1040,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
 
   it should "attach source attributes to symbols - instance" in {
     val entity = "fsm foo { (* unused *) new (* stacklimit = 3 *) fsm bar {} }".asTree[Entity]
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
     val tree = entity rewrite namer
 
     val Some((iSymbol, eSymbol)) = tree collectFirst {
@@ -1045,7 +1054,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
 
   it should "attach source attributes to symbols - declaration" in {
     val entity = "fsm foo { (* unused *) i8 a; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
+    cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
     val tree = entity rewrite namer
 
     val Some(symbol) = tree collectFirst { case Decl(symbol: TermSymbol, _) => symbol }
@@ -1055,7 +1064,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
 
   it should "issue error for a vector of structs definition" in {
     val root = "struct s { bool a; }; fsm foo { (* unused *) s[2] b; }".asTree[Root]
-    cc.addGlobalEntity(root.entity)
+    cc.addGlobalEntity(root.entity.asInstanceOf[EntityIdent])
     root rewrite namer
 
     cc.messages.loneElement should beThe[Error]("Vector element cannot have a struct type")
@@ -1063,7 +1072,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
 
   it should "issue error for a memory of structs definition" in {
     val root = "struct s { bool a; }; fsm foo { (* unused *) s b[2]; }".asTree[Root]
-    cc.addGlobalEntity(root.entity)
+    cc.addGlobalEntity(root.entity.asInstanceOf[EntityIdent])
     root rewrite namer
 
     cc.messages.loneElement should beThe[Error]("Memory element cannot have a struct type")

@@ -28,6 +28,8 @@ case class Settings(
     uninitialized: String = "none",
     // Output prefix to use
     ensurePrefix: String = "",
+    // Header text to prepend to output files
+    header: String = "",
     // Colourize diagnostic messages
     colourize: Boolean = false,
     // Dump trees after each pass

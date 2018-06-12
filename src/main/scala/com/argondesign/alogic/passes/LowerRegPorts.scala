@@ -27,8 +27,8 @@ import com.argondesign.alogic.typer.TypeAssigner
 final class LowerRegPorts(implicit cc: CompilerContext) extends TreeTransformer {
 
   override def skip(tree: Tree): Boolean = tree match {
-    case entity: Entity => entity.variant == "network"
-    case _              => false
+    case entity: EntityLowered => entity.symbol.attr.variant.value == "network"
+    case _                     => false
   }
 
   override def enter(tree: Tree): Unit = tree match {
@@ -83,7 +83,7 @@ final class LowerRegPorts(implicit cc: CompilerContext) extends TreeTransformer 
       }
     }
 
-    case entity: Entity => {
+    case entity: EntityLowered => {
       // Add connects to outputs
       val connects = for {
         Decl(oSymbol, _) <- entity.declarations
@@ -98,7 +98,7 @@ final class LowerRegPorts(implicit cc: CompilerContext) extends TreeTransformer 
       } else {
         val result = entity.copy(
           connects = connects ::: entity.connects
-        ) withVariant entity.variant
+        )
         TypeAssigner(result withLoc tree.loc)
       }
     }

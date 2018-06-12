@@ -26,7 +26,6 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Error
 import com.argondesign.alogic.core.Warning
 import com.argondesign.alogic.lib.TreeLike
-import com.argondesign.alogic.passes.Desugar
 import com.argondesign.alogic.passes.Namer
 import org.scalatest.FreeSpec
 
@@ -34,16 +33,15 @@ final class TyperSpec extends FreeSpec with AlogicTest {
 
   implicit val cc = new CompilerContext
   val namer = new Namer
-  val desugar = new Desugar
   val typer = new Typer
 
   def xform(tree: Tree) = {
     tree match {
-      case root: Root     => cc.addGlobalEntity(root.entity)
-      case entity: Entity => cc.addGlobalEntity(entity)
-      case _              =>
+      case Root(_, entity: EntityIdent) => cc.addGlobalEntity(entity)
+      case entity: EntityIdent          => cc.addGlobalEntity(entity)
+      case _                            =>
     }
-    tree rewrite namer rewrite desugar rewrite typer
+    tree rewrite namer rewrite typer
   }
 
   "The Typer should" - {
@@ -84,7 +82,7 @@ final class TyperSpec extends FreeSpec with AlogicTest {
                     e visit visitor
                   }
                   case node: Expr => {
-                    node.tpe.width.value.value shouldBe resultWidth.value
+                    node.tpe.width shouldBe resultWidth.value
                     node.children foreach { _ visit visitor }
                   }
                 }
@@ -127,14 +125,14 @@ final class TyperSpec extends FreeSpec with AlogicTest {
               if (resultWidth.isDefined) {
                 cc.messages foreach println
                 val expr = (tree collectFirst { case StmtExpr(expr) => expr }).value
-                expr.tpe.width.value.value shouldBe resultWidth.value
+                expr.tpe.width shouldBe resultWidth.value
                 lazy val visitor: PartialFunction[TreeLike, Unit] = {
                   case ExprTernary(_, t, e) => {
                     t visit visitor
                     e visit visitor
                   }
                   case node: Expr => {
-                    node.tpe.width.value.value shouldBe 8
+                    node.tpe.width shouldBe 8
                     node.children foreach { _ visit visitor }
                   }
                 }
@@ -186,7 +184,7 @@ final class TyperSpec extends FreeSpec with AlogicTest {
             if (resultWidth.isDefined) {
               cc.messages foreach println
               val expr = (tree collectFirst { case StmtExpr(expr) => expr }).value
-              expr.tpe.width.value.value shouldBe resultWidth.value
+              expr.tpe.width shouldBe resultWidth.value
               cc.messages shouldBe empty
             } else {
               cc.messages.last should beThe[Error](Pattern.quote(msg))
@@ -716,8 +714,6 @@ final class TyperSpec extends FreeSpec with AlogicTest {
           (fb, msg) <- List(
             ("fence { $display(); }", ""),
             ("fence { $display(); fence; }",
-             "'fence' block must contain only combinatorial statements"),
-            ("fence { $display(); fence; $display(); }",
              "'fence' block must contain only combinatorial statements")
           )
         } {
@@ -792,6 +788,9 @@ final class TyperSpec extends FreeSpec with AlogicTest {
             ("a = 8'd2", ""),
             ("a = bool", "Right hand side of assignment is of non-packed type"),
             ("bool = 8'd2", "Left hand side of assignment is of non-packed type"),
+            ("a += 8'd2", ""),
+            ("a += bool", "Right hand side of assignment is of non-packed type"),
+            ("bool += 8'd2", "Left hand side of assignment is of non-packed type"),
 //            ("a = 9'd2", "Right hand side of assignment yields 9 bits, 8 bits are expected"),
 //            ("a = 7'd2", "Right hand side of assignment yields 7 bits, 8 bits are expected")
           )
@@ -815,80 +814,180 @@ final class TyperSpec extends FreeSpec with AlogicTest {
         }
       }
 
-      "assignments to illegal lhs" - {
-        for {
-          (assignment, msg) <- List(
-            ("a = 8'd0", "Input port cannot be assigned"),
-            ("b = 8'd0", ""),
-            ("c = 8'd0", "Input port cannot be assigned"),
-            ("d = 8'd0", "Output port with flow control cannot be assigned directly, use '.write'"),
-            ("e = 8'd0", "Input port cannot be assigned"),
-            ("f = 8'd0", "Output port with flow control cannot be assigned directly, use '.write'"),
-            ("g = 8'd0", "Parameter cannot be assigned"),
-            ("h = 8'd0", "Constant cannot be assigned"),
-            ("a[0] = 1'b0", "Input port cannot be assigned"),
-            ("b[0] = 1'b0", ""),
-            ("c[0] = 1'b0", "Input port cannot be assigned"),
-            ("d[0] = 1'b0",
-             "Output port with flow control cannot be assigned directly, use '.write'"),
-            ("e[0] = 1'b0", "Input port cannot be assigned"),
-            ("f[0] = 1'b0",
-             "Output port with flow control cannot be assigned directly, use '.write'"),
-            ("g[0] = 1'b0", "Parameter cannot be assigned"),
-            ("h[0] = 1'b0", "Constant cannot be assigned"),
-            ("i[0] = 4'b0", "Memory cannot be assigned directly, use '.write'"),
-            ("a[1:0] = 2'b0", "Input port cannot be assigned"),
-            ("b[1:0] = 2'b0", ""),
-            ("c[1:0] = 2'b0", "Input port cannot be assigned"),
-            ("d[1:0] = 2'b0",
-             "Output port with flow control cannot be assigned directly, use '.write'"),
-            ("e[1:0] = 2'b0", "Input port cannot be assigned"),
-            ("f[1:0] = 2'b0",
-             "Output port with flow control cannot be assigned directly, use '.write'"),
-            ("g[1:0] = 2'b0", "Parameter cannot be assigned"),
-            ("h[1:0] = 2'b0", "Constant cannot be assigned"),
-            ("i[0][1:0] = 2'b0", "Memory cannot be assigned directly, use '.write'"),
-            ("{b[1], a[0]} = 2'b0", "Input port cannot be assigned"),
-            ("{b[1], b[0]} = 2'b0", ""),
-            ("{b[1], c[0]} = 2'b0", "Input port cannot be assigned"),
-            ("{b[1], d[0]} = 2'b0",
-             "Output port with flow control cannot be assigned directly, use '.write'"),
-            ("{b[1], e[0]} = 2'b0", "Input port cannot be assigned"),
-            ("{b[1], f[0]} = 2'b0",
-             "Output port with flow control cannot be assigned directly, use '.write'"),
-            ("{b[1], g[0]} = 2'b0", "Parameter cannot be assigned"),
-            ("{b[1], h[0]} = 2'b0", "Constant cannot be assigned"),
-            ("{b[1], i[0]} = 9'b0", "Memory cannot be assigned directly, use '.write'"),
-          )
-        } {
-          assignment in {
-            val tree = s"""|fsm x {
-                           |  (* unused *) in i8 a;
-                           |  (* unused *) out i8 b;
-                           |  (* unused *) in sync i8 c;
-                           |  (* unused *) out sync i8 d;
-                           |  (* unused *) in sync ready i8 e;
-                           |  (* unused *) out sync ready i8 f;
-                           |  (* unused *) param i8 g = 8'd2;
-                           |  (* unused *) const i8 h = 8'd2;
-                           |  (* unused *) u8 i[4];
-                           |
-                           |  void main() {
-                           |    ${assignment};
-                           |    fence;
-                           |  }
-                           |}""".stripMargin.asTree[Entity]
-            xform(tree)
-            if (msg.isEmpty) {
-              cc.messages shouldBe empty
-            } else {
-              cc.messages.loneElement should beThe[Error](msg)
+      "postfix increment/decrement" - {
+        for (op <- List("++", "--")) {
+          for {
+            (assignment, msg) <- List(
+              (s"a${op}", ""),
+              (s"bool${op}", s"Target of postfix '${op}' is of non-packed type")
+            )
+          } {
+            assignment in {
+              val tree = s"""|fsm x {
+                             |  void main() {
+                             |    (* unused *) i8 a;
+                             |    ${assignment};
+                             |    fence;
+                             |  }
+                             |}""".stripMargin.asTree[Entity]
+              xform(tree)
+              if (msg.isEmpty) {
+                cc.messages shouldBe empty
+              } else {
+                cc.messages.loneElement should beThe[Error](Pattern.quote(msg))
+              }
             }
           }
-
         }
       }
 
+      {
+        val iPortMsg = "Input port cannot be modified"
+        val oPortMsg =
+          Pattern.quote("Output port with flow control can only be modified using .write()")
+        val paramMsg = "Parameter cannot be modified"
+        val constMsg = "Constant cannot be modified"
+        val memoryMsg = Pattern.quote("Memory can only be modified using .write()")
+
+        "assignments to illegal lhs" - {
+          for (op <- List("=", "+=")) {
+            for {
+              (assignment, msg) <- List(
+                (s"a ${op} 8'd0", iPortMsg),
+                (s"b ${op} 8'd0", ""),
+                (s"c ${op} 8'd0", iPortMsg),
+                (s"d ${op} 8'd0", oPortMsg),
+                (s"e ${op} 8'd0", iPortMsg),
+                (s"f ${op} 8'd0", oPortMsg),
+                (s"g ${op} 8'd0", paramMsg),
+                (s"h ${op} 8'd0", constMsg),
+                (s"a[0] ${op} 1'b0", iPortMsg),
+                (s"b[0] ${op} 1'b0", ""),
+                (s"c[0] ${op} 1'b0", iPortMsg),
+                (s"d[0] ${op} 1'b0", oPortMsg),
+                (s"e[0] ${op} 1'b0", iPortMsg),
+                (s"f[0] ${op} 1'b0", oPortMsg),
+                (s"g[0] ${op} 1'b0", paramMsg),
+                (s"h[0] ${op} 1'b0", constMsg),
+                (s"i[0] ${op} 4'b0", memoryMsg),
+                (s"a[1:0] ${op} 2'b0", iPortMsg),
+                (s"b[1:0] ${op} 2'b0", ""),
+                (s"c[1:0] ${op} 2'b0", iPortMsg),
+                (s"d[1:0] ${op} 2'b0", oPortMsg),
+                (s"e[1:0] ${op} 2'b0", iPortMsg),
+                (s"f[1:0] ${op} 2'b0", oPortMsg),
+                (s"g[1:0] ${op} 2'b0", paramMsg),
+                (s"h[1:0] ${op} 2'b0", constMsg),
+                (s"i[0][1:0] ${op} 2'b0", memoryMsg),
+                (s"{b[1], a[0]} ${op} 2'b0", iPortMsg),
+                (s"{b[1], b[0]} ${op} 2'b0", ""),
+                (s"{b[1], c[0]} ${op} 2'b0", iPortMsg),
+                (s"{b[1], d[0]} ${op} 2'b0", oPortMsg),
+                (s"{b[1], e[0]} ${op} 2'b0", iPortMsg),
+                (s"{b[1], f[0]} ${op} 2'b0", oPortMsg),
+                (s"{b[1], g[0]} ${op} 2'b0", paramMsg),
+                (s"{b[1], h[0]} ${op} 2'b0", constMsg),
+                (s"{b[1], i[0]} ${op} 9'b0", memoryMsg)
+              )
+            } {
+              assignment in {
+                val tree = s"""|fsm x {
+                               |  (* unused *) in i8 a;
+                               |  (* unused *) out i8 b;
+                               |  (* unused *) in sync i8 c;
+                               |  (* unused *) out sync i8 d;
+                               |  (* unused *) in sync ready i8 e;
+                               |  (* unused *) out sync ready i8 f;
+                               |  (* unused *) param i8 g = 8'd2;
+                               |  (* unused *) const i8 h = 8'd2;
+                               |  (* unused *) u8 i[4];
+                               |
+                               |  void main() {
+                               |    ${assignment};
+                               |    fence;
+                               |  }
+                               |}""".stripMargin.asTree[Entity]
+                xform(tree)
+                if (msg.isEmpty) {
+                  cc.messages shouldBe empty
+                } else {
+                  cc.messages.loneElement should beThe[Error](msg)
+                }
+              }
+
+            }
+          }
+        }
+
+        "postfix increment/decrement of illegal target" - {
+          for (op <- List("++", "--")) {
+            for {
+              (assignment, msg) <- List(
+                (s"a${op}", iPortMsg),
+                (s"b${op}", ""),
+                (s"c${op}", iPortMsg),
+                (s"d${op}", oPortMsg),
+                (s"e${op}", iPortMsg),
+                (s"f${op}", oPortMsg),
+                (s"g${op}", paramMsg),
+                (s"h${op}", constMsg),
+                (s"a[0]${op}", iPortMsg),
+                (s"b[0]${op}", ""),
+                (s"c[0]${op}", iPortMsg),
+                (s"d[0]${op}", oPortMsg),
+                (s"e[0]${op}", iPortMsg),
+                (s"f[0]${op}", oPortMsg),
+                (s"g[0]${op}", paramMsg),
+                (s"h[0]${op}", constMsg),
+                (s"i[0]${op}", memoryMsg),
+                (s"a[1:0]${op}", iPortMsg),
+                (s"b[1:0]${op}", ""),
+                (s"c[1:0]${op}", iPortMsg),
+                (s"d[1:0]${op}", oPortMsg),
+                (s"e[1:0]${op}", iPortMsg),
+                (s"f[1:0]${op}", oPortMsg),
+                (s"g[1:0]${op}", paramMsg),
+                (s"h[1:0]${op}", constMsg),
+                (s"i[0][1:0]${op}", memoryMsg),
+                (s"{b[1], a[0]}${op}", iPortMsg),
+                (s"{b[1], b[0]}${op}", ""),
+                (s"{b[1], c[0]}${op}", iPortMsg),
+                (s"{b[1], d[0]}${op}", oPortMsg),
+                (s"{b[1], e[0]}${op}", iPortMsg),
+                (s"{b[1], f[0]}${op}", oPortMsg),
+                (s"{b[1], g[0]}${op}", paramMsg),
+                (s"{b[1], h[0]}${op}", constMsg),
+                (s"{b[1], i[0]}${op}", memoryMsg)
+              )
+            } {
+              assignment in {
+                val tree = s"""|fsm x {
+                               |  (* unused *) in i8 a;
+                               |  (* unused *) out i8 b;
+                               |  (* unused *) in sync i8 c;
+                               |  (* unused *) out sync i8 d;
+                               |  (* unused *) in sync ready i8 e;
+                               |  (* unused *) out sync ready i8 f;
+                               |  (* unused *) param i8 g = 8'd2;
+                               |  (* unused *) const i8 h = 8'd2;
+                               |  (* unused *) u8 i[4];
+                               |
+                               |  void main() {
+                               |    ${assignment};
+                               |    fence;
+                               |  }
+                               |}""".stripMargin.asTree[Entity]
+                xform(tree)
+                if (msg.isEmpty) {
+                  cc.messages shouldBe empty
+                } else {
+                  cc.messages.loneElement should beThe[Error](msg)
+                }
+              }
+            }
+          }
+        }
+      }
     }
 
     "warn mismatching operand widths where applicable" - {

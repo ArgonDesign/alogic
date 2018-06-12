@@ -19,6 +19,7 @@ import java.io.PrintWriter
 import java.nio.file.Path
 
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.util.unreachable
 
 trait Output { this: CompilerContext =>
 
@@ -39,8 +40,13 @@ trait Output { this: CompilerContext =>
         }
       }
     }
-    val Sym(symbol) = entity.ref
-    val name = symbol.name + suffix
+
+    val name = entity match {
+      case _: EntityIdent        => unreachable
+      case entity: EntityNamed   => entity.symbol.name + suffix
+      case entity: EntityLowered => entity.symbol.name + suffix
+    }
+
     oDir resolve name
   }
 

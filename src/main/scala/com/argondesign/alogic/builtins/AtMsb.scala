@@ -25,7 +25,7 @@ private[builtins] class AtMsb(implicit cc: CompilerContext) extends BuiltinPolyF
   val name = "@msb"
 
   def returnType(args: List[Expr]) = args partialMatch {
-    case List(expr) if expr.tpe.isPacked => TypeInt(expr.tpe.isSigned, Expr(1) withLoc expr.loc)
+    case List(expr) if expr.isPacked => TypeInt(expr.isSigned, Expr(1) withLoc expr.loc)
   }
 
   def isKnownConst(args: List[Expr]) = args.head.isKnownConst
@@ -35,12 +35,7 @@ private[builtins] class AtMsb(implicit cc: CompilerContext) extends BuiltinPolyF
 }
 
 private[builtins] object AtMsb {
-
   def fold(loc: Loc, expr: Expr)(implicit cc: CompilerContext): Option[Expr] = {
-    expr.width map { width =>
-      expr index (width - 1)
-    } map {
-      _.simplify
-    }
+    Some((expr index (expr.width - 1)).simplify)
   }
 }

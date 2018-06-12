@@ -24,6 +24,7 @@ import com.argondesign.alogic.lib.Stack
 import com.argondesign.alogic.lib.TreeLikeTransformer
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.FollowedBy
+import com.argondesign.alogic.util.unreachable
 
 // Tree transformers are applied during a post-order traversal of a Tree.
 abstract class TreeTransformer(implicit val cc: CompilerContext)
@@ -38,8 +39,11 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
 
   // The TypeSymbol representing the currently processed entity
   protected[this] def entitySymbol: TypeSymbol = {
-    val Sym(symbol: TypeSymbol) = entityStack.top.ref
-    symbol
+    entityStack.top match {
+      case _: EntityIdent        => unreachable
+      case entity: EntityNamed   => entity.symbol
+      case entity: EntityLowered => entity.symbol
+    }
   }
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -72,12 +76,12 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
     val result = transform(tree)
 
     if (!result.hasLoc) {
-      cc.ice(s"Lost location of transformed node:", result.toString)
+      cc.ice(s"Lost location of transformed node:", result.toString, this.getClass.getName)
     }
 
     // Check it has type
     if (typed && !result.hasTpe) {
-      cc.ice(result, "Lost type of transformed node", result.toString)
+      cc.ice(result, "Lost type of transformed node", result.toString, this.getClass.getName)
     }
 
     result
@@ -114,25 +118,59 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
           val ref = walk(node.ref)
           doTransform(TreeCopier(node)(ref))
         }
-        case node: Entity => {
-          val ref = walk(node.ref)
+        case node: EntityIdent => {
+          val ident = walk(node.ident)
           val declarations = walk(node.declarations)
           val instances = walk(node.instances)
           val connects = walk(node.connects)
-          val functions = walk(node.functions)
-          val states = walk(node.states)
           val fenceStmts = walk(node.fenceStmts)
+          val functions = walk(node.functions)
           val entities = walk(node.entities)
           doTransform(
             TreeCopier(node)(
-              ref,
+              ident,
               declarations,
               instances,
               connects,
+              fenceStmts,
+              functions,
+              entities
+            ))
+        } followedBy {
+          entityStack.pop()
+        }
+        case node: EntityNamed => {
+          val declarations = walk(node.declarations)
+          val instances = walk(node.instances)
+          val connects = walk(node.connects)
+          val fenceStmts = walk(node.fenceStmts)
+          val functions = walk(node.functions)
+          val states = walk(node.states)
+          val entities = walk(node.entities)
+          doTransform(
+            TreeCopier(node)(
+              declarations,
+              instances,
+              connects,
+              fenceStmts,
               functions,
               states,
-              fenceStmts,
               entities
+            ))
+        } followedBy {
+          entityStack.pop()
+        }
+        case node: EntityLowered => {
+          val declarations = walk(node.declarations)
+          val instances = walk(node.instances)
+          val connects = walk(node.connects)
+          val statements = walk(node.statements)
+          doTransform(
+            TreeCopier(node)(
+              declarations,
+              instances,
+              connects,
+              statements
             ))
         } followedBy {
           entityStack.pop()
@@ -180,13 +218,16 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
         case node: StmtCase => {
           val expr = walk(node.expr)
           val cases = walk(node.cases)
-          val default = walk(node.default)
-          doTransform(TreeCopier(node)(expr, cases, default))
+          doTransform(TreeCopier(node)(expr, cases))
         }
-        case node: CaseClause => {
+        case node: RegularCase => {
           val cond = walk(node.cond)
-          val body = walk(node.body)
-          doTransform(TreeCopier(node)(cond, body))
+          val stmt = walk(node.stmt)
+          doTransform(TreeCopier(node)(cond, stmt))
+        }
+        case node: DefaultCase => {
+          val stmt = walk(node.stmt)
+          doTransform(TreeCopier(node)(stmt))
         }
         case node: StmtLoop => {
           val body = walk(node.body)
@@ -214,8 +255,9 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
           val body = walk(node.body)
           doTransform(TreeCopier(node)(inits, body))
         }
-        case node: StmtFence => doTransform(node)
-        case node: StmtBreak => doTransform(node)
+        case node: StmtFence    => doTransform(node)
+        case node: StmtBreak    => doTransform(node)
+        case node: StmtContinue => doTransform(node)
         case node: StmtGoto => {
           val expr = walk(node.expr)
           doTransform(TreeCopier(node)(expr))
@@ -243,9 +285,9 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
           val decl = walk(node.decl)
           doTransform(TreeCopier(node)(decl))
         }
-        case node: StmtRead          => doTransform(node)
-        case node: StmtWrite         => doTransform(node)
-        case node: StmtDollarComment => doTransform(node)
+        case node: StmtRead    => doTransform(node)
+        case node: StmtWrite   => doTransform(node)
+        case node: StmtComment => doTransform(node)
         case node: StmtStall => {
           val cond = walk(node.cond)
           doTransform(TreeCopier(node)(cond))
@@ -322,7 +364,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
     // Ensure locations are present
     tree visitAll {
       case node: Tree if !node.hasLoc => {
-        cc.ice(s"Lost location of node:", node.toString)
+        cc.ice(s"Lost location of node:", node.toString, this.getClass.getName)
       }
     }
 
@@ -330,18 +372,22 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
     if (typed) {
       tree visit {
         case node: Tree if !node.hasTpe => {
-          cc.ice(node, "Lost type of node:", node.toString)
+          cc.ice(node, "Lost type of node:", node.toString, this.getClass.getName)
         }
         case node: Tree if node.tpe == TypeError => {
-          cc.ice(node, "Transformed tree has type error:", node.toString)
+          cc.ice(node, "Transformed tree has type error:", node.toString, this.getClass.getName)
         }
         case node @ Instance(Sym(iSymbol), Sym(eSymbol: TypeSymbol), _, _)
             if iSymbol.kind != TypeInstance(eSymbol) => {
-          cc.ice(node, "Bad type for instance symbol", iSymbol.kind.toString)
+          cc.ice(node, "Bad type for instance symbol", iSymbol.kind.toString, this.getClass.getName)
         }
-        case node @ Entity(Sym(eSymbol), _, _, _, _, _, _, _, _)
+        case node @ EntityNamed(eSymbol, _, _, _, _, _, _, _, _)
             if !eSymbol.kind.isInstanceOf[TypeEntity] => {
-          cc.ice(node, "Bad type for entity symbol", eSymbol.kind.toString)
+          cc.ice(node, "Bad type for entity symbol", eSymbol.kind.toString, this.getClass.getName)
+        }
+        case node @ EntityLowered(eSymbol, _, _, _, _, _)
+            if !eSymbol.kind.isInstanceOf[TypeEntity] => {
+          cc.ice(node, "Bad type for entity symbol", eSymbol.kind.toString, this.getClass.getName)
         }
       }
     }
@@ -371,6 +417,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
               node,
               s"reference to undeclared symbol '${symbol.name}'",
               s"of type '${symbol.kind.toSource}'",
+              this.getClass.getName,
               tree.toSource
             )
           }

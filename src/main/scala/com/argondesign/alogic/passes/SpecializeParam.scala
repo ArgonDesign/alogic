@@ -26,6 +26,7 @@ import com.argondesign.alogic.core.Symbols.TypeSymbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.transform.CloneEntity
 import com.argondesign.alogic.typer.TypeAssigner
+import com.argondesign.alogic.typer.Typer
 import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.tailrec
@@ -33,13 +34,15 @@ import scala.language.postfixOps
 
 final class SpecializeParam(
     val defaultBindingsMap: Map[TypeSymbol, Bindings],
-    val specializationMap: Map[TypeSymbol, Map[Bindings, Entity]]
+    val specializationMap: Map[TypeSymbol, Map[Bindings, EntityNamed]]
 )(implicit cc: CompilerContext)
     extends TreeTransformer {
 
+  override val typed = false
   override val checkRefs = false
 
   override def skip(tree: Tree): Boolean = tree match {
+    case _: Root     => false
     case _: Entity   => false
     case _: Instance => false
     case _           => true
@@ -66,8 +69,7 @@ final class SpecializeParam(
           }
           // Complete them with the default bindings
           val completeBindings = defaultBindingsMap(eSymbol) ++ paramBindings
-          val Sym(sSymbol: TypeSymbol) = bindingsMap(completeBindings).ref
-          sSymbol
+          bindingsMap(completeBindings).symbol
         } getOrElse {
           eSymbol
         }
@@ -91,7 +93,7 @@ object SpecializeParam extends Pass {
   val name = "specialize-param"
 
   // Recursively specialize entities directly nested within this entity
-  def specialize(entity: Entity)(implicit cc: CompilerContext): Entity = {
+  def specialize(entity: EntityNamed)(implicit cc: CompilerContext): EntityNamed = {
     assert {
       entity.declarations forall {
         case Decl(s, _) => !s.kind.isParam
@@ -99,11 +101,51 @@ object SpecializeParam extends Pass {
       }
     }
 
+    // Gather the entity symbols we are specializing on this round
+    val eSymbols = entity.entities map { _.symbol }
+
+    // Since we need the values of const and param symbols for parameter
+    // specialization, we type check their declarations here. This also has
+    // the side-effect of assigning their init attributes, meaning we can
+    // compute values dependent on const symbols.
+    entity.entities.par flatMap { entity =>
+      entity.declarations collect {
+        case decl @ Decl(symbol, _) if symbol.kind.isParam => Typer(decl)
+        case decl @ Decl(symbol, _) if symbol.kind.isConst => Typer(decl)
+      }
+    }
+
+    // Similarly, type check parameter assignments in instantiations
+    def checkParamAssigns(entity: EntityNamed): Unit = {
+      for {
+        Instance(_, Sym(eSymbol: TypeSymbol), pNames, pExprs) <- entity.instances
+        if eSymbols contains eSymbol
+        pSymbols = eSymbol.kind.asInstanceOf[TypeEntity].paramSymbols
+        (pName, pExpr) <- pNames zip pExprs
+      } {
+        // Get the parameter symbol
+        val pSymbolOpt = pSymbols.collectFirst { case symbol if symbol.name == pName => symbol }
+        if (pSymbolOpt.isEmpty) {
+          cc.error(pExpr, s"No parameter named '${pName}' in entity '${eSymbol.name}'")
+        }
+
+        Typer(pExpr)
+        // TODO: Add ArgAssign Tree node and type check
+        //      pSymbolOpt foreach { pSymbol =>
+        //        val ref = ExprRef(pSymbol) withLoc pExpr.loc
+        //        val ass = StmtAssign(ref, pExpr) withLoc pExpr.loc
+        //        Typer(ass)
+        //      }
+      }
+      entity.entities foreach checkParamAssigns
+    }
+    checkParamAssigns(entity)
+
+    cc.stopIfError()
+
     // Gather the 'entity symbol' -> 'default bindings' map
     val defaultBindingsMap: Map[TypeSymbol, Bindings] = {
       val pairs = entity.entities.par map { entity =>
-        val Sym(eSymbol: TypeSymbol) = entity.ref
-
         // Build the default bindings for this entity
         val bindings = Bindings {
           entity.declarations collect {
@@ -115,7 +157,7 @@ object SpecializeParam extends Pass {
         bindings.keysIterator foreach { _.attr.owner set entity }
 
         // Make pair with expanded the bindings
-        eSymbol -> bindings.expand
+        entity.symbol -> bindings.expand
       } filter {
         // Drop non-parametrized entities
         _._2.nonEmpty
@@ -132,36 +174,37 @@ object SpecializeParam extends Pass {
       pairs.seq.toMap
     }
 
-    // Build a map from instance symbols to the particular parameter bindings
-    // used for any instance created under and including the given entity.
-    // Ensure these are complete bindings by using default parameter values
-    // when needed
-    def gatherInstantiationBindings(entity: Entity): Map[TermSymbol, Bindings] = {
-      // Build the map of instances in this entity
-      val thisMap = entity.instances collect {
-        case Instance(Sym(iSymbol: TermSymbol), Sym(eSymbol: TypeSymbol), pNames, pExprs)
-            if defaultBindingsMap contains eSymbol => {
-          iSymbol -> Bindings {
-            val pMap = (pNames zip pExprs).toMap
-            eSymbol.kind.asInstanceOf[TypeEntity].paramSymbols map { pSymbol =>
-              val expr = pMap get pSymbol.name map {
-                _.simplify
-              } getOrElse {
-                defaultBindingsMap(eSymbol)(pSymbol)
+    // Gather the 'instance symbol' -> 'particular bindings'
+    val instanceBindingsMap: Map[TermSymbol, Bindings] = {
+      // Build a map from instance symbols to the particular parameter bindings
+      // used for any instance created under and including the given entity.
+      // Ensure these are complete bindings by using default parameter values
+      // when needed
+      def gatherInstantiationBindings(entity: EntityNamed): Map[TermSymbol, Bindings] = {
+        // Build the map of instances in this entity
+        val thisMap = entity.instances collect {
+          case Instance(Sym(iSymbol: TermSymbol), Sym(eSymbol: TypeSymbol), pNames, pExprs)
+              if defaultBindingsMap contains eSymbol => {
+            iSymbol -> Bindings {
+              val pMap = (pNames zip pExprs).toMap
+              eSymbol.kind.asInstanceOf[TypeEntity].paramSymbols map { pSymbol =>
+                val expr = pMap get pSymbol.name map {
+                  _.simplify
+                } getOrElse {
+                  defaultBindingsMap(eSymbol)(pSymbol)
+                }
+                pSymbol -> expr
               }
-              pSymbol -> expr
             }
           }
-        }
-      } toMap
-      // Apply recursively to all nested entities
-      val childMaps = entity.entities map gatherInstantiationBindings
-      // Merge all maps
-      (thisMap /: childMaps)(_ ++ _)
+        } toMap
+        // Apply recursively to all nested entities
+        val childMaps = entity.entities map gatherInstantiationBindings
+        // Merge all maps
+        (thisMap /: childMaps)(_ ++ _)
+      }
+      gatherInstantiationBindings(entity)
     }
-
-    // Gather the 'instance symbol' -> 'particular bindings'
-    val instanceBindingsMap: Map[TermSymbol, Bindings] = gatherInstantiationBindings(entity)
 
     // Compound the above 'instance symbol' -> 'particular bindings' map to
     // an 'entity symbol' -> 'Set(particular bindings)' map
@@ -196,7 +239,7 @@ object SpecializeParam extends Pass {
         simplified
       } else {
         // Expand based on the owner of the first parameter we encounter
-        val Sym(oEntitySymbol: TypeSymbol) = referenced.next().attr.owner.value.ref
+        val oEntitySymbol = referenced.next().attr.owner.value.symbol
         val oBindingsSet = entityBindingsMap(oEntitySymbol)
         val oDefaultBindings = defaultBindingsMap(oEntitySymbol)
 
@@ -219,15 +262,15 @@ object SpecializeParam extends Pass {
     // Specialize all entities by cloning them, substituting all relevant
     // instance bindings for parameters. Build a map from
     // 'entity symbol' -> 'bindings' -> 'specialized entity'
-    val specializationMap: Map[TypeSymbol, Map[Bindings, Entity]] = {
+    val specializationMap: Map[TypeSymbol, Map[Bindings, EntityNamed]] = {
       val pairs = entity.entities.par map { entity =>
-        val Sym(eSymbol: TypeSymbol) = entity.ref
+        val eSymbol = entity.symbol
         val eKind = eSymbol.kind.asInstanceOf[TypeEntity]
 
         // If an entity without instances (i.e.: a top-level) have
         // parameters, specialize them with default parameters
         lazy val fallBack = if (eKind.paramSymbols.nonEmpty) {
-          cc.warning(entity.ref,
+          cc.warning(eSymbol.loc,
                      s"Parameters of top level module '${eSymbol.name}' will " +
                        "be specialized using default initializers")
           Set(defaultBindingsMap(eSymbol))
@@ -256,7 +299,8 @@ object SpecializeParam extends Pass {
                 s"${pSymbol.name}_${bindings(pSymbol).value.get}"
               }
               val cloneName = (eSymbol.name :: suffixes) mkString cc.sep
-              bindings -> entity.rewrite(new CloneEntity(bindings, cloneName)).asInstanceOf[Entity]
+              val cloner = new CloneEntity(typed = false, bindings, cloneName)
+              bindings -> entity.rewrite(cloner).asInstanceOf[EntityNamed]
             } toMap
           }
 
@@ -274,7 +318,7 @@ object SpecializeParam extends Pass {
     val specialized2 = {
       val par = specialized.par map { entity =>
         val tt = new SpecializeParam(defaultBindingsMap, specializationMap)
-        (entity rewrite tt).asInstanceOf[Entity]
+        (entity rewrite tt).asInstanceOf[EntityNamed]
       } map {
         specialize
       }
@@ -283,11 +327,11 @@ object SpecializeParam extends Pass {
 
     // Update and rewrite instantiations in the original entity
     val result = TypeAssigner {
-      entity.copy(entities = specialized2) withLoc entity.loc withVariant entity.variant
+      entity.copy(entities = specialized2) withLoc entity.loc
     } rewrite new SpecializeParam(defaultBindingsMap, specializationMap)
 
     // Done
-    result.asInstanceOf[Entity]
+    result.asInstanceOf[EntityNamed]
   }
 
   def apply(trees: List[Tree])(implicit cc: CompilerContext): List[Tree] = {
@@ -298,8 +342,8 @@ object SpecializeParam extends Pass {
     // nested inside it, but is otherwise empty.
 
     val entities = trees map {
-      case entity: Entity => entity
-      case _              => unreachable
+      case Root(_, entity: EntityNamed) => entity
+      case _                            => unreachable
     }
 
     val loc = Loc.synthetic
@@ -307,13 +351,10 @@ object SpecializeParam extends Pass {
     val rootSymbol = {
       cc.newTypeSymbol("@@@root@@@", loc, TypeEntity("@@@root@@@", Nil, Nil))
     }
-
-    val ref = TypeAssigner {
-      Sym(rootSymbol) withLoc loc
-    }
+    rootSymbol.attr.variant set "network"
 
     val root = TypeAssigner {
-      Entity(ref, Nil, Nil, Nil, Nil, Nil, Nil, entities, Map()) withLoc loc withVariant "network"
+      EntityNamed(rootSymbol, Nil, Nil, Nil, Nil, Nil, Nil, entities, Map()) withLoc loc
     }
 
     specialize(root).entities

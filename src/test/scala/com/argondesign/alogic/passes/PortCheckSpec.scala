@@ -33,9 +33,9 @@ final class PortCheckSpec extends FreeSpec with AlogicTest {
   def xform(trees: Tree*): Unit = {
     val entities = trees map {
       _ match {
-        case root: Root     => root.entity
-        case entity: Entity => entity
-        case _              => unreachable
+        case Root(_, entity: EntityIdent) => entity
+        case entity: EntityIdent          => entity
+        case _                            => unreachable
       }
     }
 

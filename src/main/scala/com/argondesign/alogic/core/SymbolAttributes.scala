@@ -22,13 +22,15 @@ class SymbolAttributes {
   // Symbol is meant to be unused, do not warn
   val unused = new Attribute[Boolean]()
 
+  // The variant flavour of this entity (e.g: fsm/network/verbatim)
+  val variant = new Attribute[String]()
   // Is this a toplevel entity
   val topLevel = new Attribute[Boolean]()
   // Is this an entry point function
   val entry = new Attribute[Boolean]()
 
   // The entity that owns the definition of this symbol
-  val owner = new Attribute[Entity]()
+  val owner = new Attribute[EntityNamed]() // TODO: move to SpecializeParam
 
   // The initializer expression, from the declaration, if there was one
   val init = new Attribute[Expr]()
@@ -96,6 +98,7 @@ class SymbolAttributes {
   // Iterator that enumerates all fields above
   private def attrIterator = Iterator(
     unused,
+    variant,
     topLevel,
     entry,
     owner,
@@ -126,6 +129,7 @@ class SymbolAttributes {
   // Iterator that enumerates names of fields above
   private def nameIterator = Iterator(
     "unused",
+    "variant",
     "topLevel",
     "entry",
     "owner",
@@ -166,6 +170,7 @@ class SymbolAttributes {
       for ((name, expr) <- that.attr) {
         name match {
           case "unused"     => unused set true
+          case "//variant"  => variant set expr.asInstanceOf[ExprStr].value
           case "stacklimit" => stackLimit set expr
           case "reclimit"   => recLimit set expr
           case "toplevel"   => topLevel set true

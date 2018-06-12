@@ -66,7 +66,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
             val node = tree rewrite checker
 
             inside(node) {
-              case Entity(_, _, _, _, List(main), _, _, _, _) =>
+              case EntityIdent(_, _, _, _, _, List(main), _, _) =>
                 inside(main) {
                   case Function(_, List(stmt)) =>
                     stmt shouldBe StmtError()
@@ -187,7 +187,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
                     |}""".asTree[Entity]
 
       tree rewrite checker should matchPattern {
-        case Entity(_, Nil, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
+        case EntityIdent(_, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
       }
 
       cc.messages should have length 2
@@ -206,7 +206,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         val tree = entity rewrite checker
 
         inside(tree) {
-          case Entity(_, List(decl), Nil, Nil, Nil, Nil, Nil, Nil, _) =>
+          case EntityIdent(_, List(decl), Nil, Nil, Nil, Nil, Nil, _) =>
             inside(decl) {
               case DeclIdent(_, TypeOut(_, fc, st), _) =>
                 fc shouldBe FlowControlTypeNone
@@ -227,7 +227,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         val tree = entity rewrite checker
 
         inside(tree) {
-          case Entity(_, List(decl), Nil, Nil, Nil, Nil, Nil, Nil, _) =>
+          case EntityIdent(_, List(decl), Nil, Nil, Nil, Nil, Nil, _) =>
             inside(decl) {
               case DeclIdent(_, TypeOut(_, fc, st), _) =>
                 fc shouldBe FlowControlTypeValid
@@ -248,9 +248,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
                     | default: b;
                     |}""".asTree[Stmt]
 
-      tree rewrite checker should matchPattern {
-        case StmtCase(_, _, Nil) =>
-      }
+      tree rewrite checker shouldBe StmtError()
 
       cc.messages should have length 2
       cc.messages(0) should beThe[Error]("Multiple 'default' clauses specified in case statement")
@@ -274,7 +272,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
                            |}""".stripMargin.asTree[Entity]
 
             tree rewrite checker should matchPattern {
-              case Entity(_, Nil, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
+              case EntityIdent(_, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
             }
 
             cc.messages.loneElement should beThe[Error](
@@ -292,7 +290,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
                            |}""".stripMargin.asTree[Entity]
 
             tree rewrite checker should matchPattern {
-              case Entity(_, Nil, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
+              case EntityIdent(_, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
             }
 
             cc.messages.loneElement should beThe[Error](
@@ -310,7 +308,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
                            |}""".stripMargin.asTree[Entity]
 
             tree rewrite checker should matchPattern {
-              case Entity(_, Nil, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
+              case EntityIdent(_, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
             }
 
             cc.messages.loneElement should beThe[Error](
@@ -328,7 +326,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
                            |}""".stripMargin.asTree[Entity]
 
             tree rewrite checker should matchPattern {
-              case Entity(_, Nil, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
+              case EntityIdent(_, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
             }
 
             cc.messages should have length 2
@@ -349,7 +347,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
                            |}""".stripMargin.asTree[Entity]
 
             tree rewrite checker should matchPattern {
-              case Entity(_, Nil, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
+              case EntityIdent(_, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
             }
 
             cc.messages.loneElement should beThe[Error](
@@ -367,7 +365,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
                            |}""".stripMargin.asTree[Entity]
 
             tree rewrite checker should matchPattern {
-              case Entity(_, Nil, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
+              case EntityIdent(_, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
             }
 
             cc.messages.loneElement should beThe[Error](
@@ -377,28 +375,84 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         }
       }
 
-      s"declarations in verbatim" - {
+      s"declarations in fsm" - {
         for {
           (decl, msg) <- List(
-            ("i8 a", "variable"),
-            ("i8 a[2]", "array"),
             ("pipeline i8 a", "pipeline variable")
           )
         } {
           decl in {
-            val tree = s"""|verbatim entity a {
+            val tree = s"""|fsm a {
                            |  ${decl};
                            |}""".stripMargin.asTree[Entity]
 
             tree rewrite checker should matchPattern {
-              case entity: Entity =>
+              case entity: EntityIdent =>
             }
 
             cc.messages.loneElement should beThe[Error](
-              s"'verbatim' entity cannot contain ${msg} declarations")
+              s"'fsm' entity cannot contain ${msg} declarations")
             cc.messages(0).loc.line shouldBe 2
           }
 
+        }
+      }
+
+      s"declarations in networks" - {
+        for {
+          (decl, msg) <- List(
+            ("i8 a", "variable"),
+            ("i8 a[2]", "distributed memory"),
+            ("sram i8 a[2]", "SRAM"),
+            ("sram wire i8 a[2]", "SRAM"),
+            ("sram s_t a[2]", "SRAM"),
+            ("sram wire s_t a[2]", "SRAM")
+          )
+        } {
+          decl in {
+            val tree = s"""|struct s_t {
+                           |  bool s;
+                           |};
+                           |
+                           |network a {
+                           |  ${decl};
+                           |}""".stripMargin.asTree[Root]
+
+            tree rewrite checker
+
+            cc.messages.loneElement should beThe[Error](
+              s"'network' entity cannot contain ${msg} declarations")
+            cc.messages(0).loc.line shouldBe 6
+          }
+
+        }
+      }
+
+      s"declarations in verbatim" - {
+        for {
+          (decl, msg) <- List(
+            ("i8 a", "variable"),
+            ("i8 a[2]", "distributed memory"),
+            ("pipeline i8 a", "pipeline variable"),
+            ("sram s_t a[2]", "registered SRAM"),
+            ("sram i8 a[2]", "registered SRAM"),
+          )
+        } {
+          decl in {
+            val tree = s"""|struct s_t {
+                           |  bool s;
+                           |};
+                           |
+                           |verbatim entity a {
+                           |  ${decl};
+                           |}""".stripMargin.asTree[Root]
+
+            tree rewrite checker
+
+            cc.messages.loneElement should beThe[Error](
+              s"'verbatim' entity cannot contain ${msg} declarations")
+            cc.messages(0).loc.line shouldBe 6
+          }
         }
       }
     }
@@ -573,10 +627,8 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
           val tree = s"""|${entity} a {
                          | in bool b;
                          | out bool c;
-                         | i8 d;
                          | param i8 e = 2;
                          | const i8 f = 2;
-                         | i8 g[2];
                          |
                          | verbatim verilog {}
                          |}""".stripMargin.asTree[Entity]
@@ -592,22 +644,25 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
     "Check initializer expressions" - {
       "are not present in declarations where disallowed" - {
         for {
-          (decl, msg) <- List(
-            ("i8 a = 0", ""),
-            ("param i8 a = 0", ""),
-            ("const i8 a = 0", ""),
-            ("i2[8] a = 0", ""),
-            ("s a = 0", ""),
-            ("i8 a[2] = 0", "Array declarations"),
-            ("sram i8 a[2] = 0", "SRAM declarations"),
-            ("in i8 a = 0", "Input port declarations"),
-            ("out i8 a = 0", ""),
-            ("out wire i8 a = 0", "Output port with 'wire' storage specifier"),
-            ("out sync i8 a = 0", "Output port declarations with 'sync' flow control"),
-            ("out sync ready i8 a = 0", "Output port declarations with 'sync ready' flow control"),
-            ("out sync accept i8 a = 0",
+          (entity, decl, msg) <- List(
+            ("fsm", "i8 a = 0", ""),
+            ("fsm", "param i8 a = 0", ""),
+            ("fsm", "const i8 a = 0", ""),
+            ("fsm", "i2[8] a = 0", ""),
+            ("fsm", "s a = 0", ""),
+            ("fsm", "i8 a[2] = 0", "Array declarations"),
+            ("fsm", "sram i8 a[2] = 0", "SRAM declarations"),
+            ("fsm", "in i8 a = 0", "Input port declarations"),
+            ("fsm", "out i8 a = 0", ""),
+            ("fsm", "out wire i8 a = 0", "Output port with 'wire' storage specifier"),
+            ("fsm", "out sync i8 a = 0", "Output port declarations with 'sync' flow control"),
+            ("fsm",
+             "out sync ready i8 a = 0",
+             "Output port declarations with 'sync ready' flow control"),
+            ("fsm",
+             "out sync accept i8 a = 0",
              "Output port declarations with 'sync accept' flow control"),
-            ("pipeline i8 a = 0", "Pipeline variable declarations")
+            ("network", "pipeline i8 a = 0", "Pipeline variable declarations")
           )
         } {
           decl in {
@@ -615,7 +670,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
                            |  i8 b;
                            |};
                            |
-                           |fsm x {
+                           |${entity} x {
                            |  ${decl};
                            |}""".stripMargin.asTree[Root]
             tree rewrite checker shouldBe a[Root]
@@ -632,16 +687,16 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
 
       "are present in declarations where required" - {
         for {
-          (decl, msg) <- List(
-            ("i8 a ", ""),
-            ("param i8 a", "Parameter"),
-            ("const i8 a", "Constant"),
-            ("i2[8] a", ""),
-            ("s a", ""),
-            ("i8 a[2]", ""),
-            ("in i8 a", ""),
-            ("out i8 a", ""),
-            ("pipeline i8 a", "")
+          (entity, decl, msg) <- List(
+            ("fsm", "i8 a ", ""),
+            ("fsm", "param i8 a", "Parameter"),
+            ("fsm", "const i8 a", "Constant"),
+            ("fsm", "i2[8] a", ""),
+            ("fsm", "s a", ""),
+            ("fsm", "i8 a[2]", ""),
+            ("fsm", "in i8 a", ""),
+            ("fsm", "out i8 a", ""),
+            ("network", "pipeline i8 a", "")
           )
         } {
           decl in {
@@ -649,7 +704,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
                            |  i8 b;
                            |};
                            |
-                           |fsm x {
+                           |${entity} x {
                            |  ${decl};
                            |}""".stripMargin.asTree[Root]
             tree rewrite checker shouldBe a[Root]

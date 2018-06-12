@@ -295,9 +295,9 @@ fsm v {
 
   verbatim verilog {
     // Tick away
-    always @(posedge clk) {
+    always @(posedge clk) begin
       $display("tick");
-    }
+    end
   }
 }
 ```
@@ -308,9 +308,9 @@ The Verilog module output for the above would end as:
   ...
 
     // Tick away
-    always @(posedge clk) {
+    always @(posedge clk) begin
       $display("tick");
-    }
+    end
 
 endmodule
 ```
@@ -330,6 +330,7 @@ A list of:
 - `out` port declarations
 - `param` declarations
 - `const` declarations
+- `sram wire` declarations
 
 Followed by an arbitrary number of `verbatim` blocks. For example:
 
@@ -348,6 +349,11 @@ usual way. Output ports have no associated storage elements.
 
 `param` and `const` declarations are emitted as Verilog `localparam`
 declarations after undergoing parameter specialization.
+
+SRAM declarations in verbatim entities must use the `wire` qualifier. The
+compiler automatically sets the `liftsrams` attribute on verbatim entities,
+resulting in standard SRAM ports being added in the output Verilog. These SRAM
+ports can then be referenced in verbatim blocks.
 
 Verbatim entities can be instantiated in other Alogic entities without
 restrictions.

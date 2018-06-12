@@ -53,7 +53,7 @@ their Verilog equivalent:
 Alogic supports the usual ternary conditional `?:` operator:
 
 ```
-  cond ? thenExpr : elseExpre ;
+  cond ? thenExpr : elseExpr ;
 ```
 
 ### Indexing and slicing

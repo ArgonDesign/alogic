@@ -40,8 +40,8 @@ private[builtins] class AtBits(implicit cc: CompilerContext) extends BuiltinPoly
 
   def fold(loc: Loc, args: List[Expr]) = {
     args.head.tpeOpt map {
-      case TypeType(kind) => kind.width
-      case kind           => kind.width
+      case TypeType(kind) => Expr(kind.width)
+      case kind           => Expr(kind.width)
     }
   }
 }

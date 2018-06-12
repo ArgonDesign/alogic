@@ -17,6 +17,7 @@ package com.argondesign.alogic.ast
 
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Symbols.TermSymbol
+import com.argondesign.alogic.core.Symbols.TypeSymbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.StructuredTree
 import com.argondesign.alogic.core.SourceAttributes
@@ -63,27 +64,70 @@ object Trees {
   // Entity (module) nodes
   ///////////////////////////////////////////////////////////////////////////////
 
-  case class Entity(
+  // There are multiple flavours of Entity nodes. They are successively being
+  // replaced with later kinds during lowering through the compiler passes,
+  // but at any given pass all input entities are always the same, and all
+  // output entities are always the same flavour.
+
+  sealed trait Entity extends Tree
+
+  // Introduced by Parser
+  case class EntityIdent(
       // Entity being defined
-      ref: Ref,
+      ident: Ident,
       // Declarations in entity scope
       declarations: List[Declaration],
       // Instantiations
       instances: List[Instance],
       // Port connections
       connects: List[Connect],
-      // Functions
-      functions: List[Function],
-      // Sates
-      states: List[State],
       // fence statements
       fenceStmts: List[Stmt],
+      // Functions
+      functions: List[Function],
       // Nested entity definitions
       entities: List[Entity],
       // Verbatim sections. Map from language to string to insert into output
       verbatim: Map[String, String]
-  ) extends Tree
-      with EntityOps
+  ) extends Entity
+
+  // Introduced by Namer
+  case class EntityNamed(
+      // Entity being defined
+      symbol: TypeSymbol,
+      // Declarations in entity scope
+      declarations: List[Declaration],
+      // Instantiations
+      instances: List[Instance],
+      // Port connections
+      connects: List[Connect],
+      // fence statements
+      fenceStmts: List[Stmt],
+      // Functions
+      functions: List[Function],
+      // Sates
+      states: List[State],
+      // Nested entity definitions
+      entities: List[EntityNamed],
+      // Verbatim sections. Map from language to string to insert into output
+      verbatim: Map[String, String]
+  ) extends Entity
+
+  // Introduced by CreateStateSystem
+  case class EntityLowered(
+      // Entity being defined
+      symbol: TypeSymbol,
+      // Declarations in entity scope
+      declarations: List[Declaration],
+      // Instantiations
+      instances: List[Instance],
+      // Port connections
+      connects: List[Connect],
+      // The list of combinatorial statements to apply every cycle
+      statements: List[Stmt],
+      // Verbatim sections. Map from language to string to insert into output
+      verbatim: Map[String, String]
+  ) extends Entity
 
   ///////////////////////////////////////////////////////////////////////////////
   // Entity contents
@@ -120,8 +164,13 @@ object Trees {
 
   case class StmtBlock(body: List[Stmt]) extends Stmt
   case class StmtIf(cond: Expr, thenStmt: Stmt, elseStmt: Option[Stmt]) extends Stmt
-  case class StmtCase(expr: Expr, cases: List[CaseClause], default: List[Stmt]) extends Stmt
-  case class CaseClause(cond: List[Expr], body: Stmt) extends Tree
+  case class StmtCase(expr: Expr, cases: List[Case]) extends Stmt
+
+  sealed trait Case extends Tree {
+    val stmt: Stmt
+  }
+  case class RegularCase(cond: List[Expr], stmt: Stmt) extends Case
+  case class DefaultCase(stmt: Stmt) extends Case
 
   case class StmtLoop(body: List[Stmt]) extends Stmt
   case class StmtWhile(cond: Expr, body: List[Stmt]) extends Stmt
@@ -133,6 +182,7 @@ object Trees {
 
   case class StmtFence() extends Stmt
   case class StmtBreak() extends Stmt
+  case class StmtContinue() extends Stmt
   case class StmtGoto(expr: Expr) extends Stmt
   case class StmtReturn() extends Stmt
 
@@ -145,9 +195,9 @@ object Trees {
   case class StmtRead() extends Stmt
   case class StmtWrite() extends Stmt
 
-  case class StmtDollarComment(str: String) extends Stmt // TODO: remove
-
   case class StmtStall(cond: Expr) extends Stmt
+
+  case class StmtComment(str: String) extends Stmt
 
   case class StmtError() extends Stmt // placeholder when errors happened
 
@@ -176,12 +226,13 @@ object Trees {
 
   // Literals
   case class ExprInt(signed: Boolean, width: Int, value: BigInt) extends Expr {
-    require(width > 0)
-    require(signed || value >= 0)
-    require(if (value >= 0) (value >> width) == 0 else (value >> width) == -1)
+    require(width > 0, s"widht=${width}")
+    require(signed || value >= 0, s"signed=${signed}, value=${value}")
+    require(if (value >= 0) (value >> width) == 0 else (value >> width) == -1,
+            s"width=${width}, value=${value}")
   }
   case class ExprNum(signed: Boolean, value: BigInt) extends Expr {
-    require(signed || value >= 0)
+    require(signed || value >= 0, s"signed=${signed}, value=${value}")
   }
   case class ExprStr(value: String) extends Expr
 

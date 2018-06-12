@@ -50,89 +50,120 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
   private[this] var entityLevel = 0
 
   override def enter(tree: Tree): Unit = tree match {
-    case _: Entity => entityLevel += 1
-    case _         =>
+    case _: EntityIdent => entityLevel += 1
+    case _              =>
   }
 
   override def transform(tree: Tree): Tree = tree match {
-    case entity: Entity => {
-      val variant = entity.variant match {
+    case entity: EntityIdent => {
+      val variant = entity.ident.attr("//variant").asInstanceOf[ExprStr].value match {
         case "fsm"      => "fsm"
         case "network"  => "network"
         case "verbatim" => "verbatim"
         case other      => cc.ice(entity, s"Unknown entity variant '$other'")
       }
 
-      def err(nodes: List[Tree], content: String) = {
-        nodes foreach { cc.error(_, s"'${variant}' entity cannot contain ${content}") }
+      def err(node: Tree, content: String): Unit = {
+        cc.error(node, s"'${variant}' entity cannot contain ${content}")
+      }
+
+      def errs(nodes: List[Tree], content: String) = {
+        nodes foreach { err(_, content) }
         Nil
       }
 
       val instances = variant match {
         case "network" => entity.instances
-        case _         => err(entity.instances, "instantiations")
+        case _         => errs(entity.instances, "instantiations")
       }
 
       val connects = variant match {
         case "network" => entity.connects
-        case _         => err(entity.connects, "connections")
+        case _         => errs(entity.connects, "connections")
       }
 
       val functions = variant match {
         case "fsm" => entity.functions
-        case _     => err(entity.functions, "function definitions")
+        case _     => errs(entity.functions, "function definitions")
       }
 
       val fenceBlocks = variant match {
         case "fsm" => entity.fenceStmts
-        case _     => err(entity.fenceStmts, "fence blocks")
+        case _     => errs(entity.fenceStmts, "fence blocks")
       }
 
       val entities = variant match {
         case "network" => entity.entities
-        case _         => err(entity.entities, "nested entities")
+        case _         => errs(entity.entities, "nested entities")
       }
 
       val fenceStmts = if (fenceBlocks.length > 1) {
-        val Ident(name) = entity.ref
         fenceBlocks foreach {
-          cc.error(_, s"Multiple fence blocks specified in entity '${name}'")
+          cc.error(_, s"Multiple fence blocks specified in entity '${entity.ident.name}'")
         }
         Nil
       } else {
         fenceBlocks
       }
 
-      val declarations = variant match {
-        case "verbatim" => {
-          val (goodDecls, badDecls) = entity.declarations.partition {
-            case decl: DeclIdent => {
-              decl.kind match {
-                case _: TypeIn    => true
-                case _: TypeOut   => true
-                case _: TypeParam => true
-                case _: TypeConst => true
-                case _            => false
-              }
-            }
-            case _ => unreachable
-          }
+      val declarations = {
 
-          badDecls foreach {
-            case decl: DeclIdent => {
-              val hint = decl.kind match {
-                case _: TypeArray    => "array"
-                case _: TypePipeline => "pipeline variable"
-                case _               => "variable"
-              }
-              err(List(decl), s"${hint} declarations")
-            }
-            case _ => unreachable
-          }
-
-          goodDecls
+        def derr(node: Tree, content: String): Boolean = {
+          err(node, content + " declarations")
+          false
         }
-        case _ => entity.declarations
+
+        variant match {
+          case "fsm" => {
+            entity.declarations.filter {
+              case decl: DeclIdent => {
+                decl.kind match {
+                  case _: TypePipeline => derr(decl, "pipeline variable")
+                  case _               => true
+                }
+              }
+              case _ => unreachable
+            }
+          }
+
+          case "network" => {
+            entity.declarations.filter {
+              case decl: DeclIdent => {
+                decl.kind match {
+                  case _: TypeIn       => true
+                  case _: TypeOut      => true
+                  case _: TypeParam    => true
+                  case _: TypeConst    => true
+                  case _: TypePipeline => true
+                  case _: TypeArray    => derr(decl, "distributed memory")
+                  case _: TypeSram     => derr(decl, "SRAM")
+                  case _               => derr(decl, "variable")
+                }
+              }
+              case _ => unreachable
+            }
+          }
+
+          case "verbatim" => {
+            entity.declarations.filter {
+              case decl: DeclIdent => {
+                decl.kind match {
+                  case _: TypeIn                       => true
+                  case _: TypeOut                      => true
+                  case _: TypeParam                    => true
+                  case _: TypeConst                    => true
+                  case _: TypeArray                    => derr(decl, "distributed memory")
+                  case _: TypePipeline                 => derr(decl, "pipeline variable")
+                  case TypeSram(_, _, StorageTypeWire) => true
+                  case TypeSram(_, _, _)               => derr(decl, "registered SRAM")
+                  case _                               => derr(decl, "variable")
+                }
+              }
+              case _ => unreachable
+            }
+          }
+          case _ => unreachable
+        }
       }
 
       if (variant != "verbatim" &&
@@ -143,18 +174,17 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
           fenceStmts.isEmpty &&
           entities.isEmpty) {
         cc.warning(
-          entity.ref,
-          s"Entity '${entity.ref.toSource}' contains only verbatim blocks, use a 'verbatim entity' instead")
+          entity.ident,
+          s"Entity '${entity.ident.name}' contains only verbatim blocks, use a 'verbatim entity' instead")
       }
 
       TreeCopier(entity)(
-        entity.ref,
+        entity.ident,
         declarations,
         instances,
         connects,
-        functions,
-        entity.states,
         fenceStmts,
+        functions,
         entities
       )
     } followedBy {
@@ -262,11 +292,16 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
       } getOrElse tree
     }
 
-    case StmtCase(expr, cases, default) if default.length > 1 => {
-      default foreach {
-        cc.error(_, "Multiple 'default' clauses specified in case statement")
+    case StmtCase(_, cases) => {
+      val defaults = cases collect { case c: DefaultCase => c }
+      if (defaults.lengthCompare(1) <= 0) {
+        tree
+      } else {
+        defaults foreach {
+          cc.error(_, "Multiple 'default' clauses specified in case statement")
+        }
+        StmtError() withLoc tree.loc
       }
-      StmtCase(expr, cases, Nil) withLoc tree.loc
     }
 
     case StmtAssign(lhs, _) => {

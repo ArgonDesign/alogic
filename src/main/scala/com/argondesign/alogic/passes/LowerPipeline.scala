@@ -23,7 +23,6 @@ import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeReady
 import com.argondesign.alogic.core.StorageTypes.StorageSliceFwd
 import com.argondesign.alogic.core.StorageTypes.StorageTypeSlices
 import com.argondesign.alogic.core.Symbols.TermSymbol
-import com.argondesign.alogic.core.Symbols.TypeSymbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Stack
 import com.argondesign.alogic.typer.TypeAssigner
@@ -57,7 +56,7 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
 
   override def skip(tree: Tree): Boolean = tree match {
     // If this is the root entity, skip it if it has no pipeline declarations
-    case entity: Entity if firstEntity => {
+    case entity: EntityNamed if firstEntity => {
       firstEntity = false
       entity.declarations forall {
         case Decl(symbol, _) => !symbol.kind.isInstanceOf[TypePipeline]
@@ -68,7 +67,7 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
   }
 
   override def enter(tree: Tree): Unit = tree match {
-    case outer: Entity if outer.entities.nonEmpty => {
+    case outer: EntityNamed if outer.entities.nonEmpty => {
       rewriteEntity.push(true)
       // Collect pipeline symbols used in nested entities
       val useSets = for {
@@ -162,7 +161,7 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
 
   override def transform(tree: Tree): Tree = tree match {
     // Transform the outer entity
-    case entity: Entity if rewriteEntity.top && entity.entities.nonEmpty => {
+    case entity: EntityNamed if rewriteEntity.top && entity.entities.nonEmpty => {
       rewriteEntity.pop()
 
       // loose pipeline variable declarations
@@ -192,13 +191,13 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
       val result = entity.copy(
         declarations = newDecls,
         connects = newConns
-      ) withLoc entity.loc withVariant entity.variant
+      ) withLoc entity.loc
       TypeAssigner(result)
     }
 
     // Transform the nested entity
     // TODO: mark inlined
-    case entity: Entity if rewriteEntity.top => {
+    case entity: EntityNamed if rewriteEntity.top => {
       rewriteEntity.pop()
 
       // Construct pipeline port declarations
@@ -218,19 +217,18 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
       val newDecls = iPortOpt.toList ::: oPortOpt.toList ::: freshDecls ::: entity.declarations
 
       // Update type of entity to include new ports
-      val Sym(symbol: TypeSymbol) = entity.ref
-      val newKind = symbol.kind match {
+      val newKind = entity.symbol.kind match {
         case kind: TypeEntity => {
           val newPortSymbols = iPortSymbolOpt.toList ::: oPortSymbolOpt.toList ::: kind.portSymbols
           kind.copy(portSymbols = newPortSymbols)
         }
         case _ => unreachable
       }
-      symbol.kind = newKind
+      entity.symbol.kind = newKind
 
       val result = entity.copy(
         declarations = newDecls
-      ) withLoc entity.loc withVariant entity.variant
+      ) withLoc entity.loc
       TypeAssigner(result)
     }
 

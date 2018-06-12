@@ -23,6 +23,7 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Bindings
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.TreeInTypeTransformer
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.typer.TypeAssigner
@@ -32,6 +33,7 @@ import com.argondesign.alogic.util.unreachable
 import scala.collection.mutable
 
 final class CloneEntity(
+    override val typed: Boolean,
     parameterBindings: Bindings,
     cloneName: String
 )(implicit cc: CompilerContext)
@@ -49,7 +51,7 @@ final class CloneEntity(
 
   override def enter(tree: Tree): Unit = tree match {
 
-    case entity: Entity => {
+    case entity: EntityNamed => {
       entityLevel += 1
       // Clone new functions up front, as they can be referenced before definition
       for (Function(Sym(symbol: TermSymbol), _) <- entity.functions) {
@@ -57,116 +59,134 @@ final class CloneEntity(
       }
     }
 
+    case _: EntityLowered => ???
+
     case _ =>
   }
 
-  override def transform(tree: Tree): Tree = tree match {
+  def fixup(tree: Tree, loc: Loc): tree.type = {
+    tree withLoc loc
+    if (typed) TypeAssigner(tree)
+    tree
+  }
 
-    ////////////////////////////////////////////////////////////////////////////
-    // Clone the symbols in declaration
-    ////////////////////////////////////////////////////////////////////////////
+  override def transform(tree: Tree): Tree = {
+    val result = tree match {
 
-    case Decl(symbol, init) => {
-      // Change parameters that have a binding into constants
-      val (newKind, newInit) = parameterBindings.get(symbol) map { expr =>
-        assert(entityLevel == 1)
-        val TypeParam(kind) = symbol.kind
-        val newKind: Type = TypeConst(kind rewrite TypeCloneEntity)
-        val newInit: Option[Expr] = Some(expr)
-        (newKind, newInit)
-      } getOrElse {
-        val kind = symbol.kind rewrite TypeCloneEntity
-        (kind, init)
+      ////////////////////////////////////////////////////////////////////////////
+      // Clone the symbols in declaration
+      ////////////////////////////////////////////////////////////////////////////
+
+      case Decl(symbol, init) => {
+        // Change parameters that have a binding into constants
+        val (newKind, newInit) = parameterBindings.get(symbol) map { expr =>
+          assert(entityLevel == 1)
+          val TypeParam(kind) = symbol.kind
+          val newKind: Type = TypeConst(kind rewrite TypeCloneEntity)
+          val newInit: Option[Expr] = Some(expr)
+          (newKind, newInit)
+        } getOrElse {
+          val kind = symbol.kind rewrite TypeCloneEntity
+          (kind, init)
+        }
+        // Clone the symbol
+        val newSymbol = cc.newTermSymbol(symbol.name, symbol.loc, newKind)
+        newSymbol.attr update symbol.attr
+        symbolMap(symbol) = newSymbol
+        // Update the init attributes
+        newInit foreach newSymbol.attr.init.set
+        // Rewrite with new symbol and init
+        Decl(newSymbol, newInit)
       }
-      // Clone the symbol
-      val newSymbol = cc.newTermSymbol(symbol.name, symbol.loc, newKind)
-      newSymbol.attr update symbol.attr
-      symbolMap(symbol) = newSymbol
-      // Update the init attributes
-      newInit foreach newSymbol.attr.init.set
-      // Rewrite with new symbol and init
-      Decl(newSymbol, newInit) regularize tree.loc
-    }
 
-    ////////////////////////////////////////////////////////////////////////////
-    // Clone instance symbols
-    ////////////////////////////////////////////////////////////////////////////
+      ////////////////////////////////////////////////////////////////////////////
+      // Clone instance symbols
+      ////////////////////////////////////////////////////////////////////////////
 
-    case inst @ Instance(Sym(symbol: TermSymbol), _, _, _) => {
-      // Clone the symbol
-      val newSymbol = cc.newSymbolLike(symbol)
-      symbolMap(symbol) = newSymbol
-      // Rewrite with new symbol
-      inst.copy(ref = Sym(newSymbol)) regularize tree.loc
-    }
+      case inst @ Instance(Sym(symbol: TermSymbol), _, _, _) => {
+        // Clone the symbol
+        val newSymbol = cc.newSymbolLike(symbol)
+        symbolMap(symbol) = newSymbol
+        // Rewrite with new symbol
+        inst.copy(ref = fixup(Sym(newSymbol), tree.loc))
+      }
 
-    ////////////////////////////////////////////////////////////////////////////
-    // Update references
-    ////////////////////////////////////////////////////////////////////////////
+      ////////////////////////////////////////////////////////////////////////////
+      // Update references
+      ////////////////////////////////////////////////////////////////////////////
 
-    case ExprRef(symbol: TermSymbol) => {
-      symbolMap.get(symbol) map { ExprRef(_) regularize tree.loc } getOrElse tree
-    }
+      case ExprRef(symbol: TermSymbol) => {
+        symbolMap.get(symbol) map { ExprRef(_) } getOrElse tree
+      }
 
-    case Sym(symbol: TermSymbol) => {
-      symbolMap.get(symbol) map { Sym(_) regularize tree.loc } getOrElse tree
-    }
+      case Sym(symbol: TermSymbol) => {
+        symbolMap.get(symbol) map { Sym(_) } getOrElse tree
+      }
 
-    ////////////////////////////////////////////////////////////////////////////
-    // Create the new entity
-    ////////////////////////////////////////////////////////////////////////////
+      ////////////////////////////////////////////////////////////////////////////
+      // Create the new entity
+      ////////////////////////////////////////////////////////////////////////////
 
-    case entity: Entity => {
-      val newName = if (entityLevel > 1) entitySymbol.name else cloneName
+      case entity: EntityNamed => {
+        val newName = if (entityLevel > 1) entitySymbol.name else cloneName
 
-      // Update instances of nested entities to instantiate the cloned entity
-      val instances = entity.instances map {
-        case inst @ Instance(Sym(iSymbol), Sym(eSymbol), _, _) => {
-          symbolMap get eSymbol map { nSymbol =>
-            iSymbol.kind = TypeInstance(nSymbol.asInstanceOf[TypeSymbol])
-            inst.copy(module = Sym(nSymbol)) regularize inst.loc
-          } getOrElse {
-            inst
+        // Update instances of nested entities to instantiate the cloned entity
+        val instances = entity.instances map {
+          case inst @ Instance(Sym(iSymbol), Sym(eSymbol), _, _) => {
+            symbolMap get eSymbol map { nSymbol =>
+              iSymbol.kind = TypeInstance(nSymbol.asInstanceOf[TypeSymbol])
+              fixup(inst.copy(module = fixup(Sym(nSymbol), inst.loc)), inst.loc)
+            } getOrElse {
+              inst
+            }
           }
-        }
-        case _ => unreachable
-      }
-
-      val newKind = {
-        val portSymbols = for {
-          Decl(symbol, _) <- entity.declarations
-          if symbol.kind.isInstanceOf[TypeIn] || symbol.kind.isInstanceOf[TypeOut]
-        } yield {
-          symbol
+          case _ => unreachable
         }
 
-        val paramSymbols = for {
-          Decl(symbol, _) <- entity.declarations
-          if symbol.kind.isInstanceOf[TypeParam]
-        } yield {
-          symbol
+        val newKind = {
+          val portSymbols = for {
+            Decl(symbol, _) <- entity.declarations
+            if symbol.kind.isInstanceOf[TypeIn] || symbol.kind.isInstanceOf[TypeOut]
+          } yield {
+            symbol
+          }
+
+          val paramSymbols = for {
+            Decl(symbol, _) <- entity.declarations
+            if symbol.kind.isInstanceOf[TypeParam]
+          } yield {
+            symbol
+          }
+
+          TypeEntity(newName, portSymbols, paramSymbols)
         }
 
-        TypeEntity(newName, portSymbols, paramSymbols)
-      }
+        val newSymbol = cc.newTypeSymbol(newName, tree.loc, newKind)
+        newSymbol.attr update entitySymbol.attr
+        symbolMap(entitySymbol) = newSymbol
 
-      val newSymbol = cc.newTypeSymbol(newName, tree.loc, newKind)
-      newSymbol.attr update entitySymbol.attr
-      symbolMap(entitySymbol) = newSymbol
-
-      val sym = TypeAssigner(Sym(newSymbol) withLoc tree.loc)
-      TypeAssigner(
         entity.copy(
-          ref = sym,
+          symbol = newSymbol,
           instances = instances
-        ) withVariant entity.variant withLoc tree.loc)
+        )
+      } followedBy {
+        entityLevel -= 1
+      }
 
-      // TODO: Apply Typer to specialized result (iff parameterBindings.nonEmpty)
-    } followedBy {
-      entityLevel -= 1
+      case _: EntityLowered => ???
+
+      case _ => tree
     }
 
-    case _ => tree
+    if (result ne tree) {
+      if (typed) {
+        result regularize tree.loc
+      } else {
+        result withLoc tree.loc
+      }
+    }
+
+    result
   }
 
   override protected def finalCheck(tree: Tree): Unit = {

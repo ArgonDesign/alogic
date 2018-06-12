@@ -22,7 +22,6 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.TermSymbol
 import com.argondesign.alogic.transform.StatementFilter
-import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
@@ -35,8 +34,8 @@ final class OptimizeClearOnStall(implicit cc: CompilerContext) extends TreeTrans
   // signals.
 
   override def skip(tree: Tree): Boolean = tree match {
-    case entity: Entity => entity.states.isEmpty
-    case _              => true
+    case entity: EntityLowered => entity.statements.isEmpty
+    case _                     => true
   }
 
   // Given a list of statements, return a list of all linear paths through
@@ -59,11 +58,10 @@ final class OptimizeClearOnStall(implicit cc: CompilerContext) extends TreeTrans
           val elseStmt = elseStmtOpt getOrElse StmtBlock(Nil)
           enumeratePaths(List(thenStmt)) ::: enumeratePaths(List(elseStmt))
         }
-        case StmtCase(_, cases, default) => {
-          enumeratePaths(default) ::: {
-            cases flatMap {
-              case CaseClause(_, body) => enumeratePaths(List(body))
-            }
+        case StmtCase(_, cases) => {
+          cases flatMap {
+            case RegularCase(_, stmt) => enumeratePaths(List(stmt))
+            case DefaultCase(stmt)    => enumeratePaths(List(stmt))
           }
         }
         case _ => unreachable
@@ -83,7 +81,7 @@ final class OptimizeClearOnStall(implicit cc: CompilerContext) extends TreeTrans
   }
 
   override def enter(tree: Tree): Unit = tree match {
-    case entity: Entity => {
+    case entity: EntityLowered => {
       // Candidates for having clearOnStall removed
       val candidateSymbols = mutable.Set[TermSymbol]() ++ {
         entity.declarations collect {
@@ -92,29 +90,11 @@ final class OptimizeClearOnStall(implicit cc: CompilerContext) extends TreeTrans
       }
 
       if (candidateSymbols.nonEmpty) {
-        // Create the state dispatch statement
-        val block = {
-          // TODO: factor out construction
-          val statements = if (entity.states.lengthCompare(1) == 0) {
-            entity.fenceStmts ::: entity.states.head.body
-          } else {
-            val dispatch = StmtCase(
-              ExprRef(entitySymbol.attr.stateVar.value),
-              entity.states.tail map {
-                case State(expr, body) => CaseClause(List(expr), StmtBlock(body))
-              },
-              entity.states.head.body
-            )
-            entity.fenceStmts :+ (dispatch regularize entity.loc)
-          }
+        val block = StmtBlock(entity.statements) regularize tree.loc
 
-          TypeAssigner(StmtBlock(statements) withLoc tree.loc)
-        }
-
-        // Now discard everything that is not a StallStmt
+        // Discard everything that is not a StallStmt
         // or an assignment to one of our candidates
         val trimmed = block rewrite StatementFilter {
-          case _: StmtFence                   => false
           case _: StmtStall                   => true
           case StmtAssign(ExprRef(symbol), _) => symbol.attr.clearOnStall contains true
           case _: StmtAssign                  => false

@@ -28,6 +28,7 @@ import com.argondesign.alogic.util.FollowedBy
 import com.argondesign.alogic.util.ValueMap
 import com.argondesign.alogic.util.unreachable
 
+import scala.annotation.tailrec
 import scala.collection.mutable
 
 final class LiftEntities(implicit cc: CompilerContext)
@@ -61,7 +62,7 @@ final class LiftEntities(implicit cc: CompilerContext)
 
   override def skip(tree: Tree): Boolean = tree match {
     // Skip root entities without any nested entities
-    case entity: Entity => {
+    case entity: EntityNamed => {
       entityCount == 0 && entity.entities.isEmpty
     } followedBy {
       entityCount += 1
@@ -70,7 +71,7 @@ final class LiftEntities(implicit cc: CompilerContext)
   }
 
   override def enter(tree: Tree): Unit = tree match {
-    case entity: Entity => {
+    case entity: EntityNamed => {
       //////////////////////////////////////////////////////////////////////////
       // Collect outer ports and consts we are referencing
       //////////////////////////////////////////////////////////////////////////
@@ -111,18 +112,31 @@ final class LiftEntities(implicit cc: CompilerContext)
       val newConstSymbols = if (outerConstSymbols.isEmpty) {
         Nil
       } else {
+        // Find all referenced constants
         val referenced = for {
           outerSymbol <- referencedSymbols
           if outerConstSymbols.toList.exists(_ contains outerSymbol)
         } yield {
           outerSymbol
         }
-        val initializer = referenced flatMap { outerSymbol =>
-          outerSymbol.attr.init.value collect {
-            case ExprRef(s: TermSymbol) if outerConstSymbols.toList.exists(_ contains s) => s
+
+        // Recursively find all constants used in initializers of referenced constants
+        @tailrec
+        def loop(prev: List[TermSymbol], curr: List[TermSymbol]): List[TermSymbol] = {
+          if (prev == curr) {
+            curr
+          } else {
+            val referenced = curr flatMap { outerSymbol =>
+              outerSymbol.attr.init.value collect {
+                case ExprRef(s: TermSymbol) if outerConstSymbols.toList.exists(_ contains s) => s
+              }
+            }
+            loop(curr, (curr ::: referenced).distinct)
           }
         }
-        (referenced ::: initializer).distinct map { outerSymbol =>
+
+        // Sort the symbols in source order and create new symbols
+        loop(Nil, referenced) sortBy { _.loc.start } map { outerSymbol =>
           outerSymbol -> cc.newSymbolLike(outerSymbol)
         }
       }
@@ -180,7 +194,7 @@ final class LiftEntities(implicit cc: CompilerContext)
   }
 
   override def transform(tree: Tree): Tree = tree match {
-    case entity: Entity => {
+    case entity: EntityNamed => {
       entity valueMap { entity =>
         ////////////////////////////////////////////////////////////////////////
         // Create declarations for fresh ports
@@ -198,8 +212,7 @@ final class LiftEntities(implicit cc: CompilerContext)
           val newDecls = freshIPortDecls ++ freshOPortDecls ++ entity.declarations
 
           // Update type of entity to include new ports
-          val Sym(symbol: TypeSymbol) = entity.ref
-          val newKind = symbol.kind match {
+          val newKind = entity.symbol.kind match {
             case kind: TypeEntity => {
               val newPortSymbols = {
                 freshIPortSymbols.top.values ++ freshOPortSymbols.top.values ++ kind.portSymbols
@@ -208,12 +221,12 @@ final class LiftEntities(implicit cc: CompilerContext)
             }
             case _ => unreachable
           }
-          symbol.kind = newKind
+          entity.symbol.kind = newKind
 
           TypeAssigner {
             entity.copy(
               declarations = newDecls.toList
-            ) withLoc entity.loc withVariant entity.variant
+            ) withLoc entity.loc
           }
         }
       } valueMap { entity =>
@@ -232,7 +245,7 @@ final class LiftEntities(implicit cc: CompilerContext)
           TypeAssigner {
             entity.copy(
               declarations = newDecls.toList
-            ) withLoc entity.loc withVariant entity.variant
+            ) withLoc entity.loc
           }
         }
       } valueMap { entity =>
@@ -286,7 +299,7 @@ final class LiftEntities(implicit cc: CompilerContext)
           TypeAssigner {
             entity.copy(
               connects = entity.connects ++ freshIConns ++ freshOConns
-            ) withLoc entity.loc withVariant entity.variant
+            ) withLoc entity.loc
           }
         }
       } valueMap { entity =>
@@ -297,17 +310,14 @@ final class LiftEntities(implicit cc: CompilerContext)
           entity
         } else {
           val children = entity.entities
-          val parent = entity.copy(entities = Nil) withLoc entity.loc withVariant entity.variant
+          val parent = entity.copy(entities = Nil) withLoc entity.loc
           TypeAssigner(parent)
 
-          val Sym(parentSymbol: TypeSymbol) = entity.ref
-          val parentName = parentSymbol.name
+          val parentName = entity.symbol.name
 
           // Prefix child names with parent name
           for (child <- children) {
-            val Sym(childSymbol: TypeSymbol) = child.ref
-            val childName = childSymbol.name
-            childSymbol rename (parentName + cc.sep + childName)
+            child.symbol rename (parentName + cc.sep + child.symbol.name)
           }
 
           TypeAssigner(Thicket(parent :: children) withLoc entity.loc)
@@ -321,15 +331,13 @@ final class LiftEntities(implicit cc: CompilerContext)
       // Add ports created in this entity to connections required in the outer entity
       if (freshIConnSymbols.nonEmpty) {
         for ((iPortSymbol, _) <- freshIPortSymbols.top) {
-          val Sym(typeSymbol: TypeSymbol) = entity.ref
-          freshIConnSymbols.top.add((iPortSymbol, typeSymbol))
+          freshIConnSymbols.top.add((iPortSymbol, entity.symbol))
         }
       }
 
       if (freshOConnSymbols.nonEmpty) {
         for ((oPortSymbol, _) <- freshOPortSymbols.top) {
-          val Sym(typeSymbol: TypeSymbol) = entity.ref
-          freshOConnSymbols.top.add((typeSymbol, oPortSymbol))
+          freshOConnSymbols.top.add((entity.symbol, oPortSymbol))
         }
       }
 
@@ -365,7 +373,7 @@ final class LiftEntities(implicit cc: CompilerContext)
     assert(freshOConnSymbols.isEmpty)
 
     tree visit {
-      case node: Entity if node.entities.nonEmpty => {
+      case node: EntityNamed if node.entities.nonEmpty => {
         cc.ice(node, s"Nested entities remain after LiftEntities")
       }
     }

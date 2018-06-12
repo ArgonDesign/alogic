@@ -32,7 +32,7 @@ final class LowerVectors(implicit cc: CompilerContext) extends TreeTransformer {
   private[this] val tgtTpe = Stack[Type]()
 
   override def enter(tree: Tree): Unit = tree match {
-    case entity: Entity => {
+    case entity: EntityLowered => {
       // Change types of all vectors to plain TypeUInt
       // TODO: arrays as well
       for {
@@ -41,7 +41,7 @@ final class LowerVectors(implicit cc: CompilerContext) extends TreeTransformer {
       } {
         vectorType add symbol
 
-        val newUnderlying = TypeUInt(Expr(symbol.kind.width.value.get) regularize symbol.loc)
+        val newUnderlying = TypeUInt(Expr(symbol.kind.width) regularize symbol.loc)
         val newKind = {
           symbol.kind match {
             case kind: TypeIn     => kind.copy(kind = newUnderlying)
@@ -82,8 +82,7 @@ final class LowerVectors(implicit cc: CompilerContext) extends TreeTransformer {
         // By this point the target should not have a Vector type
         assert(!tgt.tpe.isVector)
         val TypeVector(eKind, _) = tgtTpe.top
-        val eSize = eKind.width.value.get.toInt
-        val sExpr = Expr(eSize) regularize tgt.loc
+        val sExpr = Expr(eKind.width) regularize tgt.loc
         ExprSlice(expr, lidx + sExpr * index, "+:", sExpr)
       }
 
@@ -92,8 +91,7 @@ final class LowerVectors(implicit cc: CompilerContext) extends TreeTransformer {
         // By this point the target should not have a Vector type
         assert(!tgt.tpe.isVector)
         val TypeVector(eKind, _) = tgtTpe.top
-        val eSize = eKind.width.value.get.toInt
-        val sExpr = Expr(eSize) regularize tgt.loc
+        val sExpr = Expr(eKind.width) regularize tgt.loc
         ExprSlice(tgt, sExpr * index, "+:", sExpr)
       }
 

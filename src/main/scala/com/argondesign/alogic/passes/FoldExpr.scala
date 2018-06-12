@@ -16,13 +16,13 @@
 package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.TreeTransformer
-import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.ast.Trees.Expr.Integral
+import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.TreeInTypeTransformer
 import com.argondesign.alogic.typer.TypeAssigner
-import com.argondesign.alogic.util.unreachable
 import com.argondesign.alogic.util.BigIntOps._
+import com.argondesign.alogic.util.unreachable
 
 import scala.language.implicitConversions
 
@@ -132,6 +132,19 @@ final class FoldExpr(
       }
 
       ////////////////////////////////////////////////////////////////////////////
+      // Fold some special unary over unary combinations
+      ////////////////////////////////////////////////////////////////////////////
+
+      case ExprUnary(aOp, ExprUnary(bOp, expr)) => {
+        val res = (aOp, bOp) match {
+          case ("!", "!") if expr.isPacked && !expr.isSigned && expr.width == 1 => expr
+          case ("~", "~")                                                       => expr
+          case _                                                                => tree
+        }
+        if (res.hasLoc) res else res withLoc tree.loc
+      }
+
+      ////////////////////////////////////////////////////////////////////////////
       // Fold other binary expressions with 2 unsized operands
       ////////////////////////////////////////////////////////////////////////////
 
@@ -219,17 +232,66 @@ final class FoldExpr(
       }
 
       ////////////////////////////////////////////////////////////////////////////
-      // Fold binary expressions with a sized operand
+      // Fold binary expressions with equally sized operands
       ////////////////////////////////////////////////////////////////////////////
 
-      // TODO
-      case ExprBinary(ExprInt(false, 32, lv), op, ExprInt(false, 32, rv)) => {
-        op match {
-          case "+" => ExprInt(false, 32, lv + rv) withLoc tree.loc
-          case "-" => ExprInt(false, 32, lv - rv) withLoc tree.loc
-          case "*" => ExprInt(false, 32, lv * rv) withLoc tree.loc
-          case _   => tree
+      case ExprBinary(ExprInt(ls, lw, lv), op, ExprInt(rs, rw, rv)) if lw == rw => {
+        val w = lw
+        val s = ls && rs
+        val sm = ls == rs
+        val num = op match {
+          // Always valid
+          case ">"  => ExprInt(false, 1, lv > rv)
+          case "<"  => ExprInt(false, 1, lv < rv)
+          case ">=" => ExprInt(false, 1, lv >= rv)
+          case "<=" => ExprInt(false, 1, lv <= rv)
+          case "==" => ExprInt(false, 1, lv == rv)
+          case "!=" => ExprInt(false, 1, lv != rv)
+          case "&&" => ExprInt(false, 1, (lv != 0) && (rv != 0))
+          case "||" => ExprInt(false, 1, (lv != 0) || (rv != 0))
+
+          // Arith with matching sign
+          case "+" if sm => ExprInt(s, w, (lv + rv).extract(0, w, s))
+          case "-" if sm => ExprInt(s, w, (lv - rv).extract(0, w, s))
+          case "*" if sm => ExprInt(s, w, (lv * rv).extract(0, w, s))
+          case "/" if sm => ExprInt(s, w, (lv / rv).extract(0, w, s))
+          case "%" if sm => ExprInt(s, w, (lv % rv).extract(0, w, s))
+
+          // Bitwise
+          case "&" => ExprInt(s, w, (lv & rv).extract(0, w, s))
+          case "^" => ExprInt(s, w, (lv ^ rv).extract(0, w, s))
+          case "|" => ExprInt(s, w, (lv | rv).extract(0, w, s))
+
+          // TODO: handle
+          case _ => tree
         }
+        if (num.hasLoc) num else num withLoc tree.loc
+      }
+
+      ////////////////////////////////////////////////////////////////////////////
+      // Fold binary operators with one known operand if possible
+      ////////////////////////////////////////////////////////////////////////////
+
+      case ExprBinary(Integral(_, _, lv), op, rhs) => {
+        val res = op match {
+          case "&&" if lv == 0                                         => ExprInt(false, 1, 0)
+          case "&&" if rhs.isPacked && !rhs.isSigned && rhs.width == 1 => rhs
+          case "||" if lv != 0                                         => ExprInt(false, 1, 1)
+          case "||" if rhs.isPacked && !rhs.isSigned && rhs.width == 1 => rhs
+          case _                                                       => tree
+        }
+        if (res.hasLoc) res else res withLoc tree.loc
+      }
+
+      case ExprBinary(lhs, op, Integral(_, _, rv)) => {
+        val res = op match {
+          case "&&" if rv == 0                                         => ExprInt(false, 1, 0)
+          case "&&" if lhs.isPacked && !lhs.isSigned && lhs.width == 1 => lhs
+          case "||" if rv != 0                                         => ExprInt(false, 1, 1)
+          case "||" if lhs.isPacked && !lhs.isSigned && lhs.width == 1 => lhs
+          case _                                                       => tree
+        }
+        if (res.hasLoc) res else res withLoc tree.loc
       }
 
       ////////////////////////////////////////////////////////////////////////////
@@ -308,13 +370,57 @@ final class FoldExpr(
       ////////////////////////////////////////////////////////////////////////////
 
       case ExprIndex(ExprSlice(expr, lidx, op, ridx), idx) => {
-        val base = op match {
+        // TODO: error on out of range
+        val lsb = op match {
           case ":"  => ridx
           case "+:" => lidx
           case "-:" => lidx - ridx + 1
           case _    => unreachable
         }
-        ExprIndex(expr, walk(base + idx).asInstanceOf[Expr]) withLoc tree.loc
+        ExprIndex(expr, walk(lsb + idx).asInstanceOf[Expr]) withLoc tree.loc
+      }
+
+      ////////////////////////////////////////////////////////////////////////////
+      // Fold Slice over a slice
+      ////////////////////////////////////////////////////////////////////////////
+
+      case ExprSlice(ExprSlice(expr, aLidx, aOp, aRidx), bLidx, bOp, bRidx) => {
+        // TODO: error on out of range
+        val aLsb = aOp match {
+          case ":"  => aRidx
+          case "+:" => aLidx
+          case "-:" => aLidx - aRidx + 1
+          case _    => unreachable
+        }
+        val bLsb = bOp match {
+          case ":"  => bRidx
+          case "+:" => bLidx
+          case "-:" => bLidx - bRidx + 1
+          case _    => unreachable
+        }
+        val bMsb = bOp match {
+          case ":"  => bLidx
+          case "+:" => bLidx + bRidx - 1
+          case "-:" => bLidx
+          case _    => unreachable
+        }
+        lazy val bWidth = bOp match {
+          case ":" => bLidx - bRidx + 1
+          case _   => bRidx
+        }
+
+        val (nLidx, nOp, nRidx) = (aOp, bOp) match {
+          case (_, "+:") => (aLsb + bLsb, "+:", bWidth)
+          case (_, "-:") => (aLsb + bMsb, "-:", bWidth)
+          case ("+:", _) => (aLsb + bLsb, "+:", bWidth)
+          case ("-:", _) => (aLsb + bMsb, "-:", bWidth)
+          case _         => (aLsb + bMsb, ":", aLsb + bLsb)
+        }
+
+        val sLidx = walk(nLidx).asInstanceOf[Expr]
+        val sRidx = walk(nRidx).asInstanceOf[Expr]
+
+        ExprSlice(expr, sLidx, nOp, sRidx) withLoc tree.loc
       }
 
       ////////////////////////////////////////////////////////////////////////////
@@ -322,6 +428,7 @@ final class FoldExpr(
       ////////////////////////////////////////////////////////////////////////////
 
       case ExprSlice(expr, lidx, ":", ridx) if lidx == ridx => {
+        // TODO: strictly, lidx/ridx could be stuff like @randbit, or other non-pure function
         ExprIndex(expr, lidx) withLoc tree.loc
       }
 
