@@ -9,7 +9,7 @@
 ### Integer literals
 
 Alogic supports both sized and unsized integers, both of which can further be
-split in to signed and unsigned variants.
+split into signed and unsigned variants.
 
 ### Writing Literal Values
 
