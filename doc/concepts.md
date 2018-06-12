@@ -15,7 +15,7 @@ this way, systems such as pipelines or other complex modules can be built.
 
 ![intro](intro.svg)
 
-An individual Alogic component is called [design entity](entities.md) (for
+An individual Alogic component is called a [design entity](entities.md) (for
 example, a [Finite State Machine](fsms.md) or a [Network](networks.md)). These
 are analogous to Verilog `modules` in that they can be instantiated inside other
 entities to build a design hierarchy. FSMs can be instantiated inside networks,
