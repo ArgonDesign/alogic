@@ -15,7 +15,7 @@ Packed types are those that are used to specify the bit level representation of
 variables. For example, a 6-bit number would be a packed variable. Every packed
 type maps to a one dimensional sequence of bits in a well defined way. The
 number of bits in the binary representation of a packed type is called the
-*width** of the type, and can be retrieved using the `@bits` [built-in
+*width* of the type, and can be retrieved using the `@bits` [built-in
 function](builtins.md).
 
 Similarly to Verilog, Alogic is a weakly typed language in that any variable of
@@ -187,14 +187,12 @@ And the following equivalencies hold:
 
   x[0][0] == y[1:0];    // Lowest element
   x[1][2] == y[13:12];  // A middle element
-  x[2][3] == y[31:30];  // Highest element
+  x[2][3] == y[23:22];  // Highest element
   
   x[0][0][0] == y[0];   // LSB
-  x[2][3][1] == y[31];  // MSB
-  x[i][j][k] == y[8i + 2j + k];
+  x[2][3][1] == y[23];  // MSB
+  x[i][j][k] == y[8*i + 2*j + k];
 ```
-
-
 
 ### Void type
 
