@@ -586,8 +586,15 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       case _ => tree
     }
 
-    // Assign type if have not been assigned by now
-    if (result.hasTpe) result else TypeAssigner(result)
+    // There is a race between the Typer running on multiple trees in parallel.
+    // The trees have already undergone parameter specialization and therefore
+    // might share instances of isomorphic sub-trees. As the type can be
+    // assigned only once, we apply synchronization on the tesult node for this
+    // step. This is not a problem as all threads would assign the same type.
+    result synchronized {
+      // Assign type if have not been assigned by now
+      if (result.hasTpe) result else TypeAssigner(result)
+    }
   }
 
   override def finalCheck(tree: Tree): Unit = {
