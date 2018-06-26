@@ -68,6 +68,10 @@ final class LiftSramsFrom(
           case TypeOut(kind, `fcn`, `stw`) => cc.newTermSymbol(name, loc, TypeIn(kind, fcn))
           case _                           => unreachable
         }
+        // Propagate interconnectClearOnStall to lifted node
+        if (entity.symbol.attr.interconnectClearOnStall.value contains ((iSymbol, pSymbol.name))) {
+          nSymbol.attr.clearOnStall set true
+        }
         portMap((iSymbol, pSymbol)) = nSymbol
       }
     }
