@@ -240,7 +240,9 @@ object SpecializeParam extends Pass {
       } else {
         // Expand based on the owner of the first parameter we encounter
         val oEntitySymbol = referenced.next().attr.owner.value.symbol
-        val oBindingsSet = entityBindingsMap(oEntitySymbol)
+        // Parametrized top level entities have no instances (are not in
+        // entityBindingsMap), so we use the set of empty bindings for them
+        val oBindingsSet = entityBindingsMap.getOrElse(oEntitySymbol, Set(Bindings.empty))
         val oDefaultBindings = defaultBindingsMap(oEntitySymbol)
 
         // For each specialization of the entity defining the referenced
