@@ -69,7 +69,10 @@ final class LiftSramsFrom(
           case _                           => unreachable
         }
         // Propagate interconnectClearOnStall to lifted node
-        if (entity.symbol.attr.interconnectClearOnStall.value contains ((iSymbol, pSymbol.name))) {
+        for {
+          icos <- entity.symbol.attr.interconnectClearOnStall.get
+          if icos contains ((iSymbol, pSymbol.name))
+        } {
           nSymbol.attr.clearOnStall set true
         }
         portMap((iSymbol, pSymbol)) = nSymbol
