@@ -39,9 +39,12 @@ private[builtins] class AtBits(implicit cc: CompilerContext) extends BuiltinPoly
   def isKnownConst(args: List[Expr]) = true
 
   def fold(loc: Loc, args: List[Expr]) = {
-    args.head.tpeOpt map {
+    args.head.tpeOpt.map {
       case TypeType(kind) => Expr(kind.width)
       case kind           => Expr(kind.width)
+    } getOrElse args.head partialMatch {
+      case ExprRef(symbol) => Expr(symbol.kind.width)
+      // TODO: Need to teach it more - this is used by parameter specialization
     }
   }
 }
