@@ -19,6 +19,7 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.typer.Typer
 
 private[builtins] class AtBits(implicit cc: CompilerContext) extends BuiltinPolyFunc {
 
@@ -39,12 +40,13 @@ private[builtins] class AtBits(implicit cc: CompilerContext) extends BuiltinPoly
   def isKnownConst(args: List[Expr]) = true
 
   def fold(loc: Loc, args: List[Expr]) = {
-    args.head.tpeOpt.map {
+    if (!args.head.hasTpe) {
+      Typer(args.head)
+    }
+
+    args.head.tpeOpt map {
       case TypeType(kind) => Expr(kind.width)
       case kind           => Expr(kind.width)
-    } getOrElse args.head partialMatch {
-      case ExprRef(symbol) => Expr(symbol.kind.width)
-      // TODO: Need to teach it more - this is used by parameter specialization
     }
   }
 }
