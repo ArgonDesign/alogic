@@ -23,6 +23,7 @@ import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeReady
 import com.argondesign.alogic.core.StorageTypes.StorageSliceFwd
 import com.argondesign.alogic.core.StorageTypes.StorageTypeSlices
 import com.argondesign.alogic.core.Symbols.TermSymbol
+import com.argondesign.alogic.core.Symbols.TypeSymbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Stack
 import com.argondesign.alogic.typer.TypeAssigner
@@ -31,16 +32,18 @@ import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.tailrec
 import scala.collection.immutable.ListMap
+import scala.language.postfixOps
 
 final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
 
   // TODO: special case the empty pipe stage (with body 'read; write; fence;') to avoid packing
 
   // List of active pipeline symbols, for each stage
-  private var actSets: List[Set[TermSymbol]] = Nil
+  private var actSetMap: Map[TypeSymbol, Set[TermSymbol]] = _
 
-  // Previous stage active list
-  private var prevActSet: Set[TermSymbol] = Set()
+  // Map to previous/next stage
+  private var prevMap: Map[TypeSymbol, TypeSymbol] = _
+  private var nextMap: Map[TypeSymbol, TypeSymbol] = _
 
   // Pipeline input and output port symbols for current stage
   private var iPortSymbolOpt: Option[TermSymbol] = None
@@ -69,20 +72,35 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
   override def enter(tree: Tree): Unit = tree match {
     case outer: EntityNamed if outer.entities.nonEmpty => {
       rewriteEntity.push(true)
-      // Collect pipeline symbols used in nested entities
-      val useSets = for {
-        inner <- outer.entities
-      } yield {
-        val it = inner collect {
-          case ExprRef(symbol: TermSymbol) if symbol.kind.isInstanceOf[TypePipeline] => symbol
-          case Sym(symbol: TermSymbol) if symbol.kind.isInstanceOf[TypePipeline]     => symbol
+
+      // Work out the prev an next maps
+      nextMap = outer.connects collect {
+        case Connect(ExprRef(iSymbolA), List(ExprRef(iSymbolB))) => {
+          val TypeInstance(eSymbolA) = iSymbolA.kind
+          val TypeInstance(eSymbolB) = iSymbolB.kind
+          eSymbolA -> eSymbolB
         }
-        it.toSet
+      } toMap
+
+      prevMap = nextMap map { _.swap }
+
+      // Sort entities using pipeline connections
+      val entities = outer.entities sortWith {
+        case (entityA, entityB) => nextMap.get(entityA.symbol) contains entityB.symbol
       }
 
-      // TODO: this assumes stages are in order. Do a topological sort or err..
+      // Collect pipeline symbols used in nested entities
+      val useSets = for {
+        inner <- entities
+      } yield {
+        inner collect {
+          case ExprRef(symbol: TermSymbol) if symbol.kind.isInstanceOf[TypePipeline] => symbol
+          case Sym(symbol: TermSymbol) if symbol.kind.isInstanceOf[TypePipeline]     => symbol
+        } toSet
+      }
+
       // Propagate uses between first and last use to create activeSets
-      actSets = {
+      actSetMap = {
         @tailrec
         def loop(useSets: List[Set[TermSymbol]],
                  actSets: List[Set[TermSymbol]]): List[Set[TermSymbol]] = {
@@ -99,17 +117,18 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
             loop(useSets.tail, actHead :: actSets)
           }
         }
-        loop(useSets.tail, List(useSets.head))
+        val propagated = loop(useSets.tail, List(useSets.head))
+        (entities zip propagated) map { case (entity, actSet) => entity.symbol -> actSet } toMap
       }
     }
 
-    case inner: Entity if actSets.nonEmpty => {
+    case inner: EntityNamed if actSetMap.nonEmpty => {
       rewriteEntity.push(true)
 
       // Figure out pipeline port types
-      val actPrev = prevActSet
-      val actCurr = actSets.head
-      val actNext = if (actSets.length > 1) actSets.tail.head else Set[TermSymbol]()
+      val actPrev = prevMap.get(inner.symbol) map { actSetMap(_) } getOrElse Set[TermSymbol]()
+      val actCurr = actSetMap(inner.symbol)
+      val actNext = nextMap.get(inner.symbol) map { actSetMap(_) } getOrElse Set[TermSymbol]()
 
       def makePortSymbol(in: Boolean, actSet: Set[TermSymbol]): Option[TermSymbol] = {
         if (actSet.isEmpty) {
@@ -147,9 +166,6 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
         }
         ListMap(pairs: _*)
       }
-
-      prevActSet = actSets.head
-      actSets = actSets.tail
     }
 
     case _: Entity => {
@@ -269,7 +285,6 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
   }
 
   override def finalCheck(tree: Tree): Unit = {
-    assert(actSets.isEmpty)
     assert(rewriteEntity.isEmpty)
 
     tree visit {
