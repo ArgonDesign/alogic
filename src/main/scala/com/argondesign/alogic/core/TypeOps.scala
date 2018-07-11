@@ -94,19 +94,35 @@ trait TypeOps extends TypePrintOps { this: Type =>
   // Width of this type, assuming it is a packed type
   final def width(implicit cc: CompilerContext): Int = {
     assert(isPacked)
-    this match {
-      case self: TypeSInt                        => self.size.value.get.toInt
-      case self: TypeUInt                        => self.size.value.get.toInt
-      case self: TypeStruct                      => self.fieldTypes map { _.width } sum
-      case TypeVoid                              => 0
-      case self: TypeVector                      => self.size.value.get.toInt * self.elementType.width
-      case self: TypeIn                          => self.kind.width
-      case self: TypeOut                         => self.kind.width
-      case self: TypePipeline                    => self.kind.width
-      case self: TypeParam                       => self.kind.width
-      case self: TypeConst                       => self.kind.width
-      case _: TypeNum if Config.treatNumAs32Wide => 32
-      case _                                     => unreachable
+    try {
+      this match {
+        case self: TypeSInt => self.size.value.get.toInt
+        case self: TypeUInt => self.size.value.get.toInt
+        case self: TypeStruct =>
+          self.fieldTypes map {
+            _.width
+          } sum
+        case TypeVoid                              => 0
+        case self: TypeVector                      => self.size.value.get.toInt * self.elementType.width
+        case self: TypeIn                          => self.kind.width
+        case self: TypeOut                         => self.kind.width
+        case self: TypePipeline                    => self.kind.width
+        case self: TypeParam                       => self.kind.width
+        case self: TypeConst                       => self.kind.width
+        case _: TypeNum if Config.treatNumAs32Wide => 32
+        case _                                     => unreachable
+      }
+    } catch {
+      case t: Throwable => {
+        cc.error(s"Cannot compute width of type ${this.toSource}", this.toString)
+        this.underlying match {
+          case self: TypeSInt =>
+            cc.fatal(self.size.loc, "Size expression:", self.size.toSource, self.size.toString)
+          case self: TypeUInt =>
+            cc.fatal(self.size.loc, "Size expression:", self.size.toSource, self.size.toString)
+          case _ => cc.fatal("")
+        }
+      }
     }
   }
 
