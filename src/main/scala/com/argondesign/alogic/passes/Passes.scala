@@ -102,8 +102,9 @@ object Passes {
       // Dump entities if required
       if (cc.settings.dumpTrees) {
         results foreach {
-          case entity: Entity => cc.dumpEntity(entity, s".${cc.passNumber}.${pass.name}")
-          case _              => ()
+          case Root(_, entity) => cc.dumpEntity(entity, s".${cc.passNumber}.${pass.name}")
+          case entity: Entity  => cc.dumpEntity(entity, s".${cc.passNumber}.${pass.name}")
+          case _               => ()
         }
       }
 

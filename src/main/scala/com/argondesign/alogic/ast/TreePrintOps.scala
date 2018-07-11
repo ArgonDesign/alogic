@@ -34,6 +34,121 @@ trait TreePrintOps { this: Tree =>
     }
   }
 
+  private[this] final def entityStr(indent: Int)(
+      attr: String,
+      variant: String,
+      name: String,
+      declarations: List[Declaration],
+      instances: List[Instance],
+      connects: List[Connect],
+      fenceStmts: List[Stmt],
+      functions: List[Function],
+      states: List[State],
+      stateSystems: List[Stmt],
+      entities: List[Entity],
+      verbatim: Map[String, String]
+  )(implicit cc: CompilerContext): String = {
+    val i = "  " * indent
+    val sb = new StringBuilder()
+    sb append s"${attr}${variant} ${name} {\n\n"
+
+    if (declarations.nonEmpty) {
+      sb append s"""|${i}  /////////////////////////////////
+                    |${i}  // Declarations
+                    |${i}  /////////////////////////////////
+                    |
+                    |""".stripMargin
+      sb append s"${i}  ${declarations map v(indent + 1) mkString s"\n${i}  "}"
+      sb append "\n\n"
+    }
+
+    if (instances.nonEmpty) {
+      sb append s"""|${i}  /////////////////////////////////
+                    |${i}  // Instances
+                    |${i}  /////////////////////////////////
+                    |
+                    |""".stripMargin
+      sb append s"${i}  ${instances map v(indent + 1) mkString s"\n\n${i}  "}"
+      sb append "\n\n"
+    }
+
+    if (connects.nonEmpty) {
+      sb append s"""|${i}  /////////////////////////////////
+                    |${i}  // Connections
+                    |${i}  /////////////////////////////////
+                    |
+                    |""".stripMargin
+      sb append s"${i}  ${connects map v(indent + 1) mkString s"\n${i}  "}"
+      sb append "\n\n"
+    }
+
+    if (fenceStmts.nonEmpty) {
+      sb append s"""|${i}  /////////////////////////////////
+                    |${i}  // Fence Block
+                    |${i}  /////////////////////////////////
+                    |
+                    |${i}  fence {
+                    |""".stripMargin
+      sb append s"${i}    ${fenceStmts map v(indent + 2) mkString s"\n${i}    "}"
+      sb append s"${i} }\n\n"
+    }
+
+    if (functions.nonEmpty) {
+      sb append s"""|${i}  /////////////////////////////////
+                    |${i}  // Functions
+                    |${i}  /////////////////////////////////
+                    |
+                    |""".stripMargin
+      sb append s"${i}  ${functions map v(indent + 1) mkString s"\n\n${i}  "}"
+      sb append "\n\n"
+    }
+
+    if (states.nonEmpty) {
+      sb append s"""|${i}  /////////////////////////////////
+                    |${i}  // States
+                    |${i}  /////////////////////////////////
+                    |
+                    |""".stripMargin
+      sb append s"${i}  ${states map v(indent + 1) mkString s"\n\n${i}  "}"
+      sb append "\n\n"
+    }
+
+    if (stateSystems.nonEmpty) {
+      sb append s"""|${i}  /////////////////////////////////
+                    |${i}  // State systems
+                    |${i}  /////////////////////////////////
+                    |
+                    |""".stripMargin
+      sb append s"${i}  ${stateSystems map v(indent + 1) mkString s"\n${i}  "}"
+      sb append "\n\n"
+    }
+
+    if (entities.nonEmpty) {
+      sb append s"""|${i}  /////////////////////////////////
+                    |${i}  // Entities
+                    |${i}  /////////////////////////////////
+                    |
+                    |""".stripMargin
+      sb append s"${i}  ${entities map v(indent + 1) mkString s"\n\n${i}  "}"
+      sb append "\n\n"
+    }
+
+    if (verbatim.nonEmpty) {
+      sb append s"""|${i}  /////////////////////////////////
+                    |${i}  // verbatim blocks
+                    |${i}  /////////////////////////////////
+                    |
+                    |""".stripMargin
+      sb append s"${i}  ${verbatim map {
+        case (lang, body) => s"verbatim ${lang} {${body}}"
+      } mkString s"\n\n${i}  "}"
+      sb append "\n\n"
+    }
+
+    sb append s"${i}}\n"
+    sb.toString
+  }
+
   private[this] final def v(expr: Expr)(implicit cc: CompilerContext): String = expr match {
     case ExprCall(expr, args)                  => s"${v(expr)}(${args map v mkString ", "})"
     case ExprUnary(op, expr)                   => s"${op}${v(expr)}"
@@ -92,118 +207,79 @@ trait TreePrintOps { this: Tree =>
             |${i}};""".stripMargin
       }
 
-      case _: EntityIdent => ???
+      case EntityIdent(
+          ident,
+          declarations,
+          instances,
+          connects,
+          fenceStmts,
+          functions,
+          entities,
+          verbatim
+          ) =>
+        entityStr(indent)(
+          "",
+          ident.attr("//variant").asInstanceOf[ExprStr].value,
+          ident.name,
+          declarations,
+          instances,
+          connects,
+          fenceStmts,
+          functions,
+          Nil,
+          Nil,
+          entities,
+          verbatim
+        )
 
-      case entity @ EntityNamed(
-            symbol,
-            declarations,
-            instances,
-            connects,
-            fenceStmts,
-            functions,
-            states,
-            entities,
-            verbatim
-          ) => {
-        s"""|${attrStr(indent, symbol)}${symbol.attr.variant.value} ${symbol.name} {
-            |${i}  /////////////////////////////////
-            |${i}  // Declarations
-            |${i}  /////////////////////////////////
-            |
-            |${i}  ${declarations map v(indent + 1) mkString s"\n${i}  "}
-            |
-            |${i}  /////////////////////////////////
-            |${i}  // Instances
-            |${i}  /////////////////////////////////
-            |
-            |${i}  ${instances map v(indent + 1) mkString s"\n\n${i}  "}
-            |
-            |${i}  /////////////////////////////////
-            |${i}  // Connections
-            |${i}  /////////////////////////////////
-            |
-            |${i}  ${connects map v(indent + 1) mkString s"\n${i}  "}
-            |
-            |${i}  /////////////////////////////////
-            |${i}  // Fence block
-            |${i}  /////////////////////////////////
-            |
-            |${i}  fence {
-            |${i}    ${fenceStmts map v(indent + 2) mkString s"\n${i}    "}
-            |${i}  }
-            |
-            |${i}  /////////////////////////////////
-            |${i}  // Functions
-            |${i}  /////////////////////////////////
-            |
-            |${i}  ${functions map v(indent + 1) mkString s"\n\n${i}  "}
-            |
-            |${i}  /////////////////////////////////
-            |${i}  // States
-            |${i}  /////////////////////////////////
-            |
-            |${i}  ${states map v(indent + 1) mkString s"\n\n${i}  "}
-            |
-            |${i}  /////////////////////////////////
-            |${i}  // Entities
-            |${i}  /////////////////////////////////
-            |
-            |${i}  ${entities map v(indent + 1) mkString s"\n\n${i}  "}
-            |
-            |${i}  /////////////////////////////////
-            |${i}  // verbatim blocks
-            |${i}  /////////////////////////////////
-            |
-            |${i}  ${verbatim map {
-             case (lang, body) => s"verbatim ${lang} {${body}}"
-           } mkString s"\n\n${i}  "}
-            |
-            |${i}}""".stripMargin
-      }
+      case EntityNamed(
+          symbol,
+          declarations,
+          instances,
+          connects,
+          fenceStmts,
+          functions,
+          states,
+          entities,
+          verbatim
+          ) =>
+        entityStr(indent)(
+          attrStr(indent, symbol),
+          symbol.attr.variant.value,
+          symbol.name,
+          declarations,
+          instances,
+          connects,
+          fenceStmts,
+          functions,
+          states,
+          Nil,
+          entities,
+          verbatim
+        )
 
-      case entity @ EntityLowered(
-            symbol,
-            declarations,
-            instances,
-            connects,
-            stateSystems,
-            verbatim
-          ) => {
-        s"""|${attrStr(indent, symbol)}${symbol.attr.variant.value} ${symbol.name} {
-            |${i}  /////////////////////////////////
-            |${i}  // Declarations
-            |${i}  /////////////////////////////////
-            |
-            |${i}  ${declarations map v(indent + 1) mkString s"\n${i}  "}
-            |
-            |${i}  /////////////////////////////////
-            |${i}  // Instances
-            |${i}  /////////////////////////////////
-            |
-            |${i}  ${instances map v(indent + 1) mkString s"\n\n${i}  "}
-            |
-            |${i}  /////////////////////////////////
-            |${i}  // Connections
-            |${i}  /////////////////////////////////
-            |
-            |${i}  ${connects map v(indent + 1) mkString s"\n${i}  "}
-            |
-            |${i}  /////////////////////////////////
-            |${i}  // State systems
-            |${i}  /////////////////////////////////
-            |
-            |${i}  ${stateSystems map v(indent + 1) mkString s"\n${i}  "}
-            |
-            |${i}  /////////////////////////////////
-            |${i}  // verbatim blocks
-            |${i}  /////////////////////////////////
-            |
-            |${i}  ${verbatim map {
-             case (lang, body) => s"verbatim ${lang} {${body}}"
-           } mkString s"\n\n${i}  "}
-            |
-            |${i}}""".stripMargin
-      }
+      case EntityLowered(
+          symbol,
+          declarations,
+          instances,
+          connects,
+          stateSystems,
+          verbatim
+          ) =>
+        entityStr(indent)(
+          attrStr(indent, symbol),
+          symbol.attr.variant.value,
+          symbol.name,
+          declarations,
+          instances,
+          connects,
+          Nil,
+          Nil,
+          Nil,
+          stateSystems,
+          Nil,
+          verbatim
+        )
 
       case Ident(name) => name
       case Sym(symbol) => symbol.name
@@ -315,14 +391,4 @@ trait TreePrintOps { this: Tree =>
   }
 
   def toSource(implicit cc: CompilerContext): String = v(0)(this)
-  //
-  //    def v(indent: Int)(node: Node): String = {
-  //      val i = "  " * indent
-  //      node match {
-  //        case expr: Expr => visitExpr(expr)
-  //        case lval: LVal => visitLVal(lval)
-  //
-  //        case FsmTask(_, name, decls, fns, fencefn, vfns) =>
-  //
-
 }
