@@ -186,11 +186,11 @@ final class LowerSrams(
       val sramParts = (kind, st) match {
         case (_: TypeInt, StorageTypeWire) =>
           SramWireInt(sEntity, sSymbol)
-        case (_: TypeStruct, StorageTypeWire) =>
+        case (_: TypeStruct | _: TypeVector, StorageTypeWire) =>
           SramWireStruct(sEntity, sSymbol, rSymbol)
         case (_: TypeInt, StorageTypeReg) =>
           SramRegInt(sEntity, sSymbol, oEntity, oSymbol)
-        case (_: TypeStruct, StorageTypeReg) =>
+        case (_: TypeStruct | _: TypeVector, StorageTypeReg) =>
           SramRegStruct(sEntity, sSymbol, rSymbol, oEntity, oSymbol)
         case _ =>
           cc.ice(tree, "Don't know how to build SRAM of type", kind.toSource)
