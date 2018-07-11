@@ -19,7 +19,6 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.FlowControlTypes._
 import com.argondesign.alogic.core.StorageTypes._
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.util.unreachable
 
 trait TypePrintOps { this: Type =>
 
@@ -78,6 +77,6 @@ trait TypePrintOps { this: Type =>
     case TypeMisc                   => "type-misc"
     case TypeError                  => "type-error"
     case _: TypePolyFunc            => "type-poly-func"
-    case _: TypeIdent               => unreachable
+    case TypeIdent(Ident(name))     => name
   }
 }
