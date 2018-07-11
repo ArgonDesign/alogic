@@ -217,7 +217,13 @@ object Liveness {
                 case RegularCase(_, stmt) => analyse(dLive, cDead, List(stmt))
                 case DefaultCase(stmt)    => analyse(dLive, cDead, List(stmt))
               }
-              sets.unzip
+
+              val explicitDefault = cases exists {
+                case _: DefaultCase => true
+                case _              => false
+              }
+
+              (if (explicitDefault) sets else (dLive, cDead) :: sets).unzip
             }
 
             val live = bLive reduce { _ union _ }
