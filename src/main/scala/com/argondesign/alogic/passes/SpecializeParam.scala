@@ -30,11 +30,12 @@ import com.argondesign.alogic.typer.Typer
 import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.tailrec
+import scala.collection.mutable
 import scala.language.postfixOps
 
 final class SpecializeParam(
     val defaultBindingsMap: Map[TypeSymbol, Bindings],
-    val specializationMap: Map[TypeSymbol, Map[Bindings, EntityNamed]]
+    val specializationMap: collection.Map[TypeSymbol, Map[Bindings, EntityNamed]]
 )(implicit cc: CompilerContext)
     extends TreeTransformer {
 
@@ -264,7 +265,7 @@ object SpecializeParam extends Pass {
     // Specialize all entities by cloning them, substituting all relevant
     // instance bindings for parameters. Build a map from
     // 'entity symbol' -> 'bindings' -> 'specialized entity'
-    val specializationMap: Map[TypeSymbol, Map[Bindings, EntityNamed]] = {
+    val specializationMap: collection.Map[TypeSymbol, Map[Bindings, EntityNamed]] = {
       val pairs = entity.entities.par map { entity =>
         val eSymbol = entity.symbol
         val eKind = eSymbol.kind.asInstanceOf[TypeEntity]
@@ -309,7 +310,7 @@ object SpecializeParam extends Pass {
           eSymbol -> specializations
         }
       }
-      pairs.seq.toMap
+      mutable.LinkedHashMap(pairs.seq: _*)
     }
 
     // Gather all resulting entities
