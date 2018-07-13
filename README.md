@@ -62,3 +62,4 @@ designed using direct Verilog description.
 
 * [Documentation](doc/index.md)
 * [License](LICENSE)
+* [Installation](doc/install.md)
