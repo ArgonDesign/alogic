@@ -1,0 +1,114 @@
+#!/bin/bash
+################################################################################
+# Argon Design Ltd. Project P8009 Alogic
+# Copyright (c) 2018 Argon Design Ltd. All rights reserved.
+#
+# This file is covered by the BSD (with attribution) license.
+# See the LICENSE file for the precise wording of the license.
+#
+# Module: Alogic Compiler
+# Author: Geza Lore/Rupert Swarbrick
+#
+# DESCRIPTION:
+#
+# Alogic compiler bootstrap script
+################################################################################
+
+# You can customize the installation location by changing the INSTALL_DIR
+# variable below. Similarly, a naked 'alogic update' will update to the
+# refspec given in DEFAULT_VERSION.
+
+DEFAULT_VERSION=3.0.x
+
+INSTALL_DIR="$HOME/.alogic"
+
+#### Code below here shouldn't need customisation.
+
+stderr () {
+  echo "$(basename $0): $1" >&2
+}
+
+error () {
+  stderr "ERROR: $1"; exit 1
+}
+
+info () {
+  stderr "INFO: $1"
+}
+
+REMOTE="https://github.com/ArgonDesign/alogic.git"
+
+# Ensure we have the given version.
+# If there is no argument, use $DEFAULT_VERSION.
+update () {
+    set -e
+
+    local REF="$1"; [[ -n "$REF" ]] || REF="$DEFAULT_VERSION"
+    info "Updating to version: $REF"
+    if [[ ! -e "$INSTALL_DIR" ]]; then
+        info "Initialising new checkout at: $INSTALL_DIR"
+        mkdir -p "$INSTALL_DIR"
+        git init -q "$INSTALL_DIR"
+        git --git-dir "$INSTALL_DIR/.git" remote add origin $REMOTE
+        git --git-dir "$INSTALL_DIR/.git" fetch -t origin
+    fi
+
+    cd "$INSTALL_DIR"
+
+    # Try to make sense of the requested version in our local
+    # checkout. If rev-parse fails, we don't know what it means, but
+    # this might just mean that we need to do a fetch. Note this will
+    # also fetch if the reference is to a branch, as there are no
+    # local tracking branches. This is exactly what we want
+    git rev-parse --verify "$REF" >&/dev/null || {
+        info "Fetching latest code from remote."
+        git fetch -q -t origin
+    }
+
+    # Try again (frist as local ref, then as remote branch,
+    # saving the result as a sha.
+    req_sha=$(git rev-parse --verify "$REF^{commit}" 2>/dev/null ||
+              git rev-parse --verify "origin/$REF" 2>/dev/null) || {
+        error "No such refspec: '$REF'"
+    }
+
+    # Do we need to check out a new version of the repo? If so, check
+    # it out and clean any built files.
+    if [[ $req_sha != $(git rev-parse HEAD 2>&1 || true) ]]; then
+        git checkout -q -f $req_sha
+        git clean -q -f -d -x
+    fi
+
+    # When we have built the tool, we'll generate .built-sha at
+    # top-level in the directory with the SHA that we just created.
+    # Look for that file now. If it doesn't exist, or has the wrong
+    # SHA in it, we need to rebuild.
+    if [[ -f .built-sha ]]; then
+        if [[ "x$(head -n1 .built-sha)" == x$req_sha ]]; then
+            info "Alogic is up to date"
+            exit 0
+        fi
+    fi
+
+    # We need to rebuild the tool.
+
+    rm -f .build-sha
+
+    sbt -batch stage
+
+    echo $req_sha > .built-sha
+
+    exit 0
+}
+
+case $1 in
+update) shift && update "$@" ;;
+esac
+
+ALOGIC="$INSTALL_DIR/target/universal/stage/bin/alogic"
+
+if [[ ! -e "$ALOGIC" ]]; then
+  error "The alogic complier is not installed. Run 'alogic update' to install locally at: $INSTALL_DIR"
+fi
+
+exec "$ALOGIC" "$@"
