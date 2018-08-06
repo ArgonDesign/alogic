@@ -352,7 +352,8 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
 
       case StmtExpr(ExprCall(ExprSelect(ref @ ExprRef(symbol: TermSymbol), "flush"), args)) => {
         oStorage.get(symbol).map {
-          case (_, iSymbol, _) => StmtStall(ExprRef(iSymbol) select "empty")
+          case (_, iSymbol, false) => StmtStall(ExprRef(iSymbol) select "space")
+          case (_, iSymbol, true)  => StmtStall(ExprRef(iSymbol) select "space" unary "&")
         } getOrElse {
           tree
         }
@@ -396,8 +397,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
 
       case ExprSelect(ExprRef(symbol: TermSymbol), "space") => {
         oStorage.get(symbol) map {
-          case (_, iSymbol, true)  => ExprRef(iSymbol) select "space"
-          case (_, iSymbol, false) => ExprRef(iSymbol) select "empty"
+          case (_, iSymbol, _) => ExprRef(iSymbol) select "space"
         } getOrElse {
           tree
         }
@@ -405,7 +405,8 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
 
       case ExprSelect(ExprRef(symbol: TermSymbol), "empty") => {
         oStorage.get(symbol) map {
-          case (_, iSymbol, _) => ExprRef(iSymbol) select "empty"
+          case (_, iSymbol, false) => ExprRef(iSymbol) select "space"
+          case (_, iSymbol, true)  => ExprRef(iSymbol) select "space" unary "&"
         } getOrElse {
           tree
         }
@@ -413,7 +414,8 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
 
       case ExprSelect(ExprRef(symbol: TermSymbol), "full") => {
         oStorage.get(symbol) map {
-          case (_, iSymbol, _) => ExprRef(iSymbol) select "full"
+          case (_, iSymbol, false) => ~(ExprRef(iSymbol) select "space")
+          case (_, iSymbol, true)  => ~(ExprRef(iSymbol) select "space" unary "|")
         } getOrElse {
           tree
         }

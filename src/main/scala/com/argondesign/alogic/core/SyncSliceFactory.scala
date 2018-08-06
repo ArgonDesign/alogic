@@ -70,44 +70,37 @@ object SyncSliceFactory {
       iprRef: ExprRef,
       opvRef: ExprRef,
       oprRef: ExprRef,
-      eRef: ExprRef,
-      fRef: ExprRef,
+      sRef: ExprRef,
       vRef: ExprRef
   ): List[Connect] = ss match {
     case StorageSliceBub => {
       // valid -> op_valid;
       // ~valid -> ip_ready;
-      // ~valid -> empty;
-      // valid -> full;
+      // ~valid -> space;
       List(
         Connect(vRef, List(opvRef)),
         Connect(~vRef, List(iprRef)),
-        Connect(~vRef, List(eRef)),
-        Connect(vRef, List(fRef))
+        Connect(~vRef, List(sRef))
       )
     }
     case StorageSliceFwd => {
       // valid -> op_valid;
       // ~valid | op_ready -> ip_ready;
-      // ~valid -> empty;
-      // valid -> full;
+      // ~valid -> space;
       List(
         Connect(vRef, List(opvRef)),
         Connect(~vRef | oprRef, List(iprRef)),
-        Connect(~vRef, List(eRef)),
-        Connect(vRef, List(fRef))
+        Connect(~vRef, List(sRef))
       )
     }
     case StorageSliceBwd => {
       // valid | ip_valid -> op_valid;
       // ~valid -> ip_ready;
-      // ~valid -> empty;
-      // valid -> full;
+      // ~valid -> space;
       List(
         Connect(vRef | ipvRef, List(opvRef)),
         Connect(~vRef, List(iprRef)),
-        Connect(~vRef, List(eRef)),
-        Connect(vRef, List(fRef))
+        Connect(~vRef, List(sRef))
       )
     }
   }
@@ -174,8 +167,7 @@ object SyncSliceFactory {
       iprRef: ExprRef,
       opvRef: ExprRef,
       oprRef: ExprRef,
-      eRef: ExprRef,
-      fRef: ExprRef,
+      sRef: ExprRef,
       pRef: ExprRef,
       vRef: ExprRef
   ): List[Connect] = ss match {
@@ -183,42 +175,36 @@ object SyncSliceFactory {
       // payload -> op ;
       // valid -> op_valid;
       // ~valid -> ip_ready;
-      // ~valid -> empty;
-      // valid -> full;
+      // ~valid -> space;
       List(
         Connect(vRef, List(opvRef)),
         Connect(pRef, List(opRef)),
         Connect(~vRef, List(iprRef)),
-        Connect(~vRef, List(eRef)),
-        Connect(vRef, List(fRef))
+        Connect(~vRef, List(sRef))
       )
     }
     case StorageSliceFwd => {
       // payload -> op;
       // valid -> op_valid;
       // ~valid | op_ready -> ip_ready;
-      // ~valid -> empty;
-      // valid -> full;
+      // ~valid -> space;
       List(
         Connect(pRef, List(opRef)),
         Connect(vRef, List(opvRef)),
         Connect(~vRef | oprRef, List(iprRef)),
-        Connect(~vRef, List(eRef)),
-        Connect(vRef, List(fRef))
+        Connect(~vRef, List(sRef))
       )
     }
     case StorageSliceBwd => {
       // valid ? payload : ip -> op;
       // valid | ip_valid -> op_valid;
       // ~valid -> ip_ready;
-      // ~valid -> empty;
-      // valid -> full;
+      // ~valid -> space;
       List(
         Connect(ExprTernary(vRef, pRef, ipRef), List(opRef)),
         Connect(vRef | ipvRef, List(opvRef)),
         Connect(~vRef, List(iprRef)),
-        Connect(~vRef, List(eRef)),
-        Connect(vRef, List(fRef))
+        Connect(~vRef, List(sRef))
       )
     }
   }
@@ -239,8 +225,7 @@ object SyncSliceFactory {
   //   in bool op_ready;
   //
   //   // Status output
-  //   out wire bool empty;
-  //   out wire bool full;
+  //   out wire bool space;
   //
   //   // Local storage
   //   payload_t payload;
@@ -278,8 +263,7 @@ object SyncSliceFactory {
     oprSymbol.attr.dontCareUnless set opvSymbol
     opvSymbol.attr.dontCareUnless set oprSymbol
 
-    val eSymbol = cc.newTermSymbol("empty", loc, TypeOut(bool, fcn, stw))
-    val fSymbol = cc.newTermSymbol("full", loc, TypeOut(bool, fcn, stw))
+    val sSymbol = cc.newTermSymbol("space", loc, TypeOut(bool, fcn, stw))
 
     lazy val pSymbol = cc.newTermSymbol("payload", loc, kind)
     val vSymbol = cc.newTermSymbol("valid", loc, bool)
@@ -292,8 +276,7 @@ object SyncSliceFactory {
     val opvRef = ExprRef(opvSymbol)
     val oprRef = ExprRef(oprSymbol)
 
-    val eRef = ExprRef(eSymbol)
-    val fRef = ExprRef(fSymbol)
+    val sRef = ExprRef(sSymbol)
 
     lazy val pRef = ExprRef(pSymbol)
     val vRef = ExprRef(vSymbol)
@@ -305,9 +288,9 @@ object SyncSliceFactory {
     }
 
     val ports = if (kind != TypeVoid) {
-      List(ipSymbol, ipvSymbol, iprSymbol, opSymbol, opvSymbol, oprSymbol, eSymbol, fSymbol)
+      List(ipSymbol, ipvSymbol, iprSymbol, opSymbol, opvSymbol, oprSymbol, sSymbol)
     } else {
-      List(ipvSymbol, iprSymbol, opvSymbol, oprSymbol, eSymbol, fSymbol)
+      List(ipvSymbol, iprSymbol, opvSymbol, oprSymbol, sSymbol)
     }
 
     val symbols = if (kind != TypeVoid) pSymbol :: vSymbol :: ports else vSymbol :: ports
@@ -317,9 +300,9 @@ object SyncSliceFactory {
     }
 
     val connects = if (kind != TypeVoid) {
-      nonVoidConnects(ss, ipRef, opRef, ipvRef, iprRef, opvRef, oprRef, eRef, fRef, pRef, vRef)
+      nonVoidConnects(ss, ipRef, opRef, ipvRef, iprRef, opvRef, oprRef, sRef, pRef, vRef)
     } else {
-      voidConnects(ss, ipvRef, iprRef, opvRef, oprRef, eRef, fRef, vRef)
+      voidConnects(ss, ipvRef, iprRef, opvRef, oprRef, sRef, vRef)
     }
 
     val entitySymbol = cc.newTypeSymbol(name, loc, TypeEntity(name, ports, Nil))
@@ -369,8 +352,6 @@ object SyncSliceFactory {
 
     val sKind = TypeOut(TypeUInt(Expr(nSlices) regularize loc), fcn, stw)
     val sSymbol = cc.newTermSymbol("space", loc, sKind)
-    val eSymbol = cc.newTermSymbol("empty", loc, TypeOut(bool, fcn, stw))
-    val fSymbol = cc.newTermSymbol("full", loc, TypeOut(bool, fcn, stw))
 
     lazy val ipRef = ExprRef(ipSymbol)
     val ipvRef = ExprRef(ipvSymbol)
@@ -381,8 +362,6 @@ object SyncSliceFactory {
     val oprRef = ExprRef(oprSymbol)
 
     val sRef = ExprRef(sSymbol)
-    val eRef = ExprRef(eSymbol)
-    val fRef = ExprRef(fSymbol)
 
     val instances = slices.zipWithIndex map {
       case (entity, index) =>
@@ -419,9 +398,7 @@ object SyncSliceFactory {
     connects append Connect(iRefs.head select iprName, List(iprRef))
 
     // Build the space, empty and full signals
-    connects append Connect(ExprCat(iRefs.reverse map { _ select "empty" }), List(sRef))
-    connects append Connect(ExprUnary("&", ExprCat(iRefs map { _ select "empty" })), List(eRef))
-    connects append Connect(ExprUnary("&", ExprCat(iRefs map { _ select "full" })), List(fRef))
+    connects append Connect(ExprCat(iRefs.reverse map { _ select "space" }), List(sRef))
 
     // Put it all together
     val ports = if (kind != TypeVoid) {
@@ -432,9 +409,7 @@ object SyncSliceFactory {
         opSymbol,
         opvSymbol,
         oprSymbol,
-        sSymbol,
-        eSymbol,
-        fSymbol
+        sSymbol
       )
     } else {
       List(
@@ -442,9 +417,7 @@ object SyncSliceFactory {
         iprSymbol,
         opvSymbol,
         oprSymbol,
-        sSymbol,
-        eSymbol,
-        fSymbol
+        sSymbol
       )
     }
 

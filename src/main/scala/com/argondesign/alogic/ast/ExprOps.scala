@@ -117,6 +117,8 @@ trait ExprOps { this: Expr =>
   final def rep(cnt: Expr): ExprRep = addLoc(ExprRep(cnt, this))
   final def rep(cnt: Int): ExprRep = addLoc(ExprRep(addLoc(Expr(cnt)), this))
 
+  final def unary(op: String): ExprUnary = addLoc(ExprUnary(op, this))
+
   final def unary_+ : this.type = this
   final def unary_- : ExprUnary = addLoc(ExprUnary("-", this))
   final def unary_~ : ExprUnary = addLoc(ExprUnary("~", this))
