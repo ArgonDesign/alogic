@@ -245,6 +245,8 @@ final class LowerInterconnect(implicit cc: CompilerContext)
           }
         }
 
+        // Tran
+
         TypeAssigner {
           entity.copy(
             declarations = newDecls.toList ::: entity.declarations,

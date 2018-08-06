@@ -35,7 +35,15 @@ object StaticEvaluation {
     if (expr.tpe.width == 1) {
       expr match {
         case ExprRef(symbol: TermSymbol) => {
-          Map(symbol -> (ExprInt(symbol.kind.isSigned, 1, 1) regularize expr.loc))
+          val self =
+            Iterator.single(symbol -> (ExprInt(symbol.kind.isSigned, 1, 1) regularize expr.loc))
+          val implied = symbol.attr.implications.enumerate collect {
+            case (true, true, iSymbol) =>
+              iSymbol -> (ExprInt(iSymbol.kind.isSigned, 1, 1) regularize expr.loc)
+            case (true, false, iSymbol) =>
+              iSymbol -> (ExprInt(iSymbol.kind.isSigned, 1, 0) regularize expr.loc)
+          }
+          (self ++ implied).toMap
         }
         case ExprUnary("!" | "~", expr)                         => inferFalse(expr)
         case ExprBinary(lhs, "&&" | "&", rhs)                   => inferTrue(lhs) ++ inferTrue(rhs)
@@ -55,7 +63,15 @@ object StaticEvaluation {
     if (eWidth == 1) {
       expr match {
         case ExprRef(symbol: TermSymbol) => {
-          Map(symbol -> (ExprInt(symbol.kind.isSigned, 1, 0) regularize expr.loc))
+          val self =
+            Iterator.single(symbol -> (ExprInt(symbol.kind.isSigned, 1, 0) regularize expr.loc))
+          val implied = symbol.attr.implications.enumerate collect {
+            case (false, true, iSymbol) =>
+              iSymbol -> (ExprInt(iSymbol.kind.isSigned, 1, 1) regularize expr.loc)
+            case (false, false, iSymbol) =>
+              iSymbol -> (ExprInt(iSymbol.kind.isSigned, 1, 0) regularize expr.loc)
+          }
+          (self ++ implied).toMap
         }
         case ExprUnary("!" | "~", expr)                         => inferTrue(expr)
         case ExprBinary(lhs, "||" | "|", rhs)                   => inferFalse(lhs) ++ inferFalse(rhs)
@@ -68,6 +84,7 @@ object StaticEvaluation {
         case ExprRef(symbol: TermSymbol) => {
           Map(symbol -> (ExprInt(symbol.kind.isSigned, eWidth, 0) regularize expr.loc))
         }
+//        case ExprCat(parts) => (Bindings.empty /: parts)(_ ++ inferFalse(_))
         case _ => Bindings.empty
       }
     }

@@ -68,6 +68,15 @@ class SymbolAttributes {
   // then the value of this signal is known to be don't care
   val dontCareUnless = new Attribute[TermSymbol]()
 
+  // Describes implication relationship between this symbol and the denoted
+  // symbols. Both this symbol and the implied symbols must be 1 bit. There
+  // are 2 further booleans attached. The first boolean denotes the state
+  // of this, and the second boolean denotes the states of the attached symbol.
+  // For example, an attribute (true, true, foo) means "this |-> foo",
+  // (false, true, foo) means "~this |-> foo", and (true, false, foo) means
+  // "this |-> ~foo"
+  val implications = new Attribute[List[(Boolean, Boolean, TermSymbol)]]()
+
   // The output register symbol if this is a registered output port
   val oReg = new Attribute[TermSymbol]()
 
@@ -115,6 +124,7 @@ class SymbolAttributes {
     clearOnStall,
     interconnectClearOnStall,
     dontCareUnless,
+    implications,
     oReg,
     flop,
     memory,
@@ -146,6 +156,7 @@ class SymbolAttributes {
     "clearOnStall",
     "interconnectClearOnStall",
     "dontCareUnless",
+    "implications",
     "oReg",
     "flop",
     "memory",

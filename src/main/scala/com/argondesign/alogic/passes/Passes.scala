@@ -69,6 +69,7 @@ object Passes {
       LowerVectors,
       FoldExpr(assignTypes = true, foldRefs = false),
       SimplifyCat,
+      InferImplications,
       FoldStmt,
       SimplifyConditionals,
       ////////////////////////////////////////////////////////////////////////
@@ -76,6 +77,8 @@ object Passes {
       ////////////////////////////////////////////////////////////////////////
       LowerVariables,
       LowerInterconnect,
+      PropagateImplications,
+      FoldStmt,
       OptimizeClearOnStall,
       // TODO: LowerGo
       DefaultAssignments,

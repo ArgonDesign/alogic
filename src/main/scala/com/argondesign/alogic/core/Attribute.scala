@@ -33,6 +33,11 @@ class Attribute[T] {
     case None       => store = Some(a.create(v))
   }
 
+  def enumerate[E](implicit a: Attribute.Enumerable[E, T]): Iterator[E] = store match {
+    case Some(coll) => a.enumerate(coll)
+    case None       => Iterator.empty
+  }
+
   def clear(): Unit = store = None
 
   def isSet = store.isDefined
@@ -49,5 +54,13 @@ object Attribute {
   implicit def appendableList[E] = new Appendable[E, List[E]] {
     def create(elem: E) = List(elem)
     def append(coll: List[E], elem: E) = coll ::: elem :: Nil
+  }
+
+  abstract class Enumerable[E, T] {
+    def enumerate(coll: T): Iterator[E]
+  }
+
+  implicit def enumerableList[E] = new Enumerable[E, List[E]] {
+    def enumerate(coll: List[E]): Iterator[E] = coll.toIterator
   }
 }
