@@ -136,10 +136,13 @@ final class FoldExpr(
       ////////////////////////////////////////////////////////////////////////////
 
       case ExprUnary(aOp, ExprUnary(bOp, expr)) => {
+        val isBoolType = expr.isPacked && !expr.isSigned && expr.width == 1
         val res = (aOp, bOp) match {
-          case ("!", "!") if expr.isPacked && !expr.isSigned && expr.width == 1 => expr
-          case ("~", "~")                                                       => expr
-          case _                                                                => tree
+          case ("~", "~")               => expr
+          case ("~", "!") if isBoolType => expr
+          case ("!", "~") if isBoolType => expr
+          case ("!", "!") if isBoolType => expr
+          case _                        => tree
         }
         if (res.hasLoc) res else res withLoc tree.loc
       }
