@@ -85,8 +85,14 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
       prevMap = nextMap map { _.swap }
 
       // Sort entities using pipeline connections
-      val entities = outer.entities sortWith {
-        case (entityA, entityB) => nextMap.get(entityA.symbol) contains entityB.symbol
+      val entities = {
+        @tailrec
+        def lt(a: TypeSymbol, b: TypeSymbol): Boolean = nextMap.get(a) match {
+          case Some(`b`)   => true
+          case Some(other) => lt(other, b)
+          case None        => false
+        }
+        outer.entities sortWith { case (aEntity, bEntity) => lt(aEntity.symbol, bEntity.symbol) }
       }
 
       // Collect pipeline symbols used in nested entities
