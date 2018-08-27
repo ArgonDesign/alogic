@@ -97,6 +97,52 @@ final class PortCheckSpec extends FreeSpec with AlogicTest {
       }
     }
 
+    "error for multiple sinks for sync ready driver" - {
+      for {
+        (conn, msg) <- List(
+          ("pi_n -> po_n_a;", ""),
+          ("pi_n -> po_n_b;", ""),
+          ("n.po_n -> po_n_a;", ""),
+          ("n.po_n -> po_n_b;", ""),
+          ("pi_n -> po_n_a; pi_n -> po_n_b;", "pi_n"),
+          ("n.po_n -> po_n_a; n.po_n -> po_n_b;", "n.po_n"),
+          ("pi_y -> po_y_a;", ""),
+          ("pi_y -> po_y_b;", ""),
+          ("n.po_y -> po_y_a;", ""),
+          ("n.po_y -> po_y_b;", ""),
+          ("pi_y -> po_y_a; pi_y -> po_y_b;", ""),
+          ("n.po_y -> po_y_a; n.po_y -> po_y_b;", "")
+        )
+      } {
+        conn in {
+          val tree = s"""|network a {
+                         |  (* unused *) in sync ready bool pi_n;
+                         |  (* unused *) out sync ready bool po_n_a;
+                         |  (* unused *) out sync ready bool po_n_b;
+                         |  (* unused *) in sync bool pi_y;
+                         |  (* unused *) out sync bool po_y_a;
+                         |  (* unused *) out sync bool po_y_b;
+                         |
+                         |  (* unused *) new fsm n {
+                         |    (* unused *) out sync ready bool po_n;
+                         |    (* unused *) out sync bool po_y;
+                         |  }
+                         |
+                         |  ${conn}
+                         |}""".stripMargin.asTree[Entity]
+          xform(tree)
+          if (msg.isEmpty) {
+            cc.messages shouldBe empty
+          } else {
+            cc.messages.loneElement should beThe[Error](
+              Pattern.quote(s"'${msg}' has multiple sinks"),
+              "Previous '->' is at: .*"
+            )
+          }
+        }
+      }
+    }
+
     "error for invalid storage specifiers" - {
       for {
         (fc, st, msg) <- List(

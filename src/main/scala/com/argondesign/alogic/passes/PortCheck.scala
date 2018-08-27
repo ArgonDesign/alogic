@@ -24,6 +24,7 @@ import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeReady
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.StorageTypes._
 import com.argondesign.alogic.core.Symbols.TermSymbol
+import com.argondesign.alogic.core.Types.TypeIn
 import com.argondesign.alogic.core.Types.TypeOut
 import com.argondesign.alogic.util.unreachable
 
@@ -35,6 +36,10 @@ final class PortCheck(implicit cc: CompilerContext) extends TreeTransformer {
     cc.error(rhs, s"'${rhs.toSource}' has multiple drivers", s"Previous '->' is at: ${loc.prefix}")
   }
 
+  private[this] def multipleSinkError(lhs: Expr, loc: Loc): Unit = {
+    cc.error(lhs, s"'${lhs.toSource}' has multiple sinks", s"Previous '->' is at: ${loc.prefix}")
+  }
+
   override def skip(tree: Tree): Boolean = tree match {
     case _: Entity => false
     case _         => true
@@ -43,6 +48,10 @@ final class PortCheck(implicit cc: CompilerContext) extends TreeTransformer {
   override def enter(tree: Tree): Unit = tree match {
 
     case entity: EntityNamed => {
+      //////////////////////////////////////////////////////////////////////////
+      // Check multiple drivers
+      //////////////////////////////////////////////////////////////////////////
+
       // Map of symbols appearing on the right of a connect that is declared by
       // us to the location of the connect
       val sinkOurs = mutable.Map[TermSymbol, Loc]()
@@ -51,22 +60,58 @@ final class PortCheck(implicit cc: CompilerContext) extends TreeTransformer {
       val sinkInst = mutable.Map[(TermSymbol, TermSymbol), Loc]()
 
       for {
-        Connect(_, rhss) <- entity.connects
+        connect @ Connect(_, rhss) <- entity.connects
         rhs <- rhss
       } {
         rhs match {
           case rhs @ ExprRef(symbol: TermSymbol) => {
             sinkOurs.get(symbol) foreach { multipleDriverError(rhs, _) }
-            sinkOurs(symbol) = tree.loc
+            sinkOurs(symbol) = connect.loc
           }
           case InstancePortRef(iSymbol, pSymbol) => {
             val key = (iSymbol, pSymbol)
             sinkInst.get(key) foreach { multipleDriverError(rhs, _) }
-            sinkInst(key) = tree.loc
+            sinkInst(key) = connect.loc
           }
           case _ => unreachable
         }
       }
+
+      //////////////////////////////////////////////////////////////////////////
+      // Check multiple sinks - sync ready ports only
+      //////////////////////////////////////////////////////////////////////////
+
+      // Map of symbols appearing on the left of a connect that is declared by
+      // us to the location of the connect
+      val drivOurs = mutable.Map[TermSymbol, Loc]()
+      // Map of instance/port symbol pairs on the left of a connect to the
+      // location of the connect
+      val drivInst = mutable.Map[(TermSymbol, TermSymbol), Loc]()
+
+      for {
+        connect @ Connect(lhs, _) <- entity.connects
+      } {
+        lhs match {
+          case rhs @ ExprRef(symbol: TermSymbol) => {
+            if (symbol.kind.isIn && symbol.kind.asInstanceOf[TypeIn].fct == FlowControlTypeReady) {
+              drivOurs.get(symbol) foreach { multipleSinkError(lhs, _) }
+              drivOurs(symbol) = connect.loc
+            }
+          }
+          case InstancePortRef(iSymbol, pSymbol) => {
+            if (pSymbol.kind.asInstanceOf[TypeOut].fct == FlowControlTypeReady) {
+              val key = (iSymbol, pSymbol)
+              drivInst.get(key) foreach { multipleSinkError(lhs, _) }
+              drivInst(key) = connect.loc
+            }
+          }
+          case _ => unreachable
+        }
+      }
+
+      //////////////////////////////////////////////////////////////////////////
+      // Check storage specifiers
+      //////////////////////////////////////////////////////////////////////////
 
       for {
         decl @ Decl(symbol: TermSymbol, _) <- entity.declarations
