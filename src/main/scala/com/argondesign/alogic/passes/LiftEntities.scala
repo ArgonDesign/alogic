@@ -18,6 +18,7 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeReady
 import com.argondesign.alogic.core.StorageTypes.StorageTypeDefault
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types.TypeOut
@@ -66,6 +67,11 @@ final class LiftEntities(implicit cc: CompilerContext)
   // assignment. The rest could have the referenced signals wired through to
   // them.
   private val outerORefs = mutable.Map[String, TermSymbol]()
+
+  // Similarly to output slices, it is also invalid to reference an input
+  // port with sync ready flow control from more than one nested entities, so
+  // we keep track of those as well
+  private val outerIRefs = mutable.Map[String, TermSymbol]()
 
   private var nestingLevel = 0
 
@@ -164,15 +170,26 @@ final class LiftEntities(implicit cc: CompilerContext)
       }
 
       //////////////////////////////////////////////////////////////////////////
-      // Mark output ports to strip storage from, and record references
+      // Mark output ports to strip storage from
       //////////////////////////////////////////////////////////////////////////
 
       for ((outerSymbol, _) <- newOPortSymbols) {
         stripStorageSymbols add outerSymbol
       }
 
+      //////////////////////////////////////////////////////////////////////////
+      // Record references
+      //////////////////////////////////////////////////////////////////////////
+
       for ((outerSymbol, _) <- newOPortSymbols) {
         outerORefs(entity.symbol.name) = outerSymbol
+      }
+
+      for ((outerSymbol, _) <- newIPortSymbols) {
+        outerSymbol.kind match {
+          case TypeIn(_, FlowControlTypeReady) => outerIRefs(entity.symbol.name) = outerSymbol
+          case _                               =>
+        }
       }
 
       //////////////////////////////////////////////////////////////////////////
@@ -362,9 +379,17 @@ final class LiftEntities(implicit cc: CompilerContext)
 
       if (nestingLevel == 0) {
         for ((oSymbol, group) <- outerORefs.groupBy { _._2 } if group.size > 1) {
-          val first = s"Output port '${oSymbol.name}' referenced by more than one nested entities:"
+          val first =
+            s"Output port '${oSymbol.name}' is referenced by more than one nested entities:"
           cc.error(oSymbol.loc, first :: group.keys.toList: _*)
         }
+
+        for ((iSymbol, group) <- outerIRefs.groupBy { _._2 } if group.size > 1) {
+          val first =
+            s"Input port '${iSymbol.name}' with 'sync ready' flow control is referenced by more than one nested entities:"
+          cc.error(iSymbol.loc, first :: group.keys.toList: _*)
+        }
+
       }
     }
 
