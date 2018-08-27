@@ -221,6 +221,9 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         }
         symbol.attr.init set init
         require(kind.isPacked)
+        if (kind.underlying != TypeVoid && kind.width < 1) {
+          cc.error(decl, s"Signal '${symbol.name}' has declared width ${kind.width}")
+        }
         if (allowWidthInference && init.tpe.isNum) {
           // Infer width of init
           val newInit = CoerceWidth(init, kind.width)
@@ -244,6 +247,9 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         val kind = origKind rewrite TypeTyper
         if (kind ne origKind) {
           symbol.kind = kind
+        }
+        if (kind.isPacked && kind.underlying != TypeVoid && kind.width < 1) {
+          cc.error(decl, s"Signal '${symbol.name}' has declared width ${kind.width}")
         }
         decl
       }

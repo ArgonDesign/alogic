@@ -990,6 +990,25 @@ final class TyperSpec extends FreeSpec with AlogicTest {
       }
     }
 
+    "error for signals with non-positive withd" - {
+      for {
+        (decl, width) <- List(
+          ("uint(-'sd1) a", -1),
+          ("uint(-'sd1) a = 0", -1),
+          ("uint(0) a", 0),
+          ("uint(0) a = 0", 0)
+        )
+      } {
+        decl in {
+          val tree = s"""|fsm tmp {
+                         |  (* unused *) ${decl};
+                         |}""".stripMargin.asTree[Entity]
+          xform(tree)
+          cc.messages.loneElement should beThe[Error](s"Signal 'a' has declared width ${width}")
+        }
+      }
+    }
+
     "warn mismatching operand widths where applicable" - {
       "binary operators" ignore {
         for {
