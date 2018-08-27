@@ -20,6 +20,7 @@ import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.typer.TypeAssigner
+import com.argondesign.alogic.util.unreachable
 
 final class CreateStateSystem(implicit cc: CompilerContext) extends TreeTransformer {
 
@@ -40,8 +41,15 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends TreeTransfor
     }
 
     case entity: EntityNamed => {
-      // TODO: polish off entry state handling (currently always state 0 and first in the list)
-      val dispatch = entity.states match {
+      // TODO: polish off entry state handling (currently always state 0)
+
+      // Ensure entry state is the first
+      val (entryState, otherStates) = entity.states partition {
+        case State(ExprInt(_, _, value), _) => value == 0
+        case _                              => unreachable
+      }
+
+      val dispatch = entryState ::: otherStates match {
         case Nil          => Nil
         case first :: Nil => first.body
         case first :: second :: Nil => {
