@@ -36,7 +36,7 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends TreeTransfor
     case _: StmtFence => StmtBlock(Nil) regularize tree.loc
 
     case State(expr @ ExprInt(_, _, value), body) => {
-      State(expr, StmtComment(s"State ${value}") :: body) regularize tree.loc
+      State(expr, StmtComment(s"State ${value} - line ${tree.loc.line}") :: body) regularize tree.loc
     }
 
     case entity: EntityNamed => {
