@@ -58,20 +58,27 @@ final class LiftEntities(implicit cc: CompilerContext)
   // to loose their storage and turn into wire ports, we collect these in a set
   private val stripStorageSymbols = mutable.Set[TermSymbol]()
 
-  private var entityCount = 0
+  // Output slices are pushed into the referencing entity. We keep track of
+  // referencing entities, and error if there is more than one, as this would
+  // result in multiple slice instances driving the output ports.
+  // TODO: This could be relaxed by allowing more than one nested entities to
+  // reference an outer port so long as there is only one doing a .write or
+  // assignment. The rest could have the referenced signals wired through to
+  // them.
+  private val outerORefs = mutable.Map[String, TermSymbol]()
+
+  private var nestingLevel = 0
 
   override def skip(tree: Tree): Boolean = tree match {
     // Skip root entities without any nested entities
-    case entity: EntityNamed => {
-      entityCount == 0 && entity.entities.isEmpty
-    } followedBy {
-      entityCount += 1
-    }
-    case _ => false
+    case entity: EntityNamed => nestingLevel == 0 && entity.entities.isEmpty
+    case _                   => false
   }
 
   override def enter(tree: Tree): Unit = tree match {
     case entity: EntityNamed => {
+      nestingLevel += 1
+
       //////////////////////////////////////////////////////////////////////////
       // Collect outer ports and consts we are referencing
       //////////////////////////////////////////////////////////////////////////
@@ -157,11 +164,15 @@ final class LiftEntities(implicit cc: CompilerContext)
       }
 
       //////////////////////////////////////////////////////////////////////////
-      // Mark output ports to strip storage from
+      // Mark output ports to strip storage from, and record references
       //////////////////////////////////////////////////////////////////////////
 
       for ((outerSymbol, _) <- newOPortSymbols) {
         stripStorageSymbols add outerSymbol
+      }
+
+      for ((outerSymbol, _) <- newOPortSymbols) {
+        outerORefs(entity.symbol.name) = outerSymbol
       }
 
       //////////////////////////////////////////////////////////////////////////
@@ -346,6 +357,15 @@ final class LiftEntities(implicit cc: CompilerContext)
       outerIPortSymbols.pop()
       outerOPortSymbols.pop()
       outerConstSymbols.pop()
+
+      nestingLevel -= 1
+
+      if (nestingLevel == 0) {
+        for ((oSymbol, group) <- outerORefs.groupBy { _._2 } if group.size > 1) {
+          val first = s"Output port '${oSymbol.name}' referenced by more than one nested entities:"
+          cc.error(oSymbol.loc, first :: group.keys.toList: _*)
+        }
+      }
     }
 
     // Rewrite references to outer ports as references to the newly created inner ports
