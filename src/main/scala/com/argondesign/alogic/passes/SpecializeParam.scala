@@ -27,6 +27,7 @@ import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.transform.CloneEntity
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.typer.Typer
+import com.argondesign.alogic.util.FollowedBy
 import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.tailrec
@@ -90,7 +91,7 @@ final class SpecializeParam(
   }
 }
 
-object SpecializeParam extends Pass {
+object SpecializeParam extends Pass with FollowedBy {
   val name = "specialize-param"
 
   // Recursively specialize entities directly nested within this entity
@@ -361,6 +362,8 @@ object SpecializeParam extends Pass {
     }
 
     specialize(root).entities
+  } followedBy {
+    cc.postSpecialization = true
   }
 
 }

@@ -29,5 +29,7 @@ class CompilerContext(val settings: Settings = Settings())
   // Shorthand for frequently accessed settings
   val sep = settings.sep
 
+  var postSpecialization = false
+
   var passNumber = 0
 }
