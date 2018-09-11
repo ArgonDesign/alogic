@@ -210,7 +210,8 @@ object Liveness {
             }
             val readers = expr :: caseReaders
             val reads = readers map { usedRv }
-            val dLive = reads reduce { _ union _ } diff cDead
+            val born = reads reduce { _ union _ } diff cDead
+            val dLive = cLive union born
 
             val (bLive, bDead) = {
               val sets = cases map {
