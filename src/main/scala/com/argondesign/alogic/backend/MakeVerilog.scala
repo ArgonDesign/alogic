@@ -113,7 +113,11 @@ final class MakeVerilog(
         }
 
         def emitVarDecl(symbol: TermSymbol) = {
-          body.emit(1)(s"reg ${vdecl(symbol)};")
+          if (netSymbols contains symbol) {
+            body.emit(1)(s"wire ${vdecl(symbol)};")
+          } else {
+            body.emit(1)(s"reg ${vdecl(symbol)};")
+          }
         }
 
         if (hasFlops) {
@@ -160,13 +164,7 @@ final class MakeVerilog(
             } {
               body.ensureBlankLine()
               body.emit(1)(s"// ${iSymbol.name}")
-              for (nSymbol <- nSymbols) {
-                if (netSymbols contains nSymbol) {
-                  body.emit(1)(s"wire ${vdecl(nSymbol)};")
-                } else {
-                  body.emit(1)(s"reg  ${vdecl(nSymbol)};")
-                }
-              }
+              nSymbols foreach emitVarDecl
             }
           }
         }
