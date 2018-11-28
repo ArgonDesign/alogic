@@ -27,7 +27,7 @@ object Liveness {
 
   private def usedRvalMaps(expr: Expr)(
       implicit cc: CompilerContext
-  ): Iterator[Map[TermSymbol, BigInt]] = expr collect {
+  ): Iterator[Map[TermSymbol, BigInt]] = expr collectAll {
     // TODO: Deal better with arrays when necessary, currently simply ignored
     case ExprIndex(ExprRef(symbol: TermSymbol), idx) if symbol.kind.isPacked => {
       idx.value map { bit =>
