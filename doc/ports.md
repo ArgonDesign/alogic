@@ -12,6 +12,8 @@ Alogic uses the concept of ports to communicate across entity boundaries. A port
 is declared in an entity body, introduced by the `in` or `out` keywords. The
 simplest ports are analogous to Verilog module ports:
 
+<a href="http://afiddle.argondesign.com/?example=ports_communication.alogic">Fiddle with this code here.</a><a href="http://afiddle.argondesign.com/?example=ports_communication.alogic">Fiddle with this code here.</a>
+
 ```
 fsm foo {
   in u7 p_in_a;
@@ -175,6 +177,8 @@ the corresponding `valid` signal is low. i.e.: A combinatorial dependence from
 The simplest way of consuming the value of an input port is to use the `.read()`
 method:
 
+<a href="http://afiddle.argondesign.com/?example=ports_input.alogic">Fiddle with this code here.</a>
+
 ```
   in sync u4 p_in;
   ...
@@ -196,6 +200,8 @@ transaction is available.
 signal to high, thus allowing the data to be consumed.
 
 ### Output port access
+
+<a href="http://afiddle.argondesign.com/?example=ports_output.alogic">Fiddle with these code samples here.</a>
 
 An output port can be updated using the `.write()` method, which takes as a
 single argument the value to output on the port (writes to `void` ports take
@@ -240,6 +246,8 @@ is simply a reference to the current value of the input port payload signals. It
 is usually reasonable to use direct port access only for ports without flow
 control.
 
+<a href="http://afiddle.argondesign.com/?example=ports_direct_in.alogic">Fiddle with this code here.</a>
+
 ```
   in bool p_flag;
   ...
@@ -257,6 +265,8 @@ any other flow control type.
 Similarly to input ports, it is also possible to reference the payload signals
 of output ports directly, which evaluates to the current value of the output
 signals:
+
+<a href="http://afiddle.argondesign.com/?example=ports_direct_out.alogic">Fiddle with this code here.</a>
 
 ```
   out u4 number;
@@ -279,6 +289,8 @@ driven from the entity.
 
 One important use of testing port state is non-blocking read/write from ports
 with flow control: 
+
+<a href="http://afiddle.argondesign.com/?example=ports_checking.alogic">Fiddle with this code here.</a>
 
 ```
 fsm nonblocking {
@@ -311,8 +323,10 @@ The `.wait()` method can be used on `sync ready` input ports to wait for an
 incoming transaction. This stalls state machines until the `valid` signal on the
 corresponding port becomes high.
 
+<a href="http://afiddle.argondesign.com/?example=ports_waiting.alogic">Fiddle with this code here.</a>
+
 ```
-  in sync void start;
+  in sync ready void start;
 
   void main() {
     start.wait();
@@ -327,6 +341,8 @@ the local flops for `a`. If a is very wide and the data will be used over
 multiple cycles, it is more efficient (in area) to use `p_in.wait()`, following
 by direct port access to `p_in`. When the entity has finished using the data in
 `p_in`, `p_in.read();` can then be used (as a statement).
+
+<a href="http://afiddle.argondesign.com/?example=ports_stepdown.alogic">Fiddle with this code here.</a>
 
 ```
 fsm stepdown {
@@ -363,6 +379,9 @@ Each of these options is now discussed in detail:
 Output ports without flow control are driven from a local flop by default, which
 is updated by the FSM:
 
+<a href="http://afiddle.argondesign.com/?example=ports_output_no_fc_flop.alogic">
+Fiddle with this code here.</a>
+
 ```
 fsm registered {
  out bool a;
@@ -394,9 +413,12 @@ of the FSM above would look like the following waveform:
 The `wire` storage specifier can be used to omit the output register and drive
 the output port combinatorially:
 
+<a href="http://afiddle.argondesign.com/?example=ports_output_no_fc_comb.alogic">
+Fiddle with this code here.</a>
+
 ```
 fsm combinatorial {
- out bool wire a;
+ out wire bool a;
  
  void main() {
     a = false;
@@ -427,18 +449,20 @@ Similarly to ports without flow control, `sync` ports (and their `valid`
 signals) are also driven from registers (local flops in the FSM) by default.
 They can also be declared combinatorially using the `wire` storage specifier:
 
+<a href="http://afiddle.argondesign.com/?example=ports_output_sync.alogic">
+Fiddle with this code here.</a>
+
 ```
 fsm syncports {
   out sync      bool a;
   out sync wire bool b;
 
   void main() {
-    a = false;
-    b = false;
+    a.write(false);
+    b.write(false);
     fence;
-    a = true;
-    b = true;
-    fence;
+    a.write(true);
+    b.write(true);
     fence;
   }
 }
@@ -490,6 +514,9 @@ Alogic supports 3 kinds of output slices:
 
 Without providing an explicit storage specifier, the default storage used for a
 `sync ready` output port is an `fslice`:
+
+<a href="http://afiddle.argondesign.com/?example=ports_output_sync_ready.alogic">
+Fiddle with this code here.</a>
 
 ```
 fsm slices {

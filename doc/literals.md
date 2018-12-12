@@ -13,7 +13,9 @@ split into signed and unsigned variants.
 
 ### Writing Literal Values
 
-The following syntax is used to write literal values:
+The following syntax is used to write literal values <a href=
+"http://afiddle.argondesign.com/?example=literals_writing.alogic">(fiddle
+with these here)>/a>:
 
 ```
 <sign> <size identifier> ' <base> <value>;
@@ -214,6 +216,8 @@ e.g. `$display`:
 ```
 $display("Help!");
 ```
+
+<a href="http://afiddle.argondesign.com/?example=literals_string.alogic">Fiddle with "display" here.</a>
 
 <p align="center">
 <a href="types.md">Previous</a> |
