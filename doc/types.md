@@ -35,14 +35,17 @@ type of the variable followed by the name of the variable:
 
 #### Sized integer types
 
+<a href="http://afiddle.argondesign.com/?example=types_sized_integers.alogic">
+Fiddle with these sized integer types here.</a>
+
 The fundamental data types in Alogic are signed or unsigned integers introduced
 with the `int` or `uint` keywords, with the number of bits used to represent
 them specified in parentheses. The representation can depend on parameters or
 constants:
 
 ```
-  int(5)    b; // A 5 bit signed integer
-  uint(8)   a; // An 8 bit unsigned integer
+  int(5)    a; // A 5 bit signed integer
+  uint(8)   b; // An 8 bit unsigned integer
   uint(N+2) c; // Unsigned integer, with width depending on a parameter.
 ```
 
@@ -53,8 +56,8 @@ with that amount of bits. Similarly, the letter `i` can be used for signed
 integers.
 
 ```
-  u8 a; // Same as 'uint(8) a'
-  i5 b; // Same as 'int(5) a'
+  i5 a; // Same as 'int(5) a'
+  u8 b; // Same as 'uint(8) b'
 ```
 
 The canonical parenthesized format is usually only used if the width
@@ -101,6 +104,9 @@ typedef struct {
 } rect_t;
 ```
 
+<a href="http://afiddle.argondesign.com/?example=types_struct.alogic">
+Fiddle with these struct types here.</a>
+
 To declare a simple variable with a structure type one would further write:
 
 ```
@@ -111,8 +117,8 @@ Fields of a structure type variable are accessed with the usual dot notation:
 
 ```
   rect.topleft = some_point; // Set 'rect.topleft' to the value of 'some_point'
-  rect.w = 9; // Set 'rect.w' to 9
-  rect.h = 1; // Set 'rect.h' to 1
+  rect.width = 8'd9; // Set 'rect.w' to 9
+  rect.height = 8'd1; // Set 'rect.h' to 1
 ```
 
 All structures are packed, and the first field corresponds to the most
@@ -135,6 +141,9 @@ or equivalently:
 Alogic supports multi-dimensional packed vectors of integer types. Variables of
 a vector type can be declared by adding the vector sizes following the type
 specifier in a declaration:
+
+<a href="http://afiddle.argondesign.com/?example=types_sized_integers.alogic">
+Fiddle with these vector types here.</a>
 
 ```
 // Vectors can be defined with one or more dimensions:
@@ -205,6 +214,9 @@ the flow control signals carry all required information.
 Similarly to the C language, a `typedef` declaration can be used to create an
 alias for packed type, giving it a new name:
 
+<a href="http://afiddle.argondesign.com/?example=types_typedef.alogic">
+Fiddle with typedefs here.</a>
+
 ```
   typedef <existing type> <new type>;
   
@@ -222,6 +234,9 @@ Variables with a structure type are emitted as multiple Verilog variables with
 field names adjoined with an `_`.
 
 An example of mappings using the definitions from above is as follows:
+
+<a href="http://afiddle.argondesign.com/?example=types_mapping.alogic">
+Fiddle with these mappings here.</a>
 
 <table>
   <tr>

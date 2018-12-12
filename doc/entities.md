@@ -72,6 +72,9 @@ design entity. The Verilog module emitted has the same name as the name of the
 design entity, and is output to a `.v` file with the same base name.
 
 For example `spam.alogic`:
+
+<a href="http://afiddle.argondesign.com/?example=entities_network.alogic">Fiddle with this code here.</a>
+
 ```
 network spam {
   ...
