@@ -33,10 +33,7 @@ type of the variable followed by the name of the variable:
 
 ### Supported packed types
 
-#### Sized integer types
-
-<a href="http://afiddle.argondesign.com/?example=types_sized_integers.alogic">
-Fiddle with these sized integer types here.</a>
+#### Sized integer types - <a href="http://afiddle.argondesign.com/?example=types_sized_integers.alogic">fiddle here.</a>
 
 The fundamental data types in Alogic are signed or unsigned integers introduced
 with the `int` or `uint` keywords, with the number of bits used to represent
@@ -68,7 +65,8 @@ of the type is computed based on values of parameters or constants.
 The keyword `bool` can also be used to represent a boolean type, and is simply a
 synonym for `u1`.
 
-#### Struct types
+#### Struct types - <a href="http://afiddle.argondesign.com/?example=types_struct.alogic">
+fiddle here.</a>
 
 Alogic supports grouping related values into structures. A structure type is
 defined with the `struct` keyword, followed by the name of the structure type,
@@ -104,9 +102,6 @@ typedef struct {
 } rect_t;
 ```
 
-<a href="http://afiddle.argondesign.com/?example=types_struct.alogic">
-Fiddle with these struct types here.</a>
-
 To declare a simple variable with a structure type one would further write:
 
 ```
@@ -136,14 +131,12 @@ or equivalently:
   rect_t rect = {some_point, 8'd9, 8'd1};
 ```
 
-#### Vector types
+#### Vector types - <a href="http://afiddle.argondesign.com/?example=types_sized_integers.alogic">
+fiddle here.</a>
 
 Alogic supports multi-dimensional packed vectors of integer types. Variables of
 a vector type can be declared by adding the vector sizes following the type
 specifier in a declaration:
-
-<a href="http://afiddle.argondesign.com/?example=types_sized_integers.alogic">
-Fiddle with these vector types here.</a>
 
 ```
 // Vectors can be defined with one or more dimensions:
@@ -209,13 +202,11 @@ The `void` type can be used where no meaningful value is necessary. It is used
 as the return type of state functions in FSMs, and as the type of ports where
 the flow control signals carry all required information.
 
-### typedefs
+### typedefs - <a href="http://afiddle.argondesign.com/?example=types_typedef.alogic">
+fiddle here.</a>
 
 Similarly to the C language, a `typedef` declaration can be used to create an
 alias for packed type, giving it a new name:
-
-<a href="http://afiddle.argondesign.com/?example=types_typedef.alogic">
-Fiddle with typedefs here.</a>
 
 ```
   typedef <existing type> <new type>;
