@@ -11,6 +11,8 @@
 Constants are local aliases for values introduced with the `const` keyword. They
 are stronger than text macros by having an associated type and hence bit width:
 
+<a href="http://afiddle.argondesign.com/?example=params_constants.alogic">Fiddle with this code here.</a>
+
 ```
 fsm baz {
   const u32 MAGIC = 32'habcd_0123;
@@ -41,6 +43,8 @@ Entities can declare typed parameters, introduced with the `param` keyword.
 These parameters must have a default value. However, it is then possible to
 overwrite this at instantiation time by defining an instantiated module to have
 a specific parameter value:
+
+<a href="http://afiddle.argondesign.com/?example=params_params.alogic">Fiddle with this code here.</a>
 
 ```
 fsm foo {
@@ -76,6 +80,8 @@ endmodule
 
 One benefit of parameter specialization is that as opposed to Verilog, port
 declarations in Alogic can depend on `const` values:
+
+<a href="http://afiddle.argondesign.com/?example=params_port_declarations.alogic">Fiddle with this code here.</a>
 
 ```
 fsm bar {
