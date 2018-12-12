@@ -51,6 +51,7 @@ used.
 ### Example FSM
 
 The following code demonstrates an FSM with 3 states:
+<a href="http://afiddle.argondesign.com/?example=concepts_example_fsm.alogic">Fiddle with this code here.</a>
 
 ```
 fsm foo {
@@ -92,6 +93,7 @@ and optionally some flow control signals with well-defined semantics.
 A simple example of a module that, on every clock cycle, reads an 8 bit value
 from an input port using a valid-ready handshake and adds a quasi-static value
 to it is as follows:
+<a href="http://afiddle.argondesign.com/?example=concepts_ports.alogic">Fiddle with this code here.</a>
 
 ```
 fsm add {
