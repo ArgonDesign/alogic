@@ -12,7 +12,7 @@ Alogic uses the concept of ports to communicate across entity boundaries. A port
 is declared in an entity body, introduced by the `in` or `out` keywords. The
 simplest ports are analogous to Verilog module ports:
 
-<a href="http://afiddle.argondesign.com/?example=ports_communication.alogic">Fiddle with this code here.</a><a href="http://afiddle.argondesign.com/?example=ports_communication.alogic">Fiddle with this code here.</a>
+<a href="http://afiddle.argondesign.com/?example=ports_communication.alogic">Fiddle with this code here.</a>
 
 ```
 fsm foo {

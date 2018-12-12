@@ -15,7 +15,7 @@ split into signed and unsigned variants.
 
 The following syntax is used to write literal values <a href=
 "http://afiddle.argondesign.com/?example=literals_writing.alogic">(fiddle
-with these here)>/a>:
+with these here)</a>:
 
 ```
 <sign> <size identifier> ' <base> <value>;
