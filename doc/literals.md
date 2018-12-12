@@ -213,11 +213,11 @@ does not support interpreting strings as a bit vector. String literals should
 only be used as arguments to builtin functions that require a string argument,
 e.g. `$display`:
 
+<a href="http://afiddle.argondesign.com/?example=literals_string.alogic">Fiddle with "display" here.</a>
+
 ```
 $display("Help!");
 ```
-
-<a href="http://afiddle.argondesign.com/?example=literals_string.alogic">Fiddle with "display" here.</a>
 
 <p align="center">
 <a href="types.md">Previous</a> |
