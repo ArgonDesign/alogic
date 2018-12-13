@@ -16,6 +16,8 @@ Networks can be declared similar to other entities, using the `network` keyword,
 followed by the name of the network, followed by the description of the network
 in curly braces.
 
+<a href="http://afiddle.argondesign.com/?example=entities_network.alogic">Fiddle with this code here</a>:
+
 ```
 network a {
   <description>
@@ -83,7 +85,11 @@ parameters defined in `fifo`.
     fifo_i = new fifo(WIDTH=32, DEPTH=512);
     ```
 
+<a href="http://afiddle.argondesign.com/?example=networks_instantiations.alogic">Fiddle with these instantiations here</a>.
+    
 ### Port connections
+
+<a href="http://afiddle.argondesign.com/?example=networks_ports.alogic">Fiddle with these port connections here.</a>
 
 Once instances of entities have been created, the ports on these instances can
 be connected using the `->` operator:
@@ -132,7 +138,7 @@ will issue an error.
 ### Nested FSMs
 
 Networks can also contain nested `fsm` definitions, which can be instantiated in
-the enclosing network:
+the enclosing network (<a href="http://afiddle.argondesign.com/?example=networks_nested.alogic">fiddle here</a>):
 
 ```
 network foo {
@@ -154,7 +160,7 @@ tightly interconnected FSMs, and is also used as the abstraction for
 It is a common pattern to define a nested FSM in a network and then create a
 single instance of it. Alogic provides syntactic sugar for defining just such a
 singleton nested entity, by using the `new` keyword before the nested
-definition:
+definition (<a href="http://afiddle.argondesign.com/?example=networks_singletons.alogic">fiddle here</a>):
 
 ```
 network foo {
@@ -182,6 +188,8 @@ entity, as well the `param` and `const` values declared in the enclosing entity.
 The compiler will emit nested entities as separate modules, and if there are
 outer ports referenced by the nested entity, these will be automatically wired
 through to the nested entity:
+
+<a href="http://afiddle.argondesign.com/?example=networks_access.alogic">Fiddle with this code here.</a>
 
 ```
 network foo {

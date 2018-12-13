@@ -23,6 +23,8 @@ execute on every clock cycle.
 This FSM reads a byte from an input port on every clock cycle, increments its
 value by 2 and writes the result to an output port:
 
+<a href="http://afiddle.argondesign.com/?example=fsms_syntax.alogic">Fiddle with this code here.</a>
+
 ```
 fsm add2 {
 
@@ -61,6 +63,8 @@ every clock cycle.
 
 An FSM that, depending on the state of an input port, would apply one of 2
 different kinds of processing could be defined using the following pattern:
+
+<a href="http://afiddle.argondesign.com/?example=fsms_functions.alogic">Fiddle with this code here.</a>
 
 ```
 fsm one_or_the_other {
@@ -136,6 +140,8 @@ defines how many times that function can be entered on the worst case execution
 path, and must be provided by the user. The compiler will use this limit to
 compute the minimum size of the return stack:
 
+<a href="http://afiddle.argondesign.com/?example=fsms_recursive.alogic">Fiddle with this code here.</a>
+
 ```
 fsm rec {
   u8 i;
@@ -184,6 +190,8 @@ function they will keep their latest value. This means that on return to the
 `main` function, we will have `b == 3`. (If a new local variable was used for
 every new recursion, then on return to `main` we would have `b == 0`.)
 
+<a href="http://afiddle.argondesign.com/?example=fsms_static.alogic">Fiddle with this code here.</a>
+
 ```
 fsm static_storage {
   u8 i;
@@ -216,7 +224,7 @@ fsm static_storage {
 FSMs definitions can contain a single `fence` block. The `fence` block may only
 contain combinatorial statements, and is executed at the beginning of every
 cycle, before any of the statements of the control unit corresponding to the
-current state are considered. For example:
+current state are considered. For example (<a href="http://afiddle.argondesign.com/?example=fsms_fence.alogic">fiddle here</a>):
 
 ```
 fsm fenceblock {
@@ -243,7 +251,7 @@ fsm fenceblock {
 }
 ```
 
-Is equivalent to:
+Is equivalent to (<a href="http://afiddle.argondesign.com/?example=fsms_nofence.alogic">fiddle here</a>):
 
 ```
 fsm nofencefunc {

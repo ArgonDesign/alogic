@@ -37,6 +37,8 @@ The `#define` directive can be used to define a macro that will undergo text
 replacement by the preprocessor. Only simple macros are supported, not
 function-like macros:
 
+<a href="http://afiddle.argondesign.com/?example=preproc_macros.alogic">Fiddle with this macro here.</a>
+
 ```
 #define MAGIC 4'd4;
 // at compile time, all instances of MAGIC will be replaced with the text "4'd4"

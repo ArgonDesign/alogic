@@ -58,6 +58,8 @@ Alogic supports the usual ternary conditional `?:` operator:
 
 ### Indexing and slicing
 
+<a href="http://afiddle.argondesign.com/?example=expr_indexing.alogic">Fiddle with indexing and slicing here.</a>
+
 Variables with appropriate type can be indexes with the usual `[_]` syntax,
 possibly multiple times.
 

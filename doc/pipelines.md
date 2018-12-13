@@ -61,6 +61,8 @@ in parallel in the 1st stage, and performs a radix-2 sum of the element-wise
 products over the subsequent 2 stages, using pipeline variables to pass
 intermediate results:
 
+<a href="http://afiddle.argondesign.com/?example=pipelines_example1.alogic">Fiddle with this example here.</a>
+
 ```
 network dotprod {
   // 1st input vector
@@ -146,6 +148,8 @@ they are needed. Pipeline ports always use `sync ready` flow control and an
 `fslice` as storage. The compiler turns the above definition of the `dotprod`
 pipeline into the following, before compilation proceeds as for other Alogic
 networks:
+
+<a href="http://afiddle.argondesign.com/?example=pipelines_example2.alogic">Fiddle with this example here.</a>
 
 ```
 network dotprod {

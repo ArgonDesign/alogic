@@ -77,6 +77,8 @@ Writes take effect only on the subsequent clock cycle:
   fence;
 ```
 
+<a href="http://afiddle.argondesign.com/?example=memories_working.alogic">Fiddle with a distributed memory here.</a>
+
 ### Implementation of distributed memories
 
 In the Verilog implementation emitted by the compiler, distributed memories are
@@ -105,7 +107,7 @@ as `u16 storage[32]`) would be implemented in the generated Verilog as:
 ### Example: FIFO with distributed memory
 
 As an example, a fifo with a simple 32 entry deep, 8-bit wide distributed memory
-could be written in Alogic as:
+could be written in Alogic as (<a href="http://afiddle.argondesign.com/?example=memories_example.alogic">fiddle here</a>):
 
 ```
 fsm dfifo {

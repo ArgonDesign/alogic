@@ -9,6 +9,8 @@
 Alogic provides a set of built-in functions, this section is a comprehensive
 reference of their semantics.
 
+<a href="http://afiddle.argondesign.com/?example=builtins.alogic">Fiddle with all of these built-in functions here.</a>
+
 ### General semantics and concepts
 
 Names of Alogic built-in functions start with either the `$` or `@` characters.

@@ -43,6 +43,8 @@ Declaration statements start with a type name, followed by the variable
 identifier, optionally followed by `=` and an initializer expression, and end in
 `;`:
 
+<a href="http://afiddle.argondesign.com/?example=statements_declaration.alogic">Fiddle with these declarations here.</a>
+
 ```
   u8 a;          // Declare 8 bit unsigned integer variable 'a',
                  // but do not initialize it.
@@ -92,6 +94,8 @@ statements do not return a value, they should only be used for their
 side-effects (see examples below). The compiler will signal an error if a pure
 expression (i.e. one with no side-effects) is used in statement position.
 
+<a href="http://afiddle.argondesign.com/?example=statements_expression.alogic">Fiddle with these expressions here.</a>
+
 ```
   p_in.read();        // Legal, as '.read()' has a side-effect of reading
                       // the input port, although the read value is discarded.
@@ -129,7 +133,7 @@ of an assignment can be either one of:
   
 - Structure member access, e.g. `foo.bar = 4'd9;`
 
-- Unpacking assignment (concatenation of lvalues): `{foo, {bar[idx], baz.x}}`
+- Unpacking assignment (concatenation of lvalues): `{foo, {bar[idx], baz.x}}` - <a href="http://afiddle.argondesign.com/?example=statements_unpacking.alogic">fiddle here:</a>
     ```
     u10 a;
     u2[3] b;
@@ -140,7 +144,7 @@ of an assignment can be either one of:
 #### Shorthand assignments (combinatorial)
 
 All binary operators are available in the shorthand assignment form, including
-when the target is a concatenation or other compound lvalue:
+when the target is a concatenation or other compound lvalue (<a href="http://afiddle.argondesign.com/?example=statements_shorthand.alogic">fiddle here</a>):
 
 ```
   a >>= 2;
@@ -167,7 +171,7 @@ the end of a control unit. All combinatorial statements before a `fence`
 statement will belong to the current control unit (which also includes the
 `fence` statement itself), and will execute in the current clock cycle. On the
 next clock cycle, control is transferred to the statements following the `fence`
-statement. The following example takes 2 cycles to execute:
+statement. The following example takes 2 cycles to execute (<a href="http://afiddle.argondesign.com/?example=statements_fence.alogic">fiddle here</a>):
 
 ```
   a = b + c;
@@ -186,6 +190,8 @@ contains a control statement, but not all branches end in a control statement,
 the branch statement is invalid and yields a compile time error.
 
 #### `if` statement (combinatorial or control)
+
+<a href="http://afiddle.argondesign.com/?example=statements_if.alogic">Fiddle with these if-else statements here.</a>
 
 The common `if` statement can be used to perform a 2-way branch:
 
@@ -268,7 +274,7 @@ Some legal examples are:
   }
 ```
 
-Some invalid examples are:
+Some invalid examples are (<a href="http://afiddle.argondesign.com/?example=statements_if.alogic">fiddle here</a>):
 
 ```
   // Invalid because 'if' is control and 'else' is combinatorial
@@ -312,7 +318,8 @@ The selectors can be:
 
 The selectors are considered in a top-to-bottom order, and if the condition
 expression is equal to the selector, the statement is executed and no further
-selectors are checked. This means overlapping selectors are legal. For example:
+selectors are checked. This means overlapping selectors are legal. For example 
+(<a href="http://afiddle.argondesign.com/?example=statements_case.alogic">fiddle here</a>):
 
 ```
   // Assume foo is an u3
@@ -343,7 +350,8 @@ The case statement can either have an explicit or implicit `default` case to
 catch remaining cases. If used explicitly, it can be placed anywhere in the
 selector list and is always evaluated last (this is the same as verilog). If
 used implicitly, it can be omitted and the compiler will insert a default empty
-combinatorial block or `fence;` control block, as appropriate. For example:
+combinatorial block or `fence;` control block, as appropriate. For example 
+(<a href="http://afiddle.argondesign.com/?example=statements_case_fence.alogic">fiddle here</a>):
 
 ```
   case (foo) {
@@ -382,7 +390,8 @@ statements relating to function call handling are control statements.
 #### The call statement (control)
 
 To end the current control unit, and transfer control to a function on the next
-clock cycle, simply call it in statement position:
+clock cycle, simply call it in statement position 
+(<a href="http://afiddle.argondesign.com/?example=statements_call.alogic">fiddle here</a>):
 
 ```
   void foo() {
@@ -403,7 +412,7 @@ The `return` statement can be used to end the control unit and transfer control
 back to the call site for the next clock cycle. As mentioned in the description
 of [FSMs](fsms.md), functions do not return automatically when they reach the
 end of the function body. Without a `return` statement, control is transferred
-back to the top of the function.
+back to the top of the function (<a href="http://afiddle.argondesign.com/?example=statements_return.alogic">fiddle here</a>).
 
 ```
   void foo() {
@@ -422,7 +431,7 @@ statement ends the current control unit, transfers control to the target
 function, but does not push a return stack entry, and hence the callee will
 return to the site of the preceding function call. One use of `goto` is to
 eliminate wasted cycles where there is no work to be done other than returning
-to an outer function:
+to an outer function (<a href="http://afiddle.argondesign.com/?example=statements_goto.alogic">fiddle here</a>):
 
 ```
   void a() {
@@ -455,7 +464,7 @@ call site of _b_ inside _a_:
 All statements in this section are control statements. The bodies of all loops
 must be `{}` blocks, even if they contain only a single statement.
 
-#### The fundamental `loop` statement (control)
+#### The fundamental `loop` statement (control) - (<a href="http://afiddle.argondesign.com/?example=statements_loop.alogic">fiddle here</a>)
 
 The fundamental looping construct is the infinite loop, introduced with the
 `loop` keyword. The body of a `loop` must end in a control statement. To exit
@@ -484,7 +493,7 @@ cycle behaviour of these structured loops, consider their rewriting. Note in
 particular that an implicit `fence` is always inserted at the end of the loop
 body and so does not need to be written.
 
-#### `do` loop (control)
+#### `do` loop (control) - (<a href="http://afiddle.argondesign.com/?example=statements_do.alogic">fiddle here</a>)
 
 The common rear testing `do` loop is written as:
 
@@ -508,7 +517,7 @@ This is rewritten by the compiler to:
   }
 ```
 
-#### `while` loop (control)
+#### `while` loop (control) - (<a href="http://afiddle.argondesign.com/?example=statements_while.alogic">fiddle here</a>)
 
 The syntax of the front testing `while` loop is as follows:
 
@@ -534,7 +543,7 @@ This is rewritten by the compiler to:
   }
 ```
 
-#### `for` loop (control)
+#### `for` loop (control) - (<a href="http://afiddle.argondesign.com/?example=statements_for.alogic">fiddle here</a>)
 
 For loops follow the common syntax:
 
@@ -606,7 +615,7 @@ statement. The `let` statement is syntactic sugar for:
 ```
 
 The canonical use case is to aid with `do` loops to construct the equivalent of
-a rear-testing `for` loop:
+a rear-testing `for` loop (<a href="http://afiddle.argondesign.com/?example=statements_let.alogic">fiddle here</a>):
 
 ```
   // Loop 8 times using a 3 bit loop variable
