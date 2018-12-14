@@ -164,7 +164,7 @@ fsm rec {
 }
 ```
 
-It the responsibility of the designer to ensure that the actual program logic of
+It is the responsibility of the designer to ensure that the actual program logic of
 the FSM does not violate the specified recursion limit.
 
 The size of the return stack can be specified explicitly using the `stacklimit`
@@ -203,6 +203,7 @@ fsm static_storage {
     // At this point b == 3
   }
 
+  (* reclimit = 4 *)
   void foo() {
     u8 a = i;
     // The C equivalent of the declaration above would be a combination of
@@ -229,7 +230,7 @@ current state are considered. For example (<a href="http://afiddle.argondesign.c
 ```
 fsm fenceblock {
   u3 s_l2 = 1;
-  u8 s;
+  out u8 s;
 
   fence {
     s = 8'd1 << s_l2;
@@ -256,7 +257,7 @@ Is equivalent to (<a href="http://afiddle.argondesign.com/?example=fsms_nofence.
 ```
 fsm nofencefunc {
   u3 s_l2 = 1;
-  u8 s;
+  out u8 s;
 
   void main () {
     s = 8'd1 << s_l2;

@@ -106,7 +106,7 @@ void main() {
   c.read();     // | Cycle 1
   fence;        // V Cycle 1 ends
 
-  d.write();    // | Cycle 2
+  d.write(a);   // | Cycle 2
   e--;          // | Cycle 2
   goto foo;     // V Cycle 2 ends - Cycle 3 would start at the first
                 //                  statement of control function 'foo'
@@ -133,7 +133,7 @@ void main() {
   }             // |
   fence;        // V Cycle 1 ends
 
-  d.write();    // | Cycle 2
+  d.write(a);   // | Cycle 2
   e--;          // | Cycle 2
   goto foo;     // V Cycle 2 ends
 }
@@ -155,7 +155,7 @@ void main() {
     g++;        // | Cycle 1
     fence;      // V Cycle 1 ends
 
-    d.write();  // | Cycle 2
+    d.write(a); // | Cycle 2
     e--;        // | Cycle 2
     goto foo;   // V Cycle 2 ends
   }
@@ -187,7 +187,7 @@ void main() {
                 //  |
   fence;        //  V Cycle 1 ends
 
-  d.write();    // | Cycle 2
+  d.write(a);   // | Cycle 2
   e--;          // | Cycle 2
   goto foo;     // V Cycle 2 ends
 }
@@ -220,7 +220,7 @@ void main() {
     fence;      //   V Cycle 2 ends if 'a' was false
   }             //
 
-  d.write();    // | Cycle 2 if 'a' was true, and Cycle 3 if 'a' was false
+  d.write(a);   // | Cycle 2 if 'a' was true, and Cycle 3 if 'a' was false
   e--;          // | Cycle 2 if 'a' was true, and Cycle 3 if 'a' was false
   goto foo;     // V Cycle 2 ends if 'a' was true, and Cycle 3 ends if 'a' was false
 }
@@ -246,10 +246,10 @@ void main() {
    loop {      // V Cycle 1 - A 'loop' is always entered, but the cycle ends
      f++;      // | Cycle 2
      g++;      // | Cycle 2
-     break;    /  V Cycle 2 ends - Iterate only once for this example
+     break;    //  V Cycle 2 ends - Iterate only once for this example
    }
 
-   d.write();  // | Cycle 3
+   d.write(a); // | Cycle 3
    e--;        // | Cycle 3
    goto foo;   // V Cycle 3 ends
 }
@@ -272,7 +272,7 @@ void main() {
     h = false; // V Cycle 2 ends if 'h' was true - Iterate once for this example
   }
 
-  d.write();   // | Cycle 3 if 'while' loop was entered, otherwise Cycle 2
+  d.write(a);  // | Cycle 3 if 'while' loop was entered, otherwise Cycle 2
   e--;         // | Cycle 3 if 'while' loop was entered, otherwise Cycle 2
   goto foo;    // V Cycle 3 ends if 'while' loop was entered, otherwise Cycle 2 ends
 }
@@ -298,7 +298,7 @@ executes twice (<a href="http://afiddle.argondesign.com/?example=control_opt_do.
   u2 i = 2'd0;          // | Cycle 1
                         // |
   do {                  // V Cycle 1 ends, 'do' loop is always entered
-    a++                 // | Cycle 2 (i == 0)         | Cycle 3 (i == 1)
+    a++;                // | Cycle 2 (i == 0)         | Cycle 3 (i == 1)
     i++;                // | Cycle 2 (i becomes 1)    | Cycle 3 (i becomes 2)
   } while (i < 2'd2);   // V Cycle 2 end - loopback   V Cycle 3 ends - loop exit
 
@@ -336,7 +336,7 @@ is redundant, and the state machine executes the same with or without it (<a hre
 ```
 void main() {
   a++;      // | Cycle 1
-  b++       // | Cycle 1
+  b++;      // | Cycle 1
   fence;    // V Cycle 1 ends
 
   loop {    // - Loop header optimization: No new state required
@@ -353,7 +353,7 @@ in this is executed, and the new cycle then ends on loop entry (<a href="http://
 ```
 void main() {
   a++;      // | Cycle 1
-  b++       // | Cycle 1
+  b++;      // | Cycle 1
   fence;    // V Cycle 1 ends
 
   d++;      // | Cycle 2

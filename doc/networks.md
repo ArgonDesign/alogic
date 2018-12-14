@@ -84,12 +84,8 @@ parameters defined in `fifo`.
     ```
     fifo_i = new fifo(WIDTH=32, DEPTH=512);
     ```
-
-<a href="http://afiddle.argondesign.com/?example=networks_instantiations.alogic">Fiddle with these instantiations here</a>.
     
 ### Port connections
-
-<a href="http://afiddle.argondesign.com/?example=networks_ports.alogic">Fiddle with these port connections here.</a>
 
 Once instances of entities have been created, the ports on these instances can
 be connected using the `->` operator:

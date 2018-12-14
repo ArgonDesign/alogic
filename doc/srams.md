@@ -36,8 +36,6 @@ called `storage` could be declared as:
 sram wire u16 storage[1024];
 ```
 
-<a href="http://afiddle.argondesign.com/?example=srams_declaration.alogic">Fiddle with declaration syntax here.</a>
-
 ### SRAM semantics
 
 All Alogic SRAM declarations refer to an instance of a single port SRAM with a
@@ -121,13 +119,13 @@ A simple read from the `storage` SRAM could be performed like this:
   // Issue read access
   storage.read(10'd87);
   fence;
-  // Given that storage was declared as combinatorially driven, stroage.rdata
+  // Given that storage was declared as combinatorially driven, storage.rdata
   // is available on the following cycle. x should now be incremented by
   // whatever value is in the SRAM at address 87
   x += storage.rdata;
 ```
 
-<a href="http://afiddle.argondesign.com/?example=srams_read_write.alogic">Fiddle with read and write syntax here.</a>
+<a href="http://afiddle.argondesign.com/?example=srams_basic.alogic">Fiddle with a basic sram here.</a>
 
 ### Combinatorially driven vs registered SRAMs
 
@@ -269,7 +267,7 @@ fsm sfifo {
 }
 ```
 
-A not very thorough but simple test-bench for the FIFO above can be written as (<a href="http://afiddle.argondesign.com/?example=srams_tb.alogic">fiddle here</a>):
+A not very thorough but simple test-bench for the FIFO above can be written as:
 
 ```
 network sfifo_tb {

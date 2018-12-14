@@ -49,9 +49,9 @@ identifier, optionally followed by `=` and an initializer expression, and end in
   u8 a;          // Declare 8 bit unsigned integer variable 'a',
                  // but do not initialize it.
   i16 b = -'sd2; // Declare 16 bit signed integer variable 'b',
-                 // and initialize it to -2;
+                 // and initialize it to -2.
   foo_t bar;     // Declare variable 'bar' of type 'foo_t', where 'foo_t' is either
-                 // a typedef or the name of a struct
+                 // a typedef or the name of a struct.
 ```
 
 Note that while this looks like a local variable, the storage is in fact
@@ -191,8 +191,6 @@ the branch statement is invalid and yields a compile time error.
 
 #### `if` statement (combinatorial or control)
 
-<a href="http://afiddle.argondesign.com/?example=statements_if.alogic">Fiddle with these if-else statements here.</a>
-
 The common `if` statement can be used to perform a 2-way branch:
 
 ```
@@ -200,7 +198,7 @@ The common `if` statement can be used to perform a 2-way branch:
 ```
 
 The else clause is optional, and omitting the else clause results in an implicit
-fence, as follows:
+fence, as follows (<a href="http://afiddle.argondesign.com/?example=statements_if.alogic">fiddle here</a>):
 
 ```
   if (cond) {
@@ -222,7 +220,7 @@ is compiled as:
   }
 ```
 
-Some legal examples are:
+Some legal examples are (<a href="http://afiddle.argondesign.com/?example=statements_if2.alogic">fiddle here</a>):
 
 ```
   // Combinatorial if statement:
@@ -274,7 +272,7 @@ Some legal examples are:
   }
 ```
 
-Some invalid examples are (<a href="http://afiddle.argondesign.com/?example=statements_if.alogic">fiddle here</a>):
+Some invalid examples are (<a href="http://afiddle.argondesign.com/?example=statements_invalid.alogic">fiddle here</a>):
 
 ```
   // Invalid because 'if' is control and 'else' is combinatorial

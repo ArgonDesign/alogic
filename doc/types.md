@@ -111,8 +111,8 @@ Fields of a structure type variable are accessed with the usual dot notation:
 
 ```
   rect.topleft = some_point; // Set 'rect.topleft' to the value of 'some_point'
-  rect.width = 8'd9; // Set 'rect.w' to 9
-  rect.height = 8'd1; // Set 'rect.h' to 1
+  rect.width = 8'd9; // Set 'rect.width' to 9
+  rect.height = 8'd1; // Set 'rect.height' to 1
 ```
 
 All structures are packed, and the first field corresponds to the most
@@ -130,11 +130,11 @@ or equivalently:
   rect_t rect = {some_point, 8'd9, 8'd1};
 ```
 
-#### Vector types - <a href="http://afiddle.argondesign.com/?example=types_vectors.alogic">fiddle here.</a>
+#### Vector types
 
 Alogic supports multi-dimensional packed vectors of integer types. Variables of
 a vector type can be declared by adding the vector sizes following the type
-specifier in a declaration:
+specifier in a declaration (<a href="http://afiddle.argondesign.com/?example=types_vectors1.alogic">fiddle here</a>):
 
 ```
 // Vectors can be defined with one or more dimensions:
@@ -168,7 +168,7 @@ specifier in a declaration:
 Note that indices are 0 based. Multi-dimensional vectors can be used after
 partial indexing, which yield vectors of lower dimensions. Vectors are
 linearized to a bit-string using row-major order, with lower order indices
-packed towards the LSBs. For example, if we defined x and y as:
+packed towards the LSBs. For example, if we defined x and y as (<a href="http://afiddle.argondesign.com/?example=types_vectors2.alogic">fiddle here</a>):
 
 ```
   u2[3][4] x = ...;

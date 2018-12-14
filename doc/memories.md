@@ -58,17 +58,17 @@ Writing the value `16'habcd` to address `9` in the distributed memory called
 `storage` (declared earlier) is performed with:
 
 ```
-  storage.write(9, 16'habcd);
+  storage.write(5'd9, 16'habcd);
 ```
 
 Writes take effect only on the subsequent clock cycle:
 
 ```
-  storage.write(9, 16'h0123);
+  storage.write(5'd9, 16'h0123);
   fence;
   // storage[9] is now 16'h0123
 
-  storage.write(9, 16'habcd); // The write only commits at the end of the cycle
+  storage.write(5'd9, 16'habcd); // The write only commits at the end of the cycle
 
   u16 x = storage[9]; // 'x' becomes 16'h0123
   fence;
@@ -106,8 +106,9 @@ as `u16 storage[32]`) would be implemented in the generated Verilog as:
 
 ### Example: FIFO with distributed memory
 
-As an example, a fifo with a simple 32 entry deep, 8-bit wide distributed memory
-could be written in Alogic as (<a href="http://afiddle.argondesign.com/?example=memories_example.alogic">fiddle here</a>):
+As an example (<a href="http://afiddle.argondesign.com/?example=memories_example.alogic">fiddle here</a>),
+a fifo with a simple 32 entry deep, 8-bit wide distributed memory could be written
+in Alogic as:
 
 ```
 fsm dfifo {

@@ -204,7 +204,7 @@ Ports (and in general signals) which are of a `struct` type are emitted as
 multiple signals by splitting the structure into its fields. The separator used
 to join the parts of the split signal names is given by the `--sep` compiler
 option, and defaults to `__`, the same way as for flow control signals described
-above. Observe the example (<a href="http://afiddle.argondesign.com/?example=intero_struct.alogic">fiddle here</a>):
+above. Observe the example (<a href="http://afiddle.argondesign.com/?example=interop_struct.alogic">fiddle here</a>):
 
 ```
 struct point_t {

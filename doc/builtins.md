@@ -104,8 +104,8 @@ uint(N) @ex(bit, N, expr);
 Extend the third argument to the width specified by the second argument,
 inserting the bit value given as the first argument into the MSBs of the result.
 The second argument must be a constant expression. The third argument can be any
-packed type with a width no greater than N. The result is unsigned if the second
-argument is unsigned, and the result is signed if the second argument is signed.
+packed type with a width no greater than N. The result is unsigned if the third
+argument is unsigned, and the result is signed if the third argument is signed.
 For example: 
 ```
 u5 a = 5'b100;

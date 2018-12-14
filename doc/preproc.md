@@ -40,7 +40,7 @@ function-like macros:
 <a href="http://afiddle.argondesign.com/?example=preproc_macros.alogic">Fiddle with this macro here.</a>
 
 ```
-#define MAGIC 4'd4;
+#define MAGIC 4'd4
 // at compile time, all instances of MAGIC will be replaced with the text "4'd4"
 
 fsm magical {

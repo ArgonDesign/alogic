@@ -44,8 +44,6 @@ These parameters must have a default value. However, it is then possible to
 overwrite this at instantiation time by defining an instantiated module to have
 a specific parameter value:
 
-<a href="http://afiddle.argondesign.com/?example=params_params.alogic">Fiddle with this code here.</a>
-
 ```
 fsm foo {
   param u8 MARKER = 8'd10;

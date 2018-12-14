@@ -53,6 +53,8 @@ statement can appear anywhere where a control statement is valid.
 - The `read;` and `write;` statements operate on the pipeline variables that
 have been automatically connected by the compiler
 
+<a href="http://afiddle.argondesign.com/?example=pipelines_commands.alogic">Fiddle with these commands here.</a>
+
 Here is an example of a 3 stage pipeline that computes the dot product of two
 4-element vectors, and has a 1-dot-product per cycle throughput. The example
 deliberately handles each vector element as a separate scalar variable to
@@ -173,7 +175,7 @@ network dotprod {
 
   new fsm stage0 {
     // The automatically inserted pipeline output port
-    out sync ready pipeline_o_t pipeline_o;
+    out sync ready pipeline_stage0_o_t pipeline_o;
 
     // Note that the first stage does not contain a pipeline input port
 
@@ -206,10 +208,10 @@ network dotprod {
 
   new fsm stage1 {
     // The automatically inserted pipeline input port
-    in sync ready pipeline_i_t pipeline_i;
+    in sync ready pipeline_stage1_i_t pipeline_i;
 
     // The automatically inserted pipeline output port
-    out sync ready pipeline_o_t pipeline_o;
+    out sync ready pipeline_stage1_o_t pipeline_o;
 
     // Declarations of the referenced pipeline variables
     u32 mul0;
@@ -242,7 +244,7 @@ network dotprod {
 
   new fsm stage2 {
     // The automatically inserted pipeline input port
-    in sync ready pipeline_i_t pipeline_i;
+    in sync ready pipeline_stage2_i_t pipeline_i;
 
     // Note that the last stage does not contain a pipeline output port
 
@@ -255,7 +257,7 @@ network dotprod {
       {sum10, sum32} = pipeline_i.read();
 
       // Zero-extend to 34 bits and perform the final sum
-      u34 prod = {1'd0, sum32} + {1'd0, sum10};;
+      u34 prod = {1'd0, sum32} + {1'd0, sum10};
 
       // Write final result to output port
       p_prod.write(prod);
