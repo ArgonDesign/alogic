@@ -320,7 +320,7 @@ selectors are checked. This means overlapping selectors are legal. For example
 (<a href="http://afiddle.argondesign.com/?example=statements_case.alogic">fiddle here</a>):
 
 ```
-  // Assume foo is an u3
+  // Assume foo is u3
   case (foo) {
     3'd0, 3'd1, 3'd2: a = 0;
     bar + 3'd1: a = 1;
