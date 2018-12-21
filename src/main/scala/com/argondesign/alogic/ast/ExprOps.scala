@@ -194,7 +194,6 @@ trait ExprOps { this: Expr =>
 
   // Value of this expression if it can be determined right now, otherwise None
   def value(implicit cc: CompilerContext): Option[BigInt] = simplify match {
-    // TODO: follow constants
     case ExprNum(_, value)    => Some(value)
     case ExprInt(_, _, value) => Some(value)
     case _                    => None
