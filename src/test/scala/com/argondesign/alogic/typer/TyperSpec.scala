@@ -32,6 +32,8 @@ import org.scalatest.FreeSpec
 final class TyperSpec extends FreeSpec with AlogicTest {
 
   implicit val cc = new CompilerContext
+  cc.postSpecialization = true
+
   val namer = new Namer
   val typer = new Typer
 
@@ -990,7 +992,7 @@ final class TyperSpec extends FreeSpec with AlogicTest {
       }
     }
 
-    "error for signals with non-positive withd" - {
+    "error for signals with non-positive width" - {
       for {
         (decl, width) <- List(
           ("uint(-'sd1) a", -1),
