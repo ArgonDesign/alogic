@@ -338,12 +338,17 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
           tree
       }
 
-      // TODO: Some function call are pure e.g.: @zx(10, 1'b1);
-      case StmtExpr(_: ExprCall) => tree
-
       case StmtExpr(expr) => {
-        cc.warning(tree, "A pure expression in statement position does nothing")
-        StmtBlock(Nil) withLoc tree.loc
+        val nonPure = expr exists {
+          // TODO: Some function calls are pure e.g.: @zx(10, 1'b1);
+          case _: ExprCall => true
+        }
+        if (!nonPure) {
+          cc.error(tree, "A pure expression in statement position does nothing")
+          StmtError() withLoc tree.loc
+        } else {
+          tree
+        }
       }
 
       ////////////////////////////////////////////////////////////////////////////

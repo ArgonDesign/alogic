@@ -544,10 +544,15 @@ final class TyperSpec extends FreeSpec with AlogicTest {
                            |  }
                            |}""".stripMargin.asTree[Root]
             xform(root)
+            val errors = cc.messages collect {
+              case error: Error
+                  if error.msg(0) != "A pure expression in statement position does nothing" =>
+                error
+            }
             if (msg.isEmpty) {
-              cc.messages collect { case error: Error => error } shouldBe empty
+              errors shouldBe empty
             } else {
-              cc.messages.loneElement should beThe[Error](msg)
+              errors.loneElement should beThe[Error](msg)
             }
           }
         }
@@ -1067,5 +1072,26 @@ final class TyperSpec extends FreeSpec with AlogicTest {
       }
     }
 
+    "error for pure expressions in statement position" - {
+      for {
+        (text, warn) <- List(
+          ("1 * 2", true),
+          ("-(1)", true),
+          ("@randbit()", false),
+          ("1 + @randbit()", false)
+        )
+      } {
+        text in {
+          xform(s"${text};".asTree[Stmt])
+          if (warn) {
+            cc.messages.loneElement should beThe[Error](
+              "A pure expression in statement position does nothing"
+            )
+          } else {
+            cc.messages shouldBe empty
+          }
+        }
+      }
+    }
   }
 }
