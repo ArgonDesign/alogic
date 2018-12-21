@@ -54,17 +54,17 @@ trait TypePrintOps { this: Type =>
     case TypeUInt(size)                 => s"uint(${size.toSource})"
     case TypeNum(true)                  => "int"
     case TypeNum(false)                 => "uint"
-    case TypeVector(elementType, size)  => s"vec<${elementType.toSource}>(${size.toSource})"
-    case TypeArray(elementType, size)   => s"${elementType.toSource}[${size.toSource}]"
-    case TypeStack(elementType, size)   => s"stack<${elementType.toSource}>(${size.toSource})"
+    case TypeVector(elementType, size)  => s"${elementType.toSource}[${size.toSource}]"
+    case TypeArray(elementType, size)   => s"${elementType.toSource} _[${size.toSource}]"
+    case TypeStack(elementType, size)   => s"stack ${elementType.toSource} _[${size.toSource}]"
     case TypeSram(elementType, size, st) =>
-      s"sram ${st2String(st)}${elementType.toSource} ${size.toSource}"
+      s"sram ${st2String(st)}${elementType.toSource} _[${size.toSource}]"
     case TypeStruct(name, _, _) => s"struct ${name}"
     case TypeVoid               => "void"
     case TypeCombFunc(argTypes, retType) =>
-      s"comb ${argTypes map { _.toSource } mkString ", "} -> ${retType.toSource}"
+      s"comb ${argTypes map { _.toSource } mkString ("(", ", ", ")")} -> ${retType.toSource}"
     case TypeCtrlFunc(argTypes, retType) =>
-      s"ctrl ${argTypes map { _.toSource } mkString ", "} -> ${retType.toSource}"
+      s"ctrl ${argTypes map { _.toSource } mkString ("(", ", ", ")")} -> ${retType.toSource}"
     case TypeEntity(name, _, _)     => s"entity ${name}"
     case TypeInstance(entitySymbol) => s"instance ${entitySymbol.name}"
     case TypeStr                    => "string"

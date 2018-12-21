@@ -26,9 +26,9 @@ import com.argondesign.alogic.analysis.WrittenRefs
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
+import com.argondesign.alogic.core.Symbols.TypeSymbol
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
-import com.argondesign.alogic.core.Symbols.TypeSymbol
 import com.argondesign.alogic.core.TreeInTypeTransformer
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.TreeLike
@@ -127,6 +127,31 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
     it.toList.headOption
   }
 
+  private def checkNameHidingByExtensionType(decl: Decl): Unit = {
+    decl.symbol.kind match {
+      case eKind: ExtensionType => {
+        eKind.kind match {
+          case cKind: CompoundType => {
+            for {
+              (field, nKind) <- eKind.extensions
+              pKind <- cKind(field)
+            } {
+              cc.error(
+                decl.loc,
+                s"Field '$field' of type '${pKind.toSource}' of symbol '${decl.symbol.name}'",
+                s"defined in type '${cKind.toSource}'",
+                s"is hidden by extension field of the same name of type '${nKind.toSource}'",
+                s"defined by extension type '${eKind.toSource}'"
+              )
+            }
+          }
+          case _ => ()
+        }
+      }
+      case _ => ()
+    }
+  }
+
   private[this] object TypeTyper extends TreeInTypeTransformer(this) {
     // TODO: implement checks
   }
@@ -141,7 +166,6 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
   }
 
   override def transform(tree: Tree): Tree = {
-    // TODO: warn for field hiding by extension types
     // TODO: reduction of 1 bit value is error
     // TODO: Check bit select widths vs dimension
     // TODO: Warn for non power of 2 dimensions
@@ -221,6 +245,7 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         }
         symbol.attr.init set init
         require(kind.isPacked)
+        checkNameHidingByExtensionType(decl)
         if (cc.postSpecialization && kind.underlying != TypeVoid && kind.width < 1) {
           cc.error(decl, s"Signal '${symbol.name}' has declared width ${kind.width}")
         }
@@ -248,6 +273,7 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         if (kind ne origKind) {
           symbol.kind = kind
         }
+        checkNameHidingByExtensionType(decl)
         if (cc.postSpecialization && kind.isPacked && kind.underlying != TypeVoid && kind.width < 1) {
           cc.error(decl, s"Signal '${symbol.name}' has declared width ${kind.width}")
         }
