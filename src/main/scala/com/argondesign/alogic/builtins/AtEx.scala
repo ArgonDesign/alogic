@@ -53,7 +53,22 @@ private[builtins] object AtEx {
   )(
       implicit cc: CompilerContext
   ): Option[Expr] = {
-    // TODO: result should always be signed if expr is signed
+
+    def fixSign(result: Expr): Expr = {
+      if (expr.isSigned) {
+        // Resolving the polymorphic builtin $signed needs types,
+        // so assign types if we are folding a typed expression,
+        // otherwise the TypeAssigner will choke on the unresolved
+        // reference to the polymorphic builtin
+        if (expr.hasTpe) {
+          result regularize loc
+        }
+        cc.makeBuiltinCall("$signed", result.loc, List(result))
+      } else {
+        result
+      }
+    }
+
     for {
       dstWidth <- width.value map { _.toInt }
     } yield {
@@ -78,14 +93,16 @@ private[builtins] object AtEx {
             case ExprInt(true, _, v) if v < 0 && bit == 0  => ExprInt(true, dstWidth, mask & v)
             case ExprInt(true, _, v) if v < 0 && bit == 1  => ExprInt(true, dstWidth, v)
             case ExprInt(false, _, v)                      => ExprInt(false, dstWidth, bits | v)
-            case _                                         => ExprInt(false, d, msbs) cat expr
+            case _                                         => fixSign(ExprInt(false, d, msbs) cat expr)
           }
         } getOrElse {
           // Variable bit value
-          if (d == 1) {
-            bitExpr cat expr
-          } else {
-            bitExpr rep d cat expr
+          fixSign {
+            if (d == 1) {
+              bitExpr cat expr
+            } else {
+              bitExpr rep d cat expr
+            }
           }
         }
       }
