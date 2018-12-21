@@ -295,6 +295,14 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       val newFieldKinds = fieldKinds map {
         _ rewrite TypeNamer
       }
+      for (field <- newFieldKinds) {
+        field match {
+          case TypeVector(_: TypeStruct, _) => {
+            cc.error(tree, "Vector element cannot have a struct type")
+          }
+          case _ => ()
+        }
+      }
       val kind = TypeStruct(ident.name, fieldNames, newFieldKinds)
       // Insert new type
       val symbol = Scopes.insert(cc.newTypeSymbol(ident, kind))
