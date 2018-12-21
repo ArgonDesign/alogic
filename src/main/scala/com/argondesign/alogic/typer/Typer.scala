@@ -26,7 +26,6 @@ import com.argondesign.alogic.analysis.WrittenRefs
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
-import com.argondesign.alogic.core.Symbols.TypeSymbol
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.TreeInTypeTransformer
@@ -175,8 +174,6 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       ////////////////////////////////////////////////////////////////////////////
       // Remove root node
       ////////////////////////////////////////////////////////////////////////////
-
-      case node: Root => node.entity
 
       ////////////////////////////////////////////////////////////////////////////
       // Propagate errors
@@ -604,22 +601,6 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       // Type the types of TypeSymbols introduced by TypeDefinitions
       //////////////////////////////////////////////////////////////////////////
 
-      case TypeDefinitionStruct(Sym(symbol: TypeSymbol), _, _) => {
-        val kind = symbol.kind rewrite TypeTyper
-        if (kind ne symbol.kind) {
-          symbol.kind = kind
-        }
-        tree
-      }
-
-      case TypeDefinitionTypedef(Sym(symbol: TypeSymbol), _) => {
-        val kind = symbol.kind rewrite TypeTyper
-        if (kind ne symbol.kind) {
-          symbol.kind = kind
-        }
-        tree
-      }
-
       case _ => tree
     }
 
@@ -640,12 +621,6 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       tree visitAll {
         case node: Tree if !node.hasTpe => {
           cc.ice(node, "Typer: untyped node remains", node.toString)
-        }
-        case node: TypeDefinition => {
-          cc.ice(node, s"Typer: type definition remains", node.toString)
-        }
-        case node: Root => {
-          cc.ice(node, s"Typer: root node remains")
         }
         case node: Tree if node.tpe.isInstanceOf[TypePolyFunc] => {
           cc.ice(node, s"Typer: node of type TypePolyFunc remains")
