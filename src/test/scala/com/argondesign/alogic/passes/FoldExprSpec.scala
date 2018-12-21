@@ -701,7 +701,10 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
           ("4'b0101[1+:3]", ExprInt(false, 3, 2), ""),
           ("4'b0101[3-:1]", ExprInt(false, 1, 0), ""),
           ("4'b0101[3-:2]", ExprInt(false, 2, 1), ""),
-          ("4'b0101[3-:3]", ExprInt(false, 3, 2), "")
+          ("4'b0101[3-:3]", ExprInt(false, 3, 2), ""),
+          // long range
+          ("36'hf0f0f0f0f[35:0]", ExprInt(false, 36, BigInt("f0f0f0f0f", 16)), ""),
+          ("68'hf0f0f0f0f0f0f0f0f[67:0]", ExprInt(false, 68, BigInt("f0f0f0f0f0f0f0f0f", 16)), "")
         )
       } {
         val expr = text.trim
@@ -1148,6 +1151,26 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
           }
         }
       }
+    }
+
+    "reference to constant" in {
+      val entity = """|fsm a {
+                      |  const u36 A = {{24{1'b0}}, {12{1'b1}}};
+                      |  const u41 B = {5'h1, A[35:0]};
+                      |
+                      |  out u41 o;
+                      |
+                      |  void main() {
+                      |    o = B;
+                      |    fence;
+                      |  }
+                      |}""".stripMargin.asTree[Entity]
+
+      val expr = xform(entity) collectFirst {
+        case StmtAssign(_, rhs) => rhs
+      }
+
+      expr.value.simplify shouldBe ExprInt(false, 41, 0x1000000fffL)
     }
   }
 }
