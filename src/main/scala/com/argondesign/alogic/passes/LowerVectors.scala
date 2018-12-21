@@ -31,6 +31,10 @@ final class LowerVectors(implicit cc: CompilerContext) extends TreeTransformer {
 
   private[this] val tgtTpe = Stack[Type]()
 
+  private[this] var lvalueLevel = 0
+
+  private[this] var catLevel = 0
+
   override def enter(tree: Tree): Unit = tree match {
     case entity: EntityLowered => {
       // Change types of all vectors to plain TypeUInt
@@ -56,20 +60,44 @@ final class LowerVectors(implicit cc: CompilerContext) extends TreeTransformer {
       }
     }
 
-    case ExprIndex(tgt, _) => tgtTpe push tgt.tpe.underlying
+    case _: StmtAssign => {
+      lvalueLevel += 1
+    }
 
-    case ExprSlice(tgt, _, _, _) => tgtTpe push tgt.tpe.underlying
-
-    case _: Expr => tgtTpe push TypeError
+    case expr: Expr => {
+      if (lvalueLevel > 0) {
+        lvalueLevel += 1
+        if (expr.isInstanceOf[ExprCat]) {
+          catLevel += 1
+        }
+      }
+      expr match {
+        case ExprIndex(tgt, _)       => tgtTpe push tgt.tpe.underlying
+        case ExprSlice(tgt, _, _, _) => tgtTpe push tgt.tpe.underlying
+        case _: Expr                 => tgtTpe push TypeError
+      }
+    }
 
     case _ => ()
+  }
+
+  def fixSign(expr: Expr, makeSigned: Boolean): Expr = {
+    // Turn it into a signed value if required,
+    // unless it is the target of the assignment
+    if (makeSigned && (lvalueLevel - catLevel) != 2) {
+      cc.makeBuiltinCall("$signed", expr.loc, List(expr))
+    } else {
+      expr
+    }
   }
 
   override def transform(tree: Tree): Tree = {
     val result = tree match {
 
       // The type of symbols changed, so re-type references
-      case ExprRef(symbol: TermSymbol) if vectorType contains symbol => ExprRef(symbol)
+      case ExprRef(symbol: TermSymbol) if vectorType contains symbol => {
+        ExprRef(symbol) regularize tree.loc
+      }
 
       // Slice over slice
 
@@ -82,8 +110,9 @@ final class LowerVectors(implicit cc: CompilerContext) extends TreeTransformer {
         // By this point the target should not have a Vector type
         assert(!tgt.tpe.isVector)
         val TypeVector(eKind, _) = tgtTpe.top
-        val sExpr = Expr(eKind.width) regularize tgt.loc
-        ExprSlice(expr, lidx + sExpr * index, "+:", sExpr)
+        val sExpr = Expr(eKind.width)
+        val res = ExprSlice(expr, lidx + sExpr * index, "+:", sExpr) regularize tgt.loc
+        fixSign(res, eKind.isSigned)
       }
 
       // Index over something else
@@ -91,22 +120,29 @@ final class LowerVectors(implicit cc: CompilerContext) extends TreeTransformer {
         // By this point the target should not have a Vector type
         assert(!tgt.tpe.isVector)
         val TypeVector(eKind, _) = tgtTpe.top
-        val sExpr = Expr(eKind.width) regularize tgt.loc
-        ExprSlice(tgt, sExpr * index, "+:", sExpr)
+        val sExpr = Expr(eKind.width)
+        val res = ExprSlice(tgt, sExpr * index, "+:", sExpr) regularize tgt.loc
+        fixSign(res, eKind.isSigned)
       }
 
       case _ => tree
     }
 
-    // If we have just processed an Expr, pop the subjectTypeStack
+    // If we have just processed an Expr, pop the subjectTypeStack and update
+    // the lvalueLevel and catLevel
     tree match {
-      case _: Expr => tgtTpe.pop
-      case _       => ()
-    }
-
-    // If we have rewritten the tree, regularize it
-    if (result ne tree) {
-      result regularize tree.loc
+      case expr: Expr => {
+        tgtTpe.pop
+        if (lvalueLevel > 0 && expr.isInstanceOf[ExprCat]) {
+          catLevel -= 1
+        }
+        if (lvalueLevel > 2) {
+          lvalueLevel -= 1
+        } else {
+          lvalueLevel = 0
+        }
+      }
+      case _ => ()
     }
 
     result
@@ -114,6 +150,8 @@ final class LowerVectors(implicit cc: CompilerContext) extends TreeTransformer {
 
   override def finalCheck(tree: Tree): Unit = {
     assert(tgtTpe.isEmpty)
+    assert(lvalueLevel == 0)
+    assert(catLevel == 0)
   }
 
 }
