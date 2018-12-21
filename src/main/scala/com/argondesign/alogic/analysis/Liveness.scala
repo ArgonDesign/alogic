@@ -27,16 +27,17 @@ object Liveness {
 
   private def usedRvalMaps(expr: Expr)(
       implicit cc: CompilerContext
-  ): Iterator[Map[TermSymbol, BigInt]] = expr collectAll {
+  ): Iterator[Map[TermSymbol, BigInt]] = expr flatCollect {
     case ExprIndex(ExprRef(symbol: TermSymbol), idx) if symbol.kind.isPacked => {
-      idx.value map { bit =>
+      val m = idx.value map { bit =>
         Map(symbol -> BigInt.oneHot(bit))
       } getOrElse {
         Map(symbol -> BigInt.mask(symbol.kind.width))
       }
+      Iterator.single(m) ++ usedRvalMaps(idx)
     }
     case ExprSlice(ExprRef(symbol: TermSymbol), lidx, op, ridx) if symbol.kind.isPacked => {
-      lidx.value flatMap { l =>
+      val m = lidx.value flatMap { l =>
         ridx.value map { r =>
           val (width, lsb) = op match {
             case ":"  => (l - r + 1, r)
@@ -49,9 +50,10 @@ object Liveness {
       } getOrElse {
         Map(symbol -> BigInt.mask(symbol.kind.width))
       }
+      Iterator.single(m) ++ usedRvalMaps(lidx) ++ usedRvalMaps(ridx)
     }
     case ExprRef(symbol: TermSymbol) if symbol.kind.isPacked => {
-      Map(symbol -> BigInt.mask(symbol.kind.width))
+      Iterator.single(Map(symbol -> BigInt.mask(symbol.kind.width)))
     }
   }
 

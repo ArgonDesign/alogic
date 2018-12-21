@@ -209,6 +209,13 @@ class LivenessSpec extends FreeSpec with AlogicTest {
           }
         }
 
+        "should recognize non-constant indices of ref" - {
+          "a[b]" in {
+            usedRval(aRef index bRef) shouldBe SymbolBitSet(
+              Map(aSymbol -> BitSet(0 to 3: _*), bSymbol -> BitSet(0 to 7: _*)))
+          }
+        }
+
         "should recognize constant slices of ref" - {
           "a[1:0]" in {
             usedRval(aRef.slice(1, ":", 0)) shouldBe SymbolBitSet(Map(aSymbol -> BitSet(1, 0)))
@@ -243,6 +250,17 @@ class LivenessSpec extends FreeSpec with AlogicTest {
             usedRval(aRef.slice(randBitCall, "-:", 1)) shouldBe {
               SymbolBitSet(Map(aSymbol -> BitSet(0 to 3: _*)))
             }
+          }
+        }
+
+        "should recognize non-constant slices of ref" - {
+          "a[b +: 1]" in {
+            usedRval(aRef.slice(bRef, "+:", 1)) shouldBe SymbolBitSet(
+              Map(aSymbol -> BitSet(0 to 3: _*), bSymbol -> BitSet(0 to 7: _*)))
+          }
+          "a[1 +: b]" in {
+            usedRval(aRef.slice(1, "+:", bRef)) shouldBe SymbolBitSet(
+              Map(aSymbol -> BitSet(0 to 3: _*), bSymbol -> BitSet(0 to 7: _*)))
           }
         }
 
