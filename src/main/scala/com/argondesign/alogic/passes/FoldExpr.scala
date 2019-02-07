@@ -427,6 +427,28 @@ final class FoldExpr(
       }
 
       ////////////////////////////////////////////////////////////////////////////
+      // Fold index over $signed/$unsigned
+      ////////////////////////////////////////////////////////////////////////////
+
+      case ExprIndex(ExprCall(ExprRef(symbol), List(arg)), idx) if symbol.isBuiltin => {
+        symbol.name match {
+          case "$signed" | "$unsigned" => ExprIndex(arg, idx) withLoc tree.loc
+          case _                       => tree
+        }
+      }
+
+      ////////////////////////////////////////////////////////////////////////////
+      // Fold slice over $signed/$unsigned
+      ////////////////////////////////////////////////////////////////////////////
+
+      case ExprSlice(ExprCall(ExprRef(symbol), List(arg)), lidx, op, ridx) if symbol.isBuiltin => {
+        symbol.name match {
+          case "$signed" | "$unsigned" => ExprSlice(arg, lidx, op, ridx) withLoc tree.loc
+          case _                       => tree
+        }
+      }
+
+      ////////////////////////////////////////////////////////////////////////////
       // Fold width 1 slices
       ////////////////////////////////////////////////////////////////////////////
 

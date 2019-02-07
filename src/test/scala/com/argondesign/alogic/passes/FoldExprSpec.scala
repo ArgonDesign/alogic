@@ -38,7 +38,11 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
       case entity: EntityIdent          => cc.addGlobalEntity(entity)
       case _                            =>
     }
-    tree rewrite namer rewrite typer rewrite fold
+    val entity = tree rewrite namer match {
+      case Root(_, entity) => entity
+      case entity          => entity
+    }
+    entity rewrite typer rewrite fold
   }
 
   "FoldExpr should fold" - {
@@ -874,6 +878,84 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
           } else {
             cc.messages.loneElement should beThe[Error](msg)
           }
+        }
+      }
+    }
+
+    "index over $signed/$unsigned" - {
+      for {
+        (text, pattern) <- List[(String, PartialFunction[Any, Unit])](
+          ("$signed(a)[0]", { case ExprIndex(ExprRef(term), Expr(0)) if term.name == "a"   => }),
+          ("$signed(a)[1]", { case ExprIndex(ExprRef(term), Expr(1)) if term.name == "a"   => }),
+          ("$unsigned(a)[0]", { case ExprIndex(ExprRef(term), Expr(0)) if term.name == "a" => }),
+          ("$unsigned(a)[1]", { case ExprIndex(ExprRef(term), Expr(1)) if term.name == "a" => }),
+        )
+      } {
+        val expr = text.trim
+        expr in {
+          val src = s"""|fsm f {
+                        |  in u8 a;
+                        |  out u1 b;
+                        |  fence { b = ${expr}; }
+                        |}""".stripMargin
+          val res = (xform(src.asTree[Root]) collectFirst { case StmtAssign(_, rhs) => rhs }).value
+          res should matchPattern(pattern)
+          cc.messages shouldBe empty
+        }
+      }
+    }
+
+    "slice over $signed/$unsigned" - {
+      for {
+        (text, pattern) <- List[(String, PartialFunction[Any, Unit])](
+          ("$signed(a)[1  : 0]", {
+            case ExprSlice(ExprRef(term), Expr(1), ":", Expr(0)) if term.name == "a" =>
+          }),
+          ("$signed(a)[2  : 1]", {
+            case ExprSlice(ExprRef(term), Expr(2), ":", Expr(1)) if term.name == "a" =>
+          }),
+          ("$signed(a)[0 +: 2]", {
+            case ExprSlice(ExprRef(term), Expr(0), "+:", Expr(2)) if term.name == "a" =>
+          }),
+          ("$signed(a)[1 +: 2]", {
+            case ExprSlice(ExprRef(term), Expr(1), "+:", Expr(2)) if term.name == "a" =>
+          }),
+          ("$signed(a)[2 -: 2]", {
+            case ExprSlice(ExprRef(term), Expr(2), "-:", Expr(2)) if term.name == "a" =>
+          }),
+          ("$signed(a)[1 -: 2]", {
+            case ExprSlice(ExprRef(term), Expr(1), "-:", Expr(2)) if term.name == "a" =>
+          }),
+          ("$unsigned(a)[1  : 0]", {
+            case ExprSlice(ExprRef(term), Expr(1), ":", Expr(0)) if term.name == "a" =>
+          }),
+          ("$unsigned(a)[2  : 1]", {
+            case ExprSlice(ExprRef(term), Expr(2), ":", Expr(1)) if term.name == "a" =>
+          }),
+          ("$unsigned(a)[0 +: 2]", {
+            case ExprSlice(ExprRef(term), Expr(0), "+:", Expr(2)) if term.name == "a" =>
+          }),
+          ("$unsigned(a)[1 +: 2]", {
+            case ExprSlice(ExprRef(term), Expr(1), "+:", Expr(2)) if term.name == "a" =>
+          }),
+          ("$unsigned(a)[2 -: 2]", {
+            case ExprSlice(ExprRef(term), Expr(2), "-:", Expr(2)) if term.name == "a" =>
+          }),
+          ("$unsigned(a)[1 -: 2]", {
+            case ExprSlice(ExprRef(term), Expr(1), "-:", Expr(2)) if term.name == "a" =>
+          })
+        )
+      } {
+        val expr = text.trim
+        expr in {
+          val src = s"""|fsm f {
+                        |  in u8 a;
+                        |  out u2 b;
+                        |  fence { b = ${expr}; }
+                        |}""".stripMargin
+          val res = (xform(src.asTree[Root]) collectFirst { case StmtAssign(_, rhs) => rhs }).value
+          res should matchPattern(pattern)
+          cc.messages shouldBe empty
         }
       }
     }
