@@ -106,16 +106,25 @@ final class SimplifyCat(implicit cc: CompilerContext) extends TreeTransformer {
       }
 
       case StmtAssign(ExprCat(oLhss), ExprCat(oRhss)) => {
-        val pairs = pairUp(tree.loc, oLhss, oRhss)
-        if (pairs.lengthCompare(1) == 0) {
-          tree
-        } else {
-          val assigns = for ((lhss, rhss) <- pairs) yield {
-            val lhs = if (lhss.lengthCompare(1) == 0) lhss.head else ExprCat(lhss)
-            val rhs = if (rhss.lengthCompare(1) == 0) rhss.head else ExprCat(rhss)
-            StmtAssign(lhs, rhs)
+        // Do not simplify if a symbol appears on both sides (eg {a, b} = {b, a})
+        // as in this case the rhs must be read atomically
+        val lSymbols = (oLhss collect { case ExprRef(symbol) => symbol }).toSet
+        val rSymbols = (oRhss collect { case ExprRef(symbol) => symbol }).toSet
+
+        if ((lSymbols intersect rSymbols).isEmpty) {
+          val pairs = pairUp(tree.loc, oLhss, oRhss)
+          if (pairs.lengthCompare(1) == 0) {
+            tree
+          } else {
+            val assigns = for ((lhss, rhss) <- pairs) yield {
+              val lhs = if (lhss.lengthCompare(1) == 0) lhss.head else ExprCat(lhss)
+              val rhs = if (rhss.lengthCompare(1) == 0) rhss.head else ExprCat(rhss)
+              StmtAssign(lhs, rhs)
+            }
+            StmtBlock(assigns)
           }
-          StmtBlock(assigns)
+        } else {
+          tree
         }
       }
 
