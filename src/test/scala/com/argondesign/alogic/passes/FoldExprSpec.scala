@@ -38,11 +38,11 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
       case entity: EntityIdent          => cc.addGlobalEntity(entity)
       case _                            =>
     }
-    val entity = tree rewrite namer match {
+    val node = tree rewrite namer match {
       case Root(_, entity) => entity
-      case entity          => entity
+      case other           => other
     }
-    entity rewrite typer rewrite fold
+    node rewrite typer rewrite fold
   }
 
   "FoldExpr should fold" - {

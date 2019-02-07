@@ -43,7 +43,11 @@ final class TyperSpec extends FreeSpec with AlogicTest {
       case entity: EntityIdent          => cc.addGlobalEntity(entity)
       case _                            =>
     }
-    tree rewrite namer rewrite typer
+    val node = tree rewrite namer match {
+      case Root(_, entity) => entity
+      case other           => other
+    }
+    node rewrite typer
   }
 
   "The Typer should" - {
