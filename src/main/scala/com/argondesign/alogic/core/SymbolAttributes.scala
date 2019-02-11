@@ -17,6 +17,7 @@ package com.argondesign.alogic.core
 
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Symbols._
+import com.argondesign.alogic.core.Types.TypeEntity
 
 class SymbolAttributes {
   // Symbol is meant to be unused, do not warn
@@ -58,6 +59,11 @@ class SymbolAttributes {
   // Is this a port that has been expanded to multiple signals?
   val expandedPort = new Attribute[Boolean]()
 
+  // If this is an entity symbol, then the type it was before
+  // flow control lowering and structure splitting (i.e.: with the high
+  // level interface)
+  val highLevelKind = new Attribute[TypeEntity]()
+
   // If the state system stalls, set this signal to all zeros
   val clearOnStall = new Attribute[Boolean]()
   // If this is an entity symbol, then these are further (instance, portname)
@@ -94,6 +100,10 @@ class SymbolAttributes {
 
   // The expanded field symbols of a struct symbol
   val fieldSymbols = new Attribute[List[TermSymbol]]()
+  // The struct symbol if this symbol was split from a struct
+  val structSymbol = new Attribute[TermSymbol]()
+  // The field offset if this symbol was split from a struct
+  val fieldOffset = new Attribute[Int]()
 
   // The default value of this symbol, if required
   val default = new Attribute[Expr]()
@@ -121,6 +131,7 @@ class SymbolAttributes {
     fcr,
     fca,
     expandedPort,
+    highLevelKind,
     clearOnStall,
     interconnectClearOnStall,
     dontCareUnless,
@@ -131,6 +142,8 @@ class SymbolAttributes {
     interconnect,
     combSignal,
     fieldSymbols,
+    structSymbol,
+    fieldOffset,
     default,
     sram,
     liftSrams
@@ -153,6 +166,7 @@ class SymbolAttributes {
     "fcr",
     "fca",
     "expandedPort",
+    "highLevelKind",
     "clearOnStall",
     "interconnectClearOnStall",
     "dontCareUnless",
@@ -163,6 +177,8 @@ class SymbolAttributes {
     "interconnect",
     "combSignal",
     "fieldSymbols",
+    "structSymbol",
+    "fieldOffset",
     "default",
     "sram",
     "liftSrams"

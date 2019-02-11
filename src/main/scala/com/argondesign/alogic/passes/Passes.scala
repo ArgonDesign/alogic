@@ -87,6 +87,7 @@ object Passes {
       RenameSymbols,
       // TODO: RenameKeywords
       // TODO: final check pass to make sure everything is well-formed
+      WriteModuleManifest,
       CodeGeneration
     )
 

@@ -41,6 +41,10 @@ final class SplitStructsA(implicit cc: CompilerContext) extends TreeTransformer 
 
   override def enter(tree: Tree) = tree match {
     case entity: EntityLowered => {
+      if (!entity.symbol.attr.highLevelKind.isSet) {
+        cc.ice(s"Missing highLevelKind attribute on entity ${entity.symbol.name}")
+      }
+
       for (Decl(symbol, _) <- entity.declarations) {
         val oKind = symbol.kind
         oKind.underlying match {
@@ -54,6 +58,12 @@ final class SplitStructsA(implicit cc: CompilerContext) extends TreeTransformer 
                 case _             => unreachable
               }
               cc.newTermSymbol(fName, tree.loc, nKind)
+            }
+            val widths = newSymbols map { _.kind.width }
+            val offsets = widths.scanLeft(0)(_ + _)
+            for ((newSymbol, offset) <- newSymbols zip offsets) {
+              newSymbol.attr.fieldOffset set offset
+              newSymbol.attr.structSymbol set symbol
             }
             symbol.attr.fieldSymbols set newSymbols
           }

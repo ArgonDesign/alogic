@@ -531,7 +531,8 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
           case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeOut] => symbol
         }
 
-        val TypeEntity(name, _, Nil) = entitySymbol.kind
+        val highLevelKind @ TypeEntity(name, _, Nil) = entitySymbol.kind
+        entitySymbol.attr.highLevelKind set highLevelKind
         entitySymbol.kind = TypeEntity(name, portSymbols, Nil)
 
         val thisEntity = entity.copy(

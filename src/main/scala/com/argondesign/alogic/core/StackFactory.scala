@@ -179,8 +179,10 @@ object StackFactory {
       Connect(stoRef, List(qRef))
     )
 
-    val entitySymbol = cc.newTypeSymbol(name, loc, TypeEntity(name, ports, Nil))
+    val eKind = TypeEntity(name, ports, Nil)
+    val entitySymbol = cc.newTypeSymbol(name, loc, eKind)
     entitySymbol.attr.variant set "fsm"
+    entitySymbol.attr.highLevelKind set eKind
     val entity = EntityLowered(entitySymbol, decls, Nil, connects, statements, Map())
     entity regularize loc
   }
@@ -329,8 +331,10 @@ object StackFactory {
       Connect(ExprIndex(stoRef, ptrRef), List(qRef))
     )
 
-    val entitySymbol = cc.newTypeSymbol(name, loc, TypeEntity(name, ports, Nil))
+    val eKind = TypeEntity(name, ports, Nil)
+    val entitySymbol = cc.newTypeSymbol(name, loc, eKind)
     entitySymbol.attr.variant set "fsm"
+    entitySymbol.attr.highLevelKind set eKind
     val entity = EntityLowered(entitySymbol, decls, Nil, connects, statements, Map())
     entity regularize loc
   }

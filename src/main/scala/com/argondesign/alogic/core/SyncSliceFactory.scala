@@ -305,8 +305,10 @@ object SyncSliceFactory {
       voidConnects(ss, ipvRef, iprRef, opvRef, oprRef, sRef, vRef)
     }
 
-    val entitySymbol = cc.newTypeSymbol(name, loc, TypeEntity(name, ports, Nil))
+    val eKind = TypeEntity(name, ports, Nil)
+    val entitySymbol = cc.newTypeSymbol(name, loc, eKind)
     entitySymbol.attr.variant set "fsm"
+    entitySymbol.attr.highLevelKind set eKind
     val entity = EntityLowered(entitySymbol, decls, Nil, connects, statements, Map())
     entity regularize loc
   }
@@ -425,8 +427,10 @@ object SyncSliceFactory {
       Decl(symbol, None)
     }
 
-    val entitySymbol = cc.newTypeSymbol(name, loc, TypeEntity(name, ports, Nil))
+    val eKind = TypeEntity(name, ports, Nil)
+    val entitySymbol = cc.newTypeSymbol(name, loc, eKind)
     entitySymbol.attr.variant set "network"
+    entitySymbol.attr.highLevelKind set eKind
     val entity = EntityLowered(entitySymbol, decls, instances, connects.toList, Nil, Map())
     entity regularize loc
   }

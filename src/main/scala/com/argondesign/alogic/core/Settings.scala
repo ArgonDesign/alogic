@@ -33,5 +33,7 @@ case class Settings(
     // Colourize diagnostic messages
     colourize: Boolean = false,
     // Dump trees after each pass
-    dumpTrees: Boolean = true
+    dumpTrees: Boolean = true,
+    // Module manifest output path
+    moduleManifestPath: Option[Path] = None
 )

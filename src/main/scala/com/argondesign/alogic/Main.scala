@@ -55,7 +55,8 @@ object Main extends App {
       case "never"  => false
       case _        => cliConf.stderrisatty.toOption contains true
     },
-    dumpTrees = cliConf.dumpTrees.toOption contains true
+    dumpTrees = cliConf.dumpTrees.toOption contains true,
+    moduleManifestPath = cliConf.moduleManifest.toOption map { _.toPath }
   )
 
   implicit val cc = new CompilerContext(settings)

@@ -22,7 +22,7 @@ class Attribute[T] {
 
   def get: Option[T] = store
 
-  def getOrElse(default: => T): T = store getOrElse default
+  def getOrElse[R >: T](default: => R): R = store getOrElse default
 
   def contains(v: T): Boolean = store contains v
 
