@@ -18,7 +18,7 @@
 
 name := "alogic"
 
-organization := "Argon Design"
+organization := "com.argondesign"
 
 ////////////////////////////////////////////////////////////////////////////////
 // Scala compiler
@@ -80,6 +80,12 @@ bashScriptExtraDefines += """
 # Pass a secret option if stderr is tty, but only if not asking for --help
 if [[ "$*" != "-h" && "$*" != "--help" && -t 2 ]]; then
   stderrisatty="--stderrisatty"
+fi
+
+if [[ "$*" == "--compiler-deps" ]]; then
+  readlink -f "$0"
+  echo "$app_classpath" | tr ":" "\n"
+  exit 0
 fi
 
 # Prepend '--' to the command line arguments. This in fact causes the wrapper

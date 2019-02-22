@@ -226,6 +226,15 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
     descr = "Write generated module manifest to file"
   )
 
+  // --compiler-deps is implemented in the wrapper.
+  // It is defined here so it appears in --help
+  val compilerDeps = opt[Boolean](
+    name = "compiler-deps",
+    noshort = true,
+    default = Some(false),
+    descr = "Print compiler dependencies and exit"
+  )
+
   // There is no standard library call to check if the console is a terminal,
   // so we pass this hidden option from the wrapper script to help ourselves out
   val stderrisatty = toggle(noshort = true, hidden = true)
