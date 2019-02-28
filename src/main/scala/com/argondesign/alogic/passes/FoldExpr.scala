@@ -23,6 +23,7 @@ import com.argondesign.alogic.core.TreeInTypeTransformer
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.BigIntOps._
 import com.argondesign.alogic.util.unreachable
+import com.argondesign.alogic.core.Symbols.Symbol
 
 import scala.language.implicitConversions
 
@@ -60,6 +61,10 @@ final class FoldExpr(
       case _               => unreachable
     }
     num withLoc expr.loc
+  }
+
+  private def isBuiltinSU(symbol: Symbol) = {
+    symbol.name == "$signed" || symbol.name == "$unsigned"
   }
 
   // In types we always fold refs so that widths are always computable
@@ -427,22 +432,37 @@ final class FoldExpr(
       // Fold index over $signed/$unsigned
       ////////////////////////////////////////////////////////////////////////////
 
-      case ExprIndex(ExprCall(ExprRef(symbol), List(arg)), idx) if symbol.isBuiltin => {
-        symbol.name match {
-          case "$signed" | "$unsigned" => ExprIndex(arg, idx) withLoc tree.loc
-          case _                       => tree
-        }
+      case ExprIndex(ExprCall(ExprRef(symbol), List(arg)), idx) if isBuiltinSU(symbol) => {
+        ExprIndex(arg, idx) withLoc tree.loc
       }
 
       ////////////////////////////////////////////////////////////////////////////
       // Fold slice over $signed/$unsigned
       ////////////////////////////////////////////////////////////////////////////
 
-      case ExprSlice(ExprCall(ExprRef(symbol), List(arg)), lidx, op, ridx) if symbol.isBuiltin => {
-        symbol.name match {
-          case "$signed" | "$unsigned" => ExprSlice(arg, lidx, op, ridx) withLoc tree.loc
-          case _                       => tree
-        }
+      case ExprSlice(ExprCall(ExprRef(symbol), List(arg)), lidx, op, ridx)
+          if isBuiltinSU(symbol) => {
+        ExprSlice(arg, lidx, op, ridx) withLoc tree.loc
+      }
+
+      ////////////////////////////////////////////////////////////////////////////
+      // Remove pointless $signed/$unsigned from Cat/Rep arguments
+      ////////////////////////////////////////////////////////////////////////////
+
+      case ExprCat(args) if args exists {
+            case ExprCall(ExprRef(symbol), _) => isBuiltinSU(symbol)
+            case _                            => false
+          } => {
+        ExprCat {
+          args map {
+            case ExprCall(ExprRef(symbol), List(arg)) if isBuiltinSU(symbol) => arg
+            case arg                                                         => arg
+          }
+        } withLoc tree.loc
+      }
+
+      case ExprRep(count, ExprCall(ExprRef(symbol), List(arg))) if isBuiltinSU(symbol) => {
+        ExprRep(count, arg) withLoc tree.loc
       }
 
       ////////////////////////////////////////////////////////////////////////////
