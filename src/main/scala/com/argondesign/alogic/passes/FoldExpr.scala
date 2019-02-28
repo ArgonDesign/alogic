@@ -85,7 +85,7 @@ final class FoldExpr(
       ////////////////////////////////////////////////////////////////////////////
 
       case ExprRef(symbol) if foldRefs && symbol.kind.isConst => {
-        symbol.attr.init.get map { walk(_) } getOrElse tree
+        symbol.attr.init getOrElse tree
       }
 
       ////////////////////////////////////////////////////////////////////////////
@@ -380,7 +380,7 @@ final class FoldExpr(
           case "-:" => lidx - ridx + 1
           case _    => unreachable
         }
-        ExprIndex(expr, walk(lsb + idx).asInstanceOf[Expr]) withLoc tree.loc
+        ExprIndex(expr, lsb + idx) withLoc tree.loc
       }
 
       ////////////////////////////////////////////////////////////////////////////
@@ -420,10 +420,7 @@ final class FoldExpr(
           case _         => (aLsb + bMsb, ":", aLsb + bLsb)
         }
 
-        val sLidx = walk(nLidx).asInstanceOf[Expr]
-        val sRidx = walk(nRidx).asInstanceOf[Expr]
-
-        ExprSlice(expr, sLidx, nOp, sRidx) withLoc tree.loc
+        ExprSlice(expr, nLidx, nOp, nRidx) withLoc tree.loc
       }
 
       ////////////////////////////////////////////////////////////////////////////
@@ -524,10 +521,13 @@ final class FoldExpr(
       case _ => tree
     }
 
-    if (assignTypes && !result.hasTpe) {
-      TypeAssigner(result)
+    // Recursively fold the resulting expression
+    val result2 = if (result ne tree) { walk(result) } else { result }
+
+    if (assignTypes && !result2.hasTpe) {
+      TypeAssigner(result2)
     } else {
-      result
+      result2
     }
   }
 
