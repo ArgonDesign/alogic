@@ -789,6 +789,11 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
           }
         }
       }
+
+      "cast" in {
+        val expr = ExprCast(TypeUInt(4), ExprNum(true, 0))
+        TypeAssigner(expr).tpe shouldBe TypeUInt(4)
+      }
     }
 
     "statements" - {

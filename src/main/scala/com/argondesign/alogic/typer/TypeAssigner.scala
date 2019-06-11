@@ -282,6 +282,7 @@ object TypeAssigner {
       case node: ExprType    => apply(node)
       case node: ExprError   => apply(node)
       case node: ExprNum     => apply(node)
+      case node: ExprCast    => apply(node)
       case _                 => unreachable
     }
     tree
@@ -422,4 +423,8 @@ object TypeAssigner {
     node withTpe tpe
   }
 
+  def apply(node: ExprCast): node.type = {
+    require(!node.hasTpe)
+    node withTpe node.kind
+  }
 }

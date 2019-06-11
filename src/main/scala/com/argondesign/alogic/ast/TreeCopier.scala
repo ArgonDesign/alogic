@@ -456,6 +456,14 @@ object TreeCopier {
     }
   }
 
+  final def apply(tree: ExprCast)(expr: Tree): ExprCast = {
+    if (expr eq tree.expr) {
+      tree
+    } else {
+      ExprCast(tree.kind, expr.asInstanceOf[Expr]) withLoc tree.loc
+    }
+  }
+
   final def apply(tree: Thicket)(trees: List[Tree]): Thicket = {
     if (trees eq tree.trees) {
       tree

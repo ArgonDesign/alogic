@@ -167,6 +167,7 @@ trait TreePrintOps { this: Tree =>
     case ExprNum(true, value)                  => s"'sd${value}"
     case ExprNum(false, value)                 => s"${value}"
     case ExprStr(value)                        => s""""${value}""""
+    case ExprCast(kind, expr)                  => s"(${kind.toSource})${v(expr)}"
     case ExprError()                           => "/* Error expression */"
   }
 

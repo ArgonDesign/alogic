@@ -50,6 +50,7 @@ final class Regularize(
     tree match {
       case DeclIdent(_, kind, _) => TypeRegularize(kind)
       case ExprType(kind)        => TypeRegularize(kind)
+      case ExprCast(kind, _)     => TypeRegularize(kind)
       case _                     => ()
     }
 

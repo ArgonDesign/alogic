@@ -85,6 +85,7 @@ trait TreeUntype {
     case node: ExprNum     => untype(node)
     case node: ExprStr     => untype(node)
     case node: ExprError   => untype(node)
+    case node: ExprCast    => untype(node)
     case node: ExprIdent   => unreachable
   }
 
@@ -301,6 +302,11 @@ trait TreeUntype {
     ) withLoc node.loc
 
   def untype(node: ExprSelect): ExprSelect =
+    node.copy(
+      expr = untype(node.expr)
+    ) withLoc node.loc
+
+  def untype(node: ExprCast): ExprCast =
     node.copy(
       expr = untype(node.expr)
     ) withLoc node.loc

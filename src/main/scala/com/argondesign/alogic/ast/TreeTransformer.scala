@@ -337,6 +337,10 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
           val expr = walk(node.expr)
           doTransform(TreeCopier(node)(expr))
         }
+        case node: ExprCast => {
+          val expr = walk(node.expr)
+          doTransform(TreeCopier(node)(expr))
+        }
         case node: ExprInt   => doTransform(node)
         case node: ExprNum   => doTransform(node)
         case node: ExprStr   => doTransform(node)
