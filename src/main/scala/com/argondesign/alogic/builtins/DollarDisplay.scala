@@ -24,14 +24,15 @@ private[builtins] class DollarDisplay(implicit cc: CompilerContext) extends Buil
 
   val name = "$display"
 
-  private def nonVoidPacked(expr: Expr) = expr.tpe match {
-    case TypeVoid => false
-    case kind     => kind.isPacked
+  private def validArg(expr: Expr) = expr.tpe match {
+    case TypeVoid   => false
+    case _: TypeNum => true
+    case kind       => kind.isPacked
   }
 
   def returnType(args: List[Expr]) = args partialMatch {
-    case Nil                                                              => TypeVoid
-    case str :: rest if str.tpe == TypeStr && (rest forall nonVoidPacked) => TypeVoid
+    case Nil                                                         => TypeVoid
+    case str :: rest if str.tpe == TypeStr && (rest forall validArg) => TypeVoid
   }
 
   def isKnownConst(args: List[Expr]) = false
