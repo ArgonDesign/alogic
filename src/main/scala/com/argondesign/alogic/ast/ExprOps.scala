@@ -16,7 +16,6 @@
 
 package com.argondesign.alogic.ast
 
-import com.argondesign.alogic.Config
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Bindings
 import com.argondesign.alogic.core.CompilerContext
@@ -207,7 +206,7 @@ trait ExprOps { this: Expr =>
 
   final def isPacked(implicit cc: CompilerContext): Boolean = simplify match {
     case _: ExprInt      => true
-    case _: ExprNum      => Config.treatNumAs32Wide
+    case _: ExprNum      => false
     case ExprRef(symbol) => symbol.kind.isPacked
     case _               => tpe.isPacked
   }

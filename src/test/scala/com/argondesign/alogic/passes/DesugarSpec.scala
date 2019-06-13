@@ -14,7 +14,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.passes
-
 import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.SourceTextConverters._
 import com.argondesign.alogic.ast.Trees._
@@ -27,7 +26,7 @@ final class DesugarSpec extends FreeSpec with AlogicTest {
 
   implicit val cc = new CompilerContext
   val namer = new Namer
-  val typer = new Typer
+  val typer = new Typer(paramsOnly = false)
   val desugar = new Desugar
 
   def xform(tree: Tree) = {
@@ -75,7 +74,7 @@ final class DesugarSpec extends FreeSpec with AlogicTest {
     "rewire update statements as assignments" - {
       for (op <- List("*", "/", "%", "+", "-", "<<", ">>", ">>>", "&", "|", "^")) {
         s"${op}=" in {
-          val tree = xform(s"{ i100 a; a ${op}= 2; }".asTree[Stmt])
+          val tree = xform(s"{ i100 a; a ${op}= 100'd2; }".asTree[Stmt])
 
           cc.messages shouldBe empty
 
@@ -85,7 +84,7 @@ final class DesugarSpec extends FreeSpec with AlogicTest {
                 case StmtAssign(lhs, rhs) =>
                   lhs shouldBe ExprRef(dSym)
                   inside(rhs) {
-                    case ExprBinary(ExprRef(sym), `op`, Expr(2)) =>
+                    case ExprBinary(ExprRef(sym), `op`, ExprInt(false, 100, v)) if v == 2 =>
                       sym should be theSameInstanceAs dSym
                   }
               }
@@ -104,14 +103,14 @@ final class DesugarSpec extends FreeSpec with AlogicTest {
         )
       } {
         name in {
-          val tree = xform(s"{ i2 b; let (i2 a = 0, b = a) ${loop} }".asTree[Stmt])
+          val tree = xform(s"{ i2 b; let (i2 a = 2'd0, b = a) ${loop} }".asTree[Stmt])
 
           inside(tree) {
             case StmtBlock(List(StmtDecl(declB: Decl), declA: StmtDecl, assignB, loop)) =>
               val dSymB = declB.symbol
               dSymB.name shouldBe "b"
               inside(declA) {
-                case StmtDecl(Decl(dSymA, Some(Expr(0)))) =>
+                case StmtDecl(Decl(dSymA, Some(ExprInt(false, 2, v)))) if v == 0 =>
                   dSymA.kind shouldBe TypeSInt(Expr(2))
                   inside(assignB) {
                     case StmtAssign(ExprRef(symB), ExprRef(symA)) =>

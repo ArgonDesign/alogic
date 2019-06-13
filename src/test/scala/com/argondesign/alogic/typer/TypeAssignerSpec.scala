@@ -164,16 +164,10 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
             ("-('d1)", TypeNum(false)),
             ("~('d1)", TypeNum(false)),
             ("!('d1)", TypeUInt(1)),
-            ("&('d1)", TypeUInt(1)),
-            ("|('d1)", TypeUInt(1)),
-            ("^('d1)", TypeUInt(1)),
             ("+('sd1)", TypeNum(true)),
             ("-('sd1)", TypeNum(true)),
             ("~('sd1)", TypeNum(true)),
-            ("!('sd1)", TypeUInt(1)),
-            ("&('sd1)", TypeUInt(1)),
-            ("|('sd1)", TypeUInt(1)),
-            ("^('sd1)", TypeUInt(1))
+            ("!('sd1)", TypeUInt(1))
           )
         } {
           val text = expr.trim.replaceAll(" +", " ")
@@ -290,39 +284,6 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
             ("3'sd1 >>  32'sd1", TypeSInt(3)),
             ("3'sd1 >>> 32'sd1", TypeSInt(3)),
             ("3'sd1 <<< 32'sd1", TypeSInt(3)),
-            // Widening
-            (" 4'd1 *   6'd1", TypeUInt(6)),
-            (" 4'd1 /   6'd1", TypeUInt(6)),
-            (" 4'd1 %   6'd1", TypeUInt(6)),
-            (" 4'd1 +   6'd1", TypeUInt(6)),
-            (" 4'd1 -   6'd1", TypeUInt(6)),
-            (" 4'd1 &   6'd1", TypeUInt(6)),
-            (" 4'd1 ^   6'd1", TypeUInt(6)),
-            (" 4'd1 |   6'd1", TypeUInt(6)),
-            (" 4'd1 *  6'sd1", TypeUInt(6)),
-            (" 4'd1 /  6'sd1", TypeUInt(6)),
-            (" 4'd1 %  6'sd1", TypeUInt(6)),
-            (" 4'd1 +  6'sd1", TypeUInt(6)),
-            (" 4'd1 -  6'sd1", TypeUInt(6)),
-            (" 4'd1 &  6'sd1", TypeUInt(6)),
-            (" 4'd1 ^  6'sd1", TypeUInt(6)),
-            (" 4'd1 |  6'sd1", TypeUInt(6)),
-            ("4'sd1 *   6'd1", TypeUInt(6)),
-            ("4'sd1 /   6'd1", TypeUInt(6)),
-            ("4'sd1 %   6'd1", TypeUInt(6)),
-            ("4'sd1 +   6'd1", TypeUInt(6)),
-            ("4'sd1 -   6'd1", TypeUInt(6)),
-            ("4'sd1 &   6'd1", TypeUInt(6)),
-            ("4'sd1 ^   6'd1", TypeUInt(6)),
-            ("4'sd1 |   6'd1", TypeUInt(6)),
-            ("4'sd1 *  6'sd1", TypeSInt(6)),
-            ("4'sd1 /  6'sd1", TypeSInt(6)),
-            ("4'sd1 %  6'sd1", TypeSInt(6)),
-            ("4'sd1 +  6'sd1", TypeSInt(6)),
-            ("4'sd1 -  6'sd1", TypeSInt(6)),
-            ("4'sd1 &  6'sd1", TypeSInt(6)),
-            ("4'sd1 ^  6'sd1", TypeSInt(6)),
-            ("4'sd1 |  6'sd1", TypeSInt(6)),
             // unsigned unsigned - unsized
             ("'d1 *   'd1", TypeNum(false)),
             ("'d1 /   'd1", TypeNum(false)),
@@ -423,23 +384,15 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
       "ternary operator" - {
         for {
           (expr, kind) <- List(
-            ("a[1:0]?  5'd2 :  5'd3", TypeUInt(5)),
-            ("a[1:0]?  5'd2 : 5'sd3", TypeUInt(5)),
-            ("a[1:0]? 5'sd2 :  5'd3", TypeUInt(5)),
-            ("a[1:0]? 5'sd2 : 5'sd3", TypeSInt(5)),
-            ("a[1:0]?  4'd2 :  2'd1", TypeUInt(4)),
-            ("a[1:0]?  4'd2 : 2'sd1", TypeUInt(4)),
-            ("a[1:0]? 4'sd2 :  2'd1", TypeUInt(4)),
-            ("a[1:0]? 4'sd2 : 2'sd1", TypeSInt(4)),
-            ("a[1:0]?  2'd1 :  3'd3", TypeUInt(3)),
-            ("a[1:0]?  2'd1 : 3'sd3", TypeUInt(3)),
-            ("a[1:0]? 2'sd1 :  3'd3", TypeUInt(3)),
-            ("a[1:0]? 2'sd1 : 3'sd3", TypeSInt(3)),
+            ("1 ?  5'd2 :  5'd3", TypeUInt(5)),
+            ("1 ?  5'd2 : 5'sd3", TypeUInt(5)),
+            ("1 ? 5'sd2 :  5'd3", TypeUInt(5)),
+            ("1 ? 5'sd2 : 5'sd3", TypeSInt(5)),
             // Unsized
-            ("a[1:0]?  'd2 :  'd3", TypeNum(false)),
-            ("a[1:0]?  'd2 : 'sd3", TypeNum(false)),
-            ("a[1:0]? 'sd2 :  'd3", TypeNum(false)),
-            ("a[1:0]? 'sd2 : 'sd3", TypeNum(true))
+            ("1 ?  'd2 :  'd3", TypeNum(false)),
+            ("1 ?  'd2 : 'sd3", TypeNum(false)),
+            ("1 ? 'sd2 :  'd3", TypeNum(false)),
+            ("1 ? 'sd2 : 'sd3", TypeNum(true))
           )
         } {
           val text = expr.trim.replaceAll(" +", " ")
@@ -568,13 +521,13 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
       "slice" - {
         for {
           (expr, kind) <- List(
-            ("a[3:2]", TypeUInt(2)),
-            ("a[0:0]", TypeUInt(1)),
-            ("a[4+:3]", TypeUInt(3)),
-            ("a[4-:3]", TypeUInt(3)),
-            ("1[3:0]", TypeUInt(4)),
-            ("1[3+:2]", TypeUInt(2)),
-            ("1[3-:2]", TypeUInt(2))
+            ("a[8'd3 :8'd2]", TypeUInt(ExprInt(false, 8, 2))),
+            ("a[8'd0 :8'd0]", TypeUInt(ExprInt(false, 8, 1))),
+            ("a[8'd4+:8'd3]", TypeUInt(ExprInt(false, 8, 3))),
+            ("a[8'd4-:8'd3]", TypeUInt(ExprInt(false, 8, 3))),
+            ("1[8'd3 :8'd0]", TypeUInt(ExprInt(false, 8, 4))),
+            ("1[8'd3+:8'd2]", TypeUInt(ExprInt(false, 8, 2))),
+            ("1[8'd3-:8'd2]", TypeUInt(ExprInt(false, 8, 2)))
           )
         } {
           val text = expr.trim.replaceAll(" +", " ")

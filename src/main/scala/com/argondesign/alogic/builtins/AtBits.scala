@@ -19,7 +19,6 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.typer.Typer
 
 private[builtins] class AtBits(implicit cc: CompilerContext) extends BuiltinPolyFunc {
 
@@ -40,10 +39,6 @@ private[builtins] class AtBits(implicit cc: CompilerContext) extends BuiltinPoly
   def isKnownConst(args: List[Expr]) = true
 
   def fold(loc: Loc, args: List[Expr]) = {
-    if (!args.head.hasTpe) {
-      Typer(args.head)
-    }
-
     args.head.tpeOpt map {
       case TypeType(kind) => Expr(kind.width)
       case kind           => Expr(kind.width)

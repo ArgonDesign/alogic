@@ -58,6 +58,9 @@ trait AlogicTest
     lazy val linesMatch = lines.length == message.msg.length && {
       val regexes = lines map { _.r }
       (regexes zip message.msg) forall { pair =>
+//        println(pair._1)
+//        println(pair._2)
+//        println(pair._1.pattern.matcher(pair._2).matches())
         pair._1.pattern.matcher(pair._2).matches()
       }
     }

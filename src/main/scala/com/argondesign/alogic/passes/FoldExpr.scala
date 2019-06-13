@@ -18,12 +18,13 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees.Expr.Integral
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.TreeInTypeTransformer
+import com.argondesign.alogic.core.Types.TypeNum
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.BigIntOps._
 import com.argondesign.alogic.util.unreachable
-import com.argondesign.alogic.core.Symbols.Symbol
 
 import scala.language.implicitConversions
 
@@ -532,6 +533,43 @@ final class FoldExpr(
       case expr @ ExprType(kind) => {
         val newKind = kind rewrite TypeFoldExpr
         if (kind eq newKind) expr else ExprType(newKind) withLoc tree.loc
+      }
+
+      ////////////////////////////////////////////////////////////////////////////
+      // Fold casts
+      ////////////////////////////////////////////////////////////////////////////
+
+      case ExprCast(kind, ExprNum(_, value)) => {
+        val width = kind.width
+        val signed = kind.isSigned
+
+        val res = if (!signed && value < 0) {
+          cc.error("Negative value cannot be represented as unsigned")
+          ExprError()
+        } else {
+          val lo = if (signed) -(BigInt(1) << (width - 1)) else BigInt(0)
+          val hi = if (signed) BigInt.mask(width - 1) else BigInt.mask(width)
+
+          if (value > hi || value < lo) {
+            val signedness = if (signed) "signed" else "unsigned"
+            cc.error(s"Value ${value} cannot be represented with ${width} ${signedness} bits")
+            ExprError()
+          } else {
+            ExprInt(signed, width, value)
+          }
+        }
+
+        res withLoc tree.loc
+      }
+
+      case ExprCast(TypeNum(tSigned), ExprInt(eSigned, _, value)) => {
+        val res = if (!tSigned && value < 0) {
+          cc.error("Negative value cannot be represented as unsigned")
+          ExprError()
+        } else {
+          ExprNum(tSigned, value)
+        }
+        res withLoc tree.loc
       }
 
       ////////////////////////////////////////////////////////////////////////////

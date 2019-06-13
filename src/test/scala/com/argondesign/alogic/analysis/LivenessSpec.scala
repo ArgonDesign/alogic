@@ -21,6 +21,7 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
+import com.argondesign.alogic.passes.FoldExpr
 import com.argondesign.alogic.passes.Namer
 import com.argondesign.alogic.typer.Typer
 import org.scalatest.FreeSpec
@@ -31,32 +32,36 @@ class LivenessSpec extends FreeSpec with AlogicTest {
 
   implicit val cc = new CompilerContext()
 
+  val typer = new Typer(paramsOnly = false)
+  val fold = new FoldExpr(assignTypes = true, foldRefs = true)
+
   val aSymbol = cc.newTermSymbol("a", Loc.synthetic, TypeUInt(Expr(4) regularize Loc.synthetic))
   val bSymbol = cc.newTermSymbol("b", Loc.synthetic, TypeUInt(Expr(8) regularize Loc.synthetic))
-  val cSymbol = cc.newTermSymbol("c", Loc.synthetic, TypeUInt(Expr(128) regularize Loc.synthetic))
+  val cSymbol = cc.newTermSymbol("c", Loc.synthetic, TypeUInt(Expr(256) regularize Loc.synthetic))
 
   val aRef = ExprRef(aSymbol)
   val bRef = ExprRef(bSymbol)
   val cRef = ExprRef(cSymbol)
 
+  def zext(n: Int, expr: Expr) = ExprCat(List(ExprInt(false, n, 0), expr))
+
   val randBitCall = {
-    ("@randbit()".asTree[Expr] rewrite new Namer rewrite new Typer).asInstanceOf[ExprCall]
+    ("@randbit()".asTree[Expr] rewrite new Namer rewrite new Typer(paramsOnly = false))
+      .asInstanceOf[ExprCall]
   }
 
-  def killed(expr: Expr) = {
-    expr regularize Loc.synthetic
-    Liveness.killed(expr)
+  def prep(expr: Expr): Expr = {
+    expr assignLocs Loc.synthetic
+    val res = (expr rewrite typer rewrite fold).asInstanceOf[Expr]
+    cc.messages shouldBe empty
+    res
   }
 
-  def usedLval(expr: Expr) = {
-    expr regularize Loc.synthetic
-    Liveness.usedLv(expr)
-  }
+  def killed(expr: Expr) = Liveness.killed(prep(expr))
 
-  def usedRval(expr: Expr) = {
-    expr regularize Loc.synthetic
-    Liveness.usedRv(expr)
-  }
+  def usedLval(expr: Expr) = Liveness.usedLv(prep(expr))
+
+  def usedRval(expr: Expr) = Liveness.usedRv(prep(expr))
 
   "Liveness" - {
 
@@ -70,7 +75,7 @@ class LivenessSpec extends FreeSpec with AlogicTest {
           killed(bRef) shouldBe SymbolBitSet(Map(bSymbol -> BitSet(0 to 7: _*)))
         }
         "c" in {
-          killed(cRef) shouldBe SymbolBitSet(Map(cSymbol -> BitSet(0 to 127: _*)))
+          killed(cRef) shouldBe SymbolBitSet(Map(cSymbol -> BitSet(0 to 255: _*)))
         }
       }
 
@@ -103,13 +108,13 @@ class LivenessSpec extends FreeSpec with AlogicTest {
 
       "should ignore variable indices of ref" - {
         "a[@randbit()]]" in {
-          killed(aRef index randBitCall) shouldBe SymbolBitSet.empty
+          killed(aRef index zext(1, randBitCall)) shouldBe SymbolBitSet.empty
         }
         "b[@randbit()]]" in {
-          killed(bRef index randBitCall) shouldBe SymbolBitSet.empty
+          killed(bRef index zext(2, randBitCall)) shouldBe SymbolBitSet.empty
         }
         "c[@randbit()]]" in {
-          killed(cRef index randBitCall) shouldBe SymbolBitSet.empty
+          killed(cRef index zext(7, randBitCall)) shouldBe SymbolBitSet.empty
         }
       }
 
@@ -124,25 +129,25 @@ class LivenessSpec extends FreeSpec with AlogicTest {
           killed(aRef.slice(2, "-:", 2)) shouldBe SymbolBitSet(Map(aSymbol -> BitSet(2, 1)))
         }
         "c[120:0]" in {
-          killed(aRef.slice(120, ":", 0)) shouldBe SymbolBitSet(
-            Map(aSymbol -> BitSet(0 to 120: _*)))
+          killed(cRef.slice(120, ":", 0)) shouldBe SymbolBitSet(
+            Map(cSymbol -> BitSet(0 to 120: _*)))
         }
         "c[32+:64]" in {
-          killed(aRef.slice(32, "+:", 64)) shouldBe SymbolBitSet(
-            Map(aSymbol -> BitSet(32 to 95: _*)))
+          killed(cRef.slice(32, "+:", 64)) shouldBe SymbolBitSet(
+            Map(cSymbol -> BitSet(32 to 95: _*)))
         }
         "c[95-:64]" in {
-          killed(aRef.slice(95, "-:", 64)) shouldBe SymbolBitSet(
-            Map(aSymbol -> BitSet(32 to 95: _*)))
+          killed(cRef.slice(95, "-:", 64)) shouldBe SymbolBitSet(
+            Map(cSymbol -> BitSet(32 to 95: _*)))
         }
       }
 
       "should ignore variable slices of ref" - {
         "a[@randbit()+:1]" in {
-          killed(aRef.slice(randBitCall, "+:", 1)) shouldBe SymbolBitSet.empty
+          killed(aRef.slice(zext(1, randBitCall), "+:", 1)) shouldBe SymbolBitSet.empty
         }
         "a[@randbit()-:1]" in {
-          killed(aRef.slice(randBitCall, "-:", 1)) shouldBe SymbolBitSet.empty
+          killed(aRef.slice(zext(1, randBitCall), "-:", 1)) shouldBe SymbolBitSet.empty
         }
       }
 
@@ -163,7 +168,7 @@ class LivenessSpec extends FreeSpec with AlogicTest {
           "a" in { usedRval(aRef) shouldBe SymbolBitSet(Map(aSymbol -> BitSet(0 to 3: _*))) }
           "b" in { usedRval(bRef) shouldBe SymbolBitSet(Map(bSymbol -> BitSet(0 to 7: _*))) }
           "c" in {
-            usedRval(cRef) shouldBe SymbolBitSet(Map(cSymbol -> BitSet(0 to 127: _*)))
+            usedRval(cRef) shouldBe SymbolBitSet(Map(cSymbol -> BitSet(0 to 255: _*)))
           }
         }
 
@@ -196,23 +201,23 @@ class LivenessSpec extends FreeSpec with AlogicTest {
 
         "should be pessimistic for variable indices of ref" - {
           "a[@randbit()]]" in {
-            usedRval(aRef index randBitCall) shouldBe SymbolBitSet(
+            usedRval(aRef index zext(1, randBitCall)) shouldBe SymbolBitSet(
               Map(aSymbol -> BitSet(0 to 3: _*)))
           }
           "b[@randbit()]]" in {
-            usedRval(bRef index randBitCall) shouldBe SymbolBitSet(
+            usedRval(bRef index zext(2, randBitCall)) shouldBe SymbolBitSet(
               Map(bSymbol -> BitSet(0 to 7: _*)))
           }
           "c[@randbit()]]" in {
-            usedRval(cRef index randBitCall) shouldBe SymbolBitSet(
-              Map(cSymbol -> BitSet(0 to 127: _*)))
+            usedRval(cRef index zext(7, randBitCall)) shouldBe SymbolBitSet(
+              Map(cSymbol -> BitSet(0 to 255: _*)))
           }
         }
 
         "should recognize non-constant indices of ref" - {
-          "a[b]" in {
-            usedRval(aRef index bRef) shouldBe SymbolBitSet(
-              Map(aSymbol -> BitSet(0 to 3: _*), bSymbol -> BitSet(0 to 7: _*)))
+          "c[b]" in {
+            usedRval(cRef index bRef) shouldBe SymbolBitSet(
+              Map(cSymbol -> BitSet(0 to 255: _*), bSymbol -> BitSet(0 to 7: _*)))
           }
         }
 
@@ -227,40 +232,40 @@ class LivenessSpec extends FreeSpec with AlogicTest {
             usedRval(aRef.slice(2, "-:", 2)) shouldBe SymbolBitSet(Map(aSymbol -> BitSet(2, 1)))
           }
           "c[120:0]" in {
-            usedRval(aRef.slice(120, ":", 0)) shouldBe SymbolBitSet(
-              Map(aSymbol -> BitSet(0 to 120: _*)))
+            usedRval(cRef.slice(120, ":", 0)) shouldBe SymbolBitSet(
+              Map(cSymbol -> BitSet(0 to 120: _*)))
           }
           "c[32+:64]" in {
-            usedRval(aRef.slice(32, "+:", 64)) shouldBe SymbolBitSet(
-              Map(aSymbol -> BitSet(32 to 95: _*)))
+            usedRval(cRef.slice(32, "+:", 64)) shouldBe SymbolBitSet(
+              Map(cSymbol -> BitSet(32 to 95: _*)))
           }
           "c[95-:64]" in {
-            usedRval(aRef.slice(95, "-:", 64)) shouldBe SymbolBitSet(
-              Map(aSymbol -> BitSet(32 to 95: _*)))
+            usedRval(cRef.slice(95, "-:", 64)) shouldBe SymbolBitSet(
+              Map(cSymbol -> BitSet(32 to 95: _*)))
           }
         }
 
         "should be pessimistic for variable slices of ref" - {
           "a[@randbit()+:1]" in {
-            usedRval(aRef.slice(randBitCall, "+:", 1)) shouldBe {
+            usedRval(aRef.slice(zext(1, randBitCall), "+:", 1)) shouldBe {
               SymbolBitSet(Map(aSymbol -> BitSet(0 to 3: _*)))
             }
           }
           "a[@randbit()-:1]" in {
-            usedRval(aRef.slice(randBitCall, "-:", 1)) shouldBe {
+            usedRval(aRef.slice(zext(1, randBitCall), "-:", 1)) shouldBe {
               SymbolBitSet(Map(aSymbol -> BitSet(0 to 3: _*)))
             }
           }
         }
 
         "should recognize non-constant slices of ref" - {
-          "a[b +: 1]" in {
-            usedRval(aRef.slice(bRef, "+:", 1)) shouldBe SymbolBitSet(
-              Map(aSymbol -> BitSet(0 to 3: _*), bSymbol -> BitSet(0 to 7: _*)))
+          "c[b +: 1]" in {
+            usedRval(cRef.slice(bRef, "+:", 1)) shouldBe SymbolBitSet(
+              Map(cSymbol -> BitSet(0 to 255: _*), bSymbol -> BitSet(0 to 7: _*)))
           }
-          "a[1 +: b]" in {
-            usedRval(aRef.slice(1, "+:", bRef)) shouldBe SymbolBitSet(
-              Map(aSymbol -> BitSet(0 to 3: _*), bSymbol -> BitSet(0 to 7: _*)))
+          "c[1 +: b]" in {
+            usedRval(cRef.slice(1, "+:", bRef)) shouldBe SymbolBitSet(
+              Map(cSymbol -> BitSet(0 to 255: _*), bSymbol -> BitSet(0 to 7: _*)))
           }
         }
 
@@ -276,44 +281,42 @@ class LivenessSpec extends FreeSpec with AlogicTest {
 
       "lvalues" - {
         "should handle index" - {
-          "a[b]" in {
-            usedLval(aRef index bRef) shouldBe SymbolBitSet(Map(bSymbol -> BitSet(0 to 7: _*)))
+          "c[b]" in {
+            usedLval(cRef index bRef) shouldBe SymbolBitSet(Map(bSymbol -> BitSet(0 to 7: _*)))
           }
           "a[b[0]]" in {
-            usedLval(aRef index (bRef index 0)) shouldBe {
+            usedLval(aRef index zext(1, (bRef index 0))) shouldBe {
               SymbolBitSet(Map(bSymbol -> BitSet(0)))
             }
           }
         }
 
         "should handle slice" - {
-          "a[b +: 1]" in {
-            usedLval(aRef.slice(bRef, "+:", 1)) shouldBe {
+          "c[b +: 1]" in {
+            usedLval(cRef.slice(bRef, "+:", 1)) shouldBe {
               SymbolBitSet(Map(bSymbol -> BitSet(0 to 7: _*)))
             }
           }
           "a[b[2] +: 1]" in {
-            usedLval(aRef.slice(bRef index 2, "+:", 1)) shouldBe {
+            usedLval(aRef.slice(zext(1, bRef index 2), "+:", 1)) shouldBe {
               SymbolBitSet(Map(bSymbol -> BitSet(2)))
             }
           }
         }
 
-        "should concatentations" - {
+        "should handle concatenations" - {
           "{b, a[0], a[b[1]], c[b[4] + b[3] +: 3]}" in {
             val cat = ExprCat(
               List(
                 bRef,
                 aRef index 0,
-                aRef index (bRef index 1),
-                cRef.slice((bRef index 4) + (bRef index 3), "+:", Expr(3))
+                aRef index zext(1, bRef index 1),
+                cRef.slice(zext(7, (bRef index 4) + (bRef index 3)), "+:", 3)
               ))
             usedLval(cat) shouldBe SymbolBitSet(Map(bSymbol -> BitSet(4, 3, 1)))
           }
         }
       }
     }
-
   }
-
 }

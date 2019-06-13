@@ -42,10 +42,10 @@ trait TreeTransformerPass extends Pass {
 
   override def apply(trees: List[Tree])(implicit cc: CompilerContext): List[Tree] = {
     // Apply pass to all trees in parallel
-    val transformed = trees.par map { _ rewrite create }
+    val transformed = trees map { _ rewrite create }
 
     // Collect the results and flatten Thickets
-    transformed.seq.toList flatMap {
+    transformed.toList flatMap {
       case Thicket(trees) => trees
       case other          => List(other)
     }

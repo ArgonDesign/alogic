@@ -22,6 +22,10 @@ import com.argondesign.alogic.SourceTextConverters._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Error
+import com.argondesign.alogic.core.Loc
+import com.argondesign.alogic.core.Types.TypeNum
+import com.argondesign.alogic.core.Types.TypeSInt
+import com.argondesign.alogic.core.Types.TypeUInt
 import com.argondesign.alogic.typer.Typer
 import org.scalatest.FreeSpec
 
@@ -29,7 +33,7 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
 
   implicit val cc = new CompilerContext
   val namer = new Namer
-  val typer = new Typer
+  val typer = new Typer(paramsOnly = false)
   val fold = new FoldExpr(assignTypes = false, foldRefs = false)
 
   def xform(tree: Tree): Tree = {
@@ -885,10 +889,18 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
     "index over $signed/$unsigned" - {
       for {
         (text, pattern) <- List[(String, PartialFunction[Any, Unit])](
-          ("$signed(a)[0]", { case ExprIndex(ExprRef(term), Expr(0)) if term.name == "a"   => }),
-          ("$signed(a)[1]", { case ExprIndex(ExprRef(term), Expr(1)) if term.name == "a"   => }),
-          ("$unsigned(a)[0]", { case ExprIndex(ExprRef(term), Expr(0)) if term.name == "a" => }),
-          ("$unsigned(a)[1]", { case ExprIndex(ExprRef(term), Expr(1)) if term.name == "a" => }),
+          ("$signed(a)[3'd0]", {
+            case ExprIndex(ExprRef(term), ExprInt(false, 3, v)) if term.name == "a" && v == 0 =>
+          }),
+          ("$signed(a)[3'd1]", {
+            case ExprIndex(ExprRef(term), ExprInt(false, 3, v)) if term.name == "a" && v == 1 =>
+          }),
+          ("$unsigned(a)[3'd0]", {
+            case ExprIndex(ExprRef(term), ExprInt(false, 3, v)) if term.name == "a" && v == 0 =>
+          }),
+          ("$unsigned(a)[3'd1]", {
+            case ExprIndex(ExprRef(term), ExprInt(false, 3, v)) if term.name == "a" && v == 1 =>
+          }),
         )
       } {
         val expr = text.trim
@@ -908,41 +920,53 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
     "slice over $signed/$unsigned" - {
       for {
         (text, pattern) <- List[(String, PartialFunction[Any, Unit])](
-          ("$signed(a)[1  : 0]", {
-            case ExprSlice(ExprRef(term), Expr(1), ":", Expr(0)) if term.name == "a" =>
+          ("$signed(a)[3'd1  : 3'd0]", {
+            case ExprSlice(ExprRef(term), ExprInt(false, 3, l), ":", ExprInt(false, 3, r))
+                if term.name == "a" && l == 1 && r == 0 =>
           }),
-          ("$signed(a)[2  : 1]", {
-            case ExprSlice(ExprRef(term), Expr(2), ":", Expr(1)) if term.name == "a" =>
+          ("$signed(a)[3'd2  : 3'd1]", {
+            case ExprSlice(ExprRef(term), ExprInt(false, 3, l), ":", ExprInt(false, 3, r))
+                if term.name == "a" && l == 2 && r == 1 =>
           }),
-          ("$signed(a)[0 +: 2]", {
-            case ExprSlice(ExprRef(term), Expr(0), "+:", Expr(2)) if term.name == "a" =>
+          ("$signed(a)[3'd0 +: 3'd2]", {
+            case ExprSlice(ExprRef(term), ExprInt(false, 3, l), "+:", ExprInt(false, 3, r))
+                if term.name == "a" && l == 0 && r == 2 =>
           }),
-          ("$signed(a)[1 +: 2]", {
-            case ExprSlice(ExprRef(term), Expr(1), "+:", Expr(2)) if term.name == "a" =>
+          ("$signed(a)[3'd1 +: 3'd2]", {
+            case ExprSlice(ExprRef(term), ExprInt(false, 3, l), "+:", ExprInt(false, 3, r))
+                if term.name == "a" && l == 1 && r == 2 =>
           }),
-          ("$signed(a)[2 -: 2]", {
-            case ExprSlice(ExprRef(term), Expr(2), "-:", Expr(2)) if term.name == "a" =>
+          ("$signed(a)[3'd2 -: 3'd2]", {
+            case ExprSlice(ExprRef(term), ExprInt(false, 3, l), "-:", ExprInt(false, 3, r))
+                if term.name == "a" && l == 2 && r == 2 =>
           }),
-          ("$signed(a)[1 -: 2]", {
-            case ExprSlice(ExprRef(term), Expr(1), "-:", Expr(2)) if term.name == "a" =>
+          ("$signed(a)[3'd1 -: 3'd2]", {
+            case ExprSlice(ExprRef(term), ExprInt(false, 3, l), "-:", ExprInt(false, 3, r))
+                if term.name == "a" && l == 1 && r == 2 =>
           }),
-          ("$unsigned(a)[1  : 0]", {
-            case ExprSlice(ExprRef(term), Expr(1), ":", Expr(0)) if term.name == "a" =>
+          ("$unsigned(a)[3'd1  : 3'd0]", {
+            case ExprSlice(ExprRef(term), ExprInt(false, 3, l), ":", ExprInt(false, 3, r))
+                if term.name == "a" && l == 1 && r == 0 =>
           }),
-          ("$unsigned(a)[2  : 1]", {
-            case ExprSlice(ExprRef(term), Expr(2), ":", Expr(1)) if term.name == "a" =>
+          ("$unsigned(a)[3'd2  : 3'd1]", {
+            case ExprSlice(ExprRef(term), ExprInt(false, 3, l), ":", ExprInt(false, 3, r))
+                if term.name == "a" && l == 2 && r == 1 =>
           }),
-          ("$unsigned(a)[0 +: 2]", {
-            case ExprSlice(ExprRef(term), Expr(0), "+:", Expr(2)) if term.name == "a" =>
+          ("$unsigned(a)[3'd0 +: 3'd2]", {
+            case ExprSlice(ExprRef(term), ExprInt(false, 3, l), "+:", ExprInt(false, 3, r))
+                if term.name == "a" && l == 0 && r == 2 =>
           }),
-          ("$unsigned(a)[1 +: 2]", {
-            case ExprSlice(ExprRef(term), Expr(1), "+:", Expr(2)) if term.name == "a" =>
+          ("$unsigned(a)[3'd1 +: 3'd2]", {
+            case ExprSlice(ExprRef(term), ExprInt(false, 3, l), "+:", ExprInt(false, 3, r))
+                if term.name == "a" && l == 1 && r == 2 =>
           }),
-          ("$unsigned(a)[2 -: 2]", {
-            case ExprSlice(ExprRef(term), Expr(2), "-:", Expr(2)) if term.name == "a" =>
+          ("$unsigned(a)[3'd2 -: 3'd2]", {
+            case ExprSlice(ExprRef(term), ExprInt(false, 3, l), "-:", ExprInt(false, 3, r))
+                if term.name == "a" && l == 2 && r == 2 =>
           }),
-          ("$unsigned(a)[1 -: 2]", {
-            case ExprSlice(ExprRef(term), Expr(1), "-:", Expr(2)) if term.name == "a" =>
+          ("$unsigned(a)[3'd1 -: 3'd2]", {
+            case ExprSlice(ExprRef(term), ExprInt(false, 3, l), "-:", ExprInt(false, 3, r))
+                if term.name == "a" && l == 1 && r == 2 =>
           })
         )
       } {
@@ -1253,6 +1277,47 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
       }
 
       expr.value.simplify shouldBe ExprInt(false, 41, 0x1000000fffL)
+    }
+
+    "cast" - {
+      for {
+        (expr, res, err) <- List(
+          (ExprCast(TypeUInt(Expr(8)), Expr(32)), ExprInt(false, 8, 32), ""),
+          (ExprCast(TypeSInt(Expr(8)), Expr(32)), ExprInt(true, 8, 32), ""),
+          (ExprCast(TypeSInt(Expr(8)), ExprNum(true, -1)), ExprInt(true, 8, -1), ""),
+          (ExprCast(TypeUInt(Expr(4)), Expr(32)),
+           ExprError(),
+           "Value 32 cannot be represented with 4 unsigned bits"),
+          (ExprCast(TypeSInt(Expr(4)), Expr(32)),
+           ExprError(),
+           "Value 32 cannot be represented with 4 signed bits"),
+          (ExprCast(TypeUInt(Expr(5)), Expr(31)), ExprInt(false, 5, 31), ""),
+          (ExprCast(TypeSInt(Expr(5)), Expr(31)),
+           ExprError(),
+           "Value 31 cannot be represented with 5 signed bits"),
+          (ExprCast(TypeUInt(Expr(8)), ExprNum(true, -1)),
+           ExprError(),
+           "Negative value cannot be represented as unsigned"),
+          (ExprCast(TypeNum(true), ExprInt(true, 10, 12)), ExprNum(true, 12), ""),
+          (ExprCast(TypeNum(true), ExprInt(false, 10, 12)), ExprNum(true, 12), ""),
+          (ExprCast(TypeNum(false), ExprInt(true, 10, 12)), ExprNum(false, 12), ""),
+          (ExprCast(TypeNum(false), ExprInt(false, 10, 12)), ExprNum(false, 12), ""),
+          (ExprCast(TypeNum(true), ExprInt(true, 10, -1)), ExprNum(true, -1), ""),
+          (ExprCast(TypeNum(false), ExprInt(true, 10, -1)),
+           ExprError(),
+           "Negative value cannot be represented as unsigned")
+        )
+      } {
+        expr.toSource in {
+          expr regularize Loc.synthetic
+          expr rewrite fold shouldBe res
+          if (err.isEmpty) {
+            cc.messages shouldBe empty
+          } else {
+            cc.messages.loneElement should beThe[Error](err)
+          }
+        }
+      }
     }
   }
 }

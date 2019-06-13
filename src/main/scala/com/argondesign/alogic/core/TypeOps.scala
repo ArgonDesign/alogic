@@ -16,7 +16,6 @@
 
 package com.argondesign.alogic.core
 
-import com.argondesign.alogic.Config
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.unreachable
 
@@ -77,7 +76,6 @@ trait TypeOps extends TypePrintOps { this: Type =>
     case self: TypePipeline => self.kind.isPacked
     case self: TypeParam    => self.kind.isPacked
     case self: TypeConst    => self.kind.isPacked
-    case _: TypeNum         => Config.treatNumAs32Wide
     case _                  => false
   }
 
@@ -102,15 +100,14 @@ trait TypeOps extends TypePrintOps { this: Type =>
           self.fieldTypes map {
             _.width
           } sum
-        case TypeVoid                              => 0
-        case self: TypeVector                      => self.size.value.get.toInt * self.elementType.width
-        case self: TypeIn                          => self.kind.width
-        case self: TypeOut                         => self.kind.width
-        case self: TypePipeline                    => self.kind.width
-        case self: TypeParam                       => self.kind.width
-        case self: TypeConst                       => self.kind.width
-        case _: TypeNum if Config.treatNumAs32Wide => 32
-        case _                                     => unreachable
+        case TypeVoid           => 0
+        case self: TypeVector   => self.size.value.get.toInt * self.elementType.width
+        case self: TypeIn       => self.kind.width
+        case self: TypeOut      => self.kind.width
+        case self: TypePipeline => self.kind.width
+        case self: TypeParam    => self.kind.width
+        case self: TypeConst    => self.kind.width
+        case _                  => unreachable
       }
     } catch {
       case t: Throwable => {
@@ -124,6 +121,13 @@ trait TypeOps extends TypePrintOps { this: Type =>
         }
       }
     }
+  }
+
+  final def shapeIter(implicit cc: CompilerContext): Iterator[Int] = this.underlying match {
+    case TypeArray(elemKind, shape)  => Iterator.single(shape.value.get.toInt) ++ elemKind.shapeIter
+    case TypeVector(elemKind, shape) => Iterator.single(shape.value.get.toInt) ++ elemKind.shapeIter
+    case kind if kind.isPacked       => Iterator.single(kind.width)
+    case _                           => Iterator.empty
   }
 
   // If this is a proxy type, get the underlying type, otherwise get this type

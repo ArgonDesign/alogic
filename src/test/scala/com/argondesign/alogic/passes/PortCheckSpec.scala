@@ -48,7 +48,7 @@ final class PortCheckSpec extends FreeSpec with AlogicTest {
     } map {
       _ rewrite new Desugar
     } map {
-      _ rewrite new Typer
+      _ rewrite new Typer(paramsOnly = false)
     } foreach {
       _ rewrite new PortCheck
     }

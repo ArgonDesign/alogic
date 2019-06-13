@@ -16,14 +16,5 @@
 package com.argondesign.alogic
 
 object Config {
-
-  final val allowWidthInference = false
-
-  final val checkAssignWidth = false
-
-  final val binaryOpWidthWarnings = false
-
-  final val treatNumAs32Wide = true
-
   final val applyTransformChecks = true
 }

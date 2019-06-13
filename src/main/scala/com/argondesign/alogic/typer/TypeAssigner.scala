@@ -343,7 +343,8 @@ object TypeAssigner {
         if (lTpe.isNum && rTpe.isNum) {
           TypeNum(signed)
         } else {
-          val width = lTpe.width max rTpe.width
+          val width = lTpe.width
+          require(rTpe.width == width)
           TypeInt(signed, Expr(width) regularize node.loc)
         }
       }
@@ -359,7 +360,8 @@ object TypeAssigner {
     val tpe = if (tTpe.isNum && eTpe.isNum) {
       TypeNum(signed)
     } else {
-      val width = tTpe.width max eTpe.width
+      val width = tTpe.width
+      require(eTpe.width == width)
       TypeInt(signed, Expr(width) regularize node.loc)
     }
     node withTpe tpe
@@ -396,7 +398,9 @@ object TypeAssigner {
   def apply(node: ExprSlice)(implicit cc: CompilerContext): node.type = {
     // TODO: implement vector slicing properly
     require(!node.hasTpe)
-    val width = if (node.op == ":") node.lidx - node.ridx + 1 else node.ridx
+    require(node.lidx.width == node.ridx.width)
+    lazy val one = ExprInt(false, node.lidx.width, 1)
+    val width = if (node.op == ":") node.lidx - node.ridx + one else node.ridx
     node withTpe TypeUInt(width.simplify regularize node.loc)
   }
 

@@ -26,7 +26,6 @@ import com.argondesign.alogic.core.Symbols.TypeSymbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.transform.CloneEntity
 import com.argondesign.alogic.typer.TypeAssigner
-import com.argondesign.alogic.typer.Typer
 import com.argondesign.alogic.util.FollowedBy
 import com.argondesign.alogic.util.unreachable
 
@@ -103,48 +102,6 @@ object SpecializeParam extends Pass with FollowedBy {
       }
     }
 
-    // Gather the entity symbols we are specializing on this round
-    val eSymbols = entity.entities map { _.symbol }
-
-    // Since we need the values of const and param symbols for parameter
-    // specialization, we type check their declarations here. This also has
-    // the side-effect of assigning their init attributes, meaning we can
-    // compute values dependent on const symbols.
-    entity.entities.par flatMap { entity =>
-      entity.declarations collect {
-        case decl @ Decl(symbol, _) if symbol.kind.isParam => Typer(decl)
-        case decl @ Decl(symbol, _) if symbol.kind.isConst => Typer(decl)
-      }
-    }
-
-    // Similarly, type check parameter assignments in instantiations
-    def checkParamAssigns(entity: EntityNamed): Unit = {
-      for {
-        Instance(_, Sym(eSymbol: TypeSymbol), pNames, pExprs) <- entity.instances
-        if eSymbols contains eSymbol
-        pSymbols = eSymbol.kind.asInstanceOf[TypeEntity].paramSymbols
-        (pName, pExpr) <- pNames zip pExprs
-      } {
-        // Get the parameter symbol
-        val pSymbolOpt = pSymbols.collectFirst { case symbol if symbol.name == pName => symbol }
-        if (pSymbolOpt.isEmpty) {
-          cc.error(pExpr, s"No parameter named '${pName}' in entity '${eSymbol.name}'")
-        }
-
-        Typer(pExpr)
-        // TODO: Add ArgAssign Tree node and type check
-        //      pSymbolOpt foreach { pSymbol =>
-        //        val ref = ExprRef(pSymbol) withLoc pExpr.loc
-        //        val ass = StmtAssign(ref, pExpr) withLoc pExpr.loc
-        //        Typer(ass)
-        //      }
-      }
-      entity.entities foreach checkParamAssigns
-    }
-    checkParamAssigns(entity)
-
-    cc.stopIfError()
-
     // Gather the 'entity symbol' -> 'default bindings' map
     val defaultBindingsMap: Map[TypeSymbol, Bindings] = {
       val pairs = entity.entities.par map { entity =>
@@ -170,7 +127,7 @@ object SpecializeParam extends Pass with FollowedBy {
         (_, bindings) <- pairs
         expr <- bindings.valuesIterator if expr.value.isEmpty
       } {
-        cc.error(expr, "Parameter initializer is not a compile time constant")
+        cc.error(expr, "Default parameter initializer is not a compile time constant")
       }
 
       pairs.seq.toMap
