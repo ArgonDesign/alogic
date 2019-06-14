@@ -537,10 +537,12 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
 
       // Binary ops
       case expr @ ExprBinary(lhs, op, rhs) => {
-        lazy val errLhs = checkPacked(lhs, s"Left hand operand of '${op}'")
-        lazy val errRhs = checkPacked(rhs, s"Right hand operand of '${op}'")
-
         val strictWidth = !(mixedWidthBinaryOps contains op)
+
+        val check = if (strictWidth) checkPacked _ else checkNumericOrPacked _
+
+        lazy val errLhs = check(lhs, s"Left hand operand of '${op}'")
+        lazy val errRhs = check(rhs, s"Right hand operand of '${op}'")
 
         (lhs.tpe.isNum, rhs.tpe.isNum) match {
           case (true, true) => {
