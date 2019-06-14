@@ -92,6 +92,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
       case entity: Entity => entityStack.push(entity)
       case _              => ()
     }
+    // Check skip in pre order
     if (skip(tree)) {
       tree match {
         case entity: Entity => entityStack.pop()

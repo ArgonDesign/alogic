@@ -22,7 +22,6 @@ import com.argondesign.alogic.SourceTextConverters._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Error
-import com.argondesign.alogic.core.Warning
 import com.argondesign.alogic.passes.Namer
 import org.scalatest.FreeSpec
 
@@ -32,7 +31,7 @@ final class TyperSpec extends FreeSpec with AlogicTest {
   cc.postSpecialization = true
 
   val namer = new Namer
-  val typer = new Typer(paramsOnly = false)
+  val typer = new Typer
 
   def xform(tree: Tree) = {
     tree match {

@@ -26,7 +26,7 @@ final class DesugarSpec extends FreeSpec with AlogicTest {
 
   implicit val cc = new CompilerContext
   val namer = new Namer
-  val typer = new Typer(paramsOnly = false)
+  val typer = new Typer
   val desugar = new Desugar
 
   def xform(tree: Tree) = {

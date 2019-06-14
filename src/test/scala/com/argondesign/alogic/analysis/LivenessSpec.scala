@@ -32,7 +32,7 @@ class LivenessSpec extends FreeSpec with AlogicTest {
 
   implicit val cc = new CompilerContext()
 
-  val typer = new Typer(paramsOnly = false)
+  val typer = new Typer
   val fold = new FoldExpr(assignTypes = true, foldRefs = true)
 
   val aSymbol = cc.newTermSymbol("a", Loc.synthetic, TypeUInt(Expr(4) regularize Loc.synthetic))
@@ -46,7 +46,7 @@ class LivenessSpec extends FreeSpec with AlogicTest {
   def zext(n: Int, expr: Expr) = ExprCat(List(ExprInt(false, n, 0), expr))
 
   val randBitCall = {
-    ("@randbit()".asTree[Expr] rewrite new Namer rewrite new Typer(paramsOnly = false))
+    ("@randbit()".asTree[Expr] rewrite new Namer rewrite new Typer)
       .asInstanceOf[ExprCall]
   }
 

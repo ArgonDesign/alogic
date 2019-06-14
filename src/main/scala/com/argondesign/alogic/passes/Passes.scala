@@ -32,9 +32,8 @@ object Passes {
       Checker,
       Namer,
       // All entities are EntityNamed from here on
-      Typer(paramsOnly = true),
       SpecializeParam,
-      Typer(paramsOnly = false),
+      Typer,
       PortCheck,
       ////////////////////////////////////////////////////////////////////////
       // Middle-end

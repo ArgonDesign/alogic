@@ -33,7 +33,7 @@ final class TyperCheckExprSpec extends FreeSpec with AlogicTest {
   cc.postSpecialization = true
 
   val namer = new Namer
-  val typer = new Typer(paramsOnly = false)
+  val typer = new Typer
 
   def xform(tree: Tree) = {
     tree match {

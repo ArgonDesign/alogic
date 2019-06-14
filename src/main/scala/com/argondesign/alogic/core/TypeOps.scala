@@ -114,11 +114,12 @@ trait TypeOps extends TypePrintOps { this: Type =>
         cc.error(s"Cannot compute width of type ${this.toSource}", this.toString)
         this.underlying match {
           case self: TypeSInt =>
-            cc.fatal(self.size.loc, "Size expression:", self.size.toSource, self.size.toString)
+            cc.error(self.size.loc, "Size expression:", self.size.toSource, self.size.toString)
           case self: TypeUInt =>
-            cc.fatal(self.size.loc, "Size expression:", self.size.toSource, self.size.toString)
-          case _ => cc.fatal("")
+            cc.error(self.size.loc, "Size expression:", self.size.toSource, self.size.toString)
+          case _ => cc.error("")
         }
+        throw t
       }
     }
   }
