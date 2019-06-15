@@ -369,6 +369,9 @@ object TypeAssigner {
 
   def apply(node: ExprCat)(implicit cc: CompilerContext): node.type = {
     require(!node.hasTpe)
+    // TODO: this probably shoudl stay symbolic by casting all part so NUM
+    // and then building the sum, that would allow it to work prior to parameter
+    // specialization (i.e.: in const and param type parameters)
     val width = if (node.parts.lengthCompare(2) >= 0) {
       node.parts map { _.tpe.width } sum
     } else {
@@ -379,8 +382,11 @@ object TypeAssigner {
 
   def apply(node: ExprRep)(implicit cc: CompilerContext): node.type = {
     require(!node.hasTpe)
-    val width = node.count * node.expr.tpe.width
-    node withTpe TypeUInt(width.simplify regularize node.loc)
+    // TODO: this probably shoudl stay symbolic by casting all part so NUM
+    // and then building the sum, that would allow it to work prior to parameter
+    // specialization (i.e.: in const and param type parameters)
+    val width = node.count.value.get * node.expr.tpe.width
+    node withTpe TypeUInt(Expr(width) regularize node.loc)
   }
 
   def apply(node: ExprIndex)(implicit cc: CompilerContext): node.type = {

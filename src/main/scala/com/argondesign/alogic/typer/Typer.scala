@@ -14,7 +14,6 @@
 // - Type checks all tree nodes
 // - Infers widths of unsized constants
 // - Assigns types to all nodes using the TypeAssigner
-// - Remove TypeDefinition nodes
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.typer
@@ -32,7 +31,9 @@ import com.argondesign.alogic.passes._
 import com.argondesign.alogic.util.FollowedBy
 import com.argondesign.alogic.util.unreachable
 
-final class Typer(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
+final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
+    extends TreeTransformer
+    with FollowedBy {
 
   override val typed: Boolean = false
 
@@ -159,6 +160,12 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
   }
 
   private var inConnect = false
+
+  override def skip(tree: Tree): Boolean = tree match {
+    case _: Entity  => false
+    case _: Connect => !externalRefs
+    case _          => externalRefs && !inConnect
+  }
 
   override def enter(tree: Tree): Unit = tree match {
     case _: Connect => {
@@ -662,7 +669,13 @@ final class Typer(implicit cc: CompilerContext) extends TreeTransformer with Fol
   }
 }
 
-object Typer extends TreeTransformerPass {
-  val name = "typer"
-  def create(implicit cc: CompilerContext) = new Typer
+object Typer {
+  class TyperPass(externalRefs: Boolean) extends TreeTransformerPass {
+    val name = "typer"
+    def create(implicit cc: CompilerContext) = new Typer(externalRefs)(cc)
+  }
+
+  def apply(externalRefs: Boolean): Pass = {
+    new TyperPass(externalRefs)
+  }
 }

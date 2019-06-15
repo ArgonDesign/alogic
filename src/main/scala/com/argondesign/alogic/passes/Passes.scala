@@ -33,7 +33,8 @@ object Passes {
       Namer,
       // All entities are EntityNamed from here on
       SpecializeParam,
-      Typer,
+      Typer(externalRefs = false),
+      Typer(externalRefs = true),
       PortCheck,
       ////////////////////////////////////////////////////////////////////////
       // Middle-end
