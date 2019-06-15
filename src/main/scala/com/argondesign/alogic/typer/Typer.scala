@@ -59,10 +59,10 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
   }
 
   private def checkNumeric(expr: Expr, msg: String): Option[Loc] = {
-    if (expr.tpe.isNumeric) {
+    if (expr.tpe.underlying.isNumeric) {
       None
     } else {
-      if (expr.tpe != TypeError) {
+      if (expr.tpe.underlying != TypeError) {
         cc.error(expr, s"${msg} is of non-numeric type")
       }
       Some(expr.loc)

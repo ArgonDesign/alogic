@@ -15,8 +15,6 @@
 
 package com.argondesign.alogic.backend
 
-import java.io.PrintWriter
-
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.TypeSymbol
@@ -26,7 +24,6 @@ object CodeGeneration extends Pass {
   val name = "code-generation"
 
   def apply(trees: List[Tree])(implicit cc: CompilerContext): List[Tree] = {
-
     // Create the details objects for all entities, collect them into a map,
     // passing the resulting map as a by name argument to EntityDetails itself,
     // this way EntityDetails can use details of other entities to figure out
@@ -44,19 +41,10 @@ object CodeGeneration extends Pass {
     entityDetails.values.par foreach { details =>
       val verilog = new MakeVerilog(details, entityDetails).moduleSource
 
-      val pw = {
-        val oFile = cc.oPathFor(details.entity, ".v").toFile
-
-        if (!oFile.exists) {
-          oFile.getParentFile.mkdirs()
-          oFile.createNewFile()
-        }
-
-        new PrintWriter(oFile)
-      }
-      pw.write(cc.settings.header)
-      pw.write(verilog)
-      pw.close()
+      val writer = cc.getEntityWriter(details.entity, ".v")
+      writer.write(cc.settings.header)
+      writer.write(verilog)
+      writer.close()
     }
 
     // Job done

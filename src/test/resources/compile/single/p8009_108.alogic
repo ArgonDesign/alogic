@@ -1,0 +1,11 @@
+fsm p8009_108 {
+    in u1 i;
+    out u16 o;
+
+    u16[2] bar;
+
+    void main() {
+        o = {9'b0, bar[i][15:9]};
+        fence;
+    }
+}

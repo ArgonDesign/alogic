@@ -15,8 +15,7 @@
 
 package com.argondesign.alogic.core
 
-import java.io.PrintWriter
-import java.nio.file.Path
+import java.io.Writer
 
 import com.argondesign.alogic.ast.Trees._
 
@@ -24,43 +23,13 @@ trait Output { this: CompilerContext =>
 
   private implicit val implicitThis = this
 
-  def oPathFor(entity: Entity, suffix: String): Path = {
-    val oDir = if (entity.loc eq Loc.synthetic) {
-      // Emit synthetic entities to the root output directory
-      settings.odir.get
-    } else {
-      settings.srcbase match {
-        case None => settings.odir.get
-        case Some(base) => {
-          val dirPath = entity.loc.source.file.toPath.toRealPath().getParent
-          assert(dirPath startsWith base)
-          val relPath = base relativize dirPath
-          settings.odir.get resolve relPath
-        }
-      }
-    }
-
-    val name = entity match {
-      case entity: EntityIdent   => entity.ident.name + suffix
-      case entity: EntityNamed   => entity.symbol.name + suffix
-      case entity: EntityLowered => entity.symbol.name + suffix
-    }
-
-    oDir resolve name
+  def getEntityWriter(entity: Entity, suffix: String): Writer = {
+    settings.entityWriterFactory(entity, suffix)
   }
 
   def dumpEntity(entity: Entity, suffix: String): Unit = {
-    val oPath = oPathFor(entity, suffix + ".alogic")
-    val oFile = oPath.toFile
-
-    if (!oFile.exists) {
-      oFile.getParentFile.mkdirs()
-      oFile.createNewFile()
-    }
-
-    val pw = new PrintWriter(oFile)
-    pw.write(entity.toSource)
-    pw.close()
+    val writer = getEntityWriter(entity, suffix + ".alogic")
+    writer.write(entity.toSource)
+    writer.close()
   }
-
 }

@@ -14,14 +14,23 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.core
-
+import java.io.File
+import java.io.Writer
 import java.nio.file.Path
 
+import com.argondesign.alogic.ast.Trees.Entity
+
 case class Settings(
-    // Output directory
-    odir: Option[Path] = None,
-    // Source base path
-    srcbase: Option[Path] = None,
+    // Directories to search for alogic files
+    moduleSearchDirs: List[File] = Nil,
+    // Directories to search for preprocessor include files
+    includeSearchDirs: List[File] = Nil,
+    // Initial preprocessor definitions
+    initialDefines: Map[String, String] = Map.empty,
+    // Entity writer factory
+    entityWriterFactory: (Entity, String) => Writer = {
+      case (_: Entity, _: String) => ???
+    },
     // The field separator sequence
     sep: String = "_",
     // The strategy for handling uninitialized local variables

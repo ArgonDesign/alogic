@@ -1,0 +1,6 @@
+fsm p8009_118 {
+    (* unused *) sram u16[8][4] storage[4];
+    void main() {
+        fence;
+    }
+}

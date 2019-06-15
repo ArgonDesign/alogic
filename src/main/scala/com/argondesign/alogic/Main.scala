@@ -16,17 +16,19 @@
 package com.argondesign.alogic
 
 import java.io.File
+import java.io.PrintWriter
+import java.io.Writer
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
+import java.nio.file.Path
 
+import com.argondesign.alogic.ast.Trees.Entity
 import com.argondesign.alogic.ast.Trees.EntityIdent
-import com.argondesign.alogic.ast.Trees.Root
+import com.argondesign.alogic.ast.Trees.EntityLowered
+import com.argondesign.alogic.ast.Trees.EntityNamed
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.FatalErrorException
+import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Settings
-import com.argondesign.alogic.frontend.Frontend
-import com.argondesign.alogic.passes.Passes
-import com.argondesign.alogic.util.unreachable
 
 object Main extends App {
 
@@ -40,9 +42,54 @@ object Main extends App {
   // Create the compiler context
   //////////////////////////////////////////////////////////////////////////////
 
+  lazy val cwd = new File(".").getCanonicalFile
+  val defaultToCWD = cliConf.ydir().isEmpty && cliConf.incdir().isEmpty && cliConf.srcbase.isEmpty
+
+  val opath = cliConf.odir().toPath
+  val srcbase = cliConf.srcbase.toOption map { _.toPath }
+
+  def entityWriterFactory(entity: Entity, suffix: String): Writer = {
+    def oPathFor(entity: Entity, suffix: String): Path = {
+      val oDir = if (entity.loc eq Loc.synthetic) {
+        // Emit synthetic entities to the root output directory
+        opath
+      } else {
+        srcbase match {
+          case None => opath
+          case Some(base) => {
+            val dirPath = entity.loc.source.file.toPath.toRealPath().getParent
+            assert(dirPath startsWith base)
+            val relPath = base relativize dirPath
+            opath resolve relPath
+          }
+        }
+      }
+
+      val name = entity match {
+        case entity: EntityIdent   => entity.ident.name + suffix
+        case entity: EntityNamed   => entity.symbol.name + suffix
+        case entity: EntityLowered => entity.symbol.name + suffix
+      }
+
+      oDir resolve name
+    }
+
+    val oPath = oPathFor(entity, suffix)
+    val oFile = oPath.toFile
+
+    if (!oFile.exists) {
+      oFile.getParentFile.mkdirs()
+      oFile.createNewFile()
+    }
+
+    new PrintWriter(oFile)
+  }
+
   val settings = Settings(
-    odir = Some(cliConf.odir().toPath),
-    srcbase = cliConf.srcbase.toOption map { _.toPath },
+    moduleSearchDirs = if (defaultToCWD) List(cwd) else cliConf.ydir(),
+    includeSearchDirs = if (defaultToCWD) List(cwd) else cliConf.incdir(),
+    initialDefines = cliConf.defs.toMap,
+    entityWriterFactory = entityWriterFactory,
     sep = cliConf.sep(),
     uninitialized = cliConf.uninitialized(),
     ensurePrefix = cliConf.ensurePrefix(),
@@ -65,48 +112,7 @@ object Main extends App {
   // Do the work
   //////////////////////////////////////////////////////////////////////////////
 
-  try {
-    val toplevels = cliConf.toplevel()
+  cc.compile(cliConf.toplevel())
 
-    lazy val cwd = new File(".").getCanonicalFile
-
-    val defaultToCWD = cliConf.ydir().isEmpty && cliConf.incdir().isEmpty && cliConf.srcbase.isEmpty
-    val moduleSeachDirs = if (defaultToCWD) List(cwd) else cliConf.ydir()
-    val includeSeachDirs = if (defaultToCWD) List(cwd) else cliConf.incdir()
-
-    val initalDefines = cliConf.defs.toMap
-
-    //////////////////////////////////////////////////////////////////////////////
-    // Create the front end and built the ASTs
-    //////////////////////////////////////////////////////////////////////////////
-
-    val frontEndTrees = {
-      val frontend = new Frontend(moduleSeachDirs, includeSeachDirs, initalDefines)
-      frontend(toplevels)
-    }
-
-    // Insert entity symbols into the global scope
-    cc.addGlobalEntities {
-      frontEndTrees map {
-        case Root(_, entity: EntityIdent) => entity
-        case _                            => unreachable
-      }
-    }
-
-    //////////////////////////////////////////////////////////////////////////////
-    // Compile the trees
-    //////////////////////////////////////////////////////////////////////////////
-
-    Passes(frontEndTrees)
-  } catch {
-    case _: FatalErrorException => ()
-  } finally {
-    cc.emitMessages(Console.err)
-  }
-
-  if (cc.hasError) {
-    sys exit 1
-  }
-
-  sys exit 0
+  sys exit (if (cc.hasError) 1 else 0)
 }
