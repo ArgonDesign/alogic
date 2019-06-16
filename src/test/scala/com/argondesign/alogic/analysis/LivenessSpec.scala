@@ -33,7 +33,7 @@ class LivenessSpec extends FreeSpec with AlogicTest {
   implicit val cc = new CompilerContext()
 
   val typer = new Typer
-  val fold = new FoldExpr(assignTypes = true, foldRefs = true)
+  val fold = new FoldExpr(foldRefs = true)
 
   val aSymbol = cc.newTermSymbol("a", Loc.synthetic, TypeUInt(Expr(4) regularize Loc.synthetic))
   val bSymbol = cc.newTermSymbol("b", Loc.synthetic, TypeUInt(Expr(8) regularize Loc.synthetic))

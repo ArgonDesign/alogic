@@ -18,6 +18,7 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.backend.CodeGeneration
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.typer.AddImplicitCasts
 import com.argondesign.alogic.typer.Typer
 import com.argondesign.alogic.util.FollowedBy._
 
@@ -36,11 +37,12 @@ object Passes {
       Typer(externalRefs = false),
       Typer(externalRefs = true),
       PortCheck,
+      AddImplicitCasts,
       ////////////////////////////////////////////////////////////////////////
       // Middle-end
       ////////////////////////////////////////////////////////////////////////
       Desugar,
-      FoldExpr(assignTypes = true, foldRefs = false),
+      FoldExpr(foldRefs = false),
       FoldSymbolTypes,
       ConvertMultiConnect,
       LowerPipeline,
@@ -68,7 +70,7 @@ object Passes {
       SplitStructsB,
       SplitStructsC,
       LowerVectors,
-      FoldExpr(assignTypes = true, foldRefs = false),
+      FoldExpr(foldRefs = false),
       SimplifyCat,
       InferImplications,
       FoldStmt,
@@ -101,6 +103,8 @@ object Passes {
       // If we have encountered errors in an earlier pass, skip any later passes
       trees
     } else {
+      println(s"${cc.passNumber} ${pass.name}")
+
       // Apply the pass
       val results = pass(trees)
 

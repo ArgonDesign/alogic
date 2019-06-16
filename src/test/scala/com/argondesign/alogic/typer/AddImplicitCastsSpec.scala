@@ -25,13 +25,14 @@ import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.passes.Namer
 import org.scalatest.FreeSpec
 
-final class TyperAutoCastSpec extends FreeSpec with AlogicTest {
+final class AddImplicitCastsSpec extends FreeSpec with AlogicTest {
 
   implicit val cc = new CompilerContext
   cc.postSpecialization = true
 
   val namer = new Namer
   val typer = new Typer
+  val addImplicitCasts = new AddImplicitCasts
 
   def xform(tree: Tree) = {
     tree match {
@@ -43,10 +44,10 @@ final class TyperAutoCastSpec extends FreeSpec with AlogicTest {
       case Root(_, entity) => entity
       case other           => other
     }
-    node rewrite typer
+    node rewrite typer rewrite addImplicitCasts
   }
 
-  "The Typer should automatically insert casts" - {
+  "AddImplicitCasts should automatically insert casts" - {
     "to infer sizes of unsized literals in" - {
       "binary operator operands" - {
         for (op <- List("*", "/", "%", "+", "-", "&", "|", "^", ">", ">=", "<", "<=", "==", "!=")) {

@@ -26,7 +26,7 @@ private[builtins] class AtEx(implicit cc: CompilerContext) extends BuiltinPolyFu
 
   def validArgs(args: List[Expr]) = args match {
     case List(bit, width, expr) => {
-      (bit.width == 1) && width.isKnownConst && expr.isPacked
+      (bit.tpe.width == 1) && width.isKnownConst && expr.tpe.isPacked
     }
     case _ => false
   }
@@ -55,7 +55,7 @@ private[builtins] object AtEx {
   ): Option[Expr] = {
 
     def fixSign(result: Expr): Expr = {
-      if (expr.isSigned) {
+      if (expr.tpe.isSigned) {
         // Resolving the polymorphic builtin $signed needs types,
         // so assign types if we are folding a typed expression,
         // otherwise the TypeAssigner will choke on the unresolved
@@ -72,7 +72,7 @@ private[builtins] object AtEx {
     for {
       dstWidth <- width.value map { _.toInt }
     } yield {
-      val srcWidth = expr.width
+      val srcWidth = expr.tpe.width
       val d = dstWidth - srcWidth
       if (d < 0) {
         val msg = s"Result width ${dstWidth} of extension is less than argument width ${srcWidth}"

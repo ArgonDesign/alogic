@@ -23,7 +23,7 @@ import com.argondesign.alogic.core.TreeInTypeTransformer
 
 final class FoldSymbolTypes(implicit cc: CompilerContext) extends TreeTransformer {
 
-  private[this] val foldExpr = new FoldExpr(assignTypes = true, foldRefs = true)
+  private[this] val foldExpr = new FoldExpr(foldRefs = true)
   private[this] object TypeFoldExpr extends TreeInTypeTransformer(foldExpr)
 
   override def enter(tree: Tree): Unit = tree match {

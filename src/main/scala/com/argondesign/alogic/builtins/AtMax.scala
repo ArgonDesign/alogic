@@ -25,7 +25,7 @@ private[builtins] class AtMax(implicit cc: CompilerContext) extends BuiltinPolyF
   val name = "@max"
 
   def returnType(args: List[Expr]) = args partialMatch {
-    case args if args.nonEmpty && (args forall { _.isPacked }) => {
+    case args if args.nonEmpty && (args forall { _.tpe.isPacked }) => {
       // TODO: return properly computed type (max width)
       TypeUInt(Expr(32))
     }

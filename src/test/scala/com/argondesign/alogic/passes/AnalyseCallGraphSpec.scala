@@ -29,7 +29,7 @@ final class AnalyseCallGraphSpec extends FreeSpec with AlogicTest {
   implicit val cc = new CompilerContext
   val namer = new Namer
   val typer = new Typer
-  val fold = new FoldExpr(assignTypes = true, foldRefs = false)
+  val fold = new FoldExpr(foldRefs = false)
   val lowerLoops = new LowerLoops
   val analyseCallGraph = new AnalyseCallGraph
 

@@ -25,8 +25,8 @@ private[builtins] class AtZx(implicit cc: CompilerContext) extends BuiltinPolyFu
   val name = "@zx"
 
   def returnType(args: List[Expr]) = args partialMatch {
-    case List(width, expr) if width.isKnownConst && expr.isPacked => {
-      TypeInt(expr.isSigned, width)
+    case List(width, expr) if width.isKnownConst && expr.tpe.isPacked => {
+      TypeInt(expr.tpe.isSigned, width)
     }
   }
 

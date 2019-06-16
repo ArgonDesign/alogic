@@ -63,7 +63,7 @@ final class LowerInterconnect(implicit cc: CompilerContext)
   // We need to fold const references in interconnect symbol types,
   // as these consts are defined in the entity being instantiated,
   // and not the entity being processed (which does the instantiation)
-  lazy val typeFoldExpr = new FoldExpr(assignTypes = true, foldRefs = true)
+  lazy val typeFoldExpr = new FoldExpr(foldRefs = true)
   object TypeFoldExpr extends TreeInTypeTransformer(typeFoldExpr)
 
   // Return the interconnect symbol for 'iSymbol.sel', if any. If the

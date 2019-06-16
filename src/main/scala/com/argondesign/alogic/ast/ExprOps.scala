@@ -23,8 +23,8 @@ import com.argondesign.alogic.core.Symbols.TermSymbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.passes.FoldExpr
 import com.argondesign.alogic.transform.ReplaceTermRefs
+import com.argondesign.alogic.typer.AddImplicitCasts
 import com.argondesign.alogic.util.PartialMatch._
-import com.argondesign.alogic.util.unreachable
 
 import scala.language.implicitConversions
 import scala.math.BigInt.int2bigInt
@@ -180,10 +180,8 @@ trait ExprOps { this: Expr =>
 
   // Simplify this expression
   def simplify(implicit cc: CompilerContext): Expr = {
-    this rewrite { new FoldExpr(assignTypes = hasTpe, foldRefs = true) } match {
-      case expr: Expr => expr
-      case _          => unreachable
-    }
+    val simple = this rewrite { new AddImplicitCasts } rewrite { new FoldExpr(foldRefs = true) }
+    simple.asInstanceOf[Expr]
   }
 
   // Rewrite expression using bindings provided
@@ -197,33 +195,6 @@ trait ExprOps { this: Expr =>
     case ExprInt(_, _, value) => Some(value)
     case _                    => None
   }
-
-  //////////////////////////////////////////////////////////////////////////////
-  // The following are the same ase the similarly named functions from TypeOps,
-  // but refrain from accessing the type if not necessary. This simplifies some
-  // client code by avoiding having to assign types early.
-  //////////////////////////////////////////////////////////////////////////////
-
-  final def isPacked(implicit cc: CompilerContext): Boolean = simplify match {
-    case _: ExprInt      => true
-    case _: ExprNum      => false
-    case ExprRef(symbol) => symbol.kind.isPacked
-    case _               => tpe.isPacked
-  }
-
-  final def isSigned(implicit cc: CompilerContext): Boolean = simplify match {
-    case ExprInt(signed, _, _) => signed
-    case ExprNum(signed, _)    => signed
-    case ExprRef(symbol)       => symbol.kind.isSigned
-    case _                     => tpe.isSigned
-  }
-
-  final def width(implicit cc: CompilerContext): Int = simplify match {
-    case ExprInt(_, width, _) => width
-    case ExprRef(symbol)      => symbol.kind.width
-    case _                    => tpe.width
-  }
-
 }
 
 trait ObjectExprOps {

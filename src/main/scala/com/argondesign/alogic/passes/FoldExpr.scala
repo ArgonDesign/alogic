@@ -29,14 +29,10 @@ import com.argondesign.alogic.util.unreachable
 import scala.language.implicitConversions
 
 final class FoldExpr(
-    assignTypes: Boolean, // Ensure results have type assigned
     foldRefs: Boolean // Replace references to known constant symbols with their value
 )(
     implicit cc: CompilerContext
 ) extends TreeTransformer {
-
-  override val typed: Boolean = assignTypes
-
   private implicit def boolean2BigInt(bool: Boolean) = if (bool) BigInt(1) else BigInt(0)
 
   private val shiftOps = Set("<<", ">>", "<<<", ">>>")
@@ -69,7 +65,7 @@ final class FoldExpr(
   }
 
   // In types we always fold refs so that widths are always computable
-  private val typeFoldExpr = if (foldRefs) this else new FoldExpr(assignTypes, foldRefs = true)
+  private val typeFoldExpr = if (foldRefs) this else new FoldExpr(foldRefs = true)
   private object TypeFoldExpr extends TreeInTypeTransformer(typeFoldExpr)
 
   override def transform(tree: Tree): Tree = {
@@ -142,7 +138,7 @@ final class FoldExpr(
       ////////////////////////////////////////////////////////////////////////////
 
       case ExprUnary(aOp, ExprUnary(bOp, expr)) => {
-        val isBoolType = expr.isPacked && !expr.isSigned && expr.width == 1
+        val isBoolType = expr.tpe.isPacked && !expr.tpe.isSigned && expr.tpe.width == 1
         val res = (aOp, bOp) match {
           case ("~", "~")               => expr
           case ("~", "!") if isBoolType => expr
@@ -283,22 +279,22 @@ final class FoldExpr(
 
       case ExprBinary(Integral(_, _, lv), op, rhs) => {
         val res = op match {
-          case "&&" if lv == 0                                         => ExprInt(false, 1, 0)
-          case "&&" if rhs.isPacked && !rhs.isSigned && rhs.width == 1 => rhs
-          case "||" if lv != 0                                         => ExprInt(false, 1, 1)
-          case "||" if rhs.isPacked && !rhs.isSigned && rhs.width == 1 => rhs
-          case _                                                       => tree
+          case "&&" if lv == 0                                                     => ExprInt(false, 1, 0)
+          case "&&" if rhs.tpe.isPacked && !rhs.tpe.isSigned && rhs.tpe.width == 1 => rhs
+          case "||" if lv != 0                                                     => ExprInt(false, 1, 1)
+          case "||" if rhs.tpe.isPacked && !rhs.tpe.isSigned && rhs.tpe.width == 1 => rhs
+          case _                                                                   => tree
         }
         if (res.hasLoc) res else res withLoc tree.loc
       }
 
       case ExprBinary(lhs, op, Integral(_, _, rv)) => {
         val res = op match {
-          case "&&" if rv == 0                                         => ExprInt(false, 1, 0)
-          case "&&" if lhs.isPacked && !lhs.isSigned && lhs.width == 1 => lhs
-          case "||" if rv != 0                                         => ExprInt(false, 1, 1)
-          case "||" if lhs.isPacked && !lhs.isSigned && lhs.width == 1 => lhs
-          case _                                                       => tree
+          case "&&" if rv == 0                                                     => ExprInt(false, 1, 0)
+          case "&&" if lhs.tpe.isPacked && !lhs.tpe.isSigned && lhs.tpe.width == 1 => lhs
+          case "||" if rv != 0                                                     => ExprInt(false, 1, 1)
+          case "||" if lhs.tpe.isPacked && !lhs.tpe.isSigned && lhs.tpe.width == 1 => lhs
+          case _                                                                   => tree
         }
         if (res.hasLoc) res else res withLoc tree.loc
       }
@@ -514,10 +510,8 @@ final class FoldExpr(
         val result = cc.foldBuiltinCall(call)
         if (result eq call) {
           call
-        } else if (assignTypes) {
-          result regularize tree.loc
         } else {
-          result
+          result regularize tree.loc
         }
       }
 
@@ -580,25 +574,21 @@ final class FoldExpr(
     }
 
     // Recursively fold the resulting expression
-    val result2 = if (result ne tree) { walk(result) } else { result }
+    val result2 = if (result ne tree) walk(result) else result
 
-    if (assignTypes && !result2.hasTpe) {
-      TypeAssigner(result2)
-    } else {
-      result2
-    }
+    if (!result2.hasTpe) TypeAssigner(result2) else result2
   }
 
 }
 
 object FoldExpr {
 
-  class FoldExprPass(assignTypes: Boolean, foldRefs: Boolean) extends TreeTransformerPass {
+  class FoldExprPass(foldRefs: Boolean) extends TreeTransformerPass {
     val name = "fold-expr"
-    def create(implicit cc: CompilerContext) = new FoldExpr(assignTypes, foldRefs)(cc)
+    def create(implicit cc: CompilerContext) = new FoldExpr(foldRefs)(cc)
   }
 
-  def apply(assignTypes: Boolean, foldRefs: Boolean): Pass = {
-    new FoldExprPass(assignTypes, foldRefs)
+  def apply(foldRefs: Boolean): Pass = {
+    new FoldExprPass(foldRefs)
   }
 }

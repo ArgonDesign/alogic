@@ -26,7 +26,7 @@ private[builtins] class DollarClog2(implicit cc: CompilerContext) extends Builti
   val name = "$clog2"
 
   def returnType(args: List[Expr]) = args partialMatch {
-    case List(arg) if arg.isPacked => TypeNum(false)
+    case List(arg) if arg.tpe.isPacked || arg.tpe.isNum => TypeNum(false)
   }
 
   def isKnownConst(args: List[Expr]) = args(0).isKnownConst

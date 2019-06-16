@@ -25,7 +25,7 @@ private[builtins] class DollarSigned(implicit cc: CompilerContext) extends Built
   val name = "$signed"
 
   def returnType(args: List[Expr]) = args partialMatch {
-    case List(arg) if arg.isPacked => TypeSInt(ExprNum(false, arg.width) regularize arg.loc)
+    case List(arg) if arg.tpe.isPacked => TypeSInt(ExprNum(false, arg.tpe.width) regularize arg.loc)
   }
 
   def isKnownConst(args: List[Expr]) = args(0).isKnownConst

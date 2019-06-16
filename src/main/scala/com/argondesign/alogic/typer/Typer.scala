@@ -12,8 +12,9 @@
 //
 // The Typer:
 // - Type checks all tree nodes
-// - Infers widths of unsized constants
 // - Assigns types to all nodes using the TypeAssigner
+// The typer is special and cannot rewrite any of the tree, unless there
+// is a type error. The rest of the compiler relies on this property.
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.typer
@@ -31,6 +32,8 @@ import com.argondesign.alogic.passes._
 import com.argondesign.alogic.util.FollowedBy
 import com.argondesign.alogic.util.unreachable
 
+import com.argondesign.alogic.lib.Math.clog2
+
 final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
     extends TreeTransformer
     with FollowedBy {
@@ -38,6 +41,8 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
   override val typed: Boolean = false
 
   private final val mixedWidthBinaryOps = Set("<<", ">>", "<<<", ">>>", "&&", "||")
+
+  private final val addImplicitCasts = new AddImplicitCasts
 
   private def hasError(tree: Tree) = {
     tree.children exists {
@@ -151,8 +156,15 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
     }
   }
 
-  private def cast(kind: Type, expr: Expr) = {
-    TypeAssigner(ExprCast(kind.underlying, expr) withLoc expr.loc)
+  private def checkIndex(expectedWidth: Int, idx: Expr, msg: String) = {
+    if (idx.tpe.isNum) { None } else {
+      val errPacked = checkPacked(idx, msg)
+      errPacked orElse {
+        val errWidth = checkWidth(expectedWidth, idx, msg)
+        val errSign = checkSign(false, idx, msg)
+        errWidth orElse errSign
+      }
+    }
   }
 
   private[this] object TypeTyper extends TreeInTypeTransformer(this) {
@@ -251,8 +263,7 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
           cc.error(decl, s"Signal '${symbol.name}' has declared width ${kind.width}")
         }
         val newdecl = if (init.tpe.isNum) {
-          // Infer width of initializer
-          decl.copy(init = Some(cast(symbol.kind, init))) withLoc tree.loc
+          decl
         } else {
           // Check initializer
           val packedErrOpt = checkPacked(init, "Initializer expression")
@@ -265,8 +276,23 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
             decl
           }
         }
-        // Attach initializer expression
-        symbol.attr.init set newdecl.init.get
+
+        // Attach initializer expression attribute to const declarations.
+        // Add the with inference casts in the attribute only. This is required
+        // as this initializer may be used in compile time computations
+        // (e.g.: width) before the AddImplicitCasts pass is run on the whole
+        // tree later
+        if (symbol.kind.isConst && !newdecl.init.get.tpe.isError) {
+          symbol.attr.init set {
+            val init = (newdecl.init.get rewrite addImplicitCasts).asInstanceOf[Expr]
+            if (symbol.kind.isPacked && init.tpe.isNum) {
+              TypeAssigner(ExprCast(symbol.kind.underlying, init) withLoc init.loc)
+            } else {
+              init
+            }
+          }
+        }
+
         // Yield actual declaration
         newdecl
       }
@@ -332,8 +358,7 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
           StmtError() withLoc _
         } getOrElse {
           if (rhs.tpe.isNum) {
-            // Infer width of rhs
-            stmt.copy(rhs = cast(lhs.tpe, rhs)) withLoc tree.loc
+            tree
           } else {
             // Type check rhs
             val rhsErrOpt = checkPacked(rhs, "Right hand side of assignment")
@@ -349,8 +374,7 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
           StmtError() withLoc _
         } getOrElse {
           if (rhs.tpe.isNum) {
-            // Infer width of rhs
-            stmt.copy(rhs = cast(lhs.tpe, rhs)) withLoc tree.loc
+            tree
           } else {
             // Check rhs
             val rhsErrOpt = checkPacked(rhs, "Right hand side of assignment")
@@ -486,45 +510,30 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
         errCount orElse errExpr map { ExprError() withLoc _ } getOrElse tree
       }
 
-      case expr @ ExprIndex(tgt, index) => {
-        checkNumeric(index, "Index") map { ExprError() withLoc _ } getOrElse {
-          val shapeIter = tgt.tpe.shapeIter
-          if (!shapeIter.hasNext) {
-            cc.error(expr, "Target is not indexable")
-            ExprError() withLoc expr.loc
-          } else {
-            val indexWidth = com.argondesign.alogic.lib.Math.clog2(shapeIter.next) max 1
-            lazy val widthExpr = Expr(indexWidth) regularize expr.loc
-            val newIndex = if (index.tpe.isNum) cast(TypeUInt(widthExpr), index) else index
-            val errWidth = checkWidth(indexWidth, newIndex, "Index expression")
-            val errSign = checkSign(false, newIndex, "Index expression")
-            errWidth orElse errSign map { ExprError() withLoc _ } getOrElse {
-              if (newIndex ne index) { expr.copy(index = newIndex) withLoc expr.loc } else tree
-            }
-          }
+      case expr @ ExprIndex(tgt, idx) => {
+        val shapeIter = tgt.tpe.shapeIter
+        if (!shapeIter.hasNext) {
+          cc.error(expr, "Target is not indexable")
+          ExprError() withLoc expr.loc
+        } else {
+          val idxWidth = clog2(shapeIter.next) max 1
+          val errTgt = if (tgt.tpe.isArray) None else checkPacked(tgt, "Target of index")
+          val errIdx = checkIndex(idxWidth, idx, "Index")
+          errTgt orElse errIdx map { ExprError() withLoc _ } getOrElse tree
         }
       }
 
       case expr @ ExprSlice(tgt, lidx, _, ridx) => {
-        val errTgt = checkPacked(tgt, "Target of slice")
-        val errLidx = checkNumeric(lidx, "Left index expression")
-        val errRidx = checkNumeric(ridx, "Right index expression")
-        errTgt orElse errLidx orElse errRidx map { ExprError() withLoc _ } getOrElse {
-          val indexWidth = com.argondesign.alogic.lib.Math.clog2(tgt.tpe.shapeIter.next) max 1
-          lazy val widthExpr = Expr(indexWidth) regularize expr.loc
-          val newLidx = if (lidx.tpe.isNum) cast(TypeUInt(widthExpr), lidx) else lidx
-          val newRidx = if (ridx.tpe.isNum) cast(TypeUInt(widthExpr), ridx) else ridx
-          val errLwidth = checkWidth(indexWidth, newLidx, "Left index expression")
-          val errRwidth = checkWidth(indexWidth, newRidx, "Right index expression")
-          val errLsign = checkSign(false, newLidx, "Index expression")
-          val errRsign = checkSign(false, newRidx, "Index expression")
-          errLwidth orElse errRwidth orElse errLsign orElse errRsign map {
-            ExprError() withLoc _
-          } getOrElse {
-            if ((newLidx ne lidx) || (newRidx ne ridx)) {
-              expr.copy(lidx = newLidx, ridx = newRidx) withLoc expr.loc
-            } else tree
-          }
+        val shapeIter = tgt.tpe.shapeIter
+        if (!shapeIter.hasNext || tgt.tpe.isArray) {
+          cc.error(expr, "Target is not sliceable")
+          ExprError() withLoc expr.loc
+        } else {
+          val idxWidth = clog2(shapeIter.next) max 1
+          val errTgt = checkPacked(tgt, "Target of slice")
+          val errLidx = checkIndex(idxWidth, lidx, "Left index")
+          val errRidx = checkIndex(idxWidth, ridx, "Right index")
+          errTgt orElse errLidx orElse errRidx map { ExprError() withLoc _ } getOrElse tree
         }
       }
 
@@ -557,16 +566,10 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
             tree
           }
           case (false, true) if strictWidth => {
-            errLhs map { ExprError() withLoc _ } getOrElse {
-              // Infer with of rhs
-              expr.copy(rhs = cast(lhs.tpe, rhs)) withLoc expr.loc
-            }
+            errLhs map { ExprError() withLoc _ } getOrElse tree
           }
           case (true, false) if strictWidth => {
-            errRhs map { ExprError() withLoc _ } getOrElse {
-              // Infer with of lhs
-              expr.copy(lhs = cast(rhs.tpe, lhs)) withLoc expr.loc
-            }
+            errRhs map { ExprError() withLoc _ } getOrElse tree
           }
           case _ => {
             errLhs orElse errRhs map { ExprError() withLoc _ } getOrElse {
@@ -596,16 +599,10 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
               tree
             }
             case (false, true) => {
-              errThen map { ExprError() withLoc _ } getOrElse {
-                // Infer with of 'else' operand
-                expr.copy(elseExpr = cast(thenExpr.tpe, elseExpr)) withLoc expr.loc
-              }
+              errThen map { ExprError() withLoc _ } getOrElse tree
             }
             case (true, false) => {
-              errElse map { ExprError() withLoc _ } getOrElse {
-                // Infer with of 'then' operand
-                expr.copy(thenExpr = cast(elseExpr.tpe, thenExpr)) withLoc expr.loc
-              }
+              errElse map { ExprError() withLoc _ } getOrElse tree
             }
             case _ => {
               errThen orElse errElse map { ExprError() withLoc _ } getOrElse {
@@ -653,7 +650,9 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
     def check(tree: TreeLike) {
       tree visitAll {
         case node: Tree if !node.hasTpe => {
-          cc.ice(node, "Typer: untyped node remains", node.toString)
+          if (externalRefs) {
+            cc.ice(node, "Typer: untyped node remains", node.toString)
+          }
         }
         case node: Tree if node.tpe.isInstanceOf[TypePolyFunc] => {
           cc.ice(node, s"Typer: node of type TypePolyFunc remains")

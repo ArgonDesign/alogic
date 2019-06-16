@@ -34,7 +34,7 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
   implicit val cc = new CompilerContext
   val namer = new Namer
   val typer = new Typer
-  val fold = new FoldExpr(assignTypes = false, foldRefs = false)
+  val fold = new FoldExpr(foldRefs = false)
 
   def xform(tree: Tree): Tree = {
     tree match {

@@ -182,8 +182,11 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
 
       "binary operators" - {
         for {
-          (expr, kind) <- List(
-            // unsigned unsigned
+          (src, kind) <- List(
+            //
+            // sized - sized
+            //
+            // unsigned - unsigned
             ("32'd1 *   32'd1", TypeUInt(32)),
             ("32'd1 /   32'd1", TypeUInt(32)),
             ("32'd1 %   32'd1", TypeUInt(32)),
@@ -204,7 +207,7 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
             ("32'd1 |   32'd1", TypeUInt(32)),
             ("32'd1 &&  32'd1", TypeUInt(1)),
             ("32'd1 ||  32'd1", TypeUInt(1)),
-            // signed unsigned
+            // signed - unsigned
             ("32'd1 *   32'sd1", TypeUInt(32)),
             ("32'd1 /   32'sd1", TypeUInt(32)),
             ("32'd1 %   32'sd1", TypeUInt(32)),
@@ -225,7 +228,7 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
             ("32'd1 |   32'sd1", TypeUInt(32)),
             ("32'd1 &&  32'sd1", TypeUInt(1)),
             ("32'd1 ||  32'sd1", TypeUInt(1)),
-            // signed unsigned
+            // signed - unsigned
             ("32'sd1 *   32'd1", TypeUInt(32)),
             ("32'sd1 /   32'd1", TypeUInt(32)),
             ("32'sd1 %   32'd1", TypeUInt(32)),
@@ -246,7 +249,7 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
             ("32'sd1 |   32'd1", TypeUInt(32)),
             ("32'sd1 &&  32'd1", TypeUInt(1)),
             ("32'sd1 ||  32'd1", TypeUInt(1)),
-            // signed signed
+            // signed - signed
             ("32'sd1 *   32'sd1", TypeSInt(32)),
             ("32'sd1 /   32'sd1", TypeSInt(32)),
             ("32'sd1 %   32'sd1", TypeSInt(32)),
@@ -267,32 +270,189 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
             ("32'sd1 |   32'sd1", TypeSInt(32)),
             ("32'sd1 &&  32'sd1", TypeUInt(1)),
             ("32'sd1 ||  32'sd1", TypeUInt(1)),
-            // Shifts
-            ("3'd1 <<  32'd1", TypeUInt(3)),
-            ("3'd1 >>  32'd1", TypeUInt(3)),
-            ("3'd1 >>> 32'd1", TypeUInt(3)),
-            ("3'd1 <<< 32'd1", TypeUInt(3)),
-            ("3'd1 <<  32'sd1", TypeUInt(3)),
-            ("3'd1 >>  32'sd1", TypeUInt(3)),
-            ("3'd1 >>> 32'sd1", TypeUInt(3)),
-            ("3'd1 <<< 32'sd1", TypeUInt(3)),
-            ("3'sd1 <<  32'd1", TypeSInt(3)),
-            ("3'sd1 >>  32'd1", TypeSInt(3)),
-            ("3'sd1 >>> 32'd1", TypeSInt(3)),
-            ("3'sd1 <<< 32'd1", TypeSInt(3)),
-            ("3'sd1 <<  32'sd1", TypeSInt(3)),
-            ("3'sd1 >>  32'sd1", TypeSInt(3)),
-            ("3'sd1 >>> 32'sd1", TypeSInt(3)),
-            ("3'sd1 <<< 32'sd1", TypeSInt(3)),
-            // unsigned unsigned - unsized
+            //
+            // sized - unsized
+            //
+            // unsigned - unsigned
+            ("32'd1 *   'd1", TypeUInt(32)),
+            ("32'd1 /   'd1", TypeUInt(32)),
+            ("32'd1 %   'd1", TypeUInt(32)),
+            ("32'd1 +   'd1", TypeUInt(32)),
+            ("32'd1 -   'd1", TypeUInt(32)),
+            ("32'd1 <<  'd1", TypeUInt(32)),
+            ("32'd1 >>  'd1", TypeUInt(32)),
+            ("32'd1 >>> 'd1", TypeUInt(32)),
+            ("32'd1 <<< 'd1", TypeUInt(32)),
+            ("32'd1 >   'd1", TypeUInt(1)),
+            ("32'd1 >=  'd1", TypeUInt(1)),
+            ("32'd1 <   'd1", TypeUInt(1)),
+            ("32'd1 <=  'd1", TypeUInt(1)),
+            ("32'd1 ==  'd1", TypeUInt(1)),
+            ("32'd1 !=  'd1", TypeUInt(1)),
+            ("32'd1 &   'd1", TypeUInt(32)),
+            ("32'd1 ^   'd1", TypeUInt(32)),
+            ("32'd1 |   'd1", TypeUInt(32)),
+            ("32'd1 &&  'd1", TypeUInt(1)),
+            ("32'd1 ||  'd1", TypeUInt(1)),
+            // signed - unsigned
+            ("32'd1 *   'sd1", TypeUInt(32)),
+            ("32'd1 /   'sd1", TypeUInt(32)),
+            ("32'd1 %   'sd1", TypeUInt(32)),
+            ("32'd1 +   'sd1", TypeUInt(32)),
+            ("32'd1 -   'sd1", TypeUInt(32)),
+            ("32'd1 <<  'sd1", TypeUInt(32)),
+            ("32'd1 >>  'sd1", TypeUInt(32)),
+            ("32'd1 >>> 'sd1", TypeUInt(32)),
+            ("32'd1 <<< 'sd1", TypeUInt(32)),
+            ("32'd1 >   'sd1", TypeUInt(1)),
+            ("32'd1 >=  'sd1", TypeUInt(1)),
+            ("32'd1 <   'sd1", TypeUInt(1)),
+            ("32'd1 <=  'sd1", TypeUInt(1)),
+            ("32'd1 ==  'sd1", TypeUInt(1)),
+            ("32'd1 !=  'sd1", TypeUInt(1)),
+            ("32'd1 &   'sd1", TypeUInt(32)),
+            ("32'd1 ^   'sd1", TypeUInt(32)),
+            ("32'd1 |   'sd1", TypeUInt(32)),
+            ("32'd1 &&  'sd1", TypeUInt(1)),
+            ("32'd1 ||  'sd1", TypeUInt(1)),
+            // signed - unsigned
+            ("32'sd1 *   'd1", TypeUInt(32)),
+            ("32'sd1 /   'd1", TypeUInt(32)),
+            ("32'sd1 %   'd1", TypeUInt(32)),
+            ("32'sd1 +   'd1", TypeUInt(32)),
+            ("32'sd1 -   'd1", TypeUInt(32)),
+            ("32'sd1 <<  'd1", TypeSInt(32)),
+            ("32'sd1 >>  'd1", TypeSInt(32)),
+            ("32'sd1 >>> 'd1", TypeSInt(32)),
+            ("32'sd1 <<< 'd1", TypeSInt(32)),
+            ("32'sd1 >   'd1", TypeUInt(1)),
+            ("32'sd1 >=  'd1", TypeUInt(1)),
+            ("32'sd1 <   'd1", TypeUInt(1)),
+            ("32'sd1 <=  'd1", TypeUInt(1)),
+            ("32'sd1 ==  'd1", TypeUInt(1)),
+            ("32'sd1 !=  'd1", TypeUInt(1)),
+            ("32'sd1 &   'd1", TypeUInt(32)),
+            ("32'sd1 ^   'd1", TypeUInt(32)),
+            ("32'sd1 |   'd1", TypeUInt(32)),
+            ("32'sd1 &&  'd1", TypeUInt(1)),
+            ("32'sd1 ||  'd1", TypeUInt(1)),
+            // signed - signed
+            ("32'sd1 *   'sd1", TypeSInt(32)),
+            ("32'sd1 /   'sd1", TypeSInt(32)),
+            ("32'sd1 %   'sd1", TypeSInt(32)),
+            ("32'sd1 +   'sd1", TypeSInt(32)),
+            ("32'sd1 -   'sd1", TypeSInt(32)),
+            ("32'sd1 <<  'sd1", TypeSInt(32)),
+            ("32'sd1 >>  'sd1", TypeSInt(32)),
+            ("32'sd1 >>> 'sd1", TypeSInt(32)),
+            ("32'sd1 <<< 'sd1", TypeSInt(32)),
+            ("32'sd1 >   'sd1", TypeUInt(1)),
+            ("32'sd1 >=  'sd1", TypeUInt(1)),
+            ("32'sd1 <   'sd1", TypeUInt(1)),
+            ("32'sd1 <=  'sd1", TypeUInt(1)),
+            ("32'sd1 ==  'sd1", TypeUInt(1)),
+            ("32'sd1 !=  'sd1", TypeUInt(1)),
+            ("32'sd1 &   'sd1", TypeSInt(32)),
+            ("32'sd1 ^   'sd1", TypeSInt(32)),
+            ("32'sd1 |   'sd1", TypeSInt(32)),
+            ("32'sd1 &&  'sd1", TypeUInt(1)),
+            ("32'sd1 ||  'sd1", TypeUInt(1)),
+            //
+            // unsized - sized
+            //
+            // unsigned - unsigned
+            ("'d1 *   32'd1", TypeUInt(32)),
+            ("'d1 /   32'd1", TypeUInt(32)),
+            ("'d1 %   32'd1", TypeUInt(32)),
+            ("'d1 +   32'd1", TypeUInt(32)),
+            ("'d1 -   32'd1", TypeUInt(32)),
+            ("'d1 <<  32'd1", TypeNum(false)),
+            ("'d1 >>  32'd1", TypeNum(false)),
+            ("'d1 >>> 32'd1", TypeNum(false)),
+            ("'d1 <<< 32'd1", TypeNum(false)),
+            ("'d1 >   32'd1", TypeUInt(1)),
+            ("'d1 >=  32'd1", TypeUInt(1)),
+            ("'d1 <   32'd1", TypeUInt(1)),
+            ("'d1 <=  32'd1", TypeUInt(1)),
+            ("'d1 ==  32'd1", TypeUInt(1)),
+            ("'d1 !=  32'd1", TypeUInt(1)),
+            ("'d1 &   32'd1", TypeUInt(32)),
+            ("'d1 ^   32'd1", TypeUInt(32)),
+            ("'d1 |   32'd1", TypeUInt(32)),
+            ("'d1 &&  32'd1", TypeUInt(1)),
+            ("'d1 ||  32'd1", TypeUInt(1)),
+            // signed - unsigned
+            ("'d1 *   32'sd1", TypeUInt(32)),
+            ("'d1 /   32'sd1", TypeUInt(32)),
+            ("'d1 %   32'sd1", TypeUInt(32)),
+            ("'d1 +   32'sd1", TypeUInt(32)),
+            ("'d1 -   32'sd1", TypeUInt(32)),
+            ("'d1 <<  32'sd1", TypeNum(false)),
+            ("'d1 >>  32'sd1", TypeNum(false)),
+            ("'d1 >>> 32'sd1", TypeNum(false)),
+            ("'d1 <<< 32'sd1", TypeNum(false)),
+            ("'d1 >   32'sd1", TypeUInt(1)),
+            ("'d1 >=  32'sd1", TypeUInt(1)),
+            ("'d1 <   32'sd1", TypeUInt(1)),
+            ("'d1 <=  32'sd1", TypeUInt(1)),
+            ("'d1 ==  32'sd1", TypeUInt(1)),
+            ("'d1 !=  32'sd1", TypeUInt(1)),
+            ("'d1 &   32'sd1", TypeUInt(32)),
+            ("'d1 ^   32'sd1", TypeUInt(32)),
+            ("'d1 |   32'sd1", TypeUInt(32)),
+            ("'d1 &&  32'sd1", TypeUInt(1)),
+            ("'d1 ||  32'sd1", TypeUInt(1)),
+            // signed - unsigned
+            ("'sd1 *   32'd1", TypeUInt(32)),
+            ("'sd1 /   32'd1", TypeUInt(32)),
+            ("'sd1 %   32'd1", TypeUInt(32)),
+            ("'sd1 +   32'd1", TypeUInt(32)),
+            ("'sd1 -   32'd1", TypeUInt(32)),
+            ("'sd1 <<  32'd1", TypeNum(true)),
+            ("'sd1 >>  32'd1", TypeNum(true)),
+            ("'sd1 >>> 32'd1", TypeNum(true)),
+            ("'sd1 <<< 32'd1", TypeNum(true)),
+            ("'sd1 >   32'd1", TypeUInt(1)),
+            ("'sd1 >=  32'd1", TypeUInt(1)),
+            ("'sd1 <   32'd1", TypeUInt(1)),
+            ("'sd1 <=  32'd1", TypeUInt(1)),
+            ("'sd1 ==  32'd1", TypeUInt(1)),
+            ("'sd1 !=  32'd1", TypeUInt(1)),
+            ("'sd1 &   32'd1", TypeUInt(32)),
+            ("'sd1 ^   32'd1", TypeUInt(32)),
+            ("'sd1 |   32'd1", TypeUInt(32)),
+            ("'sd1 &&  32'd1", TypeUInt(1)),
+            ("'sd1 ||  32'd1", TypeUInt(1)),
+            // signed - signed
+            ("'sd1 *   32'sd1", TypeSInt(32)),
+            ("'sd1 /   32'sd1", TypeSInt(32)),
+            ("'sd1 %   32'sd1", TypeSInt(32)),
+            ("'sd1 +   32'sd1", TypeSInt(32)),
+            ("'sd1 -   32'sd1", TypeSInt(32)),
+            ("'sd1 <<  32'sd1", TypeNum(true)),
+            ("'sd1 >>  32'sd1", TypeNum(true)),
+            ("'sd1 >>> 32'sd1", TypeNum(true)),
+            ("'sd1 <<< 32'sd1", TypeNum(true)),
+            ("'sd1 >   32'sd1", TypeUInt(1)),
+            ("'sd1 >=  32'sd1", TypeUInt(1)),
+            ("'sd1 <   32'sd1", TypeUInt(1)),
+            ("'sd1 <=  32'sd1", TypeUInt(1)),
+            ("'sd1 ==  32'sd1", TypeUInt(1)),
+            ("'sd1 !=  32'sd1", TypeUInt(1)),
+            ("'sd1 &   32'sd1", TypeSInt(32)),
+            ("'sd1 ^   32'sd1", TypeSInt(32)),
+            ("'sd1 |   32'sd1", TypeSInt(32)),
+            ("'sd1 &&  32'sd1", TypeUInt(1)),
+            ("'sd1 ||  32'sd1", TypeUInt(1)),
+            //
+            // unsized - unsized
+            //
+            // unsigned - unsigned
             ("'d1 *   'd1", TypeNum(false)),
             ("'d1 /   'd1", TypeNum(false)),
             ("'d1 %   'd1", TypeNum(false)),
             ("'d1 +   'd1", TypeNum(false)),
             ("'d1 -   'd1", TypeNum(false)),
-            ("'d1 &   'd1", TypeNum(false)),
-            ("'d1 ^   'd1", TypeNum(false)),
-            ("'d1 |   'd1", TypeNum(false)),
             ("'d1 <<  'd1", TypeNum(false)),
             ("'d1 >>  'd1", TypeNum(false)),
             ("'d1 >>> 'd1", TypeNum(false)),
@@ -303,17 +463,17 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
             ("'d1 <=  'd1", TypeUInt(1)),
             ("'d1 ==  'd1", TypeUInt(1)),
             ("'d1 !=  'd1", TypeUInt(1)),
+            ("'d1 &   'd1", TypeNum(false)),
+            ("'d1 ^   'd1", TypeNum(false)),
+            ("'d1 |   'd1", TypeNum(false)),
             ("'d1 &&  'd1", TypeUInt(1)),
             ("'d1 ||  'd1", TypeUInt(1)),
-            // unsigned signed - unsized
+            // unsigned - signed
             ("'d1 *   'sd1", TypeNum(false)),
             ("'d1 /   'sd1", TypeNum(false)),
             ("'d1 %   'sd1", TypeNum(false)),
             ("'d1 +   'sd1", TypeNum(false)),
             ("'d1 -   'sd1", TypeNum(false)),
-            ("'d1 &   'sd1", TypeNum(false)),
-            ("'d1 ^   'sd1", TypeNum(false)),
-            ("'d1 |   'sd1", TypeNum(false)),
             ("'d1 <<  'sd1", TypeNum(false)),
             ("'d1 >>  'sd1", TypeNum(false)),
             ("'d1 >>> 'sd1", TypeNum(false)),
@@ -324,17 +484,17 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
             ("'d1 <=  'sd1", TypeUInt(1)),
             ("'d1 ==  'sd1", TypeUInt(1)),
             ("'d1 !=  'sd1", TypeUInt(1)),
+            ("'d1 &   'sd1", TypeNum(false)),
+            ("'d1 ^   'sd1", TypeNum(false)),
+            ("'d1 |   'sd1", TypeNum(false)),
             ("'d1 &&  'sd1", TypeUInt(1)),
             ("'d1 ||  'sd1", TypeUInt(1)),
-            // signed unsigned - unsized
+            // signed - unsigned
             ("'sd1 *   'd1", TypeNum(false)),
             ("'sd1 /   'd1", TypeNum(false)),
             ("'sd1 %   'd1", TypeNum(false)),
             ("'sd1 +   'd1", TypeNum(false)),
             ("'sd1 -   'd1", TypeNum(false)),
-            ("'sd1 &   'd1", TypeNum(false)),
-            ("'sd1 ^   'd1", TypeNum(false)),
-            ("'sd1 |   'd1", TypeNum(false)),
             ("'sd1 <<  'd1", TypeNum(true)),
             ("'sd1 >>  'd1", TypeNum(true)),
             ("'sd1 >>> 'd1", TypeNum(true)),
@@ -345,17 +505,17 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
             ("'sd1 <=  'd1", TypeUInt(1)),
             ("'sd1 ==  'd1", TypeUInt(1)),
             ("'sd1 !=  'd1", TypeUInt(1)),
+            ("'sd1 &   'd1", TypeNum(false)),
+            ("'sd1 ^   'd1", TypeNum(false)),
+            ("'sd1 |   'd1", TypeNum(false)),
             ("'sd1 &&  'd1", TypeUInt(1)),
             ("'sd1 ||  'd1", TypeUInt(1)),
-            // signed signed - unsized
+            // signed - signed
             ("'sd1 *   'sd1", TypeNum(true)),
             ("'sd1 /   'sd1", TypeNum(true)),
             ("'sd1 %   'sd1", TypeNum(true)),
             ("'sd1 +   'sd1", TypeNum(true)),
             ("'sd1 -   'sd1", TypeNum(true)),
-            ("'sd1 &   'sd1", TypeNum(true)),
-            ("'sd1 ^   'sd1", TypeNum(true)),
-            ("'sd1 |   'sd1", TypeNum(true)),
             ("'sd1 <<  'sd1", TypeNum(true)),
             ("'sd1 >>  'sd1", TypeNum(true)),
             ("'sd1 >>> 'sd1", TypeNum(true)),
@@ -366,13 +526,46 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
             ("'sd1 <=  'sd1", TypeUInt(1)),
             ("'sd1 ==  'sd1", TypeUInt(1)),
             ("'sd1 !=  'sd1", TypeUInt(1)),
+            ("'sd1 &   'sd1", TypeNum(true)),
+            ("'sd1 ^   'sd1", TypeNum(true)),
+            ("'sd1 |   'sd1", TypeNum(true)),
             ("'sd1 &&  'sd1", TypeUInt(1)),
-            ("'sd1 ||  'sd1", TypeUInt(1))
+            ("'sd1 ||  'sd1", TypeUInt(1)),
+            //
+            // Mixed width operators
+            //
+            // unsigned - unsigned
+            ("3'd1 <<  32'd1", TypeUInt(3)),
+            ("3'd1 >>  32'd1", TypeUInt(3)),
+            ("3'd1 >>> 32'd1", TypeUInt(3)),
+            ("3'd1 <<< 32'd1", TypeUInt(3)),
+            ("3'd1 &&  32'd1", TypeUInt(1)),
+            ("3'd1 ||  32'd1", TypeUInt(1)),
+            // unsigned - signed
+            ("3'd1 <<  32'sd1", TypeUInt(3)),
+            ("3'd1 >>  32'sd1", TypeUInt(3)),
+            ("3'd1 >>> 32'sd1", TypeUInt(3)),
+            ("3'd1 <<< 32'sd1", TypeUInt(3)),
+            ("3'd1 &&  32'sd1", TypeUInt(1)),
+            ("3'd1 ||  32'sd1", TypeUInt(1)),
+            // igned - unsigned
+            ("3'sd1 <<  32'd1", TypeSInt(3)),
+            ("3'sd1 >>  32'd1", TypeSInt(3)),
+            ("3'sd1 >>> 32'd1", TypeSInt(3)),
+            ("3'sd1 <<< 32'd1", TypeSInt(3)),
+            ("3'sd1 &&  32'd1", TypeUInt(1)),
+            ("3'sd1 ||  32'd1", TypeUInt(1)),
+            // signed - signed
+            ("3'sd1 <<  32'sd1", TypeSInt(3)),
+            ("3'sd1 >>  32'sd1", TypeSInt(3)),
+            ("3'sd1 >>> 32'sd1", TypeSInt(3)),
+            ("3'sd1 <<< 32'sd1", TypeSInt(3)),
+            ("3'sd1 &&  32'sd1", TypeUInt(1)),
+            ("3'sd1 ||  32'sd1", TypeUInt(1))
           )
         } {
-          val text = expr.trim.replaceAll(" +", " ")
-          text in {
-            val expr @ ExprBinary(lhs, _, rhs) = text.asTree[Expr]
+          src in {
+            val expr @ ExprBinary(lhs, _, rhs) = src.asTree[Expr]
             TypeAssigner(lhs)
             TypeAssigner(rhs)
             TypeAssigner(expr).tpe shouldBe kind
@@ -383,21 +576,31 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
 
       "ternary operator" - {
         for {
-          (expr, kind) <- List(
+          (src, kind) <- List(
+            // sized - sized
             ("1 ?  5'd2 :  5'd3", TypeUInt(5)),
             ("1 ?  5'd2 : 5'sd3", TypeUInt(5)),
             ("1 ? 5'sd2 :  5'd3", TypeUInt(5)),
             ("1 ? 5'sd2 : 5'sd3", TypeSInt(5)),
-            // Unsized
+            // sized - unsized
+            ("1 ?  5'd2 :  'd3", TypeUInt(5)),
+            ("1 ?  5'd2 : 'sd3", TypeUInt(5)),
+            ("1 ? 5'sd2 :  'd3", TypeUInt(5)),
+            ("1 ? 5'sd2 : 'sd3", TypeSInt(5)),
+            // unsized - sized
+            ("1 ?  'd2 :  5'd3", TypeUInt(5)),
+            ("1 ?  'd2 : 5'sd3", TypeUInt(5)),
+            ("1 ? 'sd2 :  5'd3", TypeUInt(5)),
+            ("1 ? 'sd2 : 5'sd3", TypeSInt(5)),
+            // unsized - unsized
             ("1 ?  'd2 :  'd3", TypeNum(false)),
             ("1 ?  'd2 : 'sd3", TypeNum(false)),
             ("1 ? 'sd2 :  'd3", TypeNum(false)),
             ("1 ? 'sd2 : 'sd3", TypeNum(true))
           )
         } {
-          val text = expr.trim.replaceAll(" +", " ")
-          text in {
-            val expr @ ExprTernary(cond, thenExpr, elseExpr) = text.asTree[Expr]
+          src in {
+            val expr @ ExprTernary(cond, thenExpr, elseExpr) = src.asTree[Expr]
             TypeAssigner(cond)
             TypeAssigner(thenExpr)
             TypeAssigner(elseExpr)
