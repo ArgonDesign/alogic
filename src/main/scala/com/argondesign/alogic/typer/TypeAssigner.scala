@@ -20,291 +20,165 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.ErrorSymbol
 import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.lib.TreeLike
 import com.argondesign.alogic.util.unreachable
 
 import scala.language.postfixOps
 
-object TypeAssigner {
+final object TypeAssigner {
+  //////////////////////////////////////////////////////////////////////////////
+  // 'kind' methods compute the new type, assuming there were no type errors
+  // in the child nodes
+  //////////////////////////////////////////////////////////////////////////////
 
-  def apply(tree: Tree)(implicit cc: CompilerContext): tree.type = {
-    require(!tree.hasTpe)
-    tree match {
-      case node: Expr           => apply(node)
-      case node: Stmt           => apply(node)
-      case node: RegularCase    => apply(node)
-      case node: DefaultCase    => apply(node)
-      case node: Entity         => apply(node)
-      case node: Decl           => apply(node)
-      case node: Instance       => apply(node)
-      case node: Connect        => apply(node)
-      case node: Function       => apply(node)
-      case node: State          => apply(node)
-      case node: Sym            => apply(node)
-      case node: TypeDefinition => apply(node)
-      case node: Thicket        => apply(node)
-      case _                    => unreachable
-    }
-    assert(tree.hasTpe)
-    tree
+  private def kind(tree: Tree)(implicit cc: CompilerContext): Type = tree match {
+    case node: Expr           => kind(node)
+    case node: Stmt           => kind(node)
+    case node: RegularCase    => kind(node)
+    case node: DefaultCase    => kind(node)
+    case node: Entity         => kind(node)
+    case node: Decl           => kind(node)
+    case node: Instance       => kind(node)
+    case node: Connect        => kind(node)
+    case node: Function       => kind(node)
+    case node: State          => kind(node)
+    case node: Sym            => kind(node)
+    case node: TypeDefinition => kind(node)
+    case node: Thicket        => kind(node)
+    case _: Root              => unreachable
+    case _: DeclIdent         => unreachable
+    case _: Ident             => unreachable
   }
 
   //////////////////////////////////////////////////////////////////////////////
   // Typing Misc nodes
   //////////////////////////////////////////////////////////////////////////////
 
-  private def assignTypeMisc(node: Tree): node.type = {
-    require(!node.hasTpe)
-    node withTpe TypeMisc
-  }
+  private def kind(node: Entity) = TypeMisc
+  private def kind(node: Decl) = TypeMisc
+  private def kind(node: Instance) = TypeMisc
+  private def kind(node: Connect) = TypeMisc
+  private def kind(node: Function) = TypeMisc
+  private def kind(node: State) = TypeMisc
+  private def kind(node: TypeDefinition) = TypeMisc
+  private def kind(node: Thicket) = TypeMisc
+  private def kind(node: RegularCase) = TypeMisc
+  private def kind(node: DefaultCase) = TypeMisc
 
-  def apply(node: Entity): node.type = assignTypeMisc(node)
-  def apply(node: Decl): node.type = assignTypeMisc(node)
-  def apply(node: Instance): node.type = assignTypeMisc(node)
-  def apply(node: Connect): node.type = assignTypeMisc(node)
-  def apply(node: Function): node.type = assignTypeMisc(node)
-  def apply(node: State): node.type = assignTypeMisc(node)
-  def apply(node: TypeDefinition): node.type = assignTypeMisc(node)
+  //////////////////////////////////////////////////////////////////////////////
+  // Typing Sym
+  //////////////////////////////////////////////////////////////////////////////
 
-  def apply(node: Thicket): node.type = {
-    require(!node.hasTpe)
-    assignTypeMisc(node)
-  }
-
-  def apply(node: RegularCase): node.type = {
-    if (node.stmt.tpe == TypeError || (node.cond exists { _.tpe == TypeError })) {
-      node withTpe TypeError
-    } else {
-      assignTypeMisc(node)
-    }
-  }
-
-  def apply(node: DefaultCase): node.type = {
-    if (node.stmt.tpe == TypeError) {
-      node withTpe TypeError
-    } else {
-      assignTypeMisc(node)
-    }
-  }
-
-  def apply(node: Sym): node.type = {
-    require(!node.hasTpe)
-    if (node.symbol == ErrorSymbol) {
-      node withTpe TypeError
-    } else {
-      node withTpe node.symbol.kind
-    }
-  }
+  private def kind(node: Sym) = node.symbol.kind
 
   //////////////////////////////////////////////////////////////////////////////
   // Typing Stmt nodes
   //////////////////////////////////////////////////////////////////////////////
 
-  def apply(tree: Stmt): tree.type = {
-    require(!tree.hasTpe)
-    tree match {
-      case node: StmtBlock => apply(node)
-      case node: StmtIf    => apply(node)
-      case node: StmtCase  => apply(node)
-      case node: StmtExpr  => apply(node)
-      // Unambiguous ctrl stmts
-      case node: StmtLoop     => apply(node)
-      case node: StmtWhile    => apply(node)
-      case node: StmtFor      => apply(node)
-      case node: StmtDo       => apply(node)
-      case node: StmtLet      => apply(node)
-      case node: StmtFence    => apply(node)
-      case node: StmtBreak    => apply(node)
-      case node: StmtContinue => apply(node)
-      case node: StmtGoto     => apply(node)
-      case node: StmtReturn   => apply(node)
-      // Unambiguous comb stmts
-      case node: StmtAssign  => apply(node)
-      case node: StmtUpdate  => apply(node)
-      case node: StmtPost    => apply(node)
-      case node: StmtDecl    => apply(node)
-      case node: StmtRead    => apply(node)
-      case node: StmtWrite   => apply(node)
-      case node: StmtComment => apply(node)
-      case node: StmtStall   => apply(node)
-      //
-      case node: StmtError => apply(node)
-      //
-      case _ => unreachable
-    }
-    tree
+  private def kind(tree: Stmt): Type = tree match {
+    case node: StmtBlock => kind(node)
+    case node: StmtIf    => kind(node)
+    case node: StmtCase  => kind(node)
+    case node: StmtExpr  => kind(node)
+    // Unambiguous ctrl stmts
+    case node: StmtLoop     => kind(node)
+    case node: StmtWhile    => kind(node)
+    case node: StmtFor      => kind(node)
+    case node: StmtDo       => kind(node)
+    case node: StmtLet      => kind(node)
+    case node: StmtFence    => kind(node)
+    case node: StmtBreak    => kind(node)
+    case node: StmtContinue => kind(node)
+    case node: StmtGoto     => kind(node)
+    case node: StmtReturn   => kind(node)
+    // Unambiguous comb stmts
+    case node: StmtAssign  => kind(node)
+    case node: StmtUpdate  => kind(node)
+    case node: StmtPost    => kind(node)
+    case node: StmtDecl    => kind(node)
+    case node: StmtRead    => kind(node)
+    case node: StmtWrite   => kind(node)
+    case node: StmtComment => kind(node)
+    case node: StmtStall   => kind(node)
+    //
+    case node: StmtError => kind(node)
   }
 
-  def apply(node: StmtBlock): node.type = {
-    require(!node.hasTpe)
-    val tpe = if (node.body.nonEmpty) node.body.last.tpe else TypeCombStmt
-    node withTpe tpe
+  private def kind(node: StmtBlock) = {
+    if (node.body.nonEmpty) node.body.last.tpe else TypeCombStmt
   }
 
-  def apply(node: StmtIf): node.type = {
-    require(!node.hasTpe)
-    node withTpe node.thenStmt.tpe
-  }
+  private def kind(node: StmtIf) = node.thenStmt.tpe
 
-  def apply(node: StmtCase): node.type = {
-    require(!node.hasTpe)
-    node withTpe node.cases.head.stmt.tpe
-  }
+  private def kind(node: StmtCase) = node.cases.head.stmt.tpe
 
-  def apply(node: StmtExpr): node.type = {
-    require(!node.hasTpe)
-    val tpe = node.expr match {
-      case ExprCall(target, _) => {
-        target.tpe match {
-          case _: TypeCombFunc => TypeCombStmt
-          case _: TypeCtrlFunc => TypeCtrlStmt
-          case _               => unreachable
-        }
+  private def kind(node: StmtExpr) = node.expr match {
+    case ExprCall(target, _) =>
+      target.tpe match {
+        case _: TypeCombFunc => TypeCombStmt
+        case _: TypeCtrlFunc => TypeCtrlStmt
+        case _               => unreachable
       }
-      case _ => TypeCombStmt
-    }
-    node withTpe tpe
+    case _ => TypeCombStmt
   }
 
-  def apply(node: StmtLoop): node.type = {
-    require(!node.hasTpe)
-    node withTpe TypeCtrlStmt
-  }
+  private def kind(node: StmtLoop) = TypeCtrlStmt
+  private def kind(node: StmtWhile) = TypeCtrlStmt
+  private def kind(node: StmtFor) = TypeCtrlStmt
+  private def kind(node: StmtDo) = TypeCtrlStmt
+  private def kind(node: StmtLet) = TypeCtrlStmt
+  private def kind(node: StmtFence) = TypeCtrlStmt
+  private def kind(node: StmtBreak) = TypeCtrlStmt
+  private def kind(node: StmtContinue) = TypeCtrlStmt
+  private def kind(node: StmtGoto) = TypeCtrlStmt
+  private def kind(node: StmtReturn) = TypeCtrlStmt
 
-  def apply(node: StmtWhile): node.type = {
-    require(!node.hasTpe)
-    node withTpe TypeCtrlStmt
-  }
+  private def kind(node: StmtAssign) = TypeCombStmt
+  private def kind(node: StmtUpdate) = TypeCombStmt
+  private def kind(node: StmtPost) = TypeCombStmt
+  private def kind(node: StmtDecl) = TypeCombStmt
+  private def kind(node: StmtRead) = TypeCombStmt
+  private def kind(node: StmtWrite) = TypeCombStmt
+  private def kind(node: StmtComment) = TypeCombStmt
+  private def kind(node: StmtStall) = TypeCombStmt
 
-  def apply(node: StmtFor): node.type = {
-    require(!node.hasTpe)
-    node withTpe TypeCtrlStmt
-  }
-
-  def apply(node: StmtDo): node.type = {
-    require(!node.hasTpe)
-    node withTpe TypeCtrlStmt
-  }
-
-  def apply(node: StmtLet): node.type = {
-    require(!node.hasTpe)
-    node withTpe TypeCtrlStmt
-  }
-
-  def apply(node: StmtFence): node.type = {
-    require(!node.hasTpe)
-    node withTpe TypeCtrlStmt
-  }
-
-  def apply(node: StmtBreak): node.type = {
-    require(!node.hasTpe)
-    node withTpe TypeCtrlStmt
-  }
-
-  def apply(node: StmtContinue): node.type = {
-    require(!node.hasTpe)
-    node withTpe TypeCtrlStmt
-  }
-
-  def apply(node: StmtGoto): node.type = {
-    require(!node.hasTpe)
-    node withTpe TypeCtrlStmt
-  }
-
-  def apply(node: StmtReturn): node.type = {
-    require(!node.hasTpe)
-    node withTpe TypeCtrlStmt
-  }
-
-  def apply(node: StmtAssign): node.type = {
-    require(!node.hasTpe)
-    node withTpe TypeCombStmt
-  }
-
-  def apply(node: StmtUpdate): node.type = {
-    require(!node.hasTpe)
-    node withTpe TypeCombStmt
-  }
-
-  def apply(node: StmtPost): node.type = {
-    require(!node.hasTpe)
-    node withTpe TypeCombStmt
-  }
-
-  def apply(node: StmtDecl): node.type = {
-    require(!node.hasTpe)
-    node withTpe TypeCombStmt
-  }
-
-  def apply(node: StmtRead): node.type = {
-    require(!node.hasTpe)
-    node withTpe TypeCombStmt
-  }
-
-  def apply(node: StmtWrite): node.type = {
-    require(!node.hasTpe)
-    node withTpe TypeCombStmt
-  }
-
-  def apply(node: StmtComment): node.type = {
-    require(!node.hasTpe)
-    node withTpe TypeCombStmt
-  }
-
-  def apply(node: StmtStall): node.type = {
-    require(!node.hasTpe)
-    node withTpe TypeCombStmt
-  }
-
-  def apply(node: StmtError): node.type = {
-    require(!node.hasTpe)
-    node withTpe TypeError
-  }
+  private def kind(node: StmtError) = TypeError // TODO: is this the righttype?
 
   //////////////////////////////////////////////////////////////////////////////
   // Typing Expr nodes
   //////////////////////////////////////////////////////////////////////////////
 
-  def apply(tree: Expr)(implicit cc: CompilerContext): tree.type = {
-    require(!tree.hasTpe)
-    tree match {
-      case node: ExprCall    => apply(node)
-      case node: ExprUnary   => apply(node)
-      case node: ExprBinary  => apply(node)
-      case node: ExprTernary => apply(node)
-      case node: ExprCat     => apply(node)
-      case node: ExprRep     => apply(node)
-      case node: ExprIndex   => apply(node)
-      case node: ExprSlice   => apply(node)
-      case node: ExprSelect  => apply(node)
-      case node: ExprInt     => apply(node)
-      case node: ExprStr     => apply(node)
-      case node: ExprRef     => apply(node)
-      case node: ExprType    => apply(node)
-      case node: ExprError   => apply(node)
-      case node: ExprNum     => apply(node)
-      case node: ExprCast    => apply(node)
-      case _                 => unreachable
-    }
-    tree
+  private def kind(tree: Expr)(implicit cc: CompilerContext): Type = tree match {
+    case node: ExprCall    => kind(node)
+    case node: ExprUnary   => kind(node)
+    case node: ExprBinary  => kind(node)
+    case node: ExprTernary => kind(node)
+    case node: ExprCat     => kind(node)
+    case node: ExprRep     => kind(node)
+    case node: ExprIndex   => kind(node)
+    case node: ExprSlice   => kind(node)
+    case node: ExprSelect  => kind(node)
+    case node: ExprInt     => kind(node)
+    case node: ExprStr     => kind(node)
+    case node: ExprRef     => kind(node)
+    case node: ExprType    => kind(node)
+    case node: ExprError   => kind(node)
+    case node: ExprNum     => kind(node)
+    case node: ExprCast    => kind(node)
+    case _: ExprIdent      => unreachable
   }
 
-  def apply(node: ExprError): node.type = node withTpe TypeError
+  private def kind(node: ExprError) = TypeError
 
-  def apply(node: ExprInt)(implicit cc: CompilerContext): node.type = {
-    require(!node.hasTpe)
-    val widthExpr = Expr(node.width) regularize node.loc
-    node withTpe TypeInt(node.signed, widthExpr)
+  private def kind(node: ExprInt)(implicit cc: CompilerContext) = {
+    TypeInt(node.signed, Expr(node.width) regularize node.loc)
   }
 
-  def apply(node: ExprNum): node.type = {
-    require(!node.hasTpe)
-    node withTpe TypeNum(node.signed)
-  }
+  private def kind(node: ExprNum) = TypeNum(node.signed)
 
-  def apply(node: ExprStr): node.type = node withTpe TypeStr
+  private def kind(node: ExprStr) = TypeStr
 
-  def apply(node: ExprRef): node.type = {
-    require(!node.hasTpe)
+  private def kind(node: ExprRef) = {
     val ExprRef(symbol) = node
     val tpe = if (symbol == ErrorSymbol) {
       TypeError
@@ -317,57 +191,44 @@ object TypeAssigner {
         case other              => other
       }
     }
-    val finalTpe = if (symbol.isTermSymbol) tpe else TypeType(tpe)
-    node withTpe finalTpe
+    if (symbol.isTermSymbol) tpe else TypeType(tpe)
   }
 
-  def apply(node: ExprUnary)(implicit cc: CompilerContext): node.type = {
-    require(!node.hasTpe)
-    val tpe = node.op match {
-      case "+" | "-" | "~" => node.expr.tpe
-      case _               => TypeUInt(Expr(1) regularize node.loc)
-    }
-    node withTpe tpe
+  private def kind(node: ExprUnary)(implicit cc: CompilerContext) = node.op match {
+    case "+" | "-" | "~" => node.expr.tpe
+    case _               => TypeUInt(Expr(1) regularize node.loc)
   }
 
-  def apply(node: ExprBinary)(implicit cc: CompilerContext): node.type = {
-    require(!node.hasTpe)
-    val tpe = node.op match {
-      case ">" | ">=" | "<" | "<=" | "==" | "!=" | "&&" | "||" =>
-        TypeUInt(Expr(1) regularize node.loc)
-      case "<<" | ">>" | "<<<" | ">>>" => node.lhs.tpe
-      case _ => {
-        val lTpe = node.lhs.tpe
-        val rTpe = node.rhs.tpe
-        val signed = lTpe.isSigned && rTpe.isSigned
-        if (lTpe.isNum && rTpe.isNum) {
-          TypeNum(signed)
-        } else {
-          val width = if (lTpe.isNum) rTpe.width else lTpe.width
-          TypeInt(signed, apply(Expr(width) withLoc node.loc))
-        }
+  private def kind(node: ExprBinary)(implicit cc: CompilerContext) = node.op match {
+    case ">" | ">=" | "<" | "<=" | "==" | "!=" | "&&" | "||" =>
+      TypeUInt(Expr(1) regularize node.loc)
+    case "<<" | ">>" | "<<<" | ">>>" => node.lhs.tpe
+    case _ =>
+      val lTpe = node.lhs.tpe
+      val rTpe = node.rhs.tpe
+      val signed = lTpe.isSigned && rTpe.isSigned
+      if (lTpe.isNum && rTpe.isNum) {
+        TypeNum(signed)
+      } else {
+        val width = if (lTpe.isNum) rTpe.width else lTpe.width
+        TypeInt(signed, apply(Expr(width) withLoc node.loc))
       }
-    }
-    node withTpe tpe
   }
 
-  def apply(node: ExprTernary)(implicit cc: CompilerContext): node.type = {
-    require(!node.hasTpe)
+  private def kind(node: ExprTernary)(implicit cc: CompilerContext) = {
     val tTpe = node.thenExpr.tpe
     val eTpe = node.elseExpr.tpe
     val signed = tTpe.isSigned && eTpe.isSigned
-    val tpe = if (tTpe.isNum && eTpe.isNum) {
+    if (tTpe.isNum && eTpe.isNum) {
       TypeNum(signed)
     } else {
       val width = if (tTpe.isNum) eTpe.width else tTpe.width
       TypeInt(signed, apply(Expr(width) withLoc node.loc))
     }
-    node withTpe tpe
   }
 
-  def apply(node: ExprCat)(implicit cc: CompilerContext): node.type = {
-    require(!node.hasTpe)
-    // TODO: this probably shoudl stay symbolic by casting all part so NUM
+  private def kind(node: ExprCat)(implicit cc: CompilerContext) = {
+    // TODO: this probably should stay symbolic by casting all part so NUM
     // and then building the sum, that would allow it to work prior to parameter
     // specialization (i.e.: in const and param type parameters)
     val width = if (node.parts.lengthCompare(2) >= 0) {
@@ -375,63 +236,125 @@ object TypeAssigner {
     } else {
       node.parts.head.tpe.width
     }
-    node withTpe TypeUInt(Expr(width) regularize node.loc)
+    TypeUInt(Expr(width) regularize node.loc)
   }
 
-  def apply(node: ExprRep)(implicit cc: CompilerContext): node.type = {
-    require(!node.hasTpe)
-    // TODO: this probably shoudl stay symbolic by casting all part so NUM
+  private def kind(node: ExprRep)(implicit cc: CompilerContext) = {
+    // TODO: this probably should stay symbolic by casting all part so NUM
     // and then building the sum, that would allow it to work prior to parameter
     // specialization (i.e.: in const and param type parameters)
     val width = node.count.value.get * node.expr.tpe.width
-    node withTpe TypeUInt(Expr(width) regularize node.loc)
+    TypeUInt(Expr(width) regularize node.loc)
   }
 
-  def apply(node: ExprIndex)(implicit cc: CompilerContext): node.type = {
-    require(!node.hasTpe)
-    val tpe = node.expr.tpe.underlying match {
+  private def kind(node: ExprIndex)(implicit cc: CompilerContext) = {
+    node.expr.tpe.underlying match {
       case _: TypeNum          => TypeUInt(Expr(1) regularize node.index.loc)
       case _: TypeInt          => TypeUInt(Expr(1) regularize node.index.loc)
       case TypeArray(kind, _)  => kind
       case TypeVector(kind, _) => kind
       case _                   => unreachable
     }
-    node withTpe tpe
   }
 
-  def apply(node: ExprSlice)(implicit cc: CompilerContext): node.type = {
+  private def kind(node: ExprSlice)(implicit cc: CompilerContext) = {
     // TODO: implement vector slicing properly
-    require(!node.hasTpe)
     val width = if (node.op == ":") node.lidx - node.ridx + 1 else node.ridx
     width regularize node.loc
-    node withTpe TypeUInt(width.simplify)
+    TypeUInt(width.simplify)
   }
 
-  def apply(node: ExprSelect): node.type = {
-    require(!node.hasTpe)
-    val tpe = node.expr.tpe match {
-      case TypeType(kind: CompoundType) => TypeType(kind(node.selector).get)
-      case tpe: CompoundType            => tpe(node.selector).get
-      case _                            => TypeError
+  private def kind(node: ExprSelect) = node.expr.tpe match {
+    case TypeType(kind: CompoundType) => TypeType(kind(node.selector).get)
+    case tpe: CompoundType            => tpe(node.selector).get
+    case _                            => TypeError
+  }
+
+  private def kind(node: ExprType) = TypeType(node.kind)
+
+  private def kind(node: ExprCall) = node.expr.tpe match {
+    case TypeCombFunc(_, returnType) => returnType
+    case TypeCtrlFunc(_, returnType) => returnType
+    case _                           => unreachable
+  }
+
+  private def kind(node: ExprCast) = node.kind
+
+  //////////////////////////////////////////////////////////////////////////////
+  // 'apply' methods propagate type errors or assign the computed type. There
+  // are lots of overloads of these to use static dispatch wherever possible.
+  //////////////////////////////////////////////////////////////////////////////
+
+  private def assign(tree: Tree)(kind: => Type): tree.type = {
+    require(!tree.hasTpe)
+    def hasError(node: TreeLike): Boolean = node.children exists {
+      case child: Connect if !child.hasTpe => false
+      case child: Tree if !child.hasTpe    => unreachable
+      case child: Tree                     => child.tpe.isError
+      case child: Type                     => child.children exists hasError
+      case _                               => unreachable
     }
-    node withTpe tpe
+    val tpe = if (hasError(tree)) TypeError else kind
+    tree withTpe tpe
   }
 
-  def apply(node: ExprType): node.type = {
-    node withTpe TypeType(node.kind)
-  }
+  def apply(node: Tree)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
 
-  def apply(node: ExprCall): node.type = {
-    val tpe = node.expr.tpe match {
-      case TypeCombFunc(_, returnType) => returnType
-      case TypeCtrlFunc(_, returnType) => returnType
-      case _                           => unreachable
-    }
-    node withTpe tpe
-  }
+  // Other
+  def apply(node: Entity): node.type = assign(node)(kind(node))
+  def apply(node: Decl): node.type = assign(node)(kind(node))
+  def apply(node: Instance): node.type = assign(node)(kind(node))
+  def apply(node: Connect): node.type = assign(node)(kind(node))
+  def apply(node: Function): node.type = assign(node)(kind(node))
+  def apply(node: State): node.type = assign(node)(kind(node))
+  def apply(node: TypeDefinition): node.type = assign(node)(kind(node))
+  def apply(node: Thicket): node.type = assign(node)(kind(node))
+  def apply(node: RegularCase): node.type = assign(node)(kind(node))
+  def apply(node: DefaultCase): node.type = assign(node)(kind(node))
+  def apply(node: Sym): node.type = assign(node)(kind(node))
 
-  def apply(node: ExprCast): node.type = {
-    require(!node.hasTpe)
-    node withTpe node.kind
-  }
+  // Stmt
+  def apply(node: Stmt): node.type = assign(node)(kind(node))
+  def apply(node: StmtBlock): node.type = assign(node)(kind(node))
+  def apply(node: StmtIf): node.type = assign(node)(kind(node))
+  def apply(node: StmtCase): node.type = assign(node)(kind(node))
+  def apply(node: StmtExpr): node.type = assign(node)(kind(node))
+  def apply(node: StmtLoop): node.type = assign(node)(kind(node))
+  def apply(node: StmtWhile): node.type = assign(node)(kind(node))
+  def apply(node: StmtFor): node.type = assign(node)(kind(node))
+  def apply(node: StmtDo): node.type = assign(node)(kind(node))
+  def apply(node: StmtLet): node.type = assign(node)(kind(node))
+  def apply(node: StmtFence): node.type = assign(node)(kind(node))
+  def apply(node: StmtBreak): node.type = assign(node)(kind(node))
+  def apply(node: StmtContinue): node.type = assign(node)(kind(node))
+  def apply(node: StmtGoto): node.type = assign(node)(kind(node))
+  def apply(node: StmtReturn): node.type = assign(node)(kind(node))
+  def apply(node: StmtAssign): node.type = assign(node)(kind(node))
+  def apply(node: StmtUpdate): node.type = assign(node)(kind(node))
+  def apply(node: StmtPost): node.type = assign(node)(kind(node))
+  def apply(node: StmtDecl): node.type = assign(node)(kind(node))
+  def apply(node: StmtRead): node.type = assign(node)(kind(node))
+  def apply(node: StmtWrite): node.type = assign(node)(kind(node))
+  def apply(node: StmtComment): node.type = assign(node)(kind(node))
+  def apply(node: StmtStall): node.type = assign(node)(kind(node))
+  def apply(node: StmtError): node.type = assign(node)(kind(node))
+
+  // Expr
+  def apply(node: Expr)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: ExprInt)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: ExprNum): node.type = assign(node)(kind(node))
+  def apply(node: ExprStr): node.type = assign(node)(kind(node))
+  def apply(node: ExprRef): node.type = assign(node)(kind(node))
+  def apply(node: ExprUnary)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: ExprBinary)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: ExprTernary)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: ExprCat)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: ExprRep)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: ExprIndex)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: ExprSlice)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: ExprSelect): node.type = assign(node)(kind(node))
+  def apply(node: ExprType): node.type = assign(node)(kind(node))
+  def apply(node: ExprCall): node.type = assign(node)(kind(node))
+  def apply(node: ExprCast): node.type = assign(node)(kind(node))
+  def apply(node: ExprError): node.type = assign(node)(kind(node))
 }

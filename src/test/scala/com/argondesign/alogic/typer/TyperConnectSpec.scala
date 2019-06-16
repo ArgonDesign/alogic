@@ -46,8 +46,10 @@ final class TyperConnectSpec extends FreeSpec with AlogicTest {
       _ rewrite new Checker
     } map {
       _ rewrite new Namer
+    } map {
+      _ rewrite new Typer(externalRefs = false)
     } foreach {
-      _ rewrite new Typer
+      _ rewrite new Typer(externalRefs = true)
     }
   }
 

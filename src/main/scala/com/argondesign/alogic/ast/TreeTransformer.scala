@@ -379,7 +379,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
         case node: Tree if !node.hasTpe => {
           cc.ice(node, "Lost type of node:", node.toString, this.getClass.getName)
         }
-        case node: Tree if node.tpe == TypeError => {
+        case node: Tree if !cc.hasError && node.tpe == TypeError => {
           cc.ice(node, "Transformed tree has type error:", node.toString, this.getClass.getName)
         }
         case node @ Instance(Sym(iSymbol), Sym(eSymbol: TypeSymbol), _, _)

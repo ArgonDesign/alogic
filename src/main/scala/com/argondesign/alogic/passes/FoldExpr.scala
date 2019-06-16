@@ -72,15 +72,10 @@ final class FoldExpr(
     val result = tree match {
 
       ////////////////////////////////////////////////////////////////////////////
-      // Propagate error expressions
+      // Don't fold anything with errors
       ////////////////////////////////////////////////////////////////////////////
 
-      case ExprUnary(_, expr: ExprError)      => expr
-      case ExprBinary(expr: ExprError, _, _)  => expr
-      case ExprBinary(_, _, expr: ExprError)  => expr
-      case ExprTernary(expr: ExprError, _, _) => expr
-      case ExprTernary(_, expr: ExprError, _) => expr
-      case ExprTernary(_, _, expr: ExprError) => expr
+      case tree if tree.children collect { case t: Tree => t } exists { _.tpe.isError } => tree
 
       ////////////////////////////////////////////////////////////////////////////
       // Fold refs
