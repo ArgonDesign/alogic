@@ -440,7 +440,7 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
 
         def checkArg(expected: Type, arg: Expr, i: Int): Tree = {
           assert(expected.isPacked)
-          checkPacked(arg, s"Parameter ${i} to function call") map {
+          checkPacked(arg, s"Argument ${i} to function call") map {
             ExprError() withLoc _
           } getOrElse {
             val argWidth = arg.tpe.width
@@ -449,7 +449,7 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
               val cmp = if (argWidth > expWidth) "greater" else "less"
               cc.error(
                 arg,
-                s"Width ${argWidth} of parameter ${i} passed to function call is ${cmp} than expected width ${expWidth}")
+                s"Width ${argWidth} of argument ${i} passed to function call is ${cmp} than expected width ${expWidth}")
               ExprError() withLoc expr.loc
             } else {
               tree

@@ -358,13 +358,13 @@ final class TyperCheckExprSpec extends FreeSpec with AlogicTest {
           ("bar(1, 2, 3, 4, 5)",
            TypeError,
            "Too many arguments to function call, expected 0, have 5"),
-          ("a.write(bar)", TypeError, "Parameter 1 to function call is of non-packed type"),
+          ("a.write(bar)", TypeError, "Argument 1 to function call is of non-packed type"),
           ("a.write(3'b1)",
            TypeError,
-           "Width 3 of parameter 1 passed to function call is greater than expected width 2"),
+           "Width 3 of argument 1 passed to function call is greater than expected width 2"),
           ("a.write(1'b1)",
            TypeError,
-           "Width 1 of parameter 1 passed to function call is less than expected width 2"),
+           "Width 1 of argument 1 passed to function call is less than expected width 2"),
           ("@bits(a)", TypeNum(false), ""),
           ("@bits(a.valid)", TypeNum(false), "")
         )
