@@ -19,27 +19,24 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.util.unreachable
 
 private[builtins] class AtMax(implicit cc: CompilerContext) extends BuiltinPolyFunc {
 
   val name = "@max"
 
   def returnType(args: List[Expr]) = args partialMatch {
-    case args if args.nonEmpty && (args forall { _.tpe.isPacked }) => {
-      // TODO: return properly computed type (max width)
-      TypeUInt(Expr(32))
+    case args if args.nonEmpty && (args forall { _.tpe.isNum }) => {
+      TypeNum(args forall { _.tpe.isSigned })
     }
   }
 
-  def isKnownConst(args: List[Expr]) = args forall { _.isKnownConst }
+  def isKnownConst(args: List[Expr]) = true
 
   def fold(loc: Loc, args: List[Expr]) = {
     (args forall { _.isInstanceOf[ExprNum] }) option {
       args match {
-        case Nil => {
-          cc.error(loc, "'@max' called with empty parameter list")
-          ExprError()
-        }
+        case Nil       => unreachable
         case List(arg) => arg
         case args => {
           val (s, v) = (args collect { case ExprNum(signed, value) => (signed, value) }).unzip
