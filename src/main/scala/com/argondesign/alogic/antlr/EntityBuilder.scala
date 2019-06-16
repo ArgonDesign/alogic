@@ -120,7 +120,7 @@ object EntityBuilder extends BaseBuilder[EntityContext, EntityIdent] {
           }
         }
 
-        val variantAttr = Map("//variant" -> ExprStr(ctx.variant.text))
+        val variantAttr = Map("//variant" -> (ExprStr(ctx.variant.text) withLoc ctx.loc))
         if (ctx.attr != null) {
           ident withAttr AttrBuilder(ctx.attr) ++ variantAttr
         } else {

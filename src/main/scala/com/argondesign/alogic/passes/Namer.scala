@@ -212,6 +212,13 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
   override def enter(tree: Tree): Unit = tree match {
     case node: Root => {
       Scopes.push()
+
+      // Name the source attributes of the root entity, these have already been
+      // created so need to name the symbol attributes
+      val EntityIdent(ident, _, _, _, _, _, _, _) = node.entity
+      val symbol = lookupType(ident)
+      // TODO: do them all in a systematic way..
+      symbol.attr.stackLimit.get foreach { symbol.attr.stackLimit set walk(_).asInstanceOf[Expr] }
     }
 
     case node: EntityIdent => {
@@ -219,6 +226,11 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
 
       // Insert function names before descending an entity so they can be in arbitrary order
       for (Function(ident: Ident, _) <- node.functions) {
+        // Name the source attributes of the function
+        if (ident.hasAttr) {
+          ident withAttr { ident.attr mapValues { walk(_).asInstanceOf[Expr] } }
+        }
+
         val symbol = cc.newTermSymbol(ident, TypeCtrlFunc(Nil, TypeVoid))
         Scopes.insert(symbol)
         if (ident.name == "main") {
@@ -231,6 +243,11 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
 
       // Insert nested entity names so instantiations can resolve them in arbitrary order
       for (EntityIdent(ident, _, _, _, _, _, _, _) <- node.entities) {
+        // Name the source attributes of the nested entities
+        if (ident.hasAttr) {
+          ident withAttr { ident.attr mapValues { walk(_).asInstanceOf[Expr] } }
+        }
+
         val symbol = cc.newTypeSymbol(ident, TypeEntity("", Nil, Nil))
         Scopes.insert(symbol)
       }

@@ -183,6 +183,16 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
     case _: Connect => {
       inConnect = true
     }
+    case EntityNamed(symbol, _, _, _, _, _, _, _, _) => {
+      // Type the source attributes
+      // TODO: do them all in a systematic way..
+      symbol.attr.stackLimit.get foreach { symbol.attr.stackLimit set walk(_).asInstanceOf[Expr] }
+    }
+    case Function(Sym(symbol), _) => {
+      // Type the source attributes
+      // TODO: do them all in a systematic way..
+      symbol.attr.recLimit.get foreach { symbol.attr.recLimit set walk(_).asInstanceOf[Expr] }
+    }
     case _ => ()
   }
 

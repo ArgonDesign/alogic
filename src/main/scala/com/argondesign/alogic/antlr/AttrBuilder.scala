@@ -27,7 +27,7 @@ object AttrBuilder extends BaseBuilder[AttrContext, Map[String, Expr]] {
   def apply(ctx: AttrContext)(implicit cc: CompilerContext): Map[String, Expr] = {
     val pairs = for (attrSpec <- ctx.attrspec.asScala.toList) yield {
       val key = attrSpec.IDENTIFIER.text
-      val value = Option(attrSpec.expr) map { ExprBuilder(_) } getOrElse Expr(1)
+      val value = Option(attrSpec.expr) map { ExprBuilder(_) } getOrElse (Expr(1) withLoc ctx.loc)
       key -> value
     }
 
