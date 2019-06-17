@@ -50,91 +50,100 @@ trait TreePrintOps { this: Tree =>
   )(implicit cc: CompilerContext): String = {
     val i = "  " * indent
     val sb = new StringBuilder()
-    sb append s"${attr}${variant} ${name} {\n\n"
+    sb append s"${attr}${variant} ${name} {\n"
 
     if (declarations.nonEmpty) {
-      sb append s"""|${i}  /////////////////////////////////
+      sb append s"""|
+                    |${i}  /////////////////////////////////
                     |${i}  // Declarations
                     |${i}  /////////////////////////////////
                     |
                     |""".stripMargin
       sb append s"${i}  ${declarations map v(indent + 1) mkString s"\n${i}  "}"
-      sb append "\n\n"
+      sb append "\n"
     }
 
     if (instances.nonEmpty) {
-      sb append s"""|${i}  /////////////////////////////////
+      sb append s"""|
+                    |${i}  /////////////////////////////////
                     |${i}  // Instances
                     |${i}  /////////////////////////////////
                     |
                     |""".stripMargin
       sb append s"${i}  ${instances map v(indent + 1) mkString s"\n\n${i}  "}"
-      sb append "\n\n"
+      sb append "\n"
     }
 
     if (connects.nonEmpty) {
-      sb append s"""|${i}  /////////////////////////////////
+      sb append s"""|
+                    |${i}  /////////////////////////////////
                     |${i}  // Connections
                     |${i}  /////////////////////////////////
                     |
                     |""".stripMargin
       sb append s"${i}  ${connects map v(indent + 1) mkString s"\n${i}  "}"
-      sb append "\n\n"
+      sb append "\n"
     }
 
     if (fenceStmts.nonEmpty) {
-      sb append s"""|${i}  /////////////////////////////////
+      sb append s"""|
+                    |${i}  /////////////////////////////////
                     |${i}  // Fence Block
                     |${i}  /////////////////////////////////
                     |
                     |${i}  fence {
                     |""".stripMargin
       sb append s"${i}    ${fenceStmts map v(indent + 2) mkString s"\n${i}    "}"
-      sb append s"${i} }\n\n"
+      sb append "\n"
     }
 
     if (functions.nonEmpty) {
-      sb append s"""|${i}  /////////////////////////////////
+      sb append s"""|
+                    |${i}  /////////////////////////////////
                     |${i}  // Functions
                     |${i}  /////////////////////////////////
                     |
                     |""".stripMargin
       sb append s"${i}  ${functions map v(indent + 1) mkString s"\n\n${i}  "}"
-      sb append "\n\n"
+      sb append "\n"
     }
 
     if (states.nonEmpty) {
-      sb append s"""|${i}  /////////////////////////////////
+      sb append s"""|
+                    |${i}  /////////////////////////////////
                     |${i}  // States
                     |${i}  /////////////////////////////////
                     |
                     |""".stripMargin
       sb append s"${i}  ${states map v(indent + 1) mkString s"\n\n${i}  "}"
-      sb append "\n\n"
+      sb append "\n"
     }
 
     if (stateSystems.nonEmpty) {
-      sb append s"""|${i}  /////////////////////////////////
+      sb append s"""|
+                    |${i}  /////////////////////////////////
                     |${i}  // State systems
                     |${i}  /////////////////////////////////
                     |
                     |""".stripMargin
       sb append s"${i}  ${stateSystems map v(indent + 1) mkString s"\n${i}  "}"
-      sb append "\n\n"
+      sb append "\n"
     }
 
     if (entities.nonEmpty) {
-      sb append s"""|${i}  /////////////////////////////////
+      sb append s"""|
+                    |${i}  /////////////////////////////////
                     |${i}  // Entities
                     |${i}  /////////////////////////////////
                     |
                     |""".stripMargin
       sb append s"${i}  ${entities map v(indent + 1) mkString s"\n\n${i}  "}"
-      sb append "\n\n"
+      sb append "\n"
     }
 
     if (verbatim.nonEmpty) {
-      sb append s"""|${i}  /////////////////////////////////
+      sb append s"""|
+                    |${i}  /////////////////////////////////
                     |${i}  // verbatim blocks
                     |${i}  /////////////////////////////////
                     |
@@ -142,10 +151,10 @@ trait TreePrintOps { this: Tree =>
       sb append s"${i}  ${verbatim map {
         case (lang, body) => s"verbatim ${lang} {${body}}"
       } mkString s"\n\n${i}  "}"
-      sb append "\n\n"
+      sb append "\n"
     }
 
-    sb append s"${i}}\n"
+    sb append s"\n${i}}"
     sb.toString
   }
 
