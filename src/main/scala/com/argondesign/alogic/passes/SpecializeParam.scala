@@ -93,10 +93,8 @@ final class SpecializeEntity(bindings: Map[String, Expr])(implicit cc: CompilerC
       newSymbol.attr update symbol.attr // TODO: is this still needed?
       symbolMap(symbol) = newSymbol
 
-      // Remember value if given in bindings
-      bindings.get(symbol.name) foreach { expr =>
-        paramValues.push((symbol.name, expr.value.get))
-      }
+      // Remember final parameter value
+      paramValues.push((symbol.name, newInit.get.value.get))
 
       // Remember symbols we replaced
       outerParams add symbol
