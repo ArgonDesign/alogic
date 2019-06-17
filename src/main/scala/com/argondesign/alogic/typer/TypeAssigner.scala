@@ -286,7 +286,7 @@ final object TypeAssigner {
   //////////////////////////////////////////////////////////////////////////////
 
   private def assign(tree: Tree)(kind: => Type): tree.type = {
-    require(!tree.hasTpe)
+    require(!tree.hasTpe, tree)
     def hasError(node: TreeLike): Boolean = node.children exists {
       case child: Connect if !child.hasTpe => false
       case child: Tree if !child.hasTpe    => unreachable

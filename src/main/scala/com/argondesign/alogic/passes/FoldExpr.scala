@@ -21,6 +21,7 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.TreeInTypeTransformer
+import com.argondesign.alogic.core.Types.TypeInt
 import com.argondesign.alogic.core.Types.TypeNum
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.BigIntOps._
@@ -377,7 +378,9 @@ final class FoldExpr(
           case "-:" => lidx - ridx + 1
           case _    => unreachable
         }
-        ExprIndex(expr, lsb + idx) withLoc tree.loc
+        val nIdx = lsb + idx
+        nIdx regularize tree.loc
+        ExprIndex(expr, nIdx) withLoc tree.loc
       }
 
       ////////////////////////////////////////////////////////////////////////////
@@ -416,6 +419,9 @@ final class FoldExpr(
           case ("-:", _) => (aLsb + bMsb, "-:", bWidth)
           case _         => (aLsb + bMsb, ":", aLsb + bLsb)
         }
+
+        nLidx regularize tree.loc
+        nRidx regularize tree.loc
 
         ExprSlice(expr, nLidx, nOp, nRidx) withLoc tree.loc
       }
@@ -501,14 +507,7 @@ final class FoldExpr(
       // Fold built-in functions
       ////////////////////////////////////////////////////////////////////////////
 
-      case call @ ExprCall(ExprRef(symbol), _) if symbol.isBuiltin => {
-        val result = cc.foldBuiltinCall(call)
-        if (result eq call) {
-          call
-        } else {
-          result regularize tree.loc
-        }
-      }
+      case call @ ExprCall(ExprRef(symbol), _) if symbol.isBuiltin => cc.foldBuiltinCall(call)
 
       ////////////////////////////////////////////////////////////////////////////
       // Fold expressions inside Type instances
@@ -525,10 +524,10 @@ final class FoldExpr(
       }
 
       ////////////////////////////////////////////////////////////////////////////
-      // Fold casts
+      // Fold casts of constants
       ////////////////////////////////////////////////////////////////////////////
 
-      case ExprCast(kind, ExprNum(_, value)) => {
+      case ExprCast(kind: TypeInt, ExprNum(_, value)) => {
         val width = kind.width
         val signed = kind.isSigned
 
@@ -562,16 +561,53 @@ final class FoldExpr(
       }
 
       ////////////////////////////////////////////////////////////////////////////
+      // Fold casts of compound expressions
+      ////////////////////////////////////////////////////////////////////////////
+
+      case ExprCast(kind, expr @ ExprBinary(lhs, "<<" | "<<<" | ">>" | ">>>", _))
+          if expr.tpe.underlying.isNum => {
+        assert(lhs.tpe.underlying.isNum)
+        // Push cast into the lhs
+        expr.copy(
+          lhs = TypeAssigner(ExprCast(kind, lhs) withLoc lhs.loc)
+        ) withLoc expr.loc
+      }
+
+      case ExprCast(kind,
+                    expr @ ExprBinary(lhs, "&" | "|" | "^" | "*" | "/" | "%" | "+" | "-", rhs))
+          if expr.tpe.underlying.isNum => {
+        assert(lhs.tpe.underlying.isNum)
+        assert(rhs.tpe.underlying.isNum)
+        // Push cast into both the lhs and rhs
+        expr.copy(
+          lhs = TypeAssigner(ExprCast(kind, lhs) withLoc lhs.loc),
+          rhs = TypeAssigner(ExprCast(kind, rhs) withLoc rhs.loc)
+        ) withLoc expr.loc
+      }
+
+      case ExprCast(kind, expr @ ExprTernary(_, tExpr, eExpr)) if expr.tpe.underlying.isNum => {
+        assert(tExpr.tpe.underlying.isNum)
+        assert(eExpr.tpe.underlying.isNum)
+        // Push cast into both branches
+        expr.copy(
+          thenExpr = TypeAssigner(ExprCast(kind, tExpr) withLoc tExpr.loc),
+          elseExpr = TypeAssigner(ExprCast(kind, eExpr) withLoc eExpr.loc)
+        ) withLoc expr.loc
+      }
+
+      ////////////////////////////////////////////////////////////////////////////
       // Leave rest alone
       ////////////////////////////////////////////////////////////////////////////
 
       case _ => tree
     }
 
-    // Recursively fold the resulting expression
-    val result2 = if (result ne tree) walk(result) else result
+    if (!result.hasTpe) {
+      TypeAssigner(result)
+    }
 
-    if (!result2.hasTpe) TypeAssigner(result2) else result2
+    // Recursively fold the resulting expression
+    if (result ne tree) walk(result) else result
   }
 
 }
