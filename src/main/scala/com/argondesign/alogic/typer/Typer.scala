@@ -644,6 +644,11 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
         if (kind eq origKind) expr else expr.copy(kind = kind) withLoc tree.loc
       }
 
+      case expr @ ExprCast(origKind, _) => {
+        val kind = origKind rewrite TypeTyper
+        if (kind eq origKind) expr else expr.copy(kind = kind) withLoc tree.loc
+      }
+
       //////////////////////////////////////////////////////////////////////////
       // Type the types of TypeSymbols introduced by TypeDefinitions
       //////////////////////////////////////////////////////////////////////////
