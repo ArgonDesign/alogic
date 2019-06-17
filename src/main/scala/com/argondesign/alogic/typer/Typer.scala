@@ -440,7 +440,7 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
         require(args forall { _.hasTpe })
 
         def checkArg(expected: Type, arg: Expr, i: Int): Tree = {
-          assert(expected.isPacked || expected.isNum)
+          require(expected.isPacked || expected.isNum)
           checkNumericOrPacked(arg, s"Argument ${i} to function call") map {
             ExprError() withLoc _
           } getOrElse {

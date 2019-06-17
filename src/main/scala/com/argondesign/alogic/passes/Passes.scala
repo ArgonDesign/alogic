@@ -42,7 +42,7 @@ object Passes {
       // Middle-end
       ////////////////////////////////////////////////////////////////////////
       Desugar,
-      FoldSymbolTypes,
+      FoldExprInTypes,
       InlineUnsizedConst,
       FoldExpr(foldRefs = false),
       ConvertMultiConnect,

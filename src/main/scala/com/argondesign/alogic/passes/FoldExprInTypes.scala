@@ -10,7 +10,7 @@
 //
 // DESCRIPTION:
 //
-// Fold expressions inside symbol types, so const references are removed
+// Fold expressions inside types, so const references are removed
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.passes
@@ -20,8 +20,9 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.TreeInTypeTransformer
+import com.argondesign.alogic.typer.TypeAssigner
 
-final class FoldSymbolTypes(implicit cc: CompilerContext) extends TreeTransformer {
+final class FoldExprInTypes(implicit cc: CompilerContext) extends TreeTransformer {
 
   private[this] val foldExpr = new FoldExpr(foldRefs = true)
   private[this] object TypeFoldExpr extends TreeInTypeTransformer(foldExpr)
@@ -32,6 +33,14 @@ final class FoldSymbolTypes(implicit cc: CompilerContext) extends TreeTransforme
       symbol.kind = symbol.kind rewrite TypeFoldExpr
     }
     case _ =>
+  }
+
+  override def transform(tree: Tree): Tree = tree match {
+    case ExprCast(kind, expr) => {
+      TypeAssigner(ExprCast(kind rewrite TypeFoldExpr, expr) withLoc tree.loc)
+    }
+    case _: ExprType => ??? // Should be none left
+    case _           => tree
   }
 
   override protected def finalCheck(tree: Tree): Unit = {
@@ -46,7 +55,7 @@ final class FoldSymbolTypes(implicit cc: CompilerContext) extends TreeTransforme
   }
 }
 
-object FoldSymbolTypes extends TreeTransformerPass {
-  val name = "fold-symbol-types"
-  def create(implicit cc: CompilerContext) = new FoldSymbolTypes
+object FoldExprInTypes extends TreeTransformerPass {
+  val name = "fold-expr-in-types"
+  def create(implicit cc: CompilerContext) = new FoldExprInTypes
 }
