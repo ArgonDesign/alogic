@@ -28,9 +28,7 @@ import com.argondesign.alogic.core.Settings
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers
 
-import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
-import scala.collection.parallel.immutable
 import scala.language.postfixOps
 
 final class CompileSingle extends FreeSpec with Matchers {
@@ -61,7 +59,7 @@ final class CompileSingle extends FreeSpec with Matchers {
       Settings(
         moduleSearchDirs = List(path),
         entityWriterFactory = entityWriterFactory,
-        dumpTrees = true
+        dumpTrees = false
       )
     )
 
@@ -83,7 +81,6 @@ final class CompileSingle extends FreeSpec with Matchers {
           try {
             cc.compile(List(top))
           } finally {
-            cc.messages foreach println
             if (cc.hasError) {
               outputs.toList foreach {
                 case (k, v) =>
@@ -92,6 +89,7 @@ final class CompileSingle extends FreeSpec with Matchers {
                   println(v)
               }
             }
+            cc.messages foreach println
           }
           cc.hasError shouldBe false
         }

@@ -54,6 +54,8 @@ kind
   | UINTTYPE             # TypeUInt
   | 'int'  '(' expr ')'  # TypeIntN
   | 'uint' '(' expr ')'  # TypeUIntN
+  | 'int'                # TypeSNum
+  | 'uint'               # TypeUNum
   | IDENTIFIER           # TypeIdent
   | 'void'               # TypeVoid
   ;

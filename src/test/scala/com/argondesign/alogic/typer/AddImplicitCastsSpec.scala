@@ -213,7 +213,11 @@ final class AddImplicitCastsSpec extends FreeSpec with AlogicTest {
             ("(* unused *) i8 a = 'sd2", ExprCast(TypeSInt(8), ExprNum(true, 2))),
             ("(* unused *) u8 a = 'sd2", ExprCast(TypeUInt(8), ExprNum(true, 2))),
             ("(* unused *) i7 a = 2", ExprCast(TypeSInt(7), ExprNum(false, 2))),
-            ("(* unused *) u7 a = 2", ExprCast(TypeUInt(7), ExprNum(false, 2)))
+            ("(* unused *) u7 a = 2", ExprCast(TypeUInt(7), ExprNum(false, 2))),
+            ("(* unused *) param int a = 8'd2", ExprCast(TypeNum(true), ExprInt(false, 8, 2))),
+            ("(* unused *) param uint a = 8'd2", ExprCast(TypeNum(false), ExprInt(false, 8, 2))),
+            ("(* unused *) const int a = 8'd2", ExprCast(TypeNum(true), ExprInt(false, 8, 2))),
+            ("(* unused *) const uint a = 8'd2", ExprCast(TypeNum(false), ExprInt(false, 8, 2)))
           )
         } {
           decl in {

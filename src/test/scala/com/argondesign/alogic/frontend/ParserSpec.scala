@@ -515,6 +515,14 @@ final class ParserSpec extends FreeSpec with AlogicTest {
         "void" in {
           "void".asTree[Expr] shouldBe ExprType(TypeVoid)
         }
+
+        "unsized int" in {
+          "int".asTree[Expr] shouldBe ExprType(TypeNum(true))
+        }
+
+        "unsized uint" in {
+          "uint".asTree[Expr] shouldBe ExprType(TypeNum(false))
+        }
       }
 
       "entity contents" - {

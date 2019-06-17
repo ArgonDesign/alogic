@@ -42,8 +42,9 @@ object Passes {
       // Middle-end
       ////////////////////////////////////////////////////////////////////////
       Desugar,
-      FoldExpr(foldRefs = false),
       FoldSymbolTypes,
+      InlineUnsizedConst,
+      FoldExpr(foldRefs = false),
       ConvertMultiConnect,
       LowerPipeline,
       LiftEntities,
@@ -103,8 +104,6 @@ object Passes {
       // If we have encountered errors in an earlier pass, skip any later passes
       trees
     } else {
-      println(s"${cc.passNumber} ${pass.name}")
-
       // Apply the pass
       val results = pass(trees)
 

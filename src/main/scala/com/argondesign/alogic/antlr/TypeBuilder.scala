@@ -40,6 +40,12 @@ object TypeBuilder extends BaseBuilder[KindContext, Type] {
       override def visitTypeUIntN(ctx: TypeUIntNContext) = {
         TypeUInt(ExprBuilder(ctx.expr))
       }
+      override def visitTypeSNum(ctx: TypeSNumContext) = {
+        TypeNum(true)
+      }
+      override def visitTypeUNum(ctx: TypeUNumContext) = {
+        TypeNum(false)
+      }
       override def visitTypeIdent(ctx: TypeIdentContext) = {
         TypeIdent(ctx.IDENTIFIER.toIdent)
       }

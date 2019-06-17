@@ -46,6 +46,10 @@ final class AddImplicitCasts(implicit cc: CompilerContext) extends TreeTransform
         stmt.copy(rhs = cast(lhs.tpe, rhs))
       }
 
+      case decl @ Decl(symbol, Some(init)) if symbol.kind.underlying.isNum && init.tpe.isPacked => {
+        decl.copy(init = Some(cast(symbol.kind.underlying, init)))
+      }
+
       // TODO: case ExprCall(expr, args) => tree
 
       case expr @ ExprIndex(tgt, idx) if idx.tpe.isNum => {

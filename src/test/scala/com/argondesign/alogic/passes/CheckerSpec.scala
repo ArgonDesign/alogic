@@ -180,6 +180,46 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
       }
     }
 
+    "ensure only compile time known values are declared as unsized numbers" - {
+      for {
+        (src, err) <- List(
+          ("param int a = 1", ""),
+          ("param uint a = 1", ""),
+          ("const int a = 1", ""),
+          ("const uint a = 1", ""),
+          ("pipeline int a", "Only compile time constant scalars can be declared with type 'int'"),
+          ("pipeline uint a",
+           "Only compile time constant scalars can be declared with type 'uint'"),
+          ("in int a", "Only compile time constant scalars can be declared with type 'int'"),
+          ("in uint a", "Only compile time constant scalars can be declared with type 'uint'"),
+          ("out int a", "Only compile time constant scalars can be declared with type 'int'"),
+          ("out uint a", "Only compile time constant scalars can be declared with type 'uint'"),
+          ("int a[1]", "Only compile time constant scalars can be declared with type 'int'"),
+          ("uint a[1]", "Only compile time constant scalars can be declared with type 'uint'"),
+          ("sram int a[1]", "Only compile time constant scalars can be declared with type 'int'"),
+          ("sram uint a[1]", "Only compile time constant scalars can be declared with type 'uint'"),
+          ("int[1] a", "Only compile time constant scalars can be declared with type 'int'"),
+          ("uint[1] a", "Only compile time constant scalars can be declared with type 'uint'"),
+          ("int[2][3] a[1]", "Only compile time constant scalars can be declared with type 'int'"),
+          ("uint[2][3] a[1]",
+           "Only compile time constant scalars can be declared with type 'uint'"),
+          ("int a", "Only compile time constant scalars can be declared with type 'int'"),
+          ("uint a", "Only compile time constant scalars can be declared with type 'uint'"),
+        )
+      } {
+        src in {
+          val tree = src.asTree[DeclIdent]
+          tree rewrite checker
+
+          if (err.isEmpty) {
+            cc.messages shouldBe empty
+          } else {
+            cc.messages.loneElement should beThe[Error](err)
+          }
+        }
+      }
+    }
+
     "reject multiple fence blocks" in {
       val tree = """|fsm foo {
                     |  fence {}

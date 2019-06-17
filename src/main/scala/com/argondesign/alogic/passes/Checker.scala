@@ -43,11 +43,22 @@ import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.FollowedBy
 import com.argondesign.alogic.util.unreachable
 
+import scala.annotation.tailrec
+
 final class Checker(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
 
   override val typed: Boolean = false
 
   private[this] var entityLevel = 0
+
+  @tailrec
+  private def unitType(kind: Type): Type = kind.underlying match {
+    case TypeArray(ekind, _)   => unitType(ekind)
+    case TypeVector(ekind, _)  => unitType(ekind)
+    case TypeSram(ekind, _, _) => unitType(ekind)
+    case TypeStack(ekind, _)   => unitType(ekind)
+    case other                 => other
+  }
 
   override def enter(tree: Tree): Unit = tree match {
     case _: EntityIdent => entityLevel += 1
@@ -189,6 +200,12 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
       )
     } followedBy {
       entityLevel -= 1
+    }
+
+    case decl @ DeclIdent(_, kind, _) if unitType(kind).isNum && !kind.isConst && !kind.isParam => {
+      val s = if (unitType(kind).isSigned) "int" else "uint"
+      cc.error(s"Only compile time constant scalars can be declared with type '${s}'")
+      decl
     }
 
     case decl @ DeclIdent(Ident(name), TypeOut(kind, fc, st), None) => {

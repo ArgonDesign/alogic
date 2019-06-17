@@ -65,24 +65,19 @@ trait TypeOps extends TypePrintOps { this: Type =>
 
   // Is this a 'packed' type, i.e.: does it have a finite,
   // possibly 0 width bit-vector representation?
-  final def isPacked(implicit cc: CompilerContext): Boolean = this match {
-    case _: TypeSInt        => true
-    case _: TypeUInt        => true
-    case _: TypeStruct      => true
-    case _: TypeVector      => true
-    case TypeVoid           => true
-    case self: TypeIn       => self.kind.isPacked
-    case self: TypeOut      => self.kind.isPacked
-    case self: TypePipeline => self.kind.isPacked
-    case self: TypeParam    => self.kind.isPacked
-    case self: TypeConst    => self.kind.isPacked
-    case _                  => false
+  final def isPacked: Boolean = this.underlying match {
+    case _: TypeSInt   => true
+    case _: TypeUInt   => true
+    case _: TypeStruct => true
+    case _: TypeVector => true
+    case TypeVoid      => true
+    case _             => false
   }
 
   // Signedness of this type (as far as expressions are concerned), assuming it is a packed type
-  final def isSigned(implicit cc: CompilerContext): Boolean = {
-    assert(isNum || isPacked, println(this))
-    this match {
+  final def isSigned: Boolean = {
+    assert(underlying.isNum || isPacked, println(this))
+    this.underlying match {
       case _: TypeSInt     => true
       case TypeNum(signed) => signed
       case _               => false

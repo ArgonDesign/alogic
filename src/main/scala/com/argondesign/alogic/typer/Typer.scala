@@ -267,12 +267,13 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
         if (kind ne origKind) {
           symbol.kind = kind
         }
-        require(kind.isPacked)
+        require(kind.isPacked || kind.underlying.isNum)
         checkNameHidingByExtensionType(decl)
-        if (cc.postSpecialization && kind.underlying != TypeVoid && kind.width < 1) {
+        if (cc.postSpecialization && kind.isPacked && kind.underlying != TypeVoid && kind.width < 1) {
           cc.error(decl, s"Signal '${symbol.name}' has declared width ${kind.width}")
         }
-        val newdecl = if (init.tpe.isNum) {
+        val newdecl = if (symbol.kind.underlying.isNum || init.tpe.isNum) {
+          // TODO: check signed/unsigned somewhere?
           decl
         } else {
           // Check initializer

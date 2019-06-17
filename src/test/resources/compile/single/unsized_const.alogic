@@ -1,0 +1,26 @@
+network unsized_const {
+  in  u1  i;
+  out u2  o_a;
+  out u11 o_b;
+
+  fsm expander {
+    param u32 W0 = 32;
+    const uint W1 = W0 + 1;
+
+    in  u1       p_i;
+    out uint(W1) p_o;
+
+    void main() {
+      p_o.write({W1{p_i.read()}});
+      fence;
+    }
+  }
+
+  inst_a = new expander(W0=1);
+  inst_b = new expander(W0=10);
+
+  i -> inst_a.p_i, inst_b.p_i;
+  inst_a.p_o -> o_a;
+  inst_b.p_o -> o_b;
+}
+
