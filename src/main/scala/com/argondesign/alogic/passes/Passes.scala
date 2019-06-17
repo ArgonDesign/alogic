@@ -37,11 +37,11 @@ object Passes {
       Typer(externalRefs = false),
       Typer(externalRefs = true),
       PortCheck,
-      AddImplicitCasts,
       ////////////////////////////////////////////////////////////////////////
       // Middle-end
       ////////////////////////////////////////////////////////////////////////
       Desugar,
+      AddImplicitCasts,
       FoldExprInTypes,
       InlineUnsizedConst,
       FoldExpr(foldRefs = false),

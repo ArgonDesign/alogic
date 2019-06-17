@@ -29,36 +29,43 @@ import com.argondesign.alogic.util.FollowedBy
 final class AddImplicitCasts(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
 
   private def cast(kind: Type, expr: Expr) = {
-    TypeAssigner(expr cast kind.underlying)
+    val castType = kind.underlying
+    val castExpr = if (castType.isNum) expr.simplify else expr
+    if (castType.isNum && !castExpr.isKnownConst) {
+      cc.ice(expr, s"Trying to cast non-constant expression to type '${castType.toSource}'")
+    }
+    TypeAssigner(castExpr cast castType)
   }
 
   override def transform(tree: Tree): Tree = {
     val result = tree match {
-      case decl @ Decl(symbol, Some(init)) if symbol.kind.isPacked && init.tpe.isNum => {
-        decl.copy(init = Some(cast(symbol.kind, init)))
+      case decl @ Decl(symbol, Some(init))
+          if (symbol.kind.isPacked && init.tpe.underlying.isNum) || (symbol.kind.underlying.isNum && init.tpe.isPacked) => {
+        val newInit = cast(symbol.kind, init)
+        if (symbol.kind.isConst) {
+          symbol.attr.init set newInit
+        }
+        decl.copy(init = Some(newInit))
       }
 
-      case stmt @ StmtAssign(lhs, rhs) if lhs.tpe.isPacked && rhs.tpe.isNum => {
+      case stmt @ StmtAssign(lhs, rhs) if lhs.tpe.isPacked && rhs.tpe.underlying.isNum => {
         stmt.copy(rhs = cast(lhs.tpe, rhs))
       }
 
-      case stmt @ StmtUpdate(lhs, _, rhs) if lhs.tpe.isPacked && rhs.tpe.isNum => {
+      case stmt @ StmtUpdate(lhs, _, rhs) if lhs.tpe.isPacked && rhs.tpe.underlying.isNum => {
         stmt.copy(rhs = cast(lhs.tpe, rhs))
-      }
-
-      case decl @ Decl(symbol, Some(init)) if symbol.kind.underlying.isNum && init.tpe.isPacked => {
-        decl.copy(init = Some(cast(symbol.kind.underlying, init)))
       }
 
       // TODO: case ExprCall(expr, args) => tree
 
-      case expr @ ExprIndex(tgt, idx) if idx.tpe.isNum => {
+      case expr @ ExprIndex(tgt, idx) if idx.tpe.underlying.isNum => {
         val width = clog2(tgt.tpe.shapeIter.next) max 1
         val widthExpr = TypeAssigner(Expr(width) withLoc expr.loc)
         expr.copy(index = cast(TypeUInt(widthExpr), idx))
       }
 
-      case expr @ ExprSlice(tgt, lidx, _, ridx) if lidx.tpe.isNum || ridx.tpe.isNum => {
+      case expr @ ExprSlice(tgt, lidx, _, ridx)
+          if lidx.tpe.underlying.isNum || ridx.tpe.underlying.isNum => {
         val width = clog2(tgt.tpe.shapeIter.next) max 1
         val widthExpr = TypeAssigner(Expr(width) withLoc expr.loc)
         val newLidx = if (lidx.tpe.isNum) cast(TypeUInt(widthExpr), lidx) else lidx
@@ -69,7 +76,7 @@ final class AddImplicitCasts(implicit cc: CompilerContext) extends TreeTransform
       case expr @ ExprBinary(lhs,
                              "&" | "|" | "^" | "*" | "/" | "%" | "+" | "-" | ">" | ">=" | "<" |
                              "<=" | "==" | "!=",
-                             rhs) if lhs.tpe.isNum != rhs.tpe.isNum => {
+                             rhs) if lhs.tpe.underlying.isNum != rhs.tpe.underlying.isNum => {
         if (lhs.tpe.isNum) {
           expr.copy(lhs = cast(rhs.tpe, lhs))
         } else {
@@ -77,7 +84,8 @@ final class AddImplicitCasts(implicit cc: CompilerContext) extends TreeTransform
         }
       }
 
-      case expr @ ExprTernary(_, tExpr, eExpr) if tExpr.tpe.isNum != eExpr.tpe.isNum => {
+      case expr @ ExprTernary(_, tExpr, eExpr)
+          if tExpr.tpe.underlying.isNum != eExpr.tpe.underlying.isNum => {
         if (tExpr.tpe.isNum) {
           expr.copy(thenExpr = cast(eExpr.tpe, tExpr))
         } else {
