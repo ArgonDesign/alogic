@@ -112,14 +112,11 @@ final class SpecializeEntity(bindings: Map[String, Expr])(implicit cc: CompilerC
     case Decl(symbol, init) => {
       // Rewrite references in types
       val newKind = symbol.kind rewrite TypeSpecializeEntity
-      if (symbol.kind eq newKind) {
-        tree
-      } else {
-        val newSymbol = cc.newTermSymbol(symbol.name, symbol.loc, newKind)
-        newSymbol.attr update symbol.attr
-        symbolMap(symbol) = newSymbol
-        Decl(newSymbol, init) withLoc tree.loc
-      }
+      // Clone the symbol
+      val newSymbol = cc.newTermSymbol(symbol.name, symbol.loc, newKind)
+      newSymbol.attr update symbol.attr
+      symbolMap(symbol) = newSymbol
+      Decl(newSymbol, init) withLoc tree.loc
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -315,7 +312,11 @@ object SpecializeParam extends Pass with FollowedBy {
             specialize(eSymbol, bindings, extendedCatalog) match {
               case Some(newEntity) => {
                 iSymbol.kind = TypeInstance(newEntity.symbol)
-                inst.copy(module = Sym(newEntity.symbol) withLoc inst.loc) withLoc inst.loc
+                inst.copy(
+                  module = Sym(newEntity.symbol) withLoc inst.loc,
+                  paramNames = Nil,
+                  paramExprs = Nil
+                ) withLoc inst.loc
               }
               case None => inst
             }

@@ -29,6 +29,8 @@ import org.scalatest.FreeSpec
 import org.scalatest.Matchers
 
 import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
+import scala.collection.parallel.immutable
 import scala.language.postfixOps
 
 final class CompileSingle extends FreeSpec with Matchers {
@@ -37,8 +39,8 @@ final class CompileSingle extends FreeSpec with Matchers {
 
   val path = new File(getClass.getResource(base).getPath)
 
-  def fixture(): (mutable.ListMap[String, String], CompilerContext) = {
-    val outputs = mutable.ListMap[String, String]()
+  def fixture(): (ListBuffer[(String, String)], CompilerContext) = {
+    val outputs = ListBuffer[(String, String)]()
 
     def entityWriterFactory(entity: Entity, suffix: String): Writer = {
       new StringWriter {
@@ -48,7 +50,8 @@ final class CompileSingle extends FreeSpec with Matchers {
             case e: EntityNamed   => e.symbol.name
             case e: EntityIdent   => e.ident.name
           }
-          outputs(name + suffix) = this.toString
+
+          outputs += (name + suffix) -> this.toString
           super.close()
         }
       }
@@ -81,10 +84,13 @@ final class CompileSingle extends FreeSpec with Matchers {
             cc.compile(List(top))
           } finally {
             cc.messages foreach println
-            outputs foreach {
-              case (k, v) =>
-                println(k)
-                println(v)
+            if (cc.hasError) {
+              outputs.toList foreach {
+                case (k, v) =>
+                  println("#" * 80)
+                  println(k)
+                  println(v)
+              }
             }
           }
           cc.hasError shouldBe false
