@@ -29,7 +29,7 @@ import com.argondesign.alogic.util.FollowedBy
 final class AddImplicitCasts(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
 
   private def cast(kind: Type, expr: Expr) = {
-    TypeAssigner(ExprCast(kind.underlying, expr) withLoc expr.loc)
+    TypeAssigner(expr cast kind.underlying)
   }
 
   override def transform(tree: Tree): Tree = {

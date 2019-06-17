@@ -29,7 +29,6 @@ import org.scalatest.FreeSpec
 import org.scalatest.Matchers
 
 import scala.collection.mutable.ListBuffer
-import scala.language.postfixOps
 
 final class CompileSingle extends FreeSpec with Matchers {
 

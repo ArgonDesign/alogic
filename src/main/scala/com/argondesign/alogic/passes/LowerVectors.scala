@@ -22,6 +22,7 @@ import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Stack
 import com.argondesign.alogic.util.unreachable
+import com.argondesign.alogic.lib.Math.clog2
 
 import scala.collection.mutable
 
@@ -106,12 +107,13 @@ final class LowerVectors(implicit cc: CompilerContext) extends TreeTransformer {
       // Slice over something else
 
       // Index over a slice
-      case ExprIndex(tgt @ ExprSlice(expr, lidx, "+:", ridx), index) if tgtTpe.top.isVector => {
+      case ExprIndex(tgt @ ExprSlice(expr, lidx, "+:", _), index) if tgtTpe.top.isVector => {
         // By this point the target should not have a Vector type
         assert(!tgt.tpe.isVector)
         val TypeVector(eKind, _) = tgtTpe.top
         val sExpr = Expr(eKind.width)
-        val res = ExprSlice(expr, lidx + sExpr * index, "+:", sExpr) regularize tgt.loc
+        val idxWidth = clog2(expr.tpe.shapeIter.next) max 1
+        val res = ExprSlice(expr, lidx + sExpr * (index zx idxWidth), "+:", sExpr) regularize tgt.loc
         fixSign(res, eKind.isSigned)
       }
 
@@ -121,7 +123,8 @@ final class LowerVectors(implicit cc: CompilerContext) extends TreeTransformer {
         assert(!tgt.tpe.isVector)
         val TypeVector(eKind, _) = tgtTpe.top
         val sExpr = Expr(eKind.width)
-        val res = ExprSlice(tgt, sExpr * index, "+:", sExpr) regularize tgt.loc
+        val idxWidth = clog2(tgt.tpe.shapeIter.next) max 1
+        val res = ExprSlice(tgt, sExpr * (index zx idxWidth), "+:", sExpr) regularize tgt.loc
         fixSign(res, eKind.isSigned)
       }
 

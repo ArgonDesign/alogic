@@ -24,6 +24,7 @@ import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.passes.FoldExpr
 import com.argondesign.alogic.transform.ReplaceTermRefs
 import com.argondesign.alogic.typer.AddImplicitCasts
+import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.PartialMatch._
 
 import scala.language.implicitConversions
@@ -39,16 +40,6 @@ trait ExprOps { this: Expr =>
     val expr = ExprBinary(this, op, rhs)
     if (hasLoc) {
       if (!rhs.hasLoc) { rhs withLoc loc }
-      expr withLoc loc
-    }
-    expr
-  }
-
-  private final def makeExprCall(symbol: TermSymbol, args: Expr*) = {
-    val expr = ExprCall(ExprRef(symbol), args.toList)
-    if (hasLoc) {
-      for (arg <- args if !arg.hasLoc) { arg withLoc loc }
-      expr.expr visitAll { case tree: Tree => tree withLoc loc }
       expr withLoc loc
     }
     expr
@@ -85,13 +76,6 @@ trait ExprOps { this: Expr =>
   final def &&(rhs: Int): ExprBinary = makeExprBinary("&&", Expr(rhs))
   final def ||(rhs: Int): ExprBinary = makeExprBinary("||", Expr(rhs))
 
-  final def max(rhs: Expr)(implicit cc: CompilerContext): Expr = {
-    makeExprCall(cc.lookupGlobalTerm("@max"), this, rhs)
-  }
-  final def max(rhs: Int)(implicit cc: CompilerContext): Expr = {
-    makeExprCall(cc.lookupGlobalTerm("@max"), this, Expr(rhs))
-  }
-
   final def index(idx: Expr): ExprIndex = addLoc(ExprIndex(this, idx))
   final def index(idx: Int): ExprIndex = addLoc(ExprIndex(this, addLoc(Expr(idx))))
 
@@ -115,6 +99,17 @@ trait ExprOps { this: Expr =>
 
   final def rep(cnt: Expr): ExprRep = addLoc(ExprRep(cnt, this))
   final def rep(cnt: Int): ExprRep = addLoc(ExprRep(addLoc(Expr(cnt)), this))
+
+  final def cast(kind: Type): ExprCast = addLoc(ExprCast(kind, this))
+
+  final def zx(width: Expr)(implicit cc: CompilerContext): ExprCall = {
+    assert(hasLoc && hasTpe)
+    cc.makeBuiltinCall("@zx", loc, List(width, this))
+  }
+  final def zx(width: Int)(implicit cc: CompilerContext): ExprCall = {
+    assert(hasLoc && hasTpe)
+    this zx addLoc(TypeAssigner(Expr(width)))
+  }
 
   final def unary(op: String): ExprUnary = addLoc(ExprUnary(op, this))
 

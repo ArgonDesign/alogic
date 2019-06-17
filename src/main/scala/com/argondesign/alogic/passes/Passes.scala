@@ -71,6 +71,7 @@ object Passes {
       SplitStructsB,
       SplitStructsC,
       LowerVectors,
+      AddImplicitCasts,
       FoldExpr(foldRefs = false),
       SimplifyCat,
       InferImplications,

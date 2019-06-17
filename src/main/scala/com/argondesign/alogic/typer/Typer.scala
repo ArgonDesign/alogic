@@ -297,7 +297,7 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
           symbol.attr.init set {
             val init = (newdecl.init.get rewrite addImplicitCasts).asInstanceOf[Expr]
             if (symbol.kind.isPacked && init.tpe.isNum) {
-              TypeAssigner(ExprCast(symbol.kind.underlying, init) withLoc init.loc)
+              TypeAssigner(init cast symbol.kind.underlying)
             } else {
               init
             }

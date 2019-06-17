@@ -1,0 +1,16 @@
+fsm vector_2 {
+    in u1 i_0a;
+    in u2 i_1a;
+    in u3 i_2a;
+    in u1 i_0b;
+    in u2 i_1b;
+    in u3 i_2b;
+    out u16 o;
+
+    u16[2][4][8] bar = 0;
+
+    void main() {
+        o = bar[i_0a + i_0b][i_1a + i_1b][i_2a + i_2b];
+        fence;
+    }
+}
