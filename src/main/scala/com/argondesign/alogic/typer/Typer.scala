@@ -157,13 +157,23 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
   }
 
   private def checkIndex(expectedWidth: Int, idx: Expr, msg: String) = {
-    if (idx.tpe.isNum) { None } else {
+    if (idx.tpe.isNum) {
+      checkKnownConst(idx)
+    } else {
       val errPacked = checkPacked(idx, msg)
       errPacked orElse {
         val errWidth = checkWidth(expectedWidth, idx, msg)
         val errSign = checkSign(false, idx, msg)
         errWidth orElse errSign
       }
+    }
+  }
+
+  private def checkKnownConst(expr: Expr): Option[Loc] = {
+    if (!expr.isKnownConst) {
+      cc.error(expr, s"Will not infer width of non-constant expression, use explicit sizing")
+    } else {
+      None
     }
   }
 
@@ -273,6 +283,9 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
           cc.error(decl, s"Signal '${symbol.name}' has declared width ${kind.width}")
         }
         val newdecl = if (symbol.kind.underlying.isNum || init.tpe.isNum) {
+          if (symbol.kind.isPacked) {
+            checkKnownConst(init)
+          }
           // TODO: check signed/unsigned somewhere?
           decl
         } else {
@@ -369,6 +382,7 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
           StmtError() withLoc _
         } getOrElse {
           if (rhs.tpe.isNum) {
+            checkKnownConst(rhs)
             tree
           } else {
             // Type check rhs
@@ -385,6 +399,7 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
           StmtError() withLoc _
         } getOrElse {
           if (rhs.tpe.isNum) {
+            checkKnownConst(rhs)
             tree
           } else {
             // Check rhs
@@ -582,10 +597,12 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
             tree
           }
           case (false, true) if strictWidth => {
-            errLhs map { ExprError() withLoc _ } getOrElse tree
+            val errRhs = checkKnownConst(rhs)
+            errLhs orElse errRhs map { ExprError() withLoc _ } getOrElse tree
           }
           case (true, false) if strictWidth => {
-            errRhs map { ExprError() withLoc _ } getOrElse tree
+            val errLhs = checkKnownConst(lhs)
+            errRhs orElse errLhs map { ExprError() withLoc _ } getOrElse tree
           }
           case _ => {
             errLhs orElse errRhs map { ExprError() withLoc _ } getOrElse {
@@ -615,10 +632,12 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
               tree
             }
             case (false, true) => {
-              errThen map { ExprError() withLoc _ } getOrElse tree
+              val errElse = checkKnownConst(elseExpr)
+              errThen orElse errElse map { ExprError() withLoc _ } getOrElse tree
             }
             case (true, false) => {
-              errElse map { ExprError() withLoc _ } getOrElse tree
+              val errThen = checkKnownConst(thenExpr)
+              errElse orElse errThen map { ExprError() withLoc _ } getOrElse tree
             }
             case _ => {
               errThen orElse errElse map { ExprError() withLoc _ } getOrElse {
