@@ -21,8 +21,8 @@ import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Types.Type
+import com.argondesign.alogic.core.enums.UninitializedLocals
 import com.argondesign.alogic.typer.TypeAssigner
-import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable.ListBuffer
 import scala.util.Random
@@ -37,9 +37,9 @@ final class ConvertLocalDecls(implicit cc: CompilerContext) extends TreeTransfor
     lazy val signed = kind.isSigned
     lazy val width = kind.width
     cc.settings.uninitialized match {
-      case "none"  => None
-      case "zeros" => Some(ExprInt(signed, width, 0))
-      case "ones" => {
+      case UninitializedLocals.None  => None
+      case UninitializedLocals.Zeros => Some(ExprInt(signed, width, 0))
+      case UninitializedLocals.Ones => {
         val expr = if (signed) {
           ExprInt(signed = true, width, -1)
         } else {
@@ -47,7 +47,7 @@ final class ConvertLocalDecls(implicit cc: CompilerContext) extends TreeTransfor
         }
         Some(expr)
       }
-      case "random" => {
+      case UninitializedLocals.Random => {
         val expr = (width, signed) match {
           case (1, true)  => ExprInt(signed = true, 1, -BigInt(1, rng))
           case (1, false) => ExprInt(signed = false, 1, BigInt(1, rng))
@@ -56,7 +56,6 @@ final class ConvertLocalDecls(implicit cc: CompilerContext) extends TreeTransfor
         }
         Some(expr)
       }
-      case _ => unreachable
     }
   }
 

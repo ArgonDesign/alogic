@@ -10,12 +10,15 @@
 //
 // DESCRIPTION:
 //
-// Representations of reset styles
+// Representations of unintialzed local variabel handling methods
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.core.enums
 
-object ResetStyle extends Enumeration {
+object UninitializedLocals extends Enumeration {
   type Type = Value
-  val AsyncLow, AsyncHigh, SyncLow, SyncHigh = Value
+  val None = Value
+  val Zeros = Value
+  val Ones = Value
+  val Random = Value
 }

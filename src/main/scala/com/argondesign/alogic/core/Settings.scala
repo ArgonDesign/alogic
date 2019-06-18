@@ -19,7 +19,8 @@ import java.io.Writer
 import java.nio.file.Path
 
 import com.argondesign.alogic.ast.Trees.Entity
-import com.argondesign.alogic.core.enums.ResetStyle._
+import com.argondesign.alogic.core.enums.ResetStyle
+import com.argondesign.alogic.core.enums.UninitializedLocals
 
 case class Settings(
     // Directories to search for alogic files
@@ -35,7 +36,7 @@ case class Settings(
     // The field separator sequence
     sep: String = "_",
     // The strategy for handling uninitialized local variables
-    uninitialized: String = "none",
+    uninitialized: UninitializedLocals.Type = UninitializedLocals.None,
     // Output prefix to use
     ensurePrefix: String = "",
     // Header text to prepend to output files
@@ -47,5 +48,5 @@ case class Settings(
     // Module manifest output path
     moduleManifestPath: Option[Path] = None,
     // Reset style
-    resetStyle: ResetStyle = AsyncLow
+    resetStyle: ResetStyle.Type = ResetStyle.AsyncLow
 )

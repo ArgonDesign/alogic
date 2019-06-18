@@ -19,7 +19,7 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.core.enums.ResetStyle._
+import com.argondesign.alogic.core.enums.ResetStyle
 
 import scala.collection.mutable.ListBuffer
 
@@ -187,15 +187,15 @@ final class MakeVerilog(
           body.emitBlock(1, "Flops") {
             body.emit(1) {
               cc.settings.resetStyle match {
-                case AsyncLow  => s"always @(posedge clk or negedge ${cc.rst}) begin"
-                case AsyncHigh => s"always @(posedge clk or posedge ${cc.rst}) begin"
-                case _         => "always @(posedge clk) begin"
+                case ResetStyle.AsyncLow  => s"always @(posedge clk or negedge ${cc.rst}) begin"
+                case ResetStyle.AsyncHigh => s"always @(posedge clk or posedge ${cc.rst}) begin"
+                case _                    => "always @(posedge clk) begin"
               }
             }
             body.emit(2)(
               cc.settings.resetStyle match {
-                case AsyncLow | SyncLow => s"if (!${cc.rst}) begin"
-                case _                  => s"if (${cc.rst}) begin"
+                case ResetStyle.AsyncLow | ResetStyle.SyncLow => s"if (!${cc.rst}) begin"
+                case _                                        => s"if (${cc.rst}) begin"
               }
             )
 

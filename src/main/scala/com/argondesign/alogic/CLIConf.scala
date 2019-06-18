@@ -17,7 +17,8 @@ package com.argondesign.alogic
 
 import java.io.File
 
-import com.argondesign.alogic.core.enums.ResetStyle._
+import com.argondesign.alogic.core.enums.ResetStyle
+import com.argondesign.alogic.core.enums.UninitializedLocals
 import com.argondesign.alogic.util.PartialMatch
 import org.rogach.scallop.ArgType
 import org.rogach.scallop.ScallopConf
@@ -174,7 +175,7 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
     default = Some("__")
   )
 
-  val uninitialized = opt[String](
+  val uninitialized = opt[UninitializedLocals.Type](
     noshort = true,
     required = false,
     descr = """|Specify whether to default initialize local variables declared
@@ -185,9 +186,19 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
                |deterministic, but otherwise arbitrary bit pattern. Default is
                |'none'
                |""".stripMargin.replace('\n', ' '),
-    default = Some("none")
+    default = Some(UninitializedLocals.None)
+  )(
+    singleArgConverter(
+      {
+        case "none"   => UninitializedLocals.None
+        case "zeros"  => UninitializedLocals.Zeros
+        case "ones"   => UninitializedLocals.Ones
+        case "random" => UninitializedLocals.Random
+      }, {
+        case _ => Left("must be one of 'none', 'zeros', 'ones', 'random")
+      }
+    )
   )
-  validateOneOf(uninitialized)("none", "zeros", "ones", "random")
 
   val ensurePrefix = opt[String](
     name = "ensure-prefix",
@@ -236,7 +247,7 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
     descr = "Print compiler dependencies and exit"
   )
 
-  val resetStyle = opt[ResetStyle](
+  val resetStyle = opt[ResetStyle.Type](
     noshort = true,
     required = false,
     descr = """|Determines the reset style used in the output. One of
@@ -244,14 +255,14 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
                |synchronous/asynchronous assert, active low/high reset.
                |Default is 'async-low
                |""".stripMargin.replace('\n', ' '),
-    default = Some(AsyncLow)
+    default = Some(ResetStyle.AsyncLow)
   )(
     singleArgConverter(
       {
-        case "async-low"  => AsyncLow
-        case "async-high" => AsyncHigh
-        case "sync-low"   => SyncLow
-        case "sync-high"  => SyncHigh
+        case "async-low"  => ResetStyle.AsyncLow
+        case "async-high" => ResetStyle.AsyncHigh
+        case "sync-low"   => ResetStyle.SyncLow
+        case "sync-high"  => ResetStyle.SyncHigh
       }, {
         case _ => Left("must be one of 'async-low', 'async-high', 'sync-low', 'sync-high")
       }
