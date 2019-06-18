@@ -17,6 +17,7 @@ package com.argondesign.alogic
 
 import java.io.File
 
+import com.argondesign.alogic.core.enums.ResetStyle._
 import com.argondesign.alogic.util.PartialMatch
 import org.rogach.scallop.ArgType
 import org.rogach.scallop.ScallopConf
@@ -233,6 +234,28 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
     noshort = true,
     default = Some(false),
     descr = "Print compiler dependencies and exit"
+  )
+
+  val resetStyle = opt[ResetStyle](
+    noshort = true,
+    required = false,
+    descr = """|Determines the reset style used in the output. One of
+               |'async-low', 'async-high', 'sync-low', 'sync-high' for
+               |synchronous/asynchronous assert, active low/high reset.
+               |Default is 'async-low
+               |""".stripMargin.replace('\n', ' '),
+    default = Some(AsyncLow)
+  )(
+    singleArgConverter(
+      {
+        case "async-low"  => AsyncLow
+        case "async-high" => AsyncHigh
+        case "sync-low"   => SyncLow
+        case "sync-high"  => SyncHigh
+      }, {
+        case _ => Left("must be one of 'async-low', 'async-high', 'sync-low', 'sync-high")
+      }
+    )
   )
 
   // There is no standard library call to check if the console is a terminal,

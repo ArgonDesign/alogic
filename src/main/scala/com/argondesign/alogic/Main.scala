@@ -103,7 +103,8 @@ object Main extends App {
       case _        => cliConf.stderrisatty.toOption contains true
     },
     dumpTrees = cliConf.dumpTrees.toOption contains true,
-    moduleManifestPath = cliConf.moduleManifest.toOption map { _.toPath }
+    moduleManifestPath = cliConf.moduleManifest.toOption map { _.toPath },
+    resetStyle = cliConf.resetStyle()
   )
 
   implicit val cc = new CompilerContext(settings)

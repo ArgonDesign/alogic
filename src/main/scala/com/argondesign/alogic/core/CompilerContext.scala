@@ -20,6 +20,7 @@ package com.argondesign.alogic.core
 import com.argondesign.alogic.ast.Trees.EntityIdent
 import com.argondesign.alogic.ast.Trees.Root
 import com.argondesign.alogic.builtins.Builtins
+import com.argondesign.alogic.core.enums.ResetStyle._
 import com.argondesign.alogic.frontend.Frontend
 import com.argondesign.alogic.passes.Passes
 import com.argondesign.alogic.util.unreachable
@@ -33,6 +34,12 @@ class CompilerContext(val settings: Settings = Settings())
 
   // Shorthand for frequently accessed settings
   val sep = settings.sep
+
+  // Name of reset signal
+  val rst = settings.resetStyle match {
+    case AsyncLow | SyncLow => "rst_n"
+    case _                  => "rst"
+  }
 
   var postSpecialization = false
 

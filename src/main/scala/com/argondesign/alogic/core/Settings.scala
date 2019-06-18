@@ -19,6 +19,7 @@ import java.io.Writer
 import java.nio.file.Path
 
 import com.argondesign.alogic.ast.Trees.Entity
+import com.argondesign.alogic.core.enums.ResetStyle._
 
 case class Settings(
     // Directories to search for alogic files
@@ -44,5 +45,7 @@ case class Settings(
     // Dump trees after each pass
     dumpTrees: Boolean = true,
     // Module manifest output path
-    moduleManifestPath: Option[Path] = None
+    moduleManifestPath: Option[Path] = None,
+    // Reset style
+    resetStyle: ResetStyle = AsyncLow
 )

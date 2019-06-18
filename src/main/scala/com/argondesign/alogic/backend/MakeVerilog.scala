@@ -19,6 +19,7 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.core.enums.ResetStyle._
 
 import scala.collection.mutable.ListBuffer
 
@@ -184,8 +185,19 @@ final class MakeVerilog(
       body.emitSection(1, "Storage section") {
         if (hasFlops) {
           body.emitBlock(1, "Flops") {
-            body.emit(1)("always @(posedge clk or negedge rst_n) begin")
-            body.emit(2)("if (!rst_n) begin")
+            body.emit(1) {
+              cc.settings.resetStyle match {
+                case AsyncLow  => s"always @(posedge clk or negedge ${cc.rst}) begin"
+                case AsyncHigh => s"always @(posedge clk or posedge ${cc.rst}) begin"
+                case _         => "always @(posedge clk) begin"
+              }
+            }
+            body.emit(2)(
+              cc.settings.resetStyle match {
+                case AsyncLow | SyncLow => s"if (!${cc.rst}) begin"
+                case _                  => s"if (${cc.rst}) begin"
+              }
+            )
 
             body.emit(3) {
               for {
@@ -375,7 +387,7 @@ final class MakeVerilog(
 
             if (details(mSymbol).needsClock) {
               items append { (true, ".clk", "         (clk)") }
-              items append { (true, ".rst_n", s"         (rst_n)") }
+              items append { (true, s".${cc.rst}", s"         (${cc.rst})") }
             }
 
             val TypeEntity(_, pSymbols, _) = eSymbol.kind
@@ -452,7 +464,7 @@ final class MakeVerilog(
 
     if (needsClock) {
       items append "input  wire clk"
-      items append "input  wire rst_n"
+      items append s"input  wire ${cc.rst}"
     }
 
     for (Decl(symbol, _) <- decls) {
