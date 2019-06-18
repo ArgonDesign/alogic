@@ -1,0 +1,14 @@
+struct test_t {
+  u8 var;
+};
+
+fsm const_with_atbits {
+
+  const uint(@bits(test_t)) foo = 3;
+  out   uint(@bits(test_t)) o;
+
+  void main() {
+    o = foo;
+    fence;
+  }
+}
