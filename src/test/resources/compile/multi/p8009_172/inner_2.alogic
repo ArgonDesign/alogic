@@ -1,0 +1,11 @@
+fsm inner_2 {
+  param u10 WIDTH = 1;
+
+  in  uint(WIDTH) a;
+  out uint(WIDTH) b;
+
+  void main() {
+    b.write(a);
+    fence;
+  }
+}

@@ -1,0 +1,11 @@
+fsm output_as_index {
+  out u2 sel;
+
+  u8[4] d;
+
+  void main() {
+    sel = 1;
+    d[sel] = 5;
+    fence;
+  }
+}

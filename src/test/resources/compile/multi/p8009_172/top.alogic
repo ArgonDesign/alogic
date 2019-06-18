@@ -1,0 +1,14 @@
+struct my_type {
+  u10 x;
+  u20 y;
+};
+
+network top {
+  in  my_type a;
+  out my_type b;
+
+  inner = new inner(WIDTH=@bits(my_type));
+
+  a -> inner.a;
+  inner.b -> b;
+}
