@@ -374,17 +374,22 @@ final class FoldExpr(
         val lsb = op match {
           case ":"  => ridx
           case "+:" => lidx
-          case "-:" => lidx - ridx + 1
+          case "-:" => lidx - ridx + 1 // FIXME: needs typing
           case _    => unreachable
         }
-        ExprIndex(expr, lsb + idx) withLoc tree.loc
+        ExprIndex(expr, lsb + (idx zx lsb.tpe.width)) withLoc tree.loc
       }
 
       ////////////////////////////////////////////////////////////////////////////
       // Fold Slice over a slice
       ////////////////////////////////////////////////////////////////////////////
 
-      case ExprSlice(ExprSlice(expr, aLidx, aOp, aRidx), bLidx, bOp, bRidx) => {
+      case ExprSlice(ExprSlice(expr, aLidx, aOp, aRidx), bL, bOp, bR) => {
+        val idxWidth = aLidx.tpe.width
+
+        val bLidx = bL zx idxWidth
+        val bRidx = bR zx idxWidth
+
         // TODO: error on out of range
         val aLsb = aOp match {
           case ":"  => aRidx

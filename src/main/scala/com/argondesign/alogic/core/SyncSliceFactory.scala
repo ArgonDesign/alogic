@@ -48,6 +48,8 @@ object SyncSliceFactory {
       ipvRef: ExprRef,
       oprRef: ExprRef,
       vRef: ExprRef
+  )(
+      implicit cc: CompilerContext
   ): List[Stmt] = ss match {
     case StorageSliceBub => {
       // valid = ~valid & ip_valid | valid & ~op_ready;
@@ -72,6 +74,8 @@ object SyncSliceFactory {
       oprRef: ExprRef,
       sRef: ExprRef,
       vRef: ExprRef
+  )(
+      implicit cc: CompilerContext
   ): List[Connect] = ss match {
     case StorageSliceBub => {
       // valid -> op_valid;
@@ -113,6 +117,8 @@ object SyncSliceFactory {
       oprRef: ExprRef,
       pRef: ExprRef,
       vRef: ExprRef
+  )(
+      implicit cc: CompilerContext
   ): List[Stmt] = ss match {
     case StorageSliceBub => {
       // if (ip_valid & ~valid) {
@@ -170,6 +176,8 @@ object SyncSliceFactory {
       sRef: ExprRef,
       pRef: ExprRef,
       vRef: ExprRef
+  )(
+      implicit cc: CompilerContext
   ): List[Connect] = ss match {
     case StorageSliceBub => {
       // payload -> op ;

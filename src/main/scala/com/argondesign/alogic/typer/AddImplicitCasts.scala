@@ -34,7 +34,7 @@ final class AddImplicitCasts(implicit cc: CompilerContext) extends TreeTransform
     if (castType.isNum && !castExpr.isKnownConst) {
       cc.ice(expr, s"Trying to cast non-constant expression to type '${castType.toSource}'")
     }
-    TypeAssigner(castExpr cast castType)
+    castExpr cast castType
   }
 
   override def transform(tree: Tree): Tree = {

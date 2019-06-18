@@ -39,11 +39,11 @@ class LivenessSpec extends FreeSpec with AlogicTest {
   val bSymbol = cc.newTermSymbol("b", Loc.synthetic, TypeUInt(Expr(8) regularize Loc.synthetic))
   val cSymbol = cc.newTermSymbol("c", Loc.synthetic, TypeUInt(Expr(256) regularize Loc.synthetic))
 
-  val aRef = ExprRef(aSymbol)
-  val bRef = ExprRef(bSymbol)
-  val cRef = ExprRef(cSymbol)
+  val aRef = ExprRef(aSymbol) regularize Loc.synthetic
+  val bRef = ExprRef(bSymbol) regularize Loc.synthetic
+  val cRef = ExprRef(cSymbol) regularize Loc.synthetic
 
-  def zext(n: Int, expr: Expr) = ExprCat(List(ExprInt(false, n, 0), expr))
+  def zext(n: Int, expr: Expr) = ExprCat(List(ExprInt(false, n, 0), expr)) regularize Loc.synthetic
 
   val randBitCall = {
     ("@randbit()".asTree[Expr] rewrite new Namer rewrite new Typer)

@@ -111,7 +111,7 @@ final class LowerVectors(implicit cc: CompilerContext) extends TreeTransformer {
         // By this point the target should not have a Vector type
         assert(!tgt.tpe.isVector)
         val TypeVector(eKind, _) = tgtTpe.top
-        val sExpr = Expr(eKind.width)
+        val sExpr = Expr(eKind.width) regularize index.loc
         val idxWidth = clog2(expr.tpe.shapeIter.next) max 1
         val res = ExprSlice(expr, lidx + sExpr * (index zx idxWidth), "+:", sExpr) regularize tgt.loc
         fixSign(res, eKind.isSigned)
@@ -122,7 +122,7 @@ final class LowerVectors(implicit cc: CompilerContext) extends TreeTransformer {
         // By this point the target should not have a Vector type
         assert(!tgt.tpe.isVector)
         val TypeVector(eKind, _) = tgtTpe.top
-        val sExpr = Expr(eKind.width)
+        val sExpr = Expr(eKind.width) regularize index.loc
         val idxWidth = clog2(tgt.tpe.shapeIter.next) max 1
         val res = ExprSlice(tgt, sExpr * (index zx idxWidth), "+:", sExpr) regularize tgt.loc
         fixSign(res, eKind.isSigned)

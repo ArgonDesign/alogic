@@ -86,7 +86,7 @@ trait Symbols { self: CompilerContext =>
     } else {
       polySymbol
     }
-    val call = ExprRef(symbol) call args
+    val call = ExprRef(symbol).call(args)(this)
     if (typed) {
       call.regularize(loc)(this)
     } else {
