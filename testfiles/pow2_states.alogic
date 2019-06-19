@@ -1,9 +1,0 @@
-
-fsm pow2_states {
-  const i32 CALL_STACK_SIZE = 5;
-
-  void main() {
-    main();
-    return;
-  }
-}

@@ -1,15 +1,13 @@
-
 struct a {
-  int(3, 3)   a0;
+  int(3)  a0;
 };
 
 struct b {
-  bool        b0;
-  i3          b1;
-  uint(4, 2)  b2;
-  a           b3;
+  bool    b0;
+  i3      b1;
+  uint(4) b2;
+  a       b3;
 };
-
 
 fsm atbits {
   in sync uint(@bits(b)) p_in;
