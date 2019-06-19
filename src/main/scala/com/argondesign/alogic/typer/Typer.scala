@@ -455,24 +455,31 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
         require(args forall { _.hasTpe })
 
         def checkArg(expected: Type, arg: Expr, i: Int): Tree = {
-          require(expected.isPacked || expected.isNum)
-          checkNumericOrPacked(arg, s"Argument ${i} to function call") map {
-            ExprError() withLoc _
-          } getOrElse {
-            if (expected.isNum || arg.tpe.isNum) {
-              // TODO: check signedness?
-              tree
-            } else {
-              val argWidth = arg.tpe.width
-              val expWidth = expected.width
-              if (argWidth != expWidth) {
-                val cmp = if (argWidth > expWidth) "greater" else "less"
-                cc.error(
-                  arg,
-                  s"Width ${argWidth} of argument ${i} passed to function call is ${cmp} than expected width ${expWidth}")
-                ExprError() withLoc expr.loc
-              } else {
+          if (expected.isType && arg.tpe.isType) {
+            tree // @bits
+          } else {
+            require(expected.isPacked || expected.isNum)
+            checkNumericOrPacked(arg, s"Argument ${i} to function call") map {
+              ExprError() withLoc _
+            } getOrElse {
+              if (expected.isNum || arg.tpe.isNum) {
+                if (arg.tpe.isNum) {
+                  checkKnownConst(arg)
+                }
+                // TODO: check signedness?
                 tree
+              } else {
+                val argWidth = arg.tpe.width
+                val expWidth = expected.width
+                if (argWidth != expWidth) {
+                  val cmp = if (argWidth > expWidth) "greater" else "less"
+                  cc.error(
+                    arg,
+                    s"Width ${argWidth} of argument ${i} passed to function call is ${cmp} than expected width ${expWidth}")
+                  ExprError() withLoc expr.loc
+                } else {
+                  tree
+                }
               }
             }
           }

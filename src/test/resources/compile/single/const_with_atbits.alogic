@@ -3,12 +3,11 @@ struct test_t {
 };
 
 fsm const_with_atbits {
-
   const uint(@bits(test_t)) foo = 3;
-  out   uint(@bits(test_t)) o;
+  out   bool o;
 
   void main() {
-    o = foo;
+    o = |foo;
     fence;
   }
 }
