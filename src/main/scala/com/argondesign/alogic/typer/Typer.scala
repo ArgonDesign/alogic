@@ -283,7 +283,7 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
           cc.error(decl, s"Signal '${symbol.name}' has declared width ${kind.width}")
         }
         val newdecl = if (symbol.kind.underlying.isNum || init.tpe.isNum) {
-          if (symbol.kind.isPacked) {
+          if (init.tpe.isNum) {
             checkKnownConst(init)
           }
           // TODO: check signed/unsigned somewhere?

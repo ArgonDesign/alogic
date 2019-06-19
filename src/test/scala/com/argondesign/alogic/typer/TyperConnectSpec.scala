@@ -394,5 +394,31 @@ final class TyperConnectSpec extends FreeSpec with AlogicTest {
       }
     }
 
+    "port select" - {
+      for {
+        (expr, msg) <- List(
+          ("a.b", ""),
+          ("a.c", "No port named 'c' in 'a' of type 'instance a'"),
+          ("a.N", "No port named 'N' in 'a' of type 'instance a'")
+        )
+      } {
+        expr in {
+          val tree = s"""|network n {
+                         |  (* unused *) in bool p;
+                         |  (* unused *) new fsm a {
+                         |    (* unused *) param u8 N = 8'd2;
+                         |    (* unused *) in bool b;
+                         |  }
+                         |  p -> ${expr};
+                         |}""".stripMargin.asTree[Entity]
+          xform(tree)
+          if (msg.isEmpty) {
+            cc.messages shouldBe empty
+          } else {
+            cc.messages.loneElement should beThe[Error](msg)
+          }
+        }
+      }
+    }
   }
 }
