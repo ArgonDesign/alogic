@@ -28,33 +28,25 @@ UINTTYPE: 'u' [0-9]+;
 
 INTTYPE: 'i' [0-9]+;
 
-
 // Literals
 STRING: '"' ~["]* '"';
 
 fragment DECIMALDIGIT: [0-9] ;
-fragment DECIMALVALUE
-  : DECIMALDIGIT
-  | DECIMALDIGIT (DECIMALDIGIT|'_')* DECIMALDIGIT
-  ;
+fragment DECIMALVALUE: DECIMALDIGIT ('_'? DECIMALDIGIT)* ;
 
-fragment HEXDIGIT: (DECIMALDIGIT|[a-fA-F]) ;
-fragment HEXVALUE
-  : HEXDIGIT
-  | HEXDIGIT (HEXDIGIT|'_')* HEXDIGIT
-  ;
+fragment HEXDIGIT: [0-9a-fA-F] ;
+fragment HEXVALUE: HEXDIGIT ('_'? HEXDIGIT )* ;
 
 UNSIZEDINT
-  :                          DECIMALVALUE
-  |               '\'' 's'? [bdh] HEXVALUE
+  : DECIMALVALUE [us]?
+  | '0' [bodx] HEXVALUE [us]?
   ;
-SIZEDINT
-  : DECIMALDIGIT+ '\'' 's'? [bdh] HEXVALUE
-  ;
+
+SIZEDINT: DECIMALDIGIT+ '\'' 's'? [bdh] HEXVALUE ;
 
 ATID    : '@' SIMPLEID  ;
 
-DOLLARID: '$' SIMPLEID;
+DOLLARID: '$' SIMPLEID  ;
 
 GOESTO: '->';
 

@@ -19,40 +19,12 @@ import com.argondesign.alogic.antlr.AlogicParser._
 import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.util.unreachable
 import com.argondesign.alogic.lib.Math
-import org.antlr.v4.runtime.ParserRuleContext
+import com.argondesign.alogic.util.unreachable
 
 import scala.math.BigInt.int2bigInt
 
 object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
-
-  private def signedRest(text: String): (Boolean, String) = {
-    if (text contains 's') (true, text filter { _ != 's' }) else (false, text)
-  }
-
-  private def parseBaseValue(ctx: ParserRuleContext, text: String)(
-      implicit cc: CompilerContext): Option[BigInt] = {
-    val (base, rest) = if (text.head != '\'') {
-      (10, text)
-    } else {
-      text(1) match {
-        case 'b' => (2, text drop 2)
-        case 'd' => (10, text drop 2)
-        case 'h' => (16, text drop 2)
-        case _   => unreachable
-      }
-    }
-    val digits = rest filter { _ != '_' }
-    try {
-      Some(BigInt(digits, base))
-    } catch {
-      case _: NumberFormatException => {
-        cc.error(ctx, s"Invalid digit for base ${base} value")
-        None
-      }
-    }
-  }
 
   def apply(ctx: ExprContext)(implicit cc: CompilerContext): Expr = {
     object Visitor extends AlogicScalarVisitor[Expr] {
@@ -114,23 +86,32 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
       }
 
       override def visitExprSizedInt(ctx: ExprSizedIntContext) = {
-        lazy val errorExpr = ExprError() withLoc ctx.loc
         val neg = ctx.sign != null && ctx.sign.text == "-"
         val text = ctx.SIZEDINT.text
-        val (signed, rest) = signedRest(text)
-        val (widthDigits, baseValue) = rest span {
-          _ != '\''
-        }
+        val (widthDigits, tickRest) = text span { _ != '\'' }
         val width = widthDigits.toInt
         if (width == 0) {
           cc.error(ctx, "0 width integer literal")
-          errorExpr
+          ExprError() withLoc ctx.loc
         } else {
-          parseBaseValue(ctx, baseValue) map { abs =>
+          val signed = tickRest(1) == 's'
+          val baseRest = if (signed) tickRest drop 2 else tickRest drop 1
+          val base = baseRest(0) match {
+            case 'b' => 2
+            case 'd' => 10
+            case 'h' => 16
+            case _   => unreachable
+          }
+          val digits = baseRest drop 1 filter { _ != '_' }
+          try {
+            val abs = BigInt(digits, base)
             val reqWidth = Math.clog2(abs + 1)
             if (reqWidth > width) {
               cc.error(ctx, s"Value specifier for ${width} bit literal requires ${reqWidth} bits")
-              errorExpr
+              ExprError() withLoc ctx.loc
+            } else if (neg && abs > 0 && !signed) {
+              cc.error(ctx, "Negative unsigned literal")
+              ExprError() withLoc ctx.loc
             } else {
               val mask = (BigInt(1) << width) - 1
               val bits = (if (neg) -abs else abs) & mask
@@ -147,27 +128,52 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
               }
               ExprInt(signed, width, value) withLoc ctx.loc
             }
-          } getOrElse {
-            errorExpr
+          } catch {
+            case _: NumberFormatException =>
+              cc.error(ctx, s"Invalid digit for base ${base} value")
+              ExprError() withLoc ctx.loc
           }
         }
       }
 
       override def visitExprUnsizedInt(ctx: ExprUnsizedIntContext) = {
-        lazy val errorExpr = ExprError() withLoc ctx.loc
         val neg = ctx.sign != null && ctx.sign.text == "-"
         val text = ctx.UNSIZEDINT.text
-        val (signed, baseValue) = signedRest(text)
-        parseBaseValue(ctx, baseValue) map { abs =>
-          if (neg && abs > 0 && !signed) {
-            cc.error(ctx, "Negative unsigned literal")
-            errorExpr
+        if (text.length > 1 && text(0) == '0' && text(1).isDigit) {
+          cc.error(ctx,
+                   s"Invalid literal '${text}',",
+                   "use prefix '0o' for octal or '0d' for decimal with leading zeros")
+          ExprError() withLoc ctx.loc
+        } else {
+          val signed = text.last == 's'
+          val rest = if (signed || text.last == 'u') text.init else text
+          val literal = rest filter { _ != '_' }
+          val base = if (literal.length == 1) {
+            10
           } else {
-            val value = if (neg) -abs else abs
-            ExprNum(signed, value) withLoc ctx.loc
+            literal(1) match {
+              case 'b' => 2
+              case 'o' => 8
+              case 'd' => 10
+              case 'x' => 16
+              case _   => 10
+            }
           }
-        } getOrElse {
-          errorExpr
+          val digits = if (literal.length > 1 && !literal(1).isDigit) literal drop 2 else literal
+          try {
+            val abs = BigInt(digits, base)
+            if (neg && abs > 0 && !signed) {
+              cc.error(ctx, "Negative unsigned literal")
+              ExprError() withLoc ctx.loc
+            } else {
+              val value = if (neg) -abs else abs
+              ExprNum(signed, value) withLoc ctx.loc
+            }
+          } catch {
+            case _: NumberFormatException =>
+              cc.error(ctx, s"Invalid digit for base ${base} value")
+              ExprError() withLoc ctx.loc
+          }
         }
       }
 
