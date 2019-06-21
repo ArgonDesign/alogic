@@ -23,10 +23,6 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Error
 import com.argondesign.alogic.core.Loc
-import com.argondesign.alogic.core.Types.TypeNum
-import com.argondesign.alogic.core.Types.TypeSInt
-import com.argondesign.alogic.core.Types.TypeUInt
-import com.argondesign.alogic.typer.AddImplicitCasts
 import com.argondesign.alogic.typer.Typer
 import org.scalatest.FreeSpec
 
@@ -35,7 +31,7 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
   implicit val cc = new CompilerContext
   val namer = new Namer
   val typer = new Typer
-  val aics = new AddImplicitCasts
+  val aics = new AddCasts
   val fold = new FoldExpr(foldRefs = false)
 
   def xform(tree: Tree): Tree = {
@@ -1172,31 +1168,62 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
 
     "cast" - {
       for {
-        (expr, res, err) <- List(
+        (exprSrc, kindSrc, pattern, err) <- List[(String,
+                                                  String,
+                                                  PartialFunction[Any, Unit],
+                                                  String)](
           // format: off
-          (ExprCast(TypeUInt(Expr(8)), Expr(32)), ExprInt(false, 8, 32), ""),
-          (ExprCast(TypeSInt(Expr(8)), Expr(32)), ExprInt(true, 8, 32), ""),
-          (ExprCast(TypeSInt(Expr(8)), ExprNum(true, -1)), ExprInt(true, 8, -1), ""),
-          (ExprCast(TypeUInt(Expr(4)), Expr(32)), ExprError(), "Value 32 cannot be represented with 4 unsigned bits"),
-          (ExprCast(TypeSInt(Expr(4)), Expr(32)), ExprError(), "Value 32 cannot be represented with 4 signed bits"),
-          (ExprCast(TypeUInt(Expr(5)), Expr(31)), ExprInt(false, 5, 31), ""),
-          (ExprCast(TypeSInt(Expr(5)), Expr(31)), ExprError(), "Value 31 cannot be represented with 5 signed bits"),
-          (ExprCast(TypeUInt(Expr(8)), ExprNum(true, -1)), ExprError(), "Negative value cannot be represented as unsigned"),
-          (ExprCast(TypeNum(true), ExprInt(true, 10, 12)), ExprNum(true, 12), ""),
-          (ExprCast(TypeNum(true), ExprInt(false, 10, 12)), ExprNum(true, 12), ""),
-          (ExprCast(TypeNum(false), ExprInt(true, 10, 12)), ExprNum(false, 12), ""),
-          (ExprCast(TypeNum(false), ExprInt(false, 10, 12)), ExprNum(false, 12), ""),
-          (ExprCast(TypeNum(true), ExprInt(true, 10, -1)), ExprNum(true, -1), ""),
-          (ExprCast(TypeNum(false), ExprInt(true, 10, -1)), ExprError(), "Negative value cannot be represented as unsigned")
+          ("32", "u8", { case ExprInt(false, 8, v) if v == 32 => }, ""),
+          ("32s", "i8", { case ExprInt(true, 8, v) if v == 32=> }, ""),
+          ("-1s", "i8", { case ExprInt(true, 8, v) if v == -1 => }, ""),
+          ("32", "u4", { case _ => }, "Value 32 cannot be represented with 4 unsigned bits"),
+          ("32s", "i4", { case _ => }, "Value 32 cannot be represented with 4 signed bits"),
+          ("31", "u5", { case ExprInt(false, 5, v) if v == 31 => }, ""),
+          ("31s", "i5", { case ExprError() => }, "Value 31 cannot be represented with 5 signed bits"),
+          ("10'sd12",  "int", { case ExprNum(true, v) if v == 12 => }, ""),
+          ("10'd12",  "uint", { case ExprNum(false, v) if v == 12 => }, ""),
+          ("-10'sd1",  "int", { case ExprNum(true, v) if v == -1 => }, ""),
+          ("a",  "u10", { case ExprCat(List(ExprInt(false, 2, z), ExprRef(a))) if z == 0 && a.name == "a" => }, ""),
+          ("b",  "i10", { case ExprCall(
+                                ExprRef(s),
+                                List(ExprCat(List(
+                                      ExprRep(
+                                        Expr(3),
+                                        ExprIndex(
+                                          ExprRef(b0),
+                                          ExprInt(false, 3, i))),
+                                      ExprRef(b1))))) if s.name == "$signed" && b0.name == "b" && i == 6 && b1.name == "b" =>
+          }, ""),
+          ("a",  "u8", { case ExprRef(a) if a.name == "a" => }, ""),
+          ("b",  "i7", { case ExprRef(b) if b.name == "b" => }, ""),
+          ("c",  "u10", { case ExprInt(false, 10, v) if v == 7 => }, ""),
+          ("c", "uint", { case ExprNum(false, v) if v == 7 => }, ""),
+          ("d",  "i10", { case ExprInt(true, 10, v) if v == -3 => }, ""),
+          ("d",  "int", { case ExprNum(true, v) if v == -3 => }, "")
           // format: on
         )
       } {
-        expr.toSource in {
-          expr regularize Loc.synthetic
-          expr rewrite fold shouldBe res
+        s"(${kindSrc})(${exprSrc})" in {
+          val tree = s"""|fsm f {
+                         |  (* unused *) u8 a;
+                         |  (* unused *) i7 b;
+                         |  (* unused *) const u8 c =  7;
+                         |  (* unused *) const i8 d = -3s;
+                         |  void main() {
+                         |    $$display("", ${exprSrc});
+                         |    fence;
+                         |  }
+                         |}""".stripMargin.asTree[Entity]
+          val ExprCall(_, List(_, expr)) = xform(tree) getFirst { case e: ExprCall => e }
+          val ExprType(kind) = kindSrc.asTree[Expr]
+          cc.messages shouldBe empty
+          val cast = ExprCast(kind, expr) regularize Loc.synthetic
+          val result = cast rewrite fold
           if (err.isEmpty) {
+            result should matchPattern(pattern)
             cc.messages shouldBe empty
           } else {
+            result shouldBe ExprError()
             cc.messages.loneElement should beThe[Error](err)
           }
         }

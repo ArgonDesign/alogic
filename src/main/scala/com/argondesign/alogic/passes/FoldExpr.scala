@@ -21,6 +21,7 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.TreeInTypeTransformer
+import com.argondesign.alogic.core.Types.TypeInt
 import com.argondesign.alogic.core.Types.TypeNum
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.BigIntOps._
@@ -533,37 +534,34 @@ final class FoldExpr(
       // Fold casts
       ////////////////////////////////////////////////////////////////////////////
 
-      case ExprCast(kind, ExprNum(_, value)) => {
+      case ExprCast(TypeNum(signed), expr) => ExprNum(signed, expr.value.get) withLoc tree.loc
+
+      case ExprCast(kind: TypeInt, ExprNum(signed, value)) => {
         val width = kind.width
-        val signed = kind.isSigned
-
-        val res = if (!signed && value < 0) {
-          cc.error("Negative value cannot be represented as unsigned")
-          ExprError()
+        val lo = if (signed) -(BigInt(1) << (width - 1)) else BigInt(0)
+        val hi = if (signed) BigInt.mask(width - 1) else BigInt.mask(width)
+        if (value > hi || value < lo) {
+          val signedness = if (signed) "signed" else "unsigned"
+          cc.error(s"Value ${value} cannot be represented with ${width} ${signedness} bits")
+          ExprError() withLoc tree.loc
         } else {
-          val lo = if (signed) -(BigInt(1) << (width - 1)) else BigInt(0)
-          val hi = if (signed) BigInt.mask(width - 1) else BigInt.mask(width)
-
-          if (value > hi || value < lo) {
-            val signedness = if (signed) "signed" else "unsigned"
-            cc.error(s"Value ${value} cannot be represented with ${width} ${signedness} bits")
-            ExprError()
-          } else {
-            ExprInt(signed, width, value)
-          }
+          ExprInt(signed, width, value) withLoc tree.loc
         }
-
-        res withLoc tree.loc
       }
 
-      case ExprCast(TypeNum(tSigned), ExprInt(eSigned, _, value)) => {
-        val res = if (!tSigned && value < 0) {
-          cc.error("Negative value cannot be represented as unsigned")
-          ExprError()
+      case ExprCast(kind: TypeInt, expr) => {
+        require(expr.tpe.isPacked)
+        val kWidth = kind.width
+        val eWidth = expr.tpe.width
+        require(kWidth >= expr.tpe.width)
+        val res = if (kWidth == eWidth) {
+          expr
+        } else if (expr.tpe.isSigned) {
+          expr sx kWidth
         } else {
-          ExprNum(tSigned, value)
+          expr zx kWidth
         }
-        res withLoc tree.loc
+        res.simplify
       }
 
       ////////////////////////////////////////////////////////////////////////////

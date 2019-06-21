@@ -501,6 +501,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
       "reject" - {
         val badLvals = ListMap(
           "call" -> "a()",
+          "unary ' " -> "'a",
           "unary - " -> "-a",
           "binary +" -> "a+b",
           "ternary" -> "a ? b : c",
@@ -528,7 +529,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
                 }
               }
             }
-            "invalid lvalues inside otherwise valid lvalue expressions" - {
+            "invalid lvalues inside concatenation lvalue" - {
               for ((name, lval) <- badLvals) {
                 name in {
                   s"{x, ${lval}} ${assign};".asTree[Stmt] rewrite checker shouldBe a[StmtError]
@@ -586,6 +587,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         def check(test: String => Unit) = {
           "call" in test("a()")
           "unary - " in test("-a")
+          "unary ' " in test("'a")
           "binary +" in test("a+b")
           "ternary" in test("a ? b : c")
           "rep" in test("{2{a}}")

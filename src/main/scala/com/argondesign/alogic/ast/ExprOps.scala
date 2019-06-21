@@ -21,9 +21,10 @@ import com.argondesign.alogic.core.Bindings
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.TermSymbol
 import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.passes.AddCasts
 import com.argondesign.alogic.passes.FoldExpr
 import com.argondesign.alogic.transform.ReplaceTermRefs
-import com.argondesign.alogic.typer.AddImplicitCasts
+import com.argondesign.alogic.typer.ResolvePolyFunc
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.PartialMatch._
 import com.argondesign.alogic.lib.Math.clog2
@@ -108,6 +109,9 @@ trait ExprOps { this: Expr =>
   final def zx(width: Expr)(implicit cc: CompilerContext): ExprCall = cc.makeBuiltinCall("@zx", loc, List(width, this))
   final def zx(width: Int)(implicit cc: CompilerContext): ExprCall = this zx fix(Expr(width))
 
+  final def sx(width: Expr)(implicit cc: CompilerContext): ExprCall = cc.makeBuiltinCall("@sx", loc, List(width, this))
+  final def sx(width: Int)(implicit cc: CompilerContext): ExprCall = this sx fix(Expr(width))
+
   final def unary(op: String)(implicit cc: CompilerContext): ExprUnary = fix(ExprUnary(op, this))
 
   final def unary_+ : this.type = this
@@ -173,7 +177,13 @@ trait ExprOps { this: Expr =>
 
   // Simplify this expression
   def simplify(implicit cc: CompilerContext): Expr = {
-    val simple = this rewrite { new AddImplicitCasts } rewrite { new FoldExpr(foldRefs = true) }
+    val simple = this rewrite {
+      new ResolvePolyFunc
+    } rewrite {
+      new AddCasts
+    } rewrite {
+      new FoldExpr(foldRefs = true)
+    }
     simple.asInstanceOf[Expr]
   }
 

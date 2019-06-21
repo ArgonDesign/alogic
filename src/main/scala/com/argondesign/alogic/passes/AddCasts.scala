@@ -10,27 +10,27 @@
 //
 // DESCRIPTION:
 //
-// The Typer:
-// - Type checks all tree nodes
-// - Infers widths of unsized constants
-// - Assigns types to all nodes using the TypeAssigner
+// Add implicit casts and convert unary ' to cast
 ////////////////////////////////////////////////////////////////////////////////
 
-package com.argondesign.alogic.typer
+package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Math.clog2
-import com.argondesign.alogic.passes.TreeTransformerPass
+import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.FollowedBy
 
-final class AddImplicitCasts(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
+final class AddCasts(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
 
   private def cast(kind: Type, expr: Expr) = {
-    val castType = kind.underlying
-    val castExpr = if (castType.isNum) expr.simplify else expr
+    val (castType, castExpr) = if (kind.isNum) {
+      (TypeNum(expr.tpe.isSigned), expr.simplify)
+    } else {
+      (TypeInt(expr.tpe.isSigned, Expr(kind.width) regularize expr.loc), expr)
+    }
     if (castType.isNum && !castExpr.isKnownConst) {
       cc.ice(expr, s"Trying to cast non-constant expression to type '${castType.toSource}'")
     }
@@ -39,8 +39,7 @@ final class AddImplicitCasts(implicit cc: CompilerContext) extends TreeTransform
 
   override def transform(tree: Tree): Tree = {
     val result = tree match {
-      case decl @ Decl(symbol, Some(init))
-          if (symbol.kind.isPacked && init.tpe.underlying.isNum) || (symbol.kind.underlying.isNum && init.tpe.isPacked) => {
+      case decl @ Decl(symbol, Some(init)) if symbol.kind.isPacked && init.tpe.underlying.isNum => {
         val newInit = cast(symbol.kind, init)
         if (symbol.kind.isConst) {
           symbol.attr.init set newInit
@@ -93,6 +92,8 @@ final class AddImplicitCasts(implicit cc: CompilerContext) extends TreeTransform
         }
       }
 
+      case expr @ ExprUnary("'", op) => ExprCast(expr.tpe, op)
+
       case _ => tree
     }
 
@@ -100,7 +101,7 @@ final class AddImplicitCasts(implicit cc: CompilerContext) extends TreeTransform
   }
 }
 
-object AddImplicitCasts extends TreeTransformerPass {
-  val name = "add-implicit-casts"
-  def create(implicit cc: CompilerContext) = new AddImplicitCasts
+object AddCasts extends TreeTransformerPass {
+  val name = "add-casts"
+  def create(implicit cc: CompilerContext) = new AddCasts
 }

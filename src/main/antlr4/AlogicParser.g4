@@ -183,41 +183,41 @@ for_steps
 ///////////////////////////////////////////////////////////////////////////////
 
 expr
-  : '(' expr ')'                                            # ExprBracket
+  : '(' expr ')'                                                # ExprBracket
   // Literals
-  | 'true'                                                  # ExprTrue
-  | 'false'                                                 # ExprFalse
-  | sign=('+' | '-')? SIZEDINT                              # ExprSizedInt
-  | sign=('+' | '-')? UNSIZEDINT                            # ExprUnsizedInt
-  | STRING                                                  # ExprString
+  | 'true'                                                      # ExprTrue
+  | 'false'                                                     # ExprFalse
+  | sign=('+' | '-')? SIZEDINT                                  # ExprSizedInt
+  | sign=('+' | '-')? UNSIZEDINT                                # ExprUnsizedInt
+  | STRING                                                      # ExprString
   // Names
-  | IDENTIFIER                                              # ExprIdent
-  | ATID                                                    # ExprAtid
-  | DOLLARID                                                # ExprDollarid
+  | IDENTIFIER                                                  # ExprIdent
+  | ATID                                                        # ExprAtid
+  | DOLLARID                                                    # ExprDollarid
   // Call
-  | expr '(' commaexpr? ')'                                 # ExprCall
+  | expr '(' commaexpr? ')'                                     # ExprCall
   // Index/Slice
-  | expr '[' idx=expr ']'                                   # ExprIndex
-  | expr '[' lidx=expr op=(':' | '-:' | '+:') ridx=expr ']' # ExprSlice
+  | expr '[' idx=expr ']'                                       # ExprIndex
+  | expr '[' lidx=expr op=(':' | '-:' | '+:') ridx=expr ']'     # ExprSlice
   // Select
-  | expr '.' IDENTIFIER                                     # ExprSelect
+  | expr '.' IDENTIFIER                                         # ExprSelect
   // Operators
-  | op=('+' | '-' | '~' | '!' | '&' | '|' | '^' ) expr      # ExprUnary
-  | expr op=('*' | '/' | '%') expr                          # ExprBinary
-  | expr op=('+' | '-') expr                                # ExprBinary
-  | expr op=('<<' | '>>' | '>>>' | '<<<' ) expr             # ExprBinary
-  | expr op=('>' | '>=' | '<' | '<=') expr                  # ExprBinary
-  | expr op=('==' | '!=') expr                              # ExprBinary
-  | expr op='&' expr                                        # ExprBinary
-  | expr op='^' expr                                        # ExprBinary
-  | expr op='|' expr                                        # ExprBinary
-  | expr op='&&' expr                                       # ExprBinary
-  | expr op='||' expr                                       # ExprBinary
-  |<assoc=right> expr op='?' expr ':' expr                  # ExprTernary
-  | '{' expr '{' commaexpr '}' '}'                          # ExprRep
-  | '{' commaexpr '}'                                       # ExprCat
+  | op=('+' | '-' | '~' | '!' | '&' | '|' | '^' | '\'' ) expr   # ExprUnary
+  | expr op=('*' | '/' | '%') expr                              # ExprBinary
+  | expr op=('+' | '-') expr                                    # ExprBinary
+  | expr op=('<<' | '>>' | '>>>' | '<<<' ) expr                 # ExprBinary
+  | expr op=('>' | '>=' | '<' | '<=') expr                      # ExprBinary
+  | expr op=('==' | '!=') expr                                  # ExprBinary
+  | expr op='&' expr                                            # ExprBinary
+  | expr op='^' expr                                            # ExprBinary
+  | expr op='|' expr                                            # ExprBinary
+  | expr op='&&' expr                                           # ExprBinary
+  | expr op='||' expr                                           # ExprBinary
+  |<assoc=right> expr op='?' expr ':' expr                      # ExprTernary
+  | '{' expr '{' commaexpr '}' '}'                              # ExprRep
+  | '{' commaexpr '}'                                           # ExprCat
   // Type
-  | kind                                                    # ExprType
+  | kind                                                        # ExprType
   ;
 
 commaexpr: expr (',' expr)* ;

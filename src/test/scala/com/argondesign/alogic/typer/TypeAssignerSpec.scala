@@ -962,10 +962,25 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
         }
       }
 
-      "cast" in {
-        val expr = ExprCast(TypeUInt(4), ExprNum(true, 0))
-        assignChildren(expr)
-        TypeAssigner(expr).tpe shouldBe TypeUInt(4)
+      "cast" - {
+        for {
+          (exprSrc, kindSrc, kind) <- List(
+            // format: off
+            ("32", "u8", TypeUInt(8)),
+            ("32s", "i8", TypeSInt(8)),
+            ("8'd1", "uint", TypeNum(false)),
+            ("8'sd1", "int", TypeNum(true))
+            // format: on
+          )
+        } {
+          s"(${kindSrc})(${exprSrc})" in {
+            val expr = (xform(exprSrc.asTree[Expr]) rewrite { new Typer }).asInstanceOf[Expr]
+            val ExprType(castKind) = kindSrc.asTree[Expr]
+            cc.messages shouldBe empty
+            TypeAssigner(ExprCast(castKind, expr) withLoc Loc.synthetic).kind shouldBe kind
+            kind shouldBe castKind
+          }
+        }
       }
     }
 

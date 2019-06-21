@@ -224,7 +224,9 @@ object Trees {
   case class ExprRef(symbol: Symbol) extends Expr
   case class ExprType(kind: Type) extends Expr
 
-  case class ExprCast(kind: Type, expr: Expr) extends Expr
+  case class ExprCast(kind: Type, expr: Expr) extends Expr {
+    require(!expr.hasTpe || kind.isSigned == expr.tpe.isSigned)
+  }
 
   // Literals
   case class ExprInt(signed: Boolean, width: Int, value: BigInt) extends Expr {

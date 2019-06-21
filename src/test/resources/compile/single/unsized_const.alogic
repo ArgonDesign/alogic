@@ -5,7 +5,7 @@ network unsized_const {
 
   fsm expander {
     param u32 W0 = 32;
-    const uint W1 = W0 + 1;
+    const uint W1 = 'W0 + 1;
 
     in  u1       p_i;
     out uint(W1) p_o;

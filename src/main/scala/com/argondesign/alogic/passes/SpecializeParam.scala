@@ -255,6 +255,8 @@ object SpecializeParam extends Pass with FollowedBy {
         bindings.mapValues { _.rewrite(typer).asInstanceOf[Expr] }
       }
 
+      // TODO: check parameter assignments
+
       // Stop if there are any type errors
       if (checkedBindings.values exists { _.tpe.isError }) return None
 

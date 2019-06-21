@@ -76,7 +76,7 @@ trait TypeOps extends TypePrintOps { this: Type =>
 
   // Signedness of this type (as far as expressions are concerned), assuming it is a packed type
   final def isSigned: Boolean = {
-    assert(underlying.isNum || isPacked, println(this))
+    assert(underlying.isNum || isPacked, this)
     this.underlying match {
       case _: TypeSInt     => true
       case TypeNum(signed) => signed

@@ -119,9 +119,9 @@ object Types {
   object TypeInt {
     def apply(signed: Boolean, size: Expr): TypeInt = if (signed) TypeSInt(size) else TypeUInt(size)
 
-    def unapply(expr: Type): Option[Expr] = expr match {
-      case TypeSInt(size) => Some(size)
-      case TypeUInt(size) => Some(size)
+    def unapply(expr: Type): Option[(Boolean, Expr)] = expr match {
+      case TypeSInt(size) => Some((true, size))
+      case TypeUInt(size) => Some((false, size))
       case _              => None
     }
   }

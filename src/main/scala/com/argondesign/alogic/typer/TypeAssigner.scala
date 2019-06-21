@@ -115,9 +115,8 @@ final object TypeAssigner {
   private def kind(node: StmtExpr) = node.expr match {
     case ExprCall(target, _) =>
       target.tpe match {
-        case _: TypeCombFunc => TypeCombStmt
         case _: TypeCtrlFunc => TypeCtrlStmt
-        case _               => unreachable
+        case _               => TypeCombStmt
       }
     case _ => TypeCombStmt
   }
@@ -195,6 +194,7 @@ final object TypeAssigner {
   }
 
   private def kind(node: ExprUnary)(implicit cc: CompilerContext) = node.op match {
+    case "'"             => cc.ice("TypeAssigner invoked on unary ' operator")
     case "+" | "-" | "~" => node.expr.tpe
     case _               => TypeUInt(Expr(1) regularize node.loc)
   }

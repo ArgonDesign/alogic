@@ -79,6 +79,7 @@ GE:         '>='  ;
 LE:         '<='  ;
 LT:         '<'   ;
 
+TICK:       '\''  ;
 
 QUESTIONMARK: '?';
 

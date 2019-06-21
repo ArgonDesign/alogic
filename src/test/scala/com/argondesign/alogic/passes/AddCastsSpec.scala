@@ -13,26 +13,25 @@
 // Namer tests
 ////////////////////////////////////////////////////////////////////////////////
 
-package com.argondesign.alogic.typer
-
-import com.argondesign.alogic.ast.Trees.Expr.ImplicitConversions._
+package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.SourceTextConverters._
+import com.argondesign.alogic.ast.Trees.Expr.ImplicitConversions._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.passes.Namer
+import com.argondesign.alogic.typer.Typer
 import org.scalatest.FreeSpec
 
-final class AddImplicitCastsSpec extends FreeSpec with AlogicTest {
+final class AddCastsSpec extends FreeSpec with AlogicTest {
 
   implicit val cc = new CompilerContext
   cc.postSpecialization = true
 
   val namer = new Namer
   val typer = new Typer
-  val addImplicitCasts = new AddImplicitCasts
+  val addImplicitCasts = new AddCasts
 
   def xform(tree: Tree) = {
     tree match {
@@ -85,10 +84,10 @@ final class AddImplicitCastsSpec extends FreeSpec with AlogicTest {
             ("0 ? 2'd1 : 0", Some(Right(ExprCast(TypeUInt(2), 0)))),
             ("0 ? 0 : 3'sd1", Some(Left(ExprCast(TypeUInt(3), 0)))),
             ("0 ? 3'sd1 : 0", Some(Right(ExprCast(TypeUInt(3), 0)))),
-            ("0 ? 0s : 2'd1", Some(Left(ExprCast(TypeSInt(2), 0)))),
-            ("0 ? 2'd1 : 0s", Some(Right(ExprCast(TypeSInt(2), 0)))),
-            ("0 ? 0s : 3'sd1", Some(Left(ExprCast(TypeSInt(3), 0)))),
-            ("0 ? 3'sd1 : 0s", Some(Right(ExprCast(TypeSInt(3), 0)))),
+            ("0 ? 0s : 2'd1", Some(Left(ExprCast(TypeSInt(2), ExprNum(true, 0))))),
+            ("0 ? 2'd1 : 0s", Some(Right(ExprCast(TypeSInt(2), ExprNum(true, 0))))),
+            ("0 ? 0s : 3'sd1", Some(Left(ExprCast(TypeSInt(3), ExprNum(true, 0))))),
+            ("0 ? 3'sd1 : 0s", Some(Right(ExprCast(TypeSInt(3), ExprNum(true, 0))))),
             ("0 ? 1 : 0", None)
           )
         } {
@@ -190,10 +189,14 @@ final class AddImplicitCastsSpec extends FreeSpec with AlogicTest {
             ("(* unused *) u8 a = 2s", ExprCast(TypeSInt(8), ExprNum(true, 2))),
             ("(* unused *) i7 a = 2", ExprCast(TypeUInt(7), ExprNum(false, 2))),
             ("(* unused *) u7 a = 2", ExprCast(TypeUInt(7), ExprNum(false, 2))),
-            ("(* unused *) param int a = 8'd2", ExprCast(TypeNum(true), ExprInt(false, 8, 2))),
-            ("(* unused *) param uint a = 8'd2", ExprCast(TypeNum(false), ExprInt(false, 8, 2))),
-            ("(* unused *) const int a = 8'd2", ExprCast(TypeNum(true), ExprInt(false, 8, 2))),
-            ("(* unused *) const uint a = 8'd2", ExprCast(TypeNum(false), ExprInt(false, 8, 2)))
+            ("(* unused *) param int a = '8'sd2", ExprCast(TypeNum(true), ExprInt(true, 8, 2))),
+            ("(* unused *) param uint a = '8'sd2", ExprCast(TypeNum(true), ExprInt(true, 8, 2))),
+            ("(* unused *) param int a = '8'd2", ExprCast(TypeNum(false), ExprInt(false, 8, 2))),
+            ("(* unused *) param uint a = '8'd2", ExprCast(TypeNum(false), ExprInt(false, 8, 2))),
+            ("(* unused *) const int a = '8'sd2", ExprCast(TypeNum(true), ExprInt(true, 8, 2))),
+            ("(* unused *) const uint a = '8'sd2", ExprCast(TypeNum(true), ExprInt(true, 8, 2))),
+            ("(* unused *) const int a = '8'd2", ExprCast(TypeNum(false), ExprInt(false, 8, 2))),
+            ("(* unused *) const uint a = '8'd2", ExprCast(TypeNum(false), ExprInt(false, 8, 2)))
           )
         } {
           decl in {
@@ -205,6 +208,7 @@ final class AddImplicitCastsSpec extends FreeSpec with AlogicTest {
                              |}""".stripMargin.asTree[Entity]
             val tree = xform(entity)
             val init = tree getFirst { case Decl(_, Some(i)) => i }
+            cc.messages foreach println
             init shouldBe res
             cc.messages shouldBe empty
           }

@@ -175,11 +175,15 @@ final class TyperCheckStmtSpec extends FreeSpec with AlogicTest {
           ("i8 a = 8'd2", ""),
           ("i8 a = bool", "Initializer expression is of non-packed type"),
           ("i8 a = 9'd2", "Initializer expression yields 9 bits, 8 bits are expected"),
-          ("i8 a = 7'd2", "Initializer expression yields 7 bits, 8 bits are expected")
+          ("i8 a = 7'd2", "Initializer expression yields 7 bits, 8 bits are expected"),
+          ("const uint a = 7'd2", "Unsized integer declaration has packed initializer")
         )
       } {
         decl in {
-          val tree = s"{ (* unused *) ${decl}; }".asTree[Stmt]
+          val tree =
+            s"""|fsm f {
+                |  (* unused *) ${decl};
+                |}""".stripMargin.asTree[Entity]
           xform(tree)
           if (msg.isEmpty) {
             cc.messages shouldBe empty

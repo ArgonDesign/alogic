@@ -1545,7 +1545,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
             }
           }
 
-          for (op <- List("+", "-", "~", "!", "&", "|", "^")) {
+          for (op <- List("+", "-", "~", "!", "&", "|", "^", "'")) {
             s"unary ${op}" in {
               s"${op}(2)".asTree[Expr] shouldBe ExprUnary(op, Expr(2))
             }

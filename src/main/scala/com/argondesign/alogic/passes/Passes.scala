@@ -18,7 +18,7 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.backend.CodeGeneration
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.typer.AddImplicitCasts
+import com.argondesign.alogic.typer.ResolvePolyFunc
 import com.argondesign.alogic.typer.Typer
 import com.argondesign.alogic.util.FollowedBy._
 
@@ -40,8 +40,10 @@ object Passes {
       ////////////////////////////////////////////////////////////////////////
       // Middle-end
       ////////////////////////////////////////////////////////////////////////
+      ResolvePolyFunc,
       Desugar,
-      AddImplicitCasts,
+      // TODO: ConvertTicks
+      AddCasts,
       FoldExprInTypes,
       InlineUnsizedConst,
       FoldExpr(foldRefs = false),
@@ -71,7 +73,7 @@ object Passes {
       SplitStructsB,
       SplitStructsC,
       LowerVectors,
-      AddImplicitCasts,
+      AddCasts,
       FoldExpr(foldRefs = false),
       SimplifyCat,
       InferImplications,
