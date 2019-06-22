@@ -420,7 +420,7 @@ final class TyperCheckStmtSpec extends FreeSpec with AlogicTest {
                          |  (* unused *) ${decl};
                          |}""".stripMargin.asTree[Entity]
           xform(tree)
-          cc.messages.loneElement should beThe[Error](s"Signal 'a' has declared width ${width}")
+          cc.messages.loneElement should beThe[Error](s"'a' is declared with width ${width}")
         }
       }
     }

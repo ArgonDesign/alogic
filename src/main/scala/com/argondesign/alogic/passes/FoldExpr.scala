@@ -541,12 +541,21 @@ final class FoldExpr(
         val lo = if (signed) -(BigInt(1) << (width - 1)) else BigInt(0)
         val hi = if (signed) BigInt.mask(width - 1) else BigInt.mask(width)
         if (value > hi || value < lo) {
+          // TODO: should out of range width inference in the typer
           val signedness = if (signed) "signed" else "unsigned"
-          cc.error(s"Value ${value} cannot be represented with ${width} ${signedness} bits")
+          cc.error(tree, s"Value ${value} cannot be represented with ${width} ${signedness} bits")
           ExprError() withLoc tree.loc
         } else {
           ExprInt(signed, width, value) withLoc tree.loc
         }
+      }
+
+      case cast @ ExprCast(_: TypeInt, expr) if expr.tpe.isNum => {
+        // Expression is TypeNum but not ExprNum, but anything with TypeNum is
+        // a compile time constant, so just simplify it. This will cause the
+        // repeat walk of the rewritten cast to enter the case above when we
+        // cast an ExprNum to a TypeInt
+        cast.copy(expr = expr.simplify) withLoc tree.loc
       }
 
       case ExprCast(kind: TypeInt, expr) => {

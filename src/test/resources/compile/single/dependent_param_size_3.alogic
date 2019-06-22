@@ -1,0 +1,30 @@
+network dependent_param_size_3 {
+  in  u1  i_a;
+  in  u4  i_b;
+  out u5  o_a;
+  out u9  o_b;
+
+  const u3 P = 3'd7;
+
+  fsm pad {
+    param uint WI = 0;
+    param uint WO = 0;
+    const uint WP = WO - WI;
+    param uint(WP) PADDING = 0;
+
+    in  uint(WI) p_i;
+    out uint(WO) p_o;
+
+    void main() {
+      p_o = {PADDING, p_i};
+      fence;
+    }
+  }
+
+  inst_a = new pad(WI=1, WO=5, PADDING='P + 2);
+  inst_b = new pad(WI=4, WO=9, PADDING='P + 2);
+
+  i_a -> inst_a.p_i; inst_a.p_o -> o_a;
+  i_b -> inst_b.p_i; inst_b.p_o -> o_b;
+}
+

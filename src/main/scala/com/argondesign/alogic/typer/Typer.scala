@@ -45,8 +45,6 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
 
   private final val mixedWidthBinaryOps = Set("<<", ">>", "<<<", ">>>", "&&", "||")
 
-  private final val addCasts = new AddCasts
-
   private def hasError(node: TreeLike): Boolean = node.children exists {
     case child: Tree => child.hasTpe && child.tpe.isError
     case child: Type => child.children exists hasError
@@ -233,7 +231,7 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
       checkNameHidingByExtensionType(decl)
 
       if (kind.isPacked && kind.underlying != TypeVoid && kind.width < 1) {
-        cc.error(decl, s"Signal '${symbol.name}' has declared width ${kind.width}")
+        cc.error(decl, s"'${symbol.name}' is declared with width ${kind.width}")
         decl withTpe TypeError
       }
 
@@ -348,46 +346,51 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
 
         case decl @ Decl(symbol, Some(init)) => {
           if (symbol.kind.underlying.isNum && init.tpe.isPacked) {
-            cc.error(decl, "Unsized integer declaration has packed initializer")
-          }
-
-          val newdecl = if (symbol.kind.underlying.isNum || init.tpe.isNum) {
-            if (init.tpe.isNum) {
-              checkKnownConst(init)
+            if (symbol.kind.isParam) {
+              cc.error(init, "Unsized integer parameter assigned a packed value")
+            } else {
+              cc.error(decl, "Unsized integer declaration has packed initializer")
             }
-            // TODO: check signed/unsigned somewhere?
-            decl
+            decl withTpe TypeError
           } else {
-            // Check initializer
-            val packedErrOpt = checkPacked(init, "Initializer expression")
-            lazy val widthErrOpt = checkWidth(symbol.kind.width, init, "Initializer expression")
-            packedErrOpt orElse widthErrOpt map { errLoc =>
-              val newInit = ExprError() withLoc errLoc
-              TypeAssigner(newInit)
-              decl.copy(init = Some(newInit)) withLoc tree.loc
-            } getOrElse {
-              decl
-            }
-          }
 
-          // Attach initializer expression attribute to const declarations.
-          // Add the with inference casts in the attribute only. This is required
-          // as this initializer may be used in compile time computations
-          // (e.g.: width) before the AddImplicitCasts pass is run on the whole
-          // tree later
-          if (symbol.kind.isConst && !newdecl.init.get.tpe.isError) {
-            symbol.attr.init set {
-              val init = (newdecl.init.get rewrite addCasts).asInstanceOf[Expr]
-              if (symbol.kind.isPacked && init.tpe.isNum) {
-                init cast TypeInt(init.tpe.isSigned, Expr(symbol.kind.width) regularize init.loc)
-              } else {
-                init
+            val newdecl = if (symbol.kind.underlying.isNum || init.tpe.isNum) {
+              if (init.tpe.isNum) {
+                checkKnownConst(init)
+              }
+              // TODO: check signed/unsigned somewhere?
+              decl
+            } else {
+              // Check initializer
+              val msg = if (symbol.kind.isParam) "Parameter value" else "Initializer expression"
+              val packedErrOpt = checkPacked(init, msg)
+              lazy val widthErrOpt = {
+                checkWidth(symbol.kind.width, init, msg)
+              }
+              packedErrOpt orElse widthErrOpt map { errLoc =>
+                decl.copy(init = Some(TypeAssigner(ExprError() withLoc errLoc))) withLoc tree.loc
+              } getOrElse {
+                decl
               }
             }
-          }
 
-          // Yield actual declaration
-          newdecl
+            // Attach initializer expression attribute to param/const declarations.
+            if ((symbol.kind.isConst || symbol.kind.isParam) && !newdecl.init.get.tpe.isError) {
+              symbol.attr.init set {
+                val init = newdecl.init.get
+                val expr = if (symbol.kind.isPacked && init.tpe.isNum) {
+                  init cast TypeInt(init.tpe.isSigned, Expr(symbol.kind.width) regularize init.loc)
+                } else {
+                  init
+                }
+                expr.simplify
+                // TODO: check it's a compile time constant
+              }
+            }
+
+            // Yield actual declaration
+            newdecl
+          }
         }
 
         ////////////////////////////////////////////////////////////////////////////

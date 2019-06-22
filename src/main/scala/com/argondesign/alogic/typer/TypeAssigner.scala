@@ -275,6 +275,7 @@ final object TypeAssigner {
   private def kind(node: ExprCall) = node.expr.tpe match {
     case TypeCombFunc(_, returnType) => returnType
     case TypeCtrlFunc(_, returnType) => returnType
+    case TypePolyFunc(resolver)      => resolver(node.args).get.kind.asInstanceOf[TypeCombFunc].retType
     case _                           => unreachable
   }
 
