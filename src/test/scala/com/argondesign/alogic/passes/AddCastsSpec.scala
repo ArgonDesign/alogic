@@ -246,7 +246,36 @@ final class AddCastsSpec extends FreeSpec with AlogicTest {
         }
       }
 
-      // TODO: function arguments
+      "function argumentss expressions" - {
+        for {
+          (call, res) <- List(
+            // format: off
+            ("a.write(0s)", ExprCast(TypeSInt(1), ExprNum(true, 0))),
+            ("a.write(1u)", ExprCast(TypeUInt(1), ExprNum(false, 1))),
+            ("b.write(2s)", ExprCast(TypeSInt(10), ExprNum(true, 2))),
+            ("b.write(3u)", ExprCast(TypeUInt(10), ExprNum(false, 3))),
+            ("c.write(4s)", ExprCast(TypeSInt(20), ExprNum(true, 4))),
+            ("c.write(5u)", ExprCast(TypeUInt(20), ExprNum(false, 5)))
+            // format: on
+          )
+        } {
+          call in {
+            val entity = s"""|fsm f {
+                             |  (* unused *) out sync bool a;
+                             |  (* unused *) out sync u10 b;
+                             |  (* unused *) out sync i20 c;
+                             |  void main() {
+                             |    ${call};
+                             |    fence;
+                             |  }
+                             |}""".stripMargin.asTree[Entity]
+            val tree = xform(entity)
+            val ExprCall(_, List(expr)) = tree getFirst { case StmtExpr(expr) => expr }
+            expr shouldBe res
+            cc.messages shouldBe empty
+          }
+        }
+      }
     }
   }
 }

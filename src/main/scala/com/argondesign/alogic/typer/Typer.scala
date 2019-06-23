@@ -28,14 +28,12 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.TreeInTypeTransformer
 import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.lib.Math.clog2
 import com.argondesign.alogic.lib.Stack
 import com.argondesign.alogic.lib.TreeLike
 import com.argondesign.alogic.passes._
 import com.argondesign.alogic.util.FollowedBy
 import com.argondesign.alogic.util.unreachable
-import com.argondesign.alogic.lib.Math.clog2
-
-import scala.collection.mutable
 
 final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
     extends TreeTransformer
@@ -180,11 +178,11 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
 
   private val contextKind = Stack[Type]()
 
-  private val contextKindPopAt = mutable.Set[Int]()
+  private val contextNode = Stack[Int]()
 
   private def pushContextWidth(node: Tree, kind: Type) = {
+    contextNode push node.id
     contextKind push kind.underlying
-    contextKindPopAt add node.id
   }
 
   private[this] object TypeTyper extends TreeInTypeTransformer(this) {
@@ -272,6 +270,7 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
       }
     }
 
+    // Type check target up front
     case ExprSlice(tgt, _, _, _) if !walk(tgt).tpe.isError => {
       val shapeIter = tgt.tpe.shapeIter
       if (!shapeIter.hasNext || tgt.tpe.isArray) {
@@ -279,6 +278,28 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
         tree withTpe TypeError
       } else {
         pushContextWidth(tree, TypeUInt(Expr(clog2(shapeIter.next) max 1) regularize tgt.loc))
+      }
+    }
+
+    // Type check target up front
+    case ExprCall(tgt, args) if !walk(tgt).tpe.isError => {
+      def process(kinds: List[Type]): Unit = {
+        if (kinds.length != args.length) {
+          cc.error(tree, s"Function call expects ${kinds.length} arguments, ${args.length} given")
+          tree withTpe TypeError
+        } else {
+          for ((kind, arg) <- (kinds zip args).reverse) {
+            pushContextWidth(arg, kind)
+          }
+        }
+      }
+      tgt.tpe match {
+        case TypeCombFunc(argTypes, _) => process(argTypes)
+        case TypeCtrlFunc(argTypes, _) => process(argTypes)
+        case _: TypePolyFunc           => ()
+        case _ =>
+          cc.error(tree, s"'${tgt.toSource}' is not callable")
+          tree withTpe TypeError
       }
     }
 
@@ -501,65 +522,60 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
             val thing = if (inConnect) "port" else "field"
             cc.error(
               tree,
-              s"No ${thing} named '${selector}' in '${expr.toSource}' of type '${expr.tpe.toSource}'")
+              s"No $thing named '$selector' in '${expr.toSource}' of type '${expr.tpe.toSource}'")
             ExprError() withLoc tree.loc
           }
         }
 
-        case ExprCall(expr, args) => { // TODO: JIRA-152
-          require(expr.hasTpe)
-          require(args forall {
-            _.hasTpe
-          })
+        case ExprCall(expr, args) => {
 
           def checkArg(expected: Type, arg: Expr, i: Int): Tree = {
-            if (expected.isType && arg.tpe.isType) {
-              tree // @bits
+            if (expected.isType) {
+              if (!arg.tpe.isType) {
+                cc.error(arg, s"Argument $i expects a type")
+                ExprError() withLoc expr.loc
+              } else {
+                tree
+              }
+            } else if (expected.underlying.isNum) {
+              if (!expr.tpe.isNum) {
+                cc.error(arg, s"Argument $i expects an unsized value")
+                ExprError() withLoc expr.loc
+              } else {
+                // TODO: check signedness?
+                checkKnownConst(arg)
+                tree
+              }
+            } else if (arg.tpe.isNum) {
+              checkKnownConst(arg)
+              tree
             } else {
-              require(expected.isPacked || expected.isNum)
-              checkNumericOrPacked(arg, s"Argument ${i} to function call") map {
+              checkPacked(arg, s"Argument $i to function call") map {
                 ExprError() withLoc _
               } getOrElse {
-                if (expected.isNum || arg.tpe.isNum) {
-                  if (arg.tpe.isNum) {
-                    checkKnownConst(arg)
-                  }
-                  // TODO: check signedness?
-                  tree
+                val argWidth = arg.tpe.width
+                val expWidth = expected.width
+                if (argWidth != expWidth) {
+                  val cmp = if (argWidth > expWidth) "greater" else "less"
+                  cc.error(
+                    arg,
+                    s"Width ${argWidth} of argument ${i} passed to function call is ${cmp} than expected width ${expWidth}")
+                  ExprError() withLoc expr.loc
                 } else {
-                  val argWidth = arg.tpe.width
-                  val expWidth = expected.width
-                  if (argWidth != expWidth) {
-                    val cmp = if (argWidth > expWidth) "greater" else "less"
-                    cc.error(
-                      arg,
-                      s"Width ${argWidth} of argument ${i} passed to function call is ${cmp} than expected width ${expWidth}")
-                    ExprError() withLoc expr.loc
-                  } else {
-                    tree
-                  }
+                  tree
                 }
               }
             }
           }
 
           def checkFunc(argTypes: List[Type]) = {
-            val eLen = argTypes.length
-            val gLen = args.length
-            if (eLen != gLen) {
-              val cmp = if (eLen > gLen) "few" else "many"
-              cc.error(tree,
-                       s"Too ${cmp} arguments to function call, expected ${eLen}, have ${gLen}")
-              ExprError() withLoc tree.loc
-            } else {
-              val errOpt = {
-                val tmp = for (((e, a), i) <- (argTypes zip args).zipWithIndex) yield {
-                  checkArg(e, a, i + 1)
-                }
-                tmp collectFirst { case e: ExprError => e }
+            val errOpt = {
+              val tmp = for (((e, a), i) <- (argTypes zip args).zipWithIndex) yield {
+                checkArg(e, a, i + 1)
               }
-              errOpt getOrElse tree
+              tmp collectFirst { case e: ExprError => e }
             }
+            errOpt getOrElse tree
           }
 
           expr.tpe match {
@@ -571,23 +587,16 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
               tpe.resolve(args) match {
                 case Some(symbol) => tree withTpe symbol.kind.asInstanceOf[TypeCombFunc].retType
                 case None =>
-                  val funcStr = expr.toSource
-                  val argsStr = args map {
-                    _.toSource
-                  } mkString ", "
-                  val typeStr = args map {
-                    _.tpe.toSource
-                  } mkString ", "
+                  val err = args map { a =>
+                    s"'${a.toSource}' of type ${a.tpe.toSource}"
+                  }
                   cc.error(
                     tree,
-                    s"Builtin function '${funcStr}' cannot be applied to arguments '${argsStr}' of type '${typeStr}'")
+                    s"Builtin function '${expr.toSource}' cannot be applied to arguments" :: err: _*)
                   ExprError() withLoc tree.loc
               }
             // Anything else is not callable
-            case _ => {
-              cc.error(tree, s"'${expr}' is not callable")
-              ExprError() withLoc tree.loc
-            }
+            case _ => unreachable // Handle in enter
           }
         }
 
@@ -779,7 +788,11 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
       }
     }
 
-    if (contextKindPopAt contains result.id) {
+    // Pop context stack if required. This is a loop as some nodes might have
+    // been pushed multiple times, e.g.: port.write(array[index]), both the
+    // ExprCall and ExprIndex would have pushed the ExprIndex node
+    while (contextNode.nonEmpty && contextNode.top == tree.id) {
+      contextNode.pop()
       contextKind.pop()
     }
 
@@ -799,8 +812,8 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
   }
 
   override def finalCheck(tree: Tree): Unit = {
-    if (!hadError) {
-      assert(contextKind.isEmpty, (this, contextKind.toList, tree.toSource))
+    if (!tree.tpe.isError) {
+      assert(contextKind.isEmpty, s"${contextKind.toList} ${contextNode.toList}")
 
       def check(tree: TreeLike) {
         tree visitAll {

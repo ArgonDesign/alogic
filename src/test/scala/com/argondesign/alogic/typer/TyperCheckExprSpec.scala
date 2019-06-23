@@ -346,29 +346,21 @@ final class TyperCheckExprSpec extends FreeSpec with AlogicTest {
     "call" - {
       for {
         (text, kind, msg) <- List(
+          // format: off
           ("a()", TypeError, "'.*' is not callable"),
           ("a.valid()", TypeError, s"'.*' is not callable"),
           ("a.valid(1'b1)", TypeError, s"'.*' is not callable"),
-          ("a.write()", TypeError, "Too few arguments to function call, expected 1, have 0"),
+          ("a.write()", TypeError, "Function call expects 1 arguments, 0 given"),
           ("a.write(2'b1)", TypeVoid, ""),
-          ("a.write(1'b1, 1'b1)",
-           TypeError,
-           "Too many arguments to function call, expected 1, have 2"),
+          ("a.write(1'b1, 1'b1)", TypeError, "Function call expects 1 arguments, 2 given"),
           ("bar()", TypeVoid, ""),
-          ("bar(1, 2, 3, 4, 5)",
-           TypeError,
-           "Too many arguments to function call, expected 0, have 5"),
-          ("a.write(bar)",
-           TypeError,
-           "Argument 1 to function call is of neither numeric nor packed type"),
-          ("a.write(3'b1)",
-           TypeError,
-           "Width 3 of argument 1 passed to function call is greater than expected width 2"),
-          ("a.write(1'b1)",
-           TypeError,
-           "Width 1 of argument 1 passed to function call is less than expected width 2"),
+          ("bar(1, 2, 3, 4, 5)", TypeError, "Function call expects 0 arguments, 5 given"),
+          ("a.write(bar)", TypeError, "Argument 1 to function call is of non-packed type"),
+          ("a.write(3'b1)", TypeError, "Width 3 of argument 1 passed to function call is greater than expected width 2"),
+          ("a.write(1'b1)", TypeError, "Width 1 of argument 1 passed to function call is less than expected width 2"),
           ("@bits(a)", TypeNum(false), ""),
           ("@bits(a.valid)", TypeNum(false), "")
+          // format: on
         )
       } {
         text in {

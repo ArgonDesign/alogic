@@ -281,6 +281,33 @@ final class UnaryTickSpec extends FreeSpec with AlogicTest {
         }
       }
 
+      "function argument" - {
+        "a" in check(TypeUInt(20) :: Nil) {
+          """|fsm f {
+             |  in bool a;
+             |  out sync u20 b;
+             |  void main() {
+             |    b.write('a);
+             |    fence;
+             |  }
+             |}""".stripMargin
+        }
+
+        "b" in check(TypeUInt(8) :: TypeUInt(20) :: Nil) {
+          """|fsm f {
+             |  in bool a;
+             |  in u2   b;
+             |  
+             |  u20 store[256];
+             |  
+             |  void main() {
+             |    store.write('b, 'a);
+             |    fence;
+             |  }
+             |}""".stripMargin
+        }
+      }
+
       "multiple" - {
         "a" in check(TypeUInt(3) :: TypeUInt(4) :: Nil) {
           """|fsm f {

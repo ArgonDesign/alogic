@@ -23,6 +23,7 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Error
 import com.argondesign.alogic.core.Loc
+import com.argondesign.alogic.typer.ResolvePolyFunc
 import com.argondesign.alogic.typer.Typer
 import org.scalatest.FreeSpec
 
@@ -31,6 +32,7 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
   implicit val cc = new CompilerContext
   val namer = new Namer
   val typer = new Typer
+  val rpoly = new ResolvePolyFunc
   val aics = new AddCasts
   val fold = new FoldExpr(foldRefs = false)
 
@@ -44,7 +46,7 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
       case Root(_, entity) => entity
       case other           => other
     }
-    node rewrite typer rewrite aics rewrite fold
+    node rewrite typer rewrite rpoly rewrite aics rewrite fold
   }
 
   "FoldExpr should fold" - {

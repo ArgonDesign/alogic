@@ -22,6 +22,7 @@ import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Math.clog2
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.FollowedBy
+import com.argondesign.alogic.util.unreachable
 
 final class AddCasts(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
 
@@ -55,8 +56,6 @@ final class AddCasts(implicit cc: CompilerContext) extends TreeTransformer with 
         stmt.copy(rhs = cast(lhs.tpe, rhs))
       }
 
-      // TODO: case ExprCall(expr, args) => tree
-
       case expr @ ExprIndex(tgt, idx) if idx.tpe.underlying.isNum => {
         val width = clog2(tgt.tpe.shapeIter.next) max 1
         val widthExpr = TypeAssigner(Expr(width) withLoc expr.loc)
@@ -70,6 +69,27 @@ final class AddCasts(implicit cc: CompilerContext) extends TreeTransformer with 
         val newLidx = if (lidx.tpe.isNum) cast(TypeUInt(widthExpr), lidx) else lidx
         val newRidx = if (ridx.tpe.isNum) cast(TypeUInt(widthExpr), ridx) else ridx
         expr.copy(lidx = newLidx, ridx = newRidx)
+      }
+
+      case expr @ ExprCall(func, args) => {
+        val kinds = func.tpe match {
+          case TypeCombFunc(argTypes, _) => argTypes
+          case TypeCtrlFunc(argTypes, _) => argTypes
+          case _                         => unreachable
+        }
+
+        val needsCasts = kinds zip args map {
+          case (k, a) => k.isPacked && a.tpe.underlying.isNum
+        }
+
+        if (needsCasts exists identity) {
+          val newArgs = for ((needsCast, kind, arg) <- (needsCasts, kinds, args).zipped) yield {
+            if (needsCast) cast(kind, arg) else arg
+          }
+          expr.copy(args = newArgs.toList)
+        } else {
+          tree
+        }
       }
 
       case expr @ ExprBinary(lhs,
