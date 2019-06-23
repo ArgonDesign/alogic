@@ -21,9 +21,10 @@ import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.SourceTextConverters._
 import com.argondesign.alogic.ast.Trees.Expr.ImplicitConversions._
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Error
-import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.core.Warning
 import com.argondesign.alogic.passes.Namer
 import org.scalatest.FreeSpec
 
@@ -54,6 +55,15 @@ final class TyperCheckExprSpec extends FreeSpec with AlogicTest {
       errors shouldBe empty
     } else {
       errors.loneElement should beThe[Error]((err map Pattern.quote): _*)
+    }
+  }
+
+  def checkWarning(tree: Tree, err: List[String]) = {
+    val errors = cc.messages.filter { _.isInstanceOf[Warning] }
+    if (err.isEmpty) {
+      errors shouldBe empty
+    } else {
+      errors.loneElement should beThe[Warning]((err map Pattern.quote): _*)
     }
   }
 
@@ -102,44 +112,104 @@ final class TyperCheckExprSpec extends FreeSpec with AlogicTest {
     }
 
     "binary" - {
-      for (op <- List("*", "/", "%", "+", "-", "&", "|", "^", ">", ">=", "<", "<=", "==", "!=")) {
-        for {
-          (expr, err) <- List(
-            (s"8'd3 ${op} 8'd2", Nil),
-            (s"8'd3 ${op} 8'sd2", Nil),
-            (s"8'sd3 ${op} 8'd2", Nil),
-            (s"8'sd3 ${op} 8'sd2", Nil),
-            (s"8'd3 ${op} 2", Nil),
-            (s"3 ${op} 8'd2", Nil),
-            (s"3 ${op} 2", Nil),
-            (s"7'd3 ${op} 8'd2",
-             s"Both operands of binary '${op}' must have the same width, but" ::
-               "left  hand operand is 7 bits wide, and" ::
-               "right hand operand is 8 bits wide" :: Nil),
-            (s"8'd3 ${op} 7'd2",
-             s"Both operands of binary '${op}' must have the same width, but" ::
-               "left  hand operand is 8 bits wide, and" ::
-               "right hand operand is 7 bits wide" :: Nil),
-            (s"4'sd3 ${op} 3'sd2",
-             s"Both operands of binary '${op}' must have the same width, but" ::
-               "left  hand operand is 4 bits wide, and" ::
-               "right hand operand is 3 bits wide" :: Nil),
-            (s"3'sd3 ${op} 4'sd2",
-             s"Both operands of binary '${op}' must have the same width, but" ::
-               "left  hand operand is 3 bits wide, and" ::
-               "right hand operand is 4 bits wide" :: Nil),
-            (s"bool ${op} 8'd2", s"Left hand operand of '${op}' is of non-packed type" :: Nil),
-            (s"8'd3 ${op} bool", s"Right hand operand of '${op}' is of non-packed type" :: Nil)
-          )
-        } {
-          expr in {
-            val root = s"""|fsm a {
-                           |  void main() {
-                           |    $$display("", ${expr});
-                           |    fence;
-                           |  }
-                           |}""".stripMargin.asTree[Root]
-            checkError(xform(root), err)
+      "errors" - {
+        for (op <- List("*", "/", "%", "+", "-", "&", "|", "^", ">", ">=", "<", "<=", "==", "!=")) {
+          for {
+            (expr, err) <- List(
+              (s"8'd3 ${op} 8'd2", Nil),
+              (s"8'd3 ${op} 8'sd2", Nil),
+              (s"8'sd3 ${op} 8'd2", Nil),
+              (s"8'sd3 ${op} 8'sd2", Nil),
+              (s"8'd3 ${op} 2", Nil),
+              (s"3 ${op} 8'd2", Nil),
+              (s"3 ${op} 2", Nil),
+              (s"7'd3 ${op} 8'd2",
+               s"Both operands of binary '${op}' must have the same width, but" ::
+                 "left  hand operand is 7 bits wide, and" ::
+                 "right hand operand is 8 bits wide" :: Nil),
+              (s"8'd3 ${op} 7'd2",
+               s"Both operands of binary '${op}' must have the same width, but" ::
+                 "left  hand operand is 8 bits wide, and" ::
+                 "right hand operand is 7 bits wide" :: Nil),
+              (s"4'sd3 ${op} 3'sd2",
+               s"Both operands of binary '${op}' must have the same width, but" ::
+                 "left  hand operand is 4 bits wide, and" ::
+                 "right hand operand is 3 bits wide" :: Nil),
+              (s"3'sd3 ${op} 4'sd2",
+               s"Both operands of binary '${op}' must have the same width, but" ::
+                 "left  hand operand is 3 bits wide, and" ::
+                 "right hand operand is 4 bits wide" :: Nil),
+              (s"bool ${op} 8'd2", s"Left hand operand of '${op}' is of non-packed type" :: Nil),
+              (s"8'd3 ${op} bool", s"Right hand operand of '${op}' is of non-packed type" :: Nil)
+            )
+          } {
+            expr in {
+              val root = s"""|fsm a {
+                             |  void main() {
+                             |    $$display("", ${expr});
+                             |    fence;
+                             |  }
+                             |}""".stripMargin.asTree[Root]
+              checkError(xform(root), err)
+            }
+          }
+        }
+      }
+
+      "warnings" - {
+        "shift signedness" - {
+          for {
+            (expr, warn) <- List(
+              (s"8'd3  << 1", Nil),
+              (s"8'sd3 << 8'sd2", "Logical shift used on signed left operand" :: Nil),
+              (s"3     << 1", Nil),
+              (s"3s    << 8'sd2", "Logical shift used on signed left operand" :: Nil),
+              (s"8'd3  >> 1", Nil),
+              (s"8'sd3 >> 8'sd2", "Logical shift used on signed left operand" :: Nil),
+              (s"3     >> 1", Nil),
+              (s"3s    >> 8'sd2", "Logical shift used on signed left operand" :: Nil),
+              (s"8'd3  <<< 1", "Arithmetic shift used on unsigned left operand" :: Nil),
+              (s"8'sd3 <<< 8'sd2", Nil),
+              (s"3     <<< 1", "Arithmetic shift used on unsigned left operand" :: Nil),
+              (s"3s    <<< 8'sd2", Nil),
+              (s"8'd3  >>> 1", "Arithmetic shift used on unsigned left operand" :: Nil),
+              (s"8'sd3 >>> 8'sd2", Nil),
+              (s"3     >>> 1", "Arithmetic shift used on unsigned left operand" :: Nil),
+              (s"3s    >>> 8'sd2", Nil)
+            )
+          } {
+            expr in {
+              val root = s"""|fsm a {
+                             |  void main() {
+                             |    $$display("", ${expr});
+                             |    fence;
+                             |  }
+                             |}""".stripMargin.asTree[Root]
+              checkWarning(xform(root), warn)
+            }
+          }
+        }
+
+        "comparison signedness" - {
+          for (op <- List(">", ">=", "<", "<=", "==", "!=")) {
+            for {
+              (expr, warn) <- List(
+                (s"8'd3  ${op} 1", Nil),
+                (s"8'sd3 ${op} 1", "Comparison between signed and unsigned operands" :: Nil),
+                (s"3     ${op} 1s", "Comparison between unsigned and signed operands" :: Nil),
+                (s"3s    ${op} 1s", Nil)
+              )
+            } {
+              expr in {
+                val root = s"""|fsm a {
+                               |  void main() {
+                               |    $$display("", ${expr});
+                               |    fence;
+                               |  }
+                               |}""".stripMargin.asTree[Root]
+                checkWarning(xform(root), warn)
+              }
+            }
           }
         }
       }

@@ -20,6 +20,7 @@ import com.argondesign.alogic.SourceTextConverters._
 import com.argondesign.alogic.ast.Trees.Expr.ImplicitConversions._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Warning
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.typer.Typer
 import org.scalatest.FreeSpec
@@ -71,7 +72,7 @@ final class AddCastsSpec extends FreeSpec with AlogicTest {
                 case Some(Right(r)) => rhs shouldBe r
                 case None           => result shouldBe expr
               }
-              cc.messages shouldBe empty
+              cc.messages filterNot { _.isInstanceOf[Warning] } shouldBe empty
             }
           }
         }

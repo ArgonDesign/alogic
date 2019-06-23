@@ -55,6 +55,7 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
   override val typed: Boolean = false
 
   private final val mixedWidthBinaryOps = Set("<<", ">>", "<<<", ">>>", "&&", "||")
+  private final val comparisonBinaryOps = Set(">", ">=", "<", "<=", "==", "!=")
 
   private def hasError(node: TreeLike): Boolean = node.children exists {
     case child: Tree => child.hasTpe && child.tpe.isError
@@ -542,34 +543,51 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
         }
 
       // Binary ops
-      case ExprBinary(lhs, op, rhs) if !lhs.tpe.isNum || !rhs.tpe.isNum =>
-        lazy val strictWidth = !(mixedWidthBinaryOps contains op)
-        if (lhs.tpe.isNum && strictWidth) {
-          if (!checkPacked(rhs, s"Right hand operand of '$op'")) {
-            error(tree)
-          }
-        } else if (rhs.tpe.isNum && strictWidth) {
-          if (!checkPacked(lhs, s"Left hand operand of '$op'")) {
-            error(tree)
-          }
-        } else if (strictWidth) {
-          if (!checkPacked(lhs, s"Left hand operand of '$op'") |||
-                !checkPacked(rhs, s"Right hand operand of '$op'")) {
-            error(tree)
-          } else if (lhs.tpe.width != rhs.tpe.width) {
-            error(
-              tree,
-              s"Both operands of binary '$op' must have the same width, but",
-              s"left  hand operand is ${lhs.tpe.width} bits wide, and",
-              s"right hand operand is ${rhs.tpe.width} bits wide",
-            )
-          }
-        } else {
-          if (!checkNumericOrPacked(lhs, s"Left hand operand of '$op'") |||
-                !checkNumericOrPacked(rhs, s"Right hand operand of '$op'")) {
-            error(tree)
+      case ExprBinary(lhs, op, rhs) => {
+        if (!lhs.tpe.isNum || !rhs.tpe.isNum) {
+          lazy val strictWidth = !(mixedWidthBinaryOps contains op)
+          if (lhs.tpe.isNum && strictWidth) {
+            if (!checkPacked(rhs, s"Right hand operand of '$op'")) {
+              error(tree)
+            }
+          } else if (rhs.tpe.isNum && strictWidth) {
+            if (!checkPacked(lhs, s"Left hand operand of '$op'")) {
+              error(tree)
+            }
+          } else if (strictWidth) {
+            if (!checkPacked(lhs, s"Left hand operand of '$op'") |||
+                  !checkPacked(rhs, s"Right hand operand of '$op'")) {
+              error(tree)
+            } else if (lhs.tpe.width != rhs.tpe.width) {
+              error(
+                tree,
+                s"Both operands of binary '$op' must have the same width, but",
+                s"left  hand operand is ${lhs.tpe.width} bits wide, and",
+                s"right hand operand is ${rhs.tpe.width} bits wide",
+              )
+            }
+          } else {
+            if (!checkNumericOrPacked(lhs, s"Left hand operand of '$op'") |||
+                  !checkNumericOrPacked(rhs, s"Right hand operand of '$op'")) {
+              error(tree)
+            }
           }
         }
+
+        if (!tree.hasTpe) {
+          if ((op == "<<<" || op == ">>>") && !lhs.tpe.isSigned) {
+            cc.warning(lhs, "Arithmetic shift used on unsigned left operand")
+          } else if ((op == "<<" || op == ">>") && lhs.tpe.isSigned) {
+            cc.warning(lhs, "Logical shift used on signed left operand")
+          } else if (comparisonBinaryOps contains op) {
+            if (lhs.tpe.isSigned && !rhs.tpe.isSigned) {
+              cc.warning(tree, "Comparison between signed and unsigned operands")
+            } else if (!lhs.tpe.isSigned && rhs.tpe.isSigned) {
+              cc.warning(tree, "Comparison between unsigned and signed operands")
+            }
+          }
+        }
+      }
 
       case ExprTernary(cond, thenExpr, elseExpr) =>
         if (!checkNumericOrPacked(cond, "Condition of '?:'")) {

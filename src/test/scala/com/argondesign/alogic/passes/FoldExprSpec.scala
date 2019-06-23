@@ -23,6 +23,7 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Error
 import com.argondesign.alogic.core.Loc
+import com.argondesign.alogic.core.Warning
 import com.argondesign.alogic.typer.ResolvePolyFunc
 import com.argondesign.alogic.typer.Typer
 import org.scalatest.FreeSpec
@@ -266,9 +267,9 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
         e in {
           xform(e.asTree[Expr]) shouldBe result
           if (msg.isEmpty) {
-            cc.messages shouldBe empty
+            cc.messages filterNot { _.isInstanceOf[Warning] } shouldBe empty
           } else {
-            cc.messages.loneElement should beThe[Error](msg)
+            (cc.messages filterNot { _.isInstanceOf[Warning] }).loneElement should beThe[Error](msg)
           }
         }
       }
@@ -331,9 +332,9 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
         e in {
           xform(e.asTree[Expr]) shouldBe result
           if (msg.isEmpty) {
-            cc.messages shouldBe empty
+            cc.messages filterNot { _.isInstanceOf[Warning] } shouldBe empty
           } else {
-            cc.messages.loneElement should beThe[Error](msg)
+            (cc.messages filterNot { _.isInstanceOf[Warning] }).loneElement should beThe[Error](msg)
           }
         }
       }
@@ -414,110 +415,106 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
 
     "binary operators applied to equally sized integer literals" - {
       for {
-        (expr, result, msg) <- List(
+        (expr, result) <- List(
           //////////////////////////////////////////////
           // signed signed
           //////////////////////////////////////////////
           // Always valid
-          ("4'sd3 >  4'sd2", ExprInt(false, 1, 1), ""),
-          ("4'sd3 >= 4'sd2", ExprInt(false, 1, 1), ""),
-          ("4'sd3 <  4'sd2", ExprInt(false, 1, 0), ""),
-          ("4'sd3 <= 4'sd2", ExprInt(false, 1, 0), ""),
-          ("4'sd3 == 4'sd2", ExprInt(false, 1, 0), ""),
-          ("4'sd3 != 4'sd2", ExprInt(false, 1, 1), ""),
-          ("4'sd3 && 4'sd2", ExprInt(false, 1, 1), ""),
-          ("4'sd3 || 4'sd2", ExprInt(false, 1, 1), ""),
+          ("4'sd3 >  4'sd2", ExprInt(false, 1, 1)),
+          ("4'sd3 >= 4'sd2", ExprInt(false, 1, 1)),
+          ("4'sd3 <  4'sd2", ExprInt(false, 1, 0)),
+          ("4'sd3 <= 4'sd2", ExprInt(false, 1, 0)),
+          ("4'sd3 == 4'sd2", ExprInt(false, 1, 0)),
+          ("4'sd3 != 4'sd2", ExprInt(false, 1, 1)),
+          ("4'sd3 && 4'sd2", ExprInt(false, 1, 1)),
+          ("4'sd3 || 4'sd2", ExprInt(false, 1, 1)),
           // Arith
-          ("4'sd3 * 4'sd2", ExprInt(true, 4, 6), ""),
-          ("4'sd3 / 4'sd2", ExprInt(true, 4, 1), ""),
-          ("4'sd3 % 4'sd2", ExprInt(true, 4, 1), ""),
-          ("4'sd3 + 4'sd2", ExprInt(true, 4, 5), ""),
-          ("4'sd3 - 4'sd2", ExprInt(true, 4, 1), ""),
-          ("4'sd3 - 4'sd4", ExprInt(true, 4, -1), ""),
+          ("4'sd3 * 4'sd2", ExprInt(true, 4, 6)),
+          ("4'sd3 / 4'sd2", ExprInt(true, 4, 1)),
+          ("4'sd3 % 4'sd2", ExprInt(true, 4, 1)),
+          ("4'sd3 + 4'sd2", ExprInt(true, 4, 5)),
+          ("4'sd3 - 4'sd2", ExprInt(true, 4, 1)),
+          ("4'sd3 - 4'sd4", ExprInt(true, 4, -1)),
           // Bitwise
-          (" 4'sd3 &   4'sd2", ExprInt(true, 4, 2), ""),
-          (" 4'sd3 ^   4'sd2", ExprInt(true, 4, 1), ""),
-          (" 4'sd3 |   4'sd2", ExprInt(true, 4, 3), ""),
-          (" 4'sd3 &  -4'sd2", ExprInt(true, 4, 2), ""),
-          (" 4'sd3 ^  -4'sd2", ExprInt(true, 4, -3), ""),
-          (" 4'sd3 |  -4'sd2", ExprInt(true, 4, -1), ""),
-          ("-4'sd3 &   4'sd2", ExprInt(true, 4, 0), ""),
-          ("-4'sd3 ^   4'sd2", ExprInt(true, 4, -1), ""),
-          ("-4'sd3 |   4'sd2", ExprInt(true, 4, -1), ""),
-          ("-4'sd3 &  -4'sd2", ExprInt(true, 4, -4), ""),
-          ("-4'sd3 ^  -4'sd2", ExprInt(true, 4, 3), ""),
-          ("-4'sd3 |  -4'sd2", ExprInt(true, 4, -1), ""),
+          (" 4'sd3 &   4'sd2", ExprInt(true, 4, 2)),
+          (" 4'sd3 ^   4'sd2", ExprInt(true, 4, 1)),
+          (" 4'sd3 |   4'sd2", ExprInt(true, 4, 3)),
+          (" 4'sd3 &  -4'sd2", ExprInt(true, 4, 2)),
+          (" 4'sd3 ^  -4'sd2", ExprInt(true, 4, -3)),
+          (" 4'sd3 |  -4'sd2", ExprInt(true, 4, -1)),
+          ("-4'sd3 &   4'sd2", ExprInt(true, 4, 0)),
+          ("-4'sd3 ^   4'sd2", ExprInt(true, 4, -1)),
+          ("-4'sd3 |   4'sd2", ExprInt(true, 4, -1)),
+          ("-4'sd3 &  -4'sd2", ExprInt(true, 4, -4)),
+          ("-4'sd3 ^  -4'sd2", ExprInt(true, 4, 3)),
+          ("-4'sd3 |  -4'sd2", ExprInt(true, 4, -1)),
           //////////////////////////////////////////////
           // signed unsigned
           //////////////////////////////////////////////
           // Always valid
-          ("4'sd3 >  4'd2", ExprInt(false, 1, 1), ""),
-          ("4'sd3 >= 4'd2", ExprInt(false, 1, 1), ""),
-          ("4'sd3 <  4'd2", ExprInt(false, 1, 0), ""),
-          ("4'sd3 <= 4'd2", ExprInt(false, 1, 0), ""),
-          ("4'sd3 == 4'd2", ExprInt(false, 1, 0), ""),
-          ("4'sd3 != 4'd2", ExprInt(false, 1, 1), ""),
-          ("4'sd3 && 4'd2", ExprInt(false, 1, 1), ""),
-          ("4'sd3 || 4'd2", ExprInt(false, 1, 1), ""),
+          ("4'sd3 >  4'd2", ExprInt(false, 1, 1)),
+          ("4'sd3 >= 4'd2", ExprInt(false, 1, 1)),
+          ("4'sd3 <  4'd2", ExprInt(false, 1, 0)),
+          ("4'sd3 <= 4'd2", ExprInt(false, 1, 0)),
+          ("4'sd3 == 4'd2", ExprInt(false, 1, 0)),
+          ("4'sd3 != 4'd2", ExprInt(false, 1, 1)),
+          ("4'sd3 && 4'd2", ExprInt(false, 1, 1)),
+          ("4'sd3 || 4'd2", ExprInt(false, 1, 1)),
           // Bitwise
-          (" 4'sd3 &  4'd2", ExprInt(false, 4, 2), ""),
-          (" 4'sd3 ^  4'd2", ExprInt(false, 4, 1), ""),
-          (" 4'sd3 |  4'd2", ExprInt(false, 4, 3), ""),
-          ("-4'sd3 &  4'd2", ExprInt(false, 4, 0), ""),
-          ("-4'sd3 ^  4'd2", ExprInt(false, 4, 15), ""),
-          ("-4'sd3 |  4'd2", ExprInt(false, 4, 15), ""),
+          (" 4'sd3 &  4'd2", ExprInt(false, 4, 2)),
+          (" 4'sd3 ^  4'd2", ExprInt(false, 4, 1)),
+          (" 4'sd3 |  4'd2", ExprInt(false, 4, 3)),
+          ("-4'sd3 &  4'd2", ExprInt(false, 4, 0)),
+          ("-4'sd3 ^  4'd2", ExprInt(false, 4, 15)),
+          ("-4'sd3 |  4'd2", ExprInt(false, 4, 15)),
           //////////////////////////////////////////////
           // unsigned signed
           //////////////////////////////////////////////
           // Always valid
-          ("4'd3 >  4'sd2", ExprInt(false, 1, 1), ""),
-          ("4'd3 >= 4'sd2", ExprInt(false, 1, 1), ""),
-          ("4'd3 <  4'sd2", ExprInt(false, 1, 0), ""),
-          ("4'd3 <= 4'sd2", ExprInt(false, 1, 0), ""),
-          ("4'd3 == 4'sd2", ExprInt(false, 1, 0), ""),
-          ("4'd3 != 4'sd2", ExprInt(false, 1, 1), ""),
-          ("4'd3 && 4'sd2", ExprInt(false, 1, 1), ""),
-          ("4'd3 || 4'sd2", ExprInt(false, 1, 1), ""),
+          ("4'd3 >  4'sd2", ExprInt(false, 1, 1)),
+          ("4'd3 >= 4'sd2", ExprInt(false, 1, 1)),
+          ("4'd3 <  4'sd2", ExprInt(false, 1, 0)),
+          ("4'd3 <= 4'sd2", ExprInt(false, 1, 0)),
+          ("4'd3 == 4'sd2", ExprInt(false, 1, 0)),
+          ("4'd3 != 4'sd2", ExprInt(false, 1, 1)),
+          ("4'd3 && 4'sd2", ExprInt(false, 1, 1)),
+          ("4'd3 || 4'sd2", ExprInt(false, 1, 1)),
           // Bitwise
-          ("4'd3 &  4'sd2", ExprInt(false, 4, 2), ""),
-          ("4'd3 ^  4'sd2", ExprInt(false, 4, 1), ""),
-          ("4'd3 |  4'sd2", ExprInt(false, 4, 3), ""),
-          ("4'd3 & -4'sd2", ExprInt(false, 4, 2), ""),
-          ("4'd3 ^ -4'sd2", ExprInt(false, 4, 13), ""),
-          ("4'd3 | -4'sd2", ExprInt(false, 4, 15), ""),
+          ("4'd3 &  4'sd2", ExprInt(false, 4, 2)),
+          ("4'd3 ^  4'sd2", ExprInt(false, 4, 1)),
+          ("4'd3 |  4'sd2", ExprInt(false, 4, 3)),
+          ("4'd3 & -4'sd2", ExprInt(false, 4, 2)),
+          ("4'd3 ^ -4'sd2", ExprInt(false, 4, 13)),
+          ("4'd3 | -4'sd2", ExprInt(false, 4, 15)),
           //////////////////////////////////////////////
           // unsigned unsigned
           //////////////////////////////////////////////
           // Always valid
-          ("4'd3 >  4'd2", ExprInt(false, 1, 1), ""),
-          ("4'd3 >= 4'd2", ExprInt(false, 1, 1), ""),
-          ("4'd3 <  4'd2", ExprInt(false, 1, 0), ""),
-          ("4'd3 <= 4'd2", ExprInt(false, 1, 0), ""),
-          ("4'd3 == 4'd2", ExprInt(false, 1, 0), ""),
-          ("4'd3 != 4'd2", ExprInt(false, 1, 1), ""),
-          ("4'd3 && 4'd2", ExprInt(false, 1, 1), ""),
-          ("4'd3 || 4'd2", ExprInt(false, 1, 1), ""),
+          ("4'd3 >  4'd2", ExprInt(false, 1, 1)),
+          ("4'd3 >= 4'd2", ExprInt(false, 1, 1)),
+          ("4'd3 <  4'd2", ExprInt(false, 1, 0)),
+          ("4'd3 <= 4'd2", ExprInt(false, 1, 0)),
+          ("4'd3 == 4'd2", ExprInt(false, 1, 0)),
+          ("4'd3 != 4'd2", ExprInt(false, 1, 1)),
+          ("4'd3 && 4'd2", ExprInt(false, 1, 1)),
+          ("4'd3 || 4'd2", ExprInt(false, 1, 1)),
           // Arith
-          ("4'd3 * 4'd2", ExprInt(false, 4, 6), ""),
-          ("4'd3 / 4'd2", ExprInt(false, 4, 1), ""),
-          ("4'd3 % 4'd2", ExprInt(false, 4, 1), ""),
-          ("4'd3 + 4'd2", ExprInt(false, 4, 5), ""),
-          ("4'd3 - 4'd2", ExprInt(false, 4, 1), ""),
-          ("4'd3 - 4'd4", ExprInt(false, 4, 15), ""),
+          ("4'd3 * 4'd2", ExprInt(false, 4, 6)),
+          ("4'd3 / 4'd2", ExprInt(false, 4, 1)),
+          ("4'd3 % 4'd2", ExprInt(false, 4, 1)),
+          ("4'd3 + 4'd2", ExprInt(false, 4, 5)),
+          ("4'd3 - 4'd2", ExprInt(false, 4, 1)),
+          ("4'd3 - 4'd4", ExprInt(false, 4, 15)),
           // Bitwise
-          ("4'd3 &  4'd2", ExprInt(false, 4, 2), ""),
-          ("4'd3 ^  4'd2", ExprInt(false, 4, 1), ""),
-          ("4'd3 |  4'd2", ExprInt(false, 4, 3), "")
+          ("4'd3 &  4'd2", ExprInt(false, 4, 2)),
+          ("4'd3 ^  4'd2", ExprInt(false, 4, 1)),
+          ("4'd3 |  4'd2", ExprInt(false, 4, 3))
         )
       } {
         val e = expr.trim.replaceAll(" +", " ")
         e in {
           xform(e.asTree[Expr]) shouldBe result
-          if (msg.isEmpty) {
-            cc.messages shouldBe empty
-          } else {
-            cc.messages.loneElement should beThe[Error](msg)
-          }
+          cc.messages filterNot { _.isInstanceOf[Warning] } shouldBe empty
         }
       }
     }
