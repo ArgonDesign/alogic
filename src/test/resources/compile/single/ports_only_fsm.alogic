@@ -1,0 +1,9 @@
+fsm ports_only_fsm {
+  (* unused *) in             u8 ia;
+  (* unused *) in sync        u8 ib;
+  (* unused *) in sync ready  u8 ic;
+  (* unused *) out            u8 oa;
+  (* unused *) out sync       u8 ob;
+  (* unused *) out sync ready u8 oc;
+  (* unused *) out wire       u8 od;
+}

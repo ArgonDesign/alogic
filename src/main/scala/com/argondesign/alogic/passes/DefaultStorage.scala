@@ -37,7 +37,6 @@ final class DefaultStorage(implicit cc: CompilerContext) extends TreeTransformer
   private[this] var inConnect = false
 
   override def enter(tree: Tree): Unit = tree match {
-
     case _: Connect => {
       assert(!inConnect)
       inConnect = true
@@ -57,43 +56,42 @@ final class DefaultStorage(implicit cc: CompilerContext) extends TreeTransformer
   override def transform(tree: Tree): Tree = {
     tree match {
       case _: Connect => {
-        tree
-      } followedBy {
         assert(inConnect)
         inConnect = false
       }
 
       case entity: EntityLowered => {
-        // Collect all output declarations that use the default storage type
-        val (outs, rest) = entity.declarations.partition {
-          case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeOut] => {
-            symbol.kind.asInstanceOf[TypeOut].st == StorageTypeDefault
-          }
-          case _ => false
-        }
+        val isVerbatim = entitySymbol.attr.variant.value == "verbatim"
 
-        // Update their types
-        for (Decl(symbol, _) <- outs) {
-          val kind = symbol.kind.asInstanceOf[TypeOut]
+        // Update types or all output declarations that use the default storage type
+        for {
+          Decl(symbol, _) <- entity.declarations
+          if symbol.kind.isOut
+          kind = symbol.kind.asInstanceOf[TypeOut]
+          if kind.st == StorageTypeDefault
+        } {
           // Compute the appropriate default storage type
-          val newSt =
-            if ((connectedSet contains symbol) || entitySymbol.attr.variant.value == "verbatim") {
-              StorageTypeWire
-            } else {
-              kind.fct match {
-                case FlowControlTypeReady  => StorageTypeSlices(List(StorageSliceFwd))
-                case FlowControlTypeAccept => StorageTypeWire
-                case _                     => StorageTypeReg
-              }
+          val newSt = if (isVerbatim) {
+            StorageTypeWire
+          } else if (connectedSet contains symbol) {
+            StorageTypeWire
+          } else if (accessedSet contains symbol) {
+            kind.fct match {
+              case FlowControlTypeReady  => StorageTypeSlices(List(StorageSliceFwd))
+              case FlowControlTypeAccept => StorageTypeWire
+              case _                     => StorageTypeReg
             }
+          } else {
+            StorageTypeWire
+          }
           symbol.kind = kind.copy(st = newSt)
         }
-
-        tree
       }
 
-      case _ => tree
+      case _ => ()
     }
+
+    tree
   }
 
   override def finalCheck(tree: Tree): Unit = {
@@ -106,10 +104,9 @@ final class DefaultStorage(implicit cc: CompilerContext) extends TreeTransformer
       }
     }
   }
-
 }
 
 object DefaultStorage extends TreeTransformerPass {
-  val name = "default-storages"
+  val name = "default-storage"
   def create(implicit cc: CompilerContext) = new DefaultStorage
 }
