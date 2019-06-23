@@ -58,54 +58,36 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
           ("-(2s)", ExprNum(true, -2), ""),
           ("~(2s)", ExprNum(true, -3), ""),
           ("!(2s)", ExprInt(false, 1, 0), ""),
-          ("&(2s)", ExprInt(false, 1, 0), ""),
-          ("|(2s)", ExprInt(false, 1, 1), ""),
-          ("^(2s)", ExprInt(false, 1, 1), ""),
           // signed negative operand
           ("+(-2s)", ExprNum(true, -2), ""),
           ("-(-2s)", ExprNum(true, 2), ""),
           ("~(-2s)", ExprNum(true, 1), ""),
           ("!(-2s)", ExprInt(false, 1, 0), ""),
-          ("&(-2s)", ExprInt(false, 1, 0), ""),
-          ("|(-2s)", ExprInt(false, 1, 1), ""),
-          ("^(-2s)", ExprError(), "Unary '^' is not well defined for unsized negative values"),
           // signed 0 operand
           ("+(0s)", ExprNum(true, 0), ""),
           ("-(0s)", ExprNum(true, 0), ""),
           ("~(0s)", ExprNum(true, -1), ""),
           ("!(0s)", ExprInt(false, 1, 1), ""),
-          ("&(0s)", ExprInt(false, 1, 0), ""),
-          ("|(0s)", ExprInt(false, 1, 0), ""),
-          ("^(0s)", ExprInt(false, 1, 0), ""),
           // signed -1 operand
           ("+(-1s)", ExprNum(true, -1), ""),
           ("-(-1s)", ExprNum(true, 1), ""),
           ("~(-1s)", ExprNum(true, 0), ""),
           ("!(-1s)", ExprInt(false, 1, 0), ""),
-          ("&(-1s)", ExprInt(false, 1, 1), ""),
-          ("|(-1s)", ExprInt(false, 1, 1), ""),
-          ("^(-1s)", ExprError(), "Unary '^' is not well defined for unsized negative values"),
           // unsigned non-0 operand
           ("+(2)", ExprNum(false, 2), ""),
           ("-(2)", ExprError(), "Unary '-' is not well defined for unsigned values"),
           ("~(2)", ExprError(), "Unary '~' is not well defined for unsized unsigned values"),
           ("!(2)", ExprInt(false, 1, 0), ""),
-          ("&(2)", ExprInt(false, 1, 0), ""),
-          ("|(2)", ExprInt(false, 1, 1), ""),
-          ("^(2)", ExprInt(false, 1, 1), ""),
           // unsigned 0 operand
           ("+(0)", ExprNum(false, 0), ""),
           ("-(0)", ExprNum(false, 0), ""),
           ("~(0)", ExprError(), "Unary '~' is not well defined for unsized unsigned values"),
-          ("!(0)", ExprInt(false, 1, 1), ""),
-          ("&(0)", ExprInt(false, 1, 0), ""),
-          ("|(0)", ExprInt(false, 1, 0), ""),
-          ("^(0)", ExprInt(false, 1, 0), "")
+          ("!(0)", ExprInt(false, 1, 1), "")
         )
       } {
         val expr = text.trim
         expr in {
-          expr.asTree[Expr] rewrite fold shouldBe result
+          xform(expr.asTree[Expr]) shouldBe result
           if (msg.isEmpty) {
             cc.messages shouldBe empty
           } else {
@@ -282,7 +264,7 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
       } {
         val e = expr.trim.replaceAll(" +", " ")
         e in {
-          e.asTree[Expr] rewrite fold shouldBe result
+          xform(e.asTree[Expr]) shouldBe result
           if (msg.isEmpty) {
             cc.messages shouldBe empty
           } else {
@@ -347,7 +329,7 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
       } {
         val e = expr.trim.replaceAll(" +", " ")
         e in {
-          e.asTree[Expr] rewrite fold shouldBe result
+          xform(e.asTree[Expr]) shouldBe result
           if (msg.isEmpty) {
             cc.messages shouldBe empty
           } else {
@@ -420,7 +402,7 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
       } {
         val expr = text.trim
         expr in {
-          expr.asTree[Expr] rewrite fold shouldBe result
+          xform(expr.asTree[Expr]) shouldBe result
           if (msg.isEmpty) {
             cc.messages shouldBe empty
           } else {
@@ -530,7 +512,7 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
       } {
         val e = expr.trim.replaceAll(" +", " ")
         e in {
-          e.asTree[Expr] rewrite fold shouldBe result
+          xform(e.asTree[Expr]) shouldBe result
           if (msg.isEmpty) {
             cc.messages shouldBe empty
           } else {
@@ -583,7 +565,7 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
       } {
         val expr = text.trim
         expr in {
-          expr.asTree[Expr] rewrite fold shouldBe result
+          xform(expr.asTree[Expr]) shouldBe result
           if (msg.isEmpty) {
             cc.messages shouldBe empty
           } else {
@@ -623,7 +605,7 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
       } {
         val expr = text.trim
         expr in {
-          expr.asTree[Expr] rewrite fold shouldBe result
+          xform(expr.asTree[Expr]) shouldBe result
           if (msg.isEmpty) {
             cc.messages shouldBe empty
           } else {
@@ -654,7 +636,7 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
       } {
         val expr = text.trim
         expr in {
-          expr.asTree[Expr] rewrite fold shouldBe result
+          xform(expr.asTree[Expr]) shouldBe result
           if (msg.isEmpty) {
             cc.messages shouldBe empty
           } else {
@@ -700,7 +682,7 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
       } {
         val expr = text.trim
         expr in {
-          expr.asTree[Expr] rewrite fold shouldBe result
+          xform(expr.asTree[Expr]) shouldBe result
           if (msg.isEmpty) {
             cc.messages shouldBe empty
           } else {
@@ -942,7 +924,7 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
       } {
         val expr = text.trim
         expr in {
-          expr.asTree[Expr] rewrite fold shouldBe result
+          xform(expr.asTree[Expr]) shouldBe result
           if (msg.isEmpty) {
             cc.messages shouldBe empty
           } else {
@@ -966,7 +948,7 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
       } {
         val expr = text.trim
         expr in {
-          expr.asTree[Expr] rewrite fold shouldBe result
+          xform(expr.asTree[Expr]) shouldBe result
           if (msg.isEmpty) {
             cc.messages shouldBe empty
           } else {
@@ -1218,8 +1200,7 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
           val ExprCall(_, List(_, expr)) = xform(tree) getFirst { case e: ExprCall => e }
           val ExprType(kind) = kindSrc.asTree[Expr]
           cc.messages shouldBe empty
-          val cast = ExprCast(kind, expr) regularize Loc.synthetic
-          val result = cast rewrite fold
+          val result = xform(ExprCast(kind, expr) withLoc Loc.synthetic)
           if (err.isEmpty) {
             result should matchPattern(pattern)
             cc.messages shouldBe empty

@@ -109,10 +109,6 @@ final class FoldExpr(
             cc.error(tree, "Unary '-' is not well defined for unsigned values")
             ExprError()
           }
-          case "^" if value < 0 => {
-            cc.error(tree, "Unary '^' is not well defined for unsized negative values")
-            ExprError()
-          }
           case "~" if !signed => {
             cc.error(tree, "Unary '~' is not well defined for unsized unsigned values")
             ExprError()
@@ -120,11 +116,8 @@ final class FoldExpr(
           // Valid cases
           case "+" => expr
           case "-" => ExprNum(signed, -value)
-          case "~" => ExprNum(true, ~value)
+          case "~" => ExprNum(true, -value - 1)
           case "!" => ExprInt(false, 1, value == 0)
-          case "&" => ExprInt(false, 1, value == -1)
-          case "|" => ExprInt(false, 1, value != 0)
-          case "^" => ExprInt(false, 1, value.bitCount & 1)
         }
         if (num.hasLoc) num else num withLoc tree.loc
       }

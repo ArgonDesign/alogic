@@ -248,7 +248,7 @@ final class UnaryTickSpec extends FreeSpec with AlogicTest {
           """|fsm f {
              |  in u8 a;
              |  out bool b;
-             |  param u2 i;
+             |  const u2 i = 2;
              |  void main() {
              |    b = |a['i : 0];
              |    fence;
@@ -260,7 +260,7 @@ final class UnaryTickSpec extends FreeSpec with AlogicTest {
           """|fsm f {
              |  in u8 a;
              |  out bool b;
-             |  param u2 i;
+             |  const u2 i = 2;
              |  void main() {
              |    b = |a[0 +: 'i * 2];
              |    fence;

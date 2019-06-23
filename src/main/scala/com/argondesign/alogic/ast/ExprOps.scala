@@ -173,7 +173,8 @@ trait ExprOps { this: Expr =>
     case ExprSelect(expr, _) => expr.isKnownConst
     case call @ ExprCall(ExprRef(symbol), _) if symbol.isBuiltin =>
       cc.isKnownConstBuiltinCall(call)
-    case _ => false
+    case ExprCast(_, expr) => expr.isKnownConst
+    case _                 => false
   }
 
   // Simplify this expression

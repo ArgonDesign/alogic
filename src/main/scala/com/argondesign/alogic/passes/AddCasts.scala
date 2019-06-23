@@ -57,14 +57,14 @@ final class AddCasts(implicit cc: CompilerContext) extends TreeTransformer with 
         stmt.copy(rhs = cast(lhs.tpe, rhs))
       }
 
-      case expr @ ExprIndex(tgt, idx) if idx.tpe.underlying.isNum => {
+      case expr @ ExprIndex(tgt, idx) if !tgt.tpe.underlying.isNum && idx.tpe.underlying.isNum => {
         val width = clog2(tgt.tpe.shapeIter.next) max 1
         val widthExpr = TypeAssigner(Expr(width) withLoc expr.loc)
         expr.copy(index = cast(TypeUInt(widthExpr), idx))
       }
 
       case expr @ ExprSlice(tgt, lidx, _, ridx)
-          if lidx.tpe.underlying.isNum || ridx.tpe.underlying.isNum => {
+          if !tgt.tpe.underlying.isNum && (lidx.tpe.underlying.isNum || ridx.tpe.underlying.isNum) => {
         val width = clog2(tgt.tpe.shapeIter.next) max 1
         val widthExpr = TypeAssigner(Expr(width) withLoc expr.loc)
         val newLidx = if (lidx.tpe.isNum) cast(TypeUInt(widthExpr), lidx) else lidx

@@ -161,9 +161,22 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
     }
   }
 
-  private def checkIndex(expectedWidth: Int, idx: Expr, msg: String): Boolean = {
+  private def checkIndex(expectedWidth: Int,
+                         idx: Expr,
+                         checkConst: Boolean,
+                         msg: String): Boolean = {
     idx.tpe.isNum || {
-      checkPacked(idx, msg) && (checkWidth(expectedWidth, idx, msg) &&& checkSign(false, idx, msg))
+      checkPacked(idx, msg) && {
+        checkWidth(expectedWidth, idx, msg) &&&
+          checkSign(false, idx, msg) &&&
+          (!checkConst || checkKnownConst(idx, msg))
+      }
+    }
+  }
+
+  private def checkKnownConst(expr: Expr, msg: String): Boolean = {
+    expr.isKnownConst ifFalse {
+      cc.error(expr, s"$msg must be a constant expression")
     }
   }
 
@@ -240,21 +253,25 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
 
     // Type check target up front
     case ExprIndex(tgt, _) if !walk(tgt).tpe.isError => {
-      val shapeIter = tgt.tpe.shapeIter
-      if (!shapeIter.hasNext) {
-        error(tree, tgt, "Target is not indexable")
-      } else {
-        pushContextWidth(tree, TypeUInt(Expr(clog2(shapeIter.next) max 1) regularize tgt.loc))
+      if (!tgt.tpe.underlying.isNum) {
+        val shapeIter = tgt.tpe.shapeIter
+        if (!shapeIter.hasNext && !tgt.tpe.underlying.isNum) {
+          error(tree, tgt, "Target is not indexable")
+        } else {
+          pushContextWidth(tree, TypeUInt(Expr(clog2(shapeIter.next) max 1) regularize tgt.loc))
+        }
       }
     }
 
     // Type check target up front
     case ExprSlice(tgt, _, _, _) if !walk(tgt).tpe.isError => {
-      val shapeIter = tgt.tpe.shapeIter
-      if (!shapeIter.hasNext || tgt.tpe.isArray) {
-        error(tree, tgt, "Target is not sliceable")
-      } else {
-        pushContextWidth(tree, TypeUInt(Expr(clog2(shapeIter.next) max 1) regularize tgt.loc))
+      if (!tgt.tpe.underlying.isNum) {
+        val shapeIter = tgt.tpe.shapeIter
+        if (!shapeIter.hasNext || tgt.tpe.isArray) {
+          error(tree, tgt, "Target is not sliceable")
+        } else {
+          pushContextWidth(tree, TypeUInt(Expr(clog2(shapeIter.next) max 1) regularize tgt.loc))
+        }
       }
     }
 
@@ -457,23 +474,36 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
         }
 
       case ExprRep(count, expr) => {
-        val ok = checkNumeric(count, "Count of bit repetition") &&
-          checkPacked(expr, "Value of bit repetition")
+        val ok = checkNumeric(count, "Count of bit repetition") && {
+          checkKnownConst(count, "Count of bit repetition") &&&
+            checkPacked(expr, "Value of bit repetition")
+        }
         if (!ok) error(tree)
       }
 
-      case ExprIndex(tgt, idx) => {
-        val ok = (tgt.tpe.isArray || checkPacked(tgt, "Target of index")) &&
-          checkIndex(contextKind.top.width, idx, "Index")
-        if (!ok) error(tree)
-      }
+      case ExprIndex(tgt, idx) =>
+        if (tgt.tpe.underlying.isNum) {
+          if (!checkKnownConst(idx, "Index of unsized integer value")) {
+            error(tree)
+          }
+        } else {
+          val ok = (tgt.tpe.isArray || checkPacked(tgt, "Target of index")) &&
+            checkIndex(contextKind.top.width, idx, false, "Index")
+          if (!ok) error(tree)
+        }
 
-      case ExprSlice(tgt, lidx, _, ridx) => {
-        val ok = checkPacked(tgt, "Target of slice") &&
-          checkIndex(contextKind.top.width, lidx, "Left index") &&
-          checkIndex(contextKind.top.width, ridx, "Right index")
-        if (!ok) error(tree)
-      }
+      case ExprSlice(tgt, lidx, op, ridx) =>
+        if (tgt.tpe.underlying.isNum) {
+          val ok = checkKnownConst(lidx, "Left index of unsized integer value") &&&
+            checkKnownConst(ridx, "Right index of unsized integer value")
+          if (!ok) error(tree)
+        } else {
+          val ok = checkPacked(tgt, "Target of slice") && {
+            checkIndex(contextKind.top.width, lidx, op == ":", "Left index") &&&
+              checkIndex(contextKind.top.width, ridx, true, "Right index")
+          }
+          if (!ok) error(tree)
+        }
 
       // Unary ops
 
