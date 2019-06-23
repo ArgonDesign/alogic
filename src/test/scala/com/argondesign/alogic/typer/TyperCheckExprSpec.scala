@@ -83,9 +83,9 @@ final class TyperCheckExprSpec extends FreeSpec with AlogicTest {
           (s"-(8'sd1)", Nil),
           (s"~(8'sd1)", Nil),
           (s"!(8'sd1)", Nil),
-          (s"&(1)", "Unary operator '&' cannot be applied to value of type num" :: Nil),
-          (s"|(1)", "Unary operator '|' cannot be applied to value of type num" :: Nil),
-          (s"^(1)", "Unary operator '^' cannot be applied to value of type num" :: Nil)
+          (s"&(1)", "Unary operator '&' cannot be applied to unsized integer value" :: Nil),
+          (s"|(1)", "Unary operator '|' cannot be applied to unsized integer value" :: Nil),
+          (s"^(1)", "Unary operator '^' cannot be applied to unsized integer value" :: Nil)
         )
       } {
         expr in {
@@ -156,7 +156,7 @@ final class TyperCheckExprSpec extends FreeSpec with AlogicTest {
           ("a ? 8'sd3 : 8'sd2", Nil),
           ("a ? 8'd3 : 2", Nil),
           ("a ? 3 : 8'd1", Nil),
-          ("a ? 3 : 2", Nil),
+          ("a ? 3 : 2", "Expression of unsized integer type must be compile time constant" :: Nil),
           ("a ? 7'd3 : 8'd2",
            s"'then' and 'else' operands of ternary '?:' must have the same width, but" ::
              "'then' operand is 7 bits wide, and" ::
@@ -355,11 +355,11 @@ final class TyperCheckExprSpec extends FreeSpec with AlogicTest {
           ("a.write(1'b1, 1'b1)", TypeError, "Function call expects 1 arguments, 2 given"),
           ("bar()", TypeVoid, ""),
           ("bar(1, 2, 3, 4, 5)", TypeError, "Function call expects 0 arguments, 5 given"),
-          ("a.write(bar)", TypeError, "Argument 1 to function call is of non-packed type"),
-          ("a.write(3'b1)", TypeError, "Width 3 of argument 1 passed to function call is greater than expected width 2"),
-          ("a.write(1'b1)", TypeError, "Width 1 of argument 1 passed to function call is less than expected width 2"),
-          ("@bits(a)", TypeNum(false), ""),
-          ("@bits(a.valid)", TypeNum(false), "")
+          ("a.write(bar)", TypeError, "Argument 1 of function call is of non-packed type"),
+          ("a.write(3'b1)", TypeError, "Argument 1 of function call yields 3 bits, 2 bits are expected"),
+          ("a.write(1'b1)", TypeError, "Argument 1 of function call yields 1 bits, 2 bits are expected"),
+          ("$display(\"\", @bits(a))", TypeNum(false), ""),
+          ("$display(\"\", @bits(a.valid))", TypeNum(false), "")
           // format: on
         )
       } {
@@ -379,7 +379,7 @@ final class TyperCheckExprSpec extends FreeSpec with AlogicTest {
                          |}""".stripMargin.asTree[Root]
           val tree = xform(root)
           if (msg.isEmpty) {
-            val expr = (tree collectFirst { case e: ExprCall => e }).value
+            val expr = (tree collectAll { case e: ExprCall => e }).toList.last
             expr.tpe shouldBe kind
             cc.messages shouldBe empty
           } else {

@@ -55,7 +55,7 @@ final class UnaryTickSpec extends FreeSpec with AlogicTest {
   def checkNarrowing(text: String): Unit = {
     xform(text.asTree[Root])
     cc.messages.loneElement should beThe[Error](
-      """Result width \d+ of unary ' operator is narrower than operand width \d+""")
+      """Unary ' causes narrowing of width from \d+ to \d+""")
   }
 
   def checkInvalidContext(text: String): Unit = {

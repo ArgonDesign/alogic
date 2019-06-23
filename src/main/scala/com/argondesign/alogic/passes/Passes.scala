@@ -35,7 +35,7 @@ object Passes {
       // All entities are EntityNamed from here on
       SpecializeParam,
       // Any passes between here and the middle end can only perform checks
-      // and do not re-write any trees unless errors have been detected
+      // and cannot re-write any trees unless errors have been detected
       Typer(externalRefs = false),
       Typer(externalRefs = true),
       PortCheck,

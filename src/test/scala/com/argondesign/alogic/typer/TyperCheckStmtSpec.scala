@@ -68,12 +68,11 @@ final class TyperCheckStmtSpec extends FreeSpec with AlogicTest {
         )
       } {
         stmt in {
-          val result = xform(stmt.asTree[Stmt])
+          xform(stmt.asTree[Stmt])
           if (msg.isEmpty) {
             cc.messages shouldBe empty
           } else {
             cc.messages.loneElement should beThe[Error](msg)
-            result shouldBe StmtError()
           }
         }
       }
@@ -107,17 +106,17 @@ final class TyperCheckStmtSpec extends FreeSpec with AlogicTest {
           ("case(1) { 1: fence; default: $display(); }",
            "Either all or no cases of a case statement must be control statements"),
           ("loop { fence; }", ""),
-          ("loop { $display(); }", "Body of 'loop' must be a control statement"),
+          ("loop { }", "Body of 'loop' must be a control statement"),
+          ("loop { $display(); }", "Body of 'loop' must end in a control statement"),
           ("loop { fence; $display(); }", "Body of 'loop' must end in a control statement")
         )
       } {
         stmt in {
-          val result = xform(stmt.asTree[Stmt])
+          xform(stmt.asTree[Stmt])
           if (msg.isEmpty) {
             cc.messages shouldBe empty
           } else {
             cc.messages.loneElement should beThe[Error](msg)
-            result shouldBe StmtError()
           }
         }
       }
@@ -430,8 +429,9 @@ final class TyperCheckStmtSpec extends FreeSpec with AlogicTest {
         (text, warn) <- List(
           ("1 * 2", true),
           ("-(1)", true),
-          ("@randbit()", false),
-          ("1 + @randbit()", false)
+          ("@randbit()", true),
+          ("1 + @randbit()", true),
+          ("$display(\"\")", false)
         )
       } {
         text in {

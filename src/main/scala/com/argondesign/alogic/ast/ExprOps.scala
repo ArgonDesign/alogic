@@ -164,7 +164,7 @@ trait ExprOps { this: Expr =>
     case ExprUnary(_, expr)      => expr.isKnownConst
     case ExprBinary(lhs, _, rhs) => lhs.isKnownConst && rhs.isKnownConst
     case ExprTernary(cond, thenExpr, elseExpr) =>
-      cond.isKnownConst && thenExpr.isKnownConst && elseExpr.isKnownConst
+      thenExpr.isKnownConst && elseExpr.isKnownConst && (cond.isKnownConst || thenExpr.simplify == elseExpr.simplify)
     case ExprRep(count, expr)   => count.isKnownConst && expr.isKnownConst
     case ExprCat(parts)         => parts forall { _.isKnownConst }
     case ExprIndex(expr, index) => expr.isKnownConst && index.isKnownConst

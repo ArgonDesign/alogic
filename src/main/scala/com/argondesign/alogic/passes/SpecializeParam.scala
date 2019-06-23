@@ -286,6 +286,7 @@ object SpecializeParam extends Pass with FollowedBy {
           inst @ Instance(Sym(iSymbol), Sym(eSymbol: TypeSymbol), pNames, pExprs) <- special.instances
         } yield {
           val bindings = (pNames zip pExprs).toMap
+          // TODO: check pExprs are compile time constants
           specialize(eSymbol, bindings, extendedCatalog) map { newEntity =>
             iSymbol.kind = TypeInstance(newEntity.symbol)
             inst.copy(

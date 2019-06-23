@@ -1098,7 +1098,7 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
 
       "@bits" - {
         for {
-          (expr, result, msg) <- List(
+          (text, result, msg) <- List(
             ("@bits(1'b0)", ExprNum(false, 1), ""),
             ("@bits(2'b0)", ExprNum(false, 2), ""),
             ("@bits(2'sb0)", ExprNum(false, 2), ""),
@@ -1117,8 +1117,7 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
             ("@bits(a_t.f2.f0)", ExprNum(false, 2), "")
           )
         } {
-          val e = expr.trim.replaceAll(" +", " ")
-          e in {
+          text in {
             val tree = s"""|struct b_t {
                            |  u2 f0;
                            |};
@@ -1132,13 +1131,13 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
                            |fsm x {
                            |  a_t a;
                            |  fence {
-                           |    ${expr};
+                           |    $$display("", ${text});
                            |  }
                            |}""".stripMargin.asTree[Root]
-            val exprOpt = xform(tree) collectFirst { case StmtExpr(e) => e }
+            val expr = xform(tree) getFirst { case ExprCall(_, List(_, e)) => e }
             val errors = cc.messages filter { _.isInstanceOf[Error] }
             if (msg.isEmpty) {
-              exprOpt.value shouldBe result
+              expr shouldBe result
               errors shouldBe empty
             } else {
               errors.loneElement should beThe[Error](Pattern.quote(msg))

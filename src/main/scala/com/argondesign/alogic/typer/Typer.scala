@@ -13,8 +13,8 @@
 // The Typer:
 // - Type checks all tree nodes
 // - Assigns types to all nodes
-// The typer is special and cannot rewrite any of the tree, unless there
-// is a type error. The rest of the compiler (and the typer itself) relies on
+// The typer is special and will not rewrite any of the trees, only check and
+// assign types. The rest of the compiler (and the typer itself) relies on
 // this property.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -25,7 +25,6 @@ import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.TreeInTypeTransformer
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Math.clog2
@@ -34,6 +33,20 @@ import com.argondesign.alogic.lib.TreeLike
 import com.argondesign.alogic.passes._
 import com.argondesign.alogic.util.FollowedBy
 import com.argondesign.alogic.util.unreachable
+
+import scala.language.implicitConversions
+
+class BoolHelpers(val value: Boolean) extends AnyVal {
+  // Non short-circuiting &&
+  def &&&(other: Boolean): Boolean = value && other
+  // Non short-circuiting |||
+  def |||(other: Boolean): Boolean = value || other
+  // Run f if value is false, yield the value
+  def ifFalse(f: => Unit): Boolean = {
+    if (!value) f
+    value
+  }
+}
 
 final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
     extends TreeTransformer
@@ -49,85 +62,78 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
     case _           => unreachable
   }
 
+  implicit def boolean2BoolHelper(value: Boolean) = new BoolHelpers(value)
+
   private var hadError = false
 
-  private def checkPacked(expr: Expr, msg: String): Option[Loc] = {
-    if (expr.tpe.isPacked) {
-      None
+  private def error(tree: Tree, mark: Tree, msg: String*): Unit = {
+    if (msg.nonEmpty) {
+      cc.error(tree, msg: _*)
+    }
+    if (tree.hasTpe) {
+      assert(tree.tpe.isError)
     } else {
-      if (expr.tpe != TypeError) {
-        cc.error(expr, s"${msg} is of non-packed type")
-      }
-      Some(expr.loc)
+      tree withTpe TypeError
+    }
+    hadError = true
+  }
+
+  private def error(tree: Tree, msg: String*): Unit = error(tree, tree, msg: _*)
+
+  private def checkPacked(expr: Expr, msg: String): Boolean = {
+    expr.tpe.isPacked ifFalse {
+      cc.error(expr, s"${msg} is of non-packed type")
     }
   }
 
-  private def checkNumeric(expr: Expr, msg: String): Option[Loc] = {
-    if (expr.tpe.underlying.isNumeric) {
-      None
-    } else {
-      if (expr.tpe.underlying != TypeError) {
-        cc.error(expr, s"${msg} is of non-numeric type")
-      }
-      Some(expr.loc)
+  private def checkNumeric(expr: Expr, msg: String): Boolean = {
+    expr.tpe.underlying.isNumeric ifFalse {
+      cc.error(expr, s"${msg} is of non-numeric type")
     }
   }
 
-  private def checkNumericOrPacked(expr: Expr, msg: String): Option[Loc] = {
-    if (expr.tpe.isNumeric || expr.tpe.isPacked) {
-      None
-    } else {
-      if (expr.tpe != TypeError) {
-        cc.error(expr, s"${msg} is of neither numeric nor packed type")
-      }
-      Some(expr.loc)
+  private def checkNumericOrPacked(expr: Expr, msg: String): Boolean = {
+    (expr.tpe.isNumeric || expr.tpe.isPacked) ifFalse {
+      cc.error(expr, s"${msg} is of neither numeric nor packed type")
     }
   }
 
-  private def checkWidth(width: Int, expr: Expr, msg: String): Option[Loc] = {
+  private def checkWidth(width: Int, expr: Expr, msg: String): Boolean = {
     val exprWidth = expr.tpe.width
-    if (exprWidth != width) {
+    (exprWidth == width) ifFalse {
       cc.error(expr, s"${msg} yields ${exprWidth} bits, ${width} bits are expected")
-    } else {
-      None
     }
   }
 
-  private def checkSign(sign: Boolean, expr: Expr, msg: String): Option[Loc] = {
-    if (expr.tpe.isSigned != sign) {
+  private def checkSign(sign: Boolean, expr: Expr, msg: String): Boolean = {
+    (expr.tpe.isSigned == sign) ifFalse {
       cc.error(expr, s"${msg} must be ${if (sign) "signed" else "unsigned"}")
-    } else {
-      None
     }
   }
 
-  private def checkBlock(stmts: List[Stmt]): Option[Loc] = {
+  private def checkBlock(stmts: List[Stmt]): Boolean = {
     val hasCtrl = stmts exists { _.tpe == TypeCtrlStmt }
     val lstCtrl = stmts.nonEmpty && stmts.last.tpe == TypeCtrlStmt
-    if (hasCtrl && !lstCtrl) {
+    (!hasCtrl || lstCtrl) ifFalse {
       cc.error(stmts.last,
                "Block must contain only combinatorial statements, or end with a control statement")
-      Some(stmts.last.loc)
-    } else {
-      None
     }
   }
 
-  private def checkModifiable(expr: Expr): Option[Loc] = {
-    val it = WrittenRefs(expr) flatMap {
+  private def checkModifiable(expr: Expr): Boolean = {
+    WrittenRefs(expr) map {
       case ref @ ExprRef(symbol) =>
         symbol.kind match {
-          case _: TypeParam => cc.error(ref, "Parameter cannot be modified")
-          case _: TypeConst => cc.error(ref, "Constant cannot be modified")
-          case _: TypeIn    => cc.error(ref, "Input port cannot be modified")
-          case _: TypeArray => cc.error(ref, "Memory can only be modified using .write()")
-          case TypeOut(_, fct, _) if fct != FlowControlTypeNone => {
+          case _: TypeParam => cc.error(ref, "Parameter cannot be modified"); false
+          case _: TypeConst => cc.error(ref, "Constant cannot be modified"); false
+          case _: TypeIn    => cc.error(ref, "Input port cannot be modified"); false
+          case _: TypeArray => cc.error(ref, "Memory can only be modified using .write()"); false
+          case TypeOut(_, fct, _) if fct != FlowControlTypeNone =>
             cc.error(ref, "Output port with flow control can only be modified using .write()")
-          }
-          case _ => None
+            false
+          case _ => true
         }
-    }
-    it.toList.headOption
+    } forall identity
   }
 
   private def checkNameHidingByExtensionType(decl: Decl): Unit = {
@@ -155,24 +161,9 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
     }
   }
 
-  private def checkIndex(expectedWidth: Int, idx: Expr, msg: String) = {
-    if (idx.tpe.isNum) {
-      checkKnownConst(idx)
-    } else {
-      val errPacked = checkPacked(idx, msg)
-      errPacked orElse {
-        val errWidth = checkWidth(expectedWidth, idx, msg)
-        val errSign = checkSign(false, idx, msg)
-        errWidth orElse errSign
-      }
-    }
-  }
-
-  private def checkKnownConst(expr: Expr): Option[Loc] = {
-    if (!expr.isKnownConst) {
-      cc.error(expr, s"Will not infer width of non-constant expression, use explicit sizing")
-    } else {
-      None
+  private def checkIndex(expectedWidth: Int, idx: Expr, msg: String): Boolean = {
+    idx.tpe.isNum || {
+      checkPacked(idx, msg) && (checkWidth(expectedWidth, idx, msg) &&& checkSign(false, idx, msg))
     }
   }
 
@@ -192,20 +183,13 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
     }
   }
 
-  private var inConnect = false
-
   override def skip(tree: Tree): Boolean = tree match {
     case _: Entity  => false
     case _: Connect => !externalRefs
-    case _: Expr    => tree.hasTpe
-    case _          => externalRefs && !inConnect
+    case _          => tree.hasTpe
   }
 
   override def enter(tree: Tree): Unit = tree match {
-    case _: Connect => {
-      inConnect = true
-    }
-
     case EntityNamed(symbol, _, _, _, _, _, _, _, _) => {
       // Type the source attributes
       // TODO: do them all in a systematic way..
@@ -229,8 +213,7 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
       checkNameHidingByExtensionType(decl)
 
       if (kind.isPacked && kind.underlying != TypeVoid && kind.width < 1) {
-        cc.error(decl, s"'${symbol.name}' is declared with width ${kind.width}")
-        decl withTpe TypeError
+        error(decl, s"'${symbol.name}' is declared with width ${kind.width}")
       }
 
       // Track unary tick result types
@@ -241,30 +224,25 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
 
     // Type check the lhs up front
     case StmtAssign(lhs, _) if !walk(lhs).tpe.isError => {
-      val err = checkPacked(lhs, "Left hand side of assignment") orElse checkModifiable(lhs)
-      if (err.isDefined) {
-        tree withTpe TypeError
-      } else {
-        pushContextWidth(tree, lhs.tpe)
+      if (!(checkPacked(lhs, "Left hand side of assignment") && checkModifiable(lhs))) {
+        error(tree)
       }
+      pushContextWidth(tree, lhs.tpe)
     }
 
     // Type check the lhs up front
     case StmtUpdate(lhs, _, _) if !walk(lhs).tpe.isError => {
-      val err = checkPacked(lhs, "Left hand side of assignment") orElse checkModifiable(lhs)
-      if (err.isDefined) {
-        tree withTpe TypeError
-      } else {
-        pushContextWidth(tree, lhs.tpe)
+      if (!(checkPacked(lhs, "Left hand side of assignment") && checkModifiable(lhs))) {
+        error(tree)
       }
+      pushContextWidth(tree, lhs.tpe)
     }
 
     // Type check target up front
     case ExprIndex(tgt, _) if !walk(tgt).tpe.isError => {
       val shapeIter = tgt.tpe.shapeIter
       if (!shapeIter.hasNext) {
-        cc.error(tgt, "Target is not indexable")
-        tree withTpe TypeError
+        error(tree, tgt, "Target is not indexable")
       } else {
         pushContextWidth(tree, TypeUInt(Expr(clog2(shapeIter.next) max 1) regularize tgt.loc))
       }
@@ -274,8 +252,7 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
     case ExprSlice(tgt, _, _, _) if !walk(tgt).tpe.isError => {
       val shapeIter = tgt.tpe.shapeIter
       if (!shapeIter.hasNext || tgt.tpe.isArray) {
-        cc.error(tgt, "Target is not sliceable")
-        tree withTpe TypeError
+        error(tree, tgt, "Target is not sliceable")
       } else {
         pushContextWidth(tree, TypeUInt(Expr(clog2(shapeIter.next) max 1) regularize tgt.loc))
       }
@@ -285,8 +262,7 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
     case ExprCall(tgt, args) if !walk(tgt).tpe.isError => {
       def process(kinds: List[Type]): Unit = {
         if (kinds.length != args.length) {
-          cc.error(tree, s"Function call expects ${kinds.length} arguments, ${args.length} given")
-          tree withTpe TypeError
+          error(tree, s"Function call expects ${kinds.length} arguments, ${args.length} given")
         } else {
           for ((kind, arg) <- (kinds zip args).reverse) {
             pushContextWidth(arg, kind)
@@ -297,9 +273,7 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
         case TypeCombFunc(argTypes, _) => process(argTypes)
         case TypeCtrlFunc(argTypes, _) => process(argTypes)
         case _: TypePolyFunc           => ()
-        case _ =>
-          cc.error(tree, s"'${tgt.toSource}' is not callable")
-          tree withTpe TypeError
+        case _                         => error(tree, tgt, s"'${tgt.toSource}' is not callable")
       }
     }
 
@@ -310,483 +284,299 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
     // TODO: reduction of 1 bit value is error
     // TODO: Warn for non power of 2 dimensions
 
-    val result: Tree = if (tree.hasTpe) {
-      // Some nodes have been typed int he the enter call, don't process them
-      tree
-    } else {
-      tree match {
-        ////////////////////////////////////////////////////////////////////////////
-        // Propagate type errors
-        ////////////////////////////////////////////////////////////////////////////
+    val alreadyHadError = hadError
 
-        case node if hasError(node) => tree withTpe TypeError
+    tree match {
+      ////////////////////////////////////////////////////////////////////////////
+      // Don't type check already typed nodes
+      ////////////////////////////////////////////////////////////////////////////
 
-        ////////////////////////////////////////////////////////////////////////////
-        // Type check other nodes
-        ////////////////////////////////////////////////////////////////////////////
+      case _ if tree.hasTpe => ()
 
-        case entity: EntityNamed => {
-          if (entity.fenceStmts exists { _.tpe == TypeCtrlStmt }) {
-            cc.error("'fence' block must contain only combinatorial statements")
-            entity.copy(fenceStmts = Nil) withLoc tree.loc withTpe TypeError
-          } else {
-            tree
-          }
+      ////////////////////////////////////////////////////////////////////////////
+      // Propagate type errors
+      ////////////////////////////////////////////////////////////////////////////
+
+      case node if hasError(node) => error(tree)
+
+      ////////////////////////////////////////////////////////////////////////////
+      // Type check other nodes
+      ////////////////////////////////////////////////////////////////////////////
+
+      case entity: EntityNamed => {
+        entity.fenceStmts filter { _.tpe == TypeCtrlStmt } foreach {
+          error(tree, _, "'fence' block must contain only combinatorial statements")
         }
-
-        case Function(ref, body) => {
-          if (body.nonEmpty && body.last.tpe == TypeCtrlStmt) {
-            tree
-          } else {
-            val offender = if (body.isEmpty) {
-              ref
-            } else {
-              val combStmts = body.last collect {
-                case tree: Tree if tree.tpe == TypeCombStmt => tree
-              }
-              combStmts.toList.last
-            }
-            cc.error(offender, "Body of function must end in a control statement")
-            val err = StmtError() withLoc offender.loc
-            TypeAssigner(err)
-            Function(ref, List(err)) withLoc tree.loc
-          }
-        }
-
-        case conn @ Connect(lhs, rhss) => {
-          if (ConnectChecks(conn)) {
-            tree
-          } else {
-            val err = ExprError() withLoc tree.loc
-            TypeAssigner(err)
-            Connect(err, List(err)) withLoc tree.loc
-          }
-        } followedBy {
-          inConnect = false
-        }
-
-        case decl @ Decl(symbol, Some(init)) => {
-          if (symbol.kind.underlying.isNum && init.tpe.isPacked) {
-            if (symbol.kind.isParam) {
-              cc.error(init, "Unsized integer parameter assigned a packed value")
-            } else {
-              cc.error(decl, "Unsized integer declaration has packed initializer")
-            }
-            decl withTpe TypeError
-          } else {
-
-            val newdecl = if (symbol.kind.underlying.isNum || init.tpe.isNum) {
-              if (init.tpe.isNum) {
-                checkKnownConst(init)
-              }
-              // TODO: check signed/unsigned somewhere?
-              decl
-            } else {
-              // Check initializer
-              val msg = if (symbol.kind.isParam) "Parameter value" else "Initializer expression"
-              val packedErrOpt = checkPacked(init, msg)
-              lazy val widthErrOpt = {
-                checkWidth(symbol.kind.width, init, msg)
-              }
-              packedErrOpt orElse widthErrOpt map { errLoc =>
-                decl.copy(init = Some(TypeAssigner(ExprError() withLoc errLoc))) withLoc tree.loc
-              } getOrElse {
-                decl
-              }
-            }
-
-            // Attach initializer expression attribute to param/const declarations.
-            if ((symbol.kind.isConst || symbol.kind.isParam) && !newdecl.init.get.tpe.isError) {
-              symbol.attr.init set {
-                val init = newdecl.init.get
-                val expr = if (symbol.kind.isPacked && init.tpe.isNum) {
-                  init cast TypeInt(init.tpe.isSigned, Expr(symbol.kind.width) regularize init.loc)
-                } else {
-                  init
-                }
-                expr.simplify
-                // TODO: check it's a compile time constant
-              }
-            }
-
-            // Yield actual declaration
-            newdecl
-          }
-        }
-
-        ////////////////////////////////////////////////////////////////////////////
-        // Type check statements
-        ////////////////////////////////////////////////////////////////////////////
-
-        case StmtBlock(body) => checkBlock(body) map { StmtError() withLoc _ } getOrElse tree
-
-        case StmtIf(_, thenStmt, Some(elseStmt)) => {
-          (thenStmt.tpe, elseStmt.tpe) match {
-            case (TypeCombStmt, TypeCombStmt) => tree
-            case (TypeCtrlStmt, TypeCtrlStmt) => tree
-            case _ => {
-              cc.error(tree,
-                       "Either both or neither branches of if-else must be control statements")
-              StmtError() withLoc tree.loc
-            }
-          }
-        }
-
-        case StmtCase(_, cases) => {
-          val allCtrl = cases forall { _.stmt.tpe == TypeCtrlStmt }
-          val allComb = cases forall { _.stmt.tpe == TypeCombStmt }
-          if (!allComb && !allCtrl) {
-            cc.error(tree, "Either all or no cases of a case statement must be control statements")
-            StmtError() withLoc tree.loc
-          } else {
-            tree
-          }
-        }
-
-        case StmtLoop(body) => {
-          if (body.nonEmpty && body.last.tpe == TypeCtrlStmt) {
-            tree
-          } else if (body exists { _.tpe == TypeCtrlStmt }) {
-            cc.error(tree, "Body of 'loop' must end in a control statement")
-            StmtError() withLoc tree.loc
-          } else {
-            cc.error(tree, "Body of 'loop' must be a control statement")
-            StmtError() withLoc tree.loc
-          }
-        }
-
-        case stmt @ StmtAssign(lhs, rhs) => {
-          // lhs have already been checked in enter
-          if (rhs.tpe.isNum) {
-            checkKnownConst(rhs)
-            tree
-          } else {
-            // Type check rhs
-            val rhsErrOpt = checkPacked(rhs, "Right hand side of assignment")
-            lazy val widthErrOpt = checkWidth(lhs.tpe.width, rhs, "Right hand side of assignment")
-            rhsErrOpt orElse widthErrOpt map {
-              StmtError() withLoc _
-            } getOrElse tree
-          }
-        }
-
-        case stmt @ StmtUpdate(lhs, _, rhs) => {
-          // lhs have already been checked in enter
-          if (rhs.tpe.isNum) {
-            checkKnownConst(rhs)
-            tree
-          } else {
-            // Check rhs
-            val rhsErrOpt = checkPacked(rhs, "Right hand side of assignment")
-            lazy val widthErrOpt = checkWidth(lhs.tpe.width, rhs, "Right hand side of assignment")
-            rhsErrOpt orElse widthErrOpt map {
-              StmtError() withLoc _
-            } getOrElse tree
-          }
-        }
-
-        case StmtPost(expr, op) => {
-          checkPacked(expr, s"Target of postfix '${op}'") orElse
-            checkModifiable(expr) map {
-            StmtError() withLoc _
-          } getOrElse tree
-        }
-
-        case StmtExpr(expr) => {
-          val nonPure = expr exists {
-            // TODO: Some function calls are pure e.g.: @zx(10, 1'b1);
-            case _: ExprCall => true
-          }
-          if (!nonPure) {
-            cc.error(tree, "A pure expression in statement position does nothing")
-            StmtError() withLoc tree.loc
-          } else {
-            tree
-          }
-        }
-
-        ////////////////////////////////////////////////////////////////////////////
-        // Type check expressions
-        ////////////////////////////////////////////////////////////////////////////
-
-        case ExprSelect(expr, selector) => {
-          val field = expr.tpe match {
-            case TypeType(kind: CompoundType) => kind(selector)
-            case kind: CompoundType           => kind(selector)
-            case _                            => None
-          }
-
-          if (field.isDefined) {
-            tree
-          } else {
-            val thing = if (inConnect) "port" else "field"
-            cc.error(
-              tree,
-              s"No $thing named '$selector' in '${expr.toSource}' of type '${expr.tpe.toSource}'")
-            ExprError() withLoc tree.loc
-          }
-        }
-
-        case ExprCall(expr, args) => {
-
-          def checkArg(expected: Type, arg: Expr, i: Int): Tree = {
-            if (expected.isType) {
-              if (!arg.tpe.isType) {
-                cc.error(arg, s"Argument $i expects a type")
-                ExprError() withLoc expr.loc
-              } else {
-                tree
-              }
-            } else if (expected.underlying.isNum) {
-              if (!expr.tpe.isNum) {
-                cc.error(arg, s"Argument $i expects an unsized value")
-                ExprError() withLoc expr.loc
-              } else {
-                // TODO: check signedness?
-                checkKnownConst(arg)
-                tree
-              }
-            } else if (arg.tpe.isNum) {
-              checkKnownConst(arg)
-              tree
-            } else {
-              checkPacked(arg, s"Argument $i to function call") map {
-                ExprError() withLoc _
-              } getOrElse {
-                val argWidth = arg.tpe.width
-                val expWidth = expected.width
-                if (argWidth != expWidth) {
-                  val cmp = if (argWidth > expWidth) "greater" else "less"
-                  cc.error(
-                    arg,
-                    s"Width ${argWidth} of argument ${i} passed to function call is ${cmp} than expected width ${expWidth}")
-                  ExprError() withLoc expr.loc
-                } else {
-                  tree
-                }
-              }
-            }
-          }
-
-          def checkFunc(argTypes: List[Type]) = {
-            val errOpt = {
-              val tmp = for (((e, a), i) <- (argTypes zip args).zipWithIndex) yield {
-                checkArg(e, a, i + 1)
-              }
-              tmp collectFirst { case e: ExprError => e }
-            }
-            errOpt getOrElse tree
-          }
-
-          expr.tpe match {
-            // Nothing to do for ordinary functions
-            case tpe: TypeCombFunc => checkFunc(tpe.argTypes)
-            case tpe: TypeCtrlFunc => checkFunc(tpe.argTypes)
-            // Get result type of polymorphic builtins
-            case tpe: TypePolyFunc =>
-              tpe.resolve(args) match {
-                case Some(symbol) => tree withTpe symbol.kind.asInstanceOf[TypeCombFunc].retType
-                case None =>
-                  val err = args map { a =>
-                    s"'${a.toSource}' of type ${a.tpe.toSource}"
-                  }
-                  cc.error(
-                    tree,
-                    s"Builtin function '${expr.toSource}' cannot be applied to arguments" :: err: _*)
-                  ExprError() withLoc tree.loc
-              }
-            // Anything else is not callable
-            case _ => unreachable // Handle in enter
-          }
-        }
-
-        case ExprCat(parts) => {
-          val errors = for ((part, i) <- parts.zipWithIndex) yield {
-            checkPacked(part, s"Part ${i + 1} of bit concatenation")
-          }
-          errors.flatten.headOption map {
-            ExprError() withLoc _
-          } getOrElse tree
-        }
-
-        case ExprRep(count, expr) => {
-          val errCount = checkNumeric(count, "Count of bit repetition")
-          val errExpr = checkPacked(expr, "Value of bit repetition")
-          errCount orElse errExpr map {
-            ExprError() withLoc _
-          } getOrElse tree
-        }
-
-        case expr @ ExprIndex(tgt, idx) => {
-          val errTgt = if (tgt.tpe.isArray) None else checkPacked(tgt, "Target of index")
-          val errIdx = checkIndex(contextKind.top.width, idx, "Index")
-          errTgt orElse errIdx map {
-            ExprError() withLoc _
-          } getOrElse tree
-        }
-
-        case expr @ ExprSlice(tgt, lidx, _, ridx) => {
-          val errTgt = checkPacked(tgt, "Target of slice")
-          val errLidx = checkIndex(contextKind.top.width, lidx, "Left index")
-          val errRidx = checkIndex(contextKind.top.width, ridx, "Right index")
-          errTgt orElse errLidx orElse errRidx map {
-            ExprError() withLoc _
-          } getOrElse tree
-        }
-
-        // Unary ops
-        case expr @ ExprUnary("'", op) => {
-          if (hadError) {
-            // If we had a type error, the context stack might be out of sync
-            // so don't type check any further unary tick nodes
-            tree withTpe TypeError
-          } else if (contextKind.isEmpty) {
-            cc.error(tree, "Unary ' operator used in invalid context")
-            ExprError() withLoc tree.loc
-          } else {
-            checkPacked(op, "Operand of unary ' operator") map {
-              ExprError() withLoc _
-            } getOrElse {
-              if (contextKind.top.isNum) {
-                checkKnownConst(expr)
-                tree withTpe TypeNum(op.tpe.isSigned)
-              } else {
-                val resWidth = contextKind.top.width
-                val opWidth = op.tpe.width
-                if (resWidth < opWidth) {
-                  cc.error(
-                    s"Result width ${resWidth} of unary ' operator is narrower than operand width ${opWidth}")
-                  ExprError() withLoc tree.loc
-                } else {
-                  val widthExpr = Expr(resWidth) regularize tree.loc
-                  tree withTpe TypeInt(op.tpe.isSigned, widthExpr)
-                }
-              }
-            }
-          }
-        }
-
-        case ExprUnary(op, expr) => {
-          if (expr.tpe.isNum) {
-            if ("&|^" contains op) {
-              cc.error(tree, s"Unary operator '${op}' cannot be applied to value of type num")
-              ExprError() withLoc tree.loc
-            } else tree
-          } else {
-            checkPacked(expr, s"Operand of unary operator '${op}'") map {
-              ExprError() withLoc _
-            } getOrElse tree
-          }
-        }
-
-        // Binary ops
-        case expr @ ExprBinary(lhs, op, rhs) => {
-          val strictWidth = !(mixedWidthBinaryOps contains op)
-
-          val check = if (strictWidth) checkPacked _ else checkNumericOrPacked _
-
-          lazy val errLhs = check(lhs, s"Left hand operand of '${op}'")
-          lazy val errRhs = check(rhs, s"Right hand operand of '${op}'")
-
-          (lhs.tpe.isNum, rhs.tpe.isNum) match {
-            case (true, true) => {
-              // Do nothing, will be folded later
-              tree
-            }
-            case (false, true) if strictWidth => {
-              val errRhs = checkKnownConst(rhs)
-              errLhs orElse errRhs map {
-                ExprError() withLoc _
-              } getOrElse tree
-            }
-            case (true, false) if strictWidth => {
-              val errLhs = checkKnownConst(lhs)
-              errRhs orElse errLhs map {
-                ExprError() withLoc _
-              } getOrElse tree
-            }
-            case _ => {
-              errLhs orElse errRhs map {
-                ExprError() withLoc _
-              } getOrElse {
-                lazy val lWidth = lhs.tpe.width
-                lazy val rWidth = rhs.tpe.width
-                if (strictWidth && lWidth != rWidth) {
-                  cc.error(
-                    tree,
-                    s"Both operands of binary '${op}' must have the same width, but",
-                    s"left  hand operand is ${lWidth} bits wide, and",
-                    s"right hand operand is ${rWidth} bits wide",
-                  )
-                  ExprError() withLoc expr.loc
-                } else tree
-              }
-            }
-          }
-        }
-
-        case expr @ ExprTernary(cond, thenExpr, elseExpr) => {
-          checkNumericOrPacked(cond, "Condition of '?:'") map {
-            ExprError() withLoc _
-          } getOrElse {
-            lazy val errThen = checkPacked(thenExpr, "'then' operand of '?:'")
-            lazy val errElse = checkPacked(elseExpr, "'else' operand of '?:'")
-            (thenExpr.tpe.isNum, elseExpr.tpe.isNum) match {
-              case (true, true) => {
-                // Do nothing, will be folded later
-                tree
-              }
-              case (false, true) => {
-                val errElse = checkKnownConst(elseExpr)
-                errThen orElse errElse map {
-                  ExprError() withLoc _
-                } getOrElse tree
-              }
-              case (true, false) => {
-                val errThen = checkKnownConst(thenExpr)
-                errElse orElse errThen map {
-                  ExprError() withLoc _
-                } getOrElse tree
-              }
-              case _ => {
-                errThen orElse errElse map {
-                  ExprError() withLoc _
-                } getOrElse {
-                  val thenWidth = thenExpr.tpe.width
-                  val elseWidth = elseExpr.tpe.width
-                  if (thenWidth != elseWidth) {
-                    cc.error(
-                      tree,
-                      s"'then' and 'else' operands of ternary '?:' must have the same width, but",
-                      s"'then' operand is ${thenWidth} bits wide, and",
-                      s"'else' operand is ${elseWidth} bits wide"
-                    )
-                    ExprError() withLoc expr.loc
-                  } else tree
-                }
-              }
-            }
-          }
-        }
-
-        case expr @ ExprType(origKind) => {
-          val kind = origKind rewrite TypeTyper
-          if (kind eq origKind) expr else expr.copy(kind = kind) withLoc tree.loc
-        }
-
-        case expr @ ExprCast(origKind, _) => {
-          val kind = origKind rewrite TypeTyper
-          if (kind eq origKind) expr else expr.copy(kind = kind) withLoc tree.loc
-          // TODO: check preserves sign
-        }
-
-        //////////////////////////////////////////////////////////////////////////
-        // Type the types of TypeSymbols introduced by TypeDefinitions
-        //////////////////////////////////////////////////////////////////////////
-
-        case _ => tree
       }
+
+      case Function(ref, body) => {
+        if (body.isEmpty) {
+          error(tree, ref, "Body of function must end in a control statement")
+        } else if (body.last.tpe != TypeCtrlStmt) {
+          error(tree, body.last, "Body of function must end in a control statement")
+        }
+      }
+
+      case conn: Connect => ConnectChecks(conn)
+
+      case Decl(symbol, Some(init)) => {
+        if (symbol.kind.underlying.isNum && init.tpe.isPacked) {
+          if (symbol.kind.isParam) {
+            error(tree, init, "Unsized integer parameter assigned a packed value")
+          } else {
+            error(tree, "Unsized integer declaration has packed initializer")
+          }
+        } else if (!symbol.kind.underlying.isNum && !init.tpe.isNum) {
+          val msg = if (symbol.kind.isParam) "Parameter value" else "Initializer expression"
+          if (!(checkPacked(init, msg) && checkWidth(symbol.kind.width, init, msg))) {
+            error(tree)
+          }
+        } else if ((symbol.kind.isConst || symbol.kind.isParam) && !init.isKnownConst) {
+          val what = if (symbol.kind.isConst) "cons" else "param"
+          error(tree, init, s"Initializer of '${what}' declaration must be compile time constant")
+        }
+
+        // If there were no errors, attach initializer expression attribute
+        if (!tree.hasTpe) {
+          symbol.attr.init set {
+            if (symbol.kind.isPacked && init.tpe.isNum) {
+              val kind = TypeInt(init.tpe.isSigned, Expr(symbol.kind.width) regularize init.loc)
+              (init cast kind).simplify
+            } else {
+              init.simplify
+            }
+          }
+        }
+      }
+
+      ////////////////////////////////////////////////////////////////////////////
+      // Type check statements
+      ////////////////////////////////////////////////////////////////////////////
+
+      case StmtBlock(body) if !checkBlock(body) => error(tree)
+
+      case StmtIf(_, thenStmt, Some(elseStmt)) if thenStmt.tpe != elseStmt.tpe =>
+        error(tree, "Either both or neither branches of if-else must be control statements")
+
+      case StmtCase(_, cases) => {
+        val allCtrl = cases forall { _.stmt.tpe == TypeCtrlStmt }
+        val allComb = cases forall { _.stmt.tpe == TypeCombStmt }
+        if (!allComb && !allCtrl) {
+          error(tree, "Either all or no cases of a case statement must be control statements")
+        }
+      }
+
+      case StmtLoop(body) =>
+        if (body.isEmpty) {
+          error(tree, "Body of 'loop' must be a control statement")
+        } else if (body.last.tpe != TypeCtrlStmt) {
+          error(tree, "Body of 'loop' must end in a control statement")
+        }
+
+      case StmtAssign(lhs, rhs) if !rhs.tpe.isNum => {
+        // lhs have already been checked in enter
+        val ok = checkPacked(rhs, "Right hand side of assignment") &&
+          checkWidth(lhs.tpe.width, rhs, "Right hand side of assignment")
+        if (!ok) error(tree)
+      }
+
+      case StmtUpdate(lhs, _, rhs) if !rhs.tpe.isNum => {
+        // lhs have already been checked in enter
+        val ok = checkPacked(rhs, "Right hand side of assignment") &&
+          checkWidth(lhs.tpe.width, rhs, "Right hand side of assignment")
+        if (!ok) error(tree)
+      }
+
+      case StmtPost(expr, op) => {
+        if (!(checkPacked(expr, s"Target of postfix '${op}'") && checkModifiable(expr))) {
+          error(tree)
+        }
+      }
+
+      case StmtExpr(expr) if !expr.tpe.isVoid =>
+        expr match {
+          case ExprCall(_: ExprSelect, _) => ()
+          case _                          => error(tree, "A pure expression in statement position does nothing")
+        }
+
+      ////////////////////////////////////////////////////////////////////////////
+      // Type check expressions
+      ////////////////////////////////////////////////////////////////////////////
+
+      case ExprSelect(expr, sel) => {
+        val field = expr.tpe match {
+          case TypeType(kind: CompoundType) => kind(sel)
+          case kind: CompoundType           => kind(sel)
+          case _                            => None
+        }
+
+        if (field.isEmpty) {
+          val what = if (expr.tpe.isInstance) "port" else "field"
+          error(tree, s"No $what named '$sel' in '${expr.toSource}' of type '${expr.tpe.toSource}'")
+        }
+      }
+
+      case ExprCall(expr, args) => {
+        def check(kinds: List[Type]) =
+          for (((kind, arg), index) <- (kinds zip args).zipWithIndex) {
+            val i = index + 1
+            if (kind.isType) {
+              if (!arg.tpe.isType) error(tree, arg, s"Argument $i expects a type")
+            } else if (kind.isNum) {
+              if (!arg.tpe.isNum) error(tree, arg, s"Argument $i expects an unsized value")
+            } else if (!arg.tpe.isNum) {
+              val ok = checkPacked(arg, s"Argument $i of function call") &&
+                checkWidth(kind.width, arg, s"Argument $i of function call")
+              if (!ok) error(tree)
+            }
+          }
+
+        expr.tpe match {
+          case TypeCombFunc(argTypes, _) => check(argTypes)
+          case TypeCtrlFunc(argTypes, _) => check(argTypes)
+          case tpe: TypePolyFunc =>
+            tpe.resolve(args) match {
+              case Some(symbol) => tree withTpe symbol.kind.asInstanceOf[TypeCombFunc].retType
+              case None =>
+                val msg = s"Builtin function '${expr.toSource}' cannot be applied to arguments" :: {
+                  args map { arg =>
+                    s"'${arg.toSource}' of type ${arg.tpe.toSource}"
+                  }
+                }
+                error(tree, msg: _*)
+            }
+          case _ => unreachable // Handled in enter
+        }
+      }
+
+      case ExprCat(parts) =>
+        for ((part, i) <- parts.zipWithIndex) {
+          if (!checkPacked(part, s"Part ${i + 1} of bit concatenation")) {
+            error(tree)
+          }
+        }
+
+      case ExprRep(count, expr) => {
+        val ok = checkNumeric(count, "Count of bit repetition") &&
+          checkPacked(expr, "Value of bit repetition")
+        if (!ok) error(tree)
+      }
+
+      case ExprIndex(tgt, idx) => {
+        val ok = (tgt.tpe.isArray || checkPacked(tgt, "Target of index")) &&
+          checkIndex(contextKind.top.width, idx, "Index")
+        if (!ok) error(tree)
+      }
+
+      case ExprSlice(tgt, lidx, _, ridx) => {
+        val ok = checkPacked(tgt, "Target of slice") &&
+          checkIndex(contextKind.top.width, lidx, "Left index") &&
+          checkIndex(contextKind.top.width, ridx, "Right index")
+        if (!ok) error(tree)
+      }
+
+      // Unary ops
+
+      // Unary ' is special ant the type of the node must be assigned here
+      // based on context
+      case ExprUnary("'", op) =>
+        if (hadError) {
+          // If we had a type error, the context stack might be out of sync
+          // so don't type check any further unary tick nodes
+          error(tree)
+        } else if (contextKind.isEmpty) {
+          error(tree, "Unary ' operator used in invalid context")
+        } else if (checkPacked(op, "Operand of unary ' operator")) {
+          if (contextKind.top.isNum) {
+            tree withTpe TypeNum(op.tpe.isSigned)
+          } else {
+            val resWidth = contextKind.top.width
+            val opWidth = op.tpe.width
+            if (resWidth < opWidth) {
+              error(tree, s"Unary ' causes narrowing of width from $opWidth to $resWidth")
+            } else {
+              tree withTpe TypeInt(op.tpe.isSigned, Expr(resWidth) regularize tree.loc)
+            }
+          }
+        } else {
+          error(tree)
+        }
+
+      case ExprUnary(op, expr) =>
+        if (expr.tpe.isNum) {
+          if ("&|^" contains op) {
+            error(tree, s"Unary operator '$op' cannot be applied to unsized integer value")
+          }
+        } else if (!checkPacked(expr, s"Operand of unary operator '$op'")) {
+          error(tree)
+        }
+
+      // Binary ops
+      case ExprBinary(lhs, op, rhs) if !lhs.tpe.isNum || !rhs.tpe.isNum =>
+        lazy val strictWidth = !(mixedWidthBinaryOps contains op)
+        if (lhs.tpe.isNum && strictWidth) {
+          if (!checkPacked(rhs, s"Right hand operand of '$op'")) {
+            error(tree)
+          }
+        } else if (rhs.tpe.isNum && strictWidth) {
+          if (!checkPacked(lhs, s"Left hand operand of '$op'")) {
+            error(tree)
+          }
+        } else if (strictWidth) {
+          if (!checkPacked(lhs, s"Left hand operand of '$op'") |||
+                !checkPacked(rhs, s"Right hand operand of '$op'")) {
+            error(tree)
+          } else if (lhs.tpe.width != rhs.tpe.width) {
+            error(
+              tree,
+              s"Both operands of binary '$op' must have the same width, but",
+              s"left  hand operand is ${lhs.tpe.width} bits wide, and",
+              s"right hand operand is ${rhs.tpe.width} bits wide",
+            )
+          }
+        } else {
+          if (!checkNumericOrPacked(lhs, s"Left hand operand of '$op'") |||
+                !checkNumericOrPacked(rhs, s"Right hand operand of '$op'")) {
+            error(tree)
+          }
+        }
+
+      case ExprTernary(cond, thenExpr, elseExpr) =>
+        if (!checkNumericOrPacked(cond, "Condition of '?:'")) {
+          error(tree)
+        } else if (!thenExpr.tpe.isNum || !elseExpr.tpe.isNum) {
+          lazy val okThen = checkPacked(thenExpr, "'then' operand of '?:'")
+          lazy val okElse = checkPacked(elseExpr, "'else' operand of '?:'")
+          if (thenExpr.tpe.isNum) {
+            if (!okElse) error(tree)
+          } else if (elseExpr.tpe.isNum) {
+            if (!okThen) error(tree)
+          } else if (okElse &&& okThen) {
+            if (thenExpr.tpe.width != elseExpr.tpe.width) {
+              error(
+                tree,
+                s"'then' and 'else' operands of ternary '?:' must have the same width, but",
+                s"'then' operand is ${thenExpr.tpe.width} bits wide, and",
+                s"'else' operand is ${elseExpr.tpe.width} bits wide"
+              )
+            }
+          } else {
+            error(tree)
+          }
+        }
+
+      case ExprType(kind) if (kind rewrite TypeTyper).isError => error(tree)
+
+      case ExprCast(kind, _) if (kind rewrite TypeTyper).isError => error(tree)
+
+      //////////////////////////////////////////////////////////////////////////
+      // Done
+      //////////////////////////////////////////////////////////////////////////
+
+      case _ => ()
     }
+
+    assert(alreadyHadError || !hadError || tree.tpe.isError)
 
     // Pop context stack if required. This is a loop as some nodes might have
     // been pushed multiple times, e.g.: port.write(array[index]), both the
@@ -802,12 +592,15 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
     // assigned only once, we apply synchronization on the tesult node for this
     // step. This is not a problem as all threads would assign the same type.
 
-    result synchronized {
+    tree synchronized {
       // Assign type if have not been assigned by now
-      if (result.hasTpe) result else TypeAssigner(result)
+      if (tree.hasTpe) tree else TypeAssigner(tree)
     } followedBy {
-      assert(result.tpe.isError || (tree eq result), (result, result.tpe))
-      hadError |= result.tpe.isError
+      if (tree.tpe.isNum && !tree.asInstanceOf[Expr].isKnownConst) {
+        cc.error(tree, "Expression of unsized integer type must be compile time constant")
+      }
+
+      hadError |= tree.tpe.isError
     }
   }
 
