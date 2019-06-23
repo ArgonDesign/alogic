@@ -23,6 +23,7 @@ import com.argondesign.alogic.core.Symbols.TermSymbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.passes.AddCasts
 import com.argondesign.alogic.passes.FoldExpr
+import com.argondesign.alogic.passes.ReplaceUnaryTicks
 import com.argondesign.alogic.transform.ReplaceTermRefs
 import com.argondesign.alogic.typer.ResolvePolyFunc
 import com.argondesign.alogic.typer.TypeAssigner
@@ -178,6 +179,8 @@ trait ExprOps { this: Expr =>
   // Simplify this expression
   def simplify(implicit cc: CompilerContext): Expr = {
     val simple = this rewrite {
+      new ReplaceUnaryTicks
+    } rewrite {
       new ResolvePolyFunc
     } rewrite {
       new AddCasts

@@ -31,7 +31,7 @@ final class AddCastsSpec extends FreeSpec with AlogicTest {
 
   val namer = new Namer
   val typer = new Typer
-  val addImplicitCasts = new AddCasts
+  val addCasts = new AddCasts
 
   def xform(tree: Tree) = {
     tree match {
@@ -43,7 +43,7 @@ final class AddCastsSpec extends FreeSpec with AlogicTest {
       case Root(_, entity) => entity
       case other           => other
     }
-    node rewrite typer rewrite addImplicitCasts
+    node rewrite typer rewrite addCasts
   }
 
   "AddImplicitCasts should automatically insert casts" - {

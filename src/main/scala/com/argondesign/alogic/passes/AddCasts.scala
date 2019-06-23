@@ -52,7 +52,8 @@ final class AddCasts(implicit cc: CompilerContext) extends TreeTransformer with 
         stmt.copy(rhs = cast(lhs.tpe, rhs))
       }
 
-      case stmt @ StmtUpdate(lhs, _, rhs) if lhs.tpe.isPacked && rhs.tpe.underlying.isNum => {
+      case stmt @ StmtUpdate(lhs, "&" | "|" | "^" | "*" | "/" | "%" | "+" | "-", rhs)
+          if lhs.tpe.isPacked && rhs.tpe.underlying.isNum => {
         stmt.copy(rhs = cast(lhs.tpe, rhs))
       }
 

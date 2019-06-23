@@ -34,16 +34,18 @@ object Passes {
       Namer,
       // All entities are EntityNamed from here on
       SpecializeParam,
+      // Any passes between here and the middle end can only perform checks
+      // and do not re-write any trees unless errors have been detected
       Typer(externalRefs = false),
       Typer(externalRefs = true),
       PortCheck,
       ////////////////////////////////////////////////////////////////////////
       // Middle-end
       ////////////////////////////////////////////////////////////////////////
+      ReplaceUnaryTicks, // This must be first as TypeAssigner cannot handle unary '
       ResolvePolyFunc,
-      Desugar,
-      // TODO: ConvertTicks
       AddCasts,
+      Desugar,
       FoldExprInTypes,
       InlineUnsizedConst,
       FoldExpr(foldRefs = false),
