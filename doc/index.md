@@ -10,6 +10,7 @@ read in linear order to provide an introduction to Alogic.
 - [Compilation model](compilation.md)
 - [Design entities](entities.md)
 - [Data types and simple variables](types.md)
+- [Expression typing rules](widths.md)
 - [Literal values](literals.md)
 - [Ports](ports.md)
 - [Parameters and constants](params.md)

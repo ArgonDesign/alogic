@@ -1,7 +1,7 @@
 <p align="center">
 <a href="entities.md">Previous</a> |
 <a href="index.md">Index</a> |
-<a href="literals.md">Next</a>
+<a href="widths.md">Next</a>
 </p>
 
 # Data types and simple variables
@@ -18,7 +18,7 @@ variable:
   foo_t bar; // Declaration of a variable called 'bar' with type 'foo_t'
 ``` 
 
-The types of expressions are determined by a set of typing rules
+The result types of expressions are determined by a set of typing rules
 presented later (TODO).
 
 #### Packed types
@@ -93,9 +93,10 @@ sized integer of the same signedness as the original unsized type, if
 the value can be represented by the inferred sized integer type, or
 issue an error otherwise.
 
-The contexts where width inference of unsized integer values is 
+The contexts where width inference of unsized integer values is
 performed are listed below. The inferred widths of sub expressions are
-those that satisfy the expression width constrains (TODO):
+those that satisfy the [expression width constrains](widths.md) of the
+language:
 
 | Context | Example | Inferred width |
 |---------|---------|----------------|
@@ -104,7 +105,8 @@ those that satisfy the expression width constrains (TODO):
 | Index expressions | `x[1]` | max($clog2(size of indexed dimension), 1) |
 | Slice position expressions | `x[1:0]` | max($clog2(size of sliced dimension), 1) |
 | Slice width expressions | `x[i+:1]` | max($clog2(size of sliced dimension), 1) |
-| Function arguments with a packed formal type | `f(1)` | width of formal argument | 
+| Function arguments with a packed formal type | `f(1)` | width of formal argument |
+| Instance parameter assigment to packed parameter | `inst = new foo(A=1)` | width of parameter | 
 | Initializer expression in declaration of packed variable | `u8 x = 1` | width of declared variable | 
 | Assignment to packed right hand side | `x = 1` | widht of target of assignment |
 | Operator assignment with strict width operators\[\*\] | `x += 1` | width of target of assignment | 
@@ -322,5 +324,5 @@ Fiddle with these mappings here.</a>
 <p align="center">
 <a href="entities.md">Previous</a> |
 <a href="index.md">Index</a> |
-<a href="literals.md">Next</a>
+<a href="widths.md">Next</a>
 </p>

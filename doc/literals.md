@@ -1,5 +1,5 @@
 <p align="center">
-<a href="types.md">Previous</a> |
+<a href="widths.md">Previous</a> |
 <a href="index.md">Index</a> |
 <a href="ports.md">Next</a>
 </p>
@@ -150,7 +150,7 @@ $display("Help!");
 ```
 
 <p align="center">
-<a href="types.md">Previous</a> |
+<a href="widths.md">Previous</a> |
 <a href="index.md">Index</a> |
 <a href="ports.md">Next</a>
 </p>

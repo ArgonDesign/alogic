@@ -6,10 +6,12 @@
 
 # Constants and Parameters
 
-### Constants
+#### Constants
 
-Constants are local aliases for values introduced with the `const` keyword. They
-are stronger than text macros by having an associated type and hence bit width:
+Constants are local aliases for values introduced with the `const`
+keyword. Constants can be declared with any packed type, or with any of
+the 2 unsized integer types. As `const` values are immutable, their
+declarations must have an initializer:
 
 <a href="http://afiddle.argondesign.com/?example=params_constants.alogic">Fiddle with this code here.</a>
 
@@ -20,7 +22,8 @@ fsm baz {
 }
 ```
 
-Constants are emitted in the generated Verilog as _localparam_ declarations:
+Constants with a packed type are emitted in the generated Verilog as
+_localparam_ declarations:
 
 ```verilog
 module baz (
@@ -33,51 +36,64 @@ module baz (
 endmodule
 ```
 
-Note however, that even though `const` declarations may be emitted in the target
-language, the compiler will inline the value of `const` declarations where it
-deems necessary, especially in declarations of signals.
+Note however, that even though `const` declarations may be emitted in
+the target language, the compiler will inline the value of `const`
+declarations where it deems necessary, especially in declarations of
+signals.
 
-### Entity Parameters
+#### Entity Parameters
 
-Entities can declare typed parameters, introduced with the `param` keyword.
-These parameters must have a default value. However, it is then possible to
-overwrite this at instantiation time by defining an instantiated module to have
-a specific parameter value:
+Entities can declare typed parameters, introduced with the `param`
+keyword. Parameters are similar to constants, but can be provided with
+an alternative value at instantiation time. Parameter declarations can
+have a default value if appropriate, or can be left without an
+initializer. Actual parameter values can be specified at instantiation
+time, which override any default parameter values. Parameters without a
+default value must be provided at instantiation time:
 
 ```
 fsm foo {
-  param u8 MARKER = 8'd10;
+  param u7 A = 7'd10;
+  param u8 B = 8'd11;
+  param u9 C;
 }
 
 network bar {
-  foo_i = new foo(MARKER = 8'd247);
-  // creates an instance of foo which overwrites the default value of MARKER.
+  foo_i = new foo(A = 7'd107, C = 9'dff);
+  // Creates an instance of foo which overwrites the default value of A,
+  // but not B. The value of C is required as the declaration of C in
+  // foo has no default value.
 }
 ```
 
-### Parameter specialization
+The top level module cannot have parameters without a default value.
+
+#### Parameter specialization
 
 Alogic performs parameter specialization, meaning the compiler will emit
-specific implementations of a parametrized module, based on the particular
-parameter values it is instantiated with. This means that Verilog modules output
-by the Alogic compiler will never contain _parameter_ declarations. Specialized
-parameters are emitted as _localparam_ declarations in the output Verilog. For
-the above example, the compiler would emit the following specialization of
+specific implementations of a parametrized entity, based on the
+particular parameter values it is instantiated with. This means that
+Verilog modules output by the Alogic compiler will never contain
+_parameter_ declarations. Specialized parameters with a packed type are
+emitted as _localparam_ declarations in the output Verilog. For the
+above example, the compiler would emit the following specialization of
 entity `foo`:
 
 ```verilog
-module foo__MARKER_247 (
+module foo__MARKER_107__B_11__C_255 (
   input wire clk,
   input wire rst_n,
   ...
 );
-  localparam [7:0] MARKER = 8'd247;
+  localparam [6:0] A = 7'd107;
+  localparam [7:0] B = 8'd11;
+  localparam [9:0] C = 9'd255;
   ...
 endmodule
 ```
 
-One benefit of parameter specialization is that as opposed to Verilog, port
-declarations in Alogic can depend on `const` values:
+One benefit of parameter specialization is that as opposed to Verilog,
+port declarations in Alogic can depend on `const` values:
 
 <a href="http://afiddle.argondesign.com/?example=params_port_declarations.alogic">Fiddle with this code here.</a>
 
@@ -91,10 +107,47 @@ fsm bar {
 }
 ```
 
-Further benefits of parameter specialization include the possibility of further
-compile time optimization of the specialized entities and elimination of Verilog
-instance based code coverage holes arising from use of constant parameter values
-in expressions.
+Further benefits of parameter specialization include the possibility of
+further compile time optimization of the specialized entities and
+elimination of Verilog instance based code coverage holes arising from
+use of constant parameter values in expressions.
+
+#### Parameter and constant dependencies
+
+Parameter and constant declarations can depend on each other in an
+arbitrary way subject to declaration of names being provided before uses
+of the name. Parameters and constants however cannot depend on any other
+name declared inside the same entity, in particular this is
+valid:
+
+```
+fsm dependent_param {
+  param uint A;
+  param uint B;
+  const uint C = B - A;
+  param uint(C) D;
+  param uint(@bits(D)) E;
+
+  in uint(C) port;
+  ...
+}
+```
+
+but this is not:
+
+```
+fsm bad_param {
+  param uint A;
+  param uint B;
+
+  in uint(B - A) port; // Neither `param` nor `const`
+
+  const uint C = @bits(port); // Error: depends on 'port'
+  param uint(C) D;            // Error: depends on 'port' indirectly
+  param uint(@bits(port)) E;  // Error: depends on 'port'
+  ...
+}
+```
 
 <p align="center">
 <a href="ports.md">Previous</a> |

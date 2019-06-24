@@ -249,6 +249,7 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
       if (!(checkPacked(lhs, "Left hand side of assignment") && checkModifiable(lhs))) {
         error(tree)
       }
+      // TODO: this is not quite right for shift and compare etc
       pushContextWidth(tree, lhs.tpe)
     }
 
@@ -398,6 +399,7 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
         if (!ok) error(tree)
       }
 
+      // TODO: this is not right for shifts which can have any right hand side
       case StmtUpdate(lhs, _, rhs) if !rhs.tpe.isNum => {
         // lhs have already been checked in enter
         val ok = checkPacked(rhs, "Right hand side of assignment") &&
