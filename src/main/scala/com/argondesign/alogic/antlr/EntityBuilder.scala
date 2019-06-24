@@ -50,7 +50,9 @@ object EntityBuilder extends BaseBuilder[EntityContext, EntityIdent] {
           name withAttr AttrBuilder(ctx.attr)
         }
 
-        Instance(name, module, paramNames, paramExprs) withLoc ctx.loc
+        val loc = ctx.loc.copy(point = c.eqsign.getStartIndex)
+
+        Instance(name, module, paramNames, paramExprs) withLoc loc
       }
 
       override def visitEntityContentConnect(ctx: EntityContentConnectContext) = {
@@ -61,7 +63,7 @@ object EntityBuilder extends BaseBuilder[EntityContext, EntityIdent] {
         val entity = EntityBuilder(ctx.entity)
         if (ctx.autoinst != null) {
           val attr = Option(ctx.attr) map { AttrBuilder(_) }
-          AutoInstance(entity, attr) withLoc ctx.loc
+          AutoInstance(entity, attr) withLoc ctx.autoinst.loc
         } else {
           entity
         }
@@ -94,15 +96,15 @@ object EntityBuilder extends BaseBuilder[EntityContext, EntityIdent] {
         val contents = EntityContentVisitor(ctx.entity_content)
         val instances = contents collect {
           case x: Instance => x
-          case AutoInstance(entity, None) => {
+          case a @ AutoInstance(entity, None) => {
             val Ident(name) = entity.ident
             val ident = Ident(name) withLoc entity.ident.loc
-            Instance(ident, entity.ident, Nil, Nil) withLoc entity.loc
+            Instance(ident, entity.ident, Nil, Nil) withLoc a.loc
           }
-          case AutoInstance(entity, Some(attr)) => {
+          case a @ AutoInstance(entity, Some(attr)) => {
             val Ident(name) = entity.ident
             val ident = Ident(name) withLoc entity.ident.loc withAttr attr
-            Instance(ident, entity.ident, Nil, Nil) withLoc entity.loc
+            Instance(ident, entity.ident, Nil, Nil) withLoc a.loc
           }
         }
         val connects = contents collect { case x: Connect           => x }

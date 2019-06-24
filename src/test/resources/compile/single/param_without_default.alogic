@@ -1,0 +1,21 @@
+network param_without_default {
+  in  u4  i;
+  out u8  o;
+
+  fsm dup {
+    param uint W;
+
+    in  uint(W) p_i;
+    out uint(2*W) p_o;
+
+    void main() {
+      p_o = {2{p_i}};
+      fence;
+    }
+  }
+
+  inst = new dup(W=@bits(i));
+
+  i -> inst.p_i; inst.p_o -> o;
+}
+

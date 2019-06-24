@@ -115,7 +115,7 @@ entity_content
 
 connect : lhs=expr '->' rhs+=expr (',' rhs+=expr)* ;
 
-instance : IDENTIFIER '=' 'new' IDENTIFIER '(' param_assigns ')' ;
+instance : IDENTIFIER eqsign='=' 'new' IDENTIFIER '(' param_assigns ')' ;
 
 param_assigns : (IDENTIFIER '=' expr (','  IDENTIFIER '=' expr)*)? ;
 

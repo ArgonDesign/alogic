@@ -20,6 +20,7 @@ import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.TreeInTypeTransformer
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.typer.TypeAssigner
@@ -31,7 +32,8 @@ import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.language.postfixOps
 
-final class SpecializeEntity(bindings: Map[String, Expr])(implicit cc: CompilerContext)
+final class SpecializeEntity(bindings: Map[String, Expr], instLoc: Option[Loc])(
+    implicit cc: CompilerContext)
     extends TreeTransformer
     with PartialMatch {
 
@@ -91,9 +93,17 @@ final class SpecializeEntity(bindings: Map[String, Expr])(implicit cc: CompilerC
       val newKind = TypeParam(kind rewrite TypeSpecializeEntity)
 
       // Figure out actual parameter value
-      val newInit = bindings.get(symbol.name) orElse init
-
-      // TODO: check here newInit is not None when params without initializers are implemented
+      val newInit = bindings.get(symbol.name) orElse init orElse {
+        // Must have a value by now (either from bindings or the default), so fail
+        val msg = if (instLoc.isDefined) {
+          s"Parameter '${symbol.name}' must be provided by instantiation of entity '${entitySymbol.name}' as it has no default value"
+        } else {
+          s"Top level entity '${entitySymbol.name}' requires default parameter values"
+        }
+        cc.error(instLoc getOrElse tree.loc, msg)
+        hadError = true
+        Option(ExprNum(false, 0) withLoc tree.loc)
+      }
 
       // Create the new symbol
       val newSymbol = cc.newTermSymbol(symbol.name, symbol.loc, newKind)
@@ -118,7 +128,7 @@ final class SpecializeEntity(bindings: Map[String, Expr])(implicit cc: CompilerC
       // Remember final parameter value
       if (!hadError) {
         // .value might still fail due to for example out of range width inference
-        // TODO: should out of range width inference in the typer
+        // TODO: should check out of range width inference in the typer
         newInit.get.value foreach { v =>
           paramValues.append((symbol.name, v))
         }
@@ -257,8 +267,8 @@ object SpecializeParam extends Pass with FollowedBy {
     // Returns the specialized entity, or None if an error happened
     def specialize(entitySymbol: TypeSymbol,
                    bindings: Map[String, Expr],
-                   catalog: Map[TypeSymbol, EntityNamed])(
-        implicit cc: CompilerContext): Option[EntityNamed] = {
+                   catalog: Map[TypeSymbol, EntityNamed],
+                   instLoc: Option[Loc])(implicit cc: CompilerContext): Option[EntityNamed] = {
 
       // Here is how the specialization is actually done
       def specialized: Option[EntityNamed] = {
@@ -268,7 +278,7 @@ object SpecializeParam extends Pass with FollowedBy {
         // Specialize the parameters of this entity. This replaces all
         // param decls with const decls in this entity and type checks
         // all const decls.
-        val transformer = new SpecializeEntity(bindings)
+        val transformer = new SpecializeEntity(bindings, instLoc)
         val special = (entity rewrite transformer).asInstanceOf[EntityNamed]
         // Stop if we had an error
         if (transformer.hadError) return None
@@ -287,7 +297,7 @@ object SpecializeParam extends Pass with FollowedBy {
         } yield {
           val bindings = (pNames zip pExprs).toMap
           // TODO: check pExprs are compile time constants
-          specialize(eSymbol, bindings, extendedCatalog) map { newEntity =>
+          specialize(eSymbol, bindings, extendedCatalog, Some(inst.loc)) map { newEntity =>
             iSymbol.kind = TypeInstance(newEntity.symbol)
             inst.copy(
               module = Sym(newEntity.symbol) withLoc inst.loc,
@@ -329,7 +339,7 @@ object SpecializeParam extends Pass with FollowedBy {
 
     // Recursively specialize from all top level entities,
     // this populates the 'specializations' map
-    topSymbols foreach { specialize(_, Map.empty, catalog) }
+    topSymbols foreach { specialize(_, Map.empty, catalog, None) }
 
     // Gather and return those specialized entities which are specializations
     // of entities we started with (i.e.: all file scope entities)

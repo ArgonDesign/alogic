@@ -731,7 +731,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         for {
           (entity, decl, msg) <- List(
             ("fsm", "i8 a ", ""),
-            ("fsm", "param i8 a", "Parameter"),
+            ("fsm", "param i8 a", ""),
             ("fsm", "const i8 a", "Constant"),
             ("fsm", "i2[8] a", ""),
             ("fsm", "s a", ""),

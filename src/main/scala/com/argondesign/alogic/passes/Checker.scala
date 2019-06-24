@@ -261,7 +261,6 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
 
     case decl @ DeclIdent(_, kind, None) => {
       val hintOpt = kind match {
-        case _: TypeParam => Some("Parameter")
         case _: TypeConst => Some("Constant")
         case _            => None
       }
