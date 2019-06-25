@@ -45,7 +45,7 @@ provided, the compiler will
 [infer the width](types.md#unsized-integer-types) of the unsized value
 to be the required width. Note however that width inference never
 changes the signedness of the value provided. Values with an unsized
-type are always compile time constant do width inference will either
+type are always compile time constant so width inference will either
 always succeed, or the compiler will raise an error if the value cannot
 be represented by the target type.
 
@@ -67,7 +67,7 @@ using the `@bits`, `@max` and `$clog2` built-in functions.
 | Binary `*` `/` `%` `+` `-` `&` `\|` `^` `>` `>=` `<` `<=` `==` `!=`| `a + b`     | @bits(a) == @bits(b) |
 | Binary `<<` `<<<` `>>` `>>>` `&&` `\|\|`                           | `a << b`    | none |
 | Ternary                                                            | `a ? b : c` | @bits(b) == @bits(c) |
-| Repetition                                                         | `{N{a}`     | none |
+| Repetition                                                         | `{N{a}}`     | none |
 | Concatenation                                                      | `{a, b}`    | none |
 
 Every operator detailed above also yields a result which has a well
@@ -88,7 +88,7 @@ result types of operators are:
 | Binary `<<` `<<<` `>>` `>>>`              | `a << b`    | type of left hand operand |
 | Binary `&&` `\|\|`                        | `a && b`    | `u1` |
 | Ternary `?:`                              | `a ? b : c` | `int(@bits(b))` if both `b` and `c` are signed, else `uint(@bits(b))` |
-| Repetition                                | `{N{a}}`    | `N*@bits(a)` |
+| Repetition                                | `{N{a}}`    | `uint(N*@bits(a))` |
 | Concatenation                             | `{a, b}`    | `uint(sum of widths of operands)` |
 
 #### Expressions with unsized integer operands
