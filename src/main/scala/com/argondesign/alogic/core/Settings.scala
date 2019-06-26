@@ -48,5 +48,7 @@ case class Settings(
     // Module manifest output path
     moduleManifestPath: Option[Path] = None,
     // Reset style
-    resetStyle: ResetStyle.Type = ResetStyle.AsyncLow
+    resetStyle: ResetStyle.Type = ResetStyle.AsyncLow,
+    // Reset all
+    resetAll: Boolean = true
 )

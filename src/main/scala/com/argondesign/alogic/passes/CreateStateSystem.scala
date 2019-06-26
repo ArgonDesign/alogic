@@ -41,8 +41,6 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends TreeTransfor
     }
 
     case entity: EntityNamed => {
-      // TODO: polish off entry state handling (currently always state 0)
-
       // Ensure entry state is the first
       val (entryState, otherStates) = entity.states partition {
         case State(ExprInt(_, _, value), _) => value == 0

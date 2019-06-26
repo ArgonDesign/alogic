@@ -104,7 +104,8 @@ object Main extends App {
     },
     dumpTrees = cliConf.dumpTrees.toOption contains true,
     moduleManifestPath = cliConf.moduleManifest.toOption map { _.toPath },
-    resetStyle = cliConf.resetStyle()
+    resetStyle = cliConf.resetStyle(),
+    resetAll = !cliConf.noResetAll()
   )
 
   implicit val cc = new CompilerContext(settings)

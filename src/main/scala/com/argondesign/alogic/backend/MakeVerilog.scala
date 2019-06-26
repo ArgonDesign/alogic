@@ -183,8 +183,8 @@ final class MakeVerilog(
   private def emitInternalStorageSection(body: CodeWriter): Unit = {
     if (hasFlops || hasArrays) {
       body.emitSection(1, "Storage section") {
-        if (hasFlops) {
-          body.emitBlock(1, "Flops") {
+        if (resetFlops.nonEmpty) {
+          body.emitBlock(1, "Reset flops") {
             body.emit(1) {
               cc.settings.resetStyle match {
                 case ResetStyle.AsyncLow  => s"always @(posedge clk or negedge ${cc.rst}) begin"
@@ -201,16 +201,12 @@ final class MakeVerilog(
 
             body.emit(3) {
               for {
-                Decl(qSymbol, initOpt) <- decls
-                if qSymbol.attr.flop.isSet
+                Decl(qSymbol, initOpt) <- resetFlops
               } yield {
                 val id = qSymbol.name
                 val init = initOpt match {
                   case Some(expr) => expr
-                  case None => {
-                    val kind = qSymbol.kind
-                    ExprInt(kind.isSigned, kind.width, 0)
-                  }
+                  case None       => ExprInt(qSymbol.kind.isSigned, qSymbol.kind.width, 0)
                 }
                 s"${id} <= ${vexpr(init)};"
               }
@@ -224,7 +220,34 @@ final class MakeVerilog(
 
             body.emit(3) {
               for {
-                Decl(qSymbol, initOpt) <- decls
+                Decl(qSymbol, _) <- resetFlops
+                dSymbol <- qSymbol.attr.flop.get
+              } yield {
+                s"${qSymbol.name} <= ${dSymbol.name};"
+              }
+            }
+
+            body.emit(2)("end")
+            body.emit(1)("end")
+          }
+          body.ensureBlankLine()
+        }
+
+        if (unresetFlops.nonEmpty) {
+          body.emitBlock(1, "Unreset flops") {
+            body.emit(1) {
+              "always @(posedge clk) begin"
+            }
+
+            if (canStall) {
+              body.emit(2)("if (go) begin")
+            } else {
+              body.emit(2)("begin")
+            }
+
+            body.emit(3) {
+              for {
+                Decl(qSymbol, _) <- unresetFlops
                 dSymbol <- qSymbol.attr.flop.get
               } yield {
                 s"${qSymbol.name} <= ${dSymbol.name};"
@@ -387,6 +410,8 @@ final class MakeVerilog(
 
             if (details(mSymbol).needsClock) {
               items append { (true, ".clk", "         (clk)") }
+            }
+            if (details(mSymbol).needsReset) {
               items append { (true, s".${cc.rst}", s"         (${cc.rst})") }
             }
 
@@ -464,6 +489,8 @@ final class MakeVerilog(
 
     if (needsClock) {
       items append "input  wire clk"
+    }
+    if (needsReset) {
       items append s"input  wire ${cc.rst}"
     }
 

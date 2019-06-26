@@ -269,6 +269,14 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
     )
   )
 
+  val noResetAll = opt[Boolean](
+    noshort = true,
+    descr = """|Only reset flops that require reset initialization according
+               |to Alogic semantics, and leave other flops unreset. By default
+               |all flops emitted are reset.
+               |""".stripMargin.replace('\n', ' ')
+  )
+
   // There is no standard library call to check if the console is a terminal,
   // so we pass this hidden option from the wrapper script to help ourselves out
   val stderrisatty = toggle(noshort = true, hidden = true)

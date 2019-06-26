@@ -303,8 +303,9 @@ object SyncSliceFactory {
 
     val symbols = if (kind != TypeVoid) pSymbol :: vSymbol :: ports else vSymbol :: ports
 
-    val decls = symbols map { symbol =>
-      Decl(symbol, None)
+    val decls = symbols map {
+      case `vSymbol` => Decl(vSymbol, Some(ExprInt(false, 1, 0)))
+      case symbol    => Decl(symbol, None)
     }
 
     val connects = if (kind != TypeVoid) {

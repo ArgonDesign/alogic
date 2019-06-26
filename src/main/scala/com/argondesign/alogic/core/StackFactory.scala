@@ -165,12 +165,9 @@ object StackFactory {
 
     val symbols = valSymbol :: stoSymbol :: ports
 
-    val decls = symbols map { symbol =>
-      val init = symbol match {
-        case `valSymbol` => Some(ExprInt(false, 1, 0))
-        case _           => None
-      }
-      Decl(symbol, init)
+    val decls = symbols map {
+      case `valSymbol` => Decl(valSymbol, Some(ExprInt(false, 1, 0)))
+      case symbol      => Decl(symbol, None)
     }
 
     val connects = List(
@@ -317,14 +314,11 @@ object StackFactory {
 
     val symbols = stoSymbol :: ptrSymbol :: ports
 
-    val decls = symbols map { symbol =>
-      val init = symbol match {
-        case `empSymbol` => Some(ExprInt(false, 1, 1))
-        case `fulSymbol` => Some(ExprInt(false, 1, 0))
-        case `ptrSymbol` => Some(ExprInt(false, ptrWidth, 0))
-        case _           => None
-      }
-      Decl(symbol, init)
+    val decls = symbols map {
+      case `empSymbol` => Decl(empSymbol, Some(ExprInt(false, 1, 1)))
+      case `fulSymbol` => Decl(fulSymbol, Some(ExprInt(false, 1, 0)))
+      case `ptrSymbol` => Decl(ptrSymbol, Some(ExprInt(false, ptrWidth, 0)))
+      case symbol      => Decl(symbol, None)
     }
 
     val connects = List(

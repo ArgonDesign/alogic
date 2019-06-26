@@ -16,11 +16,13 @@ package com.argondesign.alogic.backend
 
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.ast.Trees.Expr.InstancePortRef
+import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.unreachable
 
-final class EntityDetails(val entity: EntityLowered, details: => Map[TypeSymbol, EntityDetails]) {
+final class EntityDetails(val entity: EntityLowered, details: => Map[TypeSymbol, EntityDetails])(
+    implicit cc: CompilerContext) {
 
   val EntityLowered(
     eSymbol,
@@ -47,6 +49,17 @@ final class EntityDetails(val entity: EntityLowered, details: => Map[TypeSymbol,
     }
   }
 
+  val resetFlops: List[Declaration] = decls filter {
+    case Decl(symbol, Some(_)) => symbol.attr.flop.isSet
+    case Decl(symbol, None)    => symbol.attr.flop.isSet && cc.settings.resetAll
+    case _                     => unreachable
+  }
+
+  val unresetFlops: List[Declaration] = decls filter {
+    case Decl(symbol, None) => symbol.attr.flop.isSet && !cc.settings.resetAll
+    case _                  => false
+  }
+
   lazy val isVerbatim: Boolean = eSymbol.attr.variant.value == "verbatim"
 
   lazy val hasConsts: Boolean = decls exists {
@@ -54,10 +67,7 @@ final class EntityDetails(val entity: EntityLowered, details: => Map[TypeSymbol,
     case _               => false
   }
 
-  lazy val hasFlops: Boolean = decls exists {
-    case Decl(symbol, _) => symbol.attr.flop.isSet
-    case _               => false
-  }
+  lazy val hasFlops: Boolean = resetFlops.nonEmpty || unresetFlops.nonEmpty
 
   lazy val hasCombSignals: Boolean = decls exists {
     case Decl(symbol, _) => symbol.attr.combSignal.isSet
@@ -84,6 +94,13 @@ final class EntityDetails(val entity: EntityLowered, details: => Map[TypeSymbol,
   lazy val needsClock: Boolean = isVerbatim || hasFlops || hasArrays || {
     instances exists {
       case Instance(_, Sym(symbol: TypeSymbol), _, _) => details(symbol).needsClock
+      case _                                          => unreachable
+    }
+  }
+
+  lazy val needsReset: Boolean = isVerbatim || resetFlops.nonEmpty || {
+    instances exists {
+      case Instance(_, Sym(symbol: TypeSymbol), _, _) => details(symbol).needsReset
       case _                                          => unreachable
     }
   }
