@@ -200,7 +200,7 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
   override def skip(tree: Tree): Boolean = tree match {
     case _: Entity  => false
     case _: Connect => !externalRefs
-    case _          => tree.hasTpe
+    case _          => false
   }
 
   override def enter(tree: Tree): Unit = tree match {
@@ -656,7 +656,7 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
 
   override def finalCheck(tree: Tree): Unit = {
     if (!tree.tpe.isError) {
-      assert(contextKind.isEmpty, s"${contextKind.toList} ${contextNode.toList}")
+      assert(contextKind.isEmpty, s"${tree.loc.prefix}\n${contextKind.toList}\n${contextNode.toList}")
 
       def check(tree: TreeLike) {
         tree visitAll {
