@@ -405,17 +405,19 @@ final class MakeVerilog(
           body.ensureBlankLine()
           body.emit(1)(s"${eSymbol.name} ${iSymbol.name} (")
 
-          body.emitTable(1, " ") {
-            val items = new ListBuffer[(Boolean, String, String)]
+          body.emitTable(2, " ") {
+            val items = new ListBuffer[List[String]]
 
             if (details(mSymbol).needsClock) {
-              items append { (true, ".clk", "         (clk)") }
+              items append { List(".clk", "         (clk),") }
             }
             if (details(mSymbol).needsReset) {
-              items append { (true, s".${cc.rst}", s"         (${cc.rst})") }
+              items append { List(s".${cc.rst}", s"         (${cc.rst}),") }
             }
 
             val TypeEntity(_, pSymbols, _) = eSymbol.kind
+
+            val lastIndex = pSymbols.length - 1
 
             for ((pSymbol, i) <- pSymbols.zipWithIndex) {
               val dir = pSymbol.kind match {
@@ -423,25 +425,20 @@ final class MakeVerilog(
                 case _         => "->"
               }
 
-              val (required, pStr) = instancePortExpr.get(iSymbol) flatMap {
+              val pStr = instancePortExpr.get(iSymbol) flatMap {
                 _.get(pSymbol.name)
               } map { expr =>
-                (true, vexpr(expr, wrapCat = true, indent = 2))
+                vexpr(expr, wrapCat = true, indent = 2)
               } getOrElse {
-                (false, "")
+                "/* not connected */"
               }
 
-              items append { (required, s".${pSymbol.name}", s"/* ${dir} */ (${pStr})") }
+              val comma = if (i == lastIndex) "" else ","
+
+              items append { List(s".${pSymbol.name}", s"/* ${dir} */ (${pStr})${comma}") }
             }
 
-            val lastRequied = items lastIndexWhere { _._1 }
-            val lastIndex = items.length - 1
-
-            for (((required, l, r), index) <- items.toList.zipWithIndex) yield {
-              val nl = if (required) s"  ${l}" else s"//${l}"
-              val nr = if (index == lastRequied || index == lastIndex) s"${r}" else s"${r},"
-              List(nl, nr)
-            }
+            items.toList
           }
 
           body.emit(1)(");")
