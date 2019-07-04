@@ -272,6 +272,17 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
       } getOrElse decl
     }
 
+    case GenFor(inits, cond, step, _) => {
+      if (cond.isEmpty) cc.error(tree, "'gen for' must have a termination condition")
+      if (step.isEmpty) cc.error(tree, "'gen for' must have at least one step statement")
+      if (inits.isEmpty) {
+        cc.error(tree, "'gen for' must have at least one declaration initializer")
+      } else if (inits exists { !_.isInstanceOf[StmtDecl] }) {
+        cc.error(tree, "'gen for' must use only declaration initializers")
+      }
+      tree
+    }
+
     case StmtRead() => {
       if (entityLevel <= 1) {
         cc.error(tree, "Read statements are only allowed inside nested entities")

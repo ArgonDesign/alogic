@@ -781,6 +781,43 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         cc.messages shouldBe empty
       }
     }
+
+    "reject malformed 'gen for' constructs" - {
+      "single non-decl init" in {
+        "gen for (i = 0;i < 10;i++) {}".asTree[Gen] rewrite checker
+        cc.messages.loneElement should beThe[Error] {
+          "'gen for' must use only declaration initializers"
+        }
+      }
+
+      "some non-decl init" in {
+        "gen for (u8 a = 0, i = 0;i < 10;i++) {}".asTree[Gen] rewrite checker
+        cc.messages.loneElement should beThe[Error] {
+          "'gen for' must use only declaration initializers"
+        }
+      }
+
+      "no init" in {
+        "gen for (;i < 10;i++) {}".asTree[Gen] rewrite checker
+        cc.messages.loneElement should beThe[Error] {
+          "'gen for' must have at least one declaration initializer"
+        }
+      }
+
+      "no condition" in {
+        "gen for (u8 i = 0;;i++) {}".asTree[Gen] rewrite checker
+        cc.messages.loneElement should beThe[Error] {
+          "'gen for' must have a termination condition"
+        }
+      }
+
+      "no step" in {
+        "gen for (u8 i = 0;i < 10;) {}".asTree[Gen] rewrite checker
+        cc.messages.loneElement should beThe[Error] {
+          "'gen for' must have at least one step statement"
+        }
+      }
+    }
   }
 
 }
