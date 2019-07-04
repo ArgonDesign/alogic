@@ -120,6 +120,23 @@ instance : IDENTIFIER eqsign='=' 'new' IDENTIFIER '(' param_assigns ')' ;
 param_assigns : (IDENTIFIER '=' expr (','  IDENTIFIER '=' expr)*)? ;
 
 ///////////////////////////////////////////////////////////////////////////////
+// Gen constructs
+///////////////////////////////////////////////////////////////////////////////
+
+generate : 'gen' gen ;
+
+gen
+  : 'if' '(' expr ')' '{' (thens+=genitem)* '}' ('else' '{' (elses+=genitem)* '}')? # GenIf
+  | 'for' '(' loop_init? ';' expr? ';' for_steps? ')' '{' genitem* '}'              # GenFor
+  | 'for' '(' kind IDENTIFIER op=('<' | '<=')  expr ')' '{' genitem* '}'            # GenRange
+  ;
+
+genitem
+  : generate    # GenItemGen
+  | statement   # GenItemStmt
+  ;
+
+///////////////////////////////////////////////////////////////////////////////
 // Statements
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -141,6 +158,7 @@ statement
   | decl ';'                                                            # StmtDecl
   | assignment ';'                                                      # StatementAssignment
   | expr ';'                                                            # StmtExpr
+  | generate                                                            # StmtGen
   ;
 
 loop

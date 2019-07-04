@@ -160,6 +160,7 @@ SRAM    : 'sram' ;
 REG     : 'reg' ;
 SIGNED  : 'signed' ;
 UNSIGNED: 'unsigned' ;
+GEN     : 'gen' ;
 
 SYNC        : 'sync';
 SYNC_READY  : 'sync' (WS|CMT)* 'ready';

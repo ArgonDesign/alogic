@@ -157,6 +157,17 @@ object Trees {
   case class Thicket(trees: List[Tree]) extends Tree
 
   ///////////////////////////////////////////////////////////////////////////////
+  // Gen constructs
+  ///////////////////////////////////////////////////////////////////////////////
+
+  sealed trait Gen extends Tree
+
+  case class GenIf(cond: Expr, thenItems: List[Tree], elseItems: List[Tree]) extends Gen
+  case class GenFor(inits: List[Stmt], cond: Option[Expr], step: List[Stmt], body: List[Tree])
+      extends Gen
+  case class GenRange(decl: Declaration, op: String, end: Expr, body: List[Tree]) extends Gen
+
+  ///////////////////////////////////////////////////////////////////////////////
   // Statements
   ///////////////////////////////////////////////////////////////////////////////
 
@@ -166,9 +177,7 @@ object Trees {
   case class StmtIf(cond: Expr, thenStmt: Stmt, elseStmt: Option[Stmt]) extends Stmt
   case class StmtCase(expr: Expr, cases: List[Case]) extends Stmt
 
-  sealed trait Case extends Tree {
-    val stmt: Stmt
-  }
+  sealed trait Case extends Tree { val stmt: Stmt }
   case class RegularCase(cond: List[Expr], stmt: Stmt) extends Case
   case class DefaultCase(stmt: Stmt) extends Case
 
@@ -198,6 +207,8 @@ object Trees {
   case class StmtStall(cond: Expr) extends Stmt
 
   case class StmtComment(str: String) extends Stmt
+
+  case class StmtGen(gen: Gen) extends Stmt
 
   case class StmtError() extends Stmt // placeholder when errors happened
 

@@ -132,4 +132,9 @@ trait ObjectTreeOps extends TreeUntype {
     def build(ctx: ExprContext)(implicit cc: CompilerContext): Expr = ExprBuilder(ctx)
   }
 
+  implicit final val parseableGen = new Parser.Parseable[Gen] {
+    type C = GenerateContext
+    def parse(parser: AlogicParser): GenerateContext = parser.generate()
+    def build(ctx: GenerateContext)(implicit cc: CompilerContext): Gen = GenBuilder(ctx)
+  }
 }

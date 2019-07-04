@@ -146,6 +146,11 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
         stmt withLoc ctx.loc
       }
 
+      override def visitStmtGen(ctx: StmtGenContext): Stmt = {
+        val gen = GenBuilder(ctx.generate)
+        StmtGen(gen) withLoc ctx.loc
+      }
+
       override def visitLoopInitAssign(ctx: LoopInitAssignContext) = {
         StmtAssign(ExprBuilder(ctx.expr(0)), ExprBuilder(ctx.expr(1))) withLoc ctx.loc
       }

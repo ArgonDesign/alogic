@@ -48,6 +48,7 @@ final object TypeAssigner {
     case _: Root              => unreachable
     case _: DeclIdent         => unreachable
     case _: Ident             => unreachable
+    case _: Gen               => unreachable
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -102,6 +103,8 @@ final object TypeAssigner {
     case node: StmtStall   => kind(node)
     //
     case node: StmtError => kind(node)
+    //
+    case node: StmtGen => unreachable
   }
 
   private def kind(node: StmtBlock) = {

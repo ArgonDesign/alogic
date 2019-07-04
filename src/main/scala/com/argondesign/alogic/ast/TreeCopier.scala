@@ -215,6 +215,54 @@ object TreeCopier {
     }
   }
 
+  final def apply(tree: GenIf)(cond: Tree, thenItems: List[Tree], elseItems: List[Tree]): GenIf = {
+    if ((cond eq tree.cond) && (thenItems eq tree.thenItems) && (elseItems eq tree.elseItems)) {
+      tree
+    } else {
+      GenIf(
+        cond.asInstanceOf[Expr],
+        thenItems.asInstanceOf[List[Stmt]],
+        elseItems.asInstanceOf[List[Stmt]]
+      ) withLoc tree.loc
+    }
+  }
+
+  final def apply(
+      tree: GenFor
+  )(
+      inits: List[Tree],
+      cond: Option[Tree],
+      step: List[Tree],
+      body: List[Tree]
+  ): GenFor = {
+    if ((inits eq tree.inits) && (cond eq tree.cond) && (step eq tree.step) && (body eq tree.body)) {
+      tree
+    } else {
+      assert(inits forall { _.isInstanceOf[Stmt] })
+      assert(cond forall { _.isInstanceOf[Expr] })
+      assert(step forall { _.isInstanceOf[Stmt] })
+      GenFor(
+        inits.asInstanceOf[List[Stmt]],
+        cond.asInstanceOf[Option[Expr]],
+        step.asInstanceOf[List[Stmt]],
+        body
+      ) withLoc tree.loc
+    }
+  }
+
+  final def apply(tree: GenRange)(decl: Tree, end: Tree, body: List[Tree]): GenRange = {
+    if ((decl eq tree.decl) && (end eq tree.end) && (body eq tree.body)) {
+      tree
+    } else {
+      GenRange(
+        decl.asInstanceOf[Declaration],
+        tree.op,
+        end.asInstanceOf[Expr],
+        body
+      ) withLoc tree.loc
+    }
+  }
+
   final def apply(tree: StmtBlock)(body: List[Tree]): StmtBlock = {
     if (body eq tree.body) {
       tree
@@ -379,6 +427,14 @@ object TreeCopier {
       tree
     } else {
       StmtStall(cond.asInstanceOf[Expr]) withLoc tree.loc
+    }
+  }
+
+  final def apply(tree: StmtGen)(gen: Tree): StmtGen = {
+    if (gen eq tree.gen) {
+      tree
+    } else {
+      StmtGen(gen.asInstanceOf[Gen]) withLoc tree.loc
     }
   }
 

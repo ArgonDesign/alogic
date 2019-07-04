@@ -334,6 +334,32 @@ trait TreePrintOps { this: Tree =>
 
       case Thicket(trees) => "thicket(...)"
 
+      case GenIf(cond, thenItems, Nil) => {
+        s"""|gen if (${v(cond)}) {" +
+            |${i}  ${thenItems map v(indent + 1) mkString s"\n${i}  "}
+            |${i}}""".stripMargin
+      }
+      case GenIf(cond, thenItems, elseItems) => {
+        s"""|gen if (${v(cond)}) {" +
+            |${i}  ${thenItems map v(indent + 1) mkString s"\n${i}  "}
+            |${i}} else {
+            |${i}  ${elseItems map v(indent + 1) mkString s"\n${i}  "}
+            |${i}} """.stripMargin
+      }
+      case GenFor(inits, cond, steps, body) => {
+        val initsStr = inits map v(indent) mkString s", "
+        val condStr = cond map v getOrElse ""
+        val stepsStr = steps map v(indent) mkString s", "
+        s"""|gen for (${initsStr} ; ${condStr} ; ${stepsStr}) {
+            |${i}  ${body map v(indent + 1) mkString s"\n${i}  "}
+            |${i}}""".stripMargin
+      }
+      case GenRange(decl, op, end, body) => {
+        s"""|gen for (${v(indent)(decl)} ${op}  ${v(end)}) {
+            |${i}  ${body map v(indent + 1) mkString s"\n${i}  "}
+            |${i}}""".stripMargin
+      }
+
       case StmtBlock(body) => {
         s"""|{
             |${i}  ${body map v(indent + 1) mkString s"\n${i}  "}
@@ -396,6 +422,7 @@ trait TreePrintOps { this: Tree =>
       case StmtWrite()              => "write;"
       case StmtComment(str)         => "$" + s"""("${str}")"""
       case StmtStall(cond)          => s"stall(${v(cond)});"
+      case StmtGen(gen)             => v(indent)(gen)
       case StmtError()              => "/* Error statement */"
     }
   }

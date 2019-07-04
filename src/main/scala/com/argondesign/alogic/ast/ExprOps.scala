@@ -73,6 +73,10 @@ trait ExprOps { this: Expr =>
   final def |(rhs: Expr)(implicit cc: CompilerContext): ExprBinary = mkBinary("|", rhs)
   final def &&(rhs: Expr)(implicit cc: CompilerContext): ExprBinary = mkBinary("&&", rhs)
   final def ||(rhs: Expr)(implicit cc: CompilerContext): ExprBinary = mkBinary("||", rhs)
+  final def <(rhs: Expr)(implicit cc: CompilerContext): ExprBinary = mkBinary("<", rhs)
+  final def <=(rhs: Expr)(implicit cc: CompilerContext): ExprBinary = mkBinary("<=", rhs)
+  final def >(rhs: Expr)(implicit cc: CompilerContext): ExprBinary = mkBinary(">", rhs)
+  final def >=(rhs: Expr)(implicit cc: CompilerContext): ExprBinary = mkBinary(">=", rhs)
 
   final def *(rhs: Int)(implicit cc: CompilerContext): ExprBinary = mkBinary("*", mkSized(rhs))
   final def /(rhs: Int)(implicit cc: CompilerContext): ExprBinary = mkBinary("/", mkSized(rhs))
@@ -88,6 +92,10 @@ trait ExprOps { this: Expr =>
   final def |(rhs: Int)(implicit cc: CompilerContext): ExprBinary = mkBinary("|", mkSized(rhs))
   final def &&(rhs: Int)(implicit cc: CompilerContext): ExprBinary = mkBinary("&&", fix(Expr(rhs)))
   final def ||(rhs: Int)(implicit cc: CompilerContext): ExprBinary = mkBinary("||", fix(Expr(rhs)))
+  final def <(rhs: Int)(implicit cc: CompilerContext): ExprBinary = mkBinary("<", fix(Expr(rhs)))
+  final def <=(rhs: Int)(implicit cc: CompilerContext): ExprBinary = mkBinary("<=", fix(Expr(rhs)))
+  final def >(rhs: Int)(implicit cc: CompilerContext): ExprBinary = mkBinary(">", fix(Expr(rhs)))
+  final def >=(rhs: Int)(implicit cc: CompilerContext): ExprBinary = mkBinary(">=", fix(Expr(rhs)))
 
   final def index(idx: Expr)(implicit cc: CompilerContext): ExprIndex = fix(ExprIndex(this, idx))
   final def index(idx: Int)(implicit cc: CompilerContext): ExprIndex = fix(ExprIndex(this, mkIndex(idx)))

@@ -1741,6 +1741,115 @@ final class ParserSpec extends FreeSpec with AlogicTest {
         }
       }
 
+      "gen" - {
+        "if" - {
+          "with out else" in {
+            "gen if (i < 0) { fence; }".asTree[Gen] shouldBe {
+              GenIf(
+                ExprIdent("i") < ExprNum(false, 0),
+                List(StmtFence()),
+                Nil
+              )
+            }
+          }
+
+          "with else" in {
+            "gen if (i < 0) { fence; } else { fence; break; }".asTree[Gen] shouldBe {
+              GenIf(
+                ExprIdent("i") < ExprNum(false, 0),
+                List(StmtFence()),
+                List(StmtFence(), StmtBreak())
+              )
+            }
+          }
+        }
+
+        "for" - {
+          "empty" in {
+            "gen for(;;){}".asTree[Gen] shouldBe GenFor(Nil, None, Nil, Nil)
+          }
+
+          "with single init assign" in {
+            """|gen for (a=2;a;a--) {
+               |  2;
+               |}""".asTree[Gen] shouldBe {
+              GenFor(
+                List(StmtAssign(ExprIdent("a"), Expr(2))),
+                Some(ExprIdent("a")),
+                List(StmtPost(ExprIdent("a"), "--")),
+                List(StmtExpr(Expr(2)))
+              )
+            }
+          }
+
+          "with single init decl" in {
+            """|gen for (i8 a=2;a;a--) {
+               |  2;
+               |}""".stripMargin.asTree[Gen] shouldBe {
+              GenFor(
+                List(StmtDecl(DeclIdent(Ident("a"), TypeSInt(Expr(8)), Some(Expr(2))))),
+                Some(ExprIdent("a")),
+                List(StmtPost(ExprIdent("a"), "--")),
+                List(StmtExpr(Expr(2)))
+              )
+            }
+          }
+
+          "with multiple init" in {
+            """|gen for (i8 a=2, b=1;;) {
+               |}""".stripMargin.asTree[Gen] shouldBe {
+              GenFor(
+                List(
+                  StmtDecl(DeclIdent(Ident("a"), TypeSInt(Expr(8)), Some(Expr(2)))),
+                  StmtAssign(ExprIdent("b"), Expr(1))
+                ),
+                None,
+                Nil,
+                Nil
+              )
+            }
+          }
+
+          "with multiple step" in {
+            """|gen for (;;a++, b--) {
+               |}""".stripMargin.asTree[Gen] shouldBe {
+              GenFor(
+                Nil,
+                None,
+                List(
+                  StmtPost(ExprIdent("a"), "++"),
+                  StmtPost(ExprIdent("b"), "--")
+                ),
+                Nil
+              )
+            }
+          }
+        }
+
+        "range" - {
+          "with <" in {
+            "gen for (u8 i < 10) { fence; }".asTree[Gen] shouldBe {
+              GenRange(
+                DeclIdent(Ident("i"), TypeUInt(8), None),
+                "<",
+                ExprNum(false, 10),
+                List(StmtFence())
+              )
+            }
+          }
+
+          "with <=" in {
+            "gen for (i8 j <= 20) { break; }".asTree[Gen] shouldBe {
+              GenRange(
+                DeclIdent(Ident("j"), TypeSInt(8), None),
+                "<=",
+                ExprNum(false, 20),
+                List(StmtBreak())
+              )
+            }
+          }
+        }
+      }
     }
 
     /////////////////////////////////////////////////////////////////////////////

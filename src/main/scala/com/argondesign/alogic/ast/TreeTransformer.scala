@@ -206,6 +206,25 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
           val body = walk(node.body)
           doTransform(TreeCopier(node)(expr, body))
         }
+        case node: GenIf => {
+          val cond = walk(node.cond)
+          val thenItems = walk(node.thenItems)
+          val elseItems = walk(node.elseItems)
+          doTransform(TreeCopier(node)(cond, thenItems, elseItems))
+        }
+        case node: GenFor => {
+          val inits = walk(node.inits)
+          val cond = walk(node.cond)
+          val step = walk(node.step)
+          val body = walk(node.body)
+          doTransform(TreeCopier(node)(inits, cond, step, body))
+        }
+        case node: GenRange => {
+          val decl = walk(node.decl)
+          val end = walk(node.end)
+          val body = walk(node.body)
+          doTransform(TreeCopier(node)(decl, end, body))
+        }
         case node: StmtBlock => {
           val body = walk(node.body)
           doTransform(TreeCopier(node)(body))
@@ -292,6 +311,10 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
         case node: StmtStall => {
           val cond = walk(node.cond)
           doTransform(TreeCopier(node)(cond))
+        }
+        case node: StmtGen => {
+          val gen = walk(node.gen)
+          doTransform(TreeCopier(node)(gen))
         }
         case node: StmtError => doTransform(node)
         case node: ExprCall => {

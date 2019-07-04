@@ -41,6 +41,7 @@ trait TreeUntype {
     case node: DeclIdent             => unreachable
     case node: Root                  => unreachable
     case node: EntityIdent           => unreachable
+    case node: Gen                   => unreachable
   }
 
   def untype(tree: Stmt): Stmt = tree match {
@@ -67,6 +68,7 @@ trait TreeUntype {
     case node: StmtLet      => unreachable
     case node: StmtUpdate   => unreachable
     case node: StmtPost     => unreachable
+    case node: StmtGen      => unreachable
   }
 
   def untype(tree: Expr): Expr = tree match {
