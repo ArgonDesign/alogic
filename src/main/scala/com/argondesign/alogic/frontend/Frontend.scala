@@ -96,7 +96,8 @@ class Frontend(
         }
 
         if (parsedName != entityName) {
-          cc.fatal(root.entity,
+          val EntityIdent(ident, _, _, _, _, _, _, _) = root.entity
+          cc.fatal(ident,
                    s"Entity name '${parsedName}' does not match file basename '${entityName}'")
         }
 
