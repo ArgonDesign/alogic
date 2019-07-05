@@ -39,19 +39,19 @@ final class LowerLoops(implicit cc: CompilerContext) extends TreeTransformer wit
 
     case StmtDo(cond, _) => {
       continueRewrites.push(Some({ () =>
-        StmtIf(cond, StmtContinue(), Some(StmtBreak()))
+        StmtIf(cond, List(StmtContinue()), List(StmtBreak()))
       }))
     }
 
     case StmtWhile(cond, _) => {
       continueRewrites.push(Some({ () =>
-        StmtIf(cond, StmtContinue(), Some(StmtBreak()))
+        StmtIf(cond, List(StmtContinue()), List(StmtBreak()))
       }))
     }
 
     case StmtFor(_, Some(cond), step, _) => {
       continueRewrites.push(Some({ () =>
-        StmtBlock(step :+ StmtIf(cond, StmtContinue(), Some(StmtBreak())))
+        StmtBlock(step :+ StmtIf(cond, List(StmtContinue()), List(StmtBreak())))
       }))
     }
 
@@ -78,24 +78,24 @@ final class LowerLoops(implicit cc: CompilerContext) extends TreeTransformer wit
     }
 
     case StmtDo(cond, body) => {
-      val test = StmtIf(cond, StmtFence(), Some(StmtBreak()))
+      val test = StmtIf(cond, List(StmtFence()), List(StmtBreak()))
       StmtLoop(body :+ test) regularize tree.loc
     } followedBy {
       continueRewrites.pop()
     }
 
     case StmtWhile(cond, body) => {
-      val test = StmtIf(cond, StmtFence(), Some(StmtBreak()))
+      val test = StmtIf(cond, List(StmtFence()), List(StmtBreak()))
       val loop = StmtLoop(body :+ test)
-      StmtIf(cond, loop, None) regularize tree.loc
+      StmtIf(cond, List(loop), Nil) regularize tree.loc
     } followedBy {
       continueRewrites.pop()
     }
 
     case StmtFor(inits, Some(cond), steps, body) => {
-      val test = StmtIf(cond, StmtFence(), Some(StmtBreak()))
+      val test = StmtIf(cond, List(StmtFence()), List(StmtBreak()))
       val loop = StmtLoop(body ::: (steps :+ test))
-      StmtBlock(inits :+ StmtIf(cond, loop, None)) regularize tree.loc
+      StmtBlock(inits :+ StmtIf(cond, List(loop), Nil)) regularize tree.loc
     } followedBy {
       continueRewrites.pop()
     }

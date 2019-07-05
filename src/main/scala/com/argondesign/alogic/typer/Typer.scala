@@ -374,14 +374,24 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
 
       case StmtBlock(body) if !checkBlock(body) => error(tree)
 
-      case StmtIf(_, thenStmt, Some(elseStmt)) if thenStmt.tpe != elseStmt.tpe =>
-        error(tree, "Either both or neither branches of if-else must be control statements")
+      case StmtIf(_, ts, es) => {
+        if (!(checkBlock(ts) &&& checkBlock(es))) {
+          error(tree)
+        } else if (ts.nonEmpty && es.nonEmpty && ts.last.tpe != es.last.tpe) {
+          error(tree, "Either both or neither branches of if-else must be control statements")
+        }
+      }
 
       case StmtCase(_, cases) => {
-        val allCtrl = cases forall { _.stmt.tpe == TypeCtrlStmt }
-        val allComb = cases forall { _.stmt.tpe == TypeCombStmt }
-        if (!allComb && !allCtrl) {
-          error(tree, "Either all or no cases of a case statement must be control statements")
+        val oks = cases map { _.stmts } map checkBlock
+        if (oks exists { !_ }) {
+          error(tree)
+        } else {
+          val allComb = cases forall { _.stmts forall { _.tpe.isCombStmt } }
+          val allCtrl = cases forall { _.stmts exists { _.tpe.isCtrlStmt } }
+          if (!allComb && !allCtrl) {
+            error(tree, "Either all or no cases of a case statement must be control statements")
+          }
         }
       }
 
@@ -391,6 +401,10 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
         } else if (body.last.tpe != TypeCtrlStmt) {
           error(tree, "Body of 'loop' must end in a control statement")
         }
+
+      // note: this is really redundant here as body or StmtLet is always
+      // length 1 due to syntax, but leaving it here for completeness
+      case StmtLet(_, body) if !checkBlock(body) => error(tree)
 
       case StmtAssign(lhs, rhs) if !rhs.tpe.underlying.isNum => {
         if (lhs.tpe.underlying.isNum && rhs.tpe.isPacked) {

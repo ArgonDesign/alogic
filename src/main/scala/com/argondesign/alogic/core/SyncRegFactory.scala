@@ -100,8 +100,8 @@ object SyncRegFactory {
       List(
         StmtIf(
           ipvRef,
-          StmtAssign(pRef, ipRef),
-          None
+          List(StmtAssign(pRef, ipRef)),
+          Nil
         ),
         StmtAssign(vRef, ipvRef)
       )

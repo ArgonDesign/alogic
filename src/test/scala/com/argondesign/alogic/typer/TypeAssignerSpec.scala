@@ -1020,19 +1020,19 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
       "unambiguous crtl statements" - {
         for {
           (text, pattern) <- List[(String, PartialFunction[Any, Unit])](
-            ("goto a;", { case _: StmtGoto                                    => }),
-            ("return;", { case _: StmtReturn                                  => }),
-            ("fence;", { case _: StmtFence                                    => }),
-            ("break;", { case _: StmtBreak                                    => }),
-            ("continue;", { case _: StmtContinue                              => }),
-            ("for(;;) {}", { case _: StmtFor                                  => }),
-            ("do {} while(1);", { case _: StmtDo                              => }),
-            ("while (1) {}", { case _: StmtWhile                              => }),
-            ("loop {}", { case _: StmtLoop                                    => }),
-            ("let (bool b = 1) for(;;) {}", { case StmtLet(_, _: StmtFor)     => }),
-            ("let (bool b = 1) do {} while(1);", { case StmtLet(_, _: StmtDo) => }),
-            ("let (bool b = 1) while (1) {}", { case StmtLet(_, _: StmtWhile) => }),
-            ("let (bool b = 1) loop {}", { case StmtLet(_, _: StmtLoop)       => })
+            ("goto a;", { case _: StmtGoto                                          => }),
+            ("return;", { case _: StmtReturn                                        => }),
+            ("fence;", { case _: StmtFence                                          => }),
+            ("break;", { case _: StmtBreak                                          => }),
+            ("continue;", { case _: StmtContinue                                    => }),
+            ("for(;;) {}", { case _: StmtFor                                        => }),
+            ("do {} while(1);", { case _: StmtDo                                    => }),
+            ("while (1) {}", { case _: StmtWhile                                    => }),
+            ("loop {}", { case _: StmtLoop                                          => }),
+            ("let (bool b = 1) for(;;) {}", { case StmtLet(_, List(_: StmtFor))     => }),
+            ("let (bool b = 1) do {} while(1);", { case StmtLet(_, List(_: StmtDo)) => }),
+            ("let (bool b = 1) while (1) {}", { case StmtLet(_, List(_: StmtWhile)) => }),
+            ("let (bool b = 1) loop {}", { case StmtLet(_, List(_: StmtLoop))       => })
           )
         } {
           text in {
@@ -1058,22 +1058,22 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
       "context dependent statements" - {
         for {
           (text, pattern, kind) <- List[(String, PartialFunction[Any, Unit], Type)](
-            ("if(a) read;", { case StmtIf(_, _, None)                  => }, TypeCombStmt),
-            ("if(a) read; else write;", { case StmtIf(_, _, Some(_))   => }, TypeCombStmt),
-            ("if(a) fence;", { case StmtIf(_, _, None)                 => }, TypeCtrlStmt),
-            ("if(a) fence; else return;", { case StmtIf(_, _, Some(_)) => }, TypeCtrlStmt),
-            ("case(a) {a: read;}", { case _: StmtCase                  => }, TypeCombStmt),
-            ("case(a) {default: read;}", { case _: StmtCase            => }, TypeCombStmt),
-            ("case(a) {a: fence;}", { case _: StmtCase                 => }, TypeCtrlStmt),
-            ("case(a) {default: fence;}", { case _: StmtCase           => }, TypeCtrlStmt),
-            ("case(a) {default: {read; fence;}}", { case _: StmtCase   => }, TypeCtrlStmt),
-            ("a;", { case StmtExpr(_: ExprRef)                         => }, TypeCombStmt),
-            ("a + a;", { case StmtExpr(_: ExprBinary)                  => }, TypeCombStmt),
-            ("a.read();", { case StmtExpr(_: ExprCall)                 => }, TypeCombStmt),
-            ("main();", { case StmtExpr(_: ExprCall)                   => }, TypeCtrlStmt),
-            ("{ }", { case _: StmtBlock                                => }, TypeCombStmt),
-            ("{ a; fence; }", { case _: StmtBlock                      => }, TypeCtrlStmt),
-            ("{ a; a; }", { case _: StmtBlock                          => }, TypeCombStmt)
+            ("if(a) read;", { case StmtIf(_, _, Nil)                  => }, TypeCombStmt),
+            ("if(a) read; else write;", { case StmtIf(_, _, _ :: _)   => }, TypeCombStmt),
+            ("if(a) fence;", { case StmtIf(_, _, Nil)                 => }, TypeCtrlStmt),
+            ("if(a) fence; else return;", { case StmtIf(_, _, _ :: _) => }, TypeCtrlStmt),
+            ("case(a) {a: read;}", { case _: StmtCase                 => }, TypeCombStmt),
+            ("case(a) {default: read;}", { case _: StmtCase           => }, TypeCombStmt),
+            ("case(a) {a: fence;}", { case _: StmtCase                => }, TypeCtrlStmt),
+            ("case(a) {default: fence;}", { case _: StmtCase          => }, TypeCtrlStmt),
+            ("case(a) {default: {read; fence;}}", { case _: StmtCase  => }, TypeCtrlStmt),
+            ("a;", { case StmtExpr(_: ExprRef)                        => }, TypeCombStmt),
+            ("a + a;", { case StmtExpr(_: ExprBinary)                 => }, TypeCombStmt),
+            ("a.read();", { case StmtExpr(_: ExprCall)                => }, TypeCombStmt),
+            ("main();", { case StmtExpr(_: ExprCall)                  => }, TypeCtrlStmt),
+            ("{ }", { case _: StmtBlock                               => }, TypeCombStmt),
+            ("{ a; fence; }", { case _: StmtBlock                     => }, TypeCtrlStmt),
+            ("{ a; a; }", { case _: StmtBlock                         => }, TypeCombStmt)
           )
         } {
           text in {

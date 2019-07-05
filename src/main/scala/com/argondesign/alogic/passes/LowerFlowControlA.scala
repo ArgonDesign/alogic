@@ -548,6 +548,13 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
 
     // Emit any extra statement with this statement
     val result2 = result match {
+      case StmtBlock(Nil) => {
+        val extra = extraStmts.top
+        if (extra.isEmpty) Thicket(Nil) else StmtBlock(extra.toList)
+      } followedBy {
+        extraStmts.pop()
+      }
+
       case stmt: Stmt => {
         val extra = extraStmts.top
         if (extra.isEmpty) {

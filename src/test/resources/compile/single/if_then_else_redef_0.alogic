@@ -1,0 +1,10 @@
+fsm if_then_else_redef_0 {
+  void main() {
+    if (0) {
+      (* unused *) u8 a;
+    } else {
+      (* unused *) i7 a;
+    }
+    fence;
+  }
+}

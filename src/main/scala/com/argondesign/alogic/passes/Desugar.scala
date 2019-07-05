@@ -43,9 +43,9 @@ final class Desugar(implicit cc: CompilerContext) extends TreeTransformer {
       StmtAssign(lhs, ExprBinary(lhs, op, expr)) regularize tree.loc
     }
 
-    // "let(<init>) <loop>" rewritten as "<init> <loop>"
-    case StmtLet(inits, body) => {
-      Thicket(inits ::: body :: Nil) regularize tree.loc
+    // "let(<init>) <stmts>" rewritten as "<init> <stmts>"
+    case StmtLet(inits, stmts) => {
+      Thicket(inits ::: stmts) regularize tree.loc
     }
 
     case _ => tree

@@ -181,22 +181,12 @@ object Liveness {
             (live, dead)
           }
 
-          case StmtIf(cond, thenStmt, None) => {
+          case StmtIf(cond, thenStmts, elseStmts) => {
             val born = usedRv(cond) diff cDead
             val dLive = cLive union born
 
-            val (live, _) = analyse(dLive, cDead, List(thenStmt))
-            val dead = cDead
-
-            (live, dead)
-          }
-
-          case StmtIf(cond, thenStmt, Some(elseStmt)) => {
-            val born = usedRv(cond) diff cDead
-            val dLive = cLive union born
-
-            val (tLive, tDead) = analyse(dLive, cDead, List(thenStmt))
-            val (eLive, eDead) = analyse(dLive, cDead, List(elseStmt))
+            val (tLive, tDead) = analyse(dLive, cDead, thenStmts)
+            val (eLive, eDead) = analyse(dLive, cDead, elseStmts)
 
             val live = tLive union eLive
             val dead = tDead intersect eDead
@@ -216,8 +206,8 @@ object Liveness {
 
             val (bLive, bDead) = {
               val sets = cases map {
-                case RegularCase(_, stmt) => analyse(dLive, cDead, List(stmt))
-                case DefaultCase(stmt)    => analyse(dLive, cDead, List(stmt))
+                case RegularCase(_, stmt) => analyse(dLive, cDead, stmt)
+                case DefaultCase(stmt)    => analyse(dLive, cDead, stmt)
               }
 
               val explicitDefault = cases exists {

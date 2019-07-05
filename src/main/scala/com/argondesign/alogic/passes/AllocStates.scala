@@ -113,7 +113,7 @@ final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
 
         // Drop push to return stack
         case StmtExpr(ExprCall(ExprSelect(ExprRef(symbol), _), _)) if symbol == rsSymbol => {
-          StmtBlock(Nil) withLoc tree.loc
+          Thicket(Nil) withLoc tree.loc
         }
 
         // Drop the return stack definition if exists

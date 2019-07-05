@@ -111,9 +111,16 @@ final object TypeAssigner {
     if (node.body.nonEmpty) node.body.last.tpe else TypeCombStmt
   }
 
-  private def kind(node: StmtIf) = node.thenStmt.tpe
+  private def kind(node: StmtIf) = node match {
+    case StmtIf(_, Nil, Nil) => TypeCombStmt
+    case StmtIf(_, ts, Nil)  => ts.last.tpe
+    case StmtIf(_, _, es)    => es.last.tpe
+  }
 
-  private def kind(node: StmtCase) = node.cases.head.stmt.tpe
+  private def kind(node: StmtCase) = {
+    val stmts = node.cases.head.stmts
+    if (stmts.nonEmpty) stmts.last.tpe else TypeCombStmt
+  }
 
   private def kind(node: StmtExpr) = node.expr match {
     case ExprCall(target, _) =>
@@ -128,7 +135,11 @@ final object TypeAssigner {
   private def kind(node: StmtWhile) = TypeCtrlStmt
   private def kind(node: StmtFor) = TypeCtrlStmt
   private def kind(node: StmtDo) = TypeCtrlStmt
-  private def kind(node: StmtLet) = TypeCtrlStmt
+  private def kind(node: StmtLet) = {
+    // Note this is really redundant at the moment as due to syntax let
+    // statements are always control statements, but is here for completeness
+    if (node.body.nonEmpty) node.body.last.tpe else TypeCombStmt
+  }
   private def kind(node: StmtFence) = TypeCtrlStmt
   private def kind(node: StmtBreak) = TypeCtrlStmt
   private def kind(node: StmtContinue) = TypeCtrlStmt

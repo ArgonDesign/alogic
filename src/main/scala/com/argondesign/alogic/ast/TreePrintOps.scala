@@ -180,18 +180,6 @@ trait TreePrintOps { this: Tree =>
     case ExprError()                           => "/* Error expression */"
   }
 
-  private[this] def ensureBlock(indent: Int, stmt: Stmt)(implicit cc: CompilerContext) = {
-    stmt match {
-      case block: StmtBlock => v(indent)(block)
-      case other => {
-        val i = "  " * indent
-        s"""|{
-            |${i}  ${v(indent + 1)(other)}
-            |${i}}""".stripMargin
-      }
-    }
-  }
-
   private[this] def v(indent: Int)(tree: Tree)(implicit cc: CompilerContext): String = {
     val i = "  " * indent
     tree match {
@@ -365,11 +353,23 @@ trait TreePrintOps { this: Tree =>
             |${i}  ${body map v(indent + 1) mkString s"\n${i}  "}
             |${i}}""".stripMargin
       }
-      case StmtIf(cond, thenStmt, Some(elseStmt)) => {
-        s"if (${v(cond)}) ${ensureBlock(indent, thenStmt)} else ${ensureBlock(indent, elseStmt)}"
+      case StmtIf(cond, thenStmts, Nil) => {
+        s"""|if (${v(cond)}) {
+            |${i}  ${thenStmts map v(indent + 1) mkString s"\n${i}  "}
+            |${i}}""".stripMargin
       }
-      case StmtIf(cond, thenStmt, None) => {
-        s"if (${v(cond)}) ${ensureBlock(indent, thenStmt)}"
+      case StmtIf(cond, Nil, elseStmts) => {
+        s"""|if (${v(cond)}) {} else {
+            |${i}  ${elseStmts map v(indent + 1) mkString s"\n${i}  "}
+            |${i}}""".stripMargin
+      }
+
+      case StmtIf(cond, thenStmts, elseStmts) => {
+        s"""|if (${v(cond)}) {
+            |${i}  ${thenStmts map v(indent + 1) mkString s"\n${i}  "}
+            |${i}} else {
+            |${i}  ${elseStmts map v(indent + 1) mkString s"\n${i}  "}
+            |${i}}""".stripMargin
       }
 
       case StmtCase(expr, cases) => {
@@ -378,8 +378,19 @@ trait TreePrintOps { this: Tree =>
             |${i}}""".stripMargin
       }
 
-      case RegularCase(cond, stmt) => s"${cond map v mkString ", "} : ${v(indent)(stmt)}"
-      case DefaultCase(stmt)       => s"default : ${v(indent)(stmt)}"
+      case RegularCase(cond, Nil) => s"${cond map v mkString ", "} : {}"
+      case DefaultCase(Nil)       => s"default : {}"
+
+      case RegularCase(cond, stmts) => {
+        s"""|${cond map v mkString ", "} : {
+            |${i}  ${stmts map v(indent + 1) mkString s"\n${i}  "}
+            |${i}}""".stripMargin
+      }
+      case DefaultCase(stmts) => {
+        s"""|default : {
+            |${i}  ${stmts map v(indent + 1) mkString s"\n${i}  "}
+            |${i}}""".stripMargin
+      }
 
       case StmtLoop(body) => {
         s"""|loop {
@@ -405,7 +416,9 @@ trait TreePrintOps { this: Tree =>
             |${i}} while (${v(indent)(cond)});""".stripMargin
       }
       case StmtLet(inits, body) => {
-        s"let (${inits map v(indent) mkString s", "}) ${v(indent)(body)}"
+        s"""|let (${inits map v(indent) mkString s", "}) {
+            |${i}  ${body map v(indent + 1) mkString s"\n${i}  "}
+            |${i}}""".stripMargin
       }
 
       case StmtFence()              => "fence;"

@@ -25,10 +25,11 @@ final class SimplifyConditionals(implicit cc: CompilerContext)
 
   override def transform(tree: Tree): Tree = tree match {
 
-    case StmtIf(cond, StmtBlock(Nil), Some(elseStmt)) => {
-      walk(StmtIf(!cond, elseStmt, None) regularize tree.loc)
+    case StmtIf(cond, Nil, elseStmts) => {
+      walk(StmtIf(!cond, elseStmts, Nil) regularize tree.loc)
     }
 
+    // TODO: What is the point of this?
     case stmt @ StmtIf(cond, _, _) => {
       cond.simplify match {
         case `cond`  => tree

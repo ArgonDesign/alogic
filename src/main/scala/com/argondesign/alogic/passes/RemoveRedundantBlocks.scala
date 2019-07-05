@@ -57,9 +57,21 @@ final class RemoveRedundantBlocks(implicit cc: CompilerContext) extends TreeTran
       }
     }
 
-    case StmtIf(cond, thenStmt, Some(StmtBlock(Nil))) => {
+    case StmtIf(cond, thenStmts, elseStmts) => {
       TypeAssigner {
-        StmtIf(cond, thenStmt, None) withLoc tree.loc
+        StmtIf(cond, flatten(thenStmts), flatten(elseStmts)) withLoc tree.loc
+      }
+    }
+
+    case RegularCase(cond, stmts) => {
+      TypeAssigner {
+        RegularCase(cond, flatten(stmts)) withLoc tree.loc
+      }
+    }
+
+    case DefaultCase(stmts) => {
+      TypeAssigner {
+        DefaultCase(flatten(stmts)) withLoc tree.loc
       }
     }
 

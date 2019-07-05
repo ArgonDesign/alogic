@@ -25,6 +25,11 @@ import scala.collection.JavaConverters._
 
 object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
 
+  private def makeStmtList(stmt: Stmt): List[Stmt] = stmt match {
+    case StmtBlock(ss) => ss
+    case s             => List(s)
+  }
+
   def apply(ctx: ParserRuleContext)(implicit cc: CompilerContext): Stmt = {
     object Visitor extends AlogicScalarVisitor[Stmt] { self =>
       // Block
@@ -58,7 +63,7 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
 
       override def visitStmtLet(ctx: StmtLetContext) = {
         val inits = visit(ctx.let.loop_init.loop_init_item)
-        val loop = visit(ctx.loop)
+        val loop = makeStmtList(visit(ctx.loop))
         StmtLet(inits, loop) withLoc ctx.loc
       }
 
@@ -112,21 +117,21 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
 
       override def visitStmtIf(ctx: StmtIfContext) = {
         val cond = ExprBuilder(ctx.expr)
-        val thenStmt = visit(ctx.thenStmt)
-        val elseStmt = visit(Option(ctx.elseStmt))
-        StmtIf(cond, thenStmt, elseStmt) withLoc ctx.loc
+        val thenStmts = makeStmtList(visit(ctx.thenStmt))
+        val elseStmts = visit(Option(ctx.elseStmt)) map makeStmtList getOrElse Nil
+        StmtIf(cond, thenStmts, elseStmts) withLoc ctx.loc
       }
 
       override def visitStmtCase(ctx: StmtCaseContext) = {
         object CaseVisitor extends AlogicScalarVisitor[Case] {
           override def visitRegularCase(ctx: RegularCaseContext) = {
             val cond = ExprBuilder(ctx.commaexpr.expr)
-            val stmt = self(ctx.statement)
-            RegularCase(cond, stmt) withLoc ctx.loc
+            val stmts = makeStmtList(self(ctx.statement))
+            RegularCase(cond, stmts) withLoc ctx.loc
           }
           override def visitDefaultCase(ctx: DefaultCaseContext) = {
-            val stmt = self(ctx.statement)
-            DefaultCase(stmt) withLoc ctx.loc
+            val stmts = makeStmtList(self(ctx.statement))
+            DefaultCase(stmts) withLoc ctx.loc
           }
         }
 

@@ -289,11 +289,6 @@ final class MakeVerilog(
 
   private def emitStatement(body: CodeWriter, indent: Int, stmt: Stmt): Unit = {
 
-    def emitWithoutBeginEndIfBlock(indent: Int, stmt: Stmt): Unit = stmt match {
-      case StmtBlock(stmts) => stmts foreach { emitStatement(body, indent, _) }
-      case stmt             => emitStatement(body, indent, stmt)
-    }
-
     stmt match {
       // Block
       case StmtBlock(stmts) => {
@@ -305,12 +300,12 @@ final class MakeVerilog(
       }
 
       // If statement
-      case StmtIf(cond, thenStmt, optElseStmt) => {
+      case StmtIf(cond, thenStmts, elseStmts) => {
         body.emit(indent)(s"if (${vexpr(cond)}) begin")
-        emitWithoutBeginEndIfBlock(indent + 1, thenStmt)
-        optElseStmt foreach { elseStmt =>
+        thenStmts foreach { emitStatement(body, indent + 1, _) }
+        if (elseStmts.nonEmpty) {
           body.emit(indent)(s"end else begin")
-          emitWithoutBeginEndIfBlock(indent + 1, elseStmt)
+          elseStmts foreach { emitStatement(body, indent + 1, _) }
         }
         body.emit(indent)(s"end")
       }
@@ -319,14 +314,14 @@ final class MakeVerilog(
       case StmtCase(cond, cases) => {
         body.emit(indent)(s"case (${vexpr(cond)})")
         cases foreach {
-          case RegularCase(conds, stmt) => {
+          case RegularCase(conds, stmts) => {
             body.emit(indent + 1)(s"${conds map vexpr mkString ", "}: begin")
-            emitWithoutBeginEndIfBlock(indent + 2, stmt)
+            stmts foreach { emitStatement(body, indent + 2, _) }
             body.emit(indent + 1)("end")
           }
-          case DefaultCase(stmt) => {
+          case DefaultCase(stmts) => {
             body.emit(indent + 1)("default: begin")
-            emitWithoutBeginEndIfBlock(indent + 2, stmt)
+            stmts foreach { emitStatement(body, indent + 2, _) }
             body.emit(indent + 1)("end")
           }
         }

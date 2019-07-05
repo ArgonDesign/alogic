@@ -151,12 +151,12 @@ trait TreeUntype {
   def untype(node: RegularCase): RegularCase =
     node.copy(
       cond = untype(node.cond),
-      stmt = untype(node.stmt)
+      stmts = untype(node.stmts)
     ) withLoc node.loc
 
   def untype(node: DefaultCase): DefaultCase =
     node.copy(
-      stmt = untype(node.stmt)
+      stmts = untype(node.stmts)
     ) withLoc node.loc
 
   def untype(node: Thicket): Thicket =
@@ -176,8 +176,8 @@ trait TreeUntype {
   def untype(node: StmtIf): StmtIf =
     node.copy(
       cond = untype(node.cond),
-      thenStmt = untype(node.thenStmt),
-      elseStmt = untype(node.elseStmt)
+      thenStmts = untype(node.thenStmts),
+      elseStmts = untype(node.elseStmts)
     ) withLoc node.loc
 
   def untype(node: StmtCase): StmtCase =

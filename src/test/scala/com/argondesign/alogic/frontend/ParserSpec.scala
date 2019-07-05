@@ -936,14 +936,28 @@ final class ParserSpec extends FreeSpec with AlogicTest {
         }
 
         "branching" - {
-          "if without else" in {
-            "if (1) a;".asTree[Stmt] shouldBe StmtIf(Expr(1), StmtExpr(ExprIdent("a")), None)
+          "if without else, without brace" in {
+            "if (1) a;".asTree[Stmt] shouldBe StmtIf(Expr(1), List(StmtExpr(ExprIdent("a"))), Nil)
           }
 
-          "if with else" in {
+          "if with else, without brace" in {
             "if (1) fence; else return;".asTree[Stmt] shouldBe StmtIf(Expr(1),
-                                                                      StmtFence(),
-                                                                      Some(StmtReturn()))
+                                                                      List(StmtFence()),
+                                                                      List(StmtReturn()))
+          }
+
+          "if without else, with brace" in {
+            "if (1) {a;}".asTree[Stmt] shouldBe StmtIf(Expr(1), List(StmtExpr(ExprIdent("a"))), Nil)
+          }
+
+          "if with else, with brace" in {
+            "if (1) {fence;} else {return;}".asTree[Stmt] shouldBe {
+              StmtIf(
+                Expr(1),
+                List(StmtFence()),
+                List(StmtReturn())
+              )
+            }
           }
 
           "case without default" in {
@@ -955,8 +969,8 @@ final class ParserSpec extends FreeSpec with AlogicTest {
               StmtCase(
                 Expr(1),
                 List(
-                  RegularCase(List(Expr(1)), StmtExpr(ExprIdent("a"))),
-                  RegularCase(List(Expr(2)), StmtExpr(ExprIdent("b")))
+                  RegularCase(List(Expr(1)), List(StmtExpr(ExprIdent("a")))),
+                  RegularCase(List(Expr(2)), List(StmtExpr(ExprIdent("b"))))
                 )
               )
             }
@@ -970,7 +984,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
               StmtCase(
                 Expr(1),
                 List(
-                  DefaultCase(StmtExpr(ExprIdent("c")))
+                  DefaultCase(List(StmtExpr(ExprIdent("c"))))
                 )
               )
             }
@@ -985,8 +999,8 @@ final class ParserSpec extends FreeSpec with AlogicTest {
               StmtCase(
                 Expr(1),
                 List(
-                  RegularCase(List(Expr(1)), StmtExpr(ExprIdent("c"))),
-                  RegularCase(List(Expr(2), Expr(3)), StmtExpr(ExprIdent("d")))
+                  RegularCase(List(Expr(1)), List(StmtExpr(ExprIdent("c")))),
+                  RegularCase(List(Expr(2), Expr(3)), List(StmtExpr(ExprIdent("d"))))
                 )
               )
             }
@@ -1001,8 +1015,8 @@ final class ParserSpec extends FreeSpec with AlogicTest {
               StmtCase(
                 Expr(1),
                 List(
-                  DefaultCase(StmtExpr(ExprIdent("c"))),
-                  DefaultCase(StmtExpr(ExprIdent("d")))
+                  DefaultCase(List(StmtExpr(ExprIdent("c")))),
+                  DefaultCase(List(StmtExpr(ExprIdent("d"))))
                 )
               )
             }
@@ -1019,10 +1033,42 @@ final class ParserSpec extends FreeSpec with AlogicTest {
               StmtCase(
                 Expr(1),
                 List(
-                  RegularCase(List(Expr(1)), StmtExpr(ExprIdent("a"))),
-                  DefaultCase(StmtExpr(ExprIdent("b"))),
-                  RegularCase(List(Expr(3)), StmtExpr(ExprIdent("c"))),
-                  DefaultCase(StmtExpr(ExprIdent("d")))
+                  RegularCase(List(Expr(1)), List(StmtExpr(ExprIdent("a")))),
+                  DefaultCase(List(StmtExpr(ExprIdent("b")))),
+                  RegularCase(List(Expr(3)), List(StmtExpr(ExprIdent("c")))),
+                  DefaultCase(List(StmtExpr(ExprIdent("d"))))
+                )
+              )
+            }
+          }
+
+          "case without braces" in {
+            """|case (1) {
+               | 1: a;
+               | default: c;
+               |}
+               |""".stripMargin.asTree[Stmt] shouldBe {
+              StmtCase(
+                Expr(1),
+                List(
+                  RegularCase(List(Expr(1)), List(StmtExpr(ExprIdent("a")))),
+                  DefaultCase(List(StmtExpr(ExprIdent("c"))))
+                )
+              )
+            }
+          }
+
+          "case with braces" in {
+            """|case (1) {
+               | 1: {a;}
+               | default: {c;}
+               |}
+               |""".stripMargin.asTree[Stmt] shouldBe {
+              StmtCase(
+                Expr(1),
+                List(
+                  RegularCase(List(Expr(1)), List(StmtExpr(ExprIdent("a")))),
+                  DefaultCase(List(StmtExpr(ExprIdent("c"))))
                 )
               )
             }
@@ -1115,14 +1161,14 @@ final class ParserSpec extends FreeSpec with AlogicTest {
         "let" - {
           "single assignment" in {
             "let (a=2) loop {}".asTree[Stmt] shouldBe {
-              StmtLet(List(StmtAssign(ExprIdent("a"), Expr(2))), StmtLoop(Nil))
+              StmtLet(List(StmtAssign(ExprIdent("a"), Expr(2))), List(StmtLoop(Nil)))
             }
           }
 
           "single declaration" in {
             "let (i2 a=1) loop {}".asTree[Stmt] shouldBe {
               StmtLet(List(StmtDecl(DeclIdent(Ident("a"), TypeSInt(Expr(2)), Some(Expr(1))))),
-                      StmtLoop(Nil))
+                      List(StmtLoop(Nil)))
             }
           }
 
@@ -1133,7 +1179,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                   StmtDecl(DeclIdent(Ident("a"), TypeSInt(Expr(2)), Some(ExprIdent("b")))),
                   StmtAssign(ExprIdent("c"), ExprIdent("a"))
                 ),
-                StmtLoop(Nil)
+                List(StmtLoop(Nil))
               )
 
             }

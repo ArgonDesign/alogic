@@ -46,14 +46,12 @@ final class RemoveUnused(unusedSymbols: Set[Symbol])(implicit cc: CompilerContex
   }
 
   def emptyStmt(stmt: Stmt): Boolean = stmt match {
-    case StmtBlock(Nil)                => true
-    case StmtBlock(body)               => body forall emptyStmt
-    case StmtIf(_, eBody, None)        => emptyStmt(eBody)
-    case StmtIf(_, eBody, Some(tBody)) => emptyStmt(eBody) && emptyStmt(tBody)
+    case StmtBlock(body)         => body forall emptyStmt
+    case StmtIf(_, eBody, tBody) => (eBody forall emptyStmt) && (tBody forall emptyStmt)
     case StmtCase(_, cases) => {
       cases forall {
-        case RegularCase(_, stmt) => emptyStmt(stmt)
-        case DefaultCase(stmt)    => emptyStmt(stmt)
+        case RegularCase(_, stmts) => stmts forall emptyStmt
+        case DefaultCase(stmts)    => stmts forall emptyStmt
       }
     }
     case _ => false
@@ -62,21 +60,17 @@ final class RemoveUnused(unusedSymbols: Set[Symbol])(implicit cc: CompilerContex
   override def transform(tree: Tree): Tree = tree match {
 
     ////////////////////////////////////////////////////////////////////////////
-    // Fold empty statements, unless they are already empty
+    // Fold empty statements
     ////////////////////////////////////////////////////////////////////////////
 
-    case StmtBlock(Nil) => tree
-
-    case stmt: Stmt if emptyStmt(stmt) => {
-      TypeAssigner(StmtBlock(Nil) withLoc tree.loc)
-    }
+    case stmt: Stmt if emptyStmt(stmt) => TypeAssigner(Thicket(Nil) withLoc tree.loc)
 
     ////////////////////////////////////////////////////////////////////////////
     // Remove assignments that write only unused symbols
     ////////////////////////////////////////////////////////////////////////////
 
     case StmtAssign(lhs, _) if WrittenSymbols(lhs) forall ourUnused.contains => {
-      TypeAssigner(StmtBlock(Nil) withLoc tree.loc)
+      TypeAssigner(Thicket(Nil) withLoc tree.loc)
     }
 
     ////////////////////////////////////////////////////////////////////////////

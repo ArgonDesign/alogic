@@ -74,7 +74,7 @@ final class ConvertLocalDecls(implicit cc: CompilerContext) extends TreeTransfor
       initOpt orElse getDefaultInitializer(symbol.kind) map { init =>
         StmtAssign(ExprRef(symbol), init) regularize tree.loc
       } getOrElse {
-        StmtBlock(Nil) regularize tree.loc
+        Thicket(Nil) regularize tree.loc
       }
     }
 

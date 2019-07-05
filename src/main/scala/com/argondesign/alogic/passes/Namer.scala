@@ -30,6 +30,7 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.TreeInTypeTransformer
 import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.lib.Stack
 import com.argondesign.alogic.util.FollowedBy
 import com.argondesign.alogic.util.unreachable
 
@@ -209,84 +210,100 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
 
   private[this] lazy val atBitsSymbol = cc.lookupGlobalTerm("@bits")
 
-  override def enter(tree: Tree): Unit = tree match {
-    case node: Root => {
-      Scopes.push()
+  private[this] val swapIfElseScope = Stack[Int]()
 
-      // Name the source attributes of the root entity, these have already been
-      // created so need to name the symbol attributes
-      val EntityIdent(ident, _, _, _, _, _, _, _) = node.entity
-      val symbol = lookupType(ident)
-      // TODO: do them all in a systematic way..
-      symbol.attr.stackLimit.get foreach { symbol.attr.stackLimit set walk(_).asInstanceOf[Expr] }
+  override def enter(tree: Tree): Unit = {
+    if (swapIfElseScope.nonEmpty && swapIfElseScope.top == tree.id) {
+      Scopes.pop()
+      Scopes.push()
+      swapIfElseScope.pop()
     }
 
-    case node: EntityIdent => {
-      Scopes.push()
+    tree match {
+      case node: Root => {
+        Scopes.push()
 
-      // Insert function names before descending an entity so they can be in arbitrary order
-      for (Function(ident: Ident, _) <- node.functions) {
-        // Name the source attributes of the function
-        if (ident.hasAttr) {
-          ident withAttr { ident.attr mapValues { walk(_).asInstanceOf[Expr] } }
+        // Name the source attributes of the root entity, these have already been
+        // created so need to name the symbol attributes
+        val EntityIdent(ident, _, _, _, _, _, _, _) = node.entity
+        val symbol = lookupType(ident)
+        // TODO: do them all in a systematic way..
+        symbol.attr.stackLimit.get foreach { symbol.attr.stackLimit set walk(_).asInstanceOf[Expr] }
+      }
+
+      case node: EntityIdent => {
+        Scopes.push()
+
+        // Insert function names before descending an entity so they can be in arbitrary order
+        for (Function(ident: Ident, _) <- node.functions) {
+          // Name the source attributes of the function
+          if (ident.hasAttr) {
+            ident withAttr { ident.attr mapValues { walk(_).asInstanceOf[Expr] } }
+          }
+
+          val symbol = cc.newTermSymbol(ident, TypeCtrlFunc(Nil, TypeVoid))
+          Scopes.insert(symbol)
+          if (ident.name == "main") {
+            // Always mark 'main' as used
+            Scopes.markUsed(symbol)
+            // Mark main as an entry point
+            symbol.attr.entry set true
+          }
         }
 
-        val symbol = cc.newTermSymbol(ident, TypeCtrlFunc(Nil, TypeVoid))
-        Scopes.insert(symbol)
-        if (ident.name == "main") {
-          // Always mark 'main' as used
-          Scopes.markUsed(symbol)
-          // Mark main as an entry point
-          symbol.attr.entry set true
+        // Insert nested entity names so instantiations can resolve them in arbitrary order
+        for (EntityIdent(ident, _, _, _, _, _, _, _) <- node.entities) {
+          // Name the source attributes of the nested entities
+          if (ident.hasAttr) {
+            ident withAttr { ident.attr mapValues { walk(_).asInstanceOf[Expr] } }
+          }
+
+          val symbol = cc.newTypeSymbol(ident, TypeEntity("", Nil, Nil))
+          Scopes.insert(symbol)
         }
       }
 
-      // Insert nested entity names so instantiations can resolve them in arbitrary order
-      for (EntityIdent(ident, _, _, _, _, _, _, _) <- node.entities) {
-        // Name the source attributes of the nested entities
-        if (ident.hasAttr) {
-          ident withAttr { ident.attr mapValues { walk(_).asInstanceOf[Expr] } }
-        }
-
-        val symbol = cc.newTypeSymbol(ident, TypeEntity("", Nil, Nil))
-        Scopes.insert(symbol)
+      case _: Function  => Scopes.push()
+      case _: StmtBlock => Scopes.push()
+      case _: StmtLet => {
+        assert(!sawLet)
+        sawLet = true
+        Scopes.push()
       }
-    }
+      case _: StmtLoop => {
+        if (!sawLet) Scopes.push()
+        sawLet = false
+      }
+      case _: StmtDo => {
+        if (!sawLet) Scopes.push()
+        sawLet = false
+      }
+      case _: StmtWhile => {
+        if (!sawLet) Scopes.push()
+        sawLet = false
+      }
+      case _: StmtFor => {
+        if (!sawLet) Scopes.push()
+        sawLet = false
+      }
 
-    case node: Function => {
-      Scopes.push()
-    }
-    case node: StmtBlock => {
-      Scopes.push()
-    }
-    case node: StmtLet => {
-      assert(!sawLet)
-      sawLet = true
-      Scopes.push()
-    }
-    case node: StmtLoop => {
-      if (!sawLet) Scopes.push()
-      sawLet = false
-    }
-    case node: StmtDo => {
-      if (!sawLet) Scopes.push()
-      sawLet = false
-    }
-    case node: StmtWhile => {
-      if (!sawLet) Scopes.push()
-      sawLet = false
-    }
-    case node: StmtFor => {
-      if (!sawLet) Scopes.push()
-      sawLet = false
-    }
+      case StmtIf(_, _, elseStmts) => {
+        Scopes.push()
+        if (elseStmts.nonEmpty) {
+          swapIfElseScope push elseStmts.head.id
+        }
+      }
 
-    case ExprCall(ExprIdent("@bits"), arg :: _) if arg.isTypeExpr => {
-      assert(!atBitsEitherTypeOrTerm)
-      atBitsEitherTypeOrTerm = true
-    }
+      case _: RegularCase => Scopes.push()
+      case _: DefaultCase => Scopes.push()
 
-    case _ => ()
+      case ExprCall(ExprIdent("@bits"), arg :: _) if arg.isTypeExpr => {
+        assert(!atBitsEitherTypeOrTerm)
+        atBitsEitherTypeOrTerm = true
+      }
+
+      case _ => ()
+    }
   }
 
   override def transform(tree: Tree): Tree = tree match {
@@ -424,6 +441,20 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         Scopes.pop()
       }
 
+    case node: StmtIf =>
+      node followedBy {
+        Scopes.pop()
+      }
+
+    case node: RegularCase =>
+      node followedBy {
+        Scopes.pop()
+      }
+    case node: DefaultCase =>
+      node followedBy {
+        Scopes.pop()
+      }
+
     case DeclIdent(ident: Ident, kind, init) => {
       // Lookup type
       val newKind = kind rewrite TypeNamer
@@ -473,6 +504,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
 
     assert(!sawLet)
     assert(!atBitsEitherTypeOrTerm)
+    assert(swapIfElseScope.isEmpty)
 
     // Check tree does not contain any Ident related nodes anymore
     def check(tree: Tree): Unit = {

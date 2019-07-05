@@ -37,6 +37,18 @@ object Trees {
   object Tree extends ObjectTreeOps
 
   ///////////////////////////////////////////////////////////////////////////////
+  // Thicket
+  ///////////////////////////////////////////////////////////////////////////////
+
+  // Thicket is used where a node needs to be transformed into a list of nodes.
+  // Thickets are transient and are flattened into the receiving list during
+  // traversal. Any node type T that can be transformed into a Thicket must be
+  // held as a List[T] by parent nodes and never as a simple T. These node
+  // types include:
+  //  - Stmt
+  case class Thicket(trees: List[Tree]) extends Tree
+
+  ///////////////////////////////////////////////////////////////////////////////
   // Root node for a file
   ///////////////////////////////////////////////////////////////////////////////
 
@@ -149,14 +161,6 @@ object Trees {
   case class State(expr: Expr, body: List[Stmt]) extends Tree
 
   ///////////////////////////////////////////////////////////////////////////////
-  // Thicket
-  ///////////////////////////////////////////////////////////////////////////////
-
-  // Thicket is used where a node needs to be transformed into a list of nodes.
-  // Thickets are transient and are flattened into the receiving list during traversal.
-  case class Thicket(trees: List[Tree]) extends Tree
-
-  ///////////////////////////////////////////////////////////////////////////////
   // Gen constructs
   ///////////////////////////////////////////////////////////////////////////////
 
@@ -171,15 +175,16 @@ object Trees {
   // Statements
   ///////////////////////////////////////////////////////////////////////////////
 
+  // See note about Thicket
   sealed trait Stmt extends Tree
 
   case class StmtBlock(body: List[Stmt]) extends Stmt
-  case class StmtIf(cond: Expr, thenStmt: Stmt, elseStmt: Option[Stmt]) extends Stmt
+  case class StmtIf(cond: Expr, thenStmts: List[Stmt], elseStmts: List[Stmt]) extends Stmt
   case class StmtCase(expr: Expr, cases: List[Case]) extends Stmt
 
-  sealed trait Case extends Tree { val stmt: Stmt }
-  case class RegularCase(cond: List[Expr], stmt: Stmt) extends Case
-  case class DefaultCase(stmt: Stmt) extends Case
+  sealed trait Case extends Tree { val stmts: List[Stmt] }
+  case class RegularCase(cond: List[Expr], stmts: List[Stmt]) extends Case
+  case class DefaultCase(stmts: List[Stmt]) extends Case
 
   case class StmtLoop(body: List[Stmt]) extends Stmt
   case class StmtWhile(cond: Expr, body: List[Stmt]) extends Stmt
@@ -187,7 +192,7 @@ object Trees {
       extends Stmt
   case class StmtDo(cond: Expr, body: List[Stmt]) extends Stmt
 
-  case class StmtLet(inits: List[Stmt], body: Stmt) extends Stmt
+  case class StmtLet(inits: List[Stmt], body: List[Stmt]) extends Stmt
 
   case class StmtFence() extends Stmt
   case class StmtBreak() extends Stmt

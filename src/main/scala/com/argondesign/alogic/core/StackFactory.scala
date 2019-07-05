@@ -145,12 +145,11 @@ object StackFactory {
 
     val statements = List(
       StmtIf(enRef,
-             StmtBlock(
-               List(
-                 StmtAssign(stoRef, dRef),
-                 StmtAssign(valRef, ~popRef & (valRef | pusRef))
-               )),
-             None)
+             List(
+               StmtAssign(stoRef, dRef),
+               StmtAssign(valRef, ~popRef & (valRef | pusRef))
+             ),
+             Nil)
     )
 
     val ports = List(
@@ -279,26 +278,23 @@ object StackFactory {
     val statements = List(
       StmtIf(
         enRef,
-        StmtBlock(
-          List(
-            StmtIf(
-              popRef,
-              StmtBlock(List(
-                StmtAssign(empRef, ExprBinary(ptrRef, "==", ExprInt(false, ptrWidth, 0))),
-                StmtAssign(fulRef, ExprInt(false, 1, 0)),
-                StmtAssign(ptrRef, ptrRef - zextPtrWidth(~empRef))
-              )),
-              Some(
-                StmtBlock(List(
-                  StmtAssign(ptrRef, ptrRef + zextPtrWidth(~empRef & ~fulRef & pusRef)),
-                  StmtExpr(ExprCall(stoRef select "write", List(ptrRef, dRef))),
-                  StmtAssign(empRef, empRef & ~pusRef),
-                  StmtAssign(fulRef, ExprBinary(ptrRef, "==", ExprInt(false, ptrWidth, depth - 1)))
-                ))
-              )
+        List(
+          StmtIf(
+            popRef,
+            List(
+              StmtAssign(empRef, ExprBinary(ptrRef, "==", ExprInt(false, ptrWidth, 0))),
+              StmtAssign(fulRef, ExprInt(false, 1, 0)),
+              StmtAssign(ptrRef, ptrRef - zextPtrWidth(~empRef))
+            ),
+            List(
+              StmtAssign(ptrRef, ptrRef + zextPtrWidth(~empRef & ~fulRef & pusRef)),
+              StmtExpr(ExprCall(stoRef select "write", List(ptrRef, dRef))),
+              StmtAssign(empRef, empRef & ~pusRef),
+              StmtAssign(fulRef, ExprBinary(ptrRef, "==", ExprInt(false, ptrWidth, depth - 1)))
             )
-          )),
-        None
+          )
+        ),
+        Nil
       )
     )
 

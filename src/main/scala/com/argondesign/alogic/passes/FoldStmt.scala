@@ -52,25 +52,17 @@ final class FoldStmt(implicit cc: CompilerContext) extends TreeTransformer with 
 
   override def transform(tree: Tree): Tree = {
     val result = tree match {
-      case StmtIf(cond, thenStmt, Some(elseStmt)) => {
+      case StmtIf(cond, thenStmts, elseStmts) => {
         (cond given bindings.top).value match {
-          case Some(v) if v != 0 => thenStmt
-          case Some(v) if v == 0 => elseStmt
-          case None              => tree
-        }
-      }
-
-      case StmtIf(cond, thenStmt, None) => {
-        (cond given bindings.top).value match {
-          case Some(v) if v != 0 => thenStmt
-          case Some(v) if v == 0 => StmtBlock(Nil) regularize tree.loc
+          case Some(v) if v != 0 => Thicket(thenStmts) regularize tree.loc
+          case Some(v) if v == 0 => Thicket(elseStmts) regularize tree.loc
           case None              => tree
         }
       }
 
       case StmtStall(cond) => {
         (cond given bindings.top).value match {
-          case Some(v) if v != 0 => StmtBlock(Nil) regularize tree.loc
+          case Some(v) if v != 0 => Thicket(Nil) regularize tree.loc
           case Some(v) if v == 0 => {
             cc.error(tree, "Stall condition is always true")
             tree

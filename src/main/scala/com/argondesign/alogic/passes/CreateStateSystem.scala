@@ -34,7 +34,7 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends TreeTransfor
 
   override def transform(tree: Tree): Tree = tree match {
 
-    case _: StmtFence => StmtBlock(Nil) regularize tree.loc
+    case _: StmtFence => TypeAssigner(Thicket(Nil) withLoc tree.loc)
 
     case State(expr @ ExprInt(_, _, value), body) => {
       State(expr, StmtComment(s"State ${value} - line ${tree.loc.line}") :: body) regularize tree.loc
@@ -53,16 +53,16 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends TreeTransfor
         case first :: second :: Nil => {
           StmtComment("State dispatch") :: StmtIf(
             ~ExprRef(entitySymbol.attr.stateVar.value),
-            StmtBlock(first.body),
-            Some(StmtBlock(second.body))
+            first.body,
+            second.body
           ) :: Nil
         }
         case first :: rest => {
           StmtComment("State dispatch") :: StmtCase(
             ExprRef(entitySymbol.attr.stateVar.value),
-            DefaultCase(StmtBlock(first.body)) :: {
+            DefaultCase(first.body) :: {
               rest map {
-                case State(expr, body) => RegularCase(List(expr), StmtBlock(body))
+                case State(expr, body) => RegularCase(List(expr), body)
               }
             }
           ) :: Nil

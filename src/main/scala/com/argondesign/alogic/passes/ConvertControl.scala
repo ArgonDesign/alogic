@@ -74,7 +74,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
 
   // Allocate all intermediate states that are introduced
   // by a list of statements
-  private[this] def allocateStates(stmts: List[Stmt]): Unit = {
+  private[this] def allocateStates(stmts: List[Stmt]): Unit = if (stmts.nonEmpty) {
     assert(stmts.last.tpe == TypeCtrlStmt)
 
     // Collect all but the last control statements, together with
@@ -142,10 +142,21 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
       // Allocate states where any List[Stmt] is involved
       //////////////////////////////////////////////////////////////////////////
 
-      case StmtBlock(body) => {
-        // Allocate states for body
-        allocateStates(body)
-      }
+      case StmtBlock(body) => allocateStates(body)
+
+      case StmtIf(_, thenStmts, elseStmts) =>
+        // Allocate in reverse order so the pendingStates stack is
+        // the right way around when emitting the states
+        allocateStates(elseStmts)
+        allocateStates(thenStmts)
+
+      case StmtCase(_, cases) =>
+        // Allocate in reverse order so the pendingStates stack is
+        // the right way around when emitting the states
+        cases.reverse foreach {
+          case RegularCase(_, stmts) => allocateStates(stmts)
+          case DefaultCase(stmts)    => allocateStates(stmts)
+        }
 
       case StmtLoop(body) => {
         // Set up the break target
@@ -298,14 +309,27 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
       // Convert if
       //////////////////////////////////////////////////////////////////////////
 
-      case stmt @ StmtIf(_, _, elseStmtOpt) => {
-        if (elseStmtOpt.nonEmpty) {
-          tree
-        } else {
-          // Omitted else goes to the following state (i.e.: implicit fence)
-          val ref = ExprRef(followingState.top)
-          stmt.copy(elseStmt = Some(StmtGoto(ref))) regularize tree.loc
+      case stmt @ StmtIf(_, thenStmts, elseStmts) => {
+        // Omitted else/empty then goes to the following state (i.e.: implicit fence)
+        lazy val implicitGoto = List(StmtGoto(ExprRef(followingState.top)))
+
+        val newThenStmts = thenStmts match {
+          case Nil => implicitGoto
+          case stmts =>
+            val head :: tail = splitControlUnits(stmts)
+            tail foreach emitState
+            head
         }
+
+        val newElseStmts = elseStmts match {
+          case Nil => implicitGoto
+          case stmts =>
+            val head :: tail = splitControlUnits(stmts)
+            tail foreach emitState
+            head
+        }
+
+        stmt.copy(thenStmts = newThenStmts, elseStmts = newElseStmts) regularize tree.loc
       }
 
       //////////////////////////////////////////////////////////////////////////
@@ -313,16 +337,26 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
       //////////////////////////////////////////////////////////////////////////
 
       case stmt @ StmtCase(_, cases) => {
-        val hasDefault = cases exists {
-          case _: DefaultCase => true
-          case _              => false
+        // Omitted default/empty case goes to the following state (i.e.: implicit fence)
+        lazy val implicitGoto = List(StmtGoto(ExprRef(followingState.top)))
+
+        val newCases = cases map {
+          case RegularCase(cond, Nil) => RegularCase(cond, implicitGoto)
+          case DefaultCase(Nil)       => DefaultCase(implicitGoto)
+          case RegularCase(cond, stmts) =>
+            val head :: tail = splitControlUnits(stmts)
+            tail foreach emitState
+            RegularCase(cond, head)
+          case DefaultCase(stmts) =>
+            val head :: tail = splitControlUnits(stmts)
+            tail foreach emitState
+            DefaultCase(head)
         }
-        if (hasDefault) {
-          tree
+
+        if (cases exists { _.isInstanceOf[DefaultCase] }) {
+          stmt.copy(cases = newCases) regularize tree.loc
         } else {
-          // Omitted default goes to the following state (i.e.: implicit fence)
-          val ref = ExprRef(followingState.top)
-          stmt.copy(cases = DefaultCase(StmtGoto(ref)) :: cases) regularize tree.loc
+          stmt.copy(cases = DefaultCase(implicitGoto) :: newCases) regularize tree.loc
         }
       }
 

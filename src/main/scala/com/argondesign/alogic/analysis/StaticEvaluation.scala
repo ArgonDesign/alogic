@@ -33,7 +33,7 @@ object StaticEvaluation {
   // Given an expression that is known to be true, return a set
   // of bindings that can be inferred
   private def inferTrue(expr: Expr)(implicit cc: CompilerContext): Bindings = {
-    if (expr.tpe.width == 1) {
+    if (expr.tpe.isPacked && expr.tpe.width == 1) {
       expr match {
         case ExprRef(symbol: TermSymbol) => {
           val self =
@@ -60,33 +60,37 @@ object StaticEvaluation {
   // Given an expression that is known to be false, return a set
   // of bindings that can be inferred
   private def inferFalse(expr: Expr)(implicit cc: CompilerContext): Bindings = {
-    val eWidth = expr.tpe.width
-    if (eWidth == 1) {
-      expr match {
-        case ExprRef(symbol: TermSymbol) => {
-          val self =
-            Iterator.single(symbol -> (ExprInt(symbol.kind.isSigned, 1, 0) regularize expr.loc))
-          val implied = symbol.attr.implications.enumerate collect {
-            case (false, true, iSymbol) =>
-              iSymbol -> (ExprInt(iSymbol.kind.isSigned, 1, 1) regularize expr.loc)
-            case (false, false, iSymbol) =>
-              iSymbol -> (ExprInt(iSymbol.kind.isSigned, 1, 0) regularize expr.loc)
-          }
-          (self ++ implied).toMap
-        }
-        case ExprUnary("!" | "~", expr)                         => inferTrue(expr)
-        case ExprBinary(lhs, "||" | "|", rhs)                   => inferFalse(lhs) ++ inferFalse(rhs)
-        case ExprBinary(lhs, "!=", ExprRef(symbol: TermSymbol)) => Map(symbol -> lhs)
-        case ExprBinary(ExprRef(symbol: TermSymbol), "!=", rhs) => Map(symbol -> rhs)
-        case _                                                  => Bindings.empty
-      }
+    if (!expr.tpe.isPacked) {
+      Bindings.empty
     } else {
-      expr match {
-        case ExprRef(symbol: TermSymbol) => {
-          Map(symbol -> (ExprInt(symbol.kind.isSigned, eWidth, 0) regularize expr.loc))
+      val eWidth = expr.tpe.width
+      if (eWidth == 1) {
+        expr match {
+          case ExprRef(symbol: TermSymbol) => {
+            val self =
+              Iterator.single(symbol -> (ExprInt(symbol.kind.isSigned, 1, 0) regularize expr.loc))
+            val implied = symbol.attr.implications.enumerate collect {
+              case (false, true, iSymbol) =>
+                iSymbol -> (ExprInt(iSymbol.kind.isSigned, 1, 1) regularize expr.loc)
+              case (false, false, iSymbol) =>
+                iSymbol -> (ExprInt(iSymbol.kind.isSigned, 1, 0) regularize expr.loc)
+            }
+            (self ++ implied).toMap
+          }
+          case ExprUnary("!" | "~", expr)                         => inferTrue(expr)
+          case ExprBinary(lhs, "||" | "|", rhs)                   => inferFalse(lhs) ++ inferFalse(rhs)
+          case ExprBinary(lhs, "!=", ExprRef(symbol: TermSymbol)) => Map(symbol -> lhs)
+          case ExprBinary(ExprRef(symbol: TermSymbol), "!=", rhs) => Map(symbol -> rhs)
+          case _                                                  => Bindings.empty
         }
-//        case ExprCat(parts) => (Bindings.empty /: parts)(_ ++ inferFalse(_))
-        case _ => Bindings.empty
+      } else {
+        expr match {
+          case ExprRef(symbol: TermSymbol) => {
+            Map(symbol -> (ExprInt(symbol.kind.isSigned, eWidth, 0) regularize expr.loc))
+          }
+          //        case ExprCat(parts) => (Bindings.empty /: parts)(_ ++ inferFalse(_))
+          case _ => Bindings.empty
+        }
       }
     }
   }
@@ -188,12 +192,9 @@ object StaticEvaluation {
 
         case StmtBlock(body) => (curr /: body)(analyse)
 
-        case StmtIf(cond, thenStmt, elseStmtOpt) => {
-          val afterThen = analyse(inferTrueTransitive(curr, cond), thenStmt)
-          val afterElse = elseStmtOpt match {
-            case Some(elseStmt) => analyse(inferFalseTransitive(curr, cond), elseStmt)
-            case None           => curr
-          }
+        case StmtIf(cond, thenStmts, elseStmts) => {
+          val afterThen = (inferTrueTransitive(curr, cond) /: thenStmts)(analyse)
+          val afterElse = (inferFalseTransitive(curr, cond) /: elseStmts)(analyse)
 
           // Keep only the bindings that are the same across both branches
           (afterThen.toSet intersect afterElse.toSet).toMap
@@ -203,11 +204,9 @@ object StaticEvaluation {
           // Ensure default comes at the front, as that's
           // how we are computing the 'befores' below
           val defaultStmt = cases.collectFirst {
-            case DefaultCase(stmt) => stmt
+            case DefaultCase(stmts) => StmtBlock(stmts)
           } getOrElse StmtBlock(Nil)
-          val regularStmts = cases collect {
-            case RegularCase(_, stmt) => stmt
-          }
+          val regularStmts = cases collect { case RegularCase(_, stmts) => StmtBlock(stmts) }
           val stmts = defaultStmt :: regularStmts
 
           val befores = {

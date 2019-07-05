@@ -30,7 +30,10 @@ object WrittenRefs {
       case ExprIndex(expr, _)       => apply(expr)
       case ExprSlice(expr, _, _, _) => apply(expr)
       case ExprSelect(expr, _)      => apply(expr)
-      case _                        => unreachable
+      case _ => {
+        println(expr)
+        unreachable
+      }
     }
   }
 

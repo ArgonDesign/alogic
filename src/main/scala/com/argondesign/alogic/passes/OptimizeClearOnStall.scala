@@ -54,14 +54,13 @@ final class OptimizeClearOnStall(implicit cc: CompilerContext) extends TreeTrans
 
       val branches = branch match {
         case StmtBlock(body) => enumeratePaths(body)
-        case StmtIf(_, thenStmt, elseStmtOpt) => {
-          val elseStmt = elseStmtOpt getOrElse StmtBlock(Nil)
-          enumeratePaths(List(thenStmt)) ::: enumeratePaths(List(elseStmt))
+        case StmtIf(_, thenStmts, elseStmts) => {
+          enumeratePaths(thenStmts) ::: enumeratePaths(elseStmts)
         }
         case StmtCase(_, cases) => {
           cases flatMap {
-            case RegularCase(_, stmt) => enumeratePaths(List(stmt))
-            case DefaultCase(stmt)    => enumeratePaths(List(stmt))
+            case RegularCase(_, stmts) => enumeratePaths(stmts)
+            case DefaultCase(stmts)    => enumeratePaths(stmts)
           }
         }
         case _ => unreachable

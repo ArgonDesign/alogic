@@ -83,16 +83,19 @@ object SramFactory {
     val statements = List(
       StmtIf(
         ceRef,
-        StmtIf(
-          weRef,
-          StmtBlock(
+        List(
+          StmtIf(
+            weRef,
             List(
               StmtExpr(ExprCall(stRef select "write", List(adRef, wdRef))),
               StmtAssign(rdRef, ExprInt(false, width, 0))
-            )),
-          Some(StmtAssign(rdRef, stRef index adRef))
+            ),
+            List(
+              StmtAssign(rdRef, stRef index adRef)
+            )
+          )
         ),
-        None
+        Nil
       )
     )
 

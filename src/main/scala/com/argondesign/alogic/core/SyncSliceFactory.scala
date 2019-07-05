@@ -128,8 +128,8 @@ object SyncSliceFactory {
       List(
         StmtIf(
           ipvRef & ~vRef,
-          StmtAssign(pRef, ipRef),
-          None
+          List(StmtAssign(pRef, ipRef)),
+          Nil
         ),
         StmtAssign(vRef, ~vRef & ipvRef | vRef & ~oprRef)
       )
@@ -142,8 +142,8 @@ object SyncSliceFactory {
       List(
         StmtIf(
           ipvRef & (~vRef | oprRef),
-          StmtAssign(pRef, ipRef),
-          None
+          List(StmtAssign(pRef, ipRef)),
+          Nil
         ),
         StmtAssign(vRef, ipvRef | vRef & ~oprRef)
       )
@@ -156,8 +156,8 @@ object SyncSliceFactory {
       List(
         StmtIf(
           ipvRef & ~vRef & ~oprRef,
-          StmtAssign(pRef, ipRef),
-          None
+          List(StmtAssign(pRef, ipRef)),
+          Nil
         ),
         StmtAssign(vRef, (vRef | ipvRef) & ~oprRef)
       )

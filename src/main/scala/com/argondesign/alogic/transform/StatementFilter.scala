@@ -35,14 +35,12 @@ final class StatementFilter(p: PartialFunction[Stmt, Boolean])(implicit cc: Comp
   val removeRedundantBlocks = new RemoveRedundantBlocks
 
   def emptyStmt(stmt: Stmt): Boolean = stmt match {
-    case StmtBlock(Nil)                => true
-    case StmtBlock(body)               => body forall emptyStmt
-    case StmtIf(_, eBody, None)        => emptyStmt(eBody)
-    case StmtIf(_, eBody, Some(tBody)) => emptyStmt(eBody) && emptyStmt(tBody)
+    case StmtBlock(body)         => body forall emptyStmt
+    case StmtIf(_, eBody, tBody) => (eBody forall emptyStmt) && (tBody forall emptyStmt)
     case StmtCase(_, cases) => {
       cases forall {
-        case RegularCase(_, stmt) => emptyStmt(stmt)
-        case DefaultCase(stmt)    => emptyStmt(stmt)
+        case RegularCase(_, stmts) => stmts forall emptyStmt
+        case DefaultCase(stmts)    => stmts forall emptyStmt
       }
     }
     case _: StmtExpr    => true
@@ -54,11 +52,11 @@ final class StatementFilter(p: PartialFunction[Stmt, Boolean])(implicit cc: Comp
     case stmt: Stmt => {
       val reduced = (stmt rewrite removeRedundantBlocks).asInstanceOf[Stmt]
       reduced match {
-        case StmtBlock(Nil) => tree // TODO: Introduce an explicit StmtEmpty
+        case StmtBlock(Nil) => TypeAssigner(Thicket(Nil) withLoc tree.loc)
         case _ => {
           pf(reduced) match {
-            case Some(false)             => TypeAssigner(StmtBlock(Nil) withLoc tree.loc)
-            case None if emptyStmt(stmt) => TypeAssigner(StmtBlock(Nil) withLoc tree.loc)
+            case Some(false)             => TypeAssigner(Thicket(Nil) withLoc tree.loc)
+            case None if emptyStmt(stmt) => TypeAssigner(Thicket(Nil) withLoc tree.loc)
             case _                       => reduced
           }
         }
