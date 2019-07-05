@@ -20,9 +20,11 @@ import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Bindings
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Symbols.TermSymbol
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.typer.Typer
+import com.argondesign.alogic.util.BigIntOps._
 import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.tailrec
@@ -53,17 +55,17 @@ private final class Generate(
 
   // Compute the generated tree from generate
   private def generate(tree: Tree, dispatcher: Generatable): List[Tree] = {
-    def interpretGenFor(bindings: Bindings,
-                        cond: Expr,
-                        body: List[Tree],
-                        step: Stmt): List[Tree] = {
+    def generateFor(bindings: Bindings,
+                    terminate: Bindings => Option[Boolean],
+                    loc: Loc,
+                    body: List[Tree],
+                    step: Stmt): List[Tree] = {
       val buf = new ListBuffer[Tree]
 
       @tailrec
-      def loop(bindings: Bindings): Unit = (cond given bindings).value match {
-        case None              => cc.error(cond, "Condition of 'gen for' is not a compile time constant")
-        case Some(v) if v != 0 =>
-          // TODO: ensure no infinite loop
+      def loop(bindings: Bindings): Unit = terminate(bindings).value match {
+        case None => cc.error(loc, "Condition of 'gen for' is not a compile time constant")
+        case Some(false) =>
           val subGenerate = new Generate(bindings, Some(dispatcher))
           buf appendAll { body map subGenerate }
           loop(StaticEvaluation(step, bindings)._2)
@@ -89,19 +91,73 @@ private final class Generate(
           }
         }
 
-      case tree @ GenFor(inits, Some(cond), step, body) =>
-        typeCheck(inits ::: cond :: step: _*) {
-          val initBindings = bindings ++ {
-            inits map {
-              case StmtDecl(Decl(symbol, Some(init))) => symbol -> init
-              case _                                  => unreachable
+      case tree @ GenFor(inits, Some(cond), steps, body) =>
+        typeCheck(inits ::: cond :: steps: _*) {
+          if (cond.value.isDefined) {
+            cc.error(cond, "'gen for' condition does not depend on loop variable")
+            Nil
+          } else {
+            val initBindings = bindings ++ {
+              inits map {
+                case StmtDecl(Decl(symbol, Some(init))) => symbol -> init
+                case _                                  => unreachable
+              }
             }
+            val StepStmt = TypeAssigner(StmtBlock(steps) withLoc tree.loc)
+            val terminate = { bindings: Bindings =>
+              // TODO: ensure no infinite loop
+              (cond given bindings).value map { _ == 0 }
+            }
+            generateFor(initBindings, terminate, cond.loc, body, StepStmt)
           }
-          val stepBlock = TypeAssigner(StmtBlock(step) withLoc tree.loc)
-          interpretGenFor(initBindings, cond, body, stepBlock)
         }
 
-      case _: Gen => ???
+      case tree @ GenRange(decl @ Decl(symbol, None), op, end, body) =>
+        // Build a spoof condition node for type checking only
+        val cond = {
+          val expr = (ExprRef(symbol) withLoc symbol.loc) < end
+          expr.copy() withLoc decl.loc.copy(start = symbol.loc.start)
+        }
+        typeCheck(decl, end, cond) {
+          // Some(Maximum inclusive value representable by symbol.kind) or None if infinite
+          val maxValueOpt = if (symbol.kind.underlying.isNum) {
+            None
+          } else if (symbol.kind.isSigned) {
+            Some(BigInt.mask(symbol.kind.width - 1))
+          } else {
+            Some(BigInt.mask(symbol.kind.width))
+          }
+
+          (end given bindings).value map { value =>
+            if (op == "<") value - 1 else value // Inclusive end value
+          } match {
+            case None =>
+              cc.error(end, "End value of range 'gen for' is not a compile time constant")
+              Nil
+            case Some(endValue) =>
+              val lastValue = maxValueOpt map { _ min endValue } getOrElse endValue
+              if (endValue > lastValue) {
+                val v = end.value.get
+                val t = symbol.kind.underlying.toSource
+                cc.warning(
+                  decl,
+                  s"End value $v is out of range for variable ${symbol.name} with type '$t',",
+                  s"will iterate only up to ${symbol.name} == ${maxValueOpt.get}"
+                )
+              }
+              val init = if (symbol.kind.underlying.isNum) {
+                ExprNum(symbol.kind.isSigned, 0) regularize symbol.loc
+              } else {
+                ExprInt(symbol.kind.isSigned, symbol.kind.width, 0) regularize symbol.loc
+              }
+              val iter = (BigInt(0) to lastValue).toIterator
+              val terminate = { _: Bindings =>
+                Some(if (iter.hasNext) { iter.next(); false } else true)
+              }
+              val stepStmt = StmtPost(ExprRef(symbol), "++") regularize decl.loc
+              generateFor(bindings + (symbol -> init), terminate, Loc.synthetic, body, stepStmt)
+          }
+        }
 
       case _ => unreachable
     }

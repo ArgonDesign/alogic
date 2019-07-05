@@ -1,0 +1,28 @@
+network gen_range_scope_0 {
+  in bool p_i;
+
+  out bool p_o4;
+  out bool p_o9;
+
+  fsm inner {
+    param uint P;
+
+    out bool p_o;
+
+    void main() {
+      bool b = p_i;
+      gen for (uint N < P) {
+        b = ~b;
+      }
+      bool N = b;
+      p_o.write(N);
+      fence;
+    }
+  }
+
+  i_4 = new inner(P=4);
+  i_9 = new inner(P=9);
+
+  i_4.p_o -> p_o4;
+  i_9.p_o -> p_o9;
+}

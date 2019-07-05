@@ -1,0 +1,27 @@
+network gen_range_stmt_2 {
+  in bool p_i;
+
+  out bool p_o4;
+  out bool p_o8;
+
+  fsm inner {
+    param uint P;
+
+    out bool p_o;
+
+    void main() {
+      bool b = p_i;
+      gen for (u3 N < P) {
+        b = ~b;
+      }
+      p_o.write(b);
+      fence;
+    }
+  }
+
+  i_4 = new inner(P=4);
+  i_8 = new inner(P=8);
+
+  i_4.p_o -> p_o4;
+  i_8.p_o -> p_o8;
+}

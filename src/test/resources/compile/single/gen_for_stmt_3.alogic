@@ -1,0 +1,14 @@
+fsm gen_for_stmt_3 {
+  in bool p_i;
+  out u3 p_o;
+  const bool P = 1;
+
+  void main() {
+    u3 b = 'p_i;
+    gen for (u3 N = 'P; N < 7; N++) {
+      b ^= N;
+    }
+    p_o.write(b);
+    fence;
+  }
+}

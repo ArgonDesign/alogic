@@ -1,4 +1,4 @@
-network gen_in_if_0 {
+network gen_nest_stmt_1 {
   in u32 p_i;
 
   out u32 p_o4;
@@ -11,9 +11,11 @@ network gen_in_if_0 {
 
     void main() {
       u32 b = p_i;
-      // This checks gen in if works without {} around the 'thenStmt'
-      if (b[0]) gen for (uint N = 0; N < P; N++) {
-        b += 1;
+      gen for (uint N = 0; N < P; N += 1) {
+        b += N;
+        gen if (N[0]) {
+          fence;
+        }
       }
       p_o.write(b);
       fence;

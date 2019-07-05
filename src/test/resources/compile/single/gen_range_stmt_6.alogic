@@ -1,0 +1,13 @@
+fsm gen_range_stmt_6 {
+  in u3 p_i;
+  out u3 p_o;
+
+  void main() {
+    u3 b = p_i;
+    gen for (u3 N <= 7) {
+      b += N;
+    }
+    p_o.write(b);
+    fence;
+  }
+}

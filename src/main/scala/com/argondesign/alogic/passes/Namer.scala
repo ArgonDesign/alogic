@@ -263,7 +263,17 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         }
       }
 
-      case _: Function  => Scopes.push()
+      case _: Function => Scopes.push()
+
+      case _: GenFor   => Scopes.push()
+      case _: GenRange => Scopes.push()
+      case GenIf(_, _, elseItems) => {
+        Scopes.push()
+        if (elseItems.nonEmpty) {
+          swapIfElseScope push elseItems.head.id
+        }
+      }
+
       case _: StmtBlock => Scopes.push()
       case _: StmtLet => {
         assert(!sawLet)
@@ -286,7 +296,6 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         if (!sawLet) Scopes.push()
         sawLet = false
       }
-
       case StmtIf(_, _, elseStmts) => {
         Scopes.push()
         if (elseStmts.nonEmpty) {
@@ -420,6 +429,21 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       Instance(iSym, eSym, paramNames, paramExprs) withLoc tree.loc
     }
 
+    case node: GenFor =>
+      node followedBy {
+        Scopes.pop()
+      }
+    case node @ GenRange(Decl(symbol, _), _, _, _) => {
+      Scopes.markUsed(symbol)
+      node
+    } followedBy {
+      Scopes.pop()
+    }
+    case node: GenIf =>
+      node followedBy {
+        Scopes.pop()
+      }
+
     case node: StmtBlock =>
       node followedBy {
         Scopes.pop()
@@ -440,7 +464,6 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       node followedBy {
         Scopes.pop()
       }
-
     case node: StmtIf =>
       node followedBy {
         Scopes.pop()

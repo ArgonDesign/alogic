@@ -56,12 +56,13 @@ object GenBuilder extends BaseBuilder[ParserRuleContext, Gen] {
       }
 
       override def visitGenRange(ctx: GenRangeContext) = {
-        val decl = {
-          val ident = ctx.IDENTIFIER.toIdent
-          val kind = TypeGen(TypeBuilder(ctx.kind))
-          DeclIdent(ident, kind, None) withLoc ctx.loc
-        }
         val end = ExprBuilder(ctx.expr)
+        val decl = {
+          val kind = TypeGen(TypeBuilder(ctx.kind))
+          val ident = ctx.IDENTIFIER.toIdent
+          val loc = ctx.kind.loc.copy(point = ctx.op.loc.start, end = end.loc.end)
+          DeclIdent(ident, kind, None) withLoc loc
+        }
         val body = GenItemVisitor(ctx.genitem)
         GenRange(decl, ctx.op, end, body) withLoc ctx.loc
       }

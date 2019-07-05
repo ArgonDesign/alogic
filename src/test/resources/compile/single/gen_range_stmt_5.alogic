@@ -1,0 +1,13 @@
+fsm gen_range_stmt_5 {
+  in bool p_i;
+  out bool p_o;
+
+  void main() {
+    bool b = p_i;
+    gen for (u3 N <= 7) {
+      b = ~b;
+    }
+    p_o.write(b);
+    fence;
+  }
+}
