@@ -48,19 +48,17 @@ trait TypeOps extends TypePrintOps { this: Type =>
   final def isPipeline = this.isInstanceOf[TypePipeline]
   final def isParam = this.isInstanceOf[TypeParam]
   final def isConst = this.isInstanceOf[TypeConst]
+  final def isGen = this.isInstanceOf[TypeGen]
   final def isType = this.isInstanceOf[TypeType]
   final def isMisc = this eq TypeMisc
   final def isError = this eq TypeError
   final def isPolyFunc = this.isInstanceOf[TypePolyFunc]
 
   // Is this a primitive numeric type
-  final def isNumeric(implicit cc: CompilerContext): Boolean = this match {
-    case _: TypeInt         => true
-    case _: TypeNum         => true
-    case TypeParam(kind)    => kind.isNumeric
-    case TypeConst(kind)    => kind.isNumeric
-    case TypePipeline(kind) => kind.isNumeric
-    case _                  => false
+  final def isNumeric: Boolean = this.underlying match {
+    case _: TypeInt => true
+    case _: TypeNum => true
+    case _          => false
   }
 
   // Is this a 'packed' type, i.e.: does it have a finite,
@@ -88,21 +86,16 @@ trait TypeOps extends TypePrintOps { this: Type =>
   final def width(implicit cc: CompilerContext): Int = {
     assert(isPacked)
     try {
-      this match {
+      this.underlying match {
         case self: TypeSInt => self.size.value.get.toInt
         case self: TypeUInt => self.size.value.get.toInt
         case self: TypeStruct =>
           self.fieldTypes map {
             _.width
           } sum
-        case TypeVoid           => 0
-        case self: TypeVector   => self.size.value.get.toInt * self.elementType.width
-        case self: TypeIn       => self.kind.width
-        case self: TypeOut      => self.kind.width
-        case self: TypePipeline => self.kind.width
-        case self: TypeParam    => self.kind.width
-        case self: TypeConst    => self.kind.width
-        case _                  => unreachable
+        case TypeVoid         => 0
+        case self: TypeVector => self.size.value.get.toInt * self.elementType.width
+        case _                => unreachable
       }
     } catch {
       case t: Throwable => {
@@ -133,6 +126,7 @@ trait TypeOps extends TypePrintOps { this: Type =>
     case TypePipeline(kind)  => kind
     case TypeParam(kind)     => kind
     case TypeConst(kind)     => kind
+    case TypeGen(kind)       => kind
     case other               => other
   }
 

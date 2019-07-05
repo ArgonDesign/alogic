@@ -22,12 +22,11 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.TermSymbol
 
 final class ReplaceTermRefs(
-    bindings: Bindings
+    bindings: Bindings,
+    override val typed: Boolean = true
 )(
     implicit cc: CompilerContext
 ) extends TreeTransformer {
-
-  override val typed: Boolean = true
 
   override def transform(tree: Tree): Tree = tree match {
     case ExprRef(symbol: TermSymbol) => bindings.getOrElse(symbol, tree)

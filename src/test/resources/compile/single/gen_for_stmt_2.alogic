@@ -1,0 +1,28 @@
+network gen_for_stmt_2 {
+  in u32 p_i;
+
+  out u32 p_o4;
+  out u32 p_o9;
+
+  fsm inner {
+    param uint P;
+
+    out u32 p_o;
+
+    void main() {
+      u32 b = p_i;
+      gen for (uint N = 0, uint B = 0; N < P; N += 1, B += 2) {
+        b += N << B;
+        fence;
+      }
+      p_o.write(b);
+      fence;
+    }
+  }
+
+  i_4 = new inner(P=4);
+  i_9 = new inner(P=9);
+
+  i_4.p_o -> p_o4;
+  i_9.p_o -> p_o9;
+}

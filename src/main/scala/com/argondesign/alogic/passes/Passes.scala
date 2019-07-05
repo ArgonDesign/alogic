@@ -34,6 +34,7 @@ object Passes {
       Namer,
       // All entities are EntityNamed from here on
       SpecializeParam,
+      Generate,
       // Any passes between here and the middle end can only perform checks
       // and cannot re-write any trees unless errors have been detected
       Typer(externalRefs = false),

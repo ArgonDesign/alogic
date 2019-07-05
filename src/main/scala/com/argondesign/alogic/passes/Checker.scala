@@ -202,7 +202,8 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
       entityLevel -= 1
     }
 
-    case decl @ DeclIdent(_, kind, _) if unitType(kind).isNum && !kind.isConst && !kind.isParam => {
+    case decl @ DeclIdent(_, kind, _)
+        if unitType(kind).isNum && !kind.isConst && !kind.isParam && !kind.isGen => {
       val s = if (unitType(kind).isSigned) "int" else "uint"
       cc.error(s"Only compile time constant scalars can be declared with type '${s}'")
       decl

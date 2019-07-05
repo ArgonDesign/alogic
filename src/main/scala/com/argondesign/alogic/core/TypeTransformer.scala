@@ -93,6 +93,10 @@ abstract class TypeTransformer(implicit val cc: CompilerContext) extends TreeLik
           val kind = walk(node.kind)
           transform(TypeCopier(node)(kind))
         }
+        case node: TypeGen => {
+          val kind = walk(node.kind)
+          transform(TypeCopier(node)(kind))
+        }
         case node: TypeType => {
           val kind = walk(node.kind)
           transform(TypeCopier(node)(kind))

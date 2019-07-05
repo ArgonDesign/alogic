@@ -11,7 +11,8 @@
 // DESCRIPTION:
 //
 // Given a statement, compute a map from the identity of each sub-statement
-// to known bindings of term symbols before executing that statement
+// to known bindings of term symbols before executing that statement, and the
+// final bindings after executing all statements
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.analysis
@@ -131,7 +132,36 @@ object StaticEvaluation {
     inferTransitive(curr, inferFalse(expr))
   }
 
-  def apply(stmt: Stmt)(implicit cc: CompilerContext): (Map[Int, Bindings], Bindings) = {
+  private def overwrite(curr: Bindings, symbol: TermSymbol, expr: Expr)(
+      implicit cc: CompilerContext): Bindings = {
+    // Add the new binding for the symbol, but first substitute the new
+    // expression using the current binding of symbol to remove self references
+    val expanded = {
+      val selfBinding = Bindings(curr get symbol map { symbol -> _ })
+      curr + (symbol -> (expr given selfBinding).simplify)
+    }
+
+    // Remove all binding that referenced the just added symbol,
+    // as these used the old value. TODO: use SSA form...
+    expanded filterNot {
+      case (_, v) => v exists { case ExprRef(`symbol`) => true }
+    }
+  }
+
+  private def removeWritten(curr: Bindings, lval: Expr): Bindings = {
+    // TODO: could improve this by compute new bindings
+    val written = WrittenSymbols(lval).toList
+
+    // Remove bindings of the written symbols, and all
+    // bindings that reference a written symbol
+    curr filterNot {
+      case (k, v) =>
+        (written contains k) || (v exists { case ExprRef(s) => written contains s })
+    }
+  }
+
+  def apply(stmt: Stmt, initialBindings: Bindings = Bindings.empty)(
+      implicit cc: CompilerContext): (Map[Int, Bindings], Bindings) = {
     val res = mutable.Map[Int, Bindings]()
 
     def analyse(curr: Bindings, stmt: Stmt): Bindings = {
@@ -141,29 +171,20 @@ object StaticEvaluation {
       // Compute the new bindings after this statement
       stmt match {
         // Simple assignment
-        case StmtAssign(ExprRef(symbol: TermSymbol), rhs) => {
-          // Add the new binding for the symbol
-          val expanded = curr + (symbol -> rhs)
-
-          // Remove all binding that referenced the just added symbol,
-          // as these used the old value. TODO: use SSA form...
-          expanded filterNot {
-            case (_, v) => v exists { case ExprRef(`symbol`) => true }
-          }
-        }
+        case StmtAssign(ExprRef(symbol: TermSymbol), rhs) => overwrite(curr, symbol, rhs)
+        // Simple update
+        case StmtUpdate(lhs @ ExprRef(symbol: TermSymbol), op, rhs) =>
+          overwrite(curr, symbol, ExprBinary(lhs, op, rhs) regularize stmt.loc)
+        // Simple postfix
+        case StmtPost(expr @ ExprRef(symbol: TermSymbol), "++") => overwrite(curr, symbol, expr + 1)
+        case StmtPost(expr @ ExprRef(symbol: TermSymbol), "--") => overwrite(curr, symbol, expr - 1)
 
         // Assignments with complex left hand side
-        case StmtAssign(lhs, _) => {
-          // TODO: could improve this by attempting to compute new bindings here
-          val written = WrittenSymbols(lhs).toList
-
-          // Remove bindings of the written symbols, and all
-          // bindings that reference a written symbol
-          curr filterNot {
-            case (k, v) =>
-              (written contains k) || (v exists { case ExprRef(s) => written contains s })
-          }
-        }
+        case StmtAssign(lhs, _) => removeWritten(curr, lhs)
+        // Update with complex left hand side
+        case StmtUpdate(lhs, _, _) => removeWritten(curr, lhs)
+        // Postfix with complex argument
+        case StmtPost(expr, _) => removeWritten(curr, expr)
 
         case StmtBlock(body) => (curr /: body)(analyse)
 
@@ -223,7 +244,7 @@ object StaticEvaluation {
       }
     }
 
-    val finalBindings = analyse(Bindings.empty, stmt)
+    val finalBindings = analyse(initialBindings, stmt)
 
     (res.toMap, finalBindings)
   }

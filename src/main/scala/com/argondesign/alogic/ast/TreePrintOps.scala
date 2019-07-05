@@ -59,7 +59,7 @@ trait TreePrintOps { this: Tree =>
                     |${i}  /////////////////////////////////
                     |
                     |""".stripMargin
-      sb append s"${i}  ${declarations map v(indent + 1) mkString s"\n${i}  "}"
+      sb append s"${i}  ${declarations map v(indent + 1) mkString ("", s";\n${i}  ", ";")}"
       sb append "\n"
     }
 
@@ -295,16 +295,16 @@ trait TreePrintOps { this: Tree =>
       case Sym(symbol) => symbol.name
 
       case DeclIdent(ident, kind, None) => {
-        s"${kind.toSource} ${v(indent)(ident)};"
+        s"${kind.toSource} ${v(indent)(ident)}"
       }
       case DeclIdent(ident, kind, Some(init)) => {
-        s"${kind.toSource} ${v(indent)(ident)} = ${v(init)};"
+        s"${kind.toSource} ${v(indent)(ident)} = ${v(init)}"
       }
       case Decl(symbol, None) => {
-        s"${attrStr(indent, symbol)}${symbol.kind.toSource} ${symbol.name};"
+        s"${attrStr(indent, symbol)}${symbol.kind.toSource} ${symbol.name}"
       }
       case Decl(symbol, Some(init)) => {
-        s"${attrStr(indent, symbol)}${symbol.kind.toSource} ${symbol.name} = ${v(init)};"
+        s"${attrStr(indent, symbol)}${symbol.kind.toSource} ${symbol.name} = ${v(init)}"
       }
 
       case Instance(ref, module, paramNames, paramArgs) => {
@@ -335,12 +335,12 @@ trait TreePrintOps { this: Tree =>
       case Thicket(trees) => "thicket(...)"
 
       case GenIf(cond, thenItems, Nil) => {
-        s"""|gen if (${v(cond)}) {" +
+        s"""|gen if (${v(cond)}) {
             |${i}  ${thenItems map v(indent + 1) mkString s"\n${i}  "}
             |${i}}""".stripMargin
       }
       case GenIf(cond, thenItems, elseItems) => {
-        s"""|gen if (${v(cond)}) {" +
+        s"""|gen if (${v(cond)}) {
             |${i}  ${thenItems map v(indent + 1) mkString s"\n${i}  "}
             |${i}} else {
             |${i}  ${elseItems map v(indent + 1) mkString s"\n${i}  "}

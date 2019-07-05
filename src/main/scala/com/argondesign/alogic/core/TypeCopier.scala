@@ -85,6 +85,10 @@ object TypeCopier {
     if (kind eq tree.kind) tree else TypeConst(kind)
   }
 
+  def apply(tree: TypeGen)(kind: Type): TypeGen = {
+    if (kind eq tree.kind) tree else TypeGen(kind)
+  }
+
   def apply(tree: TypeType)(kind: Type): TypeType = {
     if (kind eq tree.kind) tree else TypeType(kind)
   }

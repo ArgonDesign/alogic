@@ -210,10 +210,10 @@ final object TypeAssigner {
       val lTpe = node.lhs.tpe
       val rTpe = node.rhs.tpe
       val signed = lTpe.isSigned && rTpe.isSigned
-      if (lTpe.isNum && rTpe.isNum) {
+      if (lTpe.underlying.isNum && rTpe.underlying.isNum) {
         TypeNum(signed)
       } else {
-        val width = if (lTpe.isNum) rTpe.width else lTpe.width
+        val width = if (lTpe.underlying.isNum) rTpe.width else lTpe.width
         TypeInt(signed, apply(Expr(width) withLoc node.loc))
       }
   }
@@ -222,10 +222,10 @@ final object TypeAssigner {
     val tTpe = node.thenExpr.tpe
     val eTpe = node.elseExpr.tpe
     val signed = tTpe.isSigned && eTpe.isSigned
-    if (tTpe.isNum && eTpe.isNum) {
+    if (tTpe.underlying.isNum && eTpe.underlying.isNum) {
       TypeNum(signed)
     } else {
-      val width = if (tTpe.isNum) eTpe.width else tTpe.width
+      val width = if (tTpe.underlying.isNum) eTpe.width else tTpe.width
       TypeInt(signed, apply(Expr(width) withLoc node.loc))
     }
   }

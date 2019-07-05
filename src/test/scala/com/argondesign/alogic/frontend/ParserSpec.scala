@@ -1787,7 +1787,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                |  2;
                |}""".stripMargin.asTree[Gen] shouldBe {
               GenFor(
-                List(StmtDecl(DeclIdent(Ident("a"), TypeSInt(Expr(8)), Some(Expr(2))))),
+                List(StmtDecl(DeclIdent(Ident("a"), TypeGen(TypeSInt(Expr(8))), Some(Expr(2))))),
                 Some(ExprIdent("a")),
                 List(StmtPost(ExprIdent("a"), "--")),
                 List(StmtExpr(Expr(2)))
@@ -1800,7 +1800,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                |}""".stripMargin.asTree[Gen] shouldBe {
               GenFor(
                 List(
-                  StmtDecl(DeclIdent(Ident("a"), TypeSInt(Expr(8)), Some(Expr(2)))),
+                  StmtDecl(DeclIdent(Ident("a"), TypeGen(TypeSInt(Expr(8))), Some(Expr(2)))),
                   StmtAssign(ExprIdent("b"), Expr(1))
                 ),
                 None,
@@ -1830,7 +1830,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
           "with <" in {
             "gen for (u8 i < 10) { fence; }".asTree[Gen] shouldBe {
               GenRange(
-                DeclIdent(Ident("i"), TypeUInt(8), None),
+                DeclIdent(Ident("i"), TypeGen(TypeUInt(8)), None),
                 "<",
                 ExprNum(false, 10),
                 List(StmtFence())
@@ -1841,7 +1841,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
           "with <=" in {
             "gen for (i8 j <= 20) { break; }".asTree[Gen] shouldBe {
               GenRange(
-                DeclIdent(Ident("j"), TypeSInt(8), None),
+                DeclIdent(Ident("j"), TypeGen(TypeSInt(8)), None),
                 "<=",
                 ExprNum(false, 20),
                 List(StmtBreak())

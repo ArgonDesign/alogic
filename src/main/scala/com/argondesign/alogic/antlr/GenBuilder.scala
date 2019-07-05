@@ -19,6 +19,7 @@ import com.argondesign.alogic.antlr.AlogicParser._
 import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Types.TypeGen
 import org.antlr.v4.runtime.ParserRuleContext
 
 object GenBuilder extends BaseBuilder[ParserRuleContext, Gen] {
@@ -41,7 +42,13 @@ object GenBuilder extends BaseBuilder[ParserRuleContext, Gen] {
       }
 
       override def visitGenFor(ctx: GenForContext) = {
-        val inits = if (ctx.loop_init != null) StmtBuilder(ctx.loop_init.loop_init_item) else Nil
+        val inits = if (ctx.loop_init == null) { Nil } else {
+          StmtBuilder(ctx.loop_init.loop_init_item) map {
+            case stmt @ StmtDecl(decl: DeclIdent) =>
+              StmtDecl(decl.copy(kind = TypeGen(decl.kind)) withLoc decl.loc) withLoc stmt.loc
+            case other => other
+          }
+        }
         val cond = Option(ctx.expr) map { ExprBuilder(_) }
         val step = if (ctx.for_steps != null) StmtBuilder(ctx.for_steps.step) else Nil
         val body = GenItemVisitor(ctx.genitem)
@@ -51,7 +58,7 @@ object GenBuilder extends BaseBuilder[ParserRuleContext, Gen] {
       override def visitGenRange(ctx: GenRangeContext) = {
         val decl = {
           val ident = ctx.IDENTIFIER.toIdent
-          val kind = TypeBuilder(ctx.kind)
+          val kind = TypeGen(TypeBuilder(ctx.kind))
           DeclIdent(ident, kind, None) withLoc ctx.loc
         }
         val end = ExprBuilder(ctx.expr)

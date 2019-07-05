@@ -96,6 +96,8 @@ object Types {
   case class TypeParam(kind: Type) extends Type
   // Constant type
   case class TypeConst(kind: Type) extends Type
+  // Gen type
+  case class TypeGen(kind: Type) extends Type
 
   // Type of expressions that represent types, with underlying type kind e.g. ExprType(_)
   case class TypeType(kind: Type) extends Type

@@ -1,0 +1,27 @@
+network gen_if_stmt_1 {
+  in bool p_i;
+
+  out bool p_on;
+  out bool p_op;
+
+  fsm inner {
+    param bool P;
+
+    out bool p_o;
+
+    void main() {
+      bool b = p_i;
+      gen if (!P) {
+        b = ~b;
+      }
+      p_o.write(b);
+      fence;
+    }
+  }
+
+  neg = new inner(P=false);
+  pos = new inner(P=true);
+
+  neg.p_o -> p_on;
+  pos.p_o -> p_op;
+}

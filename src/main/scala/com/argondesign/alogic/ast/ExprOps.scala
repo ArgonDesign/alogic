@@ -50,7 +50,7 @@ trait ExprOps { this: Expr =>
   }
 
   private final def mkSized(v: Int)(implicit cc: CompilerContext) = {
-    if (tpe.isNum) fix(Expr(v)) else fix(ExprInt(tpe.isSigned, tpe.width, v))
+    if (tpe.underlying.isNum) fix(Expr(v)) else fix(ExprInt(tpe.isSigned, tpe.width, v))
   }
 
   private final def mkIndex(idx: Int)(implicit cc: CompilerContext) = {
@@ -167,6 +167,7 @@ trait ExprOps { this: Expr =>
     case ExprRef(symbol) =>
       symbol.kind match {
         case _: TypeConst => true
+        case _: TypeGen   => true
         case _            => false
       }
     case ExprUnary(_, expr)      => expr.isKnownConst

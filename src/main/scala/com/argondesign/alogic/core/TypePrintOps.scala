@@ -73,6 +73,7 @@ trait TypePrintOps { this: Type =>
     case TypePipeline(kind)         => s"pipeline ${kind.toSource}"
     case TypeParam(kind)            => s"param ${kind.toSource}"
     case TypeConst(kind)            => s"const ${kind.toSource}"
+    case TypeGen(kind)              => s"gen ${kind.toSource}"
     case TypeType(kind)             => s"type ${kind.toSource}"
     case TypeMisc                   => "type-misc"
     case TypeError                  => "type-error"

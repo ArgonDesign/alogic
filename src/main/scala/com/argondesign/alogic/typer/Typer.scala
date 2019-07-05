@@ -94,7 +94,7 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
   }
 
   private def checkNumericOrPacked(expr: Expr, msg: String): Boolean = {
-    (expr.tpe.isNumeric || expr.tpe.isPacked) ifFalse {
+    (expr.tpe.underlying.isNumeric || expr.tpe.isPacked) ifFalse {
       cc.error(expr, s"${msg} is of neither numeric nor packed type")
     }
   }
@@ -166,7 +166,7 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
                          idx: Expr,
                          checkConst: Boolean,
                          msg: String): Boolean = {
-    idx.tpe.isNum || {
+    idx.tpe.underlying.isNum || {
       checkPacked(idx, msg) && {
         checkWidth(expectedWidth, idx, msg) &&&
           checkSign(false, idx, msg) &&&
@@ -238,17 +238,17 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
 
     // Type check the lhs up front
     case StmtAssign(lhs, _) if !walk(lhs).tpe.isError => {
-      if (!(checkPacked(lhs, "Left hand side of assignment") && checkModifiable(lhs))) {
-        error(tree)
-      }
+      val ok = lhs.tpe.isGen && lhs.tpe.underlying.isNum ||
+        checkPacked(lhs, "Left hand side of assignment") && checkModifiable(lhs)
+      if (!ok) error(tree)
       pushContextWidth(tree, lhs.tpe)
     }
 
     // Type check the lhs up front
     case StmtUpdate(lhs, _, _) if !walk(lhs).tpe.isError => {
-      if (!(checkPacked(lhs, "Left hand side of assignment") && checkModifiable(lhs))) {
-        error(tree)
-      }
+      val ok = lhs.tpe.isGen && lhs.tpe.underlying.isNum ||
+        checkPacked(lhs, "Left hand side of assignment") && checkModifiable(lhs)
+      if (!ok) error(tree)
       // TODO: this is not quite right for shift and compare etc
       pushContextWidth(tree, lhs.tpe)
     }
@@ -345,7 +345,7 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
           } else {
             error(tree, "Unsized integer declaration has packed initializer")
           }
-        } else if (!symbol.kind.underlying.isNum && !init.tpe.isNum) {
+        } else if (!symbol.kind.underlying.isNum && !init.tpe.underlying.isNum) {
           val msg = if (symbol.kind.isParam) "Parameter value" else "Initializer expression"
           if (!(checkPacked(init, msg) && checkWidth(symbol.kind.width, init, msg))) {
             error(tree)
@@ -358,7 +358,7 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
         // If there were no errors, attach initializer expression attribute
         if (!tree.hasTpe) {
           symbol.attr.init set {
-            if (symbol.kind.isPacked && init.tpe.isNum) {
+            if (symbol.kind.isPacked && init.tpe.underlying.isNum) {
               val kind = TypeInt(init.tpe.isSigned, Expr(symbol.kind.width) regularize init.loc)
               (init cast kind).simplify
             } else {
@@ -392,25 +392,33 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
           error(tree, "Body of 'loop' must end in a control statement")
         }
 
-      case StmtAssign(lhs, rhs) if !rhs.tpe.isNum => {
-        // lhs have already been checked in enter
-        val ok = checkPacked(rhs, "Right hand side of assignment") &&
-          checkWidth(lhs.tpe.width, rhs, "Right hand side of assignment")
-        if (!ok) error(tree)
+      case StmtAssign(lhs, rhs) if !rhs.tpe.underlying.isNum => {
+        if (lhs.tpe.underlying.isNum && rhs.tpe.isPacked) {
+          error(tree, "Unsized integer variable assigned a packed value")
+        } else {
+          // lhs have already been checked in enter
+          val ok = checkPacked(rhs, "Right hand side of assignment") &&
+            checkWidth(lhs.tpe.width, rhs, "Right hand side of assignment")
+          if (!ok) error(tree)
+        }
       }
 
       // TODO: this is not right for shifts which can have any right hand side
-      case StmtUpdate(lhs, _, rhs) if !rhs.tpe.isNum => {
-        // lhs have already been checked in enter
-        val ok = checkPacked(rhs, "Right hand side of assignment") &&
-          checkWidth(lhs.tpe.width, rhs, "Right hand side of assignment")
-        if (!ok) error(tree)
+      case StmtUpdate(lhs, _, rhs) if !rhs.tpe.underlying.isNum => {
+        if (lhs.tpe.underlying.isNum && rhs.tpe.isPacked) {
+          error(tree, "Unsized integer variable assigned a packed value")
+        } else {
+          // lhs have already been checked in enter
+          val ok = checkPacked(rhs, "Right hand side of assignment") &&
+            checkWidth(lhs.tpe.width, rhs, "Right hand side of assignment")
+          if (!ok) error(tree)
+        }
       }
 
       case StmtPost(expr, op) => {
-        if (!(checkPacked(expr, s"Target of postfix '${op}'") && checkModifiable(expr))) {
-          error(tree)
-        }
+        val ok = expr.tpe.isGen && expr.tpe.underlying.isNum ||
+          checkPacked(expr, s"Target of postfix '${op}'") && checkModifiable(expr)
+        if (!ok) error(tree)
       }
 
       case StmtExpr(expr) if !expr.tpe.isVoid =>
@@ -443,8 +451,9 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
             if (kind.isType) {
               if (!arg.tpe.isType) error(tree, arg, s"Argument $i expects a type")
             } else if (kind.isNum) {
-              if (!arg.tpe.isNum) error(tree, arg, s"Argument $i expects an unsized value")
-            } else if (!arg.tpe.isNum) {
+              if (!arg.tpe.underlying.isNum)
+                error(tree, arg, s"Argument $i expects an unsized value")
+            } else if (!arg.tpe.underlying.isNum) {
               val ok = checkPacked(arg, s"Argument $i of function call") &&
                 checkWidth(kind.width, arg, s"Argument $i of function call")
               if (!ok) error(tree)
@@ -536,7 +545,7 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
         }
 
       case ExprUnary(op, expr) =>
-        if (expr.tpe.isNum) {
+        if (expr.tpe.underlying.isNum) {
           if ("&|^" contains op) {
             error(tree, s"Unary operator '$op' cannot be applied to unsized integer value")
           }
@@ -546,13 +555,13 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
 
       // Binary ops
       case ExprBinary(lhs, op, rhs) => {
-        if (!lhs.tpe.isNum || !rhs.tpe.isNum) {
+        if (!lhs.tpe.underlying.isNum || !rhs.tpe.underlying.isNum) {
           lazy val strictWidth = !(mixedWidthBinaryOps contains op)
-          if (lhs.tpe.isNum && strictWidth) {
+          if (lhs.tpe.underlying.isNum && strictWidth) {
             if (!checkPacked(rhs, s"Right hand operand of '$op'")) {
               error(tree)
             }
-          } else if (rhs.tpe.isNum && strictWidth) {
+          } else if (rhs.tpe.underlying.isNum && strictWidth) {
             if (!checkPacked(lhs, s"Left hand operand of '$op'")) {
               error(tree)
             }
@@ -594,12 +603,12 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
       case ExprTernary(cond, thenExpr, elseExpr) =>
         if (!checkNumericOrPacked(cond, "Condition of '?:'")) {
           error(tree)
-        } else if (!thenExpr.tpe.isNum || !elseExpr.tpe.isNum) {
+        } else if (!thenExpr.tpe.underlying.isNum || !elseExpr.tpe.underlying.isNum) {
           lazy val okThen = checkPacked(thenExpr, "'then' operand of '?:'")
           lazy val okElse = checkPacked(elseExpr, "'else' operand of '?:'")
-          if (thenExpr.tpe.isNum) {
+          if (thenExpr.tpe.underlying.isNum) {
             if (!okElse) error(tree)
-          } else if (elseExpr.tpe.isNum) {
+          } else if (elseExpr.tpe.underlying.isNum) {
             if (!okThen) error(tree)
           } else if (okElse &&& okThen) {
             if (thenExpr.tpe.width != elseExpr.tpe.width) {
@@ -646,7 +655,7 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
       // Assign type if have not been assigned by now
       if (tree.hasTpe) tree else TypeAssigner(tree)
     } followedBy {
-      if (tree.tpe.isNum && !tree.asInstanceOf[Expr].isKnownConst) {
+      if (tree.tpe.underlying.isNum && !tree.asInstanceOf[Expr].isKnownConst) {
         cc.error(tree, "Expression of unsized integer type must be compile time constant")
       }
 
@@ -656,7 +665,8 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
 
   override def finalCheck(tree: Tree): Unit = {
     if (!tree.tpe.isError) {
-      assert(contextKind.isEmpty, s"${tree.loc.prefix}\n${contextKind.toList}\n${contextNode.toList}")
+      assert(contextKind.isEmpty,
+             s"${tree.loc.prefix}\n${contextKind.toList}\n${contextNode.toList}")
 
       def check(tree: TreeLike) {
         tree visitAll {

@@ -80,6 +80,10 @@ object Bindings {
     new Bindings(underlying)
   }
 
+  implicit def apply(pairOpt: Option[(TermSymbol, Expr)]): Bindings = {
+    new Bindings(pairOpt.toMap)
+  }
+
   implicit def toUnderlying(symbolBitSet: Bindings): Map[TermSymbol, Expr] = {
     symbolBitSet.underlying
   }
