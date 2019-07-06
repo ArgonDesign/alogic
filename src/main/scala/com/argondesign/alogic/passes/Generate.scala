@@ -21,7 +21,7 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Bindings
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
-import com.argondesign.alogic.core.Symbols.TermSymbol
+import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.typer.Typer
 import com.argondesign.alogic.util.BigIntOps._
@@ -48,6 +48,7 @@ private object generatableCase extends Generatable {
 
 private final class Generate(
     bindings: Bindings,
+    newSymbols: Map[Symbol, Symbol],
     dispatcher: Option[Generatable] // Some, if already inside a 'gen' else None
 )(
     implicit cc: CompilerContext,
@@ -55,6 +56,9 @@ private final class Generate(
 ) extends TreeTransformer {
 
   override val typed: Boolean = false
+
+  // The symbols produced by the current gen instance
+  private val symbolMap = mutable.Map(newSymbols.toSeq: _*)
 
   // Type check trees, yield Nil if type error, otherwise yield result
   private def typeCheck(trees: Tree*)(result: => List[Tree]): List[Tree] = {
@@ -79,7 +83,7 @@ private final class Generate(
       def loop(bindings: Bindings): Unit = terminate(bindings).value match {
         case None => cc.error(loc, "Condition of 'gen for' is not a compile time constant")
         case Some(false) =>
-          val subGenerate = new Generate(bindings, Some(dispatcher))
+          val subGenerate = new Generate(bindings, symbolMap.toMap, Some(dispatcher))
           buf appendAll { body map subGenerate flatMap flattenThickets }
           loop(StaticEvaluation(step, bindings)._2)
         case _ => ()
@@ -90,7 +94,7 @@ private final class Generate(
       buf.toList
     }
 
-    lazy val subGenerate = new Generate(bindings, Some(dispatcher))
+    lazy val subGenerate = new Generate(bindings, symbolMap.toMap, Some(dispatcher))
 
     gen match {
       case GenIf(cond, thenItems, elseItems) =>
@@ -216,11 +220,8 @@ private final class Generate(
       // Keep going if not inside a Gen
       case _ if dispatcher.isEmpty => ()
 
-      // If inside a Gen check this is the right kind of tree
-      case _ if level == 0 && dispatcher.get.isExpectedType(tree) => ()
-
-      // Otherwise die
-      case _ if level == 0 =>
+      // Die if the wrong kind of tree is generated
+      case _ if level == 0 && !dispatcher.get.isExpectedType(tree) =>
         val desc = dispatcher.get.description
         cc.error(tree, s"'gen' construct yields invalid syntax, $desc is expected")
         generated = Some(Nil) // To prevent further descent
@@ -251,8 +252,19 @@ private final class Generate(
       // Replace nested gen with the generated result
       case _: Gen => Thicket(generated.get) withLoc tree.loc
 
-      // Replace refs to bound symbols with the value
-      case ExprRef(symbol: TermSymbol) => bindings.getOrElse(symbol, tree)
+      // Clone symbols which are declared inside a gen
+      case Decl(symbol, init) if !symbol.kind.isGen && dispatcher.nonEmpty =>
+        val newSymbol = cc.newSymbolLike(symbol)
+        newSymbol.attr update symbol.attr
+        symbolMap(symbol) = newSymbol
+        Decl(newSymbol, init) withLoc tree.loc
+
+      // Replace refs to bound symbols with the value, and
+      // to generated symbols with a ref to the new symbol
+      case ExprRef(symbol: TermSymbol) =>
+        bindings.get(symbol) orElse {
+          symbolMap.get(symbol) map { ExprRef(_) withLoc tree.loc }
+        } getOrElse tree
 
       case _ => tree
     }
@@ -275,5 +287,5 @@ private final class Generate(
 object Generate extends TreeTransformerPass {
   val name = "generate"
   def create(implicit cc: CompilerContext): TreeTransformer =
-    new Generate(Bindings.empty, None)(cc, new Typer)
+    new Generate(Bindings.empty, Map.empty, None)(cc, new Typer)
 }
