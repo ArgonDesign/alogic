@@ -60,9 +60,9 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends TreeTransfor
         case first :: rest => {
           StmtComment("State dispatch") :: StmtCase(
             ExprRef(entitySymbol.attr.stateVar.value),
-            DefaultCase(first.body) :: {
+            CaseDefault(first.body) :: {
               rest map {
-                case State(expr, body) => RegularCase(List(expr), body)
+                case State(expr, body) => CaseRegular(List(expr), body)
               }
             }
           ) :: Nil

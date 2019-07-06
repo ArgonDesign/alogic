@@ -321,7 +321,7 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
     }
 
     case StmtCase(_, cases) => {
-      val defaults = cases collect { case c: DefaultCase => c }
+      val defaults = cases collect { case c: CaseDefault => c }
       if (defaults.lengthCompare(1) <= 0) {
         tree
       } else {

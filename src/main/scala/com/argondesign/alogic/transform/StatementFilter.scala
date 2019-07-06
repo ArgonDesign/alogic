@@ -24,6 +24,7 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.passes.RemoveRedundantBlocks
 import com.argondesign.alogic.typer.TypeAssigner
+import com.argondesign.alogic.util.unreachable
 
 final class StatementFilter(p: PartialFunction[Stmt, Boolean])(implicit cc: CompilerContext)
     extends TreeTransformer {
@@ -39,8 +40,9 @@ final class StatementFilter(p: PartialFunction[Stmt, Boolean])(implicit cc: Comp
     case StmtIf(_, eBody, tBody) => (eBody forall emptyStmt) && (tBody forall emptyStmt)
     case StmtCase(_, cases) => {
       cases forall {
-        case RegularCase(_, stmts) => stmts forall emptyStmt
-        case DefaultCase(stmts)    => stmts forall emptyStmt
+        case CaseRegular(_, stmts) => stmts forall emptyStmt
+        case CaseDefault(stmts)    => stmts forall emptyStmt
+        case _: CaseGen            => unreachable
       }
     }
     case _: StmtExpr    => true

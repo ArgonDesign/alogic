@@ -23,7 +23,10 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.frontend.Parser
+import com.argondesign.alogic.passes.AddCasts
+import com.argondesign.alogic.passes.ReplaceUnaryTicks
 import com.argondesign.alogic.transform.Regularize
+import com.argondesign.alogic.typer.ResolvePolyFunc
 import com.argondesign.alogic.util.unreachable
 
 trait TreeOps extends TreePrintOps { this: Tree =>
@@ -79,6 +82,21 @@ trait TreeOps extends TreePrintOps { this: Tree =>
     val result = this rewrite new Regularize(loc, assignTypes = true)
     assert(result eq this)
     this
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // Bring tree into a normal form that can be directly evaluated
+  ////////////////////////////////////////////////////////////////////////////////
+
+  def normalize[R <: Tree](implicit cc: CompilerContext): R = {
+    val res = this rewrite {
+      new ReplaceUnaryTicks
+    } rewrite {
+      new ResolvePolyFunc
+    } rewrite {
+      new AddCasts
+    }
+    res.asInstanceOf[R]
   }
 
   ////////////////////////////////////////////////////////////////////////////////

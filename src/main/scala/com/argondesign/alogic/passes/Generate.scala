@@ -10,7 +10,7 @@
 //
 // DESCRIPTION:
 //
-// Process 'gen' statements
+// Process 'gen' constructs
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.passes
@@ -33,10 +33,17 @@ import scala.collection.mutable.ListBuffer
 
 private trait Generatable {
   def isExpectedType(tree: Tree): Boolean
+  val description: String
 }
 
 private object generatableStmt extends Generatable {
   def isExpectedType(tree: Tree): Boolean = tree.isInstanceOf[Stmt]
+  val description = "statement"
+}
+
+private object generatableCase extends Generatable {
+  def isExpectedType(tree: Tree): Boolean = tree.isInstanceOf[Case]
+  val description = "case clause"
 }
 
 private final class Generate(
@@ -97,8 +104,11 @@ private final class Generate(
           }
         }
 
-      case tree @ GenFor(inits, Some(cond), steps, body) =>
-        typeCheck(inits ::: cond :: steps: _*) {
+      case tree @ GenFor(gInits, Some(cond), gSteps, body) =>
+        typeCheck(gInits ::: cond :: gSteps: _*) {
+          // normalize inits and steps so ticks and unsized constants are sized
+          val inits = gInits map { _.normalize[Stmt] }
+          val steps = gSteps map { _.normalize[Stmt] }
           if (cond.value.isDefined) {
             cc.error(cond, "'gen for' condition does not depend on loop variable")
             Nil
@@ -178,7 +188,7 @@ private final class Generate(
     }
   }
 
-  // Result of the outermost encountered Gen constcuct
+  // Result of the outermost encountered Gen construct
   private var generated: Option[List[Tree]] = None
 
   // Tree level
@@ -194,6 +204,10 @@ private final class Generate(
       case StmtGen(gen) =>
         generated = Some(generate(gen, generatableStmt))
 
+      // Root Gen that must produce case clauses
+      case CaseGen(gen) =>
+        generated = Some(generate(gen, generatableCase))
+
       // Gen nested inside outer Gen node, must produce whatever it's nested inside
       case gen: Gen =>
         assert(dispatcher.nonEmpty)
@@ -207,7 +221,8 @@ private final class Generate(
 
       // Otherwise die
       case _ if level == 0 =>
-        cc.error(tree, "'gen' construct yields invalid syntax")
+        val desc = dispatcher.get.description
+        cc.error(tree, s"'gen' construct yields invalid syntax, $desc is expected")
         generated = Some(Nil) // To prevent further descent
 
       case _ => ()
@@ -219,6 +234,19 @@ private final class Generate(
     tree match {
       // Replace outermost gen with the generate result
       case _: StmtGen => Thicket(generated.get) withLoc tree.loc
+
+      // Replace outermost gen with the generate result
+      case _: CaseGen => {
+        val result = generated.get
+        // Check we produced at most one default case
+        val defaultCases = result collect { case c: CaseDefault => c }
+        if (defaultCases.length > 1) {
+          for (loc <- (defaultCases map { _.loc }).distinct) {
+            cc.error(loc, "'gen' yields multiple default cases")
+          }
+        }
+        Thicket(result) withLoc tree.loc
+      }
 
       // Replace nested gen with the generated result
       case _: Gen => Thicket(generated.get) withLoc tree.loc
@@ -237,7 +265,9 @@ private final class Generate(
     assert(generated.isEmpty)
     assert(level == 0)
     tree visit {
-      case node: Gen => cc.ice(node, s"Gen remains")
+      case node: Gen     => cc.ice(node, s"Gen remains")
+      case node: StmtGen => cc.ice(node, s"StmtGen remains")
+      case node: CaseGen => cc.ice(node, s"CaseGen remains")
     }
   }
 }

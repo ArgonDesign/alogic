@@ -183,8 +183,9 @@ object Trees {
   case class StmtCase(expr: Expr, cases: List[Case]) extends Stmt
 
   sealed trait Case extends Tree { val stmts: List[Stmt] }
-  case class RegularCase(cond: List[Expr], stmts: List[Stmt]) extends Case
-  case class DefaultCase(stmts: List[Stmt]) extends Case
+  case class CaseRegular(cond: List[Expr], stmts: List[Stmt]) extends Case
+  case class CaseDefault(stmts: List[Stmt]) extends Case
+  case class CaseGen(gen: Gen) extends Case { val stmts = Nil }
 
   case class StmtLoop(body: List[Stmt]) extends Stmt
   case class StmtWhile(cond: Expr, body: List[Stmt]) extends Stmt

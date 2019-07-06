@@ -138,6 +138,7 @@ genitems : genitem* ;
 genitem
   : generate    # GenItemGen
   | statement   # GenItemStmt
+  | case_clause # GenItemCase
   ;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -177,8 +178,9 @@ let
   ;
 
 case_clause
-  : commaexpr ':' statement # RegularCase
-  | 'default' ':' statement # DefaultCase
+  : commaexpr ':' statement # CaseRegular
+  | 'default' ':' statement # CaseDefault
+  | generate                # CaseGen
   ;
 
 assignment

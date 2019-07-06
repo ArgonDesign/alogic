@@ -378,15 +378,16 @@ trait TreePrintOps { this: Tree =>
             |${i}}""".stripMargin
       }
 
-      case RegularCase(cond, Nil) => s"${cond map v mkString ", "} : {}"
-      case DefaultCase(Nil)       => s"default : {}"
+      case CaseRegular(cond, Nil) => s"${cond map v mkString ", "} : {}"
+      case CaseDefault(Nil)       => s"default : {}"
+      case CaseGen(gen)           => v(indent)(gen)
 
-      case RegularCase(cond, stmts) => {
+      case CaseRegular(cond, stmts) => {
         s"""|${cond map v mkString ", "} : {
             |${i}  ${stmts map v(indent + 1) mkString s"\n${i}  "}
             |${i}}""".stripMargin
       }
-      case DefaultCase(stmts) => {
+      case CaseDefault(stmts) => {
         s"""|default : {
             |${i}  ${stmts map v(indent + 1) mkString s"\n${i}  "}
             |${i}}""".stripMargin

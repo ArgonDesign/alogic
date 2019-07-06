@@ -50,8 +50,9 @@ final class RemoveUnused(unusedSymbols: Set[Symbol])(implicit cc: CompilerContex
     case StmtIf(_, eBody, tBody) => (eBody forall emptyStmt) && (tBody forall emptyStmt)
     case StmtCase(_, cases) => {
       cases forall {
-        case RegularCase(_, stmts) => stmts forall emptyStmt
-        case DefaultCase(stmts)    => stmts forall emptyStmt
+        case CaseRegular(_, stmts) => stmts forall emptyStmt
+        case CaseDefault(stmts)    => stmts forall emptyStmt
+        case _: CaseGen            => unreachable
       }
     }
     case _ => false

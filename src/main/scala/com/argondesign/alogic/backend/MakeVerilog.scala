@@ -20,6 +20,7 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.enums.ResetStyle
+import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable.ListBuffer
 
@@ -314,16 +315,17 @@ final class MakeVerilog(
       case StmtCase(cond, cases) => {
         body.emit(indent)(s"case (${vexpr(cond)})")
         cases foreach {
-          case RegularCase(conds, stmts) => {
+          case CaseRegular(conds, stmts) => {
             body.emit(indent + 1)(s"${conds map vexpr mkString ", "}: begin")
             stmts foreach { emitStatement(body, indent + 2, _) }
             body.emit(indent + 1)("end")
           }
-          case DefaultCase(stmts) => {
+          case CaseDefault(stmts) => {
             body.emit(indent + 1)("default: begin")
             stmts foreach { emitStatement(body, indent + 2, _) }
             body.emit(indent + 1)("end")
           }
+          case _: CaseGen => unreachable
         }
         body.emit(indent)(s"endcase")
       }

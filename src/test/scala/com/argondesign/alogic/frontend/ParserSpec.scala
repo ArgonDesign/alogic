@@ -969,8 +969,8 @@ final class ParserSpec extends FreeSpec with AlogicTest {
               StmtCase(
                 Expr(1),
                 List(
-                  RegularCase(List(Expr(1)), List(StmtExpr(ExprIdent("a")))),
-                  RegularCase(List(Expr(2)), List(StmtExpr(ExprIdent("b"))))
+                  CaseRegular(List(Expr(1)), List(StmtExpr(ExprIdent("a")))),
+                  CaseRegular(List(Expr(2)), List(StmtExpr(ExprIdent("b"))))
                 )
               )
             }
@@ -984,7 +984,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
               StmtCase(
                 Expr(1),
                 List(
-                  DefaultCase(List(StmtExpr(ExprIdent("c"))))
+                  CaseDefault(List(StmtExpr(ExprIdent("c"))))
                 )
               )
             }
@@ -999,8 +999,8 @@ final class ParserSpec extends FreeSpec with AlogicTest {
               StmtCase(
                 Expr(1),
                 List(
-                  RegularCase(List(Expr(1)), List(StmtExpr(ExprIdent("c")))),
-                  RegularCase(List(Expr(2), Expr(3)), List(StmtExpr(ExprIdent("d"))))
+                  CaseRegular(List(Expr(1)), List(StmtExpr(ExprIdent("c")))),
+                  CaseRegular(List(Expr(2), Expr(3)), List(StmtExpr(ExprIdent("d"))))
                 )
               )
             }
@@ -1015,8 +1015,8 @@ final class ParserSpec extends FreeSpec with AlogicTest {
               StmtCase(
                 Expr(1),
                 List(
-                  DefaultCase(List(StmtExpr(ExprIdent("c")))),
-                  DefaultCase(List(StmtExpr(ExprIdent("d"))))
+                  CaseDefault(List(StmtExpr(ExprIdent("c")))),
+                  CaseDefault(List(StmtExpr(ExprIdent("d"))))
                 )
               )
             }
@@ -1033,10 +1033,10 @@ final class ParserSpec extends FreeSpec with AlogicTest {
               StmtCase(
                 Expr(1),
                 List(
-                  RegularCase(List(Expr(1)), List(StmtExpr(ExprIdent("a")))),
-                  DefaultCase(List(StmtExpr(ExprIdent("b")))),
-                  RegularCase(List(Expr(3)), List(StmtExpr(ExprIdent("c")))),
-                  DefaultCase(List(StmtExpr(ExprIdent("d"))))
+                  CaseRegular(List(Expr(1)), List(StmtExpr(ExprIdent("a")))),
+                  CaseDefault(List(StmtExpr(ExprIdent("b")))),
+                  CaseRegular(List(Expr(3)), List(StmtExpr(ExprIdent("c")))),
+                  CaseDefault(List(StmtExpr(ExprIdent("d"))))
                 )
               )
             }
@@ -1051,8 +1051,8 @@ final class ParserSpec extends FreeSpec with AlogicTest {
               StmtCase(
                 Expr(1),
                 List(
-                  RegularCase(List(Expr(1)), List(StmtExpr(ExprIdent("a")))),
-                  DefaultCase(List(StmtExpr(ExprIdent("c"))))
+                  CaseRegular(List(Expr(1)), List(StmtExpr(ExprIdent("a")))),
+                  CaseDefault(List(StmtExpr(ExprIdent("c"))))
                 )
               )
             }
@@ -1067,8 +1067,8 @@ final class ParserSpec extends FreeSpec with AlogicTest {
               StmtCase(
                 Expr(1),
                 List(
-                  RegularCase(List(Expr(1)), List(StmtExpr(ExprIdent("a")))),
-                  DefaultCase(List(StmtExpr(ExprIdent("c"))))
+                  CaseRegular(List(Expr(1)), List(StmtExpr(ExprIdent("a")))),
+                  CaseDefault(List(StmtExpr(ExprIdent("c"))))
                 )
               )
             }

@@ -1,0 +1,28 @@
+network gen_for_case_0 {
+  in u8 p_i;
+
+  out u8 p_o4;
+  out u8 p_o9;
+
+  fsm inner {
+    param uint P;
+
+    out u8 p_o;
+
+    void main() {
+      case (p_i) {
+        gen for (u8 N = 1; N < P; N++) {
+          N : p_o.write(p_i ^ N);
+        }
+        default: p_o.write(p_i);
+      }
+      fence;
+    }
+  }
+
+  i_4 = new inner(P=4);
+  i_9 = new inner(P=9);
+
+  i_4.p_o -> p_o4;
+  i_9.p_o -> p_o9;
+}

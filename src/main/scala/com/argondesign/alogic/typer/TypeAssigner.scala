@@ -34,8 +34,8 @@ final object TypeAssigner {
   private def kind(tree: Tree)(implicit cc: CompilerContext): Type = tree match {
     case node: Expr           => kind(node)
     case node: Stmt           => kind(node)
-    case node: RegularCase    => kind(node)
-    case node: DefaultCase    => kind(node)
+    case node: CaseRegular    => kind(node)
+    case node: CaseDefault    => kind(node)
     case node: Entity         => kind(node)
     case node: Decl           => kind(node)
     case node: Instance       => kind(node)
@@ -49,6 +49,7 @@ final object TypeAssigner {
     case _: DeclIdent         => unreachable
     case _: Ident             => unreachable
     case _: Gen               => unreachable
+    case _: CaseGen           => unreachable
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -63,8 +64,8 @@ final object TypeAssigner {
   private def kind(node: State) = TypeMisc
   private def kind(node: TypeDefinition) = TypeMisc
   private def kind(node: Thicket) = TypeMisc
-  private def kind(node: RegularCase) = TypeMisc
-  private def kind(node: DefaultCase) = TypeMisc
+  private def kind(node: CaseRegular) = TypeMisc
+  private def kind(node: CaseDefault) = TypeMisc
 
   //////////////////////////////////////////////////////////////////////////////
   // Typing Sym
@@ -324,8 +325,8 @@ final object TypeAssigner {
   def apply(node: State): node.type = assign(node)(kind(node))
   def apply(node: TypeDefinition): node.type = assign(node)(kind(node))
   def apply(node: Thicket): node.type = assign(node)(kind(node))
-  def apply(node: RegularCase): node.type = assign(node)(kind(node))
-  def apply(node: DefaultCase): node.type = assign(node)(kind(node))
+  def apply(node: CaseRegular): node.type = assign(node)(kind(node))
+  def apply(node: CaseDefault): node.type = assign(node)(kind(node))
   def apply(node: Sym): node.type = assign(node)(kind(node))
 
   // Stmt

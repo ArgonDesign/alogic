@@ -25,6 +25,7 @@ import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Stack
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.FollowedBy
+import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -154,8 +155,9 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
         // Allocate in reverse order so the pendingStates stack is
         // the right way around when emitting the states
         cases.reverse foreach {
-          case RegularCase(_, stmts) => allocateStates(stmts)
-          case DefaultCase(stmts)    => allocateStates(stmts)
+          case CaseRegular(_, stmts) => allocateStates(stmts)
+          case CaseDefault(stmts)    => allocateStates(stmts)
+          case _: CaseGen            => unreachable
         }
 
       case StmtLoop(body) => {
@@ -341,22 +343,23 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
         lazy val implicitGoto = List(StmtGoto(ExprRef(followingState.top)))
 
         val newCases = cases map {
-          case RegularCase(cond, Nil) => RegularCase(cond, implicitGoto)
-          case DefaultCase(Nil)       => DefaultCase(implicitGoto)
-          case RegularCase(cond, stmts) =>
+          case CaseRegular(cond, Nil) => CaseRegular(cond, implicitGoto)
+          case CaseDefault(Nil)       => CaseDefault(implicitGoto)
+          case CaseRegular(cond, stmts) =>
             val head :: tail = splitControlUnits(stmts)
             tail foreach emitState
-            RegularCase(cond, head)
-          case DefaultCase(stmts) =>
+            CaseRegular(cond, head)
+          case CaseDefault(stmts) =>
             val head :: tail = splitControlUnits(stmts)
             tail foreach emitState
-            DefaultCase(head)
+            CaseDefault(head)
+          case _: CaseGen => unreachable
         }
 
-        if (cases exists { _.isInstanceOf[DefaultCase] }) {
+        if (cases exists { _.isInstanceOf[CaseDefault] }) {
           stmt.copy(cases = newCases) regularize tree.loc
         } else {
-          stmt.copy(cases = DefaultCase(implicitGoto) :: newCases) regularize tree.loc
+          stmt.copy(cases = CaseDefault(implicitGoto) :: newCases) regularize tree.loc
         }
       }
 

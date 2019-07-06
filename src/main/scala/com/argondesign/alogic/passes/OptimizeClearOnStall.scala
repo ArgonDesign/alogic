@@ -59,8 +59,9 @@ final class OptimizeClearOnStall(implicit cc: CompilerContext) extends TreeTrans
         }
         case StmtCase(_, cases) => {
           cases flatMap {
-            case RegularCase(_, stmts) => enumeratePaths(stmts)
-            case DefaultCase(stmts)    => enumeratePaths(stmts)
+            case CaseRegular(_, stmts) => enumeratePaths(stmts)
+            case CaseDefault(stmts)    => enumeratePaths(stmts)
+            case _: CaseGen            => unreachable
           }
         }
         case _ => unreachable

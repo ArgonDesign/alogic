@@ -123,22 +123,8 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
       }
 
       override def visitStmtCase(ctx: StmtCaseContext) = {
-        object CaseVisitor extends AlogicScalarVisitor[Case] {
-          override def visitRegularCase(ctx: RegularCaseContext) = {
-            val cond = ExprBuilder(ctx.commaexpr.expr)
-            val stmts = makeStmtList(self(ctx.statement))
-            RegularCase(cond, stmts) withLoc ctx.loc
-          }
-          override def visitDefaultCase(ctx: DefaultCaseContext) = {
-            val stmts = makeStmtList(self(ctx.statement))
-            DefaultCase(stmts) withLoc ctx.loc
-          }
-        }
-
         val value = ExprBuilder(ctx.expr)
-
-        val cases = ctx.case_clause.asScala.toList map { CaseVisitor(_) }
-
+        val cases = ctx.case_clause.asScala.toList map { CaseBuilder(_) }
         StmtCase(value, cases) withLoc ctx.loc
       }
 

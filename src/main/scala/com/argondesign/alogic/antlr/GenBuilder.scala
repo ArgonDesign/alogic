@@ -33,6 +33,8 @@ object GenBuilder extends BaseBuilder[ParserRuleContext, Gen] {
       override def visitGenItemGen(ctx: GenItemGenContext): Tree = GenBuilder(ctx)
 
       override def visitGenItemStmt(ctx: GenItemStmtContext): Tree = StmtBuilder(ctx)
+
+      override def visitGenItemCase(ctx: GenItemCaseContext): Tree = CaseBuilder(ctx)
     }
 
     object GenVisitor extends AlogicScalarVisitor[Gen] { self =>

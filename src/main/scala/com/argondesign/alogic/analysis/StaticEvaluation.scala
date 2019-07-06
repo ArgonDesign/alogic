@@ -204,14 +204,14 @@ object StaticEvaluation {
           // Ensure default comes at the front, as that's
           // how we are computing the 'befores' below
           val defaultStmt = cases.collectFirst {
-            case DefaultCase(stmts) => StmtBlock(stmts)
+            case CaseDefault(stmts) => StmtBlock(stmts)
           } getOrElse StmtBlock(Nil)
-          val regularStmts = cases collect { case RegularCase(_, stmts) => StmtBlock(stmts) }
+          val regularStmts = cases collect { case CaseRegular(_, stmts) => StmtBlock(stmts) }
           val stmts = defaultStmt :: regularStmts
 
           val befores = {
             val constraints = cases collect {
-              case node @ RegularCase(conds, _) =>
+              case node @ CaseRegular(conds, _) =>
                 conds map { ExprBinary(_, "==", value) } reduce { _ || _ } regularize node.loc
             }
 

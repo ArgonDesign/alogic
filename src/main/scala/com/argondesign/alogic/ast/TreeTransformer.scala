@@ -240,14 +240,18 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
           val cases = walk(node.cases)
           doTransform(TreeCopier(node)(expr, cases))
         }
-        case node: RegularCase => {
+        case node: CaseRegular => {
           val cond = walk(node.cond)
           val stmts = walk(node.stmts)
           doTransform(TreeCopier(node)(cond, stmts))
         }
-        case node: DefaultCase => {
+        case node: CaseDefault => {
           val stmts = walk(node.stmts)
           doTransform(TreeCopier(node)(stmts))
+        }
+        case node: CaseGen => {
+          val gen = walk(node.gen)
+          doTransform(TreeCopier(node)(gen))
         }
         case node: StmtLoop => {
           val body = walk(node.body)

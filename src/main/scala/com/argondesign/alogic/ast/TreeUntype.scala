@@ -22,26 +22,27 @@ import com.argondesign.alogic.util.unreachable
 trait TreeUntype {
 
   def untype(tree: Tree): Tree = tree match {
-    case node: EntityNamed           => untype(node)
-    case node: EntityLowered         => untype(node)
-    case node: Sym                   => untype(node)
-    case node: Decl                  => untype(node)
-    case node: Instance              => untype(node)
-    case node: Connect               => untype(node)
-    case node: Function              => untype(node)
-    case node: State                 => untype(node)
-    case node: Thicket               => untype(node)
-    case node: RegularCase           => untype(node)
-    case node: DefaultCase           => untype(node)
-    case node: Expr                  => untype(node)
-    case node: Stmt                  => untype(node)
-    case node: TypeDefinitionTypedef => unreachable
-    case node: TypeDefinitionStruct  => unreachable
-    case node: Ident                 => unreachable
-    case node: DeclIdent             => unreachable
-    case node: Root                  => unreachable
-    case node: EntityIdent           => unreachable
-    case node: Gen                   => unreachable
+    case node: EntityNamed        => untype(node)
+    case node: EntityLowered      => untype(node)
+    case node: Sym                => untype(node)
+    case node: Decl               => untype(node)
+    case node: Instance           => untype(node)
+    case node: Connect            => untype(node)
+    case node: Function           => untype(node)
+    case node: State              => untype(node)
+    case node: Thicket            => untype(node)
+    case node: CaseRegular        => untype(node)
+    case node: CaseDefault        => untype(node)
+    case node: Expr               => untype(node)
+    case node: Stmt               => untype(node)
+    case _: TypeDefinitionTypedef => unreachable
+    case _: TypeDefinitionStruct  => unreachable
+    case _: Ident                 => unreachable
+    case _: DeclIdent             => unreachable
+    case _: Root                  => unreachable
+    case _: EntityIdent           => unreachable
+    case _: Gen                   => unreachable
+    case _: CaseGen               => unreachable
   }
 
   def untype(tree: Stmt): Stmt = tree match {
@@ -148,13 +149,13 @@ trait TreeUntype {
       body = untype(node.body)
     ) withLoc node.loc
 
-  def untype(node: RegularCase): RegularCase =
+  def untype(node: CaseRegular): CaseRegular =
     node.copy(
       cond = untype(node.cond),
       stmts = untype(node.stmts)
     ) withLoc node.loc
 
-  def untype(node: DefaultCase): DefaultCase =
+  def untype(node: CaseDefault): CaseDefault =
     node.copy(
       stmts = untype(node.stmts)
     ) withLoc node.loc

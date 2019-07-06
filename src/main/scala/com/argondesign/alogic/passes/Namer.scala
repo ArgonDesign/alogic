@@ -303,8 +303,8 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         }
       }
 
-      case _: RegularCase => Scopes.push()
-      case _: DefaultCase => Scopes.push()
+      case _: CaseRegular => Scopes.push()
+      case _: CaseDefault => Scopes.push()
 
       case ExprCall(ExprIdent("@bits"), arg :: _) if arg.isTypeExpr => {
         assert(!atBitsEitherTypeOrTerm)
@@ -469,11 +469,11 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         Scopes.pop()
       }
 
-    case node: RegularCase =>
+    case node: CaseRegular =>
       node followedBy {
         Scopes.pop()
       }
-    case node: DefaultCase =>
+    case node: CaseDefault =>
       node followedBy {
         Scopes.pop()
       }
