@@ -28,6 +28,7 @@ import com.argondesign.alogic.util.BigIntOps._
 import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.tailrec
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 private trait Generatable {
@@ -104,9 +105,16 @@ private final class Generate(
               }
             }
             val StepStmt = TypeAssigner(StmtBlock(steps) withLoc tree.loc)
+            val history = mutable.Set[Bindings]()
             val terminate = { bindings: Bindings =>
-              // TODO: ensure no infinite loop
-              (cond given bindings).value map { _ == 0 }
+              val b = bindings mapValues { _.simplify }
+              if (history contains b) {
+                cc.error(cond, "'gen for' does not terminate")
+                Some(true)
+              } else {
+                history add b
+                (cond given bindings).value map { _ == 0 }
+              }
             }
             generateFor(initBindings, terminate, cond.loc, body, StepStmt)
           }
