@@ -23,6 +23,7 @@ read in linear order to provide an introduction to Alogic.
 - [Distributed memories](memories.md)
 - [SRAMs](srams.md)
 - [Built-in functions](builtins.md)
+- [Compile time code generation](gen.md)
 - [Verilog interoperability](interop.md)
 - [Preprocessor](preproc.md)
 - [List of keywords](../src/main/antlr4/AlogicLexer.g4#L133)

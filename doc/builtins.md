@@ -1,7 +1,7 @@
 <p align="center">
 <a href="srams.md">Previous</a> |
 <a href="index.md">Index</a> |
-<a href="interop.md">Next</a>
+<a href="gen.md">Next</a>
 </p>
 
 # Built-in functions
@@ -151,5 +151,5 @@ Sign extending an unsigned value is defined as extension by the MSB.
 <p align="center">
 <a href="srams.md">Previous</a> |
 <a href="index.md">Index</a> |
-<a href="interop.md">Next</a>
+<a href="gen.md">Next</a>
 </p>

@@ -1,5 +1,5 @@
 <p align="center">
-<a href="builtins.md">Previous</a> |
+<a href="gen.md">Previous</a> |
 <a href="index.md">Index</a> |
 <a href="preproc.md">Next</a>
 </p>
@@ -480,7 +480,7 @@ complex; its interface signals simply need to be mapped to Alogic ports by the
 designer.
 
 <p align="center">
-<a href="builtins.md">Previous</a> |
+<a href="gen.md">Previous</a> |
 <a href="index.md">Index</a> |
 <a href="preproc.md">Next</a>
 </p>
