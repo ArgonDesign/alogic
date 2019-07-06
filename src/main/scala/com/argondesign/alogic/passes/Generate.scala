@@ -54,8 +54,13 @@ private final class Generate(
     if (trees map typer exists { _.tpe.isError }) Nil else result
   }
 
+  private def flattenThickets(tree: Tree): List[Tree] = tree match {
+    case Thicket(trees) => trees
+    case tree           => List(tree)
+  }
+
   // Compute the generated tree from generate
-  private def generate(tree: Tree, dispatcher: Generatable): List[Tree] = {
+  private def generate(gen: Gen, dispatcher: Generatable): List[Tree] = {
     def generateFor(bindings: Bindings,
                     terminate: Bindings => Option[Boolean],
                     loc: Loc,
@@ -68,7 +73,7 @@ private final class Generate(
         case None => cc.error(loc, "Condition of 'gen for' is not a compile time constant")
         case Some(false) =>
           val subGenerate = new Generate(bindings, Some(dispatcher))
-          buf appendAll { body map subGenerate }
+          buf appendAll { body map subGenerate flatMap flattenThickets }
           loop(StaticEvaluation(step, bindings)._2)
         case _ => ()
       }
@@ -80,15 +85,15 @@ private final class Generate(
 
     lazy val subGenerate = new Generate(bindings, Some(dispatcher))
 
-    tree match {
+    gen match {
       case GenIf(cond, thenItems, elseItems) =>
         typeCheck(cond) {
           (cond given bindings).value match {
             case None =>
               cc.error(cond, "Condition of 'gen if' is not a compile time constant")
               Nil
-            case Some(v) if v != 0 => thenItems map subGenerate
-            case _                 => elseItems map subGenerate
+            case Some(v) if v != 0 => thenItems map subGenerate flatMap flattenThickets
+            case _                 => elseItems map subGenerate flatMap flattenThickets
           }
         }
 
@@ -167,7 +172,9 @@ private final class Generate(
           }
         }
 
-      case _ => unreachable
+      case GenFor(_, None, _, _)               => unreachable
+      case GenRange(Decl(_, Some(_)), _, _, _) => unreachable
+      case GenRange(_: DeclIdent, _, _, _)     => unreachable
     }
   }
 
@@ -201,7 +208,7 @@ private final class Generate(
       // Otherwise die
       case _ if level == 0 =>
         cc.error(tree, "'gen' construct yields invalid syntax")
-        generated = Some(Nil)
+        generated = Some(Nil) // To prevent further descent
 
       case _ => ()
     }

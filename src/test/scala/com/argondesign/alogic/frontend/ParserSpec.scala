@@ -1808,6 +1808,55 @@ final class ParserSpec extends FreeSpec with AlogicTest {
               )
             }
           }
+
+          "with 1 else if" in {
+            """|gen if (i) {
+               |  fence;
+               |} else if (j) {
+               |  return;
+               |} else {
+               |  break;
+               |}""".stripMargin.asTree[Gen] shouldBe {
+              GenIf(
+                ExprIdent("i"),
+                List(StmtFence()),
+                List(
+                  GenIf(
+                    ExprIdent("j"),
+                    List(StmtReturn()),
+                    List(StmtBreak())
+                  ))
+              )
+            }
+          }
+
+          "with 2 else if" in {
+            """|gen if (i) {
+               |  fence;
+               |} else if (j) {
+               |  return;
+               |} else if (k) {
+               |  f();
+               |} else {
+               |  break;
+               |}""".stripMargin.asTree[Gen] shouldBe {
+              GenIf(
+                ExprIdent("i"),
+                List(StmtFence()),
+                List(
+                  GenIf(
+                    ExprIdent("j"),
+                    List(StmtReturn()),
+                    List(
+                      GenIf(
+                        ExprIdent("k"),
+                        List(StmtExpr(ExprCall(ExprIdent("f"), Nil))),
+                        List(StmtBreak())
+                      ))
+                  ))
+              )
+            }
+          }
         }
 
         "for" - {

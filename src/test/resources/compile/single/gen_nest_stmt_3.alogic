@@ -1,0 +1,34 @@
+network gen_nest_stmt_3 {
+  in u32 p_i;
+
+  out u32 p_o4;
+  out u32 p_o9;
+
+  fsm inner {
+    param uint P;
+
+    out u32 p_o;
+
+    void main() {
+      u32 b = p_i;
+      gen for (uint N = 0; N < P; N += 1) {
+        u32 t0 = N;
+        gen for (uint M = 0 ; M <= N; M += 1) {
+          u32 t1 = M;
+          gen for (uint O = 0 ; O <= M; O += 1) {
+            u32 t2 = O;
+            b += t0 + t1 + t2;
+          }
+        }
+      }
+      p_o.write(b);
+      fence;
+    }
+  }
+
+  i_4 = new inner(P=4);
+  i_9 = new inner(P=9);
+
+  i_4.p_o -> p_o4;
+  i_9.p_o -> p_o9;
+}

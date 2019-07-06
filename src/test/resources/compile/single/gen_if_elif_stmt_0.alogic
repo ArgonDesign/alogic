@@ -1,0 +1,33 @@
+network gen_if_elif_stmt_0 {
+  in bool p_i;
+
+  out bool p_opp;
+  out bool p_onp;
+  out bool p_onn;
+
+  fsm inner {
+    param bool P;
+    param bool Q;
+
+    out bool p_o;
+
+    void main() {
+      gen if (P) {
+        p_o.write(p_i);
+      } else if (Q) {
+        p_o.write(~p_i);
+      } else {
+        p_o.write(0);
+      }
+      fence;
+    }
+  }
+
+  pp = new inner(P=true, Q=true);
+  np = new inner(P=false, Q=true);
+  nn = new inner(P=false, Q=false);
+
+  pp.p_o -> p_opp;
+  np.p_o -> p_onp;
+  nn.p_o -> p_onn;
+}

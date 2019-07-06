@@ -126,10 +126,14 @@ param_assigns : (IDENTIFIER '=' expr (','  IDENTIFIER '=' expr)*)? ;
 generate : 'gen' gen ;
 
 gen
-  : 'if' '(' expr ')' '{' (thens+=genitem)* '}' ('else' '{' (elses+=genitem)* '}')? # GenIf
-  | 'for' '(' loop_init? ';' expr? ';' for_steps? ')' '{' genitem* '}'              # GenFor
-  | 'for' '(' kind IDENTIFIER op=('<' | '<=')  expr ')' '{' genitem* '}'            # GenRange
+  : 'if' '(' thenCond=expr ')' '{' thenItems=genitems '}'
+    ('else' 'if' '(' elifCond+=expr ')' '{' elifItems+=genitems '}')*
+    ('else' '{' elseItems=genitems '}')?                                    # GenIf
+  | 'for' '(' loop_init? ';' expr? ';' for_steps? ')' '{' genitems '}'      # GenFor
+  | 'for' '(' kind IDENTIFIER op=('<' | '<=')  expr ')' '{' genitems '}'    # GenRange
   ;
+
+genitems : genitem* ;
 
 genitem
   : generate    # GenItemGen

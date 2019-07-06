@@ -332,7 +332,7 @@ trait TreePrintOps { this: Tree =>
             |${i}  ${thenItems map v(indent + 1) mkString s"\n${i}  "}
             |${i}} else {
             |${i}  ${elseItems map v(indent + 1) mkString s"\n${i}  "}
-            |${i}} """.stripMargin
+            |${i}}""".stripMargin
       }
       case GenFor(inits, cond, steps, body) => {
         val initsStr = inits map v(indent) mkString s", "
