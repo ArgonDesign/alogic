@@ -1,0 +1,30 @@
+network gen_for_scope_1 {
+  in bool p_i;
+
+  out bool p_o4;
+  out bool p_o9;
+
+  fsm inner {
+    param uint P;
+
+    out bool p_o;
+
+    void main() {
+      (* shaded *) bool b = p_i;
+      gen for (uint N = 0 ; N < P; N++) {
+        bool b = ~b;
+        p_o.write(b);
+        fence;
+      }
+      bool N = b;
+      p_o.write(N);
+      fence;
+    }
+  }
+
+  i_4 = new inner(P=4);
+  i_9 = new inner(P=9);
+
+  i_4.p_o -> p_o4;
+  i_9.p_o -> p_o9;
+}

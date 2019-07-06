@@ -116,11 +116,13 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         }
         case None => {
           lookup(name) foreach { oldSymbol =>
-            cc.warning(
-              symbol.loc,
-              s"Definition of ${flavour} '${name}' hides previous definition at",
-              oldSymbol.loc.prefix
-            )
+            if (!oldSymbol.attr.shaded.isSet) {
+              cc.warning(
+                symbol.loc,
+                s"Definition of ${flavour} '${name}' hides previous definition at",
+                oldSymbol.loc.prefix
+              )
+            }
           }
           current(name) = symbol
         }
