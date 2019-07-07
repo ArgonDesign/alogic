@@ -117,9 +117,9 @@ object EntityBuilder extends BaseBuilder[EntityContext, EntityIdent] {
         val verbatim = {
           val blocks = contents collect { case x: VerbatimBlock          => x }
           val blockMap = blocks groupBy { case VerbatimBlock(lang, text) => lang }
-          blockMap mapValues { list =>
+          (blockMap.view mapValues { list =>
             list map { _.text.tail.init } mkString "\n"
-          }
+          }).toMap
         }
 
         val variantAttr = Map("//variant" -> (ExprStr(ctx.variant.text) withLoc ctx.loc))

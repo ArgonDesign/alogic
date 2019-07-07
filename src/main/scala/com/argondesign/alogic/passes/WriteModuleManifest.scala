@@ -31,6 +31,7 @@ import com.argondesign.alogic.core.Types.TypeIn
 import com.argondesign.alogic.core.Types.TypeOut
 import com.argondesign.alogic.util.unreachable
 
+import scala.collection.parallel.CollectionConverters._
 import scala.language.postfixOps
 
 object WriteModuleManifest extends Pass {

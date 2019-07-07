@@ -57,7 +57,7 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
   )(
       check: PartialFunction[T, String]
   ) = addValidation {
-    option.toOption flatMap check.lift map { Left(_) } getOrElse Right(Unit)
+    option.toOption flatMap check.lift map { Left(_) } getOrElse Right(())
   }
 
   private[this] def validateListOption[T](
@@ -69,7 +69,7 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
     if (msgs.nonEmpty) {
       Left(msgs mkString ("\n", "\n", ""))
     } else {
-      Right(Unit)
+      Right(())
     }
   }
 
@@ -103,7 +103,7 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
         Left(s"Option '${option.name}' must be one of: " + (choices mkString " "))
       }
     } getOrElse {
-      Right(Unit)
+      Right(())
     }
   }
 
@@ -159,13 +159,13 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
       val basePath = base.toPath.toRealPath()
       val bad = ys filterNot { _.toPath.toRealPath() startsWith basePath }
       if (bad.isEmpty) {
-        Right(Unit)
+        Right(())
       } else {
         val msgs = for (file <- bad) yield s"-y '${file}' is not under --srcbase '${base}'"
         Left(msgs mkString "\n")
       }
     }
-    case _ => Right(Unit)
+    case _ => Right(())
   }
 
   val sep = opt[String](

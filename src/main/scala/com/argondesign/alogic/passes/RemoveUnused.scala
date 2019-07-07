@@ -18,8 +18,8 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.analysis.ReadSymbols
 import com.argondesign.alogic.analysis.WrittenSymbols
 import com.argondesign.alogic.ast.TreeTransformer
-import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.ast.Trees.Expr.InstancePortRef
+import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
@@ -29,6 +29,7 @@ import com.argondesign.alogic.util.unreachable
 import scala.annotation.tailrec
 import scala.collection.immutable.HashSet
 import scala.collection.mutable
+import scala.collection.parallel.CollectionConverters._
 
 final class RemoveUnused(unusedSymbols: Set[Symbol])(implicit cc: CompilerContext)
     extends TreeTransformer {

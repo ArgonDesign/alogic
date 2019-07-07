@@ -32,6 +32,7 @@ import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.tailrec
 import scala.collection.mutable
+import scala.collection.parallel.CollectionConverters._
 import scala.language.postfixOps
 
 final class LiftSramsFrom(

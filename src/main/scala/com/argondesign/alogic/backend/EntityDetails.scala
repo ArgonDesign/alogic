@@ -184,11 +184,11 @@ final class EntityDetails(val entity: EntityLowered, details: => Map[TypeSymbol,
       }
     }
 
-    val groupped = trip groupBy { _._1 } mapValues { _ map { case (_, s, e) => (s, e) } }
+    val grouped = trip.groupMap({ _._1 })({ case (_, s, e) => (s, e) })
 
-    groupped mapValues { pairs =>
+    (grouped.view mapValues { pairs =>
       pairs.toMap ensuring { _.size == pairs.length }
-    }
+    }).toMap
   }
 
   // Connects that are not of the form 'a.b -> SOMETHING' or 'SOMETHING -> a.b'

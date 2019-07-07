@@ -160,10 +160,10 @@ final class LiftEntities(implicit cc: CompilerContext)
       //////////////////////////////////////////////////////////////////////////
 
       lazy val rewrite: Expr => Expr = {
-        val bindings = freshConstSymbols.top mapValues { innerSymbol =>
+        val bindings = freshConstSymbols.top.view mapValues { innerSymbol =>
           ExprRef(innerSymbol) regularize innerSymbol.loc
         }
-        _ given bindings
+        _ given bindings.toMap
       }
       for (innerSymbol <- freshConstSymbols.top.values) {
         innerSymbol.attr.init set rewrite(innerSymbol.attr.init.value)

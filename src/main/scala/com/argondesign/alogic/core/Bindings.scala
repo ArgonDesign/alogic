@@ -54,7 +54,7 @@ class Bindings(val underlying: Map[TermSymbol, Expr]) extends AnyVal {
   }
 
   def mapValues(f: Expr => Expr): Bindings = {
-    underlying mapValues f
+    (underlying.view mapValues f).toMap
   }
 
   def map(f: ((TermSymbol, Expr)) => (TermSymbol, Expr)): Bindings = {

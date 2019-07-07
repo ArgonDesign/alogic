@@ -74,7 +74,7 @@ object Liveness {
   def usedRv(expr: Expr)(implicit cc: CompilerContext): SymbolBitSet = {
     val acc = mutable.Map[TermSymbol, BigInt]() withDefaultValue BigInt(0)
     incorporate(acc, usedRvalMaps(expr))
-    acc.toMap mapValues { _.toBitSet }
+    (acc.view mapValues { _.toBitSet }).toMap
   }
 
   // Given an expression, return a SymbolBitSet that holds bits that might be
@@ -99,7 +99,7 @@ object Liveness {
 
     gather(lval)
 
-    acc.toMap mapValues { _.toBitSet }
+    (acc.view mapValues { _.toBitSet }).toMap
   }
 
   // Given an expression, return a SymbolBitSet that holds bits that are known
@@ -146,7 +146,7 @@ object Liveness {
       }
     }
 
-    loop(lval) mapValues { _.toBitSet }
+    (loop(lval).view mapValues { _.toBitSet }).toMap
   }
 
   // Perform bit-wise accurate liveness analysis of given statements. It

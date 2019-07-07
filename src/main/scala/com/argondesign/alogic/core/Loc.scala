@@ -62,13 +62,14 @@ case class Loc(source: Source, start: Int, end: Int, point: Int) {
       }
     }
 
-    val txt = sb.linesWithSeparators.toVector
-    if (txt.lengthCompare(8) <= 0) {
-      sb.toString
+    val txt = sb.toString
+    val lns = txt split '\n'
+    if (lns.lengthCompare(8) <= 0) {
+      txt
     } else {
-      (txt.take(4) ++
-        Vector(colourOff, colourBold, "  ... omitted ...\n", colourOff, colourOn) ++
-        txt.takeRight(4)) mkString ""
+      (lns.take(4) ++
+        Vector(colourOff, colourBold, "  ... omitted ...", colourOff, colourOn) ++
+        lns.takeRight(4)) mkString "\n"
     }
   }
   def line(implicit cc: CompilerContext): Int = cc.remapLine(source, source.lineFor(start))._2

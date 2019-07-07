@@ -20,6 +20,8 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.TypeSymbol
 import com.argondesign.alogic.passes.Pass
 
+import scala.collection.parallel.CollectionConverters._
+
 object CodeGeneration extends Pass {
   val name = "code-generation"
 

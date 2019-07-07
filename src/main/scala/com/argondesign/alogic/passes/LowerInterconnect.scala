@@ -188,7 +188,7 @@ final class LowerInterconnect(implicit cc: CompilerContext)
                 select -> sink
               }
             }
-            pairs groupBy { _._1 } mapValues { _ map { _._2 } }
+            pairs.groupMap(_._1)(_._2)
           }
 
           // For ports with multiple sinks, compute the map from

@@ -24,10 +24,9 @@ organization := "com.argondesign"
 // Scala compiler
 ////////////////////////////////////////////////////////////////////////////////
 
-scalaVersion := "2.12.4"
+scalaVersion := "2.13.0"
 
-scalacOptions ++= Seq("-deprecation",
-                      "-feature",
+scalacOptions ++= Seq("-feature",
                       "-explaintypes",
                       "-unchecked",
                       "-Xlint:_")
@@ -36,9 +35,10 @@ scalacOptions ++= Seq("-deprecation",
 // Library dependencies
 ////////////////////////////////////////////////////////////////////////////////
 
-libraryDependencies += "org.scala-lang.modules" % "scala-java8-compat_2.12" % "0.8.0"
-
 libraryDependencies += "org.rogach" %% "scallop" % "3.3.1"
+
+libraryDependencies +=
+  "org.scala-lang.modules" %% "scala-parallel-collections" % "0.2.0"
 
 ////////////////////////////////////////////////////////////////////////////////
 // Testing dependencies

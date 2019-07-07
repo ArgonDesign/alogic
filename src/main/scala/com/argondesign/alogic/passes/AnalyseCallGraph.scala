@@ -95,7 +95,7 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
 
   // Map from caller -> Set(callee)
   private[this] lazy val calleeMap = {
-    callArcSet.groupBy(_._1) mapValues { _ map { _._2 } } withDefaultValue Set.empty
+    callArcSet.groupMap(_._1)(_._2) withDefaultValue Set.empty
   }
 
   //////////////////////////////////////////////////////////////////////////////

@@ -240,7 +240,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         for (Function(ident: Ident, _) <- node.functions) {
           // Name the source attributes of the function
           if (ident.hasAttr) {
-            ident withAttr { ident.attr mapValues { walk(_).asInstanceOf[Expr] } }
+            ident withAttr { (ident.attr.view mapValues { walk(_).asInstanceOf[Expr] }).toMap }
           }
 
           val symbol = cc.newTermSymbol(ident, TypeCtrlFunc(Nil, TypeVoid))
@@ -257,7 +257,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         for (EntityIdent(ident, _, _, _, _, _, _, _) <- node.entities) {
           // Name the source attributes of the nested entities
           if (ident.hasAttr) {
-            ident withAttr { ident.attr mapValues { walk(_).asInstanceOf[Expr] } }
+            ident withAttr { (ident.attr.view mapValues { walk(_).asInstanceOf[Expr] }).toMap }
           }
 
           val symbol = cc.newTypeSymbol(ident, TypeEntity("", Nil, Nil))
