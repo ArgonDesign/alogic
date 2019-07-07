@@ -44,7 +44,7 @@ libraryDependencies += "org.rogach" %% "scallop" % "3.3.1"
 // Testing dependencies
 ////////////////////////////////////////////////////////////////////////////////
 
-libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.4" % "test"
+libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.8" % "test"
 
 logBuffered in Test := false
 
