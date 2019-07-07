@@ -38,7 +38,7 @@ scalacOptions ++= Seq("-deprecation",
 
 libraryDependencies += "org.scala-lang.modules" % "scala-java8-compat_2.12" % "0.8.0"
 
-libraryDependencies += "org.rogach" %% "scallop" % "3.1.2"
+libraryDependencies += "org.rogach" %% "scallop" % "3.3.1"
 
 ////////////////////////////////////////////////////////////////////////////////
 // Testing dependencies
