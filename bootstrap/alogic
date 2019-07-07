@@ -18,7 +18,7 @@
 # variable below. Similarly, a naked 'alogic update' will update to the
 # refspec given in DEFAULT_VERSION.
 
-DEFAULT_VERSION=3.0.x
+DEFAULT_VERSION=4.0.x
 
 INSTALL_DIR="$HOME/.alogic"
 
