@@ -162,12 +162,9 @@ object Liveness {
         cLive: SymbolBitSet,
         cDead: SymbolBitSet,
         stmts: List[Stmt]
-    ): (SymbolBitSet, SymbolBitSet) = {
-      if (stmts.isEmpty) {
-        (cLive, cDead)
-      } else {
-        val head :: tail = stmts
-
+    ): (SymbolBitSet, SymbolBitSet) = stmts match {
+      case Nil => (cLive, cDead)
+      case head :: tail =>
         val (nLive, nDead) = head match {
           case StmtAssign(lhs, rhs) => {
             val readRhs = usedRv(rhs)
@@ -245,7 +242,6 @@ object Liveness {
         }
 
         analyse(nLive, nDead, tail)
-      }
     }
 
     analyse(SymbolBitSet.empty, SymbolBitSet.empty, stmts)

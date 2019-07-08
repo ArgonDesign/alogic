@@ -47,36 +47,34 @@ final class OptimizeClearOnStall(implicit cc: CompilerContext) extends TreeTrans
       case _             => false
     }
 
-    if (rest.isEmpty) {
-      List(init)
-    } else {
-      val branch :: tail = rest
-
-      val branches = branch match {
-        case StmtBlock(body) => enumeratePaths(body)
-        case StmtIf(_, thenStmts, elseStmts) => {
-          enumeratePaths(thenStmts) ::: enumeratePaths(elseStmts)
-        }
-        case StmtCase(_, cases) => {
-          cases flatMap {
-            case CaseRegular(_, stmts) => enumeratePaths(stmts)
-            case CaseDefault(stmts)    => enumeratePaths(stmts)
-            case _: CaseGen            => unreachable
+    rest match {
+      case Nil => List(init)
+      case branch :: tail =>
+        val branches = branch match {
+          case StmtBlock(body) => enumeratePaths(body)
+          case StmtIf(_, thenStmts, elseStmts) => {
+            enumeratePaths(thenStmts) ::: enumeratePaths(elseStmts)
           }
+          case StmtCase(_, cases) => {
+            cases flatMap {
+              case CaseRegular(_, stmts) => enumeratePaths(stmts)
+              case CaseDefault(stmts)    => enumeratePaths(stmts)
+              case _: CaseGen            => unreachable
+            }
+          }
+          case _ => unreachable
         }
-        case _ => unreachable
-      }
 
-      val inits = (branches map { init ::: _ }).distinct
+        val inits = (branches map { init ::: _ }).distinct
 
-      val tails = enumeratePaths(tail).distinct
+        val tails = enumeratePaths(tail).distinct
 
-      for {
-        init <- inits
-        tail <- tails
-      } yield {
-        init ::: tail
-      }
+        for {
+          init <- inits
+          tail <- tails
+        } yield {
+          init ::: tail
+        }
     }
   }
 

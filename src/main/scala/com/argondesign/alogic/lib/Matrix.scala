@@ -54,14 +54,10 @@ case class Matrix[T: Numeric](elements: List[List[T]]) {
     val elements = for (row <- rows) yield {
       for (col <- other.cols) yield {
         @tailrec
-        def loop(row: List[T], col: List[T], acc: T = zero): T = {
-          if (row.isEmpty) {
-            acc
-          } else {
-            val r :: rs = row
-            val c :: cs = col
-            loop(rs, cs, acc + r * c)
-          }
+        def loop(row: List[T], col: List[T], acc: T = zero): T = (row, col) match {
+          case (Nil, Nil)         => acc
+          case (r :: rs, c :: cs) => loop(rs, cs, acc + r * c)
+          case _                  => unreachable
         }
         loop(row, col)
       }
