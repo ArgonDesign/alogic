@@ -586,14 +586,17 @@ final class NamerSpec extends FlatSpec with AlogicTest {
         val symB = declB.symbol
         inside(declC) {
           case Decl(symbol, _) =>
-            val TypeVector(elementType, size) = symbol.kind
-            inside(size) {
-              case ExprRef(sym) =>
-                sym should be theSameInstanceAs symA
-            }
-            inside(elementType) {
-              case TypeSInt(ExprRef(sym)) =>
-                sym should be theSameInstanceAs symB
+            symbol.kind match {
+              case TypeVector(elementType, size) =>
+                inside(size) {
+                  case ExprRef(sym) =>
+                    sym should be theSameInstanceAs symA
+                }
+                inside(elementType) {
+                  case TypeSInt(ExprRef(sym)) =>
+                    sym should be theSameInstanceAs symB
+                }
+              case _ => fail()
             }
         }
     }
@@ -1043,7 +1046,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
     val tree = entity rewrite namer
 
-    val Some((iSymbol, eSymbol)) = tree collectFirst {
+    val (iSymbol, eSymbol) = tree getFirst {
       case Instance(Sym(iSymbol: TermSymbol), Sym(eSymbol: TypeSymbol), _, _) => (iSymbol, eSymbol)
     }
     iSymbol.kind shouldBe TypeInstance(eSymbol)
@@ -1057,7 +1060,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     cc.addGlobalEntity(entity.asInstanceOf[EntityIdent])
     val tree = entity rewrite namer
 
-    val Some(symbol) = tree collectFirst { case Decl(symbol: TermSymbol, _) => symbol }
+    val symbol = tree getFirst { case Decl(symbol: TermSymbol, _) => symbol }
     symbol.kind shouldBe TypeSInt(Expr(8))
     symbol.attr.unused.get.value shouldBe true
   }

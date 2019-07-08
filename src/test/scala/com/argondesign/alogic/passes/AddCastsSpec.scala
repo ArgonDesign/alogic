@@ -65,14 +65,17 @@ final class AddCastsSpec extends FreeSpec with AlogicTest {
             )
           } {
             text in {
-              val expr = xform(text.asTree[Expr])
-              val result @ ExprBinary(lhs, _, rhs) = expr
-              res match {
-                case Some(Left(l))  => lhs shouldBe l
-                case Some(Right(r)) => rhs shouldBe r
-                case None           => result shouldBe expr
+              val expr = text.asTree[Expr]
+              xform(expr) match {
+                case result @ ExprBinary(lhs, _, rhs) =>
+                  res match {
+                    case Some(Left(l))  => lhs shouldBe l
+                    case Some(Right(r)) => rhs shouldBe r
+                    case None           => result shouldBe expr
+                  }
+                  cc.messages filterNot { _.isInstanceOf[Warning] } shouldBe empty
+                case _ => fail()
               }
-              cc.messages filterNot { _.isInstanceOf[Warning] } shouldBe empty
             }
           }
         }
@@ -93,25 +96,31 @@ final class AddCastsSpec extends FreeSpec with AlogicTest {
           )
         } {
           text in {
-            val expr = xform(text.asTree[Expr])
-            val result @ ExprTernary(_, lhs, rhs) = expr
-
-            res match {
-              case Some(Left(l))  => lhs shouldBe l
-              case Some(Right(r)) => rhs shouldBe r
-              case None           => result shouldBe expr
+            val expr = text.asTree[Expr]
+            xform(expr) match {
+              case result @ ExprTernary(_, lhs, rhs) =>
+                res match {
+                  case Some(Left(l))  => lhs shouldBe l
+                  case Some(Right(r)) => rhs shouldBe r
+                  case None           => result shouldBe expr
+                }
+                cc.messages shouldBe empty
+              case _ => fail()
             }
-            cc.messages shouldBe empty
           }
         }
       }
 
       "index expressions" - {
-        def check(expr: Expr, expected: List[Expr]): Unit = {
-          val ExprIndex(e, i) = expr
-          val v :: vs = expected
-          i shouldBe v
-          if (vs.nonEmpty) check(e, vs)
+        def check(expr: Expr, expected: List[Expr]): Unit = expr match {
+          case ExprIndex(e, i) =>
+            expected match {
+              case v :: vs =>
+                i shouldBe v
+                if (vs.nonEmpty) check(e, vs)
+              case _ => fail()
+            }
+          case _ => fail()
         }
 
         for {
@@ -142,12 +151,16 @@ final class AddCastsSpec extends FreeSpec with AlogicTest {
       }
 
       "slice expressions" - {
-        def check(expr: Expr, expected: List[(Expr, Expr)]): Unit = {
-          val ExprSlice(e, l, _, r) = expr
-          val (vl, vr) :: vs = expected
-          l shouldBe vl
-          r shouldBe vr
-          if (vs.nonEmpty) check(e, vs)
+        def check(expr: Expr, expected: List[(Expr, Expr)]): Unit = expr match {
+          case ExprSlice(e, l, _, r) =>
+            expected match {
+              case (vl, vr) :: vs =>
+                l shouldBe vl
+                r shouldBe vr
+                if (vs.nonEmpty) check(e, vs)
+              case _ => fail()
+            }
+          case _ => fail()
         }
 
         for {

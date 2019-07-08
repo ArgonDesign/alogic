@@ -70,194 +70,178 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
   // New entities created in this pass
   private[this] val extraEntities = new ListBuffer[EntityLowered]
 
-  private[this] def isIn(symbol: TermSymbol, fc: FlowControlType): Boolean = {
-    symbol.kind match {
-      case TypeIn(_, `fc`) => true
-      case _               => false
-    }
-  }
-
-  private[this] def isOut(symbol: TermSymbol, fc: FlowControlType): Boolean = {
-    symbol.kind match {
-      case TypeOut(_, `fc`, _) => true
-      case _                   => false
-    }
-  }
-
   override def enter(tree: Tree): Unit = tree match {
-    ////////////////////////////////////////////////////////////////////////////
-    // FlowControlTypeNone
-    ////////////////////////////////////////////////////////////////////////////
 
-    case Decl(symbol, _) if isIn(symbol, FlowControlTypeNone) => {
-      symbol.attr.fcn set true
-    }
+    case Decl(symbol, _) =>
+      symbol.kind match {
+        ////////////////////////////////////////////////////////////////////////////
+        // FlowControlTypeNone
+        ////////////////////////////////////////////////////////////////////////////
 
-    case Decl(symbol, _) if isOut(symbol, FlowControlTypeNone) => {
-      symbol.attr.fcn set true
-    }
+        case TypeIn(_, FlowControlTypeNone) =>
+          symbol.attr.fcn set true
 
-    ////////////////////////////////////////////////////////////////////////////
-    // FlowControlTypeValid
-    ////////////////////////////////////////////////////////////////////////////
+        case TypeOut(_, FlowControlTypeNone, _) =>
+          symbol.attr.fcn set true
 
-    case Decl(symbol, _) if isIn(symbol, FlowControlTypeValid) => {
-      // Allocate payload and valid signals
-      val kind = symbol.kind.underlying
-      val loc = tree.loc
-      val pName = symbol.name
-      val vName = pName + sep + "valid"
-      lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeIn(kind, fctn))
-      val vSymbol = cc.newTermSymbol(vName, loc, TypeIn(boolType(loc), fctn))
-      val newSymbols = if (kind != TypeVoid) (pSymbol, vSymbol) else (ErrorSymbol, vSymbol)
-      // Set attributes
-      symbol.attr.fcv set newSymbols
-      symbol.attr.expandedPort set true
-    }
+        ////////////////////////////////////////////////////////////////////////////
+        // FlowControlTypeValid
+        ////////////////////////////////////////////////////////////////////////////
 
-    case Decl(symbol, _) if isOut(symbol, FlowControlTypeValid) => {
-      // Allocate payload and valid signals
-      val TypeOut(kind, _, st) = symbol.kind
-      val loc = tree.loc
-      val pName = symbol.name
-      val vName = pName + sep + "valid"
-      lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeOut(kind, fctn, stw))
-      val vSymbol = cc.newTermSymbol(vName, loc, TypeOut(boolType(loc), fctn, stw))
-      val newSymbols = if (kind != TypeVoid) (pSymbol, vSymbol) else (ErrorSymbol, vSymbol)
-      // Set attributes
-      symbol.attr.fcv set newSymbols
-      symbol.attr.expandedPort set true
-      if (st == StorageTypeWire) {
-        vSymbol.attr.default set (ExprInt(false, 1, 0) withLoc loc)
-        vSymbol.attr.clearOnStall set true
-      } else {
-        // If a synchronous output register is required, construct it
-        // TODO: mark inline
-        val eName = entitySymbol.name + sep + "or" + sep + pName
-        val sregEntity = SyncRegFactory(eName, loc, kind)
-        extraEntities append sregEntity
-        val iSymbol = {
-          val iName = "or" + sep + pName
-          cc.newTermSymbol(iName, loc, TypeInstance(sregEntity.symbol))
-        }
-        // Set attributes
-        oStorage(symbol) = (sregEntity, iSymbol, false)
-        entitySymbol.attr.interconnectClearOnStall.append((iSymbol, s"ip${sep}valid"))
+        case TypeIn(kind, FlowControlTypeValid) =>
+          // Allocate payload and valid signals
+          val loc = tree.loc
+          val pName = symbol.name
+          val vName = pName + sep + "valid"
+          lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeIn(kind, fctn))
+          val vSymbol = cc.newTermSymbol(vName, loc, TypeIn(boolType(loc), fctn))
+          val newSymbols = if (kind != TypeVoid) (pSymbol, vSymbol) else (ErrorSymbol, vSymbol)
+          // Set attributes
+          symbol.attr.fcv set newSymbols
+          symbol.attr.expandedPort set true
+
+        case TypeOut(kind, FlowControlTypeValid, st) =>
+          // Allocate payload and valid signals
+          val loc = tree.loc
+          val pName = symbol.name
+          val vName = pName + sep + "valid"
+          lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeOut(kind, fctn, stw))
+          val vSymbol = cc.newTermSymbol(vName, loc, TypeOut(boolType(loc), fctn, stw))
+          val newSymbols = if (kind != TypeVoid) (pSymbol, vSymbol) else (ErrorSymbol, vSymbol)
+          // Set attributes
+          symbol.attr.fcv set newSymbols
+          symbol.attr.expandedPort set true
+          if (st == StorageTypeWire) {
+            vSymbol.attr.default set (ExprInt(false, 1, 0) withLoc loc)
+            vSymbol.attr.clearOnStall set true
+          } else {
+            // If a synchronous output register is required, construct it
+            // TODO: mark inline
+            val eName = entitySymbol.name + sep + "or" + sep + pName
+            val sregEntity = SyncRegFactory(eName, loc, kind)
+            extraEntities append sregEntity
+            val iSymbol = {
+              val iName = "or" + sep + pName
+              cc.newTermSymbol(iName, loc, TypeInstance(sregEntity.symbol))
+            }
+            // Set attributes
+            oStorage(symbol) = (sregEntity, iSymbol, false)
+            entitySymbol.attr.interconnectClearOnStall.append((iSymbol, s"ip${sep}valid"))
+          }
+
+        ////////////////////////////////////////////////////////////////////////////
+        // FlowControlTypeReady
+        ////////////////////////////////////////////////////////////////////////////
+
+        case TypeIn(kind, FlowControlTypeReady) =>
+          // Allocate payload, valid and ready signals
+          val loc = tree.loc
+          val pName = symbol.name
+          val vName = pName + sep + "valid"
+          val rName = pName + sep + "ready"
+          lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeIn(kind, fctn))
+          val vSymbol = cc.newTermSymbol(vName, loc, TypeIn(boolType(loc), fctn))
+          val rSymbol = cc.newTermSymbol(rName, loc, TypeOut(boolType(loc), fctn, stw))
+          val newSymbols = if (kind != TypeVoid) {
+            (pSymbol, vSymbol, rSymbol)
+          } else {
+            (ErrorSymbol, vSymbol, rSymbol)
+          }
+          // Set attributes
+          symbol.attr.fcr set newSymbols
+          symbol.attr.expandedPort set true
+          rSymbol.attr.default set (ExprInt(false, 1, 0) withLoc loc)
+          rSymbol.attr.clearOnStall set true
+          rSymbol.attr.dontCareUnless set vSymbol
+          vSymbol.attr.dontCareUnless set rSymbol
+
+        case TypeOut(kind, FlowControlTypeReady, st) =>
+          // Allocate payload, valid and ready signals
+          val loc = tree.loc
+          val pName = symbol.name
+          val vName = pName + sep + "valid"
+          val rName = pName + sep + "ready"
+          lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeOut(kind, fctn, stw))
+          val vSymbol = cc.newTermSymbol(vName, loc, TypeOut(boolType(loc), fctn, stw))
+          val rSymbol = cc.newTermSymbol(rName, loc, TypeIn(boolType(loc), fctn))
+          val newSymbols = if (kind != TypeVoid) {
+            (pSymbol, vSymbol, rSymbol)
+          } else {
+            (ErrorSymbol, vSymbol, rSymbol)
+          }
+          // Set attributes
+          symbol.attr.fcr set newSymbols
+          symbol.attr.expandedPort set true
+          rSymbol.attr.dontCareUnless set vSymbol
+          vSymbol.attr.dontCareUnless set rSymbol
+          // If output slices are required, construct them
+          st match {
+            case StorageTypeWire           =>
+            case StorageTypeSlices(slices) =>
+              // TODO: mark inline
+              val ePrefix = entitySymbol.name + sep + pName
+              val sliceEntities = SyncSliceFactory(slices, ePrefix, loc, kind)
+              extraEntities appendAll sliceEntities
+              val iSymbol = {
+                val iName = "os" + sep + pName
+                cc.newTermSymbol(iName, loc, TypeInstance(sliceEntities.head.symbol))
+              }
+              // Set attributes
+              oStorage(symbol) = (sliceEntities.head, iSymbol, sliceEntities.tail.nonEmpty)
+              entitySymbol.attr.interconnectClearOnStall.append((iSymbol, s"ip${sep}valid"))
+            case _ => unreachable
+          }
+
+        ////////////////////////////////////////////////////////////////////////////
+        // FlowControlTypeAccept
+        ////////////////////////////////////////////////////////////////////////////
+
+        case TypeIn(kind, FlowControlTypeAccept) =>
+          // Allocate payload, valid and accept signals
+          val loc = tree.loc
+          val pName = symbol.name
+          val vName = pName + sep + "valid"
+          val aName = pName + sep + "accept"
+          lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeIn(kind, fctn))
+          val vSymbol = cc.newTermSymbol(vName, loc, TypeIn(boolType(loc), fctn))
+          val aSymbol = cc.newTermSymbol(aName, loc, TypeOut(boolType(loc), fctn, stw))
+          val newSymbols = if (kind != TypeVoid) {
+            (pSymbol, vSymbol, aSymbol)
+          } else {
+            (ErrorSymbol, vSymbol, aSymbol)
+          }
+          // Set attributes
+          symbol.attr.fca set newSymbols
+          symbol.attr.expandedPort set true
+          aSymbol.attr.default set (ExprInt(false, 1, 0) withLoc loc)
+
+        case TypeOut(kind, FlowControlTypeAccept, _) =>
+          // Allocate payload, valid and ready signals
+          val loc = tree.loc
+          val pName = symbol.name
+          val vName = pName + sep + "valid"
+          val aName = pName + sep + "accept"
+          lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeOut(kind, fctn, stw))
+          val vSymbol = cc.newTermSymbol(vName, loc, TypeOut(boolType(loc), fctn, stw))
+          val aSymbol = cc.newTermSymbol(aName, loc, TypeIn(boolType(loc), fctn))
+          val newSymbols = if (kind != TypeVoid) {
+            (pSymbol, vSymbol, aSymbol)
+          } else {
+            (ErrorSymbol, vSymbol, aSymbol)
+          }
+          // Set attributes
+          symbol.attr.fca set newSymbols
+          symbol.attr.expandedPort set true
+          vSymbol.attr.default set (ExprInt(false, 1, 0) withLoc loc)
+          vSymbol.attr.clearOnStall set true
+          vSymbol.attr.dontCareUnless set aSymbol
+
+        ////////////////////////////////////////////////////////////////////////////
+        // Other decls
+        ////////////////////////////////////////////////////////////////////////////
+
+        case _ =>
       }
-    }
-
-    ////////////////////////////////////////////////////////////////////////////
-    // FlowControlTypeReady
-    ////////////////////////////////////////////////////////////////////////////
-
-    case Decl(symbol, _) if isIn(symbol, FlowControlTypeReady) => {
-      // Allocate payload, valid and ready signals
-      val kind = symbol.kind.underlying
-      val loc = tree.loc
-      val pName = symbol.name
-      val vName = pName + sep + "valid"
-      val rName = pName + sep + "ready"
-      lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeIn(kind, fctn))
-      val vSymbol = cc.newTermSymbol(vName, loc, TypeIn(boolType(loc), fctn))
-      val rSymbol = cc.newTermSymbol(rName, loc, TypeOut(boolType(loc), fctn, stw))
-      val newSymbols = if (kind != TypeVoid) {
-        (pSymbol, vSymbol, rSymbol)
-      } else {
-        (ErrorSymbol, vSymbol, rSymbol)
-      }
-      // Set attributes
-      symbol.attr.fcr set newSymbols
-      symbol.attr.expandedPort set true
-      rSymbol.attr.default set (ExprInt(false, 1, 0) withLoc loc)
-      rSymbol.attr.clearOnStall set true
-      rSymbol.attr.dontCareUnless set vSymbol
-      vSymbol.attr.dontCareUnless set rSymbol
-    }
-
-    case Decl(symbol, _) if isOut(symbol, FlowControlTypeReady) => {
-      // Allocate payload, valid and ready signals
-      val TypeOut(kind, _, st) = symbol.kind
-      val loc = tree.loc
-      val pName = symbol.name
-      val vName = pName + sep + "valid"
-      val rName = pName + sep + "ready"
-      lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeOut(kind, fctn, stw))
-      val vSymbol = cc.newTermSymbol(vName, loc, TypeOut(boolType(loc), fctn, stw))
-      val rSymbol = cc.newTermSymbol(rName, loc, TypeIn(boolType(loc), fctn))
-      val newSymbols = if (kind != TypeVoid) {
-        (pSymbol, vSymbol, rSymbol)
-      } else {
-        (ErrorSymbol, vSymbol, rSymbol)
-      }
-      // Set attributes
-      symbol.attr.fcr set newSymbols
-      symbol.attr.expandedPort set true
-      rSymbol.attr.dontCareUnless set vSymbol
-      vSymbol.attr.dontCareUnless set rSymbol
-      // If output slices are required, construct them
-      if (st != StorageTypeWire) {
-        val StorageTypeSlices(slices) = st
-        // TODO: mark inline
-        val ePrefix = entitySymbol.name + sep + pName
-        val sliceEntities = SyncSliceFactory(slices, ePrefix, loc, kind)
-        extraEntities appendAll sliceEntities
-        val iSymbol = {
-          val iName = "os" + sep + pName
-          cc.newTermSymbol(iName, loc, TypeInstance(sliceEntities.head.symbol))
-        }
-        // Set attributes
-        oStorage(symbol) = (sliceEntities.head, iSymbol, sliceEntities.tail.nonEmpty)
-        entitySymbol.attr.interconnectClearOnStall.append((iSymbol, s"ip${sep}valid"))
-      }
-    }
-
-    ////////////////////////////////////////////////////////////////////////////
-    // FlowControlTypeAccept
-    ////////////////////////////////////////////////////////////////////////////
-
-    case Decl(symbol, _) if isIn(symbol, FlowControlTypeAccept) => {
-      // Allocate payload, valid and accept signals
-      val kind = symbol.kind.underlying
-      val loc = tree.loc
-      val pName = symbol.name
-      val vName = pName + sep + "valid"
-      val aName = pName + sep + "accept"
-      lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeIn(kind, fctn))
-      val vSymbol = cc.newTermSymbol(vName, loc, TypeIn(boolType(loc), fctn))
-      val aSymbol = cc.newTermSymbol(aName, loc, TypeOut(boolType(loc), fctn, stw))
-      val newSymbols = if (kind != TypeVoid) {
-        (pSymbol, vSymbol, aSymbol)
-      } else {
-        (ErrorSymbol, vSymbol, aSymbol)
-      }
-      // Set attributes
-      symbol.attr.fca set newSymbols
-      symbol.attr.expandedPort set true
-      aSymbol.attr.default set (ExprInt(false, 1, 0) withLoc loc)
-    }
-
-    case Decl(symbol, _) if isOut(symbol, FlowControlTypeAccept) => {
-      // Allocate payload, valid and ready signals
-      val kind = symbol.kind.underlying
-      val loc = tree.loc
-      val pName = symbol.name
-      val vName = pName + sep + "valid"
-      val aName = pName + sep + "accept"
-      lazy val pSymbol = cc.newTermSymbol(pName, loc, TypeOut(kind, fctn, stw))
-      val vSymbol = cc.newTermSymbol(vName, loc, TypeOut(boolType(loc), fctn, stw))
-      val aSymbol = cc.newTermSymbol(aName, loc, TypeIn(boolType(loc), fctn))
-      val newSymbols = if (kind != TypeVoid) {
-        (pSymbol, vSymbol, aSymbol)
-      } else {
-        (ErrorSymbol, vSymbol, aSymbol)
-      }
-      // Set attributes
-      symbol.attr.fca set newSymbols
-      symbol.attr.expandedPort set true
-      vSymbol.attr.default set (ExprInt(false, 1, 0) withLoc loc)
-      vSymbol.attr.clearOnStall set true
-      vSymbol.attr.dontCareUnless set aSymbol
-    }
 
     ////////////////////////////////////////////////////////////////////////////
     // Statements
@@ -531,9 +515,12 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
           case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeOut] => symbol
         }
 
-        val highLevelKind @ TypeEntity(name, _, Nil) = entitySymbol.kind
-        entitySymbol.attr.highLevelKind set highLevelKind
-        entitySymbol.kind = TypeEntity(name, portSymbols, Nil)
+        entitySymbol.kind match {
+          case highLevelKind: TypeEntity =>
+            entitySymbol.attr.highLevelKind set highLevelKind
+            entitySymbol.kind = highLevelKind.copy(portSymbols = portSymbols)
+          case _ => unreachable
+        }
 
         val thisEntity = entity.copy(
           instances = instances ::: entity.instances,
@@ -595,5 +582,6 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
 
 object LowerFlowControlA extends TreeTransformerPass {
   val name = "lower-flow-control-a"
+
   def create(implicit cc: CompilerContext) = new LowerFlowControlA
 }

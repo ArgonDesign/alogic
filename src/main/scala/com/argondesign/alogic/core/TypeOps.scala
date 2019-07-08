@@ -54,6 +54,37 @@ trait TypeOps extends TypePrintOps { this: Type =>
   final def isError = this eq TypeError
   final def isPolyFunc = this.isInstanceOf[TypePolyFunc]
 
+  // ... equivalent casts
+  final def asCombStmt = TypeCombStmt
+  final def asCtrlStmt = TypeCtrlStmt
+  final def asState = TypeState
+  final def asInt = this.asInstanceOf[TypeInt]
+  final def asSInt = this.asInstanceOf[TypeSInt]
+  final def asUInt = this.asInstanceOf[TypeUInt]
+  final def asNum = this.asInstanceOf[TypeNum]
+  final def asVector = this.asInstanceOf[TypeVector]
+  final def asArray = this.asInstanceOf[TypeArray]
+  final def asStack = this.asInstanceOf[TypeStack]
+  final def asSram = this.asInstanceOf[TypeSram]
+  final def asStruct = this.asInstanceOf[TypeStruct]
+  final def asVoid = TypeVoid
+  final def asIdent = this.asInstanceOf[TypeIdent]
+  final def asCombFunc = this.asInstanceOf[TypeCombFunc]
+  final def asCtrlFunc = this.asInstanceOf[TypeCtrlFunc]
+  final def asEntity = this.asInstanceOf[TypeEntity]
+  final def asInstance = this.asInstanceOf[TypeInstance]
+  final def asStr = TypeStr
+  final def asIn = this.asInstanceOf[TypeIn]
+  final def asOut = this.asInstanceOf[TypeOut]
+  final def asPipeline = this.asInstanceOf[TypePipeline]
+  final def asParam = this.asInstanceOf[TypeParam]
+  final def asConst = this.asInstanceOf[TypeConst]
+  final def asGen = this.asInstanceOf[TypeGen]
+  final def asType = this.asInstanceOf[TypeType]
+  final def asMisc = TypeMisc
+  final def asError = TypeError
+  final def asPolyFunc = this.asInstanceOf[TypePolyFunc]
+
   // Is this a primitive numeric type
   final def isNumeric: Boolean = this.underlying match {
     case _: TypeInt => true

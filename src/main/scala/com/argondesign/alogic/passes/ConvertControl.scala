@@ -123,16 +123,19 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
         // Allocate function entry state symbols up front so they can be
         // resolved in an arbitrary order, also add them to the entryStmts map
         val pairs = for (function <- entity.functions) yield {
-          val Sym(functionSymbol: TermSymbol) = function.ref
-          val stateSymbol = cc.newTermSymbol(
-            s"l${functionSymbol.loc.line}_function_${functionSymbol.name}",
-            functionSymbol.loc,
-            TypeState
-          )
-          stateSymbol.attr.update(functionSymbol.attr)
-          stateSymbol.attr.recLimit.clear
-          entryStmts(function.body.head.id) = stateSymbol
-          functionSymbol -> stateSymbol
+          function.ref match {
+            case Sym(functionSymbol: TermSymbol) =>
+              val stateSymbol = cc.newTermSymbol(
+                s"l${functionSymbol.loc.line}_function_${functionSymbol.name}",
+                functionSymbol.loc,
+                TypeState
+              )
+              stateSymbol.attr.update(functionSymbol.attr)
+              stateSymbol.attr.recLimit.clear()
+              entryStmts(function.body.head.id) = stateSymbol
+              functionSymbol -> stateSymbol
+            case _ => unreachable
+          }
         }
 
         // Construct the map from function symbols to entry state symbols
@@ -222,23 +225,32 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
         stmts: List[Stmt],
         current: ListBuffer[Stmt] = ListBuffer(),
         acc: ListBuffer[List[Stmt]] = ListBuffer()
-    ): List[List[Stmt]] = {
-      val head :: tail = stmts
-      current append head
-      if (head.tpe == TypeCombStmt) {
-        loop(tail, current, acc)
-      } else {
-        acc append current.toList
-        if (tail.nonEmpty) {
-          loop(tail, ListBuffer(), acc)
+    ): List[List[Stmt]] = stmts match {
+      case head :: tail =>
+        current append head
+        if (head.tpe == TypeCombStmt) {
+          loop(tail, current, acc)
         } else {
-          acc.toList
+          acc append current.toList
+          if (tail.nonEmpty) loop(tail, ListBuffer(), acc) else acc.toList
         }
-      }
+      case Nil => unreachable
     }
 
     loop(stmts)
   }
+
+  private[this] def convertControlUnits(stmts: List[Stmt], default: => List[Stmt]): List[Stmt] =
+    stmts match {
+      case Nil => default
+      case stmts =>
+        splitControlUnits(stmts) match {
+          case Nil => unreachable
+          case head :: tail =>
+            tail foreach emitState
+            head
+        }
+    }
 
   // List of emitted states
   private[this] val emittedStates = ListBuffer[State]()
@@ -250,13 +262,11 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
 
     val symOpt = pendingStates.top followedBy pendingStates.pop()
 
-    if (symOpt.isDefined) {
+    symOpt foreach { symbol =>
       val loc = body.head.loc
-      val Some(symbol) = symOpt
       val ref = ExprRef(symbol) regularize loc
       val state = State(ref, body) withLoc loc
       TypeAssigner(state)
-
       emittedStates append state
     }
 
@@ -315,21 +325,8 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
         // Omitted else/empty then goes to the following state (i.e.: implicit fence)
         lazy val implicitGoto = List(StmtGoto(ExprRef(followingState.top)))
 
-        val newThenStmts = thenStmts match {
-          case Nil => implicitGoto
-          case stmts =>
-            val head :: tail = splitControlUnits(stmts)
-            tail foreach emitState
-            head
-        }
-
-        val newElseStmts = elseStmts match {
-          case Nil => implicitGoto
-          case stmts =>
-            val head :: tail = splitControlUnits(stmts)
-            tail foreach emitState
-            head
-        }
+        val newThenStmts = convertControlUnits(thenStmts, implicitGoto)
+        val newElseStmts = convertControlUnits(elseStmts, implicitGoto)
 
         stmt.copy(thenStmts = newThenStmts, elseStmts = newElseStmts) regularize tree.loc
       }
@@ -343,16 +340,10 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
         lazy val implicitGoto = List(StmtGoto(ExprRef(followingState.top)))
 
         val newCases = cases map {
-          case CaseRegular(cond, Nil) => CaseRegular(cond, implicitGoto)
-          case CaseDefault(Nil)       => CaseDefault(implicitGoto)
           case CaseRegular(cond, stmts) =>
-            val head :: tail = splitControlUnits(stmts)
-            tail foreach emitState
-            CaseRegular(cond, head)
+            CaseRegular(cond, convertControlUnits(stmts, implicitGoto))
           case CaseDefault(stmts) =>
-            val head :: tail = splitControlUnits(stmts)
-            tail foreach emitState
-            CaseDefault(head)
+            CaseDefault(convertControlUnits(stmts, implicitGoto))
           case _: CaseGen => unreachable
         }
 
@@ -368,9 +359,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
       //////////////////////////////////////////////////////////////////////////
 
       case StmtBlock(body) => {
-        val head :: tail = splitControlUnits(body)
-        tail foreach emitState
-        TypeAssigner(StmtBlock(head) withLoc tree.loc)
+        TypeAssigner(StmtBlock(convertControlUnits(body, unreachable)) withLoc tree.loc)
       }
 
       //////////////////////////////////////////////////////////////////////////
@@ -378,8 +367,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
       //////////////////////////////////////////////////////////////////////////
 
       case StmtLoop(body) => {
-        val head :: tail = splitControlUnits(body)
-        tail foreach emitState
+        val head = convertControlUnits(body, unreachable)
         // Emit the loop entry state if necessary
         val stmt = emitState(head) match {
           case Some(symbol) => {

@@ -282,14 +282,14 @@ final class LiftEntities(implicit cc: CompilerContext)
         ////////////////////////////////////////////////////////////////////////
         if (stripStorageSymbols.nonEmpty) {
           entity.declarations foreach {
-            case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeOut] => {
-              val TypeOut(kind, fc, st) = symbol.kind
-              if (st != StorageTypeDefault && (stripStorageSymbols contains symbol)) {
-                val newKind = TypeOut(kind, fc, StorageTypeDefault)
-                symbol.kind = newKind
+            case Decl(symbol, _) =>
+              symbol.kind match {
+                case TypeOut(_, _, StorageTypeDefault) =>
+                case kind: TypeOut if stripStorageSymbols contains symbol =>
+                  symbol.kind = kind.copy(st = StorageTypeDefault)
+                case _ =>
               }
-            }
-            case _ => ()
+            case _ =>
           }
         }
         entity

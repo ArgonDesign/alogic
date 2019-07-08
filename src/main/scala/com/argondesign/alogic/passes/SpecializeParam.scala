@@ -89,7 +89,7 @@ final class SpecializeEntity(bindings: Map[String, Expr], instLoc: Option[Loc])(
 
     case Decl(symbol, init) if entityLevel == 1 && symbol.kind.isParam => {
       // Specialize the parameter type itself
-      val TypeParam(kind) = symbol.kind
+      val TypeParam(kind) = symbol.kind.asParam
       val newKind = TypeParam(kind rewrite TypeSpecializeEntity)
 
       // Figure out actual parameter value

@@ -108,14 +108,14 @@ final class TyperConnectSpec extends FreeSpec with AlogicTest {
                          |  ${expr};
                          |}""".stripMargin.asTree[Entity]
           xform(tree)
-          if (widths.isEmpty) {
-            cc.messages shouldBe empty
-          } else {
-            val lw :: rws = widths
-            cc.messages.length shouldBe rws.length
-            for ((msg, rw) <- cc.messages zip rws) {
-              msg should beThe[Error](s"Port widths do not match: ${lw} -> ${rw}")
-            }
+          widths match {
+            case Nil =>
+              cc.messages shouldBe empty
+            case lw :: rws =>
+              cc.messages.length shouldBe rws.length
+              for ((msg, rw) <- cc.messages zip rws) {
+                msg should beThe[Error](s"Port widths do not match: ${lw} -> ${rw}")
+              }
           }
         }
       }

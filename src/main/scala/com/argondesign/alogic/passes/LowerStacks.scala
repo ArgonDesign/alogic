@@ -42,19 +42,21 @@ final class LowerStacks(implicit cc: CompilerContext) extends TreeTransformer {
   }
 
   override def enter(tree: Tree): Unit = tree match {
-    case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeStack] => {
-      // Construct the stack entity
-      val TypeStack(kind, depth) = symbol.kind
-      val loc = tree.loc
-      val pName = symbol.name
-      // TODO: mark inline
-      val eName = entitySymbol.name + cc.sep + "stack" + cc.sep + pName
-      val stackEntity = StackFactory(eName, loc, kind, depth)
-      val instanceSymbol = cc.newTermSymbol(pName, loc, TypeInstance(stackEntity.symbol))
-      stackMap(symbol) = (stackEntity, instanceSymbol)
-      // Clear enabel when the entity stalls
-      entitySymbol.attr.interconnectClearOnStall.append((instanceSymbol, "en"))
-    }
+    case Decl(symbol, _) =>
+      symbol.kind match {
+        case TypeStack(kind, depth) =>
+          // Construct the stack entity
+          val loc = tree.loc
+          val pName = symbol.name
+          // TODO: mark inline
+          val eName = entitySymbol.name + cc.sep + "stack" + cc.sep + pName
+          val stackEntity = StackFactory(eName, loc, kind, depth)
+          val instanceSymbol = cc.newTermSymbol(pName, loc, TypeInstance(stackEntity.symbol))
+          stackMap(symbol) = (stackEntity, instanceSymbol)
+          // Clear enable when the entity stalls
+          entitySymbol.attr.interconnectClearOnStall.append((instanceSymbol, "en"))
+        case _ =>
+      }
 
     ////////////////////////////////////////////////////////////////////////////
     // FlowControlTypeReady

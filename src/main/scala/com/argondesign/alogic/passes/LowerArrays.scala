@@ -42,23 +42,25 @@ final class LowerArrays(implicit cc: CompilerContext) extends TreeTransformer wi
 
   override def enter(tree: Tree): Unit = tree match {
 
-    case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeArray] => {
-      val loc = tree.loc
-      val name = symbol.name
-      val TypeArray(kind, size) = symbol.kind
-      // Append _q to array name symbol
-      symbol rename s"${name}_q"
-      // Create we symbol
-      val weSymbol = cc.newTermSymbol(s"${name}_we", loc, intType(loc, false, 1))
-      // Create waddr symbol
-      val abits = Math.clog2(size.value.get) ensuring { _ > 0 }
-      val waSymbol = cc.newTermSymbol(s"${name}_waddr", loc, intType(loc, false, abits))
-      // Create wdata symbol
-      val dbits = kind.width
-      val wdSymbol = cc.newTermSymbol(s"${name}_wdata", loc, intType(loc, kind.isSigned, dbits))
-      // Set attributes
-      symbol.attr.memory.set((weSymbol, waSymbol, wdSymbol))
-    }
+    case Decl(symbol, _) =>
+      symbol.kind match {
+        case TypeArray(kind, size) =>
+          val loc = tree.loc
+          val name = symbol.name
+          // Append _q to array name symbol
+          symbol rename s"${name}_q"
+          // Create we symbol
+          val weSymbol = cc.newTermSymbol(s"${name}_we", loc, intType(loc, false, 1))
+          // Create waddr symbol
+          val abits = Math.clog2(size.value.get) ensuring { _ > 0 }
+          val waSymbol = cc.newTermSymbol(s"${name}_waddr", loc, intType(loc, false, abits))
+          // Create wdata symbol
+          val dbits = kind.width
+          val wdSymbol = cc.newTermSymbol(s"${name}_wdata", loc, intType(loc, kind.isSigned, dbits))
+          // Set attributes
+          symbol.attr.memory.set((weSymbol, waSymbol, wdSymbol))
+        case _ =>
+      }
 
     case _ =>
   }

@@ -38,27 +38,28 @@ final class FoldExpr(
 
   private val shiftOps = Set("<<", ">>", "<<<", ">>>")
 
-  private def foldShiftUnsized(expr: ExprBinary): Expr = {
-    val ExprBinary(ExprNum(ls, lv), op, rhs) = expr
-    val rv = rhs.value.get
-    val negl = lv < 0
-    val negr = rv < 0
-    val num = (ls, op) match {
-      case _ if negr => {
-        cc.error(expr, "Negative shift amount")
-        ExprError()
+  private def foldShiftUnsized(expr: ExprBinary): Expr = expr match {
+    case ExprBinary(ExprNum(ls, lv), op, rhs) =>
+      val rv = rhs.value.get
+      val negl = lv < 0
+      val negr = rv < 0
+      val num = (ls, op) match {
+        case _ if negr => {
+          cc.error(expr, "Negative shift amount")
+          ExprError()
+        }
+        case (true, ">>") if negl => {
+          cc.error(expr, "'>>' is not well defined for negative unsized values")
+          ExprError()
+        }
+        case (signed, "<<")  => ExprNum(signed, lv << rv.toInt)
+        case (signed, ">>")  => ExprNum(signed, lv >> rv.toInt)
+        case (signed, "<<<") => ExprNum(signed, lv << rv.toInt)
+        case (signed, ">>>") => ExprNum(signed, lv >> rv.toInt)
+        case _               => unreachable
       }
-      case (true, ">>") if negl => {
-        cc.error(expr, "'>>' is not well defined for negative unsized values")
-        ExprError()
-      }
-      case (signed, "<<")  => ExprNum(signed, lv << rv.toInt)
-      case (signed, ">>")  => ExprNum(signed, lv >> rv.toInt)
-      case (signed, "<<<") => ExprNum(signed, lv << rv.toInt)
-      case (signed, ">>>") => ExprNum(signed, lv >> rv.toInt)
-      case _               => unreachable
-    }
-    num withLoc expr.loc
+      num withLoc expr.loc
+    case _ => unreachable
   }
 
   private def isBuiltinSU(symbol: Symbol) = {

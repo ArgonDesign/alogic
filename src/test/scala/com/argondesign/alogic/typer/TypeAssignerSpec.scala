@@ -92,10 +92,9 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
 
               inside(tree) {
                 case Root(_, entity: EntityNamed) => {
-                  val Some(main) = entity.functions collectFirst {
-                    case func @ Function(Sym(sym), _) if sym.name == "main" =>
-                      func
-                  }
+                  val main = (entity.functions collectFirst {
+                    case func @ Function(Sym(sym), _) if sym.name == "main" => func
+                  }).get
                   inside(main) {
                     case Function(_, List(StmtExpr(expr))) =>
                       expr should matchPattern { case ExprRef(_) => }
@@ -180,10 +179,13 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
         } {
           val text = expr.trim.replaceAll(" +", " ")
           text in {
-            val expr @ ExprUnary(_, operand) = text.asTree[Expr]
-            TypeAssigner(operand)
-            TypeAssigner(expr).tpe shouldBe kind
-            cc.messages shouldBe empty
+            text.asTree[Expr] match {
+              case expr @ ExprUnary(_, operand) =>
+                TypeAssigner(operand)
+                TypeAssigner(expr).tpe shouldBe kind
+                cc.messages shouldBe empty
+              case _ => fail()
+            }
           }
         }
       }
@@ -573,11 +575,14 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
           )
         } {
           src in {
-            val expr @ ExprBinary(lhs, _, rhs) = src.asTree[Expr]
-            TypeAssigner(lhs)
-            TypeAssigner(rhs)
-            TypeAssigner(expr).tpe shouldBe kind
-            cc.messages shouldBe empty
+            src.asTree[Expr] match {
+              case expr @ ExprBinary(lhs, _, rhs) =>
+                TypeAssigner(lhs)
+                TypeAssigner(rhs)
+                TypeAssigner(expr).tpe shouldBe kind
+                cc.messages shouldBe empty
+              case _ => fail()
+            }
           }
         }
       }
@@ -608,12 +613,15 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
           )
         } {
           src in {
-            val expr @ ExprTernary(cond, thenExpr, elseExpr) = src.asTree[Expr]
-            TypeAssigner(cond)
-            TypeAssigner(thenExpr)
-            TypeAssigner(elseExpr)
-            TypeAssigner(expr).tpe shouldBe kind
-            cc.messages shouldBe empty
+            src.asTree[Expr] match {
+              case expr @ ExprTernary(cond, thenExpr, elseExpr) =>
+                TypeAssigner(cond)
+                TypeAssigner(thenExpr)
+                TypeAssigner(elseExpr)
+                TypeAssigner(expr).tpe shouldBe kind
+                cc.messages shouldBe empty
+              case _ => fail()
+            }
           }
         }
       }
@@ -629,12 +637,13 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
         } {
           val text = expr.trim.replaceAll(" +", " ")
           text in {
-            val expr @ ExprCat(parts) = text.asTree[Expr]
-            parts foreach {
-              TypeAssigner(_)
+            text.asTree[Expr] match {
+              case expr @ ExprCat(parts) =>
+                parts foreach { TypeAssigner(_) }
+                TypeAssigner(expr).tpe shouldBe kind
+                cc.messages shouldBe empty
+              case _ => fail()
             }
-            TypeAssigner(expr).tpe shouldBe kind
-            cc.messages shouldBe empty
           }
         }
       }
@@ -975,7 +984,10 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
         } {
           s"(${kindSrc})(${exprSrc})" in {
             val expr = (xform(exprSrc.asTree[Expr]) rewrite { new Typer }).asInstanceOf[Expr]
-            val ExprType(castKind) = kindSrc.asTree[Expr]
+            val castKind = kindSrc.asTree[Expr] match {
+              case ExprType(kind) => kind
+              case _              => fail()
+            }
             cc.messages shouldBe empty
             TypeAssigner(ExprCast(castKind, expr) withLoc Loc.synthetic).kind shouldBe kind
             kind shouldBe castKind
@@ -1004,7 +1016,10 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
                            |  ${text}
                            |}""".stripMargin.asTree[Stmt]
 
-            val StmtBlock(stmts) = xform(tree)
+            val stmts = xform(tree) match {
+              case StmtBlock(s) => s
+              case _            => fail()
+            }
 
             inside(stmts.last) {
               case stmt: Stmt =>
@@ -1012,7 +1027,6 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
                 assignChildren(stmt)
                 TypeAssigner(stmt).tpe shouldBe TypeCombStmt
             }
-
           }
         }
       }
@@ -1043,7 +1057,10 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
                            |  ${text}
                            |}""".stripMargin.asTree[Stmt]
 
-            val StmtBlock(stmts) = xform(tree)
+            val stmts = xform(tree) match {
+              case StmtBlock(s) => s
+              case _            => fail()
+            }
 
             inside(stmts.last) {
               case stmt: Stmt =>
@@ -1088,7 +1105,7 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
 
             val tree = xform(entity)
 
-            val stmt = (tree collectFirst { case Function(_, stmts) => stmts.last }).value
+            val stmt = tree getFirst { case Function(_, stmts) => stmts.last }
 
             stmt.postOrderIterator collect {
               case node: Stmt => node
@@ -1103,7 +1120,6 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
                 stmt should matchPattern(pattern)
                 stmt.tpe shouldBe kind
             }
-
           }
         }
       }

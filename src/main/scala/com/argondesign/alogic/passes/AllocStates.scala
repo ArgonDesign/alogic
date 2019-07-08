@@ -24,6 +24,7 @@ import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Math
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.SequenceNumbers
+import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
 
@@ -43,15 +44,17 @@ final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
   }
 
   // The return stack symbol
-  private[this] lazy val rsSymbol: TermSymbol = {
-    val opt = entitySymbol.attr.returnStack.get map { symbol =>
-      val TypeStack(_, depth) = symbol.kind
-      val width = Expr(stateBits) regularize symbol.loc
-      symbol.kind = TypeStack(TypeUInt(width), depth)
-      symbol
+  private[this] lazy val rsSymbol: Option[TermSymbol] =
+    entitySymbol.attr.returnStack.get map { symbol =>
+      symbol.kind match {
+        case TypeStack(_, depth) =>
+          val width = Expr(stateBits) regularize symbol.loc
+          symbol.kind = TypeStack(TypeUInt(width), depth)
+          symbol
+        case _ => unreachable
+      }
     }
-    opt.orNull
-  }
+
   // The number of the current state being processed
   private[this] var currStateNum: Int = _
   // Map from state symbol to state number
@@ -71,15 +74,17 @@ final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
         val it = new SequenceNumbers
 
         // Ensure the entry symbol is allocated number 0
-        val (entryStates, otherStates) = entity.states partition { state =>
-          val State(ExprRef(symbol: TermSymbol), _) = state
-          symbol.attr.entry.isSet
+        val (entryStates, otherStates) = entity.states partition {
+          case State(ExprRef(symbol: TermSymbol), _) => symbol.attr.entry.isSet
+          case _                                     => unreachable
         }
 
         assert(entryStates.length == 1)
 
-        val State(ExprRef(entrySymbol: TermSymbol), _) = entryStates.head
-        stateMap(entrySymbol) = it.next
+        entryStates.head match {
+          case State(ExprRef(entrySymbol: TermSymbol), _) => stateMap(entrySymbol) = it.next
+          case _                                          => unreachable
+        }
 
         for (State(ExprRef(symbol: TermSymbol), _) <- otherStates) {
           stateMap(symbol) = it.next
@@ -113,12 +118,12 @@ final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
         }
 
         // Drop push to return stack
-        case StmtExpr(ExprCall(ExprSelect(ExprRef(symbol), _), _)) if symbol == rsSymbol => {
+        case StmtExpr(ExprCall(ExprSelect(ExprRef(symbol), _), _)) if rsSymbol contains symbol => {
           Thicket(Nil) withLoc tree.loc
         }
 
         // Drop the return stack definition if exists
-        case entity: EntityNamed if rsSymbol != null => {
+        case entity: EntityNamed if rsSymbol.nonEmpty => {
           entity.copy(
             declarations = entity.declarations.tail
           ) withLoc entity.loc

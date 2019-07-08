@@ -75,11 +75,11 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
 
       // Work out the prev an next maps
       nextMap = outer.connects collect {
-        case Connect(ExprRef(iSymbolA), List(ExprRef(iSymbolB))) => {
-          val TypeInstance(eSymbolA) = iSymbolA.kind
-          val TypeInstance(eSymbolB) = iSymbolB.kind
-          eSymbolA -> eSymbolB
-        }
+        case Connect(ExprRef(iSymbolA), List(ExprRef(iSymbolB))) =>
+          (iSymbolA.kind, iSymbolB.kind) match {
+            case (TypeInstance(eSymbolA), TypeInstance(eSymbolB)) => eSymbolA -> eSymbolB
+            case _                                                => unreachable
+          }
       } toMap
 
       prevMap = nextMap map { _.swap }
@@ -265,27 +265,33 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
     }
 
     // Rewrite 'read;' statement to '{....} = pipeline_i.read();'
-    case node: StmtRead => {
-      val TypeIn(iPortKind: TypeStruct, _) = iPortSymbolOpt.get.kind
-      val lhsRefs = for (name <- iPortKind.fieldNames) yield ExprRef(freshSymbols(name))
-      val lhs = ExprCat(lhsRefs)
-      val rhs = ExprCall(ExprSelect(ExprRef(iPortSymbolOpt.get), "read"), Nil)
-      StmtAssign(lhs, rhs) regularize node.loc
-    }
+    case node: StmtRead =>
+      iPortSymbolOpt.get.kind match {
+        case TypeIn(iPortKind: TypeStruct, _) =>
+          val lhsRefs = for (name <- iPortKind.fieldNames) yield ExprRef(freshSymbols(name))
+          val lhs = ExprCat(lhsRefs)
+          val rhs = ExprCall(ExprSelect(ExprRef(iPortSymbolOpt.get), "read"), Nil)
+          StmtAssign(lhs, rhs) regularize node.loc
+        case _ => unreachable
+      }
 
     // Rewrite 'write;' statement to 'pipeline_o.write({....});'
-    case node: StmtWrite => {
-      val TypeOut(oPortKind: TypeStruct, _, _) = oPortSymbolOpt.get.kind
-      val rhsRefs = for (name <- oPortKind.fieldNames) yield ExprRef(freshSymbols(name))
-      val rhs = ExprCat(rhsRefs)
-      val call = ExprCall(ExprSelect(ExprRef(oPortSymbolOpt.get), "write"), List(rhs))
-      StmtExpr(call) regularize node.loc
-    }
+    case node: StmtWrite =>
+      oPortSymbolOpt.get.kind match {
+        case TypeOut(oPortKind: TypeStruct, _, _) =>
+          val rhsRefs = for (name <- oPortKind.fieldNames) yield ExprRef(freshSymbols(name))
+          val rhs = ExprCat(rhsRefs)
+          val call = ExprCall(ExprSelect(ExprRef(oPortSymbolOpt.get), "write"), List(rhs))
+          StmtExpr(call) regularize node.loc
+        case _ => unreachable
+      }
 
     // Rewrite references to pipeline variables to references to the newly declared symbols
-    case node @ ExprRef(symbol) if symbol.kind.isInstanceOf[TypePipeline] => {
-      ExprRef(freshSymbols(symbol.name)) regularize node.loc
-    }
+    case node @ ExprRef(symbol) =>
+      symbol.kind match {
+        case _: TypePipeline => ExprRef(freshSymbols(symbol.name)) regularize node.loc
+        case _               => tree
+      }
 
     case _ => tree
   }

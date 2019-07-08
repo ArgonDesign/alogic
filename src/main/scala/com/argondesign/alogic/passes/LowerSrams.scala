@@ -133,71 +133,74 @@ final class LowerSrams(
 
   override def enter(tree: Tree): Unit = tree match {
 
-    case Decl(symbol, _) if symbol.kind.isSram => {
-      val TypeSram(kind, depthExpr, st) = symbol.kind
-      val loc = tree.loc
-      val name = symbol.name
+    case Decl(symbol, _) =>
+      symbol.kind match {
+        case TypeSram(kind, depthExpr, st) =>
+          val loc = tree.loc
+          val name = symbol.name
 
-      // Build the sram entity
-      val sEntity = {
-        val width = kind.width
-        val depth = depthExpr.value match {
-          case Some(v) => v.toInt
-          case None    => cc.fatal(symbol, "Depth of SRAM is not a compile time constant")
-        }
-        // TODO: signed/unsigned
-        sramBuilder(width, depth)
-      }
+          // Build the sram entity
+          val sEntity = {
+            val width = kind.width
+            val depth = depthExpr.value match {
+              case Some(v) => v.toInt
+              case None    => cc.fatal(symbol, "Depth of SRAM is not a compile time constant")
+            }
+            // TODO: signed/unsigned
+            sramBuilder(width, depth)
+          }
 
-      // Create the instance
-      val sSymbol = cc.newTermSymbol("sram" + sep + name, loc, TypeInstance(sEntity.symbol))
+          // Create the instance
+          val sSymbol = cc.newTermSymbol("sram" + sep + name, loc, TypeInstance(sEntity.symbol))
 
-      // If this is an SRAM with an underlying struct type, we need a new
-      // signal to unpack the read data into, allocate this here
-      lazy val rSymbol = cc.newTermSymbol(name + sep + "rdata", loc, kind)
+          // If this is an SRAM with an underlying struct type, we need a new
+          // signal to unpack the read data into, allocate this here
+          lazy val rSymbol = cc.newTermSymbol(name + sep + "rdata", loc, kind)
 
-      // If the sram is driven through registers, we need a SyncReg to drive it
-      lazy val (oEntity, oSymbol) = {
-        assert(st == StorageTypeReg)
+          // If the sram is driven through registers, we need a SyncReg to drive it
+          lazy val (oEntity, oSymbol) = {
+            assert(st == StorageTypeReg)
 
-        // Build the SyncReg entity
-        val oEntity = {
-          val oName = entitySymbol.name + sep + "or" + sep + name
-          val weKind = sSymbol.kind.asInstanceOf[TypeInstance]("we").get.underlying
-          val addrKind = sSymbol.kind.asInstanceOf[TypeInstance]("addr").get.underlying
-          val oKind = TypeStruct(oName, List("we", "addr", "wdata"), List(weKind, addrKind, kind))
-          SyncRegFactory(oName, loc, oKind)
-        }
+            // Build the SyncReg entity
+            val oEntity = {
+              val oName = entitySymbol.name + sep + "or" + sep + name
+              val weKind = sSymbol.kind.asInstanceOf[TypeInstance]("we").get.underlying
+              val addrKind = sSymbol.kind.asInstanceOf[TypeInstance]("addr").get.underlying
+              val oKind =
+                TypeStruct(oName, List("we", "addr", "wdata"), List(weKind, addrKind, kind))
+              SyncRegFactory(oName, loc, oKind)
+            }
 
-        // Create the instance
-        val oSymbol = cc.newTermSymbol("or" + sep + name, loc, TypeInstance(oEntity.symbol))
+            // Create the instance
+            val oSymbol = cc.newTermSymbol("or" + sep + name, loc, TypeInstance(oEntity.symbol))
 
-        entitySymbol.attr.interconnectClearOnStall.append((oSymbol, s"ip${sep}valid"))
+            entitySymbol.attr.interconnectClearOnStall.append((oSymbol, s"ip${sep}valid"))
 
-        (oEntity, oSymbol)
-      }
+            (oEntity, oSymbol)
+          }
 
-      if (st == StorageTypeWire) {
-        // Clear ce when the entity stalls
-        entitySymbol.attr.interconnectClearOnStall.append((sSymbol, "ce"))
-      }
+          if (st == StorageTypeWire) {
+            // Clear ce when the entity stalls
+            entitySymbol.attr.interconnectClearOnStall.append((sSymbol, "ce"))
+          }
 
-      // We now have everything we possibly need, collect the relevant parts
-      val sramParts = (kind, st) match {
-        case (_: TypeInt, StorageTypeWire) =>
-          SramWireInt(sEntity, sSymbol)
-        case (_: TypeStruct | _: TypeVector, StorageTypeWire) =>
-          SramWireStruct(sEntity, sSymbol, rSymbol)
-        case (_: TypeInt, StorageTypeReg) =>
-          SramRegInt(sEntity, sSymbol, oEntity, oSymbol)
-        case (_: TypeStruct | _: TypeVector, StorageTypeReg) =>
-          SramRegStruct(sEntity, sSymbol, rSymbol, oEntity, oSymbol)
+          // We now have everything we possibly need, collect the relevant parts
+          val sramParts = (kind, st) match {
+            case (_: TypeInt, StorageTypeWire) =>
+              SramWireInt(sEntity, sSymbol)
+            case (_: TypeStruct | _: TypeVector, StorageTypeWire) =>
+              SramWireStruct(sEntity, sSymbol, rSymbol)
+            case (_: TypeInt, StorageTypeReg) =>
+              SramRegInt(sEntity, sSymbol, oEntity, oSymbol)
+            case (_: TypeStruct | _: TypeVector, StorageTypeReg) =>
+              SramRegStruct(sEntity, sSymbol, rSymbol, oEntity, oSymbol)
+            case _ =>
+              cc.ice(tree, "Don't know how to build SRAM of type", kind.toSource)
+          }
+
+          sramMap(symbol) = sramParts
         case _ =>
-          cc.ice(tree, "Don't know how to build SRAM of type", kind.toSource)
       }
-
-      sramMap(symbol) = sramParts
-    }
 
     ////////////////////////////////////////////////////////////////////////////
     // FlowControlTypeReady
@@ -224,7 +227,7 @@ final class LowerSrams(
 
       case StmtExpr(ExprCall(ExprSelect(ExprRef(symbol: TermSymbol), "read"), List(addr))) => {
         sramMap.get(symbol) map {
-          case SramWire(_, iSymbol) => {
+          case SramWire(_, iSymbol) =>
             val iRef = ExprRef(iSymbol)
             StmtBlock(
               List(
@@ -232,17 +235,18 @@ final class LowerSrams(
                 assignFalse(iRef select "we"),
                 StmtAssign(iRef select "addr", addr)
               ))
-          }
-          case SramReg(_, _, _, oSymbol) => {
-            val oRef = ExprRef(oSymbol)
-            val TypeSram(kind, _, _) = symbol.kind
-            val data = ExprInt(false, kind.width, 0) // Don't care
-            StmtBlock(
-              List(
-                assignTrue(oRef select s"ip${sep}valid"),
-                StmtAssign(oRef select "ip", ExprCat(List(ExprInt(false, 1, 0), addr, data)))
-              ))
-          }
+          case SramReg(_, _, _, oSymbol) =>
+            symbol.kind match {
+              case TypeSram(kind, _, _) =>
+                val oRef = ExprRef(oSymbol)
+                val data = ExprInt(false, kind.width, 0) // Don't care
+                StmtBlock(
+                  List(
+                    assignTrue(oRef select s"ip${sep}valid"),
+                    StmtAssign(oRef select "ip", ExprCat(List(ExprInt(false, 1, 0), addr, data)))
+                  ))
+              case _ => unreachable
+            }
         } getOrElse {
           tree
         }

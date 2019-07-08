@@ -27,6 +27,7 @@ import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Matrix
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.FollowedBy
+import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -311,16 +312,17 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
     // Collect the call graph edges as we go
     //////////////////////////////////////////////////////////////////////////
 
-    case ExprCall(ref, _) if ref.tpe.isInstanceOf[TypeCtrlFunc] => {
-      val ExprRef(callee: TermSymbol) = ref
-      callArcs add (currentFunction -> callee)
-    }
+    case ExprCall(ref, _) if ref.tpe.isCtrlFunc =>
+      ref match {
+        case ExprRef(callee: TermSymbol) => callArcs add (currentFunction -> callee)
+        case _                           => unreachable
+      }
 
     case StmtGoto(ExprRef(callee: TermSymbol)) => {
       gotoArcs add (currentFunction -> callee)
     }
 
-    case Function(Sym(symbol: TermSymbol), body) => {
+    case Function(Sym(symbol: TermSymbol), _) => {
       currentFunction = symbol
     }
 

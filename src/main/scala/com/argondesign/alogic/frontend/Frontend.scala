@@ -96,9 +96,12 @@ class Frontend(
         }
 
         if (parsedName != entityName) {
-          val EntityIdent(ident, _, _, _, _, _, _, _) = root.entity
-          cc.fatal(ident,
-                   s"Entity name '${parsedName}' does not match file basename '${entityName}'")
+          root.entity match {
+            case entity: EntityIdent =>
+              cc.fatal(entity.ident,
+                       s"Entity name '${parsedName}' does not match file basename '${entityName}'")
+            case _ => unreachable
+          }
         }
 
         root
@@ -159,8 +162,7 @@ class Frontend(
     val treeSet = Await.result(treeSetFuture, atMost = Inf)
 
     // Mark top level entities as such
-    for (tree <- treeSet) {
-      val Root(_, entity: EntityIdent) = tree
+    for (Root(_, entity: EntityIdent) <- treeSet) {
       val ident @ Ident(name) = entity.ident
       if (topLevelNames contains name) {
         val newAttr = Map("toplevel" -> (Expr(1) withLoc entity.loc))

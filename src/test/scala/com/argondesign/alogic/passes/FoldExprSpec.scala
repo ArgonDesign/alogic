@@ -1194,8 +1194,11 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
                          |    fence;
                          |  }
                          |}""".stripMargin.asTree[Entity]
-          val ExprCall(_, List(_, expr)) = xform(tree) getFirst { case e: ExprCall => e }
-          val ExprType(kind) = kindSrc.asTree[Expr]
+          val expr = xform(tree) getFirst { case ExprCall(_, List(_, e)) => e }
+          val kind = kindSrc.asTree[Expr] match {
+            case ExprType(kind) => kind
+            case _              => fail()
+          }
           cc.messages shouldBe empty
           val result = xform(ExprCast(kind, expr) withLoc Loc.synthetic)
           if (err.isEmpty) {

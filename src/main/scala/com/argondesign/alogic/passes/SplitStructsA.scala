@@ -148,8 +148,10 @@ final class SplitStructsA(implicit cc: CompilerContext) extends TreeTransformer 
 
       case ExprSelect(expr, _) => {
         if (fieldIndexStack.top >= 0) {
-          val ExprCat(parts) = expr
-          parts(fieldIndexStack.top)
+          expr match {
+            case ExprCat(parts) => parts(fieldIndexStack.top)
+            case _              => unreachable
+          }
         } else {
           tree
         }

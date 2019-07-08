@@ -222,13 +222,12 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
     }
 
     tree match {
-      case node: Root => {
+      case Root(_, entity: EntityIdent) => {
         Scopes.push()
 
         // Name the source attributes of the root entity, these have already been
         // created so need to name the symbol attributes
-        val EntityIdent(ident, _, _, _, _, _, _, _) = node.entity
-        val symbol = lookupType(ident)
+        val symbol = lookupType(entity.ident)
         // TODO: do them all in a systematic way..
         symbol.attr.stackLimit.get foreach { symbol.attr.stackLimit set walk(_).asInstanceOf[Expr] }
       }

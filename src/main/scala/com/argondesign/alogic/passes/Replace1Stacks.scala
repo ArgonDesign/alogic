@@ -35,16 +35,16 @@ final class Replace1Stacks(implicit cc: CompilerContext) extends TreeTransformer
   }
 
   override def enter(tree: Tree): Unit = tree match {
-    case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeStack] => {
-      val TypeStack(kind, depth) = symbol.kind
-      if (depth.value contains BigInt(1)) {
-        // TODO: iff no access to empty/full ports
-        // Add to set of symbols to replace
-        stackSet add symbol
-        // Change type to element type
-        symbol.kind = kind
+    case Decl(symbol, _) =>
+      symbol.kind match {
+        case TypeStack(kind, depth) if depth.value contains BigInt(1) =>
+          // TODO: iff no access to empty/full ports
+          // Add to set of symbols to replace
+          stackSet add symbol
+          // Change type to element type
+          symbol.kind = kind
+        case _ =>
       }
-    }
 
     case _ =>
   }

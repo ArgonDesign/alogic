@@ -47,9 +47,9 @@ object WriteModuleManifest extends Pass {
       EntityLowered(eSymbol, _, insts, _, _, _) <- trees.par
     } yield {
       // High level port symbols
-      val TypeEntity(_, pSymbols, _) = eSymbol.attr.highLevelKind.value
+      val TypeEntity(_, pSymbols, _) = eSymbol.attr.highLevelKind.value.asEntity
       // Low level signal symbols
-      val TypeEntity(_, sSymbols, _) = eSymbol.kind
+      val TypeEntity(_, sSymbols, _) = eSymbol.kind.asEntity
 
       //////////////////////////////////////////////////////////////////////////
       // Compute signals

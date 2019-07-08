@@ -398,7 +398,7 @@ final class MakeVerilog(
     if (instances.nonEmpty) {
       body.emitSection(1, "Instances") {
         for (Instance(Sym(iSymbol: TermSymbol), Sym(mSymbol: TypeSymbol), Nil, Nil) <- instances) {
-          val TypeInstance(eSymbol) = iSymbol.kind
+          val TypeInstance(eSymbol) = iSymbol.kind.asInstance
           body.ensureBlankLine()
           body.emit(1)(s"${eSymbol.name} ${iSymbol.name} (")
 
@@ -412,7 +412,7 @@ final class MakeVerilog(
               items append { List(s".${cc.rst}", s"         (${cc.rst}),") }
             }
 
-            val TypeEntity(_, pSymbols, _) = eSymbol.kind
+            val TypeEntity(_, pSymbols, _) = eSymbol.kind.asEntity
 
             val lastIndex = pSymbols.length - 1
 

@@ -778,13 +778,13 @@ final class ParserSpec extends FreeSpec with AlogicTest {
             )
           }
 
-          val Some(iIdent) = tree collectFirst {
+          val iIdent = tree getFirst  {
             case Instance(ident: Ident, _, _, _) => ident
           }
           iIdent.hasAttr shouldBe true
           iIdent.attr shouldBe Map("foo" -> Expr(1))
 
-          val Some(eIdent) = tree collectFirst {
+          val eIdent = tree getFirst {
             case EntityIdent(ident @ Ident("i"), _, _, _, _, _, _, _) => ident
           }
           eIdent.hasAttr shouldBe true
@@ -808,12 +808,12 @@ final class ParserSpec extends FreeSpec with AlogicTest {
             )
           }
 
-          val Some(iIdent) = tree collectFirst {
+          val iIdent = tree getFirst  {
             case Instance(ident: Ident, _, _, _) => ident
           }
           iIdent.hasAttr shouldBe false
 
-          val Some(eIdent) = tree collectFirst {
+          val eIdent = tree getFirst  {
             case EntityIdent(ident @ Ident("i"), _, _, _, _, _, _, _) => ident
           }
           eIdent.hasAttr shouldBe true
@@ -837,13 +837,13 @@ final class ParserSpec extends FreeSpec with AlogicTest {
             )
           }
 
-          val Some(iIdent) = tree collectFirst {
+          val iIdent = tree getFirst  {
             case Instance(ident: Ident, _, _, _) => ident
           }
           iIdent.hasAttr shouldBe true
           iIdent.attr shouldBe Map("foo" -> Expr(1))
 
-          val Some(eIdent) = tree collectFirst {
+          val eIdent = tree getFirst  {
             case EntityIdent(ident @ Ident("i"), _, _, _, _, _, _, _) => ident
           }
           eIdent.hasAttr shouldBe true

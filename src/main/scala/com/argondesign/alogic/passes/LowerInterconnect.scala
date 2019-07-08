@@ -25,15 +25,16 @@
 package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.TreeTransformer
-import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.ast.Trees.Expr.InstancePortRef
+import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.TreeInTypeTransformer
-import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Stack
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.PartialMatch
+import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -69,42 +70,43 @@ final class LowerInterconnect(implicit cc: CompilerContext)
   // Return the interconnect symbol for 'iSymbol.sel', if any. If the
   // interconnect symbol does not exist and alloc is true, allocate
   // it and connect it up
-  def handlePortSelect(select: ExprSelect, alloc: Boolean): Option[TermSymbol] = {
-    val ExprSelect(ExprRef(iSymbol: TermSymbol), sel) = select
-    val key = (iSymbol, sel)
-    if (!alloc) {
-      newSymbols.get(key)
-    } else {
-      lazy val newSymbol = {
-        // Allocate interconnect symbol
-        val name = iSymbol.name + cc.sep + sel
-        val pKind = iSymbol.kind.asInstanceOf[TypeInstance](sel).get
-        val nKind = pKind.underlying rewrite TypeFoldExpr
-        val symbol = cc.newTermSymbol(name, iSymbol.loc, nKind)
-        symbol.attr.interconnect.set((iSymbol, sel))
+  def handlePortSelect(select: ExprSelect, alloc: Boolean): Option[TermSymbol] = select match {
+    case ExprSelect(ExprRef(iSymbol: TermSymbol), sel) =>
+      val key = (iSymbol, sel)
+      if (!alloc) {
+        newSymbols.get(key)
+      } else {
+        lazy val newSymbol = {
+          // Allocate interconnect symbol
+          val name = iSymbol.name + cc.sep + sel
+          val pKind = iSymbol.kind.asInstanceOf[TypeInstance](sel).get
+          val nKind = pKind.underlying rewrite TypeFoldExpr
+          val symbol = cc.newTermSymbol(name, iSymbol.loc, nKind)
+          symbol.attr.interconnect.set((iSymbol, sel))
 
-        // If this is an interconnect symbol that is in the entity
-        // interconnectClearOnStall attribute, then set clearOnStall on it
-        if (interconnectClearOnStall contains key) {
-          symbol.attr.clearOnStall set true
-        }
-
-        // Build connection
-        val loc = select.loc
-        val ref = ExprRef(symbol) regularize loc
-        val conn = TypeAssigner {
-          pKind match {
-            case _: TypeIn => Connect(ref, List(select)) withLoc loc
-            case _         => Connect(select, List(ref)) withLoc loc
+          // If this is an interconnect symbol that is in the entity
+          // interconnectClearOnStall attribute, then set clearOnStall on it
+          if (interconnectClearOnStall contains key) {
+            symbol.attr.clearOnStall set true
           }
-        }
-        newConnects append conn
 
-        // The new symbol
-        symbol
+          // Build connection
+          val loc = select.loc
+          val ref = ExprRef(symbol) regularize loc
+          val conn = TypeAssigner {
+            pKind match {
+              case _: TypeIn => Connect(ref, List(select)) withLoc loc
+              case _         => Connect(select, List(ref)) withLoc loc
+            }
+          }
+          newConnects append conn
+
+          // The new symbol
+          symbol
+        }
+        Some(newSymbols.getOrElseUpdate(key, newSymbol))
       }
-      Some(newSymbols.getOrElseUpdate(key, newSymbol))
-    }
+    case _ => unreachable
   }
 
   override def enter(tree: Tree): Unit = tree match {

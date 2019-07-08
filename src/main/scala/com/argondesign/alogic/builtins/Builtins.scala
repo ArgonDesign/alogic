@@ -17,6 +17,7 @@ package com.argondesign.alogic.builtins
 
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.util.unreachable
 
 trait Builtins { this: CompilerContext =>
 
@@ -44,16 +45,18 @@ trait Builtins { this: CompilerContext =>
   )
 
   // Fold call to builtin function
-  def foldBuiltinCall(call: ExprCall): Expr = {
-    val ExprRef(symbol) = call.expr
-    val Some(builtin) = builtins find { _ contains symbol }
-    builtin.fold(call.loc, call.args) map { _ assignLocs call.loc } getOrElse call
+  def foldBuiltinCall(call: ExprCall): Expr = call.expr match {
+    case ExprRef(symbol) =>
+      val builtin = (builtins find { _ contains symbol }).get
+      builtin.fold(call.loc, call.args) map { _ assignLocs call.loc } getOrElse call
+    case _ => unreachable
   }
 
   // Fold call to builtin function
-  def isKnownConstBuiltinCall(call: ExprCall): Boolean = {
-    val ExprRef(symbol) = call.expr
-    val Some(builtin) = builtins find { _ contains symbol }
-    builtin.isKnownConst(call.args)
+  def isKnownConstBuiltinCall(call: ExprCall): Boolean = call.expr match {
+    case ExprRef(symbol) =>
+      val builtin = (builtins find { _ contains symbol }).get
+      builtin.isKnownConst(call.args)
+    case _ => unreachable
   }
 }
