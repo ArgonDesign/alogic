@@ -32,9 +32,6 @@ class SymbolAttributes {
   // Is this an entry point function
   val entry = new Attribute[Boolean]()
 
-  // The entity that owns the definition of this symbol
-  val owner = new Attribute[EntityNamed]() // TODO: move to SpecializeParam
-
   // The initializer expression, from the declaration, if there was one
   val init = new Attribute[Expr]()
 
@@ -123,7 +120,6 @@ class SymbolAttributes {
     variant,
     topLevel,
     entry,
-    owner,
     init,
     stackLimit,
     recLimit,
@@ -159,7 +155,6 @@ class SymbolAttributes {
     "variant",
     "topLevel",
     "entry",
-    "owner",
     "init",
     "stackLimit",
     "recLimit",
