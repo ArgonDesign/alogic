@@ -20,7 +20,7 @@ import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 object AttrBuilder extends BaseBuilder[AttrContext, Map[String, Expr]] {
 

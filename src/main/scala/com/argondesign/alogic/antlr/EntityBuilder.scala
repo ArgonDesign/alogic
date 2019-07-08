@@ -25,7 +25,7 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Locationed
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 object EntityBuilder extends BaseBuilder[EntityContext, EntityIdent] {
 

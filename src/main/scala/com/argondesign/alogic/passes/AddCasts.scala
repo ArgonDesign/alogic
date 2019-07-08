@@ -84,10 +84,14 @@ final class AddCasts(implicit cc: CompilerContext) extends TreeTransformer with 
         }
 
         if (needsCasts exists identity) {
-          val newArgs = for ((needsCast, kind, arg) <- (needsCasts, kinds, args).zipped) yield {
-            if (needsCast) cast(kind, arg) else arg
+          val newArgs = List from {
+            for {
+              (needsCast, kind, arg) <- needsCasts lazyZip kinds lazyZip args
+            } yield {
+              if (needsCast) cast(kind, arg) else arg
+            }
           }
-          expr.copy(args = newArgs.toList)
+          expr.copy(args = newArgs)
         } else {
           tree
         }

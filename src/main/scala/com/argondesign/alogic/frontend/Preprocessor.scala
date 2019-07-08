@@ -28,10 +28,10 @@ import com.argondesign.alogic.core.Source
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 
-import scala.collection.JavaConverters.asScalaBufferConverter
 import scala.collection.Map
 import scala.collection.immutable
 import scala.collection.mutable
+import scala.jdk.CollectionConverters._
 import scala.util.Try
 
 class Preprocessor(implicit cc: CompilerContext) {

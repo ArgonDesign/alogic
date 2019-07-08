@@ -31,7 +31,7 @@ object ReadSymbols {
   // if this expression is used on the left hand side of an assignment
   def lval(expr: Expr): Iterator[TermSymbol] = expr match {
     case _: ExprRef                  => Iterator.empty
-    case ExprCat(parts)              => parts.toIterator flatMap lval
+    case ExprCat(parts)              => parts.iterator flatMap lval
     case ExprIndex(_, idx)           => rval(idx)
     case ExprSlice(_, lidx, _, ridx) => rval(lidx) ++ rval(ridx)
     case _                           => unreachable

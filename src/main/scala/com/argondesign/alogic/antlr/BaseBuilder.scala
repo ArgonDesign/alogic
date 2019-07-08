@@ -15,7 +15,7 @@
 
 package com.argondesign.alogic.antlr
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 import com.argondesign.alogic.core.CompilerContext
 

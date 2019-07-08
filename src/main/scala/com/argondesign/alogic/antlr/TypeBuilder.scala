@@ -55,7 +55,7 @@ object TypeBuilder extends BaseBuilder[KindContext, Type] {
       override def visitTypeVec(ctx: TypeVecContext): Type = {
         val elementType = visit(ctx.kind)
         val sizes = ExprBuilder(ctx.expr).reverse
-        (elementType /: sizes) { TypeVector }
+        sizes.foldLeft(elementType) { TypeVector }
       }
     }
 

@@ -26,6 +26,7 @@ import com.argondesign.alogic.core.Symbols.TermSymbol
 import com.argondesign.alogic.core.Symbols.TypeSymbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.FollowedBy._
+import com.argondesign.alogic.util.SequenceNumbers
 import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
@@ -94,7 +95,7 @@ trait Symbols { self: CompilerContext =>
     }
   }
 
-  final private[this] val symbolSequenceNumbers = Stream.from(0).iterator
+  final private[this] val symbolSequenceNumbers = new SequenceNumbers
 
   //////////////////////////////////////////////////////////////////////////////
   // Creating TermSymbol instances

@@ -114,7 +114,7 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
             actSets.reverse
           } else {
             // symbols active at any stage later than the current stage
-            val actTail = (Set.empty[TermSymbol] /: useSets.tail) { _ | _ }
+            val actTail = useSets.tail.foldLeft(Set.empty[TermSymbol]) { _ | _ }
             // symbols active at the previous stage
             val actPrev = actSets.head
             // symbols active at the current stage

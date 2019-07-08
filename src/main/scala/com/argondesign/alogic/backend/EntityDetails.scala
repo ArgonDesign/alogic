@@ -126,7 +126,7 @@ final class EntityDetails(val entity: EntityLowered, details: => Map[TypeSymbol,
     }
 
     // Group by instance, loose instance symbol from values
-    val groups = trip groupBy { _._1 } mapValues { _ map { case (_, s, n) => (s, n) } }
+    val groups = trip.groupMap { _._1 } { case (_, s, n) => (s, n) }
 
     // Sort by groups by instance order
     val sortedInstances = {

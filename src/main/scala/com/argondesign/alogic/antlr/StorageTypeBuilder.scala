@@ -15,7 +15,6 @@
 
 package com.argondesign.alogic.antlr
 
-import scala.collection.JavaConverters._
 import com.argondesign.alogic.antlr.AlogicParser.StorageTypeSlicesContext
 import com.argondesign.alogic.antlr.AlogicParser.StorageTypeWireContext
 import com.argondesign.alogic.antlr.AlogicParser.Storage_typeContext
@@ -23,6 +22,8 @@ import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.StorageTypes._
 import com.argondesign.alogic.util.unreachable
+
+import scala.jdk.CollectionConverters._
 
 object StorageTypeBuilder extends BaseBuilder[Storage_typeContext, StorageType] {
 

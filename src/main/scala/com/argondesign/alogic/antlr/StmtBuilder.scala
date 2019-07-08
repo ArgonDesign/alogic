@@ -21,7 +21,7 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import org.antlr.v4.runtime.ParserRuleContext
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
 

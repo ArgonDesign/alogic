@@ -102,7 +102,7 @@ object Passes {
     )
 
     // Fold passes over the trees
-    (trees /: passes) { applyPass(_, _) }
+    passes.foldLeft(trees) { applyPass(_, _) }
   }
 
   private def applyPass(trees: List[Tree], pass: Pass)(implicit cc: CompilerContext): List[Tree] = {

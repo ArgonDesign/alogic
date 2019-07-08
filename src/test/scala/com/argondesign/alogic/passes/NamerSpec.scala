@@ -198,7 +198,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
                 _) =>
         aSym.loc.line shouldBe 2
         aSym.uniqueName shouldBe TypeName("a")
-        aSym shouldBe 'typeSymbol
+        aSym.isTypeSymbol shouldBe true
 
         aSym.kind shouldBe TypeStruct(
           "a",
@@ -224,13 +224,13 @@ final class NamerSpec extends FlatSpec with AlogicTest {
       case StmtBlock(List(StmtDecl(Decl(outer1, _)), block, StmtAssign(ExprRef(outer2), _))) =>
         outer1.loc.line shouldBe 2
         outer1 should be theSameInstanceAs outer2
-        outer1 shouldBe 'termSymbol
+        outer1.isTermSymbol shouldBe true
         inside(block) {
           case StmtBlock(List(StmtDecl(Decl(inner1, _)), StmtAssign(ExprRef(inner2), _))) =>
             inner1.loc.line shouldBe 4
             inner1 should be theSameInstanceAs inner2
             inner1 shouldNot be theSameInstanceAs outer1
-            inner1 shouldBe 'termSymbol
+            inner1.isTermSymbol shouldBe true
         }
     }
 
@@ -359,7 +359,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
       case _                                           => fail
     }
 
-    aSym shouldBe 'typeSymbol
+    aSym.isTypeSymbol shouldBe true
 
     inside(treeB) {
       case EntityNamed(_, _, instances, _, _, _, _, _, _) =>
@@ -385,8 +385,8 @@ final class NamerSpec extends FlatSpec with AlogicTest {
       case EntityNamed(_, _, List(bInstance), _, _, _, _, List(bEntity), _) =>
         inside(bInstance) {
           case Instance(Sym(iSym), Sym(eSym), _, _) =>
-            iSym shouldBe 'termSymbol
-            eSym shouldBe 'typeSymbol
+            iSym.isTermSymbol shouldBe true
+            eSym.isTypeSymbol shouldBe true
             inside(bEntity) {
               case EntityNamed(sym, _, _, _, _, _, _, _, _) =>
                 eSym should be theSameInstanceAs sym
@@ -412,7 +412,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
       case EntityNamed(_, _, _, _, _, List(main, foo), _, _, _) =>
         inside(main) {
           case Function(Sym(_), List(StmtGoto(ExprRef(sym)))) =>
-            sym shouldBe 'termSymbol
+            sym.isTermSymbol shouldBe true
             inside(foo) {
               case Function(Sym(fooSym), Nil) =>
                 sym should be theSameInstanceAs fooSym
@@ -445,7 +445,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
                 inside(expr) {
                   case ExprCall(`atBits`, List(ExprRef(rSym))) =>
                     rSym should be theSameInstanceAs dSym
-                    rSym shouldBe 'termSymbol
+                    rSym.isTermSymbol shouldBe true
                     rSym.loc.line shouldBe 3
                 }
             }
@@ -478,7 +478,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
                     inside(expr) {
                       case ExprCall(`atBits`, List(ExprRef(rSym))) =>
                         rSym should be theSameInstanceAs dSym
-                        rSym shouldBe 'typeSymbol
+                        rSym.isTypeSymbol shouldBe true
                         rSym.loc.line shouldBe 1
                     }
                 }
@@ -514,7 +514,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
                     inside(expr) {
                       case ExprCall(`atBits`, List(ExprRef(rSym) + Expr(2))) =>
                         rSym should be theSameInstanceAs dSym
-                        rSym shouldBe 'termSymbol
+                        rSym.isTermSymbol shouldBe true
                         rSym.loc.line shouldBe 4
                     }
                 }
@@ -789,7 +789,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     val tree = root rewrite namer
 
     val symB = tree collectFirst { case Sym(symbol) if symbol.name == "b" => symbol }
-    symB.value shouldBe 'typeSymbol
+    symB.value.isTypeSymbol shouldBe true
     val symA = tree collectFirst { case Decl(symbol, _) if symbol.name == "a" => symbol }
     symA.value.kind shouldBe symB.value.kind
   }

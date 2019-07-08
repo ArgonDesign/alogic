@@ -97,10 +97,10 @@ final class SimplifyCat(implicit cc: CompilerContext) extends TreeTransformer {
         } else {
           val lsbs = widths.scanRight(0)(_ + _).tail
           StmtBlock {
-            for ((expr, width, lsb) <- (parts, widths, lsbs).zipped.toList) yield {
+            (for ((expr, width, lsb) <- parts lazyZip widths lazyZip lsbs) yield {
               val signed = expr.tpe.isSigned
               StmtAssign(expr, ExprInt(signed, width, value.extract(lsb, width, signed)))
-            }
+            }).toList
           }
         }
       }

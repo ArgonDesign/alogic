@@ -150,46 +150,47 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
     val directlyRecursive = adjMat.diagonal map { _ != 0 }
     val indirectlyRecursive = indMat.diagonal map { _ != 0 }
 
-    val result = for {
-      (symbol, isRecD, isRecI) <- (functionSymbols, directlyRecursive, indirectlyRecursive).zipped
-    } yield {
-      lazy val loc = symbol.loc
-      lazy val name = symbol.name
-      val exprOpt = symbol.attr.recLimit.get
-      if (!isRecD && !isRecI) {
-        if (exprOpt.isDefined) {
-          cc.warning(loc, s"'reclimit' attribute ignored on function '${name}'")
-        }
-        1
-      } else {
-        exprOpt match {
-          case None => {
-            val hint = if (isRecD) "Recursive" else "Indirectly recursive"
-            cc.error(loc, s"${hint} function '${name}' requires 'reclimit' attribute")
-            0
+    val list = List from {
+      for {
+        (symbol, isRecD, isRecI) <- functionSymbols lazyZip directlyRecursive lazyZip indirectlyRecursive
+      } yield {
+        lazy val loc = symbol.loc
+        lazy val name = symbol.name
+        val exprOpt = symbol.attr.recLimit.get
+        if (!isRecD && !isRecI) {
+          if (exprOpt.isDefined) {
+            cc.warning(loc, s"'reclimit' attribute ignored on function '${name}'")
           }
-          case Some(expr) => {
-            expr.value match {
-              case Some(value) if value < 2 => {
-                cc.error(
-                  loc,
-                  s"Recursive function '${name}' has 'reclimit' attribute equal to ${value}"
-                )
-                0
+          1
+        } else {
+          exprOpt match {
+            case None => {
+              val hint = if (isRecD) "Recursive" else "Indirectly recursive"
+              cc.error(loc, s"${hint} function '${name}' requires 'reclimit' attribute")
+              0
+            }
+            case Some(expr) => {
+              expr.value match {
+                case Some(value) if value < 2 => {
+                  cc.error(
+                    loc,
+                    s"Recursive function '${name}' has 'reclimit' attribute equal to ${value}"
+                  )
+                  0
+                }
+                case None => {
+                  symbol.attr.recLimit set Expr(2)
+                  cc.error(loc,
+                           s"Cannot compute value of 'reclimit' attribute of function '${name}'")
+                  0
+                }
+                case Some(value) => value.toInt
               }
-              case None => {
-                symbol.attr.recLimit set Expr(2)
-                cc.error(loc, s"Cannot compute value of 'reclimit' attribute of function '${name}'")
-                0
-              }
-              case Some(value) => value.toInt
             }
           }
         }
       }
     }
-
-    val list = result.toList
 
     // 0 is only possible if there was an error so yield None in that case
     if (list contains 0) None else Some(list)

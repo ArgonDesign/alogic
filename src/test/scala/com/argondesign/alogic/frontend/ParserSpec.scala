@@ -1407,7 +1407,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
               literal in {
                 literal.asTree[Expr] shouldBe result
                 if (msg.nonEmpty) {
-                  cc.messages.loneElement should beThe[Error](msg split '\n': _*)
+                  cc.messages.loneElement should beThe[Error]((msg split '\n').toSeq: _*)
                 } else {
                   cc.messages shouldBe empty
                 }

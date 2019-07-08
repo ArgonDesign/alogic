@@ -50,9 +50,9 @@ class SymbolBitSet(val underlying: Map[TermSymbol, BitSet]) extends AnyVal {
       if (acc.isEmpty) {
         SymbolBitSet.empty
       } else {
-        acc transform {
+        acc mapValuesInPlace {
           case (symbol, curr) => curr intersect that(symbol)
-        } retain {
+        } filterInPlace {
           case (_, bits) => bits.nonEmpty
         }
         SymbolBitSet(acc.toMap)
@@ -72,7 +72,7 @@ class SymbolBitSet(val underlying: Map[TermSymbol, BitSet]) extends AnyVal {
           case None       => ()
         }
       }
-      acc retain { case (_, bits) => bits.nonEmpty }
+      acc filterInPlace { case (_, bits) => bits.nonEmpty }
       SymbolBitSet(acc.toMap)
     }
   }

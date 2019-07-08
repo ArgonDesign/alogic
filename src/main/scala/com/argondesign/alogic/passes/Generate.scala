@@ -177,7 +177,7 @@ private final class Generate(
               } else {
                 ExprInt(symbol.kind.isSigned, symbol.kind.width, 0) regularize symbol.loc
               }
-              val iter = (BigInt(0) to lastValue).toIterator
+              val iter = (BigInt(0) to lastValue).iterator
               val terminate = { _: Bindings =>
                 Some(if (iter.hasNext) { iter.next(); false } else true)
               }

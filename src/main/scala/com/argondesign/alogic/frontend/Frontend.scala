@@ -136,7 +136,7 @@ class Frontend(
         childAsts <- childAstsFuture
         ast <- astFuture
       } yield {
-        (Set.empty[Root] /: childAsts)(_ union _) + ast
+        childAsts.foldLeft(Set.empty[Root])(_ union _) + ast
       }
     }
 
@@ -153,9 +153,7 @@ class Frontend(
     val treeSetFutures = Future.traverse(topLevelNames)(doIt)
 
     // Merge all sets
-    val treeSetFuture = treeSetFutures map { sets =>
-      (Set.empty[Root] /: sets) { _ union _ }
-    }
+    val treeSetFuture = treeSetFutures map { _.foldLeft(Set.empty[Root])(_ union _) }
 
     // Wait for the result
     val treeSet = Await.result(treeSetFuture, atMost = Inf)

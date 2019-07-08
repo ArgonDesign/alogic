@@ -61,6 +61,6 @@ object Attribute {
   }
 
   implicit def enumerableList[E] = new Enumerable[E, List[E]] {
-    def enumerate(coll: List[E]): Iterator[E] = coll.toIterator
+    def enumerate(coll: List[E]): Iterator[E] = coll.iterator
   }
 }

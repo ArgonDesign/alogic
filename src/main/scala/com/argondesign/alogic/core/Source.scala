@@ -28,7 +28,7 @@ class Source(val file: File, val text: String) {
   def lineFor(offset: Int): Int = text.slice(0, offset + 1).linesWithSeparators.length
 
   // Return offset of line number (1 based)
-  def offsetFor(line: Int): Int = (0 /: lines.slice(0, line - 1)) { _ + _.length }
+  def offsetFor(line: Int): Int = lines.slice(0, line - 1).foldLeft(0) { _ + _.length }
 }
 
 object Source {

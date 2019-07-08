@@ -131,10 +131,7 @@ final class LowerFlowControlB(implicit cc: CompilerContext) extends TreeTransfor
           Connect(rhs, bLhs.toList)
         }
 
-        val newConns = {
-          val it = pConn.toIterator ++ vConn.toIterator ++ bConn.toIterator
-          it.toList
-        }
+        val newConns = List.concat(pConn, vConn, bConn)
 
         if (newConns.nonEmpty) Thicket(newConns) else tree
       } followedBy {

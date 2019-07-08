@@ -30,7 +30,7 @@ final class SplitStructsB(implicit cc: CompilerContext) extends TreeTransformer 
       val kind = iSymbol.kind.asInstanceOf[TypeInstance]
       val pSymbol = kind.portSymbol(sel).get
       pSymbol.attr.fieldSymbols.get map { fSymbols =>
-        val it = fSymbols.toIterator
+        val it = fSymbols.iterator
         def cat(struct: TypeStruct): ExprCat = ExprCat {
           for (fType <- struct.fieldTypes) yield {
             fType match {

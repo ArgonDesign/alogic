@@ -20,6 +20,7 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.TermSymbol
 import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.util.SequenceNumbers
 
 import scala.collection.mutable
 
@@ -54,12 +55,12 @@ final class RenameSymbols(implicit cc: CompilerContext) extends TreeTransformer 
             }
           }
 
-          lazy val seq = Stream.from(0).toIterator
+          lazy val seq = new SequenceNumbers
 
-          for ((symbol, newName) <- sortedSymbols zip newNames) {
+          for ((symbol, newName) <- sortedSymbols lazyZip newNames) {
             // Ensure uniqueness, even if defined on the same line
             val finalName = if (newNames.count(_ == newName) > 1) {
-              s"${newName}_${seq.next()}"
+              s"${newName}_${seq.next}"
             } else {
               newName
             }

@@ -64,7 +64,7 @@ final class CodeWriter {
       // Emit each row
       for (row <- rows) {
         // Pad all columns to the output column width
-        val parts = for ((col, fieldWidth) <- (row, fieldWidths).zipped) yield {
+        val parts = for ((col, fieldWidth) <- row lazyZip fieldWidths) yield {
           val pad = fieldWidth - col.length
           if (pad <= 0) {
             col

@@ -23,6 +23,7 @@ import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Math
 import com.argondesign.alogic.typer.TypeAssigner
+import com.argondesign.alogic.util.SequenceNumbers
 
 import scala.collection.mutable
 
@@ -67,7 +68,7 @@ final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
 
       if (nStates > 1) {
         // For now, just allocate state numbers linearly as binary coded
-        val it = Stream.from(0).iterator
+        val it = new SequenceNumbers
 
         // Ensure the entry symbol is allocated number 0
         val (entryStates, otherStates) = entity.states partition { state =>
@@ -78,10 +79,10 @@ final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
         assert(entryStates.length == 1)
 
         val State(ExprRef(entrySymbol: TermSymbol), _) = entryStates.head
-        stateMap(entrySymbol) = it.next()
+        stateMap(entrySymbol) = it.next
 
         for (State(ExprRef(symbol: TermSymbol), _) <- otherStates) {
-          stateMap(symbol) = it.next()
+          stateMap(symbol) = it.next
         }
       }
 

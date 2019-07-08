@@ -36,7 +36,7 @@ object Main extends App {
   // Parse arguments
   //////////////////////////////////////////////////////////////////////////////
 
-  val cliConf = new CLIConf(args)
+  val cliConf = new CLIConf(args.toSeq)
 
   //////////////////////////////////////////////////////////////////////////////
   // Create the compiler context
@@ -88,7 +88,7 @@ object Main extends App {
   val settings = Settings(
     moduleSearchDirs = if (defaultToCWD) List(cwd) else cliConf.ydir(),
     includeSearchDirs = if (defaultToCWD) List(cwd) else cliConf.incdir(),
-    initialDefines = cliConf.defs.toMap,
+    initialDefines = cliConf.defs,
     entityWriterFactory = entityWriterFactory,
     sep = cliConf.sep(),
     uninitialized = cliConf.uninitialized(),

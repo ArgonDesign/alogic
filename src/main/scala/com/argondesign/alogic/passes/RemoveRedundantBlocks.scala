@@ -25,7 +25,7 @@ final class RemoveRedundantBlocks(implicit cc: CompilerContext) extends TreeTran
 
   private[this] def flatten(body: List[Stmt]): List[Stmt] = {
     body flatMap {
-      case StmtBlock(nested) => nested.toIterator
+      case StmtBlock(nested) => nested.iterator
       case other             => Iterator.single(other)
     }
   }

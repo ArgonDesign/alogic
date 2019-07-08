@@ -45,7 +45,7 @@ case class Matrix[T: Numeric](elements: List[List[T]]) {
 
   def +(other: Matrix[T]): Matrix[T] = {
     require(size == other.size, s"Incompatible matrix sizes ${size} + ${other.size}")
-    val elements = (rows, other.rows).zipped map { (_, _).zipped map { _ + _ } }
+    val elements = (rows lazyZip other.rows) map { case (a, b) => (a lazyZip b) map { _ + _ } }
     Matrix(elements)
   }
 

@@ -24,7 +24,7 @@ import com.argondesign.alogic.util.unreachable
 import org.antlr.v4.runtime.ParserRuleContext
 
 import scala.annotation.tailrec
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 object GenBuilder extends BaseBuilder[ParserRuleContext, Gen] {
 

@@ -16,7 +16,8 @@
 package com.argondesign.alogic.util
 
 class SequenceNumbers {
-  private[this] val it = Stream.from(0).iterator
+  // TODO: yuck
+  private[this] val it = LazyList.from(0).iterator
 
   def next: Int = synchronized {
     it.next()

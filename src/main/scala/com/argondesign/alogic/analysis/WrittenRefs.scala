@@ -26,15 +26,11 @@ object WrittenRefs {
   def apply(expr: Expr): Iterator[ExprRef] = {
     expr match {
       case expr: ExprRef            => Iterator.single(expr)
-      case ExprCat(parts)           => parts.toIterator flatMap apply
+      case ExprCat(parts)           => parts.iterator flatMap apply
       case ExprIndex(expr, _)       => apply(expr)
       case ExprSlice(expr, _, _, _) => apply(expr)
       case ExprSelect(expr, _)      => apply(expr)
-      case _ => {
-        println(expr)
-        unreachable
-      }
+      case _                        => unreachable
     }
   }
-
 }

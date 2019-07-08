@@ -15,16 +15,16 @@
 
 package com.argondesign.alogic.antlr
 
-import scala.collection.JavaConverters._
-
-import com.argondesign.alogic.antlr.AlogicParser.Type_definitionContext
 import com.argondesign.alogic.antlr.AlogicParser.TypeDefinitionStructContext
 import com.argondesign.alogic.antlr.AlogicParser.TypeDefinitionTypedefContext
+import com.argondesign.alogic.antlr.AlogicParser.Type_definitionContext
 import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.ast.Trees.TypeDefinition
 import com.argondesign.alogic.ast.Trees.TypeDefinitionStruct
 import com.argondesign.alogic.ast.Trees.TypeDefinitionTypedef
 import com.argondesign.alogic.core.CompilerContext
+
+import scala.jdk.CollectionConverters._
 
 object TypeDefinitionBuilder extends BaseBuilder[Type_definitionContext, TypeDefinition] {
 
@@ -38,7 +38,9 @@ object TypeDefinitionBuilder extends BaseBuilder[Type_definitionContext, TypeDef
         val fields = ctx.field.asScala.toList
 
         val fieldNames = fields map { _.IDENTIFIER.text }
-        val fieldKinds = fields map { ctx => TypeBuilder(ctx.kind) }
+        val fieldKinds = fields map { ctx =>
+          TypeBuilder(ctx.kind)
+        }
 
         TypeDefinitionStruct(ctx.IDENTIFIER.toIdent, fieldNames, fieldKinds) withLoc ctx.loc
       }

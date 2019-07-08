@@ -104,7 +104,7 @@ trait LocationRemapping { self: CompilerContext =>
         // If not found a mapping, then adjust our own line number based on
         // how many lines were added by the mappings preceding this line
         case None => {
-          val addedLines = (0 /: lineMap.keys.filter(_.end < line))(_ + _.size)
+          val addedLines = lineMap.keys.filter(_.end < line).foldLeft(0)(_ + _.size)
           (source, line - addedLines)
         }
       }

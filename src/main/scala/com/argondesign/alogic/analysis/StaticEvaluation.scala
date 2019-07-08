@@ -116,7 +116,7 @@ object StaticEvaluation {
         }
       }
 
-      val transitive = (Bindings.empty /: transitives)(_ ++ _)
+      val transitive = transitives.foldLeft(Bindings.empty)(_ ++ _)
 
       inferTransitive(curr ++ inferred, transitive)
     }
@@ -190,11 +190,11 @@ object StaticEvaluation {
         // Postfix with complex argument
         case StmtPost(expr, _) => removeWritten(curr, expr)
 
-        case StmtBlock(body) => (curr /: body)(analyse)
+        case StmtBlock(body) => body.foldLeft(curr)(analyse)
 
         case StmtIf(cond, thenStmts, elseStmts) => {
-          val afterThen = (inferTrueTransitive(curr, cond) /: thenStmts)(analyse)
-          val afterElse = (inferFalseTransitive(curr, cond) /: elseStmts)(analyse)
+          val afterThen = thenStmts.foldLeft(inferTrueTransitive(curr, cond))(analyse)
+          val afterElse = elseStmts.foldLeft(inferFalseTransitive(curr, cond))(analyse)
 
           // Keep only the bindings that are the same across both branches
           (afterThen.toSet intersect afterElse.toSet).toMap

@@ -475,7 +475,7 @@ final class FoldExpr(
 
       case ExprCat(parts) if parts forall { _.isInstanceOf[ExprInt] } => {
         val start = (0, BigInt(0))
-        val (width, value) = (parts :\ start) {
+        val (width, value) = parts.foldRight(start) {
           case (ExprInt(_, w, v), (aw, av)) => (w.toInt + aw, (v.extract(0, w.toInt) << aw) | av)
           case _                            => unreachable
         }
@@ -491,7 +491,7 @@ final class FoldExpr(
           val c = cnt.toInt
           val w = width.toInt
           val b = value.extract(0, w)
-          val v = (BigInt(0) /: (0 until c)) { case (a, _) => (a << w) | b }
+          val v = (0 until c).foldLeft(BigInt(0)) { case (a, _) => (a << w) | b }
           ExprInt(signed = false, c * w, v) withLoc tree.loc
         } getOrElse tree
       }

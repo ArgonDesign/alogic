@@ -15,8 +15,6 @@
 
 package com.argondesign.alogic.lib
 
-import scala.collection.GenTraversableOnce
-
 // A TreeLike is characterised by the possession of a collection of other
 // TreeLike objects called children. Note that it is *not* required that
 // the object graph is actually a tree. In particular, isomorphic subtrees
@@ -126,12 +124,12 @@ trait TreeLike extends Product {
   // flatCollect methods
   ////////////////////////////////////////////////////////////////////////////////
 
-  final def flatCollect[E](pf: PartialFunction[TreeLike, GenTraversableOnce[E]]): Iterator[E] = {
+  final def flatCollect[E](pf: PartialFunction[TreeLike, IterableOnce[E]]): Iterator[E] = {
     def iterate(it: Iterator[TreeLike]): Iterator[E] = {
       if (it.hasNext) {
         val next = it.next
         if (pf.isDefinedAt(next)) {
-          pf(next).toIterator ++ iterate(it)
+          pf(next).iterator ++ iterate(it)
         } else {
           iterate(next.children ++ it)
         }
@@ -142,12 +140,12 @@ trait TreeLike extends Product {
     iterate(Iterator.single(this))
   }
 
-  def flatCollectAll[E](pf: PartialFunction[TreeLike, GenTraversableOnce[E]]): Iterator[E] = {
+  def flatCollectAll[E](pf: PartialFunction[TreeLike, IterableOnce[E]]): Iterator[E] = {
     def iterate(it: Iterator[TreeLike]): Iterator[E] = {
       if (it.hasNext) {
         val next = it.next
         if (pf.isDefinedAt(next)) {
-          pf(next).toIterator ++ iterate(next.children ++ it)
+          pf(next).iterator ++ iterate(next.children ++ it)
         } else {
           iterate(next.children ++ it)
         }

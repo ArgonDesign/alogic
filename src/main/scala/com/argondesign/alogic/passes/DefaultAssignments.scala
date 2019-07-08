@@ -77,7 +77,7 @@ final class DefaultAssignments(implicit cc: CompilerContext)
         }
 
         // Now retain only the symbols that are not dead
-        needsDefault retain { symbol =>
+        needsDefault filterInPlace { symbol =>
           !(deadSymbols contains symbol)
         }
       }

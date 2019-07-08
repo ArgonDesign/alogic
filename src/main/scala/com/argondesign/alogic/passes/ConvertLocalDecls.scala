@@ -31,7 +31,7 @@ final class ConvertLocalDecls(implicit cc: CompilerContext) extends TreeTransfor
 
   private[this] val localDecls = ListBuffer[Declaration]()
 
-  private[this] lazy val rng = new Random((0 /: entitySymbol.name)(_ ^ _))
+  private[this] lazy val rng = new Random(entitySymbol.name.foldLeft(0)(_ ^ _))
 
   private[this] def getDefaultInitializer(kind: Type): Option[Expr] = {
     lazy val signed = kind.isSigned

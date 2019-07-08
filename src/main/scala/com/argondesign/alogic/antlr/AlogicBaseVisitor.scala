@@ -15,7 +15,7 @@
 
 package com.argondesign.alogic.antlr
 
-import scala.collection.JavaConverters.asScalaBufferConverter
+import scala.jdk.CollectionConverters._
 
 import com.argondesign.alogic.antlr.AlogicParser.CommaexprContext
 

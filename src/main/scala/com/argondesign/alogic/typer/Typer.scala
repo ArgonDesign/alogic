@@ -682,7 +682,7 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
       assert(contextKind.isEmpty,
              s"${tree.loc.prefix}\n${contextKind.toList}\n${contextNode.toList}")
 
-      def check(tree: TreeLike) {
+      def check(tree: TreeLike): Unit = {
         tree visitAll {
           case node: Tree if !node.hasTpe => {
             if (externalRefs) {

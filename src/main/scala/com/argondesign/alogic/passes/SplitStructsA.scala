@@ -100,7 +100,7 @@ final class SplitStructsA(implicit cc: CompilerContext) extends TreeTransformer 
       case Some(init) => {
         val widths = fSymbols map { _.kind.width }
         val lsbs = widths.scanRight(0)(_ + _).tail
-        val t = for ((symbol, lsb, width) <- (fSymbols, lsbs, widths).zipped) yield {
+        val t = for ((symbol, lsb, width) <- fSymbols lazyZip lsbs lazyZip widths) yield {
           val msb = lsb + width - 1
           val expr = ExprSlice(init, Expr(msb), ":", Expr(lsb)) regularize init.loc
           // TODO: teach simplify to simplify more things as necesary
@@ -127,7 +127,7 @@ final class SplitStructsA(implicit cc: CompilerContext) extends TreeTransformer 
         // Rewrite reference to struct symbol as a nested
         // concatenation of references to the field symbols
         symbol.attr.fieldSymbols.get map { fSymbols =>
-          val it = fSymbols.toIterator
+          val it = fSymbols.iterator
           def cat(struct: TypeStruct): ExprCat = ExprCat {
             for (fType <- struct.fieldTypes) yield {
               fType match {
