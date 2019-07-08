@@ -27,12 +27,11 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.FlowControlTypes._
 import com.argondesign.alogic.core.StorageTypes._
 import com.argondesign.alogic.core.Symbols._
-import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
-import com.argondesign.alogic.core.SyncSliceFactory
 import com.argondesign.alogic.core.SyncRegFactory
-import com.argondesign.alogic.lib.Stack
+import com.argondesign.alogic.core.SyncSliceFactory
+import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.FollowedBy
 import com.argondesign.alogic.util.unreachable
@@ -53,7 +52,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
   private val oStorage = mutable.Map[TermSymbol, (EntityLowered, TermSymbol, Boolean)]()
 
   // Stack of extra statements to emit when finished with a statement
-  private[this] val extraStmts = Stack[mutable.ListBuffer[Stmt]]()
+  private[this] val extraStmts = mutable.Stack[mutable.ListBuffer[Stmt]]()
 
   private[this] def boolType(loc: Loc): TypeUInt = {
     val one = Expr(1) withLoc loc
@@ -535,24 +534,12 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
 
     // Emit any extra statement with this statement
     val result2 = result match {
-      case StmtBlock(Nil) => {
-        val extra = extraStmts.top
+      case StmtBlock(Nil) =>
+        val extra = extraStmts.pop()
         if (extra.isEmpty) Thicket(Nil) else StmtBlock(extra.toList)
-      } followedBy {
-        extraStmts.pop()
-      }
-
-      case stmt: Stmt => {
-        val extra = extraStmts.top
-        if (extra.isEmpty) {
-          stmt
-        } else {
-          extra append stmt
-          StmtBlock(extra.toList)
-        }
-      } followedBy {
-        extraStmts.pop()
-      }
+      case stmt: Stmt =>
+        val extra = extraStmts.pop()
+        if (extra.isEmpty) stmt else StmtBlock((extra append stmt).toList)
       case _ => result
     }
 

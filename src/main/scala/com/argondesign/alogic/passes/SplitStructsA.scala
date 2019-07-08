@@ -21,13 +21,14 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.lib.Stack
 import com.argondesign.alogic.util.FollowedBy
 import com.argondesign.alogic.util.unreachable
 
+import scala.collection.mutable
+
 final class SplitStructsA(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
 
-  private[this] val fieldIndexStack = Stack[Int]()
+  private[this] val fieldIndexStack = mutable.Stack[Int]()
 
   private[this] def flattenStruct(prefix: String, kind: TypeStruct): List[(String, Type)] = {
     kind.fields flatMap {

@@ -18,8 +18,9 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.lib.Stack
 import com.argondesign.alogic.util.FollowedBy
+
+import scala.collection.mutable
 
 final class LowerLoops(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
 
@@ -32,7 +33,7 @@ final class LowerLoops(implicit cc: CompilerContext) extends TreeTransformer wit
   }
 
   // Stack of statements to replace continue statements with
-  private[this] val continueRewrites = Stack[Option[() => Stmt]]()
+  private[this] val continueRewrites = mutable.Stack[Option[() => Stmt]]()
 
   override def enter(tree: Tree): Unit = tree match {
     case _: StmtLoop => continueRewrites.push(None)

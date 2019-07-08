@@ -22,7 +22,6 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.TermSymbol
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.lib.Stack
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.FollowedBy
 import com.argondesign.alogic.util.unreachable
@@ -54,19 +53,19 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
   private[this] var entryStmts = mutable.Map[Int, TermSymbol]()
 
   // Stack of state symbols to go to when finished with this state
-  private[this] val followingState = Stack[TermSymbol]()
+  private[this] val followingState = mutable.Stack[TermSymbol]()
 
   // Stack of break statement target state symbols
-  private[this] val breakTargets = Stack[TermSymbol]()
+  private[this] val breakTargets = mutable.Stack[TermSymbol]()
 
   // Stack of continue statement target state symbols
-  private[this] val continueTargets = Stack[TermSymbol]()
+  private[this] val continueTargets = mutable.Stack[TermSymbol]()
 
   // Stack of states symbols in the order they are emitted. We keep these
   // as Options. A None indicates that the state does not actually needs
   // to be emitted, as it will be emitted by an enclosing list (which is empty),
   // in part, this is used to avoid emitting empty states for loop entry points.
-  private[this] val pendingStates = Stack[Option[TermSymbol]]()
+  private[this] val pendingStates = mutable.Stack[Option[TermSymbol]]()
 
   override def skip(tree: Tree): Boolean = tree match {
     case entity: EntityNamed => entity.functions.isEmpty
@@ -260,7 +259,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
     assert(body.last.tpe == TypeCtrlStmt)
     assert(body.init forall { _.tpe == TypeCombStmt })
 
-    val symOpt = pendingStates.top followedBy pendingStates.pop()
+    val symOpt = pendingStates.pop()
 
     symOpt foreach { symbol =>
       val loc = body.head.loc

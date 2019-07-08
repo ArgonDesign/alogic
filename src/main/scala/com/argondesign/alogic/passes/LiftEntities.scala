@@ -23,7 +23,6 @@ import com.argondesign.alogic.core.StorageTypes.StorageTypeDefault
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types.TypeOut
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.lib.Stack
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.FollowedBy
 import com.argondesign.alogic.util.ValueMap
@@ -41,19 +40,19 @@ final class LiftEntities(implicit cc: CompilerContext)
   // TODO: Rewrite without collectAll
 
   // ports and consts declared in outer entities
-  private val outerIPortSymbols: Stack[Set[TermSymbol]] = Stack()
-  private val outerOPortSymbols: Stack[Set[TermSymbol]] = Stack()
-  private val outerConstSymbols: Stack[Set[TermSymbol]] = Stack()
+  private val outerIPortSymbols = mutable.Stack[Set[TermSymbol]]()
+  private val outerOPortSymbols = mutable.Stack[Set[TermSymbol]]()
+  private val outerConstSymbols = mutable.Stack[Set[TermSymbol]]()
 
   // new ports that need to be created to connect up to directly accessed outer port
-  private val freshIPortSymbols: Stack[mutable.LinkedHashMap[TermSymbol, TermSymbol]] = Stack()
-  private val freshOPortSymbols: Stack[mutable.LinkedHashMap[TermSymbol, TermSymbol]] = Stack()
+  private val freshIPortSymbols = mutable.Stack[mutable.LinkedHashMap[TermSymbol, TermSymbol]]()
+  private val freshOPortSymbols = mutable.Stack[mutable.LinkedHashMap[TermSymbol, TermSymbol]]()
   // new costs that need to be created
-  private val freshConstSymbols: Stack[mutable.LinkedHashMap[TermSymbol, TermSymbol]] = Stack()
+  private val freshConstSymbols = mutable.Stack[mutable.LinkedHashMap[TermSymbol, TermSymbol]]()
 
   // new ports that need to be connected in this entity
-  private val freshIConnSymbols: Stack[mutable.LinkedHashSet[(TermSymbol, TypeSymbol)]] = Stack()
-  private val freshOConnSymbols: Stack[mutable.LinkedHashSet[(TypeSymbol, TermSymbol)]] = Stack()
+  private val freshIConnSymbols = mutable.Stack[mutable.LinkedHashSet[(TermSymbol, TypeSymbol)]]()
+  private val freshOConnSymbols = mutable.Stack[mutable.LinkedHashSet[(TypeSymbol, TermSymbol)]]()
 
   // Output ports with storage that have been pushed into nested entities need
   // to loose their storage and turn into wire ports, we collect these in a set

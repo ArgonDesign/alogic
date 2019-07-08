@@ -20,7 +20,6 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.lib.Stack
 import com.argondesign.alogic.util.unreachable
 import com.argondesign.alogic.lib.Math.clog2
 
@@ -30,7 +29,7 @@ final class LowerVectors(implicit cc: CompilerContext) extends TreeTransformer {
 
   private[this] val vectorType = mutable.Set[TermSymbol]()
 
-  private[this] val tgtTpe = Stack[Type]()
+  private[this] val tgtTpe = mutable.Stack[Type]()
 
   private[this] var lvalueLevel = 0
 

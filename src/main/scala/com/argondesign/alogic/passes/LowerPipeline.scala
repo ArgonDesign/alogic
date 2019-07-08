@@ -25,13 +25,13 @@ import com.argondesign.alogic.core.StorageTypes.StorageTypeSlices
 import com.argondesign.alogic.core.Symbols.TermSymbol
 import com.argondesign.alogic.core.Symbols.TypeSymbol
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.lib.Stack
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.FollowedBy
 import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.tailrec
 import scala.collection.immutable.ListMap
+import scala.collection.mutable
 import scala.language.postfixOps
 
 final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
@@ -53,7 +53,7 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
   private var freshSymbols: ListMap[String, TermSymbol] = ListMap()
 
   // Stack of booleans to indicate whether to rewrite this entity
-  private val rewriteEntity: Stack[Boolean] = Stack()
+  private val rewriteEntity = mutable.Stack[Boolean]()
 
   private var firstEntity = true
 

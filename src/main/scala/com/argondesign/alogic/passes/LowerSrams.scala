@@ -25,7 +25,6 @@ import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.SramFactory
 import com.argondesign.alogic.core.SyncRegFactory
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.lib.Stack
 import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
@@ -124,7 +123,7 @@ final class LowerSrams(
   private[this] val sramMap = mutable.LinkedHashMap[TermSymbol, SramParts]()
 
   // Stack of extra statements to emit when finished with a statement
-  private[this] val extraStmts = Stack[mutable.ListBuffer[Stmt]]()
+  private[this] val extraStmts = mutable.Stack[mutable.ListBuffer[Stmt]]()
 
   override def skip(tree: Tree): Boolean = tree match {
     case entity: Entity => entitySymbol.attr.variant.value == "network"
@@ -357,17 +356,9 @@ final class LowerSrams(
 
     // Emit any extra statement with this statement
     val result2 = result match {
-      case stmt: Stmt => {
-        val extra = extraStmts.top
-        if (extra.isEmpty) {
-          stmt
-        } else {
-          extra append stmt
-          StmtBlock(extra.toList)
-        }
-      } followedBy {
-        extraStmts.pop()
-      }
+      case stmt: Stmt =>
+        val extra = extraStmts.pop()
+        if (extra.isEmpty) stmt else StmtBlock((extra append stmt).toList)
       case _ => result
     }
 

@@ -20,11 +20,12 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.TermSymbol
 import com.argondesign.alogic.core.Symbols.TypeSymbol
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.lib.Stack
 import com.argondesign.alogic.lib.TreeLikeTransformer
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.FollowedBy
 import com.argondesign.alogic.util.unreachable
+
+import scala.collection.mutable
 
 // Tree transformers are applied during a post-order traversal of a Tree.
 abstract class TreeTransformer(implicit val cc: CompilerContext)
@@ -50,7 +51,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
   // Internals
   ///////////////////////////////////////////////////////////////////////////////
 
-  private[this] val entityStack = Stack[Entity]()
+  private[this] val entityStack = mutable.Stack[Entity]()
 
   // Walk list, flatten Thickets
   final override def walk(trees: List[Tree]): List[Tree] = {

@@ -23,14 +23,15 @@ import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Types.Type
-import com.argondesign.alogic.lib.Stack
 import com.argondesign.alogic.typer.TypeAssigner
+
+import scala.collection.mutable
 
 final class ReplaceUnaryTicks(implicit cc: CompilerContext) extends TreeTransformer {
 
   override val typed = false
 
-  private val kindStack = Stack[Type]()
+  private val kindStack = mutable.Stack[Type]()
 
   override protected def enter(tree: Tree): Unit = tree match {
     case expr @ ExprUnary("'", _) => kindStack push expr.tpe
@@ -39,8 +40,7 @@ final class ReplaceUnaryTicks(implicit cc: CompilerContext) extends TreeTransfor
 
   override def transform(tree: Tree): Tree = tree match {
     case ExprUnary("'", op) => {
-      val kind = kindStack.top
-      kindStack.pop
+      val kind = kindStack.pop()
       TypeAssigner(ExprCast(kind, op) withLoc tree.loc)
     }
     case node if node.hasTpe => tree

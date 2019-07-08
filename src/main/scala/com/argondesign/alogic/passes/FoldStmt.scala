@@ -20,8 +20,9 @@ import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Bindings
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.lib.Stack
 import com.argondesign.alogic.util.FollowedBy
+
+import scala.collection.mutable
 
 final class FoldStmt(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
 
@@ -35,7 +36,7 @@ final class FoldStmt(implicit cc: CompilerContext) extends TreeTransformer with 
 
   private[this] var bindingsMap: Map[Int, Bindings] = _
 
-  private[this] val bindings = Stack[Bindings]()
+  private[this] val bindings = mutable.Stack[Bindings]()
 
   override def enter(tree: Tree): Unit = tree match {
     case entity: EntityLowered => {

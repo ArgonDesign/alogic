@@ -22,7 +22,6 @@ import com.argondesign.alogic.core.StackFactory
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types.TypeStack
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.lib.Stack
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -34,7 +33,7 @@ final class LowerStacks(implicit cc: CompilerContext) extends TreeTransformer {
   private[this] val stackMap = mutable.Map[TermSymbol, (EntityLowered, TermSymbol)]()
 
   // Stack of extra statements to emit when finished with a statement
-  private[this] val extraStmts = Stack[mutable.ListBuffer[Stmt]]()
+  private[this] val extraStmts = mutable.Stack[mutable.ListBuffer[Stmt]]()
 
   override def skip(tree: Tree): Boolean = tree match {
     case entity: Entity => entitySymbol.attr.variant.value == "network"
@@ -195,17 +194,9 @@ final class LowerStacks(implicit cc: CompilerContext) extends TreeTransformer {
 
     // Emit any extra statement with this statement
     val result2 = result match {
-      case stmt: Stmt => {
-        val extra = extraStmts.top
-        if (extra.isEmpty) {
-          stmt
-        } else {
-          extra append stmt
-          StmtBlock(extra.toList)
-        }
-      } followedBy {
-        extraStmts.pop()
-      }
+      case stmt: Stmt =>
+        val extra = extraStmts.pop()
+        if (extra.isEmpty) stmt else StmtBlock((extra append stmt).toList)
       case _ => result
     }
 

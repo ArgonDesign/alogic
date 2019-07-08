@@ -28,12 +28,12 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.TreeInTypeTransformer
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Math.clog2
-import com.argondesign.alogic.lib.Stack
 import com.argondesign.alogic.lib.TreeLike
 import com.argondesign.alogic.passes._
 import com.argondesign.alogic.util.FollowedBy
 import com.argondesign.alogic.util.unreachable
 
+import scala.collection.mutable
 import scala.language.implicitConversions
 
 class BoolHelpers(val value: Boolean) extends AnyVal {
@@ -181,9 +181,9 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
     }
   }
 
-  private val contextKind = Stack[Type]()
+  private val contextKind = mutable.Stack[Type]()
 
-  private val contextNode = Stack[Int]()
+  private val contextNode = mutable.Stack[Int]()
 
   private def pushContextWidth(node: Tree, kind: Type) = {
     contextNode push node.id
@@ -654,7 +654,7 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
     // Pop context stack if required. This is a loop as some nodes might have
     // been pushed multiple times, e.g.: port.write(array[index]), both the
     // ExprCall and ExprIndex would have pushed the ExprIndex node
-    while (contextNode.nonEmpty && contextNode.top == tree.id) {
+    while (contextNode.headOption contains tree.id) {
       contextNode.pop()
       contextKind.pop()
     }
@@ -679,8 +679,7 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
 
   override def finalCheck(tree: Tree): Unit = {
     if (!tree.tpe.isError) {
-      assert(contextKind.isEmpty,
-             s"${tree.loc.prefix}\n${contextKind.toList}\n${contextNode.toList}")
+      assert(contextKind.isEmpty, s"${tree.loc.prefix}\n$contextKind\n$contextNode")
 
       def check(tree: TreeLike): Unit = {
         tree visitAll {

@@ -30,7 +30,6 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.TreeInTypeTransformer
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.lib.Stack
 import com.argondesign.alogic.util.FollowedBy
 import com.argondesign.alogic.util.unreachable
 
@@ -212,10 +211,10 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
 
   private[this] lazy val atBitsSymbol = cc.lookupGlobalTerm("@bits")
 
-  private[this] val swapIfElseScope = Stack[Int]()
+  private[this] val swapIfElseScope = mutable.Stack[Int]()
 
   override def enter(tree: Tree): Unit = {
-    if (swapIfElseScope.nonEmpty && swapIfElseScope.top == tree.id) {
+    if (swapIfElseScope.headOption contains tree.id) {
       Scopes.pop()
       Scopes.push()
       swapIfElseScope.pop()

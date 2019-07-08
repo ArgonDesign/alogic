@@ -31,7 +31,6 @@ import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.TreeInTypeTransformer
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.lib.Stack
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.PartialMatch
 import com.argondesign.alogic.util.unreachable
@@ -51,7 +50,7 @@ final class LowerInterconnect(implicit cc: CompilerContext)
 
   // Keep a stack of booleans indicating that we should
   // be allocating interconnect symbols in a connect expression
-  private[this] val enableStack = Stack[Boolean]()
+  private[this] val enableStack = mutable.Stack[Boolean]()
 
   // Keep track of whether we are in a connect expression
   private[this] var inConnect = false
@@ -272,7 +271,7 @@ final class LowerInterconnect(implicit cc: CompilerContext)
         case _: Expr => {
           enableStack.pop()
           assert(enableStack.nonEmpty)
-          if (enableStack.depth == 2) {
+          if (enableStack.size == 2) {
             enableStack.pop()
             enableStack push enableStack.top
           }
@@ -280,8 +279,9 @@ final class LowerInterconnect(implicit cc: CompilerContext)
         // If we just processed a connect, mark we are
         // out and empty the enableStack
         case _: Connect => {
-          assert(enableStack.depth == 2)
-          enableStack.pop().pop()
+          assert(enableStack.size == 2)
+          enableStack.pop()
+          enableStack.pop()
           inConnect = false
         }
         case _ => ()
