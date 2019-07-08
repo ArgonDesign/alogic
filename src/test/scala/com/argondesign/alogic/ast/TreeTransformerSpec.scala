@@ -20,7 +20,6 @@ import com.argondesign.alogic.SourceTextConverters._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Warning
-import com.argondesign.alogic.util.FollowedBy
 import org.scalatest.FlatSpec
 
 final class TreeTransformerSpec extends FlatSpec with AlogicTest {
@@ -50,17 +49,17 @@ final class TreeTransformerSpec extends FlatSpec with AlogicTest {
 
   it should "return the same tree instance if it is not rewritten" in {
     val oldTree = "{ a = b; bool c = a; }".asTree[Stmt]
-    val newTree = oldTree rewrite new TreeTransformer with FollowedBy {
+    val newTree = oldTree rewrite new TreeTransformer {
       override val typed = false
-      override def transform(tree: Tree) = tree followedBy { cc.warning(tree, "Saw it") }
+      override def transform(tree: Tree) = tree tap { _ =>
+        cc.warning(tree, "Saw it")
+      }
     }
 
     newTree should be theSameInstanceAs oldTree
 
     cc.messages should have length 8
-    forAll(cc.messages) { msg =>
-      msg should beThe[Warning]("Saw it")
-    }
+    forAll(cc.messages) { _ should beThe[Warning]("Saw it") }
   }
 
 }

@@ -21,12 +21,11 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.util.FollowedBy
 import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
 
-final class SplitStructsA(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
+final class SplitStructsA(implicit cc: CompilerContext) extends TreeTransformer {
 
   private[this] val fieldIndexStack = mutable.Stack[Int]()
 
@@ -156,7 +155,7 @@ final class SplitStructsA(implicit cc: CompilerContext) extends TreeTransformer 
         } else {
           tree
         }
-      } followedBy {
+      } tap { _ =>
         fieldIndexStack.pop()
       }
 

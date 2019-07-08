@@ -23,9 +23,8 @@ import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Math
 import com.argondesign.alogic.typer.TypeAssigner
-import com.argondesign.alogic.util.FollowedBy
 
-final class LowerArrays(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
+final class LowerArrays(implicit cc: CompilerContext) extends TreeTransformer {
 
   override def skip(tree: Tree): Boolean = tree match {
     case entity: EntityLowered => entity.statements.isEmpty

@@ -21,10 +21,9 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Math.clog2
 import com.argondesign.alogic.typer.TypeAssigner
-import com.argondesign.alogic.util.FollowedBy
 import com.argondesign.alogic.util.unreachable
 
-final class AddCasts(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
+final class AddCasts(implicit cc: CompilerContext) extends TreeTransformer {
 
   private def cast(kind: Type, expr: Expr) = {
     val (castType, castExpr) = if (kind.isNum) {

@@ -26,7 +26,6 @@ import com.argondesign.alogic.core.Symbols.TermSymbol
 import com.argondesign.alogic.core.Symbols.TypeSymbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.typer.TypeAssigner
-import com.argondesign.alogic.util.FollowedBy
 import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.tailrec
@@ -34,7 +33,7 @@ import scala.collection.immutable.ListMap
 import scala.collection.mutable
 import scala.language.postfixOps
 
-final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
+final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer {
 
   // TODO: special case the empty pipe stage (with body 'read; write; fence;') to avoid packing
 
@@ -254,7 +253,10 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
       TypeAssigner(result)
     }
 
-    case node: Entity => node followedBy rewriteEntity.pop()
+    case node: Entity =>
+      node tap { _ =>
+        rewriteEntity.pop()
+      }
 
     case node: StmtRead if iPortSymbolOpt.isEmpty => {
       cc.fatal(node, "'read' statement in first pipeline stage")

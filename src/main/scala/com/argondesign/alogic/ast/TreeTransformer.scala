@@ -22,15 +22,15 @@ import com.argondesign.alogic.core.Symbols.TypeSymbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.TreeLikeTransformer
 import com.argondesign.alogic.typer.TypeAssigner
-import com.argondesign.alogic.util.FollowedBy
 import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
+import scala.util.ChainingSyntax
 
 // Tree transformers are applied during a post-order traversal of a Tree.
 abstract class TreeTransformer(implicit val cc: CompilerContext)
     extends TreeLikeTransformer[Tree]
-    with FollowedBy {
+    with ChainingSyntax {
 
   val typed: Boolean = true
 
@@ -138,7 +138,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
               functions,
               entities
             ))
-        } followedBy {
+        } tap { _ =>
           entityStack.pop()
         }
         case node: EntityNamed => {
@@ -159,7 +159,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
               states,
               entities
             ))
-        } followedBy {
+        } tap { _ =>
           entityStack.pop()
         }
         case node: EntityLowered => {
@@ -174,7 +174,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
               connects,
               statements
             ))
-        } followedBy {
+        } tap { _ =>
           entityStack.pop()
         }
         case node: DeclIdent => {

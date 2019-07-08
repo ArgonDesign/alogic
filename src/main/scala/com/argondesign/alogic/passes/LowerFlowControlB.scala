@@ -134,7 +134,7 @@ final class LowerFlowControlB(implicit cc: CompilerContext) extends TreeTransfor
         val newConns = List.concat(pConn, vConn, bConn)
 
         if (newConns.nonEmpty) Thicket(newConns) else tree
-      } followedBy {
+      } tap { _ =>
         inConnect = false
       }
 

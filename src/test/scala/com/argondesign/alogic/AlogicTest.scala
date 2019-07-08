@@ -19,12 +19,12 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FatalErrorException
 import com.argondesign.alogic.core.InternalCompilerErrorException
 import com.argondesign.alogic.core.Message
-import com.argondesign.alogic.util.FollowedBy._
 import org.scalatest._
 import org.scalatest.matchers.MatchResult
 import org.scalatest.matchers.Matcher
 
 import scala.reflect.ClassTag
+import scala.util.ChainingSyntax
 
 trait AlogicTest
     extends TestSuite
@@ -33,12 +33,13 @@ trait AlogicTest
     with OptionValues
     with Inspectors
     with Inside
-    with OneInstancePerTest {
+    with OneInstancePerTest
+    with ChainingSyntax {
 
   override def withFixture(test: NoArgTest) = {
     super.withFixture(test) match {
       case failed: Failed =>
-        failed followedBy {
+        failed tap { _ =>
           failed.exception match {
             case FatalErrorException(cc, _) => {
               cc.messages map { _.string(cc) } foreach Console.err.println

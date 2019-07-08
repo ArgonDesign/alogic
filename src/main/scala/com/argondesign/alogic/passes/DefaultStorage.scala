@@ -22,11 +22,10 @@ import com.argondesign.alogic.core.FlowControlTypes._
 import com.argondesign.alogic.core.StorageTypes._
 import com.argondesign.alogic.core.Symbols.TermSymbol
 import com.argondesign.alogic.core.Types.TypeOut
-import com.argondesign.alogic.util.FollowedBy
 
 import scala.collection.mutable
 
-final class DefaultStorage(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
+final class DefaultStorage(implicit cc: CompilerContext) extends TreeTransformer {
 
   // Set of output ports accessed through port methods or directly
   private[this] val accessedSet = mutable.Set[TermSymbol]()

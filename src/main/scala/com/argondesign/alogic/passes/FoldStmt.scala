@@ -20,11 +20,10 @@ import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Bindings
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.util.FollowedBy
 
 import scala.collection.mutable
 
-final class FoldStmt(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
+final class FoldStmt(implicit cc: CompilerContext) extends TreeTransformer {
 
   override def skip(tree: Tree): Boolean = tree match {
     case entity: EntityLowered => entity.statements.isEmpty

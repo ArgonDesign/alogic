@@ -21,9 +21,8 @@ import com.argondesign.alogic.analysis.WrittenSymbols
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.util.FollowedBy
 
-final class LowerVariables(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
+final class LowerVariables(implicit cc: CompilerContext) extends TreeTransformer {
 
   // TODO: Generate clock enables
 

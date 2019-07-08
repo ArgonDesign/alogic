@@ -20,11 +20,10 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.util.FollowedBy
 
 import scala.collection.mutable
 
-final class Replace1Stacks(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
+final class Replace1Stacks(implicit cc: CompilerContext) extends TreeTransformer {
 
   // Set of stack symbols to replace
   private[this] val stackSet = mutable.Set[TermSymbol]()

@@ -33,15 +33,12 @@ import com.argondesign.alogic.core.SyncRegFactory
 import com.argondesign.alogic.core.SyncSliceFactory
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.typer.TypeAssigner
-import com.argondesign.alogic.util.FollowedBy
 import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-final class LowerFlowControlA(implicit cc: CompilerContext)
-    extends TreeTransformer
-    with FollowedBy {
+final class LowerFlowControlA(implicit cc: CompilerContext) extends TreeTransformer {
 
   // TODO: rework without using ErrorSymbol, use removeStmt instead
 
@@ -275,7 +272,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext)
 
       case _: Stmt if removeStmt => {
         StmtBlock(Nil)
-      } followedBy {
+      } tap { _ =>
         removeStmt = false
       }
 

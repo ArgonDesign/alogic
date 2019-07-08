@@ -30,7 +30,6 @@ import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Math.clog2
 import com.argondesign.alogic.lib.TreeLike
 import com.argondesign.alogic.passes._
-import com.argondesign.alogic.util.FollowedBy
 import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
@@ -49,8 +48,7 @@ class BoolHelpers(val value: Boolean) extends AnyVal {
 }
 
 final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
-    extends TreeTransformer
-    with FollowedBy {
+    extends TreeTransformer {
 
   override val typed: Boolean = false
 
@@ -668,7 +666,7 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
     tree synchronized {
       // Assign type if have not been assigned by now
       if (tree.hasTpe) tree else TypeAssigner(tree)
-    } followedBy {
+    } tap { _ =>
       if (tree.tpe.underlying.isNum && !tree.asInstanceOf[Expr].isKnownConst) {
         cc.error(tree, "Expression of unsized integer type must be compile time constant")
       }

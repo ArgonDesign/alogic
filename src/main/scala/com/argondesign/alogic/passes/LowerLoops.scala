@@ -18,11 +18,10 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.util.FollowedBy
 
 import scala.collection.mutable
 
-final class LowerLoops(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
+final class LowerLoops(implicit cc: CompilerContext) extends TreeTransformer {
 
   override def skip(tree: Tree): Boolean = tree match {
     case _: Entity   => false
@@ -74,14 +73,14 @@ final class LowerLoops(implicit cc: CompilerContext) extends TreeTransformer wit
 
     case _: StmtLoop => {
       tree
-    } followedBy {
+    } tap { _ =>
       continueRewrites.pop()
     }
 
     case StmtDo(cond, body) => {
       val test = StmtIf(cond, List(StmtFence()), List(StmtBreak()))
       StmtLoop(body :+ test) regularize tree.loc
-    } followedBy {
+    } tap { _ =>
       continueRewrites.pop()
     }
 
@@ -89,7 +88,7 @@ final class LowerLoops(implicit cc: CompilerContext) extends TreeTransformer wit
       val test = StmtIf(cond, List(StmtFence()), List(StmtBreak()))
       val loop = StmtLoop(body :+ test)
       StmtIf(cond, List(loop), Nil) regularize tree.loc
-    } followedBy {
+    } tap { _ =>
       continueRewrites.pop()
     }
 
@@ -97,13 +96,13 @@ final class LowerLoops(implicit cc: CompilerContext) extends TreeTransformer wit
       val test = StmtIf(cond, List(StmtFence()), List(StmtBreak()))
       val loop = StmtLoop(body ::: (steps :+ test))
       StmtBlock(inits :+ StmtIf(cond, List(loop), Nil)) regularize tree.loc
-    } followedBy {
+    } tap { _ =>
       continueRewrites.pop()
     }
 
     case StmtFor(inits, None, steps, body) => {
       StmtBlock(inits :+ StmtLoop(body ::: steps)) regularize tree.loc
-    } followedBy {
+    } tap { _ =>
       continueRewrites.pop()
     }
 

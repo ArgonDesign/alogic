@@ -25,7 +25,6 @@ import com.argondesign.alogic.core.TreeInTypeTransformer
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.typer.Typer
-import com.argondesign.alogic.util.FollowedBy
 import com.argondesign.alogic.util.PartialMatch
 
 import scala.collection.mutable
@@ -231,7 +230,7 @@ final class SpecializeEntity(bindings: Map[String, Expr], instLoc: Option[Loc])(
         symbol = newSymbol,
         instances = instances
       ) withLoc tree.loc
-    } followedBy {
+    } tap { _ =>
       entityLevel -= 1
     }
 
@@ -257,7 +256,7 @@ final class SpecializeEntity(bindings: Map[String, Expr], instLoc: Option[Loc])(
   }
 }
 
-object SpecializeParam extends Pass with FollowedBy {
+object SpecializeParam extends Pass {
   val name = "specialize-param"
 
   def apply(trees: List[Tree])(implicit cc: CompilerContext): List[Tree] = {

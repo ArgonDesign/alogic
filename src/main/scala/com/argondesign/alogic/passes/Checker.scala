@@ -40,12 +40,11 @@ import com.argondesign.alogic.core.StorageTypes.StorageTypeReg
 import com.argondesign.alogic.core.StorageTypes.StorageTypeSlices
 import com.argondesign.alogic.core.StorageTypes.StorageTypeWire
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.util.FollowedBy
 import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.tailrec
 
-final class Checker(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
+final class Checker(implicit cc: CompilerContext) extends TreeTransformer {
 
   override val typed: Boolean = false
 
@@ -198,7 +197,7 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer with F
         functions,
         entities
       )
-    } followedBy {
+    } tap { _ =>
       entityLevel -= 1
     }
 

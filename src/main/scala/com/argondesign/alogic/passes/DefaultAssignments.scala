@@ -23,13 +23,10 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.typer.TypeAssigner
-import com.argondesign.alogic.util.FollowedBy
 
 import scala.collection.mutable
 
-final class DefaultAssignments(implicit cc: CompilerContext)
-    extends TreeTransformer
-    with FollowedBy {
+final class DefaultAssignments(implicit cc: CompilerContext) extends TreeTransformer {
 
   private val needsDefault = mutable.Set[TermSymbol]()
 

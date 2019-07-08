@@ -80,7 +80,7 @@ private final class Generate(
       val buf = new ListBuffer[Tree]
 
       @tailrec
-      def loop(bindings: Bindings): Unit = terminate(bindings).value match {
+      def loop(bindings: Bindings): Unit = terminate(bindings) match {
         case None => cc.error(loc, "Condition of 'gen for' is not a compile time constant")
         case Some(false) =>
           val subGenerate = new Generate(bindings, symbolMap.toMap, Some(dispatcher))
@@ -268,7 +268,7 @@ private final class Generate(
 
       case _ => tree
     }
-  } followedBy {
+  } tap { _ =>
     generated = None
     level -= 1
   }

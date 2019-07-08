@@ -169,7 +169,7 @@ final class LowerInterconnect(implicit cc: CompilerContext)
         TypeAssigner {
           Thicket(newConnects.toList) withLoc tree.loc
         }
-      } followedBy {
+      } tap { _ =>
         newConnects.clear()
       }
 
@@ -254,13 +254,13 @@ final class LowerInterconnect(implicit cc: CompilerContext)
             connects = newConnects.toList ::: newConn
           ) withLoc tree.loc
         }
-      } followedBy {
+      } tap { _ =>
         newConnects.clear()
       }
 
       case _ => tree
     }
-  } followedBy {
+  } tap { _ =>
     if (inConnect) {
       tree match {
         // If we just processed an expression in a connect, pop the enableStack.

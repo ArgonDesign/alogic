@@ -24,17 +24,12 @@ import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types.TypeOut
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.typer.TypeAssigner
-import com.argondesign.alogic.util.FollowedBy
-import com.argondesign.alogic.util.ValueMap
 import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.tailrec
 import scala.collection.mutable
 
-final class LiftEntities(implicit cc: CompilerContext)
-    extends TreeTransformer
-    with FollowedBy
-    with ValueMap {
+final class LiftEntities(implicit cc: CompilerContext) extends TreeTransformer {
 
   // TODO: Only works for single nesting
   // TODO: Rewrite without collectAll
@@ -222,7 +217,7 @@ final class LiftEntities(implicit cc: CompilerContext)
 
   override def transform(tree: Tree): Tree = tree match {
     case entity: EntityNamed => {
-      entity valueMap { entity =>
+      entity pipe { entity =>
         ////////////////////////////////////////////////////////////////////////
         // Create declarations for fresh ports
         ////////////////////////////////////////////////////////////////////////
@@ -256,7 +251,7 @@ final class LiftEntities(implicit cc: CompilerContext)
             ) withLoc entity.loc
           }
         }
-      } valueMap { entity =>
+      } pipe { entity =>
         ////////////////////////////////////////////////////////////////////////
         // Create declarations for fresh consts
         ////////////////////////////////////////////////////////////////////////
@@ -275,7 +270,7 @@ final class LiftEntities(implicit cc: CompilerContext)
             ) withLoc entity.loc
           }
         }
-      } valueMap { entity =>
+      } pipe { entity =>
         ////////////////////////////////////////////////////////////////////////
         // Strip storage from output ports where needed
         ////////////////////////////////////////////////////////////////////////
@@ -292,7 +287,7 @@ final class LiftEntities(implicit cc: CompilerContext)
           }
         }
         entity
-      } valueMap { entity =>
+      } pipe { entity =>
         ////////////////////////////////////////////////////////////////////////
         // Connect fresh inner ports to outer port
         ////////////////////////////////////////////////////////////////////////
@@ -329,7 +324,7 @@ final class LiftEntities(implicit cc: CompilerContext)
             ) withLoc entity.loc
           }
         }
-      } valueMap { entity =>
+      } pipe { entity =>
         ////////////////////////////////////////////////////////////////////////
         // Extract the nested entities to the same level as the parent entity
         ////////////////////////////////////////////////////////////////////////
@@ -350,7 +345,7 @@ final class LiftEntities(implicit cc: CompilerContext)
           TypeAssigner(Thicket(parent :: children) withLoc entity.loc)
         }
       }
-    } followedBy {
+    } tap { _ =>
       freshIConnSymbols.pop()
       freshOConnSymbols.pop()
       freshConstSymbols.pop()

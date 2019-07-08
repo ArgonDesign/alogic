@@ -26,13 +26,12 @@ import com.argondesign.alogic.core.Symbols.TermSymbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Matrix
 import com.argondesign.alogic.typer.TypeAssigner
-import com.argondesign.alogic.util.FollowedBy
 import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.tailrec
 import scala.collection.mutable
 
-final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
+final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransformer {
 
   //////////////////////////////////////////////////////////////////////////
   // State for collecting information in the enter section

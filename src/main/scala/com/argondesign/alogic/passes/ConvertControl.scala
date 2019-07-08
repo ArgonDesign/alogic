@@ -23,14 +23,13 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.TermSymbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.typer.TypeAssigner
-import com.argondesign.alogic.util.FollowedBy
 import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy {
+final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer {
 
   // The return stack symbol
   private[this] lazy val rsSymbol: TermSymbol = {
@@ -383,7 +382,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
           }
         }
         TypeAssigner(stmt withLoc tree.loc)
-      } followedBy {
+      } tap { _ =>
         breakTargets.pop()
         followingState.pop()
         continueTargets.pop()
@@ -397,7 +396,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
         splitControlUnits(body) foreach emitState
         // Don't bother rewriting, it will be discarded later
         tree
-      } followedBy {
+      } tap { _ =>
         followingState.pop()
       }
 

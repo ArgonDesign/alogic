@@ -17,11 +17,8 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.util.FollowedBy
 
-final class SimplifyConditionals(implicit cc: CompilerContext)
-    extends TreeTransformer
-    with FollowedBy {
+final class SimplifyConditionals(implicit cc: CompilerContext) extends TreeTransformer {
 
   override def transform(tree: Tree): Tree = tree match {
 

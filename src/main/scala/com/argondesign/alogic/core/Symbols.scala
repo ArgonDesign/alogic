@@ -25,13 +25,13 @@ import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Symbols.TermSymbol
 import com.argondesign.alogic.core.Symbols.TypeSymbol
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.util.FollowedBy._
 import com.argondesign.alogic.util.SequenceNumbers
 import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
+import scala.util.ChainingSyntax
 
-trait Symbols { self: CompilerContext =>
+trait Symbols extends ChainingSyntax { self: CompilerContext =>
 
   // The global scope only holds file level entity symbols
   final private[this] var _globalScope: Option[mutable.HashMap[Name, Symbol]] = Some(
@@ -40,7 +40,7 @@ trait Symbols { self: CompilerContext =>
   // Can only hand out the final immutable copy
   final lazy val globalScope: Map[Name, Symbol] = {
     _globalScope.get.toMap
-  } followedBy {
+  } tap { _ =>
     _globalScope = None
   }
 

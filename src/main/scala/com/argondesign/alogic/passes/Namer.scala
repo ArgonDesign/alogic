@@ -30,13 +30,12 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.TreeInTypeTransformer
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.util.FollowedBy
 import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.tailrec
 import scala.collection.mutable
 
-final class Namer(implicit cc: CompilerContext) extends TreeTransformer with FollowedBy { namer =>
+final class Namer(implicit cc: CompilerContext) extends TreeTransformer { namer =>
 
   override val typed: Boolean = false
 
@@ -317,7 +316,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
 
   override def transform(tree: Tree): Tree = tree match {
     case node: Root =>
-      node followedBy {
+      node tap { _ =>
         Scopes.pop()
       }
 
@@ -398,7 +397,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
         entity.entities.asInstanceOf[List[EntityNamed]],
         entity.verbatim
       ) withLoc entity.loc
-    } followedBy {
+    } tap { _ =>
       Scopes.pop()
     }
 
@@ -408,7 +407,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
       // Rewrite node
       val sym = Sym(symbol) withLoc ident.loc
       Function(sym, body) withLoc tree.loc
-    } followedBy {
+    } tap { _ =>
       Scopes.pop()
     }
 
@@ -430,51 +429,51 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
     }
 
     case node: GenFor =>
-      node followedBy {
+      node tap { _ =>
         Scopes.pop()
       }
     case node @ GenRange(Decl(symbol, _), _, _, _) => {
       Scopes.markUsed(symbol)
       node
-    } followedBy {
+    } tap { _ =>
       Scopes.pop()
     }
     case node: GenIf =>
-      node followedBy {
+      node tap { _ =>
         Scopes.pop()
       }
 
     case node: StmtBlock =>
-      node followedBy {
+      node tap { _ =>
         Scopes.pop()
       }
     case node: StmtLoop =>
-      node followedBy {
+      node tap { _ =>
         Scopes.pop()
       }
     case node: StmtDo =>
-      node followedBy {
+      node tap { _ =>
         Scopes.pop()
       }
     case node: StmtWhile =>
-      node followedBy {
+      node tap { _ =>
         Scopes.pop()
       }
     case node: StmtFor =>
-      node followedBy {
+      node tap { _ =>
         Scopes.pop()
       }
     case node: StmtIf =>
-      node followedBy {
+      node tap { _ =>
         Scopes.pop()
       }
 
     case node: CaseRegular =>
-      node followedBy {
+      node tap { _ =>
         Scopes.pop()
       }
     case node: CaseDefault =>
-      node followedBy {
+      node tap { _ =>
         Scopes.pop()
       }
 
@@ -510,7 +509,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer with Fol
     }
 
     case ExprCall(ExprRef(symbol), _) if symbol == atBitsSymbol => {
-      tree followedBy {
+      tree tap { _ =>
         atBitsEitherTypeOrTerm = false
       }
     }
