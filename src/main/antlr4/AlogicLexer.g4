@@ -161,6 +161,7 @@ REG     : 'reg' ;
 SIGNED  : 'signed' ;
 UNSIGNED: 'unsigned' ;
 GEN     : 'gen' ;
+TYPE    : 'type' ;
 
 SYNC        : 'sync';
 SYNC_READY  : 'sync' (WS|CMT)* 'ready';
