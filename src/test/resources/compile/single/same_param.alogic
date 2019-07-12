@@ -1,0 +1,25 @@
+network same_param {
+  in  u1 i;
+  out u3 o_a;
+  out u3 o_b;
+
+  fsm expander {
+    param uint W0 = 32;
+
+    in  u1       p_i;
+    out uint(W0) p_o;
+
+    void main() {
+      p_o.write({W0{p_i.read()}});
+      fence;
+    }
+  }
+
+  inst_a = new expander(W0=3);
+  inst_b = new expander(W0=3);
+
+  i -> inst_a.p_i, inst_b.p_i;
+  inst_a.p_o -> o_a;
+  inst_b.p_o -> o_b;
+}
+

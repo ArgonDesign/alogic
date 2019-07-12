@@ -17,8 +17,7 @@ package com.argondesign.alogic.ast
 
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Symbols.TermSymbol
-import com.argondesign.alogic.core.Symbols.TypeSymbol
+import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.TreeLikeTransformer
 import com.argondesign.alogic.typer.TypeAssigner
@@ -378,43 +377,55 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
 
     // Ensure references are only present to TermSymbols
     // declared within the root entity scope
-    if (checkRefs && orig.isInstanceOf[Entity] || orig.isInstanceOf[Root]) {
-      val trees = tree match {
-        case Thicket(trees) => trees
-        case tree           => List(tree)
+    val trees = tree match {
+      case Thicket(trees) => trees
+      case tree           => List(tree)
+    }
+
+    for (tree <- trees) {
+      val declaredSymbols = {
+        val set = mutable.Set[Symbol]()
+
+        def add(node: Tree, symbol: Symbol): Unit = {
+          if (set contains symbol) {
+            cc.ice(node, "Symbol declared multiple times")
+          }
+          set add symbol
+        }
+
+        tree visitAll {
+          case node @ Decl(symbol, _)                   => add(node, symbol)
+          case node @ EntInstance(Sym(symbol), _, _, _) => add(node, symbol)
+          case node @ EntFunction(Sym(symbol), _)       => add(node, symbol)
+          case node @ EntState(ExprRef(symbol), _)      => add(node, symbol)
+          case node @ Entity(Sym(symbol), _)            => add(node, symbol)
+        }
+
+        set
       }
 
-      for (tree <- trees) {
-        val declaredSymbols = {
-          val it = tree collectAll {
-            case Decl(symbol, _)                               => symbol
-            case EntInstance(Sym(symbol: TermSymbol), _, _, _) => symbol
-            case EntFunction(Sym(symbol: TermSymbol), _)       => symbol
-            case EntState(ExprRef(symbol: TermSymbol), _)      => symbol
-          }
-          it.toSet
+      def errIfUndeclared(node: Tree, symbol: Symbol) = {
+        if (!(declaredSymbols contains symbol) && !symbol.isBuiltin) {
+          cc.ice(
+            node,
+            s"reference to undeclared symbol '${symbol.name}'",
+            s"of type '${symbol.kind.toSource}'",
+            this.getClass.getName,
+            tree.toSource
+          )
         }
+      }
 
-        def errIfUndeclared(node: Tree, symbol: TermSymbol) = {
-          if (!(declaredSymbols contains symbol) && !symbol.isBuiltin) {
-            cc.ice(
-              node,
-              s"reference to undeclared symbol '${symbol.name}'",
-              s"of type '${symbol.kind.toSource}'",
-              this.getClass.getName,
-              tree.toSource
-            )
-          }
+      def check(tree: Tree): Unit = {
+        tree visitAll {
+          case node @ Sym(symbol: TermSymbol)     => errIfUndeclared(node, symbol)
+          case node @ ExprRef(symbol: TermSymbol) => errIfUndeclared(node, symbol)
+          case Decl(symbol, _)                    => symbol.kind visit { case tree: Tree => check(tree) }
+          case Entity(Sym(symbol), _)             => symbol.kind visit { case tree: Tree => check(tree) }
         }
+      }
 
-        def check(tree: Tree): Unit = {
-          tree visitAll {
-            case node @ Sym(symbol: TermSymbol)     => errIfUndeclared(node, symbol)
-            case node @ ExprRef(symbol: TermSymbol) => errIfUndeclared(node, symbol)
-            case Decl(symbol, _)                    => symbol.kind visit { case tree: Tree => check(tree) }
-          }
-        }
-
+      if (checkRefs && orig.isInstanceOf[Entity] || orig.isInstanceOf[Root]) {
         check(tree)
       }
     }
