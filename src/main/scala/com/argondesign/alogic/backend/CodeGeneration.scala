@@ -32,9 +32,9 @@ object CodeGeneration extends Pass {
     // their own details.
     lazy val entityDetails: Map[TypeSymbol, EntityDetails] = {
       val pairs = for (tree <- trees) yield {
-        val entity = tree.asInstanceOf[EntityLowered]
+        val entity = tree.asInstanceOf[Entity]
         val details = new EntityDetails(entity, entityDetails)
-        details.eSymbol -> details
+        entity.symbol -> details
       }
       pairs.toMap
     }

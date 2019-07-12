@@ -27,8 +27,8 @@ import com.argondesign.alogic.typer.TypeAssigner
 final class LowerArrays(implicit cc: CompilerContext) extends TreeTransformer {
 
   override def skip(tree: Tree): Boolean = tree match {
-    case entity: EntityLowered => entity.statements.isEmpty
-    case _                     => false
+    case entity: Entity => entity.combProcesses.isEmpty
+    case _              => false
   }
 
   private[this] def intType(loc: Loc, signed: Boolean, width: Int): TypeUInt = {
@@ -95,14 +95,14 @@ final class LowerArrays(implicit cc: CompilerContext) extends TreeTransformer {
     // Add declarations
     //////////////////////////////////////////////////////////////////////////
 
-    case decl @ Decl(symbol, _) => {
+    case decl @ EntDecl(Decl(symbol, _)) => {
       symbol.attr.memory.get map {
         case (weSymbol, waSymbol, wdSymbol) => {
           val decls = List(
             decl,
-            Decl(weSymbol, None),
-            Decl(waSymbol, None),
-            Decl(wdSymbol, None)
+            EntDecl(Decl(weSymbol, None)),
+            EntDecl(Decl(waSymbol, None)),
+            EntDecl(Decl(wdSymbol, None))
           )
           Thicket(decls) regularize tree.loc
         }
@@ -115,25 +115,29 @@ final class LowerArrays(implicit cc: CompilerContext) extends TreeTransformer {
     // Add _we/_waddr/_wdata = 'b0 fence statements
     //////////////////////////////////////////////////////////////////////////
 
-    case entity: EntityLowered => {
-      val leading = entity.declarations collect {
-        case decl @ Decl(symbol, _) if symbol.attr.memory.isSet => {
-          val (weSymbol, waSymbol, wdSymbol) = symbol.attr.memory.value
-          StmtBlock(
-            List(
-              StmtAssign(ExprRef(weSymbol), makeExprInt(weSymbol, 0)),
-              StmtAssign(ExprRef(waSymbol), makeExprInt(waSymbol, 0)),
-              StmtAssign(ExprRef(wdSymbol), makeExprInt(wdSymbol, 0))
-            )
-          ) regularize decl.loc
-        }
+    case entity: Entity => {
+      assert(entity.combProcesses.lengthIs == 1)
+
+      val newBody = entity.body map {
+        // Add assignments
+        case ent @ EntCombProcess(stmts) =>
+          val leading = entity.declarations collect {
+            case decl @ Decl(symbol, _) if symbol.attr.memory.isSet => {
+              val (weSymbol, waSymbol, wdSymbol) = symbol.attr.memory.value
+              StmtBlock(
+                List(
+                  StmtAssign(ExprRef(weSymbol), makeExprInt(weSymbol, 0)),
+                  StmtAssign(ExprRef(waSymbol), makeExprInt(waSymbol, 0)),
+                  StmtAssign(ExprRef(wdSymbol), makeExprInt(wdSymbol, 0))
+                )
+              ) regularize decl.loc
+            }
+          }
+          TypeAssigner(EntCombProcess(leading ::: stmts) withLoc ent.loc)
+        case other => other
       }
 
-      TypeAssigner {
-        entity.copy(
-          statements = leading ::: entity.statements
-        ) withLoc tree.loc
-      }
+      TypeAssigner(entity.copy(body = newBody) withLoc tree.loc)
     }
 
     case _ => tree

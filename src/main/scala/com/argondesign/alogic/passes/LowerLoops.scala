@@ -24,11 +24,11 @@ import scala.collection.mutable
 final class LowerLoops(implicit cc: CompilerContext) extends TreeTransformer {
 
   override def skip(tree: Tree): Boolean = tree match {
-    case _: Entity   => false
-    case _: Function => false
-    case _: Stmt     => false
-    case _: Case     => false
-    case _           => true
+    case _: Entity      => false
+    case _: EntFunction => false
+    case _: Stmt        => false
+    case _: Case        => false
+    case _              => true
   }
 
   // Stack of statements to replace continue statements with

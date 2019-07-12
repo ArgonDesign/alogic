@@ -20,9 +20,6 @@ import java.io.StringWriter
 import java.io.Writer
 
 import com.argondesign.alogic.ast.Trees.Entity
-import com.argondesign.alogic.ast.Trees.EntityIdent
-import com.argondesign.alogic.ast.Trees.EntityLowered
-import com.argondesign.alogic.ast.Trees.EntityNamed
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Settings
 import org.scalatest.FreeSpec
@@ -38,13 +35,7 @@ final class CompileTests extends FreeSpec with Matchers {
     def entityWriterFactory(entity: Entity, suffix: String): Writer = {
       new StringWriter {
         override def close(): Unit = {
-          val name = entity match {
-            case e: EntityLowered => e.symbol.name
-            case e: EntityNamed   => e.symbol.name
-            case e: EntityIdent   => e.ident.name
-          }
-
-          outputs += (name + suffix) -> this.toString
+          outputs += (entity.name + suffix) -> this.toString
           super.close()
         }
       }

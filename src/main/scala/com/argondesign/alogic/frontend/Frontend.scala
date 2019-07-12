@@ -90,15 +90,12 @@ class Frontend(
         // Check that the entityName used for file search matches the actual entity name
         // defined in the top level entity in the file, we rely on this to find the
         // source file of an instance, so there is no way forward if this is violated
-        val parsedName = root.entity match {
-          case entity: EntityIdent => entity.ident.name
-          case _                   => unreachable
-        }
+        val parsedName = root.entity.name
 
         if (parsedName != entityName) {
           root.entity match {
-            case entity: EntityIdent =>
-              cc.fatal(entity.ident,
+            case Entity(ident: Ident, _) =>
+              cc.fatal(ident,
                        s"Entity name '${parsedName}' does not match file basename '${entityName}'")
             case _ => unreachable
           }
@@ -112,22 +109,15 @@ class Frontend(
 
         // Extract all instance entity names (from the recursively nested entities as well)
         val instantiatedEntityNamesFuture = astFuture map { root =>
-          def loop(entity: EntityIdent): List[String] = {
-            val nestedEntities = entity.entities map {
-              case entity: EntityIdent => entity
-              case _                   => unreachable
-            }
-            val nestedNames = nestedEntities map { _.ident.name }
+          def loop(entity: Entity): List[String] = {
+            val nestedNames = entity.entities map { _.name }
             val requiredExternalNames = entity.instances collect {
-              case Instance(_, Ident(name), _, _) if !(nestedNames contains name) => name
+              case EntInstance(_, Ident(name), _, _) if !(nestedNames contains name) => name
             }
-            requiredExternalNames ::: (nestedEntities flatMap loop)
+            requiredExternalNames ::: (entity.entities flatMap loop)
           }
 
-          root.entity match {
-            case entity: EntityIdent => loop(entity)
-            case _                   => unreachable
-          }
+          loop(root.entity)
         }
 
         // process them extracted names recursively
@@ -162,13 +152,13 @@ class Frontend(
     val treeSet = Await.result(treeSetFuture, atMost = Inf)
 
     // Mark top level entities as such
-    for (Root(_, entity: EntityIdent) <- treeSet) {
-      val ident @ Ident(name) = entity.ident
-      if (topLevelNames contains name) {
-        val newAttr = Map("toplevel" -> (Expr(1) withLoc entity.loc))
-        ident withAttr {
-          if (ident.hasAttr) ident.attr ++ newAttr else newAttr
-        }
+    for {
+      Root(_, Entity(ident: Ident, _)) <- treeSet
+      if topLevelNames contains ident.name
+    } {
+      val newAttr = Map("toplevel" -> (Expr(1) withLoc ident.loc))
+      ident withAttr {
+        if (ident.hasAttr) ident.attr ++ newAttr else newAttr
       }
     }
 

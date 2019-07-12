@@ -34,14 +34,11 @@ final object TypeAssigner {
   private def kind(tree: Tree)(implicit cc: CompilerContext): Type = tree match {
     case node: Expr           => kind(node)
     case node: Stmt           => kind(node)
+    case node: Ent            => kind(node)
     case node: CaseRegular    => kind(node)
     case node: CaseDefault    => kind(node)
     case node: Entity         => kind(node)
     case node: Decl           => kind(node)
-    case node: Instance       => kind(node)
-    case node: Connect        => kind(node)
-    case node: Function       => kind(node)
-    case node: State          => kind(node)
     case node: Sym            => kind(node)
     case node: TypeDefinition => kind(node)
     case node: Thicket        => kind(node)
@@ -58,10 +55,6 @@ final object TypeAssigner {
 
   private def kind(node: Entity) = TypeMisc
   private def kind(node: Decl) = TypeMisc
-  private def kind(node: Instance) = TypeMisc
-  private def kind(node: Connect) = TypeMisc
-  private def kind(node: Function) = TypeMisc
-  private def kind(node: State) = TypeMisc
   private def kind(node: TypeDefinition) = TypeMisc
   private def kind(node: Thicket) = TypeMisc
   private def kind(node: CaseRegular) = TypeMisc
@@ -72,6 +65,12 @@ final object TypeAssigner {
   //////////////////////////////////////////////////////////////////////////////
 
   private def kind(node: Sym) = node.symbol.kind
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Typing Ent nodes
+  //////////////////////////////////////////////////////////////////////////////
+
+  private def kind(tree: Ent): Type = TypeMisc
 
   //////////////////////////////////////////////////////////////////////////////
   // Typing Stmt nodes
@@ -304,11 +303,14 @@ final object TypeAssigner {
   private def assign(tree: Tree)(kind: => Type): tree.type = {
     require(!tree.hasTpe)
     def hasError(node: TreeLike): Boolean = node.children exists {
-      case child: Connect if !child.hasTpe => false
-      case child: Tree if !child.hasTpe    => unreachable
-      case child: Tree                     => child.tpe.isError
-      case child: Type                     => child.children exists hasError
-      case _                               => unreachable
+      case child: EntConnect if !child.hasTpe => false
+      case child: Tree if !child.hasTpe =>
+        println(tree)
+        println(child)
+        unreachable
+      case child: Tree => child.tpe.isError
+      case child: Type => child.children exists hasError
+      case _           => unreachable
     }
     val tpe = if (hasError(tree)) TypeError else kind
     tree withTpe tpe
@@ -319,15 +321,14 @@ final object TypeAssigner {
   // Other
   def apply(node: Entity): node.type = assign(node)(kind(node))
   def apply(node: Decl): node.type = assign(node)(kind(node))
-  def apply(node: Instance): node.type = assign(node)(kind(node))
-  def apply(node: Connect): node.type = assign(node)(kind(node))
-  def apply(node: Function): node.type = assign(node)(kind(node))
-  def apply(node: State): node.type = assign(node)(kind(node))
   def apply(node: TypeDefinition): node.type = assign(node)(kind(node))
   def apply(node: Thicket): node.type = assign(node)(kind(node))
   def apply(node: CaseRegular): node.type = assign(node)(kind(node))
   def apply(node: CaseDefault): node.type = assign(node)(kind(node))
   def apply(node: Sym): node.type = assign(node)(kind(node))
+
+  // Ent
+  def apply(node: Ent): node.type = assign(node)(kind(node))
 
   // Stmt
   def apply(node: Stmt): node.type = assign(node)(kind(node))

@@ -43,162 +43,107 @@ import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.tailrec
+import scala.collection.mutable
 
 final class Checker(implicit cc: CompilerContext) extends TreeTransformer {
 
   override val typed: Boolean = false
 
-  private[this] var entityLevel = 0
-
-  @tailrec
-  private def unitType(kind: Type): Type = kind.underlying match {
-    case TypeArray(ekind, _)   => unitType(ekind)
-    case TypeVector(ekind, _)  => unitType(ekind)
-    case TypeSram(ekind, _, _) => unitType(ekind)
-    case TypeStack(ekind, _)   => unitType(ekind)
-    case other                 => other
-  }
+  private[this] val variantStack = mutable.Stack[String]()
 
   override def enter(tree: Tree): Unit = tree match {
-    case _: EntityIdent => entityLevel += 1
-    case _              =>
+    case entity @ Entity(ident: Ident, _) =>
+      variantStack push {
+        ident.attr("//variant").asInstanceOf[ExprStr].value match {
+          case "fsm"      => "fsm"
+          case "network"  => "network"
+          case "verbatim" => "verbatim"
+          case other      => cc.ice(entity, s"Unknown entity variant '$other'")
+        }
+      }
+    case _ =>
   }
 
+  def err(node: Tree, content: String) = {
+    cc.error(node, s"'${variantStack.top}' entity cannot contain ${content}")
+    Thicket(Nil) withLoc node.loc
+  }
+
+  def notVariant(str: String) = variantStack.nonEmpty && variantStack.top != str
+
   override def transform(tree: Tree): Tree = tree match {
-    case entity: EntityIdent => {
-      val variant = entity.ident.attr("//variant").asInstanceOf[ExprStr].value match {
-        case "fsm"      => "fsm"
-        case "network"  => "network"
-        case "verbatim" => "verbatim"
-        case other      => cc.ice(entity, s"Unknown entity variant '$other'")
+
+    case node: EntInstance if notVariant("network") => err(node, "instantiations")
+
+    case node: EntConnect if notVariant("network") => err(node, "connections")
+
+    case node: EntFunction if notVariant("fsm") => err(node, "function definitions")
+
+    case node: EntCombProcess if notVariant("fsm") => err(node, "fence blocks")
+
+    case node: EntEntity if notVariant("network") => err(node, "nested entities")
+
+    case node @ EntDecl(decl @ DeclIdent(ident, kind, _)) =>
+      variantStack.top match {
+        case "fsm" =>
+          kind match {
+            case _: TypePipeline => err(node, "pipeline variable declarations")
+            case _               => node
+          }
+        case "network" =>
+          kind match {
+            case _: TypeIn       => node
+            case _: TypeOut      => node
+            case _: TypeParam    => node
+            case _: TypeConst    => node
+            case _: TypePipeline => node
+            case _: TypeArray    => err(decl, "distributed memory declarations")
+            case _: TypeSram     => err(decl, "SRAM declarations")
+            case _               => err(decl, "variable declarations")
+          }
+        case "verbatim" =>
+          kind match {
+            case _: TypeIn                       => node
+            case _: TypeOut                      => node
+            case _: TypeParam                    => node
+            case _: TypeConst                    => node
+            case _: TypeArray                    => err(decl, "distributed memory declarations")
+            case _: TypePipeline                 => err(decl, "pipeline variable declarations")
+            case TypeSram(_, _, StorageTypeWire) => node
+            case TypeSram(_, _, _)               => err(decl, "registered SRAM declarations")
+            case _                               => err(decl, "variable declarations")
+          }
+        case _ => unreachable
       }
 
-      def err(node: Tree, content: String): Unit = {
-        cc.error(node, s"'${variant}' entity cannot contain ${content}")
-      }
-
-      def errs(nodes: List[Tree], content: String) = {
-        nodes foreach { err(_, content) }
-        Nil
-      }
-
-      val instances = variant match {
-        case "network" => entity.instances
-        case _         => errs(entity.instances, "instantiations")
-      }
-
-      val connects = variant match {
-        case "network" => entity.connects
-        case _         => errs(entity.connects, "connections")
-      }
-
-      val functions = variant match {
-        case "fsm" => entity.functions
-        case _     => errs(entity.functions, "function definitions")
-      }
-
-      val fenceBlocks = variant match {
-        case "fsm" => entity.fenceStmts
-        case _     => errs(entity.fenceStmts, "fence blocks")
-      }
-
-      val entities = variant match {
-        case "network" => entity.entities
-        case _         => errs(entity.entities, "nested entities")
-      }
-
-      val fenceStmts = if (fenceBlocks.length > 1) {
-        fenceBlocks foreach {
-          cc.error(_, s"Multiple fence blocks specified in entity '${entity.ident.name}'")
+    case entity @ Entity(ident: Ident, body) => {
+      val newBody = if (entity.combProcesses.lengthIs > 1) {
+        entity.combProcesses foreach {
+          cc.error(_, s"Multiple fence blocks specified in entity '${ident.name}'")
         }
-        Nil
+        body filter {
+          case _: EntCombProcess => false
+          case _                 => true
+        }
       } else {
-        fenceBlocks
+        body
       }
 
-      val declarations = {
-
-        def derr(node: Tree, content: String): Boolean = {
-          err(node, content + " declarations")
-          false
-        }
-
-        variant match {
-          case "fsm" => {
-            entity.declarations.filter {
-              case decl: DeclIdent => {
-                decl.kind match {
-                  case _: TypePipeline => derr(decl, "pipeline variable")
-                  case _               => true
-                }
-              }
-              case _ => unreachable
-            }
-          }
-
-          case "network" => {
-            entity.declarations.filter {
-              case decl: DeclIdent => {
-                decl.kind match {
-                  case _: TypeIn       => true
-                  case _: TypeOut      => true
-                  case _: TypeParam    => true
-                  case _: TypeConst    => true
-                  case _: TypePipeline => true
-                  case _: TypeArray    => derr(decl, "distributed memory")
-                  case _: TypeSram     => derr(decl, "SRAM")
-                  case _               => derr(decl, "variable")
-                }
-              }
-              case _ => unreachable
-            }
-          }
-
-          case "verbatim" => {
-            entity.declarations.filter {
-              case decl: DeclIdent => {
-                decl.kind match {
-                  case _: TypeIn                       => true
-                  case _: TypeOut                      => true
-                  case _: TypeParam                    => true
-                  case _: TypeConst                    => true
-                  case _: TypeArray                    => derr(decl, "distributed memory")
-                  case _: TypePipeline                 => derr(decl, "pipeline variable")
-                  case TypeSram(_, _, StorageTypeWire) => true
-                  case TypeSram(_, _, _)               => derr(decl, "registered SRAM")
-                  case _                               => derr(decl, "variable")
-                }
-              }
-              case _ => unreachable
-            }
-          }
-          case _ => unreachable
-        }
-      }
-
-      if (variant != "verbatim" &&
-          entity.verbatim.nonEmpty &&
-          instances.isEmpty &&
-          connects.isEmpty &&
-          functions.isEmpty &&
-          fenceStmts.isEmpty &&
-          entities.isEmpty) {
+      if (variantStack.top != "verbatim" &&
+          entity.verbatims.nonEmpty &&
+          entity.instances.isEmpty &&
+          entity.connects.isEmpty &&
+          entity.functions.isEmpty &&
+          entity.combProcesses.isEmpty &&
+          entity.entities.isEmpty) {
         cc.warning(
-          entity.ident,
-          s"Entity '${entity.ident.name}' contains only verbatim blocks, use a 'verbatim entity' instead")
+          ident,
+          s"Entity '${ident.name}' contains only verbatim blocks, use a 'verbatim entity' instead")
       }
 
-      TreeCopier(entity)(
-        entity.ident,
-        declarations,
-        instances,
-        connects,
-        fenceStmts,
-        functions,
-        entities
-      )
+      TreeCopier(entity)(ident, newBody)
     } tap { _ =>
-      entityLevel -= 1
+      variantStack.pop
     }
 
     case decl @ DeclIdent(_, kind, _)
@@ -284,7 +229,7 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer {
     }
 
     case StmtRead() => {
-      if (entityLevel <= 1) {
+      if (variantStack.lengthIs <= 1) {
         cc.error(tree, "Read statements are only allowed inside nested entities")
         StmtError() withLoc tree.loc
       } else {
@@ -293,7 +238,7 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer {
     }
 
     case StmtWrite() => {
-      if (entityLevel <= 1) {
+      if (variantStack.lengthIs <= 1) {
         cc.error(tree, "Write statements are only allowed inside nested entities")
         StmtError() withLoc tree.loc
       } else {
@@ -321,7 +266,7 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer {
 
     case StmtCase(_, cases) => {
       val defaults = cases collect { case c: CaseDefault => c }
-      if (defaults.lengthCompare(1) <= 0) {
+      if (defaults.lengthIs <= 1) {
         tree
       } else {
         defaults foreach {
@@ -358,7 +303,7 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer {
       }
     }
 
-    case connect @ Connect(lhs, rhss) => {
+    case connect @ EntConnect(lhs, rhss) => {
       val hint = "Only identifiers, optionally followed by a single field selector are allowed"
 
       val newLhs = if (lhs.isPortRefExpr) {
@@ -388,7 +333,16 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer {
   }
 
   override def finalCheck(tree: Tree): Unit = {
-    assert(entityLevel == 0)
+    assert(variantStack.isEmpty)
+  }
+
+  @tailrec
+  private def unitType(kind: Type): Type = kind.underlying match {
+    case TypeArray(ekind, _)   => unitType(ekind)
+    case TypeVector(ekind, _)  => unitType(ekind)
+    case TypeSram(ekind, _, _) => unitType(ekind)
+    case TypeStack(ekind, _)   => unitType(ekind)
+    case other                 => other
   }
 
 }

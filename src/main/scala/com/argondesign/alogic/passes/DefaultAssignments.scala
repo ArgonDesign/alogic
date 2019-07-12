@@ -31,8 +31,8 @@ final class DefaultAssignments(implicit cc: CompilerContext) extends TreeTransfo
   private val needsDefault = mutable.Set[TermSymbol]()
 
   override def skip(tree: Tree): Boolean = tree match {
-    case entity: EntityLowered => entity.statements.isEmpty
-    case _                     => false
+    case entity: Entity => entity.combProcesses.isEmpty
+    case _              => false
   }
 
   override def enter(tree: Tree): Unit = tree match {
@@ -46,9 +46,9 @@ final class DefaultAssignments(implicit cc: CompilerContext) extends TreeTransfo
   }
 
   override def transform(tree: Tree): Tree = tree match {
-    case entity: EntityLowered if needsDefault.nonEmpty => {
+    case entity: Entity if needsDefault.nonEmpty => {
       // Remove any nets driven through a connect
-      for (Connect(_, List(rhs)) <- entity.connects) {
+      for (EntConnect(_, List(rhs)) <- entity.connects) {
         rhs.visit {
           case ExprRef(symbol: TermSymbol) => {
             needsDefault remove symbol
@@ -57,14 +57,14 @@ final class DefaultAssignments(implicit cc: CompilerContext) extends TreeTransfo
       }
 
       if (needsDefault.nonEmpty) {
-        assert(entity.statements.nonEmpty)
+        assert(entity.combProcesses.lengthIs == 1)
 
         // Remove symbols that are dead at the beginning of the cycle. To do
         // this, we build the case statement representing the state dispatch
         // (together with the fence statements), and do liveness analysis on it
         val deadSymbols = {
           // Perform the liveness analysis
-          val deadSymbolBits = Liveness(entity.statements)._2
+          val deadSymbolBits = Liveness(entity.combProcesses(0).stmts)._2
 
           // Keep only the symbols with all bits dead
           val it = deadSymbolBits collect {
@@ -94,10 +94,14 @@ final class DefaultAssignments(implicit cc: CompilerContext) extends TreeTransfo
           StmtAssign(ExprRef(symbol), init) regularize symbol.loc
         }
 
+        val newBody = entity.body map {
+          case ent @ EntCombProcess(stmts) =>
+            TypeAssigner(EntCombProcess(leading ::: stmts) withLoc ent.loc)
+          case other => other
+        }
+
         TypeAssigner {
-          entity.copy(
-            statements = leading ::: entity.statements
-          ) withLoc tree.loc
+          entity.copy(body = newBody) withLoc tree.loc
         }
       }
     }

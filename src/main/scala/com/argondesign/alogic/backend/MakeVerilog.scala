@@ -103,7 +103,7 @@ final class MakeVerilog(
         if (hasConsts) {
           // Emit const declarations
           body.emitBlock(1, "Local parameter declarations") {
-            decls collect {
+            entity.declarations collect {
               case Decl(symbol, Some(init)) if symbol.kind.isInstanceOf[TypeConst] => {
                 (symbol, init)
               }
@@ -126,7 +126,7 @@ final class MakeVerilog(
           // Emit flop declarations
           body.emitBlock(1, "Flop declarations") {
             for {
-              Decl(qSymbol, _) <- decls
+              Decl(qSymbol, _) <- entity.declarations
               dSymbol <- qSymbol.attr.flop.get
             } {
               emitVarDecl(qSymbol)
@@ -138,7 +138,7 @@ final class MakeVerilog(
         if (hasCombSignals) {
           body.emitBlock(1, "Combinatorial signal declarations") {
             for {
-              Decl(symbol, _) <- decls
+              Decl(symbol, _) <- entity.declarations
               if symbol.attr.combSignal.get contains true
             } {
               emitVarDecl(symbol)
@@ -150,7 +150,7 @@ final class MakeVerilog(
           // Emit memory declarations
           body.emitBlock(1, "Memory declarations") {
             for {
-              Decl(qSymbol, _) <- decls
+              Decl(qSymbol, _) <- entity.declarations
               if qSymbol.attr.memory.isSet
             } yield {
               emitVarDecl(qSymbol)
@@ -264,7 +264,7 @@ final class MakeVerilog(
         if (hasArrays) {
           body.emitBlock(1, "Distributed memory section") {
             for {
-              Decl(qSymbol, _) <- decls
+              Decl(qSymbol, _) <- entity.declarations
               (weSymbol, waSymbol, wdSymbol) <- qSymbol.attr.memory.get
             } {
               body.emit(1) {
@@ -359,45 +359,48 @@ final class MakeVerilog(
     }
   }
 
-  private def emitStateSystem(body: CodeWriter): Unit = {
-    if (statements.nonEmpty) {
-      body.emitSection(1, "State system") {
-        body.emit(1)("always @* begin")
+  private def emitCombProcesses(body: CodeWriter): Unit = {
+    require(entity.combProcesses.lengthIs <= 1)
+    entity.combProcesses foreach {
+      case EntCombProcess(stmts) =>
+        assert(stmts.nonEmpty)
+        body.emitSection(1, "State system") {
+          body.emit(1)("always @* begin")
 
-        if (canStall) {
-          body.emit(2)("// go default")
-          body.emit(2)("go = 1'b1;")
-          body.ensureBlankLine()
-        }
-
-        statements foreach { stmt =>
-          emitStatement(body, 2, stmt)
-        }
-
-        val cSymbols = decls collect {
-          case Decl(symbol, _) if symbol.attr.clearOnStall.get contains true => symbol
-        }
-
-        if (cSymbols.nonEmpty && canStall) {
-          body.ensureBlankLine()
-          body.emit(2)("// Clears")
-          body.emit(2)("if (!go) begin")
-          for (symbol <- cSymbols) {
-            val s = if (symbol.kind.isSigned) "s" else ""
-            body.emit(3)(s"${symbol.name} = ${symbol.kind.width}'${s}b0;")
+          if (canStall) {
+            body.emit(2)("// go default")
+            body.emit(2)("go = 1'b1;")
+            body.ensureBlankLine()
           }
-          body.emit(2)("end")
-        }
 
-        body.emit(1)("end")
-      }
+          stmts foreach { stmt =>
+            emitStatement(body, 2, stmt)
+          }
+
+          val cSymbols = entity.declarations collect {
+            case Decl(symbol, _) if symbol.attr.clearOnStall.get contains true => symbol
+          }
+
+          if (cSymbols.nonEmpty && canStall) {
+            body.ensureBlankLine()
+            body.emit(2)("// Clears")
+            body.emit(2)("if (!go) begin")
+            for (symbol <- cSymbols) {
+              val s = if (symbol.kind.isSigned) "s" else ""
+              body.emit(3)(s"${symbol.name} = ${symbol.kind.width}'${s}b0;")
+            }
+            body.emit(2)("end")
+          }
+
+          body.emit(1)("end")
+        }
     }
   }
 
   private def emitInstances(body: CodeWriter): Unit = {
-    if (instances.nonEmpty) {
+    if (entity.instances.nonEmpty) {
       body.emitSection(1, "Instances") {
-        for (Instance(Sym(iSymbol: TermSymbol), Sym(mSymbol: TypeSymbol), Nil, Nil) <- instances) {
+        for (EntInstance(Sym(iSymbol: TermSymbol), Sym(mSymbol: TypeSymbol), Nil, Nil) <- entity.instances) {
           val TypeInstance(eSymbol) = iSymbol.kind.asInstance
           body.ensureBlankLine()
           body.emit(1)(s"${eSymbol.name} ${iSymbol.name} (")
@@ -447,7 +450,7 @@ final class MakeVerilog(
   private def emitConnects(body: CodeWriter): Unit = {
     if (nonPortConnects.nonEmpty) {
       body.emitSection(1, "Connections") {
-        for (Connect(lhs, rhs :: Nil) <- nonPortConnects) {
+        for (EntConnect(lhs, rhs :: Nil) <- nonPortConnects) {
           val assignLhs = vexpr(rhs, wrapCat = true, indent = 1)
           val assignRhs = vexpr(lhs, wrapCat = true, indent = 1)
           body.emit(1)(s"assign ${assignLhs} = ${assignRhs};")
@@ -457,7 +460,11 @@ final class MakeVerilog(
   }
 
   private def emitVerbatimSection(body: CodeWriter): Unit = {
-    verbatim.get("verilog") foreach { text =>
+    val text = entity.verbatims collect {
+      case EntVerbatim("verilog", body) => body
+    } mkString "\n"
+
+    if (text.nonEmpty) {
       body.emitSection(1, "Verbatim section") {
         body.emit(1)(text)
       }
@@ -469,7 +476,7 @@ final class MakeVerilog(
 
     emitInternalStorageSection(body)
 
-    emitStateSystem(body)
+    emitCombProcesses(body)
 
     emitInstances(body)
 
@@ -488,7 +495,7 @@ final class MakeVerilog(
       items append s"input  wire ${cc.rst}"
     }
 
-    for (Decl(symbol, _) <- decls) {
+    for (Decl(symbol, _) <- entity.declarations) {
       symbol.kind match {
         case _: TypeIn => items append s"input  wire ${vdecl(symbol)}"
         case _: TypeOut => {
@@ -513,7 +520,7 @@ final class MakeVerilog(
     body.emit(0)("`default_nettype none")
     body.ensureBlankLine()
 
-    body.emit(0)(s"module ${eSymbol.name}(")
+    body.emit(0)(s"module ${entity.symbol.name}(")
     emitPortDeclarations(body)
     body.emit(0)(");")
     body.ensureBlankLine()

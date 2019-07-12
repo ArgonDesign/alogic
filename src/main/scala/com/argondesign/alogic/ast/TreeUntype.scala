@@ -22,17 +22,13 @@ import com.argondesign.alogic.util.unreachable
 trait TreeUntype {
 
   def untype(tree: Tree): Tree = tree match {
-    case node: EntityNamed        => untype(node)
-    case node: EntityLowered      => untype(node)
+    case node: Entity             => untype(node)
     case node: Sym                => untype(node)
     case node: Decl               => untype(node)
-    case node: Instance           => untype(node)
-    case node: Connect            => untype(node)
-    case node: Function           => untype(node)
-    case node: State              => untype(node)
     case node: Thicket            => untype(node)
     case node: CaseRegular        => untype(node)
     case node: CaseDefault        => untype(node)
+    case node: Ent                => untype(node)
     case node: Expr               => untype(node)
     case node: Stmt               => untype(node)
     case _: TypeDefinitionTypedef => unreachable
@@ -40,9 +36,19 @@ trait TreeUntype {
     case _: Ident                 => unreachable
     case _: DeclIdent             => unreachable
     case _: Root                  => unreachable
-    case _: EntityIdent           => unreachable
     case _: Gen                   => unreachable
     case _: CaseGen               => unreachable
+  }
+
+  def untype(tree: Ent): Ent = tree match {
+    case node: EntDecl        => untype(node)
+    case node: EntEntity      => untype(node)
+    case node: EntInstance    => untype(node)
+    case node: EntConnect     => untype(node)
+    case node: EntCombProcess => untype(node)
+    case node: EntFunction    => untype(node)
+    case node: EntState       => untype(node)
+    case node: EntVerbatim    => untype(node)
   }
 
   def untype(tree: Stmt): Stmt = tree match {
@@ -66,10 +72,10 @@ trait TreeUntype {
     case node: StmtComment  => untype(node)
     case node: StmtStall    => untype(node)
     case node: StmtError    => untype(node)
-    case node: StmtLet      => unreachable
-    case node: StmtUpdate   => unreachable
-    case node: StmtPost     => unreachable
-    case node: StmtGen      => unreachable
+    case _: StmtLet         => unreachable
+    case _: StmtUpdate      => unreachable
+    case _: StmtPost        => unreachable
+    case _: StmtGen         => unreachable
   }
 
   def untype(tree: Expr): Expr = tree match {
@@ -89,31 +95,12 @@ trait TreeUntype {
     case node: ExprStr     => untype(node)
     case node: ExprError   => untype(node)
     case node: ExprCast    => untype(node)
-    case node: ExprIdent   => unreachable
+    case _: ExprIdent      => unreachable
   }
 
   //////////////////////////////////////////////////////////////////////////////
   // Other
   //////////////////////////////////////////////////////////////////////////////
-
-  def untype(node: EntityNamed): EntityNamed =
-    node.copy(
-      declarations = untype(node.declarations),
-      instances = untype(node.instances),
-      connects = untype(node.connects),
-      fenceStmts = untype(node.fenceStmts),
-      functions = untype(node.functions),
-      states = untype(node.states),
-      entities = untype(node.entities)
-    ) withLoc node.loc
-
-  def untype(node: EntityLowered): EntityLowered =
-    node.copy(
-      declarations = untype(node.declarations),
-      instances = untype(node.instances),
-      connects = untype(node.connects),
-      statements = untype(node.statements)
-    ) withLoc node.loc
 
   def untype(node: Ident): Ident = node.copy() withLoc node.loc
 
@@ -122,31 +109,6 @@ trait TreeUntype {
   def untype(node: Decl): Decl =
     node.copy(
       init = untype(node.init)
-    ) withLoc node.loc
-
-  def untype(node: Instance): Instance =
-    node.copy(
-      ref = untype(node.ref.asInstanceOf[Sym]),
-      module = untype(node.module.asInstanceOf[Sym]),
-      paramExprs = untype(node.paramExprs)
-    ) withLoc node.loc
-
-  def untype(node: Connect): Connect =
-    node.copy(
-      lhs = untype(node.lhs),
-      rhs = untype(node.rhs)
-    ) withLoc node.loc
-
-  def untype(node: Function): Function =
-    node.copy(
-      ref = untype(node.ref.asInstanceOf[Sym]),
-      body = untype(node.body)
-    ) withLoc node.loc
-
-  def untype(node: State): State =
-    node.copy(
-      expr = untype(node.expr),
-      body = untype(node.body)
     ) withLoc node.loc
 
   def untype(node: CaseRegular): CaseRegular =
@@ -164,6 +126,53 @@ trait TreeUntype {
     node.copy(
       trees = untype(node.trees)
     ) withLoc node.loc
+
+  def untype(node: Entity): Entity =
+    node.copy(
+      ref = untype(node.ref.asInstanceOf[Sym]),
+      body = untype(node.body)
+    ) withLoc node.loc
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Ent
+  //////////////////////////////////////////////////////////////////////////////
+
+  def untype(node: EntDecl): EntDecl =
+    node.copy(
+      decl = untype(node.decl.asInstanceOf[Decl])
+    ) withLoc node.loc
+
+  def untype(node: EntInstance): EntInstance =
+    node.copy(
+      instance = untype(node.instance.asInstanceOf[Sym]),
+      entity = untype(node.entity.asInstanceOf[Sym]),
+      paramExprs = untype(node.paramExprs)
+    ) withLoc node.loc
+
+  def untype(node: EntConnect): EntConnect =
+    node.copy(
+      lhs = untype(node.lhs),
+      rhs = untype(node.rhs)
+    ) withLoc node.loc
+
+  def untype(node: EntCombProcess): EntCombProcess =
+    node.copy(
+      stmts = untype(node.stmts)
+    ) withLoc node.loc
+
+  def untype(node: EntFunction): EntFunction =
+    node.copy(
+      ref = untype(node.ref.asInstanceOf[Sym]),
+      stmts = untype(node.stmts)
+    ) withLoc node.loc
+
+  def untype(node: EntState): EntState =
+    node.copy(
+      expr = untype(node.expr),
+      stmts = untype(node.stmts)
+    ) withLoc node.loc
+
+  def untype(node: EntVerbatim): EntVerbatim = node.copy() withLoc node.loc
 
   //////////////////////////////////////////////////////////////////////////////
   // Stmt

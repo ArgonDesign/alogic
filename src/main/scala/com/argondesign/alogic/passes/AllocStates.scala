@@ -61,12 +61,12 @@ final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
   private[this] val stateMap: mutable.Map[TermSymbol, Int] = mutable.Map()
 
   override def skip(tree: Tree): Boolean = tree match {
-    case entity: EntityNamed => entity.states.isEmpty
-    case _                   => false
+    case entity: Entity => entity.states.isEmpty
+    case _              => false
   }
 
   override def enter(tree: Tree): Unit = tree match {
-    case entity: EntityNamed => {
+    case entity: Entity => {
       nStates = entity.states.length
 
       if (nStates > 1) {
@@ -75,18 +75,18 @@ final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
 
         // Ensure the entry symbol is allocated number 0
         val (entryStates, otherStates) = entity.states partition {
-          case State(ExprRef(symbol: TermSymbol), _) => symbol.attr.entry.isSet
-          case _                                     => unreachable
+          case EntState(ExprRef(symbol: TermSymbol), _) => symbol.attr.entry.isSet
+          case _                                        => unreachable
         }
 
         assert(entryStates.length == 1)
 
         entryStates.head match {
-          case State(ExprRef(entrySymbol: TermSymbol), _) => stateMap(entrySymbol) = it.next
-          case _                                          => unreachable
+          case EntState(ExprRef(entrySymbol: TermSymbol), _) => stateMap(entrySymbol) = it.next
+          case _                                             => unreachable
         }
 
-        for (State(ExprRef(symbol: TermSymbol), _) <- otherStates) {
+        for (EntState(ExprRef(symbol: TermSymbol), _) <- otherStates) {
           stateMap(symbol) = it.next
         }
       }
@@ -95,7 +95,7 @@ final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
       rsSymbol
     }
 
-    case State(ExprRef(symbol: TermSymbol), _) if nStates > 1 => {
+    case EntState(ExprRef(symbol: TermSymbol), _) if nStates > 1 => {
       currStateNum = stateMap(symbol)
     }
 
@@ -123,10 +123,12 @@ final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
         }
 
         // Drop the return stack definition if exists
-        case entity: EntityNamed if rsSymbol.nonEmpty => {
-          entity.copy(
-            declarations = entity.declarations.tail
-          ) withLoc entity.loc
+        case entity: Entity if rsSymbol.nonEmpty => {
+          val newBody = entity.body filterNot {
+            case EntDecl(Decl(symbol, _)) => rsSymbol contains symbol
+            case _                        => false
+          }
+          entity.copy(body = newBody) withLoc entity.loc
         }
 
         case _ => tree
@@ -154,13 +156,11 @@ final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
         }
 
         // Emit state variable declaration
-        case entity: EntityNamed => {
+        case entity: Entity => {
           // TODO: polish off entry state handling (currently always state 0)
           val init = ExprInt(false, stateVarSymbol.kind.width, 0)
-          val decl = Decl(stateVarSymbol, Some(init)) regularize stateVarSymbol.loc
-          entity.copy(
-            declarations = decl :: entity.declarations
-          ) withLoc entity.loc
+          val decl = EntDecl(Decl(stateVarSymbol, Some(init))) regularize stateVarSymbol.loc
+          entity.copy(body = decl :: entity.body) withLoc entity.loc
         }
 
         case _ => tree
@@ -178,8 +178,8 @@ final class AllocStates(implicit cc: CompilerContext) extends TreeTransformer {
 
   override protected def finalCheck(tree: Tree): Unit = {
     tree visit {
-      case State(_: ExprInt, _) => ()
-      case node @ State(expr, _) => {
+      case EntState(_: ExprInt, _) => ()
+      case node @ EntState(expr, _) => {
         cc.ice(node, "Unallocated state remains")
       }
     }

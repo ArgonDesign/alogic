@@ -34,8 +34,8 @@ final class OptimizeClearOnStall(implicit cc: CompilerContext) extends TreeTrans
   // signals.
 
   override def skip(tree: Tree): Boolean = tree match {
-    case entity: EntityLowered => entity.statements.isEmpty
-    case _                     => true
+    case entity: Entity => entity.combProcesses.isEmpty
+    case _              => true
   }
 
   // Given a list of statements, return a list of all linear paths through
@@ -79,16 +79,17 @@ final class OptimizeClearOnStall(implicit cc: CompilerContext) extends TreeTrans
   }
 
   override def enter(tree: Tree): Unit = tree match {
-    case entity: EntityLowered => {
+    case entity: Entity => {
       // Candidates for having clearOnStall removed
-      val candidateSymbols = mutable.Set[TermSymbol]() ++ {
+      val candidateSymbols = mutable.Set from {
         entity.declarations collect {
           case Decl(symbol, _) if symbol.attr.clearOnStall contains true => symbol
         }
       }
 
       if (candidateSymbols.nonEmpty) {
-        val block = StmtBlock(entity.statements) regularize tree.loc
+        assert(entity.combProcesses.lengthIs == 1)
+        val block = StmtBlock(entity.combProcesses.head.stmts) regularize tree.loc
 
         // Discard everything that is not a StallStmt
         // or an assignment to one of our candidates

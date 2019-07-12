@@ -15,13 +15,12 @@
 
 package com.argondesign.alogic.ast
 
+import com.argondesign.alogic.core.Locationed
+import com.argondesign.alogic.core.SourceAttributes
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Symbols.TermSymbol
-import com.argondesign.alogic.core.Symbols.TypeSymbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.StructuredTree
-import com.argondesign.alogic.core.SourceAttributes
-import com.argondesign.alogic.core.Locationed
 
 // scalastyle:off number.of.types
 // scalastyle:off number.of.methods
@@ -63,7 +62,7 @@ object Trees {
   case class Sym(symbol: Symbol) extends Ref
 
   ///////////////////////////////////////////////////////////////////////////////
-  // Type definition nodes
+  // Type declarations
   ///////////////////////////////////////////////////////////////////////////////
 
   sealed trait TypeDefinition extends Tree
@@ -73,92 +72,39 @@ object Trees {
   case class TypeDefinitionTypedef(ref: Ref, kind: Type) extends TypeDefinition
 
   ///////////////////////////////////////////////////////////////////////////////
-  // Entity (module) nodes
-  ///////////////////////////////////////////////////////////////////////////////
-
-  // There are multiple flavours of Entity nodes. They are successively being
-  // replaced with later kinds during lowering through the compiler passes,
-  // but at any given pass all input entities are always the same, and all
-  // output entities are always the same flavour.
-
-  sealed trait Entity extends Tree
-
-  // Introduced by Parser
-  case class EntityIdent(
-      // Entity being defined
-      ident: Ident,
-      // Declarations in entity scope
-      declarations: List[Declaration],
-      // Instantiations
-      instances: List[Instance],
-      // Port connections
-      connects: List[Connect],
-      // fence statements
-      fenceStmts: List[Stmt],
-      // Functions
-      functions: List[Function],
-      // Nested entity definitions
-      entities: List[Entity],
-      // Verbatim sections. Map from language to string to insert into output
-      verbatim: Map[String, String]
-  ) extends Entity
-
-  // Introduced by Namer
-  case class EntityNamed(
-      // Entity being defined
-      symbol: TypeSymbol,
-      // Declarations in entity scope
-      declarations: List[Declaration],
-      // Instantiations
-      instances: List[Instance],
-      // Port connections
-      connects: List[Connect],
-      // fence statements
-      fenceStmts: List[Stmt],
-      // Functions
-      functions: List[Function],
-      // Sates
-      states: List[State],
-      // Nested entity definitions
-      entities: List[EntityNamed],
-      // Verbatim sections. Map from language to string to insert into output
-      verbatim: Map[String, String]
-  ) extends Entity
-
-  // Introduced by CreateStateSystem
-  case class EntityLowered(
-      // Entity being defined
-      symbol: TypeSymbol,
-      // Declarations in entity scope
-      declarations: List[Declaration],
-      // Instantiations
-      instances: List[Instance],
-      // Port connections
-      connects: List[Connect],
-      // The list of combinatorial statements to apply every cycle
-      statements: List[Stmt],
-      // Verbatim sections. Map from language to string to insert into output
-      verbatim: Map[String, String]
-  ) extends Entity
-
-  ///////////////////////////////////////////////////////////////////////////////
-  // Entity contents
+  // Variable Declarations
   ///////////////////////////////////////////////////////////////////////////////
 
   sealed trait Declaration extends Tree
   case class DeclIdent(ident: Ident, kind: Type, init: Option[Expr]) extends Declaration
   case class Decl(symbol: TermSymbol, init: Option[Expr]) extends Declaration
 
-  case class Instance(ref: Ref, module: Ref, paramNames: List[String], paramExprs: List[Expr])
-      extends Tree
-  case class Connect(lhs: Expr, rhs: List[Expr]) extends Tree
-  case class Function(ref: Ref, body: List[Stmt]) extends Tree
-
   ///////////////////////////////////////////////////////////////////////////////
-  // Tree representing FSM states after control statement conversion
+  // Entity (module) node
   ///////////////////////////////////////////////////////////////////////////////
 
-  case class State(expr: Expr, body: List[Stmt]) extends Tree
+  case class Entity(ref: Ref, body: List[Ent]) extends Tree with EntityOps
+
+  ///////////////////////////////////////////////////////////////////////////////
+  // Entity contents
+  ///////////////////////////////////////////////////////////////////////////////
+
+  sealed trait Ent extends Tree
+
+  case class EntDecl(decl: Declaration) extends Ent
+  case class EntEntity(entity: Entity) extends Ent
+  case class EntInstance(
+      instance: Ref,
+      entity: Ref,
+      paramNames: List[String],
+      paramExprs: List[Expr]
+  ) extends Ent
+  case class EntConnect(lhs: Expr, rhs: List[Expr]) extends Ent
+  case class EntCombProcess(stmts: List[Stmt]) extends Ent
+  case class EntFunction(ref: Ref, stmts: List[Stmt]) extends Ent
+  case class EntState(expr: Expr, stmts: List[Stmt]) extends Ent
+  case class EntVerbatim(lang: String, body: String) extends Ent
+  // TODO: EntComment(str: String) extends Ent
 
   ///////////////////////////////////////////////////////////////////////////////
   // Gen constructs

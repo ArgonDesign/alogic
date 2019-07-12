@@ -46,7 +46,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext) extends TreeTransfor
 
   // Map from output port symbol to output storage entity, instance symbol,
   // and a boolean that is true if the storage is multiple output slices
-  private val oStorage = mutable.Map[TermSymbol, (EntityLowered, TermSymbol, Boolean)]()
+  private val oStorage = mutable.Map[TermSymbol, (Entity, TermSymbol, Boolean)]()
 
   // Stack of extra statements to emit when finished with a statement
   private[this] val extraStmts = mutable.Stack[mutable.ListBuffer[Stmt]]()
@@ -64,7 +64,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext) extends TreeTransfor
   private[this] var removeStmt = false
 
   // New entities created in this pass
-  private[this] val extraEntities = new ListBuffer[EntityLowered]
+  private[this] val extraEntities = new ListBuffer[Entity]
 
   override def enter(tree: Tree): Unit = tree match {
 
@@ -405,18 +405,18 @@ final class LowerFlowControlA(implicit cc: CompilerContext) extends TreeTransfor
       // Add declarations of the expanded symbols
       //////////////////////////////////////////////////////////////////////////
 
-      case decl @ Decl(symbol, _) => {
+      case decl @ EntDecl(Decl(symbol, _)) => {
         // Note: We also leave the declaration of the original symbol, as
         // Connect instances have not been rewritten yet. These will be fixed
         // up in a later pass as they required all entities to have been
         // converted before we can type port references
         symbol.attr.fcv.get.map {
           case (pSym, vSymbol) =>
-            val vDecl = Decl(vSymbol, None)
+            val vDecl = EntDecl(Decl(vSymbol, None))
             val newDecls = pSym match {
               case ErrorSymbol => List(vDecl)
               case pSymbol: TermSymbol => {
-                val pDecl = Decl(pSymbol, None)
+                val pDecl = EntDecl(Decl(pSymbol, None))
                 List(pDecl, vDecl)
               }
               case _ => unreachable
@@ -424,12 +424,12 @@ final class LowerFlowControlA(implicit cc: CompilerContext) extends TreeTransfor
             Thicket(decl :: newDecls)
         } orElse symbol.attr.fcr.get.map {
           case (pSym, vSymbol, rSymbol) =>
-            val vDecl = Decl(vSymbol, None)
-            val rDecl = Decl(rSymbol, None)
+            val vDecl = EntDecl(Decl(vSymbol, None))
+            val rDecl = EntDecl(Decl(rSymbol, None))
             val newDecls = pSym match {
               case ErrorSymbol => List(vDecl, rDecl)
               case pSymbol: TermSymbol => {
-                val pDecl = Decl(pSymbol, None)
+                val pDecl = EntDecl(Decl(pSymbol, None))
                 List(pDecl, vDecl, rDecl)
               }
               case _ => unreachable
@@ -437,12 +437,12 @@ final class LowerFlowControlA(implicit cc: CompilerContext) extends TreeTransfor
             Thicket(decl :: newDecls)
         } orElse symbol.attr.fca.get.map {
           case (pSym, vSymbol, aSymbol) =>
-            val vDecl = Decl(vSymbol, None)
-            val aDecl = Decl(aSymbol, None)
+            val vDecl = EntDecl(Decl(vSymbol, None))
+            val aDecl = EntDecl(Decl(aSymbol, None))
             val newDecls = pSym match {
               case ErrorSymbol => List(vDecl, aDecl)
               case pSymbol: TermSymbol => {
-                val pDecl = Decl(pSymbol, None)
+                val pDecl = EntDecl(Decl(pSymbol, None))
                 List(pDecl, vDecl, aDecl)
               }
               case _ => unreachable
@@ -457,14 +457,14 @@ final class LowerFlowControlA(implicit cc: CompilerContext) extends TreeTransfor
       // Add storage slice entities
       //////////////////////////////////////////////////////////////////////////
 
-      case entity: EntityLowered => {
+      case entity: Entity => {
         val ospSymbols = entity.declarations collect {
           case Decl(symbol, _) if oStorage contains symbol => symbol
         }
 
         val instances = for (symbol <- ospSymbols) yield {
           val (entity, iSymbol, _) = oStorage(symbol)
-          Instance(Sym(iSymbol), Sym(entity.symbol), Nil, Nil)
+          EntInstance(Sym(iSymbol), Sym(entity.symbol), Nil, Nil)
         }
 
         val connects = ospSymbols flatMap { symbol =>
@@ -482,11 +482,11 @@ final class LowerFlowControlA(implicit cc: CompilerContext) extends TreeTransfor
           }
 
           val pConnOpt = pSymbolOpt map { pSymbol =>
-            Connect(iRef select "op", List(ExprRef(pSymbol)))
+            EntConnect(iRef select "op", List(ExprRef(pSymbol)))
           }
-          val vConn = Connect(iRef select s"op${sep}valid", List(ExprRef(vSymbol)))
+          val vConn = EntConnect(iRef select s"op${sep}valid", List(ExprRef(vSymbol)))
           val rConnOpt = rSymbolOpt map { rSymbol =>
-            Connect(ExprRef(rSymbol), List(iRef select s"op${sep}ready"))
+            EntConnect(ExprRef(rSymbol), List(iRef select s"op${sep}ready"))
           }
 
           pConnOpt.toList ::: vConn :: rConnOpt.toList
@@ -518,10 +518,7 @@ final class LowerFlowControlA(implicit cc: CompilerContext) extends TreeTransfor
           case _ => unreachable
         }
 
-        val thisEntity = entity.copy(
-          instances = instances ::: entity.instances,
-          connects = connects ::: entity.connects
-        )
+        val thisEntity = entity.copy(body = entity.body ::: instances ::: connects)
 
         Thicket(thisEntity :: extraEntities.toList)
       }

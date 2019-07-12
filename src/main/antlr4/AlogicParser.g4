@@ -105,17 +105,13 @@ storage_type
 ///////////////////////////////////////////////////////////////////////////////
 
 entity_content
-  : attr? instance ';'                      # EntityContentInstance
-  | connect ';'                             # EntityContentConnect
-  | (attr? autoinst='new')? entity          # EntityContentEntity
-  | 'fence' block                           # EntityContentFenceBlock
-  | attr? 'void' IDENTIFIER '(' ')' block   # EntityContentFunction
-  | 'verbatim' IDENTIFIER VERBATIM_BODY     # EntityContentVerbatimBlock
+  : (attr? autoinst='new')? entity                                          # EntityContentEntity
+  | attr? IDENTIFIER eqsign='=' 'new' IDENTIFIER '(' param_assigns ')' ';'  # EntityContentInstance
+  | lhs=expr '->' rhs+=expr (',' rhs+=expr)* ';'                            # EntityContentConnect
+  | 'fence' block                                                           # EntityContentFenceBlock
+  | attr? 'void' IDENTIFIER '(' ')' block                                   # EntityContentFunction
+  | 'verbatim' IDENTIFIER VERBATIM_BODY                                     # EntityContentVerbatimBlock
   ;
-
-connect : lhs=expr '->' rhs+=expr (',' rhs+=expr)* ;
-
-instance : IDENTIFIER eqsign='=' 'new' IDENTIFIER '(' param_assigns ')' ;
 
 param_assigns : (IDENTIFIER '=' expr (','  IDENTIFIER '=' expr)*)? ;
 

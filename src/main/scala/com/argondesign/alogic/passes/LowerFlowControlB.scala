@@ -28,7 +28,7 @@ final class LowerFlowControlB(implicit cc: CompilerContext) extends TreeTransfor
   private[this] var inConnect = false
 
   override def enter(tree: Tree): Unit = tree match {
-    case _: Connect => inConnect = true
+    case _: EntConnect => inConnect = true
 
     case _ => ()
   }
@@ -107,7 +107,7 @@ final class LowerFlowControlB(implicit cc: CompilerContext) extends TreeTransfor
       // Connect
       //////////////////////////////////////////////////////////////////////////
 
-      case Connect(lhs, List(rhs)) => {
+      case EntConnect(lhs, List(rhs)) => {
         // Expand inter-entity connections
         val pLhs = partExpr(lhs, payloadSymbol)
         val pRhs = partExpr(rhs, payloadSymbol)
@@ -122,13 +122,13 @@ final class LowerFlowControlB(implicit cc: CompilerContext) extends TreeTransfor
         assert(bLhs.isDefined == bRhs.isDefined)
 
         val pConn = pLhs map { lhs =>
-          Connect(lhs, pRhs.toList)
+          EntConnect(lhs, pRhs.toList)
         }
         val vConn = vLhs map { lhs =>
-          Connect(lhs, vRhs.toList)
+          EntConnect(lhs, vRhs.toList)
         }
         val bConn = bRhs map { rhs =>
-          Connect(rhs, bLhs.toList)
+          EntConnect(rhs, bLhs.toList)
         }
 
         val newConns = List.concat(pConn, vConn, bConn)

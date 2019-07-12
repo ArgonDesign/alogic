@@ -50,13 +50,13 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer { namer 
 
     private val usedSet = mutable.Set[Symbol]()
 
-    def markUsed(symbol: Symbol) = usedSet add symbol
+    def markUsed(symbol: Symbol): Boolean = usedSet add symbol
 
-    def push() = {
+    def push(): Unit = {
       scopes = (new SymTab) :: scopes
     }
 
-    def pop() = {
+    def pop(): Unit = {
       allSet ++= current.values
 
       scopes = scopes.tail
@@ -212,6 +212,21 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer { namer 
 
   private[this] val swapIfElseScope = mutable.Stack[Int]()
 
+  private[this] def insertEarlyName(ident: Ident, isTerm: Boolean) = {
+    // Name the source attributes
+    if (ident.hasAttr) {
+      ident withAttr { (ident.attr.view mapValues { walk(_).asInstanceOf[Expr] }).toMap }
+    }
+
+    Scopes insert {
+      if (isTerm) {
+        cc.newTermSymbol(ident, TypeError) // TODO: should be TypeMissing
+      } else {
+        cc.newTypeSymbol(ident, TypeError) // TODO: should be TypeMissing
+      }
+    }
+  }
+
   override def enter(tree: Tree): Unit = {
     if (swapIfElseScope.headOption contains tree.id) {
       Scopes.pop()
@@ -220,49 +235,30 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer { namer 
     }
 
     tree match {
-      case Root(_, entity: EntityIdent) => {
+      case Root(_, Entity(ident: Ident, _)) => {
         Scopes.push()
 
         // Name the source attributes of the root entity, these have already been
         // created so need to name the symbol attributes
-        val symbol = lookupType(entity.ident)
+        val symbol = lookupType(ident)
         // TODO: do them all in a systematic way..
         symbol.attr.stackLimit.get foreach { symbol.attr.stackLimit set walk(_).asInstanceOf[Expr] }
       }
 
-      case node: EntityIdent => {
+      case entity: Entity => {
         Scopes.push()
 
-        // Insert function names before descending an entity so they can be in arbitrary order
-        for (Function(ident: Ident, _) <- node.functions) {
-          // Name the source attributes of the function
-          if (ident.hasAttr) {
-            ident withAttr { (ident.attr.view mapValues { walk(_).asInstanceOf[Expr] }).toMap }
-          }
-
-          val symbol = cc.newTermSymbol(ident, TypeCtrlFunc(Nil, TypeVoid))
-          Scopes.insert(symbol)
-          if (ident.name == "main") {
-            // Always mark 'main' as used
-            Scopes.markUsed(symbol)
-            // Mark main as an entry point
-            symbol.attr.entry set true
-          }
-        }
-
-        // Insert nested entity names so instantiations can resolve them in arbitrary order
-        for (EntityIdent(ident, _, _, _, _, _, _, _) <- node.entities) {
-          // Name the source attributes of the nested entities
-          if (ident.hasAttr) {
-            ident withAttr { (ident.attr.view mapValues { walk(_).asInstanceOf[Expr] }).toMap }
-          }
-
-          val symbol = cc.newTypeSymbol(ident, TypeEntity("", Nil, Nil))
-          Scopes.insert(symbol)
+        // Insert function names, nested entity names and instance names early
+        // so they can be referred to before the definition site in source
+        entity.body foreach {
+          case EntFunction(ident: Ident, _)       => insertEarlyName(ident, isTerm = true)
+          case EntEntity(Entity(ident: Ident, _)) => insertEarlyName(ident, isTerm = false)
+          case EntInstance(ident: Ident, _, _, _) => insertEarlyName(ident, isTerm = true)
+          case _                                  =>
         }
       }
 
-      case _: Function => Scopes.push()
+      case _: EntFunction => Scopes.push()
 
       case _: GenFor   => Scopes.push()
       case _: GenRange => Scopes.push()
@@ -355,25 +351,25 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer { namer 
       TypeDefinitionStruct(sym, fieldNames, newFieldKinds) withLoc tree.loc
     }
 
-    case entity: EntityIdent => {
-      // Get Ident
-      val ident @ Ident(name) = entity.ident
-      // Lookup type
+    case entity @ Entity(ident @ Ident(name), _) => {
+      // Lookup type symbol
       val symbol = lookupType(ident) match {
-        case symbol: TypeSymbol => {
-          // Attach proper type
-          val portSymbols = entity.declarations collect {
-            case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeIn]  => symbol
-            case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeOut] => symbol
-          }
-          val paramSymbols = entity.declarations collect {
-            case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeParam] => symbol
-          }
-          symbol.kind = TypeEntity(name, portSymbols, paramSymbols)
-          symbol
-        }
-        case _ => unreachable
+        case symbol: TypeSymbol => symbol
+        case _                  => unreachable
       }
+
+      // Attach proper type
+      symbol.kind = {
+        val portSymbols = entity.declarations collect {
+          case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeIn]  => symbol
+          case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeOut] => symbol
+        }
+        val paramSymbols = entity.declarations collect {
+          case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeParam] => symbol
+        }
+        TypeEntity(name, portSymbols, paramSymbols)
+      }
+
       // Some special behavior for verbatim entities only
       if (symbol.attr.variant.value == "verbatim") {
         // Mark all declarations used
@@ -385,47 +381,51 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer { namer 
       }
 
       // Rewrite node
-      assert(entity.entities forall { _.isInstanceOf[EntityNamed] })
-      EntityNamed(
-        symbol,
-        entity.declarations,
-        entity.instances,
-        entity.connects,
-        entity.fenceStmts,
-        entity.functions,
-        Nil,
-        entity.entities.asInstanceOf[List[EntityNamed]],
-        entity.verbatim
-      ) withLoc entity.loc
+      entity.copy(ref = Sym(symbol) withLoc ident.loc) withLoc entity.loc
     } tap { _ =>
       Scopes.pop()
     }
 
-    case Function(ident: Ident, body) => {
+    case EntFunction(ident: Ident, body) => {
       // Lookup term (inserted in enter(Entity))
       val symbol = lookupTerm(ident)
+
+      // Attach proper type
+      symbol.kind = TypeCtrlFunc(Nil, TypeVoid)
+
+      if (ident.name == "main") {
+        // Always mark 'main' as used
+        Scopes.markUsed(symbol)
+        // Mark main as an entry point
+        symbol.attr.entry set true
+      }
+
       // Rewrite node
       val sym = Sym(symbol) withLoc ident.loc
-      Function(sym, body) withLoc tree.loc
+      EntFunction(sym, body) withLoc tree.loc
     } tap { _ =>
       Scopes.pop()
     }
 
-    case Instance(iIdent: Ident, eIdent: Ident, paramNames, paramExprs) => {
-      // Lookup type
+    case EntInstance(iIdent: Ident, eIdent: Ident, paramNames, paramExprs) => {
+      // Lookup type symbol
       val eSymbol = lookupType(eIdent)
       val eSym = Sym(eSymbol) withLoc eIdent.loc
       Scopes.markUsed(eSymbol)
-      // Insert term
-      val iKind = eSymbol match {
+
+      // Lookup term symbol (inserted in enter(Entity))
+      val iSymbol = lookupTerm(iIdent)
+
+      // Attach proper type
+      iSymbol.kind = eSymbol match {
         case ErrorSymbol        => TypeError
         case symbol: TypeSymbol => TypeInstance(symbol)
         case _                  => unreachable
       }
-      val iSymbol = Scopes.insert(cc.newTermSymbol(iIdent, iKind))
-      val iSym = Sym(iSymbol) withLoc iIdent.loc
+
       // Rewrite node
-      Instance(iSym, eSym, paramNames, paramExprs) withLoc tree.loc
+      val iSym = Sym(iSymbol) withLoc iIdent.loc
+      EntInstance(iSym, eSym, paramNames, paramExprs) withLoc tree.loc
     }
 
     case node: GenFor =>
@@ -531,14 +531,13 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer { namer 
     // Check tree does not contain any Ident related nodes anymore
     def check(tree: Tree): Unit = {
       tree visitAll {
-        case node: EntityIdent => cc.ice(node, "EntityIdent remains")
-        case node: DeclIdent   => cc.ice(node, "DeclIdent remains")
-        case node: ExprIdent   => cc.ice(node, "ExprIdent remains")
-        case node: Ident       => cc.ice(node, "Ident remains")
-        case Decl(symbol, _)   => symbol.kind visit { case tree: Tree => check(tree) }
-        case Sym(symbol)       => symbol.kind visit { case tree: Tree => check(tree) }
-        case ExprRef(symbol)   => symbol.kind visit { case tree: Tree => check(tree) }
-        case ExprType(kind)    => kind visit { case tree: Tree => check(tree) }
+        case node: DeclIdent => cc.ice(node, "DeclIdent remains")
+        case node: ExprIdent => cc.ice(node, "ExprIdent remains")
+        case node: Ident     => cc.ice(node, "Ident remains")
+        case Decl(symbol, _) => symbol.kind visit { case tree: Tree => check(tree) }
+        case Sym(symbol)     => symbol.kind visit { case tree: Tree => check(tree) }
+        case ExprRef(symbol) => symbol.kind visit { case tree: Tree => check(tree) }
+        case ExprType(kind)  => kind visit { case tree: Tree => check(tree) }
         case TypeDefinitionStruct(_, _, fieldTypes) => {
           fieldTypes foreach { _ visit { case tree: Tree => check(tree) } }
         }

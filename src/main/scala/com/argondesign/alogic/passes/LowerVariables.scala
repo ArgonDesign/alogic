@@ -27,15 +27,15 @@ final class LowerVariables(implicit cc: CompilerContext) extends TreeTransformer
   // TODO: Generate clock enables
 
   override def skip(tree: Tree): Boolean = tree match {
-    case entity: EntityLowered => entity.symbol.attr.variant.value == "network"
+    case entity: Entity => entity.symbol.attr.variant.value == "network"
     // We do not replace _q with _d in connects, connects always use the _q
-    case _: Connect => true
-    case _          => false
+    case _: EntConnect => true
+    case _             => false
   }
 
   override def enter(tree: Tree): Unit = tree match {
 
-    case entity: EntityLowered => {
+    case entity: Entity => {
       // Drop the oreg prefix from the flops allocated for registered outputs,
       // These will now gain _d and _q, so the names will become unique.
       val prefix = s"oreg${cc.sep}"
@@ -52,7 +52,7 @@ final class LowerVariables(implicit cc: CompilerContext) extends TreeTransformer
 
       // Mark local symbols driven by Connect as combinatorial nets
       for {
-        Connect(_, List(rhs)) <- entity.connects
+        EntConnect(_, List(rhs)) <- entity.connects
         symbol <- WrittenSymbols(rhs)
         if symbol.kind.isInt
       } {
@@ -115,13 +115,9 @@ final class LowerVariables(implicit cc: CompilerContext) extends TreeTransformer
     // Add declarations
     //////////////////////////////////////////////////////////////////////////
 
-    case decl @ Decl(qSymbol, _) => {
+    case decl @ EntDecl(Decl(qSymbol, _)) => {
       qSymbol.attr.flop.get map { dSymbol =>
-        val decls = List(
-          decl,
-          Decl(dSymbol, None)
-        )
-        Thicket(decls) regularize tree.loc
+        Thicket(List(decl, EntDecl(Decl(dSymbol, None)))) regularize tree.loc
       } getOrElse {
         tree
       }

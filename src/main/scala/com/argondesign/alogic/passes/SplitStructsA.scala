@@ -40,7 +40,7 @@ final class SplitStructsA(implicit cc: CompilerContext) extends TreeTransformer 
   }
 
   override def enter(tree: Tree) = tree match {
-    case entity: EntityLowered => {
+    case entity: Entity => {
       if (!entity.symbol.attr.highLevelKind.isSet) {
         cc.ice(s"Missing highLevelKind attribute on entity ${entity.symbol.name}")
       }
@@ -95,7 +95,7 @@ final class SplitStructsA(implicit cc: CompilerContext) extends TreeTransformer 
     case _ => ()
   }
 
-  private[this] def fieldDecls(fSymbols: List[TermSymbol], initOpt: Option[Expr]): List[Decl] = {
+  private[this] def fieldDecls(fSymbols: List[TermSymbol], initOpt: Option[Expr]): List[EntDecl] = {
     initOpt match {
       case Some(init) => {
         val widths = fSymbols map { _.kind.width }
@@ -104,13 +104,13 @@ final class SplitStructsA(implicit cc: CompilerContext) extends TreeTransformer 
           val msb = lsb + width - 1
           val expr = ExprSlice(init, Expr(msb), ":", Expr(lsb)) regularize init.loc
           // TODO: teach simplify to simplify more things as necesary
-          Decl(symbol, Some(expr.simplify))
+          EntDecl(Decl(symbol, Some(expr.simplify)))
         }
         t.toList
       }
       case None => {
         for (symbol <- fSymbols) yield {
-          Decl(symbol, None)
+          EntDecl(Decl(symbol, None))
         }
       }
     }
@@ -163,7 +163,7 @@ final class SplitStructsA(implicit cc: CompilerContext) extends TreeTransformer 
       // Decl
       //////////////////////////////////////////////////////////////////////////
 
-      case decl @ Decl(symbol, init) => {
+      case decl @ EntDecl(Decl(symbol, init)) => {
         // Add field declarations
         symbol.attr.fieldSymbols.get map { fSymbols =>
           val fDecls = fieldDecls(fSymbols, init)
@@ -183,7 +183,7 @@ final class SplitStructsA(implicit cc: CompilerContext) extends TreeTransformer 
       // Entity
       //////////////////////////////////////////////////////////////////////////
 
-      case entity: EntityLowered => {
+      case entity: Entity => {
         // Update type of entity with new ports.
         val portSymbols = entity.declarations collect {
           case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeIn]  => symbol

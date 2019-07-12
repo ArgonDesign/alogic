@@ -35,9 +35,9 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
 
   private def xform(tree: Tree) = {
     tree match {
-      case Root(_, entity: EntityIdent) => cc.addGlobalEntity(entity)
-      case entity: EntityIdent          => cc.addGlobalEntity(entity)
-      case _                            =>
+      case Root(_, entity: Entity) => cc.addGlobalEntity(entity)
+      case entity: Entity          => cc.addGlobalEntity(entity)
+      case _                       =>
     }
     tree rewrite namer
   }
@@ -91,12 +91,12 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
               val tree = xform(root)
 
               inside(tree) {
-                case Root(_, entity: EntityNamed) => {
+                case Root(_, entity: Entity) => {
                   val main = (entity.functions collectFirst {
-                    case func @ Function(Sym(sym), _) if sym.name == "main" => func
+                    case func @ EntFunction(Sym(sym), _) if sym.name == "main" => func
                   }).get
                   inside(main) {
-                    case Function(_, List(StmtExpr(expr))) =>
+                    case EntFunction(_, List(StmtExpr(expr))) =>
                       expr should matchPattern { case ExprRef(_) => }
                       TypeAssigner(expr).tpe shouldBe kind
                   }
@@ -138,7 +138,7 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
               val tree = xform(root)
 
               val result = (tree collectFirst {
-                case Function(_, List(StmtExpr(e))) => e
+                case EntFunction(_, List(StmtExpr(e))) => e
               }).value
               val ExprCall(_, List(arg)) = result
               assignChildren(arg)
@@ -1105,7 +1105,7 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
 
             val tree = xform(entity)
 
-            val stmt = tree getFirst { case Function(_, stmts) => stmts.last }
+            val stmt = tree getFirst { case EntFunction(_, stmts) => stmts.last }
 
             stmt.postOrderIterator collect {
               case node: Stmt => node
@@ -1128,13 +1128,13 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
     "entity contents" - {
       for {
         (name, text, pattern) <- List[(String, String, PartialFunction[Any, Tree])](
-          ("entity", "fsm e {}", { case c: Entity => c }),
+          ("entity", "fsm e {}", { case c: EntEntity => c }),
           ("decl", "param bool e = true;", {
-            case c @ Decl(symbol, _) if symbol.kind.isInstanceOf[TypeParam] => c
+            case c @ EntDecl(Decl(symbol, _)) if symbol.kind.isInstanceOf[TypeParam] => c
           }),
-          ("instance", "d = new a();", { case c: Instance   => c }),
-          ("connect", "b -> c;", { case c: Connect          => c }),
-          ("function", "void main() {}", { case c: Function => c })
+          ("instance", "d = new a();", { case c: EntInstance   => c }),
+          ("connect", "b -> c;", { case c: EntConnect          => c }),
+          ("function", "void main() {}", { case c: EntFunction => c })
         )
       } {
         name in {
@@ -1154,7 +1154,7 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
 
       "state" in {
         val ref = TypeAssigner(ExprRef(ErrorSymbol))
-        TypeAssigner(State(ref, Nil)).tpe shouldBe TypeMisc
+        TypeAssigner(EntState(ref, Nil)).tpe shouldBe TypeMisc
       }
     }
 

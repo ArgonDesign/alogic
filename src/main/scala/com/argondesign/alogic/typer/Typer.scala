@@ -196,19 +196,21 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
   }
 
   override def skip(tree: Tree): Boolean = tree match {
-    case _: Entity  => false
-    case _: Connect => !externalRefs
-    case _          => false
+    case _: Entity     => false
+    case _: EntConnect => !externalRefs
+    case _             => false
   }
 
   override def enter(tree: Tree): Unit = tree match {
-    case EntityNamed(symbol, _, _, _, _, _, _, _, _) => {
+    case entity: Entity => {
       // Type the source attributes
       // TODO: do them all in a systematic way..
-      symbol.attr.stackLimit.get foreach { symbol.attr.stackLimit set walk(_).asInstanceOf[Expr] }
+      entity.symbol.attr.stackLimit.get foreach {
+        entity.symbol.attr.stackLimit set walk(_).asInstanceOf[Expr]
+      }
     }
 
-    case Function(Sym(symbol), _) => {
+    case EntFunction(Sym(symbol), _) => {
       // Type the source attributes
       // TODO: do them all in a systematic way..
       symbol.attr.recLimit.get foreach { symbol.attr.recLimit set walk(_).asInstanceOf[Expr] }
@@ -320,13 +322,12 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
       // Type check other nodes
       ////////////////////////////////////////////////////////////////////////////
 
-      case entity: EntityNamed => {
-        entity.fenceStmts filter { _.tpe == TypeCtrlStmt } foreach {
+      case EntCombProcess(List(StmtBlock(stmts))) =>
+        stmts filter { _.tpe == TypeCtrlStmt } foreach {
           error(tree, _, "'fence' block must contain only combinatorial statements")
         }
-      }
 
-      case Function(ref, body) => {
+      case EntFunction(ref, body) => {
         if (body.isEmpty) {
           error(tree, ref, "Body of function must end in a control statement")
         } else if (body.last.tpe != TypeCtrlStmt) {
@@ -334,7 +335,7 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
         }
       }
 
-      case conn: Connect => ConnectChecks(conn)
+      case conn: EntConnect => ConnectChecks(conn)
 
       case Decl(symbol, Some(init)) => {
         if (symbol.kind.underlying.isNum && init.tpe.isPacked) {

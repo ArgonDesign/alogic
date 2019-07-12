@@ -67,8 +67,8 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
   private[this] val pendingStates = mutable.Stack[Option[TermSymbol]]()
 
   override def skip(tree: Tree): Boolean = tree match {
-    case entity: EntityNamed => entity.functions.isEmpty
-    case _                   => false
+    case entity: Entity => entity.functions.isEmpty
+    case _              => false
   }
 
   // Allocate all intermediate states that are introduced
@@ -117,7 +117,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
       // Entity
       //////////////////////////////////////////////////////////////////////////
 
-      case entity: EntityNamed => {
+      case entity: Entity => {
         // Allocate function entry state symbols up front so they can be
         // resolved in an arbitrary order, also add them to the entryStmts map
         val pairs = for (function <- entity.functions) yield {
@@ -130,7 +130,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
               )
               stateSymbol.attr.update(functionSymbol.attr)
               stateSymbol.attr.recLimit.clear()
-              entryStmts(function.body.head.id) = stateSymbol
+              entryStmts(function.stmts.head.id) = stateSymbol
               functionSymbol -> stateSymbol
             case _ => unreachable
           }
@@ -193,7 +193,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
         allocateStates(body)
       }
 
-      case Function(Sym(symbol: TermSymbol), body) => {
+      case EntFunction(Sym(symbol: TermSymbol), body) => {
         val stateSymbol = func2state(symbol)
 
         // Set up the followingState to loop back to the function entry point
@@ -251,7 +251,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
     }
 
   // List of emitted states
-  private[this] val emittedStates = ListBuffer[State]()
+  private[this] val emittedStates = ListBuffer[EntState]()
 
   // Emit current state with given body, returns symbol that was emitted
   private[this] def emitState(body: List[Stmt]): Option[TermSymbol] = {
@@ -263,7 +263,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
     symOpt foreach { symbol =>
       val loc = body.head.loc
       val ref = ExprRef(symbol) regularize loc
-      val state = State(ref, body) withLoc loc
+      val state = EntState(ref, body) withLoc loc
       TypeAssigner(state)
       emittedStates append state
     }
@@ -392,7 +392,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
       // Handle function
       //////////////////////////////////////////////////////////////////////////
 
-      case Function(_, body) => {
+      case EntFunction(_, body) => {
         splitControlUnits(body) foreach emitState
         // Don't bother rewriting, it will be discarded later
         tree
@@ -404,15 +404,19 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
       // Convert entity
       //////////////////////////////////////////////////////////////////////////
 
-      case entity: EntityNamed => {
-        // Sort states by source location (for ease of debugging)
-        val states = emittedStates.toList sortBy { _.loc.start }
+      case entity: Entity => {
+        val newBody = List from {
+          // Drop functions
+          entity.body.iterator filter {
+            case _: EntFunction => false
+            case _              => true
+          } concat {
+            // Add states, sorted by source location (for ease of debugging)
+            emittedStates.toList sortBy { _.loc.start }
+          }
+        }
 
-        val result = entity.copy(
-          functions = Nil,
-          states = states
-        ) withLoc entity.loc
-        TypeAssigner(result)
+        TypeAssigner(entity.copy(body = newBody) withLoc entity.loc)
       }
 
       //////////////////////////////////////////////////////////////////////////
@@ -446,7 +450,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
 
     tree visit {
       case node: Tree if !node.hasTpe => cc.ice(node, "Lost tpe of", node.toString)
-      case node: Function             => cc.ice(node, "Function remains")
+      case node: EntFunction          => cc.ice(node, "Function remains")
       case node: StmtLoop             => cc.ice(node, "Loop remains")
       case node: StmtFence            => cc.ice(node, "Fence statement remains")
       case node: StmtBreak            => cc.ice(node, "Break statement remains")

@@ -24,14 +24,14 @@ import com.argondesign.alogic.core.Symbols._
 final class InferImplications(implicit cc: CompilerContext) extends TreeTransformer {
 
   override def skip(tree: Tree): Boolean = tree match {
-    case _: EntityLowered                           => false
-    case Connect(_, List(ExprRef(rhs: TermSymbol))) => rhs.kind.width != 1
-    case _                                          => true
+    case _: Entity                                     => false
+    case EntConnect(_, List(ExprRef(rhs: TermSymbol))) => rhs.kind.width != 1
+    case _                                             => true
   }
 
   override def transform(tree: Tree): Tree = {
     tree match {
-      case Connect(source, List(ExprRef(dst: TermSymbol))) => {
+      case EntConnect(source, List(ExprRef(dst: TermSymbol))) => {
         source match {
           case ExprRef(src: TermSymbol) => {
             src.attr.implications.append((true, true, dst))
@@ -49,7 +49,7 @@ final class InferImplications(implicit cc: CompilerContext) extends TreeTransfor
         }
       }
 
-      case entity: EntityLowered => {
+      case entity: Entity => {
         // Transitively propagate all implication relations within the entity
         def loop(): Unit = {
           val found = for {

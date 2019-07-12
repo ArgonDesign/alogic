@@ -33,7 +33,6 @@ object Passes extends ChainingSyntax {
       ////////////////////////////////////////////////////////////////////////
       Checker,
       Namer,
-      // All entities are EntityNamed from here on
       SpecializeParam,
       Generate,
       // Any passes between here and the middle end can only perform checks
@@ -60,7 +59,6 @@ object Passes extends ChainingSyntax {
       ConvertControl,
       AllocStates,
       CreateStateSystem,
-      // All entities are EntityLowered from here on
       Replace1Stacks,
       // TODO: Replace1Arrays
       DefaultStorage,

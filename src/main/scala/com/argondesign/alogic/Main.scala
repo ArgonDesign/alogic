@@ -23,9 +23,6 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 import com.argondesign.alogic.ast.Trees.Entity
-import com.argondesign.alogic.ast.Trees.EntityIdent
-import com.argondesign.alogic.ast.Trees.EntityLowered
-import com.argondesign.alogic.ast.Trees.EntityNamed
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Settings
@@ -65,13 +62,7 @@ object Main extends App {
         }
       }
 
-      val name = entity match {
-        case entity: EntityIdent   => entity.ident.name + suffix
-        case entity: EntityNamed   => entity.symbol.name + suffix
-        case entity: EntityLowered => entity.symbol.name + suffix
-      }
-
-      oDir resolve name
+      oDir resolve (entity.name + suffix)
     }
 
     val oPath = oPathFor(entity, suffix)

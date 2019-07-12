@@ -62,8 +62,8 @@ final class ParserSpec extends FreeSpec with AlogicTest {
       "file without type definitions" in {
         """|fsm foo {
            |
-           |}""".asTree[Root] should matchPattern {
-          case Root(Nil, _: EntityIdent) =>
+           |}""".stripMargin.asTree[Root] should matchPattern {
+          case Root(Nil, _: Entity) =>
         }
         cc.messages shouldBe empty
       }
@@ -528,57 +528,42 @@ final class ParserSpec extends FreeSpec with AlogicTest {
       "entity contents" - {
         "empty" in {
           "fsm a {}".asTree[Entity] shouldBe {
-            EntityIdent(Ident("a"), Nil, Nil, Nil, Nil, Nil, Nil, Map())
+            Entity(Ident("a"), Nil)
           }
         }
 
         "declaration" in {
           """|network b {
              |  in bool p_in;
-             |}""".asTree[Entity] shouldBe {
-            EntityIdent(
+             |}""".stripMargin.asTree[Entity] shouldBe {
+            Entity(
               Ident("b"),
-              List(DeclIdent(Ident("p_in"), TypeIn(TypeUInt(Expr(1)), FlowControlTypeNone), None)),
-              Nil,
-              Nil,
-              Nil,
-              Nil,
-              Nil,
-              Map()
+              List(
+                EntDecl(
+                  DeclIdent(Ident("p_in"), TypeIn(TypeUInt(Expr(1)), FlowControlTypeNone), None))
+              )
             )
           }
         }
 
         "instance without parameters" in {
           """|network c {
-                       |  i = new j();
-                       |}""".asTree[Entity] shouldBe {
-            EntityIdent(
+             |  i = new j();
+             |}""".stripMargin.asTree[Entity] shouldBe {
+            Entity(
               Ident("c"),
-              Nil,
-              List(Instance(Ident("i"), Ident("j"), Nil, Nil)),
-              Nil,
-              Nil,
-              Nil,
-              Nil,
-              Map()
+              List(EntInstance(Ident("i"), Ident("j"), Nil, Nil))
             )
           }
         }
 
         "instance with parameters" in {
           """|network d {
-                       |  i = new j(A=2, B=3);
-                       |}""".asTree[Entity] shouldBe {
-            EntityIdent(
+             |  i = new j(A=2, B=3);
+             |}""".stripMargin.asTree[Entity] shouldBe {
+            Entity(
               Ident("d"),
-              Nil,
-              List(Instance(Ident("i"), Ident("j"), List("A", "B"), List(Expr(2), Expr(3)))),
-              Nil,
-              Nil,
-              Nil,
-              Nil,
-              Map()
+              List(EntInstance(Ident("i"), Ident("j"), List("A", "B"), List(Expr(2), Expr(3))))
             )
           }
         }
@@ -589,18 +574,12 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                         |  i = new j();
                         |}""".stripMargin.asTree[Entity]
           tree shouldBe {
-            EntityIdent(
+            Entity(
               Ident("d2"),
-              Nil,
-              List(Instance(Ident("i"), Ident("j"), Nil, Nil)),
-              Nil,
-              Nil,
-              Nil,
-              Nil,
-              Map()
+              List(EntInstance(Ident("i"), Ident("j"), Nil, Nil))
             )
           }
-          val ident = (tree collectFirst { case Instance(i: Ident, _, _, _) => i }).value
+          val ident = (tree collectFirst { case EntInstance(i: Ident, _, _, _) => i }).value
           ident.hasAttr shouldBe true
           ident.attr shouldBe Map("foo" -> Expr(1))
         }
@@ -608,16 +587,11 @@ final class ParserSpec extends FreeSpec with AlogicTest {
         "single connection" in {
           """|network e {
                        |  i.a -> j.b;
-                       |}""".asTree[Entity] shouldBe {
-            EntityIdent(
+                       |}""".stripMargin.asTree[Entity] shouldBe {
+            Entity(
               Ident("e"),
-              Nil,
-              Nil,
-              List(Connect(ExprSelect(ExprIdent("i"), "a"), List(ExprSelect(ExprIdent("j"), "b")))),
-              Nil,
-              Nil,
-              Nil,
-              Map()
+              List(
+                EntConnect(ExprSelect(ExprIdent("i"), "a"), List(ExprSelect(ExprIdent("j"), "b"))))
             )
           }
         }
@@ -625,20 +599,14 @@ final class ParserSpec extends FreeSpec with AlogicTest {
         "multiple connections" in {
           """|network f {
                        |  i.a -> j.b, k.c;
-                       |}""".asTree[Entity] shouldBe {
-            EntityIdent(
+                       |}""".stripMargin.asTree[Entity] shouldBe {
+            Entity(
               Ident("f"),
-              Nil,
-              Nil,
               List(
-                Connect(
+                EntConnect(
                   ExprSelect(ExprIdent("i"), "a"),
                   List(ExprSelect(ExprIdent("j"), "b"), ExprSelect(ExprIdent("k"), "c"))
-                )),
-              Nil,
-              Nil,
-              Nil,
-              Map()
+                ))
             )
           }
         }
@@ -648,16 +616,10 @@ final class ParserSpec extends FreeSpec with AlogicTest {
              |  fence {
              |    a = 1;
              |  }
-             |}""".asTree[Entity] shouldBe {
-            EntityIdent(
+             |}""".stripMargin.asTree[Entity] shouldBe {
+            Entity(
               Ident("g"),
-              Nil,
-              Nil,
-              Nil,
-              List(StmtBlock(List(StmtAssign(ExprIdent("a"), Expr(1))))),
-              Nil,
-              Nil,
-              Map()
+              List(EntCombProcess(List(StmtBlock(List(StmtAssign(ExprIdent("a"), Expr(1)))))))
             )
           }
         }
@@ -666,15 +628,9 @@ final class ParserSpec extends FreeSpec with AlogicTest {
           """|fsm g {
              |  void main() {}
              |}""".stripMargin.asTree[Entity] shouldBe {
-            EntityIdent(
+            Entity(
               Ident("g"),
-              Nil,
-              Nil,
-              Nil,
-              Nil,
-              List(Function(Ident("main"), Nil)),
-              Nil,
-              Map()
+              List(EntFunction(Ident("main"), Nil))
             )
           }
         }
@@ -685,18 +641,12 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                         |  void main() {}
                         |}""".stripMargin.asTree[Entity]
           tree shouldBe {
-            EntityIdent(
+            Entity(
               Ident("g"),
-              Nil,
-              Nil,
-              Nil,
-              Nil,
-              List(Function(Ident("main"), Nil)),
-              Nil,
-              Map()
+              List(EntFunction(Ident("main"), Nil))
             )
           }
-          val ident = (tree collectFirst { case Function(i: Ident, _) => i }).value
+          val ident = (tree collectFirst { case EntFunction(i: Ident, _) => i }).value
           ident.hasAttr shouldBe true
           ident.attr shouldBe {
             Map(
@@ -711,15 +661,9 @@ final class ParserSpec extends FreeSpec with AlogicTest {
           """|network  h {
              |  fsm i {}
              |}""".stripMargin.asTree[Entity] shouldBe {
-            EntityIdent(
+            Entity(
               Ident("h"),
-              Nil,
-              Nil,
-              Nil,
-              Nil,
-              Nil,
-              List(EntityIdent(Ident("i"), Nil, Nil, Nil, Nil, Nil, Nil, Map())),
-              Map()
+              List(EntEntity(Entity(Ident("i"), Nil)))
             )
           }
         }
@@ -729,15 +673,9 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                         |  (* foo *) fsm i {}
                         |}""".stripMargin.asTree[Entity]
           tree shouldBe {
-            EntityIdent(
+            Entity(
               Ident("h2"),
-              Nil,
-              Nil,
-              Nil,
-              Nil,
-              Nil,
-              List(EntityIdent(Ident("i"), Nil, Nil, Nil, Nil, Nil, Nil, Map())),
-              Map()
+              List(EntEntity(Entity(Ident("i"), Nil)))
             )
           }
           val ident = (tree collectFirst { case ident @ Ident("i") => ident }).value
@@ -749,15 +687,12 @@ final class ParserSpec extends FreeSpec with AlogicTest {
           """|network  h3 {
              |  new fsm i {}
              |}""".stripMargin.asTree[Entity] shouldBe {
-            EntityIdent(
+            Entity(
               Ident("h3"),
-              Nil,
-              List(Instance(Ident("i"), Ident("i"), Nil, Nil)),
-              Nil,
-              Nil,
-              Nil,
-              List(EntityIdent(Ident("i"), Nil, Nil, Nil, Nil, Nil, Nil, Map())),
-              Map()
+              List(
+                EntEntity(Entity(Ident("i"), Nil)),
+                EntInstance(Ident("i"), Ident("i"), Nil, Nil)
+              )
             )
           }
         }
@@ -766,26 +701,23 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                         |  (* foo *) new fsm i {}
                         |}""".stripMargin.asTree[Entity]
           tree shouldBe {
-            EntityIdent(
+            Entity(
               Ident("h4"),
-              Nil,
-              List(Instance(Ident("i"), Ident("i"), Nil, Nil)),
-              Nil,
-              Nil,
-              Nil,
-              List(EntityIdent(Ident("i"), Nil, Nil, Nil, Nil, Nil, Nil, Map())),
-              Map()
+              List(
+                EntEntity(Entity(Ident("i"), Nil)),
+                EntInstance(Ident("i"), Ident("i"), Nil, Nil)
+              )
             )
           }
 
-          val iIdent = tree getFirst  {
-            case Instance(ident: Ident, _, _, _) => ident
+          val iIdent = tree getFirst {
+            case EntInstance(ident: Ident, _, _, _) => ident
           }
           iIdent.hasAttr shouldBe true
           iIdent.attr shouldBe Map("foo" -> Expr(1))
 
           val eIdent = tree getFirst {
-            case EntityIdent(ident @ Ident("i"), _, _, _, _, _, _, _) => ident
+            case Entity(ident @ Ident("i"), _) => ident
           }
           eIdent.hasAttr shouldBe true
           eIdent.attr shouldBe Map("//variant" -> ExprStr("fsm"))
@@ -796,25 +728,22 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                         |  new (* bar *) fsm i {}
                         |}""".stripMargin.asTree[Entity]
           tree shouldBe {
-            EntityIdent(
+            Entity(
               Ident("h4"),
-              Nil,
-              List(Instance(Ident("i"), Ident("i"), Nil, Nil)),
-              Nil,
-              Nil,
-              Nil,
-              List(EntityIdent(Ident("i"), Nil, Nil, Nil, Nil, Nil, Nil, Map())),
-              Map()
+              List(
+                EntEntity(Entity(Ident("i"), Nil)),
+                EntInstance(Ident("i"), Ident("i"), Nil, Nil)
+              )
             )
           }
 
-          val iIdent = tree getFirst  {
-            case Instance(ident: Ident, _, _, _) => ident
+          val iIdent = tree getFirst {
+            case EntInstance(ident: Ident, _, _, _) => ident
           }
           iIdent.hasAttr shouldBe false
 
-          val eIdent = tree getFirst  {
-            case EntityIdent(ident @ Ident("i"), _, _, _, _, _, _, _) => ident
+          val eIdent = tree getFirst {
+            case Entity(ident @ Ident("i"), _) => ident
           }
           eIdent.hasAttr shouldBe true
           eIdent.attr shouldBe Map("bar" -> Expr(1), "//variant" -> ExprStr("fsm"))
@@ -825,26 +754,23 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                         |  (* foo *) new (* bar *) fsm i {}
                         |}""".stripMargin.asTree[Entity]
           tree shouldBe {
-            EntityIdent(
+            Entity(
               Ident("h4"),
-              Nil,
-              List(Instance(Ident("i"), Ident("i"), Nil, Nil)),
-              Nil,
-              Nil,
-              Nil,
-              List(EntityIdent(Ident("i"), Nil, Nil, Nil, Nil, Nil, Nil, Map())),
-              Map()
+              List(
+                EntEntity(Entity(Ident("i"), Nil)),
+                EntInstance(Ident("i"), Ident("i"), Nil, Nil)
+              )
             )
           }
 
-          val iIdent = tree getFirst  {
-            case Instance(ident: Ident, _, _, _) => ident
+          val iIdent = tree getFirst {
+            case EntInstance(ident: Ident, _, _, _) => ident
           }
           iIdent.hasAttr shouldBe true
           iIdent.attr shouldBe Map("foo" -> Expr(1))
 
-          val eIdent = tree getFirst  {
-            case EntityIdent(ident @ Ident("i"), _, _, _, _, _, _, _) => ident
+          val eIdent = tree getFirst {
+            case Entity(ident @ Ident("i"), _) => ident
           }
           eIdent.hasAttr shouldBe true
           eIdent.attr shouldBe Map("bar" -> Expr(1), "//variant" -> ExprStr("fsm"))
@@ -855,35 +781,23 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                        |  verbatim verilog {
                        |    +-/* comment */ {{{}}}
                        |  }
-                       |}""".asTree[Entity] shouldBe {
-            EntityIdent(
+                       |}""".stripMargin.asTree[Entity] shouldBe {
+            Entity(
               Ident("i"),
-              Nil,
-              Nil,
-              Nil,
-              Nil,
-              Nil,
-              Nil,
-              Map("verilog" -> "\n    +-/* comment */ {{{}}}\n  ")
+              List(EntVerbatim("verilog", "\n    +-/* comment */ {{{}}}\n  "))
             )
           }
         }
 
         "verbatim other" in {
           """|fsm j {
-                       |  verbatim other {
-                       |    +-/* comment */ {{{}}}
-                       |  }
-                       |}""".asTree[Entity] shouldBe {
-            EntityIdent(
+             |  verbatim other {
+             |    +-/* comment */ {{{}}}
+             |  }
+             |}""".stripMargin.asTree[Entity] shouldBe {
+            Entity(
               Ident("j"),
-              Nil,
-              Nil,
-              Nil,
-              Nil,
-              Nil,
-              Nil,
-              Map("other" -> "\n    +-/* comment */ {{{}}}\n  ")
+              List(EntVerbatim("other", "\n    +-/* comment */ {{{}}}\n  "))
             )
           }
         }
@@ -897,16 +811,13 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                        |  verbatim verilog {
                        |second
                        |  }
-                       |}""".asTree[Entity] shouldBe {
-            EntityIdent(
+                       |}""".stripMargin.asTree[Entity] shouldBe {
+            Entity(
               Ident("k"),
-              Nil,
-              Nil,
-              Nil,
-              Nil,
-              Nil,
-              Nil,
-              Map("verilog" -> "\n    first\n  \n\nsecond\n  ")
+              List(
+                EntVerbatim("verilog", "\n    first\n  "),
+                EntVerbatim("verilog", "\nsecond\n  ")
+              )
             )
           }
         }
@@ -1079,19 +990,19 @@ final class ParserSpec extends FreeSpec with AlogicTest {
           "loop" in {
             """|loop {
                |  1;
-               |}""".asTree[Stmt] shouldBe StmtLoop(List(StmtExpr(Expr(1))))
+               |}""".stripMargin.asTree[Stmt] shouldBe StmtLoop(List(StmtExpr(Expr(1))))
           }
 
           "while" in {
             """|while (a) {
                |  fence;
-               |}""".asTree[Stmt] shouldBe StmtWhile(ExprIdent("a"), List(StmtFence()))
+               |}""".stripMargin.asTree[Stmt] shouldBe StmtWhile(ExprIdent("a"), List(StmtFence()))
           }
 
           "do" in {
             """|do {
                | fence;
-               |} while(b);""".asTree[Stmt] shouldBe StmtDo(ExprIdent("b"), List(StmtFence()))
+               |} while(b);""".stripMargin.asTree[Stmt] shouldBe StmtDo(ExprIdent("b"), List(StmtFence()))
           }
 
           "for" - {
@@ -1102,7 +1013,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
             "with single init assign" in {
               """|for (a=2;a;a--) {
                  |  2;
-                 |}""".asTree[Stmt] shouldBe {
+                 |}""".stripMargin.asTree[Stmt] shouldBe {
                 StmtFor(
                   List(StmtAssign(ExprIdent("a"), Expr(2))),
                   Some(ExprIdent("a")),
@@ -1867,7 +1778,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
           "with single init assign" in {
             """|gen for (a=2;a;a--) {
                |  2;
-               |}""".asTree[Gen] shouldBe {
+               |}""".stripMargin.asTree[Gen] shouldBe {
               GenFor(
                 List(StmtAssign(ExprIdent("a"), Expr(2))),
                 Some(ExprIdent("a")),
@@ -1958,15 +1869,15 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                     |    bar i;
                     |    loop { }
                     |  }
-                    |}""".asTree[Entity]
+                    |}""".stripMargin.asTree[Entity]
 
       inside(tree) {
-        case entity: EntityIdent =>
+        case entity: Entity =>
           entity.loc.line shouldBe 1
-          inside(entity.functions.loneElement) {
-            case function: Function =>
+          inside(entity.body.loneElement) {
+            case function: EntFunction =>
               function.loc.line shouldBe 2
-              inside(function.body(0)) {
+              inside(function.stmts(0)) {
                 case stmtDecl: StmtDecl =>
                   stmtDecl.loc.line shouldBe 3
                   inside(stmtDecl.decl) {
@@ -1979,7 +1890,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                       }
                   }
               }
-              inside(function.body(1)) {
+              inside(function.stmts(1)) {
                 case stmtLoop: StmtLoop =>
                   stmtLoop.loc.line shouldBe 4
                   stmtLoop.body shouldBe empty

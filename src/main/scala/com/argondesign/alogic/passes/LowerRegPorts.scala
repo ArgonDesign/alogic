@@ -27,8 +27,8 @@ import com.argondesign.alogic.typer.TypeAssigner
 final class LowerRegPorts(implicit cc: CompilerContext) extends TreeTransformer {
 
   override def skip(tree: Tree): Boolean = tree match {
-    case entity: EntityLowered => entity.symbol.attr.variant.value == "network"
-    case _                     => false
+    case entity: Entity => entity.symbol.attr.variant.value == "network"
+    case _              => false
   }
 
   override def enter(tree: Tree): Unit = tree match {
@@ -69,36 +69,34 @@ final class LowerRegPorts(implicit cc: CompilerContext) extends TreeTransformer 
       }
     }
 
-    case decl @ Decl(oSymbol, init) => {
+    case EntDecl(Decl(oSymbol, init)) => {
       // Change storage type to wire and add register declaration
       oSymbol.attr.oReg.get map { rSymbol =>
         oSymbol.kind = {
           oSymbol.kind.asInstanceOf[TypeOut].copy(fct = FlowControlTypeNone, st = StorageTypeWire)
         }
-        val declO = Decl(oSymbol, None)
-        val declR = Decl(rSymbol, init)
+        val declO = EntDecl(Decl(oSymbol, None))
+        val declR = EntDecl(Decl(rSymbol, init))
         Thicket(List(declO, declR)) regularize tree.loc
       } getOrElse {
         tree
       }
     }
 
-    case entity: EntityLowered => {
+    case entity: Entity => {
       // Add connects to outputs
       val connects = for {
         Decl(oSymbol, _) <- entity.declarations
         if oSymbol.attr.oReg.isSet
       } yield {
         val rSymbol = oSymbol.attr.oReg.value
-        Connect(ExprRef(rSymbol), List(ExprRef(oSymbol))) regularize oSymbol.loc
+        EntConnect(ExprRef(rSymbol), List(ExprRef(oSymbol))) regularize oSymbol.loc
       }
 
       if (connects.isEmpty) {
         tree
       } else {
-        val result = entity.copy(
-          connects = connects ::: entity.connects
-        )
+        val result = entity.copy(body = connects ::: entity.body)
         TypeAssigner(result withLoc tree.loc)
       }
     }

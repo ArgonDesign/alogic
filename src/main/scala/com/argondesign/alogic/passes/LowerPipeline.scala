@@ -58,7 +58,7 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
 
   override def skip(tree: Tree): Boolean = tree match {
     // If this is the root entity, skip it if it has no pipeline declarations
-    case entity: EntityNamed if firstEntity => {
+    case entity: Entity if firstEntity => {
       firstEntity = false
       entity.declarations forall {
         case Decl(symbol, _) => !symbol.kind.isInstanceOf[TypePipeline]
@@ -69,12 +69,12 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
   }
 
   override def enter(tree: Tree): Unit = tree match {
-    case outer: EntityNamed if outer.entities.nonEmpty => {
+    case outer: Entity if outer.entities.nonEmpty => {
       rewriteEntity.push(true)
 
       // Work out the prev an next maps
       nextMap = outer.connects collect {
-        case Connect(ExprRef(iSymbolA), List(ExprRef(iSymbolB))) =>
+        case EntConnect(ExprRef(iSymbolA), List(ExprRef(iSymbolB))) =>
           (iSymbolA.kind, iSymbolB.kind) match {
             case (TypeInstance(eSymbolA), TypeInstance(eSymbolB)) => eSymbolA -> eSymbolB
             case _                                                => unreachable
@@ -127,7 +127,7 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
       }
     }
 
-    case inner: EntityNamed if actSetMap.nonEmpty => {
+    case inner: Entity if actSetMap.nonEmpty => {
       rewriteEntity.push(true)
 
       // Figure out pipeline port types
@@ -167,7 +167,7 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
           val kind = psymbol.kind.underlying
           val ident = Ident(name) withLoc inner.loc
           val vsymbol = cc.newTermSymbol(ident, kind)
-          (name -> vsymbol)
+          name -> vsymbol
         }
         ListMap(pairs: _*)
       }
@@ -182,24 +182,22 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
 
   override def transform(tree: Tree): Tree = tree match {
     // Transform the outer entity
-    case entity: EntityNamed if rewriteEntity.top && entity.entities.nonEmpty => {
+    case entity: Entity if rewriteEntity.top && entity.entities.nonEmpty => {
       rewriteEntity.pop()
 
-      // loose pipeline variable declarations
-      val newDecls = entity.declarations filter {
-        case Decl(symbol, _) => !symbol.kind.isInstanceOf[TypePipeline]
-        case _               => true
-      }
-
-      // rewrite pipeline connections
-      val newConns = entity.connects map {
-        case conn @ Connect(lhs, List(rhs)) => {
+      val newBody = entity.body filter {
+        // loose pipeline variable declarations
+        case EntDecl(Decl(symbol, _)) => !symbol.kind.isInstanceOf[TypePipeline]
+        case _                        => true
+      } map {
+        // rewrite pipeline connections
+        case conn @ EntConnect(lhs, List(rhs)) => {
           (lhs.tpe, rhs.tpe) match {
             // If its an instance -> instance connection, select the new pipeline ports
             case (_: TypeInstance, _: TypeInstance) => {
               val newLhs = ExprSelect(Tree.untype(lhs), "pipeline_o") withLoc lhs.loc
               val newRhs = ExprSelect(Tree.untype(rhs), "pipeline_i") withLoc rhs.loc
-              val newConn = Connect(newLhs, List(newRhs))
+              val newConn = EntConnect(newLhs, List(newRhs))
               newConn regularize conn.loc
             }
             // Otherwise leave it alone
@@ -209,38 +207,31 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
         case other => other
       }
 
-      val result = entity.copy(
-        declarations = newDecls,
-        connects = newConns
-      ) withLoc entity.loc
-      TypeAssigner(result)
+      TypeAssigner(entity.copy(body = newBody) withLoc entity.loc)
     }
 
     // Transform the nested entity
     // TODO: mark inlined
-    case entity: EntityNamed if rewriteEntity.top => {
+    case entity: Entity if rewriteEntity.top => {
       rewriteEntity.pop()
 
       // Construct pipeline port declarations
       val iPortOpt = iPortSymbolOpt map { symbol =>
-        Decl(symbol, None) regularize entity.loc
+        EntDecl(Decl(symbol, None)) regularize entity.loc
       }
       val oPortOpt = oPortSymbolOpt map { symbol =>
-        Decl(symbol, None) regularize entity.loc
+        EntDecl(Decl(symbol, None)) regularize entity.loc
       }
 
       // Construct declarations for pipeline variables
-      val freshDecls = for { symbol <- freshSymbols.values.toList } yield {
-        Decl(symbol, None) regularize entity.loc
+      val freshDecls = freshSymbols.values map { symbol =>
+        EntDecl(Decl(symbol, None)) regularize entity.loc
       }
-
-      // List of new decls
-      val newDecls = iPortOpt.toList ::: oPortOpt.toList ::: freshDecls ::: entity.declarations
 
       // Update type of entity to include new ports
       val newKind = entity.symbol.kind match {
         case kind: TypeEntity => {
-          val newPortSymbols = iPortSymbolOpt.toList ::: oPortSymbolOpt.toList ::: kind.portSymbols
+          val newPortSymbols = List.concat(iPortSymbolOpt, oPortSymbolOpt, kind.portSymbols)
           kind.copy(portSymbols = newPortSymbols)
         }
         case _ => unreachable
@@ -248,7 +239,7 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
       entity.symbol.kind = newKind
 
       val result = entity.copy(
-        declarations = newDecls
+        body = List.concat(iPortOpt, oPortOpt, freshDecls, entity.body)
       ) withLoc entity.loc
       TypeAssigner(result)
     }

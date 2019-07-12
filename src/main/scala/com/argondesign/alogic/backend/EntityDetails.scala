@@ -14,27 +14,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 package com.argondesign.alogic.backend
 
-import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.ast.Trees.Expr.InstancePortRef
+import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.unreachable
 
-final class EntityDetails(val entity: EntityLowered, details: => Map[TypeSymbol, EntityDetails])(
+final class EntityDetails(val entity: Entity, details: => Map[TypeSymbol, EntityDetails])(
     implicit cc: CompilerContext) {
 
-  val EntityLowered(
-    eSymbol,
-    decls,
-    instances,
-    connects,
-    statements,
-    verbatim
-  ) = entity
-
   assert {
-    decls forall {
+    entity.declarations forall {
       case Decl(symbol, _) => {
         symbol.kind match {
           case _: TypeConst => true
@@ -49,42 +40,42 @@ final class EntityDetails(val entity: EntityLowered, details: => Map[TypeSymbol,
     }
   }
 
-  val resetFlops: List[Declaration] = decls filter {
+  val resetFlops: List[Declaration] = entity.declarations filter {
     case Decl(symbol, Some(_)) => symbol.attr.flop.isSet
     case Decl(symbol, None)    => symbol.attr.flop.isSet && cc.settings.resetAll
     case _                     => unreachable
   }
 
-  val unresetFlops: List[Declaration] = decls filter {
+  val unresetFlops: List[Declaration] = entity.declarations filter {
     case Decl(symbol, None) => symbol.attr.flop.isSet && !cc.settings.resetAll
     case _                  => false
   }
 
-  lazy val isVerbatim: Boolean = eSymbol.attr.variant.value == "verbatim"
+  lazy val isVerbatim: Boolean = entity.symbol.attr.variant.value == "verbatim"
 
-  lazy val hasConsts: Boolean = decls exists {
+  lazy val hasConsts: Boolean = entity.declarations exists {
     case Decl(symbol, _) => symbol.kind.isInstanceOf[TypeConst]
     case _               => false
   }
 
   lazy val hasFlops: Boolean = resetFlops.nonEmpty || unresetFlops.nonEmpty
 
-  lazy val hasCombSignals: Boolean = decls exists {
+  lazy val hasCombSignals: Boolean = entity.declarations exists {
     case Decl(symbol, _) => symbol.attr.combSignal.isSet
     case _               => false
   }
 
-  lazy val hasArrays: Boolean = decls exists {
+  lazy val hasArrays: Boolean = entity.declarations exists {
     case Decl(symbol, _) => symbol.attr.memory.isSet
     case _               => false
   }
 
-  lazy val hasInterconnect: Boolean = decls exists {
+  lazy val hasInterconnect: Boolean = entity.declarations exists {
     case Decl(symbol, _) => symbol.attr.interconnect.isSet
     case _               => false
   }
 
-  lazy val hasInstances: Boolean = instances.nonEmpty
+  lazy val hasInstances: Boolean = entity.instances.nonEmpty
 
   lazy val canStall: Boolean = entity.preOrderIterator exists {
     case _: StmtStall => true
@@ -92,22 +83,22 @@ final class EntityDetails(val entity: EntityLowered, details: => Map[TypeSymbol,
   }
 
   lazy val needsClock: Boolean = isVerbatim || hasFlops || hasArrays || {
-    instances exists {
-      case Instance(_, Sym(symbol: TypeSymbol), _, _) => details(symbol).needsClock
-      case _                                          => unreachable
+    entity.instances exists {
+      case EntInstance(_, Sym(symbol: TypeSymbol), _, _) => details(symbol).needsClock
+      case _                                             => unreachable
     }
   }
 
   lazy val needsReset: Boolean = isVerbatim || resetFlops.nonEmpty || {
-    instances exists {
-      case Instance(_, Sym(symbol: TypeSymbol), _, _) => details(symbol).needsReset
-      case _                                          => unreachable
+    entity.instances exists {
+      case EntInstance(_, Sym(symbol: TypeSymbol), _, _) => details(symbol).needsReset
+      case _                                             => unreachable
     }
   }
 
   // Any symbol that is driven by a connect must be a net
-  lazy val netSymbols: List[TermSymbol] = connects flatMap {
-    case Connect(_, rhs :: Nil) => {
+  lazy val netSymbols: List[TermSymbol] = entity.connects flatMap {
+    case EntConnect(_, rhs :: Nil) => {
       rhs collect {
         case ExprRef(symbol: TermSymbol) => symbol
       }
@@ -119,7 +110,7 @@ final class EntityDetails(val entity: EntityLowered, details: => Map[TypeSymbol,
   lazy val groupedInterconnectSymbols: List[(TermSymbol, List[TermSymbol])] = {
     // Calculate (instance symbol, port name, interconnect symbol) triplets
     val trip = for {
-      Decl(nSymbol, _) <- decls
+      Decl(nSymbol, _) <- entity.declarations
       (iSymbol, sel) <- nSymbol.attr.interconnect.get
     } yield {
       (iSymbol, sel, nSymbol)
@@ -133,7 +124,7 @@ final class EntityDetails(val entity: EntityLowered, details: => Map[TypeSymbol,
       // Sorting map for instance symbols
       val ordering = {
         val pairs = for {
-          (Instance(Sym(symbol: TermSymbol), _, _, _), i) <- instances.zipWithIndex
+          (EntInstance(Sym(symbol: TermSymbol), _, _, _), i) <- entity.instances.zipWithIndex
         } yield {
           symbol -> i
         }
@@ -175,11 +166,11 @@ final class EntityDetails(val entity: EntityLowered, details: => Map[TypeSymbol,
 
   // Function from 'instance symbol => port selector => connected expression'
   lazy val instancePortExpr: Map[TermSymbol, Map[String, Expr]] = {
-    val trip = connects collect {
-      case Connect(InstancePortRef(iSymbol, pSymbol), rhs :: Nil) => {
+    val trip = entity.connects collect {
+      case EntConnect(InstancePortRef(iSymbol, pSymbol), rhs :: Nil) => {
         (iSymbol, pSymbol.name, rhs)
       }
-      case Connect(lhs, List(InstancePortRef(iSymbol, pSymbol))) => {
+      case EntConnect(lhs, List(InstancePortRef(iSymbol, pSymbol))) => {
         (iSymbol, pSymbol.name, lhs)
       }
     }
@@ -193,10 +184,10 @@ final class EntityDetails(val entity: EntityLowered, details: => Map[TypeSymbol,
 
   // Connects that are not of the form 'a.b -> SOMETHING' or 'SOMETHING -> a.b'
   // where a is an instance
-  lazy val nonPortConnects: List[Connect] = connects filter {
-    case Connect(InstancePortRef(_, _), _)       => false
-    case Connect(_, List(InstancePortRef(_, _))) => false
-    case _                                       => true
+  lazy val nonPortConnects: List[EntConnect] = entity.connects filter {
+    case EntConnect(InstancePortRef(_, _), _)       => false
+    case EntConnect(_, List(InstancePortRef(_, _))) => false
+    case _                                          => true
   }
 
 }

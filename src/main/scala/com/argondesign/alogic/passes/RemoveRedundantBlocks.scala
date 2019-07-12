@@ -31,15 +31,15 @@ final class RemoveRedundantBlocks(implicit cc: CompilerContext) extends TreeTran
   }
 
   override def transform(tree: Tree): Tree = tree match {
-    case Function(ref, body) => {
+    case EntFunction(ref, body) => {
       TypeAssigner {
-        Function(ref, flatten(body)) withLoc tree.loc
+        EntFunction(ref, flatten(body)) withLoc tree.loc
       }
     }
 
-    case State(expr, body) => {
+    case EntState(expr, body) => {
       TypeAssigner {
-        State(expr, flatten(body)) withLoc tree.loc
+        EntState(expr, flatten(body)) withLoc tree.loc
       }
     }
 
@@ -75,11 +75,9 @@ final class RemoveRedundantBlocks(implicit cc: CompilerContext) extends TreeTran
       }
     }
 
-    case entity: EntityLowered => {
+    case EntCombProcess(stmts) => {
       TypeAssigner {
-        entity.copy(
-          statements = flatten(entity.statements)
-        ) withLoc tree.loc
+        EntCombProcess(flatten(stmts)) withLoc tree.loc
       }
     }
 

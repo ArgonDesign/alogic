@@ -26,6 +26,7 @@ import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.typer.Typer
 import com.argondesign.alogic.util.PartialMatch
+import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -64,11 +65,24 @@ final class SpecializeEntity(bindings: Map[String, Expr], instLoc: Option[Loc])(
   override def skip(tree: Tree): Boolean = hadError
 
   override def enter(tree: Tree): Unit = tree match {
-    case entity: EntityNamed => {
+    case entity: Entity => {
+      // Clone root entity up-font to simplify re-writing
+      if (entityLevel == 0) {
+        symbolMap(entity.symbol) = cc.newSymbolLike(entity.symbol)
+      }
+
       entityLevel += 1
-      // Clone new functions up front, as they can be referenced before definition
-      for (Function(Sym(symbol: TermSymbol), _) <- entity.functions) {
-        symbolMap(symbol) = cc.newSymbolLike(symbol)
+
+      // Clone new functions, instances and nested entities up front,
+      // as they can be referenced before definition
+      entity.body foreach {
+        case EntFunction(Sym(symbol: TermSymbol), _) =>
+          symbolMap(symbol) = cc.newSymbolLike(symbol)
+        case EntInstance(Sym(symbol: TermSymbol), _, _, __) =>
+          symbolMap(symbol) = cc.newSymbolLike(symbol)
+        case EntEntity(Entity(Sym(symbol: TypeSymbol), _)) =>
+          symbolMap(symbol) = cc.newSymbolLike(symbol)
+        case _ =>
       }
     }
 
@@ -159,77 +173,67 @@ final class SpecializeEntity(bindings: Map[String, Expr], instLoc: Option[Loc])(
     }
 
     ////////////////////////////////////////////////////////////////////////////
-    // Clone instance symbols
-    ////////////////////////////////////////////////////////////////////////////
-
-    case inst @ Instance(Sym(symbol: TermSymbol), _, _, _) => {
-      // Clone the symbol
-      val newSymbol = cc.newSymbolLike(symbol)
-      symbolMap(symbol) = newSymbol
-      // Rewrite with new symbol
-      inst.copy(ref = Sym(newSymbol) withLoc tree.loc) withLoc tree.loc
-    }
-
-    ////////////////////////////////////////////////////////////////////////////
     // Update references
     ////////////////////////////////////////////////////////////////////////////
 
-    case ExprRef(symbol: TermSymbol) => {
+    case ExprRef(symbol) => {
       symbolMap.get(symbol) map {
         ExprRef(_) withLoc tree.loc
       } getOrElse tree
     }
 
-    case Sym(symbol: TermSymbol) => {
+    case Sym(symbol) => {
       symbolMap.get(symbol) map {
         Sym(_) withLoc tree.loc
       } getOrElse tree
     }
 
     ////////////////////////////////////////////////////////////////////////////
+    // Update instances
+    ////////////////////////////////////////////////////////////////////////////
+
+    case EntInstance(Sym(iSymbol), Sym(eSymbol), _, _) => {
+      // The 2 Sym instances have already been rewritten, we only need to
+      // update the type of the iSymbol to refer to cloned entities
+      symbolMap get eSymbol foreach {
+        case nSymbol: TypeSymbol => iSymbol.kind = TypeInstance(nSymbol)
+        case _                   => unreachable
+      }
+
+      // No need to re-write
+      tree
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
     // Clone nested entities/Create the specialized entity
     ////////////////////////////////////////////////////////////////////////////
 
-    case entity: EntityNamed => {
-      val newName = if (entityLevel > 1 || paramValues.isEmpty) {
-        entitySymbol.name
-      } else {
-        val suffix = paramValues.toList map { case (p, v) => s"${p}_${v}" } mkString cc.sep
-        entitySymbol.name + cc.sep + suffix
+    case entity: Entity => {
+      // Update name of nested entities
+      if (entityLevel == 1 && paramValues.nonEmpty) {
+        entity.symbol rename {
+          entity.symbol.name + cc.sep + {
+            paramValues.toList map { case (p, v) => s"${p}_${v}" } mkString cc.sep
+          }
+        }
       }
 
-      // Update instances of nested entities to instantiate the cloned entity
-      val instances = for {
-        inst @ Instance(Sym(iSymbol), Sym(eSymbol), _, _) <- entity.instances
-      } yield {
-        symbolMap get eSymbol map { nSymbol =>
-          iSymbol.kind = TypeInstance(nSymbol.asInstanceOf[TypeSymbol])
-          inst.copy(module = Sym(nSymbol) withLoc inst.loc) withLoc inst.loc
-        } getOrElse inst
-      }
-
-      val newKind = {
+      // Update type of entity to refer to the cloned symbols
+      entity.symbol.kind = {
         val portSymbols = for {
           Decl(symbol, _) <- entity.declarations
-          if symbol.kind.isInstanceOf[TypeIn] || symbol.kind.isInstanceOf[TypeOut]
+          if symbol.kind.isIn || symbol.kind.isOut
         } yield symbol
 
         val paramSymbols = for {
           Decl(symbol, _) <- entity.declarations
-          if symbol.kind.isInstanceOf[TypeParam]
+          if symbol.kind.isParam
         } yield symbol
 
-        TypeEntity(newName, portSymbols, paramSymbols)
+        TypeEntity(entity.symbol.name, portSymbols, paramSymbols)
       }
 
-      val newSymbol = cc.newTypeSymbol(newName, tree.loc, newKind)
-      newSymbol.attr update entitySymbol.attr
-      symbolMap(entitySymbol) = newSymbol
-
-      entity.copy(
-        symbol = newSymbol,
-        instances = instances
-      ) withLoc tree.loc
+      entity
     } tap { _ =>
       entityLevel -= 1
     }
@@ -261,16 +265,16 @@ object SpecializeParam extends Pass {
 
   def apply(trees: List[Tree])(implicit cc: CompilerContext): List[Tree] = {
     // '(entity, bindings)' -> 'specialized entity' map
-    val specializations = mutable.Map[(TypeSymbol, Map[String, Expr]), Option[EntityNamed]]()
+    val specializations = mutable.Map[(TypeSymbol, Map[String, Expr]), Option[Entity]]()
 
     // Returns the specialized entity, or None if an error happened
     def specialize(entitySymbol: TypeSymbol,
                    bindings: Map[String, Expr],
-                   catalog: Map[TypeSymbol, EntityNamed],
-                   instLoc: Option[Loc])(implicit cc: CompilerContext): Option[EntityNamed] = {
+                   catalog: Map[TypeSymbol, Entity],
+                   instLoc: Option[Loc])(implicit cc: CompilerContext): Option[Entity] = {
 
       // Here is how the specialization is actually done
-      def specialized: Option[EntityNamed] = {
+      def specialized: Option[Entity] = {
         // Get the definition of the entity
         val entity = catalog(entitySymbol)
 
@@ -278,7 +282,7 @@ object SpecializeParam extends Pass {
         // param decls with const decls in this entity and type checks
         // all const decls.
         val transformer = new SpecializeEntity(bindings, instLoc)
-        val special = (entity rewrite transformer).asInstanceOf[EntityNamed]
+        val special = (entity rewrite transformer).asInstanceOf[Entity]
         // Stop if we had an error
         if (transformer.hadError) return None
 
@@ -292,14 +296,14 @@ object SpecializeParam extends Pass {
         // Specialize nested entities according to instantiations in this entity,
         // gather new instances if there were no errors
         val newInstanceOpts = for {
-          inst @ Instance(Sym(iSymbol), Sym(eSymbol: TypeSymbol), pNames, pExprs) <- special.instances
+          inst @ EntInstance(Sym(iSymbol), Sym(eSymbol: TypeSymbol), pNames, pExprs) <- special.instances
         } yield {
           val bindings = (pNames zip pExprs).toMap
           // TODO: check pExprs are compile time constants
           specialize(eSymbol, bindings, extendedCatalog, Some(inst.loc)) map { newEntity =>
             iSymbol.kind = TypeInstance(newEntity.symbol)
             inst.copy(
-              module = Sym(newEntity.symbol) withLoc inst.loc,
+              entity = Sym(newEntity.symbol) withLoc inst.loc,
               paramNames = Nil,
               paramExprs = Nil
             ) withLoc inst.loc
@@ -310,30 +314,38 @@ object SpecializeParam extends Pass {
         if (newInstanceOpts exists { _.isEmpty }) return None
 
         // Gather the specialized nested entities
-        val newEntities = special.entities flatMap {
-          case e => specializations collect { case (k, v) if k._1 == e.symbol => v } flatten
+        val newEntities = special.entities flatMap { entity =>
+          specializations collect {
+            case (k, specializedOpt) if k._1 == entity.symbol =>
+              specializedOpt map { specialized =>
+                EntEntity(specialized) withLoc specialized.loc
+              }
+          } flatten
         }
 
-        // Get the new instances
-        val newInstances = newInstanceOpts.flatten
+        val newBody = special.body filter {
+          case _: EntEntity   => false
+          case _: EntInstance => false
+          case _              => true
+        } concat newEntities concat newInstanceOpts.flatten
 
         // Replace nested entities and instantiations with the specialized ones
-        Some(special.copy(instances = newInstances, entities = newEntities) withLoc special.loc)
+        Some(special.copy(body = newBody) withLoc special.loc)
       }
 
       // If we have already performed this specialization, return that otherwise
-      // do it. TODO: resovle the chicken and egg specialized and bindings.simplify
+      // do it. TODO: resolve the chicken and egg specialized and bindings.simplify
       specializations.getOrElseUpdate((entitySymbol, bindings), specialized)
     }
 
     // Build catalog if file scope entities
     val catalog = trees collect {
-      case Root(_, entity: EntityNamed) => entity.symbol -> entity
+      case Root(_, entity @ Entity(Sym(symbol: TypeSymbol), _)) => symbol -> entity
     } toMap
 
     // Gather the top level entity symbols
     val topSymbols = trees collect {
-      case Root(_, entity: EntityNamed) if entity.symbol.attr.topLevel.isSet => entity.symbol
+      case Root(_, Entity(Sym(symbol: TypeSymbol), _)) if symbol.attr.topLevel.isSet => symbol
     }
 
     // Recursively specialize from all top level entities,
@@ -342,8 +354,10 @@ object SpecializeParam extends Pass {
 
     // Gather and return those specialized entities which are specializations
     // of entities we started with (i.e.: all file scope entities)
-    catalog.keys flatMap { eSymbol =>
-      specializations collect { case (k, v) if k._1 == eSymbol => v } flatten
-    } toList
+    List from {
+      catalog.keys flatMap { s =>
+        specializations collect { case (k, v) if k._1 == s => v } flatten
+      }
+    }
   }
 }

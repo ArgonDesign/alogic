@@ -26,11 +26,11 @@ import scala.collection.mutable
 final class FoldStmt(implicit cc: CompilerContext) extends TreeTransformer {
 
   override def skip(tree: Tree): Boolean = tree match {
-    case entity: EntityLowered => entity.statements.isEmpty
-    case _: Expr               => true
-    case _: Connect            => true
-    case _: Instance           => true
-    case _                     => false
+    case entity: Entity    => entity.combProcesses.isEmpty
+    case _: EntCombProcess => false
+    case _: Stmt           => false
+    case _: Case           => false
+    case _                 => true
   }
 
   private[this] var bindingsMap: Map[Int, Bindings] = _
@@ -38,14 +38,12 @@ final class FoldStmt(implicit cc: CompilerContext) extends TreeTransformer {
   private[this] val bindings = mutable.Stack[Bindings]()
 
   override def enter(tree: Tree): Unit = tree match {
-    case entity: EntityLowered => {
-      bindingsMap = StaticEvaluation(StmtBlock(entity.statements))._1
-    }
+    case EntCombProcess(stmts) =>
+      bindingsMap = StaticEvaluation(StmtBlock(stmts))._1
 
-    case stmt: Stmt => {
+    case stmt: Stmt =>
       // TODO: should not have to do orElse
       bindings.push(bindingsMap.getOrElse(stmt.id, Bindings.empty))
-    }
 
     case _ =>
   }

@@ -44,7 +44,7 @@ object WriteModuleManifest extends Pass {
     ////////////////////////////////////////////////////////////////////////////
 
     val dict = for {
-      EntityLowered(eSymbol, _, insts, _, _, _) <- trees.par
+      entity @ Entity(Sym(eSymbol), _) <- trees.par
     } yield {
       // High level port symbols
       val TypeEntity(_, pSymbols, _) = eSymbol.attr.highLevelKind.value.asEntity
@@ -176,7 +176,7 @@ object WriteModuleManifest extends Pass {
       //////////////////////////////////////////////////////////////////////////
 
       val instances = for {
-        Instance(Sym(iSymbol), Sym(eSymbol), _, _) <- insts
+        EntInstance(Sym(iSymbol), Sym(eSymbol), _, _) <- entity.instances
       } yield {
         iSymbol.name -> eSymbol.name
       }

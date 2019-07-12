@@ -184,11 +184,11 @@ object ConnectChecks {
   }
 
   // Return true if this is a well formed and typed Connect instance
-  def apply(conn: Connect)(implicit cc: CompilerContext): Boolean = {
+  def apply(conn: EntConnect)(implicit cc: CompilerContext): Boolean = {
     // TODO: error on connect same thing on multiple lhss
     // TODO: error on connect same thing on multiple rhss
 
-    val Connect(lhs, rhss) = conn
+    val EntConnect(lhs, rhss) = conn
 
     // Check left hand side is legal
     val lhsOk = lhsIsLegal(lhs)

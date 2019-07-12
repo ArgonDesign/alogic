@@ -66,9 +66,9 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
             val node = tree rewrite checker
 
             inside(node) {
-              case EntityIdent(_, _, _, _, _, List(main), _, _) =>
+              case Entity(_, List(main)) =>
                 inside(main) {
-                  case Function(_, List(stmt)) =>
+                  case EntFunction(_, List(stmt)) =>
                     stmt shouldBe StmtError()
                 }
             }
@@ -227,7 +227,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
                     |}""".asTree[Entity]
 
       tree rewrite checker should matchPattern {
-        case EntityIdent(_, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
+        case Entity(_, Nil) =>
       }
 
       cc.messages should have length 2
@@ -246,9 +246,9 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         val tree = entity rewrite checker
 
         inside(tree) {
-          case EntityIdent(_, List(decl), Nil, Nil, Nil, Nil, Nil, _) =>
+          case Entity(_, List(decl)) =>
             inside(decl) {
-              case DeclIdent(_, TypeOut(_, fc, st), _) =>
+              case EntDecl(DeclIdent(_, TypeOut(_, fc, st), _)) =>
                 fc shouldBe FlowControlTypeNone
                 st shouldBe StorageTypeReg
             }
@@ -267,9 +267,9 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         val tree = entity rewrite checker
 
         inside(tree) {
-          case EntityIdent(_, List(decl), Nil, Nil, Nil, Nil, Nil, _) =>
+          case Entity(_, List(decl)) =>
             inside(decl) {
-              case DeclIdent(_, TypeOut(_, fc, st), _) =>
+              case EntDecl(DeclIdent(_, TypeOut(_, fc, st), _)) =>
                 fc shouldBe FlowControlTypeValid
                 st shouldBe StorageTypeReg
             }
@@ -312,7 +312,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
                            |}""".stripMargin.asTree[Entity]
 
             tree rewrite checker should matchPattern {
-              case EntityIdent(_, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
+              case Entity(_, Nil) =>
             }
 
             cc.messages.loneElement should beThe[Error](
@@ -330,7 +330,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
                            |}""".stripMargin.asTree[Entity]
 
             tree rewrite checker should matchPattern {
-              case EntityIdent(_, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
+              case Entity(_, Nil) =>
             }
 
             cc.messages.loneElement should beThe[Error](
@@ -348,7 +348,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
                            |}""".stripMargin.asTree[Entity]
 
             tree rewrite checker should matchPattern {
-              case EntityIdent(_, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
+              case Entity(_, Nil) =>
             }
 
             cc.messages.loneElement should beThe[Error](
@@ -366,14 +366,14 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
                            |}""".stripMargin.asTree[Entity]
 
             tree rewrite checker should matchPattern {
-              case EntityIdent(_, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
+              case Entity(_, Nil) =>
             }
 
             cc.messages should have length 2
-            cc.messages(0) should beThe[Error](s"'${variant}' entity cannot contain instantiations")
-            cc.messages(0).loc.line shouldBe 2
-            cc.messages(1) should beThe[Error](
+            cc.messages(0) should beThe[Error](
               s"'${variant}' entity cannot contain nested entities")
+            cc.messages(0).loc.line shouldBe 2
+            cc.messages(1) should beThe[Error](s"'${variant}' entity cannot contain instantiations")
             cc.messages(1).loc.line shouldBe 2
           }
         }
@@ -387,7 +387,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
                            |}""".stripMargin.asTree[Entity]
 
             tree rewrite checker should matchPattern {
-              case EntityIdent(_, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
+              case Entity(_, Nil) =>
             }
 
             cc.messages.loneElement should beThe[Error](
@@ -405,7 +405,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
                            |}""".stripMargin.asTree[Entity]
 
             tree rewrite checker should matchPattern {
-              case EntityIdent(_, Nil, Nil, Nil, Nil, Nil, Nil, _) =>
+              case Entity(_, Nil) =>
             }
 
             cc.messages.loneElement should beThe[Error](
@@ -427,7 +427,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
                            |}""".stripMargin.asTree[Entity]
 
             tree rewrite checker should matchPattern {
-              case entity: EntityIdent =>
+              case entity: Entity =>
             }
 
             cc.messages.loneElement should beThe[Error](
@@ -602,9 +602,9 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         }
         "left hand side of ->" - {
           check { ref =>
-            val tree = s"${ref} -> b".asTree[Connect] rewrite checker
+            val tree = s"${ref} -> b;".asTree[Ent] rewrite checker
             tree should matchPattern {
-              case Connect(ExprError(), List(_)) =>
+              case EntConnect(ExprError(), List(_)) =>
             }
             cc.messages.loneElement should beThe[Error](
               s"Invalid port reference on left hand side of '->'",
@@ -614,8 +614,8 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         }
         "right hand side of -> in first position" - {
           check { ref =>
-            val tree = s"a -> ${ref}".asTree[Connect] rewrite checker
-            tree shouldBe Connect(ExprIdent("a"), Nil)
+            val tree = s"a -> ${ref};".asTree[Ent] rewrite checker
+            tree shouldBe EntConnect(ExprIdent("a"), Nil)
             cc.messages.loneElement should beThe[Error](
               s"Invalid port reference on right hand side of '->'",
               "Only identifiers, optionally followed by a single field selector are allowed"
@@ -624,8 +624,8 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         }
         "right hand side of -> in second position" - {
           check { ref =>
-            val tree = s"a -> b, ${ref}".asTree[Connect] rewrite checker
-            tree shouldBe Connect(ExprIdent("a"), List(ExprIdent("b")))
+            val tree = s"a -> b, ${ref};".asTree[Ent] rewrite checker
+            tree shouldBe EntConnect(ExprIdent("a"), List(ExprIdent("b")))
             cc.messages.loneElement should beThe[Error](
               s"Invalid port reference on right hand side of '->'",
               "Only identifiers, optionally followed by a single field selector are allowed"
@@ -641,21 +641,21 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         }
         "left hand side of ->" - {
           check { ref =>
-            val connect = s"${ref} -> b".asTree[Connect]
+            val connect = s"${ref} -> b;".asTree[Ent]
             connect rewrite checker should be theSameInstanceAs connect
             cc.messages shouldBe empty
           }
         }
         "right hand side of -> in first position" - {
           check { ref =>
-            val connect = s"a -> ${ref}".asTree[Connect]
+            val connect = s"a -> ${ref};".asTree[Ent]
             connect rewrite checker should be theSameInstanceAs connect
             cc.messages shouldBe empty
           }
         }
         "right hand side of -> in second position" - {
           check { ref =>
-            val connect = s"a -> b, ${ref}".asTree[Connect]
+            val connect = s"a -> b, ${ref};".asTree[Ent]
             connect rewrite checker should be theSameInstanceAs connect
             cc.messages shouldBe empty
           }

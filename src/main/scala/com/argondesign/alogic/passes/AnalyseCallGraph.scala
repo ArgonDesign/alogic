@@ -291,7 +291,7 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
   }
 
   override protected def skip(tree: Tree): Boolean = tree match {
-    case entity: EntityNamed if entity.functions.isEmpty => {
+    case entity: Entity if entity.functions.isEmpty => {
       // Warn early if there are no functions at all, as
       // we will not have an opportunity to do it later
       warnIgnoredStacklimitAttribute()
@@ -301,10 +301,11 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
   }
 
   override def enter(tree: Tree): Unit = tree match {
-    case entity: EntityNamed => {
+    case entity: Entity => {
       // Gather all function symbols from entity
       assert(functionSymbols == null)
-      functionSymbols = for (Function(Sym(symbol: TermSymbol), _) <- entity.functions) yield symbol
+      functionSymbols = for (EntFunction(Sym(symbol: TermSymbol), _) <- entity.functions)
+        yield symbol
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -321,7 +322,7 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
       gotoArcs add (currentFunction -> callee)
     }
 
-    case Function(Sym(symbol: TermSymbol), _) => {
+    case EntFunction(Sym(symbol: TermSymbol), _) => {
       currentFunction = symbol
     }
 
@@ -329,7 +330,7 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
   }
 
   override def transform(tree: Tree): Tree = tree match {
-    case entity: EntityNamed => {
+    case entity: Entity => {
       // Ensure 'reclimit' attributes exist on all functions
       val values = recLimits.getOrElse(List.fill(nFunctions)(1))
       for ((symbol, value) <- functionSymbols zip values) {
@@ -348,17 +349,11 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
         val kind = TypeStack(TypeState, depth)
         val name = if (stackDepth > 1) "return_stack" else "return_state"
         val symbol = cc.newTermSymbol(name, entity.loc, kind)
-        val decl = Decl(symbol, None) regularize entity.loc
+        val decl = EntDecl(Decl(symbol, None)) regularize entity.loc
 
         entity.symbol.attr.returnStack set symbol
 
-        // Add declaration
-        val result = entity.copy(
-          declarations = decl :: entity.declarations
-        ) withLoc entity.loc
-
-        // Assign type
-        TypeAssigner(result)
+        TypeAssigner(entity.copy(body = decl :: entity.body) withLoc entity.loc)
       }
     }
 

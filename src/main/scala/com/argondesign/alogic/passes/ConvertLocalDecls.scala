@@ -29,7 +29,7 @@ import scala.util.Random
 
 final class ConvertLocalDecls(implicit cc: CompilerContext) extends TreeTransformer {
 
-  private[this] val localDecls = ListBuffer[Declaration]()
+  private[this] val localDecls = ListBuffer[Ent]()
 
   private[this] lazy val rng = new Random(entitySymbol.name.foldLeft(0)(_ ^ _))
 
@@ -60,17 +60,17 @@ final class ConvertLocalDecls(implicit cc: CompilerContext) extends TreeTransfor
   }
 
   override def skip(tree: Tree): Boolean = tree match {
-    case _: Entity   => false
-    case _: Function => false
-    case _: Stmt     => false
-    case _: Case     => false
-    case _           => true
+    case _: Entity      => false
+    case _: EntFunction => false
+    case _: Stmt        => false
+    case _: Case        => false
+    case _              => true
   }
 
   override def transform(tree: Tree): Tree = tree match {
 
     case StmtDecl(decl @ Decl(symbol, initOpt)) => {
-      localDecls.append(decl.copy(init = None) regularize decl.loc)
+      localDecls.append(EntDecl(decl.copy(init = None)) regularize decl.loc)
       initOpt orElse getDefaultInitializer(symbol.kind) map { init =>
         StmtAssign(ExprRef(symbol), init) regularize tree.loc
       } getOrElse {
@@ -78,10 +78,9 @@ final class ConvertLocalDecls(implicit cc: CompilerContext) extends TreeTransfor
       }
     }
 
-    case entity: EntityNamed if localDecls.nonEmpty => {
-      localDecls.prependAll(entity.declarations)
+    case entity: Entity if localDecls.nonEmpty => {
       TypeAssigner {
-        entity.copy(declarations = localDecls.toList) withLoc tree.loc
+        entity.copy(body = (localDecls prependAll entity.body).toList) withLoc tree.loc
       }
     }
 

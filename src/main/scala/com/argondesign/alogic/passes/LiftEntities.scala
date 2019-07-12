@@ -71,12 +71,12 @@ final class LiftEntities(implicit cc: CompilerContext) extends TreeTransformer {
 
   override def skip(tree: Tree): Boolean = tree match {
     // Skip root entities without any nested entities
-    case entity: EntityNamed => nestingLevel == 0 && entity.entities.isEmpty
-    case _                   => false
+    case entity: Entity => nestingLevel == 0 && entity.entities.isEmpty
+    case _              => false
   }
 
   override def enter(tree: Tree): Unit = tree match {
-    case entity: EntityNamed => {
+    case entity: Entity => {
       nestingLevel += 1
 
       //////////////////////////////////////////////////////////////////////////
@@ -215,135 +215,134 @@ final class LiftEntities(implicit cc: CompilerContext) extends TreeTransformer {
     case _ =>
   }
 
-  override def transform(tree: Tree): Tree = tree match {
-    case entity: EntityNamed => {
-      entity pipe { entity =>
-        ////////////////////////////////////////////////////////////////////////
-        // Create declarations for fresh ports
-        ////////////////////////////////////////////////////////////////////////
-        if (freshIPortSymbols.top.isEmpty && freshOPortSymbols.top.isEmpty) {
-          entity
-        } else {
-          val freshIPortDecls = for (symbol <- freshIPortSymbols.top.values) yield {
-            Decl(symbol, None) regularize symbol.loc
-          }
-          val freshOPortDecls = for (symbol <- freshOPortSymbols.top.values) yield {
-            Decl(symbol, None) regularize symbol.loc
-          }
-
-          val newDecls = freshIPortDecls ++ freshOPortDecls ++ entity.declarations
-
-          // Update type of entity to include new ports
-          val newKind = entity.symbol.kind match {
-            case kind: TypeEntity => {
-              val newPortSymbols = {
-                freshIPortSymbols.top.values ++ freshOPortSymbols.top.values ++ kind.portSymbols
-              }
-              kind.copy(portSymbols = newPortSymbols.toList)
-            }
-            case _ => unreachable
-          }
-          entity.symbol.kind = newKind
-
-          TypeAssigner {
-            entity.copy(
-              declarations = newDecls.toList
-            ) withLoc entity.loc
-          }
-        }
-      } pipe { entity =>
-        ////////////////////////////////////////////////////////////////////////
-        // Create declarations for fresh consts
-        ////////////////////////////////////////////////////////////////////////
-        if (freshConstSymbols.top.isEmpty) {
-          entity
-        } else {
-          val freshConstDecls = for (symbol <- freshConstSymbols.top.values) yield {
-            Decl(symbol, symbol.attr.init.get) regularize symbol.loc
-          }
-
-          val newDecls = freshConstDecls ++ entity.declarations
-
-          TypeAssigner {
-            entity.copy(
-              declarations = newDecls.toList
-            ) withLoc entity.loc
-          }
-        }
-      } pipe { entity =>
-        ////////////////////////////////////////////////////////////////////////
-        // Strip storage from output ports where needed
-        ////////////////////////////////////////////////////////////////////////
-        if (stripStorageSymbols.nonEmpty) {
-          entity.declarations foreach {
-            case Decl(symbol, _) =>
-              symbol.kind match {
-                case TypeOut(_, _, StorageTypeDefault) =>
-                case kind: TypeOut if stripStorageSymbols contains symbol =>
-                  symbol.kind = kind.copy(st = StorageTypeDefault)
-                case _ =>
-              }
-            case _ =>
-          }
-        }
+  def finishEntity(entity: Entity): List[Entity] =
+    entity pipe { entity =>
+      ////////////////////////////////////////////////////////////////////////
+      // Create declarations for fresh ports
+      ////////////////////////////////////////////////////////////////////////
+      if (freshIPortSymbols.top.isEmpty && freshOPortSymbols.top.isEmpty) {
         entity
-      } pipe { entity =>
-        ////////////////////////////////////////////////////////////////////////
-        // Connect fresh inner ports to outer port
-        ////////////////////////////////////////////////////////////////////////
-        if (freshIConnSymbols.top.isEmpty && freshOConnSymbols.top.isEmpty) {
-          entity
-        } else {
-          def instanceSymbolsOfType(eSymbol: TypeSymbol): List[TermSymbol] = {
-            entity.instances collect {
-              case Instance(Sym(iSymbol: TermSymbol), Sym(`eSymbol`), _, _) => iSymbol
+      } else {
+        val freshIPortDecls = for (symbol <- freshIPortSymbols.top.values) yield {
+          EntDecl(Decl(symbol, None)) regularize symbol.loc
+        }
+        val freshOPortDecls = for (symbol <- freshOPortSymbols.top.values) yield {
+          EntDecl(Decl(symbol, None)) regularize symbol.loc
+        }
+
+        // Update type of entity to include new ports
+        val newKind = entity.symbol.kind match {
+          case kind: TypeEntity => {
+            val newPortSymbols = {
+              freshIPortSymbols.top.values ++ freshOPortSymbols.top.values ++ kind.portSymbols
             }
+            kind.copy(portSymbols = newPortSymbols.toList)
           }
+          case _ => unreachable
+        }
+        entity.symbol.kind = newKind
 
-          val freshIConns = for {
-            (srcPortSymbol, dstEntitySymbol) <- freshIConnSymbols.top
-            dstInstanceSymbol <- instanceSymbolsOfType(dstEntitySymbol)
-          } yield {
-            val lhs = ExprRef(srcPortSymbol)
-            val rhs = ExprSelect(ExprRef(dstInstanceSymbol), srcPortSymbol.name)
-            Connect(lhs, List(rhs)) regularize entity.loc
-          }
+        TypeAssigner {
+          entity.copy(
+            body = List.concat(freshIPortDecls, freshOPortDecls, entity.body)
+          ) withLoc entity.loc
+        }
+      }
+    } pipe { entity =>
+      ////////////////////////////////////////////////////////////////////////
+      // Create declarations for fresh consts
+      ////////////////////////////////////////////////////////////////////////
+      if (freshConstSymbols.top.isEmpty) {
+        entity
+      } else {
+        val freshConstDecls = for (symbol <- freshConstSymbols.top.values) yield {
+          EntDecl(Decl(symbol, symbol.attr.init.get)) regularize symbol.loc
+        }
 
-          val freshOConns = for {
-            (srcEntitySymbol, dstPortSymbol) <- freshOConnSymbols.top
-            srcInstanceSymbol <- instanceSymbolsOfType(srcEntitySymbol)
-          } yield {
-            val lhs = ExprSelect(ExprRef(srcInstanceSymbol), dstPortSymbol.name)
-            val rhs = ExprRef(dstPortSymbol)
-            Connect(lhs, List(rhs)) regularize entity.loc
-          }
-
-          TypeAssigner {
-            entity.copy(
-              connects = entity.connects ++ freshIConns ++ freshOConns
-            ) withLoc entity.loc
+        TypeAssigner {
+          entity.copy(
+            body = List.concat(freshConstDecls, entity.body)
+          ) withLoc entity.loc
+        }
+      }
+    } pipe { entity =>
+      ////////////////////////////////////////////////////////////////////////
+      // Strip storage from output ports where needed
+      ////////////////////////////////////////////////////////////////////////
+      if (stripStorageSymbols.nonEmpty) {
+        entity.declarations foreach {
+          case Decl(symbol, _) =>
+            symbol.kind match {
+              case TypeOut(_, _, StorageTypeDefault) =>
+              case kind: TypeOut if stripStorageSymbols contains symbol =>
+                symbol.kind = kind.copy(st = StorageTypeDefault)
+              case _ =>
+            }
+          case _ =>
+        }
+      }
+      entity
+    } pipe { entity =>
+      ////////////////////////////////////////////////////////////////////////
+      // Connect fresh inner ports to outer port
+      ////////////////////////////////////////////////////////////////////////
+      if (freshIConnSymbols.top.isEmpty && freshOConnSymbols.top.isEmpty) {
+        entity
+      } else {
+        def instanceSymbolsOfType(eSymbol: TypeSymbol): List[TermSymbol] = {
+          entity.instances collect {
+            case EntInstance(Sym(iSymbol: TermSymbol), Sym(`eSymbol`), _, _) => iSymbol
           }
         }
-      } pipe { entity =>
-        ////////////////////////////////////////////////////////////////////////
-        // Extract the nested entities to the same level as the parent entity
-        ////////////////////////////////////////////////////////////////////////
-        if (entity.entities.isEmpty) {
-          entity
-        } else {
-          val children = entity.entities
-          val parent = entity.copy(entities = Nil) withLoc entity.loc
-          TypeAssigner(parent)
 
-          val parentName = entity.symbol.name
-
-          // Prefix child names with parent name
-          for (child <- children) {
-            child.symbol rename (parentName + cc.sep + child.symbol.name)
-          }
-
-          TypeAssigner(Thicket(parent :: children) withLoc entity.loc)
+        val freshIConns = for {
+          (srcPortSymbol, dstEntitySymbol) <- freshIConnSymbols.top
+          dstInstanceSymbol <- instanceSymbolsOfType(dstEntitySymbol)
+        } yield {
+          val lhs = ExprRef(srcPortSymbol)
+          val rhs = ExprSelect(ExprRef(dstInstanceSymbol), srcPortSymbol.name)
+          EntConnect(lhs, List(rhs)) regularize entity.loc
         }
+
+        val freshOConns = for {
+          (srcEntitySymbol, dstPortSymbol) <- freshOConnSymbols.top
+          srcInstanceSymbol <- instanceSymbolsOfType(srcEntitySymbol)
+        } yield {
+          val lhs = ExprSelect(ExprRef(srcInstanceSymbol), dstPortSymbol.name)
+          val rhs = ExprRef(dstPortSymbol)
+          EntConnect(lhs, List(rhs)) regularize entity.loc
+        }
+
+        TypeAssigner {
+          entity.copy(
+            body = List.concat(entity.body, freshIConns, freshOConns)
+          ) withLoc entity.loc
+        }
+      }
+    } pipe { entity =>
+      ////////////////////////////////////////////////////////////////////////
+      // Extract the nested entities to the same level as the parent entity
+      ////////////////////////////////////////////////////////////////////////
+      if (entity.entities.isEmpty) {
+        entity :: Nil
+      } else {
+        val children = entity.entities
+        val parent = {
+          val newBody = entity.body filter {
+            case _: EntEntity => false
+            case _            => true
+          }
+          TypeAssigner(entity.copy(body = newBody) withLoc entity.loc)
+        }
+
+        val parentName = entity.symbol.name
+
+        // Prefix child names with parent name
+        for (child <- children) {
+          child.symbol rename (parentName + cc.sep + child.symbol.name)
+        }
+
+        parent :: children
       }
     } tap { _ =>
       freshIConnSymbols.pop()
@@ -383,9 +382,19 @@ final class LiftEntities(implicit cc: CompilerContext) extends TreeTransformer {
             s"Input port '${iSymbol.name}' with 'sync ready' flow control is referenced by more than one nested entities:"
           cc.error(iSymbol.loc, first :: group.keys.toList: _*)
         }
-
       }
     }
+
+  override def transform(tree: Tree): Tree = tree match {
+    case entity: Entity if nestingLevel == 1 =>
+      val results = finishEntity(entity)
+      TypeAssigner(Thicket(results) withLoc entity.loc)
+
+    case EntEntity(entity: Entity) =>
+      val results = finishEntity(entity) map { entity =>
+        TypeAssigner(EntEntity(entity) withLoc entity.loc)
+      }
+      TypeAssigner(Thicket(results) withLoc entity.loc)
 
     // Rewrite references to outer ports as references to the newly created inner ports
     case ExprRef(symbol: TermSymbol) => {
@@ -412,7 +421,7 @@ final class LiftEntities(implicit cc: CompilerContext) extends TreeTransformer {
     assert(freshOConnSymbols.isEmpty)
 
     tree visit {
-      case node: EntityNamed if node.entities.nonEmpty => {
+      case node: Entity if node.entities.nonEmpty => {
         cc.ice(node, s"Nested entities remain after LiftEntities")
       }
     }

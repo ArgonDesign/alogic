@@ -32,9 +32,9 @@ import scala.collection.mutable.ListBuffer
 
 final class SramBuilder {
   // Re-use SRAM entities of identical sizes
-  val store = mutable.Map[(Int, Int), EntityLowered]()
+  val store = mutable.Map[(Int, Int), Entity]()
 
-  def apply(width: Int, depth: Int)(implicit cc: CompilerContext): EntityLowered = synchronized {
+  def apply(width: Int, depth: Int)(implicit cc: CompilerContext): Entity = synchronized {
     lazy val sram = SramFactory(s"sram_${depth}x${width}", Loc.synthetic, width, depth)
     store.getOrElseUpdate((width, depth), sram)
   }
@@ -58,34 +58,34 @@ final class LowerSrams(
 
   // SRAM with wire driver and int/uint element type
   private case class SramWireInt(
-      sEntity: EntityLowered,
+      sEntity: Entity,
       sSymbol: TermSymbol
   ) extends SramParts
   // SRAM with wire driver and struct element type
   private case class SramWireStruct(
-      sEntity: EntityLowered,
+      sEntity: Entity,
       sSymbol: TermSymbol,
       rSymbol: TermSymbol
   ) extends SramParts
   // SRAM with reg driver and int/uint element type
   private case class SramRegInt(
-      sEntity: EntityLowered,
+      sEntity: Entity,
       sSymbol: TermSymbol,
-      oEntity: EntityLowered,
+      oEntity: Entity,
       oSymbol: TermSymbol
   ) extends SramParts
   // SRAM with reg driver and struct element type
   private case class SramRegStruct(
-      sEntity: EntityLowered,
+      sEntity: Entity,
       sSymbol: TermSymbol,
       rSymbol: TermSymbol,
-      oEntity: EntityLowered,
+      oEntity: Entity,
       oSymbol: TermSymbol
   ) extends SramParts
 
   // Extractors for transposed views of the above
   object SramWire {
-    def unapply(parts: SramParts): Option[(EntityLowered, TermSymbol)] = parts match {
+    def unapply(parts: SramParts): Option[(Entity, TermSymbol)] = parts match {
       case SramWireInt(sEntity, sSymbol)       => Some((sEntity, sSymbol))
       case SramWireStruct(sEntity, sSymbol, _) => Some((sEntity, sSymbol))
       case _                                   => None
@@ -93,7 +93,7 @@ final class LowerSrams(
   }
 
   object SramReg {
-    def unapply(parts: SramParts): Option[(EntityLowered, TermSymbol, EntityLowered, TermSymbol)] =
+    def unapply(parts: SramParts): Option[(Entity, TermSymbol, Entity, TermSymbol)] =
       parts match {
         case SramRegInt(sEntity, sSymbol, oEntity, oSymbol) =>
           Some((sEntity, sSymbol, oEntity, oSymbol))
@@ -104,7 +104,7 @@ final class LowerSrams(
   }
 
   object SramInt {
-    def unapply(parts: SramParts): Option[(EntityLowered, TermSymbol)] = parts match {
+    def unapply(parts: SramParts): Option[(Entity, TermSymbol)] = parts match {
       case SramWireInt(sEntity, sSymbol)      => Some((sEntity, sSymbol))
       case SramRegInt(sEntity, sSymbol, _, _) => Some((sEntity, sSymbol))
       case _                                  => None
@@ -112,7 +112,7 @@ final class LowerSrams(
   }
 
   object SramStruct {
-    def unapply(parts: SramParts): Option[(EntityLowered, TermSymbol, TermSymbol)] = parts match {
+    def unapply(parts: SramParts): Option[(Entity, TermSymbol, TermSymbol)] = parts match {
       case SramWireStruct(sEntity, sSymbol, rSymbol)      => Some((sEntity, sSymbol, rSymbol))
       case SramRegStruct(sEntity, sSymbol, rSymbol, _, _) => Some((sEntity, sSymbol, rSymbol))
       case _                                              => None
@@ -293,54 +293,53 @@ final class LowerSrams(
       // Add sram entities
       //////////////////////////////////////////////////////////////////////////
 
-      case entity: EntityLowered if sramMap.nonEmpty => {
-        // Drop sram, declarations, add rdata unpacking declarations
-        val decls = {
-          val newDecls = sramMap.valuesIterator collect {
-            case SramStruct(_, _, rSymbol) => Decl(rSymbol, None)
+      case entity: Entity if sramMap.nonEmpty => {
+        val newBody = List from {
+          {
+            // Add rdata unpacking declarations
+            sramMap.valuesIterator collect {
+              case SramStruct(_, _, rSymbol) => EntDecl(Decl(rSymbol, None))
+            }
+          } concat {
+            // Add instances
+            sramMap.valuesIterator flatMap {
+              case SramWire(sEntity, sSymbol) =>
+                Iterator.single(EntInstance(Sym(sSymbol), Sym(sEntity.symbol), Nil, Nil))
+              case SramReg(sEntity, sSymbol, oEntity, oSymbol) =>
+                Iterator(EntInstance(Sym(sSymbol), Sym(sEntity.symbol), Nil, Nil),
+                         EntInstance(Sym(oSymbol), Sym(oEntity.symbol), Nil, Nil))
+            }
+          } concat {
+            // Add connects for read data unpacking
+            sramMap.valuesIterator collect {
+              case SramStruct(_, sS, rS) =>
+                EntConnect(ExprRef(sS) select "rdata", List(ExprRef(rS)))
+            }
+          } concat {
+            // Add connects for reg driver
+            {
+              sramMap.valuesIterator collect {
+                case SramReg(_, sS, _, oS) =>
+                  Iterator(
+                    EntConnect(ExprRef(oS) select s"op${sep}valid", List(ExprRef(sS) select "ce")),
+                    EntConnect(ExprRef(oS) select s"op", List(ExprCat {
+                      List(ExprRef(sS) select "we",
+                           ExprRef(sS) select "addr",
+                           ExprRef(sS) select "wdata")
+                    }))
+                  )
+              }
+            }.flatten
+          } concat {
+            // Drop sram, declarations
+            entity.body.iterator filter {
+              case EntDecl(Decl(symbol, _)) => !symbol.kind.isSram
+              case _                        => true
+            }
           }
-          val oldDecls = entity.declarations.iterator filter {
-            case Decl(symbol, _) => !symbol.kind.isSram
-            case _               => unreachable
-          }
-          newDecls ++ oldDecls
         }
 
-        // Add instances
-        val newInstances = sramMap.valuesIterator flatMap {
-          case SramWire(sEntity, sSymbol) =>
-            Iterator.single(Instance(Sym(sSymbol), Sym(sEntity.symbol), Nil, Nil))
-          case SramReg(sEntity, sSymbol, oEntity, oSymbol) =>
-            Iterator(Instance(Sym(sSymbol), Sym(sEntity.symbol), Nil, Nil),
-                     Instance(Sym(oSymbol), Sym(oEntity.symbol), Nil, Nil))
-        }
-
-        // Add connects for read data unpacking and reg driver
-        val newConnects = {
-          val unpackConnects = sramMap.valuesIterator collect {
-            case SramStruct(_, sS, rS) => Connect(ExprRef(sS) select "rdata", List(ExprRef(rS)))
-          }
-
-          val driveConnect = sramMap.valuesIterator collect {
-            case SramReg(_, sS, _, oS) =>
-              Iterator(
-                Connect(ExprRef(oS) select s"op${sep}valid", List(ExprRef(sS) select "ce")),
-                Connect(ExprRef(oS) select s"op", List(ExprCat {
-                  List(ExprRef(sS) select "we",
-                       ExprRef(sS) select "addr",
-                       ExprRef(sS) select "wdata")
-                }))
-              )
-          }
-
-          unpackConnects ++ driveConnect.flatten
-        }
-
-        val newEntity = entity.copy(
-          declarations = decls.toList,
-          instances = (newInstances ++ entity.instances).toList,
-          connects = (newConnects ++ entity.connects).toList
-        )
+        val newEntity = entity.copy(body = newBody)
 
         // Note that we only collect register slices here,
         // SRAMs are added in the Pass dispatcher below

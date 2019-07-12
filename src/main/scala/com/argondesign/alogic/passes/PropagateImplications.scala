@@ -28,24 +28,24 @@ import scala.language.postfixOps
 final class PropagateImplications(implicit cc: CompilerContext) extends TreeTransformer {
 
   override def skip(tree: Tree): Boolean = tree match {
-    case _: EntityLowered => false
-    case _                => true
+    case _: Entity => false
+    case _         => true
   }
 
   override def enter(tree: Tree): Unit = tree match {
 
-    case entity: EntityLowered => {
+    case entity: Entity => {
       // Create empty instance -> port -> local maps
       val maps = entity.instances collect {
-        case Instance(Sym(iSymbol), _, _, _) => iSymbol -> mutable.Map[TermSymbol, TermSymbol]()
+        case EntInstance(Sym(iSymbol), _, _, _) => iSymbol -> mutable.Map[TermSymbol, TermSymbol]()
       } toMap
 
       // populate them
       entity.connects foreach {
-        case Connect(InstancePortRef(iSymbol, pSymbol), List(ExprRef(nSymbol: TermSymbol))) => {
+        case EntConnect(InstancePortRef(iSymbol, pSymbol), List(ExprRef(nSymbol: TermSymbol))) => {
           maps(iSymbol)(pSymbol) = nSymbol
         }
-        case Connect(ExprRef(nSymbol: TermSymbol), List(InstancePortRef(iSymbol, pSymbol))) => {
+        case EntConnect(ExprRef(nSymbol: TermSymbol), List(InstancePortRef(iSymbol, pSymbol))) => {
           maps(iSymbol)(pSymbol) = nSymbol
         }
         case _ =>

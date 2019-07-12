@@ -17,7 +17,7 @@
 
 package com.argondesign.alogic.core
 
-import com.argondesign.alogic.ast.Trees.EntityIdent
+import com.argondesign.alogic.ast.Trees.Entity
 import com.argondesign.alogic.ast.Trees.Root
 import com.argondesign.alogic.builtins.Builtins
 import com.argondesign.alogic.core.enums.ResetStyle._
@@ -61,8 +61,8 @@ class CompilerContext(val settings: Settings = Settings())
       // Insert entity symbols into the global scope
       addGlobalEntities {
         frontEndTrees map {
-          case Root(_, entity: EntityIdent) => entity
-          case _                            => unreachable
+          case Root(_, entity: Entity) => entity
+          case _                       => unreachable
         }
       }
 

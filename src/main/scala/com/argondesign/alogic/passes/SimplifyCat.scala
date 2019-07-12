@@ -128,7 +128,7 @@ final class SimplifyCat(implicit cc: CompilerContext) extends TreeTransformer {
         }
       }
 
-      case Connect(ExprCat(oLhss), List(ExprCat(oRhss))) => {
+      case EntConnect(ExprCat(oLhss), List(ExprCat(oRhss))) => {
         val pairs = pairUp(tree.loc, oLhss, oRhss)
         if (pairs.lengthCompare(1) == 0) {
           tree
@@ -136,7 +136,7 @@ final class SimplifyCat(implicit cc: CompilerContext) extends TreeTransformer {
           val assigns = for ((lhss, rhss) <- pairs) yield {
             val lhs = if (lhss.lengthCompare(1) == 0) lhss.head else ExprCat(lhss)
             val rhs = if (rhss.lengthCompare(1) == 0) rhss.head else ExprCat(rhss)
-            Connect(lhs, List(rhs))
+            EntConnect(lhs, List(rhs))
           }
           Thicket(assigns)
         }

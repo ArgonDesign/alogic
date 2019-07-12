@@ -38,9 +38,9 @@ final class TyperCheckExprSpec extends FreeSpec with AlogicTest {
 
   def xform(tree: Tree) = {
     tree match {
-      case Root(_, entity: EntityIdent) => cc.addGlobalEntity(entity)
-      case entity: EntityIdent          => cc.addGlobalEntity(entity)
-      case _                            =>
+      case Root(_, entity: Entity) => cc.addGlobalEntity(entity)
+      case entity: Entity          => cc.addGlobalEntity(entity)
+      case _                       =>
     }
     val node = tree rewrite namer match {
       case Root(_, entity) => entity

@@ -30,7 +30,7 @@ final class LowerStacks(implicit cc: CompilerContext) extends TreeTransformer {
 
   // Map from original stack variable symbol to the
   // corresponding stack entity and instance symbols
-  private[this] val stackMap = mutable.Map[TermSymbol, (EntityLowered, TermSymbol)]()
+  private[this] val stackMap = mutable.Map[TermSymbol, (Entity, TermSymbol)]()
 
   // Stack of extra statements to emit when finished with a statement
   private[this] val extraStmts = mutable.Stack[mutable.ListBuffer[Stmt]]()
@@ -153,36 +153,47 @@ final class LowerStacks(implicit cc: CompilerContext) extends TreeTransformer {
       // Add stack entities
       //////////////////////////////////////////////////////////////////////////
 
-      case entity: EntityLowered if stackMap.nonEmpty => {
-        // Drop stack declarations
-        val declarations = entity.declarations filterNot {
-          case Decl(symbol, _) => symbol.kind.isInstanceOf[TypeStack]
-          case _               => false
+      case entity: Entity if stackMap.nonEmpty => {
+        val newBody = List from {
+          // Drop stack declarations and the comb process
+          entity.body.iterator filterNot {
+            case EntDecl(Decl(symbol, _)) => symbol.kind.isStack
+            case _: EntCombProcess        => true
+            case _                        => false
+          } concat {
+            // Add instances
+            for ((entity, instance) <- stackMap.values) yield {
+              EntInstance(Sym(instance), Sym(entity.symbol), Nil, Nil)
+            }
+          } concat {
+            Iterator single {
+              // Add leading statements to the state system
+              assert(entity.combProcesses.lengthIs <= 1)
+
+              val leading = stackMap.values map {
+                _._2
+              } map { iSymbol =>
+                val iRef = ExprRef(iSymbol)
+                StmtBlock(
+                  List(
+                    assignFalse(iRef select "en"),
+                    StmtAssign(iRef select "d", iRef select "q"), // TODO: redundant
+                    assignFalse(iRef select "push"), // TODO: redundant
+                    assignFalse(iRef select "pop") // TODO: redundant
+                  )
+                )
+              }
+
+              entity.combProcesses.headOption map {
+                case EntCombProcess(stmts) => EntCombProcess(List.concat(leading, stmts))
+              } getOrElse {
+                EntCombProcess(leading.toList)
+              }
+            }
+          }
         }
 
-        // Add instances
-        val instances = for ((entity, instance) <- stackMap.values) yield {
-          Instance(Sym(instance), Sym(entity.symbol), Nil, Nil)
-        }
-
-        // Add leading statements to the state system
-        val leading = stackMap.values map { _._2 } map { iSymbol =>
-          val iRef = ExprRef(iSymbol)
-          StmtBlock(
-            List(
-              assignFalse(iRef select "en"),
-              StmtAssign(iRef select "d", iRef select "q"), // TODO: redundant
-              assignFalse(iRef select "push"), // TODO: redundant
-              assignFalse(iRef select "pop") // TODO: redundant
-            )
-          )
-        }
-
-        val newEntity = entity.copy(
-          declarations = declarations,
-          instances = instances.toList ::: entity.instances,
-          statements = leading.toList ::: entity.statements
-        )
+        val newEntity = entity.copy(body = newBody)
 
         val stackEntities = stackMap.values map { _._1 }
 

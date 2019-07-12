@@ -47,18 +47,18 @@ final class LiftSramsFrom(
   private val portMap = mutable.LinkedHashMap[(TermSymbol, TermSymbol), TermSymbol]()
 
   override def skip(tree: Tree): Boolean = tree match {
-    case _: EntityLowered => !(liftFromMap contains entitySymbol)
-    case _                => false
+    case _: Entity => !(liftFromMap contains entitySymbol)
+    case _         => false
   }
 
   override protected def enter(tree: Tree): Unit = tree match {
-    case entity: EntityLowered => {
+    case entity: Entity => {
       val ourList = liftFromMap(entitySymbol)
 
       // For each port of the instances being lifted,
       // create a new port on the current entity
       for {
-        Instance(Sym(iSymbol: TermSymbol), _, _, _) <- entity.instances
+        EntInstance(Sym(iSymbol: TermSymbol), _, _, _) <- entity.instances
         if ourList contains iSymbol
         pSymbol <- iSymbol.kind.asInstanceOf[TypeInstance].portSymbols
       } yield {
@@ -101,36 +101,32 @@ final class LiftSramsFrom(
     // Drop the instances, add the new ports
     ////////////////////////////////////////////////////////////////////////////
 
-    case entity: EntityLowered => {
+    case entity: Entity => {
       val ourList = liftFromMap(entitySymbol)
 
-      // Loose lifted instances
-      val instances = entity.instances filterNot {
-        case Instance(Sym(iSymbol: TermSymbol), _, _, _) => ourList contains iSymbol
-        case _                                           => unreachable
-      }
-
-      // Add new declarations
-      val decls = {
-        val newDecls = portMap.valuesIterator map { symbol =>
-          TypeAssigner(Decl(symbol, None) withLoc symbol.loc)
+      val newBody = List from {
+        {
+          // Add new declarations
+          portMap.valuesIterator map { symbol =>
+            EntDecl(Decl(symbol, None)) regularize symbol.loc
+          }
+        } concat {
+          // Loose lifted instances
+          entity.body.iterator filterNot {
+            case EntInstance(Sym(iSymbol: TermSymbol), _, _, _) => ourList contains iSymbol
+            case _                                              => false
+          }
         }
-        (newDecls ++ entity.declarations).toList
       }
 
       // Update type of entity for new ports
-      val portSymbols = decls collect {
-        case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeIn]  => symbol
-        case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeOut] => symbol
+      val portSymbols = newBody collect {
+        case EntDecl(Decl(symbol, _)) if symbol.kind.isInstanceOf[TypeIn]  => symbol
+        case EntDecl(Decl(symbol, _)) if symbol.kind.isInstanceOf[TypeOut] => symbol
       }
       entitySymbol.kind = entitySymbol.kind.asInstanceOf[TypeEntity].copy(portSymbols = portSymbols)
 
-      TypeAssigner {
-        entity.copy(
-          declarations = decls,
-          instances = instances
-        ) withLoc tree.loc
-      }
+      TypeAssigner(entity.copy(body = newBody) withLoc tree.loc)
     }
 
     case _ => tree
@@ -144,19 +140,19 @@ final class LiftSramsTo(
     extends TreeTransformer {
 
   override protected def skip(tree: Tree): Boolean = tree match {
-    case _: EntityLowered => false
-    case _                => true
+    case _: Entity => false
+    case _         => true
   }
 
   private def portRef(iSymbol: TermSymbol, sel: String) = ExprSelect(ExprRef(iSymbol), sel)
 
   override protected def transform(tree: Tree): Tree = tree match {
-    case entity: EntityLowered => {
+    case entity: Entity => {
       // For each instance that we lifted something out from,
       // create the lifted instances and connect them up
       val (newInstances, newConnects) = {
         val items = for {
-          Instance(Sym(iSymbol: TermSymbol), Sym(eSymbol: TypeSymbol), _, _) <- entity.instances
+          EntInstance(Sym(iSymbol: TermSymbol), Sym(eSymbol: TypeSymbol), _, _) <- entity.instances
           lSymbols <- (liftFromMap get eSymbol).toList
           lSymbol <- lSymbols
         } yield {
@@ -167,17 +163,17 @@ final class LiftSramsTo(
           // Create the local instance
           val nSymbol = cc.newTermSymbol(name, iSymbol.loc, lKind)
           val instance = {
-            Instance(Sym(nSymbol), Sym(lKind.entitySymbol), Nil, Nil) regularize lSymbol.loc
+            EntInstance(Sym(nSymbol), Sym(lKind.entitySymbol), Nil, Nil) regularize lSymbol.loc
           }
           // Create the connections
           val connects = for (pSymbol <- lKind.portSymbols.iterator) yield {
             val iPortName = lSymbol.name + cc.sep + pSymbol.name
             val connect = pSymbol.kind match {
               case _: TypeIn => {
-                Connect(portRef(iSymbol, iPortName), List(portRef(nSymbol, pSymbol.name)))
+                EntConnect(portRef(iSymbol, iPortName), List(portRef(nSymbol, pSymbol.name)))
               }
               case _: TypeOut => {
-                Connect(portRef(nSymbol, pSymbol.name), List(portRef(iSymbol, iPortName)))
+                EntConnect(portRef(nSymbol, pSymbol.name), List(portRef(iSymbol, iPortName)))
               }
               case _ => unreachable
             }
@@ -192,10 +188,7 @@ final class LiftSramsTo(
         tree
       } else {
         TypeAssigner {
-          entity.copy(
-            instances = newInstances ::: entity.instances,
-            connects = newConnects.flatten ::: entity.connects
-          ) withLoc tree.loc
+          entity.copy(body = entity.body ::: newInstances ::: newConnects.flatten) withLoc tree.loc
         }
       }
     }
@@ -210,31 +203,35 @@ object LiftSrams extends Pass {
   def apply(trees: List[Tree])(implicit cc: CompilerContext): List[Tree] = {
 
     val entities = trees map {
-      case entity: EntityLowered => entity
-      case _                     => unreachable
+      case entity: Entity => entity
+      case _              => unreachable
     }
 
     // Build an eSymbol -> entity map
-    val eMap = entities map { entity =>
-      entity.symbol -> entity
-    } toMap
+    val eMap = Map from {
+      entities map { entity =>
+        entity.symbol -> entity
+      }
+    }
 
     // Gather entities with the liftSrams attribute,
     // and all other entities instantiated by them
     val liftFromSet = {
-      val seed = entities filter { entity =>
-        entity.symbol.attr.liftSrams contains true
-      } toSet
+      val seed = Set from {
+        entities filter { entity =>
+          entity.symbol.attr.liftSrams contains true
+        }
+      }
 
       // Expand entity set by adding all instantiated entities
       @tailrec
-      def expand(curr: Set[EntityLowered], prev: Set[EntityLowered]): Set[EntityLowered] = {
+      def expand(curr: Set[Entity], prev: Set[Entity]): Set[Entity] = {
         if (curr == prev) {
           curr
         } else {
           val extra = for {
             entity <- curr
-            Instance(_, Sym(eSymbol: TypeSymbol), _, _) <- entity.instances
+            EntInstance(_, Sym(eSymbol: TypeSymbol), _, _) <- entity.instances
           } yield {
             eMap(eSymbol)
           }
@@ -249,20 +246,20 @@ object LiftSrams extends Pass {
 
     // Lift entities by 1 level in each iteration
     @tailrec
-    def loop(entities: List[EntityLowered]): List[EntityLowered] = {
+    def loop(entities: List[Entity]): List[Entity] = {
       // Gather the 'parent entity' -> 'List(lifted instance)' map
       val liftFromMap = {
         val pairs = for {
-          EntityLowered(pSymbol, _, instances, _, _, _) <- entities
-          if liftFromSet contains pSymbol
+          entity <- entities
+          if liftFromSet contains entity.symbol
         } yield {
           val iSymbols = for {
-            Instance(Sym(iSymbol: TermSymbol), Sym(sSymbol: TypeSymbol), _, _) <- instances
+            EntInstance(Sym(iSymbol: TermSymbol), Sym(sSymbol: TypeSymbol), _, _) <- entity.instances
             if sSymbol.attr.sram contains true
           } yield {
             iSymbol
           }
-          pSymbol -> iSymbols
+          entity.symbol -> iSymbols
         }
         pairs filter { _._2.nonEmpty } toMap
       }
@@ -272,12 +269,12 @@ object LiftSrams extends Pass {
       } else {
         // Apply the liftFrom transform
         val liftedFrom = entities.par map { entity =>
-          (entity rewrite new LiftSramsFrom(liftFromMap)).asInstanceOf[EntityLowered]
+          (entity rewrite new LiftSramsFrom(liftFromMap)).asInstanceOf[Entity]
         }
 
         // Apply the liftTo transform
         val liftedTo = liftedFrom map { entity =>
-          (entity rewrite new LiftSramsTo(liftFromMap)).asInstanceOf[EntityLowered]
+          (entity rewrite new LiftSramsTo(liftFromMap)).asInstanceOf[Entity]
         } seq
 
         // Repeat until settles

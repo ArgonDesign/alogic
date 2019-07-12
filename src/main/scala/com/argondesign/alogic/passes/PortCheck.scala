@@ -47,7 +47,7 @@ final class PortCheck(implicit cc: CompilerContext) extends TreeTransformer {
 
   override def enter(tree: Tree): Unit = tree match {
 
-    case entity: EntityNamed => {
+    case entity: Entity => {
       //////////////////////////////////////////////////////////////////////////
       // Check multiple drivers
       //////////////////////////////////////////////////////////////////////////
@@ -60,7 +60,7 @@ final class PortCheck(implicit cc: CompilerContext) extends TreeTransformer {
       val sinkInst = mutable.Map[(TermSymbol, TermSymbol), Loc]()
 
       for {
-        connect @ Connect(_, rhss) <- entity.connects
+        connect @ EntConnect(_, rhss) <- entity.connects
         rhs <- rhss
       } {
         rhs match {
@@ -89,7 +89,7 @@ final class PortCheck(implicit cc: CompilerContext) extends TreeTransformer {
       val drivInst = mutable.Map[(TermSymbol, TermSymbol), Loc]()
 
       for {
-        connect @ Connect(lhs, _) <- entity.connects
+        connect @ EntConnect(lhs, _) <- entity.connects
       } {
         lhs match {
           case rhs @ ExprRef(symbol: TermSymbol) => {

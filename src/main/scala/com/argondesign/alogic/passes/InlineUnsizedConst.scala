@@ -22,7 +22,6 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Types.TypeConst
 import com.argondesign.alogic.core.Types.TypeNum
 import com.argondesign.alogic.typer.TypeAssigner
-import com.argondesign.alogic.util.unreachable
 
 final class InlineUnsizedConst(implicit cc: CompilerContext) extends TreeTransformer {
 
@@ -33,21 +32,17 @@ final class InlineUnsizedConst(implicit cc: CompilerContext) extends TreeTransfo
         case _                     => tree
       }
 
-    case entity: EntityNamed => {
-      val declarations = entity.declarations filter {
-        case Decl(symbol, _) =>
+    case entity: Entity => {
+      val newBody = entity.body filter {
+        case EntDecl(Decl(symbol, _)) =>
           symbol.kind match {
             case TypeConst(_: TypeNum) => false
             case _                     => true
           }
-        case _ => unreachable
+        case _ => true
       }
 
-      if (declarations eq entity.declarations) {
-        entity
-      } else {
-        TypeAssigner(entity.copy(declarations = declarations) withLoc entity.loc)
-      }
+      TypeAssigner(entity.copy(body = newBody) withLoc entity.loc)
     }
 
     case _ => tree

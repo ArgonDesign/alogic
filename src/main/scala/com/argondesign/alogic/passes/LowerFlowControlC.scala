@@ -37,32 +37,26 @@ final class LowerFlowControlC(implicit cc: CompilerContext) extends TreeTransfor
     // Entity
     //////////////////////////////////////////////////////////////////////////
 
-    case entity: EntityLowered => {
+    case entity: Entity => {
       // Drop original port declarations
-      val declarations = entity.declarations filterNot {
-        case Decl(symbol, _) => symbol.attr.expandedPort.isSet
-        case _               => unreachable
+      val newBody = entity.body filterNot {
+        case EntDecl(Decl(symbol, _)) => symbol.attr.expandedPort.isSet
+        case _                        => false
       }
 
-      if (declarations == entity.declarations) {
-        entity
-      } else {
-        // Update type of entity to drop new ports.
-        val portSymbols = declarations collect {
-          case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeIn]  => symbol
-          case Decl(symbol, _) if symbol.kind.isInstanceOf[TypeOut] => symbol
-        }
-
-        val newKind = entitySymbol.kind match {
-          case kind: TypeEntity => kind.copy(portSymbols = portSymbols)
-          case _                => unreachable
-        }
-        entitySymbol.kind = newKind
-
-        TypeAssigner {
-          entity.copy(declarations = declarations) withLoc tree.loc
-        }
+      // Update type of entity to drop old ports.
+      val portSymbols = newBody collect {
+        case EntDecl(Decl(symbol, _)) if symbol.kind.isIn  => symbol
+        case EntDecl(Decl(symbol, _)) if symbol.kind.isOut => symbol
       }
+
+      val newKind = entitySymbol.kind match {
+        case kind: TypeEntity => kind.copy(portSymbols = portSymbols)
+        case _                => unreachable
+      }
+      entitySymbol.kind = newKind
+
+      TypeAssigner(entity.copy(body = newBody) withLoc tree.loc)
     }
 
     case _ => unreachable

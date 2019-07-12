@@ -146,7 +146,7 @@ trait ObjectTreeOps extends TreeUntype {
   implicit final val parseableEntity = new Parser.Parseable[Entity] {
     type C = EntityContext
     def parse(parser: AlogicParser): EntityContext = parser.entity()
-    def build(ctx: EntityContext)(implicit cc: CompilerContext): EntityIdent = EntityBuilder(ctx)
+    def build(ctx: EntityContext)(implicit cc: CompilerContext): Entity = EntityBuilder(ctx)
   }
 
   implicit final val parseableDeclIdent = new Parser.Parseable[DeclIdent] {
@@ -155,10 +155,14 @@ trait ObjectTreeOps extends TreeUntype {
     def build(ctx: DeclContext)(implicit cc: CompilerContext): DeclIdent = DeclBuilder(ctx)
   }
 
-  implicit final val parseableConnect = new Parser.Parseable[Connect] {
-    type C = ConnectContext
-    def parse(parser: AlogicParser): ConnectContext = parser.connect()
-    def build(ctx: ConnectContext)(implicit cc: CompilerContext): Connect = ConnectBuilder(ctx)
+  implicit final val parseableEnt = new Parser.Parseable[Ent] {
+    type C = Entity_contentContext
+    def parse(parser: AlogicParser): Entity_contentContext = parser.entity_content()
+    def build(ctx: Entity_contentContext)(implicit cc: CompilerContext): Ent = {
+      val ents = EntBuilder(ctx)
+      assert(ents.length == 1)
+      ents.head
+    }
   }
 
   implicit final val parseableStmt = new Parser.Parseable[Stmt] {

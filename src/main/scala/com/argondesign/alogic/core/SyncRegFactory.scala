@@ -72,7 +72,7 @@ object SyncRegFactory {
       sep: String
   )(
       implicit cc: CompilerContext
-  ): EntityLowered = {
+  ): Entity = {
     val fcn = FlowControlTypeNone
     val stw = StorageTypeWire
 
@@ -120,16 +120,18 @@ object SyncRegFactory {
     val decls = symbols map {
       case `vSymbol` => Decl(vSymbol, Some(ExprInt(false, 1, 0)))
       case symbol    => Decl(symbol, None)
+    } map {
+      EntDecl(_)
     }
 
     val connects = if (kind != TypeVoid) {
       List(
-        Connect(pRef, List(opRef)),
-        Connect(vRef, List(opvRef))
+        EntConnect(pRef, List(opRef)),
+        EntConnect(vRef, List(opvRef))
       )
     } else {
       List(
-        Connect(vRef, List(opvRef))
+        EntConnect(vRef, List(opvRef))
       )
     }
 
@@ -137,7 +139,7 @@ object SyncRegFactory {
     val entitySymbol = cc.newTypeSymbol(name, loc, eKind)
     entitySymbol.attr.variant set "fsm"
     entitySymbol.attr.highLevelKind set eKind
-    val entity = EntityLowered(entitySymbol, decls, Nil, connects, statements, Map())
+    val entity = Entity(Sym(entitySymbol), decls ::: EntCombProcess(statements) :: connects)
     entity regularize loc
   }
 
@@ -147,7 +149,7 @@ object SyncRegFactory {
       kind: Type
   )(
       implicit cc: CompilerContext
-  ): EntityLowered = {
+  ): Entity = {
     require(kind.isPacked)
     buildSyncReg(name, loc, kind, cc.sep)
   }

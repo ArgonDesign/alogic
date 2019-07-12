@@ -110,7 +110,7 @@ object StackFactory {
       kind: Type
   )(
       implicit cc: CompilerContext
-  ): EntityLowered = {
+  ): Entity = {
     val fcn = FlowControlTypeNone
     val stw = StorageTypeWire
 
@@ -167,19 +167,21 @@ object StackFactory {
     val decls = symbols map {
       case `valSymbol` => Decl(valSymbol, Some(ExprInt(false, 1, 0)))
       case symbol      => Decl(symbol, None)
+    } map {
+      EntDecl(_)
     }
 
     val connects = List(
-      Connect(~valRef, List(empRef)),
-      Connect(valRef, List(fulRef)),
-      Connect(stoRef, List(qRef))
+      EntConnect(~valRef, List(empRef)),
+      EntConnect(valRef, List(fulRef)),
+      EntConnect(stoRef, List(qRef))
     )
 
     val eKind = TypeEntity(name, ports, Nil)
     val entitySymbol = cc.newTypeSymbol(name, loc, eKind)
     entitySymbol.attr.variant set "fsm"
     entitySymbol.attr.highLevelKind set eKind
-    val entity = EntityLowered(entitySymbol, decls, Nil, connects, statements, Map())
+    val entity = Entity(Sym(entitySymbol), decls ::: EntCombProcess(statements) :: connects)
     entity regularize loc
   }
 
@@ -228,7 +230,7 @@ object StackFactory {
       depth: Int
   )(
       implicit cc: CompilerContext
-  ): EntityLowered = {
+  ): Entity = {
     require(depth >= 2)
 
     val fcn = FlowControlTypeNone
@@ -315,17 +317,19 @@ object StackFactory {
       case `fulSymbol` => Decl(fulSymbol, Some(ExprInt(false, 1, 0)))
       case `ptrSymbol` => Decl(ptrSymbol, Some(ExprInt(false, ptrWidth, 0)))
       case symbol      => Decl(symbol, None)
+    } map {
+      EntDecl(_)
     }
 
     val connects = List(
-      Connect(ExprIndex(stoRef, ptrRef), List(qRef))
+      EntConnect(ExprIndex(stoRef, ptrRef), List(qRef))
     )
 
     val eKind = TypeEntity(name, ports, Nil)
     val entitySymbol = cc.newTypeSymbol(name, loc, eKind)
     entitySymbol.attr.variant set "fsm"
     entitySymbol.attr.highLevelKind set eKind
-    val entity = EntityLowered(entitySymbol, decls, Nil, connects, statements, Map())
+    val entity = Entity(Sym(entitySymbol), decls ::: EntCombProcess(statements) :: connects)
     entity regularize loc
   }
 
@@ -336,7 +340,7 @@ object StackFactory {
       depth: Expr
   )(
       implicit cc: CompilerContext
-  ): EntityLowered = {
+  ): Entity = {
     require(kind.isPacked)
     require(kind != TypeVoid)
 

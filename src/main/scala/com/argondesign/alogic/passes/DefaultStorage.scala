@@ -36,7 +36,7 @@ final class DefaultStorage(implicit cc: CompilerContext) extends TreeTransformer
   private[this] var inConnect = false
 
   override def enter(tree: Tree): Unit = tree match {
-    case _: Connect => {
+    case _: EntConnect => {
       assert(!inConnect)
       inConnect = true
     }
@@ -54,12 +54,12 @@ final class DefaultStorage(implicit cc: CompilerContext) extends TreeTransformer
 
   override def transform(tree: Tree): Tree = {
     tree match {
-      case _: Connect => {
+      case _: EntConnect => {
         assert(inConnect)
         inConnect = false
       }
 
-      case entity: EntityLowered => {
+      case entity: Entity => {
         val isVerbatim = entitySymbol.attr.variant.value == "verbatim"
 
         // Update types or all output declarations that use the default storage type

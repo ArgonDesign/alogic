@@ -23,17 +23,17 @@ import com.argondesign.alogic.core.CompilerContext
 final class ConvertMultiConnect(implicit cc: CompilerContext) extends TreeTransformer {
 
   override def skip(tree: Tree): Boolean = tree match {
-    case _: Entity  => false
-    case _: Connect => false
-    case _          => true
+    case _: Entity     => false
+    case _: EntConnect => false
+    case _             => true
   }
 
   override def transform(tree: Tree): Tree = tree match {
 
-    case Connect(lhs, rhss) if rhss.length > 1 => {
+    case EntConnect(lhs, rhss) if rhss.length > 1 => {
       Thicket {
         for (rhs <- rhss) yield {
-          Connect(lhs, List(rhs))
+          EntConnect(lhs, List(rhs))
         }
       } regularize tree.loc
     }
@@ -43,7 +43,7 @@ final class ConvertMultiConnect(implicit cc: CompilerContext) extends TreeTransf
 
   override def finalCheck(tree: Tree): Unit = {
     tree visit {
-      case node @ Connect(_, rhss) if rhss.length > 1 => {
+      case node @ EntConnect(_, rhss) if rhss.length > 1 => {
         cc.ice(node, "Connect with multiple rhs remains")
       }
     }

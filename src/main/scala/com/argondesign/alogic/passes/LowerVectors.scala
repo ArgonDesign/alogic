@@ -36,7 +36,7 @@ final class LowerVectors(implicit cc: CompilerContext) extends TreeTransformer {
   private[this] var catLevel = 0
 
   override def enter(tree: Tree): Unit = tree match {
-    case entity: EntityLowered => {
+    case entity: Entity => {
       // Change types of all vectors to plain TypeUInt
       // TODO: arrays as well
       for {
