@@ -49,6 +49,7 @@ trait TreeUntype {
     case node: EntFunction    => untype(node)
     case node: EntState       => untype(node)
     case node: EntVerbatim    => untype(node)
+    case node: EntGen         => unreachable
   }
 
   def untype(tree: Stmt): Stmt = tree match {

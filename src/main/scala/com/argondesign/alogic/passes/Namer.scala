@@ -211,9 +211,9 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer { namer 
 
   private[this] lazy val atBitsSymbol = cc.lookupGlobalTerm("@bits")
 
-  private[this] val swapIfElseScope = mutable.Stack[Int]()
+  private[this] val swapIfElseScope = mutable.Stack[List[Tree]]()
 
-  private[this] def insertEarlyName(ident: Ident, isTerm: Boolean) = {
+  private[this] def insertEarlyName(ident: Ident, isTerm: Boolean): Unit = {
     // Name the source attributes
     if (ident.hasAttr) {
       ident withAttr { (ident.attr.view mapValues { walk(_).asInstanceOf[Expr] }).toMap }
@@ -228,11 +228,20 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer { namer 
     }
   }
 
+  // Insert function names, instance names and nested entity names early
+  // so they can be referred to before the definition site in source
+  private[this] def insertEarly(trees: List[Tree]): Unit = trees foreach {
+    case EntFunction(ident: Ident, _)       => insertEarlyName(ident, isTerm = true)
+    case EntInstance(ident: Ident, _, _, _) => insertEarlyName(ident, isTerm = true)
+    case EntEntity(Entity(ident: Ident, _)) => insertEarlyName(ident, isTerm = false)
+    case _                                  =>
+  }
+
   override def enter(tree: Tree): Unit = {
-    if (swapIfElseScope.headOption contains tree.id) {
+    if (swapIfElseScope.headOption map { _.head.id } contains tree.id) {
       Scopes.pop()
       Scopes.push()
-      swapIfElseScope.pop()
+      insertEarly(swapIfElseScope.pop())
     }
 
     tree match {
@@ -246,29 +255,26 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer { namer 
         symbol.attr.stackLimit.get foreach { symbol.attr.stackLimit set walk(_).asInstanceOf[Expr] }
       }
 
-      case entity: Entity => {
+      case entity: Entity =>
         Scopes.push()
-
-        // Insert function names, nested entity names and instance names early
-        // so they can be referred to before the definition site in source
-        entity.body foreach {
-          case EntFunction(ident: Ident, _)       => insertEarlyName(ident, isTerm = true)
-          case EntEntity(Entity(ident: Ident, _)) => insertEarlyName(ident, isTerm = false)
-          case EntInstance(ident: Ident, _, _, _) => insertEarlyName(ident, isTerm = true)
-          case _                                  =>
-        }
-      }
+        insertEarly(entity.body)
 
       case _: EntFunction => Scopes.push()
 
-      case _: GenFor   => Scopes.push()
-      case _: GenRange => Scopes.push()
-      case GenIf(_, _, elseItems) => {
+      case gen: GenFor =>
         Scopes.push()
+        insertEarly(gen.body)
+
+      case gen: GenRange =>
+        Scopes.push()
+        insertEarly(gen.body)
+
+      case GenIf(_, thenItems, elseItems) =>
+        Scopes.push()
+        insertEarly(thenItems)
         if (elseItems.nonEmpty) {
-          swapIfElseScope push elseItems.head.id
+          swapIfElseScope push elseItems
         }
-      }
 
       case _: StmtBlock => Scopes.push()
       case _: StmtLet => {
@@ -295,7 +301,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer { namer 
       case StmtIf(_, _, elseStmts) => {
         Scopes.push()
         if (elseStmts.nonEmpty) {
-          swapIfElseScope push elseStmts.head.id
+          swapIfElseScope push elseStmts
         }
       }
 

@@ -163,17 +163,17 @@ final class ParserSpec extends FreeSpec with AlogicTest {
       "declarations" - {
         "scalar" - {
           "without initializer" in {
-            "bool a".asTree[DeclIdent] shouldBe DeclIdent(Ident("a"), TypeUInt(Expr(1)), None)
+            "bool a;".asTree[DeclIdent] shouldBe DeclIdent(Ident("a"), TypeUInt(Expr(1)), None)
           }
 
           "with initializer" in {
-            "bool b = true".asTree[DeclIdent] shouldBe {
+            "bool b = true;".asTree[DeclIdent] shouldBe {
               DeclIdent(Ident("b"), TypeUInt(Expr(1)), Some(ExprInt(false, 1, 1)))
             }
           }
 
           "with attribute" in {
-            inside("(* foo *) bool b".asTree[DeclIdent]) {
+            inside("(* foo *) bool b;".asTree[DeclIdent]) {
               case DeclIdent(ident @ Ident("b"), TypeUInt(Expr(1)), None) =>
                 ident.hasAttr shouldBe true
                 ident.attr shouldBe Map("foo" -> Expr(1))
@@ -183,19 +183,19 @@ final class ParserSpec extends FreeSpec with AlogicTest {
 
         "array" - {
           "1D" in {
-            "i8 c[2]".asTree[DeclIdent] shouldBe {
+            "i8 c[2];".asTree[DeclIdent] shouldBe {
               DeclIdent(Ident("c"), TypeArray(TypeSInt(Expr(8)), Expr(2)), None)
             }
           }
 
           "2D" ignore {
-            "i8 d[2][3]".asTree[DeclIdent] shouldBe {
+            "i8 d[2][3];".asTree[DeclIdent] shouldBe {
               DeclIdent(Ident("d"), TypeArray(TypeArray(TypeSInt(Expr(8)), Expr(3)), Expr(2)), None)
             }
           }
 
           "2D array of 2D vector" ignore {
-            "i2[8] e[5][4]".asTree[DeclIdent] shouldBe {
+            "i2[8] e[5][4];".asTree[DeclIdent] shouldBe {
               DeclIdent(
                 Ident("e"),
                 TypeArray(TypeArray(TypeVector(TypeSInt(Expr(2)), Expr(8)), Expr(4)), Expr(5)),
@@ -205,7 +205,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
           }
 
           "1D with attribute" in {
-            inside("(* foo *) i8 c[2]".asTree[DeclIdent]) {
+            inside("(* foo *) i8 c[2];".asTree[DeclIdent]) {
               case DeclIdent(ident @ Ident("c"), TypeArray(TypeSInt(Expr(8)), Expr(2)), None) =>
                 ident.hasAttr shouldBe true
                 ident.attr shouldBe Map("foo" -> Expr(1))
@@ -216,7 +216,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
         "output" - {
           "no flow control" - {
             "default" in {
-              "out i2 a".asTree[DeclIdent] shouldBe {
+              "out i2 a;".asTree[DeclIdent] shouldBe {
                 DeclIdent(Ident("a"),
                           TypeOut(TypeSInt(Expr(2)), FlowControlTypeNone, StorageTypeDefault),
                           None)
@@ -224,7 +224,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
             }
 
             "wire" in {
-              "out wire u2 a".asTree[DeclIdent] shouldBe {
+              "out wire u2 a;".asTree[DeclIdent] shouldBe {
                 DeclIdent(Ident("a"),
                           TypeOut(TypeUInt(Expr(2)), FlowControlTypeNone, StorageTypeWire),
                           None)
@@ -234,7 +234,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
 
           "valid flow control" - {
             "default" in {
-              "out sync i2 a".asTree[DeclIdent] shouldBe {
+              "out sync i2 a;".asTree[DeclIdent] shouldBe {
                 DeclIdent(Ident("a"),
                           TypeOut(TypeSInt(Expr(2)), FlowControlTypeValid, StorageTypeDefault),
                           None)
@@ -242,7 +242,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
             }
 
             "wire" in {
-              "out sync wire i2 a".asTree[DeclIdent] shouldBe {
+              "out sync wire i2 a;".asTree[DeclIdent] shouldBe {
                 DeclIdent(Ident("a"),
                           TypeOut(TypeSInt(Expr(2)), FlowControlTypeValid, StorageTypeWire),
                           None)
@@ -252,7 +252,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
 
           "valid/ready flow control" - {
             "default" in {
-              "out sync ready i2 a".asTree[DeclIdent] shouldBe {
+              "out sync ready i2 a;".asTree[DeclIdent] shouldBe {
                 DeclIdent(
                   Ident("a"),
                   TypeOut(TypeSInt(Expr(2)), FlowControlTypeReady, StorageTypeDefault),
@@ -262,7 +262,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
             }
 
             "fslice" in {
-              "out sync ready fslice i2 a".asTree[DeclIdent] shouldBe {
+              "out sync ready fslice i2 a;".asTree[DeclIdent] shouldBe {
                 DeclIdent(
                   Ident("a"),
                   TypeOut(TypeSInt(Expr(2)),
@@ -274,7 +274,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
             }
 
             "bslice" in {
-              "out sync ready bslice i2 a".asTree[DeclIdent] shouldBe {
+              "out sync ready bslice i2 a;".asTree[DeclIdent] shouldBe {
                 DeclIdent(
                   Ident("a"),
                   TypeOut(TypeSInt(Expr(2)),
@@ -286,7 +286,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
             }
 
             "bubble" in {
-              "out sync ready bubble i2 a".asTree[DeclIdent] shouldBe {
+              "out sync ready bubble i2 a;".asTree[DeclIdent] shouldBe {
                 DeclIdent(
                   Ident("a"),
                   TypeOut(TypeSInt(Expr(2)),
@@ -298,7 +298,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
             }
 
             "bslice bubble fslice" in {
-              "out sync ready bslice bubble fslice i2 a".asTree[DeclIdent] shouldBe {
+              "out sync ready bslice bubble fslice i2 a;".asTree[DeclIdent] shouldBe {
                 DeclIdent(
                   Ident("a"),
                   TypeOut(
@@ -312,7 +312,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
             }
 
             "with attribute" in {
-              inside("(* foo *) out i2 a".asTree[DeclIdent]) {
+              inside("(* foo *) out i2 a;".asTree[DeclIdent]) {
                 case DeclIdent(ident @ Ident("a"),
                                TypeOut(TypeSInt(Expr(2)), FlowControlTypeNone, StorageTypeDefault),
                                None) =>
@@ -325,25 +325,25 @@ final class ParserSpec extends FreeSpec with AlogicTest {
 
         "inputs" - {
           "no flow control" in {
-            "in i2 a".asTree[DeclIdent] shouldBe {
+            "in i2 a;".asTree[DeclIdent] shouldBe {
               DeclIdent(Ident("a"), TypeIn(TypeSInt(Expr(2)), FlowControlTypeNone), None)
             }
           }
 
           "valid flow control" in {
-            "in sync i2 a".asTree[DeclIdent] shouldBe {
+            "in sync i2 a;".asTree[DeclIdent] shouldBe {
               DeclIdent(Ident("a"), TypeIn(TypeSInt(Expr(2)), FlowControlTypeValid), None)
             }
           }
 
           "valid/ready flow control" in {
-            "in sync ready i2 a".asTree[DeclIdent] shouldBe {
+            "in sync ready i2 a;".asTree[DeclIdent] shouldBe {
               DeclIdent(Ident("a"), TypeIn(TypeSInt(Expr(2)), FlowControlTypeReady), None)
             }
           }
 
           "with attribute" in {
-            inside("(* foo *) in i2 a".asTree[DeclIdent]) {
+            inside("(* foo *) in i2 a;".asTree[DeclIdent]) {
               case DeclIdent(ident @ Ident("a"),
                              TypeIn(TypeSInt(Expr(2)), FlowControlTypeNone),
                              None) =>
@@ -354,13 +354,13 @@ final class ParserSpec extends FreeSpec with AlogicTest {
         }
 
         "parameter" in {
-          "param i2 a = 2".asTree[DeclIdent] shouldBe {
+          "param i2 a = 2;".asTree[DeclIdent] shouldBe {
             DeclIdent(Ident("a"), TypeParam(TypeSInt(Expr(2))), Some(Expr(2)))
           }
         }
 
         "parameter with attribute" in {
-          inside("(* foo *) param i2 a = 2".asTree[DeclIdent]) {
+          inside("(* foo *) param i2 a = 2;".asTree[DeclIdent]) {
             case DeclIdent(ident @ Ident("a"), TypeParam(TypeSInt(Expr(2))), Some(Expr(2))) =>
               ident.hasAttr shouldBe true
               ident.attr shouldBe Map("foo" -> Expr(1))
@@ -368,13 +368,13 @@ final class ParserSpec extends FreeSpec with AlogicTest {
         }
 
         "constant" in {
-          "const i2 a = 2".asTree[DeclIdent] shouldBe {
+          "const i2 a = 2;".asTree[DeclIdent] shouldBe {
             DeclIdent(Ident("a"), TypeConst(TypeSInt(Expr(2))), Some(Expr(2)))
           }
         }
 
         "constant with attribute" in {
-          inside("(* foo *) const i2 a = 2".asTree[DeclIdent]) {
+          inside("(* foo *) const i2 a = 2;".asTree[DeclIdent]) {
             case DeclIdent(ident @ Ident("a"), TypeConst(TypeSInt(Expr(2))), Some(Expr(2))) =>
               ident.hasAttr shouldBe true
               ident.attr shouldBe Map("foo" -> Expr(1))
@@ -382,13 +382,13 @@ final class ParserSpec extends FreeSpec with AlogicTest {
         }
 
         "pipeline variable" in {
-          "pipeline u8 a".asTree[DeclIdent] shouldBe {
+          "pipeline u8 a;".asTree[DeclIdent] shouldBe {
             DeclIdent(Ident("a"), TypePipeline(TypeUInt(Expr(8))), None)
           }
         }
 
         "pipeline variable with attribute" in {
-          inside("(* foo *) pipeline u8 a".asTree[DeclIdent]) {
+          inside("(* foo *) pipeline u8 a;".asTree[DeclIdent]) {
             case DeclIdent(ident @ Ident("a"), TypePipeline(TypeUInt(Expr(8))), None) =>
               ident.hasAttr shouldBe true
               ident.attr shouldBe Map("foo" -> Expr(1))
@@ -396,13 +396,13 @@ final class ParserSpec extends FreeSpec with AlogicTest {
         }
 
         "sram" in {
-          "sram u8 a[10]".asTree[DeclIdent] shouldBe {
+          "sram u8 a[10];".asTree[DeclIdent] shouldBe {
             DeclIdent(Ident("a"), TypeSram(TypeUInt(Expr(8)), Expr(10), StorageTypeReg), None)
           }
         }
 
         "sram with attribute" in {
-          inside("(* foo *) sram u8 a[10]".asTree[DeclIdent]) {
+          inside("(* foo *) sram u8 a[10];".asTree[DeclIdent]) {
             case DeclIdent(ident @ Ident("a"),
                            TypeSram(TypeUInt(Expr(8)), Expr(10), StorageTypeReg),
                            None) =>
@@ -412,13 +412,13 @@ final class ParserSpec extends FreeSpec with AlogicTest {
         }
 
         "sram wire" in {
-          "sram wire u8 a[10]".asTree[DeclIdent] shouldBe {
+          "sram wire u8 a[10];".asTree[DeclIdent] shouldBe {
             DeclIdent(Ident("a"), TypeSram(TypeUInt(Expr(8)), Expr(10), StorageTypeWire), None)
           }
         }
 
         "sram wire with attribute" in {
-          inside("(* foo *) sram wire u8 a[10]".asTree[DeclIdent]) {
+          inside("(* foo *) sram wire u8 a[10];".asTree[DeclIdent]) {
             case DeclIdent(ident @ Ident("a"),
                            TypeSram(TypeUInt(Expr(8)), Expr(10), StorageTypeWire),
                            None) =>

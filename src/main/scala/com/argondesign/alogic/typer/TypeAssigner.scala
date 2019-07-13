@@ -70,7 +70,10 @@ final object TypeAssigner {
   // Typing Ent nodes
   //////////////////////////////////////////////////////////////////////////////
 
-  private def kind(tree: Ent): Type = TypeMisc
+  private def kind(tree: Ent): Type = tree match {
+    case _: EntGen => unreachable
+    case _         => TypeMisc
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   // Typing Stmt nodes

@@ -29,12 +29,19 @@ import scala.jdk.CollectionConverters._
 object GenBuilder extends BaseBuilder[ParserRuleContext, Gen] {
 
   def apply(ctx: ParserRuleContext)(implicit cc: CompilerContext): Gen = {
-    object GenItemVisitor extends AlogicScalarVisitor[Tree] {
-      override def visitGenItemGen(ctx: GenItemGenContext): Tree = GenBuilder(ctx)
+    object GenItemVisitor extends AlogicListVisitor[Tree] {
+      override def visitGenItemGen(ctx: GenItemGenContext) = GenBuilder(ctx) :: Nil
 
-      override def visitGenItemStmt(ctx: GenItemStmtContext): Tree = StmtBuilder(ctx)
+      override def visitGenItemDecl(ctx: GenItemDeclContext) =
+        (GenDecl(DeclBuilder(ctx.decl)) withLoc ctx.loc) :: Nil
 
-      override def visitGenItemCase(ctx: GenItemCaseContext): Tree = CaseBuilder(ctx)
+      override def visitGenItemStmt(ctx: GenItemStmtContext) =
+        StmtBuilder(ctx.statement) :: Nil
+
+      override def visitGenItemCase(ctx: GenItemCaseContext) =
+        CaseBuilder(ctx.case_clause) :: Nil
+
+      override def visitGenItemEnt(ctx: GenItemEntContext) = EntBuilder(ctx.entity_content)
     }
 
     object GenVisitor extends AlogicScalarVisitor[Gen] { self =>

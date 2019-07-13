@@ -19,16 +19,15 @@ import com.argondesign.alogic.antlr.AlogicParser._
 import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import org.antlr.v4.runtime.ParserRuleContext
 
-object CaseBuilder extends BaseBuilder[ParserRuleContext, Case] {
+object CaseBuilder extends BaseBuilder[Case_clauseContext, Case] {
 
   private def makeStmtList(stmt: Stmt): List[Stmt] = stmt match {
     case StmtBlock(ss) => ss
     case s             => List(s)
   }
 
-  def apply(ctx: ParserRuleContext)(implicit cc: CompilerContext): Case = {
+  def apply(ctx: Case_clauseContext)(implicit cc: CompilerContext): Case = {
     object Visitor extends AlogicScalarVisitor[Case] {
       override def visitCaseRegular(ctx: CaseRegularContext) = {
         val cond = ExprBuilder(ctx.commaexpr.expr)

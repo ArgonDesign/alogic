@@ -104,6 +104,7 @@ object Trees {
   case class EntFunction(ref: Ref, stmts: List[Stmt]) extends Ent
   case class EntState(expr: Expr, stmts: List[Stmt]) extends Ent
   case class EntVerbatim(lang: String, body: String) extends Ent
+  case class EntGen(gen: Gen) extends Ent
   // TODO: EntComment(str: String) extends Ent
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -112,6 +113,7 @@ object Trees {
 
   sealed trait Gen extends Tree
 
+  case class GenDecl(decl: Declaration) extends Gen
   case class GenIf(cond: Expr, thenItems: List[Tree], elseItems: List[Tree]) extends Gen
   case class GenFor(inits: List[Stmt], cond: Option[Expr], step: List[Stmt], body: List[Tree])
       extends Gen

@@ -22,6 +22,7 @@ import com.argondesign.alogic.core.Bindings
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Symbols._
+import com.argondesign.alogic.core.Types.TypeInstance
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.typer.Typer
 import com.argondesign.alogic.util.BigIntOps._
@@ -34,16 +35,24 @@ import scala.collection.mutable.ListBuffer
 private trait Generatable {
   def isExpectedType(tree: Tree): Boolean
   val description: String
+  def convertDecl(gen: GenDecl): Tree = unreachable
 }
 
 private object generatableStmt extends Generatable {
   def isExpectedType(tree: Tree): Boolean = tree.isInstanceOf[Stmt]
   val description = "statement"
+  override def convertDecl(gen: GenDecl): StmtDecl = StmtDecl(gen.decl) withLoc gen.loc
 }
 
 private object generatableCase extends Generatable {
   def isExpectedType(tree: Tree): Boolean = tree.isInstanceOf[Case]
   val description = "case clause"
+}
+
+private object generatableEnt extends Generatable {
+  def isExpectedType(tree: Tree): Boolean = tree.isInstanceOf[Ent]
+  val description = "entity contents"
+  override def convertDecl(gen: GenDecl): EntDecl = EntDecl(gen.decl) withLoc gen.loc
 }
 
 private final class Generate(
@@ -58,20 +67,40 @@ private final class Generate(
   override val typed: Boolean = false
 
   // The symbols produced by the current gen instance
-  private val symbolMap = mutable.Map(newSymbols.toSeq: _*)
+  private val symbolMap = mutable.Map from newSymbols
 
   // Type check trees, yield Nil if type error, otherwise yield result
   private def typeCheck(trees: Tree*)(result: => List[Tree]): List[Tree] = {
     if (trees map typer exists { _.tpe.isError }) Nil else result
   }
 
-  private def flattenThickets(tree: Tree): List[Tree] = tree match {
-    case Thicket(trees) => trees
-    case tree           => List(tree)
-  }
-
   // Compute the generated tree from generate
   private def generate(gen: Gen, dispatcher: Generatable): List[Tree] = {
+
+    def process(bindings: Bindings, trees: List[Tree]): List[Tree] = {
+      // Clone function, instance and entity symbols up front to use by
+      // forward references
+      val sm = Map from {
+        symbolMap.iterator concat {
+          trees collect {
+            case EntFunction(Sym(symbol: TermSymbol), _) =>
+              symbol -> cc.newSymbolLike(symbol)
+            case EntInstance(Sym(symbol: TermSymbol), _, _, __) =>
+              symbol -> cc.newSymbolLike(symbol)
+            case EntEntity(Entity(Sym(symbol: TypeSymbol), _)) =>
+              symbol -> cc.newSymbolLike(symbol)
+          }
+        }
+      }
+
+      // Generate all trees
+      val subGen = new Generate(bindings, sm, Some(dispatcher))
+      trees map subGen flatMap {
+        case Thicket(ts) => ts
+        case tree        => List(tree)
+      }
+    }
+
     def generateFor(bindings: Bindings,
                     terminate: Bindings => Option[Boolean],
                     loc: Loc,
@@ -83,8 +112,7 @@ private final class Generate(
       def loop(bindings: Bindings): Unit = terminate(bindings) match {
         case None => cc.error(loc, "Condition of 'gen for' is not a compile time constant")
         case Some(false) =>
-          val subGenerate = new Generate(bindings, symbolMap.toMap, Some(dispatcher))
-          buf appendAll { body map subGenerate flatMap flattenThickets }
+          buf appendAll process(bindings, body)
           loop(StaticEvaluation(step, bindings)._2)
         case _ => ()
       }
@@ -94,8 +122,6 @@ private final class Generate(
       buf.toList
     }
 
-    lazy val subGenerate = new Generate(bindings, symbolMap.toMap, Some(dispatcher))
-
     gen match {
       case GenIf(cond, thenItems, elseItems) =>
         typeCheck(cond) {
@@ -103,8 +129,8 @@ private final class Generate(
             case None =>
               cc.error(cond, "Condition of 'gen if' is not a compile time constant")
               Nil
-            case Some(v) if v != 0 => thenItems map subGenerate flatMap flattenThickets
-            case _                 => elseItems map subGenerate flatMap flattenThickets
+            case Some(v) if v != 0 => process(bindings, thenItems)
+            case _                 => process(bindings, elseItems)
           }
         }
 
@@ -189,6 +215,7 @@ private final class Generate(
       case GenFor(_, None, _, _)               => unreachable
       case GenRange(Decl(_, Some(_)), _, _, _) => unreachable
       case GenRange(_: DeclIdent, _, _, _)     => unreachable
+      case _: GenDecl                          => unreachable // Handled in transform
     }
   }
 
@@ -201,6 +228,12 @@ private final class Generate(
   // Only go one Gen deep
   override def skip(tree: Tree): Boolean = generated.nonEmpty
 
+  private def invalidGenSyntax(tree: Tree): Unit = {
+    val desc = dispatcher.get.description
+    cc.error(tree, s"'gen' construct yields invalid syntax, $desc is expected")
+    generated = Some(Nil) // To prevent further descent
+  }
+
   override def enter(tree: Tree): Unit = {
     assert(!tree.isInstanceOf[Gen] || generated.isEmpty)
     tree match {
@@ -212,6 +245,16 @@ private final class Generate(
       case CaseGen(gen) =>
         generated = Some(generate(gen, generatableCase))
 
+      // Root Gen that must produce entity contents
+      case EntGen(gen) =>
+        generated = Some(generate(gen, generatableEnt))
+
+      // Declaration inside gen block
+      case _: GenDecl =>
+        if (dispatcher.get eq generatableCase) {
+          invalidGenSyntax(tree)
+        }
+
       // Gen nested inside outer Gen node, must produce whatever it's nested inside
       case gen: Gen =>
         assert(dispatcher.nonEmpty)
@@ -221,10 +264,7 @@ private final class Generate(
       case _ if dispatcher.isEmpty => ()
 
       // Die if the wrong kind of tree is generated
-      case _ if level == 0 && !dispatcher.get.isExpectedType(tree) =>
-        val desc = dispatcher.get.description
-        cc.error(tree, s"'gen' construct yields invalid syntax, $desc is expected")
-        generated = Some(Nil) // To prevent further descent
+      case _ if level == 0 && !dispatcher.get.isExpectedType(tree) => invalidGenSyntax(tree)
 
       case _ => ()
     }
@@ -249,10 +289,16 @@ private final class Generate(
         Thicket(result) withLoc tree.loc
       }
 
+      // TODO: Check no defs after contents
+      case _: EntGen => Thicket(generated.get) withLoc tree.loc
+
+      // Convert GenDecls
+      case gdecl: GenDecl => dispatcher.get.convertDecl(gdecl)
+
       // Replace nested gen with the generated result
       case _: Gen => Thicket(generated.get) withLoc tree.loc
 
-      // Clone symbols which are declared inside a gen
+      // Clone variable symbols which are declared inside a gen
       case Decl(symbol, init) if !symbol.kind.isGen && dispatcher.nonEmpty =>
         val newSymbol = cc.newSymbolLike(symbol)
         newSymbol.attr update symbol.attr
@@ -265,6 +311,17 @@ private final class Generate(
         bindings.get(symbol) orElse {
           symbolMap.get(symbol) map { ExprRef(_) withLoc tree.loc }
         } getOrElse tree
+
+      case ExprRef(symbol: TypeSymbol) =>
+        symbolMap.get(symbol) map { ExprRef(_) withLoc tree.loc } getOrElse tree
+
+      case Sym(symbol) =>
+        symbolMap.get(symbol) map { Sym(_) withLoc tree.loc } getOrElse tree
+
+      // Update instance symbol types
+      case EntInstance(Sym(iSymbol), Sym(eSymbol: TypeSymbol), _, _) =>
+        iSymbol.kind = TypeInstance(eSymbol)
+        tree
 
       case _ => tree
     }

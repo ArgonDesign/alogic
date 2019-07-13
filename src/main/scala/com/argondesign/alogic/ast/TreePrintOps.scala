@@ -134,6 +134,14 @@ trait TreePrintOps { this: Tree =>
       sb append "\n"
     }
 
+    entity.body foreach {
+      case EntGen(gen) =>
+        sb append "\n"
+        sb append s"${i}  ${v(indent + 1)(gen)}"
+        sb append "\n"
+      case _ =>
+    }
+
     sb append s"\n${i}}"
     sb.toString
   }
@@ -164,6 +172,8 @@ trait TreePrintOps { this: Tree =>
     val i = "  " * indent
     tree match {
       case expr: Expr => v(expr)
+
+      case _: Thicket => "thicket(...)"
 
       case Root(typeDefinitions, entity) => {
         s"""|${typeDefinitions map v(indent) mkString s"\n\n${i}"}
@@ -208,7 +218,7 @@ trait TreePrintOps { this: Tree =>
         val pas = for ((pn, pa) <- paramNames zip paramArgs) yield {
           s"${pn} = ${v(indent)(pa)}"
         }
-        s"${attrStr(indent, ref)}new ${v(indent)(ref)} = ${v(indent)(module)}(${pas mkString ", "});"
+        s"${attrStr(indent, ref)}${v(indent)(ref)} = new ${v(indent)(module)}(${pas mkString ", "});"
       }
       case EntConnect(lhs, rhs) => s"${v(lhs)} -> ${rhs map v mkString ", "};"
       case EntCombProcess(stmts) => {
@@ -232,9 +242,9 @@ trait TreePrintOps { this: Tree =>
             |${i}}""".stripMargin
       }
       case EntVerbatim(lang, body) => s"verbatim ${lang} {${body}}"
+      case EntGen(gen)             => v(indent)(gen)
 
-      case Thicket(trees) => "thicket(...)"
-
+      case GenDecl(decl) => s"${v(indent)(decl)};"
       case GenIf(cond, thenItems, Nil) => {
         s"""|gen if (${v(cond)}) {
             |${i}  ${thenItems map v(indent + 1) mkString s"\n${i}  "}

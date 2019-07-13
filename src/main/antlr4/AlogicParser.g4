@@ -67,7 +67,7 @@ kind
 entity
   : attr?
     (variant='fsm' | variant='network' | variant='verbatim' 'entity') IDENTIFIER '{'
-      (decl ';')*
+      (decl)*
       (entity_content)*
     '}'
   ;
@@ -76,7 +76,7 @@ entity
 // Declarations
 ///////////////////////////////////////////////////////////////////////////////
 
-decl: attr? declbase ('=' expr)? ;
+decl: attr? declbase ('=' expr)? ';' ;
 
 declbase
   : kind IDENTIFIER                                         # DeclVar
@@ -105,12 +105,13 @@ storage_type
 ///////////////////////////////////////////////////////////////////////////////
 
 entity_content
-  : (attr? autoinst='new')? entity                                          # EntityContentEntity
-  | attr? IDENTIFIER eqsign='=' 'new' IDENTIFIER '(' param_assigns ')' ';'  # EntityContentInstance
-  | lhs=expr '->' rhs+=expr (',' rhs+=expr)* ';'                            # EntityContentConnect
-  | 'fence' block                                                           # EntityContentFenceBlock
-  | attr? 'void' IDENTIFIER '(' ')' block                                   # EntityContentFunction
-  | 'verbatim' IDENTIFIER VERBATIM_BODY                                     # EntityContentVerbatimBlock
+  : (attr? autoinst='new')? entity                                          # EntEntity
+  | attr? IDENTIFIER eqsign='=' 'new' IDENTIFIER '(' param_assigns ')' ';'  # EntInstance
+  | lhs=expr '->' rhs+=expr (',' rhs+=expr)* ';'                            # EntConnect
+  | 'fence' block                                                           # EntFenceBlock
+  | attr? 'void' IDENTIFIER '(' ')' block                                   # EntFunction
+  | 'verbatim' IDENTIFIER VERBATIM_BODY                                     # EntVerbatimBlock
+  | generate                                                                # EntGen
   ;
 
 param_assigns : (IDENTIFIER '=' expr (','  IDENTIFIER '=' expr)*)? ;
@@ -132,9 +133,11 @@ gen
 genitems : genitem* ;
 
 genitem
-  : generate    # GenItemGen
-  | statement   # GenItemStmt
-  | case_clause # GenItemCase
+  : generate        # GenItemGen
+  | decl            # GenItemDecl
+  | statement       # GenItemStmt
+  | case_clause     # GenItemCase
+  | entity_content  # GenItemEnt
   ;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -156,7 +159,7 @@ statement
   | 'break' ';'                                                         # StmtBreak
   | 'continue' ';'                                                      # StmtContinue
   | 'return' ';'                                                        # StmtReturn
-  | decl ';'                                                            # StmtDecl
+  | decl                                                                # StmtDecl
   | assignment ';'                                                      # StatementAssignment
   | expr ';'                                                            # StmtExpr
   | generate                                                            # StmtGen

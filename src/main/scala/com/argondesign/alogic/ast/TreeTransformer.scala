@@ -128,6 +128,29 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
         } tap { _ =>
           entityStack.pop()
         }
+        case node: GenDecl => {
+          val decl = walk(node.decl)
+          doTransform(TreeCopier(node)(decl))
+        }
+        case node: GenIf => {
+          val cond = walk(node.cond)
+          val thenItems = walk(node.thenItems)
+          val elseItems = walk(node.elseItems)
+          doTransform(TreeCopier(node)(cond, thenItems, elseItems))
+        }
+        case node: GenFor => {
+          val inits = walk(node.inits)
+          val cond = walk(node.cond)
+          val step = walk(node.step)
+          val body = walk(node.body)
+          doTransform(TreeCopier(node)(inits, cond, step, body))
+        }
+        case node: GenRange => {
+          val decl = walk(node.decl)
+          val end = walk(node.end)
+          val body = walk(node.body)
+          doTransform(TreeCopier(node)(decl, end, body))
+        }
         case node: EntDecl => {
           val decl = walk(node.decl)
           doTransform(TreeCopier(node)(decl))
@@ -162,24 +185,9 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
           doTransform(TreeCopier(node)(stmts))
         }
         case node: EntVerbatim => doTransform(node)
-        case node: GenIf => {
-          val cond = walk(node.cond)
-          val thenItems = walk(node.thenItems)
-          val elseItems = walk(node.elseItems)
-          doTransform(TreeCopier(node)(cond, thenItems, elseItems))
-        }
-        case node: GenFor => {
-          val inits = walk(node.inits)
-          val cond = walk(node.cond)
-          val step = walk(node.step)
-          val body = walk(node.body)
-          doTransform(TreeCopier(node)(inits, cond, step, body))
-        }
-        case node: GenRange => {
-          val decl = walk(node.decl)
-          val end = walk(node.end)
-          val body = walk(node.body)
-          doTransform(TreeCopier(node)(decl, end, body))
+        case node: EntGen => {
+          val gen = walk(node.gen)
+          doTransform(TreeCopier(node)(gen))
         }
         case node: StmtBlock => {
           val body = walk(node.body)
@@ -389,7 +397,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
 
         def add(node: Tree, symbol: Symbol): Unit = {
           if (checkDefs && (set contains symbol)) {
-            cc.ice(node, "Symbol declared multiple times")
+            cc.ice(node, "Symbol declared multiple times", this.getClass.getName)
           }
           set add symbol
         }

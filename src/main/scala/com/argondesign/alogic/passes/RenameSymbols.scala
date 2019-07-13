@@ -27,15 +27,18 @@ import scala.collection.mutable
 final class RenameSymbols(implicit cc: CompilerContext) extends TreeTransformer {
 
   override protected def skip(tree: Tree): Boolean = tree match {
-    case _: Entity  => false
-    case _: EntDecl => false
-    case _          => true
+    case _: Entity      => false
+    case _: EntDecl     => false
+    case _: EntInstance => false
+    case _              => true
   }
 
   private[this] val nameMap = mutable.Map[String, List[TermSymbol]]() withDefaultValue Nil
 
   override def enter(tree: Tree): Unit = tree match {
     case EntDecl(Decl(symbol, _)) => nameMap(symbol.name) ::= symbol
+
+    case EntInstance(Sym(symbol: TermSymbol), _, _, _) => nameMap(symbol.name) ::= symbol
 
     case _ => ()
   }

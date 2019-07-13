@@ -147,6 +147,22 @@ object TreeCopier {
     }
   }
 
+  final def apply(tree: EntGen)(gen: Tree): EntGen = {
+    if (gen eq tree.gen) {
+      tree
+    } else {
+      EntGen(gen.asInstanceOf[Gen]) withLoc tree.loc
+    }
+  }
+
+  final def apply(tree: GenDecl)(decl: Tree): GenDecl = {
+    if (decl eq tree.decl) {
+      tree
+    } else {
+      GenDecl(decl.asInstanceOf[Declaration]) withLoc tree.loc
+    }
+  }
+
   final def apply(tree: GenIf)(cond: Tree, thenItems: List[Tree], elseItems: List[Tree]): GenIf = {
     if ((cond eq tree.cond) && (thenItems eq tree.thenItems) && (elseItems eq tree.elseItems)) {
       tree

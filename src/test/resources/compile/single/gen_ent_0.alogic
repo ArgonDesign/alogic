@@ -1,0 +1,36 @@
+network gen_ent_0 {
+  in  u1  i_0;
+  in  u1  i_1;
+  in  u1  i_2;
+  in  u1  i_3;
+
+  out u1  o_0;
+  out u1  o_1;
+  out u1  o_2;
+  out u1  o_3;
+
+  fsm connect {
+    in       u1 p_i;
+    out wire u1 p_o;
+
+    void main() {
+      p_o = p_i;
+      fence;
+    }
+  }
+
+  gen for (uint n <= 3) {
+    inst = new connect();
+
+    gen if (n == 0) {
+      i_0 -> inst.p_i; inst.p_o -> o_0;
+    } else if (n == 1) {
+      i_1 -> inst.p_i; inst.p_o -> o_1;
+    } else if (n == 2) {
+      i_2 -> inst.p_i; inst.p_o -> o_2;
+    } else {
+      i_3 -> inst.p_i; inst.p_o -> o_3;
+    }
+  }
+}
+

@@ -323,13 +323,29 @@ object SpecializeParam extends Pass {
           } flatten
         }
 
+        // Entities referenced by anything other than instantiations directly
+        // in the specialized entity (which have been specialized above)
+        val entitiesToRetain = Set from {
+          special.body filter {
+            case _: EntInstance => false
+            case _              => true
+          } flatMap { tree =>
+            tree collect {
+              case ExprRef(symbol: TypeSymbol) if symbol.kind.isEntity => symbol
+              case EntInstance(_, Sym(symbol: TypeSymbol), _, _)       => symbol
+            }
+          }
+        }
+
+        // Replace nested entities and instantiations with the specialized ones
         val newBody = special.body filter {
-          case _: EntEntity   => false
+          // Retain original entities still referenced, drop others
+          case EntEntity(Entity(Sym(symbol: TypeSymbol), _)) => entitiesToRetain contains symbol
+          // Drop instances
           case _: EntInstance => false
           case _              => true
         } concat newEntities concat newInstanceOpts.flatten
 
-        // Replace nested entities and instantiations with the specialized ones
         Some(special.copy(body = newBody) withLoc special.loc)
       }
 

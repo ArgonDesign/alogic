@@ -183,28 +183,26 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
     "ensure only compile time known values are declared as unsized numbers" - {
       for {
         (src, err) <- List(
-          ("param int a = 1", ""),
-          ("param uint a = 1", ""),
-          ("const int a = 1", ""),
-          ("const uint a = 1", ""),
-          ("pipeline int a", "Only compile time constant scalars can be declared with type 'int'"),
-          ("pipeline uint a",
-           "Only compile time constant scalars can be declared with type 'uint'"),
-          ("in int a", "Only compile time constant scalars can be declared with type 'int'"),
-          ("in uint a", "Only compile time constant scalars can be declared with type 'uint'"),
-          ("out int a", "Only compile time constant scalars can be declared with type 'int'"),
-          ("out uint a", "Only compile time constant scalars can be declared with type 'uint'"),
-          ("int a[1]", "Only compile time constant scalars can be declared with type 'int'"),
-          ("uint a[1]", "Only compile time constant scalars can be declared with type 'uint'"),
-          ("sram int a[1]", "Only compile time constant scalars can be declared with type 'int'"),
-          ("sram uint a[1]", "Only compile time constant scalars can be declared with type 'uint'"),
-          ("int[1] a", "Only compile time constant scalars can be declared with type 'int'"),
-          ("uint[1] a", "Only compile time constant scalars can be declared with type 'uint'"),
-          ("int[2][3] a[1]", "Only compile time constant scalars can be declared with type 'int'"),
-          ("uint[2][3] a[1]",
-           "Only compile time constant scalars can be declared with type 'uint'"),
-          ("int a", "Only compile time constant scalars can be declared with type 'int'"),
-          ("uint a", "Only compile time constant scalars can be declared with type 'uint'"),
+          ("param int a = 1;", ""),
+          ("param uint a = 1;", ""),
+          ("const int a = 1;", ""),
+          ("const uint a = 1;", ""),
+          ("pipeline int a;", "int"),
+          ("pipeline uint a;", "uint"),
+          ("in int a;", "int"),
+          ("in uint a;", "uint"),
+          ("out int a;", "int"),
+          ("out uint a;", "uint"),
+          ("int a[1];", "int"),
+          ("uint a[1];", "uint"),
+          ("sram int a[1];", "int"),
+          ("sram uint a[1];", "uint"),
+          ("int[1] a;", "int"),
+          ("uint[1] a;", "uint"),
+          ("int[2][3] a[1];", "int"),
+          ("uint[2][3] a[1];", "uint"),
+          ("int a;", "int"),
+          ("uint a;", "uint"),
         )
       } {
         src in {
@@ -214,7 +212,8 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
           if (err.isEmpty) {
             cc.messages shouldBe empty
           } else {
-            cc.messages.loneElement should beThe[Error](err)
+            cc.messages.loneElement should beThe[Error](
+              s"Only compile time constant scalars can be declared with type '$err'")
           }
         }
       }
