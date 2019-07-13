@@ -51,6 +51,8 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer {
 
   private[this] val variantStack = mutable.Stack[String]()
 
+  private[this] val paramConstAllowed = mutable.Stack[Boolean](true)
+
   override def enter(tree: Tree): Unit = tree match {
     case entity @ Entity(ident: Ident, _) =>
       variantStack push {
@@ -61,6 +63,9 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer {
           case other      => cc.ice(entity, s"Unknown entity variant '$other'")
         }
       }
+      paramConstAllowed push true
+    case _: Gen =>
+      paramConstAllowed push false
     case _ =>
   }
 
@@ -143,8 +148,14 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer {
 
       TreeCopier(entity)(ident, newBody)
     } tap { _ =>
-      variantStack.pop
+      variantStack.pop()
+      paramConstAllowed.pop()
     }
+
+    case decl @ DeclIdent(_, kind, _) if !paramConstAllowed.top && (kind.isParam || kind.isConst) =>
+      val hint = if (kind.isParam) "param" else "const"
+      cc.error(decl, s"'$hint' declaration cannot appear inside 'gen' construct")
+      decl
 
     case decl @ DeclIdent(_, kind, _)
         if unitType(kind).isNum && !kind.isConst && !kind.isParam && !kind.isGen => {
@@ -217,15 +228,21 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer {
       } getOrElse decl
     }
 
-    case GenFor(inits, cond, step, _) => {
-      if (cond.isEmpty) cc.error(tree, "'gen for' must have a termination condition")
-      if (step.isEmpty) cc.error(tree, "'gen for' must have at least one step statement")
-      if (inits.isEmpty) {
-        cc.error(tree, "'gen for' must have at least one declaration initializer")
-      } else if (inits exists { !_.isInstanceOf[StmtDecl] }) {
-        cc.error(tree, "'gen for' must use only declaration initializers")
+    case gen: Gen => {
+      gen match {
+        case GenFor(inits, cond, step, _) =>
+          if (cond.isEmpty) cc.error(tree, "'gen for' must have a termination condition")
+          if (step.isEmpty) cc.error(tree, "'gen for' must have at least one step statement")
+          if (inits.isEmpty) {
+            cc.error(tree, "'gen for' must have at least one declaration initializer")
+          } else if (inits exists { !_.isInstanceOf[StmtDecl] }) {
+            cc.error(tree, "'gen for' must use only declaration initializers")
+          }
+          tree
+        case _ => tree
       }
-      tree
+    } tap { _ =>
+      paramConstAllowed.pop()
     }
 
     case StmtRead() => {
@@ -334,6 +351,7 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer {
 
   override def finalCheck(tree: Tree): Unit = {
     assert(variantStack.isEmpty)
+    assert(paramConstAllowed.sizeIs == 1)
   }
 
   @tailrec

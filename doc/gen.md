@@ -10,11 +10,12 @@ Alogic supports compile time code generation using the `gen` construct,
 which is similar to the Verilog generate construct.
 
 The compiler will process all `gen` constructs to produce expanded
-source files prior to compilation. `gen` constructs are expanded after
+source code prior to compilation. `gen` constructs are expanded after
 [parameter specialization](params.md#parameter_specialization) but
 before type checking or control flow conversion. This allows `gen`
-constructs to depend on final parameter values and produces arbitrary
-code fragments that are syntactically valid.
+constructs to depend on final parameter values and produce arbitrary
+code fragments that are syntactically valid in the context of the `gen`
+construct.
 
 The constructs are introduced with examples producing Alogic statements,
 but `gen` constructs can be used to produce various language fragments.
@@ -75,7 +76,7 @@ fsm delay {
 }
 ```
 
-Observe that the then branch of the `gen if` is a combinatorial
+Observe that the then branch of the `gen if` is a combinational
 statement, while the else branch is a control statement, which cannot be
 expressed with a simple `if` statement, even if the condition is a
 compile time constant.
@@ -119,7 +120,7 @@ fsm invert_a_lot {
 }
 ```
 
-Note that the above `gen for` yields combinatorial statements and is
+Note that the above `gen for` yields combinational statements and is
 equivalent to the following if P is say 3:
 
 ```
@@ -184,7 +185,7 @@ fsm adding__P_3 {
 #### Ranged `gen for`
 
 As using `gen for` with an incrementing variable is common, there is a
-shorthand syntax for this case:
+shorthand syntax for writing this:
 
 ```
 gen for (uint N < 4) {
@@ -321,6 +322,63 @@ fsm twiddle {
     }
     fence;
   }
+}
+```
+
+Generating entity contents:
+
+```
+network optional_buffer {
+  param bool BUFFERED;
+    
+  in  sync bool i;
+  out sync bool o;
+    
+  gen if (BUFFERED) {
+    // This will cause 'o' to have an output register by default
+    // acting as a buffer and causing a one cycle delay
+    new fsm delay {
+      void main() {
+        o = i;
+      }
+    }
+  } else {
+    // Wire straight through
+    i -> o;
+  }
+}
+```
+
+There is one restriction on generating entity contents, which is that
+`param` and `const` declarations must appear directly under the
+containing entity, and not inside a `gen` construct. It is still
+possible to create parametrized nested entities inside a `gen`, so this
+is possible:
+
+```
+network foo {
+  param bool P;
+
+  gen if (P) {
+    fsm nested {
+      param uint Q; // OK, it is directly under the containing entity,
+                    // even though the declaration is under a 'gen'
+      ...
+    }
+    ...    
+  }
+}
+```
+
+The following however will raise a compiler error:
+
+```
+network foo {
+  param bool P;
+  gen if (P) {
+    param bool Q; // Error, must appear directly under containing entity
+  }
+  ...    
 }
 ```
 

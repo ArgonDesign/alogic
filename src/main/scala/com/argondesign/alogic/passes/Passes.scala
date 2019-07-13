@@ -33,8 +33,7 @@ object Passes extends ChainingSyntax {
       ////////////////////////////////////////////////////////////////////////
       Checker,
       Namer,
-      SpecializeParam,
-      Generate,
+      Specialize,
       // Any passes between here and the middle end can only perform checks
       // and cannot re-write any trees unless errors have been detected
       Typer(externalRefs = false),

@@ -1,0 +1,48 @@
+network recursive_adder_tree {
+  in  u32[16] p_i;
+  out u36     p_o;
+
+  network tree {
+    param uint W;
+    param uint N;
+
+    const uint OW = W + $clog2(N);
+
+    in       uint(W)[N]  p_ii;
+    out wire uint(OW)    p_oo;
+
+    new fsm split {
+      out wire uint(W*N/2) o_lo;
+      out wire uint(W*N/2) o_hi;
+      void main() {
+        uint(W*N) flat = p_ii;
+        o_lo = flat[0     +: W*N/2];
+        o_hi = flat[W*N/2 +: W*N/2];
+        fence;
+      }
+    }
+
+    new fsm sum {
+      in  uint(OW-1) a;
+      in  uint(OW-1) b;
+      void main() {
+        p_oo = 'a + 'b;
+        fence;
+      }
+    }
+
+    gen if (N == 2) {
+      split.o_lo -> sum.a;
+      split.o_hi -> sum.b;
+    } else {
+      tree_lo = new tree(W=W, N=N/2);
+      tree_hi = new tree(W=W, N=N/2);
+      split.o_lo -> tree_lo.p_ii; tree_lo.p_oo -> sum.a;
+      split.o_hi -> tree_hi.p_ii; tree_hi.p_oo -> sum.b;
+    }
+  }
+
+  tree = new tree(W=32, N=16);
+
+  p_i -> tree.p_ii; tree.p_oo -> p_o;
+}

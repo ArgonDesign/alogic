@@ -16,6 +16,7 @@ package com.argondesign.alogic.ast
 
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Symbols.TypeSymbol
+import com.argondesign.alogic.core.Types.TypeEntity
 import com.argondesign.alogic.util.unreachable
 
 trait EntityOps { this: Entity =>
@@ -41,7 +42,21 @@ trait EntityOps { this: Entity =>
   }
 
   lazy val name = this.ref match {
-    case Ident(name) => name
-    case Sym(symbol) => symbol.name
+    case Ident(n) => n
+    case Sym(s)   => s.name
+  }
+
+  // Get the type of the entity based on contained parameter and port declarations
+  def typeBasedOnContents: TypeEntity = {
+    val paramSymbols = declarations collect {
+      case Decl(s, _) if s.kind.isParam => s
+    }
+
+    val portSymbols = declarations collect {
+      case Decl(s, _) if s.kind.isIn  => s
+      case Decl(s, _) if s.kind.isOut => s
+    }
+
+    TypeEntity(name, portSymbols, paramSymbols)
   }
 }

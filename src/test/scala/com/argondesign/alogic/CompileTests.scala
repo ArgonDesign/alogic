@@ -45,7 +45,7 @@ final class CompileTests extends FreeSpec with Matchers {
       Settings(
         moduleSearchDirs = List(path),
         entityWriterFactory = entityWriterFactory,
-        dumpTrees = true
+        dumpTrees = false
       )
     )
 

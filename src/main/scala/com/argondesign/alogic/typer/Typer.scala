@@ -67,7 +67,7 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
 
   private def error(tree: Tree, mark: Tree, msg: String*): Unit = {
     if (msg.nonEmpty) {
-      cc.error(tree, msg: _*)
+      cc.error(mark, msg: _*)
     }
     if (tree.hasTpe) {
       assert(tree.tpe.isError)

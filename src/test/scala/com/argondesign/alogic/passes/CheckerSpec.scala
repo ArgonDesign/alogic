@@ -817,6 +817,52 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         }
       }
     }
+
+    "reject illegal gen content" - {
+      "'param' under gen" in {
+        """|fsm a {
+           |  gen if (1) {
+           |    param uint N;
+           |  }
+           |}""".stripMargin.asTree[Entity] rewrite checker
+        cc.messages.loneElement should beThe[Error] {
+          "'param' declaration cannot appear inside 'gen' construct"
+        }
+      }
+
+      "'const' under gen" in {
+        """|fsm a {
+           |  gen if (1) {
+           |    const uint N = 0;
+           |  }
+           |}""".stripMargin.asTree[Entity] rewrite checker
+        cc.messages.loneElement should beThe[Error] {
+          "'const' declaration cannot appear inside 'gen' construct"
+        }
+      }
+
+      "'param' under entity under gen" in {
+        """|network a {
+           |  gen if (1) {
+           |    fsm b {
+           |      param uint N;
+           |    }
+           |  }
+           |}""".stripMargin.asTree[Entity] rewrite checker
+        cc.messages shouldBe empty
+      }
+
+      "'const' under entity under gen" in {
+        """|network a {
+           |  gen if (1) {
+           |    fsm b {
+           |      const uint N = 0;
+           |    }
+           |  }
+           |}""".stripMargin.asTree[Entity] rewrite checker
+        cc.messages shouldBe empty
+      }
+    }
   }
 
 }
