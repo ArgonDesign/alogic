@@ -57,7 +57,7 @@ final class SplitStructsA(implicit cc: CompilerContext) extends TreeTransformer 
                 case _: TypeStruct => fKind
                 case _             => unreachable
               }
-              cc.newTermSymbol(fName, tree.loc, nKind)
+              cc.newTermSymbol(fName, symbol.loc, nKind)
             }
             val widths = newSymbols map { _.kind.width }
             val offsets = widths.scanLeft(0)(_ + _)
