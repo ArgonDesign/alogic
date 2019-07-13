@@ -38,6 +38,7 @@ import scala.collection.mutable
 final class Namer(implicit cc: CompilerContext) extends TreeTransformer { namer =>
 
   override val typed: Boolean = false
+  override val checkDefs: Boolean = false
 
   final private[this] object Scopes {
     private type SymTab = mutable.HashMap[Name, Symbol]

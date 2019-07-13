@@ -345,6 +345,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
   //////////////////////////////////////////////////////////////////////////////
 
   val checkRefs = true
+  val checkDefs = true
 
   override def defaultCheck(orig: Tree, tree: Tree): Unit = {
     assert(entityStack.isEmpty)
@@ -387,7 +388,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
         val set = mutable.Set[Symbol]()
 
         def add(node: Tree, symbol: Symbol): Unit = {
-          if (set contains symbol) {
+          if (checkDefs && (set contains symbol)) {
             cc.ice(node, "Symbol declared multiple times")
           }
           set add symbol
