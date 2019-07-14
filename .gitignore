@@ -1,4 +1,5 @@
 /src/main/antlr4/AlogicLexer.tokens
+/verilator
 
 /.cache-tests
 

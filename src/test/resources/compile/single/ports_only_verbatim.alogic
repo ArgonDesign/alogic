@@ -1,3 +1,4 @@
+// @verilator-lint-off
 verbatim entity ports_only_verbatim {
   (* unused *) in             u8 ia;
   (* unused *) in sync        u8 ib;

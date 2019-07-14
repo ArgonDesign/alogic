@@ -34,7 +34,7 @@ case class Settings(
       case (_: Entity, _: String) => ???
     },
     // The field separator sequence
-    sep: String = "_",
+    sep: String = "__",
     // The strategy for handling uninitialized local variables
     uninitialized: UninitializedLocals.Type = UninitializedLocals.None,
     // Output prefix to use

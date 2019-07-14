@@ -1,0 +1,30 @@
+#!/bin/bash
+
+stderr () {
+  echo "$(basename $0): $1" >&2
+}
+
+error () {
+  stderr "ERROR: $1"; exit 1
+}
+
+[[ ! -e verilator ]] || error "verilator directory already exists"
+
+unset VERILATOR_ROOT
+
+REMOTE=http://git.veripool.org/git/verilator
+REFSPEC=v4.016
+
+git clone $REMOTE verilator
+
+cd verilator
+
+git checkout $REFSPEC
+
+mkdir install
+
+autoconf
+./configure --prefix=$(readlink -f install)
+
+make -j$(($(nproc) * 2))
+make install

@@ -33,7 +33,7 @@ trait AlogicTest
     with OptionValues
     with Inspectors
     with Inside
-    with OneInstancePerTest
+    with OneInstancePerTest // ????
     with ChainingSyntax {
 
   override def withFixture(test: NoArgTest) = {

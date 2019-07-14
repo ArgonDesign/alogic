@@ -10,10 +10,11 @@ struct b {
 };
 
 fsm atbits {
-  in sync uint(@bits(b)) p_in;
+  in sync uint(@bits(b)) p_i;
+  out sync u11 p_o;
 
   void main() {
-    p_in.read();
+    p_o.write(p_i.read());
     fence;
   }
 }

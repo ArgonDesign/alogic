@@ -1,4 +1,10 @@
-verbatim entity sized_param_init_1 {
+// @out-top: sized_param_init_1__DEPTH_512
+fsm sized_param_init_1 {
   param u32 DEPTH = 32'd512;
-  out uint(DEPTH*32'd2) data_cnt;
+  out wire uint(DEPTH*32'd2) p_o;
+
+  void main() {
+    p_o = 0;
+    fence;
+  }
 }

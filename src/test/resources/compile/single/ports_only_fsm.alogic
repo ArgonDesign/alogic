@@ -1,3 +1,4 @@
+// @verilator-lint-off
 fsm ports_only_fsm {
   (* unused *) in             u8 ia;
   (* unused *) in sync        u8 ib;
