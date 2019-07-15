@@ -22,8 +22,6 @@ import com.argondesign.alogic.core.Types.TypeEntity
 class SymbolAttributes {
   // Symbol is meant to be unused, do not warn
   val unused = new Attribute[Boolean]()
-  // Symbol is meant to be shadowed, do not warn
-  val shaded = new Attribute[Boolean]()
 
   // The variant flavour of this entity (e.g: fsm/network/verbatim)
   val variant = new Attribute[String]()
@@ -116,7 +114,6 @@ class SymbolAttributes {
   // Iterator that enumerates all fields above
   private def attrIterator = Iterator(
     unused,
-    shaded,
     variant,
     topLevel,
     entry,
@@ -151,7 +148,6 @@ class SymbolAttributes {
   // Iterator that enumerates names of fields above
   private def nameIterator = Iterator(
     "unused",
-    "shaded",
     "variant",
     "topLevel",
     "entry",
@@ -196,7 +192,6 @@ class SymbolAttributes {
       for ((name, expr) <- that.attr) {
         name match {
           case "unused"     => unused set true
-          case "shaded"     => shaded set true
           case "//variant"  => variant set expr.asInstanceOf[ExprStr].value
           case "stacklimit" => stackLimit set expr
           case "reclimit"   => recLimit set expr
