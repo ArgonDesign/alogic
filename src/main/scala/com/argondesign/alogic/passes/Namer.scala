@@ -13,7 +13,6 @@
 // The Namer:
 // - Constructs types and symbols for definitions
 // - Resolves identifiers to symbols
-// - Checks for unused variables
 // - Converts EntityIdent to EntityNamed
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -47,42 +46,9 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer { namer 
 
     private def current = scopes.head
 
-    private val allSet = mutable.Set[Symbol]()
+    def push(): Unit = scopes = new SymTab :: scopes
 
-    private val usedSet = mutable.Set[Symbol]()
-
-    def markUsed(symbol: Symbol): Boolean = usedSet add symbol
-
-    def push(): Unit = {
-      scopes = (new SymTab) :: scopes
-    }
-
-    def pop(): Unit = {
-      allSet ++= current.values
-
-      scopes = scopes.tail
-
-      if (scopes.isEmpty) {
-        val unusedSymbols = (allSet diff usedSet).toList sortBy { _.loc.line }
-
-        for (symbol <- unusedSymbols if !(symbol.attr.unused.get contains true)) {
-          val hint = symbol.kind match {
-            case _: TypeArray    => "Array"
-            case _: TypeCtrlFunc => "Function"
-            case _: TypeCombFunc => "Function"
-            case _: TypeEntity   => "Entity"
-            case _: TypeIn       => "Input port"
-            case _: TypeOut      => "Output port"
-            case _: TypeParam    => "Parameter"
-            case _: TypeConst    => "Constant"
-            case _: TypePipeline => "Pipeline variable"
-            case _: TypeInstance => "Instance"
-            case _               => "Variable"
-          }
-          cc.warning(symbol, s"${hint} '${symbol.name}' is unused")
-        }
-      }
-    }
+    def pop(): Unit = scopes = scopes.tail
 
     // Lookup name in symbol table
     def lookup(name: Name): Option[Symbol] = {
@@ -98,7 +64,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer { namer 
       loop(name, scopes)
     }
 
-    // Insert Symbol into current scope, and mark it unused
+    // Insert Symbol into current scope
     private def insertSymbol(symbol: Symbol): Unit = {
       val name = symbol.uniqueName
 
@@ -180,8 +146,6 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer { namer 
           s"term '${name}' defined at ${termSymbol.loc.prefix}",
           s"type '${name}' defined at ${typeSymbol.loc.prefix}"
         )
-        Scopes.markUsed(termSymbol)
-        Scopes.markUsed(typeSymbol)
         ErrorSymbol
       }
       case (None, None) => {
@@ -326,8 +290,6 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer { namer 
       val newKind = kind rewrite TypeNamer
       // Insert new type
       val symbol = Scopes.insert(cc.newTypeSymbol(ident, newKind))
-      // Don't check use of type symbols TODO: check types defined in same file
-      Scopes.markUsed(symbol)
       // Rewrite node
       val sym = Sym(symbol) withLoc ident.loc
       TypeDefinitionTypedef(sym, newKind) withLoc tree.loc
@@ -349,8 +311,6 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer { namer 
       val kind = TypeStruct(ident.name, fieldNames, newFieldKinds)
       // Insert new type
       val symbol = Scopes.insert(cc.newTypeSymbol(ident, kind))
-      // Don't check use of type symbols TODO: check types defined in same file
-      Scopes.markUsed(symbol)
       // Rewrite node
       val sym = Sym(symbol) withLoc ident.loc
       TypeDefinitionStruct(sym, fieldNames, newFieldKinds) withLoc tree.loc
@@ -377,10 +337,6 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer { namer 
 
       // Some special behavior for verbatim entities only
       if (symbol.attr.variant.value == "verbatim") {
-        // Mark all declarations used
-        for (Decl(symbol, _) <- entity.declarations) {
-          Scopes.markUsed(symbol)
-        }
         // Always lift srams
         symbol.attr.liftSrams set true
       }
@@ -399,8 +355,6 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer { namer 
       symbol.kind = TypeCtrlFunc(Nil, TypeVoid)
 
       if (ident.name == "main") {
-        // Always mark 'main' as used
-        Scopes.markUsed(symbol)
         // Mark main as an entry point
         symbol.attr.entry set true
       }
@@ -416,7 +370,6 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer { namer 
       // Lookup type symbol
       val eSymbol = lookupType(eIdent)
       val eSym = Sym(eSymbol) withLoc eIdent.loc
-      Scopes.markUsed(eSymbol)
 
       // Lookup term symbol (inserted in enter(Entity))
       val iSymbol = lookupTerm(iIdent)
@@ -438,7 +391,6 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer { namer 
         Scopes.pop()
       }
     case node @ GenRange(Decl(symbol, _), _, _, _) => {
-      Scopes.markUsed(symbol)
       node
     } tap { _ =>
       Scopes.pop()
@@ -508,7 +460,6 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer { namer 
       } else {
         lookupTermOrType(tree.loc, name)
       }
-      Scopes.markUsed(symbol)
       // Rewrite node
       ExprRef(symbol) withLoc tree.loc
     }

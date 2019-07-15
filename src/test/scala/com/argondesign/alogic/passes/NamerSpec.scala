@@ -45,14 +45,12 @@ final class NamerSpec extends FlatSpec with AlogicTest {
        |  u2 foo;
        |}""".asTree[Stmt] rewrite namer
 
-    cc.messages should have length 2
+    cc.messages should have length 1
     cc.messages(0) should beThe[Error](
       "Redefinition of name 'foo' with previous definition at",
       ".*:2"
     )
     cc.messages(0).loc.line shouldBe 3
-    cc.messages(1) should beThe[Warning]("Variable 'foo' is unused")
-    cc.messages(1).loc.line shouldBe 3
   }
 
   it should "issue error for redefinition of type" in {
@@ -75,16 +73,12 @@ final class NamerSpec extends FlatSpec with AlogicTest {
        |  { u2 foo; }
        |}""".asTree[Stmt] rewrite namer
 
-    cc.messages should have length 3
+    cc.messages should have length 1
     cc.messages(0) should beThe[Warning](
       "Definition of name 'foo' hides previous definition at",
       ".*:2"
     )
     cc.messages(0).loc.line shouldBe 3
-    cc.messages(1) should beThe[Warning]("Variable 'foo' is unused")
-    cc.messages(1).loc.line shouldBe 2
-    cc.messages(2) should beThe[Warning]("Variable 'foo' is unused")
-    cc.messages(2).loc.line shouldBe 3
   }
 
   it should "issue warning for variable hiding even for later symbol" in {
@@ -95,14 +89,12 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     cc.addGlobalEntity(entity)
     entity rewrite namer
 
-    cc.messages should have length 3
+    cc.messages should have length 1
     cc.messages(0) should beThe[Warning](
       "Definition of name 'foo' hides previous definition at",
       ".*:3"
     )
     cc.messages(0).loc.line shouldBe 2
-    cc.messages(1) should beThe[Warning]("Variable 'foo' is unused")
-    cc.messages(2) should beThe[Warning]("Function 'foo' is unused")
   }
 
   it should "cope with using the same name in non-intersecting scopes" in {
@@ -111,9 +103,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
        |  { u2 foo; }
        |}""".asTree[Stmt] rewrite namer
 
-    cc.messages should have length 2
-    cc.messages(0) should beThe[Warning]("Variable 'foo' is unused")
-    cc.messages(1) should beThe[Warning]("Variable 'foo' is unused")
+    cc.messages shouldBe empty
   }
 
   it should "cope with multi level typedefs" in {
@@ -131,10 +121,9 @@ final class NamerSpec extends FlatSpec with AlogicTest {
        |  u1 foo = bar;
        |}""".asTree[Stmt] rewrite namer
 
-    cc.messages should have length 2
+    cc.messages should have length 1
     cc.messages(0) should beThe[Error]("Name 'bar' is not defined")
     cc.messages(0).loc.line shouldBe 2
-    cc.messages(1) should beThe[Warning]("Variable 'foo' is unused")
   }
 
   it should "issue error for undefined type names" in {
@@ -142,10 +131,9 @@ final class NamerSpec extends FlatSpec with AlogicTest {
        |  foo_t foo;
        |}""".asTree[Stmt] rewrite namer
 
-    cc.messages should have length 2
+    cc.messages should have length 1
     cc.messages(0) should beThe[Error]("Type 'foo_t' is not defined")
     cc.messages(0).loc.line shouldBe 2
-    cc.messages(1) should beThe[Warning]("Variable 'foo' is unused")
   }
 
   it should "insert names from 'for ()' loop initializers into the loop scope" in {
@@ -153,14 +141,12 @@ final class NamerSpec extends FlatSpec with AlogicTest {
        | i2 b;
        |}""".asTree[Stmt] rewrite namer
 
-    cc.messages should have length 2
+    cc.messages should have length 1
     cc.messages(0) should beThe[Error](
       "Redefinition of name 'b' with previous definition at",
       ".*:1"
     )
     cc.messages(0).loc.line shouldBe 2
-    cc.messages(1) should beThe[Warning]("Variable 'b' is unused")
-    cc.messages(1).loc.line shouldBe 2
   }
 
   it should "insert names from 'let ()' initializers into the following loop scope" in {
@@ -168,14 +154,12 @@ final class NamerSpec extends FlatSpec with AlogicTest {
        | i2 a;
        |} while (1);""".asTree[Stmt] rewrite namer
 
-    cc.messages should have length 2
+    cc.messages should have length 1
     cc.messages(0) should beThe[Error](
       "Redefinition of name 'a' with previous definition at",
       ".*:1"
     )
     cc.messages(0).loc.line shouldBe 2
-    cc.messages(1) should beThe[Warning]("Variable 'a' is unused")
-    cc.messages(1).loc.line shouldBe 2
   }
 
   it should "construct struct types" in {
@@ -277,9 +261,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
         }
     }
 
-    cc.messages should have length 2
-    cc.messages(0) should beThe[Warning]("Variable 'foo_t' is unused")
-    cc.messages(1) should beThe[Warning]("Variable 'b' is unused")
+    cc.messages shouldBe empty
   }
 
   it should "resolve type names to their correct definitions - struct" in {
@@ -313,9 +295,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
         }
     }
 
-    cc.messages should have length 2
-    cc.messages(0) should beThe[Warning]("Variable 'bar_t' is unused")
-    cc.messages(1) should beThe[Warning]("Variable 'b' is unused")
+    cc.messages shouldBe empty
   }
 
   it should "resolve function references to later definitions" in {
@@ -368,8 +348,6 @@ final class NamerSpec extends FlatSpec with AlogicTest {
             sym should be theSameInstanceAs aSym
         }
     }
-
-    cc.messages.loneElement should beThe[Warning]("Instance 'a' is unused")
   }
 
   it should "resolve instantiations of nested entities" in {
@@ -394,8 +372,6 @@ final class NamerSpec extends FlatSpec with AlogicTest {
             }
         }
     }
-
-    cc.messages.loneElement should beThe[Warning]("Instance 'b' is unused")
   }
 
   it should "resolve goto targets" in {
@@ -565,10 +541,9 @@ final class NamerSpec extends FlatSpec with AlogicTest {
         }
     }
 
-    cc.messages should have length 2
+    cc.messages should have length 1
     cc.messages(0) should beThe[Error]("Name 'a' is not defined")
     cc.messages(0).loc.line shouldBe 4
-    cc.messages(1) should beThe[Warning]("Variable 'c' is unused")
   }
 
   it should "resolve names inside type arguments" in {
@@ -601,13 +576,13 @@ final class NamerSpec extends FlatSpec with AlogicTest {
         }
     }
 
-    cc.messages.loneElement should beThe[Warning]("Variable 'c' is unused")
+    cc.messages shouldBe empty
   }
 
   it should "resolve names inside array dimension" in {
     val block = """|{
                    |  i8 a;
-                   |  (* unused *) bool b[a];
+                   |  bool b[a];
                    |}""".asTree[Stmt]
 
     val tree = block rewrite namer
@@ -795,216 +770,6 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     symB.value.isTypeSymbol shouldBe true
     val symA = tree collectFirst { case Decl(symbol, _) if symbol.name == "a" => symbol }
     symA.value.kind shouldBe symB.value.kind
-  }
-
-  it should "issue warning for unused local variables" in {
-    "{ i8 b; }".asTree[Stmt] rewrite namer
-    cc.messages.loneElement should beThe[Warning]("Variable 'b' is unused")
-  }
-
-  it should "issue warning for unused local variables - but not with 'unused' attribute" in {
-    "{ (* unused *) i8 b; }".asTree[Stmt] rewrite namer
-    cc.messages shouldBe empty
-  }
-
-  it should "not issue warning for variable used in nested scope" in {
-    "{ i8 b; { b; } }".asTree[Stmt] rewrite namer
-    cc.messages shouldBe empty
-  }
-
-  it should "issue warning for unused entity variables" in {
-    val entity = "fsm a { i8 b; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
-    entity rewrite namer
-    cc.messages.loneElement should beThe[Warning]("Variable 'b' is unused")
-  }
-
-  it should "issue warning for unused entity variables - but not with 'unused' attribute" in {
-    val entity = "fsm a { (* unused *) i8 b; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
-    entity rewrite namer
-    cc.messages shouldBe empty
-  }
-
-  it should "issue warning for unused arrays" in {
-    val entity = "fsm a { i8 b[2]; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
-    entity rewrite namer
-    cc.messages.loneElement should beThe[Warning]("Array 'b' is unused")
-  }
-
-  it should "issue warning for unused arrays - but not with 'unused' attribute" in {
-    val entity = "fsm a { (* unused *) i8 b[2]; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
-    entity rewrite namer
-    cc.messages shouldBe empty
-  }
-
-  it should "issue warning for unused input ports" in {
-    val entity = "fsm a { in i8 b; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
-    entity rewrite namer
-    cc.messages.loneElement should beThe[Warning]("Input port 'b' is unused")
-  }
-
-  it should "issue warning for unused input ports - but not with 'unused' attribute" in {
-    val entity = "fsm a { (* unused *) in i8 b; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
-    entity rewrite namer
-    cc.messages shouldBe empty
-  }
-
-  it should "issue warning for unused input ports - but not in verbatim entity" in {
-    val entity = "verbatim entity a { in i8 b; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
-    entity rewrite namer
-    cc.messages shouldBe empty
-  }
-
-  it should "issue warning for unused output ports" in {
-    val entity = "fsm a { out i8 b; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
-    entity rewrite namer
-    cc.messages.loneElement should beThe[Warning]("Output port 'b' is unused")
-  }
-
-  it should "issue warning for unused output ports - but not with 'unused' attribute" in {
-    val entity = "fsm a { (* unused *) out i8 b; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
-    entity rewrite namer
-    cc.messages shouldBe empty
-  }
-
-  it should "issue warning for unused output ports - but not in verbatim entity" in {
-    val entity = "verbatim entity a { out i8 b; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
-    entity rewrite namer
-    cc.messages shouldBe empty
-  }
-
-  it should "issue warning for unused parameters" in {
-    val entity = "fsm a { param i8 b = 8'd9; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
-    entity rewrite namer
-    cc.messages.loneElement should beThe[Warning]("Parameter 'b' is unused")
-  }
-
-  it should "issue warning for unused parameters - but not with 'unused' attribute" in {
-    val entity = "fsm a { (* unused *) param i8 b = 8'd9; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
-    entity rewrite namer
-    cc.messages shouldBe empty
-  }
-
-  it should "issue warning for unused parameters - but not in verbatim entity" in {
-    val entity = "verbatim entity a { param i8 b = 8'd9; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
-    entity rewrite namer
-    cc.messages shouldBe empty
-  }
-
-  it should "issue warning for unused constants" in {
-    val entity = "fsm a { const i8 b = 8'd9; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
-    entity rewrite namer
-    cc.messages.loneElement should beThe[Warning]("Constant 'b' is unused")
-  }
-
-  it should "issue warning for unused constants - but not with 'unused' attribute" in {
-    val entity = "fsm a { (* unused *) const i8 b = 8'd9; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
-    entity rewrite namer
-    cc.messages shouldBe empty
-  }
-
-  it should "issue warning for unused pipeline variables" in {
-    val entity = "fsm a { pipeline i8 b; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
-    entity rewrite namer
-    cc.messages.loneElement should beThe[Warning]("Pipeline variable 'b' is unused")
-  }
-
-  it should "issue warning for unused pipeline variables - but not with 'unused' attribute" in {
-    val entity = "fsm a { (* unused *) pipeline i8 b; }".asTree[Entity]
-    cc.addGlobalEntity(entity)
-    entity rewrite namer
-    cc.messages shouldBe empty
-  }
-
-  it should "issue warning for unused functions" in {
-    val entity = "fsm a { void foo() {} }".asTree[Entity]
-    cc.addGlobalEntity(entity)
-    entity rewrite namer
-    cc.messages.loneElement should beThe[Warning]("Function 'foo' is unused")
-  }
-
-  it should "issue warning for unused functions - but not for main" in {
-    val entity = "fsm a { void main() {} }".asTree[Entity]
-    cc.addGlobalEntity(entity)
-    entity rewrite namer
-    cc.messages shouldBe empty
-  }
-
-  it should "issue warning for unused functions - but not with 'unused' attribute" in {
-    val entity = "fsm a { (* unused *) void foo() {} }".asTree[Entity]
-    cc.addGlobalEntity(entity)
-    entity rewrite namer
-    cc.messages shouldBe empty
-  }
-
-  it should "issue warning for unused entities" in {
-    val entity = "network a { fsm bar {} }".asTree[Entity]
-    cc.addGlobalEntity(entity)
-    entity rewrite namer
-    cc.messages.loneElement should beThe[Warning]("Entity 'bar' is unused")
-  }
-
-  it should "issue warning for unused entities - but not with 'unused' attribute" in {
-    val entity = "network a { (* unused *) fsm bar {} }".asTree[Entity]
-    cc.addGlobalEntity(entity)
-    entity rewrite namer
-    cc.messages shouldBe empty
-  }
-
-  it should "issue warning for unused instances" in {
-    val entity = "network a { new fsm bar {} }".asTree[Entity]
-    cc.addGlobalEntity(entity)
-    entity rewrite namer
-    cc.messages.loneElement should beThe[Warning]("Instance 'bar' is unused")
-  }
-
-  it should "issue warning for unused instances - but not with 'unused' attribute" in {
-    val entity = "network a { (* unused *) new fsm bar {} }".asTree[Entity]
-    cc.addGlobalEntity(entity)
-    entity rewrite namer
-    cc.messages shouldBe empty
-  }
-
-  it should "not issue warning for unused type definitions" in {
-    val root = "typedef bool b; network a { }".asTree[Root]
-    cc.addGlobalEntity(root.entity)
-    root rewrite namer
-    cc.messages shouldBe empty
-  }
-
-  it should "issue unused warnings in source line order" in {
-    """|{
-       |  bool a;
-       |  {
-       |    bool b;
-       |    {
-       |      bool c;
-       |    }
-       |  }
-       |}""".asTree[Stmt] rewrite namer
-
-    cc.messages should have length 3
-    cc.messages(0) should beThe[Warning]("Variable 'a' is unused")
-    cc.messages(0).loc.line shouldBe 2
-    cc.messages(1) should beThe[Warning]("Variable 'b' is unused")
-    cc.messages(1).loc.line shouldBe 4
-    cc.messages(2) should beThe[Warning]("Variable 'c' is unused")
-    cc.messages(2).loc.line shouldBe 6
   }
 
   it should "attach source attributes to symbols - function" in {
