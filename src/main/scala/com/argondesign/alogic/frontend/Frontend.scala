@@ -110,9 +110,9 @@ class Frontend(
         // Extract all instance entity names (from the recursively nested entities as well)
         val instantiatedEntityNamesFuture = astFuture map { root =>
           def loop(entity: Entity): List[String] = {
-            val nestedNames = entity.entities map { _.name }
+            val localNames = entity.name :: (entity.entities map { _.name })
             val requiredExternalNames = entity.instances collect {
-              case EntInstance(_, Ident(name), _, _) if !(nestedNames contains name) => name
+              case EntInstance(_, Ident(name), _, _) if !(localNames contains name) => name
             }
             requiredExternalNames ::: (entity.entities flatMap loop)
           }

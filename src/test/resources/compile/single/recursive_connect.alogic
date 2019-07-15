@@ -1,0 +1,20 @@
+network recursive_connect {
+  in  bool i;
+  out bool o;
+
+  network impl {
+    param uint P;
+    in  bool a;
+    out bool b;
+
+    gen if (P > 0) {
+      inst = new impl(P = P - 1);
+      a -> inst.a; inst.b -> b;
+    } else {
+      a -> b;
+    }
+  }
+
+  root = new impl(P=10);
+  i -> root.a; root.b -> o;
+}
