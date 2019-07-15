@@ -72,6 +72,7 @@ case class Loc(source: Source, start: Int, end: Int, point: Int) {
         lns.takeRight(4)) mkString "\n"
     }
   }
+  def file: String = source.name
   def line(implicit cc: CompilerContext): Int = cc.remapLine(source, source.lineFor(start))._2
   def prefix(implicit cc: CompilerContext): String = s"${source.name}:${line}"
 }

@@ -15,8 +15,6 @@
 
 package com.argondesign.alogic.core
 
-import java.io.PrintStream
-
 import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.util.unreachable
@@ -151,10 +149,8 @@ trait Messaging { self: CompilerContext =>
 
   final def messages: List[Message] = messageBuffer.toList
 
-  final def emitMessages(printStream: PrintStream): Unit = synchronized {
-    messageBuffer foreach { msg =>
-      printStream.println(msg.string(this))
-    }
+  final def emitMessages(): Unit = synchronized {
+    messageBuffer foreach { settings.messageEmitter(_, this) }
     messageBuffer.clear()
   }
 

@@ -33,6 +33,10 @@ case class Settings(
     entityWriterFactory: (Entity, String) => Writer = {
       case (_: Entity, _: String) => ???
     },
+    // Message emitter
+    messageEmitter: (Message, CompilerContext) => Unit = {
+      case (msg: Message, cc: CompilerContext) => Console.err.println(msg.string(cc))
+    },
     // The field separator sequence
     sep: String = "__",
     // The strategy for handling uninitialized local variables
@@ -50,5 +54,5 @@ case class Settings(
     // Reset style
     resetStyle: ResetStyle.Type = ResetStyle.AsyncLow,
     // Reset all
-    resetAll: Boolean = true
+    resetAll: Boolean = true,
 )

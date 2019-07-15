@@ -72,9 +72,9 @@ class CompilerContext(val settings: Settings = Settings())
 
       Passes(frontEndTrees)(this)
     } catch {
-      case _: FatalErrorException => ()
+      case _: FatalErrorException =>
     } finally {
-      emitMessages(Console.err)
+      emitMessages()
     }
   }
 }
