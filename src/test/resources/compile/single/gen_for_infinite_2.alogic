@@ -1,0 +1,15 @@
+fsm gen_for_infinite_2 {
+  in  bool p_i;
+  out bool p_o;
+
+  void main() {
+    bool b = p_i;
+    gen for (uint N = 0; N % 2 == 0; N += 2) {
+      b = ~b;
+    }
+    p_o.write(b);
+    fence;
+  }
+}
+// :7: ERROR: 'gen for' exceeds 1024 iterations. Possibly an infinite loop,
+// :7: ERROR: ... otherwise set --gen-loop-limit to more than 1024

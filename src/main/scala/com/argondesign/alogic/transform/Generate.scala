@@ -174,15 +174,22 @@ private final class Generate(
               }
             }
             val StepStmt = TypeAssigner(StmtBlock(steps) withLoc tree.loc)
-            val history = mutable.Set[Bindings]()
+            val iteration = (LazyList from 0).iterator
+            val limit = cc.settings.genLoopLimit
             val terminate = { bindings: Bindings =>
-              val b = bindings mapValues { _.simplify }
-              if (history contains b) {
-                error(cond, "'gen for' does not terminate")
-                Some(true)
-              } else {
-                history add b
-                (cond given bindings).value map { _ == 0 }
+              (cond given bindings).value map { value =>
+                if (value == 0) {
+                  true
+                } else if (iteration.next() >= limit) {
+                  error(
+                    cond,
+                    s"'gen for' exceeds ${limit} iterations. Possibly an infinite loop,",
+                    s"otherwise set --gen-loop-limit to more than ${limit}"
+                  )
+                  true
+                } else {
+                  false
+                }
               }
             }
             generateFor(initBindings, terminate, cond.loc, body, StepStmt)

@@ -55,4 +55,6 @@ case class Settings(
     resetStyle: ResetStyle.Type = ResetStyle.AsyncLow,
     // Reset all
     resetAll: Boolean = true,
+    // Gen loop iteration limit
+    genLoopLimit: Int = 1024
 )

@@ -277,6 +277,14 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
                |""".stripMargin.replace('\n', ' ')
   )
 
+  val genLoopLimit = opt[Int](
+    noshort = true,
+    descr = """|Maximum iteration count of standard 'gen for' loops before
+               |assuming the loop is infinite.
+               |""".stripMargin.replace('\n', ' '),
+    default = Some(1024)
+  )
+
   // There is no standard library call to check if the console is a terminal,
   // so we pass this hidden option from the wrapper script to help ourselves out
   val stderrisatty = toggle(noshort = true, hidden = true)
