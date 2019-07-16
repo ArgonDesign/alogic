@@ -1,0 +1,13 @@
+fsm p8009_180 {
+  in  sync u8 p_in;
+  out sync u8 p_out;
+  void main() {
+    if (p_in.valid) {
+      if (p_in == 8'd0) {
+        // Empty if statement
+      }
+      p_out.write(p_in);
+    }
+    fence;
+  }
+}

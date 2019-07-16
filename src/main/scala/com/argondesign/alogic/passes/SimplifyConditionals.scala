@@ -22,11 +22,14 @@ final class SimplifyConditionals(implicit cc: CompilerContext) extends TreeTrans
 
   override def transform(tree: Tree): Tree = tree match {
 
+    // Remove empty if
+    case StmtIf(_, Nil, Nil) => Thicket(Nil) regularize tree.loc
+
+    // Invert condition with empty else
     case StmtIf(cond, Nil, elseStmts) => {
       walk(StmtIf(!cond, elseStmts, Nil) regularize tree.loc)
     }
 
-    // TODO: What is the point of this?
     case stmt @ StmtIf(cond, _, _) => {
       cond.simplify match {
         case `cond`  => tree
