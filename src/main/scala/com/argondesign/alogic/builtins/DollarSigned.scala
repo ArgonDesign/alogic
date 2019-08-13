@@ -26,9 +26,12 @@ private[builtins] class DollarSigned(implicit cc: CompilerContext) extends Built
 
   def returnType(args: List[Expr]) = args partialMatch {
     case List(arg) if arg.tpe.isPacked => TypeSInt(ExprNum(false, arg.tpe.width) regularize arg.loc)
+    case List(arg) if arg.tpe.isNum    => TypeNum(true)
   }
 
   def isKnownConst(args: List[Expr]) = args(0).isKnownConst
 
-  def fold(loc: Loc, args: List[Expr]) = None
+  def fold(loc: Loc, args: List[Expr]) = args partialMatch {
+    case List(ExprNum(false, v)) => ExprNum(true, v)
+  }
 }

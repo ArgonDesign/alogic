@@ -10,7 +10,7 @@
 //
 // DESCRIPTION:
 //
-// Add implicit casts and convert unary ' to cast
+// Add implicit casts
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.passes
@@ -41,6 +41,19 @@ final class AddCasts(implicit cc: CompilerContext) extends TreeTransformer {
     val result = tree match {
       case decl @ Decl(symbol, Some(init)) if symbol.kind.isPacked && init.tpe.underlying.isNum => {
         val newInit = cast(symbol.kind, init)
+        if (symbol.kind.isConst) {
+          symbol.attr.init set newInit
+        }
+        decl.copy(init = Some(newInit))
+      }
+
+      case decl @ Decl(symbol, Some(init))
+          if symbol.kind.underlying.isNum && symbol.kind.isSigned != init.tpe.isSigned => {
+        val newInit = if (symbol.kind.isSigned) {
+          cc.makeBuiltinCall("$signed", init.loc, List(init))
+        } else {
+          cc.makeBuiltinCall("$unsigned", init.loc, List(init))
+        }
         if (symbol.kind.isConst) {
           symbol.attr.init set newInit
         }
@@ -115,8 +128,6 @@ final class AddCasts(implicit cc: CompilerContext) extends TreeTransformer {
           expr.copy(elseExpr = cast(tExpr.tpe, eExpr))
         }
       }
-
-      case expr @ ExprUnary("'", op) => ExprCast(expr.tpe, op)
 
       case _ => tree
     }

@@ -47,7 +47,7 @@ final class AddCastsSpec extends FreeSpec with AlogicTest {
     node rewrite typer rewrite addCasts
   }
 
-  "AddImplicitCasts should automatically insert casts" - {
+  "AddCasts should automatically insert casts" - {
     "to infer sizes of unsized literals in" - {
       "binary operator operands" - {
         for (op <- List("*", "/", "%", "+", "-", "&", "|", "^", ">", ">=", "<", "<=", "==", "!=")) {
@@ -198,19 +198,17 @@ final class AddCastsSpec extends FreeSpec with AlogicTest {
 
       "initializer expressions" - {
         for {
-          (decl, res) <- List(
-            ("(* unused *) i8 a = 2s", ExprCast(TypeSInt(8), ExprNum(true, 2))),
-            ("(* unused *) u8 a = 2s", ExprCast(TypeSInt(8), ExprNum(true, 2))),
-            ("(* unused *) i7 a = 2", ExprCast(TypeUInt(7), ExprNum(false, 2))),
-            ("(* unused *) u7 a = 2", ExprCast(TypeUInt(7), ExprNum(false, 2))),
-            ("(* unused *) param int a = '8'sd2", ExprCast(TypeNum(true), ExprInt(true, 8, 2))),
-            ("(* unused *) param uint a = '8'sd2", ExprCast(TypeNum(true), ExprInt(true, 8, 2))),
-            ("(* unused *) param int a = '8'd2", ExprCast(TypeNum(false), ExprInt(false, 8, 2))),
-            ("(* unused *) param uint a = '8'd2", ExprCast(TypeNum(false), ExprInt(false, 8, 2))),
-            ("(* unused *) const int a = '8'sd2", ExprCast(TypeNum(true), ExprInt(true, 8, 2))),
-            ("(* unused *) const uint a = '8'sd2", ExprCast(TypeNum(true), ExprInt(true, 8, 2))),
-            ("(* unused *) const int a = '8'd2", ExprCast(TypeNum(false), ExprInt(false, 8, 2))),
-            ("(* unused *) const uint a = '8'd2", ExprCast(TypeNum(false), ExprInt(false, 8, 2)))
+          (decl, pattern) <- List[(String, PartialFunction[Any, Unit])](
+            // format: off
+            ("(* unused *) i8 a = 2s", { case ExprCast(TypeSInt(Expr(8)), ExprNum(true, v)) if v == 2 => }),
+            ("(* unused *) u8 a = 2s", { case ExprCast(TypeSInt(Expr(8)), ExprNum(true, v)) if v == 2 => }),
+            ("(* unused *) i7 a = 2", { case ExprCast(TypeUInt(Expr(7)), ExprNum(false, v)) if v == 2 => }),
+            ("(* unused *) u7 a = 2", { case ExprCast(TypeUInt(Expr(7)), ExprNum(false, v)) if v == 2 => }),
+            ("(* unused *) int  a = 2s", { case ExprNum(true, v) if v == 2 => }),
+            ("(* unused *) uint a = 2s", { case ExprCall(ExprRef(s), List(ExprNum(true, v))) if v == 2 && s.name == "$unsigned" => }),
+            ("(* unused *) int  a = 2", { case ExprCall(ExprRef(s), List(ExprNum(false, v))) if v == 2 && s.name == "$signed" => }),
+            ("(* unused *) uint a = 2", { case ExprNum(false, v) if v == 2 => })
+            // format: on
           )
         } {
           decl in {
@@ -223,7 +221,7 @@ final class AddCastsSpec extends FreeSpec with AlogicTest {
             val tree = xform(entity)
             val init = tree getFirst { case Decl(_, Some(i)) => i }
             cc.messages foreach println
-            init shouldBe res
+            init should matchPattern(pattern)
             cc.messages shouldBe empty
           }
         }

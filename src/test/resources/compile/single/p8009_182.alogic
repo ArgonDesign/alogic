@@ -1,0 +1,13 @@
+// @out-top: p8009_182__N_20
+network p8009_182 {
+  param int N = 20;
+  in sync ready u8 p_in;
+  out sync ready u8 p_out;
+
+  new fsm bar {
+    void main() {
+      p_out.write(p_in.read() + N);
+      fence;
+    }
+  }
+}

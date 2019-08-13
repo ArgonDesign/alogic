@@ -39,17 +39,16 @@ final class ReplaceUnaryTicks(implicit cc: CompilerContext) extends TreeTransfor
   }
 
   override def transform(tree: Tree): Tree = tree match {
-    case ExprUnary("'", op) => {
-      val kind = kindStack.pop()
-      TypeAssigner(ExprCast(kind, op) withLoc tree.loc)
-    }
+    case ExprUnary("'", op)  => TypeAssigner(ExprCast(kindStack.pop(), op) withLoc tree.loc)
     case node if node.hasTpe => tree
     case node                => TypeAssigner(node)
   }
 
   override protected def finalCheck(tree: Tree): Unit = {
     assert(kindStack.isEmpty)
-    assert(tree forallAll { case node: Tree => node.hasTpe })
+    assert(tree forallAll { case node: Tree                       => node.hasTpe })
+    val unaryTicks = tree collect { case node @ ExprUnary("'", _) => node }
+    assert(unaryTicks.isEmpty)
   }
 }
 
