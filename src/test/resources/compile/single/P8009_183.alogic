@@ -1,0 +1,14 @@
+fsm P8009_183 {
+
+  in  sync void done_i;
+  in       u64  data_i;
+  out      u32  data_o;
+
+  void main() {
+    if (done_i) { // Should be done_i.valid!
+      data_o = data_i[ 0 +: 32 ];
+    }
+    fence;
+  }
+}
+// :8: ERROR: Condition of 'if' statement has width zero
