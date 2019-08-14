@@ -40,26 +40,69 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer { namer 
   override val checkDefs: Boolean = false
 
   final private[this] object Scopes {
-    private type SymTab = mutable.HashMap[Name, Symbol]
+    private class SymTab(val weak: Boolean) {
+      val tab = mutable.LinkedHashMap[Name, Symbol]()
+    }
 
-    private var scopes = List[SymTab]()
+    private val scopes = mutable.Stack[SymTab]()
 
-    private def current = scopes.head
+    private def current = scopes.head.tab
 
-    def push(): Unit = scopes = new SymTab :: scopes
+    def push(weak: Boolean): Unit = scopes.push(new SymTab(weak))
 
-    def pop(): Unit = scopes = scopes.tail
+    def pop(): Unit = {
+      val finished = scopes.pop()
+
+      if (finished.weak) {
+        // Insert symbols into the outer scope via a TypeChoice symbol. If the
+        // symbolis already a choice symbol, merge alternatives.
+        assert(scopes.nonEmpty)
+        for {
+          (name, symbol) <- finished.tab
+          if !symbol.kind.isGen
+        } {
+          current.get(name) match {
+            case None =>
+              val choiceSymbol = symbol.kind match {
+                case _: TypeChoice => symbol
+                case _ =>
+                  if (symbol.isTermSymbol) {
+                    cc.newTermSymbol(name.str, symbol.loc, TypeChoice(List(symbol)))
+                  } else {
+                    cc.newTypeSymbol(name.str, symbol.loc, TypeChoice(List(symbol)))
+                  }
+              }
+              insertSymbol(choiceSymbol)
+            case Some(oldSymbol) =>
+              oldSymbol.kind match {
+                case TypeChoice(symbols) =>
+                  assert(oldSymbol.isTermSymbol == symbol.isTermSymbol)
+                  symbol.kind match {
+                    case TypeChoice(choices) => oldSymbol.kind = TypeChoice(choices ::: symbols)
+                    case _                   => oldSymbol.kind = TypeChoice(symbol :: symbols)
+                  }
+                case _ =>
+                  cc.error(
+                    symbol.loc,
+                    s"Redefinition of '${name}' with previous definition at",
+                    oldSymbol.loc.prefix
+                  )
+              }
+          }
+        }
+      }
+    }
 
     // Lookup name in symbol table
     def lookup(name: Name): Option[Symbol] = {
       @tailrec
-      def loop(name: Name, scopes: List[SymTab]): Option[Symbol] = scopes match {
-        case Nil => cc.globalScope.get(name)
-        case scope :: scopes =>
-          scope.get(name) match {
-            case opt @ Some(symbol) => opt
-            case None               => loop(name, scopes)
+      def loop(name: Name, scopes: mutable.Stack[SymTab]): Option[Symbol] = scopes match {
+        case scope +: scopes =>
+          scope.tab.get(name) match {
+            case opt @ Some(_) => opt
+            case None          => loop(name, scopes)
           }
+        case _ => cc.globalScope.get(name)
       }
       loop(name, scopes)
     }
@@ -71,25 +114,25 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer { namer 
       lazy val flavour = if (symbol.isTermSymbol) "name" else "type"
 
       current.get(name) match {
-        case Some(oldSymbol) => {
-          cc.error(
-            symbol.loc,
-            s"Redefinition of ${flavour} '${name}' with previous definition at",
-            oldSymbol.loc.prefix
-          )
-          current(name) = symbol
-        }
-        case None => {
-          lookup(name) foreach { oldSymbol =>
+        case Some(oldSymbol) =>
+          if (!oldSymbol.kind.isChoice) {
+            cc.error(
+              symbol.loc,
+              s"Redefinition of ${flavour} '${name}' with previous definition at",
+              oldSymbol.loc.prefix
+            )
+          }
+        case None =>
+          lookup(name) filterNot { _.kind.isChoice } foreach { oldSymbol =>
             cc.warning(
               symbol.loc,
               s"Definition of ${flavour} '${name}' hides previous definition at",
               oldSymbol.loc.prefix
             )
           }
-          current(name) = symbol
-        }
       }
+
+      current(name) = symbol
     }
 
     def insert[T <: Symbol](symbol: T): symbol.type = {
@@ -173,42 +216,55 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer { namer 
 
   private[this] lazy val atBitsSymbol = cc.lookupGlobalTerm("@bits")
 
-  private[this] val swapIfElseScope = mutable.Stack[List[Tree]]()
+  private[this] val swapIfElseScope = mutable.Stack[(List[Tree], Boolean)]()
 
-  private[this] def insertEarlyName(ident: Ident, isTerm: Boolean): Unit = {
+  private[this] def insertEarlyName(ident: Ident, isTerm: Boolean, asChoice: Boolean): Unit = {
     // Name the source attributes
     if (ident.hasAttr) {
       ident withAttr { (ident.attr.view mapValues { walk(_).asInstanceOf[Expr] }).toMap }
     }
 
+    val kind = if (asChoice) TypeChoice(Nil) else TypeError // TODO: should be TypeMissing
+
     Scopes insert {
       if (isTerm) {
-        cc.newTermSymbol(ident, TypeError) // TODO: should be TypeMissing
+        cc.newTermSymbol(ident, kind)
       } else {
-        cc.newTypeSymbol(ident, TypeError) // TODO: should be TypeMissing
+        cc.newTypeSymbol(ident, kind)
       }
     }
   }
 
   // Insert function names, instance names and nested entity names early
   // so they can be referred to before the definition site in source
-  private[this] def insertEarly(trees: List[Tree]): Unit = trees foreach {
-    case EntFunction(ident: Ident, _)       => insertEarlyName(ident, isTerm = true)
-    case EntInstance(ident: Ident, _, _, _) => insertEarlyName(ident, isTerm = true)
-    case EntEntity(Entity(ident: Ident, _)) => insertEarlyName(ident, isTerm = false)
-    case _                                  =>
-  }
+  private[this] def insertEarly(trees: List[Tree], asChoice: Boolean = false): Unit =
+    trees foreach {
+      case EntFunction(ident: Ident, _)       => insertEarlyName(ident, isTerm = true, asChoice)
+      case EntInstance(ident: Ident, _, _, _) => insertEarlyName(ident, isTerm = true, asChoice)
+      case EntEntity(Entity(ident: Ident, _)) => insertEarlyName(ident, isTerm = false, asChoice)
+      case EntGen(GenIf(_, thenItems, elseItems)) =>
+        insertEarly(thenItems, asChoice = true)
+        insertEarly(elseItems, asChoice = true)
+      case EntGen(GenFor(_, _, _, body))   => insertEarly(body, asChoice = true)
+      case EntGen(GenRange(_, _, _, body)) => insertEarly(body, asChoice = true)
+      case GenIf(_, thenItems, elseItems) =>
+        insertEarly(thenItems, asChoice = true)
+        insertEarly(elseItems, asChoice = true)
+      case GenFor(_, _, _, body)   => insertEarly(body, asChoice = true)
+      case GenRange(_, _, _, body) => insertEarly(body, asChoice = true)
+      case _                       => Nil
+    }
 
   override def enter(tree: Tree): Unit = {
-    if (swapIfElseScope.headOption map { _.head.id } contains tree.id) {
+    if (swapIfElseScope.headOption map { _._1.head.id } contains tree.id) {
       Scopes.pop()
-      Scopes.push()
-      insertEarly(swapIfElseScope.pop())
+      Scopes.push(swapIfElseScope.head._2)
+      insertEarly(swapIfElseScope.pop()._1)
     }
 
     tree match {
       case Root(_, Entity(ident: Ident, _)) => {
-        Scopes.push()
+        Scopes.push(weak = false)
 
         // Name the source attributes of the root entity, these have already been
         // created so need to name the symbol attributes
@@ -218,57 +274,57 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer { namer 
       }
 
       case entity: Entity =>
-        Scopes.push()
+        Scopes.push(weak = false)
         insertEarly(entity.body)
 
-      case _: EntFunction => Scopes.push()
+      case _: EntFunction => Scopes.push(weak = false)
 
       case gen: GenFor =>
-        Scopes.push()
+        Scopes.push(weak = true)
         insertEarly(gen.body)
 
       case gen: GenRange =>
-        Scopes.push()
+        Scopes.push(weak = true)
         insertEarly(gen.body)
 
       case GenIf(_, thenItems, elseItems) =>
-        Scopes.push()
+        Scopes.push(weak = true)
         insertEarly(thenItems)
         if (elseItems.nonEmpty) {
-          swapIfElseScope push elseItems
+          swapIfElseScope.push((elseItems, true))
         }
 
-      case _: StmtBlock => Scopes.push()
+      case _: StmtBlock => Scopes.push(weak = false)
       case _: StmtLet => {
         assert(!sawLet)
         sawLet = true
-        Scopes.push()
+        Scopes.push(weak = false)
       }
       case _: StmtLoop => {
-        if (!sawLet) Scopes.push()
+        if (!sawLet) Scopes.push(weak = false)
         sawLet = false
       }
       case _: StmtDo => {
-        if (!sawLet) Scopes.push()
+        if (!sawLet) Scopes.push(weak = false)
         sawLet = false
       }
       case _: StmtWhile => {
-        if (!sawLet) Scopes.push()
+        if (!sawLet) Scopes.push(weak = false)
         sawLet = false
       }
       case _: StmtFor => {
-        if (!sawLet) Scopes.push()
+        if (!sawLet) Scopes.push(weak = false)
         sawLet = false
       }
       case StmtIf(_, _, elseStmts) => {
-        Scopes.push()
+        Scopes.push(weak = false)
         if (elseStmts.nonEmpty) {
-          swapIfElseScope push elseStmts
+          swapIfElseScope.push((elseStmts, false))
         }
       }
 
-      case _: CaseRegular => Scopes.push()
-      case _: CaseDefault => Scopes.push()
+      case _: CaseRegular => Scopes.push(weak = false)
+      case _: CaseDefault => Scopes.push(weak = false)
 
       case ExprCall(ExprIdent("@bits"), arg :: _) if arg.isTypeExpr => {
         assert(!atBitsEitherTypeOrTerm)

@@ -1,0 +1,60 @@
+network gen_alt_port_4 {
+  in u2 p_in_0;
+  in u2 p_in_1;
+  in u1 p_in_2;
+  in u1 p_in_3;
+  out u4 p_out_u_0;
+  out u2 p_out_u_1;
+  out i4 p_out_s_0;
+  out i2 p_out_s_1;
+
+  fsm inner {
+    param bool SIGNED;
+    param bool WIDE;
+
+    gen if (SIGNED) {
+      gen if (WIDE) {
+        in i2 p_i_0;
+        in i2 p_i_1;
+        out i4 p_o;
+      } else {
+        in i1 p_i_0;
+        in i1 p_i_1;
+        out i2 p_o;
+      }
+    } else {
+      gen if (WIDE) {
+       in u2 p_i_0;
+       in u2 p_i_1;
+       out u4 p_o;
+      } else {
+       in u1 p_i_0;
+       in u1 p_i_1;
+       out u2 p_o;
+     }
+    }
+
+    void main() {
+      p_o.write('p_i_0 * 'p_i_1);
+      fence;
+    }
+  }
+
+  inner_u_0 = new inner(SIGNED=false, WIDE=true);
+  inner_s_0 = new inner(SIGNED=true, WIDE=true);
+
+  p_in_0 -> inner_u_0.p_i_0, inner_s_0.p_i_0;
+  p_in_1 -> inner_u_0.p_i_1, inner_s_0.p_i_1;
+
+  inner_u_0.p_o -> p_out_u_0;
+  inner_s_0.p_o -> p_out_s_0;
+
+  inner_u_1 = new inner(SIGNED=false, WIDE=false);
+  inner_s_1 = new inner(SIGNED=true, WIDE=false);
+
+  p_in_2 -> inner_u_1.p_i_0, inner_s_1.p_i_0;
+  p_in_3 -> inner_u_1.p_i_1, inner_s_1.p_i_1;
+
+  inner_u_1.p_o -> p_out_u_1;
+  inner_s_1.p_o -> p_out_s_1;
+}

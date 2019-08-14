@@ -1,0 +1,97 @@
+network gen_alt_entity_3 {
+  in u2 p_in_0;
+  in u2 p_in_1;
+  in u2 p_in_2;
+  in u2 p_in_3;
+  out u4 p_out_u_0;
+  out u8 p_out_u_1;
+  out i4 p_out_s_0;
+  out i8 p_out_s_1;
+
+  network mid {
+    param bool SIGNED;
+    param bool DOUBLE;
+
+    in u2 p_mid_i_0;
+    in u2 p_mid_i_1;
+    gen if (DOUBLE) {
+      out u8 p_mid_o;
+    } else {
+      out u4 p_mid_o;
+    }
+
+    inner = new inner();
+
+    p_mid_i_0 -> inner.p_i_0;
+    p_mid_i_1 -> inner.p_i_1;
+    inner.p_o -> p_mid_o;
+
+    gen if (SIGNED) {
+      gen if (DOUBLE) {
+        fsm inner {
+          in i2 p_i_0;
+          in i2 p_i_1;
+          out i8 p_o;
+
+          void main() {
+            p_o.write('p_i_0 * 'p_i_0 * 'p_i_1 * 'p_i_1);
+            fence;
+          }
+        }
+      } else {
+        fsm inner {
+          in i2 p_i_0;
+          in i2 p_i_1;
+          out i4 p_o;
+
+          void main() {
+            p_o.write('p_i_0 * 'p_i_1);
+            fence;
+          }
+        }
+      }
+    } else {
+      gen if (DOUBLE) {
+        fsm inner {
+          in u2 p_i_0;
+          in u2 p_i_1;
+          out u8 p_o;
+
+          void main() {
+            p_o.write('p_i_0 * 'p_i_0 * 'p_i_1 * 'p_i_1);
+            fence;
+          }
+        }
+      } else {
+        fsm inner {
+          in u2 p_i_0;
+          in u2 p_i_1;
+          out u4 p_o;
+
+          void main() {
+            p_o.write('p_i_0 * 'p_i_1);
+            fence;
+          }
+        }
+      }
+    }
+  }
+
+  mid_u_0 = new mid(SIGNED=false, DOUBLE=false);
+  mid_s_0 = new mid(SIGNED=true, DOUBLE=false);
+
+  p_in_0 -> mid_u_0.p_mid_i_0, mid_s_0.p_mid_i_0;
+  p_in_1 -> mid_u_0.p_mid_i_1, mid_s_0.p_mid_i_1;
+
+  mid_u_0.p_mid_o -> p_out_u_0;
+  mid_s_0.p_mid_o -> p_out_s_0;
+
+  mid_u_1 = new mid(SIGNED=false, DOUBLE=true);
+  mid_s_1 = new mid(SIGNED=true, DOUBLE=true);
+
+  p_in_2 -> mid_u_1.p_mid_i_0, mid_s_1.p_mid_i_0;
+  p_in_3 -> mid_u_1.p_mid_i_1, mid_s_1.p_mid_i_1;
+
+  mid_u_1.p_mid_o -> p_out_u_1;
+  mid_s_1.p_mid_o -> p_out_s_1;
+}

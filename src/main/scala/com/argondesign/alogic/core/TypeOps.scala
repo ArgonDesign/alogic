@@ -53,6 +53,7 @@ trait TypeOps extends TypePrintOps { this: Type =>
   final def isMisc = this eq TypeMisc
   final def isError = this eq TypeError
   final def isPolyFunc = this.isInstanceOf[TypePolyFunc]
+  final def isChoice = this.isInstanceOf[TypeChoice]
 
   // ... equivalent casts
   final def asCombStmt = TypeCombStmt
@@ -84,6 +85,7 @@ trait TypeOps extends TypePrintOps { this: Type =>
   final def asMisc = TypeMisc
   final def asError = TypeError
   final def asPolyFunc = this.asInstanceOf[TypePolyFunc]
+  final def asChoice = this.asInstanceOf[TypeChoice]
 
   // Is this a primitive numeric type
   final def isNumeric: Boolean = this.underlying match {

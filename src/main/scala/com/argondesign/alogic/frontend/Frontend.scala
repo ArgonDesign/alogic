@@ -66,6 +66,17 @@ class Frontend(
     }
   }
 
+  private[this] def childNames(trees: List[Tree]): List[String] = trees flatMap {
+    case EntEntity(entity)                      => List(entity.name)
+    case EntGen(GenIf(_, thenItems, elseItems)) => childNames(thenItems) ::: childNames(elseItems)
+    case EntGen(GenFor(_, _, _, body))          => childNames(body)
+    case EntGen(GenRange(_, _, _, body))        => childNames(body)
+    case GenIf(_, thenItems, elseItems)         => childNames(thenItems) ::: childNames(elseItems)
+    case GenFor(_, _, _, body)                  => childNames(body)
+    case GenRange(_, _, _, body)                => childNames(body)
+    case _                                      => Nil
+  }
+
   // Cache of trees we already started working on. We use this to to avoid
   // repeated processing of entities that are instantiated multiple times
   val inProgress = mutable.Map[String, Future[Set[Root]]]()
@@ -110,7 +121,7 @@ class Frontend(
         // Extract all instance entity names (from the recursively nested entities as well)
         val instantiatedEntityNamesFuture = astFuture map { root =>
           def loop(entity: Entity): List[String] = {
-            val localNames = entity.name :: (entity.entities map { _.name })
+            val localNames = entity.name :: childNames(entity.body)
             val requiredExternalNames = entity.instances collect {
               case EntInstance(_, Ident(name), _, _) if !(localNames contains name) => name
             }

@@ -23,6 +23,7 @@ import com.argondesign.alogic.core.Bindings
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.TreeInTypeTransformer
+import com.argondesign.alogic.core.Types.TypeChoice
 import com.argondesign.alogic.core.Types.TypeInstance
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.typer.Typer
@@ -63,7 +64,8 @@ private final class Generate(
     initialEntityLevel: Int
 )(
     implicit cc: CompilerContext,
-    typer: Typer
+    typer: Typer,
+    choiceMap: mutable.Map[Symbol, Symbol]
 ) extends TreeTransformer {
 
   override val typed: Boolean = false
@@ -92,14 +94,15 @@ private final class Generate(
 
   // Used to clone function, instance and entity symbols up front to use by
   // forward references
-  private def cloneForwardSymbols(trees: List[Tree]): Iterator[(Symbol, Symbol)] = {
-    trees.iterator collect {
+  private def cloneForwardSymbols(trees: List[Tree]): List[(Symbol, Symbol)] = {
+    trees flatMap {
       case EntFunction(Sym(symbol: TermSymbol), _) =>
-        symbol -> cc.newSymbolLike(symbol)
+        List(symbol -> cc.newSymbolLike(symbol))
       case EntInstance(Sym(symbol: TermSymbol), _, _, _) =>
-        symbol -> cc.newSymbolLike(symbol)
+        List(symbol -> cc.newSymbolLike(symbol))
       case EntEntity(Entity(Sym(symbol: TypeSymbol), _)) =>
-        symbol -> cc.newSymbolLike(symbol)
+        List(symbol -> cc.newSymbolLike(symbol))
+      case _ => Nil
     }
   }
 
@@ -107,8 +110,14 @@ private final class Generate(
   private def generate(gen: Gen, dispatcher: Generatable): List[Tree] = {
 
     def process(bindings: Bindings, trees: List[Tree]): List[Tree] = {
+      // Clone forward symbols
+      val clones = cloneForwardSymbols(trees)
+
+      // Add them to the choice map
+      clones foreach { choiceMap += _ }
+
       // Add forward symbol clones
-      val sm = Map from { symbolMap.iterator concat cloneForwardSymbols(trees) }
+      val sm = Map from { symbolMap.iterator concat clones }
 
       // Generate all trees
       val subGen = new Generate(bindings, sm, Some(dispatcher), entityLevel)
@@ -281,7 +290,10 @@ private final class Generate(
       case entity: Entity =>
         // If entering an entity inside a Gen, clone forward symbols
         if (dispatcher.isDefined) {
-          cloneForwardSymbols(entity.body) foreach { symbolMap += _ }
+          cloneForwardSymbols(entity.body) foreach { pair =>
+            symbolMap += pair
+            choiceMap += pair
+          }
         }
         entityLevel += 1
       case _ =>
@@ -371,6 +383,7 @@ private final class Generate(
         val newSymbol = cc.newTermSymbol(symbol.name, symbol.loc, newKind)
         newSymbol.attr update symbol.attr
         symbolMap(symbol) = newSymbol
+        choiceMap(symbol) = newSymbol
         // Rewrite decl
         decl.copy(symbol = newSymbol) withLoc tree.loc
 
@@ -422,6 +435,7 @@ private final class Generate(
             } mkString cc.sep
           }
         }
+        entity.symbol.kind = entity.typeBasedOnContents
         tree
       } tap { _ =>
         entityLevel -= 1
@@ -465,11 +479,72 @@ private final class Generate(
   }
 }
 
+private final class Disambiguate(
+    choiceMap: mutable.Map[Symbol, Symbol]
+)(
+    implicit cc: CompilerContext
+) extends TreeTransformer {
+
+  override val typed: Boolean = false
+  override val checkRefs: Boolean = false
+
+  private var inEntity = false
+
+  override def skip(tree: Tree): Boolean = tree match {
+    case _: Entity => inEntity
+    case _         => false
+  }
+
+  override def enter(tree: Tree): Unit = tree match {
+    case _: Entity => inEntity = true
+    case _         =>
+  }
+
+  private def resolveChoice(symbol: Symbol, loc: Loc): Option[Symbol] = {
+    val TypeChoice(choices) = symbol.kind.asChoice
+    val resolutions = choices flatMap choiceMap.get
+    if (resolutions.isEmpty) {
+      cc.error(loc, s"'${symbol.name}' is not defined after processing 'gen' constructs")
+      None
+    } else if (resolutions.lengthIs == 1) {
+      resolutions.headOption
+    } else {
+      val msg = s"'${symbol.name}' is ambiguous after processing 'gen' constructs. Active declarations:" ::
+        (resolutions.reverse map { _.loc.prefix })
+      cc.error(loc, msg: _*)
+      None
+    }
+  }
+
+  override def transform(tree: Tree): Tree = tree match {
+    //////////////////////////////////////////////////////////////////////////
+    // Replace refs to TypeChoice symbols with the resolved value
+    //////////////////////////////////////////////////////////////////////////
+
+    case ExprRef(symbol) if symbol.kind.isChoice =>
+      resolveChoice(symbol, tree.loc) map { ExprRef(_) withLoc tree.loc } getOrElse tree
+
+    case Sym(symbol) if symbol.kind.isChoice =>
+      resolveChoice(symbol, tree.loc) map { Sym(_) withLoc tree.loc } getOrElse tree
+
+    case _: Entity =>
+      inEntity = false
+      tree
+
+    case _ => tree
+  }
+
+  override def finalCheck(tree: Tree): Unit = {
+    assert(!inEntity)
+  }
+}
+
 object Generate {
 
   def apply(tree: Tree)(implicit cc: CompilerContext): Option[Tree] = {
-    val transformer = new Generate(Bindings.empty, Map.empty, None, 0)(cc, new Typer)
-    val result = tree rewrite transformer
-    if (transformer.hadError) None else Some(result)
+    val choiceMap = mutable.Map[Symbol, Symbol]()
+    val generate = new Generate(Bindings.empty, Map.empty, None, 0)(cc, new Typer, choiceMap)
+    val result = tree rewrite generate
+    if (generate.hadError) None else Some(result rewrite new Disambiguate(choiceMap))
   }
 }

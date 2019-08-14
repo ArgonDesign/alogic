@@ -1,0 +1,41 @@
+network gen_alt_port_3 {
+  in u2 p_in_0;
+  in u2 p_in_1;
+  out u4 p_out_u;
+  out i4 p_out_s;
+
+  fsm inner {
+    param bool SIGNED;
+
+    gen if (SIGNED) {
+      in i2 p_i_0;
+      in i2 p_i_1;
+      out i4 p_o;
+    } else {
+      in u2 p_i_0;
+      in u2 p_i_1;
+      out i4 p_o;
+   }
+
+   gen if (SIGNED) {
+      out i4 p_o;
+   }
+
+    void main() {
+      p_o.write('p_i_0 * 'p_i_1);
+      fence;
+    }
+  }
+
+  inner_u = new inner(SIGNED=false);
+  inner_s = new inner(SIGNED=true);
+
+  p_in_0 -> inner_u.p_i_0, inner_s.p_i_0;
+  p_in_1 -> inner_u.p_i_1, inner_s.p_i_1;
+
+  inner_u.p_o -> p_out_u;
+  inner_s.p_o -> p_out_s;
+}
+// :25: ERROR: 'p_o' is ambiguous after processing 'gen' constructs. Active declarations:
+// :25: ERROR: ... .*gen_alt_port_3.alogic:13
+// :25: ERROR: ... .*gen_alt_port_3.alogic:21

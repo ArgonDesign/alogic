@@ -1,0 +1,53 @@
+network gen_alt_entity_0 {
+  in u2 p_in_0;
+  in u2 p_in_1;
+  out u4 p_out_u;
+  out i4 p_out_s;
+
+  network mid {
+    param bool SIGNED;
+
+    in u2 p_mid_i_0;
+    in u2 p_mid_i_1;
+    out u4 p_mid_o;
+
+    gen if (SIGNED) {
+      fsm inner {
+        in i2 p_i_0;
+        in i2 p_i_1;
+        out i4 p_o;
+
+        void main() {
+          p_o.write('p_i_0 * 'p_i_1);
+          fence;
+        }
+      }
+    } else {
+      fsm inner {
+        in u2 p_i_0;
+        in u2 p_i_1;
+        out u4 p_o;
+
+        void main() {
+          p_o.write('p_i_0 * 'p_i_1);
+          fence;
+        }
+      }
+    }
+
+    inner = new inner();
+
+    p_mid_i_0 -> inner.p_i_0;
+    p_mid_i_1 -> inner.p_i_1;
+    inner.p_o -> p_mid_o;
+  }
+
+  mid_u = new mid(SIGNED=false);
+  mid_s = new mid(SIGNED=true);
+
+  p_in_0 -> mid_u.p_mid_i_0, mid_s.p_mid_i_0;
+  p_in_1 -> mid_u.p_mid_i_1, mid_s.p_mid_i_1;
+
+  mid_u.p_mid_o -> p_out_u;
+  mid_s.p_mid_o -> p_out_s;
+}

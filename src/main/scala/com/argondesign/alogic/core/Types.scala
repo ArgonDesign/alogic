@@ -18,8 +18,7 @@ package com.argondesign.alogic.core
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.FlowControlTypes._
 import com.argondesign.alogic.core.StorageTypes._
-import com.argondesign.alogic.core.Symbols.TermSymbol
-import com.argondesign.alogic.core.Symbols.TypeSymbol
+import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.lib.StructuredTree
 import com.argondesign.alogic.typer.TypeAssigner
 
@@ -113,6 +112,10 @@ object Types {
     // Resolve based on arguments to the correct overload of the symbol
     def resolve(args: List[Expr]): Option[TermSymbol] = resolver(args)
   }
+
+  // Used to denote ambiguous definitions due to weak Gen scopes before Gen
+  // constructs are processed
+  case class TypeChoice(symbols: List[Symbol]) extends Type
 
   ///////////////////////////////////////////////////////////////////////////////
   // base trait companions

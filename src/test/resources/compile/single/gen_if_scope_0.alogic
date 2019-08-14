@@ -18,8 +18,8 @@ network gen_if_scope_0 {
         bool c = b;
         b = c;
       }
-      bool c = b;
-      p_o.write(c);
+      bool d = b;
+      p_o.write(d);
       fence;
     }
   }

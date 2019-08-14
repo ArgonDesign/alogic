@@ -414,7 +414,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
       }
 
       def errIfUndeclared(node: Tree, symbol: Symbol) = {
-        if (!(declaredSymbols contains symbol) && !symbol.isBuiltin) {
+        if (!(declaredSymbols contains symbol) && !symbol.isBuiltin && !symbol.kind.isChoice) {
           cc.ice(
             node,
             s"reference to undeclared symbol '${symbol.name}'",

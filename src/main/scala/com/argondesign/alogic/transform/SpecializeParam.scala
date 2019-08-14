@@ -49,7 +49,7 @@ final class SpecializeParam(
   // For sanity checking only
   private[this] val outerParams = mutable.Set[TermSymbol]()
 
-  private[this] object TypeSpecializeEntity extends TreeInTypeTransformer(this)
+  private[this] object TypeSpecializeParam extends TreeInTypeTransformer(this)
 
   private[this] var entityLevel = 0
 
@@ -58,6 +58,16 @@ final class SpecializeParam(
 
   // Bail on errors
   var hadError = false
+
+  private def cloneChoiceSymbol(symbol: Symbol): Unit = {
+    val newSymbol = symbol match {
+      case s: TermSymbol => cc.newSymbolLike(s)
+      case s: TypeSymbol => cc.newSymbolLike(s)
+      case _             => unreachable
+    }
+    newSymbol.kind = TypeChoice(symbol.kind.asChoice.symbols map { symbolMap(_) })
+    symbolMap(symbol) = newSymbol
+  }
 
   override def skip(tree: Tree): Boolean = hadError || entityLevel == 0 && {
     tree match {
@@ -81,21 +91,38 @@ final class SpecializeParam(
     }
   }
 
+  private def cloneForwardSymbols(trees: List[Tree]): Unit =
+    trees foreach {
+      case EntFunction(Sym(symbol: TermSymbol), _) =>
+        symbolMap(symbol) = cc.newSymbolLike(symbol)
+      case EntInstance(Sym(symbol: TermSymbol), _, _, __) =>
+        symbolMap(symbol) = cc.newSymbolLike(symbol)
+      case EntEntity(Entity(Sym(symbol: TypeSymbol), _)) =>
+        symbolMap(symbol) = cc.newSymbolLike(symbol)
+      case EntGen(GenIf(_, thenItems, elseItems)) =>
+        cloneForwardSymbols(thenItems)
+        cloneForwardSymbols(elseItems)
+      case EntGen(GenFor(_, _, _, body)) =>
+        cloneForwardSymbols(body)
+      case EntGen(GenRange(_, _, _, body)) =>
+        cloneForwardSymbols(body)
+      case GenIf(_, thenItems, elseItems) =>
+        cloneForwardSymbols(thenItems)
+        cloneForwardSymbols(elseItems)
+      case GenFor(_, _, _, body) =>
+        cloneForwardSymbols(body)
+      case GenRange(_, _, _, body) =>
+        cloneForwardSymbols(body)
+      case _ =>
+    }
+
   override def enter(tree: Tree): Unit = tree match {
     case entity: Entity => {
       entityLevel += 1
 
       // Clone new functions, instances and nested entities up front,
       // as they can be referenced before definition
-      entity.body foreach {
-        case EntFunction(Sym(symbol: TermSymbol), _) =>
-          symbolMap(symbol) = cc.newSymbolLike(symbol)
-        case EntInstance(Sym(symbol: TermSymbol), _, _, __) =>
-          symbolMap(symbol) = cc.newSymbolLike(symbol)
-        case EntEntity(Entity(Sym(symbol: TypeSymbol), _)) =>
-          symbolMap(symbol) = cc.newSymbolLike(symbol)
-        case _ =>
-      }
+      cloneForwardSymbols(entity.body)
     }
 
     case _ =>
@@ -115,7 +142,7 @@ final class SpecializeParam(
     case Decl(symbol, init) if entityLevel == 1 && symbol.kind.isParam => {
       // Specialize the parameter type itself
       val TypeParam(kind) = symbol.kind.asParam
-      val newKind = TypeParam(kind rewrite TypeSpecializeEntity)
+      val newKind = TypeParam(kind rewrite TypeSpecializeParam)
 
       // Figure out actual parameter value
       val newInit = bindings.get(symbol.name) orElse init orElse {
@@ -170,7 +197,7 @@ final class SpecializeParam(
 
     case Decl(symbol, init) => {
       // Rewrite references in types
-      val newKind = symbol.kind rewrite TypeSpecializeEntity
+      val newKind = symbol.kind rewrite TypeSpecializeParam
       // Clone the symbol
       val newSymbol = cc.newTermSymbol(symbol.name, symbol.loc, newKind)
       newSymbol.attr update symbol.attr
@@ -191,12 +218,22 @@ final class SpecializeParam(
     ////////////////////////////////////////////////////////////////////////////
 
     case ExprRef(symbol) => {
+      if (symbol.kind.isChoice && !(symbolMap contains symbol)) {
+        // Clone choice symbol on first reference
+        cloneChoiceSymbol(symbol)
+      }
+
       symbolMap.get(symbol) map {
         ExprRef(_) withLoc tree.loc
       } getOrElse tree
     }
 
     case Sym(symbol) => {
+      if (symbol.kind.isChoice && !(symbolMap contains symbol)) {
+        // Clone choice symbol on first reference
+        cloneChoiceSymbol(symbol)
+      }
+
       symbolMap.get(symbol) map {
         Sym(_) withLoc tree.loc
       } getOrElse tree

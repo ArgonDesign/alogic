@@ -12,8 +12,8 @@ network gen_for_scope_1 {
     void main() {
       bool b = p_i;
       gen for (uint N = 0 ; N < P; N++) {
-        bool b = ~b;
-        p_o.write(b);
+        bool c = ~b;
+        p_o.write(c);
         fence;
       }
       bool N = b;
@@ -28,6 +28,3 @@ network gen_for_scope_1 {
   i_4.p_o -> p_o4;
   i_9.p_o -> p_o9;
 }
-
-// :15: WARNING: Definition of name 'b' hides previous definition at
-// :15: WARNING: ... .*/gen_for_scope_1.alogic:13

@@ -1,0 +1,71 @@
+network gen_alt_func_2 {
+  in u2 p_in_0;
+  in u2 p_in_1;
+  in u2 p_in_2;
+  in u2 p_in_3;
+  out u4 p_out_u_0;
+  out u8 p_out_u_1;
+  out i4 p_out_s_0;
+  out i8 p_out_s_1;
+
+  fsm inner {
+    param bool SIGNED;
+    param bool DOUBLE;
+
+    in u2 p_i_0;
+    in u2 p_i_1;
+    gen if (DOUBLE) {
+      out u8 p_o;
+    } else {
+      out u4 p_o;
+    }
+
+    gen if (SIGNED) {
+      gen if (DOUBLE) {
+        void doit() {
+          p_o.write('$signed(p_i_0) * '$signed(p_i_0) * '$signed(p_i_1)* '$signed(p_i_1));
+          fence;
+        }
+      } else {
+        void doit() {
+          p_o.write('$signed(p_i_0) * '$signed(p_i_1));
+          fence;
+        }
+      }
+    } else {
+      gen if (DOUBLE) {
+        void doit() {
+          p_o.write('p_i_0 * 'p_i_0 * 'p_i_1 * 'p_i_1);
+          fence;
+        }
+      } else {
+        void doit() {
+          p_o.write('p_i_0 * 'p_i_1);
+          fence;
+        }
+      }
+    }
+
+    void main() {
+      goto doit;
+    }
+  }
+
+  inner_u_0 = new inner(SIGNED=false, DOUBLE=false);
+  inner_s_0 = new inner(SIGNED=true, DOUBLE=false);
+
+  p_in_0 -> inner_u_0.p_i_0, inner_s_0.p_i_0;
+  p_in_1 -> inner_u_0.p_i_1, inner_s_0.p_i_1;
+
+  inner_u_0.p_o -> p_out_u_0;
+  inner_s_0.p_o -> p_out_s_0;
+
+  inner_u_1 = new inner(SIGNED=false, DOUBLE=true);
+  inner_s_1 = new inner(SIGNED=true, DOUBLE=true);
+
+  p_in_2 -> inner_u_1.p_i_0, inner_s_1.p_i_0;
+  p_in_3 -> inner_u_1.p_i_1, inner_s_1.p_i_1;
+
+  inner_u_1.p_o -> p_out_u_1;
+  inner_s_1.p_o -> p_out_s_1;
+}

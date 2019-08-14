@@ -104,6 +104,7 @@ abstract class TypeTransformer(implicit val cc: CompilerContext) extends TreeLik
         case TypeMisc           => transform(TypeMisc)
         case node: TypePolyFunc => transform(node)
         case TypeError          => transform(TypeError)
+        case node: TypeChoice   => transform(node)
       }
     }
   }
