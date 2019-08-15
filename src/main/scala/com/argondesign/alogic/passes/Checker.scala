@@ -53,6 +53,8 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer {
 
   private[this] val paramConstAllowed = mutable.Stack[Boolean](true)
 
+  private[this] var loopLevel: Int = 0
+
   override def enter(tree: Tree): Unit = tree match {
     case entity @ Entity(ident: Ident, _) =>
       variantStack push {
@@ -66,6 +68,8 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer {
       paramConstAllowed push true
     case _: Gen =>
       paramConstAllowed push false
+    case _:StmtLoop | _:StmtWhile | _:StmtFor | _:StmtDo =>
+      loopLevel += 1
     case _ =>
   }
 
@@ -346,12 +350,29 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer {
       tree
     }
 
+    case StmtBreak() if loopLevel == 0 => {
+      cc.error(tree, "Break statements are only allowed inside looping statements")
+      StmtError() withLoc tree.loc
+    }
+
+    case StmtContinue() if loopLevel == 0 => {
+      cc.error(tree, "Continue statements are only allowed inside looping statements")
+      StmtError() withLoc tree.loc
+    }
+
+    case _:StmtLoop | _:StmtWhile | _:StmtFor | _:StmtDo => {
+      tree
+    } tap { _ =>
+      loopLevel -= 1
+    }
+
     case _ => tree
   }
 
   override def finalCheck(tree: Tree): Unit = {
     assert(variantStack.isEmpty)
     assert(paramConstAllowed.sizeIs == 1)
+    assert(loopLevel == 0)
   }
 
   @tailrec

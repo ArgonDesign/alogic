@@ -863,6 +863,53 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         cc.messages shouldBe empty
       }
     }
+
+    "check usage of break/continue statements" - {
+      "accepting them in looping statements" - {
+        for (word <- List("break", "continue")) {
+          word in {
+            val tree = s"""|fsm b {
+                           |  void main() {
+                           |    loop {
+                           |      ${word};
+                           |    }
+                           |  }
+                           |}""".asTree[Entity]
+
+            tree rewrite checker shouldBe tree
+
+            cc.messages shouldBe empty
+          }
+        }
+      }
+
+      "rejecting them outside loops" - {
+        for (word <- List("break", "continue")) {
+          word in {
+            val tree = s"""|fsm b {
+                           |  void main() {
+                           |    loop {}
+                           |    ${word};
+                           |  }
+                           |}""".asTree[Entity]
+
+            val node = tree rewrite checker
+
+            inside(node) {
+              case Entity(_, List(main)) =>
+                inside(main) {
+                  case EntFunction(_, List(_, stmt)) =>
+                    stmt shouldBe StmtError()
+                }
+            }
+
+            cc.messages.loneElement should beThe[Error](
+              s"${word.capitalize} statements are only allowed inside looping statements"
+            )
+          }
+        }
+      }
+    }
   }
 
 }
