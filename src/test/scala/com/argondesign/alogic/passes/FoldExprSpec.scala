@@ -908,6 +908,58 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
       }
     }
 
+    "full width slices" - {
+      for {
+        (text, pattern) <- List[(String, PartialFunction[Any, Unit])](
+          // format: off
+          ("c = a[6:0]", { case ExprRef(a) if a.name == "a" => }),
+          ("c = a[6-:7]", { case ExprRef(a) if a.name == "a" => }),
+          ("c = a[0+:7]", { case ExprRef(a) if a.name == "a" => }),
+          ("d = b[0:0]", { case ExprRef(b) if b.name == "b" => })
+          // format: on
+        )
+      } {
+        text in {
+          val src =
+            s"""|fsm f {
+                |  (* unused *) in u7 a;
+                |  (* unused *) in u1 b;
+                |  (* unused *) out u7 c;
+                |  (* unused *) out u1 d;
+                |  fence { ${text}; }
+                |}""".stripMargin
+          val tree = xform(src.asTree[Root])
+          val expr = tree getFirst { case StmtAssign(_, rhs) => rhs }
+          expr should matchPattern(pattern)
+          cc.messages shouldBe empty
+        }
+      }
+    }
+
+    "repetitions of count 1" - {
+      for {
+        (text, pattern) <- List[(String, PartialFunction[Any, Unit])](
+          // format: off
+          ("c = {1{a}}", { case ExprRef(a) if a.name == "a" => }),
+          ("c = {1'd1{a}}", { case ExprRef(a) if a.name == "a" => })
+          // format: on
+        )
+      } {
+        text in {
+          val src =
+            s"""|fsm f {
+                |  in u8 a;
+                |  out u8 c;
+                |  fence { ${text}; }
+                |}""".stripMargin
+          val tree = xform(src.asTree[Root])
+          val expr = tree getFirst { case StmtAssign(_, rhs) => rhs }
+          expr should matchPattern(pattern)
+          cc.messages shouldBe empty
+        }
+      }
+    }
+
     "concatenation of sized integer literals" - {
       for {
         (text, result, msg) <- List(
@@ -951,6 +1003,178 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
           } else {
             cc.messages.loneElement should beThe[Error](msg)
           }
+        }
+      }
+    }
+
+    "constant index of concatenation" - {
+      for {
+        (text, pattern) <- List[(String, PartialFunction[Any, Unit])](
+          ("c = {a,b}[3]", {
+            case ExprIndex(ExprRef(b), ExprInt(false, 2, i)) if b.name == "b" && i == 3 =>
+          }),
+          ("c = {a,b}[4]", {
+            case ExprIndex(ExprRef(a), ExprInt(false, 2, i)) if a.name == "a" && i == 0 =>
+          }),
+          ("d = @sx(28, {a,10'd0})", {
+            case ExprCat(
+                List(ExprRep(ExprNum(false, rep), ExprIndex(ExprRef(a1), ExprInt(false, 2, msb))),
+                     ExprRef(a2),
+                     ExprInt(false, 10, i)))
+                if rep == 14 && a1.name == "a" && msb == 3 && a2.name == "a" && i == 0 =>
+          })
+        )
+      } {
+        text in {
+          val src = s"""|fsm f {
+                        |  in u4 a;
+                        |  (* unused *) in u4 b;
+                        |  (* unused *) out u1 c;
+                        |  (* unused *) out u28 d;
+                        |  fence { ${text}; }
+                        |}""".stripMargin
+          val tree = xform(src.asTree[Root])
+          val expr = tree getFirst { case StmtAssign(_, rhs) => rhs }
+          expr should matchPattern(pattern)
+          cc.messages shouldBe empty
+        }
+      }
+    }
+
+    "constant index of repetition" - {
+      for {
+        (text, pattern) <- List[(String, PartialFunction[Any, Unit])](
+          ("c = {2{a}}[3]", {
+            case ExprIndex(ExprRef(a), ExprInt(false, 2, i)) if a.name == "a" && i == 3 =>
+          }),
+          ("c = {2{a}}[4]", {
+            case ExprIndex(ExprRef(a), ExprInt(false, 2, i)) if a.name == "a" && i == 0 =>
+          })
+        )
+      } {
+        text in {
+          val src = s"""|fsm f {
+                        |  in u4 a;
+                        |  out u1 c;
+                        |  fence { ${text}; }
+                        |}""".stripMargin
+          val tree = xform(src.asTree[Root])
+          val expr = tree getFirst { case StmtAssign(_, rhs) => rhs }
+          expr should matchPattern(pattern)
+          cc.messages shouldBe empty
+        }
+      }
+    }
+
+    "constant slice of concatenation" - {
+      for {
+        (text, pattern) <- List[(String, PartialFunction[Any, Unit])](
+          ("d = {a,b}[2:0]", {
+            case ExprSlice(ExprRef(b), ExprInt(false, 2, m), ":", ExprInt(false, 2, l))
+                if b.name == "b" && m == 2 && l == 0 =>
+          }),
+          ("d = {a,b}[6:4]", {
+            case ExprSlice(ExprRef(a), ExprInt(false, 2, m), ":", ExprInt(false, 2, l))
+                if a.name == "a" && m == 2 && l == 0 =>
+          }),
+          ("d = {a,b}[4+:3]", {
+            case ExprSlice(ExprRef(a), ExprInt(false, 2, m), ":", ExprInt(false, 2, l))
+                if a.name == "a" && m == 2 && l == 0 =>
+          }),
+          ("d = {a,b}[6-:3]", {
+            case ExprSlice(ExprRef(a), ExprInt(false, 2, m), ":", ExprInt(false, 2, l))
+                if a.name == "a" && m == 2 && l == 0 =>
+          }),
+          ("d = {a,b}[4:2]", {
+            case ExprCat(
+                List(ExprIndex(ExprRef(a), ExprInt(false, 2, i)),
+                     ExprSlice(ExprRef(b), ExprInt(false, 2, m), ":", ExprInt(false, 2, l))))
+                if a.name == "a" && i == 0 && b.name == "b" && m == 3 && l == 2 =>
+          }),
+          ("e = {a,b,c}[8:2]", {
+            case ExprCat(
+                List(ExprIndex(ExprRef(a), ExprInt(false, 2, i)),
+                     ExprRef(b),
+                     ExprSlice(ExprRef(c), ExprInt(false, 2, m), ":", ExprInt(false, 2, l))))
+                if a.name == "a" && i == 0 && b.name == "b" && m == 3 && l == 2 && c.name == "c" =>
+          })
+        )
+      } {
+        text in {
+          val src =
+            s"""|fsm f {
+                |  in u4 a;
+                |  in u4 b;
+                |  (* unused *) in u4 c;
+                |  (* unused *) out u3 d;
+                |  (* unused *) out u7 e;
+                |  fence { ${text}; }
+                |}""".stripMargin
+          val tree = xform(src.asTree[Root])
+          val expr = tree getFirst { case StmtAssign(_, rhs) => rhs }
+          expr should matchPattern(pattern)
+          cc.messages shouldBe empty
+        }
+      }
+    }
+
+    "constant slice of repetition" - {
+      for {
+        (text, pattern) <- List[(String, PartialFunction[Any, Unit])](
+          ("c = {2{a}}[2:0]", {
+            case ExprSlice(ExprRef(a), ExprInt(false, 2, m), ":", ExprInt(false, 2, l))
+                if a.name == "a" && m == 2 && l == 0 =>
+          }),
+          ("c = {2{a}}[6:4]", {
+            case ExprSlice(ExprRef(a), ExprInt(false, 2, m), ":", ExprInt(false, 2, l))
+                if a.name == "a" && m == 2 && l == 0 =>
+          }),
+          ("c = {2{a}}[4:2]", {
+            case ExprCat(
+                List(ExprIndex(ExprRef(a1), ExprInt(false, 2, i)),
+                     ExprSlice(ExprRef(a2), ExprInt(false, 2, m), ":", ExprInt(false, 2, l))))
+                if a1.name == "a" && i == 0 && a2.name == "a" && m == 3 && l == 2 =>
+          }),
+          ("d = {3{a}}[8:2]", {
+            case ExprCat(
+                List(ExprIndex(ExprRef(a1), ExprInt(false, 2, i)),
+                     ExprRef(a2),
+                     ExprSlice(ExprRef(a3), ExprInt(false, 2, m), ":", ExprInt(false, 2, l))))
+                if a1.name == "a" && i == 0 && a2.name == "a" && a3.name == "a" && m == 3 && l == 2 =>
+          }),
+          ("e = {4{a}}[12:2]", {
+            case ExprCat(
+                List(ExprIndex(ExprRef(a1), ExprInt(false, 2, i)),
+                     ExprRep(ExprNum(false, r), ExprRef(a2)),
+                     ExprSlice(ExprRef(a3), ExprInt(false, 2, m), ":", ExprInt(false, 2, l))))
+                if a1.name == "a" && i == 0 && r == 2 && a2.name == "a" && a3.name == "a" && m == 3 && l == 2 =>
+          }),
+          ("e = {4{a}}[11:1]", {
+            case ExprCat(
+                List(ExprRep(ExprNum(false, r), ExprRef(a2)),
+                     ExprSlice(ExprRef(a3), ExprInt(false, 2, m), ":", ExprInt(false, 2, l))))
+                if r == 2 && a2.name == "a" && a3.name == "a" && m == 3 && l == 1 =>
+          }),
+          ("e = {4{a}}[14:4]", {
+            case ExprCat(
+                List(ExprSlice(ExprRef(a1), ExprInt(false, 2, m), ":", ExprInt(false, 2, l)),
+                     ExprRep(ExprNum(false, r), ExprRef(a2))))
+                if a1.name == "a" && m == 2 && l == 0 && r == 2 && a2.name == "a" =>
+          })
+        )
+      } {
+        text in {
+          val src = s"""|fsm f {
+                        |  in u4 a;
+                        |  (* unused *) out u3 c;
+                        |  (* unused *) out u7 d;
+                        |  (* unused *) out u11 e;
+                        |  fence { ${text}; }
+                        |}""".stripMargin
+          val tree = xform(src.asTree[Root])
+          val expr = tree getFirst { case StmtAssign(_, rhs) => rhs }
+          expr should matchPattern(pattern)
+          cc.messages shouldBe empty
         }
       }
     }

@@ -26,6 +26,8 @@ import com.argondesign.alogic.core.Types.TypeNum
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.BigIntOps._
 import com.argondesign.alogic.util.unreachable
+import com.argondesign.alogic.lib.Math.clog2
+import scala.annotation.tailrec
 
 import scala.language.implicitConversions
 
@@ -471,6 +473,37 @@ final class FoldExpr(
       }
 
       ////////////////////////////////////////////////////////////////////////////
+      // Fold index zero of width zero and full width slices
+      ////////////////////////////////////////////////////////////////////////////
+
+      case ExprIndex(expr, ExprInt(_, _, i)) if expr.tpe.width == 1 && i == 0 => {
+        expr
+      }
+
+      case ExprSlice(expr, ExprInt(_, _, m), ":", ExprInt(_, _, l))
+          if m == expr.tpe.width - 1 && l == 0 => {
+        expr
+      }
+
+      case ExprSlice(expr, ExprInt(_, _, l), "+:", ExprInt(_, _, w))
+          if w == expr.tpe.width && l == 0 => {
+        expr
+      }
+
+      case ExprSlice(expr, ExprInt(_, _, m), "-:", ExprInt(_, _, w))
+          if m == expr.tpe.width - 1 && w == expr.tpe.width => {
+        expr
+      }
+
+      ////////////////////////////////////////////////////////////////////////////
+      // Fold repetitions of count 1
+      ////////////////////////////////////////////////////////////////////////////
+
+      case ExprRep(Integral(_, _, rep), expr) if rep == 1 => {
+        expr
+      }
+
+      ////////////////////////////////////////////////////////////////////////////
       // Fold concatenations of sized integers
       ////////////////////////////////////////////////////////////////////////////
 
@@ -481,6 +514,21 @@ final class FoldExpr(
           case _                            => unreachable
         }
         ExprInt(signed = false, width, value) withLoc tree.loc
+      }
+
+      ////////////////////////////////////////////////////////////////////////////
+      // Flatten concatenations
+      ////////////////////////////////////////////////////////////////////////////
+
+      case ExprCat(List(part: Expr)) => part
+
+      case ExprCat(parts) if parts exists { _.isInstanceOf[ExprCat] } => {
+        ExprCat {
+          parts flatMap {
+            case ExprCat(nested) => nested
+            case expr            => Iterator.single(expr)
+          }
+        } withLoc tree.loc
       }
 
       ////////////////////////////////////////////////////////////////////////////
@@ -495,6 +543,109 @@ final class FoldExpr(
           val v = (0 until c).foldLeft(BigInt(0)) { case (a, _) => (a << w) | b }
           ExprInt(signed = false, c * w, v) withLoc tree.loc
         } getOrElse tree
+      }
+
+      ////////////////////////////////////////////////////////////////////////////
+      // Fold constant index of concatenations
+      ////////////////////////////////////////////////////////////////////////////
+
+      case ExprIndex(ExprCat(parts), ExprInt(_, _, index)) => {
+        @tailrec def loop(remaining_parts: List[Expr], remaining_index: BigInt): ExprIndex = {
+          val head_width = remaining_parts.head.tpe.width;
+          if (remaining_index >= head_width) {
+            loop(remaining_parts.tail, remaining_index - head_width)
+          } else {
+            val part = remaining_parts.head
+            ExprIndex(part, ExprInt(false, clog2(head_width) max 1, remaining_index))
+          }
+        }
+
+        loop(parts.reverse, index) regularize tree.loc
+      }
+
+      ////////////////////////////////////////////////////////////////////////////
+      // Fold constant slice of concatenations
+      ////////////////////////////////////////////////////////////////////////////
+
+      case ExprSlice(ExprCat(parts), Integral(_, _, lidx), op, Integral(_, _, ridx)) => {
+        val (msb, lsb) = op match {
+          case ":"  => (lidx, ridx)
+          case "+:" => (lidx + ridx - 1, lidx)
+          case "-:" => (lidx, lidx - ridx + 1)
+          case _    => unreachable
+        }
+
+        def slice_part(part: Expr, m: BigInt, l: BigInt): ExprSlice = {
+          val width_bits = clog2(part.tpe.width) max 1
+          ExprSlice(part, ExprInt(false, width_bits, m), ":", ExprInt(false, width_bits, l))
+        }
+
+        @tailrec def loop(concat_list: List[Expr],
+                          rem_parts: List[Expr],
+                          msb_rem: BigInt,
+                          lsb_rem: BigInt): List[Expr] = {
+          val next_part_width = rem_parts.head.tpe.width
+          if (lsb_rem >= next_part_width) {
+            // None of this part included in slice
+            loop(concat_list, rem_parts.tail, msb_rem - next_part_width, lsb_rem - next_part_width)
+          } else if (msb_rem < next_part_width) {
+            // This is the final part included in slice
+            slice_part(rem_parts.head, msb_rem, lsb_rem) :: concat_list
+          } else {
+            // Slice this part and continue
+            val new_concat_list = slice_part(rem_parts.head, next_part_width - 1, lsb_rem) :: concat_list
+            loop(new_concat_list, rem_parts.tail, msb_rem - next_part_width, 0)
+          }
+        }
+
+        ExprCat(loop(List(), parts.reverse, msb, lsb)) regularize tree.loc
+      }
+
+      ////////////////////////////////////////////////////////////////////////////
+      // Fold constant index of repetitions
+      ////////////////////////////////////////////////////////////////////////////
+
+      case ExprIndex(ExprRep(_, expr), ExprInt(_, _, index)) => {
+        val expr_width = expr.tpe.width
+        ExprIndex(expr, ExprInt(false, clog2(expr_width) max 1, index % expr_width)) regularize tree.loc
+      }
+
+      ////////////////////////////////////////////////////////////////////////////
+      // Fold constant slice of repetitions
+      ////////////////////////////////////////////////////////////////////////////
+
+      case ExprSlice(ExprRep(_, expr), ExprInt(_, _, lidx), op, ExprInt(_, _, ridx)) => {
+        val (msb, lsb) = op match {
+          case ":"  => (lidx, ridx)
+          case "+:" => (lidx + ridx - 1, lidx)
+          case "-:" => (lidx, lidx - ridx + 1)
+          case _    => unreachable
+        }
+        val expr_width = expr.tpe.width
+        val expr_bits = clog2(expr_width) max 1
+
+        def slice_expr(m: BigInt, l: BigInt): ExprSlice = {
+          ExprSlice(expr, ExprInt(false, expr_bits, m), ":", ExprInt(false, expr_bits, l))
+        }
+
+        if (msb / expr_width == lsb / expr_width) {
+          // Just a single slice
+          slice_expr(msb % expr_width, lsb % expr_width) regularize tree.loc
+        } else {
+          val ms_slice_width = (msb + 1) % expr_width
+          val ls_slice_width = (((-lsb) % expr_width) + expr_width) % expr_width
+          val num_intermediate_reps = ((msb - lsb + 1) - ms_slice_width - ls_slice_width) / expr_width
+          val ms_slice = if (ms_slice_width > 0) Some(slice_expr(ms_slice_width - 1, 0)) else None
+          val ls_slice =
+            if (ls_slice_width > 0) Some(slice_expr(expr_width - 1, expr_width - ls_slice_width))
+            else None
+          val intermediate_reps =
+            if (num_intermediate_reps > 0)
+              Some(ExprRep(ExprNum(false, num_intermediate_reps), expr))
+            else
+              None
+          ExprCat(List(ms_slice, intermediate_reps, ls_slice).flatten) regularize tree.loc
+        }
       }
 
       ////////////////////////////////////////////////////////////////////////////

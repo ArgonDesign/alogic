@@ -11,8 +11,6 @@
 // DESCRIPTION:
 //
 // Unpack ExprCat instances:
-//  - Remove single concatenations
-//  - Flatten nested concatenations
 //  - Rewrite StmtAssign(ExprCat, ExprCat) as multiple assignments if possible
 //  - Rewrite Connect(ExprCat, ExprCat) as multiple connections if possible
 ////////////////////////////////////////////////////////////////////////////////
@@ -78,17 +76,6 @@ final class SimplifyCat(implicit cc: CompilerContext) extends TreeTransformer {
 
   override def transform(tree: Tree): Tree = {
     val result = tree match {
-
-      case ExprCat(List(part)) => part
-
-      case ExprCat(parts) => {
-        ExprCat {
-          parts flatMap {
-            case ExprCat(nested) => nested
-            case expr            => Iterator.single(expr)
-          }
-        }
-      }
 
       case StmtAssign(lhs @ ExprCat(parts), ExprInt(_, width, value)) => {
         val widths = parts map { _.tpe.width }
