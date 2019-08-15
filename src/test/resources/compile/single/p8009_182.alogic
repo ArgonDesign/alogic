@@ -11,3 +11,35 @@ network p8009_182 {
     }
   }
 }
+// @fec-golden {{{
+//  module p8009_182__N_20(
+//    input  wire       clk,
+//    input  wire       rst,
+//    input  wire [7:0] p_in,
+//    input  wire       p_in__valid,
+//    output wire       p_in__ready,
+//    output reg  [7:0] p_out,
+//    output reg        p_out__valid,
+//    input  wire       p_out__ready
+//  );
+//
+//    wire go = p_in__valid && (~p_out__valid || p_out__ready);
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        p_out <= 8'd0;
+//        p_out__valid <= 1'd0;
+//      end else begin
+//        if (go) begin
+//          p_out <= p_in + 8'd20;
+//          p_out__valid <= 1'd1;
+//        end else if (p_out__ready) begin
+//          p_out__valid <= 1'b0;
+//        end
+//      end
+//    end
+//
+//    assign p_in__ready = go;
+//
+//  endmodule
+// }}}

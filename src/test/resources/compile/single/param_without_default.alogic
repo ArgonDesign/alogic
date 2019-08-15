@@ -18,4 +18,21 @@ network param_without_default {
 
   i -> inst.p_i; inst.p_o -> o;
 }
-
+// @fec-golden {{{
+//  module param_without_default(
+//    input wire rst,
+//    input wire clk,
+//    input wire [3:0] i,
+//    output reg [7:0] o
+//  );
+//
+//  always @(posedge clk) begin
+//    if (rst) begin
+//      o <= 8'd0;
+//    end else begin
+//      o <= {2{i}};
+//    end
+//  end
+//
+//  endmodule
+// }}}

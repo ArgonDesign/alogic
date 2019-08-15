@@ -10,11 +10,20 @@ struct b {
 };
 
 fsm atbits {
-  in sync uint(@bits(b)) p_i;
-  out sync u11 p_o;
+  in       uint(@bits(b)) p_i;
+  out wire u11            p_o;
 
   void main() {
     p_o.write(p_i.read());
     fence;
   }
 }
+
+// @fec-golden {{{
+//  module atbits(
+//    input  wire [10:0] p_i,
+//    output wire [10:0] p_o
+//  );
+//    assign p_o = p_i;
+//  endmodule
+// }}}

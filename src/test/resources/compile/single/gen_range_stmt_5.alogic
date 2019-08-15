@@ -11,3 +11,21 @@ fsm gen_range_stmt_5 {
     fence;
   }
 }
+// @fec-golden {{{
+//  module gen_range_stmt_5(
+//    input wire rst,
+//    input wire clk,
+//    input wire p_i,
+//    output reg p_o
+//  );
+//
+//  always @(posedge clk) begin
+//    if (rst) begin
+//      p_o <= 1'd0;
+//    end else begin
+//      p_o <= p_i;
+//    end
+//  end
+//
+//  endmodule
+// }}}

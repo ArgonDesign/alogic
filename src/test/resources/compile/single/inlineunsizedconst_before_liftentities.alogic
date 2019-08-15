@@ -1,13 +1,29 @@
 network inlineunsizedconst_before_liftentities {
-
   const uint A = 15;
   const u16  B = (1 << (A - 1));
 
   out u16 a;
 
   new fsm foo {
-    fence{
+    fence {
       a = B;
     }
   }
 }
+// @fec-golden {{{
+//  module inlineunsizedconst_before_liftentities(
+//    input  wire        clk,
+//    input  wire        rst,
+//    output reg  [15:0] a
+//  );
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        a <= 16'd0;
+//      end else begin
+//        a <= 16'h4000;
+//      end
+//    end
+//
+//  endmodule
+// }}}

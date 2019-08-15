@@ -13,7 +13,6 @@ network gen_for_stmt_2 {
       u32 b = p_i;
       gen for (uint N = 0, uint B = 0; N < P; N += 1, B += 2) {
         b += N << B;
-        fence;
       }
       p_o.write(b);
       fence;
@@ -26,3 +25,24 @@ network gen_for_stmt_2 {
   i_4.p_o -> p_o4;
   i_9.p_o -> p_o9;
 }
+// @fec-golden {{{
+//  module gen_for_stmt_2(
+//    input wire rst,
+//    input wire clk,
+//    input wire [31:0] p_i,
+//    output reg [31:0] p_o4,
+//    output reg [31:0] p_o9
+//  );
+//
+//  always @(posedge clk) begin
+//    if (rst) begin
+//      p_o4 <= 32'd0;
+//      p_o9 <= 32'd0;
+//    end else begin
+//      p_o4 <= p_i + 32'd228;
+//      p_o9 <= p_i + 32'd669924;
+//    end
+//  end
+//
+//  endmodule
+// }}}

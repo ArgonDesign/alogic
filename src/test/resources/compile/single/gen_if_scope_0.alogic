@@ -30,3 +30,24 @@ network gen_if_scope_0 {
   i_4.p_o -> p_o4;
   i_9.p_o -> p_o9;
 }
+// @fec-golden {{{
+//  module gen_if_scope_0(
+//    input wire rst,
+//    input wire clk,
+//    input wire p_i,
+//    output reg p_o4,
+//    output reg p_o9
+//  );
+//
+//  always @(posedge clk) begin
+//    if (rst) begin
+//      p_o4 <= 1'd0;
+//      p_o9 <= 1'd0;
+//    end else begin
+//      p_o4 <= p_i;
+//      p_o9 <= p_i;
+//    end
+//  end
+//
+//  endmodule
+// }}}

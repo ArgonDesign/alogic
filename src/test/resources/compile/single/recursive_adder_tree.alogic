@@ -1,6 +1,6 @@
 network recursive_adder_tree {
-  in  u32[16] p_i;
-  out u36     p_o;
+  in  u2[16] p_i;
+  out u6     p_o;
 
   network tree {
     param uint W;
@@ -42,7 +42,30 @@ network recursive_adder_tree {
     }
   }
 
-  tree = new tree(W=32, N=16);
+  tree = new tree(W=2, N=16);
 
   p_i -> tree.p_ii; tree.p_oo -> p_o;
 }
+// @fec-golden {{{
+// module recursive_adder_tree(
+//   input  wire [31:0] p_i,
+//   output wire [5:0] p_o
+// );
+//   assign p_o = {4'd0, + p_i[ 0*2 +: 2]} +
+//                {4'd0, + p_i[ 1*2 +: 2]} +
+//                {4'd0, + p_i[ 2*2 +: 2]} +
+//                {4'd0, + p_i[ 3*2 +: 2]} +
+//                {4'd0, + p_i[ 4*2 +: 2]} +
+//                {4'd0, + p_i[ 5*2 +: 2]} +
+//                {4'd0, + p_i[ 6*2 +: 2]} +
+//                {4'd0, + p_i[ 7*2 +: 2]} +
+//                {4'd0, + p_i[ 8*2 +: 2]} +
+//                {4'd0, + p_i[ 9*2 +: 2]} +
+//                {4'd0, + p_i[10*2 +: 2]} +
+//                {4'd0, + p_i[11*2 +: 2]} +
+//                {4'd0, + p_i[12*2 +: 2]} +
+//                {4'd0, + p_i[13*2 +: 2]} +
+//                {4'd0, + p_i[14*2 +: 2]} +
+//                {4'd0, + p_i[15*2 +: 2]};
+// endmodule
+// }}}

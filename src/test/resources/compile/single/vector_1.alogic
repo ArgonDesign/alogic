@@ -1,13 +1,29 @@
 fsm vector_1 {
+    in u2[2][4][8] i;
     in u1 i_0;
     in u2 i_1;
     in u3 i_2;
-    out u16 o;
-
-    u16[2][4][8] bar = 0;
+    out wire u2 o;
 
     void main() {
-        o = bar[i_0 + 1][i_1 + 2][i_2 + 3];
+        o = i[i_0 + 1][i_1 + 2][i_2 + 3];
         fence;
     }
 }
+// @fec-golden {{{
+//  module vector_1(
+//    input wire [127:0] i,
+//    input wire       i_0,
+//    input wire [1:0] i_1,
+//    input wire [2:0] i_2,
+//    output wire [1:0] o
+//  );
+//
+//    wire [6:0] idx = {6'd0, (i_0 + 1'd1)}*7'd64 +
+//                     {5'd0, (i_1 + 2'd2)}*7'd16 +
+//                     {4'd0, (i_2 + 3'd3)}*7'd2;
+//
+//    assign o = i[idx +: 2];
+//
+//  endmodule
+// }}}

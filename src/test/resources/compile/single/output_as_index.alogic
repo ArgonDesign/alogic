@@ -1,11 +1,41 @@
 fsm output_as_index {
-  out u2 sel;
-
-  u8[4] d;
+  in  u2   idx;
+  in  bool val;
+  out u2   sel;
+  out bool old;
+  out bool[4] d;
 
   void main() {
-    sel = 1;
-    d[sel] = 5;
+    sel = idx + 1;
+    old = d[sel];
+    d[sel] = val;
     fence;
   }
 }
+// @fec-golden {{{
+//  module output_as_index(
+//    input  wire       clk,
+//    input  wire       rst,
+//    input  wire [1:0] idx,
+//    input  wire       val,
+//    output reg  [1:0] sel,
+//    output reg        old,
+//    output reg  [3:0] d
+//  );
+//
+//    wire [1:0] ptr = idx + 2'd1;
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        d <= 12'd0;
+//        sel <= 2'd0;
+//        old <= 1'd0;
+//      end else begin
+//        sel <= ptr;
+//        old <= d[ptr];
+//        d[ptr] <= val;
+//      end
+//    end
+//
+//  endmodule
+// }}}

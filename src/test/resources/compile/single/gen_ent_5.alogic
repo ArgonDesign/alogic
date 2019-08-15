@@ -15,7 +15,7 @@ network gen_ent_5 {
       out wire uint(n+1) p_o;
       void main() {
         uint(n + 1) t = p_i;
-        gen for (uint m < 2*n) {
+        gen for (uint m < 3*n) {
           t = ~t;
         }
         p_o = t;
@@ -33,4 +33,22 @@ network gen_ent_5 {
     }
   }
 }
-
+// @fec-golden {{{
+//  module gen_ent_5(
+//    input  wire       i_0,
+//    input  wire [1:0] i_1,
+//    input  wire [2:0] i_2,
+//    input  wire [3:0] i_3,
+//    output wire       o_0,
+//    output wire [1:0] o_1,
+//    output wire [2:0] o_2,
+//    output wire [3:0] o_3
+//  );
+//
+//    assign o_0 = i_0;
+//    assign o_1 = ~i_1;
+//    assign o_2 = i_2;
+//    assign o_3 = ~i_3;
+//
+//  endmodule
+// }}}

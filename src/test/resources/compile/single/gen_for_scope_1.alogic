@@ -28,3 +28,88 @@ network gen_for_scope_1 {
   i_4.p_o -> p_o4;
   i_9.p_o -> p_o9;
 }
+
+// @fec-golden {{{
+//  module gen_for_scope_1(
+//    input wire rst,
+//    input wire clk,
+//    input wire p_i,
+//    output reg p_o4,
+//    output reg p_o9
+//  );
+//
+//  reg b_4;
+//  reg [2:0] state_4;
+//
+//  always @(posedge clk) begin
+//    if (rst) begin
+//      state_4 <= 3'd0;
+//      b_4 <= 1'b0;
+//      p_o4 <= 1'd0;
+//    end else begin
+//      if (state_4 == 3'd1) begin
+//        state_4 <= 3'd2;
+//        p_o4 <= ~b_4;
+//      end else if (state_4 == 3'd2) begin
+//        state_4 <= 3'd3;
+//        p_o4 <= ~b_4;
+//      end else if (state_4 == 3'd3) begin
+//        state_4 <= 3'd4;
+//        p_o4 <= ~b_4;
+//      end else if (state_4 == 3'd4) begin
+//        state_4 <= 3'd0;
+//        p_o4 <= b_4;
+//      end else begin
+//        state_4 <= 3'd1;
+//        b_4 <= p_i;
+//        p_o4 <= ~p_i;
+//      end
+//    end
+//  end
+//
+//  reg b_9;
+//  reg [3:0] state_9;
+//
+//  always @(posedge clk) begin
+//    if (rst) begin
+//      state_9 <= 4'd0;
+//      b_9 <= 1'b0;
+//      p_o9 <= 1'd0;
+//    end else begin
+//      if (state_9 == 4'd1) begin
+//        state_9 <= 4'd2;
+//        p_o9 <= ~b_9;
+//      end else if (state_9 == 4'd2) begin
+//        state_9 <= 4'd3;
+//        p_o9 <= ~b_9;
+//      end else if (state_9 == 4'd3) begin
+//        state_9 <= 4'd4;
+//        p_o9 <= ~b_9;
+//      end else if (state_9 == 4'd4) begin
+//        state_9 <= 4'd5;
+//        p_o9 <= ~b_9;
+//      end else if (state_9 == 4'd5) begin
+//        state_9 <= 4'd6;
+//        p_o9 <= ~b_9;
+//      end else if (state_9 == 4'd6) begin
+//        state_9 <= 4'd7;
+//        p_o9 <= ~b_9;
+//      end else if (state_9 == 4'd7) begin
+//        state_9 <= 4'd8;
+//        p_o9 <= ~b_9;
+//      end else if (state_9 == 4'd8) begin
+//        state_9 <= 4'd9;
+//        p_o9 <= ~b_9;
+//      end else if (state_9 == 4'd9) begin
+//        state_9 <= 4'd0;
+//        p_o9 <= b_9;
+//      end else begin
+//        state_9 <= 4'd1;
+//        b_9 <= p_i;
+//        p_o9 <= ~p_i;
+//      end
+//    end
+//  end
+//
+//  endmodule
+// }}}

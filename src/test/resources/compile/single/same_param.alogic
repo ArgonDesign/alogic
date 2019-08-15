@@ -22,4 +22,24 @@ network same_param {
   inst_a.p_o -> o_a;
   inst_b.p_o -> o_b;
 }
-
+// @fec-golden {{{
+//  module same_param(
+//    input wire rst,
+//    input wire clk,
+//    input wire i,
+//    output reg [2:0] o_a,
+//    output reg [2:0] o_b
+//  );
+//
+//  always @(posedge clk) begin
+//    if (rst) begin
+//      o_a <= 3'd0;
+//      o_b <= 3'd0;
+//    end else begin
+//      o_a <= {3{i}};
+//      o_b <= {3{i}};
+//    end
+//  end
+//
+//  endmodule
+// }}}

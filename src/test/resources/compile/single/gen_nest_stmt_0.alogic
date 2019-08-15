@@ -1,25 +1,28 @@
 network gen_nest_stmt_0 {
-  in u32 p_i;
+  in u4 p_i;
 
-  out u32 p_o4;
-  out u32 p_o9;
+  out u4 p_o4;
+  out u4 p_o9;
+  out u4 b_4;
+  out u4 b_9;
 
   fsm inner {
     param uint P;
 
-    out u32 p_o;
+    out u4 p_o;
+    out u4 p_b;
 
     void main() {
-      u32 b = p_i;
+      p_b = p_i;
       gen for (uint N = 0; N < P; N += 1) {
         {
-          b += N;
+          p_b += N;
           gen if (N[0]) {
             fence;
           }
         }
       }
-      p_o.write(b);
+      p_o.write(p_b);
       fence;
     }
   }
@@ -29,4 +32,68 @@ network gen_nest_stmt_0 {
 
   i_4.p_o -> p_o4;
   i_9.p_o -> p_o9;
+  i_4.p_b -> b_4;
+  i_9.p_b -> b_9;
 }
+// @fec-golden {{{
+//  module gen_nest_stmt_0(
+//    input wire rst,
+//    input wire clk,
+//    input wire [3:0] p_i,
+//    output reg [3:0] p_o4,
+//    output reg [3:0] p_o9,
+//    output reg [3:0] b_4,
+//    output reg [3:0] b_9
+//  );
+//
+//  reg [1:0] state_4;
+//
+//  always @(posedge clk) begin
+//    if (rst) begin
+//      state_4 <= 2'd0;
+//      b_4 <= 4'b0;
+//      p_o4 <= 4'd0;
+//    end else begin
+//      if (state_4 == 2'd1) begin
+//        state_4 <= 2'd2;
+//        b_4 <= b_4 + 4'd5;
+//      end else if (state_4 == 2'd2) begin
+//        state_4 <= 2'd0;
+//        p_o4 <= b_4;
+//      end else begin
+//        state_4 <= 2'd1;
+//        b_4 <= p_i + 8'd1;
+//      end
+//    end
+//  end
+//
+//  reg [2:0] state_9;
+//
+//  always @(posedge clk) begin
+//    if (rst) begin
+//      state_9 <= 3'd0;
+//      b_9 <= 4'b0;
+//      p_o9 <= 4'd0;
+//    end else begin
+//      if (state_9 == 3'd1) begin
+//        state_9 <= 3'd2;
+//        b_9 <= b_9 + 4'd5;
+//      end else if (state_9 == 3'd2) begin
+//        state_9 <= 3'd3;
+//        b_9 <= b_9 + 4'd9;
+//      end else if (state_9 == 3'd3) begin
+//        state_9 <= 3'd4;
+//        b_9 <= b_9 + 4'd13;
+//      end else if (state_9 == 3'd4) begin
+//        state_9 <= 3'd0;
+//        b_9 <= b_9 + 4'd8;
+//        p_o9 <= b_9 + 4'd8;
+//      end else begin
+//        state_9 <= 3'd1;
+//        b_9 <= p_i + 4'd1;
+//      end
+//    end
+//  end
+//
+//  endmodule
+// }}}

@@ -22,4 +22,24 @@ network unsized_param {
   inst_a.p_o -> o_a;
   inst_b.p_o -> o_b;
 }
-
+// @fec-golden {{{
+//  module unsized_param(
+//    input wire rst,
+//    input wire clk,
+//    input wire i,
+//    output reg       o_a,
+//    output reg [9:0] o_b
+//  );
+//
+//  always @(posedge clk) begin
+//    if (rst) begin
+//      o_a <= 1'd0;
+//      o_b <= 10'd0;
+//    end else begin
+//      o_a <= i;
+//      o_b <= {10{i}};
+//    end
+//  end
+//
+//  endmodule
+// }}}

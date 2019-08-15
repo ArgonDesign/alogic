@@ -11,4 +11,22 @@ fsm gen_for_stmt_3 {
     p_o.write(b);
     fence;
   }
+// @fec-golden {{{
+//  module gen_for_stmt_3(
+//    input wire rst,
+//    input wire clk,
+//    input wire p_i,
+//    output reg [2:0] p_o
+//  );
+//
+//  always @(posedge clk) begin
+//    if (rst) begin
+//      p_o <= 3'd0;
+//    end else begin
+//      p_o <= {2'd3, ~p_i};
+//    end
+//  end
+//
+//  endmodule
+// }}}
 }

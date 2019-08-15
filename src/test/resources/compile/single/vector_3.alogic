@@ -15,3 +15,14 @@ fsm vector_3 {
         fence;
     }
 }
+// @fec-golden {{{
+//  module vector_3(
+//    input wire clk,
+//    input wire rst,
+//    output wire [7:0] o
+//  );
+//
+//    assign o = 8'd0;
+//
+//  endmodule
+// }}}

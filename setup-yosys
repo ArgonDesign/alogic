@@ -1,0 +1,30 @@
+#!/bin/bash
+
+stderr () {
+  echo "$(basename $0): $1" >&2
+}
+
+error () {
+  stderr "ERROR: $1"; exit 1
+}
+
+[[ ! -e yosys ]] || error "yosys directory already exists"
+
+REMOTE=https://github.com/YosysHQ/yosys.git
+
+REFSPEC=yosys-0.8
+
+git clone $REMOTE yosys
+
+cd yosys
+
+git checkout $REFSPEC
+
+mkdir install
+
+PREFIX=$(readlink -f install)
+
+make PREFIX=$PREFIX config-gcc
+make PREFIX=$PREFIX -j$(nproc)
+make PREFIX=$PREFIX -j$(nproc) test
+make PREFIX=$PREFIX install

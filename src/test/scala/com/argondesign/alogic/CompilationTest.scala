@@ -31,6 +31,7 @@ import com.argondesign.alogic.core.InternalCompilerErrorException
 import com.argondesign.alogic.core.Message
 import com.argondesign.alogic.core.Settings
 import com.argondesign.alogic.core.Warning
+import com.argondesign.alogic.core.enums.ResetStyle
 import com.argondesign.alogic.util.unreachable
 import org.scalatest.FreeSpecLike
 import org.scalatest.ParallelTestExecution
@@ -46,6 +47,12 @@ trait CompilationTest extends FreeSpecLike with AlogicTest with ParallelTestExec
 
   if (!verilatorPath.exists) {
     cancel("Run the 'setup-verilator' script to install Verilator locally for testing")
+  }
+
+  private val yosysPath = new File("yosys/install/bin/yosys")
+
+  if (!yosysPath.exists) {
+    cancel("Run the 'setup-yosys' script to install Yosys locally for testing")
   }
 
   // Will be updated form multiple threads so must be thread safe
@@ -92,8 +99,7 @@ trait CompilationTest extends FreeSpecLike with AlogicTest with ParallelTestExec
   private def verilatorLint(topLevel: String): Unit = withTmpDir { tmpDir =>
     // Write all files to temporary directory
     for ((name, text) <- outputs) {
-      val fullPath = tmpDir.resolve(name).toFile
-      val pw = new PrintWriter(fullPath)
+      val pw = new PrintWriter(tmpDir.resolve(name).toFile)
       pw.write(text)
       pw.flush()
       pw.close()
@@ -105,6 +111,69 @@ trait CompilationTest extends FreeSpecLike with AlogicTest with ParallelTestExec
     // Fail test if lint failed
     if (ret != 0) {
       fail("Verilator lint error")
+    }
+  }
+
+  private def yosysFEC(topLevel: String, golden: String): Unit = withTmpDir { tmpDir =>
+    // Write all files to temporary directory
+    for ((name, text) <- outputs) {
+      val pw = new PrintWriter(tmpDir.resolve(name).toFile)
+      pw.write(text)
+      pw.flush()
+      pw.close()
+    }
+
+    // Write the golden model
+    val goldenPath = tmpDir.resolve("__golden.v").toFile
+    val gpw = new PrintWriter(goldenPath)
+    gpw.write(golden)
+    gpw.flush()
+    gpw.close()
+
+    // Write yosys script
+    val scriptPath = tmpDir.resolve("fec.ys").toFile
+    val spw = new PrintWriter(scriptPath)
+    spw.write(
+      s"""|read_verilog ${goldenPath}
+          |prep -flatten -top ${topLevel}
+          |opt -full ${topLevel}
+          |design -stash gold
+          |
+          |read_verilog ${tmpDir.resolve(topLevel + ".v").toFile}
+          |hierarchy -check -libdir ${tmpDir} -top ${topLevel}
+          |prep -flatten -run coarse: -top ${topLevel}
+          |opt -full ${topLevel}
+          |design -stash comp
+          |
+          |design -copy-from gold -as gold ${topLevel}
+          |design -copy-from comp -as comp ${topLevel}
+          |
+          |equiv_make gold comp equiv
+          |prep -flatten -top equiv
+          |opt -full equiv
+          |opt_clean -purge
+          |
+          |#show -prefix equiv-prep -colors 1 -stretch
+          |
+          |equiv_simple -seq 5
+          |equiv_induct -seq 50
+          |
+          |equiv_status -assert
+          |""".stripMargin
+    )
+    spw.flush()
+    spw.close()
+
+    // Log path
+    val logPath = tmpDir.resolve("fec.log")
+
+    // Perform the equivalence check
+    val ret = s"${yosysPath} -s ${scriptPath} -q -l ${logPath}".!
+
+    // Fail test if fec failed
+    if (ret != 0) {
+      //s"cat ${logPath}".!
+      fail("Yosys FEC failed")
     }
   }
 
@@ -150,8 +219,9 @@ trait CompilationTest extends FreeSpecLike with AlogicTest with ParallelTestExec
   private def parseCheckFile(checkFile: String): (Map[String, String], List[MessageSpec]) = {
     val attr = mutable.Map[String, String]()
 
-    val pairMatcher = """@(.*):(.*)""".r
-    val boolMatcher = """@(.*)""".r
+    val pairMatcher = """@(.+):(.*)""".r
+    val longMatcher = """@(.+)\{\{\{""".r
+    val boolMatcher = """@(.+)""".r
     val mesgMatcher = """(.*):(\d+): (WARNING|ERROR|FATAL): (\.\.\.)?(.*)""".r
 
     val mesgSpecs = new ListBuffer[MessageSpec]
@@ -172,14 +242,27 @@ trait CompilationTest extends FreeSpecLike with AlogicTest with ParallelTestExec
       mesgBuff.clear()
     }
 
+    val longBuff = new ListBuffer[String]
+    var longAttr = ""
+
+    def finishLongAttr() = {
+      attr(longAttr) = longBuff mkString "\n"
+      longBuff.clear()
+      longAttr = ""
+    }
+
     for {
       line <- Source.fromFile(checkFile).getLines map { _.trim }
       if line startsWith "//"
     } {
-      line.drop(2).trim match {
-        case pairMatcher(k, v) => attr(k.trim) = v.trim
-        case boolMatcher(k)    => attr(k.trim) = ""
-        case mesgMatcher(file, line, kind, null, pattern) =>
+      val text = line.drop(2)
+      text.trim match {
+        case pairMatcher(k, v) if longAttr == "" => attr(k.trim) = v.trim
+        case longMatcher(k) if longAttr == ""    => longAttr = k.trim
+        case "}}}" if longAttr != ""             => finishLongAttr()
+        case _ if longAttr != ""                 => longBuff append text
+        case boolMatcher(k) if longAttr == ""    => attr(k.trim) = ""
+        case mesgMatcher(file, line, kind, null, pattern) if longAttr == "" =>
           if (mesgBuff.nonEmpty) {
             finishMeasageSpec()
           }
@@ -187,12 +270,12 @@ trait CompilationTest extends FreeSpecLike with AlogicTest with ParallelTestExec
           mesgLine = line.trim
           mesgType = kind.trim
           mesgBuff append pattern.trim
-        case mesgMatcher(file, line, kind, _, pattern) =>
+        case mesgMatcher(file, line, kind, _, pattern) if longAttr == "" =>
           assert(mesgFile == file.trim, "Message continuation must have same file pattern")
           assert(mesgLine == line.trim, "Message continuation must have same line number")
           assert(mesgType == kind.trim, "Message continuation must have same message type")
           mesgBuff append pattern.trim
-        case l =>
+        case _ =>
       }
     }
 
@@ -211,7 +294,8 @@ trait CompilationTest extends FreeSpecLike with AlogicTest with ParallelTestExec
           moduleSearchDirs = List(searchPath),
           entityWriterFactory = entityWriterFactory,
           messageEmitter = messageEmitter,
-          dumpTrees = false
+          dumpTrees = false,
+          resetStyle = ResetStyle.SyncHigh
         )
       )
 
@@ -287,6 +371,11 @@ trait CompilationTest extends FreeSpecLike with AlogicTest with ParallelTestExec
       // Lint (if it's supposed to succeed and not told otherwise by the test
       if (!expectedToFail && !(attr contains "verilator-lint-off")) {
         verilatorLint(attr.getOrElse("out-top", top))
+      }
+
+      // Perform equivalence check with golden reference if provided
+      if (!expectedToFail && (attr contains "fec-golden")) {
+        yosysFEC(attr.getOrElse("out-top", top), attr("fec-golden"))
       }
     }
   }

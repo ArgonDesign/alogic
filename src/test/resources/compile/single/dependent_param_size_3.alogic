@@ -27,4 +27,25 @@ network dependent_param_size_3 {
   i_a -> inst_a.p_i; inst_a.p_o -> o_a;
   i_b -> inst_b.p_i; inst_b.p_o -> o_b;
 }
-
+// @fec-golden {{{
+//  module dependent_param_size_3(
+//    input  wire rst,
+//    input  wire clk,
+//    input  wire       i_a,
+//    input  wire [3:0] i_b,
+//    output reg [4:0] o_a,
+//    output reg [8:0] o_b
+//  );
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        o_a <= 5'd0;
+//        o_b <= 9'd0;
+//      end else begin
+//        o_a <= {4'd9, i_a};
+//        o_b <= {5'd9, i_b};
+//      end
+//    end
+//
+//  endmodule
+// }}}

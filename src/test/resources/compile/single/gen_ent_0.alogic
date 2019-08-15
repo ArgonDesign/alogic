@@ -33,4 +33,23 @@ network gen_ent_0 {
     }
   }
 }
+// @fec-golden {{{
+//  module gen_ent_0(
+//    input  wire i_0,
+//    input  wire i_1,
+//    input  wire i_2,
+//    input  wire i_3,
+//    output wire o_0,
+//    output wire o_1,
+//    output wire o_2,
+//    output wire o_3
+//  );
+//
+//    assign o_0 = i_0;
+//    assign o_1 = i_1;
+//    assign o_2 = i_2;
+//    assign o_3 = i_3;
+//
+//  endmodule
+// }}}
 

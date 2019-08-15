@@ -32,3 +32,4 @@ network gen_nest_stmt_2 {
   i_4.p_o -> p_o4;
   i_9.p_o -> p_o9;
 }
+// Too big for fec

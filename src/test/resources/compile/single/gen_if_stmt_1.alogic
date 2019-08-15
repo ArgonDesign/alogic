@@ -25,3 +25,24 @@ network gen_if_stmt_1 {
   neg.p_o -> p_on;
   pos.p_o -> p_op;
 }
+// @fec-golden {{{
+//  module gen_if_stmt_1(
+//    input wire rst,
+//    input wire clk,
+//    input wire p_i,
+//    output reg p_on,
+//    output reg p_op
+//  );
+//
+//  always @(posedge clk) begin
+//    if (rst) begin
+//      p_on <= 1'd0;
+//      p_op <= 1'd0;
+//    end else begin
+//      p_on <= ~p_i;
+//      p_op <= p_i;
+//    end
+//  end
+//
+//  endmodule
+// }}}

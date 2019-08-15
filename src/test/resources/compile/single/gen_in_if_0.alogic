@@ -26,3 +26,29 @@ network gen_in_if_0 {
   i_4.p_o -> p_o4;
   i_9.p_o -> p_o9;
 }
+// @fec-golden {{{
+//  module gen_in_if_0(
+//    input wire rst,
+//    input wire clk,
+//    input wire [31:0] p_i,
+//    output reg [31:0] p_o4,
+//    output reg [31:0] p_o9
+//  );
+//
+//  always @(posedge clk) begin
+//    if (rst) begin
+//      p_o4 <= 32'd0;
+//      p_o9 <= 32'd0;
+//    end else begin
+//      if (p_i[0]) begin
+//        p_o4 <= p_i + 32'd4;
+//        p_o9 <= p_i + 32'd9;
+//      end else begin
+//        p_o4 <= p_i;
+//        p_o9 <= p_i;
+//      end
+//    end
+//  end
+//
+//  endmodule
+// }}}
