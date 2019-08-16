@@ -32,6 +32,11 @@ final class InlineUnsizedConst(implicit cc: CompilerContext) extends TreeTransfo
         case _                     => tree
       }
 
+    case Decl(symbol, Some(init)) if symbol.kind.isConst => {
+      symbol.attr.init set init
+      tree
+    }
+
     case entity: Entity => {
       val newBody = entity.body filter {
         case EntDecl(Decl(symbol, _)) =>

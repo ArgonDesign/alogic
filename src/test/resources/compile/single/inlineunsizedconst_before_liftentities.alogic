@@ -1,0 +1,13 @@
+network inlineunsizedconst_before_liftentities {
+
+  const uint A = 15;
+  const u16  B = (1 << (A - 1));
+
+  out u16 a;
+
+  new fsm foo {
+    fence{
+      a = B;
+    }
+  }
+}
