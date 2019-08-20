@@ -81,18 +81,10 @@ trait Symbols extends ChainingSyntax { self: CompilerContext =>
   final def makeBuiltinCall(name: String, loc: Loc, args: List[Expr]): ExprCall = {
     val polySymbol = lookupGlobalTerm(name)
     assert(polySymbol.isBuiltin(this))
-    val typed = args exists { _.hasTpe }
-    val symbol = if (typed) {
-      polySymbol.kind.asInstanceOf[TypePolyFunc].resolve(args).get
-    } else {
-      polySymbol
-    }
+    assert(args exists { _.hasTpe })
+    val symbol = polySymbol.kind.asInstanceOf[TypePolyFunc].resolve(args).get
     val call = ExprRef(symbol).call(args)(this)
-    if (typed) {
-      call.regularize(loc)(this)
-    } else {
-      call.assignLocs(loc)(this)
-    }
+    call.regularize(loc)(this)
   }
 
   final private[this] val symbolSequenceNumbers = new SequenceNumbers

@@ -32,7 +32,6 @@ class LivenessSpec extends FreeSpec with AlogicTest {
 
   implicit val cc = new CompilerContext()
 
-  val typer = new Typer
   val fold = new FoldExpr(foldRefs = true)
 
   val aSymbol = cc.newTermSymbol("a", Loc.synthetic, TypeUInt(Expr(4) regularize Loc.synthetic))
@@ -51,10 +50,9 @@ class LivenessSpec extends FreeSpec with AlogicTest {
   }
 
   def prep(expr: Expr): Expr = {
-    expr assignLocs Loc.synthetic
-    val res = (expr rewrite typer rewrite fold).asInstanceOf[Expr]
+    (expr regularize Loc.synthetic rewrite fold).asInstanceOf[Expr]
+  } tap { _ =>
     cc.messages shouldBe empty
-    res
   }
 
   def killed(expr: Expr) = Liveness.killed(prep(expr))

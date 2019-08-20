@@ -48,7 +48,7 @@ trait Builtins { this: CompilerContext =>
   def foldBuiltinCall(call: ExprCall): Expr = call.expr match {
     case ExprRef(symbol) =>
       val builtin = (builtins find { _ contains symbol }).get
-      builtin.fold(call.loc, call.args) map { _ assignLocs call.loc } getOrElse call
+      builtin.fold(call.loc, call.args) map { _ regularize call.loc } getOrElse call
     case _ => unreachable
   }
 

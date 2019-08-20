@@ -23,12 +23,7 @@ import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.TreeInTypeTransformer
 import com.argondesign.alogic.typer.TypeAssigner
 
-final class Regularize(
-    loc: Loc,
-    assignTypes: Boolean
-)(
-    implicit cc: CompilerContext
-) extends TreeTransformer {
+final class Regularize(loc: Loc)(implicit cc: CompilerContext) extends TreeTransformer {
 
   // TODO: This always walks the whole tree, which is very inefficient.
   // Rework such that it does not descend nodes which already have loc/tpe
@@ -43,7 +38,7 @@ final class Regularize(
       tree withLoc loc
     }
 
-    if (assignTypes && !tree.hasTpe) {
+    if (!tree.hasTpe) {
       TypeAssigner(tree)
     }
 
