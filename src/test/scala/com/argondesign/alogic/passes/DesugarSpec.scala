@@ -52,18 +52,9 @@ final class DesugarSpec extends FreeSpec with AlogicTest {
                 case StmtAssign(lhs, rhs) =>
                   lhs shouldBe ExprRef(dSym)
                   inside(rhs) {
-                    case ExprBinary(ExprRef(sym), opStr, incr) =>
+                    case ExprBinary(ExprRef(sym), opStr, ExprInt(false, 2, v)) if v == 1 =>
                       opStr shouldBe op.init
                       sym should be theSameInstanceAs dSym
-                      inside(incr) {
-                        case ExprCall(ExprRef(symbol), List(width, value))
-                            if symbol.name == "@zx" =>
-                          value shouldBe ExprInt(false, 1, 1)
-                          inside(width) {
-                            case ExprCall(ExprRef(symbol), List(ExprRef(dSym)))
-                                if symbol.name == "@bits" =>
-                          }
-                      }
                   }
               }
           }

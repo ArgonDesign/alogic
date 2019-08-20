@@ -25,14 +25,12 @@ import com.argondesign.alogic.util.unreachable
 final class Desugar(implicit cc: CompilerContext) extends TreeTransformer {
 
   override def transform(tree: Tree): Tree = tree match {
-    // "a++" rewritten as  "a = a + @zx(@bits(a), 1'b1)"
+    // "a++" rewritten as  "a = a + <width of a>'d1"
     case StmtPost(lhs, op) => {
-      val width = cc.makeBuiltinCall("@bits", tree.loc, List(lhs)) regularize tree.loc
-      val bit1 = ExprInt(false, 1, 1) regularize tree.loc
-      val incr = cc.makeBuiltinCall("@zx", tree.loc, List(width, bit1))
+      val one = ExprInt(false, lhs.tpe.width, 1) regularize tree.loc
       val rhs = op match {
-        case "++" => lhs + incr
-        case "--" => lhs - incr
+        case "++" => lhs + one
+        case "--" => lhs - one
         case _    => unreachable
       }
       StmtAssign(lhs, rhs) regularize tree.loc
