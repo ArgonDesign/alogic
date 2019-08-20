@@ -27,6 +27,7 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Error
 import com.argondesign.alogic.core.Fatal
 import com.argondesign.alogic.core.FatalErrorException
+import com.argondesign.alogic.core.InternalCompilerErrorException
 import com.argondesign.alogic.core.Message
 import com.argondesign.alogic.core.Settings
 import com.argondesign.alogic.core.Warning
@@ -219,6 +220,9 @@ trait CompilationTest extends FreeSpecLike with AlogicTest with ParallelTestExec
         cc.compile(List(top))
       } catch {
         case _: FatalErrorException =>
+        case e: InternalCompilerErrorException =>
+          print(e.message.string)
+          throw e
       }
 
       // Parse the check file

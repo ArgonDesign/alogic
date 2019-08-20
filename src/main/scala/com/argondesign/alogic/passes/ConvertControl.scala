@@ -45,11 +45,11 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
   // Map from function symbols to the entry state symbol of that function
   private[this] var func2state: Map[TermSymbol, TermSymbol] = _
 
-  // Map from stmt.id to state symbol that is allocated after this state
+  // Map from stmt.id to state symbol that is allocated after this statement
   private[this] val allocStmts = mutable.Map[Int, TermSymbol]()
 
-  // Map from stmt.id to state symbol if this is the first stmt in that state
-  private[this] var entryStmts = mutable.Map[Int, TermSymbol]()
+  // Map from stmt.id to state symbol if this is the first stmt in that statement
+  private[this] val entryStmts = mutable.Map[Int, TermSymbol]()
 
   // Stack of state symbols to go to when finished with this state
   private[this] val followingState = mutable.Stack[TermSymbol]()

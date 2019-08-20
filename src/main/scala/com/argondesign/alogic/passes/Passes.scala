@@ -55,6 +55,7 @@ object Passes extends ChainingSyntax {
       LowerLoops,
       AnalyseCallGraph,
       ConvertLocalDecls,
+      RemoveStructuralSharing,
       ConvertControl,
       AllocStates,
       CreateStateSystem,
@@ -86,6 +87,7 @@ object Passes extends ChainingSyntax {
       LowerVariables,
       LowerInterconnect,
       PropagateImplications,
+      RemoveStructuralSharing,
       FoldStmt,
       OptimizeClearOnStall,
       // TODO: LowerGo

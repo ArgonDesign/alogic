@@ -16,10 +16,9 @@
 package com.argondesign.alogic.util
 
 class SequenceNumbers {
-  // TODO: yuck
-  private[this] val it = LazyList.from(0).iterator
+  private[this] var n = -1
 
   def next: Int = synchronized {
-    it.next()
+    n += 1; n
   }
 }

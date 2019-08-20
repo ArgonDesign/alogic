@@ -21,17 +21,22 @@ import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Symbols.TermSymbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.StructuredTree
+import com.argondesign.alogic.util.SequenceNumbers
 
 // scalastyle:off number.of.types
 // scalastyle:off number.of.methods
 
 object Trees {
 
+  private[this] val sequenceNumbers = new SequenceNumbers
+
   ///////////////////////////////////////////////////////////////////////////////
   // AST root type
   ///////////////////////////////////////////////////////////////////////////////
 
-  sealed trait Tree extends StructuredTree with Locationed with TreeOps
+  sealed trait Tree extends StructuredTree with Locationed with TreeOps {
+    val id = sequenceNumbers.next // TODO: Get rid of this
+  }
 
   object Tree extends ObjectTreeOps
 
