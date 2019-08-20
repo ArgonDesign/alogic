@@ -185,7 +185,7 @@ trait ExprOps { this: Expr =>
 
   // Simplify this expression
   def simplify(implicit cc: CompilerContext): Expr = {
-    val simple = this.normalize[Expr] rewrite {
+    val simple = this.normalize rewrite {
       new FoldExpr(foldRefs = true)
     }
     simple.asInstanceOf[Expr]

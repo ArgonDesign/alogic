@@ -29,6 +29,8 @@ import com.argondesign.alogic.transform.Regularize
 import com.argondesign.alogic.typer.ResolvePolyFunc
 import com.argondesign.alogic.util.unreachable
 
+import scala.language.implicitConversions
+
 trait TreeOps extends TreePrintOps { this: Tree =>
 
   //////////////////////////////////////////////////////////////////////////////
@@ -79,21 +81,6 @@ trait TreeOps extends TreePrintOps { this: Tree =>
   }
 
   ////////////////////////////////////////////////////////////////////////////////
-  // Bring tree into a normal form that can be directly evaluated
-  ////////////////////////////////////////////////////////////////////////////////
-
-  def normalize[R <: Tree](implicit cc: CompilerContext): R = {
-    val res = this rewrite {
-      new ReplaceUnaryTicks
-    } rewrite {
-      new ResolvePolyFunc
-    } rewrite {
-      new AddCasts
-    }
-    res.asInstanceOf[R]
-  }
-
-  ////////////////////////////////////////////////////////////////////////////////
   // Pretty print
   ////////////////////////////////////////////////////////////////////////////////
 
@@ -114,6 +101,28 @@ trait TreeOps extends TreePrintOps { this: Tree =>
       }
     }
     sb.toString
+  }
+}
+
+//////////////////////////////////////////////////////////////////////////////
+// Polymorphic extension methods on Trees
+//////////////////////////////////////////////////////////////////////////////
+
+final class TreeExt[T <: Tree](val tree: T) extends AnyVal {
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // Bring tree into a normal form that can be directly evaluated
+  ////////////////////////////////////////////////////////////////////////////////
+
+  def normalize(implicit cc: CompilerContext): T = {
+    val res = tree rewrite {
+      new ReplaceUnaryTicks
+    } rewrite {
+      new ResolvePolyFunc
+    } rewrite {
+      new AddCasts
+    }
+    res.asInstanceOf[T]
   }
 }
 
@@ -176,4 +185,10 @@ trait ObjectTreeOps extends TreeUntype {
     def parse(parser: AlogicParser): GenerateContext = parser.generate()
     def build(ctx: GenerateContext)(implicit cc: CompilerContext): Gen = GenBuilder(ctx)
   }
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Tree to TreeExt implicit conversion
+  //////////////////////////////////////////////////////////////////////////////
+
+  implicit def tree2TreeExt[T <: Tree](tree: T) = new TreeExt[T](tree)
 }

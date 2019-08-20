@@ -171,8 +171,8 @@ private final class Generate(
       case tree @ GenFor(gInits, Some(cond), gSteps, body) =>
         typeCheck(gInits ::: cond :: gSteps: _*) {
           // normalize inits and steps so ticks and unsized constants are sized
-          val inits = gInits map { _.normalize[Stmt] }
-          val steps = gSteps map { _.normalize[Stmt] }
+          val inits = gInits map { _.normalize }
+          val steps = gSteps map { _.normalize }
           if (cond.value.isDefined) {
             error(cond, "'gen for' condition does not depend on loop variable")
             Nil
