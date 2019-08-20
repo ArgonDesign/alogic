@@ -1,4 +1,4 @@
-fsm P8009_183 {
+fsm p8009_183 {
 
   in  sync void done_i;
   in       u64  data_i;

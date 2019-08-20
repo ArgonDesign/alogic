@@ -374,10 +374,10 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
       case StmtBlock(body) if !checkBlock(body) => error(tree)
 
       case StmtIf(cond, ts, es) => {
-        if ( !checkNumericOrPacked(cond, "Condition of 'if' statement") ) {
+        if (!checkNumericOrPacked(cond, "Condition of 'if' statement")) {
           error(tree)
         } else if (cond.tpe.isPacked && cond.tpe.width == 0) {
-          error(tree, "Condition of 'if' statement has width zero")
+          error(tree, cond, "Condition of 'if' statement has width zero")
         }
         if (!(checkBlock(ts) &&& checkBlock(es))) {
           error(tree)
@@ -387,10 +387,10 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
       }
 
       case StmtCase(expr, cases) => {
-        if ( !checkNumericOrPacked(expr, "Case expression") ) {
+        if (!checkNumericOrPacked(expr, "'case' expression")) {
           error(tree)
         } else if (expr.tpe.isPacked && expr.tpe.width == 0) {
-          error(tree, "Case expression has width zero")
+          error(tree, expr, "'case' expression has width zero")
         }
         val oks = cases map { _.stmts } map checkBlock
         if (oks exists { !_ }) {
