@@ -168,15 +168,15 @@ final class AddCastsSpec extends FreeSpec with AlogicTest {
             // format: off
             ("u8 a; (* unused *) u2 b = a[1:0]", List((ExprCast(TypeUInt(3), 1), ExprCast(TypeUInt(3), 0)))),
             ("u9 a; (* unused *) u2 b = a[1:0]", List((ExprCast(TypeUInt(4), 1), ExprCast(TypeUInt(4), 0)))),
-            ("u8 a; (* unused *) u1 b = a[2+:1]", List((ExprCast(TypeUInt(3), 2), ExprCast(TypeUInt(3), 1)))),
+            ("u8 a; (* unused *) u1 b = a[2+:1]", List((ExprCast(TypeUInt(3), 2), ExprCast(TypeUInt(4), 1)))),
             ("u9 a; (* unused *) u1 b = a[2+:1]", List((ExprCast(TypeUInt(4), 2), ExprCast(TypeUInt(4), 1)))),
-            ("u8 a; (* unused *) u1 b = a[2-:1]", List((ExprCast(TypeUInt(3), 2), ExprCast(TypeUInt(3), 1)))),
+            ("u8 a; (* unused *) u1 b = a[2-:1]", List((ExprCast(TypeUInt(3), 2), ExprCast(TypeUInt(4), 1)))),
             ("u9 a; (* unused *) u1 b = a[2-:1]", List((ExprCast(TypeUInt(4), 2), ExprCast(TypeUInt(4), 1)))),
             ("u32[8] a; (* unused *) u2 b = a[1:0]", List((ExprCast(TypeUInt(3), 1), ExprCast(TypeUInt(3), 0)))),
             ("u33[9] a; (* unused *) u2 b = a[1:0]", List((ExprCast(TypeUInt(4), 1), ExprCast(TypeUInt(4), 0)))),
-            ("u32[8] a; (* unused *) u1 b = a[2+:1]", List((ExprCast(TypeUInt(3), 2), ExprCast(TypeUInt(3), 1)))),
+            ("u32[8] a; (* unused *) u1 b = a[2+:1]", List((ExprCast(TypeUInt(3), 2), ExprCast(TypeUInt(4), 1)))),
             ("u33[9] a; (* unused *) u1 b = a[2+:1]", List((ExprCast(TypeUInt(4), 2), ExprCast(TypeUInt(4), 1)))),
-            ("u32[8] a; (* unused *) u1 b = a[2-:1]", List((ExprCast(TypeUInt(3), 2), ExprCast(TypeUInt(3), 1)))),
+            ("u32[8] a; (* unused *) u1 b = a[2-:1]", List((ExprCast(TypeUInt(3), 2), ExprCast(TypeUInt(4), 1)))),
             ("u33[9] a; (* unused *) u1 b = a[2-:1]", List((ExprCast(TypeUInt(4), 2), ExprCast(TypeUInt(4), 1)))),
             // format: on
           )

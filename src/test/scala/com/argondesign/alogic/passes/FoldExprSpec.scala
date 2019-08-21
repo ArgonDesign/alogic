@@ -821,20 +821,20 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
             case ExprSlice(ExprRef(term), ExprInt(false, 3, l), ":", ExprInt(false, 3, r))
                 if term.name == "a" && l == 2 && r == 1 =>
           }),
-          ("$signed(a)[3'd0 +: 3'd2]", {
-            case ExprSlice(ExprRef(term), ExprInt(false, 3, l), "+:", ExprInt(false, 3, r))
+          ("$signed(a)[3'd0 +: 4'd2]", {
+            case ExprSlice(ExprRef(term), ExprInt(false, 3, l), "+:", ExprInt(false, 4, r))
                 if term.name == "a" && l == 0 && r == 2 =>
           }),
-          ("$signed(a)[3'd1 +: 3'd2]", {
-            case ExprSlice(ExprRef(term), ExprInt(false, 3, l), "+:", ExprInt(false, 3, r))
+          ("$signed(a)[3'd1 +: 4'd2]", {
+            case ExprSlice(ExprRef(term), ExprInt(false, 3, l), "+:", ExprInt(false, 4, r))
                 if term.name == "a" && l == 1 && r == 2 =>
           }),
-          ("$signed(a)[3'd2 -: 3'd2]", {
-            case ExprSlice(ExprRef(term), ExprInt(false, 3, l), "-:", ExprInt(false, 3, r))
+          ("$signed(a)[3'd2 -: 4'd2]", {
+            case ExprSlice(ExprRef(term), ExprInt(false, 3, l), "-:", ExprInt(false, 4, r))
                 if term.name == "a" && l == 2 && r == 2 =>
           }),
-          ("$signed(a)[3'd1 -: 3'd2]", {
-            case ExprSlice(ExprRef(term), ExprInt(false, 3, l), "-:", ExprInt(false, 3, r))
+          ("$signed(a)[3'd1 -: 4'd2]", {
+            case ExprSlice(ExprRef(term), ExprInt(false, 3, l), "-:", ExprInt(false, 4, r))
                 if term.name == "a" && l == 1 && r == 2 =>
           }),
           ("$unsigned(a)[3'd1  : 3'd0]", {
@@ -845,20 +845,20 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
             case ExprSlice(ExprRef(term), ExprInt(false, 3, l), ":", ExprInt(false, 3, r))
                 if term.name == "a" && l == 2 && r == 1 =>
           }),
-          ("$unsigned(a)[3'd0 +: 3'd2]", {
-            case ExprSlice(ExprRef(term), ExprInt(false, 3, l), "+:", ExprInt(false, 3, r))
+          ("$unsigned(a)[3'd0 +: 4'd2]", {
+            case ExprSlice(ExprRef(term), ExprInt(false, 3, l), "+:", ExprInt(false, 4, r))
                 if term.name == "a" && l == 0 && r == 2 =>
           }),
-          ("$unsigned(a)[3'd1 +: 3'd2]", {
-            case ExprSlice(ExprRef(term), ExprInt(false, 3, l), "+:", ExprInt(false, 3, r))
+          ("$unsigned(a)[3'd1 +: 4'd2]", {
+            case ExprSlice(ExprRef(term), ExprInt(false, 3, l), "+:", ExprInt(false, 4, r))
                 if term.name == "a" && l == 1 && r == 2 =>
           }),
-          ("$unsigned(a)[3'd2 -: 3'd2]", {
-            case ExprSlice(ExprRef(term), ExprInt(false, 3, l), "-:", ExprInt(false, 3, r))
+          ("$unsigned(a)[3'd2 -: 4'd2]", {
+            case ExprSlice(ExprRef(term), ExprInt(false, 3, l), "-:", ExprInt(false, 4, r))
                 if term.name == "a" && l == 2 && r == 2 =>
           }),
-          ("$unsigned(a)[3'd1 -: 3'd2]", {
-            case ExprSlice(ExprRef(term), ExprInt(false, 3, l), "-:", ExprInt(false, 3, r))
+          ("$unsigned(a)[3'd1 -: 4'd2]", {
+            case ExprSlice(ExprRef(term), ExprInt(false, 3, l), "-:", ExprInt(false, 4, r))
                 if term.name == "a" && l == 1 && r == 2 =>
           })
         )

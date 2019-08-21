@@ -75,13 +75,16 @@ final class AddCasts(implicit cc: CompilerContext) extends TreeTransformer {
         expr.copy(index = cast(TypeUInt(widthExpr), idx))
       }
 
-      case expr @ ExprSlice(tgt, lidx, _, ridx)
-          if !tgt.tpe.underlying.isNum && (lidx.tpe.underlying.isNum || ridx.tpe.underlying.isNum) => {
-        val width = clog2(tgt.tpe.shapeIter.next) max 1
-        val widthExpr = TypeAssigner(Expr(width) withLoc expr.loc)
-        val newLidx = if (lidx.tpe.isNum) cast(TypeUInt(widthExpr), lidx) else lidx
-        val newRidx = if (ridx.tpe.isNum) cast(TypeUInt(widthExpr), ridx) else ridx
-        expr.copy(lidx = newLidx, ridx = newRidx)
+      case expr @ ExprSlice(tgt, lIdx, op, rIdx)
+          if !tgt.tpe.underlying.isNum && (lIdx.tpe.underlying.isNum || rIdx.tpe.underlying.isNum) => {
+        val size = tgt.tpe.shapeIter.next
+        val lWidth = clog2(size) max 1
+        val rWidth = if (op == ":") lWidth else clog2(size + 1)
+        val lType = TypeUInt(Expr(lWidth) regularize expr.loc)
+        val rType = TypeUInt(Expr(rWidth) regularize expr.loc)
+        val newLIdx = if (lIdx.tpe.isNum) cast(lType, lIdx) else lIdx
+        val newRIdx = if (rIdx.tpe.isNum) cast(rType, rIdx) else rIdx
+        expr.copy(lidx = newLIdx, ridx = newRIdx)
       }
 
       case expr @ ExprCall(func, args) => {

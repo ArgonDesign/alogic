@@ -256,7 +256,7 @@ final class UnaryTickSpec extends FreeSpec with AlogicTest {
              |}""".stripMargin
         }
 
-        "c" in check(TypeUInt(3) :: Nil) {
+        "c" in check(TypeUInt(4) :: Nil) {
           """|fsm f {
              |  in u8 a;
              |  out bool b;

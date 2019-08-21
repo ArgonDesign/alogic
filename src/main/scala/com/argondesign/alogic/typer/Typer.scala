@@ -266,13 +266,17 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
     }
 
     // Type check target up front
-    case ExprSlice(tgt, _, _, _) if !walk(tgt).tpe.isError => {
+    case ExprSlice(tgt, lIdx, op, rIdx) if !walk(tgt).tpe.isError => {
       if (!tgt.tpe.underlying.isNum) {
         val shapeIter = tgt.tpe.shapeIter
         if (!shapeIter.hasNext || tgt.tpe.isArray) {
           error(tree, tgt, "Target is not sliceable")
         } else {
-          pushContextWidth(tree, TypeUInt(Expr(clog2(shapeIter.next) max 1) regularize tgt.loc))
+          val size = shapeIter.next
+          val lWidth = clog2(size) max 1
+          val rWidth = if (op == ":") lWidth else clog2(size + 1)
+          pushContextWidth(rIdx, TypeUInt(Expr(rWidth) regularize tgt.loc))
+          pushContextWidth(lIdx, TypeUInt(Expr(lWidth) regularize tgt.loc))
         }
       }
     }
@@ -527,15 +531,18 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
           if (!ok) error(tree)
         }
 
-      case ExprSlice(tgt, lidx, op, ridx) =>
+      case ExprSlice(tgt, lIdx, op, rIdx) =>
         if (tgt.tpe.underlying.isNum) {
-          val ok = checkKnownConst(lidx, "Left index of unsized integer value") &&&
-            checkKnownConst(ridx, "Right index of unsized integer value")
+          val ok = checkKnownConst(lIdx, "Left index of unsized integer value") &&&
+            checkKnownConst(rIdx, "Right index of unsized integer value")
           if (!ok) error(tree)
         } else {
           val ok = checkPacked(tgt, "Target of slice") && {
-            checkIndex(contextKind.top.width, lidx, op == ":", "Left index") &&&
-              checkIndex(contextKind.top.width, ridx, true, "Right index")
+            val size = tgt.tpe.shapeIter.next
+            val lWidth = clog2(size) max 1
+            val rWidth = if (op == ":") lWidth else clog2(size + 1)
+            checkIndex(lWidth, lIdx, op == ":", "Left index") &&&
+              checkIndex(rWidth, rIdx, true, "Right index")
           }
           if (!ok) error(tree)
         }

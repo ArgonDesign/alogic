@@ -104,7 +104,7 @@ language:
 | Ternary operator with one sized and one unsized operand in the branches | `c ? x : 1` | width of sized branch operand |
 | Index expressions | `x[1]` | max($clog2(size of indexed dimension), 1) |
 | Slice position expressions | `x[1:0]` | max($clog2(size of sliced dimension), 1) |
-| Slice width expressions | `x[i+:1]` | max($clog2(size of sliced dimension), 1) |
+| Slice width expressions | `x[i+:1]` | $clog2(size of sliced dimension + 1) |
 | Function arguments with a packed formal type | `f(1)` | width of formal argument |
 | Instance parameter assigment to packed parameter | `inst = new foo(A=1)` | width of parameter | 
 | Initializer expression in declaration of packed variable | `u8 x = 1` | width of declared variable | 

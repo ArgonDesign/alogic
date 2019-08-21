@@ -1,0 +1,19 @@
+fsm p8009_181 {
+  in       u8 i;
+  out wire u8 o;
+
+  void main() {
+    // Full width +:/-: slice of power of 2 width variable requires
+    // $clog2(@bits(i) + 1) wide expression to denote the width of the slice
+    o = i[0 +: 8];
+    fence;
+  }
+}
+// @fec-golden {{{
+//  module p8009_181(
+//    input  wire [7:0] i,
+//    output wire [7:0] o
+//  );
+//    assign o = i;
+//  endmodule
+// }}}

@@ -61,7 +61,8 @@ using the `@bits`, `@max` and `$clog2` built-in functions.
 | Operator                                                           | Example     | Constraint |
 |--------------------------------------------------------------------|-------------|-------------|
 | Indexing                                                           | `a[b]`      | @bits(b) == @max(1, $clog2(size of indexed dimension)) |
-| Slice (all 3 forms `:` `+:` `-:`)                                  | `a[b:c]`    | @bits(b) == @bits(c) == @max(1, $clog2(size of indexed dimension)) |
+| Slice `:`                                                          | `a[b:c]`    | @bits(b) == @bits(c) == @max(1, $clog2(size of indexed dimension)) |
+| Slice `+:` `-:`                                                    | `a[b+:c]`   | @bits(b) == @max(1, $clog2(size of indexed dimension)) and @bits(c) == $clog2(size of indexed dimension + 1) |
 | Unary `+` `-` `~` `&` `\|` `^`                                     | `-a`        | none |
 | Unary `'`                                                          | `'a`        | @bits(a) <= result width (see later sections) |
 | Binary `*` `/` `%` `+` `-` `&` `\|` `^` `>` `>=` `<` `<=` `==` `!=`| `a + b`     | @bits(a) == @bits(b) |
@@ -137,7 +138,7 @@ following contexts:
 |-----------------------------------------------------------|---------|------------------------------|
 | Index expressions                                         | `x['a]` | max($clog2(size of indexed dimension), 1) |
 | Slice position expressions                                | `x['a:0]` | max($clog2(size of sliced dimension), 1) |
-| Slice width expressions                                   | `x['a+:1]` | max($clog2(size of sliced dimension), 1) |
+| Slice width expressions                                   | `x[0+:'a]` | $clog2(size of sliced dimension + 1) |
 | Function arguments with a packed formal type              | `f('a)` | width of formal argument |
 | Instance parameter assignment to packed parameter         | `inst = new foo(A='A)` | width of parameter |
 | Initializer expression in declaration of packed variable  | `u8 x = 'a` | width of declared variable |
