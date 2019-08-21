@@ -143,17 +143,20 @@ final class ParserSpec extends FreeSpec with AlogicTest {
       "type definitions" - {
 
         "typedef" in {
-          "typedef u8 foo;".asTree[TypeDefinition] shouldBe {
-            TypeDefinitionTypedef(Ident("foo"), TypeUInt(Expr(8)))
+          "typedef u8 foo;".asTree[DefIdent] shouldBe {
+            DefIdent(Ident("foo"), TypeUInt(Expr(8)))
           }
         }
 
         "struct" in {
-          "struct bar { u8 foo; i2 baz; }".asTree[TypeDefinition] shouldBe {
-            TypeDefinitionStruct(
+          "struct bar { u8 foo; i2 baz; }".asTree[DefIdent] shouldBe {
+            DefIdent(
               Ident("bar"),
-              List("foo", "baz"),
-              List(TypeUInt(Expr(8)), TypeSInt(Expr(2)))
+              TypeStruct(
+                "bar",
+                List("foo", "baz"),
+                List(TypeUInt(Expr(8)), TypeSInt(Expr(2)))
+              )
             )
           }
         }
@@ -586,8 +589,8 @@ final class ParserSpec extends FreeSpec with AlogicTest {
 
         "single connection" in {
           """|network e {
-                       |  i.a -> j.b;
-                       |}""".stripMargin.asTree[Entity] shouldBe {
+             |  i.a -> j.b;
+             |}""".stripMargin.asTree[Entity] shouldBe {
             Entity(
               Ident("e"),
               List(
@@ -598,8 +601,8 @@ final class ParserSpec extends FreeSpec with AlogicTest {
 
         "multiple connections" in {
           """|network f {
-                       |  i.a -> j.b, k.c;
-                       |}""".stripMargin.asTree[Entity] shouldBe {
+             |  i.a -> j.b, k.c;
+             |}""".stripMargin.asTree[Entity] shouldBe {
             Entity(
               Ident("f"),
               List(
@@ -778,10 +781,10 @@ final class ParserSpec extends FreeSpec with AlogicTest {
 
         "verbatim verilog" in {
           """|fsm i {
-                       |  verbatim verilog {
-                       |    +-/* comment */ {{{}}}
-                       |  }
-                       |}""".stripMargin.asTree[Entity] shouldBe {
+             |  verbatim verilog {
+             |    +-/* comment */ {{{}}}
+             |  }
+             |}""".stripMargin.asTree[Entity] shouldBe {
             Entity(
               Ident("i"),
               List(EntVerbatim("verilog", "\n    +-/* comment */ {{{}}}\n  "))
@@ -804,14 +807,14 @@ final class ParserSpec extends FreeSpec with AlogicTest {
 
         "multiple verbatim" in {
           """|fsm k {
-                       |  verbatim verilog {
-                       |    first
-                       |  }
-                       |
-                       |  verbatim verilog {
-                       |second
-                       |  }
-                       |}""".stripMargin.asTree[Entity] shouldBe {
+             |  verbatim verilog {
+             |    first
+             |  }
+             |
+             |  verbatim verilog {
+             |second
+             |  }
+             |}""".stripMargin.asTree[Entity] shouldBe {
             Entity(
               Ident("k"),
               List(
@@ -1002,7 +1005,8 @@ final class ParserSpec extends FreeSpec with AlogicTest {
           "do" in {
             """|do {
                | fence;
-               |} while(b);""".stripMargin.asTree[Stmt] shouldBe StmtDo(ExprIdent("b"), List(StmtFence()))
+               |} while(b);""".stripMargin.asTree[Stmt] shouldBe StmtDo(ExprIdent("b"),
+                                                                        List(StmtFence()))
           }
 
           "for" - {

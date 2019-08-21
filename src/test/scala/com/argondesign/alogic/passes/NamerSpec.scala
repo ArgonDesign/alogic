@@ -176,8 +176,8 @@ final class NamerSpec extends FlatSpec with AlogicTest {
 
     inside(tree) {
       case Root(List(
-                  TypeDefinitionTypedef(Sym(eSym), _),
-                  TypeDefinitionStruct(Sym(aSym), names, kind)
+                  Def(eSym),
+                  Def(aSym)
                 ),
                 _) =>
         aSym.loc.line shouldBe 2
@@ -248,14 +248,14 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     inside(tree) {
       case Root(List(typedef), entity) =>
         inside(typedef) {
-          case TypeDefinitionTypedef(Sym(declSym), _) =>
-            declSym.loc.line shouldBe 1
-            declSym.kind shouldBe TypeUInt(Expr(1))
+          case Def(defSym) =>
+            defSym.loc.line shouldBe 1
+            defSym.kind shouldBe TypeUInt(Expr(1))
             inside(entity) {
               case Entity(_, List(EntCombProcess(List(StmtBlock(List(_, stmt)))))) =>
                 inside(stmt) {
                   case StmtDecl(Decl(symbol, _)) =>
-                    symbol.kind shouldBe declSym.kind
+                    symbol.kind shouldBe defSym.kind
                 }
             }
         }
@@ -283,13 +283,13 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     inside(tree) {
       case Root(List(typedef), entity) =>
         inside(typedef) {
-          case TypeDefinitionStruct(Sym(declSym), _, _) =>
-            declSym.loc.line shouldBe 1
+          case Def(defSym) =>
+            defSym.loc.line shouldBe 1
             inside(entity) {
               case Entity(_, List(EntCombProcess(List(StmtBlock(List(_, stmt)))))) =>
                 inside(stmt) {
                   case StmtDecl(Decl(symbol, _)) =>
-                    symbol.kind shouldBe declSym.kind
+                    symbol.kind shouldBe defSym.kind
                 }
             }
         }
@@ -446,7 +446,8 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     inside(tree) {
       case Root(List(typedef), entity) =>
         inside(typedef) {
-          case TypeDefinitionTypedef(Sym(dSym), TypeUInt(Expr(1))) =>
+          case Def(dSym) =>
+            dSym.kind shouldBe TypeUInt(Expr(1))
             inside(entity) {
               case Entity(_, List(main)) =>
                 inside(main) {
@@ -481,7 +482,8 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     inside(tree) {
       case Root(List(typedef), entity) =>
         inside(typedef) {
-          case TypeDefinitionTypedef(Sym(_), TypeUInt(Expr(1))) =>
+          case Def(defSym) =>
+            defSym.kind shouldBe TypeUInt(Expr(1))
             inside(entity) {
               case Entity(_, List(main)) =>
                 inside(main) {
@@ -637,7 +639,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     cc.addGlobalEntity(root.entity)
     val tree = root rewrite namer
 
-    val symA = tree collectFirst { case Sym(symbol) if symbol.name == "a" => symbol }
+    val symA = tree collectFirst { case Def(symbol) if symbol.name == "a" => symbol }
     symA.value.kind shouldBe TypeUInt(Expr(1))
   }
 
@@ -646,7 +648,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     cc.addGlobalEntity(root.entity)
     val tree = root rewrite namer
 
-    val symA = tree collectFirst { case Sym(symbol) if symbol.name == "a" => symbol }
+    val symA = tree collectFirst { case Def(symbol) if symbol.name == "a" => symbol }
     symA.value.kind shouldBe TypeStruct(
       "a",
       List("a", "b"),
@@ -766,7 +768,7 @@ final class NamerSpec extends FlatSpec with AlogicTest {
     cc.addGlobalEntity(root.entity)
     val tree = root rewrite namer
 
-    val symB = tree collectFirst { case Sym(symbol) if symbol.name == "b" => symbol }
+    val symB = tree collectFirst { case Def(symbol) if symbol.name == "b" => symbol }
     symB.value.isTypeSymbol shouldBe true
     val symA = tree collectFirst { case Decl(symbol, _) if symbol.name == "a" => symbol }
     symA.value.kind shouldBe symB.value.kind

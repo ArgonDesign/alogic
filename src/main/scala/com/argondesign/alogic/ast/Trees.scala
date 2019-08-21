@@ -19,6 +19,7 @@ import com.argondesign.alogic.core.Locationed
 import com.argondesign.alogic.core.SourceAttributes
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Symbols.TermSymbol
+import com.argondesign.alogic.core.Symbols.TypeSymbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.StructuredTree
 import com.argondesign.alogic.util.SequenceNumbers
@@ -56,7 +57,7 @@ object Trees {
   // Root node for a file
   ///////////////////////////////////////////////////////////////////////////////
 
-  case class Root(typeDefinitions: List[TypeDefinition], entity: Entity) extends Tree
+  case class Root(defs: List[Definition], entity: Entity) extends Tree
 
   ///////////////////////////////////////////////////////////////////////////////
   // References refer to definitions
@@ -67,17 +68,15 @@ object Trees {
   case class Sym(symbol: Symbol) extends Ref
 
   ///////////////////////////////////////////////////////////////////////////////
-  // Type declarations
+  // Definition of types (except for entities)
   ///////////////////////////////////////////////////////////////////////////////
 
-  sealed trait TypeDefinition extends Tree
-
-  case class TypeDefinitionStruct(ref: Ref, fieldNames: List[String], fieldTypes: List[Type])
-      extends TypeDefinition
-  case class TypeDefinitionTypedef(ref: Ref, kind: Type) extends TypeDefinition
+  sealed trait Definition extends Tree
+  case class DefIdent(ident: Ident, kind: Type) extends Definition
+  case class Def(symbol: TypeSymbol) extends Definition
 
   ///////////////////////////////////////////////////////////////////////////////
-  // Variable Declarations
+  // Declaration of terms (except for instances and functions)
   ///////////////////////////////////////////////////////////////////////////////
 
   sealed trait Declaration extends Tree

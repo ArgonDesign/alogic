@@ -22,22 +22,22 @@ import com.argondesign.alogic.util.unreachable
 trait TreeUntype {
 
   def untype(tree: Tree): Tree = tree match {
-    case node: Entity             => untype(node)
-    case node: Sym                => untype(node)
-    case node: Decl               => untype(node)
-    case node: Thicket            => untype(node)
-    case node: CaseRegular        => untype(node)
-    case node: CaseDefault        => untype(node)
-    case node: Ent                => untype(node)
-    case node: Expr               => untype(node)
-    case node: Stmt               => untype(node)
-    case _: TypeDefinitionTypedef => unreachable
-    case _: TypeDefinitionStruct  => unreachable
-    case _: Ident                 => unreachable
-    case _: DeclIdent             => unreachable
-    case _: Root                  => unreachable
-    case _: Gen                   => unreachable
-    case _: CaseGen               => unreachable
+    case node: Entity      => untype(node)
+    case node: Sym         => untype(node)
+    case node: Def         => untype(node)
+    case node: Decl        => untype(node)
+    case node: Thicket     => untype(node)
+    case node: CaseRegular => untype(node)
+    case node: CaseDefault => untype(node)
+    case node: Ent         => untype(node)
+    case node: Expr        => untype(node)
+    case node: Stmt        => untype(node)
+    case _: DefIdent       => unreachable
+    case _: Ident          => unreachable
+    case _: DeclIdent      => unreachable
+    case _: Root           => unreachable
+    case _: Gen            => unreachable
+    case _: CaseGen        => unreachable
   }
 
   def untype(tree: Ent): Ent = tree match {
@@ -106,6 +106,8 @@ trait TreeUntype {
   def untype(node: Ident): Ident = node.copy() withLoc node.loc
 
   def untype(node: Sym): Sym = node.copy() withLoc node.loc
+
+  def untype(node: Def): Def = node.copy() withLoc node.loc
 
   def untype(node: Decl): Decl =
     node.copy(

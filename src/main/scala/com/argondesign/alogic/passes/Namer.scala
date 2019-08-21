@@ -341,35 +341,26 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer { namer 
         Scopes.pop()
       }
 
-    case TypeDefinitionTypedef(ident: Ident, kind) => {
+    case DefIdent(ident: Ident, kind) => {
       // Lookup target type
       val newKind = kind rewrite TypeNamer
+      // Check for vector of struct
+      newKind match {
+        case TypeStruct(_, _, fieldTypes) =>
+          for (field <- fieldTypes) {
+            field match {
+              case TypeVector(_: TypeStruct, _) => {
+                cc.error(tree, "Vector element cannot have a struct type")
+              }
+              case _ => ()
+            }
+          }
+        case _ =>
+      }
       // Insert new type
       val symbol = Scopes.insert(cc.newTypeSymbol(ident, newKind))
       // Rewrite node
-      val sym = Sym(symbol) withLoc ident.loc
-      TypeDefinitionTypedef(sym, newKind) withLoc tree.loc
-    }
-
-    case TypeDefinitionStruct(ident: Ident, fieldNames, fieldKinds) => {
-      // Lookup field types
-      val newFieldKinds = fieldKinds map {
-        _ rewrite TypeNamer
-      }
-      for (field <- newFieldKinds) {
-        field match {
-          case TypeVector(_: TypeStruct, _) => {
-            cc.error(tree, "Vector element cannot have a struct type")
-          }
-          case _ => ()
-        }
-      }
-      val kind = TypeStruct(ident.name, fieldNames, newFieldKinds)
-      // Insert new type
-      val symbol = Scopes.insert(cc.newTypeSymbol(ident, kind))
-      // Rewrite node
-      val sym = Sym(symbol) withLoc ident.loc
-      TypeDefinitionStruct(sym, fieldNames, newFieldKinds) withLoc tree.loc
+      Def(symbol) withLoc tree.loc
     }
 
     case entity @ Entity(ident @ Ident(name), _) => {
@@ -544,17 +535,15 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer { namer 
     def check(tree: Tree): Unit = {
       tree visitAll {
         case node: DeclIdent => cc.ice(node, "DeclIdent remains")
+        case node: DefIdent  => cc.ice(node, "DefIdent remains")
         case node: ExprIdent => cc.ice(node, "ExprIdent remains")
         case node: Ident     => cc.ice(node, "Ident remains")
         case Decl(symbol, _) => symbol.kind visit { case tree: Tree => check(tree) }
+        case Def(symbol)     => symbol.kind visit { case tree: Tree => check(tree) }
         case Sym(symbol)     => symbol.kind visit { case tree: Tree => check(tree) }
         case ExprRef(symbol) => symbol.kind visit { case tree: Tree => check(tree) }
         case ExprType(kind)  => kind visit { case tree: Tree => check(tree) }
-        case TypeDefinitionStruct(_, _, fieldTypes) => {
-          fieldTypes foreach { _ visit { case tree: Tree => check(tree) } }
-        }
-        case TypeDefinitionTypedef(_, kind) => kind visit { case tree: Tree => check(tree) }
-        case node: TypeIdent                => cc.ice(node.ident, "TypeIdent remains")
+        case node: TypeIdent => cc.ice(node.ident, "TypeIdent remains")
       }
     }
 

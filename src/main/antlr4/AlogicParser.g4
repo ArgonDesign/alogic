@@ -25,7 +25,7 @@ options {
 ///////////////////////////////////////////////////////////////////////////////
 
 start
-  : (type_definition ';')*
+  : (def ';')*
     entity
     EOF
   ;
@@ -34,11 +34,11 @@ start
 // Type definitions
 ///////////////////////////////////////////////////////////////////////////////
 
-type_definition
-  : 'typedef' kind IDENTIFIER   # TypeDefinitionTypedef
+def
+  : 'typedef' kind IDENTIFIER   # DefTypedef
   | 'struct' IDENTIFIER '{'
       field+
-    '}'                         # TypeDefinitionStruct
+    '}'                         # DefStruct
   ;
 
 field: kind IDENTIFIER SEMICOLON;

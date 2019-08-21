@@ -26,30 +26,22 @@ import Trees._
 object TreeCopier {
 
   final def apply(tree: Root)(typeDefinitions: List[Tree], entity: Tree): Root = {
-    if ((typeDefinitions eq tree.typeDefinitions) && (entity eq tree.entity)) {
+    if ((typeDefinitions eq tree.defs) && (entity eq tree.entity)) {
       tree
     } else {
-      assert(typeDefinitions forall { _.isInstanceOf[TypeDefinition] })
+      assert(typeDefinitions forall { _.isInstanceOf[Definition] })
       Root(
-        typeDefinitions.asInstanceOf[List[TypeDefinition]],
+        typeDefinitions.asInstanceOf[List[Definition]],
         entity.asInstanceOf[Entity]
       ) withLoc tree.loc
     }
   }
 
-  final def apply(tree: TypeDefinitionStruct)(ref: Tree): TypeDefinitionStruct = {
-    if (ref eq tree.ref) {
+  final def apply(tree: DefIdent)(ident: Tree): DefIdent = {
+    if (ident eq tree.ident) {
       tree
     } else {
-      TypeDefinitionStruct(ref.asInstanceOf[Ref], tree.fieldNames, tree.fieldTypes) withLoc tree.loc
-    }
-  }
-
-  final def apply(tree: TypeDefinitionTypedef)(ref: Tree): TypeDefinitionTypedef = {
-    if (ref eq tree.ref) {
-      tree
-    } else {
-      TypeDefinitionTypedef(ref.asInstanceOf[Ref], tree.kind) withLoc tree.loc
+      DefIdent(ident.asInstanceOf[Ident], tree.kind) withLoc tree.loc
     }
   }
 

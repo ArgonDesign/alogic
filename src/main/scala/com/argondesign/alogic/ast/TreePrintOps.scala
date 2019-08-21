@@ -18,6 +18,7 @@ package com.argondesign.alogic.ast
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.Types.TypeStruct
 
 trait TreePrintOps { this: Tree =>
 
@@ -146,6 +147,17 @@ trait TreePrintOps { this: Tree =>
     sb.toString
   }
 
+  private[this] final def structStr(indent: Int)(kind: TypeStruct)(
+      implicit cc: CompilerContext): String = {
+    val i = "  " * indent
+    val fields = for ((fn, ft) <- kind.fieldNames zip kind.fieldTypes) yield {
+      s"${ft.toSource} ${fn};"
+    }
+    s"""|struct ${kind.name} {
+        |${i}  ${fields mkString s"\n${i}  "}
+        |${i}};""".stripMargin
+  }
+
   private[this] final def v(expr: Expr)(implicit cc: CompilerContext): String = expr match {
     case ExprCall(expr, args)                  => s"${v(expr)}(${args map v mkString ", "})"
     case ExprUnary(op, expr)                   => s"${op}${v(expr)}"
@@ -181,22 +193,21 @@ trait TreePrintOps { this: Tree =>
             |${i}${v(indent)(entity)}
             |""".stripMargin
       }
-
-      case TypeDefinitionTypedef(ref, kind) => {
-        s"${attrStr(indent, ref)}typedef ${kind.toSource} ${v(indent)(ref)}"
-      }
-
-      case TypeDefinitionStruct(ref, fieldNames, fieldTypes) => {
-        val fields = for ((fn, ft) <- fieldNames zip fieldTypes) yield {
-          s"${ft.toSource} ${fn};"
-        }
-        s"""|${attrStr(indent, ref)}struct ${v(indent)(ref)} {
-            |${i}  ${fields mkString s"\n${i}  "}
-            |${i}};""".stripMargin
-      }
-
       case Ident(name) => name
       case Sym(symbol) => symbol.name
+
+      case DefIdent(ident, kind) =>
+        if (kind.isStruct) {
+          s"${attrStr(indent, ident)}${structStr(indent)(kind.asStruct)}"
+        } else {
+          s"${attrStr(indent, ident)}typedef ${kind.toSource} ${v(indent)(ident)};"
+        }
+      case Def(symbol) =>
+        if (symbol.kind.isStruct) {
+          s"${attrStr(indent, symbol)}${structStr(indent)(symbol.kind.asStruct)}"
+        } else {
+          s"${attrStr(indent, symbol)}typedef ${symbol.kind.toSource} ${symbol.name};"
+        }
 
       case DeclIdent(ident, kind, None) => {
         s"${kind.toSource} ${v(indent)(ident)}"

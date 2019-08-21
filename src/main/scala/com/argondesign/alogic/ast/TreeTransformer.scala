@@ -98,20 +98,17 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
       // Call transform in post order
       tree match {
         case node: Root => {
-          val typeDefinitions = walk(node.typeDefinitions)
+          val typeDefinitions = walk(node.defs)
           val entity = walk(node.entity)
           doTransform(TreeCopier(node)(typeDefinitions, entity))
         }
         case node: Ident => doTransform(node)
         case node: Sym   => doTransform(node)
-        case node: TypeDefinitionStruct => {
-          val ref = walk(node.ref)
-          doTransform(TreeCopier(node)(ref))
+        case node: DefIdent => {
+          val ident = walk(node.ident)
+          doTransform(TreeCopier(node)(ident))
         }
-        case node: TypeDefinitionTypedef => {
-          val ref = walk(node.ref)
-          doTransform(TreeCopier(node)(ref))
-        }
+        case node: Def => doTransform(node)
         case node: DeclIdent => {
           val ident = walk(node.ident)
           val init = walk(node.init)
