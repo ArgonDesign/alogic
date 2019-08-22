@@ -29,10 +29,8 @@ object EntityBuilder extends BaseBuilder[EntityContext, Entity] {
     object Visitor extends AlogicScalarVisitor[Entity] {
       override def visitEntity(ctx: EntityContext) = {
         val ref = ctx.IDENTIFIER.toIdent
-        val decls = DeclBuilder(ctx.decl) map { decl =>
-          EntDecl(decl) withLoc decl.loc
-        }
-        val ents = ctx.entity_content.asScala.toList flatMap { EntBuilder(_) }
+
+        val ents = ctx.ent.asScala.toList flatMap { EntBuilder(_) }
 
         val variantAttr = Map("//variant" -> (ExprStr(ctx.variant.text) withLoc ctx.loc))
         if (ctx.attr != null) {
@@ -41,7 +39,7 @@ object EntityBuilder extends BaseBuilder[EntityContext, Entity] {
           ref withAttr variantAttr
         }
 
-        Entity(ref, decls ::: ents) withLoc ctx.loc
+        Entity(ref, ents) withLoc ctx.loc
       }
     }
 

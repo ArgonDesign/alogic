@@ -341,7 +341,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer { namer 
         Scopes.pop()
       }
 
-    case DefIdent(ident: Ident, kind) => {
+    case DefnIdent(ident: Ident, kind) => {
       // Lookup target type
       val newKind = kind rewrite TypeNamer
       // Check for vector of struct
@@ -360,7 +360,7 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer { namer 
       // Insert new type
       val symbol = Scopes.insert(cc.newTypeSymbol(ident, newKind))
       // Rewrite node
-      Def(symbol) withLoc tree.loc
+      Defn(symbol) withLoc tree.loc
     }
 
     case entity @ Entity(ident @ Ident(name), _) => {
@@ -535,11 +535,11 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer { namer 
     def check(tree: Tree): Unit = {
       tree visitAll {
         case node: DeclIdent => cc.ice(node, "DeclIdent remains")
-        case node: DefIdent  => cc.ice(node, "DefIdent remains")
+        case node: DefnIdent => cc.ice(node, "DefnIdent remains")
         case node: ExprIdent => cc.ice(node, "ExprIdent remains")
         case node: Ident     => cc.ice(node, "Ident remains")
         case Decl(symbol, _) => symbol.kind visit { case tree: Tree => check(tree) }
-        case Def(symbol)     => symbol.kind visit { case tree: Tree => check(tree) }
+        case Defn(symbol)    => symbol.kind visit { case tree: Tree => check(tree) }
         case Sym(symbol)     => symbol.kind visit { case tree: Tree => check(tree) }
         case ExprRef(symbol) => symbol.kind visit { case tree: Tree => check(tree) }
         case ExprType(kind)  => kind visit { case tree: Tree => check(tree) }

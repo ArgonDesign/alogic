@@ -68,20 +68,20 @@ object Trees {
   case class Sym(symbol: Symbol) extends Ref
 
   ///////////////////////////////////////////////////////////////////////////////
-  // Definition of types (except for entities)
-  ///////////////////////////////////////////////////////////////////////////////
-
-  sealed trait Definition extends Tree
-  case class DefIdent(ident: Ident, kind: Type) extends Definition
-  case class Def(symbol: TypeSymbol) extends Definition
-
-  ///////////////////////////////////////////////////////////////////////////////
   // Declaration of terms (except for instances and functions)
   ///////////////////////////////////////////////////////////////////////////////
 
   sealed trait Declaration extends Tree
   case class DeclIdent(ident: Ident, kind: Type, init: Option[Expr]) extends Declaration
   case class Decl(symbol: TermSymbol, init: Option[Expr]) extends Declaration
+
+  ///////////////////////////////////////////////////////////////////////////////
+  // Definition of types (except for entities)
+  ///////////////////////////////////////////////////////////////////////////////
+
+  sealed trait Definition extends Tree
+  case class DefnIdent(ident: Ident, kind: Type) extends Definition
+  case class Defn(symbol: TypeSymbol) extends Definition
 
   ///////////////////////////////////////////////////////////////////////////////
   // Entity (module) node
@@ -96,6 +96,7 @@ object Trees {
   sealed trait Ent extends Tree
 
   case class EntDecl(decl: Declaration) extends Ent
+  case class EntDefn(defn: Definition) extends Ent
   case class EntEntity(entity: Entity) extends Ent
   case class EntInstance(
       instance: Ref,
@@ -118,6 +119,7 @@ object Trees {
   sealed trait Gen extends Tree
 
   case class GenDecl(decl: Declaration) extends Gen
+  case class GenDefn(defn: Definition) extends Gen
   case class GenIf(cond: Expr, thenItems: List[Tree], elseItems: List[Tree]) extends Gen
   case class GenFor(inits: List[Stmt], cond: Option[Expr], step: List[Stmt], body: List[Tree])
       extends Gen

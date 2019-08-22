@@ -30,10 +30,14 @@ object GenBuilder extends BaseBuilder[ParserRuleContext, Gen] {
 
   def apply(ctx: ParserRuleContext)(implicit cc: CompilerContext): Gen = {
     object GenItemVisitor extends AlogicListVisitor[Tree] {
-      override def visitGenItemGen(ctx: GenItemGenContext) = GenBuilder(ctx) :: Nil
+      override def visitGenItemGen(ctx: GenItemGenContext) =
+        GenBuilder(ctx) :: Nil
 
       override def visitGenItemDecl(ctx: GenItemDeclContext) =
         (GenDecl(DeclBuilder(ctx.decl)) withLoc ctx.loc) :: Nil
+
+      override def visitGenItemDefn(ctx: GenItemDefnContext) =
+        (GenDefn(DefnBuilder(ctx.defn)) withLoc ctx.loc) :: Nil
 
       override def visitGenItemStmt(ctx: GenItemStmtContext) =
         StmtBuilder(ctx.statement) :: Nil
@@ -41,7 +45,7 @@ object GenBuilder extends BaseBuilder[ParserRuleContext, Gen] {
       override def visitGenItemCase(ctx: GenItemCaseContext) =
         CaseBuilder(ctx.case_clause) :: Nil
 
-      override def visitGenItemEnt(ctx: GenItemEntContext) = EntBuilder(ctx.entity_content)
+      override def visitGenItemEnt(ctx: GenItemEntContext) = EntBuilder(ctx.ent)
     }
 
     object GenVisitor extends AlogicScalarVisitor[Gen] { self =>

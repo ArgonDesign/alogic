@@ -104,11 +104,6 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
         }
         case node: Ident => doTransform(node)
         case node: Sym   => doTransform(node)
-        case node: DefIdent => {
-          val ident = walk(node.ident)
-          doTransform(TreeCopier(node)(ident))
-        }
-        case node: Def => doTransform(node)
         case node: DeclIdent => {
           val ident = walk(node.ident)
           val init = walk(node.init)
@@ -118,6 +113,11 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
           val init = walk(node.init)
           doTransform(TreeCopier(node)(init))
         }
+        case node: DefnIdent => {
+          val ident = walk(node.ident)
+          doTransform(TreeCopier(node)(ident))
+        }
+        case node: Defn => doTransform(node)
         case node: Entity => {
           val ref = walk(node.ref)
           val body = walk(node.body)
@@ -128,6 +128,10 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
         case node: GenDecl => {
           val decl = walk(node.decl)
           doTransform(TreeCopier(node)(decl))
+        }
+        case node: GenDefn => {
+          val defn = walk(node.defn)
+          doTransform(TreeCopier(node)(defn))
         }
         case node: GenIf => {
           val cond = walk(node.cond)
@@ -151,6 +155,10 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
         case node: EntDecl => {
           val decl = walk(node.decl)
           doTransform(TreeCopier(node)(decl))
+        }
+        case node: EntDefn => {
+          val defn = walk(node.defn)
+          doTransform(TreeCopier(node)(defn))
         }
         case node: EntEntity => {
           val entity = walk(node.entity)

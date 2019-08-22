@@ -39,12 +39,12 @@ final object TypeAssigner {
     case node: CaseDefault => kind(node)
     case node: Entity      => kind(node)
     case node: Decl        => kind(node)
-    case node: Def         => kind(node)
+    case node: Defn        => kind(node)
     case node: Sym         => kind(node)
     case node: Thicket     => kind(node)
     case _: Root           => unreachable
     case _: DeclIdent      => unreachable
-    case _: DefIdent       => unreachable
+    case _: DefnIdent      => unreachable
     case _: Ident          => unreachable
     case _: Gen            => unreachable
     case _: CaseGen        => unreachable
@@ -56,7 +56,7 @@ final object TypeAssigner {
 
   private def kind(node: Entity) = TypeMisc
   private def kind(node: Decl) = TypeMisc
-  private def kind(node: Def) = TypeMisc
+  private def kind(node: Defn) = TypeMisc
   private def kind(node: Thicket) = TypeMisc
   private def kind(node: CaseRegular) = TypeMisc
   private def kind(node: CaseDefault) = TypeMisc
@@ -325,7 +325,7 @@ final object TypeAssigner {
   // Other
   def apply(node: Entity): node.type = assign(node)(kind(node))
   def apply(node: Decl): node.type = assign(node)(kind(node))
-  def apply(node: Def): node.type = assign(node)(kind(node))
+  def apply(node: Defn): node.type = assign(node)(kind(node))
   def apply(node: Thicket): node.type = assign(node)(kind(node))
   def apply(node: CaseRegular): node.type = assign(node)(kind(node))
   def apply(node: CaseDefault): node.type = assign(node)(kind(node))

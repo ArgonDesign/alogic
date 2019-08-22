@@ -196,13 +196,13 @@ trait TreePrintOps { this: Tree =>
       case Ident(name) => name
       case Sym(symbol) => symbol.name
 
-      case DefIdent(ident, kind) =>
+      case DefnIdent(ident, kind) =>
         if (kind.isStruct) {
           s"${attrStr(indent, ident)}${structStr(indent)(kind.asStruct)}"
         } else {
           s"${attrStr(indent, ident)}typedef ${kind.toSource} ${v(indent)(ident)};"
         }
-      case Def(symbol) =>
+      case Defn(symbol) =>
         if (symbol.kind.isStruct) {
           s"${attrStr(indent, symbol)}${structStr(indent)(symbol.kind.asStruct)}"
         } else {
@@ -223,6 +223,7 @@ trait TreePrintOps { this: Tree =>
       }
 
       case entity: Entity    => entityStr(indent)(entity)
+      case EntDefn(defn)     => s"${v(indent)(defn)};"
       case EntDecl(decl)     => s"${v(indent)(decl)};"
       case EntEntity(entity) => v(indent)(entity)
       case EntInstance(ref, module, paramNames, paramArgs) => {
@@ -256,6 +257,7 @@ trait TreePrintOps { this: Tree =>
       case EntGen(gen)             => v(indent)(gen)
 
       case GenDecl(decl) => s"${v(indent)(decl)};"
+      case GenDefn(defn) => s"${v(indent)(defn)};"
       case GenIf(cond, thenItems, Nil) => {
         s"""|gen if (${v(cond)}) {
             |${i}  ${thenItems map v(indent + 1) mkString s"\n${i}  "}

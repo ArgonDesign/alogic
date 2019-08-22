@@ -518,5 +518,39 @@ final class TyperCheckExprSpec extends FreeSpec with AlogicTest {
         }
       }
     }
+
+    "inside definitions" - {
+      for {
+        (text, err) <- List(
+          ("typedef u8 a;", Nil),
+          ("typedef uint(8 + 2) a;", Nil),
+          ("typedef uint(8'd8 + 7'd2) a;",
+           s"Both operands of binary '+' must have the same width, but" ::
+             "left  hand operand is 8 bits wide, and" ::
+             "right hand operand is 7 bits wide" :: Nil),
+          ("struct a {u8 f;};", Nil),
+          ("struct a {uint(8 + 2) f;};", Nil),
+          ("struct a {uint(8'd8 + 7'd2) f;};",
+           s"Both operands of binary '+' must have the same width, but" ::
+             "left  hand operand is 8 bits wide, and" ::
+             "right hand operand is 7 bits wide" :: Nil)
+        )
+      } {
+        text in {
+          val tree = s"""|fsm foo {
+                         |  ${text}
+                         |}""".stripMargin.asTree[Entity]
+          val result = xform(tree)
+          val defn = result getFirst { case defn: Defn => defn }
+          if (err.isEmpty) {
+            cc.messages shouldBe empty
+            defn.tpe shouldBe TypeMisc
+          } else {
+            cc.messages.loneElement should beThe[Error]((err map Pattern.quote): _*)
+            defn.tpe shouldBe TypeError
+          }
+        }
+      }
+    }
   }
 }

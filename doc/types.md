@@ -263,8 +263,8 @@ of ports where the flow control signals carry all required information.
 
 #### typedefs - <a href="http://afiddle.argondesign.com/?example=types_typedef.alogic">fiddle here.</a>
 
-Similarly to the C language, a `typedef` declaration can be used to
-create an alias for packed type, giving it a new name:
+Similarly to the C language, a `typedef` definition can be used to
+create an alias for a type, giving it a new name:
 
 ```
   typedef <existing type> <new type>;

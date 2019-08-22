@@ -15,9 +15,9 @@
 
 package com.argondesign.alogic.antlr
 
-import com.argondesign.alogic.antlr.AlogicParser.DefContext
-import com.argondesign.alogic.antlr.AlogicParser.DefStructContext
-import com.argondesign.alogic.antlr.AlogicParser.DefTypedefContext
+import com.argondesign.alogic.antlr.AlogicParser.DefnContext
+import com.argondesign.alogic.antlr.AlogicParser.DefnStructContext
+import com.argondesign.alogic.antlr.AlogicParser.DefnTypedefContext
 import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
@@ -25,15 +25,15 @@ import com.argondesign.alogic.core.Types.TypeStruct
 
 import scala.jdk.CollectionConverters._
 
-object DefBuilder extends BaseBuilder[DefContext, DefIdent] {
+object DefnBuilder extends BaseBuilder[DefnContext, DefnIdent] {
 
-  def apply(ctx: DefContext)(implicit cc: CompilerContext): DefIdent = {
-    object Visitor extends AlogicScalarVisitor[DefIdent] {
-      override def visitDefTypedef(ctx: DefTypedefContext) = {
-        DefIdent(ctx.IDENTIFIER.toIdent, TypeBuilder(ctx.kind)) withLoc ctx.loc
+  def apply(ctx: DefnContext)(implicit cc: CompilerContext): DefnIdent = {
+    object Visitor extends AlogicScalarVisitor[DefnIdent] {
+      override def visitDefnTypedef(ctx: DefnTypedefContext) = {
+        DefnIdent(ctx.IDENTIFIER.toIdent, TypeBuilder(ctx.kind)) withLoc ctx.loc
       }
 
-      override def visitDefStruct(ctx: DefStructContext) = {
+      override def visitDefnStruct(ctx: DefnStructContext) = {
         val fields = ctx.field.asScala.toList
 
         val fieldNames = fields map { _.IDENTIFIER.text }
@@ -43,7 +43,7 @@ object DefBuilder extends BaseBuilder[DefContext, DefIdent] {
 
         val kind = TypeStruct(ctx.IDENTIFIER, fieldNames, fieldKinds)
 
-        DefIdent(ctx.IDENTIFIER.toIdent, kind) withLoc ctx.loc
+        DefnIdent(ctx.IDENTIFIER.toIdent, kind) withLoc ctx.loc
       }
     }
 

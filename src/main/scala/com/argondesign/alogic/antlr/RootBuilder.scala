@@ -23,7 +23,7 @@ import com.argondesign.alogic.core.CompilerContext
 object RootBuilder extends BaseBuilder[StartContext, Root] {
 
   def apply(ctx: StartContext)(implicit cc: CompilerContext): Root = {
-    val typeDefinitions = DefBuilder(ctx.`def`)
+    val typeDefinitions = DefnBuilder(ctx.defn)
     val entity = EntityBuilder(ctx.entity)
 
     Root(typeDefinitions, entity) withLoc ctx.loc

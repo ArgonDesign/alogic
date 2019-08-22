@@ -1,0 +1,22 @@
+// @out-top: def_ent_2__W_6
+fsm def_ent_2 {
+  param uint W = 6;
+
+  typedef uint(W) data_t;
+
+  in       data_t i;
+  out wire data_t o;
+
+  void main() {
+    o = i;
+    fence;
+  }
+}
+// @fec-golden {{{
+//  module def_ent_2__W_6(
+//    input  wire [5:0] i,
+//    output wire [5:0] o
+//  );
+//    assign o = i;
+//  endmodule
+// }}}

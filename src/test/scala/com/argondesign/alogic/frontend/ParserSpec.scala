@@ -143,14 +143,14 @@ final class ParserSpec extends FreeSpec with AlogicTest {
       "type definitions" - {
 
         "typedef" in {
-          "typedef u8 foo;".asTree[DefIdent] shouldBe {
-            DefIdent(Ident("foo"), TypeUInt(Expr(8)))
+          "typedef u8 foo;".asTree[DefnIdent] shouldBe {
+            DefnIdent(Ident("foo"), TypeUInt(Expr(8)))
           }
         }
 
         "struct" in {
-          "struct bar { u8 foo; i2 baz; }".asTree[DefIdent] shouldBe {
-            DefIdent(
+          "struct bar { u8 foo; i2 baz; };".asTree[DefnIdent] shouldBe {
+            DefnIdent(
               Ident("bar"),
               TypeStruct(
                 "bar",

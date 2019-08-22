@@ -24,10 +24,18 @@ import com.argondesign.alogic.core.CompilerContext
 
 import scala.jdk.CollectionConverters._
 
-object EntBuilder extends BaseBuilder[Entity_contentContext, List[Ent]] {
+object EntBuilder extends BaseBuilder[EntContext, List[Ent]] {
 
-  def apply(ctx: Entity_contentContext)(implicit cc: CompilerContext): List[Ent] = {
+  def apply(ctx: EntContext)(implicit cc: CompilerContext): List[Ent] = {
     object Visitor extends AlogicListVisitor[Ent] {
+      override def visitEntDecl(ctx: EntDeclContext) = {
+        List(EntDecl(DeclBuilder(ctx.decl)) withLoc ctx.loc)
+      }
+
+      override def visitEntDefn(ctx: EntDefnContext) = {
+        List(EntDefn(DefnBuilder(ctx.defn)) withLoc ctx.loc)
+      }
+
       override def visitEntEntity(ctx: EntEntityContext) = {
         val entity = EntEntity(EntityBuilder(ctx.entity)) withLoc ctx.loc
         if (ctx.autoinst != null) {

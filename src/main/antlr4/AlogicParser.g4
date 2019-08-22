@@ -25,52 +25,23 @@ options {
 ///////////////////////////////////////////////////////////////////////////////
 
 start
-  : (def ';')*
+  : defn*
     entity
     EOF
   ;
 
 ///////////////////////////////////////////////////////////////////////////////
-// Type definitions
+// Definitions
 ///////////////////////////////////////////////////////////////////////////////
 
-def
-  : 'typedef' kind IDENTIFIER   # DefTypedef
+defn
+  : 'typedef' kind IDENTIFIER ';'   # DefnTypedef
   | 'struct' IDENTIFIER '{'
       field+
-    '}'                         # DefStruct
+    '}' ';'                         # DefnStruct
   ;
 
 field: kind IDENTIFIER SEMICOLON;
-
-///////////////////////////////////////////////////////////////////////////////
-// Type names
-///////////////////////////////////////////////////////////////////////////////
-
-kind
-  : kind ('[' expr ']')+ # TypeVec
-  | 'bool'               # TypeBool
-  | INTTYPE              # TypeInt
-  | UINTTYPE             # TypeUInt
-  | 'int'  '(' expr ')'  # TypeIntN
-  | 'uint' '(' expr ')'  # TypeUIntN
-  | 'int'                # TypeSNum
-  | 'uint'               # TypeUNum
-  | IDENTIFIER           # TypeIdent
-  | 'void'               # TypeVoid
-  ;
-
-///////////////////////////////////////////////////////////////////////////////
-// Entity
-///////////////////////////////////////////////////////////////////////////////
-
-entity
-  : attr?
-    (variant='fsm' | variant='network' | variant='verbatim' 'entity') IDENTIFIER '{'
-      (decl)*
-      (entity_content)*
-    '}'
-  ;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Declarations
@@ -101,11 +72,41 @@ storage_type
   ;
 
 ///////////////////////////////////////////////////////////////////////////////
+// Type names
+///////////////////////////////////////////////////////////////////////////////
+
+kind
+  : kind ('[' expr ']')+ # TypeVec
+  | 'bool'               # TypeBool
+  | INTTYPE              # TypeInt
+  | UINTTYPE             # TypeUInt
+  | 'int'  '(' expr ')'  # TypeIntN
+  | 'uint' '(' expr ')'  # TypeUIntN
+  | 'int'                # TypeSNum
+  | 'uint'               # TypeUNum
+  | IDENTIFIER           # TypeIdent
+  | 'void'               # TypeVoid
+  ;
+
+///////////////////////////////////////////////////////////////////////////////
+// Entity
+///////////////////////////////////////////////////////////////////////////////
+
+entity
+  : attr?
+    (variant='fsm' | variant='network' | variant='verbatim' 'entity') IDENTIFIER '{'
+      (ent)*
+    '}'
+  ;
+
+///////////////////////////////////////////////////////////////////////////////
 // Entity contents
 ///////////////////////////////////////////////////////////////////////////////
 
-entity_content
-  : (attr? autoinst='new')? entity                                          # EntEntity
+ent
+  : decl                                                                    # EntDecl
+  | defn                                                                    # EntDefn
+  | (attr? autoinst='new')? entity                                          # EntEntity
   | attr? IDENTIFIER eqsign='=' 'new' IDENTIFIER '(' param_assigns ')' ';'  # EntInstance
   | lhs=expr '->' rhs+=expr (',' rhs+=expr)* ';'                            # EntConnect
   | 'fence' block                                                           # EntFenceBlock
@@ -135,9 +136,10 @@ genitems : genitem* ;
 genitem
   : generate        # GenItemGen
   | decl            # GenItemDecl
+  | defn            # GenItemDefn
   | statement       # GenItemStmt
   | case_clause     # GenItemCase
-  | entity_content  # GenItemEnt
+  | ent             # GenItemEnt
   ;
 
 ///////////////////////////////////////////////////////////////////////////////

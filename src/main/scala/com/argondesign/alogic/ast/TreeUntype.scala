@@ -24,7 +24,7 @@ trait TreeUntype {
   def untype(tree: Tree): Tree = tree match {
     case node: Entity      => untype(node)
     case node: Sym         => untype(node)
-    case node: Def         => untype(node)
+    case node: Defn        => untype(node)
     case node: Decl        => untype(node)
     case node: Thicket     => untype(node)
     case node: CaseRegular => untype(node)
@@ -32,7 +32,7 @@ trait TreeUntype {
     case node: Ent         => untype(node)
     case node: Expr        => untype(node)
     case node: Stmt        => untype(node)
-    case _: DefIdent       => unreachable
+    case _: DefnIdent      => unreachable
     case _: Ident          => unreachable
     case _: DeclIdent      => unreachable
     case _: Root           => unreachable
@@ -41,6 +41,7 @@ trait TreeUntype {
   }
 
   def untype(tree: Ent): Ent = tree match {
+    case node: EntDefn        => untype(node)
     case node: EntDecl        => untype(node)
     case node: EntEntity      => untype(node)
     case node: EntInstance    => untype(node)
@@ -107,7 +108,7 @@ trait TreeUntype {
 
   def untype(node: Sym): Sym = node.copy() withLoc node.loc
 
-  def untype(node: Def): Def = node.copy() withLoc node.loc
+  def untype(node: Defn): Defn = node.copy() withLoc node.loc
 
   def untype(node: Decl): Decl =
     node.copy(
@@ -139,6 +140,11 @@ trait TreeUntype {
   //////////////////////////////////////////////////////////////////////////////
   // Ent
   //////////////////////////////////////////////////////////////////////////////
+
+  def untype(node: EntDefn): EntDefn =
+    node.copy(
+      defn = untype(node.defn.asInstanceOf[Defn])
+    ) withLoc node.loc
 
   def untype(node: EntDecl): EntDecl =
     node.copy(

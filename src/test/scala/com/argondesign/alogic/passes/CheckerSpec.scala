@@ -869,12 +869,12 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         for (word <- List("break", "continue")) {
           word in {
             val tree = s"""|fsm b {
-                           |  void main() {
-                           |    loop {
-                           |      ${word};
-                           |    }
-                           |  }
-                           |}""".asTree[Entity]
+             |  void main() {
+             |    loop {
+             |      ${word};
+             |    }
+             |  }
+             |}""".asTree[Entity]
 
             tree rewrite checker shouldBe tree
 
@@ -887,11 +887,11 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         for (word <- List("break", "continue")) {
           word in {
             val tree = s"""|fsm b {
-                           |  void main() {
-                           |    loop {}
-                           |    ${word};
-                           |  }
-                           |}""".asTree[Entity]
+             |  void main() {
+             |    loop {}
+             |    ${word};
+             |  }
+             |}""".asTree[Entity]
 
             val node = tree rewrite checker
 
@@ -906,6 +906,242 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
             cc.messages.loneElement should beThe[Error](
               s"${word.capitalize} statements are only allowed inside looping statements"
             )
+          }
+        }
+      }
+    }
+
+    "check port and param declarations precede" - {
+      for (thing <- List("in", "out", "param")) {
+        thing - {
+          val hint = if (thing == "param") "Parameter" else "Port"
+          "nested entities" in {
+            val tree = s"""|network a {
+                           |  fsm b {}
+                           |  ${thing} bool p;
+                           |}""".stripMargin.asTree[Entity]
+
+            tree rewrite checker
+
+            cc.messages.loneElement should beThe[Error](
+              s"${hint} declarations must appear before nested entities")
+          }
+
+          "instances" in {
+            val tree = s"""|network a {
+                           |  b = new c();
+                           |  ${thing} bool p;
+                           |}""".stripMargin.asTree[Entity]
+
+            tree rewrite checker
+
+            cc.messages.loneElement should beThe[Error](
+              s"${hint} declarations must appear before instances")
+          }
+
+          "connections" in {
+            val tree = s"""|network a {
+                           |  b -> c;
+                           |  ${thing} bool p;
+                           |}""".stripMargin.asTree[Entity]
+
+            tree rewrite checker
+
+            cc.messages.loneElement should beThe[Error](
+              s"${hint} declarations must appear before connections")
+          }
+
+          "functions" in {
+            val tree = s"""|fsm a {
+                           |  void main() { fence; }
+                           |  ${thing} bool p;
+                           |}""".stripMargin.asTree[Entity]
+
+            tree rewrite checker
+
+            cc.messages.loneElement should beThe[Error](
+              s"${hint} declarations must appear before function definitions")
+          }
+
+          "fence block" in {
+            val tree = s"""|fsm a {
+                           |  fence {}
+                           |  ${thing} bool p;
+                           |}""".stripMargin.asTree[Entity]
+
+            tree rewrite checker
+
+            cc.messages.loneElement should beThe[Error](
+              s"${hint} declarations must appear before 'fence' block")
+          }
+
+          "verbatim block" in {
+            val tree = s"""|fsm a {
+                           |  verbatim verilog {}
+                           |  ${thing} bool p;
+                           |  void main() {fence; }
+                           |}""".stripMargin.asTree[Entity]
+
+            tree rewrite checker
+
+            cc.messages.loneElement should beThe[Error](
+              s"${hint} declarations must appear before 'verbatim' blocks")
+          }
+
+          if (thing != "param") {
+            "inside 'gen'" - {
+              "'if' a" in {
+                val tree = s"""|fsm a {
+                               |  void main() { fence; }
+                               |  gen if (1) { ${thing} bool p; }
+                               |}""".stripMargin.asTree[Entity]
+
+                tree rewrite checker
+
+                cc.messages.loneElement should beThe[Error](
+                  s"${hint} declarations must appear before function definitions")
+              }
+
+              "'if' b" in {
+                val tree = s"""|fsm a {
+                               |  gen if (1) {
+                               |   void main() { fence; }
+                               |   ${thing} bool p;
+                               |  }
+                               |}""".stripMargin.asTree[Entity]
+
+                tree rewrite checker
+
+                cc.messages.loneElement should beThe[Error](
+                  s"${hint} declarations must appear before function definitions")
+              }
+
+              "'if' c" in {
+                val tree = s"""|fsm a {
+                               |  gen if (1) { void main() { fence; } }
+                               |  ${thing} bool p;
+                               |}""".stripMargin.asTree[Entity]
+
+                tree rewrite checker
+
+                cc.messages.loneElement should beThe[Error](
+                  s"${hint} declarations must appear before function definitions")
+              }
+
+              "'else' a" in {
+                val tree = s"""|fsm a {
+                               |  void main() { fence; }
+                               |  gen if (1) {} else { ${thing} bool p; }
+                               |}""".stripMargin.asTree[Entity]
+
+                tree rewrite checker
+
+                cc.messages.loneElement should beThe[Error](
+                  s"${hint} declarations must appear before function definitions")
+              }
+
+              "'else' b" in {
+                val tree = s"""|fsm a {
+                               |  gen if (1) {} else {
+                               |   void main() { fence; }
+                               |   ${thing} bool p;
+                               |  }
+                               |}""".stripMargin.asTree[Entity]
+
+                tree rewrite checker
+
+                cc.messages.loneElement should beThe[Error](
+                  s"${hint} declarations must appear before function definitions")
+              }
+
+              "'else' c" in {
+                val tree = s"""|fsm a {
+                               |  gen if (1) {} else { void main() { fence; } }
+                               |  ${thing} bool p;
+                               |}""".stripMargin.asTree[Entity]
+
+                tree rewrite checker
+
+                cc.messages.loneElement should beThe[Error](
+                  s"${hint} declarations must appear before function definitions")
+              }
+
+              "'for' standard a" in {
+                val tree = s"""|fsm a {
+                               |  void main() { fence; }
+                               |  gen for (uint N = 0 ; N < 1 ; N++) { ${thing} bool p; }
+                               |}""".stripMargin.asTree[Entity]
+
+                tree rewrite checker
+
+                cc.messages.loneElement should beThe[Error](
+                  s"${hint} declarations must appear before function definitions")
+              }
+
+              "'for' standard b" in {
+                val tree = s"""|fsm a {
+                               |  gen for (uint N = 0 ; N < 1 ; N++) {
+                               |    void main() { fence; }
+                               |    ${thing} bool p;
+                               |  }
+                               |}""".stripMargin.asTree[Entity]
+
+                tree rewrite checker
+
+                cc.messages.loneElement should beThe[Error](
+                  s"${hint} declarations must appear before function definitions")
+              }
+
+              "'for' standard c" in {
+                val tree = s"""|fsm a {
+                               |  gen for (uint N = 0 ; N < 1 ; N++) { void main() { fence; } }
+                               |  ${thing} bool p;
+                               |}""".stripMargin.asTree[Entity]
+
+                tree rewrite checker
+
+                cc.messages.loneElement should beThe[Error](
+                  s"${hint} declarations must appear before function definitions")
+              }
+
+              "'for' range a" in {
+                val tree = s"""|fsm a {
+                               |  void main() { fence; }
+                               |  gen for (uint N < 1) { ${thing} bool p; }
+                               |}""".stripMargin.asTree[Entity]
+
+                tree rewrite checker
+
+                cc.messages.loneElement should beThe[Error](
+                  s"${hint} declarations must appear before function definitions")
+              }
+
+              "'for' range b" in {
+                val tree = s"""|fsm a {
+                               |  gen for (uint N < 1) {
+                               |    void main() { fence; }
+                               |    ${thing} bool p;
+                               |  }
+                               |}""".stripMargin.asTree[Entity]
+
+                tree rewrite checker
+
+                cc.messages.loneElement should beThe[Error](
+                  s"${hint} declarations must appear before function definitions")
+              }
+
+              "'for' range c" in {
+                val tree = s"""|fsm a {
+                               |  gen for (uint N < 1) { void main() { fence; } }
+                               |  ${thing} bool p;
+                               |}""".stripMargin.asTree[Entity]
+
+                tree rewrite checker
+
+                cc.messages.loneElement should beThe[Error](
+                  s"${hint} declarations must appear before function definitions")
+              }
+            }
           }
         }
       }

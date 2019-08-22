@@ -49,8 +49,6 @@ final class SpecializeParam(
   // For sanity checking only
   private[this] val outerParams = mutable.Set[TermSymbol]()
 
-  private[this] object TypeSpecializeParam extends TreeInTypeTransformer(this)
-
   private[this] var entityLevel = 0
 
   // For type checking parameter assignments
@@ -69,24 +67,33 @@ final class SpecializeParam(
     symbolMap(symbol) = newSymbol
   }
 
+  private[this] object TypeSpecializeParam extends TreeInTypeTransformer(this) {
+    override def transform(kind: Type): Type = kind match {
+      case TypeChoice(choices) => TypeChoice(choices map symbolMap)
+      case _                   => super.transform(kind)
+    }
+  }
+
   override def skip(tree: Tree): Boolean = hadError || entityLevel == 0 && {
     tree match {
       case entity: Entity =>
         // If the root entity does not have any parameters then we just need to
-        // type check the const declarations as these need to be well formed,
-        // but otherwise we need not re-write the entity
+        // type check the const declarations and definitions as these need to be
+        // well formed, but otherwise we need not re-write the entity
         val nParams = entity.declarations count { case Decl(symbol, _) => symbol.kind.isParam }
-        if (nParams == 0) {
-          for {
-            decl @ Decl(symbol, _) <- entity.declarations
-            if symbol.kind.isConst
-          } {
-            decl rewrite typer
-            // Latch error
-            hadError |= decl.tpe.isError
+        val skipIt = nParams == 0
+        if (skipIt) {
+          entity.body foreach {
+            case EntDecl(decl @ Decl(symbol, _)) if symbol.kind.isConst =>
+              decl rewrite typer
+              hadError |= decl.tpe.isError
+            case EntDefn(defn) =>
+              defn rewrite typer
+              hadError |= defn.tpe.isError
+            case _ =>
           }
         }
-        nParams == 0
+        skipIt
       case _ => unreachable
     }
   }
@@ -211,6 +218,28 @@ final class SpecializeParam(
       }
       // Done
       newDecl
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Clone definition symbols
+    ////////////////////////////////////////////////////////////////////////////
+
+    case Defn(symbol) => {
+      // Rewrite references in types
+      val newKind = symbol.kind rewrite TypeSpecializeParam
+      // Clone the symbol
+      val newSymbol = cc.newTypeSymbol(symbol.name, symbol.loc, newKind)
+      newSymbol.attr update symbol.attr
+      symbolMap(symbol) = newSymbol
+      val newDefn = Defn(newSymbol) withLoc tree.loc
+      // Type check it if it's in the outermost entity
+      if (entityLevel == 1) {
+        newDefn rewrite typer
+        // Latch error
+        hadError |= newDefn.tpe.isError
+      }
+      // Done
+      newDefn
     }
 
     ////////////////////////////////////////////////////////////////////////////

@@ -1,0 +1,20 @@
+// @out-top: def_ent_0
+fsm def_ent_0 {
+  typedef u6 data_t;
+
+  in       data_t i;
+  out wire data_t o;
+
+  void main() {
+    o = i;
+    fence;
+  }
+}
+// @fec-golden {{{
+//  module def_ent_0(
+//    input  wire [5:0] i,
+//    output wire [5:0] o
+//  );
+//    assign o = i;
+//  endmodule
+// }}}

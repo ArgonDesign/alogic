@@ -37,11 +37,11 @@ object TreeCopier {
     }
   }
 
-  final def apply(tree: DefIdent)(ident: Tree): DefIdent = {
+  final def apply(tree: DefnIdent)(ident: Tree): DefnIdent = {
     if (ident eq tree.ident) {
       tree
     } else {
-      DefIdent(ident.asInstanceOf[Ident], tree.kind) withLoc tree.loc
+      DefnIdent(ident.asInstanceOf[Ident], tree.kind) withLoc tree.loc
     }
   }
 
@@ -77,6 +77,14 @@ object TreeCopier {
       tree
     } else {
       EntDecl(decl.asInstanceOf[Declaration]) withLoc tree.loc
+    }
+  }
+
+  final def apply(tree: EntDefn)(defn: Tree): EntDefn = {
+    if (defn eq tree.defn) {
+      tree
+    } else {
+      EntDefn(defn.asInstanceOf[Definition]) withLoc tree.loc
     }
   }
 
@@ -152,6 +160,14 @@ object TreeCopier {
       tree
     } else {
       GenDecl(decl.asInstanceOf[Declaration]) withLoc tree.loc
+    }
+  }
+
+  final def apply(tree: GenDefn)(defn: Tree): GenDefn = {
+    if (defn eq tree.defn) {
+      tree
+    } else {
+      GenDefn(defn.asInstanceOf[Definition]) withLoc tree.loc
     }
   }
 

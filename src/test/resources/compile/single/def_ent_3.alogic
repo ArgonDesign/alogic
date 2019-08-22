@@ -1,0 +1,28 @@
+// @out-top: def_ent_3__W_2
+fsm def_ent_3 {
+  param uint W = 2;
+
+  struct data_t {
+    uint(W)   a;
+    uint(2*W) b;
+  };
+
+  in       data_t i;
+  out wire data_t o;
+
+  void main() {
+    o = i;
+    fence;
+  }
+}
+// @fec-golden {{{
+//  module def_ent_3__W_2(
+//    input  wire [1:0] i__a,
+//    input  wire [3:0] i__b,
+//    output wire [1:0] o__a,
+//    output wire [3:0] o__b
+//  );
+//    assign o__a = i__a;
+//    assign o__b = i__b;
+//  endmodule
+// }}}

@@ -68,7 +68,7 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer {
       paramConstAllowed push true
     case _: Gen =>
       paramConstAllowed push false
-    case _:StmtLoop | _:StmtWhile | _:StmtFor | _:StmtDo =>
+    case _: StmtLoop | _: StmtWhile | _: StmtFor | _: StmtDo =>
       loopLevel += 1
     case _ =>
   }
@@ -137,6 +137,70 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer {
       } else {
         body
       }
+
+      case class Seen(
+          entity: Boolean = false,
+          instance: Boolean = false,
+          connect: Boolean = false,
+          fence: Boolean = false,
+          function: Boolean = false,
+          verbatim: Boolean = false
+      ) {
+        def ||(that: Seen) = Seen(
+          entity || that.entity,
+          instance || that.instance,
+          connect || that.connect,
+          fence || that.fence,
+          function || that.function,
+          verbatim || that.verbatim
+        )
+      }
+
+      def checkDeclOrder(trees: List[Tree], seen: Seen): Seen = {
+        def checkDecl(decl: DeclIdent) = {
+          val kind = decl.kind
+          if (kind.isIn || kind.isOut || kind.isParam) {
+            val prefix = if (kind.isParam) {
+              "Parameter declarations must appear before"
+            } else {
+              "Port declarations must appear before"
+            }
+            if (seen.entity) cc.error(decl, s"${prefix} nested entities")
+            if (seen.instance) cc.error(decl, s"${prefix} instances")
+            if (seen.connect) cc.error(decl, s"${prefix} connections")
+            if (seen.fence) cc.error(decl, s"${prefix} 'fence' block")
+            if (seen.function) cc.error(decl, s"${prefix} function definitions")
+            if (seen.verbatim) cc.error(decl, s"${prefix} 'verbatim' blocks")
+          }
+        }
+
+        if (trees.isEmpty) {
+          seen
+        } else {
+          val newSeen = trees.head match {
+            case EntDecl(decl: DeclIdent)     => checkDecl(decl); seen
+            case GenDecl(decl: DeclIdent)     => checkDecl(decl); seen
+            case _: EntDefn                   => seen
+            case _: EntEntity                 => seen.copy(entity = true)
+            case _: EntInstance               => seen.copy(instance = true)
+            case _: EntConnect                => seen.copy(connect = true)
+            case _: EntCombProcess            => seen.copy(fence = true)
+            case _: EntFunction               => seen.copy(function = true)
+            case _: EntVerbatim               => seen.copy(verbatim = true)
+            case EntGen(GenIf(_, t, e))       => checkDeclOrder(t, seen) || checkDeclOrder(e, seen)
+            case EntGen(GenFor(_, _, _, b))   => checkDeclOrder(b, seen)
+            case EntGen(GenRange(_, _, _, b)) => checkDeclOrder(b, seen)
+            case GenIf(_, t, e)               => checkDeclOrder(t, seen) || checkDeclOrder(e, seen)
+            case GenFor(_, _, _, b)           => checkDeclOrder(b, seen)
+            case GenRange(_, _, _, b)         => checkDeclOrder(b, seen)
+            case _: GenDefn                   => seen
+            case _                            => unreachable
+          }
+          checkDeclOrder(trees.tail, newSeen)
+        }
+      }
+
+      checkDeclOrder(entity.body, Seen())
 
       if (variantStack.top != "verbatim" &&
           entity.verbatims.nonEmpty &&
@@ -360,7 +424,7 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer {
       StmtError() withLoc tree.loc
     }
 
-    case _:StmtLoop | _:StmtWhile | _:StmtFor | _:StmtDo => {
+    case _: StmtLoop | _: StmtWhile | _: StmtFor | _: StmtDo => {
       tree
     } tap { _ =>
       loopLevel -= 1

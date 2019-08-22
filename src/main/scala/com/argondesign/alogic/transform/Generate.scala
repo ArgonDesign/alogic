@@ -23,7 +23,9 @@ import com.argondesign.alogic.core.Bindings
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.TreeInTypeTransformer
+import com.argondesign.alogic.core.Types.Type
 import com.argondesign.alogic.core.Types.TypeChoice
+import com.argondesign.alogic.core.Types.TypeError
 import com.argondesign.alogic.core.Types.TypeInstance
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.typer.Typer
@@ -38,6 +40,7 @@ private trait Generatable {
   def isExpectedType(tree: Tree): Boolean
   val description: String
   def convertDecl(gen: GenDecl): Tree = unreachable
+  def convertDefn(gen: GenDefn): Tree = unreachable
 }
 
 private object generatableStmt extends Generatable {
@@ -55,6 +58,7 @@ private object generatableEnt extends Generatable {
   def isExpectedType(tree: Tree): Boolean = tree.isInstanceOf[Ent]
   val description = "entity content"
   override def convertDecl(gen: GenDecl): EntDecl = EntDecl(gen.decl) withLoc gen.loc
+  override def convertDefn(gen: GenDefn): EntDefn = EntDefn(gen.defn) withLoc gen.loc
 }
 
 private final class Generate(
@@ -257,6 +261,7 @@ private final class Generate(
       case GenRange(Decl(_, Some(_)), _, _, _) => unreachable
       case GenRange(_: DeclIdent, _, _, _)     => unreachable
       case _: GenDecl                          => unreachable // Handled in transform
+      case _: GenDefn                          => unreachable // Handled in transform
     }
 
     if (hadError) Nil else result
@@ -324,6 +329,12 @@ private final class Generate(
             invalidGenSyntax(tree)
           }
 
+        // Definition inside gen block
+        case _: GenDefn =>
+          if (dispatcher.get ne generatableEnt) {
+            invalidGenSyntax(tree)
+          }
+
         // Gen nested inside outer Gen node, must produce whatever it's nested inside
         case gen: Gen =>
           assert(dispatcher.nonEmpty)
@@ -363,17 +374,20 @@ private final class Generate(
         }
         Thicket(result) withLoc tree.loc
 
-      // TODO: Check no defs after contents
+      // Replace outermost gen with the generate result
       case _: EntGen if generated.isDefined => Thicket(generated.get) withLoc tree.loc
 
       // Convert GenDecl
       case node: GenDecl if entityLevel <= 1 => dispatcher.get.convertDecl(node)
 
+      // Convert GenDefn
+      case node: GenDefn if entityLevel <= 1 => dispatcher.get.convertDefn(node)
+
       // Replace nested gen with the generated result
       case _: Gen if generated.isDefined => Thicket(generated.get) withLoc tree.loc
 
       //////////////////////////////////////////////////////////////////////////
-      // Clone variable symbols which are declared inside a gen
+      // Clone term symbols which are declared inside a gen
       //////////////////////////////////////////////////////////////////////////
 
       case decl @ Decl(symbol, _) if dispatcher.nonEmpty =>
@@ -386,6 +400,21 @@ private final class Generate(
         choiceMap(symbol) = newSymbol
         // Rewrite decl
         decl.copy(symbol = newSymbol) withLoc tree.loc
+
+      //////////////////////////////////////////////////////////////////////////
+      // Clone type symbols which are defined inside a gen
+      //////////////////////////////////////////////////////////////////////////
+
+      case Defn(symbol) if dispatcher.nonEmpty =>
+        // Rewrite references in types
+        val newKind = symbol.kind rewrite TypeGenerate
+        // Clone symbol
+        val newSymbol = cc.newTypeSymbol(symbol.name, symbol.loc, newKind)
+        newSymbol.attr update symbol.attr
+        symbolMap(symbol) = newSymbol
+        choiceMap(symbol) = newSymbol
+        // Rewrite defn
+        Defn(newSymbol) withLoc tree.loc
 
       //////////////////////////////////////////////////////////////////////////
       // Replace refs to bound symbols with the value, and
@@ -474,6 +503,7 @@ private final class Generate(
         case node: Gen     => cc.ice(node, s"Gen remains")
         case node: StmtGen => cc.ice(node, s"StmtGen remains")
         case node: CaseGen => cc.ice(node, s"CaseGen remains")
+        case node: EntGen  => cc.ice(node, s"EntGen remains")
       }
     }
   }
@@ -500,19 +530,28 @@ private final class Disambiguate(
     case _         =>
   }
 
-  private def resolveChoice(symbol: Symbol, loc: Loc): Option[Symbol] = {
-    val TypeChoice(choices) = symbol.kind.asChoice
+  private def resolveChoice(choice: TypeChoice, loc: Loc): Option[Symbol] = {
+    val TypeChoice(choices) = choice
+    val name = choices.head.name
     val resolutions = choices flatMap choiceMap.get
     if (resolutions.isEmpty) {
-      cc.error(loc, s"'${symbol.name}' is not defined after processing 'gen' constructs")
+      cc.error(loc, s"'${name}' is not defined after processing 'gen' constructs")
       None
     } else if (resolutions.lengthIs == 1) {
       resolutions.headOption
     } else {
-      val msg = s"'${symbol.name}' is ambiguous after processing 'gen' constructs. Active declarations:" ::
+      val msg = s"'${name}' is ambiguous after processing 'gen' constructs. Active declarations:" ::
         (resolutions.reverse map { _.loc.prefix })
       cc.error(loc, msg: _*)
       None
+    }
+  }
+
+  // To rewrite refs in types
+  private[this] final class TypeDisambiguate(loc: Loc) extends TreeInTypeTransformer(this) {
+    override def transform(kind: Type): Type = kind match {
+      case choice: TypeChoice => resolveChoice(choice, loc) map { _.kind } getOrElse TypeError
+      case _                  => super.transform(kind)
     }
   }
 
@@ -522,12 +561,37 @@ private final class Disambiguate(
     //////////////////////////////////////////////////////////////////////////
 
     case ExprRef(symbol) if symbol.kind.isChoice =>
-      resolveChoice(symbol, tree.loc) map { ExprRef(_) withLoc tree.loc } getOrElse tree
+      resolveChoice(symbol.kind.asChoice, tree.loc) map {
+        ExprRef(_) withLoc tree.loc
+      } getOrElse tree
 
     case Sym(symbol) if symbol.kind.isChoice =>
-      resolveChoice(symbol, tree.loc) map { Sym(_) withLoc tree.loc } getOrElse tree
+      resolveChoice(symbol.kind.asChoice, tree.loc) map {
+        Sym(_) withLoc tree.loc
+      } getOrElse tree
 
-    case _: Entity =>
+    //////////////////////////////////////////////////////////////////////////
+    // Disambiguate in Type
+    //////////////////////////////////////////////////////////////////////////
+
+    case Decl(symbol, _) =>
+      symbol.kind = symbol.kind rewrite new TypeDisambiguate(tree.loc)
+      tree
+
+    case Defn(symbol) =>
+      symbol.kind = symbol.kind rewrite new TypeDisambiguate(tree.loc)
+      tree
+
+    case ExprType(kind) =>
+      val newKind = kind rewrite new TypeDisambiguate(tree.loc)
+      if (kind eq newKind) tree else ExprType(newKind) withLoc tree.loc
+
+    case cast @ ExprCast(kind, _) =>
+      val newKind = kind rewrite new TypeDisambiguate(tree.loc)
+      if (kind eq newKind) tree else cast.copy(kind = newKind) withLoc tree.loc
+
+    case entity: Entity =>
+      entity.symbol.kind = entity.typeBasedOnContents
       inEntity = false
       tree
 

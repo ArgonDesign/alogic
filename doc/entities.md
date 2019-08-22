@@ -53,16 +53,19 @@ example:
 
 ```
 fsm foo {
-  <body: port/parameter/constant declarations>
-  <body: entity-specific body>
+  <fsm description>
 }
 ```
 
-If the entity name is foo, the Alogic source file must be called `foo.alogic`.
-Within the body, all entities can contain [port](ports.md), and [parameter /
-constant definitions](params.md) (in arbitrary order). The remainder of the body
-depends on the type of entity and is discussed in detail in [FSMs](fsms.md),
-[Networks](networks.md) and [Verbatim Entities](interop.md#verbatim-entities).
+If the entity name is `foo`, the Alogic source file must be called
+`foo.alogic`. Within the body, all entities can contain
+[port](ports.md), [parameter](params.md#entity-parameters) and
+[constant](params.md) declarations as well as any type definitions. The
+remainder of the body depends on the type of entity and is discussed in
+detail in [FSMs](fsms.md), [Networks](networks.md) and
+[Verbatim Entities](interop.md#verbatim-entities). Parameter and port
+declarations must precede any other entity contents except for constant
+and type definitions, but can otherwise appear in an arbitrary order.
 
 ### Output Verilog modules
 

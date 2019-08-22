@@ -57,6 +57,7 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
 
   private def hasError(node: TreeLike): Boolean = node.children exists {
     case child: Tree => child.hasTpe && child.tpe.isError
+    case TypeError   => true
     case child: Type => child.children exists hasError
     case _           => unreachable
   }
@@ -221,6 +222,8 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
       val origKind = symbol.kind
       val kind = origKind rewrite TypeTyper
       if (kind ne origKind) {
+        assert(kind.isError)
+        error(decl)
         symbol.kind = kind
       }
 
@@ -233,6 +236,17 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
       // Track unary tick result types
       if (initOpt.isDefined) {
         pushContextWidth(tree, symbol.kind)
+      }
+    }
+
+    case defn @ Defn(symbol) => {
+      // Type check trees in the type of the symbol
+      val origKind = symbol.kind
+      val kind = origKind rewrite TypeTyper
+      if (kind ne origKind) {
+        assert(kind.isError)
+        error(defn)
+        symbol.kind = kind
       }
     }
 
