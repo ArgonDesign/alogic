@@ -1,0 +1,49 @@
+
+
+fsm prune_unused_flops_1 {
+
+    in  u8 i;
+    out u8 o;
+
+    void main() {
+
+        u8 temp_1 = i+1;
+        o.write(temp_1);
+
+        fence;
+
+        u8 temp_2 = i+2;
+        o.write(temp_2);
+
+        fence;
+    }
+}
+
+// @fec-golden {{{
+// module prune_unused_flops_1(
+//   input  wire clk,
+//   input  wire rst,
+//   input  wire [7:0] i,
+//   output reg [7:0] o
+// );
+//
+//   reg state;
+//
+//   always @(posedge clk) begin
+//     if (rst) begin
+//       state <= 1'd0;
+//       o <= 8'd0;
+//     end else begin
+//       if (~state) begin
+//         state <= 1'd1;
+//         o <= i + 8'd1;
+//       end else begin
+//         state <= 1'd0;
+//         o <= i + 8'd2;
+//       end
+//     end
+//   end
+//
+// endmodule
+//
+// }}}

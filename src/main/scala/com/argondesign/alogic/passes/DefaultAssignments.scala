@@ -56,16 +56,15 @@ final class DefaultAssignments(implicit cc: CompilerContext) extends TreeTransfo
         }
       }
 
+      // Remove symbols that are dead at the beginning of the cycle. To do
+      // this, we build the case statement representing the state dispatch
+      // (together with the fence statements), and do liveness analysis on it
+      lazy val (liveSymbolBits, deadSymbolBits) = Liveness(entity.combProcesses(0).stmts)
+
       if (needsDefault.nonEmpty) {
         assert(entity.combProcesses.lengthIs == 1)
 
-        // Remove symbols that are dead at the beginning of the cycle. To do
-        // this, we build the case statement representing the state dispatch
-        // (together with the fence statements), and do liveness analysis on it
         val deadSymbols = {
-          // Perform the liveness analysis
-          val deadSymbolBits = Liveness(entity.combProcesses(0).stmts)._2
-
           // Keep only the symbols with all bits dead
           val it = deadSymbolBits collect {
             case (symbol, set) if set.size == symbol.kind.width => symbol
@@ -82,12 +81,31 @@ final class DefaultAssignments(implicit cc: CompilerContext) extends TreeTransfo
       if (needsDefault.isEmpty) {
         tree
       } else {
+        // Symbols have default assignments set as follows:
+        // If a symbol is live or drives a connection, initialize to its default value
+        // otherwise zero.
+        val initializeToRegisteredVal = {
+          val liveSymbols = liveSymbolBits.underlying.keySet
+
+          val symbolsDrivingConnect = Set from {
+            entity.connects.iterator flatMap {
+              case EntConnect(lhs, _) =>
+                lhs.collect {
+                  case ExprRef(symbol: TermSymbol) => symbol.attr.flop.getOrElse(symbol)
+                }
+            }
+          }
+
+          liveSymbols union symbolsDrivingConnect
+        }
+
         val leading = for {
           Decl(symbol, _) <- entity.declarations
           if needsDefault contains symbol
         } yield {
-          // Initialize items to their default values, otherwise zero
-          val init = symbol.attr.default.getOrElse {
+          val init = if ((initializeToRegisteredVal contains symbol) && symbol.attr.default.isSet) {
+            symbol.attr.default.value
+          } else {
             val kind = symbol.kind
             ExprInt(kind.isSigned, kind.width, 0)
           }
