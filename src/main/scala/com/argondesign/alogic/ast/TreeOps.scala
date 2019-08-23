@@ -25,8 +25,8 @@ import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.frontend.Parser
 import com.argondesign.alogic.passes.AddCasts
 import com.argondesign.alogic.passes.ReplaceUnaryTicks
+import com.argondesign.alogic.passes.ResolvePolyFunc
 import com.argondesign.alogic.transform.Regularize
-import com.argondesign.alogic.typer.ResolvePolyFunc
 import com.argondesign.alogic.util.unreachable
 
 import scala.language.implicitConversions
@@ -127,10 +127,10 @@ trait ObjectTreeOps extends TreeUntype {
     def build(ctx: StartContext)(implicit cc: CompilerContext): Root = RootBuilder(ctx)
   }
 
-  implicit final val parseableDefIdent = new Parser.Parseable[DefnIdent] {
+  implicit final val parseableDefIdent = new Parser.Parseable[DefnRef] {
     type C = DefnContext
     def parse(parser: AlogicParser): DefnContext = parser.defn()
-    def build(ctx: DefnContext)(implicit cc: CompilerContext): DefnIdent = DefnBuilder(ctx)
+    def build(ctx: DefnContext)(implicit cc: CompilerContext): DefnRef = DefnBuilder(ctx)
   }
 
   implicit final val parseableEntity = new Parser.Parseable[Entity] {
@@ -139,10 +139,10 @@ trait ObjectTreeOps extends TreeUntype {
     def build(ctx: EntityContext)(implicit cc: CompilerContext): Entity = EntityBuilder(ctx)
   }
 
-  implicit final val parseableDeclIdent = new Parser.Parseable[DeclIdent] {
+  implicit final val parseableDeclIdent = new Parser.Parseable[DeclRef] {
     type C = DeclContext
     def parse(parser: AlogicParser): DeclContext = parser.decl()
-    def build(ctx: DeclContext)(implicit cc: CompilerContext): DeclIdent = DeclBuilder(ctx)
+    def build(ctx: DeclContext)(implicit cc: CompilerContext): DeclRef = DeclBuilder(ctx)
   }
 
   implicit final val parseableEnt = new Parser.Parseable[Ent] {

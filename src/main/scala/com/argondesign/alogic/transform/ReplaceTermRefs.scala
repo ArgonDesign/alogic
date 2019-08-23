@@ -29,7 +29,7 @@ final class ReplaceTermRefs(
 ) extends TreeTransformer {
 
   override def transform(tree: Tree): Tree = tree match {
-    case ExprRef(symbol: TermSymbol) => bindings.getOrElse(symbol, tree)
+    case ExprSym(symbol: TermSymbol) => bindings.getOrElse(symbol, tree)
 
     case _ => tree
   }

@@ -120,6 +120,8 @@ COLON: ':';
 MINUSCOLON: '-:';
 PLUSCOLON: '+:';
 
+HASH: '#' ;
+
 // Keywords
 FSM     : 'fsm';
 NETWORK : 'network';

@@ -37,15 +37,16 @@ final class PropagateImplications(implicit cc: CompilerContext) extends TreeTran
     case entity: Entity => {
       // Create empty instance -> port -> local maps
       val maps = entity.instances collect {
-        case EntInstance(Sym(iSymbol), _, _, _) => iSymbol -> mutable.Map[TermSymbol, TermSymbol]()
+        case EntInstance(Sym(iSymbol, _), _, _, _) =>
+          iSymbol -> mutable.Map[TermSymbol, TermSymbol]()
       } toMap
 
       // populate them
       entity.connects foreach {
-        case EntConnect(InstancePortRef(iSymbol, pSymbol), List(ExprRef(nSymbol: TermSymbol))) => {
+        case EntConnect(InstancePortRef(iSymbol, pSymbol), List(ExprSym(nSymbol: TermSymbol))) => {
           maps(iSymbol)(pSymbol) = nSymbol
         }
-        case EntConnect(ExprRef(nSymbol: TermSymbol), List(InstancePortRef(iSymbol, pSymbol))) => {
+        case EntConnect(ExprSym(nSymbol: TermSymbol), List(InstancePortRef(iSymbol, pSymbol))) => {
           maps(iSymbol)(pSymbol) = nSymbol
         }
         case _ =>

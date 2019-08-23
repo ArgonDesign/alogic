@@ -19,9 +19,7 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.typer.TypeAssigner
-import com.argondesign.alogic.util.unreachable
 
 final class SplitStructsC(implicit cc: CompilerContext) extends TreeTransformer {
 
@@ -36,25 +34,16 @@ final class SplitStructsC(implicit cc: CompilerContext) extends TreeTransformer 
     //////////////////////////////////////////////////////////////////////////
 
     case entity: Entity => {
+      // Drop original port declarations
       val newBody = entity.body filterNot {
-        // Drop original port declarations
         case EntDecl(Decl(symbol, _)) => symbol.attr.fieldSymbols.isSet
         case _                        => false
       }
 
-      // Update type of entity to drop new ports.
-      val portSymbols = newBody collect {
-        case EntDecl(Decl(symbol, _)) if symbol.kind.isInstanceOf[TypeIn]  => symbol
-        case EntDecl(Decl(symbol, _)) if symbol.kind.isInstanceOf[TypeOut] => symbol
-      }
-
-      val newKind = entitySymbol.kind match {
-        case kind: TypeEntity => kind.copy(portSymbols = portSymbols)
-        case _                => unreachable
-      }
-      entitySymbol.kind = newKind
-
       TypeAssigner(entity.copy(body = newBody) withLoc tree.loc)
+    } tap { result =>
+      // Update type of entity to drop new ports.
+      entitySymbol.kind = result.typeBasedOnContents
     }
 
     case _ => tree
@@ -62,10 +51,10 @@ final class SplitStructsC(implicit cc: CompilerContext) extends TreeTransformer 
 
   override def finalCheck(tree: Tree): Unit = {
     tree visit {
-      case node @ Decl(symbol, _) if symbol.kind.underlying.isInstanceOf[TypeStruct] => {
+      case node @ Decl(symbol, _) if symbol.kind.deref.underlying.isStruct => {
         cc.ice(node, "Struct declaration remains")
       }
-      case node: Tree if node.tpe.underlying.isInstanceOf[TypeStruct] => {
+      case node: Tree if node.tpe.deref.underlying.isStruct => {
         cc.ice(node, "Tree of type struct remains", node.toString)
       }
     }

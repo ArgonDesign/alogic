@@ -102,20 +102,26 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
           val entity = walk(node.entity)
           doTransform(TreeCopier(node)(typeDefinitions, entity))
         }
-        case node: Ident => doTransform(node)
-        case node: Sym   => doTransform(node)
-        case node: DeclIdent => {
-          val ident = walk(node.ident)
+        case node: Ident => {
+          val indices = walk(node.idxs)
+          doTransform(TreeCopier(node)(indices))
+        }
+        case node: Sym => {
+          val indices = walk(node.idxs)
+          doTransform(TreeCopier(node)(indices))
+        }
+        case node: DeclRef => {
+          val ref = walk(node.ref)
           val init = walk(node.init)
-          doTransform(TreeCopier(node)(ident, init))
+          doTransform(TreeCopier(node)(ref, init))
         }
         case node: Decl => {
           val init = walk(node.init)
           doTransform(TreeCopier(node)(init))
         }
-        case node: DefnIdent => {
-          val ident = walk(node.ident)
-          doTransform(TreeCopier(node)(ident))
+        case node: DefnRef => {
+          val ref = walk(node.ref)
+          doTransform(TreeCopier(node)(ref))
         }
         case node: Defn => doTransform(node)
         case node: Entity => {
@@ -332,17 +338,21 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
         }
         case node: ExprSelect => {
           val expr = walk(node.expr)
-          doTransform(TreeCopier(node)(expr))
+          val idxs = walk(node.idxs)
+          doTransform(TreeCopier(node)(expr, idxs))
         }
         case node: ExprCast => {
           val expr = walk(node.expr)
           doTransform(TreeCopier(node)(expr))
         }
+        case node: ExprRef => {
+          val ref = walk(node.ref)
+          doTransform(TreeCopier(node)(ref))
+        }
         case node: ExprInt   => doTransform(node)
         case node: ExprNum   => doTransform(node)
         case node: ExprStr   => doTransform(node)
-        case node: ExprIdent => doTransform(node)
-        case node: ExprRef   => doTransform(node)
+        case node: ExprSym   => doTransform(node)
         case node: ExprType  => doTransform(node)
         case node: ExprError => doTransform(node)
         case node: Thicket => {
@@ -379,11 +389,11 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
         case node: Tree if !cc.hasError && node.tpe == TypeError => {
           cc.ice(node, "Transformed tree has type error:", node.toString, this.getClass.getName)
         }
-        case node @ EntInstance(Sym(iSymbol), Sym(eSymbol: TypeSymbol), _, _)
+        case node @ EntInstance(Sym(iSymbol, _), Sym(eSymbol: TypeSymbol, _), _, _)
             if iSymbol.kind != TypeInstance(eSymbol) => {
           cc.ice(node, "Bad type for instance symbol", iSymbol.kind.toString, this.getClass.getName)
         }
-        case node @ Entity(Sym(eSymbol), _) if !eSymbol.kind.isInstanceOf[TypeEntity] => {
+        case node @ Entity(Sym(eSymbol, _), _) if !eSymbol.kind.isEntity => {
           cc.ice(node, "Bad type for entity symbol", eSymbol.kind.toString, this.getClass.getName)
         }
       }
@@ -402,17 +412,18 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
 
         def add(node: Tree, symbol: Symbol): Unit = {
           if (checkDefs && (set contains symbol)) {
-            cc.ice(node, "Symbol declared multiple times", this.getClass.getName)
+            cc.ice(node, s"Symbol '${symbol.name}' declared multiple times", this.getClass.getName)
           }
           set add symbol
         }
 
         tree visitAll {
-          case node @ Decl(symbol, _)                   => add(node, symbol)
-          case node @ EntInstance(Sym(symbol), _, _, _) => add(node, symbol)
-          case node @ EntFunction(Sym(symbol), _)       => add(node, symbol)
-          case node @ EntState(ExprRef(symbol), _)      => add(node, symbol)
-          case node @ Entity(Sym(symbol), _)            => add(node, symbol)
+          case node @ DeclRef(Sym(symbol, _), _, _)        => add(node, symbol)
+          case node @ Decl(symbol, _)                      => add(node, symbol)
+          case node @ EntInstance(Sym(symbol, _), _, _, _) => add(node, symbol)
+          case node @ EntFunction(Sym(symbol, _), _)       => add(node, symbol)
+          case node @ EntState(ExprSym(symbol), _)         => add(node, symbol)
+          case node @ Entity(Sym(symbol, _), _)            => add(node, symbol)
         }
 
         set
@@ -432,14 +443,15 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
 
       def check(tree: Tree): Unit = {
         tree visitAll {
-          case node @ Sym(symbol: TermSymbol)     => errIfUndeclared(node, symbol)
-          case node @ ExprRef(symbol: TermSymbol) => errIfUndeclared(node, symbol)
+          case node @ Sym(symbol: TermSymbol, _)  => errIfUndeclared(node, symbol)
+          case node @ ExprSym(symbol: TermSymbol) => errIfUndeclared(node, symbol)
           case Decl(symbol, _)                    => symbol.kind visit { case tree: Tree => check(tree) }
-          case Entity(Sym(symbol), _)             => symbol.kind visit { case tree: Tree => check(tree) }
+          case Entity(Sym(symbol, _), _)          => symbol.kind visit { case tree: Tree => check(tree) }
         }
       }
 
-      if (checkRefs && orig.isInstanceOf[Entity] || orig.isInstanceOf[Root]) {
+      // TODO: should only need Root, once all passes process Root nodes
+      if (checkRefs && (orig.isInstanceOf[Entity] || orig.isInstanceOf[Root])) {
         check(tree)
       }
     }

@@ -73,12 +73,12 @@ object SramFactory {
     val rdSymbol = cc.newTermSymbol("rdata", loc, TypeOut(dataKind, fcn, StorageTypeReg))
     val stSymbol = cc.newTermSymbol("storage", loc, storKind)
 
-    val ceRef = ExprRef(ceSymbol)
-    val weRef = ExprRef(weSymbol)
-    val adRef = ExprRef(adSymbol)
-    val wdRef = ExprRef(wdSymbol)
-    val rdRef = ExprRef(rdSymbol)
-    val stRef = ExprRef(stSymbol)
+    val ceRef = ExprSym(ceSymbol)
+    val weRef = ExprSym(weSymbol)
+    val adRef = ExprSym(adSymbol)
+    val wdRef = ExprSym(wdSymbol)
+    val rdRef = ExprSym(rdSymbol)
+    val stRef = ExprSym(stSymbol)
 
     val statements = List(
       StmtIf(
@@ -112,7 +112,7 @@ object SramFactory {
     entitySymbol.attr.variant set "fsm"
     entitySymbol.attr.sram set true
     entitySymbol.attr.highLevelKind set eKind
-    val entity = Entity(Sym(entitySymbol), decls ::: EntCombProcess(statements) :: Nil)
+    val entity = Entity(Sym(entitySymbol, Nil), decls ::: EntCombProcess(statements) :: Nil)
     entity regularize loc
   }
 

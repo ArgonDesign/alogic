@@ -87,14 +87,14 @@ object SyncRegFactory {
     lazy val pSymbol = cc.newTermSymbol("payload", loc, kind)
     val vSymbol = cc.newTermSymbol("valid", loc, bool)
 
-    lazy val ipRef = ExprRef(ipSymbol)
-    val ipvRef = ExprRef(ipvSymbol)
+    lazy val ipRef = ExprSym(ipSymbol)
+    val ipvRef = ExprSym(ipvSymbol)
 
-    lazy val opRef = ExprRef(opSymbol)
-    val opvRef = ExprRef(opvSymbol)
+    lazy val opRef = ExprSym(opSymbol)
+    val opvRef = ExprSym(opvSymbol)
 
-    lazy val pRef = ExprRef(pSymbol)
-    val vRef = ExprRef(vSymbol)
+    lazy val pRef = ExprSym(pSymbol)
+    val vRef = ExprSym(vSymbol)
 
     val statements = if (kind != TypeVoid) {
       List(
@@ -139,7 +139,7 @@ object SyncRegFactory {
     val entitySymbol = cc.newTypeSymbol(name, loc, eKind)
     entitySymbol.attr.variant set "fsm"
     entitySymbol.attr.highLevelKind set eKind
-    val entity = Entity(Sym(entitySymbol), decls ::: EntCombProcess(statements) :: connects)
+    val entity = Entity(Sym(entitySymbol, Nil), decls ::: EntCombProcess(statements) :: connects)
     entity regularize loc
   }
 

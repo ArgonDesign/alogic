@@ -1,0 +1,28 @@
+network dictident_defn_5 {
+  gen for (uint N < 2) {
+    typedef uint(N+1) i_t#[N];
+    typedef uint(N+1) o_t#[N];
+  }
+  gen for (uint N < 2) {
+    typedef uint(N+1) i_t#[N];
+    typedef uint(N+1) o_t#[N];
+  }
+  in  i_t#[0] i_0;
+  in  i_t#[1] i_1;
+  out o_t#[0] o_0;
+  out o_t#[1] o_1;
+  i_0 -> o_0;
+  i_1 -> o_1;
+}
+// :10: ERROR: 'i_t' is ambiguous after processing 'gen' constructs. Active declarations:
+// :10: ERROR: ... .*dictident_defn_5.alogic:3
+// :10: ERROR: ... .*dictident_defn_5.alogic:7
+// :11: ERROR: 'i_t' is ambiguous after processing 'gen' constructs. Active declarations:
+// :11: ERROR: ... .*dictident_defn_5.alogic:3
+// :11: ERROR: ... .*dictident_defn_5.alogic:7
+// :12: ERROR: 'o_t' is ambiguous after processing 'gen' constructs. Active declarations:
+// :12: ERROR: ... .*dictident_defn_5.alogic:4
+// :12: ERROR: ... .*dictident_defn_5.alogic:8
+// :13: ERROR: 'o_t' is ambiguous after processing 'gen' constructs. Active declarations:
+// :13: ERROR: ... .*dictident_defn_5.alogic:4
+// :13: ERROR: ... .*dictident_defn_5.alogic:8

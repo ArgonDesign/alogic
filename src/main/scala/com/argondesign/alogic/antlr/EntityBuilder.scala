@@ -28,7 +28,7 @@ object EntityBuilder extends BaseBuilder[EntityContext, Entity] {
   def apply(ctx: EntityContext)(implicit cc: CompilerContext): Entity = {
     object Visitor extends AlogicScalarVisitor[Entity] {
       override def visitEntity(ctx: EntityContext) = {
-        val ref = ctx.IDENTIFIER.toIdent
+        val ref = IdentBuilder(ctx.ident)
 
         val ents = ctx.ent.asScala.toList flatMap { EntBuilder(_) }
 

@@ -24,13 +24,13 @@ object ReadSymbols {
   // Given an expression, return an Iterable of Symbols that would be read
   // if this expression is not used on the left hand side of an assignment
   def rval(expr: Expr): Iterator[TermSymbol] = {
-    expr collect { case ExprRef(symbol: TermSymbol) => symbol }
+    expr collect { case ExprSym(symbol: TermSymbol) => symbol }
   }
 
   // Given an expression, return an Iterable of Symbols that would be read
   // if this expression is used on the left hand side of an assignment
   def lval(expr: Expr): Iterator[TermSymbol] = expr match {
-    case _: ExprRef                  => Iterator.empty
+    case _: ExprSym                  => Iterator.empty
     case ExprCat(parts)              => parts.iterator flatMap lval
     case ExprIndex(_, idx)           => rval(idx)
     case ExprSlice(_, lidx, _, ridx) => rval(lidx) ++ rval(ridx)

@@ -224,10 +224,10 @@ final class LowerSrams(
       // Rewrite statements
       //////////////////////////////////////////////////////////////////////////
 
-      case StmtExpr(ExprCall(ExprSelect(ExprRef(symbol: TermSymbol), "read"), List(addr))) => {
+      case StmtExpr(ExprCall(ExprSelect(ExprSym(symbol: TermSymbol), "read", _), List(addr))) => {
         sramMap.get(symbol) map {
           case SramWire(_, iSymbol) =>
-            val iRef = ExprRef(iSymbol)
+            val iRef = ExprSym(iSymbol)
             StmtBlock(
               List(
                 assignTrue(iRef select "ce"),
@@ -237,7 +237,7 @@ final class LowerSrams(
           case SramReg(_, _, _, oSymbol) =>
             symbol.kind match {
               case TypeSram(kind, _, _) =>
-                val oRef = ExprRef(oSymbol)
+                val oRef = ExprSym(oSymbol)
                 val data = ExprInt(false, kind.width, 0) // Don't care
                 StmtBlock(
                   List(
@@ -251,10 +251,11 @@ final class LowerSrams(
         }
       }
 
-      case StmtExpr(ExprCall(ExprSelect(ExprRef(symbol: TermSymbol), "write"), List(addr, data))) => {
+      case StmtExpr(
+          ExprCall(ExprSelect(ExprSym(symbol: TermSymbol), "write", _), List(addr, data))) => {
         sramMap.get(symbol) map {
           case SramWire(_, iSymbol) => {
-            val iRef = ExprRef(iSymbol)
+            val iRef = ExprSym(iSymbol)
             StmtBlock(
               List(
                 assignTrue(iRef select "ce"),
@@ -264,7 +265,7 @@ final class LowerSrams(
               ))
           }
           case SramReg(_, _, _, oSymbol) => {
-            val oRef = ExprRef(oSymbol)
+            val oRef = ExprSym(oSymbol)
             StmtBlock(
               List(
                 assignTrue(oRef select s"ip${sep}valid"),
@@ -280,10 +281,10 @@ final class LowerSrams(
       // Rewrite expressions
       //////////////////////////////////////////////////////////////////////////
 
-      case ExprSelect(ExprRef(symbol: TermSymbol), "rdata") => {
+      case ExprSelect(ExprSym(symbol: TermSymbol), "rdata", _) => {
         sramMap.get(symbol) map {
-          case SramInt(_, iSymbol)       => ExprRef(iSymbol) select "rdata"
-          case SramStruct(_, _, rSymbol) => ExprRef(rSymbol)
+          case SramInt(_, iSymbol)       => ExprSym(iSymbol) select "rdata"
+          case SramStruct(_, _, rSymbol) => ExprSym(rSymbol)
         } getOrElse {
           tree
         }
@@ -304,16 +305,16 @@ final class LowerSrams(
             // Add instances
             sramMap.valuesIterator flatMap {
               case SramWire(sEntity, sSymbol) =>
-                Iterator.single(EntInstance(Sym(sSymbol), Sym(sEntity.symbol), Nil, Nil))
+                Iterator.single(EntInstance(Sym(sSymbol, Nil), Sym(sEntity.symbol, Nil), Nil, Nil))
               case SramReg(sEntity, sSymbol, oEntity, oSymbol) =>
-                Iterator(EntInstance(Sym(sSymbol), Sym(sEntity.symbol), Nil, Nil),
-                         EntInstance(Sym(oSymbol), Sym(oEntity.symbol), Nil, Nil))
+                Iterator(EntInstance(Sym(sSymbol, Nil), Sym(sEntity.symbol, Nil), Nil, Nil),
+                         EntInstance(Sym(oSymbol, Nil), Sym(oEntity.symbol, Nil), Nil, Nil))
             }
           } concat {
             // Add connects for read data unpacking
             sramMap.valuesIterator collect {
               case SramStruct(_, sS, rS) =>
-                EntConnect(ExprRef(sS) select "rdata", List(ExprRef(rS)))
+                EntConnect(ExprSym(sS) select "rdata", List(ExprSym(rS)))
             }
           } concat {
             // Add connects for reg driver
@@ -321,11 +322,11 @@ final class LowerSrams(
               sramMap.valuesIterator collect {
                 case SramReg(_, sS, _, oS) =>
                   Iterator(
-                    EntConnect(ExprRef(oS) select s"op${sep}valid", List(ExprRef(sS) select "ce")),
-                    EntConnect(ExprRef(oS) select s"op", List(ExprCat {
-                      List(ExprRef(sS) select "we",
-                           ExprRef(sS) select "addr",
-                           ExprRef(sS) select "wdata")
+                    EntConnect(ExprSym(oS) select s"op${sep}valid", List(ExprSym(sS) select "ce")),
+                    EntConnect(ExprSym(oS) select s"op", List(ExprCat {
+                      List(ExprSym(sS) select "we",
+                           ExprSym(sS) select "addr",
+                           ExprSym(sS) select "wdata")
                     }))
                   )
               }
@@ -374,7 +375,7 @@ final class LowerSrams(
     assert(extraStmts.isEmpty)
 
     tree visit {
-      case node @ ExprCall(ExprSelect(ref, sel), _) if ref.tpe.isSram => {
+      case node @ ExprCall(ExprSelect(ref, sel, _), _) if ref.tpe.isSram => {
         cc.ice(node, s"SRAM .${sel} remains")
       }
     }

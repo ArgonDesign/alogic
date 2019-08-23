@@ -31,14 +31,37 @@ start
   ;
 
 ///////////////////////////////////////////////////////////////////////////////
+// Type names
+///////////////////////////////////////////////////////////////////////////////
+
+kind
+  : kind ('[' expr ']')+ # TypeVec
+  | 'bool'               # TypeBool
+  | INTTYPE              # TypeInt
+  | UINTTYPE             # TypeUInt
+  | 'int'  '(' expr ')'  # TypeIntN
+  | 'uint' '(' expr ')'  # TypeUIntN
+  | 'int'                # TypeSNum
+  | 'uint'               # TypeUNum
+  | ident                # TypeIdent
+  | 'void'               # TypeVoid
+  ;
+
+///////////////////////////////////////////////////////////////////////////////
+// Identifiers
+///////////////////////////////////////////////////////////////////////////////
+
+ident : IDENTIFIER ('#' '[' expr (',' expr)* ']')? ;
+
+///////////////////////////////////////////////////////////////////////////////
 // Definitions
 ///////////////////////////////////////////////////////////////////////////////
 
 defn
-  : 'typedef' kind IDENTIFIER ';'   # DefnTypedef
-  | 'struct' IDENTIFIER '{'
+  : 'typedef' kind ident ';'   # DefnTypedef
+  | 'struct' ident '{'
       field+
-    '}' ';'                         # DefnStruct
+    '}' ';'                     # DefnStruct
   ;
 
 field: kind IDENTIFIER SEMICOLON;
@@ -50,14 +73,14 @@ field: kind IDENTIFIER SEMICOLON;
 decl: attr? declbase ('=' expr)? ';' ;
 
 declbase
-  : kind IDENTIFIER                                         # DeclVar
-  | 'out' flow_control_type? storage_type? kind IDENTIFIER  # DeclOut
-  | 'in' flow_control_type? kind IDENTIFIER                 # DeclIn
-  | 'param' kind IDENTIFIER                                 # DeclParam
-  | 'const' kind IDENTIFIER                                 # DeclConst
-  | 'pipeline' kind IDENTIFIER                              # DeclPipeline
-  | kind IDENTIFIER '[' expr ']'                            # DeclArr
-  | 'sram' (wire='wire')? kind IDENTIFIER '[' expr ']'      # DeclSram
+  : kind ident                                         # DeclVar
+  | 'out' flow_control_type? storage_type? kind ident  # DeclOut
+  | 'in' flow_control_type? kind ident                 # DeclIn
+  | 'param' kind IDENTIFIER                            # DeclParam
+  | 'const' kind IDENTIFIER                            # DeclConst
+  | 'pipeline' kind ident                              # DeclPipeline
+  | kind ident '[' expr ']'                            # DeclArr
+  | 'sram' (wire='wire')? kind ident '[' expr ']'      # DeclSram
   ;
 
 flow_control_type
@@ -72,29 +95,12 @@ storage_type
   ;
 
 ///////////////////////////////////////////////////////////////////////////////
-// Type names
-///////////////////////////////////////////////////////////////////////////////
-
-kind
-  : kind ('[' expr ']')+ # TypeVec
-  | 'bool'               # TypeBool
-  | INTTYPE              # TypeInt
-  | UINTTYPE             # TypeUInt
-  | 'int'  '(' expr ')'  # TypeIntN
-  | 'uint' '(' expr ')'  # TypeUIntN
-  | 'int'                # TypeSNum
-  | 'uint'               # TypeUNum
-  | IDENTIFIER           # TypeIdent
-  | 'void'               # TypeVoid
-  ;
-
-///////////////////////////////////////////////////////////////////////////////
 // Entity
 ///////////////////////////////////////////////////////////////////////////////
 
 entity
   : attr?
-    (variant='fsm' | variant='network' | variant='verbatim' 'entity') IDENTIFIER '{'
+    (variant='fsm' | variant='network' | variant='verbatim' 'entity') ident '{'
       (ent)*
     '}'
   ;
@@ -104,15 +110,15 @@ entity
 ///////////////////////////////////////////////////////////////////////////////
 
 ent
-  : decl                                                                    # EntDecl
-  | defn                                                                    # EntDefn
-  | (attr? autoinst='new')? entity                                          # EntEntity
-  | attr? IDENTIFIER eqsign='=' 'new' IDENTIFIER '(' param_assigns ')' ';'  # EntInstance
-  | lhs=expr '->' rhs+=expr (',' rhs+=expr)* ';'                            # EntConnect
-  | 'fence' block                                                           # EntFenceBlock
-  | attr? 'void' IDENTIFIER '(' ')' block                                   # EntFunction
-  | 'verbatim' IDENTIFIER VERBATIM_BODY                                     # EntVerbatimBlock
-  | generate                                                                # EntGen
+  : decl                                                          # EntDecl
+  | defn                                                          # EntDefn
+  | (attr? autoinst='new')? entity                                # EntEntity
+  | attr? ident eqsign='=' 'new' ident '(' param_assigns ')' ';'  # EntInstance
+  | lhs=expr '->' rhs+=expr (',' rhs+=expr)* ';'                  # EntConnect
+  | 'fence' block                                                 # EntFenceBlock
+  | attr? 'void' ident '(' ')' block                              # EntFunction
+  | 'verbatim' IDENTIFIER VERBATIM_BODY                           # EntVerbatimBlock
+  | generate                                                      # EntGen
   ;
 
 param_assigns : (IDENTIFIER '=' expr (','  IDENTIFIER '=' expr)*)? ;
@@ -156,7 +162,7 @@ statement
   | 'case' '(' expr ')' '{' case_clause+ '}'                            # StmtCase
   | let loop                                                            # StmtLet
   | loop                                                                # StatementLoop
-  | 'goto' IDENTIFIER ';'                                               # StmtGoto
+  | 'goto' ident ';'                                                    # StmtGoto
   | 'fence' ';'                                                         # StmtFence
   | 'break' ';'                                                         # StmtBreak
   | 'continue' ';'                                                      # StmtContinue
@@ -216,7 +222,7 @@ expr
   | sign=('+' | '-')? UNSIZEDINT                                # ExprUnsizedInt
   | STRING                                                      # ExprString
   // Names
-  | IDENTIFIER                                                  # ExprIdent
+  | ident                                                       # ExprIdent
   | ATID                                                        # ExprAtid
   | DOLLARID                                                    # ExprDollarid
   // Call
@@ -225,7 +231,7 @@ expr
   | expr '[' idx=expr ']'                                       # ExprIndex
   | expr '[' lidx=expr op=(':' | '-:' | '+:') ridx=expr ']'     # ExprSlice
   // Select
-  | expr '.' IDENTIFIER                                         # ExprSelect
+  | expr '.' ident                                              # ExprSelect
   // Operators
   | op=('+' | '-' | '~' | '!' | '&' | '|' | '^' | '\'' ) expr   # ExprUnary
   | expr op=('*' | '/' | '%') expr                              # ExprBinary

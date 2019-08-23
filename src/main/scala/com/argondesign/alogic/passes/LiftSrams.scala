@@ -58,7 +58,7 @@ final class LiftSramsFrom(
       // For each port of the instances being lifted,
       // create a new port on the current entity
       for {
-        EntInstance(Sym(iSymbol: TermSymbol), _, _, _) <- entity.instances
+        EntInstance(Sym(iSymbol: TermSymbol, _), _, _, _) <- entity.instances
         if ourList contains iSymbol
         pSymbol <- iSymbol.kind.asInstanceOf[TypeInstance].portSymbols
       } yield {
@@ -91,7 +91,7 @@ final class LiftSramsFrom(
 
     case InstancePortRef(iSymbol, pSymbol) => {
       portMap.get((iSymbol, pSymbol)) map { nSymbol =>
-        ExprRef(nSymbol) regularize tree.loc
+        ExprSym(nSymbol) regularize tree.loc
       } getOrElse {
         tree
       }
@@ -113,8 +113,8 @@ final class LiftSramsFrom(
         } concat {
           // Loose lifted instances
           entity.body.iterator filterNot {
-            case EntInstance(Sym(iSymbol: TermSymbol), _, _, _) => ourList contains iSymbol
-            case _                                              => false
+            case EntInstance(Sym(iSymbol: TermSymbol, _), _, _, _) => ourList contains iSymbol
+            case _                                                 => false
           }
         }
       }
@@ -144,7 +144,7 @@ final class LiftSramsTo(
     case _         => true
   }
 
-  private def portRef(iSymbol: TermSymbol, sel: String) = ExprSelect(ExprRef(iSymbol), sel)
+  private def portRef(iSymbol: TermSymbol, sel: String) = ExprSelect(ExprSym(iSymbol), sel, Nil)
 
   override protected def transform(tree: Tree): Tree = tree match {
     case entity: Entity => {
@@ -152,7 +152,7 @@ final class LiftSramsTo(
       // create the lifted instances and connect them up
       val (newInstances, newConnects) = {
         val items = for {
-          EntInstance(Sym(iSymbol: TermSymbol), Sym(eSymbol: TypeSymbol), _, _) <- entity.instances
+          EntInstance(Sym(iSymbol: TermSymbol, _), Sym(eSymbol: TypeSymbol, _), _, _) <- entity.instances
           lSymbols <- (liftFromMap get eSymbol).toList
           lSymbol <- lSymbols
         } yield {
@@ -163,7 +163,7 @@ final class LiftSramsTo(
           // Create the local instance
           val nSymbol = cc.newTermSymbol(name, iSymbol.loc, lKind)
           val instance = {
-            EntInstance(Sym(nSymbol), Sym(lKind.entitySymbol), Nil, Nil) regularize lSymbol.loc
+            EntInstance(Sym(nSymbol, Nil), Sym(lKind.entitySymbol, Nil), Nil, Nil) regularize lSymbol.loc
           }
           // Create the connections
           val connects = for (pSymbol <- lKind.portSymbols.iterator) yield {
@@ -231,7 +231,7 @@ object LiftSrams extends Pass {
         } else {
           val extra = for {
             entity <- curr
-            EntInstance(_, Sym(eSymbol: TypeSymbol), _, _) <- entity.instances
+            EntInstance(_, Sym(eSymbol: TypeSymbol, _), _, _) <- entity.instances
           } yield {
             eMap(eSymbol)
           }
@@ -254,7 +254,7 @@ object LiftSrams extends Pass {
           if liftFromSet contains entity.symbol
         } yield {
           val iSymbols = for {
-            EntInstance(Sym(iSymbol: TermSymbol), Sym(sSymbol: TypeSymbol), _, _) <- entity.instances
+            EntInstance(Sym(iSymbol: TermSymbol, _), Sym(sSymbol: TypeSymbol, _), _, _) <- entity.instances
             if sSymbol.attr.sram contains true
           } yield {
             iSymbol

@@ -74,8 +74,8 @@ final class MakeVerilog(
         }
         case ExprIndex(e, index)           => s"${vexpr(e)}[${vexpr(index)}]"
         case ExprSlice(e, lidx, op, ridx)  => s"${vexpr(e)}[${vexpr(lidx)}${op}${vexpr(ridx)}]"
-        case ExprSelect(e, sel)            => s"${vexpr(e)}${cc.sep}${sel}"
-        case ExprRef(symbol)               => symbol.name
+        case ExprSelect(e, sel, Nil)       => s"${vexpr(e)}${cc.sep}${sel}"
+        case ExprSym(symbol)               => symbol.name
         case ExprInt(false, w, v)          => s"${w}'d${v}"
         case ExprInt(true, w, v) if v >= 0 => s"${w}'sd${v}"
         case ExprInt(true, w, v)           => s"-${w}'sd${-v}"
@@ -400,7 +400,7 @@ final class MakeVerilog(
   private def emitInstances(body: CodeWriter): Unit = {
     if (entity.instances.nonEmpty) {
       body.emitSection(1, "Instances") {
-        for (EntInstance(Sym(iSymbol: TermSymbol), Sym(mSymbol: TypeSymbol), Nil, Nil) <- entity.instances) {
+        for (EntInstance(Sym(iSymbol: TermSymbol, _), Sym(mSymbol: TypeSymbol, _), _, _) <- entity.instances) {
           val TypeInstance(eSymbol) = iSymbol.kind.asInstance
           body.ensureBlankLine()
           body.emit(1)(s"${eSymbol.name} ${iSymbol.name} (")

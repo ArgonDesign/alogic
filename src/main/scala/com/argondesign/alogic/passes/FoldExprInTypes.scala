@@ -47,7 +47,7 @@ final class FoldExprInTypes(implicit cc: CompilerContext) extends TreeTransforme
     tree visit {
       case decl @ Decl(symbol, _) => {
         symbol.kind visit {
-          case ref @ ExprRef(cSymbol: TermSymbol) if cSymbol.kind.isConst =>
+          case ref @ ExprSym(cSymbol: TermSymbol) if cSymbol.kind.isConst =>
             cc.ice(ref, s"const reference remains in type of '${symbol.name}'", decl.toSource)
         }
       }

@@ -1,0 +1,21 @@
+network dictident_entity_7 {
+  in  u1 i_a;
+  out u1 o_a;
+  in  u2 i_b;
+  out u2 o_b;
+
+  gen for (uint N < 3) {
+    network inner#[N%2] {
+      in  uint(N+1) ii;
+      out uint(N+1) oo;
+      ii -> oo;
+    }
+  }
+
+  inner_a = new inner#[0]();
+  inner_b = new inner#[1]();
+
+  i_a -> inner_a.ii; inner_a.oo -> o_a;
+  i_b -> inner_b.ii; inner_b.oo -> o_b;
+}
+// :8: ERROR: Entity 'inner#\[0\]' defined multiple times after processing 'gen' constructs

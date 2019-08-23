@@ -47,9 +47,9 @@ object SyncSliceFactory {
   // slice logic for void payload:
   private def voidBody(
       ss: StorageSlice,
-      ipvRef: ExprRef,
-      oprRef: ExprRef,
-      vRef: ExprRef
+      ipvRef: ExprSym,
+      oprRef: ExprSym,
+      vRef: ExprSym
   )(
       implicit cc: CompilerContext
   ): List[Stmt] = ss match {
@@ -70,12 +70,12 @@ object SyncSliceFactory {
   // slice connects for void payload:
   private def voidConnects(
       ss: StorageSlice,
-      ipvRef: ExprRef,
-      iprRef: ExprRef,
-      opvRef: ExprRef,
-      oprRef: ExprRef,
-      sRef: ExprRef,
-      vRef: ExprRef
+      ipvRef: ExprSym,
+      iprRef: ExprSym,
+      opvRef: ExprSym,
+      oprRef: ExprSym,
+      sRef: ExprSym,
+      vRef: ExprSym
   )(
       implicit cc: CompilerContext
   ): List[EntConnect] = ss match {
@@ -114,11 +114,11 @@ object SyncSliceFactory {
   // slice logic for non-void payload:
   private def nonVoidBody(
       ss: StorageSlice,
-      ipRef: ExprRef,
-      ipvRef: ExprRef,
-      oprRef: ExprRef,
-      pRef: ExprRef,
-      vRef: ExprRef
+      ipRef: ExprSym,
+      ipvRef: ExprSym,
+      oprRef: ExprSym,
+      pRef: ExprSym,
+      vRef: ExprSym
   )(
       implicit cc: CompilerContext
   ): List[Stmt] = ss match {
@@ -169,15 +169,15 @@ object SyncSliceFactory {
   // slice connects for non-void payload:
   private def nonVoidConnects(
       ss: StorageSlice,
-      ipRef: ExprRef,
-      opRef: ExprRef,
-      ipvRef: ExprRef,
-      iprRef: ExprRef,
-      opvRef: ExprRef,
-      oprRef: ExprRef,
-      sRef: ExprRef,
-      pRef: ExprRef,
-      vRef: ExprRef
+      ipRef: ExprSym,
+      opRef: ExprSym,
+      ipvRef: ExprSym,
+      iprRef: ExprSym,
+      opvRef: ExprSym,
+      oprRef: ExprSym,
+      sRef: ExprSym,
+      pRef: ExprSym,
+      vRef: ExprSym
   )(
       implicit cc: CompilerContext
   ): List[EntConnect] = ss match {
@@ -278,18 +278,18 @@ object SyncSliceFactory {
     lazy val pSymbol = cc.newTermSymbol("payload", loc, kind)
     val vSymbol = cc.newTermSymbol("valid", loc, bool)
 
-    lazy val ipRef = ExprRef(ipSymbol)
-    val ipvRef = ExprRef(ipvSymbol)
-    val iprRef = ExprRef(iprSymbol)
+    lazy val ipRef = ExprSym(ipSymbol)
+    val ipvRef = ExprSym(ipvSymbol)
+    val iprRef = ExprSym(iprSymbol)
 
-    lazy val opRef = ExprRef(opSymbol)
-    val opvRef = ExprRef(opvSymbol)
-    val oprRef = ExprRef(oprSymbol)
+    lazy val opRef = ExprSym(opSymbol)
+    val opvRef = ExprSym(opvSymbol)
+    val oprRef = ExprSym(oprSymbol)
 
-    val sRef = ExprRef(sSymbol)
+    val sRef = ExprSym(sSymbol)
 
-    lazy val pRef = ExprRef(pSymbol)
-    val vRef = ExprRef(vSymbol)
+    lazy val pRef = ExprSym(pSymbol)
+    val vRef = ExprSym(vSymbol)
 
     val statements = if (kind != TypeVoid) {
       nonVoidBody(ss, ipRef, ipvRef, oprRef, pRef, vRef)
@@ -322,7 +322,7 @@ object SyncSliceFactory {
     val entitySymbol = cc.newTypeSymbol(name, loc, eKind)
     entitySymbol.attr.variant set "fsm"
     entitySymbol.attr.highLevelKind set eKind
-    val entity = Entity(Sym(entitySymbol), decls ::: EntCombProcess(statements) :: connects)
+    val entity = Entity(Sym(entitySymbol, Nil), decls ::: EntCombProcess(statements) :: connects)
     entity regularize loc
   }
 
@@ -368,27 +368,27 @@ object SyncSliceFactory {
     val sKind = TypeOut(TypeUInt(Expr(nSlices) regularize loc), fcn, stw)
     val sSymbol = cc.newTermSymbol("space", loc, sKind)
 
-    lazy val ipRef = ExprRef(ipSymbol)
-    val ipvRef = ExprRef(ipvSymbol)
-    val iprRef = ExprRef(iprSymbol)
+    lazy val ipRef = ExprSym(ipSymbol)
+    val ipvRef = ExprSym(ipvSymbol)
+    val iprRef = ExprSym(iprSymbol)
 
-    lazy val opRef = ExprRef(opSymbol)
-    val opvRef = ExprRef(opvSymbol)
-    val oprRef = ExprRef(oprSymbol)
+    lazy val opRef = ExprSym(opSymbol)
+    val opvRef = ExprSym(opvSymbol)
+    val oprRef = ExprSym(oprSymbol)
 
-    val sRef = ExprRef(sSymbol)
+    val sRef = ExprSym(sSymbol)
 
     val instances = slices.zipWithIndex map {
       case (entity, index) =>
         val eSymbol = entity.ref match {
-          case Sym(symbol: TypeSymbol) => symbol
-          case _                       => unreachable
+          case Sym(symbol: TypeSymbol, _) => symbol
+          case _                          => unreachable
         }
         val iSymbol = cc.newTermSymbol(s"slice_${index}", loc, TypeInstance(eSymbol))
-        EntInstance(Sym(iSymbol), Sym(eSymbol), Nil, Nil)
+        EntInstance(Sym(iSymbol, Nil), Sym(eSymbol, Nil), Nil, Nil)
     }
 
-    val iRefs = for (EntInstance(Sym(iSymbol), _, _, _) <- instances) yield { ExprRef(iSymbol) }
+    val iRefs = for (EntInstance(Sym(iSymbol, _), _, _, _) <- instances) yield { ExprSym(iSymbol) }
 
     val connects = new ListBuffer[EntConnect]()
 
@@ -448,7 +448,7 @@ object SyncSliceFactory {
     val entitySymbol = cc.newTypeSymbol(name, loc, eKind)
     entitySymbol.attr.variant set "network"
     entitySymbol.attr.highLevelKind set eKind
-    val entity = Entity(Sym(entitySymbol), decls ::: instances ::: connects.toList)
+    val entity = Entity(Sym(entitySymbol, Nil), decls ::: instances ::: connects.toList)
     entity regularize loc
   }
 

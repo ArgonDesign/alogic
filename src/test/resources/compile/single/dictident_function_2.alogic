@@ -1,0 +1,16 @@
+fsm dictident_function_2 {
+  in        bool i;
+  out wire  bool o;
+
+  gen for (uint N < 1) {
+    void func#[N]() {
+      o = i;
+    }
+  }
+
+  void main() {
+    func#[0]();
+    func#[1]();
+  }
+}
+// :13: ERROR: 'func#\[1\]' is not defined after processing 'gen' constructs

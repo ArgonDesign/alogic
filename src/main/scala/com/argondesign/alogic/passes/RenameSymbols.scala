@@ -38,7 +38,7 @@ final class RenameSymbols(implicit cc: CompilerContext) extends TreeTransformer 
   override def enter(tree: Tree): Unit = tree match {
     case EntDecl(Decl(symbol, _)) => nameMap(symbol.name) ::= symbol
 
-    case EntInstance(Sym(symbol: TermSymbol), _, _, _) => nameMap(symbol.name) ::= symbol
+    case EntInstance(Sym(symbol: TermSymbol, _), _, _, _) => nameMap(symbol.name) ::= symbol
 
     case _ => ()
   }

@@ -85,7 +85,7 @@ final class LiftEntities(implicit cc: CompilerContext) extends TreeTransformer {
 
       lazy val referencedSymbols = {
         val it = entity collectAll {
-          case ExprRef(symbol: TermSymbol) => symbol
+          case ExprSym(symbol: TermSymbol) => symbol
         }
         it.toList
       }
@@ -135,7 +135,7 @@ final class LiftEntities(implicit cc: CompilerContext) extends TreeTransformer {
           } else {
             val referenced = curr flatMap { outerSymbol =>
               outerSymbol.attr.init.value collect {
-                case ExprRef(s: TermSymbol) if outerConstSymbols.toList.exists(_ contains s) => s
+                case ExprSym(s: TermSymbol) if outerConstSymbols.toList.exists(_ contains s) => s
               }
             }
             loop(curr, (curr ::: referenced).distinct)
@@ -155,7 +155,7 @@ final class LiftEntities(implicit cc: CompilerContext) extends TreeTransformer {
 
       lazy val rewrite: Expr => Expr = {
         val bindings = freshConstSymbols.top.view mapValues { innerSymbol =>
-          ExprRef(innerSymbol) regularize innerSymbol.loc
+          ExprSym(innerSymbol) regularize innerSymbol.loc
         }
         _ given bindings.toMap
       }
@@ -291,7 +291,7 @@ final class LiftEntities(implicit cc: CompilerContext) extends TreeTransformer {
       } else {
         def instanceSymbolsOfType(eSymbol: TypeSymbol): List[TermSymbol] = {
           entity.instances collect {
-            case EntInstance(Sym(iSymbol: TermSymbol), Sym(`eSymbol`), _, _) => iSymbol
+            case EntInstance(Sym(iSymbol: TermSymbol, _), Sym(`eSymbol`, _), _, _) => iSymbol
           }
         }
 
@@ -299,8 +299,8 @@ final class LiftEntities(implicit cc: CompilerContext) extends TreeTransformer {
           (srcPortSymbol, dstEntitySymbol) <- freshIConnSymbols.top
           dstInstanceSymbol <- instanceSymbolsOfType(dstEntitySymbol)
         } yield {
-          val lhs = ExprRef(srcPortSymbol)
-          val rhs = ExprSelect(ExprRef(dstInstanceSymbol), srcPortSymbol.name)
+          val lhs = ExprSym(srcPortSymbol)
+          val rhs = ExprSelect(ExprSym(dstInstanceSymbol), srcPortSymbol.name, Nil)
           EntConnect(lhs, List(rhs)) regularize entity.loc
         }
 
@@ -308,8 +308,8 @@ final class LiftEntities(implicit cc: CompilerContext) extends TreeTransformer {
           (srcEntitySymbol, dstPortSymbol) <- freshOConnSymbols.top
           srcInstanceSymbol <- instanceSymbolsOfType(srcEntitySymbol)
         } yield {
-          val lhs = ExprSelect(ExprRef(srcInstanceSymbol), dstPortSymbol.name)
-          val rhs = ExprRef(dstPortSymbol)
+          val lhs = ExprSelect(ExprSym(srcInstanceSymbol), dstPortSymbol.name, Nil)
+          val rhs = ExprSym(dstPortSymbol)
           EntConnect(lhs, List(rhs)) regularize entity.loc
         }
 
@@ -397,11 +397,11 @@ final class LiftEntities(implicit cc: CompilerContext) extends TreeTransformer {
       TypeAssigner(Thicket(results) withLoc entity.loc)
 
     // Rewrite references to outer ports as references to the newly created inner ports
-    case ExprRef(symbol: TermSymbol) => {
+    case ExprSym(symbol: TermSymbol) => {
       freshIPortSymbols.top.get(symbol) orElse
         freshOPortSymbols.top.get(symbol) orElse
         freshConstSymbols.top.get(symbol) map { innerSymbol =>
-        ExprRef(innerSymbol) regularize tree.loc
+        ExprSym(innerSymbol) regularize tree.loc
       } getOrElse {
         tree
       }

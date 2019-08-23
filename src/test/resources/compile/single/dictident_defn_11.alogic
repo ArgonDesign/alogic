@@ -1,0 +1,35 @@
+network dictident_defn_11 {
+  gen for (uint N < 2) {
+    typedef uint(N+1) i_t#[N];
+    typedef uint(N+1) o_t#[N];
+  }
+
+  in  u1 i_0;
+  in  u2 i_1;
+  out u1 o_0;
+  out u2 o_1;
+
+  gen for(uint N < 2) {
+    new network inner {
+      in  i_t#[N] i;
+      out o_t#[N] o;
+      i -> o;
+    }
+    gen if (N == 0) {
+      i_0 -> inner.i; inner.o -> o_0;
+    } else {
+      i_1 -> inner.i; inner.o -> o_1;
+    }
+  }
+}
+// @fec-golden {{{
+//  module dictident_defn_11(
+//    input  wire       i_0,
+//    input  wire [1:0] i_1,
+//    output wire       o_0,
+//    output wire [1:0] o_1
+//  );
+//    assign o_0 = i_0;
+//    assign o_1 = i_1;
+//  endmodule
+// }}}

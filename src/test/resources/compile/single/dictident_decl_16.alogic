@@ -1,0 +1,9 @@
+network dictident_decl_16 {
+  gen for (uint N < 0) {
+    in  bool i#[N];
+    out bool o#[N];
+  }
+  i#[0] -> o#[0];
+}
+// :6: ERROR: 'i' is not defined after processing 'gen' constructs
+// :6: ERROR: 'o' is not defined after processing 'gen' constructs

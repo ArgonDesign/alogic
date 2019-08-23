@@ -85,7 +85,7 @@ final class SplitStructsA(implicit cc: CompilerContext) extends TreeTransformer 
       }
     }
 
-    case ExprSelect(expr, sel) => {
+    case ExprSelect(expr, sel, _) => {
       expr.tpe.underlying match {
         case kind: TypeStruct => fieldIndexStack.push(kind.fieldNames.takeWhile(_ != sel).length)
         case _                => fieldIndexStack.push(-1)
@@ -123,7 +123,7 @@ final class SplitStructsA(implicit cc: CompilerContext) extends TreeTransformer 
       // ExprRef
       //////////////////////////////////////////////////////////////////////////
 
-      case ExprRef(symbol) => {
+      case ExprSym(symbol) => {
         // Rewrite reference to struct symbol as a nested
         // concatenation of references to the field symbols
         symbol.attr.fieldSymbols.get map { fSymbols =>
@@ -132,7 +132,7 @@ final class SplitStructsA(implicit cc: CompilerContext) extends TreeTransformer 
             for (fType <- struct.fieldTypes) yield {
               fType match {
                 case struct: TypeStruct => cat(struct)
-                case _                  => ExprRef(it.next())
+                case _                  => ExprSym(it.next())
               }
             }
           }
@@ -146,7 +146,7 @@ final class SplitStructsA(implicit cc: CompilerContext) extends TreeTransformer 
       // ExprRef
       //////////////////////////////////////////////////////////////////////////
 
-      case ExprSelect(expr, _) => {
+      case ExprSelect(expr, _, _) => {
         if (fieldIndexStack.top >= 0) {
           expr match {
             case ExprCat(parts) => parts(fieldIndexStack.top)

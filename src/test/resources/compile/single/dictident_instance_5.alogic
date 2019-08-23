@@ -1,0 +1,33 @@
+network dictident_instance_5 {
+  in  bool i_a;
+  out bool o_a;
+  in  bool i_b;
+  out bool o_b;
+
+  gen for (uint N < 2) {
+    gen if (N == 0) {
+      i_a -> inner#[N].ii; inner#[N].oo -> o_a;
+    } else {
+      i_b -> inner#[N].ii; inner#[N].oo -> o_b;
+    }
+
+    inner#[N] = new inner();
+  }
+
+  network inner {
+    in  bool ii;
+    out bool oo;
+    ii -> oo;
+  }
+}
+// @fec-golden {{{
+//  module dictident_instance_5(
+//    input  wire i_a,
+//    input  wire i_b,
+//    output wire o_a,
+//    output wire o_b
+//  );
+//    assign o_a = i_a;
+//    assign o_b = i_b;
+//  endmodule
+// }}}

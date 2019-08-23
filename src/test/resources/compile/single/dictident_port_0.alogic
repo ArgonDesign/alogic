@@ -1,0 +1,28 @@
+network dictident_port_0 {
+  in  u1 i_0;
+  in  u2 i_1;
+  out u1 o_0;
+  out u2 o_1;
+
+  new network inner {
+    gen for (uint N < 2) {
+      in  uint(N+1) i#[N];
+      out uint(N+1) o#[N];
+      i#[N] -> o#[N];
+    }
+  }
+
+  i_0 -> inner.i#[0]; inner.o#[0] -> o_0;
+  i_1 -> inner.i#[1]; inner.o#[1] -> o_1;
+}
+// @fec-golden {{{
+//  module dictident_port_0(
+//    input   wire        i_0,
+//    input   wire [1:0]  i_1,
+//    output  wire        o_0,
+//    output  wire [1:0]  o_1
+//  );
+//    assign o_0 = i_0;
+//    assign o_1 = i_1;
+//  endmodule
+// }}}

@@ -80,7 +80,7 @@ object GenBuilder extends BaseBuilder[ParserRuleContext, Gen] {
       override def visitGenFor(ctx: GenForContext) = {
         val inits = if (ctx.loop_init == null) { Nil } else {
           StmtBuilder(ctx.loop_init.loop_init_item) map {
-            case stmt @ StmtDecl(decl: DeclIdent) =>
+            case stmt @ StmtDecl(decl: DeclRef) =>
               StmtDecl(decl.copy(kind = TypeGen(decl.kind)) withLoc decl.loc) withLoc stmt.loc
             case other => other
           }
@@ -95,9 +95,9 @@ object GenBuilder extends BaseBuilder[ParserRuleContext, Gen] {
         val end = ExprBuilder(ctx.expr)
         val decl = {
           val kind = TypeGen(TypeBuilder(ctx.kind))
-          val ident = ctx.IDENTIFIER.toIdent
+          val ident = IdentBuilder(ctx.IDENTIFIER)
           val loc = ctx.kind.loc.copy(point = ctx.op.loc.start, end = end.loc.end)
-          DeclIdent(ident, kind, None) withLoc loc
+          DeclRef(ident, kind, None) withLoc loc
         }
         val body = GenItemVisitor(ctx.genitems.genitem)
         GenRange(decl, ctx.op, end, body) withLoc ctx.loc

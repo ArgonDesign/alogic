@@ -20,7 +20,7 @@
 
 package com.argondesign.alogic.typer
 
-import com.argondesign.alogic.analysis.WrittenRefs
+import com.argondesign.alogic.analysis.WrittenSyms
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
@@ -121,8 +121,8 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
   }
 
   private def checkModifiable(expr: Expr): Boolean = {
-    WrittenRefs(expr) map {
-      case ref @ ExprRef(symbol) =>
+    WrittenSyms(expr) map {
+      case ref @ ExprSym(symbol) =>
         symbol.kind match {
           case _: TypeParam => cc.error(ref, "Parameter cannot be modified"); false
           case _: TypeConst => cc.error(ref, "Constant cannot be modified"); false
@@ -197,6 +197,7 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
   }
 
   override def skip(tree: Tree): Boolean = tree match {
+    case _: Root       => false
     case _: Entity     => false
     case _: EntConnect => !externalRefs
     case _             => false
@@ -211,7 +212,7 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
       }
     }
 
-    case EntFunction(Sym(symbol), _) => {
+    case EntFunction(Sym(symbol, _), _) => {
       // Type the source attributes
       // TODO: do them all in a systematic way..
       symbol.attr.recLimit.get foreach { symbol.attr.recLimit set walk(_).asInstanceOf[Expr] }
@@ -228,6 +229,17 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
       }
 
       checkNameHidingByExtensionType(decl)
+
+      // TODO: implement memory of struct, vector of struct, and multi dimensional memory/sram
+      kind.underlying match {
+        case TypeVector(elemKind, _) if elemKind.underlying.isStruct => {
+          cc.error(tree, "Vector element cannot have a struct type")
+        }
+        case TypeArray(elemKind, _) if elemKind.underlying.isStruct => {
+          cc.error(tree, "Memory element cannot have a struct type")
+        }
+        case _ => ()
+      }
 
       if (kind.isPacked && kind.underlying != TypeVoid && kind.width < 1) {
         error(decl, s"'${symbol.name}' is declared with width ${kind.width}")
@@ -247,6 +259,19 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
         assert(kind.isError)
         error(defn)
         symbol.kind = kind
+      }
+
+      // TODO: Now check for vector of struct, later implement...
+      kind.underlying match {
+        case TypeStruct(_, _, fieldTypes) =>
+          for (field <- fieldTypes) {
+            field.underlying match {
+              case TypeVector(elemKind, _) if elemKind.isStruct =>
+                cc.error(tree, "Vector element cannot have a struct type")
+              case _ => ()
+            }
+          }
+        case _ =>
       }
     }
 
@@ -472,7 +497,9 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
       // Type check expressions
       ////////////////////////////////////////////////////////////////////////////
 
-      case ExprSelect(expr, sel) => {
+      case ExprSelect(expr, sel, idxs) => {
+        assert(idxs.isEmpty)
+
         val field = expr.tpe match {
           case TypeType(kind: CompoundType) => kind(sel)
           case kind: CompoundType           => kind(sel)
@@ -713,15 +740,14 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
 
       def check(tree: TreeLike): Unit = {
         tree visitAll {
-          case node: Tree if !node.hasTpe => {
+          case node: Tree if !node.hasTpe =>
             if (externalRefs) {
               cc.ice(node, "Typer: untyped node remains", node.toString)
             }
-          }
           case Decl(symbol, _) => check(symbol.kind)
-          case Sym(symbol)     => check(symbol.kind)
-//        case ExprRef(symbol) => check(symbol.kind) // TODO: fix this
-          case ExprType(kind) => check(kind)
+          case Defn(symbol)    => check(symbol.kind)
+          case Sym(symbol, _)  => check(symbol.kind)
+          case ExprSym(symbol) => check(symbol.kind)
         }
       }
 

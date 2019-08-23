@@ -85,7 +85,7 @@ final class FoldExpr(
       // Fold refs
       ////////////////////////////////////////////////////////////////////////////
 
-      case ExprRef(symbol) if foldRefs && symbol.kind.isConst => {
+      case ExprSym(symbol) if foldRefs && symbol.kind.isConst => {
         symbol.attr.init getOrElse tree
       }
 
@@ -426,7 +426,7 @@ final class FoldExpr(
       // Fold index over $signed/$unsigned
       ////////////////////////////////////////////////////////////////////////////
 
-      case ExprIndex(ExprCall(ExprRef(symbol), List(arg)), idx) if isBuiltinSU(symbol) => {
+      case ExprIndex(ExprCall(ExprSym(symbol), List(arg)), idx) if isBuiltinSU(symbol) => {
         ExprIndex(arg, idx) withLoc tree.loc
       }
 
@@ -434,7 +434,7 @@ final class FoldExpr(
       // Fold slice over $signed/$unsigned
       ////////////////////////////////////////////////////////////////////////////
 
-      case ExprSlice(ExprCall(ExprRef(symbol), List(arg)), lidx, op, ridx)
+      case ExprSlice(ExprCall(ExprSym(symbol), List(arg)), lidx, op, ridx)
           if isBuiltinSU(symbol) => {
         ExprSlice(arg, lidx, op, ridx) withLoc tree.loc
       }
@@ -444,18 +444,18 @@ final class FoldExpr(
       ////////////////////////////////////////////////////////////////////////////
 
       case ExprCat(args) if args exists {
-            case ExprCall(ExprRef(symbol), _) => isBuiltinSU(symbol)
+            case ExprCall(ExprSym(symbol), _) => isBuiltinSU(symbol)
             case _                            => false
           } => {
         ExprCat {
           args map {
-            case ExprCall(ExprRef(symbol), List(arg)) if isBuiltinSU(symbol) => arg
+            case ExprCall(ExprSym(symbol), List(arg)) if isBuiltinSU(symbol) => arg
             case arg                                                         => arg
           }
         } withLoc tree.loc
       }
 
-      case ExprRep(count, ExprCall(ExprRef(symbol), List(arg))) if isBuiltinSU(symbol) => {
+      case ExprRep(count, ExprCall(ExprSym(symbol), List(arg))) if isBuiltinSU(symbol) => {
         ExprRep(count, arg) withLoc tree.loc
       }
 
@@ -652,7 +652,7 @@ final class FoldExpr(
       // Fold built-in functions
       ////////////////////////////////////////////////////////////////////////////
 
-      case call @ ExprCall(ExprRef(symbol), _) if symbol.isBuiltin => {
+      case call @ ExprCall(ExprSym(symbol), _) if symbol.isBuiltin => {
         val result = cc.foldBuiltinCall(call)
         if (result eq call) {
           call
@@ -665,7 +665,7 @@ final class FoldExpr(
       // Fold expressions inside Type instances
       ////////////////////////////////////////////////////////////////////////////
 
-      case decl @ DeclIdent(_, kind, _) => {
+      case decl @ DeclRef(_, kind, _) => {
         val newKind = kind rewrite TypeFoldExpr
         if (kind eq newKind) decl else decl.copy(kind = newKind) withLoc tree.loc
       }

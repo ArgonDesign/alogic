@@ -35,7 +35,7 @@ object StaticEvaluation {
   private def inferTrue(expr: Expr)(implicit cc: CompilerContext): Bindings = {
     if (expr.tpe.isPacked && expr.tpe.width == 1) {
       expr match {
-        case ExprRef(symbol: TermSymbol) => {
+        case ExprSym(symbol: TermSymbol) => {
           val self =
             Iterator.single(symbol -> (ExprInt(symbol.kind.isSigned, 1, 1) regularize expr.loc))
           val implied = symbol.attr.implications.enumerate collect {
@@ -48,8 +48,8 @@ object StaticEvaluation {
         }
         case ExprUnary("!" | "~", expr)                         => inferFalse(expr)
         case ExprBinary(lhs, "&&" | "&", rhs)                   => inferTrue(lhs) ++ inferTrue(rhs)
-        case ExprBinary(lhs, "==", ExprRef(symbol: TermSymbol)) => Map(symbol -> lhs)
-        case ExprBinary(ExprRef(symbol: TermSymbol), "==", rhs) => Map(symbol -> rhs)
+        case ExprBinary(lhs, "==", ExprSym(symbol: TermSymbol)) => Map(symbol -> lhs)
+        case ExprBinary(ExprSym(symbol: TermSymbol), "==", rhs) => Map(symbol -> rhs)
         case _                                                  => Bindings.empty
       }
     } else {
@@ -66,7 +66,7 @@ object StaticEvaluation {
       val eWidth = expr.tpe.width
       if (eWidth == 1) {
         expr match {
-          case ExprRef(symbol: TermSymbol) => {
+          case ExprSym(symbol: TermSymbol) => {
             val self =
               Iterator.single(symbol -> (ExprInt(symbol.kind.isSigned, 1, 0) regularize expr.loc))
             val implied = symbol.attr.implications.enumerate collect {
@@ -79,13 +79,13 @@ object StaticEvaluation {
           }
           case ExprUnary("!" | "~", expr)                         => inferTrue(expr)
           case ExprBinary(lhs, "||" | "|", rhs)                   => inferFalse(lhs) ++ inferFalse(rhs)
-          case ExprBinary(lhs, "!=", ExprRef(symbol: TermSymbol)) => Map(symbol -> lhs)
-          case ExprBinary(ExprRef(symbol: TermSymbol), "!=", rhs) => Map(symbol -> rhs)
+          case ExprBinary(lhs, "!=", ExprSym(symbol: TermSymbol)) => Map(symbol -> lhs)
+          case ExprBinary(ExprSym(symbol: TermSymbol), "!=", rhs) => Map(symbol -> rhs)
           case _                                                  => Bindings.empty
         }
       } else {
         expr match {
-          case ExprRef(symbol: TermSymbol) => {
+          case ExprSym(symbol: TermSymbol) => {
             Map(symbol -> (ExprInt(symbol.kind.isSigned, eWidth, 0) regularize expr.loc))
           }
           //        case ExprCat(parts) => (Bindings.empty /: parts)(_ ++ inferFalse(_))
@@ -148,7 +148,7 @@ object StaticEvaluation {
     // Remove all binding that referenced the just added symbol,
     // as these used the old value. TODO: use SSA form...
     expanded filterNot {
-      case (_, v) => v exists { case ExprRef(`symbol`) => true }
+      case (_, v) => v exists { case ExprSym(`symbol`) => true }
     }
   }
 
@@ -160,7 +160,7 @@ object StaticEvaluation {
     // bindings that reference a written symbol
     curr filterNot {
       case (k, v) =>
-        (written contains k) || (v exists { case ExprRef(s) => written contains s })
+        (written contains k) || (v exists { case ExprSym(s) => written contains s })
     }
   }
 
@@ -175,13 +175,13 @@ object StaticEvaluation {
       // Compute the new bindings after this statement
       stmt match {
         // Simple assignment
-        case StmtAssign(ExprRef(symbol: TermSymbol), rhs) => overwrite(curr, symbol, rhs)
+        case StmtAssign(ExprSym(symbol: TermSymbol), rhs) => overwrite(curr, symbol, rhs)
         // Simple update
-        case StmtUpdate(lhs @ ExprRef(symbol: TermSymbol), op, rhs) =>
+        case StmtUpdate(lhs @ ExprSym(symbol: TermSymbol), op, rhs) =>
           overwrite(curr, symbol, ExprBinary(lhs, op, rhs) regularize stmt.loc)
         // Simple postfix
-        case StmtPost(expr @ ExprRef(symbol: TermSymbol), "++") => overwrite(curr, symbol, expr + 1)
-        case StmtPost(expr @ ExprRef(symbol: TermSymbol), "--") => overwrite(curr, symbol, expr - 1)
+        case StmtPost(expr @ ExprSym(symbol: TermSymbol), "++") => overwrite(curr, symbol, expr + 1)
+        case StmtPost(expr @ ExprSym(symbol: TermSymbol), "--") => overwrite(curr, symbol, expr - 1)
 
         // Assignments with complex left hand side
         case StmtAssign(lhs, _) => removeWritten(curr, lhs)

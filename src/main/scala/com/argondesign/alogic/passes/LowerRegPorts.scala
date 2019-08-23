@@ -59,11 +59,11 @@ final class LowerRegPorts(implicit cc: CompilerContext) extends TreeTransformer 
   }
 
   override def transform(tree: Tree): Tree = tree match {
-    case ExprRef(symbol: TermSymbol) => {
+    case ExprSym(symbol: TermSymbol) => {
       // Rewrite all references to the registered output
       // port as references to the local reg
       symbol.attr.oReg.get map { rSymbol =>
-        ExprRef(rSymbol) regularize tree.loc
+        ExprSym(rSymbol) regularize tree.loc
       } getOrElse {
         tree
       }
@@ -90,7 +90,7 @@ final class LowerRegPorts(implicit cc: CompilerContext) extends TreeTransformer 
         if oSymbol.attr.oReg.isSet
       } yield {
         val rSymbol = oSymbol.attr.oReg.value
-        EntConnect(ExprRef(rSymbol), List(ExprRef(oSymbol))) regularize oSymbol.loc
+        EntConnect(ExprSym(rSymbol), List(ExprSym(oSymbol))) regularize oSymbol.loc
       }
 
       if (connects.isEmpty) {

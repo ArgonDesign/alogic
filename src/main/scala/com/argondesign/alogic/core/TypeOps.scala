@@ -17,6 +17,7 @@
 package com.argondesign.alogic.core
 
 import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.transform.DereferenceTypeRefs
 import com.argondesign.alogic.util.unreachable
 
 import scala.language.postfixOps
@@ -37,7 +38,7 @@ trait TypeOps extends TypePrintOps { this: Type =>
   final def isSram = this.isInstanceOf[TypeSram]
   final def isStruct = this.isInstanceOf[TypeStruct]
   final def isVoid = this eq TypeVoid
-  final def isIdent = this.isInstanceOf[TypeIdent]
+  final def isRef = this.isInstanceOf[TypeRef]
   final def isCombFunc = this.isInstanceOf[TypeCombFunc]
   final def isCtrlFunc = this.isInstanceOf[TypeCtrlFunc]
   final def isEntity = this.isInstanceOf[TypeEntity]
@@ -69,7 +70,7 @@ trait TypeOps extends TypePrintOps { this: Type =>
   final def asSram = this.asInstanceOf[TypeSram]
   final def asStruct = this.asInstanceOf[TypeStruct]
   final def asVoid = TypeVoid
-  final def asIdent = this.asInstanceOf[TypeIdent]
+  final def asRef = this.asInstanceOf[TypeRef]
   final def asCombFunc = this.asInstanceOf[TypeCombFunc]
   final def asCtrlFunc = this.asInstanceOf[TypeCtrlFunc]
   final def asEntity = this.asInstanceOf[TypeEntity]
@@ -88,7 +89,7 @@ trait TypeOps extends TypePrintOps { this: Type =>
   final def asChoice = this.asInstanceOf[TypeChoice]
 
   // Is this a primitive numeric type
-  final def isNumeric: Boolean = this.underlying match {
+  final def isNumeric(implicit cc: CompilerContext): Boolean = this.underlying match {
     case _: TypeInt => true
     case _: TypeNum => true
     case _          => false
@@ -96,7 +97,7 @@ trait TypeOps extends TypePrintOps { this: Type =>
 
   // Is this a 'packed' type, i.e.: does it have a finite,
   // possibly 0 width bit-vector representation?
-  final def isPacked: Boolean = this.underlying match {
+  final def isPacked(implicit cc: CompilerContext): Boolean = this.underlying match {
     case _: TypeSInt   => true
     case _: TypeUInt   => true
     case _: TypeStruct => true
@@ -106,7 +107,7 @@ trait TypeOps extends TypePrintOps { this: Type =>
   }
 
   // Signedness of this type (as far as expressions are concerned), assuming it is a packed type
-  final def isSigned: Boolean = {
+  final def isSigned(implicit cc: CompilerContext): Boolean = {
     assert(underlying.isNum || isPacked, this)
     this.underlying match {
       case _: TypeSInt     => true
@@ -152,8 +153,11 @@ trait TypeOps extends TypePrintOps { this: Type =>
     case _                           => Iterator.empty
   }
 
+  // Chase TypeRef nodes
+  final def deref(implicit cc: CompilerContext): Type = this rewrite new DereferenceTypeRefs
+
   // If this is a proxy type, get the underlying type, otherwise get this type
-  final lazy val underlying: Type = this match {
+  final def underlying(implicit cc: CompilerContext): Type = this.deref match {
     case TypeIn(kind, _)     => kind
     case TypeOut(kind, _, _) => kind
     case TypePipeline(kind)  => kind
@@ -164,7 +168,7 @@ trait TypeOps extends TypePrintOps { this: Type =>
   }
 
   ////////////////////////////////////////////////////////////////////////////////
-  // Rewrie with TypeTransformer
+  // Rewrite with TypeTransformer
   ////////////////////////////////////////////////////////////////////////////////
 
   final def rewrite(tt: TypeTransformer): Type = tt(this)

@@ -30,8 +30,8 @@ trait TreePrintOps { this: Tree =>
 
   private[this] final def attrStr(indent: Int, ref: Ref)(implicit cc: CompilerContext): String = {
     ref match {
-      case Sym(symbol) => attrStr(indent, symbol)
-      case _           => ""
+      case Sym(symbol, _) => attrStr(indent, symbol)
+      case _              => ""
     }
   }
 
@@ -40,8 +40,8 @@ trait TreePrintOps { this: Tree =>
     val i = "  " * indent
     val sb = new StringBuilder()
     val variant = entity.ref match {
-      case ident: Ident => ident.attr("//variant").asInstanceOf[ExprStr].value
-      case Sym(symbol)  => symbol.attr.variant.value
+      case ident: Ident   => ident.attr("//variant").asInstanceOf[ExprStr].value
+      case Sym(symbol, _) => symbol.attr.variant.value
     }
 
     sb append s"${attrStr(indent, entity.ref)}${variant} ${v(indent)(entity.ref)} {\n"
@@ -167,9 +167,10 @@ trait TreePrintOps { this: Tree =>
     case ExprCat(parts)                        => s"{${parts map v mkString ", "}}"
     case ExprIndex(expr, index)                => s"${v(expr)}[${v(index)}]"
     case ExprSlice(expr, lidx, op, ridx)       => s"${v(expr)}[${v(lidx)}${op}${v(ridx)}]"
-    case ExprSelect(expr, selector)            => s"${v(expr)}.${selector}"
-    case ExprIdent(name)                       => name
-    case ExprRef(symbol)                       => symbol.name
+    case ExprSelect(expr, selector, Nil)       => s"${v(expr)}.${selector}"
+    case ExprSelect(expr, selector, idxs)      => s"${v(expr)}.${selector}#[${idxs map v mkString ", "}]"
+    case ExprRef(ref)                          => v(0)(ref)
+    case ExprSym(symbol)                       => symbol.name
     case ExprType(kind)                        => s"type(${kind.toSource})"
     case ExprInt(true, width, value)           => s"${width}'sd${value}"
     case ExprInt(false, width, value)          => s"${width}'d${value}"
@@ -193,10 +194,13 @@ trait TreePrintOps { this: Tree =>
             |${i}${v(indent)(entity)}
             |""".stripMargin
       }
-      case Ident(name) => name
-      case Sym(symbol) => symbol.name
 
-      case DefnIdent(ident, kind) =>
+      case Ident(name, Nil)     => name
+      case Sym(symbol, Nil)     => symbol.name
+      case Ident(name, indices) => indices map v mkString (s"${name}#[", ",", "]")
+      case Sym(symbol, indices) => indices map v mkString (s"${symbol.name}#[", ",", "]")
+
+      case DefnRef(ident, kind) =>
         if (kind.isStruct) {
           s"${attrStr(indent, ident)}${structStr(indent)(kind.asStruct)}"
         } else {
@@ -209,10 +213,10 @@ trait TreePrintOps { this: Tree =>
           s"${attrStr(indent, symbol)}typedef ${symbol.kind.toSource} ${symbol.name};"
         }
 
-      case DeclIdent(ident, kind, None) => {
+      case DeclRef(ident, kind, None) => {
         s"${kind.toSource} ${v(indent)(ident)}"
       }
-      case DeclIdent(ident, kind, Some(init)) => {
+      case DeclRef(ident, kind, Some(init)) => {
         s"${kind.toSource} ${v(indent)(ident)} = ${v(init)}"
       }
       case Decl(symbol, None) => {
@@ -243,7 +247,7 @@ trait TreePrintOps { this: Tree =>
             |${i}  ${body map v(indent + 1) mkString s"\n${i}  "}
             |${i}}""".stripMargin
       }
-      case EntState(ExprRef(symbol), body) => {
+      case EntState(ExprSym(symbol), body) => {
         s"""|${attrStr(indent, symbol)}state ${symbol.name} {
             |${i}  ${body map v(indent + 1) mkString s"\n${i}  "}
             |${i}}""".stripMargin

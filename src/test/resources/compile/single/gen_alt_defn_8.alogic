@@ -1,0 +1,40 @@
+// @out-top: gen_alt_defn_8__SIGNED_0
+network gen_alt_defn_8 {
+  param bool SIGNED = false;
+
+  gen if (SIGNED) {
+    in  i2 p_i_0;
+    in  i2 p_i_1;
+    out i4 p_o;
+  } else {
+    in  u2 p_i_0;
+    in  u2 p_i_1;
+    out u4 p_o;
+  }
+
+  new fsm inner {
+    void main() {
+      p_o.write('p_i_0 * 'p_i_1);
+      fence;
+    }
+  }
+}
+// @fec-golden {{{
+//  module gen_alt_defn_8__SIGNED_0(
+//    input wire clk,
+//    input wire rst,
+//    input wire [1:0] p_i_0,
+//    input wire [1:0] p_i_1,
+//    output reg [3:0] p_o
+//  );
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        p_o <= 4'd0;
+//      end else begin
+//        p_o <= {2'd0, p_i_0} * {2'd0, p_i_1};
+//      end
+//    end
+//
+//  endmodule
+// }}}

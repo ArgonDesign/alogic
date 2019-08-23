@@ -40,12 +40,12 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         for (word <- List("read", "write")) {
           word in {
             val tree = s"""|network a {
-             |  new fsm b {
-             |    void main() {
-             |      ${word};
-             |    }
-             |  }
-             |}""".asTree[Entity]
+                           |  new fsm b {
+                           |    void main() {
+                           |      ${word};
+                           |    }
+                           |  }
+                           |}""".stripMargin.asTree[Entity]
 
             tree rewrite checker shouldBe tree
 
@@ -58,10 +58,10 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         for (word <- List("read", "write")) {
           word in {
             val tree = s"""|fsm b {
-             |  void main() {
-             |    ${word};
-             |  }
-             |}""".asTree[Entity]
+                           |  void main() {
+                           |    ${word};
+                           |  }
+                           |}""".stripMargin.asTree[Entity]
 
             val node = tree rewrite checker
 
@@ -180,7 +180,8 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
       }
     }
 
-    "ensure only compile time known values are declared as unsized numbers" - {
+    // TODO: Move to Typer
+    "ensure only compile time known values are declared as unsized numbers" ignore {
       for {
         (src, err) <- List(
           ("param int a = 1;", ""),
@@ -206,7 +207,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         )
       } {
         src in {
-          val tree = src.asTree[DeclIdent]
+          val tree = src.asTree[DeclRef]
           tree rewrite checker
 
           if (err.isEmpty) {
@@ -223,7 +224,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
       val tree = """|fsm foo {
                     |  fence {}
                     |  fence {}
-                    |}""".asTree[Entity]
+                    |}""".stripMargin.asTree[Entity]
 
       tree rewrite checker should matchPattern {
         case Entity(_, Nil) =>
@@ -240,14 +241,14 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
       "with no flow control" in {
         val entity = """|network a {
                         |  out bubble i2 a;
-                        |}""".asTree[Entity]
+                        |}""".stripMargin.asTree[Entity]
 
         val tree = entity rewrite checker
 
         inside(tree) {
           case Entity(_, List(decl)) =>
             inside(decl) {
-              case EntDecl(DeclIdent(_, TypeOut(_, fc, st), _)) =>
+              case EntDecl(DeclRef(_, TypeOut(_, fc, st), _)) =>
                 fc shouldBe FlowControlTypeNone
                 st shouldBe StorageTypeReg
             }
@@ -261,14 +262,14 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
       "with valid flow control" in {
         val entity = """|network a {
                         |  out sync bubble i2 a;
-                        |}""".asTree[Entity]
+                        |}""".stripMargin.asTree[Entity]
 
         val tree = entity rewrite checker
 
         inside(tree) {
           case Entity(_, List(decl)) =>
             inside(decl) {
-              case EntDecl(DeclIdent(_, TypeOut(_, fc, st), _)) =>
+              case EntDecl(DeclRef(_, TypeOut(_, fc, st), _)) =>
                 fc shouldBe FlowControlTypeValid
                 st shouldBe StorageTypeReg
             }
@@ -285,7 +286,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
       val tree = """|case(1) {
                     | default: a;
                     | default: b;
-                    |}""".asTree[Stmt]
+                    |}""".stripMargin.asTree[Stmt]
 
       tree rewrite checker shouldBe StmtError()
 
@@ -614,7 +615,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         "right hand side of -> in first position" - {
           check { ref =>
             val tree = s"a -> ${ref};".asTree[Ent] rewrite checker
-            tree shouldBe EntConnect(ExprIdent("a"), Nil)
+            tree shouldBe EntConnect(ExprRef(Ident("a", Nil)), Nil)
             cc.messages.loneElement should beThe[Error](
               s"Invalid port reference on right hand side of '->'",
               "Only identifiers, optionally followed by a single field selector are allowed"
@@ -624,7 +625,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         "right hand side of -> in second position" - {
           check { ref =>
             val tree = s"a -> b, ${ref};".asTree[Ent] rewrite checker
-            tree shouldBe EntConnect(ExprIdent("a"), List(ExprIdent("b")))
+            tree shouldBe EntConnect(ExprRef(Ident("a", Nil)), List(ExprRef(Ident("b", Nil))))
             cc.messages.loneElement should beThe[Error](
               s"Invalid port reference on right hand side of '->'",
               "Only identifiers, optionally followed by a single field selector are allowed"
@@ -634,7 +635,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
       }
 
       "accept valid port references on " - {
-        def check(test: String => Unit) = {
+        def check(test: String => Unit): Unit = {
           "identifier " in test("a")
           "single-select" in test("a.b")
         }
@@ -818,63 +819,17 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
       }
     }
 
-    "reject illegal gen content" - {
-      "'param' under gen" in {
-        """|fsm a {
-           |  gen if (1) {
-           |    param uint N;
-           |  }
-           |}""".stripMargin.asTree[Entity] rewrite checker
-        cc.messages.loneElement should beThe[Error] {
-          "'param' declaration cannot appear inside 'gen' construct"
-        }
-      }
-
-      "'const' under gen" in {
-        """|fsm a {
-           |  gen if (1) {
-           |    const uint N = 0;
-           |  }
-           |}""".stripMargin.asTree[Entity] rewrite checker
-        cc.messages.loneElement should beThe[Error] {
-          "'const' declaration cannot appear inside 'gen' construct"
-        }
-      }
-
-      "'param' under entity under gen" in {
-        """|network a {
-           |  gen if (1) {
-           |    fsm b {
-           |      param uint N;
-           |    }
-           |  }
-           |}""".stripMargin.asTree[Entity] rewrite checker
-        cc.messages shouldBe empty
-      }
-
-      "'const' under entity under gen" in {
-        """|network a {
-           |  gen if (1) {
-           |    fsm b {
-           |      const uint N = 0;
-           |    }
-           |  }
-           |}""".stripMargin.asTree[Entity] rewrite checker
-        cc.messages shouldBe empty
-      }
-    }
-
     "check usage of break/continue statements" - {
       "accepting them in looping statements" - {
         for (word <- List("break", "continue")) {
           word in {
             val tree = s"""|fsm b {
-             |  void main() {
-             |    loop {
-             |      ${word};
-             |    }
-             |  }
-             |}""".asTree[Entity]
+                           |  void main() {
+                           |    loop {
+                           |      ${word};
+                           |    }
+                           |  }
+                           |}""".stripMargin.asTree[Entity]
 
             tree rewrite checker shouldBe tree
 
@@ -887,11 +842,11 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         for (word <- List("break", "continue")) {
           word in {
             val tree = s"""|fsm b {
-             |  void main() {
-             |    loop {}
-             |    ${word};
-             |  }
-             |}""".asTree[Entity]
+                           |  void main() {
+                           |    loop {}
+                           |    ${word};
+                           |  }
+                           |}""".stripMargin.asTree[Entity]
 
             val node = tree rewrite checker
 
@@ -911,14 +866,20 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
       }
     }
 
-    "check port and param declarations precede" - {
-      for (thing <- List("in", "out", "param")) {
-        thing - {
-          val hint = if (thing == "param") "Parameter" else "Port"
+    "check port, const and param declarations precede" - {
+      for {
+        (decl, hint, genOK) <- List(
+          ("in bool p", "Port", true),
+          ("out bool p", "Port", true),
+          ("param bool p", "Parameter", false),
+          ("const bool p = false", "Constant", false)
+        )
+      } {
+        decl - {
           "nested entities" in {
             val tree = s"""|network a {
                            |  fsm b {}
-                           |  ${thing} bool p;
+                           |  ${decl};
                            |}""".stripMargin.asTree[Entity]
 
             tree rewrite checker
@@ -930,7 +891,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
           "instances" in {
             val tree = s"""|network a {
                            |  b = new c();
-                           |  ${thing} bool p;
+                           |  ${decl};
                            |}""".stripMargin.asTree[Entity]
 
             tree rewrite checker
@@ -942,7 +903,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
           "connections" in {
             val tree = s"""|network a {
                            |  b -> c;
-                           |  ${thing} bool p;
+                           |  ${decl};
                            |}""".stripMargin.asTree[Entity]
 
             tree rewrite checker
@@ -954,7 +915,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
           "functions" in {
             val tree = s"""|fsm a {
                            |  void main() { fence; }
-                           |  ${thing} bool p;
+                           |  ${decl};
                            |}""".stripMargin.asTree[Entity]
 
             tree rewrite checker
@@ -966,7 +927,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
           "fence block" in {
             val tree = s"""|fsm a {
                            |  fence {}
-                           |  ${thing} bool p;
+                           |  ${decl};
                            |}""".stripMargin.asTree[Entity]
 
             tree rewrite checker
@@ -978,8 +939,8 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
           "verbatim block" in {
             val tree = s"""|fsm a {
                            |  verbatim verilog {}
-                           |  ${thing} bool p;
-                           |  void main() {fence; }
+                           |  ${decl};
+                           |  void main() {fence;}
                            |}""".stripMargin.asTree[Entity]
 
             tree rewrite checker
@@ -988,12 +949,27 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
               s"${hint} declarations must appear before 'verbatim' blocks")
           }
 
-          if (thing != "param") {
+          if (!genOK) {
+            "gen blocks" in {
+              val tree = s"""|fsm a {
+                             |  gen if (true) {}
+                             |  ${decl};
+                             |  void main() {fence;}
+                             |}""".stripMargin.asTree[Entity]
+
+              tree rewrite checker
+
+              cc.messages.loneElement should beThe[Error](
+                s"${hint} declarations must appear before 'gen' blocks")
+            }
+          }
+
+          if (genOK) {
             "inside 'gen'" - {
               "'if' a" in {
                 val tree = s"""|fsm a {
                                |  void main() { fence; }
-                               |  gen if (1) { ${thing} bool p; }
+                               |  gen if (1) { ${decl}; }
                                |}""".stripMargin.asTree[Entity]
 
                 tree rewrite checker
@@ -1006,7 +982,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
                 val tree = s"""|fsm a {
                                |  gen if (1) {
                                |   void main() { fence; }
-                               |   ${thing} bool p;
+                               |   ${decl};
                                |  }
                                |}""".stripMargin.asTree[Entity]
 
@@ -1019,7 +995,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
               "'if' c" in {
                 val tree = s"""|fsm a {
                                |  gen if (1) { void main() { fence; } }
-                               |  ${thing} bool p;
+                               |  ${decl};
                                |}""".stripMargin.asTree[Entity]
 
                 tree rewrite checker
@@ -1031,7 +1007,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
               "'else' a" in {
                 val tree = s"""|fsm a {
                                |  void main() { fence; }
-                               |  gen if (1) {} else { ${thing} bool p; }
+                               |  gen if (1) {} else { ${decl}; }
                                |}""".stripMargin.asTree[Entity]
 
                 tree rewrite checker
@@ -1044,7 +1020,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
                 val tree = s"""|fsm a {
                                |  gen if (1) {} else {
                                |   void main() { fence; }
-                               |   ${thing} bool p;
+                               |   ${decl};
                                |  }
                                |}""".stripMargin.asTree[Entity]
 
@@ -1057,7 +1033,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
               "'else' c" in {
                 val tree = s"""|fsm a {
                                |  gen if (1) {} else { void main() { fence; } }
-                               |  ${thing} bool p;
+                               |  ${decl};
                                |}""".stripMargin.asTree[Entity]
 
                 tree rewrite checker
@@ -1069,7 +1045,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
               "'for' standard a" in {
                 val tree = s"""|fsm a {
                                |  void main() { fence; }
-                               |  gen for (uint N = 0 ; N < 1 ; N++) { ${thing} bool p; }
+                               |  gen for (uint N = 0 ; N < 1 ; N++) { ${decl}; }
                                |}""".stripMargin.asTree[Entity]
 
                 tree rewrite checker
@@ -1082,7 +1058,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
                 val tree = s"""|fsm a {
                                |  gen for (uint N = 0 ; N < 1 ; N++) {
                                |    void main() { fence; }
-                               |    ${thing} bool p;
+                               |    ${decl};
                                |  }
                                |}""".stripMargin.asTree[Entity]
 
@@ -1095,7 +1071,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
               "'for' standard c" in {
                 val tree = s"""|fsm a {
                                |  gen for (uint N = 0 ; N < 1 ; N++) { void main() { fence; } }
-                               |  ${thing} bool p;
+                               |  ${decl};
                                |}""".stripMargin.asTree[Entity]
 
                 tree rewrite checker
@@ -1107,7 +1083,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
               "'for' range a" in {
                 val tree = s"""|fsm a {
                                |  void main() { fence; }
-                               |  gen for (uint N < 1) { ${thing} bool p; }
+                               |  gen for (uint N < 1) { ${decl}; }
                                |}""".stripMargin.asTree[Entity]
 
                 tree rewrite checker
@@ -1120,7 +1096,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
                 val tree = s"""|fsm a {
                                |  gen for (uint N < 1) {
                                |    void main() { fence; }
-                               |    ${thing} bool p;
+                               |    ${decl};
                                |  }
                                |}""".stripMargin.asTree[Entity]
 
@@ -1133,7 +1109,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
               "'for' range c" in {
                 val tree = s"""|fsm a {
                                |  gen for (uint N < 1) { void main() { fence; } }
-                               |  ${thing} bool p;
+                               |  ${decl};
                                |}""".stripMargin.asTree[Entity]
 
                 tree rewrite checker

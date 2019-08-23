@@ -1,0 +1,63 @@
+network gen_alt_defn_9 {
+  in u2 p_in_0;
+  in u2 p_in_1;
+  out u4 p_out_u;
+  out i4 p_out_s;
+
+  fsm inner {
+    param bool SIGNED;
+
+    gen if (true) {
+      gen if (false) {} else {
+        gen if (true) {
+          gen if (SIGNED) {
+            in  i2 p_i_0;
+            in  i2 p_i_1;
+            out i4 p_o;
+          } else {
+            in  u2 p_i_0;
+            in  u2 p_i_1;
+            out u4 p_o;
+          }
+        }
+      }
+    }
+
+
+    void main() {
+      p_o.write('p_i_0 * 'p_i_1);
+      fence;
+    }
+  }
+
+  inner_u = new inner(SIGNED=false);
+  inner_s = new inner(SIGNED=true);
+
+  p_in_0 -> inner_u.p_i_0, inner_s.p_i_0;
+  p_in_1 -> inner_u.p_i_1, inner_s.p_i_1;
+
+  inner_u.p_o -> p_out_u;
+  inner_s.p_o -> p_out_s;
+}
+// @fec-golden {{{
+//  module gen_alt_defn_9(
+//    input wire clk,
+//    input wire rst,
+//    input wire [1:0] p_in_0,
+//    input wire [1:0] p_in_1,
+//    output reg [3:0] p_out_u,
+//    output reg [3:0] p_out_s
+//  );
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        p_out_u <= 4'd0;
+//        p_out_s <= 4'd0;
+//      end else begin
+//        p_out_u <= {2'd0, p_in_0} * {2'd0, p_in_1};
+//        p_out_s <= $signed({{2{p_in_0[1]}}, p_in_0}) * $signed({{2{p_in_1[1]}}, p_in_1});
+//      end
+//    end
+//
+//  endmodule
+// }}}

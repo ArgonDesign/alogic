@@ -83,7 +83,7 @@ trait Symbols extends ChainingSyntax { self: CompilerContext =>
     assert(polySymbol.isBuiltin(this))
     assert(args exists { _.hasTpe })
     val symbol = polySymbol.kind.asInstanceOf[TypePolyFunc].resolve(args).get
-    val call = ExprRef(symbol).call(args)(this)
+    val call = ExprSym(symbol).call(args)(this)
     call.regularize(loc)(this)
   }
 

@@ -1,0 +1,9 @@
+network dictident_decl_8 {
+  gen for (uint N < 2) {
+    in  bool i#[0];
+    out bool o#[0];
+  }
+  i#[0] -> o#[0];
+}
+// :3: ERROR: Name 'i#\[0\]' defined multiple times after processing 'gen' constructs
+// :4: ERROR: Name 'o#\[0\]' defined multiple times after processing 'gen' constructs

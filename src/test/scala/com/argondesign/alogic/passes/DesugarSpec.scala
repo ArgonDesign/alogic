@@ -50,9 +50,9 @@ final class DesugarSpec extends FreeSpec with AlogicTest {
             case StmtBlock(List(StmtDecl(Decl(dSym, _)), stmt)) =>
               inside(stmt) {
                 case StmtAssign(lhs, rhs) =>
-                  lhs shouldBe ExprRef(dSym)
+                  lhs shouldBe ExprSym(dSym)
                   inside(rhs) {
-                    case ExprBinary(ExprRef(sym), opStr, ExprInt(false, 2, v)) if v == 1 =>
+                    case ExprBinary(ExprSym(sym), opStr, ExprInt(false, 2, v)) if v == 1 =>
                       opStr shouldBe op.init
                       sym should be theSameInstanceAs dSym
                   }
@@ -73,9 +73,9 @@ final class DesugarSpec extends FreeSpec with AlogicTest {
             case StmtBlock(List(StmtDecl(Decl(dSym, _)), stmt)) =>
               inside(stmt) {
                 case StmtAssign(lhs, rhs) =>
-                  lhs shouldBe ExprRef(dSym)
+                  lhs shouldBe ExprSym(dSym)
                   inside(rhs) {
-                    case ExprBinary(ExprRef(sym), `op`, ExprInt(false, 100, v)) if v == 2 =>
+                    case ExprBinary(ExprSym(sym), `op`, ExprInt(false, 100, v)) if v == 2 =>
                       sym should be theSameInstanceAs dSym
                   }
               }
@@ -104,7 +104,7 @@ final class DesugarSpec extends FreeSpec with AlogicTest {
                 case StmtDecl(Decl(dSymA, Some(ExprInt(false, 2, v)))) if v == 0 =>
                   dSymA.kind shouldBe TypeSInt(Expr(2))
                   inside(assignB) {
-                    case StmtAssign(ExprRef(symB), ExprRef(symA)) =>
+                    case StmtAssign(ExprSym(symB), ExprSym(symA)) =>
                       symB.name shouldBe "b";
                       symA should be theSameInstanceAs dSymA
                   }

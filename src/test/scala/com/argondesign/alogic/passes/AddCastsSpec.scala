@@ -205,8 +205,8 @@ final class AddCastsSpec extends FreeSpec with AlogicTest {
             ("(* unused *) i7 a = 2", { case ExprCast(TypeUInt(Expr(7)), ExprNum(false, v)) if v == 2 => }),
             ("(* unused *) u7 a = 2", { case ExprCast(TypeUInt(Expr(7)), ExprNum(false, v)) if v == 2 => }),
             ("(* unused *) int  a = 2s", { case ExprNum(true, v) if v == 2 => }),
-            ("(* unused *) uint a = 2s", { case ExprCall(ExprRef(s), List(ExprNum(true, v))) if v == 2 && s.name == "$unsigned" => }),
-            ("(* unused *) int  a = 2", { case ExprCall(ExprRef(s), List(ExprNum(false, v))) if v == 2 && s.name == "$signed" => }),
+            ("(* unused *) uint a = 2s", { case ExprCall(ExprSym(s), List(ExprNum(true, v))) if v == 2 && s.name == "$unsigned" => }),
+            ("(* unused *) int  a = 2", { case ExprCall(ExprSym(s), List(ExprNum(false, v))) if v == 2 && s.name == "$signed" => }),
             ("(* unused *) uint a = 2", { case ExprNum(false, v) if v == 2 => })
             // format: on
           )

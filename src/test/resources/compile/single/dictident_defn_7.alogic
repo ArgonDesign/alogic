@@ -1,0 +1,12 @@
+network dictident_defn_7 {
+  in u8 x;
+  gen for (uint N < 2) {
+    typedef uint(N+1) i_t#[N];
+    typedef uint(N+1) o_t#[N];
+  }
+  in  i_t#[x] i_0;
+  out o_t#[x] o_0;
+  i_0 -> o_0;
+}
+// :7: ERROR: Identifier index must be a compile time constant
+// :8: ERROR: Identifier index must be a compile time constant

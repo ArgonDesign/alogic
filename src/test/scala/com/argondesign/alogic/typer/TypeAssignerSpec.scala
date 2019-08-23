@@ -93,11 +93,11 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
               inside(tree) {
                 case Root(_, entity: Entity) => {
                   val main = (entity.functions collectFirst {
-                    case func @ EntFunction(Sym(sym), _) if sym.name == "main" => func
+                    case func @ EntFunction(Sym(sym, Nil), _) if sym.name == "main" => func
                   }).get
                   inside(main) {
                     case EntFunction(_, List(StmtExpr(expr))) =>
-                      expr should matchPattern { case ExprRef(_) => }
+                      expr should matchPattern { case ExprSym(_) => }
                       TypeAssigner(expr).tpe shouldBe kind
                   }
                 }
@@ -822,7 +822,7 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
             val tree = xform(block)
 
             tree.postOrderIterator collect {
-              case expr: ExprRef    => expr
+              case expr: ExprSym    => expr
               case expr: ExprSelect => expr
             } foreach {
               TypeAssigner(_)
@@ -955,7 +955,7 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
             val tree = xform(block)
 
             tree.postOrderIterator collect {
-              case expr: ExprRef    => expr
+              case expr: ExprSym    => expr
               case expr: ExprSelect => expr
               case expr: ExprCall   => expr
             } foreach {
@@ -1084,7 +1084,7 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
             ("case(a) {a: fence;}", { case _: StmtCase                => }, TypeCtrlStmt),
             ("case(a) {default: fence;}", { case _: StmtCase          => }, TypeCtrlStmt),
             ("case(a) {default: {read; fence;}}", { case _: StmtCase  => }, TypeCtrlStmt),
-            ("a;", { case StmtExpr(_: ExprRef)                        => }, TypeCombStmt),
+            ("a;", { case StmtExpr(_: ExprSym)                        => }, TypeCombStmt),
             ("a + a;", { case StmtExpr(_: ExprBinary)                 => }, TypeCombStmt),
             ("a.read();", { case StmtExpr(_: ExprCall)                => }, TypeCombStmt),
             ("main();", { case StmtExpr(_: ExprCall)                  => }, TypeCtrlStmt),
@@ -1153,14 +1153,14 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
       }
 
       "state" in {
-        val ref = TypeAssigner(ExprRef(ErrorSymbol))
+        val ref = TypeAssigner(ExprSym(ErrorSymbol))
         TypeAssigner(EntState(ref, Nil)).tpe shouldBe TypeMisc
       }
     }
 
     "Sym" in {
       val symbol = cc.newTermSymbol("foo", Loc.synthetic, TypeUInt(4))
-      TypeAssigner(Sym(symbol)).tpe shouldBe TypeUInt(4)
+      TypeAssigner(Sym(symbol, Nil)).tpe shouldBe TypeUInt(4)
     }
   }
 }

@@ -41,6 +41,7 @@ final class PortCheck(implicit cc: CompilerContext) extends TreeTransformer {
   }
 
   override def skip(tree: Tree): Boolean = tree match {
+    case _: Root   => false
     case _: Entity => false
     case _         => true
   }
@@ -64,7 +65,7 @@ final class PortCheck(implicit cc: CompilerContext) extends TreeTransformer {
         rhs <- rhss
       } {
         rhs match {
-          case rhs @ ExprRef(symbol: TermSymbol) => {
+          case rhs @ ExprSym(symbol: TermSymbol) => {
             sinkOurs.get(symbol) foreach { multipleDriverError(rhs, _) }
             sinkOurs(symbol) = connect.loc
           }
@@ -92,7 +93,7 @@ final class PortCheck(implicit cc: CompilerContext) extends TreeTransformer {
         connect @ EntConnect(lhs, _) <- entity.connects
       } {
         lhs match {
-          case rhs @ ExprRef(symbol: TermSymbol) => {
+          case rhs @ ExprSym(symbol: TermSymbol) => {
             if (symbol.kind.isIn && symbol.kind.asInstanceOf[TypeIn].fct == FlowControlTypeReady) {
               drivOurs.get(symbol) foreach { multipleSinkError(lhs, _) }
               drivOurs(symbol) = connect.loc

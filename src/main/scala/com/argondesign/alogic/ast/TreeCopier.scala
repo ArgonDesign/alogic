@@ -37,20 +37,38 @@ object TreeCopier {
     }
   }
 
-  final def apply(tree: DefnIdent)(ident: Tree): DefnIdent = {
-    if (ident eq tree.ident) {
+  final def apply(tree: Ident)(indices: List[Tree]): Ident = {
+    if (indices eq tree.idxs) {
       tree
     } else {
-      DefnIdent(ident.asInstanceOf[Ident], tree.kind) withLoc tree.loc
+      assert(indices forall { _.isInstanceOf[Expr] })
+      Ident(tree.name, indices.asInstanceOf[List[Expr]]) withLoc tree.loc
     }
   }
 
-  final def apply(tree: DeclIdent)(ident: Tree, init: Option[Tree]): DeclIdent = {
-    if ((ident eq tree.ident) && (tree.init eq init)) {
+  final def apply(tree: Sym)(indices: List[Tree]): Sym = {
+    if (indices eq tree.idxs) {
+      tree
+    } else {
+      assert(indices forall { _.isInstanceOf[Expr] })
+      Sym(tree.symbol, indices.asInstanceOf[List[Expr]]) withLoc tree.loc
+    }
+  }
+
+  final def apply(tree: DefnRef)(ref: Tree): DefnRef = {
+    if (ref eq tree.ref) {
+      tree
+    } else {
+      DefnRef(ref.asInstanceOf[Ref], tree.kind) withLoc tree.loc
+    }
+  }
+
+  final def apply(tree: DeclRef)(ref: Tree, init: Option[Tree]): DeclRef = {
+    if ((ref eq tree.ref) && (tree.init eq init)) {
       tree
     } else {
       assert(init forall { _.isInstanceOf[Expr] })
-      DeclIdent(ident.asInstanceOf[Ident], tree.kind, init.asInstanceOf[Option[Expr]]) withLoc tree.loc
+      DeclRef(ref.asInstanceOf[Ref], tree.kind, init.asInstanceOf[Option[Expr]]) withLoc tree.loc
     }
   }
 
@@ -476,11 +494,20 @@ object TreeCopier {
     }
   }
 
-  final def apply(tree: ExprSelect)(expr: Tree): ExprSelect = {
-    if (expr eq tree.expr) {
+  final def apply(tree: ExprRef)(ref: Tree): ExprRef = {
+    if (ref eq tree.ref) {
       tree
     } else {
-      ExprSelect(expr.asInstanceOf[Expr], tree.selector) withLoc tree.loc
+      ExprRef(ref.asInstanceOf[Ref]) withLoc tree.loc
+    }
+  }
+
+  final def apply(tree: ExprSelect)(expr: Tree, idxs: List[Tree]): ExprSelect = {
+    if ((expr eq tree.expr) && (idxs eq tree.idxs)) {
+      tree
+    } else {
+      assert(idxs forall { _.isInstanceOf[Expr] })
+      ExprSelect(expr.asInstanceOf[Expr], tree.selector, idxs.asInstanceOf[List[Expr]]) withLoc tree.loc
     }
   }
 

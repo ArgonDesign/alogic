@@ -61,14 +61,14 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends TreeTransfor
               case first :: Nil => first.stmts
               case first :: second :: Nil => {
                 StmtComment("State dispatch") :: StmtIf(
-                  ~ExprRef(entitySymbol.attr.stateVar.value),
+                  ~ExprSym(entitySymbol.attr.stateVar.value),
                   first.stmts,
                   second.stmts
                 ) :: Nil
               }
               case first :: rest => {
                 StmtComment("State dispatch") :: StmtCase(
-                  ExprRef(entitySymbol.attr.stateVar.value),
+                  ExprSym(entitySymbol.attr.stateVar.value),
                   CaseDefault(first.stmts) :: {
                     rest map {
                       case EntState(expr, body) => CaseRegular(List(expr), body)

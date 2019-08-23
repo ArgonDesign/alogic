@@ -1,0 +1,57 @@
+fsm dictident_function_3 {
+  in        bool i;
+  out wire  bool o;
+
+  fence {
+    o = 1'b0;
+  }
+
+  gen for (uint N < 2) {
+    void func#[N]() {
+      gen if (N) {
+        o = ~i;
+        goto main;
+      } else {
+        o = i;
+        goto func#[N+1];
+      }
+    }
+  }
+
+  void main() {
+    goto func#[0];
+  }
+}
+// @fec-golden {{{
+//  module dictident_function_3(
+//    input  wire clk,
+//    input  wire rst,
+//    input  wire i,
+//    output reg  o
+//  );
+//    reg [1:0] s_q;
+//    reg [1:0] s_d;
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        s_q <= 2'd0;
+//      end else begin
+//        s_q <= s_d;
+//      end
+//    end
+//
+//    always @* begin
+//      if (s_q == 2'd1) begin
+//        o = i;
+//        s_d = 2'd2;
+//      end else if (s_q == 2'd2) begin
+//        o = ~i;
+//        s_d = 2'd0;
+//      end else begin
+//        o = 1'b0;
+//        s_d = 2'd1;
+//      end
+//    end
+//
+//  endmodule
+// }}}

@@ -38,16 +38,16 @@ final class ParserSpec extends FreeSpec with AlogicTest {
 
   def beSyntaxError: Matcher[Message] = beSyntaxError("")
 
-  def beSyntaxError(text: String): Matcher[Message] = Matcher { (msg: Message) =>
+  def beSyntaxError(text: String): Matcher[Message] = Matcher { msg: Message =>
     val matchesMessage = if (text.isEmpty) {
       msg.msg(0) startsWith "Syntax error: "
     } else {
-      msg.msg(0) == s"Syntax error: ${text}"
+      msg.msg(0) == s"Syntax error: $text"
     }
     MatchResult(
       msg.isInstanceOf[Error] && matchesMessage,
-      s"'${msg}' was not a Syntax error message matching 'Syntax error: ${text}'",
-      s"'${msg}' was the correct Syntex error message"
+      s"'$msg' was not a Syntax error message matching 'Syntax error: $text'",
+      s"'$msg' was the correct Syntex error message"
     )
   }
 
@@ -143,15 +143,15 @@ final class ParserSpec extends FreeSpec with AlogicTest {
       "type definitions" - {
 
         "typedef" in {
-          "typedef u8 foo;".asTree[DefnIdent] shouldBe {
-            DefnIdent(Ident("foo"), TypeUInt(Expr(8)))
+          "typedef u8 foo;".asTree[DefnRef] shouldBe {
+            DefnRef(Ident("foo", Nil), TypeUInt(Expr(8)))
           }
         }
 
         "struct" in {
-          "struct bar { u8 foo; i2 baz; };".asTree[DefnIdent] shouldBe {
-            DefnIdent(
-              Ident("bar"),
+          "struct bar { u8 foo; i2 baz; };".asTree[DefnRef] shouldBe {
+            DefnRef(
+              Ident("bar", Nil),
               TypeStruct(
                 "bar",
                 List("foo", "baz"),
@@ -166,18 +166,18 @@ final class ParserSpec extends FreeSpec with AlogicTest {
       "declarations" - {
         "scalar" - {
           "without initializer" in {
-            "bool a;".asTree[DeclIdent] shouldBe DeclIdent(Ident("a"), TypeUInt(Expr(1)), None)
+            "bool a;".asTree[DeclRef] shouldBe DeclRef(Ident("a", Nil), TypeUInt(Expr(1)), None)
           }
 
           "with initializer" in {
-            "bool b = true;".asTree[DeclIdent] shouldBe {
-              DeclIdent(Ident("b"), TypeUInt(Expr(1)), Some(ExprInt(false, 1, 1)))
+            "bool b = true;".asTree[DeclRef] shouldBe {
+              DeclRef(Ident("b", Nil), TypeUInt(Expr(1)), Some(ExprInt(false, 1, 1)))
             }
           }
 
           "with attribute" in {
-            inside("(* foo *) bool b;".asTree[DeclIdent]) {
-              case DeclIdent(ident @ Ident("b"), TypeUInt(Expr(1)), None) =>
+            inside("(* foo *) bool b;".asTree[DeclRef]) {
+              case DeclRef(ident @ Ident("b", Nil), TypeUInt(Expr(1)), None) =>
                 ident.hasAttr shouldBe true
                 ident.attr shouldBe Map("foo" -> Expr(1))
             }
@@ -186,21 +186,21 @@ final class ParserSpec extends FreeSpec with AlogicTest {
 
         "array" - {
           "1D" in {
-            "i8 c[2];".asTree[DeclIdent] shouldBe {
-              DeclIdent(Ident("c"), TypeArray(TypeSInt(Expr(8)), Expr(2)), None)
+            "i8 c[2];".asTree[DeclRef] shouldBe {
+              DeclRef(Ident("c", Nil), TypeArray(TypeSInt(Expr(8)), Expr(2)), None)
             }
           }
 
           "2D" ignore {
-            "i8 d[2][3];".asTree[DeclIdent] shouldBe {
-              DeclIdent(Ident("d"), TypeArray(TypeArray(TypeSInt(Expr(8)), Expr(3)), Expr(2)), None)
+            "i8 d[2][3];".asTree[DeclRef] shouldBe {
+              DeclRef(Ident("d", Nil), TypeArray(TypeArray(TypeSInt(Expr(8)), Expr(3)), Expr(2)), None)
             }
           }
 
           "2D array of 2D vector" ignore {
-            "i2[8] e[5][4];".asTree[DeclIdent] shouldBe {
-              DeclIdent(
-                Ident("e"),
+            "i2[8] e[5][4];".asTree[DeclRef] shouldBe {
+              DeclRef(
+                Ident("e", Nil),
                 TypeArray(TypeArray(TypeVector(TypeSInt(Expr(2)), Expr(8)), Expr(4)), Expr(5)),
                 None
               )
@@ -208,8 +208,8 @@ final class ParserSpec extends FreeSpec with AlogicTest {
           }
 
           "1D with attribute" in {
-            inside("(* foo *) i8 c[2];".asTree[DeclIdent]) {
-              case DeclIdent(ident @ Ident("c"), TypeArray(TypeSInt(Expr(8)), Expr(2)), None) =>
+            inside("(* foo *) i8 c[2];".asTree[DeclRef]) {
+              case DeclRef(ident @ Ident("c", Nil), TypeArray(TypeSInt(Expr(8)), Expr(2)), None) =>
                 ident.hasAttr shouldBe true
                 ident.attr shouldBe Map("foo" -> Expr(1))
             }
@@ -219,16 +219,16 @@ final class ParserSpec extends FreeSpec with AlogicTest {
         "output" - {
           "no flow control" - {
             "default" in {
-              "out i2 a;".asTree[DeclIdent] shouldBe {
-                DeclIdent(Ident("a"),
+              "out i2 a;".asTree[DeclRef] shouldBe {
+                DeclRef(Ident("a", Nil),
                           TypeOut(TypeSInt(Expr(2)), FlowControlTypeNone, StorageTypeDefault),
                           None)
               }
             }
 
             "wire" in {
-              "out wire u2 a;".asTree[DeclIdent] shouldBe {
-                DeclIdent(Ident("a"),
+              "out wire u2 a;".asTree[DeclRef] shouldBe {
+                DeclRef(Ident("a", Nil),
                           TypeOut(TypeUInt(Expr(2)), FlowControlTypeNone, StorageTypeWire),
                           None)
               }
@@ -237,16 +237,16 @@ final class ParserSpec extends FreeSpec with AlogicTest {
 
           "valid flow control" - {
             "default" in {
-              "out sync i2 a;".asTree[DeclIdent] shouldBe {
-                DeclIdent(Ident("a"),
+              "out sync i2 a;".asTree[DeclRef] shouldBe {
+                DeclRef(Ident("a", Nil),
                           TypeOut(TypeSInt(Expr(2)), FlowControlTypeValid, StorageTypeDefault),
                           None)
               }
             }
 
             "wire" in {
-              "out sync wire i2 a;".asTree[DeclIdent] shouldBe {
-                DeclIdent(Ident("a"),
+              "out sync wire i2 a;".asTree[DeclRef] shouldBe {
+                DeclRef(Ident("a", Nil),
                           TypeOut(TypeSInt(Expr(2)), FlowControlTypeValid, StorageTypeWire),
                           None)
               }
@@ -255,9 +255,9 @@ final class ParserSpec extends FreeSpec with AlogicTest {
 
           "valid/ready flow control" - {
             "default" in {
-              "out sync ready i2 a;".asTree[DeclIdent] shouldBe {
-                DeclIdent(
-                  Ident("a"),
+              "out sync ready i2 a;".asTree[DeclRef] shouldBe {
+                DeclRef(
+                  Ident("a", Nil),
                   TypeOut(TypeSInt(Expr(2)), FlowControlTypeReady, StorageTypeDefault),
                   None
                 )
@@ -265,9 +265,9 @@ final class ParserSpec extends FreeSpec with AlogicTest {
             }
 
             "fslice" in {
-              "out sync ready fslice i2 a;".asTree[DeclIdent] shouldBe {
-                DeclIdent(
-                  Ident("a"),
+              "out sync ready fslice i2 a;".asTree[DeclRef] shouldBe {
+                DeclRef(
+                  Ident("a", Nil),
                   TypeOut(TypeSInt(Expr(2)),
                           FlowControlTypeReady,
                           StorageTypeSlices(List(StorageSliceFwd))),
@@ -277,9 +277,9 @@ final class ParserSpec extends FreeSpec with AlogicTest {
             }
 
             "bslice" in {
-              "out sync ready bslice i2 a;".asTree[DeclIdent] shouldBe {
-                DeclIdent(
-                  Ident("a"),
+              "out sync ready bslice i2 a;".asTree[DeclRef] shouldBe {
+                DeclRef(
+                  Ident("a", Nil),
                   TypeOut(TypeSInt(Expr(2)),
                           FlowControlTypeReady,
                           StorageTypeSlices(List(StorageSliceBwd))),
@@ -289,9 +289,9 @@ final class ParserSpec extends FreeSpec with AlogicTest {
             }
 
             "bubble" in {
-              "out sync ready bubble i2 a;".asTree[DeclIdent] shouldBe {
-                DeclIdent(
-                  Ident("a"),
+              "out sync ready bubble i2 a;".asTree[DeclRef] shouldBe {
+                DeclRef(
+                  Ident("a", Nil),
                   TypeOut(TypeSInt(Expr(2)),
                           FlowControlTypeReady,
                           StorageTypeSlices(List(StorageSliceBub))),
@@ -301,9 +301,9 @@ final class ParserSpec extends FreeSpec with AlogicTest {
             }
 
             "bslice bubble fslice" in {
-              "out sync ready bslice bubble fslice i2 a;".asTree[DeclIdent] shouldBe {
-                DeclIdent(
-                  Ident("a"),
+              "out sync ready bslice bubble fslice i2 a;".asTree[DeclRef] shouldBe {
+                DeclRef(
+                  Ident("a", Nil),
                   TypeOut(
                     TypeSInt(Expr(2)),
                     FlowControlTypeReady,
@@ -315,8 +315,8 @@ final class ParserSpec extends FreeSpec with AlogicTest {
             }
 
             "with attribute" in {
-              inside("(* foo *) out i2 a;".asTree[DeclIdent]) {
-                case DeclIdent(ident @ Ident("a"),
+              inside("(* foo *) out i2 a;".asTree[DeclRef]) {
+                case DeclRef(ident @ Ident("a", Nil),
                                TypeOut(TypeSInt(Expr(2)), FlowControlTypeNone, StorageTypeDefault),
                                None) =>
                   ident.hasAttr shouldBe true
@@ -328,26 +328,26 @@ final class ParserSpec extends FreeSpec with AlogicTest {
 
         "inputs" - {
           "no flow control" in {
-            "in i2 a;".asTree[DeclIdent] shouldBe {
-              DeclIdent(Ident("a"), TypeIn(TypeSInt(Expr(2)), FlowControlTypeNone), None)
+            "in i2 a;".asTree[DeclRef] shouldBe {
+              DeclRef(Ident("a", Nil), TypeIn(TypeSInt(Expr(2)), FlowControlTypeNone), None)
             }
           }
 
           "valid flow control" in {
-            "in sync i2 a;".asTree[DeclIdent] shouldBe {
-              DeclIdent(Ident("a"), TypeIn(TypeSInt(Expr(2)), FlowControlTypeValid), None)
+            "in sync i2 a;".asTree[DeclRef] shouldBe {
+              DeclRef(Ident("a", Nil), TypeIn(TypeSInt(Expr(2)), FlowControlTypeValid), None)
             }
           }
 
           "valid/ready flow control" in {
-            "in sync ready i2 a;".asTree[DeclIdent] shouldBe {
-              DeclIdent(Ident("a"), TypeIn(TypeSInt(Expr(2)), FlowControlTypeReady), None)
+            "in sync ready i2 a;".asTree[DeclRef] shouldBe {
+              DeclRef(Ident("a", Nil), TypeIn(TypeSInt(Expr(2)), FlowControlTypeReady), None)
             }
           }
 
           "with attribute" in {
-            inside("(* foo *) in i2 a;".asTree[DeclIdent]) {
-              case DeclIdent(ident @ Ident("a"),
+            inside("(* foo *) in i2 a;".asTree[DeclRef]) {
+              case DeclRef(ident @ Ident("a", Nil),
                              TypeIn(TypeSInt(Expr(2)), FlowControlTypeNone),
                              None) =>
                 ident.hasAttr shouldBe true
@@ -357,56 +357,56 @@ final class ParserSpec extends FreeSpec with AlogicTest {
         }
 
         "parameter" in {
-          "param i2 a = 2;".asTree[DeclIdent] shouldBe {
-            DeclIdent(Ident("a"), TypeParam(TypeSInt(Expr(2))), Some(Expr(2)))
+          "param i2 a = 2;".asTree[DeclRef] shouldBe {
+            DeclRef(Ident("a", Nil), TypeParam(TypeSInt(Expr(2))), Some(Expr(2)))
           }
         }
 
         "parameter with attribute" in {
-          inside("(* foo *) param i2 a = 2;".asTree[DeclIdent]) {
-            case DeclIdent(ident @ Ident("a"), TypeParam(TypeSInt(Expr(2))), Some(Expr(2))) =>
+          inside("(* foo *) param i2 a = 2;".asTree[DeclRef]) {
+            case DeclRef(ident @ Ident("a", Nil), TypeParam(TypeSInt(Expr(2))), Some(Expr(2))) =>
               ident.hasAttr shouldBe true
               ident.attr shouldBe Map("foo" -> Expr(1))
           }
         }
 
         "constant" in {
-          "const i2 a = 2;".asTree[DeclIdent] shouldBe {
-            DeclIdent(Ident("a"), TypeConst(TypeSInt(Expr(2))), Some(Expr(2)))
+          "const i2 a = 2;".asTree[DeclRef] shouldBe {
+            DeclRef(Ident("a", Nil), TypeConst(TypeSInt(Expr(2))), Some(Expr(2)))
           }
         }
 
         "constant with attribute" in {
-          inside("(* foo *) const i2 a = 2;".asTree[DeclIdent]) {
-            case DeclIdent(ident @ Ident("a"), TypeConst(TypeSInt(Expr(2))), Some(Expr(2))) =>
+          inside("(* foo *) const i2 a = 2;".asTree[DeclRef]) {
+            case DeclRef(ident @ Ident("a", Nil), TypeConst(TypeSInt(Expr(2))), Some(Expr(2))) =>
               ident.hasAttr shouldBe true
               ident.attr shouldBe Map("foo" -> Expr(1))
           }
         }
 
         "pipeline variable" in {
-          "pipeline u8 a;".asTree[DeclIdent] shouldBe {
-            DeclIdent(Ident("a"), TypePipeline(TypeUInt(Expr(8))), None)
+          "pipeline u8 a;".asTree[DeclRef] shouldBe {
+            DeclRef(Ident("a", Nil), TypePipeline(TypeUInt(Expr(8))), None)
           }
         }
 
         "pipeline variable with attribute" in {
-          inside("(* foo *) pipeline u8 a;".asTree[DeclIdent]) {
-            case DeclIdent(ident @ Ident("a"), TypePipeline(TypeUInt(Expr(8))), None) =>
+          inside("(* foo *) pipeline u8 a;".asTree[DeclRef]) {
+            case DeclRef(ident @ Ident("a", Nil), TypePipeline(TypeUInt(Expr(8))), None) =>
               ident.hasAttr shouldBe true
               ident.attr shouldBe Map("foo" -> Expr(1))
           }
         }
 
         "sram" in {
-          "sram u8 a[10];".asTree[DeclIdent] shouldBe {
-            DeclIdent(Ident("a"), TypeSram(TypeUInt(Expr(8)), Expr(10), StorageTypeReg), None)
+          "sram u8 a[10];".asTree[DeclRef] shouldBe {
+            DeclRef(Ident("a", Nil), TypeSram(TypeUInt(Expr(8)), Expr(10), StorageTypeReg), None)
           }
         }
 
         "sram with attribute" in {
-          inside("(* foo *) sram u8 a[10];".asTree[DeclIdent]) {
-            case DeclIdent(ident @ Ident("a"),
+          inside("(* foo *) sram u8 a[10];".asTree[DeclRef]) {
+            case DeclRef(ident @ Ident("a", Nil),
                            TypeSram(TypeUInt(Expr(8)), Expr(10), StorageTypeReg),
                            None) =>
               ident.hasAttr shouldBe true
@@ -415,14 +415,14 @@ final class ParserSpec extends FreeSpec with AlogicTest {
         }
 
         "sram wire" in {
-          "sram wire u8 a[10];".asTree[DeclIdent] shouldBe {
-            DeclIdent(Ident("a"), TypeSram(TypeUInt(Expr(8)), Expr(10), StorageTypeWire), None)
+          "sram wire u8 a[10];".asTree[DeclRef] shouldBe {
+            DeclRef(Ident("a", Nil), TypeSram(TypeUInt(Expr(8)), Expr(10), StorageTypeWire), None)
           }
         }
 
         "sram wire with attribute" in {
-          inside("(* foo *) sram wire u8 a[10];".asTree[DeclIdent]) {
-            case DeclIdent(ident @ Ident("a"),
+          inside("(* foo *) sram wire u8 a[10];".asTree[DeclRef]) {
+            case DeclRef(ident @ Ident("a", Nil),
                            TypeSram(TypeUInt(Expr(8)), Expr(10), StorageTypeWire),
                            None) =>
               ident.hasAttr shouldBe true
@@ -455,11 +455,11 @@ final class ParserSpec extends FreeSpec with AlogicTest {
 
         "parametrized integers" - {
           "unsigned" in {
-            "uint(N)".asTree[Expr] shouldBe ExprType(TypeUInt(ExprIdent("N")))
+            "uint(N)".asTree[Expr] shouldBe ExprType(TypeUInt(ExprRef(Ident("N", Nil))))
           }
 
           "signed" in {
-            "int(N)".asTree[Expr] shouldBe ExprType(TypeSInt(ExprIdent("N")))
+            "int(N)".asTree[Expr] shouldBe ExprType(TypeSInt(ExprRef(Ident("N", Nil))))
           }
         }
 
@@ -531,7 +531,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
       "entity contents" - {
         "empty" in {
           "fsm a {}".asTree[Entity] shouldBe {
-            Entity(Ident("a"), Nil)
+            Entity(Ident("a", Nil), Nil)
           }
         }
 
@@ -540,10 +540,10 @@ final class ParserSpec extends FreeSpec with AlogicTest {
              |  in bool p_in;
              |}""".stripMargin.asTree[Entity] shouldBe {
             Entity(
-              Ident("b"),
+              Ident("b", Nil),
               List(
                 EntDecl(
-                  DeclIdent(Ident("p_in"), TypeIn(TypeUInt(Expr(1)), FlowControlTypeNone), None))
+                  DeclRef(Ident("p_in", Nil), TypeIn(TypeUInt(Expr(1)), FlowControlTypeNone), None))
               )
             )
           }
@@ -554,8 +554,8 @@ final class ParserSpec extends FreeSpec with AlogicTest {
              |  i = new j();
              |}""".stripMargin.asTree[Entity] shouldBe {
             Entity(
-              Ident("c"),
-              List(EntInstance(Ident("i"), Ident("j"), Nil, Nil))
+              Ident("c", Nil),
+              List(EntInstance(Ident("i", Nil), Ident("j", Nil), Nil, Nil))
             )
           }
         }
@@ -565,8 +565,8 @@ final class ParserSpec extends FreeSpec with AlogicTest {
              |  i = new j(A=2, B=3);
              |}""".stripMargin.asTree[Entity] shouldBe {
             Entity(
-              Ident("d"),
-              List(EntInstance(Ident("i"), Ident("j"), List("A", "B"), List(Expr(2), Expr(3))))
+              Ident("d", Nil),
+              List(EntInstance(Ident("i", Nil), Ident("j", Nil), List("A", "B"), List(Expr(2), Expr(3))))
             )
           }
         }
@@ -578,8 +578,8 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                         |}""".stripMargin.asTree[Entity]
           tree shouldBe {
             Entity(
-              Ident("d2"),
-              List(EntInstance(Ident("i"), Ident("j"), Nil, Nil))
+              Ident("d2", Nil),
+              List(EntInstance(Ident("i", Nil), Ident("j", Nil), Nil, Nil))
             )
           }
           val ident = (tree collectFirst { case EntInstance(i: Ident, _, _, _) => i }).value
@@ -592,9 +592,9 @@ final class ParserSpec extends FreeSpec with AlogicTest {
              |  i.a -> j.b;
              |}""".stripMargin.asTree[Entity] shouldBe {
             Entity(
-              Ident("e"),
+              Ident("e", Nil),
               List(
-                EntConnect(ExprSelect(ExprIdent("i"), "a"), List(ExprSelect(ExprIdent("j"), "b"))))
+                EntConnect(ExprSelect(ExprRef(Ident("i", Nil)), "a", Nil), List(ExprSelect(ExprRef(Ident("j", Nil)), "b", Nil))))
             )
           }
         }
@@ -604,12 +604,27 @@ final class ParserSpec extends FreeSpec with AlogicTest {
              |  i.a -> j.b, k.c;
              |}""".stripMargin.asTree[Entity] shouldBe {
             Entity(
-              Ident("f"),
+              Ident("f", Nil),
               List(
                 EntConnect(
-                  ExprSelect(ExprIdent("i"), "a"),
-                  List(ExprSelect(ExprIdent("j"), "b"), ExprSelect(ExprIdent("k"), "c"))
+                  ExprSelect(ExprRef(Ident("i", Nil)), "a", Nil),
+                  List(ExprSelect(ExprRef(Ident("j", Nil)), "b", Nil), ExprSelect(ExprRef(Ident("k", Nil)), "c", Nil))
                 ))
+            )
+          }
+        }
+
+        "dict connection" in {
+          """|network e {
+             |  i.a#[0] -> j.b#[1, 2];
+             |}""".stripMargin.asTree[Entity] shouldBe {
+            Entity(
+              Ident("e", Nil),
+              List(
+                EntConnect(
+                  ExprSelect(ExprRef(Ident("i", Nil)), "a", Expr(0):: Nil),
+                  List(ExprSelect(ExprRef(Ident("j", Nil)), "b", Expr(1) :: Expr(2) :: Nil)))
+              )
             )
           }
         }
@@ -621,8 +636,8 @@ final class ParserSpec extends FreeSpec with AlogicTest {
              |  }
              |}""".stripMargin.asTree[Entity] shouldBe {
             Entity(
-              Ident("g"),
-              List(EntCombProcess(List(StmtBlock(List(StmtAssign(ExprIdent("a"), Expr(1)))))))
+              Ident("g", Nil),
+              List(EntCombProcess(List(StmtBlock(List(StmtAssign(ExprRef(Ident("a", Nil)), Expr(1)))))))
             )
           }
         }
@@ -632,8 +647,8 @@ final class ParserSpec extends FreeSpec with AlogicTest {
              |  void main() {}
              |}""".stripMargin.asTree[Entity] shouldBe {
             Entity(
-              Ident("g"),
-              List(EntFunction(Ident("main"), Nil))
+              Ident("g", Nil),
+              List(EntFunction(Ident("main", Nil), Nil))
             )
           }
         }
@@ -645,8 +660,8 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                         |}""".stripMargin.asTree[Entity]
           tree shouldBe {
             Entity(
-              Ident("g"),
-              List(EntFunction(Ident("main"), Nil))
+              Ident("g", Nil),
+              List(EntFunction(Ident("main", Nil), Nil))
             )
           }
           val ident = (tree collectFirst { case EntFunction(i: Ident, _) => i }).value
@@ -665,8 +680,8 @@ final class ParserSpec extends FreeSpec with AlogicTest {
              |  fsm i {}
              |}""".stripMargin.asTree[Entity] shouldBe {
             Entity(
-              Ident("h"),
-              List(EntEntity(Entity(Ident("i"), Nil)))
+              Ident("h", Nil),
+              List(EntEntity(Entity(Ident("i", Nil), Nil)))
             )
           }
         }
@@ -677,11 +692,11 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                         |}""".stripMargin.asTree[Entity]
           tree shouldBe {
             Entity(
-              Ident("h2"),
-              List(EntEntity(Entity(Ident("i"), Nil)))
+              Ident("h2", Nil),
+              List(EntEntity(Entity(Ident("i", Nil), Nil)))
             )
           }
-          val ident = (tree collectFirst { case ident @ Ident("i") => ident }).value
+          val ident = (tree collectFirst { case ident @ Ident("i", Nil) => ident }).value
           ident.hasAttr shouldBe true
           ident.attr shouldBe Map("foo" -> Expr(1), "//variant" -> ExprStr("fsm"))
         }
@@ -691,10 +706,10 @@ final class ParserSpec extends FreeSpec with AlogicTest {
              |  new fsm i {}
              |}""".stripMargin.asTree[Entity] shouldBe {
             Entity(
-              Ident("h3"),
+              Ident("h3", Nil),
               List(
-                EntEntity(Entity(Ident("i"), Nil)),
-                EntInstance(Ident("i"), Ident("i"), Nil, Nil)
+                EntEntity(Entity(Ident("i", Nil), Nil)),
+                EntInstance(Ident("i", Nil), Ident("i", Nil), Nil, Nil)
               )
             )
           }
@@ -705,10 +720,10 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                         |}""".stripMargin.asTree[Entity]
           tree shouldBe {
             Entity(
-              Ident("h4"),
+              Ident("h4", Nil),
               List(
-                EntEntity(Entity(Ident("i"), Nil)),
-                EntInstance(Ident("i"), Ident("i"), Nil, Nil)
+                EntEntity(Entity(Ident("i", Nil), Nil)),
+                EntInstance(Ident("i", Nil), Ident("i", Nil), Nil, Nil)
               )
             )
           }
@@ -720,7 +735,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
           iIdent.attr shouldBe Map("foo" -> Expr(1))
 
           val eIdent = tree getFirst {
-            case Entity(ident @ Ident("i"), _) => ident
+            case Entity(ident @ Ident("i", Nil), _) => ident
           }
           eIdent.hasAttr shouldBe true
           eIdent.attr shouldBe Map("//variant" -> ExprStr("fsm"))
@@ -732,10 +747,10 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                         |}""".stripMargin.asTree[Entity]
           tree shouldBe {
             Entity(
-              Ident("h4"),
+              Ident("h4", Nil),
               List(
-                EntEntity(Entity(Ident("i"), Nil)),
-                EntInstance(Ident("i"), Ident("i"), Nil, Nil)
+                EntEntity(Entity(Ident("i", Nil), Nil)),
+                EntInstance(Ident("i", Nil), Ident("i", Nil), Nil, Nil)
               )
             )
           }
@@ -746,7 +761,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
           iIdent.hasAttr shouldBe false
 
           val eIdent = tree getFirst {
-            case Entity(ident @ Ident("i"), _) => ident
+            case Entity(ident @ Ident("i", Nil), _) => ident
           }
           eIdent.hasAttr shouldBe true
           eIdent.attr shouldBe Map("bar" -> Expr(1), "//variant" -> ExprStr("fsm"))
@@ -758,10 +773,10 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                         |}""".stripMargin.asTree[Entity]
           tree shouldBe {
             Entity(
-              Ident("h4"),
+              Ident("h4", Nil),
               List(
-                EntEntity(Entity(Ident("i"), Nil)),
-                EntInstance(Ident("i"), Ident("i"), Nil, Nil)
+                EntEntity(Entity(Ident("i", Nil), Nil)),
+                EntInstance(Ident("i", Nil), Ident("i", Nil), Nil, Nil)
               )
             )
           }
@@ -773,7 +788,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
           iIdent.attr shouldBe Map("foo" -> Expr(1))
 
           val eIdent = tree getFirst {
-            case Entity(ident @ Ident("i"), _) => ident
+            case Entity(ident @ Ident("i", Nil), _) => ident
           }
           eIdent.hasAttr shouldBe true
           eIdent.attr shouldBe Map("bar" -> Expr(1), "//variant" -> ExprStr("fsm"))
@@ -786,7 +801,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
              |  }
              |}""".stripMargin.asTree[Entity] shouldBe {
             Entity(
-              Ident("i"),
+              Ident("i", Nil),
               List(EntVerbatim("verilog", "\n    +-/* comment */ {{{}}}\n  "))
             )
           }
@@ -799,7 +814,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
              |  }
              |}""".stripMargin.asTree[Entity] shouldBe {
             Entity(
-              Ident("j"),
+              Ident("j", Nil),
               List(EntVerbatim("other", "\n    +-/* comment */ {{{}}}\n  "))
             )
           }
@@ -816,7 +831,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
              |  }
              |}""".stripMargin.asTree[Entity] shouldBe {
             Entity(
-              Ident("k"),
+              Ident("k", Nil),
               List(
                 EntVerbatim("verilog", "\n    first\n  "),
                 EntVerbatim("verilog", "\nsecond\n  ")
@@ -851,7 +866,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
 
         "branching" - {
           "if without else, without brace" in {
-            "if (1) a;".asTree[Stmt] shouldBe StmtIf(Expr(1), List(StmtExpr(ExprIdent("a"))), Nil)
+            "if (1) a;".asTree[Stmt] shouldBe StmtIf(Expr(1), List(StmtExpr(ExprRef(Ident("a", Nil)))), Nil)
           }
 
           "if with else, without brace" in {
@@ -861,7 +876,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
           }
 
           "if without else, with brace" in {
-            "if (1) {a;}".asTree[Stmt] shouldBe StmtIf(Expr(1), List(StmtExpr(ExprIdent("a"))), Nil)
+            "if (1) {a;}".asTree[Stmt] shouldBe StmtIf(Expr(1), List(StmtExpr(ExprRef(Ident("a", Nil)))), Nil)
           }
 
           "if with else, with brace" in {
@@ -883,8 +898,8 @@ final class ParserSpec extends FreeSpec with AlogicTest {
               StmtCase(
                 Expr(1),
                 List(
-                  CaseRegular(List(Expr(1)), List(StmtExpr(ExprIdent("a")))),
-                  CaseRegular(List(Expr(2)), List(StmtExpr(ExprIdent("b"))))
+                  CaseRegular(List(Expr(1)), List(StmtExpr(ExprRef(Ident("a", Nil))))),
+                  CaseRegular(List(Expr(2)), List(StmtExpr(ExprRef(Ident("b", Nil)))))
                 )
               )
             }
@@ -898,7 +913,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
               StmtCase(
                 Expr(1),
                 List(
-                  CaseDefault(List(StmtExpr(ExprIdent("c"))))
+                  CaseDefault(List(StmtExpr(ExprRef(Ident("c", Nil)))))
                 )
               )
             }
@@ -913,8 +928,8 @@ final class ParserSpec extends FreeSpec with AlogicTest {
               StmtCase(
                 Expr(1),
                 List(
-                  CaseRegular(List(Expr(1)), List(StmtExpr(ExprIdent("c")))),
-                  CaseRegular(List(Expr(2), Expr(3)), List(StmtExpr(ExprIdent("d"))))
+                  CaseRegular(List(Expr(1)), List(StmtExpr(ExprRef(Ident("c", Nil))))),
+                  CaseRegular(List(Expr(2), Expr(3)), List(StmtExpr(ExprRef(Ident("d", Nil)))))
                 )
               )
             }
@@ -929,8 +944,8 @@ final class ParserSpec extends FreeSpec with AlogicTest {
               StmtCase(
                 Expr(1),
                 List(
-                  CaseDefault(List(StmtExpr(ExprIdent("c")))),
-                  CaseDefault(List(StmtExpr(ExprIdent("d"))))
+                  CaseDefault(List(StmtExpr(ExprRef(Ident("c", Nil))))),
+                  CaseDefault(List(StmtExpr(ExprRef(Ident("d", Nil)))))
                 )
               )
             }
@@ -947,10 +962,10 @@ final class ParserSpec extends FreeSpec with AlogicTest {
               StmtCase(
                 Expr(1),
                 List(
-                  CaseRegular(List(Expr(1)), List(StmtExpr(ExprIdent("a")))),
-                  CaseDefault(List(StmtExpr(ExprIdent("b")))),
-                  CaseRegular(List(Expr(3)), List(StmtExpr(ExprIdent("c")))),
-                  CaseDefault(List(StmtExpr(ExprIdent("d"))))
+                  CaseRegular(List(Expr(1)), List(StmtExpr(ExprRef(Ident("a", Nil))))),
+                  CaseDefault(List(StmtExpr(ExprRef(Ident("b", Nil))))),
+                  CaseRegular(List(Expr(3)), List(StmtExpr(ExprRef(Ident("c", Nil))))),
+                  CaseDefault(List(StmtExpr(ExprRef(Ident("d", Nil)))))
                 )
               )
             }
@@ -965,8 +980,8 @@ final class ParserSpec extends FreeSpec with AlogicTest {
               StmtCase(
                 Expr(1),
                 List(
-                  CaseRegular(List(Expr(1)), List(StmtExpr(ExprIdent("a")))),
-                  CaseDefault(List(StmtExpr(ExprIdent("c"))))
+                  CaseRegular(List(Expr(1)), List(StmtExpr(ExprRef(Ident("a", Nil))))),
+                  CaseDefault(List(StmtExpr(ExprRef(Ident("c", Nil)))))
                 )
               )
             }
@@ -981,8 +996,8 @@ final class ParserSpec extends FreeSpec with AlogicTest {
               StmtCase(
                 Expr(1),
                 List(
-                  CaseRegular(List(Expr(1)), List(StmtExpr(ExprIdent("a")))),
-                  CaseDefault(List(StmtExpr(ExprIdent("c"))))
+                  CaseRegular(List(Expr(1)), List(StmtExpr(ExprRef(Ident("a", Nil))))),
+                  CaseDefault(List(StmtExpr(ExprRef(Ident("c", Nil)))))
                 )
               )
             }
@@ -999,13 +1014,13 @@ final class ParserSpec extends FreeSpec with AlogicTest {
           "while" in {
             """|while (a) {
                |  fence;
-               |}""".stripMargin.asTree[Stmt] shouldBe StmtWhile(ExprIdent("a"), List(StmtFence()))
+               |}""".stripMargin.asTree[Stmt] shouldBe StmtWhile(ExprRef(Ident("a", Nil)), List(StmtFence()))
           }
 
           "do" in {
             """|do {
                | fence;
-               |} while(b);""".stripMargin.asTree[Stmt] shouldBe StmtDo(ExprIdent("b"),
+               |} while(b);""".stripMargin.asTree[Stmt] shouldBe StmtDo(ExprRef(Ident("b", Nil)),
                                                                         List(StmtFence()))
           }
 
@@ -1019,9 +1034,9 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                  |  2;
                  |}""".stripMargin.asTree[Stmt] shouldBe {
                 StmtFor(
-                  List(StmtAssign(ExprIdent("a"), Expr(2))),
-                  Some(ExprIdent("a")),
-                  List(StmtPost(ExprIdent("a"), "--")),
+                  List(StmtAssign(ExprRef(Ident("a", Nil)), Expr(2))),
+                  Some(ExprRef(Ident("a", Nil))),
+                  List(StmtPost(ExprRef(Ident("a", Nil)), "--")),
                   List(StmtExpr(Expr(2)))
                 )
 
@@ -1033,9 +1048,9 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                  |  2;
                  |}""".stripMargin.asTree[Stmt] shouldBe {
                 StmtFor(
-                  List(StmtDecl(DeclIdent(Ident("a"), TypeSInt(Expr(8)), Some(Expr(2))))),
-                  Some(ExprIdent("a")),
-                  List(StmtPost(ExprIdent("a"), "--")),
+                  List(StmtDecl(DeclRef(Ident("a", Nil), TypeSInt(Expr(8)), Some(Expr(2))))),
+                  Some(ExprRef(Ident("a", Nil))),
+                  List(StmtPost(ExprRef(Ident("a", Nil)), "--")),
                   List(StmtExpr(Expr(2)))
                 )
               }
@@ -1046,8 +1061,8 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                  |}""".stripMargin.asTree[Stmt] shouldBe {
                 StmtFor(
                   List(
-                    StmtDecl(DeclIdent(Ident("a"), TypeSInt(Expr(8)), Some(Expr(2)))),
-                    StmtAssign(ExprIdent("b"), Expr(1))
+                    StmtDecl(DeclRef(Ident("a", Nil), TypeSInt(Expr(8)), Some(Expr(2)))),
+                    StmtAssign(ExprRef(Ident("b", Nil)), Expr(1))
                   ),
                   None,
                   Nil,
@@ -1063,8 +1078,8 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                   Nil,
                   None,
                   List(
-                    StmtPost(ExprIdent("a"), "++"),
-                    StmtPost(ExprIdent("b"), "--")
+                    StmtPost(ExprRef(Ident("a", Nil)), "++"),
+                    StmtPost(ExprRef(Ident("b", Nil)), "--")
                   ),
                   Nil
                 )
@@ -1076,13 +1091,13 @@ final class ParserSpec extends FreeSpec with AlogicTest {
         "let" - {
           "single assignment" in {
             "let (a=2) loop {}".asTree[Stmt] shouldBe {
-              StmtLet(List(StmtAssign(ExprIdent("a"), Expr(2))), List(StmtLoop(Nil)))
+              StmtLet(List(StmtAssign(ExprRef(Ident("a", Nil)), Expr(2))), List(StmtLoop(Nil)))
             }
           }
 
           "single declaration" in {
             "let (i2 a=1) loop {}".asTree[Stmt] shouldBe {
-              StmtLet(List(StmtDecl(DeclIdent(Ident("a"), TypeSInt(Expr(2)), Some(Expr(1))))),
+              StmtLet(List(StmtDecl(DeclRef(Ident("a", Nil), TypeSInt(Expr(2)), Some(Expr(1))))),
                       List(StmtLoop(Nil)))
             }
           }
@@ -1091,8 +1106,8 @@ final class ParserSpec extends FreeSpec with AlogicTest {
             "let (i2 a=b, c=a) loop {}".asTree[Stmt] shouldBe {
               StmtLet(
                 List(
-                  StmtDecl(DeclIdent(Ident("a"), TypeSInt(Expr(2)), Some(ExprIdent("b")))),
-                  StmtAssign(ExprIdent("c"), ExprIdent("a"))
+                  StmtDecl(DeclRef(Ident("a", Nil), TypeSInt(Expr(2)), Some(ExprRef(Ident("b", Nil))))),
+                  StmtAssign(ExprRef(Ident("c", Nil)), ExprRef(Ident("a", Nil)))
                 ),
                 List(StmtLoop(Nil))
               )
@@ -1118,50 +1133,50 @@ final class ParserSpec extends FreeSpec with AlogicTest {
         }
 
         "goto" in {
-          "goto foo;".asTree[Stmt] shouldBe StmtGoto(ExprIdent("foo"))
+          "goto foo;".asTree[Stmt] shouldBe StmtGoto(ExprRef(Ident("foo", Nil)))
         }
 
         // TODO: assignments
         "assignments" - {
           "simple" in {
-            "a = 1;".asTree[Stmt] shouldBe StmtAssign(ExprIdent("a"), Expr(1))
+            "a = 1;".asTree[Stmt] shouldBe StmtAssign(ExprRef(Ident("a", Nil)), Expr(1))
           }
 
           "update +=" in {
-            "b += 2;".asTree[Stmt] shouldBe StmtUpdate(ExprIdent("b"), "+", Expr(2))
+            "b += 2;".asTree[Stmt] shouldBe StmtUpdate(ExprRef(Ident("b", Nil)), "+", Expr(2))
           }
 
           "update <<=" in {
-            "c <<= 3;".asTree[Stmt] shouldBe StmtUpdate(ExprIdent("c"), "<<", Expr(3))
+            "c <<= 3;".asTree[Stmt] shouldBe StmtUpdate(ExprRef(Ident("c", Nil)), "<<", Expr(3))
           }
 
           "postfix ++" in {
-            "d++;".asTree[Stmt] shouldBe StmtPost(ExprIdent("d"), "++")
+            "d++;".asTree[Stmt] shouldBe StmtPost(ExprRef(Ident("d", Nil)), "++")
           }
 
           "postfix --" in {
-            "e--;".asTree[Stmt] shouldBe StmtPost(ExprIdent("e"), "--")
+            "e--;".asTree[Stmt] shouldBe StmtPost(ExprRef(Ident("e", Nil)), "--")
           }
         }
 
         "expressions in statement position" - {
           "identifier" in {
-            "a;".asTree[Stmt] shouldBe StmtExpr(ExprIdent("a"))
+            "a;".asTree[Stmt] shouldBe StmtExpr(ExprRef(Ident("a", Nil)))
           }
 
           "call" in {
-            "b();".asTree[Stmt] shouldBe StmtExpr(ExprCall(ExprIdent("b"), Nil))
+            "b();".asTree[Stmt] shouldBe StmtExpr(ExprCall(ExprRef(Ident("b", Nil)), Nil))
           }
         }
 
         "declaration statements" - {
           "scalar without initializer" in {
-            "u2 a;".asTree[Stmt] shouldBe StmtDecl(DeclIdent(Ident("a"), TypeUInt(Expr(2)), None))
+            "u2 a;".asTree[Stmt] shouldBe StmtDecl(DeclRef(Ident("a", Nil), TypeUInt(Expr(2)), None))
           }
 
           "scalar with initializer" in {
             "i2 b = 3;".asTree[Stmt] shouldBe {
-              StmtDecl(DeclIdent(Ident("b"), TypeSInt(Expr(2)), Some(Expr(3))))
+              StmtDecl(DeclRef(Ident("b", Nil), TypeSInt(Expr(2)), Some(Expr(3))))
             }
           }
         }
@@ -1493,22 +1508,22 @@ final class ParserSpec extends FreeSpec with AlogicTest {
           }
 
           "call with no arguments" in {
-            "a()".asTree[Expr] shouldBe ExprCall(ExprIdent("a"), Nil)
+            "a()".asTree[Expr] shouldBe ExprCall(ExprRef(Ident("a", Nil)), Nil)
           }
 
           "call with 1 argument" in {
-            "b(2)".asTree[Expr] shouldBe ExprCall(ExprIdent("b"), List(Expr(2)))
+            "b(2)".asTree[Expr] shouldBe ExprCall(ExprRef(Ident("b", Nil)), List(Expr(2)))
           }
 
           "call with 2 arguments" in {
             "c(d, e)".asTree[Expr] shouldBe {
-              ExprCall(ExprIdent("c"), List(ExprIdent("d"), ExprIdent("e")))
+              ExprCall(ExprRef(Ident("c", Nil)), List(ExprRef(Ident("d", Nil)), ExprRef(Ident("e", Nil))))
             }
           }
 
           for (op <- List("+", "-", "~", "!", "&", "|", "^", "'")) {
-            s"unary ${op}" in {
-              s"${op}(2)".asTree[Expr] shouldBe ExprUnary(op, Expr(2))
+            s"unary $op" in {
+              s"$op(2)".asTree[Expr] shouldBe ExprUnary(op, Expr(2))
             }
           }
 
@@ -1533,7 +1548,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                           "&&",
                           "||")) {
             s"binary $op" in {
-              s"4 ${op} 3".asTree[Expr] shouldBe ExprBinary(Expr(4), op, Expr(3))
+              s"4 $op 3".asTree[Expr] shouldBe ExprBinary(Expr(4), op, Expr(3))
             }
           }
 
@@ -1542,7 +1557,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
           }
 
           "repetition" in {
-            "{N{a}}".asTree[Expr] shouldBe ExprRep(ExprIdent("N"), ExprIdent("a"))
+            "{N{a}}".asTree[Expr] shouldBe ExprRep(ExprRef(Ident("N", Nil)), ExprRef(Ident("a", Nil)))
           }
 
           "concatenation" in {
@@ -1551,27 +1566,27 @@ final class ParserSpec extends FreeSpec with AlogicTest {
 
           "multiple concatenation " in {
             "{N{a, b}}".asTree[Expr] shouldBe {
-              ExprRep(ExprIdent("N"), ExprCat(List(ExprIdent("a"), ExprIdent("b"))))
+              ExprRep(ExprRef(Ident("N", Nil)), ExprCat(List(ExprRef(Ident("a", Nil)), ExprRef(Ident("b", Nil)))))
             }
           }
 
           "index 1x" in {
-            "a[0]".asTree[Expr] shouldBe ExprIndex(ExprIdent("a"), Expr(0))
+            "a[0]".asTree[Expr] shouldBe ExprIndex(ExprRef(Ident("a", Nil)), Expr(0))
           }
 
           "index 2x" in {
             "a[0][2]".asTree[Expr] shouldBe {
-              ExprIndex(ExprIndex(ExprIdent("a"), Expr(0)), Expr(2))
+              ExprIndex(ExprIndex(ExprRef(Ident("a", Nil)), Expr(0)), Expr(2))
             }
           }
 
           "slice 1x" in {
-            "b[1:0]".asTree[Expr] shouldBe ExprSlice(ExprIdent("b"), Expr(1), ":", Expr(0))
+            "b[1:0]".asTree[Expr] shouldBe ExprSlice(ExprRef(Ident("b", Nil)), Expr(1), ":", Expr(0))
           }
 
           "slice 2x" in {
             "b[2+:0][1-:1]".asTree[Expr] should matchPattern {
-              case ExprSlice(ExprSlice(ExprIdent("b"), Expr(2), "+:", Expr(0)),
+              case ExprSlice(ExprSlice(ExprRef(Ident("b", Nil)), Expr(2), "+:", Expr(0)),
                              Expr(1),
                              "-:",
                              Expr(1)) =>
@@ -1579,35 +1594,35 @@ final class ParserSpec extends FreeSpec with AlogicTest {
           }
 
           "select 1x" in {
-            "a.b".asTree[Expr] shouldBe ExprSelect(ExprIdent("a"), "b")
+            "a.b".asTree[Expr] shouldBe ExprSelect(ExprRef(Ident("a", Nil)), "b", Nil)
           }
 
           "select 2x" in {
-            "a.b.c".asTree[Expr] shouldBe ExprSelect(ExprSelect(ExprIdent("a"), "b"), "c")
+            "a.b.c".asTree[Expr] shouldBe ExprSelect(ExprSelect(ExprRef(Ident("a", Nil)), "b", Nil), "c", Nil)
           }
 
           "@id" in {
-            "@zx".asTree[Expr] shouldBe ExprIdent("@zx")
+            "@zx".asTree[Expr] shouldBe ExprRef(Ident("@zx", Nil))
           }
 
           "$id" in {
-            "$clog2".asTree[Expr] shouldBe ExprIdent("$clog2")
+            "$clog2".asTree[Expr] shouldBe ExprRef(Ident("$clog2", Nil))
           }
 
           "@ call" in {
             "@zx(0, a)".asTree[Expr] shouldBe {
-              ExprCall(ExprIdent("@zx"), List(Expr(0), ExprIdent("a")))
+              ExprCall(ExprRef(Ident("@zx", Nil)), List(Expr(0), ExprRef(Ident("a", Nil))))
             }
           }
 
           "$ call" in {
             "$clog2(a)".asTree[Expr] shouldBe {
-              ExprCall(ExprIdent("$clog2"), List(ExprIdent("a")))
+              ExprCall(ExprRef(Ident("$clog2", Nil)), List(ExprRef(Ident("a", Nil))))
             }
           }
 
           "identifier" in {
-            "foo".asTree[Expr] shouldBe ExprIdent("foo")
+            "foo".asTree[Expr] shouldBe ExprRef(Ident("foo", Nil))
           }
 
           "type" in {
@@ -1629,32 +1644,32 @@ final class ParserSpec extends FreeSpec with AlogicTest {
 
           "a.b && a.c" in {
             "a.b && a.c".asTree[Expr] shouldBe {
-              ExprSelect(ExprIdent("a"), "b") && ExprSelect(ExprIdent("a"), "c")
+              ExprSelect(ExprRef(Ident("a", Nil)), "b", Nil) && ExprSelect(ExprRef(Ident("a", Nil)), "c", Nil)
             }
           }
 
           "a.b && a.c == 1" in {
             "a.b && a.c == 1".asTree[Expr] shouldBe {
-              ExprSelect(ExprIdent("a"), "b") &&
-              ExprBinary(ExprSelect(ExprIdent("a"), "c"), "==", Expr(1))
+              ExprSelect(ExprRef(Ident("a", Nil)), "b", Nil) &&
+              ExprBinary(ExprSelect(ExprRef(Ident("a", Nil)), "c", Nil), "==", Expr(1))
             }
           }
 
           "a.b && a[0]" in {
             "a.b && a[0]".asTree[Expr] shouldBe {
-              ExprSelect(ExprIdent("a"), "b") && ExprIndex(ExprIdent("a"), 0)
+              ExprSelect(ExprRef(Ident("a", Nil)), "b", Nil) && ExprIndex(ExprRef(Ident("a", Nil)), 0)
             }
           }
 
           "a.b && a[1:0]" in {
             "a.b && a[1:0]".asTree[Expr] shouldBe {
-              ExprSelect(ExprIdent("a"), "b") && ExprSlice(ExprIdent("a"), 1, ":", 0)
+              ExprSelect(ExprRef(Ident("a", Nil)), "b", Nil) && ExprSlice(ExprRef(Ident("a", Nil)), 1, ":", 0)
             }
           }
 
           "a.b[1]" in {
             "a.b[1]".asTree[Expr] shouldBe {
-              ExprIndex(ExprSelect(ExprIdent("a"), "b"), 1)
+              ExprIndex(ExprSelect(ExprRef(Ident("a", Nil)), "b", Nil), 1)
             }
           }
           // TODO: complete all precedence checks
@@ -1707,7 +1722,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
           "with out else" in {
             "gen if (i < 0) { fence; }".asTree[Gen] shouldBe {
               GenIf(
-                ExprIdent("i") < ExprNum(false, 0),
+                ExprRef(Ident("i", Nil)) < ExprNum(false, 0),
                 List(StmtFence()),
                 Nil
               )
@@ -1717,7 +1732,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
           "with else" in {
             "gen if (i < 0) { fence; } else { fence; break; }".asTree[Gen] shouldBe {
               GenIf(
-                ExprIdent("i") < ExprNum(false, 0),
+                ExprRef(Ident("i", Nil)) < ExprNum(false, 0),
                 List(StmtFence()),
                 List(StmtFence(), StmtBreak())
               )
@@ -1733,11 +1748,11 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                |  break;
                |}""".stripMargin.asTree[Gen] shouldBe {
               GenIf(
-                ExprIdent("i"),
+                ExprRef(Ident("i", Nil)),
                 List(StmtFence()),
                 List(
                   GenIf(
-                    ExprIdent("j"),
+                    ExprRef(Ident("j", Nil)),
                     List(StmtReturn()),
                     List(StmtBreak())
                   ))
@@ -1756,16 +1771,16 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                |  break;
                |}""".stripMargin.asTree[Gen] shouldBe {
               GenIf(
-                ExprIdent("i"),
+                ExprRef(Ident("i", Nil)),
                 List(StmtFence()),
                 List(
                   GenIf(
-                    ExprIdent("j"),
+                    ExprRef(Ident("j", Nil)),
                     List(StmtReturn()),
                     List(
                       GenIf(
-                        ExprIdent("k"),
-                        List(StmtExpr(ExprCall(ExprIdent("f"), Nil))),
+                        ExprRef(Ident("k", Nil)),
+                        List(StmtExpr(ExprCall(ExprRef(Ident("f", Nil)), Nil))),
                         List(StmtBreak())
                       ))
                   ))
@@ -1784,9 +1799,9 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                |  2;
                |}""".stripMargin.asTree[Gen] shouldBe {
               GenFor(
-                List(StmtAssign(ExprIdent("a"), Expr(2))),
-                Some(ExprIdent("a")),
-                List(StmtPost(ExprIdent("a"), "--")),
+                List(StmtAssign(ExprRef(Ident("a", Nil)), Expr(2))),
+                Some(ExprRef(Ident("a", Nil))),
+                List(StmtPost(ExprRef(Ident("a", Nil)), "--")),
                 List(StmtExpr(Expr(2)))
               )
             }
@@ -1797,9 +1812,9 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                |  2;
                |}""".stripMargin.asTree[Gen] shouldBe {
               GenFor(
-                List(StmtDecl(DeclIdent(Ident("a"), TypeGen(TypeSInt(Expr(8))), Some(Expr(2))))),
-                Some(ExprIdent("a")),
-                List(StmtPost(ExprIdent("a"), "--")),
+                List(StmtDecl(DeclRef(Ident("a", Nil), TypeGen(TypeSInt(Expr(8))), Some(Expr(2))))),
+                Some(ExprRef(Ident("a", Nil))),
+                List(StmtPost(ExprRef(Ident("a", Nil)), "--")),
                 List(StmtExpr(Expr(2)))
               )
             }
@@ -1810,8 +1825,8 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                |}""".stripMargin.asTree[Gen] shouldBe {
               GenFor(
                 List(
-                  StmtDecl(DeclIdent(Ident("a"), TypeGen(TypeSInt(Expr(8))), Some(Expr(2)))),
-                  StmtAssign(ExprIdent("b"), Expr(1))
+                  StmtDecl(DeclRef(Ident("a", Nil), TypeGen(TypeSInt(Expr(8))), Some(Expr(2)))),
+                  StmtAssign(ExprRef(Ident("b", Nil)), Expr(1))
                 ),
                 None,
                 Nil,
@@ -1827,8 +1842,8 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                 Nil,
                 None,
                 List(
-                  StmtPost(ExprIdent("a"), "++"),
-                  StmtPost(ExprIdent("b"), "--")
+                  StmtPost(ExprRef(Ident("a", Nil)), "++"),
+                  StmtPost(ExprRef(Ident("b", Nil)), "--")
                 ),
                 Nil
               )
@@ -1840,7 +1855,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
           "with <" in {
             "gen for (u8 i < 10) { fence; }".asTree[Gen] shouldBe {
               GenRange(
-                DeclIdent(Ident("i"), TypeGen(TypeUInt(8)), None),
+                DeclRef(Ident("i", Nil), TypeGen(TypeUInt(8)), None),
                 "<",
                 ExprNum(false, 10),
                 List(StmtFence())
@@ -1851,7 +1866,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
           "with <=" in {
             "gen for (i8 j <= 20) { break; }".asTree[Gen] shouldBe {
               GenRange(
-                DeclIdent(Ident("j"), TypeGen(TypeSInt(8)), None),
+                DeclRef(Ident("j", Nil), TypeGen(TypeSInt(8)), None),
                 "<=",
                 ExprNum(false, 20),
                 List(StmtBreak())
@@ -1885,11 +1900,11 @@ final class ParserSpec extends FreeSpec with AlogicTest {
                 case stmtDecl: StmtDecl =>
                   stmtDecl.loc.line shouldBe 3
                   inside(stmtDecl.decl) {
-                    case decl: DeclIdent =>
+                    case decl @  DeclRef(ident: Ident, kind, _) =>
                       decl.loc.line shouldBe 3
-                      decl.ident.loc.line shouldBe 3
-                      inside(decl.kind) {
-                        case TypeIdent(ident: Ident) =>
+                      ident.loc.line shouldBe 3
+                      inside(kind) {
+                        case TypeRef(ident: Ident) =>
                           ident.loc.line shouldBe 3
                       }
                   }

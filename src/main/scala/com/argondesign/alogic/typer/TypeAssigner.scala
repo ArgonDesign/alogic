@@ -42,9 +42,9 @@ final object TypeAssigner {
     case node: Defn        => kind(node)
     case node: Sym         => kind(node)
     case node: Thicket     => kind(node)
-    case _: Root           => unreachable
-    case _: DeclIdent      => unreachable
-    case _: DefnIdent      => unreachable
+    case node: Root        => kind(node)
+    case _: DeclRef        => unreachable
+    case _: DefnRef        => unreachable
     case _: Ident          => unreachable
     case _: Gen            => unreachable
     case _: CaseGen        => unreachable
@@ -54,6 +54,7 @@ final object TypeAssigner {
   // Typing Misc nodes
   //////////////////////////////////////////////////////////////////////////////
 
+  private def kind(node: Root) = TypeMisc
   private def kind(node: Entity) = TypeMisc
   private def kind(node: Decl) = TypeMisc
   private def kind(node: Defn) = TypeMisc
@@ -177,12 +178,12 @@ final object TypeAssigner {
     case node: ExprSelect  => kind(node)
     case node: ExprInt     => kind(node)
     case node: ExprStr     => kind(node)
-    case node: ExprRef     => kind(node)
+    case node: ExprSym     => kind(node)
     case node: ExprType    => kind(node)
     case node: ExprError   => kind(node)
     case node: ExprNum     => kind(node)
     case node: ExprCast    => kind(node)
-    case _: ExprIdent      => unreachable
+    case _: ExprRef        => unreachable
   }
 
   private def kind(node: ExprError) = TypeError
@@ -195,8 +196,8 @@ final object TypeAssigner {
 
   private def kind(node: ExprStr) = TypeStr
 
-  private def kind(node: ExprRef) = {
-    val ExprRef(symbol) = node
+  private def kind(node: ExprSym) = {
+    val ExprSym(symbol) = node
     val tpe = if (symbol == ErrorSymbol) {
       TypeError
     } else {
@@ -304,7 +305,7 @@ final object TypeAssigner {
   // are lots of overloads of these to use static dispatch wherever possible.
   //////////////////////////////////////////////////////////////////////////////
 
-  private def assign(tree: Tree)(kind: => Type): tree.type = {
+  private def assign(tree: Tree)(kind: => Type)(implicit cc: CompilerContext): tree.type = {
     require(!tree.hasTpe)
     def hasError(node: TreeLike): Boolean = node.children exists {
       case child: EntConnect if !child.hasTpe => false
@@ -316,56 +317,56 @@ final object TypeAssigner {
       case child: Type => child.children exists hasError
       case _           => unreachable
     }
-    val tpe = if (hasError(tree)) TypeError else kind
+    val tpe = if (hasError(tree)) TypeError else kind.deref
     tree withTpe tpe
   }
 
   def apply(node: Tree)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
 
   // Other
-  def apply(node: Entity): node.type = assign(node)(kind(node))
-  def apply(node: Decl): node.type = assign(node)(kind(node))
-  def apply(node: Defn): node.type = assign(node)(kind(node))
-  def apply(node: Thicket): node.type = assign(node)(kind(node))
-  def apply(node: CaseRegular): node.type = assign(node)(kind(node))
-  def apply(node: CaseDefault): node.type = assign(node)(kind(node))
-  def apply(node: Sym): node.type = assign(node)(kind(node))
+  def apply(node: Entity)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: Decl)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: Defn)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: Thicket)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: CaseRegular)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: CaseDefault)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: Sym)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
 
   // Ent
-  def apply(node: Ent): node.type = assign(node)(kind(node))
+  def apply(node: Ent)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
 
   // Stmt
-  def apply(node: Stmt): node.type = assign(node)(kind(node))
-  def apply(node: StmtBlock): node.type = assign(node)(kind(node))
-  def apply(node: StmtIf): node.type = assign(node)(kind(node))
-  def apply(node: StmtCase): node.type = assign(node)(kind(node))
-  def apply(node: StmtExpr): node.type = assign(node)(kind(node))
-  def apply(node: StmtLoop): node.type = assign(node)(kind(node))
-  def apply(node: StmtWhile): node.type = assign(node)(kind(node))
-  def apply(node: StmtFor): node.type = assign(node)(kind(node))
-  def apply(node: StmtDo): node.type = assign(node)(kind(node))
-  def apply(node: StmtLet): node.type = assign(node)(kind(node))
-  def apply(node: StmtFence): node.type = assign(node)(kind(node))
-  def apply(node: StmtBreak): node.type = assign(node)(kind(node))
-  def apply(node: StmtContinue): node.type = assign(node)(kind(node))
-  def apply(node: StmtGoto): node.type = assign(node)(kind(node))
-  def apply(node: StmtReturn): node.type = assign(node)(kind(node))
-  def apply(node: StmtAssign): node.type = assign(node)(kind(node))
-  def apply(node: StmtUpdate): node.type = assign(node)(kind(node))
-  def apply(node: StmtPost): node.type = assign(node)(kind(node))
-  def apply(node: StmtDecl): node.type = assign(node)(kind(node))
-  def apply(node: StmtRead): node.type = assign(node)(kind(node))
-  def apply(node: StmtWrite): node.type = assign(node)(kind(node))
-  def apply(node: StmtComment): node.type = assign(node)(kind(node))
-  def apply(node: StmtStall): node.type = assign(node)(kind(node))
-  def apply(node: StmtError): node.type = assign(node)(kind(node))
+  def apply(node: Stmt)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: StmtBlock)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: StmtIf)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: StmtCase)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: StmtExpr)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: StmtLoop)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: StmtWhile)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: StmtFor)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: StmtDo)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: StmtLet)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: StmtFence)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: StmtBreak)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: StmtContinue)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: StmtGoto)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: StmtReturn)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: StmtAssign)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: StmtUpdate)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: StmtPost)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: StmtDecl)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: StmtRead)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: StmtWrite)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: StmtComment)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: StmtStall)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: StmtError)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
 
   // Expr
   def apply(node: Expr)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
   def apply(node: ExprInt)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
-  def apply(node: ExprNum): node.type = assign(node)(kind(node))
-  def apply(node: ExprStr): node.type = assign(node)(kind(node))
-  def apply(node: ExprRef): node.type = assign(node)(kind(node))
+  def apply(node: ExprNum)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: ExprStr)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: ExprSym)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
   def apply(node: ExprUnary)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
   def apply(node: ExprBinary)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
   def apply(node: ExprTernary)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
@@ -373,9 +374,9 @@ final object TypeAssigner {
   def apply(node: ExprRep)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
   def apply(node: ExprIndex)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
   def apply(node: ExprSlice)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
-  def apply(node: ExprSelect): node.type = assign(node)(kind(node))
-  def apply(node: ExprType): node.type = assign(node)(kind(node))
-  def apply(node: ExprCall): node.type = assign(node)(kind(node))
-  def apply(node: ExprCast): node.type = assign(node)(kind(node))
-  def apply(node: ExprError): node.type = assign(node)(kind(node))
+  def apply(node: ExprSelect)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: ExprType)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: ExprCall)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: ExprCast)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
+  def apply(node: ExprError)(implicit cc: CompilerContext): node.type = assign(node)(kind(node))
 }

@@ -20,7 +20,6 @@ import com.argondesign.alogic.core.FlowControlTypes._
 import com.argondesign.alogic.core.StorageTypes._
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.lib.StructuredTree
-import com.argondesign.alogic.typer.TypeAssigner
 
 object Types {
 
@@ -42,19 +41,21 @@ object Types {
   case object TypeState extends Type
 
   sealed trait TypeInt extends Type
-
   // Simple signed integer types e.g.: i8 / int(N), analogous to Verilog packed arrays
   case class TypeSInt(size: Expr) extends TypeInt
   // Simple unsigned integer types e.g.: u2 / uint(N), analogous to Verilog packed arrays
   case class TypeUInt(size: Expr) extends TypeInt
+
   // Unsized numbers e.g: 1
   case class TypeNum(signed: Boolean) extends Type
   // Vector types (analogous to higher dimensions of SystemVerilog multi-dimensional packed arrays)
+
   case class TypeVector(elementType: Type, size: Expr) extends Type
   // Array types (analogous to verilog unpacked arrays)
   case class TypeArray(elementType: Type, size: Expr)(implicit val cc: CompilerContext)
       extends Type
       with TypeArrayImpl
+
   // SRAM types
   case class TypeSram(elementType: Type, size: Expr, st: StorageType)(
       implicit val cc: CompilerContext)
@@ -62,24 +63,30 @@ object Types {
       with TypeSramImpl
   // Stack types
   case class TypeStack(elementType: Type, size: Expr) extends Type with TypeStackImpl
+
   // Structure type
   case class TypeStruct(name: String, fieldNames: List[String], fieldTypes: List[Type])
       extends Type
       with TypeStructImpl
+
   // Void type
   case object TypeVoid extends Type
+
   // Named type e.g. 'foo_t foo;'
-  case class TypeIdent(ident: Ident) extends Type
+  case class TypeRef(ref: Ref) extends Type
+
   // Combinatorial function type e.g. 'port.read'
   case class TypeCombFunc(argTypes: List[Type], retType: Type) extends Type
   // State function type e.g. 'void foo() {}'
   case class TypeCtrlFunc(argTypes: List[Type], retType: Type) extends Type
   // Entity type e.g. 'fsm foo {}'
+
   case class TypeEntity(name: String, portSymbols: List[TermSymbol], paramSymbols: List[TermSymbol])
       extends Type
       with TypeEntityImpl
   // Instance type
   case class TypeInstance(entitySymbol: TypeSymbol) extends Type with TypeInstanceImpl
+
   // Strings
   case object TypeStr extends Type
 
@@ -115,7 +122,9 @@ object Types {
 
   // Used to denote ambiguous definitions due to weak Gen scopes before Gen
   // constructs are processed
-  case class TypeChoice(symbols: List[Symbol]) extends Type
+  case class TypeChoice(symbols: List[Symbol]) extends Type {
+    assert(symbols forall (!_.kind.isChoice))
+  }
 
   ///////////////////////////////////////////////////////////////////////////////
   // base trait companions
@@ -135,7 +144,7 @@ object Types {
   // Implementations
   ///////////////////////////////////////////////////////////////////////////////
 
-  private val boolType = TypeUInt(TypeAssigner(Expr(1) withLoc Loc.synthetic))
+  private val boolType = TypeUInt(Expr(1) withLoc Loc.synthetic withTpe TypeNum(false))
 
   // A base trait for types that have fields that can be looked up using dot notation
   trait CompoundType {

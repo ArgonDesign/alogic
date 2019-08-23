@@ -1,0 +1,9 @@
+network dictident_decl_13 {
+  gen for (uint N < 2) {
+    in  bool i#[N, 0];
+    out bool o#[N];
+    i#[N] -> o#[N, 0];
+  }
+}
+// :5: ERROR: Wrong number of indices for name 'i' \(expected 2, provided 1\)
+// :5: ERROR: Wrong number of indices for name 'o' \(expected 1, provided 2\)

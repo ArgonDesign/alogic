@@ -51,6 +51,10 @@ final class SpecializeParam(
 
   private[this] var entityLevel = 0
 
+  // While this is true, we need to type check definitions as param/const
+  // declarations might depend on the defined type
+  private[this] var checkDefn = true
+
   // For type checking parameter assignments
   private[this] val typer = new Typer
 
@@ -74,37 +78,43 @@ final class SpecializeParam(
     }
   }
 
+  private def skipIt(entity: Entity): Boolean = {
+    // If the root entity does not have any parameters then we just need to
+    // type check the const declarations and definitions as these need to be
+    // well formed, but otherwise we need not re-write the entity
+    entity.declarations forall {
+      case Decl(symbol, _) => !symbol.kind.isParam
+      case _               => true
+    } tap {
+      case false => ()
+      case true =>
+        entity.body foreach {
+          case EntDecl(decl @ Decl(symbol, _)) if symbol.kind.isConst =>
+            decl rewrite typer
+            hadError |= decl.tpe.isError
+          case EntDefn(defn) =>
+            defn rewrite typer
+            hadError |= defn.tpe.isError
+          case _ =>
+        }
+    }
+  }
+
   override def skip(tree: Tree): Boolean = hadError || entityLevel == 0 && {
     tree match {
-      case entity: Entity =>
-        // If the root entity does not have any parameters then we just need to
-        // type check the const declarations and definitions as these need to be
-        // well formed, but otherwise we need not re-write the entity
-        val nParams = entity.declarations count { case Decl(symbol, _) => symbol.kind.isParam }
-        val skipIt = nParams == 0
-        if (skipIt) {
-          entity.body foreach {
-            case EntDecl(decl @ Decl(symbol, _)) if symbol.kind.isConst =>
-              decl rewrite typer
-              hadError |= decl.tpe.isError
-            case EntDefn(defn) =>
-              defn rewrite typer
-              hadError |= defn.tpe.isError
-            case _ =>
-          }
-        }
-        skipIt
-      case _ => unreachable
+      case Root(_, entity) => skipIt(entity)
+      case entity: Entity  => skipIt(entity)
+      case _               => false
     }
   }
 
   private def cloneForwardSymbols(trees: List[Tree]): Unit =
     trees foreach {
-      case EntFunction(Sym(symbol: TermSymbol), _) =>
+      case EntFunction(Sym(symbol: TermSymbol, _), _) =>
         symbolMap(symbol) = cc.newSymbolLike(symbol)
-      case EntInstance(Sym(symbol: TermSymbol), _, _, __) =>
+      case EntInstance(Sym(symbol: TermSymbol, _), _, _, _) =>
         symbolMap(symbol) = cc.newSymbolLike(symbol)
-      case EntEntity(Entity(Sym(symbol: TypeSymbol), _)) =>
+      case EntEntity(Entity(Sym(symbol: TypeSymbol, _), _)) =>
         symbolMap(symbol) = cc.newSymbolLike(symbol)
       case EntGen(GenIf(_, thenItems, elseItems)) =>
         cloneForwardSymbols(thenItems)
@@ -124,13 +134,16 @@ final class SpecializeParam(
     }
 
   override def enter(tree: Tree): Unit = tree match {
-    case entity: Entity => {
+    case entity: Entity =>
       entityLevel += 1
-
       // Clone new functions, instances and nested entities up front,
       // as they can be referenced before definition
       cloneForwardSymbols(entity.body)
-    }
+
+    case _: EntDecl =>
+    case _: EntDefn =>
+    // Any other ent means there won't be any more param/const decls later
+    case _: Ent => checkDefn = false
 
     case _ =>
   }
@@ -146,7 +159,7 @@ final class SpecializeParam(
     // Change parameter declarations in the first level to constant declarations
     ////////////////////////////////////////////////////////////////////////////
 
-    case Decl(symbol, init) if entityLevel == 1 && symbol.kind.isParam => {
+    case Decl(symbol, init) if entityLevel == 1 && symbol.kind.isParam =>
       // Specialize the parameter type itself
       val TypeParam(kind) = symbol.kind.asParam
       val newKind = TypeParam(kind rewrite TypeSpecializeParam)
@@ -196,83 +209,104 @@ final class SpecializeParam(
       // Must simplify the actual init expression in order to remove references
       // to external symbols
       TypeAssigner(newDecl.copy(init = newInit map { _.simplify }) withLoc tree.loc)
-    }
 
     ////////////////////////////////////////////////////////////////////////////
     // Clone other declaration symbols
     ////////////////////////////////////////////////////////////////////////////
 
-    case Decl(symbol, init) => {
-      // Rewrite references in types
-      val newKind = symbol.kind rewrite TypeSpecializeParam
-      // Clone the symbol
-      val newSymbol = cc.newTermSymbol(symbol.name, symbol.loc, newKind)
-      newSymbol.attr update symbol.attr
-      symbolMap(symbol) = newSymbol
-      val newDecl = Decl(newSymbol, init) withLoc tree.loc
+    case decl: Declaration =>
+      def cloneSymbol(symbol: TermSymbol): TermSymbol = {
+        // Rewrite references in types
+        val newKind = symbol.kind rewrite TypeSpecializeParam
+        // Clone the symbol
+        cc.newTermSymbol(symbol.name, symbol.loc, newKind)
+      } tap { newSymbol =>
+        newSymbol.attr update symbol.attr
+        symbolMap(symbol) = newSymbol
+      }
+      val (newDecl, newSymbol) = decl match {
+        case DeclRef(sym @ Sym(symbol: TermSymbol, _), _, init) =>
+          val newSymbol = cloneSymbol(symbol)
+          val newSym = sym.copy(symbol = newSymbol) withLoc sym.loc
+          val newDecl = DeclRef(newSym, newSymbol.kind, init) withLoc tree.loc
+          (newDecl, newSymbol)
+        case _: DeclRef => unreachable
+        case Decl(symbol, init) =>
+          val newSymbol = cloneSymbol(symbol)
+          val newDecl = Decl(newSymbol, init) withLoc tree.loc
+          (newDecl, newSymbol)
+      }
       // Type check it if it's a const declaration in the outermost entity
-      if (entityLevel == 1 && symbol.kind.isConst) {
+      if (entityLevel == 1 && newSymbol.kind.isConst) {
         newDecl rewrite typer
         // Latch error
         hadError |= newDecl.tpe.isError
       }
       // Done
       newDecl
-    }
 
     ////////////////////////////////////////////////////////////////////////////
     // Clone definition symbols
     ////////////////////////////////////////////////////////////////////////////
 
-    case Defn(symbol) => {
-      // Rewrite references in types
-      val newKind = symbol.kind rewrite TypeSpecializeParam
-      // Clone the symbol
-      val newSymbol = cc.newTypeSymbol(symbol.name, symbol.loc, newKind)
-      newSymbol.attr update symbol.attr
-      symbolMap(symbol) = newSymbol
-      val newDefn = Defn(newSymbol) withLoc tree.loc
-      // Type check it if it's in the outermost entity
-      if (entityLevel == 1) {
+    case defn: Definition =>
+      def cloneSymbol(symbol: TypeSymbol): TypeSymbol = {
+        // Rewrite references in types
+        val newKind = symbol.kind rewrite TypeSpecializeParam
+        // Clone the symbol
+        cc.newTypeSymbol(symbol.name, symbol.loc, newKind)
+      } tap { newSymbol =>
+        newSymbol.attr update symbol.attr
+        symbolMap(symbol) = newSymbol
+      }
+      val newDefn = defn match {
+        case DefnRef(sym @ Sym(symbol: TypeSymbol, _), _) =>
+          val newSymbol = cloneSymbol(symbol)
+          val newSym = sym.copy(symbol = newSymbol) withLoc sym.loc
+          DefnRef(newSym, newSymbol.kind) withLoc tree.loc
+        case _: DefnRef => unreachable
+        case Defn(symbol) =>
+          val newSymbol = cloneSymbol(symbol)
+          Defn(newSymbol) withLoc tree.loc
+      }
+      // Type check it if required
+      if (checkDefn) {
         newDefn rewrite typer
         // Latch error
         hadError |= newDefn.tpe.isError
       }
       // Done
       newDefn
-    }
 
     ////////////////////////////////////////////////////////////////////////////
     // Update references
     ////////////////////////////////////////////////////////////////////////////
 
-    case ExprRef(symbol) => {
+    case ExprSym(symbol) =>
       if (symbol.kind.isChoice && !(symbolMap contains symbol)) {
         // Clone choice symbol on first reference
         cloneChoiceSymbol(symbol)
       }
 
       symbolMap.get(symbol) map {
-        ExprRef(_) withLoc tree.loc
+        ExprSym(_) withLoc tree.loc
       } getOrElse tree
-    }
 
-    case Sym(symbol) => {
+    case Sym(symbol, idxs) =>
       if (symbol.kind.isChoice && !(symbolMap contains symbol)) {
         // Clone choice symbol on first reference
         cloneChoiceSymbol(symbol)
       }
 
       symbolMap.get(symbol) map {
-        Sym(_) withLoc tree.loc
+        Sym(_, idxs) withLoc tree.loc
       } getOrElse tree
-    }
 
     ////////////////////////////////////////////////////////////////////////////
     // Update instances
     ////////////////////////////////////////////////////////////////////////////
 
-    case EntInstance(Sym(iSymbol), Sym(eSymbol), _, _) => {
+    case EntInstance(Sym(iSymbol, Nil), Sym(eSymbol, Nil), _, _) =>
       // The 2 Sym instances have already been rewritten, we only need to
       // update the type of the iSymbol to refer to cloned entities
       symbolMap get eSymbol foreach {
@@ -282,7 +316,6 @@ final class SpecializeParam(
 
       // No need to re-write
       tree
-    }
 
     ////////////////////////////////////////////////////////////////////////////
     // Clone nested entities/Create the specialized entity
@@ -306,7 +339,7 @@ final class SpecializeParam(
         newSymbol.attr update entity.symbol.attr
 
         // Build new node
-        Entity(Sym(newSymbol) withLoc newSymbol.loc, entity.body) withLoc entity.loc
+        Entity(Sym(newSymbol, Nil) withLoc newSymbol.loc, entity.body) withLoc entity.loc
       }
     } tap { _ =>
       entityLevel -= 1
@@ -320,15 +353,12 @@ final class SpecializeParam(
       assert(entityLevel == 0)
 
       tree visitAll {
-        case node @ ExprRef(symbol: TermSymbol) if outerParams contains symbol => {
+        case node @ ExprSym(symbol: TermSymbol) if outerParams contains symbol =>
           cc.ice(node, "Reference to parameter remains")
-        }
-        case node @ Sym(symbol: TermSymbol) if outerParams contains symbol => {
+        case node @ Sym(symbol: TermSymbol, _) if outerParams contains symbol =>
           cc.ice(node, "Sym to parameter remains")
-        }
-        case node @ Decl(symbol, _) if outerParams contains symbol => {
+        case node @ Decl(symbol, _) if outerParams contains symbol =>
           cc.ice(node, "Outer parameter declaration remains")
-        }
       }
     }
   }

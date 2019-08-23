@@ -25,12 +25,12 @@ import com.argondesign.alogic.core.Types.TypeStruct
 
 import scala.jdk.CollectionConverters._
 
-object DefnBuilder extends BaseBuilder[DefnContext, DefnIdent] {
+object DefnBuilder extends BaseBuilder[DefnContext, DefnRef] {
 
-  def apply(ctx: DefnContext)(implicit cc: CompilerContext): DefnIdent = {
-    object Visitor extends AlogicScalarVisitor[DefnIdent] {
+  def apply(ctx: DefnContext)(implicit cc: CompilerContext): DefnRef = {
+    object Visitor extends AlogicScalarVisitor[DefnRef] {
       override def visitDefnTypedef(ctx: DefnTypedefContext) = {
-        DefnIdent(ctx.IDENTIFIER.toIdent, TypeBuilder(ctx.kind)) withLoc ctx.loc
+        DefnRef(IdentBuilder(ctx.ident), TypeBuilder(ctx.kind)) withLoc ctx.loc
       }
 
       override def visitDefnStruct(ctx: DefnStructContext) = {
@@ -41,9 +41,9 @@ object DefnBuilder extends BaseBuilder[DefnContext, DefnIdent] {
           TypeBuilder(ctx.kind)
         }
 
-        val kind = TypeStruct(ctx.IDENTIFIER, fieldNames, fieldKinds)
+        val kind = TypeStruct(ctx.ident.IDENTIFIER, fieldNames, fieldKinds)
 
-        DefnIdent(ctx.IDENTIFIER.toIdent, kind) withLoc ctx.loc
+        DefnRef(IdentBuilder(ctx.ident), kind) withLoc ctx.loc
       }
     }
 

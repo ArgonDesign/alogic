@@ -25,7 +25,7 @@ final class SplitStructsB(implicit cc: CompilerContext) extends TreeTransformer 
 
   override def transform(tree: Tree): Tree = tree match {
 
-    case ExprSelect(ExprRef(iSymbol), sel) => {
+    case ExprSelect(ExprSym(iSymbol), sel, _) => {
       // Rewrite selects of form instance.port
       val kind = iSymbol.kind.asInstanceOf[TypeInstance]
       val pSymbol = kind.portSymbol(sel).get
@@ -35,7 +35,7 @@ final class SplitStructsB(implicit cc: CompilerContext) extends TreeTransformer 
           for (fType <- struct.fieldTypes) yield {
             fType match {
               case struct: TypeStruct => cat(struct)
-              case _                  => ExprSelect(ExprRef(iSymbol), it.next().name)
+              case _                  => ExprSelect(ExprSym(iSymbol), it.next().name, Nil)
             }
           }
         }

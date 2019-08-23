@@ -78,7 +78,7 @@ trait TypePrintOps { this: Type =>
     case TypeMisc                   => "type-misc"
     case TypeError                  => "type-error"
     case _: TypePolyFunc            => "type-poly-func"
-    case TypeIdent(Ident(name))     => name
+    case TypeRef(ref)               => ref.toSource
     case _: TypeChoice              => this.toString
   }
 }

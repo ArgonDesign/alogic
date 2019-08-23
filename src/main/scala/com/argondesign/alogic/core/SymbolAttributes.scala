@@ -111,6 +111,9 @@ class SymbolAttributes {
   // Denotes that SRAM instances should be lifted from the hierarchy below this entity
   val liftSrams = new Attribute[Boolean]()
 
+  // Name of this symbol as declared in source, with dictionary index values
+  val sourceName = new Attribute[(String, List[BigInt])]
+
   // Iterator that enumerates all fields above
   private def attrIterator = Iterator(
     unused,
@@ -142,7 +145,8 @@ class SymbolAttributes {
     fieldOffset,
     default,
     sram,
-    liftSrams
+    liftSrams,
+    sourceName
   )
 
   // Iterator that enumerates names of fields above
@@ -176,7 +180,8 @@ class SymbolAttributes {
     "fieldOffset",
     "default",
     "sram",
-    "liftSrams"
+    "liftSrams",
+    "sourceName"
   )
 
   // Copy values of attributes from another instance

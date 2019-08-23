@@ -13,21 +13,21 @@
 // Replace references to polymorphic builtins with the resolved symbol
 ////////////////////////////////////////////////////////////////////////////////
 
-package com.argondesign.alogic.typer
+package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.TreeLike
-import com.argondesign.alogic.passes.TreeTransformerPass
+import com.argondesign.alogic.typer.TypeAssigner
 
 final class ResolvePolyFunc(implicit cc: CompilerContext) extends TreeTransformer {
 
   override def transform(tree: Tree): Tree = tree match {
     case ExprCall(expr, args) if expr.tpe.isPolyFunc => {
       val symbol = expr.tpe.asInstanceOf[TypePolyFunc].resolve(args).get
-      val ref = TypeAssigner(ExprRef(symbol) withLoc expr.loc)
+      val ref = TypeAssigner(ExprSym(symbol) withLoc expr.loc)
       TypeAssigner(ExprCall(ref, args) withLoc tree.loc)
     }
 

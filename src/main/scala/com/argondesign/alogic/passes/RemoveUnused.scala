@@ -95,8 +95,8 @@ final class RemoveUnused(unusedSymbols: Set[Symbol])(implicit cc: CompilerContex
       // - unused instances
       // - connects driving only unused symbols
       val newBody = entity.body filterNot {
-        case EntDecl(Decl(symbol, _))          => ourUnused contains symbol
-        case EntInstance(Sym(symbol), _, _, _) => unusedSymbols contains symbol
+        case EntDecl(Decl(symbol, _))             => ourUnused contains symbol
+        case EntInstance(Sym(symbol, _), _, _, _) => unusedSymbols contains symbol
         case EntConnect(_, List(InstancePortRef(iSymbol, pSymbol))) =>
           unusedSymbols.contains(iSymbol) || unusedSymbols.contains(pSymbol)
         case EntConnect(_, List(rhs)) => WrittenSymbols(rhs) forall ourUnused.contains
@@ -154,7 +154,7 @@ object RemoveUnused extends Pass {
       }
 
       val iSymbols = entity.instances.iterator collect {
-        case EntInstance(Sym(iSymbol), _, _, _) => iSymbol
+        case EntInstance(Sym(iSymbol, _), _, _, _) => iSymbol
       }
 
       eSymbols ++ dSymbols ++ iSymbols
@@ -168,7 +168,7 @@ object RemoveUnused extends Pass {
     // required as placeholders
     val usedSymbols = gather(entities) {
       _ flatCollect {
-        case EntInstance(_, Sym(eSymbol), _, _) => Iterator.single(eSymbol)
+        case EntInstance(_, Sym(eSymbol, _), _, _) => Iterator.single(eSymbol)
         case EntConnect(lhs, List(rhs: ExprCat)) => {
           // Concatenation on the right, everything is used, if only as a placeholder
           // TODO: if any symbol in the concatenation is used, then all are used
@@ -176,7 +176,7 @@ object RemoveUnused extends Pass {
             case InstancePortRef(iSymbol, pSymbol) => Iterator(iSymbol, pSymbol)
             case _                                 => ReadSymbols.rval(lhs)
           }
-          val rSymbols = rhs collect { case ExprRef(symbol) => symbol }
+          val rSymbols = rhs collect { case ExprSym(symbol) => symbol }
           lSymbols ++ rSymbols
         }
         case EntConnect(InstancePortRef(iSymbol, pSymbol), List(rhs)) => {
@@ -194,7 +194,7 @@ object RemoveUnused extends Pass {
         case stmt @ StmtAssign(_: ExprCat, _) => {
           // Concatenation on the left, everything is used, if only as a placeholder
           // TODO: if any symbol in the concatenation is used, then all are used
-          stmt collect { case ExprRef(symbol) => symbol }
+          stmt collect { case ExprSym(symbol) => symbol }
         }
         case StmtAssign(lhs, rhs) => {
           // Everything on the right, but on the left only stuff that is read
@@ -209,7 +209,7 @@ object RemoveUnused extends Pass {
           val (we, waddr, wdata) = symbol.attr.memory.value
           Iterator(we, waddr, wdata)
         }
-        case ExprRef(symbol) => {
+        case ExprSym(symbol) => {
           // Any other reference is used
           Iterator.single(symbol)
         }
@@ -224,8 +224,8 @@ object RemoveUnused extends Pass {
     } else {
       // Remove unused entities
       val usedEntities = entities filterNot {
-        case Entity(Sym(symbol: TypeSymbol), _) => unusedSymbols contains symbol
-        case _                                  => unreachable
+        case Entity(Sym(symbol: TypeSymbol, _), _) => unusedSymbols contains symbol
+        case _                                     => unreachable
       }
 
       // Remove symbols

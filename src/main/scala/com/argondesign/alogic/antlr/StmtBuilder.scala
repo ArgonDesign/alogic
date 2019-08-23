@@ -93,7 +93,7 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
       }
 
       override def visitStmtGoto(ctx: StmtGotoContext) = {
-        val ref = ExprIdent(ctx.IDENTIFIER) withLoc ctx.IDENTIFIER.loc
+        val ref = ExprRef(IdentBuilder(ctx.ident)) withLoc ctx.ident.loc
         StmtGoto(ref) withLoc ctx.loc
       }
 
@@ -147,10 +147,10 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
       }
 
       override def visitLoopInitDecl(ctx: LoopInitDeclContext) = {
-        val ident = ctx.IDENTIFIER.toIdent
+        val ident = IdentBuilder(ctx.IDENTIFIER)
         val kind = TypeBuilder(ctx.kind)
         val init = ExprBuilder(ctx.expr)
-        val decl = DeclIdent(ident, kind, Some(init)) withLoc ctx.loc
+        val decl = DeclRef(ident, kind, Some(init)) withLoc ctx.loc
         StmtDecl(decl) withLoc ctx.loc
       }
     }

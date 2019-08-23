@@ -123,7 +123,7 @@ class Frontend(
           def loop(entity: Entity): List[String] = {
             val localNames = entity.name :: childNames(entity.body)
             val requiredExternalNames = entity.instances collect {
-              case EntInstance(_, Ident(name), _, _) if !(localNames contains name) => name
+              case EntInstance(_, Ident(name, _), _, _) if !(localNames contains name) => name
             }
             requiredExternalNames ::: (entity.entities flatMap loop)
           }

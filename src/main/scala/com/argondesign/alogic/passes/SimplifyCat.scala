@@ -95,8 +95,8 @@ final class SimplifyCat(implicit cc: CompilerContext) extends TreeTransformer {
       case StmtAssign(ExprCat(oLhss), ExprCat(oRhss)) => {
         // Do not simplify if a symbol appears on both sides (eg {a, b} = {b, a})
         // as in this case the rhs must be read atomically
-        val lSymbols = (oLhss collect { case ExprRef(symbol) => symbol }).toSet
-        val rSymbols = (oRhss collect { case ExprRef(symbol) => symbol }).toSet
+        val lSymbols = (oLhss collect { case ExprSym(symbol) => symbol }).toSet
+        val rSymbols = (oRhss collect { case ExprSym(symbol) => symbol }).toSet
 
         if ((lSymbols intersect rSymbols).isEmpty) {
           val pairs = pairUp(tree.loc, oLhss, oRhss)

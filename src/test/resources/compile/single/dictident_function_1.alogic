@@ -1,0 +1,15 @@
+fsm dictident_function_1 {
+  in        bool i;
+  out wire  bool o;
+
+  gen for (uint N < 1) {
+    void func#[0]() {
+      o = i;
+    }
+    void func#[1]() {
+      o = i;
+    }
+  }
+}
+// :9: ERROR: Redefinition of name 'func' with previous definition at
+// :9: ERROR: ... .*dictident_function_1.alogic:6

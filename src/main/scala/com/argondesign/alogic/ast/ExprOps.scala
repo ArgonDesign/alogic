@@ -102,7 +102,7 @@ trait ExprOps { this: Expr =>
   final def slice(lidx: Int, op: String, ridx: Expr)(implicit cc: CompilerContext): ExprSlice = fix(ExprSlice(this, mkIndex(lidx), op, ridx))
   final def slice(lidx: Int, op: String, ridx: Int)(implicit cc: CompilerContext): ExprSlice = fix(ExprSlice(this, mkIndex(lidx), op, mkIndex(ridx)))
 
-  final def select(name: String)(implicit cc: CompilerContext): ExprSelect = fix(ExprSelect(this, name))
+  final def select(name: String)(implicit cc: CompilerContext): ExprSelect = fix(ExprSelect(this, name, Nil))
   final def call(args: List[Expr])(implicit cc: CompilerContext): ExprCall = fix(ExprCall(this, args))
 
   final def cat(rhs: Expr)(implicit cc: CompilerContext): ExprCat = fix(ExprCat(List(this, rhs)))
@@ -128,31 +128,31 @@ trait ExprOps { this: Expr =>
 
   // Is this expression shaped as a valid type expression
   lazy val isTypeExpr: Boolean = this forall {
-    case _: ExprIdent        => true
-    case _: ExprRef          => true
-    case _: ExprType         => true
-    case ExprSelect(expr, _) => expr.isTypeExpr
-    case _                   => false
+    case _: ExprRef               => true
+    case _: ExprSym               => true
+    case _: ExprType              => true
+    case ExprSelect(expr, _, Nil) => expr.isTypeExpr
+    case _                        => false
   }
 
   // Is this expression shaped as a valid lvalue expression
   lazy val isLValueExpr: Boolean = this forall {
-    case _: ExprIdent             => true
     case _: ExprRef               => true
+    case _: ExprSym               => true
     case ExprIndex(expr, _)       => expr.isLValueExpr
     case ExprSlice(expr, _, _, _) => expr.isLValueExpr
-    case ExprSelect(expr, _)      => expr.isLValueExpr
+    case ExprSelect(expr, _, _)   => expr.isLValueExpr
     case ExprCat(parts)           => parts forall { _.isLValueExpr }
     case _                        => false
   }
 
   // Is this expression shaped as a valid port reference expression
   lazy val isPortRefExpr: Boolean = this match {
-    case _: ExprIdent                => true
-    case _: ExprRef                  => true
-    case ExprSelect(_: ExprIdent, _) => true
-    case ExprSelect(_: ExprRef, _)   => true
-    case _                           => false
+    case _: ExprRef                   => true
+    case _: ExprSym                   => true
+    case ExprSelect(_: ExprRef, _, _) => true
+    case ExprSelect(_: ExprSym, _, _) => true
+    case _                            => false
   }
 
   // Is this expression a known constant
@@ -161,7 +161,7 @@ trait ExprOps { this: Expr =>
     case _: ExprInt  => true
     case _: ExprStr  => true
     case _: ExprType => true
-    case ExprRef(symbol) =>
+    case ExprSym(symbol) =>
       symbol.kind match {
         case _: TypeConst => true
         case _: TypeGen   => true
@@ -176,8 +176,8 @@ trait ExprOps { this: Expr =>
     case ExprIndex(expr, index) => expr.isKnownConst && index.isKnownConst
     case ExprSlice(expr, lidx, op, ridx) =>
       expr.isKnownConst && lidx.isKnownConst && ridx.isKnownConst
-    case ExprSelect(expr, _) => expr.isKnownConst
-    case call @ ExprCall(ExprRef(symbol), _) if symbol.isBuiltin =>
+    case ExprSelect(expr, _, idxs) => expr.isKnownConst && (idxs forall { _.isKnownConst })
+    case call @ ExprCall(ExprSym(symbol), _) if symbol.isBuiltin =>
       cc.isKnownConstBuiltinCall(call)
     case ExprCast(_, expr) => expr.isKnownConst
     case _                 => false
@@ -264,7 +264,8 @@ trait ObjectExprOps {
   // Extractor for instance port references
   final object InstancePortRef {
     def unapply(expr: ExprSelect): Option[(TermSymbol, TermSymbol)] = expr partialMatch {
-      case ExprSelect(ExprRef(iSymbol: TermSymbol), sel) if iSymbol.kind.isInstance =>
+      case ExprSelect(ExprSym(iSymbol: TermSymbol), sel, idxs) if iSymbol.kind.isInstance =>
+        assert(idxs.isEmpty)
         (iSymbol, iSymbol.kind.asInstanceOf[TypeInstance].portSymbol(sel).get)
     }
   }

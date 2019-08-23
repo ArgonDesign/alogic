@@ -32,9 +32,9 @@ trait TreeUntype {
     case node: Ent         => untype(node)
     case node: Expr        => untype(node)
     case node: Stmt        => untype(node)
-    case _: DefnIdent      => unreachable
+    case _: DefnRef        => unreachable
     case _: Ident          => unreachable
-    case _: DeclIdent      => unreachable
+    case _: DeclRef        => unreachable
     case _: Root           => unreachable
     case _: Gen            => unreachable
     case _: CaseGen        => unreachable
@@ -90,14 +90,14 @@ trait TreeUntype {
     case node: ExprIndex   => untype(node)
     case node: ExprSlice   => untype(node)
     case node: ExprSelect  => untype(node)
-    case node: ExprRef     => untype(node)
+    case node: ExprSym     => untype(node)
     case node: ExprType    => untype(node)
     case node: ExprInt     => untype(node)
     case node: ExprNum     => untype(node)
     case node: ExprStr     => untype(node)
     case node: ExprError   => untype(node)
     case node: ExprCast    => untype(node)
-    case _: ExprIdent      => unreachable
+    case _: ExprRef        => unreachable
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -324,7 +324,8 @@ trait TreeUntype {
 
   def untype(node: ExprSelect): ExprSelect =
     node.copy(
-      expr = untype(node.expr)
+      expr = untype(node.expr),
+      idxs = untype(node.idxs)
     ) withLoc node.loc
 
   def untype(node: ExprCast): ExprCast =
@@ -332,7 +333,7 @@ trait TreeUntype {
       expr = untype(node.expr)
     ) withLoc node.loc
 
-  def untype(node: ExprRef): ExprRef = node.copy() withLoc node.loc
+  def untype(node: ExprSym): ExprSym = node.copy() withLoc node.loc
 
   def untype(node: ExprType): ExprType = node.copy() withLoc node.loc
 

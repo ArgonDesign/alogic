@@ -50,7 +50,7 @@ final class DefaultAssignments(implicit cc: CompilerContext) extends TreeTransfo
       // Remove any nets driven through a connect
       for (EntConnect(_, List(rhs)) <- entity.connects) {
         rhs.visit {
-          case ExprRef(symbol: TermSymbol) => {
+          case ExprSym(symbol: TermSymbol) => {
             needsDefault remove symbol
           }
         }
@@ -91,7 +91,7 @@ final class DefaultAssignments(implicit cc: CompilerContext) extends TreeTransfo
             entity.connects.iterator flatMap {
               case EntConnect(lhs, _) =>
                 lhs.collect {
-                  case ExprRef(symbol: TermSymbol) => symbol.attr.flop.getOrElse(symbol)
+                  case ExprSym(symbol: TermSymbol) => symbol.attr.flop.getOrElse(symbol)
                 }
             }
           }
@@ -109,7 +109,7 @@ final class DefaultAssignments(implicit cc: CompilerContext) extends TreeTransfo
             val kind = symbol.kind
             ExprInt(kind.isSigned, kind.width, 0)
           }
-          StmtAssign(ExprRef(symbol), init) regularize symbol.loc
+          StmtAssign(ExprSym(symbol), init) regularize symbol.loc
         }
 
         val newBody = entity.body map {

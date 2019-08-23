@@ -25,21 +25,21 @@ final class InferImplications(implicit cc: CompilerContext) extends TreeTransfor
 
   override def skip(tree: Tree): Boolean = tree match {
     case _: Entity                                     => false
-    case EntConnect(_, List(ExprRef(rhs: TermSymbol))) => rhs.kind.width != 1
+    case EntConnect(_, List(ExprSym(rhs: TermSymbol))) => rhs.kind.width != 1
     case _                                             => true
   }
 
   override def transform(tree: Tree): Tree = {
     tree match {
-      case EntConnect(source, List(ExprRef(dst: TermSymbol))) => {
+      case EntConnect(source, List(ExprSym(dst: TermSymbol))) => {
         source match {
-          case ExprRef(src: TermSymbol) => {
+          case ExprSym(src: TermSymbol) => {
             src.attr.implications.append((true, true, dst))
             src.attr.implications.append((false, false, dst))
             dst.attr.implications.append((true, true, src))
             dst.attr.implications.append((false, false, src))
           }
-          case ExprUnary("~" | "!", ExprRef(src: TermSymbol)) => {
+          case ExprUnary("~" | "!", ExprSym(src: TermSymbol)) => {
             src.attr.implications.append((false, true, dst))
             src.attr.implications.append((true, false, dst))
             dst.attr.implications.append((false, true, src))

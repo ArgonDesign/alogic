@@ -1,0 +1,20 @@
+network dictident_defn_9 {
+  gen for (uint N < 2) {
+    typedef uint(N+1) i_t#[N];
+    typedef uint(N+1) o_t#[N];
+    in  i_t#[N] i#[N];
+    out o_t#[N] o#[N];
+    i#[N] -> o#[N];
+  }
+}
+// @fec-golden {{{
+//  module dictident_defn_9(
+//    input  wire       i__0,
+//    input  wire [1:0] i__1,
+//    output wire       o__0,
+//    output wire [1:0] o__1
+//  );
+//    assign o__0 = i__0;
+//    assign o__1 = i__1;
+//  endmodule
+// }}}

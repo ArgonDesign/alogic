@@ -304,7 +304,7 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
     case entity: Entity => {
       // Gather all function symbols from entity
       assert(functionSymbols == null)
-      functionSymbols = for (EntFunction(Sym(symbol: TermSymbol), _) <- entity.functions)
+      functionSymbols = for (EntFunction(Sym(symbol: TermSymbol, _), _) <- entity.functions)
         yield symbol
     }
 
@@ -314,15 +314,15 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
 
     case ExprCall(ref, _) if ref.tpe.isCtrlFunc =>
       ref match {
-        case ExprRef(callee: TermSymbol) => callArcs add (currentFunction -> callee)
+        case ExprSym(callee: TermSymbol) => callArcs add (currentFunction -> callee)
         case _                           => unreachable
       }
 
-    case StmtGoto(ExprRef(callee: TermSymbol)) => {
+    case StmtGoto(ExprSym(callee: TermSymbol)) => {
       gotoArcs add (currentFunction -> callee)
     }
 
-    case EntFunction(Sym(symbol: TermSymbol), _) => {
+    case EntFunction(Sym(symbol: TermSymbol, _), _) => {
       currentFunction = symbol
     }
 

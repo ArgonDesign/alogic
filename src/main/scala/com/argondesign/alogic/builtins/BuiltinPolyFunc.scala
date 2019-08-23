@@ -77,7 +77,7 @@ private[builtins] abstract class BuiltinPolyFunc(implicit cc: CompilerContext)
   protected[this] final lazy val loc = Loc(Source(s"builtin ${name}", ""), 0, 0, 0)
 
   // Synthetic identifier
-  private[this] final lazy val ident = Ident(name) withLoc loc
+  private[this] final lazy val ident = Ident(name, Nil) withLoc loc
 
   // Collection of overloaded symbols (if any) for given arguments
   // TODO: This map should be in cc to avoid a space leak

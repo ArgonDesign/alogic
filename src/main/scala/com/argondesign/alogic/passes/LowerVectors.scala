@@ -95,8 +95,8 @@ final class LowerVectors(implicit cc: CompilerContext) extends TreeTransformer {
     val result = tree match {
 
       // The type of symbols changed, so re-type references
-      case ExprRef(symbol: TermSymbol) if vectorType contains symbol => {
-        ExprRef(symbol) regularize tree.loc
+      case ExprSym(symbol: TermSymbol) if vectorType contains symbol => {
+        ExprSym(symbol) regularize tree.loc
       }
 
       // Slice over slice

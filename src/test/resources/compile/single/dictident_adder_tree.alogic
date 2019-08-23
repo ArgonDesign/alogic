@@ -1,0 +1,79 @@
+network dictident_adder_tree {
+  const uint INPUTS = 16; // must be power of 2
+  const uint IWIDTH = 2;
+
+  const uint LEVELS = $clog2(INPUTS);
+
+  const uint OWIDTH = IWIDTH + LEVELS;
+
+  gen for (uint n < INPUTS) {
+    in uint(IWIDTH) p_i#[n];
+  }
+  out uint(OWIDTH) p_o;
+
+  fsm adder {
+    param uint IW;
+    in uint(IW) a;
+    in uint(IW) b;
+    out wire uint(IW+1) s;
+
+    void main() {
+      s = 'a + 'b;
+      fence;
+    }
+  }
+
+  gen for (uint level < LEVELS) {
+    gen for (uint n < (INPUTS >> level + 1)) {
+      add#[level, n] = new adder(IW = IWIDTH + level);
+      gen if (level == 0) {
+        p_i#[2*n + 0] -> add#[level, n].a;
+        p_i#[2*n + 1] -> add#[level, n].b;
+      } else {
+        add#[level - 1, 2*n + 0].s -> add#[level, n].a;
+        add#[level - 1, 2*n + 1].s -> add#[level, n].b;
+      }
+    }
+    gen if (level == LEVELS-1) {
+      add#[level, 0].s -> p_o;
+    }
+  }
+}
+// @fec-golden {{{
+// module dictident_adder_tree(
+//   input  wire [1:0] p_i__0,
+//   input  wire [1:0] p_i__1,
+//   input  wire [1:0] p_i__2,
+//   input  wire [1:0] p_i__3,
+//   input  wire [1:0] p_i__4,
+//   input  wire [1:0] p_i__5,
+//   input  wire [1:0] p_i__6,
+//   input  wire [1:0] p_i__7,
+//   input  wire [1:0] p_i__8,
+//   input  wire [1:0] p_i__9,
+//   input  wire [1:0] p_i__10,
+//   input  wire [1:0] p_i__11,
+//   input  wire [1:0] p_i__12,
+//   input  wire [1:0] p_i__13,
+//   input  wire [1:0] p_i__14,
+//   input  wire [1:0] p_i__15,
+//   output wire [5:0] p_o
+// );
+//   assign p_o = {4'd0, + p_i__0} +
+//                {4'd0, + p_i__1} +
+//                {4'd0, + p_i__2} +
+//                {4'd0, + p_i__3} +
+//                {4'd0, + p_i__4} +
+//                {4'd0, + p_i__5} +
+//                {4'd0, + p_i__6} +
+//                {4'd0, + p_i__7} +
+//                {4'd0, + p_i__8} +
+//                {4'd0, + p_i__9} +
+//                {4'd0, + p_i__10} +
+//                {4'd0, + p_i__11} +
+//                {4'd0, + p_i__12} +
+//                {4'd0, + p_i__13} +
+//                {4'd0, + p_i__14} +
+//                {4'd0, + p_i__15};
+// endmodule
+// }}}

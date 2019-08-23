@@ -55,21 +55,21 @@ final class Replace1Stacks(implicit cc: CompilerContext) extends TreeTransformer
       // Rewrite statements
       //////////////////////////////////////////////////////////////////////////
 
-      case StmtExpr(ExprCall(ExprSelect(ExprRef(symbol: TermSymbol), "push" | "set"), args))
+      case StmtExpr(ExprCall(ExprSelect(ExprSym(symbol: TermSymbol), "push" | "set", _), args))
           if stackSet contains symbol => {
-        StmtAssign(ExprRef(symbol), args.head)
+        StmtAssign(ExprSym(symbol), args.head)
       }
 
       //////////////////////////////////////////////////////////////////////////
       // Rewrite expressions
       //////////////////////////////////////////////////////////////////////////
 
-      case ExprCall(ExprSelect(ExprRef(symbol: TermSymbol), "pop" | "top"), Nil)
+      case ExprCall(ExprSelect(ExprSym(symbol: TermSymbol), "pop" | "top", _), Nil)
           if stackSet contains symbol => {
-        ExprRef(symbol)
+        ExprSym(symbol)
       }
 
-      case ExprSelect(ExprRef(symbol: TermSymbol), "full" | "empty")
+      case ExprSelect(ExprSym(symbol: TermSymbol), "full" | "empty", _)
           if stackSet contains symbol => {
         cc.ice(tree, "Replacing 1 deep steck with full access")
       }

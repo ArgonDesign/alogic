@@ -70,7 +70,7 @@ final class LowerInterconnect(implicit cc: CompilerContext)
   // interconnect symbol does not exist and alloc is true, allocate
   // it and connect it up
   def handlePortSelect(select: ExprSelect, alloc: Boolean): Option[TermSymbol] = select match {
-    case ExprSelect(ExprRef(iSymbol: TermSymbol), sel) =>
+    case ExprSelect(ExprSym(iSymbol: TermSymbol), sel, _) =>
       val key = (iSymbol, sel)
       if (!alloc) {
         newSymbols.get(key)
@@ -91,7 +91,7 @@ final class LowerInterconnect(implicit cc: CompilerContext)
 
           // Build connection
           val loc = select.loc
-          val ref = ExprRef(symbol) regularize loc
+          val ref = ExprSym(symbol) regularize loc
           val conn = TypeAssigner {
             pKind match {
               case _: TypeIn => EntConnect(ref, List(select)) withLoc loc
@@ -154,7 +154,7 @@ final class LowerInterconnect(implicit cc: CompilerContext)
 
       case select @ InstancePortRef(_, _) => {
         handlePortSelect(select, !inConnect || enableStack.top) map { nSymbol =>
-          ExprRef(nSymbol) regularize tree.loc
+          ExprSym(nSymbol) regularize tree.loc
         } getOrElse {
           tree
         }
@@ -220,9 +220,9 @@ final class LowerInterconnect(implicit cc: CompilerContext)
               case conn @ EntConnect(expr: ExprSelect, List(rhs)) =>
                 nMap get expr map { nSymbol =>
                   rhs match {
-                    case ExprRef(`nSymbol`) => conn // Already the nSymbol, leave it alone
+                    case ExprSym(`nSymbol`) => conn // Already the nSymbol, leave it alone
                     case _ => {
-                      EntConnect(ExprRef(nSymbol), List(rhs)) regularize rhs.loc
+                      EntConnect(ExprSym(nSymbol), List(rhs)) regularize rhs.loc
                     }
                   }
                 } getOrElse {
@@ -291,7 +291,7 @@ final class LowerInterconnect(implicit cc: CompilerContext)
 
     def check(tree: Tree) = {
       tree visit {
-        case node @ ExprSelect(ExprRef(symbol: TermSymbol), _)
+        case node @ ExprSelect(ExprSym(symbol: TermSymbol), _, _)
             if symbol.kind.isInstanceOf[TypeInstance] => {
           cc.ice(node, "Direct port access remains")
         }

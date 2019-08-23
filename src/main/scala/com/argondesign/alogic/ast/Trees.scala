@@ -51,6 +51,7 @@ object Trees {
   // held as a List[T] by parent nodes and never as a simple T. These node
   // types include:
   //  - Stmt
+  //  - Ent
   case class Thicket(trees: List[Tree]) extends Tree
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -64,15 +65,20 @@ object Trees {
   ///////////////////////////////////////////////////////////////////////////////
 
   sealed trait Ref extends Tree
-  case class Ident(name: String) extends Ref with SourceAttributes
-  case class Sym(symbol: Symbol) extends Ref
+  case class Ident(name: String, idxs: List[Expr]) extends Ref with SourceAttributes
+  case class Sym(symbol: Symbol, idxs: List[Expr]) extends Ref
 
   ///////////////////////////////////////////////////////////////////////////////
   // Declaration of terms (except for instances and functions)
   ///////////////////////////////////////////////////////////////////////////////
 
   sealed trait Declaration extends Tree
-  case class DeclIdent(ident: Ident, kind: Type, init: Option[Expr]) extends Declaration
+  case class DeclRef(ref: Ref, kind: Type, init: Option[Expr]) extends Declaration {
+    ref match {
+      case Sym(symbol, _) => assert(symbol.kind == kind)
+      case _              =>
+    }
+  }
   case class Decl(symbol: TermSymbol, init: Option[Expr]) extends Declaration
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -80,7 +86,12 @@ object Trees {
   ///////////////////////////////////////////////////////////////////////////////
 
   sealed trait Definition extends Tree
-  case class DefnIdent(ident: Ident, kind: Type) extends Definition
+  case class DefnRef(ref: Ref, kind: Type) extends Definition {
+    ref match {
+      case Sym(symbol, _) => assert(symbol.kind == kind)
+      case _              =>
+    }
+  }
   case class Defn(symbol: TypeSymbol) extends Definition
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -190,9 +201,9 @@ object Trees {
   case class ExprIndex(expr: Expr, index: Expr) extends Expr
   case class ExprSlice(expr: Expr, lidx: Expr, op: String, ridx: Expr) extends Expr
 
-  case class ExprSelect(expr: Expr, selector: String) extends Expr
-  case class ExprIdent(name: String) extends Expr
-  case class ExprRef(symbol: Symbol) extends Expr
+  case class ExprSelect(expr: Expr, selector: String, idxs: List[Expr]) extends Expr
+  case class ExprRef(ref: Ref) extends Expr
+  case class ExprSym(symbol: Symbol) extends Expr
   case class ExprType(kind: Type) extends Expr
 
   case class ExprCast(kind: Type, expr: Expr) extends Expr

@@ -1,0 +1,49 @@
+// @out-top: gen_alt_defn_4__SIGNED_0
+network gen_alt_defn_4 {
+  param bool SIGNED = false;
+  in u2 p_in_0;
+  in u2 p_in_1;
+  out u4 p_out;
+
+  gen if (SIGNED) {
+    typedef i2 i_t;
+    typedef i4 o_t;
+  } else {
+    typedef u2 i_t;
+    typedef u4 o_t;
+  }
+
+  new fsm inner {
+    in  i_t p_i_0;
+    in  i_t p_i_1;
+    out o_t p_o;
+
+    void main() {
+      p_o.write('p_i_0 * 'p_i_1);
+      fence;
+    }
+  }
+
+  p_in_0 -> inner.p_i_0;
+  p_in_1 -> inner.p_i_1;
+  inner.p_o -> p_out;
+}
+// @fec-golden {{{
+//  module gen_alt_defn_4__SIGNED_0(
+//    input wire clk,
+//    input wire rst,
+//    input wire [1:0] p_in_0,
+//    input wire [1:0] p_in_1,
+//    output reg [3:0] p_out
+//  );
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        p_out <= 4'd0;
+//      end else begin
+//        p_out <= {2'd0, p_in_0} * {2'd0, p_in_1};
+//      end
+//    end
+//
+//  endmodule
+// }}}

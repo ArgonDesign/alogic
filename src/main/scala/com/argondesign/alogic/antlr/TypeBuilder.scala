@@ -47,7 +47,7 @@ object TypeBuilder extends BaseBuilder[KindContext, Type] {
         TypeNum(false)
       }
       override def visitTypeIdent(ctx: TypeIdentContext) = {
-        TypeIdent(ctx.IDENTIFIER.toIdent)
+        TypeRef(IdentBuilder(ctx.ident))
       }
       override def visitTypeVoid(ctx: TypeVoidContext) = {
         TypeVoid

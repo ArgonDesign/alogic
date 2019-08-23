@@ -70,8 +70,9 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
 
       // Select
       override def visitExprSelect(ctx: ExprSelectContext) = {
-        val loc = ctx.loc.copy(point = ctx.IDENTIFIER.getStartIndex - 1)
-        ExprSelect(visit(ctx.expr), ctx.IDENTIFIER) withLoc loc
+        val loc = ctx.loc.copy(point = ctx.ident.start.getStartIndex - 1)
+        val Ident(name, idxs) = IdentBuilder(ctx.ident)
+        ExprSelect(visit(ctx.expr), name, idxs) withLoc loc
       }
 
       // Literals
@@ -179,13 +180,13 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
 
       // Identifiers
       override def visitExprIdent(ctx: ExprIdentContext) = {
-        ExprIdent(ctx.IDENTIFIER) withLoc ctx.loc
+        ExprRef(IdentBuilder(ctx.ident)) withLoc ctx.loc
       }
       override def visitExprAtid(ctx: ExprAtidContext) = {
-        ExprIdent(ctx.ATID) withLoc ctx.loc
+        ExprRef(IdentBuilder(ctx.ATID)) withLoc ctx.loc
       }
       override def visitExprDollarid(ctx: ExprDollaridContext) = {
-        ExprIdent(ctx.DOLLARID) withLoc ctx.loc
+        ExprRef(IdentBuilder(ctx.DOLLARID)) withLoc ctx.loc
       }
 
       // Type

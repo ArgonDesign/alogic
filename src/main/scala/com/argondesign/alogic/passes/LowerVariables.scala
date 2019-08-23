@@ -85,7 +85,7 @@ final class LowerVariables(implicit cc: CompilerContext) extends TreeTransformer
       // If the symbol has a default attribute, move that to the _d,
       // otherwise use the _q as the default initializer
       val default = symbol.attr.default.getOrElse {
-        ExprRef(symbol) regularize loc
+        ExprSym(symbol) regularize loc
       }
       dSymbol.attr.default set default
       symbol.attr.default.clear()
@@ -102,10 +102,10 @@ final class LowerVariables(implicit cc: CompilerContext) extends TreeTransformer
     // Rewrite references
     //////////////////////////////////////////////////////////////////////////
 
-    case ExprRef(qSymbol) => {
+    case ExprSym(qSymbol) => {
       // Rewrite references to flops as references to the _d,
       qSymbol.attr.flop.get map { dSymbol =>
-        ExprRef(dSymbol) regularize tree.loc
+        ExprSym(dSymbol) regularize tree.loc
       } getOrElse {
         tree
       }

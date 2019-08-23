@@ -1,0 +1,19 @@
+network dictident_defn_1 {
+  gen for (uint N < 1) {
+    typedef bool i_t#[0];
+    typedef bool i_t#[1];
+    typedef bool o_t#[0];
+    typedef bool o_t#[1];
+  }
+  in  i_t#[0] i_0;
+  in  i_t#[1] i_1;
+  out o_t#[0] o_0;
+  out o_t#[1] o_1;
+
+  i_0 -> o_0;
+  i_1 -> o_1;
+}
+// :4: ERROR: Redefinition of type 'i_t' with previous definition at
+// :4: ERROR: ... .*dictident_defn_1.alogic:3
+// :6: ERROR: Redefinition of type 'o_t' with previous definition at
+// :6: ERROR: ... .*dictident_defn_1.alogic:5

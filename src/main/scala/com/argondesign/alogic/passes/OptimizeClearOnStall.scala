@@ -95,7 +95,7 @@ final class OptimizeClearOnStall(implicit cc: CompilerContext) extends TreeTrans
         // or an assignment to one of our candidates
         val trimmed = block rewrite StatementFilter {
           case _: StmtStall                   => true
-          case StmtAssign(ExprRef(symbol), _) => symbol.attr.clearOnStall contains true
+          case StmtAssign(ExprSym(symbol), _) => symbol.attr.clearOnStall contains true
           case _: StmtAssign                  => false
         }
 
@@ -114,7 +114,7 @@ final class OptimizeClearOnStall(implicit cc: CompilerContext) extends TreeTrans
             case Nil => {
               // No stall conditions through this path, we are safe
             }
-            case (cond @ ExprRef(sSymbol)) :: Nil => {
+            case (cond @ ExprSym(sSymbol)) :: Nil => {
               // There is a single stall condition. Remove candidates that are
               // neither gated by this signal nor are assigned this signal.
               // The point being is that if the signal is gated by the stall
@@ -122,12 +122,12 @@ final class OptimizeClearOnStall(implicit cc: CompilerContext) extends TreeTrans
               // required, hence the signal in question can be anything when we
               // stall, no need to clear it on stall.
               path filterNot {
-                case StmtAssign(ExprRef(cand), rhs) => {
+                case StmtAssign(ExprSym(cand), rhs) => {
                   (cand.attr.dontCareUnless.get contains sSymbol) || (rhs == cond)
                 }
                 case _ => false
               } foreach {
-                case StmtAssign(ExprRef(s: TermSymbol), _) => candidateSymbols remove s
+                case StmtAssign(ExprSym(s: TermSymbol), _) => candidateSymbols remove s
                 case _                                     =>
               }
             }
@@ -135,10 +135,10 @@ final class OptimizeClearOnStall(implicit cc: CompilerContext) extends TreeTrans
               // There is a single generic stall condition on this path, remove
               // all candidates that are not assigned this condition.
               path filter {
-                case StmtAssign(_: ExprRef, `cond`) => false
+                case StmtAssign(_: ExprSym, `cond`) => false
                 case _                              => true
               } foreach {
-                case StmtAssign(ExprRef(s: TermSymbol), _) => candidateSymbols remove s
+                case StmtAssign(ExprSym(s: TermSymbol), _) => candidateSymbols remove s
                 case _                                     =>
               }
             }
@@ -146,7 +146,7 @@ final class OptimizeClearOnStall(implicit cc: CompilerContext) extends TreeTrans
               // There are 2 or more stall conditions on this path, remove all
               // candidates that are assigned anything on this path
               path foreach {
-                case StmtAssign(ExprRef(s: TermSymbol), _) => candidateSymbols remove s
+                case StmtAssign(ExprSym(s: TermSymbol), _) => candidateSymbols remove s
                 case _                                     =>
               }
             }

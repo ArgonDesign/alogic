@@ -72,7 +72,7 @@ final class ConvertLocalDecls(implicit cc: CompilerContext) extends TreeTransfor
     case StmtDecl(decl @ Decl(symbol, initOpt)) => {
       localDecls.append(EntDecl(decl.copy(init = None)) regularize decl.loc)
       initOpt orElse getDefaultInitializer(symbol.kind) map { init =>
-        StmtAssign(ExprRef(symbol), init) regularize tree.loc
+        StmtAssign(ExprSym(symbol), init) regularize tree.loc
       } getOrElse {
         Thicket(Nil) regularize tree.loc
       }

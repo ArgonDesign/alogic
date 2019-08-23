@@ -1,0 +1,33 @@
+network dictident_entity_6 {
+  in  u1 i_a;
+  out u1 o_a;
+  in  u2 i_b;
+  out u2 o_b;
+
+  gen for (uint N < 2) {
+    network inner#[N] {
+      in  uint(N+1) ii;
+      out uint(N+1) oo;
+      ii -> oo;
+    }
+
+    inner = new inner#[N]();
+
+    gen if (N == 0) {
+      i_a -> inner.ii; inner.oo -> o_a;
+    } else {
+      i_b -> inner.ii; inner.oo -> o_b;
+    }
+  }
+}
+// @fec-golden {{{
+//  module dictident_entity_6(
+//    input  wire       i_a,
+//    input  wire [1:0] i_b,
+//    output wire       o_a,
+//    output wire [1:0] o_b
+//  );
+//    assign o_a = i_a;
+//    assign o_b = i_b;
+//  endmodule
+// }}}

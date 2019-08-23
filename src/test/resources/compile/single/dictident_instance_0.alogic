@@ -1,0 +1,15 @@
+network dictident_instance_0 {
+  in  bool i;
+  out bool o;
+
+  network inner {
+    in bool ii;
+    out bool oo;
+    ii -> oo;
+  }
+
+  inner#[0] = new inner();
+
+  i -> inner#[0].ii; inner#[0].oo -> o;
+}
+// :11: ERROR: Declaration with dictionary identifier must appear directly in 'gen' loop scope.

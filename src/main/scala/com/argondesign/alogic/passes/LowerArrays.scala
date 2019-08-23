@@ -75,14 +75,15 @@ final class LowerArrays(implicit cc: CompilerContext) extends TreeTransformer {
     // Rewrite .write calls
     //////////////////////////////////////////////////////////////////////////
 
-    case StmtExpr(ExprCall(ExprSelect(ExprRef(symbol: TermSymbol), "write"), List(addr, data))) => {
+    case StmtExpr(
+        ExprCall(ExprSelect(ExprSym(symbol: TermSymbol), "write", _), List(addr, data))) => {
       // Rewrite assignments to array elements
       symbol.attr.memory.get map {
         case (weSymbol, waSymbol, wdSymbol) => {
           val stmts = List(
-            StmtAssign(ExprRef(weSymbol), makeExprInt(weSymbol, 1)),
-            StmtAssign(ExprRef(waSymbol), addr),
-            StmtAssign(ExprRef(wdSymbol), data)
+            StmtAssign(ExprSym(weSymbol), makeExprInt(weSymbol, 1)),
+            StmtAssign(ExprSym(waSymbol), addr),
+            StmtAssign(ExprSym(wdSymbol), data)
           )
           StmtBlock(stmts) regularize tree.loc
         }
@@ -126,9 +127,9 @@ final class LowerArrays(implicit cc: CompilerContext) extends TreeTransformer {
               val (weSymbol, waSymbol, wdSymbol) = symbol.attr.memory.value
               StmtBlock(
                 List(
-                  StmtAssign(ExprRef(weSymbol), makeExprInt(weSymbol, 0)),
-                  StmtAssign(ExprRef(waSymbol), makeExprInt(waSymbol, 0)),
-                  StmtAssign(ExprRef(wdSymbol), makeExprInt(wdSymbol, 0))
+                  StmtAssign(ExprSym(weSymbol), makeExprInt(weSymbol, 0)),
+                  StmtAssign(ExprSym(waSymbol), makeExprInt(waSymbol, 0)),
+                  StmtAssign(ExprSym(wdSymbol), makeExprInt(wdSymbol, 0))
                 )
               ) regularize decl.loc
             }

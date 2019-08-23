@@ -1,0 +1,18 @@
+network dictident_decl_9 {
+  gen for (uint N < 2) {
+    in  uint(N+1) i#[N];
+    out uint(N+1) o#[N];
+    i#[N] -> o#[N];
+  }
+}
+// @fec-golden {{{
+//  module dictident_decl_9(
+//    input  wire       i__0,
+//    input  wire [1:0] i__1,
+//    output wire       o__0,
+//    output wire [1:0] o__1
+//  );
+//    assign o__0 = i__0;
+//    assign o__1 = i__1;
+//  endmodule
+// }}}

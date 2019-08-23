@@ -1,0 +1,15 @@
+network dictident_entity_1 {
+  in  bool i;
+  out bool o;
+
+  network inner#[0] {
+    in  bool ii;
+    out bool oo;
+    ii -> oo;
+  }
+
+  inner = new inner#[0]();
+
+  i -> inner.ii; inner.oo -> o;
+}
+// :5: ERROR: Definition with dictionary identifier must appear directly in 'gen' loop scope.

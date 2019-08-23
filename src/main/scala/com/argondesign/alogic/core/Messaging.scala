@@ -150,7 +150,7 @@ trait Messaging { self: CompilerContext =>
   final def messages: List[Message] = messageBuffer.toList
 
   final def emitMessages(): Unit = synchronized {
-    messageBuffer foreach { settings.messageEmitter(_, this) }
+    messageBuffer.distinct foreach { settings.messageEmitter(_, this) }
     messageBuffer.clear()
   }
 

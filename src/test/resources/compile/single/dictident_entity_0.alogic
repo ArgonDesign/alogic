@@ -1,0 +1,6 @@
+network dictident_entity_0#[0] {
+  in  bool i;
+  out bool o;
+  i -> o;
+}
+// :1: ERROR: Definition with dictionary identifier must appear directly in 'gen' loop scope.

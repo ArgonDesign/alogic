@@ -129,19 +129,19 @@ object StackFactory {
     val valSymbol = cc.newTermSymbol("valid", loc, bool)
     val stoSymbol = cc.newTermSymbol("storage", loc, kind)
 
-    val enRef = ExprRef(enSymbol)
+    val enRef = ExprSym(enSymbol)
 
-    val pusRef = ExprRef(pusSymbol)
-    val popRef = ExprRef(popSymbol)
-    val dRef = ExprRef(dSymbol)
+    val pusRef = ExprSym(pusSymbol)
+    val popRef = ExprSym(popSymbol)
+    val dRef = ExprSym(dSymbol)
 
-    val empRef = ExprRef(empSymbol)
-    val fulRef = ExprRef(fulSymbol)
-    val qRef = ExprRef(qSymbol)
+    val empRef = ExprSym(empSymbol)
+    val fulRef = ExprSym(fulSymbol)
+    val qRef = ExprSym(qSymbol)
 
-    val valRef = ExprRef(valSymbol)
+    val valRef = ExprSym(valSymbol)
 
-    val stoRef = ExprRef(stoSymbol)
+    val stoRef = ExprSym(stoSymbol)
 
     val statements = List(
       StmtIf(enRef,
@@ -181,7 +181,7 @@ object StackFactory {
     val entitySymbol = cc.newTypeSymbol(name, loc, eKind)
     entitySymbol.attr.variant set "fsm"
     entitySymbol.attr.highLevelKind set eKind
-    val entity = Entity(Sym(entitySymbol), decls ::: EntCombProcess(statements) :: connects)
+    val entity = Entity(Sym(entitySymbol, Nil), decls ::: EntCombProcess(statements) :: connects)
     entity regularize loc
   }
 
@@ -256,18 +256,18 @@ object StackFactory {
     val ptrKind = TypeUInt(Expr(ptrWidth) regularize loc)
     val ptrSymbol = cc.newTermSymbol("ptr", loc, ptrKind)
 
-    val enRef = ExprRef(enSymbol)
+    val enRef = ExprSym(enSymbol)
 
-    val pusRef = ExprRef(pusSymbol)
-    val popRef = ExprRef(popSymbol)
-    val dRef = ExprRef(dSymbol)
+    val pusRef = ExprSym(pusSymbol)
+    val popRef = ExprSym(popSymbol)
+    val dRef = ExprSym(dSymbol)
 
-    val empRef = ExprRef(empSymbol)
-    val fulRef = ExprRef(fulSymbol)
-    val qRef = ExprRef(qSymbol)
+    val empRef = ExprSym(empSymbol)
+    val fulRef = ExprSym(fulSymbol)
+    val qRef = ExprSym(qSymbol)
 
-    val stoRef = ExprRef(stoSymbol)
-    val ptrRef = ExprRef(ptrSymbol)
+    val stoRef = ExprSym(stoSymbol)
+    val ptrRef = ExprSym(ptrSymbol)
 
     def zextPtrWidth(bool: Expr): Expr = {
       if (ptrWidth == 1) {
@@ -329,7 +329,7 @@ object StackFactory {
     val entitySymbol = cc.newTypeSymbol(name, loc, eKind)
     entitySymbol.attr.variant set "fsm"
     entitySymbol.attr.highLevelKind set eKind
-    val entity = Entity(Sym(entitySymbol), decls ::: EntCombProcess(statements) :: connects)
+    val entity = Entity(Sym(entitySymbol, Nil), decls ::: EntCombProcess(statements) :: connects)
     entity regularize loc
   }
 

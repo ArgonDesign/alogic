@@ -42,7 +42,6 @@ import com.argondesign.alogic.core.StorageTypes.StorageTypeWire
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.unreachable
 
-import scala.annotation.tailrec
 import scala.collection.mutable
 
 final class Checker(implicit cc: CompilerContext) extends TreeTransformer {
@@ -92,7 +91,7 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer {
 
     case node: EntEntity if notVariant("network") => err(node, "nested entities")
 
-    case node @ EntDecl(decl @ DeclIdent(ident, kind, _)) =>
+    case node @ EntDecl(decl @ DeclRef(ident, kind, _)) =>
       variantStack.top match {
         case "fsm" =>
           kind match {
@@ -144,7 +143,8 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer {
           connect: Boolean = false,
           fence: Boolean = false,
           function: Boolean = false,
-          verbatim: Boolean = false
+          verbatim: Boolean = false,
+          gen: Boolean = false
       ) {
         def ||(that: Seen) = Seen(
           entity || that.entity,
@@ -152,49 +152,49 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer {
           connect || that.connect,
           fence || that.fence,
           function || that.function,
-          verbatim || that.verbatim
+          verbatim || that.verbatim,
+          gen || that.gen
         )
       }
 
       def checkDeclOrder(trees: List[Tree], seen: Seen): Seen = {
-        def checkDecl(decl: DeclIdent) = {
+        def checkDecl(decl: DeclRef) = {
           val kind = decl.kind
-          if (kind.isIn || kind.isOut || kind.isParam) {
-            val prefix = if (kind.isParam) {
-              "Parameter declarations must appear before"
-            } else {
-              "Port declarations must appear before"
-            }
-            if (seen.entity) cc.error(decl, s"${prefix} nested entities")
-            if (seen.instance) cc.error(decl, s"${prefix} instances")
-            if (seen.connect) cc.error(decl, s"${prefix} connections")
-            if (seen.fence) cc.error(decl, s"${prefix} 'fence' block")
-            if (seen.function) cc.error(decl, s"${prefix} function definitions")
-            if (seen.verbatim) cc.error(decl, s"${prefix} 'verbatim' blocks")
+          val isPC = kind.isParam || kind.isConst
+          val isPCIO = isPC || kind.isIn || kind.isOut
+          lazy val prefix = kind match {
+            case _: TypeParam => "Parameter declarations must appear before"
+            case _: TypeConst => "Constant declarations must appear before"
+            case _            => "Port declarations must appear before"
           }
+          if (isPCIO && seen.entity) cc.error(decl, s"${prefix} nested entities")
+          if (isPCIO && seen.instance) cc.error(decl, s"${prefix} instances")
+          if (isPCIO && seen.connect) cc.error(decl, s"${prefix} connections")
+          if (isPCIO && seen.fence) cc.error(decl, s"${prefix} 'fence' block")
+          if (isPCIO && seen.function) cc.error(decl, s"${prefix} function definitions")
+          if (isPCIO && seen.verbatim) cc.error(decl, s"${prefix} 'verbatim' blocks")
+          if (isPC && seen.gen) cc.error(decl, s"${prefix} 'gen' blocks")
         }
 
         if (trees.isEmpty) {
           seen
         } else {
           val newSeen = trees.head match {
-            case EntDecl(decl: DeclIdent)     => checkDecl(decl); seen
-            case GenDecl(decl: DeclIdent)     => checkDecl(decl); seen
-            case _: EntDefn                   => seen
-            case _: EntEntity                 => seen.copy(entity = true)
-            case _: EntInstance               => seen.copy(instance = true)
-            case _: EntConnect                => seen.copy(connect = true)
-            case _: EntCombProcess            => seen.copy(fence = true)
-            case _: EntFunction               => seen.copy(function = true)
-            case _: EntVerbatim               => seen.copy(verbatim = true)
-            case EntGen(GenIf(_, t, e))       => checkDeclOrder(t, seen) || checkDeclOrder(e, seen)
-            case EntGen(GenFor(_, _, _, b))   => checkDeclOrder(b, seen)
-            case EntGen(GenRange(_, _, _, b)) => checkDeclOrder(b, seen)
-            case GenIf(_, t, e)               => checkDeclOrder(t, seen) || checkDeclOrder(e, seen)
-            case GenFor(_, _, _, b)           => checkDeclOrder(b, seen)
-            case GenRange(_, _, _, b)         => checkDeclOrder(b, seen)
-            case _: GenDefn                   => seen
-            case _                            => unreachable
+            case EntDecl(decl: DeclRef) => checkDecl(decl); seen
+            case GenDecl(decl: DeclRef) => checkDecl(decl); seen
+            case _: EntDefn             => seen
+            case _: EntEntity           => seen.copy(entity = true)
+            case _: EntInstance         => seen.copy(instance = true)
+            case _: EntConnect          => seen.copy(connect = true)
+            case _: EntCombProcess      => seen.copy(fence = true)
+            case _: EntFunction         => seen.copy(function = true)
+            case _: EntVerbatim         => seen.copy(verbatim = true)
+            case EntGen(gen)            => checkDeclOrder(List(gen), seen.copy(gen = true))
+            case GenIf(_, t, e)         => checkDeclOrder(t, seen) || checkDeclOrder(e, seen)
+            case GenFor(_, _, _, b)     => checkDeclOrder(b, seen)
+            case GenRange(_, _, _, b)   => checkDeclOrder(b, seen)
+            case _: GenDefn             => seen
+            case _                      => unreachable
           }
           checkDeclOrder(trees.tail, newSeen)
         }
@@ -220,30 +220,27 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer {
       paramConstAllowed.pop()
     }
 
-    case decl @ DeclIdent(_, kind, _) if !paramConstAllowed.top && (kind.isParam || kind.isConst) =>
-      val hint = if (kind.isParam) "param" else "const"
-      cc.error(decl, s"'$hint' declaration cannot appear inside 'gen' construct")
-      decl
+    // TODO: This needs to move past the Namer as TypeRefs cannot be resolved here
+//    case decl @ DeclRef(_, kind, _)
+//        if unitType(kind).isNum && !kind.isConst && !kind.isParam && !kind.isGen => {
+//      val s = if (unitType(kind).isSigned) "int" else "uint"
+//      cc.error(s"Only compile time constant scalars can be declared with type '${s}'")
+//      decl
+//    }
 
-    case decl @ DeclIdent(_, kind, _)
-        if unitType(kind).isNum && !kind.isConst && !kind.isParam && !kind.isGen => {
-      val s = if (unitType(kind).isSigned) "int" else "uint"
-      cc.error(s"Only compile time constant scalars can be declared with type '${s}'")
-      decl
-    }
-
-    case decl @ DeclIdent(Ident(name), TypeOut(kind, fc, st), None) => {
+    case decl @ DeclRef(ref, TypeOut(kind, fc, st), None) => {
 
       val newSt = (fc, st) match {
         case (FlowControlTypeNone, _: StorageTypeSlices) => {
-          cc.error(tree,
-                   s"Output port '${name}' without flow control specifier cannot use output slices")
+          cc.error(
+            tree,
+            s"Output port '${ref.toSource}' without flow control specifier cannot use output slices")
           StorageTypeReg
         }
         case (FlowControlTypeValid, _: StorageTypeSlices) => {
           cc.error(
             tree,
-            s"Output port '${name}' with 'sync' flow control specifier cannot use output slices")
+            s"Output port '${ref.toSource}' with 'sync' flow control specifier cannot use output slices")
           StorageTypeReg
         }
         case _ => st
@@ -256,7 +253,7 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer {
       }
     }
 
-    case decl @ DeclIdent(_, kind, Some(init)) => {
+    case decl @ DeclRef(_, kind, Some(init)) => {
       val hintOpt = kind match {
         case _: TypeIn => Some("Input port declarations")
         case TypeOut(_, FlowControlTypeNone, StorageTypeWire) => {
@@ -283,7 +280,7 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer {
       } getOrElse decl
     }
 
-    case decl @ DeclIdent(_, kind, None) => {
+    case decl @ DeclRef(_, kind, None) => {
       val hintOpt = kind match {
         case _: TypeConst => Some("Constant")
         case _            => None
@@ -331,7 +328,7 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer {
       }
     }
 
-    case StmtDecl(decl: DeclIdent) => {
+    case StmtDecl(decl: DeclRef) => {
       def msg(kind: Type) = kind match {
         case _: TypeIn       => Some("Input ports must be declared in the enclosing entity")
         case _: TypeOut      => Some("Output ports must be declared in the enclosing entity")
@@ -439,14 +436,14 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer {
     assert(loopLevel == 0)
   }
 
-  @tailrec
-  private def unitType(kind: Type): Type = kind.underlying match {
-    case TypeArray(ekind, _)   => unitType(ekind)
-    case TypeVector(ekind, _)  => unitType(ekind)
-    case TypeSram(ekind, _, _) => unitType(ekind)
-    case TypeStack(ekind, _)   => unitType(ekind)
-    case other                 => other
-  }
+//  @tailrec
+//  private def unitType(kind: Type): Type = kind.underlying match {
+//    case TypeArray(ekind, _)   => unitType(ekind)
+//    case TypeVector(ekind, _)  => unitType(ekind)
+//    case TypeSram(ekind, _, _) => unitType(ekind)
+//    case TypeStack(ekind, _)   => unitType(ekind)
+//    case other                 => other
+//  }
 
 }
 

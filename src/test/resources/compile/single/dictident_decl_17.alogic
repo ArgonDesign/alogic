@@ -1,0 +1,45 @@
+fsm dictident_decl_17 {
+  in       bool x;
+  in       bool y;
+  out wire bool a;
+  out wire bool b;
+
+  void main() {
+    gen for(uint n < 8) {
+      bool tmp#[n];
+      gen if (n == 0) {
+        tmp#[n] = x;
+      } else {
+        tmp#[n] = ~tmp#[n-1];
+      }
+      gen if (n == 7) {
+        a = tmp#[n];
+      }
+    }
+
+    gen for(uint n < 7) {
+      bool tmp#[n];
+      gen if (n == 0) {
+        tmp#[n] = y;
+      } else {
+        tmp#[n] = ~tmp#[n-1];
+      }
+      gen if (n == 6) {
+        b = tmp#[n];
+      }
+    }
+
+    fence;
+  }
+}
+// @fec-golden {{{
+//  module dictident_decl_17(
+//    input  wire x,
+//    input  wire y,
+//    output wire a,
+//    output wire b
+//  );
+//    assign a = ~x;
+//    assign b = y;
+//  endmodule
+// }}}

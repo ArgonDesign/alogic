@@ -17,7 +17,7 @@
 package com.argondesign.alogic.core
 
 import com.argondesign.alogic.ast.Trees.Expr
-import com.argondesign.alogic.ast.Trees.ExprRef
+import com.argondesign.alogic.ast.Trees.ExprSym
 import com.argondesign.alogic.core.Symbols.TermSymbol
 
 import scala.annotation.tailrec
@@ -35,7 +35,7 @@ class Bindings(val underlying: Map[TermSymbol, Expr]) extends AnyVal {
 
     // Collect any symbols referenced that have a value in the bindings
     val referenced = simplified.valuesIterator flatMap {
-      _ collect { case ExprRef(symbol: TermSymbol) if symbol.kind.isParam => symbol }
+      _ collect { case ExprSym(symbol: TermSymbol) if symbol.kind.isParam => symbol }
     } filter {
       this.contains
     }

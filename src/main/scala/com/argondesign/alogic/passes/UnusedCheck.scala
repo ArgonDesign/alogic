@@ -25,7 +25,7 @@ import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
 
-final class UnusedCheck(implicit cc: CompilerContext) extends TreeTransformer { namer =>
+final class UnusedCheck(implicit cc: CompilerContext) extends TreeTransformer {
 
   override val typed = false
 
@@ -53,7 +53,7 @@ final class UnusedCheck(implicit cc: CompilerContext) extends TreeTransformer { 
   override def enter(tree: Tree): Unit = {
     count += 1
     tree match {
-      case ExprRef(symbol) =>
+      case ExprSym(symbol) =>
         // Mark symbol as used
         markUsed(symbol)
 
@@ -65,7 +65,7 @@ final class UnusedCheck(implicit cc: CompilerContext) extends TreeTransformer { 
           markUsed(symbol)
         }
 
-      case EntFunction(Sym(symbol), _) =>
+      case EntFunction(Sym(symbol, _), _) =>
         // Add symbol
         markDecl(symbol)
         // Mark entry functions as used
@@ -73,7 +73,7 @@ final class UnusedCheck(implicit cc: CompilerContext) extends TreeTransformer { 
           markUsed(symbol)
         }
 
-      case Entity(Sym(symbol: TypeSymbol), _) =>
+      case Entity(Sym(symbol: TypeSymbol, _), _) =>
         // Add symbol
         markDecl(symbol)
         // Mark the root entity as used
@@ -86,7 +86,7 @@ final class UnusedCheck(implicit cc: CompilerContext) extends TreeTransformer { 
         eSymbolStack push Some(symbol)
         inVerbatimEntity = symbol.attr.variant contains "verbatim"
 
-      case EntInstance(Sym(iSymbol), Sym(eSymbol), _, _) =>
+      case EntInstance(Sym(iSymbol, _), Sym(eSymbol, _), _, _) =>
         // Add instance symbol
         markDecl(iSymbol)
         // Mark entity as used

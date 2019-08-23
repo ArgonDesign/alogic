@@ -26,7 +26,7 @@ import com.argondesign.alogic.typer.TypeAssigner
 final class InlineUnsizedConst(implicit cc: CompilerContext) extends TreeTransformer {
 
   override def transform(tree: Tree): Tree = tree match {
-    case ExprRef(symbol) =>
+    case ExprSym(symbol) =>
       symbol.kind match {
         case TypeConst(_: TypeNum) => walk(symbol.attr.init.value)
         case _                     => tree

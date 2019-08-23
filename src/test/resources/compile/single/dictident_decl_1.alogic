@@ -1,0 +1,15 @@
+network dictident_decl_1 {
+  gen for (uint N < 1) {
+    in  bool i#[0];
+    in  bool i#[1];
+    out bool o#[0];
+    out bool o#[1];
+  }
+
+  i#[0] -> o#[0];
+  i#[1] -> o#[1];
+}
+// :4: ERROR: Redefinition of name 'i' with previous definition at
+// :4: ERROR: ... .*dictident_decl_1.alogic:3
+// :6: ERROR: Redefinition of name 'o' with previous definition at
+// :6: ERROR: ... .*dictident_decl_1.alogic:5

@@ -46,7 +46,7 @@ trait Builtins { this: CompilerContext =>
 
   // Fold call to builtin function
   def foldBuiltinCall(call: ExprCall): Expr = call.expr match {
-    case ExprRef(symbol) =>
+    case ExprSym(symbol) =>
       val builtin = (builtins find { _ contains symbol }).get
       builtin.fold(call.loc, call.args) map { _ regularize call.loc } getOrElse call
     case _ => unreachable
@@ -54,7 +54,7 @@ trait Builtins { this: CompilerContext =>
 
   // Fold call to builtin function
   def isKnownConstBuiltinCall(call: ExprCall): Boolean = call.expr match {
-    case ExprRef(symbol) =>
+    case ExprSym(symbol) =>
       val builtin = (builtins find { _ contains symbol }).get
       builtin.isKnownConst(call.args)
     case _ => unreachable

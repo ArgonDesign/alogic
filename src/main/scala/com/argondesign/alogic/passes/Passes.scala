@@ -18,7 +18,6 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.backend.CodeGeneration
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.typer.ResolvePolyFunc
 import com.argondesign.alogic.typer.Typer
 
 import scala.util.ChainingSyntax
@@ -34,6 +33,7 @@ object Passes extends ChainingSyntax {
       Checker,
       Namer,
       Specialize,
+      ResolveDictPorts,
       // Any passes between here and the middle end can only perform checks
       // and cannot re-write any trees unless errors have been detected
       Typer(externalRefs = false),
@@ -45,6 +45,7 @@ object Passes extends ChainingSyntax {
       ReplaceUnaryTicks, // This must be first as TypeAssigner cannot handle unary '
       ResolvePolyFunc,
       AddCasts,
+      FoldTypeRefs,
       Desugar,
       FoldExprInTypes,
       InlineUnsizedConst,

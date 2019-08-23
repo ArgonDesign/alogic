@@ -43,10 +43,10 @@ final class Regularize(loc: Loc)(implicit cc: CompilerContext) extends TreeTrans
     }
 
     tree match {
-      case DeclIdent(_, kind, _) => TypeRegularize(kind)
-      case ExprType(kind)        => TypeRegularize(kind)
-      case ExprCast(kind, _)     => TypeRegularize(kind)
-      case _                     => ()
+      case DeclRef(_, kind, _) => TypeRegularize(kind)
+      case ExprType(kind)      => TypeRegularize(kind)
+      case ExprCast(kind, _)   => TypeRegularize(kind)
+      case _                   => ()
     }
 
     tree

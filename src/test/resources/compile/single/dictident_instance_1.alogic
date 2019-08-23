@@ -1,0 +1,22 @@
+network dictident_instance_1 {
+  in  bool i_a;
+  out bool o_a;
+  in  bool i_b;
+  out bool o_b;
+
+  network inner {
+    in  bool ii;
+    out bool oo;
+    ii -> oo;
+  }
+
+  gen for (uint N < 1) {
+    inner#[0] = new inner();
+    inner#[1] = new inner();
+  }
+
+  i_a -> inner#[0].ii; inner#[0].oo -> o_a;
+  i_b -> inner#[1].ii; inner#[1].oo -> o_b;
+}
+// :15: ERROR: Redefinition of name 'inner' with previous definition at
+// :15: ERROR: ... .*dictident_instance_1.alogic:14

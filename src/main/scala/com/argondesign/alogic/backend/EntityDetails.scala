@@ -84,15 +84,15 @@ final class EntityDetails(val entity: Entity, details: => Map[TypeSymbol, Entity
 
   lazy val needsClock: Boolean = isVerbatim || hasFlops || hasArrays || {
     entity.instances exists {
-      case EntInstance(_, Sym(symbol: TypeSymbol), _, _) => details(symbol).needsClock
-      case _                                             => unreachable
+      case EntInstance(_, Sym(symbol: TypeSymbol, _), _, _) => details(symbol).needsClock
+      case _                                                => unreachable
     }
   }
 
   lazy val needsReset: Boolean = isVerbatim || resetFlops.nonEmpty || {
     entity.instances exists {
-      case EntInstance(_, Sym(symbol: TypeSymbol), _, _) => details(symbol).needsReset
-      case _                                             => unreachable
+      case EntInstance(_, Sym(symbol: TypeSymbol, _), _, _) => details(symbol).needsReset
+      case _                                                => unreachable
     }
   }
 
@@ -100,7 +100,7 @@ final class EntityDetails(val entity: Entity, details: => Map[TypeSymbol, Entity
   lazy val netSymbols: List[TermSymbol] = entity.connects flatMap {
     case EntConnect(_, rhs :: Nil) => {
       rhs collect {
-        case ExprRef(symbol: TermSymbol) => symbol
+        case ExprSym(symbol: TermSymbol) => symbol
       }
     }
     case _ => Nil
@@ -124,7 +124,7 @@ final class EntityDetails(val entity: Entity, details: => Map[TypeSymbol, Entity
       // Sorting map for instance symbols
       val ordering = {
         val pairs = for {
-          (EntInstance(Sym(symbol: TermSymbol), _, _, _), i) <- entity.instances.zipWithIndex
+          (EntInstance(Sym(symbol: TermSymbol, _), _, _, _), i) <- entity.instances.zipWithIndex
         } yield {
           symbol -> i
         }

@@ -52,8 +52,8 @@ object EntBuilder extends BaseBuilder[EntContext, List[Ent]] {
       }
 
       override def visitEntInstance(ctx: EntInstanceContext) = {
-        val iIdent = ctx.IDENTIFIER(0).toIdent
-        val eIdent = ctx.IDENTIFIER(1).toIdent
+        val iIdent = IdentBuilder(ctx.ident(0))
+        val eIdent = IdentBuilder(ctx.ident(1))
 
         val paramNames = ctx.param_assigns.IDENTIFIER.asScala.toList map { _.text }
         val paramExprs = ExprBuilder(ctx.param_assigns.expr)
@@ -80,7 +80,7 @@ object EntBuilder extends BaseBuilder[EntContext, List[Ent]] {
       }
 
       override def visitEntFunction(ctx: EntFunctionContext) = {
-        val ident = ctx.IDENTIFIER.toIdent
+        val ident = IdentBuilder(ctx.ident)
         val stmts = StmtBuilder(ctx.block.statement)
         if (ctx.attr != null) {
           ident withAttr AttrBuilder(ctx.attr)

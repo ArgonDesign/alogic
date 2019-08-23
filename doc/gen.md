@@ -19,8 +19,13 @@ construct.
 
 The constructs are introduced with examples producing Alogic statements,
 but `gen` constructs can be used to produce various language fragments.
-The places where `gen` constructs can be used are described later in
-this section.
+The places where `gen` constructs can be used are described
+[later](#where_gen_constructs_can_appear) in this section.
+
+Note that `gen` construct have special lexical scoping rules which allow
+names declared inside `gen` blocks to escape into the scope containing
+the `gen` construct. This makes `gen` constructs more powerful and is
+explained [later](#lexical_scopes_of_gen_constructs) in this section.
 
 #### Simple conditionals with `gen if`
 
@@ -223,7 +228,7 @@ The only case when a ranged `gen for` is not equivalent to a standard
 representable on the declared type:
 
 ```
-gen for(u3 i < 8) {
+gen for (u3 i < 8) {
   ...
 }
 ```
@@ -382,22 +387,106 @@ network foo {
 }
 ```
 
-### Variable scopes
+### Lexical scopes of `gen` constructs 
 
-Any name defined inside a `gen` construct have a scope limited to the
-defining `gen` construct.
+The `{}` block scopes introduced by `gen` constructs are special and
+introduce what we will refer to as _weak lexical scopes_ (as opposed to
+regular lexical scopes introduced by other language constructs). Names
+introduced inside weak scopes can escape into the enclosing scope. The
+rules are slightly different for `gen if` conditionals and `gen` loops,
+and are described in the following sections.
+
+#### Scoping rules for `gen if` conditionals
+
+All names introduced inside `gen if` constructs will be inserted into
+the enclosing regular lexical scope. This allows for example to use `gen
+if` to change types of definitions based on compile time conditions:
 
 ```
-gen if (P) {
-  u8 a = ...;
-  p_out.write(a); // Uses 'a' above
+gen if (SIGNED) {
+  i8 a;
+  i8 b;
+  i16 c;
+} else {
+  u8 a;
+  u8 b;
+  u16 c;
 }
-
-u8 b = a; // 'a' is undefined
+...
+c = 'a * 'b; // Signed or unsigned variables depending on SIGNED
 ```
 
-Furthermore, names defines in `gen` loops have a separate copy for each
-iteration, with a scope limited to the defining iteration:
+This mechanism of escaping the `gen if` scopes works with any
+declarations or definitions that introduces a name (including type,
+entity, instance or function definitions), so the above is equivalent to
+the following:
+
+```
+gen if (SIGNED) {
+  typedef i8 i_t;
+  typedef i16 o_t;
+} else {
+  typedef u8 i_t;
+  typedef u16 o_t;
+}
+i_t a; // i_t and o_t are signed or unsigned depending on SIGNED
+i_t b;
+o_t c;
+...
+c = 'a * 'b;
+```
+
+References within the weak scope of a `gen if` will always refer to
+names within the same scope if those names are introduced within the
+scope. The compiler however will issue an error when `gen if` constructs
+yield missing or ambiguous definitions of names escaping the weak scope,
+if those names are referred to outside of the introducing weak scope.
+This means that the following would be valid:
+
+```
+gen if (A) {
+    bool x = ...
+    a = x;    
+}
+gen if (B) {
+    bool x = ... 
+    b = x;
+}
+```
+
+While the following would raise an ambiguous definition error if both
+`A` and `B` are true, or a missing definition error if both `A` and `B`
+are false:
+
+```
+gen if (A) {
+    bool x = ...
+}
+gen if (B) {
+    bool x = ... 
+}
+c = x; // might be an error if A and B both have the same truth value
+```
+
+Note that any names defined inside a regular scope which is inside a
+weak scope will not escape the enclosing scope, so the following is
+invalid:
+
+```
+gen if (SIGNED) {{
+  i2 a;
+}} else {{
+  u2 a;
+}}
+a = 0;  // ERROR: 'a' is not defined.
+```
+
+#### Scoping rules for `gen` loops
+
+Simple names defined in `gen` loops have a separate copy for each
+iteration and do not escape the weak scope of the `gen` loop. Within the
+loop body, references are resolved to the symbols created in the current
+iteration.
 
 ```
 fsm scoping {
@@ -409,9 +498,8 @@ fsm scoping {
   void main() {
     bool b = p_i;
     gen for (uint N = 0 ; N <= P; N++) {
-      bool b = ~b;  // Redefinition of outer 'b' on every iteration,
-                    // initialized to the outer 'b' on every iteration
-      p_o.write(b); // Will always write ~p_i;
+      bool c = ~b; // Separate copy of 'c' in each iteration.
+      p_o.write(c);
       fence;
     }
   }
@@ -428,18 +516,173 @@ fsm scoping__P_2 {
 
   void main() {
     bool b = p_i;
-    bool b0 = ~b;
-    p_o.write(b0);
+    bool c__0 = ~b;
+    p_o.write(c__0);
     fence;
-    bool b1 = ~b;
-    p_o.write(b1);
+    bool c__1 = ~b;
+    p_o.write(c__1);
     fence;
-    bool b2 = ~b;
-    p_o.write(b2);
+    bool c__2 = ~b;
+    p_o.write(c__2);
     fence;
   }
 }
 ```
+
+Directly within the weak scopes of `gen` loops, _dictionary identifiers_
+can be used when introducing names to disambiguate between iterations.
+Dictionary identifiers use a simple base identifier, followed by a comma
+separated list of one or more compile time constant indices enclosed in
+`#[` `]`. The following generates 8 `bool` variables with names `a#[0]`
+to `a#[7]`:
+
+```
+gen for (uint N < 8) {
+  bool a#[N]; 
+}
+```
+ 
+The indices must be unique for each copy of the definition, but can
+otherwise be arbitrary (including sparse indices). Dictionary
+identifiers (and only dictionary identifiers) escape the weak scope of
+the `gen` loop, and can be referred to with the same syntax within the
+enclosing regular scope:
+
+```
+network connect_2 {
+  gen for (uint n < 2)
+    in  bool i#[n];
+    out bool i#[n];
+  }
+  
+  i#[0] -> o#[0];
+  i#[1] -> o#[1];
+}
+```
+
+Dictionary identifiers can also be used to reference definitions across
+loop iterations as well:
+
+```
+network connect_N_backwards {
+  param uint N;
+  
+  gen for (uint n < N) {
+    in  bool i#[n];
+    out bool o#[n];
+    i#[n] -> o#[N - 1 - n];
+  }  
+}
+```
+
+It is an error to have more than one lexical definition of the same name
+within the same `gen` loop scope, even if the dictionary indices are
+unique:
+
+```
+gen for (uint n < 8) {
+  bool a#[0, n];
+  bool a#[1, n]; // ERROR: redefinition of 'a'
+}
+```
+
+It is also an error to have multiple `gen` loops introducing the same
+name, even if the dictionary indices are unique, if the name is referred
+to from the enclosing scope:
+
+```
+gen for (uint n < 8) {
+  bool a#[0, n];
+}
+gen for (uint n < 8) {
+  bool a#[1, n];
+}
+a#[A, B] = ... // ERROR: 'a' is ambiguous
+```
+
+Remember however that references within the loop are resolved locally so
+the following is OK, so long as there are no external references to `a`:
+
+```
+gen for (uint n < 8) {
+  bool a#[n];
+  gen if (n == 0) {
+    a#[n] = x;
+  } else {
+    a#[n] = ~a#[n-1];
+  }  
+  gen if (n == 7) {
+    b = a#[n];
+  }
+}
+
+gen for (uint n < 8) {
+  bool a#[n];
+  gen if (n == 0) {
+    a#[n] = x;
+  } else {
+    a#[n] = ~a#[n-1];
+  }  
+  gen if (n == 7) {
+    c = a#[n];
+  }
+}
+```
+
+When working out how dictionary identifiers are resolved, it might be
+helpful to think of names introduced with a dictionary identifier as a
+single symbol, which is introduced by the corresponding lexical
+definition. This means that an ambiguity error will be raised if there
+are more than one lexical definitions active while resolving a
+reference.
+
+Here is an example of the power of the mechanism to generate a pipelined
+binary tree of adders to sum a number of values:
+
+```
+network dictident_adder_tree {
+  param uint INPUTS; // Number of inputs (must be power of 2)
+  param uint IWIDTH; // Width of each input
+
+  const uint LEVELS = $clog2(INPUTS);
+
+  const uint OWIDTH = IWIDTH + LEVELS;
+
+  gen for (uint n < INPUTS) {
+    in uint(IWIDTH) p_i#[n];
+  }
+  out uint(OWIDTH) p_o;
+
+  fsm adder {
+    param uint IW;
+    in uint(IW) a;
+    in uint(IW) b;
+    out uint(IW+1) s;
+
+    void main() {
+      s = 'a + 'b;
+      fence;
+    }
+  }
+
+  gen for (uint level < LEVELS) {
+    gen for (uint n < (INPUTS >> level + 1)) {
+      add#[level, n] = new adder(IW = IWIDTH + level);
+      gen if (level == 0) {
+        p_i#[2*n + 0] -> add#[level, n].a;
+        p_i#[2*n + 1] -> add#[level, n].b;
+      } else {
+        add#[level - 1, 2*n + 0].s -> add#[level, n].a;
+        add#[level - 1, 2*n + 1].s -> add#[level, n].b;
+      }
+    }
+    gen if (level == LEVELS-1) {
+      add#[level, 0].s -> p_o;
+    }
+  }
+}
+```
+
 <p align="center">
 <a href="builtins.md">Previous</a> |
 <a href="index.md">Index</a> |

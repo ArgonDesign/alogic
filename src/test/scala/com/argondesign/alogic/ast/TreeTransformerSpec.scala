@@ -19,21 +19,22 @@ import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.SourceTextConverters._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Types.TypeUInt
 import com.argondesign.alogic.core.Warning
 import org.scalatest.FlatSpec
 
 final class TreeTransformerSpec extends FlatSpec with AlogicTest {
 
-  implicit val cc = new CompilerContext
+  implicit val cc: CompilerContext = new CompilerContext
 
   "A TreeTransformer" should "rewrite all nodes where it applies" in {
     val tree = """|{
                   |  u1 foo;
                   |  u2 foo;
-                  |}""".asTree[Stmt] rewrite new TreeTransformer {
+                  |}""".stripMargin.asTree[Stmt] rewrite new TreeTransformer {
       override val typed = false
-      override def transform(tree: Tree) = tree match {
-        case _: Ident => Ident("bar") withLoc tree.loc
+      override def transform(tree: Tree): Tree = tree match {
+        case _: Ident => Ident("bar", Nil) withLoc tree.loc
         case other    => other
       }
     }
@@ -41,8 +42,8 @@ final class TreeTransformerSpec extends FlatSpec with AlogicTest {
     tree should matchPattern {
       case StmtBlock(
           List(
-            StmtDecl(DeclIdent(Ident("bar"), _, _)),
-            StmtDecl(DeclIdent(Ident("bar"), _, _))
+            StmtDecl(DeclRef(Ident("bar", Nil), TypeUInt(Expr(1)), None)),
+            StmtDecl(DeclRef(Ident("bar", Nil), TypeUInt(Expr(2)), None))
           )) =>
     }
   }
@@ -51,14 +52,14 @@ final class TreeTransformerSpec extends FlatSpec with AlogicTest {
     val oldTree = "{ a = b; bool c = a; }".asTree[Stmt]
     val newTree = oldTree rewrite new TreeTransformer {
       override val typed = false
-      override def transform(tree: Tree) = tree tap { _ =>
+      override def transform(tree: Tree): Tree = tree tap { _ =>
         cc.warning(tree, "Saw it")
       }
     }
 
     newTree should be theSameInstanceAs oldTree
 
-    cc.messages should have length 8
+    cc.messages should have length 11
     forAll(cc.messages) { _ should beThe[Warning]("Saw it") }
   }
 

@@ -17,23 +17,24 @@ package com.argondesign.alogic.antlr
 
 import com.argondesign.alogic.antlr.AlogicParser._
 import com.argondesign.alogic.antlr.AntlrConverters._
-import com.argondesign.alogic.ast.Trees.DeclIdent
+import com.argondesign.alogic.ast.Trees.DeclRef
+import com.argondesign.alogic.ast.Trees.Ident
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.StorageTypes.StorageTypeReg
 import com.argondesign.alogic.core.StorageTypes.StorageTypeWire
 import com.argondesign.alogic.core.Types._
 
-object DeclBuilder extends BaseBuilder[DeclContext, DeclIdent] {
+object DeclBuilder extends BaseBuilder[DeclContext, DeclRef] {
 
-  def apply(ctx: DeclContext)(implicit cc: CompilerContext): DeclIdent = {
-    object Visitor extends AlogicScalarVisitor[DeclIdent] {
+  def apply(ctx: DeclContext)(implicit cc: CompilerContext): DeclRef = {
+    object Visitor extends AlogicScalarVisitor[DeclRef] {
 
       // Attach initializers
       override def visitDecl(ctx: DeclContext) = {
         val init = Option(ctx.expr) map { ExprBuilder(_) }
-        val decl @ DeclIdent(ident, _, _) = visit(ctx.declbase)
+        val decl @ DeclRef(ref, _, _) = visit(ctx.declbase)
         if (ctx.attr != null) {
-          ident withAttr AttrBuilder(ctx.attr)
+          ref.asInstanceOf[Ident] withAttr AttrBuilder(ctx.attr)
         }
         if (init.isDefined) {
           decl.copy(init = init) withLoc ctx.loc.copy(point = decl.loc.point)
@@ -45,18 +46,18 @@ object DeclBuilder extends BaseBuilder[DeclContext, DeclIdent] {
       // Simple decls
       override def visitDeclVar(ctx: DeclVarContext) = {
         val kind = TypeBuilder(ctx.kind)
-        DeclIdent(ctx.IDENTIFIER.toIdent, kind, None) withLoc ctx.loc
+        DeclRef(IdentBuilder(ctx.ident), kind, None) withLoc ctx.loc
       }
 
       // Entity decls
       override def visitDeclOut(ctx: DeclOutContext) = {
-        val ident = ctx.IDENTIFIER.toIdent
+        val ident = IdentBuilder(ctx.ident)
         val underlying = TypeBuilder(ctx.kind)
         val fcType = FlowControlTypeBuilder(ctx.flow_control_type)
         val storage = StorageTypeBuilder(ctx.storage_type)
         val kind = TypeOut(underlying, fcType, storage)
-        DeclIdent(ident, kind, None) withLoc {
-          ctx.loc.copy(point = ctx.IDENTIFIER.getStartIndex)
+        DeclRef(ident, kind, None) withLoc {
+          ctx.loc.copy(point = ctx.ident.start.getStartIndex)
         }
       }
 
@@ -64,15 +65,15 @@ object DeclBuilder extends BaseBuilder[DeclContext, DeclIdent] {
         val underlying = TypeBuilder(ctx.kind)
         val fcType = FlowControlTypeBuilder(ctx.flow_control_type)
         val kind = TypeIn(underlying, fcType)
-        DeclIdent(ctx.IDENTIFIER.toIdent, kind, None) withLoc {
-          ctx.loc.copy(point = ctx.IDENTIFIER.getStartIndex)
+        DeclRef(IdentBuilder(ctx.ident), kind, None) withLoc {
+          ctx.loc.copy(point = ctx.ident.start.getStartIndex)
         }
       }
 
       override def visitDeclParam(ctx: DeclParamContext) = {
         val underlying = TypeBuilder(ctx.kind)
         val kind = TypeParam(underlying)
-        DeclIdent(ctx.IDENTIFIER.toIdent, kind, None) withLoc {
+        DeclRef(IdentBuilder(ctx.IDENTIFIER), kind, None) withLoc {
           ctx.loc.copy(point = ctx.IDENTIFIER.getStartIndex)
         }
       }
@@ -80,7 +81,7 @@ object DeclBuilder extends BaseBuilder[DeclContext, DeclIdent] {
       override def visitDeclConst(ctx: DeclConstContext) = {
         val underlying = TypeBuilder(ctx.kind)
         val kind = TypeConst(underlying)
-        DeclIdent(ctx.IDENTIFIER.toIdent, kind, None) withLoc {
+        DeclRef(IdentBuilder(ctx.IDENTIFIER), kind, None) withLoc {
           ctx.loc.copy(point = ctx.IDENTIFIER.getStartIndex)
         }
       }
@@ -88,8 +89,8 @@ object DeclBuilder extends BaseBuilder[DeclContext, DeclIdent] {
       override def visitDeclPipeline(ctx: DeclPipelineContext) = {
         val underlying = TypeBuilder(ctx.kind)
         val kind = TypePipeline(underlying)
-        DeclIdent(ctx.IDENTIFIER.toIdent, kind, None) withLoc {
-          ctx.loc.copy(point = ctx.IDENTIFIER.getStartIndex)
+        DeclRef(IdentBuilder(ctx.ident), kind, None) withLoc {
+          ctx.loc.copy(point = ctx.ident.start.getStartIndex)
         }
       }
 
@@ -97,8 +98,8 @@ object DeclBuilder extends BaseBuilder[DeclContext, DeclIdent] {
         val elem = TypeBuilder(ctx.kind)
         val size = ExprBuilder(ctx.expr)
         val kind = TypeArray(elem, size)
-        DeclIdent(ctx.IDENTIFIER.toIdent, kind, None) withLoc {
-          ctx.loc.copy(point = ctx.IDENTIFIER.getStartIndex)
+        DeclRef(IdentBuilder(ctx.ident), kind, None) withLoc {
+          ctx.loc.copy(point = ctx.ident.start.getStartIndex)
         }
       }
 
@@ -107,8 +108,8 @@ object DeclBuilder extends BaseBuilder[DeclContext, DeclIdent] {
         val size = ExprBuilder(ctx.expr)
         val st = if (ctx.wire != null) StorageTypeWire else StorageTypeReg
         val kind = TypeSram(elem, size, st)
-        DeclIdent(ctx.IDENTIFIER.toIdent, kind, None) withLoc {
-          ctx.loc.copy(point = ctx.IDENTIFIER.getStartIndex)
+        DeclRef(IdentBuilder(ctx.ident), kind, None) withLoc {
+          ctx.loc.copy(point = ctx.ident.start.getStartIndex)
         }
       }
     }

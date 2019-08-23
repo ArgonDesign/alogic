@@ -1,0 +1,9 @@
+network dictident_defn_0 {
+  typedef bool i_t#[0];
+  typedef bool o_t#[0];
+  in  i_t i;
+  out o_t o;
+  i -> o;
+}
+// :2: ERROR: Definition with dictionary identifier must appear directly in 'gen' loop scope.
+// :3: ERROR: Definition with dictionary identifier must appear directly in 'gen' loop scope.

@@ -1,0 +1,10 @@
+network dictident_decl_6 {
+  in u8 x;
+  gen for (uint N < 2) {
+    in  bool i#[x];
+    out bool o#[x];
+  }
+  i#[0] -> o#[0];
+}
+// :4: ERROR: Identifier index must be a compile time constant
+// :5: ERROR: Identifier index must be a compile time constant

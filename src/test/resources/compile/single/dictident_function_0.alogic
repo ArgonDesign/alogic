@@ -1,0 +1,9 @@
+fsm dictident_function_0 {
+  in        bool i;
+  out wire  bool o;
+
+  void func#[0]() {
+    o = i;
+  }
+}
+// :5: ERROR: Definition with dictionary identifier must appear directly in 'gen' loop scope.

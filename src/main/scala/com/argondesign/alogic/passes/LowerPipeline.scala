@@ -74,7 +74,7 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
 
       // Work out the prev an next maps
       nextMap = outer.connects collect {
-        case EntConnect(ExprRef(iSymbolA), List(ExprRef(iSymbolB))) =>
+        case EntConnect(ExprSym(iSymbolA), List(ExprSym(iSymbolB))) =>
           (iSymbolA.kind, iSymbolB.kind) match {
             case (TypeInstance(eSymbolA), TypeInstance(eSymbolB)) => eSymbolA -> eSymbolB
             case _                                                => unreachable
@@ -99,8 +99,8 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
         inner <- entities
       } yield {
         inner collect {
-          case ExprRef(symbol: TermSymbol) if symbol.kind.isInstanceOf[TypePipeline] => symbol
-          case Sym(symbol: TermSymbol) if symbol.kind.isInstanceOf[TypePipeline]     => symbol
+          case ExprSym(symbol: TermSymbol) if symbol.kind.isInstanceOf[TypePipeline] => symbol
+          case Sym(symbol: TermSymbol, _) if symbol.kind.isInstanceOf[TypePipeline]  => symbol
         } toSet
       }
 
@@ -141,7 +141,6 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
         } else {
           val act = actSet.toList sortWith { _.id < _.id }
           val name = if (in) "pipeline_i" else "pipeline_o"
-          val ident = Ident(name) withLoc inner.loc
           val struct = TypeStruct(
             s"${name}_t",
             act map { _.name },
@@ -153,8 +152,7 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
             val st = StorageTypeSlices(List(StorageSliceFwd))
             TypeOut(struct, FlowControlTypeReady, st)
           }
-          val symbol = cc.newTermSymbol(ident, kind)
-          Some(symbol)
+          Some(cc.newTermSymbol(name, inner.loc, kind))
         }
       }
 
@@ -165,9 +163,7 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
         val pairs = for (psymbol <- actCurr.toList sortWith { _.id < _.id }) yield {
           val name = psymbol.name
           val kind = psymbol.kind.underlying
-          val ident = Ident(name) withLoc inner.loc
-          val vsymbol = cc.newTermSymbol(ident, kind)
-          name -> vsymbol
+          name -> cc.newTermSymbol(name, inner.loc, kind)
         }
         ListMap(pairs: _*)
       }
@@ -195,8 +191,8 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
           (lhs.tpe, rhs.tpe) match {
             // If its an instance -> instance connection, select the new pipeline ports
             case (_: TypeInstance, _: TypeInstance) => {
-              val newLhs = ExprSelect(Tree.untype(lhs), "pipeline_o") withLoc lhs.loc
-              val newRhs = ExprSelect(Tree.untype(rhs), "pipeline_i") withLoc rhs.loc
+              val newLhs = ExprSelect(Tree.untype(lhs), "pipeline_o", Nil) withLoc lhs.loc
+              val newRhs = ExprSelect(Tree.untype(rhs), "pipeline_i", Nil) withLoc rhs.loc
               val newConn = EntConnect(newLhs, List(newRhs))
               newConn regularize conn.loc
             }
@@ -261,9 +257,9 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
     case node: StmtRead =>
       iPortSymbolOpt.get.kind match {
         case TypeIn(iPortKind: TypeStruct, _) =>
-          val lhsRefs = for (name <- iPortKind.fieldNames) yield ExprRef(freshSymbols(name))
+          val lhsRefs = for (name <- iPortKind.fieldNames) yield ExprSym(freshSymbols(name))
           val lhs = ExprCat(lhsRefs)
-          val rhs = ExprCall(ExprSelect(ExprRef(iPortSymbolOpt.get), "read"), Nil)
+          val rhs = ExprCall(ExprSelect(ExprSym(iPortSymbolOpt.get), "read", Nil), Nil)
           StmtAssign(lhs, rhs) regularize node.loc
         case _ => unreachable
       }
@@ -272,17 +268,17 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
     case node: StmtWrite =>
       oPortSymbolOpt.get.kind match {
         case TypeOut(oPortKind: TypeStruct, _, _) =>
-          val rhsRefs = for (name <- oPortKind.fieldNames) yield ExprRef(freshSymbols(name))
+          val rhsRefs = for (name <- oPortKind.fieldNames) yield ExprSym(freshSymbols(name))
           val rhs = ExprCat(rhsRefs)
-          val call = ExprCall(ExprSelect(ExprRef(oPortSymbolOpt.get), "write"), List(rhs))
+          val call = ExprCall(ExprSelect(ExprSym(oPortSymbolOpt.get), "write", Nil), List(rhs))
           StmtExpr(call) regularize node.loc
         case _ => unreachable
       }
 
     // Rewrite references to pipeline variables to references to the newly declared symbols
-    case node @ ExprRef(symbol) =>
+    case node @ ExprSym(symbol) =>
       symbol.kind match {
-        case _: TypePipeline => ExprRef(freshSymbols(symbol.name)) regularize node.loc
+        case _: TypePipeline => ExprSym(freshSymbols(symbol.name)) regularize node.loc
         case _               => tree
       }
 
@@ -298,7 +294,7 @@ final class LowerPipeline(implicit cc: CompilerContext) extends TreeTransformer 
       case node @ Decl(symbol, _) if symbol.kind.isInstanceOf[TypePipeline] => {
         cc.ice(node, "Pipeline variable declaration remains after LowerPipeline")
       }
-      case node @ ExprRef(symbol) => {
+      case node @ ExprSym(symbol) => {
         symbol.kind match {
           case _: TypePipeline => {
             cc.ice(node, "Pipeline variable reference remains after LowerPipeline")
