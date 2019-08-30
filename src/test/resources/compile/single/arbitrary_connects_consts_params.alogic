@@ -1,0 +1,29 @@
+// @out-top: arbitrary_connects_consts_params__B_7
+network arbitrary_connects_consts_params {
+
+    const u32 A = 5;
+    param u32 B = 7;
+
+    out u32 out_const;
+    out u32 out_param;
+    out u32 out_lit;
+
+    // Consts & Params
+    A     -> out_const;
+    B     -> out_param;
+    32'd9 -> out_lit;
+
+}
+// @fec-golden {{{
+//  module arbitrary_connects_consts_params__B_7(
+//    output wire [31:0] out_const,
+//    output wire [31:0] out_param,
+//    output wire [31:0] out_lit
+//  );
+//
+//  assign out_const = 32'd5;
+//  assign out_param = 32'd7;
+//  assign out_lit   = 32'd9;
+//
+//  endmodule
+// }}}

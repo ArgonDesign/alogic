@@ -1,0 +1,33 @@
+// @out-top: arbitrary_connects_const_param_indices__Bu_7
+network arbitrary_connects_const_param_indices {
+
+    const uint Au = 5;
+    param uint Bu = 7;
+
+    in  u32 in_const_index;
+    in  u32 in_param_index;
+    out u32 out_const_index;
+    out u32 out_param_index;
+
+    // Const and param indices
+    in_const_index[31-:Au]   -> out_const_index[0+:Au];
+    in_const_index[0+:32-Au] -> out_const_index[31-:32-Au];
+    in_param_index[31-:Bu]   -> out_param_index[0+:Bu];
+    in_param_index[0+:32-Bu] -> out_param_index[31-:32-Bu];
+
+}
+// @fec-golden {{{
+//  module arbitrary_connects_const_param_indices__Bu_7(
+//    input  wire [31:0] in_const_index,
+//    input  wire [31:0] in_param_index,
+//    output wire [31:0] out_const_index,
+//    output wire [31:0] out_param_index
+//  );
+//
+//  assign out_const_index[4:0]  = in_const_index[31:32-5];
+//  assign out_const_index[31:5] = in_const_index[31-5:0];
+//  assign out_param_index[6:0]  = in_param_index[31:32-7];
+//  assign out_param_index[31:7] = in_param_index[31-7:0];
+//
+//  endmodule
+// }}}

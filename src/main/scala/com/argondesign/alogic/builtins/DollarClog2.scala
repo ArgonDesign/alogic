@@ -29,7 +29,7 @@ private[builtins] class DollarClog2(implicit cc: CompilerContext) extends Builti
     case List(arg) if arg.tpe.isPacked || arg.tpe.isNum => TypeNum(false)
   }
 
-  def isKnownConst(args: List[Expr]) = args(0).isKnownConst
+  def combArgs(args: List[Expr]) = List(args(0))
 
   def fold(loc: Loc, args: List[Expr]) = {
     args(0).value map { value =>

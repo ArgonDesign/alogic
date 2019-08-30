@@ -26,15 +26,10 @@ import com.argondesign.alogic.core.StorageTypes._
 import com.argondesign.alogic.core.Symbols.TermSymbol
 import com.argondesign.alogic.core.Types.TypeIn
 import com.argondesign.alogic.core.Types.TypeOut
-import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
 
-final class PortCheck(implicit cc: CompilerContext) extends TreeTransformer {
-
-  private[this] def multipleDriverError(rhs: Expr, loc: Loc): Unit = {
-    cc.error(rhs, s"'${rhs.toSource}' has multiple drivers", s"Previous '->' is at: ${loc.prefix}")
-  }
+final class PortCheckA(implicit cc: CompilerContext) extends TreeTransformer {
 
   private[this] def multipleSinkError(lhs: Expr, loc: Loc): Unit = {
     cc.error(lhs, s"'${lhs.toSource}' has multiple sinks", s"Previous '->' is at: ${loc.prefix}")
@@ -49,34 +44,6 @@ final class PortCheck(implicit cc: CompilerContext) extends TreeTransformer {
   override def enter(tree: Tree): Unit = tree match {
 
     case entity: Entity => {
-      //////////////////////////////////////////////////////////////////////////
-      // Check multiple drivers
-      //////////////////////////////////////////////////////////////////////////
-
-      // Map of symbols appearing on the right of a connect that is declared by
-      // us to the location of the connect
-      val sinkOurs = mutable.Map[TermSymbol, Loc]()
-      // Map of instance/port symbol pairs on the right of a connect to the
-      // location of the connect
-      val sinkInst = mutable.Map[(TermSymbol, TermSymbol), Loc]()
-
-      for {
-        connect @ EntConnect(_, rhss) <- entity.connects
-        rhs <- rhss
-      } {
-        rhs match {
-          case rhs @ ExprSym(symbol: TermSymbol) => {
-            sinkOurs.get(symbol) foreach { multipleDriverError(rhs, _) }
-            sinkOurs(symbol) = connect.loc
-          }
-          case InstancePortRef(iSymbol, pSymbol) => {
-            val key = (iSymbol, pSymbol)
-            sinkInst.get(key) foreach { multipleDriverError(rhs, _) }
-            sinkInst(key) = connect.loc
-          }
-          case _ => unreachable
-        }
-      }
 
       //////////////////////////////////////////////////////////////////////////
       // Check multiple sinks - sync ready ports only
@@ -106,7 +73,7 @@ final class PortCheck(implicit cc: CompilerContext) extends TreeTransformer {
               drivInst(key) = connect.loc
             }
           }
-          case _ => unreachable
+          case _ => ()
         }
       }
 
@@ -116,7 +83,6 @@ final class PortCheck(implicit cc: CompilerContext) extends TreeTransformer {
 
       for {
         decl @ Decl(symbol: TermSymbol, _) <- entity.declarations
-        if !(sinkOurs contains symbol)
       } {
         symbol.kind match {
           case TypeOut(_, FlowControlTypeReady, StorageTypeWire) => {
@@ -135,7 +101,7 @@ final class PortCheck(implicit cc: CompilerContext) extends TreeTransformer {
 
 }
 
-object PortCheck extends TreeTransformerPass {
-  val name = "port-check"
-  def create(implicit cc: CompilerContext) = new PortCheck
+object PortCheckA extends TreeTransformerPass {
+  val name = "port-check-a"
+  def create(implicit cc: CompilerContext) = new PortCheckA
 }

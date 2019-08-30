@@ -26,6 +26,7 @@ import com.argondesign.alogic.passes.FoldExpr
 import com.argondesign.alogic.transform.ReplaceTermRefs
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.PartialMatch._
+import com.argondesign.alogic.util.unreachable
 
 import scala.language.implicitConversions
 import scala.math.BigInt.int2bigInt
@@ -155,6 +156,34 @@ trait ExprOps { this: Expr =>
     case _                            => false
   }
 
+  def isValidConnectRhs(implicit cc: CompilerContext): Boolean = this match {
+    case _: ExprSym => true
+    case ExprIndex(expr, idx) =>
+      expr.isValidConnectRhs && idx.isKnownConst
+    case ExprSlice(expr, lidx, _, ridx) =>
+      expr.isValidConnectRhs && lidx.isKnownConst && ridx.isKnownConst
+    case ExprSelect(expr, _, idxs) =>
+      expr.isValidConnectRhs && (idxs forall { _.isValidConnectRhs })
+    case ExprCat(parts) => parts forall { _.isValidConnectRhs }
+    case _              => false
+  }
+
+  def isValidConnectLhs(implicit cc: CompilerContext): Boolean = this match {
+    case _: ExprSym => true
+    case ExprIndex(expr, idx) =>
+      expr.isValidConnectLhs && idx.isKnownConst
+    case ExprSlice(expr, lidx, _, ridx) =>
+      expr.isValidConnectLhs && lidx.isKnownConst && ridx.isKnownConst
+    case ExprSelect(expr, _, idxs) =>
+      expr.isValidConnectLhs && (idxs forall { _.isValidConnectLhs })
+    case ExprCat(parts)   => parts forall { _.isValidConnectLhs }
+    case ExprRep(_, expr) => expr.isValidConnectLhs
+    case _: ExprInt       => true
+    case call @ ExprCall(ExprSym(symbol), _) if symbol.isBuiltin =>
+      cc.isValidConnectLhsBuiltinCall(call)
+    case _ => false
+  }
+
   // Is this expression a known constant
   def isKnownConst(implicit cc: CompilerContext): Boolean = this match {
     case _: ExprNum  => true
@@ -164,6 +193,7 @@ trait ExprOps { this: Expr =>
     case ExprSym(symbol) =>
       symbol.kind match {
         case _: TypeConst => true
+        case _: TypeParam => unreachable
         case _: TypeGen   => true
         case _            => false
       }
@@ -174,7 +204,7 @@ trait ExprOps { this: Expr =>
     case ExprRep(count, expr)   => count.isKnownConst && expr.isKnownConst
     case ExprCat(parts)         => parts forall { _.isKnownConst }
     case ExprIndex(expr, index) => expr.isKnownConst && index.isKnownConst
-    case ExprSlice(expr, lidx, op, ridx) =>
+    case ExprSlice(expr, lidx, _, ridx) =>
       expr.isKnownConst && lidx.isKnownConst && ridx.isKnownConst
     case ExprSelect(expr, _, idxs) => expr.isKnownConst && (idxs forall { _.isKnownConst })
     case call @ ExprCall(ExprSym(symbol), _) if symbol.isBuiltin =>

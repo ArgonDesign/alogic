@@ -29,7 +29,7 @@ private[builtins] class DollarUnigned(implicit cc: CompilerContext) extends Buil
     case List(arg) if arg.tpe.isNum    => TypeNum(false)
   }
 
-  def isKnownConst(args: List[Expr]) = args(0).isKnownConst
+  def combArgs(args: List[Expr]) = List(args(0))
 
   def fold(loc: Loc, args: List[Expr]) = args partialMatch {
     case List(ExprNum(true, v)) => ExprNum(false, v)

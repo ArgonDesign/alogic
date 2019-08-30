@@ -1,0 +1,40 @@
+network arbitrary_connects_structs {
+
+    struct ss {
+        u8 a;
+        u8 b;
+    }
+
+    struct s {
+        ss a;
+        ss b;
+    }
+
+    in  s in_s;
+    out s out_s;
+
+    // Structs
+    in_s.a   -> out_s.a;
+    in_s.b.a -> out_s.b.b;
+    in_s.b.b -> out_s.b.a;
+
+}
+// @fec-golden {{{
+//  module arbitrary_connects_structs(
+//    input  wire [7:0] in_s__a__a,
+//    input  wire [7:0] in_s__a__b,
+//    input  wire [7:0] in_s__b__a,
+//    input  wire [7:0] in_s__b__b,
+//    output wire [7:0] out_s__a__a,
+//    output wire [7:0] out_s__a__b,
+//    output wire [7:0] out_s__b__a,
+//    output wire [7:0] out_s__b__b
+//  );
+//
+//  assign out_s__a__a = in_s__a__a;
+//  assign out_s__a__b = in_s__a__b;
+//  assign out_s__b__a = in_s__b__b;
+//  assign out_s__b__b = in_s__b__a;
+//
+//  endmodule
+// }}}

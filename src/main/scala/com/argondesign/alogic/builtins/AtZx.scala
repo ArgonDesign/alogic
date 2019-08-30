@@ -30,7 +30,7 @@ private[builtins] class AtZx(implicit cc: CompilerContext) extends BuiltinPolyFu
     }
   }
 
-  def isKnownConst(args: List[Expr]) = args(1).isKnownConst
+  def combArgs(args: List[Expr]) = List(args(1))
 
   def fold(loc: Loc, args: List[Expr]) = {
     val List(width, expr) = args

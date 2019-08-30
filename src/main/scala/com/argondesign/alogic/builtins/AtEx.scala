@@ -35,9 +35,7 @@ private[builtins] class AtEx(implicit cc: CompilerContext) extends BuiltinPolyFu
     TypeInt(args(2).tpe.isSigned, args(1))
   }
 
-  def isKnownConst(args: List[Expr]) = {
-    args(0).isKnownConst && args(2).isKnownConst
-  }
+  def combArgs(args: List[Expr]) = List(args(0), args(2))
 
   def fold(loc: Loc, args: List[Expr]) = AtEx.fold(loc, args(0), args(1), args(2))
 

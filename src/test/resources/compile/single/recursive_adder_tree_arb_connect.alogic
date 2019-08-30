@@ -1,0 +1,59 @@
+network recursive_adder_tree_arb_connect {
+  in  u2[16] p_i;
+  out u6     p_o;
+
+  network tree {
+    param uint W;
+    param uint N;
+
+    const uint OW = W + $clog2(N);
+
+    in       uint(W)[N]  p_ii;
+    out wire uint(OW)    p_oo;
+
+    new fsm sum {
+      in  uint(OW-1) a;
+      in  uint(OW-1) b;
+      void main() {
+        p_oo = 'a + 'b;
+        fence;
+      }
+    }
+
+    gen if (N == 2) {
+      p_ii -> {sum.a, sum.b};
+    } else {
+      tree_lo = new tree(W=W, N=N/2);
+      tree_hi = new tree(W=W, N=N/2);
+      p_ii                         -> {tree_hi.p_ii, tree_lo.p_ii};
+      {tree_hi.p_oo, tree_lo.p_oo} -> {sum.a, sum.b};
+    }
+  }
+
+  inst = new tree(W=2, N=16);
+
+  p_i -> inst.p_ii; inst.p_oo -> p_o;
+}
+// @fec-golden {{{
+// module recursive_adder_tree_arb_connect(
+//   input  wire [31:0] p_i,
+//   output wire [5:0] p_o
+// );
+//   assign p_o = {4'd0, + p_i[ 0*2 +: 2]} +
+//                {4'd0, + p_i[ 1*2 +: 2]} +
+//                {4'd0, + p_i[ 2*2 +: 2]} +
+//                {4'd0, + p_i[ 3*2 +: 2]} +
+//                {4'd0, + p_i[ 4*2 +: 2]} +
+//                {4'd0, + p_i[ 5*2 +: 2]} +
+//                {4'd0, + p_i[ 6*2 +: 2]} +
+//                {4'd0, + p_i[ 7*2 +: 2]} +
+//                {4'd0, + p_i[ 8*2 +: 2]} +
+//                {4'd0, + p_i[ 9*2 +: 2]} +
+//                {4'd0, + p_i[10*2 +: 2]} +
+//                {4'd0, + p_i[11*2 +: 2]} +
+//                {4'd0, + p_i[12*2 +: 2]} +
+//                {4'd0, + p_i[13*2 +: 2]} +
+//                {4'd0, + p_i[14*2 +: 2]} +
+//                {4'd0, + p_i[15*2 +: 2]};
+// endmodule
+// }}}

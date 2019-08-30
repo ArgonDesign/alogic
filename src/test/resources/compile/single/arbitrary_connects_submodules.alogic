@@ -1,0 +1,95 @@
+network arbitrary_connects_submodules {
+
+    in  u32 in_to_X;
+    out u32 out_from_Y;
+
+    in  u2  in_to_X_nt_b;
+    in  u1  in_to_X_nt_s;
+
+    out u2  out_from_Y_nt_b;
+    out u1  out_from_Y_nt_s;
+
+    new network X {
+        in  u32 in_from_ext;
+        out u32 out_to_Y;
+
+        in  u2  in_from_ext_nt_b;
+        in  u1  in_from_ext_nt_s;
+
+        out u2  out_to_Y_nt_b;
+        out u1  out_to_Y_nt_s;
+
+        in_from_ext      -> out_to_Y;
+        in_from_ext_nt_b -> out_to_Y_nt_b;
+        in_from_ext_nt_s -> out_to_Y_nt_s;
+    }
+
+    new fsm Y {
+        in  u32 in_from_X;
+        out u32 out_to_ext;
+
+        in  u2  in_from_X_nt_b;
+        in  u1  in_from_X_nt_s;
+
+        out u2  out_to_ext_nt_b;
+        out u1  out_to_ext_nt_s;
+
+        fence {
+            out_to_ext      = in_from_X;
+            out_to_ext_nt_b = in_from_X_nt_b;
+            out_to_ext_nt_s = in_from_X_nt_s;
+        }
+    }
+
+    // Straightforward connections
+    in_to_X      -> X.in_from_ext;
+    X.out_to_Y   -> Y.in_from_X;
+    Y.out_to_ext -> out_from_Y;
+
+    // Non-trivial connections into X
+    in_to_X_nt_b[0] -> X.in_from_ext_nt_s;
+    in_to_X_nt_s    -> X.in_from_ext_nt_b[0];
+    in_to_X_nt_b[1] -> X.in_from_ext_nt_b[1];
+
+    // Non-trivial connections X to Y
+    X.out_to_Y_nt_b[0] -> Y.in_from_X_nt_s;
+    X.out_to_Y_nt_s    -> Y.in_from_X_nt_b[0];
+    X.out_to_Y_nt_b[1] -> Y.in_from_X_nt_b[1];
+
+    // Non-trivial connections Y to ext
+    Y.out_to_ext_nt_b[0] -> out_from_Y_nt_s;
+    Y.out_to_ext_nt_s    -> out_from_Y_nt_b[0];
+    Y.out_to_ext_nt_b[1] -> out_from_Y_nt_b[1];
+
+}
+// @fec-golden {{{
+//  module arbitrary_connects_submodules(
+//
+//    input  wire        clk,
+//    input  wire        rst,
+//
+//    input  wire [31:0] in_to_X,
+//    output reg  [31:0] out_from_Y,
+//
+//    input  wire [1:0]  in_to_X_nt_b,
+//    input  wire        in_to_X_nt_s,
+//
+//    output reg  [1:0]  out_from_Y_nt_b,
+//    output reg         out_from_Y_nt_s
+//
+//  );
+//
+//  always @(posedge clk) begin
+//    if (rst) begin
+//      out_from_Y      <= 32'd0;
+//      out_from_Y_nt_b <= 2'd0;
+//      out_from_Y_nt_s <= 1'd0;
+//    end else begin
+//      out_from_Y      <= in_to_X;
+//      out_from_Y_nt_b <= {in_to_X_nt_b[1], in_to_X_nt_s};
+//      out_from_Y_nt_s <= in_to_X_nt_b[0];
+//    end
+//  end
+//
+//  endmodule
+// }}}

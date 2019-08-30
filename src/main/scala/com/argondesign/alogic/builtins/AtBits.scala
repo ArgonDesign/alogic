@@ -36,7 +36,7 @@ private[builtins] class AtBits(implicit cc: CompilerContext) extends BuiltinPoly
     case _ => None
   }
 
-  def isKnownConst(args: List[Expr]) = true
+  def combArgs(args: List[Expr]) = Nil
 
   def fold(loc: Loc, args: List[Expr]) = {
     args.head.tpeOpt map {

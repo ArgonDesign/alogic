@@ -1,0 +1,49 @@
+network arbitrary_connects_concats_reps {
+
+    in  u2 in_c_s_0;
+    in  u2 in_c_s_1;
+    out u4 out_c_b_0;
+    in  u4 in_c_b_0;
+    out u2 out_c_s_0;
+    out u2 out_c_s_1;
+    in  u1 in_c_s_2;
+    in  u2 in_c_b_1;
+    out u2 out_c_b_1;
+    out u1 out_c_s_2;
+
+    in  u2 in_r;
+    out u4 out_r;
+
+    {in_c_s_0, in_c_s_1} -> out_c_b_0;
+    in_c_b_0             -> {out_c_s_0, out_c_s_1};
+    {in_c_s_2, in_c_b_1} -> {out_c_b_1, out_c_s_2};
+    {2{in_r}}            -> out_r;
+
+}
+// @fec-golden {{{
+//  module arbitrary_connects_concats_reps(
+//    input  wire [1:0] in_c_s_0,
+//    input  wire [1:0] in_c_s_1,
+//    output wire [3:0] out_c_b_0,
+//    input  wire [3:0] in_c_b_0,
+//    output wire [1:0] out_c_s_0,
+//    output wire [1:0] out_c_s_1,
+//    input  wire       in_c_s_2,
+//    input  wire [1:0] in_c_b_1,
+//    output wire [1:0] out_c_b_1,
+//    output wire       out_c_s_2,
+//
+//    input  wire [1:0] in_r,
+//    output wire [3:0] out_r
+//  );
+//
+//  assign out_c_b_0 = {in_c_s_0, in_c_s_1};
+//  assign out_c_s_0 = in_c_b_0[3:2];
+//  assign out_c_s_1 = in_c_b_0[1:0];
+//  assign out_c_b_1 = {in_c_s_2, in_c_b_1[1]};
+//  assign out_c_s_2 = in_c_b_1[0];
+//
+//  assign out_r = {2{in_r}};
+//
+//  endmodule
+// }}}

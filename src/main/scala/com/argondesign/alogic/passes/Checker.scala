@@ -395,27 +395,6 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer {
       }
     }
 
-    case connect @ EntConnect(lhs, rhss) => {
-      val hint = "Only identifiers, optionally followed by a single field selector are allowed"
-
-      val newLhs = if (lhs.isPortRefExpr) {
-        lhs
-      } else {
-        cc.error(lhs, s"Invalid port reference on left hand side of '->'", hint)
-        ExprError() withLoc lhs.loc
-      }
-
-      val (goodRhss, badRhss) = rhss partition { _.isPortRefExpr }
-
-      badRhss foreach {
-        cc.error(_, s"Invalid port reference on right hand side of '->'", hint)
-      }
-
-      val newRhss = if (badRhss.isEmpty) rhss else goodRhss
-
-      TreeCopier(connect)(newLhs, newRhss)
-    }
-
     case ExprCat(List(_)) => {
       cc.warning(tree, "Single expression concatenation")
       tree

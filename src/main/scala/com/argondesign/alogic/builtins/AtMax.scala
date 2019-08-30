@@ -31,7 +31,7 @@ private[builtins] class AtMax(implicit cc: CompilerContext) extends BuiltinPolyF
     }
   }
 
-  def isKnownConst(args: List[Expr]) = true
+  def combArgs(args: List[Expr]) = args
 
   def fold(loc: Loc, args: List[Expr]) = {
     (args forall { _.isInstanceOf[ExprNum] }) option {

@@ -40,7 +40,7 @@ object Passes extends ChainingSyntax {
       // and cannot re-write any trees unless errors have been detected
       Typer(externalRefs = false),
       Typer(externalRefs = true),
-      PortCheck,
+      PortCheckA,
       ////////////////////////////////////////////////////////////////////////
       // Middle-end
       ////////////////////////////////////////////////////////////////////////
@@ -52,6 +52,7 @@ object Passes extends ChainingSyntax {
       FoldExprInTypes,
       InlineUnsizedConst,
       FoldExpr(foldRefs = false),
+      PortCheckB,
       ConvertMultiConnect,
       LowerPipeline,
       LiftEntities,

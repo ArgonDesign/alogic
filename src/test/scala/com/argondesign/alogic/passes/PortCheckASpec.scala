@@ -10,7 +10,7 @@
 //
 // DESCRIPTION:
 //
-// PortCheck tests
+// PortCheckA tests
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.passes
@@ -26,7 +26,7 @@ import com.argondesign.alogic.typer.Typer
 import com.argondesign.alogic.util.unreachable
 import org.scalatest.FreeSpec
 
-final class PortCheckSpec extends FreeSpec with AlogicTest {
+final class PortCheckASpec extends FreeSpec with AlogicTest {
 
   implicit val cc = new CompilerContext
 
@@ -50,52 +50,11 @@ final class PortCheckSpec extends FreeSpec with AlogicTest {
     } map {
       _ rewrite new Typer
     } foreach {
-      _ rewrite new PortCheck
+      _ rewrite new PortCheckA
     }
   }
 
-  "PortCheck should" - {
-
-    "error for multiple drivers for sink" - {
-      for {
-        (conn, msg) <- List(
-          ("pia -> po;", ""),
-          ("pia -> n.pi;", ""),
-          ("pib -> po;", ""),
-          ("pib -> n.pi;", ""),
-          ("pia -> po, n.pi;", ""),
-          ("pib -> po, n.pi;", ""),
-          ("pia -> po, po;", "po"),
-          ("pia -> n.pi, n.pi;", "n.pi"),
-          ("pia -> po; pib -> n.pi;", ""),
-          ("pia -> po; pib -> po;", "po"),
-          ("pia -> n.pi; pib -> n.pi;", "n.pi")
-        )
-      } {
-        conn in {
-          val tree = s"""|network a {
-                         |  (* unused *) in bool pia;
-                         |  (* unused *) in bool pib;
-                         |  (* unused *) out bool po;
-                         |
-                         |  (* unused *) new fsm n {
-                         |    (* unused *) in bool pi;
-                         |  }
-                         |
-                         |  ${conn}
-                         |}""".stripMargin.asTree[Entity]
-          xform(tree)
-          if (msg.isEmpty) {
-            cc.messages shouldBe empty
-          } else {
-            cc.messages.loneElement should beThe[Error](
-              Pattern.quote(s"'${msg}' has multiple drivers"),
-              "Previous '->' is at: .*"
-            )
-          }
-        }
-      }
-    }
+  "PortCheckA should" - {
 
     "error for multiple sinks for sync ready driver" - {
       for {

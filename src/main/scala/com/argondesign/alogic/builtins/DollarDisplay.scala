@@ -35,7 +35,9 @@ private[builtins] class DollarDisplay(implicit cc: CompilerContext) extends Buil
     case str :: rest if str.tpe == TypeStr && (rest forall validArg) => TypeVoid
   }
 
-  def isKnownConst(args: List[Expr]) = false
+  override def isValidConnectLhs(args: List[Expr]) = false
+
+  def combArgs(args: List[Expr]) = Nil
 
   def fold(loc: Loc, args: List[Expr]) = None
 }

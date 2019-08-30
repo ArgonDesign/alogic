@@ -131,6 +131,30 @@ settings.width -> b.width, c.width, d.width;
 Connections of `sync ready` ports must be one to one, otherwise the compiler
 will issue an error.
 
+Ports without flow control can be connected using arbitrary expressions, provided
+that the resulting connection is pure wiring and will not induce any logic gates.
+Connections can also be used to tie off ports. For example, the following
+connections are valid:
+
+```
+{pin_0, pin_1} -> a.pin_0[0+:8];
+{2{pin_2}}     -> a.pin_1[A];
+pin_3.x.y      -> a.pin_2.z;
+8'd123         -> {pout_0, pout_1};
+@sx(8, a.pout) -> pout_2;
+```
+
+In the above:
+  - `pin_0` through `pin_3` and `pout_0` through `pout_2` are input and output ports
+  declared in the current network,
+  - `pin_3` is a struct type with a member named `x`, itself a struct type with a
+  member named `y`,
+  - `a` is an entity with input ports `pin_0` through `pin_2` and output port `pout`,
+  - `A` is a const or param value,
+  - the port `pin_1` on the entity `a` is a vector type and hence `a.pin_1[A]` has
+  width greater than 1, and
+  - the port `pin_2` on the entity `a` is a struct type with a member named `z`.
+
 ### Nested FSMs
 
 Networks can also contain nested `fsm` definitions, which can be instantiated in

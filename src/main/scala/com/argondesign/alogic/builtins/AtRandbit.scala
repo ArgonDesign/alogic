@@ -28,7 +28,9 @@ private[builtins] class AtRandbit(implicit cc: CompilerContext) extends BuiltinP
     case Nil => TypeUInt(Expr(1) regularize Loc.synthetic)
   }
 
-  def isKnownConst(args: List[Expr]) = false
+  override def isValidConnectLhs(args: List[Expr]) = false
+
+  def combArgs(args: List[Expr]) = Nil
 
   def fold(loc: Loc, args: List[Expr]) = None
 }

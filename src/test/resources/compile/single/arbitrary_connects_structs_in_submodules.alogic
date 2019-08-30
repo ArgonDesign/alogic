@@ -1,0 +1,40 @@
+network arbitrary_connects_structs_in_submodules {
+
+    struct ss {
+        u8 a;
+        u8 b;
+    }
+
+    in  ss in_to_X_s;
+    out ss out_from_X_s;
+
+    new network X {
+        in  ss  in_from_ext_s;
+        out ss  out_to_ext_s;
+
+        in_from_ext_s -> out_to_ext_s;
+    }
+
+    // Structs within entities
+    in_to_X_s.a      -> X.in_from_ext_s.b;
+    in_to_X_s.b      -> X.in_from_ext_s.a;
+    X.out_to_ext_s.a -> out_from_X_s.b;
+    X.out_to_ext_s.b -> out_from_X_s.a;
+
+}
+// @fec-golden {{{
+//  module arbitrary_connects_structs_in_submodules(
+//
+//    input  wire [7:0] in_to_X_s__a,
+//    input  wire [7:0] in_to_X_s__b,
+//
+//    output wire [7:0] out_from_X_s__a,
+//    output wire [7:0] out_from_X_s__b
+//
+//  );
+//
+//  assign out_from_X_s__a = in_to_X_s__a;
+//  assign out_from_X_s__b = in_to_X_s__b;
+//
+//  endmodule
+// }}}

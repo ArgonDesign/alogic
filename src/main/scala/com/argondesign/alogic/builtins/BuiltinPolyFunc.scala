@@ -62,10 +62,20 @@ private[builtins] abstract class BuiltinPolyFunc(implicit cc: CompilerContext)
   protected[this] def returnType(args: List[Expr]): Option[Type]
 
   // Is this a known compile time constant?
-  private[builtins] def isKnownConst(args: List[Expr]): Boolean
+  private[builtins] def isKnownConst(args: List[Expr]): Boolean = combArgs(args) forall {
+    _.isKnownConst
+  }
 
   // Fold calls to this function
   private[builtins] def fold(loc: Loc, args: List[Expr]): Option[Expr]
+
+  // Can this call be exist on the lhs of a Connect?
+  private[builtins] def isValidConnectLhs(args: List[Expr]): Boolean = combArgs(args) forall {
+    _.isValidConnectLhs
+  }
+
+  // Return all arguments which connect combinationally to the output of the function
+  private[builtins] def combArgs(args: List[Expr]): List[Expr]
 
   //////////////////////////////////////////////////////////////////////////////
   // Implementation

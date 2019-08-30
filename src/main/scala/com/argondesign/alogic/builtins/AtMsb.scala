@@ -29,7 +29,7 @@ private[builtins] class AtMsb(implicit cc: CompilerContext) extends BuiltinPolyF
       TypeInt(expr.tpe.isSigned, Expr(1) withLoc expr.loc)
   }
 
-  def isKnownConst(args: List[Expr]) = args.head.isKnownConst
+  def combArgs(args: List[Expr]) = List(args(0))
 
   def fold(loc: Loc, args: List[Expr]) = AtMsb.fold(loc, args(0))
 

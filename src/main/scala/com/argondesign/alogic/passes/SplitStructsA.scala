@@ -120,7 +120,7 @@ final class SplitStructsA(implicit cc: CompilerContext) extends TreeTransformer 
     val result: Tree = tree match {
 
       //////////////////////////////////////////////////////////////////////////
-      // ExprRef
+      // ExprSym
       //////////////////////////////////////////////////////////////////////////
 
       case ExprSym(symbol) => {
@@ -143,14 +143,14 @@ final class SplitStructsA(implicit cc: CompilerContext) extends TreeTransformer 
       }
 
       //////////////////////////////////////////////////////////////////////////
-      // ExprRef
+      // ExprSelect
       //////////////////////////////////////////////////////////////////////////
 
       case ExprSelect(expr, _, _) => {
         if (fieldIndexStack.top >= 0) {
           expr match {
             case ExprCat(parts) => parts(fieldIndexStack.top)
-            case _              => unreachable
+            case _              => tree
           }
         } else {
           tree

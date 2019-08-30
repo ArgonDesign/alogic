@@ -1,0 +1,21 @@
+network arbitrary_connects_indices_slices {
+
+    in  u9 in_is;
+    out u9 out_is;
+
+    // Indexes and slices
+    in_is[0 +: 4]      -> out_is[8 : 5];
+    in_is[8 -: 6][4:1] -> out_is[1 +: 4];
+    in_is[8]           -> out_is[3:0][0];
+
+}
+// @fec-golden {{{
+//  module arbitrary_connects_indices_slices(
+//    input  wire [8:0] in_is,
+//    output wire [8:0] out_is
+//  );
+//
+//  assign out_is = {in_is[3:0], in_is[7:4], in_is[8]};
+//
+//  endmodule
+// }}}
