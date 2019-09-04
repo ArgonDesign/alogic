@@ -11,7 +11,7 @@ which is similar to the Verilog generate construct.
 
 The compiler will process all `gen` constructs to produce expanded
 source code prior to compilation. `gen` constructs are expanded after
-[parameter specialization](params.md#parameter_specialization) but
+[parameter specialization](params.md#parameter-specialization) but
 before type checking or control flow conversion. This allows `gen`
 constructs to depend on final parameter values and produce arbitrary
 code fragments that are syntactically valid in the context of the `gen`
@@ -20,12 +20,12 @@ construct.
 The constructs are introduced with examples producing Alogic statements,
 but `gen` constructs can be used to produce various language fragments.
 The places where `gen` constructs can be used are described
-[later](#where_gen_constructs_can_appear) in this section.
+[later](#where-gen-constructs-can-appear) in this section.
 
 Note that `gen` construct have special lexical scoping rules which allow
 names declared inside `gen` blocks to escape into the scope containing
 the `gen` construct. This makes `gen` constructs more powerful and is
-explained [later](#lexical_scopes_of_gen_constructs) in this section.
+explained [later](#lexical-scopes-of-gen-constructs) in this section.
 
 #### Simple conditionals with `gen if`
 
