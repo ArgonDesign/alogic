@@ -248,7 +248,7 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer {
           case _ => st
         }
       } tap { st =>
-        if (variantStack.top == "verbatim" && st != StorageTypeDefault) {
+        if ((variantStack.headOption contains "verbatim") && st != StorageTypeDefault) {
           cc.error(tree, "'verbatim entity' output ports cannot use a storage specifier")
           StorageTypeDefault
         } else {

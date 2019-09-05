@@ -6,5 +6,4 @@ verbatim entity ports_only_verbatim {
   (* unused *) out            u8 oa;
   (* unused *) out sync       u8 ob;
   (* unused *) out sync ready u8 oc;
-  (* unused *) out wire       u8 od;
 }
