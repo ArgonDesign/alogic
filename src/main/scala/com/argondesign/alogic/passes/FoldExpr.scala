@@ -695,16 +695,20 @@ final class FoldExpr(
         }
       }
 
-      case cast @ ExprCast(_: TypeInt, expr) if expr.tpe.isNum => {
+      case cast @ ExprCast(_: TypeInt, expr) if expr.tpe.underlying.isNum => {
         // Expression is TypeNum but not ExprNum, but anything with TypeNum is
         // a compile time constant, so just simplify it. This will cause the
         // repeat walk of the rewritten cast to enter the case above when we
-        // cast an ExprNum to a TypeInt
-        cast.copy(expr = expr.simplify) withLoc tree.loc
+        // cast an ExprNum to a TypeInt. It is however possible that we don't
+        // have bindings for TypeNum symbols yet, so only re-write if the
+        // simplified argument is actually different
+        expr.simplify match {
+          case `expr`     => cast
+          case simplified => cast.copy(expr = simplified) withLoc tree.loc
+        }
       }
 
-      case ExprCast(kind: TypeInt, expr) => {
-        require(expr.tpe.isPacked)
+      case ExprCast(kind: TypeInt, expr) if expr.tpe.isPacked => {
         val kWidth = kind.width
         val eWidth = expr.tpe.width
         require(kWidth >= expr.tpe.width)

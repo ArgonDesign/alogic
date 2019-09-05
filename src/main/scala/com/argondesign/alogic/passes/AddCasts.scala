@@ -26,7 +26,7 @@ import com.argondesign.alogic.util.unreachable
 final class AddCasts(implicit cc: CompilerContext) extends TreeTransformer {
 
   private def cast(kind: Type, expr: Expr) = {
-    val (castType, castExpr) = if (kind.isNum) {
+    val (castType, castExpr) = if (kind.underlying.isNum) {
       (TypeNum(expr.tpe.isSigned), expr.simplify)
     } else {
       (TypeInt(expr.tpe.isSigned, Expr(kind.width) regularize expr.loc), expr)
@@ -82,8 +82,8 @@ final class AddCasts(implicit cc: CompilerContext) extends TreeTransformer {
         val rWidth = if (op == ":") lWidth else clog2(size + 1)
         val lType = TypeUInt(Expr(lWidth) regularize expr.loc)
         val rType = TypeUInt(Expr(rWidth) regularize expr.loc)
-        val newLIdx = if (lIdx.tpe.isNum) cast(lType, lIdx) else lIdx
-        val newRIdx = if (rIdx.tpe.isNum) cast(rType, rIdx) else rIdx
+        val newLIdx = if (lIdx.tpe.underlying.isNum) cast(lType, lIdx) else lIdx
+        val newRIdx = if (rIdx.tpe.underlying.isNum) cast(rType, rIdx) else rIdx
         expr.copy(lidx = newLIdx, ridx = newRIdx)
       }
 
@@ -116,7 +116,7 @@ final class AddCasts(implicit cc: CompilerContext) extends TreeTransformer {
                              "&" | "|" | "^" | "*" | "/" | "%" | "+" | "-" | ">" | ">=" | "<" |
                              "<=" | "==" | "!=",
                              rhs) if lhs.tpe.underlying.isNum != rhs.tpe.underlying.isNum => {
-        if (lhs.tpe.isNum) {
+        if (lhs.tpe.underlying.isNum) {
           expr.copy(lhs = cast(rhs.tpe, lhs))
         } else {
           expr.copy(rhs = cast(lhs.tpe, rhs))
@@ -125,7 +125,7 @@ final class AddCasts(implicit cc: CompilerContext) extends TreeTransformer {
 
       case expr @ ExprTernary(_, tExpr, eExpr)
           if tExpr.tpe.underlying.isNum != eExpr.tpe.underlying.isNum => {
-        if (tExpr.tpe.isNum) {
+        if (tExpr.tpe.underlying.isNum) {
           expr.copy(thenExpr = cast(eExpr.tpe, tExpr))
         } else {
           expr.copy(elseExpr = cast(tExpr.tpe, eExpr))

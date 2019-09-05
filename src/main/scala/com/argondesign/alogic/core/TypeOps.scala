@@ -118,7 +118,7 @@ trait TypeOps extends TypePrintOps { this: Type =>
 
   // Width of this type, assuming it is a packed type
   final def width(implicit cc: CompilerContext): Int = {
-    assert(isPacked)
+    assert(isPacked, this)
     try {
       this.underlying match {
         case self: TypeSInt => self.size.value.get.toInt
