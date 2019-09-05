@@ -1,0 +1,19 @@
+network dictident_port_3 {
+  out u8 o0;
+  out u8 o1;
+
+  new fsm inner {
+    gen for (uint i < 2) {
+      out u8 o#[i];
+    }
+    void main() {
+      o#[0] = 2;
+      o#[1] = 4;
+      fence;
+    }
+  }
+
+  inner.o__0 -> o0;
+  inner.o#[1]-> o1;
+}
+// :16: ERROR: No port named 'o__0' on instance 'inner'

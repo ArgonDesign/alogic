@@ -35,7 +35,22 @@ final class ResolveDictPorts(implicit cc: CompilerContext) extends TreeTransform
   }
 
   override def transform(tree: Tree): Tree = tree match {
-    case ExprSelect(expr, sel, idxs) if idxs.nonEmpty =>
+    case ExprSelect(expr, sel, Nil) =>
+      expr match {
+        // Error for referencing x.p#[n] as x.p__n
+        case ExprSym(iSymbol) if iSymbol.kind.isInstance =>
+          iSymbol.kind.asInstance.entitySymbol.kind.asEntity.portSymbols exists { pSymbol =>
+            !pSymbol.attr.sourceName.isSet && pSymbol.name == sel
+          } pipe {
+            case true => tree
+            case false =>
+              cc.error(tree, s"No port named '$sel' on instance '${expr.toSource}'")
+              ExprError() withLoc tree.loc
+          }
+        case _ => tree
+      }
+
+    case ExprSelect(expr, sel, idxs) =>
       val res = expr match {
         case ExprSym(iSymbol) if iSymbol.kind.isInstance =>
           DictIdxValues(idxs) map { idxValues =>
