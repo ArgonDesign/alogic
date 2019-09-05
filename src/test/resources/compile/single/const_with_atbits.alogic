@@ -1,6 +1,6 @@
 struct test_t {
   u8 var;
-};
+}
 
 fsm const_with_atbits {
   const uint(@bits(test_t)) foo = 3;

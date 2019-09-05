@@ -8,11 +8,11 @@ network gen_alt_defn_1 {
     param bool SIGNED;
 
     gen if (SIGNED) {
-      struct i_t {i2 f;};
-      struct o_t {i4 f;};
+      struct i_t {i2 f;}
+      struct o_t {i4 f;}
     } else {
-      struct i_t {u2 f;};
-      struct o_t {u4 f;};
+      struct i_t {u2 f;}
+      struct o_t {u4 f;}
     }
 
     in  i_t p_i_0;

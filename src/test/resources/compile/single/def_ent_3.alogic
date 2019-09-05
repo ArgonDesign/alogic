@@ -5,7 +5,7 @@ fsm def_ent_3 {
   struct data_t {
     uint(W)   a;
     uint(2*W) b;
-  };
+  }
 
   in       data_t i;
   out wire data_t o;

@@ -1,7 +1,7 @@
 struct my_type {
   u10 x;
   u20 y;
-};
+}
 
 network top {
   in  my_type a;

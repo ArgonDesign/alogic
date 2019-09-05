@@ -385,11 +385,11 @@ final class TyperCheckExprSpec extends FreeSpec with AlogicTest {
         text in {
           val root = s"""|struct a {
                          |  i8 x;
-                         |};
+                         |}
                          |
                          |struct b {
                          |  a y;
-                         |};
+                         |}
                          |
                          |fsm c {
                          |  (* unused *) a d;
@@ -528,9 +528,9 @@ final class TyperCheckExprSpec extends FreeSpec with AlogicTest {
            s"Both operands of binary '+' must have the same width, but" ::
              "left  hand operand is 8 bits wide, and" ::
              "right hand operand is 7 bits wide" :: Nil),
-          ("struct a {u8 f;};", Nil),
-          ("struct a {uint(8 + 2) f;};", Nil),
-          ("struct a {uint(8'd8 + 7'd2) f;};",
+          ("struct a {u8 f;}", Nil),
+          ("struct a {uint(8 + 2) f;}", Nil),
+          ("struct a {uint(8'd8 + 7'd2) f;}",
            s"Both operands of binary '+' must have the same width, but" ::
              "left  hand operand is 8 bits wide, and" ::
              "right hand operand is 7 bits wide" :: Nil)

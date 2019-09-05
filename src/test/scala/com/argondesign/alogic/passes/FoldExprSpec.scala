@@ -1322,13 +1322,13 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
           text in {
             val tree = s"""|struct b_t {
                            |  u2 f0;
-                           |};
+                           |}
                            |
                            |struct a_t {
                            |  bool f0;
                            |  i7   f1;
                            |  b_t  f2;
-                           |};
+                           |}
                            |
                            |fsm x {
                            |  a_t a;

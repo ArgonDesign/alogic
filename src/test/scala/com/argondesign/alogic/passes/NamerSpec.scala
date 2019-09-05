@@ -177,7 +177,7 @@ final class NamerSpec extends FreeSpec with AlogicTest {
                     |  bool b;
                     |  i8 c;
                     |  e_t  d;
-                    |};
+                    |}
                     |fsm b {}""".stripMargin.asTree[Root]
       cc.addGlobalEntity(root.entity)
 
@@ -276,7 +276,7 @@ final class NamerSpec extends FreeSpec with AlogicTest {
     "resolve type names to their correct definitions - struct" in {
       val root = """|struct bar_t {
                     |  bool a;
-                    |};
+                    |}
                     |
                     |fsm a {
                     |  fence {
@@ -733,7 +733,7 @@ final class NamerSpec extends FreeSpec with AlogicTest {
     }
 
     "attach correct types to symbols - struct" in {
-      val root = "struct a { bool a; i2 b; }; fsm b {}".asTree[Root]
+      val root = "struct a { bool a; i2 b; } fsm b {}".asTree[Root]
       cc.addGlobalEntity(root.entity)
       val tree = root rewrite namer
 

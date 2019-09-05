@@ -3,7 +3,7 @@ fsm def_ent_1 {
   struct data_t {
     u2 a;
     u4 b;
-  };
+  }
 
   in       data_t i;
   out wire data_t o;

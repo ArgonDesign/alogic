@@ -452,7 +452,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
           decl in {
             val tree = s"""|struct s_t {
                            |  bool s;
-                           |};
+                           |}
                            |
                            |network a {
                            |  ${decl};
@@ -481,7 +481,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
           decl in {
             val tree = s"""|struct s_t {
                            |  bool s;
-                           |};
+                           |}
                            |
                            |verbatim entity a {
                            |  ${decl};
@@ -710,7 +710,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
           decl in {
             val tree = s"""|struct s {
                            |  i8 b;
-                           |};
+                           |}
                            |
                            |${entity} x {
                            |  ${decl};
@@ -744,7 +744,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
           decl in {
             val tree = s"""|struct s {
                            |  i8 b;
-                           |};
+                           |}
                            |
                            |${entity} x {
                            |  ${decl};

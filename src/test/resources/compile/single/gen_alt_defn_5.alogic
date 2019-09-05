@@ -24,11 +24,11 @@ network gen_alt_defn_5 {
     param bool SIGNED;
 
     gen if (SIGNED) {
-      struct i_t {i2_t f;};
-      struct o_t {i4_t f;};
+      struct i_t {i2_t f;}
+      struct o_t {i4_t f;}
     } else {
-      struct i_t {u2_t f;};
-      struct o_t {u4_t f;};
+      struct i_t {u2_t f;}
+      struct o_t {u4_t f;}
     }
 
     in  i_t p_i_0;

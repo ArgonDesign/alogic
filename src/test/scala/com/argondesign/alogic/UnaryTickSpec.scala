@@ -144,7 +144,7 @@ final class UnaryTickSpec extends FreeSpec with AlogicTest {
           """|struct s {
              |  u2 f;
              |  u3 g;
-             |};
+             |}
              |
              |fsm f {
              |  in s a;

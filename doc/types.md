@@ -124,20 +124,19 @@ simply a synonym for `u1`.
 
 Alogic supports grouping related values into structures. A structure
 type is defined with the `struct` keyword, followed by the name of the
-structure type, and the structure fields in curly braces, ending with a
-semicolon:
+structure type, and the structure fields in curly braces:
 
 ```
 struct point_t {
   u16 x;
   u16 y;
-};
+}
 
 struct rect_t {
   point_t topleft;
   u8 width;
   u8 height;
-};
+}
 ```
 
 Note that the above definitions define *types*  (with the names `point_t` and

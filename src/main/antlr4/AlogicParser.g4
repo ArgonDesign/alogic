@@ -61,7 +61,7 @@ defn
   : 'typedef' kind ident ';'   # DefnTypedef
   | 'struct' ident '{'
       field+
-    '}' ';'                     # DefnStruct
+    '}'                        # DefnStruct
   ;
 
 field: kind IDENTIFIER SEMICOLON;

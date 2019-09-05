@@ -80,7 +80,7 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
                              |struct s {
                              |  bool b;
                              |  i8 c;
-                             |};
+                             |}
                              |
                              |fsm thing {
                              |  ${decl}
@@ -127,7 +127,7 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
                              |struct s {
                              |  bool b;
                              |  i8 c;
-                             |};
+                             |}
                              |
                              |fsm thing {
                              |  void main() {
@@ -797,12 +797,12 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
             val block = s"""|struct s {
                             |  bool a;
                             |  u8   b;
-                            |};
+                            |}
                             |
                             |struct t {
                             |  i6  a;
                             |  s   b;
-                            |};
+                            |}
                             |
                             |fsm a {
                             |  in  sync ready i8   pi0;
@@ -840,7 +840,7 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
       "select from type" in {
         val tree = """|struct a {
                       | i8 b;
-                      |};
+                      |}
                       |
                       |fsm c {
                       |  void main() {
@@ -930,12 +930,12 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
             val block = s"""|struct s {
                             |  bool a;
                             |  u8   b;
-                            |};
+                            |}
                             |
                             |struct t {
                             |  i6  a;
                             |  s   b;
-                            |};
+                            |}
                             |
                             |fsm a {
                             |  in  sync ready i8   pi0;

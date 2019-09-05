@@ -210,13 +210,13 @@ above. Observe the example (<a href="http://afiddle.argondesign.com/?example=int
 struct point_t {
   u10 x;
   u10 y;
-};
+}
 
 struct req_t {
   u32 addr;
   u3  len;
   u4  prop;
-};
+}
 
 fsm foo {
   in sync point_t p;
@@ -254,12 +254,12 @@ Nested structures are split recursively as demonstrated by the following (<a hre
 struct point_t {
   u10 x;
   u10 y;
-};
+}
 
 struct rect_t {
   point_t top_left;
   point_t bottom_right;
-};
+}
 
 fsm foo {
   in sync rect_t r;

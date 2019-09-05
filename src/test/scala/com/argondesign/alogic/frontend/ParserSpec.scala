@@ -149,7 +149,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
         }
 
         "struct" in {
-          "struct bar { u8 foo; i2 baz; };".asTree[DefnRef] shouldBe {
+          "struct bar { u8 foo; i2 baz; }".asTree[DefnRef] shouldBe {
             DefnRef(
               Ident("bar", Nil),
               TypeStruct(
