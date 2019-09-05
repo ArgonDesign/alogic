@@ -26,7 +26,11 @@ import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
 
-final class UnusedCheck(implicit cc: CompilerContext) extends TreeTransformer {
+final class UnusedCheck(
+    postSpecialize: Boolean
+)(
+    implicit cc: CompilerContext
+) extends TreeTransformer {
 
   override val typed = false
 
@@ -233,7 +237,15 @@ final class UnusedCheck(implicit cc: CompilerContext) extends TreeTransformer {
           case (false, _: TypeStruct) => "struct"
           case (false, _)             => "Type"
         }
-        cc.warning(symbol, s"${hint} '${symbol.name}' is unused")
+        if (postSpecialize) {
+          val srcName = symbol.attr.sourceName.get match {
+            case Some((name, idxValues)) => idxValues.mkString(name + "#[", ", ", "]")
+            case None                    => symbol.name
+          }
+          cc.warning(symbol, s"$hint '$srcName' is unused after processing 'gen' constructs")
+        } else {
+          cc.warning(symbol, s"$hint '${symbol.name}' is unused")
+        }
       }
     }
 
@@ -248,7 +260,13 @@ final class UnusedCheck(implicit cc: CompilerContext) extends TreeTransformer {
   }
 }
 
-object UnusedCheck extends TreeTransformerPass {
-  val name = "unused-check"
-  def create(implicit cc: CompilerContext) = new UnusedCheck
+object UnusedCheck {
+  class UnusedCheckPass(postSpecialize: Boolean) extends TreeTransformerPass {
+    val name = "unused-check"
+    def create(implicit cc: CompilerContext) = new UnusedCheck(postSpecialize)(cc)
+  }
+
+  def apply(postSpecialize: Boolean): Pass = {
+    new UnusedCheckPass(postSpecialize)
+  }
 }

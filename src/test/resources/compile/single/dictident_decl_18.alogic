@@ -1,0 +1,11 @@
+// @verilator-lint-off
+network dictident_decl_18 {
+  gen for (uint N < 3) {
+    in  bool i#[N];
+    out bool o#[N];
+  }
+  i#[0] -> o#[0];
+  i#[1] -> o#[1];
+}
+// :4: WARNING: Input port 'i#\[2\]' is unused after processing 'gen' constructs
+// :5: WARNING: Output port 'o#\[2\]' is unused after processing 'gen' constructs

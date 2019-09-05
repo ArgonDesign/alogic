@@ -32,7 +32,7 @@ final class UnusedCheckSpec extends FlatSpec with AlogicTest {
       case entity: Entity          => cc.addGlobalEntity(entity)
       case _                       =>
     }
-    tree rewrite new Namer rewrite new UnusedCheck()
+    tree rewrite new Namer rewrite new UnusedCheck(postSpecialize = false)
   }
 
   "The UnusedCheck" should "issue warning for unused local variables" in {

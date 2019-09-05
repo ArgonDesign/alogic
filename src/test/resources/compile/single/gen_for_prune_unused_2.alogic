@@ -1,0 +1,52 @@
+network gen_for_prune_unused_2 {
+  in bool p_i;
+
+  out bool p_o4;
+  out bool p_o9;
+
+  fsm inner {
+    param uint P;
+    param bool Q;
+
+    const uint(P) PP = P + 1;
+    const uint PPP = 'PP - 1;
+
+    out bool p_o;
+
+    void main() {
+      bool b = p_i;
+      gen for (uint N = 0; N < PPP; N++) {
+        b = ~b;
+      }
+      p_o.write(b ^ Q);
+      fence;
+    }
+  }
+
+  i_4 = new inner(P=4, Q=true);
+  i_9 = new inner(P=9, Q=false);
+
+  i_4.p_o -> p_o4;
+  i_9.p_o -> p_o9;
+}
+// @fec-golden {{{
+//  module gen_for_prune_unused_2(
+//    input wire rst,
+//    input wire clk,
+//    input wire p_i,
+//    output reg p_o4,
+//    output reg p_o9
+//  );
+//
+//  always @(posedge clk) begin
+//    if (rst) begin
+//      p_o4 <= 1'd0;
+//      p_o9 <= 1'd0;
+//    end else begin
+//      p_o4 <= ~p_i;
+//      p_o9 <= ~p_i;
+//    end
+//  end
+//
+//  endmodule
+// }}}

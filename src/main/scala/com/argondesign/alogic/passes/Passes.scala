@@ -32,9 +32,10 @@ object Passes extends ChainingSyntax {
       ////////////////////////////////////////////////////////////////////////
       Checker,
       Namer,
-      UnusedCheck,
+      UnusedCheck(postSpecialize = false),
       Specialize,
       ResolveDictPorts,
+      UnusedCheck(postSpecialize = true),
       // Any passes between here and the middle end can only perform checks
       // and cannot re-write any trees unless errors have been detected
       Typer(externalRefs = false),

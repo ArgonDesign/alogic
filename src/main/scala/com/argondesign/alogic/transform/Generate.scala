@@ -665,6 +665,8 @@ private final class Resolve(
   // Latch errors
   var hadError = false
 
+  private[this] val refCounts = mutable.Map[Symbol, Int]()
+
   private[this] def error(loc: Loc, msg: String*): Unit = {
     cc.error(loc, msg: _*)
     hadError = true
@@ -742,64 +744,109 @@ private final class Resolve(
     }
   }
 
-  override def transform(tree: Tree): Tree = tree match {
-    //////////////////////////////////////////////////////////////////////////
-    // Replace refs to TypeChoice symbols with the resolved value
-    //////////////////////////////////////////////////////////////////////////
+  override def transform(tree: Tree): Tree = {
+    val result = tree match {
+      //////////////////////////////////////////////////////////////////////////
+      // Replace refs to TypeChoice symbols with the resolved value
+      //////////////////////////////////////////////////////////////////////////
 
-    case ExprSym(symbol) =>
-      resolveChoiceSymbol(symbol, tree.loc) map { symbol =>
-        assert(!(dictMap contains symbol))
-        ExprSym(symbol) withLoc tree.loc
-      } getOrElse tree
+      case ExprSym(symbol) =>
+        resolveChoiceSymbol(symbol, tree.loc) map { symbol =>
+          assert(!(dictMap contains symbol))
+          ExprSym(symbol) withLoc tree.loc
+        } getOrElse tree
 
-    case Sym(symbol, idxs) =>
-      resolveChoiceSymbol(symbol, tree.loc) flatMap {
-        resolveDict(_, idxs, tree.loc)
-      } map {
-        Sym(_, Nil) withLoc tree.loc
-      } getOrElse tree
+      case Sym(symbol, idxs) =>
+        resolveChoiceSymbol(symbol, tree.loc) flatMap {
+          resolveDict(_, idxs, tree.loc)
+        } map {
+          Sym(_, Nil) withLoc tree.loc
+        } getOrElse tree
 
-    //////////////////////////////////////////////////////////////////////////
-    // simplify now resolved ExprRefs
-    //////////////////////////////////////////////////////////////////////////
+      //////////////////////////////////////////////////////////////////////////
+      // simplify now resolved ExprRefs
+      //////////////////////////////////////////////////////////////////////////
 
-    case ExprRef(Sym(symbol, Nil)) => ExprSym(symbol) withLoc tree.loc
+      case ExprRef(Sym(symbol, Nil)) => ExprSym(symbol) withLoc tree.loc
 
-    //////////////////////////////////////////////////////////////////////////
-    // Resolve in Type
-    //////////////////////////////////////////////////////////////////////////
+      //////////////////////////////////////////////////////////////////////////
+      // Resolve in Type
+      //////////////////////////////////////////////////////////////////////////
 
-    case Decl(symbol, _) =>
-      symbol.kind = symbol.kind rewrite new TypeResolve(tree.loc)
-      tree
+      case Decl(symbol, _) =>
+        symbol.kind = symbol.kind rewrite new TypeResolve(tree.loc)
+        tree
 
-    case Defn(symbol) =>
-      symbol.kind = symbol.kind rewrite new TypeResolve(tree.loc)
-      tree
+      case Defn(symbol) =>
+        symbol.kind = symbol.kind rewrite new TypeResolve(tree.loc)
+        tree
 
-    case ExprType(kind) =>
-      val newKind = kind rewrite new TypeResolve(tree.loc)
-      if (kind eq newKind) tree else ExprType(newKind) withLoc tree.loc
+      case ExprType(kind) =>
+        val newKind = kind rewrite new TypeResolve(tree.loc)
+        if (kind eq newKind) tree else ExprType(newKind) withLoc tree.loc
 
-    case cast @ ExprCast(kind, _) =>
-      val newKind = kind rewrite new TypeResolve(tree.loc)
-      if (kind eq newKind) tree else cast.copy(kind = newKind) withLoc tree.loc
+      case cast @ ExprCast(kind, _) =>
+        val newKind = kind rewrite new TypeResolve(tree.loc)
+        if (kind eq newKind) tree else cast.copy(kind = newKind) withLoc tree.loc
 
-    //////////////////////////////////////////////////////////////////////////
-    // Update symbol types
-    //////////////////////////////////////////////////////////////////////////
+      //////////////////////////////////////////////////////////////////////////
+      // Update symbol types
+      //////////////////////////////////////////////////////////////////////////
 
-    case EntInstance(Sym(iSymbol, Nil), Sym(eSymbol: TypeSymbol, Nil), _, _) =>
-      iSymbol.kind = TypeInstance(eSymbol)
-      tree
+      case EntInstance(Sym(iSymbol, Nil), Sym(eSymbol: TypeSymbol, Nil), _, _) =>
+        iSymbol.kind = TypeInstance(eSymbol)
+        tree
 
-    case entity: Entity =>
-      entity.symbol.kind = entity.typeBasedOnContents
-      entityLevel -= 1
-      tree
+      case entity: Entity => {
+        if (entityLevel > 1 || entity.symbol.attr.variant.contains("verbatim")) {
+          entity
+        } else {
+          // Remove const declarations with no more references
+          @tailrec
+          def loop(body: List[Ent]): List[Ent] = {
+            if (refCounts.valuesIterator contains 0) {
+              loop {
+                body filter {
+                  case EntDecl(Decl(symbol, initOpt)) if refCounts get symbol contains 0 =>
+                    refCounts remove symbol
+                    symbol.kind.visit { case ExprSym(s)         => refCounts(s) -= 1 }
+                    initOpt foreach { _ visit { case ExprSym(s) => refCounts(s) -= 1 } }
+                    false
+                  case _ => true
+                }
+              }
+            } else {
+              body
+            }
+          }
 
-    case _ => tree
+          entity.copy(body = loop(entity.body)) withLoc entity.loc
+        }
+      } tap { result =>
+        result.symbol.kind = result.typeBasedOnContents
+        entityLevel -= 1
+      }
+
+      case _ => tree
+    }
+
+    result match {
+      case ExprSym(symbol: Symbol) =>
+        refCounts.updateWith(symbol) { _ map { _ + 1 } }
+      case Decl(symbol, _) if symbol.kind.isConst && entityLevel == 1 =>
+        refCounts(symbol) = 0
+      case EntInstance(_, _, _, paramExprs) =>
+        // Ignore references in parameter assignments. These will be stripped
+        // by the end of Specialize.
+        paramExprs foreach {
+          _ visit {
+            case ExprSym(symbol: Symbol) => refCounts.updateWith(symbol) { _ map { _ - 1 } }
+          }
+        }
+      case _ =>
+    }
+
+    result
   }
 
   override def finalCheck(tree: Tree): Unit = {
