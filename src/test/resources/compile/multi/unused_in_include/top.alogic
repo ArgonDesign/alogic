@@ -1,0 +1,9 @@
+#include "header.h"
+
+// b in header.h should not be warned for as unused
+
+network top {
+  in  a i;
+  out a o;
+  i -> o;
+}

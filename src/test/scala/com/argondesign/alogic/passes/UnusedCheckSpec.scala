@@ -170,9 +170,24 @@ final class UnusedCheckSpec extends FlatSpec with AlogicTest {
     cc.messages shouldBe empty
   }
 
-  it should "not issue warning for unused type definitions" in {
-    xform("typedef bool b; network a { }".asTree[Root])
-    cc.messages shouldBe empty
+  it should "issue warning for unused struct - in file scope" in {
+    xform("struct s {bool f;} network a {}".asTree[Root])
+    cc.messages.loneElement should beThe[Warning]("struct 's' is unused")
+  }
+
+  it should "issue warning for unused struct - in entity scope" in {
+    xform("network a {struct s {bool f;}}".asTree[Entity])
+    cc.messages.loneElement should beThe[Warning]("struct 's' is unused")
+  }
+
+  it should "issue warning for unused typedef - in file scope" in {
+    xform("typedef bool t; network a {}".asTree[Root])
+    cc.messages.loneElement should beThe[Warning]("Type 't' is unused")
+  }
+
+  it should "issue warning for unused typedef - in entity scope" in {
+    xform("network a {typedef bool t;}".asTree[Entity])
+    cc.messages.loneElement should beThe[Warning]("Type 't' is unused")
   }
 
   it should "not issue unused warning for nested instance using outer ports" in {

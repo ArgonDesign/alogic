@@ -32,6 +32,7 @@ object Passes extends ChainingSyntax {
       ////////////////////////////////////////////////////////////////////////
       Checker,
       Namer,
+      UnusedCheck,
       Specialize,
       ResolveDictPorts,
       // Any passes between here and the middle end can only perform checks
