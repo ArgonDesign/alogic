@@ -1122,6 +1122,38 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         }
       }
     }
+
+    "error for verbatim entity output ports with storage specifiers" - {
+      for {
+        (decl, ok) <- List(
+          ("out bool a", true),
+          ("out wire bool a", false),
+          ("out sync bool a", true),
+          ("out sync wire bool a", false),
+          ("out sync ready bool a", true),
+          ("out sync ready bubble bool a", false),
+          ("out sync ready fslice bool a", false),
+          ("out sync ready bslice bool a", false),
+          ("out sync ready wire bool a", false)
+        )
+      } {
+        decl in {
+          val tree = s"""|verbatim entity a {
+                         |  $decl;
+                         |}""".stripMargin.asTree[Entity]
+
+          tree rewrite checker
+          if (ok) {
+            cc.messages shouldBe empty
+          } else {
+            cc.messages.loneElement should beThe[Error] {
+              "'verbatim entity' output ports cannot use a storage specifier"
+            }
+          }
+        }
+
+      }
+    }
   }
 
 }

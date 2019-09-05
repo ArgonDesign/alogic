@@ -36,6 +36,7 @@ import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeAccept
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeReady
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeValid
+import com.argondesign.alogic.core.StorageTypes.StorageTypeDefault
 import com.argondesign.alogic.core.StorageTypes.StorageTypeReg
 import com.argondesign.alogic.core.StorageTypes.StorageTypeSlices
 import com.argondesign.alogic.core.StorageTypes.StorageTypeWire
@@ -230,20 +231,29 @@ final class Checker(implicit cc: CompilerContext) extends TreeTransformer {
 
     case decl @ DeclRef(ref, TypeOut(kind, fc, st), None) => {
 
-      val newSt = (fc, st) match {
-        case (FlowControlTypeNone, _: StorageTypeSlices) => {
-          cc.error(
-            tree,
-            s"Output port '${ref.toSource}' without flow control specifier cannot use output slices")
-          StorageTypeReg
+      val newSt = {
+        (fc, st) match {
+          case (FlowControlTypeNone, _: StorageTypeSlices) => {
+            cc.error(
+              tree,
+              s"Output port '${ref.toSource}' without flow control specifier cannot use output slices")
+            StorageTypeReg
+          }
+          case (FlowControlTypeValid, _: StorageTypeSlices) => {
+            cc.error(
+              tree,
+              s"Output port '${ref.toSource}' with 'sync' flow control specifier cannot use output slices")
+            StorageTypeReg
+          }
+          case _ => st
         }
-        case (FlowControlTypeValid, _: StorageTypeSlices) => {
-          cc.error(
-            tree,
-            s"Output port '${ref.toSource}' with 'sync' flow control specifier cannot use output slices")
-          StorageTypeReg
+      } tap { st =>
+        if (variantStack.top == "verbatim" && st != StorageTypeDefault) {
+          cc.error(tree, "'verbatim entity' output ports cannot use a storage specifier")
+          StorageTypeDefault
+        } else {
+          st
         }
-        case _ => st
       }
 
       if (newSt eq st) {
