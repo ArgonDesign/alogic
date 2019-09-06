@@ -147,9 +147,9 @@ trait TypeOps extends TypePrintOps { this: Type =>
   }
 
   final def shapeIter(implicit cc: CompilerContext): Iterator[Int] = this.underlying match {
+    case TypeInt(_, width)           => Iterator.single(width.value.get.toInt)
     case TypeArray(elemKind, shape)  => Iterator.single(shape.value.get.toInt) ++ elemKind.shapeIter
     case TypeVector(elemKind, shape) => Iterator.single(shape.value.get.toInt) ++ elemKind.shapeIter
-    case kind if kind.isPacked       => Iterator.single(kind.width)
     case _                           => Iterator.empty
   }
 
