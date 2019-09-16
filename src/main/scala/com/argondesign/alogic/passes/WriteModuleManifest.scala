@@ -32,7 +32,6 @@ import com.argondesign.alogic.core.Types.TypeOut
 import com.argondesign.alogic.util.unreachable
 
 import scala.collection.parallel.CollectionConverters._
-import scala.language.postfixOps
 
 object WriteModuleManifest extends Pass {
   val name = "write-module-manifest"
@@ -69,42 +68,42 @@ object WriteModuleManifest extends Pass {
         }
       }
 
-      val d2p = {
+      val d2p = Map from {
         for {
-          pSymbol <- pSymbols
+          pSymbol <- pSymbols.iterator
           dSymbol <- payloadSymbol(pSymbol)
         } yield {
           dSymbol -> pSymbol
         }
-      } toMap
+      }
 
-      val v2p = {
+      val v2p = Map from {
         for {
-          pSymbol <- pSymbols
+          pSymbol <- pSymbols.iterator
           vSymbol <- (pSymbol.attr.fcv.get map { _._2 }) orElse (pSymbol.attr.fcr.get map { _._2 })
         } yield {
           vSymbol -> pSymbol
         }
-      } toMap
+      }
 
-      val r2p = {
+      val r2p = Map from {
         for {
-          pSymbol <- pSymbols
+          pSymbol <- pSymbols.iterator
           rSymbol <- pSymbol.attr.fcr.get map { _._3 }
         } yield {
           rSymbol -> pSymbol
         }
-      } toMap
+      }
 
       // Compute the field -> struct map
-      val f2t = {
+      val f2t = Map from {
         for {
-          sSymbol <- sSymbols
+          sSymbol <- sSymbols.iterator
           tSymbol <- sSymbol.attr.structSymbol.get
         } yield {
           sSymbol -> tSymbol
         }
-      } toMap
+      }
 
       val signals = for {
         sSymbol <- sSymbols
@@ -123,7 +122,8 @@ object WriteModuleManifest extends Pass {
             "port" -> pSymbol.name,
             "component" -> "payload",
             "width" -> sSymbol.kind.width,
-            "offset" -> (sSymbol.attr.fieldOffset getOrElse 0)
+            "offset" -> (sSymbol.attr.fieldOffset getOrElse 0),
+            "signed" -> sSymbol.kind.isSigned
           )
         }
 
@@ -155,7 +155,7 @@ object WriteModuleManifest extends Pass {
 
         // Low level ports with no matching high level port
         val llPorts = {
-          val coveredPorts = d2p.keySet union v2p.keySet union r2p.keySet
+          val coveredPorts = Set from (d2p.keysIterator ++ v2p.keysIterator ++ r2p.keysIterator)
           for {
             sSymbol <- sSymbols
             tSymbol = f2t.getOrElse(sSymbol, sSymbol)
