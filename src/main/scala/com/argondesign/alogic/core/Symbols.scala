@@ -18,9 +18,6 @@
 package com.argondesign.alogic.core
 
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.Names.Name
-import com.argondesign.alogic.core.Names.TermName
-import com.argondesign.alogic.core.Names.TypeName
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Symbols.TermSymbol
 import com.argondesign.alogic.core.Symbols.TypeSymbol
@@ -34,11 +31,11 @@ import scala.util.ChainingSyntax
 trait Symbols extends ChainingSyntax { self: CompilerContext =>
 
   // The global scope only holds file level entity symbols
-  final private[this] var _globalScope: Option[mutable.HashMap[Name, Symbol]] = Some(
-    mutable.HashMap())
+  final private[this] var _globalScope: Option[mutable.HashMap[String, Symbol]] =
+    Some(mutable.HashMap())
 
   // Can only hand out the final immutable copy
-  final lazy val globalScope: Map[Name, Symbol] = {
+  final lazy val globalScope: Map[String, Symbol] = {
     _globalScope.get.toMap
   } tap { _ =>
     _globalScope = None
@@ -49,9 +46,9 @@ trait Symbols extends ChainingSyntax { self: CompilerContext =>
     _globalScope match {
       case None => ice("Global scope is already sealed")
       case Some(scope) => {
-        val name = symbol.uniqueName
+        val name = symbol.name
         if (scope contains name) {
-          ice(s"Global scope already contains '${name}'")
+          ice(s"Global scope already contains '$name'")
         }
         scope(name) = symbol
       }
@@ -71,10 +68,10 @@ trait Symbols extends ChainingSyntax { self: CompilerContext =>
   final def addGlobalEntity(entity: Entity): Unit = addGlobalEntities(List(entity))
 
   final def lookupGlobalTerm(name: String): TermSymbol = synchronized {
-    globalScope.get(TermName(name)) match {
+    globalScope.get(name) match {
       case Some(symbol: TermSymbol) => symbol
       case Some(_)                  => unreachable
-      case None                     => ice(s"Cannot find global term '${name}'")
+      case None                     => ice(s"Cannot find global term '$name'")
     }
   }
 
@@ -144,7 +141,7 @@ object Symbols {
       final val id: Int,
       final val loc: Loc,
       initialType: Type,
-      initialName: Name
+      initialName: String
   ) {
     def isTermSymbol: Boolean
 
@@ -154,19 +151,20 @@ object Symbols {
     // Common implementation
     ////////////////////////////////////////////////////////////////////////////
 
-    final override def hashCode = id
+    final override def hashCode: Int = id
 
-    final override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]
+    final override def equals(that: Any): Boolean = this eq that.asInstanceOf[AnyRef]
 
     final var kind: Type = initialType
 
-    protected final var _uniqueName: Name = initialName
+    protected final var _name: String = initialName
 
-    def uniqueName: Name = _uniqueName
+    def name: String = _name
 
-    def name: String = _uniqueName.str
-
-    def rename(name: String): this.type
+    def rename(name: String): this.type = {
+      _name = name
+      this
+    }
 
     ////////////////////////////////////////////////////////////////////////////
     // Attributes
@@ -183,38 +181,22 @@ object Symbols {
   }
 
   final class TermSymbol(id: Int, loc: Loc, kind: Type, name: String)
-      extends Symbol(id, loc, kind, TermName(name)) {
+      extends Symbol(id, loc, kind, name) {
     override def isTermSymbol = true
     override def isTypeSymbol = false
-
-    override def rename(name: String): this.type = {
-      _uniqueName = TermName(name)
-      this
-    }
-
-    override def toString = s"TermSymbol(id=$id, name=${name})"
+    override def toString = s"TermSymbol(id=$id, name=$name)"
   }
 
   final class TypeSymbol(id: Int, loc: Loc, kind: Type, name: String)
-      extends Symbol(id, loc, kind, TypeName(name)) {
+      extends Symbol(id, loc, kind, name) {
     override def isTermSymbol = false
     override def isTypeSymbol = true
-
-    override def rename(name: String): this.type = {
-      _uniqueName = TypeName(name)
-      this
-    }
-
-    override def toString = s"TypeSymbol(id=$id, name=${name})"
+    override def toString = s"TypeSymbol(id=$id, name=$name)"
   }
 
-  final object ErrorSymbol
-      extends Symbol(-1, Loc.synthetic, TypeError, TermName("@error-symbol@")) {
+  final object ErrorSymbol extends Symbol(-1, Loc.synthetic, TypeError, "@error-symbol@") {
     override def isTermSymbol = false
     override def isTypeSymbol = false
-
-    override def rename(name: String): this.type = unreachable
-
     override def toString = s"ErrorSymbol"
   }
 }

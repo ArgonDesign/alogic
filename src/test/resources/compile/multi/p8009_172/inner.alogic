@@ -4,8 +4,8 @@ network inner {
   in  uint(WIDTH) a;
   out uint(WIDTH) b;
 
-  inner_2 = new inner_2(WIDTH=WIDTH);
+  inst = new inner_2(WIDTH=WIDTH);
 
-  a -> inner_2.a;
-  inner_2.b -> b;
+  a -> inst.a;
+  inst.b -> b;
 }

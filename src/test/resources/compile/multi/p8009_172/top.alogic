@@ -7,8 +7,8 @@ network top {
   in  my_type a;
   out my_type b;
 
-  inner = new inner(WIDTH=@bits(my_type));
+  inst = new inner(WIDTH=@bits(my_type));
 
-  a -> inner.a;
-  inner.b -> b;
+  a -> inst.a;
+  inst.b -> b;
 }

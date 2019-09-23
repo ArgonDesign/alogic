@@ -23,8 +23,9 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 
 import scala.jdk.CollectionConverters._
+import scala.util.ChainingSyntax
 
-object EntBuilder extends BaseBuilder[EntContext, List[Ent]] {
+object EntBuilder extends BaseBuilder[EntContext, List[Ent]] with ChainingSyntax {
 
   def apply(ctx: EntContext)(implicit cc: CompilerContext): List[Ent] = {
     object Visitor extends AlogicListVisitor[Ent] {
@@ -37,17 +38,20 @@ object EntBuilder extends BaseBuilder[EntContext, List[Ent]] {
       }
 
       override def visitEntEntity(ctx: EntEntityContext) = {
-        val entity = EntEntity(EntityBuilder(ctx.entity)) withLoc ctx.loc
+        val entity = EntityBuilder(ctx.entity)
         if (ctx.autoinst != null) {
-          val eIdent = entity.entity.ref.asInstanceOf[Ident]
-          val iIdent = eIdent.copy() withLoc eIdent.loc
+          val (eIdent, iIdent) = entity.ref.asInstanceOf[Ident] pipe { ident =>
+            (ident.copy(name = ident.name + "$") withLoc ident.loc withAttr ident.attr,
+             ident.copy() withLoc ident.loc)
+          }
           if (ctx.attr != null) {
             iIdent withAttr AttrBuilder(ctx.attr)
           }
+          val ent = EntEntity(entity.copy(ref = eIdent) withLoc entity.loc) withLoc ctx.loc
           val inst = EntInstance(iIdent, eIdent, Nil, Nil) withLoc ctx.autoinst.loc
-          List(entity, inst)
+          List(ent, inst)
         } else {
-          List(entity)
+          List(EntEntity(entity) withLoc ctx.loc)
         }
       }
 

@@ -42,9 +42,9 @@ network recursive_adder_tree {
     }
   }
 
-  tree = new tree(W=2, N=16);
+  inst = new tree(W=2, N=16);
 
-  p_i -> tree.p_ii; tree.p_oo -> p_o;
+  p_i -> inst.p_ii; inst.p_oo -> p_o;
 }
 // @fec-golden {{{
 // module recursive_adder_tree(

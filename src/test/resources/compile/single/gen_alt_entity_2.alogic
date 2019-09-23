@@ -70,11 +70,11 @@ network gen_alt_entity_2 {
       }
     }
 
-    inner = new inner();
+    inst = new inner();
 
-    p_mid_i_0 -> inner.p_i_0;
-    p_mid_i_1 -> inner.p_i_1;
-    inner.p_o -> p_mid_o;
+    p_mid_i_0 -> inst.p_i_0;
+    p_mid_i_1 -> inst.p_i_1;
+    inst.p_o -> p_mid_o;
   }
 
   mid_u_0 = new mid(SIGNED=false, DOUBLE=false);

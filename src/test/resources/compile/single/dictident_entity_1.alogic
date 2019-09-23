@@ -8,8 +8,8 @@ network dictident_entity_1 {
     ii -> oo;
   }
 
-  inner = new inner#[0]();
+  inst = new inner#[0]();
 
-  i -> inner.ii; inner.oo -> o;
+  i -> inst.ii; inst.oo -> o;
 }
 // :5: ERROR: Definition with dictionary identifier must appear directly in 'gen' loop scope.

@@ -11,13 +11,13 @@ network dictident_instance_3 {
   }
 
   gen for (uint N < 2) {
-    inner#[N] = new inner();
+    inst#[N] = new inner();
   }
 
-  i_a -> inner#[0].ii;
-  inner#[0].oo -> o_a;
-  i_b -> inner#[1].ii;
-  inner#[1].oo -> o_b;
+  i_a -> inst#[0].ii;
+  inst#[0].oo -> o_a;
+  i_b -> inst#[1].ii;
+  inst#[1].oo -> o_b;
 }
 // @fec-golden {{{
 //  module dictident_instance_3(

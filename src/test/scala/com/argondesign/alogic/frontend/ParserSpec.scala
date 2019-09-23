@@ -708,8 +708,8 @@ final class ParserSpec extends FreeSpec with AlogicTest {
             Entity(
               Ident("h3", Nil),
               List(
-                EntEntity(Entity(Ident("i", Nil), Nil)),
-                EntInstance(Ident("i", Nil), Ident("i", Nil), Nil, Nil)
+                EntEntity(Entity(Ident("i$", Nil), Nil)),
+                EntInstance(Ident("i", Nil), Ident("i$", Nil), Nil, Nil)
               )
             )
           }
@@ -722,8 +722,8 @@ final class ParserSpec extends FreeSpec with AlogicTest {
             Entity(
               Ident("h4", Nil),
               List(
-                EntEntity(Entity(Ident("i", Nil), Nil)),
-                EntInstance(Ident("i", Nil), Ident("i", Nil), Nil, Nil)
+                EntEntity(Entity(Ident("i$", Nil), Nil)),
+                EntInstance(Ident("i", Nil), Ident("i$", Nil), Nil, Nil)
               )
             )
           }
@@ -735,7 +735,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
           iIdent.attr shouldBe Map("foo" -> Expr(1))
 
           val eIdent = tree getFirst {
-            case Entity(ident @ Ident("i", Nil), _) => ident
+            case Entity(ident @ Ident("i$", Nil), _) => ident
           }
           eIdent.hasAttr shouldBe true
           eIdent.attr shouldBe Map("//variant" -> ExprStr("fsm"))
@@ -749,8 +749,8 @@ final class ParserSpec extends FreeSpec with AlogicTest {
             Entity(
               Ident("h4", Nil),
               List(
-                EntEntity(Entity(Ident("i", Nil), Nil)),
-                EntInstance(Ident("i", Nil), Ident("i", Nil), Nil, Nil)
+                EntEntity(Entity(Ident("i$", Nil), Nil)),
+                EntInstance(Ident("i", Nil), Ident("i$", Nil), Nil, Nil)
               )
             )
           }
@@ -761,7 +761,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
           iIdent.hasAttr shouldBe false
 
           val eIdent = tree getFirst {
-            case Entity(ident @ Ident("i", Nil), _) => ident
+            case Entity(ident @ Ident("i$", Nil), _) => ident
           }
           eIdent.hasAttr shouldBe true
           eIdent.attr shouldBe Map("bar" -> Expr(1), "//variant" -> ExprStr("fsm"))
@@ -775,8 +775,8 @@ final class ParserSpec extends FreeSpec with AlogicTest {
             Entity(
               Ident("h4", Nil),
               List(
-                EntEntity(Entity(Ident("i", Nil), Nil)),
-                EntInstance(Ident("i", Nil), Ident("i", Nil), Nil, Nil)
+                EntEntity(Entity(Ident("i$", Nil), Nil)),
+                EntInstance(Ident("i", Nil), Ident("i$", Nil), Nil, Nil)
               )
             )
           }
@@ -788,7 +788,7 @@ final class ParserSpec extends FreeSpec with AlogicTest {
           iIdent.attr shouldBe Map("foo" -> Expr(1))
 
           val eIdent = tree getFirst {
-            case Entity(ident @ Ident("i", Nil), _) => ident
+            case Entity(ident @ Ident("i$", Nil), _) => ident
           }
           eIdent.hasAttr shouldBe true
           eIdent.attr shouldBe Map("bar" -> Expr(1), "//variant" -> ExprStr("fsm"))

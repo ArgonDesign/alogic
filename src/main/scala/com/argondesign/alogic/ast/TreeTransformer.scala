@@ -26,7 +26,7 @@ import scala.collection.mutable
 import scala.util.ChainingSyntax
 
 // Tree transformers are applied during a post-order traversal of a Tree.
-abstract class TreeTransformer(implicit val cc: CompilerContext)
+abstract class TreeTransformer(implicit cc: CompilerContext)
     extends TreeLikeTransformer[Tree]
     with ChainingSyntax {
 

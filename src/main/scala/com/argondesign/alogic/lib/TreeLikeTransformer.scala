@@ -16,9 +16,12 @@
 package com.argondesign.alogic.lib
 
 import com.argondesign.alogic.Config
+import com.argondesign.alogic.core.CompilerContext
 
 // Tree transformers are applied during a post-order traversal of a Tree.
-abstract class TreeLikeTransformer[T <: TreeLike] extends (T => T) {
+abstract class TreeLikeTransformer[T <: TreeLike](
+    implicit val cc: CompilerContext
+) extends (T => T) {
 
   // enter is called when entering a node, before visiting any children.
   // enter is used to modify the state of the tree transformer or the context
@@ -49,7 +52,7 @@ abstract class TreeLikeTransformer[T <: TreeLike] extends (T => T) {
   def apply(tree: T): T = {
     // Walk the tree
     val result = walk(tree)
-    if (Config.applyTransformChecks) {
+    if (Config.applyTransformChecks && !cc.hasError) {
       // Apply default check
       defaultCheck(tree, result)
       // Apply final check

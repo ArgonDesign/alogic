@@ -11,12 +11,12 @@ network dictident_entity_6 {
       ii -> oo;
     }
 
-    inner = new inner#[N]();
+    inst = new inner#[N]();
 
     gen if (N == 0) {
-      i_a -> inner.ii; inner.oo -> o_a;
+      i_a -> inst.ii; inst.oo -> o_a;
     } else {
-      i_b -> inner.ii; inner.oo -> o_b;
+      i_b -> inst.ii; inst.oo -> o_b;
     }
   }
 }

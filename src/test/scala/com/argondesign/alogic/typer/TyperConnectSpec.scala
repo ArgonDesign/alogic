@@ -53,14 +53,14 @@ final class TyperConnectSpec extends FreeSpec with AlogicTest {
     }
   }
 
-  val treeA = s"""|fsm a {
+  val treeA = s"""|fsm a_entity {
                   |  (* unused *) param           bool P = true;
                   |  (* unused *) out             bool fcn;
                   |  (* unused *) out sync        bool fcv;
                   |  (* unused *) out sync ready  bool fcr;
                   |  (* unused *) out sync accept bool fca;
                   |}""".stripMargin.asTree[Entity]
-  val treeB = s"""|fsm b {
+  val treeB = s"""|fsm b_entity {
                   |  (* unused *) param           bool P = true;
                   |  (* unused *) in              bool fcn;
                   |  (* unused *) in sync         bool fcv;
@@ -188,8 +188,8 @@ final class TyperConnectSpec extends FreeSpec with AlogicTest {
                 |  (* unused *) out sync        bool ofcv;
                 |  (* unused *) out sync ready  bool ofcr;
                 |  (* unused *) out sync accept bool ofca;
-                |  (* unused *) a = new a();
-                |  (* unused *) b = new b();
+                |  (* unused *) a = new a_entity();
+                |  (* unused *) b = new b_entity();
                 |  ${conn};
                 |}""".stripMargin.asTree[Entity]
 
@@ -239,8 +239,8 @@ final class TyperConnectSpec extends FreeSpec with AlogicTest {
                 |  (* unused *) out sync        bool ofcv;
                 |  (* unused *) out sync ready  bool ofcr;
                 |  (* unused *) out sync accept bool ofca;
-                |  (* unused *) a = new a();
-                |  (* unused *) b = new b();
+                |  (* unused *) a = new a_entity();
+                |  (* unused *) b = new b_entity();
                 |  ${conn};
                 |}""".stripMargin.asTree[Entity]
 
@@ -282,8 +282,8 @@ final class TyperConnectSpec extends FreeSpec with AlogicTest {
         connect in {
           val treeC =
             s"""|network  foo {
-                |  (* unused *) a = new a();
-                |  (* unused *) b = new b();
+                |  (* unused *) a = new a_entity();
+                |  (* unused *) b = new b_entity();
                 |  ${connect};
                 |}""".stripMargin.asTree[Entity]
 
@@ -316,8 +316,8 @@ final class TyperConnectSpec extends FreeSpec with AlogicTest {
                 |  (* unused *) out sync        bool ofcv;
                 |  (* unused *) out sync ready  bool ofcr;
                 |  (* unused *) out sync accept bool ofca;
-                |  (* unused *) a = new a();
-                |  (* unused *) b = new b();
+                |  (* unused *) a = new a_entity();
+                |  (* unused *) b = new b_entity();
                 |  ${conn};
                 |}""".stripMargin.asTree[Entity]
 
@@ -398,8 +398,8 @@ final class TyperConnectSpec extends FreeSpec with AlogicTest {
       for {
         (expr, msg) <- List(
           ("a.b", ""),
-          ("a.c", "No port named 'c' in 'a' of type 'instance a'"),
-          ("a.N", "No port named 'N' in 'a' of type 'instance a'")
+          ("a.c", "No port named 'c' on instance 'a' of entity 'a'"),
+          ("a.N", "No port named 'N' on instance 'a' of entity 'a'")
         )
       } {
         expr in {

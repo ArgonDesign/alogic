@@ -17,12 +17,9 @@ package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.SourceTextConverters._
-import com.argondesign.alogic.ast.Trees.Expr._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.FlowControlTypes._
-import com.argondesign.alogic.core.Names.TypeName
 import com.argondesign.alogic.core.StorageTypes._
-import com.argondesign.alogic.core.Symbols.ErrorSymbol
 import com.argondesign.alogic.core.Symbols.TermSymbol
 import com.argondesign.alogic.core.Symbols.TypeSymbol
 import com.argondesign.alogic.core.Types.TypeArray
@@ -131,7 +128,7 @@ final class NamerSpec extends FreeSpec with AlogicTest {
          |}""".stripMargin.asTree[Stmt] rewrite namer
 
       cc.messages should have length 1
-      cc.messages(0) should beThe[Error]("Name 'bar' is not defined")
+      cc.messages(0) should beThe[Error]("'bar' is not defined")
       cc.messages(0).loc.line shouldBe 2
     }
 
@@ -141,7 +138,7 @@ final class NamerSpec extends FreeSpec with AlogicTest {
          |}""".stripMargin.asTree[Stmt] rewrite namer
 
       cc.messages should have length 1
-      cc.messages(0) should beThe[Error]("Type 'foo_t' is not defined")
+      cc.messages(0) should beThe[Error]("'foo_t' is not defined")
       cc.messages(0).loc.line shouldBe 2
     }
 
@@ -190,7 +187,7 @@ final class NamerSpec extends FreeSpec with AlogicTest {
                   ),
                   _) =>
           aSym.loc.line shouldBe 2
-          aSym.uniqueName shouldBe TypeName("a")
+          aSym.name shouldBe "a"
           aSym.isTypeSymbol shouldBe true
 
           aSym.kind shouldBe TypeStruct(
@@ -245,7 +242,7 @@ final class NamerSpec extends FreeSpec with AlogicTest {
                     |
                     |fsm a {
                     |  fence {
-                    |    bool foo_t = 0;
+                    |    { bool foo_t = 0; }
                     |    foo_t b;
                     |  }
                     |}""".stripMargin.asTree[Root]
@@ -269,8 +266,6 @@ final class NamerSpec extends FreeSpec with AlogicTest {
               }
           }
       }
-
-      cc.messages shouldBe empty
     }
 
     "resolve type names to their correct definitions - struct" in {
@@ -280,7 +275,7 @@ final class NamerSpec extends FreeSpec with AlogicTest {
                     |
                     |fsm a {
                     |  fence {
-                    |    bool bar_t;
+                    |    { bool bar_t; }
                     |    bar_t b;
                     |  }
                     |}""".stripMargin.asTree[Root]
@@ -303,8 +298,6 @@ final class NamerSpec extends FreeSpec with AlogicTest {
               }
           }
       }
-
-      cc.messages shouldBe empty
     }
 
     "resolve type names to their correct definitions - dict a" in {
@@ -415,7 +408,7 @@ final class NamerSpec extends FreeSpec with AlogicTest {
     "resolve entity symbols in instantiations" in {
       val entityA = """fsm a {}""".stripMargin.asTree[Entity]
       val entityB = """|network b {
-                       |  a = new a();
+                       |  i = new a();
                        |}""".stripMargin.asTree[Entity]
 
       cc.addGlobalEntities(List(entityA, entityB))
@@ -486,155 +479,6 @@ final class NamerSpec extends FreeSpec with AlogicTest {
       }
 
       cc.messages shouldBe empty
-    }
-
-    "resolve @bits arguments to term names even if the argument is a valid type expression" in {
-      val entity = """|fsm a {
-                      |  void main() {
-                      |    bool b;
-                      |    @bits(b);
-                      |  }
-                      |}""".stripMargin.asTree[Entity]
-
-      cc.addGlobalEntity(entity)
-
-      val tree = entity rewrite namer
-
-      inside(tree) {
-        case Entity(_, List(main)) =>
-          inside(main) {
-            case EntFunction(Sym(_, Nil), List(StmtDecl(decl), StmtExpr(expr))) =>
-              inside(decl) {
-                case Decl(dSym, None) =>
-                  dSym.kind shouldBe TypeUInt(Expr(1))
-                  inside(expr) {
-                    case ExprCall(`atBits`, List(ExprSym(rSym))) =>
-                      rSym should be theSameInstanceAs dSym
-                      rSym.isTermSymbol shouldBe true
-                      rSym.loc.line shouldBe 3
-                  }
-              }
-          }
-      }
-
-      cc.messages shouldBe empty
-    }
-
-    "resolve @bits arguments to type names if the argument is a valid type expression" in {
-      val root = """|typedef bool a;
-                    |fsm b {
-                    |  void main() {
-                    |    @bits(a);
-                    |  }
-                    |}""".stripMargin.asTree[Root]
-
-      cc.addGlobalEntity(root.entity)
-
-      val tree = root rewrite namer
-
-      inside(tree) {
-        case Root(List(typedef), entity) =>
-          inside(typedef) {
-            case Defn(dSym) =>
-              dSym.kind shouldBe TypeUInt(Expr(1))
-              inside(entity) {
-                case Entity(_, List(main)) =>
-                  inside(main) {
-                    case EntFunction(Sym(_, Nil), List(StmtExpr(expr))) =>
-                      inside(expr) {
-                        case ExprCall(`atBits`, List(ExprSym(rSym))) =>
-                          rSym should be theSameInstanceAs dSym
-                          rSym.isTypeSymbol shouldBe true
-                          rSym.loc.line shouldBe 1
-                      }
-                  }
-              }
-          }
-      }
-
-      cc.messages shouldBe empty
-    }
-
-    "not resolve @bits arguments to type names if the argument is not a type expression" in {
-      val root = """|typedef bool a;
-                    |fsm b {
-                    |  void main() {
-                    |    i4 a;
-                    |    @bits(a + 2);
-                    |  }
-                    |}""".stripMargin.asTree[Root]
-
-      cc.addGlobalEntity(root.entity)
-
-      val tree = root rewrite namer
-
-      inside(tree) {
-        case Root(List(typedef), entity) =>
-          inside(typedef) {
-            case Defn(defSym) =>
-              defSym.kind shouldBe TypeUInt(Expr(1))
-              inside(entity) {
-                case Entity(_, List(main)) =>
-                  inside(main) {
-                    case EntFunction(Sym(_, Nil), List(StmtDecl(decl: Decl), StmtExpr(expr))) =>
-                      val dSym = decl.symbol
-                      inside(expr) {
-                        case ExprCall(`atBits`, List(ExprSym(rSym) + Expr(2))) =>
-                          rSym should be theSameInstanceAs dSym
-                          rSym.isTermSymbol shouldBe true
-                          rSym.loc.line shouldBe 4
-                      }
-                  }
-              }
-          }
-      }
-
-      cc.messages shouldBe empty
-    }
-
-    "issue error if @bits argument is ambiguous and can resolve to both type and term names" in {
-      val root = """|typedef bool a;
-                    |fsm b {
-                    |  void main() {
-                    |    u1 a;
-                    |    @bits(a);
-                    |  }
-                    |}""".stripMargin.asTree[Root]
-
-      cc.addGlobalEntity(root.entity)
-
-      root rewrite namer
-
-      cc.messages.loneElement should beThe[Error](
-        "Name 'a' in this context can resolve to either of",
-        "term 'a' defined at .*:4",
-        "type 'a' defined at .*:1"
-      )
-    }
-
-    "not resolve other identifiers in expressions to type names" in {
-      val root = """|typedef bool a;
-                    |fsm b {
-                    |  void main() {
-                    |    bool c = a;
-                    |  }
-                    |}""".stripMargin.asTree[Root]
-
-      cc.addGlobalEntity(root.entity)
-
-      val tree = root rewrite namer
-
-      inside(tree) {
-        case Root(_, entity: Entity) =>
-          inside(entity.functions.head.stmts.head) {
-            case StmtDecl(Decl(_, Some(ExprSym(sym)))) =>
-              sym should be theSameInstanceAs ErrorSymbol
-          }
-      }
-
-      cc.messages should have length 1
-      cc.messages(0) should beThe[Error]("Name 'a' is not defined")
-      cc.messages(0).loc.line shouldBe 4
     }
 
     "resolve names inside type arguments" in {
@@ -908,7 +752,7 @@ final class NamerSpec extends FreeSpec with AlogicTest {
       }
       iSymbol.kind shouldBe TypeInstance(eSymbol)
       iSymbol.attr.unused.get.value shouldBe true
-      eSymbol.kind shouldBe TypeEntity("bar", Nil, Nil)
+      eSymbol.kind shouldBe TypeEntity("bar$", Nil, Nil)
       eSymbol.attr.stackLimit.get.value shouldBe Expr(3)
     }
 

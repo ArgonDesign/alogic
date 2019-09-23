@@ -804,7 +804,7 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
                             |  s   b;
                             |}
                             |
-                            |fsm a {
+                            |fsm f {
                             |  in  sync ready i8   pi0;
                             |  in  sync ready void pi1;
                             |  out sync ready i8   po0;
@@ -937,7 +937,7 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
                             |  s   b;
                             |}
                             |
-                            |fsm a {
+                            |fsm f {
                             |  in  sync ready i8   pi0;
                             |  in  sync ready void pi1;
                             |  out sync ready i8   po0;

@@ -507,8 +507,15 @@ final class Typer(externalRefs: Boolean = false)(implicit cc: CompilerContext)
         }
 
         if (field.isEmpty) {
-          val what = if (expr.tpe.isInstance) "port" else "field"
-          error(tree, s"No $what named '$sel' in '${expr.toSource}' of type '${expr.tpe.toSource}'")
+          expr.tpe match {
+            case TypeInstance(eSymbol) =>
+              error(
+                tree,
+                s"No port named '$sel' on instance '${expr.toSource}' of entity '${eSymbol.name}'")
+            case kind =>
+              error(tree,
+                    s"No member named '$sel' in '${expr.toSource}' of type '${kind.toSource}'")
+          }
         }
       }
 

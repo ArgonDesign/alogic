@@ -11,13 +11,13 @@ network dictident_instance_2 {
   }
 
   gen for (uint N < 1) {
-    inner#[N] = new inner();
+    inst#[N] = new inner();
   }
 
-  i_a -> inner#[0].ii;
-  inner#[0].oo -> o_a;
-  i_b -> inner#[1].ii;
-  inner#[1].oo -> o_b;
+  i_a -> inst#[0].ii;
+  inst#[0].oo -> o_a;
+  i_b -> inst#[1].ii;
+  inst#[1].oo -> o_b;
 }
-// :19: ERROR: 'inner#\[1\]' is not defined after processing 'gen' constructs
-// :20: ERROR: 'inner#\[1\]' is not defined after processing 'gen' constructs
+// :19: ERROR: 'inst#\[1\]' is not defined after processing 'gen' constructs
+// :20: ERROR: 'inst#\[1\]' is not defined after processing 'gen' constructs

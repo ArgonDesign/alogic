@@ -10,4 +10,4 @@ fsm gen_range_scope_1 {
     fence;
   }
 }
-// :9: ERROR: Name 'c' is not defined
+// :9: ERROR: 'c' is not defined

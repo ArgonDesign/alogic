@@ -6,12 +6,12 @@ network dictident_instance_5 {
 
   gen for (uint N < 2) {
     gen if (N == 0) {
-      i_a -> inner#[N].ii; inner#[N].oo -> o_a;
+      i_a -> inst#[N].ii; inst#[N].oo -> o_a;
     } else {
-      i_b -> inner#[N].ii; inner#[N].oo -> o_b;
+      i_b -> inst#[N].ii; inst#[N].oo -> o_b;
     }
 
-    inner#[N] = new inner();
+    inst#[N] = new inner();
   }
 
   network inner {

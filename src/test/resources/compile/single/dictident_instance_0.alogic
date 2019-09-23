@@ -8,8 +8,8 @@ network dictident_instance_0 {
     ii -> oo;
   }
 
-  inner#[0] = new inner();
+  inst#[0] = new inner();
 
-  i -> inner#[0].ii; inner#[0].oo -> o;
+  i -> inst#[0].ii; inst#[0].oo -> o;
 }
 // :11: ERROR: Declaration with dictionary identifier must appear directly in 'gen' loop scope.

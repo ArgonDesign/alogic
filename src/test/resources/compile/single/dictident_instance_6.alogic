@@ -4,13 +4,13 @@ network dictident_instance_6 {
   in  bool i_b;
   out bool o_b;
 
-  i_a -> inner#[0].ii;
-  inner#[0].oo -> o_a;
-  i_b -> inner#[1].ii;
-  inner#[1].oo -> o_b;
+  i_a -> inst#[0].ii;
+  inst#[0].oo -> o_a;
+  i_b -> inst#[1].ii;
+  inst#[1].oo -> o_b;
 
   gen for (uint N < 3) {
-    inner#[N%2] = new inner();
+    inst#[N%2] = new inner();
   }
 
   network inner {
@@ -19,4 +19,4 @@ network dictident_instance_6 {
     ii -> oo;
   }
 }
-// :13: ERROR: Instance 'inner#\[0\]' defined multiple times after processing 'gen' constructs
+// :13: ERROR: Instance 'inst#\[0\]' defined multiple times after processing 'gen' constructs

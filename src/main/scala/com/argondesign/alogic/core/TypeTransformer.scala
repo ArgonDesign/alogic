@@ -20,7 +20,7 @@ import com.argondesign.alogic.lib.TreeLikeTransformer
 import Types._
 
 // Type transformers are applied during a post-order traversal of a Type.
-abstract class TypeTransformer(implicit val cc: CompilerContext) extends TreeLikeTransformer[Type] {
+abstract class TypeTransformer(implicit cc: CompilerContext) extends TreeLikeTransformer[Type] {
 
   ///////////////////////////////////////////////////////////////////////////////
   // Internals
