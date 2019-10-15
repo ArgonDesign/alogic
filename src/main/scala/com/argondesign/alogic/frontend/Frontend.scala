@@ -122,10 +122,17 @@ class Frontend(
         val instantiatedEntityNamesFuture = astFuture map { root =>
           def loop(entity: Entity): List[String] = {
             val localNames = entity.name :: childNames(entity.body)
-            val requiredExternalNames = entity.instances collect {
-              case EntInstance(_, Ident(name, _), _, _) if !(localNames contains name) => name
+
+            def gatherExternalNames(trees: List[Tree]): List[String] = trees flatMap {
+              case EntInstance(_, Ident(name, _), _, _) if !(localNames contains name) => List(name)
+              case EntGen(GenFor(_, _, _, body))                                       => gatherExternalNames(body)
+              case EntGen(GenRange(_, _, _, body))                                     => gatherExternalNames(body)
+              case EntGen(GenIf(_, thenItems, elseItems)) =>
+                gatherExternalNames(thenItems) ::: gatherExternalNames(elseItems)
+              case _ => Nil
             }
-            requiredExternalNames ::: (entity.entities flatMap loop)
+
+            gatherExternalNames(entity.body) ::: (entity.entities flatMap loop)
           }
 
           loop(root.entity)

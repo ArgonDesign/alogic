@@ -1,0 +1,10 @@
+fsm test_add {
+  in sync u16 a;
+  in sync u16 b;
+  out sync u16 c;
+
+  void main() {
+    c.write(a + b);
+    fence;
+  }
+}
