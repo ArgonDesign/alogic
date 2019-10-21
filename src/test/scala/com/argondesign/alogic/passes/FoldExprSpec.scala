@@ -1384,6 +1384,96 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
       expr.value.simplify shouldBe ExprInt(false, 41, 0x1000000fffL)
     }
 
+    "sliced or indexed refs when slice or index is const" - {
+      for {
+        (stmt, pattern) <- List[(String, PartialFunction[Any, Unit])](
+          ("o_2 = B[1]", {
+            case ExprInt(false, 2, v) if v == 1 =>
+          }),
+          ("o_4 = B[1+:2]", {
+            case ExprInt(false, 4, v) if v == 9 =>
+          }),
+          ("o_1 = i_3[i_3[B[1]+2'd1]]", {
+            case ExprIndex(ExprSym(i_3a), ExprIndex(ExprSym(i_3b), ExprInt(false, 2, w)))
+                if i_3a.name == "i_3" && i_3b.name == "i_3" && w == 2 =>
+          }),
+          ("o_1 = i_3[i_3 +: B[1]]", {
+            case ExprIndex(ExprSym(i_3a), ExprSym(i_3b))
+                if i_3a.name == "i_3" && i_3b.name == "i_3" =>
+          })
+        )
+      } {
+        stmt in {
+          val entity = s"""|fsm a {
+                           |  const u2[3] B = {2'd2, 2'd1, 2'd0};
+                           |
+                           |  (* unused *) in  u3 i_3;
+                           |  (* unused *) out u1 o_1;
+                           |  (* unused *) out u2 o_2;
+                           |  (* unused *) out u4 o_4;
+                           |
+                           |  fence { ${stmt}; }
+                           |}""".stripMargin.asTree[Entity]
+
+          val expr = xform(entity) rewrite {
+            new LowerVectors()
+          } rewrite {
+            new AddCasts()
+          } rewrite {
+            new FoldExpr(foldRefs = true)
+          } getFirst {
+            case StmtAssign(_, rhs) => rhs
+          }
+
+          expr should matchPattern(pattern)
+        }
+      }
+    }
+
+    "no sliced or indexed refs when slice or index is not const" - {
+      for {
+        (stmt, pattern) <- List[(String, PartialFunction[Any, Unit])](
+          ("o_1 = A[i_3]", {
+            case ExprIndex(ExprSym(a), ExprSym(i_3)) if a.name == "A" && i_3.name == "i_3" =>
+          }),
+          ("o_2 = B[i_1]", {
+            case ExprIndex(ExprSym(b), ExprSym(i_1)) if b.name == "B" && i_1.name == "i_1" =>
+          }),
+          ("o_2 = A[i_1 +: 2]", {
+            case ExprSlice(ExprSym(a), ExprSym(i_1), "+:", ExprInt(false, 4, w))
+                if a.name == "A" && i_1.name == "i_1" && w == 2 =>
+          }),
+          ("o_4 = B[i_1 +: 2]", {
+            case ExprSlice(ExprSym(b), ExprSym(i_1), "+:", ExprInt(false, 2, w))
+                if b.name == "B" && i_1.name == "i_1" && w == 2 =>
+          }),
+        )
+      } {
+        stmt in {
+          val entity = s"""|fsm a {
+                           |  const u8    A = 8'b10101100;
+                           |  const u2[2] B = {2'd1, 2'd0};
+                           |
+                           |  (* unused *) in  u1 i_1;
+                           |  (* unused *) in  u3 i_3;
+                           |  (* unused *) out u1 o_1;
+                           |  (* unused *) out u2 o_2;
+                           |  (* unused *) out u4 o_4;
+                           |
+                           |  fence { ${stmt}; }
+                           |}""".stripMargin.asTree[Entity]
+
+          val expr = xform(entity) rewrite {
+            new FoldExpr(foldRefs = true)
+          } getFirst {
+            case StmtAssign(_, rhs) => rhs
+          }
+
+          expr should matchPattern(pattern)
+        }
+      }
+    }
+
     "cast" - {
       for {
         (exprSrc, kindSrc, pattern, err) <- List[(String,

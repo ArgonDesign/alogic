@@ -40,6 +40,8 @@ final class FoldExpr(
 
   private val shiftOps = Set("<<", ">>", "<<<", ">>>")
 
+  private var dontFoldNextSym = false
+
   private def foldShiftUnsized(expr: ExprBinary): Expr = expr match {
     case ExprBinary(ExprNum(ls, lv), op, rhs) =>
       val rv = rhs.value.get
@@ -72,6 +74,18 @@ final class FoldExpr(
   private val typeFoldExpr = if (foldRefs) this else new FoldExpr(foldRefs = true)
   private object TypeFoldExpr extends TreeInTypeTransformer(typeFoldExpr)
 
+  override def enter(tree: Tree): Unit = tree match {
+    case ExprIndex(ExprSym(_), idx) =>
+      // If idx is not a constant, don't fold target
+      val idxNonConst = idx.value.isEmpty
+      dontFoldNextSym = idxNonConst
+    case ExprSlice(ExprSym(_), lidx, _, _) =>
+      // If lidx is not a constant, don't fold target
+      val lidxNonConst = lidx.value.isEmpty
+      dontFoldNextSym = lidxNonConst
+    case _ => ()
+  }
+
   override def transform(tree: Tree): Tree = {
     val result = tree match {
 
@@ -86,7 +100,12 @@ final class FoldExpr(
       ////////////////////////////////////////////////////////////////////////////
 
       case ExprSym(symbol) if foldRefs && symbol.kind.isConst => {
-        symbol.attr.init getOrElse tree
+        if (dontFoldNextSym) {
+          dontFoldNextSym = false
+          tree
+        } else {
+          symbol.attr.init getOrElse tree
+        }
       }
 
       ////////////////////////////////////////////////////////////////////////////

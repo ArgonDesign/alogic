@@ -1,0 +1,39 @@
+fsm p8009_193 {
+  const u3[5] ARRAY = {3'd0, 3'd1, 3'd2, 3'd3, 3'd4};
+  out u3 x = 3'd0;
+  out u3 y = 3'd0;
+
+  void main() {
+    if (ARRAY[2] > y) {
+      y = y + 1;
+    }
+    if (ARRAY[x] > 3'd2) {
+      x = x + 1;
+    }
+    fence;
+  }
+}
+// @fec-golden {{{
+//  module p8009_193(
+//    input  wire       clk,
+//    input  wire       rst,
+//    output reg[2:0]   x,
+//    output reg[2:0]   y
+//  );
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        x <= 3'd0;
+//        y <= 3'd0;
+//      end else begin
+//        if (y < 3'd2) begin
+//          y <= y + 1;
+//        end
+//        if (x < 3'd2) begin
+//          x <= x + 1;
+//        end
+//      end
+//    end
+//
+//  endmodule
+// }}}
