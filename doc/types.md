@@ -220,10 +220,29 @@ here</a>):
   vb++;         // Increment 'vb' as a 162 bit variable
   vb[0]++;      // Increment 'vb[0]' as a 27 bit variable
   vb[0][0]++;   // Increment the 3-bit primitive element 
+
+// Vectors can be sliced, producing a vector of the same dimension but
+// smaller size in the first dimension:
+
+  u4[2]    vs1 = va[3:2]     // va[3:2] has type u4[2]
+  u3[3][9] vs2 = vb[0+:3]    // vb[0+:3] has type u3[3][9]
+  u3[4]    vs3 = vb[5][9-:4] // vb[5][9-:4] has type u3[4]
 ```
 
 Note that indices are 0 based. Multi-dimensional vectors can be used
-after partial indexing, which yield vectors of lower dimensions. Vectors
+after partial indexing, which yield vectors of lower dimensions. The result of 
+slicing a vector is a vector of the same dimension - note that a vector slice
+of width one is still a vector and hence is not equivalent to vector indexing.
+This is demonstrated by the following indexing behaviour:
+
+```
+  va[1]      // Type u4
+  va[1:1]    // Type u4[1]
+  va[1][0]   // Type u1
+  va[1:1][0] // Type u4
+```
+
+Vectors
 are linearized to a bit-string using row-major order, with lower order
 indices packed towards the LSBs. For example, if we defined x and y as
 (<a

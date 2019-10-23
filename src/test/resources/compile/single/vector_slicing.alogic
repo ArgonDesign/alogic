@@ -1,0 +1,76 @@
+fsm vector_slicing {
+
+  in       u8[8][10] i;
+  out wire u8[8][10] o1;
+  out wire u8[2][10] o2;
+  out wire u8[10]    o3;
+  out wire u8[2]     o4;
+  out wire u8        o5;
+  out wire u2        o6;
+  out wire bool      o7;
+
+  in       u8[1]     i_single;
+  out wire u8        o_single1;
+  out wire u1        o_single2;
+
+  in       u8[8][10] i_mux;
+  in       u3        sel1;
+  in       u1        sel2;
+  in       u4        sel3;
+  in       u2        sel4;
+  in       u3        sel5;
+  in       u2        sel6;
+  out wire u1        o_mux;
+
+  void main() {
+    o1 = i;
+    o2 = i[7-:4][3:2];
+    o3 = i[7:3][2-:3][1:1][0];
+    o4 = i[6:2][2][7+:2];
+    o5 = i[1+:5][3][7:5][0];
+    o6 = i[7][5][3 +: 2];
+    o7 = i[2][4][5:1][0+:3][2];
+
+    o_single1 = i_single[0];
+    o_single2 = i_single[0][0];
+
+    o_mux = i_mux[sel1+:2][sel2][sel3+:3][sel4][sel5+:4][sel6];
+    fence;
+  }
+}
+// @fec-golden {{{
+//  module vector_slicing(
+//    input  wire[639:0] i,
+//    output wire[639:0] o1,
+//    output wire[159:0] o2,
+//    output wire[79 :0] o3,
+//    output wire[15 :0] o4,
+//    output wire[7  :0] o5,
+//    output wire[1  :0] o6,
+//    output wire        o7,
+//    input  wire[7:0]   i_single,
+//    output wire[7:0]   o_single1,
+//    output wire        o_single2,
+//    input  wire[639:0] i_mux,
+//    input  wire[2:0]   sel1,
+//    input  wire        sel2,
+//    input  wire[3:0]   sel3,
+//    input  wire[1:0]   sel4,
+//    input  wire[2:0]   sel5,
+//    input  wire[1:0]   sel6,
+//    output wire        o_mux
+//  );
+//
+//    assign o1 = i;
+//    assign o2 = i[480 +: 160];
+//    assign o3 = i[320 +: 80 ];
+//    assign o4 = i[376 +: 16 ];
+//    assign o5 = i[360 +: 8  ];
+//    assign o6 = i[603 +: 2  ];
+//    assign o7 = i[195 +: 1  ];
+//    assign o_single1 = i_single;
+//    assign o_single2 = i_single[0];
+//    assign o_mux = i_mux[ 80*{7'd0,sel1+sel2} + 8*{6'd0,sel3+sel4} + {7'd0,sel5+sel6}];
+//
+//  endmodule
+// }}}

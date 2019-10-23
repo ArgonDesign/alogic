@@ -261,10 +261,6 @@ class LivenessSpec extends FreeSpec with AlogicTest {
             usedRval(cRef.slice(bRef, "+:", 1)) shouldBe SymbolBitSet(
               Map(cSymbol -> BitSet(0 to 255: _*), bSymbol -> BitSet(0 to 7: _*)))
           }
-          "c[1 +: b]" in {
-            usedRval(cRef.slice(1, "+:", bRef)) shouldBe SymbolBitSet(
-              Map(cSymbol -> BitSet(0 to 255: _*), bSymbol -> BitSet(0 to 7: _*)))
-          }
         }
 
         "should merge concatenation assignment targets" - {

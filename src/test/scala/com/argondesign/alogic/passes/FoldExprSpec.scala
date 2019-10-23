@@ -723,57 +723,67 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
 
     "slice over a slice" - {
       for {
-        (text, pattern) <- List[(String, PartialFunction[Any, Unit])](
-          // format: off
-          ("a[8  : 4][1  : 0]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), ":", ExprInt(false, 4, r)) if s.name == "a" && l == 5 && r == 4 => }),
-          ("a[9  : 4][1  : 0]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), ":", ExprInt(false, 4, r)) if s.name == "a" && l == 5 && r == 4 => }),
-          ("a[8  : 4][2  : 1]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), ":", ExprInt(false, 4, r)) if s.name == "a" && l == 6 && r == 5 => }),
-          ("a[9  : 4][2  : 1]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), ":", ExprInt(false, 4, r)) if s.name == "a" && l == 6 && r == 5 => }),
-          ("a[8  : 4][1 +: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if s.name == "a" && l == 5 && r == 2 => }),
-          ("a[9  : 4][1 +: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if s.name == "a" && l == 5 && r == 2 => }),
-          ("a[8  : 4][2 +: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if s.name == "a" && l == 6 && r == 2 => }),
-          ("a[9  : 4][2 +: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if s.name == "a" && l == 6 && r == 2 => }),
-          ("a[8  : 4][1 -: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if s.name == "a" && l == 5 && r == 2 => }),
-          ("a[9  : 4][1 -: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if s.name == "a" && l == 5 && r == 2 => }),
-          ("a[8  : 4][2 -: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if s.name == "a" && l == 6 && r == 2 => }),
-          ("a[9  : 4][2 -: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if s.name == "a" && l == 6 && r == 2 => }),
-          ("a[8 +: 4][1  : 0]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if s.name == "a" && l == 8 && r == 2 => }),
-          ("a[9 +: 4][1  : 0]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if s.name == "a" && l == 9 && r == 2 => }),
-          ("a[8 +: 4][2  : 1]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if s.name == "a" && l == 9 && r == 2 => }),
-          ("a[9 +: 4][2  : 1]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if s.name == "a" && l == 10 && r == 2 => }),
-          ("a[8 +: 4][1 +: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if s.name == "a" && l == 9 && r == 2 => }),
-          ("a[9 +: 4][1 +: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if s.name == "a" && l == 10 && r == 2 => }),
-          ("a[8 +: 4][2 +: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if s.name == "a" && l == 10 && r == 2 => }),
-          ("a[9 +: 4][2 +: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if s.name == "a" && l == 11 && r == 2 => }),
-          ("a[8 +: 4][1 -: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if s.name == "a" && l == 9 && r == 2 => }),
-          ("a[9 +: 4][1 -: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if s.name == "a" && l == 10 && r == 2 => }),
-          ("a[8 +: 4][2 -: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if s.name == "a" && l == 10 && r == 2 => }),
-          ("a[9 +: 4][2 -: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if s.name == "a" && l == 11 && r == 2 => }),
-          ("a[8 -: 4][1  : 0]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if s.name == "a" && l == 6 && r == 2 => }),
-          ("a[9 -: 4][1  : 0]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if s.name == "a" && l == 7 && r == 2 => }),
-          ("a[8 -: 4][2  : 1]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if s.name == "a" && l == 7 && r == 2 => }),
-          ("a[9 -: 4][2  : 1]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if s.name == "a" && l == 8 && r == 2 => }),
-          ("a[8 -: 4][1 +: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if s.name == "a" && l == 6 && r == 2 => }),
-          ("a[9 -: 4][1 +: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if s.name == "a" && l == 7 && r == 2 => }),
-          ("a[8 -: 4][2 +: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if s.name == "a" && l == 7 && r == 2 => }),
-          ("a[9 -: 4][2 +: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if s.name == "a" && l == 8 && r == 2 => }),
-          ("a[8 -: 4][1 -: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if s.name == "a" && l == 6 && r == 2 => }),
-          ("a[9 -: 4][1 -: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if s.name == "a" && l == 7 && r == 2 => }),
-          ("a[8 -: 4][2 -: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if s.name == "a" && l == 7 && r == 2 => }),
-          ("a[9 -: 4][2 -: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if s.name == "a" && l == 8 && r == 2 => })
-          // format: on
+        (descr, in_type, out_type) <- List(
+          ("of non-vectors", "u10", "u2"),
+          ("of vectors", "u8[10]", "u8[2]")
         )
       } {
-        text in {
-          val src = s"""|fsm f {
-                        |  in u10 a;
-                        |  out u2 b;
-                        |  fence { b = ${text}; }
-                        |}""".stripMargin
-          val tree = xform(src.asTree[Root])
-          val expr = tree getFirst { case StmtAssign(_, rhs) => rhs }
-          expr should matchPattern(pattern)
-          cc.messages shouldBe empty
+        descr - {
+          for {
+            (text, pattern) <- List[(String, PartialFunction[Any, Unit])](
+              // format: off
+              ("a[8  : 4][1  : 0]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), ":", ExprInt(false, 4, r)) if s.name == "a" && l == 5 && r == 4 => }),
+              ("a[9  : 4][1  : 0]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), ":", ExprInt(false, 4, r)) if s.name == "a" && l == 5 && r == 4 => }),
+              ("a[8  : 4][2  : 1]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), ":", ExprInt(false, 4, r)) if s.name == "a" && l == 6 && r == 5 => }),
+              ("a[9  : 4][2  : 1]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), ":", ExprInt(false, 4, r)) if s.name == "a" && l == 6 && r == 5 => }),
+              ("a[8  : 4][1 +: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if s.name == "a" && l == 5 && r == 2 => }),
+              ("a[9  : 4][1 +: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if s.name == "a" && l == 5 && r == 2 => }),
+              ("a[8  : 4][2 +: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if s.name == "a" && l == 6 && r == 2 => }),
+              ("a[9  : 4][2 +: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if s.name == "a" && l == 6 && r == 2 => }),
+              ("a[8  : 4][1 -: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if s.name == "a" && l == 5 && r == 2 => }),
+              ("a[9  : 4][1 -: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if s.name == "a" && l == 5 && r == 2 => }),
+              ("a[8  : 4][2 -: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if s.name == "a" && l == 6 && r == 2 => }),
+              ("a[9  : 4][2 -: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if s.name == "a" && l == 6 && r == 2 => }),
+              ("a[8 +: 4][1  : 0]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if s.name == "a" && l == 8 && r == 2 => }),
+              ("a[9 +: 4][1  : 0]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if s.name == "a" && l == 9 && r == 2 => }),
+              ("a[8 +: 4][2  : 1]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if s.name == "a" && l == 9 && r == 2 => }),
+              ("a[9 +: 4][2  : 1]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if s.name == "a" && l == 10 && r == 2 => }),
+              ("a[8 +: 4][1 +: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if s.name == "a" && l == 9 && r == 2 => }),
+              ("a[9 +: 4][1 +: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if s.name == "a" && l == 10 && r == 2 => }),
+              ("a[8 +: 4][2 +: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if s.name == "a" && l == 10 && r == 2 => }),
+              ("a[9 +: 4][2 +: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if s.name == "a" && l == 11 && r == 2 => }),
+              ("a[8 +: 4][1 -: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if s.name == "a" && l == 9 && r == 2 => }),
+              ("a[9 +: 4][1 -: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if s.name == "a" && l == 10 && r == 2 => }),
+              ("a[8 +: 4][2 -: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if s.name == "a" && l == 10 && r == 2 => }),
+              ("a[9 +: 4][2 -: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if s.name == "a" && l == 11 && r == 2 => }),
+              ("a[8 -: 4][1  : 0]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if s.name == "a" && l == 6 && r == 2 => }),
+              ("a[9 -: 4][1  : 0]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if s.name == "a" && l == 7 && r == 2 => }),
+              ("a[8 -: 4][2  : 1]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if s.name == "a" && l == 7 && r == 2 => }),
+              ("a[9 -: 4][2  : 1]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if s.name == "a" && l == 8 && r == 2 => }),
+              ("a[8 -: 4][1 +: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if s.name == "a" && l == 6 && r == 2 => }),
+              ("a[9 -: 4][1 +: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if s.name == "a" && l == 7 && r == 2 => }),
+              ("a[8 -: 4][2 +: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if s.name == "a" && l == 7 && r == 2 => }),
+              ("a[9 -: 4][2 +: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if s.name == "a" && l == 8 && r == 2 => }),
+              ("a[8 -: 4][1 -: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if s.name == "a" && l == 6 && r == 2 => }),
+              ("a[9 -: 4][1 -: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if s.name == "a" && l == 7 && r == 2 => }),
+              ("a[8 -: 4][2 -: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if s.name == "a" && l == 7 && r == 2 => }),
+              ("a[9 -: 4][2 -: 2]", { case ExprSlice(ExprSym(s), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if s.name == "a" && l == 8 && r == 2 => })
+              // format: on
+            )
+          } {
+            text in {
+              val src =
+                s"""|fsm f {
+                    |  in  ${in_type}  a;
+                    |  out ${out_type} b;
+                    |  fence { b = ${text}; }
+                    |}""".stripMargin
+              val tree = xform(src.asTree[Root])
+              val expr = tree getFirst { case StmtAssign(_, rhs) => rhs }
+              expr should matchPattern(pattern)
+              cc.messages shouldBe empty
+            }
+          }
         }
       }
     }
@@ -876,7 +886,7 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
       }
     }
 
-    "width 1 slices" - {
+    "width 1 slices except vectors" - {
       for {
         (text, pattern) <- List[(String, PartialFunction[Any, Unit])](
           // format: off
@@ -887,7 +897,11 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
           ("c = a[3 -: 1]", { case ExprIndex(ExprSym(a), ExprInt(false, 3, i)) if a.name == "a" && i == 3 => }),
           ("d = a[2  : 1]", { case ExprSlice(ExprSym(a), ExprInt(false, 3, l), ":", ExprInt(false, 3, r)) if a.name == "a" && l == 2 && r == 1 => }),
           ("c = a[b +: 1]", { case ExprIndex(ExprSym(a), ExprSym(b)) if a.name == "a" && b.name == "b" => }),
-          ("c = a[b -: 1]", { case ExprIndex(ExprSym(a), ExprSym(b)) if a.name == "a" && b.name == "b" => })
+          ("c = a[b -: 1]", { case ExprIndex(ExprSym(a), ExprSym(b)) if a.name == "a" && b.name == "b" => }),
+          ("d = v[0  : 0]", { case ExprSlice(ExprSym(v), ExprInt(false, 3, l), ":", ExprInt(false, 3, r)) if v.name == "v" && l == 0 && r == 0 => }),
+          ("d = v[5 +: 1]", { case ExprSlice(ExprSym(v), ExprInt(false, 3, l), "+:", ExprInt(false, 4, r)) if v.name == "v" && l == 5 && r == 1 => }),
+          ("d = v[5 -: 1]", { case ExprSlice(ExprSym(v), ExprInt(false, 3, l), "-:", ExprInt(false, 4, r)) if v.name == "v" && l == 5 && r == 1 => }),
+          ("d = v[b +: 1]", { case ExprSlice(ExprSym(v), ExprSym(b), "+:", ExprInt(false, 4, r)) if v.name == "v" && b.name == "b" && r == 1 => })
           // format: on
         )
       } {
@@ -895,6 +909,7 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
           val src = s"""|fsm f {
                         |  in u8 a;
                         |  (* unused *) in u3 b;
+                        |  (* unused *) in u2[8] v;
                         |  (* unused *) out u1 c;
                         |  (* unused *) out u2 d;
                         |  fence { ${text}; }

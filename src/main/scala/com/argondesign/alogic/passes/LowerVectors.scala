@@ -99,33 +99,45 @@ final class LowerVectors(implicit cc: CompilerContext) extends TreeTransformer {
         ExprSym(symbol) regularize tree.loc
       }
 
-      // Slice over slice
-
-      // Slice over index
-
-      // Slice over something else
-
-      // Index over a slice
-      case ExprIndex(tgt @ ExprSlice(expr, lidx, "+:", _), index) =>
+      // Slice
+      case ExprSlice(tgt, lidx, op, ridx) =>
         tgtTpe.top match {
           case TypeVector(eKind, _) =>
             assert(!tgt.tpe.isVector) // By this point the target should not have a Vector type
-            val sExpr = Expr(eKind.width) regularize index.loc
-            val idxWidth = clog2(expr.tpe.shapeIter.next) max 1
-            val res = ExprSlice(expr, lidx + sExpr * (index zx idxWidth), "+:", sExpr) regularize tgt.loc
-            fixSign(res, eKind.isSigned)
+
+            val lsbExpr = {
+              val lidxWidth = clog2(tgt.tpe.shapeIter.next) max 1
+              op match {
+                case ":"  => ridx zx lidxWidth
+                case "+:" => lidx zx lidxWidth
+                case "-:" => (lidx zx lidxWidth) - (ridx.value.get.toInt - 1)
+              }
+            }
+
+            val sliceWidth = op match {
+              case ":" => lidx.value.get - ridx.value.get + 1
+              case _   => ridx.value.get
+            }
+
+            val widthExpr = Expr(eKind.width * sliceWidth) regularize lidx.loc
+            val sExpr = Expr(eKind.width) regularize lidx.loc
+            ExprSlice(tgt, sExpr * lsbExpr, "+:", widthExpr) regularize tgt.loc
           case _ => tree
         }
 
-      // Index over something else
+      // Index
       case ExprIndex(tgt, index) =>
         tgtTpe.top match {
-          case TypeVector(eKind, _) =>
+          case TypeVector(eKind, size) =>
             assert(!tgt.tpe.isVector) // By this point the target should not have a Vector type
-            val sExpr = Expr(eKind.width) regularize index.loc
-            val idxWidth = clog2(tgt.tpe.shapeIter.next) max 1
-            val res = ExprSlice(tgt, sExpr * (index zx idxWidth), "+:", sExpr) regularize tgt.loc
-            fixSign(res, eKind.isSigned)
+            if (size.value.get == 1) {
+              fixSign(tgt, eKind.isSigned)
+            } else {
+              val sExpr = Expr(eKind.width) regularize index.loc
+              val idxWidth = clog2(tgt.tpe.shapeIter.next) max 1
+              val res = ExprSlice(tgt, sExpr * (index zx idxWidth), "+:", sExpr) regularize tgt.loc
+              fixSign(res, eKind.isSigned)
+            }
           case _ => tree
         }
 

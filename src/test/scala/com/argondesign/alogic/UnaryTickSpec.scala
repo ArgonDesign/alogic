@@ -154,6 +154,16 @@ final class UnaryTickSpec extends FreeSpec with AlogicTest {
              |  }
              |}""".stripMargin
         }
+
+        "h" in check(TypeUInt(40) :: Nil) {
+          """|fsm f {
+             |  in u10[3] a;
+             |  void main() {
+             |    (* unused *)u10[4] b = 'a;
+             |    fence;
+             |  }
+             |}""".stripMargin
+        }
       }
 
       "rhs of assignment" - {
@@ -275,6 +285,19 @@ final class UnaryTickSpec extends FreeSpec with AlogicTest {
              |  in u2 i;
              |  void main() {
              |    b['i +: 2] = {2{a['i]}};
+             |    fence;
+             |  }
+             |}""".stripMargin
+        }
+
+        "e" in check(TypeUInt(3) :: TypeUInt(4) :: Nil) {
+          """|fsm f {
+             |  const u2 A = 2'd2;
+             |  in  u32[8]  a;
+             |  out u32[2]  b;
+             |  in  uint(A) i;
+             |  void main() {
+             |    b = a['i +: 'A];
              |    fence;
              |  }
              |}""".stripMargin

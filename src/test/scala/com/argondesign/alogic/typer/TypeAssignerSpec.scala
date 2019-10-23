@@ -741,19 +741,33 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
       "slice" - {
         for {
           (expr, kind) <- List(
-            ("a[8'd3 :8'd2]", TypeUInt(ExprInt(false, 8, 2))),
-            ("a[8'd0 :8'd0]", TypeUInt(ExprInt(false, 8, 1))),
-            ("a[8'd4+:8'd3]", TypeUInt(ExprInt(false, 8, 3))),
-            ("a[8'd4-:8'd3]", TypeUInt(ExprInt(false, 8, 3))),
-            ("1[8'd3 :8'd0]", TypeUInt(ExprInt(false, 8, 4))),
-            ("1[8'd3+:8'd2]", TypeUInt(ExprInt(false, 8, 2))),
-            ("1[8'd3-:8'd2]", TypeUInt(ExprInt(false, 8, 2)))
+            ("a[8'd3 :8'd2]", TypeUInt(ExprNum(false, 2))),
+            ("a[8'd0 :8'd0]", TypeUInt(ExprNum(false, 1))),
+            ("a[8'd4+:8'd3]", TypeUInt(ExprNum(false, 3))),
+            ("a[8'd4-:8'd3]", TypeUInt(ExprNum(false, 3))),
+            ("1[8'd3 :8'd0]", TypeUInt(ExprNum(false, 4))),
+            ("1[8'd3+:8'd2]", TypeUInt(ExprNum(false, 2))),
+            ("1[8'd3-:8'd2]", TypeUInt(ExprNum(false, 2))),
+            ("a[5'd31:5'd0]", TypeUInt(ExprNum(false, 32))),
+            ("b[2'd1 :2'd1]", TypeVector(TypeUInt(32), ExprNum(false, 1))),
+            ("b[2'd1 :2'd0]", TypeVector(TypeUInt(32), ExprNum(false, 2))),
+            ("b[2'd3 :2'd1]", TypeVector(TypeUInt(32), ExprNum(false, 3))),
+            ("b[2'd3 :2'd0]", TypeVector(TypeUInt(32), ExprNum(false, 4))),
+            ("b[2'd0+:3'd1]", TypeVector(TypeUInt(32), ExprNum(false, 1))),
+            ("b[2'd2+:3'd2]", TypeVector(TypeUInt(32), ExprNum(false, 2))),
+            ("b[2'd1+:3'd3]", TypeVector(TypeUInt(32), ExprNum(false, 3))),
+            ("b[2'd0+:3'd4]", TypeVector(TypeUInt(32), ExprNum(false, 4))),
+            ("b[2'd1-:3'd1]", TypeVector(TypeUInt(32), ExprNum(false, 1))),
+            ("b[2'd1-:3'd2]", TypeVector(TypeUInt(32), ExprNum(false, 2))),
+            ("b[2'd3-:3'd3]", TypeVector(TypeUInt(32), ExprNum(false, 3))),
+            ("b[2'd3-:3'd4]", TypeVector(TypeUInt(32), ExprNum(false, 4)))
           )
         } {
           val text = expr.trim.replaceAll(" +", " ")
           text in {
             val block = s"""|{
                             |  (* unused *) u32 a;
+                            |  (* unused *) u32[4] b;
                             |
                             |  ${text};
                             |}""".stripMargin.asTree[Stmt]

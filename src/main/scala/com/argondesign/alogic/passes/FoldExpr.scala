@@ -391,18 +391,18 @@ final class FoldExpr(
         val aLsb = aOp match {
           case ":"  => aRidx
           case "+:" => aLidx
-          case "-:" => aLidx - aRidx + 1
+          case "-:" => aLidx - (aRidx.value.get.toInt - 1)
           case _    => unreachable
         }
         val bLsb = bOp match {
           case ":"  => bRidx
           case "+:" => bLidx
-          case "-:" => bLidx - bRidx + 1
+          case "-:" => bLidx - (bRidx.value.get.toInt - 1)
           case _    => unreachable
         }
         val bMsb = bOp match {
           case ":"  => bLidx
-          case "+:" => bLidx + bRidx - 1
+          case "+:" => bLidx + (bRidx.value.get.toInt - 1)
           case "-:" => bLidx
           case _    => unreachable
         }
@@ -463,17 +463,18 @@ final class FoldExpr(
       // Fold width 1 slices
       ////////////////////////////////////////////////////////////////////////////
 
-      case ExprSlice(expr, lidx, ":", ridx) if lidx == ridx => {
+      case ExprSlice(expr, lidx, ":", ridx) if !expr.tpe.underlying.isVector && lidx == ridx => {
         // TODO: strictly, lidx/ridx could be stuff like @randbit, or other non-pure function
         ExprIndex(expr, lidx) withLoc tree.loc
       }
 
-      case ExprSlice(expr, lidx, ("-:" | "+:"), ridx) if ridx.value contains BigInt(1) => {
+      case ExprSlice(expr, lidx, ("-:" | "+:"), ridx)
+          if !expr.tpe.underlying.isVector && (ridx.value contains BigInt(1)) => {
         ExprIndex(expr, lidx) withLoc tree.loc
       }
 
       ////////////////////////////////////////////////////////////////////////////
-      // Fold index zero of width zero and full width slices
+      // Fold index zero of width one and full width slices
       ////////////////////////////////////////////////////////////////////////////
 
       case ExprIndex(expr, ExprInt(_, _, i)) if expr.tpe.width == 1 && i == 0 => {

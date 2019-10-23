@@ -278,9 +278,15 @@ final object TypeAssigner {
 
   private def kind(node: ExprSlice)(implicit cc: CompilerContext) = {
     // TODO: implement vector slicing properly
-    val width = if (node.op == ":") node.lidx - node.ridx + 1 else node.ridx
-    width regularize node.loc
-    TypeUInt(width.simplify)
+    val width =
+      if (node.op == ":") node.lidx.value.get - node.ridx.value.get + 1 else node.ridx.value.get
+    val widthExpr = ExprNum(false, width) regularize node.loc
+    node.expr.tpe.underlying match {
+      case _: TypeNum          => TypeUInt(widthExpr)
+      case _: TypeInt          => TypeUInt(widthExpr)
+      case TypeVector(kind, _) => TypeVector(kind, widthExpr)
+      case _                   => unreachable
+    }
   }
 
   private def kind(node: ExprSelect) = node.expr.tpe match {

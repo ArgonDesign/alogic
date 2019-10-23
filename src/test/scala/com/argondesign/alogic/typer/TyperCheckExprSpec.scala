@@ -339,14 +339,18 @@ final class TyperCheckExprSpec extends FreeSpec with AlogicTest {
           ("9'd0[2'd1:4'd0]", "Left index yields 2 bits, 4 bits are expected" :: Nil),
           ("9'd0[3'd1:4'd0]", "Left index yields 3 bits, 4 bits are expected" :: Nil),
           ("9'd0[4'sd1:4'd0]", "Left index must be unsigned" :: Nil),
-          ("9'd0[4'd1:4'sd0]", "Right index must be unsigned" :: Nil)
+          ("9'd0[4'd1:4'sd0]", "Right index must be unsigned" :: Nil),
+          ("b[0:0]", Nil),
+          ("b[1'd1:2'd0]", "Right index yields 2 bits, 1 bits are expected" :: Nil),
+          ("b[2'd1:1'd0]", "Left index yields 2 bits, 1 bits are expected" :: Nil),
+          ("b[1'd0+:1'd1]", "Right index yields 1 bits, 2 bits are expected" :: Nil),
         )
       } {
         expr in {
           val root = s"""|fsm f {
                          |  (* unused *) out sync u2 a;
-                         |  (* unused *) i3[1][2] b;
-                         |  (* unused *) i3[1][2] c[4];
+                         |  (* unused *) i3[2][2] b;
+                         |  (* unused *) i3[2][2] c[4];
                          |  void main() {
                          |    $$display("", ${expr});
                          |    fence;
