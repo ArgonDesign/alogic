@@ -115,7 +115,7 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatefulTreeTr
             symbol -> newSymbol
         }
       }
-      val bindings = Bindings {
+      val bindings = Bindings from {
         deps.iterator map {
           case (symbol, newSymbol) =>
             symbol -> TypeAssigner(ExprSym(newSymbol) withLoc newSymbol.loc)

@@ -19,7 +19,10 @@ import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Error
+import com.argondesign.alogic.core.FuncVariant
+import com.argondesign.alogic.core.SymbolAttributes
 import com.argondesign.alogic.core.Warning
+import com.argondesign.alogic.core.Symbols.Symbol
 import org.scalatest.FreeSpec
 
 final class AnalyseCallGraphSpec extends FreeSpec with AlogicTest {
@@ -366,5 +369,454 @@ final class AnalyseCallGraphSpec extends FreeSpec with AlogicTest {
       }
     }
 
+    def checkAttr[A](symbol: Symbol,
+                     getAttr: SymbolAttributes => A,
+                     golden: Map[String, A]): Unit = {
+      golden.get(symbol.name) foreach { expected =>
+        getAttr(symbol.attr) shouldBe expected
+      }
+    }
+
+    def checkFunctionAttrs(defnEntity: DefnEntity,
+                           goldenPushStackOnCall: Map[String, Boolean],
+                           goldenPopStackOnReturn: Map[String, Boolean],
+                           goldenStaticReturnPoint: Map[String, Option[String]]): Unit =
+      defnEntity.functions foreach {
+        case DefnFunc(symbol, _, _)
+            if symbol.decl.asInstanceOf[DeclFunc].variant == FuncVariant.Ctrl =>
+          checkAttr(symbol, _.pushStackOnCall.value, goldenPushStackOnCall)
+          checkAttr(symbol, _.popStackOnReturn.value, goldenPopStackOnReturn)
+          checkAttr(symbol, _.staticReturnPoint.value map { _.name }, goldenStaticReturnPoint)
+        case _ => fail
+      }
+
+    def checkStack(defnEnt: DefnEntity, expected: Option[BigInt]): Unit = {
+      val rsSymbol = defnEnt.collectFirst {
+        case Defn(symbol) if symbol.attr.returnStack.isSet => symbol
+      }
+      rsSymbol map { _.kind.asStack.size.intValue } shouldBe expected
+    }
+
+    "doesn't assign return stack " - {
+      "if call graph is tree and only one call to each" in {
+        val result = analyseCallGraph {
+          """|fsm fsm_e {
+             |  void main() { a(); b(); c(); }
+             |  void a() { e(); f(); return; }
+             |  void b() { goto d; }
+             |  void c() { return; }
+             |  void d() { goto g; }
+             |  void e() { return; }
+             |  void f() { return; }
+             |  void g() { return; }
+             |}"""
+        }
+        val defnEntity = result getFirst {
+          case entity: DefnEntity => entity
+        }
+
+        val goldenPushStackOnCall = Map from {
+          List("a", "b", "c", "e", "f") map { _ -> false }
+        }
+        val goldenPopStackOnReturn = Map from {
+          List("a", "c", "e", "f", "g") map { _ -> false }
+        }
+        val goldenStaticReturnPoint = Map(
+          "a" -> Some("a"),
+          "c" -> Some("c"),
+          "e" -> Some("e"),
+          "f" -> Some("f"),
+          "g" -> Some("b")
+        )
+
+        checkStack(defnEntity, None)
+        checkFunctionAttrs(defnEntity,
+                           goldenPushStackOnCall,
+                           goldenPopStackOnReturn,
+                           goldenStaticReturnPoint)
+      }
+
+      "if all returns have static return point" in {
+        val result = analyseCallGraph {
+          """|fsm fsm_e {
+             |  in bool pi;
+             |  void main() { a(); }
+             |  void a() { if (pi) { goto b; } else { goto c; } }
+             |  void b() { return; }
+             |  void c() { d(); return; }
+             |  void d() { return; }
+             |}"""
+        }
+        val defnEntity = result getFirst {
+          case entity: DefnEntity => entity
+        }
+
+        val goldenPushStackOnCall = Map from {
+          List("a", "d") map { _ -> false }
+        }
+        val goldenPopStackOnReturn = Map from {
+          List("b", "c", "d") map { _ -> false }
+        }
+        val goldenStaticReturnPoint = Map(
+          "b" -> Some("a"),
+          "c" -> Some("a"),
+          "d" -> Some("d")
+        )
+
+        checkStack(defnEntity, None)
+        checkFunctionAttrs(defnEntity,
+                           goldenPushStackOnCall,
+                           goldenPopStackOnReturn,
+                           goldenStaticReturnPoint)
+      }
+    }
+
+    "assigns return stack " - {
+
+      "when return points are not static" in {
+        val result = analyseCallGraph {
+          """|fsm fsm_e {
+             |  void main() { a(); b(); }
+             |  void a() { goto c; }
+             |  void b() { goto c; }
+             |  void c() { return; }
+             |}"""
+        }
+        val defnEntity = result getFirst {
+          case entity: DefnEntity => entity
+        }
+
+        val goldenPushStackOnCall = Map(
+          "a" -> true,
+          "b" -> true
+        )
+        val goldenPopStackOnReturn = Map(
+          "c" -> true
+        )
+        val goldenStaticReturnPoint = Map(
+          "c" -> None
+        )
+
+        checkStack(defnEntity, Some(1))
+        checkFunctionAttrs(defnEntity,
+                           goldenPushStackOnCall,
+                           goldenPopStackOnReturn,
+                           goldenStaticReturnPoint)
+      }
+
+      "only for calls which need it " - {
+
+        "1" in {
+          val result = analyseCallGraph {
+            """|fsm fsm_e {
+               |  void main() { a(); a(); b(); }
+               |  void a() { return; }
+               |  void b() { return; }
+               |}"""
+          }
+          val defnEntity = result getFirst {
+            case entity: DefnEntity => entity
+          }
+
+          val goldenPushStackOnCall = Map(
+            "a" -> true,
+            "b" -> false
+          )
+          val goldenPopStackOnReturn = Map(
+            "a" -> true,
+            "b" -> false
+          )
+          val goldenStaticReturnPoint = Map(
+            "a" -> None,
+            "b" -> Some("b")
+          )
+
+          checkStack(defnEntity, Some(1))
+          checkFunctionAttrs(defnEntity,
+                             goldenPushStackOnCall,
+                             goldenPopStackOnReturn,
+                             goldenStaticReturnPoint)
+        }
+
+        "2" in {
+          val result = analyseCallGraph {
+            """|fsm fsm_e {
+               |  void main() { a(); b(); }
+               |  void a() { c(); return; }
+               |  void b() { c(); return; }
+               |  void c() { return; }
+               |}"""
+          }
+          val defnEntity = result getFirst {
+            case entity: DefnEntity => entity
+          }
+
+          val goldenPushStackOnCall = Map(
+            "a" -> false,
+            "b" -> false,
+            "c" -> true
+          )
+          val goldenPopStackOnReturn = Map(
+            "a" -> false,
+            "b" -> false,
+            "c" -> true
+          )
+          val goldenStaticReturnPoint = Map(
+            "a" -> Some("a"),
+            "b" -> Some("b"),
+            "c" -> None
+          )
+
+          checkStack(defnEntity, Some(1))
+          checkFunctionAttrs(defnEntity,
+                             goldenPushStackOnCall,
+                             goldenPopStackOnReturn,
+                             goldenStaticReturnPoint)
+        }
+
+      }
+
+      "with appropriate depth" in {
+        // Only need to use the stack when we call b or d, so stack depth should be 2
+        val result = analyseCallGraph {
+          """|fsm fsm_e {
+             |  void main() { a(); }
+             |  void a() { b(); b(); return; }
+             |  void b() { goto b2; }
+             |  void b2() { c(); return; }
+             |  void c() { d(); d(); return; }
+             |  void d() { goto d2; }
+             |  void d2() { e(); return; }
+             |  void e() { return; }
+             |}"""
+        }
+        val defnEntity = result getFirst {
+          case entity: DefnEntity => entity
+        }
+
+        val goldenPushStackOnCall = Map(
+          "a" -> false,
+          "b" -> true,
+          "c" -> false,
+          "d" -> true,
+          "e" -> false,
+        )
+        val goldenPopStackOnReturn = Map(
+          "a" -> false,
+          "b2" -> true,
+          "c" -> false,
+          "d2" -> true,
+          "e" -> false,
+        )
+        val goldenStaticReturnPoint = Map(
+          "a" -> Some("a"),
+          "b2" -> None,
+          "c" -> Some("c"),
+          "d2" -> None,
+          "e" -> Some("e"),
+        )
+
+        checkStack(defnEntity, Some(2))
+        checkFunctionAttrs(defnEntity,
+                           goldenPushStackOnCall,
+                           goldenPopStackOnReturn,
+                           goldenStaticReturnPoint)
+      }
+
+      "correctly when function return point is static but still needs to pop" in {
+        // Function b can either return to call site of a or call site of b.
+        // Therefore calls to both a and b must push to stack.
+        // However returns from c always go back to call site of a.
+        // So c has a static return point yet must still pop the stack.
+        val result = analyseCallGraph {
+          """|fsm fsm_e {
+             |  in bool pi;
+             |  void main() { a(); b(); }
+             |  void a() {
+             |    if (pi) { goto c; } else { goto b; }
+             |  }
+             |  void b() { return; }
+             |  void c() { return; }
+             |}"""
+        }
+        val defnEntity = result getFirst {
+          case entity: DefnEntity => entity
+        }
+
+        val goldenPushStackOnCall = Map(
+          "a" -> true,
+          "b" -> true
+        )
+        val goldenPopStackOnReturn = Map(
+          "b" -> true,
+          "c" -> true
+        )
+        val goldenStaticReturnPoint = Map(
+          "b" -> None,
+          "c" -> Some("a")
+        )
+
+        checkStack(defnEntity, Some(1))
+        checkFunctionAttrs(defnEntity,
+                           goldenPushStackOnCall,
+                           goldenPopStackOnReturn,
+                           goldenStaticReturnPoint)
+      }
+
+      "with correct depth when longest path doesn't start at main" in {
+        // Calls to b, c and d require pushes but not a.
+        val result = analyseCallGraph {
+          """|fsm fsm_e {
+             |  void main() { a(); }
+             |  void a() { b(); b(); return; }
+             |  void b() { c(); c(); return; }
+             |  void c() { d(); d(); return; }
+             |  void d() { return; }
+             |}"""
+        }
+        val defnEntity = result getFirst {
+          case entity: DefnEntity => entity
+        }
+
+        val goldenPushStackOnCall = Map(
+          "a" -> false,
+          "b" -> true,
+          "c" -> true,
+          "d" -> true,
+        )
+        val goldenPopStackOnReturn = Map(
+          "a" -> false,
+          "b" -> true,
+          "c" -> true,
+          "d" -> true,
+        )
+        val goldenStaticReturnPoint = Map(
+          "a" -> Some("a"),
+          "b" -> None,
+          "c" -> None,
+          "d" -> None
+        )
+
+        checkStack(defnEntity, Some(3))
+        checkFunctionAttrs(defnEntity,
+                           goldenPushStackOnCall,
+                           goldenPopStackOnReturn,
+                           goldenStaticReturnPoint)
+      }
+    }
+
+    "handles returns to main by " - {
+      "returning to top of main if return called" in {
+        val result = analyseCallGraph {
+          """|fsm fsm_e {
+             |  void main() { return; }
+             |}"""
+        }
+        val defnEntity = result getFirst {
+          case entity: DefnEntity => entity
+        }
+
+        val goldenPushStackOnCall = Map[String, Boolean]()
+        val goldenPopStackOnReturn = Map(
+          "main" -> false
+        )
+        val goldenStaticReturnPoint = Map(
+          "main" -> Some("main")
+        )
+
+        checkStack(defnEntity, None)
+        checkFunctionAttrs(defnEntity,
+                           goldenPushStackOnCall,
+                           goldenPopStackOnReturn,
+                           goldenStaticReturnPoint)
+      }
+
+      "returning to top of main after goto in main function" in {
+        val result = analyseCallGraph {
+          """|fsm fsm_e {
+             |  void main() { goto a; }
+             |  void a() { return; }
+             |}"""
+        }
+        val defnEntity = result getFirst {
+          case entity: DefnEntity => entity
+        }
+
+        val goldenPushStackOnCall = Map[String, Boolean]()
+        val goldenPopStackOnReturn = Map(
+          "a" -> false
+        )
+        val goldenStaticReturnPoint = Map(
+          "a" -> Some("main")
+        )
+
+        checkStack(defnEntity, None)
+        checkFunctionAttrs(defnEntity,
+                           goldenPushStackOnCall,
+                           goldenPopStackOnReturn,
+                           goldenStaticReturnPoint)
+      }
+
+      "refer to stack if main calls itself" in {
+        // The return statement in the body of main could go to either of the two states.
+        val result = analyseCallGraph {
+          """|fsm fsm_e {
+             |  (* reclimit = 2 *) void main() { main(); return; }
+             |}"""
+        }
+        val defnEntity = result getFirst {
+          case entity: DefnEntity => entity
+        }
+
+        val goldenPushStackOnCall = Map[String, Boolean](
+          "main" -> true,
+        )
+        val goldenPopStackOnReturn = Map(
+          "main" -> true
+        )
+        val goldenStaticReturnPoint = Map(
+          "main" -> None
+        )
+
+        checkStack(defnEntity, Some(2))
+        checkFunctionAttrs(defnEntity,
+                           goldenPushStackOnCall,
+                           goldenPopStackOnReturn,
+                           goldenStaticReturnPoint)
+      }
+
+      "refer to stack if main returns but is called elsewhere" in {
+        // The return statement in the body of a will always return to the same point.
+        // The return statement in the body of main will either go to a or to the start of main.
+        val result = analyseCallGraph {
+          """|fsm fsm_e {
+             |  (* reclimit = 3 *) void main() { a(); return; }
+             |  (* reclimit = 3 *) void a() { main(); return; }
+             |}"""
+        }
+        val defnEntity = result getFirst {
+          case entity: DefnEntity => entity
+        }
+
+        val goldenPushStackOnCall = Map[String, Boolean](
+          "main" -> true,
+          "a" -> false
+        )
+        val goldenPopStackOnReturn = Map(
+          "main" -> true,
+          "a" -> false
+        )
+        val goldenStaticReturnPoint = Map(
+          "main" -> None,
+          "a" -> Some("a")
+        )
+
+        checkStack(defnEntity, Some(3))
+        checkFunctionAttrs(defnEntity,
+                           goldenPushStackOnCall,
+                           goldenPopStackOnReturn,
+                           goldenStaticReturnPoint)
+      }
+    }
   }
 }

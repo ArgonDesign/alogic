@@ -38,6 +38,14 @@ class SymbolAttributes {
   val recLimit = new Attribute[Expr]() // TODO: Treeify
   // This is the return stack of the enclosing entity
   val returnStack = new Attribute[Boolean]()
+  // Whether calling this function should push to the return stack
+  val pushStackOnCall = new Attribute[Boolean]()
+  // When returning from this function, is the return point known at compile time?
+  // If so, Option contains function symbol whose static call site to return to.
+  val staticReturnPoint = new Attribute[Option[Symbol]]()
+  // When returning from this function, should we pop the return stack? (Sometimes it
+  // is necessary to pop even if return point is known at compile time)
+  val popStackOnReturn = new Attribute[Boolean]()
   // This is the go signal of the enclosing entity
   val go = new Attribute[Boolean]()
 
@@ -127,6 +135,9 @@ class SymbolAttributes {
     entry,
     stackLimit,
     recLimit,
+    pushStackOnCall,
+    staticReturnPoint,
+    popStackOnReturn,
     returnStack,
     go,
     clk,
@@ -163,6 +174,9 @@ class SymbolAttributes {
     "entry",
     "stackLimit",
     "recLimit",
+    "pushStackOnCall",
+    "staticReturnPoint",
+    "popStackOnReturn",
     "returnStack",
     "go",
     "clk",

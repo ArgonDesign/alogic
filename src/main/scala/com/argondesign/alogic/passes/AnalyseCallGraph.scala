@@ -39,23 +39,27 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends StatefulTreeT
   //////////////////////////////////////////////////////////////////////////
 
   // Current function we are inside of
-  private[this] var currentFunction: Symbol = _
+  private var currentFunction: Symbol = _
 
-  // Set of caller -> callee call arcs
-  private[this] val callArcs = mutable.Set.empty[(Symbol, Symbol)]
+  // Set of caller -> callee call arcs. Caller is option, None represents
+  // the fictional caller that called the entry point.
+  private val calls = mutable.Set.empty[(Option[Symbol], Symbol)]
 
   // Set of caller -> callee goto arcs
-  private[this] val gotoArcs = mutable.Set.empty[(Symbol, Symbol)]
+  private val gotos = mutable.Set.empty[(Symbol, Symbol)]
 
-  // All function symbols
-  private[this] var functionSymbols: List[Symbol] = _
+  // Count of number of times each function is called
+  private val callCounts = mutable.Map[Symbol, Int]().withDefaultValue(0)
+
+  // All control function symbols
+  private var functionSymbols: List[Symbol] = _
 
   //////////////////////////////////////////////////////////////////////////
   // Lazy vals used for computation in the transform section
   //////////////////////////////////////////////////////////////////////////
 
   // number of function symbols
-  private[this] lazy val nFunctions = functionSymbols.length
+  private lazy val nFunctions = functionSymbols.length
 
   //////////////////////////////////////////////////////////////////////////////
   // All call arcs in the entity
@@ -68,43 +72,45 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends StatefulTreeT
   // is treated as
   //   a --call--> {b, c}
   // or in a more general case:
-  //   {a,b} --call--> {c, d} --goto--> {e, f}
+  //   {a, b} --call--> {c, d} --goto--> {e, f}
   // is treated as
   //   {a, b} --call--> {c, d, e, f}
+  // We store each arc as a triple, (caller, returnee, callee), where returnee
+  // is the function whose call site we need to return to from the callee,
+  // which might be different due to goto, e.g.:
+  //   a --call--> b             is stored as (a, b, b)
+  //   a --call--> b --goto--> c is stored as (a, b, c)
   //////////////////////////////////////////////////////////////////////////////
-  private[this] lazy val callArcSet = if (callArcs.isEmpty) {
-    // As an optimization, if we know that there are no calls, then
-    // we know that there won't be any after goto conversion either
-    Set.empty[(Symbol, Symbol)]
-  } else {
-    // Set of all callers of callee based on the current callArcs
-    // This is forced to an immutable set to avoid iterating callArcs
-    // while it is being modified in the for expression below
-    def callers(callee: Symbol): Set[Symbol] = {
-      (callArcs filter { _._2 == callee } map { _._1 }).toSet
+  private lazy val callArcSet: Set[(Option[Symbol], Symbol, Symbol)] = {
+
+    @tailrec
+    def loop(arcs: Set[(Option[Symbol], Symbol, Symbol)]): Set[(Option[Symbol], Symbol, Symbol)] = {
+      // Add one batch of transitive goto arcs
+      val extra = gotos.iterator flatMap {
+        case (intermediate, callee) =>
+          arcs.iterator collect {
+            case (caller, returnee, `intermediate`) => (caller, returnee, callee)
+          }
+      }
+
+      val expanded = extra.foldLeft(arcs)(_ + _)
+
+      // Keep going until settled
+      if (expanded == arcs) arcs else loop(expanded)
     }
 
-    for {
-      (intermediate, callee) <- gotoArcs
-      caller <- callers(intermediate)
-    } {
-      callArcs add (caller -> callee)
-    }
-
-    callArcs.toSet
-  }
-
-  // Map from caller -> Set(callee)
-  private[this] lazy val calleeMap = {
-    callArcSet.groupMap(_._1)(_._2) withDefaultValue Set.empty
+    loop(Set from {
+      calls.iterator map { case (caller, callee) => (caller, callee, callee) }
+    })
   }
 
   //////////////////////////////////////////////////////////////////////////////
   // Adjacency matrix of the call graph
   //////////////////////////////////////////////////////////////////////////////
-  private[this] lazy val adjMat: Matrix[Int] = Matrix {
+  private lazy val adjMat: Matrix[Int] = Matrix {
+    val calleeMap = callArcSet.groupMap(_._1)(_._3) withDefaultValue Set.empty
     for (caller <- functionSymbols) yield {
-      val calleeSet = calleeMap.getOrElse(caller, Set())
+      val calleeSet = calleeMap(Some(caller))
       for (symbol <- functionSymbols) yield {
         if (calleeSet contains symbol) 1 else 0
       }
@@ -118,7 +124,7 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends StatefulTreeT
   // matrix between 2 and nFunctions. This will have a non-zero on the diagonal
   // if the function is recursively entered through a cycle of any length >= 2
   //////////////////////////////////////////////////////////////////////////////
-  private[this] lazy val indMat: Matrix[Int] = {
+  private lazy val indMat: Matrix[Int] =
     if (nFunctions == 1) {
       Matrix.zeros[Int](1)
     } else {
@@ -131,23 +137,22 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends StatefulTreeT
           loop(pow - 1, prod, prod + acc)
         }
       }
+
       val square = adjMat * adjMat
       loop(nFunctions, square, square)
     }
-  }
 
-  private[this] def warnIgnoredStacklimitAttribute(eSymbol: Symbol): Unit = {
+  private def warnIgnoredStacklimitAttribute(eSymbol: Symbol): Unit =
     if (eSymbol.attr.stackLimit.isSet) {
       val loc = eSymbol.loc
       val name = eSymbol.name
       cc.warning(loc, s"'stacklimit' attribute ignored on entity '${name}'")
     }
-  }
 
   //////////////////////////////////////////////////////////////////////////////
   // Collect 'reclimit' values and check that they are sensible
   //////////////////////////////////////////////////////////////////////////////
-  private[this] lazy val recLimits: Option[List[Int]] = {
+  private lazy val recLimits: Option[List[Int]] = {
     val directlyRecursive = adjMat.diagonal map { _ != 0 }
     val indirectlyRecursive = indMat.diagonal map { _ != 0 }
 
@@ -165,29 +170,25 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends StatefulTreeT
           1
         } else {
           exprOpt match {
-            case None => {
+            case None =>
               val hint = if (isRecD) "Recursive" else "Indirectly recursive"
               cc.error(loc, s"${hint} function '${name}' requires 'reclimit' attribute")
               0
-            }
-            case Some(expr) => {
+            case Some(expr) =>
               expr.value match {
-                case Some(value) if value < 2 => {
+                case Some(value) if value < 2 =>
                   cc.error(
                     loc,
                     s"Recursive function '${name}' has 'reclimit' attribute equal to ${value}"
                   )
                   0
-                }
-                case None => {
+                case None =>
                   symbol.attr.recLimit set Expr(2)
                   cc.error(loc,
                            s"Cannot compute value of 'reclimit' attribute of function '${name}'")
                   0
-                }
                 case Some(value) => value.toInt
               }
-            }
           }
         }
       }
@@ -200,45 +201,84 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends StatefulTreeT
   //////////////////////////////////////////////////////////////////////////////
   // Computes the length of the longest static path in the call graphs
   //////////////////////////////////////////////////////////////////////////////
-  private[this] def computeLongestPathLength(cost: Map[Symbol, Int]): Int = {
+  private def computeLongestPathLength(costOfCalling: Map[Symbol, Int]): Int = {
     // Find the longest simple (non-cyclic) path in the call graph
     // Note strictly this is only an upper bound on the required
     // return stack depth if there is recursion
-    val (length, _) = {
-      // Longest path from 'node' that goes through only vertices that are in 'nodes'
-      def longestPathFrom(node: Symbol, nodes: Set[Symbol]): (Int, List[Symbol]) = {
-        assert(!(nodes contains node))
-        // Candidate successors are the vertices which are callees of this node and are in 'nodes'
-        val candidates = calleeMap(node) intersect nodes
-        // Find longest paths from each of these candidates
-        val paths = for (cand <- candidates) yield longestPathFrom(cand, nodes - cand)
 
-        if (paths.isEmpty) {
-          // If no further paths, we are done
-          (cost(node), node :: Nil)
-        } else {
-          // Find the one that is the longest among all candidates
-          val (len, longest) = paths maxBy { _._1 }
-          // Prepend this node
-          (cost(node) + len, node :: longest)
-        }
+    // Longest path from 'node' that goes through only vertices that are in 'nodes'
+    def longestPathFrom(node: Option[Symbol], nodes: Set[Symbol]): (Int, List[Symbol]) = {
+      assert(!(node exists nodes.contains))
+      // Candidate successors are the vertices which are callees of this node and are in 'nodes'
+      val candidates = callArcSet.iterator collect {
+        case (`node`, returnee, callee) if nodes contains callee => (returnee, callee)
+      }
+      // Find longest paths from each of these candidates
+      val paths = for ((returnee, callee) <- candidates) yield {
+        val (l, p) = longestPathFrom(Some(callee), nodes - callee)
+        (returnee, l, p)
       }
 
-      val funcSet = functionSymbols.toSet
-
-      // Get the longest of the longest paths originating from any function
-      functionSymbols map { symbol =>
-        longestPathFrom(symbol, funcSet - symbol)
-      } maxBy { _._1 }
+      if (paths.isEmpty) {
+        // If no further paths, we are done
+        (0, node.toList)
+      } else {
+        // Find the one that is the longest among all candidates
+        val (returnee, len, longest) = paths maxBy {
+          case (fc, l, _) => costOfCalling(fc) + l
+        }
+        // Prepend this node
+        (costOfCalling(returnee) + len, node.fold(longest)(_ :: longest))
+      }
     }
 
-    length
+    // Get the longest path originating from "None", which represents the
+    // original call to the entry point function.
+    longestPathFrom(None, functionSymbols.toSet)._1
   }
+
+  // If the return point of this function is known at compile time, then
+  // Some(function-the-call-site-of-whom-to-return-to).  Otherwise, None. E.g.
+  // If the only call arc ending at c is (a,b,c), (and b is only called once
+  // within the body of a) then the unique return point is Some(b) as c needs
+  // to return to the call site of b. If no call arcs end at c then return
+  // to the top of main.
+  private def uniqueReturnPoint(symbol: Symbol): Option[Symbol] = {
+    val it = callArcSet.iterator collect {
+      case (_, returnee, `symbol`) => returnee
+    }
+    val returnee = it.next
+    // If the returnee is unique and is called only once, then we have an urp
+    Option.when(!it.hasNext && callCounts(returnee) == 1) {
+      returnee
+    }
+  }
+
+  // When this function is called, should we push an entry to the return stack?
+  // True if and only if every call arc with this function as returnee
+  // ends at a function with uniqueReturnPoint.
+  private def pushStackOnCall(symbol: Symbol): Boolean =
+    // We can skip checking this if the function has multiple call sites, as it
+    // will then definitely need to push
+    (callCounts(symbol) > 1) || {
+      // This function is indeed called only once, figure out if we need a push
+      val arcsWithSymbolAsReturnee = callArcSet filter { _._2 == symbol }
+      // Since callCounts(symbol) == 1, all tuples should have identical callers
+      assert((arcsWithSymbolAsReturnee map { _._1 }).sizeIs <= 1)
+      arcsWithSymbolAsReturnee exists {
+        case (_, _, callee) =>
+          uniqueReturnPoint(callee) match {
+            case None           => true // Must push stack if callee does not have an urp
+            case Some(`symbol`) => false // The unique return point should be exactly this symbol
+            case _              => unreachable
+          }
+      }
+    }
 
   //////////////////////////////////////////////////////////////////////////////
   // The actual return stack depth required
   //////////////////////////////////////////////////////////////////////////////
-  private[this] def returnStackDepth(eSymbol: Symbol): Int = {
+  private def returnStackDepth(eSymbol: Symbol): Int = {
     // Compute if the entity uses any recursion
     val hasRecursion = adjMat.diagonal.sum + indMat.diagonal.sum != 0
 
@@ -264,28 +304,29 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends StatefulTreeT
       }
     }
 
-    // Compute the maximum number of active functions
-    val maxActive = if (hasRecursion && stackLimit.isDefined) {
+    // Compute the maximum number of pushes to stack
+    if (hasRecursion && stackLimit.isDefined) {
       // If the entity uses recursion and has a sane
-      // 'stacklimit' attribute, use the value of that
-      stackLimit.get
+      // 'stacklimit' attribute, use the value of that.
+      // We subtract one as the root function does not return anywhere
+      stackLimit.get - 1
     } else {
       recLimits map { weights =>
-        // Map from symbol -> reclimit
-        val cost = (functionSymbols zip weights).toMap
+        // Map from symbol -> max stack pushes for this function
+        val costOfCalling: Map[Symbol, Int] = Map from {
+          (functionSymbols lazyZip weights) map {
+            case (returnee, recLimit) =>
+              returnee -> (if (returnee.attr.pushStackOnCall.value) recLimit else 0)
+          }
+        }
 
         // Find the longest path in the static call graph
-        computeLongestPathLength(cost)
+        computeLongestPathLength(costOfCalling)
       } getOrElse {
         // If we don't have sane recLimits, emit a return stack of size 1
-        // (by using maxActive == 2) to allow later passes to proceed
-        2
+        1
       }
     }
-
-    // The actual stack depth required for handling return from N active
-    // functions is N - 1 as the root function does not return anywhere
-    maxActive - 1
   }
 
   override protected def skip(tree: Tree): Boolean = tree match {
@@ -312,7 +353,9 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends StatefulTreeT
 
     case defn: DefnEntity =>
       assert(functionSymbols == null)
-      functionSymbols = defn.functions map { _.symbol }
+      functionSymbols = List from {
+        defn.functions.iterator map { _.symbol } filter { _.kind.isCtrlFunc }
+      }
       val entryPoints = functionSymbols filter { _.attr.entry.isSet }
       Option.when(entryPoints.lengthIs != 1) {
         if (entryPoints.isEmpty) {
@@ -330,6 +373,11 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends StatefulTreeT
 
     case defn: DefnFunc =>
       currentFunction = defn.symbol
+      if (currentFunction.attr.entry.isSet) {
+        // Add the initial call to the entry point function.
+        calls add (None -> currentFunction)
+        callCounts(currentFunction) += 1
+      }
       None
 
     //////////////////////////////////////////////////////////////////////////
@@ -338,13 +386,15 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends StatefulTreeT
 
     case ExprCall(ref, _) if ref.tpe.isCtrlFunc =>
       ref match {
-        case ExprSym(callee) => callArcs add (currentFunction -> callee)
-        case _               => unreachable
+        case ExprSym(callee) =>
+          calls add (Some(currentFunction) -> callee)
+          callCounts(callee) += 1
+        case _ => unreachable
       }
       None
 
     case StmtGoto(ExprSym(callee)) =>
-      gotoArcs add (currentFunction -> callee)
+      gotos add (currentFunction -> callee)
       None
 
     //
@@ -356,8 +406,23 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends StatefulTreeT
     case defn: DefnEntity =>
       // Ensure 'reclimit' attributes exist on all functions
       val values = recLimits.getOrElse(List.fill(nFunctions)(1))
-      for ((symbol, value) <- functionSymbols zip values) {
+      for ((symbol, value) <- functionSymbols lazyZip values) {
         symbol.attr.recLimit set Expr(value)
+      }
+
+      // Set function attributes
+      for { symbol <- functionSymbols } {
+        symbol.attr.pushStackOnCall set pushStackOnCall(symbol)
+        symbol.attr.staticReturnPoint set uniqueReturnPoint(symbol)
+      }
+
+      for { symbol <- functionSymbols } {
+        symbol.attr.popStackOnReturn set {
+          symbol.attr.staticReturnPoint.value match {
+            case Some(returnee) => returnee.attr.pushStackOnCall.value
+            case None           => true
+          }
+        }
       }
 
       val stackDepth = returnStackDepth(defn.symbol)

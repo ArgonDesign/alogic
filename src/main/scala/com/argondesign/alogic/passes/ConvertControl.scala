@@ -19,9 +19,11 @@ package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.core.Bindings
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.transform.ReplaceTermRefs
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.unreachable
 
@@ -37,6 +39,9 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
   //////////////////////////////////////////////////////////////////////////
   // State for control conversion
   //////////////////////////////////////////////////////////////////////////
+
+  // Current function we are in
+  private[this] var currentFunction: Symbol = _
 
   // Map from function symbols to the entry state symbol of that function
   private[this] var func2state: Map[Symbol, Symbol] = _
@@ -61,6 +66,18 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
   // to be emitted, as it will be emitted by an enclosing list (which is empty),
   // in part, this is used to avoid emitting empty states for loop entry points.
   private[this] val pendingStates = mutable.Stack[Option[Symbol]]()
+
+  // Map from function symbols to the state symbol following the function call.
+  // Only valid when function is only called once.
+  private[this] val stateFollowingCallOf = mutable.Map[Symbol, Symbol]()
+
+  // Map from state symbol alias to the function call to which it corresponds.
+  // State aliases are created when resolving return statements with static return points
+  // (the return point is the state immediately following some function call).
+  // We cannot replace such a return statement with the correct goto statement since the
+  // state may not yet have been allocated. So we create aliases which are resolved when
+  // we finish transforming the entity.
+  private[this] val functionCallReturningTo = mutable.Map[Symbol, Symbol]()
 
   // Allocate all intermediate states that are introduced
   // by a list of statements
@@ -190,7 +207,15 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
         allocateStates(body)
 
       case DefnFunc(symbol, _, body) =>
+        currentFunction = symbol
+
         val stateSymbol = func2state(symbol)
+
+        if (symbol.attr.entry.isSet) {
+          // If we ever want to return to the start of the entry point function
+          // (e.g. return stmt in main or after sequence of gotos from main).
+          stateFollowingCallOf(symbol) = stateSymbol
+        }
 
         // Set up the followingState to loop back to the function entry point
         followingState.push(stateSymbol)
@@ -200,6 +225,9 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
 
         // Ensure the function entry state is emitted
         pendingStates.push(Some(stateSymbol))
+
+      case StmtExpr(ExprCall(ExprSym(functionSymbol), Nil)) =>
+        stateFollowingCallOf(functionSymbol) = followingState.top
 
       //////////////////////////////////////////////////////////////////////////
       // Otherwise nothing interesting
@@ -295,15 +323,38 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
         val ref = ExprSym(func2state(symbol))
         StmtGoto(ref) regularize tree.loc
 
-      case _: StmtReturn =>
-        val pop = ExprSym(rsSymbol) select "pop" call Nil
-        StmtGoto(pop) regularize tree.loc
+      case stmt: StmtReturn =>
+        def stmtGotoStateFollowing(returnee: Symbol): StmtGoto = {
+          val returnStateAlias =
+            cc.newSymbol(s"l${stmt.loc.line}_state_alias_following_${returnee.name}_call", stmt.loc)
+          returnStateAlias.kind = TypeState
+
+          functionCallReturningTo(returnStateAlias) = returnee
+
+          StmtGoto(ExprSym(returnStateAlias))
+        }
+
+        lazy val pop = ExprSym(rsSymbol) select "pop" call Nil
+
+        (currentFunction.attr.popStackOnReturn.value, currentFunction.attr.staticReturnPoint.value) match {
+          case (true, Some(returnee)) =>
+            Thicket(List(StmtExpr(pop), stmtGotoStateFollowing(returnee))) regularize tree.loc
+          case (false, Some(returnee)) =>
+            stmtGotoStateFollowing(returnee) regularize tree.loc
+          case (true, None) =>
+            StmtGoto(pop) regularize tree.loc
+          case (false, None) => unreachable
+        }
 
       case StmtExpr(ExprCall(ExprSym(symbol), Nil)) =>
-        val ret = ExprSym(followingState.top)
-        val push = ExprSym(rsSymbol) select "push" call List(ArgP(ret))
         val ref = ExprSym(func2state(symbol))
-        StmtBlock(List(StmtExpr(push), StmtGoto(ref))) regularize tree.loc
+        if (symbol.attr.pushStackOnCall.value) {
+          val ret = ArgP(ExprSym(followingState.top))
+          val push = ExprSym(rsSymbol) select "push" call List(ret)
+          Thicket(List(StmtExpr(push), StmtGoto(ref))) regularize tree.loc
+        } else {
+          StmtGoto(ref) regularize tree.loc
+        }
 
       //////////////////////////////////////////////////////////////////////////
       // Convert if
@@ -401,9 +452,20 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
         TypeAssigner(decl.copy(decls = newDecls) withLoc decl.loc)
 
       case defn: DefnEntity =>
-        val newBody = List from {
-          defn.body.iterator ++ finishedStates.iterator
+        // Now all the return state aliases have been created, resolve
+        // all the aliases within the emitted states.
+        val bindings = Bindings from {
+          functionCallReturningTo.iterator map {
+            case (aSymbol, fSymbol) => aSymbol -> ExprSym(stateFollowingCallOf(fSymbol))
+          }
         }
+
+        val resolve = new ReplaceTermRefs(bindings)
+
+        val newBody = List from {
+          defn.body.iterator ++ (finishedStates.iterator map { _ rewrite resolve })
+        }
+
         TypeAssigner(defn.copy(body = newBody) withLoc defn.loc)
 
       //////////////////////////////////////////////////////////////////////////

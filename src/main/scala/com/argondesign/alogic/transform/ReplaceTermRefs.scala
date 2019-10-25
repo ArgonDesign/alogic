@@ -36,8 +36,12 @@ final class ReplaceTermRefs(
   }
 
   override def enter(tree: Tree): Option[Tree] = tree match {
-    case ExprSym(symbol) => Some(bindings.getOrElse(symbol, tree))
-    case _               => None
+    case ExprSym(symbol) =>
+      bindings.get(symbol) match {
+        case some @ Some(replacement) => replacement regularize tree.loc; some
+        case None                     => Some(tree)
+      }
+    case _ => None
   }
 
 }

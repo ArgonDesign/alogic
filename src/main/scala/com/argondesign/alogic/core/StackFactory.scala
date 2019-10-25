@@ -96,7 +96,7 @@ object StackFactory extends ChainingSyntax {
   //
   //   void main() {
   //     if (en) {
-  //       storage = d;
+  //       storage = pop ? 0 : d;
   //       valid = ~pop & (valid | push);
   //     }
   //     fence;
@@ -160,7 +160,7 @@ object StackFactory extends ChainingSyntax {
     val statements = List(
       StmtIf(enRef,
              List(
-               StmtAssign(stoRef, dRef),
+               StmtAssign(stoRef, ExprTernary(popRef, ExprInt(kind.isSigned, kind.width.toInt, 0), dRef)),
                StmtAssign(valRef, ~popRef & (valRef | pusRef))
              ),
              Nil)
@@ -222,7 +222,7 @@ object StackFactory extends ChainingSyntax {
   //     fence;
   //   }
   //
-  //   storage[ptr] -> q;
+  //   (empty ? 0 : storage[ptr]) -> q;
   // }
   private def buildStackN(
       name: String,
@@ -316,7 +316,7 @@ object StackFactory extends ChainingSyntax {
     val defns = List(enDefn, pusDefn, popDefn, dDefn, empDefn, fulDefn, qDefn, stoDefn, ptrDefn) map EntDefn
 
     val connects = List(
-      EntConnect(ExprIndex(stoRef, ptrRef), List(qRef))
+      EntConnect(ExprTernary(empRef, ExprInt(kind.isSigned, kind.width.toInt, 0), ExprIndex(stoRef, ptrRef)), List(qRef))
     )
 
     val entitySymbol = cc.newSymbol(name, loc)

@@ -70,7 +70,7 @@ object Bindings {
 
   val empty = new Bindings(Map.empty)
 
-  implicit def apply(pairs: Iterator[(Symbol, Expr)]): Bindings = {
+  implicit def from(pairs: IterableOnce[(Symbol, Expr)]): Bindings = {
     new Bindings(Map.from(pairs))
   }
 

@@ -27,6 +27,8 @@ final class Replace1Stacks(implicit cc: CompilerContext) extends StatefulTreeTra
   // Map from original stack variable symbol to the corresponding replacement,
   private[this] val stackMap = mutable.LinkedHashMap[Symbol, Symbol]()
 
+  private[this] var poppedStack: Option[Symbol] = None
+
   override def transform(tree: Tree): Tree = {
     val result: Tree = tree match {
 
@@ -59,13 +61,26 @@ final class Replace1Stacks(implicit cc: CompilerContext) extends StatefulTreeTra
       // Rewrite expressions
       //////////////////////////////////////////////////////////////////////////
 
-      case ExprCall(ExprSelect(ExprSym(s), "pop" | "top", _), Nil) =>
+      case ExprCall(ExprSelect(ExprSym(s), "top", _), Nil) =>
+        stackMap.get(s) map ExprSym getOrElse tree
+
+      case ExprCall(ExprSelect(ExprSym(s), "pop", _), Nil) =>
         stackMap.get(s) map { symbol =>
+          poppedStack = Some(symbol)
           ExprSym(symbol)
         } getOrElse tree
 
-      case ExprSelect(ExprSym(s), "full" | "empty", _) if stackMap contains s =>
-        cc.ice(tree, "Replacing 1 deep stack with full access")
+      case stmt: Stmt if poppedStack.nonEmpty =>
+        val symbol = poppedStack.get
+        poppedStack = None
+        Thicket(
+          List(
+            stmt,
+            StmtAssign(ExprSym(symbol), ExprInt(symbol.kind.isSigned, symbol.kind.width.toInt, 0))
+          ))
+
+      case ExprSelect(ExprSym(s), sel @ ("full" | "empty"), _) if stackMap contains s =>
+        cc.ice(tree, s"Replacing 1 deep stack with '$sel' access")
 
       case _ => tree
     }

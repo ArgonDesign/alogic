@@ -72,7 +72,9 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends StatefulTree
       // For now, just allocate state numbers linearly as binary coded
       stateNumbers = {
         val it = new SequenceNumbers
-        // Ensure the entry symbol is allocated number 0
+        // Ensure the entry symbol is allocated number 0.
+        // This is necessary since the return stack uses the special value 0
+        // to mean "stack is empty - return to top of main".
         Map from {
           (entryStates.head :: otherStates) map { _.symbol -> it.next }
         }
