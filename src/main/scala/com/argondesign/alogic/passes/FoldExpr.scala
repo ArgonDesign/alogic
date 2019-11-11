@@ -21,14 +21,18 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.TreeInTypeTransformer
+import com.argondesign.alogic.core.Types.Type
+import com.argondesign.alogic.core.Types.TypeError
 import com.argondesign.alogic.core.Types.TypeInt
 import com.argondesign.alogic.core.Types.TypeNum
+import com.argondesign.alogic.core.Types.TypeVector
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.BigIntOps._
 import com.argondesign.alogic.util.unreachable
 import com.argondesign.alogic.lib.Math.clog2
-import scala.annotation.tailrec
 
+import scala.annotation.tailrec
+import scala.collection.mutable
 import scala.language.implicitConversions
 
 final class FoldExpr(
@@ -41,6 +45,8 @@ final class FoldExpr(
   private val shiftOps = Set("<<", ">>", "<<<", ">>>")
 
   private var dontFoldNextSym = false
+
+  private val tgtTpe = mutable.Stack[Type]()
 
   private def foldShiftUnsized(expr: ExprBinary): Expr = expr match {
     case ExprBinary(ExprNum(ls, lv), op, rhs) =>
@@ -74,16 +80,33 @@ final class FoldExpr(
   private val typeFoldExpr = if (foldRefs) this else new FoldExpr(foldRefs = true)
   private object TypeFoldExpr extends TreeInTypeTransformer(typeFoldExpr)
 
-  override def enter(tree: Tree): Unit = tree match {
-    case ExprIndex(ExprSym(_), idx) =>
-      // If idx is not a constant, don't fold target
-      val idxNonConst = idx.value.isEmpty
-      dontFoldNextSym = idxNonConst
-    case ExprSlice(ExprSym(_), lidx, _, _) =>
-      // If lidx is not a constant, don't fold target
-      val lidxNonConst = lidx.value.isEmpty
-      dontFoldNextSym = lidxNonConst
-    case _ => ()
+  override def enter(tree: Tree): Unit = {
+
+    if (foldRefs) {
+
+      tree match {
+        case ExprIndex(_, idx) =>
+          val idxValOpt = idx.value
+          // If idx is not a constant, don't fold symbol at start of target
+          val idxNonConst = idxValOpt.isEmpty
+          dontFoldNextSym ||= idxNonConst
+        case ExprSlice(_, lidx, _, _) =>
+          val lidxValOpt = lidx.value
+          // If lidx is not a constant, don't fold symbol at start of target
+          val lidxNonConst = lidxValOpt.isEmpty
+          dontFoldNextSym ||= lidxNonConst
+        case _ => ()
+      }
+
+      // Next keep track of tgt type so that when transforming Indices, Slices or Selects,
+      // if we see ExprInt in the place of the target, we know how to index/slice or select from it.
+      tree match {
+        case ExprIndex(tgt, _)       => tgtTpe push tgt.tpe.underlying
+        case ExprSlice(tgt, _, _, _) => tgtTpe push tgt.tpe.underlying
+        case ExprSelect(tgt, _, _)   => tgtTpe push tgt.tpe.underlying
+        case _                       => tgtTpe push TypeError
+      }
+    }
   }
 
   override def transform(tree: Tree): Tree = {
@@ -99,12 +122,14 @@ final class FoldExpr(
       // Fold refs
       ////////////////////////////////////////////////////////////////////////////
 
-      case ExprSym(symbol) if foldRefs && symbol.kind.isConst => {
+      case ExprSym(symbol) if foldRefs => {
         if (dontFoldNextSym) {
           dontFoldNextSym = false
           tree
-        } else {
+        } else if (symbol.kind.isConst) {
           symbol.attr.init getOrElse tree
+        } else {
+          tree
         }
       }
 
@@ -352,12 +377,34 @@ final class FoldExpr(
       }
 
       ////////////////////////////////////////////////////////////////////////////
+      // Fold selects into integers (these arise when foldRefs == true)
+      ////////////////////////////////////////////////////////////////////////////
+
+      case ExprSelect(Integral(_, _, value), sel, _) => {
+        val tpe = tgtTpe.head.asStruct
+        val (fieldTpe, lessSigFieldTpes) =
+          (tpe.fieldNames zip tpe.fieldTypes) dropWhile (_._1 != sel) map (_._2) match {
+            case head :: tail => (head, tail)
+            case _            => unreachable
+          }
+        val lsb = lessSigFieldTpes.map(_.width).sum
+        val result = value.extract(lsb, fieldTpe.width, fieldTpe.isSigned)
+        ExprInt(fieldTpe.isSigned, fieldTpe.width, result) withLoc tree.loc
+      }
+
+      ////////////////////////////////////////////////////////////////////////////
       // Fold index into sized/unsized integers
       ////////////////////////////////////////////////////////////////////////////
 
       case ExprIndex(Integral(_, _, value), Integral(_, _, idx)) => {
         // TODO: error on out of range
-        ExprInt(false, 1, (value >> idx.toInt) & 1) withLoc tree.loc
+        tgtTpe.headOption match {
+          case Some(TypeVector(eKind, _)) =>
+            val result = value.extract(eKind.width * idx.toInt, eKind.width, eKind.isSigned)
+            ExprInt(eKind.isSigned, eKind.width, result) withLoc tree.loc
+          case _ =>
+            ExprInt(false, 1, (value >> idx.toInt) & 1) withLoc tree.loc
+        }
       }
 
       ////////////////////////////////////////////////////////////////////////////
@@ -378,7 +425,14 @@ final class FoldExpr(
           case ":" => lidx - ridx + 1
           case _   => ridx
         }
-        ExprInt(false, width, value.extract(lsb, width)) withLoc tree.loc
+        tgtTpe.headOption match {
+          case Some(TypeVector(eKind, _)) =>
+            val result =
+              value.extract(eKind.width * lsb, eKind.width * width)
+            ExprInt(false, eKind.width * width, result) withLoc tree.loc
+          case _ =>
+            ExprInt(false, width, value.extract(lsb, width)) withLoc tree.loc
+        }
       }
 
       ////////////////////////////////////////////////////////////////////////////
@@ -750,10 +804,19 @@ final class FoldExpr(
       case _ => tree
     }
 
+    if (foldRefs) {
+      tgtTpe.pop()
+    }
+
     // Recursively fold the resulting expression
     val result2 = if (result ne tree) walk(result) else result
 
     if (!result2.hasTpe) TypeAssigner(result2) else result2
+  }
+
+  override def finalCheck(tree: Tree): Unit = {
+    assert(tgtTpe.isEmpty)
+    assert(dontFoldNextSym == false)
   }
 
 }

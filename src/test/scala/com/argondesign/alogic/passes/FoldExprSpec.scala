@@ -1418,6 +1418,9 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
           ("o_2 = B[1]", {
             case ExprInt(false, 2, v) if v == 1 =>
           }),
+          ("os_2 = Bs[1]", {
+            case ExprInt(true, 2, v) if v == -1 =>
+          }),
           ("o_4 = B[1+:2]", {
             case ExprInt(false, 4, v) if v == 9 =>
           }),
@@ -1428,26 +1431,54 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
           ("o_1 = i_3[i_3 +: B[1]]", {
             case ExprIndex(ExprSym(i_3a), ExprSym(i_3b))
                 if i_3a.name == "i_3" && i_3b.name == "i_3" =>
+          }),
+          ("o_8 = A[B[1]]", {
+            case ExprInt(false, 8, v) if v == 123 =>
+          }),
+          ("o_16 = A[B[1] +: 2]", {
+            case ExprInt(false, 16, v) if v == ((5 << 8) + 123) =>
+          }),
+          ("o_8 = A[2:1][0]", {
+            case ExprInt(false, 8, v) if v == 123 =>
+          }),
+          ("o_2 = A[2][2:1]", {
+            case ExprInt(false, 2, v) if v == 2 =>
+          }),
+          ("o_8 = C.a", {
+            case ExprInt(false, 8, v) if v == 47 =>
+          }),
+          ("o_8 = C.b", {
+            case ExprInt(false, 8, v) if v == 23 =>
+          }),
+          ("o_4 = C.c[1]", {
+            case ExprInt(false, 4, v) if v == 3 =>
           })
         )
       } {
         stmt in {
           val entity = s"""|fsm a {
+                           |  struct struct_t {
+                           |    u8 a;
+                           |    u8 b;
+                           |    u4[2] c;
+                           |  }
+                           |  const u8[3] A = {8'd5, 8'd123, 8'd7};
                            |  const u2[3] B = {2'd2, 2'd1, 2'd0};
+                           |  const i2[3] Bs= {-2'sd1, -2'sd1, 2'sd0};
+                           |  const struct_t C = {8'd47, 8'd23, {4'd3, 4'd4}};
                            |
                            |  (* unused *) in  u3 i_3;
                            |  (* unused *) out u1 o_1;
                            |  (* unused *) out u2 o_2;
+                           |  (* unused *) out i2 os_2;
                            |  (* unused *) out u4 o_4;
+                           |  (* unused *) out u8 o_8;
+                           |  (* unused *) out u16 o_16;
                            |
                            |  fence { ${stmt}; }
                            |}""".stripMargin.asTree[Entity]
 
           val expr = xform(entity) rewrite {
-            new LowerVectors()
-          } rewrite {
-            new AddCasts()
-          } rewrite {
             new FoldExpr(foldRefs = true)
           } getFirst {
             case StmtAssign(_, rhs) => rhs
@@ -1475,12 +1506,19 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
             case ExprSlice(ExprSym(b), ExprSym(i_1), "+:", ExprInt(false, 2, w))
                 if b.name == "B" && i_1.name == "i_1" && w == 2 =>
           }),
+          ("o_2 = B[1:0][i_1]", {
+            case ExprIndex(ExprSym(b),
+                           ExprBinary(ExprInt(false, 2, lsb),
+                                      "+",
+                                      ExprCat(List(ExprInt(false, 1, _), ExprSym(i_1)))))
+                if b.name == "B" && lsb == 0 && i_1.name == "i_1" =>
+          })
         )
       } {
         stmt in {
           val entity = s"""|fsm a {
                            |  const u8    A = 8'b10101100;
-                           |  const u2[2] B = {2'd1, 2'd0};
+                           |  const u2[3] B = {2'd2, 2'd1, 2'd0};
                            |
                            |  (* unused *) in  u1 i_1;
                            |  (* unused *) in  u3 i_3;
