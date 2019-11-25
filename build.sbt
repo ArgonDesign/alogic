@@ -77,8 +77,11 @@ enablePlugins(JavaAppPackaging)
 // stage := (stage dependsOn (test in Test)).value
 
 bashScriptExtraDefines += """
-# Pass a secret option if stderr is tty, but only if not asking for --help
-if [[ "$*" != "-h" && "$*" != "--help" && -t 2 ]]; then
+# Pass a secret option if stderr is tty, but only if not asking for
+# --help or --version
+if [[ "$*" != "-h" && "$*" != "--help" ]] && \
+   [[ "$*" != "-v" && "$*" != "--version" ]] && \
+   [[ -t 2 ]]; then
   stderrisatty="--stderrisatty"
 fi
 
