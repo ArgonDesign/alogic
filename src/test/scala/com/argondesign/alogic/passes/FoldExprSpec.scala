@@ -950,6 +950,34 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
       }
     }
 
+    "index zero of width zero" - {
+      for {
+        (text, pattern) <- List[(String, PartialFunction[Any, Unit])](
+          // format: off
+          ("c = a[0]", { case ExprSym(a) if a.name == "a" => }),
+          ("c = b[3][0]", { case ExprIndex(ExprSym(a), ExprInt(false, _, idx)) if a.name == "b" && idx == 3 => }),
+          ("d = mem[0]", { case ExprIndex(ExprSym(a), ExprInt(false, _, idx)) if a.name == "mem" && idx == 0 => })
+          // format: on
+        )
+      } {
+        text in {
+          val src =
+            s"""|fsm f {
+                |  (* unused *) in u1 a;
+                |  (* unused *) in u7 b;
+                |  (* unused *) out u1 c;
+                |  (* unused *) out u8 d;
+                |  (* unused *) u8 mem[8];
+                |  fence { ${text}; }
+                |}""".stripMargin
+          val tree = xform(src.asTree[Root])
+          val expr = tree getFirst { case StmtAssign(_, rhs) => rhs }
+          expr should matchPattern(pattern)
+          cc.messages shouldBe empty
+        }
+      }
+    }
+
     "repetitions of count 1" - {
       for {
         (text, pattern) <- List[(String, PartialFunction[Any, Unit])](

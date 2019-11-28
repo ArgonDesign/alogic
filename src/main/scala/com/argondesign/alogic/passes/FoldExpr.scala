@@ -496,7 +496,8 @@ final class FoldExpr(
       // Fold index zero of width one and full width slices
       ////////////////////////////////////////////////////////////////////////////
 
-      case ExprIndex(expr, ExprInt(_, _, i)) if expr.tpe.width == 1 && i == 0 => {
+      case ExprIndex(expr, ExprInt(_, _, i))
+          if i == 0 && expr.tpe.isPacked && expr.tpe.width == 1 => {
         expr
       }
 
