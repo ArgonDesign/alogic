@@ -50,7 +50,7 @@ used.
 
 ### Example FSM
 
-The following code demonstrates an FSM with 3 states:
+The following code demonstrates an FSM with 4 states:
 
 <a href="http://afiddle.argondesign.com/?example=concepts_example_fsm.alogic">Fiddle with this code here.</a>
 
@@ -74,13 +74,19 @@ fsm foo {
     b += 8'd1;
     
     if (b[2:0] == 3'b0) {
-      doit(); // This function call ends the Control Unit
-    } // An implicit else here also ends the Control Unit
-    // We are now in state 2 or 3 depending on the outcome.
+      doit(); // This function call ends the Control Unit and we transition to state 3.
+    } // An implicit else here also ends the Control Unit and we transition to state 2.
+    
+    // We are now in state 2.
+    a += 3;
+
+    fence; // Control returns to the top of main, state 0.
   }
 
   void doit() {
+    // At this point we are in state 3
     ...
+    return; // Control returns to the state which follows the call site, state 2. 
   }
 }
 ```

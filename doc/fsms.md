@@ -39,7 +39,7 @@ fsm add2 {
   // all FSMs must contain a main function:
   void main() {
     u8 x = p_in.read();
-    p_out.write(x + 8'd2);
+    p_out.write(x + a[7:0] + 'b);
     fence; // All functions must end with a control statement
   }
 }
@@ -229,24 +229,26 @@ current state are considered. For example (<a href="http://afiddle.argondesign.c
 
 ```
 fsm fenceblock {
-  u3 s_l2 = 1;
-  out u8 s;
+  in u3 s_l2;
+  out u8 o;
+  u8 s;
 
   fence {
+    // this line will be inserted at the start of every state case
     s = 8'd1 << s_l2;
   }
 
   void main () {
-    ...
-    s_l2 = 2;
+    // ...
+    o = s;
     fence;
 
-    ...
-    s_l2 = 3;
+    // ...
+    o = s + 1;
     fence;
 
-    ...
-    s_l2 = 4;
+    // ...
+    o = s + 2;
     fence;
   }
 }
@@ -256,26 +258,28 @@ Is equivalent to (<a href="http://afiddle.argondesign.com/?example=fsms_nofence.
 
 ```
 fsm nofencefunc {
-  u3 s_l2 = 1;
-  out u8 s;
+  in u3 s_l2;
+  out u8 o;
+  u8 s;
 
   void main () {
     s = 8'd1 << s_l2;
-    ...
-    s_l2 = 2;
+    // ...
+    o = s;
     fence;
 
     s = 8'd1 << s_l2;
-    ...
-    s_l2 = 3;
+    // ...
+    o = s + 1;
     fence;
 
     s = 8'd1 << s_l2;
-    ...
-    s_l2 = 1;
+    // ...
+    o = s + 2;
     fence;
   }
 }
+
 ```
 
 The `fence` block is particularly useful for computing combinatorial signals

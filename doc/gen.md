@@ -31,7 +31,8 @@ explained [later](#lexical-scopes-of-gen-constructs) in this section.
 
 The simplest `gen` construct is the conditional `gen if`, which can be
 used to conditionally include some source content. Braces around the
-branches are required. The `else` branch is optional:
+branches are required. The `else` branch is optional
+(<a href="http://afiddle.argondesign.com/?example=gen_if.alogic">fiddle here</a>):
 
 ```
 fsm delay_or_inverter {
@@ -109,6 +110,8 @@ except for the following restrictions:
 - The stop condition must be present
 - At least one step statement must be present
 
+<a href="http://afiddle.argondesign.com/?example=gen_for.alogic">Fiddle with this code here.</a>
+
 ```
 fsm invert_a_lot {
   param uint P;
@@ -116,10 +119,11 @@ fsm invert_a_lot {
   out bool p_o;
 
   void main() {
-    bool b = p_in;
+    bool b = p_i;
     gen for (uint N = 0 ; N < P ; N++) {
       b = ~b;
     }
+    p_o = b;
     fence;
   }
 }
@@ -138,24 +142,26 @@ fsm silly_inverter {
     b = ~b;
     b = ~b;
     b = ~b;
+    p_o = b;
     fence;
   }
 }
 ```
 
 The variables declared in the `gen for` headers are available as
-constants in the body:
+constants in the body
+(<a href="http://afiddle.argondesign.com/?example=gen_for_var.alogic">fiddle here</a>):
 
 ```
 fsm adding {
-  param uint P;
+  param uint P = 3;
   in  u8 p_i;
   out u8 p_o;
 
   void main() {
-    u8 x = p_in;
+    u8 x = p_i;
     gen for (u8 N = 0 ; N <= P ; N++) {
-      b += N;
+      x += N;
       fence;
     }
     p_o.write(x);
@@ -172,14 +178,14 @@ fsm adding__P_3 {
   out u8 p_o;
 
   void main() {
-    u8 x = p_in;
-    b += 8'd0;
+    u8 x = p_i;
+    x += 8'd0;
     fence;
-    b += 8'd1;
+    x += 8'd1;
     fence;
-    b += 8'd2;
+    x += 8'd2;
     fence;
-    b += 8'd3;
+    x += 8'd3;
     fence;
     p_o.write(x);
     fence;
@@ -190,7 +196,8 @@ fsm adding__P_3 {
 #### Ranged `gen for`
 
 As using `gen for` with an incrementing variable is common, there is a
-shorthand syntax for writing this:
+shorthand syntax for writing this
+(<a href="http://afiddle.argondesign.com/?example=gen_range.alogic">fiddle here</a>):
 
 ```
 gen for (uint N < 4) {
@@ -225,7 +232,8 @@ gen for (<type> <name> = 0 ; <name> <op> <end> ; <name>++) {
 
 The only case when a ranged `gen for` is not equivalent to a standard
 `gen for` is when the end value is larger than the most positive number
-representable on the declared type:
+representable on the declared type
+(<a href="http://afiddle.argondesign.com/?example=gen_range_i3_8.alogic">fiddle here</a>):
 
 ```
 gen for (u3 i < 8) {
@@ -241,7 +249,8 @@ above example, `i` would be set to values 0 to 7 inclusive.
 #### Nesting `gen` constructs
 
 `gen` constructs can be arbitrarily nested. Inner `gen` constructs can
-depend on variables defined in outer gen constructs:
+depend on variables defined in outer gen constructs
+(<a href="http://afiddle.argondesign.com/?example=gen_nested.alogic">fiddle here</a>):
 
 ```
 fsm faster_adding {
@@ -250,9 +259,9 @@ fsm faster_adding {
   out u8 p_o;
 
   void main() {
-    u8 x = p_in;
+    u8 x = p_i;
     gen for (u8 N = 0 ; N <= P ; N++) {
-      b += N;
+      x += N;
       gen if (N % 2 && N != P) {
         fence;
       }
@@ -273,14 +282,14 @@ fsm faster_adding__P_6 {
 
   void main() {
     u8 x = p_in;
-    b += 8'd0;
-    b += 8'd1;
+    x += 8'd0;
+    x += 8'd1;
     fence;
-    b += 8'd2;
-    b += 8'd3;
+    x += 8'd2;
+    x += 8'd3;
     fence;
-    b += 8'd4;
-    b += 8'd5;
+    x += 8'd4;
+    x += 8'd5;
     p_o.write(x);
     fence;
   }
@@ -291,7 +300,8 @@ fsm faster_adding__P_6 {
 
 A `gen` construct can appear in any of the following positions.
 
-Where a statement is expected (except in `for` loop headers):
+Where a statement is expected (except in `for` loop headers)
+(<a href="http://afiddle.argondesign.com/?example=gen_statement.alogic">fiddle here</a>):
 
 ```
 fsm toggle {
@@ -300,7 +310,7 @@ fsm toggle {
   out bool p_o = false;
 
   void main() {
-    gen if (P) {
+    gen if (SLOW) {
       fence;
     }
     p_o = ~p_o;
@@ -309,7 +319,8 @@ fsm toggle {
 }
 ```
 
-Generating case clauses:
+Generating case clauses
+(<a href="http://afiddle.argondesign.com/?example=gen_case.alogic">fiddle here</a>):
 
 ```
 fsm twiddle {
@@ -330,7 +341,8 @@ fsm twiddle {
 }
 ```
 
-Generating entity contents:
+Generating entity contents
+(<a href="http://afiddle.argondesign.com/?example=gen_entity.alogic">fiddle here</a>):
 
 ```
 network optional_buffer {
@@ -344,7 +356,8 @@ network optional_buffer {
     // acting as a buffer and causing a one cycle delay
     new fsm delay {
       void main() {
-        o = i;
+        o.write(i);
+        fence;
       }
     }
   } else {
@@ -375,7 +388,8 @@ network foo {
 }
 ```
 
-The following however will raise a compiler error:
+The following however will raise a compiler error
+(<a href="http://afiddle.argondesign.com/?example=gen_param_const_error.alogic">fiddle here</a>):
 
 ```
 network foo {
@@ -400,7 +414,8 @@ and are described in the following sections.
 
 All names introduced inside `gen if` constructs will be inserted into
 the enclosing regular lexical scope. This allows for example to use `gen
-if` to change types of definitions based on compile time conditions:
+if` to change types of definitions based on compile time conditions
+(<a href="http://afiddle.argondesign.com/?example=gen_if_scope.alogic">fiddle here</a>):
 
 ```
 gen if (SIGNED) {
@@ -456,7 +471,8 @@ gen if (B) {
 
 While the following would raise an ambiguous definition error if both
 `A` and `B` are true, or a missing definition error if both `A` and `B`
-are false:
+are false
+(<a href="http://afiddle.argondesign.com/?example=gen_if_ambiguous_error.alogic">fiddle here</a>):
 
 ```
 gen if (A) {
@@ -486,7 +502,8 @@ a = 0;  // ERROR: 'a' is not defined.
 Simple names defined in `gen` loops have a separate copy for each
 iteration and do not escape the weak scope of the `gen` loop. Within the
 loop body, references are resolved to the symbols created in the current
-iteration.
+iteration
+(<a href="http://afiddle.argondesign.com/?example=gen_loop_simple_names.alogic">fiddle here</a>).
 
 ```
 fsm scoping {
@@ -534,7 +551,8 @@ can be used when introducing names to disambiguate between iterations.
 Dictionary identifiers use a simple base identifier, followed by a comma
 separated list of one or more compile time constant indices enclosed in
 `#[` `]`. The following generates 8 `bool` variables with names `a#[0]`
-to `a#[7]`:
+to `a#[7]`
+(<a href="http://afiddle.argondesign.com/?example=gen_loop_dict_ident.alogic">fiddle here</a>):
 
 ```
 gen for (uint N < 8) {
@@ -546,13 +564,14 @@ The indices must be unique for each copy of the definition, but can
 otherwise be arbitrary (including sparse indices). Dictionary
 identifiers (and only dictionary identifiers) escape the weak scope of
 the `gen` loop, and can be referred to with the same syntax within the
-enclosing regular scope:
+enclosing regular scope
+(<a href="http://afiddle.argondesign.com/?example=gen_loop_dict_ident_escape.alogic">fiddle here</a>):
 
 ```
 network connect_2 {
-  gen for (uint n < 2)
+  gen for (uint n < 2) {
     in  bool i#[n];
-    out bool i#[n];
+    out bool o#[n];
   }
   
   i#[0] -> o#[0];
@@ -561,7 +580,8 @@ network connect_2 {
 ```
 
 Dictionary identifiers can also be used to reference definitions across
-loop iterations as well:
+loop iterations as well
+(<a href="http://afiddle.argondesign.com/?example=gen_loop_dict_ident_across.alogic">fiddle here</a>):
 
 ```
 network connect_N_backwards {
@@ -577,7 +597,8 @@ network connect_N_backwards {
 
 It is an error to have more than one lexical definition of the same name
 within the same `gen` loop scope, even if the dictionary indices are
-unique:
+unique
+(<a href="http://afiddle.argondesign.com/?example=gen_multiple_names_error.alogic">fiddle here</a>):
 
 ```
 gen for (uint n < 8) {
@@ -601,7 +622,8 @@ a#[A, B] = ... // ERROR: 'a' is ambiguous
 ```
 
 Remember however that references within the loop are resolved locally so
-the following is OK, so long as there are no external references to `a`:
+the following is OK, so long as there are no external references to `a`
+(<a href="http://afiddle.argondesign.com/?example=gen_multiple_names_local.alogic">fiddle here</a>):
 
 ```
 gen for (uint n < 8) {
@@ -637,7 +659,8 @@ are more than one lexical definitions active while resolving a
 reference.
 
 Here is an example of the power of the mechanism to generate a pipelined
-binary tree of adders to sum a number of values:
+binary tree of adders to sum a number of values
+(<a href="http://afiddle.argondesign.com/?example=gen_adder_tree.alogic">fiddle here</a>):
 
 ```
 network dictident_adder_tree {

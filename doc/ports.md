@@ -593,7 +593,8 @@ buffering on output ports as required:
 
 Another important use of multiple output slices is the combination of a `bslice`
 and a `fslice` in order to break the combinatorial paths in both the forward and
-backward directions, while maintaining the possibility of 100% utilization:
+backward directions, while maintaining the possibility of 100% utilization (the
+trade-off is that this approach requires twice as many flops as a bubble port):
 
 ```
   out sync ready bslice fslice u8 a;

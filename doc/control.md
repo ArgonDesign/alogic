@@ -239,19 +239,19 @@ header (<a href="http://afiddle.argondesign.com/?example=control_loop.alogic">fi
 
 ```
 void main() {
-   a++;        // | Cycle 1
-   b++;        // | Cycle 1
-   c.read();   // | Cycle 1
-               // |
-   loop {      // V Cycle 1 - A 'loop' is always entered, but the cycle ends
-     f++;      // | Cycle 2
-     g++;      // | Cycle 2
-     break;    //  V Cycle 2 ends - Iterate only once for this example
-   }
+  a++;        // | Cycle 1
+  b++;        // | Cycle 1
+  c.read();   // | Cycle 1
+              // |
+  loop {      // V Cycle 1 - A 'loop' is always entered, but the cycle ends
+    f++;      // | Cycle 2
+    g++;      // | Cycle 2
+    break;    // V Cycle 2 ends - Iterate only once for this example
+  }
 
-   d.write(a); // | Cycle 3
-   e--;        // | Cycle 3
-   goto foo;   // V Cycle 3 ends
+  d.write(a); // | Cycle 3
+  e--;        // | Cycle 3
+  goto foo;   // V Cycle 3 ends
 }
 ```
 
@@ -262,19 +262,19 @@ Similarly, here is an example with a front-testing loop (<a href="http://afiddle
 
 ```
 void main() {
-  a++;         // | Cycle 1
-  b++;         // | Cycle 1
-  c.read();    // | Cycle 1
-               // |
-  while (h) {  // V Cycle 1 - Test 'h' to decide loop entry, the cycle ends
-    f++;       // | Cycle 2 if 'h' was true
-    g++;       // | Cycle 2 if 'h' was true
-    h = false; // V Cycle 2 ends if 'h' was true - Iterate once for this example
+  a++;        // | Cycle 1
+  b++;        // | Cycle 1
+  c.read();   // | Cycle 1
+              // |
+  while (h) { // V Cycle 1 - Test 'h' to decide loop entry, the cycle ends
+    f++;      // | Cycle 2 if 'h' was true
+    g++;      // | Cycle 2 if 'h' was true
+    h = ~h;   // V Cycle 2 ends if 'h' was true - Iterate once for this example
   }
-
-  d.write(a);  // | Cycle 3 if 'while' loop was entered, otherwise Cycle 2
-  e--;         // | Cycle 3 if 'while' loop was entered, otherwise Cycle 2
-  goto foo;    // V Cycle 3 ends if 'while' loop was entered, otherwise Cycle 2 ends
+  
+  d.write(a); // | Cycle 3 if 'while' loop was entered, otherwise Cycle 2
+  e--;        // | Cycle 3 if 'while' loop was entered, otherwise Cycle 2
+  goto foo;   // V Cycle 3 ends if 'while' loop was entered, otherwise Cycle 2 ends
 }
 ```
 

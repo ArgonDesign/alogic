@@ -224,9 +224,9 @@ here</a>):
 // Vectors can be sliced, producing a vector of the same dimension but
 // smaller size in the first dimension:
 
-  u4[2]    vs1 = va[3:2]     // va[3:2] has type u4[2]
-  u3[3][9] vs2 = vb[0+:3]    // vb[0+:3] has type u3[3][9]
-  u3[4]    vs3 = vb[5][9-:4] // vb[5][9-:4] has type u3[4]
+  u4[2]    vs1 = va[3:2];     // va[3:2] has type u4[2]
+  u3[3][9] vs2 = vb[0+:3];    // vb[0+:3] has type u3[3][9]
+  u3[4]    vs3 = vb[5][9-:4]; // vb[5][9-:4] has type u3[4]
 ```
 
 Note that indices are 0 based. Multi-dimensional vectors can be used

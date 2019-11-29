@@ -17,7 +17,8 @@ declarations must have an initializer:
 
 ```
 fsm baz {
-  const u32 MAGIC = 32'habcd_0123;
+  const uint MAGIC = 0x0123_abcd;
+  const u32 MAGIC_PACKED = 32'habcd_0123;
 	...
 }
 ```
@@ -31,7 +32,7 @@ module baz (
   input wire rst_n,
   ...
 );
-  localparam [31:0] MAGIC = 32'habcd0123;
+  localparam [31:0] MAGIC_PACKED = 32'habcd0123;
   ...
 endmodule
 ```
@@ -99,8 +100,8 @@ port declarations in Alogic can depend on `const` values:
 
 ```
 fsm bar {
-  param u32 WIDTH_L2 = 8;
-  const u32 WIDTH = 1<<WIDTH_L2;
+  param uint WIDTH_L2 = 8;
+  const uint WIDTH = 1<<WIDTH_L2;
   in sync uint(WIDTH) p_in;
   out sync uint(2*WIDTH) p_out;
   ...

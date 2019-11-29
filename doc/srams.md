@@ -188,11 +188,11 @@ generic FIFO, using a single SRAM as the backing store is provided (<a href="htt
 ```
 (* liftsrams *)
 fsm sfifo {
-  param u32 WIDTH = 8;
-  param u32 DEPTH = 2;
+  param uint WIDTH = 8;
+  param uint DEPTH = 2;
 
   // Number of address bits
-  const u32 ABITS = $clog2(DEPTH);
+  const uint ABITS = $clog2(DEPTH);
 
   // The input port
   in  sync ready               uint(WIDTH) p_in;
@@ -208,7 +208,7 @@ fsm sfifo {
   uint(ABITS) wrptr = @zx(ABITS, 1'b0);
 
   // The highers valid poitner
-  const u32 MAXPTR = DEPTH - 1;
+  const uint MAXPTR = DEPTH - 1;
 
   // The actual storage SRAM
   sram wire uint(WIDTH) storage[DEPTH];
@@ -272,8 +272,8 @@ A not very thorough but simple test-bench for the FIFO above can be written as:
 ```
 network sfifo_tb {
 
-  const u32 WIDTH = 8;
-  const u32 DEPTH = 32;
+  const uint WIDTH = 8;
+  const uint DEPTH = 32;
 
   dut = new sfifo(WIDTH=WIDTH, DEPTH=DEPTH);
 
@@ -282,7 +282,7 @@ network sfifo_tb {
     out sync ready uint(WIDTH) item;
 
     void main() {
-      for (u32 i = 0 ; i < 10000 ; i++) {
+      for (uint i = 0 ; i < 10000 ; i++) {
         item.write(i[0 +: WIDTH]);
       }
 
@@ -295,7 +295,7 @@ network sfifo_tb {
     in sync ready uint(WIDTH) item;
 
     void main() {
-      for (u32 i = 0 ; i < 10000 ; i++) {
+      for (uint i = 0 ; i < 10000 ; i++) {
         item.read();
         if (item.valid && item != i[0 +: WIDTH]) {
           $display("@@@FAIL");
