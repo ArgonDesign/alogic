@@ -107,6 +107,18 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
     }
   }
 
+  private[this] def validateOutputNameMaxLengthWithPrefix(outNameMaxLen: ScallopOption[Int],
+                                                          prefix: ScallopOption[String]) =
+    addValidation {
+      val min = prefix().length + 16
+      outNameMaxLen.toOption partialMatch {
+        case Some(value) if value < min =>
+          Left(s"""|Minimum value of option '${outNameMaxLen.name}' is $min
+                   |(prefix length + 16) but value provided is $value
+                   |""".stripMargin.replaceAll("\n+", " "))
+      } getOrElse Right(())
+    }
+
   version(BuildInfo.version)
 
   banner("Alogic compiler")
@@ -211,6 +223,18 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
                |""".stripMargin.replace('\n', ' '),
     default = Some("")
   )
+
+  val outputNameMaxLength = opt[Int](
+    name = "output-name-max-length",
+    noshort = true,
+    required = false,
+    descr = """|Enforce a maximum length upon output module names (excluding top-level
+               |modules). Any names exceeding this length will be truncated and appended
+               |with a short number. The default behaviour is no maximum.
+               |""".stripMargin.replace('\n', ' '),
+    default = None
+  )
+  validateOutputNameMaxLengthWithPrefix(outputNameMaxLength, ensurePrefix)
 
   val header = opt[File](
     noshort = true,

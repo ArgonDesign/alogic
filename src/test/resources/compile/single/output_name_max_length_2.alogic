@@ -1,0 +1,18 @@
+// @output-name-max-length: 16
+network output_name_max_length_2 {
+    out wire u8 o;
+
+    new fsm inner {
+        void main() { o = 0; fence; }
+    }
+}
+// @expect-file: _h3ceaa72efd28a1.v
+// @fec-golden {{{
+//  module output_name_max_length_2(
+//    output wire [7:0] o,
+//  );
+//
+//    assign o = 0;
+//
+//  endmodule
+// }}}

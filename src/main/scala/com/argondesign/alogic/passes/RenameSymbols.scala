@@ -20,11 +20,16 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.SequenceNumbers
 
+import scala.annotation.tailrec
+import scala.collection.mutable
+
 object RenameSymbols extends PairsTransformerPass {
   val name = "rename-symbols"
 
   override protected def process(input: List[(Decl, Defn)])(
       implicit cc: CompilerContext): List[(Decl, Defn)] = {
+
+    val topNames = mutable.Set[String]()
 
     // Rename symbol within entities that have the same name
     input.iterator collect {
@@ -70,12 +75,38 @@ object RenameSymbols extends PairsTransformerPass {
         val prefix = (0 to ep.length) collectFirst {
           case n if eSymbol.name startsWith ep.drop(n) => ep.take(n)
         }
-        eSymbol.name = prefix.get + eSymbol.name
-    }
 
-    assert {
-      val topNames = input map { _._1.symbol.name }
-      topNames.lengthIs == topNames.distinct.length
+        val nameWithPrefix = prefix.get + eSymbol.name
+
+        // Enforce max name length if provided
+        val entityNameWithLegalLen = cc.settings.outputNameMaxLength match {
+          case Some(limit) if nameWithPrefix.length > limit && !eSymbol.attr.topLevel.isSet =>
+            val (nameKeep, nameDrop) = nameWithPrefix.splitAt(limit - 16)
+
+            @tailrec
+            def generateUniqueShortName(salt: Int): String = {
+              val shortName = {
+                val salted = salt.toString + nameDrop
+                val md5Buf = java.security.MessageDigest.getInstance("MD5").digest(salted.getBytes)
+                val md5Str = md5Buf take 7 map { "%02x" format _ } mkString ""
+                s"${nameKeep}_h$md5Str"
+              }
+
+              // Try again on hash collision
+              if (topNames(shortName)) generateUniqueShortName(salt + 1) else shortName
+            }
+
+            generateUniqueShortName(0)
+          case _ => nameWithPrefix
+        }
+
+        eSymbol.name = entityNameWithLegalLen
+
+        if (topNames(eSymbol.name)) {
+          cc.ice(eSymbol.loc, "entity name collision")
+        }
+
+        topNames += eSymbol.name
     }
 
     input

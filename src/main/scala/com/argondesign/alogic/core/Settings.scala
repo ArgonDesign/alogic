@@ -43,6 +43,8 @@ case class Settings(
     uninitialized: UninitializedLocals.Type = UninitializedLocals.None,
     // Output prefix to use
     ensurePrefix: String = "",
+    // Maximum permitted output module name
+    outputNameMaxLength: Option[Int] = None,
     // Header text to prepend to output files
     header: String = "",
     // Colourize diagnostic messages

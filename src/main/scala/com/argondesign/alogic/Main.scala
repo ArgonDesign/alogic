@@ -89,6 +89,7 @@ object Main extends App {
     sep = cliConf.sep(),
     uninitialized = cliConf.uninitialized(),
     ensurePrefix = cliConf.ensurePrefix(),
+    outputNameMaxLength = cliConf.outputNameMaxLength.toOption,
     header = cliConf.header.toOption map { file =>
       val str = new String(Files.readAllBytes(file.toPath), StandardCharsets.UTF_8)
       if (str.endsWith("\n")) str else str + "\n"

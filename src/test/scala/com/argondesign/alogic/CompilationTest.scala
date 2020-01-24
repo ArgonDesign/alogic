@@ -97,6 +97,12 @@ trait CompilationTest
       pw.close()
   }
 
+  def checkFileExists(name: String): Unit =
+    if (!(outputs contains name)) {
+      val files = outputs.keys mkString "\n"
+      fail(s"Could not find file '$name' among \n$files\n")
+    }
+
   // Lint compiler output with verilator
   def verilatorLint(topLevel: String, tmpDir: Path): Unit = {
     // Write all files to temporary directory
@@ -332,7 +338,8 @@ trait CompilationTest
           resetStyle = resetStyle,
           resetAll = resetAll,
           shuffleEnts = configMap.getOptional[String]("shuffle-ents") map { _.toInt },
-          traceElaborate = configMap.getWithDefault("trace-elaborate", "0").toInt != 0
+          traceElaborate = configMap.getWithDefault("trace-elaborate", "0").toInt != 0,
+          outputNameMaxLength = attr.get("output-name-max-length") map { _.toInt }
         )
       )
 
@@ -409,20 +416,26 @@ trait CompilationTest
       // Check compilation status
       cc.hasError shouldBe expectedToFail
 
-      // Lint (if it's supposed to succeed and not told otherwise by the test
-      if (!expectedToFail && !(attr contains "verilator-lint-off")) {
-        withTmpDir { tmpDir =>
-          verilatorLint(attr.getOrElse("out-top", top), tmpDir)
+      if (!expectedToFail) {
+        // Check expected output file exists
+        attr get "expect-file" foreach { name =>
+          checkFileExists(name)
+        }
+
+        // Lint (if it's supposed to succeed and not told otherwise by the test
+        if (!(attr contains "verilator-lint-off")) {
+          withTmpDir { tmpDir =>
+            verilatorLint(attr.getOrElse("out-top", top), tmpDir)
+          }
+        }
+
+        // Perform equivalence check with golden reference if provided
+        attr get "fec-golden" foreach { golden =>
+          withTmpDir { tmpDir =>
+            yosysFEC(attr.getOrElse("out-top", top), golden, tmpDir)
+          }
         }
       }
-
-      // Perform equivalence check with golden reference if provided
-      if (!expectedToFail && (attr contains "fec-golden")) {
-        withTmpDir { tmpDir =>
-          yosysFEC(attr.getOrElse("out-top", top), attr("fec-golden"), tmpDir)
-        }
-      }
-
     }
   }
 }
