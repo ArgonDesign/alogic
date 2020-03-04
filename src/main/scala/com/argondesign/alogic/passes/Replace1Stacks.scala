@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2018 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2018-2019 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
@@ -19,60 +19,53 @@ import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols._
-import com.argondesign.alogic.core.Types._
 
 import scala.collection.mutable
 
 final class Replace1Stacks(implicit cc: CompilerContext) extends TreeTransformer {
 
-  // Set of stack symbols to replace
-  private[this] val stackSet = mutable.Set[TermSymbol]()
-
-  override def skip(tree: Tree): Boolean = tree match {
-    case entity: Entity => entity.declarations.isEmpty
-    case _              => false
-  }
-
-  override def enter(tree: Tree): Unit = tree match {
-    case Decl(symbol, _) =>
-      symbol.kind match {
-        case TypeStack(kind, depth) if depth.value contains BigInt(1) =>
-          // TODO: iff no access to empty/full ports
-          // Add to set of symbols to replace
-          stackSet add symbol
-          // Change type to element type
-          symbol.kind = kind
-        case _ =>
-      }
-
-    case _ =>
-  }
+  // Map from original stack variable symbol to the corresponding replacement,
+  private[this] val stackMap = mutable.LinkedHashMap[Symbol, Symbol]()
 
   override def transform(tree: Tree): Tree = {
     val result: Tree = tree match {
 
       //////////////////////////////////////////////////////////////////////////
+      // Replace the stack decl/defn with the decl/defn of the new symbol
+      //////////////////////////////////////////////////////////////////////////
+
+      // TODO: iff no access to empty/full ports
+      case DeclStack(symbol, _, depth) if depth.value contains BigInt(1) =>
+        val newSymbol = cc.newSymbolLike(symbol) tap { _.kind = symbol.kind.asStack.kind }
+        stackMap(symbol) = newSymbol
+        newSymbol.mkDecl
+
+      case DefnStack(symbol) =>
+        stackMap.get(symbol) match {
+          case None            => tree
+          case Some(newSymbol) => newSymbol.mkDefn
+        }
+
+      //////////////////////////////////////////////////////////////////////////
       // Rewrite statements
       //////////////////////////////////////////////////////////////////////////
 
-      case StmtExpr(ExprCall(ExprSelect(ExprSym(symbol: TermSymbol), "push" | "set", _), args))
-          if stackSet contains symbol => {
-        StmtAssign(ExprSym(symbol), args.head)
-      }
+      case StmtExpr(ExprCall(ExprSelect(ExprSym(s), "push" | "set", _), List(ArgP(arg)))) =>
+        stackMap.get(s) map { symbol =>
+          StmtAssign(ExprSym(symbol), arg)
+        } getOrElse tree
 
       //////////////////////////////////////////////////////////////////////////
       // Rewrite expressions
       //////////////////////////////////////////////////////////////////////////
 
-      case ExprCall(ExprSelect(ExprSym(symbol: TermSymbol), "pop" | "top", _), Nil)
-          if stackSet contains symbol => {
-        ExprSym(symbol)
-      }
+      case ExprCall(ExprSelect(ExprSym(s), "pop" | "top", _), Nil) =>
+        stackMap.get(s) map { symbol =>
+          ExprSym(symbol)
+        } getOrElse tree
 
-      case ExprSelect(ExprSym(symbol: TermSymbol), "full" | "empty", _)
-          if stackSet contains symbol => {
-        cc.ice(tree, "Replacing 1 deep steck with full access")
-      }
+      case ExprSelect(ExprSym(s), "full" | "empty", _) if stackMap contains s =>
+        cc.ice(tree, "Replacing 1 deep stack with full access")
 
       case _ => tree
     }
@@ -88,7 +81,24 @@ final class Replace1Stacks(implicit cc: CompilerContext) extends TreeTransformer
 
 }
 
-object Replace1Stacks extends TreeTransformerPass {
+object Replace1Stacks extends PairTransformerPass {
   val name = "replace-1-stacks"
-  def create(implicit cc: CompilerContext) = new Replace1Stacks
+  def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {
+    (decl, defn) match {
+      case (dcl: DeclEntity, _: DefnEntity) =>
+        if (dcl.decls.isEmpty) {
+          // If no decls, then there is nothing to do
+          (decl, defn)
+        } else {
+          // Perform the transform
+          val transformer = new Replace1Stacks
+          // First transform the decl
+          val newDecl = transformer(decl)
+          // Then transform the defn
+          val newDefn = transformer(defn)
+          (newDecl, newDefn)
+        }
+      case _ => (decl, defn)
+    }
+  }
 }

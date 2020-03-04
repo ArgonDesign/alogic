@@ -21,19 +21,20 @@ import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.unreachable
 
-private[builtins] class AtMax(implicit cc: CompilerContext) extends BuiltinPolyFunc {
+private[builtins] class AtMax(implicit cc: CompilerContext)
+    extends BuiltinPolyFunc(isValidConnLhs = true) {
 
   val name = "@max"
 
-  def returnType(args: List[Expr]) = args partialMatch {
+  def returnType(args: List[Expr]): Option[TypeFund] = args partialMatch {
     case args if args.nonEmpty && (args forall { _.tpe.isNum }) => {
       TypeNum(args forall { _.tpe.isSigned })
     }
   }
 
-  def combArgs(args: List[Expr]) = args
+  def isKnown(args: List[Expr]) = true
 
-  def fold(loc: Loc, args: List[Expr]) = {
+  def simplify(loc: Loc, args: List[Expr]) = {
     (args forall { _.isInstanceOf[ExprNum] }) option {
       args match {
         case Nil       => unreachable

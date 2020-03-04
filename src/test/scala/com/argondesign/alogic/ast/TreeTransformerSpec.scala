@@ -42,9 +42,9 @@ final class TreeTransformerSpec extends FlatSpec with AlogicTest {
     tree should matchPattern {
       case StmtBlock(
           List(
-            StmtDecl(DeclRef(Ident("bar", Nil), TypeUInt(Expr(1)), None)),
-            StmtDecl(DeclRef(Ident("bar", Nil), TypeUInt(Expr(2)), None))
-          )) =>
+            StmtDesc(DescVar(Ident("bar", Nil), ExprType(TypeUInt(w1)), None)),
+            StmtDesc(DescVar(Ident("bar", Nil), ExprType(TypeUInt(w2)), None))
+          )) if w1 == 1 && w2 == 2 =>
     }
   }
 
@@ -59,7 +59,7 @@ final class TreeTransformerSpec extends FlatSpec with AlogicTest {
 
     newTree should be theSameInstanceAs oldTree
 
-    cc.messages should have length 11
+    cc.messages should have length 12
     forAll(cc.messages) { _ should beThe[Warning]("Saw it") }
   }
 

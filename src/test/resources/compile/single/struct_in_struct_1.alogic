@@ -1,12 +1,12 @@
+struct a {
+  bool a0;
+}
+
+struct b {
+  a    b0;
+}
+
 network struct_in_struct_1 {
-  struct a {
-    bool a0;
-  }
-
-  struct b {
-    a    b0;
-  }
-
   in  b i;
   out b o;
   i -> o;

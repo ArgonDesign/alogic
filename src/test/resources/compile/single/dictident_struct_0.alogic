@@ -1,0 +1,18 @@
+network dictident_struct_0 {
+  in  bool i;
+  out bool o;
+
+  struct i_t#[0] { bool f; }
+  struct o_t#[0] { bool f; }
+
+  new network inner {
+    in  i_t#[0] ii;
+    out o_t#[0] oo;
+
+    ii -> oo;
+  }
+
+  i -> inner.ii; inner.oo -> o;
+}
+// :5: ERROR: Definition with dictionary identifier must appear directly in 'gen' loop scope.
+// :6: ERROR: Definition with dictionary identifier must appear directly in 'gen' loop scope.

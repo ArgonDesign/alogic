@@ -22,7 +22,7 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Symbols.TermSymbol
+import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Matrix
 import com.argondesign.alogic.typer.TypeAssigner
@@ -38,16 +38,16 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
   //////////////////////////////////////////////////////////////////////////
 
   // Current function we are inside of
-  private[this] var currentFunction: TermSymbol = _
+  private[this] var currentFunction: Symbol = _
 
   // Set of caller -> callee call arcs
-  private[this] val callArcs = mutable.Set.empty[(TermSymbol, TermSymbol)]
+  private[this] val callArcs = mutable.Set.empty[(Symbol, Symbol)]
 
   // Set of caller -> callee goto arcs
-  private[this] val gotoArcs = mutable.Set.empty[(TermSymbol, TermSymbol)]
+  private[this] val gotoArcs = mutable.Set.empty[(Symbol, Symbol)]
 
   // All function symbols
-  private[this] var functionSymbols: List[TermSymbol] = _
+  private[this] var functionSymbols: List[Symbol] = _
 
   //////////////////////////////////////////////////////////////////////////
   // Lazy vals used for computation in the transform section
@@ -74,12 +74,12 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
   private[this] lazy val callArcSet = if (callArcs.isEmpty) {
     // As an optimization, if we know that there are no calls, then
     // we know that there won't be any after goto conversion either
-    Set.empty[(TermSymbol, TermSymbol)]
+    Set.empty[(Symbol, Symbol)]
   } else {
     // Set of all callers of callee based on the current callArcs
     // This is forced to an immutable set to avoid iterating callArcs
     // while it is being modified in the for expression below
-    def callers(callee: TermSymbol): Set[TermSymbol] = {
+    def callers(callee: Symbol): Set[Symbol] = {
       (callArcs filter { _._2 == callee } map { _._1 }).toSet
     }
 
@@ -135,10 +135,10 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
     }
   }
 
-  private[this] def warnIgnoredStacklimitAttribute(): Unit = {
-    if (entitySymbol.attr.stackLimit.isSet) {
-      val loc = entitySymbol.loc
-      val name = entitySymbol.name
+  private[this] def warnIgnoredStacklimitAttribute(eSymbol: Symbol): Unit = {
+    if (eSymbol.attr.stackLimit.isSet) {
+      val loc = eSymbol.loc
+      val name = eSymbol.name
       cc.warning(loc, s"'stacklimit' attribute ignored on entity '${name}'")
     }
   }
@@ -197,36 +197,15 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  // Computes the value of the 'stacklimit' attribute of the entity
-  //////////////////////////////////////////////////////////////////////////////
-  private[this] lazy val stackLimit: Option[Int] = {
-    entitySymbol.attr.stackLimit.get flatMap { expr =>
-      lazy val loc = entitySymbol.loc
-      lazy val name = entitySymbol.name
-      expr.value match {
-        case Some(value) if value < 1 => {
-          cc.error(loc, s"Entity '${name}' has 'stacklimit' attribute equal to ${value}")
-          None
-        }
-        case None => {
-          cc.error(loc, s"Cannot compute value of 'stacklimit' attribute of entity '${name}'")
-          None
-        }
-        case Some(value) => Some(value.toInt)
-      }
-    }
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
   // Computes the length of the longest static path in the call graphs
   //////////////////////////////////////////////////////////////////////////////
-  private[this] def computeLongestPathLength(cost: Map[TermSymbol, Int]): Int = {
+  private[this] def computeLongestPathLength(cost: Map[Symbol, Int]): Int = {
     // Find the longest simple (non-cyclic) path in the call graph
     // Note strictly this is only an upper bound on the required
     // return stack depth if there is recursion
-    val (length, path) = {
+    val (length, _) = {
       // Longest path from 'node' that goes through only vertices that are in 'nodes'
-      def longestPathFrom(node: TermSymbol, nodes: Set[TermSymbol]): (Int, List[TermSymbol]) = {
+      def longestPathFrom(node: Symbol, nodes: Set[Symbol]): (Int, List[Symbol]) = {
         assert(!(nodes contains node))
         // Candidate successors are the vertices which are callees of this node and are in 'nodes'
         val candidates = calleeMap(node) intersect nodes
@@ -258,12 +237,30 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
   //////////////////////////////////////////////////////////////////////////////
   // The actual return stack depth required
   //////////////////////////////////////////////////////////////////////////////
-  private[this] lazy val returnStackDepth: Int = {
+  private[this] def returnStackDepth(eSymbol: Symbol): Int = {
     // Compute if the entity uses any recursion
     val hasRecursion = adjMat.diagonal.sum + indMat.diagonal.sum != 0
 
+    // Issue ignored attribute waring if required
     if (!hasRecursion) {
-      warnIgnoredStacklimitAttribute()
+      warnIgnoredStacklimitAttribute(eSymbol)
+    }
+
+    // Compute the value of the 'stacklimit' attribute of the entity
+    lazy val stackLimit: Option[Int] = {
+      eSymbol.attr.stackLimit.get flatMap { expr =>
+        lazy val loc = eSymbol.loc
+        lazy val name = eSymbol.name
+        expr.value match {
+          case Some(value) if value < 1 =>
+            cc.error(loc, s"Entity '$name' has 'stacklimit' attribute equal to $value")
+            None
+          case None =>
+            cc.error(loc, s"Cannot compute value of 'stacklimit' attribute of entity '$name'")
+            None
+          case Some(value) => Some(value.toInt)
+        }
+      }
     }
 
     // Compute the maximum number of active functions
@@ -291,71 +288,90 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
   }
 
   override protected def skip(tree: Tree): Boolean = tree match {
-    case entity: Entity if entity.functions.isEmpty => {
-      // Warn early if there are no functions at all, as
-      // we will not have an opportunity to do it later
-      warnIgnoredStacklimitAttribute()
-      true
-    }
-    case _ => false
+    case decl: DeclEntity =>
+      decl.functions.isEmpty tap {
+        case true =>
+          // Warn early if there are no functions at all, as
+          // we will not have an opportunity to do it later
+          warnIgnoredStacklimitAttribute(decl.symbol)
+        case _ =>
+      }
+    case defn: DefnEntity => defn.functions.isEmpty
+    case _: EntDefn       => false
+    case _: Ent           => true
+    case _: DefnFunc      => false
+    case _: Defn          => true
+    case _: Decl          => true
+    case _                => false
   }
 
-  override def enter(tree: Tree): Unit = tree match {
-    case entity: Entity => {
-      // Gather all function symbols from entity
-      assert(functionSymbols == null)
-      functionSymbols = for (EntFunction(Sym(symbol: TermSymbol, _), _) <- entity.functions)
-        yield symbol
+  override def enter(tree: Tree): Option[Tree] = {
+    tree match {
+
+      //////////////////////////////////////////////////////////////////////////
+      // Gather all function symbols defined in the
+      //////////////////////////////////////////////////////////////////////////
+
+      case defn: DefnEntity =>
+        assert(functionSymbols == null)
+        functionSymbols = defn.functions map { _.symbol }
+
+      //////////////////////////////////////////////////////////////////////////
+      // Note current function we are processing
+      //////////////////////////////////////////////////////////////////////////
+
+      case defn: DefnFunc =>
+        currentFunction = defn.symbol
+
+      //////////////////////////////////////////////////////////////////////////
+      // Collect the call graph edges as we go
+      //////////////////////////////////////////////////////////////////////////
+
+      case ExprCall(ref, _) if ref.tpe.isCtrlFunc =>
+        ref match {
+          case ExprSym(callee) => callArcs add (currentFunction -> callee)
+          case _               => unreachable
+        }
+
+      case StmtGoto(ExprSym(callee)) =>
+        gotoArcs add (currentFunction -> callee)
+
+      //
+      case _ =>
     }
-
-    //////////////////////////////////////////////////////////////////////////
-    // Collect the call graph edges as we go
-    //////////////////////////////////////////////////////////////////////////
-
-    case ExprCall(ref, _) if ref.tpe.isCtrlFunc =>
-      ref match {
-        case ExprSym(callee: TermSymbol) => callArcs add (currentFunction -> callee)
-        case _                           => unreachable
-      }
-
-    case StmtGoto(ExprSym(callee: TermSymbol)) => {
-      gotoArcs add (currentFunction -> callee)
-    }
-
-    case EntFunction(Sym(symbol: TermSymbol, _), _) => {
-      currentFunction = symbol
-    }
-
-    case _ =>
+    None
   }
 
   override def transform(tree: Tree): Tree = tree match {
-    case entity: Entity => {
+    case defn: DefnEntity =>
       // Ensure 'reclimit' attributes exist on all functions
       val values = recLimits.getOrElse(List.fill(nFunctions)(1))
       for ((symbol, value) <- functionSymbols zip values) {
         symbol.attr.recLimit set Expr(value)
       }
 
-      val stackDepth = returnStackDepth
+      val stackDepth = returnStackDepth(defn.symbol)
 
       if (stackDepth == 0) {
-        entity
+        defn
       } else {
-        // Allocate the return stack with generic TermSymbol entries
-        // and with the right depth. The elementType will be refined
-        // in a later pass when the state numbers are allocated
-        val depth = Expr(stackDepth) regularize entity.loc
-        val kind = TypeStack(TypeState, depth)
+        // Allocate the return stack with TypeVoid entries and with the right
+        // depth. The elementType will be refined in a later pass when the
+        // state numbers are allocated
         val name = if (stackDepth > 1) "return_stack" else "return_state"
-        val symbol = cc.newTermSymbol(name, entity.loc, kind)
-        val decl = EntDecl(Decl(symbol, None)) regularize entity.loc
-
-        entity.symbol.attr.returnStack set symbol
-
-        TypeAssigner(entity.copy(body = decl :: entity.body) withLoc entity.loc)
+        val symbol = cc.newSymbol(name, defn.loc) tap { _.kind = TypeStack(TypeVoid, stackDepth) }
+        // Set the returnStack attribute of the entity
+        defn.symbol.attr.returnStack set symbol
+        // Add th Defn of the return stack
+        val stackDefn = EntDefn(symbol.mkDefn) regularize defn.loc
+        TypeAssigner(defn.copy(body = stackDefn :: defn.body) withLoc defn.loc)
       }
-    }
+
+    case decl: DeclEntity if decl.symbol.attr.returnStack.isSet =>
+      val symbol = decl.symbol.attr.returnStack.value
+      // Add the Decl of the return stack
+      val stackDecl = symbol.mkDecl regularize decl.loc
+      TypeAssigner(decl.copy(decls = stackDecl :: decl.decls) withLoc decl.loc)
 
     case _ => tree
   }
@@ -367,7 +383,15 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
   }
 }
 
-object AnalyseCallGraph extends TreeTransformerPass {
+object AnalyseCallGraph extends PairTransformerPass {
   val name = "analyse-call-graph"
-  def create(implicit cc: CompilerContext) = new AnalyseCallGraph
+
+  def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {
+    val transformer = new AnalyseCallGraph
+    // First transform the defn
+    val newDefn = transformer(defn)
+    // Then transform the decl
+    val newDecl = transformer(decl)
+    (newDecl, newDefn)
+  }
 }

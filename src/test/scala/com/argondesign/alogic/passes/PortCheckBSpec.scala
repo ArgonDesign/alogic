@@ -18,53 +18,28 @@ package com.argondesign.alogic.passes
 import java.util.regex.Pattern
 
 import com.argondesign.alogic.AlogicTest
-import com.argondesign.alogic.SourceTextConverters._
-import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Error
-import com.argondesign.alogic.typer.Typer
-import com.argondesign.alogic.util.unreachable
 import org.scalatest.FreeSpec
 
 final class PortCheckBSpec extends FreeSpec with AlogicTest {
 
-  implicit val cc = new CompilerContext
+  implicit val cc: CompilerContext = new CompilerContext
 
-  def xform(trees: Tree*): Unit = {
-    val entities = trees map {
-      _ match {
-        case Root(_, entity: Entity) => entity
-        case entity: Entity          => entity
-        case _                       => unreachable
-      }
-    }
-
-    cc.addGlobalEntities(entities)
-
-    val passes: List[Pass] = List(
-      Checker,
-      Namer,
-      // Specialize,
-      ResolveDictPorts,
-      Typer(externalRefs = false),
-      Typer(externalRefs = true),
-      PortCheckA,
-      ReplaceUnaryTicks,
-      ResolvePolyFunc,
-      AddCasts,
-      FoldTypeRefs,
-      Desugar,
-      FoldExprInTypes,
-      InlineUnsizedConst,
-      FoldExpr(foldRefs = false),
-      PortCheckB
-    )
-
-    passes.foldLeft(trees.toList) { (t, pass) =>
-      pass(t)
-    }
-
-  }
+  protected def portCheckB(text: String): Unit = transformWithPass(
+    Namer andThen
+      Elaborate andThen
+      TypeCheck andThen
+      ReplaceUnaryTicks andThen
+      ResolvePolyFunc andThen
+      AddCasts andThen
+      Desugar andThen
+      InlineUnsizedConst andThen
+      FoldTypeAliases andThen
+      FoldExpr andThen
+      PortCheckB,
+    text
+  )
 
   "PortCheckB should" - {
 
@@ -85,20 +60,22 @@ final class PortCheckBSpec extends FreeSpec with AlogicTest {
         )
       } {
         conn in {
-          val tree = s"""|network a {
-                         |  (* unused *) in bool pia;
-                         |  (* unused *) in bool pib;
-                         |  (* unused *) out bool po;
-                         |
-                         |  (* unused *) new fsm n {
-                         |    (* unused *) in bool pi;
-                         |    (* unused *) out bool npo;
-                         |    fence { npo = pi; }
-                         |  }
-                         |
-                         |  ${conn}
-                         |}""".stripMargin.asTree[Root]
-          xform(tree)
+          portCheckB {
+            s"""
+            |network a {
+            |  in bool pia;
+            |  in bool pib;
+            |  out bool po;
+            |
+            |  new fsm n {
+            |    in bool pi;
+            |    out bool npo;
+            |    fence { npo = pi; }
+            |  }
+            |
+            |  $conn
+            |}"""
+          }
           if (msg.isEmpty) {
             cc.messages shouldBe empty
           } else {
@@ -141,29 +118,31 @@ final class PortCheckBSpec extends FreeSpec with AlogicTest {
         )
       } {
         conn in {
-          val tree = s"""|network a {
-                         |  struct ss {
-                         |    u2 z;
-                         |  }
-                         |  struct s {
-                         |    u2[2] x;
-                         |    ss    y;
-                         |  }
-                         |  const uint A = 1;
-                         |  (* unused *) in u8 pi;
-                         |  (* unused *) out u4 po;
-                         |  (* unused *) out u2[2] pov;
-                         |  (* unused *) out s pos;
-                         |
-                         |  (* unused *) new fsm n {
-                         |    (* unused *) in  s pin;
-                         |    (* unused *) out s pon;
-                         |    fence { pon = pin; }
-                         |  }
-                         |
-                         |  ${conn}
-                         |}""".stripMargin.asTree[Root]
-          xform(tree)
+          portCheckB {
+            s"""
+            |network a {
+            |  struct ss {
+            |    u2 z;
+            |  }
+            |  struct s {
+            |    u2[2] x;
+            |    ss    y;
+            |  }
+            |  const uint A = 1;
+            |  in u8 pi;
+            |  out u4 po;
+            |  out u2[2] pov;
+            |  out s pos;
+            |
+            |  new fsm n {
+            |    in  s pin;
+            |    out s pon;
+            |    fence { pon = pin; }
+            |  }
+            |
+            |  $conn
+            |}"""
+          }
           if (msg.isEmpty) {
             cc.messages shouldBe empty
           } else {
@@ -183,34 +162,36 @@ final class PortCheckBSpec extends FreeSpec with AlogicTest {
         )
       } {
         conn in {
-          val tree = s"""|network p {
-                         |  
-                         |  (* unused *) in  u8 pi;
-                         |  (* unused *) out u8 po;
-                         |
-                         |  pipeline u8 x;
-                         |  
-                         |  new fsm stage_0 {
-                         |    in u1 i;
-                         |    void main() {
-                         |      x = pi + 'i;
-                         |      write; fence;
-                         |    }
-                         |  }
-                         |  
-                         |  new fsm stage_1 {
-                         |    out u1 o;
-                         |    void main() {
-                         |      read;
-                         |      po = x;
-                         |      o = x[0];
-                         |      fence;
-                         |    }
-                         |  }
-                         |
-                         |  ${conn}
-                         |}""".stripMargin.asTree[Root]
-          xform(tree)
+          portCheckB {
+            s"""
+            |network p {
+            |
+            |  in  u8 pi;
+            |  out u8 po;
+            |
+            |  pipeline u8 x;
+            |
+            |  new fsm stage_0 {
+            |    in u1 i;
+            |    void main() {
+            |      x = pi + 'i;
+            |      write; fence;
+            |    }
+            |  }
+            |
+            |  new fsm stage_1 {
+            |    out u1 o;
+            |    void main() {
+            |      read;
+            |      po = x;
+            |      o = x[0];
+            |      fence;
+            |    }
+            |  }
+            |
+            |  $conn
+            |}"""
+          }
           cc.messages shouldBe empty
         }
       }

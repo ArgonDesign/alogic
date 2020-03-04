@@ -9,12 +9,12 @@ network dictident_defn_2 {
 }
 // @fec-golden {{{
 //  module dictident_defn_2(
-//    input  wire       i__0,
-//    input  wire [1:0] i__1,
-//    output wire       o__0,
-//    output wire [1:0] o__1
+//    input  wire       i__N_0,
+//    input  wire [1:0] i__N_1,
+//    output wire       o__N_0,
+//    output wire [1:0] o__N_1
 //  );
-//    assign o__0 = i__0;
-//    assign o__1 = i__1;
+//    assign o__N_0 = i__N_0;
+//    assign o__N_1 = i__N_1;
 //  endmodule
 // }}}

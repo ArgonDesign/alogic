@@ -20,17 +20,16 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
 
-private[builtins] class AtRandbit(implicit cc: CompilerContext) extends BuiltinPolyFunc {
+private[builtins] class AtRandbit(implicit cc: CompilerContext)
+    extends BuiltinPolyFunc(isValidConnLhs = false) {
 
   val name = "@randbit"
 
-  def returnType(args: List[Expr]) = args partialMatch {
-    case Nil => TypeUInt(Expr(1) regularize Loc.synthetic)
+  def returnType(args: List[Expr]): Option[TypeFund] = args partialMatch {
+    case Nil => TypeUInt(1)
   }
 
-  override def isValidConnectLhs(args: List[Expr]) = false
+  def isKnown(args: List[Expr]) = false
 
-  def combArgs(args: List[Expr]) = Nil
-
-  def fold(loc: Loc, args: List[Expr]) = None
+  def simplify(loc: Loc, args: List[Expr]) = None
 }

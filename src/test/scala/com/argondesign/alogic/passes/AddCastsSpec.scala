@@ -16,35 +16,31 @@
 package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.AlogicTest
-import com.argondesign.alogic.SourceTextConverters._
 import com.argondesign.alogic.ast.Trees.Expr.ImplicitConversions._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Warning
+import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.typer.Typer
+import com.argondesign.alogic.core.Warning
 import org.scalatest.FreeSpec
 
 final class AddCastsSpec extends FreeSpec with AlogicTest {
 
-  implicit val cc = new CompilerContext
-  cc.postSpecialization = true
+  implicit val cc: CompilerContext = new CompilerContext
 
-  val namer = new Namer
-  val typer = new Typer
-  val addCasts = new AddCasts
-
-  def xform(tree: Tree) = {
-    tree match {
-      case Root(_, entity: Entity) => cc.addGlobalEntity(entity)
-      case entity: Entity          => cc.addGlobalEntity(entity)
-      case _                       =>
-    }
-    val node = tree rewrite namer match {
-      case Root(_, entity) => entity
-      case other           => other
-    }
-    node rewrite typer rewrite addCasts
+  private def addCasts(text: String): Thicket = Thicket {
+    transformWithPass(
+      Namer andThen
+        Elaborate andThen
+        TypeCheck andThen
+        ResolvePolyFunc andThen
+        AddCasts,
+      text
+    ) map {
+      _ flatMap {
+        case (decl, defn) => List(decl, defn)
+      }
+    } getOrElse Nil
   }
 
   "AddCasts should automatically insert casts" - {
@@ -65,17 +61,21 @@ final class AddCastsSpec extends FreeSpec with AlogicTest {
             )
           } {
             text in {
-              val expr = text.asTree[Expr]
-              xform(expr) match {
-                case result @ ExprBinary(lhs, _, rhs) =>
-                  res match {
-                    case Some(Left(l))  => lhs shouldBe l
-                    case Some(Right(r)) => rhs shouldBe r
-                    case None           => result shouldBe expr
-                  }
-                  cc.messages filterNot { _.isInstanceOf[Warning] } shouldBe empty
-                case _ => fail()
+              addCasts {
+                s"""
+                |void function() {
+                |  $$display("", $text);
+                |}"""
+              } getFirst {
+                case expr: ExprBinary => expr
+              } tap { expr =>
+                res match {
+                  case Some(Left(l))  => expr.lhs shouldBe l
+                  case Some(Right(r)) => expr.rhs shouldBe r
+                  case None           =>
+                }
               }
+              cc.messages filter { !_.isInstanceOf[Warning] } shouldBe empty
             }
           }
         }
@@ -96,17 +96,21 @@ final class AddCastsSpec extends FreeSpec with AlogicTest {
           )
         } {
           text in {
-            val expr = text.asTree[Expr]
-            xform(expr) match {
-              case result @ ExprTernary(_, lhs, rhs) =>
-                res match {
-                  case Some(Left(l))  => lhs shouldBe l
-                  case Some(Right(r)) => rhs shouldBe r
-                  case None           => result shouldBe expr
-                }
-                cc.messages shouldBe empty
-              case _ => fail()
+            addCasts {
+              s"""
+              |void function() {
+              |  $$display("", $text);
+              |}"""
+            } getFirst {
+              case expr: ExprTernary => expr
+            } tap { expr =>
+              res match {
+                case Some(Left(l))  => expr.thenExpr shouldBe l
+                case Some(Right(r)) => expr.elseExpr shouldBe r
+                case None           =>
+              }
             }
+            cc.messages shouldBe empty
           }
         }
       }
@@ -126,25 +130,26 @@ final class AddCastsSpec extends FreeSpec with AlogicTest {
         for {
           (index, res) <- List(
             // format: off
-            ("u8 a; (* unused *) u1 b = a[0]", List(ExprCast(TypeUInt(3), 0))),
-            ("u9 a; (* unused *) u1 b = a[0]", List(ExprCast(TypeUInt(4), 0))),
-            ("u32[8] a; (* unused *) u32 b = a[0]", List(ExprCast(TypeUInt(3), 0))),
-            ("u33[9] a; (* unused *) u33 b = a[0]", List(ExprCast(TypeUInt(4), 0))),
-            ("u32[8] a; (* unused *) u1 b = a[0][2]", List(ExprCast(TypeUInt(5), 2), ExprCast(TypeUInt(3), 0))),
-            ("u33[9] a; (* unused *) u1 b = a[0][2]", List(ExprCast(TypeUInt(6), 2), ExprCast(TypeUInt(4), 0)))
+            ("u8 a; u1 b = a[0]", List(ExprCast(TypeUInt(3), 0))),
+            ("u9 a; u1 b = a[0]", List(ExprCast(TypeUInt(4), 0))),
+            ("u32[8] a; u32 b = a[0]", List(ExprCast(TypeUInt(3), 0))),
+            ("u33[9] a; u33 b = a[0]", List(ExprCast(TypeUInt(4), 0))),
+            ("u32[8] a; u1 b = a[0][2]", List(ExprCast(TypeUInt(5), 2), ExprCast(TypeUInt(3), 0))),
+            ("u33[9] a; u1 b = a[0][2]", List(ExprCast(TypeUInt(6), 2), ExprCast(TypeUInt(4), 0)))
             // format: on
           )
         } {
           index in {
-            val entity = s"""|fsm f {
-                             |  void main() {
-                             |    ${index};
-                             |    fence;
-                             |  }
-                             |}""".stripMargin.asTree[Entity]
-            val tree = xform(entity)
-            val expr = tree getFirst { case Decl(_, Some(i)) => i }
-            check(expr, res)
+            addCasts {
+              s"""
+              |void function () {
+              |  $index;
+              |}"""
+            } getFirst {
+              case DefnVar(_, Some(i)) => i
+            } tap {
+              check(_, res)
+            }
             cc.messages shouldBe empty
           }
         }
@@ -182,15 +187,16 @@ final class AddCastsSpec extends FreeSpec with AlogicTest {
           )
         } {
           slice in {
-            val entity = s"""|fsm f {
-                             |  void main() {
-                             |    ${slice};
-                             |    fence;
-                             |  }
-                             |}""".stripMargin.asTree[Entity]
-            val tree = xform(entity)
-            val expr = tree getFirst { case Decl(_, Some(i)) => i }
-            check(expr, res)
+            addCasts {
+              s"""
+              |void function() {
+              |  $slice;
+              |}"""
+            } getFirst {
+              case DefnVar(_, Some(i)) => i
+            } tap {
+              check(_, res)
+            }
             cc.messages shouldBe empty
           }
         }
@@ -200,28 +206,28 @@ final class AddCastsSpec extends FreeSpec with AlogicTest {
         for {
           (decl, pattern) <- List[(String, PartialFunction[Any, Unit])](
             // format: off
-            ("(* unused *) i8 a = 2s", { case ExprCast(TypeSInt(Expr(8)), ExprNum(true, v)) if v == 2 => }),
-            ("(* unused *) u8 a = 2s", { case ExprCast(TypeSInt(Expr(8)), ExprNum(true, v)) if v == 2 => }),
-            ("(* unused *) i7 a = 2", { case ExprCast(TypeUInt(Expr(7)), ExprNum(false, v)) if v == 2 => }),
-            ("(* unused *) u7 a = 2", { case ExprCast(TypeUInt(Expr(7)), ExprNum(false, v)) if v == 2 => }),
-            ("(* unused *) int  a = 2s", { case ExprNum(true, v) if v == 2 => }),
-            ("(* unused *) uint a = 2s", { case ExprCall(ExprSym(s), List(ExprNum(true, v))) if v == 2 && s.name == "$unsigned" => }),
-            ("(* unused *) int  a = 2", { case ExprCall(ExprSym(s), List(ExprNum(false, v))) if v == 2 && s.name == "$signed" => }),
-            ("(* unused *) uint a = 2", { case ExprNum(false, v) if v == 2 => })
+            ("i8 a = 2s", { case ExprCast(TypeSInt(w), ExprNum(true, v)) if v == 2 && w == 8 => }),
+            ("u8 a = 2s", { case ExprCast(TypeSInt(w), ExprNum(true, v)) if v == 2 && w == 8 => }),
+            ("i7 a = 2", { case ExprCast(TypeUInt(w), ExprNum(false, v)) if v == 2 && w == 7 => }),
+            ("u7 a = 2", { case ExprCast(TypeUInt(w), ExprNum(false, v)) if v == 2 && w == 7 => }),
+            ("int  a = 2s", { case ExprNum(true, v) if v == 2 => }),
+            ("uint a = 2s", { case ExprCall(ExprSym(Symbol("$unsigned")), List(ArgP(ExprNum(true, v)))) if v == 2 => }),
+            ("int  a = 2", { case ExprCall(ExprSym(Symbol("$signed")), List(ArgP(ExprNum(false, v)))) if v == 2 => }),
+            ("uint a = 2", { case ExprNum(false, v) if v == 2 => })
             // format: on
           )
         } {
           decl in {
-            val entity = s"""|fsm f {
-                             |  void main() {
-                             |    ${decl}; 
-                             |    fence;
-                             |  }
-                             |}""".stripMargin.asTree[Entity]
-            val tree = xform(entity)
-            val init = tree getFirst { case Decl(_, Some(i)) => i }
-            cc.messages foreach println
-            init should matchPattern(pattern)
+            addCasts {
+              s"""
+              |void function() {
+              |  $decl;
+              |}"""
+            } getFirst {
+              case DefnVar(_, Some(i)) => i
+            } tap {
+              _ should matchPattern(pattern)
+            }
             cc.messages shouldBe empty
           }
         }
@@ -241,24 +247,23 @@ final class AddCastsSpec extends FreeSpec with AlogicTest {
           )
         } {
           assign in {
-            val entity = s"""|fsm f {
-                             |  void main() {
-                             |    ${assign};
-                             |    fence;
-                             |  }
-                             |}""".stripMargin.asTree[Entity]
-            val tree = xform(entity)
-            val rhs = tree getFirst {
+            addCasts {
+              s"""
+              |void function() {
+              |  $assign;
+              |}"""
+            } getFirst {
               case StmtAssign(_, rhs)    => rhs
               case StmtUpdate(_, _, rhs) => rhs
+            } tap {
+              _ shouldBe res
             }
-            rhs shouldBe res
             cc.messages shouldBe empty
           }
         }
       }
 
-      "function argumentss expressions" - {
+      "function argument expressions" - {
         for {
           (call, res) <- List(
             // format: off
@@ -272,18 +277,21 @@ final class AddCastsSpec extends FreeSpec with AlogicTest {
           )
         } {
           call in {
-            val entity = s"""|fsm f {
-                             |  (* unused *) out sync bool a;
-                             |  (* unused *) out sync u10 b;
-                             |  (* unused *) out sync i20 c;
-                             |  void main() {
-                             |    ${call};
-                             |    fence;
-                             |  }
-                             |}""".stripMargin.asTree[Entity]
-            val tree = xform(entity)
-            val ExprCall(_, List(expr)) = tree getFirst { case StmtExpr(expr) => expr }
-            expr shouldBe res
+            addCasts {
+              s"""|fsm f {
+               |  out sync bool a;
+               |  out sync u10 b;
+               |  out sync i20 c;
+               |  void main() {
+               |    ${call};
+               |    fence;
+               |  }
+               |}"""
+            } getFirst {
+              case ExprCall(_, List(ArgP(expr))) => expr
+            } tap {
+              _ shouldBe res
+            }
             cc.messages shouldBe empty
           }
         }

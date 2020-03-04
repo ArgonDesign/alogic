@@ -10,7 +10,7 @@ network dictident_instance_4 {
   inst#[1].oo -> o_b;
 
   gen for (uint N < 2) {
-    inst#[N] = new inner();
+    inst#[N] = new inner;
   }
 
   network inner {

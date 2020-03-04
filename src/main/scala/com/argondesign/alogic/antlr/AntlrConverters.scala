@@ -72,7 +72,7 @@ object AntlrConverters extends {
     def text: String = node.getText
 
     def children: List[ParseTree] = {
-      for (n <- 0 to node.getChildCount - 1)
+      for (n <- 0 until node.getChildCount)
         yield node.getChild(n)
     }.toList
   }

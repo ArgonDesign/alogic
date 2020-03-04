@@ -1,0 +1,53 @@
+fsm specialize_hard_0 {
+  // Putting this under a 'gen if' makes initial specialization of 'other'
+  // succeed but 'main' fail, resulting on having to discard the 
+  // specialization of 'other' as it is dependent on 'main'
+  gen if (true) {
+    in bool i;
+  }
+  out wire bool o;
+
+  void main() {
+    o = i;
+    goto other;
+  }
+
+  void other() {
+    o = 0;
+    goto main;
+  }
+}
+// @fec-golden {{{
+//  module specialize_hard_0(
+//    input   wire  clk,
+//    input   wire  rst,
+//    input   wire  i,
+//    output  reg   o
+//  );
+//
+//    reg state_q;
+//    reg state_d;
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        state_q <= 1'd0;
+//      end else begin
+//        state_q <= state_d;
+//      end
+//    end
+//
+//    always @* begin
+//      case (state_q)
+//        default: begin
+//          o = i;
+//          state_d = 1'd1;
+//        end
+//        1'd1: begin
+//          o = 1'd0;
+//          state_d = 1'd0;
+//        end
+//      endcase
+//    end
+//
+//  endmodule
+// }}}

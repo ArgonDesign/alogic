@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2018 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2018-2020 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
@@ -17,14 +17,15 @@ package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.StorageTypes.StorageTypeReg
-import com.argondesign.alogic.core.StorageTypes.StorageTypeWire
-import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.SramFactory
+import com.argondesign.alogic.core.StorageTypes.StorageTypeReg
+import com.argondesign.alogic.core.StorageTypes.StorageTypeWire
+import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.SyncRegFactory
 import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.core.enums.EntityVariant
 import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
@@ -32,11 +33,13 @@ import scala.collection.mutable.ListBuffer
 
 final class SramBuilder {
   // Re-use SRAM entities of identical sizes
-  val store = mutable.Map[(Int, Int), Entity]()
+  private val store = mutable.Map[(Int, Int), (DeclEntity, DefnEntity)]()
 
-  def apply(width: Int, depth: Int)(implicit cc: CompilerContext): Entity = synchronized {
-    lazy val sram = SramFactory(s"sram_${depth}x${width}", Loc.synthetic, width, depth)
-    store.getOrElseUpdate((width, depth), sram)
+  def srams: Iterable[(DeclEntity, DefnEntity)] = store.values
+
+  def apply(width: Int, depth: Int)(implicit cc: CompilerContext): Symbol = synchronized {
+    lazy val sram = SramFactory(s"sram_${depth}x$width", Loc.synthetic, width, depth)
+    store.getOrElseUpdate((width, depth), sram)._1.symbol
   }
 }
 
@@ -49,169 +52,162 @@ final class LowerSrams(
 
   // Collection of various bits required to implement SRAMs
   // These are all the possible components required
-  //  sEntity: EntityLowered,  // The SRAM entity
-  //  sSymbol: TermSymbol,     // The instance of the SRAM entity above
-  //  rSymbol: TermSymbol,     // If the SRAM is of struct type, this is the local rdata signal
-  //  oEntity: EntityLowered], // If the output is registered, this is the SyncReg entity
-  //  oSymbol: TermSymbol      // If the output is registered, the instance of the SyncReg entity above
+  //  sSymbol: Symbol,        // The instance of the SRAM entity above
+  //  rSymbol: Symbol,        // If the SRAM is of struct type, this is the local rdata signal
+  //  oEntity: (Decl, Defn),  // If the output is registered, this is the SyncReg entity
+  //  oSymbol: Symbol       // If the output is registered, the instance of the SyncReg entity above
   private sealed trait SramParts
+
+  // TODO: sEntity is not unused in these
 
   // SRAM with wire driver and int/uint element type
   private case class SramWireInt(
-      sEntity: Entity,
-      sSymbol: TermSymbol
+      sSymbol: Symbol
   ) extends SramParts
   // SRAM with wire driver and struct element type
   private case class SramWireStruct(
-      sEntity: Entity,
-      sSymbol: TermSymbol,
-      rSymbol: TermSymbol
+      sSymbol: Symbol,
+      rSymbol: Symbol
   ) extends SramParts
   // SRAM with reg driver and int/uint element type
   private case class SramRegInt(
-      sEntity: Entity,
-      sSymbol: TermSymbol,
-      oEntity: Entity,
-      oSymbol: TermSymbol
+      sSymbol: Symbol,
+      oEntity: (DeclEntity, DefnEntity),
+      oSymbol: Symbol
   ) extends SramParts
   // SRAM with reg driver and struct element type
   private case class SramRegStruct(
-      sEntity: Entity,
-      sSymbol: TermSymbol,
-      rSymbol: TermSymbol,
-      oEntity: Entity,
-      oSymbol: TermSymbol
+      sSymbol: Symbol,
+      rSymbol: Symbol,
+      oEntity: (DeclEntity, DefnEntity),
+      oSymbol: Symbol
   ) extends SramParts
 
   // Extractors for transposed views of the above
   object SramWire {
-    def unapply(parts: SramParts): Option[(Entity, TermSymbol)] = parts match {
-      case SramWireInt(sEntity, sSymbol)       => Some((sEntity, sSymbol))
-      case SramWireStruct(sEntity, sSymbol, _) => Some((sEntity, sSymbol))
-      case _                                   => None
+    def unapply(parts: SramParts): Option[Symbol] = parts match {
+      case SramWireInt(sSymbol)       => Some(sSymbol)
+      case SramWireStruct(sSymbol, _) => Some(sSymbol)
+      case _                          => None
     }
   }
 
   object SramReg {
-    def unapply(parts: SramParts): Option[(Entity, TermSymbol, Entity, TermSymbol)] =
+    def unapply(parts: SramParts): Option[(Symbol, (DeclEntity, DefnEntity), Symbol)] =
       parts match {
-        case SramRegInt(sEntity, sSymbol, oEntity, oSymbol) =>
-          Some((sEntity, sSymbol, oEntity, oSymbol))
-        case SramRegStruct(sEntity, sSymbol, _, oEntity, oSymbol) =>
-          Some((sEntity, sSymbol, oEntity, oSymbol))
-        case _ => None
+        case SramRegInt(sSymbol, oEntity, oSymbol)       => Some((sSymbol, oEntity, oSymbol))
+        case SramRegStruct(sSymbol, _, oEntity, oSymbol) => Some((sSymbol, oEntity, oSymbol))
+        case _                                           => None
       }
   }
 
   object SramInt {
-    def unapply(parts: SramParts): Option[(Entity, TermSymbol)] = parts match {
-      case SramWireInt(sEntity, sSymbol)      => Some((sEntity, sSymbol))
-      case SramRegInt(sEntity, sSymbol, _, _) => Some((sEntity, sSymbol))
-      case _                                  => None
+    def unapply(parts: SramParts): Option[Symbol] = parts match {
+      case SramWireInt(sSymbol)      => Some(sSymbol)
+      case SramRegInt(sSymbol, _, _) => Some(sSymbol)
+      case _                         => None
     }
   }
 
   object SramStruct {
-    def unapply(parts: SramParts): Option[(Entity, TermSymbol, TermSymbol)] = parts match {
-      case SramWireStruct(sEntity, sSymbol, rSymbol)      => Some((sEntity, sSymbol, rSymbol))
-      case SramRegStruct(sEntity, sSymbol, rSymbol, _, _) => Some((sEntity, sSymbol, rSymbol))
-      case _                                              => None
+    def unapply(parts: SramParts): Option[(Symbol, Symbol)] = parts match {
+      case SramWireStruct(sSymbol, rSymbol)      => Some((sSymbol, rSymbol))
+      case SramRegStruct(sSymbol, rSymbol, _, _) => Some((sSymbol, rSymbol))
+      case _                                     => None
     }
   }
 
   // Map from original sram variable symbol to the corresponding SramKit,
-  private[this] val sramMap = mutable.LinkedHashMap[TermSymbol, SramParts]()
+  private[this] val sramMap = mutable.LinkedHashMap[Symbol, SramParts]()
 
   // Stack of extra statements to emit when finished with a statement
   private[this] val extraStmts = mutable.Stack[mutable.ListBuffer[Stmt]]()
 
-  override def skip(tree: Tree): Boolean = tree match {
-    case entity: Entity => entitySymbol.attr.variant.value == "network"
-    case _              => false
-  }
+  override def enter(tree: Tree): Option[Tree] = {
+    tree match {
+      case Decl(symbol) =>
+        symbol.kind match {
+          case TypeSram(kind, depth, st) =>
+            val loc = tree.loc
+            val name = symbol.name
 
-  override def enter(tree: Tree): Unit = tree match {
-
-    case Decl(symbol, _) =>
-      symbol.kind match {
-        case TypeSram(kind, depthExpr, st) =>
-          val loc = tree.loc
-          val name = symbol.name
-
-          // Build the sram entity
-          val sEntity = {
-            val width = kind.width
-            val depth = depthExpr.value match {
-              case Some(v) => v.toInt
-              case None    => cc.fatal(symbol, "Depth of SRAM is not a compile time constant")
-            }
-            // TODO: signed/unsigned
-            sramBuilder(width, depth)
-          }
-
-          // Create the instance
-          val sSymbol = cc.newTermSymbol("sram" + sep + name, loc, TypeInstance(sEntity.symbol))
-
-          // If this is an SRAM with an underlying struct type, we need a new
-          // signal to unpack the read data into, allocate this here
-          lazy val rSymbol = cc.newTermSymbol(name + sep + "rdata", loc, kind)
-
-          // If the sram is driven through registers, we need a SyncReg to drive it
-          lazy val (oEntity, oSymbol) = {
-            assert(st == StorageTypeReg)
-
-            // Build the SyncReg entity
-            val oEntity = {
-              val oName = entitySymbol.name + sep + "or" + sep + name
-              val weKind = sSymbol.kind.asInstanceOf[TypeInstance]("we").get.underlying
-              val addrKind = sSymbol.kind.asInstanceOf[TypeInstance]("addr").get.underlying
-              val oKind =
-                TypeStruct(oName, List("we", "addr", "wdata"), List(weKind, addrKind, kind))
-              SyncRegFactory(oName, loc, oKind)
-            }
+            // Build the sram entity             // TODO: signed/unsigned
+            val eSymbol = sramBuilder(kind.width.toInt, depth.toInt)
 
             // Create the instance
-            val oSymbol = cc.newTermSymbol("or" + sep + name, loc, TypeInstance(oEntity.symbol))
+            val sSymbol = cc.newSymbol("sram" + sep + name, loc) tap {
+              _.kind = eSymbol.kind.asType.kind
+            }
 
-            entitySymbol.attr.interconnectClearOnStall.append((oSymbol, s"ip${sep}valid"))
+            // If this is an SRAM with an underlying struct type, we need a new
+            // signal to unpack the read data into, allocate this here
+            lazy val rSymbol = cc.newSymbol(name + sep + "rdata", loc) tap { _.kind = kind }
 
-            (oEntity, oSymbol)
-          }
+            // If the sram is driven through registers, we need a SyncReg to drive it
+            lazy val (oEntity, oSymbol) = {
+              assert(st == StorageTypeReg)
 
-          if (st == StorageTypeWire) {
-            // Clear ce when the entity stalls
-            entitySymbol.attr.interconnectClearOnStall.append((sSymbol, "ce"))
-          }
+              // Build the SyncReg entity
+              val oEntity = {
+                val oName = entitySymbol.name + sep + "or" + sep + name
+                val weKind = sSymbol.kind.asEntity("we").get.kind.underlying
+                val addrKind = sSymbol.kind.asEntity("addr").get.kind.underlying
+                val weSymbol = cc.newSymbol("we", tree.loc) tap { _.kind = weKind }
+                val addrSymbol = cc.newSymbol("addr", tree.loc) tap { _.kind = addrKind }
+                val wdataSymbol = cc.newSymbol("wdata", tree.loc) tap { _.kind = kind }
+                val oSymbol = cc.newSymbol(oName, tree.loc)
+                val oKind = TypeType(TypeRecord(oSymbol, List(weSymbol, addrSymbol, wdataSymbol)))
+                oSymbol.kind = oKind
+                SyncRegFactory(oName, loc, oKind.kind)
+              }
 
-          // We now have everything we possibly need, collect the relevant parts
-          val sramParts = (kind, st) match {
-            case (_: TypeInt, StorageTypeWire) =>
-              SramWireInt(sEntity, sSymbol)
-            case (_: TypeStruct | _: TypeVector, StorageTypeWire) =>
-              SramWireStruct(sEntity, sSymbol, rSymbol)
-            case (_: TypeInt, StorageTypeReg) =>
-              SramRegInt(sEntity, sSymbol, oEntity, oSymbol)
-            case (_: TypeStruct | _: TypeVector, StorageTypeReg) =>
-              SramRegStruct(sEntity, sSymbol, rSymbol, oEntity, oSymbol)
-            case _ =>
-              cc.ice(tree, "Don't know how to build SRAM of type", kind.toSource)
-          }
+              // Create the instance
+              val oSymbol = cc.newSymbol("or" + sep + name, loc) tap {
+                _.kind = oEntity._1.symbol.kind.asType.kind
+              }
 
-          sramMap(symbol) = sramParts
-        case _ =>
-      }
+              entitySymbol.attr.interconnectClearOnStall.append((oSymbol, s"ip${sep}valid"))
 
-    ////////////////////////////////////////////////////////////////////////////
-    // FlowControlTypeReady
-    ////////////////////////////////////////////////////////////////////////////
+              (oEntity, oSymbol)
+            }
 
-    case _: Stmt => {
-      // Whenever we enter a new statement, add a new buffer to
-      // store potential extra statements
-      extraStmts.push(ListBuffer())
+            if (st == StorageTypeWire) {
+              // Clear ce when the entity stalls
+              entitySymbol.attr.interconnectClearOnStall.append((sSymbol, "ce"))
+            }
+
+            // We now have everything we possibly need, collect the relevant parts
+            val sramParts = (kind, st) match {
+              case (_: TypeInt, StorageTypeWire) =>
+                SramWireInt(sSymbol)
+              case (_: TypeRecord | _: TypeVector, StorageTypeWire) =>
+                SramWireStruct(sSymbol, rSymbol)
+              case (_: TypeInt, StorageTypeReg) =>
+                SramRegInt(sSymbol, oEntity, oSymbol)
+              case (_: TypeRecord | _: TypeVector, StorageTypeReg) =>
+                SramRegStruct(sSymbol, rSymbol, oEntity, oSymbol)
+              case _ =>
+                cc.ice(tree, "Don't know how to build SRAM of type", kind.toSource)
+            }
+
+            sramMap(symbol) = sramParts
+
+          //
+          case _ =>
+        }
+
+      ////////////////////////////////////////////////////////////////////////////
+      // FlowControlTypeReady
+      ////////////////////////////////////////////////////////////////////////////
+
+      case _: Stmt =>
+        // Whenever we enter a new statement, add a new buffer to
+        // store potential extra statements
+        extraStmts.push(ListBuffer())
+
+      case _ =>
     }
-
-    case _ =>
+    None
   }
 
   private[this] def assignTrue(expr: Expr) = StmtAssign(expr, ExprInt(false, 1, 1))
@@ -224,9 +220,9 @@ final class LowerSrams(
       // Rewrite statements
       //////////////////////////////////////////////////////////////////////////
 
-      case StmtExpr(ExprCall(ExprSelect(ExprSym(symbol: TermSymbol), "read", _), List(addr))) => {
+      case StmtExpr(ExprCall(ExprSelect(ExprSym(symbol), "read", _), List(ArgP(addr)))) =>
         sramMap.get(symbol) map {
-          case SramWire(_, iSymbol) =>
+          case SramWire(iSymbol) =>
             val iRef = ExprSym(iSymbol)
             StmtBlock(
               List(
@@ -234,11 +230,11 @@ final class LowerSrams(
                 assignFalse(iRef select "we"),
                 StmtAssign(iRef select "addr", addr)
               ))
-          case SramReg(_, _, _, oSymbol) =>
+          case SramReg(_, _, oSymbol) =>
             symbol.kind match {
               case TypeSram(kind, _, _) =>
                 val oRef = ExprSym(oSymbol)
-                val data = ExprInt(false, kind.width, 0) // Don't care
+                val data = ExprInt(false, kind.width.toInt, 0) // Don't care
                 StmtBlock(
                   List(
                     assignTrue(oRef select s"ip${sep}valid"),
@@ -249,12 +245,11 @@ final class LowerSrams(
         } getOrElse {
           tree
         }
-      }
 
       case StmtExpr(
-          ExprCall(ExprSelect(ExprSym(symbol: TermSymbol), "write", _), List(addr, data))) => {
+          ExprCall(ExprSelect(ExprSym(symbol), "write", _), List(ArgP(addr), ArgP(data)))) =>
         sramMap.get(symbol) map {
-          case SramWire(_, iSymbol) => {
+          case SramWire(iSymbol) =>
             val iRef = ExprSym(iSymbol)
             StmtBlock(
               List(
@@ -263,94 +258,82 @@ final class LowerSrams(
                 StmtAssign(iRef select "addr", addr),
                 StmtAssign(iRef select "wdata", data)
               ))
-          }
-          case SramReg(_, _, _, oSymbol) => {
+          case SramReg(_, _, oSymbol) =>
             val oRef = ExprSym(oSymbol)
             StmtBlock(
               List(
                 assignTrue(oRef select s"ip${sep}valid"),
                 StmtAssign(oRef select "ip", ExprCat(List(ExprInt(false, 1, 1), addr, data)))
               ))
-          }
         } getOrElse {
           tree
         }
-      }
 
       //////////////////////////////////////////////////////////////////////////
       // Rewrite expressions
       //////////////////////////////////////////////////////////////////////////
 
-      case ExprSelect(ExprSym(symbol: TermSymbol), "rdata", _) => {
+      case ExprSelect(ExprSym(symbol), "rdata", _) =>
         sramMap.get(symbol) map {
-          case SramInt(_, iSymbol)       => ExprSym(iSymbol) select "rdata"
-          case SramStruct(_, _, rSymbol) => ExprSym(rSymbol)
+          case SramInt(iSymbol)       => ExprSym(iSymbol) select "rdata"
+          case SramStruct(_, rSymbol) => ExprSym(rSymbol)
         } getOrElse {
           tree
         }
-      }
 
       //////////////////////////////////////////////////////////////////////////
-      // Add sram entities
+      // Replace Sram Decl/Defn with the Decl/Defn of the expanded symbols
       //////////////////////////////////////////////////////////////////////////
 
-      case entity: Entity if sramMap.nonEmpty => {
-        val newBody = List from {
-          {
-            // Add rdata unpacking declarations
-            sramMap.valuesIterator collect {
-              case SramStruct(_, _, rSymbol) => EntDecl(Decl(rSymbol, None))
-            }
-          } concat {
-            // Add instances
-            sramMap.valuesIterator flatMap {
-              case SramWire(sEntity, sSymbol) =>
-                Iterator.single(EntInstance(Sym(sSymbol, Nil), Sym(sEntity.symbol, Nil), Nil, Nil))
-              case SramReg(sEntity, sSymbol, oEntity, oSymbol) =>
-                Iterator(EntInstance(Sym(sSymbol, Nil), Sym(sEntity.symbol, Nil), Nil, Nil),
-                         EntInstance(Sym(oSymbol, Nil), Sym(oEntity.symbol, Nil), Nil, Nil))
-            }
-          } concat {
-            // Add connects for read data unpacking
-            sramMap.valuesIterator collect {
-              case SramStruct(_, sS, rS) =>
-                EntConnect(ExprSym(sS) select "rdata", List(ExprSym(rS)))
-            }
-          } concat {
-            // Add connects for reg driver
-            {
-              sramMap.valuesIterator collect {
-                case SramReg(_, sS, _, oS) =>
-                  Iterator(
-                    EntConnect(ExprSym(oS) select s"op${sep}valid", List(ExprSym(sS) select "ce")),
-                    EntConnect(ExprSym(oS) select s"op", List(ExprCat {
-                      List(ExprSym(sS) select "we",
-                           ExprSym(sS) select "addr",
-                           ExprSym(sS) select "wdata")
-                    }))
-                  )
-              }
-            }.flatten
-          } concat {
-            // Drop sram, declarations
-            entity.body.iterator filter {
-              case EntDecl(Decl(symbol, _)) => !symbol.kind.isSram
-              case _                        => true
-            }
+      case DeclSram(symbol, _, _, _) =>
+        val newSymbols = sramMap(symbol) match {
+          case SramWireInt(sSymbol)                        => List(sSymbol)
+          case SramWireStruct(sSymbol, rSymbol)            => List(sSymbol, rSymbol)
+          case SramRegInt(sSymbol, _, oSymbol)             => List(sSymbol, oSymbol)
+          case SramRegStruct(sSymbol, rSymbol, _, oSymbol) => List(sSymbol, rSymbol, oSymbol)
+        }
+        Thicket(newSymbols map { _.mkDecl })
+
+      case DefnSram(symbol) =>
+        val newSymbols = sramMap(symbol) match {
+          case SramWireInt(sSymbol)                        => List(sSymbol)
+          case SramWireStruct(sSymbol, rSymbol)            => List(sSymbol, rSymbol)
+          case SramRegInt(sSymbol, _, oSymbol)             => List(sSymbol, oSymbol)
+          case SramRegStruct(sSymbol, rSymbol, _, oSymbol) => List(sSymbol, rSymbol, oSymbol)
+        }
+        Thicket(newSymbols map { _.mkDefn })
+
+      //////////////////////////////////////////////////////////////////////////
+      // Add sram connections
+      //////////////////////////////////////////////////////////////////////////
+
+      case defn: DefnEntity if sramMap.nonEmpty =>
+        val connects = {
+          // Add connects for read data unpacking
+          sramMap.valuesIterator collect {
+            case SramStruct(sS, rS) =>
+              EntConnect(ExprSym(sS) select "rdata", List(ExprSym(rS)))
           }
+        } concat {
+          // Add connects for reg driver
+          {
+            sramMap.valuesIterator collect {
+              case SramReg(sS, _, oS) =>
+                Iterator(
+                  EntConnect(ExprSym(oS) select s"op${sep}valid", List(ExprSym(sS) select "ce")),
+                  EntConnect(ExprSym(oS) select s"op", List(ExprCat {
+                    List(ExprSym(sS) select "we",
+                         ExprSym(sS) select "addr",
+                         ExprSym(sS) select "wdata")
+                  }))
+                )
+            }
+          }.flatten
         }
 
-        val newEntity = entity.copy(body = newBody)
+        defn.copy(body = List from (defn.body.iterator ++ connects))
 
-        // Note that we only collect register slices here,
-        // SRAMs are added in the Pass dispatcher below
-        val extraEntities = sramMap.valuesIterator collect {
-          case SramReg(_, _, oEntity, _) => oEntity
-        }
-
-        Thicket(newEntity :: extraEntities.toList)
-      }
-
+      //
       case _ => tree
     }
 
@@ -371,33 +354,60 @@ final class LowerSrams(
     result2
   }
 
+  override def finish(tree: Tree): Tree = tree match {
+    // Note that we only collect register slices here,
+    // SRAMs are added in the Pass dispatcher below
+    case _: DeclEntity =>
+      val extra = sramMap.valuesIterator collect { case SramReg(_, (oDecl, _), _) => oDecl }
+      Thicket(tree :: extra.toList)
+    case _: DefnEntity =>
+      val extra = sramMap.valuesIterator collect { case SramReg(_, (_, oDefn), _) => oDefn }
+      Thicket(tree :: extra.toList)
+    case _ => unreachable
+  }
+
   override def finalCheck(tree: Tree): Unit = {
     assert(extraStmts.isEmpty)
 
     tree visit {
-      case node @ ExprCall(ExprSelect(ref, sel, _), _) if ref.tpe.isSram => {
-        cc.ice(node, s"SRAM .${sel} remains")
-      }
+      case node @ ExprSelect(ref, sel, _) if ref.tpe.isSram => cc.ice(node, s"SRAM .$sel remains")
     }
   }
 
 }
 
 object LowerSrams {
-  class LowerSramsPass extends TreeTransformerPass {
+  class LowerSramsPass extends PairTransformerPass {
     val name = "lower-srams"
 
     val sramBuilder = new SramBuilder
 
-    def create(implicit cc: CompilerContext) = new LowerSrams(sramBuilder)
+    def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {
+      (decl, defn) match {
+        case (dcl: DeclEntity, dfn: DefnEntity) =>
+          if (dcl.decls.isEmpty || dfn.variant == EntityVariant.Net) {
+            // If no decls, or network, then there is nothing to do
+            (decl, defn)
+          } else {
+            // Perform the transform
+            val transformer = new LowerSrams(sramBuilder)
+            // First transform the decl
+            val newDecl = transformer(decl)
+            // Then transform the defn
+            val newDefn = transformer(defn)
+            (newDecl, newDefn)
+          }
+        case _ => (decl, defn)
+      }
+    }
 
-    override def apply(trees: List[Tree])(implicit cc: CompilerContext): List[Tree] = {
-      // Transform all trees
-      val results = super.apply(trees)
-      // Add all SRAMs as well
-      sramBuilder.store.values.toList ::: results
+    override protected def finish(
+        results: List[(Decl, Defn)]
+    )(implicit cc: CompilerContext): List[(Decl, Defn)] = {
+      // Add all SRAMs to the results
+      results ++ sramBuilder.srams
     }
   }
 
-  def apply(): Pass = new LowerSramsPass
+  def apply(): PairTransformerPass = new LowerSramsPass
 }

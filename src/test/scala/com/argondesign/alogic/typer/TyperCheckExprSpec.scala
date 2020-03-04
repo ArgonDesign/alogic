@@ -15,56 +15,26 @@
 
 package com.argondesign.alogic.typer
 
-import java.util.regex.Pattern
-
 import com.argondesign.alogic.AlogicTest
-import com.argondesign.alogic.SourceTextConverters._
-import com.argondesign.alogic.ast.Trees.Expr.ImplicitConversions._
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Error
-import com.argondesign.alogic.core.Warning
+import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.passes.Elaborate
 import com.argondesign.alogic.passes.Namer
+import com.argondesign.alogic.passes.TypeCheck
 import org.scalatest.FreeSpec
 
 final class TyperCheckExprSpec extends FreeSpec with AlogicTest {
 
-  implicit val cc = new CompilerContext
-  cc.postSpecialization = true
+  implicit val cc: CompilerContext = new CompilerContext
 
-  val namer = new Namer
-  val typer = new Typer
-
-  def xform(tree: Tree) = {
-    tree match {
-      case Root(_, entity: Entity) => cc.addGlobalEntity(entity)
-      case entity: Entity          => cc.addGlobalEntity(entity)
-      case _                       =>
-    }
-    val node = tree rewrite namer match {
-      case Root(_, entity) => entity
-      case other           => other
-    }
-    node rewrite typer
-  }
-
-  def checkError(tree: Tree, err: List[String]) = {
-    val errors = cc.messages.filter { _.isInstanceOf[Error] }
-    if (err.isEmpty) {
-      errors shouldBe empty
-    } else {
-      errors.loneElement should beThe[Error]((err map Pattern.quote): _*)
-    }
-  }
-
-  def checkWarning(tree: Tree, err: List[String]) = {
-    val errors = cc.messages.filter { _.isInstanceOf[Warning] }
-    if (err.isEmpty) {
-      errors shouldBe empty
-    } else {
-      errors.loneElement should beThe[Warning]((err map Pattern.quote): _*)
-    }
+  private def typeCheck(text: String): Thicket = Thicket {
+    transformWithPass(Namer andThen Elaborate andThen TypeCheck, text) map {
+      _ flatMap {
+        case (decl, defn) => List(decl, defn)
+      }
+    } getOrElse Nil
   }
 
   "The Typer should type check expressions" - {
@@ -99,14 +69,17 @@ final class TyperCheckExprSpec extends FreeSpec with AlogicTest {
         )
       } {
         expr in {
-          val root = s"""|fsm a {
-                         |  (* unused *) param u8 N = 8'd2;
-                         |  void main() {
-                         |    $$display("", ${expr});
-                         |    fence;
-                         |  }
-                         |}""".stripMargin.asTree[Root]
-          checkError(xform(root), err)
+          typeCheck {
+            s"""
+            |fsm a {
+            |  const u8 N = 8'd2;
+            |  void main() {
+            |    $$display("", ${expr});
+            |    fence;
+            |  }
+            |}"""
+          }
+          checkSingleError(err)
         }
       }
     }
@@ -144,13 +117,16 @@ final class TyperCheckExprSpec extends FreeSpec with AlogicTest {
             )
           } {
             expr in {
-              val root = s"""|fsm a {
-                             |  void main() {
-                             |    $$display("", ${expr});
-                             |    fence;
-                             |  }
-                             |}""".stripMargin.asTree[Root]
-              checkError(xform(root), err)
+              typeCheck {
+                s"""
+                |fsm a {
+                |  void main() {
+                |    $$display("", ${expr});
+                |    fence;
+                |  }
+                |}"""
+              }
+              checkSingleError(err)
             }
           }
         }
@@ -179,13 +155,16 @@ final class TyperCheckExprSpec extends FreeSpec with AlogicTest {
             )
           } {
             expr in {
-              val root = s"""|fsm a {
-                             |  void main() {
-                             |    $$display("", ${expr});
-                             |    fence;
-                             |  }
-                             |}""".stripMargin.asTree[Root]
-              checkWarning(xform(root), warn)
+              typeCheck {
+                s"""
+                |fsm a {
+                |  void main() {
+                |    $$display("", ${expr});
+                |    fence;
+                |  }
+                |}"""
+              }
+              checkSingleWarning(warn)
             }
           }
         }
@@ -201,13 +180,16 @@ final class TyperCheckExprSpec extends FreeSpec with AlogicTest {
               )
             } {
               expr in {
-                val root = s"""|fsm a {
-                               |  void main() {
-                               |    $$display("", ${expr});
-                               |    fence;
-                               |  }
-                               |}""".stripMargin.asTree[Root]
-                checkWarning(xform(root), warn)
+                typeCheck {
+                  s"""
+                  |fsm a {
+                  |  void main() {
+                  |    $$display("", ${expr});
+                  |    fence;
+                  |  }
+                  |}"""
+                }
+                checkSingleWarning(warn)
               }
             }
           }
@@ -248,62 +230,109 @@ final class TyperCheckExprSpec extends FreeSpec with AlogicTest {
         )
       } {
         expr in {
-          val root = s"""|fsm f {
-                         |  (* unused *) out sync u2 a;
-                         |  (* unused *) i2[1][2] b;
-                         |  (* unused *) i2[1][2] c[4];
-                         |  void main() {
-                         |    $$display("", ${expr});
-                         |    fence;
-                         |  }
-                         |}""".stripMargin.asTree[Root]
-          checkError(xform(root), err)
+          typeCheck {
+            s"""
+            |fsm f {
+            |  (* unused *) out sync u2 a;
+            |  (* unused *) i2[1][2] b;
+            |  (* unused *) i2[1][2] c[4];
+            |  void main() {
+            |    $$display("", ${expr});
+            |    fence;
+            |  }
+            |}"""
+          }
+          checkSingleError(err)
         }
       }
     }
 
     "index" - {
-      for {
-        (expr, err) <- List(
-          ("a[0]", Nil),
-          ("b[0]", Nil),
-          ("b[0][0]", Nil),
-          ("b[0][0][0]", Nil),
-          ("c[0]", Nil),
-          ("c[0][0]", Nil),
-          ("c[0][0][0]", Nil),
-          ("c[0][0][0][0]", Nil),
-          ("8'd2[0]", Nil),
-          ("8'd2[0][0]", Nil),
-          ("8'd2[0][0][0]", Nil),
-          ("main[0]", "Target is not indexable" :: Nil),
-          ("a[bool]", "Index is of non-packed type" :: Nil),
-          ("8'd0[2'd0]", "Index yields 2 bits, 3 bits are expected" :: Nil),
-          ("8'd0[3'd0]", Nil),
-          ("8'd0[4'd0]", "Index yields 4 bits, 3 bits are expected" :: Nil),
-          ("7'd0[2'd0]", "Index yields 2 bits, 3 bits are expected" :: Nil),
-          ("7'd0[3'd0]", Nil),
-          ("7'd0[4'd0]", "Index yields 4 bits, 3 bits are expected" :: Nil),
-          ("9'd0[2'd0]", "Index yields 2 bits, 4 bits are expected" :: Nil),
-          ("9'd0[3'd0]", "Index yields 3 bits, 4 bits are expected" :: Nil),
-          ("9'd0[4'd0]", Nil),
-          ("1'd0[1'd0]", Nil),
-          ("1'd0[2'd0]", "Index yields 2 bits, 1 bits are expected" :: Nil),
-          ("c[2'd3][1'd0][1'd1][2'd2]", Nil),
-          ("8'd0[3'sd0]", "Index must be unsigned" :: Nil),
-        )
-      } {
-        expr in {
-          val root = s"""|fsm f {
-                         |  (* unused *) out sync u2 a;
-                         |  (* unused *) i3[1][2] b;
-                         |  (* unused *) i3[1][2] c[4];
-                         |  void main() {
-                         |    $$display("", ${expr});
-                         |    fence;
-                         |  }
-                         |}""".stripMargin.asTree[Root]
-          checkError(xform(root), err)
+      "term" - {
+        for {
+          (expr, err) <- List(
+            ("a[0]", Nil),
+            ("b[0]", Nil),
+            ("b[0][0]", Nil),
+            ("b[0][0][0]", Nil),
+            ("c[0]", Nil),
+            ("c[0][0]", Nil),
+            ("c[0][0][0]", Nil),
+            ("c[0][0][0][0]", Nil),
+            ("8'd2[0]", Nil),
+            ("8'd2[0][0]", Nil),
+            ("8'd2[0][0][0]", Nil),
+            ("main[0]", "Target is not indexable" :: Nil),
+            ("a[bool]", "Index is of non-packed type" :: Nil),
+            ("8'd0[2'd0]", "Index yields 2 bits, 3 bits are expected" :: Nil),
+            ("8'd0[3'd0]", Nil),
+            ("8'd0[4'd0]", "Index yields 4 bits, 3 bits are expected" :: Nil),
+            ("7'd0[2'd0]", "Index yields 2 bits, 3 bits are expected" :: Nil),
+            ("7'd0[3'd0]", Nil),
+            ("7'd0[4'd0]", "Index yields 4 bits, 3 bits are expected" :: Nil),
+            ("9'd0[2'd0]", "Index yields 2 bits, 4 bits are expected" :: Nil),
+            ("9'd0[3'd0]", "Index yields 3 bits, 4 bits are expected" :: Nil),
+            ("9'd0[4'd0]", Nil),
+            ("1'd0[1'd0]", Nil),
+            ("1'd0[2'd0]", "Index yields 2 bits, 1 bits are expected" :: Nil),
+            ("c[2'd3][1'd0][1'd1][2'd2]", Nil),
+            ("8'd0[3'sd0]", "Index must be unsigned" :: Nil),
+          )
+        } {
+          expr in {
+            typeCheck {
+              s"""
+              |fsm f {
+              |  out sync u2 a;
+              |  i3[1][2] b;
+              |  i3[1][2] c[4];
+              |  void main() {
+              |    $$display("", ${expr});
+              |    fence;
+              |  }
+              |}"""
+            }
+            checkSingleError(err)
+          }
+        }
+      }
+
+      "type" - {
+        for {
+          (expr, err) <- List(
+            ("u1[ 2 ]", Nil),
+            ("u1[ 1 ]", Nil),
+            ("u1[ 0 ]", "Size of vector must be positive (not 0)" :: Nil),
+            ("u1[-1s]", "Size of vector must be positive (not -1)" :: Nil),
+            ("u1[ x ]", "Size of vector must be a compile time constant" :: Nil),
+            ("u1[1][ 2 ]", Nil),
+            ("u1[1][ 1 ]", Nil),
+            ("u1[1][ 0 ]", "Size of vector must be positive (not 0)" :: Nil),
+            ("u1[1][-1s]", "Size of vector must be positive (not -1)" :: Nil),
+            ("u1[1][ x ]", "Size of vector must be a compile time constant" :: Nil),
+            ("int[2]", "Vector element must have a packed type" :: Nil),
+            ("void[2]", "Vector element must not have 'void' type" :: Nil),
+            ("s[1]", "Vector element must not have 'struct' type" :: Nil)
+          )
+        } {
+          expr in {
+            typeCheck {
+              s"""
+              |struct s {
+              |  bool b;
+              |}
+              |
+              |(* toplevel *)
+              |fsm f {
+              |  in u8 x;
+              |  void main() {
+              |    ${expr} y;
+              |    fence;
+              |  }
+              |}"""
+            }
+            checkSingleError(err)
+          }
         }
       }
     }
@@ -347,71 +376,77 @@ final class TyperCheckExprSpec extends FreeSpec with AlogicTest {
         )
       } {
         expr in {
-          val root = s"""|fsm f {
-                         |  (* unused *) out sync u2 a;
-                         |  (* unused *) i3[2][2] b;
-                         |  (* unused *) i3[2][2] c[4];
-                         |  void main() {
-                         |    $$display("", ${expr});
-                         |    fence;
-                         |  }
-                         |}""".stripMargin.asTree[Root]
-          checkError(xform(root), err)
+          typeCheck {
+            s"""
+            |fsm f {
+            |  out sync u2 a;
+            |  i3[2][2] b;
+            |  i3[2][2] c[4];
+            |  void main() {
+            |    $$display("", ${expr});
+            |    fence;
+            |  }
+            |}"""
+          }
+          checkSingleError(err)
         }
       }
     }
 
     "select" - {
       for {
-        (text, kind, msg) <- List(
-          ("d.x", TypeSInt(8), ""),
-          ("e.y", TypeStruct("a", List("x"), List(TypeSInt(8))), ""),
-          ("e.y.x", TypeSInt(8), ""),
-          ("d.z", TypeError, "No member named 'z' in 'd' of type 'struct a'"),
-          ("e.z", TypeError, "No member named 'z' in 'e' of type 'struct b'"),
-          ("e.y.z", TypeError, "No member named 'z' in 'e.y' of type 'struct a'"),
-          ("f.x", TypeSInt(8), ""),
-          ("g.y", TypeStruct("a", List("x"), List(TypeSInt(8))), ""),
-          ("g.y.x", TypeSInt(8), ""),
-          ("f.valid", TypeUInt(1), ""),
-          ("g.valid", TypeUInt(1), ""),
-          ("@bits(d.x)", TypeSInt(8), ""),
-          ("@bits(e.y)", TypeStruct("a", List("x"), List(TypeSInt(8))), ""),
-          ("@bits(e.y.x)", TypeSInt(8), ""),
-          ("@bits(f.x)", TypeSInt(8), ""),
-          ("@bits(g.y)", TypeStruct("a", List("x"), List(TypeSInt(8))), ""),
-          ("@bits(g.y.x)", TypeSInt(8), ""),
-          ("@bits(a.x)", TypeType(TypeSInt(8)), ""),
-          ("@bits(b.y)", TypeType(TypeStruct("a", List("x"), List(TypeSInt(8)))), ""),
-          ("@bits(b.y.x)", TypeType(TypeSInt(8)), "")
+        (text, kind, msg) <- List[(String, PartialFunction[Any, Unit], String)](
+          // format: off
+          ("d.x", { case TypeSInt(w) if w == 8 => }, ""),
+          ("e.y", { case TypeRecord(a, List(x)) if a.name == "a" && x.name == "x" => }, ""),
+          ("e.y.x", { case TypeSInt(w) if w == 8 => }, ""),
+          ("d.z", { case TypeError => }, "No member named 'z' in value of type 'struct a'"),
+          ("e.z", { case TypeError => }, "No member named 'z' in value of type 'struct b'"),
+          ("e.y.z", { case TypeError => }, "No member named 'z' in value of type 'struct a'"),
+          ("f.x", { case TypeSInt(w) if w == 8 => }, ""),
+          ("g.y", { case TypeRecord(a, List(x)) if a.name == "a" && x.name == "x" => }, ""),
+          ("g.y.x", { case TypeSInt(w) if w == 8 => }, ""),
+          ("f.valid", { case TypeUInt(w) if w == 1 => }, ""),
+          ("g.valid", { case TypeUInt(w) if w == 1 => }, ""),
+          ("a.x", { case TypeNone(TypeSInt(w)) if w == 8 => }, ""),
+          ("b.y", { case TypeNone(TypeRecord(a, List(x))) if a.name == "a" && x.name == "x" => }, ""),
+          ("b.y.x", { case TypeNone(TypeSInt(w)) if w == 8 => }, "")
+          // format: on
         )
       } {
         text in {
-          val root = s"""|struct a {
-                         |  i8 x;
-                         |}
-                         |
-                         |struct b {
-                         |  a y;
-                         |}
-                         |
-                         |fsm c {
-                         |  (* unused *) a d;
-                         |  (* unused *) b e;
-                         |  (* unused *) in sync a f;
-                         |  (* unused *) out sync b g;
-                         |  void main() {
-                         |    $$display("", ${text});
-                         |    fence;
-                         |  }
-                         |}""".stripMargin.asTree[Root]
-          val tree = xform(root)
-          if (msg.isEmpty) {
-            val expr = (tree collectFirst { case e: ExprSelect => e }).value
-            expr.tpe shouldBe kind
-            cc.messages shouldBe empty
-          } else {
-            cc.messages.loneElement should beThe[Error](msg)
+          typeCheck {
+            s"""
+            |struct a {
+            |  i8 x;
+            |}
+            |
+            |struct b {
+            |  a y;
+            |}
+            |
+            |(* toplevel *)
+            |fsm c {
+            |  a d;
+            |  b e;
+            |  in sync a f;
+            |  out sync b g;
+            |  void main() {
+            |    $$display("", @bits(${text}));
+            |    fence;
+            |  }
+            |}"""
+          } tap { tree =>
+            if (msg.isEmpty) {
+              tree getFirst {
+                case e: ExprSelect => e
+              } tap {
+                _.tpe should matchPattern(kind)
+              }
+              cc.messages shouldBe empty
+            } else {
+              cc.messages.loneElement should beThe[Error](msg)
+            }
           }
         }
       }
@@ -432,32 +467,37 @@ final class TyperCheckExprSpec extends FreeSpec with AlogicTest {
           ("a.write(bar)", TypeError, "Argument 1 of function call is of non-packed type"),
           ("a.write(3'b1)", TypeError, "Argument 1 of function call yields 3 bits, 2 bits are expected"),
           ("a.write(1'b1)", TypeError, "Argument 1 of function call yields 1 bits, 2 bits are expected"),
-          ("$display(\"\", @bits(a))", TypeNum(false), ""),
-          ("$display(\"\", @bits(a.valid))", TypeNum(false), "")
+          ("int x = @bits(a)", TypeNum(false), ""),
+          ("int x = @bits(a.valid)", TypeNum(false), "")
           // format: on
         )
       } {
         text in {
-          val root = s"""|fsm c {
-                         |  (* unused *) out sync u2 a;
-                         |
-                         |  (* unused *)
-                         |  void bar() {
-                         |    fence;
-                         |  }
-                         |
-                         |  void main() {
-                         |    ${text};
-                         |    fence;
-                         |  }
-                         |}""".stripMargin.asTree[Root]
-          val tree = xform(root)
-          if (msg.isEmpty) {
-            val expr = (tree collectAll { case e: ExprCall => e }).toList.last
-            expr.tpe shouldBe kind
-            cc.messages shouldBe empty
-          } else {
-            cc.messages.loneElement should beThe[Error](msg)
+          typeCheck {
+            s"""
+            |fsm c {
+            |  out sync u2 a;
+            |
+            |  void bar() {
+            |    fence;
+            |  }
+            |
+            |  void main() {
+            |    ${text};
+            |    fence;
+            |  }
+            |}"""
+          } tap { tree =>
+            if (msg.isEmpty) {
+              tree getFirst {
+                case e: ExprCall => e
+              } tap {
+                _.tpe shouldBe kind
+              }
+              cc.messages shouldBe empty
+            } else {
+              cc.messages.loneElement should beThe[Error](msg)
+            }
           }
         }
       }
@@ -468,25 +508,31 @@ final class TyperCheckExprSpec extends FreeSpec with AlogicTest {
         (text, kind, msg) <- List(
           ("{1'b1, 1'b0}", TypeUInt(2), ""),
           ("{a, a}", TypeUInt(4), ""),
-//            ("{a, 1}", TypeError, s"Part 2 of bit concatenation is of non-packed type"),
+          ("{a, 1}", TypeError, s"Part 2 of bit concatenation is of non-packed type"),
           ("{a, bool}", TypeError, s"Part 2 of bit concatenation is of non-packed type")
         )
       } {
         text in {
-          val root = s"""|fsm c {
-                         |  (* unused *) out sync u2 a;
-                         |  void main() {
-                         |    $$display("", ${text});
-                         |    fence;
-                         |  }
-                         |}""".stripMargin.asTree[Root]
-          val tree = xform(root)
-          if (msg.isEmpty) {
-            val expr = (tree collectFirst { case e: ExprCat => e }).value
-            expr.tpe shouldBe kind
-            cc.messages shouldBe empty
-          } else {
-            cc.messages.loneElement should beThe[Error](msg)
+          typeCheck {
+            s"""
+            |fsm c {
+            |  out sync u2 a;
+            |  void main() {
+            |    $$display("", ${text});
+            |    fence;
+            |  }
+            |}"""
+          } tap { tree =>
+            if (msg.isEmpty) {
+              tree getFirst {
+                case e: ExprCat => e
+              } tap {
+                _.tpe shouldBe kind
+              }
+              cc.messages shouldBe empty
+            } else {
+              cc.messages.loneElement should beThe[Error](msg)
+            }
           }
         }
       }
@@ -498,60 +544,32 @@ final class TyperCheckExprSpec extends FreeSpec with AlogicTest {
           ("{4{1'b1}}", TypeUInt(4), ""),
           ("{4{2'b0, 1'b1}}", TypeUInt(12), ""),
           ("{4{a}}", TypeUInt(8), ""),
-//            ("{4{1}}", TypeError, s"Value of bit repetition is of non-packed type"),
+          ("{4{1}}", TypeError, s"Value of bit repetition is of non-packed type"),
           ("{4{bool}}", TypeError, s"Value of bit repetition is of non-packed type"),
           ("{bool{1'b1}}", TypeError, s"Count of bit repetition is of non-numeric type")
         )
       } {
         text in {
-          val root = s"""|fsm c {
-                         |  (* unused *) out sync u2 a;
-                         |  void main() {
-                         |    $$display("", ${text});
-                         |    fence;
-                         |  }
-                         |}""".stripMargin.asTree[Root]
-          val tree = xform(root)
-          if (msg.isEmpty) {
-            val expr = (tree collectFirst { case e: ExprRep => e }).value
-            expr.tpe shouldBe kind
-            cc.messages shouldBe empty
-          } else {
-            cc.messages.loneElement should beThe[Error](msg)
-          }
-        }
-      }
-    }
-
-    "inside definitions" - {
-      for {
-        (text, err) <- List(
-          ("typedef u8 a;", Nil),
-          ("typedef uint(8 + 2) a;", Nil),
-          ("typedef uint(8'd8 + 7'd2) a;",
-           s"Both operands of binary '+' must have the same width, but" ::
-             "left  hand operand is 8 bits wide, and" ::
-             "right hand operand is 7 bits wide" :: Nil),
-          ("struct a {u8 f;}", Nil),
-          ("struct a {uint(8 + 2) f;}", Nil),
-          ("struct a {uint(8'd8 + 7'd2) f;}",
-           s"Both operands of binary '+' must have the same width, but" ::
-             "left  hand operand is 8 bits wide, and" ::
-             "right hand operand is 7 bits wide" :: Nil)
-        )
-      } {
-        text in {
-          val tree = s"""|fsm foo {
-                         |  ${text}
-                         |}""".stripMargin.asTree[Entity]
-          val result = xform(tree)
-          val defn = result getFirst { case defn: Defn => defn }
-          if (err.isEmpty) {
-            cc.messages shouldBe empty
-            defn.tpe shouldBe TypeMisc
-          } else {
-            cc.messages.loneElement should beThe[Error]((err map Pattern.quote): _*)
-            defn.tpe shouldBe TypeError
+          typeCheck {
+            s"""
+            |fsm c {
+            |  (* unused *) out sync u2 a;
+            |  void main() {
+            |    $$display("", ${text});
+            |    fence;
+            |  }
+            |}"""
+          } tap { tree =>
+            if (msg.isEmpty) {
+              tree getFirst {
+                case e: ExprRep => e
+              } tap {
+                _.tpe shouldBe kind
+              }
+              cc.messages shouldBe empty
+            } else {
+              cc.messages.loneElement should beThe[Error](msg)
+            }
           }
         }
       }

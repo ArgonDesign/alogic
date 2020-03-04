@@ -19,7 +19,6 @@ import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Bindings
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Symbols.TermSymbol
 
 final class ReplaceTermRefs(
     bindings: Bindings,
@@ -29,7 +28,7 @@ final class ReplaceTermRefs(
 ) extends TreeTransformer {
 
   override def transform(tree: Tree): Tree = tree match {
-    case ExprSym(symbol: TermSymbol) => bindings.getOrElse(symbol, tree)
+    case ExprSym(symbol) => bindings.getOrElse(symbol, tree)
 
     case _ => tree
   }

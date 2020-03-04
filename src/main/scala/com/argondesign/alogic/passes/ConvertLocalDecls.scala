@@ -22,6 +22,7 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Types.Type
 import com.argondesign.alogic.core.enums.UninitializedLocals
+import com.argondesign.alogic.util.unreachable
 import com.argondesign.alogic.typer.TypeAssigner
 
 import scala.collection.mutable.ListBuffer
@@ -29,25 +30,32 @@ import scala.util.Random
 
 final class ConvertLocalDecls(implicit cc: CompilerContext) extends TreeTransformer {
 
-  private[this] val localDecls = ListBuffer[Ent]()
+  private[this] val localDecls = ListBuffer[Decl]()
 
-  private[this] lazy val rng = new Random(entitySymbol.name.foldLeft(0)(_ ^ _))
+  private[this] val localDefns = ListBuffer[Defn]()
+
+  private[this] var rng: Random = _
+
+  override def start(tree: Tree): Unit = tree match {
+    case Defn(symbol) => rng = new Random(symbol.name.foldLeft(0)(_ ^ _))
+    case _: Decl      =>
+    case _            => unreachable
+  }
 
   private[this] def getDefaultInitializer(kind: Type): Option[Expr] = {
     lazy val signed = kind.isSigned
-    lazy val width = kind.width
+    lazy val width = kind.width.toInt
     cc.settings.uninitialized match {
       case UninitializedLocals.None  => None
       case UninitializedLocals.Zeros => Some(ExprInt(signed, width, 0))
-      case UninitializedLocals.Ones => {
+      case UninitializedLocals.Ones =>
         val expr = if (signed) {
           ExprInt(signed = true, width, -1)
         } else {
           ExprInt(signed = false, width, (BigInt(1) << width) - 1)
         }
         Some(expr)
-      }
-      case UninitializedLocals.Random => {
+      case UninitializedLocals.Random =>
         val expr = (width, signed) match {
           case (1, true)  => ExprInt(signed = true, 1, -BigInt(1, rng))
           case (1, false) => ExprInt(signed = false, 1, BigInt(1, rng))
@@ -55,34 +63,37 @@ final class ConvertLocalDecls(implicit cc: CompilerContext) extends TreeTransfor
           case (n, false) => ExprInt(signed = false, n, BigInt(n, rng))
         }
         Some(expr)
-      }
     }
   }
 
   override def skip(tree: Tree): Boolean = tree match {
-    case _: Entity      => false
-    case _: EntFunction => false
-    case _: Stmt        => false
-    case _: Case        => false
-    case _              => true
+    case _: Expr => true
+    case _       => false
   }
 
   override def transform(tree: Tree): Tree = tree match {
+    case StmtDecl(decl) =>
+      assert(decl.isInstanceOf[DeclVar])
+      localDecls append decl
+      Stump
 
-    case StmtDecl(decl @ Decl(symbol, initOpt)) => {
-      localDecls.append(EntDecl(decl.copy(init = None)) regularize decl.loc)
-      initOpt orElse getDefaultInitializer(symbol.kind) map { init =>
-        StmtAssign(ExprSym(symbol), init) regularize tree.loc
-      } getOrElse {
-        Thicket(Nil) regularize tree.loc
+    case StmtDefn(defn @ DefnVar(symbol, initOpt)) =>
+      localDefns append TypeAssigner(DefnVar(symbol, None) withLoc defn.loc)
+      initOpt orElse getDefaultInitializer(symbol.kind) match {
+        case Some(init) => StmtAssign(ExprSym(symbol), init) regularize tree.loc
+        case None       => Stump
       }
-    }
 
-    case entity: Entity if localDecls.nonEmpty => {
-      TypeAssigner {
-        entity.copy(body = (localDecls prependAll entity.body).toList) withLoc tree.loc
+    case decl: DeclEntity if localDecls.nonEmpty =>
+      val newDecls = List.from(decl.decls.iterator ++ localDecls.iterator)
+      TypeAssigner(decl.copy(decls = newDecls) withLoc tree.loc)
+
+    case defn: DefnEntity if localDefns.nonEmpty =>
+      val newDefns = localDefns.iterator map { d =>
+        TypeAssigner(EntDefn(d) withLoc d.loc)
       }
-    }
+      val newBody = List.from(defn.body.iterator ++ newDefns)
+      TypeAssigner(defn.copy(body = newBody) withLoc tree.loc)
 
     case _ => tree
   }
@@ -92,10 +103,17 @@ final class ConvertLocalDecls(implicit cc: CompilerContext) extends TreeTransfor
       case node: StmtDecl => cc.ice(node, "Local declaration remains")
     }
   }
-
 }
 
-object ConvertLocalDecls extends TreeTransformerPass {
+object ConvertLocalDecls extends PairTransformerPass {
   val name = "convert-local-decls"
-  def create(implicit cc: CompilerContext) = new ConvertLocalDecls
+
+  def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {
+    val transformer = new ConvertLocalDecls
+    // First transform the defn
+    val newDefn = transformer(defn)
+    // Then transform the decl
+    val newDecl = transformer(decl)
+    (newDecl, newDefn)
+  }
 }

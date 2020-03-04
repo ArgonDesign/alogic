@@ -19,6 +19,7 @@ import com.argondesign.alogic.antlr.AlogicParser._
 import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Math
 import com.argondesign.alogic.util.unreachable
 
@@ -28,65 +29,23 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
 
   def apply(ctx: ExprContext)(implicit cc: CompilerContext): Expr = {
     object Visitor extends AlogicScalarVisitor[Expr] {
+      //////////////////////////////////////////////////////////////////////////
       // Bracket
-      override def visitExprBracket(ctx: ExprBracketContext) = visit(ctx.expr)
+      //////////////////////////////////////////////////////////////////////////
 
-      // Call
-      override def visitExprCall(ctx: ExprCallContext) = {
-        val args = Option(ctx.commaexpr) map { this(_) } getOrElse Nil
-        ExprCall(visit(ctx.expr), args) withLoc ctx.loc
-      }
+      override def visitExprBracket(ctx: ExprBracketContext): Expr = visit(ctx.expr)
 
-      // Operators
-      override def visitExprUnary(ctx: ExprUnaryContext) = {
-        ExprUnary(ctx.op, visit(ctx.expr)) withLoc ctx.loc
-      }
-      override def visitExprBinary(ctx: ExprBinaryContext) = {
-        val loc = ctx.loc.copy(point = ctx.op.getStartIndex)
-        ExprBinary(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1))) withLoc loc
-      }
-      override def visitExprTernary(ctx: ExprTernaryContext) = {
-        val loc = ctx.loc.copy(point = ctx.op.getStartIndex)
-        ExprTernary(visit(ctx.expr(0)), visit(ctx.expr(1)), visit(ctx.expr(2))) withLoc loc
-      }
-      override def visitExprRep(ctx: ExprRepContext) = {
-        val rep = visit(ctx.expr)
-        val parts = this(ctx.commaexpr)
-        lazy val cat = ExprCat(parts) withLoc ctx.commaexpr.loc
-        parts match {
-          case one :: Nil => ExprRep(rep, one) withLoc ctx.loc
-          case _          => ExprRep(rep, cat) withLoc ctx.loc
-        }
-      }
-      override def visitExprCat(ctx: ExprCatContext) = {
-        ExprCat(this(ctx.commaexpr)) withLoc ctx.loc
-      }
-      override def visitExprIndex(ctx: ExprIndexContext) = {
-        ExprIndex(visit(ctx.expr(0)), visit(ctx.idx)) withLoc ctx.loc
-      }
-      override def visitExprSlice(ctx: ExprSliceContext) = {
-        ExprSlice(visit(ctx.expr(0)), visit(ctx.lidx), ctx.op, visit(ctx.ridx)) withLoc ctx.loc
-      }
-
-      // Select
-      override def visitExprSelect(ctx: ExprSelectContext) = {
-        val loc = ctx.loc.copy(point = ctx.ident.start.getStartIndex - 1)
-        val Ident(name, idxs) = IdentBuilder(ctx.ident)
-        ExprSelect(visit(ctx.expr), name, idxs) withLoc loc
-      }
-
+      //////////////////////////////////////////////////////////////////////////
       // Literals
-      override def visitExprTrue(ctx: ExprTrueContext) = {
-        ExprInt(false, 1, 1) withLoc ctx.loc
-      }
-      override def visitExprFalse(ctx: ExprFalseContext) = {
-        ExprInt(false, 1, 0) withLoc ctx.loc
-      }
-      override def visitExprString(ctx: ExprStringContext) = {
-        ExprStr(ctx.STRING.text.tail.init) withLoc ctx.loc
-      }
+      //////////////////////////////////////////////////////////////////////////
 
-      override def visitExprSizedInt(ctx: ExprSizedIntContext) = {
+      override def visitExprLitTrue(ctx: ExprLitTrueContext): Expr =
+        ExprInt(false, 1, 1) withLoc ctx.loc
+
+      override def visitExprLitFalse(ctx: ExprLitFalseContext): Expr =
+        ExprInt(false, 1, 0) withLoc ctx.loc
+
+      override def visitExprLitSizedInt(ctx: ExprLitSizedIntContext): Expr = {
         val neg = ctx.sign != null && ctx.sign.text == "-"
         val text = ctx.SIZEDINT.text
         val (widthDigits, tickRest) = text span { _ != '\'' }
@@ -108,7 +67,7 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
             val abs = BigInt(digits, base)
             val reqWidth = Math.clog2(abs + 1)
             if (reqWidth > width) {
-              cc.error(ctx, s"Value specifier for ${width} bit literal requires ${reqWidth} bits")
+              cc.error(ctx, s"Value specifier for $width bit literal requires $reqWidth bits")
               ExprError() withLoc ctx.loc
             } else if (neg && abs > 0 && !signed) {
               cc.error(ctx, "Negative unsigned literal")
@@ -119,30 +78,30 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
               val value = if (!signed) {
                 bits
               } else {
-                val offset = (BigInt(-1) << width)
+                val offset = BigInt(-1) << width
                 if (bits.testBit(width - 1)) bits + offset else bits
               }
               if (neg && value > 0) {
-                cc.warning(ctx, s"Apparently negative literal stands for positive value ${value}")
+                cc.warning(ctx, s"Apparently negative literal stands for positive value $value")
               } else if (!neg && value < 0) {
-                cc.warning(ctx, s"Apparently positive literal stands for negative value ${value}")
+                cc.warning(ctx, s"Apparently positive literal stands for negative value $value")
               }
               ExprInt(signed, width, value) withLoc ctx.loc
             }
           } catch {
             case _: NumberFormatException =>
-              cc.error(ctx, s"Invalid digit for base ${base} value")
+              cc.error(ctx, s"Invalid digit for base $base value")
               ExprError() withLoc ctx.loc
           }
         }
       }
 
-      override def visitExprUnsizedInt(ctx: ExprUnsizedIntContext) = {
+      override def visitExprLitUnsizedInt(ctx: ExprLitUnsizedIntContext): Expr = {
         val neg = ctx.sign != null && ctx.sign.text == "-"
         val text = ctx.UNSIZEDINT.text
         if (text.length > 1 && text(0) == '0' && text(1).isDigit) {
           cc.error(ctx,
-                   s"Invalid literal '${text}',",
+                   s"Invalid literal '$text',",
                    "use prefix '0o' for octal or '0d' for decimal with leading zeros")
           ExprError() withLoc ctx.loc
         } else {
@@ -172,27 +131,117 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
             }
           } catch {
             case _: NumberFormatException =>
-              cc.error(ctx, s"Invalid digit for base ${base} value")
+              cc.error(ctx, s"Invalid digit for base $base value")
               ExprError() withLoc ctx.loc
           }
         }
       }
 
-      // Identifiers
-      override def visitExprIdent(ctx: ExprIdentContext) = {
+      override def visitExprLitString(ctx: ExprLitStringContext): Expr =
+        ExprStr(ctx.STRING.text.tail.init) withLoc ctx.loc
+
+      //////////////////////////////////////////////////////////////////////////
+      // Primitive types
+      //////////////////////////////////////////////////////////////////////////
+
+      override def visitExprTypeBool(ctx: ExprTypeBoolContext): Expr =
+        ExprType(TypeUInt(1)) withLoc ctx.loc
+
+      override def visitExprTypeSInt(ctx: ExprTypeSIntContext): Expr =
+        ExprType(TypeSInt(ctx.INTTYPE.text.tail.toInt)) withLoc ctx.loc
+
+      override def visitExprTypeUInt(ctx: ExprTypeUIntContext): Expr =
+        ExprType(TypeUInt(ctx.UINTTYPE.text.tail.toInt)) withLoc ctx.loc
+
+      override def visitExprTypeSNum(ctx: ExprTypeSNumContext): Expr =
+        ExprType(TypeNum(true)) withLoc ctx.loc
+
+      override def visitExprTypeUNum(ctx: ExprTypeUNumContext): Expr =
+        ExprType(TypeNum(false)) withLoc ctx.loc
+
+      override def visitExprTypeVoid(ctx: ExprTypeVoidContext): Expr =
+        ExprType(TypeVoid) withLoc ctx.loc
+
+      //////////////////////////////////////////////////////////////////////////
+      // Names
+      //////////////////////////////////////////////////////////////////////////
+
+      override def visitExprIdent(ctx: ExprIdentContext): Expr =
         ExprRef(IdentBuilder(ctx.ident)) withLoc ctx.loc
-      }
-      override def visitExprAtid(ctx: ExprAtidContext) = {
+
+      override def visitExprAtid(ctx: ExprAtidContext): Expr =
         ExprRef(IdentBuilder(ctx.ATID)) withLoc ctx.loc
-      }
-      override def visitExprDollarid(ctx: ExprDollaridContext) = {
+
+      override def visitExprDollarid(ctx: ExprDollaridContext): Expr =
         ExprRef(IdentBuilder(ctx.DOLLARID)) withLoc ctx.loc
+
+      //////////////////////////////////////////////////////////////////////////
+      // Call
+      //////////////////////////////////////////////////////////////////////////
+
+      override def visitExprCall(ctx: ExprCallContext): Expr = {
+        object ArgVisitor extends AlogicScalarVisitor[Arg] {
+          override def visitArgNamed(ctx: ArgNamedContext): Arg = {
+            val loc = ctx.loc.copy(point = ctx.point.getStartIndex)
+            ArgN(ctx.IDENTIFIER, ExprBuilder(ctx.expr)) withLoc loc
+          }
+
+          override def visitArgPositional(ctx: ArgPositionalContext): Arg =
+            ArgP(ExprBuilder(ctx.expr)) withLoc ctx.loc
+        }
+
+        val args = if (ctx.args == null) Nil else ArgVisitor(ctx.args.arg)
+        ExprCall(visit(ctx.expr), args) withLoc ctx.loc
       }
 
-      // Type
-      override def visitExprType(ctx: ExprTypeContext) = {
-        ExprType(TypeBuilder(ctx.kind)) withLoc ctx.loc
+      //////////////////////////////////////////////////////////////////////////
+      // Index/Slice
+      //////////////////////////////////////////////////////////////////////////
+
+      override def visitExprIndex(ctx: ExprIndexContext): Expr =
+        ExprIndex(visit(ctx.expr(0)), visit(ctx.idx)) withLoc ctx.loc
+
+      override def visitExprSlice(ctx: ExprSliceContext): Expr =
+        ExprSlice(visit(ctx.expr(0)), visit(ctx.lidx), ctx.op, visit(ctx.ridx)) withLoc ctx.loc
+
+      //////////////////////////////////////////////////////////////////////////
+      // Select
+      //////////////////////////////////////////////////////////////////////////
+
+      override def visitExprSelect(ctx: ExprSelectContext): Expr = {
+        val loc = ctx.loc.copy(point = ctx.ident.start.getStartIndex - 1)
+        val Ident(name, idxs) = IdentBuilder(ctx.ident)
+        ExprSelect(visit(ctx.expr), name, idxs) withLoc loc
       }
+
+      //////////////////////////////////////////////////////////////////////////
+      // Operators
+      //////////////////////////////////////////////////////////////////////////
+
+      override def visitExprUnary(ctx: ExprUnaryContext): Expr =
+        ExprUnary(ctx.op, visit(ctx.expr)) withLoc ctx.loc
+
+      override def visitExprBinary(ctx: ExprBinaryContext): Expr = {
+        val loc = ctx.loc.copy(point = ctx.op.getStartIndex)
+        ExprBinary(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1))) withLoc loc
+      }
+
+      override def visitExprTernary(ctx: ExprTernaryContext): Expr = {
+        val loc = ctx.loc.copy(point = ctx.op.getStartIndex)
+        ExprTernary(visit(ctx.expr(0)), visit(ctx.expr(1)), visit(ctx.expr(2))) withLoc loc
+      }
+
+      override def visitExprRep(ctx: ExprRepContext): Expr = visit(ctx.expr) match {
+        case Nil                => unreachable
+        case _ :: Nil           => unreachable
+        case rep :: part :: Nil => ExprRep(rep, part) withLoc ctx.loc
+        case rep :: parts =>
+          val cat = ExprCat(parts) withLoc ctx.s.loc.copy(end = ctx.e.loc.end)
+          ExprRep(rep, cat) withLoc ctx.loc
+      }
+
+      override def visitExprCat(ctx: ExprCatContext): Expr =
+        ExprCat(visit(ctx.expr)) withLoc ctx.loc
     }
 
     Visitor(ctx)

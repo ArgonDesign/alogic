@@ -17,11 +17,11 @@
 
 package com.argondesign.alogic.analysis
 
-import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.ast.Trees.Expr.Integral
+import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Bindings
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Symbols.TermSymbol
+import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.util.PartialMatch._
 
 import scala.annotation.tailrec
@@ -35,7 +35,7 @@ object StaticEvaluation {
   private def inferTrue(expr: Expr)(implicit cc: CompilerContext): Bindings = {
     if (expr.tpe.isPacked && expr.tpe.width == 1) {
       expr match {
-        case ExprSym(symbol: TermSymbol) => {
+        case ExprSym(symbol) => {
           val self =
             Iterator.single(symbol -> (ExprInt(symbol.kind.isSigned, 1, 1) regularize expr.loc))
           val implied = symbol.attr.implications.enumerate collect {
@@ -46,11 +46,11 @@ object StaticEvaluation {
           }
           (self ++ implied).toMap
         }
-        case ExprUnary("!" | "~", expr)                         => inferFalse(expr)
-        case ExprBinary(lhs, "&&" | "&", rhs)                   => inferTrue(lhs) ++ inferTrue(rhs)
-        case ExprBinary(lhs, "==", ExprSym(symbol: TermSymbol)) => Map(symbol -> lhs)
-        case ExprBinary(ExprSym(symbol: TermSymbol), "==", rhs) => Map(symbol -> rhs)
-        case _                                                  => Bindings.empty
+        case ExprUnary("!" | "~", expr)             => inferFalse(expr)
+        case ExprBinary(lhs, "&&" | "&", rhs)       => inferTrue(lhs) ++ inferTrue(rhs)
+        case ExprBinary(lhs, "==", ExprSym(symbol)) => Map(symbol -> lhs)
+        case ExprBinary(ExprSym(symbol), "==", rhs) => Map(symbol -> rhs)
+        case _                                      => Bindings.empty
       }
     } else {
       Bindings.empty
@@ -66,7 +66,7 @@ object StaticEvaluation {
       val eWidth = expr.tpe.width
       if (eWidth == 1) {
         expr match {
-          case ExprSym(symbol: TermSymbol) => {
+          case ExprSym(symbol) => {
             val self =
               Iterator.single(symbol -> (ExprInt(symbol.kind.isSigned, 1, 0) regularize expr.loc))
             val implied = symbol.attr.implications.enumerate collect {
@@ -77,16 +77,16 @@ object StaticEvaluation {
             }
             (self ++ implied).toMap
           }
-          case ExprUnary("!" | "~", expr)                         => inferTrue(expr)
-          case ExprBinary(lhs, "||" | "|", rhs)                   => inferFalse(lhs) ++ inferFalse(rhs)
-          case ExprBinary(lhs, "!=", ExprSym(symbol: TermSymbol)) => Map(symbol -> lhs)
-          case ExprBinary(ExprSym(symbol: TermSymbol), "!=", rhs) => Map(symbol -> rhs)
-          case _                                                  => Bindings.empty
+          case ExprUnary("!" | "~", expr)             => inferTrue(expr)
+          case ExprBinary(lhs, "||" | "|", rhs)       => inferFalse(lhs) ++ inferFalse(rhs)
+          case ExprBinary(lhs, "!=", ExprSym(symbol)) => Map(symbol -> lhs)
+          case ExprBinary(ExprSym(symbol), "!=", rhs) => Map(symbol -> rhs)
+          case _                                      => Bindings.empty
         }
       } else {
         expr match {
-          case ExprSym(symbol: TermSymbol) => {
-            Map(symbol -> (ExprInt(symbol.kind.isSigned, eWidth, 0) regularize expr.loc))
+          case ExprSym(symbol) => {
+            Map(symbol -> (ExprInt(symbol.kind.isSigned, eWidth.toInt, 0) regularize expr.loc))
           }
           //        case ExprCat(parts) => (Bindings.empty /: parts)(_ ++ inferFalse(_))
           case _ => Bindings.empty
@@ -136,7 +136,7 @@ object StaticEvaluation {
     inferTransitive(curr, inferFalse(expr))
   }
 
-  private def overwrite(curr: Bindings, symbol: TermSymbol, expr: Expr)(
+  private def overwrite(curr: Bindings, symbol: Symbol, expr: Expr)(
       implicit cc: CompilerContext): Bindings = {
     // Add the new binding for the symbol, but first substitute the new
     // expression using the current binding of symbol to remove self references
@@ -175,13 +175,13 @@ object StaticEvaluation {
       // Compute the new bindings after this statement
       stmt match {
         // Simple assignment
-        case StmtAssign(ExprSym(symbol: TermSymbol), rhs) => overwrite(curr, symbol, rhs)
+        case StmtAssign(ExprSym(symbol), rhs) => overwrite(curr, symbol, rhs)
         // Simple update
-        case StmtUpdate(lhs @ ExprSym(symbol: TermSymbol), op, rhs) =>
+        case StmtUpdate(lhs @ ExprSym(symbol), op, rhs) =>
           overwrite(curr, symbol, ExprBinary(lhs, op, rhs) regularize stmt.loc)
         // Simple postfix
-        case StmtPost(expr @ ExprSym(symbol: TermSymbol), "++") => overwrite(curr, symbol, expr + 1)
-        case StmtPost(expr @ ExprSym(symbol: TermSymbol), "--") => overwrite(curr, symbol, expr - 1)
+        case StmtPost(expr @ ExprSym(symbol), "++") => overwrite(curr, symbol, expr + 1)
+        case StmtPost(expr @ ExprSym(symbol), "--") => overwrite(curr, symbol, expr - 1)
 
         // Assignments with complex left hand side
         case StmtAssign(lhs, _) => removeWritten(curr, lhs)

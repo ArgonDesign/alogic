@@ -1,0 +1,12 @@
+network recursive_connect {
+  param uint P;
+  in  bool i;
+  out bool o;
+
+  gen if (P > 0) {
+    inst = new recursive_connect(P = P - 1);
+    i -> inst.i; inst.o -> o;
+  } else {
+    i -> o;
+  }
+}

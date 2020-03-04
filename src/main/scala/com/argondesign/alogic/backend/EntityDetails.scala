@@ -19,101 +19,102 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.util.unreachable
+import com.argondesign.alogic.core.enums.EntityVariant
 
-final class EntityDetails(val entity: Entity, details: => Map[TypeSymbol, EntityDetails])(
-    implicit cc: CompilerContext) {
+import scala.util.chaining._
+
+final class EntityDetails(val decl: DeclEntity,
+                          val defn: DefnEntity,
+                          details: => Map[Symbol, EntityDetails])(implicit cc: CompilerContext) {
 
   assert {
-    entity.declarations forall {
-      case Decl(symbol, _) => {
-        symbol.kind match {
-          case _: TypeConst => true
-          case _: TypeIn    => true
-          case _: TypeOut   => true
-          case _: TypeArray => true
-          case _: TypeInt   => true
-          case _            => false
-        }
+    decl.decls forall {
+      _.symbol.kind match {
+        case _: TypeInt    => true
+        case _: TypeEntity => true
+        case _: TypeIn     => true
+        case _: TypeOut    => true
+        case _: TypeConst  => true
+        case _: TypeArray  => true
+        case _             => false
       }
-      case _ => unreachable
     }
   }
 
-  val resetFlops: List[Declaration] = entity.declarations filter {
-    case Decl(symbol, Some(_)) => symbol.attr.flop.isSet
-    case Decl(symbol, None)    => symbol.attr.flop.isSet && cc.settings.resetAll
-    case _                     => unreachable
+  val resetFlops: List[Defn] = defn.defns filter {
+    case DefnVar(symbol, Some(_)) => symbol.attr.flop.isSet
+    case DefnVar(symbol, None)    => symbol.attr.flop.isSet && cc.settings.resetAll
+    case _                        => false
   }
 
-  val unresetFlops: List[Declaration] = entity.declarations filter {
-    case Decl(symbol, None) => symbol.attr.flop.isSet && !cc.settings.resetAll
-    case _                  => false
+  val unresetFlops: List[Defn] = defn.defns filter {
+    case DefnVar(symbol, None) => symbol.attr.flop.isSet && !cc.settings.resetAll
+    case _                     => false
   }
 
-  lazy val isVerbatim: Boolean = entity.symbol.attr.variant.value == "verbatim"
+  lazy val isVerbatim: Boolean = defn.variant == EntityVariant.Ver
 
-  lazy val hasConsts: Boolean = entity.declarations exists {
-    case Decl(symbol, _) => symbol.kind.isInstanceOf[TypeConst]
-    case _               => false
-  }
+  lazy val hasConsts: Boolean = decl.decls exists { _.symbol.kind.isConst }
 
   lazy val hasFlops: Boolean = resetFlops.nonEmpty || unresetFlops.nonEmpty
 
-  lazy val hasCombSignals: Boolean = entity.declarations exists {
-    case Decl(symbol, _) => symbol.attr.combSignal.isSet
-    case _               => false
-  }
+  lazy val hasCombSignals: Boolean = decl.decls exists { _.symbol.attr.combSignal.isSet }
 
-  lazy val hasArrays: Boolean = entity.declarations exists {
-    case Decl(symbol, _) => symbol.attr.memory.isSet
-    case _               => false
-  }
+  lazy val hasArrays: Boolean = decl.decls exists { _.symbol.attr.memory.isSet }
 
-  lazy val hasInterconnect: Boolean = entity.declarations exists {
-    case Decl(symbol, _) => symbol.attr.interconnect.isSet
-    case _               => false
-  }
+  lazy val hasInterconnect: Boolean = decl.decls exists { _.symbol.attr.interconnect.isSet }
 
-  lazy val hasInstances: Boolean = entity.instances.nonEmpty
+  lazy val hasInstances: Boolean = decl.instances.nonEmpty
 
-  lazy val canStall: Boolean = entity.preOrderIterator exists {
+  lazy val canStall: Boolean = defn.preOrderIterator exists {
     case _: StmtStall => true
     case _            => false
   }
 
   lazy val needsClock: Boolean = isVerbatim || hasFlops || hasArrays || {
-    entity.instances exists {
-      case EntInstance(_, Sym(symbol: TypeSymbol, _), _, _) => details(symbol).needsClock
-      case _                                                => unreachable
+    decl.instances exists { decl =>
+      details(decl.symbol.kind.asEntity.symbol).needsClock
     }
   }
 
   lazy val needsReset: Boolean = isVerbatim || resetFlops.nonEmpty || {
-    entity.instances exists {
-      case EntInstance(_, Sym(symbol: TypeSymbol, _), _, _) => details(symbol).needsReset
-      case _                                                => unreachable
+    defn.instances exists { decl =>
+      details(decl.symbol.kind.asEntity.symbol).needsReset
     }
   }
 
   // Any symbol that is driven by a connect must be a net
-  lazy val netSymbols: List[TermSymbol] = entity.connects flatMap {
-    case EntConnect(_, rhs :: Nil) => {
-      rhs collect {
-        case ExprSym(symbol: TermSymbol) => symbol
-      }
-    }
-    case _ => Nil
+  lazy val netSymbols: List[Symbol] = defn.connects flatMap {
+    case EntConnect(_, rhs :: Nil) => rhs collect { case ExprSym(symbol) => symbol }
+    case _                         => Nil
   }
 
   // Group and sort interconnect symbols by instance, then by port declaration order
-  lazy val groupedInterconnectSymbols: List[(TermSymbol, List[TermSymbol])] = {
+  lazy val groupedInterconnectSymbols: List[(Symbol, List[Symbol])] = {
     // Calculate (instance symbol, port name, interconnect symbol) triplets
-    val trip = for {
-      Decl(nSymbol, _) <- entity.declarations
-      (iSymbol, sel) <- nSymbol.attr.interconnect.get
-    } yield {
-      (iSymbol, sel, nSymbol)
+    val trip = decl.decls map {
+      _.symbol
+    } filter {
+      _.attr.interconnect.isSet
+    } flatMap { nSymbol =>
+      {
+        defn.connects collectFirst {
+          case EntConnect(lhs, List(ExprSym(`nSymbol`))) => lhs
+        }
+      } orElse {
+        defn.connects collectFirst {
+          case EntConnect(ExprSym(`nSymbol`), List(rhs)) => rhs
+        }
+      } pipe {
+        case Some(ExprSelect(ExprSym(iSymbol), sel, Nil)) => Some((iSymbol, sel, nSymbol))
+        //
+        case Some(other) => cc.ice(other, "Malformed interconnect assignment")
+        case None        =>
+          // This can happen if the connect was removed because it was driving
+          // an unused signal, but the interconnect symbol is also used in an
+          // unpacking assignment so it couldn't itself be removed
+          None
+      }
     }
 
     // Group by instance, loose instance symbol from values
@@ -122,13 +123,12 @@ final class EntityDetails(val entity: Entity, details: => Map[TypeSymbol, Entity
     // Sort by groups by instance order
     val sortedInstances = {
       // Sorting map for instance symbols
-      val ordering = {
-        val pairs = for {
-          (EntInstance(Sym(symbol: TermSymbol, _), _, _, _), i) <- entity.instances.zipWithIndex
+      val ordering = Map from {
+        for {
+          (decl, i) <- decl.instances.iterator.zipWithIndex
         } yield {
-          symbol -> i
+          decl.symbol -> i
         }
-        pairs.toMap
       }
       // Sort by instance
       groups.toList sortBy { case (i, _) => ordering(i) }
@@ -138,53 +138,51 @@ final class EntityDetails(val entity: Entity, details: => Map[TypeSymbol, Entity
     sortedInstances map {
       case (iSymbol, list) =>
         // Sorting map for port selectors
-        val ordering = {
-          val pairs = for {
-            (symbol, i) <- iSymbol.kind.asInstanceOf[TypeInstance].portSymbols.zipWithIndex
+        val ordering = Map from {
+          for {
+            (symbol, i) <- iSymbol.kind.asEntity.publicSymbols.iterator.zipWithIndex
           } yield {
             symbol.name -> i
           }
-          pairs.toMap
         }
         // Sort by port selector, then loose them, note that some interconnect
         // symbols can remain as placeholders in concatenations while their
         // corresponding ports have ben removed. We put these at the end sorted
         // lexically.
         val sortedSymbols = list sortWith {
-          case ((a, _), (b, _)) => {
+          case ((a, _), (b, _)) =>
             (ordering.get(a), ordering.get(b)) match {
               case (Some(oa), Some(ob)) => oa < ob
               case (Some(_), None)      => true
               case (None, Some(_))      => false
               case (None, None)         => a < b
             }
-          }
         } map { _._2 }
         (iSymbol, sortedSymbols)
     }
   }
 
   // Function from 'instance symbol => port selector => connected expression'
-  lazy val instancePortExpr: Map[TermSymbol, Map[String, Expr]] = {
-    val trip = entity.connects collect {
-      case EntConnect(InstancePortRef(iSymbol, pSymbol), rhs :: Nil) => {
+  lazy val instancePortExpr: Map[Symbol, Map[String, Expr]] = {
+    val trip = defn.connects collect {
+      case EntConnect(InstancePortRef(iSymbol, pSymbol), List(rhs)) =>
         (iSymbol, pSymbol.name, rhs)
-      }
-      case EntConnect(lhs, List(InstancePortRef(iSymbol, pSymbol))) => {
+      case EntConnect(lhs, List(InstancePortRef(iSymbol, pSymbol))) =>
         (iSymbol, pSymbol.name, lhs)
-      }
     }
 
     val grouped = trip.groupMap({ _._1 })({ case (_, s, e) => (s, e) })
 
-    (grouped.view mapValues { pairs =>
-      pairs.toMap ensuring { _.size == pairs.length }
-    }).toMap
+    Map from {
+      grouped.view mapValues { pairs =>
+        pairs.toMap ensuring { _.size == pairs.length }
+      }
+    }
   }
 
   // Connects that are not of the form 'a.b -> SOMETHING' or 'SOMETHING -> a.b'
   // where a is an instance
-  lazy val nonPortConnects: List[EntConnect] = entity.connects filter {
+  lazy val nonPortConnects: List[EntConnect] = defn.connects filter {
     case EntConnect(InstancePortRef(_, _), _)       => false
     case EntConnect(_, List(InstancePortRef(_, _))) => false
     case _                                          => true

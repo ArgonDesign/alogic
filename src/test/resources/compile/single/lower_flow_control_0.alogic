@@ -1,0 +1,23 @@
+fsm lower_flow_control_0 {
+  in  sync      bool i;
+  out sync wire bool o;
+
+  void main() {
+    o.write(i.read());
+    fence;
+  }
+}
+
+// @fec-golden {{{
+// module lower_flow_control_0(
+//   input  wire i,
+//   input  wire i__valid,
+//   output wire o,
+//   output wire o__valid
+// );
+//
+//   assign o = i;
+//   assign o__valid = i__valid;
+//
+// endmodule
+// }}}

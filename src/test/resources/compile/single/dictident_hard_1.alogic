@@ -1,0 +1,48 @@
+network dictident_hard_1 {
+  const uint N = 2;
+
+  gen for (uint n < N) {
+    out bool o#[n];
+  }
+
+  fsm inner {
+    param uint W;
+
+    gen for (uint n < N) {
+      out wire uint(W) oo#[n];
+    }
+    gen for (uint n < N-2) {
+      in  uint(W) ii#[n];
+    }
+
+    void main() {
+      gen for (uint n < N) {
+        gen if (n == 0) {
+          oo#[n] = 0;
+        } else if (n == N - 1) {
+          oo#[n] = 1;
+        } else {
+          // The hard bit is that this ii is cpmpletely eliminated, before
+          // these gens are processed at all.
+          oo#[n] = ii#[n-2];
+        }
+      }
+    fence;
+    }
+  }
+
+  inst = new inner(W=1);
+
+  gen for (uint n < N) {
+    inst.oo#[n] -> o#[n];
+  }
+}
+// @fec-golden {{{
+//  module dictident_hard_1(
+//    output o__0,
+//    output o__1
+//  );
+//    assign o__0 = 0;
+//    assign o__1 = 1;
+//  endmodule
+// }}}

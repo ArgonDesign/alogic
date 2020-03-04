@@ -1,0 +1,24 @@
+fsm circular_definition_0 {
+  uint(@bits(b)) a;
+  uint(@bits(c)) b;
+  uint(@bits(a)) c;
+}
+// :2: ERROR: Definition of 'a' is circular:
+// :2: ERROR: ... defined at .*circular_definition_0\.alogic:2
+// :2: ERROR: ...     uint\(@bits\(b\)\) a;
+// :2: ERROR: ...                    \^
+// :2: ERROR: ... depends on 'b' via .*circular_definition_0\.alogic:2
+// :2: ERROR: ...     uint\(@bits\(b\)\) a;
+// :2: ERROR: ...                \^
+// :2: ERROR: ... defined at .*circular_definition_0\.alogic:3
+// :2: ERROR: ...     uint\(@bits\(c\)\) b;
+// :2: ERROR: ...                    \^
+// :2: ERROR: ... depends on 'c' via .*circular_definition_0\.alogic:3
+// :2: ERROR: ...     uint\(@bits\(c\)\) b;
+// :2: ERROR: ...                \^
+// :2: ERROR: ... defined at .*circular_definition_0.alogic:4
+// :2: ERROR: ...     uint\(@bits\(a\)\) c;
+// :2: ERROR: ...                    \^
+// :2: ERROR: ... depends on 'a' via .*circular_definition_0\.alogic:4
+// :2: ERROR: ...     uint\(@bits\(a\)\) c;
+// :2: ERROR: ...                \^

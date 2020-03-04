@@ -36,6 +36,6 @@ network gen_alt_port_3 {
   inner_u.p_o -> p_out_u;
   inner_s.p_o -> p_out_s;
 }
-// :25: ERROR: 'p_o' is ambiguous after processing 'gen' constructs. Active declarations:
+// :25: ERROR: 'p_o' is ambiguous after processing 'gen' constructs. Active definitions at:
 // :25: ERROR: ... .*gen_alt_port_3.alogic:13
 // :25: ERROR: ... .*gen_alt_port_3.alogic:21

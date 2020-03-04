@@ -18,18 +18,13 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees.Expr.Integral
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.TreeInTypeTransformer
-import com.argondesign.alogic.core.Types.Type
-import com.argondesign.alogic.core.Types.TypeError
-import com.argondesign.alogic.core.Types.TypeInt
-import com.argondesign.alogic.core.Types.TypeNum
-import com.argondesign.alogic.core.Types.TypeVector
+import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.lib.Math.clog2
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.BigIntOps._
 import com.argondesign.alogic.util.unreachable
-import com.argondesign.alogic.lib.Math.clog2
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -40,7 +35,7 @@ final class FoldExpr(
 )(
     implicit cc: CompilerContext
 ) extends TreeTransformer {
-  private implicit def boolean2BigInt(bool: Boolean) = if (bool) BigInt(1) else BigInt(0)
+  private implicit def boolean2BigInt(bool: Boolean): BigInt = if (bool) BigInt(1) else BigInt(0)
 
   private val shiftOps = Set("<<", ">>", "<<<", ">>>")
 
@@ -76,14 +71,8 @@ final class FoldExpr(
     symbol.name == "$signed" || symbol.name == "$unsigned"
   }
 
-  // In types we always fold refs so that widths are always computable
-  private val typeFoldExpr = if (foldRefs) this else new FoldExpr(foldRefs = true)
-  private object TypeFoldExpr extends TreeInTypeTransformer(typeFoldExpr)
-
-  override def enter(tree: Tree): Unit = {
-
+  override def enter(tree: Tree): Option[Tree] = {
     if (foldRefs) {
-
       tree match {
         case ExprIndex(_, idx) =>
           val idxValOpt = idx.value
@@ -98,14 +87,44 @@ final class FoldExpr(
         case _ => ()
       }
 
-      // Next keep track of tgt type so that when transforming Indices, Slices or Selects,
-      // if we see ExprInt in the place of the target, we know how to index/slice or select from it.
+      // Next keep track of tgt type so that when transforming Indices or Slices,
+      // if we see ExprInt in the place of the target, we know how to index/slice from it.
       tree match {
         case ExprIndex(tgt, _)       => tgtTpe push tgt.tpe.underlying
         case ExprSlice(tgt, _, _, _) => tgtTpe push tgt.tpe.underlying
-        case ExprSelect(tgt, _, _)   => tgtTpe push tgt.tpe.underlying
         case _                       => tgtTpe push TypeError
       }
+    }
+
+    // Pre-order folds to avoid creating invalid intermediate nodes
+    tree pipe {
+      ////////////////////////////////////////////////////////////////////////////
+      // Fold selects
+      ////////////////////////////////////////////////////////////////////////////
+
+      case ExprSelect(tgt, sel, _) if tgt.tpe.isRecord =>
+        walk(tgt) match {
+          case Integral(_, _, value) =>
+            val (fieldTpe, lessSigFieldTpes) =
+              tgt.tpe.asRecord.publicSymbols dropWhile { _.name != sel } map { _.kind } match {
+                case head :: tail => (head, tail)
+                case Nil          => unreachable
+              }
+            val lsb = lessSigFieldTpes.map(_.width).sum.toInt
+            val result = value.extract(lsb, fieldTpe.width.toInt, fieldTpe.isSigned)
+            Some {
+              TypeAssigner {
+                ExprInt(fieldTpe.isSigned, fieldTpe.width.toInt, result) withLoc tree.loc
+              }
+            }
+          case _ => None
+        }
+
+      //
+      case _ => None
+    } tap {
+      case Some(_) if foldRefs => tgtTpe.pop()
+      case _                   =>
     }
   }
 
@@ -122,16 +141,15 @@ final class FoldExpr(
       // Fold refs
       ////////////////////////////////////////////////////////////////////////////
 
-      case ExprSym(symbol) if foldRefs => {
+      case ExprSym(symbol) if foldRefs =>
         if (dontFoldNextSym) {
           dontFoldNextSym = false
           tree
         } else if (symbol.kind.isConst) {
-          symbol.attr.init getOrElse tree
+          symbol.init getOrElse tree
         } else {
           tree
         }
-      }
 
       ////////////////////////////////////////////////////////////////////////////
       // Fold shifts with an unsized left hand side
@@ -377,22 +395,6 @@ final class FoldExpr(
       }
 
       ////////////////////////////////////////////////////////////////////////////
-      // Fold selects into integers (these arise when foldRefs == true)
-      ////////////////////////////////////////////////////////////////////////////
-
-      case ExprSelect(Integral(_, _, value), sel, _) => {
-        val tpe = tgtTpe.head.asStruct
-        val (fieldTpe, lessSigFieldTpes) =
-          (tpe.fieldNames zip tpe.fieldTypes) dropWhile (_._1 != sel) map (_._2) match {
-            case head :: tail => (head, tail)
-            case _            => unreachable
-          }
-        val lsb = lessSigFieldTpes.map(_.width).sum
-        val result = value.extract(lsb, fieldTpe.width, fieldTpe.isSigned)
-        ExprInt(fieldTpe.isSigned, fieldTpe.width, result) withLoc tree.loc
-      }
-
-      ////////////////////////////////////////////////////////////////////////////
       // Fold index into sized/unsized integers
       ////////////////////////////////////////////////////////////////////////////
 
@@ -400,8 +402,8 @@ final class FoldExpr(
         // TODO: error on out of range
         tgtTpe.headOption match {
           case Some(TypeVector(eKind, _)) =>
-            val result = value.extract(eKind.width * idx.toInt, eKind.width, eKind.isSigned)
-            ExprInt(eKind.isSigned, eKind.width, result) withLoc tree.loc
+            val result = value.extract((eKind.width * idx).toInt, eKind.width.toInt, eKind.isSigned)
+            ExprInt(eKind.isSigned, eKind.width.toInt, result) withLoc tree.loc
           case _ =>
             ExprInt(false, 1, (value >> idx.toInt) & 1) withLoc tree.loc
         }
@@ -428,8 +430,8 @@ final class FoldExpr(
         tgtTpe.headOption match {
           case Some(TypeVector(eKind, _)) =>
             val result =
-              value.extract(eKind.width * lsb, eKind.width * width)
-            ExprInt(false, eKind.width * width, result) withLoc tree.loc
+              value.extract((eKind.width * lsb).toInt, (eKind.width * width).toInt)
+            ExprInt(false, (eKind.width * width).toInt, result) withLoc tree.loc
           case _ =>
             ExprInt(false, width, value.extract(lsb, width)) withLoc tree.loc
         }
@@ -447,7 +449,7 @@ final class FoldExpr(
           case "-:" => lidx - ridx + 1 // FIXME: needs typing
           case _    => unreachable
         }
-        ExprIndex(expr, lsb + (idx zx lsb.tpe.width)) withLoc tree.loc
+        ExprIndex(expr, lsb + (idx zx lsb.tpe.width.toInt)) withLoc tree.loc
       }
 
       ////////////////////////////////////////////////////////////////////////////
@@ -455,7 +457,7 @@ final class FoldExpr(
       ////////////////////////////////////////////////////////////////////////////
 
       case ExprSlice(ExprSlice(expr, aLidx, aOp, aRidx), bL, bOp, bR) => {
-        val idxWidth = aLidx.tpe.width
+        val idxWidth = aLidx.tpe.width.toInt
 
         val bLidx = bL zx idxWidth
         val bRidx = bR zx idxWidth
@@ -499,7 +501,7 @@ final class FoldExpr(
       // Fold index over $signed/$unsigned
       ////////////////////////////////////////////////////////////////////////////
 
-      case ExprIndex(ExprCall(ExprSym(symbol), List(arg)), idx) if isBuiltinSU(symbol) => {
+      case ExprIndex(ExprCall(ExprSym(symbol), List(ArgP(arg))), idx) if isBuiltinSU(symbol) => {
         ExprIndex(arg, idx) withLoc tree.loc
       }
 
@@ -507,7 +509,7 @@ final class FoldExpr(
       // Fold slice over $signed/$unsigned
       ////////////////////////////////////////////////////////////////////////////
 
-      case ExprSlice(ExprCall(ExprSym(symbol), List(arg)), lidx, op, ridx)
+      case ExprSlice(ExprCall(ExprSym(symbol), List(ArgP(arg))), lidx, op, ridx)
           if isBuiltinSU(symbol) => {
         ExprSlice(arg, lidx, op, ridx) withLoc tree.loc
       }
@@ -522,13 +524,13 @@ final class FoldExpr(
           } => {
         ExprCat {
           args map {
-            case ExprCall(ExprSym(symbol), List(arg)) if isBuiltinSU(symbol) => arg
-            case arg                                                         => arg
+            case ExprCall(ExprSym(symbol), List(ArgP(arg))) if isBuiltinSU(symbol) => arg
+            case arg                                                               => arg
           }
         } withLoc tree.loc
       }
 
-      case ExprRep(count, ExprCall(ExprSym(symbol), List(arg))) if isBuiltinSU(symbol) => {
+      case ExprRep(count, ExprCall(ExprSym(symbol), List(ArgP(arg)))) if isBuiltinSU(symbol) => {
         ExprRep(count, arg) withLoc tree.loc
       }
 
@@ -737,27 +739,13 @@ final class FoldExpr(
       }
 
       ////////////////////////////////////////////////////////////////////////////
-      // Fold expressions inside Type instances
-      ////////////////////////////////////////////////////////////////////////////
-
-      case decl @ DeclRef(_, kind, _) => {
-        val newKind = kind rewrite TypeFoldExpr
-        if (kind eq newKind) decl else decl.copy(kind = newKind) withLoc tree.loc
-      }
-
-      case expr @ ExprType(kind) => {
-        val newKind = kind rewrite TypeFoldExpr
-        if (kind eq newKind) expr else ExprType(newKind) withLoc tree.loc
-      }
-
-      ////////////////////////////////////////////////////////////////////////////
       // Fold casts
       ////////////////////////////////////////////////////////////////////////////
 
       case ExprCast(TypeNum(signed), expr) => ExprNum(signed, expr.value.get) withLoc tree.loc
 
       case ExprCast(kind: TypeInt, ExprNum(signed, value)) => {
-        val width = kind.width
+        val width = kind.width.toInt
         val lo = if (signed) -(BigInt(1) << (width - 1)) else BigInt(0)
         val hi = if (signed) BigInt.mask(width - 1) else BigInt.mask(width)
         if (value > hi || value < lo) {
@@ -766,7 +754,7 @@ final class FoldExpr(
           cc.error(tree, s"Value ${value} cannot be represented with ${width} ${signedness} bits")
           ExprError() withLoc tree.loc
         } else {
-          ExprInt(signed, width, value) withLoc tree.loc
+          ExprInt(signed, width.toInt, value) withLoc tree.loc
         }
       }
 
@@ -784,8 +772,8 @@ final class FoldExpr(
       }
 
       case ExprCast(kind: TypeInt, expr) if expr.tpe.isPacked => {
-        val kWidth = kind.width
-        val eWidth = expr.tpe.width
+        val kWidth = kind.width.toInt
+        val eWidth = expr.tpe.width.toInt
         require(kWidth >= expr.tpe.width)
         val res = if (kWidth == eWidth) {
           expr
@@ -816,19 +804,15 @@ final class FoldExpr(
 
   override def finalCheck(tree: Tree): Unit = {
     assert(tgtTpe.isEmpty)
-    assert(dontFoldNextSym == false)
+    assert(!dontFoldNextSym)
   }
 
 }
 
-object FoldExpr {
-
-  class FoldExprPass(foldRefs: Boolean) extends TreeTransformerPass {
-    val name = "fold-expr"
-    def create(implicit cc: CompilerContext) = new FoldExpr(foldRefs)(cc)
-  }
-
-  def apply(foldRefs: Boolean): Pass = {
-    new FoldExprPass(foldRefs)
+object FoldExpr extends PairTransformerPass {
+  val name = "fold-expr"
+  def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {
+    val transformer = new FoldExpr(foldRefs = false)(cc)
+    (transformer(decl), transformer(defn))
   }
 }

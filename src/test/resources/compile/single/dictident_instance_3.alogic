@@ -11,7 +11,7 @@ network dictident_instance_3 {
   }
 
   gen for (uint N < 2) {
-    inst#[N] = new inner();
+    inst#[N] = new inner;
   }
 
   i_a -> inst#[0].ii;

@@ -18,7 +18,7 @@ import java.io.File
 import java.io.Writer
 import java.nio.file.Path
 
-import com.argondesign.alogic.ast.Trees.Entity
+import com.argondesign.alogic.ast.Trees.Tree
 import com.argondesign.alogic.core.enums.ResetStyle
 import com.argondesign.alogic.core.enums.UninitializedLocals
 
@@ -29,9 +29,9 @@ case class Settings(
     includeSearchDirs: List[File] = Nil,
     // Initial preprocessor definitions
     initialDefines: Map[String, String] = Map.empty,
-    // Entity writer factory
-    entityWriterFactory: (Entity, String) => Writer = {
-      case (_: Entity, _: String) => ???
+    // Output writer factory
+    outputWriterFactory: (Tree, String) => Writer = {
+      case (_: Tree, _: String) => ???
     },
     // Message emitter
     messageEmitter: (Message, CompilerContext) => Unit = {
@@ -48,7 +48,9 @@ case class Settings(
     // Colourize diagnostic messages
     colourize: Boolean = false,
     // Dump trees after each pass
-    dumpTrees: Boolean = true,
+    dumpTrees: Boolean = false,
+    // Randomly shuffle entity contents
+    shuffleEnts: Option[Int] = None,
     // Module manifest output path
     moduleManifestPath: Option[Path] = None,
     // Reset style

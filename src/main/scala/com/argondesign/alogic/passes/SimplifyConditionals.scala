@@ -17,6 +17,7 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Symbols.Symbol
 
 final class SimplifyConditionals(implicit cc: CompilerContext) extends TreeTransformer {
 
@@ -26,37 +27,34 @@ final class SimplifyConditionals(implicit cc: CompilerContext) extends TreeTrans
     case StmtIf(_, Nil, Nil) => Thicket(Nil) regularize tree.loc
 
     // Invert condition with empty else
-    case StmtIf(cond, Nil, elseStmts) => {
+    case StmtIf(cond, Nil, elseStmts) =>
       walk(StmtIf(!cond, elseStmts, Nil) regularize tree.loc)
-    }
 
-    case stmt @ StmtIf(cond, _, _) => {
+    case stmt @ StmtIf(cond, _, _) =>
       cond.simplify match {
-        case `cond`  => tree
-        case simpler => stmt.copy(cond = simpler) regularize tree.loc
+        case simpler if simpler eq cond => tree
+        case simpler                    => stmt.copy(cond = simpler) regularize tree.loc
       }
-    }
 
-    case StmtStall(cond) => {
+    case StmtStall(cond) =>
       cond.simplify match {
-        case `cond`  => tree
-        case simpler => StmtStall(simpler) regularize tree.loc
+        case simpler if simpler eq cond => tree
+        case simpler                    => StmtStall(simpler) regularize tree.loc
       }
-    }
 
-    case expr @ ExprTernary(cond, _, _) => {
+    case expr @ ExprTernary(cond, _, _) =>
       cond.simplify match {
-        case `cond`  => tree
-        case simpler => expr.copy(cond = simpler) regularize tree.loc
+        case simpler if simpler eq cond => tree
+        case simpler                    => expr.copy(cond = simpler) regularize tree.loc
       }
-    }
 
     case _ => tree
   }
 
 }
 
-object SimplifyConditionals extends TreeTransformerPass {
+object SimplifyConditionals extends EntityTransformerPass(declFirst = true) {
   val name = "simplify-conditionals"
-  def create(implicit cc: CompilerContext) = new SimplifyConditionals
+  def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
+    new SimplifyConditionals
 }

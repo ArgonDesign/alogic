@@ -17,9 +17,7 @@ package com.argondesign.alogic
 
 import java.io.File
 
-import org.scalatest.FreeSpec
-
-final class CompileMultiple extends FreeSpec with CompilationTest {
+final class CompileMultiple extends CompilationTest {
 
   val base = "/compile/multi"
 

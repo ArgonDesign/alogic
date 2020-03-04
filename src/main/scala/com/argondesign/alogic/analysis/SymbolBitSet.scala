@@ -16,13 +16,13 @@
 
 package com.argondesign.alogic.analysis
 
-import com.argondesign.alogic.core.Symbols.TermSymbol
+import com.argondesign.alogic.core.Symbols.Symbol
 
 import scala.collection.immutable.BitSet
 import scala.collection.mutable
 import scala.language.implicitConversions
 
-class SymbolBitSet(val underlying: Map[TermSymbol, BitSet]) extends AnyVal {
+class SymbolBitSet(val underlying: Map[Symbol, BitSet]) extends AnyVal {
 
   def union(that: SymbolBitSet): SymbolBitSet = {
     if (this.isEmpty) {
@@ -30,7 +30,7 @@ class SymbolBitSet(val underlying: Map[TermSymbol, BitSet]) extends AnyVal {
     } else if (that.isEmpty) {
       this
     } else {
-      val acc = mutable.Map[TermSymbol, BitSet]() ++ underlying
+      val acc = mutable.Map[Symbol, BitSet]() ++ underlying
       for ((symbol, bits) <- that) {
         acc.get(symbol) match {
           case Some(curr) => acc(symbol) = curr union bits
@@ -45,7 +45,7 @@ class SymbolBitSet(val underlying: Map[TermSymbol, BitSet]) extends AnyVal {
     if (this.isEmpty || that.isEmpty) {
       SymbolBitSet.empty
     } else {
-      val acc = mutable.Map[TermSymbol, BitSet]()
+      val acc = mutable.Map[Symbol, BitSet]()
       acc ++= underlying filter { case (symbol, _) => that contains symbol }
       if (acc.isEmpty) {
         SymbolBitSet.empty
@@ -64,7 +64,7 @@ class SymbolBitSet(val underlying: Map[TermSymbol, BitSet]) extends AnyVal {
     if (this.isEmpty || that.isEmpty) {
       this
     } else {
-      val acc = mutable.Map[TermSymbol, BitSet]() ++ underlying
+      val acc = mutable.Map[Symbol, BitSet]() ++ underlying
       // TODO: early termination if acc is empty
       for ((symbol, bits) <- that) {
         acc.get(symbol) match {
@@ -89,11 +89,11 @@ object SymbolBitSet {
 
   val empty = new SymbolBitSet(Map.empty)
 
-  implicit def apply(underlying: Map[TermSymbol, BitSet]): SymbolBitSet = {
+  implicit def apply(underlying: Map[Symbol, BitSet]): SymbolBitSet = {
     new SymbolBitSet(underlying)
   }
 
-  implicit def toUnderlying(symbolBitSet: SymbolBitSet): Map[TermSymbol, BitSet] = {
+  implicit def toUnderlying(symbolBitSet: SymbolBitSet): Map[Symbol, BitSet] = {
     symbolBitSet.underlying
   }
 

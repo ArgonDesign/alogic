@@ -1,0 +1,24 @@
+network sub {
+  param bool INVERT;
+  in  bool i;
+  out bool o;
+
+  fsm inner {
+    param bool INV;
+    in       bool ii;
+    out wire bool oo;
+
+    void main() {
+      gen if (INV) {
+        oo = ~ii;
+      } else {
+        oo = ii;
+      }
+      fence;
+    }
+  }
+
+  inst = new inner(INV=INVERT);
+
+  i -> inst.ii; inst.oo -> o;
+}

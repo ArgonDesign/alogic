@@ -1,0 +1,46 @@
+struct t {
+  bool x;
+  bool y;
+}
+
+struct s {
+  t a;
+  t b;
+}
+
+network split_struct_3 {
+  in  s i;
+  out s o;
+
+  new fsm inner {
+    in       s ii;
+    out wire s oo;
+
+    void main() {
+      oo = ii;
+      fence;
+    }
+  }
+
+  i -> inner.ii;
+  inner.oo -> o;
+}
+// @fec-golden {{{
+// module split_struct_3(
+//   input  wire i__a__x,
+//   input  wire i__a__y,
+//   input  wire i__b__x,
+//   input  wire i__b__y,
+//   output wire o__a__x,
+//   output wire o__a__y,
+//   output wire o__b__x,
+//   output wire o__b__y
+// );
+//
+//   assign o__a__x = i__a__x;
+//   assign o__a__y = i__a__y;
+//   assign o__b__x = i__b__x;
+//   assign o__b__y = i__b__y;
+//
+// endmodule
+// }}}

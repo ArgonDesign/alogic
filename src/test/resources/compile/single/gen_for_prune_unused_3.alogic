@@ -54,4 +54,3 @@ network gen_for_prune_unused_3 {
 //
 //  endmodule
 // }}}
-// :11: WARNING: struct 'foo' is unused after processing 'gen' constructs

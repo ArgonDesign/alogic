@@ -19,6 +19,7 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.typer.TypeAssigner
 
 final class RemoveRedundantBlocks(implicit cc: CompilerContext) extends TreeTransformer {
@@ -31,62 +32,54 @@ final class RemoveRedundantBlocks(implicit cc: CompilerContext) extends TreeTran
   }
 
   override def transform(tree: Tree): Tree = tree match {
-    case EntFunction(ref, body) => {
+    case defn: DefnFunc =>
       TypeAssigner {
-        EntFunction(ref, flatten(body)) withLoc tree.loc
+        defn.copy(body = flatten(defn.body)) withLoc tree.loc
       }
-    }
 
-    case EntState(expr, body) => {
+    case defn: DefnState =>
       TypeAssigner {
-        EntState(expr, flatten(body)) withLoc tree.loc
+        defn.copy(body = flatten(defn.body)) withLoc tree.loc
       }
-    }
 
     case StmtBlock(List(stmt)) => stmt
 
-    case StmtBlock(body) => {
+    case StmtBlock(body) =>
       TypeAssigner {
         StmtBlock(flatten(body)) withLoc tree.loc
       }
-    }
 
-    case StmtLoop(body) => {
+    case StmtLoop(body) =>
       TypeAssigner {
         StmtLoop(flatten(body)) withLoc tree.loc
       }
-    }
 
-    case StmtIf(cond, thenStmts, elseStmts) => {
+    case StmtIf(cond, thenStmts, elseStmts) =>
       TypeAssigner {
         StmtIf(cond, flatten(thenStmts), flatten(elseStmts)) withLoc tree.loc
       }
-    }
 
-    case CaseRegular(cond, stmts) => {
+    case CaseRegular(cond, stmts) =>
       TypeAssigner {
         CaseRegular(cond, flatten(stmts)) withLoc tree.loc
       }
-    }
 
-    case CaseDefault(stmts) => {
+    case CaseDefault(stmts) =>
       TypeAssigner {
         CaseDefault(flatten(stmts)) withLoc tree.loc
       }
-    }
 
-    case EntCombProcess(stmts) => {
+    case EntCombProcess(stmts) =>
       TypeAssigner {
         EntCombProcess(flatten(stmts)) withLoc tree.loc
       }
-    }
 
     case _ => tree
   }
 
 }
 
-object RemoveRedundantBlocks extends TreeTransformerPass {
+object RemoveRedundantBlocks extends EntityTransformerPass(declFirst = true) {
   val name = "remove-redundant-blocks"
-  def create(implicit cc: CompilerContext) = new RemoveRedundantBlocks
+  def create(symbol: Symbol)(implicit cc: CompilerContext) = new RemoveRedundantBlocks
 }

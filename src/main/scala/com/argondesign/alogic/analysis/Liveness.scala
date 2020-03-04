@@ -17,7 +17,7 @@ package com.argondesign.alogic.analysis
 
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Symbols.TermSymbol
+import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.util.BigIntOps._
 import com.argondesign.alogic.util.unreachable
 
@@ -27,8 +27,8 @@ object Liveness {
 
   private def usedRvalMaps(expr: Expr)(
       implicit cc: CompilerContext
-  ): Iterator[Map[TermSymbol, BigInt]] = expr flatCollect {
-    case ExprIndex(ExprSym(symbol: TermSymbol), idx) if symbol.kind.isPacked => {
+  ): Iterator[Map[Symbol, BigInt]] = expr flatCollect {
+    case ExprIndex(ExprSym(symbol), idx) if symbol.kind.isPacked => {
       val m = idx.value map { bit =>
         Map(symbol -> BigInt.oneHot(bit))
       } getOrElse {
@@ -36,7 +36,7 @@ object Liveness {
       }
       Iterator.single(m) ++ usedRvalMaps(idx)
     }
-    case ExprSlice(ExprSym(symbol: TermSymbol), lidx, op, ridx) if symbol.kind.isPacked => {
+    case ExprSlice(ExprSym(symbol), lidx, op, ridx) if symbol.kind.isPacked => {
       val m = lidx.value flatMap { l =>
         ridx.value map { r =>
           val (width, lsb) = op match {
@@ -52,14 +52,14 @@ object Liveness {
       }
       Iterator.single(m) ++ usedRvalMaps(lidx) ++ usedRvalMaps(ridx)
     }
-    case ExprSym(symbol: TermSymbol) if symbol.kind.isPacked => {
+    case ExprSym(symbol) if symbol.kind.isPacked => {
       Iterator.single(Map(symbol -> BigInt.mask(symbol.kind.width)))
     }
   }
 
   private def incorporate(
-      acc: mutable.Map[TermSymbol, BigInt],
-      it: Iterator[Map[TermSymbol, BigInt]]
+      acc: mutable.Map[Symbol, BigInt],
+      it: Iterator[Map[Symbol, BigInt]]
   ): Unit = {
     for {
       map <- it
@@ -72,7 +72,7 @@ object Liveness {
   // Given an expression, return a SymbolBitSet that holds bits that might be
   // read if this expression is not used on the left hand side of an assignment
   def usedRv(expr: Expr)(implicit cc: CompilerContext): SymbolBitSet = {
-    val acc = mutable.Map[TermSymbol, BigInt]() withDefaultValue BigInt(0)
+    val acc = mutable.Map[Symbol, BigInt]() withDefaultValue BigInt(0)
     incorporate(acc, usedRvalMaps(expr))
     (acc.view mapValues { _.toBitSet }).toMap
   }
@@ -80,10 +80,10 @@ object Liveness {
   // Given an expression, return a SymbolBitSet that holds bits that might be
   // read if this expression is used on the left hand side of an assignment
   def usedLv(lval: Expr)(implicit cc: CompilerContext): SymbolBitSet = {
-    val acc = mutable.Map[TermSymbol, BigInt]() withDefaultValue BigInt(0)
+    val acc = mutable.Map[Symbol, BigInt]() withDefaultValue BigInt(0)
 
     def gather(expr: Expr): Unit = expr match {
-      case ExprSym(symbol: TermSymbol) => ()
+      case ExprSym(symbol) => ()
       case ExprIndex(_: ExprSym, idx) => {
         incorporate(acc, usedRvalMaps(idx))
       }
@@ -107,17 +107,17 @@ object Liveness {
   // assignment
   def killed(lval: Expr)(implicit cc: CompilerContext): SymbolBitSet = {
 
-    def loop(expr: Expr): Map[TermSymbol, BigInt] = {
+    def loop(expr: Expr): Map[Symbol, BigInt] = {
       expr match {
-        case ExprSym(symbol: TermSymbol) => {
+        case ExprSym(symbol) => {
           Map(symbol -> BigInt.mask(symbol.kind.width))
         }
-        case ExprIndex(ExprSym(symbol: TermSymbol), idx) => {
+        case ExprIndex(ExprSym(symbol), idx) => {
           idx.value map { bit =>
             Map(symbol -> BigInt.oneHot(bit))
           } getOrElse Map.empty
         }
-        case ExprSlice(ExprSym(symbol: TermSymbol), lidx, op, ridx) => {
+        case ExprSlice(ExprSym(symbol), lidx, op, ridx) => {
           lidx.value flatMap { l =>
             ridx.value map { r =>
               val (width, lsb) = op match {
@@ -131,7 +131,7 @@ object Liveness {
           } getOrElse Map.empty
         }
         case ExprCat(parts) => {
-          val acc = mutable.Map[TermSymbol, BigInt]() withDefaultValue BigInt(0)
+          val acc = mutable.Map[Symbol, BigInt]() withDefaultValue BigInt(0)
           for {
             map <- parts map loop
             (symbol, mask) <- map

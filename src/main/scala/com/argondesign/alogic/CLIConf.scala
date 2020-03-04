@@ -292,6 +292,9 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
   // Dump entities after each pass
   val dumpTrees = toggle(name = "dump-trees", noshort = true, hidden = true)
 
+  // Randomly shuffle Ent nodes
+  val shuffleEnts = opt[Int](noshort = true, default = None, hidden = true)
+
   val toplevel = trailArg[List[String]](
     required = true,
     descr = "List of top level entity names"

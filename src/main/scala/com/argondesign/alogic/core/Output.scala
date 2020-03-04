@@ -17,19 +17,31 @@ package com.argondesign.alogic.core
 
 import java.io.Writer
 
-import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.ast.Trees.Decl
+import com.argondesign.alogic.ast.Trees.Defn
+import com.argondesign.alogic.ast.Trees.Tree
 
 trait Output { this: CompilerContext =>
 
-  private implicit val implicitThis = this
+  private implicit val implicitThis: CompilerContext = this
 
-  def getEntityWriter(entity: Entity, suffix: String): Writer = {
-    settings.entityWriterFactory(entity, suffix)
+  def getOutputWriter(tree: Tree, suffix: String): Writer = {
+    settings.outputWriterFactory(tree, suffix)
   }
 
-  def dumpEntity(entity: Entity, suffix: String): Unit = {
-    val writer = getEntityWriter(entity, suffix + ".alogic")
-    writer.write(entity.toSource)
+  def dump(decl: Decl, defn: Defn, suffix: String): Unit = {
+    val writer = getOutputWriter(decl, suffix + ".alogic")
+    writer.write(decl.toSource)
+    writer.write("\n")
+    writer.write(defn.toSource)
+    writer.write("\n")
+    writer.close()
+  }
+
+  def dump(tree: Tree, suffix: String): Unit = {
+    val writer = getOutputWriter(tree, suffix + ".alogic")
+    writer.write(tree.toSource)
+    writer.write("\n")
     writer.close()
   }
 }

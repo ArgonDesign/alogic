@@ -15,7 +15,6 @@
 
 package com.argondesign.alogic.core
 
-import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.FlowControlTypes._
 import com.argondesign.alogic.core.StorageTypes._
 import com.argondesign.alogic.core.Types._
@@ -33,52 +32,48 @@ trait TypePrintOps { this: Type =>
     case StorageTypeDefault => ""
     case StorageTypeReg     => "reg "
     case StorageTypeWire    => "wire "
-    case StorageTypeSlices(slices) => {
+    case StorageTypeSlices(slices) =>
       slices map {
         case StorageSliceFwd => "fslice"
         case StorageSliceBwd => "bslice"
         case StorageSliceBub => "bubble"
       } mkString ("", " ", " ")
-    }
   }
 
-  final def toSource(implicit cc: CompilerContext): String = this match {
-    case TypeCombStmt                   => "type-comb-statement"
-    case TypeCtrlStmt                   => "type-ctrl-statement"
-    case TypeState                      => "type-state"
-    case TypeSInt(ExprNum(_, value))    => s"i${value}"
-    case TypeUInt(ExprNum(_, value))    => s"u${value}"
-    case TypeSInt(ExprInt(_, _, value)) => s"i${value}"
-    case TypeUInt(ExprInt(_, _, value)) => s"u${value}"
-    case TypeSInt(size)                 => s"int(${size.toSource})"
-    case TypeUInt(size)                 => s"uint(${size.toSource})"
-    case TypeNum(true)                  => "int"
-    case TypeNum(false)                 => "uint"
-    case TypeVector(elementType, size)  => s"${elementType.toSource}[${size.toSource}]"
-    case TypeArray(elementType, size)   => s"${elementType.toSource} _[${size.toSource}]"
-    case TypeStack(elementType, size)   => s"stack ${elementType.toSource} _[${size.toSource}]"
-    case TypeSram(elementType, size, st) =>
-      s"sram ${st2String(st)}${elementType.toSource} _[${size.toSource}]"
-    case TypeStruct(name, _, _) => s"struct ${name}"
-    case TypeVoid               => "void"
-    case TypeCombFunc(argTypes, retType) =>
-      s"comb ${argTypes map { _.toSource } mkString ("(", ", ", ")")} -> ${retType.toSource}"
-    case TypeCtrlFunc(argTypes, retType) =>
-      s"ctrl ${argTypes map { _.toSource } mkString ("(", ", ", ")")} -> ${retType.toSource}"
-    case TypeEntity(name, _, _)     => s"entity ${name}"
-    case TypeInstance(entitySymbol) => s"instance ${entitySymbol.name}"
-    case TypeStr                    => "string"
-    case TypeIn(kind, fct)          => s"in ${fct2String(fct)}${kind.toSource}"
-    case TypeOut(kind, fct, st)     => s"out ${fct2String(fct)}${st2String(st)}${kind.toSource}"
-    case TypePipeline(kind)         => s"pipeline ${kind.toSource}"
-    case TypeParam(kind)            => s"param ${kind.toSource}"
-    case TypeConst(kind)            => s"const ${kind.toSource}"
-    case TypeGen(kind)              => s"gen ${kind.toSource}"
-    case TypeType(kind)             => s"type ${kind.toSource}"
-    case TypeMisc                   => "type-misc"
-    case TypeError                  => "type-error"
-    case _: TypePolyFunc            => "type-poly-func"
-    case TypeRef(ref)               => ref.toSource
-    case _: TypeChoice              => this.toString
+  // format: off
+  final def toSource: String = this match {
+    case TypeSInt(sz)                         => s"i$sz"
+    case TypeUInt(sz)                         => s"u$sz"
+    case TypeNum(true)                        => "int"
+    case TypeNum(false)                       => "uint"
+    case TypeVector(elem, sz)                 => s"${elem.toSource}[$sz]"
+    case TypeVoid                             => "void"
+    case TypeStr                              => "string"
+    case TypeRecord(symbol, _)                => s"struct ${symbol.name}"
+    case TypeEntity(symbol, _)                => s"entity ${symbol.name}"
+    case TypeIn(kind, fct)                    => s"in ${fct2String(fct)}${kind.toSource}"
+    case TypeOut(kind, fct, st)               => s"out ${fct2String(fct)}${st2String(st)}${kind.toSource}"
+    case TypePipeline(kind)                   => s"pipeline ${kind.toSource}"
+    case TypeParam(kind)                      => s"param ${kind.toSource}"
+    case TypeConst(kind)                      => s"const ${kind.toSource}"
+    case TypeGen(kind)                        => s"gen ${kind.toSource}"
+    case TypeArray(elem, sz)                  => s"${elem.toSource} _[$sz]"
+    case TypeSram(elem, sz, StorageTypeWire)  => s"sram wire ${elem.toSource} _[$sz]"
+    case TypeSram(elem, sz, _)                => s"sram ${elem.toSource} _[$sz]"
+    case TypeStack(elem, sz)                  => s"stack ${elem.toSource} _[$sz]"
+    case TypeType(kind)                       => s"type ${kind.toSource}"
+    case TypeNone(kind)                       => s"none ${kind.toSource}"
+    case TypeParametrized(symbol)             => s"parametrized ${symbol.name}"
+    case TypeCombStmt                         => this.toString
+    case TypeCtrlStmt                         => this.toString
+    case TypeCombFunc(s, r, as)               => s"comb ${r.toSource} ${s.name} ${as map { _.toSource } mkString ("(", ", ", ")")}"
+    case TypeCtrlFunc(s, r, as)               => s"ctrl ${r.toSource} ${s.name} ${as map { _.toSource } mkString ("(", ", ", ")")}"
+    case _: TypePolyFunc                      => this.toString
+    case TypeUnknown                          => this.toString
+    case TypeChoice                           => this.toString
+    case TypeState                            => this.toString
+    case TypeMisc                             => this.toString
+    case TypeError                            => this.toString
   }
+  // format: on
 }

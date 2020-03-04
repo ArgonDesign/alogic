@@ -15,68 +15,63 @@
 
 package com.argondesign.alogic
 
-import com.argondesign.alogic.SourceTextConverters._
-import com.argondesign.alogic.ast.Trees.Expr.ImplicitConversions._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Error
 import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.passes.Elaborate
 import com.argondesign.alogic.passes.Namer
-import com.argondesign.alogic.typer.Typer
+import com.argondesign.alogic.passes.TypeCheck
 import org.scalatest.FreeSpec
 
 final class UnaryTickSpec extends FreeSpec with AlogicTest {
 
-  implicit val cc = new CompilerContext
-  cc.postSpecialization = true
+  implicit val cc: CompilerContext = new CompilerContext
 
-  val namer = new Namer
-  val typer = new Typer
-
-  def xform(tree: Tree) = {
-    tree match {
-      case Root(_, entity: Entity) => cc.addGlobalEntity(entity)
-      case entity: Entity          => cc.addGlobalEntity(entity)
-      case _                       =>
+  protected def replaceUnaryTicks(text: String): Option[Thicket] = {
+    transformWithPass(Namer andThen
+                        Elaborate andThen
+                        TypeCheck,
+                      text) map { pairs =>
+      Thicket {
+        pairs flatMap {
+          case (decl, defn) => List(decl, defn)
+        }
+      }
     }
-    val node = tree rewrite namer match {
-      case Root(_, entity) => entity
-      case other           => other
-    }
-    node rewrite typer
   }
 
   def checkUnpacked(text: String): Unit = {
-    xform(text.asTree[Root])
+    replaceUnaryTicks(text)
     cc.messages.loneElement should beThe[Error](
       """Operand of unary ' operator is of non-packed type""")
   }
 
   def checkNarrowing(text: String): Unit = {
-    xform(text.asTree[Root])
+    replaceUnaryTicks(text)
     cc.messages.loneElement should beThe[Error](
       """Unary ' causes narrowing of width from \d+ to \d+""")
   }
 
   def checkInvalidContext(text: String): Unit = {
-    xform(text.asTree[Root])
+    replaceUnaryTicks(text)
     cc.messages.loneElement should beThe[Error]("Unary ' operator used in invalid context")
   }
 
   def check(kinds: List[Type])(text: String): Unit = {
-    val tree = xform(text.asTree[Root])
+    val tree = replaceUnaryTicks(text)
     cc.messages foreach { msg =>
       println(msg.string(cc))
     }
     cc.messages shouldBe empty
-    val exprs = { tree collect { case e @ ExprUnary("'", _) => e } }.toList
+    val exprs = { tree.value collect { case e @ ExprUnary("'", _) => e } }.toList
     exprs should have length kinds.length
     for ((kind, expr) <- kinds zip exprs) {
       expr.tpe shouldBe kind
     }
   }
 
-  "The Typer should process the unary tick operator in" - {
+  "The Typer should assign the type of the unary tick operator in" - {
     "valid context" - {
       "declaration initializer" - {
         "a" in check(TypeUInt(9) :: Nil) {
@@ -146,7 +141,8 @@ final class UnaryTickSpec extends FreeSpec with AlogicTest {
              |  u3 g;
              |}
              |
-             |fsm f {
+             |(* toplevel *)
+             |fsm x {
              |  in s a;
              |  void main() {
              |    (* unused *)u9 b = 'a;
@@ -295,7 +291,7 @@ final class UnaryTickSpec extends FreeSpec with AlogicTest {
              |  const u2 A = 2'd2;
              |  in  u32[8]  a;
              |  out u32[2]  b;
-             |  in  uint(A) i;
+             |  in  u2 i;
              |  void main() {
              |    b = a['i +: 'A];
              |    fence;
@@ -320,9 +316,9 @@ final class UnaryTickSpec extends FreeSpec with AlogicTest {
           """|fsm f {
              |  in bool a;
              |  in u2   b;
-             |  
+             |
              |  u20 store[256];
-             |  
+             |
              |  void main() {
              |    store.write('b, 'a);
              |    fence;
@@ -390,7 +386,7 @@ final class UnaryTickSpec extends FreeSpec with AlogicTest {
       "a" in checkInvalidContext {
         """|fsm f {
            |  const u2 P = 2;
-           |  (* unused *)in uint('P) a;
+           |  in uint('P) a;
            |}""".stripMargin
       }
 
@@ -442,6 +438,21 @@ final class UnaryTickSpec extends FreeSpec with AlogicTest {
            |  }
            |}""".stripMargin
       }
+
+      "f" in checkInvalidContext {
+        """|fsm f {
+           |  const u2 P = 2;
+           |  in bool['P] a;
+           |}""".stripMargin
+      }
+
+      "g" in checkInvalidContext {
+        """|fsm f {
+           |  const u2 P = 2;
+           |  u8 a = @bits(bool['P]);
+           |}""".stripMargin
+      }
+
     }
   }
 }

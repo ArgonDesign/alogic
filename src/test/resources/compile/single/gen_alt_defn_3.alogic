@@ -38,6 +38,6 @@ network gen_alt_defn_3 {
   inner_u.p_o -> p_out_u;
   inner_s.p_o -> p_out_s;
 }
-// :24: ERROR: 'o_t' is ambiguous after processing 'gen' constructs. Active declarations:
+// :24: ERROR: 'o_t' is ambiguous after processing 'gen' constructs. Active definitions at:
 // :24: ERROR: ... .*gen_alt_defn_3.alogic:12
 // :24: ERROR: ... .*gen_alt_defn_3.alogic:19

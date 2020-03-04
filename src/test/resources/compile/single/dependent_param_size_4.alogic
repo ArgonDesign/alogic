@@ -1,0 +1,48 @@
+network dependent_param_size_4 {
+  in  u1  i_a;
+  in  u4  i_b;
+  out u5  o_a;
+  out u9  o_b;
+
+  fsm pad {
+    param uint(WO-WI) PADDING = 0;
+    param uint WI = 0;
+    param uint WO = 0;
+
+    in  uint(WI) p_i;
+    out uint(WO) p_o;
+
+    void main() {
+      p_o = {PADDING, p_i};
+      fence;
+    }
+  }
+
+  inst_a = new pad(WI=1, WO=5, PADDING=4'd7);
+  inst_b = new pad(WI=4, WO=9, PADDING=5'd7);
+
+  i_a -> inst_a.p_i; inst_a.p_o -> o_a;
+  i_b -> inst_b.p_i; inst_b.p_o -> o_b;
+}
+// @fec-golden {{{
+//  module dependent_param_size_4(
+//    input wire rst,
+//    input wire clk,
+//    input wire i_a,
+//    input wire [3:0] i_b,
+//    output reg [4:0] o_a,
+//    output reg [8:0] o_b
+//  );
+//
+//  always @(posedge clk) begin
+//    if (rst) begin
+//      o_a <= 5'd0;
+//      o_b <= 9'd0;
+//    end else begin
+//      o_a <= {4'd7, i_a};
+//      o_b <= {5'd7, i_b};
+//    end
+//  end
+//
+//  endmodule
+// }}}

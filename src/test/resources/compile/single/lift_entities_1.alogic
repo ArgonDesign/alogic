@@ -1,0 +1,21 @@
+network lift_entities_1 {
+  in  bool i;
+  out bool o;
+
+  new network inner_a {
+    new network inner_b {
+      i -> o;
+    }
+  }
+}
+
+// @fec-golden {{{
+// module lift_entities_1(
+//   input  wire i,
+//   output wire o
+// );
+//
+//   assign o = i;
+//
+// endmodule
+// }}}

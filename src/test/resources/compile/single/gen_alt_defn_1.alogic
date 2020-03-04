@@ -4,20 +4,23 @@ network gen_alt_defn_1 {
   out u4 p_out_u;
   out i4 p_out_s;
 
+  struct si_t {i2 f;}
+  struct so_t {i4 f;}
+  struct ui_t {u2 f;}
+  struct uo_t {u4 f;}
+
   fsm inner {
     param bool SIGNED;
 
     gen if (SIGNED) {
-      struct i_t {i2 f;}
-      struct o_t {i4 f;}
+      in  si_t p_i_0;
+      in  si_t p_i_1;
+      out so_t p_o;
     } else {
-      struct i_t {u2 f;}
-      struct o_t {u4 f;}
+      in  ui_t p_i_0;
+      in  ui_t p_i_1;
+      out uo_t p_o;
     }
-
-    in  i_t p_i_0;
-    in  i_t p_i_1;
-    out o_t p_o;
 
     void main() {
       p_o.write('p_i_0.f * 'p_i_1.f);

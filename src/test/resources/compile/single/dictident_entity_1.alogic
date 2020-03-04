@@ -8,7 +8,7 @@ network dictident_entity_1 {
     ii -> oo;
   }
 
-  inst = new inner#[0]();
+  inst = new inner#[0];
 
   i -> inst.ii; inst.oo -> o;
 }

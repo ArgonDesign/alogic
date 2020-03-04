@@ -11,6 +11,7 @@ fsm gen_for_stmt_3 {
     p_o.write(b);
     fence;
   }
+}
 // @fec-golden {{{
 //  module gen_for_stmt_3(
 //    input wire rst,
@@ -29,4 +30,3 @@ fsm gen_for_stmt_3 {
 //
 //  endmodule
 // }}}
-}

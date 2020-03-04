@@ -1,0 +1,22 @@
+fsm circular_reference_0 {
+  out wire u7 p_a;
+  out wire u8 p_b;
+
+  fence {
+    u7 a = @bits(b);
+    u8 b = @bits(a);
+    p_a = a;
+    p_b = b;
+  }
+}
+// @fec-golden {{{
+//  module circular_reference_0(
+//    output wire [6:0] p_a,
+//    output wire [7:0] p_b
+//  );
+//
+//    assign p_a = 7'd8;
+//    assign p_b = 8'd7;
+//
+//  endmodule
+// }}}

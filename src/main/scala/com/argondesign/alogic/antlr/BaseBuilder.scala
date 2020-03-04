@@ -19,10 +19,10 @@ import scala.jdk.CollectionConverters._
 
 import com.argondesign.alogic.core.CompilerContext
 
-abstract trait BaseBuilder[C, T] {
+trait BaseBuilder[C, T] {
   def apply(ctx: C)(implicit cc: CompilerContext): T
 
-  def apply(ctxs: java.util.List[_ <: C])(implicit cc: CompilerContext): List[T] = {
-    ctxs.asScala.toList map { apply(_) }
+  def apply(ctxs: java.util.List[_ <: C])(implicit cc: CompilerContext): List[T] = List from {
+    ctxs.iterator.asScala map apply
   }
 }

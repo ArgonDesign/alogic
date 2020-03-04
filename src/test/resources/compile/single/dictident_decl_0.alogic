@@ -3,5 +3,5 @@ network dictident_decl_0 {
   out bool o#[0];
   i#[0] -> o#[0];
 }
-// :2: ERROR: Declaration with dictionary identifier must appear directly in 'gen' loop scope.
-// :3: ERROR: Declaration with dictionary identifier must appear directly in 'gen' loop scope.
+// :2: ERROR: Definition with dictionary identifier must appear directly in 'gen' loop scope.
+// :3: ERROR: Definition with dictionary identifier must appear directly in 'gen' loop scope.

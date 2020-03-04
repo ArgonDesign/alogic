@@ -20,24 +20,23 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
 
-private[builtins] class AtEx(implicit cc: CompilerContext) extends BuiltinPolyFunc {
+private[builtins] class AtEx(implicit cc: CompilerContext)
+    extends BuiltinPolyFunc(isValidConnLhs = true) {
 
   val name = "@ex"
 
   def validArgs(args: List[Expr]) = args match {
-    case List(bit, width, expr) => {
-      (bit.tpe.width == 1) && width.isKnownConst && expr.tpe.isPacked
-    }
-    case _ => false
+    case List(bit, width, expr) => (bit.tpe.width == 1) && width.isKnownConst && expr.tpe.isPacked
+    case _                      => false
   }
 
-  def returnType(args: List[Expr]) = Some {
-    TypeInt(args(2).tpe.isSigned, args(1))
+  def returnType(args: List[Expr]): Option[TypeFund] = Some {
+    TypeInt(args(2).tpe.isSigned, args(1).value.get.toInt)
   }
 
-  def combArgs(args: List[Expr]) = List(args(0), args(2))
+  def isKnown(args: List[Expr]) = args(0).isKnownConst && args(2).isKnownConst
 
-  def fold(loc: Loc, args: List[Expr]) = AtEx.fold(loc, args(0), args(1), args(2))
+  def simplify(loc: Loc, args: List[Expr]) = AtEx.fold(loc, args(0), args(1), args(2))
 
 }
 
@@ -70,7 +69,7 @@ private[builtins] object AtEx {
     for {
       dstWidth <- width.value map { _.toInt }
     } yield {
-      val srcWidth = expr.tpe.width
+      val srcWidth = expr.tpe.width.toInt
       val d = dstWidth - srcWidth
       if (d < 0) {
         val msg = s"Result width ${dstWidth} of extension is less than argument width ${srcWidth}"

@@ -1,0 +1,28 @@
+network p8009_212 {
+  const uint N = 4;
+
+  in sync ready u48 i;
+
+  gen for (uint n < N) {
+    in       u48 value#[n];
+    out sync u48 output#[n];
+  }
+
+  out u1 error;
+
+  new fsm inner {
+    u48 tmp;
+
+    void main() {
+      tmp = i.read();
+      error = 1;
+      gen for (uint n < N) {
+        if (tmp == value#[n]) {
+          output#[n].write(tmp);
+          error = 0;
+        }
+      }
+      fence;
+    }
+  }
+}

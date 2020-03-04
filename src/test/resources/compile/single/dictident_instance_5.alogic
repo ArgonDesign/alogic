@@ -11,7 +11,7 @@ network dictident_instance_5 {
       i_b -> inst#[N].ii; inst#[N].oo -> o_b;
     }
 
-    inst#[N] = new inner();
+    inst#[N] = new inner;
   }
 
   network inner {

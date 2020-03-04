@@ -1,0 +1,28 @@
+struct s {
+  bool a;
+  bool b;
+}
+
+fsm split_struct_0 {
+  in       s i;
+  out wire s o;
+
+  void main() {
+    o = i;
+    fence;
+  }
+}
+
+// @fec-golden {{{
+// module split_struct_0(
+//   input  wire i__a,
+//   input  wire i__b,
+//   output wire o__a,
+//   output wire o__b
+// );
+//
+//   assign o__a = i__a;
+//   assign o__b = i__b;
+//
+// endmodule
+// }}}

@@ -1,0 +1,43 @@
+// @out-top: dictident_struct_4__P_1
+network dictident_struct_4 {
+  param bool P = true;
+  gen for (uint N < 2) {
+    in  uint(N+1) i#[N];
+    out uint(N+1) o#[N];
+  }
+
+  gen if (P) {
+    gen for (uint N < 2) {
+      struct i_t#[N] { uint(N+1) f; }
+      struct o_t#[N] { uint(N+1) f; }
+    }
+  } else {
+    gen for (uint N < 2) {
+      struct i_t#[N] { uint(N+10) f; }
+      struct o_t#[N] { uint(N+10) f; }
+    }
+  }
+
+  new network inner {
+    gen for (uint N < 2) {
+      in  i_t#[N] ii#[N];
+      out o_t#[N] oo#[N];
+      ii#[N] -> oo#[N];
+    }
+  }
+
+  gen for (uint N < 2) {
+    i#[N] -> inner.ii#[N]; inner.oo#[N] -> o#[N];
+  }
+}
+// @fec-golden {{{
+//  module dictident_struct_4__P_1(
+//    input  wire       i__0,
+//    input  wire [1:0] i__1,
+//    output wire       o__0,
+//    output wire [1:0] o__1
+//  );
+//    assign o__0 = i__0;
+//    assign o__1 = i__1;
+//  endmodule
+// }}}

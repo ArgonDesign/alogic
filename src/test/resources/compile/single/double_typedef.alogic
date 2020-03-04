@@ -1,0 +1,20 @@
+typedef bool a;
+typedef a b;
+typedef a c;
+
+network double_typedef {
+  in  b i;
+  out c o;
+  i -> o;
+}
+
+// @fec-golden {{{
+// module double_typedef(
+//   input  wire i,
+//   output wire o
+// );
+//
+//  assign o = i;
+//
+// endmodule
+// }}}

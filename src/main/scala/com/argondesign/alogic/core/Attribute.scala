@@ -24,6 +24,11 @@ class Attribute[T] {
 
   def getOrElse[R >: T](default: => R): R = store getOrElse default
 
+  def getOrElseUpdate(default: => T): T = store getOrElse {
+    this set default
+    value
+  }
+
   def contains(v: T): Boolean = store contains v
 
   def set(v: T): Unit = store = Some(v)

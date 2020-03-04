@@ -12,8 +12,8 @@ network dictident_entity_4 {
     }
   }
 
-  inner_a = new inner#[0]();
-  inner_b = new inner#[1]();
+  inner_a = new inner#[0];
+  inner_b = new inner#[1];
 
   i_a -> inner_a.ii; inner_a.oo -> o_a;
   i_b -> inner_b.ii; inner_b.oo -> o_b;

@@ -23,45 +23,45 @@ import scala.collection.mutable
 
 final class LowerLoops(implicit cc: CompilerContext) extends TreeTransformer {
 
+  // TODO: Add back correct skip condition
   override def skip(tree: Tree): Boolean = tree match {
-    case _: Entity      => false
-    case _: EntFunction => false
-    case _: Stmt        => false
-    case _: Case        => false
-    case _              => true
+    case _: Decl       => true
+    case _: Expr       => true
+    case _: EntConnect => true
+    case _             => false
+
   }
 
   // Stack of statements to replace continue statements with
   private[this] val continueRewrites = mutable.Stack[Option[() => Stmt]]()
 
-  override def enter(tree: Tree): Unit = tree match {
-    case _: StmtLoop => continueRewrites.push(None)
+  override def enter(tree: Tree): Option[Tree] = {
+    tree match {
+      case _: StmtLoop => continueRewrites.push(None)
 
-    case StmtDo(cond, _) => {
-      continueRewrites.push(Some({ () =>
-        StmtIf(cond, List(StmtContinue()), List(StmtBreak()))
-      }))
+      case StmtDo(cond, _) =>
+        continueRewrites.push(Some({ () =>
+          StmtIf(cond, List(StmtContinue()), List(StmtBreak()))
+        }))
+
+      case StmtWhile(cond, _) =>
+        continueRewrites.push(Some({ () =>
+          StmtIf(cond, List(StmtContinue()), List(StmtBreak()))
+        }))
+
+      case StmtFor(_, Some(cond), step, _) =>
+        continueRewrites.push(Some({ () =>
+          StmtBlock(step :+ StmtIf(cond, List(StmtContinue()), List(StmtBreak())))
+        }))
+
+      case StmtFor(_, None, step, _) =>
+        continueRewrites.push(Some({ () =>
+          StmtBlock(step :+ StmtContinue())
+        }))
+
+      case _ =>
     }
-
-    case StmtWhile(cond, _) => {
-      continueRewrites.push(Some({ () =>
-        StmtIf(cond, List(StmtContinue()), List(StmtBreak()))
-      }))
-    }
-
-    case StmtFor(_, Some(cond), step, _) => {
-      continueRewrites.push(Some({ () =>
-        StmtBlock(step :+ StmtIf(cond, List(StmtContinue()), List(StmtBreak())))
-      }))
-    }
-
-    case StmtFor(_, None, step, _) => {
-      continueRewrites.push(Some({ () =>
-        StmtBlock(step :+ StmtContinue())
-      }))
-    }
-
-    case _ => ()
+    None
   }
 
   override def transform(tree: Tree): Tree = tree match {
@@ -122,7 +122,10 @@ final class LowerLoops(implicit cc: CompilerContext) extends TreeTransformer {
 
 }
 
-object LowerLoops extends TreeTransformerPass {
+object LowerLoops extends PairTransformerPass {
   val name = "lower-loops"
-  def create(implicit cc: CompilerContext) = new LowerLoops
+  def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {
+    val transformer = new LowerLoops
+    (transformer(decl), transformer(defn))
+  }
 }

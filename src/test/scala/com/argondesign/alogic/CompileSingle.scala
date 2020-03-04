@@ -17,9 +17,7 @@ package com.argondesign.alogic
 
 import java.io.File
 
-import org.scalatest.FreeSpec
-
-final class CompileSingle extends FreeSpec with CompilationTest {
+final class CompileSingle extends CompilationTest {
 
   val base = "/compile/single"
 

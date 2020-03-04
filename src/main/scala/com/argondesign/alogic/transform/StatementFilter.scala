@@ -23,7 +23,6 @@ import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.passes.RemoveRedundantBlocks
-import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.unreachable
 
 final class StatementFilter(p: PartialFunction[Stmt, Boolean])(implicit cc: CompilerContext)
@@ -38,32 +37,29 @@ final class StatementFilter(p: PartialFunction[Stmt, Boolean])(implicit cc: Comp
   def emptyStmt(stmt: Stmt): Boolean = stmt match {
     case StmtBlock(body)         => body forall emptyStmt
     case StmtIf(_, eBody, tBody) => (eBody forall emptyStmt) && (tBody forall emptyStmt)
-    case StmtCase(_, cases) => {
+    case StmtCase(_, cases) =>
       cases forall {
         case CaseRegular(_, stmts) => stmts forall emptyStmt
         case CaseDefault(stmts)    => stmts forall emptyStmt
         case _: CaseGen            => unreachable
       }
-    }
     case _: StmtExpr    => true
     case _: StmtComment => true
     case _              => false
   }
 
   override def transform(tree: Tree): Tree = tree match {
-    case stmt: Stmt => {
-      val reduced = (stmt rewrite removeRedundantBlocks).asInstanceOf[Stmt]
+    case stmt: Stmt =>
+      val reduced = stmt rewrite removeRedundantBlocks
       reduced match {
-        case StmtBlock(Nil) => TypeAssigner(Thicket(Nil) withLoc tree.loc)
-        case _ => {
+        case StmtBlock(Nil) => Stump
+        case _ =>
           pf(reduced) match {
-            case Some(false)             => TypeAssigner(Thicket(Nil) withLoc tree.loc)
-            case None if emptyStmt(stmt) => TypeAssigner(Thicket(Nil) withLoc tree.loc)
+            case Some(false)             => Stump
+            case None if emptyStmt(stmt) => Stump
             case _                       => reduced
           }
-        }
       }
-    }
 
     case _ => tree
   }

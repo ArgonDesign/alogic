@@ -21,40 +21,27 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Types.TypeConst
 import com.argondesign.alogic.core.Types.TypeNum
-import com.argondesign.alogic.typer.TypeAssigner
 
 final class InlineUnsizedConst(implicit cc: CompilerContext) extends TreeTransformer {
 
   override def transform(tree: Tree): Tree = tree match {
     case ExprSym(symbol) =>
       symbol.kind match {
-        case TypeConst(_: TypeNum) => walk(symbol.attr.init.value)
+        case TypeConst(_: TypeNum) => walk(symbol.defn.initializer.get)
         case _                     => tree
       }
 
-    case Decl(symbol, Some(init)) if symbol.kind.isConst => {
-      symbol.attr.init set init
-      tree
-    }
-
-    case entity: Entity => {
-      val newBody = entity.body filter {
-        case EntDecl(Decl(symbol, _)) =>
-          symbol.kind match {
-            case TypeConst(_: TypeNum) => false
-            case _                     => true
-          }
-        case _ => true
-      }
-
-      TypeAssigner(entity.copy(body = newBody) withLoc entity.loc)
-    }
+    case DeclConst(symbol, _) if symbol.kind.underlying.isNum => Stump
+    case DefnConst(symbol, _) if symbol.kind.underlying.isNum => Stump
 
     case _ => tree
   }
 }
 
-object InlineUnsizedConst extends TreeTransformerPass {
+object InlineUnsizedConst extends PairTransformerPass {
   val name = "inline-unsized-const"
-  def create(implicit cc: CompilerContext) = new InlineUnsizedConst
+  def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {
+    val transformer = new InlineUnsizedConst
+    (transformer(decl), transformer(defn))
+  }
 }

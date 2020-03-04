@@ -20,7 +20,7 @@ network gen_ent_0 {
   }
 
   gen for (uint n <= 3) {
-    inst = new connect();
+    inst = new connect;
 
     gen if (n == 0) {
       i_0 -> inst.p_i; inst.p_o -> o_0;

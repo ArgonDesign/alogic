@@ -19,4 +19,4 @@ network dictident_instance_6 {
     ii -> oo;
   }
 }
-// :13: ERROR: Instance 'inst#\[0\]' defined multiple times after processing 'gen' constructs
+// :13: ERROR: 'inst#\[0\]' defined multiple times after processing 'gen' constructs

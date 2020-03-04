@@ -15,10 +15,20 @@
 
 package com.argondesign.alogic
 
+import java.util.regex.Pattern
+
+import com.argondesign.alogic.SourceTextConverters._
+import com.argondesign.alogic.ast.Trees.Ident
+import com.argondesign.alogic.ast.Trees.RizDesc
+import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Error
 import com.argondesign.alogic.core.FatalErrorException
 import com.argondesign.alogic.core.InternalCompilerErrorException
 import com.argondesign.alogic.core.Message
+import com.argondesign.alogic.core.SourceAttribute
+import com.argondesign.alogic.core.Warning
+import com.argondesign.alogic.passes.Pass
 import org.scalatest._
 import org.scalatest.matchers.MatchResult
 import org.scalatest.matchers.Matcher
@@ -36,17 +46,15 @@ trait AlogicTest
     with OneInstancePerTest // ????
     with ChainingSyntax {
 
-  override def withFixture(test: NoArgTest) = {
+  override def withFixture(test: NoArgTest): Outcome = {
     super.withFixture(test) match {
       case failed: Failed =>
         failed tap { _ =>
           failed.exception match {
-            case FatalErrorException(cc, _) => {
+            case FatalErrorException(cc, _) =>
               cc.messages map { _.string(cc) } foreach Console.err.println
-            }
-            case InternalCompilerErrorException(cc, _) => {
+            case InternalCompilerErrorException(cc, _) =>
               cc.messages map { _.string(cc) } foreach Console.err.println
-            }
             case _ =>
           }
         }
@@ -54,14 +62,11 @@ trait AlogicTest
     }
   }
 
-  final def beThe[T <: Message: ClassTag](lines: String*)(
+  final protected def beThe[T <: Message: ClassTag](lines: String*)(
       implicit cc: CompilerContext): Matcher[Message] = Matcher { message: Message =>
     lazy val linesMatch = lines.length == message.msg.length && {
       val regexes = lines map { _.r }
       (regexes zip message.msg) forall { pair =>
-//        println(pair._1)
-//        println(pair._2)
-//        println(pair._1.pattern.matcher(pair._2).matches())
         pair._1.pattern.matcher(pair._2).matches()
       }
     }
@@ -70,19 +75,64 @@ trait AlogicTest
     lazy val msgName = tag.runtimeClass.getName.split("[.]").last
 
     val (pass, hint) = if (!tag.runtimeClass.isInstance(message)) {
-      (false, s"was not an instance of ${msgName}")
+      (false, s"was not an instance of $msgName")
     } else if (!linesMatch) {
-      (false, s"did not match the expected ${msgName} message")
+      (false, s"did not match the expected $msgName message")
     } else {
-      (true, s"matches the expected ${msgName} message ")
+      (true, s"matches the expected $msgName message ")
     }
 
     val reply = s"""|--- Message
                     |${message.string}
-                    |--- ${hint} ---
+                    |--- $hint ---
                     |${lines mkString ("  ", "\n  ", "")}
                     |---""".stripMargin
 
     MatchResult(pass, reply, reply)
   }
+
+  final protected def transformWithPass[R](
+      pass: Pass[List[Root], R],
+      text: String
+  )(
+      implicit cc: CompilerContext
+  ): Option[R] = {
+    // Parse it
+    val root = text.stripMargin.asTree[Root]
+
+    // If there is only one desc in the root, mark it as the toplevel for convenience
+    root.body match {
+      case List(RizDesc(desc)) =>
+        desc.ref.asInstanceOf[Ident].attr("toplevel") = SourceAttribute.Flag()
+      case _ =>
+    }
+
+    // Ensure a toplevel exists
+    val hasToplevel = root.body collect { case RizDesc(desc) => desc } exists {
+      _.ref.asInstanceOf[Ident].attr contains "toplevel"
+    }
+    assert(hasToplevel, "Don't know which Desc is the top level")
+
+    // Apply transform
+    pass(List(root))
+  }
+
+  final protected def checkSingleError(err: List[String])(implicit cc: CompilerContext): Unit = {
+    val errors = cc.messages.filter { _.isInstanceOf[Error] }
+    if (err.isEmpty) {
+      errors shouldBe empty
+    } else {
+      errors.loneElement should beThe[Error](err map Pattern.quote: _*)
+    }
+  }
+
+  final protected def checkSingleWarning(err: List[String])(implicit cc: CompilerContext): Unit = {
+    val errors = cc.messages.filter { _.isInstanceOf[Warning] }
+    if (err.isEmpty) {
+      errors shouldBe empty
+    } else {
+      errors.loneElement should beThe[Warning](err map Pattern.quote: _*)
+    }
+  }
+
 }

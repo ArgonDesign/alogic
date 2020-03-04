@@ -21,17 +21,20 @@ import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Math
 
-private[builtins] class DollarClog2(implicit cc: CompilerContext) extends BuiltinPolyFunc {
+private[builtins] class DollarClog2(implicit cc: CompilerContext)
+    extends BuiltinPolyFunc(isValidConnLhs = true) {
 
   val name = "$clog2"
 
-  def returnType(args: List[Expr]) = args partialMatch {
+  // TODO: die when non-const argument
+
+  def returnType(args: List[Expr]): Option[TypeFund] = args partialMatch {
     case List(arg) if arg.tpe.isPacked || arg.tpe.isNum => TypeNum(false)
   }
 
-  def combArgs(args: List[Expr]) = List(args(0))
+  def isKnown(args: List[Expr]) = args(0).isKnownConst // TODO: should be always true
 
-  def fold(loc: Loc, args: List[Expr]) = {
+  def simplify(loc: Loc, args: List[Expr]) = {
     args(0).value map { value =>
       if (value < 0) {
         cc.error(loc, s"'${name}' invoked on negative value ${value}")

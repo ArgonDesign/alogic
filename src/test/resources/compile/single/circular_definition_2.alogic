@@ -1,0 +1,46 @@
+network circular_definition_2 {
+  network inner {
+    param uint P;
+    gen if (P == 0) {
+      i = new inner(P = 1);
+    } else if (P == 1) {
+      i = new inner(P = 2);
+    } else if (P == 2) {
+      i = new inner(P = 3);
+    } else {
+      i = new inner(P = 0);
+    }
+  }
+
+  start = new inner(P = 0);
+}
+// :15: ERROR: Definition of 'inner' is circular:
+// :15: ERROR: ... with parameter assignments: P = 0
+// :15: ERROR: ... defined at .*circular_definition_2.alogic:2
+// :15: ERROR: ...     network inner \{
+// :15: ERROR: ...             \^~~~~
+// :15: ERROR: ... depends on 'inner' via .*circular_definition_2.alogic:5
+// :15: ERROR: ... with parameter assignments: P = 1
+// :15: ERROR: ...         i = new inner\(P = 1\);
+// :15: ERROR: ...                 \^~~~~~~~~~~~
+// :15: ERROR: ... defined at .*circular_definition_2.alogic:2
+// :15: ERROR: ...     network inner \{
+// :15: ERROR: ...             \^~~~~
+// :15: ERROR: ... depends on 'inner' via .*circular_definition_2.alogic:7
+// :15: ERROR: ... with parameter assignments: P = 2
+// :15: ERROR: ...         i = new inner\(P = 2\);
+// :15: ERROR: ...                 \^~~~~~~~~~~~
+// :15: ERROR: ... defined at .*circular_definition_2.alogic:2
+// :15: ERROR: ...     network inner \{
+// :15: ERROR: ...             \^~~~~
+// :15: ERROR: ... depends on 'inner' via .*circular_definition_2.alogic:9
+// :15: ERROR: ... with parameter assignments: P = 3
+// :15: ERROR: ...         i = new inner\(P = 3\);
+// :15: ERROR: ...                 \^~~~~~~~~~~~
+// :15: ERROR: ... defined at .*circular_definition_2.alogic:2
+// :15: ERROR: ...     network inner \{
+// :15: ERROR: ...             \^~~~~
+// :15: ERROR: ... depends on 'inner' via .*circular_definition_2.alogic:11
+// :15: ERROR: ... with parameter assignments: P = 0
+// :15: ERROR: ...         i = new inner\(P = 0\);
+// :15: ERROR: ...                 \^~~~~~~~~~~~

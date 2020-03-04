@@ -19,41 +19,38 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Symbols._
+import com.argondesign.alogic.core.Symbols.Symbol
 
 final class InferImplications(implicit cc: CompilerContext) extends TreeTransformer {
 
   override def skip(tree: Tree): Boolean = tree match {
-    case _: Entity                                     => false
-    case EntConnect(_, List(ExprSym(rhs: TermSymbol))) => rhs.kind.width != 1
-    case _                                             => true
+    case _: DefnEntity                     => false
+    case EntConnect(_, List(ExprSym(rhs))) => rhs.kind.width != 1
+    case _                                 => true
   }
 
   override def transform(tree: Tree): Tree = {
     tree match {
-      case EntConnect(source, List(ExprSym(dst: TermSymbol))) => {
-        source match {
-          case ExprSym(src: TermSymbol) => {
+      case EntConnect(lhs, List(ExprSym(dst))) =>
+        lhs match {
+          case ExprSym(src) =>
             src.attr.implications.append((true, true, dst))
             src.attr.implications.append((false, false, dst))
             dst.attr.implications.append((true, true, src))
             dst.attr.implications.append((false, false, src))
-          }
-          case ExprUnary("~" | "!", ExprSym(src: TermSymbol)) => {
+          case ExprUnary("~" | "!", ExprSym(src)) =>
             src.attr.implications.append((false, true, dst))
             src.attr.implications.append((true, false, dst))
             dst.attr.implications.append((false, true, src))
             dst.attr.implications.append((true, false, src))
-          }
           case _ =>
         }
-      }
 
-      case entity: Entity => {
+      case defn: DefnEntity =>
         // Transitively propagate all implication relations within the entity
         def loop(): Unit = {
           val found = for {
-            Decl(aSymbol, _) <- entity.declarations
+            Defn(aSymbol) <- defn.defns
             (da, db, bSymbol) <- aSymbol.attr.implications.enumerate
             (tb, tc, cSymbol) <- bSymbol.attr.implications.enumerate
             if db == tb && cSymbol != aSymbol
@@ -65,7 +62,6 @@ final class InferImplications(implicit cc: CompilerContext) extends TreeTransfor
           if (found.nonEmpty) loop()
         }
         loop()
-      }
 
       case _ =>
     }
@@ -75,7 +71,7 @@ final class InferImplications(implicit cc: CompilerContext) extends TreeTransfor
 
 }
 
-object InferImplications extends TreeTransformerPass {
+object InferImplications extends EntityTransformerPass(declFirst = true) {
   val name = "infer-implications"
-  def create(implicit cc: CompilerContext) = new InferImplications
+  def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer = new InferImplications
 }

@@ -11,5 +11,5 @@ fsm dictident_function_1 {
     }
   }
 }
-// :9: ERROR: Redefinition of name 'func' with previous definition at
+// :9: ERROR: Redefinition of 'func' with previous definition at
 // :9: ERROR: ... .*dictident_function_1.alogic:6

@@ -22,4 +22,4 @@ fsm dictident_function_5 {
     }
   }
 }
-// :14: ERROR: Function 'func#\[0\]' defined multiple times after processing 'gen' constructs
+// :14: ERROR: 'func#\[0\]' defined multiple times after processing 'gen' constructs

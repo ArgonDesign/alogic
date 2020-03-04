@@ -10,143 +10,131 @@
 //
 // DESCRIPTION:
 //
-// Namer tests
+// TypeAssigner tests
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.typer
 
 import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.SourceTextConverters._
-import com.argondesign.alogic.ast.Trees.Expr.ImplicitConversions.int2ExprNum
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.FlowControlTypes._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.FlowControlTypes._
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.StorageTypes._
-import com.argondesign.alogic.core.Symbols.ErrorSymbol
+import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.passes.Elaborate
 import com.argondesign.alogic.passes.Namer
 import org.scalatest.FreeSpec
 
 final class TypeAssignerSpec extends FreeSpec with AlogicTest {
 
   implicit val cc: CompilerContext = new CompilerContext
-  lazy val namer = new Namer
 
-  private def xform(tree: Tree) = {
-    tree match {
-      case Root(_, entity: Entity) => cc.addGlobalEntity(entity)
-      case entity: Entity          => cc.addGlobalEntity(entity)
-      case _                       =>
+  protected def elaborate(text: String): Thicket = Thicket {
+    transformWithPass(Namer andThen Elaborate, text).value flatMap {
+      case (decl, defn) => List(decl, defn)
     }
-    tree rewrite namer
   }
 
   // Apply type assigner to all children
-  private def assignChildren(tree: Tree): Unit = tree.children foreach { child =>
-    child.postOrderIterator foreach {
-      case node: Tree => TypeAssigner(node)
-      case _          => ()
-    }
+  private def assignChildren(tree: Tree): Unit = tree.postOrderIterator foreach {
+    case node if node eq tree =>
+    case node if node.hasTpe  =>
+    case node                 => TypeAssigner(node)
   }
 
   "The TypeAssigner should assign correct types to" - {
     "expressions" - {
-      "names" - {
+      "references" - {
         "terms" - {
           for {
-            (name, decl, kind) <- List(
+            (decl, kind) <- List[(String, PartialFunction[Any, Unit])](
               // format: off
-              ("bool", "bool a;", TypeUInt(1)),
-              ("u8", "u8 a;", TypeUInt(8)),
-              ("i1", "i1 a;", TypeSInt(1)),
-              ("i8", "i8 a;", TypeSInt(8)),
-              ("struct", "s a;", TypeStruct("s", List("b", "c"), List(TypeUInt(1), TypeSInt(8)))),
-              ("typedef", "t a;", TypeUInt(4)),
-              ("u8[2]", "u8[2] a;", TypeVector(TypeUInt(8), 2)),
-              ("memory u8[2]", "u8 a[2];", TypeArray(TypeUInt(8), 2)),
-              ("param u8", " param u8 a = 8'd2;", TypeUInt(8)),
-              ("const u8", " const u8 a = 8'd2;", TypeUInt(8)),
-              ("pipeline u8", "pipeline u8 a;", TypeUInt(8)),
-              ("in u8", "in u8 a;", TypeIn(TypeUInt(8), FlowControlTypeNone)),
-              ("out u8", "out u8 a;", TypeOut(TypeUInt(8), FlowControlTypeNone, StorageTypeDefault)),
-              ("function", "void a() {}", TypeCtrlFunc(Nil, TypeVoid))
+              ("bool a;", { case TypeUInt(w) if w == 1 => }),
+              ("u8 a;", { case TypeUInt(w) if w == 8 => }),
+              ("i1 a;", { case TypeSInt(w) if w == 1 => }),
+              ("i8 a;", { case TypeSInt(w) if w == 8 => }),
+              ("s a;", { case TypeRecord(s, List(b, c)) if s.name == "s" && b.name == "b" && c.name == "c" => }),
+              ("t a;", { case TypeUInt(w) if w == 4 => }),
+              ("u8[2] a;", { case TypeVector(TypeUInt(w1), w2) if w1 == 8 && w2 == 2 => }),
+              ("u8 a[2];", { case TypeArray(TypeUInt(w1), w2) if w1 == 8 && w2 == 2 => }),
+              ("const u8 a = 8'd2;", { case TypeUInt(w) if w == 8 => }),
+              ("pipeline u8 a;", { case TypeUInt(w) if w == 8 => }),
+              ("in u8 a;", { case TypeIn(TypeUInt(w), FlowControlTypeNone) if w == 8 => }),
+              ("out u8 a;", { case TypeOut(TypeUInt(w), FlowControlTypeNone, StorageTypeDefault) if w == 8 => }),
+              ("void a() {}", { case TypeCtrlFunc(_, TypeVoid, Nil) => })
               // format: on
             )
           } {
-            name in {
-              val root = s"""|typedef u4 t;
-                             |
-                             |struct s {
-                             |  bool b;
-                             |  i8 c;
-                             |}
-                             |
-                             |fsm thing {
-                             |  ${decl}
-                             |  void main() {
-                             |    a;
-                             |  }
-                             |}""".stripMargin.asTree[Root]
-              val tree = xform(root)
-
-              inside(tree) {
-                case Root(_, entity: Entity) => {
-                  val main = (entity.functions collectFirst {
-                    case func @ EntFunction(Sym(sym, Nil), _) if sym.name == "main" => func
-                  }).get
-                  inside(main) {
-                    case EntFunction(_, List(StmtExpr(expr))) =>
-                      expr should matchPattern { case ExprSym(_) => }
-                      TypeAssigner(expr).tpe shouldBe kind
-                  }
-                }
+            decl in {
+              elaborate {
+                s""" 
+                |typedef u4 t;
+                |
+                |struct s { bool b; i8 c; }
+                |
+                |(* toplevel *)
+                |fsm thing {
+                |  $decl
+                |  fence { a; }
+                |}"""
+              } getFirst {
+                case StmtExpr(expr: ExprSym) => expr
+              } pipe {
+                TypeAssigner(_).tpe
+              } tap {
+                _ should matchPattern(kind)
               }
+              cc.messages shouldBe empty
             }
           }
         }
 
         "types" - {
           for {
-            (expr, kind) <- List(
-              ("bool", TypeUInt(1)),
-              ("u2", TypeUInt(2)),
-              ("uint(3)", TypeUInt(3)),
-              ("uint(3)[6]", TypeVector(TypeUInt(3), 6)),
-              ("i2", TypeSInt(2)),
-              ("int(3)", TypeSInt(3)),
-              ("int(3)[6]", TypeVector(TypeSInt(3), 6)),
-              ("void", TypeVoid),
-              ("t /* typedef */", TypeUInt(4)),
-              ("s /* struct */", TypeStruct("s", List("b", "c"), List(TypeUInt(1), TypeSInt(8))))
+            (text, kind) <- List[(String, PartialFunction[Any, Unit])](
+              ("bool", { case TypeUInt(w) if w == 1                               => }),
+              ("u2", { case TypeUInt(w) if w == 2                                 => }),
+              ("u3[6]", { case TypeVector(TypeUInt(w1), w2) if w1 == 3 && w2 == 6 => }),
+              ("i2", { case TypeSInt(w) if w == 2                                 => }),
+              ("i3[6]", { case TypeVector(TypeSInt(w1), w2) if w1 == 3 && w2 == 6 => }),
+              ("void", { case TypeVoid                                            => }),
+              ("t /* typedef */", { case TypeUInt(w) if w == 4                    => }),
+              ("s /* struct */", {
+                case TypeRecord(s, List(b, c)) if s.name == "s" && b.name == "b" && c.name == "c" =>
+              })
             )
           } {
-            expr in {
-              val root = s"""|typedef u4 t;
-                             |
-                             |struct s {
-                             |  bool b;
-                             |  i8 c;
-                             |}
-                             |
-                             |fsm thing {
-                             |  void main() {
-                             |    @bits(${expr});
-                             |  }
-                             |}""".stripMargin.asTree[Root]
-
-              val tree = xform(root)
-
-              val result = (tree collectFirst {
-                case EntFunction(_, List(StmtExpr(e))) => e
-              }).value
-              val ExprCall(_, List(arg)) = result
-              assignChildren(arg)
-              TypeAssigner(arg).tpe shouldBe TypeType(kind)
+            text in {
+              elaborate {
+                s"""
+                |typedef u4 t;
+                |
+                |struct s {
+                |  bool b;
+                |  i8 c;
+                |}
+                |
+                |(* toplevel *)
+                |fsm thing {
+                |  fence { $text; }
+                |}"""
+              } getFirst {
+                case StmtExpr(e) => e
+              } tap {
+                assignChildren
+              } pipe {
+                TypeAssigner(_).tpe
+              } tap {
+                case TypeType(k) => k should matchPattern(kind)
+                case _           => fail("Expression must have TypeType")
+              }
+              cc.messages shouldBe empty
             }
           }
         }
-
       }
 
       "unary operators" - {
@@ -708,30 +696,28 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
         } {
           val text = expr.trim.replaceAll(" +", " ")
           text in {
-            val block = s"""|{
-                            |  (* unused *) i7 a;
-                            |  (* unused *) i7[2] b;
-                            |  (* unused *) i7[4][2] c;
-                            |  (* unused *) i7 d[2];
-                            |  (* unused *) i7 e[2];
-                            |  (* unused *) i7[4][2] f[3];
-                            |  (* unused *) in i7 g;
-                            |
-                            |  ${text};
-                            |}""".stripMargin.asTree[Stmt]
-
-            val tree = xform(block)
-
-            tree.postOrderIterator collect { case expr: Expr => expr } foreach {
-              TypeAssigner(_)
-            }
-
-            inside(tree) {
-              case StmtBlock(stmts) =>
-                inside(stmts.last) {
-                  case StmtExpr(e) =>
-                    e.tpe shouldBe kind
-                }
+            elaborate {
+              s"""
+              |(* toplevel *)
+              |void function() {
+              |  i7 a;
+              |  i7[2] b;
+              |  i7[4][2] c;
+              |  i7 d[2];
+              |  i7 e[2];
+              |  i7[4][2] f[3];
+              |  in i7 g;
+              |
+              |  $text;
+              |}"""
+            } getFirst {
+              case StmtExpr(e) => e
+            } tap {
+              assignChildren(_)
+            } pipe {
+              TypeAssigner(_).tpe
+            } tap {
+              _ shouldBe kind
             }
             cc.messages shouldBe empty
           }
@@ -741,41 +727,47 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
       "slice" - {
         for {
           (expr, kind) <- List(
-            ("a[8'd3 :8'd2]", TypeUInt(ExprNum(false, 2))),
-            ("a[8'd0 :8'd0]", TypeUInt(ExprNum(false, 1))),
-            ("a[8'd4+:8'd3]", TypeUInt(ExprNum(false, 3))),
-            ("a[8'd4-:8'd3]", TypeUInt(ExprNum(false, 3))),
-            ("1[8'd3 :8'd0]", TypeUInt(ExprNum(false, 4))),
-            ("1[8'd3+:8'd2]", TypeUInt(ExprNum(false, 2))),
-            ("1[8'd3-:8'd2]", TypeUInt(ExprNum(false, 2))),
-            ("a[5'd31:5'd0]", TypeUInt(ExprNum(false, 32))),
-            ("b[2'd1 :2'd1]", TypeVector(TypeUInt(32), ExprNum(false, 1))),
-            ("b[2'd1 :2'd0]", TypeVector(TypeUInt(32), ExprNum(false, 2))),
-            ("b[2'd3 :2'd1]", TypeVector(TypeUInt(32), ExprNum(false, 3))),
-            ("b[2'd3 :2'd0]", TypeVector(TypeUInt(32), ExprNum(false, 4))),
-            ("b[2'd0+:3'd1]", TypeVector(TypeUInt(32), ExprNum(false, 1))),
-            ("b[2'd2+:3'd2]", TypeVector(TypeUInt(32), ExprNum(false, 2))),
-            ("b[2'd1+:3'd3]", TypeVector(TypeUInt(32), ExprNum(false, 3))),
-            ("b[2'd0+:3'd4]", TypeVector(TypeUInt(32), ExprNum(false, 4))),
-            ("b[2'd1-:3'd1]", TypeVector(TypeUInt(32), ExprNum(false, 1))),
-            ("b[2'd1-:3'd2]", TypeVector(TypeUInt(32), ExprNum(false, 2))),
-            ("b[2'd3-:3'd3]", TypeVector(TypeUInt(32), ExprNum(false, 3))),
-            ("b[2'd3-:3'd4]", TypeVector(TypeUInt(32), ExprNum(false, 4)))
+            ("a[8'd3 :8'd2]", TypeUInt(2)),
+            ("a[8'd0 :8'd0]", TypeUInt(1)),
+            ("a[8'd4+:8'd3]", TypeUInt(3)),
+            ("a[8'd4-:8'd3]", TypeUInt(3)),
+            ("1[8'd3 :8'd0]", TypeUInt(4)),
+            ("1[8'd3+:8'd2]", TypeUInt(2)),
+            ("1[8'd3-:8'd2]", TypeUInt(2)),
+            ("a[5'd31:5'd0]", TypeUInt(32)),
+            ("b[2'd1 :2'd1]", TypeVector(TypeUInt(32), 1)),
+            ("b[2'd1 :2'd0]", TypeVector(TypeUInt(32), 2)),
+            ("b[2'd3 :2'd1]", TypeVector(TypeUInt(32), 3)),
+            ("b[2'd3 :2'd0]", TypeVector(TypeUInt(32), 4)),
+            ("b[2'd0+:3'd1]", TypeVector(TypeUInt(32), 1)),
+            ("b[2'd2+:3'd2]", TypeVector(TypeUInt(32), 2)),
+            ("b[2'd1+:3'd3]", TypeVector(TypeUInt(32), 3)),
+            ("b[2'd0+:3'd4]", TypeVector(TypeUInt(32), 4)),
+            ("b[2'd1-:3'd1]", TypeVector(TypeUInt(32), 1)),
+            ("b[2'd1-:3'd2]", TypeVector(TypeUInt(32), 2)),
+            ("b[2'd3-:3'd3]", TypeVector(TypeUInt(32), 3)),
+            ("b[2'd3-:3'd4]", TypeVector(TypeUInt(32), 4))
           )
         } {
           val text = expr.trim.replaceAll(" +", " ")
           text in {
-            val block = s"""|{
-                            |  (* unused *) u32 a;
-                            |  (* unused *) u32[4] b;
-                            |
-                            |  ${text};
-                            |}""".stripMargin.asTree[Stmt]
-
-            val tree = xform(block)
-            val expr = tree getFirst { case e: Expr => e }
-            assignChildren(expr)
-            TypeAssigner(expr).tpe shouldBe kind
+            elaborate {
+              s"""
+              |void function() {
+              |  u32 a;
+              |  u32[4] b;
+              |
+              |  $text;
+              |}"""
+            } getFirst {
+              case e: ExprSlice => e
+            } tap {
+              assignChildren(_)
+            } pipe {
+              TypeAssigner(_).tpe
+            } tap {
+              _ shouldBe kind
+            }
             cc.messages shouldBe empty
           }
         }
@@ -783,95 +775,112 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
 
       "select" - {
         for {
-          (expr, kind) <- List(
-            ("a.a", TypeSInt(6)),
-            ("a.b", TypeStruct("s", List("a", "b"), List(TypeUInt(1), TypeUInt(8)))),
-            ("a.b.a", TypeUInt(1)),
-            ("a.b.b", TypeUInt(8)),
-            ("pi0.valid", TypeUInt(1)),
-            ("pi0.read", TypeCombFunc(Nil, TypeSInt(8))),
-            ("pi0.wait", TypeCombFunc(Nil, TypeVoid)),
-            ("pi1.valid", TypeUInt(1)),
-            ("pi1.read", TypeCombFunc(Nil, TypeVoid)),
-            ("pi1.wait", TypeCombFunc(Nil, TypeVoid)),
-            ("po0.valid", TypeUInt(1)),
-            ("po0.write", TypeCombFunc(List(TypeSInt(8)), TypeVoid)),
-            ("po0.flush", TypeCombFunc(Nil, TypeVoid)),
-            ("po0.full", TypeUInt(1)),
-            ("po0.empty", TypeUInt(1)),
-            ("po1.valid", TypeUInt(1)),
-            ("po1.write", TypeCombFunc(Nil, TypeVoid)),
-            ("po1.flush", TypeCombFunc(Nil, TypeVoid)),
-            ("po1.full", TypeUInt(1)),
-            ("po1.empty", TypeUInt(1))
+          (expr, kind) <- List[(String, PartialFunction[Any, Unit])](
+            ("a.a", { case TypeSInt(w) if w == 6                                        => }),
+            ("a.b", { case TypeRecord(Symbol("s"), List(Symbol("a"), Symbol("b")))      => }),
+            ("a.b.a", { case TypeUInt(w) if w == 1                                      => }),
+            ("a.b.b", { case TypeUInt(w) if w == 8                                      => }),
+            ("pi0.valid", { case TypeUInt(w) if w == 1                                  => }),
+            ("pi0.read", { case TypeCombFunc(_, TypeSInt(w), Nil) if w == 8             => }),
+            ("pi0.wait", { case TypeCombFunc(_, TypeVoid, Nil)                          => }),
+            ("pi1.valid", { case TypeUInt(w) if w == 1                                  => }),
+            ("pi1.read", { case TypeCombFunc(_, TypeVoid, Nil)                          => }),
+            ("pi1.wait", { case TypeCombFunc(_, TypeVoid, Nil)                          => }),
+            ("po0.valid", { case TypeUInt(w) if w == 1                                  => }),
+            ("po0.write", { case TypeCombFunc(_, TypeVoid, List(TypeSInt(w))) if w == 8 => }),
+            ("po0.flush", { case TypeCombFunc(_, TypeVoid, Nil)                         => }),
+            ("po0.full", { case TypeUInt(w) if w == 1                                   => }),
+            ("po0.empty", { case TypeUInt(w) if w == 1                                  => }),
+            ("po1.valid", { case TypeUInt(w) if w == 1                                  => }),
+            ("po1.write", { case TypeCombFunc(_, TypeVoid, Nil)                         => }),
+            ("po1.flush", { case TypeCombFunc(_, TypeVoid, Nil)                         => }),
+            ("po1.full", { case TypeUInt(w) if w == 1                                   => }),
+            ("po1.empty", { case TypeUInt(w) if w == 1                                  => })
           )
         } {
           val text = expr.trim.replaceAll(" +", " ")
           text in {
-            val block = s"""|struct s {
-                            |  bool a;
-                            |  u8   b;
-                            |}
-                            |
-                            |struct t {
-                            |  i6  a;
-                            |  s   b;
-                            |}
-                            |
-                            |fsm f {
-                            |  in  sync ready i8   pi0;
-                            |  in  sync ready void pi1;
-                            |  out sync ready i8   po0;
-                            |  out sync ready void po1;
-                            |
-                            |  t a;
-                            |
-                            |  void main() {
-                            |    pi0; pi1; po0; po1; a; // Suppress unused warnings
-                            |
-                            |    ${text};
-                            |  }
-                            |}""".stripMargin.asTree[Root]
-
-            val tree = xform(block)
-
-            tree.postOrderIterator collect {
-              case expr: ExprSym    => expr
+            elaborate {
+              s"""
+              |struct s {
+              |  bool a;
+              |  u8   b;
+              |}
+              |
+              |struct t {
+              |  i6  a;
+              |  s   b;
+              |}
+              |
+              |(* toplevel *)
+              |fsm f {
+              |  in  sync ready i8   pi0;
+              |  in  sync ready void pi1;
+              |  out sync ready i8   po0;
+              |  out sync ready void po1;
+              |
+              |  t a;
+              |
+              |  void main() {
+              |    $text;
+              |  }
+              |}"""
+            } getFirst {
               case expr: ExprSelect => expr
-            } foreach {
-              TypeAssigner(_)
+            } tap {
+              assignChildren(_)
+            } pipe {
+              TypeAssigner(_).tpe
+            } tap {
+              _ should matchPattern(kind)
             }
-
-            val expr = (tree collectFirst { case expr: ExprSelect => expr }).value
-
-            expr.tpe shouldBe kind
-
             cc.messages shouldBe empty
           }
         }
       }
 
-      "select from type" in {
-        val tree = """|struct a {
-                      | i8 b;
-                      |}
-                      |
-                      |fsm c {
-                      |  void main() {
-                      |    @bits(a.b);
-                      |  }
-                      |}""".stripMargin.asTree[Root]
-        val expr = (xform(tree) collectFirst { case e: ExprSelect => e }).value
-
-        expr.postOrderIterator collect {
-          case e: Expr => e
-        } foreach {
-          TypeAssigner(_)
+      "select from type" - {
+        for {
+          (text, pattern) <- List[(String, PartialFunction[Any, Unit])](
+            ("a.x", { case TypeNone(TypeSInt(w)) if w == 8                                    => }),
+            ("b.y", { case TypeNone(TypeRecord(a, List(x))) if a.name == "a" && x.name == "x" => }),
+            ("b.y.x", { case TypeNone(TypeSInt(w)) if w == 8                                  => }),
+            ("c.d", { case TypeNone(TypeRecord(d, Nil)) if d.name == "d"                      => }),
+          )
+        } {
+          text in {
+            elaborate {
+              s"""
+              |struct a {
+              |  i8 x;
+              |}
+              |
+              |struct b {
+              |  a y;
+              |}
+              |
+              |struct c {
+              |  struct d {}
+              |}
+              |
+              |(* toplevel *)
+              |fsm f {
+              |  fence { 
+              |    $text; 
+              |  }
+              |}"""
+            } getFirst {
+              case e: ExprSelect => e
+            } tap {
+              assignChildren(_)
+            } pipe {
+              TypeAssigner(_).tpe
+            } tap {
+              _ should matchPattern(pattern)
+            }
+            cc.messages shouldBe empty
+          }
         }
-
-        expr.tpe shouldBe TypeType(TypeSInt(8))
-
-        cc.messages shouldBe empty
       }
 
       "sized integer literals" - {
@@ -941,45 +950,40 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
         } {
           val text = expr.trim.replaceAll(" +", " ")
           text in {
-            val block = s"""|struct s {
-                            |  bool a;
-                            |  u8   b;
-                            |}
-                            |
-                            |struct t {
-                            |  i6  a;
-                            |  s   b;
-                            |}
-                            |
-                            |fsm f {
-                            |  in  sync ready i8   pi0;
-                            |  in  sync ready void pi1;
-                            |  out sync ready i8   po0;
-                            |  out sync ready void po1;
-                            |
-                            |  t a;
-                            |
-                            |  void main() {
-                            |    pi0; pi1; po0; po1; a; // Suppress unused warnings
-                            |
-                            |    ${text}();
-                            |  }
-                            |}""".stripMargin.asTree[Root]
-
-            val tree = xform(block)
-
-            tree.postOrderIterator collect {
-              case expr: ExprSym    => expr
-              case expr: ExprSelect => expr
-              case expr: ExprCall   => expr
-            } foreach {
-              TypeAssigner(_)
+            elaborate {
+              s"""
+              |struct s {
+              |  bool a;
+              |  u8   b;
+              |}
+              |
+              |struct t {
+              |  i6  a;
+              |  s   b;
+              |}
+              |
+              |(* toplevel *)
+              |fsm f {
+              |  in  sync ready i8   pi0;
+              |  in  sync ready void pi1;
+              |  out sync ready i8   po0;
+              |  out sync ready void po1;
+              |
+              |  t a;
+              |
+              |  void main() {
+              |    $text();
+              |  }
+              |}"""
+            } getFirst {
+              case expr: ExprCall => expr
+            } tap {
+              assignChildren(_)
+            } pipe {
+              TypeAssigner(_).tpe
+            } tap {
+              _ shouldBe kind
             }
-
-            val expr = (tree collectFirst { case expr: ExprCall => expr }).value
-
-            expr.tpe shouldBe kind
-
             cc.messages shouldBe empty
           }
         }
@@ -996,8 +1000,8 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
             // format: on
           )
         } {
-          s"(${kindSrc})(${exprSrc})" in {
-            val expr = (xform(exprSrc.asTree[Expr]) rewrite { new Typer }).asInstanceOf[Expr]
+          s"($kindSrc)($exprSrc)" in {
+            val expr = exprSrc.asTree[Expr] rewrite new Typer
             val castKind = kindSrc.asTree[Expr] match {
               case ExprType(kind) => kind
               case _              => fail()
@@ -1005,6 +1009,47 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
             cc.messages shouldBe empty
             TypeAssigner(ExprCast(castKind, expr) withLoc Loc.synthetic).kind shouldBe kind
             kind shouldBe castKind
+          }
+        }
+      }
+
+      "type expressions" - {
+        for {
+          (text, kind) <- List[(String, PartialFunction[Any, Unit])](
+            ("bool[2]", { case TypeType(TypeVector(TypeUInt(w1), w2)) if w1 == 1 && w2 == 2 => }),
+            ("bool[2][3]", {
+              case TypeType(TypeVector(TypeVector(TypeUInt(w1), w2), w3))
+                  if w1 == 1 && w2 == 3 && w3 == 2 =>
+            }),
+            ("s.a", { case TypeNone(TypeUInt(w)) if w == 32              => }),
+            ("s.t", { case TypeNone(TypeRecord(t, Nil)) if t.name == "t" => }),
+            ("x.a", { case TypeType(TypeUInt(w)) if w == 32              => }),
+            ("x.t", { case TypeType(TypeRecord(t, Nil)) if t.name == "t" => })
+          )
+        } {
+          text in {
+            elaborate {
+              s"""
+              |struct s {
+              |  typedef u32 a;
+              |  struct t {}
+              |}
+              |
+              |(* toplevel *)
+              |fsm f {
+              |  s x;
+              |  fence { $text; }
+              |}"""
+            } getFirst {
+              case StmtExpr(e) => e
+            } tap {
+              assignChildren(_)
+            } pipe {
+              TypeAssigner(_).tpe
+            } tap {
+              _ should matchPattern(kind)
+            }
+            cc.messages shouldBe empty
           }
         }
       }
@@ -1017,35 +1062,37 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
             ("a = a + 1;", { case _: StmtAssign => }),
             ("a++;", { case _: StmtPost         => }),
             ("a += 1;", { case _: StmtUpdate    => }),
-            ("bool c;", { case _: StmtDecl      => }),
+            ("bool c;", { case _: StmtDefn      => }),
             ("read;", { case _: StmtRead        => }),
             ("write;", { case _: StmtWrite      => }),
           )
         } {
           text in {
-            val tree = s"""|{
-                           |  bool a;
-                           |  a;
-                           |
-                           |  ${text}
-                           |}""".stripMargin.asTree[Stmt]
-
-            val stmts = xform(tree) match {
-              case StmtBlock(s) => s
-              case _            => fail()
+            elaborate {
+              s"""
+              |void function () {
+              |  bool a;
+              |  a;
+              |
+              |  $text
+              |}"""
+            } getFirst {
+              case DefnFunc(_, _, body) => body.last
+            } tap {
+              _ should matchPattern(pattern)
+            } tap {
+              assignChildren(_)
+            } pipe {
+              TypeAssigner(_).tpe
+            } tap {
+              _ shouldBe TypeCombStmt
             }
-
-            inside(stmts.last) {
-              case stmt: Stmt =>
-                stmt should matchPattern(pattern)
-                assignChildren(stmt)
-                TypeAssigner(stmt).tpe shouldBe TypeCombStmt
-            }
+            cc.messages shouldBe empty
           }
         }
       }
 
-      "unambiguous crtl statements" - {
+      "unambiguous ctrl statements" - {
         for {
           (text, pattern) <- List[(String, PartialFunction[Any, Unit])](
             ("goto a;", { case _: StmtGoto                                          => }),
@@ -1064,29 +1111,31 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
           )
         } {
           text in {
-            val tree = s"""|{
-                           |  bool a;
-                           |  a;
-                           |
-                           |  ${text}
-                           |}""".stripMargin.asTree[Stmt]
-
-            val stmts = xform(tree) match {
-              case StmtBlock(s) => s
-              case _            => fail()
+            elaborate {
+              s"""
+              |void function() {
+              |  bool a;
+              |  a;
+              |
+              |  $text
+              |}"""
+            } getFirst {
+              case DefnFunc(_, _, body) => body.last
+            } tap {
+              _ should matchPattern(pattern)
+            } tap {
+              assignChildren(_)
+            } pipe {
+              TypeAssigner(_).tpe
+            } tap {
+              _ shouldBe TypeCtrlStmt
             }
-
-            inside(stmts.last) {
-              case stmt: Stmt =>
-                stmt should matchPattern(pattern)
-                stmt.postOrderIterator foreach { case tree: Tree => TypeAssigner(tree) }
-                stmt.tpe shouldBe TypeCtrlStmt
-            }
+            cc.messages shouldBe empty
           }
         }
       }
 
-      "context dependent statements" - {
+      "content dependent statements" - {
         for {
           (text, pattern, kind) <- List[(String, PartialFunction[Any, Unit], Type)](
             ("if(a) read;", { case StmtIf(_, _, Nil)                  => }, TypeCombStmt),
@@ -1108,32 +1157,28 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
           )
         } {
           text in {
-            val entity = s"""|fsm a {
-                             |  in sync bool a;
-                             |
-                             |  void main() {
-                             |    a;
-                             |    ${text}
-                             |  }
-                             |}""".stripMargin.asTree[Entity]
-
-            val tree = xform(entity)
-
-            val stmt = tree getFirst { case EntFunction(_, stmts) => stmts.last }
-
-            stmt.postOrderIterator collect {
-              case node: Stmt => node
-              case node: Case => node
-              case node: Expr => node
-            } foreach {
-              TypeAssigner(_)
+            elaborate {
+              s"""
+              |fsm a {
+              |  in sync bool a;
+              |
+              |  void main() {
+              |    a;
+              |    $text
+              |  }
+              |}"""
+            } getFirst {
+              case DefnFunc(_, _, body) => body.last
+            } tap {
+              _ should matchPattern(pattern)
+            } tap {
+              assignChildren(_)
+            } pipe {
+              TypeAssigner(_).tpe
+            } tap {
+              _ shouldBe kind
             }
-
-            inside(stmt) {
-              case stmt: Stmt =>
-                stmt should matchPattern(pattern)
-                stmt.tpe shouldBe kind
-            }
+            cc.messages shouldBe empty
           }
         }
       }
@@ -1141,40 +1186,43 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
 
     "entity contents" - {
       for {
-        (name, text, pattern) <- List[(String, String, PartialFunction[Any, Tree])](
-          ("entity", "fsm e {}", { case c: EntEntity => c }),
-          ("decl", "param bool e = true;", {
-            case c @ EntDecl(Decl(symbol, _)) if symbol.kind.isInstanceOf[TypeParam] => c
-          }),
-          ("instance", "d = new a();", { case c: EntInstance   => c }),
-          ("connect", "b -> c;", { case c: EntConnect          => c }),
-          ("function", "void main() {}", { case c: EntFunction => c })
+        (name, text) <- List(
+          ("entity", "fsm x {}"),
+          ("decl", "param bool x = true;"),
+          ("instance", "x = new f;"),
+          ("connect", "b -> c;"),
+          ("function", "void x() {}")
         )
       } {
         name in {
-          val entity = s"""|network a {
-                           |  in bool b;
-                           |  out bool c;
-                           |  ${text}
-                           |}""".stripMargin.asTree[Entity]
-
-          val contents = (xform(entity).children collect pattern).toList
-
-          contents foreach assignChildren
-
-          TypeAssigner(contents.loneElement).tpe shouldBe TypeMisc
+          elaborate {
+            s"""
+            |fsm f {}
+            |
+            |(* toplevel *)
+            |network a {
+            |  in bool b;
+            |  out bool c;
+            |  $text
+            |}"""
+          } getFirst {
+            case DefnEntity(_, _, body) => body.last
+          } tap {
+            assignChildren(_)
+          } pipe {
+            TypeAssigner(_).tpe
+          } tap {
+            _ shouldBe TypeMisc
+          }
+          cc.messages shouldBe empty
         }
-      }
-
-      "state" in {
-        val ref = TypeAssigner(ExprSym(ErrorSymbol))
-        TypeAssigner(EntState(ref, Nil)).tpe shouldBe TypeMisc
       }
     }
 
     "Sym" in {
-      val symbol = cc.newTermSymbol("foo", Loc.synthetic, TypeUInt(4))
-      TypeAssigner(Sym(symbol, Nil)).tpe shouldBe TypeUInt(4)
+      val symbol = cc.newSymbol("foo", Loc.synthetic) tap { _.kind = TypeUInt(4) }
+      TypeAssigner(Sym(symbol, Nil)).tpe shouldBe TypeMisc
+      cc.messages shouldBe empty
     }
   }
 }

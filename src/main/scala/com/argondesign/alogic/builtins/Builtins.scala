@@ -41,7 +41,7 @@ trait Builtins { this: CompilerContext =>
     register(new DollarDisplay),
     register(new DollarFinish),
     register(new DollarSigned),
-    register(new DollarUnigned)
+    register(new DollarUnsigned)
   )
 
   // Fold call to builtin function
@@ -60,21 +60,12 @@ trait Builtins { this: CompilerContext =>
     case _ => unreachable
   }
 
-  // Is call a valid Connect LHS
+  // Is call valid as a connect LHS
   def isValidConnectLhsBuiltinCall(call: ExprCall): Boolean =
     call.expr match {
       case ExprSym(symbol) =>
         val builtin = (builtins find { _ contains symbol }).get
         builtin.isValidConnectLhs(call.args)
-      case _ => unreachable
-    }
-
-  // Return all arguments which connect combinationally to the output of the function
-  def combArgsBuiltInCall(call: ExprCall): List[Expr] =
-    call.expr match {
-      case ExprSym(symbol) =>
-        val builtin = (builtins find { _ contains symbol }).get
-        builtin.combArgs(call.args)
       case _ => unreachable
     }
 }

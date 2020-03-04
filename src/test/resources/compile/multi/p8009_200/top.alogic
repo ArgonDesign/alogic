@@ -8,7 +8,7 @@ network top {
     }
 
     gen for (uint n < N) {
-        instance#[n] = new test_add();
+        instance#[n] = new test_add;
     }
     gen for (uint n < N) {
         a#[n] -> instance#[n].a;

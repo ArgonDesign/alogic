@@ -1,0 +1,19 @@
+network dictident_struct_8 {
+  in  u1 i;
+  out u1 o;
+
+  gen for (uint N < 2) {
+    struct i_t#[0] { uint(N+1) f; }
+    struct o_t#[0] { uint(N+1) f; }
+  }
+
+  new network inner {
+    in  i_t#[0] ii;
+    out o_t#[0] oo;
+    ii -> oo;
+  }
+
+  i -> inner.ii; inner.oo -> o;
+}
+// :6: ERROR: 'i_t#\[0\]' defined multiple times after processing 'gen' constructs
+// :7: ERROR: 'o_t#\[0\]' defined multiple times after processing 'gen' constructs

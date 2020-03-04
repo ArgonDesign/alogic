@@ -1,0 +1,29 @@
+network dictident_struct_1 {
+  gen for (uint N < 2) {
+    in  bool i#[N];
+    out bool o#[N];
+  }
+
+  gen for (uint N < 1) {
+    struct i_t#[0] { bool f; }
+    struct i_t#[1] { bool f; }
+    struct o_t#[0] { bool f; }
+    struct o_t#[1] { bool f; }
+  }
+
+  new network inner {
+    gen for (uint N < 2) {
+      in  i_t#[N] ii#[N];
+      out o_t#[N] oo#[N];
+      ii#[N] -> oo#[N];
+    }
+  }
+
+  gen for (uint N < 2) {
+    i#[N] -> inner.ii#[N]; inner.oo#[N] -> o#[N];
+  }
+}
+// :9: ERROR: Redefinition of 'i_t' with previous definition at
+// :9: ERROR: ... .*dictident_struct_1.alogic:8
+// :11: ERROR: Redefinition of 'o_t' with previous definition at
+// :11: ERROR: ... .*dictident_struct_1.alogic:10

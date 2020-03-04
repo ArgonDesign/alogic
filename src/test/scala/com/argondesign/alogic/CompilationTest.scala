@@ -22,26 +22,32 @@ import java.io.Writer
 import java.nio.file.Files
 import java.nio.file.Path
 
-import com.argondesign.alogic.ast.Trees.Entity
+import com.argondesign.alogic.ast.Trees.Decl
+import com.argondesign.alogic.ast.Trees.Root
+import com.argondesign.alogic.ast.Trees.Tree
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Error
 import com.argondesign.alogic.core.Fatal
-import com.argondesign.alogic.core.FatalErrorException
 import com.argondesign.alogic.core.InternalCompilerErrorException
 import com.argondesign.alogic.core.Message
 import com.argondesign.alogic.core.Settings
 import com.argondesign.alogic.core.Warning
 import com.argondesign.alogic.core.enums.ResetStyle
 import com.argondesign.alogic.util.unreachable
-import org.scalatest.FreeSpecLike
+import org.scalatest.ConfigMap
 import org.scalatest.ParallelTestExecution
+import org.scalatest.fixture
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.io.Source
 import scala.sys.process._
 
-trait CompilationTest extends FreeSpecLike with AlogicTest with ParallelTestExecution {
+trait CompilationTest
+    extends fixture.FreeSpec
+    with AlogicTest
+    with fixture.ConfigMapFixture
+    with ParallelTestExecution {
 
   private val verilatorPath = new File("verilator/install/bin/verilator")
 
@@ -59,10 +65,15 @@ trait CompilationTest extends FreeSpecLike with AlogicTest with ParallelTestExec
   private val outputs = scala.collection.concurrent.TrieMap[String, String]()
 
   // Insert compiler output to the 'outputs' map above
-  private def entityWriterFactory(entity: Entity, suffix: String): Writer = {
+  private def outputWriterFactory(tree: Tree, suffix: String): Writer = {
     new StringWriter {
       override def close(): Unit = {
-        outputs(entity.name + suffix) = this.toString
+        tree match {
+          case decl: Decl => outputs(decl.symbol.name + suffix) = this.toString
+          case root: Root =>
+            outputs(root.loc.source.file.getName.split('.').head + suffix) = this.toString
+          case _ => ???
+        }
         super.close()
       }
     }
@@ -78,32 +89,18 @@ trait CompilationTest extends FreeSpecLike with AlogicTest with ParallelTestExec
     }
   }
 
-  // Create temporary directory, run function passing the path to the temporary
-  // directory as argument, then remove the temporary directory
-  private def withTmpDir[R](f: Path => R): R = {
-    val tmpDir = Files.createTempDirectory("alogic-test-")
-    try {
-      f(tmpDir)
-    } finally {
-      def del(f: File): Unit = {
-        if (f.isDirectory) {
-          f.listFiles foreach del
-        }
-        f.delete()
-      }
-      del(tmpDir.toFile)
-    }
-  }
-
-  // Lint compiler output with verilator
-  private def verilatorLint(topLevel: String): Unit = withTmpDir { tmpDir =>
-    // Write all files to temporary directory
-    for ((name, text) <- outputs) {
-      val pw = new PrintWriter(tmpDir.resolve(name).toFile)
+  def writeOutputs(path: Path): Unit = outputs foreach {
+    case (name, text) =>
+      val pw = new PrintWriter(path.resolve(name).toFile)
       pw.write(text)
       pw.flush()
       pw.close()
-    }
+  }
+
+  // Lint compiler output with verilator
+  def verilatorLint(topLevel: String, tmpDir: Path): Unit = {
+    // Write all files to temporary directory
+    writeOutputs(tmpDir)
 
     // Lint the top level
     val ret = s"${verilatorPath} --lint-only -Wall -y ${tmpDir} ${topLevel}".!
@@ -114,14 +111,9 @@ trait CompilationTest extends FreeSpecLike with AlogicTest with ParallelTestExec
     }
   }
 
-  private def yosysFEC(topLevel: String, golden: String): Unit = withTmpDir { tmpDir =>
+  def yosysFEC(topLevel: String, golden: String, tmpDir: Path): Unit = {
     // Write all files to temporary directory
-    for ((name, text) <- outputs) {
-      val pw = new PrintWriter(tmpDir.resolve(name).toFile)
-      pw.write(text)
-      pw.flush()
-      pw.close()
-    }
+    writeOutputs(tmpDir)
 
     // Write the golden model
     val goldenPath = tmpDir.resolve("__golden.v").toFile
@@ -222,7 +214,7 @@ trait CompilationTest extends FreeSpecLike with AlogicTest with ParallelTestExec
     val pairMatcher = """@(.+):(.*)""".r
     val longMatcher = """@(.+)\{\{\{""".r
     val boolMatcher = """@(.+)""".r
-    val mesgMatcher = """(.*):(\d+): (WARNING|ERROR|FATAL): (\.\.\.)?(.*)""".r
+    val mesgMatcher = """(.*):(\d+): (WARNING|ERROR|FATAL): (\.\.\. )?(.*)""".r
 
     val mesgSpecs = new ListBuffer[MessageSpec]
 
@@ -269,12 +261,12 @@ trait CompilationTest extends FreeSpecLike with AlogicTest with ParallelTestExec
           mesgFile = file.trim
           mesgLine = line.trim
           mesgType = kind.trim
-          mesgBuff append pattern.trim
+          mesgBuff append pattern
         case mesgMatcher(file, line, kind, _, pattern) if longAttr == "" =>
           assert(mesgFile == file.trim, "Message continuation must have same file pattern")
           assert(mesgLine == line.trim, "Message continuation must have same line number")
           assert(mesgType == kind.trim, "Message continuation must have same message type")
-          mesgBuff append pattern.trim
+          mesgBuff append pattern
         case _ =>
       }
     }
@@ -287,15 +279,46 @@ trait CompilationTest extends FreeSpecLike with AlogicTest with ParallelTestExec
   }
 
   def defineTest(name: String, searchPath: File, top: String, checkFile: String): Unit = {
-    name in {
+    name in { configMap: ConfigMap =>
+      // Create temporary directory, run function passing the path to the temporary
+      // directory as argument, then remove the temporary directory
+      def withTmpDir[R](f: Path => R): R = configMap.getOptional[String]("tmpdir") match {
+        case Some(tmpDir) =>
+          val tmp = new File(tmpDir)
+          tmp.mkdirs()
+          f(tmp.toPath)
+        case None =>
+          val tmpPath = Files.createTempDirectory("alogic-test-")
+          try {
+            f(tmpPath)
+          } finally {
+            def del(f: File): Unit = {
+              if (f.isDirectory) {
+                f.listFiles foreach del
+              }
+              f.delete()
+            }
+            del(tmpPath.toFile)
+          }
+      }
+
+      // Parse the check file
+      val (attr, messageSpecs) = parseCheckFile(checkFile)
+
+      // Cancel test if required
+      if (attr contains "ignore") {
+        cancel
+      }
+
       // Create compiler context
       implicit val cc: CompilerContext = new CompilerContext(
         Settings(
           moduleSearchDirs = List(searchPath),
-          entityWriterFactory = entityWriterFactory,
+          outputWriterFactory = outputWriterFactory,
           messageEmitter = messageEmitter,
-          dumpTrees = false,
-          resetStyle = ResetStyle.SyncHigh
+          dumpTrees = configMap.getWithDefault("dump-trees", "0").toInt != 0,
+          resetStyle = ResetStyle.SyncHigh,
+          shuffleEnts = configMap.getOptional[String]("shuffle-ents") map { _.toInt }
         )
       )
 
@@ -303,14 +326,18 @@ trait CompilationTest extends FreeSpecLike with AlogicTest with ParallelTestExec
       try {
         cc.compile(List(top))
       } catch {
-        case _: FatalErrorException =>
         case e: InternalCompilerErrorException =>
           print(e.message.string)
           throw e
+        case e: StackOverflowError =>
+          // For some reason scalatest swallows stack overflow exceptions,
+          // wrapping them makes them show up in the test runner.......
+          throw new RuntimeException(e)
+      } finally {
+        if (cc.settings.dumpTrees) {
+          withTmpDir(writeOutputs)
+        }
       }
-
-      // Parse the check file
-      val (attr, messageSpecs) = parseCheckFile(checkFile)
 
       // Check messages
       {
@@ -370,13 +397,18 @@ trait CompilationTest extends FreeSpecLike with AlogicTest with ParallelTestExec
 
       // Lint (if it's supposed to succeed and not told otherwise by the test
       if (!expectedToFail && !(attr contains "verilator-lint-off")) {
-        verilatorLint(attr.getOrElse("out-top", top))
+        withTmpDir { tmpDir =>
+          verilatorLint(attr.getOrElse("out-top", top), tmpDir)
+        }
       }
 
       // Perform equivalence check with golden reference if provided
       if (!expectedToFail && (attr contains "fec-golden")) {
-        yosysFEC(attr.getOrElse("out-top", top), attr("fec-golden"))
+        withTmpDir { tmpDir =>
+          yosysFEC(attr.getOrElse("out-top", top), attr("fec-golden"), tmpDir)
+        }
       }
+
     }
   }
 }

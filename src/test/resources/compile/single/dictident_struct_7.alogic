@@ -1,0 +1,27 @@
+network dictident_struct_7 {
+  gen for (uint N < 2) {
+    in  uint(N+1) i#[N];
+    out uint(N+1) o#[N];
+  }
+
+  in u8 x;
+
+  gen for (uint N < 2) {
+    struct i_t#[N] { uint(N+1) f; }
+    struct o_t#[N] { uint(N+1) f; }
+  }
+
+  new network inner {
+    gen for (uint N < 2) {
+      in  i_t#[x] ii#[N];
+      out o_t#[x] oo#[N];
+      ii#[N] -> oo#[N];
+    }
+  }
+
+  gen for (uint N < 2) {
+    i#[N] -> inner.ii#[N]; inner.oo#[N] -> o#[N];
+  }
+}
+// :16: ERROR: Identifier index must be a compile time constant
+// :17: ERROR: Identifier index must be a compile time constant

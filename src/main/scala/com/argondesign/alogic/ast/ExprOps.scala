@@ -19,7 +19,7 @@ package com.argondesign.alogic.ast
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Bindings
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Symbols.TermSymbol
+import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Math.clog2
 import com.argondesign.alogic.passes.FoldExpr
@@ -48,7 +48,7 @@ trait ExprOps { this: Expr =>
   }
 
   private final def mkSized(v: Int)(implicit cc: CompilerContext) = {
-    if (tpe.underlying.isNum) fix(Expr(v)) else fix(ExprInt(tpe.isSigned, tpe.width, v))
+    if (tpe.underlying.isNum) fix(Expr(v)) else fix(ExprInt(tpe.isSigned, tpe.width.toInt, v))
   }
 
   private final def mkIndex(idx: Int)(implicit cc: CompilerContext) = {
@@ -98,20 +98,20 @@ trait ExprOps { this: Expr =>
   final def index(idx: Expr)(implicit cc: CompilerContext): ExprIndex = fix(ExprIndex(this, idx))
   final def index(idx: Int)(implicit cc: CompilerContext): ExprIndex = fix(ExprIndex(this, mkIndex(idx)))
 
-  final def slice(lidx: Expr, op: String, ridx: Expr)(implicit cc: CompilerContext): ExprSlice = fix(ExprSlice(this, lidx, op, ridx))
-  final def slice(lidx: Expr, op: String, ridx: Int)(implicit cc: CompilerContext): ExprSlice = fix(ExprSlice(this, lidx, op, mkIndex(ridx)))
-  final def slice(lidx: Int, op: String, ridx: Expr)(implicit cc: CompilerContext): ExprSlice = fix(ExprSlice(this, mkIndex(lidx), op, ridx))
-  final def slice(lidx: Int, op: String, ridx: Int)(implicit cc: CompilerContext): ExprSlice = fix(ExprSlice(this, mkIndex(lidx), op, mkIndex(ridx)))
+  final def slice(lIdx: Expr, op: String, rIdx: Expr)(implicit cc: CompilerContext): ExprSlice = fix(ExprSlice(this, lIdx, op, rIdx))
+  final def slice(lIdx: Expr, op: String, rIdx: Int)(implicit cc: CompilerContext): ExprSlice = fix(ExprSlice(this, lIdx, op, mkIndex(rIdx)))
+  final def slice(lIdx: Int, op: String, rIdx: Expr)(implicit cc: CompilerContext): ExprSlice = fix(ExprSlice(this, mkIndex(lIdx), op, rIdx))
+  final def slice(lIdx: Int, op: String, rIdx: Int)(implicit cc: CompilerContext): ExprSlice = fix(ExprSlice(this, mkIndex(lIdx), op, mkIndex(rIdx)))
 
   final def select(name: String)(implicit cc: CompilerContext): ExprSelect = fix(ExprSelect(this, name, Nil))
-  final def call(args: List[Expr])(implicit cc: CompilerContext): ExprCall = fix(ExprCall(this, args))
+  final def call(args: List[Arg])(implicit cc: CompilerContext): ExprCall = fix(ExprCall(this, args))
 
   final def cat(rhs: Expr)(implicit cc: CompilerContext): ExprCat = fix(ExprCat(List(this, rhs)))
 
   final def rep(cnt: Expr)(implicit cc: CompilerContext): ExprRep = fix(ExprRep(cnt, this))
   final def rep(cnt: Int)(implicit cc: CompilerContext): ExprRep = fix(ExprRep(fix(Expr(cnt)), this))
 
-  final def cast(kind: Type)(implicit cc: CompilerContext): ExprCast = fix(ExprCast(kind, this))
+  final def cast(kind: TypeFund)(implicit cc: CompilerContext): ExprCast = fix(ExprCast(kind, this))
 
   final def zx(width: Expr)(implicit cc: CompilerContext): ExprCall = cc.makeBuiltinCall("@zx", loc, List(width, this))
   final def zx(width: Int)(implicit cc: CompilerContext): ExprCall = this zx fix(Expr(width))
@@ -160,8 +160,8 @@ trait ExprOps { this: Expr =>
     case _: ExprSym => true
     case ExprIndex(expr, idx) =>
       expr.isValidConnectRhs && idx.isKnownConst
-    case ExprSlice(expr, lidx, _, ridx) =>
-      expr.isValidConnectRhs && lidx.isKnownConst && ridx.isKnownConst
+    case ExprSlice(expr, lIdx, _, rIdx) =>
+      expr.isValidConnectRhs && lIdx.isKnownConst && rIdx.isKnownConst
     case ExprSelect(expr, _, idxs) =>
       expr.isValidConnectRhs && (idxs forall { _.isValidConnectRhs })
     case ExprCat(parts) => parts forall { _.isValidConnectRhs }
@@ -172,8 +172,8 @@ trait ExprOps { this: Expr =>
     case _: ExprSym => true
     case ExprIndex(expr, idx) =>
       expr.isValidConnectLhs && idx.isKnownConst
-    case ExprSlice(expr, lidx, _, ridx) =>
-      expr.isValidConnectLhs && lidx.isKnownConst && ridx.isKnownConst
+    case ExprSlice(expr, lIdx, _, rIdx) =>
+      expr.isValidConnectLhs && lIdx.isKnownConst && rIdx.isKnownConst
     case ExprSelect(expr, _, idxs) =>
       expr.isValidConnectLhs && (idxs forall { _.isValidConnectLhs })
     case ExprCat(parts)   => parts forall { _.isValidConnectLhs }
@@ -204,8 +204,8 @@ trait ExprOps { this: Expr =>
     case ExprRep(count, expr)   => count.isKnownConst && expr.isKnownConst
     case ExprCat(parts)         => parts forall { _.isKnownConst }
     case ExprIndex(expr, index) => expr.isKnownConst && index.isKnownConst
-    case ExprSlice(expr, lidx, _, ridx) =>
-      expr.isKnownConst && lidx.isKnownConst && ridx.isKnownConst
+    case ExprSlice(expr, lIdx, _, rIdx) =>
+      expr.isKnownConst && lIdx.isKnownConst && rIdx.isKnownConst
     case ExprSelect(expr, _, idxs) => expr.isKnownConst && (idxs forall { _.isKnownConst })
     case call @ ExprCall(ExprSym(symbol), _) if symbol.isBuiltin =>
       cc.isKnownConstBuiltinCall(call)
@@ -215,15 +215,12 @@ trait ExprOps { this: Expr =>
 
   // Simplify this expression
   def simplify(implicit cc: CompilerContext): Expr = {
-    val simple = this.normalize rewrite {
-      new FoldExpr(foldRefs = true)
-    }
-    simple.asInstanceOf[Expr]
+    this.normalize rewrite new FoldExpr(foldRefs = true)
   }
 
   // Rewrite expression using bindings provided
   def given(bindings: Bindings)(implicit cc: CompilerContext): Expr = {
-    (this rewrite new ReplaceTermRefs(bindings)).asInstanceOf[Expr]
+    this rewrite new ReplaceTermRefs(bindings)
   }
 
   // Value of this expression if it can be determined right now, otherwise None
@@ -234,7 +231,7 @@ trait ExprOps { this: Expr =>
   }
 }
 
-trait ObjectExprOps {
+trait ExprObjOps { self: Expr.type =>
   // Helpers to easily create ExprNum from integers
   final def apply(n: Int): ExprNum = ExprNum(false, n)
   final def apply(n: BigInt): ExprNum = ExprNum(false, n)
@@ -293,11 +290,12 @@ trait ObjectExprOps {
 
   // Extractor for instance port references
   final object InstancePortRef {
-    def unapply(expr: ExprSelect): Option[(TermSymbol, TermSymbol)] = expr partialMatch {
-      case ExprSelect(ExprSym(iSymbol: TermSymbol), sel, idxs) if iSymbol.kind.isInstance =>
-        assert(idxs.isEmpty)
-        (iSymbol, iSymbol.kind.asInstanceOf[TypeInstance].portSymbol(sel).get)
-    }
+    def unapply(expr: ExprSelect)(implicit cc: CompilerContext): Option[(Symbol, Symbol)] =
+      expr partialMatch {
+        case ExprSelect(ExprSym(iSymbol), sel, idxs) if iSymbol.kind.isEntity =>
+          assert(idxs.isEmpty)
+          (iSymbol, iSymbol.kind.asEntity(sel).get)
+      }
   }
 
   // Extractor for integral values (ExprInt or ExprNum)

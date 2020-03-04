@@ -1,0 +1,19 @@
+// @ignore
+struct s_t {
+  param uint W;
+  uint(W) f;
+}
+
+network struct_param_0 {
+    in  s_t(10) i;
+    out s_t(10) o;
+    i -> o;
+}
+// @fec-golden {{{
+//  module struct_param_0 (
+//    input wire [9:0] i,
+//    output wire [9:0] o
+//  );
+//    assign o = i;
+//  endmodule
+// }}}

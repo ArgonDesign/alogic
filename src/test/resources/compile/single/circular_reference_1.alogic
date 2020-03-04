@@ -1,0 +1,35 @@
+fsm circular_reference_1 {
+  out wire bool p_o;
+
+  void main() {
+    p_o = false;
+    goto other;
+  }
+
+  void other() {
+    p_o = true;
+    goto main;
+  }
+
+}
+// @fec-golden {{{
+//  module circular_reference_1(
+//    input  wire clk,
+//    input  wire rst,
+//    output wire p_o
+//  );
+//
+//    reg state_q;
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        state_q <= 1'b0;
+//      end else begin
+//        state_q <= ~state_q;
+//      end
+//    end
+//
+//    assign p_o = state_q;
+//
+//  endmodule
+// }}}

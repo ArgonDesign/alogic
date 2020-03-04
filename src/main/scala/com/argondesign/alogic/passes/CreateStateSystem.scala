@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2018 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2018-2019 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
@@ -10,7 +10,7 @@
 //
 // DESCRIPTION:
 //
-// - Convert EntityNamed to EntityLowered by constructing the state dispatch
+// - Constructing the state dispatch statement
 // - Drop all StmtFence
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -25,65 +25,62 @@ import com.argondesign.alogic.util.unreachable
 final class CreateStateSystem(implicit cc: CompilerContext) extends TreeTransformer {
 
   override def skip(tree: Tree): Boolean = tree match {
-    case entity: Entity => entity.states.isEmpty
-    case _: EntState    => false
-    case _: Stmt        => false
-    case _: Case        => false
-    case _              => true
+    case _: Expr => true
+    case _       => false
   }
 
   override def transform(tree: Tree): Tree = tree match {
 
-    case _: StmtFence => TypeAssigner(Thicket(Nil) withLoc tree.loc)
+    case _: StmtFence => Stump
 
-    case EntState(expr @ ExprInt(_, _, value), body) => {
-      EntState(expr, StmtComment(s"State ${value} - line ${tree.loc.line}") :: body) regularize tree.loc
-    }
+    case _: DeclState => Stump
 
-    case entity: Entity => {
+    case desc @ DefnState(_, ExprInt(_, _, value), body) =>
+      val newBody = StmtComment(s"State $value - line ${tree.loc.line}") :: body
+      desc.copy(body = newBody) regularize tree.loc
+
+    case defn: DefnEntity =>
       val newBody = List from {
         // Drop states and the comb process
-        entity.body.iterator filter {
-          case _: EntCombProcess => false
-          case _: EntState       => false
-          case _                 => true
+        defn.body.iterator filter {
+          case _: EntCombProcess     => false
+          case EntDefn(_: DefnState) => false
+          case _                     => true
         } concat {
           // Add the comb process back with the state dispatch
           Iterator single {
             // Ensure entry state is the first
-            val (entryState, otherStates) = entity.states partition {
-              case EntState(ExprInt(_, _, value), _) => value == 0
+            val (entryState, otherStates) = defn.states partition {
+              case DefnState(_, ExprInt(_, _, v), _) => v == 0
               case _                                 => unreachable
             }
 
             val dispatch = entryState ::: otherStates match {
               case Nil          => Nil
-              case first :: Nil => first.stmts
-              case first :: second :: Nil => {
+              case first :: Nil => first.body
+              case first :: second :: Nil =>
                 StmtComment("State dispatch") :: StmtIf(
-                  ~ExprSym(entitySymbol.attr.stateVar.value),
-                  first.stmts,
-                  second.stmts
+                  ~ExprSym(defn.symbol.attr.stateVar.value),
+                  first.body,
+                  second.body
                 ) :: Nil
-              }
-              case first :: rest => {
+              case first :: rest =>
                 StmtComment("State dispatch") :: StmtCase(
-                  ExprSym(entitySymbol.attr.stateVar.value),
-                  CaseDefault(first.stmts) :: {
+                  ExprSym(defn.symbol.attr.stateVar.value),
+                  CaseDefault(first.body) :: {
                     rest map {
-                      case EntState(expr, body) => CaseRegular(List(expr), body)
+                      case DefnState(_, expr, body) => CaseRegular(List(expr), body)
                     }
                   }
                 ) :: Nil
-              }
             }
 
-            dispatch foreach { _ regularize entity.loc }
+            dispatch foreach { _ regularize defn.loc }
 
-            assert(entity.combProcesses.lengthIs <= 1)
+            assert(defn.combProcesses.lengthIs <= 1)
 
             TypeAssigner {
-              entity.combProcesses.headOption map { tree =>
+              defn.combProcesses.headOption map { tree =>
                 EntCombProcess(tree.stmts ::: dispatch) withLoc tree.loc
               } getOrElse {
                 EntCombProcess(dispatch) withLoc dispatch.head.loc
@@ -93,21 +90,38 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends TreeTransfor
         }
       }
 
-      TypeAssigner(entity.copy(body = newBody) withLoc entity.loc)
-    }
+      TypeAssigner(defn.copy(body = newBody) withLoc defn.loc)
 
     case _ => tree
   }
 
   override protected def finalCheck(tree: Tree): Unit = {
     tree visit {
-      case node: EntState  => cc.ice(node, "Entity states remain")
+      case node: DeclState => cc.ice(node, "DeclState remains")
+      case node: DefnState => cc.ice(node, "DefnState remains")
       case node: StmtFence => cc.ice(node, "StmtFence remains")
     }
   }
 }
 
-object CreateStateSystem extends TreeTransformerPass {
+object CreateStateSystem extends PairTransformerPass {
   val name = "create-state-system"
-  def create(implicit cc: CompilerContext) = new CreateStateSystem
+  def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {
+    (decl, defn) match {
+      case (dcl: DeclEntity, _: DefnEntity) =>
+        if (dcl.states.isEmpty) {
+          // If no states, then there is nothing to do
+          (decl, defn)
+        } else {
+          // Perform the transform
+          val transformer = new CreateStateSystem
+          // First transform the defn
+          val newDefn = transformer(defn)
+          // Then transform the decl
+          val newDecl = transformer(decl)
+          (newDecl, newDefn)
+        }
+      case _ => (decl, defn)
+    }
+  }
 }

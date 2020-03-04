@@ -17,369 +17,315 @@ package com.argondesign.alogic.ast
 
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Symbols.Symbol
-import com.argondesign.alogic.core.Types.TypeStruct
+import com.argondesign.alogic.core.FlowControlTypes._
+import com.argondesign.alogic.core.SourceAttribute
+import com.argondesign.alogic.core.StorageTypes._
+import com.argondesign.alogic.core.enums.EntityVariant
 
-trait TreePrintOps { this: Tree =>
+import scala.util.chaining._
 
-  private[this] final def attrStr(indent: Int, symbol: Symbol)(
-      implicit cc: CompilerContext): String = {
-    val str = symbol.attr.toSource
-    if (str.isEmpty) str else str + "\n" + "  " * indent
-  }
+trait TreePrintOps extends { this: Tree =>
 
-  private[this] final def attrStr(indent: Int, ref: Ref)(implicit cc: CompilerContext): String = {
-    ref match {
-      case Sym(symbol, _) => attrStr(indent, symbol)
-      case _              => ""
+  def toSource(implicit cc: CompilerContext): String = v(this)(cc, 0)
+
+  private final def block(
+      header: String,
+      body: List[Tree]
+  )(
+      implicit cc: CompilerContext,
+      indent: Int
+  ): String = {
+    val prefix = if (header.nonEmpty) header + " " else ""
+    if (body.isEmpty) {
+      s"$prefix{}"
+    } else {
+      val i = "  " * indent
+      s"""|$prefix{
+          |$i  ${body map { v(_)(cc, indent + 1) } mkString s"\n$i  "}
+          |$i}""".stripMargin
     }
   }
 
-  private[this] final def entityStr(indent: Int)(entity: Entity)(
-      implicit cc: CompilerContext): String = {
-    val i = "  " * indent
-    val sb = new StringBuilder()
-    val variant = entity.ref match {
-      case ident: Ident   => ident.attr("//variant").asInstanceOf[ExprStr].value
-      case Sym(symbol, _) => symbol.attr.variant.value
-    }
-
-    sb append s"${attrStr(indent, entity.ref)}${variant} ${v(indent)(entity.ref)} {\n"
-
-    if (entity.declarations.nonEmpty) {
-      sb append s"""|
-                    |${i}  /////////////////////////////////
-                    |${i}  // Declarations
-                    |${i}  /////////////////////////////////
-                    |
-                    |""".stripMargin
-      sb append s"${i}  ${entity.declarations map v(indent + 1) mkString ("", s";\n${i}  ", ";")}"
-      sb append "\n"
-    }
-
-    if (entity.entities.nonEmpty) {
-      sb append s"""|
-                    |${i}  /////////////////////////////////
-                    |${i}  // Entities
-                    |${i}  /////////////////////////////////
-                    |
-                    |""".stripMargin
-      sb append s"${i}  ${entity.entities map v(indent + 1) mkString s"\n\n${i}  "}"
-      sb append "\n"
-    }
-
-    if (entity.instances.nonEmpty) {
-      sb append s"""|
-                    |${i}  /////////////////////////////////
-                    |${i}  // Instances
-                    |${i}  /////////////////////////////////
-                    |
-                    |""".stripMargin
-      sb append s"${i}  ${entity.instances map v(indent + 1) mkString s"\n\n${i}  "}"
-      sb append "\n"
-    }
-
-    if (entity.connects.nonEmpty) {
-      sb append s"""|
-                    |${i}  /////////////////////////////////
-                    |${i}  // Connections
-                    |${i}  /////////////////////////////////
-                    |
-                    |""".stripMargin
-      sb append s"${i}  ${entity.connects map v(indent + 1) mkString s"\n${i}  "}"
-      sb append "\n"
-    }
-
-    if (entity.combProcesses.nonEmpty) {
-      sb append s"""|
-                    |${i}  /////////////////////////////////
-                    |${i}  // Combinational Blocks
-                    |${i}  /////////////////////////////////
-                    |
-                    |${i}  always_comb {
-                    |""".stripMargin
-      sb append s"${i}    ${entity.combProcesses map v(indent + 2) mkString s"\n${i}    "}"
-      sb append "\n"
-    }
-
-    if (entity.functions.nonEmpty) {
-      sb append s"""|
-                    |${i}  /////////////////////////////////
-                    |${i}  // Functions
-                    |${i}  /////////////////////////////////
-                    |
-                    |""".stripMargin
-      sb append s"${i}  ${entity.functions map v(indent + 1) mkString s"\n\n${i}  "}"
-      sb append "\n"
-    }
-
-    if (entity.states.nonEmpty) {
-      sb append s"""|
-                    |${i}  /////////////////////////////////
-                    |${i}  // States
-                    |${i}  /////////////////////////////////
-                    |
-                    |""".stripMargin
-      sb append s"${i}  ${entity.states map v(indent + 1) mkString s"\n\n${i}  "}"
-      sb append "\n"
-    }
-
-    if (entity.verbatims.nonEmpty) {
-      sb append s"""|
-                    |${i}  /////////////////////////////////
-                    |${i}  // verbatim blocks
-                    |${i}  /////////////////////////////////
-                    |
-                    |""".stripMargin
-      sb append s"${i}  ${entity.verbatims map v(indent + 1) mkString s"\n\n${i}  "}"
-      sb append "\n"
-    }
-
-    entity.body foreach {
-      case EntGen(gen) =>
-        sb append "\n"
-        sb append s"${i}  ${v(indent + 1)(gen)}"
-        sb append "\n"
-      case _ =>
-    }
-
-    sb append s"\n${i}}"
-    sb.toString
+  private final def v(fct: FlowControlType): String = fct match {
+    case FlowControlTypeNone   => ""
+    case FlowControlTypeValid  => "sync "
+    case FlowControlTypeReady  => "sync ready "
+    case FlowControlTypeAccept => "sync accept "
   }
 
-  private[this] final def structStr(indent: Int)(kind: TypeStruct)(
-      implicit cc: CompilerContext): String = {
-    val i = "  " * indent
-    val fields = for ((fn, ft) <- kind.fieldNames zip kind.fieldTypes) yield {
-      s"${ft.toSource} ${fn};"
-    }
-    s"""|struct ${kind.name} {
-        |${i}  ${fields mkString s"\n${i}  "}
-        |${i}};""".stripMargin
+  private final def v(st: StorageType): String = st match {
+    case StorageTypeDefault => ""
+    case StorageTypeReg     => "reg "
+    case StorageTypeWire    => "wire "
+    case StorageTypeSlices(slices) =>
+      slices map {
+        case StorageSliceFwd => "fslice"
+        case StorageSliceBwd => "bslice"
+        case StorageSliceBub => "bubble"
+      } mkString ("", " ", " ")
   }
 
-  private[this] final def v(expr: Expr)(implicit cc: CompilerContext): String = expr match {
-    case ExprCall(expr, args)                  => s"${v(expr)}(${args map v mkString ", "})"
-    case ExprUnary(op, expr)                   => s"${op}${v(expr)}"
-    case ExprBinary(lhs, op, rhs)              => s"${v(lhs)} $op ${v(rhs)}"
-    case ExprTernary(cond, thenExpr, elseExpr) => s"${v(cond)} ? ${v(thenExpr)} : ${v(elseExpr)}"
+  private final def v(ev: EntityVariant.Type): String = ev match {
+    case EntityVariant.Fsm => "fsm"
+    case EntityVariant.Net => "network"
+    case EntityVariant.Ver => "verbatim entity"
+  }
+
+  private final def vs(
+      trees: List[Tree],
+      sep: String
+  )(
+      implicit cc: CompilerContext,
+      indent: Int
+  ): String = trees map v mkString s", "
+
+  private final def vs(
+      trees: List[Tree],
+      start: String,
+      sep: String,
+      end: String
+  )(
+      implicit cc: CompilerContext,
+      indent: Int
+  ): String = trees map v mkString (start, sep, end)
+
+  private final def vo(treeOpt: Option[Tree])(implicit cc: CompilerContext, indent: Int): String =
+    treeOpt map v getOrElse ""
+
+  private final def v(tree: Tree)(implicit cc: CompilerContext, indent: Int): String = tree match {
+    case node: Root    => v(node)
+    case node: Ref     => v(node)
+    case node: Desc    => v(node)
+    case node: Decl    => v(node)
+    case node: Defn    => v(node)
+    case node: Gen     => v(node)
+    case node: Riz     => v(node)
+    case node: Ent     => v(node)
+    case node: Rec     => v(node)
+    case node: Stmt    => v(node)
+    case node: Case    => v(node)
+    case node: Expr    => v(node)
+    case node: Arg     => v(node)
+    case node: Thicket => block("thicket", node.trees)
+    case Stump         => "Stump"
+  }
+
+  private final def v(tree: Root)(implicit cc: CompilerContext, indent: Int): String = {
+    block("root", tree.body)
+  }
+
+  private final def v(ref: Ref)(implicit cc: CompilerContext, indent: Int): String = ref match {
+    case Ident(name, Nil)     => name
+    case Sym(symbol, Nil)     => s"${symbol.name}@${symbol.id}"
+    case Ident(name, indices) => vs(indices, s"$name#[", ",", "]")
+    case Sym(symbol, indices) => vs(indices, s"${symbol.name}@${symbol.id}#[", ",", "]")
+  }
+
+  private final def v(tree: Desc)(implicit cc: CompilerContext, indent: Int): String = {
+    val attr = tree.ref pipe {
+      case Sym(symbol, _)                     => symbol.attr.toSource
+      case ident: Ident if ident.attr.isEmpty => ""
+      case ident: Ident =>
+        ident.attr.iterator map {
+          case (k, _: SourceAttribute.Flag)        => k
+          case (k, SourceAttribute.Expr(expr))     => s"$k = ${v(expr)}"
+          case (k, SourceAttribute.Slices(slices)) => s"$k = ${v(StorageTypeSlices(slices))}"
+        } mkString ("(* ", ", ", " *)")
+    } pipe {
+      case ""  => ""
+      case str => str + "\n" + "  " * indent
+    }
+    val name = v(tree.ref)
+    attr + v(tree, name)
+  }
+
+  // format: off
+  private final def v(tree: Desc, name: String)(implicit cc: CompilerContext, indent: Int): String = tree match {
+    case DescVar(_, spec, None)                => s"desc ${v(spec)} $name"
+    case DescVar(_, spec, Some(init))          => s"desc ${v(spec)} $name = ${v(init)}"
+    case DescIn(_, spec, fct)                  => s"desc in ${v(fct)}${v(spec)} $name"
+    case DescOut(_, spec, fct, st, None)       => s"desc out ${v(fct)}${v(st)}${v(spec)} $name"
+    case DescOut(_, spec, fct, st, Some(init)) => s"desc out ${v(fct)}${v(st)}${v(spec)} $name = ${v(init)}"
+    case DescPipeline(_, spec)                 => s"desc pipeline ${v(spec)} $name"
+    case DescParam(_, spec, None)              => s"desc param ${v(spec)} $name"
+    case DescParam(_, spec, Some(init))        => s"desc param ${v(spec)} $name = ${v(init)}"
+    case DescConst(_, spec, init)              => s"desc const ${v(spec)} $name = ${v(init)}"
+    case DescGen(_, spec, init)                => s"desc gen ${v(spec)} $name = ${v(init)}"
+    case DescArray(_, elem, size)              => s"desc ${v(elem)} $name[$size]"
+    case DescSram(_, elem, size, st)           => s"desc sram ${v(st)}${v(elem)} $name[$size]"
+    case DescType(_, spec)                     => s"desc typedef ${v(spec)} $name"
+    case DescEntity(_, variant, body)          => block(s"desc ${v(variant)} $name", body)
+    case DescRecord(_, body)                   => block(s"desc record $name", body)
+    case DescInstance(_, spec)                 => s"desc $name = new ${v(spec)};"
+    case DescSingleton(_, variant, body)       => block(s"desc new ${v(variant)} $name", body)
+    case DescFunc(_, _, ret, args, body)       => block(s"desc ${v(ret)} $name(${vs(args, ", ")})", body)
+    case DescChoice(_, choices)                => s"desc ${vs(choices, "choice<", ", ", ">")} $name"
+  }
+  // format: on
+
+  private final def v(tree: Decl)(implicit cc: CompilerContext, indent: Int): String = {
+    val symbol = tree.symbol
+    val attr = symbol.attr.toSource pipe {
+      case ""  => ""
+      case str => str + "\n" + "  " * indent
+    }
+    attr + v(tree, s"${symbol.name}@${symbol.id}")
+  }
+
+  // format: off
+  private final def v(tree: Decl, name: String)(implicit cc: CompilerContext, indent: Int): String = tree match {
+    case DeclVar(_, spec)                => s"decl ${v(spec)} $name;"
+    case DeclIn(_, spec, fct)            => s"decl in ${v(fct)}${v(spec)} $name;"
+    case DeclOut(_, spec, fct, st)       => s"decl out ${v(fct)}${v(st)}${v(spec)} $name;"
+    case DeclPipeline(_, spec)           => s"decl pipeline ${v(spec)} $name;"
+    case DeclConst(_, spec)              => s"decl const ${v(spec)} $name;"
+    case DeclGen(_, spec)                => s"decl gen ${v(spec)} $name;"
+    case DeclArray(_, elem, size)        => s"decl ${v(elem)} $name[$size];"
+    case DeclSram(_, elem, size, st)     => s"decl sram ${v(st)}${v(elem)} $name[$size];"
+    case DeclStack(_, elem, size)        => s"decl stack ${v(elem)} $name[$size];"
+    case DeclType(_, spec)               => s"decl typedef ${v(spec)} $name;"
+    case DeclEntity(_, decls)            => block(s"decl entity $name", decls)
+    case DeclRecord(_, decls)            => block(s"decl record $name", decls)
+    case DeclInstance(_, spec)           => s"decl $name = new ${v(spec)};"
+    case DeclSingleton(_, decls)         => block(s"decl new entity $name", decls)
+    case DeclFunc(_, _, ret, args)       => s"decl ${v(ret)} $name(${vs(args, ", ")});"
+    case DeclState(_)                    => s"decl state $name;"
+  }
+  // format: on
+
+  private final def v(tree: Defn)(implicit cc: CompilerContext, indent: Int): String = {
+    val symbol = tree.symbol
+    val attr = symbol.attr.toSource pipe {
+      case ""  => ""
+      case str => str + "\n" + "  " * indent
+    }
+    attr + v(tree, s"${symbol.name}@${symbol.id}")
+  }
+
+  // format: off
+  private final def v(tree: Defn, name: String)(implicit cc: CompilerContext, indent: Int): String = tree match {
+    case DefnVar(_, None)                => s"defn $name;"
+    case DefnVar(_, Some(init))          => s"defn $name = ${v(init)};"
+    case DefnIn(_)                       => s"defn $name;"
+    case DefnOut(_, None)                => s"defn $name;"
+    case DefnOut(_, Some(init))          => s"defn $name = ${v(init)};"
+    case DefnPipeline(_)                 => s"defn $name;"
+    case DefnConst(_, init)              => s"defn $name = ${v(init)};"
+    case DefnGen(_, init)                => s"defn $name = ${v(init)};"
+    case DefnArray(_)                    => s"defn $name;"
+    case DefnSram(_)                     => s"defn $name;"
+    case DefnStack(_)                    => s"defn $name;"
+    case DefnType(_)                     => s"defn $name;"
+    case DefnEntity(_, variant, body)    => block(s"defn ${v(variant)} $name", body)
+    case DefnRecord(_, body)             => block(s"defn record $name", body)
+    case DefnInstance(_)                 => s"defn $name;"
+    case DefnSingleton(_, variant, body) => block(s"defn ${v(variant)} $name", body)
+    case DefnFunc(_, args, body)         => block(s"defn $name", args ::: body)
+    case DefnState(_, expr, body)        => block(s"defn $name ${v(expr)}", body)
+  }
+  // format: on
+
+  // format: off
+  private final def v(tree: Gen)(implicit cc: CompilerContext, indent: Int): String = tree match {
+    case GenIf(cond, thenItems, Nil)       => block(s"gen if (${v(cond)}) ", thenItems)
+    case GenIf(cond, thenItems, elseItems) => block(s"gen if (${v(cond)}) ", thenItems) + block(s" else", elseItems)
+    case GenFor(inits, cond, steps, body)  => block(s"gen for (${vs(inits, ", ")}; ${v(cond)} ; ${vs(steps, ", ")})", body)
+    case GenRange(inits, op, end, body)     => block(s"gen for (${vs(inits, ", ")} $op ${v(end)})", body)
+  }
+  // format: on
+
+  private final def v(tree: Riz)(implicit cc: CompilerContext, indent: Int): String = tree match {
+    case RizDesc(desc) => v(desc)
+    case RizDecl(decl) => v(decl)
+    case RizDefn(defn) => v(defn)
+  }
+
+  private final def v(tree: Ent)(implicit cc: CompilerContext, indent: Int): String = tree match {
+    case EntDesc(desc)           => v(desc)
+    case EntDecl(decl)           => v(decl)
+    case EntDefn(defn)           => v(defn)
+    case EntGen(gen)             => v(gen)
+    case EntConnect(lhs, rhs)    => s"${v(lhs)} -> ${vs(rhs, ", ")};"
+    case EntCombProcess(stmts)   => block("always", stmts)
+    case EntVerbatim(lang, body) => s"verbatim $lang {$body}"
+    case EntComment(str)         => "//" + str
+  }
+
+  private final def v(tree: Rec)(implicit cc: CompilerContext, indent: Int): String = tree match {
+    case RecDesc(desc)   => v(desc)
+    case RecDecl(decl)   => v(decl)
+    case RecDefn(defn)   => v(defn)
+    case RecGen(gen)     => v(gen)
+    case RecComment(str) => "//" + str
+  }
+
+  // format: off
+  private final def v(tree: Stmt)(implicit cc: CompilerContext, indent: Int): String = tree match {
+    case StmtDesc(desc)                    => s"${v(desc)}"
+    case StmtDecl(decl)                    => s"${v(decl)}"
+    case StmtDefn(defn)                    => s"${v(defn)}"
+    case StmtGen(gen)                      => v(gen)
+    case StmtBlock(body)                   => block("", body)
+    case StmtIf(cond, ts, Nil)             => block(s"if (${v(cond)})", ts)
+    case StmtIf(cond, ts, es)              => block(s"if (${v(cond)})", ts) + block(s" else", es)
+    case StmtCase(expr, cases)             => block(s"case (${v(expr)})", cases)
+    case StmtLoop(body)                    => block("loop", body)
+    case StmtWhile(cond, body)             => block(s"while (${v(cond)})", body)
+    case StmtFor(inits, cond, steps, body) => block(s"for (${vs(inits, ",")} ; ${vo(cond)} ; ${vs(steps, ", ")})", body)
+    case StmtDo(cond, body)                => block(s"do", body) + s" while (${v(cond)});"
+    case StmtLet(inits, body)              => block(s"let (${vs(inits, ", ")})", body)
+    case StmtFence()                       => "fence;"
+    case StmtBreak()                       => "break;"
+    case StmtContinue()                    => "continue;"
+    case StmtGoto(expr)                    => s"goto ${v(expr)};"
+    case StmtReturn()                      => "return;"
+    case StmtAssign(lhs, rhs)              => s"${v(lhs)} = ${v(rhs)};"
+    case StmtUpdate(lhs, op, rhs)          => s"${v(lhs)} $op= ${v(rhs)};"
+    case StmtPost(expr, op)                => s"${v(expr)}$op;"
+    case StmtExpr(expr)                    => s"${v(expr)};"
+    case StmtRead()                        => "read;"
+    case StmtWrite()                       => "write;"
+    case StmtComment(str)                  => "// " + str
+    case StmtStall(cond)                   => s"stall ${v(cond)};"
+    case StmtError()                       => "/* Error statement */"
+  }
+  // format: on
+
+  private final def v(tree: Case)(implicit cc: CompilerContext, indent: Int): String = tree match {
+    case CaseGen(gen)             => v(gen)
+    case CaseRegular(cond, stmts) => block(s"${vs(cond, ", ")} :", stmts)
+    case CaseDefault(stmts)       => block("default :", stmts)
+  }
+
+  // format: off
+  private final def v(tree: Expr)(implicit cc: CompilerContext, indent: Int): String = tree match {
+    case ExprCall(expr, args)                  => s"${v(expr)}(${vs(args, ", ")})"
+    case ExprUnary(op, expr)                   => s"$op${v(expr)}"
+    case ExprBinary(lhs, op, rhs)              => s"(${v(lhs)} $op ${v(rhs)})"
+    case ExprTernary(cond, thenExpr, elseExpr) => s"(${v(cond)} ? ${v(thenExpr)} : ${v(elseExpr)})"
     case ExprRep(count, expr)                  => s"{${v(count)}{${v(expr)}}}"
-    case ExprCat(parts)                        => s"{${parts map v mkString ", "}}"
+    case ExprCat(parts)                        => s"{${vs(parts, ", ")}}"
     case ExprIndex(expr, index)                => s"${v(expr)}[${v(index)}]"
-    case ExprSlice(expr, lidx, op, ridx)       => s"${v(expr)}[${v(lidx)}${op}${v(ridx)}]"
-    case ExprSelect(expr, selector, Nil)       => s"${v(expr)}.${selector}"
-    case ExprSelect(expr, selector, idxs)      => s"${v(expr)}.${selector}#[${idxs map v mkString ", "}]"
-    case ExprRef(ref)                          => v(0)(ref)
+    case ExprSlice(expr, lIdx, op, rIdx)       => s"${v(expr)}[${v(lIdx)}$op${v(rIdx)}]"
+    case ExprSelect(expr, selector, Nil)       => s"${v(expr)}.$selector"
+    case ExprSelect(expr, selector, idxs)      => s"${v(expr)}.$selector#[${vs(idxs, ", ")}]"
+    case ExprRef(ref)                          => v(ref)
+//    case ExprSym(symbol)                       => s"${symbol.name}@${symbol.id}"
     case ExprSym(symbol)                       => symbol.name
-    case ExprType(kind)                        => s"type(${kind.toSource})"
-    case ExprInt(true, width, value)           => s"${width}'sd${value}"
-    case ExprInt(false, width, value)          => s"${width}'d${value}"
-    case ExprNum(true, value)                  => s"'sd${value}"
-    case ExprNum(false, value)                 => s"${value}"
-    case ExprStr(value)                        => s""""${value}""""
+    case ExprType(kind)                        => s"${kind.toSource}"
     case ExprCast(kind, expr)                  => s"(${kind.toSource})(${v(expr)})"
-    case ExprError()                           => "/* Error expression */"
+    case ExprInt(true, width, value)           => s"$width'sd$value"
+    case ExprInt(false, width, value)          => s"$width'd$value"
+    case ExprNum(true, value)                  => s"'sd$value"
+    case ExprNum(false, value)                 => s"$value"
+    case ExprStr(value)                        => s""""$value""""
+    case ExprError()                           => "ExprError"
+  }
+  // format: on
+
+  private final def v(tree: Arg)(implicit cc: CompilerContext, indent: Int): String = tree match {
+    case ArgP(expr)       => v(expr)
+    case ArgN(name, expr) => s"$name = ${v(expr)}"
   }
 
-  private[this] def v(indent: Int)(tree: Tree)(implicit cc: CompilerContext): String = {
-    val i = "  " * indent
-    tree match {
-      case expr: Expr => v(expr)
-
-      case _: Thicket => "thicket(...)"
-
-      case Root(typeDefinitions, entity) => {
-        s"""|${typeDefinitions map v(indent) mkString s"\n\n${i}"}
-            |
-            |${i}${v(indent)(entity)}
-            |""".stripMargin
-      }
-
-      case Ident(name, Nil)     => name
-      case Sym(symbol, Nil)     => symbol.name
-      case Ident(name, indices) => indices map v mkString (s"${name}#[", ",", "]")
-      case Sym(symbol, indices) => indices map v mkString (s"${symbol.name}#[", ",", "]")
-
-      case DefnRef(ident, kind) =>
-        if (kind.isStruct) {
-          s"${attrStr(indent, ident)}${structStr(indent)(kind.asStruct)}"
-        } else {
-          s"${attrStr(indent, ident)}typedef ${kind.toSource} ${v(indent)(ident)};"
-        }
-      case Defn(symbol) =>
-        if (symbol.kind.isStruct) {
-          s"${attrStr(indent, symbol)}${structStr(indent)(symbol.kind.asStruct)}"
-        } else {
-          s"${attrStr(indent, symbol)}typedef ${symbol.kind.toSource} ${symbol.name};"
-        }
-
-      case DeclRef(ident, kind, None) => {
-        s"${kind.toSource} ${v(indent)(ident)}"
-      }
-      case DeclRef(ident, kind, Some(init)) => {
-        s"${kind.toSource} ${v(indent)(ident)} = ${v(init)}"
-      }
-      case Decl(symbol, None) => {
-        s"${attrStr(indent, symbol)}${symbol.kind.toSource} ${symbol.name}"
-      }
-      case Decl(symbol, Some(init)) => {
-        s"${attrStr(indent, symbol)}${symbol.kind.toSource} ${symbol.name} = ${v(init)}"
-      }
-
-      case entity: Entity    => entityStr(indent)(entity)
-      case EntDefn(defn)     => s"${v(indent)(defn)};"
-      case EntDecl(decl)     => s"${v(indent)(decl)};"
-      case EntEntity(entity) => v(indent)(entity)
-      case EntInstance(ref, module, paramNames, paramArgs) => {
-        val pas = for ((pn, pa) <- paramNames zip paramArgs) yield {
-          s"${pn} = ${v(indent)(pa)}"
-        }
-        s"${attrStr(indent, ref)}${v(indent)(ref)} = new ${v(indent)(module)}(${pas mkString ", "});"
-      }
-      case EntConnect(lhs, rhs) => s"${v(lhs)} -> ${rhs map v mkString ", "};"
-      case EntCombProcess(stmts) => {
-        s"""|always_comb {
-            |${i}  ${stmts map v(indent + 1) mkString s"\n${i}  "}
-            |${i}}""".stripMargin
-      }
-      case EntFunction(ref, body) => {
-        s"""|${attrStr(indent, ref)}void ${v(indent)(ref)}() {
-            |${i}  ${body map v(indent + 1) mkString s"\n${i}  "}
-            |${i}}""".stripMargin
-      }
-      case EntState(ExprSym(symbol), body) => {
-        s"""|${attrStr(indent, symbol)}state ${symbol.name} {
-            |${i}  ${body map v(indent + 1) mkString s"\n${i}  "}
-            |${i}}""".stripMargin
-      }
-      case EntState(expr, body) => {
-        s"""|state ${v(indent)(expr)} {
-            |${i}  ${body map v(indent + 1) mkString s"\n${i}  "}
-            |${i}}""".stripMargin
-      }
-      case EntVerbatim(lang, body) => s"verbatim ${lang} {${body}}"
-      case EntGen(gen)             => v(indent)(gen)
-
-      case GenDecl(decl) => s"${v(indent)(decl)};"
-      case GenDefn(defn) => s"${v(indent)(defn)};"
-      case GenIf(cond, thenItems, Nil) => {
-        s"""|gen if (${v(cond)}) {
-            |${i}  ${thenItems map v(indent + 1) mkString s"\n${i}  "}
-            |${i}}""".stripMargin
-      }
-      case GenIf(cond, thenItems, elseItems) => {
-        s"""|gen if (${v(cond)}) {
-            |${i}  ${thenItems map v(indent + 1) mkString s"\n${i}  "}
-            |${i}} else {
-            |${i}  ${elseItems map v(indent + 1) mkString s"\n${i}  "}
-            |${i}}""".stripMargin
-      }
-      case GenFor(inits, cond, steps, body) => {
-        val initsStr = inits map v(indent) mkString s", "
-        val condStr = cond map v getOrElse ""
-        val stepsStr = steps map v(indent) mkString s", "
-        s"""|gen for (${initsStr} ; ${condStr} ; ${stepsStr}) {
-            |${i}  ${body map v(indent + 1) mkString s"\n${i}  "}
-            |${i}}""".stripMargin
-      }
-      case GenRange(decl, op, end, body) => {
-        s"""|gen for (${v(indent)(decl)} ${op}  ${v(end)}) {
-            |${i}  ${body map v(indent + 1) mkString s"\n${i}  "}
-            |${i}}""".stripMargin
-      }
-
-      case StmtBlock(body) => {
-        s"""|{
-            |${i}  ${body map v(indent + 1) mkString s"\n${i}  "}
-            |${i}}""".stripMargin
-      }
-      case StmtIf(cond, thenStmts, Nil) => {
-        s"""|if (${v(cond)}) {
-            |${i}  ${thenStmts map v(indent + 1) mkString s"\n${i}  "}
-            |${i}}""".stripMargin
-      }
-      case StmtIf(cond, Nil, elseStmts) => {
-        s"""|if (${v(cond)}) {} else {
-            |${i}  ${elseStmts map v(indent + 1) mkString s"\n${i}  "}
-            |${i}}""".stripMargin
-      }
-
-      case StmtIf(cond, thenStmts, elseStmts) => {
-        s"""|if (${v(cond)}) {
-            |${i}  ${thenStmts map v(indent + 1) mkString s"\n${i}  "}
-            |${i}} else {
-            |${i}  ${elseStmts map v(indent + 1) mkString s"\n${i}  "}
-            |${i}}""".stripMargin
-      }
-
-      case StmtCase(expr, cases) => {
-        s"""|case (${v(expr)}) {
-            |${i}  ${cases map v(indent + 1) mkString s"\n${i}  "}
-            |${i}}""".stripMargin
-      }
-
-      case CaseRegular(cond, Nil) => s"${cond map v mkString ", "} : {}"
-      case CaseDefault(Nil)       => s"default : {}"
-      case CaseGen(gen)           => v(indent)(gen)
-
-      case CaseRegular(cond, stmts) => {
-        s"""|${cond map v mkString ", "} : {
-            |${i}  ${stmts map v(indent + 1) mkString s"\n${i}  "}
-            |${i}}""".stripMargin
-      }
-      case CaseDefault(stmts) => {
-        s"""|default : {
-            |${i}  ${stmts map v(indent + 1) mkString s"\n${i}  "}
-            |${i}}""".stripMargin
-      }
-
-      case StmtLoop(body) => {
-        s"""|loop {
-            |${i}  ${body map v(indent + 1) mkString s"\n${i}  "}
-            |${i}}""".stripMargin
-      }
-      case StmtWhile(cond, body) => {
-        s"""|while (${v(indent)(cond)}) {
-            |${i}  ${body map v(indent + 1) mkString s"\n${i}  "}
-            |${i}}""".stripMargin
-      }
-      case StmtFor(inits, cond, steps, body) => {
-        val initsStr = inits map v(indent) mkString s", "
-        val condStr = cond map v getOrElse ""
-        val stepsStr = steps map v(indent) mkString s", "
-        s"""|for (${initsStr} ; ${condStr} ; ${stepsStr}) {
-            |${i}  ${body map v(indent + 1) mkString s"\n${i}  "}
-            |${i}}""".stripMargin
-      }
-      case StmtDo(cond, body) => {
-        s"""|do {
-            |${i}  ${body map v(indent + 1) mkString s"\n${i}  "}
-            |${i}} while (${v(indent)(cond)});""".stripMargin
-      }
-      case StmtLet(inits, body) => {
-        s"""|let (${inits map v(indent) mkString s", "}) {
-            |${i}  ${body map v(indent + 1) mkString s"\n${i}  "}
-            |${i}}""".stripMargin
-      }
-
-      case StmtFence()              => "fence;"
-      case StmtBreak()              => "break;"
-      case StmtContinue()           => "continue;"
-      case StmtGoto(ref)            => s"goto ${v(indent)(ref)};"
-      case StmtReturn()             => "return;"
-      case StmtAssign(lhs, rhs)     => s"${v(lhs)} = ${v(rhs)};"
-      case StmtUpdate(lhs, op, rhs) => s"${v(lhs)} ${op}= ${v(rhs)};"
-      case StmtPost(expr, op)       => s"${v(expr)}${op};"
-      case StmtExpr(expr)           => s"${v(expr)};"
-      case StmtDecl(decl)           => s"${v(indent)(decl)};"
-      case StmtRead()               => "read;"
-      case StmtWrite()              => "write;"
-      case StmtComment(str)         => "$" + s"""("${str}")"""
-      case StmtStall(cond)          => s"stall(${v(cond)});"
-      case StmtGen(gen)             => v(indent)(gen)
-      case StmtError()              => "/* Error statement */"
-    }
-  }
-
-  def toSource(implicit cc: CompilerContext): String = v(0)(this)
 }

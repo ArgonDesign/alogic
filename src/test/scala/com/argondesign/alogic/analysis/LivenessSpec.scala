@@ -18,9 +18,9 @@ package com.argondesign.alogic.analysis
 import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.SourceTextConverters._
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
+import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.passes.FoldExpr
 import com.argondesign.alogic.passes.Namer
 import com.argondesign.alogic.typer.Typer
@@ -30,36 +30,37 @@ import scala.collection.immutable.BitSet
 
 class LivenessSpec extends FreeSpec with AlogicTest {
 
-  implicit val cc = new CompilerContext()
+  implicit val cc: CompilerContext = new CompilerContext()
 
-  val fold = new FoldExpr(foldRefs = true)
+  private val fold = new FoldExpr(foldRefs = true)
 
-  val aSymbol = cc.newTermSymbol("a", Loc.synthetic, TypeUInt(Expr(4) regularize Loc.synthetic))
-  val bSymbol = cc.newTermSymbol("b", Loc.synthetic, TypeUInt(Expr(8) regularize Loc.synthetic))
-  val cSymbol = cc.newTermSymbol("c", Loc.synthetic, TypeUInt(Expr(256) regularize Loc.synthetic))
+  private val aSymbol = cc.newSymbol("a", Loc.synthetic) tap { _.kind = TypeUInt(4) }
+  private val bSymbol = cc.newSymbol("b", Loc.synthetic) tap { _.kind = TypeUInt(8) }
+  private val cSymbol = cc.newSymbol("c", Loc.synthetic) tap { _.kind = TypeUInt(256) }
 
-  val aRef = ExprSym(aSymbol) regularize Loc.synthetic
-  val bRef = ExprSym(bSymbol) regularize Loc.synthetic
-  val cRef = ExprSym(cSymbol) regularize Loc.synthetic
+  private val aRef = ExprSym(aSymbol) regularize Loc.synthetic
+  private val bRef = ExprSym(bSymbol) regularize Loc.synthetic
+  private val cRef = ExprSym(cSymbol) regularize Loc.synthetic
 
-  def zext(n: Int, expr: Expr) = ExprCat(List(ExprInt(false, n, 0), expr)) regularize Loc.synthetic
+  private def zext(n: Int, expr: Expr) =
+    ExprCat(List(ExprInt(false, n, 0), expr)) regularize Loc.synthetic
 
-  val randBitCall = {
+  private val randBitCall = {
     ("@randbit()".asTree[Expr] rewrite new Namer rewrite new Typer)
       .asInstanceOf[ExprCall]
   }
 
-  def prep(expr: Expr): Expr = {
-    (expr regularize Loc.synthetic rewrite fold).asInstanceOf[Expr]
+  private def prep(expr: Expr): Expr = {
+    expr regularize Loc.synthetic rewrite fold
   } tap { _ =>
     cc.messages shouldBe empty
   }
 
-  def killed(expr: Expr) = Liveness.killed(prep(expr))
+  private def killed(expr: Expr) = Liveness.killed(prep(expr))
 
-  def usedLval(expr: Expr) = Liveness.usedLv(prep(expr))
+  private def usedLval(expr: Expr) = Liveness.usedLv(prep(expr))
 
-  def usedRval(expr: Expr) = Liveness.usedRv(prep(expr))
+  private def usedRval(expr: Expr) = Liveness.usedRv(prep(expr))
 
   "Liveness" - {
 
@@ -279,7 +280,7 @@ class LivenessSpec extends FreeSpec with AlogicTest {
             usedLval(cRef index bRef) shouldBe SymbolBitSet(Map(bSymbol -> BitSet(0 to 7: _*)))
           }
           "a[b[0]]" in {
-            usedLval(aRef index zext(1, (bRef index 0))) shouldBe {
+            usedLval(aRef index zext(1, bRef index 0)) shouldBe {
               SymbolBitSet(Map(bSymbol -> BitSet(0)))
             }
           }

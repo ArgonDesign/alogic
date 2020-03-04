@@ -20,18 +20,17 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
 
-private[builtins] class DollarFinish(implicit cc: CompilerContext) extends BuiltinPolyFunc {
+private[builtins] class DollarFinish(implicit cc: CompilerContext)
+    extends BuiltinPolyFunc(isValidConnLhs = false) {
 
   val name = "$finish"
 
-  def returnType(args: List[Expr]) = args partialMatch {
+  def returnType(args: List[Expr]): Option[TypeFund] = args partialMatch {
     case Nil                           => TypeVoid
     case expr :: Nil if expr.tpe.isNum => TypeVoid
   }
 
-  override def isValidConnectLhs(args: List[Expr]) = false
+  def isKnown(args: List[Expr]) = false
 
-  def combArgs(args: List[Expr]) = Nil
-
-  def fold(loc: Loc, args: List[Expr]) = None
+  def simplify(loc: Loc, args: List[Expr]) = None
 }

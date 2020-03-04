@@ -18,12 +18,12 @@ package com.argondesign.alogic.core
 
 import com.argondesign.alogic.ast.Trees.Expr
 import com.argondesign.alogic.ast.Trees.ExprSym
-import com.argondesign.alogic.core.Symbols.TermSymbol
+import com.argondesign.alogic.core.Symbols.Symbol
 
 import scala.annotation.tailrec
 import scala.language.implicitConversions
 
-class Bindings(val underlying: Map[TermSymbol, Expr]) extends AnyVal {
+class Bindings(val underlying: Map[Symbol, Expr]) extends AnyVal {
   // Expand bindings by replacing references to symbols within the bindings
   // with their values. i.e.: If any value in the bindings map references a
   // key in the same bindings map, replace that reference with the value for
@@ -35,7 +35,7 @@ class Bindings(val underlying: Map[TermSymbol, Expr]) extends AnyVal {
 
     // Collect any symbols referenced that have a value in the bindings
     val referenced = simplified.valuesIterator flatMap {
-      _ collect { case ExprSym(symbol: TermSymbol) if symbol.kind.isParam => symbol }
+      _ collect { case ExprSym(symbol) if symbol.kind.isParam => symbol }
     } filter {
       this.contains
     }
@@ -57,34 +57,34 @@ class Bindings(val underlying: Map[TermSymbol, Expr]) extends AnyVal {
     (underlying.view mapValues f).toMap
   }
 
-  def map(f: ((TermSymbol, Expr)) => (TermSymbol, Expr)): Bindings = {
+  def map(f: ((Symbol, Expr)) => (Symbol, Expr)): Bindings = {
     underlying map f
   }
 
-  def +(pair: (TermSymbol, Expr)): Bindings = underlying + pair
+  def +(pair: (Symbol, Expr)): Bindings = underlying + pair
 }
 
 object Bindings {
 
   val empty = new Bindings(Map.empty)
 
-  implicit def apply(pairs: Seq[(TermSymbol, Expr)]): Bindings = {
+  implicit def apply(pairs: Seq[(Symbol, Expr)]): Bindings = {
     new Bindings(pairs.toMap)
   }
 
-  implicit def apply(map: scala.collection.Map[TermSymbol, Expr]): Bindings = {
+  implicit def apply(map: scala.collection.Map[Symbol, Expr]): Bindings = {
     new Bindings(map.toMap)
   }
 
-  implicit def apply(underlying: Map[TermSymbol, Expr]): Bindings = {
+  implicit def apply(underlying: Map[Symbol, Expr]): Bindings = {
     new Bindings(underlying)
   }
 
-  implicit def apply(pairOpt: Option[(TermSymbol, Expr)]): Bindings = {
+  implicit def apply(pairOpt: Option[(Symbol, Expr)]): Bindings = {
     new Bindings(pairOpt.toMap)
   }
 
-  implicit def toUnderlying(symbolBitSet: Bindings): Map[TermSymbol, Expr] = {
+  implicit def toUnderlying(symbolBitSet: Bindings): Map[Symbol, Expr] = {
     symbolBitSet.underlying
   }
 

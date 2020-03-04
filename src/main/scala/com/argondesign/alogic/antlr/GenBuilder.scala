@@ -19,44 +19,47 @@ import com.argondesign.alogic.antlr.AlogicParser._
 import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Types.TypeGen
 import com.argondesign.alogic.util.unreachable
-import org.antlr.v4.runtime.ParserRuleContext
 
 import scala.annotation.tailrec
 import scala.jdk.CollectionConverters._
 
-object GenBuilder extends BaseBuilder[ParserRuleContext, Gen] {
+object GenBuilder extends BaseBuilder[GenContext, Gen] {
 
-  def apply(ctx: ParserRuleContext)(implicit cc: CompilerContext): Gen = {
-    object GenItemVisitor extends AlogicListVisitor[Tree] {
-      override def visitGenItemGen(ctx: GenItemGenContext) =
-        GenBuilder(ctx) :: Nil
-
-      override def visitGenItemDecl(ctx: GenItemDeclContext) =
-        (GenDecl(DeclBuilder(ctx.decl)) withLoc ctx.loc) :: Nil
-
-      override def visitGenItemDefn(ctx: GenItemDefnContext) =
-        (GenDefn(DefnBuilder(ctx.defn)) withLoc ctx.loc) :: Nil
-
-      override def visitGenItemStmt(ctx: GenItemStmtContext) =
-        StmtBuilder(ctx.statement) :: Nil
-
-      override def visitGenItemCase(ctx: GenItemCaseContext) =
-        CaseBuilder(ctx.case_clause) :: Nil
-
-      override def visitGenItemEnt(ctx: GenItemEntContext) = EntBuilder(ctx.ent)
+  def apply(ctx: GenContext)(implicit cc: CompilerContext): Gen = {
+    object GenItemVisitor extends AlogicScalarVisitor[Tree] {
+      // format: off
+      override def visitGenItemGen(ctx: GenItemGenContext): Tree = GenBuilder(ctx.gen)
+      override def visitGenItemDesc(ctx: GenItemDescContext): Tree = DescBuilder(ctx.desc)
+      override def visitGenItemStmt(ctx: GenItemStmtContext): Tree = StmtBuilder(ctx.stmt)
+      override def visitGenItemCase(ctx: GenItemCaseContext): Tree = CaseBuilder(ctx.kase)
+      override def visitGenItemEnt(ctx: GenItemEntContext): Tree = EntBuilder(ctx.ent)
+      override def visitGenItemRec(ctx: GenItemRecContext): Tree = RecBuilder(ctx.rec)
+      // format: on
     }
 
-    object GenVisitor extends AlogicScalarVisitor[Gen] { self =>
-      override def visitGenerate(ctx: GenerateContext): Gen = visit(ctx.gen)
+    object GinitVisitor extends AlogicScalarVisitor[StmtDesc] {
+      override def visitGinit(ctx: GinitContext): StmtDesc = {
+        val ident = IdentBuilder(ctx.IDENTIFIER)
+        val spec = ExprBuilder(ctx.expr(0))
+        val init = ExprBuilder(ctx.expr(1))
+        val loc = ctx.loc.copy(point = ident.loc.start)
+        val desc = DescGen(ident, spec, init) withLoc loc
+        StmtDesc(desc) withLoc loc
+      }
+    }
 
-      override def visitGenIf(ctx: GenIfContext) = {
+    object GenVisitor extends AlogicScalarVisitor[Gen] {
+      override def visitGen(ctx: GenContext): Gen = visit(ctx.generate)
+
+      override def visitGenIf(ctx: GenIfContext): Gen = {
         val thenCond = ExprBuilder(ctx.thenCond)
         val thenItems = GenItemVisitor(ctx.thenItems.genitem)
         val elifConds = ExprBuilder(ctx.elifCond)
-        val elifItemss = ctx.elifItems.asScala.toList map { c =>
-          GenItemVisitor(c.genitem)
+        val elifItemss = List from {
+          ctx.elifItems.iterator.asScala map { c =>
+            GenItemVisitor(c.genitem)
+          }
         }
         val elseItems = if (ctx.elseItems != null) GenItemVisitor(ctx.elseItems.genitem) else Nil
 
@@ -69,7 +72,9 @@ object GenBuilder extends BaseBuilder[ParserRuleContext, Gen] {
               case _          => unreachable
             }
           } else {
-            val genIf = GenIf(conds.head, thenItemss.head, elseItems) withLoc ctx.loc
+            val genIf = GenIf(conds.head, thenItemss.head, elseItems) withLoc {
+              ctx.loc.copy(point = conds.head.loc.start)
+            }
             loop(conds.tail, thenItemss.tail, List(genIf))
           }
         }
@@ -77,34 +82,29 @@ object GenBuilder extends BaseBuilder[ParserRuleContext, Gen] {
         loop((thenCond :: elifConds).reverse, (thenItems :: elifItemss).reverse, elseItems)
       }
 
-      override def visitGenFor(ctx: GenForContext) = {
-        val inits = if (ctx.loop_init == null) { Nil } else {
-          StmtBuilder(ctx.loop_init.loop_init_item) map {
-            case stmt @ StmtDecl(decl: DeclRef) =>
-              StmtDecl(decl.copy(kind = TypeGen(decl.kind)) withLoc decl.loc) withLoc stmt.loc
-            case other => other
-          }
-        }
-        val cond = Option(ctx.expr) map { ExprBuilder(_) }
-        val step = if (ctx.for_steps != null) StmtBuilder(ctx.for_steps.step) else Nil
+      override def visitGenFor(ctx: GenForContext): Gen = {
+        val inits = GinitVisitor(ctx.ginits.ginit)
+        val cond = ExprBuilder(ctx.expr)
+        val steps = StmtBuilder(ctx.lsteps.lstep)
         val body = GenItemVisitor(ctx.genitems.genitem)
-        GenFor(inits, cond, step, body) withLoc ctx.loc
+        GenFor(inits, cond, steps, body) withLoc ctx.loc
       }
 
-      override def visitGenRange(ctx: GenRangeContext) = {
-        val end = ExprBuilder(ctx.expr)
-        val decl = {
-          val kind = TypeGen(TypeBuilder(ctx.kind))
+      override def visitGenRange(ctx: GenRangeContext): Gen = {
+        val inits = {
           val ident = IdentBuilder(ctx.IDENTIFIER)
-          val loc = ctx.kind.loc.copy(point = ctx.op.loc.start, end = end.loc.end)
-          DeclRef(ident, kind, None) withLoc loc
+          val spec = ExprBuilder(ctx.expr(0))
+          val init = ExprNum(false, 0) withLoc ident.loc
+          val loc = ctx.loc.copy(point = ident.loc.start)
+          val desc = DescGen(ident, spec, init) withLoc loc
+          List(StmtDesc(desc) withLoc loc)
         }
+        val end = ExprBuilder(ctx.expr(1))
         val body = GenItemVisitor(ctx.genitems.genitem)
-        GenRange(decl, ctx.op, end, body) withLoc ctx.loc
+        GenRange(inits, ctx.op, end, body) withLoc ctx.loc
       }
     }
 
     GenVisitor(ctx)
   }
-
 }

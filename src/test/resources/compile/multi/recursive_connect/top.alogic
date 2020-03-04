@@ -1,0 +1,16 @@
+network top {
+  in bool i;
+  out bool o;
+
+  inst = new recursive_connect(P=10);
+
+  i -> inst.i; inst.o -> o;
+}
+// @fec-golden {{{
+//  module top(
+//    input  wire i,
+//    output wire o
+//  );
+//    assign o = i;
+//  endmodule
+// }}}

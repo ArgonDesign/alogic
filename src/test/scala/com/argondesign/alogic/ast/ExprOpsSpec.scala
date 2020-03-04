@@ -22,7 +22,7 @@ import com.argondesign.alogic.core.CompilerContext
 import org.scalatest.FreeSpec
 
 final class ExprOpsSpec extends FreeSpec with AlogicTest {
-  implicit val cc = new CompilerContext
+  implicit val cc: CompilerContext = new CompilerContext
 
   "ExprOps" - {
     "infix operator methods should build the appropriate binary expression node" - {

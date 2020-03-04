@@ -16,24 +16,24 @@
 package com.argondesign.alogic.analysis
 
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.Symbols.TermSymbol
+import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.util.unreachable
 
 object ReadSymbols {
 
   // Given an expression, return an Iterable of Symbols that would be read
   // if this expression is not used on the left hand side of an assignment
-  def rval(expr: Expr): Iterator[TermSymbol] = {
-    expr collect { case ExprSym(symbol: TermSymbol) => symbol }
+  def rval(expr: Expr): Iterator[Symbol] = {
+    expr collect { case ExprSym(symbol) => symbol }
   }
 
   // Given an expression, return an Iterable of Symbols that would be read
   // if this expression is used on the left hand side of an assignment
-  def lval(expr: Expr): Iterator[TermSymbol] = expr match {
+  def lval(expr: Expr): Iterator[Symbol] = expr match {
     case _: ExprSym                  => Iterator.empty
     case ExprCat(parts)              => parts.iterator flatMap lval
     case ExprIndex(_, idx)           => rval(idx)
-    case ExprSlice(_, lidx, _, ridx) => rval(lidx) ++ rval(ridx)
+    case ExprSlice(_, lIdx, _, rIdx) => rval(lIdx) ++ rval(rIdx)
     case _                           => unreachable
   }
 

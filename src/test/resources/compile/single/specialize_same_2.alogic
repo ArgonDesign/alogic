@@ -1,0 +1,34 @@
+network specialize_same_2 {
+  in u2 i_0;
+  in u2 i_1;
+  out u2 o_0;
+  out u2 o_1;
+
+  fsm inner {
+    param u2 ADDEND;
+    in       u2 i;
+    out wire u2 o;
+
+    void main() {
+      o.write(i.read() + ADDEND);
+      fence;
+    }
+  }
+
+  inst_0 = new inner(ADDEND='2'd2);
+  inst_1 = new inner(ADDEND='1'd1 + '1'd1);
+
+  i_0 -> inst_0.i; inst_0.o -> o_0;
+  i_1 -> inst_1.i; inst_1.o -> o_1;
+}
+// @fec-golden {{{
+//  module specialize_same_2(
+//    input  [1:0] i_0,
+//    input  [1:0] i_1,
+//    output [1:0] o_0,
+//    output [1:0] o_1
+//  );
+//    assign o_0 = i_0 + 2'd2;
+//    assign o_1 = i_1 + 2'd2;
+//  endmodule
+// }}}

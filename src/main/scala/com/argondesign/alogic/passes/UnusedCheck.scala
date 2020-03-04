@@ -18,29 +18,26 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.TreeInTypeTransformer
 import com.argondesign.alogic.core.Symbols.Symbol
-import com.argondesign.alogic.core.Symbols._
-import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.core.enums.EntityVariant
 import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
 
-final class UnusedCheck(
-    postSpecialize: Boolean
-)(
-    implicit cc: CompilerContext
-) extends TreeTransformer {
+final class UnusedCheck(implicit cc: CompilerContext) extends TreeTransformer {
 
   override val typed = false
 
   // Set of declared symbols, keyed by entity containing the definition
   private val declared =
-    mutable.Map[Option[TypeSymbol], mutable.Set[Symbol]](None -> mutable.Set())
+    mutable.Map[Option[Symbol], mutable.Set[Symbol]](None -> mutable.Set())
 
   // Set of referenced symbols, keyed by entity containing the reference
   private val used =
-    mutable.Map[Option[TypeSymbol], mutable.Set[Symbol]](None -> mutable.Set())
+    mutable.Map[Option[Symbol], mutable.Set[Symbol]](None -> mutable.Set())
+
+  // Set of symbols which contain external references
+  private val hasExtRefs = mutable.Set[Symbol]()
 
   // Node counter
   private var count = 0
@@ -48,134 +45,116 @@ final class UnusedCheck(
   // Root node file name
   private var rootFileName: String = _
 
-  // Entity symbol stack
-  private val eSymbolStack = mutable.Stack[TypeSymbol]()
+  // Declaration symbol stack
+  private val symbolStack = mutable.Stack[Symbol]()
 
   // Flag to indicate we are in a verbatim entity
   private var inVerbatimEntity = false
 
-  private def markDecl(symbol: Symbol): Unit = declared(eSymbolStack.headOption) add symbol
+  private def markDecl(symbol: Symbol): Unit = declared(symbolStack.headOption) add symbol
 
-  private def markUsed(symbol: Symbol): Unit = used(eSymbolStack.headOption) add symbol
+  private def markUsed(symbol: Symbol): Unit = used(symbolStack.headOption) add symbol
 
-  private object TypeUnusedCheck extends TreeInTypeTransformer(this) {
-    override protected def enter(kind: Type): Unit = kind match {
-      case TypeRef(Sym(symbol, _)) =>
-        // Mark symbol as used
-        markUsed(symbol)
-        // Check choice symbols at use site
-        if (symbol.kind.isChoice) {
-          walk(symbol.kind)
-        }
-      case TypeChoice(symbols) => symbols foreach markUsed
-      case _                   =>
+  private def checkExtRef(symbol: Symbol): Unit = {
+    // Only need to do this if we haven't found an external reference yet.
+    symbolStack.iterator.takeWhile { s =>
+      !(declared(Some(s)) contains symbol)
+    } foreach hasExtRefs.add
+  }
+
+  private def processEntity(symbol: Symbol, variant: EntityVariant.Type, body: List[Ent]): Unit = {
+    // Mark the root entity as used
+    if (symbolStack.isEmpty) {
+      markUsed(symbol)
+    }
+    declared(Some(symbol)) = mutable.Set()
+    used(Some(symbol)) = mutable.Set()
+    symbolStack push symbol
+    inVerbatimEntity = variant == EntityVariant.Ver
+    // Mark definitions up front so nested entities can check external refs
+    body foreach {
+      case EntDesc(desc) => markDecl(desc.symbol)
+      case _             =>
     }
   }
 
-  override def enter(tree: Tree): Unit = {
+  override def enter(tree: Tree): Option[Tree] = {
     if (count == 0) {
       rootFileName = tree.loc.source.name
     }
     count += 1
     tree match {
       case ExprSym(symbol) =>
-        // Check choice symbols at use site
-        if (symbol.kind.isChoice) {
-          TypeUnusedCheck(symbol.kind)
-        }
         // Mark symbol as used
         markUsed(symbol)
+        // Check if this is an external reference
+        checkExtRef(symbol)
 
       case ExprRef(Sym(symbol, _)) =>
-        // Check choice symbols at use site
-        if (symbol.kind.isChoice) {
-          TypeUnusedCheck(symbol.kind)
-        }
         // Mark symbol as used
         markUsed(symbol)
+        // Check if this is an external reference
+        checkExtRef(symbol)
 
-      case Decl(symbol, _) =>
-        // Walk type
-        TypeUnusedCheck(symbol.kind)
+      case desc: Desc =>
         // Add symbol
-        markDecl(symbol)
+        markDecl(desc.symbol)
         // Mark all verbatim declarations as used
         if (inVerbatimEntity) {
-          markUsed(symbol)
+          markUsed(desc.symbol)
+        }
+        // Mark externally defined types as used
+        if (desc.symbol.loc.file != rootFileName) {
+          markUsed(desc.symbol)
+        }
+        // Behaviour specific to certain kinds of definitions
+        desc match {
+          case DescEntity(_, variant, body) =>
+            processEntity(desc.symbol, variant, body)
+          case DescSingleton(_, variant, body) =>
+            processEntity(desc.symbol, variant, body)
+          case record: DescRecord =>
+            // Mark all members as used
+            record.descs foreach { desc =>
+              markUsed(desc.symbol)
+            }
+          case _: DescFunc =>
+            // Mark entry point functions as used
+            if (desc.symbol.attr.entry contains true) {
+              markUsed(desc.symbol)
+            }
+          case _: DescChoice =>
+            // Assume used
+            markUsed(desc.symbol)
+          case _ =>
         }
 
-      case DeclRef(Sym(symbol, _), _, _) =>
-        // Walk type
-        TypeUnusedCheck(symbol.kind)
-        // Add symbol
-        markDecl(symbol)
-        // Mark all verbatim declarations as used
-        if (inVerbatimEntity) {
-          markUsed(symbol)
-        }
-
-      case Defn(symbol) =>
-        // Walk type
-        TypeUnusedCheck(symbol.kind)
-        // Add symbol
-        markDecl(symbol)
-        // Mark externally defined types as used as well
-        if (symbol.loc.file != rootFileName) {
-          markUsed(symbol)
-        }
-
-      case DefnRef(Sym(symbol, _), _) =>
-        // Walk type
-        TypeUnusedCheck(symbol.kind)
-        // Add symbol
-        markDecl(symbol)
-
-      case EntFunction(Sym(symbol, _), _) =>
-        // Add symbol
-        markDecl(symbol)
-        // Mark entry functions as used
-        if (symbol.attr.entry.isSet) {
-          markUsed(symbol)
-        }
-
-      case Entity(Sym(symbol: TypeSymbol, _), _) =>
-        // Add symbol
-        markDecl(symbol)
-        // Mark the root entity as used
-        if (eSymbolStack.isEmpty) {
-          markUsed(symbol)
-        }
-        // Update state
-        declared(Some(symbol)) = mutable.Set()
-        used(Some(symbol)) = mutable.Set()
-        eSymbolStack push symbol
-        inVerbatimEntity = symbol.attr.variant contains "verbatim"
-
-      case EntInstance(Sym(iSymbol, _), Sym(eSymbol, _), _, _) =>
-        // Check choice symbols at use site
-        if (eSymbol.kind.isChoice) {
-          TypeUnusedCheck(eSymbol.kind)
-        }
-        // Add instance symbol
-        markDecl(iSymbol)
-        // Mark entity as used
-        markUsed(eSymbol)
-
-      case GenRange(Decl(symbol, _), _, _, _) =>
+      case GenRange(List(StmtDesc(DescGen(Sym(symbol, _), _, _))), _, _, _) =>
         // Mark loop variable as used
         markUsed(symbol)
 
       case _ =>
     }
+    None
   }
 
   override def transform(tree: Tree): Tree = {
     count -= 1
 
     tree match {
-      case _: Entity =>
-        eSymbolStack.pop()
+      case _: DescEntity =>
+        symbolStack.pop()
         inVerbatimEntity = false
+      case desc: DescSingleton =>
+        symbolStack.pop()
+        inVerbatimEntity = false
+        // Mark this instance as used if it has external references
+        if (hasExtRefs(desc.symbol)) {
+          markUsed(desc.symbol)
+        }
+      case desc: DescInstance =>
+        // We don't know the type of this yet, assume used
+        markUsed(desc.symbol)
       case _ =>
     }
 
@@ -183,69 +162,35 @@ final class UnusedCheck(
     if (count == 0) {
       val allDeclared = declared.values.foldLeft(Set.empty[Symbol]) { _ union _ }
 
-      // Mark all instance symbols which are instances of entities which refer
-      // to outer pots as used
-      for {
-        iSymbol <- allDeclared
-      } {
-        iSymbol.kind match {
-          case TypeInstance(symbol) =>
-            val hasExternalPortRef = {
-              val eSymbols = symbol.kind match {
-                case _: TypeEntity => Iterator(symbol.asInstanceOf[TypeSymbol])
-                case TypeChoice(choices) =>
-                  assert(choices forall { _.kind.isEntity })
-                  choices.iterator map { _.asInstanceOf[TypeSymbol] }
-                case _ => unreachable
-              }
-              eSymbols exists { eSymbol =>
-                used.get(Some(eSymbol)) match {
-                  case Some(set) =>
-                    val portSymbols = eSymbol.kind.asEntity.portSymbols
-                    set exists { symbol =>
-                      (symbol.kind.isIn || symbol.kind.isOut) && !(portSymbols contains symbol)
-                    }
-                  case None => false
-                }
-              }
-            }
-            if (hasExternalPortRef) {
-              markUsed(iSymbol)
-            }
-          case _ =>
-        }
-      }
-
       val allUsed = used.values.foldLeft(Set.empty[Symbol]) { _ union _ }
 
       for {
         symbol <- allDeclared diff allUsed
         if !(symbol.attr.unused.get contains true)
       } {
-        val hint = (symbol.isTermSymbol, symbol.kind) match {
-          case (_, _: TypeArray)      => "Array"
-          case (_, _: TypeCtrlFunc)   => "Function"
-          case (_, _: TypeCombFunc)   => "Function"
-          case (_, _: TypeEntity)     => "Entity"
-          case (_, _: TypeIn)         => "Input port"
-          case (_, _: TypeOut)        => "Output port"
-          case (_, _: TypeParam)      => "Parameter"
-          case (_, _: TypeConst)      => "Constant"
-          case (_, _: TypePipeline)   => "Pipeline variable"
-          case (_, _: TypeInstance)   => "Instance"
-          case (true, _)              => "Variable"
-          case (false, _: TypeStruct) => "struct"
-          case (false, _)             => "Type"
+        val hint = symbol.desc match {
+          case _: DescVar       => "Variable"
+          case _: DescIn        => "Input port"
+          case _: DescOut       => "Output port"
+          case _: DescPipeline  => "Pipeline variable"
+          case _: DescParam     => "Parameter"
+          case _: DescConst     => "Constant"
+          case _: DescGen       => "'gen' variable"
+          case _: DescArray     => "Array"
+          case _: DescSram      => "SRAM"
+          case _: DescType      => "Type"
+          case _: DescEntity    => "Entity"
+          case _: DescRecord    => "struct"
+          case _: DescInstance  => "Instance"
+          case _: DescSingleton => "Singleton instance"
+          case _: DescFunc      => "Function"
+          case _                => unreachable
         }
-        if (postSpecialize) {
-          val srcName = symbol.attr.sourceName.get match {
-            case Some((name, idxValues)) => idxValues.mkString(name + "#[", ", ", "]")
-            case None                    => symbol.name
-          }
-          cc.warning(symbol, s"$hint '$srcName' is unused after processing 'gen' constructs")
-        } else {
-          cc.warning(symbol, s"$hint '${symbol.name}' is unused")
+        val name = symbol.attr.sourceName.get match {
+          case None               => symbol.name
+          case Some((base, idxs)) => idxs mkString (s"$base#[", ", ", "]")
         }
+        cc.warning(symbol, s"$hint '$name' is unused")
       }
     }
 
@@ -255,18 +200,12 @@ final class UnusedCheck(
 
   override def finalCheck(tree: Tree): Unit = {
     assert(count == 0)
-    assert(eSymbolStack.isEmpty)
+    assert(symbolStack.isEmpty)
     assert(!inVerbatimEntity)
   }
 }
 
-object UnusedCheck {
-  class UnusedCheckPass(postSpecialize: Boolean) extends TreeTransformerPass {
-    val name = "unused-check"
-    def create(implicit cc: CompilerContext) = new UnusedCheck(postSpecialize)(cc)
-  }
-
-  def apply(postSpecialize: Boolean): Pass = {
-    new UnusedCheckPass(postSpecialize)
-  }
+object UnusedCheck extends RootTransformerPass {
+  val name = "unused-check"
+  def create(implicit cc: CompilerContext) = new UnusedCheck
 }

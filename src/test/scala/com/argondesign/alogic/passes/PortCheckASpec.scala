@@ -18,83 +18,64 @@ package com.argondesign.alogic.passes
 import java.util.regex.Pattern
 
 import com.argondesign.alogic.AlogicTest
-import com.argondesign.alogic.SourceTextConverters._
-import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Error
-import com.argondesign.alogic.typer.Typer
-import com.argondesign.alogic.util.unreachable
 import org.scalatest.FreeSpec
 
 final class PortCheckASpec extends FreeSpec with AlogicTest {
 
-  implicit val cc = new CompilerContext
+  implicit val cc: CompilerContext = new CompilerContext
 
-  def xform(trees: Tree*): Unit = {
-    val entities = trees map {
-      _ match {
-        case Root(_, entity: Entity) => entity
-        case entity: Entity          => entity
-        case _                       => unreachable
-      }
-    }
-
-    cc.addGlobalEntities(entities)
-
-    trees map {
-      _ rewrite new Checker
-    } map {
-      _ rewrite new Namer
-    } map {
-      _ rewrite new Desugar
-    } map {
-      _ rewrite new Typer
-    } foreach {
-      _ rewrite new PortCheckA
-    }
-  }
+  protected def portCheckA(text: String): Unit =
+    transformWithPass(Namer andThen
+                        Elaborate andThen
+                        TypeCheck andThen
+                        PortCheckA,
+                      text)
 
   "PortCheckA should" - {
 
     "error for multiple sinks for sync ready driver" - {
       for {
-        (conn, msg) <- List(
-          ("pi_n -> po_n_a;", ""),
-          ("pi_n -> po_n_b;", ""),
-          ("n.po_n -> po_n_a;", ""),
-          ("n.po_n -> po_n_b;", ""),
-          ("pi_n -> po_n_a; pi_n -> po_n_b;", "pi_n"),
-          ("n.po_n -> po_n_a; n.po_n -> po_n_b;", "n.po_n"),
-          ("pi_y -> po_y_a;", ""),
-          ("pi_y -> po_y_b;", ""),
-          ("n.po_y -> po_y_a;", ""),
-          ("n.po_y -> po_y_b;", ""),
-          ("pi_y -> po_y_a; pi_y -> po_y_b;", ""),
-          ("n.po_y -> po_y_a; n.po_y -> po_y_b;", "")
+        (conn, good) <- List(
+          ("pi_n -> po_n_a;", true),
+          ("pi_n -> po_n_b;", true),
+          ("n.po_n -> po_n_a;", true),
+          ("n.po_n -> po_n_b;", true),
+          ("pi_n -> po_n_a; pi_n -> po_n_b;", false),
+          ("n.po_n -> po_n_a; n.po_n -> po_n_b;", false),
+          ("pi_y -> po_y_a;", true),
+          ("pi_y -> po_y_b;", true),
+          ("n.po_y -> po_y_a;", true),
+          ("n.po_y -> po_y_b;", true),
+          ("pi_y -> po_y_a; pi_y -> po_y_b;", true),
+          ("n.po_y -> po_y_a; n.po_y -> po_y_b;", true)
         )
       } {
         conn in {
-          val tree = s"""|network a {
-                         |  (* unused *) in sync ready bool pi_n;
-                         |  (* unused *) out sync ready bool po_n_a;
-                         |  (* unused *) out sync ready bool po_n_b;
-                         |  (* unused *) in sync bool pi_y;
-                         |  (* unused *) out sync bool po_y_a;
-                         |  (* unused *) out sync bool po_y_b;
-                         |
-                         |  (* unused *) new fsm n {
-                         |    (* unused *) out sync ready bool po_n;
-                         |    (* unused *) out sync bool po_y;
-                         |  }
-                         |
-                         |  ${conn}
-                         |}""".stripMargin.asTree[Entity]
-          xform(tree)
-          if (msg.isEmpty) {
+          portCheckA {
+            s"""
+            |network a {
+            |  (* unused *) in sync ready bool pi_n;
+            |  (* unused *) out sync ready bool po_n_a;
+            |  (* unused *) out sync ready bool po_n_b;
+            |  (* unused *) in sync bool pi_y;
+            |  (* unused *) out sync bool po_y_a;
+            |  (* unused *) out sync bool po_y_b;
+            |
+            |  (* unused *) new fsm n {
+            |    (* unused *) out sync ready bool po_n;
+            |    (* unused *) out sync bool po_y;
+            |  }
+            |
+            |  $conn
+            |}"""
+          }
+          if (good) {
             cc.messages shouldBe empty
           } else {
             cc.messages.loneElement should beThe[Error](
-              Pattern.quote(s"'${msg}' has multiple sinks"),
+              Pattern.quote(s"Port with 'sync ready' flow control has multiple sinks"),
               "Previous '->' is at: .*"
             )
           }
@@ -120,11 +101,12 @@ final class PortCheckASpec extends FreeSpec with AlogicTest {
         )
       } {
 
-        s"'${fc}' with '${st}'" in {
-          val tree = s"""|fsm a {
-                         |   (* unused *) out ${fc} ${st} bool po;
-                         |}""".stripMargin.asTree[Entity]
-          xform(tree)
+        s"'$fc' with '$st'" in {
+          portCheckA {
+            s"""|fsm a {
+             |   (* unused *) out $fc $st bool po;
+             |}"""
+          }
           if (msg.isEmpty) {
             cc.messages shouldBe empty
           } else {

@@ -25,7 +25,6 @@ import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeAccept
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeReady
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeValid
-import com.argondesign.alogic.core.Symbols.TermSymbol
 import com.argondesign.alogic.core.Types.TypeEntity
 import com.argondesign.alogic.core.Types.TypeIn
 import com.argondesign.alogic.core.Types.TypeOut
@@ -33,22 +32,22 @@ import com.argondesign.alogic.util.unreachable
 
 import scala.collection.parallel.CollectionConverters._
 
-object WriteModuleManifest extends Pass {
+object WriteModuleManifest extends PairsTransformerPass {
   val name = "write-module-manifest"
 
-  def emit(path: Path, trees: List[Tree])(implicit cc: CompilerContext): Unit = {
+  def emit(path: Path, pairs: List[(Decl, Defn)])(implicit cc: CompilerContext): Unit = {
 
     ////////////////////////////////////////////////////////////////////////////
     // Build nested manifest as a Map (dictionary)
     ////////////////////////////////////////////////////////////////////////////
 
     val dict = for {
-      entity @ Entity(Sym(eSymbol, _), _) <- trees.par
+      (Decl(eSymbol), defn: DefnEntity) <- pairs.par
     } yield {
       // High level port symbols
-      val TypeEntity(_, pSymbols, _) = eSymbol.attr.highLevelKind.value.asEntity
+      val pSymbols = eSymbol.attr.highLevelKind.get map { _.publicSymbols } getOrElse Nil
       // Low level signal symbols
-      val TypeEntity(_, sSymbols, _) = eSymbol.kind.asEntity
+      val TypeEntity(_, sSymbols) = eSymbol.kind.asType.kind.asEntity
 
       //////////////////////////////////////////////////////////////////////////
       // Compute signals
@@ -56,22 +55,10 @@ object WriteModuleManifest extends Pass {
 
       // Compute payload -> port, valid -> port, ready -> port maps
 
-      def payloadSymbol(pSymbol: TermSymbol): Option[TermSymbol] = {
-        val attr = pSymbol.attr
-        if (!attr.fcv.isSet && !attr.fcr.isSet) {
-          Some(pSymbol)
-        } else {
-          attr.fcv.get.map(_._1) orElse attr.fcr.get.map(_._1) match {
-            case opt @ Some(_: TermSymbol) => opt.asInstanceOf[Option[TermSymbol]]
-            case _                         => None
-          }
-        }
-      }
-
       val d2p = Map from {
         for {
-          pSymbol <- pSymbols.iterator
-          dSymbol <- payloadSymbol(pSymbol)
+          dSymbol <- sSymbols.iterator
+          pSymbol <- dSymbol.attr.payloadOfPort.get
         } yield {
           dSymbol -> pSymbol
         }
@@ -79,8 +66,8 @@ object WriteModuleManifest extends Pass {
 
       val v2p = Map from {
         for {
-          pSymbol <- pSymbols.iterator
-          vSymbol <- (pSymbol.attr.fcv.get map { _._2 }) orElse (pSymbol.attr.fcr.get map { _._2 })
+          vSymbol <- sSymbols.iterator
+          pSymbol <- vSymbol.attr.validOfPort.get
         } yield {
           vSymbol -> pSymbol
         }
@@ -88,36 +75,23 @@ object WriteModuleManifest extends Pass {
 
       val r2p = Map from {
         for {
-          pSymbol <- pSymbols.iterator
-          rSymbol <- pSymbol.attr.fcr.get map { _._3 }
+          rSymbol <- sSymbols.iterator
+          pSymbol <- rSymbol.attr.readyOfPort.get
         } yield {
           rSymbol -> pSymbol
         }
       }
 
-      // Compute the field -> struct map
-      val f2t = Map from {
-        for {
-          sSymbol <- sSymbols.iterator
-          tSymbol <- sSymbol.attr.structSymbol.get
-        } yield {
-          sSymbol -> tSymbol
-        }
-      }
-
       val signals = for {
-        sSymbol <- sSymbols
+        sSymbol <- sSymbols sortBy { _.name }
       } yield {
-        // Map field back to struct (if any)
-        val tSymbol = f2t.getOrElse(sSymbol, sSymbol)
-
         // Figure out whether this is payload, valid or ready
-        val value = v2p.get(tSymbol).map { pSymbol =>
+        val value = v2p.get(sSymbol).map { pSymbol =>
           List("port" -> pSymbol.name, "component" -> "valid")
-        } orElse r2p.get(tSymbol).map { pSymbol =>
+        } orElse r2p.get(sSymbol).map { pSymbol =>
           List("port" -> pSymbol.name, "component" -> "ready")
         } getOrElse {
-          val pSymbol = d2p.getOrElse(tSymbol, tSymbol)
+          val pSymbol = d2p.getOrElse(sSymbol, sSymbol)
           List(
             "port" -> pSymbol.name,
             "component" -> "payload",
@@ -158,8 +132,7 @@ object WriteModuleManifest extends Pass {
           val coveredPorts = Set from (d2p.keysIterator ++ v2p.keysIterator ++ r2p.keysIterator)
           for {
             sSymbol <- sSymbols
-            tSymbol = f2t.getOrElse(sSymbol, sSymbol)
-            if !(coveredPorts contains tSymbol)
+            if !coveredPorts(sSymbol)
           } yield {
             val dir = if (sSymbol.kind.isIn) "in" else "out"
             sSymbol.name -> List("dir" -> dir, "flow-control" -> "none")
@@ -168,7 +141,7 @@ object WriteModuleManifest extends Pass {
 
         assert((hlPorts.map(_._1).toSet intersect llPorts.map(_._1).toSet).isEmpty)
 
-        hlPorts ::: llPorts
+        (hlPorts ::: llPorts) sortBy { _._1 }
       }
 
       //////////////////////////////////////////////////////////////////////////
@@ -176,9 +149,9 @@ object WriteModuleManifest extends Pass {
       //////////////////////////////////////////////////////////////////////////
 
       val instances = for {
-        EntInstance(Sym(iSymbol, _), Sym(eSymbol, _), _, _) <- entity.instances
+        Defn(iSymbol) <- defn.instances sortBy { _.symbol.name }
       } yield {
-        iSymbol.name -> eSymbol.name
+        iSymbol.name -> iSymbol.kind.asEntity.symbol.name
       }
 
       eSymbol.name -> List(
@@ -208,10 +181,10 @@ object WriteModuleManifest extends Pass {
 
         def writePair(key: Any, value: Any): Unit = {
           pw.write(indent)
-          pw.write(s"""${i0}"${key}" : """)
+          pw.write(s"""$i0"$key" : """)
           value match {
             case child: Seq[_] => writeDict(child, level + 1)
-            case str: String   => pw.write(s""""${str}"""")
+            case str: String   => pw.write(s""""$str"""")
             case other         => pw.write(other.toString)
           }
         }
@@ -233,18 +206,19 @@ object WriteModuleManifest extends Pass {
       }
     }
 
-    writeDict(dict.seq, level = 0)
+    writeDict(dict.seq.sortBy(_._1), level = 0)
     pw.write("\n")
 
     pw.close()
   }
 
-  def apply(trees: List[Tree])(implicit cc: CompilerContext): List[Tree] = {
+  override def process(input: List[(Decl, Defn)])(
+      implicit cc: CompilerContext): List[(Decl, Defn)] = {
     cc.settings.moduleManifestPath match {
-      case Some(path) => emit(path, trees)
+      case Some(path) => emit(path, input)
       case None       =>
     }
-    trees
+    input
   }
 
 }

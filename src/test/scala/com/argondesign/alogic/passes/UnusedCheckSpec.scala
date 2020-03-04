@@ -24,15 +24,15 @@ import org.scalatest.FlatSpec
 
 final class UnusedCheckSpec extends FlatSpec with AlogicTest {
 
-  implicit val cc = new CompilerContext
+  implicit val cc: CompilerContext = new CompilerContext
 
-  def xform(tree: Tree) = {
+  private def xform(tree: Tree): Tree = {
     tree match {
-      case Root(_, entity: Entity) => cc.addGlobalEntity(entity)
-      case entity: Entity          => cc.addGlobalEntity(entity)
-      case _                       =>
+      case root: Root => cc.addGlobalDescs(root.body collect { case RizDesc(desc) => desc })
+      case desc: Desc => cc.addGlobalDesc(desc)
+      case _          =>
     }
-    tree rewrite new Namer rewrite new UnusedCheck(postSpecialize = false)
+    tree rewrite new Namer rewrite new UnusedCheck
   }
 
   "The UnusedCheck" should "issue warning for unused local variables" in {
@@ -46,127 +46,127 @@ final class UnusedCheckSpec extends FlatSpec with AlogicTest {
   }
 
   it should "not issue warning for variable used in nested scope" in {
-    xform("{ i8 b; { b; } }".asTree[Stmt])
+    xform("{ i8 b; { $display(\"\", b); } }".asTree[Stmt])
     cc.messages shouldBe empty
   }
 
   it should "issue warning for unused entity variables" in {
-    xform("fsm a { i8 b; }".asTree[Entity])
+    xform("fsm a { i8 b; }".asTree[Desc])
     cc.messages.loneElement should beThe[Warning]("Variable 'b' is unused")
   }
 
   it should "issue warning for unused entity variables - but not with 'unused' attribute" in {
-    xform("fsm a { (* unused *) i8 b; }".asTree[Entity])
+    xform("fsm a { (* unused *) i8 b; }".asTree[Desc])
     cc.messages shouldBe empty
   }
 
   it should "issue warning for unused arrays" in {
-    xform("fsm a { i8 b[2]; }".asTree[Entity])
+    xform("fsm a { i8 b[2]; }".asTree[Desc])
     cc.messages.loneElement should beThe[Warning]("Array 'b' is unused")
   }
 
   it should "issue warning for unused arrays - but not with 'unused' attribute" in {
-    xform("fsm a { (* unused *) i8 b[2]; }".asTree[Entity])
+    xform("fsm a { (* unused *) i8 b[2]; }".asTree[Desc])
     cc.messages shouldBe empty
   }
 
   it should "issue warning for unused input ports" in {
-    xform("fsm a { in i8 b; }".asTree[Entity])
+    xform("fsm a { in i8 b; }".asTree[Desc])
     cc.messages.loneElement should beThe[Warning]("Input port 'b' is unused")
   }
 
   it should "issue warning for unused input ports - but not with 'unused' attribute" in {
-    xform("fsm a { (* unused *) in i8 b; }".asTree[Entity])
+    xform("fsm a { (* unused *) in i8 b; }".asTree[Desc])
     cc.messages shouldBe empty
   }
 
   it should "issue warning for unused input ports - but not in verbatim entity" in {
-    xform("verbatim entity a { in i8 b; }".asTree[Entity])
+    xform("verbatim entity a { in i8 b; }".asTree[Desc])
     cc.messages shouldBe empty
   }
 
   it should "issue warning for unused output ports" in {
-    xform("fsm a { out i8 b; }".asTree[Entity])
+    xform("fsm a { out i8 b; }".asTree[Desc])
     cc.messages.loneElement should beThe[Warning]("Output port 'b' is unused")
   }
 
   it should "issue warning for unused output ports - but not with 'unused' attribute" in {
-    xform("fsm a { (* unused *) out i8 b; }".asTree[Entity])
+    xform("fsm a { (* unused *) out i8 b; }".asTree[Desc])
     cc.messages shouldBe empty
   }
 
   it should "issue warning for unused output ports - but not in verbatim entity" in {
-    xform("verbatim entity a { out i8 b; }".asTree[Entity])
+    xform("verbatim entity a { out i8 b; }".asTree[Desc])
     cc.messages shouldBe empty
   }
 
   it should "issue warning for unused parameters" in {
-    xform("fsm a { param i8 b = 8'd9; }".asTree[Entity])
+    xform("fsm a { param i8 b = 8'd9; }".asTree[Desc])
     cc.messages.loneElement should beThe[Warning]("Parameter 'b' is unused")
   }
 
   it should "issue warning for unused parameters - but not with 'unused' attribute" in {
-    xform("fsm a { (* unused *) param i8 b = 8'd9; }".asTree[Entity])
+    xform("fsm a { (* unused *) param i8 b = 8'd9; }".asTree[Desc])
     cc.messages shouldBe empty
   }
 
   it should "issue warning for unused parameters - but not in verbatim entity" in {
-    xform("verbatim entity a { param i8 b = 8'd9; }".asTree[Entity])
+    xform("verbatim entity a { param i8 b = 8'd9; }".asTree[Desc])
     cc.messages shouldBe empty
   }
 
   it should "issue warning for unused constants" in {
-    xform("fsm a { const i8 b = 8'd9; }".asTree[Entity])
+    xform("fsm a { const i8 b = 8'd9; }".asTree[Desc])
     cc.messages.loneElement should beThe[Warning]("Constant 'b' is unused")
   }
 
   it should "issue warning for unused constants - but not with 'unused' attribute" in {
-    xform("fsm a { (* unused *) const i8 b = 8'd9; }".asTree[Entity])
+    xform("fsm a { (* unused *) const i8 b = 8'd9; }".asTree[Desc])
     cc.messages shouldBe empty
   }
 
   it should "issue warning for unused pipeline variables" in {
-    xform("fsm a { pipeline i8 b; }".asTree[Entity])
+    xform("fsm a { pipeline i8 b; }".asTree[Desc])
     cc.messages.loneElement should beThe[Warning]("Pipeline variable 'b' is unused")
   }
 
   it should "issue warning for unused pipeline variables - but not with 'unused' attribute" in {
-    xform("fsm a { (* unused *) pipeline i8 b; }".asTree[Entity])
+    xform("fsm a { (* unused *) pipeline i8 b; }".asTree[Desc])
     cc.messages shouldBe empty
   }
 
   it should "issue warning for unused functions" in {
-    xform("fsm a { void foo() {} }".asTree[Entity])
+    xform("fsm a { void foo() { fence; } }".asTree[Desc])
     cc.messages.loneElement should beThe[Warning]("Function 'foo' is unused")
   }
 
   it should "issue warning for unused functions - but not for main" in {
-    xform("fsm a { void main() {} }".asTree[Entity])
+    xform("fsm a { void main() { fence; } }".asTree[Desc])
     cc.messages shouldBe empty
   }
 
   it should "issue warning for unused functions - but not with 'unused' attribute" in {
-    xform("fsm a { (* unused *) void foo() {} }".asTree[Entity])
+    xform("fsm a { (* unused *) void foo() { fence; } }".asTree[Desc])
     cc.messages shouldBe empty
   }
 
   it should "issue warning for unused entities" in {
-    xform("network a { fsm bar {} }".asTree[Entity])
+    xform("network a { fsm bar {} }".asTree[Desc])
     cc.messages.loneElement should beThe[Warning]("Entity 'bar' is unused")
   }
 
   it should "issue warning for unused entities - but not with 'unused' attribute" in {
-    xform("network a { (* unused *) fsm bar {} }".asTree[Entity])
+    xform("network a { (* unused *) fsm bar {} }".asTree[Desc])
     cc.messages shouldBe empty
   }
 
-  it should "issue warning for unused instances" in {
-    xform("network a { new fsm bar {} }".asTree[Entity])
-    cc.messages.loneElement should beThe[Warning]("Instance 'bar' is unused")
+  it should "issue warning for unused singleton instances" in {
+    xform("network a { new fsm bar {} }".asTree[Desc])
+    cc.messages.loneElement should beThe[Warning]("Singleton instance 'bar' is unused")
   }
 
   it should "issue warning for unused instances - but not with 'unused' attribute" in {
-    xform("network a { (* unused *) new fsm bar {} }".asTree[Entity])
+    xform("network a { (* unused *) new fsm bar {} }".asTree[Desc])
     cc.messages shouldBe empty
   }
 
@@ -176,7 +176,7 @@ final class UnusedCheckSpec extends FlatSpec with AlogicTest {
   }
 
   it should "issue warning for unused struct - in entity scope" in {
-    xform("network a {struct s {bool f;}}".asTree[Entity])
+    xform("network a {struct s {bool f;}}".asTree[Desc])
     cc.messages.loneElement should beThe[Warning]("struct 's' is unused")
   }
 
@@ -186,7 +186,7 @@ final class UnusedCheckSpec extends FlatSpec with AlogicTest {
   }
 
   it should "issue warning for unused typedef - in entity scope" in {
-    xform("network a {typedef bool t;}".asTree[Entity])
+    xform("network a {typedef bool t;}".asTree[Desc])
     cc.messages.loneElement should beThe[Warning]("Type 't' is unused")
   }
 
@@ -203,7 +203,7 @@ final class UnusedCheckSpec extends FlatSpec with AlogicTest {
          |      fence;
          |    }
          |  }
-         |}""".stripMargin.asTree[Entity]
+         |}""".stripMargin.asTree[Desc]
     }
     cc.messages shouldBe empty
   }

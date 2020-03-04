@@ -1,12 +1,15 @@
 // @out-top: def_ent_1
-fsm def_ent_1 {
-  struct data_t {
-    u2 a;
-    u4 b;
-  }
+struct data_t {
+  u2 a;
+  u4 b;
+}
 
-  in       data_t i;
-  out wire data_t o;
+fsm def_ent_1 {
+
+  typedef data_t d_t;
+
+  in       d_t i;
+  out wire d_t o;
 
   void main() {
     o = i;

@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2018 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2018-2019 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
@@ -18,9 +18,11 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
 import com.argondesign.alogic.core.StorageTypes._
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.typer.TypeAssigner
+import com.argondesign.alogic.core.enums.EntityVariant
 
-object SyncRegFactory {
+import scala.util.ChainingSyntax
+
+object SyncRegFactory extends ChainingSyntax {
 
   /*
 
@@ -68,31 +70,41 @@ object SyncRegFactory {
   private def buildSyncReg(
       name: String,
       loc: Loc,
-      kind: Type,
+      kind: TypeFund,
       sep: String
   )(
       implicit cc: CompilerContext
-  ): Entity = {
+  ): (DeclEntity, DefnEntity) = {
     val fcn = FlowControlTypeNone
     val stw = StorageTypeWire
 
-    val bool = TypeUInt(TypeAssigner(Expr(1) withLoc loc))
+    lazy val ipSymbol = cc.newSymbol("ip", loc) tap { _.kind = TypeIn(kind, fcn) }
+    val ipvSymbol = cc.newSymbol(s"ip${sep}valid", loc) tap { _.kind = TypeIn(TypeUInt(1), fcn) }
+    lazy val opSymbol = cc.newSymbol("op", loc) tap { _.kind = TypeOut(kind, fcn, stw) }
+    val opvSymbol = cc.newSymbol(s"op${sep}valid", loc) tap {
+      _.kind = TypeOut(TypeUInt(1), fcn, stw)
+    }
+    lazy val pSymbol = cc.newSymbol("payload", loc) tap { _.kind = kind }
+    val vSymbol = cc.newSymbol("valid", loc) tap { _.kind = TypeUInt(1) }
 
-    lazy val ipSymbol = cc.newTermSymbol("ip", loc, TypeIn(kind, fcn))
-    val ipvSymbol = cc.newTermSymbol(s"ip${sep}valid", loc, TypeIn(bool, fcn))
+    lazy val ipDecl = ipSymbol.mkDecl regularize loc
+    val ipvDecl = ipvSymbol.mkDecl regularize loc
+    lazy val opDecl = opSymbol.mkDecl regularize loc
+    val opvDecl = opvSymbol.mkDecl regularize loc
+    lazy val pDecl = pSymbol.mkDecl regularize loc
+    val vDecl = vSymbol.mkDecl regularize loc
 
-    lazy val opSymbol = cc.newTermSymbol("op", loc, TypeOut(kind, fcn, stw))
-    val opvSymbol = cc.newTermSymbol(s"op${sep}valid", loc, TypeOut(bool, fcn, stw))
-
-    lazy val pSymbol = cc.newTermSymbol("payload", loc, kind)
-    val vSymbol = cc.newTermSymbol("valid", loc, bool)
+    lazy val ipDefn = ipSymbol.mkDefn
+    val ipvDefn = ipvSymbol.mkDefn
+    lazy val opDefn = opSymbol.mkDefn
+    val opvDefn = opvSymbol.mkDefn
+    lazy val pDefn = pSymbol.mkDefn
+    val vDefn = vSymbol.mkDefn(ExprInt(false, 1, 0))
 
     lazy val ipRef = ExprSym(ipSymbol)
     val ipvRef = ExprSym(ipvSymbol)
-
     lazy val opRef = ExprSym(opSymbol)
     val opvRef = ExprSym(opvSymbol)
-
     lazy val pRef = ExprSym(pSymbol)
     val vRef = ExprSym(vSymbol)
 
@@ -109,19 +121,22 @@ object SyncRegFactory {
       List(StmtAssign(vRef, ipvRef))
     }
 
-    val ports = if (kind != TypeVoid) {
-      List(ipSymbol, ipvSymbol, opSymbol, opvSymbol)
-    } else {
-      List(ipvSymbol, opvSymbol)
+    val decls = {
+      if (kind != TypeVoid) {
+        List(ipDecl, ipvDecl, opDecl, opvDecl, pDecl, vDecl)
+      } else {
+        List(ipvDecl, opvDecl, vDecl)
+      }
     }
 
-    val symbols = if (kind != TypeVoid) pSymbol :: vSymbol :: ports else vSymbol :: ports
-
-    val decls = symbols map {
-      case `vSymbol` => Decl(vSymbol, Some(ExprInt(false, 1, 0)))
-      case symbol    => Decl(symbol, None)
+    val defns = {
+      if (kind != TypeVoid) {
+        List(ipDefn, ipvDefn, opDefn, opvDefn, pDefn, vDefn)
+      } else {
+        List(ipvDefn, opvDefn, vDefn)
+      }
     } map {
-      EntDecl(_)
+      EntDefn
     }
 
     val connects = if (kind != TypeVoid) {
@@ -135,21 +150,23 @@ object SyncRegFactory {
       )
     }
 
-    val eKind = TypeEntity(name, ports, Nil)
-    val entitySymbol = cc.newTypeSymbol(name, loc, eKind)
-    entitySymbol.attr.variant set "fsm"
-    entitySymbol.attr.highLevelKind set eKind
-    val entity = Entity(Sym(entitySymbol, Nil), decls ::: EntCombProcess(statements) :: connects)
-    entity regularize loc
+    val entitySymbol = cc.newSymbol(name, loc)
+    val decl = DeclEntity(entitySymbol, decls) regularize loc
+    val defn = DefnEntity(
+      entitySymbol,
+      EntityVariant.Fsm,
+      defns ::: EntCombProcess(statements) :: connects
+    ) regularize loc
+    (decl, defn)
   }
 
   def apply(
       name: String,
       loc: Loc,
-      kind: Type
+      kind: TypeFund
   )(
       implicit cc: CompilerContext
-  ): Entity = {
+  ): (DeclEntity, DefnEntity) = {
     require(kind.isPacked)
     buildSyncReg(name, loc, kind, cc.sep)
   }

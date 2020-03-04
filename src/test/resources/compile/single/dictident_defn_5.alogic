@@ -14,15 +14,15 @@ network dictident_defn_5 {
   i_0 -> o_0;
   i_1 -> o_1;
 }
-// :10: ERROR: 'i_t' is ambiguous after processing 'gen' constructs. Active declarations:
+// :10: ERROR: 'i_t' is ambiguous after processing 'gen' constructs. Active definitions at:
 // :10: ERROR: ... .*dictident_defn_5.alogic:3
 // :10: ERROR: ... .*dictident_defn_5.alogic:7
-// :11: ERROR: 'i_t' is ambiguous after processing 'gen' constructs. Active declarations:
+// :11: ERROR: 'i_t' is ambiguous after processing 'gen' constructs. Active definitions at:
 // :11: ERROR: ... .*dictident_defn_5.alogic:3
 // :11: ERROR: ... .*dictident_defn_5.alogic:7
-// :12: ERROR: 'o_t' is ambiguous after processing 'gen' constructs. Active declarations:
+// :12: ERROR: 'o_t' is ambiguous after processing 'gen' constructs. Active definitions at:
 // :12: ERROR: ... .*dictident_defn_5.alogic:4
 // :12: ERROR: ... .*dictident_defn_5.alogic:8
-// :13: ERROR: 'o_t' is ambiguous after processing 'gen' constructs. Active declarations:
+// :13: ERROR: 'o_t' is ambiguous after processing 'gen' constructs. Active definitions at:
 // :13: ERROR: ... .*dictident_defn_5.alogic:4
 // :13: ERROR: ... .*dictident_defn_5.alogic:8

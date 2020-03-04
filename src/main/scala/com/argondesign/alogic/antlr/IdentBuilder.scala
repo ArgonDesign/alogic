@@ -22,18 +22,9 @@ import com.argondesign.alogic.core.CompilerContext
 import org.antlr.v4.runtime.Token
 
 object IdentBuilder extends BaseBuilder[IdentContext, Ident] {
-  // To be called on ctx.ident
-  def apply(ctx: IdentContext)(implicit cc: CompilerContext): Ident = {
-    object Visitor extends AlogicScalarVisitor[Ident] {
-      override def visitIdent(ctx: IdentContext) = {
-        val indices = ExprBuilder(ctx.expr)
-        Ident(ctx.IDENTIFIER.text, indices) withLoc ctx.loc
-      }
-    }
+  def apply(ctx: IdentContext)(implicit cc: CompilerContext): Ident =
+    Ident(ctx.IDENTIFIER.text, ExprBuilder(ctx.expr)) withLoc ctx.loc
 
-    Visitor(ctx)
-  }
-
-  // To be called on ctx.IDENTIFIER/ctx.ATID/ctx.DOLLARID
-  def apply(token: Token): Ident = Ident(token, Nil) withLoc token.loc
+  def apply(token: Token): Ident =
+    Ident(token, Nil) withLoc token.loc
 }

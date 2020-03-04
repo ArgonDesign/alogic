@@ -15,71 +15,71 @@
 
 package com.argondesign.alogic.passes
 import com.argondesign.alogic.AlogicTest
-import com.argondesign.alogic.SourceTextConverters._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.typer.Typer
 import org.scalatest.FreeSpec
 
 final class DesugarSpec extends FreeSpec with AlogicTest {
 
-  implicit val cc = new CompilerContext
-  val namer = new Namer
-  val typer = new Typer
-  val desugar = new Desugar
+  implicit val cc: CompilerContext = new CompilerContext
 
-  def xform(tree: Tree) = {
-    tree match {
-      case Root(_, entity: Entity) => cc.addGlobalEntity(entity)
-      case entity: Entity          => cc.addGlobalEntity(entity)
-      case _                       =>
-    }
-    tree rewrite namer rewrite typer rewrite desugar
+  private def desugar(text: String): Thicket = Thicket {
+    transformWithPass(Namer andThen Elaborate andThen TypeCheck andThen Desugar, text) map {
+      _ flatMap {
+        case (decl, defn) => List(decl, defn)
+      }
+    } getOrElse Nil
   }
 
   "Desugar should" - {
     "rewire postfix statements as assignments" - {
       for (op <- List("++", "--")) {
         op in {
-          val tree = xform(s"{ i2 a; a${op}; }".asTree[Stmt])
-
-          cc.messages shouldBe empty
-
-          inside(tree) {
-            case StmtBlock(List(StmtDecl(Decl(dSym, _)), stmt)) =>
-              inside(stmt) {
-                case StmtAssign(lhs, rhs) =>
-                  lhs shouldBe ExprSym(dSym)
-                  inside(rhs) {
-                    case ExprBinary(ExprSym(sym), opStr, ExprInt(false, 2, v)) if v == 1 =>
-                      opStr shouldBe op.init
-                      sym should be theSameInstanceAs dSym
-                  }
-              }
+          desugar {
+            s"""
+            |void function() {
+            |  i2 a; a$op;
+            |}"""
+          } getFirst {
+            case DefnFunc(_, _, body) => body
+          } tap {
+            inside(_) {
+              case List(StmtDecl(DeclVar(dSym, _)), _: StmtDefn, StmtAssign(lhs, rhs)) =>
+                lhs shouldBe ExprSym(dSym)
+                inside(rhs) {
+                  case ExprBinary(ExprSym(sym), opStr, ExprInt(false, 2, v)) if v == 1 =>
+                    opStr shouldBe op.init
+                    sym should be theSameInstanceAs dSym
+                }
+            }
           }
+          cc.messages shouldBe empty
         }
       }
     }
 
     "rewire update statements as assignments" - {
       for (op <- List("*", "/", "%", "+", "-", "<<", ">>", ">>>", "&", "|", "^")) {
-        s"${op}=" in {
-          val tree = xform(s"{ i100 a; a ${op}= 100'd2; }".asTree[Stmt])
-
-          cc.messages shouldBe empty
-
-          inside(tree) {
-            case StmtBlock(List(StmtDecl(Decl(dSym, _)), stmt)) =>
-              inside(stmt) {
-                case StmtAssign(lhs, rhs) =>
-                  lhs shouldBe ExprSym(dSym)
-                  inside(rhs) {
-                    case ExprBinary(ExprSym(sym), `op`, ExprInt(false, 100, v)) if v == 2 =>
-                      sym should be theSameInstanceAs dSym
-                  }
-              }
+        s"$op=" in {
+          desugar {
+            s"""
+            |void function() {
+            |  i100 a; a $op= 100'd2;
+            |}"""
+          } getFirst {
+            case DefnFunc(_, _, body) => body
+          } tap {
+            inside(_) {
+              case List(StmtDecl(DeclVar(dSym, _)), _: StmtDefn, StmtAssign(lhs, rhs)) =>
+                lhs shouldBe ExprSym(dSym)
+                inside(rhs) {
+                  case ExprBinary(ExprSym(sym), `op`, ExprInt(false, 100, v)) if v == 2 =>
+                    sym should be theSameInstanceAs dSym
+                }
+            }
           }
+          cc.messages shouldBe empty
         }
       }
     }
@@ -94,23 +94,72 @@ final class DesugarSpec extends FreeSpec with AlogicTest {
         )
       } {
         name in {
-          val tree = xform(s"{ i2 b; let (i2 a = 2'd0, b = a) ${loop} }".asTree[Stmt])
-
-          inside(tree) {
-            case StmtBlock(List(StmtDecl(declB: Decl), declA: StmtDecl, assignB, loop)) =>
-              val dSymB = declB.symbol
-              dSymB.name shouldBe "b"
-              inside(declA) {
-                case StmtDecl(Decl(dSymA, Some(ExprInt(false, 2, v)))) if v == 0 =>
-                  dSymA.kind shouldBe TypeSInt(Expr(2))
-                  inside(assignB) {
-                    case StmtAssign(ExprSym(symB), ExprSym(symA)) =>
-                      symB.name shouldBe "b";
-                      symA should be theSameInstanceAs dSymA
-                  }
-                  loop should matchPattern(pattern)
-              }
+          desugar {
+            s"""
+            |void function() {
+            |  i2 b;
+            |  let (i2 a = 2'd0, b = a) $loop
+            |}"""
+          } getFirst {
+            case DefnFunc(_, _, body) => body
+          } tap {
+            inside(_) {
+              case List(StmtDecl(declB),
+                        StmtDefn(defnB),
+                        StmtDecl(declA),
+                        StmtDefn(defnA),
+                        assign,
+                        loop) =>
+                declB.symbol.name shouldBe "b"
+                defnB.symbol.name shouldBe "b"
+                declB.symbol should be theSameInstanceAs defnB.symbol
+                declA.symbol.name shouldBe "a"
+                defnA.symbol.name shouldBe "a"
+                declA.symbol should be theSameInstanceAs defnA.symbol
+                declA should matchPattern {
+                  case DeclVar(_, ExprType(TypeSInt(w))) if w == 2 =>
+                }
+                defnA should matchPattern {
+                  case DefnVar(_, Some(ExprInt(false, 2, v))) if v == 0 =>
+                }
+                inside(assign) {
+                  case StmtAssign(ExprSym(symB), ExprSym(symA)) =>
+                    symA should be theSameInstanceAs declA.symbol
+                    symB should be theSameInstanceAs declB.symbol
+                }
+                loop should matchPattern(pattern)
+            }
           }
+          cc.messages shouldBe empty
+        }
+      }
+    }
+
+    "replace singleton instances with entity + instance" in {
+      desugar {
+        """
+          |network a {
+           |  new fsm b {}
+           |}"""
+      } getFirst {
+        case Thicket(body) => body
+      } tap {
+        inside(_) {
+          case List(decl_a: DeclEntity, defn_a: DefnEntity) =>
+            inside(decl_a) {
+              case DeclEntity(_, List(decl_b_e, decl_b_i)) =>
+                inside(decl_b_e) {
+                  case DeclEntity(b_e, _) =>
+                    decl_b_i should matchPattern {
+                      case DeclInstance(_, ExprSym(`b_e`)) =>
+                    }
+                }
+            }
+            inside(defn_a) {
+              case DefnEntity(_, _, List(EntDefn(defn_b_e), EntDefn(defn_b_i))) =>
+                defn_b_e should matchPattern { case DefnEntity(b_e, _, Nil) => }
+                defn_b_i shouldBe a[DefnInstance]
+            }
         }
       }
     }

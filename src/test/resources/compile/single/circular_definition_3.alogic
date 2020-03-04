@@ -1,0 +1,11 @@
+network circular_definition_3 {
+  same = new circular_definition_3;
+}
+// :1: ERROR: Definition of 'circular_definition_3' is circular:
+// :1: ERROR: ... defined at .*circular_definition_3.alogic:1
+// :1: ERROR: ...   network circular_definition_3 \{
+// :1: ERROR: ...           \^~~~~~~~~~~~~~~~~~~~~
+// :1: ERROR: ... depends on 'circular_definition_3' via .*circular_definition_3.alogic:2
+// :1: ERROR: ...     same = new circular_definition_3;
+// :1: ERROR: ...                \^~~~~~~~~~~~~~~~~~~~~
+

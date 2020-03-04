@@ -1,0 +1,25 @@
+network param_assignment_required_0 {
+  in       bool i;
+  out wire bool o;
+
+  fsm inner {
+    param bool P;
+
+    in       bool ii;
+    out wire bool oo;
+
+    void main() {
+      gen if (P) {
+        ii = oo;
+      } else {
+        ii = ~oo;
+      }
+      fence;
+    }
+  }
+
+  inst = new inner;
+
+  i -> inst.ii; inst.oo -> o;
+}
+// :21: ERROR: Parametrized type requires parameter list.

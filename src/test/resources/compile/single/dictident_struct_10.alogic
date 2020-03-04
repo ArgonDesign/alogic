@@ -1,0 +1,28 @@
+network dictident_struct_10 {
+  gen for (uint N < 2) {
+    in  uint(2-N) i#[N];
+    out uint(2-N) o#[N];
+    struct i_t#[1-N] { uint(N+1) f; }
+    struct o_t#[1-N] { uint(N+1) f; }
+    i#[N] -> inner.ii#[N]; inner.oo#[N] -> o#[N];
+  }
+
+  new network inner {
+    gen for (uint N < 2) {
+      in  i_t#[N] ii#[N];
+      out o_t#[N] oo#[N];
+      ii#[1-N] -> oo#[1-N];
+    }
+  }
+}
+// @fec-golden {{{
+//  module dictident_struct_10(
+//    input  wire [1:0] i__0,
+//    input  wire       i__1,
+//    output wire [1:0] o__0,
+//    output wire       o__1
+//  );
+//    assign o__0 = i__0;
+//    assign o__1 = i__1;
+//  endmodule
+// }}}

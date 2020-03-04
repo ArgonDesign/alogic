@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2018 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2018-2019 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
@@ -20,92 +20,97 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FlowControlTypes._
 import com.argondesign.alogic.core.StorageTypes._
-import com.argondesign.alogic.core.Symbols.TermSymbol
-import com.argondesign.alogic.core.Types.TypeOut
+import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.enums.EntityVariant
+import com.argondesign.alogic.typer.TypeAssigner
 
 import scala.collection.mutable
 
 final class DefaultStorage(implicit cc: CompilerContext) extends TreeTransformer {
 
   // Set of output ports accessed through port methods or directly
-  private[this] val accessedSet = mutable.Set[TermSymbol]()
+  private[this] val accessedSet = mutable.Set[Symbol]()
 
   // Set of output ports connected with '->'
-  private[this] val connectedSet = mutable.Set[TermSymbol]()
+  private[this] val connectedSet = mutable.Set[Symbol]()
 
   private[this] var inConnect = false
 
-  override def enter(tree: Tree): Unit = tree match {
-    case _: EntConnect => {
-      assert(!inConnect)
-      inConnect = true
-    }
+  private[this] var entityVariant: EntityVariant.Type = _
 
-    case ExprSym(symbol: TermSymbol) if symbol.kind.isInstanceOf[TypeOut] => {
-      if (inConnect) {
-        connectedSet add symbol
-      } else {
-        accessedSet add symbol
-      }
-    }
+  override def enter(tree: Tree): Option[Tree] = {
+    tree match {
+      case DefnEntity(_, variant, _) =>
+        entityVariant = variant
 
-    case _ =>
+      case _: EntConnect =>
+        assert(!inConnect)
+        inConnect = true
+
+      case ExprSym(symbol) if symbol.kind.isOut =>
+        if (inConnect) {
+          connectedSet add symbol
+        } else {
+          accessedSet add symbol
+        }
+
+      case _ =>
+    }
+    None
   }
 
-  override def transform(tree: Tree): Tree = {
-    tree match {
-      case _: EntConnect => {
-        assert(inConnect)
-        inConnect = false
-      }
+  override def transform(tree: Tree): Tree = tree match {
+    case _: EntConnect =>
+      assert(inConnect)
+      inConnect = false
+      tree
 
-      case entity: Entity => {
-        val isVerbatim = entitySymbol.attr.variant.value == "verbatim"
-
-        // Update types or all output declarations that use the default storage type
-        for {
-          Decl(symbol, _) <- entity.declarations
-          if symbol.kind.isOut
-          kind = symbol.kind.asInstanceOf[TypeOut]
-          if kind.st == StorageTypeDefault
-        } {
-          // Compute the appropriate default storage type
-          val newSt = if (isVerbatim) {
-            StorageTypeWire
-          } else if (connectedSet contains symbol) {
-            StorageTypeWire
-          } else if (accessedSet contains symbol) {
-            kind.fct match {
-              case FlowControlTypeReady  => StorageTypeSlices(List(StorageSliceFwd))
-              case FlowControlTypeAccept => StorageTypeWire
-              case _                     => StorageTypeReg
-            }
-          } else {
-            StorageTypeWire
-          }
-          symbol.kind = kind.copy(st = newSt)
+    case decl @ DeclOut(symbol, _, fc, StorageTypeDefault) =>
+      val newSt = if (entityVariant == EntityVariant.Ver) {
+        StorageTypeWire
+      } else if (connectedSet contains symbol) {
+        StorageTypeWire
+      } else if (accessedSet contains symbol) {
+        fc match {
+          case FlowControlTypeReady  => StorageTypeSlices(List(StorageSliceFwd))
+          case FlowControlTypeAccept => StorageTypeWire
+          case _                     => StorageTypeReg
         }
+      } else {
+        StorageTypeWire
       }
+      TypeAssigner(decl.copy(st = newSt) withLoc decl.loc)
 
-      case _ => ()
-    }
-
-    tree
+    case _ => tree
   }
 
   override def finalCheck(tree: Tree): Unit = {
     assert(!inConnect)
     tree visitAll {
-      case Decl(symbol, _) => {
-        symbol.kind visit {
-          case TypeOut(_, _, StorageTypeDefault) => cc.ice(tree, "Default storage type remains")
-        }
-      }
+      case node @ DeclOut(_, _, _, StorageTypeDefault) =>
+        cc.ice(node, "Default storage type remains")
     }
   }
 }
 
-object DefaultStorage extends TreeTransformerPass {
+object DefaultStorage extends PairTransformerPass {
   val name = "default-storage"
-  def create(implicit cc: CompilerContext) = new DefaultStorage
+  def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {
+    (decl, defn) match {
+      case (dcl: DeclEntity, _: DefnEntity) =>
+        if (dcl.decls.isEmpty) {
+          // If no decls, then there is nothing to do
+          (decl, defn)
+        } else {
+          // Perform the transform
+          val transformer = new DefaultStorage
+          // First transform the defn
+          val newDefn = transformer(defn)
+          // Then transform the decl
+          val newDecl = transformer(decl)
+          (newDecl, newDefn)
+        }
+      case _ => (decl, defn)
+    }
+  }
 }

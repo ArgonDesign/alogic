@@ -30,13 +30,13 @@ class ParseErrorListener(implicit cc: CompilerContext) extends BaseErrorListener
       charPositionInLine: Int,
       defaultMessage: String,
       e: RecognitionException
-  ) = {
+  ): Unit = {
     val source = recogniser.asInstanceOf[SourceMixin].source
 
     val offset = source.offsetFor(line) + charPositionInLine
 
     val loc = Loc(source, offset, offset, offset)
 
-    cc.error(loc, s"Syntax error: ${defaultMessage}")
+    cc.error(loc, s"Syntax error: $defaultMessage")
   }
 }

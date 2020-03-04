@@ -31,7 +31,7 @@ class AlogicParseErrorListener(implicit cc: CompilerContext) extends ParseErrorL
       charPositionInLine: Int,
       defaultMessage: String,
       e: RecognitionException
-  ) = {
+  ): Unit = {
     val parser = recogniser.asInstanceOf[AlogicParser]
 
     val tokenStream = parser.getInputStream
@@ -39,13 +39,13 @@ class AlogicParseErrorListener(implicit cc: CompilerContext) extends ParseErrorL
     parser.getTokenFactory
 
     val message = if (tokenStream.LT(-2) != null) {
-      List(-2, -1, 1) map { tokenStream.LA(_) } match {
+      List(-2, -1, 1) map tokenStream.LA match {
         case List(`LET`, `LEFTBRACKET`, `RIGHTBRACKET`)   => "empty 'let ()' statement"
         case List(`WHILE`, `LEFTBRACKET`, `RIGHTBRACKET`) => "empty 'while ()' condition"
         case List(`NEW`, `IDENTIFIER`, token) if token != LEFTBRACKET => {
           s"missing parameter list '()' after entity name in instantiation 'new ${tokenStream.LT(-1).getText}'"
         }
-        case other => defaultMessage
+        case _ => defaultMessage
       }
     } else {
       defaultMessage

@@ -20,18 +20,18 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
 
-private[builtins] class AtMsb(implicit cc: CompilerContext) extends BuiltinPolyFunc {
+private[builtins] class AtMsb(implicit cc: CompilerContext)
+    extends BuiltinPolyFunc(isValidConnLhs = true) {
 
   val name = "@msb"
 
-  def returnType(args: List[Expr]) = args partialMatch {
-    case List(expr) if expr.tpe.isPacked && expr.tpe.width > 0 =>
-      TypeInt(expr.tpe.isSigned, Expr(1) withLoc expr.loc)
+  def returnType(args: List[Expr]): Option[TypeFund] = args partialMatch {
+    case List(expr) if expr.tpe.isPacked && expr.tpe.width > 0 => TypeInt(expr.tpe.isSigned, 1)
   }
 
-  def combArgs(args: List[Expr]) = List(args(0))
+  def isKnown(args: List[Expr]) = args.head.isKnownConst
 
-  def fold(loc: Loc, args: List[Expr]) = AtMsb.fold(loc, args(0))
+  def simplify(loc: Loc, args: List[Expr]) = AtMsb.fold(loc, args(0))
 
 }
 
@@ -40,6 +40,6 @@ private[builtins] object AtMsb {
     if (expr.tpe.width == 1) {
       Some(expr)
     } else {
-      Some((expr index (expr.tpe.width - 1)).simplify)
+      Some((expr index (expr.tpe.width.toInt - 1)).simplify)
     }
 }

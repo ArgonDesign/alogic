@@ -16,14 +16,14 @@
 package com.argondesign.alogic.analysis
 
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.Symbols.TermSymbol
+import com.argondesign.alogic.core.Symbols.Symbol
 
 object WrittenSymbols {
 
   // Given an expression, return an iterable of symbols that would be written
   // should this expression be used on the left hand side of an assignment
-  def apply(expr: Expr): Iterator[TermSymbol] = WrittenSyms(expr) collect {
-    case ExprSym(symbol: TermSymbol) => symbol
+  def apply(expr: Expr): Iterator[Symbol] = WrittenSyms(expr) collect {
+    case ExprSym(symbol) => symbol
   }
 
 }

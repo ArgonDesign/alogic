@@ -21,8 +21,9 @@ import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
-import com.argondesign.alogic.util.unreachable
+import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.util.BigIntOps._
+import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
@@ -77,22 +78,21 @@ final class SimplifyCat(implicit cc: CompilerContext) extends TreeTransformer {
   override def transform(tree: Tree): Tree = {
     val result = tree match {
 
-      case StmtAssign(lhs @ ExprCat(parts), ExprInt(_, width, value)) => {
-        val widths = parts map { _.tpe.width }
+      case StmtAssign(ExprCat(parts), ExprInt(_, width, value)) =>
+        val widths = parts map { _.tpe.width.toInt }
         if (widths.sum != width) {
           tree
         } else {
-          val lsbs = widths.scanRight(0)(_ + _).tail
+          val lsbs = widths.scanRight(BigInt(0))(_ + _).tail map { _.toInt }
           StmtBlock {
             (for ((expr, width, lsb) <- parts lazyZip widths lazyZip lsbs) yield {
               val signed = expr.tpe.isSigned
-              StmtAssign(expr, ExprInt(signed, width, value.extract(lsb, width, signed)))
+              StmtAssign(expr, ExprInt(signed, width.toInt, value.extract(lsb, width, signed)))
             }).toList
           }
         }
-      }
 
-      case StmtAssign(ExprCat(oLhss), ExprCat(oRhss)) => {
+      case StmtAssign(ExprCat(oLhss), ExprCat(oRhss)) =>
         // Do not simplify if a symbol appears on both sides (eg {a, b} = {b, a})
         // as in this case the rhs must be read atomically
         val lSymbols = (oLhss collect { case ExprSym(symbol) => symbol }).toSet
@@ -113,9 +113,8 @@ final class SimplifyCat(implicit cc: CompilerContext) extends TreeTransformer {
         } else {
           tree
         }
-      }
 
-      case EntConnect(ExprCat(oLhss), List(ExprCat(oRhss))) => {
+      case EntConnect(ExprCat(oLhss), List(ExprCat(oRhss))) =>
         val pairs = pairUp(tree.loc, oLhss, oRhss)
         if (pairs.lengthCompare(1) == 0) {
           tree
@@ -127,7 +126,6 @@ final class SimplifyCat(implicit cc: CompilerContext) extends TreeTransformer {
           }
           Thicket(assigns)
         }
-      }
 
       case _ => tree
     }
@@ -141,7 +139,7 @@ final class SimplifyCat(implicit cc: CompilerContext) extends TreeTransformer {
 
 }
 
-object SimplifyCat extends TreeTransformerPass {
+object SimplifyCat extends EntityTransformerPass(declFirst = true) {
   val name = "simplify-cat"
-  def create(implicit cc: CompilerContext) = new SimplifyCat
+  def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer = new SimplifyCat
 }

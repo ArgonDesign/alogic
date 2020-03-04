@@ -22,7 +22,7 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Types.Type
+import com.argondesign.alogic.core.Types.TypeFund
 import com.argondesign.alogic.typer.TypeAssigner
 
 import scala.collection.mutable
@@ -31,11 +31,14 @@ final class ReplaceUnaryTicks(implicit cc: CompilerContext) extends TreeTransfor
 
   override val typed = false
 
-  private val kindStack = mutable.Stack[Type]()
+  private val kindStack = mutable.Stack[TypeFund]()
 
-  override protected def enter(tree: Tree): Unit = tree match {
-    case expr @ ExprUnary("'", _) => kindStack push expr.tpe
-    case _                        =>
+  override protected def enter(tree: Tree): Option[Tree] = {
+    tree match {
+      case expr @ ExprUnary("'", _) => kindStack push expr.tpe.asFund
+      case _                        =>
+    }
+    None
   }
 
   override def transform(tree: Tree): Tree = tree match {
@@ -46,13 +49,16 @@ final class ReplaceUnaryTicks(implicit cc: CompilerContext) extends TreeTransfor
 
   override protected def finalCheck(tree: Tree): Unit = {
     assert(kindStack.isEmpty)
-    assert(tree forallAll { case node: Tree                       => node.hasTpe })
-    val unaryTicks = tree collect { case node @ ExprUnary("'", _) => node }
-    assert(unaryTicks.isEmpty)
+    assert(tree forallAll { case node: Tree => node.hasTpe })
+    assert((tree collect { case node @ ExprUnary("'", _) => node }).isEmpty)
   }
 }
 
-object ReplaceUnaryTicks extends TreeTransformerPass {
+object ReplaceUnaryTicks extends PairTransformerPass {
   val name = "replace-unary-ticks"
-  def create(implicit cc: CompilerContext) = new ReplaceUnaryTicks
+  def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {
+    val transform = new ReplaceUnaryTicks
+    // The decl should contain no ticks
+    (decl, transform(defn))
+  }
 }

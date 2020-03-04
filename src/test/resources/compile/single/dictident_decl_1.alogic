@@ -9,7 +9,7 @@ network dictident_decl_1 {
   i#[0] -> o#[0];
   i#[1] -> o#[1];
 }
-// :4: ERROR: Redefinition of name 'i' with previous definition at
+// :4: ERROR: Redefinition of 'i' with previous definition at
 // :4: ERROR: ... .*dictident_decl_1.alogic:3
-// :6: ERROR: Redefinition of name 'o' with previous definition at
+// :6: ERROR: Redefinition of 'o' with previous definition at
 // :6: ERROR: ... .*dictident_decl_1.alogic:5

@@ -20,7 +20,7 @@ network gen_alt_entity_3 {
       out u4 p_mid_o;
     }
 
-    inst = new inner();
+    inst = new inner;
 
     p_mid_i_0 -> inst.p_i_0;
     p_mid_i_1 -> inst.p_i_1;

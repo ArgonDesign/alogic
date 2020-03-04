@@ -21,17 +21,18 @@ import com.argondesign.alogic.FindFile
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Source
-import com.argondesign.alogic.util.unreachable
+import com.argondesign.alogic.core.SourceAttribute
 
 import scala.collection.mutable
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Await
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration.Duration.Inf
+import scala.util.ChainingSyntax
 
 // The frontend is responsible for:
 // - locating sources (name -> source)
-// - preprocessing (source -> source)
+// - pre-processing (source -> source)
 // - parsing (source -> ast)
 
 class Frontend(
@@ -41,13 +42,15 @@ class Frontend(
 )(
     implicit
     cc: CompilerContext
-) {
+) extends ChainingSyntax {
+
+  private[this] val rootDescs = mutable.ListBuffer[Desc]()
 
   private[this] def locateIt(entityName: String): Source = {
     val sourceFileOpt = FindFile(entityName + ".alogic", moduleSeachDirs, maxDepth = 1)
 
     val sourceFile = sourceFileOpt.getOrElse {
-      cc.fatal(s"Cannot find entity '${entityName}'. Looked in:" :: moduleSeachDirs map {
+      cc.fatal(s"Cannot find entity '$entityName'. Looked in:" :: moduleSeachDirs map {
         _.toString
       }: _*)
     }
@@ -67,75 +70,76 @@ class Frontend(
   }
 
   private[this] def childNames(trees: List[Tree]): List[String] = trees flatMap {
-    case EntEntity(entity)                      => List(entity.name)
-    case EntGen(GenIf(_, thenItems, elseItems)) => childNames(thenItems) ::: childNames(elseItems)
-    case EntGen(GenFor(_, _, _, body))          => childNames(body)
-    case EntGen(GenRange(_, _, _, body))        => childNames(body)
-    case GenIf(_, thenItems, elseItems)         => childNames(thenItems) ::: childNames(elseItems)
-    case GenFor(_, _, _, body)                  => childNames(body)
-    case GenRange(_, _, _, body)                => childNames(body)
-    case _                                      => Nil
+    case DescEntity(Ident(name, _), _, _) => List(name)
+    case EntDesc(desc)                    => childNames(List(desc))
+    case EntGen(gen)                      => childNames(List(gen))
+    case GenIf(_, thenItems, elseItems)   => childNames(thenItems) ::: childNames(elseItems)
+    case GenFor(_, _, _, body)            => childNames(body)
+    case GenRange(_, _, _, body)          => childNames(body)
+    case _                                => Nil
   }
 
   // Cache of trees we already started working on. We use this to to avoid
   // repeated processing of entities that are instantiated multiple times
-  val inProgress = mutable.Map[String, Future[Set[Root]]]()
+  private[this] val inProgress = mutable.Map[String, Future[Set[Root]]]()
 
   // Recursive worker that builds a future yielding the set of all trees required for an entity
-  def doIt(entityName: String): Future[Set[Root]] = {
+  private[this] def doIt(name: String): Future[Set[Root]] = {
 
     // The actual future that builds all parse trees under the hierarchy of the given entity
     // note that this is only actually constructed if the inProgress map does not contain the
     // future already
     lazy val future = {
       // Fetch source
-      val sourceFuture = Future { locateIt(entityName) }
+      val sourceFuture = Future { locateIt(name) }
 
-      // Preproces it
+      // Pre-process it
       val preprocessedFuture = sourceFuture map preprocessIt
 
       // Parse it
       val astFuture = preprocessedFuture map { source =>
-        val root = parseIt(source, entityName)
-
-        // Check that the entityName used for file search matches the actual entity name
-        // defined in the top level entity in the file, we rely on this to find the
-        // source file of an instance, so there is no way forward if this is violated
-        val parsedName = root.entity.name
-
-        if (parsedName != entityName) {
-          root.entity match {
-            case Entity(ident: Ident, _) =>
-              cc.fatal(ident,
-                       s"Entity name '${parsedName}' does not match file basename '${entityName}'")
-            case _ => unreachable
+        parseIt(source, name) tap { root =>
+          // Find the declaration of name, ensure there is one and only one,
+          val decl = root.descs filter { _.name == name } match {
+            case Nil      => cc.fatal(s"'${source.name}' does not contain the definition of '$name'")
+            case d :: Nil => d
+            case _        => cc.fatal(s"'${source.name}' contains multiple definitions of '$name'")
+          }
+          // Add it to the root decls
+          synchronized {
+            rootDescs append decl
           }
         }
-
-        root
       }
 
       // Recursively process all instantiated nodes
       val childAstsFuture = {
-
         // Extract all instance entity names (from the recursively nested entities as well)
         val instantiatedEntityNamesFuture = astFuture map { root =>
-          def loop(entity: Entity): List[String] = {
-            val localNames = entity.name :: childNames(entity.body)
+          def loop(desc: Desc): List[String] = desc match {
+            case d: DescEntity =>
+              val localNames = d.name :: childNames(d.body)
 
-            def gatherExternalNames(trees: List[Tree]): List[String] = trees flatMap {
-              case EntInstance(_, Ident(name, _), _, _) if !(localNames contains name) => List(name)
-              case EntGen(GenFor(_, _, _, body))                                       => gatherExternalNames(body)
-              case EntGen(GenRange(_, _, _, body))                                     => gatherExternalNames(body)
-              case EntGen(GenIf(_, thenItems, elseItems)) =>
-                gatherExternalNames(thenItems) ::: gatherExternalNames(elseItems)
-              case _ => Nil
-            }
+              def gatherExternalNames(trees: List[Tree]): List[String] = trees flatMap {
+                case d: DescInstance =>
+                  d.spec match {
+                    case ExprCall(ExprRef(Ident(n, Nil)), _) if !(localNames contains n) => List(n)
+                    case ExprRef(Ident(n, Nil)) if !(localNames contains n)              => List(n)
+                    case _                                                               => Nil
+                  }
+                case EntDesc(desc)           => gatherExternalNames(List(desc))
+                case EntGen(gen)             => gatherExternalNames(List(gen))
+                case GenFor(_, _, _, body)   => gatherExternalNames(body)
+                case GenRange(_, _, _, body) => gatherExternalNames(body)
+                case GenIf(_, thenItems, elseItems) =>
+                  gatherExternalNames(thenItems) ::: gatherExternalNames(elseItems)
+                case _ => Nil
+              }
 
-            gatherExternalNames(entity.body) ::: (entity.entities flatMap loop)
+              gatherExternalNames(d.body) ::: (d.descs flatMap loop)
+            case _ => Nil
           }
-
-          loop(root.entity)
+          root.descs flatMap loop
         }
 
         // process them extracted names recursively
@@ -153,12 +157,13 @@ class Frontend(
 
     // Now look up the result, or create the future if we have not started it yet
     synchronized {
-      inProgress.getOrElseUpdate(entityName, future)
+      inProgress.getOrElseUpdate(name, future)
     }
   }
 
   // Parse all files needed for 'topLevelNames'. Returns list of Root nodes
-  def apply(topLevelNames: List[String]): List[Root] = {
+  // and global descs
+  def apply(topLevelNames: List[String]): (List[Root], List[Desc]) = {
 
     // Process all specified top level entities
     val treeSetFutures = Future.traverse(topLevelNames)(doIt)
@@ -171,16 +176,16 @@ class Frontend(
 
     // Mark top level entities as such
     for {
-      Root(_, Entity(ident: Ident, _)) <- treeSet
+      Root(body) <- treeSet
+      RizDesc(desc) <- body
+      if desc.isInstanceOf[DescEntity]
+      ident: Ident = desc.ref.asInstanceOf[Ident]
       if topLevelNames contains ident.name
     } {
-      val newAttr = Map("toplevel" -> (Expr(1) withLoc ident.loc))
-      ident withAttr {
-        if (ident.hasAttr) ident.attr ++ newAttr else newAttr
-      }
+      ident.attr("toplevel") = SourceAttribute.Flag()
     }
 
-    // Return the trees
-    treeSet.toList
+    // Return the trees and global decls
+    (treeSet.toList, rootDescs.toList)
   }
 }

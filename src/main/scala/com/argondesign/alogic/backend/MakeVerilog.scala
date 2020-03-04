@@ -26,29 +26,26 @@ import scala.collection.mutable.ListBuffer
 
 final class MakeVerilog(
     presentDetails: EntityDetails,
-    details: => Map[TypeSymbol, EntityDetails]
+    details: => Map[Symbol, EntityDetails]
 )(
     implicit cc: CompilerContext
 ) {
 
   import presentDetails._
 
-  // Render Verilog declaration List(signed, packed, id) strings for term symbol
-  private def vdecl(symbol: TermSymbol): String = {
-    def decl(id: String, kind: Type): String = {
-      kind match {
-        case intKind: TypeInt => {
-          val signedStr = if (kind.isSigned) "signed " else ""
-          intKind.width match {
-            case 1 => s"${signedStr}${id}"
-            case n => s"${signedStr}[${n - 1}:0] ${id}"
-          }
+  // Render Verilog declaration List(signed, packed, id) strings for symbol
+  private def vdecl(symbol: Symbol): String = {
+    def decl(id: String, kind: Type): String = kind match {
+      case k: TypeInt =>
+        val signedStr = if (kind.isSigned) "signed " else ""
+        if (k.width == 1) {
+          s"$signedStr$id"
+        } else {
+          s"$signedStr[${k.width - 1}:0] $id"
         }
-        case TypeArray(elemKind, sizeExpr) => {
-          s"${decl(id, elemKind)} [${sizeExpr.value.get - 1}:0]"
-        }
-        case _ => cc.ice(s"Don't know how to declare this type in Verilog:", kind.toString)
-      }
+      case TypeArray(elemKind, size) =>
+        s"${decl(id, elemKind)} [${size - 1}:0]"
+      case _ => cc.ice(s"Don't know how to declare this type in Verilog:", kind.toString)
     }
 
     decl(symbol.name, symbol.kind.underlying)
@@ -58,33 +55,37 @@ final class MakeVerilog(
   private def vexpr(expr: Expr, wrapCat: Boolean, indent: Int): String = {
     lazy val i0 = "  "
     lazy val i = i0 * indent
+
+    def aexpr(arg: Arg) = arg match {
+      case ArgP(e) => vexpr(e)
+      case _       => unreachable
+    }
+
     def loop(expr: Expr) = {
       expr match {
-        case ExprCall(e, args)         => s"${vexpr(e)}(${args map vexpr mkString ", "})"
-        case ExprUnary(op, e)          => s"(${op}${vexpr(e)})"
-        case ExprBinary(l, op, r)      => s"(${vexpr(l)} ${op} ${vexpr(r)})"
+        case ExprCall(e, args)         => s"${vexpr(e)}(${args map aexpr mkString ", "})"
+        case ExprUnary(op, e)          => s"($op${vexpr(e)})"
+        case ExprBinary(l, op, r)      => s"(${vexpr(l)} $op ${vexpr(r)})"
         case ExprTernary(cond, te, ee) => s"(${vexpr(cond)} ? ${vexpr(te)} : ${vexpr(ee)})"
         case ExprRep(count, e)         => s"{${vexpr(count)}{${vexpr(e)}}}"
-        case ExprCat(parts) => {
+        case ExprCat(parts) =>
           if (wrapCat) {
-            parts map vexpr mkString (s"{\n${i0}${i}", s",\n${i0}${i}", s"\n${i}}")
+            parts map vexpr mkString (s"{\n$i0$i", s",\n$i0$i", s"\n$i}")
           } else {
             parts map vexpr mkString ("{", ", ", "}")
           }
-        }
         case ExprIndex(e, index)           => s"${vexpr(e)}[${vexpr(index)}]"
-        case ExprSlice(e, lidx, op, ridx)  => s"${vexpr(e)}[${vexpr(lidx)}${op}${vexpr(ridx)}]"
-        case ExprSelect(e, sel, Nil)       => s"${vexpr(e)}${cc.sep}${sel}"
+        case ExprSlice(e, lidx, op, ridx)  => s"${vexpr(e)}[${vexpr(lidx)}$op${vexpr(ridx)}]"
+        case ExprSelect(e, sel, Nil)       => s"${vexpr(e)}${cc.sep}$sel"
         case ExprSym(symbol)               => symbol.name
-        case ExprInt(false, w, v)          => s"${w}'d${v}"
-        case ExprInt(true, w, v) if v >= 0 => s"${w}'sd${v}"
-        case ExprInt(true, w, v)           => s"-${w}'sd${-v}"
-        case ExprNum(false, value)         => s"'d${value}"
-        case ExprNum(true, value)          => s"${value}"
-        case ExprStr(str)                  => s""""${str}""""
-        case _ => {
+        case ExprInt(false, w, v)          => s"$w'd$v"
+        case ExprInt(true, w, v) if v >= 0 => s"$w'sd$v"
+        case ExprInt(true, w, v)           => s"-$w'sd${-v}"
+        case ExprNum(false, value)         => s"'d$value"
+        case ExprNum(true, value)          => s"$value"
+        case ExprStr(str)                  => s""""$str""""
+        case _ =>
           cc.ice(expr, "Don't know how to emit Verilog for expression", expr.toString)
-        }
       }
     }
 
@@ -103,18 +104,15 @@ final class MakeVerilog(
         if (hasConsts) {
           // Emit const declarations
           body.emitBlock(1, "Local parameter declarations") {
-            entity.declarations collect {
-              case Decl(symbol, Some(init)) if symbol.kind.isInstanceOf[TypeConst] => {
-                (symbol, init)
-              }
+            defn.defns collect {
+              case DefnConst(symbol, init) => (symbol, init)
             } foreach {
-              case (symbol, init) =>
-                body.emit(1)(s"localparam ${vdecl(symbol)} = ${vexpr(init)};")
+              case (symbol, init) => body.emit(1)(s"localparam ${vdecl(symbol)} = ${vexpr(init)};")
             }
           }
         }
 
-        def emitVarDecl(symbol: TermSymbol) = {
+        def emitVarDecl(symbol: Symbol): Unit = {
           if (netSymbols contains symbol) {
             body.emit(1)(s"wire ${vdecl(symbol)};")
           } else {
@@ -126,7 +124,7 @@ final class MakeVerilog(
           // Emit flop declarations
           body.emitBlock(1, "Flop declarations") {
             for {
-              Decl(qSymbol, _) <- entity.declarations
+              Decl(qSymbol) <- decl.decls
               dSymbol <- qSymbol.attr.flop.get
             } {
               emitVarDecl(qSymbol)
@@ -138,7 +136,7 @@ final class MakeVerilog(
         if (hasCombSignals) {
           body.emitBlock(1, "Combinatorial signal declarations") {
             for {
-              Decl(symbol, _) <- entity.declarations
+              Decl(symbol) <- decl.decls
               if symbol.attr.combSignal.get contains true
             } {
               emitVarDecl(symbol)
@@ -150,7 +148,7 @@ final class MakeVerilog(
           // Emit memory declarations
           body.emitBlock(1, "Memory declarations") {
             for {
-              Decl(qSymbol, _) <- entity.declarations
+              Decl(qSymbol) <- decl.decls
               if qSymbol.attr.memory.isSet
             } yield {
               emitVarDecl(qSymbol)
@@ -202,14 +200,14 @@ final class MakeVerilog(
 
             body.emit(3) {
               for {
-                Decl(qSymbol, initOpt) <- resetFlops
+                DefnVar(qSymbol, initOpt) <- resetFlops
               } yield {
                 val id = qSymbol.name
                 val init = initOpt match {
                   case Some(expr) => expr
-                  case None       => ExprInt(qSymbol.kind.isSigned, qSymbol.kind.width, 0)
+                  case None       => ExprInt(qSymbol.kind.isSigned, qSymbol.kind.width.toInt, 0)
                 }
-                s"${id} <= ${vexpr(init)};"
+                s"$id <= ${vexpr(init)};"
               }
             }
 
@@ -221,7 +219,7 @@ final class MakeVerilog(
 
             body.emit(3) {
               for {
-                Decl(qSymbol, _) <- resetFlops
+                Defn(qSymbol) <- resetFlops
                 dSymbol <- qSymbol.attr.flop.get
               } yield {
                 s"${qSymbol.name} <= ${dSymbol.name};"
@@ -248,7 +246,7 @@ final class MakeVerilog(
 
             body.emit(3) {
               for {
-                Decl(qSymbol, _) <- unresetFlops
+                Defn(qSymbol) <- unresetFlops
                 dSymbol <- qSymbol.attr.flop.get
               } yield {
                 s"${qSymbol.name} <= ${dSymbol.name};"
@@ -264,7 +262,7 @@ final class MakeVerilog(
         if (hasArrays) {
           body.emitBlock(1, "Distributed memory section") {
             for {
-              Decl(qSymbol, _) <- entity.declarations
+              Decl(qSymbol) <- decl.decls
               (weSymbol, waSymbol, wdSymbol) <- qSymbol.attr.memory.get
             } {
               body.emit(1) {
@@ -292,16 +290,15 @@ final class MakeVerilog(
 
     stmt match {
       // Block
-      case StmtBlock(stmts) => {
+      case StmtBlock(stmts) =>
         body.emit(indent)("begin")
         stmts foreach {
           emitStatement(body, indent + 1, _)
         }
         body.emit(indent)("end")
-      }
 
       // If statement
-      case StmtIf(cond, thenStmts, elseStmts) => {
+      case StmtIf(cond, thenStmts, elseStmts) =>
         body.emit(indent)(s"if (${vexpr(cond)}) begin")
         thenStmts foreach { emitStatement(body, indent + 1, _) }
         if (elseStmts.nonEmpty) {
@@ -309,45 +306,39 @@ final class MakeVerilog(
           elseStmts foreach { emitStatement(body, indent + 1, _) }
         }
         body.emit(indent)(s"end")
-      }
 
       // Case statement
-      case StmtCase(cond, cases) => {
+      case StmtCase(cond, cases) =>
         body.emit(indent)(s"case (${vexpr(cond)})")
         cases foreach {
-          case CaseRegular(conds, stmts) => {
+          case CaseRegular(conds, stmts) =>
             body.emit(indent + 1)(s"${conds map vexpr mkString ", "}: begin")
             stmts foreach { emitStatement(body, indent + 2, _) }
             body.emit(indent + 1)("end")
-          }
-          case CaseDefault(stmts) => {
+          case CaseDefault(stmts) =>
             body.emit(indent + 1)("default: begin")
             stmts foreach { emitStatement(body, indent + 2, _) }
             body.emit(indent + 1)("end")
-          }
           case _: CaseGen => unreachable
         }
         body.emit(indent)(s"endcase")
-      }
 
       // Assignment statements
-      case StmtAssign(lhs, rhs) => {
+      case StmtAssign(lhs, rhs) =>
         def wrapIfCat(expr: Expr) = expr match {
           case _: ExprCat => vexpr(expr, wrapCat = true, indent = indent)
           case _          => vexpr(expr)
         }
         body.emit(indent)(s"${wrapIfCat(lhs)} = ${wrapIfCat(rhs)};")
-      }
 
       // Error statement injected by compiler at an earlier error
-      case stmts: StmtError => body.emit(indent)(s"/* Error statement from ${stmt.loc.prefix} */")
+      case _: StmtError => body.emit(indent)(s"/* Error statement from ${stmt.loc.prefix} */")
 
       // Stall statement
-      case StmtStall(cond) => {
+      case StmtStall(cond) =>
         body.emit(indent)(s"if (!${vexpr(cond)}) begin")
         body.emit(indent + 1)("go = 1'b0;")
         body.emit(indent)(s"end")
-      }
 
       // Expression statements like $display();
       case StmtExpr(expr) => body.emit(indent)(s"${vexpr(expr)};")
@@ -360,8 +351,8 @@ final class MakeVerilog(
   }
 
   private def emitCombProcesses(body: CodeWriter): Unit = {
-    require(entity.combProcesses.lengthIs <= 1)
-    entity.combProcesses foreach {
+    require(defn.combProcesses.lengthIs <= 1)
+    defn.combProcesses foreach {
       case EntCombProcess(stmts) =>
         assert(stmts.nonEmpty)
         body.emitSection(1, "State system") {
@@ -377,8 +368,8 @@ final class MakeVerilog(
             emitStatement(body, 2, stmt)
           }
 
-          val cSymbols = entity.declarations collect {
-            case Decl(symbol, _) if symbol.attr.clearOnStall.get contains true => symbol
+          val cSymbols = decl.decls collect {
+            case Decl(symbol) if symbol.attr.clearOnStall.get contains true => symbol
           }
 
           if (cSymbols.nonEmpty && canStall) {
@@ -398,24 +389,23 @@ final class MakeVerilog(
   }
 
   private def emitInstances(body: CodeWriter): Unit = {
-    if (entity.instances.nonEmpty) {
+    if (decl.instances.nonEmpty) {
       body.emitSection(1, "Instances") {
-        for (EntInstance(Sym(iSymbol: TermSymbol, _), Sym(mSymbol: TypeSymbol, _), _, _) <- entity.instances) {
-          val TypeInstance(eSymbol) = iSymbol.kind.asInstance
+        for (DeclInstance(iSymbol, ExprSym(eSymbol)) <- decl.instances) {
           body.ensureBlankLine()
           body.emit(1)(s"${eSymbol.name} ${iSymbol.name} (")
 
           body.emitTable(2, " ") {
             val items = new ListBuffer[List[String]]
 
-            if (details(mSymbol).needsClock) {
+            if (details(eSymbol).needsClock) {
               items append { List(".clk", "         (clk),") }
             }
-            if (details(mSymbol).needsReset) {
+            if (details(eSymbol).needsReset) {
               items append { List(s".${cc.rst}", s"         (${cc.rst}),") }
             }
 
-            val TypeEntity(_, pSymbols, _) = eSymbol.kind.asEntity
+            val TypeEntity(_, pSymbols) = iSymbol.kind.asEntity
 
             val lastIndex = pSymbols.length - 1
 
@@ -435,7 +425,7 @@ final class MakeVerilog(
 
               val comma = if (i == lastIndex) "" else ","
 
-              items append { List(s".${pSymbol.name}", s"/* ${dir} */ (${pStr})${comma}") }
+              items append { List(s".${pSymbol.name}", s"/* $dir */ ($pStr)$comma") }
             }
 
             items.toList
@@ -453,15 +443,15 @@ final class MakeVerilog(
         for (EntConnect(lhs, rhs :: Nil) <- nonPortConnects) {
           val assignLhs = vexpr(rhs, wrapCat = true, indent = 1)
           val assignRhs = vexpr(lhs, wrapCat = true, indent = 1)
-          body.emit(1)(s"assign ${assignLhs} = ${assignRhs};")
+          body.emit(1)(s"assign $assignLhs = $assignRhs;")
         }
       }
     }
   }
 
   private def emitVerbatimSection(body: CodeWriter): Unit = {
-    val text = entity.verbatims collect {
-      case EntVerbatim("verilog", body) => body
+    val text = defn.verbatims collect {
+      case EntVerbatim("verilog", b) => b
     } mkString "\n"
 
     if (text.nonEmpty) {
@@ -495,13 +485,12 @@ final class MakeVerilog(
       items append s"input  wire ${cc.rst}"
     }
 
-    for (Decl(symbol, _) <- entity.declarations) {
+    for (Decl(symbol) <- decl.decls) {
       symbol.kind match {
         case _: TypeIn => items append s"input  wire ${vdecl(symbol)}"
-        case _: TypeOut => {
+        case _: TypeOut =>
           val word = if (isVerbatim || (netSymbols contains symbol)) "wire" else "reg "
-          items append s"output ${word} ${vdecl(symbol)}"
-        }
+          items append s"output $word ${vdecl(symbol)}"
         case _ => ()
       }
     }
@@ -520,7 +509,7 @@ final class MakeVerilog(
     body.emit(0)("`default_nettype none")
     body.ensureBlankLine()
 
-    body.emit(0)(s"module ${entity.symbol.name}(")
+    body.emit(0)(s"module ${decl.symbol.name}(")
     emitPortDeclarations(body)
     body.emit(0)(");")
     body.ensureBlankLine()

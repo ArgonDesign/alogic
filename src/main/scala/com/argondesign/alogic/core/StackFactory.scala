@@ -18,10 +18,12 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
 import com.argondesign.alogic.core.StorageTypes._
 import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.core.enums.EntityVariant
 import com.argondesign.alogic.lib.Math
-import com.argondesign.alogic.typer.TypeAssigner
 
-object StackFactory {
+import scala.util.ChainingSyntax
+
+object StackFactory extends ChainingSyntax {
 
   /*
 
@@ -107,40 +109,51 @@ object StackFactory {
   private def buildStack1(
       name: String,
       loc: Loc,
-      kind: Type
+      kind: TypeFund
   )(
       implicit cc: CompilerContext
-  ): Entity = {
+  ): (DeclEntity, DefnEntity) = {
     val fcn = FlowControlTypeNone
     val stw = StorageTypeWire
 
-    val bool = TypeUInt(TypeAssigner(Expr(1) withLoc loc))
+    val enSymbol = cc.newSymbol("en", loc) tap { _.kind = TypeIn(TypeUInt(1), fcn) }
+    val pusSymbol = cc.newSymbol("push", loc) tap { _.kind = TypeIn(TypeUInt(1), fcn) }
+    val popSymbol = cc.newSymbol("pop", loc) tap { _.kind = TypeIn(TypeUInt(1), fcn) }
+    val dSymbol = cc.newSymbol("d", loc) tap { _.kind = TypeIn(kind, fcn) }
+    val empSymbol = cc.newSymbol("empty", loc) tap { _.kind = TypeOut(TypeUInt(1), fcn, stw) }
+    val fulSymbol = cc.newSymbol("full", loc) tap { _.kind = TypeOut(TypeUInt(1), fcn, stw) }
+    val qSymbol = cc.newSymbol("q", loc) tap { _.kind = TypeOut(kind, fcn, stw) }
+    val valSymbol = cc.newSymbol("valid", loc) tap { _.kind = TypeUInt(1) }
+    val stoSymbol = cc.newSymbol("storage", loc) tap { _.kind = kind }
 
-    val enSymbol = cc.newTermSymbol("en", loc, TypeIn(bool, fcn))
+    val enDecl = enSymbol.mkDecl regularize loc
+    val pusDecl = pusSymbol.mkDecl regularize loc
+    val popDecl = popSymbol.mkDecl regularize loc
+    val dDecl = dSymbol.mkDecl regularize loc
+    val empDecl = empSymbol.mkDecl regularize loc
+    val fulDecl = fulSymbol.mkDecl regularize loc
+    val qDecl = qSymbol.mkDecl regularize loc
+    val valDecl = valSymbol.mkDecl regularize loc
+    val stoDecl = stoSymbol.mkDecl regularize loc
 
-    val pusSymbol = cc.newTermSymbol("push", loc, TypeIn(bool, fcn))
-    val popSymbol = cc.newTermSymbol("pop", loc, TypeIn(bool, fcn))
-    val dSymbol = cc.newTermSymbol("d", loc, TypeIn(kind, fcn))
-
-    val empSymbol = cc.newTermSymbol("empty", loc, TypeOut(bool, fcn, stw))
-    val fulSymbol = cc.newTermSymbol("full", loc, TypeOut(bool, fcn, stw))
-    val qSymbol = cc.newTermSymbol("q", loc, TypeOut(kind, fcn, stw))
-
-    val valSymbol = cc.newTermSymbol("valid", loc, bool)
-    val stoSymbol = cc.newTermSymbol("storage", loc, kind)
+    val enDefn = enSymbol.mkDefn
+    val pusDefn = pusSymbol.mkDefn
+    val popDefn = popSymbol.mkDefn
+    val dDefn = dSymbol.mkDefn
+    val empDefn = empSymbol.mkDefn
+    val fulDefn = fulSymbol.mkDefn
+    val qDefn = qSymbol.mkDefn
+    val valDefn = valSymbol.mkDefn(ExprInt(false, 1, 0))
+    val stoDefn = stoSymbol.mkDefn
 
     val enRef = ExprSym(enSymbol)
-
     val pusRef = ExprSym(pusSymbol)
     val popRef = ExprSym(popSymbol)
     val dRef = ExprSym(dSymbol)
-
     val empRef = ExprSym(empSymbol)
     val fulRef = ExprSym(fulSymbol)
     val qRef = ExprSym(qSymbol)
-
     val valRef = ExprSym(valSymbol)
-
     val stoRef = ExprSym(stoSymbol)
 
     val statements = List(
@@ -152,24 +165,9 @@ object StackFactory {
              Nil)
     )
 
-    val ports = List(
-      enSymbol,
-      dSymbol,
-      pusSymbol,
-      popSymbol,
-      qSymbol,
-      empSymbol,
-      fulSymbol
-    )
+    val decls = List(enDecl, pusDecl, popDecl, dDecl, empDecl, fulDecl, qDecl, valDecl, stoDecl)
 
-    val symbols = valSymbol :: stoSymbol :: ports
-
-    val decls = symbols map {
-      case `valSymbol` => Decl(valSymbol, Some(ExprInt(false, 1, 0)))
-      case symbol      => Decl(symbol, None)
-    } map {
-      EntDecl(_)
-    }
+    val defns = List(enDefn, pusDefn, popDefn, dDefn, empDefn, fulDefn, qDefn, valDefn, stoDefn) map EntDefn
 
     val connects = List(
       EntConnect(~valRef, List(empRef)),
@@ -177,12 +175,14 @@ object StackFactory {
       EntConnect(stoRef, List(qRef))
     )
 
-    val eKind = TypeEntity(name, ports, Nil)
-    val entitySymbol = cc.newTypeSymbol(name, loc, eKind)
-    entitySymbol.attr.variant set "fsm"
-    entitySymbol.attr.highLevelKind set eKind
-    val entity = Entity(Sym(entitySymbol, Nil), decls ::: EntCombProcess(statements) :: connects)
-    entity regularize loc
+    val entitySymbol = cc.newSymbol(name, loc)
+    val decl = DeclEntity(entitySymbol, decls) regularize loc
+    val defn = DefnEntity(
+      entitySymbol,
+      EntityVariant.Fsm,
+      defns ::: EntCombProcess(statements) :: connects
+    ) regularize loc
+    (decl, defn)
   }
 
   // Build an entity similar to the following Alogic FSM to be used as an
@@ -226,46 +226,56 @@ object StackFactory {
   private def buildStackN(
       name: String,
       loc: Loc,
-      kind: Type,
-      depth: Int
+      kind: TypeFund,
+      depth: BigInt
   )(
       implicit cc: CompilerContext
-  ): Entity = {
+  ): (DeclEntity, DefnEntity) = {
     require(depth >= 2)
 
     val fcn = FlowControlTypeNone
     val stw = StorageTypeWire
     val str = StorageTypeReg
 
-    val bool = TypeUInt(TypeAssigner(Expr(1) withLoc loc))
-
     val ptrWidth = Math.clog2(depth)
 
-    val enSymbol = cc.newTermSymbol("en", loc, TypeIn(bool, fcn))
+    val enSymbol = cc.newSymbol("en", loc) tap { _.kind = TypeIn(TypeUInt(1), fcn) }
+    val pusSymbol = cc.newSymbol("push", loc) tap { _.kind = TypeIn(TypeUInt(1), fcn) }
+    val popSymbol = cc.newSymbol("pop", loc) tap { _.kind = TypeIn(TypeUInt(1), fcn) }
+    val dSymbol = cc.newSymbol("d", loc) tap { _.kind = TypeIn(kind, fcn) }
+    val empSymbol = cc.newSymbol("empty", loc) tap { _.kind = TypeOut(TypeUInt(1), fcn, str) }
+    val fulSymbol = cc.newSymbol("full", loc) tap { _.kind = TypeOut(TypeUInt(1), fcn, str) }
+    val qSymbol = cc.newSymbol("q", loc) tap { _.kind = TypeOut(kind, fcn, stw) }
+    val stoSymbol = cc.newSymbol("storage", loc) tap { _.kind = TypeArray(kind, depth) }
+    val ptrSymbol = cc.newSymbol("ptr", loc) tap { _.kind = TypeUInt(ptrWidth) }
 
-    val pusSymbol = cc.newTermSymbol("push", loc, TypeIn(bool, fcn))
-    val popSymbol = cc.newTermSymbol("pop", loc, TypeIn(bool, fcn))
-    val dSymbol = cc.newTermSymbol("d", loc, TypeIn(kind, fcn))
+    val enDecl = enSymbol.mkDecl regularize loc
+    val pusDecl = pusSymbol.mkDecl regularize loc
+    val popDecl = popSymbol.mkDecl regularize loc
+    val dDecl = dSymbol.mkDecl regularize loc
+    val empDecl = empSymbol.mkDecl regularize loc
+    val fulDecl = fulSymbol.mkDecl regularize loc
+    val qDecl = qSymbol.mkDecl regularize loc
+    val stoDecl = stoSymbol.mkDecl regularize loc
+    val ptrDecl = ptrSymbol.mkDecl regularize loc
 
-    val empSymbol = cc.newTermSymbol("empty", loc, TypeOut(bool, fcn, str))
-    val fulSymbol = cc.newTermSymbol("full", loc, TypeOut(bool, fcn, str))
-    val qSymbol = cc.newTermSymbol("q", loc, TypeOut(kind, fcn, stw))
-
-    val stoKind = TypeArray(kind, ExprNum(false, depth) regularize loc)
-    val stoSymbol = cc.newTermSymbol("storage", loc, stoKind)
-    val ptrKind = TypeUInt(Expr(ptrWidth) regularize loc)
-    val ptrSymbol = cc.newTermSymbol("ptr", loc, ptrKind)
+    val enDefn = enSymbol.mkDefn
+    val pusDefn = pusSymbol.mkDefn
+    val popDefn = popSymbol.mkDefn
+    val dDefn = dSymbol.mkDefn
+    val empDefn = empSymbol.mkDefn(ExprInt(false, 1, 1))
+    val fulDefn = fulSymbol.mkDefn(ExprInt(false, 1, 0))
+    val qDefn = qSymbol.mkDefn
+    val stoDefn = stoSymbol.mkDefn
+    val ptrDefn = ptrSymbol.mkDefn(ExprInt(false, ptrWidth, 0))
 
     val enRef = ExprSym(enSymbol)
-
     val pusRef = ExprSym(pusSymbol)
     val popRef = ExprSym(popSymbol)
     val dRef = ExprSym(dSymbol)
-
     val empRef = ExprSym(empSymbol)
     val fulRef = ExprSym(fulSymbol)
     val qRef = ExprSym(qSymbol)
-
     val stoRef = ExprSym(stoSymbol)
     val ptrRef = ExprSym(ptrSymbol)
 
@@ -290,7 +300,7 @@ object StackFactory {
             ),
             List(
               StmtAssign(ptrRef, ptrRef + zextPtrWidth(~empRef & ~fulRef & pusRef)),
-              StmtExpr(ExprCall(stoRef select "write", List(ptrRef, dRef))),
+              StmtExpr(ExprCall(stoRef select "write", List(ArgP(ptrRef), ArgP(dRef)))),
               StmtAssign(empRef, empRef & ~pusRef),
               StmtAssign(fulRef, ExprBinary(ptrRef, "==", ExprInt(false, ptrWidth, depth - 1)))
             )
@@ -300,54 +310,39 @@ object StackFactory {
       )
     )
 
-    val ports = List(
-      enSymbol,
-      dSymbol,
-      pusSymbol,
-      popSymbol,
-      qSymbol,
-      empSymbol,
-      fulSymbol
-    )
+    val decls = List(enDecl, pusDecl, popDecl, dDecl, empDecl, fulDecl, qDecl, stoDecl, ptrDecl)
 
-    val symbols = stoSymbol :: ptrSymbol :: ports
-
-    val decls = symbols map {
-      case `empSymbol` => Decl(empSymbol, Some(ExprInt(false, 1, 1)))
-      case `fulSymbol` => Decl(fulSymbol, Some(ExprInt(false, 1, 0)))
-      case `ptrSymbol` => Decl(ptrSymbol, Some(ExprInt(false, ptrWidth, 0)))
-      case symbol      => Decl(symbol, None)
-    } map {
-      EntDecl(_)
-    }
+    val defns = List(enDefn, pusDefn, popDefn, dDefn, empDefn, fulDefn, qDefn, stoDefn, ptrDefn) map EntDefn
 
     val connects = List(
       EntConnect(ExprIndex(stoRef, ptrRef), List(qRef))
     )
 
-    val eKind = TypeEntity(name, ports, Nil)
-    val entitySymbol = cc.newTypeSymbol(name, loc, eKind)
-    entitySymbol.attr.variant set "fsm"
-    entitySymbol.attr.highLevelKind set eKind
-    val entity = Entity(Sym(entitySymbol, Nil), decls ::: EntCombProcess(statements) :: connects)
-    entity regularize loc
+    val entitySymbol = cc.newSymbol(name, loc)
+    val decl = DeclEntity(entitySymbol, decls) regularize loc
+    val defn = DefnEntity(
+      entitySymbol,
+      EntityVariant.Fsm,
+      defns ::: EntCombProcess(statements) :: connects
+    ) regularize loc
+    (decl, defn)
   }
 
   def apply(
       name: String,
       loc: Loc,
-      kind: Type,
-      depth: Expr
+      kind: TypeFund,
+      depth: BigInt
   )(
       implicit cc: CompilerContext
-  ): Entity = {
+  ): (DeclEntity, DefnEntity) = {
     require(kind.isPacked)
     require(kind != TypeVoid)
 
-    depth.value match {
-      case Some(v) if v == 1 => buildStack1(name, loc, kind)
-      case Some(v)           => buildStackN(name, loc, kind, v.toInt)
-      case None              => cc.ice(loc, "Stack with non-computable dept")
+    if (depth == 1) {
+      buildStack1(name, loc, kind)
+    } else {
+      buildStackN(name, loc, kind, depth)
     }
   }
 

@@ -1,0 +1,39 @@
+network dependent_gen_1 {
+  in  bool i_0;
+  in  bool i_1;
+  out bool o_0;
+  out bool o_1;
+
+  const bool P = false;
+
+  gen if (P) {
+    const bool Q = false;
+  } else {
+    const bool Q = true;
+  }
+
+  gen if (Q) {
+    const bool R = false;
+  } else {
+    const bool R = true;
+  }
+
+  gen if (R) {
+    i_0 -> o_0;
+    i_1 -> o_1;
+  } else {
+    i_1 -> o_0;
+    i_0 -> o_1;
+  }
+}
+// @fec-golden {{{
+//  module dependent_gen_1(
+//    input  i_0,
+//    input  i_1,
+//    output o_0,
+//    output o_1
+//  );
+//    assign o_0 = i_1;
+//    assign o_1 = i_0;
+//  endmodule
+// }}}

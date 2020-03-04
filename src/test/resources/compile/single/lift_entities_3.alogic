@@ -1,0 +1,22 @@
+network lift_entities_3 {
+  out wire u8 o;
+  const u8 C = 8'd35;
+  const u8 D = C;
+
+  new fsm inner {
+    void main() {
+      o = D;
+      fence;
+    }
+  }
+}
+
+// @fec-golden {{{
+// module lift_entities_3(
+//   output wire [7:0] o
+// );
+//
+//   assign o = 8'd35;
+//
+// endmodule
+// }}}

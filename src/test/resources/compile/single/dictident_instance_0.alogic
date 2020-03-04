@@ -12,4 +12,4 @@ network dictident_instance_0 {
 
   i -> inst#[0].ii; inst#[0].oo -> o;
 }
-// :11: ERROR: Declaration with dictionary identifier must appear directly in 'gen' loop scope.
+// :11: ERROR: Definition with dictionary identifier must appear directly in 'gen' loop scope.

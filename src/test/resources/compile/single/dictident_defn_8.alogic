@@ -7,5 +7,5 @@ network dictident_defn_8 {
   out o_t#[0] o_0;
   i_0 -> o_0;
 }
-// :3: ERROR: Type 'i_t#\[0\]' defined multiple times after processing 'gen' constructs
-// :4: ERROR: Type 'o_t#\[0\]' defined multiple times after processing 'gen' constructs
+// :3: ERROR: 'i_t#\[0\]' defined multiple times after processing 'gen' constructs
+// :4: ERROR: 'o_t#\[0\]' defined multiple times after processing 'gen' constructs

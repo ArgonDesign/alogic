@@ -1,0 +1,60 @@
+network dictident_hard_0 {
+  const uint N = 4;
+
+  gen for (uint n < N) {
+    in  bool i#[n];
+    out bool o#[n];
+  }
+
+  fsm inner {
+    param uint W;
+    gen if (N > 2) {
+      gen for (uint n < N) {
+        in       uint(W) ii#[n];
+        out wire uint(W) oo#[n];
+      }
+    }
+
+    void main() {
+      gen for (uint n < N) {
+        gen if (n == N - 1) {
+          oo#[n] = ii#[0];
+        } else {
+          // The hard bit is that this is invalid for n == N-1, but that
+          // will be removed by the enclosing 'gen if', but that is only
+          // expanded after the 'gen for', so we cannot resolve the dict ident
+          // while processing the 'gen for'. At the same time, the 'gen if'
+          // enclosing the definition of 'ii' and 'oo' removes a level of choice
+          // when processed, which must be resolved before this 'gen if' is
+          // processed..
+          oo#[n] = ii#[n+1];
+        }
+      }
+    fence;
+    }
+  }
+
+  inst = new inner(W=1);
+
+  gen for (uint n < N) {
+    i#[n] -> inst.ii#[n];
+    inst.oo#[n] -> o#[n];
+  }
+}
+// @fec-golden {{{
+//  module dictident_hard_0(
+//    input i__0,
+//    input i__1,
+//    input i__2,
+//    input i__3,
+//    output o__0,
+//    output o__1,
+//    output o__2,
+//    output o__3
+//  );
+//    assign o__0 = i__1;
+//    assign o__1 = i__2;
+//    assign o__2 = i__3;
+//    assign o__3 = i__0;
+//  endmodule
+// }}}

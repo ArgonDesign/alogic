@@ -18,5 +18,5 @@ network dictident_instance_1 {
   i_a -> inst#[0].ii; inst#[0].oo -> o_a;
   i_b -> inst#[1].ii; inst#[1].oo -> o_b;
 }
-// :15: ERROR: Redefinition of name 'inst' with previous definition at
+// :15: ERROR: Redefinition of 'inst' with previous definition at
 // :15: ERROR: ... .*dictident_instance_1.alogic:14

@@ -11,7 +11,7 @@ network dictident_entity_6 {
       ii -> oo;
     }
 
-    inst = new inner#[N]();
+    inst = new inner#[N];
 
     gen if (N == 0) {
       i_a -> inst.ii; inst.oo -> o_a;

@@ -1,0 +1,34 @@
+network dictident_struct_5 {
+  gen for (uint N < 2) {
+    in  uint(N+1) i#[N];
+    out uint(N+1) o#[N];
+  }
+
+  gen for (uint N < 2) {
+    struct i_t#[N] { uint(N+1) f; }
+    struct o_t#[N] { uint(N+1) f; }
+  }
+
+  gen for (uint N < 2) {
+    struct i_t#[N] { uint(N+1) f; }
+    struct o_t#[N] { uint(N+1) f; }
+  }
+
+  new network inner {
+    gen for (uint N < 2) {
+      in  i_t#[N] ii#[N];
+      out o_t#[N] oo#[N];
+      ii#[N] -> oo#[N];
+    }
+  }
+
+  gen for (uint N < 2) {
+    i#[N] -> inner.ii#[N]; inner.oo#[N] -> o#[N];
+  }
+}
+// :19: ERROR: 'i_t' is ambiguous after processing 'gen' constructs. Active definitions at:
+// :19: ERROR: ... .*dictident_struct_5.alogic:8
+// :19: ERROR: ... .*dictident_struct_5.alogic:13
+// :20: ERROR: 'o_t' is ambiguous after processing 'gen' constructs. Active definitions at:
+// :20: ERROR: ... .*dictident_struct_5.alogic:9
+// :20: ERROR: ... .*dictident_struct_5.alogic:14

@@ -20,19 +20,19 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
 
-private[builtins] class AtZx(implicit cc: CompilerContext) extends BuiltinPolyFunc {
+private[builtins] class AtZx(implicit cc: CompilerContext)
+    extends BuiltinPolyFunc(isValidConnLhs = true) {
 
   val name = "@zx"
 
-  def returnType(args: List[Expr]) = args partialMatch {
-    case List(width, expr) if width.isKnownConst && expr.tpe.isPacked => {
-      TypeInt(expr.tpe.isSigned, width)
-    }
+  def returnType(args: List[Expr]): Option[TypeFund] = args partialMatch {
+    case List(width, expr) if width.isKnownConst && expr.tpe.isPacked =>
+      TypeInt(expr.tpe.isSigned, width.value.get.toInt)
   }
 
-  def combArgs(args: List[Expr]) = List(args(1))
+  def isKnown(args: List[Expr]) = args(1).isKnownConst
 
-  def fold(loc: Loc, args: List[Expr]) = {
+  def simplify(loc: Loc, args: List[Expr]) = {
     val List(width, expr) = args
     AtEx.fold(loc, ExprInt(false, 1, 0) withLoc loc, width, expr)
   }

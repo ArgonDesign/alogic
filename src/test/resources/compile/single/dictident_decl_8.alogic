@@ -5,5 +5,5 @@ network dictident_decl_8 {
   }
   i#[0] -> o#[0];
 }
-// :3: ERROR: Name 'i#\[0\]' defined multiple times after processing 'gen' constructs
-// :4: ERROR: Name 'o#\[0\]' defined multiple times after processing 'gen' constructs
+// :3: ERROR: 'i#\[0\]' defined multiple times after processing 'gen' constructs
+// :4: ERROR: 'o#\[0\]' defined multiple times after processing 'gen' constructs

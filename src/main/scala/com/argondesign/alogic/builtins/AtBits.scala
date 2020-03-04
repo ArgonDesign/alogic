@@ -20,27 +20,26 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
 
-private[builtins] class AtBits(implicit cc: CompilerContext) extends BuiltinPolyFunc {
+private[builtins] class AtBits(implicit cc: CompilerContext)
+    extends BuiltinPolyFunc(isValidConnLhs = true) {
 
   val name = "@bits"
 
-  def returnType(args: List[Expr]) = args match {
-    case List(arg) => {
-      arg.tpe match {
-        case _: TypeNum                      => None
-        case TypeType(kind) if kind.isPacked => Some(TypeNum(false))
-        case kind if kind.isPacked           => Some(TypeNum(false))
-        case _                               => None
-      }
+  def returnType(args: List[Expr]): Option[TypeFund] = {
+    args map { _.tpe } match {
+      case List(TypeType(kind)) if kind.isPacked => Some(TypeNum(false))
+      case List(TypeNone(kind)) if kind.isPacked => Some(TypeNum(false))
+      case List(kind) if kind.isPacked           => Some(TypeNum(false))
+      case _                                     => None
     }
-    case _ => None
   }
 
-  def combArgs(args: List[Expr]) = Nil
+  def isKnown(args: List[Expr]) = true
 
-  def fold(loc: Loc, args: List[Expr]) = {
+  def simplify(loc: Loc, args: List[Expr]) = {
     args.head.tpeOpt map {
       case TypeType(kind) => Expr(kind.width)
+      case TypeNone(kind) => Expr(kind.width)
       case kind           => Expr(kind.width)
     }
   }

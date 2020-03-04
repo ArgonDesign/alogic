@@ -29,7 +29,10 @@ case class Loc(source: Source, start: Int, end: Int, point: Int) {
     val s = start - startLineOffset
     val e = end - startLineOffset
     val p = point - startLineOffset
-    val text = lines mkString ""
+    val text = lines mkString "" match {
+      case s if s.nonEmpty && s.last != '\n' => s + '\n'
+      case s                                 => s
+    }
     val squiggle = text.zipWithIndex map {
       case ('\n', _)        => '\n'
       case (_, i) if i == p => '^'

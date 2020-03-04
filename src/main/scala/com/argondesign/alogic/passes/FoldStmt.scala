@@ -20,13 +20,14 @@ import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Bindings
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Symbols.Symbol
 
 import scala.collection.mutable
 
 final class FoldStmt(implicit cc: CompilerContext) extends TreeTransformer {
 
   override def skip(tree: Tree): Boolean = tree match {
-    case entity: Entity    => entity.combProcesses.isEmpty
+    case defn: DefnEntity  => defn.combProcesses.isEmpty
     case _: EntCombProcess => false
     case _: Stmt           => false
     case _: Case           => false
@@ -37,37 +38,37 @@ final class FoldStmt(implicit cc: CompilerContext) extends TreeTransformer {
 
   private[this] val bindings = mutable.Stack[Bindings]()
 
-  override def enter(tree: Tree): Unit = tree match {
-    case EntCombProcess(stmts) =>
-      bindingsMap = StaticEvaluation(StmtBlock(stmts))._1
+  override def enter(tree: Tree): Option[Tree] = {
+    tree match {
+      case EntCombProcess(stmts) =>
+        bindingsMap = StaticEvaluation(StmtBlock(stmts))._1
 
-    case stmt: Stmt =>
-      // TODO: should not have to do orElse
-      bindings.push(bindingsMap.getOrElse(stmt.id, Bindings.empty))
+      case stmt: Stmt =>
+        // TODO: should not have to do orElse
+        bindings.push(bindingsMap.getOrElse(stmt.id, Bindings.empty))
 
-    case _ =>
+      case _ =>
+    }
+    None
   }
 
   override def transform(tree: Tree): Tree = {
     val result = tree match {
-      case StmtIf(cond, thenStmts, elseStmts) => {
+      case StmtIf(cond, thenStmts, elseStmts) =>
         (cond given bindings.top).value match {
           case Some(v) if v != 0 => Thicket(thenStmts) regularize tree.loc
           case Some(v) if v == 0 => Thicket(elseStmts) regularize tree.loc
           case None              => tree
         }
-      }
 
-      case StmtStall(cond) => {
+      case StmtStall(cond) =>
         (cond given bindings.top).value match {
           case Some(v) if v != 0 => Thicket(Nil) regularize tree.loc
-          case Some(v) if v == 0 => {
+          case Some(v) if v == 0 =>
             cc.error(tree, "Stall condition is always true")
             tree
-          }
           case None => tree
         }
-      }
 
       case _ => tree
     }
@@ -84,7 +85,7 @@ final class FoldStmt(implicit cc: CompilerContext) extends TreeTransformer {
   }
 }
 
-object FoldStmt extends TreeTransformerPass {
+object FoldStmt extends EntityTransformerPass(declFirst = true) {
   val name = "fold-stms"
-  def create(implicit cc: CompilerContext) = new FoldStmt
+  def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer = new FoldStmt
 }

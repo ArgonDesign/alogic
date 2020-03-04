@@ -20,27 +20,22 @@ import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 
-object CaseBuilder extends BaseBuilder[Case_clauseContext, Case] {
-
-  private def makeStmtList(stmt: Stmt): List[Stmt] = stmt match {
+object CaseBuilder extends BaseBuilder[KaseContext, Case] {
+  private def stmts(stmt: Stmt): List[Stmt] = stmt match {
     case StmtBlock(ss) => ss
     case s             => List(s)
   }
 
-  def apply(ctx: Case_clauseContext)(implicit cc: CompilerContext): Case = {
+  def apply(ctx: KaseContext)(implicit cc: CompilerContext): Case = {
     object Visitor extends AlogicScalarVisitor[Case] {
-      override def visitCaseRegular(ctx: CaseRegularContext) = {
-        val cond = ExprBuilder(ctx.commaexpr.expr)
-        val stmts = makeStmtList(StmtBuilder(ctx.statement))
-        CaseRegular(cond, stmts) withLoc ctx.loc
-      }
-      override def visitCaseDefault(ctx: CaseDefaultContext) = {
-        val stmts = makeStmtList(StmtBuilder(ctx.statement))
-        CaseDefault(stmts) withLoc ctx.loc
-      }
-      override def visitCaseGen(ctx: CaseGenContext) = {
-        CaseGen(GenBuilder(ctx.generate)) withLoc ctx.loc
-      }
+      override def visitCaseGen(ctx: CaseGenContext): Case =
+        CaseGen(GenBuilder(ctx.gen)) withLoc ctx.loc
+
+      override def visitCaseRegular(ctx: CaseRegularContext): Case =
+        CaseRegular(ExprBuilder(ctx.expr), stmts(StmtBuilder(ctx.stmt))) withLoc ctx.loc
+
+      override def visitCaseDefault(ctx: CaseDefaultContext): Case =
+        CaseDefault(stmts(StmtBuilder(ctx.stmt))) withLoc ctx.loc
     }
 
     Visitor(ctx)
