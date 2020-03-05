@@ -15,22 +15,23 @@
 
 package com.argondesign.alogic.passes
 
-import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.backend.CodeGeneration
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.frontend.Parse
 
 import scala.util.ChainingSyntax
 
 object Passes extends ChainingSyntax {
 
   // All trees are transformed with the given pass before the next pass begins
-  def apply(trees: List[Root])(implicit cc: CompilerContext) = {
+  def apply(topLevels: List[String])(implicit cc: CompilerContext) = {
     // Define the passes to apply
     val passes =
       ////////////////////////////////////////////////////////////////////////
       // Front-end
       ////////////////////////////////////////////////////////////////////////
-      Checker andThen
+      Parse andThen
+        Checker andThen
         Namer andThen
         UnusedCheck andThen
         Elaborate andThen
@@ -99,7 +100,7 @@ object Passes extends ChainingSyntax {
         CodeGeneration
 
     // Apply the passes to the trees
-    passes(trees)
+    passes(topLevels)
   }
 
 }

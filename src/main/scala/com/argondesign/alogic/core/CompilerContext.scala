@@ -21,7 +21,6 @@ import com.argondesign.alogic.ast.Trees.Tree
 import com.argondesign.alogic.builtins.Builtins
 import com.argondesign.alogic.core.Types.TypeUnknown
 import com.argondesign.alogic.core.enums.ResetStyle._
-import com.argondesign.alogic.frontend.Frontend
 import com.argondesign.alogic.passes.Passes
 import com.argondesign.alogic.typer.Typer
 
@@ -42,29 +41,13 @@ class CompilerContext(val settings: Settings = Settings())
     case _                  => "rst"
   }
 
-  var passNumber = 0
+  //////////////////////////////////////////////////////////////////////////////
+  // Compile the top levels
+  //////////////////////////////////////////////////////////////////////////////
 
-  def compile(toplevels: List[String]): Unit = {
+  def compile(topLevels: List[String]): Unit = {
     try {
-      //////////////////////////////////////////////////////////////////////////////
-      // Create the front end and built the ASTs
-      //////////////////////////////////////////////////////////////////////////////
-
-      val (frontEndTrees, rootDescs) = {
-        val frontend = new Frontend(settings.moduleSearchDirs,
-                                    settings.includeSearchDirs,
-                                    settings.initialDefines)(this)
-        frontend(toplevels)
-      }
-
-      // Insert root decls into the global scope
-      addGlobalDescs(rootDescs)
-
-      //////////////////////////////////////////////////////////////////////////////
-      // Compile the trees
-      //////////////////////////////////////////////////////////////////////////////
-
-      Passes(frontEndTrees)(this)
+      Passes(topLevels)(cc = this)
     } catch {
       case _: FatalErrorException =>
     } finally {

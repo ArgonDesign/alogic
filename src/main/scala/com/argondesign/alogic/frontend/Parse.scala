@@ -22,6 +22,7 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Source
 import com.argondesign.alogic.core.SourceAttribute
+import com.argondesign.alogic.passes.Pass
 
 import scala.collection.mutable
 import scala.concurrent.Await
@@ -35,7 +36,7 @@ import scala.util.ChainingSyntax
 // - pre-processing (source -> source)
 // - parsing (source -> ast)
 
-class Frontend(
+class Parse(
     val moduleSeachDirs: List[File],
     val includeSeachDirs: List[File],
     val initialDefines: Map[String, String]
@@ -188,4 +189,25 @@ class Frontend(
     // Return the trees and global decls
     (treeSet.toList, rootDescs.toList)
   }
+}
+
+object Parse extends Pass[List[String], List[Root]] {
+  val name = "parser"
+
+  def process(topLevels: List[String])(implicit cc: CompilerContext): List[Root] = {
+    val parse = new Parse(cc.settings.moduleSearchDirs,
+                          cc.settings.includeSearchDirs,
+                          cc.settings.initialDefines)
+
+    // Parse the things
+    val (roots, rootDescs) = parse(topLevels)
+
+    // Insert root decls into the global scope
+    cc.addGlobalDescs(rootDescs)
+
+    roots
+  }
+
+  def dump(result: List[Root], tag: String)(implicit cc: CompilerContext): Unit =
+    result foreach { cc.dump(_, "." + tag) }
 }
