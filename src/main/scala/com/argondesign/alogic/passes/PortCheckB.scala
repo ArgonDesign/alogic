@@ -26,11 +26,8 @@ import scala.collection.mutable
 
 final class PortCheckB(implicit cc: CompilerContext) extends TreeTransformer {
 
-  private[this] def multipleDriverError(rhs: Expr, loc: Loc, sliceOrIndexStr: String): Unit = {
-    cc.error(rhs,
-             s"'${rhs.toSource}${sliceOrIndexStr}' has multiple drivers",
-             s"Other '->' is at: ${loc.prefix}")
-  }
+  private[this] def multipleDriverError(rhs: Expr, loc: Loc, sliceOrIndexStr: String): Unit =
+    cc.error(rhs, s"Port has multiple drivers. Other '->' is at:", loc.prefix)
 
   // TODO: Add back correct skip condition
 //  override def skip(tree: Tree): Boolean = tree match {
