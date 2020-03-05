@@ -99,6 +99,7 @@ object Main extends App {
       case _        => cliConf.stderrisatty.toOption contains true
     },
     dumpTrees = cliConf.dumpTrees.toOption contains true,
+    profile = cliConf.profile.toOption contains true,
     shuffleEnts = cliConf.shuffleEnts.toOption,
     moduleManifestPath = cliConf.moduleManifest.toOption map { _.toPath },
     resetStyle = cliConf.resetStyle(),
@@ -112,6 +113,12 @@ object Main extends App {
   //////////////////////////////////////////////////////////////////////////////
 
   cc.compile(cliConf.toplevel())
+
+  if (cc.settings.profile) {
+    val pw = new PrintWriter((opath resolve "profile").toFile)
+    cc.writeProfile(pw)
+    pw.close()
+  }
 
   sys exit (if (cc.hasError) 1 else 0)
 }

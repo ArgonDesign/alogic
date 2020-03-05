@@ -49,6 +49,8 @@ case class Settings(
     colourize: Boolean = false,
     // Dump trees after each pass
     dumpTrees: Boolean = false,
+    // Measure and report inserted execution timing
+    profile: Boolean = false,
     // Randomly shuffle entity contents
     shuffleEnts: Option[Int] = None,
     // Module manifest output path

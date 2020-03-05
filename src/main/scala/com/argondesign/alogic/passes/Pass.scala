@@ -57,7 +57,7 @@ trait Pass[T, R] { self =>
   // Run  the pass
   protected def run(input: T, passNumber: Int)(implicit cc: CompilerContext): Option[R] = {
     // Process the inputs
-    val output = process(input)
+    val output = cc.timeit(f"pass $passNumber%02d $name") { process(input) }
     // Dump result if requested
     if (cc.settings.dumpTrees) dump(output, f"$passNumber%02d.$name")
     // Yield output, if there were no errors

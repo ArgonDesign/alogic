@@ -292,6 +292,9 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
   // Dump entities after each pass
   val dumpTrees = toggle(name = "dump-trees", noshort = true, hidden = true)
 
+  // Measure and report inserted execution timing
+  val profile = toggle(name = "profile", noshort = true, hidden = true)
+
   // Randomly shuffle Ent nodes
   val shuffleEnts = opt[Int](noshort = true, default = None, hidden = true)
 
