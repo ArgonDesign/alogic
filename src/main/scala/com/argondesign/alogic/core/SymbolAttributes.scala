@@ -16,6 +16,7 @@
 package com.argondesign.alogic.core
 
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.builtins.BuiltinPolyFunc
 import com.argondesign.alogic.core.StorageTypes.StorageSlice
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types.TypeEntity
@@ -108,6 +109,9 @@ class SymbolAttributes {
   // This choice symbol has been removed by generate processing
   val eliminated = new Attribute[Boolean]()
 
+  // For builtin symbols, points to the implementation
+  val builtin = new Attribute[BuiltinPolyFunc]()
+
   // Iterator that enumerates all fields above
   private def attrIterator = Iterator(
     unused,
@@ -137,7 +141,8 @@ class SymbolAttributes {
     wasParam,
     pipelineStorage,
     dictResolutions,
-    eliminated
+    eliminated,
+    builtin
   )
 
   // Iterator that enumerates names of fields above
@@ -169,7 +174,8 @@ class SymbolAttributes {
     "wasParam",
     "pipelineStorage",
     "dictResolutions",
-    "eliminated"
+    "eliminated",
+    "builtin"
   )
 
   // Copy values of attributes from another instance

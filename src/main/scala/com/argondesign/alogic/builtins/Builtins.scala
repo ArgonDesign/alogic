@@ -47,25 +47,27 @@ trait Builtins { this: CompilerContext =>
   // Fold call to builtin function
   def foldBuiltinCall(call: ExprCall): Expr = call.expr match {
     case ExprSym(symbol) =>
-      val builtin = (builtins find { _ contains symbol }).get
-      builtin.fold(call.loc, call.args) map { _ regularize call.loc } getOrElse call
+      val builtin = timeit("Find builtin") {
+        symbol.attr.builtin.value
+      }
+      timeit("Fold builtin") {
+        builtin.fold(call.loc, call.args) map {
+          _ regularize call.loc
+        } getOrElse call
+      }
     case _ => unreachable
   }
 
   // Is call a known const
   def isKnownConstBuiltinCall(call: ExprCall): Boolean = call.expr match {
-    case ExprSym(symbol) =>
-      val builtin = (builtins find { _ contains symbol }).get
-      builtin.isKnownConst(call.args)
-    case _ => unreachable
+    case ExprSym(symbol) => symbol.attr.builtin.value.isKnownConst(call.args)
+    case _               => unreachable
   }
 
   // Is call valid as a connect LHS
   def isValidConnectLhsBuiltinCall(call: ExprCall): Boolean =
     call.expr match {
-      case ExprSym(symbol) =>
-        val builtin = (builtins find { _ contains symbol }).get
-        builtin.isValidConnectLhs(call.args)
-      case _ => unreachable
+      case ExprSym(symbol) => symbol.attr.builtin.value.isValidConnectLhs(call.args)
+      case _               => unreachable
     }
 }

@@ -21,6 +21,7 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Source
 import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.Types.Type
 import com.argondesign.alogic.core.Types.TypeCombFunc
 import com.argondesign.alogic.core.Types.TypeFund
 import com.argondesign.alogic.core.Types.TypePolyFunc
@@ -30,7 +31,7 @@ import com.argondesign.alogic.util.PartialMatch
 import scala.collection.concurrent.TrieMap
 import scala.util.ChainingSyntax
 
-private[builtins] abstract class BuiltinPolyFunc(
+abstract class BuiltinPolyFunc(
     val isValidConnLhs: Boolean
 )(
     implicit cc: CompilerContext
@@ -42,19 +43,9 @@ private[builtins] abstract class BuiltinPolyFunc(
   // Public interface
   //////////////////////////////////////////////////////////////////////////////
 
-  final def symbol: Symbol = {
-    if (_symbol == null) {
-      _symbol = cc.newSymbol(name, loc) tap { s =>
-        s.kind = TypePolyFunc(s, resolver)
-      }
-    }
-    _symbol
-  }
-
-  // Check if symbol is referring to this BuiltinPolyFunc, or is an
-  // overload of this BuiltinPolyFunc
-  final def contains(symbol: Symbol): Boolean = {
-    (_symbol == symbol) || (overloads.values.iterator.flatten contains symbol)
+  lazy val symbol: Symbol = cc.newSymbol(name, loc) tap { s =>
+    s.kind = TypePolyFunc(s, resolver)
+    s.attr.builtin set this
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -92,26 +83,27 @@ private[builtins] abstract class BuiltinPolyFunc(
       expr.isKnownConst || expr.isValidConnectLhs
     }) && (isValidConnLhs || isKnownConst(args))
 
-  private[this] final var _symbol: Symbol = _
-
   // Synthetic location of this builtin
   protected[this] final lazy val loc = Loc(Source(s"builtin $name", ""), 0, 0, 0)
 
   // Collection of overloaded symbols (if any) for given arguments
   // TODO: This map should be in cc to avoid a space leak
-  private[this] final val overloads = TrieMap[List[Arg], Option[Symbol]]()
+  private[this] final val overloads = TrieMap[(Type, List[Type]), Symbol]()
 
   // The resolver for TypePolyFunc
   private[this] final def resolver(args: List[Arg]): Option[Symbol] = {
-    overloads.getOrElseUpdate(
-      args, {
-        val pas = pargs(args)
-        returnType(pas) map { retType =>
-          val argTypes = pas map { _.tpe }
-          cc.newSymbol(name, loc) tap { _.kind = TypeCombFunc(symbol, retType, argTypes) }
+    val pas = pargs(args)
+    returnType(pas) map { retType =>
+      val argTypes = pas map { _.tpe }
+      overloads.getOrElseUpdate(
+        (retType, argTypes), {
+          cc.newSymbol(name, loc) tap { s =>
+            s.kind = TypeCombFunc(symbol, retType, argTypes)
+            s.attr.builtin set this
+          }
         }
-      }
-    )
+      )
+    }
   }
 
   //////////////////////////////////////////////////////////////////////////////

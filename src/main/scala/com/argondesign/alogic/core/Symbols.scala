@@ -73,7 +73,7 @@ trait Symbols extends { self: CompilerContext =>
 
   final def makeBuiltinCall(name: String, loc: Loc, args: List[Expr]): ExprCall = {
     val polySymbol = lookupGlobalTerm(name)
-    assert(polySymbol.isBuiltin(this))
+    assert(polySymbol.isBuiltin)
     assert(args exists { _.hasTpe })
     val argps = args map { a =>
       ArgP(a).regularize(a.loc)(this)
@@ -119,7 +119,7 @@ object Symbols {
 
     val attr: SymbolAttributes = new SymbolAttributes()
 
-    def isBuiltin(implicit cc: CompilerContext): Boolean = cc.builtins exists { _ contains this }
+    def isBuiltin: Boolean = this.attr.builtin.isSet
 
     override def hashCode: Int = id // TODO: review if this is still needed
 
