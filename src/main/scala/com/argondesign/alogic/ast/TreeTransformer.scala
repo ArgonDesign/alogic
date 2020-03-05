@@ -24,6 +24,7 @@ import com.argondesign.alogic.core.Types.TypeType
 import com.argondesign.alogic.typer.TypeAssigner
 
 import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 import scala.util.ChainingSyntax
 
 // Tree transformers are applied during a traversal of a Tree.
@@ -177,18 +178,20 @@ abstract class TreeTransformer(
   // Walk list, but return the original list if nothing is transformed
   final def walk(trees: List[Tree]): List[Tree] = trees match {
     case Nil => Nil
-    case head :: tail =>
-      val newHead = walk(head)
-      val newTail = walk(tail)
-      if ((newHead eq head) && (newTail eq tail)) {
-        trees
-      } else {
-        newHead match {
-          case Thicket(ts) => ts ::: newTail
-          case Stump       => newTail
-          case t           => t :: newTail
+    case _   =>
+      // Using a ListBuilder without recursion here as these lists can grow
+      // very long with liberal use of 'gen' constructs.
+      var same = true
+      val results = new ListBuffer[Tree]()
+      trees foreach { tree =>
+        walk(tree) match {
+          case Thicket(ts)          => same = false; results ++= ts
+          case Stump                => same = false
+          case same if same eq tree => results += same
+          case t                    => same = false; results += t
         }
       }
+      if (same) trees else results.toList
   }
 
   // Walk option, but return the original option if value is not transformed
