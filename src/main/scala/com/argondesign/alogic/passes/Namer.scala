@@ -66,10 +66,14 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer { namer 
             (name, symbol) <- finished.tab
             // If we finished a gen loop, step past the header scope
             outerScope <- (if (finished.genLoop) scopes drop 1 else scopes).headOption
-            // Get the choice symbol
-            choiceSymbol <- outerScope.tab.get(name)
+            // Get the outer symbol
+            outerSymbol <- outerScope.tab.get(name)
           } {
-            choices(choiceSymbol) ::= symbol
+            // Add choice if it's a choice symbol
+            choices.updateWith(outerSymbol) {
+              case None          => assert(!finished.genIf); None
+              case Some(choices) => Some(symbol :: choices)
+            }
           }
         }
 

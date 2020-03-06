@@ -1,0 +1,19 @@
+fsm gen_range_not_escaping_shadow_0 {
+  in  bool i;
+  gen for (uint n < 2) {
+      (* unused *) bool i;
+  }
+  out wire bool o;
+  void main() {
+    o = i;
+    fence;
+  }
+}
+// @fec-golden {{{
+//  module gen_range_not_escaping_shadow_0(
+//    input  wire i,
+//    output wire o
+//  );
+//    assign o = i;
+//  endmodule
+// }}}
