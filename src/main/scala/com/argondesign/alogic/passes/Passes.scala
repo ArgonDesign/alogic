@@ -93,6 +93,7 @@ object Passes extends ChainingSyntax {
         DefaultAssignments andThen
         RemoveUnused andThen
         RemoveRedundantBlocks andThen
+        FoldExpr andThen
         RenameSymbols andThen
 //      // TODO: RenameKeywords
 //      // TODO: final check pass to make sure everything is well-formed
