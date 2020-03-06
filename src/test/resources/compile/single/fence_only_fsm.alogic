@@ -1,0 +1,8 @@
+fsm fence_only_fsm {
+  in  bool i;
+  out bool o;
+  fence {
+    o = i;
+  }
+}
+// :1: ERROR: No 'main' function in fsm.

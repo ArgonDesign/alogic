@@ -389,7 +389,11 @@ final class Namer(implicit cc: CompilerContext) extends TreeTransformer { namer 
           case DescEntity(_, EntityVariant.Ver, _)    => symbol.attr.liftSrams set true
           case DescSingleton(_, EntityVariant.Ver, _) => symbol.attr.liftSrams set true
           // Mark main function as an entry point
-          case _: DescFunc if ident.name == "main" => symbol.attr.entry set true
+          case _: DescFunc if ident.name == "main" =>
+            if (ident.idxs.nonEmpty) {
+              cc.error(ident, "'main' function cannot be declared with a dictionary identifier")
+            }
+            symbol.attr.entry set true
           //
           case _ =>
         }

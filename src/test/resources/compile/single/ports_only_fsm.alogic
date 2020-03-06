@@ -1,4 +1,3 @@
-// @verilator-lint-off
 fsm ports_only_fsm {
   (* unused *) in             u8 ia;
   (* unused *) in sync        u8 ib;
@@ -8,3 +7,4 @@ fsm ports_only_fsm {
   (* unused *) out sync ready u8 oc;
   (* unused *) out wire       u8 od;
 }
+// :1: ERROR: No 'main' function in fsm.

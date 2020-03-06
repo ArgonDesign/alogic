@@ -1,0 +1,13 @@
+fsm multiple_main_fsm {
+  in  u2 i;
+  out u2 o;
+  gen for (uint n < 2) {
+    void main() {
+      o[n] = i[n];
+      fence;
+    }
+  }
+}
+// :1: ERROR: Multiple 'main' functions in fsm at:
+// :1: ERROR: ... .*/multiple_main_fsm.alogic:5
+// :1: ERROR: ... .*/multiple_main_fsm.alogic:5

@@ -34,10 +34,11 @@ network arbitrary_connects_submodules {
         out u2  out_to_ext_nt_b;
         out u1  out_to_ext_nt_s;
 
-        fence {
+        void main() {
             out_to_ext      = in_from_X;
             out_to_ext_nt_b = in_from_X_nt_b;
             out_to_ext_nt_s = in_from_X_nt_s;
+            fence;
         }
     }
 

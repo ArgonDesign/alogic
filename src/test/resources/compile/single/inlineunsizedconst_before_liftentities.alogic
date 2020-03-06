@@ -5,8 +5,9 @@ network inlineunsizedconst_before_liftentities {
   out u16 a;
 
   new fsm foo {
-    fence {
+    void main() {
       a = B;
+      fence;
     }
   }
 }

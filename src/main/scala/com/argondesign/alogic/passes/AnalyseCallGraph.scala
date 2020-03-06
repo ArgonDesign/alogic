@@ -24,6 +24,7 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.core.enums.EntityVariant
 import com.argondesign.alogic.lib.Matrix
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.unreachable
@@ -288,58 +289,67 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
   }
 
   override protected def skip(tree: Tree): Boolean = tree match {
-    case decl: DeclEntity =>
-      decl.functions.isEmpty tap {
-        case true =>
-          // Warn early if there are no functions at all, as
-          // we will not have an opportunity to do it later
-          warnIgnoredStacklimitAttribute(decl.symbol)
-        case _ =>
-      }
-    case defn: DefnEntity => defn.functions.isEmpty
-    case _: EntDefn       => false
-    case _: Ent           => true
-    case _: DefnFunc      => false
-    case _: Defn          => true
-    case _: Decl          => true
-    case _                => false
+    case decl: DeclEntity                                               => decl.functions.isEmpty
+    case DefnEntity(symbol, variant, _) if variant != EntityVariant.Fsm =>
+      // Warn early if there are no functions at all, as
+      // we will not have an opportunity to do it later
+      warnIgnoredStacklimitAttribute(symbol)
+      true
+    case _: DefnEntity => false
+    case _: EntDefn    => false
+    case _: Ent        => true
+    case _: DefnFunc   => false
+    case _: Defn       => true
+    case _: Decl       => true
+    case _             => false
   }
 
-  override def enter(tree: Tree): Option[Tree] = {
-    tree match {
+  override def enter(tree: Tree): Option[Tree] = tree match {
 
-      //////////////////////////////////////////////////////////////////////////
-      // Gather all function symbols defined in the
-      //////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////
+    // Gather all function symbols defined in the
+    //////////////////////////////////////////////////////////////////////////
 
-      case defn: DefnEntity =>
-        assert(functionSymbols == null)
-        functionSymbols = defn.functions map { _.symbol }
-
-      //////////////////////////////////////////////////////////////////////////
-      // Note current function we are processing
-      //////////////////////////////////////////////////////////////////////////
-
-      case defn: DefnFunc =>
-        currentFunction = defn.symbol
-
-      //////////////////////////////////////////////////////////////////////////
-      // Collect the call graph edges as we go
-      //////////////////////////////////////////////////////////////////////////
-
-      case ExprCall(ref, _) if ref.tpe.isCtrlFunc =>
-        ref match {
-          case ExprSym(callee) => callArcs add (currentFunction -> callee)
-          case _               => unreachable
+    case defn: DefnEntity =>
+      assert(functionSymbols == null)
+      functionSymbols = defn.functions map { _.symbol }
+      val entryPoints = functionSymbols filter { _.attr.entry.isSet }
+      Option.when(entryPoints.lengthIs != 1) {
+        if (entryPoints.isEmpty) {
+          cc.error(defn.symbol, "No 'main' function in fsm.")
+        } else {
+          val locations = entryPoints map { _.loc.prefix }
+          cc.error(defn.symbol, "Multiple 'main' functions in fsm at:" :: locations: _*)
         }
+        tree
+      }
 
-      case StmtGoto(ExprSym(callee)) =>
-        gotoArcs add (currentFunction -> callee)
+    //////////////////////////////////////////////////////////////////////////
+    // Note current function we are processing
+    //////////////////////////////////////////////////////////////////////////
 
-      //
-      case _ =>
-    }
-    None
+    case defn: DefnFunc =>
+      currentFunction = defn.symbol
+      None
+
+    //////////////////////////////////////////////////////////////////////////
+    // Collect the call graph edges as we go
+    //////////////////////////////////////////////////////////////////////////
+
+    case ExprCall(ref, _) if ref.tpe.isCtrlFunc =>
+      ref match {
+        case ExprSym(callee) => callArcs add (currentFunction -> callee)
+        case _               => unreachable
+      }
+      None
+
+    case StmtGoto(ExprSym(callee)) =>
+      gotoArcs add (currentFunction -> callee)
+      None
+
+    //
+    case _ => None
+
   }
 
   override def transform(tree: Tree): Tree = tree match {

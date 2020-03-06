@@ -1,0 +1,11 @@
+fsm dictident_main_fsm {
+  in  u2 i;
+  out u2 o;
+  gen for (uint n < 2) {
+    void main#[n]() {
+      o[n] = i[n];
+      fence;
+    }
+  }
+}
+// :5: ERROR: 'main' function cannot be declared with a dictionary identifier

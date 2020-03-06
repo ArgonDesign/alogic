@@ -20,10 +20,11 @@ network arbitrary_connects_dict_idents {
             out uint(i) out_to_ext_gen#[i];
         }
 
-        fence {
+        void main() {
             gen for (uint i=1; i<=2; i++) {
                 out_to_ext_gen#[i] = in_from_X_gen#[i];
             }
+            fence;
         }
     }
 
