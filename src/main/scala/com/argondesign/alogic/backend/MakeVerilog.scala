@@ -134,7 +134,7 @@ final class MakeVerilog(
         }
 
         if (hasCombSignals) {
-          body.emitBlock(1, "Combinatorial signal declarations") {
+          body.emitBlock(1, "Combinational signal declarations") {
             for {
               Decl(symbol) <- decl.decls
               if symbol.attr.combSignal.get contains true
@@ -167,13 +167,6 @@ final class MakeVerilog(
               nSymbols foreach emitVarDecl
             }
           }
-        }
-
-        // Emit go declarations
-        if (canStall) {
-          body.emit(1)("// go declaration")
-          body.emit(1)("reg go;")
-          body.ensureBlankLine()
         }
       }
     }
@@ -268,11 +261,7 @@ final class MakeVerilog(
               body.emit(1) {
                 List(
                   "always @(posedge clk) begin",
-                  if (canStall) {
-                    s"  if (go && ${weSymbol.name}) begin"
-                  } else {
-                    s"  if (${weSymbol.name}) begin"
-                  },
+                  s"  if (${weSymbol.name}) begin",
                   s"    ${qSymbol.name}[${waSymbol.name}] <= ${wdSymbol.name};",
                   "  end",
                   "end"
@@ -334,12 +323,6 @@ final class MakeVerilog(
       // Error statement injected by compiler at an earlier error
       case _: StmtError => body.emit(indent)(s"/* Error statement from ${stmt.loc.prefix} */")
 
-      // Stall statement
-      case StmtStall(cond) =>
-        body.emit(indent)(s"if (!${vexpr(cond)}) begin")
-        body.emit(indent + 1)("go = 1'b0;")
-        body.emit(indent)(s"end")
-
       // Expression statements like $display();
       case StmtExpr(expr) => body.emit(indent)(s"${vexpr(expr)};")
 
@@ -357,32 +340,9 @@ final class MakeVerilog(
         assert(stmts.nonEmpty)
         body.emitSection(1, "State system") {
           body.emit(1)("always @* begin")
-
-          if (canStall) {
-            body.emit(2)("// go default")
-            body.emit(2)("go = 1'b1;")
-            body.ensureBlankLine()
-          }
-
           stmts foreach { stmt =>
             emitStatement(body, 2, stmt)
           }
-
-          val cSymbols = decl.decls collect {
-            case Decl(symbol) if symbol.attr.clearOnStall.get contains true => symbol
-          }
-
-          if (cSymbols.nonEmpty && canStall) {
-            body.ensureBlankLine()
-            body.emit(2)("// Clears")
-            body.emit(2)("if (!go) begin")
-            for (symbol <- cSymbols) {
-              val s = if (symbol.kind.isSigned) "s" else ""
-              body.emit(3)(s"${symbol.name} = ${symbol.kind.width}'${s}b0;")
-            }
-            body.emit(2)("end")
-          }
-
           body.emit(1)("end")
         }
     }

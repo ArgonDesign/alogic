@@ -1,0 +1,32 @@
+fsm unused_go {
+  in             bool i;
+  out sync ready bool o;
+  void main() {
+    o.write(i);
+    fence;
+  }
+}
+// @fec-golden {{{
+// module unused_go(
+//   input  wire clk,
+//   input  wire rst,
+//   input  wire i,
+//   output reg  o,
+//   output reg  o__valid,
+//   input  wire o__ready
+// );
+//
+//   always @(posedge clk) begin
+//     if (rst) begin
+//       o <= 1'b0;
+//       o__valid <= 1'b0;
+//     end else begin
+//       if (~o__valid || o__ready) begin
+//         o <= i;
+//       end
+//       o__valid <= 1'b1;
+//     end
+//   end
+//
+// endmodule
+// }}}

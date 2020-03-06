@@ -66,9 +66,8 @@ final class EntityDetails(val decl: DeclEntity,
 
   lazy val hasInstances: Boolean = decl.instances.nonEmpty
 
-  lazy val canStall: Boolean = defn.preOrderIterator exists {
-    case _: StmtStall => true
-    case _            => false
+  lazy val canStall: Boolean = decl.decls exists {
+    case Decl(symbol) => symbol.attr.go.isSet
   }
 
   lazy val needsClock: Boolean = isVerbatim || hasFlops || hasArrays || {

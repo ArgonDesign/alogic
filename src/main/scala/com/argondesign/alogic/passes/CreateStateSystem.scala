@@ -10,8 +10,10 @@
 //
 // DESCRIPTION:
 //
-// - Constructing the state dispatch statement
-// - Drop all StmtFence
+// - Allocate state numbers
+// - Add 'go' signal
+// - Add state variable if needed
+// - Construct the state dispatch statement
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.passes
@@ -28,6 +30,8 @@ import com.argondesign.alogic.util.unreachable
 
 final class CreateStateSystem(implicit cc: CompilerContext) extends TreeTransformer {
 
+  // The 'go' symbol
+  private[this] var goSymbol: Symbol = _
   // whether there is only a single state
   private[this] var singleState: Boolean = _
   // Number of bits in state variable
@@ -45,6 +49,12 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends TreeTransfor
 
   override def enter(tree: Tree): Option[Tree] = tree match {
     case defn: DefnEntity =>
+      goSymbol = cc.newSymbol("go", defn.symbol.loc) tap { s =>
+        s.kind = TypeUInt(1)
+        s.attr.go set true
+        s.attr.combSignal set true
+      }
+
       val nStates = defn.states.length
       singleState = nStates == 1
       stateWidth = Math.clog2(nStates) max 1
@@ -110,15 +120,29 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends TreeTransfor
     case DeclStack(symbol, _, _) if symbol.attr.returnStack.isSet && singleState => Stump
     case DefnStack(symbol) if symbol.attr.returnStack.isSet && singleState       => Stump
 
-    // Add state variable Decl
-    case decl: DeclEntity if !singleState =>
-      val newDecl = stateVarSymbol.mkDecl regularize stateVarSymbol.loc
-      TypeAssigner(decl.copy(decls = newDecl :: decl.decls) withLoc decl.loc)
+    // Add 'go' and state variable Decl
+    case decl: DeclEntity =>
+      val newDecls = {
+        Iterator single {
+          goSymbol.mkDecl regularize goSymbol.loc
+        }
+      } concat {
+        // Add state variable Decl
+        Option.when(!singleState) {
+          stateVarSymbol.mkDecl regularize stateVarSymbol.loc
+        }
+      } concat decl.decls
+      TypeAssigner(decl.copy(decls = List from newDecls) withLoc decl.loc)
 
     case defn: DefnEntity =>
       assert(defn.combProcesses.lengthIs <= 1)
       TypeAssigner(defn.copy(body = List from {
         {
+          // Add 'go' definition
+          Iterator single {
+            EntDefn(goSymbol.mkDefn) regularize goSymbol.loc
+          }
+        } concat {
           // Add state variable Defn
           Option.when(!singleState) {
             val init = ExprInt(false, stateWidth, stateNumbers(entryState))
@@ -179,11 +203,13 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends TreeTransfor
                 }
             }
 
+            val goInit = StmtAssign(ExprSym(goSymbol), ExprInt(false, 1, 1)) regularize tree.loc
+
             TypeAssigner {
               defn.combProcesses.headOption map { tree =>
-                EntCombProcess(tree.stmts ::: dispatch) withLoc tree.loc
+                EntCombProcess(goInit :: tree.stmts ::: dispatch) withLoc tree.loc
               } getOrElse {
-                EntCombProcess(dispatch) withLoc dispatch.head.loc
+                EntCombProcess(goInit :: dispatch) withLoc dispatch.head.loc
               }
             }
           }

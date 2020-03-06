@@ -88,7 +88,7 @@ object Passes extends ChainingSyntax {
         RemoveStructuralSharing andThen
         FoldStmt andThen
         OptimizeClearOnStall andThen
-//      // TODO: LowerGo
+        LowerStalls andThen
         DefaultAssignments andThen
         RemoveUnused andThen
         RemoveRedundantBlocks andThen

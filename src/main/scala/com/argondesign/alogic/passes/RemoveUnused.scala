@@ -127,10 +127,7 @@ object RemoveUnused extends PairsTransformerPass {
         // Retain all definitions for verbatim entities
         Iterator.empty
       } else {
-        decl.decls.iterator filter {
-          case _: DeclInstance => false
-          case _               => true
-        } map {
+        decl.decls.iterator map {
           _.symbol
         } filter { // Retain inputs and outputs of top level entities
           _.kind match {
@@ -140,11 +137,7 @@ object RemoveUnused extends PairsTransformerPass {
           }
         }
       }
-
-      val iSymbols = decl.instances.iterator map { _.symbol }
-
-      // TODO: simplify by unifying dSymbols and iSymbols
-      eSymbols ++ dSymbols ++ iSymbols
+      eSymbols ++ dSymbols
     }
 
     // Gather all used symbols. A symbol is used if it's value is consumed,
@@ -154,13 +147,16 @@ object RemoveUnused extends PairsTransformerPass {
     // symbols that are written through a concatenation lvalue, as they are
     // required as placeholders
     val usedSymbols = gather(pairs) { (decl, defn) =>
+      val goSymbolOpt = decl.decls collectFirst {
+        case Decl(symbol) if symbol.attr.go.isSet => symbol
+      }
       val partA = decl flatCollect {
         case DeclInstance(_, ExprSym(eSymbol)) =>
-          // Instntiated entity
+          // Instantiated entity
           Iterator.single(eSymbol)
         case Decl(symbol) if symbol.attr.flop.isSet =>
-          // Flop _d
-          symbol.attr.flop.get.iterator
+          // Flop _d and go signal
+          symbol.attr.flop.get.iterator ++ goSymbolOpt.iterator
         case Decl(symbol) if symbol.attr.memory.isSet =>
           // Array _we/_waddr/_wdata
           val (we, waddr, wdata) = symbol.attr.memory.value

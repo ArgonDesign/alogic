@@ -128,12 +128,14 @@ trait CompilationTest
     spw.write(
       s"""|read_verilog ${goldenPath}
           |prep -flatten -top ${topLevel}
+          |memory
           |opt -full ${topLevel}
           |design -stash gold
           |
           |read_verilog ${tmpDir.resolve(topLevel + ".v").toFile}
           |hierarchy -check -libdir ${tmpDir} -top ${topLevel}
           |prep -flatten -run coarse: -top ${topLevel}
+          |memory
           |opt -full ${topLevel}
           |design -stash comp
           |

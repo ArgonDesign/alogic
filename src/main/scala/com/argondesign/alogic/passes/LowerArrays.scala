@@ -41,7 +41,10 @@ final class LowerArrays(implicit cc: CompilerContext) extends TreeTransformer {
             // Append _q to array name symbol
             symbol.name = s"${name}_q"
             // Create we symbol
-            val weSymbol = cc.newSymbol(s"${name}_we", loc) tap { _.kind = TypeUInt(1) }
+            val weSymbol = cc.newSymbol(s"${name}_we", loc) tap { s =>
+              s.kind = TypeUInt(1)
+              s.attr.clearOnStall set true
+            }
             // Create waddr symbol
             val abits = Math.clog2(size) ensuring { _ > 0 }
             val waSymbol = cc.newSymbol(s"${name}_waddr", loc) tap { _.kind = TypeUInt(abits) }

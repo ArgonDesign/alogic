@@ -1,4 +1,3 @@
-// @ignore
 network pipeline_0 {
   in  bool i;
   out bool o;
@@ -43,8 +42,8 @@ network pipeline_0 {
 //   output reg  o
 // );
 //
-//   p_a_q;
-//   p_b_q;
+//   reg p_a_q;
+//   reg p_b_q;
 //
 //   always @(posedge clk) begin
 //     if (rst) begin
@@ -54,7 +53,7 @@ network pipeline_0 {
 //     end else begin
 //       p_a_q <= i;
 //       p_b_q <= p_a_q;
-//       o <= p_a_q;
+//       o <= p_b_q;
 //     end
 //   end
 //

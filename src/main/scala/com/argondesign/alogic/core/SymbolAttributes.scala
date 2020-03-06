@@ -38,6 +38,8 @@ class SymbolAttributes {
   val recLimit = new Attribute[Expr]() // TODO: Treeify
   // This is the return stack of the enclosing entity
   val returnStack = new Attribute[Boolean]()
+  // This is the go signal of the enclosing entity
+  val go = new Attribute[Boolean]()
 
   // Back link to port this signal was created from
   val payloadOfPort = new Attribute[Symbol]()
@@ -118,6 +120,7 @@ class SymbolAttributes {
     stackLimit,
     recLimit,
     returnStack,
+    go,
     payloadOfPort,
     validOfPort,
     readyOfPort,
@@ -150,6 +153,7 @@ class SymbolAttributes {
     "stackLimit",
     "recLimit",
     "returnStack",
+    "go",
     "payloadOfPort",
     "validOfPort",
     "readyOfPort",

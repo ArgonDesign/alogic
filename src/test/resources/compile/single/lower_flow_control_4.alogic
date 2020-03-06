@@ -1,0 +1,40 @@
+fsm lower_flow_control_4 {
+  in  sync      bool i;
+  out sync wire bool o;
+
+  bool flop = false;
+
+  void main() {
+    o.write(flop);
+    flop = i.read();
+    fence;
+  }
+}
+// @fec-golden {{{
+//  module lower_flow_control_4(
+//    input  wire clk,
+//    input  wire rst,
+//    input  wire i,
+//    input  wire i__valid,
+//    output reg  o,
+//    output reg  o__valid
+//  );
+//
+//    reg flop_q, flop_d;
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        flop_q <= 1'd0;
+//      end else if (i__valid) begin
+//        flop_q <= flop_d;
+//      end
+//    end
+//
+//    always @* begin
+//      o = flop_q;
+//      flop_d = i;
+//      o__valid = i__valid;
+//    end
+//
+//  endmodule
+// }}}

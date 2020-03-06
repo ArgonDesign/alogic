@@ -1,0 +1,33 @@
+fsm lower_array_0 {
+  in       u2    waddr;
+  in       bool  wdata;
+  in       u2    raddr;
+  out wire bool  rdata;
+
+  bool store[4];
+
+  void main() {
+    rdata = store[raddr];
+    store.write(waddr, wdata);
+    fence;
+  }
+}
+// @fec-golden {{{
+//  module lower_array_0(
+//    input             clk,
+//    input  wire [1:0] waddr,
+//    input  wire       wdata,
+//    input  wire [1:0] raddr,
+//    output wire       rdata
+//  );
+//
+//    reg store_q[3:0];
+//
+//    always @(posedge clk) begin
+//      store_q[waddr] <= wdata;
+//    end
+//
+//    assign rdata = store_q[raddr];
+//
+//  endmodule
+// }}}
