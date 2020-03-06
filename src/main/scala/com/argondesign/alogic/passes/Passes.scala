@@ -89,6 +89,7 @@ object Passes extends ChainingSyntax {
         FoldStmt andThen
         OptimizeClearOnStall andThen
         LowerStalls andThen
+//        InlineKnownVars andThen
         DefaultAssignments andThen
         RemoveUnused andThen
         RemoveRedundantBlocks andThen
