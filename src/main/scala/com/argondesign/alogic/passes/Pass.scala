@@ -112,7 +112,9 @@ trait PairsTransformerPass extends Pass[List[(Decl, Defn)], List[(Decl, Defn)]] 
 
 }
 
-trait BasePairTransformerPass extends PairsTransformerPass with ChainingSyntax {
+// NOTE: This is only hear because otherwise we get an unused warning on cc in
+// the default implementations in PairTransformerPass
+sealed trait BasePairTransformerPass extends PairsTransformerPass with ChainingSyntax {
   protected def start(pairs: List[(Decl, Defn)])(implicit cc: CompilerContext): Unit
   protected def skip(decl: Decl, defn: Defn)(implicit cc: CompilerContext): Boolean
   protected def finish(pairs: List[(Decl, Defn)])(implicit cc: CompilerContext): List[(Decl, Defn)]
