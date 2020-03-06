@@ -22,7 +22,7 @@ trait DefnSingletonOps { this: DefnSingleton =>
 
   final lazy val decls: List[Decl] = body collect { case EntDecl(decl) => decl }
 
-  final lazy val defns: List[Defn] = body collect { case EntDefn(defn) => defn }
+  override final lazy val defns: List[Defn] = body collect { case EntDefn(defn) => defn }
 
   final lazy val connects: List[EntConnect] = body collect { case node: EntConnect => node }
 

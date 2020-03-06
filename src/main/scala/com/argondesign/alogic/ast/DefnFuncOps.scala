@@ -22,6 +22,6 @@ trait DefnFuncOps { this: DefnFunc =>
 
   final lazy val decls: List[Decl] = body collect { case StmtDecl(decl) => decl }
 
-  final lazy val defns: List[Defn] = body collect { case StmtDefn(defn) => defn }
+  override final lazy val defns: List[Defn] = body collect { case StmtDefn(defn) => defn }
 
 }

@@ -21,6 +21,8 @@ trait DefnOps { this: Defn =>
 
   def descs: List[Desc] = Nil
 
+  def defns: List[Defn] = Nil
+
   final lazy val initializer: Option[Expr] = this match {
     case DefnVar(_, iOpt) => iOpt
     case DefnOut(_, iOpt) => iOpt

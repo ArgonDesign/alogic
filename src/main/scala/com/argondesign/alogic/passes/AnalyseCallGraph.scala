@@ -359,39 +359,34 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends TreeTransform
         // depth. The elementType will be refined in a later pass when the
         // state numbers are allocated
         val name = if (stackDepth > 1) "return_stack" else "return_state"
-        val symbol = cc.newSymbol(name, defn.loc) tap { _.kind = TypeStack(TypeVoid, stackDepth) }
-        // Set the returnStack attribute of the entity
-        defn.symbol.attr.returnStack set symbol
-        // Add th Defn of the return stack
+        val symbol = cc.newSymbol(name, defn.loc) tap { s =>
+          s.kind = TypeStack(TypeVoid, stackDepth)
+          s.attr.returnStack set true
+        }
+        // Add th Defn of the return stack. ConvertControl relies on it being
+        // added to the front so it can be picked up in 'transform' early.
         val stackDefn = EntDefn(symbol.mkDefn) regularize defn.loc
         TypeAssigner(defn.copy(body = stackDefn :: defn.body) withLoc defn.loc)
       }
 
-    case decl: DeclEntity if decl.symbol.attr.returnStack.isSet =>
-      val symbol = decl.symbol.attr.returnStack.value
-      // Add the Decl of the return stack
-      val stackDecl = symbol.mkDecl regularize decl.loc
-      TypeAssigner(decl.copy(decls = stackDecl :: decl.decls) withLoc decl.loc)
+    case decl: DeclEntity =>
+      decl.symbol.defn.defns collectFirst {
+        // Add the Decl of the return stack
+        case Defn(symbol) if symbol.attr.returnStack.isSet =>
+          val stackDecl = symbol.mkDecl regularize decl.loc
+          TypeAssigner(decl.copy(decls = stackDecl :: decl.decls) withLoc decl.loc)
+      } getOrElse tree
 
     case _ => tree
   }
 
-  override def finalCheck(tree: Tree): Unit = {
-    tree visit {
-      case node: Tree if !node.hasTpe => cc.ice(node, "Lost tpe of", node.toString)
-    }
+  override def finalCheck(tree: Tree): Unit = tree visit {
+    case node: Tree if !node.hasTpe => cc.ice(node, "Lost tpe of", node.toString)
   }
 }
 
-object AnalyseCallGraph extends PairTransformerPass {
+object AnalyseCallGraph extends EntityTransformerPass(declFirst = false) {
   val name = "analyse-call-graph"
 
-  def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {
-    val transformer = new AnalyseCallGraph
-    // First transform the defn
-    val newDefn = transformer(defn)
-    // Then transform the decl
-    val newDecl = transformer(decl)
-    (newDecl, newDefn)
-  }
+  def create(symbol: Symbol)(implicit cc: CompilerContext) = new AnalyseCallGraph
 }

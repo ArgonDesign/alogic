@@ -39,8 +39,9 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends TreeTransfor
   // Map from state symbol to state number
   private[this] var stateNumbers: Map[Symbol, Int] = _
 
-  // The return stack symbol
-  private[this] var rsSymbol: Option[Symbol] = _
+  // Replace the return stack symbol (if it's being kept)
+  override protected def replace(symbol: Symbol): Boolean =
+    !singleState && symbol.attr.returnStack.isSet
 
   override def enter(tree: Tree): Option[Tree] = tree match {
     case defn: DefnEntity =>
@@ -53,31 +54,28 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends TreeTransfor
         }
       }
 
-      // Ensure the entry symbol is allocated number 0
+      // Pick up the entry state
       val (entryStates, otherStates) = defn.states partition { _.symbol.attr.entry.isSet }
-
       assert(entryStates.length == 1)
-
       entryState = entryStates.head.symbol
 
       // For now, just allocate state numbers linearly as binary coded
       stateNumbers = {
         val it = new SequenceNumbers
+        // Ensure the entry symbol is allocated number 0
         Map from {
           (entryStates.head :: otherStates) map { _.symbol -> it.next }
         }
       }
 
-      // Get the return stack symbol if exists and update it's type
-      rsSymbol = defn.symbol.attr.returnStack.get map { symbol =>
-        symbol.kind match {
-          case TypeStack(_, depth) =>
-            symbol.kind = TypeStack(TypeUInt(stateWidth), depth)
-            symbol
-          case _ => unreachable
-        }
-      }
       None
+
+    // Update the type of the return stack symbol
+    case decl @ DeclStack(symbol, _, _) if symbol.attr.returnStack.isSet =>
+      Some {
+        val newElem = TypeAssigner(ExprType(TypeUInt(stateWidth)) withLoc tree.loc)
+        TypeAssigner(decl.copy(elem = newElem) withLoc tree.loc)
+      }
 
     // Remove goto <current state>
     case StmtGoto(ExprSym(symbol)) if symbol eq enclosingSymbols.head => Some(Stump)
@@ -97,7 +95,7 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends TreeTransfor
 
     // If only 1 state, drop push to return stack
     case StmtExpr(ExprCall(ExprSelect(ExprSym(symbol), _, _), _))
-        if (rsSymbol contains symbol) && singleState =>
+        if symbol.attr.returnStack.isSet && singleState =>
       Stump
 
     // Drop State Decl
@@ -109,8 +107,8 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends TreeTransfor
       TypeAssigner(desc.copy(body = cmnt :: body) withLoc tree.loc)
 
     // If only 1 state, drop the return stack Decl/Defn
-    case DeclStack(symbol, _, _) if (rsSymbol contains symbol) && singleState => Stump
-    case DefnStack(symbol) if (rsSymbol contains symbol) && singleState       => Stump
+    case DeclStack(symbol, _, _) if symbol.attr.returnStack.isSet && singleState => Stump
+    case DefnStack(symbol) if symbol.attr.returnStack.isSet && singleState       => Stump
 
     // Add state variable Decl
     case decl: DeclEntity if !singleState =>

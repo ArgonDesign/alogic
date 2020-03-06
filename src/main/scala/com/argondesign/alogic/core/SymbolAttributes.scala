@@ -36,8 +36,8 @@ class SymbolAttributes {
   val stackLimit = new Attribute[Expr]() // TODO: Treeify
   // Function recursion limit
   val recLimit = new Attribute[Expr]() // TODO: Treeify
-  // The return stack symbol, if this is an entity
-  val returnStack = new Attribute[Symbol]() // TODO: Treeify
+  // This is the return stack of the enclosing entity
+  val returnStack = new Attribute[Boolean]()
 
   // Back link to port this signal was created from
   val payloadOfPort = new Attribute[Symbol]()

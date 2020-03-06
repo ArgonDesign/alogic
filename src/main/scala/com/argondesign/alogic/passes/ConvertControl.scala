@@ -32,11 +32,7 @@ import scala.collection.mutable.ListBuffer
 final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer {
 
   // The return stack symbol
-  private[this] lazy val rsSymbol: Symbol = {
-    entitySymbol.attr.returnStack.get getOrElse {
-      cc.ice(entitySymbol, "Entity requires a return stack, but none was allocated")
-    }
-  }
+  private[this] var rsSymbol: Symbol = _
 
   //////////////////////////////////////////////////////////////////////////
   // State for control conversion
@@ -127,6 +123,13 @@ final class ConvertControl(implicit cc: CompilerContext) extends TreeTransformer
             funcSymbol -> stateSymbol
           }
         }
+
+      //////////////////////////////////////////////////////////////////////////
+      // Keep hold of the return stack symbol (previously put at the beginning)
+      //////////////////////////////////////////////////////////////////////////
+
+      case Defn(symbol) if symbol.attr.returnStack.isSet =>
+        rsSymbol = symbol
 
       //////////////////////////////////////////////////////////////////////////
       // Allocate states where any List[Stmt] is involved

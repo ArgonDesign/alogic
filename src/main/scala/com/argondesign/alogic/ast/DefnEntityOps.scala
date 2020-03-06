@@ -22,7 +22,7 @@ trait DefnEntityOps { this: DefnEntity =>
 
   final lazy val decls: List[Decl] = body collect { case EntDecl(decl) => decl }
 
-  final lazy val defns: List[Defn] = body collect { case EntDefn(defn) => defn }
+  override final lazy val defns: List[Defn] = body collect { case EntDefn(defn) => defn }
 
   final lazy val entities: List[DefnEntity] = defns collect {
     case defn: DefnEntity => defn
