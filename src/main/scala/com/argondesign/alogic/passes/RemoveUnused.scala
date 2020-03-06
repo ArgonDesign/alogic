@@ -127,16 +127,11 @@ object RemoveUnused extends PairsTransformerPass {
         // Retain all definitions for verbatim entities
         Iterator.empty
       } else {
-        val stateVarQ = eSymbol.attr.stateVar.get
-        val stateVarD = stateVarQ map { _.attr.flop.value }
         decl.decls.iterator filter {
           case _: DeclInstance => false
           case _               => true
         } map {
           _.symbol
-        } filterNot { symbol =>
-          // Retain the state variables if they exist
-          (stateVarQ contains symbol) || (stateVarD contains symbol)
         } filter { // Retain inputs and outputs of top level entities
           _.kind match {
             case _: TypeIn  => !isTopLevel

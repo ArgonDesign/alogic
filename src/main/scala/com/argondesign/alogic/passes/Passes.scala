@@ -59,7 +59,6 @@ object Passes extends ChainingSyntax {
         ConvertLocalDecls andThen
         RemoveStructuralSharing andThen
         ConvertControl andThen
-        AllocStates andThen
         CreateStateSystem andThen
         Replace1Stacks andThen
         // TODO: Replace1Arrays

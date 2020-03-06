@@ -19,65 +19,167 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.lib.Math
 import com.argondesign.alogic.typer.TypeAssigner
+import com.argondesign.alogic.util.SequenceNumbers
 import com.argondesign.alogic.util.unreachable
 
 final class CreateStateSystem(implicit cc: CompilerContext) extends TreeTransformer {
 
-  override def skip(tree: Tree): Boolean = tree match {
-    case _: Expr => true
-    case _       => false
+  // whether there is only a single state
+  private[this] var singleState: Boolean = _
+  // Number of bits in state variable
+  private[this] var stateWidth: Int = _
+  // The state variable symbol
+  private[this] var stateVarSymbol: Symbol = _
+  // The entry state
+  private[this] var entryState: Symbol = _
+  // Map from state symbol to state number
+  private[this] var stateNumbers: Map[Symbol, Int] = _
+
+  // The return stack symbol
+  private[this] var rsSymbol: Option[Symbol] = _
+
+  override def enter(tree: Tree): Option[Tree] = tree match {
+    case defn: DefnEntity =>
+      val nStates = defn.states.length
+      singleState = nStates == 1
+      stateWidth = Math.clog2(nStates) max 1
+      if (nStates > 1) {
+        stateVarSymbol = cc.newSymbol("state", defn.symbol.loc) tap { s =>
+          s.kind = TypeUInt(stateWidth)
+        }
+      }
+
+      // Ensure the entry symbol is allocated number 0
+      val (entryStates, otherStates) = defn.states partition { _.symbol.attr.entry.isSet }
+
+      assert(entryStates.length == 1)
+
+      entryState = entryStates.head.symbol
+
+      // For now, just allocate state numbers linearly as binary coded
+      stateNumbers = {
+        val it = new SequenceNumbers
+        Map from {
+          (entryStates.head :: otherStates) map { _.symbol -> it.next }
+        }
+      }
+
+      // Get the return stack symbol if exists and update it's type
+      rsSymbol = defn.symbol.attr.returnStack.get map { symbol =>
+        symbol.kind match {
+          case TypeStack(_, depth) =>
+            symbol.kind = TypeStack(TypeUInt(stateWidth), depth)
+            symbol
+          case _ => unreachable
+        }
+      }
+      None
+
+    // Remove goto <current state>
+    case StmtGoto(ExprSym(symbol)) if symbol eq enclosingSymbols.head => Some(Stump)
+
+    case _ => None
   }
 
   override def transform(tree: Tree): Tree = tree match {
+    // Replace references to states with the state numbers
+    case ExprSym(symbol) =>
+      stateNumbers.get(symbol) map { stateNumber =>
+        TypeAssigner(ExprInt(false, stateWidth, stateNumber) withLoc tree.loc)
+      } getOrElse tree
 
-    case _: StmtFence => Stump
+    // Convert goto <other state> to state assignment
+    case StmtGoto(expr) => StmtAssign(ExprSym(stateVarSymbol), expr) regularize tree.loc
 
+    // If only 1 state, drop push to return stack
+    case StmtExpr(ExprCall(ExprSelect(ExprSym(symbol), _, _), _))
+        if (rsSymbol contains symbol) && singleState =>
+      Stump
+
+    // Drop State Decl
     case _: DeclState => Stump
 
+    // Add comment to state body (State Defn will be dropped later)
     case desc @ DefnState(_, ExprInt(_, _, value), body) =>
-      val newBody = StmtComment(s"State $value - line ${tree.loc.line}") :: body
-      desc.copy(body = newBody) regularize tree.loc
+      val cmnt = TypeAssigner(StmtComment(s"State $value - line ${tree.loc.line}") withLoc tree.loc)
+      TypeAssigner(desc.copy(body = cmnt :: body) withLoc tree.loc)
+
+    // If only 1 state, drop the return stack Decl/Defn
+    case DeclStack(symbol, _, _) if (rsSymbol contains symbol) && singleState => Stump
+    case DefnStack(symbol) if (rsSymbol contains symbol) && singleState       => Stump
+
+    // Add state variable Decl
+    case decl: DeclEntity if !singleState =>
+      val newDecl = stateVarSymbol.mkDecl regularize stateVarSymbol.loc
+      TypeAssigner(decl.copy(decls = newDecl :: decl.decls) withLoc decl.loc)
 
     case defn: DefnEntity =>
-      val newBody = List from {
-        // Drop states and the comb process
-        defn.body.iterator filter {
-          case _: EntCombProcess     => false
-          case EntDefn(_: DefnState) => false
-          case _                     => true
+      assert(defn.combProcesses.lengthIs <= 1)
+      TypeAssigner(defn.copy(body = List from {
+        {
+          // Add state variable Defn
+          Option.when(!singleState) {
+            val init = ExprInt(false, stateWidth, stateNumbers(entryState))
+            EntDefn(stateVarSymbol.mkDefn(init)) regularize stateVarSymbol.loc
+          }
+        } concat {
+          // Drop states and the comb process
+          defn.body.iterator filter {
+            case _: EntCombProcess     => false
+            case EntDefn(_: DefnState) => false
+            case _                     => true
+          }
         } concat {
           // Add the comb process back with the state dispatch
           Iterator single {
             // Ensure entry state is the first
-            val (entryState, otherStates) = defn.states partition {
-              case DefnState(_, ExprInt(_, _, v), _) => v == 0
-              case _                                 => unreachable
+            val (entryStates, otherStates) = defn.states partition {
+              case DefnState(symbol, _, _) => symbol == entryState
             }
 
-            val dispatch = entryState ::: otherStates match {
-              case Nil          => Nil
-              case first :: Nil => first.body
-              case first :: second :: Nil =>
-                StmtComment("State dispatch") :: StmtIf(
-                  ~ExprSym(defn.symbol.attr.stateVar.value),
-                  first.body,
-                  second.body
-                ) :: Nil
-              case first :: rest =>
-                StmtComment("State dispatch") :: StmtCase(
-                  ExprSym(defn.symbol.attr.stateVar.value),
-                  CaseDefault(first.body) :: {
-                    rest map {
-                      case DefnState(_, expr, body) => CaseRegular(List(expr), body)
+            assert(entryStates.lengthIs == 1)
+
+            val dispatch = entryStates.head :: otherStates match {
+              case Nil          => unreachable
+              case entry :: Nil =>
+                // Single state, simple.
+                entry.body
+              case entry :: other :: Nil =>
+                // 2 states, use an 'if' statement.
+                List(
+                  StmtComment("State dispatch"),
+                  StmtIf(
+                    ExprBinary(
+                      ExprSym(stateVarSymbol),
+                      "==",
+                      ExprInt(false, stateWidth, stateNumbers(entryState))
+                    ),
+                    entry.body,
+                    other.body
+                  )
+                ) tapEach {
+                  _ regularize defn.loc
+                }
+              case entry :: rest =>
+                // Many states, use a 'case' statement.
+                List(
+                  StmtComment("State dispatch"),
+                  StmtCase(
+                    ExprSym(stateVarSymbol),
+                    CaseDefault(entry.body) :: {
+                      rest map {
+                        case DefnState(_, expr, body) => CaseRegular(List(expr), body)
+                      }
                     }
-                  }
-                ) :: Nil
+                  )
+                ) tapEach {
+                  _ regularize defn.loc
+                }
             }
-
-            dispatch foreach { _ regularize defn.loc }
-
-            assert(defn.combProcesses.lengthIs <= 1)
 
             TypeAssigner {
               defn.combProcesses.headOption map { tree =>
@@ -88,40 +190,24 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends TreeTransfor
             }
           }
         }
-      }
+      }) withLoc defn.loc)
 
-      TypeAssigner(defn.copy(body = newBody) withLoc defn.loc)
-
+    //
     case _ => tree
   }
 
-  override protected def finalCheck(tree: Tree): Unit = {
-    tree visit {
-      case node: DeclState => cc.ice(node, "DeclState remains")
-      case node: DefnState => cc.ice(node, "DefnState remains")
-      case node: StmtFence => cc.ice(node, "StmtFence remains")
-    }
+  override protected def finalCheck(tree: Tree): Unit = tree visit {
+    case node: DeclState => cc.ice(node, "DeclState remains")
+    case node: DefnState => cc.ice(node, "DefnState remains")
+    case node: StmtFence => cc.ice(node, "StmtFence remains")
   }
 }
 
-object CreateStateSystem extends PairTransformerPass {
+object CreateStateSystem extends EntityTransformerPass(declFirst = false) {
   val name = "create-state-system"
-  def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {
-    (decl, defn) match {
-      case (dcl: DeclEntity, _: DefnEntity) =>
-        if (dcl.states.isEmpty) {
-          // If no states, then there is nothing to do
-          (decl, defn)
-        } else {
-          // Perform the transform
-          val transformer = new CreateStateSystem
-          // First transform the defn
-          val newDefn = transformer(defn)
-          // Then transform the decl
-          val newDecl = transformer(decl)
-          (newDecl, newDefn)
-        }
-      case _ => (decl, defn)
-    }
-  }
+
+  override def skip(decl: Decl, defn: Defn)(implicit cc: CompilerContext): Boolean =
+    super.skip(decl, defn) || decl.asInstanceOf[DeclEntity].states.isEmpty
+
+  def create(symbol: Symbol)(implicit cc: CompilerContext) = new CreateStateSystem
 }

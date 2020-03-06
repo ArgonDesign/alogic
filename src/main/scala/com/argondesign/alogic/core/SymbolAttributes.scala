@@ -38,8 +38,6 @@ class SymbolAttributes {
   val recLimit = new Attribute[Expr]() // TODO: Treeify
   // The return stack symbol, if this is an entity
   val returnStack = new Attribute[Symbol]() // TODO: Treeify
-  // The state variable symbol, if this is an entity
-  val stateVar = new Attribute[Symbol]() // TODO: Treeify
 
   // Back link to port this signal was created from
   val payloadOfPort = new Attribute[Symbol]()
@@ -120,7 +118,6 @@ class SymbolAttributes {
     stackLimit,
     recLimit,
     returnStack,
-    stateVar,
     payloadOfPort,
     validOfPort,
     readyOfPort,
@@ -153,7 +150,6 @@ class SymbolAttributes {
     "stackLimit",
     "recLimit",
     "returnStack",
-    "stateVar",
     "payloadOfPort",
     "validOfPort",
     "readyOfPort",
