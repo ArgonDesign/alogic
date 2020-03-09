@@ -10,14 +10,7 @@
 //
 // DESCRIPTION:
 //
-// - Inline any variables that we know the value of at the end of the cycle
-// - Use a connect or output ports
-//
-// Assumes that this kind of stuff does not happen:
-//   a = 1
-//   b = a
-//   a = 2
-// This is ensured by FoldStmt earlier
+// Inline any variables that we know the value of
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.passes
@@ -25,70 +18,107 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.analysis.StaticEvaluation
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.core.Bindings
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.Symbol
-import com.argondesign.alogic.util.unreachable
+import com.argondesign.alogic.typer.TypeAssigner
 
-final class InlineKnownVars(implicit cc: CompilerContext) extends TreeTransformer {
+import scala.collection.mutable
 
-  private var bindings: Map[Symbol, Expr] = Map.empty
+final class InlineKnownVars(
+    combOnly: Boolean
+)(implicit cc: CompilerContext)
+    extends TreeTransformer {
+
+  private[this] var stmtBindings: Map[Int, Bindings] = _
+  private[this] var endOfCycleBindings: Bindings = _
+
+  private[this] val bindings = mutable.Stack[Bindings]()
 
   override def start(tree: Tree): Unit = tree match {
     case defn: DefnEntity =>
       assert(defn.combProcesses.lengthIs <= 1)
       defn.combProcesses.headOption foreach {
         case EntCombProcess(body) =>
-          val magic = Set from {
-            defn.defns.iterator flatMap {
-              // Flop D signals
-              case Defn(symbol) if symbol.attr.flop.isSet =>
-                Iterator.single(symbol.attr.flop.value)
-              // Memory signals
-              case Defn(symbol) if symbol.attr.memory.isSet =>
-                val (a, b, c) = symbol.attr.memory.value
-                Iterator(a, b, c)
-              case _ => Iterator.empty
-            }
-          }
-          bindings = Map from {
-            StaticEvaluation(StmtBlock(body), Nil)._2.view mapValues {
-              _.simplify
-            } filter {
-              case (symbol, _: ExprInt) =>
-                !(symbol.kind.isIn || symbol.kind.isOut) && !magic(symbol)
-              case _ => false
-            }
-          }
+          val evaluation = StaticEvaluation(StmtBlock(body), Nil)
+          stmtBindings = evaluation._1
+          endOfCycleBindings = if (combOnly) Bindings.empty else evaluation._2
+          bindings.push(endOfCycleBindings)
       }
-    case _: DeclEntity =>
-    case _             => unreachable
+    case _ =>
   }
 
   override def skip(tree: Tree): Boolean = bindings.isEmpty
 
   override def enter(tree: Tree): Option[Tree] = tree match {
-    // Drop assignments to dropped symbols
-    case StmtAssign(ExprSym(symbol), _) if bindings contains symbol => Some(Stump)
-    case _                                                          => None
+    // Don't fold constants on the lhs of assignment TODO: fold the read ones...
+    case stmt @ StmtAssign(_, rhs) =>
+      Some {
+        bindings.push(stmtBindings.getOrElse(stmt.id, Bindings.empty))
+        TypeAssigner(stmt.copy(rhs = walk(rhs).asInstanceOf[Expr]) withLoc tree.loc) tap { _ =>
+          bindings.pop()
+        }
+      }
+
+    case stmt: Stmt =>
+      bindings.push(stmtBindings.getOrElse(stmt.id, endOfCycleBindings))
+      None
+
+    // Only substitute in index/slice target if the indices are known constants,
+    // in which case fold them as well. This is to avoid creating non-constant
+    // indices into non-symbols
+    case e @ ExprIndex(expr, index) =>
+      Some {
+        walk(index).asInstanceOf[Expr].simplify match {
+          case known: ExprInt =>
+            val newExpr = walk(expr).asInstanceOf[Expr]
+            TypeAssigner(ExprIndex(newExpr, known) withLoc tree.loc).simplify
+          case other => TypeAssigner(e.copy(index = other) withLoc tree.loc)
+        }
+      }
+
+    case e @ ExprSlice(expr, lIdx, _, _) =>
+      Some {
+        walk(lIdx).asInstanceOf[Expr].simplify match {
+          case known: ExprInt =>
+            val newExpr = walk(expr).asInstanceOf[Expr]
+            // Note: rIdx is always constant
+            TypeAssigner(e.copy(expr = newExpr, lIdx = known) withLoc tree.loc).simplify
+          case other => TypeAssigner(e.copy(lIdx = other) withLoc tree.loc)
+        }
+      }
+
+    //
+    case _ => None
   }
 
   override def transform(tree: Tree): Tree = tree match {
-    // Drop Decl/Defn
-    case DeclVar(symbol, _) if bindings contains symbol => Stump
-    case DefnVar(symbol, _) if bindings contains symbol => Stump
+    // Substitute known constants
+    case ExprSym(symbol) =>
+      bindings.top.get(symbol) map { _.simplify } match {
+        case Some(expr: ExprInt) => expr
+//        case Some(expr: ExprNum) => expr
+        case _ => tree
+      }
 
-    case ExprSym(symbol) => bindings.getOrElse(symbol, tree)
+    case _: Stmt =>
+      bindings.pop()
+      tree
 
     case _ => tree
   }
 
 }
 
-object InlineKnownVars extends EntityTransformerPass(declFirst = false) {
-  val name = "inline-known-wars"
+object InlineKnownVars {
 
-  override def skip(decl: Decl, defn: Defn)(implicit cc: CompilerContext): Boolean =
-    super.skip(decl, defn) || defn.asInstanceOf[DefnEntity].combProcesses.isEmpty
+  def apply(combOnly: Boolean): EntityTransformerPass =
+    new EntityTransformerPass(declFirst = false) {
+      val name = "inline-known-vars"
 
-  def create(symbol: Symbol)(implicit cc: CompilerContext) = new InlineKnownVars
+      override def skip(decl: Decl, defn: Defn)(implicit cc: CompilerContext): Boolean =
+        super.skip(decl, defn) || defn.asInstanceOf[DefnEntity].combProcesses.isEmpty
+
+      def create(symbol: Symbol)(implicit cc: CompilerContext) = new InlineKnownVars(combOnly)
+    }
 }

@@ -4,7 +4,7 @@ struct test_t {
 
 fsm const_with_atbits {
   const uint(@bits(test_t)) foo = 3;
-  out   uint(8) o;
+  out   uint(8) o = 8'd0;
 
   void main() {
     o = foo;

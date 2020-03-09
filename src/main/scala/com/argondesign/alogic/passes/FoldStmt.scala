@@ -15,120 +15,74 @@
 
 package com.argondesign.alogic.passes
 
-import com.argondesign.alogic.analysis.StaticEvaluation
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.Bindings
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.typer.TypeAssigner
-
-import scala.collection.mutable
+import com.argondesign.alogic.util.unreachable
 
 final class FoldStmt(implicit cc: CompilerContext) extends TreeTransformer {
 
   override def skip(tree: Tree): Boolean = tree match {
-    case defn: DefnEntity  => defn.combProcesses.isEmpty
-    case _: EntCombProcess => false
-    case _: Stmt           => false
-    case _: Case           => false
-    case _: Expr           => false
-    case _                 => true
+    case _: DefnEntity        => false
+    case _: EntCombProcess    => false
+    case _: EntClockedProcess => false
+    case _: Stmt              => false
+    case _: Case              => false
+    case _                    => true
   }
 
-  private[this] var bindingsMap: Map[Int, Bindings] = _
+  private def emptyStmt(stmt: Stmt): Boolean = stmt match {
+    case StmtBlock(body)         => body forall emptyStmt
+    case StmtIf(_, eBody, tBody) => (eBody forall emptyStmt) && (tBody forall emptyStmt)
+    case StmtCase(_, cases) =>
+      cases forall {
+        case CaseRegular(_, stmts) => stmts forall emptyStmt
+        case CaseDefault(stmts)    => stmts forall emptyStmt
+        case _: CaseGen            => unreachable
+      }
+    case _: StmtExpr    => true
+    case _: StmtComment => true
+    case _              => false
+  }
 
-  private[this] val bindings = mutable.Stack[Bindings]()
+  override def transform(tree: Tree): Tree = tree match {
+    // Remove empty if
+    case StmtIf(_, Nil, Nil) => Stump
 
-  override def enter(tree: Tree): Option[Tree] = tree match {
-    case EntCombProcess(stmts) =>
-      bindingsMap = StaticEvaluation(StmtBlock(stmts))._1
-      None
+    // Invert condition with empty else
+    case StmtIf(cond, Nil, elseStmts) =>
+      walk(StmtIf(!cond, elseStmts, Nil) regularize tree.loc)
 
-    case stmt @ StmtAssign(_, rhs) =>
-      // Don't fold constants on the lhs TODO: fold the read ones...
-      Some {
-        bindings.push(bindingsMap.getOrElse(stmt.id, Bindings.empty))
-        TypeAssigner(stmt.copy(rhs = walk(rhs).asInstanceOf[Expr]) withLoc tree.loc) tap { _ =>
-          bindings.pop()
-        }
+    case stmt @ StmtIf(cond, thenStmts, elseStmts) =>
+      val simp = cond.simplify
+      simp.value match {
+        case Some(v) if v != 0    => Thicket(thenStmts)
+        case Some(v) if v == 0    => Thicket(elseStmts)
+        case None if simp eq cond => tree
+        case None                 => TypeAssigner(stmt.copy(cond = simp) withLoc tree.loc)
       }
 
-    case stmt: Stmt =>
-      bindings.push(bindingsMap.getOrElse(stmt.id, Bindings.empty))
-      None
-
-    // Only substitute in index/slice target if the indices are known constants,
-    // in which case fold them as well. This is to avoid creating non-constant
-    // indices into non-symbols
-    case e @ ExprIndex(expr, index) =>
-      Some {
-        walk(index).asInstanceOf[Expr].simplify match {
-          case known: ExprInt =>
-            val newExpr = walk(expr).asInstanceOf[Expr]
-            TypeAssigner(ExprIndex(newExpr, known) withLoc tree.loc).simplify
-          case other => TypeAssigner(e.copy(index = other) withLoc tree.loc)
-        }
+    case StmtStall(cond) =>
+      val simp = cond.simplify
+      simp.value match {
+        case Some(v) if v != 0    => Stump
+        case Some(v) if v == 0    => cc.error(tree, "Stall condition is always true"); tree
+        case None if simp eq cond => tree
+        case None                 => TypeAssigner(StmtStall(simp) withLoc tree.loc)
       }
 
-    case e @ ExprSlice(expr, lIdx, _, _) =>
-      Some {
-        walk(lIdx).asInstanceOf[Expr].simplify match {
-          case known: ExprInt =>
-            val newExpr = walk(expr).asInstanceOf[Expr]
-            // Note: rIdx is always constant
-            TypeAssigner(e.copy(expr = newExpr, lIdx = known) withLoc tree.loc).simplify
-          case other => TypeAssigner(e.copy(lIdx = other) withLoc tree.loc)
-        }
-      }
+    // TODO: Fold StmtCase
 
-    case _ => None
+    // Drop empty processes
+    case EntCombProcess(stmts) if stmts forall emptyStmt => Stump
+
+    case EntClockedProcess(_, stmts) if stmts forall emptyStmt => Stump
+
+    case _ => tree
   }
 
-  override def transform(tree: Tree): Tree = {
-    val result = tree match {
-      // Substitute known constants
-      case ExprSym(symbol) =>
-        bindings.head get symbol map {
-          _.simplify match {
-            case known: ExprInt => known
-            case _              => tree
-          }
-        } getOrElse tree
-
-      // Fold if statements
-      case StmtIf(cond, thenStmts, elseStmts) =>
-        cond.value match {
-          case Some(v) if v != 0 => Thicket(thenStmts) regularize tree.loc
-          case Some(v) if v == 0 => Thicket(elseStmts) regularize tree.loc
-          case None              => tree
-        }
-
-      // Fold stall statements
-      case StmtStall(cond) =>
-        cond.value match {
-          case Some(v) if v != 0 => Thicket(Nil) regularize tree.loc
-          case Some(v) if v == 0 =>
-            cc.error(tree, "Stall condition is always true")
-            tree
-          case None => tree
-        }
-
-      // TODO: Fold case statements
-
-      case _ => tree
-    }
-
-    if (tree.isInstanceOf[Stmt]) {
-      bindings.pop()
-    }
-
-    result
-  }
-
-  override def finalCheck(tree: Tree): Unit = {
-    assert(bindings.isEmpty)
-  }
 }
 
 object FoldStmt extends EntityTransformerPass(declFirst = true) {

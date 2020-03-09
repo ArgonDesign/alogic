@@ -128,7 +128,9 @@ final class MakeVerilog(
               dSymbol <- qSymbol.attr.flop.get
             } {
               emitVarDecl(qSymbol)
-              emitVarDecl(dSymbol)
+              if (decl.decls exists { _.symbol eq dSymbol }) {
+                emitVarDecl(dSymbol)
+              }
             }
           }
         }

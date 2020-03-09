@@ -75,25 +75,26 @@ object Passes extends ChainingSyntax {
         AddCasts andThen
         FoldExpr andThen
         SimplifyCat andThen
-        InferImplications andThen
-        FoldStmt andThen
-        SimplifyConditionals andThen
         ////////////////////////////////////////////////////////////////////////
         // Back-end
         ////////////////////////////////////////////////////////////////////////
         RenameSymbols andThen
         LowerVariables andThen
         LowerInterconnect andThen
+        InferImplications andThen
         PropagateImplications andThen
         RemoveStructuralSharing andThen
+        InlineKnownVars(combOnly = true) andThen
+        FoldExpr andThen
         FoldStmt andThen
         OptimizeClearOnStall andThen
         LowerStalls andThen
-//        InlineKnownVars andThen
         DefaultAssignments andThen
+        InlineKnownVars(combOnly = false) andThen
+        FoldStmt andThen
         RemoveUnused andThen
         RemoveRedundantBlocks andThen
-        FoldExpr andThen
+        FoldStmt andThen
         RenameSymbols andThen
 //      // TODO: RenameKeywords
 //      // TODO: final check pass to make sure everything is well-formed
