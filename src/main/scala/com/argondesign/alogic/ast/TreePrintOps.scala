@@ -241,14 +241,15 @@ trait TreePrintOps extends { this: Tree =>
   }
 
   private final def v(tree: Ent)(implicit cc: CompilerContext, indent: Int): String = tree match {
-    case EntDesc(desc)           => v(desc)
-    case EntDecl(decl)           => v(decl)
-    case EntDefn(defn)           => v(defn)
-    case EntGen(gen)             => v(gen)
-    case EntConnect(lhs, rhs)    => s"${v(lhs)} -> ${vs(rhs, ", ")};"
-    case EntCombProcess(stmts)   => block("always", stmts)
-    case EntVerbatim(lang, body) => s"verbatim $lang {$body}"
-    case EntComment(str)         => "//" + str
+    case EntDesc(desc)                   => v(desc)
+    case EntDecl(decl)                   => v(decl)
+    case EntDefn(defn)                   => v(defn)
+    case EntGen(gen)                     => v(gen)
+    case EntConnect(lhs, rhs)            => s"${v(lhs)} -> ${vs(rhs, ", ")};"
+    case EntCombProcess(stmts)           => block("comb-process", stmts)
+    case EntClockedProcess(reset, stmts) => block(s"clocked-process reset=$reset", stmts)
+    case EntVerbatim(lang, body)         => s"verbatim $lang {$body}"
+    case EntComment(str)                 => "//" + str
   }
 
   private final def v(tree: Rec)(implicit cc: CompilerContext, indent: Int): String = tree match {
@@ -282,6 +283,7 @@ trait TreePrintOps extends { this: Tree =>
     case StmtAssign(lhs, rhs)              => s"${v(lhs)} = ${v(rhs)};"
     case StmtUpdate(lhs, op, rhs)          => s"${v(lhs)} $op= ${v(rhs)};"
     case StmtPost(expr, op)                => s"${v(expr)}$op;"
+    case StmtDelayed(lhs, rhs)             => s"${v(lhs)} <= ${v(rhs)};"
     case StmtExpr(expr)                    => s"${v(expr)};"
     case StmtRead()                        => "read;"
     case StmtWrite()                       => "write;"

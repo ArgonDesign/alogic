@@ -178,6 +178,7 @@ object Trees {
   case class EntGen(gen: Gen) extends Ent
   case class EntConnect(lhs: Expr, rhs: List[Expr]) extends Ent
   case class EntCombProcess(stmts: List[Stmt]) extends Ent
+  case class EntClockedProcess(reset: Boolean, stmts: List[Stmt]) extends Ent
   case class EntVerbatim(lang: String, body: String) extends Ent
   case class EntComment(str: String) extends Ent
 
@@ -220,6 +221,7 @@ object Trees {
   case class StmtAssign(lhs: Expr, rhs: Expr) extends Stmt
   case class StmtUpdate(lhs: Expr, op: String, rhs: Expr) extends Stmt
   case class StmtPost(expr: Expr, op: String) extends Stmt
+  case class StmtDelayed(lhs: Expr, rhs: Expr) extends Stmt
   case class StmtRead() extends Stmt
   case class StmtWrite() extends Stmt
   case class StmtExpr(expr: Expr) extends Stmt

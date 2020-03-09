@@ -657,6 +657,15 @@ object TreeCopier {
     }
   }
 
+  def apply(tree: EntClockedProcess)(stmts: List[Tree]): EntClockedProcess = {
+    if (stmts eq tree.stmts) {
+      tree
+    } else {
+      assert(stmts forall { _.isInstanceOf[Stmt] })
+      tree.copy(stmts = stmts.asInstanceOf[List[Stmt]]) withLoc tree.loc
+    }
+  }
+
   //////////////////////////////////////////////////////////////////////////////
   // Rec
   //////////////////////////////////////////////////////////////////////////////
@@ -858,6 +867,14 @@ object TreeCopier {
       tree
     } else {
       StmtPost(expr.asInstanceOf[Expr], tree.op) withLoc tree.loc
+    }
+  }
+
+  def apply(tree: StmtDelayed)(lhs: Tree, rhs: Tree): StmtDelayed = {
+    if ((lhs eq tree.lhs) && (rhs eq tree.rhs)) {
+      tree
+    } else {
+      StmtDelayed(lhs.asInstanceOf[Expr], rhs.asInstanceOf[Expr]) withLoc tree.loc
     }
   }
 

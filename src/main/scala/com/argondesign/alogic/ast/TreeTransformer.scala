@@ -488,6 +488,9 @@ abstract class TreeTransformer(
           case node: EntCombProcess =>
             val stmts = walk(node.stmts)
             TreeCopier(node)(stmts)
+          case node: EntClockedProcess =>
+            val stmts = walk(node.stmts)
+            TreeCopier(node)(stmts)
           case node: EntVerbatim => node
           case node: EntComment  => node
           ////////////////////////////////////////////////////////////////////////
@@ -560,6 +563,10 @@ abstract class TreeTransformer(
           case node: StmtPost =>
             val expr = walk(node.expr)
             TreeCopier(node)(expr)
+          case node: StmtDelayed =>
+            val lhs = walk(node.lhs)
+            val rhs = walk(node.rhs)
+            TreeCopier(node)(lhs, rhs)
           case node: StmtRead  => node
           case node: StmtWrite => node
           case node: StmtExpr =>
