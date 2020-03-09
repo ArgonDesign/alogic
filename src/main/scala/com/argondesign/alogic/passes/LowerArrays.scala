@@ -38,20 +38,19 @@ final class LowerArrays(implicit cc: CompilerContext) extends TreeTransformer {
           case TypeArray(kind, size) =>
             val loc = tree.loc
             val name = symbol.name
-            // Append _q to array name symbol
-            symbol.name = s"${name}_q"
             // Create we symbol
-            val weSymbol = cc.newSymbol(s"${name}_we", loc) tap { s =>
-              s.kind = TypeUInt(1)
-              s.attr.clearOnStall set true
-            }
+            val weSymbol = cc.newSymbol(s"${name}_we", loc) tap { _.kind = TypeUInt(1) }
+            weSymbol.attr.clearOnStall set true
+            weSymbol.attr.combSignal set true
             // Create waddr symbol
             val abits = Math.clog2(size) ensuring { _ > 0 }
             val waSymbol = cc.newSymbol(s"${name}_waddr", loc) tap { _.kind = TypeUInt(abits) }
+            waSymbol.attr.combSignal set true
             // Create wdata symbol
             val dbits = kind.width
             val wdSymbol = cc.newSymbol(s"${name}_wdata", loc) tap { _.kind = TypeUInt(dbits) }
-            // Set attributes
+            wdSymbol.attr.combSignal set true
+            // Memorize
             symbol.attr.memory.set((weSymbol, waSymbol, wdSymbol))
             arrays.append((weSymbol, waSymbol, wdSymbol))
 
@@ -87,16 +86,33 @@ final class LowerArrays(implicit cc: CompilerContext) extends TreeTransformer {
       }
 
     //////////////////////////////////////////////////////////////////////////
-    // Add extra Decl/Defn
+    // Add extra Decl/Defn and the clocked process
     //////////////////////////////////////////////////////////////////////////
 
     case DeclArray(symbol, _, _) =>
       val (we, wa, wd) = symbol.attr.memory.value
       Thicket(List(tree, we.mkDecl, wa.mkDecl, wd.mkDecl)) regularize tree.loc
 
-    case DefnArray(symbol) =>
+    case EntDefn(DefnArray(symbol)) =>
       val (we, wa, wd) = symbol.attr.memory.value
-      Thicket(List(tree, we.mkDefn, wa.mkDefn, wd.mkDefn)) regularize tree.loc
+      val stmts = List(
+        StmtComment(s"Distributed memory '${symbol.name}' - line ${symbol.loc.line}"),
+        StmtIf(
+          ExprSym(we),
+          List(StmtDelayed(ExprSym(symbol) index ExprSym(wa), ExprSym(wd))),
+          Nil
+        )
+      )
+      // Append _q to array name symbol
+      symbol.name = s"${symbol.name}_q"
+      Thicket(
+        List(
+          tree,
+          EntDefn(we.mkDefn),
+          EntDefn(wa.mkDefn),
+          EntDefn(wd.mkDefn),
+          EntClockedProcess(reset = false, stmts)
+        )) regularize tree.loc
 
     //////////////////////////////////////////////////////////////////////////
     // Add _we/_waddr/_wdata = 'b0 fence statements

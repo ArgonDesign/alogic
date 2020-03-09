@@ -58,16 +58,6 @@ final class LowerVariables(implicit cc: CompilerContext) extends TreeTransformer
           symbol.attr.combSignal set true
         }
 
-        // Mark memory control signals as combinatorial nets
-        for {
-          Decl(mSymbol) <- decl.decls
-          (weSymbol, waSymbol, wdSymbol) <- mSymbol.attr.memory.get
-        } {
-          weSymbol.attr.combSignal set true
-          waSymbol.attr.combSignal set true
-          wdSymbol.attr.combSignal set true
-        }
-
         decl.decls foreach {
           case decl @ Decl(symbol)
               if symbol.kind.isInt && !(symbol.attr.combSignal contains true) =>

@@ -157,10 +157,6 @@ object RemoveUnused extends PairsTransformerPass {
         case Decl(symbol) if symbol.attr.flop.isSet =>
           // Flop _d and go signal
           symbol.attr.flop.get.iterator ++ goSymbolOpt.iterator
-        case Decl(symbol) if symbol.attr.memory.isSet =>
-          // Array _we/_waddr/_wdata
-          val (we, waddr, wdata) = symbol.attr.memory.value
-          Iterator(we, waddr, wdata)
         case ExprSym(symbol) =>
           // Any other reference is used
           Iterator.single(symbol)

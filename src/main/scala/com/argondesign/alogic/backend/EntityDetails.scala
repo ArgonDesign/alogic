@@ -40,6 +40,8 @@ final class EntityDetails(val decl: DeclEntity,
     }
   }
 
+  val clockedProcesses: List[EntClockedProcess] = defn.clockedProcesses
+
   val resetFlops: List[Defn] = defn.defns filter {
     case DefnVar(symbol, Some(_)) => symbol.attr.flop.isSet
     case DefnVar(symbol, None)    => symbol.attr.flop.isSet && cc.settings.resetAll
@@ -69,13 +71,15 @@ final class EntityDetails(val decl: DeclEntity,
     case Decl(symbol) => symbol.attr.go.isSet
   }
 
-  lazy val needsClock: Boolean = isVerbatim || hasFlops || hasArrays || {
+  lazy val needsClock: Boolean = isVerbatim || hasFlops || clockedProcesses.nonEmpty || {
     decl.instances exists { decl =>
       details(decl.symbol.kind.asEntity.symbol).needsClock
     }
   }
 
   lazy val needsReset: Boolean = isVerbatim || resetFlops.nonEmpty || {
+    clockedProcesses exists { _.reset }
+  } || {
     defn.instances exists { decl =>
       details(decl.symbol.kind.asEntity.symbol).needsReset
     }

@@ -46,6 +46,10 @@ trait DefnEntityOps { this: DefnEntity =>
     case node: EntCombProcess => node
   }
 
+  final lazy val clockedProcesses: List[EntClockedProcess] = body collect {
+    case node: EntClockedProcess => node
+  }
+
   final lazy val verbatims: List[EntVerbatim] = body collect { case node: EntVerbatim => node }
 
 }

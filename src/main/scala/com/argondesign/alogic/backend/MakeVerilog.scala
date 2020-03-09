@@ -173,7 +173,7 @@ final class MakeVerilog(
   }
 
   private def emitInternalStorageSection(body: CodeWriter): Unit = {
-    if (hasFlops || hasArrays) {
+    if (hasFlops) {
       body.emitSection(1, "Storage section") {
         if (resetFlops.nonEmpty) {
           body.emitBlock(1, "Reset flops") {
@@ -251,31 +251,15 @@ final class MakeVerilog(
           }
           body.ensureBlankLine()
         }
-
-        if (hasArrays) {
-          body.emitBlock(1, "Distributed memory section") {
-            for {
-              Decl(qSymbol) <- decl.decls
-              (weSymbol, waSymbol, wdSymbol) <- qSymbol.attr.memory.get
-            } {
-              body.emit(1) {
-                List(
-                  "always @(posedge clk) begin",
-                  s"  if (${weSymbol.name}) begin",
-                  s"    ${qSymbol.name}[${waSymbol.name}] <= ${wdSymbol.name};",
-                  "  end",
-                  "end"
-                )
-              }
-              body.ensureBlankLine()
-            }
-          }
-        }
       }
     }
   }
 
   private def emitStatement(body: CodeWriter, indent: Int, stmt: Stmt): Unit = {
+    def wrapIfCat(expr: Expr) = expr match {
+      case _: ExprCat => vexpr(expr, wrapCat = true, indent = indent)
+      case _          => vexpr(expr)
+    }
 
     stmt match {
       // Block
@@ -312,16 +296,11 @@ final class MakeVerilog(
         }
         body.emit(indent)(s"endcase")
 
-      // Assignment statements
-      case StmtAssign(lhs, rhs) =>
-        def wrapIfCat(expr: Expr) = expr match {
-          case _: ExprCat => vexpr(expr, wrapCat = true, indent = indent)
-          case _          => vexpr(expr)
-        }
-        body.emit(indent)(s"${wrapIfCat(lhs)} = ${wrapIfCat(rhs)};")
+      // Blocking assignment statements
+      case StmtAssign(lhs, rhs) => body.emit(indent)(s"${wrapIfCat(lhs)} = ${wrapIfCat(rhs)};")
 
-      // Error statement injected by compiler at an earlier error
-      case _: StmtError => body.emit(indent)(s"/* Error statement from ${stmt.loc.prefix} */")
+      // Non-blocking assignment statements
+      case StmtDelayed(lhs, rhs) => body.emit(indent)(s"${wrapIfCat(lhs)} <= ${wrapIfCat(rhs)};")
 
       // Expression statements like $display();
       case StmtExpr(expr) => body.emit(indent)(s"${vexpr(expr)};")
@@ -333,20 +312,38 @@ final class MakeVerilog(
     }
   }
 
-  private def emitCombProcesses(body: CodeWriter): Unit = {
-    require(defn.combProcesses.lengthIs <= 1)
-    defn.combProcesses foreach {
-      case EntCombProcess(stmts) =>
-        assert(stmts.nonEmpty)
-        body.emitSection(1, "State system") {
+  private def emitClockedProcesses(body: CodeWriter, processes: List[EntClockedProcess]): Unit =
+    body.emitSection(1, "Clocked processes") {
+      processes foreach {
+        case EntClockedProcess(reset, stmts) =>
+          assert(stmts.nonEmpty)
+          val header = cc.settings.resetStyle match {
+            case ResetStyle.AsyncLow if reset  => s"always @(posedge clk or negedge ${cc.rst})"
+            case ResetStyle.AsyncHigh if reset => s"always @(posedge clk or posedge ${cc.rst})"
+            case _                             => "always @(posedge clk)"
+          }
+          body.emit(1)(header + " begin")
+          stmts foreach { stmt =>
+            emitStatement(body, 2, stmt)
+          }
+          body.emit(1)("end")
+      }
+    }
+
+  private def emitCombProcesses(body: CodeWriter, processes: List[EntCombProcess]): Unit =
+    // TODO: allow multiple
+    body.emitSection(1, "State system") {
+      require(processes.lengthIs == 1)
+      processes foreach {
+        case EntCombProcess(stmts) =>
+          assert(stmts.nonEmpty)
           body.emit(1)("always @* begin")
           stmts foreach { stmt =>
             emitStatement(body, 2, stmt)
           }
           body.emit(1)("end")
-        }
+      }
     }
-  }
 
   private def emitInstances(body: CodeWriter): Unit = {
     if (decl.instances.nonEmpty) {
@@ -426,7 +423,13 @@ final class MakeVerilog(
 
     emitInternalStorageSection(body)
 
-    emitCombProcesses(body)
+    if (defn.clockedProcesses.nonEmpty) {
+      emitClockedProcesses(body, defn.clockedProcesses)
+    }
+
+    if (defn.combProcesses.nonEmpty) {
+      emitCombProcesses(body, defn.combProcesses)
+    }
 
     emitInstances(body)
 
