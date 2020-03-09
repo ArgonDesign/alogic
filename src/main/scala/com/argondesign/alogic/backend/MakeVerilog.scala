@@ -172,89 +172,6 @@ final class MakeVerilog(
     }
   }
 
-  private def emitInternalStorageSection(body: CodeWriter): Unit = {
-    if (hasFlops) {
-      body.emitSection(1, "Storage section") {
-        if (resetFlops.nonEmpty) {
-          body.emitBlock(1, "Reset flops") {
-            body.emit(1) {
-              cc.settings.resetStyle match {
-                case ResetStyle.AsyncLow  => s"always @(posedge clk or negedge ${cc.rst}) begin"
-                case ResetStyle.AsyncHigh => s"always @(posedge clk or posedge ${cc.rst}) begin"
-                case _                    => "always @(posedge clk) begin"
-              }
-            }
-            body.emit(2)(
-              cc.settings.resetStyle match {
-                case ResetStyle.AsyncLow | ResetStyle.SyncLow => s"if (!${cc.rst}) begin"
-                case _                                        => s"if (${cc.rst}) begin"
-              }
-            )
-
-            body.emit(3) {
-              for {
-                DefnVar(qSymbol, initOpt) <- resetFlops
-              } yield {
-                val id = qSymbol.name
-                val init = initOpt match {
-                  case Some(expr) => expr
-                  case None       => ExprInt(qSymbol.kind.isSigned, qSymbol.kind.width.toInt, 0)
-                }
-                s"$id <= ${vexpr(init)};"
-              }
-            }
-
-            if (canStall) {
-              body.emit(2)("end else if (go) begin")
-            } else {
-              body.emit(2)("end else begin")
-            }
-
-            body.emit(3) {
-              for {
-                Defn(qSymbol) <- resetFlops
-                dSymbol <- qSymbol.attr.flop.get
-              } yield {
-                s"${qSymbol.name} <= ${dSymbol.name};"
-              }
-            }
-
-            body.emit(2)("end")
-            body.emit(1)("end")
-          }
-          body.ensureBlankLine()
-        }
-
-        if (unresetFlops.nonEmpty) {
-          body.emitBlock(1, "Unreset flops") {
-            body.emit(1) {
-              "always @(posedge clk) begin"
-            }
-
-            if (canStall) {
-              body.emit(2)("if (go) begin")
-            } else {
-              body.emit(2)("begin")
-            }
-
-            body.emit(3) {
-              for {
-                Defn(qSymbol) <- unresetFlops
-                dSymbol <- qSymbol.attr.flop.get
-              } yield {
-                s"${qSymbol.name} <= ${dSymbol.name};"
-              }
-            }
-
-            body.emit(2)("end")
-            body.emit(1)("end")
-          }
-          body.ensureBlankLine()
-        }
-      }
-    }
-  }
-
   private def emitStatement(body: CodeWriter, indent: Int, stmt: Stmt): Unit = {
     def wrapIfCat(expr: Expr) = expr match {
       case _: ExprCat => vexpr(expr, wrapCat = true, indent = indent)
@@ -317,6 +234,7 @@ final class MakeVerilog(
       processes foreach {
         case EntClockedProcess(reset, stmts) =>
           assert(stmts.nonEmpty)
+          body.ensureBlankLine()
           val header = cc.settings.resetStyle match {
             case ResetStyle.AsyncLow if reset  => s"always @(posedge clk or negedge ${cc.rst})"
             case ResetStyle.AsyncHigh if reset => s"always @(posedge clk or posedge ${cc.rst})"
@@ -420,8 +338,6 @@ final class MakeVerilog(
 
   private def emitBody(body: CodeWriter): Unit = {
     emitDeclarationSection(body)
-
-    emitInternalStorageSection(body)
 
     if (defn.clockedProcesses.nonEmpty) {
       emitClockedProcesses(body, defn.clockedProcesses)

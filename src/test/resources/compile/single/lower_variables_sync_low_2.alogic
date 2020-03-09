@@ -1,0 +1,31 @@
+// @no-reset-all
+// @reset-style:sync-low
+fsm lower_variables_sync_low_2 {
+  in       bool i;
+  out wire bool o;
+
+  bool flop;
+
+  void main() {
+    o = flop;
+    flop = i;
+    fence;
+  }
+}
+// @fec-golden {{{
+//  module lower_variables_sync_low_2(
+//    input  wire clk,
+//    input  wire i,
+//    output wire o
+//  );
+//
+//    reg flop_q;
+//
+//    always @(posedge clk) begin
+//      flop_q <= i;
+//    end
+//
+//    assign o = flop_q;
+//
+//  endmodule
+// }}}

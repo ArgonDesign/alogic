@@ -67,7 +67,6 @@ final class StatementFilter(p: PartialFunction[Stmt, Boolean])(implicit cc: Comp
 
 object StatementFilter {
 
-  def apply(p: PartialFunction[Stmt, Boolean])(implicit cc: CompilerContext): StatementFilter = {
+  def apply(p: PartialFunction[Stmt, Boolean])(implicit cc: CompilerContext): StatementFilter =
     new StatementFilter(p)
-  }
 }

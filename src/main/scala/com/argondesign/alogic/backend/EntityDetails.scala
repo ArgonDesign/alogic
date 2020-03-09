@@ -42,22 +42,11 @@ final class EntityDetails(val decl: DeclEntity,
 
   val clockedProcesses: List[EntClockedProcess] = defn.clockedProcesses
 
-  val resetFlops: List[Defn] = defn.defns filter {
-    case DefnVar(symbol, Some(_)) => symbol.attr.flop.isSet
-    case DefnVar(symbol, None)    => symbol.attr.flop.isSet && cc.settings.resetAll
-    case _                        => false
-  }
-
-  val unresetFlops: List[Defn] = defn.defns filter {
-    case DefnVar(symbol, None) => symbol.attr.flop.isSet && !cc.settings.resetAll
-    case _                     => false
-  }
-
   lazy val isVerbatim: Boolean = defn.variant == EntityVariant.Ver
 
   lazy val hasConsts: Boolean = decl.decls exists { _.symbol.kind.isConst }
 
-  lazy val hasFlops: Boolean = resetFlops.nonEmpty || unresetFlops.nonEmpty
+  lazy val hasFlops: Boolean = decl.decls exists { _.symbol.attr.flop.isSet }
 
   lazy val hasCombSignals: Boolean = decl.decls exists { _.symbol.attr.combSignal.isSet }
 
@@ -71,15 +60,13 @@ final class EntityDetails(val decl: DeclEntity,
     case Decl(symbol) => symbol.attr.go.isSet
   }
 
-  lazy val needsClock: Boolean = isVerbatim || hasFlops || clockedProcesses.nonEmpty || {
+  lazy val needsClock: Boolean = isVerbatim || clockedProcesses.nonEmpty || {
     decl.instances exists { decl =>
       details(decl.symbol.kind.asEntity.symbol).needsClock
     }
   }
 
-  lazy val needsReset: Boolean = isVerbatim || resetFlops.nonEmpty || {
-    clockedProcesses exists { _.reset }
-  } || {
+  lazy val needsReset: Boolean = isVerbatim || (clockedProcesses exists { _.reset }) || {
     defn.instances exists { decl =>
       details(decl.symbol.kind.asEntity.symbol).needsReset
     }

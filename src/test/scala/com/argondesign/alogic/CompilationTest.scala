@@ -312,6 +312,16 @@ trait CompilationTest
         cancel
       }
 
+      val resetStyle = attr.get("reset-style") map {
+        case "async-low"  => ResetStyle.AsyncLow
+        case "async-high" => ResetStyle.AsyncHigh
+        case "sync-low"   => ResetStyle.SyncLow
+        case "sync-high"  => ResetStyle.SyncHigh
+        case other        => fail(s"Unknown reset style: $other")
+      } getOrElse ResetStyle.SyncHigh
+
+      val resetAll = !(attr contains "no-reset-all")
+
       // Create compiler context
       implicit val cc: CompilerContext = new CompilerContext(
         Settings(
@@ -319,7 +329,8 @@ trait CompilationTest
           outputWriterFactory = outputWriterFactory,
           messageEmitter = messageEmitter,
           dumpTrees = configMap.getWithDefault("dump-trees", "0").toInt != 0,
-          resetStyle = ResetStyle.SyncHigh,
+          resetStyle = resetStyle,
+          resetAll = resetAll,
           shuffleEnts = configMap.getOptional[String]("shuffle-ents") map { _.toInt }
         )
       )

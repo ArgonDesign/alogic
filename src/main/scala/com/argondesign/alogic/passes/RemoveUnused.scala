@@ -147,16 +147,10 @@ object RemoveUnused extends PairsTransformerPass {
     // symbols that are written through a concatenation lvalue, as they are
     // required as placeholders
     val usedSymbols = gather(pairs) { (decl, defn) =>
-      val goSymbolOpt = decl.decls collectFirst {
-        case Decl(symbol) if symbol.attr.go.isSet => symbol
-      }
       val partA = decl flatCollect {
         case DeclInstance(_, ExprSym(eSymbol)) =>
           // Instantiated entity
           Iterator.single(eSymbol)
-        case Decl(symbol) if symbol.attr.flop.isSet =>
-          // Flop _d and go signal
-          symbol.attr.flop.get.iterator ++ goSymbolOpt.iterator
         case ExprSym(symbol) =>
           // Any other reference is used
           Iterator.single(symbol)

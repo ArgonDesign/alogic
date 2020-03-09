@@ -22,7 +22,12 @@ import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.Types.TypeUInt
 import com.argondesign.alogic.core.enums.EntityVariant
+import com.argondesign.alogic.core.enums.ResetStyle
+import com.argondesign.alogic.typer.TypeAssigner
+
+import scala.collection.mutable.ListBuffer
 
 final class LowerVariables(implicit cc: CompilerContext) extends TreeTransformer {
 
@@ -34,16 +39,19 @@ final class LowerVariables(implicit cc: CompilerContext) extends TreeTransformer
     case _             => false
   }
 
+  private val resetFlops = new ListBuffer[(Symbol, Symbol, Expr)]()
+  private val nonResetFlops = new ListBuffer[(Symbol, Symbol)]()
+
   override def enter(tree: Tree): Option[Tree] = {
     tree match {
 
-      case decl: DeclEntity =>
+      case defn: DefnEntity =>
         // Drop the oreg prefix from the flops allocated for registered outputs,
         // These will now gain _d and _q, so the names will become unique.
         val prefix = s"`oreg${cc.sep}"
         val prefixLen = prefix.length
         for {
-          Decl(symbol) <- decl.decls
+          Defn(symbol) <- defn.defns
           if symbol.name startsWith prefix
         } {
           symbol.name = symbol.name drop prefixLen
@@ -51,17 +59,16 @@ final class LowerVariables(implicit cc: CompilerContext) extends TreeTransformer
 
         // Mark local symbols driven by Connect as combinational nets
         for {
-          EntConnect(_, List(rhs)) <- decl.symbol.defn.asInstanceOf[DefnEntity].connects
+          EntConnect(_, List(rhs)) <- defn.connects
           symbol <- WrittenSymbols(rhs)
           if symbol.kind.isInt
         } {
           symbol.attr.combSignal set true
         }
 
-        decl.decls foreach {
-          case decl @ Decl(symbol)
-              if symbol.kind.isInt && !(symbol.attr.combSignal contains true) =>
-            val loc = decl.loc
+        defn.defns foreach {
+          case defn @ DefnVar(symbol, initOpt) if !(symbol.attr.combSignal contains true) =>
+            val loc = defn.loc
             val name = symbol.name
             // Append _q to the name of the symbol
             symbol.name = s"${name}_q"
@@ -83,6 +90,14 @@ final class LowerVariables(implicit cc: CompilerContext) extends TreeTransformer
             symbol.attr.default.clear()
             // Set attributes
             symbol.attr.flop set dSymbol
+            // Memorize
+            if (cc.settings.resetAll || initOpt.isDefined) {
+              val kind = symbol.kind
+              val resetExpr = initOpt getOrElse ExprInt(kind.isSigned, kind.width.toInt, 0)
+              resetFlops.append((symbol, dSymbol, resetExpr))
+            } else {
+              nonResetFlops.append((symbol, dSymbol))
+            }
 
           case _ =>
         }
@@ -103,6 +118,76 @@ final class LowerVariables(implicit cc: CompilerContext) extends TreeTransformer
       qSymbol.attr.flop.get map { dSymbol =>
         ExprSym(dSymbol) regularize tree.loc
       } getOrElse {
+        tree
+      }
+
+    //////////////////////////////////////////////////////////////////////////
+    // Add the clocked processes
+    //////////////////////////////////////////////////////////////////////////
+
+    case defn: DefnEntity =>
+      lazy val goSymbolOpt = defn.defns collectFirst {
+        case Defn(symbol) if symbol.attr.go.isSet => symbol
+      }
+      val resetProcess = Option.when(resetFlops.nonEmpty) {
+        // TODO: Here we just make up an undeclared reset symbol (yuck) so we
+        // can condition on it. It should be a proper signal...
+        val rstSymbol = cc.newSymbol(cc.rst, tree.loc) tap { _.kind = TypeUInt(1) }
+        val rstLow = cc.settings.resetStyle match {
+          case ResetStyle.AsyncLow | ResetStyle.SyncLow => true
+          case _                                        => false
+        }
+        val resetAssigns = List from {
+          resetFlops.iterator map {
+            case (qSymbol, _, resetVal) => StmtDelayed(ExprSym(qSymbol), resetVal)
+          }
+        }
+        val dAssigns = {
+          val assigns = List from {
+            resetFlops.iterator map {
+              case (qSymbol, dSymbol, _) => StmtDelayed(ExprSym(qSymbol), ExprSym(dSymbol))
+            }
+          }
+          goSymbolOpt match {
+            case None => assigns
+            case Some(goSymbol) =>
+              List(StmtIf(ExprSym(goSymbol), assigns, Nil))
+          }
+        }
+        EntClockedProcess(
+          reset = true,
+          List(
+            StmtComment("Reset flops"),
+            StmtIf(
+              if (rstLow) !ExprSym(rstSymbol) else ExprSym(rstSymbol),
+              resetAssigns,
+              dAssigns
+            )
+          )
+        ) regularize tree.loc
+      }
+      val nonResetProcess = Option.when(nonResetFlops.nonEmpty) {
+        val dAssigns = {
+          val assigns = List from {
+            nonResetFlops.iterator map {
+              case (qSymbol, dSymbol) => StmtDelayed(ExprSym(qSymbol), ExprSym(dSymbol))
+            }
+          }
+          goSymbolOpt match {
+            case None => assigns
+            case Some(goSymbol) =>
+              List(StmtIf(ExprSym(goSymbol), assigns, Nil))
+          }
+        }
+        EntClockedProcess(
+          reset = false,
+          StmtComment("Non-reset flops") :: dAssigns
+        ) regularize tree.loc
+      }
+      if (resetProcess.isDefined || nonResetProcess.isDefined) {
+        val newBody = defn.body ++ resetProcess.iterator ++ nonResetProcess.iterator
+        TypeAssigner(defn.copy(body = newBody) withLoc tree.loc)
+      } else {
         tree
       }
 
@@ -130,7 +215,7 @@ final class LowerVariables(implicit cc: CompilerContext) extends TreeTransformer
 
 }
 
-object LowerVariables extends EntityTransformerPass(declFirst = true) {
+object LowerVariables extends EntityTransformerPass(declFirst = false) {
   val name = "lower-variables"
 
   override def skip(decl: Decl, defn: Defn)(implicit cc: CompilerContext): Boolean =

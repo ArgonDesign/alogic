@@ -22,6 +22,7 @@ import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols._
+import com.argondesign.alogic.transform.StatementFilter
 import com.argondesign.alogic.typer.TypeAssigner
 
 import scala.collection.mutable
@@ -54,7 +55,7 @@ final class DefaultAssignments(implicit cc: CompilerContext) extends TreeTransfo
       }
 
       // Remove symbols that are dead at the beginning of the cycle.
-      lazy val (liveSymbolBits, deadSymbolBits) = Liveness(defn.combProcesses.head.stmts)
+      val (liveSymbolBits, deadSymbolBits) = Liveness(defn.combProcesses.head.stmts)
 
       if (needsDefault.nonEmpty) {
         assert(defn.combProcesses.lengthIs == 1)
@@ -72,49 +73,70 @@ final class DefaultAssignments(implicit cc: CompilerContext) extends TreeTransfo
         }
       }
 
-      if (needsDefault.isEmpty) {
-        tree
-      } else {
-        // Symbols have default assignments set as follows:
-        // If a symbol is live or drives a connection, initialize to its default value
-        // otherwise zero.
-        val initializeToRegisteredVal = {
-          val liveSymbols = liveSymbolBits.underlying.keySet
+      // If a symbol is live or drives a connection, initialize to its
+      // default value otherwise zero.
+      val initializeToDefault = {
+        val symbolsDrivingConnect = Set from {
+          defn.connects.iterator flatMap {
+            case EntConnect(lhs, _) =>
+              lhs.collect {
+                case ExprSym(symbol) => symbol.attr.flop.getOrElse(symbol)
+              }
+          }
+        }
 
-          val symbolsDrivingConnect = Set from {
-            defn.connects.iterator flatMap {
-              case EntConnect(lhs, _) =>
-                lhs.collect {
-                  case ExprSym(symbol) => symbol.attr.flop.getOrElse(symbol)
-                }
+        liveSymbolBits.keySet union symbolsDrivingConnect
+      }
+
+      // Any Q symbols which are referenced  (other than in the clocked blocks)
+      val referencedQSymbols = Set from {
+        defn flatCollect {
+          case _: EntClockedProcess                      => None // Stop descent
+          case ExprSym(symbol) if symbol.attr.flop.isSet => Some(symbol)
+        }
+      }
+
+      val newBody = defn.body flatMap {
+        case ent @ EntCombProcess(stmts) =>
+          // Add default assignments
+          val leading = for {
+            Defn(symbol) <- defn.defns
+            if needsDefault contains symbol
+          } yield {
+            val init = if ((initializeToDefault contains symbol) && symbol.attr.default.isSet) {
+              symbol.attr.default.value
+            } else {
+              val kind = symbol.kind
+              ExprInt(kind.isSigned, kind.width.toInt, 0)
             }
+            StmtAssign(ExprSym(symbol), init) regularize symbol.loc
           }
-
-          liveSymbols union symbolsDrivingConnect
-        }
-
-        val leading = for {
-          Defn(symbol) <- defn.defns
-          if needsDefault contains symbol
-        } yield {
-          val init = if ((initializeToRegisteredVal contains symbol) && symbol.attr.default.isSet) {
-            symbol.attr.default.value
-          } else {
-            val kind = symbol.kind
-            ExprInt(kind.isSigned, kind.width.toInt, 0)
+          List(TypeAssigner(EntCombProcess(leading ::: stmts) withLoc ent.loc))
+        case ent @ EntClockedProcess(_, stmts) =>
+          // Drop delayed assignments to unused flops
+          val filter = StatementFilter {
+            case _: StmtComment => true // Keep comments
+            case StmtDelayed(ExprSym(qSymbol), _) if !referencedQSymbols(qSymbol) =>
+              qSymbol.attr.flop.get match {
+                case None          => true // Keep non-flops
+                case Some(dSymbol) => needsDefault(dSymbol) && initializeToDefault(dSymbol)
+              }
           }
-          StmtAssign(ExprSym(symbol), init) regularize symbol.loc
-        }
+          val newStmts = stmts map filter collect {
+            // Keep it if there are any assignments left, or it's a top level comment
+            case stmt: StmtComment => stmt
+            case stmt: Stmt if stmt exists { case _: StmtDelayed => true } => stmt
+          }
+          val drop = newStmts forall {
+            case _: StmtComment => true
+            case _              => false
+          }
+          if (drop) Nil else List(TypeAssigner(ent.copy(stmts = newStmts) withLoc ent.loc))
+        case other => List(other)
+      }
 
-        val newBody = defn.body map {
-          case ent @ EntCombProcess(stmts) =>
-            TypeAssigner(EntCombProcess(leading ::: stmts) withLoc ent.loc)
-          case other => other
-        }
-
-        TypeAssigner {
-          defn.copy(body = newBody) withLoc tree.loc
-        }
+      TypeAssigner {
+        defn.copy(body = newBody) withLoc tree.loc
       }
 
     case _ => tree
