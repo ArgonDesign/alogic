@@ -16,7 +16,7 @@
 
 package com.argondesign.alogic.passes
 
-import com.argondesign.alogic.ast.TreeTransformer
+import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeReady
@@ -38,7 +38,7 @@ final class LowerPipelineStage(
     oPortSymbolOpt: Option[(Symbol, TypeRecord)],
     pipelinedSymbols: Map[Symbol, Symbol]
 )(implicit cc: CompilerContext)
-    extends TreeTransformer {
+    extends StatefulTreeTransformer {
 
   private val pipelinedNames = pipelinedSymbols map { case (k, v) => (k.name, v) }
 
@@ -120,7 +120,7 @@ final class LowerPipelineStage(
   }
 }
 
-final class LowerPipelineHost(implicit cc: CompilerContext) extends TreeTransformer {
+final class LowerPipelineHost(implicit cc: CompilerContext) extends StatefulTreeTransformer {
 
   // Map from old symbols to replaced symbol/decl/defn
   private val symbolMap: mutable.Map[Symbol, (Symbol, Decl, Defn)] = mutable.Map()

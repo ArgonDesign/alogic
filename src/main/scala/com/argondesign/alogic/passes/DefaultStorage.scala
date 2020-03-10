@@ -15,7 +15,7 @@
 
 package com.argondesign.alogic.passes
 
-import com.argondesign.alogic.ast.TreeTransformer
+import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FlowControlTypes._
@@ -26,7 +26,7 @@ import com.argondesign.alogic.typer.TypeAssigner
 
 import scala.collection.mutable
 
-final class DefaultStorage(implicit cc: CompilerContext) extends TreeTransformer {
+final class DefaultStorage(implicit cc: CompilerContext) extends StatefulTreeTransformer {
 
   // Set of output ports accessed through port methods or directly
   private[this] val accessedSet = mutable.Set[Symbol]()

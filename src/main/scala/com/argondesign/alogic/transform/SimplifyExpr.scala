@@ -15,7 +15,7 @@
 
 package com.argondesign.alogic.transform
 
-import com.argondesign.alogic.ast.TreeTransformer
+import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees.Expr.Integral
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
@@ -27,20 +27,13 @@ import com.argondesign.alogic.util.BigIntOps._
 import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.tailrec
-import scala.collection.mutable
 import scala.language.implicitConversions
 
-final class SimplifyExpr(implicit cc: CompilerContext) extends TreeTransformer {
-
-  private val foldRefs = true
+final class SimplifyExpr(implicit cc: CompilerContext) extends StatelessTreeTransformer {
 
   private implicit def boolean2BigInt(bool: Boolean): BigInt = if (bool) BigInt(1) else BigInt(0)
 
   private val shiftOps = Set("<<", ">>", "<<<", ">>>")
-
-  private var dontFoldNextSym = false
-
-  private val tgtTpe = mutable.Stack[Type]()
 
   private def foldShiftUnsized(expr: ExprBinary): Expr = expr match {
     case ExprBinary(ExprNum(ls, lv), op, rhs) =>
@@ -48,14 +41,12 @@ final class SimplifyExpr(implicit cc: CompilerContext) extends TreeTransformer {
       val negl = lv < 0
       val negr = rv < 0
       val num = (ls, op) match {
-        case _ if negr => {
+        case _ if negr =>
           cc.error(expr, "Negative shift amount")
           ExprError()
-        }
-        case (true, ">>") if negl => {
+        case (true, ">>") if negl =>
           cc.error(expr, "'>>' is not well defined for negative unsized values")
           ExprError()
-        }
         case (signed, "<<")  => ExprNum(signed, lv << rv.toInt)
         case (signed, ">>")  => ExprNum(signed, lv >> rv.toInt)
         case (signed, "<<<") => ExprNum(signed, lv << rv.toInt)
@@ -70,40 +61,111 @@ final class SimplifyExpr(implicit cc: CompilerContext) extends TreeTransformer {
     symbol.name == "$signed" || symbol.name == "$unsigned"
   }
 
-  override def enter(tree: Tree): Option[Tree] = {
-    if (foldRefs) {
-      tree match {
-        case ExprIndex(_, idx) =>
-          val idxValOpt = idx.value
-          // If idx is not a constant, don't fold symbol at start of target
-          val idxNonConst = idxValOpt.isEmpty
-          dontFoldNextSym ||= idxNonConst
-        case ExprSlice(_, lidx, _, _) =>
-          val lidxValOpt = lidx.value
-          // If lidx is not a constant, don't fold symbol at start of target
-          val lidxNonConst = lidxValOpt.isEmpty
-          dontFoldNextSym ||= lidxNonConst
-        case _ => ()
+  override def enter(tree: Tree): Option[Tree] = tree match {
+    //////////////////////////////////////////////////////////////////////////
+    // Only substitute in index/slice target if the indices are known
+    // constants, in which case fold them as well. This is to avoid creating
+    // non-constant indices into non-symbols. In addition, we need to fold
+    // index/slice over constants in pre-order as the target type might be
+    // a vector
+    //////////////////////////////////////////////////////////////////////////
+
+    case expr @ ExprIndex(tgt, idx) =>
+      Some {
+        (walk(tgt), walk(idx)) match {
+          case (Integral(_, _, tgtValue), Integral(_, _, idxValue)) =>
+            // Fold known index into known value TODO: error on out of range
+            TypeAssigner {
+              tgt.tpe match {
+                case TypeVector(eKind, _) =>
+                  val eSigned = eKind.isSigned
+                  val eWidth = eKind.width.toInt
+                  val result = tgtValue.extract((eWidth * idxValue).toInt, eWidth, eSigned)
+                  ExprInt(eSigned, eWidth, result) withLoc tree.loc
+                case _ =>
+                  ExprInt(false, 1, (tgtValue >> idxValue.toInt) & 1) withLoc tree.loc
+              }
+            }
+          case (newTgt, newIdx) if (newTgt eq tgt) && (newIdx eq idx) =>
+            // If all children are final, simply apply the transform to the input
+            transform(expr)
+          case (_: ExprInt | _: ExprNum, newIdx: Expr) =>
+            // Do not fold unknown index into known value, but transform the
+            // simplified expression
+            transform {
+              TypeAssigner {
+                expr.copy(index = newIdx) withLoc tree.loc
+              }
+            }
+          case (newTgt: Expr, newIdx: Expr) =>
+            // Transform the simplified expression
+            transform {
+              TypeAssigner {
+                expr.copy(expr = newTgt, index = newIdx) withLoc tree.loc
+              }
+            }
+          case _ => unreachable
+        }
       }
 
-      // Next keep track of tgt type so that when transforming Indices or Slices,
-      // if we see ExprInt in the place of the target, we know how to index/slice from it.
-      tree match {
-        case ExprIndex(tgt, _)       => tgtTpe push tgt.tpe.underlying
-        case ExprSlice(tgt, _, _, _) => tgtTpe push tgt.tpe.underlying
-        case _                       => tgtTpe push TypeError
+    case expr @ ExprSlice(tgt, lIdx, op, rIdx) =>
+      Some {
+        (walk(tgt), walk(lIdx), walk(rIdx)) match {
+          case (Integral(_, _, tgtValue), Integral(_, _, lIdxValue), Integral(_, _, rIdxValue)) =>
+            // Fold known slice into known value TODO: error on out of range
+            val lsb = op match {
+              case ":"  => rIdxValue.toInt
+              case "+:" => lIdxValue.toInt
+              case "-:" => (lIdxValue - rIdxValue + 1).toInt
+              case _    => unreachable
+            }
+            val width = op match {
+              case ":" => (lIdxValue - rIdxValue + 1).toInt
+              case _   => rIdxValue.toInt
+            }
+            TypeAssigner {
+              tgt.tpe match {
+                case TypeVector(eKind, _) =>
+                  val rWidth = (eKind.width * width).toInt
+                  val result = tgtValue.extract((eKind.width * lsb).toInt, rWidth)
+                  ExprInt(false, rWidth, result) withLoc tree.loc
+                case _ =>
+                  ExprInt(false, width, tgtValue.extract(lsb, width)) withLoc tree.loc
+              }
+            }
+          case (newTgt, newLIdx, newRIdx)
+              if (newTgt eq tgt) && (newLIdx eq lIdx) && (newRIdx eq rIdx) =>
+            // If all children are final, simply apply the transform to the input
+            transform(expr)
+          case (_: ExprInt | _: ExprNum, newLIdx: Expr, newRIdx: Expr) =>
+            // Do not fold unknown slice into known value, but transform the
+            // simplified expression
+            transform {
+              TypeAssigner {
+                expr.copy(lIdx = newLIdx, rIdx = newRIdx) withLoc tree.loc
+              }
+            }
+          case (newTgt: Expr, newLIdx: Expr, newRIdx: Expr) =>
+            // Transform the simplified expression
+            transform {
+              TypeAssigner {
+                expr.copy(expr = newTgt, lIdx = newLIdx, rIdx = newRIdx) withLoc tree.loc
+              }
+            }
+          case _ => unreachable
+        }
       }
-    }
 
-    // Pre-order folds to avoid creating invalid intermediate nodes
-    tree pipe {
-      ////////////////////////////////////////////////////////////////////////////
-      // Fold selects
-      ////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////
+    // Fold selects
+    //////////////////////////////////////////////////////////////////////////
 
-      case ExprSelect(tgt, sel, _) if tgt.tpe.isRecord =>
+    case expr @ ExprSelect(tgt, sel, idxs) =>
+      assert(idxs.isEmpty)
+      Some {
         walk(tgt) match {
           case Integral(_, _, value) =>
+            // Fold select into known value
             val (fieldTpe, lessSigFieldTpes) =
               tgt.tpe.asRecord.publicSymbols dropWhile { _.name != sel } map { _.kind } match {
                 case head :: tail => (head, tail)
@@ -111,20 +173,24 @@ final class SimplifyExpr(implicit cc: CompilerContext) extends TreeTransformer {
               }
             val lsb = lessSigFieldTpes.map(_.width).sum.toInt
             val result = value.extract(lsb, fieldTpe.width.toInt, fieldTpe.isSigned)
-            Some {
+            TypeAssigner {
+              ExprInt(fieldTpe.isSigned, fieldTpe.width.toInt, result) withLoc tree.loc
+            }
+          case newTgt if newTgt eq tgt =>
+            // If all children are final, simply apply the transform to the input
+            transform(expr)
+          case newTgt: Expr =>
+            // Transform the simplified expression
+            transform {
               TypeAssigner {
-                ExprInt(fieldTpe.isSigned, fieldTpe.width.toInt, result) withLoc tree.loc
+                expr.copy(expr = newTgt) withLoc tree.loc
               }
             }
-          case _ => None
+          case _ => unreachable
         }
+      }
 
-      //
-      case _ => None
-    } tap {
-      case Some(_) if foldRefs => tgtTpe.pop()
-      case _                   =>
-    }
+    case _ => None
   }
 
   override def transform(tree: Tree): Tree = {
@@ -157,15 +223,7 @@ final class SimplifyExpr(implicit cc: CompilerContext) extends TreeTransformer {
       // Fold references to other symbols
       ////////////////////////////////////////////////////////////////////////////
 
-      case ExprSym(symbol) if foldRefs =>
-        if (dontFoldNextSym) {
-          dontFoldNextSym = false
-          tree
-        } else if (symbol.kind.isConst) {
-          symbol.init getOrElse tree
-        } else {
-          tree
-        }
+      case ExprSym(symbol) if symbol.kind.isConst => symbol.init getOrElse unreachable
 
       ////////////////////////////////////////////////////////////////////////////
       // Fold shifts with an unsized left hand side
@@ -407,49 +465,6 @@ final class SimplifyExpr(implicit cc: CompilerContext) extends TreeTransformer {
           } else {
             tree
           }
-        }
-      }
-
-      ////////////////////////////////////////////////////////////////////////////
-      // Fold index into sized/unsized integers
-      ////////////////////////////////////////////////////////////////////////////
-
-      case ExprIndex(Integral(_, _, value), Integral(_, _, idx)) => {
-        // TODO: error on out of range
-        tgtTpe.headOption match {
-          case Some(TypeVector(eKind, _)) =>
-            val result = value.extract((eKind.width * idx).toInt, eKind.width.toInt, eKind.isSigned)
-            ExprInt(eKind.isSigned, eKind.width.toInt, result) withLoc tree.loc
-          case _ =>
-            ExprInt(false, 1, (value >> idx.toInt) & 1) withLoc tree.loc
-        }
-      }
-
-      ////////////////////////////////////////////////////////////////////////////
-      // Fold slice into sized/unsized integers
-      ////////////////////////////////////////////////////////////////////////////
-
-      case ExprSlice(Integral(_, _, value), Integral(_, _, blidx), op, Integral(_, _, bridx)) => {
-        // TODO: error on out of range
-        val lidx = blidx.toInt
-        val ridx = bridx.toInt
-        val lsb = op match {
-          case ":"  => ridx
-          case "+:" => lidx
-          case "-:" => lidx - ridx + 1
-          case _    => unreachable
-        }
-        val width = op match {
-          case ":" => lidx - ridx + 1
-          case _   => ridx
-        }
-        tgtTpe.headOption match {
-          case Some(TypeVector(eKind, _)) =>
-            val result =
-              value.extract((eKind.width * lsb).toInt, (eKind.width * width).toInt)
-            ExprInt(false, (eKind.width * width).toInt, result) withLoc tree.loc
-          case _ =>
-            ExprInt(false, width, value.extract(lsb, width)) withLoc tree.loc
         }
       }
 
@@ -808,19 +823,9 @@ final class SimplifyExpr(implicit cc: CompilerContext) extends TreeTransformer {
       case _ => tree
     }
 
-    if (foldRefs) {
-      tgtTpe.pop()
-    }
-
     // Recursively fold the resulting expression
     val result2 = if (result ne tree) walk(result) else result
 
     if (!result2.hasTpe) TypeAssigner(result2) else result2
   }
-
-  override def finalCheck(tree: Tree): Unit = {
-    assert(tgtTpe.isEmpty)
-    assert(!dontFoldNextSym)
-  }
-
 }

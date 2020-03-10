@@ -15,12 +15,12 @@
 
 package com.argondesign.alogic.passes
 
-import com.argondesign.alogic.ast.TreeTransformer
+import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.typer.TypeAssigner
 
-final class ResolvePolyFunc(implicit cc: CompilerContext) extends TreeTransformer {
+final class ResolvePolyFunc(implicit cc: CompilerContext) extends StatelessTreeTransformer {
 
   override def transform(tree: Tree): Tree = tree match {
     case ExprCall(expr, args) if expr.tpe.isPolyFunc =>
@@ -40,8 +40,6 @@ final class ResolvePolyFunc(implicit cc: CompilerContext) extends TreeTransforme
 
 object ResolvePolyFunc extends PairTransformerPass {
   val name = "resolve-poly-func"
-  def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {
-    val transformer = new ResolvePolyFunc
-    (transformer(decl), transformer(defn))
-  }
+  def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) =
+    (cc.resolvePolyFunc(decl), cc.resolvePolyFunc(defn))
 }

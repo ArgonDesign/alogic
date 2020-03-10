@@ -15,7 +15,7 @@
 
 package com.argondesign.alogic.passes
 
-import com.argondesign.alogic.ast.TreeTransformer
+import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Types._
@@ -23,7 +23,7 @@ import com.argondesign.alogic.lib.Math.clog2
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.unreachable
 
-final class AddCasts(implicit cc: CompilerContext) extends TreeTransformer {
+final class AddCasts(implicit cc: CompilerContext) extends StatelessTreeTransformer {
 
   private def cast(kind: Type, expr: Expr) = {
     val (castType, castExpr) = if (kind.underlying.isNum) {
@@ -148,8 +148,6 @@ final class AddCasts(implicit cc: CompilerContext) extends TreeTransformer {
 
 object AddCasts extends PairTransformerPass {
   val name = "add-casts"
-  def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {
-    val transformer = new AddCasts
-    (transformer(decl), transformer(defn))
-  }
+  def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) =
+    (cc.addCasts(decl), cc.addCasts(defn))
 }

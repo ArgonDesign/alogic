@@ -15,7 +15,7 @@
 
 package com.argondesign.alogic.passes
 
-import com.argondesign.alogic.ast.TreeTransformer
+import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
@@ -46,7 +46,7 @@ final class SramBuilder {
 final class LowerSrams(
     sramBuilder: SramBuilder
 )(implicit cc: CompilerContext)
-    extends TreeTransformer {
+    extends StatefulTreeTransformer {
 
   private val sep = cc.sep
 

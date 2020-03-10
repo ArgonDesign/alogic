@@ -16,13 +16,13 @@
 
 package com.argondesign.alogic.passes
 
-import com.argondesign.alogic.ast.TreeTransformer
+import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.typer.TypeAssigner
 
-final class RemoveRedundantBlocks(implicit cc: CompilerContext) extends TreeTransformer {
+final class RemoveRedundantBlocks(implicit cc: CompilerContext) extends StatefulTreeTransformer {
 
   private[this] def flatten(body: List[Stmt]): List[Stmt] = {
     body flatMap {

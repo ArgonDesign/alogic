@@ -19,14 +19,14 @@
 
 package com.argondesign.alogic.transform
 
-import com.argondesign.alogic.ast.TreeTransformer
+import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.passes.RemoveRedundantBlocks
 import com.argondesign.alogic.util.unreachable
 
 final class StatementFilter(p: PartialFunction[Stmt, Boolean])(implicit cc: CompilerContext)
-    extends TreeTransformer {
+    extends StatefulTreeTransformer {
 
   override val typed: Boolean = true
 

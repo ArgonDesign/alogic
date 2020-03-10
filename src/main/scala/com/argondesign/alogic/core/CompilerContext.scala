@@ -30,7 +30,8 @@ class CompilerContext(val settings: Settings = Settings())
     with Symbols
     with Builtins
     with Output
-    with Profiling {
+    with Profiling
+    with StatelessTransforms {
 
   // Shorthand for frequently accessed settings
   val sep: String = settings.sep

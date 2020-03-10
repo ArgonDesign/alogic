@@ -15,6 +15,7 @@
 
 package com.argondesign.alogic.passes
 
+import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
@@ -28,7 +29,7 @@ import scala.collection.mutable
 final class LowerVectorsA(
     globalReplacements: mutable.Map[Symbol, Symbol],
 )(implicit cc: CompilerContext)
-    extends TreeTransformer {
+    extends StatefulTreeTransformer {
 
   private[this] val tgtTpe = mutable.Stack[Type]()
 
@@ -179,7 +180,7 @@ final class LowerVectorsA(
 final class LowerVectorsB(
     globalReplacements: mutable.Map[Symbol, Symbol],
 )(implicit cc: CompilerContext)
-    extends TreeTransformer {
+    extends StatefulTreeTransformer {
 
   override def replace(symbol: Symbol): Boolean = symbol.kind match {
     case TypeEntity(eSymbol, _) => globalReplacements contains eSymbol

@@ -15,6 +15,7 @@
 
 package com.argondesign.alogic.passes
 
+import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
@@ -29,7 +30,7 @@ final class SplitStructsA(
     globalReplacements: mutable.Map[Symbol, Symbol],
     fieldMap: mutable.Map[Symbol, List[Symbol]]
 )(implicit cc: CompilerContext)
-    extends TreeTransformer {
+    extends StatefulTreeTransformer {
 
   private[this] def flattenStruct(prefix: String, kind: TypeRecord): List[(String, TypeFund)] = {
     kind.publicSymbols flatMap { symbol =>
@@ -135,7 +136,7 @@ final class SplitStructsB(
     globalReplacements: collection.Map[Symbol, Symbol],
     fieldMaps: collection.Map[Symbol, collection.Map[Symbol, List[Symbol]]]
 )(implicit cc: CompilerContext)
-    extends TreeTransformer {
+    extends StatefulTreeTransformer {
 
   override def replace(symbol: Symbol): Boolean = symbol.kind match {
     case TypeEntity(eSymbol, _) => globalReplacements contains eSymbol

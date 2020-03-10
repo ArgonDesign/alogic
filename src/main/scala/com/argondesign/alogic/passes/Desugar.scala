@@ -15,13 +15,13 @@
 
 package com.argondesign.alogic.passes
 
-import com.argondesign.alogic.ast.TreeTransformer
+import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.unreachable
 
-final class Desugar(implicit cc: CompilerContext) extends TreeTransformer {
+final class Desugar(implicit cc: CompilerContext) extends StatefulTreeTransformer {
 
   override def transform(tree: Tree): Tree = tree match {
     // "a++" rewritten as  "a = a + <width of a>'d1"

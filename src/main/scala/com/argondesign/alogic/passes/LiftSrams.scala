@@ -15,7 +15,7 @@
 
 package com.argondesign.alogic.passes
 
-import com.argondesign.alogic.ast.TreeTransformer
+import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees.Expr.InstancePortRef
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
@@ -36,7 +36,7 @@ final class LiftSramsFrom(
     replacements: mutable.Map[Symbol, Symbol],
     liftFromMap: Map[Symbol, List[Symbol]]
 )(implicit cc: CompilerContext)
-    extends TreeTransformer {
+    extends StatefulTreeTransformer {
 
   private val fcn = FlowControlTypeNone
   private val stw = StorageTypeWire
@@ -121,7 +121,7 @@ final class LiftSramsTo(
     replacements: collection.Map[Symbol, Symbol],
     liftFromMap: Map[Symbol, List[Symbol]]
 )(implicit cc: CompilerContext)
-    extends TreeTransformer {
+    extends StatefulTreeTransformer {
 
   private def portRef(iSymbol: Symbol, sel: String) = ExprSelect(ExprSym(iSymbol), sel, Nil)
 

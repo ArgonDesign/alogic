@@ -21,7 +21,7 @@
 package com.argondesign.alogic.typer
 
 import com.argondesign.alogic.analysis.WrittenSyms
-import com.argondesign.alogic.ast.TreeTransformer
+import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.CompoundType
@@ -49,7 +49,7 @@ class BoolHelpers(val value: Boolean) extends AnyVal {
   def implies(other: => Boolean): Boolean = !value || other
 }
 
-final class Typer(implicit cc: CompilerContext) extends TreeTransformer {
+final class Typer(implicit cc: CompilerContext) extends StatefulTreeTransformer {
 
   override val typed: Boolean = false
 

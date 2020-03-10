@@ -16,13 +16,13 @@
 
 package com.argondesign.alogic.transform
 
-import com.argondesign.alogic.ast.TreeTransformer
+import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.typer.TypeAssigner
 
-final class Regularize(loc: Loc)(implicit cc: CompilerContext) extends TreeTransformer {
+final class Regularize(loc: Loc)(implicit cc: CompilerContext) extends StatefulTreeTransformer {
 
   // TODO: This always walks the whole tree, which is very inefficient.
   // Rework such that it does not descend nodes which already have loc/tpe

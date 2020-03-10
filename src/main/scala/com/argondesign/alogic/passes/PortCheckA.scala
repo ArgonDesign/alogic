@@ -15,7 +15,7 @@
 
 package com.argondesign.alogic.passes
 
-import com.argondesign.alogic.ast.TreeTransformer
+import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees.Expr.InstancePortRef
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
@@ -30,7 +30,7 @@ import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
 
-final class PortCheckA(implicit cc: CompilerContext) extends TreeTransformer {
+final class PortCheckA(implicit cc: CompilerContext) extends StatefulTreeTransformer {
 
   private[this] def multipleSinkError(lhs: Expr, loc: Loc): Unit = {
     cc.error(lhs,

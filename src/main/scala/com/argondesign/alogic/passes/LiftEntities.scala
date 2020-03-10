@@ -15,6 +15,7 @@
 
 package com.argondesign.alogic.passes
 
+import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
@@ -105,7 +106,7 @@ class LiftEntitiesA(
     requiredSymbolsMap: Map[Symbol, Set[Symbol]]
 )(
     implicit cc: CompilerContext
-) extends TreeTransformer {
+) extends StatefulTreeTransformer {
 
   // Map of ('containing entity', 'referenced symbol') -> 'propagated symbol'
   private val propMap: Map[(Symbol, Symbol), Symbol] = requiredSymbolsMap flatMap {
@@ -293,7 +294,7 @@ class LiftEntitiesB(
     propagatedSymbols: Set[Symbol]
 )(
     implicit cc: CompilerContext
-) extends TreeTransformer {
+) extends StatefulTreeTransformer {
 
   // Output ports with storage that have been pushed into nested entities need
   // to loose their storage and turn into wire ports, we collect these in a set
@@ -348,7 +349,7 @@ class LiftEntitiesB(
 final class LiftEntitiesC(
     globalReplacements: collection.Map[Symbol, Symbol],
 )(implicit cc: CompilerContext)
-    extends TreeTransformer {
+    extends StatefulTreeTransformer {
 
   override def replace(symbol: Symbol): Boolean = symbol.kind match {
     case TypeEntity(eSymbol, _) => globalReplacements contains eSymbol

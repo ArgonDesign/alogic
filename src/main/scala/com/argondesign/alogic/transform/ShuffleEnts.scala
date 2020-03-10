@@ -15,7 +15,7 @@
 
 package com.argondesign.alogic.transform
 
-import com.argondesign.alogic.ast.TreeTransformer
+import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.typer.TypeAssigner
@@ -23,7 +23,7 @@ import com.argondesign.alogic.typer.TypeAssigner
 import scala.util.Random
 
 final class ShuffleEnts(override val typed: Boolean, val seed: Int)(implicit cc: CompilerContext)
-    extends TreeTransformer {
+    extends StatefulTreeTransformer {
 
   private[this] def shuffle(name: String, ents: List[Ent]): List[Ent] = {
     val random = new Random(name.foldLeft(seed)(_ * _))

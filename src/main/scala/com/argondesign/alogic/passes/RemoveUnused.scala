@@ -17,7 +17,7 @@ package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.analysis.ReadSymbols
 import com.argondesign.alogic.analysis.WrittenSymbols
-import com.argondesign.alogic.ast.TreeTransformer
+import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees.Expr.InstancePortRef
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
@@ -30,7 +30,7 @@ import scala.annotation.tailrec
 import scala.collection.immutable.HashSet
 
 final class RemoveUnused(unusedSymbols: Set[Symbol])(implicit cc: CompilerContext)
-    extends TreeTransformer {
+    extends StatefulTreeTransformer {
 
   override def replace(symbol: Symbol): Boolean = !unusedSymbols(symbol) && {
     symbol.kind match {

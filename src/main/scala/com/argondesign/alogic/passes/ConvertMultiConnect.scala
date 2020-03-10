@@ -16,11 +16,11 @@
 
 package com.argondesign.alogic.passes
 
-import com.argondesign.alogic.ast.TreeTransformer
+import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 
-final class ConvertMultiConnect(implicit cc: CompilerContext) extends TreeTransformer {
+final class ConvertMultiConnect(implicit cc: CompilerContext) extends StatefulTreeTransformer {
 
   override def skip(tree: Tree): Boolean = tree match {
     case _: Decl => true

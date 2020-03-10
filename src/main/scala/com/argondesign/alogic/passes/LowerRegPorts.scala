@@ -15,7 +15,7 @@
 
 package com.argondesign.alogic.passes
 
-import com.argondesign.alogic.ast.TreeTransformer
+import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.StorageTypes._
@@ -24,7 +24,7 @@ import com.argondesign.alogic.core.enums.EntityVariant
 
 import scala.collection.mutable
 
-final class LowerRegPorts(implicit cc: CompilerContext) extends TreeTransformer {
+final class LowerRegPorts(implicit cc: CompilerContext) extends StatefulTreeTransformer {
 
   val oRegs = mutable.Map[Symbol, Symbol]()
 

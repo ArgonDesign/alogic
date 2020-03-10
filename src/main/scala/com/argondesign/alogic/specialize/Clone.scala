@@ -14,7 +14,7 @@
 
 package com.argondesign.alogic.specialize
 
-import com.argondesign.alogic.ast.TreeTransformer
+import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 
@@ -29,7 +29,7 @@ private[specialize] object Clone {
     }
 
     // Transform that replaces references to cloned symbols
-    val transform = new TreeTransformer {
+    val transform = new StatefulTreeTransformer {
       override val typed: Boolean = false
 
       override def transform(tree: Tree): Tree = tree match {

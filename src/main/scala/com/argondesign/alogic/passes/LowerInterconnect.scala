@@ -24,7 +24,7 @@
 
 package com.argondesign.alogic.passes
 
-import com.argondesign.alogic.ast.TreeTransformer
+import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees.Expr.InstancePortRef
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
@@ -38,7 +38,7 @@ import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 final class LowerInterconnect(implicit cc: CompilerContext)
-    extends TreeTransformer
+    extends StatefulTreeTransformer
     with PartialMatch {
 
   // Map from (instance symbol, selector) to the new interconnect symbol

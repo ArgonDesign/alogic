@@ -17,6 +17,7 @@
 
 package com.argondesign.alogic.passes
 
+import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
@@ -29,7 +30,7 @@ import com.argondesign.alogic.util.unreachable
 import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
 
-final class SimplifyCat(implicit cc: CompilerContext) extends TreeTransformer {
+final class SimplifyCat(implicit cc: CompilerContext) extends StatefulTreeTransformer {
 
   // Return a list of pairwise equal-length sub-lists that can be assigned to each other
   private[this] def pairUp(
@@ -144,5 +145,6 @@ final class SimplifyCat(implicit cc: CompilerContext) extends TreeTransformer {
 
 object SimplifyCat extends EntityTransformerPass(declFirst = true) {
   val name = "simplify-cat"
-  def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer = new SimplifyCat
+  def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
+    new SimplifyCat
 }

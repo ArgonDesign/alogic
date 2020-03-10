@@ -15,7 +15,7 @@
 
 package com.argondesign.alogic.specialize
 
-import com.argondesign.alogic.ast.TreeTransformer
+import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.Symbol
@@ -25,7 +25,7 @@ private[specialize] object Replace {
   private class Transform(
       mapping: collection.Map[Symbol, Symbol]
   )(implicit cc: CompilerContext)
-      extends TreeTransformer {
+      extends StatefulTreeTransformer {
     override val typed: Boolean = false
     override def transform(tree: Tree): Tree = tree match {
       case ExprSym(symbol) =>

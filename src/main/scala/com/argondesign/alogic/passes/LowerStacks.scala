@@ -15,7 +15,7 @@
 
 package com.argondesign.alogic.passes
 
-import com.argondesign.alogic.ast.TreeTransformer
+import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.StackFactory
@@ -27,7 +27,7 @@ import com.argondesign.alogic.util.unreachable
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-final class LowerStacks(implicit cc: CompilerContext) extends TreeTransformer {
+final class LowerStacks(implicit cc: CompilerContext) extends StatefulTreeTransformer {
 
   // Map from original stack variable symbol to the
   // corresponding stack entity and instance symbols

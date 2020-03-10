@@ -15,13 +15,13 @@
 
 package com.argondesign.alogic.passes
 
-import com.argondesign.alogic.ast.TreeTransformer
+import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 
 import scala.collection.mutable
 
-final class LowerLoops(implicit cc: CompilerContext) extends TreeTransformer {
+final class LowerLoops(implicit cc: CompilerContext) extends StatefulTreeTransformer {
 
   // TODO: Add back correct skip condition
   override def skip(tree: Tree): Boolean = tree match {

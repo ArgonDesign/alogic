@@ -19,6 +19,7 @@
 
 package com.argondesign.alogic.passes
 
+import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
@@ -32,14 +33,13 @@ import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
-
 import scala.collection.concurrent.TrieMap
 
 final class LowerFlowControlA(
     globalReplacements: mutable.Map[Symbol, Symbol],
     portMap: mutable.Map[Symbol, List[Option[Symbol]]]
 )(implicit cc: CompilerContext)
-    extends TreeTransformer {
+    extends StatefulTreeTransformer {
 
   private val sep = cc.sep
 
@@ -520,7 +520,7 @@ final class LowerFlowControlB(
     globalReplacements: collection.Map[Symbol, Symbol],
     portMaps: collection.Map[Symbol, collection.Map[Symbol, List[Option[Symbol]]]]
 )(implicit cc: CompilerContext)
-    extends TreeTransformer {
+    extends StatefulTreeTransformer {
 
   //////////////////////////////////////////////////////////////////////////////
   // Extractor mechanism used to convert references to lowered versions

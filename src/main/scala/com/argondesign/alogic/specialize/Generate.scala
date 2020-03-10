@@ -16,7 +16,7 @@
 package com.argondesign.alogic.specialize
 
 import com.argondesign.alogic.analysis.StaticEvaluation
-import com.argondesign.alogic.ast.TreeTransformer
+import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Bindings
 import com.argondesign.alogic.core.CompilerContext
@@ -159,7 +159,7 @@ private[specialize] object Generate {
         inGen: Boolean
     )(
         implicit cc: CompilerContext
-    ) extends TreeTransformer {
+    ) extends StatefulTreeTransformer {
 
       override val typed: Boolean = false
 
@@ -616,7 +616,7 @@ private[specialize] object Generate {
     final class Resolve(
         finished: Boolean
     )(implicit cc: CompilerContext)
-        extends TreeTransformer {
+        extends StatefulTreeTransformer {
 
       override val typed: Boolean = false
 
@@ -815,7 +815,7 @@ private[specialize] object Generate {
 
     def rewrite(
         input: Either[Desc, (Decl, Defn)],
-        transform: TreeTransformer
+        transform: StatefulTreeTransformer
     ): Either[Desc, (Decl, Defn)] = input match {
       case Left(desc) =>
         Left(desc rewrite transform ensuring { _.symbol eq desc.symbol })

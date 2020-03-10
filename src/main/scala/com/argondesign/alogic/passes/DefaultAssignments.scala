@@ -18,7 +18,7 @@
 package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.analysis.Liveness
-import com.argondesign.alogic.ast.TreeTransformer
+import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols._
@@ -27,7 +27,7 @@ import com.argondesign.alogic.typer.TypeAssigner
 
 import scala.collection.mutable
 
-final class DefaultAssignments(implicit cc: CompilerContext) extends TreeTransformer {
+final class DefaultAssignments(implicit cc: CompilerContext) extends StatefulTreeTransformer {
 
   private val needsDefault = mutable.Set[Symbol]()
 

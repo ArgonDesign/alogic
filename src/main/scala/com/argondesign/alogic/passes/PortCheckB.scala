@@ -15,7 +15,7 @@
 
 package com.argondesign.alogic.passes
 
-import com.argondesign.alogic.ast.TreeTransformer
+import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
@@ -24,7 +24,7 @@ import com.argondesign.alogic.util.unreachable
 import scala.annotation.tailrec
 import scala.collection.mutable
 
-final class PortCheckB(implicit cc: CompilerContext) extends TreeTransformer {
+final class PortCheckB(implicit cc: CompilerContext) extends StatefulTreeTransformer {
 
   private[this] def multipleDriverError(rhs: Expr, loc: Loc, sliceOrIndexStr: String): Unit =
     cc.error(rhs, s"Port has multiple drivers. Other '->' is at:", loc.prefix)

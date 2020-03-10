@@ -18,7 +18,7 @@
 
 package com.argondesign.alogic.passes
 
-import com.argondesign.alogic.ast.TreeTransformer
+import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.Symbol
@@ -28,7 +28,7 @@ import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.SequenceNumbers
 import com.argondesign.alogic.util.unreachable
 
-final class CreateStateSystem(implicit cc: CompilerContext) extends TreeTransformer {
+final class CreateStateSystem(implicit cc: CompilerContext) extends StatefulTreeTransformer {
 
   // The 'go' symbol
   private[this] var goSymbol: Symbol = _

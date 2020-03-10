@@ -48,9 +48,8 @@ final class SimplifyExprSpec extends FreeSpec with AlogicTest {
     }
   }
 
-  protected def simplify(text: String): Expr = {
-    (text.asTree[Expr] rewrite new Namer rewrite new Typer).normalize rewrite new SimplifyExpr
-  }
+  protected def simplify(text: String): Expr =
+    (text.asTree[Expr] rewrite new Namer rewrite new Typer).simplify
 
   "FoldExpr should fold" - {
     "unary operators applied to unsized integer literals" - {
@@ -1538,7 +1537,7 @@ final class SimplifyExprSpec extends FreeSpec with AlogicTest {
               case _              => fail
             }
             ExprCast(kind, expr) withLoc Loc.synthetic rewrite {
-              new SimplifyExpr
+              cc.simpifyExpr
             } should matchPattern(pattern)
             checkSingleError(err)
           }

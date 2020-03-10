@@ -23,7 +23,7 @@ import com.argondesign.alogic.core.Types.TypeUInt
 import com.argondesign.alogic.core.Warning
 import org.scalatest.FlatSpec
 
-final class TreeTransformerSpec extends FlatSpec with AlogicTest {
+final class StatelessTreeTransformerSpec extends FlatSpec with AlogicTest {
 
   implicit val cc: CompilerContext = new CompilerContext
 
@@ -31,7 +31,7 @@ final class TreeTransformerSpec extends FlatSpec with AlogicTest {
     val tree = """|{
                   |  u1 foo;
                   |  u2 foo;
-                  |}""".stripMargin.asTree[Stmt] rewrite new TreeTransformer {
+                  |}""".stripMargin.asTree[Stmt] rewrite new StatelessTreeTransformer {
       override val typed = false
       override def transform(tree: Tree): Tree = tree match {
         case _: Ident => Ident("bar", Nil) withLoc tree.loc
@@ -50,7 +50,7 @@ final class TreeTransformerSpec extends FlatSpec with AlogicTest {
 
   it should "return the same tree instance if it is not rewritten" in {
     val oldTree = "{ a = b; bool c = a; }".asTree[Stmt]
-    val newTree = oldTree rewrite new TreeTransformer {
+    val newTree = oldTree rewrite new StatelessTreeTransformer {
       override val typed = false
       override def transform(tree: Tree): Tree = tree tap { _ =>
         cc.warning(tree, "Saw it")

@@ -19,12 +19,12 @@
 
 package com.argondesign.alogic.passes
 
-import com.argondesign.alogic.ast.TreeTransformer
+import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.typer.TypeAssigner
 
-final class ReplaceUnaryTicks(implicit cc: CompilerContext) extends TreeTransformer {
+final class ReplaceUnaryTicks(implicit cc: CompilerContext) extends StatelessTreeTransformer {
 
   override protected def enter(tree: Tree): Option[Tree] = tree match {
     case expr @ ExprUnary("'", op) =>
@@ -44,8 +44,7 @@ final class ReplaceUnaryTicks(implicit cc: CompilerContext) extends TreeTransfor
 object ReplaceUnaryTicks extends PairTransformerPass {
   val name = "replace-unary-ticks"
   def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {
-    val transform = new ReplaceUnaryTicks
     // The decl should contain no ticks
-    (decl, transform(defn))
+    (decl, cc.replaceUnaryTicks(defn))
   }
 }

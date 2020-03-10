@@ -16,7 +16,7 @@
 package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.analysis.StaticEvaluation
-import com.argondesign.alogic.ast.TreeTransformer
+import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Bindings
 import com.argondesign.alogic.core.CompilerContext
@@ -28,7 +28,7 @@ import scala.collection.mutable
 final class InlineKnownVars(
     combOnly: Boolean
 )(implicit cc: CompilerContext)
-    extends TreeTransformer {
+    extends StatefulTreeTransformer {
 
   private[this] var stmtBindings: Map[Int, Bindings] = _
   private[this] var endOfCycleBindings: Bindings = _

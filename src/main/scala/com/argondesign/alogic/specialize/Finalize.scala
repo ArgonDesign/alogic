@@ -15,7 +15,7 @@
 
 package com.argondesign.alogic.specialize
 
-import com.argondesign.alogic.ast.TreeTransformer
+import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.util.unreachable
@@ -36,7 +36,7 @@ private[specialize] object Finalize {
 
     val paramValues = mutable.Map[String, BigInt]()
 
-    val transform: TreeTransformer = new TreeTransformer {
+    val transform: StatefulTreeTransformer = new StatefulTreeTransformer {
       override val typed = false
 
       def typeCheck(tree: Tree): Boolean = cc.typeCheck(tree) tap {

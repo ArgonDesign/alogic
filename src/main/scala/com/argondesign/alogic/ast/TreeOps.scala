@@ -23,9 +23,6 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.frontend.Parser.Parseable
-import com.argondesign.alogic.passes.AddCasts
-import com.argondesign.alogic.passes.ReplaceUnaryTicks
-import com.argondesign.alogic.passes.ResolvePolyFunc
 import com.argondesign.alogic.transform.Regularize
 import com.argondesign.alogic.util.unreachable
 
@@ -336,11 +333,11 @@ final class TreeExt[T <: Tree](val tree: T) extends AnyVal {
 
   def normalize(implicit cc: CompilerContext): T =
     rewrite {
-      new ReplaceUnaryTicks
+      cc.replaceUnaryTicks
     } rewrite {
-      new ResolvePolyFunc
+      cc.resolvePolyFunc
     } rewrite {
-      new AddCasts
+      cc.addCasts
     }
 
   //////////////////////////////////////////////////////////////////////////////

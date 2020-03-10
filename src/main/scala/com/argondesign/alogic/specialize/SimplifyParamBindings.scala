@@ -14,7 +14,7 @@
 
 package com.argondesign.alogic.specialize
 
-import com.argondesign.alogic.ast.TreeTransformer
+import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 
@@ -22,7 +22,7 @@ import scala.collection.mutable
 
 private[specialize] object SimplifyParamBindings {
   def apply(paramBindings: Map[String, Expr])(implicit cc: CompilerContext): Map[String, Expr] = {
-    val transform: TreeTransformer = new TreeTransformer {
+    val transform: StatefulTreeTransformer = new StatefulTreeTransformer {
       override val typed = false
 
       // Number of tick children this Expr node has

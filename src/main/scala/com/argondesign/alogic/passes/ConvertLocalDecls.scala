@@ -17,7 +17,7 @@
 
 package com.argondesign.alogic.passes
 
-import com.argondesign.alogic.ast.TreeTransformer
+import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Types.Type
@@ -28,7 +28,7 @@ import com.argondesign.alogic.typer.TypeAssigner
 import scala.collection.mutable.ListBuffer
 import scala.util.Random
 
-final class ConvertLocalDecls(implicit cc: CompilerContext) extends TreeTransformer {
+final class ConvertLocalDecls(implicit cc: CompilerContext) extends StatefulTreeTransformer {
 
   private[this] val localDecls = ListBuffer[Decl]()
 

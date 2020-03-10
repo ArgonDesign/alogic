@@ -14,7 +14,7 @@
 
 package com.argondesign.alogic.specialize
 
-import com.argondesign.alogic.ast.TreeTransformer
+import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
@@ -46,7 +46,7 @@ private[specialize] object SpecializeExpr {
     var hadError = false
     val unknowns = mutable.Set[Symbol]()
 
-    val transform: TreeTransformer = new TreeTransformer {
+    val transform: StatefulTreeTransformer = new StatefulTreeTransformer {
       override val typed = false
 
       def error(loc: Loc, msg: String*): ExprError = {
