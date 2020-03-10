@@ -1,0 +1,42 @@
+struct struct_t {
+  bool a;
+  bool b;
+}
+
+network p8009_225 {
+  in  struct_t  i;
+  out struct_t  o;
+
+  // Ports declared as generic sized integers
+  new network generic {
+    out u2 oo;
+    i -> oo;
+  }
+
+  generic.oo -> specific.ii;
+
+  // Ports declred as specific structs
+  new network specific {
+      in  struct_t ii;
+      {ii.a, 1'd0} -> o;
+  }
+
+  verbatim verilog {
+    // Squelch verilator warning
+    wire _unused = 1'd0 & specific__ii__b;
+  }
+}
+
+// @fec-golden {{{
+//  module p8009_225(
+//    input  wire i__a,
+//    input  wire i__b,
+//    output wire o__a,
+//    output wire o__b
+//  );
+//
+//    assign o__a = i__a;
+//    assign o__b = 1'd0;
+//
+//  endmodule
+// }}}

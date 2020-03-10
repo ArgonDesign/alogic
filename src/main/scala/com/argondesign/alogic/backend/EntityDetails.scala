@@ -14,14 +14,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 package com.argondesign.alogic.backend
 
+import com.argondesign.alogic.analysis.WrittenSymbols
 import com.argondesign.alogic.ast.Trees.Expr.InstancePortRef
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.enums.EntityVariant
-
-import scala.util.chaining._
 
 final class EntityDetails(val decl: DeclEntity,
                           val defn: DefnEntity,
@@ -96,23 +95,13 @@ final class EntityDetails(val decl: DeclEntity,
     } filter {
       _.attr.interconnect.isSet
     } flatMap { nSymbol =>
-      {
-        defn.connects collectFirst {
-          case EntConnect(lhs, List(ExprSym(`nSymbol`))) => lhs
-        }
-      } orElse {
-        defn.connects collectFirst {
-          case EntConnect(ExprSym(`nSymbol`), List(rhs)) => rhs
-        }
-      } pipe {
-        case Some(ExprSelect(ExprSym(iSymbol), sel, Nil)) => Some((iSymbol, sel, nSymbol))
-        //
-        case Some(other) => cc.ice(other, "Malformed interconnect assignment")
-        case None        =>
-          // This can happen if the connect was removed because it was driving
-          // an unused signal, but the interconnect symbol is also used in an
-          // unpacking assignment so it couldn't itself be removed
-          None
+      defn.connects collectFirst {
+        case EntConnect(ExprSelect(ExprSym(iSymbol), sel, Nil), List(rhs))
+            if WrittenSymbols(rhs) contains nSymbol =>
+          (iSymbol, sel, nSymbol)
+        case EntConnect(lhs, List(ExprSelect(ExprSym(iSymbol), sel, Nil)))
+            if lhs.isLValueExpr && (WrittenSymbols(lhs) contains nSymbol) =>
+          (iSymbol, sel, nSymbol)
       }
     }
 
