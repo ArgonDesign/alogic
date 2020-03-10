@@ -47,9 +47,7 @@ object Passes extends ChainingSyntax {
         ResolvePolyFunc andThen
         AddCasts andThen
         Desugar andThen
-        InlineUnsizedConst andThen
-        FoldTypeAliases andThen
-        FoldExpr andThen
+        Fold andThen
         PortCheckB andThen
         ConvertMultiConnect andThen
         LowerPipeline andThen
@@ -73,7 +71,7 @@ object Passes extends ChainingSyntax {
         SplitStructs() andThen
         LowerVectors() andThen
         AddCasts andThen
-        FoldExpr andThen
+        Fold andThen
         SimplifyCat andThen
         ////////////////////////////////////////////////////////////////////////
         // Back-end
@@ -85,16 +83,15 @@ object Passes extends ChainingSyntax {
         PropagateImplications andThen
         RemoveStructuralSharing andThen
         InlineKnownVars(combOnly = true) andThen
-        FoldExpr andThen
-        FoldStmt andThen
+        Fold andThen
         OptimizeClearOnStall andThen
         LowerStalls andThen
         DefaultAssignments andThen
         InlineKnownVars(combOnly = false) andThen
-        FoldStmt andThen
+        Fold andThen
         RemoveUnused andThen
         RemoveRedundantBlocks andThen
-        FoldStmt andThen
+        Fold andThen
         RenameSymbols andThen
 //      // TODO: RenameKeywords
 //      // TODO: final check pass to make sure everything is well-formed

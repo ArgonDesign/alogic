@@ -10,10 +10,10 @@
 //
 // DESCRIPTION:
 //
-// FoldExpr tests
+// SimplifyExpr tests
 ////////////////////////////////////////////////////////////////////////////////
 
-package com.argondesign.alogic.passes
+package com.argondesign.alogic.transform
 
 import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.SourceTextConverters._
@@ -21,10 +21,17 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.passes.AddCasts
+import com.argondesign.alogic.passes.Elaborate
+import com.argondesign.alogic.passes.Fold
+import com.argondesign.alogic.passes.Namer
+import com.argondesign.alogic.passes.ResolvePolyFunc
+import com.argondesign.alogic.passes.TypeCheck
 import com.argondesign.alogic.typer.Typer
 import org.scalatest.FreeSpec
 
-final class FoldExprSpec extends FreeSpec with AlogicTest {
+final class SimplifyExprSpec extends FreeSpec with AlogicTest {
 
   implicit val cc: CompilerContext = new CompilerContext
 
@@ -34,17 +41,15 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
                         TypeCheck andThen
                         ResolvePolyFunc andThen
                         AddCasts andThen
-                        FoldExpr,
+                        Fold,
                       text).value flatMap {
       case (decl, defn) =>
         List(decl, defn)
     }
   }
 
-  protected def foldExpr(text: String): Expr = {
-    (text.asTree[Expr] rewrite new Namer rewrite new Typer).normalize rewrite {
-      new FoldExpr(foldRefs = true)
-    }
+  protected def simplify(text: String): Expr = {
+    (text.asTree[Expr] rewrite new Namer rewrite new Typer).normalize rewrite new SimplifyExpr
   }
 
   "FoldExpr should fold" - {
@@ -86,7 +91,7 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
         )
       } {
         text in {
-          foldExpr(text) shouldBe result
+          simplify(text) shouldBe result
           checkSingleError(err)
         }
       }
@@ -258,7 +263,7 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
         )
       } {
         text in {
-          foldExpr(text) shouldBe result
+          simplify(text) shouldBe result
           checkSingleError(err)
         }
       }
@@ -320,7 +325,7 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
         )
       } {
         text in {
-          foldExpr(text) shouldBe result
+          simplify(text) shouldBe result
           checkSingleError(err)
         }
       }
@@ -390,7 +395,7 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
         )
       } {
         text in {
-          foldExpr(text) shouldBe result
+          simplify(text) shouldBe result
           checkSingleError(err)
         }
       }
@@ -497,7 +502,7 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
         )
       } {
         text in {
-          foldExpr(text) shouldBe result
+          simplify(text) shouldBe result
           checkSingleError(Nil)
         }
       }
@@ -518,7 +523,7 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
         )
       } {
         text in {
-          foldExpr(text) should matchPattern(pattern)
+          simplify(text) should matchPattern(pattern)
           checkSingleError(err)
         }
       }
@@ -542,7 +547,7 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
         )
       } {
         text in {
-          foldExpr(text) shouldBe result
+          simplify(text) shouldBe result
           checkSingleError(err)
         }
       }
@@ -579,7 +584,7 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
         )
       } {
         text in {
-          foldExpr(text) shouldBe result
+          simplify(text) shouldBe result
           checkSingleError(err)
         }
       }
@@ -607,7 +612,7 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
         )
       } {
         text in {
-          foldExpr(text) shouldBe result
+          simplify(text) shouldBe result
           checkSingleError(err)
         }
       }
@@ -650,7 +655,7 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
         )
       } {
         text in {
-          foldExpr(text) shouldBe result
+          simplify(text) shouldBe result
           checkSingleError(err)
         }
       }
@@ -986,7 +991,7 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
         )
       } {
         text in {
-          foldExpr(text) shouldBe result
+          simplify(text) shouldBe result
           checkSingleError(err)
         }
       }
@@ -1007,7 +1012,7 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
         )
       } {
         text in {
-          foldExpr(text) shouldBe result
+          simplify(text) shouldBe result
           checkSingleError(err)
         }
       }
@@ -1217,7 +1222,7 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
           )
         } {
           text in {
-            foldExpr(text) shouldBe result
+            simplify(text) shouldBe result
             checkSingleError(err)
           }
         }
@@ -1259,7 +1264,7 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
           )
         } {
           text in {
-            foldExpr(text) shouldBe result
+            simplify(text) shouldBe result
             checkSingleError(err)
           }
         }
@@ -1297,7 +1302,7 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
           )
         } {
           text in {
-            foldExpr(text) shouldBe result
+            simplify(text) shouldBe result
             checkSingleError(err)
           }
         }
@@ -1342,8 +1347,9 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
               |(* toplevel *)
               |fsm x {
               |  a_t a;
-              |  fence {
+              |  void main() {
               |    $$display("", $text);
+              |    fence;
               |  }
               |}"""
             } getFirst {
@@ -1532,9 +1538,56 @@ final class FoldExprSpec extends FreeSpec with AlogicTest {
               case _              => fail
             }
             ExprCast(kind, expr) withLoc Loc.synthetic rewrite {
-              new FoldExpr(foldRefs = true)
+              new SimplifyExpr
             } should matchPattern(pattern)
             checkSingleError(err)
+          }
+        }
+      }
+    }
+
+    "reference to type" - {
+      for {
+        (decl, pattern) <- List[(String, PartialFunction[Any, Unit])](
+          // format: off
+          ("in bool_t x;",      { case ExprType(TypeUInt(w)) if w == 1 => }),
+          ("in i2_t x;",        { case ExprType(TypeSInt(w)) if w == 2 => }),
+          ("in v3u2_t x;",      { case ExprType(TypeVector(TypeUInt(w), s)) if w == 2 && s == 3=> }),
+//          ("const int x = 0;",  { case ExprType(TypeNum(true)) => }), // These are dropped by Fold
+//          ("const uint x = 0;", { case ExprType(TypeNum(false)) => }),// These are dropped by Fold
+          ("in sync void_t x;", { case ExprType(TypeVoid) => }),
+          ("in s_t x;",         { case ExprSym(Symbol("s_t")) => }),
+          ("x = new e_t;",      { case ExprSym(Symbol("e_t")) => }),
+          ("in ts_t x;",        { case ExprSym(Symbol("s_t")) => })
+          // format: on
+        )
+      } {
+        decl in {
+          fold {
+            s"""
+            |struct s_t {
+            |  bool x;
+            |}
+            |
+            |network e_t {
+            |}
+            |
+            |(* toplevel *)
+            |network a {
+            |  typedef bool  bool_t;
+            |  typedef i2    i2_t;
+            |  typedef u2[3] v3u2_t;
+            |  typedef void  void_t;
+            |  typedef s_t   ts_t;
+            |
+            |  $decl
+            |}"""
+          } getFirst {
+            case DeclIn(_, spec, _)    => spec
+            case DeclConst(_, spec)    => spec
+            case DeclInstance(_, spec) => spec
+          } tap {
+            _ should matchPattern(pattern)
           }
         }
       }

@@ -34,7 +34,7 @@ final class AnalyseCallGraphSpec extends FreeSpec with AlogicTest {
         ReplaceUnaryTicks andThen
         ResolvePolyFunc andThen
         AddCasts andThen
-        FoldExpr andThen
+        Fold andThen
         LowerLoops andThen
         AnalyseCallGraph,
       text

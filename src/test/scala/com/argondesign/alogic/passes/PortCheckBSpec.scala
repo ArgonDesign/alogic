@@ -32,9 +32,7 @@ final class PortCheckBSpec extends FreeSpec with AlogicTest {
       ResolvePolyFunc andThen
       AddCasts andThen
       Desugar andThen
-      InlineUnsizedConst andThen
-      FoldTypeAliases andThen
-      FoldExpr andThen
+      Fold andThen
       PortCheckB,
     text
   )

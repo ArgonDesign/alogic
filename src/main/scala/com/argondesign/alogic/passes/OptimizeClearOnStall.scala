@@ -97,10 +97,14 @@ final class OptimizeClearOnStall(implicit cc: CompilerContext) extends TreeTrans
             case StmtAssign(ExprSym(symbol), _) => symbol.attr.clearOnStall contains true
             case _: StmtAssign                  => false
           }
-          val trimmed = filter(block).asInstanceOf[Stmt]
+          val trimmed = filter(block) match {
+            case stmt: Stmt => List(stmt)
+            case Stump      => Nil
+            case _          => unreachable
+          }
 
           // Check each path through the statements
-          for (path <- enumeratePaths(List(trimmed))) {
+          for (path <- enumeratePaths(trimmed)) {
             // Gather all the distinct stall conditions
             val stallConditions = (path collect { case StmtStall(cond) => cond }).distinct
             stallConditions match {

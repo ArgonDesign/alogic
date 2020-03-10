@@ -22,8 +22,8 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Math.clog2
-import com.argondesign.alogic.passes.FoldExpr
 import com.argondesign.alogic.transform.ReplaceTermRefs
+import com.argondesign.alogic.transform.SimplifyExpr
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.PartialMatch._
 import com.argondesign.alogic.util.unreachable
@@ -215,7 +215,7 @@ trait ExprOps { this: Expr =>
 
   // Simplify this expression
   def simplify(implicit cc: CompilerContext): Expr = {
-    this.normalize rewrite new FoldExpr(foldRefs = true)
+    this.normalize rewrite (new SimplifyExpr)
   }
 
   // Rewrite expression using bindings provided

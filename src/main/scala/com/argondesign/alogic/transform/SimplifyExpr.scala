@@ -13,7 +13,7 @@
 // Constant expression folding
 ////////////////////////////////////////////////////////////////////////////////
 
-package com.argondesign.alogic.passes
+package com.argondesign.alogic.transform
 
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees.Expr.Integral
@@ -30,11 +30,10 @@ import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.language.implicitConversions
 
-final class FoldExpr(
-    foldRefs: Boolean // Replace references to known constant symbols with their value
-)(
-    implicit cc: CompilerContext
-) extends TreeTransformer {
+final class SimplifyExpr(implicit cc: CompilerContext) extends TreeTransformer {
+
+  private val foldRefs = true
+
   private implicit def boolean2BigInt(bool: Boolean): BigInt = if (bool) BigInt(1) else BigInt(0)
 
   private val shiftOps = Set("<<", ">>", "<<<", ">>>")
@@ -138,7 +137,24 @@ final class FoldExpr(
       case tree if tree.children collect { case t: Tree => t } exists { _.tpe.isError } => tree
 
       ////////////////////////////////////////////////////////////////////////////
-      // Fold refs
+      // Fold references to type symbols (unless it's directly to the named type)
+      ////////////////////////////////////////////////////////////////////////////
+
+      case expr @ ExprSym(symbol) if symbol.kind.isType =>
+        symbol.kind.asType.kind match {
+          case kind: TypeInt           => TypeAssigner(ExprType(kind) withLoc tree.loc)
+          case kind: TypeNum           => TypeAssigner(ExprType(kind) withLoc tree.loc)
+          case kind: TypeVector        => TypeAssigner(ExprType(kind) withLoc tree.loc)
+          case TypeVoid                => TypeAssigner(ExprType(TypeVoid) withLoc tree.loc)
+          case TypeStr                 => TypeAssigner(ExprType(TypeStr) withLoc tree.loc)
+          case TypeEntity(`symbol`, _) => expr
+          case TypeRecord(`symbol`, _) => expr
+          case TypeEntity(s, _)        => TypeAssigner(ExprSym(s) withLoc tree.loc)
+          case TypeRecord(s, _)        => TypeAssigner(ExprSym(s) withLoc tree.loc)
+        }
+
+      ////////////////////////////////////////////////////////////////////////////
+      // Fold references to other symbols
       ////////////////////////////////////////////////////////////////////////////
 
       case ExprSym(symbol) if foldRefs =>
@@ -807,12 +823,4 @@ final class FoldExpr(
     assert(!dontFoldNextSym)
   }
 
-}
-
-object FoldExpr extends PairTransformerPass {
-  val name = "fold-expr"
-  def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {
-    val transformer = new FoldExpr(foldRefs = false)(cc)
-    (transformer(decl), transformer(defn))
-  }
 }

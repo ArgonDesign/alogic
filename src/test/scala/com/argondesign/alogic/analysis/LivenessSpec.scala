@@ -21,7 +21,6 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.passes.FoldExpr
 import com.argondesign.alogic.passes.Namer
 import com.argondesign.alogic.typer.Typer
 import org.scalatest.FreeSpec
@@ -31,8 +30,6 @@ import scala.collection.immutable.BitSet
 class LivenessSpec extends FreeSpec with AlogicTest {
 
   implicit val cc: CompilerContext = new CompilerContext()
-
-  private val fold = new FoldExpr(foldRefs = true)
 
   private val aSymbol = cc.newSymbol("a", Loc.synthetic) tap { _.kind = TypeUInt(4) }
   private val bSymbol = cc.newSymbol("b", Loc.synthetic) tap { _.kind = TypeUInt(8) }
@@ -51,7 +48,7 @@ class LivenessSpec extends FreeSpec with AlogicTest {
   }
 
   private def prep(expr: Expr): Expr = {
-    expr regularize Loc.synthetic rewrite fold
+    (expr regularize Loc.synthetic).simplify
   } tap { _ =>
     cc.messages shouldBe empty
   }
