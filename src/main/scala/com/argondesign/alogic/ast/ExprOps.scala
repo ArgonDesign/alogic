@@ -212,9 +212,15 @@ trait ExprOps { this: Expr =>
     case _                 => false
   }
 
+  private[this] var _simplified: Expr = null
+
   // Simplify this expression
-  def simplify(implicit cc: CompilerContext): Expr =
-    this.normalize rewrite cc.simpifyExpr
+  def simplify(implicit cc: CompilerContext): Expr = {
+    if (_simplified == null) {
+      _simplified = (new TreeExt(this)).normalize rewrite cc.simpifyExpr
+    }
+    _simplified
+  }
 
   // Rewrite expression using bindings provided
   def given(bindings: Bindings)(implicit cc: CompilerContext): Expr = {
