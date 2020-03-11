@@ -97,6 +97,7 @@ final class OptimizeClearOnStall(implicit cc: CompilerContext) extends Stateless
             case _: StmtStall                   => true
             case StmtAssign(ExprSym(symbol), _) => symbol.attr.clearOnStall contains true
             case _: StmtAssign                  => false
+            case _: StmtExpr                    => false
           }
           val trimmed = filter(block) match {
             case stmt: Stmt => List(stmt)

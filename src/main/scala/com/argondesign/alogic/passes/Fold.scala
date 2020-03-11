@@ -19,19 +19,10 @@ import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.typer.TypeAssigner
-import com.argondesign.alogic.util.unreachable
 
 final class Fold(implicit cc: CompilerContext) extends StatelessTreeTransformer {
 
-  private def emptyStmt(stmt: Stmt): Boolean = stmt match {
-    case StmtBlock(body)         => body forall emptyStmt
-    case StmtIf(_, eBody, tBody) => (eBody forall emptyStmt) && (tBody forall emptyStmt)
-    case StmtCase(_, cases) =>
-      cases forall {
-        case CaseRegular(_, stmts) => stmts forall emptyStmt
-        case CaseDefault(stmts)    => stmts forall emptyStmt
-        case _: CaseGen            => unreachable
-      }
+  private def empty(stmts: List[Stmt]): Boolean = stmts forall {
     case _: StmtComment => true
     case _              => false
   }
@@ -43,8 +34,8 @@ final class Fold(implicit cc: CompilerContext) extends StatelessTreeTransformer 
     // Fold 'if' with known conditions
     case StmtIf(cond, thenStmts, elseStmts) =>
       cond.value match {
-        case Some(v) if v != 0 => Some(Thicket(thenStmts map walk))
-        case Some(v) if v == 0 => Some(Thicket(elseStmts map walk))
+        case Some(v) if v != 0 => Some(Thicket(walk(thenStmts)))
+        case Some(v) if v == 0 => Some(Thicket(walk(elseStmts)))
         case None              => None
       }
 
@@ -56,39 +47,43 @@ final class Fold(implicit cc: CompilerContext) extends StatelessTreeTransformer 
         case None              => None
       }
 
-    // TODO: Fold StmtCase
+    // TODO: Fold 'case' with known conditions
 
-    // Drop type definitions, references to these will be folded
+    // Drop type definitions, references to these will be folded by expr.simplify
     case _: DeclType => Some(Stump)
     case _: DefnType => Some(Stump)
 
-    // Drop unsized consts,  references to these will be folded
+    // Drop unsized consts, references to these will be folded by expr.simplify
     case DeclConst(symbol, _) if symbol.kind.underlying.isNum => Some(Stump)
     case DefnConst(symbol, _) if symbol.kind.underlying.isNum => Some(Stump)
 
     //
-    case _ =>
-      None
+    case _ => None
   }
 
   override def transform(tree: Tree): Tree = tree match {
-    // Remove empty if
-    case StmtIf(_, thenStmts, elseStmts)
-        if (thenStmts forall emptyStmt) && (elseStmts forall emptyStmt) =>
-      Stump
+    // Remove all blocks (this will also remove empty blocks)
+    case StmtBlock(stmts) => Thicket(stmts)
 
-    // Invert condition with empty else
-    case StmtIf(cond, Nil, elseStmts) =>
-      TypeAssigner(StmtIf((!cond).simplify, elseStmts, Nil) withLoc tree.loc)
+    // Simplify 'if' with empty branches
+    case StmtIf(cond, ts, es) =>
+      (empty(ts), empty(es)) match {
+        case (true, true)  => Stump
+        case (false, true) => TypeAssigner(StmtIf(cond, ts, Nil) withLoc tree.loc)
+        case (true, false) => TypeAssigner(StmtIf((!cond).simplify, es, Nil) withLoc tree.loc)
+        case _             => tree
+      }
+
+    // Remove empty 'case' statements
+    case StmtCase(_, cases) if cases.iterator map { _.stmts } forall empty => Stump
 
     // Drop empty processes
-    case EntCombProcess(stmts) if stmts forall emptyStmt       => Stump
-    case EntClockedProcess(_, stmts) if stmts forall emptyStmt => Stump
+    case EntCombProcess(stmts) if empty(stmts)       => Stump
+    case EntClockedProcess(_, stmts) if empty(stmts) => Stump
 
     //
     case _ => tree
   }
-
 }
 
 object Fold extends PairTransformerPass {

@@ -19,54 +19,38 @@
 
 package com.argondesign.alogic.transform
 
-import com.argondesign.alogic.ast.StatefulTreeTransformer
+import com.argondesign.alogic.ast.StatelessTreeTransformer
+import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.passes.RemoveRedundantBlocks
-import com.argondesign.alogic.util.unreachable
-
-final class StatementFilter(p: PartialFunction[Stmt, Boolean])(implicit cc: CompilerContext)
-    extends StatefulTreeTransformer {
-
-  override val typed: Boolean = true
-
-  val pf = p.lift
-
-  val removeRedundantBlocks = new RemoveRedundantBlocks
-
-  def emptyStmt(stmt: Stmt): Boolean = stmt match {
-    case StmtBlock(body)         => body forall emptyStmt
-    case StmtIf(_, eBody, tBody) => (eBody forall emptyStmt) && (tBody forall emptyStmt)
-    case StmtCase(_, cases) =>
-      cases forall {
-        case CaseRegular(_, stmts) => stmts forall emptyStmt
-        case CaseDefault(stmts)    => stmts forall emptyStmt
-        case _: CaseGen            => unreachable
-      }
-    case _: StmtExpr    => true
-    case _: StmtComment => true
-    case _              => false
-  }
-
-  override def transform(tree: Tree): Tree = tree match {
-    case stmt: Stmt =>
-      val reduced = stmt rewrite removeRedundantBlocks
-      reduced match {
-        case StmtBlock(Nil) => Stump
-        case _ =>
-          pf(reduced) match {
-            case Some(false)             => Stump
-            case None if emptyStmt(stmt) => Stump
-            case _                       => reduced
-          }
-      }
-
-    case _ => tree
-  }
-}
 
 object StatementFilter {
+  def apply(p: PartialFunction[Stmt, Boolean])(implicit cc: CompilerContext): TreeTransformer =
+    new StatelessTreeTransformer {
+      private val pf = p.lift
 
-  def apply(p: PartialFunction[Stmt, Boolean])(implicit cc: CompilerContext): StatementFilter =
-    new StatementFilter(p)
+      override def transform(tree: Tree): Tree = tree match {
+        case stmt: Stmt =>
+          pf(stmt) match {
+            case Some(false) => Stump // Don't keep
+            case Some(true)  => tree // Keep
+            case None => // Remove empty/pure statements
+              stmt match {
+                case StmtBlock(Nil)        => Stump
+                case StmtIf(_, Nil, Nil)   => Stump
+                case StmtCase(_, Nil)      => Stump
+                case StmtExpr(_: ExprCall) => tree // Assume non-pure, keep
+                case _: StmtExpr           => Stump
+                case _: StmtComment        => Stump
+                case _                     => tree
+              }
+          }
+
+        // Remove empty case
+        case CaseDefault(Nil)    => Stump
+        case CaseRegular(_, Nil) => Stump
+
+        case _ => tree
+      }
+    }
 }

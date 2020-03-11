@@ -1138,10 +1138,12 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
       "content dependent statements" - {
         for {
           (text, pattern, kind) <- List[(String, PartialFunction[Any, Unit], Type)](
+            ("if(a) {} else {}", { case StmtIf(_, Nil, Nil)           => }, TypeCombStmt),
             ("if(a) read;", { case StmtIf(_, _, Nil)                  => }, TypeCombStmt),
             ("if(a) read; else write;", { case StmtIf(_, _, _ :: _)   => }, TypeCombStmt),
             ("if(a) fence;", { case StmtIf(_, _, Nil)                 => }, TypeCtrlStmt),
             ("if(a) fence; else return;", { case StmtIf(_, _, _ :: _) => }, TypeCtrlStmt),
+            ("case(a) {}", { case StmtCase(_, Nil)                    => }, TypeCombStmt),
             ("case(a) {a: read;}", { case _: StmtCase                 => }, TypeCombStmt),
             ("case(a) {default: read;}", { case _: StmtCase           => }, TypeCombStmt),
             ("case(a) {a: fence;}", { case _: StmtCase                => }, TypeCtrlStmt),

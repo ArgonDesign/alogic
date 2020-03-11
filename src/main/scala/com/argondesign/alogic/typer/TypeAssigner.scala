@@ -151,9 +151,13 @@ object TypeAssigner {
     case StmtIf(_, _, es)    => es.last.tpe
   }
 
-  private def kind(tree: StmtCase) = tree.cases.head.stmts match {
+  private def kind(tree: StmtCase) = tree.cases match {
     case Nil => TypeCombStmt
-    case ss  => ss.last.tpe
+    case kase :: _ =>
+      kase.stmts match {
+        case Nil   => TypeCombStmt
+        case stmts => stmts.last.tpe
+      }
   }
 
   private def kind(tree: StmtLoop) = TypeCtrlStmt

@@ -90,7 +90,6 @@ object Passes extends ChainingSyntax {
         InlineKnownVars(combOnly = false) andThen
         Fold andThen
         RemoveUnused andThen
-        RemoveRedundantBlocks andThen // TODO: Merge into Fold
         Fold andThen
         RenameSymbols andThen
 //      // TODO: RenameKeywords
