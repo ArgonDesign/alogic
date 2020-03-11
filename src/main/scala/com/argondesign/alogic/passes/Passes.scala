@@ -86,7 +86,7 @@ object Passes extends ChainingSyntax {
         Fold andThen
         OptimizeClearOnStall andThen
         LowerStalls andThen
-        DefaultAssignments andThen // TODO: Make stateless
+        DefaultAssignments andThen
         InlineKnownVars(combOnly = false) andThen
         Fold andThen
         RemoveUnused andThen

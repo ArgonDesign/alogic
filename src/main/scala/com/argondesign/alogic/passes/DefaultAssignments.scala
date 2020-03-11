@@ -18,47 +18,51 @@
 package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.analysis.Liveness
-import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.transform.StatementFilter
 import com.argondesign.alogic.typer.TypeAssigner
+import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
 
-final class DefaultAssignments(implicit cc: CompilerContext) extends StatefulTreeTransformer {
+object DefaultAssignments extends PairTransformerPass {
+  val name = "default-assignments"
 
-  private val needsDefault = mutable.Set[Symbol]()
-
-  override def skip(tree: Tree): Boolean = tree match {
-    case defn: DefnEntity => defn.combProcesses.isEmpty
-    case _                => false
+  override def skip(decl: Decl, defn: Defn)(implicit cc: CompilerContext): Boolean = defn match {
+    case d: DefnEntity => d.combProcesses.isEmpty
+    case _             => true
   }
 
-  override def enter(tree: Tree): Option[Tree] = {
-    tree match {
+  override def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {
+
+    val entityDefn = defn.asInstanceOf[DefnEntity]
+
+    val needsDefault = mutable.Set[Symbol]()
+
+    decl.decls.iterator foreach {
       case DeclVar(symbol, _) if !symbol.attr.flop.isSet       => needsDefault += symbol
       case DeclOut(symbol, _, _, _) if !symbol.attr.flop.isSet => needsDefault += symbol
       case _                                                   =>
     }
-    None
-  }
 
-  override def transform(tree: Tree): Tree = tree match {
-    case defn: DefnEntity if needsDefault.nonEmpty =>
+    if (needsDefault.isEmpty) {
+      (decl, defn)
+    } else {
+
       // Remove any nets driven through a connect
-      for (EntConnect(_, List(rhs)) <- defn.connects) {
+      for (EntConnect(_, List(rhs)) <- entityDefn.connects) {
         rhs.visit {
           case ExprSym(symbol) => needsDefault remove symbol
         }
       }
 
       // Remove symbols that are dead at the beginning of the cycle.
-      val (liveSymbolBits, deadSymbolBits) = Liveness(defn.combProcesses.head.stmts)
+      val (liveSymbolBits, deadSymbolBits) = Liveness(entityDefn.combProcesses.head.stmts)
 
       if (needsDefault.nonEmpty) {
-        assert(defn.combProcesses.lengthIs == 1)
+        assert(entityDefn.combProcesses.lengthIs == 1)
 
         // Keep only the symbols with all bits dead
         val deadSymbols = Set from {
@@ -77,7 +81,7 @@ final class DefaultAssignments(implicit cc: CompilerContext) extends StatefulTre
       // default value otherwise zero.
       val initializeToDefault = {
         val symbolsDrivingConnect = Set from {
-          defn.connects.iterator flatMap {
+          entityDefn.connects.iterator flatMap {
             case EntConnect(lhs, _) =>
               lhs.collect {
                 case ExprSym(symbol) => symbol.attr.flop.getOrElse(symbol)
@@ -96,55 +100,53 @@ final class DefaultAssignments(implicit cc: CompilerContext) extends StatefulTre
         }
       }
 
-      val newBody = defn.body flatMap {
+      val newBody = entityDefn.body flatMap {
         case ent @ EntCombProcess(stmts) =>
-          // Add default assignments
-          val leading = for {
-            Defn(symbol) <- defn.defns
-            if needsDefault contains symbol
-          } yield {
-            val init = if ((initializeToDefault contains symbol) && symbol.attr.default.isSet) {
-              symbol.attr.default.value
-            } else {
-              val kind = symbol.kind
-              ExprInt(kind.isSigned, kind.width.toInt, 0)
+          Some {
+            // Add default assignments
+            val leading = for {
+              Defn(symbol) <- entityDefn.defns
+              if needsDefault contains symbol
+            } yield {
+              val init = if ((initializeToDefault contains symbol) && symbol.attr.default.isSet) {
+                symbol.attr.default.value
+              } else {
+                val kind = symbol.kind
+                ExprInt(kind.isSigned, kind.width.toInt, 0)
+              }
+              StmtAssign(ExprSym(symbol), init) regularize symbol.loc
             }
-            StmtAssign(ExprSym(symbol), init) regularize symbol.loc
+            TypeAssigner(EntCombProcess(leading ::: stmts) withLoc ent.loc)
           }
-          List(TypeAssigner(EntCombProcess(leading ::: stmts) withLoc ent.loc))
         case ent @ EntClockedProcess(_, stmts) =>
           // Drop delayed assignments to unused flops
           val filter = StatementFilter {
-            case _: StmtComment => true // Keep comments
             case StmtDelayed(ExprSym(qSymbol), _) if !referencedQSymbols(qSymbol) =>
               qSymbol.attr.flop.get match {
                 case None          => true // Keep non-flops
                 case Some(dSymbol) => needsDefault(dSymbol) && initializeToDefault(dSymbol)
               }
           }
-          val newStmts = stmts map filter collect {
-            // Keep it if there are any assignments left, or it's a top level comment
-            case stmt: StmtComment => stmt
-            case stmt: Stmt if stmt exists { case _: StmtDelayed => true } => stmt
+          // Keep comments directly in the process, filter the rest
+          val newStmts = stmts flatMap {
+            case stmt: StmtComment => Some(stmt)
+            case stmt: Stmt =>
+              filter(stmt) match {
+                case Stump       => None
+                case other: Stmt => Some(other)
+                case _           => unreachable
+              }
           }
-          val drop = newStmts forall {
-            case _: StmtComment => true
-            case _              => false
+          // Drop the whole block if there are only comments left
+          Option.unless(newStmts forall { _.isInstanceOf[StmtComment] }) {
+            TypeAssigner(ent.copy(stmts = newStmts) withLoc ent.loc)
           }
-          if (drop) Nil else List(TypeAssigner(ent.copy(stmts = newStmts) withLoc ent.loc))
-        case other => List(other)
+        case other => Some(other)
       }
 
-      TypeAssigner {
-        defn.copy(body = newBody) withLoc tree.loc
-      }
+      val newDefn = TypeAssigner { entityDefn.copy(body = newBody) withLoc entityDefn.loc }
 
-    case _ => tree
+      (decl, newDefn)
+    }
   }
-
-}
-
-object DefaultAssignments extends EntityTransformerPass(declFirst = true) {
-  val name = "default-assignments"
-  def create(symbol: Symbol)(implicit cc: CompilerContext) = new DefaultAssignments
 }
