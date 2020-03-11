@@ -22,6 +22,7 @@ import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.enums.ResetStyle
 import com.argondesign.alogic.util.unreachable
 
+import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
 
 final class MakeVerilog(
@@ -192,12 +193,22 @@ final class MakeVerilog(
       // If statement
       case StmtIf(cond, thenStmts, elseStmts) =>
         body.emit(indent)(s"if (${vexpr(cond)}) begin")
-        thenStmts foreach { emitStatement(body, indent + 1, _) }
-        if (elseStmts.nonEmpty) {
-          body.emit(indent)(s"end else begin")
-          elseStmts foreach { emitStatement(body, indent + 1, _) }
+        @tailrec
+        def loop(ts: List[Stmt], es: List[Stmt]): Unit = {
+          ts foreach { emitStatement(body, indent + 1, _) }
+          es match {
+            case Nil =>
+              body.emit(indent)(s"end")
+            case List(StmtIf(cond, thenStmts, elseStmts)) =>
+              body.emit(indent)(s"end else if (${vexpr(cond)}) begin")
+              loop(thenStmts, elseStmts)
+            case _ =>
+              body.emit(indent)(s"end else begin")
+              es foreach { emitStatement(body, indent + 1, _) }
+              body.emit(indent)(s"end")
+          }
         }
-        body.emit(indent)(s"end")
+        loop(thenStmts, elseStmts)
 
       // Case statement
       case StmtCase(cond, cases) =>
