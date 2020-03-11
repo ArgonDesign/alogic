@@ -15,13 +15,13 @@
 
 package com.argondesign.alogic.passes
 
-import com.argondesign.alogic.ast.StatefulTreeTransformer
+import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.unreachable
 
-final class Desugar(implicit cc: CompilerContext) extends StatefulTreeTransformer {
+final class Desugar(implicit cc: CompilerContext) extends StatelessTreeTransformer {
 
   override def transform(tree: Tree): Tree = tree match {
     // "a++" rewritten as  "a = a + <width of a>'d1"
@@ -77,8 +77,6 @@ final class Desugar(implicit cc: CompilerContext) extends StatefulTreeTransforme
 
 object Desugar extends PairTransformerPass {
   val name = "desugar"
-  def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {
-    val transformer = new Desugar
-    (transformer(decl), transformer(defn))
-  }
+  def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) =
+    (cc.desugar(decl), cc.desugar(defn))
 }

@@ -86,11 +86,11 @@ object Passes extends ChainingSyntax {
         Fold andThen
         OptimizeClearOnStall andThen
         LowerStalls andThen
-        DefaultAssignments andThen
+        DefaultAssignments andThen // TODO: Make stateless
         InlineKnownVars(combOnly = false) andThen
         Fold andThen
         RemoveUnused andThen
-        RemoveRedundantBlocks andThen
+        RemoveRedundantBlocks andThen // TODO: Merge into Fold
         Fold andThen
         RenameSymbols andThen
 //      // TODO: RenameKeywords

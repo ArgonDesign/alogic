@@ -17,7 +17,8 @@
 
 package com.argondesign.alogic.passes
 
-import com.argondesign.alogic.ast.StatefulTreeTransformer
+import com.argondesign.alogic.ast.StatelessTreeTransformer
+import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.Symbol
@@ -26,7 +27,7 @@ import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
 
-final class OptimizeClearOnStall(implicit cc: CompilerContext) extends StatefulTreeTransformer {
+final class OptimizeClearOnStall(implicit cc: CompilerContext) extends StatelessTreeTransformer {
 
   // TODO: This assumes clearOnStall signals are alone on the lhs of assignments
   // If this is a problem, start by teaching SimplifyCat more cases. It also
@@ -159,5 +160,6 @@ final class OptimizeClearOnStall(implicit cc: CompilerContext) extends StatefulT
 
 object OptimizeClearOnStall extends EntityTransformerPass(declFirst = true) {
   val name = "optimize-clear-on-stall"
-  def create(symbol: Symbol)(implicit cc: CompilerContext) = new OptimizeClearOnStall
+  def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
+    cc.optimizeClearOnStall
 }

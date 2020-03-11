@@ -15,13 +15,13 @@
 
 package com.argondesign.alogic.passes
 
-import com.argondesign.alogic.ast.StatefulTreeTransformer
+import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.unreachable
 
-final class Fold(implicit cc: CompilerContext) extends StatefulTreeTransformer {
+final class Fold(implicit cc: CompilerContext) extends StatelessTreeTransformer {
 
   private def emptyStmt(stmt: Stmt): Boolean = stmt match {
     case StmtBlock(body)         => body forall emptyStmt
@@ -93,8 +93,6 @@ final class Fold(implicit cc: CompilerContext) extends StatefulTreeTransformer {
 
 object Fold extends PairTransformerPass {
   val name = "fold"
-  def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {
-    val transformer = new Fold
-    (transformer(decl), transformer(defn))
-  }
+  def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) =
+    (cc.fold(decl), cc.fold(defn))
 }

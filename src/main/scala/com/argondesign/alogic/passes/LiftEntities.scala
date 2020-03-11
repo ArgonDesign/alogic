@@ -398,9 +398,8 @@ object LiftEntities {
         requiredSymbolMaps.valuesIterator flatMap { _.valuesIterator flatMap { _.iterator } }
       }
 
-      def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer = {
+      def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
         new LiftEntitiesB(globalReplacements, propagatedSymbols)
-      }
     } andThen new EntityTransformerPass(declFirst = true) {
       val name = "lift-entities-c"
 

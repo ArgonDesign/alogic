@@ -16,7 +16,8 @@
 
 package com.argondesign.alogic.passes
 
-import com.argondesign.alogic.ast.StatefulTreeTransformer
+import com.argondesign.alogic.ast.StatelessTreeTransformer
+import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees.Expr.InstancePortRef
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
@@ -24,7 +25,7 @@ import com.argondesign.alogic.core.Symbols._
 
 import scala.collection.mutable
 
-final class PropagateImplications(implicit cc: CompilerContext) extends StatefulTreeTransformer {
+final class PropagateImplications(implicit cc: CompilerContext) extends StatelessTreeTransformer {
 
   override def skip(tree: Tree): Boolean = tree match {
     case _: DefnEntity => false
@@ -72,5 +73,6 @@ final class PropagateImplications(implicit cc: CompilerContext) extends Stateful
 
 object PropagateImplications extends EntityTransformerPass(declFirst = true) {
   val name = "propagate-implications"
-  def create(symbol: Symbol)(implicit cc: CompilerContext) = new PropagateImplications
+  def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
+    cc.propagateImplications
 }

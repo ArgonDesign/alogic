@@ -16,11 +16,11 @@
 
 package com.argondesign.alogic.passes
 
-import com.argondesign.alogic.ast.StatefulTreeTransformer
+import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 
-final class ConvertMultiConnect(implicit cc: CompilerContext) extends StatefulTreeTransformer {
+final class ConvertMultiConnect(implicit cc: CompilerContext) extends StatelessTreeTransformer {
 
   override def skip(tree: Tree): Boolean = tree match {
     case _: Decl => true
@@ -51,8 +51,6 @@ final class ConvertMultiConnect(implicit cc: CompilerContext) extends StatefulTr
 
 object ConvertMultiConnect extends PairTransformerPass {
   val name = "convert-multi-connect"
-  def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {
-    val transformer = new ConvertMultiConnect
-    (transformer(decl), transformer(defn))
-  }
+  def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) =
+    (cc.convertMultiConnect(decl), cc.convertMultiConnect(defn))
 }

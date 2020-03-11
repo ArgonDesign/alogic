@@ -16,13 +16,13 @@
 
 package com.argondesign.alogic.passes
 
-import com.argondesign.alogic.ast.StatefulTreeTransformer
+import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.Symbol
 
-final class InferImplications(implicit cc: CompilerContext) extends StatefulTreeTransformer {
+final class InferImplications(implicit cc: CompilerContext) extends StatelessTreeTransformer {
 
   override def skip(tree: Tree): Boolean = tree match {
     case _: DefnEntity                     => false
@@ -74,6 +74,5 @@ final class InferImplications(implicit cc: CompilerContext) extends StatefulTree
 
 object InferImplications extends EntityTransformerPass(declFirst = true) {
   val name = "infer-implications"
-  def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
-    new InferImplications
+  def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer = cc.inferImplications
 }
