@@ -124,6 +124,9 @@ trait ExprOps { this: Expr =>
   final def unary_-(implicit cc: CompilerContext) : ExprUnary = fix(ExprUnary("-", this))
   final def unary_~(implicit cc: CompilerContext) : ExprUnary = fix(ExprUnary("~", this))
   final def unary_!(implicit cc: CompilerContext) : ExprUnary = fix(ExprUnary("!", this))
+
+  final def castUnsigned(implicit cc: CompilerContext): ExprCall = cc.makeBuiltinCall("$unsigned", loc, this :: Nil)
+  final def castSigned(implicit cc: CompilerContext): ExprCall = cc.makeBuiltinCall("$signed", loc, this :: Nil)
   // format: on
 
   // Is this expression shaped as a valid type expression
@@ -220,6 +223,33 @@ trait ExprOps { this: Expr =>
       _simplified = (new TreeExt(this)).normalize rewrite cc.simpifyExpr
     }
     _simplified
+  }
+
+  private[this] var _simplifiedLValue: Expr = null
+
+  def simplifyLValue(implicit cc: CompilerContext): Expr = {
+    if (_simplifiedLValue == null) {
+      _simplifiedLValue = this match {
+        case _: ExprSym        => this
+        case ExprCat(p :: Nil) => p
+        case ExprCat(ps) =>
+          TypeAssigner {
+            ExprCat {
+              ps flatMap {
+                _.simplifyLValue match {
+                  case ExprCat(es) => es
+                  case e           => List(e)
+                }
+              }
+            } withLoc loc
+          }
+        case _: ExprIndex  => simplify
+        case _: ExprSlice  => simplify
+        case _: ExprSelect => this
+        case _             => unreachable
+      }
+    }
+    _simplifiedLValue
   }
 
   // Rewrite expression using bindings provided

@@ -330,9 +330,15 @@ trait DefnImpl { this: Trees.Defn =>
 
 trait ExprIntImpl { this: Trees.ExprInt =>
   require(width > 0, s"width=$width")
-  require(signed || value >= 0, s"signed=$signed, value=$value")
-  require(if (value >= 0) (value >> width) == 0 else (value >> width) == -1,
-          s"width=$width, value=$value")
+  require(
+    if (signed) {
+      val lim = BigInt(1) << (width - 1)
+      -lim <= value && value < lim
+    } else {
+      0 <= value && value < (BigInt(1) << width)
+    },
+    s"signed=$signed, value=$value"
+  )
 }
 
 trait ExprNumImpl {

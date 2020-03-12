@@ -61,6 +61,15 @@ final class SimplifyExpr(implicit cc: CompilerContext) extends StatelessTreeTran
     symbol.name == "$signed" || symbol.name == "$unsigned"
   }
 
+  override def start(tree: Tree): Unit =
+    assert(tree.isInstanceOf[Expr], "Cannot invoke SimplifyExpr on non Expr tree.")
+
+  override def skip(tree: Tree): Boolean = tree match {
+    case _: ExprInt => true
+    case _: ExprNum => true
+    case _          => false
+  }
+
   override def enter(tree: Tree): Option[Tree] = tree match {
     //////////////////////////////////////////////////////////////////////////
     // Only substitute in index/slice target if the indices are known
@@ -193,8 +202,8 @@ final class SimplifyExpr(implicit cc: CompilerContext) extends StatelessTreeTran
     case _ => None
   }
 
-  override def transform(tree: Tree): Tree = {
-    val result = tree match {
+  override def transform(tree: Tree): Tree =
+    tree pipe {
 
       ////////////////////////////////////////////////////////////////////////////
       // Don't fold anything with errors
@@ -296,14 +305,14 @@ final class SimplifyExpr(implicit cc: CompilerContext) extends StatelessTreeTran
         val nege = negl || negr
         val num = (ls, op, rs) match {
           // Always valid
-          case (_, ">", _)  => ExprNum(false, lv > rv)
-          case (_, "<", _)  => ExprNum(false, lv < rv)
-          case (_, ">=", _) => ExprNum(false, lv >= rv)
-          case (_, "<=", _) => ExprNum(false, lv <= rv)
-          case (_, "==", _) => ExprNum(false, lv == rv)
-          case (_, "!=", _) => ExprNum(false, lv != rv)
-          case (_, "&&", _) => ExprNum(false, (lv != 0) && (rv != 0))
-          case (_, "||", _) => ExprNum(false, (lv != 0) || (rv != 0))
+          case (_, ">", _)  => ExprInt(false, 1, lv > rv)
+          case (_, "<", _)  => ExprInt(false, 1, lv < rv)
+          case (_, ">=", _) => ExprInt(false, 1, lv >= rv)
+          case (_, "<=", _) => ExprInt(false, 1, lv <= rv)
+          case (_, "==", _) => ExprInt(false, 1, lv == rv)
+          case (_, "!=", _) => ExprInt(false, 1, lv != rv)
+          case (_, "&&", _) => ExprInt(false, 1, (lv != 0) && (rv != 0))
+          case (_, "||", _) => ExprInt(false, 1, (lv != 0) || (rv != 0))
 
           // Arith
           case (true, "*", true) => ExprNum(true, lv * rv)
@@ -608,11 +617,7 @@ final class SimplifyExpr(implicit cc: CompilerContext) extends StatelessTreeTran
       ////////////////////////////////////////////////////////////////////////////
 
       case ExprRep(Integral(_, _, rep), expr) if rep == 1 =>
-        if (!expr.tpe.isSigned) {
-          expr
-        } else {
-          cc.makeBuiltinCall("$unsigned", tree.loc, expr :: Nil)
-        }
+        if (expr.tpe.isSigned) expr.castUnsigned else expr
 
       ////////////////////////////////////////////////////////////////////////////
       // Fold concatenations of sized integers
@@ -631,7 +636,7 @@ final class SimplifyExpr(implicit cc: CompilerContext) extends StatelessTreeTran
       // Flatten concatenations
       ////////////////////////////////////////////////////////////////////////////
 
-      case ExprCat(List(part: Expr)) => part
+      case ExprCat(List(expr: Expr)) => if (expr.tpe.isSigned) expr.castUnsigned else expr
 
       case ExprCat(parts) if parts exists { _.isInstanceOf[ExprCat] } => {
         ExprCat {
@@ -824,11 +829,43 @@ final class SimplifyExpr(implicit cc: CompilerContext) extends StatelessTreeTran
       ////////////////////////////////////////////////////////////////////////////
 
       case _ => tree
+    } tap { result =>
+      if (!result.hasTpe) {
+        TypeAssigner(result)
+      }
+      if (!result.tpe.isError) {
+        lazy val hints: List[String] = List(
+          "Old tree:",
+          tree.toString,
+          tree.toSource,
+          "Old type:",
+          tree.tpe.underlying.toString,
+          "New tree:",
+          result.toString,
+          result.toSource,
+          "New type:",
+          result.tpe.underlying.toString
+        )
+        if (result.tpe.isPacked != tree.tpe.isPacked) {
+          cc.ice(tree, s"SimplifyExpr changed Packedness." :: hints: _*)
+        }
+        if (result.tpe.isSigned != tree.tpe.isSigned) {
+          cc.ice(tree, s"SimplifyExpr changed signedness." :: hints: _*)
+        }
+        if (result.tpe.isPacked && result.tpe.width != tree.tpe.width) {
+          cc.ice(tree, s"SimplifyExpr changed width." :: hints: _*)
+        }
+        if (result.tpe.isNum != tree.tpe.isNum) {
+          cc.ice(tree, s"SimplifyExpr changed Num'ness." :: hints: _*)
+        }
+        if (result.tpe.isType != tree.tpe.isType) {
+          cc.ice(tree, s"SimplifyExpr changed Type'ness." :: hints: _*)
+        }
+      }
+    } pipe {
+      case result: ExprInt          => result
+      case result: ExprNum          => result
+      case result if result ne tree => walk(result) // Recursively fold the resulting expression
+      case result                   => result
     }
-
-    // Recursively fold the resulting expression
-    val result2 = if (result ne tree) walk(result) else result
-
-    if (!result2.hasTpe) TypeAssigner(result2) else result2
-  }
 }

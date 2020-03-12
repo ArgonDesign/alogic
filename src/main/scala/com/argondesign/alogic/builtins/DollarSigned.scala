@@ -33,6 +33,19 @@ private[builtins] class DollarSigned(implicit cc: CompilerContext)
   def isKnown(args: List[Expr]) = args(0).isKnownConst
 
   def simplify(loc: Loc, args: List[Expr]) = args partialMatch {
-    case List(ExprNum(false, v)) => ExprNum(true, v)
+    case List(e @ ExprNum(s, v)) =>
+      if (s) {
+        e
+      } else {
+        ExprNum(true, v)
+      }
+    case List(e @ ExprInt(s, w, v)) =>
+      if (s) {
+        e
+      } else if (v.testBit(w - 1)) {
+        ExprInt(true, w, v - (BigInt(1) << w))
+      } else {
+        ExprInt(true, w, v)
+      }
   }
 }

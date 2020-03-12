@@ -340,7 +340,14 @@ object Symbols {
       } else if (!_defn.hasTpe && !cc.typeCheck(_defn)) {
         None
       } else {
-        _defn.normalize.initializer
+        _defn.normalize.initializer map {
+          // Ensure initializer has same signedness as the type
+          _.simplify match {
+            case e if e.tpe.isSigned == kind.isSigned => e
+            case e if e.tpe.isSigned                  => e.castUnsigned
+            case e                                    => e.castSigned
+          }
+        }
       }
     }
 

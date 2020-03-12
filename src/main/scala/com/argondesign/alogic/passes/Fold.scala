@@ -18,6 +18,7 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.typer.TypeAssigner
 
 final class Fold(implicit cc: CompilerContext) extends StatelessTreeTransformer {
@@ -27,9 +28,35 @@ final class Fold(implicit cc: CompilerContext) extends StatelessTreeTransformer 
     case _              => false
   }
 
+  private def simplifyAssignmentSource(expr: Expr): Expr = expr.simplify match {
+    // Drop pointless call to $unsigned/$signed
+    case ExprCall(ExprSym(Symbol("$unsigned" | "$signed")), ArgP(arg) :: Nil) => arg
+    case other                                                                => other
+  }
+
   override def enter(tree: Tree): Option[Tree] = tree match {
     // Simplify expressions
     case expr: Expr => Some(expr.simplify)
+
+    // Simplify expressions in assignments specially
+    case StmtAssign(lhs, rhs) =>
+      Some {
+        TypeAssigner {
+          StmtAssign(lhs.simplifyLValue, simplifyAssignmentSource(rhs)) withLoc tree.loc
+        }
+      }
+    case StmtDelayed(lhs, rhs) =>
+      Some {
+        TypeAssigner {
+          StmtDelayed(lhs.simplifyLValue, simplifyAssignmentSource(rhs)) withLoc tree.loc
+        }
+      }
+    case EntConnect(lhs, rhss) =>
+      Some {
+        TypeAssigner {
+          EntConnect(simplifyAssignmentSource(lhs), rhss map { _.simplifyLValue }) withLoc tree.loc
+        }
+      }
 
     // Fold 'if' with known conditions
     case StmtIf(cond, thenStmts, elseStmts) =>

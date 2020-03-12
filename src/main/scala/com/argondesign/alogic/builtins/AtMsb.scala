@@ -26,7 +26,7 @@ private[builtins] class AtMsb(implicit cc: CompilerContext)
   val name = "@msb"
 
   def returnType(args: List[Expr]): Option[TypeFund] = args partialMatch {
-    case List(expr) if expr.tpe.isPacked && expr.tpe.width > 0 => TypeInt(expr.tpe.isSigned, 1)
+    case List(expr) if expr.tpe.isPacked && expr.tpe.width > 0 => TypeInt(false, 1)
   }
 
   def isKnown(args: List[Expr]) = args.head.isKnownConst
@@ -37,9 +37,11 @@ private[builtins] class AtMsb(implicit cc: CompilerContext)
 
 private[builtins] object AtMsb {
   def fold(loc: Loc, expr: Expr)(implicit cc: CompilerContext): Option[Expr] =
-    if (expr.tpe.width == 1) {
-      Some(expr)
-    } else {
-      Some((expr index (expr.tpe.width.toInt - 1)).simplify)
+    Some {
+      if (expr.tpe.width == 1) {
+        if (expr.tpe.isSigned) expr.castUnsigned else expr
+      } else {
+        (expr index (expr.tpe.width.toInt - 1)).simplify
+      }
     }
 }

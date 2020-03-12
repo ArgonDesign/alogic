@@ -104,14 +104,14 @@ final class SimplifyExprSpec extends FreeSpec with AlogicTest {
           // signed signed
           //////////////////////////////////////////////
           // Always valid
-          ("3s >  2s", ExprNum(false, 1), Nil),
-          ("3s >= 2s", ExprNum(false, 1), Nil),
-          ("3s <  2s", ExprNum(false, 0), Nil),
-          ("3s <= 2s", ExprNum(false, 0), Nil),
-          ("3s == 2s", ExprNum(false, 0), Nil),
-          ("3s != 2s", ExprNum(false, 1), Nil),
-          ("3s && 2s", ExprNum(false, 1), Nil),
-          ("3s || 2s", ExprNum(false, 1), Nil),
+          ("3s >  2s", ExprInt(false, 1, 1), Nil),
+          ("3s >= 2s", ExprInt(false, 1, 1), Nil),
+          ("3s <  2s", ExprInt(false, 1, 0), Nil),
+          ("3s <= 2s", ExprInt(false, 1, 0), Nil),
+          ("3s == 2s", ExprInt(false, 1, 0), Nil),
+          ("3s != 2s", ExprInt(false, 1, 1), Nil),
+          ("3s && 2s", ExprInt(false, 1, 1), Nil),
+          ("3s || 2s", ExprInt(false, 1, 1), Nil),
           // Arith
           ("3s * 2s", ExprNum(true, 6), Nil),
           ("3s / 2s", ExprNum(true, 1), Nil),
@@ -152,14 +152,14 @@ final class SimplifyExprSpec extends FreeSpec with AlogicTest {
           // signed unsigned
           //////////////////////////////////////////////
           // Always valid
-          ("3s >  2", ExprNum(false, 1), Nil),
-          ("3s >= 2", ExprNum(false, 1), Nil),
-          ("3s <  2", ExprNum(false, 0), Nil),
-          ("3s <= 2", ExprNum(false, 0), Nil),
-          ("3s == 2", ExprNum(false, 0), Nil),
-          ("3s != 2", ExprNum(false, 1), Nil),
-          ("3s && 2", ExprNum(false, 1), Nil),
-          ("3s || 2", ExprNum(false, 1), Nil),
+          ("3s >  2", ExprInt(false, 1, 1), Nil),
+          ("3s >= 2", ExprInt(false, 1, 1), Nil),
+          ("3s <  2", ExprInt(false, 1, 0), Nil),
+          ("3s <= 2", ExprInt(false, 1, 0), Nil),
+          ("3s == 2", ExprInt(false, 1, 0), Nil),
+          ("3s != 2", ExprInt(false, 1, 1), Nil),
+          ("3s && 2", ExprInt(false, 1, 1), Nil),
+          ("3s || 2", ExprInt(false, 1, 1), Nil),
           // Arith
           (" 3s * 2", ExprNum(false, 6), Nil),
           (" 3s / 2", ExprNum(false, 1), Nil),
@@ -193,14 +193,14 @@ final class SimplifyExprSpec extends FreeSpec with AlogicTest {
           // unsigned signed
           //////////////////////////////////////////////
           // Always valid
-          ("3 >  2s", ExprNum(false, 1), Nil),
-          ("3 >= 2s", ExprNum(false, 1), Nil),
-          ("3 <  2s", ExprNum(false, 0), Nil),
-          ("3 <= 2s", ExprNum(false, 0), Nil),
-          ("3 == 2s", ExprNum(false, 0), Nil),
-          ("3 != 2s", ExprNum(false, 1), Nil),
-          ("3 && 2s", ExprNum(false, 1), Nil),
-          ("3 || 2s", ExprNum(false, 1), Nil),
+          ("3 >  2s", ExprInt(false, 1, 1), Nil),
+          ("3 >= 2s", ExprInt(false, 1, 1), Nil),
+          ("3 <  2s", ExprInt(false, 1, 0), Nil),
+          ("3 <= 2s", ExprInt(false, 1, 0), Nil),
+          ("3 == 2s", ExprInt(false, 1, 0), Nil),
+          ("3 != 2s", ExprInt(false, 1, 1), Nil),
+          ("3 && 2s", ExprInt(false, 1, 1), Nil),
+          ("3 || 2s", ExprInt(false, 1, 1), Nil),
           // Arith
           ("3 *  2s", ExprNum(false, 6), Nil),
           ("3 /  2s", ExprNum(false, 1), Nil),
@@ -234,14 +234,14 @@ final class SimplifyExprSpec extends FreeSpec with AlogicTest {
           // unsigned unsigned
           //////////////////////////////////////////////
           // Always valid
-          ("3 >  2", ExprNum(false, 1), Nil),
-          ("3 >= 2", ExprNum(false, 1), Nil),
-          ("3 <  2", ExprNum(false, 0), Nil),
-          ("3 <= 2", ExprNum(false, 0), Nil),
-          ("3 == 2", ExprNum(false, 0), Nil),
-          ("3 != 2", ExprNum(false, 1), Nil),
-          ("3 && 2", ExprNum(false, 1), Nil),
-          ("3 || 2", ExprNum(false, 1), Nil),
+          ("3 >  2", ExprInt(false, 1, 1), Nil),
+          ("3 >= 2", ExprInt(false, 1, 1), Nil),
+          ("3 <  2", ExprInt(false, 1, 0), Nil),
+          ("3 <= 2", ExprInt(false, 1, 0), Nil),
+          ("3 == 2", ExprInt(false, 1, 0), Nil),
+          ("3 != 2", ExprInt(false, 1, 1), Nil),
+          ("3 && 2", ExprInt(false, 1, 1), Nil),
+          ("3 || 2", ExprInt(false, 1, 1), Nil),
           // Arith
           ("3 * 2", ExprNum(false, 6), Nil),
           ("3 / 2", ExprNum(false, 1), Nil),
@@ -951,10 +951,40 @@ final class SimplifyExprSpec extends FreeSpec with AlogicTest {
       for {
         (text, pattern) <- List[(String, PartialFunction[Any, Unit])](
           // format: off
-          ("c = {1{a}}",    { case ExprSym(Symbol("a")) => }),
-          ("c = {1'd1{a}}", { case ExprSym(Symbol("a"))  => }),
-          ("c = {1{b}}",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("b"))) :: Nil) => }),
-          ("c = {1'd1{b}}", { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("b"))) :: Nil) => })
+          ("{1{a}}",    { case ExprSym(Symbol("a")) => }),
+          ("{1'd1{a}}", { case ExprSym(Symbol("a"))  => }),
+          ("{1{b}}",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("b"))) :: Nil) => }),
+          ("{1'd1{b}}", { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("b"))) :: Nil) => })
+          // format: on
+        )
+      } {
+        text in {
+          fold {
+            s"""
+            |fsm f {
+            |  in u8 a;
+            |  in i8 b;
+            |  void main() {
+            |    $$display("", $text);
+            |    fence;
+            |  }
+            |}"""
+          } getFirst {
+            case ExprCall(_, _ :: ArgP(expr) :: Nil) => expr
+          } tap {
+            _ should matchPattern(pattern)
+          }
+          cc.messages shouldBe empty
+        }
+      }
+    }
+
+    "concatenation of size 1" - {
+      for {
+        (text, pattern) <- List[(String, PartialFunction[Any, Unit])](
+          // format: off
+          ("{a}",    { case ExprSym(Symbol("a")) => }),
+          ("{b}",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("b"))) :: Nil) => }),
           // format: on
         )
       } {
@@ -966,12 +996,12 @@ final class SimplifyExprSpec extends FreeSpec with AlogicTest {
             |  in i8 b;
             |  out u8 c;
             |  void main() {
-            |    $text;
+            |    $$display("", $text);
             |    fence;
             |  }
             |}"""
           } getFirst {
-            case StmtAssign(_, rhs) => rhs
+            case ExprCall(_, _ :: ArgP(expr) :: Nil) => expr
           } tap {
             _ should matchPattern(pattern)
           }
@@ -1364,26 +1394,97 @@ final class SimplifyExprSpec extends FreeSpec with AlogicTest {
           }
         }
       }
+
+      "$signed" - {
+        for {
+          (text, result) <- List(
+            // format: off
+            ("$signed(1)",      ExprNum(true,  1)),
+            ("$signed(1s)",     ExprNum(true,  1)),
+            ("$signed(-1s)",    ExprNum(true, -1)),
+            ("$signed(2'd0)",   ExprInt(true, 2,    0)),
+            ("$signed(2'd1)",   ExprInt(true, 2,    1)),
+            ("$signed(2'd3)",   ExprInt(true, 2,   -1)),
+            ("$signed(2'sd0)",  ExprInt(true, 2,    0)),
+            ("$signed(2'sd1)",  ExprInt(true, 2,    1)),
+            ("$signed(-2'sd1)", ExprInt(true, 2,   -1)),
+            ("$signed(8'h7f)",  ExprInt(true, 8,  127)),
+            ("$signed(8'h80)",  ExprInt(true, 8, -128)),
+            ("$signed(8'hff)",  ExprInt(true, 8,   -1)),
+            ("$signed({1'd0, {31{1'd1}}})", ExprInt(true, 32,  2147483647)),
+            ("$signed({1'd1, {31{1'd0}}})", ExprInt(true, 32, -2147483648))
+            // format: on
+          )
+        } {
+          text in {
+            simplify(text) shouldBe result
+          }
+        }
+      }
+
+      "$unsigned" - {
+        for {
+          (text, result, err) <- List(
+            // format: off
+            ("$unsigned(1)",        ExprNum(false,  1), Nil),
+            ("$unsigned(1s)",       ExprNum(false,  1), Nil),
+            ("$unsigned(-1s)",      ExprError(), "Cannot cast negative unsized integer to unsigned" :: Nil),
+            ("$unsigned(2'd0)",     ExprInt(false, 2,   0), Nil),
+            ("$unsigned(2'd1)",     ExprInt(false, 2,   1), Nil),
+            ("$unsigned(2'd3)",     ExprInt(false, 2,   3), Nil),
+            ("$unsigned(2'sd0)",    ExprInt(false, 2,   0), Nil),
+            ("$unsigned(2'sd1)",    ExprInt(false, 2,   1), Nil),
+            ("$unsigned(-2'sd1)",   ExprInt(false, 2,   3), Nil),
+            ("$unsigned(8'sd127)",  ExprInt(false, 8, 127), Nil),
+            ("$unsigned(-8'sd128)", ExprInt(false, 8, 128), Nil),
+            ("$unsigned(-8'sd1)",   ExprInt(false, 8, 255), Nil),
+            ("$unsigned({1'd0, {31{1'd1}}})", ExprInt(false, 32, 2147483647), Nil),
+            ("$unsigned({1'd1, {31{1'd0}}})", ExprInt(false, 32, 2147483648L), Nil)
+            // format: on
+          )
+        } {
+          text in {
+            simplify(text) shouldBe result
+            checkSingleError(err)
+
+          }
+        }
+      }
     }
 
-    "reference to constant" in {
-      fold {
-        """
-        |fsm a {
-        |  const u36 A = {{24{1'b0}}, {12{1'b1}}};
-        |  const u41 B = {5'h1, A[35:0]};
-        |
-        |  out u41 o;
-        |
-        |  void main() {
-        |    o = B;
-        |    fence;
-        |  }
-        |}"""
-      } getFirst {
-        case StmtAssign(_, rhs) => rhs
-      } tap {
-        _.simplify shouldBe ExprInt(false, 41, 0x1000000fffL)
+    "reference to constant" - {
+      for {
+        (expr, value) <- List(
+          // format: off
+          ("A", ExprInt(false, 36, 0x0000000fffL)),
+          ("B", ExprInt(false, 41, 0x1000000fffL)),
+          ("C", ExprInt(false,  8, 2)),
+          ("D", ExprInt(false,  7, 3)),
+          ("E", ExprInt(true,   6, 4)),
+          ("F", ExprInt(true,   5, 5))
+          // format: on
+        )
+      } expr in {
+        fold {
+          s"""
+          |fsm a {
+          |  const u36 A = {{24{1'b0}}, {12{1'b1}}};
+          |  const u41 B = {5'h1, A[35:0]};
+          |  const u8  C = 2;
+          |  const u7  D = 3s;
+          |  const i6  E = 4;
+          |  const i5  F = 5s;
+          |
+          |  void main() {
+          |    $$display("", $expr);
+          |    fence;
+          |  }
+          |}"""
+        } getFirst {
+          case ExprCall(_, _ :: ArgP(expr) :: Nil) => expr
+        } tap {
+          _ shouldBe value
+        }
       }
     }
 
