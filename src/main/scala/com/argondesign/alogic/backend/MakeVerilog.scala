@@ -52,48 +52,69 @@ final class MakeVerilog(
     decl(symbol.name, symbol.kind.underlying)
   }
 
+  private val multiBinOps = Set("*", "+", "-", "|", "&", "||", "&&")
+
   // Render expression to Verilog
-  private def vexpr(expr: Expr, wrapCat: Boolean, indent: Int): String = {
-    lazy val i0 = "  "
-    lazy val i = i0 * indent
-
-    def aexpr(arg: Arg) = arg match {
-      case ArgP(e) => vexpr(e)
-      case _       => unreachable
-    }
-
-    def loop(expr: Expr) = {
-      expr match {
-        case ExprCall(e, args)         => s"${vexpr(e)}(${args map aexpr mkString ", "})"
-        case ExprUnary(op, e)          => s"($op${vexpr(e)})"
-        case ExprBinary(l, op, r)      => s"(${vexpr(l)} $op ${vexpr(r)})"
-        case ExprTernary(cond, te, ee) => s"(${vexpr(cond)} ? ${vexpr(te)} : ${vexpr(ee)})"
-        case ExprRep(count, e)         => s"{${vexpr(count)}{${vexpr(e)}}}"
-        case ExprCat(parts) =>
-          if (wrapCat) {
-            parts map vexpr mkString (s"{\n$i0$i", s",\n$i0$i", s"\n$i}")
-          } else {
-            parts map vexpr mkString ("{", ", ", "}")
-          }
-        case ExprIndex(e, index)           => s"${vexpr(e)}[${vexpr(index)}]"
-        case ExprSlice(e, lidx, op, ridx)  => s"${vexpr(e)}[${vexpr(lidx)}$op${vexpr(ridx)}]"
-        case ExprSelect(e, sel, Nil)       => s"${vexpr(e)}${cc.sep}$sel"
-        case ExprSym(symbol)               => symbol.name
-        case ExprInt(false, w, v)          => s"$w'd$v"
-        case ExprInt(true, w, v) if v >= 0 => s"$w'sd$v"
-        case ExprInt(true, w, v)           => s"-$w'sd${-v}"
-        case ExprNum(false, value)         => s"'d$value"
-        case ExprNum(true, value)          => s"$value"
-        case ExprStr(str)                  => s""""$str""""
-        case _ =>
-          cc.ice(expr, "Don't know how to emit Verilog for expression", expr.toString)
+  private def vexpr(expr: Expr, indent: Int = 0): String = expr match {
+    case ExprCall(e, as) =>
+      val aa = as map {
+        case ArgP(e) => vexpr(e)
+        case _       => unreachable
       }
-    }
-
-    loop(expr)
+      s"${vexpr(e)}(${aa mkString ", "})"
+    case ExprUnary(op, e) =>
+      e match {
+        case _: ExprBinary | _: ExprTernary => s"$op(${vexpr(e)})"
+        case ExprInt(_, _, v) if v < 0      => s"$op(${vexpr(e)})"
+        case ExprNum(_, v) if v < 0         => s"$op(${vexpr(e)})"
+        case _                              => s"$op${vexpr(e)}"
+      }
+    case ExprBinary(l, op, r) =>
+      val ll = l match {
+        case ExprBinary(_, `op`, _) if multiBinOps(op) => vexpr(l)
+        case _: ExprBinary | _: ExprTernary            => s"(${vexpr(l)})"
+        case _                                         => vexpr(l)
+      }
+      val rr = r match {
+        case ExprBinary(_, `op`, _) if multiBinOps(op) => vexpr(r)
+        case ExprUnary(`op`, _)                        => s"(${vexpr(r)})"
+        case _: ExprBinary | _: ExprTernary            => s"(${vexpr(r)})"
+        case _                                         => vexpr(r)
+      }
+      s"$ll $op $rr"
+    case ExprTernary(c, t, e) =>
+      val cc = c match {
+        case _: ExprTernary => s"(${vexpr(c)})"
+        case _              => vexpr(c)
+      }
+      val tt = t match {
+        case _: ExprTernary => s"(${vexpr(t)})"
+        case _              => vexpr(t)
+      }
+      val ee = e match {
+        case _: ExprTernary => s"(${vexpr(e)})"
+        case _              => vexpr(e)
+      }
+      s"$cc ? $tt : $ee"
+    case ExprRep(c, e) => s"{${vexpr(c)}{${vexpr(e)}}}"
+    case ExprCat(ps) if indent > 0 =>
+      val i0 = "  "
+      val i = i0 * indent
+      ps map { vexpr(_, indent + 1) } mkString (s"{\n$i0$i", s",\n$i0$i", s"\n$i}")
+    case ExprCat(ps)                   => ps map { vexpr(_) } mkString ("{", ", ", "}")
+    case ExprIndex(e, i)               => s"${vexpr(e)}[${vexpr(i)}]"
+    case ExprSlice(e, l, op, r)        => s"${vexpr(e)}[${vexpr(l)}$op${vexpr(r)}]"
+    case ExprSelect(e, s, Nil)         => s"${vexpr(e)}${cc.sep}$s"
+    case ExprSym(symbol)               => symbol.name
+    case ExprInt(false, w, v)          => s"$w'd$v"
+    case ExprInt(true, w, v) if v >= 0 => s"$w'sd$v"
+    case ExprInt(true, w, v)           => s"-$w'sd${-v}"
+    case ExprNum(false, v)             => s"'d$v"
+    case ExprNum(true, v)              => s"$v"
+    case ExprStr(str)                  => s""""$str""""
+    case _ =>
+      cc.ice(expr, "Don't know how to emit Verilog for expression", expr.toString)
   }
-
-  private def vexpr(expr: Expr): String = vexpr(expr, wrapCat = false, indent = 0)
 
   //////////////////////////////////////////////////////////////////////////////
   // Emit code
@@ -177,7 +198,7 @@ final class MakeVerilog(
 
   private def emitStatement(body: CodeWriter, indent: Int, stmt: Stmt): Unit = {
     def wrapIfCat(expr: Expr) = expr match {
-      case _: ExprCat => vexpr(expr, wrapCat = true, indent = indent)
+      case _: ExprCat => vexpr(expr, indent)
       case _          => vexpr(expr)
     }
 
@@ -215,7 +236,7 @@ final class MakeVerilog(
         body.emit(indent)(s"case (${vexpr(cond)})")
         cases foreach {
           case CaseRegular(conds, stmts) =>
-            body.emit(indent + 1)(s"${conds map vexpr mkString ", "}: begin")
+            body.emit(indent + 1)(s"${conds map { vexpr(_) } mkString ", "}: begin")
             stmts foreach { emitStatement(body, indent + 2, _) }
             body.emit(indent + 1)("end")
           case CaseDefault(stmts) =>
@@ -306,7 +327,7 @@ final class MakeVerilog(
               val pStr = instancePortExpr.get(iSymbol) flatMap {
                 _.get(pSymbol.name)
               } map { expr =>
-                vexpr(expr, wrapCat = true, indent = 2)
+                vexpr(expr, indent = 2)
               } getOrElse {
                 "/* not connected */"
               }
@@ -329,8 +350,8 @@ final class MakeVerilog(
     if (nonPortConnects.nonEmpty) {
       body.emitSection(1, "Connections") {
         for (EntConnect(lhs, rhs :: Nil) <- nonPortConnects) {
-          val assignLhs = vexpr(rhs, wrapCat = true, indent = 1)
-          val assignRhs = vexpr(lhs, wrapCat = true, indent = 1)
+          val assignLhs = vexpr(rhs, indent = 1)
+          val assignRhs = vexpr(lhs, indent = 1)
           body.emit(1)(s"assign $assignLhs = $assignRhs;")
         }
       }
