@@ -607,9 +607,12 @@ final class SimplifyExpr(implicit cc: CompilerContext) extends StatelessTreeTran
       // Fold repetitions of count 1
       ////////////////////////////////////////////////////////////////////////////
 
-      case ExprRep(Integral(_, _, rep), expr) if rep == 1 => {
-        expr
-      }
+      case ExprRep(Integral(_, _, rep), expr) if rep == 1 =>
+        if (!expr.tpe.isSigned) {
+          expr
+        } else {
+          cc.makeBuiltinCall("$unsigned", tree.loc, expr :: Nil)
+        }
 
       ////////////////////////////////////////////////////////////////////////////
       // Fold concatenations of sized integers

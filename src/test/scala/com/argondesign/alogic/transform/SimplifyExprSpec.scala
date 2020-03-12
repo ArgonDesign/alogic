@@ -952,7 +952,9 @@ final class SimplifyExprSpec extends FreeSpec with AlogicTest {
         (text, pattern) <- List[(String, PartialFunction[Any, Unit])](
           // format: off
           ("c = {1{a}}",    { case ExprSym(Symbol("a")) => }),
-          ("c = {1'd1{a}}", { case ExprSym(Symbol("a"))  => })
+          ("c = {1'd1{a}}", { case ExprSym(Symbol("a"))  => }),
+          ("c = {1{b}}",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("b"))) :: Nil) => }),
+          ("c = {1'd1{b}}", { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("b"))) :: Nil) => })
           // format: on
         )
       } {
@@ -961,9 +963,11 @@ final class SimplifyExprSpec extends FreeSpec with AlogicTest {
             s"""
             |fsm f {
             |  in u8 a;
+            |  in i8 b;
             |  out u8 c;
-            |  fence {
+            |  void main() {
             |    $text;
+            |    fence;
             |  }
             |}"""
           } getFirst {
