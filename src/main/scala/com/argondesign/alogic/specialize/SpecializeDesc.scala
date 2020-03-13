@@ -134,7 +134,7 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
   private[this] val pendingMap = mutable.HashMap[(Symbol, (Map[String, Expr], Boolean)), Loc]()
 
   // The below is just debug aid for the developer
-  private[this] val dumpEnable = false
+  private[this] val dumpEnable = cc.settings.traceElaborate
   private[this] var prevDumped: Either[Desc, (Decl, Defn)] = _
   private[this] def dump(label: String)(item: Either[Desc, (Decl, Defn)]): Unit =
     if (dumpEnable && item != prevDumped) {
@@ -585,6 +585,7 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
             case _ => (decl, defn)
           }
 
+          prevDumped = null
           dump("Final")(Right((sDecl, sDefn)))
 
           // Set of symbols defined inside this definition

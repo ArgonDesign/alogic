@@ -331,7 +331,8 @@ trait CompilationTest
           dumpTrees = configMap.getWithDefault("dump-trees", "0").toInt != 0,
           resetStyle = resetStyle,
           resetAll = resetAll,
-          shuffleEnts = configMap.getOptional[String]("shuffle-ents") map { _.toInt }
+          shuffleEnts = configMap.getOptional[String]("shuffle-ents") map { _.toInt },
+          traceElaborate = configMap.getWithDefault("trace-elaborate", "0").toInt != 0
         )
       )
 

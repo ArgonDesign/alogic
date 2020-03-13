@@ -60,5 +60,7 @@ case class Settings(
     // Reset all
     resetAll: Boolean = true,
     // Gen loop iteration limit
-    genLoopLimit: Int = 1024
+    genLoopLimit: Int = 1024,
+    // For debugging only, trace the progress of elaboration
+    traceElaborate: Boolean = false
 )
