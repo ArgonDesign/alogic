@@ -24,12 +24,15 @@ import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Math.clog2
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.BigIntOps._
+import com.argondesign.alogic.util.PartialMatch
 import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.tailrec
 import scala.language.implicitConversions
 
-final class SimplifyExpr(implicit cc: CompilerContext) extends StatelessTreeTransformer {
+final class SimplifyExpr(implicit cc: CompilerContext)
+    extends StatelessTreeTransformer
+    with PartialMatch {
 
   private implicit def boolean2BigInt(bool: Boolean): BigInt = if (bool) BigInt(1) else BigInt(0)
 
@@ -55,6 +58,49 @@ final class SimplifyExpr(implicit cc: CompilerContext) extends StatelessTreeTran
       }
       num withLoc expr.loc
     case _ => unreachable
+  }
+
+  private def foldBinOpOneKnown(
+      kSigned: Boolean,
+      kWidthOpt: Option[Int],
+      kValue: BigInt,
+      op: String,
+      unk: Expr,
+      lKnown: Boolean
+  ): Option[Expr] = {
+    val tpe = unk.tpe
+    lazy val width = tpe.width.toInt
+    lazy val allOnes = kValue.extract(0, width) == BigInt.mask(width)
+    val bPack = kWidthOpt.isDefined && tpe.isPacked
+    op partialMatch {
+      // Arithmetic
+      case "*" if bPack && kValue == 0           => ExprInt(kSigned && tpe.isSigned, width, 0)
+      case "*" if bPack && kValue == 1           => if (kSigned || !tpe.isSigned) unk else unk.castUnsigned
+      case "/" if bPack && kValue == 0 && lKnown => ExprInt(kSigned && tpe.isSigned, width, 0)
+      case "/" if bPack && kValue == 1 && !lKnown =>
+        if (kSigned || !tpe.isSigned) unk else unk.castUnsigned
+      case "%" if bPack && kValue == 0 && lKnown  => ExprInt(kSigned && tpe.isSigned, width, 0)
+      case "%" if bPack && kValue == 1 && !lKnown => ExprInt(kSigned && tpe.isSigned, width, 0)
+      case "+" if bPack && kValue == 0            => if (kSigned || !tpe.isSigned) unk else unk.castUnsigned
+      case "-" if bPack && kValue == 0 && lKnown =>
+        if (kSigned || !tpe.isSigned) -unk else (-unk).castUnsigned
+      case "-" if bPack && kValue == 0 => if (kSigned || !tpe.isSigned) unk else unk.castUnsigned
+      // Shift
+      case ">>" | ">>>" | "<<" | "<<<" if kValue == 0 =>
+        if (lKnown) ExprInt(kSigned, kWidthOpt.get, 0) else unk
+      // Logical
+      case "&&" if kValue == 0                => ExprInt(false, 1, 0)
+      case "&&" if tpe.isPacked && width == 1 => if (tpe.isSigned) unk.castUnsigned else unk
+      case "||" if kValue != 0                => ExprInt(false, 1, 1)
+      case "||" if tpe.isPacked && width == 1 => if (tpe.isSigned) unk.castUnsigned else unk
+      // Bitwise
+      case "&" if bPack && kValue == 0 => ExprInt(kSigned && tpe.isSigned, width, 0)
+      case "&" if bPack && allOnes     => if (kSigned || !tpe.isSigned) unk else unk.castUnsigned
+      case "|" if bPack && kValue == 0 => if (kSigned || !tpe.isSigned) unk else unk.castUnsigned
+      case "|" if bPack && allOnes     => ExprInt(kSigned && tpe.isSigned, width, 0)
+      case "^" if bPack && kValue == 0 => if (kSigned || !tpe.isSigned) unk else unk.castUnsigned
+      case "^" if bPack && allOnes     => if (kSigned || !tpe.isSigned) ~unk else (~unk).castUnsigned
+    }
   }
 
   private def isBuiltinSU(symbol: Symbol) = {
@@ -414,27 +460,21 @@ final class SimplifyExpr(implicit cc: CompilerContext) extends StatelessTreeTran
       // Fold binary operators with one known operand if possible
       ////////////////////////////////////////////////////////////////////////////
 
-      case ExprBinary(Integral(_, _, lv), op, rhs) => {
-        val res = op match {
-          case "&&" if lv == 0                                                     => ExprInt(false, 1, 0)
-          case "&&" if rhs.tpe.isPacked && !rhs.tpe.isSigned && rhs.tpe.width == 1 => rhs
-          case "||" if lv != 0                                                     => ExprInt(false, 1, 1)
-          case "||" if rhs.tpe.isPacked && !rhs.tpe.isSigned && rhs.tpe.width == 1 => rhs
-          case _                                                                   => tree
+      case ExprBinary(Integral(ks, kw, kv), op, unk) =>
+        foldBinOpOneKnown(ks, kw, kv, op, unk, lKnown = true) getOrElse {
+          tree
+        } tap {
+          case result if result.hasLoc => result
+          case result                  => result withLoc tree.loc
         }
-        if (res.hasLoc) res else res withLoc tree.loc
-      }
 
-      case ExprBinary(lhs, op, Integral(_, _, rv)) => {
-        val res = op match {
-          case "&&" if rv == 0                                                     => ExprInt(false, 1, 0)
-          case "&&" if lhs.tpe.isPacked && !lhs.tpe.isSigned && lhs.tpe.width == 1 => lhs
-          case "||" if rv != 0                                                     => ExprInt(false, 1, 1)
-          case "||" if lhs.tpe.isPacked && !lhs.tpe.isSigned && lhs.tpe.width == 1 => lhs
-          case _                                                                   => tree
+      case ExprBinary(unk, op, Integral(ks, kw, kv)) =>
+        foldBinOpOneKnown(ks, kw, kv, op, unk, lKnown = false) getOrElse {
+          tree
+        } tap {
+          case result if result.hasLoc => result
+          case result                  => result withLoc tree.loc
         }
-        if (res.hasLoc) res else res withLoc tree.loc
-      }
 
       ////////////////////////////////////////////////////////////////////////////
       // Fold binary expressions with a mixed operand

@@ -528,6 +528,226 @@ final class SimplifyExprSpec extends FreeSpec with AlogicTest {
       }
     }
 
+    "binary operators with one side known" - {
+      for {
+        (text, pattern) <- List[(String, PartialFunction[Any, Unit])](
+          // format: off
+          // Arithmetic *
+          ("8'd0   * x_u8",    { case ExprInt(false, 8, v) if v == 0 => }),
+          ("8'sd0  * x_u8",    { case ExprInt(false, 8, v) if v == 0 => }),
+          ("8'd0   * x_i8",    { case ExprInt(false, 8, v) if v == 0 => }),
+          ("8'sd0  * x_i8",    { case ExprInt(true,  8, v) if v == 0 => }),
+          ("x_u8   * 8'd0",    { case ExprInt(false, 8, v) if v == 0 => }),
+          ("x_u8   * 8'sd0",   { case ExprInt(false, 8, v) if v == 0 => }),
+          ("x_i8   * 8'd0",    { case ExprInt(false, 8, v) if v == 0 => }),
+          ("x_i8   * 8'sd0",   { case ExprInt(true,  8, v) if v == 0 => }),
+          ("8'd1   * x_u8",    { case ExprSym(Symbol("x_u8")) => }),
+          ("8'sd1  * x_u8",    { case ExprSym(Symbol("x_u8")) => }),
+          ("8'd1   * x_i8",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("x_i8"))) :: Nil) => }),
+          ("8'sd1  * x_i8",    { case ExprSym(Symbol("x_i8")) => }),
+          ("x_u8   * 8'd1",    { case ExprSym(Symbol("x_u8")) => }),
+          ("x_u8   * 8'sd1",   { case ExprSym(Symbol("x_u8")) => }),
+          ("x_i8   * 8'd1",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("x_i8"))) :: Nil) => }),
+          ("x_i8   * 8'sd1",   { case ExprSym(Symbol("x_i8")) => }),
+          // Arithmetic /
+          ("8'd0   / x_u8",    { case ExprInt(false, 8, v) if v == 0 => }),
+          ("8'sd0  / x_u8",    { case ExprInt(false, 8, v) if v == 0 => }),
+          ("8'd0   / x_i8",    { case ExprInt(false, 8, v) if v == 0 => }),
+          ("8'sd0  / x_i8",    { case ExprInt(true,  8, v) if v == 0 => }),
+          ("x_u8   / 8'd1",    { case ExprSym(Symbol("x_u8")) => }),
+          ("x_u8   / 8'sd1",   { case ExprSym(Symbol("x_u8")) => }),
+          ("x_i8   / 8'd1",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("x_i8"))) :: Nil) => }),
+          ("x_i8   / 8'sd1",   { case ExprSym(Symbol("x_i8")) => }),
+          // Arithmetic /
+          ("8'd0   % x_u8",    { case ExprInt(false, 8, v) if v == 0 => }),
+          ("8'sd0  % x_u8",    { case ExprInt(false, 8, v) if v == 0 => }),
+          ("8'd0   % x_i8",    { case ExprInt(false, 8, v) if v == 0 => }),
+          ("8'sd0  % x_i8",    { case ExprInt(true,  8, v) if v == 0 => }),
+          ("x_u8   % 8'd1",    { case ExprInt(false, 8, v) if v == 0 => }),
+          ("x_u8   % 8'sd1",   { case ExprInt(false, 8, v) if v == 0 => }),
+          ("x_i8   % 8'd1",    { case ExprInt(false, 8, v) if v == 0 => }),
+          ("x_i8   % 8'sd1",   { case ExprInt(true,  8, v) if v == 0 => }),
+          // Arithmetic +
+          ("8'd0   + x_u8",    { case ExprSym(Symbol("x_u8")) => }),
+          ("8'sd0  + x_u8",    { case ExprSym(Symbol("x_u8")) => }),
+          ("8'd0   + x_i8",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("x_i8"))) :: Nil) => }),
+          ("8'sd0  + x_i8",    { case ExprSym(Symbol("x_i8")) => }),
+          ("x_u8   + 8'd0",    { case ExprSym(Symbol("x_u8")) => }),
+          ("x_u8   + 8'sd0",   { case ExprSym(Symbol("x_u8")) => }),
+          ("x_i8   + 8'd0",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("x_i8"))) :: Nil) => }),
+          ("x_i8   + 8'sd0",   { case ExprSym(Symbol("x_i8")) => }),
+          // Arithmetic -
+          ("8'd0   - x_u8",    { case ExprUnary("-", ExprSym(Symbol("x_u8"))) => }),
+          ("8'sd0  - x_u8",    { case ExprUnary("-", ExprSym(Symbol("x_u8"))) => }),
+          ("8'd0   - x_i8",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprUnary("-", ExprSym(Symbol("x_i8")))) :: Nil) => }),
+          ("8'sd0  - x_i8",    { case ExprUnary("-", ExprSym(Symbol("x_i8"))) => }),
+          ("x_u8   - 8'd0",    { case ExprSym(Symbol("x_u8")) => }),
+          ("x_u8   - 8'sd0",   { case ExprSym(Symbol("x_u8")) => }),
+          ("x_i8   - 8'd0",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("x_i8"))) :: Nil) => }),
+          ("x_i8   - 8'sd0",   { case ExprSym(Symbol("x_i8")) => }),
+          // Shift >>
+          ("8'd0   >> x_u8",    { case ExprInt(false, 8, v) if v == 0 => }),
+          ("8'sd0  >> x_u8",    { case ExprInt(true,  8, v) if v == 0 => }),
+          ("8'd0   >> x_i8",    { case ExprInt(false, 8, v) if v == 0 => }),
+          ("8'sd0  >> x_i8",    { case ExprInt(true,  8, v) if v == 0 => }),
+          ("x_u8   >> 8'd0",    { case ExprSym(Symbol("x_u8")) => }),
+          ("x_u8   >> 8'sd0",   { case ExprSym(Symbol("x_u8")) => }),
+          ("x_i8   >> 8'd0",    { case ExprSym(Symbol("x_i8")) => }),
+          ("x_i8   >> 8'sd0",   { case ExprSym(Symbol("x_i8")) => }),
+          // Shift >>>
+          ("8'd0   >>> x_u8",   { case ExprInt(false, 8, v) if v == 0 => }),
+          ("8'sd0  >>> x_u8",   { case ExprInt(true,  8, v) if v == 0 => }),
+          ("8'd0   >>> x_i8",   { case ExprInt(false, 8, v) if v == 0 => }),
+          ("8'sd0  >>> x_i8",   { case ExprInt(true,  8, v) if v == 0 => }),
+          ("x_u8   >>> 8'd0",   { case ExprSym(Symbol("x_u8")) => }),
+          ("x_u8   >>> 8'sd0",  { case ExprSym(Symbol("x_u8")) => }),
+          ("x_i8   >>> 8'd0",   { case ExprSym(Symbol("x_i8")) => }),
+          ("x_i8   >>> 8'sd0",  { case ExprSym(Symbol("x_i8")) => }),
+          // Shift <<
+          ("8'd0   << x_u8",    { case ExprInt(false, 8, v) if v == 0 => }),
+          ("8'sd0  << x_u8",    { case ExprInt(true,  8, v) if v == 0 => }),
+          ("8'd0   << x_i8",    { case ExprInt(false, 8, v) if v == 0 => }),
+          ("8'sd0  << x_i8",    { case ExprInt(true,  8, v) if v == 0 => }),
+          ("x_u8   << 8'd0",    { case ExprSym(Symbol("x_u8")) => }),
+          ("x_u8   << 8'sd0",   { case ExprSym(Symbol("x_u8")) => }),
+          ("x_i8   << 8'd0",    { case ExprSym(Symbol("x_i8")) => }),
+          ("x_i8   << 8'sd0",   { case ExprSym(Symbol("x_i8")) => }),
+          // Shift <<<
+          ("8'd0   <<< x_u8",   { case ExprInt(false, 8, v) if v == 0 => }),
+          ("8'sd0  <<< x_u8",   { case ExprInt(true,  8, v) if v == 0 => }),
+          ("8'd0   <<< x_i8",   { case ExprInt(false, 8, v) if v == 0 => }),
+          ("8'sd0  <<< x_i8",   { case ExprInt(true,  8, v) if v == 0 => }),
+          ("x_u8   <<< 8'd0",   { case ExprSym(Symbol("x_u8")) => }),
+          ("x_u8   <<< 8'sd0",  { case ExprSym(Symbol("x_u8")) => }),
+          ("x_i8   <<< 8'd0",   { case ExprSym(Symbol("x_i8")) => }),
+          ("x_i8   <<< 8'sd0",  { case ExprSym(Symbol("x_i8")) => }),
+          // Logical &&
+          ("1    && x_u1",    { case ExprSym(Symbol("x_u1")) => }),
+          ("1'd1 && x_u1",    { case ExprSym(Symbol("x_u1")) => }),
+          ("2'd2 && x_u1",    { case ExprSym(Symbol("x_u1")) => }),
+          ("x_u1 && 1   ",    { case ExprSym(Symbol("x_u1")) => }),
+          ("x_u1 && 1'd1",    { case ExprSym(Symbol("x_u1")) => }),
+          ("x_u1 && 2'd2",    { case ExprSym(Symbol("x_u1")) => }),
+          ("1    && x_i1",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("x_i1"))) :: Nil) => }),
+          ("1'd1 && x_i1",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("x_i1"))) :: Nil) => }),
+          ("2'd2 && x_i1",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("x_i1"))) :: Nil) => }),
+          ("x_i1 && 1   ",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("x_i1"))) :: Nil) => }),
+          ("x_i1 && 1'd1",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("x_i1"))) :: Nil) => }),
+          ("x_i1 && 2'd2",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("x_i1"))) :: Nil) => }),
+          ("0    && x_u1",    { case ExprInt(false, 1, v) if v == 0 => }),
+          ("1'd0 && x_u1",    { case ExprInt(false, 1, v) if v == 0 => }),
+          ("2'd0 && x_u1",    { case ExprInt(false, 1, v) if v == 0 => }),
+          ("x_u1 && 0   ",    { case ExprInt(false, 1, v) if v == 0 => }),
+          ("x_u1 && 1'd0",    { case ExprInt(false, 1, v) if v == 0 => }),
+          ("x_u1 && 2'd0",    { case ExprInt(false, 1, v) if v == 0 => }),
+          ("0    && x_i1",    { case ExprInt(false, 1, v) if v == 0 => }),
+          ("1'd0 && x_i1",    { case ExprInt(false, 1, v) if v == 0 => }),
+          ("2'd0 && x_i1",    { case ExprInt(false, 1, v) if v == 0 => }),
+          ("x_i1 && 0   ",    { case ExprInt(false, 1, v) if v == 0 => }),
+          ("x_i1 && 1'd0",    { case ExprInt(false, 1, v) if v == 0 => }),
+          ("x_i1 && 2'd0",    { case ExprInt(false, 1, v) if v == 0 => }),
+          // Logical ||
+          ("1    || x_u1",    { case ExprInt(false, 1, v) if v == 1 => }),
+          ("1'd1 || x_u1",    { case ExprInt(false, 1, v) if v == 1 => }),
+          ("2'd2 || x_u1",    { case ExprInt(false, 1, v) if v == 1 => }),
+          ("x_u1 || 1   ",    { case ExprInt(false, 1, v) if v == 1 => }),
+          ("x_u1 || 1'd1",    { case ExprInt(false, 1, v) if v == 1 => }),
+          ("x_u1 || 2'd2",    { case ExprInt(false, 1, v) if v == 1 => }),
+          ("1    || x_i1",    { case ExprInt(false, 1, v) if v == 1 => }),
+          ("1'd1 || x_i1",    { case ExprInt(false, 1, v) if v == 1 => }),
+          ("2'd2 || x_i1",    { case ExprInt(false, 1, v) if v == 1 => }),
+          ("x_i1 || 1   ",    { case ExprInt(false, 1, v) if v == 1 => }),
+          ("x_i1 || 1'd1",    { case ExprInt(false, 1, v) if v == 1 => }),
+          ("x_i1 || 2'd2",    { case ExprInt(false, 1, v) if v == 1 => }),
+          ("0    || x_u1",    { case ExprSym(Symbol("x_u1")) => }),
+          ("1'd0 || x_u1",    { case ExprSym(Symbol("x_u1")) => }),
+          ("2'd0 || x_u1",    { case ExprSym(Symbol("x_u1")) => }),
+          ("x_u1 || 0   ",    { case ExprSym(Symbol("x_u1")) => }),
+          ("x_u1 || 1'd0",    { case ExprSym(Symbol("x_u1")) => }),
+          ("x_u1 || 2'd0",    { case ExprSym(Symbol("x_u1")) => }),
+          ("0    || x_i1",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("x_i1"))) :: Nil) => }),
+          ("1'd0 || x_i1",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("x_i1"))) :: Nil) => }),
+          ("2'd0 || x_i1",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("x_i1"))) :: Nil) => }),
+          ("x_i1 || 0   ",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("x_i1"))) :: Nil) => }),
+          ("x_i1 || 1'd0",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("x_i1"))) :: Nil) => }),
+          ("x_i1 || 2'd0",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("x_i1"))) :: Nil) => }),
+          // Binary &
+          ("8'd0   & x_u8",    { case ExprInt(false, 8, v) if v == 0 => }),
+          ("8'sd0  & x_u8",    { case ExprInt(false,  8, v) if v == 0 => }),
+          ("8'd0   & x_i8",    { case ExprInt(false, 8, v) if v == 0 => }),
+          ("8'sd0  & x_i8",    { case ExprInt(true,  8, v) if v == 0 => }),
+          ("x_u8   & 8'd0",    { case ExprInt(false, 8, v) if v == 0 => }),
+          ("x_u8   & 8'sd0",   { case ExprInt(false,  8, v) if v == 0 => }),
+          ("x_i8   & 8'd0",    { case ExprInt(false, 8, v) if v == 0 => }),
+          ("x_i8   & 8'sd0",   { case ExprInt(true,  8, v) if v == 0 => }),
+          ("8'hff  & x_u8",    { case ExprSym(Symbol("x_u8")) => }),
+          ("-8'sd1 & x_u8",    { case ExprSym(Symbol("x_u8")) => }),
+          ("8'hff  & x_i8",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("x_i8"))) :: Nil) => }),
+          ("-8'sd1 & x_i8",    { case ExprSym(Symbol("x_i8")) => }),
+          ("x_u8   & 8'hff",   { case ExprSym(Symbol("x_u8")) => }),
+          ("x_u8   & -8'sd1",  { case ExprSym(Symbol("x_u8")) => }),
+          ("x_i8   & 8'hff",   { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("x_i8"))) :: Nil) => }),
+          ("x_i8   & -8'sd1",  { case ExprSym(Symbol("x_i8")) => }),
+          // Binary |
+          ("8'd0   | x_u8",    { case ExprSym(Symbol("x_u8")) => }),
+          ("8'sd0  | x_u8",    { case ExprSym(Symbol("x_u8")) => }),
+          ("8'd0   | x_i8",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("x_i8"))) :: Nil) => }),
+          ("8'sd0  | x_i8",    { case ExprSym(Symbol("x_i8")) => }),
+          ("x_u8   | 8'd0",    { case ExprSym(Symbol("x_u8")) => }),
+          ("x_u8   | 8'sd0",   { case ExprSym(Symbol("x_u8")) => }),
+          ("x_i8   | 8'd0",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("x_i8"))) :: Nil) => }),
+          ("x_i8   | 8'sd0",   { case ExprSym(Symbol("x_i8")) => }),
+          ("8'hff  | x_u8",    { case ExprInt(false, 8, v) if v == 0 => }),
+          ("-8'sd1 | x_u8",    { case ExprInt(false,  8, v) if v == 0 => }),
+          ("8'hff  | x_i8",    { case ExprInt(false, 8, v) if v == 0 => }),
+          ("-8'sd1 | x_i8",    { case ExprInt(true,  8, v) if v == 0 => }),
+          ("x_u8   | 8'hff",   { case ExprInt(false, 8, v) if v == 0 => }),
+          ("x_u8   | -8'sd1",  { case ExprInt(false,  8, v) if v == 0 => }),
+          ("x_i8   | 8'hff",   { case ExprInt(false, 8, v) if v == 0 => }),
+          ("x_i8   | -8'sd1",  { case ExprInt(true,  8, v) if v == 0 => }),
+          // Binary ^
+          ("8'd0   ^ x_u8",    { case ExprSym(Symbol("x_u8")) => }),
+          ("8'sd0  ^ x_u8",    { case ExprSym(Symbol("x_u8")) => }),
+          ("8'd0   ^ x_i8",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("x_i8"))) :: Nil) => }),
+          ("8'sd0  ^ x_i8",    { case ExprSym(Symbol("x_i8")) => }),
+          ("x_u8   ^ 8'd0",    { case ExprSym(Symbol("x_u8")) => }),
+          ("x_u8   ^ 8'sd0",   { case ExprSym(Symbol("x_u8")) => }),
+          ("x_i8   ^ 8'd0",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("x_i8"))) :: Nil) => }),
+          ("x_i8   ^ 8'sd0",   { case ExprSym(Symbol("x_i8")) => }),
+          ("8'hff  ^ x_u8",    { case ExprUnary("~", ExprSym(Symbol("x_u8"))) => }),
+          ("-8'sd1 ^ x_u8",    { case ExprUnary("~", ExprSym(Symbol("x_u8"))) => }),
+          ("8'hff  ^ x_i8",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprUnary("~", ExprSym(Symbol("x_i8")))) :: Nil) => }),
+          ("-8'sd1 ^ x_i8",    { case ExprUnary("~", ExprSym(Symbol("x_i8"))) => }),
+          ("x_u8   ^ 8'hff",   { case ExprUnary("~", ExprSym(Symbol("x_u8"))) => }),
+          ("x_u8   ^ -8'sd1",  { case ExprUnary("~", ExprSym(Symbol("x_u8"))) => }),
+          ("x_i8   ^ 8'hff",   { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprUnary("~", ExprSym(Symbol("x_i8")))) :: Nil) => }),
+          ("x_i8   ^ -8'sd1",  { case ExprUnary("~", ExprSym(Symbol("x_i8"))) => }),
+          // format: on
+        )
+      } {
+        text in {
+          fold {
+            s"""
+            |fsm f {
+            |  u1 x_u1;
+            |  i1 x_i1;
+            |  u8 x_u8;
+            |  i8 x_i8;
+            |  void main() {
+            |    $$display("", $text);
+            |    fence;
+            |  }
+            |}"""
+          } getFirst {
+            case ExprCall(_, _ :: ArgP(expr) :: Nil) => expr
+          } tap {
+            _ should matchPattern(pattern)
+          }
+          cc.messages filter { _.isInstanceOf[Error] } shouldBe empty
+        }
+      }
+    }
+
     "index into sized integer literals" - {
       for {
         (text, result, err) <- List(
@@ -1548,11 +1768,13 @@ final class SimplifyExprSpec extends FreeSpec with AlogicTest {
       for {
         (stmt, pattern) <- List[(String, PartialFunction[Any, Unit])](
           // format: off
-          ("o_1 = A[i_3]",      { case ExprIndex(ExprSym(Symbol("A")), ExprSym(Symbol("i_3"))) => }),
-          ("o_2 = B[i_2]",      { case ExprIndex(ExprSym(Symbol("B")), ExprSym(Symbol("i_2"))) => }),
-          ("o_2 = A[i_3 +: 2]", { case ExprSlice(ExprSym(Symbol("A")), ExprSym(Symbol("i_3")), "+:", ExprInt(false, 4, w)) if w == 2 => }),
-          ("o_4 = B[i_2 +: 2]", { case ExprSlice(ExprSym(Symbol("B")), ExprSym(Symbol("i_2")), "+:", ExprInt(false, 2, w)) if w == 2 => }),
-          ("o_2 = B[1:0][i_1]", { case ExprIndex(ExprSym(Symbol("B")), ExprBinary(ExprInt(false, 2, lsb), "+", ExprCat(List(ExprInt(false, 1, _), ExprSym(Symbol("i_1")))))) if lsb == 0 => })
+          ("o_1 = A[i_3]",       { case ExprIndex(ExprSym(Symbol("A")), ExprSym(Symbol("i_3"))) => }),
+          ("o_2 = B[i_2]",       { case ExprIndex(ExprSym(Symbol("B")), ExprSym(Symbol("i_2"))) => }),
+          ("o_2 = A[i_3 +: 2]",  { case ExprSlice(ExprSym(Symbol("A")), ExprSym(Symbol("i_3")), "+:", ExprInt(false, 4, w)) if w == 2 => }),
+          ("o_4 = B[i_2 +: 2]",  { case ExprSlice(ExprSym(Symbol("B")), ExprSym(Symbol("i_2")), "+:", ExprInt(false, 2, w)) if w == 2 => }),
+          ("o_2 = B[1:0][i_1]",  { case ExprIndex(ExprSym(Symbol("B")), ExprCat(List(ExprInt(false, 1, p), ExprSym(Symbol("i_1"))))) if p == 0 => }),
+          ("o_2 = B[2:1][i_1]",  { case ExprIndex(ExprSym(Symbol("B")), ExprBinary(ExprInt(false, 2, l), "+", ExprCat(List(ExprInt(false, 1, p), ExprSym(Symbol("i_1")))))) if l == 1 && p == 0 => }),
+          ("o_2 = B[2+:1][i_1]", { case ExprIndex(ExprSym(Symbol("B")), ExprBinary(ExprInt(false, 2, l), "+", ExprCat(List(ExprInt(false, 1, p), ExprSym(Symbol("i_1")))))) if l == 2 && p == 0 => })
           // format: on
         )
       } {
