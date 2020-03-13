@@ -1,0 +1,16 @@
+network gen_redef_0 {
+  const uint N = 2;
+  gen for (uint n < N) {
+    in sync ready u32 up#[n];
+  }
+  in sync ready u32 down;
+
+  out sync ready u32 up;
+  gen for (uint n < N) {
+    out sync ready u32 down#[n];
+  }
+}
+// :8: ERROR: Redefinition of 'up' with previous definition at
+// :8: ERROR: ... .*gen_redef_0.alogic:4
+// :10: ERROR: Redefinition of 'down' with previous definition at
+// :10: ERROR: ... .*gen_redef_0.alogic:6
