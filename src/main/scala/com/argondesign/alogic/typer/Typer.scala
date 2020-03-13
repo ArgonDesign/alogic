@@ -83,7 +83,7 @@ final class Typer(implicit cc: CompilerContext) extends StatefulTreeTransformer 
   }
 
   // Same as above but location provided from the 'mark' node.
-  private def error(tree: Tree, mark: Tree, msg: String*): Unit = error(tree, tree.loc, msg: _*)
+  private def error(tree: Tree, mark: Tree, msg: String*): Unit = error(tree, mark.loc, msg: _*)
 
   // Wrapper for above when 'tree' and 'mark' are the same
   private def error(tree: Tree, msg: String*): Unit = error(tree, tree.loc, msg: _*)
