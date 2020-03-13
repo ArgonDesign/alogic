@@ -1,0 +1,18 @@
+fsm folding_before_lower_vectors {
+  const u8[2] VECTOR = {8'd5, 8'd4};
+  const u8 VECTOR_ITEM = VECTOR[1];
+
+  out wire u8 o;
+
+  void main() {
+    o = VECTOR_ITEM;
+    fence;
+  }
+}
+// @fec-golden {{{
+//  module folding_before_lower_vectors(
+//    output wire [7:0] o
+//  );
+//    assign o = 8'd5;
+//  endmodule
+// }}}

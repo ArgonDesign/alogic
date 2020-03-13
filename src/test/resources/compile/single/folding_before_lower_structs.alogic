@@ -1,0 +1,23 @@
+fsm folding_before_lower_structs {
+  struct s {
+    u8 a;
+    u8 b;
+  }
+
+  const s STRUCT = {8'd5, 8'd4};
+  const u8 STRUCT_ITEM = STRUCT.a;
+
+  out wire u8 o;
+
+  void main() {
+    o = STRUCT_ITEM;
+    fence;
+  }
+}
+// @fec-golden {{{
+//  module folding_before_lower_structs(
+//    output wire [7:0] o
+//  );
+//    assign o = 8'd5;
+//  endmodule
+// }}}
