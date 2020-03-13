@@ -1,0 +1,13 @@
+network mixed_param_assign {
+  struct s_t {
+    param uint W;
+    param uint V;
+    uint(W + V) a;
+  }
+
+  in  s_t(1, V=1) i;
+  out s_t(1, V=1) o;
+  i -> o;
+}
+// :8: ERROR: Mixing positional and named parameter assignments is not allowed
+// :9: ERROR: Mixing positional and named parameter assignments is not allowed

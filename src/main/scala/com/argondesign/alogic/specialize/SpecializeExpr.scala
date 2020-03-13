@@ -126,7 +126,9 @@ private[specialize] object SpecializeExpr {
                   case _: ArgP => true
                   case _: ArgN => false
                 }
-                if (posArgs.nonEmpty) {
+                if (posArgs.nonEmpty && namedArgs.nonEmpty) {
+                  error(tree, "Mixing positional and named parameter assignments is not allowed")
+                } else if (posArgs.nonEmpty) {
                   error(posArgs.head, "Parameter assignments must be given by name")
                 } else {
                   val bindings = Map from {
