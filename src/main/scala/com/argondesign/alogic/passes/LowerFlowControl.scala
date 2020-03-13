@@ -31,9 +31,9 @@ import com.argondesign.alogic.core.SyncSliceFactory
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.unreachable
 
+import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
-import scala.collection.concurrent.TrieMap
 
 final class LowerFlowControlA(
     globalReplacements: mutable.Map[Symbol, Symbol],
@@ -439,7 +439,7 @@ final class LowerFlowControlA(
 
       case EntDefn(Defn(symbol)) =>
         // Note: Output port defaults, including for flow control signals will
-        // be set in the DefaultAssignments pass
+        // be set in the DefaultAssignments/TieOffInputs pass
         portMap.get(symbol) map { loweredSymbolOpts =>
           val portDefns = loweredSymbolOpts.iterator.flatten map {
             case `symbol` => tree

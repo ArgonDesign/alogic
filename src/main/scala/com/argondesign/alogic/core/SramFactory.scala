@@ -66,6 +66,7 @@ object SramFactory extends ChainingSyntax {
     val dataKind = TypeUInt(width)
 
     val ceSymbol = cc.newSymbol("ce", loc) tap { _.kind = TypeIn(TypeUInt(1), fcn) }
+    ceSymbol.attr.default.set(ExprInt(false, 1, 0) regularize loc)
     val weSymbol = cc.newSymbol("we", loc) tap { _.kind = TypeIn(TypeUInt(1), fcn) }
     val adSymbol = cc.newSymbol("addr", loc) tap { _.kind = TypeIn(addrKind, fcn) }
     val wdSymbol = cc.newSymbol("wdata", loc) tap { _.kind = TypeIn(dataKind, fcn) }

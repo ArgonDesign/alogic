@@ -80,6 +80,7 @@ object SyncRegFactory extends ChainingSyntax {
 
     lazy val ipSymbol = cc.newSymbol("ip", loc) tap { _.kind = TypeIn(kind, fcn) }
     val ipvSymbol = cc.newSymbol(s"ip${sep}valid", loc) tap { _.kind = TypeIn(TypeUInt(1), fcn) }
+    ipvSymbol.attr.default.set(ExprInt(false, 1, 0) regularize loc)
     lazy val opSymbol = cc.newSymbol("op", loc) tap { _.kind = TypeOut(kind, fcn, stw) }
     val opvSymbol = cc.newSymbol(s"op${sep}valid", loc) tap {
       _.kind = TypeOut(TypeUInt(1), fcn, stw)

@@ -117,6 +117,7 @@ object StackFactory extends ChainingSyntax {
     val stw = StorageTypeWire
 
     val enSymbol = cc.newSymbol("en", loc) tap { _.kind = TypeIn(TypeUInt(1), fcn) }
+    enSymbol.attr.default.set(ExprInt(false, 1, 0) regularize loc)
     val pusSymbol = cc.newSymbol("push", loc) tap { _.kind = TypeIn(TypeUInt(1), fcn) }
     val popSymbol = cc.newSymbol("pop", loc) tap { _.kind = TypeIn(TypeUInt(1), fcn) }
     val dSymbol = cc.newSymbol("d", loc) tap { _.kind = TypeIn(kind, fcn) }

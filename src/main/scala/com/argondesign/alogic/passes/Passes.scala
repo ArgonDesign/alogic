@@ -87,6 +87,7 @@ object Passes extends ChainingSyntax {
         OptimizeClearOnStall andThen
         LowerStalls andThen
         DefaultAssignments andThen
+        TieOffInputs andThen
         InlineKnownVars(combOnly = false) andThen
         Fold andThen
         RemoveUnused andThen

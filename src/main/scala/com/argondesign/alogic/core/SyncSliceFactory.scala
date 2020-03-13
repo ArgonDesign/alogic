@@ -248,6 +248,7 @@ object SyncSliceFactory extends ChainingSyntax {
 
     lazy val ipSymbol = cc.newSymbol("ip", loc) tap { _.kind = TypeIn(kind, fcn) }
     val ipvSymbol = cc.newSymbol(s"ip${sep}valid", loc) tap { _.kind = TypeIn(TypeUInt(1), fcn) }
+    ipvSymbol.attr.default.set(ExprInt(false, 1, 0) regularize loc)
     val iprSymbol = cc.newSymbol(s"ip${sep}ready", loc) tap {
       _.kind = TypeOut(TypeUInt(1), fcn, stw)
     }
@@ -258,6 +259,7 @@ object SyncSliceFactory extends ChainingSyntax {
       _.kind = TypeOut(TypeUInt(1), fcn, stw)
     }
     val oprSymbol = cc.newSymbol(s"op${sep}ready", loc) tap { _.kind = TypeIn(TypeUInt(1), fcn) }
+    oprSymbol.attr.default.set(ExprInt(false, 1, 0) regularize loc)
     oprSymbol.attr.dontCareUnless set opvSymbol
     opvSymbol.attr.dontCareUnless set oprSymbol
     val sSymbol = cc.newSymbol("space", loc) tap { _.kind = TypeOut(TypeUInt(1), fcn, stw) }
@@ -361,12 +363,14 @@ object SyncSliceFactory extends ChainingSyntax {
 
     lazy val ipSymbol = cc.newSymbol(ipName, loc) tap { _.kind = TypeIn(kind, fcn) }
     val ipvSymbol = cc.newSymbol(ipvName, loc) tap { _.kind = TypeIn(TypeUInt(1), fcn) }
+    ipvSymbol.attr.default.set(ExprInt(false, 1, 0) regularize loc)
     val iprSymbol = cc.newSymbol(iprName, loc) tap { _.kind = TypeOut(TypeUInt(1), fcn, stw) }
     iprSymbol.attr.dontCareUnless set ipvSymbol
     ipvSymbol.attr.dontCareUnless set iprSymbol
     lazy val opSymbol = cc.newSymbol(opName, loc) tap { _.kind = TypeOut(kind, fcn, stw) }
     val opvSymbol = cc.newSymbol(opvName, loc) tap { _.kind = TypeOut(TypeUInt(1), fcn, stw) }
     val oprSymbol = cc.newSymbol(oprName, loc) tap { _.kind = TypeIn(TypeUInt(1), fcn) }
+    oprSymbol.attr.default.set(ExprInt(false, 1, 0) regularize loc)
     oprSymbol.attr.dontCareUnless set opvSymbol
     opvSymbol.attr.dontCareUnless set oprSymbol
     val sSymbol = cc.newSymbol("space", loc) tap { _.kind = TypeOut(TypeUInt(nSlices), fcn, stw) }
