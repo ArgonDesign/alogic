@@ -502,16 +502,23 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
       "declarations with disallowed type" - {
         for {
           (hint, decl) <- List(
-            ("port", "in bool a"),
-            ("port", "out bool a"),
-            ("pipeline", "pipeline bool a"),
-            ("distributed memory", "bool a[10]"),
-            ("SRAM", "sram bool a[10]")
+            ("port", "in bool a;"),
+            ("port", "out bool a;"),
+            ("pipeline", "pipeline bool a;"),
+            ("distributed memory", "bool a[10];"),
+            ("SRAM", "sram bool a[10];"),
+            ("entity", "fsm a {}"),
+            ("entity", "network a {}"),
+            ("entity", "verbatim entity a {}"),
+            ("entity", "new fsm a {}"),
+            ("entity", "new network a {}"),
+            ("entity", "new verbatim entity a {}"),
+            ("instance", "foo = new x;"),
           )
         } {
           decl in {
             s"""|struct a {
-                |  ${decl};
+                |  $decl
                 |}""".stripMargin.asTree[Desc] rewrite checker should matchPattern {
               case DescRecord(_, Nil) =>
             }

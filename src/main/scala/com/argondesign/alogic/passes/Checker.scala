@@ -173,12 +173,15 @@ final class Checker(implicit cc: CompilerContext) extends StatefulTreeTransforme
 
     case RecDesc(desc) =>
       desc match {
-        case _: DescIn       => clsErr(desc, "port declarations")
-        case _: DescOut      => clsErr(desc, "port declarations")
-        case _: DescPipeline => clsErr(desc, "pipeline declarations")
-        case _: DescArray    => clsErr(desc, "distributed memory declarations")
-        case _: DescSram     => clsErr(desc, "SRAM declarations")
-        case _               => tree
+        case _: DescIn        => clsErr(desc, "port declarations")
+        case _: DescOut       => clsErr(desc, "port declarations")
+        case _: DescPipeline  => clsErr(desc, "pipeline declarations")
+        case _: DescArray     => clsErr(desc, "distributed memory declarations")
+        case _: DescSram      => clsErr(desc, "SRAM declarations")
+        case _: DescEntity    => clsErr(desc, "entity declarations")
+        case _: DescSingleton => clsErr(desc, "entity declarations")
+        case _: DescInstance  => clsErr(desc, "instance declarations")
+        case _                => tree
       }
 
     case desc @ DescOut(_, _, fc, st, None) =>
