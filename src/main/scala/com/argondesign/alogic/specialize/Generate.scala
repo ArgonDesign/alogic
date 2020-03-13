@@ -474,25 +474,19 @@ private[specialize] object Generate {
         if (hadError) Some(Nil) else result
       }
 
-      // Result of the outermost encountered Gen construct
-      private var generated: Option[List[Tree]] = None
-
       // Indicates whether we are in a parametrized Desc (> 0) or not ( == 0)
       private var parametrizedLevel = 0
 
-      // Don't descend into processed gen nodes
-      override def skip(tree: Tree): Boolean = generated.isDefined
-
       override def enter(tree: Tree): Option[Tree] = {
-        assert(generated.isEmpty, "Should have stopped descent")
-
         tree match {
           case desc: Desc if desc.isParametrized => parametrizedLevel += 1
           case _                                 =>
         }
 
         // Only process Gen in non-parametrized context
-        if (parametrizedLevel == 0) {
+        if (parametrizedLevel > 0) {
+          None
+        } else {
           // Clone un-specialized symbols introduced in the scope of this tree
           symbolMap ++= {
             def stmtDescs(stmts: List[Stmt]): List[Desc] = stmts collect {
@@ -518,56 +512,36 @@ private[specialize] object Generate {
             cloneSymbolsInDescs(descs, bindings, "", inGen)
           }
 
-          tree match {
+          tree pipe {
             // Gen that must produce entity contents
-            case EntGen(gen) => generated = generate[Ent](gen)
+            case EntGen(gen) => generate[Ent](gen) map Thicket
 
             // Gen that must produce statement
-            case StmtGen(gen) => generated = generate[Stmt](gen)
+            case StmtGen(gen) => generate[Stmt](gen) map Thicket
 
             // Gen that must produce case clauses
-            case CaseGen(gen) => generated = generate[Case](gen)
+            case CaseGen(gen) =>
+              generate[Case](gen) map { results =>
+                // Check we produced at most one default case
+                val defaultCases = results collect { case c: CaseDefault => c }
+                if (defaultCases.lengthIs > 1) {
+                  for (loc <- (defaultCases map { _.loc }).distinct) {
+                    error(loc, "'gen' yields multiple default cases")
+                  }
+                }
+                Thicket(results)
+              }
 
             // Keep going
-            case _ =>
+            case _ => None
+          } tap {
+            case Some(_) => progress = true
+            case None    =>
           }
         }
-        None
       }
 
       override def transform(tree: Tree): Tree = tree match {
-        //////////////////////////////////////////////////////////////////////////
-        // Replace processed *Gen nodes with the result, if available
-        //////////////////////////////////////////////////////////////////////////
-
-        case _: EntGen if generated.isDefined => {
-          progress = true
-          Thicket(generated.get)
-        } tap { _ =>
-          generated = None
-        }
-
-        case _: StmtGen if generated.isDefined => {
-          progress = true
-          Thicket(generated.get)
-        } tap { _ =>
-          generated = None
-        }
-
-        case _: CaseGen if generated.isDefined => {
-          // Check we produced at most one default case
-          val defaultCases = generated.get collect { case c: CaseDefault => c }
-          if (defaultCases.lengthIs > 1) {
-            for (loc <- (defaultCases map { _.loc }).distinct) {
-              error(loc, "'gen' yields multiple default cases")
-            }
-          }
-          progress = true
-          Thicket(generated.get)
-        } tap { _ =>
-          generated = None
-        }
-
         //////////////////////////////////////////////////////////////////////////
         // Replace refs to bound symbols with the value, and to cloned symbols
         // with a ref to the new symbol. Dict indices are handled by Resolve.
@@ -610,7 +584,6 @@ private[specialize] object Generate {
 
       override def finalCheck(tree: Tree): Unit = {
         if (!hadError) {
-          assert(generated.isEmpty, generated)
           assert(parametrizedLevel == 0)
         }
       }
