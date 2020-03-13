@@ -191,7 +191,7 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
         }
 
         val args = if (ctx.args == null) Nil else ArgVisitor(ctx.args.arg)
-        ExprCall(visit(ctx.expr), args) withLoc ctx.loc
+        ExprCall(visit(ctx.expr), args) withLoc ctx.loc.copy(point = ctx.open.getStartIndex)
       }
 
       //////////////////////////////////////////////////////////////////////////

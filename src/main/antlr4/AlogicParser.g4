@@ -207,7 +207,7 @@ expr
   | ATID                                                        # ExprAtid
   | DOLLARID                                                    # ExprDollarid
   // Call
-  | expr '(' args? ')'                                          # ExprCall
+  | expr open='(' args? ')'                                     # ExprCall
   // Index/Slice
   | expr '[' idx=expr ']'                                       # ExprIndex
   | expr '[' lidx=expr op=(':' | '-:' | '+:') ridx=expr ']'     # ExprSlice
