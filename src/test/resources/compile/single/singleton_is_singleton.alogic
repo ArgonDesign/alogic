@@ -1,0 +1,18 @@
+network singleton_is_singleton {
+  in  bool i_0;
+  in  bool i_1;
+  out bool o_0;
+  out bool o_1;
+
+  new network connect {
+    in  bool i;
+    out bool o;
+    i -> o;
+  }
+
+  other_connect = new connect;
+
+  i_0 -> connect.i; connect.o -> o_0;
+  i_1 -> other_connect.i; other_connect.o -> o_1;
+}
+// :13: ERROR: Expression does not name an entity

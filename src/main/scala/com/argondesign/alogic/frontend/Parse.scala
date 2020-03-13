@@ -76,13 +76,14 @@ class Parse(
   }
 
   private[this] def childNames(trees: List[Tree]): List[String] = trees flatMap {
-    case DescEntity(Ident(name, _), _, _) => List(name)
-    case EntDesc(desc)                    => childNames(List(desc))
-    case EntGen(gen)                      => childNames(List(gen))
-    case GenIf(_, thenItems, elseItems)   => childNames(thenItems) ::: childNames(elseItems)
-    case GenFor(_, _, _, body)            => childNames(body)
-    case GenRange(_, _, _, body)          => childNames(body)
-    case _                                => Nil
+    case DescEntity(Ident(name, _), _, _)    => List(name)
+    case DescSingleton(Ident(name, _), _, _) => List(name)
+    case EntDesc(desc)                       => childNames(List(desc))
+    case EntGen(gen)                         => childNames(List(gen))
+    case GenIf(_, thenItems, elseItems)      => childNames(thenItems) ::: childNames(elseItems)
+    case GenFor(_, _, _, body)               => childNames(body)
+    case GenRange(_, _, _, body)             => childNames(body)
+    case _                                   => Nil
   }
 
   // Cache of trees we already started working on. We use this to to avoid
