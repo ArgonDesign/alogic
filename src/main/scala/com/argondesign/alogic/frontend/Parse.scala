@@ -20,6 +20,7 @@ import java.io.File
 import com.argondesign.alogic.FindFile
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Source
 import com.argondesign.alogic.core.SourceAttribute
 import com.argondesign.alogic.passes.Pass
@@ -47,13 +48,17 @@ class Parse(
 
   private[this] val rootDescs = mutable.ListBuffer[Desc]()
 
-  private[this] def locateIt(entityName: String): Source = {
+  private[this] def locateIt(entityName: String, locOpt: Option[Loc]): Source = {
     val sourceFileOpt = FindFile(entityName + ".alogic", moduleSeachDirs, maxDepth = 1)
 
     val sourceFile = sourceFileOpt.getOrElse {
-      cc.fatal(s"Cannot find entity '$entityName'. Looked in:" :: moduleSeachDirs map {
-        _.toString
-      }: _*)
+      val hints = moduleSeachDirs map { _.toString }
+      locOpt match {
+        case None =>
+          cc.fatal(s"Cannot find top level entity '$entityName'. Looked in:" :: hints: _*)
+        case Some(loc) =>
+          cc.fatal(loc, s"Cannot find entity '$entityName'. Looked in:" :: hints: _*)
+      }
     }
 
     Source(sourceFile)
@@ -85,14 +90,14 @@ class Parse(
   private[this] val inProgress = mutable.Map[String, Future[Set[Root]]]()
 
   // Recursive worker that builds a future yielding the set of all trees required for an entity
-  private[this] def doIt(name: String): Future[Set[Root]] = {
+  private[this] def doIt(name: String, locOpt: Option[Loc]): Future[Set[Root]] = {
 
     // The actual future that builds all parse trees under the hierarchy of the given entity
     // note that this is only actually constructed if the inProgress map does not contain the
     // future already
     lazy val future = {
       // Fetch source
-      val sourceFuture = Future { locateIt(name) }
+      val sourceFuture = Future { locateIt(name, locOpt) }
 
       // Pre-process it
       val preprocessedFuture = sourceFuture map preprocessIt
@@ -116,17 +121,19 @@ class Parse(
       // Recursively process all instantiated nodes
       val childAstsFuture = {
         // Extract all instance entity names (from the recursively nested entities as well)
-        val instantiatedEntityNamesFuture = astFuture map { root =>
-          def loop(desc: Desc): List[String] = desc match {
+        val instantiatedEntityNamesFuture: Future[List[(String, Loc)]] = astFuture map { root =>
+          def loop(desc: Desc): List[(String, Loc)] = desc match {
             case d: DescEntity =>
               val localNames = d.name :: childNames(d.body)
 
-              def gatherExternalNames(trees: List[Tree]): List[String] = trees flatMap {
+              def gatherExternalNames(trees: List[Tree]): List[(String, Loc)] = trees flatMap {
                 case d: DescInstance =>
                   d.spec match {
-                    case ExprCall(ExprRef(Ident(n, Nil)), _) if !(localNames contains n) => List(n)
-                    case ExprRef(Ident(n, Nil)) if !(localNames contains n)              => List(n)
-                    case _                                                               => Nil
+                    case ExprCall(ExprRef(i: Ident), _) if !(localNames contains i.name) =>
+                      List((i.name, i.loc))
+                    case ExprRef(i: Ident) if !(localNames contains i.name) =>
+                      List((i.name, i.loc))
+                    case _ => Nil
                   }
                 case EntDesc(desc)           => gatherExternalNames(List(desc))
                 case EntGen(gen)             => gatherExternalNames(List(gen))
@@ -143,8 +150,10 @@ class Parse(
           root.descs flatMap loop
         }
 
-        // process them extracted names recursively
-        instantiatedEntityNamesFuture flatMap { Future.traverse(_)(doIt) }
+        // process the extracted names recursively
+        instantiatedEntityNamesFuture flatMap {
+          Future.traverse(_) { case (name, loc) => doIt(name, Some(loc)) }
+        }
       }
 
       // Merge child tree sets and add this tree
@@ -167,7 +176,7 @@ class Parse(
   def apply(topLevelNames: List[String]): (List[Root], List[Desc]) = {
 
     // Process all specified top level entities
-    val treeSetFutures = Future.traverse(topLevelNames)(doIt)
+    val treeSetFutures = Future.traverse(topLevelNames)(doIt(_, None))
 
     // Merge all sets
     val treeSetFuture = treeSetFutures map { _.foldLeft(Set.empty[Root])(_ union _) }
