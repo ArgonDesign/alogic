@@ -25,7 +25,6 @@ import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.unreachable
 
-import scala.annotation.tailrec
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
 
@@ -51,32 +50,33 @@ private object Analyze {
         case _             => true
       } map { _.symbol }
     }
-    // Extract referenced symbols
-    def extractReferences(decl: Decl, defn: Defn): Set[Symbol] = Set from {
+    // Set of symbols directly referenced within this entity
+    val directlyReferencedSymbols = Set from {
       {
         decl flatCollect {
-          case ExprSym(symbol)            => Iterator.single(symbol)
-          case d: DeclEntity if d ne decl => Iterator.empty // Stop descent
+          case e: ExprSym                 => Some(e)
+          case d: DeclEntity if d ne decl => None // Stop descent
         }
       } concat {
         defn flatCollect {
-          case ExprSym(symbol)            => Iterator.single(symbol)
-          case d: DefnEntity if d ne defn => Iterator.empty // Stop descent
+          case e: ExprSym                 => Some(e)
+          case d: DefnEntity if d ne defn => None // Stop descent
         }
+      } filter {
+        case ExprSym(symbol) if symbol.kind.isIn    => true
+        case ExprSym(symbol) if symbol.kind.isOut   => true
+        case ExprSym(symbol) if symbol.kind.isConst => true
+        case e @ ExprSym(symbol) =>
+          if (outerSymbols(symbol)) {
+            symbol.kind match {
+              case _: TypeEntity => cc.error(e, "Cannot access outer instance directly.")
+              case _             => cc.error(e, "Cannot access outer name directly.")
+            }
+          }
+          false
+      } map {
+        _.symbol
       }
-    }
-    // Set of symbols directly referenced within this entity
-    val directlyReferencedSymbols = extractReferences(decl, defn)
-    // Transitive closure of referenced symbols
-    val referencedSymbols = {
-      @tailrec
-      def loop(set: Set[Symbol]): Set[Symbol] = {
-        val expanded = set flatMap { symbol =>
-          if (symbol.isBuiltin) Nil else extractReferences(symbol.decl, symbol.defn)
-        } union set
-        if (expanded.size == set.size) set else loop(expanded)
-      }
-      loop(directlyReferencedSymbols)
     }
     // The results for nested entities
     val nestedResults = {
@@ -87,7 +87,7 @@ private object Analyze {
       maps.foldLeft(Map.empty[Symbol, Set[Symbol]]) { _ ++ _ }
     }
     // Set of symbols referenced within or below this entity
-    val usedSymbols = nestedResults.valuesIterator.foldLeft(referencedSymbols) { _ union _ }
+    val usedSymbols = nestedResults.valuesIterator.fold(directlyReferencedSymbols) { _ union _ }
     // Set of outer symbols that must be propagated to this entity
     val requiredSymbols = (usedSymbols diff definedSymbols) intersect outerSymbols
     // Include this entity in the result map

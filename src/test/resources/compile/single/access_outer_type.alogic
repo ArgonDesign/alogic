@@ -1,0 +1,27 @@
+network access_outer_type {
+  in bool i;
+  out bool o;
+
+  struct s {
+    bool b;
+  }
+
+  new fsm a {
+    in       s ii;
+    out wire s oo;
+    void main() {
+      oo = ii;
+      fence;
+    }
+  }
+
+  i -> a.ii; a.oo -> o;
+}
+// @fec-golden {{{
+//  module access_outer_type(
+//    input  wire i,
+//    output wire o
+//  );
+//    assign o = i;
+//  endmodule
+// }}}

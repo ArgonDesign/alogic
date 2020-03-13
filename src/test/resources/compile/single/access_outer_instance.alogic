@@ -1,0 +1,20 @@
+network access_outer_instance {
+  in bool i;
+  out bool o;
+
+  new fsm a {
+    out bool oo;
+    void main() {
+      oo = i;
+      fence;
+    }
+  }
+
+  new fsm b {
+    void main() {
+      o = a.oo;
+      fence;
+    }
+  }
+}
+// :15: ERROR: Cannot access outer instance directly.
