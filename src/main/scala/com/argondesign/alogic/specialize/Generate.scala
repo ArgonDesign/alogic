@@ -94,6 +94,33 @@ private[specialize] object Generate {
     }
   }
 
+  // Type class instance for Rec
+  private implicit object generatableRec extends Generatable[Rec] {
+    val description = "struct content"
+    def isValid(tree: Tree): Boolean = tree match {
+      case _: Gen        => true
+      case _: Rec        => true
+      case _: DescVar    => true
+      case _: DescParam  => true
+      case _: DescConst  => true
+      case _: DescType   => true
+      case _: DescRecord => true
+      case _: DescFunc   => true
+      case _: DescChoice => true
+      case _             => false
+    }
+    def splice(tree: Tree): Rec = tree match {
+      case gen: Gen => RecGen(gen) withLoc gen.loc
+      case rec: Rec => rec
+      case desc: DescFunc =>
+        assert(desc.variant == FuncVariant.None)
+        val newDesc = desc.copy(variant = FuncVariant.Comb) withLoc desc.loc
+        RecDesc(newDesc) withLoc desc.loc
+      case desc: Desc => RecDesc(desc) withLoc desc.loc
+      case _          => unreachable
+    }
+  }
+
   // Type class instance for Stmt
   private implicit object generatableStmt extends Generatable[Stmt] {
     val description = "statement"
@@ -515,6 +542,9 @@ private[specialize] object Generate {
           tree pipe {
             // Gen that must produce entity contents
             case EntGen(gen) => generate[Ent](gen) map Thicket
+
+            // Gen that must produce record contents
+            case RecGen(gen) => generate[Rec](gen) map Thicket
 
             // Gen that must produce statement
             case StmtGen(gen) => generate[Stmt](gen) map Thicket
