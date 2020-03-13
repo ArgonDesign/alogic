@@ -40,10 +40,13 @@ final class InlineKnownVars(
       assert(defn.combProcesses.lengthIs <= 1)
       defn.combProcesses.headOption foreach {
         case EntCombProcess(body) =>
-          val evaluation = StaticEvaluation(StmtBlock(body), Nil)
-          stmtBindings = evaluation._1
-          endOfCycleBindings = if (combOnly) Bindings.empty else evaluation._2
-          bindings.push(endOfCycleBindings)
+          StaticEvaluation(StmtBlock(body), Nil) match {
+            case None =>
+            case Some(evaluation) =>
+              stmtBindings = evaluation._1
+              endOfCycleBindings = if (combOnly) Bindings.empty else evaluation._2
+              bindings.push(endOfCycleBindings)
+          }
       }
     case _ =>
   }

@@ -337,7 +337,10 @@ private[specialize] object Generate {
             case None => error(loc, "Condition of 'gen for' is not a compile time constant")
             case Some(false) =>
               buf appendAll process(bindings, body)
-              loop(StaticEvaluation(step, bindings)._2)
+              StaticEvaluation(step, bindings) match {
+                case None                   => hadError = true
+                case Some((_, newBindings)) => loop(newBindings)
+              }
             case _ => ()
           }
 

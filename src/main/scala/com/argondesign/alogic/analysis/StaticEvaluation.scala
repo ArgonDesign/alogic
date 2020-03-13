@@ -137,18 +137,18 @@ object StaticEvaluation {
   }
 
   private def overwrite(curr: Bindings, symbol: Symbol, expr: Expr)(
-      implicit cc: CompilerContext): Bindings = {
+      implicit cc: CompilerContext): Option[Bindings] = {
     // Add the new binding for the symbol, but first substitute the new
     // expression using the current binding of symbol to remove self references
-    val expanded = {
-      val selfBinding = Bindings(curr get symbol map { symbol -> _ })
-      curr + (symbol -> (expr given selfBinding).simplify)
-    }
-
-    // Remove all binding that referenced the just added symbol,
-    // as these used the old value. TODO: use SSA form...
-    expanded filterNot {
-      case (_, v) => v exists { case ExprSym(`symbol`) => true }
+    val selfBinding = Bindings(curr get symbol map { symbol -> _ })
+    val newValue = (expr given selfBinding).simplify
+    Option.unless(newValue.tpe.isError) {
+      val expanded = curr + (symbol -> newValue)
+      // Remove all binding that referenced the just added symbol,
+      // as these used the old value. TODO: use SSA form...
+      expanded filterNot {
+        case (_, v) => v exists { case ExprSym(`symbol`) => true }
+      }
     }
   }
 
@@ -165,13 +165,18 @@ object StaticEvaluation {
   }
 
   def apply(stmt: Stmt, initialBindings: Bindings = Bindings.empty)(
-      implicit cc: CompilerContext): (Map[Int, Bindings], Bindings) = {
+      implicit cc: CompilerContext): Option[(Map[Int, Bindings], Bindings)] = {
     val res = mutable.Map[Int, Bindings]()
 
-    def analyse(curr: Bindings, stmt: Stmt): Bindings = {
+    def analyse(curr: Bindings, stmt: Stmt): Option[Bindings] = {
       // Annotate the current statement right at the beginning,
       // this side-effect builds the final map we are returning
       res(stmt.id) = curr
+      //
+      def analyseOpt(bindingsOpt: Option[Bindings], stmt: Stmt): Option[Bindings] =
+        bindingsOpt flatMap { bindings =>
+          analyse(bindings, stmt)
+        }
       // Compute the new bindings after this statement
       stmt match {
         // Simple assignment
@@ -180,27 +185,30 @@ object StaticEvaluation {
         case StmtUpdate(lhs @ ExprSym(symbol), op, rhs) =>
           overwrite(curr, symbol, ExprBinary(lhs, op, rhs) regularize stmt.loc)
         // Simple postfix
-        case StmtPost(expr @ ExprSym(symbol), "++") => overwrite(curr, symbol, expr + 1)
-        case StmtPost(expr @ ExprSym(symbol), "--") => overwrite(curr, symbol, expr - 1)
+        case StmtPost(expr @ ExprSym(symbol), "++") => overwrite(curr, symbol, expr.inc)
+        case StmtPost(expr @ ExprSym(symbol), "--") => overwrite(curr, symbol, expr.dec)
 
         // Assignments with complex left hand side
-        case StmtAssign(lhs, _) => removeWritten(curr, lhs)
+        case StmtAssign(lhs, _) => Some(removeWritten(curr, lhs))
         // Update with complex left hand side
-        case StmtUpdate(lhs, _, _) => removeWritten(curr, lhs)
+        case StmtUpdate(lhs, _, _) => Some(removeWritten(curr, lhs))
         // Postfix with complex argument
-        case StmtPost(expr, _) => removeWritten(curr, expr)
+        case StmtPost(expr, _) => Some(removeWritten(curr, expr))
 
-        case StmtBlock(body) => body.foldLeft(curr)(analyse)
+        case StmtBlock(body) => body.foldLeft(Option(curr))(analyseOpt)
 
-        case StmtIf(cond, thenStmts, elseStmts) => {
-          val afterThen = thenStmts.foldLeft(inferTrueTransitive(curr, cond))(analyse)
-          val afterElse = elseStmts.foldLeft(inferFalseTransitive(curr, cond))(analyse)
+        case StmtIf(cond, thenStmts, elseStmts) =>
+          val afterThen = thenStmts.foldLeft(Option(inferTrueTransitive(curr, cond)))(analyseOpt)
+          val afterElse = elseStmts.foldLeft(Option(inferFalseTransitive(curr, cond)))(analyseOpt)
 
           // Keep only the bindings that are the same across both branches
-          (afterThen.toSet intersect afterElse.toSet).toMap
-        }
+          afterThen flatMap { at =>
+            afterElse map { ae =>
+              (at.toSet intersect ae.toSet).toMap
+            }
+          }
 
-        case StmtCase(value, cases) => {
+        case StmtCase(value, cases) =>
           // Ensure default comes at the front, as that's
           // how we are computing the 'befores' below
           val defaultStmt = cases.collectFirst {
@@ -232,20 +240,21 @@ object StaticEvaluation {
 
           val afters = for ((before, stmt) <- befores zip stmts) yield analyse(before, stmt)
 
-          // Keep only the bindings that are the same across all branches
-          (afters map { _.toSet } reduce { _ intersect _ }).toMap
-        }
+          Option.when(afters forall { _.isDefined }) {
+            // Keep only the bindings that are the same across all branches
+            (afters map { _.get.toSet } reduce { _ intersect _ }).toMap
+          }
 
-        case _: StmtStall   => curr // TODO: can we do better here?
-        case _: StmtExpr    => curr
-        case _: StmtComment => curr
-        case _              => Bindings.empty
+        case _: StmtStall   => Some(curr) // TODO: can we do better here?
+        case _: StmtExpr    => Some(curr)
+        case _: StmtComment => Some(curr)
+        case _              => Some(Bindings.empty)
       }
     }
 
-    val finalBindings = analyse(initialBindings, stmt)
-
-    (res.toMap, finalBindings)
+    analyse(initialBindings, stmt) map { finalBindings =>
+      (res.toMap, finalBindings)
+    }
   }
 
 }

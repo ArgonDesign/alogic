@@ -341,7 +341,7 @@ final class SimplifyExpr(implicit cc: CompilerContext)
           if (value >= 0) {
             ExprNum(false, value)
           } else {
-            cc.error(tree, s"Result of operator '${op}' is unsigned, but value is negative")
+            cc.error(tree, s"Result of operator '${op}' is unsigned, but value is negative: $value")
             ExprError()
           }
         }

@@ -47,7 +47,11 @@ trait ExprOps { this: Expr =>
   }
 
   private final def mkSized(v: Int)(implicit cc: CompilerContext) = {
-    if (tpe.underlying.isNum) fix(Expr(v)) else fix(ExprInt(tpe.isSigned, tpe.width.toInt, v))
+    if (tpe.underlying.isNum) {
+      fix(ExprNum(tpe.isSigned, v))
+    } else {
+      fix(ExprInt(tpe.isSigned, tpe.width.toInt, v))
+    }
   }
 
   private final def mkIndex(idx: Int)(implicit cc: CompilerContext) = {
@@ -127,6 +131,9 @@ trait ExprOps { this: Expr =>
 
   final def castUnsigned(implicit cc: CompilerContext): ExprCall = cc.makeBuiltinCall("$unsigned", loc, this :: Nil)
   final def castSigned(implicit cc: CompilerContext): ExprCall = cc.makeBuiltinCall("$signed", loc, this :: Nil)
+
+  final def inc(implicit cc:CompilerContext): Expr = if (tpe.isSigned && tpe.isPacked && tpe.width == 1) this - -1 else this + 1 // -1 works with i1
+  final def dec(implicit cc:CompilerContext): Expr = if (tpe.isSigned && tpe.isPacked && tpe.width == 1) this + -1 else this - 1 // -1 works with i1
   // format: on
 
   // Is this expression shaped as a valid type expression

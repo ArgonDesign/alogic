@@ -48,7 +48,7 @@ final class DesugarSpec extends FreeSpec with AlogicTest {
               case List(StmtDecl(DeclVar(dSym, _)), _: StmtDefn, StmtAssign(lhs, rhs)) =>
                 lhs shouldBe ExprSym(dSym)
                 inside(rhs) {
-                  case ExprBinary(ExprSym(sym), opStr, ExprInt(false, 2, v)) if v == 1 =>
+                  case ExprBinary(ExprSym(sym), opStr, ExprInt(true, 2, v)) if v == 1 =>
                     opStr shouldBe op.init
                     sym should be theSameInstanceAs dSym
                 }
