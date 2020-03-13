@@ -51,7 +51,7 @@ final class Checker(implicit cc: CompilerContext) extends StatefulTreeTransforme
 
   private[this] val variantStack = mutable.Stack[EntityVariant.Type]()
 
-  private[this] val paramConstAllowed = mutable.Stack[Boolean](true)
+  private[this] val singletonStack = mutable.Stack[Boolean]()
 
   private[this] var loopLevel: Int = 0
 
@@ -59,14 +59,12 @@ final class Checker(implicit cc: CompilerContext) extends StatefulTreeTransforme
     tree match {
       case DescEntity(ident: Ident, variant, body) =>
         variantStack push variant
-        paramConstAllowed push true
+        singletonStack push false
         checkEntityBody(ident, variant, body)
       case DescSingleton(ident: Ident, variant, body) =>
         variantStack push variant
-        paramConstAllowed push true
+        singletonStack push true
         checkEntityBody(ident, variant, body)
-      case _: Gen =>
-        paramConstAllowed push false
       case _: StmtLoop | _: StmtWhile | _: StmtFor | _: StmtDo =>
         loopLevel += 1
       case _ =>
@@ -124,6 +122,10 @@ final class Checker(implicit cc: CompilerContext) extends StatefulTreeTransforme
 
     case node: EntCombProcess if notVariant(EntityVariant.Fsm) => entErr(node, "fence blocks")
 
+    case EntDesc(_: DescParam) if singletonStack.top =>
+      cc.error(tree, "Singleton entity cannot have parameters. Use a 'const' declaration instead.")
+      Stump
+
     case EntDesc(desc) =>
       variantStack.top match {
         case EntityVariant.Fsm =>
@@ -160,13 +162,13 @@ final class Checker(implicit cc: CompilerContext) extends StatefulTreeTransforme
     case _: DescEntity =>
       tree tap { _ =>
         variantStack.pop()
-        paramConstAllowed.pop()
+        singletonStack.pop()
       }
 
     case _: DescSingleton =>
       tree tap { _ =>
         variantStack.pop()
-        paramConstAllowed.pop()
+        singletonStack.pop()
       }
 
     case RecDesc(desc) =>
@@ -219,7 +221,7 @@ final class Checker(implicit cc: CompilerContext) extends StatefulTreeTransforme
         desc.copy(initOpt = None) withLoc desc.loc
       } getOrElse tree
 
-    case gen: Gen => {
+    case gen: Gen =>
       gen match {
         case GenFor(inits, _, step, _) =>
           if (step.isEmpty) cc.error(tree, "'gen for' must have at least one step statement")
@@ -229,9 +231,6 @@ final class Checker(implicit cc: CompilerContext) extends StatefulTreeTransforme
           tree
         case _ => tree
       }
-    } tap { _ =>
-      paramConstAllowed.pop()
-    }
 
     case StmtRead() =>
       if (variantStack.lengthIs <= 1) {
@@ -307,7 +306,7 @@ final class Checker(implicit cc: CompilerContext) extends StatefulTreeTransforme
 
   override def finalCheck(tree: Tree): Unit = {
     assert(variantStack.isEmpty)
-    assert(paramConstAllowed.sizeIs == 1)
+    assert(singletonStack.isEmpty)
     assert(loopLevel == 0)
   }
 }

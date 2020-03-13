@@ -475,6 +475,29 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
       }
     }
 
+    "reject disallowed singleton contents" - {
+
+      "parameters in" - {
+        for (variant <- List("fsm", "network", "verbatim entity")) {
+          variant in {
+            val tree = s"""|network outer {
+                           |  new $variant inner {
+                           |    param u8 P = 0;
+                           |  }
+                           |}""".stripMargin.asTree[Desc]
+
+            tree rewrite checker should matchPattern {
+              case DescEntity(_, _, EntDesc(DescSingleton(_, _, Nil)) :: Nil) =>
+            }
+
+            cc.messages.loneElement should beThe[Error](
+              s"Singleton entity cannot have parameters. Use a 'const' declaration instead.")
+            cc.messages.loneElement.loc.line shouldBe 3
+          }
+        }
+      }
+    }
+
     "reject disallowed class contents" - {
       "declarations with disallowed type" - {
         for {
