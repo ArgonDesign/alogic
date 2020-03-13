@@ -1,0 +1,20 @@
+fsm p8009_198 {
+  const uint ARRAY_SIZE = 2;
+  const u3[ARRAY_SIZE] ARRAY = {3'd5, 3'd4};
+  const u3 ARRAY_ITEM = ARRAY[0];
+  const u3 ARRAY_ITEM_CLOG2 = $clog2(ARRAY_ITEM);
+
+  out wire u3 o;
+
+  void main() {
+    o = ARRAY_ITEM_CLOG2;
+    fence;
+  }
+}
+// @fec-golden {{{
+//  module p8009_198(
+//    output wire [2:0] o
+//  );
+//    assign o = 3'd2;
+//  endmodule
+// }}}
