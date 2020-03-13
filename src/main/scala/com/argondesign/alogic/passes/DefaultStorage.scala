@@ -16,6 +16,7 @@
 package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.StatefulTreeTransformer
+import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FlowControlTypes._
@@ -27,9 +28,6 @@ import com.argondesign.alogic.typer.TypeAssigner
 import scala.collection.mutable
 
 final class DefaultStorage(implicit cc: CompilerContext) extends StatefulTreeTransformer {
-
-  // Set of output ports accessed through port methods or directly
-  private[this] val accessedSet = mutable.Set[Symbol]()
 
   // Set of output ports connected with '->'
   private[this] val connectedSet = mutable.Set[Symbol]()
@@ -47,12 +45,8 @@ final class DefaultStorage(implicit cc: CompilerContext) extends StatefulTreeTra
         assert(!inConnect)
         inConnect = true
 
-      case ExprSym(symbol) if symbol.kind.isOut =>
-        if (inConnect) {
-          connectedSet add symbol
-        } else {
-          accessedSet add symbol
-        }
+      case ExprSym(symbol) if symbol.kind.isOut && inConnect =>
+        connectedSet add symbol
 
       case _ =>
     }
@@ -66,18 +60,16 @@ final class DefaultStorage(implicit cc: CompilerContext) extends StatefulTreeTra
       tree
 
     case decl @ DeclOut(symbol, _, fc, StorageTypeDefault) =>
-      val newSt = if (entityVariant == EntityVariant.Ver) {
+      val newSt = if (connectedSet contains symbol) {
         StorageTypeWire
-      } else if (connectedSet contains symbol) {
+      } else if (entityVariant != EntityVariant.Fsm) {
         StorageTypeWire
-      } else if (accessedSet contains symbol) {
+      } else {
         fc match {
           case FlowControlTypeReady  => StorageTypeSlices(List(StorageSliceFwd))
           case FlowControlTypeAccept => StorageTypeWire
           case _                     => StorageTypeReg
         }
-      } else {
-        StorageTypeWire
       }
       TypeAssigner(decl.copy(st = newSt) withLoc decl.loc)
 
@@ -93,24 +85,9 @@ final class DefaultStorage(implicit cc: CompilerContext) extends StatefulTreeTra
   }
 }
 
-object DefaultStorage extends PairTransformerPass {
+object DefaultStorage extends EntityTransformerPass(declFirst = false) {
   val name = "default-storage"
-  def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {
-    (decl, defn) match {
-      case (dcl: DeclEntity, _: DefnEntity) =>
-        if (dcl.decls.isEmpty) {
-          // If no decls, then there is nothing to do
-          (decl, defn)
-        } else {
-          // Perform the transform
-          val transformer = new DefaultStorage
-          // First transform the defn
-          val newDefn = transformer(defn)
-          // Then transform the decl
-          val newDecl = transformer(decl)
-          (newDecl, newDefn)
-        }
-      case _ => (decl, defn)
-    }
-  }
+
+  override def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
+    new DefaultStorage
 }

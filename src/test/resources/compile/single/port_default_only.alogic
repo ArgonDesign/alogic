@@ -1,0 +1,18 @@
+fsm port_default_only {
+  out u8 o = 5;
+  void main() {
+    fence;
+  }
+}
+// :2: WARNING: Output port 'o' is unused
+// @fec-golden {{{
+//  module port_default_only(
+//    input  wire clk,
+//    input  wire rst,
+//    output reg  [7:0] o
+//  );
+//    always @(posedge clk) begin
+//      o <= 8'd5;
+//    end
+//  endmodule
+// }}}

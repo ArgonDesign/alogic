@@ -16,6 +16,7 @@
 package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.StatefulTreeTransformer
+import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.StorageTypes._
@@ -87,24 +88,12 @@ final class LowerRegPorts(implicit cc: CompilerContext) extends StatefulTreeTran
 
 }
 
-object LowerRegPorts extends PairTransformerPass {
+object LowerRegPorts extends EntityTransformerPass(declFirst = true) {
   val name = "lower-reg-ports"
-  def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {
-    (decl, defn) match {
-      case (dcl: DeclEntity, dfn: DefnEntity) =>
-        if (dcl.decls.isEmpty || dfn.variant == EntityVariant.Net) {
-          // If no decls, or network, then there is nothing to do
-          (decl, defn)
-        } else {
-          // Perform the transform
-          val transformer = new LowerRegPorts
-          // First transform the decl
-          val newDecl = transformer(decl)
-          // Then transform the defn
-          val newDefn = transformer(defn)
-          (newDecl, newDefn)
-        }
-      case _ => (decl, defn)
-    }
-  }
+
+  override protected def skip(decl: Decl, defn: Defn)(implicit cc: CompilerContext): Boolean =
+    super.skip(decl, defn) || defn.asInstanceOf[DefnEntity].variant != EntityVariant.Fsm
+
+  override protected def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
+    new LowerRegPorts()
 }
