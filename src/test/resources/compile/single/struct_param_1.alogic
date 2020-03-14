@@ -1,0 +1,22 @@
+struct s_t {
+  param uint W;
+  uint(W)   a;
+  uint(W/2) b;
+}
+
+network struct_param_1 {
+  in  s_t(W=9) i;
+  out s_t(W=9) o;
+  i -> o;
+}
+// @fec-golden {{{
+//  module struct_param_1 (
+//    input  wire [8:0] i__a,
+//    input  wire [3:0] i__b,
+//    output wire [8:0] o__a,
+//    output wire [3:0] o__b
+//  );
+//    assign o__a = i__a;
+//    assign o__b = i__b;
+//  endmodule
+// }}}

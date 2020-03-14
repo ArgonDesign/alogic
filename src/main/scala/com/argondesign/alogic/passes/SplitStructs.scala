@@ -33,7 +33,7 @@ final class SplitStructsA(
     extends StatefulTreeTransformer {
 
   private[this] def flattenStruct(prefix: String, kind: TypeRecord): List[(String, TypeFund)] = {
-    kind.publicSymbols flatMap { symbol =>
+    kind.dataMembers flatMap { symbol =>
       symbol.kind match {
         case k: TypeRecord => flattenStruct(s"$prefix${cc.sep}${symbol.name}", k)
         case k: TypeFund   => List((s"$prefix${cc.sep}${symbol.name}", k))
@@ -193,7 +193,7 @@ final class SplitStructsB(
     case ExprSym(symbol) =>
       fieldMaps(entitySymbol).get(symbol) map { fSymbols =>
         def cat(struct: TypeRecord, it: Iterator[Symbol]): ExprCat = ExprCat {
-          struct.publicSymbols map { symbol =>
+          struct.publicSymbols filter { _.kind.isFund } map { symbol =>
             symbol.kind match {
               case struct: TypeRecord => cat(struct, it)
               case _                  => ExprSym(it.next())

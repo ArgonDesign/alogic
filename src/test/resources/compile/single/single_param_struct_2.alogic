@@ -1,0 +1,13 @@
+network single_param_struct_2 {
+  struct s_t {
+    param uint W;
+    param uint V;
+    uint(W + V) a;
+  }
+
+  in  s_t(1, 1) i;
+  out s_t(1, 1) o;
+  i -> o;
+}
+// :8: ERROR: Multiple parameter assignments must be given by name
+// :9: ERROR: Multiple parameter assignments must be given by name

@@ -19,7 +19,7 @@ import com.argondesign.alogic.core.Symbols.Symbol
 
 trait DeclSingletonOps { this: DeclSingleton =>
 
-  final lazy val publicSymbols: List[Symbol] = decls collect {
+  final lazy val ports: List[Symbol] = decls collect {
     case decl: DeclIn  => decl.symbol
     case decl: DeclOut => decl.symbol
   }

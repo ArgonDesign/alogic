@@ -232,10 +232,10 @@ object Symbols {
           case DeclSram(_, elem, size, st) => TypeSram(elem.tpe.asType.kind, size.value.get, st)
           case DeclStack(_, elem, size)    => TypeStack(elem.tpe.asType.kind, size.value.get)
           case DeclType(_, spec)           => TypeType(spec.tpe.asType.kind)
-          case desc: DeclEntity            => TypeType(TypeEntity(this, desc.publicSymbols))
-          case desc: DeclRecord            => TypeType(TypeRecord(this, desc.publicSymbols))
+          case desc: DeclEntity            => TypeType(TypeEntity(this, desc.ports))
+          case desc: DeclRecord            => TypeType(TypeRecord(this, desc.members))
           case DeclInstance(_, spec)       => spec.tpe.asType.kind
-          case desc: DeclSingleton         => TypeEntity(this, desc.publicSymbols)
+          case desc: DeclSingleton         => TypeEntity(this, desc.ports)
           case DeclFunc(_, variant, ret, args) =>
             val retType = ret.tpe.asType.kind
             val argTypes = args map { _.symbol.kind.asFund }

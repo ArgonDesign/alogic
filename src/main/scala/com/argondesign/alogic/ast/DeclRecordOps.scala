@@ -19,6 +19,6 @@ import com.argondesign.alogic.core.Symbols.Symbol
 
 trait DeclRecordOps { this: DeclRecord =>
 
-  final lazy val publicSymbols: List[Symbol] = decls map { _.symbol }
+  final lazy val members: List[Symbol] = decls map { _.symbol }
 
 }

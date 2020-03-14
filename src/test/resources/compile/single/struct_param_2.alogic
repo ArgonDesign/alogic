@@ -1,0 +1,30 @@
+struct s_t {
+  param uint W;
+  uint(W)   a;
+  gen if (W % 2 == 0) {
+    uint(W/2) b;
+  }
+}
+
+network struct_param_2 {
+  in  s_t(W=9) i_0;
+  in  s_t(W=8) i_1;
+  out s_t(W=9) o_0;
+  out s_t(W=8) o_1;
+  i_0 -> o_0;
+  i_1 -> o_1;
+}
+// @fec-golden {{{
+//  module struct_param_2 (
+//    input  wire [8:0] i_0__a,
+//    input  wire [7:0] i_1__a,
+//    input  wire [3:0] i_1__b,
+//    output wire [8:0] o_0__a,
+//    output wire [7:0] o_1__a,
+//    output wire [3:0] o_1__b,
+//  );
+//    assign o_0__a = i_0__a;
+//    assign o_1__a = i_1__a;
+//    assign o_1__b = i_1__b;
+//  endmodule
+// }}}

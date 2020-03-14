@@ -1,0 +1,18 @@
+network single_param_struct_0 {
+  struct s_t {
+    param uint W;
+    uint(W)   a;
+  }
+
+  in  s_t(2) i;
+  out s_t(2) o;
+  i -> o;
+}
+// @fec-golden {{{
+//  module single_param_struct_0 (
+//    input  wire [1:0] i__a,
+//    output wire [1:0] o__a
+//  );
+//    assign o__a = i__a;
+//  endmodule
+// }}}

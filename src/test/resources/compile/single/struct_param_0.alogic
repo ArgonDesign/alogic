@@ -1,19 +1,18 @@
-// @ignore
 struct s_t {
   param uint W;
-  uint(W) f;
+  uint(W) a;
 }
 
 network struct_param_0 {
-    in  s_t(10) i;
-    out s_t(10) o;
-    i -> o;
+  in  s_t(W=10) i;
+  out s_t(W=10) o;
+  i -> o;
 }
 // @fec-golden {{{
 //  module struct_param_0 (
-//    input wire [9:0] i,
-//    output wire [9:0] o
+//    input  wire [9:0] i__a,
+//    output wire [9:0] o__a
 //  );
-//    assign o = i;
+//    assign o__a = i__a;
 //  endmodule
 // }}}

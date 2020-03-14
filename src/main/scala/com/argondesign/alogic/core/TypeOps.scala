@@ -19,8 +19,6 @@ package com.argondesign.alogic.core
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.unreachable
 
-import scala.language.postfixOps
-
 trait TypeOps extends TypePrintOps { this: Type =>
 
   //////////////////////////////////////////////////////////////////////////////
@@ -120,12 +118,12 @@ trait TypeOps extends TypePrintOps { this: Type =>
   final def width(implicit cc: CompilerContext): BigInt = {
     if (_width == null) {
       _width = underlying match {
-        case TypeSInt(size)                => size
-        case TypeUInt(size)                => size
-        case self: TypeRecord              => self.publicSymbols map { _.kind.width } sum
-        case TypeVoid                      => 0
-        case TypeVector(elementType, size) => size * elementType.width
-        case _                             => unreachable
+        case TypeSInt(size)          => size
+        case TypeUInt(size)          => size
+        case self: TypeRecord        => self.dataMembers.foldLeft(BigInt(0)) { _ + _.kind.width }
+        case TypeVoid                => 0
+        case TypeVector(eType, size) => size * eType.width
+        case _                       => unreachable
       }
     }
     _width

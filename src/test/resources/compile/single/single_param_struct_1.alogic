@@ -1,0 +1,11 @@
+network single_param_struct_1 {
+  struct s_t {
+    uint(2)   a;
+  }
+
+  in  s_t(2) i;
+  out s_t(2) o;
+  i -> o;
+}
+// :6: ERROR: Type does not take any parameters
+// :7: ERROR: Type does not take any parameters
