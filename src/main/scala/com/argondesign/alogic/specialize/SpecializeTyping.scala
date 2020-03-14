@@ -46,19 +46,9 @@ private[specialize] object SpecializeTyping {
         f: Expr => TypingSpecialization
     ): TypingSpecialization = {
       SpecializeExpr(expr) match {
-        case ExprSpecializationError      => TypingSpecializationError
-        case _: ExprSpecializationUnknown => TypingSpecializationUnknown
-        case ExprSpecializationComplete(s) =>
-          val badRefs = List from {
-            s collect {
-              case expr @ ExprSym(symbol) if symbol.isParametrized => expr
-            }
-          }
-          badRefs foreach {
-            case expr @ ExprSym(symbol) =>
-              cc.error(expr, s"Parametrized type requires parameter list.")
-          }
-          if (badRefs.isEmpty) f(s) else TypingSpecializationError
+        case ExprSpecializationError       => TypingSpecializationError
+        case _: ExprSpecializationUnknown  => TypingSpecializationUnknown
+        case ExprSpecializationComplete(s) => f(s)
       }
     }
 
@@ -77,10 +67,10 @@ private[specialize] object SpecializeTyping {
         TypingSpecializationUnknown
       } else {
         val specialized = descs filter { !_.isParametrized } map { d =>
-          d.symbol -> specializeDesc(d, Map.empty, true, d.symbol.loc)
+          d.symbol -> specializeDesc(d, ParamBindingsNamed(Map.empty), true, d.symbol.loc)
         }
 
-        if (specialized exists { _._2 == DescSpecializationError }) {
+        if (specialized exists { _._2 == DescSpecializationErrorOther }) {
           TypingSpecializationError
         } else if (specialized exists { _._2.isInstanceOf[DescSpecializationUnknown] }) {
           TypingSpecializationUnknown

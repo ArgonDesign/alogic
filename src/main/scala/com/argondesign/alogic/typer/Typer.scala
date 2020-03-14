@@ -49,7 +49,10 @@ class BoolHelpers(val value: Boolean) extends AnyVal {
   def implies(other: => Boolean): Boolean = !value || other
 }
 
-final class Typer(implicit cc: CompilerContext) extends StatefulTreeTransformer {
+final class Typer(
+    errorForParametrized: Boolean = true
+)(implicit cc: CompilerContext)
+    extends StatefulTreeTransformer {
 
   override val typed: Boolean = false
 
@@ -57,7 +60,7 @@ final class Typer(implicit cc: CompilerContext) extends StatefulTreeTransformer 
   private final val comparisonBinaryOps = Set(">", ">=", "<", "<=", "==", "!=")
 
   private def hasError(node: Tree): Boolean = node.children exists { child =>
-    child.hasTpe && child.tpe.isError
+    child.hasTpe && (child.tpe.isError || child.tpe.isParametrized)
   }
 
   private def hasUnknown(node: Tree): Boolean = node.children exists { child =>
@@ -752,15 +755,18 @@ final class Typer(implicit cc: CompilerContext) extends StatefulTreeTransformer 
       // Assign type if have not been assigned by now
       if (tree.hasTpe) tree else TypeAssigner(tree)
     } tap { _ =>
-      if (tree.hasTpe) {
-        tree match {
-          case expr: Expr if expr.tpe.underlying.isNum && !expr.isKnownConst =>
-            cc.error(expr, "Expression of unsized integer type must be compile time constant")
-          case _ =>
-        }
-
-        hadError |= tree.tpe.isError
+      if (errorForParametrized && tree.tpe.isParametrized) {
+        cc.error(tree, s"Parametrized type requires parameter list")
+        hadError = true
       }
+
+      tree match {
+        case expr: Expr if expr.tpe.underlying.isNum && !expr.isKnownConst =>
+          cc.error(expr, "Expression of unsized integer type must be compile time constant")
+        case _ =>
+      }
+
+      hadError |= tree.tpe.isError
     }
   }
 

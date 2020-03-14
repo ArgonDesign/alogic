@@ -22,4 +22,4 @@ network param_assignment_required_1 {
 
   i -> inst.ii; inst.oo -> o;
 }
-// :21: ERROR: Parametrized type requires parameter list.
+// :21: ERROR: Parametrized type requires parameter list

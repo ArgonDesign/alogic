@@ -65,6 +65,8 @@ object Trees {
 
   // format: off
   sealed trait Desc extends Tree with DescImpl with DescOps { val ref: Ref }
+
+  object Desc extends DescObjOps
   
   case class DescVar(ref: Ref, spec: Expr, initOpt: Option[Expr]) extends Desc
   case class DescIn(ref: Ref, spec: Expr, fc: FlowControlType) extends Desc

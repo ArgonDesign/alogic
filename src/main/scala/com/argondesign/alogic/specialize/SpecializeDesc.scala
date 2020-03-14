@@ -97,8 +97,13 @@ import scala.util.chaining._
 // format: off
 // Specialization result indicators
 private[specialize] sealed trait DescSpecialization
-// Specialization failed due to error
-private[specialize] case object DescSpecializationError extends DescSpecialization
+// Specialization failed
+private[specialize] sealed trait DescSpecializationError extends DescSpecialization
+// Specialization failed due to named param bindings required
+private[specialize] case object DescSpecializationErrorNeedsNamed extends DescSpecializationError
+// Specialization failed due to other error
+private[specialize] case object DescSpecializationErrorOther extends DescSpecializationError
+
 // Specialization failed due to dependency on unresolved choice symbols
 private[specialize] case class DescSpecializationUnknown(symbols: collection.Set[Symbol]) extends DescSpecialization {
   require(symbols forall { _.isChoice})
@@ -118,7 +123,7 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
 
   // Cache of ('original symbol', 'param bindings', 'use defaults') -> 'specialization result'
   // Kept as an var to an immutable for easy reverting
-  private[this] var cache: Map[(Symbol, Map[String, Expr], Boolean), DescSpecialization] = Map.empty
+  private[this] var cache: Map[(Symbol, ParamBindings, Boolean), DescSpecialization] = Map.empty
 
   // Complete specialization results 'original symbol' -> 'param values' -> 'result Decl and Defn'
   private[this] val specializations =
@@ -130,8 +135,8 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
   // time, and to provide better error messages, we also keep a map holding the
   // same keys as the stack, with the source location of the reference requiring
   // the specialization as the value.
-  private[this] val pendingStack = mutable.Stack[(Symbol, (Map[String, Expr], Boolean))]()
-  private[this] val pendingMap = mutable.HashMap[(Symbol, (Map[String, Expr], Boolean)), Loc]()
+  private[this] val pendingStack = mutable.Stack[(Symbol, (ParamBindings, Boolean))]()
+  private[this] val pendingMap = mutable.HashMap[(Symbol, (ParamBindings, Boolean)), Loc]()
 
   // The below is just debug aid for the developer
   private[this] val dumpEnable = cc.settings.traceElaborate
@@ -191,7 +196,7 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
   // Entry point to the actual specialization algorithm
   private[this] def step1(
       desc: Desc,
-      paramBindings: Map[String, Expr],
+      paramBindings: ParamBindings,
       useDefaultParameters: Boolean,
       loc: Loc
   ): DescSpecialization = {
@@ -200,56 +205,56 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
     // Step 1: Substitute parameters with the given expression
     ////////////////////////////////////////////////////////////////////////////
 
-    val (substituted: Option[Desc], unusedBindings: Map[String, Expr]) =
-      Substitute(desc, paramBindings) match {
-        case Left(unbound) =>
-          unbound foreach { d: Desc =>
-            cc.error(loc, s"'${desc.name}' requires parameter '${d.name}")
-          }
-          (None, Map.empty[String, Expr])
-        case Right((d, unused)) =>
-          (Some(d), unused)
-      }
-
-    substituted foreach { desc =>
-      dump("Substituted")(Left(desc))
-    }
-
-    ////////////////////////////////////////////////////////////////////////////
-    // Step 2: Attempt typing specialization
-    ////////////////////////////////////////////////////////////////////////////
-
-    val typingSpecialized: Option[Either[Desc, (Decl, Defn)]] = substituted flatMap { desc =>
-      if (hasTypingGen(desc) || desc.isParametrized) {
-        Some(Left(desc))
-      } else {
-        SpecializeTyping(desc) match {
-          case TypingSpecializationError                => None
-          case TypingSpecializationUnknown              => Some(Left(desc))
-          case TypingSpecializationComplete(decl, defn) =>
-            // Put the DescSpecializationPending result into the cache so recursive
-            // calls can pick up the decl if needed to resolve circular references
-            val (symbol, (pb, udp)) = pendingStack.top
-            val key = (symbol, pb, udp)
-            assert(!(cache contains key))
-            cache = cache + (key -> DescSpecializationPending(decl))
-            Some(Right((decl, defn)))
+    SubstituteParams(desc, paramBindings) match {
+      case ParamSubstitutionUnbound(unbound) =>
+        // Unbound parameter remains
+        unbound foreach { d: Desc =>
+          cc.error(loc, s"'${desc.name}' requires parameter '${d.name}")
         }
-      }
-    }
+        DescSpecializationErrorOther
+      case ParamSubstitutionNeedsNamed =>
+        // Named bindings are required but positional were given
+        DescSpecializationErrorNeedsNamed
+      case ParamSubstitutionComplete(desc, unusedBindings) =>
+        // Substitution successful
 
-    typingSpecialized foreach dump("Typing specialized")
+        dump("Substituted")(Left(desc))
 
-    typingSpecialized match {
-      case None       => DescSpecializationError
-      case Some(item) => step3(item, unusedBindings, useDefaultParameters, loc)
+        ////////////////////////////////////////////////////////////////////////////
+        // Step 2: Attempt typing specialization
+        ////////////////////////////////////////////////////////////////////////////
+
+        val typingSpecialized: Option[Either[Desc, (Decl, Defn)]] =
+          if (hasTypingGen(desc) || desc.isParametrized) {
+            Some(Left(desc))
+          } else {
+            SpecializeTyping(desc) match {
+              case TypingSpecializationError                => None
+              case TypingSpecializationUnknown              => Some(Left(desc))
+              case TypingSpecializationComplete(decl, defn) =>
+                // Put the DescSpecializationPending result into the cache so recursive
+                // calls can pick up the decl if needed to resolve circular references
+                val (symbol, (pb, udp)) = pendingStack.top
+                val key = (symbol, pb, udp)
+                assert(!(cache contains key))
+                cache = cache + (key -> DescSpecializationPending(decl))
+                Some(Right((decl, defn)))
+            }
+          }
+
+        typingSpecialized foreach dump("Typing specialized")
+
+        typingSpecialized match {
+          case None       => DescSpecializationErrorOther
+          case Some(item) => step3(item, unusedBindings, useDefaultParameters, loc)
+        }
     }
   }
 
   @tailrec
   private[this] def step3(
       input: Either[Desc, (Decl, Defn)],
-      unusedBindings: Map[String, Expr],
+      unusedBindings: ParamBindings,
       useDefaultParameters: Boolean,
       loc: Loc
   ): DescSpecialization = {
@@ -261,11 +266,11 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
     val containedSpecialized = SpecializeContained(input)
 
     containedSpecialized foreach {
-      case (item, _) => dump("Contained Descs specialized")(item)
+      case (item, _) => dump("Contained specialized")(item)
     }
 
     containedSpecialized match {
-      case None                               => DescSpecializationError
+      case None                               => DescSpecializationErrorOther
       case Some((item, unknownChoiceSymbols)) =>
         ////////////////////////////////////////////////////////////////////////
         // Step 4: Stop if external un-specialized dependency remains
@@ -291,7 +296,7 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
 
             expanded match {
               // Propagate error
-              case None => DescSpecializationError
+              case None => DescSpecializationErrorOther
               // If no gen nodes were expanded
               case Some(`item`) => cc.fatal("Circular 'gen'")
               // Otherwise go again
@@ -305,7 +310,7 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
                 unreachable // TODO: implement partial specialization
               case Right((decl, defn)) =>
                 Finalize(decl, defn) match {
-                  case None => DescSpecializationError
+                  case None => DescSpecializationErrorOther
                   case Some((fDecl, fDefn, paramValues)) =>
                     dump("Finalized")(Right((fDecl, fDefn)))
                     DescSpecializationComplete(fDecl, fDefn, paramValues)
@@ -319,7 +324,7 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
   // Entry point to the actual specialization algorithm
   private[this] def specialize(
       desc: Desc,
-      paramBindings: Map[String, Expr],
+      paramBindings: ParamBindings,
       useDefaultParameters: Boolean,
       loc: Loc
   ): DescSpecialization = {
@@ -360,7 +365,7 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
   // Recursive entry point with circularity check
   private[this] def attempt(
       desc: Desc,
-      paramBindings: Map[String, Expr],
+      paramBindings: ParamBindings,
       useDefaultParameters: Boolean,
       refLoc: Loc
   ): DescSpecialization = {
@@ -379,10 +384,16 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
 
         val msg = new ListBuffer[String]
 
-        def bindingsNote(bindings: Map[String, Expr]): Unit = if (bindings.nonEmpty) {
-          msg += bindings map {
-            case (k, v) => s"$k = ${v.toSource}"
-          } mkString ("with parameter assignments: ", ", ", "")
+        def bindingsNote(bindings: ParamBindings): Unit = bindings match {
+          case ParamBindingsPositional(params) if params.nonEmpty =>
+            msg += params map {
+              _.toSource
+            } mkString ("with parameter values: ", ", ", "")
+          case ParamBindingsNamed(params) if params.nonEmpty =>
+            msg += params map {
+              case (k, v) => s"$k = ${v.toSource}"
+            } mkString ("with parameter assignments: ", ", ", "")
+          case _ =>
         }
 
         def sourceName(symbol: Symbol): String = symbol.attr.sourceName.get match {
@@ -399,7 +410,7 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
 
         def addEntry(
             symbol: Symbol,
-            bindings: Map[String, Expr],
+            bindings: ParamBindings,
             loc: Loc,
             last: Boolean = false
         ): Unit = {
@@ -423,7 +434,7 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
 
         cc.error(startLoc, msg.toList: _*)
 
-        DescSpecializationError
+        DescSpecializationErrorOther
 
       case None =>
         // Good to go
@@ -436,9 +447,8 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
         // Some sanity checks
         result match {
           case DescSpecializationComplete(decl, defn, _) =>
-            // Defn should not have any references to non-specialized things,
-            // but might still have external choice refs. It might also still
-            // contain Desc of parametrized symbols.
+            // Note: References remaining to non-specialized things will
+            // be caught by the type checker later.
             defn visit {
               case desc: Desc if !desc.isParametrized =>
                 cc.ice(desc, "Non-parametrized Desc remains in Defn")
@@ -447,13 +457,6 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
                 cc.ice(decl, "EntDecl remains in Defn")
               case RecDecl(decl) =>
                 cc.ice(decl, "RecDecl remains in Defn")
-              case expr @ ExprSym(symbol) if !symbol.isSpecialized && !symbol.isChoice =>
-                cc.ice(expr, "Reference to non-specialized, non-choice  remains")
-            }
-            // Similarly for the decl
-            decl visit {
-              case expr @ ExprSym(symbol) if !symbol.isSpecialized && !symbol.isChoice =>
-                cc.ice(expr, "Reference to non-specialized, non-choice  remains")
             }
           case _ =>
         }
@@ -463,17 +466,23 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
     }
   }
 
-  // Specialize Desc given bindings for parameters, consulting cache
+  // Specialize Desc given bindings for parameters (given either as positional
+  // parameter or a map of by name bindings), consulting cache
   def apply(
       desc: Desc,
-      paramBindings: Map[String, Expr],
+      paramBindings: ParamBindings,
       useDefaultParameters: Boolean,
       refLoc: Loc
   ): DescSpecialization = {
     require(useDefaultParameters, "Not yet implemented")
     require(!desc.isInstanceOf[DescChoice], "Cannot specialize DescChoice")
 
-    assert(!(desc.isParametrized && paramBindings.isEmpty && !useDefaultParameters),
+    val emptyParams = paramBindings match {
+      case ParamBindingsPositional(params) => params.isEmpty
+      case ParamBindingsNamed(params)      => params.isEmpty
+    }
+
+    assert(!(desc.isParametrized && emptyParams && !useDefaultParameters),
            "pointless specialization")
 
     val simplifiedParamBindings = SimplifyParamBindings(paramBindings)
@@ -487,7 +496,7 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
 
     val savedCache = cache
 
-    cache.get(key) match {
+    cache.get(key) pipe {
       case Some(result) => result
       case None         =>
         // Here is how to actually compute the result if it is not cached
@@ -512,11 +521,11 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
             // added specialization dependent on this result (which is unknown),
             // but add this result so we don't try to do it again.
             cache = savedCache + (key -> result)
-          case DescSpecializationError =>
+          case result: DescSpecializationError =>
             // Result is error. We will eventually fail anyway, so do not
             // revert the cache, as doing so might cause error messages to
             // be generated multiple times
-            cache = cache + (key -> DescSpecializationError)
+            cache = cache + (key -> result)
           case _: DescSpecializationPending =>
             // We have just finished a specialization, so it will never be
             // pending...
@@ -525,15 +534,19 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
             // All good, add result to cache
             cache = cache + (key -> result)
         }
+    } tap {
+      case DescSpecializationErrorNeedsNamed =>
+        cc.error(refLoc, "Type with more than one parameter requires named parameter assignment")
+      case _ =>
     }
   }
 
   def apply(descs: Iterable[Desc]): Option[Set[(Decl, Defn)]] = {
     val results = descs map { desc =>
-      this(desc, Map.empty, true, desc.ref.loc)
+      this(desc, ParamBindingsNamed(Map.empty), true, desc.ref.loc)
     } flatMap {
       case DescSpecializationComplete(decl, defn, _) => Some((decl, defn))
-      case DescSpecializationError                   => None
+      case _: DescSpecializationError                => None
       case _                                         => unreachable
     }
 
@@ -605,11 +618,11 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
             }
           }
 
-          assert(requiredSymbols forall { _.isSpecialized })
-
-          // Iterator of all dependencies, including self
+          // Iterator of all dependencies, including self note that references
+          // to non-specialized symbols might remain in malformed programs.
+          // These will be flagged by the type checker
           Iterator.single((sDecl, sDefn)) ++ {
-            requiredSymbols.iterator flatMap { symbol =>
+            requiredSymbols.iterator filter { _.isSpecialized } flatMap { symbol =>
               dependencies(symbol.decl, symbol.defn)
             }
           }
@@ -623,12 +636,10 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
   } tap {
     case None          =>
     case Some(results) =>
-      // Quick sanity check: All symbols must have been fully specialized
+      // Quick sanity check: All definitions must have been fully specialized
       def check(tree: Tree): Unit = tree visit {
-        case node @ Sym(symbol, _) if !symbol.isSpecialized =>
-          cc.ice(node, "Unspecialized definition remains")
-        case node @ ExprSym(symbol) if !symbol.isSpecialized && !symbol.isBuiltin =>
-          cc.ice(node, "Unspecialized reference remains")
+        case Desc(ref) =>
+          cc.ice(ref, "Unspecialized definition remains")
         case node: ExprRef =>
           cc.ice(node, "ExprRef remains")
         case node: DescChoice =>

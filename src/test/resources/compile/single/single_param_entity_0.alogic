@@ -1,0 +1,23 @@
+network single_param_entity_0 {
+  in  u2 i;
+  out u2 o;
+
+  network inner {
+    param uint W;
+    in  uint(W) ii;
+    out uint(W) oo;
+    ii -> oo;
+  }
+
+  inst = new inner(2);
+
+  i -> inst.ii; inst.oo -> o;
+}
+// @fec-golden {{{
+//  module single_param_entity_0 (
+//    input  wire [1:0] i,
+//    output wire [1:0] o
+//  );
+//    assign o = i;
+//  endmodule
+// }}}

@@ -17,6 +17,7 @@
 
 package com.argondesign.alogic.core
 
+import com.argondesign.alogic.ast.Trees.Expr
 import com.argondesign.alogic.ast.Trees.Tree
 import com.argondesign.alogic.builtins.Builtins
 import com.argondesign.alogic.core.Types.TypeUnknown
@@ -60,11 +61,14 @@ class CompilerContext(val settings: Settings = Settings())
   // Entry point to the type checker
   //////////////////////////////////////////////////////////////////////////////
 
-  // Return Some(false) for type error, Some(true) for well typed, and None,
-  // if the type cannot be determined due to unresolved type parameters
+  // Type check tree
   def typeCheck(tree: Tree): Boolean = {
     if (!tree.hasTpe) {
-      (tree rewrite new Typer()(this)) ensuring { _ eq tree }
+      val errorForParametrized = tree match {
+        case _: Expr => false
+        case _       => true
+      }
+      (tree rewrite new Typer(errorForParametrized)(this)) ensuring { _ eq tree }
     }
     assert(tree.hasTpe)
     assert(tree.tpe != TypeUnknown)

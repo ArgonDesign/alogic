@@ -1,0 +1,11 @@
+network param_assignment_required_2 {
+  out u9 o;
+
+  network t {
+    param uint W = 0;
+  }
+
+  t -> o;
+}
+// :8: ERROR: Parametrized type requires parameter list
+// :5: WARNING: Parameter 'W' is unused

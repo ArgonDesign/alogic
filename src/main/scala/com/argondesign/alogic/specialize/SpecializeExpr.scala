@@ -20,6 +20,7 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
 
@@ -78,14 +79,16 @@ private[specialize] object SpecializeExpr {
 
         // Specialize references to non-specialized, non-parametric symbols.
         case ExprSym(symbol) =>
-          specializeDesc(symbol.desc, Map.empty, true, tree.loc) match {
+          specializeDesc(symbol.desc, ParamBindingsNamed(Map.empty), true, tree.loc) match {
             // If successful, replace with reference to specialized symbol
             case DescSpecializationComplete(decl, _, _) => ExprSym(decl.symbol) withLoc tree.loc
             case DescSpecializationPending(decl)        => ExprSym(decl.symbol) withLoc tree.loc
             // Propagate error
-            case DescSpecializationError => error(tree)
+            case DescSpecializationErrorOther => error(tree)
             // Propagate unknown
             case DescSpecializationUnknown(symbols) => unknowns addAll symbols; tree
+            // We used named bindings so this cannot happen ...
+            case DescSpecializationErrorNeedsNamed => unreachable
           }
 
         // Specialize calls to 'int'/'uint' to the corresponding sized TypeInt
@@ -128,11 +131,19 @@ private[specialize] object SpecializeExpr {
                 }
                 if (posArgs.nonEmpty && namedArgs.nonEmpty) {
                   error(tree, "Mixing positional and named parameter assignments is not allowed")
-                } else if (posArgs.nonEmpty) {
-                  error(posArgs.head, "Parameter assignments must be given by name")
+                } else if (posArgs.lengthIs > 1) {
+                  error(tree, "Multiple parameter assignments must be given by name")
                 } else {
-                  val bindings = Map from {
-                    namedArgs.iterator collect { case ArgN(name, expr) => name -> expr }
+                  val bindings = if (posArgs.nonEmpty) {
+                    ParamBindingsPositional {
+                      posArgs collect { case ArgP(expr) => expr }
+                    }
+                  } else {
+                    ParamBindingsNamed {
+                      Map from {
+                        namedArgs.iterator collect { case ArgN(name, expr) => name -> expr }
+                      }
+                    }
                   }
                   specializeDesc(symbol.desc, bindings, true, tree.loc) match {
                     // If successful, replace with reference to specialized symbol
@@ -141,7 +152,7 @@ private[specialize] object SpecializeExpr {
                     case DescSpecializationPending(decl) =>
                       ExprSym(decl.symbol) withLoc tree.loc
                     // Propagate Error
-                    case DescSpecializationError => error(tree)
+                    case _: DescSpecializationError => error(tree)
                     // Propagate Unknown
                     case DescSpecializationUnknown(symbols) => unknowns addAll symbols; tree
                   }

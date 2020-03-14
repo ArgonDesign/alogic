@@ -43,8 +43,8 @@ private[specialize] object SpecializeContained {
         spliceDecl: Decl => T,
         spliceDefn: Defn => T
     ): Tree = {
-      specializeDesc(desc, Map.empty, true, desc.symbol.loc) match {
-        case DescSpecializationError            => hadError = true; Stump
+      specializeDesc(desc, ParamBindingsNamed(Map.empty), true, desc.symbol.loc) match {
+        case DescSpecializationErrorOther       => hadError = true; Stump
         case DescSpecializationUnknown(symbols) => unknowns addAll symbols; tree
         case DescSpecializationComplete(decl, defn, _) =>
           mapping(desc.symbol) = decl.symbol
@@ -55,6 +55,8 @@ private[specialize] object SpecializeContained {
             ))
         // We are specializing the Desc node itself, so this cannot happen
         case _: DescSpecializationPending => unreachable
+        // We used named bindings so this cannot happen ...
+        case DescSpecializationErrorNeedsNamed => unreachable
       }
     }
 
