@@ -49,7 +49,7 @@ Local variables or memories cannot be declared in networks because it does not
 have an associated state system.
 
 Networks can also declare `pipeline` variables, which are used as an abstraction
-for describing pipelined data paths. These are described in their own chapter on 
+for describing pipelined data paths. These are described in their own chapter on
 [pipelines](pipelines.md).
 
 ### Instantiations
@@ -58,23 +58,31 @@ Instantiating an entity can be done using the `new` keyword, with the following
 assignment style syntax:
 
 ```
-<name-of-instance> = new <name-of-entity>(<optional paremeter assignments>);
+<name-of-instance> = new <name-of-entity>;
 ```
 
-- _\<name-of-instance>_ can be chosen by the designed
+- _\<name-of-instance>_ can be chosen by the designer
 
 - _\<name-of-entity>_ must match the name of the entity being instantiated
 
-- _\<parameter-assignmets>_ is a comma-separated list of parameter specifications. 
-    - They take the form `<parameter-name> = <expression>`
-    - They override any default parameter values declared in the entity being instantiated.
-    - See the the documentation on [parameters](params.md).
+Instantiation of parametrized entities also require a parameter list:
+
+```
+<name-of-instance> = new <name-of-entity>(<parameter-list>);
+```
+
+The parameter list must be present (but may be empty) if the entity is
+parametrized, and must be absent if the entity is not parametrized.
+Parameter values are usually provided by-name (i.e.: as a comma separated
+list of '<parameter-name>=<value>' assignments). If the entity declares only
+a single parameter, it can be provided as a single positional argument. See
+the documentation on [parameters](params.md) for more details.
 
 - An example instantiation that creates an instance named `bar` of an entity
 named `foo` would be simply:
 
     ```
-    bar = new foo();
+    bar = new foo;
     ```
 
 - Similarly, one could instantiate a parametrized entity called `fifo` with a
@@ -84,7 +92,7 @@ parameters defined in `fifo`.
     ```
     fifo_i = new fifo(WIDTH=32, DEPTH=512);
     ```
-    
+
 ### Port connections
 
 Once instances of entities have been created, the ports on these instances can
@@ -166,8 +174,8 @@ network foo {
     ...
   }
 
-  bar_0 = new bar();
-  bar_1 = new bar();
+  bar_0 = new bar;
+  bar_1 = new bar;
 }
 ```
 
@@ -197,7 +205,7 @@ network foo {
   fsm bar {
     ...
   }
-  bar = new bar();
+  bar = new bar;
 }
 ```
 

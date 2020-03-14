@@ -466,8 +466,8 @@ network inc2 {
   in  u8 i;
   out u8 o;
 
-  inc_0 = new inc_wrap();
-  inc_1 = new inc_wrap();
+  inc_0 = new inc_wrap;
+  inc_1 = new inc_wrap;
 
   i -> inc_0.ii;
   inc_0.oo -> inc_1.ii;
