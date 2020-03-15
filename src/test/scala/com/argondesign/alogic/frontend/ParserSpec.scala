@@ -1039,6 +1039,18 @@ final class ParserSpec extends FreeSpec with AlogicTest {
         "write statement" in {
           "write;".asTree[Stmt] shouldBe StmtWrite()
         }
+
+        "assert statement with no message" in {
+          "assert false;".asTree[Stmt] shouldBe {
+            StmtAssert(Assert(ExprInt(false, 1, 0), None))
+          }
+        }
+
+        "assert statement with message" in {
+          """assert false, "msg";""".asTree[Stmt] shouldBe {
+            StmtAssert(Assert(ExprInt(false, 1, 0), Some("msg")))
+          }
+        }
       }
 
       "expressions" - {

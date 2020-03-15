@@ -1059,12 +1059,13 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
       "unambiguous comb statements" - {
         for {
           (text, pattern) <- List[(String, PartialFunction[Any, Unit])](
-            ("a = a + 1;", { case _: StmtAssign => }),
-            ("a++;", { case _: StmtPost         => }),
-            ("a += 1;", { case _: StmtUpdate    => }),
-            ("bool c;", { case _: StmtDefn      => }),
-            ("read;", { case _: StmtRead        => }),
-            ("write;", { case _: StmtWrite      => }),
+            ("a = a + 1;", { case _: StmtAssign    => }),
+            ("a++;", { case _: StmtPost            => }),
+            ("a += 1;", { case _: StmtUpdate       => }),
+            ("bool c;", { case _: StmtDefn         => }),
+            ("read;", { case _: StmtRead           => }),
+            ("write;", { case _: StmtWrite         => }),
+            ("assert false;", { case _: StmtAssert => })
           )
         } {
           text in {

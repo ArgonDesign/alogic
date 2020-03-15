@@ -94,6 +94,8 @@ final class RemoveStructuralSharing(implicit cc: CompilerContext) extends Statef
         case node: GenFor   => node.copy()
         case node: GenRange => node.copy()
 
+        case node: Assert => node.copy()
+
         case node: RizDesc => node.copy()
         case node: RizDecl => node.copy()
         case node: RizDefn => node.copy()
@@ -139,6 +141,7 @@ final class RemoveStructuralSharing(implicit cc: CompilerContext) extends Statef
         case _: StmtWrite      => StmtWrite()
         case node: StmtExpr    => node.copy()
         case node: StmtStall   => node.copy()
+        case node: StmtAssert  => node.copy()
         case _: StmtError      => StmtError()
         case node: StmtComment => node.copy()
 

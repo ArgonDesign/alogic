@@ -99,6 +99,7 @@ trait TreePrintOps extends { this: Tree =>
     case node: Decl    => v(node)
     case node: Defn    => v(node)
     case node: Gen     => v(node)
+    case node: Assert  => v(node)
     case node: Riz     => v(node)
     case node: Ent     => v(node)
     case node: Rec     => v(node)
@@ -234,6 +235,13 @@ trait TreePrintOps extends { this: Tree =>
   }
   // format: on
 
+  // format: off
+  private final def v(tree: Assert)(implicit cc: CompilerContext, indent: Int): String = tree match {
+    case Assert(cond, Some(msg)) => s"assert ${v(cond)}, $msg;"
+    case Assert(cond, None)      => s"assert ${v(cond)};"
+  }
+  // format: on
+
   private final def v(tree: Riz)(implicit cc: CompilerContext, indent: Int): String = tree match {
     case RizDesc(desc) => v(desc)
     case RizDecl(decl) => v(decl)
@@ -292,6 +300,7 @@ trait TreePrintOps extends { this: Tree =>
     case StmtWrite()                       => "write;"
     case StmtComment(str)                  => "// " + str
     case StmtStall(cond)                   => s"stall ${v(cond)};"
+    case StmtAssert(assertion)             => v(assertion)
     case StmtError()                       => "/* Error statement */"
   }
   // format: on

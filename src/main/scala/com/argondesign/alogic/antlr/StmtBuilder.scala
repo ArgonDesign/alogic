@@ -106,6 +106,10 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
         stmt withLoc ctx.loc
       }
 
+      override def visitStmtAssert(ctx: StmtAssertContext): Stmt = {
+        StmtAssert(AssertBuilder(ctx.assertion)) withLoc ctx.loc
+      }
+
       override def visitLoopInitAssign(ctx: LoopInitAssignContext): Stmt =
         StmtAssign(ExprBuilder(ctx.expr(0)), ExprBuilder(ctx.expr(1))) withLoc {
           ctx.loc.copy(point = ctx.point.getStartIndex)

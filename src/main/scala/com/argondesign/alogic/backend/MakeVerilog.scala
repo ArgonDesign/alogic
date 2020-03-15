@@ -259,6 +259,14 @@ final class MakeVerilog(
       // Comment
       case StmtComment(str) => body.emit(indent)("// " + str)
 
+      // Procedural assertion
+      case StmtAssert(Assert(cond, msgOpt)) =>
+        val elsePart = msgOpt match {
+          case None      => ""
+          case Some(msg) => s""" else $$error("$msg")"""
+        }
+        body.emit(indent)(s"assert (${vexpr(cond)})$elsePart;")
+
       case other => cc.ice(other, "Don't know how to emit Verilog for statement", other.toString)
     }
   }

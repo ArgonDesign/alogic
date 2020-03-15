@@ -1,0 +1,9 @@
+fsm stmt_assert_4 {
+  in sync bool i;
+  void main() {
+    assert i.read();
+    fence;
+    assert i.read();
+    fence;
+  }
+}

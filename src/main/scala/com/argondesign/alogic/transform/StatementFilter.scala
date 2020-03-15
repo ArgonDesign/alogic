@@ -25,6 +25,8 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 
 object StatementFilter {
+  def commentOnly(stmts: List[Stmt]): Boolean = stmts forall { _.isInstanceOf[StmtComment] }
+
   def apply(p: PartialFunction[Stmt, Boolean])(implicit cc: CompilerContext): TreeTransformer =
     new StatelessTreeTransformer {
       private val pf = p.lift
@@ -34,15 +36,12 @@ object StatementFilter {
           pf(stmt) match {
             case Some(false) => Stump // Don't keep
             case Some(true)  => tree // Keep
-            case None => // Remove empty/pure statements
+            case None => // Remove empty statements
               stmt match {
-                case StmtBlock(Nil)        => Stump
-                case StmtIf(_, Nil, Nil)   => Stump
-                case StmtCase(_, Nil)      => Stump
-                case StmtExpr(_: ExprCall) => tree // Assume non-pure, keep
-                case _: StmtExpr           => Stump
-                case _: StmtComment        => Stump
-                case _                     => tree
+                case StmtBlock(ss) if commentOnly(ss)                        => Stump
+                case StmtIf(_, ts, es) if commentOnly(ts) && commentOnly(es) => Stump
+                case StmtCase(_, cs) if cs.forall(c => commentOnly(c.stmts)) => Stump
+                case _                                                       => tree
               }
           }
 

@@ -93,11 +93,17 @@ final class OptimizeClearOnStall(implicit cc: CompilerContext) extends Stateless
 
           // Discard everything that is not a StallStmt
           // or an assignment to one of our candidates
-          val filter = StatementFilter {
-            case _: StmtStall                   => true
-            case StmtAssign(ExprSym(symbol), _) => symbol.attr.clearOnStall contains true
-            case _: StmtAssign                  => false
-            case _: StmtExpr                    => false
+          val filter = {
+            def leafStatement(stmt: Stmt): Boolean = stmt.children forall {
+              case _: Stmt => false
+              case _: Case => false
+              case _       => true
+            }
+            StatementFilter {
+              case _: StmtStall                   => true
+              case StmtAssign(ExprSym(symbol), _) => symbol.attr.clearOnStall contains true
+              case stmt if leafStatement(stmt)    => false // Discard other leaf statements
+            }
           }
           val trimmed = filter(block) match {
             case stmt: Stmt => List(stmt)

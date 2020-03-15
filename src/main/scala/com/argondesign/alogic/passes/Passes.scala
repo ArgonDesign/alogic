@@ -72,6 +72,7 @@ object Passes extends ChainingSyntax {
         SplitStructs() andThen
         LowerVectors() andThen
         AddCasts andThen
+        LowerAssert andThen
         Fold andThen
         SimplifyCat andThen
         ////////////////////////////////////////////////////////////////////////

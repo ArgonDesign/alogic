@@ -576,6 +576,18 @@ object TreeCopier {
   }
 
   //////////////////////////////////////////////////////////////////////////////
+  // Assert
+  //////////////////////////////////////////////////////////////////////////////
+
+  def apply(tree: Assert)(cond: Tree): Assert = {
+    if (cond eq tree.cond) {
+      tree
+    } else {
+      tree.copy(cond = cond.asInstanceOf[Expr]) withLoc tree.loc
+    }
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
   // Riz
   //////////////////////////////////////////////////////////////////////////////
 
@@ -898,6 +910,14 @@ object TreeCopier {
       tree
     } else {
       StmtStall(cond.asInstanceOf[Expr]) withLoc tree.loc
+    }
+  }
+
+  def apply(tree: StmtAssert)(assertion: Tree): StmtAssert = {
+    if (assertion eq tree.assertion) {
+      tree
+    } else {
+      StmtAssert(assertion.asInstanceOf[Assert]) withLoc tree.loc
     }
   }
 

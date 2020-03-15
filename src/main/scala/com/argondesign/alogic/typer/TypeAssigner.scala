@@ -41,6 +41,7 @@ object TypeAssigner {
     case node: Decl    => kind(node)
     case node: Defn    => kind(node)
     case _: Gen        => unreachable
+    case node: Assert  => kind(node)
     case node: Riz     => kind(node)
     case node: Ent     => kind(node)
     case node: Rec     => kind(node)
@@ -81,6 +82,12 @@ object TypeAssigner {
   //////////////////////////////////////////////////////////////////////////////
 
   private def kind(tree: Defn) = TypeMisc
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Assert
+  //////////////////////////////////////////////////////////////////////////////
+
+  private def kind(tree: Assert) = TypeMisc
 
   //////////////////////////////////////////////////////////////////////////////
   // Riz
@@ -130,6 +137,7 @@ object TypeAssigner {
     case node: StmtWrite    => kind(node)
     case node: StmtExpr     => kind(node)
     case node: StmtStall    => kind(node)
+    case node: StmtAssert   => kind(node)
     case node: StmtError    => kind(node)
     case node: StmtComment  => kind(node)
   }
@@ -201,6 +209,8 @@ object TypeAssigner {
   }
 
   private def kind(tree: StmtStall) = TypeCombStmt
+
+  private def kind(tree: StmtAssert) = TypeCombStmt
 
   private def kind(tree: StmtError) = TypeError
 
@@ -378,6 +388,7 @@ object TypeAssigner {
   def apply(tree: Desc): tree.type = assign(tree)(kind(tree))
   def apply(tree: Decl): tree.type = assign(tree)(kind(tree))
   def apply(tree: Defn): tree.type = assign(tree)(kind(tree))
+  def apply(tree: Assert): tree.type = assign(tree)(kind(tree))
   def apply(tree: Riz): tree.type = assign(tree)(kind(tree))
   def apply(tree: Ent): tree.type = assign(tree)(kind(tree))
   def apply(tree: Rec): tree.type = assign(tree)(kind(tree))
@@ -407,6 +418,7 @@ object TypeAssigner {
   def apply(tree: StmtWrite): tree.type = assign(tree)(kind(tree))
   def apply(tree: StmtComment): tree.type = assign(tree)(kind(tree))
   def apply(tree: StmtStall): tree.type = assign(tree)(kind(tree))
+  def apply(tree: StmtAssert): tree.type = assign(tree)(kind(tree))
   def apply(tree: StmtError): tree.type = assign(tree)(kind(tree))
   def apply(tree: Case): tree.type = assign(tree)(kind(tree))
   def apply(tree: Expr)(implicit cc: CompilerContext): tree.type = assign(tree)(kind(tree))
