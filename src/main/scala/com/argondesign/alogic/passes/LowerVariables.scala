@@ -22,7 +22,6 @@ import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.Symbol
-import com.argondesign.alogic.core.Types.TypeUInt
 import com.argondesign.alogic.core.enums.EntityVariant
 import com.argondesign.alogic.core.enums.ResetStyle
 import com.argondesign.alogic.typer.TypeAssigner
@@ -30,8 +29,6 @@ import com.argondesign.alogic.typer.TypeAssigner
 import scala.collection.mutable.ListBuffer
 
 final class LowerVariables(implicit cc: CompilerContext) extends StatefulTreeTransformer {
-
-  // TODO: Generate clock enables
 
   override def skip(tree: Tree): Boolean = tree match {
     // We do not replace _q with _d in connects, connects always use the _q
@@ -41,6 +38,17 @@ final class LowerVariables(implicit cc: CompilerContext) extends StatefulTreeTra
 
   private val resetFlops = new ListBuffer[(Symbol, Symbol, Expr)]()
   private val nonResetFlops = new ListBuffer[(Symbol, Symbol)]()
+
+  // The clock and reset symbols
+  private var clk: Symbol = _
+  private var rst: Symbol = _
+
+  override protected def start(tree: Tree): Unit = tree match {
+    case defn: DefnEntity =>
+      clk = defn.clk.get
+      rst = defn.rst.get
+    case _ =>
+  }
 
   override def enter(tree: Tree): Option[Tree] = {
     tree match {
@@ -130,9 +138,6 @@ final class LowerVariables(implicit cc: CompilerContext) extends StatefulTreeTra
         case Defn(symbol) if symbol.attr.go.isSet => symbol
       }
       val resetProcess = Option.when(resetFlops.nonEmpty) {
-        // TODO: Here we just make up an undeclared reset symbol (yuck) so we
-        // can condition on it. It should be a proper signal...
-        val rstSymbol = cc.newSymbol(cc.rst, tree.loc) tap { _.kind = TypeUInt(1) }
         val rstLow = cc.settings.resetStyle match {
           case ResetStyle.AsyncLow | ResetStyle.SyncLow => true
           case _                                        => false
@@ -155,11 +160,12 @@ final class LowerVariables(implicit cc: CompilerContext) extends StatefulTreeTra
           }
         }
         EntClockedProcess(
-          reset = true,
+          ExprSym(clk),
+          Some(ExprSym(rst)),
           List(
             StmtComment("Reset flops"),
             StmtIf(
-              if (rstLow) !ExprSym(rstSymbol) else ExprSym(rstSymbol),
+              if (rstLow) !ExprSym(rst) else ExprSym(rst),
               resetAssigns,
               dAssigns
             )
@@ -180,7 +186,8 @@ final class LowerVariables(implicit cc: CompilerContext) extends StatefulTreeTra
           }
         }
         EntClockedProcess(
-          reset = false,
+          ExprSym(clk),
+          None,
           StmtComment("Non-reset flops") :: dAssigns
         ) regularize tree.loc
       }
@@ -219,12 +226,7 @@ object LowerVariables extends EntityTransformerPass(declFirst = false) {
   val name = "lower-variables"
 
   override def skip(decl: Decl, defn: Defn)(implicit cc: CompilerContext): Boolean =
-    super.skip(decl, defn) || {
-      defn match {
-        case DefnEntity(_, EntityVariant.Net, _) => true
-        case _                                   => false
-      }
-    }
+    super.skip(decl, defn) || defn.asInstanceOf[DefnEntity].variant != EntityVariant.Fsm
 
   def create(symbol: Symbol)(implicit cc: CompilerContext) = new LowerVariables
 }

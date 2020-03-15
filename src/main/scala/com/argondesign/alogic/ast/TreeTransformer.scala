@@ -386,8 +386,10 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
         val stmts = walk(node.stmts)
         TreeCopier(node)(stmts)
       case node: EntClockedProcess =>
+        val clk = walk(node.clk)
+        val rstOpt = walk(node.rstOpt)
         val stmts = walk(node.stmts)
-        TreeCopier(node)(stmts)
+        TreeCopier(node)(clk, rstOpt, stmts)
       case node: EntVerbatim => node
       case node: EntComment  => node
       ////////////////////////////////////////////////////////////////////////

@@ -16,6 +16,7 @@
 package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.StatefulTreeTransformer
+import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.Symbol
@@ -29,7 +30,15 @@ import scala.collection.mutable
 final class LowerArrays(implicit cc: CompilerContext) extends StatefulTreeTransformer {
 
   // List of array we/waddr/wdata symbols
-  private[this] val arrays = mutable.ListBuffer[(Symbol, Symbol, Symbol)]()
+  private val arrays = mutable.ListBuffer[(Symbol, Symbol, Symbol)]()
+
+  // The clock symbol
+  private var clk: Symbol = _
+
+  override protected def start(tree: Tree): Unit = tree match {
+    case decl: DeclEntity => clk = decl.clk.get
+    case _                =>
+  }
 
   override def enter(tree: Tree): Option[Tree] = {
     tree match {
@@ -111,7 +120,7 @@ final class LowerArrays(implicit cc: CompilerContext) extends StatefulTreeTransf
           EntDefn(we.mkDefn),
           EntDefn(wa.mkDefn),
           EntDefn(wd.mkDefn),
-          EntClockedProcess(reset = false, stmts)
+          EntClockedProcess(ExprSym(clk), None, stmts)
         )) regularize tree.loc
 
     //////////////////////////////////////////////////////////////////////////
@@ -140,27 +149,14 @@ final class LowerArrays(implicit cc: CompilerContext) extends StatefulTreeTransf
     case _: DeclEntity =>
     case _             => assert(arrays.isEmpty)
   }
-
 }
 
-object LowerArrays extends PairTransformerPass {
+object LowerArrays extends EntityTransformerPass(declFirst = true) {
   val name = "lower-arrays"
-  def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {
-    (decl, defn) match {
-      case (dcl: DeclEntity, dfn: DefnEntity) =>
-        if (dcl.decls.isEmpty || dfn.variant != EntityVariant.Fsm) {
-          // If no decls, or network, then there is nothing to do
-          (decl, defn)
-        } else {
-          // Perform the transform
-          val transformer = new LowerArrays
-          // First transform the decl
-          val newDecl = transformer(decl)
-          // Then transform the defn
-          val newDefn = transformer(defn)
-          (newDecl, newDefn)
-        }
-      case _ => (decl, defn)
-    }
-  }
+
+  override protected def skip(decl: Decl, defn: Defn)(implicit cc: CompilerContext): Boolean =
+    super.skip(decl, defn) || defn.asInstanceOf[DefnEntity].variant != EntityVariant.Fsm
+
+  protected def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
+    new LowerArrays
 }

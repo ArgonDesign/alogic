@@ -118,7 +118,7 @@ object DefaultAssignments extends PairTransformerPass {
             }
             TypeAssigner(EntCombProcess(leading ::: stmts) withLoc ent.loc)
           }
-        case ent @ EntClockedProcess(_, stmts) =>
+        case ent @ EntClockedProcess(__, _, stmts) =>
           // Drop delayed assignments to unused flops
           val filter = StatementFilter {
             case StmtDelayed(ExprSym(qSymbol), _) if !referencedQSymbols(qSymbol) =>

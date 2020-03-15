@@ -40,4 +40,10 @@ trait DeclEntityOps { this: DeclEntity =>
     case decl: DeclOut => decl.symbol
   }
 
+  final lazy val clk: Option[Symbol] =
+    decls collectFirst { case Decl(symbol) if symbol.attr.clk.isSet => symbol }
+
+  final lazy val rst: Option[Symbol] =
+    decls collectFirst { case Decl(symbol) if symbol.attr.rst.isSet => symbol }
+
 }

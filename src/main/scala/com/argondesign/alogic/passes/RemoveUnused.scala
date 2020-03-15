@@ -129,9 +129,11 @@ object RemoveUnused extends PairsTransformerPass {
       } else {
         decl.decls.iterator map {
           _.symbol
-        } filter { // Retain inputs and outputs of top level entities
-          _.kind match {
-            case _: TypeIn  => !isTopLevel
+        } filter { symbol =>
+          // Retain inputs and outputs of top level entities,
+          // remove clock and reset if possible)
+          symbol.kind match {
+            case _: TypeIn  => !isTopLevel || symbol.attr.clk.isSet || symbol.attr.rst.isSet
             case _: TypeOut => !isTopLevel
             case _          => true
           }

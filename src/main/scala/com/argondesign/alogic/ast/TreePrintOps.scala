@@ -240,17 +240,20 @@ trait TreePrintOps extends { this: Tree =>
     case RizDefn(defn) => v(defn)
   }
 
+  // format: off
   private final def v(tree: Ent)(implicit cc: CompilerContext, indent: Int): String = tree match {
-    case EntDesc(desc)                   => v(desc)
-    case EntDecl(decl)                   => v(decl)
-    case EntDefn(defn)                   => v(defn)
-    case EntGen(gen)                     => v(gen)
-    case EntConnect(lhs, rhs)            => s"${v(lhs)} -> ${vs(rhs, ", ")};"
-    case EntCombProcess(stmts)           => block("comb-process", stmts)
-    case EntClockedProcess(reset, stmts) => block(s"clocked-process reset=$reset", stmts)
-    case EntVerbatim(lang, body)         => s"verbatim $lang {$body}"
-    case EntComment(str)                 => "//" + str
+    case EntDesc(desc)                            => v(desc)
+    case EntDecl(decl)                            => v(decl)
+    case EntDefn(defn)                            => v(defn)
+    case EntGen(gen)                              => v(gen)
+    case EntConnect(lhs, rhs)                     => s"${v(lhs)} -> ${vs(rhs, ", ")};"
+    case EntCombProcess(stmts)                    => block("comb-process", stmts)
+    case EntClockedProcess(clk, None, stmts)      => block(s"clocked-process clk=${v(clk)}", stmts)
+    case EntClockedProcess(clk, Some(rst), stmts) => block(s"clocked-process clk=${v(clk)} reset=${v(rst)}", stmts)
+    case EntVerbatim(lang, body)                  => s"verbatim $lang {$body}"
+    case EntComment(str)                          => "//" + str
   }
+  // format: on
 
   private final def v(tree: Rec)(implicit cc: CompilerContext, indent: Int): String = tree match {
     case RecDesc(desc)   => v(desc)

@@ -41,6 +41,11 @@ class SymbolAttributes {
   // This is the go signal of the enclosing entity
   val go = new Attribute[Boolean]()
 
+  // This is the clock signal of the enclosing entity
+  val clk = new Attribute[Boolean]()
+  // This is the reset signal of the enclosing entity
+  val rst = new Attribute[Boolean]()
+
   // Back link to port this signal was created from
   val payloadOfPort = new Attribute[Symbol]()
   val validOfPort = new Attribute[Symbol]()
@@ -121,6 +126,8 @@ class SymbolAttributes {
     recLimit,
     returnStack,
     go,
+    clk,
+    rst,
     payloadOfPort,
     validOfPort,
     readyOfPort,
@@ -154,6 +161,8 @@ class SymbolAttributes {
     "recLimit",
     "returnStack",
     "go",
+    "clk",
+    "rst",
     "payloadOfPort",
     "validOfPort",
     "readyOfPort",

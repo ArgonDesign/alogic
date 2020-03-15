@@ -60,18 +60,6 @@ final class EntityDetails(val decl: DeclEntity,
     case Decl(symbol) => symbol.attr.go.isSet
   }
 
-  lazy val needsClock: Boolean = isVerbatim || clockedProcesses.nonEmpty || {
-    decl.instances exists { decl =>
-      details(decl.symbol.kind.asEntity.symbol).needsClock
-    }
-  }
-
-  lazy val needsReset: Boolean = isVerbatim || (clockedProcesses exists { _.reset }) || {
-    defn.instances exists { decl =>
-      details(decl.symbol.kind.asEntity.symbol).needsReset
-    }
-  }
-
   // Any symbol that is driven by a connect must be a net
   lazy val netSymbols: List[Symbol] = defn.connects flatMap {
     case EntConnect(_, rhs :: Nil) => rhs collect { case ExprSym(symbol) => symbol }

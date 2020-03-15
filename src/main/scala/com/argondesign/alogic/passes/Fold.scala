@@ -105,8 +105,8 @@ final class Fold(implicit cc: CompilerContext) extends StatelessTreeTransformer 
     case StmtCase(_, cases) if cases.iterator map { _.stmts } forall empty => Stump
 
     // Drop empty processes
-    case EntCombProcess(stmts) if empty(stmts)       => Stump
-    case EntClockedProcess(_, stmts) if empty(stmts) => Stump
+    case EntCombProcess(stmts) if empty(stmts)          => Stump
+    case EntClockedProcess(_, _, stmts) if empty(stmts) => Stump
 
     //
     case _ => tree

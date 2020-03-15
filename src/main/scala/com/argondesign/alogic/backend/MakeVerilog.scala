@@ -266,15 +266,19 @@ final class MakeVerilog(
   private def emitClockedProcesses(body: CodeWriter, processes: List[EntClockedProcess]): Unit =
     body.emitSection(1, "Clocked processes") {
       processes foreach {
-        case EntClockedProcess(reset, stmts) =>
+        case EntClockedProcess(clk, rstOpt, stmts) =>
           assert(stmts.nonEmpty)
           body.ensureBlankLine()
-          val header = cc.settings.resetStyle match {
-            case ResetStyle.AsyncLow if reset  => s"always @(posedge clk or negedge ${cc.rst})"
-            case ResetStyle.AsyncHigh if reset => s"always @(posedge clk or posedge ${cc.rst})"
-            case _                             => "always @(posedge clk)"
+          val rstPart = rstOpt match {
+            case None => ""
+            case Some(rst) =>
+              cc.settings.resetStyle match {
+                case ResetStyle.AsyncLow  => s" or negedge ${vexpr(rst)}"
+                case ResetStyle.AsyncHigh => s" or posedge ${vexpr(rst)}"
+                case _                    => ""
+              }
           }
-          body.emit(1)(header + " begin")
+          body.emit(1)(s"always @(posedge ${vexpr(clk)}$rstPart)" + " begin")
           stmts foreach { stmt =>
             emitStatement(body, 2, stmt)
           }
@@ -306,13 +310,6 @@ final class MakeVerilog(
 
           body.emitTable(2, " ") {
             val items = new ListBuffer[List[String]]
-
-            if (details(eSymbol).needsClock) {
-              items append { List(".clk", "         (clk),") }
-            }
-            if (details(eSymbol).needsReset) {
-              items append { List(s".${cc.rst}", s"         (${cc.rst}),") }
-            }
 
             val TypeEntity(_, pSymbols) = iSymbol.kind.asEntity
 
@@ -390,13 +387,6 @@ final class MakeVerilog(
 
   def emitPortDeclarations(body: CodeWriter): Unit = {
     val items = new ListBuffer[String]
-
-    if (needsClock) {
-      items append "input  wire clk"
-    }
-    if (needsReset) {
-      items append s"input  wire ${cc.rst}"
-    }
 
     for (Decl(symbol) <- decl.decls) {
       symbol.kind match {

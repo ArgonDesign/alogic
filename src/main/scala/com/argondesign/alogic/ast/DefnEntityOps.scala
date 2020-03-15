@@ -15,6 +15,7 @@
 package com.argondesign.alogic.ast
 
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.core.Symbols.Symbol
 
 trait DefnEntityOps { this: DefnEntity =>
 
@@ -52,4 +53,9 @@ trait DefnEntityOps { this: DefnEntity =>
 
   final lazy val verbatims: List[EntVerbatim] = body collect { case node: EntVerbatim => node }
 
+  final lazy val clk: Option[Symbol] =
+    body collectFirst { case EntDefn(Defn(symbol)) if symbol.attr.clk.isSet => symbol }
+
+  final lazy val rst: Option[Symbol] =
+    body collectFirst { case EntDefn(Defn(symbol)) if symbol.attr.rst.isSet => symbol }
 }
