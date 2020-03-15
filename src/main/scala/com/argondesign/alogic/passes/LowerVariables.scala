@@ -134,9 +134,6 @@ final class LowerVariables(implicit cc: CompilerContext) extends StatefulTreeTra
     //////////////////////////////////////////////////////////////////////////
 
     case defn: DefnEntity =>
-      lazy val goSymbolOpt = defn.defns collectFirst {
-        case Defn(symbol) if symbol.attr.go.isSet => symbol
-      }
       val resetProcess = Option.when(resetFlops.nonEmpty) {
         val rstLow = cc.settings.resetStyle match {
           case ResetStyle.AsyncLow | ResetStyle.SyncLow => true
@@ -153,7 +150,7 @@ final class LowerVariables(implicit cc: CompilerContext) extends StatefulTreeTra
               case (qSymbol, dSymbol, _) => StmtDelayed(ExprSym(qSymbol), ExprSym(dSymbol))
             }
           }
-          goSymbolOpt match {
+          defn.go match {
             case None => assigns
             case Some(goSymbol) =>
               List(StmtIf(ExprSym(goSymbol), assigns, Nil))
@@ -179,7 +176,7 @@ final class LowerVariables(implicit cc: CompilerContext) extends StatefulTreeTra
               case (qSymbol, dSymbol) => StmtDelayed(ExprSym(qSymbol), ExprSym(dSymbol))
             }
           }
-          goSymbolOpt match {
+          defn.go match {
             case None => assigns
             case Some(goSymbol) =>
               List(StmtIf(ExprSym(goSymbol), assigns, Nil))

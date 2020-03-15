@@ -121,7 +121,7 @@ final class MakeVerilog(
   //////////////////////////////////////////////////////////////////////////////
 
   private def emitDeclarationSection(body: CodeWriter): Unit = {
-    if (hasConsts || hasFlops || hasCombSignals || hasArrays || hasInterconnect || canStall) {
+    if (hasConsts || hasFlops || hasCombSignals || hasArrays || hasInterconnect) {
       body.emitSection(1, "Declaration section") {
         if (hasConsts) {
           // Emit const declarations

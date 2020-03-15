@@ -32,10 +32,8 @@ final class LowerStalls(implicit cc: CompilerContext) extends StatefulTreeTransf
 
   override def enter(tree: Tree): Option[Tree] = {
     tree match {
-      case DeclEntity(_, decls) =>
-        goSymbol = decls collectFirst {
-          case Decl(symbol) if symbol.attr.go.isSet => symbol
-        }
+      case decl: DeclEntity =>
+        goSymbol = decl.go
       case Decl(symbol) if symbol.attr.clearOnStall.isSet =>
         clearOnStall += symbol
       case _ =>

@@ -58,4 +58,7 @@ trait DefnEntityOps { this: DefnEntity =>
 
   final lazy val rst: Option[Symbol] =
     body collectFirst { case EntDefn(Defn(symbol)) if symbol.attr.rst.isSet => symbol }
+
+  final lazy val go: Option[Symbol] =
+    body collectFirst { case EntDefn(Defn(symbol)) if symbol.attr.go.isSet => symbol }
 }

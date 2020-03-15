@@ -56,10 +56,6 @@ final class EntityDetails(val decl: DeclEntity,
 
   lazy val hasInstances: Boolean = decl.instances.nonEmpty
 
-  lazy val canStall: Boolean = decl.decls exists {
-    case Decl(symbol) => symbol.attr.go.isSet
-  }
-
   // Any symbol that is driven by a connect must be a net
   lazy val netSymbols: List[Symbol] = defn.connects flatMap {
     case EntConnect(_, rhs :: Nil) => rhs collect { case ExprSym(symbol) => symbol }

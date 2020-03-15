@@ -46,4 +46,6 @@ trait DeclEntityOps { this: DeclEntity =>
   final lazy val rst: Option[Symbol] =
     decls collectFirst { case Decl(symbol) if symbol.attr.rst.isSet => symbol }
 
+  final lazy val go: Option[Symbol] =
+    decls collectFirst { case Decl(symbol) if symbol.attr.go.isSet => symbol }
 }
