@@ -29,6 +29,7 @@ import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.tailrec
 import scala.collection.mutable
+import scala.util.chaining._
 
 final class Namer(implicit cc: CompilerContext) extends StatefulTreeTransformer { namer =>
 
@@ -252,8 +253,6 @@ final class Namer(implicit cc: CompilerContext) extends StatefulTreeTransformer 
         ident.attr mapValuesInPlace {
           case (_, attr @ SourceAttribute.Expr(expr)) =>
             SourceAttribute.Expr(walk(expr).asInstanceOf[Expr]) withLoc attr.loc
-          case (_, attr @ SourceAttribute.Exprs(exprs)) =>
-            SourceAttribute.Exprs(walk(exprs).asInstanceOf[List[Expr]]) withLoc attr.loc
           case (_, v) => v
         }
 
@@ -597,7 +596,27 @@ final class Namer(implicit cc: CompilerContext) extends StatefulTreeTransformer 
 
 }
 
-object Namer extends RootTransformerPass {
+object Namer extends PreElaboratePass {
   val name = "namer"
   def create(implicit cc: CompilerContext) = new Namer
+
+  override protected def process(input: (List[Root], List[Expr]))(
+      implicit cc: CompilerContext): (List[Root], List[Expr]) =
+    // Run the Namer on the top level specs as well
+    super.process(input) pipe {
+      case (roots, specs) =>
+        val transform = create
+        val namedSpecs = specs map { _ rewrite transform }
+        val badRefs = namedSpecs flatMap {
+          case ExprCall(_, args) =>
+            args flatMap {
+              _ collect { case expr @ ExprSym(symbol) if !symbol.attr.builtin.isSet => expr }
+            }
+          case _ => Nil
+        } tapEach {
+          cc.error(_, "Top level specifier can only refer to built-in identifiers")
+        }
+        if (badRefs.nonEmpty) (Nil, Nil) else (roots, namedSpecs)
+    }
+
 }

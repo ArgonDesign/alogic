@@ -28,7 +28,6 @@ import com.argondesign.alogic.core.InternalCompilerErrorException
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Message
 import com.argondesign.alogic.core.SourceAttribute
-import com.argondesign.alogic.core.SourceAttribute.Exprs
 import com.argondesign.alogic.core.Warning
 import com.argondesign.alogic.passes.Pass
 import org.scalatest._
@@ -94,7 +93,7 @@ trait AlogicTest
   }
 
   final protected def transformWithPass[R](
-      pass: Pass[List[Root], R],
+      pass: Pass[(List[Root], List[Expr]), R],
       text: String
   )(
       implicit cc: CompilerContext
@@ -109,25 +108,29 @@ trait AlogicTest
       case _ =>
     }
 
-    // Ensure a toplevel exists
-    val hasToplevel = root.body collect { case RizDesc(desc) => desc } exists {
-      _.ref.asInstanceOf[Ident].attr contains "toplevel"
+    // Find the top level
+    val topLevelDesc = root.body collectFirst {
+      case RizDesc(desc) if desc.ref.asInstanceOf[Ident].attr contains "toplevel" => desc
+    } getOrElse {
+      fail("Don't know which Desc is the top level")
     }
-    assert(hasToplevel, "Don't know which Desc is the top level")
 
-    // For convenience, set the elab attribute to default parameters if the
-    // toplevel is parametrized -- this is only for unit testing
-    root.body foreach {
-      case RizDesc(desc @ Desc(ident: Ident))
-          if desc.isParametrized && (ident.attr contains "toplevel") =>
-        val ref = ExprRef(ident) withLoc Loc.synthetic
-        val call = ExprCall(ref, Nil) withLoc Loc.synthetic
-        ident.attr("#elab") = Exprs(List(call)) withLoc Loc.synthetic
-      case _ =>
+    // Add it to the global scope
+    cc.addGlobalDescs(List(topLevelDesc))
+
+    // For convenience, set the top-level spec to use default parameters if the
+    // top-level is parametrized -- this is only for unit testing
+    val topLevelSpec = {
+      val ref = ExprRef(topLevelDesc.ref) withLoc Loc.synthetic
+      if (topLevelDesc.isParametrized) {
+        ExprCall(ref, Nil) withLoc Loc.synthetic
+      } else {
+        ref
+      }
     }
 
     // Apply transform
-    pass(List(root))
+    pass((List(root), List(topLevelSpec)))
   }
 
   final protected def checkSingleError(err: List[String])(implicit cc: CompilerContext): Unit = {

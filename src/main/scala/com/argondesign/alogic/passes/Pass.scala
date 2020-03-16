@@ -81,24 +81,23 @@ trait Pass[T, R] { self =>
   }
 }
 
-// Simple pass that applies a new instance of a TreeTransformer to all trees
-trait RootTransformerPass extends Pass[List[Root], List[Root]] {
+// Passes before Elaborate work on a list of Root trees, together with a list
+// of top level instance specifier expressions
+trait PreElaboratePass extends Pass[(List[Root], List[Expr]), (List[Root], List[Expr])] {
 
   // Factory method to create a new instance of the tree transformer
   protected def create(implicit cc: CompilerContext): TreeTransformer
 
-  protected def process(trees: List[Root])(implicit cc: CompilerContext): List[Root] = {
-    // Apply pass to all trees
-    trees map { _ rewrite create }
-  }
+  protected def process(input: (List[Root], List[Expr]))(
+      implicit cc: CompilerContext): (List[Root], List[Expr]) =
+    // Apply pass to all Roots, pass through top level specs
+    (input._1 map { _ rewrite create }, input._2)
 
   final protected def dump(
-      result: List[Root],
+      result: (List[Root], List[Expr]),
       tag: String
-  )(implicit cc: CompilerContext): Unit = {
-    result foreach { cc.dump(_, "." + tag) }
-  }
-
+  )(implicit cc: CompilerContext): Unit =
+    result._1 foreach { cc.dump(_, "." + tag) }
 }
 
 trait PairsTransformerPass extends Pass[List[(Decl, Defn)], List[(Decl, Defn)]] {

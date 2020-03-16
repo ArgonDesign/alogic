@@ -1,0 +1,20 @@
+// @top: top_param_3(W=2)
+network top_param_3 {
+  param uint W;
+
+  typedef uint(W) uw_t;
+
+  in  uw_t i;
+  out uw_t o;
+
+  i -> o;
+}
+// @out-top: top_param_3__W_2
+// @fec-golden {{{
+//  module top_param_3__W_2(
+//    input   wire  [1:0] i,
+//    output  wire  [1:0] o
+//  );
+//    assign o = i;
+//  endmodule
+// }}}

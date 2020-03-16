@@ -48,7 +48,7 @@ private[specialize] object SimplifyParamBindings {
       override def transform(tree: Tree): Tree = tree match {
         case expr: Expr =>
           // Simplify it if it has no tick children, otherwise leave it alone
-          if (ticks.pop() == 0) expr.simplify else tree
+          if (ticks.pop() == 0 && cc.typeCheck(expr)) expr.simplify else tree
         case _ =>
           tree
       }

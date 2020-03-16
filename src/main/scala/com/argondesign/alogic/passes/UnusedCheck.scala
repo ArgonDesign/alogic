@@ -205,7 +205,7 @@ final class UnusedCheck(implicit cc: CompilerContext) extends StatefulTreeTransf
   }
 }
 
-object UnusedCheck extends RootTransformerPass {
+object UnusedCheck extends PreElaboratePass {
   val name = "unused-check"
   def create(implicit cc: CompilerContext) = new UnusedCheck
 }

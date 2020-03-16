@@ -314,7 +314,7 @@ final class Checker(implicit cc: CompilerContext) extends StatefulTreeTransforme
   }
 }
 
-object Checker extends RootTransformerPass {
+object Checker extends PreElaboratePass {
   val name = "checker"
   def create(implicit cc: CompilerContext) = new Checker
 }

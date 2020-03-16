@@ -81,8 +81,6 @@ fsm bar {
 }
 ```
 
-The top level module cannot have parameters without a default value.
-
 #### Parameter specialization
 
 Alogic performs parameter specialization, meaning the compiler will emit
@@ -194,6 +192,31 @@ const c = @bits(t_10); // Same as above
 
 t_10 a_t_10; // Declares 'a_t_10' with type t(W=10)
 ```
+
+#### Parameterized top level entities
+
+Top level entities can have parameters. Actual parameter values for top
+level entities can be specified on the compiler command line with the
+same call-style syntax as in the Alogic language:
+
+```
+fsm top {
+  param uint P;
+  param uint Q = 4;
+  ...
+}
+```
+
+```
+alogic -o out 'top(P=1, Q=2)' 'top(P=3)'
+```
+
+The above compiler invocation will generate two specializations of entity
+'top', both of which will be emitted in the output directory 'out'. Note
+that the quiting is required by the shell to pass the expression as a
+single argument to the alogic compiler. The top-level specifier expressions
+are fully fledged Alogic expression as they would appear in an instance
+definition in the Alogic language.
 
 #### Parameter and constant dependencies
 

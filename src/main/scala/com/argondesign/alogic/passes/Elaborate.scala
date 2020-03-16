@@ -18,11 +18,10 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.specialize.Specialize
-import com.argondesign.alogic.util.unreachable
 
 import scala.util.ChainingSyntax
 
-object Elaborate extends Pass[List[Root], List[(Decl, Defn)]] with ChainingSyntax {
+object Elaborate extends Pass[(List[Root], List[Expr]), List[(Decl, Defn)]] with ChainingSyntax {
   val name = "elaborate"
 
   override def dump(result: List[(Decl, Defn)], tag: String)(implicit cc: CompilerContext): Unit =
@@ -30,35 +29,9 @@ object Elaborate extends Pass[List[Root], List[(Decl, Defn)]] with ChainingSynta
       case (decl, defn) => cc.dump(decl, defn, "." + tag)
     }
 
-  def process(trees: List[Root])(implicit cc: CompilerContext): List[(Decl, Defn)] = {
-
-    val topLevelSpecs = trees flatMap {
-      case root: Root =>
-        root.descs.iterator map {
-          _.symbol
-        } filter {
-          _.attr.topLevel.isSet
-        } flatMap { symbol =>
-          symbol.attr.elab.get match {
-            case Some(specs) =>
-              // Entity given as a toplevel on command line
-              specs
-            case None =>
-              // Entity marked with toplevel in source but not on command line
-              if (symbol.isParametrized) {
-                cc.error(symbol.loc,
-                         "Parametrized entity cannot be marked with 'toplevel' attribute")
-                Nil
-              } else {
-                List(ExprSym(symbol) withLoc symbol.loc)
-              }
-          }
-        }
-      case _ => unreachable
-    }
-
+  def process(input: (List[Root], List[Expr]))(implicit cc: CompilerContext): List[(Decl, Defn)] = {
+    val topLevelSpecs = input._2
     val specializedTopLevelDescs = Specialize(topLevelSpecs)
-
     specializedTopLevelDescs map { _.toList } getOrElse Nil
   }
 }

@@ -20,7 +20,6 @@ import com.argondesign.alogic.builtins.BuiltinPolyFunc
 import com.argondesign.alogic.core.StorageTypes.StorageSlice
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types.TypeEntity
-import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
 
@@ -218,9 +217,7 @@ class SymbolAttributes {
         case ("pipelinestorage", SourceAttribute.Slices(slices)) => pipelineStorage set slices
         case ("pipelinestorage", _) =>
           cc.error(sa, "'pipelinestorage' attribute must be a list of slices")
-        case ("#elab", SourceAttribute.Exprs(exprs)) => elab set exprs
-        case ("#elab", _)                            => unreachable
-        case _                                       => cc.error(sa, s"Unknown attribute '$name'")
+        case _ => cc.error(sa, s"Unknown attribute '$name'")
       }
     }
 

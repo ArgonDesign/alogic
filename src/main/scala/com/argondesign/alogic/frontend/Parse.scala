@@ -200,10 +200,10 @@ class Parse(
   }
 }
 
-object Parse extends Pass[List[String], List[Root]] {
+object Parse extends Pass[List[String], (List[Root], List[Expr])] {
   val name = "parser"
 
-  def process(topLevels: List[String])(implicit cc: CompilerContext): List[Root] = {
+  def process(topLevels: List[String])(implicit cc: CompilerContext): (List[Root], List[Expr]) = {
     val parse = new Parse(cc.settings.moduleSearchDirs,
                           cc.settings.includeSearchDirs,
                           cc.settings.initialDefines)
@@ -233,30 +233,23 @@ object Parse extends Pass[List[String], List[Root]] {
             cc.error(loc, "extraneous text after top-level specifier")
             None
           } else {
-            def checkIdent(ident: Ident): Boolean = ident match {
-              case Ident(_, Nil) => true
-              case _ =>
-                cc.error(ident, "top level specifier cannot use a dictionary identifier")
-                false
-            }
-            def checkArgs(args: List[Arg]): Boolean = {
-              def check(arg: Arg): Boolean = {
-                val refs = arg collect { case expr: ExprRef => expr }
-                refs foreach { ref =>
-                  cc.error(ref, "top level parameter list cannot contain identifiers")
-                }
-                refs.isEmpty
-              }
+            def checkIdents(expr: Expr): Boolean =
               // Apply checks eagerly
-              (args map check) forall identity
-            }
+              List from {
+                expr.preOrderIterator map {
+                  case ident @ Ident(_, _ :: Nil) =>
+                    cc.error(ident, "top level specifier cannot contain dictionary identifiers")
+                    false
+                  case _ => true
+                }
+              } forall identity
             expr pipe {
-              case ExprRef(ident: Ident) =>
-                Option.when(checkIdent(ident)) {
+              case ExprRef(ident) =>
+                Option.when(checkIdents(expr)) {
                   ident.name -> expr
                 }
-              case ExprCall(ExprRef(ident: Ident), args) =>
-                Option.when(checkIdent(ident) && checkArgs(args)) {
+              case ExprCall(ExprRef(ident), _) =>
+                Option.when(checkIdents(expr)) {
                   ident.name -> expr
                 }
               case _ =>
@@ -273,27 +266,19 @@ object Parse extends Pass[List[String], List[Root]] {
     }
 
     if (badArg) {
-      Nil
+      (Nil, Nil)
     } else {
       // Parse the things
       val (roots, rootDescs) = parse(specs.keys.toList.sorted)
 
-      // Attach elab attributes
-      rootDescs foreach {
-        case DescEntity(ident: Ident, _, _) =>
-          specs.get(ident.name) foreach { elab =>
-            ident.attr("#elab") = SourceAttribute.Exprs(elab) withLoc Loc.synthetic
-          }
-        case _ =>
-      }
-
       // Insert root decls into the global scope
       cc.addGlobalDescs(rootDescs)
 
-      roots
+      // Return the root trees and the top level specs
+      (roots, specs.valuesIterator.flatten.toList)
     }
   }
 
-  def dump(result: List[Root], tag: String)(implicit cc: CompilerContext): Unit =
-    result foreach { cc.dump(_, "." + tag) }
+  def dump(result: (List[Root], List[Expr]), tag: String)(implicit cc: CompilerContext): Unit =
+    result._1 foreach { cc.dump(_, "." + tag) }
 }

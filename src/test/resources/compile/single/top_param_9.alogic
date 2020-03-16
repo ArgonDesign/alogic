@@ -1,0 +1,5 @@
+// @top: top_param_9#[0](1)
+network top_param_9 {
+  param uint W;
+}
+// command-line:1: ERROR: top level specifier cannot contain dictionary identifiers

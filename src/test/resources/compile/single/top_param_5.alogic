@@ -1,0 +1,6 @@
+// @top: top_param_5(1, W=1)
+network top_param_5 {
+  param uint W;
+}
+// command-line:1: ERROR: Mixing positional and named parameter assignments is not allowed
+// :3: WARNING: Parameter 'W' is unused

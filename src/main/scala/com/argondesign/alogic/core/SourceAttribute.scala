@@ -23,6 +23,5 @@ sealed trait SourceAttribute extends Locationed
 object SourceAttribute {
   final case class Flag() extends SourceAttribute
   final case class Expr(expr: Trees.Expr) extends SourceAttribute
-  final case class Exprs(exprs: List[Trees.Expr]) extends SourceAttribute
   final case class Slices(slices: List[StorageSlice]) extends SourceAttribute
 }

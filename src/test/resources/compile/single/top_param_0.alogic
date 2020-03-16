@@ -1,0 +1,6 @@
+// @top: top_param_0
+network top_param_0 {
+  param uint W;
+}
+// command-line:1: ERROR: Parametrized type requires parameter list
+// :3: WARNING: Parameter 'W' is unused
