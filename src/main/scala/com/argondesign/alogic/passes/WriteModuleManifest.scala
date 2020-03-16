@@ -21,13 +21,10 @@ import java.nio.file.Path
 
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeAccept
-import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
-import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeReady
-import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeValid
-import com.argondesign.alogic.core.Types.TypeEntity
+import com.argondesign.alogic.core.FlowControlTypes._
 import com.argondesign.alogic.core.Types.TypeIn
 import com.argondesign.alogic.core.Types.TypeOut
+import com.argondesign.alogic.core.enums.ResetStyle
 import com.argondesign.alogic.util.unreachable
 
 import scala.collection.parallel.CollectionConverters._
@@ -43,11 +40,16 @@ object WriteModuleManifest extends PairsTransformerPass {
 
     val dict = for {
       (Decl(eSymbol), defn: DefnEntity) <- pairs.par
+      if eSymbol.attr.topLevel.isSet
     } yield {
       // High level port symbols
-      val pSymbols = eSymbol.attr.highLevelKind.get map { _.publicSymbols } getOrElse Nil
+      val pSymbols = eSymbol.attr.highLevelKind.get map { _.ports } getOrElse Nil sortBy { symbol =>
+        (symbol.loc.start, symbol.name)
+      }
       // Low level signal symbols
-      val TypeEntity(_, sSymbols) = eSymbol.kind.asType.kind.asEntity
+      val sSymbols = eSymbol.kind.asType.kind.asEntity.ports sortBy { symbol =>
+        (symbol.loc.start, symbol.name)
+      }
 
       //////////////////////////////////////////////////////////////////////////
       // Compute signals
@@ -83,7 +85,7 @@ object WriteModuleManifest extends PairsTransformerPass {
       }
 
       val signals = for {
-        sSymbol <- sSymbols sortBy { _.name }
+        sSymbol <- sSymbols
       } yield {
         // Figure out whether this is payload, valid or ready
         val value = v2p.get(sSymbol).map { pSymbol =>
@@ -91,13 +93,12 @@ object WriteModuleManifest extends PairsTransformerPass {
         } orElse r2p.get(sSymbol).map { pSymbol =>
           List("port" -> pSymbol.name, "component" -> "ready")
         } getOrElse {
-          val pSymbol = d2p.getOrElse(sSymbol, sSymbol)
           List(
-            "port" -> pSymbol.name,
+            "port" -> d2p.getOrElse(sSymbol, sSymbol).name,
             "component" -> "payload",
             "width" -> sSymbol.kind.width,
-            "offset" -> (sSymbol.attr.fieldOffset getOrElse 0),
-            "signed" -> sSymbol.kind.isSigned
+            "signed" -> sSymbol.kind.isSigned,
+            "offset" -> (sSymbol.attr.fieldOffset getOrElse 0)
           )
         }
 
@@ -145,20 +146,22 @@ object WriteModuleManifest extends PairsTransformerPass {
       }
 
       //////////////////////////////////////////////////////////////////////////
-      // Compute instances
+      // The entry for this entity
       //////////////////////////////////////////////////////////////////////////
 
-      val instances = for {
-        Defn(iSymbol) <- defn.instances sortBy { _.symbol.name }
-      } yield {
-        iSymbol.name -> iSymbol.kind.asEntity.symbol.name
-      }
-
       eSymbol.name -> List(
-        "top-level" -> eSymbol.attr.topLevel.isSet,
         "ports" -> ports,
         "signals" -> signals,
-        "instances" -> instances
+        "clock" -> (defn.clk map { _.name } getOrElse null),
+        "reset" -> (defn.rst map { _.name } getOrElse null),
+        "reset-style" -> {
+          cc.settings.resetStyle match {
+            case ResetStyle.AsyncLow  => "async-low"
+            case ResetStyle.AsyncHigh => "async-high"
+            case ResetStyle.SyncLow   => "sync-low"
+            case ResetStyle.SyncHigh  => "sync-high"
+          }
+        }
       )
     }
 
@@ -183,6 +186,7 @@ object WriteModuleManifest extends PairsTransformerPass {
           pw.write(indent)
           pw.write(s"""$i0"$key" : """)
           value match {
+            case null          => pw.write("null")
             case child: Seq[_] => writeDict(child, level + 1)
             case str: String   => pw.write(s""""$str"""")
             case other         => pw.write(other.toString)
