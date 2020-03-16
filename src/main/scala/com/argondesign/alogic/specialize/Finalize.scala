@@ -95,6 +95,11 @@ private[specialize] object Finalize {
             tree
           }
 
+        // Adjust defnLevel
+        case _: Defn =>
+          defnLevel -= 1
+          tree
+
         // Error for referencing x.p#[n] as x.p__n
         case ExprSelect(ExprSym(iSymbol), sel, Nil) if iSymbol.kind.isEntity =>
           iSymbol.kind.asEntity.publicSymbols exists { pSymbol =>
