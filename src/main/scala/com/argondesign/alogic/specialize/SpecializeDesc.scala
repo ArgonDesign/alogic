@@ -209,7 +209,7 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
       case ParamSubstitutionUnbound(unbound) =>
         // Unbound parameter remains
         unbound foreach { d: Desc =>
-          cc.error(loc, s"'${desc.name}' requires parameter '${d.name}")
+          cc.error(loc, s"'${desc.name}' requires parameter '${d.name}'")
         }
         DescSpecializationErrorOther
       case ParamSubstitutionNeedsNamed =>
