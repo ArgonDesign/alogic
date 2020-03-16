@@ -112,7 +112,7 @@ object Main extends App {
   // Do the work
   //////////////////////////////////////////////////////////////////////////////
 
-  cc.compile(cliConf.toplevel())
+  cc.compile(cliConf.topLevels())
 
   if (cc.settings.profile) {
     val pw = new PrintWriter((opath resolve "profile").toFile)

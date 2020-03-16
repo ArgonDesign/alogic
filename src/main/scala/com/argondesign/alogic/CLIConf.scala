@@ -298,9 +298,13 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
   // Randomly shuffle Ent nodes
   val shuffleEnts = opt[Int](noshort = true, default = None, hidden = true)
 
-  val toplevel = trailArg[List[String]](
+  val topLevels = trailArg[List[String]](
+    name = "top-levels",
     required = true,
-    descr = "List of top level entity names"
+    descr = """|List of top level entities. Parameter values for top level
+               |entities can be provided with the same call-style syntax as
+               |for an Alogic instantiation.
+               |""".stripMargin.replace('\n', ' '),
   )
 
   verify()

@@ -252,6 +252,8 @@ final class Namer(implicit cc: CompilerContext) extends StatefulTreeTransformer 
         ident.attr mapValuesInPlace {
           case (_, attr @ SourceAttribute.Expr(expr)) =>
             SourceAttribute.Expr(walk(expr).asInstanceOf[Expr]) withLoc attr.loc
+          case (_, attr @ SourceAttribute.Exprs(exprs)) =>
+            SourceAttribute.Exprs(walk(exprs).asInstanceOf[List[Expr]]) withLoc attr.loc
           case (_, v) => v
         }
 

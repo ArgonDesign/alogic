@@ -1,3 +1,4 @@
+// @top: sized_param_init_0()
 fsm sized_param_init_0 {
   param u32 DEPTH = 32'd512;
   out wire uint(DEPTH*2) p_o;

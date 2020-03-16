@@ -25,8 +25,10 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Error
 import com.argondesign.alogic.core.FatalErrorException
 import com.argondesign.alogic.core.InternalCompilerErrorException
+import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Message
 import com.argondesign.alogic.core.SourceAttribute
+import com.argondesign.alogic.core.SourceAttribute.Exprs
 import com.argondesign.alogic.core.Warning
 import com.argondesign.alogic.passes.Pass
 import org.scalatest._
@@ -112,6 +114,17 @@ trait AlogicTest
       _.ref.asInstanceOf[Ident].attr contains "toplevel"
     }
     assert(hasToplevel, "Don't know which Desc is the top level")
+
+    // For convenience, set the elab attribute to default parameters if the
+    // toplevel is parametrized -- this is only for unit testing
+    root.body foreach {
+      case RizDesc(desc @ Desc(ident: Ident))
+          if desc.isParametrized && (ident.attr contains "toplevel") =>
+        val ref = ExprRef(ident) withLoc Loc.synthetic
+        val call = ExprCall(ref, Nil) withLoc Loc.synthetic
+        ident.attr("#elab") = Exprs(List(call)) withLoc Loc.synthetic
+      case _ =>
+    }
 
     // Apply transform
     pass(List(root))

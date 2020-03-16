@@ -1,3 +1,4 @@
+// @top: dictident_defn_4()
 // @out-top: dictident_defn_4__P_1
 network dictident_defn_4 {
   param bool P = true;

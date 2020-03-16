@@ -1,3 +1,4 @@
+// @top: gen_alt_defn_8()
 // @out-top: gen_alt_defn_8__SIGNED_0
 network gen_alt_defn_8 {
   param bool SIGNED = false;

@@ -20,6 +20,7 @@ import com.argondesign.alogic.builtins.BuiltinPolyFunc
 import com.argondesign.alogic.core.StorageTypes.StorageSlice
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types.TypeEntity
+import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
 
@@ -117,6 +118,9 @@ class SymbolAttributes {
   // For builtin symbols, points to the implementation
   val builtin = new Attribute[BuiltinPolyFunc]()
 
+  // Elaboration parameters for top-level entities
+  val elab = new Attribute[List[Expr]]()
+
   // Iterator that enumerates all fields above
   private def attrIterator = Iterator(
     unused,
@@ -149,7 +153,8 @@ class SymbolAttributes {
     pipelineStorage,
     dictResolutions,
     eliminated,
-    builtin
+    builtin,
+    elab
   )
 
   // Iterator that enumerates names of fields above
@@ -184,7 +189,8 @@ class SymbolAttributes {
     "pipelineStorage",
     "dictResolutions",
     "eliminated",
-    "builtin"
+    "builtin",
+    "elab"
   )
 
   // Copy values of attributes from another instance
@@ -211,8 +217,10 @@ class SymbolAttributes {
         case ("liftsrams", _)                                    => cc.error(sa, "'liftsrams' attribute is a flag")
         case ("pipelinestorage", SourceAttribute.Slices(slices)) => pipelineStorage set slices
         case ("pipelinestorage", _) =>
-          cc.error(sa, "'liftsrams' attribute must be a list of slices")
-        case _ => cc.error(sa, s"Unknown attribute '$name'")
+          cc.error(sa, "'pipelinestorage' attribute must be a list of slices")
+        case ("#elab", SourceAttribute.Exprs(exprs)) => elab set exprs
+        case ("#elab", _)                            => unreachable
+        case _                                       => cc.error(sa, s"Unknown attribute '$name'")
       }
     }
 

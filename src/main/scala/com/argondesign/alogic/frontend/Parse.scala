@@ -30,7 +30,7 @@ import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration.Duration.Inf
-import scala.util.ChainingSyntax
+import scala.util.chaining._
 
 // The frontend is responsible for:
 // - locating sources (name -> source)
@@ -44,7 +44,7 @@ class Parse(
 )(
     implicit
     cc: CompilerContext
-) extends ChainingSyntax {
+) {
 
   private[this] val rootDescs = mutable.ListBuffer[Desc]()
 
@@ -187,8 +187,7 @@ class Parse(
 
     // Mark top level entities as such
     for {
-      Root(body) <- treeSet
-      RizDesc(desc) <- body
+      desc <- rootDescs
       if desc.isInstanceOf[DescEntity]
       ident: Ident = desc.ref.asInstanceOf[Ident]
       if topLevelNames contains ident.name
@@ -209,13 +208,90 @@ object Parse extends Pass[List[String], List[Root]] {
                           cc.settings.includeSearchDirs,
                           cc.settings.initialDefines)
 
-    // Parse the things
-    val (roots, rootDescs) = parse(topLevels)
+    // Parse the top level specifications
+    var badArg = false
+    val specs: Map[String, List[Expr]] = {
+      val pairs = topLevels flatMap { text =>
+        val source = Source("command-line", text)
+        val l = text.length
+        Parser[Expr](source) tap {
+          case None =>
+            val loc = Loc(source, 0, l, 0)
+            cc.error(loc, "Failed to parse top level specified on command line")
+          case _ =>
+        } flatMap { expr =>
+          val s = expr.loc.start
+          val e = expr.loc.end
+          val pre = text.slice(0, s)
+          val suf = text.slice(e, l)
+          if (pre exists { !_.isWhitespace }) {
+            val loc = Loc(source, 0, s, pre indexWhere (!_.isWhitespace))
+            cc.error(loc, "extraneous text before top-level specifier")
+            None
+          } else if (suf exists { !_.isWhitespace }) {
+            val loc = Loc(source, e, l, e + (suf indexWhere (!_.isWhitespace)))
+            cc.error(loc, "extraneous text after top-level specifier")
+            None
+          } else {
+            def checkIdent(ident: Ident): Boolean = ident match {
+              case Ident(_, Nil) => true
+              case _ =>
+                cc.error(ident, "top level specifier cannot use a dictionary identifier")
+                false
+            }
+            def checkArgs(args: List[Arg]): Boolean = {
+              def check(arg: Arg): Boolean = {
+                val refs = arg collect { case expr: ExprRef => expr }
+                refs foreach { ref =>
+                  cc.error(ref, "top level parameter list cannot contain identifiers")
+                }
+                refs.isEmpty
+              }
+              // Apply checks eagerly
+              (args map check) forall identity
+            }
+            expr pipe {
+              case ExprRef(ident: Ident) =>
+                Option.when(checkIdent(ident)) {
+                  ident.name -> expr
+                }
+              case ExprCall(ExprRef(ident: Ident), args) =>
+                Option.when(checkIdent(ident) && checkArgs(args)) {
+                  ident.name -> expr
+                }
+              case _ =>
+                cc.error(expr, "Invalid top level specifier")
+                None
+            }
+          }
+        } tap {
+          case None => badArg = true
+          case _    =>
+        }
+      }
+      pairs.groupMap(_._1)(_._2)
+    }
 
-    // Insert root decls into the global scope
-    cc.addGlobalDescs(rootDescs)
+    if (badArg) {
+      Nil
+    } else {
+      // Parse the things
+      val (roots, rootDescs) = parse(specs.keys.toList.sorted)
 
-    roots
+      // Attach elab attributes
+      rootDescs foreach {
+        case DescEntity(ident: Ident, _, _) =>
+          specs.get(ident.name) foreach { elab =>
+            ident.attr("#elab") = SourceAttribute.Exprs(elab) withLoc Loc.synthetic
+          }
+        case _ =>
+      }
+
+      // Insert root decls into the global scope
+      cc.addGlobalDescs(rootDescs)
+
+      roots
+    }
   }
 
   def dump(result: List[Root], tag: String)(implicit cc: CompilerContext): Unit =

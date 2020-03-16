@@ -131,6 +131,7 @@ trait TreePrintOps extends { this: Tree =>
           case (k, _: SourceAttribute.Flag)        => k
           case (k, SourceAttribute.Expr(expr))     => s"$k = ${v(expr)}"
           case (k, SourceAttribute.Slices(slices)) => s"$k = ${v(StorageTypeSlices(slices))}"
+          case (k, SourceAttribute.Exprs(exprs))   => s"$k = ${exprs map v mkString s", "}"
         } mkString ("(* ", ", ", " *)")
     } pipe {
       case ""  => ""

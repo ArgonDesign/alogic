@@ -1,3 +1,4 @@
+// @top: gen_alt_defn_5()
 // @out-top: gen_alt_defn_5__STRANGE_0
 network gen_alt_defn_5 {
   param bool STRANGE = false;

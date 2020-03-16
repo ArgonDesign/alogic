@@ -541,19 +541,26 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
     }
   }
 
-  def apply(descs: Iterable[Desc]): Option[Set[(Decl, Defn)]] = {
-    val results = descs map { desc =>
-      this(desc, ParamBindingsNamed(Map.empty), true, desc.ref.loc)
+  def apply(specs: Iterable[Expr]): Option[Set[(Decl, Defn)]] = {
+    val results = specs filter {
+      case expr @ ExprSym(symbol) if symbol.isParametrized =>
+        cc.error(expr, s"Parametrized type requires parameter list")
+        false
+      case _ => true
+    } map {
+      SpecializeExpr(_)
     } flatMap {
-      case DescSpecializationComplete(decl, defn, _) => Some((decl, defn))
-      case _: DescSpecializationError                => None
-      case _                                         => unreachable
+      case ExprSpecializationComplete(ExprSym(symbol)) => Some(symbol)
+      case ExprSpecializationError                     => None
+      case _                                           => unreachable
     }
 
-    if (results.sizeIs != descs.size) {
+    if (results.sizeIs != specs.size) {
       // There was an error, so return None
       None
     } else {
+      assert(results forall { _.isSpecialized })
+
       // Return all complete specializations of the given parametrized Descs
       Some {
         def specials(descs: List[Desc]): (List[Decl], List[Defn]) = {
@@ -629,7 +636,9 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
         }
 
         Set from {
-          results.iterator flatMap { case (decl, defn) => dependencies(decl, defn) }
+          results.iterator flatMap { symbol =>
+            dependencies(symbol.decl, symbol.defn)
+          }
         }
       }
     }
@@ -650,11 +659,5 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
           check(decl)
           check(defn)
       }
-  }
-}
-
-object SpecializeDesc {
-  def apply(descs: List[Desc])(implicit cc: CompilerContext): Option[Set[(Decl, Defn)]] = {
-    (new SpecializeDesc()(cc))(descs)
   }
 }

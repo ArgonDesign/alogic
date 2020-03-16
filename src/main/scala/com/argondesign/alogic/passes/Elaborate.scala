@@ -32,12 +32,32 @@ object Elaborate extends Pass[List[Root], List[(Decl, Defn)]] with ChainingSynta
 
   def process(trees: List[Root])(implicit cc: CompilerContext): List[(Decl, Defn)] = {
 
-    val topLevelDescs = trees flatMap {
-      case root: Root => root.descs filter { _.symbol.attr.topLevel.isSet }
-      case _          => unreachable
+    val topLevelSpecs = trees flatMap {
+      case root: Root =>
+        root.descs.iterator map {
+          _.symbol
+        } filter {
+          _.attr.topLevel.isSet
+        } flatMap { symbol =>
+          symbol.attr.elab.get match {
+            case Some(specs) =>
+              // Entity given as a toplevel on command line
+              specs
+            case None =>
+              // Entity marked with toplevel in source but not on command line
+              if (symbol.isParametrized) {
+                cc.error(symbol.loc,
+                         "Parametrized entity cannot be marked with 'toplevel' attribute")
+                Nil
+              } else {
+                List(ExprSym(symbol) withLoc symbol.loc)
+              }
+          }
+        }
+      case _ => unreachable
     }
 
-    val specializedTopLevelDescs = Specialize(topLevelDescs)
+    val specializedTopLevelDescs = Specialize(topLevelSpecs)
 
     specializedTopLevelDescs map { _.toList } getOrElse Nil
   }

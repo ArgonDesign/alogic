@@ -338,7 +338,7 @@ trait CompilationTest
 
       // Do the compilation
       try {
-        cc.compile(List(top))
+        cc.compile(List(attr.getOrElse("top", top)))
       } catch {
         case e: InternalCompilerErrorException =>
           print(e.message.string)

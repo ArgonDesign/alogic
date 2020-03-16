@@ -1,3 +1,4 @@
+// @top: def_ent_3()
 // @out-top: def_ent_3__W_2
 fsm def_ent_3 {
   param uint W = 2;

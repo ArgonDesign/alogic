@@ -1,3 +1,4 @@
+// @top: arbitrary_connects_const_param_indices()
 // @out-top: arbitrary_connects_const_param_indices__Bu_7
 network arbitrary_connects_const_param_indices {
 
