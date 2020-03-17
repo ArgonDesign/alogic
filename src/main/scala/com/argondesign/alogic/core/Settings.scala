@@ -52,8 +52,6 @@ case class Settings(
     dumpTrees: Boolean = false,
     // Measure and report inserted execution timing
     profile: Boolean = false,
-    // Randomly shuffle entity contents
-    shuffleEnts: Option[Int] = None,
     // Module manifest output path
     manifestWriterFactory: Option[() => Writer] = None,
     // Reset style

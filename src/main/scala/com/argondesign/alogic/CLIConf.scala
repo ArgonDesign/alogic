@@ -319,9 +319,6 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
   // Measure and report inserted execution timing
   val profile = toggle(name = "profile", noshort = true, hidden = true)
 
-  // Randomly shuffle Ent nodes
-  val shuffleEnts = opt[Int](noshort = true, default = None, hidden = true)
-
   val topLevels = trailArg[List[String]](
     name = "top-levels",
     required = true,

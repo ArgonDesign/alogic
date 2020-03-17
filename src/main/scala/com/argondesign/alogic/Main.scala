@@ -107,7 +107,6 @@ object Main extends App {
     },
     dumpTrees = cliConf.dumpTrees.toOption contains true,
     profile = cliConf.profile.toOption contains true,
-    shuffleEnts = cliConf.shuffleEnts.toOption,
     manifestWriterFactory = manifestWrtierFactory,
     resetStyle = cliConf.resetStyle(),
     resetAll = !cliConf.noResetAll()

@@ -346,7 +346,6 @@ trait CompilationTest
           dumpTrees = configMap.getWithDefault("dump-trees", "0").toInt != 0,
           resetStyle = resetStyle,
           resetAll = resetAll,
-          shuffleEnts = configMap.getOptional[String]("shuffle-ents") map { _.toInt },
           manifestWriterFactory = manifestWriterFactory,
           traceElaborate = configMap.getWithDefault("trace-elaborate", "0").toInt != 0,
           outputNameMaxLength = attr.get("output-name-max-length") map { _.toInt }
