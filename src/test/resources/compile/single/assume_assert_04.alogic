@@ -1,0 +1,25 @@
+fsm assume_assert_04 {
+  in       u2 c;
+  in       bool i;
+  out wire bool o;
+
+  void main() {
+    assert c == 2'd2;
+    if (c == 2'd3) {
+      o =  i;
+    } else {
+      o = ~i;
+    }
+    fence;
+  }
+}
+// @verilator-lint-off
+// @fec-golden {{{
+//  module assume_assert_04(
+//    input   wire [1:0] c,
+//    input   wire       i,
+//    output  wire       o
+//  );
+//    assign o = ~i;
+//  endmodule
+// }}}

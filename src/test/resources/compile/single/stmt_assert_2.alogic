@@ -1,3 +1,4 @@
+// @assertions
 fsm stmt_assert_2 {
   in bool i;
   void main() {

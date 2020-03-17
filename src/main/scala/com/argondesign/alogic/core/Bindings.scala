@@ -62,6 +62,8 @@ class Bindings(val underlying: Map[Symbol, Expr]) extends AnyVal {
   }
 
   def +(pair: (Symbol, Expr)): Bindings = underlying + pair
+
+  override def toString: String = s"Bindings(${underlying.toString})"
 }
 
 object Bindings {

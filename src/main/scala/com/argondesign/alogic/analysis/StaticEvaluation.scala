@@ -245,6 +245,8 @@ object StaticEvaluation {
             (afters map { _.get.toSet } reduce { _ intersect _ }).toMap
           }
 
+        case StmtAssert(Assert(cond, _)) => Some(inferTrueTransitive(curr, cond))
+
         case _: StmtStall   => Some(curr) // TODO: can we do better here?
         case _: StmtExpr    => Some(curr)
         case _: StmtComment => Some(curr)

@@ -1,0 +1,18 @@
+fsm assume_assert_07 {
+  in       u2 i;
+  out wire u2 o;
+
+  void main() {
+    assert i != 2'd2;
+    o = i;
+    fence;
+  }
+}
+// @fec-golden {{{
+//  module assume_assert_07(
+//    input   wire [1:0] i,
+//    output  wire [1:0] o
+//  );
+//    assign o = i;
+//  endmodule
+// }}}

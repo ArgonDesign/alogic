@@ -1,0 +1,20 @@
+fsm assume_assert_09 {
+  in       u2 i;
+  out wire u2 o;
+
+  void main() {
+    u2 tmp = i;
+    assert !tmp;
+    o = i;
+    fence;
+  }
+}
+// @verilator-lint-off
+// @fec-golden {{{
+//  module assume_assert_09(
+//    input   wire [1:0] i,
+//    output  wire [1:0] o
+//  );
+//    assign o = 2'd0;
+//  endmodule
+// }}}
