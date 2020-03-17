@@ -79,6 +79,15 @@ trait CompilationTest
     }
   }
 
+  private val manifestWriterFactory = Some { () =>
+    new StringWriter {
+      override def close(): Unit = {
+        outputs("manifest.json") = this.toString
+        super.close()
+      }
+    }
+  }
+
   // Compiler message buffer
   private val messages = new ListBuffer[Message]
 
@@ -338,6 +347,7 @@ trait CompilationTest
           resetStyle = resetStyle,
           resetAll = resetAll,
           shuffleEnts = configMap.getOptional[String]("shuffle-ents") map { _.toInt },
+          manifestWriterFactory = manifestWriterFactory,
           traceElaborate = configMap.getWithDefault("trace-elaborate", "0").toInt != 0,
           outputNameMaxLength = attr.get("output-name-max-length") map { _.toInt }
         )

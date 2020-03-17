@@ -16,7 +16,6 @@
 package com.argondesign.alogic.core
 import java.io.File
 import java.io.Writer
-import java.nio.file.Path
 
 import com.argondesign.alogic.ast.Trees.Tree
 import com.argondesign.alogic.core.enums.ResetStyle
@@ -56,7 +55,7 @@ case class Settings(
     // Randomly shuffle entity contents
     shuffleEnts: Option[Int] = None,
     // Module manifest output path
-    moduleManifestPath: Option[Path] = None,
+    manifestWriterFactory: Option[() => Writer] = None,
     // Reset style
     resetStyle: ResetStyle.Type = ResetStyle.AsyncLow,
     // Reset all

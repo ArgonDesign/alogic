@@ -16,8 +16,7 @@
 
 package com.argondesign.alogic.passes
 
-import java.io.PrintWriter
-import java.nio.file.Path
+import java.io.Writer
 
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
@@ -32,7 +31,7 @@ import scala.collection.parallel.CollectionConverters._
 object WriteModuleManifest extends PairsTransformerPass {
   val name = "write-module-manifest"
 
-  def emit(path: Path, pairs: List[(Decl, Defn)])(implicit cc: CompilerContext): Unit = {
+  def emit(ow: Writer, pairs: List[(Decl, Defn)])(implicit cc: CompilerContext): Unit = {
 
     ////////////////////////////////////////////////////////////////////////////
     // Build nested manifest as a Map (dictionary)
@@ -152,8 +151,8 @@ object WriteModuleManifest extends PairsTransformerPass {
       eSymbol.name -> List(
         "ports" -> ports,
         "signals" -> signals,
-        "clock" -> (defn.clk map { _.name } getOrElse null),
-        "reset" -> (defn.rst map { _.name } getOrElse null),
+        "clock" -> (defn.clk map { _.name }).orNull,
+        "reset" -> (defn.rst map { _.name }).orNull,
         "reset-style" -> {
           cc.settings.resetStyle match {
             case ResetStyle.AsyncLow  => "async-low"
@@ -169,58 +168,56 @@ object WriteModuleManifest extends PairsTransformerPass {
     // Write out the nested dict
     ////////////////////////////////////////////////////////////////////////////
 
-    val pw = new PrintWriter(path.toFile)
-
     val i0 = "  "
 
     def writeDict(dict: Seq[Any], level: Int): Unit = {
       if (dict.isEmpty) {
-        pw.write("{}")
+        ow.write("{}")
       } else {
         val indent = i0 * level
 
         // Open dict
-        pw.write("{\n")
+        ow.write("{\n")
 
         def writePair(key: Any, value: Any): Unit = {
-          pw.write(indent)
-          pw.write(s"""$i0"$key" : """)
+          ow.write(indent)
+          ow.write(s"""$i0"$key" : """)
           value match {
-            case null          => pw.write("null")
+            case null          => ow.write("null")
             case child: Seq[_] => writeDict(child, level + 1)
-            case str: String   => pw.write(s""""$str"""")
-            case other         => pw.write(other.toString)
+            case str: String   => ow.write(s""""$str"""")
+            case other         => ow.write(other.toString)
           }
         }
 
         // Write all but last pair with trailing commas
         for ((key, value) <- dict.init) {
           writePair(key, value)
-          pw.write(",\n")
+          ow.write(",\n")
         }
 
         // Write last pair without trailing comma
         val (key, value) = dict.last
         writePair(key, value)
-        pw.write("\n")
+        ow.write("\n")
 
         // Close dict
-        pw.write(indent)
-        pw.write("}")
+        ow.write(indent)
+        ow.write("}")
       }
     }
 
     writeDict(dict.seq.sortBy(_._1), level = 0)
-    pw.write("\n")
+    ow.write("\n")
 
-    pw.close()
+    ow.close()
   }
 
   override def process(input: List[(Decl, Defn)])(
       implicit cc: CompilerContext): List[(Decl, Defn)] = {
-    cc.settings.moduleManifestPath match {
-      case Some(path) => emit(path, input)
-      case None       =>
+    cc.settings.manifestWriterFactory match {
+      case Some(f) => emit(f(), input)
+      case None    =>
     }
     input
   }

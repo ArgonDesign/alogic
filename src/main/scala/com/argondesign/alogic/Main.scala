@@ -81,6 +81,12 @@ object Main extends App {
     new PrintWriter(oFile)
   }
 
+  val manifestWrtierFactory = cliConf.moduleManifest.toOption map { file =>
+    { () =>
+      new PrintWriter(file)
+    }
+  }
+
   val settings = Settings(
     moduleSearchDirs = if (defaultToCWD) List(cwd) else cliConf.ydir(),
     includeSearchDirs = if (defaultToCWD) List(cwd) else cliConf.incdir(),
@@ -102,7 +108,7 @@ object Main extends App {
     dumpTrees = cliConf.dumpTrees.toOption contains true,
     profile = cliConf.profile.toOption contains true,
     shuffleEnts = cliConf.shuffleEnts.toOption,
-    moduleManifestPath = cliConf.moduleManifest.toOption map { _.toPath },
+    manifestWriterFactory = manifestWrtierFactory,
     resetStyle = cliConf.resetStyle(),
     resetAll = !cliConf.noResetAll()
   )
