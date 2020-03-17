@@ -109,7 +109,8 @@ object Main extends App {
     profile = cliConf.profile.toOption contains true,
     manifestWriterFactory = manifestWrtierFactory,
     resetStyle = cliConf.resetStyle(),
-    resetAll = !cliConf.noResetAll()
+    resetAll = !cliConf.noResetAll(),
+    assertions = cliConf.assertions()
   )
 
   implicit val cc: CompilerContext = new CompilerContext(settings)

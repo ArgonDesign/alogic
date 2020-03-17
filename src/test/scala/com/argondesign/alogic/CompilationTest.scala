@@ -348,7 +348,8 @@ trait CompilationTest
           resetAll = resetAll,
           manifestWriterFactory = manifestWriterFactory,
           traceElaborate = configMap.getWithDefault("trace-elaborate", "0").toInt != 0,
-          outputNameMaxLength = attr.get("output-name-max-length") map { _.toInt }
+          outputNameMaxLength = attr.get("output-name-max-length") map { _.toInt },
+          assertions = attr contains "assertions"
         )
       )
 

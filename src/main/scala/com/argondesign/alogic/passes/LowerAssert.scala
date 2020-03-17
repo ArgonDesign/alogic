@@ -41,6 +41,11 @@ final class LowerAssert(implicit cc: CompilerContext) extends StatefulTreeTransf
 
   override def transform(tree: Tree): Tree = tree match {
 
+    // If assertions are not enabled, just drop them
+    case _: StmtAssert if !cc.settings.assertions =>
+      Stump
+
+    // Otherwise convert them to deferred assertions
     case StmtAssert(Assert(cond, msg)) =>
       val n = seqNum.next
       val enSymbol = cc.newSymbol(s"_assert_en_$n", tree.loc)
