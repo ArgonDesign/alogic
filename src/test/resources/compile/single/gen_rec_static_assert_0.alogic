@@ -1,0 +1,11 @@
+struct t {
+  gen if (false) {
+    static assert false;
+  }
+  bool x;
+}
+
+network gen_rec_static_assert_0 {
+  out t o;
+  1'd0 -> o;
+}

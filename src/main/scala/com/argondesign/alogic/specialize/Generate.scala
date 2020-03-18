@@ -77,10 +77,11 @@ private[specialize] object Generate {
   private implicit object generatableEnt extends Generatable[Ent] {
     val description = "entity content"
     def isValid(tree: Tree): Boolean = tree match {
-      case _: Gen  => true
-      case _: Ent  => true
-      case _: Desc => true
-      case _       => false
+      case _: Gen             => true
+      case _: Ent             => true
+      case _: Desc            => true
+      case _: AssertionStatic => true
+      case _                  => false
     }
     def splice(tree: Tree): Ent = tree match {
       case gen: Gen => EntGen(gen) withLoc gen.loc
@@ -89,8 +90,9 @@ private[specialize] object Generate {
         assert(desc.variant == FuncVariant.None)
         val newDesc = desc.copy(variant = FuncVariant.Ctrl) withLoc desc.loc
         EntDesc(newDesc) withLoc desc.loc
-      case desc: Desc => EntDesc(desc) withLoc desc.loc
-      case _          => unreachable
+      case desc: Desc           => EntDesc(desc) withLoc desc.loc
+      case assertion: Assertion => EntAssertion(assertion) withLoc assertion.loc
+      case _                    => unreachable
     }
   }
 
@@ -98,16 +100,17 @@ private[specialize] object Generate {
   private implicit object generatableRec extends Generatable[Rec] {
     val description = "struct content"
     def isValid(tree: Tree): Boolean = tree match {
-      case _: Gen        => true
-      case _: Rec        => true
-      case _: DescVar    => true
-      case _: DescParam  => true
-      case _: DescConst  => true
-      case _: DescType   => true
-      case _: DescRecord => true
-      case _: DescFunc   => true
-      case _: DescChoice => true
-      case _             => false
+      case _: Gen             => true
+      case _: Rec             => true
+      case _: DescVar         => true
+      case _: DescParam       => true
+      case _: DescConst       => true
+      case _: DescType        => true
+      case _: DescRecord      => true
+      case _: DescFunc        => true
+      case _: DescChoice      => true
+      case _: AssertionStatic => true
+      case _                  => false
     }
     def splice(tree: Tree): Rec = tree match {
       case gen: Gen => RecGen(gen) withLoc gen.loc
@@ -116,8 +119,9 @@ private[specialize] object Generate {
         assert(desc.variant == FuncVariant.None)
         val newDesc = desc.copy(variant = FuncVariant.Comb) withLoc desc.loc
         RecDesc(newDesc) withLoc desc.loc
-      case desc: Desc => RecDesc(desc) withLoc desc.loc
-      case _          => unreachable
+      case desc: Desc           => RecDesc(desc) withLoc desc.loc
+      case assertion: Assertion => RecAssertion(assertion) withLoc assertion.loc
+      case _                    => unreachable
     }
   }
 
@@ -125,16 +129,18 @@ private[specialize] object Generate {
   private implicit object generatableStmt extends Generatable[Stmt] {
     val description = "statement"
     def isValid(tree: Tree): Boolean = tree match {
-      case _: Gen  => true
-      case _: Stmt => true
-      case _: Desc => true
-      case _       => false
+      case _: Gen       => true
+      case _: Stmt      => true
+      case _: Desc      => true
+      case _: Assertion => true
+      case _            => false
     }
     def splice(tree: Tree): Stmt = tree match {
-      case gen: Gen   => StmtGen(gen) withLoc gen.loc
-      case stmt: Stmt => stmt
-      case desc: Desc => StmtDesc(desc) withLoc desc.loc
-      case _          => unreachable
+      case gen: Gen             => StmtGen(gen) withLoc gen.loc
+      case stmt: Stmt           => stmt
+      case desc: Desc           => StmtDesc(desc) withLoc desc.loc
+      case assertion: Assertion => StmtAssertion(assertion) withLoc assertion.loc
+      case _                    => unreachable
     }
   }
 
@@ -310,9 +316,8 @@ private[specialize] object Generate {
 
           // Issue error for any invalid contents
           invalid foreach { t =>
-            error(
-              t,
-              s"'gen' construct yields invalid syntax, ${dispatcher.description} is expected (${t.toString})")
+            error(t,
+                  s"'gen' construct yields invalid syntax, ${dispatcher.description} is expected")
           }
 
           // Gather definitions in the 'gen' scope

@@ -1,0 +1,6 @@
+network gen_ent_static_assert_1 {
+  gen if (true) {
+    static assert false;
+  }
+}
+// :3: ERROR: Static assertion failure

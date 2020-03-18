@@ -31,6 +31,7 @@ object GenBuilder extends BaseBuilder[GenContext, Gen] {
       // format: off
       override def visitGenItemGen(ctx: GenItemGenContext): Tree = GenBuilder(ctx.gen)
       override def visitGenItemDesc(ctx: GenItemDescContext): Tree = DescBuilder(ctx.desc)
+      override def visitGenItemAssertion(ctx: GenItemAssertionContext): Tree = AssertionBuilder(ctx.assertion)
       override def visitGenItemStmt(ctx: GenItemStmtContext): Tree = StmtBuilder(ctx.stmt)
       override def visitGenItemCase(ctx: GenItemCaseContext): Tree = CaseBuilder(ctx.kase)
       override def visitGenItemEnt(ctx: GenItemEntContext): Tree = EntBuilder(ctx.ent)

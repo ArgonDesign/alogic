@@ -97,12 +97,13 @@ generate
 
 genitems : genitem* ;
 genitem
-  : gen     # GenItemGen
-  | desc    # GenItemDesc
-  | stmt    # GenItemStmt
-  | kase    # GenItemCase
-  | ent     # GenItemEnt
-  | rec     # GenItemRec
+  : gen         # GenItemGen
+  | desc        # GenItemDesc
+  | assertion   # GenItemAssertion
+  | stmt        # GenItemStmt
+  | kase        # GenItemCase
+  | ent         # GenItemEnt
+  | rec         # GenItemRec
   ;
 
 ginits : ginit (',' ginit)* ;

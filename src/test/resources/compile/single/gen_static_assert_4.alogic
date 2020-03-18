@@ -1,0 +1,16 @@
+network gen_static_assert_4 {
+  gen if (false) {
+    out u8 o;
+  } else {
+    out u7 o;
+  }
+
+  new fsm inner {
+    static assert @bits(o) == 8;
+    void main() {
+      o = 8'd0;
+      fence;
+    }
+  }
+}
+// :9: ERROR: Static assertion failure

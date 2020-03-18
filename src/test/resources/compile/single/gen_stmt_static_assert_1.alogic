@@ -1,0 +1,9 @@
+fsm gen_stmt_static_assert_1 {
+  void main() {
+    gen if (true) {
+      static assert false;
+    }
+    fence;
+  }
+}
+// :4: ERROR: Static assertion failure

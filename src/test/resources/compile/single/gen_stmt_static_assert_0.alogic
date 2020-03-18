@@ -1,0 +1,8 @@
+fsm gen_stmt_static_assert_0 {
+  void main() {
+    gen if (false) {
+      static assert false;
+    }
+    fence;
+  }
+}

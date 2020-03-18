@@ -438,7 +438,7 @@ final class TyperCheckStmtSpec extends FreeSpec with AlogicTest {
         for {
           (cond, err) <- List(
             ("true", Nil),
-            ("8'd0", Nil),
+            ("8'd1", Nil),
             ("1", Nil),
             ("main", s"Condition of '$kw' is of neither numeric nor packed type" :: Nil),
             ("bool", s"Condition of '$kw' is of neither numeric nor packed type" :: Nil)

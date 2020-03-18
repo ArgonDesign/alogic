@@ -1,0 +1,15 @@
+network gen_static_assert_3 {
+  gen if (true) {
+    out u8 o;
+  } else {
+    out u7 o;
+  }
+
+  new fsm inner {
+    static assert @bits(o) == 8;
+    void main() {
+      o = 8'd0;
+      fence;
+    }
+  }
+}

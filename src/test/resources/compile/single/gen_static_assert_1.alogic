@@ -1,0 +1,10 @@
+network gen_static_assert_1 {
+  gen if (false) {
+    out u8 o;
+  } else {
+    out u7 o;
+  }
+  static assert @bits(o) == 8;
+  7'd0 -> o;
+}
+// :7: ERROR: Static assertion failure

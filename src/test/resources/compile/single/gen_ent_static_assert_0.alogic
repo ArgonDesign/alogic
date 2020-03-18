@@ -1,0 +1,5 @@
+network gen_ent_static_assert_0 {
+  gen if (false) {
+    static assert false;
+  }
+}

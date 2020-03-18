@@ -269,7 +269,15 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
       case (item, _) => dump("Contained specialized")(item)
     }
 
-    containedSpecialized match {
+    val checked = containedSpecialized flatMap {
+      case (item, ucs) => CheckStaticAssertions(item) map { (_, ucs) }
+    }
+
+    checked foreach {
+      case (item, _) => dump("Checked")(item)
+    }
+
+    checked match {
       case None                               => DescSpecializationErrorOther
       case Some((item, unknownChoiceSymbols)) =>
         ////////////////////////////////////////////////////////////////////////
@@ -446,7 +454,7 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
 
         // Some sanity checks
         result match {
-          case DescSpecializationComplete(decl, defn, _) =>
+          case DescSpecializationComplete(_, defn, _) =>
             // Note: References remaining to non-specialized things will
             // be caught by the type checker later.
             defn visit {
@@ -457,6 +465,8 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
                 cc.ice(decl, "EntDecl remains in Defn")
               case RecDecl(decl) =>
                 cc.ice(decl, "RecDecl remains in Defn")
+              case node: AssertionStatic =>
+                cc.ice(node, "AssertionStatic remains in Defn")
             }
           case _ =>
         }

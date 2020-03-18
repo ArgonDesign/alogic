@@ -1,0 +1,9 @@
+network gen_static_assert_0 {
+  gen if (true) {
+    out u8 o;
+  } else {
+    out u7 o;
+  }
+  static assert @bits(o) == 8;
+  8'd0 -> o;
+}
