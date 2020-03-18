@@ -1,0 +1,7 @@
+fsm stmt_static_assert_3 {
+  void main() {
+    static assert @bits(u8) == 9, "u8 is not 9 bits";
+    fence;
+  }
+}
+// :3: ERROR: Static assertion failure: u8 is not 9 bits

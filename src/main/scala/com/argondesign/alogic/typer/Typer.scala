@@ -430,6 +430,8 @@ final class Typer(
 
       case AssertionAssume(cond, _) => checkNumericOrPacked(cond, "Condition of 'assume'")
 
+      case AssertionStatic(cond, _) => checkNumericOrPacked(cond, "Condition of 'static assert'")
+
       //////////////////////////////////////////////////////////////////////////
       // Ent
       //////////////////////////////////////////////////////////////////////////

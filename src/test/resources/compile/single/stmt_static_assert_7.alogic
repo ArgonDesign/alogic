@@ -1,0 +1,9 @@
+// @top: stmt_static_assert_7(3)
+fsm stmt_static_assert_7 {
+  param uint P;
+  void main() {
+    static assert P % 2 == 0, "P must be even";
+    fence;
+  }
+}
+// :5: ERROR: Static assertion failure: P must be even

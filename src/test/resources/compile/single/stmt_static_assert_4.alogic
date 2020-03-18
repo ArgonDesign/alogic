@@ -1,0 +1,8 @@
+fsm stmt_static_assert_4 {
+  in u32 i;
+  void main() {
+    static assert i;
+    fence;
+  }
+}
+// :4: ERROR: Cannot evaluate condition of static assertion at compilation time

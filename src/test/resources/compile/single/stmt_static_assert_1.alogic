@@ -1,0 +1,6 @@
+fsm stmt_static_assert_1 {
+  void main() {
+    static assert @bits(u8) == @bits(i8);
+    fence;
+  }
+}

@@ -113,8 +113,9 @@ ginit : expr IDENTIFIER point='=' expr ;
 ////////////////////////////////////////////////////////////////////////////////
 
 assertion
-  : 'assert' expr (',' STRING)? ';'    # AssertionAssert
-  | 'assume' expr (',' STRING)? ';'    # AssertionAssume
+  : 'assert' expr (',' STRING)? ';'             # AssertionAssert
+  | 'assume' expr (',' STRING)? ';'             # AssertionAssume
+  | 'static' 'assert' expr (',' STRING)? ';'    # AssertionStatic
   ;
 
 ////////////////////////////////////////////////////////////////////////////////

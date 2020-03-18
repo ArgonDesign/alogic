@@ -1,0 +1,7 @@
+fsm stmt_static_assert_8 {
+  void main() {
+    static assert @bits;
+    fence;
+  }
+}
+// :3: ERROR: Condition of 'static assert' is of neither numeric nor packed type

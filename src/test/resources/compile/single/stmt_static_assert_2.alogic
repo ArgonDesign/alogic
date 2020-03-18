@@ -1,0 +1,7 @@
+fsm stmt_static_assert_2 {
+  void main() {
+    static assert @bits(u8) == 9;
+    fence;
+  }
+}
+// :3: ERROR: Static assertion failure

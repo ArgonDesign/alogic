@@ -595,6 +595,14 @@ object TreeCopier {
     }
   }
 
+  def apply(tree: AssertionStatic)(cond: Tree): AssertionStatic = {
+    if (cond eq tree.cond) {
+      tree
+    } else {
+      tree.copy(cond = cond.asInstanceOf[Expr]) withLoc tree.loc
+    }
+  }
+
   //////////////////////////////////////////////////////////////////////////////
   // Riz
   //////////////////////////////////////////////////////////////////////////////

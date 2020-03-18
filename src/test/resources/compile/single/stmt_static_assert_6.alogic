@@ -1,0 +1,9 @@
+// @top: stmt_static_assert_6(2)
+fsm stmt_static_assert_6 {
+  param uint P;
+  void main() {
+    static assert P % 2 == 0, "P must be even";
+    fence;
+  }
+}
+// @out-top: stmt_static_assert_6__P_2

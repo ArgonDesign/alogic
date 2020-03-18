@@ -36,6 +36,13 @@ object AssertionBuilder extends BaseBuilder[AssertionContext, Assertion] {
         }
         AssertionAssume(ExprBuilder(ctx.expr), msgOpt) withLoc ctx.loc
       }
+
+      override def visitAssertionStatic(ctx: AssertionStaticContext): Assertion = {
+        val msgOpt = Option.when(ctx.STRING != null) {
+          ctx.STRING.text.slice(1, ctx.STRING.text.length - 1)
+        }
+        AssertionStatic(ExprBuilder(ctx.expr), msgOpt) withLoc ctx.loc
+      }
     }
 
     Visitor(ctx)
