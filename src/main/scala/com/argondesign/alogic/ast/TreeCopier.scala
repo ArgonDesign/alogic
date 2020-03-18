@@ -576,10 +576,18 @@ object TreeCopier {
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  // Assert
+  // Assertion
   //////////////////////////////////////////////////////////////////////////////
 
-  def apply(tree: Assert)(cond: Tree): Assert = {
+  def apply(tree: AssertionAssert)(cond: Tree): AssertionAssert = {
+    if (cond eq tree.cond) {
+      tree
+    } else {
+      tree.copy(cond = cond.asInstanceOf[Expr]) withLoc tree.loc
+    }
+  }
+
+  def apply(tree: AssertionAssume)(cond: Tree): AssertionAssume = {
     if (cond eq tree.cond) {
       tree
     } else {
@@ -913,11 +921,11 @@ object TreeCopier {
     }
   }
 
-  def apply(tree: StmtAssert)(assertion: Tree): StmtAssert = {
+  def apply(tree: StmtAssertion)(assertion: Tree): StmtAssertion = {
     if (assertion eq tree.assertion) {
       tree
     } else {
-      StmtAssert(assertion.asInstanceOf[Assert]) withLoc tree.loc
+      StmtAssertion(assertion.asInstanceOf[Assertion]) withLoc tree.loc
     }
   }
 

@@ -113,7 +113,8 @@ ginit : expr IDENTIFIER point='=' expr ;
 ////////////////////////////////////////////////////////////////////////////////
 
 assertion
-  : 'assert' expr (',' STRING)? ';'
+  : 'assert' expr (',' STRING)? ';'    # AssertionAssert
+  | 'assume' expr (',' STRING)? ';'    # AssertionAssume
   ;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -170,7 +171,7 @@ stmt
   | expr ASSIGNOP expr ';'                                      # StmtUpdate
   | expr op=('++'|'--') ';'                                     # StmtPost
   | expr ';'                                                    # StmtExpr
-  | assertion                                                   # StmtAssert
+  | assertion                                                   # StmtAssertion
   ;
 
 kase

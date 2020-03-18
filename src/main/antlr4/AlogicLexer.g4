@@ -165,6 +165,7 @@ UNSIGNED: 'unsigned' ;
 GEN     : 'gen' ;
 TYPE    : 'type' ;
 ASSERT  : 'assert' ;
+ASSUME  : 'assume' ;
 
 SYNC        : 'sync';
 SYNC_READY  : 'sync' (WS|CMT)* 'ready';

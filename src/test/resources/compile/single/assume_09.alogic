@@ -1,20 +1,21 @@
 // @no-assertions
-fsm assume_assert_08 {
+fsm assume_09 {
   in       u2 i;
   out wire u2 o;
 
   void main() {
-    assert i == 2'd2;
+    u2 tmp = i;
+    assume !tmp;
     o = i;
     fence;
   }
 }
 // @verilator-lint-off
 // @fec-golden {{{
-//  module assume_assert_08(
+//  module assume_09(
 //    input   wire [1:0] i,
 //    output  wire [1:0] o
 //  );
-//    assign o = 2'd2;
+//    assign o = 2'd0;
 //  endmodule
 // }}}

@@ -364,9 +364,12 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
         val body = walk(node.body)
         TreeCopier(node)(inits, end, body)
       ////////////////////////////////////////////////////////////////////////
-      // Assert
+      // Assertion
       ////////////////////////////////////////////////////////////////////////
-      case node: Assert =>
+      case node: AssertionAssert =>
+        val cond = walk(node.cond)
+        TreeCopier(node)(cond)
+      case node: AssertionAssume =>
         val cond = walk(node.cond)
         TreeCopier(node)(cond)
       ////////////////////////////////////////////////////////////////////////
@@ -480,9 +483,9 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
       case node: StmtStall =>
         val cond = walk(node.cond)
         TreeCopier(node)(cond)
-      case node: StmtAssert  => splice(node.assertion, TreeCopier(node))
-      case node: StmtError   => node
-      case node: StmtComment => node
+      case node: StmtAssertion => splice(node.assertion, TreeCopier(node))
+      case node: StmtError     => node
+      case node: StmtComment   => node
       ////////////////////////////////////////////////////////////////////////
       // Case
       ////////////////////////////////////////////////////////////////////////

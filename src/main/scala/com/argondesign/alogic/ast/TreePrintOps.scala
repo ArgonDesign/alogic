@@ -93,22 +93,22 @@ trait TreePrintOps extends { this: Tree =>
     treeOpt map v getOrElse ""
 
   private final def v(tree: Tree)(implicit cc: CompilerContext, indent: Int): String = tree match {
-    case node: Root    => v(node)
-    case node: Ref     => v(node)
-    case node: Desc    => v(node)
-    case node: Decl    => v(node)
-    case node: Defn    => v(node)
-    case node: Gen     => v(node)
-    case node: Assert  => v(node)
-    case node: Riz     => v(node)
-    case node: Ent     => v(node)
-    case node: Rec     => v(node)
-    case node: Stmt    => v(node)
-    case node: Case    => v(node)
-    case node: Expr    => v(node)
-    case node: Arg     => v(node)
-    case node: Thicket => block("thicket", node.trees)
-    case Stump         => "Stump"
+    case node: Root      => v(node)
+    case node: Ref       => v(node)
+    case node: Desc      => v(node)
+    case node: Decl      => v(node)
+    case node: Defn      => v(node)
+    case node: Gen       => v(node)
+    case node: Assertion => v(node)
+    case node: Riz       => v(node)
+    case node: Ent       => v(node)
+    case node: Rec       => v(node)
+    case node: Stmt      => v(node)
+    case node: Case      => v(node)
+    case node: Expr      => v(node)
+    case node: Arg       => v(node)
+    case node: Thicket   => block("thicket", node.trees)
+    case Stump           => "Stump"
   }
 
   private final def v(tree: Root)(implicit cc: CompilerContext, indent: Int): String = {
@@ -236,9 +236,11 @@ trait TreePrintOps extends { this: Tree =>
   // format: on
 
   // format: off
-  private final def v(tree: Assert)(implicit cc: CompilerContext, indent: Int): String = tree match {
-    case Assert(cond, Some(msg)) => s"assert ${v(cond)}, $msg;"
-    case Assert(cond, None)      => s"assert ${v(cond)};"
+  private final def v(tree: Assertion)(implicit cc: CompilerContext, indent: Int): String = tree match {
+    case AssertionAssert(cond, Some(msg)) => s"assert ${v(cond)}, $msg;"
+    case AssertionAssert(cond, None)      => s"assert ${v(cond)};"
+    case AssertionAssume(cond, Some(msg)) => s"assume ${v(cond)}, $msg;"
+    case AssertionAssume(cond, None)      => s"assume ${v(cond)};"
   }
   // format: on
 
@@ -300,7 +302,7 @@ trait TreePrintOps extends { this: Tree =>
     case StmtWrite()                       => "write;"
     case StmtComment(str)                  => "// " + str
     case StmtStall(cond)                   => s"stall ${v(cond)};"
-    case StmtAssert(assertion)             => v(assertion)
+    case StmtAssertion(assertion)          => v(assertion)
     case StmtError()                       => "/* Error statement */"
   }
   // format: on

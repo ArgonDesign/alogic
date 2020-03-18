@@ -24,15 +24,17 @@ import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.enums.ResetStyle
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.SequenceNumbers
+import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
 
-final class LowerAssert(implicit cc: CompilerContext) extends StatefulTreeTransformer {
+final class LowerAssertions(implicit cc: CompilerContext) extends StatefulTreeTransformer {
 
-  // List of assertion (enable signal, condition signals, message)
-  private val assertions = mutable.ListBuffer[(Symbol, Symbol, Option[String])]()
+  // List of emitted assertion (enable signal, condition signals, message, comment)
+  private val assertions = mutable.ListBuffer[(Symbol, Symbol, Option[String], String)]()
 
-  private val seqNum = new SequenceNumbers
+  private val assertSeqNum = new SequenceNumbers
+  private val assumeSeqNum = new SequenceNumbers
 
   override protected def skip(tree: Tree): Boolean = tree match {
     case _: Expr => true
@@ -42,19 +44,26 @@ final class LowerAssert(implicit cc: CompilerContext) extends StatefulTreeTransf
   override def transform(tree: Tree): Tree = tree match {
 
     // If assertions are not enabled, just drop them
-    case _: StmtAssert if !cc.settings.assertions =>
+    case _: StmtAssertion if !cc.settings.assertions =>
       Stump
 
     // Otherwise convert them to deferred assertions
-    case StmtAssert(Assert(cond, msg)) =>
-      val n = seqNum.next
-      val enSymbol = cc.newSymbol(s"_assert_en_$n", tree.loc)
+    case StmtAssertion(assertion) =>
+      val (cond, msg, prefix, comment) = assertion match {
+        case AssertionAssert(c, m) =>
+          (c, m, s"_assert_${assertSeqNum.next}", s"'assert' on line ${tree.loc.line}")
+        case AssertionAssume(c, m) =>
+          (c, m, s"_assume_${assumeSeqNum.next}", s"'assume' on line ${tree.loc.line}")
+        case _: AssertionStatic =>
+          unreachable
+      }
+      val enSymbol = cc.newSymbol(s"${prefix}_en", tree.loc)
       enSymbol.kind = TypeUInt(1)
       enSymbol.attr.combSignal set true
-      val condSymbol = cc.newSymbol(s"_assert_cond_$n", cond.loc)
+      val condSymbol = cc.newSymbol(s"${prefix}_cond", cond.loc)
       condSymbol.kind = cond.tpe.underlying
       condSymbol.attr.combSignal set true
-      assertions.append((enSymbol, condSymbol, msg))
+      assertions.append((enSymbol, condSymbol, msg, comment))
       Thicket(
         List(
           StmtAssign(ExprSym(enSymbol), ExprInt(false, 1, 1)) regularize tree.loc,
@@ -65,7 +74,7 @@ final class LowerAssert(implicit cc: CompilerContext) extends StatefulTreeTransf
       val newBody = List from {
         defn.body.iterator concat {
           assertions.iterator flatMap {
-            case (enSymbol, condSymbol, _) =>
+            case (enSymbol, condSymbol, _, _) =>
               val enDefn = EntDefn(enSymbol.mkDefn) regularize enSymbol.loc
               val condDefn = EntDefn(condSymbol.mkDefn) regularize condSymbol.loc
               Iterator(enDefn, condDefn)
@@ -74,12 +83,12 @@ final class LowerAssert(implicit cc: CompilerContext) extends StatefulTreeTransf
           Iterator single {
             val asserts = List from {
               assertions.iterator flatMap {
-                case (enSymbol, condSymbol, msgOpt) =>
+                case (enSymbol, condSymbol, msgOpt, comment) =>
                   Iterator(
-                    StmtComment(s"Procedural assertion on line ${enSymbol.loc.line}"),
+                    StmtComment(comment),
                     StmtIf(
                       ExprSym(enSymbol),
-                      StmtAssert(Assert(ExprSym(condSymbol), msgOpt)) :: Nil,
+                      StmtAssertion(AssertionAssert(ExprSym(condSymbol), msgOpt)) :: Nil,
                       Nil
                     ) regularize enSymbol.loc
                   )
@@ -113,7 +122,7 @@ final class LowerAssert(implicit cc: CompilerContext) extends StatefulTreeTransf
       val newDecls = List from {
         decl.decls.iterator concat {
           assertions.iterator flatMap {
-            case (enSymbol, condSymbol, _) =>
+            case (enSymbol, condSymbol, _, _) =>
               val enDecl = enSymbol.mkDecl regularize enSymbol.loc
               val condDecl = condSymbol.mkDecl regularize condSymbol.loc
               Iterator(enDecl, condDecl)
@@ -128,9 +137,9 @@ final class LowerAssert(implicit cc: CompilerContext) extends StatefulTreeTransf
 
 }
 
-object LowerAssert extends EntityTransformerPass(declFirst = false) {
-  val name = "lower-assert"
+object LowerAssertions extends EntityTransformerPass(declFirst = false) {
+  val name = "lower-assertions"
 
   override def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
-    new LowerAssert
+    new LowerAssertions
 }

@@ -23,6 +23,7 @@ import com.argondesign.alogic.core.Bindings
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.util.PartialMatch._
+import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -245,12 +246,15 @@ object StaticEvaluation {
             (afters map { _.get.toSet } reduce { _ intersect _ }).toMap
           }
 
-        case StmtAssert(Assert(cond, _)) => Some(inferTrueTransitive(curr, cond))
+        // Infer condition of 'assume' is true, but not for 'assert'
+        case StmtAssertion(AssertionAssume(cond, _)) => Some(inferTrueTransitive(curr, cond))
+        case StmtAssertion(_: AssertionAssert)       => Some(curr)
 
         case _: StmtStall   => Some(curr) // TODO: can we do better here?
         case _: StmtExpr    => Some(curr)
         case _: StmtComment => Some(curr)
-        case _              => Some(Bindings.empty)
+
+        case _ => unreachable
       }
     }
 

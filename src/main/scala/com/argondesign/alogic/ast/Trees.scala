@@ -162,7 +162,10 @@ object Trees {
   // Assertion
   //////////////////////////////////////////////////////////////////////////////
 
-  case class Assert(cond: Expr, msgOpt: Option[String]) extends Tree
+  sealed trait Assertion extends Tree
+
+  case class AssertionAssert(cond: Expr, msgOpt: Option[String]) extends Assertion
+  case class AssertionAssume(cond: Expr, msgOpt: Option[String]) extends Assertion
 
   //////////////////////////////////////////////////////////////////////////////
   // Root contents (Riz is from 'riza', the Greek word for root)
@@ -234,7 +237,7 @@ object Trees {
   case class StmtWrite() extends Stmt
   case class StmtExpr(expr: Expr) extends Stmt
   case class StmtStall(cond: Expr) extends Stmt
-  case class StmtAssert(assertion: Assert) extends Stmt
+  case class StmtAssertion(assertion: Assertion) extends Stmt
   case class StmtError() extends Stmt
   case class StmtComment(str: String) extends Stmt
   // format: on

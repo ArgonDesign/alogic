@@ -35,22 +35,22 @@ object TypeAssigner {
   //////////////////////////////////////////////////////////////////////////////
 
   private def kind(tree: Tree)(implicit cc: CompilerContext): Type = tree match {
-    case node: Root    => kind(node)
-    case node: Ref     => kind(node)
-    case node: Desc    => kind(node)
-    case node: Decl    => kind(node)
-    case node: Defn    => kind(node)
-    case _: Gen        => unreachable
-    case node: Assert  => kind(node)
-    case node: Riz     => kind(node)
-    case node: Ent     => kind(node)
-    case node: Rec     => kind(node)
-    case node: Stmt    => kind(node)
-    case node: Case    => kind(node)
-    case node: Expr    => kind(node)
-    case node: Arg     => kind(node)
-    case node: Thicket => kind(node)
-    case Stump         => kind(Stump)
+    case node: Root      => kind(node)
+    case node: Ref       => kind(node)
+    case node: Desc      => kind(node)
+    case node: Decl      => kind(node)
+    case node: Defn      => kind(node)
+    case _: Gen          => unreachable
+    case node: Assertion => kind(node)
+    case node: Riz       => kind(node)
+    case node: Ent       => kind(node)
+    case node: Rec       => kind(node)
+    case node: Stmt      => kind(node)
+    case node: Case      => kind(node)
+    case node: Expr      => kind(node)
+    case node: Arg       => kind(node)
+    case node: Thicket   => kind(node)
+    case Stump           => kind(Stump)
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -84,10 +84,10 @@ object TypeAssigner {
   private def kind(tree: Defn) = TypeMisc
 
   //////////////////////////////////////////////////////////////////////////////
-  // Assert
+  // Assertion
   //////////////////////////////////////////////////////////////////////////////
 
-  private def kind(tree: Assert) = TypeMisc
+  private def kind(tree: Assertion) = TypeMisc
 
   //////////////////////////////////////////////////////////////////////////////
   // Riz
@@ -112,34 +112,34 @@ object TypeAssigner {
   //////////////////////////////////////////////////////////////////////////////
 
   private def kind(tree: Stmt): Type = tree match {
-    case node: StmtDesc     => kind(node)
-    case node: StmtDecl     => kind(node)
-    case node: StmtDefn     => kind(node)
-    case _: StmtGen         => unreachable
-    case node: StmtBlock    => kind(node)
-    case node: StmtIf       => kind(node)
-    case node: StmtCase     => kind(node)
-    case node: StmtLoop     => kind(node)
-    case node: StmtWhile    => kind(node)
-    case node: StmtFor      => kind(node)
-    case node: StmtDo       => kind(node)
-    case node: StmtLet      => kind(node)
-    case node: StmtFence    => kind(node)
-    case node: StmtBreak    => kind(node)
-    case node: StmtContinue => kind(node)
-    case node: StmtGoto     => kind(node)
-    case node: StmtReturn   => kind(node)
-    case node: StmtAssign   => kind(node)
-    case node: StmtUpdate   => kind(node)
-    case node: StmtPost     => kind(node)
-    case node: StmtDelayed  => kind(node)
-    case node: StmtRead     => kind(node)
-    case node: StmtWrite    => kind(node)
-    case node: StmtExpr     => kind(node)
-    case node: StmtStall    => kind(node)
-    case node: StmtAssert   => kind(node)
-    case node: StmtError    => kind(node)
-    case node: StmtComment  => kind(node)
+    case node: StmtDesc      => kind(node)
+    case node: StmtDecl      => kind(node)
+    case node: StmtDefn      => kind(node)
+    case _: StmtGen          => unreachable
+    case node: StmtBlock     => kind(node)
+    case node: StmtIf        => kind(node)
+    case node: StmtCase      => kind(node)
+    case node: StmtLoop      => kind(node)
+    case node: StmtWhile     => kind(node)
+    case node: StmtFor       => kind(node)
+    case node: StmtDo        => kind(node)
+    case node: StmtLet       => kind(node)
+    case node: StmtFence     => kind(node)
+    case node: StmtBreak     => kind(node)
+    case node: StmtContinue  => kind(node)
+    case node: StmtGoto      => kind(node)
+    case node: StmtReturn    => kind(node)
+    case node: StmtAssign    => kind(node)
+    case node: StmtUpdate    => kind(node)
+    case node: StmtPost      => kind(node)
+    case node: StmtDelayed   => kind(node)
+    case node: StmtRead      => kind(node)
+    case node: StmtWrite     => kind(node)
+    case node: StmtExpr      => kind(node)
+    case node: StmtStall     => kind(node)
+    case node: StmtAssertion => kind(node)
+    case node: StmtError     => kind(node)
+    case node: StmtComment   => kind(node)
   }
 
   private def kind(tree: StmtDesc) = TypeCombStmt
@@ -210,7 +210,7 @@ object TypeAssigner {
 
   private def kind(tree: StmtStall) = TypeCombStmt
 
-  private def kind(tree: StmtAssert) = TypeCombStmt
+  private def kind(tree: StmtAssertion) = TypeCombStmt
 
   private def kind(tree: StmtError) = TypeError
 
@@ -388,7 +388,7 @@ object TypeAssigner {
   def apply(tree: Desc): tree.type = assign(tree)(kind(tree))
   def apply(tree: Decl): tree.type = assign(tree)(kind(tree))
   def apply(tree: Defn): tree.type = assign(tree)(kind(tree))
-  def apply(tree: Assert): tree.type = assign(tree)(kind(tree))
+  def apply(tree: Assertion): tree.type = assign(tree)(kind(tree))
   def apply(tree: Riz): tree.type = assign(tree)(kind(tree))
   def apply(tree: Ent): tree.type = assign(tree)(kind(tree))
   def apply(tree: Rec): tree.type = assign(tree)(kind(tree))
@@ -418,7 +418,7 @@ object TypeAssigner {
   def apply(tree: StmtWrite): tree.type = assign(tree)(kind(tree))
   def apply(tree: StmtComment): tree.type = assign(tree)(kind(tree))
   def apply(tree: StmtStall): tree.type = assign(tree)(kind(tree))
-  def apply(tree: StmtAssert): tree.type = assign(tree)(kind(tree))
+  def apply(tree: StmtAssertion): tree.type = assign(tree)(kind(tree))
   def apply(tree: StmtError): tree.type = assign(tree)(kind(tree))
   def apply(tree: Case): tree.type = assign(tree)(kind(tree))
   def apply(tree: Expr)(implicit cc: CompilerContext): tree.type = assign(tree)(kind(tree))

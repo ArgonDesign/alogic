@@ -260,7 +260,7 @@ final class MakeVerilog(
       case StmtComment(str) => body.emit(indent)("// " + str)
 
       // Procedural assertion
-      case StmtAssert(Assert(cond, msgOpt)) =>
+      case StmtAssertion(AssertionAssert(cond, msgOpt)) =>
         val elsePart = msgOpt match {
           case None      => ""
           case Some(msg) => s""" else $$error("$msg")"""

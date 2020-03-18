@@ -434,26 +434,28 @@ final class TyperCheckStmtSpec extends FreeSpec with AlogicTest {
     }
 
     "assertion conditions" - {
-      for {
-        (cond, err) <- List(
-          ("true", Nil),
-          ("8'd0", Nil),
-          ("1", Nil),
-          ("main", "Condition of assertion is of neither numeric nor packed type" :: Nil),
-          ("bool", "Condition of assertion is of neither numeric nor packed type" :: Nil)
-        )
-      } {
-        cond in {
-          typeCheck {
-            s"""
-            |fsm x {
-            |  void main() {
-            |    assert $cond;
-            |    fence;
-            |  }
-            |}"""
+      for (kw <- List("assert", "assume")) {
+        for {
+          (cond, err) <- List(
+            ("true", Nil),
+            ("8'd0", Nil),
+            ("1", Nil),
+            ("main", s"Condition of '$kw' is of neither numeric nor packed type" :: Nil),
+            ("bool", s"Condition of '$kw' is of neither numeric nor packed type" :: Nil)
+          )
+        } {
+          s"$kw $cond" in {
+            typeCheck {
+              s"""
+              |fsm x {
+              |  void main() {
+              |    $kw $cond;
+              |    fence;
+              |  }
+              |}"""
+            }
+            checkSingleError(err)
           }
-          checkSingleError(err)
         }
       }
     }

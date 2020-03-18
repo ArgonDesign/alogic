@@ -1,11 +1,11 @@
 // @no-assertions
-fsm assume_assert_02 {
+fsm assume_02 {
   in       bool c;
   in       bool i;
   out wire bool o;
 
   void main() {
-    assert ~c;
+    assume ~c;
     if (c) {
       o =  i;
     } else {
@@ -16,7 +16,7 @@ fsm assume_assert_02 {
 }
 // @verilator-lint-off
 // @fec-golden {{{
-//  module assume_assert_02(
+//  module assume_02(
 //    input   wire c,
 //    input   wire i,
 //    output  wire o

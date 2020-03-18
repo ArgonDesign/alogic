@@ -1,17 +1,16 @@
 // @no-assertions
-fsm assume_assert_10 {
+fsm assume_05 {
   in       u2 i;
   out wire u2 o;
 
   void main() {
-    u2 tmp = i;
-    assert tmp;
+    assume i;
     o = i;
     fence;
   }
 }
 // @fec-golden {{{
-//  module assume_assert_10(
+//  module assume_05(
 //    input   wire [1:0] i,
 //    output  wire [1:0] o
 //  );

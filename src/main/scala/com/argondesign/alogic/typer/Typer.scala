@@ -423,10 +423,12 @@ final class Typer(
         }
 
       //////////////////////////////////////////////////////////////////////////
-      // Assert
+      // Assertion
       //////////////////////////////////////////////////////////////////////////
 
-      case Assert(cond, _) => checkNumericOrPacked(cond, "Condition of assertion")
+      case AssertionAssert(cond, _) => checkNumericOrPacked(cond, "Condition of 'assert'")
+
+      case AssertionAssume(cond, _) => checkNumericOrPacked(cond, "Condition of 'assume'")
 
       //////////////////////////////////////////////////////////////////////////
       // Ent
