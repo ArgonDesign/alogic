@@ -61,7 +61,7 @@ case class Settings(
     // Gen loop iteration limit
     genLoopLimit: Int = 1024,
     // Enable LowerAssertions
-    assertions: Boolean = false,
+    assertions: Boolean = true,
     // For debugging only, trace the progress of elaboration
     traceElaborate: Boolean = false
 )

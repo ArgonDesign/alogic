@@ -309,9 +309,9 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
     default = Some(1024)
   )
 
-  val assertions = opt[Boolean](
+  val noAssertions = opt[Boolean](
     noshort = true,
-    descr = "Enable simulation-time assertions"
+    descr = "Disable emitting assertions"
   )
 
   // There is no standard library call to check if the console is a terminal,

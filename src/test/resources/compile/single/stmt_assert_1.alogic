@@ -1,4 +1,3 @@
-// @assertions
 fsm stmt_assert_1 {
   void main() {
     assert false, "Boom";

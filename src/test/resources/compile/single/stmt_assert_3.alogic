@@ -1,4 +1,3 @@
-// @assertions
 fsm stmt_assert_3 {
   in sync bool i;
   void main() {

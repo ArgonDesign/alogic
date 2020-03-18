@@ -1,3 +1,4 @@
+// @no-assertions
 fsm assume_assert_05 {
   in       u2 i;
   out wire u2 o;
