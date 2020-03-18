@@ -30,13 +30,6 @@ object AssertionBuilder extends BaseBuilder[AssertionContext, Assertion] {
         AssertionAssert(ExprBuilder(ctx.expr), msgOpt) withLoc ctx.loc
       }
 
-      override def visitAssertionAssume(ctx: AssertionAssumeContext): Assertion = {
-        val msgOpt = Option.when(ctx.STRING != null) {
-          ctx.STRING.text.slice(1, ctx.STRING.text.length - 1)
-        }
-        AssertionAssume(ExprBuilder(ctx.expr), msgOpt) withLoc ctx.loc
-      }
-
       override def visitAssertionStatic(ctx: AssertionStaticContext): Assertion = {
         val msgOpt = Option.when(ctx.STRING != null) {
           ctx.STRING.text.slice(1, ctx.STRING.text.length - 1)

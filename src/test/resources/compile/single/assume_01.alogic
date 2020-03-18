@@ -5,7 +5,7 @@ fsm assume_01 {
   out wire bool o;
 
   void main() {
-    assume !c;
+    assert !c;
     if (c) {
       o =  i;
     } else {

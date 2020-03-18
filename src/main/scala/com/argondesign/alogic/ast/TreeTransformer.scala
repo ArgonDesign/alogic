@@ -369,9 +369,6 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
       case node: AssertionAssert =>
         val cond = walk(node.cond)
         TreeCopier(node)(cond)
-      case node: AssertionAssume =>
-        val cond = walk(node.cond)
-        TreeCopier(node)(cond)
       case node: AssertionStatic =>
         val cond = walk(node.cond)
         TreeCopier(node)(cond)

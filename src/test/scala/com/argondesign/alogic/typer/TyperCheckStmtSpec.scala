@@ -434,7 +434,7 @@ final class TyperCheckStmtSpec extends FreeSpec with AlogicTest {
     }
 
     "assertion conditions" - {
-      for (kw <- List("assert", "assume", "static assert")) {
+      for (kw <- List("assert", "static assert")) {
         for {
           (cond, err) <- List(
             ("true", Nil),

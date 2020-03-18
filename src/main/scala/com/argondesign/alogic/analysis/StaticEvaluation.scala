@@ -246,9 +246,8 @@ object StaticEvaluation {
             (afters map { _.get.toSet } reduce { _ intersect _ }).toMap
           }
 
-        // Infer condition of 'assume' is true, but not for 'assert'
-        case StmtAssertion(AssertionAssume(cond, _)) => Some(inferTrueTransitive(curr, cond))
-        case StmtAssertion(_: AssertionAssert)       => Some(curr)
+        // Infer condition of 'assert' is true
+        case StmtAssertion(AssertionAssert(cond, _)) => Some(inferTrueTransitive(curr, cond))
 
         case _: StmtStall   => Some(curr) // TODO: can we do better here?
         case _: StmtExpr    => Some(curr)

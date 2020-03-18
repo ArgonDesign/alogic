@@ -34,7 +34,6 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatefulTreeTr
   private val assertions = mutable.ListBuffer[(Symbol, Symbol, Option[String], String)]()
 
   private val assertSeqNum = new SequenceNumbers
-  private val assumeSeqNum = new SequenceNumbers
 
   override protected def skip(tree: Tree): Boolean = tree match {
     case _: Expr => true
@@ -52,8 +51,6 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatefulTreeTr
       val (cond, msg, prefix, comment) = assertion match {
         case AssertionAssert(c, m) =>
           (c, m, s"_assert_${assertSeqNum.next}", s"'assert' on line ${tree.loc.line}")
-        case AssertionAssume(c, m) =>
-          (c, m, s"_assume_${assumeSeqNum.next}", s"'assume' on line ${tree.loc.line}")
         case _: AssertionStatic =>
           unreachable
       }

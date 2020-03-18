@@ -5,7 +5,7 @@ fsm assume_03 {
   out wire bool o;
 
   void main() {
-    assume c == 2'd2;
+    assert c == 2'd2;
     if (c == 2'd2) {
       o =  i;
     } else {
