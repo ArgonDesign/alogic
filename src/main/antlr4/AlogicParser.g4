@@ -136,6 +136,7 @@ ent
   | gen                                                 # EntGen
   | lhs=expr point='->' rhs+=expr (',' rhs+=expr)* ';'  # EntConnect
   | 'fence' '{' stmt* '}'                               # EntFenceBlock
+  | assertion                                           # EntAssertion
   | 'verbatim' IDENTIFIER VERBATIM_BODY                 # EntVerbatimBlock
   ;
 

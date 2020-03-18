@@ -673,6 +673,18 @@ final class ParserSpec extends FreeSpec with AlogicTest {
           }
         }
 
+        "static assert with no message" in {
+          "static assert false;".asTree[Ent] shouldBe {
+            EntAssertion(AssertionStatic(ExprInt(false, 1, 0), None))
+          }
+        }
+
+        "static assert with message" in {
+          """static assert false, "msg";""".asTree[Ent] shouldBe {
+            EntAssertion(AssertionStatic(ExprInt(false, 1, 0), Some("msg")))
+          }
+        }
+
         "verbatim verilog" in {
           "verbatim verilog {\n    +-/* comment */ {{{}}}\n  }".asTree[Ent] shouldBe {
             EntVerbatim("verilog", "\n    +-/* comment */ {{{}}}\n  ")

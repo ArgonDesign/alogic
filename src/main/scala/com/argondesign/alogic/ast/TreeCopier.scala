@@ -701,6 +701,14 @@ object TreeCopier {
     }
   }
 
+  def apply(tree: EntAssertion)(assertion: Tree): EntAssertion = {
+    if (assertion eq tree.assertion) {
+      tree
+    } else {
+      EntAssertion(assertion.asInstanceOf[Assertion]) withLoc tree.loc
+    }
+  }
+
   //////////////////////////////////////////////////////////////////////////////
   // Rec
   //////////////////////////////////////////////////////////////////////////////

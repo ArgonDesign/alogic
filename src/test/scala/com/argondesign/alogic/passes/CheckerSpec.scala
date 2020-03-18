@@ -473,6 +473,24 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
           }
         }
       }
+
+      "non-static assertion in" - {
+        for (variant <- List("network", "fsm", "verbatim entity")) {
+          variant in {
+            val tree = s"""|$variant a {
+                           |  assert 0;
+                           |}""".stripMargin.asTree[Desc]
+
+            tree rewrite checker should matchPattern {
+              case DescEntity(_, _, Nil) =>
+            }
+
+            cc.messages.loneElement should beThe[Error](
+              s"'${variant}' cannot contain non-static assertions")
+            cc.messages(0).loc.line shouldBe 2
+          }
+        }
+      }
     }
 
     "reject disallowed singleton contents" - {

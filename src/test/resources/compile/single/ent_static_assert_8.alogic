@@ -1,0 +1,4 @@
+network ent_static_assert_8 {
+  static assert @bits;
+}
+// :2: ERROR: Condition of 'static assert' is of neither numeric nor packed type

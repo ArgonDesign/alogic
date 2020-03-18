@@ -1,0 +1,5 @@
+network ent_static_assert_4 {
+  in u32 i;
+  static assert i;
+}
+// :3: ERROR: Cannot evaluate condition of static assertion at compilation time

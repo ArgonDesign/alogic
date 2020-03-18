@@ -1,0 +1,4 @@
+network ent_static_assert_3 {
+  static assert @bits(u8) == 9, "u8 is not 9 bits";
+}
+// :2: ERROR: Static assertion failure: u8 is not 9 bits

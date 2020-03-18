@@ -159,6 +159,12 @@ final class Checker(implicit cc: CompilerContext) extends StatefulTreeTransforme
           }
       }
 
+    case EntAssertion(assertion) =>
+      assertion match {
+        case _: AssertionStatic => tree // OK
+        case _                  => entErr(assertion, "non-static assertions")
+      }
+
     case _: DescEntity =>
       tree tap { _ =>
         variantStack.pop()

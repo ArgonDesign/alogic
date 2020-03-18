@@ -191,6 +191,7 @@ object Trees {
   case class EntConnect(lhs: Expr, rhs: List[Expr]) extends Ent
   case class EntCombProcess(stmts: List[Stmt]) extends Ent
   case class EntClockedProcess(clk: Expr, rstOpt: Option[Expr], stmts: List[Stmt]) extends Ent
+  case class EntAssertion(assertion: Assertion) extends Ent
   case class EntVerbatim(lang: String, body: String) extends Ent
   case class EntComment(str: String) extends Ent
 

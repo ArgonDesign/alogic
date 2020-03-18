@@ -109,6 +109,7 @@ final class RemoveStructuralSharing(implicit cc: CompilerContext) extends Statef
         case node: EntConnect        => node.copy()
         case node: EntCombProcess    => node.copy()
         case node: EntClockedProcess => node.copy()
+        case node: EntAssertion      => node.copy()
         case node: EntVerbatim       => node.copy()
         case node: EntComment        => node.copy()
 

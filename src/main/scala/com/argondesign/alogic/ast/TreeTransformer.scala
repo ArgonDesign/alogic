@@ -402,8 +402,9 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
         val rstOpt = walk(node.rstOpt)
         val stmts = walk(node.stmts)
         TreeCopier(node)(clk, rstOpt, stmts)
-      case node: EntVerbatim => node
-      case node: EntComment  => node
+      case node: EntAssertion => splice(node.assertion, TreeCopier(node))
+      case node: EntVerbatim  => node
+      case node: EntComment   => node
       ////////////////////////////////////////////////////////////////////////
       // Rec
       ////////////////////////////////////////////////////////////////////////

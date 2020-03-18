@@ -42,6 +42,9 @@ object EntBuilder extends BaseBuilder[EntContext, Ent] {
       override def visitEntFenceBlock(ctx: EntFenceBlockContext): Ent =
         EntCombProcess(StmtBuilder(ctx.stmt)) withLoc ctx.loc
 
+      override def visitEntAssertion(ctx: EntAssertionContext): Ent =
+        EntAssertion(AssertionBuilder(ctx.assertion)) withLoc ctx.loc
+
       override def visitEntVerbatimBlock(ctx: EntVerbatimBlockContext): Ent =
         EntVerbatim(ctx.IDENTIFIER, ctx.VERBATIM_BODY.text.tail.init) withLoc ctx.loc
     }
