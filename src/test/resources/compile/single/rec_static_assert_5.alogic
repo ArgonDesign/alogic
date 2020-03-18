@@ -1,0 +1,12 @@
+struct t {
+  static assert 2'd0 + 3'd0;
+  bool x;
+}
+
+network rec_static_assert_5 {
+  out t o;
+  1'd0 -> o;
+}
+// :2: ERROR: Both operands of binary '\+' must have the same width, but
+// :2: ERROR: ... left  hand operand is 2 bits wide, and
+// :2: ERROR: ... right hand operand is 3 bits wide

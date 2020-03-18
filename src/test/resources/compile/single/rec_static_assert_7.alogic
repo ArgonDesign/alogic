@@ -1,0 +1,11 @@
+struct t {
+  param uint P;
+  static assert P % 2 == 0, "P must be even";
+  bool x;
+}
+
+network rec_static_assert_7 {
+  out t(3) o;
+  1'd0 -> o;
+}
+// :3: ERROR: Static assertion failure: P must be even

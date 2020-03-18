@@ -113,11 +113,12 @@ final class RemoveStructuralSharing(implicit cc: CompilerContext) extends Statef
         case node: EntVerbatim       => node.copy()
         case node: EntComment        => node.copy()
 
-        case node: RecDesc    => node.copy()
-        case node: RecDecl    => node.copy()
-        case node: RecDefn    => node.copy()
-        case node: RecGen     => node.copy()
-        case node: RecComment => node.copy()
+        case node: RecDesc      => node.copy()
+        case node: RecDecl      => node.copy()
+        case node: RecDefn      => node.copy()
+        case node: RecGen       => node.copy()
+        case node: RecAssertion => node.copy()
+        case node: RecComment   => node.copy()
 
         case node: StmtDesc      => node.copy()
         case node: StmtDecl      => node.copy()

@@ -414,7 +414,8 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
       case node: RecGen =>
         val gen = walk(node.gen)
         TreeCopier(node)(gen)
-      case node: RecComment => node
+      case node: RecAssertion => splice(node.assertion, TreeCopier(node))
+      case node: RecComment   => node
       ////////////////////////////////////////////////////////////////////////
       // Stmt
       ////////////////////////////////////////////////////////////////////////

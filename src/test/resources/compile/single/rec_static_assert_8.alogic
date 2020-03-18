@@ -1,0 +1,10 @@
+struct t {
+  static assert @bits;
+  bool x;
+}
+
+network rec_static_assert_8 {
+  out t o;
+  1'd0 -> o;
+}
+// :2: ERROR: Condition of 'static assert' is of neither numeric nor packed type

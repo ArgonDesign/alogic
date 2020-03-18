@@ -1,0 +1,10 @@
+struct t {
+  static assert @bits(u8) == 9, "u8 is not 9 bits";
+  bool x;
+}
+
+network rec_static_assert_3 {
+  out t o;
+  1'd0 -> o;
+}
+// :2: ERROR: Static assertion failure: u8 is not 9 bits

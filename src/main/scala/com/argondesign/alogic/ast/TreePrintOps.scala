@@ -269,11 +269,12 @@ trait TreePrintOps extends { this: Tree =>
   // format: on
 
   private final def v(tree: Rec)(implicit cc: CompilerContext, indent: Int): String = tree match {
-    case RecDesc(desc)   => v(desc)
-    case RecDecl(decl)   => v(decl)
-    case RecDefn(defn)   => v(defn)
-    case RecGen(gen)     => v(gen)
-    case RecComment(str) => "//" + str
+    case RecDesc(desc)           => v(desc)
+    case RecDecl(decl)           => v(decl)
+    case RecDefn(defn)           => v(defn)
+    case RecGen(gen)             => v(gen)
+    case RecAssertion(assertion) => v(assertion)
+    case RecComment(str)         => "//" + str
   }
 
   // format: off

@@ -745,6 +745,14 @@ object TreeCopier {
     }
   }
 
+  def apply(tree: RecAssertion)(assertion: Tree): RecAssertion = {
+    if (assertion eq tree.assertion) {
+      tree
+    } else {
+      RecAssertion(assertion.asInstanceOf[Assertion]) withLoc tree.loc
+    }
+  }
+
   //////////////////////////////////////////////////////////////////////////////
   // Stmt
   //////////////////////////////////////////////////////////////////////////////

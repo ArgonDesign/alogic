@@ -1,0 +1,10 @@
+struct t {
+  param uint P;
+  static assert P % 2 == 0, "P must be even";
+  bool x;
+}
+
+network rec_static_assert_6 {
+  out t(2) o;
+  1'd0 -> o;
+}

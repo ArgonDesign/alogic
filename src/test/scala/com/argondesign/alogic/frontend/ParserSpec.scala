@@ -704,6 +704,18 @@ final class ParserSpec extends FreeSpec with AlogicTest {
             RecDesc(DescVar(Ident("x", Nil), ExprType(TypeUInt(1)), None))
           }
         }
+
+        "static assert with no message" in {
+          "static assert false;".asTree[Rec] shouldBe {
+            RecAssertion(AssertionStatic(ExprInt(false, 1, 0), None))
+          }
+        }
+
+        "static assert with message" in {
+          """static assert false, "msg";""".asTree[Rec] shouldBe {
+            RecAssertion(AssertionStatic(ExprInt(false, 1, 0), Some("msg")))
+          }
+        }
       }
 
       "statements" - {

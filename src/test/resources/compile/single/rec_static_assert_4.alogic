@@ -1,0 +1,12 @@
+struct t {
+  static assert @bits(t) % 8 == 0, "@bits(t) must be a multiple of 8";
+  u8 x;
+  u8 y;
+  bool oops;
+}
+
+network rec_static_assert_4 {
+  out t o;
+  17'd0 -> o;
+}
+// :2: ERROR: Static assertion failure: @bits\(t\) must be a multiple of 8

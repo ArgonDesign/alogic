@@ -1,0 +1,9 @@
+struct t {
+  static assert @bits(u8) == 8;
+  bool x;
+}
+
+network rec_static_assert_0 {
+  out t o;
+  1'd0 -> o;
+}

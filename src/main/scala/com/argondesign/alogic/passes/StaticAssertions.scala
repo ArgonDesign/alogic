@@ -16,10 +16,8 @@
 package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.StatefulTreeTransformer
-import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Symbols.Symbol
 
 final class StaticAssertions(implicit cc: CompilerContext) extends StatefulTreeTransformer {
 
@@ -50,9 +48,11 @@ final class StaticAssertions(implicit cc: CompilerContext) extends StatefulTreeT
 
 }
 
-object StaticAssertions extends EntityTransformerPass(declFirst = false) {
+object StaticAssertions extends PairTransformerPass {
   val name = "static-assertions"
 
-  override def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
-    new StaticAssertions
+  override def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {
+    val transform = new StaticAssertions
+    (transform(decl), transform(defn))
+  }
 }

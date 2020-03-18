@@ -205,6 +205,7 @@ object Trees {
   case class RecDecl(decl: Decl) extends Rec
   case class RecDefn(defn: Defn) extends Rec
   case class RecGen(gen: Gen) extends Rec
+  case class RecAssertion(assertion: Assertion) extends Rec
   case class RecComment(str: String) extends Rec
 
   //////////////////////////////////////////////////////////////////////////////

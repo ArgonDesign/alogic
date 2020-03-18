@@ -35,6 +35,9 @@ object RecBuilder extends BaseBuilder[RecContext, Rec] {
 
       override def visitRecGen(ctx: RecGenContext): Rec =
         RecGen(GenBuilder(ctx.gen)) withLoc ctx.loc
+
+      override def visitRecAssertion(ctx: RecAssertionContext): Rec =
+        RecAssertion(AssertionBuilder(ctx.assertion)) withLoc ctx.loc
     }
 
     Visitor(ctx)
