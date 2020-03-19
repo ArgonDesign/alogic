@@ -222,20 +222,24 @@ trait ExprOps { this: Expr =>
     case _                 => false
   }
 
-  private[this] var _simplified: Expr = null
+  protected final var _simplified: Expr = null
 
   // Simplify this expression
-  def simplify(implicit cc: CompilerContext): Expr = {
+  final def simplify(implicit cc: CompilerContext): Expr = {
     if (_simplified == null) {
+      // Compute the simplified expression
       _simplified = (new TreeExt(this)).normalize rewrite cc.simpifyExpr
+      // The simplified expression cannot be simplified further
+      _simplified._simplified = _simplified
     }
     _simplified
   }
 
-  private[this] var _simplifiedLValue: Expr = null
+  protected final var _simplifiedLValue: Expr = null
 
-  def simplifyLValue(implicit cc: CompilerContext): Expr = {
+  final def simplifyLValue(implicit cc: CompilerContext): Expr = {
     if (_simplifiedLValue == null) {
+      // Compute the simplified expression
       _simplifiedLValue = this match {
         case _: ExprSym        => this
         case ExprCat(p :: Nil) => p
@@ -255,6 +259,8 @@ trait ExprOps { this: Expr =>
         case _: ExprSelect => this
         case _             => unreachable
       }
+      // The simplified expression cannot be simplified further
+      _simplifiedLValue._simplifiedLValue = _simplifiedLValue
     }
     _simplifiedLValue
   }
