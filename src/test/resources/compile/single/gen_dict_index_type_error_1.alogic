@@ -1,0 +1,10 @@
+network gen_dict_index_type_error_1 {
+  gen for (u8 n < 1) {
+    in  bool i#[n];
+  }
+  out bool o;
+  i#[8'd0 + 10'd0] -> o;
+}
+// :6: ERROR: Both operands of binary '\+' must have the same width, but
+// :6: ERROR: ... left  hand operand is 8 bits wide, and
+// :6: ERROR: ... right hand operand is 10 bits wide

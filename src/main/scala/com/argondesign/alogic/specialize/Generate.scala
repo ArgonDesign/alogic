@@ -159,13 +159,22 @@ private[specialize] object Generate {
     }
   }
 
-  def values(idxs: List[Expr])(implicit cc: CompilerContext): Option[List[BigInt]] = idxs match {
+  def values(idxs: List[Expr], bindings: Bindings)(
+      implicit cc: CompilerContext): Option[List[BigInt]] = idxs match {
     case Nil => Some(Nil)
     case head :: tail =>
-      val resOpt = values(tail) // Compute eagerly to emit all errors
-      head.value match {
-        case Some(value) => resOpt map { value :: _ }
-        case None        => cc.error(head, "Identifier index must be a compile time constant"); None
+      if (!cc.typeCheck(head)) {
+        values(tail, bindings) // Compute it anyway to emit all errors
+        None
+      } else {
+        (head given bindings).value match {
+          case Some(value) =>
+            values(tail, bindings) map { value :: _ }
+          case None =>
+            cc.error(head, "Identifier index must be a compile time constant");
+            values(tail, bindings) // Compute it anyway to emit all errors
+            None
+        }
       }
   }
 
@@ -261,7 +270,7 @@ private[specialize] object Generate {
           // Choice symbols are never dict
           assert(!desc.isInstanceOf[DescChoice])
           // At this point the indices must be known, or it's an error
-          values(desc.ref.idxs map { _ given bindings }) match {
+          values(desc.ref.idxs, bindings) match {
             case None =>
               hadError = true
               Nil
@@ -698,7 +707,7 @@ private[specialize] object Generate {
               symbol.attr.dictResolutions.get match {
                 case None => None // Gen not yet expanded (nested entity)
                 case Some(dMap) =>
-                  values(idxs) orElse {
+                  values(idxs, Bindings.empty) orElse {
                     hadError = true
                     None
                   } flatMap { idxValues =>
