@@ -47,14 +47,10 @@ trait Builtins { this: CompilerContext =>
   // Fold call to builtin function
   def foldBuiltinCall(call: ExprCall): Expr = call.expr match {
     case ExprSym(symbol) =>
-      val builtin = timeit("Find builtin") {
-        symbol.attr.builtin.value
-      }
-      timeit("Fold builtin") {
-        builtin.fold(call.loc, call.args) map {
-          _ regularize call.loc
-        } getOrElse call
-      }
+      val builtin = symbol.attr.builtin.value
+      builtin.fold(call.loc, call.args) map {
+        _ regularize call.loc
+      } getOrElse call
     case _ => unreachable
   }
 
