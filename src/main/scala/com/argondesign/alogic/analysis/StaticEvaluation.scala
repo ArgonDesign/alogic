@@ -137,6 +137,30 @@ object StaticEvaluation {
     inferTransitive(curr, inferFalse(expr))
   }
 
+  // Same as "expr exists { case ExprSym(symbol) => set(symbol) }" but faster
+  private def uses(expr: Expr, set: Set[Symbol]): Boolean = {
+    def p(expr: Expr): Boolean = expr match {
+      case _: ExprInt             => false
+      case _: ExprNum             => false
+      case ExprSym(symbol)        => set(symbol)
+      case ExprBinary(l, _, r)    => p(l) || p(r)
+      case ExprUnary(_, e)        => p(e)
+      case ExprTernary(c, ts, es) => p(c) || p(ts) || p(es)
+      case ExprCall(e, as)        => p(e) || (as exists { case ArgN(_, e) => p(e); case ArgP(e) => p(e) })
+      case ExprIndex(e, i)        => p(e) || p(i)
+      case ExprSlice(e, l, _, r)  => p(e) || p(l) || p(r)
+      case ExprCat(ps)            => ps exists p
+      case ExprRep(c, e)          => p(e) || p(c)
+      case ExprSelect(e, _, _)    => p(e)
+      case ExprCast(_, e)         => p(e)
+      case _: ExprType            => false
+      case _: ExprStr             => false
+      case _: ExprError           => false
+      case _: ExprRef             => unreachable
+    }
+    p(expr)
+  }
+
   private def overwrite(curr: Bindings, symbol: Symbol, expr: Expr)(
       implicit cc: CompilerContext): Option[Bindings] = {
     // Add the new binding for the symbol, but first substitute the new
@@ -144,25 +168,18 @@ object StaticEvaluation {
     val selfBinding = Bindings(curr get symbol map { symbol -> _ })
     val newValue = (expr given selfBinding).simplify
     Option.unless(newValue.tpe.isError) {
-      val expanded = curr + (symbol -> newValue)
-      // Remove all binding that referenced the just added symbol,
+      // Remove all bindings that reference the just added symbol,
       // as these used the old value. TODO: use SSA form...
-      expanded filterNot {
-        case (_, v) => v exists { case ExprSym(`symbol`) => true }
-      }
+      val written = Set(symbol)
+      (curr filterNot { case (_, v) => uses(v, written) }) + (symbol -> newValue)
     }
   }
 
   private def removeWritten(curr: Bindings, lval: Expr): Bindings = {
-    // TODO: could improve this by compute new bindings
-    val written = WrittenSymbols(lval).toList
-
     // Remove bindings of the written symbols, and all
     // bindings that reference a written symbol
-    curr filterNot {
-      case (k, v) =>
-        (written contains k) || (v exists { case ExprSym(s) => written contains s })
-    }
+    val written = WrittenSymbols(lval).toSet
+    curr filterNot { case (k, v) => written(k) || uses(v, written) }
   }
 
   def apply(stmt: Stmt, initialBindings: Bindings = Bindings.empty)(
@@ -189,6 +206,7 @@ object StaticEvaluation {
         case StmtPost(expr @ ExprSym(symbol), "++") => overwrite(curr, symbol, expr.inc)
         case StmtPost(expr @ ExprSym(symbol), "--") => overwrite(curr, symbol, expr.dec)
 
+        // TODO: these could be improved by computing new bindings
         // Assignments with complex left hand side
         case StmtAssign(lhs, _) => Some(removeWritten(curr, lhs))
         // Update with complex left hand side

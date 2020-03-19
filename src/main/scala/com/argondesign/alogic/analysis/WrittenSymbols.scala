@@ -22,8 +22,6 @@ object WrittenSymbols {
 
   // Given an expression, return an iterable of symbols that would be written
   // should this expression be used on the left hand side of an assignment
-  def apply(expr: Expr): Iterator[Symbol] = WrittenSyms(expr) collect {
-    case ExprSym(symbol) => symbol
-  }
+  def apply(expr: Expr): Iterator[Symbol] = WrittenSyms(expr) map { _.symbol }
 
 }
