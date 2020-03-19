@@ -1,0 +1,7 @@
+fsm assert_false_4 {
+  void main() {
+    assert false, "Statically known";
+    fence;
+  }
+}
+// :3: ERROR: Assertion is always false: Statically known

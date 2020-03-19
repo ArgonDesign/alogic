@@ -23,6 +23,8 @@ import com.argondesign.alogic.typer.TypeAssigner
 
 final class Fold(implicit cc: CompilerContext) extends StatelessTreeTransformer {
 
+  private val zero = BigInt(0)
+
   private def empty(stmts: List[Stmt]): Boolean = stmts forall {
     case _: StmtComment => true
     case _              => false
@@ -107,6 +109,15 @@ final class Fold(implicit cc: CompilerContext) extends StatelessTreeTransformer 
     // Drop empty processes
     case EntCombProcess(stmts) if empty(stmts)          => Stump
     case EntClockedProcess(_, _, stmts) if empty(stmts) => Stump
+
+    // Fail on known false assertions
+    case AssertionAssert(cond, msgOpt) if cond.value contains zero =>
+      val suffix = msgOpt match {
+        case Some(msg) => ": " + msg;
+        case None      => ""
+      }
+      cc.error(tree, s"Assertion is always false$suffix")
+      tree
 
     //
     case _ => tree

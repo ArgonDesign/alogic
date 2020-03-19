@@ -1,0 +1,7 @@
+fsm assert_false_1 {
+  void main() {
+    assert 8'h02 & 8'hf0;
+    fence;
+  }
+}
+// :3: ERROR: Assertion is always false

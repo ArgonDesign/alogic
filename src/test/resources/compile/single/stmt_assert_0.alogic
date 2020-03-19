@@ -1,6 +1,6 @@
 fsm stmt_assert_0 {
   void main() {
-    assert false;
+    assert true;
     fence;
   }
 }

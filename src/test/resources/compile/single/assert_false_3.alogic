@@ -1,0 +1,11 @@
+fsm assert_false_3 {
+  in bool i;
+  void main() {
+    if (i) {
+    } else {
+      assert i;
+    }
+    fence;
+  }
+}
+// :6: ERROR: Assertion is always false
