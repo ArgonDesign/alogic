@@ -27,9 +27,17 @@ final class ReplaceTermRefs(
     implicit cc: CompilerContext
 ) extends StatelessTreeTransformer {
 
-  override def transform(tree: Tree): Tree = tree match {
-    case ExprSym(symbol) => bindings.getOrElse(symbol, tree)
-
-    case _ => tree
+  override def skip(tree: Tree): Boolean = tree match {
+    case _: ExprType => true
+    case _: ExprInt  => true
+    case _: ExprNum  => true
+    case _: ExprStr  => true
+    case _           => false
   }
+
+  override def enter(tree: Tree): Option[Tree] = tree match {
+    case ExprSym(symbol) => Some(bindings.getOrElse(symbol, tree))
+    case _               => None
+  }
+
 }
