@@ -15,7 +15,7 @@
 
 package com.argondesign.alogic.transform
 
-import com.argondesign.alogic.ast.StatefulTreeTransformer
+import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Bindings
 import com.argondesign.alogic.core.CompilerContext
@@ -25,7 +25,7 @@ final class ReplaceTermRefs(
     override val typed: Boolean = true
 )(
     implicit cc: CompilerContext
-) extends StatefulTreeTransformer {
+) extends StatelessTreeTransformer {
 
   override def transform(tree: Tree): Tree = tree match {
     case ExprSym(symbol) => bindings.getOrElse(symbol, tree)
