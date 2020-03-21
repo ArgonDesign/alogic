@@ -426,7 +426,12 @@ private[specialize] object Generate {
               // normalize inits and steps so ticks and unsized constants are sized
               val inits = gInits map { _.normalize }
               val steps = gSteps map { _.normalize }
-              if (cond.value.isDefined) {
+              val loopVars = Set from {
+                inits.iterator collect {
+                  case StmtDecl(Decl(symbol)) => symbol
+                }
+              }
+              if (cond forall { case ExprSym(symbol) => !loopVars(symbol) }) {
                 error(cond, "'gen for' condition does not depend on loop variable")
                 Nil
               } else {

@@ -284,10 +284,10 @@ object Trees {
   // Argument assignments
   //////////////////////////////////////////////////////////////////////////////
 
-  sealed trait Arg extends Tree
+  sealed trait Arg extends Tree with ArgOps
 
-  case class ArgP(expr: Expr) extends Arg
-  case class ArgN(name: String, expr: Expr) extends Arg
+  case class ArgP(override val expr: Expr) extends Arg
+  case class ArgN(name: String, override val expr: Expr) extends Arg
 
   //////////////////////////////////////////////////////////////////////////////
   // Thicket/Stump
