@@ -71,7 +71,7 @@ object Passes extends ChainingSyntax {
         LowerArrays andThen
         SplitStructs() andThen
         LowerVectors() andThen
-        AddCasts andThen
+        AddCasts andThen // TODO: Remove the need for this (make previous passes not add Nums..)
         Fold andThen
         SimplifyCat andThen
         ////////////////////////////////////////////////////////////////////////

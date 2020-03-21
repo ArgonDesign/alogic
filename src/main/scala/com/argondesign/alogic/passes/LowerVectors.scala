@@ -67,11 +67,7 @@ final class LowerVectorsA(
   private def fixSign(expr: Expr, makeSigned: Boolean): Expr = {
     // Turn it into a signed value if required,
     // unless it is the target of the assignment
-    if (makeSigned && (lvalueLevel - catLevel) != 2) {
-      cc.makeBuiltinCall("$signed", expr.loc, List(expr))
-    } else {
-      expr
-    }
+    if (makeSigned && (lvalueLevel - catLevel) != 2) expr.castSigned else expr
   }
 
   private def vecSpec(symbol: Symbol): Expr = {
@@ -110,23 +106,42 @@ final class LowerVectorsA(
           case TypeVector(eKind, _) =>
             assert(!tgt.tpe.isVector) // By this point the target should not have a Vector type
 
-            val lsbExpr = {
-              val lIdxWidth = clog2(tgt.tpe.shapeIter.next) max 1
+            val ew = eKind.width
+            val shape = tgt.tpe.shapeIter.next
+
+            val newLIdx = {
+              val w = clog2(shape) max 1
+
               op match {
-                case ":"  => rIdx zx lIdxWidth
-                case "+:" => lIdx zx lIdxWidth
-                case "-:" => (lIdx zx lIdxWidth) - (rIdx.value.get.toInt - 1)
+                case ":" =>
+                  rIdx match {
+                    case ExprInt(_, _, v) => ExprInt(false, w, ew * v)
+                    case _                => ExprInt(false, w, ew) * (rIdx zx w)
+                  }
+                case "+:" =>
+                  lIdx match {
+                    case ExprInt(_, _, v) => ExprInt(false, w, ew * v)
+                    case _                => ExprInt(false, w, ew) * (lIdx zx w)
+                  }
+                case "-:" =>
+                  lIdx match {
+                    case ExprInt(_, _, v) => ExprInt(false, w, ew * (v - rIdx.value.get.toInt + 1))
+                    case _                => ExprInt(false, w, ew) * ((lIdx zx w) - rIdx.value.get.toInt + 1)
+                  }
               }
             }
 
-            val sliceWidth = op match {
-              case ":" => lIdx.value.get - rIdx.value.get + 1
-              case _   => rIdx.value.get
+            val newRIdx = {
+              val sliceWidth = op match {
+                case ":" => lIdx.value.get - rIdx.value.get + 1
+                case _   => rIdx.value.get
+              }
+
+              ExprInt(false, clog2(shape + 1), ew * sliceWidth) regularize lIdx.loc
             }
 
-            val widthExpr = Expr(eKind.width * sliceWidth) regularize lIdx.loc
-            val sExpr = Expr(eKind.width) regularize lIdx.loc
-            ExprSlice(tgt, sExpr * lsbExpr, "+:", widthExpr) regularize tgt.loc
+            ExprSlice(tgt, newLIdx, "+:", newRIdx) regularize tgt.loc
+
           case _ => tree
         }
 
@@ -138,11 +153,22 @@ final class LowerVectorsA(
             if (size == 1) {
               fixSign(tgt, eKind.isSigned)
             } else {
-              val sExpr = Expr(eKind.width) regularize index.loc
-              val idxWidth = clog2(tgt.tpe.shapeIter.next) max 1
-              val res = ExprSlice(tgt, sExpr * (index zx idxWidth), "+:", sExpr) regularize tgt.loc
-              fixSign(res, eKind.isSigned)
+              val ew = eKind.width
+              val shape = tgt.tpe.shapeIter.next
+
+              val newLIdx = {
+                val w = clog2(shape) max 1
+                index match {
+                  case ExprInt(_, _, v) => ExprInt(false, w, ew * v)
+                  case _                => ExprInt(false, w, ew) * (index zx w)
+                }
+              }
+
+              val newRIdx = ExprInt(false, clog2(shape + 1), ew)
+
+              fixSign(ExprSlice(tgt, newLIdx, "+:", newRIdx) regularize tgt.loc, eKind.isSigned)
             }
+
           case _ => tree
         }
 

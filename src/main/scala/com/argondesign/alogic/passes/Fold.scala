@@ -32,8 +32,8 @@ final class Fold(implicit cc: CompilerContext) extends StatelessTreeTransformer 
 
   private def simplifyAssignmentSource(expr: Expr): Expr = expr.simplify match {
     // Drop pointless call to $unsigned/$signed
-    case ExprCall(ExprSym(Symbol("$unsigned" | "$signed")), ArgP(arg) :: Nil) => arg
-    case other                                                                => other
+    case ExprCall(ExprSym(Symbol("$unsigned" | "$signed")), args) => args.head.expr
+    case other                                                    => other
   }
 
   override def enter(tree: Tree): Option[Tree] = tree match {
