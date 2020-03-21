@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2018 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2018-2020 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
@@ -19,69 +19,109 @@ package com.argondesign.alogic.analysis
 import com.argondesign.alogic.core.Symbols.Symbol
 
 import scala.collection.immutable.BitSet
-import scala.collection.mutable
 import scala.language.implicitConversions
 
-class SymbolBitSet(val underlying: Map[Symbol, BitSet]) extends AnyVal {
+final class SymbolBitSet(val underlying: Map[Symbol, BitSet]) extends AnyVal {
 
-  def union(that: SymbolBitSet): SymbolBitSet = {
-    if (this.isEmpty) {
-      that
-    } else if (that.isEmpty) {
+  private def unionSingle(single: SymbolBitSet, big: SymbolBitSet): SymbolBitSet =
+    SymbolBitSet {
+      val (symbol, other) = single.iterator.next
+      big.updatedWith(symbol) {
+        case Some(bits) => Some(bits union other)
+        case None       => Some(other)
+      }
+    }
+
+  def union(that: SymbolBitSet): SymbolBitSet =
+    if (that.isEmpty) {
       this
+    } else if (this.isEmpty) {
+      that
+    } else if (that.sizeIs == 1) {
+      unionSingle(that, this)
+    } else if (this.sizeIs == 1) {
+      unionSingle(this, that)
     } else {
-      val acc = mutable.Map[Symbol, BitSet]() ++ underlying
-      for ((symbol, bits) <- that) {
-        acc.get(symbol) match {
-          case Some(curr) => acc(symbol) = curr union bits
-          case None       => acc(symbol) = bits
+      SymbolBitSet from {
+        {
+          underlying.iterator map {
+            case (symbol, bits) =>
+              symbol -> {
+                that.get(symbol) match {
+                  case Some(other) => bits union other
+                  case None        => bits
+                }
+              }
+          }
+        } concat {
+          that.underlying.iterator filterNot {
+            case (symbol, _) => this contains symbol
+          }
         }
       }
-      SymbolBitSet(acc.toMap)
     }
-  }
 
-  def intersect(that: SymbolBitSet): SymbolBitSet = {
+  def intersect(that: SymbolBitSet): SymbolBitSet =
     if (this.isEmpty || that.isEmpty) {
       SymbolBitSet.empty
     } else {
-      val acc = mutable.Map[Symbol, BitSet]()
-      acc ++= underlying filter { case (symbol, _) => that contains symbol }
-      if (acc.isEmpty) {
-        SymbolBitSet.empty
-      } else {
-        acc mapValuesInPlace {
-          case (symbol, curr) => curr intersect that(symbol)
-        } filterInPlace {
-          case (_, bits) => bits.nonEmpty
+      val (sml, big) = if ((this sizeCompare that) < 0) (this, that) else (that, this)
+      SymbolBitSet from {
+        sml.underlying.iterator map {
+          case (symbol, bits) =>
+            symbol -> {
+              big.get(symbol) match {
+                case Some(other) => bits intersect other
+                case None        => BitSet.empty
+              }
+            }
+        } filter {
+          _._2.nonEmpty
         }
-        SymbolBitSet(acc.toMap)
       }
     }
-  }
 
-  def diff(that: SymbolBitSet): SymbolBitSet = {
+  def diff(that: SymbolBitSet): SymbolBitSet =
     if (this.isEmpty || that.isEmpty) {
       this
-    } else {
-      val acc = mutable.Map[Symbol, BitSet]() ++ underlying
-      // TODO: early termination if acc is empty
-      for ((symbol, bits) <- that) {
-        acc.get(symbol) match {
-          case Some(curr) => acc(symbol) = curr diff bits
-          case None       => ()
+    } else if (that.sizeIs == 1) {
+      SymbolBitSet {
+        val (symbol, other) = that.iterator.next
+        underlying.updatedWith(symbol) {
+          case Some(bits) =>
+            val diff = bits diff other
+            if (diff.isEmpty) None else Some(diff)
+          case None => None
         }
       }
-      acc filterInPlace { case (_, bits) => bits.nonEmpty }
-      SymbolBitSet(acc.toMap)
+    } else {
+      SymbolBitSet from {
+        underlying.iterator map {
+          case (symbol, bits) =>
+            symbol -> {
+              that.get(symbol) match {
+                case Some(other) => bits diff other
+                case None        => bits
+              }
+            }
+        } filter {
+          _._2.nonEmpty
+        }
+      }
     }
-  }
 
-  def subsetOf(that: SymbolBitSet): Boolean = {
-    this forall {
-      case (symbol, bits) => bits.isEmpty || (that.get(symbol) exists { bits.subsetOf })
+  def subsetOf(that: SymbolBitSet): Boolean =
+    underlying forall {
+      case (symbol, bits) =>
+        bits.isEmpty || {
+          that get symbol match {
+            case Some(other) => bits subsetOf other
+            case None        => false
+          }
+        }
     }
-  }
+
+  override def toString: String = s"SymbolBitSet(${underlying.toString})"
 
 }
 
@@ -96,5 +136,7 @@ object SymbolBitSet {
   implicit def toUnderlying(symbolBitSet: SymbolBitSet): Map[Symbol, BitSet] = {
     symbolBitSet.underlying
   }
+
+  def from(it: IterableOnce[(Symbol, BitSet)]): SymbolBitSet = SymbolBitSet(Map.from(it))
 
 }
