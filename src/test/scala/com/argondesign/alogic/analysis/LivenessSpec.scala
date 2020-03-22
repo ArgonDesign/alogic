@@ -124,9 +124,44 @@ class LivenessSpec extends FreeSpec with AlogicTest {
         "a[2-:2]" in {
           killed(aRef.slice(2, "-:", 2)) shouldBe SymbolBitSet(Map(aSymbol -> BitSet(2, 1)))
         }
+        "c[63:0]" in {
+          killed(cRef.slice(63, ":", 0)) shouldBe SymbolBitSet(Map(cSymbol -> BitSet(0 to 63: _*)))
+        }
+        "c[63:10]" in {
+          killed(cRef.slice(63, ":", 10)) shouldBe SymbolBitSet(
+            Map(cSymbol -> BitSet(10 to 63: _*)))
+        }
         "c[120:0]" in {
           killed(cRef.slice(120, ":", 0)) shouldBe SymbolBitSet(
             Map(cSymbol -> BitSet(0 to 120: _*)))
+        }
+        "c[120:66]" in {
+          killed(cRef.slice(120, ":", 66)) shouldBe SymbolBitSet(
+            Map(cSymbol -> BitSet(66 to 120: _*)))
+        }
+        "c[127:0]" in {
+          killed(cRef.slice(127, ":", 0)) shouldBe SymbolBitSet(
+            Map(cSymbol -> BitSet(0 to 127: _*)))
+        }
+        "c[127:10]" in {
+          killed(cRef.slice(127, ":", 10)) shouldBe SymbolBitSet(
+            Map(cSymbol -> BitSet(10 to 127: _*)))
+        }
+        "c[127:64]" in {
+          killed(cRef.slice(127, ":", 64)) shouldBe SymbolBitSet(
+            Map(cSymbol -> BitSet(64 to 127: _*)))
+        }
+        "c[127:70]" in {
+          killed(cRef.slice(127, ":", 70)) shouldBe SymbolBitSet(
+            Map(cSymbol -> BitSet(70 to 127: _*)))
+        }
+        "c[250:249]" in {
+          killed(cRef.slice(250, ":", 249)) shouldBe SymbolBitSet(
+            Map(cSymbol -> BitSet(249 to 250: _*)))
+        }
+        "c[250:128]" in {
+          killed(cRef.slice(250, ":", 128)) shouldBe SymbolBitSet(
+            Map(cSymbol -> BitSet(128 to 250: _*)))
         }
         "c[32+:64]" in {
           killed(cRef.slice(32, "+:", 64)) shouldBe SymbolBitSet(

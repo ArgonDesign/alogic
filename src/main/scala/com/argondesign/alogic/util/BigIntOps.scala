@@ -15,7 +15,6 @@
 
 package com.argondesign.alogic.util
 
-import scala.collection.immutable.BitSet
 import scala.language.implicitConversions
 
 // For importing with BigIntOps._
@@ -34,16 +33,6 @@ object BigIntOps {
       if (!signed || !bits.testBit(width - 1)) bits else (BigInt(-1) << width) | bits
     } ensuring { result =>
       !signed || (value.testBit(lsb + width - 1) == (result < 0))
-    }
-
-    def toBitSet: BitSet = {
-      require(value >= 0)
-      val nLongs = (value.bitLength + 63) / 64
-      val mask = new Array[Long](nLongs)
-      for (n <- 0 until nLongs) {
-        mask(n) = (value >> (64 * n)).longValue
-      }
-      BitSet.fromBitMaskNoCopy(mask)
     }
   }
 

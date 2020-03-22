@@ -18,88 +18,108 @@ package com.argondesign.alogic.analysis
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.Symbol
-import com.argondesign.alogic.util.BigIntOps._
 import com.argondesign.alogic.util.unreachable
 
-import scala.collection.mutable
+import scala.collection.immutable.BitSet
 
 object Liveness {
 
-  private def usedRvalMaps(expr: Expr)(
-      implicit cc: CompilerContext
-  ): Iterator[Map[Symbol, BigInt]] = expr flatCollect {
-    case ExprIndex(ExprSym(symbol), idx) if symbol.kind.isPacked => {
-      val m = idx.value map { bit =>
-        Map(symbol -> BigInt.oneHot(bit))
-      } getOrElse {
-        Map(symbol -> BigInt.mask(symbol.kind.width))
+  private val buf1 = ThreadLocal.withInitial[Array[Long]](() => Array[Long](0))
+  private val buf2 = ThreadLocal.withInitial[Array[Long]](() => Array[Long](0, 0))
+
+  private def bitRange(lo: Int, hi: Int): BitSet =
+    if (hi <= 64) {
+      val arr = buf1.get()
+      arr(0) = (-1L >>> (64 - hi)) & (-1L << lo)
+      BitSet.fromBitMask(arr)
+    } else if (hi <= 128) {
+      val arr = buf2.get()
+      if (lo >= 64) {
+        arr(1) = (-1L >>> (128 - hi)) & (-1L << (lo - 64))
+        arr(0) = 0
+      } else {
+        arr(1) = -1L >>> (128 - hi)
+        arr(0) = -1L << lo
       }
-      Iterator.single(m) ++ usedRvalMaps(idx)
+      BitSet.fromBitMask(arr)
+    } else {
+      val qh = hi / 64
+      val rh = hi % 64
+
+      val arr = Array.fill[Long](qh + 1)(-1L)
+      arr(qh) = ~(-1L << rh)
+
+      if (lo != 0) {
+        var ql = lo / 64
+        val rl = (lo % 64)
+        arr(ql) &= -1L << rl
+        while (ql > 0) {
+          ql -= 1
+          arr(ql) = 0
+        }
+      }
+
+      BitSet.fromBitMaskNoCopy(arr)
     }
-    case ExprSlice(ExprSym(symbol), lidx, op, ridx) if symbol.kind.isPacked => {
-      val m = lidx.value flatMap { l =>
-        ridx.value map { r =>
-          val (width, lsb) = op match {
-            case ":"  => (l - r + 1, r)
-            case "+:" => (r, l)
-            case "-:" => (r, l - r + 1)
+
+  private def usedRvalPairs(expr: Expr)(
+      implicit cc: CompilerContext
+  ): Iterator[(Symbol, BitSet)] = expr flatCollect {
+    case ExprSym(symbol) if symbol.kind.isPacked =>
+      Iterator.single(symbol -> bitRange(0, symbol.kind.width.toInt))
+    case ExprIndex(ExprSym(symbol), idx) if symbol.kind.isPacked =>
+      val m = idx.value match {
+        case Some(bit) => symbol -> BitSet(bit.toInt)
+        case None      => symbol -> bitRange(0, symbol.kind.width.toInt)
+      }
+      Iterator.single(m) ++ usedRvalPairs(idx)
+    case ExprSlice(ExprSym(symbol), lIdx, op, rIdx) if symbol.kind.isPacked =>
+      val m = lIdx.value flatMap { l =>
+        rIdx.value map { r =>
+          val (msb, lsb) = op match {
+            case ":"  => (l, r)
+            case "+:" => (l + r - 1, l)
+            case "-:" => (l, l - r + 1)
             case _    => unreachable
           }
-          Map(symbol -> (BigInt.mask(width) << lsb.toInt))
+          symbol -> bitRange(lsb.toInt, msb.toInt + 1)
         }
       } getOrElse {
-        Map(symbol -> BigInt.mask(symbol.kind.width))
+        symbol -> bitRange(0, symbol.kind.width.toInt)
       }
-      Iterator.single(m) ++ usedRvalMaps(lidx) ++ usedRvalMaps(ridx)
-    }
-    case ExprSym(symbol) if symbol.kind.isPacked => {
-      Iterator.single(Map(symbol -> BigInt.mask(symbol.kind.width)))
-    }
-  }
-
-  private def incorporate(
-      acc: mutable.Map[Symbol, BigInt],
-      it: Iterator[Map[Symbol, BigInt]]
-  ): Unit = {
-    for {
-      map <- it
-      (symbol, mask) <- map
-    } {
-      acc(symbol) |= mask
-    }
+      Iterator.single(m) ++ usedRvalPairs(lIdx) ++ usedRvalPairs(rIdx)
   }
 
   // Given an expression, return a SymbolBitSet that holds bits that might be
   // read if this expression is not used on the left hand side of an assignment
-  def usedRv(expr: Expr)(implicit cc: CompilerContext): SymbolBitSet = {
-    val acc = mutable.Map[Symbol, BigInt]() withDefaultValue BigInt(0)
-    incorporate(acc, usedRvalMaps(expr))
-    (acc.view mapValues { _.toBitSet }).toMap
-  }
+  def usedRv(expr: Expr)(implicit cc: CompilerContext): SymbolBitSet =
+    usedRvalPairs(expr).foldLeft(Map.empty[Symbol, BitSet]) {
+      case (acc, (symbol, bits)) =>
+        acc.updatedWith(symbol) {
+          case Some(prev) => Some(prev union bits)
+          case None       => Some(bits)
+        }
+    }
 
   // Given an expression, return a SymbolBitSet that holds bits that might be
   // read if this expression is used on the left hand side of an assignment
   def usedLv(lval: Expr)(implicit cc: CompilerContext): SymbolBitSet = {
-    val acc = mutable.Map[Symbol, BigInt]() withDefaultValue BigInt(0)
-
-    def gather(expr: Expr): Unit = expr match {
-      case ExprSym(symbol) => ()
-      case ExprIndex(_: ExprSym, idx) => {
-        incorporate(acc, usedRvalMaps(idx))
-      }
-      case ExprSlice(_: ExprSym, lidx, _, ridx) => {
-        incorporate(acc, usedRvalMaps(lidx))
-        incorporate(acc, usedRvalMaps(ridx))
-      }
-      case ExprCat(parts) => parts map gather
-      case other => {
+    def gather(expr: Expr): Iterator[(Symbol, BitSet)] = expr match {
+      case _: ExprSym                           => Iterator.empty
+      case ExprIndex(_: ExprSym, idx)           => usedRvalPairs(idx)
+      case ExprSlice(_: ExprSym, lIdx, _, rIdx) => usedRvalPairs(lIdx) ++ usedRvalPairs(rIdx)
+      case ExprCat(parts)                       => parts.iterator flatMap gather
+      case other =>
         cc.ice(other, "Don't know how to extract read variables from lval", other.toSource)
-      }
     }
 
-    gather(lval)
-
-    (acc.view mapValues { _.toBitSet }).toMap
+    gather(lval).foldLeft(Map.empty[Symbol, BitSet]) {
+      case (acc, (symbol, bits)) =>
+        acc.updatedWith(symbol) {
+          case Some(prev) => Some(prev union bits)
+          case None       => Some(bits)
+        }
+    }
   }
 
   // Given an expression, return a SymbolBitSet that holds bits that are known
@@ -107,46 +127,39 @@ object Liveness {
   // assignment
   def killed(lval: Expr)(implicit cc: CompilerContext): SymbolBitSet = {
 
-    def loop(expr: Expr): Map[Symbol, BigInt] = {
-      expr match {
-        case ExprSym(symbol) => {
-          Map(symbol -> BigInt.mask(symbol.kind.width))
+    def gather(expr: Expr): Iterator[(Symbol, BitSet)] = expr match {
+      case ExprSym(symbol) =>
+        Iterator single {
+          symbol -> bitRange(0, symbol.kind.width.toInt)
         }
-        case ExprIndex(ExprSym(symbol), idx) => {
-          idx.value map { bit =>
-            Map(symbol -> BigInt.oneHot(bit))
-          } getOrElse Map.empty
+      case ExprIndex(ExprSym(symbol), idx) =>
+        idx.value.iterator map { bit =>
+          symbol -> BitSet(bit.toInt)
         }
-        case ExprSlice(ExprSym(symbol), lidx, op, ridx) => {
-          lidx.value flatMap { l =>
-            ridx.value map { r =>
-              val (width, lsb) = op match {
-                case ":"  => (l - r + 1, r)
-                case "+:" => (r, l)
-                case "-:" => (r, l - r + 1)
-                case _    => unreachable
-              }
-              Map(symbol -> (BigInt.mask(width) << lsb.toInt))
+      case ExprSlice(ExprSym(symbol), lIdx, op, rIdx) =>
+        lIdx.value.iterator flatMap { l =>
+          rIdx.value.iterator map { r =>
+            val (msb, lsb) = op match {
+              case ":"  => (l, r)
+              case "+:" => (l + r - 1, l)
+              case "-:" => (l, l - r + 1)
+              case _    => unreachable
             }
-          } getOrElse Map.empty
-        }
-        case ExprCat(parts) => {
-          val acc = mutable.Map[Symbol, BigInt]() withDefaultValue BigInt(0)
-          for {
-            map <- parts map loop
-            (symbol, mask) <- map
-          } {
-            acc(symbol) |= mask
+            symbol -> bitRange(lsb.toInt, msb.toInt + 1)
           }
-          acc.toMap
         }
-        case other => {
-          cc.ice(other, "Don't know how to extract written variables from", other.toSource)
-        }
-      }
+      case ExprCat(parts) => parts.iterator flatMap gather
+      case other =>
+        cc.ice(other, "Don't know how to extract written variables from", other.toSource)
     }
 
-    (loop(lval).view mapValues { _.toBitSet }).toMap
+    gather(lval).foldLeft(Map.empty[Symbol, BitSet]) {
+      case (acc, (symbol, bits)) =>
+        acc.updatedWith(symbol) {
+          case Some(prev) => Some(prev union bits)
+          case None       => Some(bits)
+        }
+    }
   }
 
   // Perform bit-wise accurate liveness analysis of given statements. It
@@ -166,7 +179,7 @@ object Liveness {
       case Nil => (cLive, cDead)
       case head :: tail =>
         val (nLive, nDead) = head match {
-          case StmtAssign(lhs, rhs) => {
+          case StmtAssign(lhs, rhs) =>
             val readRhs = usedRv(rhs)
             val readLhs = usedLv(lhs)
             // Everything read is born, unless it's already dead
@@ -176,9 +189,8 @@ object Liveness {
             val kill = killed(lhs) diff live
             val dead = cDead union kill
             (live, dead)
-          }
 
-          case StmtIf(cond, thenStmts, elseStmts) => {
+          case StmtIf(cond, thenStmts, elseStmts) =>
             val born = usedRv(cond) diff cDead
             val dLive = cLive union born
 
@@ -189,9 +201,8 @@ object Liveness {
             val dead = tDead intersect eDead
 
             (live, dead)
-          }
 
-          case StmtCase(expr, cases) => {
+          case StmtCase(expr, cases) =>
             val caseReaders = cases flatMap {
               case CaseRegular(cond, _) => cond
               case _: CaseDefault       => Nil
@@ -221,19 +232,16 @@ object Liveness {
             val dead = bDead reduce { _ intersect _ }
 
             (live, dead)
-          }
 
-          case StmtStall(cond) => {
+          case StmtStall(cond) =>
             val born = usedRv(cond) diff cDead
             val live = cLive union born
             (live, cDead)
-          }
 
-          case StmtExpr(expr) => {
+          case StmtExpr(expr) =>
             val born = usedRv(expr) diff cDead
             val live = cLive union born
             (live, cDead)
-          }
 
           case StmtBlock(body) => analyse(cLive, cDead, body)
 
