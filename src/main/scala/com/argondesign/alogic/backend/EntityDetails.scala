@@ -29,13 +29,14 @@ final class EntityDetails(val decl: DeclEntity,
   assert {
     decl.decls forall {
       _.symbol.kind match {
-        case _: TypeInt    => true
-        case _: TypeEntity => true
-        case _: TypeIn     => true
-        case _: TypeOut    => true
-        case _: TypeConst  => true
-        case _: TypeArray  => true
-        case _             => false
+        case _: TypeInt      => true
+        case _: TypeEntity   => true
+        case _: TypeIn       => true
+        case _: TypeOut      => true
+        case _: TypeConst    => true
+        case _: TypeArray    => true
+        case _: TypeXenoFunc => true
+        case _               => false
       }
     }
   }
@@ -53,6 +54,8 @@ final class EntityDetails(val decl: DeclEntity,
   lazy val hasArrays: Boolean = decl.decls exists { _.symbol.attr.memory.isSet }
 
   lazy val hasInterconnect: Boolean = decl.decls exists { _.symbol.attr.interconnect.isSet }
+
+  lazy val hasXenoFuncs: Boolean = decl.decls exists { _.symbol.kind.isXenoFunc }
 
   lazy val hasInstances: Boolean = decl.instances.nonEmpty
 

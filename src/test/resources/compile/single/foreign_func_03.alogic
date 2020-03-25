@@ -1,0 +1,31 @@
+fsm foreign_func_03 {
+  import void f(u32 i);
+
+  void main() {
+    f(0);
+    f(10);
+    f(20);
+    f(0xffffffff);
+    $finish();
+    fence;
+  }
+}
+// @sim/test {{{
+//  wire _unused = &{1'd0, clk, rst};
+// }}}
+//
+// @sim/dpi {{{
+//  #include <stdio.h>
+//  #include "svdpi.h"
+//  extern "C" void f(const svBitVecVal *i) {
+//    printf("YAY %u\n", *i);
+//  }
+// }}}
+//
+// @sim/expect {{{
+//  YAY 0
+//  YAY 10
+//  YAY 20
+//  YAY 4294967295
+//  - .*/foreign_func_03\.v:\d+: Verilog \$finish
+// }}}

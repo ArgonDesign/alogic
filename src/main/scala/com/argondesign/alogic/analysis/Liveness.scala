@@ -190,6 +190,18 @@ object Liveness {
             val dead = cDead union kill
             (live, dead)
 
+          case StmtOutcall(output, func, inputs) =>
+            val readFunc = usedRv(func)
+            val readInputs = (inputs map usedRv).foldLeft(SymbolBitSet.empty) { _ union _ }
+            val readOutput = usedLv(output)
+            // Everything read is born, unless it's already dead
+            val born = (readFunc union readInputs union readOutput) diff cDead
+            val live = cLive union born
+            // Everything written is killed unless it's already live
+            val kill = killed(output) diff live
+            val dead = cDead union kill
+            (live, dead)
+
           case StmtIf(cond, thenStmts, elseStmts) =>
             val born = usedRv(cond) diff cDead
             val dLive = cLive union born

@@ -294,7 +294,8 @@ final class Typer(
         }
 
       // Special case uint(n)/int(n)/instance for now
-      case ExprCall(tgt, _) if walk(tgt).tpe.isType =>
+      case ExprCall(tgt, _) if walk(tgt).tpe.isType => // TODO: is this still needed?
+
       // Type check target up front
       case ExprCall(tgt, args) if !walk(tgt).tpe.isError =>
         def process(kinds: List[Type]): Unit = {
@@ -309,6 +310,7 @@ final class Typer(
         tgt.tpe match {
           case TypeCombFunc(_, _, argTypes) => process(argTypes)
           case TypeCtrlFunc(_, _, argTypes) => process(argTypes)
+          case TypeXenoFunc(_, _, argTypes) => process(argTypes)
           case _: TypePolyFunc              =>
           case _: TypeParametrized          =>
           case _: TypeType                  =>
@@ -564,6 +566,7 @@ final class Typer(
         expr.tpe match {
           case TypeCombFunc(_, _, argTypes) => check(argTypes)
           case TypeCtrlFunc(_, _, argTypes) => check(argTypes)
+          case TypeXenoFunc(_, _, argTypes) => check(argTypes)
           case tpe: TypePolyFunc =>
             tpe.resolve(args) match {
               case Some(symbol) => tree withTpe symbol.kind.asCombFunc.retType

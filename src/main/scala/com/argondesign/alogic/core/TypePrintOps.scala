@@ -68,6 +68,7 @@ trait TypePrintOps { this: Type =>
     case TypeCtrlStmt                         => this.toString
     case TypeCombFunc(s, r, as)               => s"comb ${r.toSource} ${s.name} ${as map { _.toSource } mkString ("(", ", ", ")")}"
     case TypeCtrlFunc(s, r, as)               => s"ctrl ${r.toSource} ${s.name} ${as map { _.toSource } mkString ("(", ", ", ")")}"
+    case TypeXenoFunc(s, r, as)               => s"xeno ${r.toSource} ${s.name} ${as map { _.toSource } mkString ("(", ", ", ")")}"
     case _: TypePolyFunc                      => this.toString
     case TypeUnknown                          => this.toString
     case TypeChoice                           => this.toString

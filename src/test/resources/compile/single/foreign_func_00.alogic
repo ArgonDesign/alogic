@@ -1,0 +1,44 @@
+fsm foreign_func_00 {
+  in       bool i;
+  out wire bool o;
+
+  import bool f(bool i);
+
+  void main() {
+    o = f(i);
+    fence;
+  }
+}
+// @sim/test {{{
+//  reg [1:0] tick;
+//
+//  always @(posedge clk) begin
+//    if (rst) begin
+//      tick <= 2'd0;
+//    end else begin
+//      tick <= tick + 2'd1;
+//    end
+//  end
+//
+//  wire i = tick[1];
+//  wire o;
+//
+//  always @(posedge clk) begin
+//    if (!rst) begin
+//      assert(o == ~tick[1]);
+//    end
+//  end
+// }}}
+//
+// @sim/dpi {{{
+//  #include "svdpi.h"
+//  // NOTE: This is non-standard compliant behaviour in Verilator,
+//  // (see https://github.com/verilator/verilator/issues/2207)
+//  // The correct signature would be:
+//  // extern "C" void f(svBitVecVal *o, const svBitVecVal *i)
+//  extern "C" void f(unsigned char *o, unsigned char i) {
+//    *o = !i;
+//  }
+// }}}
+//
+// @sim/expect: TIMEOUT at 100ns

@@ -46,6 +46,15 @@ final class MakeVerilog(
         }
       case TypeArray(elemKind, size) =>
         s"${decl(id, elemKind)} [${size - 1}:0]"
+      case TypeXenoFunc(symbol, retType, _) =>
+        val is = symbol.decl.asInstanceOf[DeclFunc].args map {
+          case Decl(symbol) => s"input bit [${symbol.kind.width - 1}:0] ${symbol.name}"
+        }
+        val as = retType match {
+          case TypeVoid => is
+          case kind     => s"output bit [${kind.width - 1}:0] _result" :: is
+        }
+        s"""import "DPI-C" context function void $id(${as mkString ", "});"""
       case _ => cc.ice(s"Don't know how to declare this type in Verilog:", kind.toString)
     }
 
@@ -121,8 +130,16 @@ final class MakeVerilog(
   //////////////////////////////////////////////////////////////////////////////
 
   private def emitDeclarationSection(body: CodeWriter): Unit = {
-    if (hasConsts || hasFlops || hasCombSignals || hasArrays || hasInterconnect) {
+    if (hasConsts || hasFlops || hasCombSignals || hasArrays || hasInterconnect || hasXenoFuncs) {
       body.emitSection(1, "Declaration section") {
+        if (hasXenoFuncs) {
+          body.emitBlock(1, "Foreign functions") {
+            decl.decls filter { _.symbol.kind.isXenoFunc } foreach { decl =>
+              body.emit(1)(vdecl(decl.symbol))
+            }
+          }
+        }
+
         if (hasConsts) {
           // Emit const declarations
           body.emitBlock(1, "Local parameter declarations") {
@@ -252,6 +269,9 @@ final class MakeVerilog(
 
       // Non-blocking assignment statements
       case StmtDelayed(lhs, rhs) => body.emit(indent)(s"${wrapIfCat(lhs)} <= ${wrapIfCat(rhs)};")
+
+      case StmtOutcall(o, f, is) =>
+        body.emit(indent)(s"${vexpr(f)}(${(o :: is) map { vexpr(_) } mkString ", "});")
 
       // Expression statements like $display();
       case StmtExpr(expr) => body.emit(indent)(s"${vexpr(expr)};")

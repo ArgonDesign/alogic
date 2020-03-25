@@ -66,6 +66,7 @@ object Passes extends ChainingSyntax {
         LowerSrams() andThen
         LowerStacks andThen
         LowerRegPorts andThen
+        LowerForeignFunctions andThen
         LiftSrams andThen
         AddClockAndReset() andThen
         LowerArrays andThen

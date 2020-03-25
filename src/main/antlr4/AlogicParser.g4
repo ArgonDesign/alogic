@@ -46,20 +46,21 @@ attr
   ;
 
 descbase
-  : expr ident ('=' init=expr)? ';'                     # DescVar
-  | 'in' fct? expr ident ';'                            # DescIn
-  | 'out' fct? stt? expr ident ('=' init=expr)? ';'     # DescOut
-  | 'pipeline' expr ident ';'                           # DescPipeline
-  | 'param' expr IDENTIFIER ('=' init=expr)?  ';'       # DescParam
-  | 'const' expr IDENTIFIER '=' expr  ';'               # DescConst
-  | expr ident '[' expr ']' ';'                         # DescArr
-  | 'sram' (wire='wire')? expr ident '[' expr ']' ';'   # DescSram
-  | 'typedef' expr ident ';'                            # DescType
-  | entity_keyword ident '{' ent* '}'                   # DescEntity
-  | 'struct' ident '{' rec* '}'                         # DescRecord
-  | ident '=' 'new' expr ';'                            # DescInstance
-  | 'new' entity_keyword ident '{' ent* '}'             # DescSingleton
-  | expr ident '(' ')' '{' stmt* '}'                    # DescFunc
+  : expr ident ('=' init=expr)? ';'                        # DescVar
+  | 'in' fct? expr ident ';'                               # DescIn
+  | 'out' fct? stt? expr ident ('=' init=expr)? ';'        # DescOut
+  | 'pipeline' expr ident ';'                              # DescPipeline
+  | 'param' expr IDENTIFIER ('=' init=expr)?  ';'          # DescParam
+  | 'const' expr IDENTIFIER '=' expr  ';'                  # DescConst
+  | expr ident '[' expr ']' ';'                            # DescArr
+  | 'sram' (wire='wire')? expr ident '[' expr ']' ';'      # DescSram
+  | 'typedef' expr ident ';'                               # DescType
+  | entity_keyword ident '{' ent* '}'                      # DescEntity
+  | 'struct' ident '{' rec* '}'                            # DescRecord
+  | ident '=' 'new' expr ';'                               # DescInstance
+  | 'new' entity_keyword ident '{' ent* '}'                # DescSingleton
+  | expr ident '(' ')' '{' stmt* '}'                       # DescFuncAlogic
+  | 'import' expr IDENTIFIER '('formal_arguments? ')' ';'  # DescFuncImport
   ;
 
 fct
@@ -79,6 +80,10 @@ entity_keyword
   : 'fsm'
   | 'network'
   | 'verbatim' 'entity'
+  ;
+
+formal_arguments
+  : expr IDENTIFIER (',' expr IDENTIFIER)*
   ;
 
 ////////////////////////////////////////////////////////////////////////////////

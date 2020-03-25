@@ -18,6 +18,7 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.FuncVariant
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.enums.EntityVariant
 import com.argondesign.alogic.util.unreachable
@@ -118,10 +119,16 @@ final class UnusedCheck(implicit cc: CompilerContext) extends StatefulTreeTransf
             record.descs foreach { desc =>
               markUsed(desc.symbol)
             }
-          case _: DescFunc =>
+          case DescFunc(_, variant, _, args, _) =>
             // Mark entry point functions as used
             if (desc.symbol.attr.entry contains true) {
               markUsed(desc.symbol)
+            }
+            // Mark foreign function arguments as used
+            if (variant == FuncVariant.Xeno) {
+              args foreach { desc =>
+                markUsed(desc.symbol)
+              }
             }
           case _: DescChoice =>
             // Assume used

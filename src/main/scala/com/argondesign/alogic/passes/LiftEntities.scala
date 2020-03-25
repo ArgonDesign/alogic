@@ -63,9 +63,10 @@ private object Analyze {
           case d: DefnEntity if d ne defn => None // Stop descent
         }
       } filter {
-        case ExprSym(symbol) if symbol.kind.isIn    => true
-        case ExprSym(symbol) if symbol.kind.isOut   => true
-        case ExprSym(symbol) if symbol.kind.isConst => true
+        case ExprSym(symbol) if symbol.kind.isIn       => true
+        case ExprSym(symbol) if symbol.kind.isOut      => true
+        case ExprSym(symbol) if symbol.kind.isConst    => true
+        case ExprSym(symbol) if symbol.kind.isXenoFunc => true
         case e @ ExprSym(symbol) =>
           if (outerSymbols(symbol)) {
             symbol.kind match {
@@ -241,8 +242,9 @@ class LiftEntitiesA(
                   Some(
                     EntConnect(ExprSym(defn.symbol) select requiredSymbol.name,
                                List(ExprSym(outerSymbol))) regularize defn.loc)
-                case _: TypeConst => None
-                case _            => unreachable // TODO: Proper error
+                case _: TypeConst    => None
+                case _: TypeXenoFunc => None
+                case _               => unreachable
               }
             }
           }

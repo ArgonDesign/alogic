@@ -1,0 +1,32 @@
+fsm foreign_func_04 {
+  import void yay();
+
+  void main() {
+    yay();
+    yay();
+    yay();
+    yay();
+    $finish();
+    fence;
+  }
+}
+// @sim/test {{{
+//  wire _unused = &{1'd0, clk, rst};
+// }}}
+//
+// @sim/dpi {{{
+//  #include <stdio.h>
+//  #include "svdpi.h"
+//  extern "C" void yay() {
+//    static unsigned n = 0;
+//    printf("Yay %u\n", n++);
+//  }
+// }}}
+//
+// @sim/expect {{{
+//  Yay 0
+//  Yay 1
+//  Yay 2
+//  Yay 3
+//  - .*/foreign_func_04\.v:\d+: Verilog \$finish
+// }}}

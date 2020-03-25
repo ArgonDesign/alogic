@@ -235,6 +235,7 @@ object Trees {
   case class StmtUpdate(lhs: Expr, op: String, rhs: Expr) extends Stmt
   case class StmtPost(expr: Expr, op: String) extends Stmt
   case class StmtDelayed(lhs: Expr, rhs: Expr) extends Stmt
+  case class StmtOutcall(output: Expr, func: Expr, inputs: List[Expr]) extends Stmt
   case class StmtRead() extends Stmt
   case class StmtWrite() extends Stmt
   case class StmtExpr(expr: Expr) extends Stmt

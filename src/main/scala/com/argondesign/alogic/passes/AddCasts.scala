@@ -95,6 +95,7 @@ final class AddCasts(implicit cc: CompilerContext) extends StatelessTreeTransfor
         val kinds = func.tpe match {
           case TypeCombFunc(_, _, argTypes) => argTypes
           case TypeCtrlFunc(_, _, argTypes) => argTypes
+          case TypeXenoFunc(_, _, argTypes) => argTypes
           case _                            => unreachable
         }
 

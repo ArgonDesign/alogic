@@ -242,6 +242,7 @@ object Symbols {
             variant match {
               case FuncVariant.Ctrl => TypeCtrlFunc(this, retType, argTypes)
               case FuncVariant.Comb => TypeCombFunc(this, retType, argTypes)
+              case FuncVariant.Xeno => TypeXenoFunc(this, retType, argTypes)
               case FuncVariant.None => cc.ice(_decl, "Unknown function variant")
             }
           case _: DeclState => TypeState

@@ -96,8 +96,9 @@ object Types {
 
   // format: off
   case class TypeCombFunc(symbol: Symbol, retType: TypeFund, argTypes: List[Type]) extends Type
-  case class TypeCtrlFunc(symbol: Symbol, retType: TypeFund, argTypes: List[Type]) extends Type
+  case class TypeCtrlFunc(symbol: Symbol, retType: TypeFund, argTypes: List[TypeFund]) extends Type
   case class TypePolyFunc(symbol: Symbol, resolver: List[Arg] => Option[Symbol]) extends Type with TypePolyFuncImpl
+  case class TypeXenoFunc(symbol: Symbol, retType: TypeFund, argTypes: List[TypeFund]) extends Type
   // format: on
 
   //////////////////////////////////////////////////////////////////////////////

@@ -216,7 +216,7 @@ trait TreePrintOps extends { this: Tree =>
     case DefnRecord(_, body)             => block(s"defn record $name", body)
     case DefnInstance(_)                 => s"defn $name;"
     case DefnSingleton(_, variant, body) => block(s"defn ${v(variant)} $name", body)
-    case DefnFunc(_, args, body)         => block(s"defn $name", args ::: body)
+    case DefnFunc(_, args, body)         => block(s"defn $name(${vs(args)})", body)
     case DefnState(_, expr, body)        => block(s"defn $name ${v(expr)}", body)
   }
   // format: on
@@ -294,6 +294,7 @@ trait TreePrintOps extends { this: Tree =>
     case StmtUpdate(lhs, op, rhs)          => s"${v(lhs)} $op= ${v(rhs)};"
     case StmtPost(expr, op)                => s"${v(expr)}$op;"
     case StmtDelayed(lhs, rhs)             => s"${v(lhs)} <= ${v(rhs)};"
+    case StmtOutcall(o, f, is)             => s"${v(f)}(${v(o)} <- ${vs(is)});"
     case StmtExpr(expr)                    => s"${v(expr)};"
     case StmtRead()                        => "read;"
     case StmtWrite()                       => "write;"

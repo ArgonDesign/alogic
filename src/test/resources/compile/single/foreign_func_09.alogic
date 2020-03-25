@@ -1,0 +1,55 @@
+network foreign_func_09 {
+  import void f();
+
+  // Just so the instances don't get pruned
+  out wire bool o_a;
+  out wire bool o_b;
+
+  new fsm a {
+    fence {
+      o_a = false;
+    }
+
+    void main() {
+      fence;
+      fence;
+      f();
+      $finish();
+      fence;
+    }
+  }
+
+  new fsm b {
+    fence {
+      o_b = false;
+    }
+
+    void main() {
+      fence;
+      f();
+      fence;
+      fence;
+    }
+  }
+}
+// @sim/test {{{
+//  wire o_a;
+//  wire o_b;
+//  wire _unused = &{1'd0, o_a, o_b};
+// }}}
+//
+// @sim/dpi {{{
+//  #include <stdio.h>
+//  #include "svdpi.h"
+//  extern "C" void f() {
+//    svScope scope = svGetScope();
+//    const char *instance = svGetNameFromScope(scope);
+//    printf("Instance: %s\n", instance);
+//  }
+// }}}
+//
+// @sim/expect {{{
+//  Instance: TOP.testbench.dut.b
+//  Instance: TOP.testbench.dut.a
+//  - .*/foreign_func_09__a\.v:\d+: Verilog \$finish
+// }}}

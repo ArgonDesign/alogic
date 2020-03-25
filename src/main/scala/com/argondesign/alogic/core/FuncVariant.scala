@@ -20,4 +20,5 @@ object FuncVariant {
   case object None extends FuncVariant
   case object Ctrl extends FuncVariant
   case object Comb extends FuncVariant
+  case object Xeno extends FuncVariant
 }

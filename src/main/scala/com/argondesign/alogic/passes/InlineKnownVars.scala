@@ -63,6 +63,18 @@ final class InlineKnownVars(
         }
       }
 
+    case stmt @ StmtOutcall(_, func, inputs) =>
+      Some {
+        bindings.push(stmtBindings.getOrElse(stmt.id, Bindings.empty))
+        TypeAssigner(
+          stmt.copy(
+            func = walk(func).asInstanceOf[Expr],
+            inputs = walk(inputs).asInstanceOf[List[Expr]]
+          ) withLoc tree.loc) tap { _ =>
+          bindings.pop()
+        }
+      }
+
     case stmt: Stmt =>
       bindings.push(stmtBindings.getOrElse(stmt.id, endOfCycleBindings))
       None

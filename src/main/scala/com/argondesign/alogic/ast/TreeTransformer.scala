@@ -466,6 +466,11 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
       val lhs = walk(node.lhs)
       val rhs = walk(node.rhs)
       TreeCopier(node)(lhs, rhs)
+    case node: StmtOutcall =>
+      val output = walk(node.output)
+      val func = walk(node.func)
+      val inputs = walk(node.inputs)
+      TreeCopier(node)(output, func, inputs)
     case node: StmtRead  => node
     case node: StmtWrite => node
     case node: StmtExpr =>

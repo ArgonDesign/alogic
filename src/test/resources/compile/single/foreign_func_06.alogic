@@ -1,0 +1,56 @@
+fsm foreign_func_06 {
+  import u80 f();
+  out u80 o;
+
+  void main() {
+    fence;
+    o = f();
+    o = f();
+    fence;
+    o = f();
+    o = f();
+    fence;
+    fence;
+    $finish();
+    fence;
+  }
+}
+// @sim/test {{{
+//  reg [7:0] tick;
+//  always @(posedge clk) begin
+//    if (rst) begin
+//      tick <= 8'd0;
+//    end else begin
+//      tick <= tick + 8'd1;
+//    end
+//  end
+//
+//  wire [79:0] o;
+//
+//  always @(posedge clk) begin
+//    if (!rst) begin
+//      case (tick)
+//        8'd2, 8'd3: $display("%1d %020x", tick, o);
+//        default: ;
+//      endcase
+//    end
+//  end
+// }}}
+//
+// @sim/dpi {{{
+//  #include "svdpi.h"
+//
+//  extern "C" void f(svBitVecVal *o) {
+//    static int n = 0;
+//    o[0] = 0xffffffff;
+//    o[1] = 0xffffffff;
+//    o[2] = 0xffffffff;
+//    o[n++ % 3] = 0;
+//  }
+// }}}
+//
+// @sim/expect {{{
+//  2 ffff00000000ffffffff
+//  3 ffffffffffff00000000
+//  - .*/foreign_func_06\.v:\d+: Verilog \$finish
+// }}}

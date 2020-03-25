@@ -1,0 +1,46 @@
+fsm checker_0 {
+  in        u8 a;
+  in        u8 b;
+  out wire  u8 c;
+
+  import bool check_add(u8 a, u8 b, u8 sum);
+
+  void main() {
+    c = a + b;
+    assert check_add(a, b, c);
+    fence;
+  }
+}
+// @sim/test {{{
+//  reg [7:0] tick;
+//
+//  always @(posedge clk) begin
+//    if (rst) begin
+//      tick <= 8'd0;
+//    end else begin
+//      tick <= tick + 8'd1;
+//    end
+//  end
+//
+//  wire [7:0] a = tick;
+//  wire [7:0] b = tick ^ 8'd55;
+//  wire [7:0] c;
+//
+//  wire _unused = &{1'd0, c};
+// }}}
+//
+// @sim/dpi {{{
+//  #include "svdpi.h"
+//  extern "C" void check_add(
+//    svBitVecVal *o,
+//    const svBitVecVal *a,
+//    const svBitVecVal *b,
+//    const svBitVecVal *sum
+//  ) {
+//    *o = ((*a + *b) & 0xff) == *sum;
+//  }
+// }}}
+//
+// @sim/timeout: 260
+//
+// @sim/expect: TIMEOUT at 260ns

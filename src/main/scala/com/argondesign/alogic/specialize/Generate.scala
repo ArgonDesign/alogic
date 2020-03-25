@@ -86,8 +86,7 @@ private[specialize] object Generate {
     def splice(tree: Tree): Ent = tree match {
       case gen: Gen => EntGen(gen) withLoc gen.loc
       case ent: Ent => ent
-      case desc: DescFunc =>
-        assert(desc.variant == FuncVariant.None)
+      case desc: DescFunc if desc.variant == FuncVariant.None =>
         val newDesc = desc.copy(variant = FuncVariant.Ctrl) withLoc desc.loc
         EntDesc(newDesc) withLoc desc.loc
       case desc: Desc           => EntDesc(desc) withLoc desc.loc
@@ -115,8 +114,7 @@ private[specialize] object Generate {
     def splice(tree: Tree): Rec = tree match {
       case gen: Gen => RecGen(gen) withLoc gen.loc
       case rec: Rec => rec
-      case desc: DescFunc =>
-        assert(desc.variant == FuncVariant.None)
+      case desc: DescFunc if desc.variant == FuncVariant.None =>
         val newDesc = desc.copy(variant = FuncVariant.Comb) withLoc desc.loc
         RecDesc(newDesc) withLoc desc.loc
       case desc: Desc           => RecDesc(desc) withLoc desc.loc

@@ -53,6 +53,12 @@ final class Fold(implicit cc: CompilerContext) extends StatelessTreeTransformer 
           StmtDelayed(lhs.simplifyLValue, simplifyAssignmentSource(rhs)) withLoc tree.loc
         }
       }
+    case StmtOutcall(output, func, inputs) =>
+      Some {
+        TypeAssigner {
+          StmtOutcall(output.simplifyLValue, func.simplify, inputs map simplifyAssignmentSource) withLoc tree.loc
+        }
+      }
     case EntConnect(lhs, rhss) =>
       Some {
         TypeAssigner {

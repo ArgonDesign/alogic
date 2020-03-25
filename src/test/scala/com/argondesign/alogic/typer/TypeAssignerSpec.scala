@@ -64,7 +64,10 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
               ("pipeline u8 a;", { case TypeUInt(w) if w == 8 => }),
               ("in u8 a;", { case TypeIn(TypeUInt(w), FlowControlTypeNone) if w == 8 => }),
               ("out u8 a;", { case TypeOut(TypeUInt(w), FlowControlTypeNone, StorageTypeDefault) if w == 8 => }),
-              ("void a() {}", { case TypeCtrlFunc(_, TypeVoid, Nil) => })
+              ("void a() {}", { case TypeCtrlFunc(_, TypeVoid, Nil) => }),
+              ("import void a();", { case TypeXenoFunc(_, TypeVoid, Nil) => }),
+              ("import bool a();", { case TypeXenoFunc(_, TypeUInt(r), Nil) if r == 1 => }),
+              ("import u3 a(i2 i);", { case TypeXenoFunc(_, TypeUInt(r), TypeSInt(a) :: Nil) if r == 3 && a == 2 => })
               // format: on
             )
           } {
@@ -1154,6 +1157,7 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
             ("a + a;", { case StmtExpr(_: ExprBinary)                 => }, TypeCombStmt),
             ("a.read();", { case StmtExpr(_: ExprCall)                => }, TypeCombStmt),
             ("main();", { case StmtExpr(_: ExprCall)                  => }, TypeCtrlStmt),
+            ("xeno();", { case StmtExpr(_: ExprCall)                  => }, TypeCombStmt),
             ("{ }", { case _: StmtBlock                               => }, TypeCombStmt),
             ("{ a; fence; }", { case _: StmtBlock                     => }, TypeCtrlStmt),
             ("{ a; a; }", { case _: StmtBlock                         => }, TypeCombStmt)
@@ -1164,6 +1168,7 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
               s"""
               |fsm a {
               |  in sync bool a;
+              |  import bool xeno();
               |
               |  void main() {
               |    a;
@@ -1171,7 +1176,7 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
               |  }
               |}"""
             } getFirst {
-              case DefnFunc(_, _, body) => body.last
+              case DefnFunc(Symbol("main"), _, body) => body.last
             } tap {
               _ should matchPattern(pattern)
             } tap {

@@ -26,7 +26,7 @@ object EntBuilder extends BaseBuilder[EntContext, Ent] {
     object Visitor extends AlogicScalarVisitor[Ent] {
       override def visitEntDesc(ctx: EntDescContext): Ent = {
         val desc = DescBuilder(ctx.desc) match {
-          case func: DescFunc =>
+          case func: DescFunc if func.variant == FuncVariant.None =>
             func.copy(variant = FuncVariant.Ctrl) withLoc func.loc
           case other => other
         }

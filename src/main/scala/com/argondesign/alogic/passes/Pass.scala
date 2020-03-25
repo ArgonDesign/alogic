@@ -164,12 +164,12 @@ trait PairTransformerPass extends BasePairTransformerPass {
       // Ensure Decl/Defn are always in pairs
       case (decl, defn) =>
         val declSymbols = Set from {
-          decl collectAll {
+          decl collect {
             case Decl(symbol) if symbol != decl.symbol => symbol
           }
-        } diff Set(decl.symbol)
+        }
         val defnSymbols = Set from {
-          defn collectAll {
+          defn collect {
             case EntDefn(Defn(symbol)) => symbol
             case RecDefn(Defn(symbol)) => symbol
           }

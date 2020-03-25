@@ -35,6 +35,7 @@ import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeAccept
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeReady
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeValid
+import com.argondesign.alogic.core.FuncVariant
 import com.argondesign.alogic.core.StorageTypes.StorageTypeDefault
 import com.argondesign.alogic.core.StorageTypes.StorageTypeReg
 import com.argondesign.alogic.core.StorageTypes.StorageTypeSlices
@@ -141,8 +142,9 @@ final class Checker(implicit cc: CompilerContext) extends StatefulTreeTransforme
             case _: DescVar   => entErr(desc, "variable declarations")
             case _: DescArray => entErr(desc, "distributed memory declarations")
             case _: DescSram  => entErr(desc, "SRAM declarations")
-            case _: DescFunc  => entErr(desc, "function definitions")
-            case _            => tree
+            case DescFunc(_, funcVariant, _, _, _) if funcVariant != FuncVariant.Xeno =>
+              entErr(desc, "function definitions")
+            case _ => tree
           }
         case EntityVariant.Ver =>
           desc match {

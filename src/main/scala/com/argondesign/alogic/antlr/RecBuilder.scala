@@ -26,7 +26,7 @@ object RecBuilder extends BaseBuilder[RecContext, Rec] {
     object Visitor extends AlogicScalarVisitor[Rec] {
       override def visitRecDesc(ctx: RecDescContext): Rec = {
         val desc = DescBuilder(ctx.desc) match {
-          case func: DescFunc =>
+          case func: DescFunc if func.variant == FuncVariant.None =>
             func.copy(variant = FuncVariant.Comb) withLoc func.loc
           case other => other
         }

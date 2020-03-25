@@ -214,6 +214,9 @@ object StaticEvaluation {
         // Postfix with complex argument
         case StmtPost(expr, _) => Some(removeWritten(curr, expr))
 
+        // Outcall
+        case StmtOutcall(output, _, _) => Some(removeWritten(curr, output))
+
         case StmtBlock(body) => body.foldLeft(Option(curr))(analyseOpt)
 
         case StmtIf(cond, thenStmts, elseStmts) =>

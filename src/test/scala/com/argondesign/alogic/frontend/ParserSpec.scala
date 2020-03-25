@@ -485,6 +485,37 @@ final class ParserSpec extends FreeSpec with AlogicTest {
           }
         }
 
+        "foreign function" - {
+          "a" in {
+            "import u8 f();".asTree[Desc] shouldBe {
+              DescFunc(Ident("f", Nil), FuncVariant.Xeno, ExprType(TypeUInt(8)), Nil, Nil)
+            }
+          }
+
+          "b" in {
+            "import void f(u2 i);".asTree[Desc] shouldBe {
+              DescFunc(Ident("f", Nil),
+                       FuncVariant.Xeno,
+                       ExprType(TypeVoid),
+                       DescVar(Ident("i", Nil), ExprType(TypeUInt(2)), None) :: Nil,
+                       Nil)
+            }
+          }
+
+          "c" in {
+            "import void f(u2 i, i3 j);".asTree[Desc] shouldBe {
+              DescFunc(
+                Ident("f", Nil),
+                FuncVariant.Xeno,
+                ExprType(TypeVoid),
+                DescVar(Ident("i", Nil), ExprType(TypeUInt(2)), None) ::
+                  DescVar(Ident("j", Nil), ExprType(TypeSInt(3)), None) ::
+                  Nil,
+                Nil
+              )
+            }
+          }
+        }
       }
 
       "attributes" - {

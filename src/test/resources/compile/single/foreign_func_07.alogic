@@ -1,0 +1,49 @@
+fsm foreign_func_07 {
+  import u16 f(u8 i);
+  out wire u32 o;
+
+  void main() {
+    fence;
+    o = {f(0x11), f(0x88)};
+    fence;
+    o = {f(0x55), f(0xcc)};
+    fence;
+    $finish();
+    fence;
+  }
+}
+// @sim/test {{{
+//  reg [7:0] tick;
+//  always @(posedge clk) begin
+//    if (rst) begin
+//      tick <= 8'd0;
+//    end else begin
+//      tick <= tick + 8'd1;
+//    end
+//  end
+//
+//  wire [31:0] o;
+//
+//  always @(posedge clk) begin
+//    if (!rst) begin
+//      case (tick)
+//        8'd1, 8'd2: $display("%1d %08x", tick, o);
+//        default: ;
+//      endcase
+//    end
+//  end
+// }}}
+//
+// @sim/dpi {{{
+//  #include "svdpi.h"
+//
+//  extern "C" void f(svBitVecVal *o, const svBitVecVal *i) {
+//    o[0] = i[0] | (~i[0] << 8);
+//  }
+// }}}
+//
+// @sim/expect {{{
+//  1 ee117788
+//  2 aa5533cc
+//  - .*/foreign_func_07\.v:\d+: Verilog \$finish
+// }}}

@@ -25,6 +25,7 @@ import com.argondesign.alogic.core.StorageTypes._
 import com.argondesign.alogic.core.enums.EntityVariant
 
 import scala.util.ChainingSyntax
+import scala.jdk.CollectionConverters._
 
 object DescBuilder extends BaseBuilder[DescContext, Desc] with ChainingSyntax {
 
@@ -48,6 +49,19 @@ object DescBuilder extends BaseBuilder[DescContext, Desc] with ChainingSyntax {
       override def visitSTTSlices(ctx: STTSlicesContext): StorageType =
         StorageTypeSlices(SlicesBuilder(ctx.slices))
     }
+
+    def argDescs(ctx: Formal_argumentsContext): List[DescVar] =
+      if (ctx == null) {
+        Nil
+      } else {
+        List from {
+          ctx.expr.iterator.asScala zip ctx.IDENTIFIER.iterator.asScala map {
+            case (e, i) =>
+              val loc = i.loc.copy(start = e.loc.start)
+              DescVar(IdentBuilder(i), ExprBuilder(e), None) withLoc loc
+          }
+        }
+      }
 
     object Visitor extends AlogicScalarVisitor[Desc] {
       //////////////////////////////////////////////////////////////////////////
@@ -178,12 +192,20 @@ object DescBuilder extends BaseBuilder[DescContext, Desc] with ChainingSyntax {
         DescSingleton(ident, variant, body) withLoc loc
       }
 
-      override def visitDescFunc(ctx: DescFuncContext): Desc = {
+      override def visitDescFuncAlogic(ctx: DescFuncAlogicContext): Desc = {
         val ident = IdentBuilder(ctx.ident)
         val ret = ExprBuilder(ctx.expr)
         val body = StmtBuilder(ctx.stmt)
         val loc = ctx.loc.copy(point = ident.loc.start)
         DescFunc(ident, FuncVariant.None, ret, Nil, body) withLoc loc
+      }
+
+      override def visitDescFuncImport(ctx: DescFuncImportContext): Desc = {
+        val ident = IdentBuilder(ctx.IDENTIFIER)
+        val ret = ExprBuilder(ctx.expr)
+        val args = argDescs(ctx.formal_arguments)
+        val loc = ctx.loc.copy(point = ident.loc.start)
+        DescFunc(ident, FuncVariant.Xeno, ret, args, Nil) withLoc loc
       }
     }
 

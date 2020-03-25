@@ -52,6 +52,7 @@ trait TypeOps extends TypePrintOps { this: Type =>
   final def isCombFunc: Boolean = this.isInstanceOf[TypeCombFunc]
   final def isCtrlFunc: Boolean = this.isInstanceOf[TypeCtrlFunc]
   final def isPolyFunc: Boolean = this.isInstanceOf[TypePolyFunc]
+  final def isXenoFunc: Boolean = this.isInstanceOf[TypeXenoFunc]
   final def isUnknown: Boolean = this eq TypeUnknown
   final def isChoice: Boolean = this eq TypeChoice
   final def isState: Boolean = this eq TypeState
@@ -85,6 +86,7 @@ trait TypeOps extends TypePrintOps { this: Type =>
   final def asCombFunc: TypeCombFunc = this.asInstanceOf[TypeCombFunc]
   final def asCtrlFunc: TypeCtrlFunc = this.asInstanceOf[TypeCtrlFunc]
   final def asPolyFunc: TypePolyFunc = this.asInstanceOf[TypePolyFunc]
+  final def asXenoFunc: TypeXenoFunc = this.asInstanceOf[TypeXenoFunc]
 
   // Is this a primitive numeric type
   final lazy val isNumeric: Boolean = underlying match {

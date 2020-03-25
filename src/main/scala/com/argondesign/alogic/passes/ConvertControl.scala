@@ -89,6 +89,12 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
     }
   }
 
+  override def skip(tree: Tree): Boolean = tree match {
+    case DeclFunc(symbol, _, _, _) => !symbol.kind.isCtrlFunc
+    case DefnFunc(symbol, _, _)    => !symbol.kind.isCtrlFunc
+    case _                         => false
+  }
+
   override def enter(tree: Tree): Option[Tree] = {
     if (tree.tpe == TypeCtrlStmt) {
       // Either push the state that is allocated after this statement,
@@ -112,7 +118,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
         // Allocate function entry state symbols up front so they can be
         // resolved in an arbitrary order, also add them to the entryStmts map
         func2state = Map from {
-          defn.functions.iterator map { funcDefn =>
+          defn.functions.iterator filter { _.symbol.kind.isCtrlFunc } map { funcDefn =>
             val funcSymbol = funcDefn.symbol
             val name = s"l${funcSymbol.loc.line}_function_${funcSymbol.name}"
             val stateSymbol = cc.newSymbol(name, funcSymbol.loc)
@@ -368,7 +374,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
       }
 
       //////////////////////////////////////////////////////////////////////////
-      // Handle functions
+      // Handle control functions
       //////////////////////////////////////////////////////////////////////////
 
       case _: DeclFunc => Stump
@@ -429,13 +435,13 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
     assert(pendingStates.isEmpty)
 
     tree visit {
-      case node: Tree if !node.hasTpe => cc.ice(node, "Lost tpe of", node.toString)
-      case node: DeclFunc             => cc.ice(node, "Function remains")
-      case node: DefnFunc             => cc.ice(node, "Function remains")
-      case node: StmtLoop             => cc.ice(node, "Loop remains")
-      case node: StmtFence            => cc.ice(node, "Fence statement remains")
-      case node: StmtBreak            => cc.ice(node, "Break statement remains")
-      case node: StmtReturn           => cc.ice(node, "Return statement remains")
+      case node: Tree if !node.hasTpe                    => cc.ice(node, "Lost tpe of", node.toString)
+      case node: DeclFunc if node.symbol.kind.isCtrlFunc => cc.ice(node, "Control Function remains")
+      case node: DefnFunc if node.symbol.kind.isCtrlFunc => cc.ice(node, "Control Function remains")
+      case node: StmtLoop                                => cc.ice(node, "Loop remains")
+      case node: StmtFence                               => cc.ice(node, "Fence statement remains")
+      case node: StmtBreak                               => cc.ice(node, "Break statement remains")
+      case node: StmtReturn                              => cc.ice(node, "Return statement remains")
       case node @ ExprCall(ref, _) if ref.tpe == TypeCtrlStmt =>
         cc.ice(node, "Control function call remains")
     }
