@@ -12,8 +12,8 @@ error () {
 
 unset VERILATOR_ROOT
 
-REMOTE=http://git.veripool.org/git/verilator
-REFSPEC=v4.016
+REMOTE=http://github.com/verilator/verilator
+REFSPEC=v4.030
 
 git clone $REMOTE verilator
 
