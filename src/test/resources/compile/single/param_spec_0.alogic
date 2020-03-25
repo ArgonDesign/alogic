@@ -25,7 +25,7 @@ network param_spec_0 {
   inst_a.p_o -> o_a;
   inst_b.p_o -> o_b;
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module param_spec_0(
 //    input wire rst,
 //    input wire clk,

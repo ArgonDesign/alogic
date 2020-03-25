@@ -23,7 +23,7 @@ network unsized_const {
   inst_a.p_o -> o_a;
   inst_b.p_o -> o_b;
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module unsized_const(
 //    input wire rst,
 //    input wire clk,

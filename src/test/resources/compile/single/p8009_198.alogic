@@ -11,7 +11,7 @@ fsm p8009_198 {
     fence;
   }
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module p8009_198(
 //    output wire [2:0] o
 //  );

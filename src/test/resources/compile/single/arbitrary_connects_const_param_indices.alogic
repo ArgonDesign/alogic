@@ -17,7 +17,7 @@ network arbitrary_connects_const_param_indices {
     in_param_index[0+:32-Bu] -> out_param_index[31-:32-Bu];
 
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module arbitrary_connects_const_param_indices__Bu_7(
 //    input  wire [31:0] in_const_index,
 //    input  wire [31:0] in_param_index,

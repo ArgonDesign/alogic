@@ -17,7 +17,7 @@ network lower_flow_control_3 {
   inner.oo -> o;
 }
 
-// @fec-golden {{{
+// @fec/golden {{{
 // module lower_flow_control_3(
 //   input  wire i__valid,
 //   output wire o__valid

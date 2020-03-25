@@ -15,7 +15,7 @@ network dictident_struct_10 {
     }
   }
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module dictident_struct_10(
 //    input  wire [1:0] i__0,
 //    input  wire       i__1,

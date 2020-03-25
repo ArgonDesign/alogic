@@ -7,7 +7,7 @@ network lift_entities_0 {
   }
 }
 
-// @fec-golden {{{
+// @fec/golden {{{
 // module lift_entities_0(
 //   input  wire i,
 //   output wire o

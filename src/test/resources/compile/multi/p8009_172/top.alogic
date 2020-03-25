@@ -12,7 +12,7 @@ network top {
   a -> inst.a;
   inst.b -> b;
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module top(
 //    input wire        clk,
 //    input wire        rst,

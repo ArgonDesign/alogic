@@ -13,7 +13,7 @@ fsm split_struct_0 {
   }
 }
 
-// @fec-golden {{{
+// @fec/golden {{{
 // module split_struct_0(
 //   input  wire i__a,
 //   input  wire i__b,

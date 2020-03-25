@@ -6,7 +6,7 @@ fsm unused_go {
     fence;
   }
 }
-// @fec-golden {{{
+// @fec/golden {{{
 // module unused_go(
 //   input  wire clk,
 //   input  wire rst,

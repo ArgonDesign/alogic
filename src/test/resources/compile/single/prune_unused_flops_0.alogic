@@ -16,7 +16,7 @@ fsm prune_unused_flops_0 {
     }
 }
 
-// @fec-golden {{{
+// @fec/golden {{{
 // module prune_unused_flops_0(
 //   input  wire [7:0] i,
 //   output reg  [7:0] o

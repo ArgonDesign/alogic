@@ -18,7 +18,7 @@ network recursive_connect {
   root = new impl(P=10);
   i -> root.a; root.b -> o;
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module recursive_connect(
 //    input  wire i,
 //    output wire o

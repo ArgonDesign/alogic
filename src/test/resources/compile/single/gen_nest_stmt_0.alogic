@@ -35,7 +35,7 @@ network gen_nest_stmt_0 {
   i_4.p_b -> b_4;
   i_9.p_b -> b_9;
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module gen_nest_stmt_0(
 //    input wire rst,
 //    input wire clk,

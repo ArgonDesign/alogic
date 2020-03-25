@@ -12,7 +12,7 @@ fsm lower_variables_sync_high_2 {
     fence;
   }
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module lower_variables_sync_high_2(
 //    input  wire clk,
 //    input  wire i,

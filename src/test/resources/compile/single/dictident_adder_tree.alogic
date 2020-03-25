@@ -39,7 +39,7 @@ network dictident_adder_tree {
     }
   }
 }
-// @fec-golden {{{
+// @fec/golden {{{
 // module dictident_adder_tree(
 //   input  wire [1:0] p_i__0,
 //   input  wire [1:0] p_i__1,

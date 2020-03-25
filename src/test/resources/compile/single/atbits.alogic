@@ -19,7 +19,7 @@ fsm atbits {
   }
 }
 
-// @fec-golden {{{
+// @fec/golden {{{
 //  module atbits(
 //    input  wire [10:0] p_i,
 //    output wire [10:0] p_o

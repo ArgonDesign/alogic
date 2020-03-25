@@ -18,7 +18,7 @@ fsm split_struct_2 {
   }
 }
 
-// @fec-golden {{{
+// @fec/golden {{{
 // module split_struct_2(
 //   input  wire i__a__x,
 //   input  wire i__a__y,

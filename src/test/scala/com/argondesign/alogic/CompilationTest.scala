@@ -225,8 +225,13 @@ trait CompilationTest
   private case class ErrorSpec(file: String, line: Int, patterns: List[String]) extends MessageSpec
   private case class FatalSpec(file: String, line: Int, patterns: List[String]) extends MessageSpec
 
-  private def parseCheckFile(checkFile: String): (Map[String, String], List[MessageSpec]) = {
-    val attr = mutable.Map[String, String]()
+  private def parseCheckFile(checkFile: String): (
+      Map[String, String],
+      Map[String, Map[String, String]],
+      List[MessageSpec]
+  ) = {
+    val attrs = mutable.Map[String, String]()
+    val dicts = mutable.Map[String, Map[String, String]]()
 
     val pairMatcher = """@(.+):(.*)""".r
     val longMatcher = """@(.+)\{\{\{""".r
@@ -240,7 +245,7 @@ trait CompilationTest
     var mesgFile = ""
     var mesgLine = ""
 
-    def finishMeasageSpec() = {
+    def finishMeasageSpec(): Unit = {
       val file = if (mesgFile.isEmpty) ".*" + checkFile.split("/").last else mesgFile
       mesgType match {
         case "WARNING" => mesgSpecs append WarningSpec(file, mesgLine.toInt, mesgBuff.toList)
@@ -251,48 +256,61 @@ trait CompilationTest
       mesgBuff.clear()
     }
 
-    val longBuff = new ListBuffer[String]
-    var longAttr = ""
+    var key = ""
+    val buf = new ListBuffer[String]
 
-    def finishLongAttr() = {
-      attr(longAttr) = longBuff mkString "\n"
-      longBuff.clear()
-      longAttr = ""
+    def add(key: String, value: String): Unit = {
+      val (a, b) = key.span(_ != '/')
+      if (b.isEmpty) {
+        attrs(a.trim) = value
+      } else {
+        val pair = b.tail.trim -> value
+        dicts.updateWith(a.trim) {
+          case Some(m) => Some(m + pair)
+          case None    => Some(Map(pair))
+        }
+      }
     }
 
-    for {
-      line <- Source.fromFile(checkFile).getLines map { _.trim }
-      if line startsWith "//"
-    } {
-      val text = line.drop(2)
-      text.trim match {
-        case pairMatcher(k, v) if longAttr == "" => attr(k.trim) = v.trim
-        case longMatcher(k) if longAttr == ""    => longAttr = k.trim
-        case "}}}" if longAttr != ""             => finishLongAttr()
-        case _ if longAttr != ""                 => longBuff append text
-        case boolMatcher(k) if longAttr == ""    => attr(k.trim) = ""
-        case mesgMatcher(file, line, kind, null, pattern) if longAttr == "" =>
-          if (mesgBuff.nonEmpty) {
-            finishMeasageSpec()
-          }
-          mesgFile = file.trim
-          mesgLine = line.trim
-          mesgType = kind.trim
-          mesgBuff append pattern
-        case mesgMatcher(file, line, kind, _, pattern) if longAttr == "" =>
-          assert(mesgFile == file.trim, "Message continuation must have same file pattern")
-          assert(mesgLine == line.trim, "Message continuation must have same line number")
-          assert(mesgType == kind.trim, "Message continuation must have same message type")
-          mesgBuff append pattern
-        case _ =>
+    val source = Source.fromFile(checkFile)
+
+    try {
+      for {
+        line <- source.getLines
+        if line startsWith "//"
+      } {
+        val text = line.drop(2)
+        text.trim match {
+          case pairMatcher(k, v) if key == "" => add(k, v.trim)
+          case longMatcher(k) if key == ""    => key = k
+          case "}}}" if key != ""             => add(key, buf mkString "\n"); buf.clear(); key = ""
+          case _ if key != ""                 => buf append text
+          case boolMatcher(k) if key == ""    => add(k, "")
+          case mesgMatcher(file, line, kind, null, pattern) if key == "" =>
+            if (mesgBuff.nonEmpty) {
+              finishMeasageSpec()
+            }
+            mesgFile = file.trim
+            mesgLine = line.trim
+            mesgType = kind.trim
+            mesgBuff append pattern
+          case mesgMatcher(file, line, kind, _, pattern) if key == "" =>
+            assert(mesgFile == file.trim, "Message continuation must have same file pattern")
+            assert(mesgLine == line.trim, "Message continuation must have same line number")
+            assert(mesgType == kind.trim, "Message continuation must have same message type")
+            mesgBuff append pattern
+          case _ =>
+        }
       }
+    } finally {
+      source.close()
     }
 
     if (mesgBuff.nonEmpty) {
       finishMeasageSpec()
     }
 
-    (attr.toMap, mesgSpecs.toList)
+    (attrs.toMap, dicts.toMap, mesgSpecs.toList)
   }
 
   def defineTest(name: String, searchPath: File, top: String, checkFile: String): Unit = {
@@ -320,11 +338,16 @@ trait CompilationTest
       }
 
       // Parse the check file
-      val (attr, messageSpecs) = parseCheckFile(checkFile)
+      val (attr, dict, messageSpecs) = parseCheckFile(checkFile)
 
       // Cancel test if required
       if (attr contains "ignore") {
         cancel
+      }
+
+      // Warning for legacy test syntax
+      if (attr contains "fec-golden") {
+        fail("use @fec/golden")
       }
 
       val resetStyle = attr.get("reset-style") map {
@@ -440,9 +463,9 @@ trait CompilationTest
         }
 
         // Perform equivalence check with golden reference if provided
-        attr get "fec-golden" foreach { golden =>
+        dict get "fec" foreach { fec =>
           withTmpDir { tmpDir =>
-            yosysFEC(attr.getOrElse("out-top", top), golden, tmpDir)
+            yosysFEC(attr.getOrElse("out-top", top), fec("golden"), tmpDir)
           }
         }
       }

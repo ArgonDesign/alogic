@@ -19,7 +19,7 @@ network dictident_instance_3 {
   i_b -> inst#[1].ii;
   inst#[1].oo -> o_b;
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module dictident_instance_3(
 //    input  wire i_a,
 //    input  wire i_b,

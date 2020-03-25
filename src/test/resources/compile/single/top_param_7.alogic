@@ -11,7 +11,7 @@ network top_param_7 {
   C -> o;
 }
 // @out-top: top_param_7__W_4__C_10
-// @fec-golden {{{
+// @fec/golden {{{
 //  module top_param_7__W_4__C_10(
 //    output  wire  [3:0] o
 //  );

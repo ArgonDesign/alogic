@@ -15,7 +15,7 @@ fsm vector_3 {
         fence;
     }
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module vector_3(
 //    input wire clk,
 //    input wire rst,

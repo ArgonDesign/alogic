@@ -12,7 +12,7 @@ fsm lower_array_3 {
     fence;
   }
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module lower_array_3(
 //    input             clk,
 //    input  wire [1:0] waddr,

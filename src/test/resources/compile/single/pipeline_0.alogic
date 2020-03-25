@@ -34,7 +34,7 @@ network pipeline_0 {
 
 }
 
-// @fec-golden {{{
+// @fec/golden {{{
 // module pipeline_0(
 //   input  wire clk,
 //   input  wire rst,

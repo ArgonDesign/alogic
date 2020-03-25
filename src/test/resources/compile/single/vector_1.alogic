@@ -10,7 +10,7 @@ fsm vector_1 {
         fence;
     }
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module vector_1(
 //    input wire [127:0] i,
 //    input wire       i_0,

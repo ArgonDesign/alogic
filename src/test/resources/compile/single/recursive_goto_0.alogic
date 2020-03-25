@@ -7,7 +7,7 @@ fsm recursive_goto_0 {
     goto main;
   }
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module recursive_goto_0(
 //    input i,
 //    output o

@@ -27,7 +27,7 @@ network p8009_225 {
   }
 }
 
-// @fec-golden {{{
+// @fec/golden {{{
 //  module p8009_225(
 //    input  wire i__a,
 //    input  wire i__b,

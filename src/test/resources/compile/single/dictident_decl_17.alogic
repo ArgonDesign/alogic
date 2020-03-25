@@ -32,7 +32,7 @@ fsm dictident_decl_17 {
     fence;
   }
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module dictident_decl_17(
 //    input  wire x,
 //    input  wire y,

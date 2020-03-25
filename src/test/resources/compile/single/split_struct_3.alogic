@@ -25,7 +25,7 @@ network split_struct_3 {
   i -> inner.ii;
   inner.oo -> o;
 }
-// @fec-golden {{{
+// @fec/golden {{{
 // module split_struct_3(
 //   input  wire i__a__x,
 //   input  wire i__a__y,

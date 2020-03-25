@@ -12,7 +12,7 @@ fsm circular_reference_1 {
   }
 
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module circular_reference_1(
 //    input  wire clk,
 //    input  wire rst,

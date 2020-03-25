@@ -22,7 +22,7 @@ fsm dictident_function_4 {
     }
   }
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module dictident_function_4(
 //    input  wire clk,
 //    input  wire rst,

@@ -10,7 +10,7 @@ network top {
   i_0 -> inst_0.i; inst_0.o -> o_0;
   i_1 -> inst_1.i; inst_1.o -> o_1;
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module top(
 //    input  i_0,
 //    input  i_1,

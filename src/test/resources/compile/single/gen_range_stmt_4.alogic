@@ -11,7 +11,7 @@ fsm gen_range_stmt_4 {
     fence;
   }
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module gen_range_stmt_4(
 //    input wire rst,
 //    input wire clk,

@@ -8,7 +8,7 @@ fsm lower_flow_control_0 {
   }
 }
 
-// @fec-golden {{{
+// @fec/golden {{{
 // module lower_flow_control_0(
 //   input  wire i,
 //   input  wire i__valid,

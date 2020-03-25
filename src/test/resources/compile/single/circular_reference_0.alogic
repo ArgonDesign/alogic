@@ -10,7 +10,7 @@ fsm circular_reference_0 {
     fence;
   }
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module circular_reference_0(
 //    output wire [6:0] p_a,
 //    output wire [7:0] p_b

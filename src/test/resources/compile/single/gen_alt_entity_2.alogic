@@ -95,7 +95,7 @@ network gen_alt_entity_2 {
   mid_u_1.p_mid_o -> p_out_u_1;
   mid_s_1.p_mid_o -> p_out_s_1;
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module gen_alt_entity_2(
 //    input wire clk,
 //    input wire rst,

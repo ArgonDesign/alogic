@@ -11,7 +11,7 @@ fsm lower_flow_control_5 {
     fence;
   }
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module lower_flow_control_5(
 //    input  wire clk,
 //    input  wire rst,

@@ -49,7 +49,7 @@ network gen_alt_autoinst_0 {
   mid_u.p_mid_o -> p_out_u;
   mid_s.p_mid_o -> p_out_s;
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module gen_alt_autoinst_0(
 //    input wire clk,
 //    input wire rst,

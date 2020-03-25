@@ -27,7 +27,7 @@ fsm recursive_goto_3 {
     }
   }
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module recursive_goto_3(
 //    input   wire        clk,
 //    input   wire        rst,

@@ -10,7 +10,7 @@ fsm assume_06 {
   }
 }
 // @verilator-lint-off
-// @fec-golden {{{
+// @fec/golden {{{
 //  module assume_06(
 //    input   wire [1:0] i,
 //    output  wire [1:0] o

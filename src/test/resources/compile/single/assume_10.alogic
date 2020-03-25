@@ -10,7 +10,7 @@ fsm assume_10 {
     fence;
   }
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module assume_10(
 //    input   wire [1:0] i,
 //    output  wire [1:0] o

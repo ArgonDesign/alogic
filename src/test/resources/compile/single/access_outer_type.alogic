@@ -17,7 +17,7 @@ network access_outer_type {
 
   i -> a.ii; a.oo -> o;
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module access_outer_type(
 //    input  wire i,
 //    output wire o

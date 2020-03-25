@@ -9,7 +9,7 @@ fsm sized_param_init_1 {
   }
 }
 // @out-top: sized_param_init_1__DEPTH_512
-// @fec-golden {{{
+// @fec/golden {{{
 //  module sized_param_init_1__DEPTH_512(
 //    output wire [1023:0] p_o
 //  );

@@ -25,7 +25,7 @@ network gen_if_stmt_0 {
   neg.p_o -> p_on;
   pos.p_o -> p_op;
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module gen_if_stmt_0(
 //    input wire rst,
 //    input wire clk,

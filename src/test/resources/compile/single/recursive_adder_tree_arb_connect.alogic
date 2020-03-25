@@ -34,7 +34,7 @@ network recursive_adder_tree_arb_connect {
 
   p_i -> inst.p_ii; inst.p_oo -> p_o;
 }
-// @fec-golden {{{
+// @fec/golden {{{
 // module recursive_adder_tree_arb_connect(
 //   input  wire [31:0] p_i,
 //   output wire [5:0] p_o

@@ -69,7 +69,7 @@ network gen_alt_func_2 {
   inner_u_1.p_o -> p_out_u_1;
   inner_s_1.p_o -> p_out_s_1;
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module gen_alt_func_2(
 //    input wire clk,
 //    input wire rst,

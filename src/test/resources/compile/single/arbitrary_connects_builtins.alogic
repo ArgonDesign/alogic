@@ -12,7 +12,7 @@ network arbitrary_connects_builtins {
     @ex(in_ex[0], 4, in_ex) -> out_ex;
 
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module arbitrary_connects_builtins(
 //    input  wire [1:0] in_zx,
 //    output wire [3:0] out_zx,

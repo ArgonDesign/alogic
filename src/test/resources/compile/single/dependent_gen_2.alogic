@@ -25,7 +25,7 @@ network dependent_gen_2 {
     i_0 -> o_1;
   }
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module dependent_gen_2(
 //    input  i_0,
 //    input  i_1,

@@ -37,7 +37,7 @@ network dictident_hard_1 {
     inst.oo#[n] -> o#[n];
   }
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module dictident_hard_1(
 //    output o__0,
 //    output o__1

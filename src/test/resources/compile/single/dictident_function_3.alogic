@@ -22,7 +22,7 @@ fsm dictident_function_3 {
     goto func#[0];
   }
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module dictident_function_3(
 //    input  wire clk,
 //    input  wire rst,

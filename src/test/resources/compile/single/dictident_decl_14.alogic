@@ -10,7 +10,7 @@ network dictident_decl_14 {
     }
   }
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module dictident_decl_14(
 //    input  wire i__0,
 //    input  wire i__1,

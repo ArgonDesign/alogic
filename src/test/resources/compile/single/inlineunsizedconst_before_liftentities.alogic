@@ -11,7 +11,7 @@ network inlineunsizedconst_before_liftentities {
     }
   }
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module inlineunsizedconst_before_liftentities(
 //    input  wire        clk,
 //    input  wire        rst,

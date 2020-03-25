@@ -16,7 +16,7 @@ network dictident_port_1 {
   i#[N] -> inner.ii#[N]; inner.oo#[N] -> o#[N];
   }
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module dictident_port_1(
 //    input   wire        i__0,
 //    input   wire [1:0]  i__1,

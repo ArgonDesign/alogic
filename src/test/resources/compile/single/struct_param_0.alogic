@@ -8,7 +8,7 @@ network struct_param_0 {
   out s_t(W=10) o;
   i -> o;
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module struct_param_0 (
 //    input  wire [9:0] i__a,
 //    output wire [9:0] o__a

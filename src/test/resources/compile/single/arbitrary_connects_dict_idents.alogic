@@ -34,7 +34,7 @@ network arbitrary_connects_dict_idents {
     {Y.out_to_ext_gen#[1], Y.out_to_ext_gen#[2]} -> {out_gen#[2], out_gen#[1]};
 
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module arbitrary_connects_dict_idents(
 //
 //    input  wire       clk,

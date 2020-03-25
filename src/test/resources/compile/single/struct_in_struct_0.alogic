@@ -11,7 +11,7 @@ network struct_in_struct_0 {
   out b o;
   i -> o;
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module struct_in_struct_0(
 //    input  wire i__b0__a0,
 //    output wire o__b0__a0

@@ -12,7 +12,7 @@ fsm gen_for_stmt_3 {
     fence;
   }
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module gen_for_stmt_3(
 //    input wire rst,
 //    input wire clk,

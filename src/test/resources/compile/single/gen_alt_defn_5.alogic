@@ -54,7 +54,7 @@ network gen_alt_defn_5 {
   inner_u.p_o -> p_out_u;
   inner_s.p_o -> p_out_s;
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module gen_alt_defn_5__STRANGE_0(
 //    input wire clk,
 //    input wire rst,

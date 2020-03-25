@@ -15,7 +15,7 @@ fsm assume_04 {
   }
 }
 // @verilator-lint-off
-// @fec-golden {{{
+// @fec/golden {{{
 //  module assume_04(
 //    input   wire [1:0] c,
 //    input   wire       i,

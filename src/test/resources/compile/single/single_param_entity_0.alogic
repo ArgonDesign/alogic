@@ -13,7 +13,7 @@ network single_param_entity_0 {
 
   i -> inst.ii; inst.oo -> o;
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module single_param_entity_0 (
 //    input  wire [1:0] i,
 //    output wire [1:0] o

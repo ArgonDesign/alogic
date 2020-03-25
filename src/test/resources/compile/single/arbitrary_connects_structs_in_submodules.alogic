@@ -22,7 +22,7 @@ network arbitrary_connects_structs_in_submodules {
     X.out_to_ext_s.b -> out_from_X_s.a;
 
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module arbitrary_connects_structs_in_submodules(
 //
 //    input  wire [7:0] in_to_X_s__a,

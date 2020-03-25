@@ -31,7 +31,7 @@ network gen_if_elif_stmt_0 {
   np.p_o -> p_onp;
   nn.p_o -> p_onn;
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module gen_if_elif_stmt_0(
 //    input wire rst,
 //    input wire clk,

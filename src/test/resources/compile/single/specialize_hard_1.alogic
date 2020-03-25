@@ -27,7 +27,7 @@ fsm specialize_hard_1 {
     goto main;
   }
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module specialize_hard_1(
 //    input   wire clk,
 //    input   wire rst,

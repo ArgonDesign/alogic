@@ -26,7 +26,7 @@ network gen_range_scope_0 {
   i_4.p_o -> p_o4;
   i_9.p_o -> p_o9;
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module gen_range_scope_0(
 //    input wire rst,
 //    input wire clk,

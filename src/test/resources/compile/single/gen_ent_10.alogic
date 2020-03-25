@@ -36,7 +36,7 @@ network gen_ent_10 {
     }
   }
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module gen_ent_10(
 //    input  wire        i_0,
 //    input  wire [ 1:0] i_1,

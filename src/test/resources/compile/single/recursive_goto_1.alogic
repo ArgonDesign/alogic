@@ -12,7 +12,7 @@ fsm recursive_goto_1 {
     goto main;
   }
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module recursive_goto_1(
 //    input wire clk,
 //    input wire rst,

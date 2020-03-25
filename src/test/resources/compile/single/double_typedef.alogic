@@ -8,7 +8,7 @@ network double_typedef {
   i -> o;
 }
 
-// @fec-golden {{{
+// @fec/golden {{{
 // module double_typedef(
 //   input  wire i,
 //   output wire o

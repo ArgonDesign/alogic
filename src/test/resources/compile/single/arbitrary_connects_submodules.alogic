@@ -63,7 +63,7 @@ network arbitrary_connects_submodules {
     Y.out_to_ext_nt_b[1] -> out_from_Y_nt_b[1];
 
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module arbitrary_connects_submodules(
 //
 //    input  wire        clk,

@@ -19,7 +19,7 @@ fsm prune_unused_flops_1 {
     }
 }
 
-// @fec-golden {{{
+// @fec/golden {{{
 // module prune_unused_flops_1(
 //   input  wire clk,
 //   input  wire rst,

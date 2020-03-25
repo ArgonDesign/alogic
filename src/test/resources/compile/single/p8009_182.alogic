@@ -12,7 +12,7 @@ network p8009_182 {
     }
   }
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module p8009_182__N_20(
 //    input  wire       clk,
 //    input  wire       rst,

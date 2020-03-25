@@ -11,7 +11,7 @@ fsm const_with_atbits {
     fence;
   }
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module const_with_atbits(
 //    input  wire clk,
 //    input  wire rst,

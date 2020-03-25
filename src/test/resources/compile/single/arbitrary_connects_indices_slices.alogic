@@ -9,7 +9,7 @@ network arbitrary_connects_indices_slices {
     in_is[8]           -> out_is[3:0][0];
 
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module arbitrary_connects_indices_slices(
 //    input  wire [8:0] in_is,
 //    output wire [8:0] out_is

@@ -14,7 +14,7 @@ fsm folding_before_lower_structs {
     fence;
   }
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module folding_before_lower_structs(
 //    output wire [7:0] o
 //  );

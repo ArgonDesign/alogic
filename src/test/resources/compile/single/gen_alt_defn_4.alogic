@@ -29,7 +29,7 @@ network gen_alt_defn_4 {
   p_in_1 -> inner.p_i_1;
   inner.p_o -> p_out;
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module gen_alt_defn_4__SIGNED_0(
 //    input wire clk,
 //    input wire rst,

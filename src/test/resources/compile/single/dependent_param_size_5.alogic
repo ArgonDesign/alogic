@@ -25,7 +25,7 @@ network dependent_param_size_5 {
   i_a -> inst_a.p_i; inst_a.p_o -> o_a;
   i_b -> inst_b.p_i; inst_b.p_o -> o_b;
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module dependent_param_size_5(
 //    input wire rst,
 //    input wire clk,

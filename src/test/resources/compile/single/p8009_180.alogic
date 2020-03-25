@@ -11,7 +11,7 @@ fsm p8009_180 {
     fence;
   }
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module p8009_180(
 //    input  wire       clk,
 //    input  wire       rst,

@@ -10,7 +10,7 @@ network top_param_3 {
   i -> o;
 }
 // @out-top: top_param_3__W_2
-// @fec-golden {{{
+// @fec/golden {{{
 //  module top_param_3__W_2(
 //    input   wire  [1:0] i,
 //    output  wire  [1:0] o

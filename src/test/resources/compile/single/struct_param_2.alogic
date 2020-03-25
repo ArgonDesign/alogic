@@ -14,7 +14,7 @@ network struct_param_2 {
   i_0 -> o_0;
   i_1 -> o_1;
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module struct_param_2 (
 //    input  wire [8:0] i_0__a,
 //    input  wire [7:0] i_1__a,

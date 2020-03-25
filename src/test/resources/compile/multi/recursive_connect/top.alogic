@@ -6,7 +6,7 @@ network top {
 
   i -> inst.i; inst.o -> o;
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module top(
 //    input  wire i,
 //    output wire o

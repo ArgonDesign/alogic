@@ -5,7 +5,7 @@ fsm port_default_only {
   }
 }
 // :2: WARNING: Output port 'o' is unused
-// @fec-golden {{{
+// @fec/golden {{{
 //  module port_default_only(
 //    input  wire clk,
 //    input  wire rst,

@@ -21,7 +21,7 @@ network dictident_struct_3 {
   i_0 -> inner.ii_0; inner.oo_0 -> o_0;
   i_1 -> inner.ii_1; inner.oo_1 -> o_1;
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module dictident_struct_3(
 //    input  wire       i_0,
 //    input  wire [1:0] i_1,

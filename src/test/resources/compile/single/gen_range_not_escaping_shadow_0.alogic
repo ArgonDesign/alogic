@@ -9,7 +9,7 @@ fsm gen_range_not_escaping_shadow_0 {
     fence;
   }
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module gen_range_not_escaping_shadow_0(
 //    input  wire i,
 //    output wire o

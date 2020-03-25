@@ -29,7 +29,7 @@ network gen_for_prune_unused_2 {
   i_4.p_o -> p_o4;
   i_9.p_o -> p_o9;
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module gen_for_prune_unused_2(
 //    input wire rst,
 //    input wire clk,

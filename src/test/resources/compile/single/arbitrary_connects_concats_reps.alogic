@@ -20,7 +20,7 @@ network arbitrary_connects_concats_reps {
     {2{in_r}}            -> out_r;
 
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module arbitrary_connects_concats_reps(
 //    input  wire [1:0] in_c_s_0,
 //    input  wire [1:0] in_c_s_1,

@@ -13,7 +13,7 @@ fsm def_ent_2 {
     fence;
   }
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module def_ent_2__W_6(
 //    input  wire [5:0] i,
 //    output wire [5:0] o

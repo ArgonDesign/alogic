@@ -41,7 +41,7 @@ network dictident_hard_0 {
     inst.oo#[n] -> o#[n];
   }
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module dictident_hard_0(
 //    input i__0,
 //    input i__1,

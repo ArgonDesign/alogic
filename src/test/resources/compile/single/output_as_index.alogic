@@ -12,7 +12,7 @@ fsm output_as_index {
     fence;
   }
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module output_as_index(
 //    input  wire       clk,
 //    input  wire       rst,

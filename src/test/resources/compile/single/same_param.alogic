@@ -22,7 +22,7 @@ network same_param {
   inst_a.p_o -> o_a;
   inst_b.p_o -> o_b;
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module same_param(
 //    input wire rst,
 //    input wire clk,

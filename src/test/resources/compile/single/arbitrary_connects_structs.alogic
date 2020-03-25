@@ -19,7 +19,7 @@ network arbitrary_connects_structs {
     in_s.b.b -> out_s.b.a;
 
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module arbitrary_connects_structs(
 //    input  wire [7:0] in_s__a__a,
 //    input  wire [7:0] in_s__a__b,

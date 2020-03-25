@@ -21,7 +21,7 @@ network specialize_same_0 {
   i_0 -> inst_0.i; inst_0.o -> o_0;
   i_1 -> inst_1.i; inst_1.o -> o_1;
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module specialize_same_0(
 //    input  [1:0] i_0,
 //    input  [1:0] i_1,

@@ -12,7 +12,7 @@ fsm lower_variables_async_low_1 {
     fence;
   }
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module lower_variables_async_low_1(
 //    input  wire clk,
 //    input  wire rst_n,

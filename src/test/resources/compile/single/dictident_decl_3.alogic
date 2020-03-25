@@ -6,7 +6,7 @@ network dictident_decl_3 {
   i#[0] -> o#[0];
   i#[1] -> o#[1];
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module dictident_decl_3(
 //    input  wire i__0,
 //    input  wire i__1,

@@ -9,7 +9,7 @@ fsm folding_before_lower_vectors {
     fence;
   }
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module folding_before_lower_vectors(
 //    output wire [7:0] o
 //  );

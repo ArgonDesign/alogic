@@ -38,7 +38,7 @@ fsm vector_slicing {
     fence;
   }
 }
-// @fec-golden {{{
+// @fec/golden {{{
 //  module vector_slicing(
 //    input  wire[639:0] i,
 //    output wire[639:0] o1,
