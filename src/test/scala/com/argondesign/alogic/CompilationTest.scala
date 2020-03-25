@@ -311,6 +311,25 @@ trait CompilationTest
     }
 
     (attrs.toMap, dicts.toMap, mesgSpecs.toList)
+  } tap {
+    case (attr, dict, _) =>
+      val valid = Set(
+        "expect-file",
+        "fec",
+        "ignore",
+        "no-assertions",
+        "no-reset-all",
+        "out-top",
+        "output-name-max-length",
+        "reset-style",
+        "top",
+        "verilator-lint-off"
+      )
+      attr.keysIterator concat dict.keysIterator foreach { k =>
+        if (!valid(k)) {
+          fail(s"Unknown test attribute '$k'")
+        }
+      }
   }
 
   def defineTest(name: String, searchPath: File, top: String, checkFile: String): Unit = {
@@ -343,11 +362,6 @@ trait CompilationTest
       // Cancel test if required
       if (attr contains "ignore") {
         cancel
-      }
-
-      // Warning for legacy test syntax
-      if (attr contains "fec-golden") {
-        fail("use @fec/golden")
       }
 
       val resetStyle = attr.get("reset-style") map {
