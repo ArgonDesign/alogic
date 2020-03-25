@@ -49,16 +49,24 @@ trait CompilationTest
     with fixture.ConfigMapFixture
     with ParallelTestExecution {
 
-  private val verilatorPath = new File("verilator/install/bin/verilator")
-
-  if (!verilatorPath.exists) {
-    cancel("Run the 'setup-verilator' script to install Verilator locally for testing")
+  private lazy val verilator = {
+    new File("verilator/install/bin/verilator")
+  } pipe {
+    _.getCanonicalFile
+  } tap { file =>
+    if (!file.exists) {
+      cancel("Run the 'setup-verilator' script to install Verilator locally for testing")
+    }
   }
 
-  private val yosysPath = new File("yosys/install/bin/yosys")
-
-  if (!yosysPath.exists) {
-    cancel("Run the 'setup-yosys' script to install Yosys locally for testing")
+  private lazy val yosys = {
+    new File("yosys/install/bin/yosys")
+  } pipe {
+    _.getCanonicalFile
+  } tap { file =>
+    if (!file.exists) {
+      cancel("Run the 'setup-yosys' script to install Yosys locally for testing")
+    }
   }
 
   // Will be updated form multiple threads so must be thread safe
@@ -98,12 +106,15 @@ trait CompilationTest
     }
   }
 
+  def writeFile(path: Path)(content: String): Unit = {
+    val pw = new PrintWriter(path.toFile)
+    pw.write(content)
+    pw.flush()
+    pw.close()
+  }
+
   def writeOutputs(path: Path): Unit = outputs foreach {
-    case (name, text) =>
-      val pw = new PrintWriter(path.resolve(name).toFile)
-      pw.write(text)
-      pw.flush()
-      pw.close()
+    case (name, text) => writeFile(path.resolve(name))(text)
   }
 
   def checkFileExists(name: String): Unit =
@@ -112,36 +123,229 @@ trait CompilationTest
       fail(s"Could not find file '$name' among \n$files\n")
     }
 
+  def system(cwd: Path, cmd: String, logfile: String): Unit = {
+    val logFile = cwd.resolve(logfile).toFile
+    val logger = ProcessLogger(logFile)
+    val ret = Process(cmd, cwd.toFile) ! logger
+    logger.flush()
+    logger.close()
+    if (ret != 0) {
+      val source = Source.fromFile(logFile)
+      try {
+        source.getLines foreach println
+      } finally {
+        source.close()
+      }
+      fail(s"Command failed: '$cmd'")
+    }
+  }
+
+  def allMatches(patterns: Iterable[String], lines: Iterable[String]): Boolean = {
+    lines.sizeIs == patterns.size && { // Right length
+      (patterns.iterator zip lines.iterator) forall { // Right content
+        case (pattern, line) => pattern.r.pattern.matcher(line).matches()
+      }
+    }
+  }
+
   // Lint compiler output with verilator
   def verilatorLint(topLevel: String, tmpDir: Path): Unit = {
     // Write all files to temporary directory
     writeOutputs(tmpDir)
 
     // Lint the top level
-    val ret = s"${verilatorPath} --lint-only -Wall -y ${tmpDir} ${topLevel}".!
+    system(tmpDir, s"$verilator --lint-only -Wall -y $tmpDir $topLevel", "verilator-lint.log")
+  }
 
-    // Fail test if lint failed
-    if (ret != 0) {
-      fail("Verilator lint error")
+  // Build and run simulation with Verilator
+  def verilatorSim(
+      topLevel: String,
+      test: String,
+      expect: String,
+      dpi: String,
+      timeout: Long,
+      trace: Boolean,
+      tmpDir: Path
+  )(implicit cc: CompilerContext): Unit = {
+    require(topLevel != "testbench")
+    assert(outputs forall { _._1 != "testbench" })
+
+    // Write all files to temporary directory
+    writeOutputs(tmpDir)
+
+    // Write the testbench
+    val tbPath = tmpDir.resolve("testbench.sv")
+    writeFile(tbPath) {
+      s"""|module testbench(
+          |  input wire clk,
+          |  input wire ${cc.rst}
+          |);
+          |
+          |$test
+          |
+          |  $topLevel dut (.*);
+          |
+          |endmodule
+          |""".stripMargin
+    }
+
+    // Write the dpi source file
+    val dpiPathOpt = Option.when(dpi.nonEmpty)(tmpDir.resolve("dpi.cc"))
+    dpiPathOpt foreach { dpiPath =>
+      writeFile(dpiPath)(dpi)
+    }
+
+    // The Verilator output directory
+    val objPath = tmpDir.resolve("obj_dir")
+
+    // Write simulation main
+    val mainPath = tmpDir.resolve("main.cc")
+    writeFile(mainPath) {
+      val rstActive = cc.settings.resetStyle match {
+        case ResetStyle.AsyncHigh | ResetStyle.SyncHigh => 1
+        case _                                          => 0
+      }
+      val rstInactive = 1 - rstActive;
+      val rstSync = cc.settings.resetStyle match {
+        case ResetStyle.SyncHigh | ResetStyle.SyncLow => 1
+        case _                                        => 0
+      }
+
+      s"""|#include <assert.h>
+          |#include <inttypes.h>
+          |#include <stdlib.h>
+          |
+          |#include <verilated.h>
+          |#include "Vtestbench.h"
+          |
+          |#if VM_TRACE
+          |# include <verilated_vcd_c.h>
+          |#endif
+          |
+          |#define HALF_CLK_PERIOD 500 // 1ns clock
+          |
+          |static uint64_t main_time = 0;
+          |
+          |double sc_time_stamp() {
+          |  return main_time;
+          |}
+          |
+          |void vl_stop(const char* filename, int linenum, const char* hier) VL_MT_UNSAFE {
+          |  (void)filename;
+          |  (void)linenum;
+          |  (void)hier;
+          |  Verilated::gotFinish(true);
+          |  Verilated::flushCall();
+          |  throw 2;
+          |}
+          |
+          |int main(int argc, char **argv) {
+          |  assert(argc == 1);
+          |  (void)argv;
+          |
+          |  Vtestbench testbench;
+          |
+          |#if VM_TRACE
+          |  Verilated::traceEverOn(true);
+          |  VerilatedVcdC trace;
+          |  trace.set_time_resolution("1ps");
+          |  testbench.trace(&trace, 99);
+          |  trace.open("trace.vcd");
+          |# define EVAL() do { testbench.eval(); trace.dump(main_time); } while(false)
+          |#else
+          |# define EVAL() testbench.eval();
+          |#endif
+          |
+          |  // Initialize
+          |  testbench.${cc.rst} = $rstInactive;
+          |  testbench.clk = 0;
+          |  EVAL();
+          |  main_time += HALF_CLK_PERIOD;
+          |
+          |  // Assert reset asynchronously
+          |  testbench.${cc.rst} = $rstActive;
+          |  EVAL();
+          |  main_time += HALF_CLK_PERIOD;
+          |
+          |  // Apply a clock pulse when using sync reset
+          |  testbench.clk = $rstSync;
+          |  EVAL();
+          |  main_time += HALF_CLK_PERIOD;
+          |
+          |  // De-assert reset
+          |  testbench.${cc.rst} = $rstInactive;
+          |  testbench.clk = 0;
+          |  EVAL();
+          |  main_time += HALF_CLK_PERIOD;
+          |
+          |  // Tick the clock
+          |  int exit_code = 0;
+          |  while (!Verilated::gotFinish()) {
+          |    testbench.clk = !testbench.clk;
+          |    try {
+          |      EVAL();
+          |      main_time += HALF_CLK_PERIOD;
+          |    } catch (int code) {
+          |      exit_code = code;
+          |      break;
+          |    }
+          |    if (main_time > ${timeout * 1000}L) {
+          |      printf("TIMEOUT at %luns\\n", (long)(main_time/1000));
+          |      exit_code = 1;
+          |      break;
+          |    }
+          |  }
+          |
+          |  // Finished simulation
+          |  testbench.final();
+          |
+          |#if VM_TRACE
+          |  trace.close();
+          |#endif
+          |
+          |  exit(exit_code);
+          |}
+          |""".stripMargin
+    }
+
+    // Run verilator
+    val verilatorCmd = {
+      val traceOpts = if (trace) "--trace" else ""
+      val cflags = "-DVL_USER_STOP"
+      val files = s"$tbPath $mainPath ${dpiPathOpt.fold("")(_.toString)}"
+      s"""$verilator --cc --exe -Wall $traceOpts -CFLAGS "$cflags" -O3 --assert --trace-underscore -y $tmpDir --Mdir $objPath $files"""
+    }
+    system(tmpDir, verilatorCmd, "verilator-compile.log")
+
+    // Build model
+    system(tmpDir, s"make -C $objPath -f Vtestbench.mk", "verilator-build.log")
+
+    // Run model and check output
+    val lines = Process(s"${objPath.resolve("Vtestbench")}", tmpDir.toFile).lazyLines_!
+    val patterns = expect.split("\n") map { _.trim }
+    if (!allMatches(patterns, lines)) {
+      println("Output:")
+      lines foreach println
+      println("Expected:")
+      patterns foreach println
+      fail("Simulation output does not match expected")
     }
   }
 
+  // Functional equivalence check with yosys
   def yosysFEC(topLevel: String, golden: String, tmpDir: Path): Unit = {
     // Write all files to temporary directory
     writeOutputs(tmpDir)
 
     // Write the golden model
-    val goldenPath = tmpDir.resolve("__golden.v").toFile
-    val gpw = new PrintWriter(goldenPath)
-    gpw.write(golden)
-    gpw.flush()
-    gpw.close()
+    val goldenPath = tmpDir.resolve("__golden.v")
+    writeFile(goldenPath)(golden)
 
     // Write yosys script
     val scriptPath = tmpDir.resolve("fec.ys").toFile
     val spw = new PrintWriter(scriptPath)
     spw.write(
-      s"""|read_verilog ${goldenPath}
+      s"""|read_verilog ${goldenPath.toFile}
           |prep -flatten -top ${topLevel}
           |memory
           |opt -full ${topLevel}
@@ -177,7 +381,7 @@ trait CompilationTest
     val logPath = tmpDir.resolve("fec.log")
 
     // Perform the equivalence check
-    val ret = s"${yosysPath} -s ${scriptPath} -q -l ${logPath}".!
+    val ret = s"${yosys} -s ${scriptPath} -q -l ${logPath}".!
 
     // Fail test if fec failed
     if (ret != 0) {
@@ -201,11 +405,7 @@ trait CompilationTest
       typeMatches && // Right type
       message.loc.line == line && // Right line number
       file.r.pattern.matcher(message.loc.file).matches() && // Right file pattern
-      message.msg.lengthIs == patterns.length && { // Right length
-        ((patterns map { _.r }) zip message.msg) forall { pair => // Right text
-          pair._1.pattern.matcher(pair._2).matches()
-        }
-      }
+      allMatches(patterns, message.msg) // Right text
     }
 
     def string: String = {
@@ -233,7 +433,7 @@ trait CompilationTest
     val attrs = mutable.Map[String, String]()
     val dicts = mutable.Map[String, Map[String, String]]()
 
-    val pairMatcher = """@(.+):(.*)""".r
+    val pairMatcher = """@([^:]+):(.*)""".r
     val longMatcher = """@(.+)\{\{\{""".r
     val boolMatcher = """@(.+)""".r
     val mesgMatcher = """(.*):(\d+): (WARNING|ERROR|FATAL): (\.\.\. )?(.*)""".r
@@ -245,7 +445,7 @@ trait CompilationTest
     var mesgFile = ""
     var mesgLine = ""
 
-    def finishMeasageSpec(): Unit = {
+    def finishMessageSpec(): Unit = {
       val file = if (mesgFile.isEmpty) ".*" + checkFile.split("/").last else mesgFile
       mesgType match {
         case "WARNING" => mesgSpecs append WarningSpec(file, mesgLine.toInt, mesgBuff.toList)
@@ -288,7 +488,7 @@ trait CompilationTest
           case boolMatcher(k) if key == ""    => add(k, "")
           case mesgMatcher(file, line, kind, null, pattern) if key == "" =>
             if (mesgBuff.nonEmpty) {
-              finishMeasageSpec()
+              finishMessageSpec()
             }
             mesgFile = file.trim
             mesgLine = line.trim
@@ -307,7 +507,7 @@ trait CompilationTest
     }
 
     if (mesgBuff.nonEmpty) {
-      finishMeasageSpec()
+      finishMessageSpec()
     }
 
     (attrs.toMap, dicts.toMap, mesgSpecs.toList)
@@ -322,6 +522,7 @@ trait CompilationTest
         "out-top",
         "output-name-max-length",
         "reset-style",
+        "sim",
         "top",
         "verilator-lint-off"
       )
@@ -336,24 +537,29 @@ trait CompilationTest
     name in { configMap: ConfigMap =>
       // Create temporary directory, run function passing the path to the temporary
       // directory as argument, then remove the temporary directory
-      def withTmpDir[R](f: Path => R): R = configMap.getOptional[String]("tmpdir") match {
-        case Some(tmpDir) =>
-          val tmp = new File(tmpDir)
-          tmp.mkdirs()
-          f(tmp.toPath)
-        case None =>
-          val tmpPath = Files.createTempDirectory("alogic-test-")
-          try {
-            f(tmpPath)
-          } finally {
-            def del(f: File): Unit = {
-              if (f.isDirectory) {
-                f.listFiles foreach del
-              }
-              f.delete()
-            }
-            del(tmpPath.toFile)
+      def withTmpDir[R](f: Path => R): R = {
+        def del(f: File): Unit = {
+          if (f.isDirectory) {
+            f.listFiles foreach del
           }
+          f.delete()
+        }
+        configMap.getOptional[String]("tmpdir") match {
+          case Some(tmpDir) =>
+            val tmp = new File(tmpDir)
+            if (tmp.exists) {
+              del(tmp)
+            }
+            tmp.mkdirs()
+            f(tmp.toPath.toAbsolutePath)
+          case None =>
+            val tmpPath = Files.createTempDirectory("alogic-test-").toAbsolutePath
+            try {
+              f(tmpPath)
+            } finally {
+              del(tmpPath.toFile)
+            }
+        }
       }
 
       // Parse the check file
@@ -464,22 +670,37 @@ trait CompilationTest
       cc.hasError shouldBe expectedToFail
 
       if (!expectedToFail) {
-        // Check expected output file exists
         attr get "expect-file" foreach { name =>
+          // Check expected output file exists
           checkFileExists(name)
         }
 
-        // Lint (if it's supposed to succeed and not told otherwise by the test
-        if (!(attr contains "verilator-lint-off")) {
-          withTmpDir { tmpDir =>
-            verilatorLint(attr.getOrElse("out-top", top), tmpDir)
-          }
+        val outTop = attr.getOrElse("out-top", top)
+
+        dict get "sim" match {
+          // Build and run testbench if provided
+          case Some(sim) =>
+            withTmpDir { tmpDir =>
+              val test = sim("test")
+              val expect = sim.getOrElse("expect", "")
+              val dpi = sim.getOrElse("dpi", "")
+              val timeout = sim.getOrElse("timeout", "100").toLong
+              val trace = configMap.getWithDefault("trace", "0").toInt != 0
+              verilatorSim(outTop, test, expect, dpi, timeout, trace, tmpDir)
+            }
+          case None =>
+            // Lint unless told not to
+            if (!(attr contains "verilator-lint-off")) {
+              withTmpDir { tmpDir =>
+                verilatorLint(outTop, tmpDir)
+              }
+            }
         }
 
-        // Perform equivalence check with golden reference if provided
         dict get "fec" foreach { fec =>
+          // Perform equivalence check with golden reference
           withTmpDir { tmpDir =>
-            yosysFEC(attr.getOrElse("out-top", top), fec("golden"), tmpDir)
+            yosysFEC(outTop, fec("golden"), tmpDir)
           }
         }
       }

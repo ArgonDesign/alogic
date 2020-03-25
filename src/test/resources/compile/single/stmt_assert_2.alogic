@@ -5,3 +5,19 @@ fsm stmt_assert_2 {
     fence;
   }
 }
+// @sim/test {{{
+//  reg [7:0] tick;
+//
+//  always @(posedge clk) begin
+//    if (rst) begin
+//      tick <= 0;
+//    end else begin
+//      tick <= tick + 1;
+//    end
+//  end
+//
+//  wire i = tick < 5;
+// }}}
+// @sim/expect {{{
+//  \[7000\] %Error: stmt_assert_2\.v:\d+: Assertion failed in TOP\.testbench\.dut: 'assert' failed\.
+// }}}

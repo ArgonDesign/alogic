@@ -1,0 +1,13 @@
+fsm stmt_assert_5 {
+  in bool i;
+  void main() {
+    assert i, "Boom";
+    fence;
+  }
+}
+// @sim/test {{{
+//  wire i = 0;
+// }}}
+// @sim/expect {{{
+//  \[2000\] %Error: stmt_assert_5\.v:\d+: Assertion failed in TOP\.testbench\.dut: Boom
+// }}}

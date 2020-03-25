@@ -4,3 +4,5 @@ fsm stmt_assert_0 {
     fence;
   }
 }
+// @sim/test: // empty
+// @sim/expect: TIMEOUT at 100ns

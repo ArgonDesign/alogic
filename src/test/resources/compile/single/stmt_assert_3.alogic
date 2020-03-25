@@ -7,3 +7,10 @@ fsm stmt_assert_3 {
     fence;
   }
 }
+// @sim/test {{{
+//  wire i = 1'd0;
+//  wire i__valid = 1'd1;
+// }}}
+// @sim/expect {{{
+//  \[3000\] %Error: stmt_assert_3\.v:\d+: Assertion failed in TOP\.testbench\.dut: 'assert' failed\.
+// }}}
