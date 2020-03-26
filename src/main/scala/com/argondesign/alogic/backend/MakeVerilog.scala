@@ -35,7 +35,7 @@ final class MakeVerilog(
   import presentDetails._
 
   // Render Verilog declaration List(signed, packed, id) strings for symbol
-  private def vdecl(symbol: Symbol): String = {
+  private def vdecl(symbol: Symbol, indent: Int = 0): String = {
     def decl(id: String, kind: Type): String = kind match {
       case k: TypeInt =>
         val signedStr = if (kind.isSigned) "signed " else ""
@@ -54,7 +54,13 @@ final class MakeVerilog(
           case TypeVoid => is
           case kind     => s"output bit [${kind.width - 1}:0] _result" :: is
         }
-        s"""import "DPI-C" context function void $id(${as mkString ", "});"""
+        if (as.lengthIs <= 1) {
+          s"""import "DPI-C" context function void $id(${as.headOption.getOrElse("")});"""
+        } else {
+          val i0 = "  " * indent
+          val i1 = i0 + "  "
+          s"""import "DPI-C" context function void $id(${as mkString ("\n" + i1, ",\n" + i1, "\n" + i0)});"""
+        }
       case _ => cc.ice(s"Don't know how to declare this type in Verilog:", kind.toString)
     }
 
@@ -135,7 +141,7 @@ final class MakeVerilog(
         if (hasXenoFuncs) {
           body.emitBlock(1, "Foreign functions") {
             decl.decls filter { _.symbol.kind.isXenoFunc } foreach { decl =>
-              body.emit(1)(vdecl(decl.symbol))
+              body.emit(1)(vdecl(decl.symbol, 1))
             }
           }
         }

@@ -95,6 +95,7 @@ final class RemoveStructuralSharing(implicit cc: CompilerContext) extends Statef
         case node: GenRange => node.copy()
 
         case node: AssertionAssert => node.copy()
+        case node: AssertionAssume => node.copy()
         case node: AssertionStatic => node.copy()
 
         case node: RizDesc => node.copy()

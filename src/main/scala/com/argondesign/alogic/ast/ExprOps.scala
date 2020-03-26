@@ -222,6 +222,30 @@ trait ExprOps { this: Expr =>
     case _                 => false
   }
 
+  final lazy val isPure: Boolean = {
+    def p(expr: Expr): Boolean = expr match {
+      case _: ExprCall             => false
+      case ExprUnary(_, e)         => p(e)
+      case ExprBinary(l, _, r)     => p(l) && p(r)
+      case ExprTernary(c, t, e)    => p(c) && p(t) && p(e)
+      case ExprRep(_, e)           => p(e)
+      case ExprCat(ps)             => ps forall p
+      case ExprIndex(e, i)         => p(e) && p(i)
+      case ExprSlice(e, _, ":", _) => p(e)
+      case ExprSlice(e, l, _, _)   => p(e) && p(l)
+      case ExprSelect(e, _, _)     => p(e)
+      case _: ExprRef              => true
+      case _: ExprSym              => true
+      case _: ExprType             => true
+      case ExprCast(_, e)          => p(e)
+      case _: ExprInt              => true
+      case _: ExprNum              => true
+      case _: ExprStr              => true
+      case _: ExprError            => true
+    }
+    p(this)
+  }
+
   protected final var _simplified: Expr = null
 
   // Simplify this expression

@@ -10,7 +10,8 @@
 //
 // DESCRIPTION:
 //
-// Lower assertions
+// Lower assertions into separate clocked processes, and convert originals
+// to assumptions to aid folding.
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.passes
@@ -24,9 +25,9 @@ import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.enums.ResetStyle
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.SequenceNumbers
-import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 
 final class LowerAssertions(implicit cc: CompilerContext) extends StatefulTreeTransformer {
 
@@ -42,30 +43,35 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatefulTreeTr
 
   override def transform(tree: Tree): Tree = tree match {
 
-    // If assertions are not enabled, just drop them
-    case _: StmtAssertion if !cc.settings.assertions =>
-      Stump
-
-    // Otherwise convert them to deferred assertions
-    case StmtAssertion(assertion) =>
-      val (cond, msg, prefix, comment) = assertion match {
-        case AssertionAssert(c, m) =>
-          (c, m, s"_assert_${assertSeqNum.next}", s"'assert' on line ${tree.loc.line}")
-        case _: AssertionStatic =>
-          unreachable
+    // If assertions are not enabled, just convert them to assumptions if the
+    // condition is pure, otherwise drop them
+    case StmtAssertion(AssertionAssert(cond, _)) if !cc.settings.assertions =>
+      if (cond.isPure) {
+        StmtAssertion(AssertionAssume(cond)) regularize tree.loc
+      } else {
+        Stump
       }
+
+    // If assertions are enabled, convert them to deferred assertions, but
+    // leave in the original as an assume to be used by folding. The assume
+    // will be removed by the RemoveAssume pass.
+    case StmtAssertion(AssertionAssert(cond, msgOpt)) =>
+      val prefix = s"_assert_${assertSeqNum.next}"
+      val comment = s"'assert' on line ${tree.loc.line}"
       val enSymbol = cc.newSymbol(s"${prefix}_en", tree.loc)
       enSymbol.kind = TypeUInt(1)
       enSymbol.attr.combSignal set true
       val condSymbol = cc.newSymbol(s"${prefix}_cond", cond.loc)
       condSymbol.kind = cond.tpe.underlying
       condSymbol.attr.combSignal set true
-      assertions.append((enSymbol, condSymbol, msg, comment))
-      Thicket(
-        List(
-          StmtAssign(ExprSym(enSymbol), ExprInt(false, 1, 1)) regularize tree.loc,
-          StmtAssign(ExprSym(condSymbol), cond) regularize cond.loc
-        ))
+      assertions.append((enSymbol, condSymbol, msgOpt, comment))
+      val lb = new ListBuffer[Stmt]
+      lb.append(StmtAssign(ExprSym(enSymbol), ExprInt(false, 1, 1)) regularize tree.loc)
+      lb.append(StmtAssign(ExprSym(condSymbol), cond) regularize cond.loc)
+      if (cond.isPure) {
+        lb.append(StmtAssertion(AssertionAssume(cond)) regularize cond.loc)
+      }
+      Thicket(lb.toList)
 
     case defn: DefnEntity if assertions.nonEmpty =>
       val newBody = List from {

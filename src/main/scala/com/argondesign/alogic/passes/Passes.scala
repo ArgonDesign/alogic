@@ -66,9 +66,10 @@ object Passes extends ChainingSyntax {
         LowerSrams() andThen
         LowerStacks andThen
         LowerRegPorts andThen
-        LowerForeignFunctions andThen
         LiftSrams andThen
         AddClockAndReset() andThen
+        LowerAssertions andThen
+        LowerForeignFunctions andThen
         LowerArrays andThen
         SplitStructs() andThen
         LowerVectors() andThen
@@ -88,7 +89,7 @@ object Passes extends ChainingSyntax {
         Fold andThen
         OptimizeClearOnStall andThen
         LowerStalls andThen
-        LowerAssertions andThen
+        RemoveAssume andThen
         DefaultAssignments andThen
         TieOffInputs andThen
         InlineKnownVars(combOnly = false) andThen

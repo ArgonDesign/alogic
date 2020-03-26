@@ -25,6 +25,7 @@ import com.argondesign.alogic.passes.OptimizeClearOnStall
 import com.argondesign.alogic.passes.PortCheckA
 import com.argondesign.alogic.passes.PortCheckB
 import com.argondesign.alogic.passes.PropagateImplications
+import com.argondesign.alogic.passes.RemoveAssume
 import com.argondesign.alogic.passes.ReplaceUnaryTicks
 import com.argondesign.alogic.passes.ResolvePolyFunc
 import com.argondesign.alogic.passes.SimplifyCat
@@ -45,4 +46,5 @@ trait StatelessTransforms { this: CompilerContext =>
   val inferImplications: StatelessTreeTransformer = new InferImplications()(cc = this)
   val propagateImplications: StatelessTreeTransformer = new PropagateImplications()(cc = this)
   val optimizeClearOnStall: StatelessTreeTransformer = new OptimizeClearOnStall()(cc = this)
+  val removeAssume: StatelessTreeTransformer = new RemoveAssume()(cc = this)
 }
