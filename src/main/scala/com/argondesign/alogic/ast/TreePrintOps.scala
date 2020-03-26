@@ -71,13 +71,8 @@ trait TreePrintOps extends { this: Tree =>
     case EntityVariant.Ver => "verbatim entity"
   }
 
-  private final def vs(
-      trees: List[Tree],
-      sep: String
-  )(
-      implicit cc: CompilerContext,
-      indent: Int
-  ): String = trees map v mkString s", "
+  private final def vs(trees: List[Tree])(implicit cc: CompilerContext, indent: Int): String =
+    trees map v mkString ", "
 
   private final def vs(
       trees: List[Tree],
@@ -159,7 +154,7 @@ trait TreePrintOps extends { this: Tree =>
     case DescRecord(_, body)                   => block(s"desc record $name", body)
     case DescInstance(_, spec)                 => s"desc $name = new ${v(spec)};"
     case DescSingleton(_, variant, body)       => block(s"desc new ${v(variant)} $name", body)
-    case DescFunc(_, _, ret, args, body)       => block(s"desc ${v(ret)} $name(${vs(args, ", ")})", body)
+    case DescFunc(_, _, ret, args, body)       => block(s"desc ${v(ret)} $name(${vs(args)})", body)
     case DescChoice(_, choices)                => s"desc ${vs(choices, "choice<", ", ", ">")} $name"
   }
   // format: on
@@ -189,7 +184,7 @@ trait TreePrintOps extends { this: Tree =>
     case DeclRecord(_, decls)            => block(s"decl record $name", decls)
     case DeclInstance(_, spec)           => s"decl $name = new ${v(spec)};"
     case DeclSingleton(_, decls)         => block(s"decl new entity $name", decls)
-    case DeclFunc(_, _, ret, args)       => s"decl ${v(ret)} $name(${vs(args, ", ")});"
+    case DeclFunc(_, _, ret, args)       => s"decl ${v(ret)} $name(${vs(args)});"
     case DeclState(_)                    => s"decl state $name;"
   }
   // format: on
@@ -230,8 +225,8 @@ trait TreePrintOps extends { this: Tree =>
   private final def v(tree: Gen)(implicit cc: CompilerContext, indent: Int): String = tree match {
     case GenIf(cond, thenItems, Nil)       => block(s"gen if (${v(cond)}) ", thenItems)
     case GenIf(cond, thenItems, elseItems) => block(s"gen if (${v(cond)}) ", thenItems) + block(s" else", elseItems)
-    case GenFor(inits, cond, steps, body)  => block(s"gen for (${vs(inits, ", ")}; ${v(cond)} ; ${vs(steps, ", ")})", body)
-    case GenRange(inits, op, end, body)     => block(s"gen for (${vs(inits, ", ")} $op ${v(end)})", body)
+    case GenFor(inits, cond, steps, body)  => block(s"gen for (${vs(inits)}; ${v(cond)} ; ${vs(steps)})", body)
+    case GenRange(inits, op, end, body)     => block(s"gen for (${vs(inits)} $op ${v(end)})", body)
   }
   // format: on
 
@@ -256,7 +251,7 @@ trait TreePrintOps extends { this: Tree =>
     case EntDecl(decl)                            => v(decl)
     case EntDefn(defn)                            => v(defn)
     case EntGen(gen)                              => v(gen)
-    case EntConnect(lhs, rhs)                     => s"${v(lhs)} -> ${vs(rhs, ", ")};"
+    case EntConnect(lhs, rhs)                     => s"${v(lhs)} -> ${vs(rhs)};"
     case EntCombProcess(stmts)                    => block("comb-process", stmts)
     case EntClockedProcess(clk, None, stmts)      => block(s"clocked-process clk=${v(clk)}", stmts)
     case EntClockedProcess(clk, Some(rst), stmts) => block(s"clocked-process clk=${v(clk)} reset=${v(rst)}", stmts)
@@ -287,9 +282,9 @@ trait TreePrintOps extends { this: Tree =>
     case StmtCase(expr, cases)             => block(s"case (${v(expr)})", cases)
     case StmtLoop(body)                    => block("loop", body)
     case StmtWhile(cond, body)             => block(s"while (${v(cond)})", body)
-    case StmtFor(inits, cond, steps, body) => block(s"for (${vs(inits, ",")} ; ${vo(cond)} ; ${vs(steps, ", ")})", body)
+    case StmtFor(inits, cond, steps, body) => block(s"for (${vs(inits)} ; ${vo(cond)} ; ${vs(steps)})", body)
     case StmtDo(cond, body)                => block(s"do", body) + s" while (${v(cond)});"
-    case StmtLet(inits, body)              => block(s"let (${vs(inits, ", ")})", body)
+    case StmtLet(inits, body)              => block(s"let (${vs(inits)})", body)
     case StmtFence()                       => "fence;"
     case StmtBreak()                       => "break;"
     case StmtContinue()                    => "continue;"
@@ -311,22 +306,22 @@ trait TreePrintOps extends { this: Tree =>
 
   private final def v(tree: Case)(implicit cc: CompilerContext, indent: Int): String = tree match {
     case CaseGen(gen)             => v(gen)
-    case CaseRegular(cond, stmts) => block(s"${vs(cond, ", ")} :", stmts)
+    case CaseRegular(cond, stmts) => block(s"${vs(cond)} :", stmts)
     case CaseDefault(stmts)       => block("default :", stmts)
   }
 
   // format: off
   private final def v(tree: Expr)(implicit cc: CompilerContext, indent: Int): String = tree match {
-    case ExprCall(expr, args)                  => s"${v(expr)}(${vs(args, ", ")})"
+    case ExprCall(expr, args)                  => s"${v(expr)}(${vs(args)})"
     case ExprUnary(op, expr)                   => s"$op${v(expr)}"
     case ExprBinary(lhs, op, rhs)              => s"(${v(lhs)} $op ${v(rhs)})"
     case ExprTernary(cond, thenExpr, elseExpr) => s"(${v(cond)} ? ${v(thenExpr)} : ${v(elseExpr)})"
     case ExprRep(count, expr)                  => s"{${v(count)}{${v(expr)}}}"
-    case ExprCat(parts)                        => s"{${vs(parts, ", ")}}"
+    case ExprCat(parts)                        => s"{${vs(parts)}}"
     case ExprIndex(expr, index)                => s"${v(expr)}[${v(index)}]"
     case ExprSlice(expr, lIdx, op, rIdx)       => s"${v(expr)}[${v(lIdx)}$op${v(rIdx)}]"
     case ExprSelect(expr, selector, Nil)       => s"${v(expr)}.$selector"
-    case ExprSelect(expr, selector, idxs)      => s"${v(expr)}.$selector#[${vs(idxs, ", ")}]"
+    case ExprSelect(expr, selector, idxs)      => s"${v(expr)}.$selector#[${vs(idxs)}]"
     case ExprRef(ref)                          => v(ref)
     case ExprSym(symbol)                       => s"${symbol.name}@${symbol.id}"
     case ExprType(kind)                        => s"${kind.toSource}"
