@@ -75,7 +75,8 @@ final class RemoveUnused(unusedSymbols: Set[Symbol])(implicit cc: CompilerContex
     // Remove assignments that write only unused symbols
     ////////////////////////////////////////////////////////////////////////////
 
-    case StmtAssign(lhs, _) if WrittenSymbols(lhs) forall unusedSymbols => Stump
+    case StmtAssign(lhs, _) if WrittenSymbols(lhs) forall unusedSymbols  => Stump
+    case StmtDelayed(lhs, _) if WrittenSymbols(lhs) forall unusedSymbols => Stump
 
     ////////////////////////////////////////////////////////////////////////////
     // Remove decl/defn of unused symbols
@@ -112,6 +113,7 @@ object RemoveUnused extends PairsTransformerPass {
   @tailrec
   def process(pairs: List[(Decl, Defn)])(implicit cc: CompilerContext): List[(Decl, Defn)] = {
     // TODO: Could prune every entity completely that has only inputs left
+    // (unless it has non-pure contents like foreign function calls..)
 
     // TODO: Rename interconnect for removed ports
 
@@ -183,6 +185,11 @@ object RemoveUnused extends PairsTransformerPass {
         case StmtAssign(lhs, rhs) =>
           // Everything on the right, but on the left only stuff that is read
           ReadSymbols.lval(lhs) ++ ReadSymbols.rval(rhs)
+        case StmtDelayed(lhs, rhs) =>
+          // Everything on the right, but on the left only stuff that is read
+          ReadSymbols.lval(lhs) ++ ReadSymbols.rval(rhs)
+        // TODO: Same as assign for StmtOutcall if it's a pure function,
+        // currently all are assumed to be non-pure...
         case ExprSym(symbol) =>
           // Any other reference is used
           Iterator.single(symbol)
