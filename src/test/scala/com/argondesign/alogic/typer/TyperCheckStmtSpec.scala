@@ -415,8 +415,8 @@ final class TyperCheckStmtSpec extends FreeSpec with AlogicTest {
         (text, err) <- List(
           ("1 * 2", error),
           ("-(1)", error),
-          ("@randbit()", error),
-          ("1 + @randbit()", error),
+          ("@randbit()", Nil),
+          ("1 + @randbit()", Nil),
           ("$display(\"\")", Nil)
         )
       } {

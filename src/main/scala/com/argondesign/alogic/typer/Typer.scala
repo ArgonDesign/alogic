@@ -513,11 +513,8 @@ final class Typer(
           checkPacked(expr, s"Target of postfix '$op'") && checkModifiable(expr)
         if (!ok) error(tree)
 
-      case StmtExpr(expr) if !expr.tpe.isVoid =>
-        expr match {
-          case ExprCall(_: ExprSelect, _) => ()
-          case _                          => error(tree, "A pure expression in statement position does nothing")
-        }
+      case StmtExpr(expr) if expr.isPure =>
+        error(tree, "A pure expression in statement position does nothing")
 
       //////////////////////////////////////////////////////////////////////////
       // Expr
