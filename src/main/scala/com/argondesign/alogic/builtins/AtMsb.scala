@@ -31,6 +31,8 @@ private[builtins] class AtMsb(implicit cc: CompilerContext)
 
   def isKnown(args: List[Expr]) = args.head.isKnownConst
 
+  val isPure: Boolean = true
+
   def simplify(loc: Loc, args: List[Expr]) = AtMsb.fold(loc, args(0))
 
 }

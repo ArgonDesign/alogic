@@ -64,6 +64,9 @@ abstract class BuiltinPolyFunc(
   // Can this call be exist on the lhs of a Connect?
   protected[this] def isValidConnLhs(args: List[Expr]): Boolean = false
 
+  // Is this a pure function?
+  protected[builtins] val isPure: Boolean
+
   // Fold calls to this function
   protected[this] def simplify(loc: Loc, args: List[Expr]): Option[Expr]
 

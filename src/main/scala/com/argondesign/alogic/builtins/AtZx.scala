@@ -32,6 +32,8 @@ private[builtins] class AtZx(implicit cc: CompilerContext)
 
   def isKnown(args: List[Expr]) = args(1).isKnownConst
 
+  val isPure: Boolean = true
+
   def simplify(loc: Loc, args: List[Expr]) = {
     val List(width, expr) = args
     AtEx.fold(loc, ExprInt(false, 1, 0) withLoc loc, width, expr)

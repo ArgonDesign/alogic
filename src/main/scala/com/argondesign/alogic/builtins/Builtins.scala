@@ -60,6 +60,13 @@ trait Builtins { this: CompilerContext =>
     case _               => unreachable
   }
 
+  // Is this a pure call
+  def isPureBuiltinCall(call: ExprCall): Boolean = call.expr match {
+    case ExprSym(symbol) =>
+      symbol.attr.builtin.value.isPure && (call.args forall { _.expr.isPure })
+    case _ => unreachable
+  }
+
   // Is call valid as a connect LHS
   def isValidConnectLhsBuiltinCall(call: ExprCall): Boolean =
     call.expr match {

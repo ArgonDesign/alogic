@@ -36,6 +36,8 @@ private[builtins] class AtEx(implicit cc: CompilerContext)
 
   def isKnown(args: List[Expr]) = args(0).isKnownConst && args(2).isKnownConst
 
+  val isPure: Boolean = true
+
   def simplify(loc: Loc, args: List[Expr]) = AtEx.fold(loc, args(0), args(1), args(2))
 
 }

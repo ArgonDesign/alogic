@@ -32,5 +32,7 @@ private[builtins] class DollarFinish(implicit cc: CompilerContext)
 
   def isKnown(args: List[Expr]) = false
 
+  val isPure: Boolean = false
+
   def simplify(loc: Loc, args: List[Expr]) = None
 }

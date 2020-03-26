@@ -34,6 +34,8 @@ private[builtins] class DollarClog2(implicit cc: CompilerContext)
 
   def isKnown(args: List[Expr]) = args(0).isKnownConst // TODO: should be always true
 
+  val isPure: Boolean = true
+
   def simplify(loc: Loc, args: List[Expr]) = {
     args(0).value map { value =>
       if (value < 0) {

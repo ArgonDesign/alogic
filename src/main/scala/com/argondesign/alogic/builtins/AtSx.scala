@@ -32,6 +32,8 @@ private[builtins] class AtSx(implicit cc: CompilerContext)
 
   def isKnown(args: List[Expr]) = args(1).isKnownConst
 
+  val isPure: Boolean = true
+
   def simplify(loc: Loc, args: List[Expr]) = {
     val List(width, expr) = args
     AtMsb.fold(loc, expr) flatMap { msb =>

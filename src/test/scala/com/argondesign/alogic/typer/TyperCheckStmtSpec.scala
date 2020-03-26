@@ -417,6 +417,7 @@ final class TyperCheckStmtSpec extends FreeSpec with AlogicTest {
           ("-(1)", error),
           ("@randbit()", Nil),
           ("1 + @randbit()", Nil),
+          ("1 + $clog2(2)", error),
           ("$display(\"\")", Nil)
         )
       } {

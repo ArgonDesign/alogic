@@ -32,6 +32,8 @@ private[builtins] class DollarSigned(implicit cc: CompilerContext)
 
   def isKnown(args: List[Expr]) = args(0).isKnownConst
 
+  val isPure: Boolean = true
+
   def simplify(loc: Loc, args: List[Expr]) = args partialMatch {
     case List(e @ ExprNum(s, v)) =>
       if (s) {

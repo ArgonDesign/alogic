@@ -34,6 +34,8 @@ private[builtins] class AtMax(implicit cc: CompilerContext)
 
   def isKnown(args: List[Expr]) = true
 
+  val isPure: Boolean = true
+
   def simplify(loc: Loc, args: List[Expr]) = {
     (args forall { _.isInstanceOf[ExprNum] }) option {
       args match {

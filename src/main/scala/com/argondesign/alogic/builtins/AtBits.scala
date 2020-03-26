@@ -36,6 +36,8 @@ private[builtins] class AtBits(implicit cc: CompilerContext)
 
   def isKnown(args: List[Expr]) = true
 
+  val isPure: Boolean = true
+
   def simplify(loc: Loc, args: List[Expr]) = {
     args.head.tpeOpt map {
       case TypeType(kind) => Expr(kind.width)

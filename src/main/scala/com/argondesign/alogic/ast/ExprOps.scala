@@ -222,9 +222,14 @@ trait ExprOps { this: Expr =>
     case _                 => false
   }
 
-  final lazy val isPure: Boolean = {
+  final def isPure(implicit cc: CompilerContext): Boolean = {
     def p(expr: Expr): Boolean = expr match {
-      case _: ExprCall             => false
+      case call @ ExprCall(tgt, _) =>
+        tgt.tpe match {
+          case TypePolyFunc(symbol, _) if symbol.isBuiltin    => cc.isPureBuiltinCall(call)
+          case TypeCombFunc(symbol, _, _) if symbol.isBuiltin => cc.isPureBuiltinCall(call)
+          case _                                              => false
+        }
       case ExprUnary(_, e)         => p(e)
       case ExprBinary(l, _, r)     => p(l) && p(r)
       case ExprTernary(c, t, e)    => p(c) && p(t) && p(e)
