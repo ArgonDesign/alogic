@@ -591,7 +591,7 @@ object TreeCopier {
     if (cond eq tree.cond) {
       tree
     } else {
-      AssertionAssume(cond.asInstanceOf[Expr]) withLoc tree.loc
+      tree.copy(cond = cond.asInstanceOf[Expr]) withLoc tree.loc
     }
   }
 

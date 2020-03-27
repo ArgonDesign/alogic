@@ -96,6 +96,15 @@ final class Fold(implicit cc: CompilerContext) extends StatelessTreeTransformer 
     case _ => None
   }
 
+  private def alwaysFalseError(tree: Tree, msgOpt: Option[String]): tree.type = {
+    val suffix = msgOpt match {
+      case Some(msg) => ": " + msg;
+      case None      => ""
+    }
+    cc.error(tree.loc, s"Assertion is always false$suffix")
+    tree
+  }
+
   override def transform(tree: Tree): Tree = tree match {
     // Remove all blocks (this will also remove empty blocks)
     case StmtBlock(stmts) => Thicket(stmts)
@@ -118,12 +127,9 @@ final class Fold(implicit cc: CompilerContext) extends StatelessTreeTransformer 
 
     // Fail on known false assertions
     case AssertionAssert(cond, msgOpt) if cond.value contains zero =>
-      val suffix = msgOpt match {
-        case Some(msg) => ": " + msg;
-        case None      => ""
-      }
-      cc.error(tree, s"Assertion is always false$suffix")
-      tree
+      alwaysFalseError(tree, msgOpt)
+    case AssertionAssume(cond, msgOpt) if cond.value contains zero =>
+      alwaysFalseError(tree, msgOpt)
 
     //
     case _ => tree

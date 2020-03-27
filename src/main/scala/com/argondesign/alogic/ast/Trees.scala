@@ -165,7 +165,7 @@ object Trees {
   sealed trait Assertion extends Tree
 
   case class AssertionAssert(cond: Expr, msgOpt: Option[String]) extends Assertion
-  case class AssertionAssume(cond: Expr) extends Assertion
+  case class AssertionAssume(cond: Expr, msgOpt: Option[String]) extends Assertion
   case class AssertionStatic(cond: Expr, msgOpt: Option[String]) extends Assertion
 
   //////////////////////////////////////////////////////////////////////////////

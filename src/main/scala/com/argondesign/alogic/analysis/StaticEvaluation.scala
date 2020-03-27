@@ -268,7 +268,7 @@ object StaticEvaluation {
           }
 
         // Infer assumption is true
-        case StmtAssertion(AssertionAssume(cond)) => Some(inferTrueTransitive(curr, cond))
+        case StmtAssertion(AssertionAssume(cond, _)) => Some(inferTrueTransitive(curr, cond))
 
         case _: StmtStall   => Some(curr) // TODO: can we do better here?
         case _: StmtExpr    => Some(curr)

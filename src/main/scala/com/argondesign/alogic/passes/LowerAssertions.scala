@@ -89,9 +89,9 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatefulTreeTr
 
     // If assertions are not enabled, just convert them to assumptions if the
     // condition is pure, otherwise drop them
-    case StmtAssertion(AssertionAssert(cond, _)) if !cc.settings.assertions =>
+    case StmtAssertion(AssertionAssert(cond, msgOpt)) if !cc.settings.assertions =>
       if (cond.isPure) {
-        StmtAssertion(AssertionAssume(cond)) regularize tree.loc
+        StmtAssertion(AssertionAssume(cond, msgOpt)) regularize tree.loc
       } else {
         Stump
       }
@@ -129,7 +129,7 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatefulTreeTr
           lb.append(StmtAssign(ExprSym(newSymbol), ExprSym(symbol)) regularize cond.loc)
       }
       if (cond.isPure) {
-        lb.append(StmtAssertion(AssertionAssume(cond)) regularize cond.loc)
+        lb.append(StmtAssertion(AssertionAssume(cond, msgOpt)) regularize cond.loc)
       }
       Thicket(lb.toList)
 
