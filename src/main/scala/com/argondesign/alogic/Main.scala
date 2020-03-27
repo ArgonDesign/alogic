@@ -47,7 +47,7 @@ object Main extends App {
   val opath = cliConf.odir().toPath
   val srcbase = cliConf.srcbase.toOption map { _.toPath }
 
-  def outputWriterFactory(tree: Tree, suffix: String): Writer = {
+  def outputWriterFactory(treeAndSuffixOrFileName: Either[(Tree, String), String]): Writer = {
     def oPathFor(decl: Decl, suffix: String): Path = {
       val oDir = if (decl.loc eq Loc.synthetic) {
         // Emit synthetic decls to the root output directory
@@ -66,10 +66,12 @@ object Main extends App {
       oDir resolve (decl.symbol.name + suffix)
     }
 
-    val oPath = tree match {
-      case decl: Decl => oPathFor(decl, suffix)
-      case root: Root => opath resolve (root.loc.source.file.getName.split('.').head + suffix)
-      case _          => ???
+    val oPath = treeAndSuffixOrFileName match {
+      case Left((decl: Decl, suffix)) => oPathFor(decl, suffix)
+      case Left((root: Root, suffix)) =>
+        opath resolve (root.loc.source.file.getName.split('.').head + suffix)
+      case Right(fileName) => opath resolve fileName
+      case _               => ???
     }
     val oFile = oPath.toFile
 

@@ -1,0 +1,22 @@
+network foreign_func_11 {
+  out wire u1 o_a;
+  out wire u2 o_b;
+
+  new fsm a {
+    import u1 f();
+    void main() {
+      o_a = f();
+      fence;
+    }
+  }
+
+  new fsm b{
+    import u2 f();
+    void main() {
+      o_b = f();
+      fence;
+    }
+  }
+}
+// :14: ERROR: Foreign function imported with different signatures. First import is at:
+// :14: ERROR: ... .*/foreign_func_11.alogic:6

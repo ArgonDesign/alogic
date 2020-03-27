@@ -1,0 +1,56 @@
+network foreign_func_13 {
+  in       u32 i;
+  out wire u32 o_a;
+  out wire u32 o_b;
+
+  new fsm a {
+    import u32 f(u32 i, u32 j);
+    void main() {
+      o_a = f(i, 100);
+      fence;
+    }
+  }
+
+  new fsm b{
+    import u32 f(u32 i, u32 j);
+    void main() {
+      o_b = f(i, 200);
+      fence;
+    }
+  }
+}
+// @sim/test {{{
+//  reg [7:0] tick;
+//
+//  always @(posedge clk) begin
+//    if (rst) begin
+//      tick <= 8'd0;
+//    end else begin
+//      tick <= tick + 8'd1;
+//    end
+//  end
+//
+//  wire [31:0] i = 32'(tick);
+//  wire [31:0] o_a;
+//  wire [31:0] o_b;
+//
+//  always @(posedge clk) begin
+//    if (!rst) begin
+//      assert(o_a == 32'(tick) + 100);
+//      assert(o_b == 32'(tick) + 200);
+//    end
+//  end
+// }}}
+//
+// @sim/dpi {{{
+//  #include "svdpi.h"
+//  extern "C" void f(
+//    svBitVecVal *o,
+//    const svBitVecVal *i,
+//    const svBitVecVal *j
+//  ) {
+//    *o = *i + *j;
+//  }
+// }}}
+//
+// @sim/expect: TIMEOUT at 100ns

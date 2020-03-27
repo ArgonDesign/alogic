@@ -69,7 +69,7 @@ object Passes extends ChainingSyntax {
         LiftSrams andThen
         AddClockAndReset() andThen
         LowerAssertions andThen
-        LowerForeignFunctions andThen
+        LowerForeignFunctions() andThen
         LowerArrays andThen
         SplitStructs() andThen
         LowerVectors() andThen

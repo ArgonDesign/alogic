@@ -20,22 +20,47 @@ import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.FuncVariant
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.lib.Json
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.SequenceNumbers
 
+import scala.collection.immutable.ListMap
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-final class LowerForeignFunctions(implicit cc: CompilerContext) extends StatefulTreeTransformer {
+final class LowerForeignFunctions(
+    encountered: mutable.Map[String, (TypeXenoFunc, List[String])]
+)(implicit cc: CompilerContext)
+    extends StatefulTreeTransformer {
 
+  // TODO: change signatures to remove Record/Vector
   private val extraStmts = mutable.Stack[ListBuffer[Stmt]]()
   private val extraSymbols = new ListBuffer[Symbol]
 
   private val sequenceNumbers = mutable.Map[String, SequenceNumbers]()
 
   override def enter(tree: Tree): Option[Tree] = tree match {
+    case DeclFunc(symbol, FuncVariant.Xeno, _, args) =>
+      encountered synchronized {
+        encountered.get(symbol.name) match {
+          case None =>
+            encountered(symbol.name) = (symbol.kind.asXenoFunc, args map { _.symbol.name })
+          case Some((kind, _)) =>
+            val newKind = symbol.kind.asXenoFunc
+            if (kind.retType != newKind.retType || kind.argTypes != newKind.argTypes) {
+              cc.error(
+                tree,
+                "Foreign function imported with different signatures. First import is at:",
+                kind.symbol.loc.prefix
+              )
+            }
+        }
+      }
+      None
+
     case ExprCall(func, _) if func.tpe.isXenoFunc && extraStmts.isEmpty =>
       cc.error(tree, "Foreign function call can only appear inside statements.")
       Some(tree)
@@ -118,9 +143,48 @@ final class LowerForeignFunctions(implicit cc: CompilerContext) extends Stateful
 
 }
 
-object LowerForeignFunctions extends EntityTransformerPass(declFirst = false) {
-  val name = "lower-foreign-functions"
+object LowerForeignFunctions {
 
-  override def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
-    new LowerForeignFunctions
+  def apply(): Pass[List[(Decl, Defn)], List[(Decl, Defn)]] = {
+
+    val encountered = mutable.Map[String, (TypeXenoFunc, List[String])]()
+
+    new EntityTransformerPass(declFirst = false) {
+      val name = "lower-foreign-functions"
+
+      override def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
+        new LowerForeignFunctions(encountered)
+
+      override def finish(pairs: List[(Decl, Defn)])(
+          implicit cc: CompilerContext): List[(Decl, Defn)] = {
+
+        def desc(kind: Type) = Iterator(
+          "width" -> kind.width.toInt,
+          "signed" -> kind.isSigned
+        )
+
+        val foreignFunctions = ListMap from {
+          encountered.toSeq.sortBy(_._1) map {
+            case (k, (kind, ids)) =>
+              k -> ListMap(
+                "return" -> ListMap.from(desc(kind.retType)),
+                "args" -> List.from(
+                  (kind.argTypes lazyZip ids) map {
+                    case (kind, id) => ListMap.from(Iterator.single("name" -> id) concat desc(kind))
+                  }
+                )
+              )
+          }
+        }
+
+        if (foreignFunctions.nonEmpty) {
+          val w = cc.settings.outputWriterFactory(Right("foreign_functions.json"))
+          Json.write(w, foreignFunctions)
+          w.close()
+        }
+
+        pairs
+      }
+    }
+  }
 }

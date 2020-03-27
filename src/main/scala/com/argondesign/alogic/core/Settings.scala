@@ -29,8 +29,8 @@ case class Settings(
     // Initial preprocessor definitions
     initialDefines: Map[String, String] = Map.empty,
     // Output writer factory
-    outputWriterFactory: (Tree, String) => Writer = {
-      case (_: Tree, _: String) => ???
+    outputWriterFactory: Either[(Tree, String), String] => Writer = { _ =>
+      ???
     },
     // Message emitter
     messageEmitter: (Message, CompilerContext) => Unit = {

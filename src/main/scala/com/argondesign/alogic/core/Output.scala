@@ -26,7 +26,7 @@ trait Output { this: CompilerContext =>
   private implicit val implicitThis: CompilerContext = this
 
   def getOutputWriter(tree: Tree, suffix: String): Writer = {
-    settings.outputWriterFactory(tree, suffix)
+    settings.outputWriterFactory(Left((tree, suffix)))
   }
 
   def dump(decl: Decl, defn: Defn, suffix: String): Unit = {

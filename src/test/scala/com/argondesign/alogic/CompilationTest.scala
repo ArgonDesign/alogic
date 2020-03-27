@@ -73,14 +73,16 @@ trait CompilationTest
   private val outputs = scala.collection.concurrent.TrieMap[String, String]()
 
   // Insert compiler output to the 'outputs' map above
-  private def outputWriterFactory(tree: Tree, suffix: String): Writer = {
+  private def outputWriterFactory(
+      treeAndSuffixOrFileName: Either[(Tree, String), String]): Writer = {
     new StringWriter {
       override def close(): Unit = {
-        tree match {
-          case decl: Decl => outputs(decl.symbol.name + suffix) = this.toString
-          case root: Root =>
+        treeAndSuffixOrFileName match {
+          case Left((decl: Decl, suffix)) => outputs(decl.symbol.name + suffix) = this.toString
+          case Left((root: Root, suffix)) =>
             outputs(root.loc.source.file.getName.split('.').head + suffix) = this.toString
-          case _ => ???
+          case Right(fileName) => outputs(fileName) = this.toString
+          case _               => ???
         }
         super.close()
       }
