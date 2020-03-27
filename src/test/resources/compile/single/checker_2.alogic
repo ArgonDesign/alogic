@@ -1,0 +1,81 @@
+fsm checker_2 {
+  in        u8 a;
+  in        u8 b;
+  out wire  u8 c;
+
+  import bool check_add(u8 a, u8 b, u8 result);
+  import bool check_sub(u8 a, u8 b, u8 result);
+  import bool check_mul(u8 a, u8 b, u8 result);
+
+  u8 x = 0;
+  u8 y = 0;
+
+  void main() {
+    c = x + y;
+    assert check_add(x, y, c);
+    x = a;
+    y = b;
+    fence;
+    c = x - y;
+    assert check_sub(x, y, c);
+    x = a;
+    y = b;
+    fence;
+    c = x * y;
+    assert check_mul(x, y, c);
+    x = a;
+    y = b;
+    fence;
+  }
+}
+// @sim/test {{{
+//  reg [7:0] tick;
+//
+//  always @(posedge clk) begin
+//    if (rst) begin
+//      tick <= 8'd0;
+//    end else begin
+//      tick <= tick + 8'd1;
+//    end
+//  end
+//
+//  wire [7:0] a = tick;
+//  wire [7:0] b = tick ^ 8'd55;
+//  wire [7:0] c;
+//
+//  wire _unused = &{1'd0, c};
+// }}}
+//
+// @sim/dpi {{{
+//  #include "svdpi.h"
+//  extern "C" void check_add(
+//    svBitVecVal *o,
+//    const svBitVecVal *a,
+//    const svBitVecVal *b,
+//    const svBitVecVal *result
+//  ) {
+//    *o = ((*a + *b) & 0xff) == *result;
+//  }
+//
+//  extern "C" void check_sub(
+//    svBitVecVal *o,
+//    const svBitVecVal *a,
+//    const svBitVecVal *b,
+//    const svBitVecVal *result
+//  ) {
+//    *o = ((*a - *b) & 0xff) == *result;
+//  }
+//
+//  extern "C" void check_mul(
+//    svBitVecVal *o,
+//    const svBitVecVal *a,
+//    const svBitVecVal *b,
+//    const svBitVecVal *result
+//  ) {
+//    *o = ((*a * *b) & 0xff) == *result;
+//  }
+// }}}
+//
+// @sim/timeout: 260
+//
+// @sim/expect: TIMEOUT at 260ns

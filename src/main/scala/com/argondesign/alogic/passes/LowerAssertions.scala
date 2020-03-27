@@ -19,22 +19,66 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.core.Bindings
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.enums.ResetStyle
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.SequenceNumbers
+import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 final class LowerAssertions(implicit cc: CompilerContext) extends StatefulTreeTransformer {
 
-  // List of emitted assertion (enable signal, condition signals, message, comment)
-  private val assertions = mutable.ListBuffer[(Symbol, Symbol, Option[String], String)]()
+  // List of emitted assertion (enable signal, condition, condition symbols, message, comment)
+  private val assertions =
+    mutable.ListBuffer[(Symbol, Expr, List[Symbol], Option[String], String)]()
 
   private val assertSeqNum = new SequenceNumbers
+
+  // Predicate indicating what kind of symbols need to be copied for assertions
+  // as their values might change.
+  private def modifiable(symbol: Symbol): Boolean = symbol.kind match {
+    // Fundamental type
+    case _: TypeInt    => true
+    case _: TypeNum    => unreachable
+    case _: TypeVector => true
+    case TypeVoid      => unreachable
+    case TypeStr       => unreachable
+    case _: TypeRecord => true
+    case _: TypeEntity => false
+    // Derived
+    case _: TypeIn          => false
+    case TypeOut(_, fct, _) => fct == FlowControlTypeNone
+    case _: TypePipeline    => unreachable
+    case _: TypeParam       => unreachable
+    case _: TypeConst       => false
+    case _: TypeGen         => unreachable
+    case _: TypeArray       => false
+    case _: TypeSram        => false
+    case _: TypeStack       => false
+    // Function types
+    case _: TypeCombFunc => false
+    case _: TypeCtrlFunc => unreachable
+    case _: TypePolyFunc => unreachable
+    case _: TypeXenoFunc => false
+    // Misc types
+    case _: TypeType         => false
+    case _: TypeNone         => unreachable
+    case _: TypeParametrized => unreachable
+    case TypeCombStmt        => unreachable
+    case TypeCtrlStmt        => unreachable
+    //
+    case TypeUnknown => unreachable
+    case TypeChoice  => unreachable
+    case TypeState   => unreachable
+    case TypeMisc    => unreachable
+    case TypeError   => unreachable
+  }
 
   override protected def skip(tree: Tree): Boolean = tree match {
     case _: Expr => true
@@ -61,13 +105,29 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatefulTreeTr
       val enSymbol = cc.newSymbol(s"${prefix}_en", tree.loc)
       enSymbol.kind = TypeUInt(1)
       enSymbol.attr.combSignal set true
-      val condSymbol = cc.newSymbol(s"${prefix}_cond", cond.loc)
-      condSymbol.kind = cond.tpe.underlying
-      condSymbol.attr.combSignal set true
-      assertions.append((enSymbol, condSymbol, msgOpt, comment))
+      val deps = List from {
+        val seqNum = new SequenceNumbers
+        cond collect {
+          case expr @ ExprSym(symbol) if modifiable(symbol) =>
+            val newSymbol = cc.newSymbol(s"${prefix}_c${seqNum.next}", expr.loc)
+            newSymbol.kind = symbol.kind.underlying
+            newSymbol.attr.combSignal set true
+            symbol -> newSymbol
+        }
+      }
+      val bindings = Bindings {
+        deps.iterator map {
+          case (symbol, newSymbol) =>
+            symbol -> TypeAssigner(ExprSym(newSymbol) withLoc newSymbol.loc)
+        }
+      }
+      assertions.append((enSymbol, cond `given` bindings, deps map { _._2 }, msgOpt, comment))
       val lb = new ListBuffer[Stmt]
       lb.append(StmtAssign(ExprSym(enSymbol), ExprInt(false, 1, 1)) regularize tree.loc)
-      lb.append(StmtAssign(ExprSym(condSymbol), cond) regularize cond.loc)
+      deps foreach {
+        case (symbol, newSymbol) =>
+          lb.append(StmtAssign(ExprSym(newSymbol), ExprSym(symbol)) regularize cond.loc)
+      }
       if (cond.isPure) {
         lb.append(StmtAssertion(AssertionAssume(cond)) regularize cond.loc)
       }
@@ -77,21 +137,23 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatefulTreeTr
       val newBody = List from {
         defn.body.iterator concat {
           assertions.iterator flatMap {
-            case (enSymbol, condSymbol, _, _) =>
-              val enDefn = EntDefn(enSymbol.mkDefn) regularize enSymbol.loc
-              val condDefn = EntDefn(condSymbol.mkDefn) regularize condSymbol.loc
-              Iterator(enDefn, condDefn)
+            case (enSymbol, _, condSymbols, _, _) =>
+              Iterator.single(EntDefn(enSymbol.mkDefn) regularize enSymbol.loc) concat {
+                condSymbols.iterator map { condSymbol =>
+                  EntDefn(condSymbol.mkDefn) regularize condSymbol.loc
+                }
+              }
           }
         } concat {
           Iterator single {
             val asserts = List from {
               assertions.iterator flatMap {
-                case (enSymbol, condSymbol, msgOpt, comment) =>
+                case (enSymbol, cond, _, msgOpt, comment) =>
                   Iterator(
                     StmtComment(comment),
                     StmtIf(
                       ExprSym(enSymbol),
-                      StmtAssertion(AssertionAssert(ExprSym(condSymbol), msgOpt)) :: Nil,
+                      StmtAssertion(AssertionAssert(cond, msgOpt)) :: Nil,
                       Nil
                     ) regularize enSymbol.loc
                   )
@@ -125,10 +187,12 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatefulTreeTr
       val newDecls = List from {
         decl.decls.iterator concat {
           assertions.iterator flatMap {
-            case (enSymbol, condSymbol, _, _) =>
-              val enDecl = enSymbol.mkDecl regularize enSymbol.loc
-              val condDecl = condSymbol.mkDecl regularize condSymbol.loc
-              Iterator(enDecl, condDecl)
+            case (enSymbol, _, condSymbols, _, _) =>
+              Iterator.single(enSymbol.mkDecl regularize enSymbol.loc) concat {
+                condSymbols.iterator map { condSymbol =>
+                  condSymbol.mkDecl regularize condSymbol.loc
+                }
+              }
           }
         }
       }

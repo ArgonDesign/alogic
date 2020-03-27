@@ -1,0 +1,29 @@
+fsm checker_3 {
+  in sync void i;
+
+  import bool boom();
+
+  void main() {
+    i.read();
+    assert boom();
+    fence;
+  }
+}
+// @sim/test {{{
+//  wire i__valid = 1'd0;
+// }}}
+//
+// @sim/dpi {{{
+//  #include <stdio.h>
+//  #include "svdpi.h"
+//  // NOTE: This is non-standard compliant behaviour in Verilator,
+//  // (see https://github.com/verilator/verilator/issues/2207)
+//  // The correct signature would be:
+//  // extern "C" void boom(svBitVecVal *o) {
+//  extern "C" void boom(unsigned char *o) {
+//    printf("This should never be executed\n");
+//    *o = 0;
+//  }
+// }}}
+//
+// @sim/expect: TIMEOUT at 100ns

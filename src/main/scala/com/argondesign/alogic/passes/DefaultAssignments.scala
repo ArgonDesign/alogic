@@ -18,6 +18,7 @@
 package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.analysis.Liveness
+import com.argondesign.alogic.analysis.WrittenSymbols
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols._
@@ -55,6 +56,17 @@ object DefaultAssignments extends PairTransformerPass {
       for (EntConnect(_, List(rhs)) <- entityDefn.connects) {
         rhs.visit {
           case ExprSym(symbol) => needsDefault remove symbol
+        }
+      }
+
+      // Remove any nets written in a clocked process
+      for {
+        EntClockedProcess(_, _, stmts) <- entityDefn.clockedProcesses
+        stmt <- stmts
+      } {
+        stmt visit {
+          case StmtAssign(lhs, _)     => WrittenSymbols(lhs) foreach needsDefault.remove
+          case StmtOutcall(out, _, _) => WrittenSymbols(out) foreach needsDefault.remove
         }
       }
 

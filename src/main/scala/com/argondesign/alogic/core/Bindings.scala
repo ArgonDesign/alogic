@@ -70,6 +70,10 @@ object Bindings {
 
   val empty = new Bindings(Map.empty)
 
+  implicit def apply(pairs: Iterator[(Symbol, Expr)]): Bindings = {
+    new Bindings(Map.from(pairs))
+  }
+
   implicit def apply(pairs: Seq[(Symbol, Expr)]): Bindings = {
     new Bindings(pairs.toMap)
   }
