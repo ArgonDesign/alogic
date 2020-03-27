@@ -24,14 +24,16 @@ import com.argondesign.alogic.core.FlowControlTypes._
 import com.argondesign.alogic.core.Types.TypeIn
 import com.argondesign.alogic.core.Types.TypeOut
 import com.argondesign.alogic.core.enums.ResetStyle
+import com.argondesign.alogic.lib.Json
 import com.argondesign.alogic.util.unreachable
 
+import scala.collection.immutable.ListMap
 import scala.collection.parallel.CollectionConverters._
 
 object WriteModuleManifest extends PairsTransformerPass {
   val name = "write-module-manifest"
 
-  def emit(ow: Writer, pairs: List[(Decl, Defn)])(implicit cc: CompilerContext): Unit = {
+  def emit(wf: () => Writer, pairs: List[(Decl, Defn)])(implicit cc: CompilerContext): Unit = {
 
     ////////////////////////////////////////////////////////////////////////////
     // Build nested manifest as a Map (dictionary)
@@ -83,25 +85,24 @@ object WriteModuleManifest extends PairsTransformerPass {
         }
       }
 
-      val signals = for {
-        sSymbol <- sSymbols
-      } yield {
-        // Figure out whether this is payload, valid or ready
-        val value = v2p.get(sSymbol).map { pSymbol =>
-          List("port" -> pSymbol.name, "component" -> "valid")
-        } orElse r2p.get(sSymbol).map { pSymbol =>
-          List("port" -> pSymbol.name, "component" -> "ready")
-        } getOrElse {
-          List(
-            "port" -> d2p.getOrElse(sSymbol, sSymbol).name,
-            "component" -> "payload",
-            "width" -> sSymbol.kind.width,
-            "signed" -> sSymbol.kind.isSigned,
-            "offset" -> (sSymbol.attr.fieldOffset getOrElse 0)
-          )
+      val signals = ListMap from {
+        sSymbols.iterator map { sSymbol =>
+          // Figure out whether this is payload, valid or ready
+          val value = v2p.get(sSymbol).map { pSymbol =>
+            ListMap("port" -> pSymbol.name, "component" -> "valid")
+          } orElse r2p.get(sSymbol).map { pSymbol =>
+            ListMap("port" -> pSymbol.name, "component" -> "ready")
+          } getOrElse {
+            ListMap[String, Any](
+              "port" -> d2p.getOrElse(sSymbol, sSymbol).name,
+              "component" -> "payload",
+              "width" -> sSymbol.kind.width,
+              "signed" -> sSymbol.kind.isSigned,
+              "offset" -> (sSymbol.attr.fieldOffset getOrElse 0)
+            )
+          }
+          sSymbol.name -> value
         }
-
-        sSymbol.name -> value
       }
 
       //////////////////////////////////////////////////////////////////////////
@@ -124,7 +125,7 @@ object WriteModuleManifest extends PairsTransformerPass {
             case TypeOut(_, FlowControlTypeAccept, _) => ("out", "sync accept")
             case _                                    => unreachable
           }
-          pSymbol.name -> List("dir" -> dir, "flow-control" -> fc)
+          pSymbol.name -> ListMap("dir" -> dir, "flow-control" -> fc)
         }
 
         // Low level ports with no matching high level port
@@ -135,20 +136,22 @@ object WriteModuleManifest extends PairsTransformerPass {
             if !coveredPorts(sSymbol)
           } yield {
             val dir = if (sSymbol.kind.isIn) "in" else "out"
-            sSymbol.name -> List("dir" -> dir, "flow-control" -> "none")
+            sSymbol.name -> ListMap("dir" -> dir, "flow-control" -> "none")
           }
         }
 
         assert((hlPorts.map(_._1).toSet intersect llPorts.map(_._1).toSet).isEmpty)
 
-        (hlPorts ::: llPorts) sortBy { _._1 }
+        ListMap from {
+          (hlPorts ::: llPorts) sortBy { _._1 }
+        }
       }
 
       //////////////////////////////////////////////////////////////////////////
       // The entry for this entity
       //////////////////////////////////////////////////////////////////////////
 
-      eSymbol.name -> List(
+      eSymbol.name -> ListMap(
         "ports" -> ports,
         "signals" -> signals,
         "clock" -> (defn.clk map { _.name }).orNull,
@@ -168,47 +171,9 @@ object WriteModuleManifest extends PairsTransformerPass {
     // Write out the nested dict
     ////////////////////////////////////////////////////////////////////////////
 
-    val i0 = "  "
+    val ow = wf()
 
-    def writeDict(dict: Seq[Any], level: Int): Unit = {
-      if (dict.isEmpty) {
-        ow.write("{}")
-      } else {
-        val indent = i0 * level
-
-        // Open dict
-        ow.write("{\n")
-
-        def writePair(key: Any, value: Any): Unit = {
-          ow.write(indent)
-          ow.write(s"""$i0"$key" : """)
-          value match {
-            case null          => ow.write("null")
-            case child: Seq[_] => writeDict(child, level + 1)
-            case str: String   => ow.write(s""""$str"""")
-            case other         => ow.write(other.toString)
-          }
-        }
-
-        // Write all but last pair with trailing commas
-        for ((key, value) <- dict.init) {
-          writePair(key, value)
-          ow.write(",\n")
-        }
-
-        // Write last pair without trailing comma
-        val (key, value) = dict.last
-        writePair(key, value)
-        ow.write("\n")
-
-        // Close dict
-        ow.write(indent)
-        ow.write("}")
-      }
-    }
-
-    writeDict(dict.seq.sortBy(_._1), level = 0)
-    ow.write("\n")
+    Json.write(ow, ListMap.from(dict))
 
     ow.close()
   }
@@ -216,7 +181,7 @@ object WriteModuleManifest extends PairsTransformerPass {
   override def process(input: List[(Decl, Defn)])(
       implicit cc: CompilerContext): List[(Decl, Defn)] = {
     cc.settings.manifestWriterFactory match {
-      case Some(f) => emit(f(), input)
+      case Some(f) => emit(f, input)
       case None    =>
     }
     input
