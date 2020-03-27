@@ -1,0 +1,46 @@
+fsm foreign_func_16 {
+  in       u32 i;
+  out wire u32 o;
+
+  struct t {
+    i8    x;
+    u16   y;
+    u2[4] z;
+  }
+
+  import u32 f(t i);
+
+  void main() {
+    o = f(i);
+    fence;
+  }
+}
+// @sim/test {{{
+//  reg [7:0] tick;
+//
+//  always @(posedge clk) begin
+//    if (rst) begin
+//      tick <= 8'd0;
+//    end else begin
+//      tick <= tick + 8'd1;
+//    end
+//  end
+//
+//  wire [31:0] i = 32'(tick);
+//  wire [31:0] o;
+//
+//  always @(posedge clk) begin
+//    if (!rst) begin
+//      assert(o == 32'(tick) + 12345);
+//    end
+//  end
+// }}}
+//
+// @sim/dpi {{{
+//  #include "svdpi.h"
+//  extern "C" void f(svBitVecVal *o, const svBitVecVal *i) {
+//    *o = *i + 12345;
+//  }
+// }}}
+//
+// @sim/expect: TIMEOUT at 100ns
