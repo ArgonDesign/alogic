@@ -155,8 +155,8 @@ object RemoveUnused extends PairsTransformerPass {
         case DeclInstance(_, ExprSym(eSymbol)) =>
           // Instantiated entity
           Iterator.single(eSymbol)
-        case ExprSym(symbol) =>
-          // Any other reference is used
+        case ExprSym(symbol) if !symbol.kind.isType =>
+          // Any other reference is used (unless it's a type)
           Iterator.single(symbol)
       }
       val partB = defn flatCollect {
@@ -190,8 +190,8 @@ object RemoveUnused extends PairsTransformerPass {
           ReadSymbols.lval(lhs) ++ ReadSymbols.rval(rhs)
         // TODO: Same as assign for StmtOutcall if it's a pure function,
         // currently all are assumed to be non-pure...
-        case ExprSym(symbol) =>
-          // Any other reference is used
+        case ExprSym(symbol) if !symbol.kind.isType =>
+          // Any other reference is used (unless it's a type)
           Iterator.single(symbol)
       }
       partA concat partB
