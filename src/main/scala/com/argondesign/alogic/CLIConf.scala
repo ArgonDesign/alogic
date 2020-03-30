@@ -255,13 +255,6 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
   )
   validateOneOf(color)("always", "never", "auto")
 
-  val moduleManifest = opt[File](
-    name = "module-manifest",
-    noshort = true,
-    required = false,
-    descr = "Write generated module manifest to file"
-  )
-
   // --compiler-deps is implemented in the wrapper.
   // It is defined here so it appears in --help
   val compilerDeps = opt[Boolean](

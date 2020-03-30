@@ -52,8 +52,6 @@ case class Settings(
     dumpTrees: Boolean = false,
     // Measure and report inserted execution timing
     profile: Boolean = false,
-    // Module manifest output path
-    manifestWriterFactory: Option[() => Writer] = None,
     // Reset style
     resetStyle: ResetStyle.Type = ResetStyle.AsyncLow,
     // Reset all

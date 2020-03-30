@@ -33,7 +33,7 @@ import scala.collection.parallel.CollectionConverters._
 object WriteModuleManifest extends PairsTransformerPass {
   val name = "write-module-manifest"
 
-  def emit(wf: () => Writer, pairs: List[(Decl, Defn)])(implicit cc: CompilerContext): Unit = {
+  def emit(ow: Writer, pairs: List[(Decl, Defn)])(implicit cc: CompilerContext): Unit = {
 
     ////////////////////////////////////////////////////////////////////////////
     // Build nested manifest as a Map (dictionary)
@@ -171,19 +171,16 @@ object WriteModuleManifest extends PairsTransformerPass {
     // Write out the nested dict
     ////////////////////////////////////////////////////////////////////////////
 
-    val ow = wf()
-
     Json.write(ow, ListMap.from(dict))
-
-    ow.close()
   }
 
   override def process(input: List[(Decl, Defn)])(
       implicit cc: CompilerContext): List[(Decl, Defn)] = {
-    cc.settings.manifestWriterFactory match {
-      case Some(f) => emit(f, input)
-      case None    =>
-    }
+
+    val w = cc.settings.outputWriterFactory(Right("manifest.json"))
+    emit(w, input)
+    w.close()
+
     input
   }
 

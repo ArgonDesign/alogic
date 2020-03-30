@@ -89,15 +89,6 @@ trait CompilationTest
     }
   }
 
-  private val manifestWriterFactory = Some { () =>
-    new StringWriter {
-      override def close(): Unit = {
-        outputs("manifest.json") = this.toString
-        super.close()
-      }
-    }
-  }
-
   // Compiler message buffer
   private val messages = new ListBuffer[Message]
 
@@ -591,7 +582,6 @@ trait CompilationTest
           dumpTrees = configMap.getWithDefault("dump-trees", "0").toInt != 0,
           resetStyle = resetStyle,
           resetAll = resetAll,
-          manifestWriterFactory = manifestWriterFactory,
           traceElaborate = configMap.getWithDefault("trace-elaborate", "0").toInt != 0,
           outputNameMaxLength = attr.get("output-name-max-length") map { _.toInt },
           assertions = !(attr contains "no-assertions")
