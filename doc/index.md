@@ -22,6 +22,7 @@ read in linear order to provide an introduction to Alogic.
 - [Pipelines](pipelines.md)
 - [Distributed memories](memories.md)
 - [SRAMs](srams.md)
+- [Assertions](assert.md)
 - [Built-in functions](builtins.md)
 - [Compile time code generation](gen.md)
 - [Foreign function interface](ffi.md)

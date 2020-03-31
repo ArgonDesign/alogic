@@ -1,7 +1,7 @@
 <p align="center">
 <a href="memories.md">Previous</a> |
 <a href="index.md">Index</a> |
-<a href="builtins.md">Next</a>
+<a href="assert.md">Next</a>
 </p>
 
 # SRAMs
@@ -327,5 +327,5 @@ instantiated by any entities with the `liftsrams` attribute.
 <p align="center">
 <a href="memories.md">Previous</a> |
 <a href="index.md">Index</a> |
-<a href="builtins.md">Next</a>
+<a href="assert.md">Next</a>
 </p>

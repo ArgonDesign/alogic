@@ -1,5 +1,5 @@
 <p align="center">
-<a href="srams.md">Previous</a> |
+<a href="assert.md">Previous</a> |
 <a href="index.md">Index</a> |
 <a href="gen.md">Next</a>
 </p>
@@ -149,7 +149,7 @@ Sign extending an unsigned value is defined as extension by the MSB.
 `@sx(N, a)` is the same as `@ex(@msb(a), N, a)`
 
 <p align="center">
-<a href="srams.md">Previous</a> |
+<a href="assert.md">Previous</a> |
 <a href="index.md">Index</a> |
 <a href="gen.md">Next</a>
 </p>
