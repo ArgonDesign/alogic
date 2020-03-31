@@ -262,9 +262,9 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
     loop(stmts, ListBuffer(), ListBuffer())
   }
 
-  private[this] def convertControlUnits(stmts: List[Stmt], default: => List[Stmt]): List[Stmt] =
+  private[this] def convertControlUnits(stmts: List[Stmt]): List[Stmt] =
     stmts match {
-      case Nil => default
+      case Nil => unreachable
       case stmts =>
         splitControlUnits(stmts) match {
           case Nil => unreachable
@@ -361,12 +361,8 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
       //////////////////////////////////////////////////////////////////////////
 
       case stmt @ StmtIf(_, thenStmts, elseStmts) =>
-        // Omitted else/empty then goes to the following state (i.e.: implicit fence)
-        lazy val implicitGoto = List(StmtGoto(ExprSym(followingState.top)))
-
-        val newThenStmts = convertControlUnits(thenStmts, implicitGoto)
-        val newElseStmts = convertControlUnits(elseStmts, implicitGoto)
-
+        val newThenStmts = convertControlUnits(thenStmts)
+        val newElseStmts = convertControlUnits(elseStmts)
         stmt.copy(thenStmts = newThenStmts, elseStmts = newElseStmts) regularize tree.loc
 
       //////////////////////////////////////////////////////////////////////////
@@ -374,36 +370,29 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
       //////////////////////////////////////////////////////////////////////////
 
       case stmt @ StmtCase(_, cases) =>
-        // Omitted default/empty case goes to the following state (i.e.: implicit fence)
-        lazy val implicitGoto = List(StmtGoto(ExprSym(followingState.top)))
-
         val newCases = cases map {
           case CaseRegular(cond, stmts) =>
-            CaseRegular(cond, convertControlUnits(stmts, implicitGoto))
+            CaseRegular(cond, convertControlUnits(stmts))
           case CaseDefault(stmts) =>
-            CaseDefault(convertControlUnits(stmts, implicitGoto))
+            CaseDefault(convertControlUnits(stmts))
           case _: CaseGen => unreachable
         }
 
-        if (cases exists { _.isInstanceOf[CaseDefault] }) {
-          stmt.copy(cases = newCases) regularize tree.loc
-        } else {
-          stmt.copy(cases = CaseDefault(implicitGoto) :: newCases) regularize tree.loc
-        }
+        stmt.copy(cases = newCases) regularize tree.loc
 
       //////////////////////////////////////////////////////////////////////////
       // Convert block
       //////////////////////////////////////////////////////////////////////////
 
       case StmtBlock(body) =>
-        TypeAssigner(StmtBlock(convertControlUnits(body, unreachable)) withLoc tree.loc)
+        TypeAssigner(StmtBlock(convertControlUnits(body)) withLoc tree.loc)
 
       //////////////////////////////////////////////////////////////////////////
       // Convert loop
       //////////////////////////////////////////////////////////////////////////
 
       case StmtLoop(body) => {
-        val head = convertControlUnits(body, unreachable)
+        val head = convertControlUnits(body)
         // Emit the loop entry state if necessary
         val stmt = emitState(head) match {
           case Some(symbol) =>

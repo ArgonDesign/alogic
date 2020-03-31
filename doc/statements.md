@@ -408,13 +408,12 @@ clock cycle, simply call it in statement position
 
 The `return` statement can be used to end the control unit and transfer control
 back to the call site for the next clock cycle. As mentioned in the description
-of [FSMs](fsms.md), functions do not return automatically when they reach the
-end of the function body. Without a `return` statement, control is transferred
-back to the top of the function (<a href="http://afiddle.argondesign.com/?example=statements_return.alogic">fiddle here</a>).
+of [FSMs](fsms.md), functions will return automatically when they reach the
+end of the function body (<a href="http://afiddle.argondesign.com/?example=statements_return.alogic">fiddle here</a>).
 
 ```
   void foo() {
-    bar();  // Call 'bar',  when it returns, loop back to the top of 'foo'.
+    bar();  // Call 'bar',  when it returns, return to the caller of 'foo'.
   }
 
   void bar() {

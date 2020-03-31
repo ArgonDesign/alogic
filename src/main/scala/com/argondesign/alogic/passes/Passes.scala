@@ -53,6 +53,7 @@ object Passes extends ChainingSyntax {
         LowerPipeline andThen
         LiftEntities() andThen
         LowerLoops andThen
+        NormalizeControl andThen
         AnalyseCallGraph andThen
         ConvertLocalDecls andThen
         RemoveStructuralSharing andThen

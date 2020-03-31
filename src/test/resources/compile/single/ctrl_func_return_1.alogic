@@ -1,0 +1,34 @@
+fsm ctrl_func_return_1 {
+  out u2 o = 0;
+
+  void main() {
+    o = 2'd3;
+    a();
+    o = 2'd0;
+    fence;
+  }
+
+  void a() {
+    o = 2'd2;
+    fence;
+    o = 2'd1;
+    return;
+  }
+}
+// @fec/golden {{{
+//  module ctrl_func_return_1(
+//    input  wire       clk,
+//    input  wire       rst,
+//    output reg  [1:0] o
+//  );
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        o <= 2'd0;
+//      end else begin
+//        o <= o - 2'd1;
+//      end
+//    end
+//
+//  endmodule
+// }}}

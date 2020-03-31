@@ -53,13 +53,13 @@ available inside `void main()` and would not be accessible by another function.
 ### Using functions for encapsulation
 
 All FSMs must contain a `main` function. Execution starts at the beginning of
-`main` after reset. FSM code can also be partitioned into multiple functions.
-Note that functions do not return without an explicit `return` statement. If the
-execution reaches the end of the body of a function, control is transferred to
-the beginning of the function, and conceptually proceeds in an infinite loop.
-This behaviour is distinctly different from common programming languages. The
-body of the example FSM above takes 1 cycle to execute, and hence repeats on
-every clock cycle.
+`main` after reset. FSM code can also be partitioned into multiple control
+functions. If the execution reaches the end of the body of a control function,
+the function returns (control is transferred to the call site). When the `main`
+function returns, control is transferred to the beginning of `main` again,
+with the execution thus proceeding in an infinite loop. The body of the example
+FSM above takes 1 cycle to execute, then it reaches the end of `main`, and
+hence the body is effectively executed on every clock cycle.
 
 An FSM that, depending on the state of an input port, would apply one of 2
 different kinds of processing could be defined using the following pattern:
