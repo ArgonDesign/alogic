@@ -1,7 +1,7 @@
 <p align="center">
 <a href="builtins.md">Previous</a> |
 <a href="index.md">Index</a> |
-<a href="interop.md">Next</a>
+<a href="ffi.md">Next</a>
 </p>
 
 # Compile time code generation
@@ -709,5 +709,5 @@ network dictident_adder_tree {
 <p align="center">
 <a href="builtins.md">Previous</a> |
 <a href="index.md">Index</a> |
-<a href="interop.md">Next</a>
+<a href="ffi.md">Next</a>
 </p>
