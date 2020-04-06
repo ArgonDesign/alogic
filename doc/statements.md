@@ -69,6 +69,17 @@ declared in the design entity scope.
 
 Declaration statements are always combinatorial statements.
 
+A declaration statement can be qualified with the `const` keyword.
+`const` qualified declaration statements behave exactly the same as those
+without the `const` qualifier, except they cannot be modified in any way after
+the declaration. This also means that an initializer is required for `const`
+qualified declaration statements. Note that `const` qualified declaration
+statements are a different concept than
+[constant declarations](params.md#constants) as their value can change at
+run-time for every evaluation of the declaration statement. They will also
+require storage if their value is used in a control unit other than the one
+introducing the declaration.
+
 ### Block statement (combinatorial or control)
 
 A `{}` block can be used to introduce a new lexical scope at any time. This can

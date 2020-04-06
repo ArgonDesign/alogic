@@ -30,8 +30,13 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
 
   def apply(ctx: ParserRuleContext)(implicit cc: CompilerContext): Stmt = {
     object Visitor extends AlogicScalarVisitor[Stmt] { self =>
-      override def visitStmtDesc(ctx: StmtDescContext): Stmt =
-        StmtDesc(DescBuilder(ctx.desc)) withLoc ctx.loc
+      override def visitStmtDesc(ctx: StmtDescContext): Stmt = {
+        val desc = DescBuilder(ctx.desc) match {
+          case const: DescConst => DescVal(const.ref, const.spec, const.init) withLoc const.loc
+          case other            => other
+        }
+        StmtDesc(desc) withLoc ctx.loc
+      }
 
       override def visitStmtGen(ctx: StmtGenContext): Stmt =
         StmtGen(GenBuilder(ctx.gen)) withLoc ctx.loc

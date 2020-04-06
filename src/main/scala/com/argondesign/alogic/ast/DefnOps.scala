@@ -25,6 +25,7 @@ trait DefnOps { this: Defn =>
 
   final lazy val initializer: Option[Expr] = this match {
     case DefnVar(_, iOpt) => iOpt
+    case DefnVal(_, i)    => Some(i)
     case DefnOut(_, iOpt) => iOpt
     case DefnConst(_, i)  => Some(i)
     case DefnGen(_, i)    => Some(i)
@@ -33,6 +34,7 @@ trait DefnOps { this: Defn =>
 
   def cpy(symbol: Symbol): Defn = this match {
     case node: DefnVar       => node.copy(symbol = symbol)
+    case node: DefnVal       => node.copy(symbol = symbol)
     case node: DefnIn        => node.copy(symbol = symbol)
     case node: DefnOut       => node.copy(symbol = symbol)
     case node: DefnPipeline  => node.copy(symbol = symbol)

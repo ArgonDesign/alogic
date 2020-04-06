@@ -139,6 +139,7 @@ trait TreePrintOps extends { this: Tree =>
   private final def v(tree: Desc, name: String)(implicit cc: CompilerContext, indent: Int): String = tree match {
     case DescVar(_, spec, None)                => s"desc ${v(spec)} $name"
     case DescVar(_, spec, Some(init))          => s"desc ${v(spec)} $name = ${v(init)}"
+    case DescVal(_, spec, init)                => s"desc val ${v(spec)} $name = ${v(init)}"
     case DescIn(_, spec, fct)                  => s"desc in ${v(fct)}${v(spec)} $name"
     case DescOut(_, spec, fct, st, None)       => s"desc out ${v(fct)}${v(st)}${v(spec)} $name"
     case DescOut(_, spec, fct, st, Some(init)) => s"desc out ${v(fct)}${v(st)}${v(spec)} $name = ${v(init)}"
@@ -171,6 +172,7 @@ trait TreePrintOps extends { this: Tree =>
   // format: off
   private final def v(tree: Decl, name: String)(implicit cc: CompilerContext, indent: Int): String = tree match {
     case DeclVar(_, spec)                => s"decl ${v(spec)} $name;"
+    case DeclVal(_, spec)                => s"decl val ${v(spec)} $name;"
     case DeclIn(_, spec, fct)            => s"decl in ${v(fct)}${v(spec)} $name;"
     case DeclOut(_, spec, fct, st)       => s"decl out ${v(fct)}${v(st)}${v(spec)} $name;"
     case DeclPipeline(_, spec)           => s"decl pipeline ${v(spec)} $name;"
@@ -202,6 +204,7 @@ trait TreePrintOps extends { this: Tree =>
   private final def v(tree: Defn, name: String)(implicit cc: CompilerContext, indent: Int): String = tree match {
     case DefnVar(_, None)                => s"defn $name;"
     case DefnVar(_, Some(init))          => s"defn $name = ${v(init)};"
+    case DefnVal(_, init)                => s"defn $name = ${v(init)};"
     case DefnIn(_)                       => s"defn $name;"
     case DefnOut(_, None)                => s"defn $name;"
     case DefnOut(_, Some(init))          => s"defn $name = ${v(init)};"

@@ -183,8 +183,13 @@ final class Typer(
           case _: TypeConst => error(tree, ref, "Constant cannot be modified"); false
           case _: TypeIn    => error(tree, ref, "Input port cannot be modified"); false
           case _: TypeArray => error(tree, ref, "Memory can only be modified using .write()"); false
-          case TypeOut(_, fct, _) if fct != FlowControlTypeNone =>
+          case TypeOut(_, FlowControlTypeNone, _) =>
+            true
+          case _: TypeOut =>
             error(tree, ref, "Output port with flow control can only be modified using .write()")
+            false
+          case _ if symbol.decl.isInstanceOf[DeclVal] =>
+            error(tree, ref, "'const' qualified variable cannot be modified")
             false
           case _ => true
         }
@@ -356,6 +361,7 @@ final class Typer(
         // TODO: These need loads more checks (eg, void variable, etc etc...)
         val ok = decl match {
           case DeclVar(_, spec)       => checkType(spec)
+          case DeclVal(_, spec)       => checkType(spec)
           case DeclIn(_, spec, _)     => checkType(spec)
           case DeclOut(_, spec, _, _) => checkType(spec)
           case DeclPipeline(_, spec)  => checkType(spec)

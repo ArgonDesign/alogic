@@ -22,6 +22,7 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Error
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeValid
+import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.StorageTypes.StorageTypeReg
 import com.argondesign.alogic.core.Warning
 import org.scalatest.FreeSpec
@@ -113,7 +114,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         }
 
         "constants" in {
-          val tree = "const bool a = false;".asTree[Stmt]
+          val tree = StmtDesc("const bool a = false;".asTree[Desc]) withLoc Loc.synthetic
 
           tree rewrite checker shouldBe StmtError()
 

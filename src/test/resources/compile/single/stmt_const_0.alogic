@@ -1,0 +1,18 @@
+fsm stmt_const_0 {
+  in       u2 i;
+  out wire u2 o;
+
+  void main() {
+    const u2 x = i + 2'd1;
+    o = x;
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module stmt_const_0(
+//    input   wire [1:0] i,
+//    output  wire [1:0] o
+//  );
+//    assign o = i + 2'd1;
+//  endmodule
+// }}}

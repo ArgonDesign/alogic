@@ -40,6 +40,7 @@ final class RemoveStructuralSharing(implicit cc: CompilerContext) extends Statef
         case node: Sym   => node.copy()
 
         case node: DescVar       => node.copy()
+        case node: DescVal       => node.copy()
         case node: DescIn        => node.copy()
         case node: DescOut       => node.copy()
         case node: DescPipeline  => node.copy()
@@ -57,6 +58,7 @@ final class RemoveStructuralSharing(implicit cc: CompilerContext) extends Statef
         case node: DescChoice    => node.copy()
 
         case node: DeclVar       => node.copy()
+        case node: DeclVal       => node.copy()
         case node: DeclIn        => node.copy()
         case node: DeclOut       => node.copy()
         case node: DeclPipeline  => node.copy()
@@ -74,6 +76,7 @@ final class RemoveStructuralSharing(implicit cc: CompilerContext) extends Statef
         case node: DeclState     => node.copy()
 
         case node: DefnVar       => node.copy()
+        case node: DefnVal       => node.copy()
         case node: DefnIn        => node.copy()
         case node: DefnOut       => node.copy()
         case node: DefnPipeline  => node.copy()

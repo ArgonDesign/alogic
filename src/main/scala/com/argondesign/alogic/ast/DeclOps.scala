@@ -23,6 +23,7 @@ trait DeclOps { this: Decl =>
 
   def cpy(symbol: Symbol): Decl = this match {
     case node: DeclVar       => node.copy(symbol = symbol)
+    case node: DeclVal       => node.copy(symbol = symbol)
     case node: DeclIn        => node.copy(symbol = symbol)
     case node: DeclOut       => node.copy(symbol = symbol)
     case node: DeclPipeline  => node.copy(symbol = symbol)

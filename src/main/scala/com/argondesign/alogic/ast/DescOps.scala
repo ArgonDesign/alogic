@@ -35,6 +35,7 @@ trait DescOps { this: Desc =>
 
   final lazy val initializer: Option[Expr] = this match {
     case DescVar(_, _, iOpt)       => iOpt
+    case DescVal(_, _, i)          => Some(i)
     case DescOut(_, _, _, _, iOpt) => iOpt
     case DescParam(_, _, iOpt)     => iOpt
     case DescConst(_, _, i)        => Some(i)
@@ -44,6 +45,7 @@ trait DescOps { this: Desc =>
 
   def cpy(ref: Ref): Desc = this match {
     case node: DescVar       => node.copy(ref = ref)
+    case node: DescVal       => node.copy(ref = ref)
     case node: DescIn        => node.copy(ref = ref)
     case node: DescOut       => node.copy(ref = ref)
     case node: DescPipeline  => node.copy(ref = ref)

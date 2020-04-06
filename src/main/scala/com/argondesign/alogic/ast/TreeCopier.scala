@@ -77,6 +77,18 @@ object TreeCopier {
     }
   }
 
+  def apply(tree: DescVal)(ref: Tree, spec: Tree, init: Tree): DescVal = {
+    if ((ref eq tree.ref) && (spec eq tree.spec) && (init eq tree.init)) {
+      tree
+    } else {
+      DescVal(
+        ref.asInstanceOf[Ref],
+        spec.asInstanceOf[Expr],
+        init.asInstanceOf[Expr]
+      ) withLoc tree.loc
+    }
+  }
+
   def apply(tree: DescIn)(ref: Tree, spec: Tree): DescIn = {
     if ((ref eq tree.ref) && (spec eq tree.spec)) {
       tree
@@ -272,6 +284,16 @@ object TreeCopier {
     }
   }
 
+  def apply(tree: DeclVal)(spec: Tree): DeclVal = {
+    if (spec eq tree.spec) {
+      tree
+    } else {
+      tree.copy(
+        spec = spec.asInstanceOf[Expr],
+      ) withLoc tree.loc
+    }
+  }
+
   def apply(tree: DeclIn)(spec: Tree): DeclIn = {
     if (spec eq tree.spec) {
       tree
@@ -431,6 +453,16 @@ object TreeCopier {
       assert(initOpt forall { _.isInstanceOf[Expr] })
       tree.copy(
         initOpt = initOpt.asInstanceOf[Option[Expr]]
+      ) withLoc tree.loc
+    }
+  }
+
+  def apply(tree: DefnVal)(init: Tree): DefnVal = {
+    if (init eq tree.init) {
+      tree
+    } else {
+      tree.copy(
+        init = init.asInstanceOf[Expr]
       ) withLoc tree.loc
     }
   }

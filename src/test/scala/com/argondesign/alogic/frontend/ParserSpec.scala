@@ -1085,6 +1085,12 @@ final class ParserSpec extends FreeSpec with AlogicTest {
               StmtDesc(DescVar(Ident("b", Nil), ExprType(TypeSInt(2)), Some(Expr(3))))
             }
           }
+
+          "constant" in {
+            "const u6 x = 7;".asTree[Stmt] shouldBe StmtDesc(
+              DescVal(Ident("x", Nil), ExprType(TypeUInt(6)), Expr(7))
+            )
+          }
         }
 
         "read statement" in {

@@ -262,6 +262,7 @@ final class Checker(implicit cc: CompilerContext) extends StatefulTreeTransforme
     case StmtDesc(desc) =>
       desc match {
         case _: DescVar => tree
+        case _: DescVal => tree
         case _: DescGen => tree
         case _ =>
           cc.error(tree, "Only variables can be declared in declaration statements")

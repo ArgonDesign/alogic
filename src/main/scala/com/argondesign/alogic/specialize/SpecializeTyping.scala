@@ -108,6 +108,13 @@ private[specialize] object SpecializeTyping {
             DefnVar(ref.symbol, initOpt) withLoc desc.loc
           )
         }
+      case DescVal(ref, spec, init) =>
+        specializeExpr(spec) { specialSpec =>
+          TypingSpecializationComplete(
+            DeclVal(ref.symbol, specialSpec) withLoc desc.loc,
+            DefnVal(ref.symbol, init) withLoc desc.loc
+          )
+        }
       case DescIn(ref, spec, fc) =>
         specializeExpr(spec) { specialSpec =>
           TypingSpecializationComplete(

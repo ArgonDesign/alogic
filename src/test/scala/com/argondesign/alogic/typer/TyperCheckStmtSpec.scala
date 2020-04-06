@@ -280,6 +280,7 @@ final class TyperCheckStmtSpec extends FreeSpec with AlogicTest {
       val oPortErr = "Output port with flow control can only be modified using .write()" :: Nil
       val constErr = "Constant cannot be modified" :: Nil
       val memoryErr = "Memory can only be modified using .write()" :: Nil
+      val valErr = "'const' qualified variable cannot be modified" :: Nil
 
       for (op <- List("=", "+=")) {
         for {
@@ -291,6 +292,7 @@ final class TyperCheckStmtSpec extends FreeSpec with AlogicTest {
             (s"e ${op} 8'd0", iPortErr),
             (s"f ${op} 8'd0", oPortErr),
             (s"h ${op} 8'd0", constErr),
+            (s"j ${op} 8'b0", valErr),
             (s"a[0] ${op} 1'b0", iPortErr),
             (s"b[0] ${op} 1'b0", Nil),
             (s"c[0] ${op} 1'b0", iPortErr),
@@ -299,6 +301,7 @@ final class TyperCheckStmtSpec extends FreeSpec with AlogicTest {
             (s"f[0] ${op} 1'b0", oPortErr),
             (s"h[0] ${op} 1'b0", constErr),
             (s"i[0] ${op} 4'b0", memoryErr),
+            (s"j[0] ${op} 1'b0", valErr),
             (s"a[1:0] ${op} 2'b0", iPortErr),
             (s"b[1:0] ${op} 2'b0", Nil),
             (s"c[1:0] ${op} 2'b0", iPortErr),
@@ -307,6 +310,7 @@ final class TyperCheckStmtSpec extends FreeSpec with AlogicTest {
             (s"f[1:0] ${op} 2'b0", oPortErr),
             (s"h[1:0] ${op} 2'b0", constErr),
             (s"i[0][1:0] ${op} 2'b0", memoryErr),
+            (s"j[1:0] ${op} 2'b0", valErr),
             (s"{b[1], a[0]} ${op} 2'b0", iPortErr),
             (s"{b[1], b[0]} ${op} 2'b0", Nil),
             (s"{b[1], c[0]} ${op} 2'b0", iPortErr),
@@ -314,7 +318,8 @@ final class TyperCheckStmtSpec extends FreeSpec with AlogicTest {
             (s"{b[1], e[0]} ${op} 2'b0", iPortErr),
             (s"{b[1], f[0]} ${op} 2'b0", oPortErr),
             (s"{b[1], h[0]} ${op} 2'b0", constErr),
-            (s"{b[1], i[0]} ${op} 9'b0", memoryErr)
+            (s"{b[1], i[0]} ${op} 9'b0", memoryErr),
+            (s"{b[1], j[0]} ${op} 2'b0", valErr)
           )
         } {
           assignment in {
@@ -331,7 +336,8 @@ final class TyperCheckStmtSpec extends FreeSpec with AlogicTest {
               |  u8 i[4];
               |
               |  void main() {
-              |    ${assignment};
+              |    const i8 j = 8'd0;
+              |    $assignment;
               |    fence;
               |  }
               |}"""
@@ -347,6 +353,7 @@ final class TyperCheckStmtSpec extends FreeSpec with AlogicTest {
       val oPortErr = "Output port with flow control can only be modified using .write()" :: Nil
       val constErr = "Constant cannot be modified" :: Nil
       val memoryErr = "Memory can only be modified using .write()" :: Nil
+      val valErr = "'const' qualified variable cannot be modified" :: Nil
 
       for (op <- List("++", "--")) {
         for {
@@ -358,6 +365,7 @@ final class TyperCheckStmtSpec extends FreeSpec with AlogicTest {
             (s"e${op}", iPortErr),
             (s"f${op}", oPortErr),
             (s"h${op}", constErr),
+            (s"j${op}", valErr),
             (s"a[0]${op}", iPortErr),
             (s"b[0]${op}", Nil),
             (s"c[0]${op}", iPortErr),
@@ -366,6 +374,7 @@ final class TyperCheckStmtSpec extends FreeSpec with AlogicTest {
             (s"f[0]${op}", oPortErr),
             (s"h[0]${op}", constErr),
             (s"i[0]${op}", memoryErr),
+            (s"j[0]${op}", valErr),
             (s"a[1:0]${op}", iPortErr),
             (s"b[1:0]${op}", Nil),
             (s"c[1:0]${op}", iPortErr),
@@ -374,6 +383,7 @@ final class TyperCheckStmtSpec extends FreeSpec with AlogicTest {
             (s"f[1:0]${op}", oPortErr),
             (s"h[1:0]${op}", constErr),
             (s"i[0][1:0]${op}", memoryErr),
+            (s"j[1:0]${op}", valErr),
             (s"{b[1], a[0]}${op}", iPortErr),
             (s"{b[1], b[0]}${op}", Nil),
             (s"{b[1], c[0]}${op}", iPortErr),
@@ -381,7 +391,8 @@ final class TyperCheckStmtSpec extends FreeSpec with AlogicTest {
             (s"{b[1], e[0]}${op}", iPortErr),
             (s"{b[1], f[0]}${op}", oPortErr),
             (s"{b[1], h[0]}${op}", constErr),
-            (s"{b[1], i[0]}${op}", memoryErr)
+            (s"{b[1], i[0]}${op}", memoryErr),
+            (s"{b[1], j[0]}${op}", valErr)
           )
         } {
           assignment in {
@@ -398,7 +409,8 @@ final class TyperCheckStmtSpec extends FreeSpec with AlogicTest {
               |  u8 i[4];
               |
               |  void main() {
-              |    ${assignment};
+              |    const i8 j = 8'd0;
+              |    $assignment;
               |    fence;
               |  }
               |}"""

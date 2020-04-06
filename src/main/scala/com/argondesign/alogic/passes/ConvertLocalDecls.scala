@@ -72,10 +72,23 @@ final class ConvertLocalDecls(implicit cc: CompilerContext) extends StatefulTree
   }
 
   override def transform(tree: Tree): Tree = tree match {
-    case StmtDecl(decl) =>
-      assert(decl.isInstanceOf[DeclVar])
+    ////////////////////////////////////////////////////////////////////////////
+    // Pull StmtDecl to entity
+    ////////////////////////////////////////////////////////////////////////////
+
+    case StmtDecl(decl: DeclVar) =>
       localDecls append decl
       Stump
+
+    case StmtDecl(decl: DeclVal) =>
+      localDecls append TypeAssigner(DeclVar(decl.symbol, decl.spec) withLoc decl.loc)
+      Stump
+
+    case _: StmtDecl => unreachable
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Pull StmtDefn to entity and replace with assignment
+    ////////////////////////////////////////////////////////////////////////////
 
     case StmtDefn(defn @ DefnVar(symbol, initOpt)) =>
       localDefns append TypeAssigner(DefnVar(symbol, None) withLoc defn.loc)
@@ -83,6 +96,16 @@ final class ConvertLocalDecls(implicit cc: CompilerContext) extends StatefulTree
         case Some(init) => StmtAssign(ExprSym(symbol), init) regularize tree.loc
         case None       => Stump
       }
+
+    case StmtDefn(defn @ DefnVal(symbol, init)) =>
+      localDefns append TypeAssigner(DefnVar(symbol, None) withLoc defn.loc)
+      StmtAssign(ExprSym(symbol), init) regularize tree.loc
+
+    case _: StmtDefn => unreachable
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Add entity extra Decl/Defn pairs
+    ////////////////////////////////////////////////////////////////////////////
 
     case decl: DeclEntity if localDecls.nonEmpty =>
       val newDecls = List.from(decl.decls.iterator ++ localDecls.iterator)
