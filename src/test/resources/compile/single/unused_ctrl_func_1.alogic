@@ -1,0 +1,25 @@
+fsm unused_ctrl_func_1 {
+  in bool i;
+  out wire bool o;
+
+  void main() {
+    o = i;
+    fence;
+  }
+
+  void f() {
+    g();
+  }
+
+  void g() {
+    f();
+  }
+}
+// @fec/golden {{{
+//  module unused_ctrl_func_1(
+//    input  wire i,
+//    output wire o
+//  );
+//    assign o = i;
+//  endmodule
+// }}}

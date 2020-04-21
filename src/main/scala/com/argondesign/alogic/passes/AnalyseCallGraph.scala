@@ -15,6 +15,7 @@
 //  - Ensure reclimit attributes exist on all functions
 //  - Check stacklimit attributes
 //  - Allocate return stack with required depth
+//  - Remove unused functions
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.passes
@@ -52,7 +53,7 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends StatefulTreeT
   private val callCounts = mutable.Map[Symbol, Int]().withDefaultValue(0)
 
   // All control function symbols
-  private var functionSymbols: List[Symbol] = _
+  private val functionSymbols = mutable.LinkedHashSet[Symbol]()
 
   ////////////////////////////////////////////////////////////////////////////
   // All call arcs in the entity
@@ -105,10 +106,14 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends StatefulTreeT
   //////////////////////////////////////////////////////////////////////////////
   private def computeAdjacentyMatrix(callArcs: Set[CallArc]): Matrix[Int] = Matrix {
     val calleeMap = callArcs.groupMap(_._1)(_._3) withDefaultValue Set.empty
-    for (caller <- functionSymbols) yield {
-      val calleeSet = calleeMap(Some(caller))
-      for (symbol <- functionSymbols) yield {
-        if (calleeSet contains symbol) 1 else 0
+    List from {
+      functionSymbols.iterator map { caller =>
+        val calleeSet = calleeMap(Some(caller))
+        List from {
+          functionSymbols.iterator map { symbol =>
+            if (calleeSet contains symbol) 1 else 0
+          }
+        }
       }
     }
   }
@@ -350,16 +355,14 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends StatefulTreeT
     //////////////////////////////////////////////////////////////////////////
 
     case defn: DefnEntity =>
-      assert(functionSymbols == null)
-      functionSymbols = List from {
-        defn.functions.iterator map { _.symbol } filter { _.kind.isCtrlFunc }
-      }
+      assert(functionSymbols.isEmpty)
+      functionSymbols ++= defn.functions.iterator map { _.symbol } filter { _.kind.isCtrlFunc }
       val entryPoints = functionSymbols filter { _.attr.entry.isSet }
-      Option.when(entryPoints.lengthIs != 1) {
+      Option.when(entryPoints.sizeIs != 1) {
         if (entryPoints.isEmpty) {
           cc.error(defn.symbol, "No 'main' function in fsm.")
         } else {
-          val locations = entryPoints map { _.loc.prefix }
+          val locations = List from { entryPoints.iterator map { _.loc.prefix } }
           cc.error(defn.symbol, "Multiple 'main' functions in fsm at:" :: locations: _*)
         }
         tree
@@ -402,13 +405,32 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends StatefulTreeT
 
   override def transform(tree: Tree): Tree = tree match {
     case defn: DefnEntity =>
-      val callArcs = computeCallArcSet
+      val allCallArcs = computeCallArcSet
+      // Compute which functions are actually used
+      val usedFunctions = {
+        def loop(used: Set[Symbol]): Set[Symbol] = {
+          val extra = allCallArcs collect {
+            case (None, _, callee) if !used(callee)                         => callee
+            case (Some(caller), _, callee) if used(caller) && !used(callee) => callee
+          }
+          if (extra.isEmpty) used else loop(used union extra)
+        }
+        loop(Set.empty)
+      }
+
+      // Filter call arcs and function symbols to the used functions
+      val callArcs = allCallArcs filter {
+        case (Some(caller), _, _) => usedFunctions(caller)
+        case _                    => true
+      }
+      functionSymbols filterInPlace usedFunctions
+
       val adjMat = computeAdjacentyMatrix(callArcs)
       val indMat = computeIndirectCallMatrix(adjMat)
 
       // Ensure 'reclimit' attributes exist on all functions
       val recLimtis =
-        computeRecLimits(callArcs, adjMat, indMat).getOrElse(List.fill(functionSymbols.length)(1))
+        computeRecLimits(callArcs, adjMat, indMat).getOrElse(List.fill(functionSymbols.size)(1))
       for ((symbol, value) <- functionSymbols lazyZip recLimtis) {
         symbol.attr.recLimit set Expr(value)
       }
@@ -428,10 +450,16 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends StatefulTreeT
         }
       }
 
+      // Drop unused functions
+      val newBody = defn.body filter {
+        case EntDefn(DefnFunc(symbol, _, _)) if symbol.kind.isCtrlFunc => usedFunctions(symbol)
+        case _                                                         => true
+      }
+
       val stackDepth = returnStackDepth(defn.symbol, callArcs, adjMat, indMat, recLimtis)
 
       if (stackDepth == 0) {
-        defn
+        TypeAssigner(defn.copy(body = newBody) withLoc defn.loc)
       } else {
         // Allocate the return stack with TypeVoid entries and with the right
         // depth. The elementType will be refined in a later pass when the
@@ -444,16 +472,24 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends StatefulTreeT
         // Add th Defn of the return stack. ConvertControl relies on it being
         // added to the front so it can be picked up in 'transform' early.
         val stackDefn = EntDefn(symbol.mkDefn) regularize defn.loc
-        TypeAssigner(defn.copy(body = stackDefn :: defn.body) withLoc defn.loc)
+        TypeAssigner(defn.copy(body = stackDefn :: newBody) withLoc defn.loc)
       }
 
     case decl: DeclEntity =>
+      // Drop unused functions
+      val newDecls = decl.decls filter {
+        case DeclFunc(symbol, _, _, _) if symbol.kind.isCtrlFunc => functionSymbols(symbol)
+        case _                                                   => true
+      }
+
       decl.symbol.defn.defns collectFirst {
         // Add the Decl of the return stack
         case Defn(symbol) if symbol.attr.returnStack.isSet =>
           val stackDecl = symbol.mkDecl regularize decl.loc
-          TypeAssigner(decl.copy(decls = stackDecl :: decl.decls) withLoc decl.loc)
-      } getOrElse tree
+          TypeAssigner(decl.copy(decls = stackDecl :: newDecls) withLoc decl.loc)
+      } getOrElse {
+        TypeAssigner(decl.copy(decls = newDecls) withLoc decl.loc)
+      }
 
     case _ => tree
   }
