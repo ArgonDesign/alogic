@@ -24,7 +24,7 @@ organization := "com.argondesign"
 // Scala compiler
 ////////////////////////////////////////////////////////////////////////////////
 
-scalaVersion := "2.13.1"
+scalaVersion := "2.13.2"
 
 scalacOptions ++= Seq("-feature", "-explaintypes", "-unchecked", "-Xlint:_")
 

@@ -22,6 +22,7 @@ import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.enums.ResetStyle
 import com.argondesign.alogic.util.unreachable
 
+import scala.annotation.nowarn
 import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
 
@@ -70,6 +71,7 @@ final class MakeVerilog(
   private val multiBinOps = Set("*", "+", "-", "|", "&", "||", "&&")
 
   // Render expression to Verilog
+  @nowarn("msg=Recursive call used default arguments")
   private def vexpr(expr: Expr, indent: Int = 0): String = expr match {
     case ExprCall(e, as) =>
       val aa = as map {
