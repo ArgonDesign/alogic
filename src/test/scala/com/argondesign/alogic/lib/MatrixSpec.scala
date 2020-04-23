@@ -16,9 +16,9 @@
 package com.argondesign.alogic.lib
 
 import com.argondesign.alogic.AlogicTest
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
-final class MatrixSpec extends FreeSpec with AlogicTest {
+final class MatrixSpec extends AnyFreeSpec with AlogicTest {
 
   val square = Matrix(
     List(

@@ -31,6 +31,7 @@ import com.argondesign.alogic.core.SourceAttribute
 import com.argondesign.alogic.core.Warning
 import com.argondesign.alogic.passes.Pass
 import org.scalatest._
+import org.scalatest.matchers.should.Matchers
 import org.scalatest.matchers.MatchResult
 import org.scalatest.matchers.Matcher
 

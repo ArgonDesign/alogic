@@ -37,6 +37,7 @@ import com.argondesign.alogic.util.unreachable
 import org.scalatest.ConfigMap
 import org.scalatest.ParallelTestExecution
 import org.scalatest.fixture
+import org.scalatest.freespec.FixtureAnyFreeSpec
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -44,7 +45,7 @@ import scala.io.Source
 import scala.sys.process._
 
 trait CompilationTest
-    extends fixture.FreeSpec
+    extends FixtureAnyFreeSpec
     with AlogicTest
     with fixture.ConfigMapFixture
     with ParallelTestExecution {

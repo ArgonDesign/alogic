@@ -16,10 +16,9 @@
 package com.argondesign.alogic.lib
 
 import com.argondesign.alogic.AlogicTest
+import org.scalatest.freespec.AnyFreeSpec
 
-import org.scalatest.FreeSpec
-
-final class MathSpec extends FreeSpec with AlogicTest {
+final class MathSpec extends AnyFreeSpec with AlogicTest {
 
   "Math" - {
     "clog2" - {

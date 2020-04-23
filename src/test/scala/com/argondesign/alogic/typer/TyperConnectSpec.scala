@@ -24,9 +24,9 @@ import com.argondesign.alogic.core.Error
 import com.argondesign.alogic.passes.Elaborate
 import com.argondesign.alogic.passes.Namer
 import com.argondesign.alogic.passes.TypeCheck
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
-final class TyperConnectSpec extends FreeSpec with AlogicTest {
+final class TyperConnectSpec extends AnyFreeSpec with AlogicTest {
 
   implicit val cc: CompilerContext = new CompilerContext
 

@@ -23,11 +23,11 @@ import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.passes.Namer
 import com.argondesign.alogic.typer.Typer
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 import scala.collection.immutable.BitSet
 
-class LivenessSpec extends FreeSpec with AlogicTest {
+class LivenessSpec extends AnyFreeSpec with AlogicTest {
 
   implicit val cc: CompilerContext = new CompilerContext()
 

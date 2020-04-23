@@ -23,11 +23,10 @@ import com.argondesign.alogic.core.Fatal
 import com.argondesign.alogic.core.FatalErrorException
 import com.argondesign.alogic.core.Source
 import com.argondesign.alogic.core.Warning
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-import org.scalatest.FlatSpec
-import org.scalatest.Matchers
-
-final class PreprocessorSpec extends FlatSpec with Matchers {
+final class PreprocessorSpec extends AnyFlatSpec with Matchers {
 
   val emptyDefines = Map.empty[String, String]
 

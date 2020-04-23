@@ -19,9 +19,9 @@ import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.ast.Trees.Expr._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
-final class ExprOpsSpec extends FreeSpec with AlogicTest {
+final class ExprOpsSpec extends AnyFreeSpec with AlogicTest {
   implicit val cc: CompilerContext = new CompilerContext
 
   "ExprOps" - {

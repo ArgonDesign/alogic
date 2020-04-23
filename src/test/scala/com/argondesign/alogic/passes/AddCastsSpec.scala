@@ -18,13 +18,13 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.ast.Trees.Expr.ImplicitConversions._
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Warning
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
-final class AddCastsSpec extends FreeSpec with AlogicTest {
+final class AddCastsSpec extends AnyFreeSpec with AlogicTest {
 
   implicit val cc: CompilerContext = new CompilerContext
 

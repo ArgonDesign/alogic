@@ -41,7 +41,7 @@ libraryDependencies +=
 // Testing dependencies
 ////////////////////////////////////////////////////////////////////////////////
 
-libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.8" % "test"
+libraryDependencies += "org.scalatest" %% "scalatest" % "3.1.1" % "test"
 
 logBuffered in Test := false
 

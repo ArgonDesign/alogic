@@ -18,9 +18,9 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Error
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
-final class PortCheckBSpec extends FreeSpec with AlogicTest {
+final class PortCheckBSpec extends AnyFreeSpec with AlogicTest {
 
   implicit val cc: CompilerContext = new CompilerContext
 

@@ -20,9 +20,9 @@ import com.argondesign.alogic.SourceTextConverters._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Warning
-import org.scalatest.FlatSpec
+import org.scalatest.flatspec.AnyFlatSpec
 
-final class UnusedCheckSpec extends FlatSpec with AlogicTest {
+final class UnusedCheckSpec extends AnyFlatSpec with AlogicTest {
 
   implicit val cc: CompilerContext = new CompilerContext
 

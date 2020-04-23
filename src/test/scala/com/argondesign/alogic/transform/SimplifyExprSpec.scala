@@ -22,16 +22,11 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.passes.AddCasts
-import com.argondesign.alogic.passes.Elaborate
-import com.argondesign.alogic.passes.Fold
-import com.argondesign.alogic.passes.Namer
-import com.argondesign.alogic.passes.ResolvePolyFunc
-import com.argondesign.alogic.passes.TypeCheck
+import com.argondesign.alogic.passes._
 import com.argondesign.alogic.typer.Typer
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
-final class SimplifyExprSpec extends FreeSpec with AlogicTest {
+final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
 
   implicit val cc: CompilerContext = new CompilerContext
 

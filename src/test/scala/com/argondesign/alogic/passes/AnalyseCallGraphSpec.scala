@@ -17,15 +17,15 @@ package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Error
 import com.argondesign.alogic.core.FuncVariant
 import com.argondesign.alogic.core.SymbolAttributes
 import com.argondesign.alogic.core.Warning
-import com.argondesign.alogic.core.Symbols.Symbol
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
-final class AnalyseCallGraphSpec extends FreeSpec with AlogicTest {
+final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
 
   implicit val cc: CompilerContext = new CompilerContext
 

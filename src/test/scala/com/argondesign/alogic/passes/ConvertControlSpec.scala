@@ -19,9 +19,9 @@ import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.Symbol
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
-final class ConvertControlSpec extends FreeSpec with AlogicTest {
+final class ConvertControlSpec extends AnyFreeSpec with AlogicTest {
 
   implicit val cc = new CompilerContext
 

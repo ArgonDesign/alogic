@@ -19,23 +19,23 @@ import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.SourceTextConverters._
 import com.argondesign.alogic.ast.Trees.Expr.ImplicitConversions._
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Error
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeReady
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeValid
+import com.argondesign.alogic.core.StorageTypes._
+import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Error
 import com.argondesign.alogic.core.FuncVariant
 import com.argondesign.alogic.core.Message
 import com.argondesign.alogic.core.SourceAttribute
-import com.argondesign.alogic.core.StorageTypes._
-import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.Warning
 import com.argondesign.alogic.core.enums.EntityVariant
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.MatchResult
 import org.scalatest.matchers.Matcher
 
-final class ParserSpec extends FreeSpec with AlogicTest {
+final class ParserSpec extends AnyFreeSpec with AlogicTest {
 
   implicit val cc: CompilerContext = new CompilerContext
 

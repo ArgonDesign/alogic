@@ -19,11 +19,11 @@ import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.ast.Trees.ExprBinary
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Types.TypeUInt
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
 import scala.collection.mutable
 
-final class TreeOpsSpec extends FreeSpec with AlogicTest {
+final class TreeOpsSpec extends AnyFreeSpec with AlogicTest {
 
   private val tree = Thicket(
     List(

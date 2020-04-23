@@ -22,9 +22,9 @@ import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.passes.Elaborate
 import com.argondesign.alogic.passes.Namer
 import com.argondesign.alogic.passes.TypeCheck
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
-final class UnaryTickSpec extends FreeSpec with AlogicTest {
+final class UnaryTickSpec extends AnyFreeSpec with AlogicTest {
 
   implicit val cc: CompilerContext = new CompilerContext
 

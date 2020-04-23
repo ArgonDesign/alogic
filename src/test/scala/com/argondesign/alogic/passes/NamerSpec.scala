@@ -18,16 +18,16 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.SourceTextConverters._
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Error
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types.TypeNum
 import com.argondesign.alogic.core.Types.TypeUInt
+import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Error
 import com.argondesign.alogic.core.Warning
 import com.argondesign.alogic.core.enums.EntityVariant
-import org.scalatest.FreeSpec
+import org.scalatest.freespec.AnyFreeSpec
 
-final class NamerSpec extends FreeSpec with AlogicTest {
+final class NamerSpec extends AnyFreeSpec with AlogicTest {
 
   implicit val cc: CompilerContext = new CompilerContext
   lazy val atBits = ExprSym(cc.lookupGlobalTerm("@bits"))

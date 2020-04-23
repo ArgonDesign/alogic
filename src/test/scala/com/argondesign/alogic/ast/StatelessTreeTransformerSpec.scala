@@ -18,12 +18,12 @@ package com.argondesign.alogic.ast
 import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.SourceTextConverters._
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Types.TypeUInt
+import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Warning
-import org.scalatest.FlatSpec
+import org.scalatest.flatspec.AnyFlatSpec
 
-final class StatelessTreeTransformerSpec extends FlatSpec with AlogicTest {
+final class StatelessTreeTransformerSpec extends AnyFlatSpec with AlogicTest {
 
   implicit val cc: CompilerContext = new CompilerContext
 
