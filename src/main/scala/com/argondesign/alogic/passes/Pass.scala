@@ -28,6 +28,7 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.util.unreachable
 
+import scala.annotation.nowarn
 import scala.annotation.tailrec
 import scala.util.ChainingSyntax
 
@@ -124,26 +125,21 @@ trait PairsTransformerPass extends Pass[List[(Decl, Defn)], List[(Decl, Defn)]] 
 
 }
 
-// NOTE: This is only hear because otherwise we get an unused warning on cc in
-// the default implementations in PairTransformerPass
-sealed trait BasePairTransformerPass extends PairsTransformerPass with ChainingSyntax {
-  protected def start(pairs: List[(Decl, Defn)])(implicit cc: CompilerContext): Unit
-  protected def skip(decl: Decl, defn: Defn)(implicit cc: CompilerContext): Boolean
-  protected def finish(pairs: List[(Decl, Defn)])(implicit cc: CompilerContext): List[(Decl, Defn)]
-}
-
-trait PairTransformerPass extends BasePairTransformerPass {
+trait PairTransformerPass extends PairsTransformerPass with ChainingSyntax {
 
   // Called before any pair has been transformed with the input pairs
+  @nowarn("msg=parameter value cc .* is never used")
   protected def start(pairs: List[(Decl, Defn)])(implicit cc: CompilerContext): Unit = {}
 
   // Predicate to check whether this pair needs transforming
+  @nowarn("msg=parameter value cc .* is never used")
   protected def skip(decl: Decl, defn: Defn)(implicit cc: CompilerContext): Boolean = false
 
   // Called fore each pair that needs to be transformed
   protected def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree)
 
   // Called after all pairs have been transformed with the output pairs
+  @nowarn("msg=parameter value cc .* is never used")
   protected def finish(
       pairs: List[(Decl, Defn)]
     )(
