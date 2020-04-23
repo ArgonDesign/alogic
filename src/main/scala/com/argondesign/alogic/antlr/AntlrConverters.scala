@@ -26,7 +26,7 @@ import scala.language.implicitConversions
 
 object AntlrConverters extends {
 
-  implicit class RichParserRuleContext(val ctx: ParserRuleContext) extends AnyVal {
+  implicit class RichParserRuleContext(private val ctx: ParserRuleContext) extends AnyVal {
 
     def sourceText: String = {
       val inputStream = ctx.start.getInputStream
@@ -56,7 +56,7 @@ object AntlrConverters extends {
 
   }
 
-  implicit class RichToken(val token: Token) extends AnyVal {
+  implicit class RichToken(private val token: Token) extends AnyVal {
 
     def loc: Loc = {
       val source = token.getTokenSource.asInstanceOf[SourceMixin].source
@@ -70,7 +70,7 @@ object AntlrConverters extends {
     def isHidden: Boolean = token.getChannel != Token.DEFAULT_CHANNEL
   }
 
-  implicit class RichParseTree(val node: ParseTree) extends AnyVal {
+  implicit class RichParseTree(private val node: ParseTree) extends AnyVal {
     def text: String = node.getText
 
     def children: List[ParseTree] = {

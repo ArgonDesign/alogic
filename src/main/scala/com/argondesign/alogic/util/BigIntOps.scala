@@ -20,7 +20,7 @@ import scala.language.implicitConversions
 // For importing with BigIntOps._
 object BigIntOps {
 
-  implicit final class BigIntOpsImpl(val value: BigInt) extends AnyVal {
+  implicit final class BigIntOpsImpl(private val value: BigInt) extends AnyVal {
 
     // Extract bit field of width 'width' starting from 'lsb' if 'signed'
     // ensure result is negative if the bit 'lsb + width - 1' is set
@@ -37,7 +37,7 @@ object BigIntOps {
 
   }
 
-  implicit final class BigIntObjOpsImpl(val value: BigInt.type) extends AnyVal {
+  implicit final class BigIntObjOpsImpl(private val value: BigInt.type) extends AnyVal {
     def mask(width: Int): BigInt = (BigInt(1) << width) - 1
     def mask(width: BigInt): BigInt = (BigInt(1) << width.toInt) - 1
 

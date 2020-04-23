@@ -34,7 +34,7 @@ import scala.language.implicitConversions
 // For importing with PartialMatch._
 object PartialMatch {
 
-  implicit final class PartialMatchImpl[T](val value: T) extends AnyVal {
+  implicit final class PartialMatchImpl[T](private val value: T) extends AnyVal {
     def partialMatch[U](pf: PartialFunction[T, U]): Option[U] = pf.lift(value)
   }
 

@@ -20,7 +20,7 @@ import scala.language.implicitConversions
 // For importing with BooleanOps._
 object BooleanOps {
 
-  implicit final class BooleanOpsImpl(val bool: Boolean) extends AnyVal {
+  implicit final class BooleanOpsImpl(private val bool: Boolean) extends AnyVal {
     def option[T](v: => T): Option[T] = if (bool) Some(v) else None
   }
 
