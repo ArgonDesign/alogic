@@ -21,6 +21,7 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 
 object CaseBuilder extends BaseBuilder[KaseContext, Case] {
+
   private def stmts(stmt: Stmt): List[Stmt] = stmt match {
     case StmtBlock(ss) => ss
     case s             => List(s)
@@ -40,4 +41,5 @@ object CaseBuilder extends BaseBuilder[KaseContext, Case] {
 
     Visitor(ctx)
   }
+
 }

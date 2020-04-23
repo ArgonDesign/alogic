@@ -100,9 +100,11 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
         val neg = ctx.sign != null && ctx.sign.text == "-"
         val text = ctx.UNSIZEDINT.text
         if (text.length > 1 && text(0) == '0' && text(1).isDigit) {
-          cc.error(ctx,
-                   s"Invalid literal '$text',",
-                   "use prefix '0o' for octal or '0d' for decimal with leading zeros")
+          cc.error(
+            ctx,
+            s"Invalid literal '$text',",
+            "use prefix '0o' for octal or '0d' for decimal with leading zeros"
+          )
           ExprError() withLoc ctx.loc
         } else {
           val signed = text.last == 's'

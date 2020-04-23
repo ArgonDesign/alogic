@@ -38,6 +38,7 @@ private[builtins] class AtMsb(implicit cc: CompilerContext)
 }
 
 private[builtins] object AtMsb {
+
   def fold(loc: Loc, expr: Expr)(implicit cc: CompilerContext): Option[Expr] =
     Some {
       if (expr.tpe.width == 1) {
@@ -46,4 +47,5 @@ private[builtins] object AtMsb {
         (expr index (expr.tpe.width.toInt - 1)).simplify
       }
     }
+
 }

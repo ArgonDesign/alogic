@@ -130,9 +130,9 @@ final class PreprocessorSpec extends FlatSpec with Matchers {
     val message = cc.messages(0)
 
     message shouldBe a[Warning]
-    message.loc.source should be { source }
-    message.loc.line should be { 3 }
-    message.msg(0) should be { "Redefined preprocessor identifier 'foo'" }
+    message.loc.source should be(source)
+    message.loc.line should be(3)
+    message.msg(0) should be("Redefined preprocessor identifier 'foo'")
   }
 
   it should "warn for redefinition of initial definition" in new Fixture {
@@ -149,9 +149,9 @@ final class PreprocessorSpec extends FlatSpec with Matchers {
     val message = cc.messages(0)
 
     message shouldBe a[Warning]
-    message.loc.source should be { source }
-    message.loc.line should be { 1 }
-    message.msg(0) should be { "Redefined preprocessor identifier 'foo'" }
+    message.loc.source should be(source)
+    message.loc.line should be(1)
+    message.msg(0) should be("Redefined preprocessor identifier 'foo'")
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -194,9 +194,9 @@ final class PreprocessorSpec extends FlatSpec with Matchers {
       val message = cc.messages(0)
 
       message shouldBe an[Error]
-      message.loc.source should be { source }
-      message.loc.line should be { 1 }
-      message.msg(0) should be { "#if condition macro 'COND' is not defined" }
+      message.loc.source should be(source)
+      message.loc.line should be(1)
+      message.msg(0) should be("#if condition macro 'COND' is not defined")
     }
 
     it should "error for non-integer #if condition" in new Fixture {
@@ -205,10 +205,10 @@ final class PreprocessorSpec extends FlatSpec with Matchers {
       val message = cc.messages(0)
 
       message shouldBe an[Error]
-      message.loc.source should be { source }
-      message.loc.line should be { 1 }
-      message.msg(0) should be { "#if condition macro 'COND' must be defined as a single integer," }
-      message.msg(1) should be { "not '?'" }
+      message.loc.source should be(source)
+      message.loc.line should be(1)
+      message.msg(0) should be("#if condition macro 'COND' must be defined as a single integer,")
+      message.msg(1) should be("not '?'")
     }
   }
 
@@ -342,9 +342,8 @@ final class PreprocessorSpec extends FlatSpec with Matchers {
                |""".stripMargin
           )
         case "bar.h" =>
-          Source("bar.h",
-                 """|--This is
-                    |--from bar.h""".stripMargin)
+          Source("bar.h", """|--This is
+                            |--from bar.h""".stripMargin)
         case "def1.h" =>
           Source(
             "def1.h",
@@ -357,9 +356,8 @@ final class PreprocessorSpec extends FlatSpec with Matchers {
                |""".stripMargin
           )
         case "def2.h" =>
-          Source("def2.h",
-                 """|#define a def2
-                    |#define b def2""".stripMargin)
+          Source("def2.h", """|#define a def2
+                             |#define b def2""".stripMargin)
       }
       Right(result)
     }
@@ -426,28 +424,28 @@ final class PreprocessorSpec extends FlatSpec with Matchers {
            |""".stripMargin
       )
 
-      preproc(source, emptyDefines, includeResolver(_, _)).text should be { "\n" * 13 }
+      preproc(source, emptyDefines, includeResolver(_, _)).text should be("\n" * 13)
 
       cc.messages should have length 9
 
-      cc.messages(0).loc.source.name should endWith { "def1.h" }
-      cc.messages(0).loc.line should be { 2 }
-      cc.messages(1).loc.source.name should endWith { "def2.h" }
-      cc.messages(1).loc.line should be { 1 }
-      cc.messages(2).loc.source.name should endWith { "def2.h" }
-      cc.messages(2).loc.line should be { 2 }
-      cc.messages(3).loc.source.name should endWith { "def1.h" }
-      cc.messages(3).loc.line should be { 4 }
-      cc.messages(4).loc.source.name should endWith { "def2.h" }
-      cc.messages(4).loc.line should be { 1 }
-      cc.messages(5).loc.source.name should endWith { "def2.h" }
-      cc.messages(5).loc.line should be { 2 }
-      cc.messages(6).loc.source.name should endWith { "def1.h" }
-      cc.messages(6).loc.line should be { 6 }
-      cc.messages(7).loc.source.name should endWith { "test.alogic" }
-      cc.messages(7).loc.line should be { 4 }
-      cc.messages(8).loc.source.name should endWith { "test.alogic" }
-      cc.messages(8).loc.line should be { 5 }
+      cc.messages(0).loc.source.name should endWith("def1.h")
+      cc.messages(0).loc.line should be(2)
+      cc.messages(1).loc.source.name should endWith("def2.h")
+      cc.messages(1).loc.line should be(1)
+      cc.messages(2).loc.source.name should endWith("def2.h")
+      cc.messages(2).loc.line should be(2)
+      cc.messages(3).loc.source.name should endWith("def1.h")
+      cc.messages(3).loc.line should be(4)
+      cc.messages(4).loc.source.name should endWith("def2.h")
+      cc.messages(4).loc.line should be(1)
+      cc.messages(5).loc.source.name should endWith("def2.h")
+      cc.messages(5).loc.line should be(2)
+      cc.messages(6).loc.source.name should endWith("def1.h")
+      cc.messages(6).loc.line should be(6)
+      cc.messages(7).loc.source.name should endWith("test.alogic")
+      cc.messages(7).loc.line should be(4)
+      cc.messages(8).loc.source.name should endWith("test.alogic")
+      cc.messages(8).loc.line should be(5)
     }
 
     it should "fatal for absolute include paths" in new Fixture {
@@ -466,9 +464,9 @@ final class PreprocessorSpec extends FlatSpec with Matchers {
       val message = cc.messages(0)
 
       message shouldBe a[Fatal]
-      message.loc.source should be { source }
-      message.loc.line should be { 1 }
-      message.msg(0) should be { "No absolute include paths allowed: \"/abs.h\"" }
+      message.loc.source should be(source)
+      message.loc.line should be(1)
+      message.msg(0) should be("No absolute include paths allowed: \"/abs.h\"")
     }
 
     it should "fatal for unsuccessful path search" in new Fixture {
@@ -492,11 +490,11 @@ final class PreprocessorSpec extends FlatSpec with Matchers {
       val message = cc.messages(0)
 
       message shouldBe a[Fatal]
-      message.loc.source should be { source }
-      message.loc.line should be { 1 }
-      message.msg(0) should be { "Cannot find include file \"missing.h\". Looked in:" }
-      message.msg(1) should be { includeSearchPaths(0).getCanonicalPath }
-      message.msg(2) should be { includeSearchPaths(1).getCanonicalPath }
+      message.loc.source should be(source)
+      message.loc.line should be(1)
+      message.msg(0) should be("Cannot find include file \"missing.h\". Looked in:")
+      message.msg(1) should be(includeSearchPaths(0).getCanonicalPath)
+      message.msg(2) should be(includeSearchPaths(1).getCanonicalPath)
     }
   }
 

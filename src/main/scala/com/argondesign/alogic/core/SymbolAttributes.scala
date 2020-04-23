@@ -214,8 +214,12 @@ class SymbolAttributes {
   }
 
   // Copy values from source attributes
-  def update(attr: scala.collection.Map[String, SourceAttribute])(
-      implicit cc: CompilerContext): Unit =
+  def update(
+      attr: scala.collection.Map[String, SourceAttribute]
+    )(
+      implicit
+      cc: CompilerContext
+    ): Unit =
     for ((name, sa) <- attr) {
       (name, sa) match {
         case ("unused", _: SourceAttribute.Flag)                 => unused set true
@@ -239,12 +243,13 @@ class SymbolAttributes {
   def toSource(implicit cc: CompilerContext): String = {
     val parts = for ((name, attr) <- nameIterator zip attrIterator if attr.isSet) yield {
       attr.value match {
-        case true       => s"${name}"
-        case false      => s"!${name}"
-        case expr: Expr => s"${name} = ${expr.toSource}"
-        case other      => s"${name} = ${other.toString}"
+        case true       => s"$name"
+        case false      => s"!$name"
+        case expr: Expr => s"$name = ${expr.toSource}"
+        case other      => s"$name = ${other.toString}"
       }
     }
     if (parts.nonEmpty) parts.mkString("(* ", ", ", " *)") else ""
   }
+
 }

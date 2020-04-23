@@ -26,8 +26,13 @@ private[specialize] object Finalize {
 
   // Type all constants and simplify initializers (this also type checks the
   // final parameter assignments). Rename according to actual parameters.
-  def apply(decl: Decl, defn: Defn)(
-      implicit cc: CompilerContext): Option[(Decl, Defn, Map[String, BigInt])] = {
+  def apply(
+      decl: Decl,
+      defn: Defn
+    )(
+      implicit
+      cc: CompilerContext
+    ): Option[(Decl, Defn, Map[String, BigInt])] = {
     require(decl.symbol eq defn.symbol)
 
     val nameComponents = mutable.ListBuffer[String](decl.symbol.name)
@@ -148,4 +153,5 @@ private[specialize] object Finalize {
 
     if (hadError) None else Some((fDecl, fDefn, paramValues.toMap))
   }
+
 }

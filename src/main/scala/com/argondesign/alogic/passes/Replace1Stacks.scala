@@ -77,7 +77,8 @@ final class Replace1Stacks(implicit cc: CompilerContext) extends StatefulTreeTra
           List(
             stmt,
             StmtAssign(ExprSym(symbol), ExprInt(symbol.kind.isSigned, symbol.kind.width.toInt, 0))
-          ))
+          )
+        )
 
       case ExprSelect(ExprSym(s), sel @ ("full" | "empty"), _) if stackMap contains s =>
         cc.ice(tree, s"Replacing 1 deep stack with '$sel' access")
@@ -98,6 +99,7 @@ final class Replace1Stacks(implicit cc: CompilerContext) extends StatefulTreeTra
 
 object Replace1Stacks extends PairTransformerPass {
   val name = "replace-1-stacks"
+
   def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {
     (decl, defn) match {
       case (dcl: DeclEntity, _: DefnEntity) =>
@@ -116,4 +118,5 @@ object Replace1Stacks extends PairTransformerPass {
       case _ => (decl, defn)
     }
   }
+
 }

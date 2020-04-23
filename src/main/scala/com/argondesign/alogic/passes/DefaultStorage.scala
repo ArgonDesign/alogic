@@ -83,6 +83,7 @@ final class DefaultStorage(implicit cc: CompilerContext) extends StatefulTreeTra
         cc.ice(node, "Default storage type remains")
     }
   }
+
 }
 
 object DefaultStorage extends EntityTransformerPass(declFirst = false) {

@@ -156,9 +156,10 @@ object DefaultAssignments extends PairTransformerPass {
         case other => Some(other)
       }
 
-      val newDefn = TypeAssigner { entityDefn.copy(body = newBody) withLoc entityDefn.loc }
+      val newDefn = TypeAssigner(entityDefn.copy(body = newBody) withLoc entityDefn.loc)
 
       (decl, newDefn)
     }
   }
+
 }

@@ -40,24 +40,28 @@ class BoolHelpers(val value: Boolean) extends AnyVal {
   def &&&(other: Boolean): Boolean = value && other
   // Non short-circuiting |||
   def |||(other: Boolean): Boolean = value || other
+
   // Run f if value is false, yield the value
   def ifFalse(f: => Unit): Boolean = {
     if (!value) f
     value
   }
+
   // Implication
   def implies(other: => Boolean): Boolean = !value || other
 }
 
 final class Typer(
     errorForParametrized: Boolean = true
-)(implicit cc: CompilerContext)
+  )(
+    implicit
+    cc: CompilerContext)
     extends StatefulTreeTransformer {
 
   override val typed: Boolean = false
 
-  private final val mixedWidthBinaryOps = Set("<<", ">>", "<<<", ">>>", "&&", "||")
-  private final val comparisonBinaryOps = Set(">", ">=", "<", "<=", "==", "!=")
+  final private val mixedWidthBinaryOps = Set("<<", ">>", "<<<", ">>>", "&&", "||")
+  final private val comparisonBinaryOps = Set(">", ">=", "<", "<=", "==", "!=")
 
   private def hasError(node: Tree): Boolean = node.children exists { child =>
     child.hasTpe && (child.tpe.isError || child.tpe.isParametrized)
@@ -154,9 +158,11 @@ final class Typer(
     val hasCtrl = stmts exists { _.tpe == TypeCtrlStmt }
     val lstCtrl = stmts.nonEmpty && stmts.last.tpe == TypeCtrlStmt
     (!hasCtrl || lstCtrl) ifFalse {
-      error(tree,
-            stmts.last,
-            "Block must contain only combinational statements, or end with a control statement")
+      error(
+        tree,
+        stmts.last,
+        "Block must contain only combinational statements, or end with a control statement"
+      )
     }
   }
 
@@ -165,7 +171,10 @@ final class Typer(
       idx: Expr,
       checkConst: Boolean,
       msg: String
-  )(implicit tree: Tree): Boolean = {
+    )(
+      implicit
+      tree: Tree
+    ): Boolean = {
     idx.tpe.underlying.isNum || {
       checkPacked(idx, msg) && {
         checkWidth(expectedWidth, idx, msg) &&&
@@ -691,7 +700,7 @@ final class Typer(
                 tree,
                 s"Both operands of binary '$op' must have the same width, but",
                 s"left  hand operand is ${lhs.tpe.width} bits wide, and",
-                s"right hand operand is ${rhs.tpe.width} bits wide",
+                s"right hand operand is ${rhs.tpe.width} bits wide"
               )
             }
           } else {
@@ -793,4 +802,5 @@ final class Typer(
       }
     }
   }
+
 }

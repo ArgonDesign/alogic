@@ -24,6 +24,7 @@ import scala.jdk.CollectionConverters._
 import scala.util.ChainingSyntax
 
 object SlicesBuilder extends BaseBuilder[SlicesContext, List[StorageSlice]] with ChainingSyntax {
+
   def apply(ctx: SlicesContext)(implicit cc: CompilerContext): List[StorageSlice] = {
     ctx.slice.asScala.toList map {
       _.text match {
@@ -34,4 +35,5 @@ object SlicesBuilder extends BaseBuilder[SlicesContext, List[StorageSlice]] with
       }
     }
   }
+
 }

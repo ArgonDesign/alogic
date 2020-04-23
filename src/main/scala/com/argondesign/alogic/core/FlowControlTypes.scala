@@ -17,7 +17,7 @@ package com.argondesign.alogic.core
 
 object FlowControlTypes {
 
-  abstract sealed trait FlowControlType
+  sealed abstract trait FlowControlType
 
   case object FlowControlTypeNone extends FlowControlType
   case object FlowControlTypeValid extends FlowControlType

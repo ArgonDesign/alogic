@@ -33,15 +33,19 @@ import scala.language.implicitConversions
 
 // For importing with PartialMatch._
 object PartialMatch {
+
   implicit final class PartialMatchImpl[T](val value: T) extends AnyVal {
     def partialMatch[U](pf: PartialFunction[T, U]): Option[U] = pf.lift(value)
   }
+
 }
 
 // For mixing into classes
 trait PartialMatch {
   import PartialMatch.PartialMatchImpl
+
   implicit final def any2PartialMatchImpl[T](value: T): PartialMatchImpl[T] = {
     new PartialMatchImpl(value)
   }
+
 }

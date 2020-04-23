@@ -17,13 +17,13 @@ package com.argondesign.alogic.core
 
 object StorageTypes {
 
-  abstract sealed trait StorageSlice
+  sealed abstract trait StorageSlice
 
   case object StorageSliceFwd extends StorageSlice
   case object StorageSliceBwd extends StorageSlice
   case object StorageSliceBub extends StorageSlice
 
-  abstract sealed trait StorageType
+  sealed abstract trait StorageType
 
   case object StorageTypeDefault extends StorageType
   case object StorageTypeWire extends StorageType

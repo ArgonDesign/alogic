@@ -34,7 +34,7 @@ final class SimplifyExpr(implicit cc: CompilerContext)
     extends StatelessTreeTransformer
     with PartialMatch {
 
-  private implicit def boolean2BigInt(bool: Boolean): BigInt = if (bool) BigInt(1) else BigInt(0)
+  implicit private def boolean2BigInt(bool: Boolean): BigInt = if (bool) BigInt(1) else BigInt(0)
 
   private val shiftOps = Set("<<", ">>", "<<<", ">>>")
 
@@ -67,7 +67,7 @@ final class SimplifyExpr(implicit cc: CompilerContext)
       op: String,
       unk: Expr,
       lKnown: Boolean
-  ): Option[Expr] = {
+    ): Option[Expr] = {
     val tpe = unk.tpe
     lazy val width = tpe.width.toInt
     lazy val allOnes = kValue.extract(0, width) == BigInt.mask(width)
@@ -433,7 +433,7 @@ final class SimplifyExpr(implicit cc: CompilerContext)
         if (value >= 0) {
           ExprNum(false, value)
         } else {
-          cc.error(tree, s"Result of operator '${op}' is unsigned, but value is negative: $value")
+          cc.error(tree, s"Result of operator '$op' is unsigned, but value is negative: $value")
           ExprError()
         }
       }
@@ -466,8 +466,7 @@ final class SimplifyExpr(implicit cc: CompilerContext)
 
         // Bitwise
         case (_, op @ ("&" | "^" | "|"), _) if nege =>
-          cc.error(tree,
-                   s"Bitwise '${op}' operator is not well defined for negative unsized values")
+          cc.error(tree, s"Bitwise '$op' operator is not well defined for negative unsized values")
           ExprError()
         case (_, "~^", _) =>
           cc.error(tree, "Bitwise '~^' operator is not well defined for unsized values")
@@ -608,7 +607,10 @@ final class SimplifyExpr(implicit cc: CompilerContext)
 
         case ExprRep(_, expr) =>
           val expr_width = expr.tpe.width
-          ExprIndex(expr, ExprInt(false, clog2(expr_width) max 1, index % expr_width)) regularize tree.loc
+          ExprIndex(
+            expr,
+            ExprInt(false, clog2(expr_width) max 1, index % expr_width)
+          ) regularize tree.loc
 
         ////////////////////////////////////////////////////////////////////////////
         // Fold index zero of width one
@@ -708,23 +710,28 @@ final class SimplifyExpr(implicit cc: CompilerContext)
             ExprSlice(part, ExprInt(false, width_bits, m), ":", ExprInt(false, width_bits, l))
           }
 
-          @tailrec def loop(concat_list: List[Expr],
-                            rem_parts: List[Expr],
-                            msb_rem: BigInt,
-                            lsb_rem: BigInt): List[Expr] = {
+          @tailrec def loop(
+              concat_list: List[Expr],
+              rem_parts: List[Expr],
+              msb_rem: BigInt,
+              lsb_rem: BigInt
+            ): List[Expr] = {
             val next_part_width = rem_parts.head.tpe.width
             if (lsb_rem >= next_part_width) {
               // None of this part included in slice
-              loop(concat_list,
-                   rem_parts.tail,
-                   msb_rem - next_part_width,
-                   lsb_rem - next_part_width)
+              loop(
+                concat_list,
+                rem_parts.tail,
+                msb_rem - next_part_width,
+                lsb_rem - next_part_width
+              )
             } else if (msb_rem < next_part_width) {
               // This is the final part included in slice
               slice_part(rem_parts.head, msb_rem, lsb_rem) :: concat_list
             } else {
               // Slice this part and continue
-              val new_concat_list = slice_part(rem_parts.head, next_part_width - 1, lsb_rem) :: concat_list
+              val new_concat_list =
+                slice_part(rem_parts.head, next_part_width - 1, lsb_rem) :: concat_list
               loop(new_concat_list, rem_parts.tail, msb_rem - next_part_width, 0)
             }
           }
@@ -755,7 +762,8 @@ final class SimplifyExpr(implicit cc: CompilerContext)
           } else {
             val ms_slice_width = (msb + 1) % expr_width
             val ls_slice_width = (((-lsb) % expr_width) + expr_width) % expr_width
-            val num_intermediate_reps = ((msb - lsb + 1) - ms_slice_width - ls_slice_width) / expr_width
+            val num_intermediate_reps =
+              ((msb - lsb + 1) - ms_slice_width - ls_slice_width) / expr_width
             val ms_slice = if (ms_slice_width > 0) Some(slice_expr(ms_slice_width - 1, 0)) else None
             val ls_slice =
               if (ls_slice_width > 0) Some(slice_expr(expr_width - 1, expr_width - ls_slice_width))

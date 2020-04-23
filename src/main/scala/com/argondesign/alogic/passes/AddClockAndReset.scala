@@ -30,7 +30,9 @@ import scala.collection.mutable
 
 final class AddClockAndResetA(
     globalReplacements: mutable.Map[Symbol, Symbol]
-)(implicit cc: CompilerContext)
+  )(
+    implicit
+    cc: CompilerContext)
     extends StatefulTreeTransformer {
 
   private val clk: Symbol = cc.newSymbol("clk", Loc.synthetic)
@@ -68,11 +70,14 @@ final class AddClockAndResetA(
 
     case _ => tree
   }
+
 }
 
 final class AddClockAndResetB(
     globalReplacements: collection.Map[Symbol, Symbol]
-)(implicit cc: CompilerContext)
+  )(
+    implicit
+    cc: CompilerContext)
     extends StatefulTreeTransformer {
 
   override def replace(symbol: Symbol): Boolean = symbol.kind match {
@@ -106,8 +111,14 @@ final class AddClockAndResetB(
         defn.body.iterator concat {
           defn.instances flatMap {
             case Defn(iSymbol) =>
-              val clkConn = EntConnect(ExprSym(clk), List(ExprSym(iSymbol) select "clk")) regularize Loc.synthetic
-              val rstConn = EntConnect(ExprSym(rst), List(ExprSym(iSymbol) select cc.rst)) regularize Loc.synthetic
+              val clkConn = EntConnect(
+                ExprSym(clk),
+                List(ExprSym(iSymbol) select "clk")
+              ) regularize Loc.synthetic
+              val rstConn = EntConnect(
+                ExprSym(rst),
+                List(ExprSym(iSymbol) select cc.rst)
+              ) regularize Loc.synthetic
               Iterator(clkConn, rstConn)
           }
         }
@@ -128,6 +139,7 @@ final class AddClockAndResetB(
       }
     case _ =>
   }
+
 }
 
 object AddClockAndReset {
@@ -151,4 +163,5 @@ object AddClockAndReset {
         new AddClockAndResetB(globalReplacements)
     }
   }
+
 }

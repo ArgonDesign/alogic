@@ -21,6 +21,7 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 
 object AssertionBuilder extends BaseBuilder[AssertionContext, Assertion] {
+
   def apply(ctx: AssertionContext)(implicit cc: CompilerContext): Assertion = {
     object Visitor extends AlogicScalarVisitor[Assertion] {
       override def visitAssertionAssert(ctx: AssertionAssertContext): Assertion = {
@@ -40,4 +41,5 @@ object AssertionBuilder extends BaseBuilder[AssertionContext, Assertion] {
 
     Visitor(ctx)
   }
+
 }

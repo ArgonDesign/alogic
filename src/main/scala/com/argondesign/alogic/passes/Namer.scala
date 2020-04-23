@@ -156,6 +156,7 @@ final class Namer(implicit cc: CompilerContext) extends StatefulTreeTransformer 
     def finalCheck(): Unit = {
       assert(scopes.isEmpty)
     }
+
   }
 
   private[this] def lookup(loc: Loc, name: String): Option[Symbol] = {
@@ -600,8 +601,12 @@ object Namer extends PreElaboratePass {
   val name = "namer"
   def create(implicit cc: CompilerContext) = new Namer
 
-  override protected def process(input: (List[Root], List[Expr]))(
-      implicit cc: CompilerContext): (List[Root], List[Expr]) =
+  override protected def process(
+      input: (List[Root], List[Expr])
+    )(
+      implicit
+      cc: CompilerContext
+    ): (List[Root], List[Expr]) =
     // Run the Namer on the top level specs as well
     super.process(input) pipe {
       case (roots, specs) =>

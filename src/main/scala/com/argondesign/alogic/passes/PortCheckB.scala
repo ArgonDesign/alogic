@@ -70,8 +70,8 @@ final class PortCheckB(implicit cc: CompilerContext) extends StatelessTreeTransf
 
           override def toString: String = this match {
             case IndexRangeAll()               => ""
-            case IndexRangeIndex(index)        => s"[${index}]"
-            case IndexRangeSlice(upper, lower) => s"[${upper}:${lower}]"
+            case IndexRangeIndex(index)        => s"[$index]"
+            case IndexRangeSlice(upper, lower) => s"[$upper:$lower]"
           }
         }
 

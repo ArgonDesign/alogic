@@ -40,24 +40,24 @@ final class LowerLoops(implicit cc: CompilerContext) extends StatefulTreeTransfo
       case _: StmtLoop => continueRewrites.push(None)
 
       case StmtDo(cond, _) =>
-        continueRewrites.push(Some({ () =>
+        continueRewrites.push(Some { () =>
           StmtIf(cond, List(StmtContinue()), List(StmtBreak()))
-        }))
+        })
 
       case StmtWhile(cond, _) =>
-        continueRewrites.push(Some({ () =>
+        continueRewrites.push(Some { () =>
           StmtIf(cond, List(StmtContinue()), List(StmtBreak()))
-        }))
+        })
 
       case StmtFor(_, Some(cond), step, _) =>
-        continueRewrites.push(Some({ () =>
+        continueRewrites.push(Some { () =>
           StmtBlock(step :+ StmtIf(cond, List(StmtContinue()), List(StmtBreak())))
-        }))
+        })
 
       case StmtFor(_, None, step, _) =>
-        continueRewrites.push(Some({ () =>
+        continueRewrites.push(Some { () =>
           StmtBlock(step :+ StmtContinue())
-        }))
+        })
 
       case _ =>
     }
@@ -72,39 +72,39 @@ final class LowerLoops(implicit cc: CompilerContext) extends StatefulTreeTransfo
     }
 
     case _: StmtLoop => {
-      tree
-    } tap { _ =>
-      continueRewrites.pop()
-    }
+        tree
+      } tap { _ =>
+        continueRewrites.pop()
+      }
 
     case StmtDo(cond, body) => {
-      val test = StmtIf(cond, List(StmtFence()), List(StmtBreak()))
-      StmtLoop(body :+ test) regularize tree.loc
-    } tap { _ =>
-      continueRewrites.pop()
-    }
+        val test = StmtIf(cond, List(StmtFence()), List(StmtBreak()))
+        StmtLoop(body :+ test) regularize tree.loc
+      } tap { _ =>
+        continueRewrites.pop()
+      }
 
     case StmtWhile(cond, body) => {
-      val test = StmtIf(cond, List(StmtFence()), List(StmtBreak()))
-      val loop = StmtLoop(body :+ test)
-      StmtIf(cond, List(loop), Nil) regularize tree.loc
-    } tap { _ =>
-      continueRewrites.pop()
-    }
+        val test = StmtIf(cond, List(StmtFence()), List(StmtBreak()))
+        val loop = StmtLoop(body :+ test)
+        StmtIf(cond, List(loop), Nil) regularize tree.loc
+      } tap { _ =>
+        continueRewrites.pop()
+      }
 
     case StmtFor(inits, Some(cond), steps, body) => {
-      val test = StmtIf(cond, List(StmtFence()), List(StmtBreak()))
-      val loop = StmtLoop(body ::: (steps :+ test))
-      StmtBlock(inits :+ StmtIf(cond, List(loop), Nil)) regularize tree.loc
-    } tap { _ =>
-      continueRewrites.pop()
-    }
+        val test = StmtIf(cond, List(StmtFence()), List(StmtBreak()))
+        val loop = StmtLoop(body ::: (steps :+ test))
+        StmtBlock(inits :+ StmtIf(cond, List(loop), Nil)) regularize tree.loc
+      } tap { _ =>
+        continueRewrites.pop()
+      }
 
     case StmtFor(inits, None, steps, body) => {
-      StmtBlock(inits :+ StmtLoop(body ::: steps)) regularize tree.loc
-    } tap { _ =>
-      continueRewrites.pop()
-    }
+        StmtBlock(inits :+ StmtLoop(body ::: steps)) regularize tree.loc
+      } tap { _ =>
+        continueRewrites.pop()
+      }
 
     case _ => tree
   }
@@ -124,8 +124,10 @@ final class LowerLoops(implicit cc: CompilerContext) extends StatefulTreeTransfo
 
 object LowerLoops extends PairTransformerPass {
   val name = "lower-loops"
+
   def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {
     val transformer = new LowerLoops
     (transformer(decl), transformer(defn))
   }
+
 }

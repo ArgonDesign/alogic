@@ -22,6 +22,7 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FuncVariant
 
 object RecBuilder extends BaseBuilder[RecContext, Rec] {
+
   def apply(ctx: RecContext)(implicit cc: CompilerContext): Rec = {
     object Visitor extends AlogicScalarVisitor[Rec] {
       override def visitRecDesc(ctx: RecDescContext): Rec = {
@@ -42,4 +43,5 @@ object RecBuilder extends BaseBuilder[RecContext, Rec] {
 
     Visitor(ctx)
   }
+
 }

@@ -33,9 +33,11 @@ import scala.collection.mutable
 final class PortCheckA(implicit cc: CompilerContext) extends StatelessTreeTransformer {
 
   private[this] def multipleSinkError(lhs: Expr, loc: Loc): Unit = {
-    cc.error(lhs,
-             s"Port with 'sync ready' flow control has multiple sinks",
-             s"Previous '->' is at: ${loc.prefix}")
+    cc.error(
+      lhs,
+      s"Port with 'sync ready' flow control has multiple sinks",
+      s"Previous '->' is at: ${loc.prefix}"
+    )
   }
 
   // TODO: add back

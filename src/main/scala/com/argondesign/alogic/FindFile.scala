@@ -24,6 +24,7 @@ import java.util.function.BiPredicate
 import scala.jdk.CollectionConverters._
 
 object FindFile {
+
   def apply(tail: String, searchPaths: List[File], maxDepth: Int = Int.MaxValue): Option[File] = {
     val paths = searchPaths.to(LazyList) filter { _.exists } map { _.toPath }
 
@@ -35,4 +36,5 @@ object FindFile {
 
     results.headOption map { _.toFile.getCanonicalFile }
   }
+
 }

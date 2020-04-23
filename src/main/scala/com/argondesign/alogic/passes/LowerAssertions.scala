@@ -177,7 +177,8 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatefulTreeTr
                 ExprSym(defn.clk.get) regularize tree.loc,
                 None,
                 stmts
-              ) withLoc tree.loc)
+              ) withLoc tree.loc
+            )
           }
         }
       }

@@ -19,15 +19,19 @@ import scala.language.implicitConversions
 
 // For importing with BooleanOps._
 object BooleanOps {
+
   implicit final class BooleanOpsImpl(val bool: Boolean) extends AnyVal {
     def option[T](v: => T): Option[T] = if (bool) Some(v) else None
   }
+
 }
 
 // For mixing into classes
 trait BooleanOps {
   import BooleanOps.BooleanOpsImpl
+
   implicit final def boolean2BooleanOpsImpl(bool: Boolean): BooleanOpsImpl = {
     new BooleanOpsImpl(bool)
   }
+
 }

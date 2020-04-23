@@ -36,8 +36,8 @@ sealed abstract trait Message {
 
   def string(implicit cc: CompilerContext): String = {
     val prefix = lop match {
-      case Some(loc) => s"${loc.prefix}: ${cat}: "
-      case None      => s"${cat}: "
+      case Some(loc) => s"${loc.prefix}: $cat: "
+      case None      => s"$cat: "
     }
     val context = lop match {
       case Some(loc) => "\n" + loc.context(color)
@@ -45,6 +45,7 @@ sealed abstract trait Message {
     }
     (msg mkString (prefix, "\n" + prefix + "... ", "")) + context
   }
+
 }
 
 // Warnings are informative messages about issues that the compiler
@@ -85,9 +86,9 @@ case class InternalCompilerErrorException(cc: CompilerContext, message: ICE) ext
 trait Messaging { self: CompilerContext =>
 
   // buffer to store messages without source location information
-  private[this] final val messageBuffer = mutable.ListBuffer[Message]()
+  final private[this] val messageBuffer = mutable.ListBuffer[Message]()
 
-  private[this] final var errorCount = 0
+  final private[this] var errorCount = 0
 
   //////////////////////////////////////////////////////////////////////////////
   // Versions without source location

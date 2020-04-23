@@ -85,7 +85,8 @@ final class LowerStacks(implicit cc: CompilerContext) extends StatefulTreeTransf
                 assignTrue(ExprSym(iSymbol) select "en"),
                 assignTrue(ExprSym(iSymbol) select "push"),
                 StmtAssign(ExprSym(iSymbol) select "d", arg)
-              ))
+              )
+            )
         } getOrElse {
           tree
         }
@@ -97,7 +98,8 @@ final class LowerStacks(implicit cc: CompilerContext) extends StatefulTreeTransf
               List(
                 assignTrue(ExprSym(iSymbol) select "en"),
                 StmtAssign(ExprSym(iSymbol) select "d", arg)
-              ))
+              )
+            )
 
         } getOrElse {
           tree
@@ -212,6 +214,7 @@ final class LowerStacks(implicit cc: CompilerContext) extends StatefulTreeTransf
     case _: DefnEntity => Thicket(tree :: List.from(stackMap.valuesIterator map { _._1._2 }))
     case _             => unreachable
   }
+
   override def finalCheck(tree: Tree): Unit = {
     assert(extraStmts.isEmpty)
 
@@ -224,6 +227,7 @@ final class LowerStacks(implicit cc: CompilerContext) extends StatefulTreeTransf
 
 object LowerStacks extends PairTransformerPass {
   val name = "lower-stacks"
+
   def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {
     (decl, defn) match {
       case (dcl: DeclEntity, dfn: DefnEntity) =>
@@ -242,4 +246,5 @@ object LowerStacks extends PairTransformerPass {
       case _ => (decl, defn)
     }
   }
+
 }

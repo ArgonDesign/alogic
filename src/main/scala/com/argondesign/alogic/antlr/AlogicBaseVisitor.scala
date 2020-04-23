@@ -31,6 +31,7 @@ abstract class AlogicBaseVisitor[T, L, O] extends AlogicParserBaseVisitor[T] {
   } ensuring {
     null != _
   }
+
   // scalastyle:on
 
   def visit[U <: RuleNode](ctxList: List[U]): L

@@ -43,8 +43,10 @@ final class TyperCheckStmtSpec extends FreeSpec with AlogicTest {
           ("{ fence; }", Nil),
           ("{ $display(); fence; }", Nil),
           ("{ $display(); fence; $display(); fence; }", Nil),
-          ("{ fence; $display();}",
-           "Block must contain only combinational statements, or end with a control statement" :: Nil)
+          (
+            "{ fence; $display();}",
+            "Block must contain only combinational statements, or end with a control statement" :: Nil
+          )
         )
       } {
         stmt in {
@@ -70,12 +72,18 @@ final class TyperCheckStmtSpec extends FreeSpec with AlogicTest {
           ("if (1) $display(); else $display();", Nil),
           ("if (1) fence;", Nil),
           ("if (1) fence; else fence;", Nil),
-          ("if (1) fence; else $display();",
-           "Either both or neither branches of if-else must be control statements" :: Nil),
-          ("if (1) $display(); else fence;",
-           "Either both or neither branches of if-else must be control statements" :: Nil),
-          ("if (void) $display();",
-           "Condition of 'if' statement is of neither numeric nor packed type" :: Nil),
+          (
+            "if (1) fence; else $display();",
+            "Either both or neither branches of if-else must be control statements" :: Nil
+          ),
+          (
+            "if (1) $display(); else fence;",
+            "Either both or neither branches of if-else must be control statements" :: Nil
+          ),
+          (
+            "if (void) $display();",
+            "Condition of 'if' statement is of neither numeric nor packed type" :: Nil
+          ),
           ("case(1) { 1: $display(); }", Nil),
           ("case(1) { 1: fence; }", Nil),
           ("case(1) { default: $display(); }", Nil),
@@ -84,16 +92,26 @@ final class TyperCheckStmtSpec extends FreeSpec with AlogicTest {
           ("case(1) { 1: fence; 2: fence; }", Nil),
           ("case(1) { 1: $display(); default: $display(); }", Nil),
           ("case(1) { 1: fence; default: fence; }", Nil),
-          ("case(1) { 1: $display(); 2: fence; }",
-           "Either all or no cases of a case statement must be control statements" :: Nil),
-          ("case(1) { 1: fence; 2: $display(); }",
-           "Either all or no cases of a case statement must be control statements" :: Nil),
-          ("case(1) { 1: $display(); default: fence; }",
-           "Either all or no cases of a case statement must be control statements" :: Nil),
-          ("case(1) { 1: fence; default: $display(); }",
-           "Either all or no cases of a case statement must be control statements" :: Nil),
-          ("case(void) { 1: $display(); }",
-           "'case' expression is of neither numeric nor packed type" :: Nil),
+          (
+            "case(1) { 1: $display(); 2: fence; }",
+            "Either all or no cases of a case statement must be control statements" :: Nil
+          ),
+          (
+            "case(1) { 1: fence; 2: $display(); }",
+            "Either all or no cases of a case statement must be control statements" :: Nil
+          ),
+          (
+            "case(1) { 1: $display(); default: fence; }",
+            "Either all or no cases of a case statement must be control statements" :: Nil
+          ),
+          (
+            "case(1) { 1: fence; default: $display(); }",
+            "Either all or no cases of a case statement must be control statements" :: Nil
+          ),
+          (
+            "case(void) { 1: $display(); }",
+            "'case' expression is of neither numeric nor packed type" :: Nil
+          ),
           ("loop { fence; }", Nil),
           ("loop { }", "Body of 'loop' must be a control statement" :: Nil),
           ("loop { $display(); }", "Body of 'loop' must end in a control statement" :: Nil),
@@ -120,10 +138,14 @@ final class TyperCheckStmtSpec extends FreeSpec with AlogicTest {
       for {
         (func, err) <- List(
           ("void main () { fence; }", Nil),
-          ("void main () { $display(); }",
-           "Body of function must end in a control statement" :: Nil),
-          ("void main () { fence; $display(); }",
-           "Body of function must end in a control statement" :: Nil)
+          (
+            "void main () { $display(); }",
+            "Body of function must end in a control statement" :: Nil
+          ),
+          (
+            "void main () { fence; $display(); }",
+            "Body of function must end in a control statement" :: Nil
+          )
         )
       } {
         func in {
@@ -143,8 +165,10 @@ final class TyperCheckStmtSpec extends FreeSpec with AlogicTest {
       for {
         (fenceBlock, err) <- List(
           ("fence { $display(); }", Nil),
-          ("fence { $display(); fence; }",
-           "'fence' block must contain only combinational statements" :: Nil)
+          (
+            "fence { $display(); fence; }",
+            "'fence' block must contain only combinational statements" :: Nil
+          )
         )
       } {
         fenceBlock in {
@@ -240,7 +264,7 @@ final class TyperCheckStmtSpec extends FreeSpec with AlogicTest {
             |fsm x {
             |  void main() {
             |    (* unused *) i8 a;
-            |    ${assignment};
+            |    $assignment;
             |    fence;
             |  }
             |}"""
@@ -254,8 +278,8 @@ final class TyperCheckStmtSpec extends FreeSpec with AlogicTest {
       for (op <- List("++", "--")) {
         for {
           (assignment, err) <- List(
-            (s"a${op}", Nil),
-            (s"bool${op}", s"Target of postfix '${op}' is of non-packed type" :: Nil)
+            (s"a$op", Nil),
+            (s"bool$op", s"Target of postfix '$op' is of non-packed type" :: Nil)
           )
         } {
           assignment in {
@@ -264,7 +288,7 @@ final class TyperCheckStmtSpec extends FreeSpec with AlogicTest {
               |fsm x {
               |  void main() {
               |    (* unused *) i8 a;
-              |    ${assignment};
+              |    $assignment;
               |    fence;
               |  }
               |}"""
@@ -285,41 +309,41 @@ final class TyperCheckStmtSpec extends FreeSpec with AlogicTest {
       for (op <- List("=", "+=")) {
         for {
           (assignment, err) <- List(
-            (s"a ${op} 8'd0", iPortErr),
-            (s"b ${op} 8'd0", Nil),
-            (s"c ${op} 8'd0", iPortErr),
-            (s"d ${op} 8'd0", oPortErr),
-            (s"e ${op} 8'd0", iPortErr),
-            (s"f ${op} 8'd0", oPortErr),
-            (s"h ${op} 8'd0", constErr),
-            (s"j ${op} 8'b0", valErr),
-            (s"a[0] ${op} 1'b0", iPortErr),
-            (s"b[0] ${op} 1'b0", Nil),
-            (s"c[0] ${op} 1'b0", iPortErr),
-            (s"d[0] ${op} 1'b0", oPortErr),
-            (s"e[0] ${op} 1'b0", iPortErr),
-            (s"f[0] ${op} 1'b0", oPortErr),
-            (s"h[0] ${op} 1'b0", constErr),
-            (s"i[0] ${op} 4'b0", memoryErr),
-            (s"j[0] ${op} 1'b0", valErr),
-            (s"a[1:0] ${op} 2'b0", iPortErr),
-            (s"b[1:0] ${op} 2'b0", Nil),
-            (s"c[1:0] ${op} 2'b0", iPortErr),
-            (s"d[1:0] ${op} 2'b0", oPortErr),
-            (s"e[1:0] ${op} 2'b0", iPortErr),
-            (s"f[1:0] ${op} 2'b0", oPortErr),
-            (s"h[1:0] ${op} 2'b0", constErr),
-            (s"i[0][1:0] ${op} 2'b0", memoryErr),
-            (s"j[1:0] ${op} 2'b0", valErr),
-            (s"{b[1], a[0]} ${op} 2'b0", iPortErr),
-            (s"{b[1], b[0]} ${op} 2'b0", Nil),
-            (s"{b[1], c[0]} ${op} 2'b0", iPortErr),
-            (s"{b[1], d[0]} ${op} 2'b0", oPortErr),
-            (s"{b[1], e[0]} ${op} 2'b0", iPortErr),
-            (s"{b[1], f[0]} ${op} 2'b0", oPortErr),
-            (s"{b[1], h[0]} ${op} 2'b0", constErr),
-            (s"{b[1], i[0]} ${op} 9'b0", memoryErr),
-            (s"{b[1], j[0]} ${op} 2'b0", valErr)
+            (s"a $op 8'd0", iPortErr),
+            (s"b $op 8'd0", Nil),
+            (s"c $op 8'd0", iPortErr),
+            (s"d $op 8'd0", oPortErr),
+            (s"e $op 8'd0", iPortErr),
+            (s"f $op 8'd0", oPortErr),
+            (s"h $op 8'd0", constErr),
+            (s"j $op 8'b0", valErr),
+            (s"a[0] $op 1'b0", iPortErr),
+            (s"b[0] $op 1'b0", Nil),
+            (s"c[0] $op 1'b0", iPortErr),
+            (s"d[0] $op 1'b0", oPortErr),
+            (s"e[0] $op 1'b0", iPortErr),
+            (s"f[0] $op 1'b0", oPortErr),
+            (s"h[0] $op 1'b0", constErr),
+            (s"i[0] $op 4'b0", memoryErr),
+            (s"j[0] $op 1'b0", valErr),
+            (s"a[1:0] $op 2'b0", iPortErr),
+            (s"b[1:0] $op 2'b0", Nil),
+            (s"c[1:0] $op 2'b0", iPortErr),
+            (s"d[1:0] $op 2'b0", oPortErr),
+            (s"e[1:0] $op 2'b0", iPortErr),
+            (s"f[1:0] $op 2'b0", oPortErr),
+            (s"h[1:0] $op 2'b0", constErr),
+            (s"i[0][1:0] $op 2'b0", memoryErr),
+            (s"j[1:0] $op 2'b0", valErr),
+            (s"{b[1], a[0]} $op 2'b0", iPortErr),
+            (s"{b[1], b[0]} $op 2'b0", Nil),
+            (s"{b[1], c[0]} $op 2'b0", iPortErr),
+            (s"{b[1], d[0]} $op 2'b0", oPortErr),
+            (s"{b[1], e[0]} $op 2'b0", iPortErr),
+            (s"{b[1], f[0]} $op 2'b0", oPortErr),
+            (s"{b[1], h[0]} $op 2'b0", constErr),
+            (s"{b[1], i[0]} $op 9'b0", memoryErr),
+            (s"{b[1], j[0]} $op 2'b0", valErr)
           )
         } {
           assignment in {
@@ -358,41 +382,41 @@ final class TyperCheckStmtSpec extends FreeSpec with AlogicTest {
       for (op <- List("++", "--")) {
         for {
           (assignment, err) <- List(
-            (s"a${op}", iPortErr),
-            (s"b${op}", Nil),
-            (s"c${op}", iPortErr),
-            (s"d${op}", oPortErr),
-            (s"e${op}", iPortErr),
-            (s"f${op}", oPortErr),
-            (s"h${op}", constErr),
-            (s"j${op}", valErr),
-            (s"a[0]${op}", iPortErr),
-            (s"b[0]${op}", Nil),
-            (s"c[0]${op}", iPortErr),
-            (s"d[0]${op}", oPortErr),
-            (s"e[0]${op}", iPortErr),
-            (s"f[0]${op}", oPortErr),
-            (s"h[0]${op}", constErr),
-            (s"i[0]${op}", memoryErr),
-            (s"j[0]${op}", valErr),
-            (s"a[1:0]${op}", iPortErr),
-            (s"b[1:0]${op}", Nil),
-            (s"c[1:0]${op}", iPortErr),
-            (s"d[1:0]${op}", oPortErr),
-            (s"e[1:0]${op}", iPortErr),
-            (s"f[1:0]${op}", oPortErr),
-            (s"h[1:0]${op}", constErr),
-            (s"i[0][1:0]${op}", memoryErr),
-            (s"j[1:0]${op}", valErr),
-            (s"{b[1], a[0]}${op}", iPortErr),
-            (s"{b[1], b[0]}${op}", Nil),
-            (s"{b[1], c[0]}${op}", iPortErr),
-            (s"{b[1], d[0]}${op}", oPortErr),
-            (s"{b[1], e[0]}${op}", iPortErr),
-            (s"{b[1], f[0]}${op}", oPortErr),
-            (s"{b[1], h[0]}${op}", constErr),
-            (s"{b[1], i[0]}${op}", memoryErr),
-            (s"{b[1], j[0]}${op}", valErr)
+            (s"a$op", iPortErr),
+            (s"b$op", Nil),
+            (s"c$op", iPortErr),
+            (s"d$op", oPortErr),
+            (s"e$op", iPortErr),
+            (s"f$op", oPortErr),
+            (s"h$op", constErr),
+            (s"j$op", valErr),
+            (s"a[0]$op", iPortErr),
+            (s"b[0]$op", Nil),
+            (s"c[0]$op", iPortErr),
+            (s"d[0]$op", oPortErr),
+            (s"e[0]$op", iPortErr),
+            (s"f[0]$op", oPortErr),
+            (s"h[0]$op", constErr),
+            (s"i[0]$op", memoryErr),
+            (s"j[0]$op", valErr),
+            (s"a[1:0]$op", iPortErr),
+            (s"b[1:0]$op", Nil),
+            (s"c[1:0]$op", iPortErr),
+            (s"d[1:0]$op", oPortErr),
+            (s"e[1:0]$op", iPortErr),
+            (s"f[1:0]$op", oPortErr),
+            (s"h[1:0]$op", constErr),
+            (s"i[0][1:0]$op", memoryErr),
+            (s"j[1:0]$op", valErr),
+            (s"{b[1], a[0]}$op", iPortErr),
+            (s"{b[1], b[0]}$op", Nil),
+            (s"{b[1], c[0]}$op", iPortErr),
+            (s"{b[1], d[0]}$op", oPortErr),
+            (s"{b[1], e[0]}$op", iPortErr),
+            (s"{b[1], f[0]}$op", oPortErr),
+            (s"{b[1], h[0]}$op", constErr),
+            (s"{b[1], i[0]}$op", memoryErr),
+            (s"{b[1], j[0]}$op", valErr)
           )
         } {
           assignment in {
@@ -437,7 +461,7 @@ final class TyperCheckStmtSpec extends FreeSpec with AlogicTest {
           typeCheck {
             s"""
                |void function() {
-               | ${text};
+               | $text;
                |}
                |""".stripMargin
           }

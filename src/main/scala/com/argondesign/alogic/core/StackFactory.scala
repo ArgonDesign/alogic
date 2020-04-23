@@ -110,9 +110,10 @@ object StackFactory extends ChainingSyntax {
       name: String,
       loc: Loc,
       kind: TypeFund
-  )(
-      implicit cc: CompilerContext
-  ): (DeclEntity, DefnEntity) = {
+    )(
+      implicit
+      cc: CompilerContext
+    ): (DeclEntity, DefnEntity) = {
     val fcn = FlowControlTypeNone
     val stw = StorageTypeWire
 
@@ -158,17 +159,23 @@ object StackFactory extends ChainingSyntax {
     val stoRef = ExprSym(stoSymbol)
 
     val statements = List(
-      StmtIf(enRef,
-             List(
-               StmtAssign(stoRef, ExprTernary(popRef, ExprInt(kind.isSigned, kind.width.toInt, 0), dRef)),
-               StmtAssign(valRef, ~popRef & (valRef | pusRef))
-             ),
-             Nil)
+      StmtIf(
+        enRef,
+        List(
+          StmtAssign(
+            stoRef,
+            ExprTernary(popRef, ExprInt(kind.isSigned, kind.width.toInt, 0), dRef)
+          ),
+          StmtAssign(valRef, ~popRef & (valRef | pusRef))
+        ),
+        Nil
+      )
     )
 
     val decls = List(enDecl, pusDecl, popDecl, dDecl, empDecl, fulDecl, qDecl, valDecl, stoDecl)
 
-    val defns = List(enDefn, pusDefn, popDefn, dDefn, empDefn, fulDefn, qDefn, valDefn, stoDefn) map EntDefn
+    val defns =
+      List(enDefn, pusDefn, popDefn, dDefn, empDefn, fulDefn, qDefn, valDefn, stoDefn) map EntDefn
 
     val connects = List(
       EntConnect(~valRef, List(empRef)),
@@ -229,9 +236,10 @@ object StackFactory extends ChainingSyntax {
       loc: Loc,
       kind: TypeFund,
       depth: BigInt
-  )(
-      implicit cc: CompilerContext
-  ): (DeclEntity, DefnEntity) = {
+    )(
+      implicit
+      cc: CompilerContext
+    ): (DeclEntity, DefnEntity) = {
     require(depth >= 2)
 
     val fcn = FlowControlTypeNone
@@ -313,10 +321,14 @@ object StackFactory extends ChainingSyntax {
 
     val decls = List(enDecl, pusDecl, popDecl, dDecl, empDecl, fulDecl, qDecl, stoDecl, ptrDecl)
 
-    val defns = List(enDefn, pusDefn, popDefn, dDefn, empDefn, fulDefn, qDefn, stoDefn, ptrDefn) map EntDefn
+    val defns =
+      List(enDefn, pusDefn, popDefn, dDefn, empDefn, fulDefn, qDefn, stoDefn, ptrDefn) map EntDefn
 
     val connects = List(
-      EntConnect(ExprTernary(empRef, ExprInt(kind.isSigned, kind.width.toInt, 0), ExprIndex(stoRef, ptrRef)), List(qRef))
+      EntConnect(
+        ExprTernary(empRef, ExprInt(kind.isSigned, kind.width.toInt, 0), ExprIndex(stoRef, ptrRef)),
+        List(qRef)
+      )
     )
 
     val entitySymbol = cc.newSymbol(name, loc)
@@ -334,9 +346,10 @@ object StackFactory extends ChainingSyntax {
       loc: Loc,
       kind: TypeFund,
       depth: BigInt
-  )(
-      implicit cc: CompilerContext
-  ): (DeclEntity, DefnEntity) = {
+    )(
+      implicit
+      cc: CompilerContext
+    ): (DeclEntity, DefnEntity) = {
     require(kind.isPacked)
     require(kind != TypeVoid)
 

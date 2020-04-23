@@ -37,7 +37,7 @@ final class NamerSpec extends FreeSpec with AlogicTest {
     tree match {
       case Root(body) => cc.addGlobalDescs(body.collect { case RizDesc(desc) => desc })
       case desc: Desc => cc.addGlobalDesc(desc)
-      case _ =>
+      case _          =>
     }
     tree rewrite namer
   }
@@ -194,12 +194,14 @@ final class NamerSpec extends FreeSpec with AlogicTest {
 
       inside(tree) {
         case StmtBlock(
-            List(StmtDesc(DescVar(Sym(outer1, _), _, _)), block, StmtAssign(ExprSym(outer2), _))) =>
+              List(StmtDesc(DescVar(Sym(outer1, _), _, _)), block, StmtAssign(ExprSym(outer2), _))
+            ) =>
           outer1.loc.line shouldBe 2
           outer1 should be theSameInstanceAs outer2
           inside(block) {
             case StmtBlock(
-                List(StmtDesc(DescVar(Sym(inner1, _), _, _)), StmtAssign(ExprSym(inner2), _))) =>
+                  List(StmtDesc(DescVar(Sym(inner1, _), _, _)), StmtAssign(ExprSym(inner2), _))
+                ) =>
               inner1.loc.line shouldBe 4
               inner1 should be theSameInstanceAs inner2
               inner1 shouldNot be theSameInstanceAs outer1
@@ -231,11 +233,15 @@ final class NamerSpec extends FreeSpec with AlogicTest {
       inside(xform(root)) {
         case Root(List(RizDesc(DescEntity(_, EntityVariant.Net, ents)))) =>
           inside(ents) {
-            case List(EntGen(GenRange(List(StmtDesc(DescGen(Sym(nSym, _), _, _))), _, _, body)), _, _) =>
+            case List(
+                  EntGen(GenRange(List(StmtDesc(DescGen(Sym(nSym, _), _, _))), _, _, body)),
+                  _,
+                  _
+                ) =>
               inside(body) {
                 case DescIn(Sym(dISym, ExprSym(nASym) :: Nil), _, _) ::
-                      DescOut(Sym(dOSym, ExprSym(nBSym) :: Nil), _, _, _, _) ::
-                      EntConnect(
+                    DescOut(Sym(dOSym, ExprSym(nBSym) :: Nil), _, _, _, _) ::
+                    EntConnect(
                       ExprRef(Sym(cISym, ExprSym(nCSym) :: Nil)),
                       ExprRef(Sym(cOSym, ExprSym(nDSym) :: Nil)) :: Nil
                     ) :: Nil =>
@@ -273,23 +279,23 @@ final class NamerSpec extends FreeSpec with AlogicTest {
                     case EntDesc(DescChoice(Sym(cSym1, Nil), List(ExprSym(aSym1)))) =>
                       inside(body) {
                         case DescIn(Sym(iSym, _), _, _) ::
-                          DescOut(Sym(oSym, _), _, _, _, _) :: Nil =>
+                            DescOut(Sym(oSym, _), _, _, _, _) :: Nil =>
                           iSym should be theSameInstanceAs aSym0
                           oSym should be theSameInstanceAs aSym1
                       }
                       inside(conn0) {
                         case EntConnect(
-                        ExprRef(Sym(lSym, Expr(0) :: Nil)),
-                        ExprRef(Sym(rSym, Expr(0) :: Nil)) :: Nil
-                        ) =>
+                              ExprRef(Sym(lSym, Expr(0) :: Nil)),
+                              ExprRef(Sym(rSym, Expr(0) :: Nil)) :: Nil
+                            ) =>
                           lSym should be theSameInstanceAs cSym0
                           rSym should be theSameInstanceAs cSym1
                       }
                       inside(conn1) {
                         case EntConnect(
-                        ExprRef(Sym(lSym, Expr(1) :: Nil)),
-                        ExprRef(Sym(rSym, Expr(1) :: Nil)) :: Nil
-                        ) =>
+                              ExprRef(Sym(lSym, Expr(1) :: Nil)),
+                              ExprRef(Sym(rSym, Expr(1) :: Nil)) :: Nil
+                            ) =>
                           lSym should be theSameInstanceAs cSym0
                           rSym should be theSameInstanceAs cSym1
                       }
@@ -376,8 +382,7 @@ final class NamerSpec extends FreeSpec with AlogicTest {
       inside(xform(entity)) {
         case DescEntity(_, EntityVariant.Fsm, List(main, foo)) =>
           inside(main) {
-            case EntDesc(
-                DescFunc(_, _, _, _, List(StmtExpr(ExprCall(ExprSym(fooInMain), _))))) =>
+            case EntDesc(DescFunc(_, _, _, _, List(StmtExpr(ExprCall(ExprSym(fooInMain), _))))) =>
               inside(foo) {
                 case EntDesc(DescFunc(Sym(fooInDef, Nil), _, _, _, _)) =>
                   fooInMain should be theSameInstanceAs fooInDef
@@ -401,7 +406,7 @@ final class NamerSpec extends FreeSpec with AlogicTest {
 
       val aSym = treeA match {
         case desc: Desc => desc.symbol
-        case _                         => fail
+        case _          => fail
       }
 
       inside(treeB) {
@@ -717,7 +722,6 @@ final class NamerSpec extends FreeSpec with AlogicTest {
           }
         }
 
-
         "if then else" in {
           val tree = xform {
             """|{
@@ -732,9 +736,7 @@ final class NamerSpec extends FreeSpec with AlogicTest {
           inside(tree) {
             case StmtBlock(List(StmtGen(gen), StmtDesc(desc))) =>
               inside(gen) {
-                case GenIf(_,
-                List(DescVar(Sym(a0, _), _, _)),
-                List(DescVar(Sym(a1, _), _, _))) =>
+                case GenIf(_, List(DescVar(Sym(a0, _), _, _)), List(DescVar(Sym(a1, _), _, _))) =>
                   inside(desc) {
                     case DescChoice(Sym(c, _), List(ExprSym(`a1`), ExprSym(`a0`))) =>
                       checkUnique(c, a0, a1)
@@ -767,7 +769,10 @@ final class NamerSpec extends FreeSpec with AlogicTest {
                       inside(gen2) {
                         case GenIf(_, List(DescVar(Sym(a2, _), _, _)), Nil) =>
                           inside(desc) {
-                            case DescChoice(Sym(c, _), List(ExprSym(`a2`), ExprSym(`a1`), ExprSym(`a0`))) =>
+                            case DescChoice(
+                                  Sym(c, _),
+                                  List(ExprSym(`a2`), ExprSym(`a1`), ExprSym(`a0`))
+                                ) =>
                               checkUnique(c, a0, a1, a2)
                           }
                       }
@@ -795,15 +800,18 @@ final class NamerSpec extends FreeSpec with AlogicTest {
           inside(tree) {
             case StmtBlock(List(StmtGen(gen0), StmtGen(gen1), StmtDesc(desc))) =>
               inside(gen0) {
-                case GenIf(_,
-                List(DescVar(Sym(a0, _), _, _)),
-                List(DescVar(Sym(a1, _), _, _))) =>
+                case GenIf(_, List(DescVar(Sym(a0, _), _, _)), List(DescVar(Sym(a1, _), _, _))) =>
                   inside(gen1) {
-                    case GenIf(_,
-                    List(DescVar(Sym(a2, _), _, _)),
-                    List(DescVar(Sym(a3, _), _, _))) =>
+                    case GenIf(
+                          _,
+                          List(DescVar(Sym(a2, _), _, _)),
+                          List(DescVar(Sym(a3, _), _, _))
+                        ) =>
                       inside(desc) {
-                        case DescChoice(Sym(c, _), List(ExprSym(`a3`), ExprSym(`a2`), ExprSym(`a1`), ExprSym(`a0`))) =>
+                        case DescChoice(
+                              Sym(c, _),
+                              List(ExprSym(`a3`), ExprSym(`a2`), ExprSym(`a1`), ExprSym(`a0`))
+                            ) =>
                           checkUnique(c, a0, a1, a2, a3)
                       }
                   }
@@ -829,9 +837,11 @@ final class NamerSpec extends FreeSpec with AlogicTest {
           inside(tree) {
             case StmtBlock(List(StmtGen(gen), StmtDesc(desc))) =>
               inside(gen) {
-                case GenIf(_,
-                List(GenIf(_, List(DescVar(Sym(a0, _), _, _)), Nil), d0),
-                List(GenIf(_, List(DescVar(Sym(a1, _), _, _)), Nil), d1)) =>
+                case GenIf(
+                      _,
+                      List(GenIf(_, List(DescVar(Sym(a0, _), _, _)), Nil), d0),
+                      List(GenIf(_, List(DescVar(Sym(a1, _), _, _)), Nil), d1)
+                    ) =>
                   inside(d0) {
                     case DescChoice(Sym(c0, _), List(ExprSym(`a0`))) =>
                       inside(d1) {
@@ -868,15 +878,17 @@ final class NamerSpec extends FreeSpec with AlogicTest {
           inside(tree) {
             case StmtBlock(List(StmtGen(gen), StmtDesc(desc))) =>
               inside(gen) {
-                case GenIf(_,
-                List(GenIf(_,
-                List(DescVar(Sym(a0, _), _, _)),
-                List(DescVar(Sym(a1, _), _, _))),
-                d0),
-                List(GenIf(_,
-                List(DescVar(Sym(a2, _), _, _)),
-                List(DescVar(Sym(a3, _), _, _))),
-                d1)) =>
+                case GenIf(
+                      _,
+                      List(
+                        GenIf(_, List(DescVar(Sym(a0, _), _, _)), List(DescVar(Sym(a1, _), _, _))),
+                        d0
+                      ),
+                      List(
+                        GenIf(_, List(DescVar(Sym(a2, _), _, _)), List(DescVar(Sym(a3, _), _, _))),
+                        d1
+                      )
+                    ) =>
                   inside(d0) {
                     case DescChoice(Sym(c0, _), List(ExprSym(`a1`), ExprSym(`a0`))) =>
                       inside(d1) {
@@ -961,7 +973,11 @@ final class NamerSpec extends FreeSpec with AlogicTest {
               inside(genFor) {
                 case GenFor(_, _, _, List(genIf, d0, d1)) =>
                   inside(genIf) {
-                    case GenIf(_, List(DescVar(Sym(a0, _), _, _), DescVar(Sym(b0, _), _, _)), Nil) =>
+                    case GenIf(
+                          _,
+                          List(DescVar(Sym(a0, _), _, _), DescVar(Sym(b0, _), _, _)),
+                          Nil
+                        ) =>
                       inside(d0) {
                         case DescChoice(Sym(c0, _), List(ExprSym(`a0`))) =>
                           inside(d1) {
@@ -996,9 +1012,7 @@ final class NamerSpec extends FreeSpec with AlogicTest {
             inside(tree) {
               case DescEntity(_, _, List(EntGen(gen), EntDesc(desc))) =>
                 inside(gen) {
-                  case GenIf(_,
-                             List(DescVar(Sym(a0, _), _, _)),
-                             List(DescVar(Sym(a1, _), _, _))) =>
+                  case GenIf(_, List(DescVar(Sym(a0, _), _, _)), List(DescVar(Sym(a1, _), _, _))) =>
                     inside(desc) {
                       case DescChoice(Sym(c, _), List(ExprSym(`a1`), ExprSym(`a0`))) =>
                         checkUnique(c, a0, a1)
@@ -1023,9 +1037,7 @@ final class NamerSpec extends FreeSpec with AlogicTest {
             inside(tree) {
               case DescSingleton(_, _, List(EntGen(gen), EntDesc(desc))) =>
                 inside(gen) {
-                  case GenIf(_,
-                             List(DescVar(Sym(a0, _),_, _)),
-                             List(DescVar(Sym(a1, _),_, _))) =>
+                  case GenIf(_, List(DescVar(Sym(a0, _), _, _)), List(DescVar(Sym(a1, _), _, _))) =>
                     inside(desc) {
                       case DescChoice(Sym(c, _), List(ExprSym(`a1`), ExprSym(`a0`))) =>
                         checkUnique(c, a0, a1)
@@ -1048,9 +1060,7 @@ final class NamerSpec extends FreeSpec with AlogicTest {
             inside(tree) {
               case DescFunc(_, _, _, _, List(StmtGen(gen), StmtDesc(desc))) =>
                 inside(gen) {
-                  case GenIf(_,
-                             List(DescVar(Sym(a0, _), _, _)),
-                             List(DescVar(Sym(a1, _), _, _))) =>
+                  case GenIf(_, List(DescVar(Sym(a0, _), _, _)), List(DescVar(Sym(a1, _), _, _))) =>
                     inside(desc) {
                       case DescChoice(Sym(c, _), List(ExprSym(`a1`), ExprSym(`a0`))) =>
                         checkUnique(c, a0, a1)
@@ -1075,12 +1085,14 @@ final class NamerSpec extends FreeSpec with AlogicTest {
             }
 
             inside(tree) {
-              case GenIf(_,
-                         List(GenIf(_,
-                                    List(DescVar(Sym(a0, _), _, _)),
-                                    List(DescVar(Sym(a1, _), _, _))),
-                              d0),
-                         Nil) =>
+              case GenIf(
+                    _,
+                    List(
+                      GenIf(_, List(DescVar(Sym(a0, _), _, _)), List(DescVar(Sym(a1, _), _, _))),
+                      d0
+                    ),
+                    Nil
+                  ) =>
                 inside(d0) {
                   case DescChoice(Sym(c0, _), List(ExprSym(`a1`), ExprSym(`a0`))) =>
                     checkUnique(c0, a0, a1)
@@ -1100,12 +1112,14 @@ final class NamerSpec extends FreeSpec with AlogicTest {
             }
 
             inside(tree) {
-              case GenIf(_,
-                         Nil,
-                         List(GenIf(_,
-                                    List(DescVar(Sym(a0, _), _, _)),
-                                    List(DescVar(Sym(a1, _), _, _))),
-                              d0)) =>
+              case GenIf(
+                    _,
+                    Nil,
+                    List(
+                      GenIf(_, List(DescVar(Sym(a0, _), _, _)), List(DescVar(Sym(a1, _), _, _))),
+                      d0
+                    )
+                  ) =>
                 inside(d0) {
                   case DescChoice(Sym(c0, _), List(ExprSym(`a1`), ExprSym(`a0`))) =>
                     checkUnique(c0, a0, a1)
@@ -1131,15 +1145,17 @@ final class NamerSpec extends FreeSpec with AlogicTest {
             }
 
             inside(tree) {
-              case GenIf(_,
-                         List(GenIf(_,
-                                    List(DescVar(Sym(a0, _), _, _)),
-                                    List(DescVar(Sym(a1, _), _, _))),
-                              d0),
-                         List(GenIf(_,
-                                    List(DescVar(Sym(a2, _), _, _)),
-                                    List(DescVar(Sym(a3, _), _, _))),
-                              d1)) =>
+              case GenIf(
+                    _,
+                    List(
+                      GenIf(_, List(DescVar(Sym(a0, _), _, _)), List(DescVar(Sym(a1, _), _, _))),
+                      d0
+                    ),
+                    List(
+                      GenIf(_, List(DescVar(Sym(a2, _), _, _)), List(DescVar(Sym(a3, _), _, _))),
+                      d1
+                    )
+                  ) =>
                 inside(d0) {
                   case DescChoice(Sym(c0, _), List(ExprSym(`a1`), ExprSym(`a0`))) =>
                     inside(d1) {
@@ -1162,13 +1178,15 @@ final class NamerSpec extends FreeSpec with AlogicTest {
             }
 
             inside(tree) {
-              case GenFor(_,
-                          _,
-                          _,
-                          List(GenIf(_,
-                                     List(DescVar(Sym(a0, _), _, _)),
-                                     List(DescVar(Sym(a1, _), _, _))),
-                               d0)) =>
+              case GenFor(
+                    _,
+                    _,
+                    _,
+                    List(
+                      GenIf(_, List(DescVar(Sym(a0, _), _, _)), List(DescVar(Sym(a1, _), _, _))),
+                      d0
+                    )
+                  ) =>
                 inside(d0) {
                   case DescChoice(Sym(c0, _), List(ExprSym(`a1`), ExprSym(`a0`))) =>
                     checkUnique(c0, a0, a1)
@@ -1188,13 +1206,15 @@ final class NamerSpec extends FreeSpec with AlogicTest {
             }
 
             inside(tree) {
-              case GenRange(_,
-                            _,
-                            _,
-                            List(GenIf(_,
-                                       List(DescVar(Sym(a0, _), _, _)),
-                                       List(DescVar(Sym(a1, _), _, _))),
-                                 d0)) =>
+              case GenRange(
+                    _,
+                    _,
+                    _,
+                    List(
+                      GenIf(_, List(DescVar(Sym(a0, _), _, _)), List(DescVar(Sym(a1, _), _, _))),
+                      d0
+                    )
+                  ) =>
                 inside(d0) {
                   case DescChoice(Sym(c0, _), List(ExprSym(`a1`), ExprSym(`a0`))) =>
                     checkUnique(c0, a0, a1)
@@ -1219,9 +1239,7 @@ final class NamerSpec extends FreeSpec with AlogicTest {
             inside(tree) {
               case EntCombProcess(List(StmtGen(gen), StmtDesc(desc))) =>
                 inside(gen) {
-                  case GenIf(_,
-                             List(DescVar(Sym(a0, _), _, _)),
-                             List(DescVar(Sym(a1, _), _, _))) =>
+                  case GenIf(_, List(DescVar(Sym(a0, _), _, _)), List(DescVar(Sym(a1, _), _, _))) =>
                     inside(desc) {
                       case DescChoice(Sym(c, _), List(ExprSym(`a1`), ExprSym(`a0`))) =>
                         checkUnique(c, a0, a1)
@@ -1245,11 +1263,13 @@ final class NamerSpec extends FreeSpec with AlogicTest {
 
             inside(tree) {
               case StmtBlock(
-              List(StmtGen(
-              GenIf(_,
-              List(DescVar(Sym(a0, _), _, _)),
-              List(DescVar(Sym(a1, _), _, _)))),
-              StmtDesc(d0))) =>
+                    List(
+                      StmtGen(
+                        GenIf(_, List(DescVar(Sym(a0, _), _, _)), List(DescVar(Sym(a1, _), _, _)))
+                      ),
+                      StmtDesc(d0)
+                    )
+                  ) =>
                 inside(d0) {
                   case DescChoice(Sym(c0, _), List(ExprSym(`a1`), ExprSym(`a0`))) =>
                     checkUnique(c0, a0, a1)
@@ -1269,13 +1289,16 @@ final class NamerSpec extends FreeSpec with AlogicTest {
             }
 
             inside(tree) {
-              case StmtIf(_,
-              List(StmtGen(
-              GenIf(_,
-              List(DescVar(Sym(a0, _), _, _)),
-              List(DescVar(Sym(a1, _), _, _)))),
-              StmtDesc(d0)),
-              Nil) =>
+              case StmtIf(
+                    _,
+                    List(
+                      StmtGen(
+                        GenIf(_, List(DescVar(Sym(a0, _), _, _)), List(DescVar(Sym(a1, _), _, _)))
+                      ),
+                      StmtDesc(d0)
+                    ),
+                    Nil
+                  ) =>
                 inside(d0) {
                   case DescChoice(Sym(c0, _), List(ExprSym(`a1`), ExprSym(`a0`))) =>
                     checkUnique(c0, a0, a1)
@@ -1295,13 +1318,16 @@ final class NamerSpec extends FreeSpec with AlogicTest {
             }
 
             inside(tree) {
-              case StmtIf(_,
-              Nil,
-              List(StmtGen(
-              GenIf(_,
-              List(DescVar(Sym(a0, _), _, _)),
-              List(DescVar(Sym(a1, _), _, _)))),
-              StmtDesc(d0))) =>
+              case StmtIf(
+                    _,
+                    Nil,
+                    List(
+                      StmtGen(
+                        GenIf(_, List(DescVar(Sym(a0, _), _, _)), List(DescVar(Sym(a1, _), _, _)))
+                      ),
+                      StmtDesc(d0)
+                    )
+                  ) =>
                 inside(d0) {
                   case DescChoice(Sym(c0, _), List(ExprSym(`a1`), ExprSym(`a0`))) =>
                     checkUnique(c0, a0, a1)
@@ -1327,17 +1353,21 @@ final class NamerSpec extends FreeSpec with AlogicTest {
             }
 
             inside(tree) {
-              case StmtIf(_,
-              List(StmtGen(
-              GenIf(_,
-              List(DescVar(Sym(a0, _), _, _)),
-              List(DescVar(Sym(a1, _), _, _)))),
-              StmtDesc(d0)),
-              List(StmtGen(
-              GenIf(_,
-              List(DescVar(Sym(a2, _), _, _)),
-              List(DescVar(Sym(a3, _), _, _)))),
-              StmtDesc(d1))) =>
+              case StmtIf(
+                    _,
+                    List(
+                      StmtGen(
+                        GenIf(_, List(DescVar(Sym(a0, _), _, _)), List(DescVar(Sym(a1, _), _, _)))
+                      ),
+                      StmtDesc(d0)
+                    ),
+                    List(
+                      StmtGen(
+                        GenIf(_, List(DescVar(Sym(a2, _), _, _)), List(DescVar(Sym(a3, _), _, _)))
+                      ),
+                      StmtDesc(d1)
+                    )
+                  ) =>
                 inside(d0) {
                   case DescChoice(Sym(c0, _), List(ExprSym(`a1`), ExprSym(`a0`))) =>
                     inside(d1) {
@@ -1360,12 +1390,24 @@ final class NamerSpec extends FreeSpec with AlogicTest {
             }
 
             inside(tree) {
-              case StmtCase(_,
-              List(CaseRegular(_, List(StmtGen(
-              GenIf(_,
-              List(DescVar(Sym(a0, _), _, _)),
-              List(DescVar(Sym(a1, _), _, _)))),
-              StmtDesc(d0))))) =>
+              case StmtCase(
+                    _,
+                    List(
+                      CaseRegular(
+                        _,
+                        List(
+                          StmtGen(
+                            GenIf(
+                              _,
+                              List(DescVar(Sym(a0, _), _, _)),
+                              List(DescVar(Sym(a1, _), _, _))
+                            )
+                          ),
+                          StmtDesc(d0)
+                        )
+                      )
+                    )
+                  ) =>
                 inside(d0) {
                   case DescChoice(Sym(c0, _), List(ExprSym(`a1`), ExprSym(`a0`))) =>
                     checkUnique(c0, a0, a1)
@@ -1385,12 +1427,23 @@ final class NamerSpec extends FreeSpec with AlogicTest {
             }
 
             inside(tree) {
-              case StmtCase(_,
-              List(CaseDefault(List(StmtGen(
-              GenIf(_,
-              List(DescVar(Sym(a0, _), _, _)),
-              List(DescVar(Sym(a1, _), _, _)))),
-              StmtDesc(d0))))) =>
+              case StmtCase(
+                    _,
+                    List(
+                      CaseDefault(
+                        List(
+                          StmtGen(
+                            GenIf(
+                              _,
+                              List(DescVar(Sym(a0, _), _, _)),
+                              List(DescVar(Sym(a1, _), _, _))
+                            )
+                          ),
+                          StmtDesc(d0)
+                        )
+                      )
+                    )
+                  ) =>
                 inside(d0) {
                   case DescChoice(Sym(c0, _), List(ExprSym(`a1`), ExprSym(`a0`))) =>
                     checkUnique(c0, a0, a1)
@@ -1411,12 +1464,13 @@ final class NamerSpec extends FreeSpec with AlogicTest {
 
             inside(tree) {
               case StmtLoop(
-              List(StmtGen(
-              GenIf(_,
-              List(DescVar(Sym(a0, _), _, _)),
-              List(DescVar(Sym(a1, _), _, _)))),
-              StmtDesc(d0)),
-              ) =>
+                    List(
+                      StmtGen(
+                        GenIf(_, List(DescVar(Sym(a0, _), _, _)), List(DescVar(Sym(a1, _), _, _)))
+                      ),
+                      StmtDesc(d0)
+                    )
+                  ) =>
                 inside(d0) {
                   case DescChoice(Sym(c0, _), List(ExprSym(`a1`), ExprSym(`a0`))) =>
                     checkUnique(c0, a0, a1)
@@ -1436,13 +1490,15 @@ final class NamerSpec extends FreeSpec with AlogicTest {
             }
 
             inside(tree) {
-              case StmtDo(_,
-              List(StmtGen(
-              GenIf(_,
-              List(DescVar(Sym(a0, _), _, _)),
-              List(DescVar(Sym(a1, _), _, _)))),
-              StmtDesc(d0)),
-              ) =>
+              case StmtDo(
+                    _,
+                    List(
+                      StmtGen(
+                        GenIf(_, List(DescVar(Sym(a0, _), _, _)), List(DescVar(Sym(a1, _), _, _)))
+                      ),
+                      StmtDesc(d0)
+                    )
+                  ) =>
                 inside(d0) {
                   case DescChoice(Sym(c0, _), List(ExprSym(`a1`), ExprSym(`a0`))) =>
                     checkUnique(c0, a0, a1)
@@ -1462,13 +1518,15 @@ final class NamerSpec extends FreeSpec with AlogicTest {
             }
 
             inside(tree) {
-              case StmtWhile(_,
-              List(StmtGen(
-              GenIf(_,
-              List(DescVar(Sym(a0, _), _, _)),
-              List(DescVar(Sym(a1, _), _, _)))),
-              StmtDesc(d0)),
-              ) =>
+              case StmtWhile(
+                    _,
+                    List(
+                      StmtGen(
+                        GenIf(_, List(DescVar(Sym(a0, _), _, _)), List(DescVar(Sym(a1, _), _, _)))
+                      ),
+                      StmtDesc(d0)
+                    )
+                  ) =>
                 inside(d0) {
                   case DescChoice(Sym(c0, _), List(ExprSym(`a1`), ExprSym(`a0`))) =>
                     checkUnique(c0, a0, a1)
@@ -1488,15 +1546,17 @@ final class NamerSpec extends FreeSpec with AlogicTest {
             }
 
             inside(tree) {
-              case StmtFor(_,
-              _,
-              _,
-              List(StmtGen(
-              GenIf(_,
-              List(DescVar(Sym(a0, _), _, _)),
-              List(DescVar(Sym(a1, _), _, _)))),
-              StmtDesc(d0)),
-              ) =>
+              case StmtFor(
+                    _,
+                    _,
+                    _,
+                    List(
+                      StmtGen(
+                        GenIf(_, List(DescVar(Sym(a0, _), _, _)), List(DescVar(Sym(a1, _), _, _)))
+                      ),
+                      StmtDesc(d0)
+                    )
+                  ) =>
                 inside(d0) {
                   case DescChoice(Sym(c0, _), List(ExprSym(`a1`), ExprSym(`a0`))) =>
                     checkUnique(c0, a0, a1)
@@ -1515,15 +1575,16 @@ final class NamerSpec extends FreeSpec with AlogicTest {
                  |}""".stripMargin.asTree[Stmt]
             }
 
-
             inside(tree) {
-              case StmtLet(_,
-              List(StmtGen(
-              GenIf(_,
-              List(DescVar(Sym(a0, _), _, _)),
-              List(DescVar(Sym(a1, _), _, _)))),
-              StmtDesc(d0)),
-              ) =>
+              case StmtLet(
+                    _,
+                    List(
+                      StmtGen(
+                        GenIf(_, List(DescVar(Sym(a0, _), _, _)), List(DescVar(Sym(a1, _), _, _)))
+                      ),
+                      StmtDesc(d0)
+                    )
+                  ) =>
                 inside(d0) {
                   case DescChoice(Sym(c0, _), List(ExprSym(`a1`), ExprSym(`a0`))) =>
                     checkUnique(c0, a0, a1)

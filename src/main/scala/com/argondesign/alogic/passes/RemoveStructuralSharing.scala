@@ -184,12 +184,15 @@ final class RemoveStructuralSharing(implicit cc: CompilerContext) extends Statef
       duplicate withLoc tree.loc withTpe tree.tpe
     }
   }
+
 }
 
 object RemoveStructuralSharing extends PairTransformerPass {
   val name = "remove-structural-sharing"
+
   def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {
     val transformer = new RemoveStructuralSharing
     (transformer(decl), transformer(defn))
   }
+
 }

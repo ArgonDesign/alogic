@@ -23,6 +23,7 @@ import com.argondesign.alogic.core.SourceAttribute
 import scala.util.ChainingSyntax
 
 object AttrBuilder extends BaseBuilder[AttrContext, (String, SourceAttribute)] with ChainingSyntax {
+
   def apply(ctx: AttrContext)(implicit cc: CompilerContext): (String, SourceAttribute) = {
     object Visitor extends AlogicScalarVisitor[(String, SourceAttribute)] {
       override def visitAttrFlag(ctx: AttrFlagContext): (String, SourceAttribute) =
@@ -35,4 +36,5 @@ object AttrBuilder extends BaseBuilder[AttrContext, (String, SourceAttribute)] w
 
     Visitor(ctx)
   }
+
 }

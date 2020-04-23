@@ -37,7 +37,9 @@ final class LowerPipelineStage(
     iPortSymbolOpt: Option[(Symbol, TypeRecord)],
     oPortSymbolOpt: Option[(Symbol, TypeRecord)],
     pipelinedSymbols: Map[Symbol, Symbol]
-)(implicit cc: CompilerContext)
+  )(
+    implicit
+    cc: CompilerContext)
     extends StatefulTreeTransformer {
 
   private val pipelinedNames = pipelinedSymbols map { case (k, v) => (k.name, v) }
@@ -118,6 +120,7 @@ final class LowerPipelineStage(
     //
     case _ => tree
   }
+
 }
 
 final class LowerPipelineHost(implicit cc: CompilerContext) extends StatefulTreeTransformer {
@@ -172,7 +175,7 @@ final class LowerPipelineHost(implicit cc: CompilerContext) extends StatefulTree
               actSets.reverse
             } else {
               // symbols active at any stage later than the current stage
-              val actTail = useSets.tail.foldLeft(Set.empty[Symbol]) { _ | _ }
+              val actTail = useSets.tail.foldLeft(Set.empty[Symbol])(_ | _)
               // symbols active at the previous stage
               val actPrev = actSets.head
               // symbols active at the current stage
@@ -229,8 +232,11 @@ final class LowerPipelineHost(implicit cc: CompilerContext) extends StatefulTree
           )
 
           val newSymbol = inner.symbol.dup
-          val newDecl = TypeAssigner(inner.symbol.decl.cpy(symbol = newSymbol) withLoc inner.loc) rewrite transform
-          val newDefn = TypeAssigner(inner.copy(symbol = newSymbol) withLoc inner.loc) rewrite transform
+          val newDecl = TypeAssigner(
+            inner.symbol.decl.cpy(symbol = newSymbol) withLoc inner.loc
+          ) rewrite transform
+          val newDefn =
+            TypeAssigner(inner.copy(symbol = newSymbol) withLoc inner.loc) rewrite transform
           symbolMap(inner.symbol) = (newSymbol, newDecl, newDefn)
         }
 
@@ -308,6 +314,7 @@ final class LowerPipelineHost(implicit cc: CompilerContext) extends StatefulTree
         cc.ice(node, "Pipeline variable type remains after LowerPipeline")
     }
   }
+
 }
 
 object LowerPipeline extends PairTransformerPass {
@@ -321,4 +328,5 @@ object LowerPipeline extends PairTransformerPass {
     val newDecl = transformer(decl)
     (newDecl, newDefn)
   }
+
 }

@@ -19,7 +19,11 @@ import scala.annotation.tailrec
 import scala.collection.concurrent.TrieMap
 import scala.io.AnsiColor
 
-case class Loc(source: Source, start: Int, end: Int, point: Int) {
+case class Loc(
+    source: Source,
+    start: Int,
+    end: Int,
+    point: Int) {
 
   def context(ansiColor: String)(implicit cc: CompilerContext) = {
     val startLine = source.lineFor(start)
@@ -80,7 +84,7 @@ case class Loc(source: Source, start: Int, end: Int, point: Int) {
     cc.remapLine(source, source.lineFor(start))._1.name
   def line(implicit cc: CompilerContext): Int =
     cc.remapLine(source, source.lineFor(start))._2
-  def prefix(implicit cc: CompilerContext): String = s"${file}:${line}"
+  def prefix(implicit cc: CompilerContext): String = s"$file:$line"
 }
 
 object Loc {
@@ -124,4 +128,5 @@ trait LocationRemapping { self: CompilerContext =>
     val lineMap = locMap.getOrElseUpdate(source, new LineMap)
     lineMap(range) = origSource
   }
+
 }

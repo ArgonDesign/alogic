@@ -31,4 +31,5 @@ final object Math {
     }
     loop(value - 1, 0)
   }
+
 }

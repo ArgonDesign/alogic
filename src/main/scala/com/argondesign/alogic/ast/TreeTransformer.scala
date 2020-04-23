@@ -56,7 +56,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
   //////////////////////////////////////////////////////////////////////////////
 
   // Walk list, but return the original list if nothing is transformed
-  protected final def walk(trees: List[Tree]): List[Tree] = trees match {
+  final protected def walk(trees: List[Tree]): List[Tree] = trees match {
     case Nil => Nil
     case _   =>
       // Using a ListBuilder without recursion here as these lists can grow
@@ -75,7 +75,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
   }
 
   // Walk option, but return the original option if value is not transformed
-  protected final def walk(treeOpt: Option[Tree]): Option[Tree] = treeOpt match {
+  final protected def walk(treeOpt: Option[Tree]): Option[Tree] = treeOpt match {
     case None => None
     case Some(tree) =>
       val newTree = walk(tree)
@@ -123,7 +123,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
   //////////////////////////////////////////////////////////////////////////////
 
   // Check result of walk
-  private final def checkResult(tree: Tree, result: Tree): Unit = {
+  final private def checkResult(tree: Tree, result: Tree): Unit = {
     if (!result.hasLoc) {
       cc.ice(
         s"TreeTransformer '${this.getClass.getName}' lost location of transformed node:",
@@ -148,11 +148,11 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
 
   // Nodes with children that have been rewritten and therefore copied by
   // TreeCopier need their types assigned
-  private final def assignType(tree: Tree): Tree =
+  final private def assignType(tree: Tree): Tree =
     if (typed && !tree.hasTpe) TypeAssigner(tree) else tree
 
   // Walk child, propagate Thicket/Stump
-  private final def splice(child: Tree, treeCopier: Tree => Tree): Tree = walk(child) match {
+  final private def splice(child: Tree, treeCopier: Tree => Tree): Tree = walk(child) match {
     case Stump       => Stump
     case Thicket(ts) => Thicket(ts map (treeCopier andThen assignType))
     case tree        => treeCopier(tree)
@@ -572,7 +572,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
   }
 
   // Walk children of node
-  protected[ast] final def walkChildren(tree: Tree): Tree = assignType {
+  final protected[ast] def walkChildren(tree: Tree): Tree = assignType {
     tree match {
       ////////////////////////////////////////////////////////////////////////
       // Dispatch based on group
@@ -614,4 +614,5 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
     assert(!typed || !tree.tpe.isError, this.getClass.getName + "\n" + tree.toSource)
     // TODO: Add back referencing checks
   }
+
 }

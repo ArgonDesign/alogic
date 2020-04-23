@@ -41,7 +41,7 @@ class Preprocessor(implicit cc: CompilerContext) {
       source: Source,
       includeResovler: (Source, String) => Either[List[String], Source],
       initialDefines: immutable.Map[String, String]
-  ): (Source, Map[String, String]) = {
+    ): (Source, Map[String, String]) = {
     // text, final defines and the remappings
     val (text, defines, remaps) = {
       // Map of #define to substitution
@@ -202,7 +202,7 @@ class Preprocessor(implicit cc: CompilerContext) {
       src: Source,
       initialDefines: Map[String, String],
       includeResolver: (Source, String) => Either[List[String], Source]
-  ): Source = {
+    ): Source = {
     process(src, includeResolver, initialDefines.toMap)._1
   }
 
@@ -211,7 +211,7 @@ class Preprocessor(implicit cc: CompilerContext) {
       src: Source,
       initialDefines: Map[String, String],
       includeSearchPaths: List[File]
-  ): Source = {
+    ): Source = {
     // Include file resolver that looks up include files in the search paths, or the
     // directory of the including file
     def includeResolver(source: Source, includeSpec: String): Either[List[String], Source] = {
@@ -240,4 +240,5 @@ class Preprocessor(implicit cc: CompilerContext) {
 
     process(src, includeResolver, initialDefines.toMap)._1
   }
+
 }

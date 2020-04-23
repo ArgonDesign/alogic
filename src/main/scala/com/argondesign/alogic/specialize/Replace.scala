@@ -24,9 +24,12 @@ private[specialize] object Replace {
 
   private class Transform(
       mapping: collection.Map[Symbol, Symbol]
-  )(implicit cc: CompilerContext)
+    )(
+      implicit
+      cc: CompilerContext)
       extends StatefulTreeTransformer {
     override val typed: Boolean = false
+
     override def transform(tree: Tree): Tree = tree match {
       case ExprSym(symbol) =>
         mapping.get(symbol) match {
@@ -36,19 +39,26 @@ private[specialize] object Replace {
       case ExprRef(Sym(symbol, _)) if mapping contains symbol => ???
       case tree                                               => tree
     }
+
   }
 
   // Replace every symbol reference with a reference to the mapped symbol
   def apply[T <: Tree](
       tree: T,
       mapping: collection.Map[Symbol, Symbol]
-  )(implicit cc: CompilerContext): T =
+    )(
+      implicit
+      cc: CompilerContext
+    ): T =
     if (mapping.isEmpty) tree else tree rewrite new Transform(mapping)
 
   def apply(
       input: Either[Desc, (Decl, Defn)],
       mapping: collection.Map[Symbol, Symbol]
-  )(implicit cc: CompilerContext): Either[Desc, (Decl, Defn)] = {
+    )(
+      implicit
+      cc: CompilerContext
+    ): Either[Desc, (Decl, Defn)] = {
     if (mapping.isEmpty) {
       input
     } else {
@@ -58,4 +68,5 @@ private[specialize] object Replace {
       }
     }
   }
+
 }

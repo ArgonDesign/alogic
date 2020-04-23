@@ -41,11 +41,14 @@ final class SramBuilder {
     lazy val sram = SramFactory(s"sram_${depth}x$width", Loc.synthetic, width, depth)
     store.getOrElseUpdate((width, depth), sram)._1.symbol
   }
+
 }
 
 final class LowerSrams(
     sramBuilder: SramBuilder
-)(implicit cc: CompilerContext)
+  )(
+    implicit
+    cc: CompilerContext)
     extends StatefulTreeTransformer {
 
   private val sep = cc.sep
@@ -56,65 +59,76 @@ final class LowerSrams(
   //  rSymbol: Symbol,        // If the SRAM is of struct type, this is the local rdata signal
   //  oEntity: (Decl, Defn),  // If the output is registered, this is the SyncReg entity
   //  oSymbol: Symbol       // If the output is registered, the instance of the SyncReg entity above
-  private sealed trait SramParts
+  sealed private trait SramParts
 
   // TODO: sEntity is not unused in these
 
   // SRAM with wire driver and int/uint element type
   private case class SramWireInt(
-      sSymbol: Symbol
-  ) extends SramParts
+      sSymbol: Symbol)
+      extends SramParts
+
   // SRAM with wire driver and struct element type
   private case class SramWireStruct(
       sSymbol: Symbol,
-      rSymbol: Symbol
-  ) extends SramParts
+      rSymbol: Symbol)
+      extends SramParts
+
   // SRAM with reg driver and int/uint element type
   private case class SramRegInt(
       sSymbol: Symbol,
       oEntity: (DeclEntity, DefnEntity),
-      oSymbol: Symbol
-  ) extends SramParts
+      oSymbol: Symbol)
+      extends SramParts
+
   // SRAM with reg driver and struct element type
   private case class SramRegStruct(
       sSymbol: Symbol,
       rSymbol: Symbol,
       oEntity: (DeclEntity, DefnEntity),
-      oSymbol: Symbol
-  ) extends SramParts
+      oSymbol: Symbol)
+      extends SramParts
 
   // Extractors for transposed views of the above
   object SramWire {
+
     def unapply(parts: SramParts): Option[Symbol] = parts match {
       case SramWireInt(sSymbol)       => Some(sSymbol)
       case SramWireStruct(sSymbol, _) => Some(sSymbol)
       case _                          => None
     }
+
   }
 
   object SramReg {
+
     def unapply(parts: SramParts): Option[(Symbol, (DeclEntity, DefnEntity), Symbol)] =
       parts match {
         case SramRegInt(sSymbol, oEntity, oSymbol)       => Some((sSymbol, oEntity, oSymbol))
         case SramRegStruct(sSymbol, _, oEntity, oSymbol) => Some((sSymbol, oEntity, oSymbol))
         case _                                           => None
       }
+
   }
 
   object SramInt {
+
     def unapply(parts: SramParts): Option[Symbol] = parts match {
       case SramWireInt(sSymbol)      => Some(sSymbol)
       case SramRegInt(sSymbol, _, _) => Some(sSymbol)
       case _                         => None
     }
+
   }
 
   object SramStruct {
+
     def unapply(parts: SramParts): Option[(Symbol, Symbol)] = parts match {
       case SramWireStruct(sSymbol, rSymbol)      => Some((sSymbol, rSymbol))
       case SramRegStruct(sSymbol, rSymbol, _, _) => Some((sSymbol, rSymbol))
       case _                                     => None
     }
+
   }
 
   // Map from original sram variable symbol to the corresponding SramKit,
@@ -229,7 +243,8 @@ final class LowerSrams(
                 assignTrue(iRef select "ce"),
                 assignFalse(iRef select "we"),
                 StmtAssign(iRef select "addr", addr)
-              ))
+              )
+            )
           case SramReg(_, _, oSymbol) =>
             symbol.kind match {
               case TypeSram(kind, _, _) =>
@@ -239,7 +254,8 @@ final class LowerSrams(
                   List(
                     assignTrue(oRef select s"ip${sep}valid"),
                     StmtAssign(oRef select "ip", ExprCat(List(ExprInt(false, 1, 0), addr, data)))
-                  ))
+                  )
+                )
               case _ => unreachable
             }
         } getOrElse {
@@ -247,7 +263,8 @@ final class LowerSrams(
         }
 
       case StmtExpr(
-          ExprCall(ExprSelect(ExprSym(symbol), "write", _), List(ArgP(addr), ArgP(data)))) =>
+            ExprCall(ExprSelect(ExprSym(symbol), "write", _), List(ArgP(addr), ArgP(data)))
+          ) =>
         sramMap.get(symbol) map {
           case SramWire(iSymbol) =>
             val iRef = ExprSym(iSymbol)
@@ -257,14 +274,16 @@ final class LowerSrams(
                 assignTrue(iRef select "we"),
                 StmtAssign(iRef select "addr", addr),
                 StmtAssign(iRef select "wdata", data)
-              ))
+              )
+            )
           case SramReg(_, _, oSymbol) =>
             val oRef = ExprSym(oSymbol)
             StmtBlock(
               List(
                 assignTrue(oRef select s"ip${sep}valid"),
                 StmtAssign(oRef select "ip", ExprCat(List(ExprInt(false, 1, 1), addr, data)))
-              ))
+              )
+            )
         } getOrElse {
           tree
         }
@@ -321,11 +340,16 @@ final class LowerSrams(
               case SramReg(sS, _, oS) =>
                 Iterator(
                   EntConnect(ExprSym(oS) select s"op${sep}valid", List(ExprSym(sS) select "ce")),
-                  EntConnect(ExprSym(oS) select s"op", List(ExprCat {
-                    List(ExprSym(sS) select "we",
-                         ExprSym(sS) select "addr",
-                         ExprSym(sS) select "wdata")
-                  }))
+                  EntConnect(
+                    ExprSym(oS) select s"op",
+                    List(ExprCat {
+                      List(
+                        ExprSym(sS) select "we",
+                        ExprSym(sS) select "addr",
+                        ExprSym(sS) select "wdata"
+                      )
+                    })
+                  )
                 )
             }
           }.flatten
@@ -377,6 +401,7 @@ final class LowerSrams(
 }
 
 object LowerSrams {
+
   class LowerSramsPass extends PairTransformerPass {
     val name = "lower-srams"
 
@@ -403,10 +428,14 @@ object LowerSrams {
 
     override protected def finish(
         results: List[(Decl, Defn)]
-    )(implicit cc: CompilerContext): List[(Decl, Defn)] = {
+      )(
+        implicit
+        cc: CompilerContext
+      ): List[(Decl, Defn)] = {
       // Add all SRAMs to the results
       results ++ sramBuilder.srams
     }
+
   }
 
   def apply(): PairTransformerPass = new LowerSramsPass

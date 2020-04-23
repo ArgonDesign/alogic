@@ -113,8 +113,7 @@ object Symbols {
   final class Symbol(
       val id: Int,
       val loc: Loc,
-      initialName: String
-  ) {
+      initialName: String) {
     var name: String = initialName
 
     val attr: SymbolAttributes = new SymbolAttributes()
@@ -293,9 +292,12 @@ object Symbols {
         case _: TypeSram   => DefnSram(this)
         case _: TypeStack  => DefnStack(this)
         case TypeType(TypeRecord(s, members)) =>
-          DefnRecord(s, members map { symbol =>
-            RecDefn(symbol.mkDefn)
-          })
+          DefnRecord(
+            s,
+            members map { symbol =>
+              RecDefn(symbol.mkDefn)
+            }
+          )
         // The rest should never be used by the compiler, but ones that make
         // sense can be added if required in the future
         case _ => unreachable
@@ -380,4 +382,5 @@ object Symbols {
     // Extractor to pattern match against symbol name
     def unapply(arg: Symbol): Option[String] = Some(arg.name)
   }
+
 }

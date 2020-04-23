@@ -49,15 +49,15 @@ final class AddCastsSpec extends FreeSpec with AlogicTest {
         for (op <- List("*", "/", "%", "+", "-", "&", "|", "^", ">", ">=", "<", "<=", "==", "!=")) {
           for {
             (text, res) <- List(
-              (s"8'd3 ${op} 2", Some(Right(ExprCast(TypeUInt(8), 2)))),
-              (s"2 ${op} 8'd3", Some(Left(ExprCast(TypeUInt(8), 2)))),
-              (s"8'd3 ${op} -2s", Some(Right(ExprCast(TypeSInt(8), ExprNum(true, -2))))),
-              (s"-2s ${op} 8'd3", Some(Left(ExprCast(TypeSInt(8), ExprNum(true, -2))))),
-              (s"7'sd3 ${op} 2", Some(Right(ExprCast(TypeUInt(7), 2)))),
-              (s"2 ${op} 7'sd3", Some(Left(ExprCast(TypeUInt(7), 2)))),
-              (s"7'sd3 ${op} -2s", Some(Right(ExprCast(TypeSInt(7), ExprNum(true, -2))))),
-              (s"-2s ${op} 7'sd3", Some(Left(ExprCast(TypeSInt(7), ExprNum(true, -2))))),
-              (s"4 ${op} 2 ", None)
+              (s"8'd3 $op 2", Some(Right(ExprCast(TypeUInt(8), 2)))),
+              (s"2 $op 8'd3", Some(Left(ExprCast(TypeUInt(8), 2)))),
+              (s"8'd3 $op -2s", Some(Right(ExprCast(TypeSInt(8), ExprNum(true, -2))))),
+              (s"-2s $op 8'd3", Some(Left(ExprCast(TypeSInt(8), ExprNum(true, -2))))),
+              (s"7'sd3 $op 2", Some(Right(ExprCast(TypeUInt(7), 2)))),
+              (s"2 $op 7'sd3", Some(Left(ExprCast(TypeUInt(7), 2)))),
+              (s"7'sd3 $op -2s", Some(Right(ExprCast(TypeSInt(7), ExprNum(true, -2))))),
+              (s"-2s $op 7'sd3", Some(Left(ExprCast(TypeSInt(7), ExprNum(true, -2))))),
+              (s"4 $op 2 ", None)
             )
           } {
             text in {
@@ -283,7 +283,7 @@ final class AddCastsSpec extends FreeSpec with AlogicTest {
                |  out sync u10 b;
                |  out sync i20 c;
                |  void main() {
-               |    ${call};
+               |    $call;
                |    fence;
                |  }
                |}"""

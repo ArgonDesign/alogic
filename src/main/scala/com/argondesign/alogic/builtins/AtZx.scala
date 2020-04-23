@@ -38,4 +38,5 @@ private[builtins] class AtZx(implicit cc: CompilerContext)
     val List(width, expr) = args
     AtEx.fold(loc, ExprInt(false, 1, 0) withLoc loc, width, expr)
   }
+
 }

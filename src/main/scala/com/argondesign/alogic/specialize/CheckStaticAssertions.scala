@@ -21,8 +21,12 @@ import com.argondesign.alogic.core.CompilerContext
 
 object CheckStaticAssertions {
 
-  def apply(input: Either[Desc, (Decl, Defn)])(
-      implicit cc: CompilerContext): Option[Either[Desc, (Decl, Defn)]] = {
+  def apply(
+      input: Either[Desc, (Decl, Defn)]
+    )(
+      implicit
+      cc: CompilerContext
+    ): Option[Either[Desc, (Decl, Defn)]] = {
 
     var hadError = false
 
@@ -68,12 +72,14 @@ object CheckStaticAssertions {
       }
     }
 
-    val result = input.fold({ desc =>
-      Left(desc rewrite transform)
-    }, {
-      case (decl, defn) => Right((decl, defn rewrite transform))
-    })
+    val result = input.fold(
+      desc => Left(desc rewrite transform),
+      {
+        case (decl, defn) => Right((decl, defn rewrite transform))
+      }
+    )
 
     Option.unless(hadError)(result)
   }
+
 }

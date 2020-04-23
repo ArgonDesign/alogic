@@ -243,7 +243,14 @@ object TreeCopier {
     }
   }
 
-  def apply(tree: DescFunc)(ref: Tree, ret: Tree, args: List[Tree], body: List[Tree]): DescFunc = {
+  def apply(
+      tree: DescFunc
+    )(
+      ref: Tree,
+      ret: Tree,
+      args: List[Tree],
+      body: List[Tree]
+    ): DescFunc = {
     if ((ref eq tree.ref) && (ret eq tree.ret) && (args eq tree.args) && (body eq tree.body)) {
       tree
     } else {
@@ -279,7 +286,7 @@ object TreeCopier {
       tree
     } else {
       tree.copy(
-        spec = spec.asInstanceOf[Expr],
+        spec = spec.asInstanceOf[Expr]
       ) withLoc tree.loc
     }
   }
@@ -289,7 +296,7 @@ object TreeCopier {
       tree
     } else {
       tree.copy(
-        spec = spec.asInstanceOf[Expr],
+        spec = spec.asInstanceOf[Expr]
       ) withLoc tree.loc
     }
   }
@@ -574,12 +581,12 @@ object TreeCopier {
 
   def apply(
       tree: GenFor
-  )(
+    )(
       inits: List[Tree],
       cond: Tree,
       steps: List[Tree],
       body: List[Tree]
-  ): GenFor = {
+    ): GenFor = {
     if ((inits eq tree.inits) && (cond eq tree.cond) && (steps eq tree.steps) && (body eq tree.body)) {
       tree
     } else {
@@ -717,9 +724,13 @@ object TreeCopier {
     }
   }
 
-  def apply(tree: EntClockedProcess)(clk: Tree,
-                                     rstOpt: Option[Tree],
-                                     stmts: List[Tree]): EntClockedProcess = {
+  def apply(
+      tree: EntClockedProcess
+    )(
+      clk: Tree,
+      rstOpt: Option[Tree],
+      stmts: List[Tree]
+    ): EntClockedProcess = {
     if ((clk eq tree.clk) && (rstOpt eq tree.rstOpt) && (stmts eq tree.stmts)) {
       tree
     } else {
@@ -830,11 +841,13 @@ object TreeCopier {
     }
   }
 
-  def apply(tree: StmtIf)(
+  def apply(
+      tree: StmtIf
+    )(
       cond: Tree,
       thenStmts: List[Tree],
       elseStmts: List[Tree]
-  ): StmtIf = {
+    ): StmtIf = {
     if ((cond eq tree.cond) && (thenStmts eq tree.thenStmts) && (elseStmts eq tree.elseStmts)) {
       tree
     } else {
@@ -855,7 +868,7 @@ object TreeCopier {
       assert(cases forall { _.isInstanceOf[Case] })
       StmtCase(
         expr.asInstanceOf[Expr],
-        cases.asInstanceOf[List[Case]],
+        cases.asInstanceOf[List[Case]]
       ) withLoc tree.loc
     }
   }
@@ -880,12 +893,12 @@ object TreeCopier {
 
   def apply(
       tree: StmtFor
-  )(
+    )(
       inits: List[Tree],
       cond: Option[Tree],
       steps: List[Tree],
       body: List[Tree]
-  ): StmtFor = {
+    ): StmtFor = {
     if ((inits eq tree.inits) && (cond eq tree.cond) && (steps eq tree.steps) && (body eq tree.body)) {
       tree
     } else {
@@ -1062,7 +1075,11 @@ object TreeCopier {
     if ((cond eq tree.cond) && (thenExpr eq tree.thenExpr) && (elseExpr eq tree.elseExpr)) {
       tree
     } else {
-      ExprTernary(cond.asInstanceOf[Expr], thenExpr.asInstanceOf[Expr], elseExpr.asInstanceOf[Expr]) withLoc tree.loc
+      ExprTernary(
+        cond.asInstanceOf[Expr],
+        thenExpr.asInstanceOf[Expr],
+        elseExpr.asInstanceOf[Expr]
+      ) withLoc tree.loc
     }
   }
 

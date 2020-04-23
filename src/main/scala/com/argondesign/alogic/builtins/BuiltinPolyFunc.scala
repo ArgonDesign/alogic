@@ -33,9 +33,10 @@ import scala.util.ChainingSyntax
 
 abstract class BuiltinPolyFunc(
     val isValidConnLhs: Boolean
-)(
-    implicit cc: CompilerContext
-) extends BooleanOps
+  )(
+    implicit
+    cc: CompilerContext)
+    extends BooleanOps
     with PartialMatch
     with ChainingSyntax {
 
@@ -87,23 +88,22 @@ abstract class BuiltinPolyFunc(
     }) && (isValidConnLhs || isKnownConst(args))
 
   // Synthetic location of this builtin
-  protected[this] final lazy val loc = Loc(Source(s"builtin $name", ""), 0, 0, 0)
+  final protected[this] lazy val loc = Loc(Source(s"builtin $name", ""), 0, 0, 0)
 
   // Collection of overloaded symbols (if any) for given arguments
   // TODO: This map should be in cc to avoid a space leak
-  private[this] final val overloads = TrieMap[(Type, List[Type]), Symbol]()
+  final private[this] val overloads = TrieMap[(Type, List[Type]), Symbol]()
 
   // The resolver for TypePolyFunc
-  private[this] final def resolver(args: List[Arg]): Option[Symbol] = {
+  final private[this] def resolver(args: List[Arg]): Option[Symbol] = {
     val pas = pargs(args)
     returnType(pas) map { retType =>
       val argTypes = pas map { _.tpe }
       overloads.getOrElseUpdate(
-        (retType, argTypes), {
-          cc.newSymbol(name, loc) tap { s =>
-            s.kind = TypeCombFunc(symbol, retType, argTypes)
-            s.attr.builtin set this
-          }
+        (retType, argTypes),
+        cc.newSymbol(name, loc) tap { s =>
+          s.kind = TypeCombFunc(symbol, retType, argTypes)
+          s.attr.builtin set this
         }
       )
     }

@@ -28,13 +28,14 @@ trait TreePrintOps extends { this: Tree =>
 
   def toSource(implicit cc: CompilerContext): String = v(this)(cc, 0)
 
-  private final def block(
+  final private def block(
       header: String,
       body: List[Tree]
-  )(
-      implicit cc: CompilerContext,
+    )(
+      implicit
+      cc: CompilerContext,
       indent: Int
-  ): String = {
+    ): String = {
     val prefix = if (header.nonEmpty) header + " " else ""
     if (body.isEmpty) {
       s"$prefix{}"
@@ -46,14 +47,14 @@ trait TreePrintOps extends { this: Tree =>
     }
   }
 
-  private final def v(fct: FlowControlType): String = fct match {
+  final private def v(fct: FlowControlType): String = fct match {
     case FlowControlTypeNone   => ""
     case FlowControlTypeValid  => "sync "
     case FlowControlTypeReady  => "sync ready "
     case FlowControlTypeAccept => "sync accept "
   }
 
-  private final def v(st: StorageType): String = st match {
+  final private def v(st: StorageType): String = st match {
     case StorageTypeDefault => ""
     case StorageTypeReg     => "reg "
     case StorageTypeWire    => "wire "
@@ -65,29 +66,30 @@ trait TreePrintOps extends { this: Tree =>
       } mkString ("", " ", " ")
   }
 
-  private final def v(ev: EntityVariant.Type): String = ev match {
+  final private def v(ev: EntityVariant.Type): String = ev match {
     case EntityVariant.Fsm => "fsm"
     case EntityVariant.Net => "network"
     case EntityVariant.Ver => "verbatim entity"
   }
 
-  private final def vs(trees: List[Tree])(implicit cc: CompilerContext, indent: Int): String =
+  final private def vs(trees: List[Tree])(implicit cc: CompilerContext, indent: Int): String =
     trees map v mkString ", "
 
-  private final def vs(
+  final private def vs(
       trees: List[Tree],
       start: String,
       sep: String,
       end: String
-  )(
-      implicit cc: CompilerContext,
+    )(
+      implicit
+      cc: CompilerContext,
       indent: Int
-  ): String = trees map v mkString (start, sep, end)
+    ): String = trees map v mkString (start, sep, end)
 
-  private final def vo(treeOpt: Option[Tree])(implicit cc: CompilerContext, indent: Int): String =
+  final private def vo(treeOpt: Option[Tree])(implicit cc: CompilerContext, indent: Int): String =
     treeOpt map v getOrElse ""
 
-  private final def v(tree: Tree)(implicit cc: CompilerContext, indent: Int): String = tree match {
+  final private def v(tree: Tree)(implicit cc: CompilerContext, indent: Int): String = tree match {
     case node: Root      => v(node)
     case node: Ref       => v(node)
     case node: Desc      => v(node)
@@ -106,18 +108,18 @@ trait TreePrintOps extends { this: Tree =>
     case Stump           => "Stump"
   }
 
-  private final def v(tree: Root)(implicit cc: CompilerContext, indent: Int): String = {
+  final private def v(tree: Root)(implicit cc: CompilerContext, indent: Int): String = {
     block("root", tree.body)
   }
 
-  private final def v(ref: Ref)(implicit cc: CompilerContext, indent: Int): String = ref match {
+  final private def v(ref: Ref)(implicit cc: CompilerContext, indent: Int): String = ref match {
     case Ident(name, Nil)     => name
     case Sym(symbol, Nil)     => s"${symbol.name}@${symbol.id}"
     case Ident(name, indices) => vs(indices, s"$name#[", ",", "]")
     case Sym(symbol, indices) => vs(indices, s"${symbol.name}@${symbol.id}#[", ",", "]")
   }
 
-  private final def v(tree: Desc)(implicit cc: CompilerContext, indent: Int): String = {
+  final private def v(tree: Desc)(implicit cc: CompilerContext, indent: Int): String = {
     val attr = tree.ref pipe {
       case Sym(symbol, _)                     => symbol.attr.toSource
       case ident: Ident if ident.attr.isEmpty => ""
@@ -160,7 +162,7 @@ trait TreePrintOps extends { this: Tree =>
   }
   // format: on
 
-  private final def v(tree: Decl)(implicit cc: CompilerContext, indent: Int): String = {
+  final private def v(tree: Decl)(implicit cc: CompilerContext, indent: Int): String = {
     val symbol = tree.symbol
     val attr = symbol.attr.toSource pipe {
       case ""  => ""
@@ -191,7 +193,7 @@ trait TreePrintOps extends { this: Tree =>
   }
   // format: on
 
-  private final def v(tree: Defn)(implicit cc: CompilerContext, indent: Int): String = {
+  final private def v(tree: Defn)(implicit cc: CompilerContext, indent: Int): String = {
     val symbol = tree.symbol
     val attr = symbol.attr.toSource pipe {
       case ""  => ""
@@ -244,7 +246,7 @@ trait TreePrintOps extends { this: Tree =>
   }
   // format: on
 
-  private final def v(tree: Riz)(implicit cc: CompilerContext, indent: Int): String = tree match {
+  final private def v(tree: Riz)(implicit cc: CompilerContext, indent: Int): String = tree match {
     case RizDesc(desc) => v(desc)
     case RizDecl(decl) => v(decl)
     case RizDefn(defn) => v(defn)
@@ -266,7 +268,7 @@ trait TreePrintOps extends { this: Tree =>
   }
   // format: on
 
-  private final def v(tree: Rec)(implicit cc: CompilerContext, indent: Int): String = tree match {
+  final private def v(tree: Rec)(implicit cc: CompilerContext, indent: Int): String = tree match {
     case RecDesc(desc)           => v(desc)
     case RecDecl(decl)           => v(decl)
     case RecDefn(defn)           => v(defn)
@@ -310,7 +312,7 @@ trait TreePrintOps extends { this: Tree =>
   }
   // format: on
 
-  private final def v(tree: Case)(implicit cc: CompilerContext, indent: Int): String = tree match {
+  final private def v(tree: Case)(implicit cc: CompilerContext, indent: Int): String = tree match {
     case CaseGen(gen)             => v(gen)
     case CaseRegular(cond, stmts) => block(s"${vs(cond)} :", stmts)
     case CaseDefault(stmts)       => block("default :", stmts)
@@ -341,7 +343,7 @@ trait TreePrintOps extends { this: Tree =>
   }
   // format: on
 
-  private final def v(tree: Arg)(implicit cc: CompilerContext, indent: Int): String = tree match {
+  final private def v(tree: Arg)(implicit cc: CompilerContext, indent: Int): String = tree match {
     case ArgP(expr)       => v(expr)
     case ArgN(name, expr) => s"$name = ${v(expr)}"
   }

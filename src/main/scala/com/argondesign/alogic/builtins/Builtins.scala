@@ -21,7 +21,7 @@ import com.argondesign.alogic.util.unreachable
 
 trait Builtins { this: CompilerContext =>
 
-  private implicit val implicitThis = this
+  implicit private val implicitThis = this
 
   // Register this builtin in the global scope
   private[this] def register(builtin: BuiltinPolyFunc): builtin.type = {
@@ -73,4 +73,5 @@ trait Builtins { this: CompilerContext =>
       case ExprSym(symbol) => symbol.attr.builtin.value.isValidConnectLhs(call.args)
       case _               => unreachable
     }
+
 }

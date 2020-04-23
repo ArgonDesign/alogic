@@ -19,7 +19,9 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 
 object Specialize {
+
   def apply(specs: List[Expr])(implicit cc: CompilerContext): Option[Set[(Decl, Defn)]] = {
     (new SpecializeDesc()(cc))(specs)
   }
+
 }

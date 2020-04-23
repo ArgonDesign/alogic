@@ -113,7 +113,8 @@ final class Checker(implicit cc: CompilerContext) extends StatefulTreeTransforme
     if (variant != EntityVariant.Ver && verbatims.nonEmpty && verbatims.length == nonports.length) {
       cc.warning(
         ident,
-        s"Entity '${ident.name}' contains only verbatim blocks, use a 'verbatim entity' instead")
+        s"Entity '${ident.name}' contains only verbatim blocks, use a 'verbatim entity' instead"
+      )
     }
   }
 
@@ -196,13 +197,16 @@ final class Checker(implicit cc: CompilerContext) extends StatefulTreeTransforme
       val newSt = {
         (fc, st) match {
           case (FlowControlTypeNone, _: StorageTypeSlices) =>
-            cc.error(tree,
-                     s"Output port '${desc.name}' without flow control cannot use output slices")
+            cc.error(
+              tree,
+              s"Output port '${desc.name}' without flow control cannot use output slices"
+            )
             StorageTypeReg
           case (FlowControlTypeValid, _: StorageTypeSlices) =>
             cc.error(
               tree,
-              s"Output port '${desc.name}' with 'sync' flow control cannot use output slices")
+              s"Output port '${desc.name}' with 'sync' flow control cannot use output slices"
+            )
             StorageTypeReg
           case _ => st
         }
@@ -321,6 +325,7 @@ final class Checker(implicit cc: CompilerContext) extends StatefulTreeTransforme
     assert(singletonStack.isEmpty)
     assert(loopLevel == 0)
   }
+
 }
 
 object Checker extends PreElaboratePass {

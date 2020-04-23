@@ -34,4 +34,5 @@ object Elaborate extends Pass[(List[Root], List[Expr]), List[(Decl, Defn)]] with
     val specializedTopLevelDescs = Specialize(topLevelSpecs)
     specializedTopLevelDescs map { _.toList } getOrElse Nil
   }
+
 }

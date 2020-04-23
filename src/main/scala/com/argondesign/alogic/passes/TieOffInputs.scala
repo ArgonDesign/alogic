@@ -71,9 +71,10 @@ object TieOffInputs extends PairTransformerPass {
         }
       }
 
-      val newDefn = TypeAssigner { entityDefn.copy(body = newBody) withLoc entityDefn.loc }
+      val newDefn = TypeAssigner(entityDefn.copy(body = newBody) withLoc entityDefn.loc)
 
       (decl, newDefn)
     }
   }
+
 }

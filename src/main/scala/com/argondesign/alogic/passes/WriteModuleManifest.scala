@@ -174,8 +174,12 @@ object WriteModuleManifest extends PairsTransformerPass {
     Json.write(ow, ListMap.from(dict))
   }
 
-  override def process(input: List[(Decl, Defn)])(
-      implicit cc: CompilerContext): List[(Decl, Defn)] = {
+  override def process(
+      input: List[(Decl, Defn)]
+    )(
+      implicit
+      cc: CompilerContext
+    ): List[(Decl, Defn)] = {
 
     val w = cc.settings.outputWriterFactory(Right("manifest.json"))
     emit(w, input)

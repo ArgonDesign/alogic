@@ -18,10 +18,10 @@ import com.argondesign.alogic.ast.Trees._
 
 trait DefnRecordOps { this: DefnRecord =>
 
-  override final lazy val descs: List[Desc] = body collect { case RecDesc(desc) => desc }
+  final override lazy val descs: List[Desc] = body collect { case RecDesc(desc) => desc }
 
   final lazy val decls: List[Decl] = body collect { case RecDecl(decl) => decl }
 
-  override final lazy val defns: List[Defn] = body collect { case RecDefn(defn) => defn }
+  final override lazy val defns: List[Defn] = body collect { case RecDefn(defn) => defn }
 
 }

@@ -369,18 +369,22 @@ final class AnalyseCallGraphSpec extends FreeSpec with AlogicTest {
       }
     }
 
-    def checkAttr[A](symbol: Symbol,
-                     getAttr: SymbolAttributes => A,
-                     golden: Map[String, A]): Unit = {
+    def checkAttr[A](
+        symbol: Symbol,
+        getAttr: SymbolAttributes => A,
+        golden: Map[String, A]
+      ): Unit = {
       golden.get(symbol.name) foreach { expected =>
         getAttr(symbol.attr) shouldBe expected
       }
     }
 
-    def checkFunctionAttrs(defnEntity: DefnEntity,
-                           goldenPushStackOnCall: Map[String, Boolean],
-                           goldenPopStackOnReturn: Map[String, Boolean],
-                           goldenStaticReturnPoint: Map[String, Option[String]]): Unit =
+    def checkFunctionAttrs(
+        defnEntity: DefnEntity,
+        goldenPushStackOnCall: Map[String, Boolean],
+        goldenPopStackOnReturn: Map[String, Boolean],
+        goldenStaticReturnPoint: Map[String, Option[String]]
+      ): Unit =
       defnEntity.functions foreach {
         case DefnFunc(symbol, _, _)
             if symbol.decl.asInstanceOf[DeclFunc].variant == FuncVariant.Ctrl =>
@@ -430,10 +434,12 @@ final class AnalyseCallGraphSpec extends FreeSpec with AlogicTest {
         )
 
         checkStack(defnEntity, None)
-        checkFunctionAttrs(defnEntity,
-                           goldenPushStackOnCall,
-                           goldenPopStackOnReturn,
-                           goldenStaticReturnPoint)
+        checkFunctionAttrs(
+          defnEntity,
+          goldenPushStackOnCall,
+          goldenPopStackOnReturn,
+          goldenStaticReturnPoint
+        )
       }
 
       "if all returns have static return point" in {
@@ -464,10 +470,12 @@ final class AnalyseCallGraphSpec extends FreeSpec with AlogicTest {
         )
 
         checkStack(defnEntity, None)
-        checkFunctionAttrs(defnEntity,
-                           goldenPushStackOnCall,
-                           goldenPopStackOnReturn,
-                           goldenStaticReturnPoint)
+        checkFunctionAttrs(
+          defnEntity,
+          goldenPushStackOnCall,
+          goldenPopStackOnReturn,
+          goldenStaticReturnPoint
+        )
       }
     }
 
@@ -498,10 +506,12 @@ final class AnalyseCallGraphSpec extends FreeSpec with AlogicTest {
         )
 
         checkStack(defnEntity, Some(1))
-        checkFunctionAttrs(defnEntity,
-                           goldenPushStackOnCall,
-                           goldenPopStackOnReturn,
-                           goldenStaticReturnPoint)
+        checkFunctionAttrs(
+          defnEntity,
+          goldenPushStackOnCall,
+          goldenPopStackOnReturn,
+          goldenStaticReturnPoint
+        )
       }
 
       "only for calls which need it " - {
@@ -532,10 +542,12 @@ final class AnalyseCallGraphSpec extends FreeSpec with AlogicTest {
           )
 
           checkStack(defnEntity, Some(1))
-          checkFunctionAttrs(defnEntity,
-                             goldenPushStackOnCall,
-                             goldenPopStackOnReturn,
-                             goldenStaticReturnPoint)
+          checkFunctionAttrs(
+            defnEntity,
+            goldenPushStackOnCall,
+            goldenPopStackOnReturn,
+            goldenStaticReturnPoint
+          )
         }
 
         "2" in {
@@ -568,10 +580,12 @@ final class AnalyseCallGraphSpec extends FreeSpec with AlogicTest {
           )
 
           checkStack(defnEntity, Some(1))
-          checkFunctionAttrs(defnEntity,
-                             goldenPushStackOnCall,
-                             goldenPopStackOnReturn,
-                             goldenStaticReturnPoint)
+          checkFunctionAttrs(
+            defnEntity,
+            goldenPushStackOnCall,
+            goldenPopStackOnReturn,
+            goldenStaticReturnPoint
+          )
         }
 
       }
@@ -599,28 +613,30 @@ final class AnalyseCallGraphSpec extends FreeSpec with AlogicTest {
           "b" -> true,
           "c" -> false,
           "d" -> true,
-          "e" -> false,
+          "e" -> false
         )
         val goldenPopStackOnReturn = Map(
           "a" -> false,
           "b2" -> true,
           "c" -> false,
           "d2" -> true,
-          "e" -> false,
+          "e" -> false
         )
         val goldenStaticReturnPoint = Map(
           "a" -> Some("a"),
           "b2" -> None,
           "c" -> Some("c"),
           "d2" -> None,
-          "e" -> Some("e"),
+          "e" -> Some("e")
         )
 
         checkStack(defnEntity, Some(2))
-        checkFunctionAttrs(defnEntity,
-                           goldenPushStackOnCall,
-                           goldenPopStackOnReturn,
-                           goldenStaticReturnPoint)
+        checkFunctionAttrs(
+          defnEntity,
+          goldenPushStackOnCall,
+          goldenPopStackOnReturn,
+          goldenStaticReturnPoint
+        )
       }
 
       "correctly when function return point is static but still needs to pop" in {
@@ -657,10 +673,12 @@ final class AnalyseCallGraphSpec extends FreeSpec with AlogicTest {
         )
 
         checkStack(defnEntity, Some(1))
-        checkFunctionAttrs(defnEntity,
-                           goldenPushStackOnCall,
-                           goldenPopStackOnReturn,
-                           goldenStaticReturnPoint)
+        checkFunctionAttrs(
+          defnEntity,
+          goldenPushStackOnCall,
+          goldenPopStackOnReturn,
+          goldenStaticReturnPoint
+        )
       }
 
       "with correct depth when longest path doesn't start at main" in {
@@ -682,13 +700,13 @@ final class AnalyseCallGraphSpec extends FreeSpec with AlogicTest {
           "a" -> false,
           "b" -> true,
           "c" -> true,
-          "d" -> true,
+          "d" -> true
         )
         val goldenPopStackOnReturn = Map(
           "a" -> false,
           "b" -> true,
           "c" -> true,
-          "d" -> true,
+          "d" -> true
         )
         val goldenStaticReturnPoint = Map(
           "a" -> Some("a"),
@@ -698,10 +716,12 @@ final class AnalyseCallGraphSpec extends FreeSpec with AlogicTest {
         )
 
         checkStack(defnEntity, Some(3))
-        checkFunctionAttrs(defnEntity,
-                           goldenPushStackOnCall,
-                           goldenPopStackOnReturn,
-                           goldenStaticReturnPoint)
+        checkFunctionAttrs(
+          defnEntity,
+          goldenPushStackOnCall,
+          goldenPopStackOnReturn,
+          goldenStaticReturnPoint
+        )
       }
     }
 
@@ -725,10 +745,12 @@ final class AnalyseCallGraphSpec extends FreeSpec with AlogicTest {
         )
 
         checkStack(defnEntity, None)
-        checkFunctionAttrs(defnEntity,
-                           goldenPushStackOnCall,
-                           goldenPopStackOnReturn,
-                           goldenStaticReturnPoint)
+        checkFunctionAttrs(
+          defnEntity,
+          goldenPushStackOnCall,
+          goldenPopStackOnReturn,
+          goldenStaticReturnPoint
+        )
       }
 
       "returning to top of main after goto in main function" in {
@@ -751,10 +773,12 @@ final class AnalyseCallGraphSpec extends FreeSpec with AlogicTest {
         )
 
         checkStack(defnEntity, None)
-        checkFunctionAttrs(defnEntity,
-                           goldenPushStackOnCall,
-                           goldenPopStackOnReturn,
-                           goldenStaticReturnPoint)
+        checkFunctionAttrs(
+          defnEntity,
+          goldenPushStackOnCall,
+          goldenPopStackOnReturn,
+          goldenStaticReturnPoint
+        )
       }
 
       "refer to stack if main calls itself" in {
@@ -769,7 +793,7 @@ final class AnalyseCallGraphSpec extends FreeSpec with AlogicTest {
         }
 
         val goldenPushStackOnCall = Map[String, Boolean](
-          "main" -> true,
+          "main" -> true
         )
         val goldenPopStackOnReturn = Map(
           "main" -> true
@@ -779,10 +803,12 @@ final class AnalyseCallGraphSpec extends FreeSpec with AlogicTest {
         )
 
         checkStack(defnEntity, Some(2))
-        checkFunctionAttrs(defnEntity,
-                           goldenPushStackOnCall,
-                           goldenPopStackOnReturn,
-                           goldenStaticReturnPoint)
+        checkFunctionAttrs(
+          defnEntity,
+          goldenPushStackOnCall,
+          goldenPopStackOnReturn,
+          goldenStaticReturnPoint
+        )
       }
 
       "refer to stack if main returns but is called elsewhere" in {
@@ -812,10 +838,12 @@ final class AnalyseCallGraphSpec extends FreeSpec with AlogicTest {
         )
 
         checkStack(defnEntity, Some(3))
-        checkFunctionAttrs(defnEntity,
-                           goldenPushStackOnCall,
-                           goldenPopStackOnReturn,
-                           goldenStaticReturnPoint)
+        checkFunctionAttrs(
+          defnEntity,
+          goldenPushStackOnCall,
+          goldenPopStackOnReturn,
+          goldenStaticReturnPoint
+        )
       }
     }
   }

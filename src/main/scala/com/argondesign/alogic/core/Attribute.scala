@@ -51,6 +51,7 @@ class Attribute[T] {
 }
 
 object Attribute {
+
   abstract class Appendable[E, T] {
     def create(elem: E): T
     def append(coll: T, elem: E): T
@@ -68,4 +69,5 @@ object Attribute {
   implicit def enumerableList[E] = new Enumerable[E, List[E]] {
     def enumerate(coll: List[E]): Iterator[E] = coll.iterator
   }
+
 }

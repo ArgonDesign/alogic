@@ -28,10 +28,12 @@ import scala.collection.mutable
 sealed trait ExprSpecialization
 // Specialization failed due to error
 case object ExprSpecializationError extends ExprSpecialization
+
 // Specialization failed due to dependency on unresolved choice symbols
 case class ExprSpecializationUnknown(symbols: collection.Set[Symbol]) extends ExprSpecialization {
   require(symbols forall { _.isChoice })
 }
+
 // Specialization successful with the given result
 case class ExprSpecializationComplete(expr: Expr) extends ExprSpecialization
 
@@ -39,10 +41,11 @@ private[specialize] object SpecializeExpr {
 
   def apply(
       expr: Expr
-  )(
-      implicit cc: CompilerContext,
+    )(
+      implicit
+      cc: CompilerContext,
       specializeDesc: SpecializeDesc
-  ): ExprSpecialization = {
+    ): ExprSpecialization = {
 
     var hadError = false
     val unknowns = mutable.Set[Symbol]()
@@ -176,4 +179,5 @@ private[specialize] object SpecializeExpr {
       ExprSpecializationComplete(result)
     }
   }
+
 }

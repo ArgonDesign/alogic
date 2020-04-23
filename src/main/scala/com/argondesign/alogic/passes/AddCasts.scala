@@ -122,10 +122,11 @@ final class AddCasts(implicit cc: CompilerContext) extends StatelessTreeTransfor
           tree
         }
 
-      case expr @ ExprBinary(lhs,
-                             "&" | "|" | "^" | "*" | "/" | "%" | "+" | "-" | ">" | ">=" | "<" |
-                             "<=" | "==" | "!=",
-                             rhs) if lhs.tpe.underlying.isNum != rhs.tpe.underlying.isNum =>
+      case expr @ ExprBinary(
+            lhs,
+            "&" | "|" | "^" | "*" | "/" | "%" | "+" | "-" | ">" | ">=" | "<" | "<=" | "==" | "!=",
+            rhs
+          ) if lhs.tpe.underlying.isNum != rhs.tpe.underlying.isNum =>
         if (lhs.tpe.underlying.isNum) {
           expr.copy(lhs = cast(rhs.tpe, lhs))
         } else {
@@ -145,6 +146,7 @@ final class AddCasts(implicit cc: CompilerContext) extends StatelessTreeTransfor
 
     if (result ne tree) TypeAssigner(result withLoc tree.loc) else tree
   }
+
 }
 
 object AddCasts extends PairTransformerPass {

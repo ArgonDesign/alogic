@@ -63,8 +63,12 @@ trait AlogicTest
     }
   }
 
-  final protected def beThe[T <: Message: ClassTag](lines: String*)(
-      implicit cc: CompilerContext): Matcher[Message] = Matcher { message: Message =>
+  final protected def beThe[T <: Message: ClassTag](
+      lines: String*
+    )(
+      implicit
+      cc: CompilerContext
+    ): Matcher[Message] = Matcher { message: Message =>
     lazy val linesMatch = lines.length == message.msg.length && {
       val regexes = lines map { _.r }
       (regexes zip message.msg) forall { pair =>
@@ -95,9 +99,10 @@ trait AlogicTest
   final protected def transformWithPass[R](
       pass: Pass[(List[Root], List[Expr]), R],
       text: String
-  )(
-      implicit cc: CompilerContext
-  ): Option[R] = {
+    )(
+      implicit
+      cc: CompilerContext
+    ): Option[R] = {
     // Parse it
     val root = text.stripMargin.asTree[Root]
 
@@ -134,7 +139,7 @@ trait AlogicTest
   }
 
   final protected def checkSingleError(err: List[String])(implicit cc: CompilerContext): Unit = {
-    val errors = cc.messages.filter { _.isInstanceOf[Error] }
+    val errors = cc.messages.filter(_.isInstanceOf[Error])
     if (err.isEmpty) {
       errors shouldBe empty
     } else {
@@ -143,7 +148,7 @@ trait AlogicTest
   }
 
   final protected def checkSingleWarning(err: List[String])(implicit cc: CompilerContext): Unit = {
-    val errors = cc.messages.filter { _.isInstanceOf[Warning] }
+    val errors = cc.messages.filter(_.isInstanceOf[Warning])
     if (err.isEmpty) {
       errors shouldBe empty
     } else {

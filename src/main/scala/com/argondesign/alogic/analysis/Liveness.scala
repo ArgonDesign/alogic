@@ -62,9 +62,12 @@ object Liveness {
       BitSet.fromBitMaskNoCopy(arr)
     }
 
-  private def usedRvalPairs(expr: Expr)(
-      implicit cc: CompilerContext
-  ): Iterator[(Symbol, BitSet)] = expr flatCollect {
+  private def usedRvalPairs(
+      expr: Expr
+    )(
+      implicit
+      cc: CompilerContext
+    ): Iterator[(Symbol, BitSet)] = expr flatCollect {
     case ExprSym(symbol) if symbol.kind.isPacked =>
       Iterator.single(symbol -> bitRange(0, symbol.kind.width.toInt))
     case ExprIndex(ExprSym(symbol), idx) if symbol.kind.isPacked =>
@@ -175,7 +178,7 @@ object Liveness {
         cLive: SymbolBitSet,
         cDead: SymbolBitSet,
         stmts: List[Stmt]
-    ): (SymbolBitSet, SymbolBitSet) = stmts match {
+      ): (SymbolBitSet, SymbolBitSet) = stmts match {
       case Nil => (cLive, cDead)
       case head :: tail =>
         val (nLive, nDead) = head match {
@@ -192,7 +195,7 @@ object Liveness {
 
           case StmtOutcall(output, func, inputs) =>
             val readFunc = usedRv(func)
-            val readInputs = (inputs map usedRv).foldLeft(SymbolBitSet.empty) { _ union _ }
+            val readInputs = (inputs map usedRv).foldLeft(SymbolBitSet.empty)(_ union _)
             val readOutput = usedLv(output)
             // Everything read is born, unless it's already dead
             val born = (readFunc union readInputs union readOutput) diff cDead

@@ -74,7 +74,8 @@ trait CompilationTest
 
   // Insert compiler output to the 'outputs' map above
   private def outputWriterFactory(
-      treeAndSuffixOrFileName: Either[(Tree, String), String]): Writer = {
+      treeAndSuffixOrFileName: Either[(Tree, String), String]
+    ): Writer = {
     new StringWriter {
       override def close(): Unit = {
         treeAndSuffixOrFileName match {
@@ -159,7 +160,10 @@ trait CompilationTest
       timeout: Long,
       trace: Boolean,
       tmpDir: Path
-  )(implicit cc: CompilerContext): Unit = {
+    )(
+      implicit
+      cc: CompilerContext
+    ): Unit = {
     require(topLevel != "testbench")
     assert(outputs forall { _._1 != "testbench" })
 
@@ -339,20 +343,20 @@ trait CompilationTest
     val spw = new PrintWriter(scriptPath)
     spw.write(
       s"""|read_verilog ${goldenPath.toFile}
-          |prep -flatten -top ${topLevel}
+          |prep -flatten -top $topLevel
           |memory
-          |opt -full ${topLevel}
+          |opt -full $topLevel
           |design -stash gold
           |
           |read_verilog ${tmpDir.resolve(topLevel + ".v").toFile}
-          |hierarchy -check -libdir ${tmpDir} -top ${topLevel}
-          |prep -flatten -run coarse: -top ${topLevel}
+          |hierarchy -check -libdir $tmpDir -top $topLevel
+          |prep -flatten -run coarse: -top $topLevel
           |memory
-          |opt -full ${topLevel}
+          |opt -full $topLevel
           |design -stash comp
           |
-          |design -copy-from gold -as gold ${topLevel}
-          |design -copy-from comp -as comp ${topLevel}
+          |design -copy-from gold -as gold $topLevel
+          |design -copy-from comp -as comp $topLevel
           |
           |equiv_make gold comp equiv
           |prep -flatten -top equiv
@@ -374,7 +378,7 @@ trait CompilationTest
     val logPath = tmpDir.resolve("fec.log")
 
     // Perform the equivalence check
-    val ret = s"${yosys} -s ${scriptPath} -q -l ${logPath}".!
+    val ret = s"$yosys -s $scriptPath -q -l $logPath".!
 
     // Fail test if fec failed
     if (ret != 0) {
@@ -383,7 +387,7 @@ trait CompilationTest
     }
   }
 
-  private sealed trait MessageSpec {
+  sealed private trait MessageSpec {
     val file: String
     val line: Int
     val patterns: List[String]
@@ -407,10 +411,12 @@ trait CompilationTest
         case _: ErrorSpec   => "ERROR"
         case _: FatalSpec   => "FATAL"
       }
-      val prefix = s"${file}:${line}: ${kindString}: "
-      val triplets = LazyList.continually(prefix) lazyZip ("" +: LazyList.continually("... ")) lazyZip patterns
+      val prefix = s"$file:$line: $kindString: "
+      val triplets =
+        LazyList.continually(prefix) lazyZip ("" +: LazyList.continually("... ")) lazyZip patterns
       triplets map { case (a, b, c) => a + b + c } mkString "\n"
     }
+
   }
 
   private case class WarningSpec(file: String, line: Int, patterns: List[String])
@@ -526,7 +532,12 @@ trait CompilationTest
       }
   }
 
-  def defineTest(name: String, searchPath: File, top: String, checkFile: String): Unit = {
+  def defineTest(
+      name: String,
+      searchPath: File,
+      top: String,
+      checkFile: String
+    ): Unit = {
     name in { configMap: ConfigMap =>
       // Create temporary directory, run function passing the path to the temporary
       // directory as argument, then remove the temporary directory
@@ -698,4 +709,5 @@ trait CompilationTest
       }
     }
   }
+
 }

@@ -74,7 +74,7 @@ final class TyperCheckExprSpec extends FreeSpec with AlogicTest {
             |fsm a {
             |  const u8 N = 8'd2;
             |  void main() {
-            |    $$display("", ${expr});
+            |    $$display("", $expr);
             |    fence;
             |  }
             |}"""
@@ -89,31 +89,39 @@ final class TyperCheckExprSpec extends FreeSpec with AlogicTest {
         for (op <- List("*", "/", "%", "+", "-", "&", "|", "^", ">", ">=", "<", "<=", "==", "!=")) {
           for {
             (expr, err) <- List(
-              (s"8'd3 ${op} 8'd2", Nil),
-              (s"8'd3 ${op} 8'sd2", Nil),
-              (s"8'sd3 ${op} 8'd2", Nil),
-              (s"8'sd3 ${op} 8'sd2", Nil),
-              (s"8'd3 ${op} 2", Nil),
-              (s"3 ${op} 8'd2", Nil),
-              (s"3 ${op} 2", Nil),
-              (s"7'd3 ${op} 8'd2",
-               s"Both operands of binary '${op}' must have the same width, but" ::
-                 "left  hand operand is 7 bits wide, and" ::
-                 "right hand operand is 8 bits wide" :: Nil),
-              (s"8'd3 ${op} 7'd2",
-               s"Both operands of binary '${op}' must have the same width, but" ::
-                 "left  hand operand is 8 bits wide, and" ::
-                 "right hand operand is 7 bits wide" :: Nil),
-              (s"4'sd3 ${op} 3'sd2",
-               s"Both operands of binary '${op}' must have the same width, but" ::
-                 "left  hand operand is 4 bits wide, and" ::
-                 "right hand operand is 3 bits wide" :: Nil),
-              (s"3'sd3 ${op} 4'sd2",
-               s"Both operands of binary '${op}' must have the same width, but" ::
-                 "left  hand operand is 3 bits wide, and" ::
-                 "right hand operand is 4 bits wide" :: Nil),
-              (s"bool ${op} 8'd2", s"Left hand operand of '${op}' is of non-packed type" :: Nil),
-              (s"8'd3 ${op} bool", s"Right hand operand of '${op}' is of non-packed type" :: Nil)
+              (s"8'd3 $op 8'd2", Nil),
+              (s"8'd3 $op 8'sd2", Nil),
+              (s"8'sd3 $op 8'd2", Nil),
+              (s"8'sd3 $op 8'sd2", Nil),
+              (s"8'd3 $op 2", Nil),
+              (s"3 $op 8'd2", Nil),
+              (s"3 $op 2", Nil),
+              (
+                s"7'd3 $op 8'd2",
+                s"Both operands of binary '$op' must have the same width, but" ::
+                  "left  hand operand is 7 bits wide, and" ::
+                  "right hand operand is 8 bits wide" :: Nil
+              ),
+              (
+                s"8'd3 $op 7'd2",
+                s"Both operands of binary '$op' must have the same width, but" ::
+                  "left  hand operand is 8 bits wide, and" ::
+                  "right hand operand is 7 bits wide" :: Nil
+              ),
+              (
+                s"4'sd3 $op 3'sd2",
+                s"Both operands of binary '$op' must have the same width, but" ::
+                  "left  hand operand is 4 bits wide, and" ::
+                  "right hand operand is 3 bits wide" :: Nil
+              ),
+              (
+                s"3'sd3 $op 4'sd2",
+                s"Both operands of binary '$op' must have the same width, but" ::
+                  "left  hand operand is 3 bits wide, and" ::
+                  "right hand operand is 4 bits wide" :: Nil
+              ),
+              (s"bool $op 8'd2", s"Left hand operand of '$op' is of non-packed type" :: Nil),
+              (s"8'd3 $op bool", s"Right hand operand of '$op' is of non-packed type" :: Nil)
             )
           } {
             expr in {
@@ -121,7 +129,7 @@ final class TyperCheckExprSpec extends FreeSpec with AlogicTest {
                 s"""
                 |fsm a {
                 |  void main() {
-                |    $$display("", ${expr});
+                |    $$display("", $expr);
                 |    fence;
                 |  }
                 |}"""
@@ -159,7 +167,7 @@ final class TyperCheckExprSpec extends FreeSpec with AlogicTest {
                 s"""
                 |fsm a {
                 |  void main() {
-                |    $$display("", ${expr});
+                |    $$display("", $expr);
                 |    fence;
                 |  }
                 |}"""
@@ -173,10 +181,10 @@ final class TyperCheckExprSpec extends FreeSpec with AlogicTest {
           for (op <- List(">", ">=", "<", "<=", "==", "!=")) {
             for {
               (expr, warn) <- List(
-                (s"8'd3  ${op} 1", Nil),
-                (s"8'sd3 ${op} 1", "Comparison between signed and unsigned operands" :: Nil),
-                (s"3     ${op} 1s", "Comparison between unsigned and signed operands" :: Nil),
-                (s"3s    ${op} 1s", Nil)
+                (s"8'd3  $op 1", Nil),
+                (s"8'sd3 $op 1", "Comparison between signed and unsigned operands" :: Nil),
+                (s"3     $op 1s", "Comparison between unsigned and signed operands" :: Nil),
+                (s"3s    $op 1s", Nil)
               )
             } {
               expr in {
@@ -184,7 +192,7 @@ final class TyperCheckExprSpec extends FreeSpec with AlogicTest {
                   s"""
                   |fsm a {
                   |  void main() {
-                  |    $$display("", ${expr});
+                  |    $$display("", $expr);
                   |    fence;
                   |  }
                   |}"""
@@ -209,22 +217,30 @@ final class TyperCheckExprSpec extends FreeSpec with AlogicTest {
           ("a ? 8'd3 : 2", Nil),
           ("a ? 3 : 8'd1", Nil),
           ("a ? 3 : 2", "Expression of unsized integer type must be compile time constant" :: Nil),
-          ("a ? 7'd3 : 8'd2",
-           s"'then' and 'else' operands of ternary '?:' must have the same width, but" ::
-             "'then' operand is 7 bits wide, and" ::
-             "'else' operand is 8 bits wide" :: Nil),
-          ("a ? 8'd3 : 7'd2",
-           s"'then' and 'else' operands of ternary '?:' must have the same width, but" ::
-             "'then' operand is 8 bits wide, and" ::
-             "'else' operand is 7 bits wide" :: Nil),
-          ("a ? 4'sd3 : 3'sd2",
-           s"'then' and 'else' operands of ternary '?:' must have the same width, but" ::
-             "'then' operand is 4 bits wide, and" ::
-             "'else' operand is 3 bits wide" :: Nil),
-          ("a ? 3'sd3 : 4'sd2",
-           s"'then' and 'else' operands of ternary '?:' must have the same width, but" ::
-             "'then' operand is 3 bits wide, and" ::
-             "'else' operand is 4 bits wide" :: Nil),
+          (
+            "a ? 7'd3 : 8'd2",
+            s"'then' and 'else' operands of ternary '?:' must have the same width, but" ::
+              "'then' operand is 7 bits wide, and" ::
+              "'else' operand is 8 bits wide" :: Nil
+          ),
+          (
+            "a ? 8'd3 : 7'd2",
+            s"'then' and 'else' operands of ternary '?:' must have the same width, but" ::
+              "'then' operand is 8 bits wide, and" ::
+              "'else' operand is 7 bits wide" :: Nil
+          ),
+          (
+            "a ? 4'sd3 : 3'sd2",
+            s"'then' and 'else' operands of ternary '?:' must have the same width, but" ::
+              "'then' operand is 4 bits wide, and" ::
+              "'else' operand is 3 bits wide" :: Nil
+          ),
+          (
+            "a ? 3'sd3 : 4'sd2",
+            s"'then' and 'else' operands of ternary '?:' must have the same width, but" ::
+              "'then' operand is 3 bits wide, and" ::
+              "'else' operand is 4 bits wide" :: Nil
+          ),
           ("a ? c : b", "'then' operand of '?:' is of non-packed type" :: Nil),
           ("a ? b : c", "'else' operand of '?:' is of non-packed type" :: Nil)
         )
@@ -237,7 +253,7 @@ final class TyperCheckExprSpec extends FreeSpec with AlogicTest {
             |  (* unused *) i2[1][2] b;
             |  (* unused *) i2[1][2] c[4];
             |  void main() {
-            |    $$display("", ${expr});
+            |    $$display("", $expr);
             |    fence;
             |  }
             |}"""
@@ -276,7 +292,7 @@ final class TyperCheckExprSpec extends FreeSpec with AlogicTest {
             ("1'd0[1'd0]", Nil),
             ("1'd0[2'd0]", "Index yields 2 bits, 1 bits are expected" :: Nil),
             ("c[2'd3][1'd0][1'd1][2'd2]", Nil),
-            ("8'd0[3'sd0]", "Index must be unsigned" :: Nil),
+            ("8'd0[3'sd0]", "Index must be unsigned" :: Nil)
           )
         } {
           expr in {
@@ -287,7 +303,7 @@ final class TyperCheckExprSpec extends FreeSpec with AlogicTest {
               |  i3[1][2] b;
               |  i3[1][2] c[4];
               |  void main() {
-              |    $$display("", ${expr});
+              |    $$display("", $expr);
               |    fence;
               |  }
               |}"""
@@ -326,7 +342,7 @@ final class TyperCheckExprSpec extends FreeSpec with AlogicTest {
               |fsm f {
               |  in u8 x;
               |  void main() {
-              |    ${expr} y;
+              |    $expr y;
               |    fence;
               |  }
               |}"""
@@ -372,7 +388,7 @@ final class TyperCheckExprSpec extends FreeSpec with AlogicTest {
           ("b[0:0]", Nil),
           ("b[1'd1:2'd0]", "Right index yields 2 bits, 1 bits are expected" :: Nil),
           ("b[2'd1:1'd0]", "Left index yields 2 bits, 1 bits are expected" :: Nil),
-          ("b[1'd0+:1'd1]", "Right index yields 1 bits, 2 bits are expected" :: Nil),
+          ("b[1'd0+:1'd1]", "Right index yields 1 bits, 2 bits are expected" :: Nil)
         )
       } {
         expr in {
@@ -383,7 +399,7 @@ final class TyperCheckExprSpec extends FreeSpec with AlogicTest {
             |  i3[2][2] b;
             |  i3[2][2] c[4];
             |  void main() {
-            |    $$display("", ${expr});
+            |    $$display("", $expr);
             |    fence;
             |  }
             |}"""
@@ -432,7 +448,7 @@ final class TyperCheckExprSpec extends FreeSpec with AlogicTest {
             |  in sync a f;
             |  out sync b g;
             |  void main() {
-            |    $$display("", @bits(${text}));
+            |    $$display("", @bits($text));
             |    fence;
             |  }
             |}"""
@@ -483,7 +499,7 @@ final class TyperCheckExprSpec extends FreeSpec with AlogicTest {
             |  }
             |
             |  void main() {
-            |    ${text};
+            |    $text;
             |    fence;
             |  }
             |}"""
@@ -518,7 +534,7 @@ final class TyperCheckExprSpec extends FreeSpec with AlogicTest {
             |fsm c {
             |  out sync u2 a;
             |  void main() {
-            |    $$display("", ${text});
+            |    $$display("", $text);
             |    fence;
             |  }
             |}"""
@@ -555,7 +571,7 @@ final class TyperCheckExprSpec extends FreeSpec with AlogicTest {
             |fsm c {
             |  (* unused *) out sync u2 a;
             |  void main() {
-            |    $$display("", ${text});
+            |    $$display("", $text);
             |    fence;
             |  }
             |}"""

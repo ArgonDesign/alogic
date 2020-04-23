@@ -32,7 +32,7 @@ import scala.math.BigInt.int2bigInt
 
 trait ExprOps { this: Expr =>
 
-  private final def fix(expr: Expr)(implicit cc: CompilerContext): expr.type = {
+  final private def fix(expr: Expr)(implicit cc: CompilerContext): expr.type = {
     if (hasLoc) {
       expr withLoc loc
     }
@@ -42,11 +42,11 @@ trait ExprOps { this: Expr =>
     expr
   }
 
-  private final def mkBinary(op: String, rhs: Expr)(implicit cc: CompilerContext) = {
+  final private def mkBinary(op: String, rhs: Expr)(implicit cc: CompilerContext) = {
     fix(ExprBinary(this, op, rhs))
   }
 
-  private final def mkSized(v: Int)(implicit cc: CompilerContext) = {
+  final private def mkSized(v: Int)(implicit cc: CompilerContext) = {
     if (tpe.underlying.isNum) {
       fix(ExprNum(tpe.isSigned, v))
     } else {
@@ -54,7 +54,7 @@ trait ExprOps { this: Expr =>
     }
   }
 
-  private final def mkIndex(idx: Int)(implicit cc: CompilerContext) = {
+  final private def mkIndex(idx: Int)(implicit cc: CompilerContext) = {
     fix(ExprInt(false, clog2(tpe.shapeIter.next) max 1, idx))
   }
 
@@ -251,7 +251,7 @@ trait ExprOps { this: Expr =>
     p(this)
   }
 
-  protected final var _simplified: Expr = null
+  final protected var _simplified: Expr = null
 
   // Simplify this expression
   final def simplify(implicit cc: CompilerContext): Expr = {
@@ -264,7 +264,7 @@ trait ExprOps { this: Expr =>
     _simplified
   }
 
-  protected final var _simplifiedLValue: Expr = null
+  final protected var _simplifiedLValue: Expr = null
 
   final def simplifyLValue(implicit cc: CompilerContext): Expr = {
     if (_simplifiedLValue == null) {
@@ -308,6 +308,7 @@ trait ExprOps { this: Expr =>
     case ExprInt(_, _, value) => Some(value)
     case _                    => None
   }
+
 }
 
 trait ExprObjOps { self: Expr.type =>
@@ -327,61 +328,79 @@ trait ExprObjOps { self: Expr.type =>
   final object * {
     def unapply(expr: ExprBinary) = if (expr.op == "*") Some((expr.lhs, expr.rhs)) else None
   }
+
   final object / {
     def unapply(expr: ExprBinary) = if (expr.op == "/") Some((expr.lhs, expr.rhs)) else None
   }
+
   final object % {
     def unapply(expr: ExprBinary) = if (expr.op == "%") Some((expr.lhs, expr.rhs)) else None
   }
+
   final object + {
     def unapply(expr: ExprBinary) = if (expr.op == "+") Some((expr.lhs, expr.rhs)) else None
   }
+
   final object - {
     def unapply(expr: ExprBinary) = if (expr.op == "-") Some((expr.lhs, expr.rhs)) else None
   }
+
   final object << {
     def unapply(expr: ExprBinary) = if (expr.op == "<<") Some((expr.lhs, expr.rhs)) else None
   }
+
   final object >> {
     def unapply(expr: ExprBinary) = if (expr.op == ">>") Some((expr.lhs, expr.rhs)) else None
   }
+
   final object >>> {
     def unapply(expr: ExprBinary) = if (expr.op == ">>>") Some((expr.lhs, expr.rhs)) else None
   }
+
   final object <<< {
     def unapply(expr: ExprBinary) = if (expr.op == "<<<") Some((expr.lhs, expr.rhs)) else None
   }
+
   final object & {
     def unapply(expr: ExprBinary) = if (expr.op == "&") Some((expr.lhs, expr.rhs)) else None
   }
+
   final object ^ {
     def unapply(expr: ExprBinary) = if (expr.op == "^") Some((expr.lhs, expr.rhs)) else None
   }
+
   final object | {
     def unapply(expr: ExprBinary) = if (expr.op == "|") Some((expr.lhs, expr.rhs)) else None
   }
+
   final object && {
     def unapply(expr: ExprBinary) = if (expr.op == "&&") Some((expr.lhs, expr.rhs)) else None
   }
+
   final object || {
     def unapply(expr: ExprBinary) = if (expr.op == "||") Some((expr.lhs, expr.rhs)) else None
   }
 
   // Extractor for instance port references
   final object InstancePortRef {
+
     def unapply(expr: ExprSelect)(implicit cc: CompilerContext): Option[(Symbol, Symbol)] =
       expr partialMatch {
         case ExprSelect(ExprSym(iSymbol), sel, idxs) if iSymbol.kind.isEntity =>
           assert(idxs.isEmpty)
           (iSymbol, iSymbol.kind.asEntity(sel).get)
       }
+
   }
 
   // Extractor for integral values (ExprInt or ExprNum)
   final object Integral {
+
     def unapply(expr: Expr): Option[(Boolean, Option[Int], BigInt)] = expr partialMatch {
       case ExprNum(signed, value)        => (signed, None, value)
       case ExprInt(signed, width, value) => (signed, Some(width), value)
     }
+
   }
+
 }

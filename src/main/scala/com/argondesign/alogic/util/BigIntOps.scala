@@ -34,6 +34,7 @@ object BigIntOps {
     } ensuring { result =>
       !signed || (value.testBit(lsb + width - 1) == (result < 0))
     }
+
   }
 
   implicit final class BigIntObjOpsImpl(val value: BigInt.type) extends AnyVal {
@@ -49,12 +50,15 @@ object BigIntOps {
 // For mixing into classes
 trait BigIntOps {
   import BigIntOps.BigIntOpsImpl
+
   implicit final def value2BigIntOpsImpl(value: BigInt): BigIntOpsImpl = {
     new BigIntOpsImpl(value)
   }
 
   import BigIntOps.BigIntObjOpsImpl
+
   implicit final def value2BigIntObjOpsImpl(value: BigInt.type): BigIntObjOpsImpl = {
     new BigIntObjOpsImpl(value)
   }
+
 }

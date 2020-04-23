@@ -36,13 +36,15 @@ final class SimplifyExprSpec extends FreeSpec with AlogicTest {
   implicit val cc: CompilerContext = new CompilerContext
 
   protected def fold(text: String): Thicket = Thicket {
-    transformWithPass(Namer andThen
-                        Elaborate andThen
-                        TypeCheck andThen
-                        ResolvePolyFunc andThen
-                        AddCasts andThen
-                        Fold,
-                      text).value flatMap {
+    transformWithPass(
+      Namer andThen
+        Elaborate andThen
+        TypeCheck andThen
+        ResolvePolyFunc andThen
+        AddCasts andThen
+        Fold,
+      text
+    ).value flatMap {
       case (decl, defn) =>
         List(decl, defn)
     }
@@ -1155,7 +1157,7 @@ final class SimplifyExprSpec extends FreeSpec with AlogicTest {
              |  out u1 c;
              |  out u8 d;
              |  u8 mem[8];
-             |  fence { ${text}; }
+             |  fence { $text; }
              |}"""
           } getFirst {
             case StmtAssign(_, rhs) => rhs
@@ -1807,11 +1809,9 @@ final class SimplifyExprSpec extends FreeSpec with AlogicTest {
 
     "cast" - {
       for {
-        (exprSrc, kindSrc, pattern, err) <- List[(String,
-                                                  String,
-                                                  PartialFunction[Any, Unit],
-                                                  List[String])](
-          // format: off
+        (exprSrc, kindSrc, pattern, err) <-
+          List[(String, String, PartialFunction[Any, Unit], List[String])](
+            // format: off
           ("32", "u8", { case ExprInt(false, 8, v) if v == 32 => }, Nil),
           ("32s", "i8", { case ExprInt(true, 8, v) if v == 32=> }, Nil),
           ("-1s", "i8", { case ExprInt(true, 8, v) if v == -1 => }, Nil),
@@ -1840,7 +1840,7 @@ final class SimplifyExprSpec extends FreeSpec with AlogicTest {
           ("d",  "i10", { case ExprInt(true, 10, v) if v == -3 => }, Nil),
           ("d",  "int", { case ExprNum(true, v) if v == -3 => }, Nil)
           // format: on
-        )
+          )
       } {
         s"($kindSrc)($exprSrc)" in {
           fold {

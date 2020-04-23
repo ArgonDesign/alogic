@@ -27,8 +27,10 @@ import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
 
 final class LowerVectorsA(
-    globalReplacements: mutable.Map[Symbol, Symbol],
-)(implicit cc: CompilerContext)
+    globalReplacements: mutable.Map[Symbol, Symbol]
+  )(
+    implicit
+    cc: CompilerContext)
     extends StatefulTreeTransformer {
 
   private[this] val tgtTpe = mutable.Stack[Type]()
@@ -204,8 +206,10 @@ final class LowerVectorsA(
 }
 
 final class LowerVectorsB(
-    globalReplacements: mutable.Map[Symbol, Symbol],
-)(implicit cc: CompilerContext)
+    globalReplacements: mutable.Map[Symbol, Symbol]
+  )(
+    implicit
+    cc: CompilerContext)
     extends StatefulTreeTransformer {
 
   override def replace(symbol: Symbol): Boolean = symbol.kind match {
@@ -250,6 +254,7 @@ final class LowerVectorsB(
 }
 
 object LowerVectors {
+
   def apply(): Pass[List[(Decl, Defn)], List[(Decl, Defn)]] = {
     val globalReplacements = TrieMap[Symbol, Symbol]()
 
@@ -265,4 +270,5 @@ object LowerVectors {
         new LowerVectorsB(globalReplacements)
     }
   }
+
 }

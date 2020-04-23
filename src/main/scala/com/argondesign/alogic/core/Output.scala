@@ -23,7 +23,7 @@ import com.argondesign.alogic.ast.Trees.Tree
 
 trait Output { this: CompilerContext =>
 
-  private implicit val implicitThis: CompilerContext = this
+  implicit private val implicitThis: CompilerContext = this
 
   def getOutputWriter(tree: Tree, suffix: String): Writer = {
     settings.outputWriterFactory(Left((tree, suffix)))
@@ -44,4 +44,5 @@ trait Output { this: CompilerContext =>
     writer.write("\n")
     writer.close()
   }
+
 }

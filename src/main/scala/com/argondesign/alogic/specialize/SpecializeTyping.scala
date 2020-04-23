@@ -31,20 +31,22 @@ private[specialize] case class TypingSpecializationComplete(decl: Decl, defn: De
 // format: on
 
 private[specialize] object SpecializeTyping {
+
   def apply(
       desc: Desc
-  )(
-      implicit cc: CompilerContext,
+    )(
+      implicit
+      cc: CompilerContext,
       specializeDesc: SpecializeDesc
-  ): TypingSpecialization = {
+    ): TypingSpecialization = {
     require(desc.ref.idxs.isEmpty)
     require(!desc.isParametrized)
 
     def specializeExpr(
         expr: Expr
-    )(
+      )(
         f: Expr => TypingSpecialization
-    ): TypingSpecialization = {
+      ): TypingSpecialization = {
       SpecializeExpr(expr) match {
         case ExprSpecializationError       => TypingSpecializationError
         case _: ExprSpecializationUnknown  => TypingSpecializationUnknown
@@ -54,9 +56,9 @@ private[specialize] object SpecializeTyping {
 
     def specializeDescs(
         descs: List[Desc]
-    )(
+      )(
         f: (Map[Symbol, Symbol], Iterator[Decl], Iterator[Defn]) => TypingSpecialization
-    ): TypingSpecialization = {
+      ): TypingSpecialization = {
       val unknown = descs exists {
         case _: DescChoice => true
         case _: DescParam  => unreachable
@@ -234,7 +236,8 @@ private[specialize] object SpecializeTyping {
       case DescFunc(ref, variant, ret, args, body) =>
         specializeExpr(ret) { specialRet =>
           specializeDescs(args) { (mapping, extraDecls, extraDefns) =>
-            val decl = DeclFunc(ref.symbol: Symbol, variant, specialRet, extraDecls.toList) withLoc desc.loc
+            val decl =
+              DeclFunc(ref.symbol: Symbol, variant, specialRet, extraDecls.toList) withLoc desc.loc
             val defn = DefnFunc(ref.symbol: Symbol, extraDefns.toList, body) withLoc desc.loc
             TypingSpecializationComplete(decl, Replace(defn, mapping))
           }
@@ -242,4 +245,5 @@ private[specialize] object SpecializeTyping {
       case _: DescChoice => unreachable
     }
   }
+
 }

@@ -40,4 +40,5 @@ private[builtins] class AtSx(implicit cc: CompilerContext)
       AtEx.fold(loc, msb, width, expr)
     }
   }
+
 }

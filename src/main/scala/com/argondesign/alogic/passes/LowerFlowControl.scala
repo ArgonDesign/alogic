@@ -38,7 +38,9 @@ import scala.collection.mutable.ListBuffer
 final class LowerFlowControlA(
     globalReplacements: mutable.Map[Symbol, Symbol],
     portMap: mutable.Map[Symbol, List[Option[Symbol]]]
-)(implicit cc: CompilerContext)
+  )(
+    implicit
+    cc: CompilerContext)
     extends StatefulTreeTransformer {
 
   private val sep = cc.sep
@@ -519,7 +521,9 @@ final class LowerFlowControlA(
 final class LowerFlowControlB(
     globalReplacements: collection.Map[Symbol, Symbol],
     portMaps: collection.Map[Symbol, collection.Map[Symbol, List[Option[Symbol]]]]
-)(implicit cc: CompilerContext)
+  )(
+    implicit
+    cc: CompilerContext)
     extends StatefulTreeTransformer {
 
   //////////////////////////////////////////////////////////////////////////////
@@ -702,4 +706,5 @@ object LowerFlowControl {
         new LowerFlowControlB(globalReplacements, pMaps)
     }
   }
+
 }

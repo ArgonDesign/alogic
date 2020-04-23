@@ -53,4 +53,5 @@ private[builtins] class DollarUnsigned(implicit cc: CompilerContext)
         ExprInt(false, w, v)
       }
   }
+
 }

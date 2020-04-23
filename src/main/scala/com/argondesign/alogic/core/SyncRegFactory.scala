@@ -72,9 +72,10 @@ object SyncRegFactory extends ChainingSyntax {
       loc: Loc,
       kind: TypeFund,
       sep: String
-  )(
-      implicit cc: CompilerContext
-  ): (DeclEntity, DefnEntity) = {
+    )(
+      implicit
+      cc: CompilerContext
+    ): (DeclEntity, DefnEntity) = {
     val fcn = FlowControlTypeNone
     val stw = StorageTypeWire
 
@@ -165,9 +166,10 @@ object SyncRegFactory extends ChainingSyntax {
       name: String,
       loc: Loc,
       kind: TypeFund
-  )(
-      implicit cc: CompilerContext
-  ): (DeclEntity, DefnEntity) = {
+    )(
+      implicit
+      cc: CompilerContext
+    ): (DeclEntity, DefnEntity) = {
     require(kind.isPacked)
     buildSyncReg(name, loc, kind, cc.sep)
   }

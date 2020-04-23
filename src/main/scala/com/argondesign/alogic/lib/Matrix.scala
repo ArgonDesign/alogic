@@ -44,13 +44,13 @@ case class Matrix[T: Numeric](elements: List[List[T]]) {
   lazy val transpose: Matrix[T] = Matrix(elements.transpose)
 
   def +(other: Matrix[T]): Matrix[T] = {
-    require(size == other.size, s"Incompatible matrix sizes ${size} + ${other.size}")
+    require(size == other.size, s"Incompatible matrix sizes $size + ${other.size}")
     val elements = (rows lazyZip other.rows) map { case (a, b) => (a lazyZip b) map { _ + _ } }
     Matrix(elements)
   }
 
   def *(other: Matrix[T]): Matrix[T] = {
-    require(colCount == other.rowCount, s"Incompatible matrix sizes ${size} * ${other.size}")
+    require(colCount == other.rowCount, s"Incompatible matrix sizes $size * ${other.size}")
     val elements = for (row <- rows) yield {
       for (col <- other.cols) yield {
         @tailrec
@@ -121,6 +121,7 @@ case class Matrix[T: Numeric](elements: List[List[T]]) {
     require(this.isSquare)
     printWithHeaders(headers, headers)
   }
+
 }
 
 object Matrix {

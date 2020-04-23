@@ -45,4 +45,5 @@ private[builtins] class AtBits(implicit cc: CompilerContext)
       case kind           => Expr(kind.width)
     }
   }
+
 }

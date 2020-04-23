@@ -105,9 +105,13 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
               ("i3[6]", { case TypeVector(TypeSInt(w1), w2) if w1 == 3 && w2 == 6 => }),
               ("void", { case TypeVoid                                            => }),
               ("t /* typedef */", { case TypeUInt(w) if w == 4                    => }),
-              ("s /* struct */", {
-                case TypeRecord(s, List(b, c)) if s.name == "s" && b.name == "b" && c.name == "c" =>
-              })
+              (
+                "s /* struct */",
+                {
+                  case TypeRecord(s, List(b, c))
+                      if s.name == "s" && b.name == "b" && c.name == "c" =>
+                }
+              )
             )
           } {
             text in {
@@ -848,7 +852,7 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
             ("a.x", { case TypeNone(TypeSInt(w)) if w == 8                                    => }),
             ("b.y", { case TypeNone(TypeRecord(a, List(x))) if a.name == "a" && x.name == "x" => }),
             ("b.y.x", { case TypeNone(TypeSInt(w)) if w == 8                                  => }),
-            ("c.d", { case TypeNone(TypeRecord(d, Nil)) if d.name == "d"                      => }),
+            ("c.d", { case TypeNone(TypeRecord(d, Nil)) if d.name == "d"                      => })
           )
         } {
           text in {
@@ -1020,10 +1024,13 @@ final class TypeAssignerSpec extends FreeSpec with AlogicTest {
         for {
           (text, kind) <- List[(String, PartialFunction[Any, Unit])](
             ("bool[2]", { case TypeType(TypeVector(TypeUInt(w1), w2)) if w1 == 1 && w2 == 2 => }),
-            ("bool[2][3]", {
-              case TypeType(TypeVector(TypeVector(TypeUInt(w1), w2), w3))
-                  if w1 == 1 && w2 == 3 && w3 == 2 =>
-            }),
+            (
+              "bool[2][3]",
+              {
+                case TypeType(TypeVector(TypeVector(TypeUInt(w1), w2), w3))
+                    if w1 == 1 && w2 == 3 && w3 == 2 =>
+              }
+            ),
             ("s.a", { case TypeNone(TypeUInt(w)) if w == 32              => }),
             ("s.t", { case TypeNone(TypeRecord(t, Nil)) if t.name == "t" => }),
             ("x.a", { case TypeType(TypeUInt(w)) if w == 32              => }),

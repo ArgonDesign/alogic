@@ -23,9 +23,10 @@ import com.argondesign.alogic.core.CompilerContext
 final class ReplaceTermRefs(
     bindings: Bindings,
     override val typed: Boolean = true
-)(
-    implicit cc: CompilerContext
-) extends StatelessTreeTransformer {
+  )(
+    implicit
+    cc: CompilerContext)
+    extends StatelessTreeTransformer {
 
   override def skip(tree: Tree): Boolean = tree match {
     case _: ExprType => true

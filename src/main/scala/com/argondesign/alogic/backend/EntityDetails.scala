@@ -22,9 +22,13 @@ import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.enums.EntityVariant
 
-final class EntityDetails(val decl: DeclEntity,
-                          val defn: DefnEntity,
-                          details: => Map[Symbol, EntityDetails])(implicit cc: CompilerContext) {
+final class EntityDetails(
+    val decl: DeclEntity,
+    val defn: DefnEntity,
+    details: => Map[Symbol, EntityDetails]
+  )(
+    implicit
+    cc: CompilerContext) {
 
   assert {
     decl.decls forall {
@@ -84,7 +88,7 @@ final class EntityDetails(val decl: DeclEntity,
     }
 
     // Group by instance, loose instance symbol from values
-    val groups = trip.groupMap { _._1 } { case (_, s, n) => (s, n) }
+    val groups = trip.groupMap(_._1) { case (_, s, n) => (s, n) }
 
     // Sort by groups by instance order
     val sortedInstances = {
@@ -137,7 +141,7 @@ final class EntityDetails(val decl: DeclEntity,
         (iSymbol, pSymbol.name, lhs)
     }
 
-    val grouped = trip.groupMap({ _._1 })({ case (_, s, e) => (s, e) })
+    val grouped = trip.groupMap(_._1)({ case (_, s, e) => (s, e) })
 
     Map from {
       grouped.view mapValues { pairs =>

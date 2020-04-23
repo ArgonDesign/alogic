@@ -26,8 +26,12 @@ import scala.collection.mutable
 object RenameSymbols extends PairsTransformerPass {
   val name = "rename-symbols"
 
-  override protected def process(input: List[(Decl, Defn)])(
-      implicit cc: CompilerContext): List[(Decl, Defn)] = {
+  override protected def process(
+      input: List[(Decl, Defn)]
+    )(
+      implicit
+      cc: CompilerContext
+    ): List[(Decl, Defn)] = {
 
     val topNames = mutable.Set[String]()
 
@@ -111,4 +115,5 @@ object RenameSymbols extends PairsTransformerPass {
 
     input
   }
+
 }

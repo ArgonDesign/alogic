@@ -14,6 +14,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.core
+
 import java.io.File
 import java.io.Writer
 
@@ -61,5 +62,4 @@ case class Settings(
     // Enable LowerAssertions
     assertions: Boolean = true,
     // For debugging only, trace the progress of elaboration
-    traceElaborate: Boolean = false
-)
+    traceElaborate: Boolean = false)

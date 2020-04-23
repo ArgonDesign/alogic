@@ -108,4 +108,5 @@ object GenBuilder extends BaseBuilder[GenContext, Gen] {
 
     GenVisitor(ctx)
   }
+
 }

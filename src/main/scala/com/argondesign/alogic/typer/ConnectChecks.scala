@@ -34,8 +34,13 @@ object ConnectChecks {
     case ArgN(_, expr) => expr
   }
 
-  private def flowControlType(expr: Expr, side: String)(
-      implicit cc: CompilerContext): Option[FlowControlType] = {
+  private def flowControlType(
+      expr: Expr,
+      side: String
+    )(
+      implicit
+      cc: CompilerContext
+    ): Option[FlowControlType] = {
 
     val simpleExpr = expr match {
       case _: ExprSym            => true
@@ -81,7 +86,8 @@ object ConnectChecks {
         case (fct, e) if fct != FlowControlTypeNone =>
           cc.error(
             e,
-            s"Port with flow control found in non-trivial expression on $side hand side of '->'")
+            s"Port with flow control found in non-trivial expression on $side hand side of '->'"
+          )
       } isEmpty
 
       if (noFlowControl) Some(flowControlTypes.head._1) else None
@@ -98,9 +104,11 @@ object ConnectChecks {
   private def lhsIsLegal(lhs: Expr)(implicit cc: CompilerContext): Boolean = {
     val lhsValidExpr = lhs.isValidConnectLhs tap { b =>
       if (!b) {
-        cc.error(lhs,
-                 "Invalid port reference on left hand side of '->'",
-                 "Only expressions which are purely wiring are permitted")
+        cc.error(
+          lhs,
+          "Invalid port reference on left hand side of '->'",
+          "Only expressions which are purely wiring are permitted"
+        )
       }
     }
 
@@ -138,9 +146,11 @@ object ConnectChecks {
   private def rhsIsLegal(rhs: Expr)(implicit cc: CompilerContext): Boolean = {
     val rhsValidExpr = rhs.isValidConnectRhs tap { b =>
       if (!b) {
-        cc.error(rhs,
-                 "Invalid port reference on right hand side of '->'",
-                 "Only expressions which are purely wiring are permitted")
+        cc.error(
+          rhs,
+          "Invalid port reference on right hand side of '->'",
+          "Only expressions which are purely wiring are permitted"
+        )
       }
     }
 
@@ -155,8 +165,10 @@ object ConnectChecks {
         symbol.kind.isOut && !symbol.kind.isIn
       case InstancePortRef(iSymbol, symbol) =>
         if (symbol.kind.isOut) {
-          cc.error(expr,
-                   s"Right hand side of '->' contains an output from instance '${iSymbol.name}'")
+          cc.error(
+            expr,
+            s"Right hand side of '->' contains an output from instance '${iSymbol.name}'"
+          )
         }
         !symbol.kind.isOut
       case ExprSelect(expr, _, _)   => portDirectionsValid(expr)
@@ -172,7 +184,10 @@ object ConnectChecks {
       loc: Loc,
       lhs: Expr,
       rhs: Expr
-  )(implicit cc: CompilerContext): Boolean = {
+    )(
+      implicit
+      cc: CompilerContext
+    ): Boolean = {
     (lhs.tpe, rhs.tpe) match {
       case (_: TypeEntity, _: TypeEntity) => true
       case (_: TypeEntity, _) =>
@@ -199,7 +214,10 @@ object ConnectChecks {
   private def compatibleFlowControl(
       lhs: Expr,
       rhs: Expr
-  )(implicit cc: CompilerContext): Boolean = {
+    )(
+      implicit
+      cc: CompilerContext
+    ): Boolean = {
 
     val fctlo = flowControlType(lhs, "left")
     val fctro = flowControlType(rhs, "right")
@@ -223,7 +241,10 @@ object ConnectChecks {
       loc: Loc,
       lhs: Expr,
       rhss: List[Expr]
-  )(implicit cc: CompilerContext): Boolean = {
+    )(
+      implicit
+      cc: CompilerContext
+    ): Boolean = {
     rhss.lengthCompare(1) == 0 || {
       flowControlType(lhs, "left") match {
         case Some(FlowControlTypeNone)  => true
@@ -298,4 +319,5 @@ object ConnectChecks {
     // Everything needs to be OK
     lhsOk && rhssOk && typeOk && flowControlOk && sinkCountOk && storageOk && initOk
   }
+
 }

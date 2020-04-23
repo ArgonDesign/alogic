@@ -24,6 +24,7 @@ import scala.annotation.tailrec
 import scala.language.implicitConversions
 
 class Bindings(val underlying: Map[Symbol, Expr]) extends AnyVal {
+
   // Expand bindings by replacing references to symbols within the bindings
   // with their values. i.e.: If any value in the bindings map references a
   // key in the same bindings map, replace that reference with the value for

@@ -23,6 +23,7 @@ import org.antlr.v4.runtime.RecognitionException
 import org.antlr.v4.runtime.Recognizer
 
 class ParseErrorListener(implicit cc: CompilerContext) extends BaseErrorListener {
+
   override def syntaxError(
       recogniser: Recognizer[_, _],
       offendingSymbol: Object,
@@ -30,7 +31,7 @@ class ParseErrorListener(implicit cc: CompilerContext) extends BaseErrorListener
       charPositionInLine: Int,
       defaultMessage: String,
       e: RecognitionException
-  ): Unit = {
+    ): Unit = {
     val source = recogniser.asInstanceOf[SourceMixin].source
 
     val offset = source.offsetFor(line) + charPositionInLine
@@ -39,4 +40,5 @@ class ParseErrorListener(implicit cc: CompilerContext) extends BaseErrorListener
 
     cc.error(loc, s"Syntax error: $defaultMessage")
   }
+
 }

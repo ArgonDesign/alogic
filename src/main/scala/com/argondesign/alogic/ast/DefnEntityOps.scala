@@ -19,11 +19,11 @@ import com.argondesign.alogic.core.Symbols.Symbol
 
 trait DefnEntityOps { this: DefnEntity =>
 
-  override final lazy val descs: List[Desc] = body collect { case EntDesc(desc) => desc }
+  final override lazy val descs: List[Desc] = body collect { case EntDesc(desc) => desc }
 
   final lazy val decls: List[Decl] = body collect { case EntDecl(decl) => decl }
 
-  override final lazy val defns: List[Defn] = body collect { case EntDefn(defn) => defn }
+  final override lazy val defns: List[Defn] = body collect { case EntDefn(defn) => defn }
 
   final lazy val entities: List[DefnEntity] = defns collect {
     case defn: DefnEntity => defn

@@ -21,4 +21,5 @@ class SequenceNumbers {
   def next: Int = synchronized {
     n += 1; n
   }
+
 }

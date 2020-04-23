@@ -49,9 +49,10 @@ object SyncSliceFactory extends ChainingSyntax {
       ipvRef: ExprSym,
       oprRef: ExprSym,
       vRef: ExprSym
-  )(
-      implicit cc: CompilerContext
-  ): List[Stmt] = ss match {
+    )(
+      implicit
+      cc: CompilerContext
+    ): List[Stmt] = ss match {
     case StorageSliceBub =>
       // valid = ~valid & ip_valid | valid & ~op_ready;
       List(StmtAssign(vRef, ~vRef & ipvRef | vRef & ~oprRef))
@@ -72,9 +73,10 @@ object SyncSliceFactory extends ChainingSyntax {
       oprRef: ExprSym,
       sRef: ExprSym,
       vRef: ExprSym
-  )(
-      implicit cc: CompilerContext
-  ): List[EntConnect] = ss match {
+    )(
+      implicit
+      cc: CompilerContext
+    ): List[EntConnect] = ss match {
     case StorageSliceBub =>
       // valid -> op_valid;
       // ~valid -> ip_ready;
@@ -112,9 +114,10 @@ object SyncSliceFactory extends ChainingSyntax {
       oprRef: ExprSym,
       pRef: ExprSym,
       vRef: ExprSym
-  )(
-      implicit cc: CompilerContext
-  ): List[Stmt] = ss match {
+    )(
+      implicit
+      cc: CompilerContext
+    ): List[Stmt] = ss match {
     case StorageSliceBub =>
       // if (ip_valid & ~valid) {
       //   payload = ip;
@@ -168,9 +171,10 @@ object SyncSliceFactory extends ChainingSyntax {
       sRef: ExprSym,
       pRef: ExprSym,
       vRef: ExprSym
-  )(
-      implicit cc: CompilerContext
-  ): List[EntConnect] = ss match {
+    )(
+      implicit
+      cc: CompilerContext
+    ): List[EntConnect] = ss match {
     case StorageSliceBub =>
       // payload -> op ;
       // valid -> op_valid;
@@ -240,9 +244,10 @@ object SyncSliceFactory extends ChainingSyntax {
       loc: Loc,
       kind: TypeFund,
       sep: String
-  )(
-      implicit cc: CompilerContext
-  ): (DeclEntity, DefnEntity) = {
+    )(
+      implicit
+      cc: CompilerContext
+    ): (DeclEntity, DefnEntity) = {
     val fcn = FlowControlTypeNone
     val stw = StorageTypeWire
 
@@ -344,9 +349,10 @@ object SyncSliceFactory extends ChainingSyntax {
       loc: Loc,
       kind: TypeFund,
       sep: String
-  )(
-      implicit cc: CompilerContext
-  ): (DeclEntity, DefnEntity) = {
+    )(
+      implicit
+      cc: CompilerContext
+    ): (DeclEntity, DefnEntity) = {
     val nSlices = slices.length
     require(nSlices >= 2)
 
@@ -476,9 +482,10 @@ object SyncSliceFactory extends ChainingSyntax {
       prefix: String,
       loc: Loc,
       kind: TypeFund
-  )(
-      implicit cc: CompilerContext
-  ): List[(DeclEntity, DefnEntity)] = {
+    )(
+      implicit
+      cc: CompilerContext
+    ): List[(DeclEntity, DefnEntity)] = {
     require(slices.nonEmpty)
     require(kind.isPacked)
 

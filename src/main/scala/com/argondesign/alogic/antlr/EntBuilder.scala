@@ -22,6 +22,7 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FuncVariant
 
 object EntBuilder extends BaseBuilder[EntContext, Ent] {
+
   def apply(ctx: EntContext)(implicit cc: CompilerContext): Ent = {
     object Visitor extends AlogicScalarVisitor[Ent] {
       override def visitEntDesc(ctx: EntDescContext): Ent = {
@@ -51,4 +52,5 @@ object EntBuilder extends BaseBuilder[EntContext, Ent] {
 
     Visitor(ctx)
   }
+
 }

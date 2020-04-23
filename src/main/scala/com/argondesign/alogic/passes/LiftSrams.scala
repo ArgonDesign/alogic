@@ -35,7 +35,9 @@ import scala.collection.mutable
 final class LiftSramsFrom(
     replacements: mutable.Map[Symbol, Symbol],
     liftFromMap: Map[Symbol, List[Symbol]]
-)(implicit cc: CompilerContext)
+  )(
+    implicit
+    cc: CompilerContext)
     extends StatefulTreeTransformer {
 
   private val fcn = FlowControlTypeNone
@@ -120,7 +122,9 @@ final class LiftSramsFrom(
 final class LiftSramsTo(
     replacements: collection.Map[Symbol, Symbol],
     liftFromMap: Map[Symbol, List[Symbol]]
-)(implicit cc: CompilerContext)
+  )(
+    implicit
+    cc: CompilerContext)
     extends StatefulTreeTransformer {
 
   private def portRef(iSymbol: Symbol, sel: String) = ExprSelect(ExprSym(iSymbol), sel, Nil)
@@ -187,6 +191,7 @@ final class LiftSramsTo(
     //
     case _ => tree
   }
+
 }
 
 object LiftSrams extends PairsTransformerPass {
@@ -194,7 +199,10 @@ object LiftSrams extends PairsTransformerPass {
 
   def process(
       pairs: List[(Decl, Defn)]
-  )(implicit cc: CompilerContext): List[(Decl, Defn)] = {
+    )(
+      implicit
+      cc: CompilerContext
+    ): List[(Decl, Defn)] = {
 
     // Lift entities by 1 level in each iteration
     @tailrec
@@ -243,9 +251,12 @@ object LiftSrams extends PairsTransformerPass {
         }
 
         // Go again, with a remapped the liftFromSet
-        loop(liftedTo, liftFromSet map { symbol =>
-          replacements.getOrElse(symbol, symbol)
-        })
+        loop(
+          liftedTo,
+          liftFromSet map { symbol =>
+            replacements.getOrElse(symbol, symbol)
+          }
+        )
       }
     }
 
@@ -273,8 +284,12 @@ object LiftSrams extends PairsTransformerPass {
       expand(seedSet, Set())
     }
 
-    loop(eSymbols map { s =>
-      (s.decl, s.defn)
-    }, liftFromSet)
+    loop(
+      eSymbols map { s =>
+        (s.decl, s.defn)
+      },
+      liftFromSet
+    )
   }
+
 }

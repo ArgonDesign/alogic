@@ -95,7 +95,11 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
         }
 
       override def visitStmtUpdate(ctx: StmtUpdateContext): Stmt =
-        StmtUpdate(ExprBuilder(ctx.expr(0)), ctx.ASSIGNOP.text.init, ExprBuilder(ctx.expr(1))) withLoc {
+        StmtUpdate(
+          ExprBuilder(ctx.expr(0)),
+          ctx.ASSIGNOP.text.init,
+          ExprBuilder(ctx.expr(1))
+        ) withLoc {
           ctx.loc.copy(point = ctx.ASSIGNOP.getStartIndex)
         }
 
@@ -135,7 +139,11 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
         }
 
       override def visitLoopStepUpdate(ctx: LoopStepUpdateContext): Stmt =
-        StmtUpdate(ExprBuilder(ctx.expr(0)), ctx.ASSIGNOP.text.init, ExprBuilder(ctx.expr(1))) withLoc {
+        StmtUpdate(
+          ExprBuilder(ctx.expr(0)),
+          ctx.ASSIGNOP.text.init,
+          ExprBuilder(ctx.expr(1))
+        ) withLoc {
           ctx.loc.copy(point = ctx.ASSIGNOP.getStartIndex)
         }
 
@@ -145,4 +153,5 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
 
     Visitor(ctx)
   }
+
 }

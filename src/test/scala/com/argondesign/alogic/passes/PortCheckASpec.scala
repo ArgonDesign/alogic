@@ -27,11 +27,13 @@ final class PortCheckASpec extends FreeSpec with AlogicTest {
   implicit val cc: CompilerContext = new CompilerContext
 
   protected def portCheckA(text: String): Unit =
-    transformWithPass(Namer andThen
-                        Elaborate andThen
-                        TypeCheck andThen
-                        PortCheckA,
-                      text)
+    transformWithPass(
+      Namer andThen
+        Elaborate andThen
+        TypeCheck andThen
+        PortCheckA,
+      text
+    )
 
   "PortCheckA should" - {
 

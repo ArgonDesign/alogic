@@ -167,9 +167,9 @@ final class UnusedCheck(implicit cc: CompilerContext) extends StatefulTreeTransf
 
     // When we have processed the root node, check references
     if (count == 0) {
-      val allDeclared = declared.values.foldLeft(Set.empty[Symbol]) { _ union _ }
+      val allDeclared = declared.values.foldLeft(Set.empty[Symbol])(_ union _)
 
-      val allUsed = used.values.foldLeft(Set.empty[Symbol]) { _ union _ }
+      val allUsed = used.values.foldLeft(Set.empty[Symbol])(_ union _)
 
       for {
         symbol <- allDeclared diff allUsed
@@ -210,6 +210,7 @@ final class UnusedCheck(implicit cc: CompilerContext) extends StatefulTreeTransf
     assert(symbolStack.isEmpty)
     assert(!inVerbatimEntity)
   }
+
 }
 
 object UnusedCheck extends PreElaboratePass {

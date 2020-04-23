@@ -57,7 +57,7 @@ trait Pass[T, R] { self =>
   // Run  the pass
   protected def run(input: T, passNumber: Int)(implicit cc: CompilerContext): Option[R] = {
     // Process the inputs
-    val output = cc.timeit(f"pass $passNumber%02d $name") { process(input) }
+    val output = cc.timeit(f"pass $passNumber%02d $name")(process(input))
     // Dump result if requested
     if (cc.settings.dumpTrees) dump(output, f"$passNumber%02d.$name")
     // Yield output, if there were no errors
@@ -78,7 +78,9 @@ trait Pass[T, R] { self =>
       // Apply the self pass and then the tail pass
       self.run(input, passNumber) flatMap { next.run(_, passNumber + self.steps) }
     }
+
   }
+
 }
 
 // Passes before Elaborate work on a list of Root trees, together with a list
@@ -88,16 +90,24 @@ trait PreElaboratePass extends Pass[(List[Root], List[Expr]), (List[Root], List[
   // Factory method to create a new instance of the tree transformer
   protected def create(implicit cc: CompilerContext): TreeTransformer
 
-  protected def process(input: (List[Root], List[Expr]))(
-      implicit cc: CompilerContext): (List[Root], List[Expr]) =
+  protected def process(
+      input: (List[Root], List[Expr])
+    )(
+      implicit
+      cc: CompilerContext
+    ): (List[Root], List[Expr]) =
     // Apply pass to all Roots, pass through top level specs
     (input._1 map { _ rewrite create }, input._2)
 
   final protected def dump(
       result: (List[Root], List[Expr]),
       tag: String
-  )(implicit cc: CompilerContext): Unit =
+    )(
+      implicit
+      cc: CompilerContext
+    ): Unit =
     result._1 foreach { cc.dump(_, "." + tag) }
+
 }
 
 trait PairsTransformerPass extends Pass[List[(Decl, Defn)], List[(Decl, Defn)]] {
@@ -105,7 +115,10 @@ trait PairsTransformerPass extends Pass[List[(Decl, Defn)], List[(Decl, Defn)]] 
   final protected def dump(
       result: List[(Decl, Defn)],
       tag: String
-  )(implicit cc: CompilerContext): Unit = {
+    )(
+      implicit
+      cc: CompilerContext
+    ): Unit = {
     result foreach { case (decl, defn) => cc.dump(decl, defn, "." + tag) }
   }
 
@@ -131,13 +144,20 @@ trait PairTransformerPass extends BasePairTransformerPass {
   protected def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree)
 
   // Called after all pairs have been transformed with the output pairs
-  protected def finish(pairs: List[(Decl, Defn)])(
-      implicit cc: CompilerContext): List[(Decl, Defn)] = pairs
+  protected def finish(
+      pairs: List[(Decl, Defn)]
+    )(
+      implicit
+      cc: CompilerContext
+    ): List[(Decl, Defn)] = pairs
 
   // Implementation of the pass
   final protected def process(
       pairs: List[(Decl, Defn)]
-  )(implicit cc: CompilerContext): List[(Decl, Defn)] = {
+    )(
+      implicit
+      cc: CompilerContext
+    ): List[(Decl, Defn)] = {
     // Call start
     start(pairs)
     // Apply transform to all pairs, flatten Thicket/Stump
@@ -177,6 +197,7 @@ trait PairTransformerPass extends BasePairTransformerPass {
         assert(declSymbols == defnSymbols)
     }
   }
+
 }
 
 abstract class EntityTransformerPass(declFirst: Boolean) extends PairTransformerPass {
@@ -185,7 +206,10 @@ abstract class EntityTransformerPass(declFirst: Boolean) extends PairTransformer
   override protected def skip(
       decl: Decl,
       defn: Defn
-  )(implicit cc: CompilerContext): Boolean = decl match {
+    )(
+      implicit
+      cc: CompilerContext
+    ): Boolean = decl match {
     case _: DeclEntity => false
     case _             => true
   }
@@ -195,7 +219,10 @@ abstract class EntityTransformerPass(declFirst: Boolean) extends PairTransformer
   final protected def transform(
       decl: Decl,
       defn: Defn
-  )(implicit cc: CompilerContext): (Tree, Tree) = {
+    )(
+      implicit
+      cc: CompilerContext
+    ): (Tree, Tree) = {
     require(decl.symbol eq defn.symbol)
     val transformer = create(decl.symbol)
     @tailrec
@@ -206,4 +233,5 @@ abstract class EntityTransformerPass(declFirst: Boolean) extends PairTransformer
     }
     loop(decl, defn, List(declFirst, !declFirst))
   }
+
 }

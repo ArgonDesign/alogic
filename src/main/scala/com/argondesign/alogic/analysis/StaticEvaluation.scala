@@ -102,7 +102,10 @@ object StaticEvaluation {
   private def inferTransitive(
       curr: Bindings,
       inferred: Bindings
-  )(implicit cc: CompilerContext): Bindings = {
+    )(
+      implicit
+      cc: CompilerContext
+    ): Bindings = {
     if (inferred.isEmpty) {
       curr
     } else {
@@ -126,14 +129,20 @@ object StaticEvaluation {
   private def inferTrueTransitive(
       curr: Bindings,
       expr: Expr
-  )(implicit cc: CompilerContext): Bindings = {
+    )(
+      implicit
+      cc: CompilerContext
+    ): Bindings = {
     inferTransitive(curr, inferTrue(expr))
   }
 
   private def inferFalseTransitive(
       curr: Bindings,
       expr: Expr
-  )(implicit cc: CompilerContext): Bindings = {
+    )(
+      implicit
+      cc: CompilerContext
+    ): Bindings = {
     inferTransitive(curr, inferFalse(expr))
   }
 
@@ -161,8 +170,14 @@ object StaticEvaluation {
     p(expr)
   }
 
-  private def overwrite(curr: Bindings, symbol: Symbol, expr: Expr)(
-      implicit cc: CompilerContext): Option[Bindings] = {
+  private def overwrite(
+      curr: Bindings,
+      symbol: Symbol,
+      expr: Expr
+    )(
+      implicit
+      cc: CompilerContext
+    ): Option[Bindings] = {
     // Add the new binding for the symbol, but first substitute the new
     // expression using the current binding of symbol to remove self references
     val selfBinding = Bindings(curr get symbol map { symbol -> _ })
@@ -182,8 +197,13 @@ object StaticEvaluation {
     curr filterNot { case (k, v) => written(k) || uses(v, written) }
   }
 
-  def apply(stmt: Stmt, initialBindings: Bindings = Bindings.empty)(
-      implicit cc: CompilerContext): Option[(Map[Int, Bindings], Bindings)] = {
+  def apply(
+      stmt: Stmt,
+      initialBindings: Bindings = Bindings.empty
+    )(
+      implicit
+      cc: CompilerContext
+    ): Option[(Map[Int, Bindings], Bindings)] = {
     val res = mutable.Map[Int, Bindings]()
 
     def analyse(curr: Bindings, stmt: Stmt): Option[Bindings] = {

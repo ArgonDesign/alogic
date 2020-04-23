@@ -41,10 +41,9 @@ class Parse(
     val moduleSeachDirs: List[File],
     val includeSeachDirs: List[File],
     val initialDefines: Map[String, String]
-)(
+  )(
     implicit
-    cc: CompilerContext
-) {
+    cc: CompilerContext) {
 
   private[this] val rootDescs = mutable.ListBuffer[Desc]()
 
@@ -98,7 +97,7 @@ class Parse(
     // future already
     lazy val future = {
       // Fetch source
-      val sourceFuture = Future { locateIt(name, locOpt) }
+      val sourceFuture = Future(locateIt(name, locOpt))
 
       // Pre-process it
       val preprocessedFuture = sourceFuture map preprocessIt
@@ -198,15 +197,18 @@ class Parse(
     // Return the trees and global decls
     (treeSet.toList, rootDescs.toList)
   }
+
 }
 
 object Parse extends Pass[List[String], (List[Root], List[Expr])] {
   val name = "parser"
 
   def process(topLevels: List[String])(implicit cc: CompilerContext): (List[Root], List[Expr]) = {
-    val parse = new Parse(cc.settings.moduleSearchDirs,
-                          cc.settings.includeSearchDirs,
-                          cc.settings.initialDefines)
+    val parse = new Parse(
+      cc.settings.moduleSearchDirs,
+      cc.settings.includeSearchDirs,
+      cc.settings.initialDefines
+    )
 
     // Parse the top level specifications
     var badArg = false

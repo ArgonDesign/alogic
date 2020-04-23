@@ -37,14 +37,19 @@ final class SimplifyCat(implicit cc: CompilerContext) extends StatelessTreeTrans
       loc: Loc,
       as: List[Expr],
       bs: List[Expr]
-  ): List[(List[Expr], List[Expr])] = {
+    ): List[(List[Expr], List[Expr])] = {
     def width(es: List[Expr]) = (es map { _.tpe.width }).sum
 
     assert(width(as) == width(bs))
     val pairs = ListBuffer[(List[Expr], List[Expr])]()
 
     @tailrec
-    def loop(suba: List[Expr], subb: List[Expr], as: List[Expr], bs: List[Expr]): Unit = {
+    def loop(
+        suba: List[Expr],
+        subb: List[Expr],
+        as: List[Expr],
+        bs: List[Expr]
+      ): Unit = {
       val aw = width(suba)
       val bw = width(subb)
       if (aw == bw) {

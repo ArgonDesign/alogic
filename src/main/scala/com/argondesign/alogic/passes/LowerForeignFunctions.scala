@@ -33,7 +33,9 @@ import scala.collection.mutable.ListBuffer
 
 final class LowerForeignFunctions(
     encountered: mutable.Map[String, (TypeXenoFunc, List[String])]
-)(implicit cc: CompilerContext)
+  )(
+    implicit
+    cc: CompilerContext)
     extends StatefulTreeTransformer {
 
   // TODO: change signatures to remove Record/Vector
@@ -155,8 +157,12 @@ object LowerForeignFunctions {
       override def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
         new LowerForeignFunctions(encountered)
 
-      override def finish(pairs: List[(Decl, Defn)])(
-          implicit cc: CompilerContext): List[(Decl, Defn)] = {
+      override def finish(
+          pairs: List[(Decl, Defn)]
+        )(
+          implicit
+          cc: CompilerContext
+        ): List[(Decl, Defn)] = {
 
         def desc(kind: Type) = Iterator(
           "width" -> kind.width.toInt,
@@ -187,4 +193,5 @@ object LowerForeignFunctions {
       }
     }
   }
+
 }

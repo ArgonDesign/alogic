@@ -29,10 +29,12 @@ final class UnaryTickSpec extends FreeSpec with AlogicTest {
   implicit val cc: CompilerContext = new CompilerContext
 
   protected def replaceUnaryTicks(text: String): Option[Thicket] = {
-    transformWithPass(Namer andThen
-                        Elaborate andThen
-                        TypeCheck,
-                      text) map { pairs =>
+    transformWithPass(
+      Namer andThen
+        Elaborate andThen
+        TypeCheck,
+      text
+    ) map { pairs =>
       Thicket {
         pairs flatMap {
           case (decl, defn) => List(decl, defn)
@@ -44,13 +46,15 @@ final class UnaryTickSpec extends FreeSpec with AlogicTest {
   def checkUnpacked(text: String): Unit = {
     replaceUnaryTicks(text)
     cc.messages.loneElement should beThe[Error](
-      """Operand of unary ' operator is of non-packed type""")
+      """Operand of unary ' operator is of non-packed type"""
+    )
   }
 
   def checkNarrowing(text: String): Unit = {
     replaceUnaryTicks(text)
     cc.messages.loneElement should beThe[Error](
-      """Unary ' causes narrowing of width from \d+ to \d+""")
+      """Unary ' causes narrowing of width from \d+ to \d+"""
+    )
   }
 
   def checkInvalidContext(text: String): Unit = {

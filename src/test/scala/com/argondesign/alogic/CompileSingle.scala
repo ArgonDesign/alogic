@@ -34,7 +34,7 @@ final class CompileSingle extends CompilationTest {
       val checkFile = matchData.group(0)
 
       // Define test
-      defineTest(s"${base.tail}/${top}.alogic", testPath, top, checkFile)
+      defineTest(s"${base.tail}/$top.alogic", testPath, top, checkFile)
     }
   }
 }

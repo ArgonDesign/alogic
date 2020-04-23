@@ -87,6 +87,7 @@ final class LowerStalls(implicit cc: CompilerContext) extends StatefulTreeTransf
   override def finalCheck(tree: Tree): Unit = tree visit {
     case stmt: StmtStall => cc.ice(stmt, "StmtStall remains")
   }
+
 }
 
 object LowerStalls extends EntityTransformerPass(declFirst = true) {

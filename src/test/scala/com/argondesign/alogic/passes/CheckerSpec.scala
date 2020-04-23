@@ -42,7 +42,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
             val tree = s"""|network a {
                            |  new fsm b {
                            |    void main() {
-                           |      ${word};
+                           |      $word;
                            |    }
                            |  }
                            |}""".stripMargin.asTree[Desc]
@@ -59,7 +59,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
           word in {
             val tree = s"""|fsm b {
                            |  void main() {
-                           |    ${word};
+                           |    $word;
                            |  }
                            |}""".stripMargin.asTree[Desc]
 
@@ -196,7 +196,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
           ("int[2][3] a[1];", "int"),
           ("uint[2][3] a[1];", "uint"),
           ("int a;", "int"),
-          ("uint a;", "uint"),
+          ("uint a;", "uint")
         )
       } {
         src in {
@@ -207,7 +207,8 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
             cc.messages shouldBe empty
           } else {
             cc.messages.loneElement should beThe[Error](
-              s"Only compile time constant scalars can be declared with type '$err'")
+              s"Only compile time constant scalars can be declared with type '$err'"
+            )
           }
         }
       }
@@ -300,8 +301,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
               case DescEntity(_, _, Nil) =>
             }
 
-            cc.messages.loneElement should beThe[Error](
-              s"'${variant}' cannot contain instantiations")
+            cc.messages.loneElement should beThe[Error](s"'$variant' cannot contain instantiations")
             cc.messages(0).loc.line shouldBe 2
           }
         }
@@ -318,7 +318,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
               case DescEntity(_, _, Nil) =>
             }
 
-            cc.messages.loneElement should beThe[Error](s"'${variant}' cannot contain connections")
+            cc.messages.loneElement should beThe[Error](s"'$variant' cannot contain connections")
             cc.messages(0).loc.line shouldBe 2
           }
         }
@@ -336,7 +336,8 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
             }
 
             cc.messages.loneElement should beThe[Error](
-              s"'${variant}' cannot contain nested entities")
+              s"'$variant' cannot contain nested entities"
+            )
             cc.messages(0).loc.line shouldBe 2
           }
         }
@@ -354,7 +355,8 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
             }
 
             cc.messages.loneElement should beThe[Error](
-              s"'${variant}' cannot contain singleton entities")
+              s"'$variant' cannot contain singleton entities"
+            )
             cc.messages.loneElement.loc.line shouldBe 2
           }
         }
@@ -372,7 +374,8 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
             }
 
             cc.messages.loneElement should beThe[Error](
-              s"'${variant}' cannot contain function definitions")
+              s"'$variant' cannot contain function definitions"
+            )
             cc.messages(0).loc.line shouldBe 2
           }
         }
@@ -389,7 +392,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
               case DescEntity(_, _, Nil) =>
             }
 
-            cc.messages.loneElement should beThe[Error](s"'${variant}' cannot contain fence blocks")
+            cc.messages.loneElement should beThe[Error](s"'$variant' cannot contain fence blocks")
             cc.messages(0).loc.line shouldBe 2
           }
         }
@@ -403,14 +406,14 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
         } {
           decl in {
             val tree = s"""|fsm a {
-                           |  ${decl};
+                           |  $decl;
                            |}""".stripMargin.asTree[Desc]
 
             tree rewrite checker should matchPattern {
               case DescEntity(_, _, Nil) =>
             }
 
-            cc.messages.loneElement should beThe[Error](s"'fsm' cannot contain ${msg} declarations")
+            cc.messages.loneElement should beThe[Error](s"'fsm' cannot contain $msg declarations")
             cc.messages(0).loc.line shouldBe 2
           }
 
@@ -434,13 +437,14 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
                            |}
                            |
                            |network a {
-                           |  ${decl};
+                           |  $decl;
                            |}""".stripMargin.asTree[Root]
 
             tree rewrite checker
 
             cc.messages.loneElement should beThe[Error](
-              s"'network' cannot contain ${msg} declarations")
+              s"'network' cannot contain $msg declarations"
+            )
             cc.messages(0).loc.line shouldBe 6
           }
 
@@ -454,7 +458,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
             ("i8 a[2]", "distributed memory"),
             ("pipeline i8 a", "pipeline variable"),
             ("sram s_t a[2]", "registered SRAM"),
-            ("sram i8 a[2]", "registered SRAM"),
+            ("sram i8 a[2]", "registered SRAM")
           )
         } {
           decl in {
@@ -463,13 +467,14 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
                            |}
                            |
                            |verbatim entity a {
-                           |  ${decl};
+                           |  $decl;
                            |}""".stripMargin.asTree[Root]
 
             tree rewrite checker
 
             cc.messages.loneElement should beThe[Error](
-              s"'verbatim entity' cannot contain ${msg} declarations")
+              s"'verbatim entity' cannot contain $msg declarations"
+            )
             cc.messages(0).loc.line shouldBe 6
           }
         }
@@ -487,7 +492,8 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
             }
 
             cc.messages.loneElement should beThe[Error](
-              s"'${variant}' cannot contain non-static assertions")
+              s"'$variant' cannot contain non-static assertions"
+            )
             cc.messages(0).loc.line shouldBe 2
           }
         }
@@ -510,7 +516,8 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
             }
 
             cc.messages.loneElement should beThe[Error](
-              s"Singleton entity cannot have parameters. Use a 'const' declaration instead.")
+              s"Singleton entity cannot have parameters. Use a 'const' declaration instead."
+            )
             cc.messages.loneElement.loc.line shouldBe 3
           }
         }
@@ -532,7 +539,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
             ("entity", "new fsm a {}"),
             ("entity", "new network a {}"),
             ("entity", "new verbatim entity a {}"),
-            ("instance", "foo = new x;"),
+            ("instance", "foo = new x;")
           )
         } {
           decl in {
@@ -543,7 +550,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
             }
 
             cc.messages.loneElement should beThe[Error] {
-              s"'struct' cannot contain ${hint} declarations"
+              s"'struct' cannot contain $hint declarations"
             }
             cc.messages(0).loc.line shouldBe 2
           }
@@ -577,18 +584,20 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
             "simple invalid lvalues" - {
               for ((name, lval) <- badLvals) {
                 name in {
-                  s"${lval} ${assign};".asTree[Stmt] rewrite checker shouldBe a[StmtError]
+                  s"$lval $assign;".asTree[Stmt] rewrite checker shouldBe a[StmtError]
                   cc.messages.loneElement should beThe[Error](
-                    s"Invalid expression on left hand side of '${op}'")
+                    s"Invalid expression on left hand side of '$op'"
+                  )
                 }
               }
             }
             "invalid lvalues inside concatenation lvalue" - {
               for ((name, lval) <- badLvals) {
                 name in {
-                  s"{x, ${lval}} ${assign};".asTree[Stmt] rewrite checker shouldBe a[StmtError]
+                  s"{x, $lval} $assign;".asTree[Stmt] rewrite checker shouldBe a[StmtError]
                   cc.messages.loneElement should beThe[Error](
-                    s"Invalid expression on left hand side of '${op}'")
+                    s"Invalid expression on left hand side of '$op'"
+                  )
                 }
               }
             }
@@ -616,7 +625,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
             "simple valid lvalues" - {
               for ((name, lval) <- goodLvals) {
                 name in {
-                  val stmt = s"${lval} ${assign};".asTree[Stmt]
+                  val stmt = s"$lval $assign;".asTree[Stmt]
                   stmt rewrite checker should be theSameInstanceAs stmt
                   cc.messages shouldBe empty
                 }
@@ -625,7 +634,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
             "nested valid lvalues" - {
               for ((name, lval) <- goodLvals) {
                 name in {
-                  val stmt = s"{x, ${lval}} ${assign};".asTree[Stmt]
+                  val stmt = s"{x, $lval} $assign;".asTree[Stmt]
                   stmt rewrite checker should be theSameInstanceAs stmt
                   cc.messages shouldBe empty
                 }
@@ -639,7 +648,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
     "warn for non-verbatim entities with only verbatim contents" - {
       for (entity <- List("fsm", "network")) {
         entity in {
-          val tree = s"""|${entity} a {
+          val tree = s"""|$entity a {
                          | in bool b;
                          | out bool c;
                          | param i8 e = 2;
@@ -673,13 +682,13 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
                            |  i8 b;
                            |}
                            |
-                           |${entity} x {
-                           |  ${decl};
+                           |$entity x {
+                           |  $decl;
                            |}""".stripMargin.asTree[Root]
             tree rewrite checker shouldBe a[Root]
             if (msg.nonEmpty) {
               cc.messages.loneElement should beThe[Error](
-                s"${msg} cannot have an initializer"
+                s"$msg cannot have an initializer"
               )
             } else {
               cc.messages shouldBe empty
@@ -716,7 +725,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
             val tree = s"""|fsm b {
                            |  void main() {
                            |    loop {
-                           |      ${word};
+                           |      $word;
                            |    }
                            |  }
                            |}""".stripMargin.asTree[Desc]
@@ -734,7 +743,7 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
             val tree = s"""|fsm b {
                            |  void main() {
                            |    loop {}
-                           |    ${word};
+                           |    $word;
                            |  }
                            |}""".stripMargin.asTree[Desc]
 
@@ -769,99 +778,107 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
           "nested classes" in {
             val tree = s"""|network a {
                            |  struct b {}
-                           |  ${decl};
+                           |  $decl;
                            |}""".stripMargin.asTree[Desc]
 
             tree rewrite checker
 
             cc.messages.loneElement should beThe[Error](
-              s"${hint} declarations must appear before nested 'struct' definitions")
+              s"$hint declarations must appear before nested 'struct' definitions"
+            )
           }
 
           "nested entities" in {
             val tree = s"""|network a {
                            |  fsm b {}
-                           |  ${decl};
+                           |  $decl;
                            |}""".stripMargin.asTree[Desc]
 
             tree rewrite checker
 
             cc.messages.loneElement should beThe[Error](
-              s"${hint} declarations must appear before nested entities")
+              s"$hint declarations must appear before nested entities"
+            )
           }
 
           "instances" in {
             val tree = s"""|network a {
                            |  b = new c();
-                           |  ${decl};
+                           |  $decl;
                            |}""".stripMargin.asTree[Desc]
 
             tree rewrite checker
 
             cc.messages.loneElement should beThe[Error](
-              s"${hint} declarations must appear before instances")
+              s"$hint declarations must appear before instances"
+            )
           }
 
           "connections" in {
             val tree = s"""|network a {
                            |  b -> c;
-                           |  ${decl};
+                           |  $decl;
                            |}""".stripMargin.asTree[Desc]
 
             tree rewrite checker
 
             cc.messages.loneElement should beThe[Error](
-              s"${hint} declarations must appear before connections")
+              s"$hint declarations must appear before connections"
+            )
           }
 
           "functions" in {
             val tree = s"""|fsm a {
                            |  void main() { fence; }
-                           |  ${decl};
+                           |  $decl;
                            |}""".stripMargin.asTree[Desc]
 
             tree rewrite checker
 
             cc.messages.loneElement should beThe[Error](
-              s"${hint} declarations must appear before function definitions")
+              s"$hint declarations must appear before function definitions"
+            )
           }
 
           "fence block" in {
             val tree = s"""|fsm a {
                            |  fence {}
-                           |  ${decl};
+                           |  $decl;
                            |}""".stripMargin.asTree[Desc]
 
             tree rewrite checker
 
             cc.messages.loneElement should beThe[Error](
-              s"${hint} declarations must appear before 'fence' block")
+              s"$hint declarations must appear before 'fence' block"
+            )
           }
 
           "verbatim block" in {
             val tree = s"""|fsm a {
                            |  verbatim verilog {}
-                           |  ${decl};
+                           |  $decl;
                            |  void main() {fence;}
                            |}""".stripMargin.asTree[Desc]
 
             tree rewrite checker
 
             cc.messages.loneElement should beThe[Error](
-              s"${hint} declarations must appear before 'verbatim' blocks")
+              s"$hint declarations must appear before 'verbatim' blocks"
+            )
           }
 
           if (!genOK) {
             "gen blocks" in {
               val tree = s"""|fsm a {
                              |  gen if (true) {}
-                             |  ${decl};
+                             |  $decl;
                              |}""".stripMargin.asTree[Desc]
 
               tree rewrite checker
 
               cc.messages.loneElement should beThe[Error](
-                s"${hint} declarations must appear before 'gen' blocks")
+                s"$hint declarations must appear before 'gen' blocks"
+              )
             }
           }
 
@@ -870,153 +887,165 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
               "'if' a" in {
                 val tree = s"""|fsm a {
                                |  void main() { fence; }
-                               |  gen if (1) { ${decl}; }
+                               |  gen if (1) { $decl; }
                                |}""".stripMargin.asTree[Desc]
 
                 tree rewrite checker
 
                 cc.messages.loneElement should beThe[Error](
-                  s"${hint} declarations must appear before function definitions")
+                  s"$hint declarations must appear before function definitions"
+                )
               }
 
               "'if' b" in {
                 val tree = s"""|fsm a {
                                |  gen if (1) {
                                |   void main() { fence; }
-                               |   ${decl};
+                               |   $decl;
                                |  }
                                |}""".stripMargin.asTree[Desc]
 
                 tree rewrite checker
 
                 cc.messages.loneElement should beThe[Error](
-                  s"${hint} declarations must appear before function definitions")
+                  s"$hint declarations must appear before function definitions"
+                )
               }
 
               "'if' c" in {
                 val tree = s"""|fsm a {
                                |  gen if (1) { void main() { fence; } }
-                               |  ${decl};
+                               |  $decl;
                                |}""".stripMargin.asTree[Desc]
 
                 tree rewrite checker
 
                 cc.messages.loneElement should beThe[Error](
-                  s"${hint} declarations must appear before function definitions")
+                  s"$hint declarations must appear before function definitions"
+                )
               }
 
               "'else' a" in {
                 val tree = s"""|fsm a {
                                |  void main() { fence; }
-                               |  gen if (1) {} else { ${decl}; }
+                               |  gen if (1) {} else { $decl; }
                                |}""".stripMargin.asTree[Desc]
 
                 tree rewrite checker
 
                 cc.messages.loneElement should beThe[Error](
-                  s"${hint} declarations must appear before function definitions")
+                  s"$hint declarations must appear before function definitions"
+                )
               }
 
               "'else' b" in {
                 val tree = s"""|fsm a {
                                |  gen if (1) {} else {
                                |   void main() { fence; }
-                               |   ${decl};
+                               |   $decl;
                                |  }
                                |}""".stripMargin.asTree[Desc]
 
                 tree rewrite checker
 
                 cc.messages.loneElement should beThe[Error](
-                  s"${hint} declarations must appear before function definitions")
+                  s"$hint declarations must appear before function definitions"
+                )
               }
 
               "'else' c" in {
                 val tree = s"""|fsm a {
                                |  gen if (1) {} else { void main() { fence; } }
-                               |  ${decl};
+                               |  $decl;
                                |}""".stripMargin.asTree[Desc]
 
                 tree rewrite checker
 
                 cc.messages.loneElement should beThe[Error](
-                  s"${hint} declarations must appear before function definitions")
+                  s"$hint declarations must appear before function definitions"
+                )
               }
 
               "'for' standard a" in {
                 val tree = s"""|fsm a {
                                |  void main() { fence; }
-                               |  gen for (uint N = 0 ; N < 1 ; N++) { ${decl}; }
+                               |  gen for (uint N = 0 ; N < 1 ; N++) { $decl; }
                                |}""".stripMargin.asTree[Desc]
 
                 tree rewrite checker
 
                 cc.messages.loneElement should beThe[Error](
-                  s"${hint} declarations must appear before function definitions")
+                  s"$hint declarations must appear before function definitions"
+                )
               }
 
               "'for' standard b" in {
                 val tree = s"""|fsm a {
                                |  gen for (uint N = 0 ; N < 1 ; N++) {
                                |    void main() { fence; }
-                               |    ${decl};
+                               |    $decl;
                                |  }
                                |}""".stripMargin.asTree[Desc]
 
                 tree rewrite checker
 
                 cc.messages.loneElement should beThe[Error](
-                  s"${hint} declarations must appear before function definitions")
+                  s"$hint declarations must appear before function definitions"
+                )
               }
 
               "'for' standard c" in {
                 val tree = s"""|fsm a {
                                |  gen for (uint N = 0 ; N < 1 ; N++) { void main() { fence; } }
-                               |  ${decl};
+                               |  $decl;
                                |}""".stripMargin.asTree[Desc]
 
                 tree rewrite checker
 
                 cc.messages.loneElement should beThe[Error](
-                  s"${hint} declarations must appear before function definitions")
+                  s"$hint declarations must appear before function definitions"
+                )
               }
 
               "'for' range a" in {
                 val tree = s"""|fsm a {
                                |  void main() { fence; }
-                               |  gen for (uint N < 1) { ${decl}; }
+                               |  gen for (uint N < 1) { $decl; }
                                |}""".stripMargin.asTree[Desc]
 
                 tree rewrite checker
 
                 cc.messages.loneElement should beThe[Error](
-                  s"${hint} declarations must appear before function definitions")
+                  s"$hint declarations must appear before function definitions"
+                )
               }
 
               "'for' range b" in {
                 val tree = s"""|fsm a {
                                |  gen for (uint N < 1) {
                                |    void main() { fence; }
-                               |    ${decl};
+                               |    $decl;
                                |  }
                                |}""".stripMargin.asTree[Desc]
 
                 tree rewrite checker
 
                 cc.messages.loneElement should beThe[Error](
-                  s"${hint} declarations must appear before function definitions")
+                  s"$hint declarations must appear before function definitions"
+                )
               }
 
               "'for' range c" in {
                 val tree = s"""|fsm a {
                                |  gen for (uint N < 1) { void main() { fence; } }
-                               |  ${decl};
+                               |  $decl;
                                |}""".stripMargin.asTree[Desc]
 
                 tree rewrite checker
 
                 cc.messages.loneElement should beThe[Error](
-                  s"${hint} declarations must appear before function definitions")
+                  s"$hint declarations must appear before function definitions"
+                )
               }
             }
           }
@@ -1035,37 +1064,40 @@ final class CheckerSpec extends FreeSpec with AlogicTest {
           "nested classes" ignore {
             val tree = s"""|struct a {
                            |  struct b {}
-                           |  ${decl};
+                           |  $decl;
                            |}""".stripMargin.asTree[Desc]
 
             tree rewrite checker
 
             cc.messages.loneElement should beThe[Error](
-              s"${hint} declarations must appear before nested 'struct' definitions")
+              s"$hint declarations must appear before nested 'struct' definitions"
+            )
           }
 
           "functions" ignore {
             val tree = s"""|struct a {
                            |  void main() { fence; }
-                           |  ${decl};
+                           |  $decl;
                            |}""".stripMargin.asTree[Desc]
 
             tree rewrite checker
 
             cc.messages.loneElement should beThe[Error](
-              s"${hint} declarations must appear before function definitions")
+              s"$hint declarations must appear before function definitions"
+            )
           }
 
           "gen blocks" ignore {
             val tree = s"""|struct a {
                            |  gen if (true) {}
-                           |  ${decl};
+                           |  $decl;
                            |}""".stripMargin.asTree[Desc]
 
             tree rewrite checker
 
             cc.messages.loneElement should beThe[Error](
-              s"${hint} declarations must appear before 'gen' blocks")
+              s"$hint declarations must appear before 'gen' blocks"
+            )
           }
         }
       }

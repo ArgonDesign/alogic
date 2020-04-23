@@ -28,7 +28,7 @@ class Source(val file: File, val text: String) {
   def lineFor(offset: Int): Int = text.slice(0, offset + 1).linesWithSeparators.length
 
   // Return offset of line number (1 based)
-  def offsetFor(line: Int): Int = lines.slice(0, line - 1).foldLeft(0) { _ + _.length }
+  def offsetFor(line: Int): Int = lines.slice(0, line - 1).foldLeft(0)(_ + _.length)
 }
 
 object Source {
@@ -38,6 +38,7 @@ object Source {
     val text = new String(Files.readAllBytes(file.toPath), StandardCharsets.UTF_8)
     new Source(file, text)
   }
+
   def apply(file: String, text: String): Source = Source(new File(file), text)
   def apply(file: String): Source = Source(new File(file))
 }

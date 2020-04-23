@@ -141,6 +141,7 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
   // The below is just debug aid for the developer
   private[this] val dumpEnable = cc.settings.traceElaborate
   private[this] var prevDumped: Either[Desc, (Decl, Defn)] = _
+
   private[this] def dump(label: String)(item: Either[Desc, (Decl, Defn)]): Unit =
     if (dumpEnable && item != prevDumped) {
       val prefix = pendingStack.reverse map {
@@ -152,7 +153,7 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
       import AnsiColor._
 
       val text = item
-        .fold({ _.toSource }, { case (decl, defn) => decl.toSource + "\n" + defn.toSource })
+        .fold(_.toSource, { case (decl, defn) => decl.toSource + "\n" + defn.toSource })
         .replaceAll("\\bparam\\b", BOLD + RED + "param" + RESET)
         .replaceAll("\\bconst\\b", BOLD + GREEN + "const" + RESET)
         .replaceAll("\\bgen\\b", BOLD + YELLOW + "gen" + RESET)
@@ -199,7 +200,7 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
       paramBindings: ParamBindings,
       useDefaultParameters: Boolean,
       loc: Loc
-  ): DescSpecialization = {
+    ): DescSpecialization = {
 
     ////////////////////////////////////////////////////////////////////////////
     // Step 1: Substitute parameters with the given expression
@@ -257,7 +258,7 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
       unusedBindings: ParamBindings,
       useDefaultParameters: Boolean,
       loc: Loc
-  ): DescSpecialization = {
+    ): DescSpecialization = {
 
     ////////////////////////////////////////////////////////////////////////////
     // Step 3: Specialize contained Descs
@@ -335,7 +336,7 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
       paramBindings: ParamBindings,
       useDefaultParameters: Boolean,
       loc: Loc
-  ): DescSpecialization = {
+    ): DescSpecialization = {
     require(desc.ref.asInstanceOf[Sym].idxs.isEmpty)
     require(useDefaultParameters) // TODO: implement partial specialization
 
@@ -376,7 +377,7 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
       paramBindings: ParamBindings,
       useDefaultParameters: Boolean,
       refLoc: Loc
-  ): DescSpecialization = {
+    ): DescSpecialization = {
     //////////////////////////////////////////////////////////////////////////
     // Check for circular and divergent specialization
     //////////////////////////////////////////////////////////////////////////
@@ -421,7 +422,7 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
             bindings: ParamBindings,
             loc: Loc,
             last: Boolean = false
-        ): Unit = {
+          ): Unit = {
           msg += s"depends on '${sourceName(symbol)}' via ${loc.prefix}"
           bindingsNote(bindings)
           msg ++= loc.context(color).split("\\s*\n") map { "  " + _ }
@@ -483,7 +484,7 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
       paramBindings: ParamBindings,
       useDefaultParameters: Boolean,
       refLoc: Loc
-  ): DescSpecialization = {
+    ): DescSpecialization = {
     require(useDefaultParameters, "Not yet implemented")
     require(!desc.isInstanceOf[DescChoice], "Cannot specialize DescChoice")
 
@@ -492,8 +493,10 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
       case ParamBindingsNamed(params)      => params.isEmpty
     }
 
-    assert(!(desc.isParametrized && emptyParams && !useDefaultParameters),
-           "pointless specialization")
+    assert(
+      !(desc.isParametrized && emptyParams && !useDefaultParameters),
+      "pointless specialization"
+    )
 
     val simplifiedParamBindings = SimplifyParamBindings(paramBindings)
 
@@ -670,4 +673,5 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
           check(defn)
       }
   }
+
 }

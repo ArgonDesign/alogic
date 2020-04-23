@@ -26,6 +26,7 @@ object SourceTextConverters {
   case class AsTreeSyntaxErrorException() extends Exception
 
   implicit class String2Repr(val string: String) {
+
     val source = {
       val strip = string.startsWith("|") && (string.count(_ == '\n') > 0)
       val text = if (strip) string.stripMargin else string
@@ -35,5 +36,7 @@ object SourceTextConverters {
     def asTree[T <: Tree: Parseable](implicit cc: CompilerContext): T = {
       Parser[T](source) getOrElse { throw AsTreeSyntaxErrorException() }
     }
+
   }
+
 }

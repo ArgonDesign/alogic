@@ -39,12 +39,15 @@ final class ReplaceUnaryTicks(implicit cc: CompilerContext) extends StatelessTre
     assert(tree forallAll { case node: Tree => node.hasTpe })
     assert((tree collect { case node @ ExprUnary("'", _) => node }).isEmpty)
   }
+
 }
 
 object ReplaceUnaryTicks extends PairTransformerPass {
   val name = "replace-unary-ticks"
+
   def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {
     // The decl should contain no ticks
     (decl, cc.replaceUnaryTicks(defn))
   }
+
 }

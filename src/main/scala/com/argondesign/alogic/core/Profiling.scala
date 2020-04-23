@@ -32,7 +32,7 @@ trait Profiling { this: CompilerContext =>
       trace = key :: trace
       val t0 = System.nanoTime()
       val result = block
-      val elapsed = (System.nanoTime() - t0).toDouble / 1e9
+      val elapsed = (System.nanoTime() - t0).toDouble / 1E9
       measurements.updateWith(trace.reverse) {
         case None        => Some(elapsed)
         case Some(value) => Some(value + elapsed)
@@ -65,4 +65,5 @@ trait Profiling { this: CompilerContext =>
     writer.println(f"${"TOTAL".padTo(width, ' ')} $total%8.2f 100.00%%")
     writer.flush()
   }
+
 }

@@ -29,7 +29,7 @@ import org.rogach.scallop.singleArgConverter
 // Option parser based on Scallop. See the Scallop wiki for usage:
 // https://github.com/scallop/scallop/wiki
 class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
-  private[this] implicit val fileConverter =
+  implicit private[this] val fileConverter =
     singleArgConverter[File](path => (new File(path)).getCanonicalFile())
 
   // Ensures all option instances have only a single argument
@@ -49,22 +49,23 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
         }))
       }
     }
+
     val argType = ArgType.SINGLE
   }
 
   private[this] def validateOption[T](
       option: ScallopOption[T]
-  )(
+    )(
       check: PartialFunction[T, String]
-  ) = addValidation {
+    ) = addValidation {
     option.toOption flatMap check.lift map { Left(_) } getOrElse Right(())
   }
 
   private[this] def validateListOption[T](
       option: ScallopOption[List[T]]
-  )(
+    )(
       check: PartialFunction[T, String]
-  ) = addValidation {
+    ) = addValidation {
     val msgs = option.toOption.getOrElse(Nil) collect check
     if (msgs.nonEmpty) {
       Left(msgs mkString ("\n", "\n", ""))
@@ -75,25 +76,25 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
 
   private[this] def validateFileExist(option: ScallopOption[File]) = {
     validateOption(option) {
-      case path: File if !path.exists() => s"'${path}' does not exist"
+      case path: File if !path.exists() => s"'$path' does not exist"
     }
   }
 
   private[this] def validateFileIsRegular(option: ScallopOption[File]) = {
     validateOption(option) {
-      case path: File if !path.isFile() => s"'${path}' is not a regular file"
+      case path: File if !path.isFile() => s"'$path' is not a regular file"
     }
   }
 
   private[this] def validateFilesExist(option: ScallopOption[List[File]]) = {
     validateListOption(option) {
-      case path: File if !path.exists() => s"'${path}' does not exist"
+      case path: File if !path.exists() => s"'$path' does not exist"
     }
   }
 
   private[this] def validateFilesAreDirectories(option: ScallopOption[List[File]]) = {
     validateListOption(option) {
-      case path: File if !path.isDirectory() => s"'${path}' is not a directory"
+      case path: File if !path.isDirectory() => s"'$path' is not a directory"
     }
   }
 
@@ -107,8 +108,10 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
     }
   }
 
-  private[this] def validateOutputNameMaxLengthWithPrefix(outNameMaxLen: ScallopOption[Int],
-                                                          prefix: ScallopOption[String]) =
+  private[this] def validateOutputNameMaxLengthWithPrefix(
+      outNameMaxLen: ScallopOption[Int],
+      prefix: ScallopOption[String]
+    ) =
     addValidation {
       val min = prefix().length + 16
       outNameMaxLen.toOption partialMatch {
@@ -132,6 +135,7 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
     short = 'y',
     descr = "Directory to search for entities"
   )(singlefileListConverter)
+
   validateFilesExist(ydir)
   validateFilesAreDirectories(ydir)
 
@@ -139,6 +143,7 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
     short = 'I',
     descr = "Directory to search for includes"
   )(singlefileListConverter)
+
   validateFilesExist(incdir)
   validateFilesAreDirectories(incdir)
 
@@ -173,7 +178,7 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
       if (bad.isEmpty) {
         Right(())
       } else {
-        val msgs = for (file <- bad) yield s"-y '${file}' is not under --srcbase '${base}'"
+        val msgs = for (file <- bad) yield s"-y '$file' is not under --srcbase '$base'"
         Left(msgs mkString "\n")
       }
     }
@@ -206,7 +211,8 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
         case "zeros"  => UninitializedLocals.Zeros
         case "ones"   => UninitializedLocals.Ones
         case "random" => UninitializedLocals.Random
-      }, {
+      },
+      {
         case _ => Left("must be one of 'none', 'zeros', 'ones', 'random")
       }
     )
@@ -234,6 +240,7 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
                |""".stripMargin.replace('\n', ' '),
     default = None
   )
+
   validateOutputNameMaxLengthWithPrefix(outputNameMaxLength, ensurePrefix)
 
   val header = opt[File](
@@ -241,6 +248,7 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
     required = false,
     descr = "File containing text that will be prepended to every output file"
   )
+
   validateFileExist(header)
   validateFileIsRegular(header)
 
@@ -253,6 +261,7 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
                |""".stripMargin.replace('\n', ' '),
     default = Some("auto")
   )
+
   validateOneOf(color)("always", "never", "auto")
 
   // --compiler-deps is implemented in the wrapper.
@@ -280,7 +289,8 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
         case "async-high" => ResetStyle.AsyncHigh
         case "sync-low"   => ResetStyle.SyncLow
         case "sync-high"  => ResetStyle.SyncHigh
-      }, {
+      },
+      {
         case _ => Left("must be one of 'async-low', 'async-high', 'sync-low', 'sync-high")
       }
     )
@@ -323,7 +333,7 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
     descr = """|List of top level entities. Parameter values for top level
                |entities can be provided with the same call-style syntax as
                |for an Alogic instantiation.
-               |""".stripMargin.replace('\n', ' '),
+               |""".stripMargin.replace('\n', ' ')
   )
 
   verify()

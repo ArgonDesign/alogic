@@ -14,6 +14,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.passes
+
 import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
@@ -104,12 +105,14 @@ final class DesugarSpec extends FreeSpec with AlogicTest {
             case DefnFunc(_, _, body) => body
           } tap {
             inside(_) {
-              case List(StmtDecl(declB),
-                        StmtDefn(defnB),
-                        StmtDecl(declA),
-                        StmtDefn(defnA),
-                        assign,
-                        loop) =>
+              case List(
+                    StmtDecl(declB),
+                    StmtDefn(defnB),
+                    StmtDecl(declA),
+                    StmtDefn(defnA),
+                    assign,
+                    loop
+                  ) =>
                 declB.symbol.name shouldBe "b"
                 defnB.symbol.name shouldBe "b"
                 declB.symbol should be theSameInstanceAs defnB.symbol

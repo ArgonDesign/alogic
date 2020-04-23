@@ -25,4 +25,5 @@ trait BaseBuilder[C, T] {
   def apply(ctxs: java.util.List[_ <: C])(implicit cc: CompilerContext): List[T] = List from {
     ctxs.iterator.asScala map apply
   }
+
 }

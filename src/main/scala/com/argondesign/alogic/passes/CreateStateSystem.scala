@@ -227,6 +227,7 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends StatefulTree
     case node: DefnState => cc.ice(node, "DefnState remains")
     case node: StmtFence => cc.ice(node, "StmtFence remains")
   }
+
 }
 
 object CreateStateSystem extends EntityTransformerPass(declFirst = false) {

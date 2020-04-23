@@ -247,7 +247,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
         stmts: List[Stmt],
         current: ListBuffer[Stmt],
         acc: ListBuffer[List[Stmt]]
-    ): List[List[Stmt]] = stmts match {
+      ): List[List[Stmt]] = stmts match {
       case head :: tail =>
         current append head
         if (head.tpe == TypeCombStmt) {
@@ -336,7 +336,10 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
 
         lazy val pop = ExprSym(rsSymbol) select "pop" call Nil
 
-        (currentFunction.attr.popStackOnReturn.value, currentFunction.attr.staticReturnPoint.value) match {
+        (
+          currentFunction.attr.popStackOnReturn.value,
+          currentFunction.attr.staticReturnPoint.value
+        ) match {
           case (true, Some(returnee)) =>
             Thicket(List(StmtExpr(pop), stmtGotoStateFollowing(returnee))) regularize tree.loc
           case (false, Some(returnee)) =>
@@ -392,26 +395,26 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
       //////////////////////////////////////////////////////////////////////////
 
       case StmtLoop(body) => {
-        val head = convertControlUnits(body)
-        // Emit the loop entry state if necessary
-        val stmt = emitState(head) match {
-          case Some(symbol) =>
-            // Loop entry state was emitted, so the containing state
-            // needs to go to the emitted state
-            val ref = ExprSym(symbol) regularize symbol.loc
-            StmtGoto(ref)
-          case None =>
-            // Loop entry state was not emitted (because the containing
-            // state is empty), so the containing state becomes the loop
-            // entry state
-            StmtBlock(head)
+          val head = convertControlUnits(body)
+          // Emit the loop entry state if necessary
+          val stmt = emitState(head) match {
+            case Some(symbol) =>
+              // Loop entry state was emitted, so the containing state
+              // needs to go to the emitted state
+              val ref = ExprSym(symbol) regularize symbol.loc
+              StmtGoto(ref)
+            case None =>
+              // Loop entry state was not emitted (because the containing
+              // state is empty), so the containing state becomes the loop
+              // entry state
+              StmtBlock(head)
+          }
+          TypeAssigner(stmt withLoc tree.loc)
+        } tap { _ =>
+          breakTargets.pop()
+          followingState.pop()
+          continueTargets.pop()
         }
-        TypeAssigner(stmt withLoc tree.loc)
-      } tap { _ =>
-        breakTargets.pop()
-        followingState.pop()
-        continueTargets.pop()
-      }
 
       //////////////////////////////////////////////////////////////////////////
       // Handle control functions
@@ -420,11 +423,11 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
       case _: DeclFunc => Stump
 
       case DefnFunc(_, _, body) => {
-        splitControlUnits(body) foreach emitState
-        Stump
-      } tap { _ =>
-        followingState.pop()
-      }
+          splitControlUnits(body) foreach emitState
+          Stump
+        } tap { _ =>
+          followingState.pop()
+        }
 
       //////////////////////////////////////////////////////////////////////////
       // Convert entity
@@ -497,10 +500,12 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
         cc.ice(node, "Control function call remains")
     }
   }
+
 }
 
 object ConvertControl extends PairTransformerPass {
   val name = "convert-control"
+
   def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {
     (decl, defn) match {
       case (dcl: DeclEntity, _: DefnEntity) =>
@@ -519,4 +524,5 @@ object ConvertControl extends PairTransformerPass {
       case _ => (decl, defn)
     }
   }
+
 }

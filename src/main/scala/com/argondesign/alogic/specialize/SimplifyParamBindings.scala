@@ -21,6 +21,7 @@ import com.argondesign.alogic.core.CompilerContext
 import scala.collection.mutable
 
 private[specialize] object SimplifyParamBindings {
+
   def apply(paramBindings: ParamBindings)(implicit cc: CompilerContext): ParamBindings = {
     val transform: StatefulTreeTransformer = new StatefulTreeTransformer {
       override val typed = false
@@ -61,4 +62,5 @@ private[specialize] object SimplifyParamBindings {
         ParamBindingsNamed(Map from { params.view mapValues { _ rewrite transform } })
     }
   }
+
 }

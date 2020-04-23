@@ -48,4 +48,5 @@ private[builtins] class AtMax(implicit cc: CompilerContext)
       }
     }
   }
+
 }

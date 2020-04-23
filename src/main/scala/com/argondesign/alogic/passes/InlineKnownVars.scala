@@ -27,7 +27,9 @@ import scala.collection.mutable
 
 final class InlineKnownVars(
     combOnly: Boolean
-)(implicit cc: CompilerContext)
+  )(
+    implicit
+    cc: CompilerContext)
     extends StatefulTreeTransformer {
 
   private[this] var stmtBindings: Map[Int, Bindings] = _
@@ -70,7 +72,8 @@ final class InlineKnownVars(
           stmt.copy(
             func = walk(func).asInstanceOf[Expr],
             inputs = walk(inputs).asInstanceOf[List[Expr]]
-          ) withLoc tree.loc) tap { _ =>
+          ) withLoc tree.loc
+        ) tap { _ =>
           bindings.pop()
         }
       }
@@ -136,4 +139,5 @@ object InlineKnownVars {
 
       def create(symbol: Symbol)(implicit cc: CompilerContext) = new InlineKnownVars(combOnly)
     }
+
 }

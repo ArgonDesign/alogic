@@ -24,6 +24,7 @@ import org.antlr.v4.runtime.Recognizer
 import com.argondesign.alogic.antlr.AlogicLexer._
 
 class AlogicParseErrorListener(implicit cc: CompilerContext) extends ParseErrorListener {
+
   override def syntaxError(
       recogniser: Recognizer[_, _],
       offendingSymbol: Object,
@@ -31,7 +32,7 @@ class AlogicParseErrorListener(implicit cc: CompilerContext) extends ParseErrorL
       charPositionInLine: Int,
       defaultMessage: String,
       e: RecognitionException
-  ): Unit = {
+    ): Unit = {
     val parser = recogniser.asInstanceOf[AlogicParser]
 
     val tokenStream = parser.getInputStream
@@ -53,4 +54,5 @@ class AlogicParseErrorListener(implicit cc: CompilerContext) extends ParseErrorL
 
     super.syntaxError(recogniser, offendingSymbol, line, charPositionInLine, message, e)
   }
+
 }

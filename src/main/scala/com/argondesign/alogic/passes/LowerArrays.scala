@@ -80,7 +80,8 @@ final class LowerArrays(implicit cc: CompilerContext) extends StatefulTreeTransf
     //////////////////////////////////////////////////////////////////////////
 
     case StmtExpr(
-        ExprCall(ExprSelect(ExprSym(symbol), "write", _), List(ArgP(addr), ArgP(data)))) =>
+          ExprCall(ExprSelect(ExprSym(symbol), "write", _), List(ArgP(addr), ArgP(data)))
+        ) =>
       // Rewrite assignments to array elements
       symbol.attr.memory.get map {
         case (weSymbol, waSymbol, wdSymbol) =>
@@ -89,7 +90,8 @@ final class LowerArrays(implicit cc: CompilerContext) extends StatefulTreeTransf
               StmtAssign(ExprSym(weSymbol), ExprInt(false, 1, 1)),
               StmtAssign(ExprSym(waSymbol), addr),
               StmtAssign(ExprSym(wdSymbol), data)
-            )) regularize tree.loc
+            )
+          ) regularize tree.loc
       } getOrElse {
         tree
       }
@@ -121,7 +123,8 @@ final class LowerArrays(implicit cc: CompilerContext) extends StatefulTreeTransf
           EntDefn(wa.mkDefn),
           EntDefn(wd.mkDefn),
           EntClockedProcess(ExprSym(clk), None, stmts)
-        )) regularize tree.loc
+        )
+      ) regularize tree.loc
 
     //////////////////////////////////////////////////////////////////////////
     // Add _we/_waddr/_wdata = 'b0 fence statements
@@ -149,6 +152,7 @@ final class LowerArrays(implicit cc: CompilerContext) extends StatefulTreeTransf
     case _: DeclEntity =>
     case _             => assert(arrays.isEmpty)
   }
+
 }
 
 object LowerArrays extends EntityTransformerPass(declFirst = true) {

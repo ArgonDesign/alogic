@@ -41,7 +41,10 @@ private[specialize] object SubstituteParams {
   def apply(
       desc: Desc,
       bindings: ParamBindings
-  )(implicit cc: CompilerContext): ParamSubstitution = {
+    )(
+      implicit
+      cc: CompilerContext
+    ): ParamSubstitution = {
     require(!desc.isInstanceOf[DescParam])
 
     def checkPosOk: Boolean = bindings match {
@@ -145,4 +148,5 @@ private[specialize] object SubstituteParams {
       }
     }
   }
+
 }

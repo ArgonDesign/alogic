@@ -127,6 +127,7 @@ object Types {
   //////////////////////////////////////////////////////////////////////////////
 
   object TypeInt {
+
     def apply(signed: Boolean, size: BigInt): TypeInt = {
       if (signed) TypeSInt(size) else TypeUInt(size)
     }
@@ -136,7 +137,9 @@ object Types {
       case TypeUInt(size) => Some((false, size))
       case _              => None
     }
+
   }
+
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -154,23 +157,28 @@ trait CompoundType {
 
 trait TypeRecordImpl { this: TypeRecord =>
   final def dataMembers(implicit cc: CompilerContext): List[Symbol] = _dataMembers(cc)
-  private final val _dataMembers = CCLazy[List[Symbol]] { implicit cc =>
+
+  final private val _dataMembers = CCLazy[List[Symbol]] { implicit cc =>
     members filter { _.kind.isFund }
   }
 
   final def publicSymbols(implicit cc: CompilerContext): List[Symbol] = _publicSymbols(cc)
-  private final val _publicSymbols = CCLazy[List[Symbol]] { _ =>
+
+  final private val _publicSymbols = CCLazy[List[Symbol]] { _ =>
     // Doesn't depend on cc right now but will in the future
     members
   }
+
 }
 
 trait TypeEntityImpl { this: TypeEntity =>
   final def publicSymbols(implicit cc: CompilerContext): List[Symbol] = _publicSymbols(cc)
-  private final val _publicSymbols = CCLazy[List[Symbol]] { _ =>
+
+  final private val _publicSymbols = CCLazy[List[Symbol]] { _ =>
     // Doesn't depend on cc right now but will in the future
     ports
   }
+
 }
 
 // Base trait of types that add fields to existing types
@@ -182,16 +190,19 @@ trait ExtensionType extends CompoundType {
   protected def extensionSymbols: List[Symbol]
 
   final def publicSymbols(implicit cc: CompilerContext): List[Symbol] = _publicSymbols(cc)
-  private final val _publicSymbols = CCLazy[List[Symbol]] { implicit cc =>
+
+  final private val _publicSymbols = CCLazy[List[Symbol]] { implicit cc =>
     kind match {
       case ct: CompoundType => extensionSymbols ::: ct.publicSymbols
       case _                => extensionSymbols
     }
   }
+
 }
 
 trait TypeInImpl extends ExtensionType { this: TypeIn =>
-  protected final def extensionSymbols: List[Symbol] = fc match {
+
+  final protected def extensionSymbols: List[Symbol] = fc match {
     case FlowControlTypeNone =>
       val read = new Symbol(-1, Loc.synthetic, "read")
       read.kind = TypeCombFunc(read, kind, Nil)
@@ -215,10 +226,12 @@ trait TypeInImpl extends ExtensionType { this: TypeIn =>
       read.kind = TypeCombFunc(read, kind, Nil)
       List(read)
   }
+
 }
 
 trait TypeOutImpl extends ExtensionType { this: TypeOut =>
-  protected final def extensionSymbols: List[Symbol] = {
+
+  final protected def extensionSymbols: List[Symbol] = {
     def writeFuncType(symbol: Symbol): TypeCombFunc = kind match {
       case TypeVoid => TypeCombFunc(symbol, TypeVoid, Nil)
       case _        => TypeCombFunc(symbol, TypeVoid, List(kind))
@@ -259,10 +272,12 @@ trait TypeOutImpl extends ExtensionType { this: TypeOut =>
         List(write)
     }
   }
+
 }
 
 trait TypeStackImpl extends CompoundType { this: TypeStack =>
-  private final val _publicSymbols: List[Symbol] = {
+
+  final private val _publicSymbols: List[Symbol] = {
     val push = new Symbol(-1, Loc.synthetic, "push")
     push.kind = TypeCombFunc(push, TypeVoid, List(kind))
     val pop = new Symbol(-1, Loc.synthetic, "pop")
@@ -282,7 +297,8 @@ trait TypeStackImpl extends CompoundType { this: TypeStack =>
 }
 
 trait TypeArrayImpl extends CompoundType { this: TypeArray =>
-  private final val _publicSymbols: List[Symbol] = {
+
+  final private val _publicSymbols: List[Symbol] = {
     val write = new Symbol(-1, Loc.synthetic, "write")
     write.kind = TypeCombFunc(write, TypeVoid, List(TypeUInt(Math.clog2(size)), kind))
     List(write)
@@ -292,7 +308,8 @@ trait TypeArrayImpl extends CompoundType { this: TypeArray =>
 }
 
 trait TypeSramImpl extends CompoundType { this: TypeSram =>
-  private final val _publicSymbols: List[Symbol] = {
+
+  final private val _publicSymbols: List[Symbol] = {
     val addrType = TypeUInt(Math.clog2(size))
     val read = new Symbol(-1, Loc.synthetic, "read")
     read.kind = TypeCombFunc(read, TypeVoid, List(addrType))

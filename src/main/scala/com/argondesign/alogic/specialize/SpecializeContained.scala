@@ -23,17 +23,19 @@ import com.argondesign.alogic.util.unreachable
 import scala.collection.mutable
 
 private[specialize] object SpecializeContained {
+
   def apply(
       input: Either[Desc, (Decl, Defn)]
-  )(
-      implicit cc: CompilerContext,
+    )(
+      implicit
+      cc: CompilerContext,
       specializeDesc: SpecializeDesc
-  ): Option[(Either[Desc, (Decl, Defn)], collection.Set[Symbol])] = {
+    ): Option[(Either[Desc, (Decl, Defn)], collection.Set[Symbol])] = {
     var hadError = false
 
     val unknowns = mutable.Set[Symbol]()
 
-    val inputSymbol = input.fold({ _.symbol }, { _._1.symbol })
+    val inputSymbol = input.fold(_.symbol, _._1.symbol)
 
     val mapping = mutable.Map[Symbol, Symbol]()
 
@@ -42,7 +44,7 @@ private[specialize] object SpecializeContained {
         desc: Desc,
         spliceDecl: Decl => T,
         spliceDefn: Defn => T
-    ): Tree = {
+      ): Tree = {
       specializeDesc(desc, ParamBindingsNamed(Map.empty), true, desc.symbol.loc) match {
         case DescSpecializationErrorOther       => hadError = true; Stump
         case DescSpecializationUnknown(symbols) => unknowns addAll symbols; tree
@@ -52,7 +54,8 @@ private[specialize] object SpecializeContained {
             List(
               spliceDecl(decl) withLoc tree.loc,
               spliceDefn(defn) withLoc tree.loc
-            ))
+            )
+          )
         // We are specializing the Desc node itself, so this cannot happen
         case _: DescSpecializationPending => unreachable
         // We used named bindings so this cannot happen ...
@@ -117,12 +120,14 @@ private[specialize] object SpecializeContained {
       }
     }
 
-    val result = input.fold({ desc =>
-      Left(desc rewrite transform)
-    }, {
-      case (decl, defn) => Right((decl, defn rewrite transform))
-    })
+    val result = input.fold(
+      desc => Left(desc rewrite transform),
+      {
+        case (decl, defn) => Right((decl, defn rewrite transform))
+      }
+    )
 
     if (hadError) None else Some((Replace(result, mapping), unknowns))
   }
+
 }

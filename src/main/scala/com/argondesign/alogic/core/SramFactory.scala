@@ -56,9 +56,10 @@ object SramFactory extends ChainingSyntax {
       loc: Loc,
       width: Int,
       depth: Int
-  )(
-      implicit cc: CompilerContext
-  ): (DeclEntity, DefnEntity) = {
+    )(
+      implicit
+      cc: CompilerContext
+    ): (DeclEntity, DefnEntity) = {
 
     val fcn = FlowControlTypeNone
 

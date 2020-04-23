@@ -147,48 +147,50 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends StatefulTreeT
     if (eSymbol.attr.stackLimit.isSet) {
       val loc = eSymbol.loc
       val name = eSymbol.name
-      cc.warning(loc, s"'stacklimit' attribute ignored on entity '${name}'")
+      cc.warning(loc, s"'stacklimit' attribute ignored on entity '$name'")
     }
 
   //////////////////////////////////////////////////////////////////////////////
   // Collect 'reclimit' values and check that they are sensible
   //////////////////////////////////////////////////////////////////////////////
-  private def computeRecLimits(callArcs: Set[CallArc],
-                               adjMat: Matrix[Int],
-                               indMat: Matrix[Int]): Option[List[Int]] = {
+  private def computeRecLimits(
+      callArcs: Set[CallArc],
+      adjMat: Matrix[Int],
+      indMat: Matrix[Int]
+    ): Option[List[Int]] = {
     val directlyRecursive = adjMat.diagonal map { _ != 0 }
     val indirectlyRecursive = indMat.diagonal map { _ != 0 }
 
     val list = List from {
       for {
-        (symbol, isRecD, isRecI) <- functionSymbols lazyZip directlyRecursive lazyZip indirectlyRecursive
+        (symbol, isRecD, isRecI) <-
+          functionSymbols lazyZip directlyRecursive lazyZip indirectlyRecursive
       } yield {
         lazy val loc = symbol.loc
         lazy val name = symbol.name
         val exprOpt = symbol.attr.recLimit.get
         if (!isRecD && !isRecI) {
           if (exprOpt.isDefined) {
-            cc.warning(loc, s"'reclimit' attribute ignored on function '${name}'")
+            cc.warning(loc, s"'reclimit' attribute ignored on function '$name'")
           }
           1
         } else {
           exprOpt match {
             case None =>
               val hint = if (isRecD) "Recursive" else "Indirectly recursive"
-              cc.error(loc, s"${hint} function '${name}' requires 'reclimit' attribute")
+              cc.error(loc, s"$hint function '$name' requires 'reclimit' attribute")
               0
             case Some(expr) =>
               expr.value match {
                 case Some(value) if value < 2 =>
                   cc.error(
                     loc,
-                    s"Recursive function '${name}' has 'reclimit' attribute equal to ${value}"
+                    s"Recursive function '$name' has 'reclimit' attribute equal to $value"
                   )
                   0
                 case None =>
                   symbol.attr.recLimit set Expr(2)
-                  cc.error(loc,
-                           s"Cannot compute value of 'reclimit' attribute of function '${name}'")
+                  cc.error(loc, s"Cannot compute value of 'reclimit' attribute of function '$name'")
                   0
                 case Some(value) => value.toInt
               }
@@ -204,8 +206,10 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends StatefulTreeT
   //////////////////////////////////////////////////////////////////////////////
   // Computes the length of the longest static path in the call graphs
   //////////////////////////////////////////////////////////////////////////////
-  private def computeLongestPathLength(callArcs: Set[CallArc],
-                                       costOfCalling: Map[Symbol, Int]): Int = {
+  private def computeLongestPathLength(
+      callArcs: Set[CallArc],
+      costOfCalling: Map[Symbol, Int]
+    ): Int = {
     // Find the longest simple (non-cyclic) path in the call graph
     // Note strictly this is only an upper bound on the required
     // return stack depth if there is recursion
@@ -282,11 +286,13 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends StatefulTreeT
   //////////////////////////////////////////////////////////////////////////////
   // The actual return stack depth required
   //////////////////////////////////////////////////////////////////////////////
-  private def returnStackDepth(eSymbol: Symbol,
-                               callArcs: Set[CallArc],
-                               adjMat: Matrix[Int],
-                               indMat: Matrix[Int],
-                               recLimits: List[Int]): Int = {
+  private def returnStackDepth(
+      eSymbol: Symbol,
+      callArcs: Set[CallArc],
+      adjMat: Matrix[Int],
+      indMat: Matrix[Int],
+      recLimits: List[Int]
+    ): Int = {
     // Compute if the entity uses any recursion
     val hasRecursion = adjMat.diagonal.sum + indMat.diagonal.sum != 0
 
@@ -497,6 +503,7 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends StatefulTreeT
   override def finalCheck(tree: Tree): Unit = tree visit {
     case node: Tree if !node.hasTpe => cc.ice(node, "Lost tpe of", node.toString)
   }
+
 }
 
 object AnalyseCallGraph extends EntityTransformerPass(declFirst = false) {

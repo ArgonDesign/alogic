@@ -297,7 +297,7 @@ object TypeAssigner {
   }
 
   private def kind(tree: ExprCat)(implicit cc: CompilerContext) = {
-    TypeUInt(tree.parts.foldLeft(BigInt(0)) { _ + _.tpe.width })
+    TypeUInt(tree.parts.foldLeft(BigInt(0))(_ + _.tpe.width))
   }
 
   private def kind(tree: ExprIndex)(implicit cc: CompilerContext) = {

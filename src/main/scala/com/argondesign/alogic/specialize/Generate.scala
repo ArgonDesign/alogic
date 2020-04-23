@@ -74,8 +74,9 @@ private[specialize] object Generate {
   }
 
   // Type class instance for Ent
-  private implicit object generatableEnt extends Generatable[Ent] {
+  implicit private object generatableEnt extends Generatable[Ent] {
     val description = "entity content"
+
     def isValid(tree: Tree): Boolean = tree match {
       case _: Gen             => true
       case _: Ent             => true
@@ -83,6 +84,7 @@ private[specialize] object Generate {
       case _: AssertionStatic => true
       case _                  => false
     }
+
     def splice(tree: Tree): Ent = tree match {
       case gen: Gen => EntGen(gen) withLoc gen.loc
       case ent: Ent => ent
@@ -93,11 +95,13 @@ private[specialize] object Generate {
       case assertion: Assertion => EntAssertion(assertion) withLoc assertion.loc
       case _                    => unreachable
     }
+
   }
 
   // Type class instance for Rec
-  private implicit object generatableRec extends Generatable[Rec] {
+  implicit private object generatableRec extends Generatable[Rec] {
     val description = "struct content"
+
     def isValid(tree: Tree): Boolean = tree match {
       case _: Gen             => true
       case _: Rec             => true
@@ -111,6 +115,7 @@ private[specialize] object Generate {
       case _: AssertionStatic => true
       case _                  => false
     }
+
     def splice(tree: Tree): Rec = tree match {
       case gen: Gen => RecGen(gen) withLoc gen.loc
       case rec: Rec => rec
@@ -121,11 +126,13 @@ private[specialize] object Generate {
       case assertion: Assertion => RecAssertion(assertion) withLoc assertion.loc
       case _                    => unreachable
     }
+
   }
 
   // Type class instance for Stmt
-  private implicit object generatableStmt extends Generatable[Stmt] {
+  implicit private object generatableStmt extends Generatable[Stmt] {
     val description = "statement"
+
     def isValid(tree: Tree): Boolean = tree match {
       case _: Gen       => true
       case _: Stmt      => true
@@ -133,6 +140,7 @@ private[specialize] object Generate {
       case _: Assertion => true
       case _            => false
     }
+
     def splice(tree: Tree): Stmt = tree match {
       case gen: Gen             => StmtGen(gen) withLoc gen.loc
       case stmt: Stmt           => stmt
@@ -140,25 +148,34 @@ private[specialize] object Generate {
       case assertion: Assertion => StmtAssertion(assertion) withLoc assertion.loc
       case _                    => unreachable
     }
+
   }
 
   // Type class instance for Case
-  private implicit object generatableCase extends Generatable[Case] {
+  implicit private object generatableCase extends Generatable[Case] {
     val description = "case clause"
+
     def isValid(tree: Tree): Boolean = tree match {
       case _: Gen  => true
       case _: Case => true
       case _       => false
     }
+
     def splice(tree: Tree): Case = tree match {
       case gen: Gen   => CaseGen(gen) withLoc gen.loc
       case kase: Case => kase
       case _          => unreachable
     }
+
   }
 
-  def values(idxs: List[Expr], bindings: Bindings)(
-      implicit cc: CompilerContext): Option[List[BigInt]] = idxs match {
+  def values(
+      idxs: List[Expr],
+      bindings: Bindings
+    )(
+      implicit
+      cc: CompilerContext
+    ): Option[List[BigInt]] = idxs match {
     case Nil => Some(Nil)
     case head :: tail =>
       if (!cc.typeCheck(head)) {
@@ -178,9 +195,10 @@ private[specialize] object Generate {
 
   def apply(
       input: Either[Desc, (Decl, Defn)]
-  )(
-      implicit cc: CompilerContext
-  ): Option[Either[Desc, (Decl, Defn)]] = {
+    )(
+      implicit
+      cc: CompilerContext
+    ): Option[Either[Desc, (Decl, Defn)]] = {
     assert(input.left forall { !_.isParametrized })
     assert(input.left forall { _.ref.asInstanceOf[Sym].idxs.isEmpty })
 
@@ -197,9 +215,10 @@ private[specialize] object Generate {
         newSymbols: Map[Symbol, Symbol],
         // This is inside a gen
         inGen: Boolean
-    )(
-        implicit cc: CompilerContext
-    ) extends StatefulTreeTransformer {
+      )(
+        implicit
+        cc: CompilerContext)
+        extends StatefulTreeTransformer {
 
       override val typed: Boolean = false
 
@@ -224,7 +243,7 @@ private[specialize] object Generate {
           bindings: Bindings,
           suffix: String,
           inGen: Boolean
-      ): List[(Symbol, Symbol)] = descs flatMap {
+        ): List[(Symbol, Symbol)] = descs flatMap {
         // Don't clone parametrized symbols outside Gen. These will be
         // specialized and replaced
         case desc: Desc if desc.isParametrized && !inGen => Nil
@@ -323,8 +342,10 @@ private[specialize] object Generate {
 
           // Issue error for any invalid contents
           invalid foreach { t =>
-            error(t,
-                  s"'gen' construct yields invalid syntax, ${dispatcher.description} is expected")
+            error(
+              t,
+              s"'gen' construct yields invalid syntax, ${dispatcher.description} is expected"
+            )
           }
 
           // Gather definitions in the 'gen' scope
@@ -364,11 +385,13 @@ private[specialize] object Generate {
           }
         }
 
-        def generateFor(bindings: Bindings,
-                        terminate: Bindings => Option[Boolean],
-                        loc: Loc,
-                        body: List[Tree],
-                        step: Stmt): List[Tree] = {
+        def generateFor(
+            bindings: Bindings,
+            terminate: Bindings => Option[Boolean],
+            loc: Loc,
+            body: List[Tree],
+            step: Stmt
+          ): List[Tree] = {
           val buf = new ListBuffer[Tree]
 
           @tailrec
@@ -503,7 +526,8 @@ private[specialize] object Generate {
                   }
                   val iter = (BigInt(0) to lastValue).iterator
                   val terminate = { _: Bindings =>
-                    Some(if (iter.hasNext) { iter.next(); false } else true)
+                    Some(if (iter.hasNext) { iter.next(); false }
+                    else true)
                   }
                   val stepStmt = StmtPost(ExprSym(symbol), "++") regularize decl.loc
                   generateFor(initBindings, terminate, Loc.synthetic, body, stepStmt)
@@ -638,7 +662,9 @@ private[specialize] object Generate {
 
     final class Resolve(
         finished: Boolean
-    )(implicit cc: CompilerContext)
+      )(
+        implicit
+        cc: CompilerContext)
         extends StatefulTreeTransformer {
 
       override val typed: Boolean = false
@@ -689,10 +715,11 @@ private[specialize] object Generate {
             case resolution :: Nil => Some(resolution)
             case resolutions =>
               if (finished) {
-                val msg = s"'${symbol.name}' is ambiguous after processing 'gen' constructs. Active definitions at:" ::
-                  (resolutions.reverse map {
-                  _.loc.prefix
-                })
+                val msg =
+                  s"'${symbol.name}' is ambiguous after processing 'gen' constructs. Active definitions at:" ::
+                    (resolutions.reverse map {
+                    _.loc.prefix
+                  })
                 error(loc, msg: _*)
               }
               None
@@ -720,7 +747,8 @@ private[specialize] object Generate {
                       if (expected != provided) {
                         error(
                           loc,
-                          s"Wrong number of indices for name '${symbol.name}' (expected $expected, provided $provided)")
+                          s"Wrong number of indices for name '${symbol.name}' (expected $expected, provided $provided)"
+                        )
                       } else {
                         val srcName = idxValues.mkString(symbol.name + "#[", ", ", "]")
                         error(loc, s"'$srcName' is not defined after processing 'gen' constructs")
@@ -839,13 +867,15 @@ private[specialize] object Generate {
     def rewrite(
         input: Either[Desc, (Decl, Defn)],
         transform: StatefulTreeTransformer
-    ): Either[Desc, (Decl, Defn)] = input match {
+      ): Either[Desc, (Decl, Defn)] = input match {
       case Left(desc) =>
         Left(desc rewrite transform ensuring { _.symbol eq desc.symbol })
       case Right((decl, defn)) =>
         Right(
-          (decl rewrite transform ensuring { _.symbol eq decl.symbol },
-           defn rewrite transform ensuring { _.symbol eq defn.symbol })
+          (
+            decl rewrite transform ensuring { _.symbol eq decl.symbol },
+            defn rewrite transform ensuring { _.symbol eq defn.symbol }
+          )
         )
     }
 
@@ -865,4 +895,5 @@ private[specialize] object Generate {
       if (resolve.hadError) None else Some(res)
     }
   }
+
 }

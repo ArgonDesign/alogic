@@ -25,6 +25,7 @@ import org.antlr.v4.runtime.tree.TerminalNode
 import scala.language.implicitConversions
 
 object AntlrConverters extends {
+
   implicit class RichParserRuleContext(val ctx: ParserRuleContext) extends AnyVal {
 
     def sourceText: String = {
@@ -52,6 +53,7 @@ object AntlrConverters extends {
       val eLoc = ctx.stop.loc
       Loc(sLoc.source, sLoc.start, eLoc.end, sLoc.point)
     }
+
   }
 
   implicit class RichToken(val token: Token) extends AnyVal {
@@ -75,6 +77,7 @@ object AntlrConverters extends {
       for (n <- 0 until node.getChildCount)
         yield node.getChild(n)
     }.toList
+
   }
 
   implicit def terminalNodeToString(node: TerminalNode): String = node.text

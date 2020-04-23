@@ -102,8 +102,11 @@ final class RemoveUnused(unusedSymbols: Set[Symbol])(implicit cc: CompilerContex
 object RemoveUnused extends PairsTransformerPass {
   val name = "remove-unused"
 
-  private def gather(pairs: List[(Decl, Defn)])(
-      f: (DeclEntity, DefnEntity) => Iterator[Symbol]): Set[Symbol] =
+  private def gather(
+      pairs: List[(Decl, Defn)]
+    )(
+      f: (DeclEntity, DefnEntity) => Iterator[Symbol]
+    ): Set[Symbol] =
     HashSet from {
       (pairs.iterator collect {
         case (decl: DeclEntity, defn: DefnEntity) => f(decl, defn)
@@ -217,4 +220,5 @@ object RemoveUnused extends PairsTransformerPass {
       process(results)
     }
   }
+
 }

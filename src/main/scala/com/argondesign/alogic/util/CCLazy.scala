@@ -25,6 +25,7 @@ final class CCLazy[T <: AnyRef](f: CompilerContext => T) {
     }
     value
   }
+
 }
 
 object CCLazy {

@@ -26,10 +26,7 @@ organization := "com.argondesign"
 
 scalaVersion := "2.13.1"
 
-scalacOptions ++= Seq("-feature",
-                      "-explaintypes",
-                      "-unchecked",
-                      "-Xlint:_")
+scalacOptions ++= Seq("-feature", "-explaintypes", "-unchecked", "-Xlint:_")
 
 ////////////////////////////////////////////////////////////////////////////////
 // Library dependencies

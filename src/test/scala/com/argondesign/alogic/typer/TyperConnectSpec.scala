@@ -87,7 +87,7 @@ final class TyperConnectSpec extends FreeSpec with AlogicTest {
             |  in u4 pi4;
             |  out u1 po1;
             |  out u2 po2;
-            |  ${conn};
+            |  $conn;
             |}"""
           }
           cc.messages.loneElement should beThe[Error](
@@ -125,7 +125,7 @@ final class TyperConnectSpec extends FreeSpec with AlogicTest {
             |  out sync ready u2 po2sr;
             |  out u2 po2b;
             |  out u4 po4;
-            |  ${conn};
+            |  $conn;
             |}"""
           }
           cc.messages.loneElement should beThe[Error](
@@ -177,7 +177,7 @@ final class TyperConnectSpec extends FreeSpec with AlogicTest {
             |  out u1 po1;
             |  out u2 po2;
             |  out u4 po4;
-            |  ${conn};
+            |  $conn;
             |}"""
           }
           cc.messages shouldBe empty
@@ -213,7 +213,7 @@ final class TyperConnectSpec extends FreeSpec with AlogicTest {
             |  out u2 po2;
             |  out u4 po4;
             |  out foo so4;
-            |  ${conn};
+            |  $conn;
             |}"""
           }
           cc.messages shouldBe empty
@@ -271,7 +271,7 @@ final class TyperConnectSpec extends FreeSpec with AlogicTest {
             |  in u3 pi3;
             |  out u3 po3;
             |  in foo si4;
-            |  ${conn};
+            |  $conn;
             |}"""
           }
           widths match {
@@ -280,7 +280,7 @@ final class TyperConnectSpec extends FreeSpec with AlogicTest {
             case lw :: rws =>
               cc.messages.length shouldBe rws.length
               for ((msg, rw) <- cc.messages zip rws) {
-                msg should beThe[Error](s"Port widths do not match: ${lw} -> ${rw}")
+                msg should beThe[Error](s"Port widths do not match: $lw -> $rw")
               }
           }
         }
@@ -309,7 +309,7 @@ final class TyperConnectSpec extends FreeSpec with AlogicTest {
             |  new fsm pipea {}
             |  new fsm pipeb {}
             |  new fsm pipec {}
-            |  ${conn};
+            |  $conn;
             |}"""
           }
           if (msg.isEmpty) {
@@ -344,8 +344,10 @@ final class TyperConnectSpec extends FreeSpec with AlogicTest {
           ("ofcv -> b.fcv", "Left hand side of '->' contains an output from enclosing entity"),
           ("ofcr -> b.fcr", "Left hand side of '->' contains an output from enclosing entity"),
           ("ofca -> b.fca", "Left hand side of '->' contains an output from enclosing entity"),
-          ("{ofcn, ofcn} -> b.fcn2",
-           "Left hand side of '->' contains an output from enclosing entity"),
+          (
+            "{ofcn, ofcn} -> b.fcn2",
+            "Left hand side of '->' contains an output from enclosing entity"
+          ),
           ("P -> b.fcn", ""),
           ("isn.a -> b.fcn", ""),
           ("a_entity -> ofcn", "Left hand side of '->' contains non-port type")
@@ -376,7 +378,7 @@ final class TyperConnectSpec extends FreeSpec with AlogicTest {
             |  out sync accept bool ofca;
             |  a = new a_entity;
             |  b = new b_entity;
-            |  ${conn};
+            |  $conn;
             |}"""
           }
           if (msg.isEmpty) {
@@ -401,14 +403,18 @@ final class TyperConnectSpec extends FreeSpec with AlogicTest {
           ("a.fcv -> a.fcv", "Right hand side of '->' contains an output from instance 'a'"),
           ("a.fcr -> a.fcr", "Right hand side of '->' contains an output from instance 'a'"),
           ("a.fca -> a.fca", "Right hand side of '->' contains an output from instance 'a'"),
-          ("a.fcn2 -> {a.fcn, a.fcnb}",
-           "Right hand side of '->' contains an output from instance 'a'"),
+          (
+            "a.fcn2 -> {a.fcn, a.fcnb}",
+            "Right hand side of '->' contains an output from instance 'a'"
+          ),
           ("a.fcn -> ifcn", "Right hand side of '->' contains an input to enclosing entity"),
           ("a.fcv -> ifcv", "Right hand side of '->' contains an input to enclosing entity"),
           ("a.fcr -> ifcr", "Right hand side of '->' contains an input to enclosing entity"),
           ("a.fca -> ifca", "Right hand side of '->' contains an input to enclosing entity"),
-          ("a.fcn2 -> {ifcn,ifcnb}",
-           "Right hand side of '->' contains an input to enclosing entity"),
+          (
+            "a.fcn2 -> {ifcn,ifcnb}",
+            "Right hand side of '->' contains an input to enclosing entity"
+          ),
           ("a.fcn -> ofcn", ""),
           ("a.fcv -> ofcv", ""),
           ("a.fcr -> ofcr", ""),
@@ -446,7 +452,7 @@ final class TyperConnectSpec extends FreeSpec with AlogicTest {
             |  out sync accept bool ofca;
             |  a = new a_entity;
             |  b = new b_entity;
-            |  ${conn};
+            |  $conn;
             |}"""
           }
           if (msg.isEmpty) {
@@ -460,7 +466,7 @@ final class TyperConnectSpec extends FreeSpec with AlogicTest {
 
     "non-trivial connect expressions have no flow control" - {
       def mkMsg(side: String) =
-        s"Port with flow control found in non-trivial expression on ${side} hand side of '->'"
+        s"Port with flow control found in non-trivial expression on $side hand side of '->'"
 
       for {
         (connect, msgs) <- List(
@@ -470,7 +476,7 @@ final class TyperConnectSpec extends FreeSpec with AlogicTest {
           ("$signed(a.fcv) -> b.fcv", List(mkMsg("left"))),
           ("a.fcn2 -> {b.fcn, b.fcv}", List(mkMsg("right"))),
           ("a.fcn2 -> {b.fcr, b.fcr}", List(mkMsg("right"), mkMsg("right"))),
-          ("is.a -> b.fcn", List(mkMsg("left"))),
+          ("is.a -> b.fcn", List(mkMsg("left")))
         )
       } {
         connect in {
@@ -542,7 +548,7 @@ final class TyperConnectSpec extends FreeSpec with AlogicTest {
             |  in bar is;
             |  a = new a_entity;
             |  b = new b_entity;
-            |  ${connect};
+            |  $connect;
             |}"""
           }
           if (msg.isEmpty) {
@@ -561,10 +567,14 @@ final class TyperConnectSpec extends FreeSpec with AlogicTest {
           ("a.fcn2 -> {b.fcn, b.fcnb}, ofcn2", ""),
           ("a.fcn2 -> os.a, ofcn2", ""),
           ("a.fcv -> b.fcv, ofcv", ""),
-          ("a.fcr -> b.fcr, ofcr",
-           "Port with 'sync ready' flow control cannot have multiple sinks"),
-          ("a.fca -> b.fca, ofca",
-           "Port with 'sync accept' flow control cannot have multiple sinks")
+          (
+            "a.fcr -> b.fcr, ofcr",
+            "Port with 'sync ready' flow control cannot have multiple sinks"
+          ),
+          (
+            "a.fca -> b.fca, ofca",
+            "Port with 'sync accept' flow control cannot have multiple sinks"
+          )
         )
       } {
         conn in {
@@ -588,7 +598,7 @@ final class TyperConnectSpec extends FreeSpec with AlogicTest {
             |  out sync accept bool ofca;
             |  a = new a_entity;
             |  b = new b_entity;
-            |  ${conn};
+            |  $conn;
             |}"""
           }
           if (msg.isEmpty) {
@@ -617,12 +627,12 @@ final class TyperConnectSpec extends FreeSpec with AlogicTest {
         )
       } {
 
-        s"'${fc}' with '${st}'" in {
+        s"'$fc' with '$st'" in {
           typeCheck {
             s"""
             |network a {
-            |   in  ${fc}       bool pi;
-            |   out ${fc} ${st} bool po;
+            |   in  $fc       bool pi;
+            |   out $fc $st bool po;
             |   pi -> po;
             |}"""
           }
@@ -650,7 +660,7 @@ final class TyperConnectSpec extends FreeSpec with AlogicTest {
             s"""
             |network a {
             |   in  bool pi;
-            |   out bool po ${init};
+            |   out bool po $init;
             |   pi -> po;
             |}"""
           }
@@ -677,7 +687,7 @@ final class TyperConnectSpec extends FreeSpec with AlogicTest {
           typeCheck {
             s"""
             |network a {
-            |   ${init}
+            |   $init
             |   in  bool pi;
             |   out u4   po;
             |   pi -> po[A];
@@ -713,7 +723,7 @@ final class TyperConnectSpec extends FreeSpec with AlogicTest {
             |    in bool b;
             |    in bar  c;
             |  }
-            |  p -> ${expr};
+            |  p -> $expr;
             |}"""
           }
           if (msg.isEmpty) {

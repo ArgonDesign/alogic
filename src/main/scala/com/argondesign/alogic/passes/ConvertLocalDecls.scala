@@ -126,6 +126,7 @@ final class ConvertLocalDecls(implicit cc: CompilerContext) extends StatefulTree
       case node: StmtDecl => cc.ice(node, "Local declaration remains")
     }
   }
+
 }
 
 object ConvertLocalDecls extends PairTransformerPass {
@@ -139,4 +140,5 @@ object ConvertLocalDecls extends PairTransformerPass {
     val newDecl = transformer(decl)
     (newDecl, newDefn)
   }
+
 }

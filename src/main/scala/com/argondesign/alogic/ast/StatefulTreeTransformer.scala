@@ -68,11 +68,11 @@ abstract class StatefulTreeTransformer(implicit cc: CompilerContext) extends Tre
   // Enclosing context tracker
   //////////////////////////////////////////////////////////////////////////////
 
-  private[this] final val _enclosingSymbols = mutable.Stack[Symbol]()
+  final private[this] val _enclosingSymbols = mutable.Stack[Symbol]()
 
-  protected[this] final def enclosingSymbols: collection.Seq[Symbol] = _enclosingSymbols
+  final protected[this] def enclosingSymbols: collection.Seq[Symbol] = _enclosingSymbols
 
-  protected[this] final def withEnclosingSymbol[R](symbol: Symbol)(f: => R): R = {
+  final protected[this] def withEnclosingSymbol[R](symbol: Symbol)(f: => R): R = {
     _enclosingSymbols push symbol
     f
   } tap { _ =>
@@ -80,7 +80,7 @@ abstract class StatefulTreeTransformer(implicit cc: CompilerContext) extends Tre
   }
 
   // The Symbol of the closest enclosing entity
-  protected[this] final def entitySymbol: Symbol =
+  final protected[this] def entitySymbol: Symbol =
     (_enclosingSymbols find {
       _.kind match {
         case TypeType(_: TypeEntity) => true
@@ -93,17 +93,17 @@ abstract class StatefulTreeTransformer(implicit cc: CompilerContext) extends Tre
   //////////////////////////////////////////////////////////////////////////////
 
   // Map from replacement symbol to original symbol
-  protected final val orig: mutable.Map[Symbol, Symbol] = mutable.Map()
+  final protected val orig: mutable.Map[Symbol, Symbol] = mutable.Map()
 
   // Replacement symbol for original symbol, if exists
-  protected final def repl(symbol: Symbol): Option[Symbol] = _replacementDecl.get(symbol) map {
+  final protected def repl(symbol: Symbol): Option[Symbol] = _replacementDecl.get(symbol) map {
     _.symbol
   }
 
   // Map from replacement symbol to its declaration
-  private final val _replacementDecl: mutable.Map[Symbol, Decl] = mutable.Map()
+  final private val _replacementDecl: mutable.Map[Symbol, Decl] = mutable.Map()
 
-  private[this] final def replacementDecl(symbol: Symbol): Decl = {
+  final private[this] def replacementDecl(symbol: Symbol): Decl = {
     // First time we encounter a symbol that is replaced, we create a new
     // symbol and process it's declaration so it's type is known.
     _replacementDecl.getOrElseUpdate(
@@ -120,9 +120,9 @@ abstract class StatefulTreeTransformer(implicit cc: CompilerContext) extends Tre
     )
   }
 
-  private[this] final def replacementSymbol(symbol: Symbol): Symbol = replacementDecl(symbol).symbol
+  final private[this] def replacementSymbol(symbol: Symbol): Symbol = replacementDecl(symbol).symbol
 
-  private[this] final def mustBeReplaced(symbol: Symbol): Boolean = {
+  final private[this] def mustBeReplaced(symbol: Symbol): Boolean = {
     !(orig contains symbol) && ((_replacementDecl contains symbol) || replace(symbol))
   }
 
@@ -200,15 +200,16 @@ abstract class StatefulTreeTransformer(implicit cc: CompilerContext) extends Tre
   // Internals
   //////////////////////////////////////////////////////////////////////////////
 
-  private final def transform(trees: List[Tree]): List[Tree] = trees flatMap { t =>
+  final private def transform(trees: List[Tree]): List[Tree] = trees flatMap { t =>
     transform(t) match {
       case Thicket(results) => results
       case result           => List(result)
     }
   }
 
-  override final def defaultCheck(orig: Tree, tree: Tree): Unit = {
+  final override def defaultCheck(orig: Tree, tree: Tree): Unit = {
     assert(enclosingSymbols.isEmpty, this.getClass.getName + " " + enclosingSymbols)
     super.defaultCheck(orig, tree)
   }
+
 }

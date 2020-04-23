@@ -28,9 +28,9 @@ import scala.collection.mutable.ListBuffer
 final class MakeVerilog(
     presentDetails: EntityDetails,
     details: => Map[Symbol, EntityDetails]
-)(
-    implicit cc: CompilerContext
-) {
+  )(
+    implicit
+    cc: CompilerContext) {
 
   import presentDetails._
 
@@ -459,4 +459,5 @@ final class MakeVerilog(
 
     body.text
   }
+
 }

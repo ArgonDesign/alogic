@@ -49,9 +49,10 @@ private[builtins] object AtEx {
       bitExpr: Expr,
       width: Expr,
       expr: Expr
-  )(
-      implicit cc: CompilerContext
-  ): Option[Expr] = {
+    )(
+      implicit
+      cc: CompilerContext
+    ): Option[Expr] = {
 
     def fixSign(result: Expr): Expr = {
       if (expr.tpe.isSigned) {
@@ -74,7 +75,7 @@ private[builtins] object AtEx {
       val srcWidth = expr.tpe.width.toInt
       val d = dstWidth - srcWidth
       if (d < 0) {
-        val msg = s"Result width ${dstWidth} of extension is less than argument width ${srcWidth}"
+        val msg = s"Result width $dstWidth of extension is less than argument width $srcWidth"
         cc.error(loc, msg)
         ExprError()
       } else if (d == 0) {

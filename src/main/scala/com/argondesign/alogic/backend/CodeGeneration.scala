@@ -25,8 +25,12 @@ import scala.collection.parallel.CollectionConverters._
 object CodeGeneration extends PairsTransformerPass {
   val name = "code-generation"
 
-  override protected def process(input: List[(Decl, Defn)])(
-      implicit cc: CompilerContext): List[(Decl, Defn)] = {
+  override protected def process(
+      input: List[(Decl, Defn)]
+    )(
+      implicit
+      cc: CompilerContext
+    ): List[(Decl, Defn)] = {
     // Create the details objects for all entities, collect them into a map,
     // passing the resulting map as a by name argument to EntityDetails itself,
     // this way EntityDetails can use details of other entities to figure out
@@ -51,4 +55,5 @@ object CodeGeneration extends PairsTransformerPass {
     // Job done
     Nil
   }
+
 }

@@ -274,7 +274,14 @@ object Trees {
   case class ExprRep(count: Expr, expr: Expr) extends Expr
   case class ExprCat(parts: List[Expr]) extends Expr
   case class ExprIndex(expr: Expr, index: Expr) extends Expr
-  case class ExprSlice(expr: Expr, lIdx: Expr, op: String, rIdx: Expr) extends Expr
+
+  case class ExprSlice(
+      expr: Expr,
+      lIdx: Expr,
+      op: String,
+      rIdx: Expr)
+      extends Expr
+
   case class ExprSelect(expr: Expr, selector: String, idxs: List[Expr]) extends Expr
   case class ExprRef(ref: Ref) extends Expr
   case class ExprSym(symbol: Symbol) extends Expr
@@ -316,9 +323,11 @@ object Trees {
     this withLoc Loc.synthetic
     this withTpe TypeMisc
   }
+
 }
 
 trait TreeImpl extends Product with Locationed { this: Trees.Tree =>
+
   // A Tree can have children held either directly, via an Iterable or via an Option
   def children: Iterator[Trees.Tree] = productIterator flatMap {
     case tree: Trees.Tree       => Iterator.single(tree)
@@ -326,6 +335,7 @@ trait TreeImpl extends Product with Locationed { this: Trees.Tree =>
     case Some(tree: Trees.Tree) => Iterator.single(tree)
     case _                      => Iterator.empty
   }
+
 }
 
 trait IdentImpl { this: Trees.Ident =>

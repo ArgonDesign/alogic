@@ -56,7 +56,11 @@ final class Fold(implicit cc: CompilerContext) extends StatelessTreeTransformer 
     case StmtOutcall(output, func, inputs) =>
       Some {
         TypeAssigner {
-          StmtOutcall(output.simplifyLValue, func.simplify, inputs map simplifyAssignmentSource) withLoc tree.loc
+          StmtOutcall(
+            output.simplifyLValue,
+            func.simplify,
+            inputs map simplifyAssignmentSource
+          ) withLoc tree.loc
         }
       }
     case EntConnect(lhs, rhss) =>
@@ -134,6 +138,7 @@ final class Fold(implicit cc: CompilerContext) extends StatelessTreeTransformer 
     //
     case _ => tree
   }
+
 }
 
 object Fold extends PairTransformerPass {

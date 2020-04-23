@@ -77,10 +77,11 @@ abstract class StatelessTreeTransformer(implicit cc: CompilerContext) extends Tr
   // Internals
   //////////////////////////////////////////////////////////////////////////////
 
-  private final def transform(trees: List[Tree]): List[Tree] = trees flatMap { t =>
+  final private def transform(trees: List[Tree]): List[Tree] = trees flatMap { t =>
     transform(t) match {
       case Thicket(results) => results
       case result           => List(result)
     }
   }
+
 }

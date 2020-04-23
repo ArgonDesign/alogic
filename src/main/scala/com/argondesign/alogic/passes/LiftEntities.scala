@@ -29,6 +29,7 @@ import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
 
 private object Analyze {
+
   // Given a decl and defn for an entity, and the set of symbols defined in
   // entities enclosing this entity, return a map from entity symbol to
   // sets of symbols that need to be propagated to that entity. The returned
@@ -38,9 +39,10 @@ private object Analyze {
       decl: DeclEntity,
       defn: DefnEntity,
       outerSymbols: Set[Symbol]
-  )(
-      implicit cc: CompilerContext
-  ): Map[Symbol, Set[Symbol]] = {
+    )(
+      implicit
+      cc: CompilerContext
+    ): Map[Symbol, Set[Symbol]] = {
     require(decl.symbol eq defn.symbol)
     // Set of term symbols defined within this entity
     val definedSymbols = Set from {
@@ -85,10 +87,10 @@ private object Analyze {
       val maps = decl.entities map { decl =>
         analyze(decl, decl.symbol.defn.asInstanceOf[DefnEntity], newOuterSymbols)
       }
-      maps.foldLeft(Map.empty[Symbol, Set[Symbol]]) { _ ++ _ }
+      maps.foldLeft(Map.empty[Symbol, Set[Symbol]])(_ ++ _)
     }
     // Set of symbols referenced within or below this entity
-    val usedSymbols = nestedResults.valuesIterator.fold(directlyReferencedSymbols) { _ union _ }
+    val usedSymbols = nestedResults.valuesIterator.fold(directlyReferencedSymbols)(_ union _)
     // Set of outer symbols that must be propagated to this entity
     val requiredSymbols = (usedSymbols diff definedSymbols) intersect outerSymbols
     // Include this entity in the result map
@@ -98,16 +100,19 @@ private object Analyze {
   def apply(
       decl: DeclEntity,
       defn: DefnEntity
-  )(
-      implicit cc: CompilerContext
-  ): Map[Symbol, Set[Symbol]] = analyze(decl, defn, Set.empty[Symbol])
+    )(
+      implicit
+      cc: CompilerContext
+    ): Map[Symbol, Set[Symbol]] = analyze(decl, defn, Set.empty[Symbol])
+
 }
 
 class LiftEntitiesA(
     requiredSymbolsMap: Map[Symbol, Set[Symbol]]
-)(
-    implicit cc: CompilerContext
-) extends StatefulTreeTransformer {
+  )(
+    implicit
+    cc: CompilerContext)
+    extends StatefulTreeTransformer {
 
   // Map of ('containing entity', 'referenced symbol') -> 'propagated symbol'
   private val propMap: Map[(Symbol, Symbol), Symbol] = requiredSymbolsMap flatMap {
@@ -237,11 +242,16 @@ class LiftEntitiesA(
                   Some(
                     EntConnect(
                       ExprSym(outerSymbol),
-                      List(ExprSym(defn.symbol) select requiredSymbol.name)) regularize defn.loc)
+                      List(ExprSym(defn.symbol) select requiredSymbol.name)
+                    ) regularize defn.loc
+                  )
                 case _: TypeOut =>
                   Some(
-                    EntConnect(ExprSym(defn.symbol) select requiredSymbol.name,
-                               List(ExprSym(outerSymbol))) regularize defn.loc)
+                    EntConnect(
+                      ExprSym(defn.symbol) select requiredSymbol.name,
+                      List(ExprSym(outerSymbol))
+                    ) regularize defn.loc
+                  )
                 case _: TypeConst    => None
                 case _: TypeXenoFunc => None
                 case _               => unreachable
@@ -289,14 +299,16 @@ class LiftEntitiesA(
     assert(newDeclsStack.isEmpty)
     assert(newDefnsStack.isEmpty)
   }
+
 }
 
 class LiftEntitiesB(
     globalReplacements: mutable.Map[Symbol, Symbol],
     propagatedSymbols: Set[Symbol]
-)(
-    implicit cc: CompilerContext
-) extends StatefulTreeTransformer {
+  )(
+    implicit
+    cc: CompilerContext)
+    extends StatefulTreeTransformer {
 
   // Output ports with storage that have been pushed into nested entities need
   // to loose their storage and turn into wire ports, we collect these in a set
@@ -346,11 +358,14 @@ class LiftEntitiesB(
     //
     case _ => tree
   }
+
 }
 
 final class LiftEntitiesC(
-    globalReplacements: collection.Map[Symbol, Symbol],
-)(implicit cc: CompilerContext)
+    globalReplacements: collection.Map[Symbol, Symbol]
+  )(
+    implicit
+    cc: CompilerContext)
     extends StatefulTreeTransformer {
 
   override def replace(symbol: Symbol): Boolean = symbol.kind match {
@@ -371,6 +386,7 @@ final class LiftEntitiesC(
     //
     case _ => tree
   }
+
 }
 
 object LiftEntities {
@@ -409,4 +425,5 @@ object LiftEntities {
         new LiftEntitiesC(globalReplacements)
     }
   }
+
 }

@@ -41,4 +41,5 @@ final class Regularize(loc: Loc)(implicit cc: CompilerContext) extends Stateless
 
     tree
   }
+
 }
