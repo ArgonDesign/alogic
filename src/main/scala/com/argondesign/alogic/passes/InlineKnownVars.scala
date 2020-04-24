@@ -23,6 +23,7 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.typer.TypeAssigner
 
+import scala.annotation.tailrec
 import scala.collection.mutable
 
 final class InlineKnownVars(
@@ -113,10 +114,15 @@ final class InlineKnownVars(
   override def transform(tree: Tree): Tree = tree match {
     // Substitute known constants
     case ExprSym(symbol) =>
-      bindings.top.get(symbol) map { _.simplify } match {
+      val bs = bindings.top
+      @tailrec // Recursively replace with bound values
+      def simplify(expr: Expr): Expr = (expr given bs).simplify match {
+        case simplified: ExprInt => simplified
+        case simplified          => if (simplified eq expr) expr else simplify(simplified)
+      }
+      bs.get(symbol) map simplify match {
         case Some(expr: ExprInt) => expr
-//        case Some(expr: ExprNum) => expr
-        case _ => tree
+        case _                   => tree
       }
 
     case _: Stmt =>
