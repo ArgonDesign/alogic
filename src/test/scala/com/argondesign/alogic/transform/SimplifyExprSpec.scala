@@ -1107,7 +1107,13 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
           ("c = a[6:0]",  { case ExprSym(Symbol("a")) => }),
           ("c = a[6-:7]", { case ExprSym(Symbol("a")) => }),
           ("c = a[0+:7]", { case ExprSym(Symbol("a")) => }),
-          ("d = b[0:0]",  { case ExprSym(Symbol("b")) => })
+          ("d = b[0:0]",  { case ExprSym(Symbol("b")) => }),
+          ("c = e[6:0] + 7'd1",  { case ExprBinary(ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("e"))) :: Nil),
+                                                   "+", ExprInt(false, 7, v)) if v == 1 => }),
+          ("c = e[0+:7] + 7'd1", { case ExprBinary(ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("e"))) :: Nil),
+                                                   "+", ExprInt(false, 7, v)) if v == 1 => }),
+          ("c = e[6-:7] + 7'd1", { case ExprBinary(ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("e"))) :: Nil),
+                                                   "+", ExprInt(false, 7, v)) if v == 1 => })
           // format: on
         )
       } {
@@ -1119,6 +1125,7 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
             |  in u1 b;
             |  out u7 c;
             |  out u1 d;
+            |  in i7 e;
             |  fence {
             |    $text;
             |  }

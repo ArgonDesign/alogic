@@ -783,11 +783,19 @@ final class SimplifyExpr(implicit cc: CompilerContext)
         case _ =>
           op match {
             case ":" =>
-              if (rIdx == 0 && lIdx == expr.tpe.width - 1) expr else tree
+              if (rIdx == 0 && lIdx == expr.tpe.width - 1) {
+                if (expr.tpe.isSigned) expr.castUnsigned else expr
+              } else {
+                tree
+              }
             case "+:" | "-:" =>
               // Note: This assumes the slice is well formed, i.e.:
               // lIdx is 0 if "+:" or rIdx is size - 1 if "-:"
-              if (rIdx == expr.tpe.width) expr else tree
+              if (rIdx == expr.tpe.width) {
+                if (expr.tpe.isSigned) expr.castUnsigned else expr
+              } else {
+                tree
+              }
             case _ => unreachable
           }
       }
