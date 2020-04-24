@@ -1,0 +1,15 @@
+fsm method_bad_02 {
+  out wire bool o;
+
+  struct s {
+    static bool f() {
+      // Empty
+    }
+  }
+
+  void main() {
+    o = s.f();
+    fence;
+  }
+}
+// :5: ERROR: Control reaches end of non-void function

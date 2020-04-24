@@ -91,15 +91,29 @@ object Types {
   case object TypeCtrlStmt extends Type
 
   //////////////////////////////////////////////////////////////////////////////
-  // Function types
+  // Callable types
   //////////////////////////////////////////////////////////////////////////////
 
+  sealed trait TypeCallable extends Type {
+    val symbol: Symbol
+    val retType: TypeFund
+    val argTypes: List[Type]
+  }
+
+  sealed trait TypeMethod extends TypeCallable
+
   // format: off
-  case class TypeCombFunc(symbol: Symbol, retType: TypeFund, argTypes: List[Type]) extends Type
-  case class TypeCtrlFunc(symbol: Symbol, retType: TypeFund, argTypes: List[TypeFund]) extends Type
-  case class TypePolyFunc(symbol: Symbol, resolver: List[Arg] => Option[Symbol]) extends Type with TypePolyFuncImpl
-  case class TypeXenoFunc(symbol: Symbol, retType: TypeFund, argTypes: List[TypeFund]) extends Type
+  case class TypeCombFunc(symbol: Symbol, retType: TypeFund, argTypes: List[Type]) extends TypeCallable
+  case class TypeCtrlFunc(symbol: Symbol, retType: TypeFund, argTypes: List[TypeFund]) extends TypeCallable
+  case class TypeXenoFunc(symbol: Symbol, retType: TypeFund, argTypes: List[TypeFund]) extends TypeCallable
+  case class TypeStaticMethod(symbol: Symbol, retType: TypeFund, argTypes: List[TypeFund]) extends TypeMethod
+  case class TypeNormalMethod(symbol: Symbol, retType: TypeFund, argTypes: List[TypeFund]) extends TypeMethod
   // format: on
+
+  // This is callable, but is not quite a TypeCallable yet
+  case class TypePolyFunc(symbol: Symbol, resolver: List[Arg] => Option[Symbol])
+      extends Type
+      with TypePolyFuncImpl
 
   //////////////////////////////////////////////////////////////////////////////
   // Unknown type (placeholder used prior to type checking)
@@ -132,10 +146,19 @@ object Types {
       if (signed) TypeSInt(size) else TypeUInt(size)
     }
 
-    def unapply(expr: Type): Option[(Boolean, BigInt)] = expr match {
+    def unapply(kind: Type): Option[(Boolean, BigInt)] = kind match {
       case TypeSInt(size) => Some((true, size))
       case TypeUInt(size) => Some((false, size))
       case _              => None
+    }
+
+  }
+
+  object TypeCallable {
+
+    def unapply(kind: Type): Option[(Symbol, Type, List[Type])] = kind match {
+      case callable: TypeCallable => Some((callable.symbol, callable.retType, callable.argTypes))
+      case _                      => None
     }
 
   }

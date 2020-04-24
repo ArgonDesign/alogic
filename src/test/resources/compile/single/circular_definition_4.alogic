@@ -1,0 +1,6 @@
+// @ignore
+fsm circular_definition_4 {
+  struct s {
+    uint(@bits(this)) x;
+  }
+}

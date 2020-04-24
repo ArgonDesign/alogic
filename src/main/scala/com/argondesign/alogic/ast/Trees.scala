@@ -216,7 +216,7 @@ object Trees {
   //////////////////////////////////////////////////////////////////////////////
 
   // format: off
-  sealed trait Stmt extends Tree
+  sealed trait Stmt extends Tree with StmtOps
 
   case class StmtDesc(desc: Desc) extends Stmt
   case class StmtDecl(decl: Decl) extends Stmt
@@ -234,7 +234,7 @@ object Trees {
   case class StmtBreak() extends Stmt
   case class StmtContinue() extends Stmt
   case class StmtGoto(expr: Expr) extends Stmt
-  case class StmtReturn() extends Stmt
+  case class StmtReturn(comb: Boolean, exprOpt: Option[Expr]) extends Stmt
   case class StmtAssign(lhs: Expr, rhs: Expr) extends Stmt
   case class StmtUpdate(lhs: Expr, op: String, rhs: Expr) extends Stmt
   case class StmtPost(expr: Expr, op: String) extends Stmt
@@ -263,6 +263,7 @@ object Trees {
   // Expressions
   //////////////////////////////////////////////////////////////////////////////
 
+  // format: off
   sealed trait Expr extends Tree with ExprOps
 
   object Expr extends ExprObjOps
@@ -274,23 +275,18 @@ object Trees {
   case class ExprRep(count: Expr, expr: Expr) extends Expr
   case class ExprCat(parts: List[Expr]) extends Expr
   case class ExprIndex(expr: Expr, index: Expr) extends Expr
-
-  case class ExprSlice(
-      expr: Expr,
-      lIdx: Expr,
-      op: String,
-      rIdx: Expr)
-      extends Expr
-
+  case class ExprSlice(expr: Expr, lIdx: Expr, op: String, rIdx: Expr) extends Expr
   case class ExprSelect(expr: Expr, selector: String, idxs: List[Expr]) extends Expr
   case class ExprRef(ref: Ref) extends Expr
   case class ExprSym(symbol: Symbol) extends Expr
+  case class ExprThis(expr: Expr) extends Expr
   case class ExprType(kind: TypeFund) extends Expr
   case class ExprCast(kind: TypeFund, expr: Expr) extends Expr
   case class ExprInt(signed: Boolean, width: Int, value: BigInt) extends Expr with ExprIntImpl
   case class ExprNum(signed: Boolean, value: BigInt) extends Expr with ExprNumImpl
   case class ExprStr(value: String) extends Expr
   case class ExprError() extends Expr
+  // format: on
 
   //////////////////////////////////////////////////////////////////////////////
   // Argument assignments

@@ -39,8 +39,10 @@ final class DesugarSpec extends AnyFreeSpec with AlogicTest {
         op in {
           desugar {
             s"""
-            |void function() {
-            |  i2 a; a$op;
+            |struct s {
+            |  void function() {
+            |    i2 a; a$op;
+            |  }
             |}"""
           } getFirst {
             case DefnFunc(_, _, body) => body
@@ -65,8 +67,10 @@ final class DesugarSpec extends AnyFreeSpec with AlogicTest {
         s"$op=" in {
           desugar {
             s"""
-            |void function() {
-            |  i100 a; a $op= 100'd2;
+            |struct s {
+            |  void function() {
+            |    i100 a; a $op= 100'd2;
+            |  }
             |}"""
           } getFirst {
             case DefnFunc(_, _, body) => body
@@ -97,9 +101,11 @@ final class DesugarSpec extends AnyFreeSpec with AlogicTest {
         name in {
           desugar {
             s"""
-            |void function() {
-            |  i2 b;
-            |  let (i2 a = 2'd0, b = a) $loop
+            |fsm e {
+            |  void function() {
+            |    i2 b;
+            |    let (i2 a = 2'd0, b = a) $loop
+            |  }
             |}"""
           } getFirst {
             case DefnFunc(_, _, body) => body
@@ -142,8 +148,8 @@ final class DesugarSpec extends AnyFreeSpec with AlogicTest {
       desugar {
         """
           |network a {
-           |  new fsm b {}
-           |}"""
+          |  new fsm b {}
+          |}"""
       } getFirst {
         case Thicket(body) => body
       } tap {

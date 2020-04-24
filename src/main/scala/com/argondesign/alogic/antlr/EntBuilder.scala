@@ -19,11 +19,12 @@ import com.argondesign.alogic.antlr.AlogicParser._
 import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.SourceContext
 import com.argondesign.alogic.core.FuncVariant
 
 object EntBuilder extends BaseBuilder[EntContext, Ent] {
 
-  def apply(ctx: EntContext)(implicit cc: CompilerContext): Ent = {
+  def apply(ctx: EntContext)(implicit cc: CompilerContext, sc: SourceContext): Ent = {
     object Visitor extends AlogicScalarVisitor[Ent] {
       override def visitEntDesc(ctx: EntDescContext): Ent = {
         val desc = DescBuilder(ctx.desc) match {

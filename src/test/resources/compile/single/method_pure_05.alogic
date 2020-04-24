@@ -1,0 +1,26 @@
+fsm method_pure_05 {
+  in bool i;
+  out wire bool o;
+
+  struct s {
+    static bool neg(bool x) {
+      return ~x;
+    }
+    static bool identity(bool x) {
+      return ~neg(x);
+    }
+  }
+
+  void main() {
+    o = s.identity(i);
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module method_pure_05(
+//    input  wire i,
+//    output wire o
+//  );
+//    assign o = i;
+//  endmodule
+// }}}

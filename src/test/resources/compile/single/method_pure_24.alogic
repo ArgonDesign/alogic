@@ -1,0 +1,27 @@
+fsm method_pure_24 {
+  in u2 i;
+  out wire u2 o;
+
+  struct s {
+    static u2 f(u2 x) {
+      case (x) {
+        2'd0:     return 2'd1;
+        default:  {} // Nothing
+      }
+      return 2'd0;
+    }
+  }
+
+  void main() {
+    o = s.f(i);
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module method_pure_24(
+//    input  wire [1:0] i,
+//    output wire [1:0] o
+//  );
+//    assign o = i == 2'd0 ? 2'd1 : 2'd0;
+//  endmodule
+// }}}

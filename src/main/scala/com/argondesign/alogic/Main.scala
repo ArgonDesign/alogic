@@ -105,6 +105,8 @@ object Main extends App {
     profile = cliConf.profile.toOption contains true,
     resetStyle = cliConf.resetStyle(),
     resetAll = !cliConf.noResetAll(),
+    genLoopLimit = cliConf.genLoopLimit(),
+    combRecLimit = cliConf.combRecLimit(),
     assertions = !cliConf.noAssertions()
   )
 

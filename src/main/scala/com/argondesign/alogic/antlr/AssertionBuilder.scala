@@ -19,10 +19,17 @@ import com.argondesign.alogic.antlr.AlogicParser._
 import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.SourceContext
 
 object AssertionBuilder extends BaseBuilder[AssertionContext, Assertion] {
 
-  def apply(ctx: AssertionContext)(implicit cc: CompilerContext): Assertion = {
+  def apply(
+      ctx: AssertionContext
+    )(
+      implicit
+      cc: CompilerContext,
+      sc: SourceContext
+    ): Assertion = {
     object Visitor extends AlogicScalarVisitor[Assertion] {
       override def visitAssertionAssert(ctx: AssertionAssertContext): Assertion = {
         val msgOpt = Option.when(ctx.STRING != null) {

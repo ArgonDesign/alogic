@@ -136,7 +136,9 @@ final class Checker(implicit cc: CompilerContext) extends StatefulTreeTransforme
             case _: DescEntity    => entErr(desc, "nested entities")
             case _: DescInstance  => entErr(desc, "instantiations")
             case _: DescSingleton => entErr(desc, "singleton entities")
-            case _                => tree
+            case DescFunc(_, FuncVariant.Static, _, _, _) =>
+              entErr(desc, "static function definitions")
+            case _ => tree
           }
         case EntityVariant.Net =>
           desc match {

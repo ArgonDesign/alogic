@@ -63,8 +63,10 @@ final class AddCastsSpec extends AnyFreeSpec with AlogicTest {
             text in {
               addCasts {
                 s"""
-                |void function() {
-                |  $$display("", $text);
+                |struct s {
+                |  void function() {
+                |    $$display("", $text);
+                |  }
                 |}"""
               } getFirst {
                 case expr: ExprBinary => expr
@@ -98,8 +100,10 @@ final class AddCastsSpec extends AnyFreeSpec with AlogicTest {
           text in {
             addCasts {
               s"""
-              |void function() {
-              |  $$display("", $text);
+              |struct s {
+              |  void function() {
+              |    $$display("", $text);
+              |  }
               |}"""
             } getFirst {
               case expr: ExprTernary => expr
@@ -142,8 +146,10 @@ final class AddCastsSpec extends AnyFreeSpec with AlogicTest {
           index in {
             addCasts {
               s"""
-              |void function () {
-              |  $index;
+              |struct s {
+              |  void function () {
+              |    $index;
+              |  }
               |}"""
             } getFirst {
               case DefnVar(_, Some(i)) => i
@@ -171,26 +177,28 @@ final class AddCastsSpec extends AnyFreeSpec with AlogicTest {
         for {
           (slice, res) <- List(
             // format: off
-            ("u8 a; (* unused *) u2 b = a[1:0]", List((ExprCast(TypeUInt(3), 1), ExprCast(TypeUInt(3), 0)))),
-            ("u9 a; (* unused *) u2 b = a[1:0]", List((ExprCast(TypeUInt(4), 1), ExprCast(TypeUInt(4), 0)))),
-            ("u8 a; (* unused *) u1 b = a[2+:1]", List((ExprCast(TypeUInt(3), 2), ExprCast(TypeUInt(4), 1)))),
-            ("u9 a; (* unused *) u1 b = a[2+:1]", List((ExprCast(TypeUInt(4), 2), ExprCast(TypeUInt(4), 1)))),
-            ("u8 a; (* unused *) u1 b = a[2-:1]", List((ExprCast(TypeUInt(3), 2), ExprCast(TypeUInt(4), 1)))),
-            ("u9 a; (* unused *) u1 b = a[2-:1]", List((ExprCast(TypeUInt(4), 2), ExprCast(TypeUInt(4), 1)))),
-            ("u32[8] a; (* unused *) u32[2] b = a[1:0]", List((ExprCast(TypeUInt(3), 1), ExprCast(TypeUInt(3), 0)))),
-            ("u33[9] a; (* unused *) u33[2] b = a[1:0]", List((ExprCast(TypeUInt(4), 1), ExprCast(TypeUInt(4), 0)))),
-            ("u32[8] a; (* unused *) u32[1] b = a[2+:1]", List((ExprCast(TypeUInt(3), 2), ExprCast(TypeUInt(4), 1)))),
-            ("u33[9] a; (* unused *) u33[1] b = a[2+:1]", List((ExprCast(TypeUInt(4), 2), ExprCast(TypeUInt(4), 1)))),
-            ("u32[8] a; (* unused *) u32[1] b = a[2-:1]", List((ExprCast(TypeUInt(3), 2), ExprCast(TypeUInt(4), 1)))),
-            ("u33[9] a; (* unused *) u33[1] b = a[2-:1]", List((ExprCast(TypeUInt(4), 2), ExprCast(TypeUInt(4), 1)))),
+            ("u8 a; u2 b = a[1:0]", List((ExprCast(TypeUInt(3), 1), ExprCast(TypeUInt(3), 0)))),
+            ("u9 a; u2 b = a[1:0]", List((ExprCast(TypeUInt(4), 1), ExprCast(TypeUInt(4), 0)))),
+            ("u8 a; u1 b = a[2+:1]", List((ExprCast(TypeUInt(3), 2), ExprCast(TypeUInt(4), 1)))),
+            ("u9 a; u1 b = a[2+:1]", List((ExprCast(TypeUInt(4), 2), ExprCast(TypeUInt(4), 1)))),
+            ("u8 a; u1 b = a[2-:1]", List((ExprCast(TypeUInt(3), 2), ExprCast(TypeUInt(4), 1)))),
+            ("u9 a; u1 b = a[2-:1]", List((ExprCast(TypeUInt(4), 2), ExprCast(TypeUInt(4), 1)))),
+            ("u32[8] a; u32[2] b = a[1:0]", List((ExprCast(TypeUInt(3), 1), ExprCast(TypeUInt(3), 0)))),
+            ("u33[9] a; u33[2] b = a[1:0]", List((ExprCast(TypeUInt(4), 1), ExprCast(TypeUInt(4), 0)))),
+            ("u32[8] a; u32[1] b = a[2+:1]", List((ExprCast(TypeUInt(3), 2), ExprCast(TypeUInt(4), 1)))),
+            ("u33[9] a; u33[1] b = a[2+:1]", List((ExprCast(TypeUInt(4), 2), ExprCast(TypeUInt(4), 1)))),
+            ("u32[8] a; u32[1] b = a[2-:1]", List((ExprCast(TypeUInt(3), 2), ExprCast(TypeUInt(4), 1)))),
+            ("u33[9] a; u33[1] b = a[2-:1]", List((ExprCast(TypeUInt(4), 2), ExprCast(TypeUInt(4), 1)))),
             // format: on
           )
         } {
           slice in {
             addCasts {
               s"""
-              |void function() {
-              |  $slice;
+              |struct s {
+              |  void function() {
+              |    $slice;
+              |  }
               |}"""
             } getFirst {
               case DefnVar(_, Some(i)) => i
@@ -220,8 +228,10 @@ final class AddCastsSpec extends AnyFreeSpec with AlogicTest {
           decl in {
             addCasts {
               s"""
-              |void function() {
-              |  $decl;
+              |struct s {
+              |  void function() {
+              |    $decl;
+              |  }
               |}"""
             } getFirst {
               case DefnVar(_, Some(i)) => i
@@ -249,8 +259,10 @@ final class AddCastsSpec extends AnyFreeSpec with AlogicTest {
           assign in {
             addCasts {
               s"""
-              |void function() {
-              |  $assign;
+              |struct s {
+              |  void function() {
+              |    $assign;
+              |  }
               |}"""
             } getFirst {
               case StmtAssign(_, rhs)    => rhs
@@ -278,7 +290,8 @@ final class AddCastsSpec extends AnyFreeSpec with AlogicTest {
         } {
           call in {
             addCasts {
-              s"""|fsm f {
+              s"""
+               |fsm f {
                |  out sync bool a;
                |  out sync u10 b;
                |  out sync i20 c;
@@ -289,6 +302,33 @@ final class AddCastsSpec extends AnyFreeSpec with AlogicTest {
                |}"""
             } getFirst {
               case ExprCall(_, List(ArgP(expr))) => expr
+            } tap {
+              _ shouldBe res
+            }
+            cc.messages shouldBe empty
+          }
+        }
+      }
+
+      "function return expressions" - {
+        for {
+          (kind, value, res) <- List(
+            ("i8", "2s", ExprCast(TypeSInt(8), ExprNum(true, 2))),
+            ("u8", "2s", ExprCast(TypeSInt(8), ExprNum(true, 2))),
+            ("i7", "2", ExprCast(TypeUInt(7), ExprNum(false, 2))),
+            ("u7", "2", ExprCast(TypeUInt(7), ExprNum(false, 2)))
+          )
+        } {
+          s"return $kind $value" in {
+            addCasts {
+              s"""
+              |struct s {
+              |  $kind f() {
+              |    return $value;
+              |  }
+              |}"""
+            } getFirst {
+              case StmtReturn(_, Some(expr)) => expr
             } tap {
               _ shouldBe res
             }

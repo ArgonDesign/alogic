@@ -1,0 +1,25 @@
+fsm method_pure_06 {
+  in u2 i_0;
+  in u2 i_1;
+  out wire u2 o;
+
+  struct s {
+    static u2 add(u2 x, u2 y) {
+      return x + y;
+    }
+  }
+
+  void main() {
+    o = s.add(i_0, i_1);
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module method_pure_06(
+//    input  wire [1:0] i_0,
+//    input  wire [1:0] i_1,
+//    output wire [1:0] o
+//  );
+//    assign o = i_0 + i_1;
+//  endmodule
+// }}}

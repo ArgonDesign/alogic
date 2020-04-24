@@ -1,0 +1,23 @@
+fsm method_pure_03 {
+  in u3 i;
+  out wire u3 o;
+
+  struct s {
+    static u3 dub(u3 x) {
+      return x + x;
+    }
+  }
+
+  void main() {
+    o = s.dub(i);
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module method_pure_03(
+//    input  wire [2:0] i,
+//    output wire [2:0] o
+//  );
+//    assign o = i << 1;
+//  endmodule
+// }}}

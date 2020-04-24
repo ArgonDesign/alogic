@@ -1,0 +1,26 @@
+fsm method_pure_19 {
+  in bool i;
+  out wire bool o;
+
+  struct s {
+    static bool f(bool x) {
+      if (x) {
+        return false;
+      }
+      return true;
+    }
+  }
+
+  void main() {
+    o = s.f(i);
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module method_pure_19(
+//    input  wire i,
+//    output wire o
+//  );
+//    assign o = ~i;
+//  endmodule
+// }}}

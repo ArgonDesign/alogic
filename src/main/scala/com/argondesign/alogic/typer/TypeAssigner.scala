@@ -190,7 +190,7 @@ object TypeAssigner {
 
   private def kind(tree: StmtGoto) = TypeCtrlStmt
 
-  private def kind(tree: StmtReturn) = TypeCtrlStmt
+  private def kind(tree: StmtReturn) = if (tree.comb) TypeCombStmt else TypeCtrlStmt
 
   private def kind(tree: StmtAssign) = TypeCombStmt
 
@@ -241,6 +241,7 @@ object TypeAssigner {
     case node: ExprSelect  => kind(node)
     case _: ExprRef        => unreachable
     case node: ExprSym     => kind(node)
+    case node: ExprThis    => kind(node)
     case node: ExprType    => kind(node)
     case node: ExprCast    => kind(node)
     case node: ExprInt     => kind(node)
@@ -250,13 +251,15 @@ object TypeAssigner {
   }
 
   private def kind(tree: ExprCall)(implicit cc: CompilerContext) = tree.expr.tpe match {
-    case TypeCombFunc(_, returnType, _) => returnType
-    case TypeCtrlFunc(_, returnType, _) => returnType
-    case TypePolyFunc(_, resolver)      => resolver(tree.args).get.kind.asCombFunc.retType
-    case TypeXenoFunc(_, returnType, _) => returnType
-    case _: TypeType                    => TypeUnknown
-    case _: TypeParametrized            => TypeUnknown
-    case _                              => unreachable
+    case TypeCombFunc(_, returnType, _)     => returnType
+    case TypeCtrlFunc(_, returnType, _)     => returnType
+    case TypePolyFunc(_, resolver)          => resolver(tree.args).get.kind.asCombFunc.retType
+    case TypeXenoFunc(_, returnType, _)     => returnType
+    case TypeStaticMethod(_, returnType, _) => returnType
+    case TypeNormalMethod(_, returnType, _) => returnType
+    case _: TypeType                        => TypeUnknown
+    case _: TypeParametrized                => TypeUnknown
+    case _                                  => unreachable
   }
 
   private def kind(tree: ExprUnary) = tree.op match {
@@ -332,6 +335,9 @@ object TypeAssigner {
         // TypeType(k) such that k can be instantiated without an instance of
         // the enclosing type)
         kind(tree.selector).get.kind match {
+          // Static function is accessible via type
+          case k: TypeStaticMethod => k
+          // Other things are not
           case TypeType(k) => TypeNone(k)
           case k           => TypeNone(k)
         }
@@ -351,6 +357,8 @@ object TypeAssigner {
     //
     case other => other
   }
+
+  private def kind(tree: ExprThis) = tree.expr.tpe.asType.kind
 
   private def kind(tree: ExprType) = TypeType(tree.kind)
 
@@ -437,6 +445,7 @@ object TypeAssigner {
   def apply(tree: ExprSlice)(implicit cc: CompilerContext): tree.type = assign(tree)(kind(tree))
   def apply(tree: ExprSelect)(implicit cc: CompilerContext): tree.type = assign(tree)(kind(tree))
   def apply(tree: ExprSym)(implicit cc: CompilerContext): tree.type = assign(tree)(kind(tree))
+  def apply(tree: ExprThis): tree.type = assign(tree)(kind(tree))
   def apply(tree: ExprType): tree.type = assign(tree)(kind(tree))
   def apply(tree: ExprCast): tree.type = assign(tree)(kind(tree))
   def apply(tree: ExprInt): tree.type = assign(tree)(kind(tree))

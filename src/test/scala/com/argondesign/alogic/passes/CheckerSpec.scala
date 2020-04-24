@@ -381,6 +381,23 @@ final class CheckerSpec extends AnyFreeSpec with AlogicTest {
         }
       }
 
+      "static functions in" - {
+        "fsm" in {
+          val tree = s"""|fsm a {
+                         |  static void main() {}
+                         |}""".stripMargin.asTree[Desc]
+
+          tree rewrite checker should matchPattern {
+            case DescEntity(_, _, Nil) =>
+          }
+
+          cc.messages.loneElement should beThe[Error](
+            s"'fsm' cannot contain static function definitions"
+          )
+          cc.messages(0).loc.line shouldBe 2
+        }
+      }
+
       s"fence blocks in" - {
         for (variant <- List("network", "verbatim entity")) {
           variant in {
@@ -1135,5 +1152,4 @@ final class CheckerSpec extends AnyFreeSpec with AlogicTest {
       }
     }
   }
-
 }

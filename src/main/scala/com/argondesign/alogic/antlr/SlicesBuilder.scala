@@ -17,6 +17,7 @@ package com.argondesign.alogic.antlr
 import com.argondesign.alogic.antlr.AlogicParser._
 import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.SourceContext
 import com.argondesign.alogic.core.StorageTypes._
 import com.argondesign.alogic.util.unreachable
 
@@ -25,7 +26,13 @@ import scala.util.ChainingSyntax
 
 object SlicesBuilder extends BaseBuilder[SlicesContext, List[StorageSlice]] with ChainingSyntax {
 
-  def apply(ctx: SlicesContext)(implicit cc: CompilerContext): List[StorageSlice] = {
+  def apply(
+      ctx: SlicesContext
+    )(
+      implicit
+      cc: CompilerContext,
+      sc: SourceContext
+    ): List[StorageSlice] = {
     ctx.slice.asScala.toList map {
       _.text match {
         case "bubble" => StorageSliceBub

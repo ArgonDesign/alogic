@@ -1,0 +1,37 @@
+fsm method_pure_17 {
+  out wire u2 o_0;
+  out wire u2 o_1;
+  out wire u2 o_2;
+  out wire u2 o_3;
+
+  struct s {
+    static u2 f(u2 x) {
+      case (x) {
+        2'd0:     return 2'd1;
+        default:  {} // Nothing
+      }
+      return 2'd0;
+    }
+  }
+
+  void main() {
+    o_0 = s.f(0);
+    o_1 = s.f(1);
+    o_2 = s.f(2);
+    o_3 = s.f(3);
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module method_pure_17(
+//    output wire [1:0] o_0,
+//    output wire [1:0] o_1,
+//    output wire [1:0] o_2,
+//    output wire [1:0] o_3
+//  );
+//    assign o_0 = 2'd1;
+//    assign o_1 = 2'd0;
+//    assign o_2 = 2'd0;
+//    assign o_3 = 2'd0;
+//  endmodule
+// }}}

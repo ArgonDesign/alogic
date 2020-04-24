@@ -25,7 +25,7 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 
 object StatementFilter {
-  def commentOnly(stmts: List[Stmt]): Boolean = stmts forall { _.isInstanceOf[StmtComment] }
+  private def commentOnly(stmts: List[Stmt]): Boolean = stmts forall { _.isInstanceOf[StmtComment] }
 
   def apply(p: PartialFunction[Stmt, Boolean])(implicit cc: CompilerContext): TreeTransformer =
     new StatelessTreeTransformer {
@@ -44,10 +44,6 @@ object StatementFilter {
                 case _                                                       => tree
               }
           }
-
-        // Remove empty case
-        case CaseDefault(Nil)    => Stump
-        case CaseRegular(_, Nil) => Stump
 
         case _ => tree
       }

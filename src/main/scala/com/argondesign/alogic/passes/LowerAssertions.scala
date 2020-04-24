@@ -62,10 +62,12 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatefulTreeTr
     case _: TypeSram        => false
     case _: TypeStack       => false
     // Function types
-    case _: TypeCombFunc => false
-    case _: TypeCtrlFunc => unreachable
-    case _: TypePolyFunc => unreachable
-    case _: TypeXenoFunc => false
+    case _: TypeCombFunc     => false
+    case _: TypeCtrlFunc     => unreachable
+    case _: TypePolyFunc     => unreachable
+    case _: TypeXenoFunc     => false
+    case _: TypeStaticMethod => unreachable
+    case _: TypeNormalMethod => unreachable
     // Misc types
     case _: TypeType         => false
     case _: TypeNone         => unreachable

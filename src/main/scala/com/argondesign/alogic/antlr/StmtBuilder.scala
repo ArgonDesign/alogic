@@ -19,6 +19,7 @@ import com.argondesign.alogic.antlr.AlogicParser._
 import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.SourceContext
 import org.antlr.v4.runtime.ParserRuleContext
 
 object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
@@ -28,7 +29,7 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
     case s             => List(s)
   }
 
-  def apply(ctx: ParserRuleContext)(implicit cc: CompilerContext): Stmt = {
+  def apply(ctx: ParserRuleContext)(implicit cc: CompilerContext, sc: SourceContext): Stmt = {
     object Visitor extends AlogicScalarVisitor[Stmt] { self =>
       override def visitStmtDesc(ctx: StmtDescContext): Stmt = {
         val desc = DescBuilder(ctx.desc) match {
@@ -86,8 +87,15 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
       override def visitStmtGoto(ctx: StmtGotoContext): Stmt =
         StmtGoto(ExprRef(IdentBuilder(ctx.ident)) withLoc ctx.ident.loc) withLoc ctx.loc
 
-      override def visitStmtReturn(ctx: StmtReturnContext): Stmt =
-        StmtReturn() withLoc ctx.loc
+      override def visitStmtReturn(ctx: StmtReturnContext): Stmt = {
+        val comb = sc match {
+          case SourceContext.Entity => false
+          case SourceContext.Record => true
+          case SourceContext.File | SourceContext.Unknown =>
+            cc.ice(ctx, "Cannot parse 'return' without knowing enclosing context")
+        }
+        StmtReturn(comb, Option.when(ctx.expr != null)(ExprBuilder(ctx.expr))) withLoc ctx.loc
+      }
 
       override def visitStmtAssign(ctx: StmtAssignContext): Stmt =
         StmtAssign(ExprBuilder(ctx.expr(0)), ExprBuilder(ctx.expr(1))) withLoc {

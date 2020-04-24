@@ -1,0 +1,127 @@
+struct lfsr {
+  param uint WIDTH;
+
+  static assert WIDTH > 1;
+
+  typedef uint(WIDTH) state_t;
+
+  // Feedback polynomials from:
+  // https://en.wikipedia.org/wiki/Linear-feedback_shift_register
+  gen if (WIDTH == 2) {
+    const state_t FEEDBACK = 2'b11;
+  } else if (WIDTH == 3) {
+    const state_t FEEDBACK = 3'b110;
+  } else if (WIDTH == 4) {
+    const state_t FEEDBACK = 4'b1100;
+  } else if (WIDTH == 5) {
+    const state_t FEEDBACK = 5'b1_0100;
+  } else if (WIDTH == 6) {
+    const state_t FEEDBACK = 6'b11_0000;
+  } else if (WIDTH == 7) {
+    const state_t FEEDBACK = 7'b110_0000;
+  } else if (WIDTH == 8) {
+    const state_t FEEDBACK = 8'b1011_1000;
+  }
+  static assert WIDTH <= 8, "Please provide feedback polynomial";
+
+  // The counter state
+  state_t state;
+
+  state_t get() {
+    return state;
+  }
+
+  state_t next() {
+    return {state[WIDTH-2:0], ^(state & FEEDBACK)};
+  }
+
+  void step() {
+    state = next();
+  }
+}
+
+fsm lfsr_struct {
+  out wire u2 o2;
+  out wire u3 o3;
+  out wire u4 o4;
+  out wire u5 o5;
+  out wire u6 o6;
+  out wire u7 o7;
+  out wire u8 o8;
+
+  lfsr(2) lfsr2;
+  lfsr(3) lfsr3;
+  lfsr(4) lfsr4;
+  lfsr(5) lfsr5;
+  lfsr(6) lfsr6;
+  lfsr(7) lfsr7;
+  lfsr(8) lfsr8;
+
+  void main() {
+    o2 = lfsr2.get();
+    o3 = lfsr3.get();
+    o4 = lfsr4.get();
+    o5 = lfsr5.get();
+    o6 = lfsr6.get();
+    o7 = lfsr7.get();
+    o8 = lfsr8.get();
+    lfsr2.step();
+    lfsr3.step();
+    lfsr4.step();
+    lfsr5.step();
+    lfsr6.step();
+    lfsr7.step();
+    lfsr8.step();
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module lfsr_struct(
+//    input  wire       clk,
+//    input  wire       rst,
+//    output wire [1:0] o2,
+//    output wire [2:0] o3,
+//    output wire [3:0] o4,
+//    output wire [4:0] o5,
+//    output wire [5:0] o6,
+//    output wire [6:0] o7,
+//    output wire [7:0] o8
+//  );
+//    reg [1:0] q2;
+//    reg [2:0] q3;
+//    reg [3:0] q4;
+//    reg [4:0] q5;
+//    reg [5:0] q6;
+//    reg [6:0] q7;
+//    reg [7:0] q8;
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        q2 <= 2'd0;
+//        q3 <= 3'd0;
+//        q4 <= 4'd0;
+//        q5 <= 5'd0;
+//        q6 <= 6'd0;
+//        q7 <= 7'd0;
+//        q8 <= 8'd0;
+//      end else begin
+//        q2 <= (q2 << 1) | {1'd0, ^{q2[1], q2[0]}};
+//        q3 <= (q3 << 1) | {2'd0, ^{q3[2], q3[1]}};
+//        q4 <= (q4 << 1) | {3'd0, ^{q4[3], q4[2]}};
+//        q5 <= (q5 << 1) | {4'd0, ^{q5[4], q5[2]}};
+//        q6 <= (q6 << 1) | {5'd0, ^{q6[5], q6[4]}};
+//        q7 <= (q7 << 1) | {6'd0, ^{q7[6], q7[5]}};
+//        q8 <= (q8 << 1) | {7'd0, ^{q8[7], q8[5], q8[4], q8[3]}};
+//      end
+//    end
+//
+//    assign o2 = q2;
+//    assign o3 = q3;
+//    assign o4 = q4;
+//    assign o5 = q5;
+//    assign o6 = q6;
+//    assign o7 = q7;
+//    assign o8 = q8;
+//
+//  endmodule
+// }}}

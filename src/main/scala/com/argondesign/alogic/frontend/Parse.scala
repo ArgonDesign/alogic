@@ -20,6 +20,7 @@ import java.io.File
 import com.argondesign.alogic.FindFile
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.SourceContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Source
 import com.argondesign.alogic.core.SourceAttribute
@@ -69,7 +70,7 @@ class Parse(
   }
 
   private[this] def parseIt(source: Source, fileName: String): Root = {
-    Parser[Root](source).getOrElse {
+    Parser[Root](source, SourceContext.File).getOrElse {
       cc.fatal("Stopping due to syntax errors")
     }
   }
@@ -216,7 +217,7 @@ object Parse extends Pass[List[String], (List[Root], List[Expr])] {
       val pairs = topLevels flatMap { text =>
         val source = Source("command-line", text)
         val l = text.length
-        Parser[Expr](source) tap {
+        Parser[Expr](source, SourceContext.Unknown) tap {
           case None =>
             val loc = Loc(source, 0, l, 0)
             cc.error(loc, "Failed to parse top level specified on command line")

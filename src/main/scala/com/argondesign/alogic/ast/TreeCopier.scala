@@ -942,6 +942,15 @@ object TreeCopier {
     }
   }
 
+  def apply(tree: StmtReturn)(exprOpt: Option[Tree]): StmtReturn = {
+    if (exprOpt eq tree.exprOpt) {
+      tree
+    } else {
+      assert(exprOpt forall { _.isInstanceOf[Expr] })
+      tree.copy(exprOpt = exprOpt.asInstanceOf[Option[Expr]]) withLoc tree.loc
+    }
+  }
+
   def apply(tree: StmtAssign)(lhs: Tree, rhs: Tree): StmtAssign = {
     if ((lhs eq tree.lhs) && (rhs eq tree.rhs)) {
       tree
@@ -1137,6 +1146,14 @@ object TreeCopier {
       tree
     } else {
       ExprRef(ref.asInstanceOf[Ref]) withLoc tree.loc
+    }
+  }
+
+  def apply(tree: ExprThis)(expr: Tree): ExprThis = {
+    if (expr eq tree.expr) {
+      tree
+    } else {
+      ExprThis(expr.asInstanceOf[Expr]) withLoc tree.loc
     }
   }
 

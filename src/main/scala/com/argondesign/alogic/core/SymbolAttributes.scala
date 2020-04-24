@@ -128,6 +128,9 @@ class SymbolAttributes {
   // Elaboration parameters for top-level entities
   val elab = new Attribute[List[Expr]]()
 
+  // Flag indicating this is a temporary introduced by the compiler
+  val tmp = new Attribute[Boolean]()
+
   // Iterator that enumerates all fields above
   private def attrIterator = Iterator(
     unused,
@@ -164,7 +167,8 @@ class SymbolAttributes {
     dictResolutions,
     eliminated,
     builtin,
-    elab
+    elab,
+    tmp
   )
 
   // Iterator that enumerates names of fields above
@@ -203,7 +207,8 @@ class SymbolAttributes {
     "dictResolutions",
     "eliminated",
     "builtin",
-    "elab"
+    "elab",
+    "tmp"
   )
 
   // Copy values of attributes from another instance

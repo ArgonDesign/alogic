@@ -20,6 +20,7 @@ package com.argondesign.alogic.frontend
 import com.argondesign.alogic.antlr._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.SourceContext
 import com.argondesign.alogic.core.Source
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
@@ -30,12 +31,18 @@ object Parser {
   abstract class Parseable[T <: Tree] {
     type C <: ParserRuleContext
     def parse(parser: AlogicParser): C
-    def build(ctx: C)(implicit cc: CompilerContext): T
+    def build(ctx: C)(implicit cc: CompilerContext, sc: SourceContext): T
   }
 
   // apply is polymorphic in its output. We achieve this through using an implicitly
-  // provided dispatchers to dispatch to the appropriate parser entry points
-  def apply[T <: Tree: Parseable](source: Source)(implicit cc: CompilerContext): Option[T] = {
+  // provided dispatcher to dispatch to the appropriate parser entry points
+  def apply[T <: Tree: Parseable](
+      source: Source,
+      sc: SourceContext
+    )(
+      implicit
+      cc: CompilerContext
+    ): Option[T] = {
     // Build Antlr4 parse tree
     val inputStream = CharStreams.fromString(source.text, source.name)
 
@@ -57,7 +64,7 @@ object Parser {
 
     opt map { ctx =>
       // Build the Abstract Sytnax Tree from the Parse Tree
-      val tree = dispatcher.build(ctx)
+      val tree = dispatcher.build(ctx)(cc, sc)
 
       // TODO: Make optional
       // Ensure all nodes have locations

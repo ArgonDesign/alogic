@@ -241,6 +241,7 @@ trait ExprOps { this: Expr =>
       case ExprSelect(e, _, _)     => p(e)
       case _: ExprRef              => true
       case _: ExprSym              => true
+      case _: ExprThis             => true
       case _: ExprType             => true
       case ExprCast(_, e)          => p(e)
       case _: ExprInt              => true

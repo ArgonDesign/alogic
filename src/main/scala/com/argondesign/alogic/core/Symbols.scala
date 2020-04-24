@@ -106,6 +106,15 @@ trait Symbols extends { self: CompilerContext =>
     }
   }
 
+  final def newTemp(name: String, loc: Loc, kind: Type): Symbols.Symbol =
+    newSymbol(name, loc) tap { symbol =>
+      symbol.kind = kind
+      symbol.attr.tmp set true
+    }
+
+  final def newTempLike(symbol: Symbols.Symbol): Symbols.Symbol =
+    newSymbolLike(symbol) tap { _.attr.tmp set true }
+
 }
 
 object Symbols {
@@ -240,10 +249,12 @@ object Symbols {
             val retType = ret.tpe.asType.kind
             val argTypes = args map { _.symbol.kind.asFund }
             variant match {
-              case FuncVariant.Ctrl => TypeCtrlFunc(this, retType, argTypes)
-              case FuncVariant.Comb => TypeCombFunc(this, retType, argTypes)
-              case FuncVariant.Xeno => TypeXenoFunc(this, retType, argTypes)
-              case FuncVariant.None => cc.ice(_decl, "Unknown function variant")
+              case FuncVariant.Ctrl   => TypeCtrlFunc(this, retType, argTypes)
+              case FuncVariant.Comb   => TypeCombFunc(this, retType, argTypes)
+              case FuncVariant.Xeno   => TypeXenoFunc(this, retType, argTypes)
+              case FuncVariant.Static => TypeStaticMethod(this, retType, argTypes)
+              case FuncVariant.Method => TypeNormalMethod(this, retType, argTypes)
+              case FuncVariant.None   => cc.ice(_decl, "Unknown function variant")
             }
           case _: DeclState => TypeState
         }
@@ -282,7 +293,7 @@ object Symbols {
 
     // Create a Defn node describing this symbol based on it's type
     def mkDefn(implicit cc: CompilerContext): Defn = {
-      assert(_defn == null)
+      assert(_defn == null, this.toString)
       kind match {
         case _: TypeEntity => DefnInstance(this)
         case _: TypeFund   => DefnVar(this, None)

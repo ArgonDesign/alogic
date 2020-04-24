@@ -166,6 +166,7 @@ object StaticEvaluation {
       case _: ExprStr             => false
       case _: ExprError           => false
       case _: ExprRef             => unreachable
+      case _: ExprThis            => unreachable
     }
     p(expr)
   }
@@ -235,6 +236,14 @@ object StaticEvaluation {
         case StmtPost(expr @ ExprSym(symbol), "++") => overwrite(curr, symbol, expr.inc)
         case StmtPost(expr @ ExprSym(symbol), "--") => overwrite(curr, symbol, expr.dec)
 
+        // Initialization is like assignment. This is only used early when
+        // inlining combinational functions. As the symbol is being introduced
+        // by this statement, and in statements definitions must precede use,
+        // we know that the symbol is not in the bindings, so just add it
+        case StmtDefn(DefnVal(symbol, init))       => Some(curr + (symbol -> init))
+        case StmtDefn(DefnVar(symbol, Some(init))) => Some(curr + (symbol -> init))
+        case StmtDefn(DefnVar(_, None))            => Some(curr)
+
         // TODO: these could be improved by computing new bindings
         // Assignments with complex left hand side
         case StmtAssign(lhs, _) => Some(removeWritten(curr, lhs))
@@ -302,6 +311,12 @@ object StaticEvaluation {
         case _: StmtStall   => Some(curr) // TODO: can we do better here?
         case _: StmtExpr    => Some(curr)
         case _: StmtComment => Some(curr)
+        case _: StmtDecl    => Some(curr)
+
+        // TODO: This is only used by InlineMethods and could be improved by
+        // indicating this branch does not join hence shouldn't constrain
+        // subsequent statements
+        case _: StmtReturn => Some(curr)
 
         case _ => unreachable
       }

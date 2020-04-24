@@ -19,6 +19,7 @@ import com.argondesign.alogic.antlr.AlogicParser._
 import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.SourceContext
 import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.tailrec
@@ -26,7 +27,7 @@ import scala.jdk.CollectionConverters._
 
 object GenBuilder extends BaseBuilder[GenContext, Gen] {
 
-  def apply(ctx: GenContext)(implicit cc: CompilerContext): Gen = {
+  def apply(ctx: GenContext)(implicit cc: CompilerContext, sc: SourceContext): Gen = {
     object GenItemVisitor extends AlogicScalarVisitor[Tree] {
       // format: off
       override def visitGenItemGen(ctx: GenItemGenContext): Tree = GenBuilder(ctx.gen)

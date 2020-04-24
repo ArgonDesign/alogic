@@ -20,6 +20,9 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.typer.TypeAssigner
+import com.argondesign.alogic.util.unreachable
+
+import scala.annotation.tailrec
 
 final class Fold(implicit cc: CompilerContext) extends StatelessTreeTransformer {
 
@@ -86,7 +89,38 @@ final class Fold(implicit cc: CompilerContext) extends StatelessTreeTransformer 
         case None              => None
       }
 
-    // TODO: Fold 'case' with known conditions
+    // Fold 'case' with known conditions
+    case StmtCase(expr, cases) =>
+      expr.value match {
+        case None => None
+        case Some(v) =>
+          @tailrec
+          def loop(remaining: List[Case]): Option[Tree] = remaining match {
+            case CaseRegular(cond, stmts) :: tail =>
+              if (cond exists { _.value contains v }) {
+                // A condition matches
+                Some(Thicket(walk(stmts)))
+              } else if (cond exists { _.value.isEmpty }) {
+                // At least one condition has an unknown value, and therefore
+                // might match, so we cannot fold further, but drop leading
+                // eliminated cases
+                Option.when(remaining ne cases) {
+                  val retained = walk(remaining) map { _.asInstanceOf[Case] }
+                  TypeAssigner(StmtCase(expr, retained) withLoc tree.loc)
+                }
+              } else {
+                // None of the conditions match, proceed with the tail
+                loop(tail)
+              }
+            // Default case always matches
+            case CaseDefault(stmts) :: _ => Some(Thicket(walk(stmts)))
+            // Reached the end of cases, nothing matched, so Stump
+            case Nil => Some(Stump)
+            //
+            case _ => unreachable
+          }
+          loop(cases)
+      }
 
     // Drop type definitions, references to these will be folded by expr.simplify
     case _: DeclType => Some(Stump)

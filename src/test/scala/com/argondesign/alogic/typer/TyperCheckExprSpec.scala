@@ -472,9 +472,9 @@ final class TyperCheckExprSpec extends AnyFreeSpec with AlogicTest {
       for {
         (text, kind, msg) <- List(
           // format: off
-          ("a()", TypeError, "'.*' is not callable"),
-          ("a.valid()", TypeError, s"'.*' is not callable"),
-          ("a.valid(1'b1)", TypeError, s"'.*' is not callable"),
+          ("a()", TypeError, "Expression is not callable"),
+          ("a.valid()", TypeError, s"Expression is not callable"),
+          ("a.valid(1'b1)", TypeError, s"Expression is not callable"),
           ("a.write()", TypeError, "Function call expects 1 arguments, 0 given"),
           ("a.write(2'b1)", TypeVoid, ""),
           ("a.write(1'b1, 1'b1)", TypeError, "Function call expects 1 arguments, 2 given"),
@@ -484,7 +484,8 @@ final class TyperCheckExprSpec extends AnyFreeSpec with AlogicTest {
           ("a.write(3'b1)", TypeError, "Argument 1 of function call yields 3 bits, 2 bits are expected"),
           ("a.write(1'b1)", TypeError, "Argument 1 of function call yields 1 bits, 2 bits are expected"),
           ("int x = @bits(a)", TypeNum(false), ""),
-          ("int x = @bits(a.valid)", TypeNum(false), "")
+          ("int x = @bits(a.valid)", TypeNum(false), ""),
+          ("s.f()", TypeError, "Attempting to call non-static method via type")
           // format: on
         )
       } {
@@ -493,6 +494,10 @@ final class TyperCheckExprSpec extends AnyFreeSpec with AlogicTest {
             s"""
             |fsm c {
             |  out sync u2 a;
+            |
+            |  struct s {
+            |    void f() {}
+            |  }
             |
             |  void bar() {
             |    fence;

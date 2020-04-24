@@ -46,21 +46,21 @@ attr
   ;
 
 descbase
-  : expr ident ('=' init=expr)? ';'                        # DescVar
-  | 'in' fct? expr ident ';'                               # DescIn
-  | 'out' fct? stt? expr ident ('=' init=expr)? ';'        # DescOut
-  | 'pipeline' expr ident ';'                              # DescPipeline
-  | 'param' expr IDENTIFIER ('=' init=expr)?  ';'          # DescParam
-  | 'const' expr IDENTIFIER '=' expr  ';'                  # DescConst
-  | expr ident '[' expr ']' ';'                            # DescArr
-  | 'sram' (wire='wire')? expr ident '[' expr ']' ';'      # DescSram
-  | 'typedef' expr ident ';'                               # DescType
-  | entity_keyword ident '{' ent* '}'                      # DescEntity
-  | 'struct' ident '{' rec* '}'                            # DescRecord
-  | ident '=' 'new' expr ';'                               # DescInstance
-  | 'new' entity_keyword ident '{' ent* '}'                # DescSingleton
-  | expr ident '(' ')' '{' stmt* '}'                       # DescFuncAlogic
-  | 'import' expr IDENTIFIER '('formal_arguments? ')' ';'  # DescFuncImport
+  : expr ident ('=' init=expr)? ';'                                     # DescVar
+  | 'in' fct? expr ident ';'                                            # DescIn
+  | 'out' fct? stt? expr ident ('=' init=expr)? ';'                     # DescOut
+  | 'pipeline' expr ident ';'                                           # DescPipeline
+  | 'param' expr IDENTIFIER ('=' init=expr)?  ';'                       # DescParam
+  | 'const' expr IDENTIFIER '=' expr  ';'                               # DescConst
+  | expr ident '[' expr ']' ';'                                         # DescArr
+  | 'sram' (wire='wire')? expr ident '[' expr ']' ';'                   # DescSram
+  | 'typedef' expr ident ';'                                            # DescType
+  | entity_keyword ident '{' ent* '}'                                   # DescEntity
+  | 'struct' ident '{' rec* '}'                                         # DescRecord
+  | ident '=' 'new' expr ';'                                            # DescInstance
+  | 'new' entity_keyword ident '{' ent* '}'                             # DescSingleton
+  | (stat='static')? expr ident '(' formal_arguments? ')' '{' stmt* '}' # DescFuncAlogic
+  | 'import' expr IDENTIFIER '('formal_arguments? ')' ';'               # DescFuncImport
   ;
 
 fct
@@ -174,7 +174,7 @@ stmt
   | 'break' ';'                                                 # StmtBreak
   | 'continue' ';'                                              # StmtContinue
   | 'goto' ident ';'                                            # StmtGoto
-  | 'return' ';'                                                # StmtReturn
+  | 'return' expr? ';'                                          # StmtReturn
   | expr point='=' expr ';'                                     # StmtAssign
   | expr ASSIGNOP expr ';'                                      # StmtUpdate
   | expr op=('++'|'--') ';'                                     # StmtPost
@@ -220,6 +220,8 @@ expr
   | 'int'                                                       # ExprTypeSNum
   | 'uint'                                                      # ExprTypeUNum
   | 'void'                                                      # ExprTypeVoid
+  // 'this'
+  | 'this'                                                      # ExprThis
   // Names
   | ident                                                       # ExprIdent
   | ATID                                                        # ExprAtid

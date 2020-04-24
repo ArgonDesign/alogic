@@ -154,8 +154,9 @@ final class SplitStructsB(
     case ExprSelect(expr, sel, _) if expr.tpe.underlying.isRecord =>
       Some {
         val kind = expr.tpe.underlying.asRecord
-        val fieldIndex = kind.publicSymbols.indexWhere(_.name == sel)
-        walk(expr).asInstanceOf[ExprCat].parts(fieldIndex)
+        val fieldIndex = kind.dataMembers.indexWhere(_.name == sel)
+        val cat = walk(expr).asInstanceOf[ExprCat]
+        cat.parts(fieldIndex)
       }
 
     // Select on instance

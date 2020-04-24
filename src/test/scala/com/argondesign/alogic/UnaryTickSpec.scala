@@ -331,6 +331,24 @@ final class UnaryTickSpec extends AnyFreeSpec with AlogicTest {
         }
       }
 
+      "function return" - {
+        "a" in check(TypeUInt(8) :: Nil) {
+          """|struct s {
+             |  u8 f(u2 x) {
+             |    return 'x;
+             |  }
+             |}""".stripMargin
+        }
+
+        "b" in check(TypeUInt(8) :: TypeUInt(8) :: Nil) {
+          """|fsm f {
+             |  u8 f(u2 x, u3 y) {
+             |    if (x == 0) return 'y; else return 'x;
+             |  }
+             |}""".stripMargin
+        }
+      }
+
       "multiple" - {
         "a" in check(TypeUInt(3) :: TypeUInt(4) :: Nil) {
           """|fsm f {

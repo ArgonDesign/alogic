@@ -1,0 +1,23 @@
+fsm method_pure_01 {
+  in bool i;
+  out wire bool o;
+
+  struct s {
+    static bool inv(bool x) {
+      return ~x;
+    }
+  }
+
+  void main() {
+    o = s.inv(i);
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module method_pure_01(
+//    input  wire i,
+//    output wire o
+//  );
+//    assign o = ~i;
+//  endmodule
+// }}}

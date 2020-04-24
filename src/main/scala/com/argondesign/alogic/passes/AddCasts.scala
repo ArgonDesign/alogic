@@ -15,7 +15,7 @@
 
 package com.argondesign.alogic.passes
 
-import com.argondesign.alogic.ast.StatelessTreeTransformer
+import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Types._
@@ -23,7 +23,7 @@ import com.argondesign.alogic.lib.Math.clog2
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.unreachable
 
-final class AddCasts(implicit cc: CompilerContext) extends StatelessTreeTransformer {
+final class AddCasts(implicit cc: CompilerContext) extends StatefulTreeTransformer {
 
   private def cast(kind: Type, expr: Expr) = {
     val (castType, castExpr) = if (kind.underlying.isNum) {
@@ -74,6 +74,11 @@ final class AddCasts(implicit cc: CompilerContext) extends StatelessTreeTransfor
           if lhs.tpe.isPacked && rhs.tpe.underlying.isNum =>
         stmt.copy(rhs = cast(lhs.tpe, rhs))
 
+      case stmt @ StmtReturn(_, Some(expr)) =>
+        enclosingSymbols.headOption map { fSymbol =>
+          stmt.copy(exprOpt = Some(cast(fSymbol.kind.asCallable.retType, expr)))
+        } getOrElse tree
+
       case expr @ ExprIndex(tgt, idx) if idx.tpe.underlying.isNum =>
         tgt.tpe.shapeIter.nextOption map { size =>
           expr.copy(index = cast(TypeUInt(clog2(size) max 1), idx))
@@ -93,10 +98,12 @@ final class AddCasts(implicit cc: CompilerContext) extends StatelessTreeTransfor
 
       case expr @ ExprCall(func, args) =>
         val kinds = func.tpe match {
-          case TypeCombFunc(_, _, argTypes) => argTypes
-          case TypeCtrlFunc(_, _, argTypes) => argTypes
-          case TypeXenoFunc(_, _, argTypes) => argTypes
-          case _                            => unreachable
+          case TypeCombFunc(_, _, argTypes)     => argTypes
+          case TypeCtrlFunc(_, _, argTypes)     => argTypes
+          case TypeXenoFunc(_, _, argTypes)     => argTypes
+          case TypeStaticMethod(_, _, argTypes) => argTypes
+          case TypeNormalMethod(_, _, argTypes) => argTypes
+          case _                                => unreachable
         }
 
         val needsCasts = kinds zip args map {
@@ -151,6 +158,10 @@ final class AddCasts(implicit cc: CompilerContext) extends StatelessTreeTransfor
 
 object AddCasts extends PairTransformerPass {
   val name = "add-casts"
-  def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) =
-    (cc.addCasts(decl), cc.addCasts(defn))
+
+  def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {
+    val addCasts = new AddCasts
+    (addCasts(decl), addCasts(defn))
+  }
+
 }

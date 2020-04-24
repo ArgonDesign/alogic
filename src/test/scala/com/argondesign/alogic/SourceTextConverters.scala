@@ -15,9 +15,10 @@
 
 package com.argondesign.alogic
 
-import com.argondesign.alogic.core.Source
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Source
+import com.argondesign.alogic.core.SourceContext
 import com.argondesign.alogic.frontend.Parser
 import com.argondesign.alogic.frontend.Parser.Parseable
 
@@ -27,15 +28,17 @@ object SourceTextConverters {
 
   implicit class String2Repr(val string: String) {
 
-    val source = {
+    val source: Source = {
       val strip = string.startsWith("|") && (string.count(_ == '\n') > 0)
       val text = if (strip) string.stripMargin else string
       Source("nofile", text)
     }
 
-    def asTree[T <: Tree: Parseable](implicit cc: CompilerContext): T = {
-      Parser[T](source) getOrElse { throw AsTreeSyntaxErrorException() }
-    }
+    def asTree[T <: Tree: Parseable](implicit cc: CompilerContext): T =
+      Parser[T](source, SourceContext.Unknown) getOrElse { throw AsTreeSyntaxErrorException() }
+
+    def asTree[T <: Tree: Parseable](sc: SourceContext)(implicit cc: CompilerContext): T =
+      Parser[T](source, sc) getOrElse { throw AsTreeSyntaxErrorException() }
 
   }
 

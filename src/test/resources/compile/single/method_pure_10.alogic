@@ -1,0 +1,21 @@
+fsm method_pure_10 {
+  out wire u8 o;
+
+  struct s {
+    static u8 f() {
+      return 20;
+    }
+  }
+
+  void main() {
+    o = s.f();
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module method_pure_10(
+//    output wire [7:0] o
+//  );
+//    assign o = 8'd20;
+//  endmodule
+// }}}

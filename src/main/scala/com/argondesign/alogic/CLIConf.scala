@@ -312,6 +312,16 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
     default = Some(1024)
   )
 
+  val combRecLimit = opt[Int](
+    noshort = true,
+    descr = """|Combinational function recursion limit. This is the maximum
+               |number of calls to the same function that can be active before
+               |the compiler assumes the recursion is infinite and reports an
+               |error.
+               |""".stripMargin.replace('\n', ' '),
+    default = Some(16)
+  )
+
   val noAssertions = opt[Boolean](
     noshort = true,
     descr = "Disable emitting assertions"

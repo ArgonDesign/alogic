@@ -124,7 +124,7 @@ simply a synonym for `u1`.
 
 Alogic supports grouping related values into structures. A structure
 type is defined with the `struct` keyword, followed by the name of the
-structure type, and the structure fields in curly braces:
+structure type, and the structure members in curly braces:
 
 ```
 struct point_t {
@@ -139,8 +139,8 @@ struct rect_t {
 }
 ```
 
-Note that the above definitions define *types*  (with the names `point_t` and
-`rect_t`) respectively, and not variables. The analogous C language statements
+Note that the above definitions define *types* (with the names `point_t` and
+`rect_t` respectively), and not variables. The analogous C language statements
 would be:
 
 ```C
@@ -184,6 +184,62 @@ or equivalently:
 ```
   rect_t rect = {some_point, 8'd9, 8'd1};
 ```
+
+Apart from data member, a structure can also contain methods which are the
+mechanism provided by Alogic to implement combinational functions:
+
+```
+struct coutner {
+  u8 state;
+
+  u8 get() {
+    return state;
+  }
+
+  void step() {
+    state++;
+  }
+}
+
+fsm count_away {
+  out wire u8 o;
+
+  counter cnt;
+
+  void main() {
+    o = cnt.get(); // As structures are packed, we could also use 'o = cnt'
+    cnt.step();
+    fence;
+  }
+}
+```
+
+Methods can be declared static, which allows them to be invoked on the type
+without an actual variable:
+
+```
+struct functions {
+  static u8 f(u8 i) {
+    return i + 2;
+  }
+  static u8 g(u8 i) {
+    return i - 2; 
+  }
+}
+
+fsm identiti {
+  in u8 i;
+  out wire u8 o;
+
+  void main() {
+    o = functions.f(i) + functions.g(i) - i;
+    assert(o == i);
+    fence
+  }
+}
+```
+
+Structures can also be [parametrized](prams.md).
 
 #### Vector types
 

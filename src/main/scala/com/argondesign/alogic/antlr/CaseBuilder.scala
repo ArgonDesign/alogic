@@ -19,6 +19,7 @@ import com.argondesign.alogic.antlr.AlogicParser._
 import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.SourceContext
 
 object CaseBuilder extends BaseBuilder[KaseContext, Case] {
 
@@ -27,7 +28,7 @@ object CaseBuilder extends BaseBuilder[KaseContext, Case] {
     case s             => List(s)
   }
 
-  def apply(ctx: KaseContext)(implicit cc: CompilerContext): Case = {
+  def apply(ctx: KaseContext)(implicit cc: CompilerContext, sc: SourceContext): Case = {
     object Visitor extends AlogicScalarVisitor[Case] {
       override def visitCaseGen(ctx: CaseGenContext): Case =
         CaseGen(GenBuilder(ctx.gen)) withLoc ctx.loc

@@ -296,7 +296,8 @@ trait TreePrintOps extends { this: Tree =>
     case StmtBreak()                       => "break;"
     case StmtContinue()                    => "continue;"
     case StmtGoto(expr)                    => s"goto ${v(expr)};"
-    case StmtReturn()                      => "return;"
+    case StmtReturn(_, None)               => "return;"
+    case StmtReturn(_, Some(expr))         => s"return ${v(expr)};"
     case StmtAssign(lhs, rhs)              => s"${v(lhs)} = ${v(rhs)};"
     case StmtUpdate(lhs, op, rhs)          => s"${v(lhs)} $op= ${v(rhs)};"
     case StmtPost(expr, op)                => s"${v(expr)}$op;"
@@ -332,6 +333,7 @@ trait TreePrintOps extends { this: Tree =>
     case ExprSelect(expr, selector, idxs)      => s"${v(expr)}.$selector#[${vs(idxs)}]"
     case ExprRef(ref)                          => v(ref)
     case ExprSym(symbol)                       => s"${symbol.name}@${symbol.id}"
+    case ExprThis(expr)                        => s"this(${v(expr)})"
     case ExprType(kind)                        => s"${kind.toSource}"
     case ExprCast(kind, expr)                  => s"(${kind.toSource})(${v(expr)})"
     case ExprInt(true, width, value)           => s"$width'sd$value"

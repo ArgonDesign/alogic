@@ -59,6 +59,8 @@ case class Settings(
     resetAll: Boolean = true,
     // Gen loop iteration limit
     genLoopLimit: Int = 1024,
+    // Combinational function recursion limit
+    combRecLimit: Int = 16,
     // Enable LowerAssertions
     assertions: Boolean = true,
     // For debugging only, trace the progress of elaboration

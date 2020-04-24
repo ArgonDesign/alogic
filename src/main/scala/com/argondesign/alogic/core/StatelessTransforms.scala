@@ -16,19 +16,7 @@
 package com.argondesign.alogic.core
 
 import com.argondesign.alogic.ast.StatelessTreeTransformer
-import com.argondesign.alogic.passes.AddCasts
-import com.argondesign.alogic.passes.ConvertMultiConnect
-import com.argondesign.alogic.passes.Desugar
-import com.argondesign.alogic.passes.Fold
-import com.argondesign.alogic.passes.InferImplications
-import com.argondesign.alogic.passes.OptimizeClearOnStall
-import com.argondesign.alogic.passes.PortCheckA
-import com.argondesign.alogic.passes.PortCheckB
-import com.argondesign.alogic.passes.PropagateImplications
-import com.argondesign.alogic.passes.RemoveAssume
-import com.argondesign.alogic.passes.ReplaceUnaryTicks
-import com.argondesign.alogic.passes.ResolvePolyFunc
-import com.argondesign.alogic.passes.SimplifyCat
+import com.argondesign.alogic.passes._
 import com.argondesign.alogic.transform.SimplifyExpr
 
 trait StatelessTransforms { this: CompilerContext =>
@@ -37,7 +25,6 @@ trait StatelessTransforms { this: CompilerContext =>
   val portCheckA: StatelessTreeTransformer = new PortCheckA()(cc = this)
   val replaceUnaryTicks: StatelessTreeTransformer = new ReplaceUnaryTicks()(cc = this)
   val resolvePolyFunc: StatelessTreeTransformer = new ResolvePolyFunc()(cc = this)
-  val addCasts: StatelessTreeTransformer = new AddCasts()(cc = this)
   val desugar: StatelessTreeTransformer = new Desugar()(cc = this)
   val fold: StatelessTreeTransformer = new Fold()(cc = this)
   val portCheckB: StatelessTreeTransformer = new PortCheckB()(cc = this)

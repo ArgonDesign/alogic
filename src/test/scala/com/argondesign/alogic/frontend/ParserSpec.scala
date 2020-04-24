@@ -29,6 +29,7 @@ import com.argondesign.alogic.core.Error
 import com.argondesign.alogic.core.FuncVariant
 import com.argondesign.alogic.core.Message
 import com.argondesign.alogic.core.SourceAttribute
+import com.argondesign.alogic.core.SourceContext
 import com.argondesign.alogic.core.Warning
 import com.argondesign.alogic.core.enums.EntityVariant
 import org.scalatest.freespec.AnyFreeSpec
@@ -472,7 +473,7 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
 
         "function in record" in {
           "void main() {}".asTree[Rec] shouldBe {
-            RecDesc(DescFunc(Ident("main", Nil), FuncVariant.Comb, ExprType(TypeVoid), Nil, Nil))
+            RecDesc(DescFunc(Ident("main", Nil), FuncVariant.Method, ExprType(TypeVoid), Nil, Nil))
           }
         }
 
@@ -540,6 +541,72 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
                 Nil
               )
             }
+          }
+        }
+
+        "function with parameters" - {
+          "a" in {
+            "void f(u2 i) {}".asTree[Desc] shouldBe {
+              DescFunc(
+                Ident("f", Nil),
+                FuncVariant.None,
+                ExprType(TypeVoid),
+                DescVar(Ident("i", Nil), ExprType(TypeUInt(2)), None) :: Nil,
+                Nil
+              )
+            }
+          }
+
+          "b" in {
+            "void f(u2 i, i3 j) {}".asTree[Desc] shouldBe {
+              DescFunc(
+                Ident("f", Nil),
+                FuncVariant.None,
+                ExprType(TypeVoid),
+                DescVar(Ident("i", Nil), ExprType(TypeUInt(2)), None) ::
+                  DescVar(Ident("j", Nil), ExprType(TypeSInt(3)), None) ::
+                  Nil,
+                Nil
+              )
+            }
+          }
+        }
+
+        "function with non-void return type" - {
+          "a" in {
+            "u10 f() {}".asTree[Desc] shouldBe {
+              DescFunc(
+                Ident("f", Nil),
+                FuncVariant.None,
+                ExprType(TypeUInt(10)),
+                Nil,
+                Nil
+              )
+            }
+          }
+
+          "b" in {
+            "r f() {}".asTree[Desc] shouldBe {
+              DescFunc(
+                Ident("f", Nil),
+                FuncVariant.None,
+                ExprRef(Ident("r", Nil)),
+                Nil,
+                Nil
+              )
+            }
+          }
+        }
+
+        "static function" in {
+          "static void f() {}".asTree[Desc] shouldBe {
+            DescFunc(
+              Ident("f", Nil),
+              FuncVariant.Static,
+              ExprType(TypeVoid),
+              Nil,
+              Nil
+            )
           }
         }
       }
@@ -790,6 +857,18 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
             RecAssertion(AssertionStatic(ExprInt(false, 1, 0), Some("msg")))
           }
         }
+
+        "static method" in {
+          """static void f() {}""".asTree[Rec] shouldBe {
+            RecDesc(DescFunc(Ident("f", Nil), FuncVariant.Static, ExprType(TypeVoid), Nil, Nil))
+          }
+        }
+
+        "method" in {
+          """void f() {}""".asTree[Rec] shouldBe {
+            RecDesc(DescFunc(Ident("f", Nil), FuncVariant.Method, ExprType(TypeVoid), Nil, Nil))
+          }
+        }
       }
 
       "statements" - {
@@ -817,7 +896,11 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
 
           "if with else, without brace" in {
             "if (1) fence; else return;"
-              .asTree[Stmt] shouldBe StmtIf(Expr(1), List(StmtFence()), List(StmtReturn()))
+              .asTree[Stmt](SourceContext.Entity) shouldBe StmtIf(
+              Expr(1),
+              List(StmtFence()),
+              List(StmtReturn(comb = false, None))
+            )
           }
 
           "if without else, with brace" in {
@@ -826,11 +909,11 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
           }
 
           "if with else, with brace" in {
-            "if (1) {fence;} else {return;}".asTree[Stmt] shouldBe {
+            "if (1) {fence;} else {return;}".asTree[Stmt](SourceContext.Entity) shouldBe {
               StmtIf(
                 Expr(1),
                 List(StmtFence()),
-                List(StmtReturn())
+                List(StmtReturn(comb = false, None))
               )
             }
           }
@@ -1074,8 +1157,28 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
           "continue;".asTree[Stmt] shouldBe StmtContinue()
         }
 
-        "return" in {
-          "return;".asTree[Stmt] shouldBe StmtReturn()
+        "return" - {
+          "entity" - {
+            "void" in {
+              "return;".asTree[Stmt](SourceContext.Entity) shouldBe StmtReturn(comb = false, None)
+            }
+
+            "value" in {
+              "return 0;"
+                .asTree[Stmt](SourceContext.Entity) shouldBe StmtReturn(comb = false, Some(Expr(0)))
+            }
+          }
+
+          "record" - {
+            "void" in {
+              "return;".asTree[Stmt](SourceContext.Record) shouldBe StmtReturn(comb = true, None)
+            }
+
+            "value" in {
+              "return 0;"
+                .asTree[Stmt](SourceContext.Record) shouldBe StmtReturn(comb = true, Some(Expr(0)))
+            }
+          }
         }
 
         "goto" in {
@@ -1778,14 +1881,14 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
                |  return;
                |} else {
                |  break;
-               |}""".stripMargin.asTree[Gen] shouldBe {
+               |}""".stripMargin.asTree[Gen](SourceContext.Entity) shouldBe {
               GenIf(
                 ExprRef(Ident("i", Nil)),
                 List(StmtFence()),
                 List(
                   GenIf(
                     ExprRef(Ident("j", Nil)),
-                    List(StmtReturn()),
+                    List(StmtReturn(comb = false, None)),
                     List(StmtBreak())
                   )
                 )
@@ -1802,14 +1905,14 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
                |  f();
                |} else {
                |  break;
-               |}""".stripMargin.asTree[Gen] shouldBe {
+               |}""".stripMargin.asTree[Gen](SourceContext.Entity) shouldBe {
               GenIf(
                 ExprRef(Ident("i", Nil)),
                 List(StmtFence()),
                 List(
                   GenIf(
                     ExprRef(Ident("j", Nil)),
-                    List(StmtReturn()),
+                    List(StmtReturn(comb = false, None)),
                     List(
                       GenIf(
                         ExprRef(Ident("k", Nil)),

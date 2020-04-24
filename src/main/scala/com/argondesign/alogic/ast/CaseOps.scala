@@ -21,4 +21,10 @@ trait CaseOps { this: Case =>
 
   def stmts: List[Stmt] = unreachable
 
+  def cpy(stmts: List[Stmt]): Case = this match {
+    case node: CaseRegular => node.copy(stmts = stmts)
+    case node: CaseDefault => node.copy(stmts = stmts)
+    case _: CaseGen        => unreachable
+  }
+
 }

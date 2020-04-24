@@ -1,0 +1,26 @@
+fsm method_normal_03 {
+  in u2 i;
+  out wire u2 o;
+
+  struct s {
+    u2 x;
+    void set(u2 value) { x = value; }
+    u2 get() { return x; }
+  }
+
+  s a;
+
+  void main() {
+    a.x = ~i;
+    o = a.get();
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module method_normal_03(
+//    input  wire [1:0] i,
+//    output wire [1:0] o
+//  );
+//    assign o = ~i;
+//  endmodule
+// }}}

@@ -783,8 +783,9 @@ final class TypeAssignerSpec extends AnyFreeSpec with AlogicTest {
       "select" - {
         for {
           (expr, kind) <- List[(String, PartialFunction[Any, Unit])](
+            // format: off
             ("a.a", { case TypeSInt(w) if w == 6                                        => }),
-            ("a.b", { case TypeRecord(Symbol("s"), List(Symbol("a"), Symbol("b")))      => }),
+            ("a.b", { case TypeRecord(Symbol("s"), List(Symbol("a"), Symbol("b"), Symbol("f"), Symbol("g")) ) => }),
             ("a.b.a", { case TypeUInt(w) if w == 1                                      => }),
             ("a.b.b", { case TypeUInt(w) if w == 8                                      => }),
             ("pi0.valid", { case TypeUInt(w) if w == 1                                  => }),
@@ -802,7 +803,12 @@ final class TypeAssignerSpec extends AnyFreeSpec with AlogicTest {
             ("po1.write", { case TypeCombFunc(_, TypeVoid, Nil)                         => }),
             ("po1.flush", { case TypeCombFunc(_, TypeVoid, Nil)                         => }),
             ("po1.full", { case TypeUInt(w) if w == 1                                   => }),
-            ("po1.empty", { case TypeUInt(w) if w == 1                                  => })
+            ("po1.empty", { case TypeUInt(w) if w == 1                                  => }),
+            ("a.b.f", { case TypeStaticMethod(Symbol("f"), TypeVoid, Nil)                 => }),
+            ("a.b.g", { case TypeNormalMethod(Symbol("g"), TypeVoid, Nil)                 => }),
+            ("a.h", { case TypeStaticMethod(Symbol("h"), TypeVoid, Nil)                   => }),
+            ("a.i", { case TypeNormalMethod(Symbol("i"), TypeVoid, Nil)                   => })
+            // format: on
           )
         } {
           val text = expr.trim.replaceAll(" +", " ")
@@ -812,11 +818,15 @@ final class TypeAssignerSpec extends AnyFreeSpec with AlogicTest {
               |struct s {
               |  bool a;
               |  u8   b;
+              |  static void f() {}
+              |  void g() {}
               |}
               |
               |struct t {
               |  i6  a;
               |  s   b;
+              |  static void h() {}
+              |  void i() {}
               |}
               |
               |(* toplevel *)
@@ -849,10 +859,11 @@ final class TypeAssignerSpec extends AnyFreeSpec with AlogicTest {
       "select from type" - {
         for {
           (text, pattern) <- List[(String, PartialFunction[Any, Unit])](
-            ("a.x", { case TypeNone(TypeSInt(w)) if w == 8                                    => }),
-            ("b.y", { case TypeNone(TypeRecord(a, List(x))) if a.name == "a" && x.name == "x" => }),
-            ("b.y.x", { case TypeNone(TypeSInt(w)) if w == 8                                  => }),
-            ("c.d", { case TypeNone(TypeRecord(d, Nil)) if d.name == "d"                      => })
+            ("a.x", { case TypeNone(TypeSInt(w)) if w == 8                                   => }),
+            ("b.y", { case TypeNone(TypeRecord(Symbol("a"), List(Symbol("x"), Symbol("f")))) => }),
+            ("b.y.x", { case TypeNone(TypeSInt(w)) if w == 8                                 => }),
+            ("c.d", { case TypeNone(TypeRecord(Symbol("d"), Nil))                            => }),
+            ("a.f", { case TypeStaticMethod(Symbol("f"), TypeVoid, Nil)                      => })
           )
         } {
           text in {
@@ -860,6 +871,7 @@ final class TypeAssignerSpec extends AnyFreeSpec with AlogicTest {
               s"""
               |struct a {
               |  i8 x;
+              |  static void f() {}
               |}
               |
               |struct b {
@@ -1075,17 +1087,18 @@ final class TypeAssignerSpec extends AnyFreeSpec with AlogicTest {
             ("bool c;", { case _: StmtDefn            => }),
             ("read;", { case _: StmtRead              => }),
             ("write;", { case _: StmtWrite            => }),
-            ("assert false;", { case _: StmtAssertion => })
+            ("assert false;", { case _: StmtAssertion => }),
+            ("return;", { case _: StmtReturn          => })
           )
         } {
           text in {
             elaborate {
               s"""
-              |void function () {
-              |  bool a;
-              |  a;
-              |
-              |  $text
+              |struct s {
+              |  void f() {
+              |    bool a;
+              |    $text
+              |  }
               |}"""
             } getFirst {
               case DefnFunc(_, _, body) => body.last
@@ -1124,11 +1137,11 @@ final class TypeAssignerSpec extends AnyFreeSpec with AlogicTest {
           text in {
             elaborate {
               s"""
-              |void function() {
-              |  bool a;
-              |  a;
-              |
-              |  $text
+              |fsm e {
+              |  void f() {
+              |    bool a;
+              |    $text
+              |  }
               |}"""
             } getFirst {
               case DefnFunc(_, _, body) => body.last
@@ -1165,6 +1178,8 @@ final class TypeAssignerSpec extends AnyFreeSpec with AlogicTest {
             ("a.read();", { case StmtExpr(_: ExprCall)                => }, TypeCombStmt),
             ("main();", { case StmtExpr(_: ExprCall)                  => }, TypeCtrlStmt),
             ("xeno();", { case StmtExpr(_: ExprCall)                  => }, TypeCombStmt),
+            ("s.f();", { case StmtExpr(_: ExprCall)                   => }, TypeCombStmt),
+            ("i.g();", { case StmtExpr(_: ExprCall)                   => }, TypeCombStmt),
             ("{ }", { case _: StmtBlock                               => }, TypeCombStmt),
             ("{ a; fence; }", { case _: StmtBlock                     => }, TypeCtrlStmt),
             ("{ a; a; }", { case _: StmtBlock                         => }, TypeCombStmt)
@@ -1176,6 +1191,13 @@ final class TypeAssignerSpec extends AnyFreeSpec with AlogicTest {
               |fsm a {
               |  in sync bool a;
               |  import bool xeno();
+              |
+              |  struct s {
+              |    static void f() {}
+              |    void g() {}
+              |  }
+              |
+              |  s i;
               |
               |  void main() {
               |    a;

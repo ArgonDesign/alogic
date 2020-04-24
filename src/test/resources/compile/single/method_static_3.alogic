@@ -1,0 +1,27 @@
+fsm method_static_3 {
+  in bool i;
+  out wire bool o;
+
+  struct s {
+    static void f(bool x) {
+      o = x;
+    }
+  }
+
+  s ss;
+
+  void main() {
+    ss.f(i); // access static method via instance
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module method_static_3(
+//    input  wire i,
+//    output wire o
+//  );
+//
+//    assign o = i;
+//
+//  endmodule
+// }}}

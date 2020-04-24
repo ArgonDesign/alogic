@@ -14,7 +14,7 @@
 
 package com.argondesign.alogic.specialize
 
-import com.argondesign.alogic.ast.StatefulTreeTransformer
+import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 
@@ -29,30 +29,31 @@ private[specialize] object Clone {
     }
 
     // Transform that replaces references to cloned symbols
-    val transform = new StatefulTreeTransformer {
+    object Transform extends StatelessTreeTransformer {
       override val typed: Boolean = false
 
       override def transform(tree: Tree): Tree = tree match {
         case node: Sym =>
           symbolMap.get(node.symbol) match {
-            case Some(symbol) => node.copy(symbol = symbol) withLoc node.loc
+            case Some(symbol) => node.copy(symbol = symbol) withLoc tree.loc
             case None         => tree
           }
         case node: ExprSym =>
           symbolMap.get(node.symbol) match {
-            case Some(symbol) => node.copy(symbol = symbol) withLoc node.loc
+            case Some(symbol) => node.copy(symbol = symbol) withLoc tree.loc
             case None         => tree
           }
-        case node => node
+        case _ => tree
       }
     }
 
     // Apply transform
-    val cloned = desc rewrite transform
+    val cloned = desc rewrite Transform
 
-    // Finally clone the symbol introduced by this Desc
-    val sym = cloned.ref.asInstanceOf[Sym]
-    cloned.cpy(ref = sym.copy(symbol = sym.symbol.dup) withLoc sym.loc) withLoc desc.loc
+    // Finally replace the symbol in this Desc with a clone
+    val sym = desc.ref.asInstanceOf[Sym]
+    val thisSymbol = sym.symbol.dup
+    cloned.cpy(ref = sym.copy(symbol = thisSymbol) withLoc sym.loc) withLoc desc.loc
   }
 
 }

@@ -1,0 +1,23 @@
+fsm method_pure_11 {
+  in u2 i;
+  out wire u4 o;
+
+  struct s {
+    static u4 f(u2 x) {
+      return 'x;
+    }
+  }
+
+  void main() {
+    o = s.f(i);
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module method_pure_11(
+//    input  wire [1:0] i,
+//    output wire [3:0] o
+//  );
+//    assign o = {2'd0, i};
+//  endmodule
+// }}}

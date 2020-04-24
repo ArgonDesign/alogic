@@ -19,10 +19,11 @@ import com.argondesign.alogic.antlr.AlogicParser.IdentContext
 import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.SourceContext
 import org.antlr.v4.runtime.Token
 
 object IdentBuilder extends BaseBuilder[IdentContext, Ident] {
-  def apply(ctx: IdentContext)(implicit cc: CompilerContext): Ident =
+  def apply(ctx: IdentContext)(implicit cc: CompilerContext, sc: SourceContext): Ident =
     Ident(ctx.IDENTIFIER.text, ExprBuilder(ctx.expr)) withLoc ctx.loc
 
   def apply(token: Token): Ident =

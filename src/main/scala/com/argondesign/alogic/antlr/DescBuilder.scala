@@ -19,8 +19,9 @@ import com.argondesign.alogic.antlr.AlogicParser._
 import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.FlowControlTypes._
+import com.argondesign.alogic.core.SourceContext
 import com.argondesign.alogic.core.FuncVariant
+import com.argondesign.alogic.core.FlowControlTypes._
 import com.argondesign.alogic.core.StorageTypes._
 import com.argondesign.alogic.core.enums.EntityVariant
 
@@ -29,7 +30,7 @@ import scala.jdk.CollectionConverters._
 
 object DescBuilder extends BaseBuilder[DescContext, Desc] with ChainingSyntax {
 
-  def apply(ctx: DescContext)(implicit cc: CompilerContext): Desc = {
+  def apply(ctx: DescContext)(implicit cc: CompilerContext, sc: SourceContext): Desc = {
     object FCTVisitor extends AlogicScalarVisitor[FlowControlType] {
       override def defaultResult: FlowControlType =
         FlowControlTypeNone
@@ -161,14 +162,14 @@ object DescBuilder extends BaseBuilder[DescContext, Desc] with ChainingSyntax {
           case "network" => EntityVariant.Net
           case _         => EntityVariant.Ver
         }
-        val body = EntBuilder(ctx.ent)
+        val body = EntBuilder(ctx.ent)(cc, SourceContext.Entity)
         val loc = ctx.loc.copy(point = ident.loc.start)
         DescEntity(ident, variant, body) withLoc loc
       }
 
       override def visitDescRecord(ctx: DescRecordContext): Desc = {
         val ident = IdentBuilder(ctx.ident)
-        val body = RecBuilder(ctx.rec)
+        val body = RecBuilder(ctx.rec)(cc, SourceContext.Record)
         val loc = ctx.loc.copy(point = ident.loc.start)
         DescRecord(ident, body) withLoc loc
       }
@@ -187,17 +188,19 @@ object DescBuilder extends BaseBuilder[DescContext, Desc] with ChainingSyntax {
           case "network" => EntityVariant.Net
           case _         => EntityVariant.Ver
         }
-        val body = EntBuilder(ctx.ent)
+        val body = EntBuilder(ctx.ent)(cc, SourceContext.Entity)
         val loc = ctx.loc.copy(point = ident.loc.start)
         DescSingleton(ident, variant, body) withLoc loc
       }
 
       override def visitDescFuncAlogic(ctx: DescFuncAlogicContext): Desc = {
         val ident = IdentBuilder(ctx.ident)
+        val variant = if (ctx.stat == null) FuncVariant.None else FuncVariant.Static
         val ret = ExprBuilder(ctx.expr)
+        val args = argDescs(ctx.formal_arguments)
         val body = StmtBuilder(ctx.stmt)
         val loc = ctx.loc.copy(point = ident.loc.start)
-        DescFunc(ident, FuncVariant.None, ret, Nil, body) withLoc loc
+        DescFunc(ident, variant, ret, args, body) withLoc loc
       }
 
       override def visitDescFuncImport(ctx: DescFuncImportContext): Desc = {

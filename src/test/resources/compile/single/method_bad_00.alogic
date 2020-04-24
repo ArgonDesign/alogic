@@ -1,0 +1,25 @@
+fsm method_bad_00 {
+  in bool i;
+  out wire bool o;
+
+  struct s {
+    static bool inv(bool x) {
+      return ~x;
+      x = false;
+    }
+  }
+
+  void main() {
+    o = s.inv(i);
+    fence;
+  }
+}
+// :8: WARNING: Statement is unreachable
+// @fec/golden {{{
+//  module method_bad_00(
+//    input  wire i,
+//    output wire o
+//  );
+//    assign o = ~i;
+//  endmodule
+// }}}

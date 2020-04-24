@@ -18,13 +18,20 @@ package com.argondesign.alogic.antlr
 import com.argondesign.alogic.antlr.AlogicParser._
 import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.SourceContext
 import com.argondesign.alogic.core.SourceAttribute
 
 import scala.util.ChainingSyntax
 
 object AttrBuilder extends BaseBuilder[AttrContext, (String, SourceAttribute)] with ChainingSyntax {
 
-  def apply(ctx: AttrContext)(implicit cc: CompilerContext): (String, SourceAttribute) = {
+  def apply(
+      ctx: AttrContext
+    )(
+      implicit
+      cc: CompilerContext,
+      sc: SourceContext
+    ): (String, SourceAttribute) = {
     object Visitor extends AlogicScalarVisitor[(String, SourceAttribute)] {
       override def visitAttrFlag(ctx: AttrFlagContext): (String, SourceAttribute) =
         (ctx.IDENTIFIER.text, SourceAttribute.Flag() withLoc ctx.loc)

@@ -1,0 +1,15 @@
+fsm method_recursive_3 {
+  struct s {
+    static void f() {
+      f();
+    }
+  }
+
+  void main() {
+    s.f();
+    fence;
+  }
+}
+// :4: ERROR: Combinational function call exceeds static recursion limit of 16
+// :4: ERROR: ... this can be increased with the '--comb-rec-limit' option
+// :4: ERROR: ... root call is at: .*method_recursive_3.alogic:9

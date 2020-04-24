@@ -278,6 +278,15 @@ final class Typer(
         // TODO: this is not quite right for shift and compare etc
         pushContextWidth(tree, lhs.tpe)
 
+      case _: StmtReturn =>
+        enclosingSymbols.headOption foreach {
+          _.kind match {
+            case TypeCallable(_, retType, _) if retType != TypeVoid =>
+              pushContextWidth(tree, retType)
+            case _ =>
+          }
+        }
+
       // Type check target up front
       case ExprIndex(tgt, _) if !walk(tgt).tpe.isError =>
         assert(!tgt.tpe.isUnknown)
@@ -322,13 +331,17 @@ final class Typer(
           }
         }
         tgt.tpe match {
-          case TypeCombFunc(_, _, argTypes) => process(argTypes)
-          case TypeCtrlFunc(_, _, argTypes) => process(argTypes)
-          case TypeXenoFunc(_, _, argTypes) => process(argTypes)
-          case _: TypePolyFunc              =>
-          case _: TypeParametrized          =>
-          case _: TypeType                  =>
-          case _                            => error(tree, tgt, s"'${tgt.toSource}' is not callable")
+          case TypeCombFunc(_, _, argTypes)     => process(argTypes)
+          case TypeCtrlFunc(_, _, argTypes)     => process(argTypes)
+          case TypeXenoFunc(_, _, argTypes)     => process(argTypes)
+          case TypeStaticMethod(_, _, argTypes) => process(argTypes)
+          case TypeNormalMethod(_, _, argTypes) => process(argTypes)
+          case _: TypePolyFunc                  =>
+          case _: TypeParametrized              =>
+          case _: TypeType                      =>
+          case TypeNone(_: TypeNormalMethod) =>
+            error(tree, tgt, "Attempting to call non-static method via type")
+          case _ => error(tree, tgt, s"Expression is not callable")
         }
 
       case _ => ()
@@ -412,11 +425,23 @@ final class Typer(
 //          }
         }
 
-      case DefnFunc(symbol, _, body) if symbol.kind.isCtrlFunc =>
-        if (body.isEmpty) {
-          error(tree, symbol.loc, "Body of function must end in a control statement")
-        } else if (body.last.tpe != TypeCtrlStmt) {
-          error(tree, body.last, "Body of function must end in a control statement")
+      case DefnFunc(symbol, _, body) =>
+        if (symbol.kind.isCtrlFunc) {
+          if (body.isEmpty) {
+            error(tree, symbol.loc, "Body of control function must end in a control statement")
+          } else if (body.last.tpe != TypeCtrlStmt) {
+            error(tree, body.last, "Body of control function must end in a control statement")
+          }
+        } else if (symbol.kind.isMethod) {
+          body.iterator filter { _.tpe.isCtrlStmt } foreach { stmt =>
+            error(
+              tree,
+              stmt,
+              "Body of combinational function must contain only combinational statements"
+            )
+          }
+        } else if (!symbol.kind.isXenoFunc) {
+          cc.ice(tree, "Unknown function definition")
         }
 
       case defn: Defn =>
@@ -528,6 +553,27 @@ final class Typer(
           checkPacked(expr, s"Target of postfix '$op'") && checkModifiable(expr)
         if (!ok) error(tree)
 
+      case stmt: StmtReturn =>
+        enclosingSymbols.head.kind match {
+          case TypeCallable(symbol, TypeVoid, _) =>
+            stmt.exprOpt match {
+              case Some(expr) =>
+                error(tree, expr, s"void function '${symbol.name}' cannot return a value")
+              case _ =>
+            }
+          case TypeCallable(symbol, retType, _) =>
+            stmt.exprOpt match {
+              case None => error(tree, s"non-void function '${symbol.name}' must return a value")
+              case Some(expr) =>
+                if (!expr.tpe.underlying.isNum) {
+                  val ok = checkPacked(expr, "Return value") &&
+                    checkWidth(retType.width, expr, "Return value")
+                  if (!ok) error(tree)
+                }
+            }
+          case _ => error(tree, "'return' statement not inside function")
+        }
+
       case StmtExpr(expr) if expr.isPure =>
         error(tree, "A pure expression in statement position does nothing")
 
@@ -576,9 +622,11 @@ final class Typer(
         }
 
         expr.tpe match {
-          case TypeCombFunc(_, _, argTypes) => check(argTypes)
-          case TypeCtrlFunc(_, _, argTypes) => check(argTypes)
-          case TypeXenoFunc(_, _, argTypes) => check(argTypes)
+          case TypeCombFunc(_, _, argTypes)     => check(argTypes)
+          case TypeCtrlFunc(_, _, argTypes)     => check(argTypes)
+          case TypeXenoFunc(_, _, argTypes)     => check(argTypes)
+          case TypeStaticMethod(_, _, argTypes) => check(argTypes)
+          case TypeNormalMethod(_, _, argTypes) => check(argTypes)
           case tpe: TypePolyFunc =>
             tpe.resolve(args) match {
               case Some(symbol) => tree withTpe symbol.kind.asCombFunc.retType
@@ -646,7 +694,7 @@ final class Typer(
       // Unary ops
 
       // Unary ' is special and the type of the node must be assigned here
-      // based on context
+      // based on context as it cannot be determined from the operand only.
       case ExprUnary("'", op) =>
         if (hadError) {
           // If we had a type error, the context stack might be out of sync

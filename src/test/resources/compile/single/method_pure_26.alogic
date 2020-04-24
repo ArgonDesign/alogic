@@ -1,0 +1,23 @@
+fsm method_pure_26 {
+  out wire bool o;
+
+  struct s {
+    static bool f() {
+      return false;
+      return true;
+    }
+  }
+
+  void main() {
+    o = s.f();
+    fence;
+  }
+}
+// :7: WARNING: Statement is unreachable
+// @fec/golden {{{
+//  module method_pure_26(
+//    output wire o
+//  );
+//    assign o = 1'b0;
+//  endmodule
+// }}}

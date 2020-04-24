@@ -1,0 +1,32 @@
+fsm method_pure_20 {
+  in u2 i;
+  out wire u2 o;
+
+  struct s {
+    static u2 f(u2 x) {
+      if (x < 3) {
+        if (x < 2) {
+          if (x < 1) {
+            return 2'd1;
+          }
+          return 2'd2;
+        }
+        // No retun here
+      }
+      return 2'd0;
+    }
+  }
+
+  void main() {
+    o = s.f(i);
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module method_pure_20(
+//    input  wire [1:0] i,
+//    output wire [1:0] o
+//  );
+//    assign o = i <= 2'd1 ? i + 2'd1 : 2'd0;
+//  endmodule
+// }}}

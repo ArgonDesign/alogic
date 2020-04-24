@@ -1,0 +1,18 @@
+fsm method_bad_01 {
+  in bool i;
+  out wire bool o;
+
+  struct s {
+    static bool inv(bool x) {
+      if (x) {
+        return false;
+      }
+    }
+  }
+
+  void main() {
+    o = s.inv(i);
+    fence;
+  }
+}
+// :7: ERROR: Control reaches end of non-void function

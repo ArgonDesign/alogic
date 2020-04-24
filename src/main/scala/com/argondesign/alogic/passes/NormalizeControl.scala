@@ -42,7 +42,7 @@ final class NormalizeControl(implicit cc: CompilerContext) extends StatelessTree
 
   private def convertBreak(stmt: Stmt): Stmt = stmt match {
     // Convert 'break' to 'return
-    case _: StmtBreak => TypeAssigner(StmtReturn() withLoc stmt.loc)
+    case _: StmtBreak => TypeAssigner(StmtReturn(comb = false, None) withLoc stmt.loc)
 
     // Nested statements, convert each branch
     case StmtBlock(body) =>
@@ -76,7 +76,7 @@ final class NormalizeControl(implicit cc: CompilerContext) extends StatelessTree
       case _: StmtGoto   => stmt
 
       // Convert final 'fence' to 'return'
-      case _: StmtFence => TypeAssigner(StmtReturn() withLoc stmt.loc)
+      case _: StmtFence => TypeAssigner(StmtReturn(comb = false, None) withLoc stmt.loc)
       // Convert final 'call' to 'goto' (tail call)
       case StmtExpr(expr) =>
         expr match {

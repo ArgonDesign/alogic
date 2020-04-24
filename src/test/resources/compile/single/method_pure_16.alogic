@@ -1,0 +1,29 @@
+fsm method_pure_16 {
+  out wire bool o_0;
+  out wire bool o_1;
+
+  struct s {
+    static bool f(bool x) {
+      case (x) {
+        true:     {} // Nothing
+        default:  return false;
+      }
+      return true;
+    }
+  }
+
+  void main() {
+    o_0 = s.f(0);
+    o_1 = s.f(1);
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module method_pure_16(
+//    output wire o_0,
+//    output wire o_1
+//  );
+//    assign o_0 = 1'b0;
+//    assign o_1 = 1'b1;
+//  endmodule
+// }}}

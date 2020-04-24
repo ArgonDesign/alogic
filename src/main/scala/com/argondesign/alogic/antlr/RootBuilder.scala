@@ -19,8 +19,9 @@ import com.argondesign.alogic.antlr.AlogicParser.RootContext
 import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.ast.Trees.Root
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.SourceContext
 
 object RootBuilder extends BaseBuilder[RootContext, Root] {
-  def apply(ctx: RootContext)(implicit cc: CompilerContext): Root =
+  def apply(ctx: RootContext)(implicit cc: CompilerContext, sc: SourceContext): Root =
     Root(RizBuilder(ctx.riz)) withLoc ctx.loc
 }

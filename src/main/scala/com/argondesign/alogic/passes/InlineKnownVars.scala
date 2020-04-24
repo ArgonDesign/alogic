@@ -18,16 +18,16 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.analysis.StaticEvaluation
 import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Bindings
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.typer.TypeAssigner
 
 import scala.annotation.tailrec
 import scala.collection.mutable
 
 final class InlineKnownVars(
-    combOnly: Boolean
+    combOnly: Boolean = true
   )(
     implicit
     cc: CompilerContext)
@@ -38,20 +38,20 @@ final class InlineKnownVars(
 
   private[this] val bindings = mutable.Stack[Bindings]()
 
+  def computeEvaluation(stmt: Stmt): Unit = StaticEvaluation(stmt, Bindings.empty) match {
+    case None =>
+    case Some(evaluation) =>
+      stmtBindings = evaluation._1
+      endOfCycleBindings = if (combOnly) Bindings.empty else evaluation._2
+      bindings.push(endOfCycleBindings)
+  }
+
   override def start(tree: Tree): Unit = tree match {
     case defn: DefnEntity =>
       assert(defn.combProcesses.lengthIs <= 1)
-      defn.combProcesses.headOption foreach {
-        case EntCombProcess(body) =>
-          StaticEvaluation(StmtBlock(body), Nil) match {
-            case None =>
-            case Some(evaluation) =>
-              stmtBindings = evaluation._1
-              endOfCycleBindings = if (combOnly) Bindings.empty else evaluation._2
-              bindings.push(endOfCycleBindings)
-          }
-      }
-    case _ =>
+      defn.combProcesses.headOption foreach { proc => computeEvaluation(StmtBlock(proc.stmts)) }
+    case stmt: Stmt => computeEvaluation(stmt)
+    case _          =>
   }
 
   override def skip(tree: Tree): Boolean = bindings.isEmpty
@@ -121,8 +121,12 @@ final class InlineKnownVars(
         case simplified          => if (simplified eq expr) expr else simplify(simplified)
       }
       bs.get(symbol) map simplify match {
+        // If the value is known, replace the ref
         case Some(expr: ExprInt) => expr
-        case _                   => tree
+        // If the current ref is a temporary, and there placement is simply
+        // another symbol, replace the temporary with the other symbol
+        case Some(expr: ExprSym) if symbol.attr.tmp.isSet => expr
+        case _                                            => tree
       }
 
     case _: Stmt =>

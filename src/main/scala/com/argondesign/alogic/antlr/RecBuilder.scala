@@ -19,16 +19,17 @@ import com.argondesign.alogic.antlr.AlogicParser._
 import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.SourceContext
 import com.argondesign.alogic.core.FuncVariant
 
 object RecBuilder extends BaseBuilder[RecContext, Rec] {
 
-  def apply(ctx: RecContext)(implicit cc: CompilerContext): Rec = {
+  def apply(ctx: RecContext)(implicit cc: CompilerContext, sc: SourceContext): Rec = {
     object Visitor extends AlogicScalarVisitor[Rec] {
       override def visitRecDesc(ctx: RecDescContext): Rec = {
         val desc = DescBuilder(ctx.desc) match {
           case func: DescFunc if func.variant == FuncVariant.None =>
-            func.copy(variant = FuncVariant.Comb) withLoc func.loc
+            func.copy(variant = FuncVariant.Method) withLoc func.loc
           case other => other
         }
         RecDesc(desc) withLoc ctx.loc

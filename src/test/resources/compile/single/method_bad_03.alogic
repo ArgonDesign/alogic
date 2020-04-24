@@ -1,0 +1,16 @@
+fsm method_bad_03 {
+  out wire bool o;
+
+  struct s {
+    bool a;
+    static bool get() {
+      return a;
+    }
+  }
+
+  void main() {
+    o = s.get();
+    fence;
+  }
+}
+// :7: ERROR: Static method cannot reference non-static members

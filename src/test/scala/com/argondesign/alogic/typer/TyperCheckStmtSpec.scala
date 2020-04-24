@@ -134,116 +134,6 @@ final class TyperCheckStmtSpec extends AnyFreeSpec with AlogicTest {
       }
     }
 
-    "function bodies" - {
-      for {
-        (func, err) <- List(
-          ("void main () { fence; }", Nil),
-          (
-            "void main () { $display(); }",
-            "Body of function must end in a control statement" :: Nil
-          ),
-          (
-            "void main () { fence; $display(); }",
-            "Body of function must end in a control statement" :: Nil
-          )
-        )
-      } {
-        func in {
-          typeCheck {
-            s"""
-               |fsm a {
-               |  $func
-               |}
-               |""".stripMargin
-          }
-          checkSingleError(err)
-        }
-      }
-    }
-
-    "fence blocks bodies" - {
-      for {
-        (fenceBlock, err) <- List(
-          ("fence { $display(); }", Nil),
-          (
-            "fence { $display(); fence; }",
-            "'fence' block must contain only combinational statements" :: Nil
-          )
-        )
-      } {
-        fenceBlock in {
-          typeCheck {
-            s"""
-               |fsm a {
-               |  $fenceBlock
-               |}
-               |""".stripMargin
-          }
-          checkSingleError(err)
-        }
-      }
-    }
-
-    "declaration initializers" - {
-      for {
-        (decl, err) <- List(
-          ("i8 a = 2", Nil),
-          ("i8 a = 8'd2", Nil),
-          ("i8 a = bool", "Initializer expression is of non-packed type" :: Nil),
-          ("i8 a = 9'd2", "Initializer expression yields 9 bits, 8 bits are expected" :: Nil),
-          ("i8 a = 7'd2", "Initializer expression yields 7 bits, 8 bits are expected" :: Nil),
-          ("const uint a = 7'd2", "Unsized integer declaration has packed initializer" :: Nil)
-        )
-      } {
-        decl in {
-          typeCheck {
-            s"""
-               |fsm a {
-               |  $decl;
-               |}
-               |""".stripMargin
-          }
-          checkSingleError(err)
-        }
-      }
-    }
-
-    "declaration types" - {
-      for {
-        (decl, err) <- List(
-          ("i8 a", Nil),
-          ("x a", "Expression does not name a type" :: Nil),
-          ("in i8 a", Nil),
-          ("in x a", "Expression does not name a type" :: Nil),
-          ("out i8 a", Nil),
-          ("out x a", "Expression does not name a type" :: Nil),
-          ("param i8 a = 0", Nil),
-          ("param x a = 0", "Expression does not name a type" :: Nil),
-          ("const i8 a = 0", Nil),
-          ("const x a = 0", "Expression does not name a type" :: Nil),
-          ("pipeline i8 a", Nil),
-          ("pipeline x a", "Expression does not name a type" :: Nil),
-          ("sram i8 a[1]", Nil),
-          ("sram x a[1]", "Expression does not name a type" :: Nil),
-          ("i8 a[1]", Nil),
-          ("x a[1]", "Expression does not name a type" :: Nil),
-          ("i8[1] a", Nil),
-          ("x[1] a", "Expression does not name a type" :: Nil)
-        )
-      } {
-        decl in {
-          typeCheck {
-            s"""
-            |fsm f {
-            |  u2 x;
-            |  $decl;
-            |}"""
-          }
-          checkSingleError(err)
-        }
-      }
-    }
-
     "assignments" - {
       for {
         (assignment, err) <- List(
@@ -460,10 +350,11 @@ final class TyperCheckStmtSpec extends AnyFreeSpec with AlogicTest {
         text in {
           typeCheck {
             s"""
-               |void function() {
-               | $text;
-               |}
-               |""".stripMargin
+               |struct s {
+               |  void function() {
+               |   $text;
+               |  }
+               |}""".stripMargin
           }
           checkSingleError(err)
         }
@@ -494,6 +385,48 @@ final class TyperCheckStmtSpec extends AnyFreeSpec with AlogicTest {
             checkSingleError(err)
           }
         }
+      }
+    }
+
+    "return" - {
+      "packed" - {
+        for {
+          (kind, value, err) <- List(
+            ("u8", "2", Nil),
+            ("u8", "8'd2", Nil),
+            ("u8", "bool", "Return value is of non-packed type" :: Nil),
+            ("u8", "9'd2", "Return value yields 9 bits, 8 bits are expected" :: Nil),
+            ("u8", "7'd2", "Return value yields 7 bits, 8 bits are expected" :: Nil),
+            ("u8", "", "non-void function 'f' must return a value" :: Nil),
+            ("void", "", Nil),
+            ("void", "8'd2", "void function 'f' cannot return a value" :: Nil),
+            ("void", "bool", "void function 'f' cannot return a value" :: Nil)
+          )
+        } {
+          s"$kind return $value" in {
+            typeCheck {
+              s"""
+              |struct s {
+              |  $kind f() {
+              |    return $value;
+              |  }
+              |}"""
+            }
+            checkSingleError(err)
+          }
+        }
+      }
+
+      "outside callable" in {
+        typeCheck {
+          s"""
+          |fsm a {
+          |  fence {
+          |    return;
+          |  }
+          |}"""
+        }
+        checkSingleError("'return' statement not inside function" :: Nil)
       }
     }
   }

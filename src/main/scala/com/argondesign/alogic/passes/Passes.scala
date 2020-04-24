@@ -50,6 +50,8 @@ object Passes extends ChainingSyntax {
         Fold andThen
         PortCheckB andThen
         ConvertMultiConnect andThen
+        NormalizeFunctions andThen
+        InlineMethods andThen
         LowerPipeline andThen
         LiftEntities() andThen
         LowerLoops andThen

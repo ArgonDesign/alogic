@@ -19,6 +19,7 @@ import com.argondesign.alogic.antlr.AlogicParser._
 import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.SourceContext
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Math
 import com.argondesign.alogic.util.unreachable
@@ -27,7 +28,7 @@ import scala.math.BigInt.int2bigInt
 
 object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
 
-  def apply(ctx: ExprContext)(implicit cc: CompilerContext): Expr = {
+  def apply(ctx: ExprContext)(implicit cc: CompilerContext, sc: SourceContext): Expr = {
     object Visitor extends AlogicScalarVisitor[Expr] {
       //////////////////////////////////////////////////////////////////////////
       // Bracket
@@ -163,6 +164,15 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
 
       override def visitExprTypeVoid(ctx: ExprTypeVoidContext): Expr =
         ExprType(TypeVoid) withLoc ctx.loc
+
+      //////////////////////////////////////////////////////////////////////////
+      // 'this'
+      //////////////////////////////////////////////////////////////////////////
+
+      override def visitExprThis(ctx: ExprThisContext): Expr = {
+        cc.error(ctx.loc, "'this' reference is not user accessible")
+        ExprError() withLoc ctx.loc
+      }
 
       //////////////////////////////////////////////////////////////////////////
       // Names

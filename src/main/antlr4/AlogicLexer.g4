@@ -167,6 +167,7 @@ TYPE    : 'type' ;
 ASSERT  : 'assert' ;
 ASSUME  : 'assume' ;
 IMPORT  : 'import' ;
+THIS    : 'this' ;
 
 SYNC        : 'sync';
 SYNC_READY  : 'sync' (WS|CMT)* 'ready';
