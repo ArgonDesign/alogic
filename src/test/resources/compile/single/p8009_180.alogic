@@ -18,7 +18,7 @@ fsm p8009_180 {
 //    input  wire [7:0] p_in,
 //    input  wire       p_in__valid,
 //    output reg  [7:0] p_out,
-//    output reg        p_out__valid,
+//    output reg        p_out__valid
 //  );
 //
 //    always @(posedge clk) begin

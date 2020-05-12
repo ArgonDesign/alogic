@@ -16,6 +16,6 @@ network struct_in_struct_1 {
 //    input  wire i__b0__a0,
 //    output wire o__b0__a0
 //  );
-//    assign i__b0__a0 = o__b0__a0;
+//    assign o__b0__a0 = i__b0__a0;
 //  endmodule
 // }}}

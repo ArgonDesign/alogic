@@ -17,6 +17,7 @@ fsm specialize_hard_0 {
     goto main;
   }
 }
+// @fec/mode: bmc
 // @fec/golden {{{
 //  module specialize_hard_0(
 //    input   wire  clk,

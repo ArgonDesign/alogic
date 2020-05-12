@@ -60,7 +60,7 @@ network gen_nest_stmt_1 {
 //        p_o4 <= b_4;
 //      end else begin
 //        state_4 <= 2'd1;
-//        b_4 <= p_i + 8'd1;
+//        b_4 <= p_i + 4'd1;
 //      end
 //    end
 //  end

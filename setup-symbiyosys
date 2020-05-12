@@ -1,0 +1,80 @@
+#!/bin/bash
+
+set -e
+
+stderr () {
+  echo "$(basename $0): $1" >&2
+}
+
+error () {
+  stderr "ERROR: $1"; exit 1
+}
+
+[[ ! -e symbiyosys ]] || error "symbiyosys directory already exists"
+
+# From:
+# https://symbiyosys.readthedocs.io/en/latest/quickstart.html#installing
+
+# Assuming standard packages already installed:
+# sudo apt-get install build-essential clang bison flex libreadline-dev \
+#                      gawk tcl-dev libffi-dev git mercurial graphviz   \
+#                      xdot pkg-config python python3 libftdi-dev gperf \
+#                      libboost-program-options-dev autoconf libgmp-dev \
+#                      cmake
+
+mkdir symbiyosys
+pushd symbiyosys
+
+mkdir install
+PREFIX=$(readlink -f install)
+
+# Install yosys
+git clone https://github.com/YosysHQ/yosys.git yosys
+pushd yosys
+git checkout aafaeb66
+make PREFIX=$PREFIX -j$(nproc)
+make PREFIX=$PREFIX install
+popd
+
+# Install SymbiYosys
+git clone https://github.com/YosysHQ/SymbiYosys.git SymbiYosys
+pushd SymbiYosys
+git checkout ca9c188
+make PREFIX=$PREFIX install
+popd
+
+# Install yices2
+git clone https://github.com/SRI-CSL/yices2.git yices2
+pushd yices2
+git checkout Yices-2.6.2
+autoconf
+./configure --prefix=$PREFIX
+make -j$(nproc)
+make install
+popd
+
+# Install z3
+git clone https://github.com/Z3Prover/z3.git z3
+pushd z3
+git checkout z3-4.8.8
+CXX=clang++ CC=clang python scripts/mk_make.py --prefix=$PREFIX
+pushd build
+make -j$(nproc)
+make install
+popd
+popd
+
+# Install boolector
+git clone https://github.com/boolector/boolector
+pushd boolector
+./contrib/setup-lingeling.sh
+./contrib/setup-btor2tools.sh
+./configure.sh --prefix $PREFIX
+pushd build
+make -j$(nproc)
+make install
+popd
+popd
+
+#
+echo "Done setting up SymbiYosys"

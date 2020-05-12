@@ -21,6 +21,7 @@ import java.io.StringWriter
 import java.io.Writer
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.Paths
 
 import com.argondesign.alogic.ast.Trees.Decl
 import com.argondesign.alogic.ast.Trees.Root
@@ -39,8 +40,10 @@ import org.scalatest.ParallelTestExecution
 import org.scalatest.fixture
 import org.scalatest.freespec.FixtureAnyFreeSpec
 
+import scala.collection.immutable.ListMap
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
+import scala.io.AnsiColor
 import scala.io.Source
 import scala.sys.process._
 
@@ -50,23 +53,64 @@ trait CompilationTest
     with fixture.ConfigMapFixture
     with ParallelTestExecution {
 
-  private lazy val verilator = {
-    new File("verilator/install/bin/verilator")
-  } pipe {
-    _.getCanonicalFile
-  } tap { file =>
-    if (!file.exists) {
-      cancel("Run the 'setup-verilator' script to install Verilator locally for testing")
-    }
-  }
+  def getTool(path: Path, name: String, msg: String): File = {
+    path.resolve(name).toFile
+  } pipe { _.getCanonicalFile } ensuring { _.exists }
 
-  private lazy val yosys = {
-    new File("yosys/install/bin/yosys")
-  } pipe {
-    _.getCanonicalFile
-  } tap { file =>
-    if (!file.exists) {
-      cancel("Run the 'setup-yosys' script to install Yosys locally for testing")
+  private lazy val verilatorPath = Paths.get("verilator/install/bin").toAbsolutePath
+
+  private lazy val verilator = getTool(
+    verilatorPath,
+    "verilator",
+    "Run the 'setup-verilator' script to install Verilator locally for testing"
+  )
+
+  private lazy val symbiyosysPath = Paths.get("symbiyosys/install/bin").toAbsolutePath
+
+  private lazy val symbiyosys = getTool(
+    symbiyosysPath,
+    "sby",
+    "Run the 'setup-symbiyosys' script to install SymbiYosys locally for testing"
+  )
+
+  private lazy val yosys = getTool(
+    symbiyosysPath,
+    "yosys",
+    "Run the 'setup-symbiyosys' script to install SymbiYosys locally for testing"
+  )
+
+  // Test config
+  case class Config(
+      dumpTrees: Boolean,
+      tmpDir: Option[String],
+      trace: Boolean,
+      traceElaborate: Boolean,
+      verbose: Int)
+
+  // Create temporary directory, run function passing the path to the temporary
+  // directory as argument, then remove the temporary directory
+  def withTmpDir[R](f: Path => R)(implicit config: Config): R = {
+    def del(f: File): Unit = {
+      if (f.isDirectory) {
+        f.listFiles foreach del
+      }
+      f.delete()
+    }
+    config.tmpDir match {
+      case Some(tmpDir) =>
+        val tmp = new File(tmpDir)
+        if (tmp.exists) {
+          del(tmp)
+        }
+        tmp.mkdirs()
+        f(tmp.toPath.toAbsolutePath)
+      case None =>
+        val tmpPath = Files.createTempDirectory("alogic-test-").toAbsolutePath
+        try {
+          f(tmpPath)
+        } finally {
+          del(tmpPath.toFile)
+        }
     }
   }
 
@@ -101,15 +145,15 @@ trait CompilationTest
     }
   }
 
-  def writeFile(path: Path)(content: String): Unit = {
-    val pw = new PrintWriter(path.toFile)
+  def writeFile(file: File)(content: String): Unit = {
+    val pw = new PrintWriter(file)
     pw.write(content)
     pw.flush()
     pw.close()
   }
 
   def writeOutputs(path: Path): Unit = outputs foreach {
-    case (name, text) => writeFile(path.resolve(name))(text)
+    case (name, text) => writeFile(path.resolve(name).toFile)(text)
   }
 
   def checkFileExists(name: String): Unit =
@@ -118,21 +162,38 @@ trait CompilationTest
       fail(s"Could not find file '$name' among \n$files\n")
     }
 
-  def system(cwd: Path, cmd: String, logfile: String): Unit = {
+  def system(
+      cmd: String,
+      cwd: Path,
+      logfile: String,
+      failOk: Boolean = false,
+      extraEnv: Map[String, String] = Map.empty
+    )(
+      implicit
+      config: Config
+    ): Boolean = {
     val logFile = cwd.resolve(logfile).toFile
     val logger = ProcessLogger(logFile)
-    val ret = Process(cmd, cwd.toFile) ! logger
+    if (config.verbose > 0) {
+      println(s"${AnsiColor.BOLD}=== Running in directory: $cwd${AnsiColor.RESET}")
+      println(cmd)
+    }
+    val ret = Process(cmd, cwd.toFile, extraEnv.toSeq: _*) ! logger
     logger.flush()
     logger.close()
-    if (ret != 0) {
+    if (config.verbose > 0) {
+      println("=== Output:")
       val source = Source.fromFile(logFile)
       try {
         source.getLines foreach println
       } finally {
         source.close()
       }
+    }
+    if (!failOk && ret != 0) {
       fail(s"Command failed: '$cmd'")
     }
+    ret == 0
   }
 
   def allMatches(patterns: Iterable[String], lines: Iterable[String]): Boolean = {
@@ -143,13 +204,13 @@ trait CompilationTest
     }
   }
 
-  // Lint compiler output with verilator
-  def verilatorLint(topLevel: String, tmpDir: Path): Unit = {
+  // Lint compiler output with Verilator
+  def verilatorLint(topLevel: String, tmpDir: Path)(implicit config: Config): Unit = {
     // Write all files to temporary directory
     writeOutputs(tmpDir)
 
     // Lint the top level
-    system(tmpDir, s"$verilator --lint-only -Wall -y $tmpDir $topLevel", "verilator-lint.log")
+    system(s"$verilator --lint-only -Wall -y $tmpDir $topLevel", tmpDir, "verilator-lint.log")
   }
 
   // Build and run simulation with Verilator
@@ -163,7 +224,8 @@ trait CompilationTest
       tmpDir: Path
     )(
       implicit
-      cc: CompilerContext
+      cc: CompilerContext,
+      config: Config
     ): Unit = {
     require(topLevel != "testbench")
     assert(outputs forall { _._1 != "testbench" })
@@ -172,8 +234,8 @@ trait CompilationTest
     writeOutputs(tmpDir)
 
     // Write the testbench
-    val tbPath = tmpDir.resolve("testbench.sv")
-    writeFile(tbPath) {
+    val tbFile = tmpDir.resolve("testbench.sv").toFile
+    writeFile(tbFile) {
       s"""|module testbench(
           |  input wire clk,
           |  input wire ${cc.rst}
@@ -188,22 +250,22 @@ trait CompilationTest
     }
 
     // Write the dpi source file
-    val dpiPathOpt = Option.when(dpi.nonEmpty)(tmpDir.resolve("dpi.cc"))
-    dpiPathOpt foreach { dpiPath =>
-      writeFile(dpiPath)(dpi)
+    val dpiFileOpt = Option.when(dpi.nonEmpty)(tmpDir.resolve("dpi.cc").toFile)
+    dpiFileOpt foreach { dpiFile =>
+      writeFile(dpiFile)(dpi)
     }
 
     // The Verilator output directory
     val objPath = tmpDir.resolve("obj_dir")
 
     // Write simulation main
-    val mainPath = tmpDir.resolve("main.cc")
-    writeFile(mainPath) {
+    val mainFile = tmpDir.resolve("main.cc").toFile
+    writeFile(mainFile) {
       val rstActive = cc.settings.resetStyle match {
         case ResetStyle.AsyncHigh | ResetStyle.SyncHigh => 1
         case _                                          => 0
       }
-      val rstInactive = 1 - rstActive;
+      val rstInactive = 1 - rstActive
       val rstSync = cc.settings.resetStyle match {
         case ResetStyle.SyncHigh | ResetStyle.SyncLow => 1
         case _                                        => 0
@@ -310,13 +372,13 @@ trait CompilationTest
     val verilatorCmd = {
       val traceOpts = if (trace) "--trace" else ""
       val cflags = "-DVL_USER_STOP"
-      val files = s"$tbPath $mainPath ${dpiPathOpt.fold("")(_.toString)}"
+      val files = s"$tbFile $mainFile ${dpiFileOpt.fold("")(_.toString)}"
       s"""$verilator --cc --exe -Wall $traceOpts -CFLAGS "$cflags" -O3 --assert --trace-underscore -y $tmpDir --Mdir $objPath $files"""
     }
-    system(tmpDir, verilatorCmd, "verilator-compile.log")
+    system(verilatorCmd, tmpDir, "verilator-compile.log")
 
     // Build model
-    system(tmpDir, s"make -C $objPath -f Vtestbench.mk", "verilator-build.log")
+    system(s"make -C $objPath -f Vtestbench.mk", tmpDir, "verilator-build.log")
 
     // Run model and check output
     val lines = Process(s"${objPath.resolve("Vtestbench")}", tmpDir.toFile).lazyLines_!
@@ -330,20 +392,18 @@ trait CompilationTest
     }
   }
 
-  // Functional equivalence check with yosys
-  def yosysFEC(topLevel: String, golden: String, tmpDir: Path): Unit = {
-    // Write all files to temporary directory
-    writeOutputs(tmpDir)
-
-    // Write the golden model
-    val goldenPath = tmpDir.resolve("__golden.v")
-    writeFile(goldenPath)(golden)
-
-    // Write yosys script
-    val scriptPath = tmpDir.resolve("fec.ys").toFile
-    val spw = new PrintWriter(scriptPath)
-    spw.write(
-      s"""|read_verilog ${goldenPath.toFile}
+  // Structural equivalence checking with yosys
+  def yosysEquiv(
+      topLevel: String,
+      goldenFile: File,
+      tmpDir: Path
+    )(
+      implicit
+      config: Config
+    ): Boolean = {
+    val scriptFile = tmpDir.resolve("equiv.ys").toFile
+    writeFile(scriptFile) {
+      s"""|read_verilog $goldenFile
           |prep -flatten -top $topLevel
           |memory
           |opt -full $topLevel
@@ -367,24 +427,271 @@ trait CompilationTest
           |#show -prefix equiv-prep -colors 1 -stretch
           |
           |equiv_simple -seq 5
-          |equiv_induct -seq 50
+          |equiv_induct -seq 20
           |
           |equiv_status -assert
           |""".stripMargin
-    )
-    spw.flush()
-    spw.close()
+    }
 
-    // Log path
-    val logPath = tmpDir.resolve("fec.log")
+    system(
+      s"$yosys -s $scriptFile ${if (config.verbose < 2) "-q" else ""}",
+      tmpDir,
+      "yosys-equiv.log",
+      failOk = true
+    )
+  }
+
+  // BMC/k-induction based equivalence checking using SymbiYosys
+  def symbiYosysEquiv(
+      topLevel: String,
+      goldenFile: File,
+      tmpDir: Path,
+      fec: Map[String, String]
+    )(
+      implicit
+      config: Config
+    ): Boolean = {
+    // Generate the miter circuit
+    val manifest = {
+      io.circe.parser.parse(outputs("manifest.json")) match {
+        case Left(failure) => fail(failure.message)
+        case Right(json)   => json.hcursor.downField(topLevel)
+      }
+    }
+
+    val clock = manifest.get[String]("clock").toOption
+    val reset = manifest.get[String]("reset").toOption
+
+    val resetStyle = manifest.get[String]("reset-style") match {
+      case Right("sync-high")  => ResetStyle.SyncHigh
+      case Right("sync-low")   => ResetStyle.SyncLow
+      case Right("async-high") => ResetStyle.AsyncHigh
+      case Right("async-low")  => ResetStyle.AsyncLow
+      case other               => fail("Unknown reset style: " + other)
+    }
+
+    case class Port(dir: String, fc: String)
+    case class Signal(
+        port: String,
+        component: String,
+        width: Option[Int],
+        signed: Option[Boolean],
+        offset: Option[Int])
+
+    implicit val portDecoder: io.circe.Decoder[Port] =
+      io.circe.Decoder.forProduct2("dir", "flow-control")(Port.apply)
+    implicit val signalDecoder: io.circe.Decoder[Signal] = io.circe.generic.semiauto.deriveDecoder
+
+    val ports = manifest.downField("ports").as[ListMap[String, Port]].getOrElse(fail)
+    val signals = manifest.downField("signals").as[ListMap[String, Signal]].getOrElse(fail)
+
+    val vInputs = signals collect {
+      case (name, Signal(port, "payload", _, _, _)) if ports(port).dir == "in" => name
+      case (name, Signal(port, "valid", _, _, _)) if ports(port).dir == "in"   => name
+      case (name, Signal(port, "ready", _, _, _)) if ports(port).dir == "out"  => name
+    }
+
+    val vOutputs = signals collect {
+      case (name, Signal(port, "payload", _, _, _)) if ports(port).dir == "out" => name
+      case (name, Signal(port, "valid", _, _, _)) if ports(port).dir == "out"   => name
+      case (name, Signal(port, "ready", _, _, _)) if ports(port).dir == "in"    => name
+    }
+
+    val widthOf: Map[String, Int] = signals map {
+      case (name, Signal(_, _, Some(width), _, _)) => name -> width
+      case (name, _)                               => name -> 1
+    }
+
+    val miterFile = tmpDir.resolve("__miter.v").toFile
+    val mpw = new PrintWriter(miterFile)
+
+    def writeDecl(
+        prefix: String,
+        width: Int,
+        name: String,
+        end: String
+      ): Unit = width match {
+      case 1 => mpw.write(s"  $prefix $name$end\n")
+      case w => mpw.write(s"  $prefix [${w - 1}:0] $name$end\n")
+    }
+
+    // Module header
+    mpw.write("module miter(\n")
+    if (clock.isEmpty) {
+      mpw.write("  input wire clk")
+      if (vInputs.nonEmpty) mpw.write(",")
+      mpw.write("\n")
+    }
+    (vInputs.iterator filterNot { reset contains _ }).zipWithIndex foreach {
+      case (name, idx) =>
+        val end = if (idx < vInputs.size - 1) "," else ""
+        writeDecl("input wire", widthOf(name), name, end)
+    }
+    mpw.write(");\n")
+
+    // Reset logic
+    reset foreach { name =>
+      mpw.write("  // Reset logic\n")
+      // Note: This isn't quite semantically right for async resets, as there
+      // is no active reset edge, but will do for now for equivalence checking
+      resetStyle match {
+        case ResetStyle.SyncHigh | ResetStyle.AsyncHigh =>
+          mpw.write {
+            s"""|  reg $name = 1;
+                |  always @(posedge clk) $name <= 1'd0;
+                |""".stripMargin
+          }
+        case ResetStyle.SyncLow | ResetStyle.AsyncLow =>
+          mpw.write {
+            s"""|  reg $name = 0;
+                |  always @(posedge clk) $name <= 1'd1;
+                |""".stripMargin
+          }
+      }
+    }
+
+    // Output nets
+    mpw.write("\n")
+    mpw.write("  // Outputs of golden\n")
+    vOutputs foreach { name =>
+      writeDecl("wire", widthOf(name), s"golden__$name", ";")
+    }
+    mpw.write("\n")
+    mpw.write("  // Outputs of alogic\n")
+    vOutputs foreach { name =>
+      writeDecl("wire", widthOf(name), s"alogic__$name", ";")
+    }
+
+    mpw.write("\n")
+    mpw.write("  // Golden instance\n")
+    mpw.write("  golden golden_u (\n")
+    vInputs foreach { name => mpw.write(s"    .$name($name),\n") }
+    vOutputs.iterator.zipWithIndex foreach {
+      case (name, idx) =>
+        val end = if (idx < vOutputs.size - 1) ",\n" else "\n"
+        mpw.write(s"    .$name(golden__$name)$end")
+    }
+    mpw.write("  );\n")
+    mpw.write("\n")
+    mpw.write("  // Alogic instance\n")
+    mpw.write("  alogic alogic_u (\n")
+    vInputs foreach { name => mpw.write(s"    .$name($name),\n") }
+    vOutputs.iterator.zipWithIndex foreach {
+      case (name, idx) =>
+        val end = if (idx < vOutputs.size - 1) ",\n" else "\n"
+        mpw.write(s"    .$name(alogic__$name)$end")
+    }
+    mpw.write("  );\n")
+
+    mpw.write("\n")
+    mpw.write("  // Output comparators\n")
+    vOutputs foreach { name =>
+      writeDecl("wire", 1, s"cmp__$name", s" = golden__$name === alogic__$name;")
+    }
+
+    mpw.write("\n")
+    mpw.write("  // The equivalence signal\n")
+    mpw.write(
+      vOutputs.iterator
+        .map(n => s"cmp__$n")
+        .mkString("  wire equiv = &{\n    ", ",\n    ", "\n  };\n")
+    )
+
+    mpw.write("\n")
+    mpw.write("  // assertions\n")
+    reset match {
+      case None => mpw.write("  always @(posedge clk) assert(equiv);\n");
+      case Some(rst) =>
+        resetStyle match {
+          case ResetStyle.SyncHigh | ResetStyle.AsyncHigh =>
+            mpw.write(s"  always @(posedge clk) if (!$rst) assert(equiv);\n");
+          case ResetStyle.SyncLow | ResetStyle.AsyncLow =>
+            mpw.write(s"  always @(posedge clk) if ($rst) assert(equiv);\n");
+        }
+    }
+
+    mpw.write("\nendmodule\n")
+    mpw.flush()
+    mpw.close()
+
+    // Write sby script
+    val scriptFile = tmpDir.resolve("equiv.sby").toFile
+    writeFile(scriptFile) {
+      s"""|[options]
+          |mode ${fec.getOrElse("mode", if (clock.isDefined) "prove" else "bmc")}
+          |depth ${fec.getOrElse("depth", if (clock.isDefined) 20 else 2)}
+          |timeout ${fec.getOrElse("timeout", "10")}
+          |
+          |[engines]
+          |smtbmc ${fec.getOrElse("solver", "z3")}
+          |
+          |[script]
+          |# Read the reference implementation
+          |read_verilog -formal ${goldenFile.getName}
+          |rename $topLevel golden
+          |
+          |# Read the compiled design
+          |read_verilog ${tmpDir.resolve(topLevel + ".v").toFile.getName}
+          |rename $topLevel alogic
+          |
+          |# Read the miter circuit
+          |read_verilog -formal ${miterFile.getName}
+          |
+          |# Resolve and prep
+          |hierarchy -check -libdir $tmpDir -top miter
+          |prep -run coarse: -top miter
+          |
+          |# Set initial state of all memories to 0
+          |setparam -set INIT 0 t:$$mem
+          |
+          |#memory; flatten; opt -full
+          |#show -colors 1 -stretch miter
+          |
+          |[files]
+          |${topLevel + ".v"}
+          |${goldenFile.getName}
+          |${miterFile.getName}
+          |""".stripMargin
+    }
 
     // Perform the equivalence check
-    val ret = s"$yosys -s $scriptPath -q -l $logPath".!
+    val sbyCmd = s"$symbiyosys ${scriptFile.getName}"
+    val path = s"$symbiyosysPath:${scala.util.Properties.envOrElse("PATH", "")}"
+    system(sbyCmd, tmpDir, "sby-equiv.log", failOk = true, Map("PATH" -> path))
+  }
 
-    // Fail test if fec failed
-    if (ret != 0) {
-      //s"cat ${logPath}".!
-      fail("Yosys FEC failed")
+  def formalEquivalenceCheck(
+      topLevel: String,
+      fec: Map[String, String],
+      tmpDir: Path
+    )(
+      implicit
+      config: Config
+    ): Unit = {
+    // Write all files to temporary directory
+    writeOutputs(tmpDir)
+
+    // Write the golden model
+    val goldenFile = tmpDir.resolve("__golden.v").toFile
+    writeFile(goldenFile)(fec("golden"))
+
+    // Lint the golden model, just to be sure, as yosys "helpfully" provides
+    // implicit declarations of undeclared names.
+    system(
+      s"$verilator --lint-only -Wall -Wno-DECLFILENAME -Wno-UNUSED ${goldenFile.getName}",
+      tmpDir,
+      "verilator-golden-lint.log"
+    )
+
+    // Now strip `line because it's too much for yosys...
+    system(s"sed -i s/`line.*// ${goldenFile.getName}", tmpDir, "sed.log")
+
+    // First check the simple  if that fails try the hard way
+    lazy val easyOK = yosysEquiv(topLevel, goldenFile, tmpDir)
+    lazy val hardOK = symbiYosysEquiv(topLevel, goldenFile, tmpDir, fec)
+
+    if (!easyOK && !hardOK) {
+      fail("FEC failed");
     }
   }
 
@@ -476,16 +783,21 @@ trait CompilationTest
 
     try {
       for {
-        line <- source.getLines
+        (line, lineNo) <- source.getLines zip LazyList.from(1)
         if line startsWith "//"
       } {
         val text = line.drop(2)
         text.trim match {
           case pairMatcher(k, v) if key == "" => add(k, v.trim)
-          case longMatcher(k) if key == ""    => key = k
-          case "}}}" if key != ""             => add(key, buf mkString "\n"); buf.clear(); key = ""
-          case _ if key != ""                 => buf append text
-          case boolMatcher(k) if key == ""    => add(k, "")
+          case longMatcher(k) if key == "" =>
+            key = k
+            key filterNot { _.isWhitespace } match {
+              case "fec/golden" => buf append s"`line ${lineNo + 1} $checkFile 0"
+              case _            =>
+            }
+          case "}}}" if key != ""          => add(key, buf mkString "\n"); buf.clear(); key = ""
+          case _ if key != ""              => buf append text
+          case boolMatcher(k) if key == "" => add(k, "")
           case mesgMatcher(file, line, kind, null, pattern) if key == "" =>
             if (mesgBuff.nonEmpty) {
               finishMessageSpec()
@@ -540,32 +852,13 @@ trait CompilationTest
       checkFile: String
     ): Unit = {
     name in { configMap: ConfigMap =>
-      // Create temporary directory, run function passing the path to the temporary
-      // directory as argument, then remove the temporary directory
-      def withTmpDir[R](f: Path => R): R = {
-        def del(f: File): Unit = {
-          if (f.isDirectory) {
-            f.listFiles foreach del
-          }
-          f.delete()
-        }
-        configMap.getOptional[String]("tmpdir") match {
-          case Some(tmpDir) =>
-            val tmp = new File(tmpDir)
-            if (tmp.exists) {
-              del(tmp)
-            }
-            tmp.mkdirs()
-            f(tmp.toPath.toAbsolutePath)
-          case None =>
-            val tmpPath = Files.createTempDirectory("alogic-test-").toAbsolutePath
-            try {
-              f(tmpPath)
-            } finally {
-              del(tmpPath.toFile)
-            }
-        }
-      }
+      implicit val config: Config = Config(
+        dumpTrees = configMap.getWithDefault("dump-trees", "0").toInt != 0,
+        tmpDir = configMap.getOptional[String]("tmpdir"),
+        trace = configMap.getWithDefault("trace", "0").toInt != 0,
+        traceElaborate = configMap.getWithDefault("trace-elaborate", "0").toInt != 0,
+        verbose = configMap.getWithDefault("verbose", "0").toInt
+      )
 
       // Parse the check file
       val (attr, dict, messageSpecs) = parseCheckFile(checkFile)
@@ -591,10 +884,10 @@ trait CompilationTest
           moduleSearchDirs = List(searchPath),
           outputWriterFactory = outputWriterFactory,
           messageEmitter = messageEmitter,
-          dumpTrees = configMap.getWithDefault("dump-trees", "0").toInt != 0,
+          dumpTrees = config.dumpTrees,
           resetStyle = resetStyle,
           resetAll = resetAll,
-          traceElaborate = configMap.getWithDefault("trace-elaborate", "0").toInt != 0,
+          traceElaborate = config.traceElaborate,
           outputNameMaxLength = attr.get("output-name-max-length") map { _.toInt },
           assertions = !(attr contains "no-assertions")
         )
@@ -689,7 +982,7 @@ trait CompilationTest
               val expect = sim.getOrElse("expect", "")
               val dpi = sim.getOrElse("dpi", "")
               val timeout = sim.getOrElse("timeout", "100").toLong
-              val trace = configMap.getWithDefault("trace", "0").toInt != 0
+              val trace = config.trace
               verilatorSim(outTop, test, expect, dpi, timeout, trace, tmpDir)
             }
           case None =>
@@ -704,7 +997,7 @@ trait CompilationTest
         dict get "fec" foreach { fec =>
           // Perform equivalence check with golden reference
           withTmpDir { tmpDir =>
-            yosysFEC(outTop, fec("golden"), tmpDir)
+            formalEquivalenceCheck(outTop, fec, tmpDir)
           }
         }
       }

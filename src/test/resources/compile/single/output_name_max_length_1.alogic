@@ -9,7 +9,7 @@ network output_name_max_length_1 {
 // @expect-file: output_name_max_length_1__inner.v
 // @fec/golden {{{
 //  module output_name_max_length_1(
-//    output wire [7:0] o,
+//    output wire [7:0] o
 //  );
 //
 //    assign o = 0;

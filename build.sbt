@@ -43,6 +43,12 @@ libraryDependencies +=
 
 libraryDependencies += "org.scalatest" %% "scalatest" % "3.1.1" % "test"
 
+libraryDependencies ++= Seq(
+  "io.circe" %% "circe-core",
+  "io.circe" %% "circe-generic",
+  "io.circe" %% "circe-parser"
+) map { _ % "0.13.0" % "test" }
+
 logBuffered in Test := false
 
 testOptions in Test += Tests.Argument("-oD") // Add F for full stack traces

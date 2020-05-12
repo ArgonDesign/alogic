@@ -38,7 +38,7 @@ network gen_for_case_0 {
 //  always @(posedge clk) begin
 //    if (rst) begin
 //      p_o4 <= 4'd0;
-//      p_o9 <= 9'd0;
+//      p_o9 <= 4'd0;
 //    end else begin
 //      case (p_i)
 //        4'd0: p_o4 <= p_i ^ 4'd0;

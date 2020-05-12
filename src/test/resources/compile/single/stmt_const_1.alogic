@@ -10,6 +10,7 @@ fsm stmt_const_1 {
     fence;
   }
 }
+// @fec/mode: bmc
 // @fec/golden {{{
 //  module stmt_const_1(
 //    input   wire       clk,

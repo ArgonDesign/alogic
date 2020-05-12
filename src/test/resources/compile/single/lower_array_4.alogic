@@ -12,6 +12,7 @@ fsm lower_array_4 {
     fence;
   }
 }
+// @fec/mode: bmc
 // @fec/golden {{{
 //  module lower_array_4(
 //    input             clk,
