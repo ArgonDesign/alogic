@@ -189,7 +189,7 @@ Apart from data member, a structure can also contain methods which are the
 mechanism provided by Alogic to implement combinational functions:
 
 ```
-struct coutner {
+struct counter {
   u8 state;
 
   u8 get() {
@@ -239,7 +239,7 @@ fsm identiti {
 }
 ```
 
-Structures can also be [parametrized](prams.md).
+Structures can also be [parametrized](params.md).
 
 #### Vector types
 
