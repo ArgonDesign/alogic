@@ -255,14 +255,14 @@ final class SimplifyExpr(implicit cc: CompilerContext)
       Some {
         walk(cond) match {
           case Integral(_, _, value) =>
-            val result = (if (value != 0) walk(thenExpr) else walk(elseExpr)).asInstanceOf[Expr]
-            if (!expr.tpe.isSigned && result.tpe.isSigned) walk(result.castUnsigned) else result
-          case newCond: Expr =>
-            transform {
-              TypeAssigner {
-                expr.copy(cond = newCond) withLoc tree.loc
-              }
+            walk {
+              val taken = if (value != 0) thenExpr else elseExpr
+              if (!expr.tpe.isSigned && taken.tpe.isSigned) taken.castUnsigned else taken
             }
+          case newC: Expr =>
+            val newTE = walk(thenExpr).asInstanceOf[Expr]
+            val newEE = walk(elseExpr).asInstanceOf[Expr]
+            transform(TypeAssigner(ExprTernary(newC, newTE, newEE) withLoc tree.loc))
           case _ => unreachable
         }
       }
