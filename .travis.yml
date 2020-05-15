@@ -14,6 +14,7 @@ cache:
   directories:
     - symbiyosys
     - verilator
+    - $HOME/.cache/coursier
 
 before_install:
   # SymbiYosys dependencies
