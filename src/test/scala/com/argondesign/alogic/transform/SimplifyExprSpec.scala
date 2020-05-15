@@ -514,7 +514,9 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
           ("@randbit() ? 2 : 2", { case ExprNum(false, v) if v == 2                             => }, Nil),
           ("@randbit() ? 8'd0 : 8'd0", { case ExprInt(false, 8, v) if v == 0                    => }, Nil),
           ("@randbit() ? 8'd0 : 8'd1", { case ExprTernary(_: ExprCall, _: ExprInt, _: ExprInt)  => }, Nil),
-          ("@randbit() ? 8'd0 : 8'sd0", { case ExprTernary(_: ExprCall, _: ExprInt, _: ExprInt) => }, Nil)
+          ("@randbit() ? 8'd0 : 8'sd0", { case ExprTernary(_: ExprCall, _: ExprInt, _: ExprInt) => }, Nil),
+          ("1 ? 1 : 0 - 2", { case ExprNum(false, v) if v == 1                                  => }, Nil),
+          ("1 ? 1s : 0", { case ExprNum(false, v) if v == 1                                     => }, Nil)
           // format: on
         )
       } {

@@ -114,7 +114,7 @@ final class SimplifyExpr(implicit cc: CompilerContext)
     case _          => false
   }
 
-  override def enter(tree: Tree): Option[Tree] = tree match {
+  override def enter(tree: Tree): Option[Tree] = tree pipe {
     //////////////////////////////////////////////////////////////////////////
     // Only substitute in index/slice target if the indices are known
     // constants, in which case fold them as well. This is to avoid creating
@@ -243,80 +243,110 @@ final class SimplifyExpr(implicit cc: CompilerContext)
         }
       }
 
+    //////////////////////////////////////////////////////////////////////////
+    // Fold ternary up front and only evaluate the take branch. Sometimes it's
+    // easy to have 'gen' create "1 ? 0 : 0-1", where the untaken expression is
+    // invalid (in this case its a negative value with an unsigned type). It's
+    // arguable whether this should be legal or not, it is however type sound
+    // so we will support it.
+    //////////////////////////////////////////////////////////////////////////
+
+    case expr @ ExprTernary(cond, thenExpr, elseExpr) =>
+      Some {
+        walk(cond) match {
+          case Integral(_, _, value) =>
+            val result = (if (value != 0) walk(thenExpr) else walk(elseExpr)).asInstanceOf[Expr]
+            if (!expr.tpe.isSigned && result.tpe.isSigned) walk(result.castUnsigned) else result
+          case newCond: Expr =>
+            transform {
+              TypeAssigner {
+                expr.copy(cond = newCond) withLoc tree.loc
+              }
+            }
+          case _ => unreachable
+        }
+      }
+
     case _ => None
+  } tap {
+    case Some(result) => checkResult(tree, result)
+    case None         =>
   }
 
-  override def transform(tree: Tree): Tree =
-    tree pipe {
-      //////////////////////////////////////////////////////////////////////////
-      // Don't fold anything with errors
-      //////////////////////////////////////////////////////////////////////////
+  override def transform(tree: Tree): Tree = tree pipe {
+    //////////////////////////////////////////////////////////////////////////
+    // Don't fold anything with errors
+    //////////////////////////////////////////////////////////////////////////
 
-      case tree if tree.children collect { case t: Tree => t } exists { _.tpe.isError } => tree
+    case tree if tree.children collect { case t: Tree => t } exists { _.tpe.isError } => tree
 
-      //////////////////////////////////////////////////////////////////////////
-      // Everything else, dispatch based on the root node to speed things up
-      //////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////
+    // Everything else, dispatch based on the root node to speed things up
+    //////////////////////////////////////////////////////////////////////////
 
-      case expr: ExprSym     => transformSym(expr)
-      case expr: ExprUnary   => transformUnary(expr)
-      case expr: ExprBinary  => transformBinary(expr)
-      case expr: ExprTernary => transformTernary(expr)
-      case expr: ExprIndex   => transformIndex(expr)
-      case expr: ExprSlice   => transformSlice(expr)
-      case expr: ExprCat     => transformCat(expr)
-      case expr: ExprRep     => transformRep(expr)
-      case expr: ExprCast    => transformCast(expr)
-      case expr: ExprCall    => transformCall(expr)
+    case expr: ExprSym     => transformSym(expr)
+    case expr: ExprUnary   => transformUnary(expr)
+    case expr: ExprBinary  => transformBinary(expr)
+    case expr: ExprTernary => transformTernary(expr)
+    case expr: ExprIndex   => transformIndex(expr)
+    case expr: ExprSlice   => transformSlice(expr)
+    case expr: ExprCat     => transformCat(expr)
+    case expr: ExprRep     => transformRep(expr)
+    case expr: ExprCast    => transformCast(expr)
+    case expr: ExprCall    => transformCall(expr)
 
-      //////////////////////////////////////////////////////////////////////////
-      // Leave rest alone
-      //////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////
+    // Leave rest alone
+    //////////////////////////////////////////////////////////////////////////
 
-      case _ => tree
-    } tap { result =>
-      if (!result.hasTpe) {
-        TypeAssigner(result)
-      }
-      if (!result.tpe.isError) {
-        lazy val hints: List[String] = List(
-          "Old tree:",
-          tree.toString,
-          tree.toSource,
-          "Old type:",
-          tree.tpe.underlying.toString,
-          "New tree:",
-          result.toString,
-          result.toSource,
-          "New type:",
-          result.tpe.underlying.toString
-        )
-        if (result.tpe.isPacked != tree.tpe.isPacked) {
-          cc.ice(tree, s"SimplifyExpr changed packedness." :: hints: _*)
-        }
-        if (result.tpe.isSigned != tree.tpe.isSigned) {
-          cc.ice(tree, s"SimplifyExpr changed signedness." :: hints: _*)
-        }
-        if (result.tpe.isPacked && result.tpe.width != tree.tpe.width) {
-          cc.ice(tree, s"SimplifyExpr changed width." :: hints: _*)
-        }
-        if (result.tpe.isNum != tree.tpe.isNum) {
-          cc.ice(tree, s"SimplifyExpr changed Num'ness." :: hints: _*)
-        }
-        if (result.tpe.isType != tree.tpe.isType) {
-          cc.ice(tree, s"SimplifyExpr changed Type'ness." :: hints: _*)
-        }
-      }
-    } pipe {
-      case result: ExprInt          => result
-      case result: ExprNum          => result
-      case result: ExprType         => result
-      case result: ExprStr          => result
-      case result: ExprError        => result
-      case result: ExprSym          => result
-      case result if result ne tree => walk(result) // Recursively fold the resulting expression
-      case result                   => result
+    case _ => tree
+  } tap { result =>
+    if (!result.hasTpe) {
+      TypeAssigner(result)
     }
+    checkResult(tree, result)
+  } pipe {
+    case result: ExprInt          => result
+    case result: ExprNum          => result
+    case result: ExprType         => result
+    case result: ExprStr          => result
+    case result: ExprError        => result
+    case result: ExprSym          => result
+    case result if result ne tree => walk(result) // Recursively fold the resulting expression
+    case result                   => result
+  }
+
+  private def checkResult(tree: Tree, result: Tree) = {
+    if (!result.tpe.isError) {
+      lazy val hints: List[String] = List(
+        "Old tree:",
+        tree.toString,
+        tree.toSource,
+        "Old type:",
+        tree.tpe.underlying.toString,
+        "New tree:",
+        result.toString,
+        result.toSource,
+        "New type:",
+        result.tpe.underlying.toString
+      )
+      if (result.tpe.isPacked != tree.tpe.isPacked) {
+        cc.ice(tree, s"SimplifyExpr changed packedness." :: hints: _*)
+      }
+      if (result.tpe.isSigned != tree.tpe.isSigned) {
+        cc.ice(tree, s"SimplifyExpr changed signedness." :: hints: _*)
+      }
+      if (result.tpe.isPacked && result.tpe.width != tree.tpe.width) {
+        cc.ice(tree, s"SimplifyExpr changed width." :: hints: _*)
+      }
+      if (result.tpe.isNum != tree.tpe.isNum) {
+        cc.ice(tree, s"SimplifyExpr changed Num'ness." :: hints: _*)
+      }
+      if (result.tpe.isType != tree.tpe.isType) {
+        cc.ice(tree, s"SimplifyExpr changed Type'ness." :: hints: _*)
+      }
+    }
+  }
 
   private def transformSym(tree: ExprSym): Expr = {
     val symbol = tree.symbol
@@ -542,17 +572,12 @@ final class SimplifyExpr(implicit cc: CompilerContext)
   }
 
   private def transformTernary(tree: ExprTernary): Expr = tree match {
-    case ExprTernary(cond, thenExpr, elseExpr) =>
-      cond.value map { value =>
-        if (value != 0) thenExpr else elseExpr
-      } getOrElse {
-        if (!thenExpr.hasTpe || !elseExpr.hasTpe) {
-          tree
-        } else if (thenExpr == elseExpr && thenExpr.tpe == elseExpr.tpe) {
-          thenExpr
-        } else {
-          tree
-        }
+    case ExprTernary(_, thenExpr, elseExpr) =>
+      // Condition folded in enter
+      if (thenExpr == elseExpr && thenExpr.tpe == elseExpr.tpe) {
+        thenExpr
+      } else {
+        tree
       }
   }
 
