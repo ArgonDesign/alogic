@@ -1,30 +1,32 @@
 #!/bin/bash
 
-stderr () {
-  echo "$(basename $0): $1" >&2
-}
+set -e
 
-error () {
-  stderr "ERROR: $1"; exit 1
-}
+WORKDIR=verilator
 
-[[ ! -e verilator ]] || error "verilator directory already exists"
+if [[ -e $WORKDIR/checksum ]] && md5sum --status --check $WORKDIR/checksum; then
+  echo "$WORKDIR up to date"
+  exit 0
+else
+  echo "Rebuilding $WORKDIR"
+  rm -rf $WORKDIR
+fi
 
-unset VERILATOR_ROOT
-
+# Build verilator
 REMOTE=http://github.com/verilator/verilator
-REFSPEC=v4.030
+REFSPEC=v4.034
 
-git clone $REMOTE verilator
+git clone $REMOTE $WORKDIR
 
-cd verilator
-
+pushd $WORKDIR
+unset VERILATOR_ROOT
 git checkout $REFSPEC
-
 mkdir install
-
 autoconf
-./configure --prefix=$(readlink -f install)
-
-make -j$(($(nproc) * 2))
+./configure --prefix=$(readlink -f install) CXX=clang++
+make -j$(nproc)
 make install
+popd
+
+# Update checksum
+md5sum $BASH_SOURCE > $WORKDIR/checksum

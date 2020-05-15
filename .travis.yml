@@ -1,0 +1,44 @@
+# Copyright (c) 2020 Argon Design Ltd. All rights reserved.
+
+os: linux
+dist: bionic
+
+language: scala
+
+jdk:
+  - openjdk8
+  - openjdk11
+
+cache:
+  ccache: true
+  directories:
+    - symbiyosys
+    - verilator
+
+before_install:
+  # SymbiYosys dependencies
+  - sudo apt-get install gperf
+  - sudo apt-get install libftdi-dev
+  - sudo apt-get install libboost-program-options-dev
+  # Verilator dependencies
+  - sudo apt-get install libfl-dev
+  - sudo apt-get install libgoogle-perftools-dev
+
+install:
+  - bash -x setup-symbiyosys
+  - bash -x setup-verilator
+
+script:
+  - sbt compile
+  - sbt test:compile
+  - sbt test
+  - sbt scalafmtCheckAll
+
+after_script:
+  - ccache -s
+
+notifications:
+  email:
+    if: repo = alogic/alogic
+    recipients:
+      - gezalore@gmail.com
