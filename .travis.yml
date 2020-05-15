@@ -14,7 +14,11 @@ cache:
   directories:
     - symbiyosys
     - verilator
+    - $HOME/.sbt
     - $HOME/.cache/coursier
+
+before_cache:
+  - find $HOME/.sbt -name "*.lock" -print -delete
 
 before_install:
   # SymbiYosys dependencies

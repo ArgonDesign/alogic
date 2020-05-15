@@ -28,6 +28,7 @@ git checkout aafaeb66
 make PREFIX=$PREFIX -j$(nproc)
 make PREFIX=$PREFIX install
 popd
+rm -rf yosys
 
 # Install SymbiYosys
 git clone https://github.com/YosysHQ/SymbiYosys.git SymbiYosys
@@ -35,6 +36,7 @@ pushd SymbiYosys
 git checkout ca9c188
 make PREFIX=$PREFIX install
 popd
+rm -rf SymbiYosys
 
 # Install yices2
 git clone https://github.com/SRI-CSL/yices2.git yices2
@@ -45,6 +47,7 @@ autoconf
 make -j$(nproc)
 make install
 popd
+rm -rf yices2
 
 # Install z3
 git clone https://github.com/Z3Prover/z3.git z3
@@ -56,6 +59,7 @@ make -j$(nproc)
 make install
 popd
 popd
+rm -rf z3
 
 # Install boolector
 git clone https://github.com/boolector/boolector
@@ -68,6 +72,7 @@ make -j$(nproc)
 make install
 popd
 popd
+rm -rf boolector
 
 popd
 

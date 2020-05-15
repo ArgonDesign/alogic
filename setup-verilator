@@ -12,20 +12,24 @@ else
   rm -rf $WORKDIR
 fi
 
-# Build verilator
-REMOTE=http://github.com/verilator/verilator
-REFSPEC=v4.034
-
-git clone $REMOTE $WORKDIR
-
+mkdir $WORKDIR
 pushd $WORKDIR
-unset VERILATOR_ROOT
-git checkout $REFSPEC
+
 mkdir install
+PREFIX=$(readlink -f install)
+
+# Build verilator
+git clone http://github.com/verilator/verilator src
+pushd src
+git checkout v4.034
+unset VERILATOR_ROOT
 autoconf
-./configure --prefix=$(readlink -f install) CXX=clang++
+./configure --prefix=$PREFIX CXX=clang++
 make -j$(nproc)
 make install
+popd
+rm -rf src
+
 popd
 
 # Update checksum
