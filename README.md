@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/alogic/alogic.svg?branch=4.0.x)](https://travis-ci.com/alogic/alogic)
+
 # Alogic
 
 Alogic is a Medium Level Synthesis language for digital logic that compiles
