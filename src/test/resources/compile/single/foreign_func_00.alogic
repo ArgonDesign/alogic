@@ -32,12 +32,8 @@ fsm foreign_func_00 {
 //
 // @sim/dpi {{{
 //  #include "svdpi.h"
-//  // NOTE: This is non-standard compliant behaviour in Verilator,
-//  // (see https://github.com/verilator/verilator/issues/2207)
-//  // The correct signature would be:
-//  // extern "C" void f(svBitVecVal *o, const svBitVecVal *i)
-//  extern "C" void f(unsigned char *o, unsigned char i) {
-//    *o = !i;
+//  extern "C" void f(svBitVecVal *o, const svBitVecVal *i) {
+//    *o = !*i;
 //  }
 // }}}
 //
