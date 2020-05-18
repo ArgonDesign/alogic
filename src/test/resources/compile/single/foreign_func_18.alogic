@@ -1,0 +1,40 @@
+import bool f(bool i);
+
+fsm foreign_func_18 {
+  in       bool i;
+  out wire bool o;
+
+  void main() {
+    o = f(i);
+    fence;
+  }
+}
+// @sim/test {{{
+//  reg [1:0] tick;
+//
+//  always @(posedge clk) begin
+//    if (rst) begin
+//      tick <= 2'd0;
+//    end else begin
+//      tick <= tick + 2'd1;
+//    end
+//  end
+//
+//  wire i = tick[1];
+//  wire o;
+//
+//  always @(posedge clk) begin
+//    if (!rst) begin
+//      assert(o == ~tick[1]);
+//    end
+//  end
+// }}}
+//
+// @sim/dpi {{{
+//  #include "svdpi.h"
+//  extern "C" void f(svBitVecVal *o, const svBitVecVal *i) {
+//    *o = !*i;
+//  }
+// }}}
+//
+// @sim/expect: TIMEOUT at 100ns

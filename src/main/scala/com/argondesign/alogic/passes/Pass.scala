@@ -186,8 +186,9 @@ trait PairTransformerPass extends PairsTransformerPass with ChainingSyntax {
         }
         val defnSymbols = Set from {
           defn collect {
-            case EntDefn(Defn(symbol)) => symbol
-            case RecDefn(Defn(symbol)) => symbol
+            case EntDefn(Defn(symbol)) => symbol // Do not recurse into sub symbols
+            case RecDefn(Defn(symbol)) => symbol // Do not recurse into sub symbols
+            case Defn(symbol) if symbol != decl.symbol => symbol
           }
         }
         assert(declSymbols == defnSymbols)

@@ -59,7 +59,7 @@ final class EntityDetails(
 
   lazy val hasInterconnect: Boolean = decl.decls exists { _.symbol.attr.interconnect.isSet }
 
-  lazy val hasXenoFuncs: Boolean = decl.decls exists { _.symbol.kind.isXenoFunc }
+  lazy val hasXenoFuncs: Boolean = xenoFuncs.nonEmpty
 
   lazy val hasInstances: Boolean = decl.instances.nonEmpty
 
@@ -156,6 +156,16 @@ final class EntityDetails(
     case EntConnect(InstancePortRef(_, _), _)       => false
     case EntConnect(_, List(InstancePortRef(_, _))) => false
     case _                                          => true
+  }
+
+  // Foreign functions referenced by this entity
+  lazy val xenoFuncs: List[Symbol] = {
+    val list = List from {
+      defn collect {
+        case ExprSym(symbol) if symbol.kind.isXenoFunc => symbol
+      }
+    }
+    list.distinct
   }
 
 }
