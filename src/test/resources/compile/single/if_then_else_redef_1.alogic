@@ -1,6 +1,6 @@
 fsm if_then_else_redef_1 {
   void main() {
-    if (0)
+    if (false)
       (* unused *) u8 a;
     else
       (* unused *) i7 a;

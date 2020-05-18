@@ -31,7 +31,8 @@ explained [later](#lexical-scopes-of-gen-constructs) in this section.
 
 The simplest `gen` construct is the conditional `gen if`, which can be
 used to conditionally include some source content. Braces around the
-branches are required. The `else` branch is optional
+branches are required. The condition must be a 1-bit value. The `else`
+branch is optional
 (<a href="http://afiddle.argondesign.com/?example=gen_if.alogic">fiddle here</a>):
 
 ```

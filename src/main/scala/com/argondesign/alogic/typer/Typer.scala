@@ -126,9 +126,20 @@ final class Typer(
     }
   }
 
+  private def pluralize(value: BigInt, singular: String, plural: String): String = {
+    if (value == 1) s"$value $singular" else s"$value $plural"
+  }
+
   private def checkWidth(width: BigInt, expr: Expr, msg: String)(implicit tree: Tree): Boolean = {
-    (expr.tpe.width == width) ifFalse {
-      error(tree, expr, s"$msg yields ${expr.tpe.width} bits, $width bits are expected")
+    val expected = s"${pluralize(width, "bit is", "bits are")} expected"
+    if (expr.tpe.isNum) {
+      error(tree, s"$msg yields an unsized value, $expected")
+      false
+    } else if (expr.tpe.width != width) {
+      error(tree, expr, s"$msg yields ${pluralize(expr.tpe.width, "bit", "bits")}, $expected")
+      false
+    } else {
+      true
     }
   }
 
@@ -492,8 +503,8 @@ final class Typer(
       case StmtIf(cond, ts, es) =>
         if (!checkNumericOrPacked(cond, "Condition of 'if' statement")) {
           error(tree)
-        } else if (cond.tpe.isPacked && cond.tpe.width == 0) {
-          error(tree, cond, "Condition of 'if' statement has width zero")
+        } else if (!checkWidth(1, cond, "Condition of 'if' statement")) {
+          error(tree)
         }
         if (!(checkBlock(ts) &&& checkBlock(es))) {
           error(tree)

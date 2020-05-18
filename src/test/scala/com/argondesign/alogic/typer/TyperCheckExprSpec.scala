@@ -290,7 +290,7 @@ final class TyperCheckExprSpec extends AnyFreeSpec with AlogicTest {
             ("9'd0[3'd0]", "Index yields 3 bits, 4 bits are expected" :: Nil),
             ("9'd0[4'd0]", Nil),
             ("1'd0[1'd0]", Nil),
-            ("1'd0[2'd0]", "Index yields 2 bits, 1 bits are expected" :: Nil),
+            ("1'd0[2'd0]", "Index yields 2 bits, 1 bit is expected" :: Nil),
             ("c[2'd3][1'd0][1'd1][2'd2]", Nil),
             ("8'd0[3'sd0]", "Index must be unsigned" :: Nil)
           )
@@ -386,9 +386,9 @@ final class TyperCheckExprSpec extends AnyFreeSpec with AlogicTest {
           ("9'd0[4'sd1:4'd0]", "Left index must be unsigned" :: Nil),
           ("9'd0[4'd1:4'sd0]", "Right index must be unsigned" :: Nil),
           ("b[0:0]", Nil),
-          ("b[1'd1:2'd0]", "Right index yields 2 bits, 1 bits are expected" :: Nil),
-          ("b[2'd1:1'd0]", "Left index yields 2 bits, 1 bits are expected" :: Nil),
-          ("b[1'd0+:1'd1]", "Right index yields 1 bits, 2 bits are expected" :: Nil)
+          ("b[1'd1:2'd0]", "Right index yields 2 bits, 1 bit is expected" :: Nil),
+          ("b[2'd1:1'd0]", "Left index yields 2 bits, 1 bit is expected" :: Nil),
+          ("b[1'd0+:1'd1]", "Right index yields 1 bit, 2 bits are expected" :: Nil)
         )
       } {
         expr in {
@@ -482,7 +482,7 @@ final class TyperCheckExprSpec extends AnyFreeSpec with AlogicTest {
           ("bar(1, 2, 3, 4, 5)", TypeError, "Function call expects 0 arguments, 5 given"),
           ("a.write(bar)", TypeError, "Argument 1 of function call is of non-packed type"),
           ("a.write(3'b1)", TypeError, "Argument 1 of function call yields 3 bits, 2 bits are expected"),
-          ("a.write(1'b1)", TypeError, "Argument 1 of function call yields 1 bits, 2 bits are expected"),
+          ("a.write(1'b1)", TypeError, "Argument 1 of function call yields 1 bit, 2 bits are expected"),
           ("int x = @bits(a)", TypeNum(false), ""),
           ("int x = @bits(a.valid)", TypeNum(false), ""),
           ("s.f()", TypeError, "Attempting to call non-static method via type")

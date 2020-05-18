@@ -433,12 +433,18 @@ private[specialize] object Generate {
         val result = gen match {
           case GenIf(cond, thenItems, elseItems) =>
             typeCheck(cond) {
-              (cond given bindings).value match {
-                case None =>
+              (cond given bindings).simplify match {
+                case ExprInt(_, 1, v) if v != 0 => process(bindings, thenItems)
+                case ExprInt(_, 1, _)           => process(bindings, elseItems)
+                case ExprInt(_, w, _) =>
+                  error(cond, s"Condition of 'gen if' yields $w bits, 1 bit is expected")
+                  Nil
+                case _: ExprNum =>
+                  error(cond, "Condition of 'gen if' yields an unsized value, 1 bit is expected")
+                  Nil
+                case _ =>
                   error(cond, "Condition of 'gen if' is not a compile time constant")
                   Nil
-                case Some(v) if v != 0 => process(bindings, thenItems)
-                case _                 => process(bindings, elseItems)
               }
             }
 

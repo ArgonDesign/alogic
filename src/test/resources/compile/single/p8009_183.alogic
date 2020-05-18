@@ -11,4 +11,4 @@ fsm p8009_183 {
     fence;
   }
 }
-// :8: ERROR: Condition of 'if' statement has width zero
+// :8: ERROR: Condition of 'if' statement yields 0 bits, 1 bit is expected

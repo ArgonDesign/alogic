@@ -68,16 +68,16 @@ final class TyperCheckStmtSpec extends AnyFreeSpec with AlogicTest {
     "fundamental flow control statements" - {
       for {
         (stmt, err) <- List(
-          ("if (1) $display();", Nil),
-          ("if (1) $display(); else $display();", Nil),
-          ("if (1) fence;", Nil),
-          ("if (1) fence; else fence;", Nil),
+          ("if (true) $display();", Nil),
+          ("if (true) $display(); else $display();", Nil),
+          ("if (true) fence;", Nil),
+          ("if (true) fence; else fence;", Nil),
           (
-            "if (1) fence; else $display();",
+            "if (true) fence; else $display();",
             "Either both or neither branches of if-else must be control statements" :: Nil
           ),
           (
-            "if (1) $display(); else fence;",
+            "if (true) $display(); else fence;",
             "Either both or neither branches of if-else must be control statements" :: Nil
           ),
           (
@@ -427,6 +427,43 @@ final class TyperCheckStmtSpec extends AnyFreeSpec with AlogicTest {
           |}"""
         }
         checkSingleError("'return' statement not inside function" :: Nil)
+      }
+    }
+
+    "warn for conditionals with packed condition wider than 1 bit" - {
+      for {
+        (cond, err) <- List(
+          ("a", Nil),
+          ("b", Nil),
+          ("c", "Condition of 'if' statement yields 2 bits, 1 bit is expected" :: Nil),
+          ("d", "Condition of 'if' statement yields 8 bits, 1 bit is expected" :: Nil),
+          ("c[0]", Nil),
+          ("d[1]", Nil),
+          ("0", "Condition of 'if' statement yields an unsized value, 1 bit is expected" :: Nil),
+          ("1", "Condition of 'if' statement yields an unsized value, 1 bit is expected" :: Nil),
+          ("5", "Condition of 'if' statement yields an unsized value, 1 bit is expected" :: Nil),
+          ("1'd0", Nil),
+          ("1'd1", Nil),
+          ("2'd0", "Condition of 'if' statement yields 2 bits, 1 bit is expected" :: Nil),
+          ("9'd1", "Condition of 'if' statement yields 9 bits, 1 bit is expected" :: Nil)
+        )
+      } {
+        cond in {
+          typeCheck {
+            s"""fsm  f {
+               |  u1 a;
+               |  i1 b;
+               |  u2 c;
+               |  i8 d;
+               |
+               |  void main() {
+               |     if ($cond) {}
+               |     fence;
+               |  }
+               |}"""
+          }
+          checkSingleError(err)
+        }
       }
     }
   }

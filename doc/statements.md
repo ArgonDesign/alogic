@@ -208,8 +208,8 @@ The common `if` statement can be used to perform a 2-way branch:
   if (condition) <then-statement> else <else-statement>
 ```
 
-The else clause is optional, and omitting the else clause results in an implicit
-fence, as follows (<a href="http://afiddle.argondesign.com/?example=statements_if.alogic">fiddle here</a>):
+The condition must be a 1-bit wide value. The else clause is optional, and
+omitting the else clause results in an implicit fence, as follows (<a href="http://afiddle.argondesign.com/?example=statements_if.alogic">fiddle here</a>):
 
 ```
   if (cond) {

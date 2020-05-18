@@ -1,0 +1,4 @@
+network gen_if_bad_1 {
+  gen if (2'd0) {}
+}
+// :2: ERROR: Condition of 'gen if' yields 2 bits, 1 bit is expected

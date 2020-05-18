@@ -8,7 +8,7 @@ fsm dictident_function_3 {
 
   gen for (uint N < 2) {
     void func#[N]() {
-      gen if (N) {
+      gen if (N > 0) {
         o = ~i;
         goto main;
       } else {
