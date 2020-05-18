@@ -236,17 +236,17 @@ trait CompilationTest
     // Write the testbench
     val tbFile = tmpDir.resolve("testbench.sv").toFile
     writeFile(tbFile) {
-      s"""|module testbench(
-          |  input wire clk,
-          |  input wire ${cc.rst}
-          |);
-          |
-          |$test
-          |
-          |  $topLevel dut (.*);
-          |
-          |endmodule
-          |""".stripMargin
+      s"""module testbench(
+         |  input wire clk,
+         |  input wire ${cc.rst}
+         |);
+         |
+         |$test
+         |
+         |  $topLevel dut (.*);
+         |
+         |endmodule
+         |""".stripMargin
     }
 
     // Write the dpi source file
@@ -271,101 +271,101 @@ trait CompilationTest
         case _                                        => 0
       }
 
-      s"""|#include <assert.h>
-          |#include <inttypes.h>
-          |#include <stdlib.h>
-          |
-          |#include <verilated.h>
-          |#include "Vtestbench.h"
-          |
-          |#if VM_TRACE
-          |# include <verilated_vcd_c.h>
-          |#endif
-          |
-          |#define HALF_CLK_PERIOD 500 // 1ns clock
-          |
-          |static uint64_t main_time = 0;
-          |
-          |double sc_time_stamp() {
-          |  return main_time;
-          |}
-          |
-          |void vl_stop(const char* filename, int linenum, const char* hier) VL_MT_UNSAFE {
-          |  (void)filename;
-          |  (void)linenum;
-          |  (void)hier;
-          |  Verilated::gotFinish(true);
-          |  Verilated::flushCall();
-          |  throw 2;
-          |}
-          |
-          |int main(int argc, char **argv) {
-          |  assert(argc == 1);
-          |  (void)argv;
-          |
-          |  Vtestbench testbench;
-          |
-          |#if VM_TRACE
-          |  Verilated::traceEverOn(true);
-          |  VerilatedVcdC trace;
-          |  trace.set_time_resolution("1ps");
-          |  testbench.trace(&trace, 99);
-          |  trace.open("trace.vcd");
-          |# define EVAL() do { testbench.eval(); trace.dump(main_time); } while(false)
-          |#else
-          |# define EVAL() testbench.eval();
-          |#endif
-          |
-          |  // Initialize
-          |  testbench.${cc.rst} = $rstInactive;
-          |  testbench.clk = 0;
-          |  EVAL();
-          |  main_time += HALF_CLK_PERIOD;
-          |
-          |  // Assert reset asynchronously
-          |  testbench.${cc.rst} = $rstActive;
-          |  EVAL();
-          |  main_time += HALF_CLK_PERIOD;
-          |
-          |  // Apply a clock pulse when using sync reset
-          |  testbench.clk = $rstSync;
-          |  EVAL();
-          |  main_time += HALF_CLK_PERIOD;
-          |
-          |  // De-assert reset
-          |  testbench.${cc.rst} = $rstInactive;
-          |  testbench.clk = 0;
-          |  EVAL();
-          |  main_time += HALF_CLK_PERIOD;
-          |
-          |  // Tick the clock
-          |  int exit_code = 0;
-          |  while (!Verilated::gotFinish()) {
-          |    testbench.clk = !testbench.clk;
-          |    try {
-          |      EVAL();
-          |      main_time += HALF_CLK_PERIOD;
-          |    } catch (int code) {
-          |      exit_code = code;
-          |      break;
-          |    }
-          |    if (main_time > ${timeout * 1000}L) {
-          |      printf("TIMEOUT at %luns\\n", (long)(main_time/1000));
-          |      exit_code = 1;
-          |      break;
-          |    }
-          |  }
-          |
-          |  // Finished simulation
-          |  testbench.final();
-          |
-          |#if VM_TRACE
-          |  trace.close();
-          |#endif
-          |
-          |  exit(exit_code);
-          |}
-          |""".stripMargin
+      s"""#include <assert.h>
+         |#include <inttypes.h>
+         |#include <stdlib.h>
+         |
+         |#include <verilated.h>
+         |#include "Vtestbench.h"
+         |
+         |#if VM_TRACE
+         |# include <verilated_vcd_c.h>
+         |#endif
+         |
+         |#define HALF_CLK_PERIOD 500 // 1ns clock
+         |
+         |static uint64_t main_time = 0;
+         |
+         |double sc_time_stamp() {
+         |  return main_time;
+         |}
+         |
+         |void vl_stop(const char* filename, int linenum, const char* hier) VL_MT_UNSAFE {
+         |  (void)filename;
+         |  (void)linenum;
+         |  (void)hier;
+         |  Verilated::gotFinish(true);
+         |  Verilated::flushCall();
+         |  throw 2;
+         |}
+         |
+         |int main(int argc, char **argv) {
+         |  assert(argc == 1);
+         |  (void)argv;
+         |
+         |  Vtestbench testbench;
+         |
+         |#if VM_TRACE
+         |  Verilated::traceEverOn(true);
+         |  VerilatedVcdC trace;
+         |  trace.set_time_resolution("1ps");
+         |  testbench.trace(&trace, 99);
+         |  trace.open("trace.vcd");
+         |# define EVAL() do { testbench.eval(); trace.dump(main_time); } while(false)
+         |#else
+         |# define EVAL() testbench.eval();
+         |#endif
+         |
+         |  // Initialize
+         |  testbench.${cc.rst} = $rstInactive;
+         |  testbench.clk = 0;
+         |  EVAL();
+         |  main_time += HALF_CLK_PERIOD;
+         |
+         |  // Assert reset asynchronously
+         |  testbench.${cc.rst} = $rstActive;
+         |  EVAL();
+         |  main_time += HALF_CLK_PERIOD;
+         |
+         |  // Apply a clock pulse when using sync reset
+         |  testbench.clk = $rstSync;
+         |  EVAL();
+         |  main_time += HALF_CLK_PERIOD;
+         |
+         |  // De-assert reset
+         |  testbench.${cc.rst} = $rstInactive;
+         |  testbench.clk = 0;
+         |  EVAL();
+         |  main_time += HALF_CLK_PERIOD;
+         |
+         |  // Tick the clock
+         |  int exit_code = 0;
+         |  while (!Verilated::gotFinish()) {
+         |    testbench.clk = !testbench.clk;
+         |    try {
+         |      EVAL();
+         |      main_time += HALF_CLK_PERIOD;
+         |    } catch (int code) {
+         |      exit_code = code;
+         |      break;
+         |    }
+         |    if (main_time > ${timeout * 1000}L) {
+         |      printf("TIMEOUT at %luns\\n", (long)(main_time/1000));
+         |      exit_code = 1;
+         |      break;
+         |    }
+         |  }
+         |
+         |  // Finished simulation
+         |  testbench.final();
+         |
+         |#if VM_TRACE
+         |  trace.close();
+         |#endif
+         |
+         |  exit(exit_code);
+         |}
+         |""".stripMargin
     }
 
     // Run verilator
@@ -403,34 +403,34 @@ trait CompilationTest
     ): Boolean = {
     val scriptFile = tmpDir.resolve("equiv.ys").toFile
     writeFile(scriptFile) {
-      s"""|read_verilog $goldenFile
-          |prep -flatten -top $topLevel
-          |memory
-          |opt -full $topLevel
-          |design -stash gold
-          |
-          |read_verilog ${tmpDir.resolve(topLevel + ".v").toFile}
-          |hierarchy -check -libdir $tmpDir -top $topLevel
-          |prep -flatten -run coarse: -top $topLevel
-          |memory
-          |opt -full $topLevel
-          |design -stash comp
-          |
-          |design -copy-from gold -as gold $topLevel
-          |design -copy-from comp -as comp $topLevel
-          |
-          |equiv_make gold comp equiv
-          |prep -flatten -top equiv
-          |opt -full equiv
-          |opt_clean -purge
-          |
-          |#show -prefix equiv-prep -colors 1 -stretch
-          |
-          |equiv_simple -seq 5
-          |equiv_induct -seq 20
-          |
-          |equiv_status -assert
-          |""".stripMargin
+      s"""read_verilog $goldenFile
+         |prep -flatten -top $topLevel
+         |memory
+         |opt -full $topLevel
+         |design -stash gold
+         |
+         |read_verilog ${tmpDir.resolve(topLevel + ".v").toFile}
+         |hierarchy -check -libdir $tmpDir -top $topLevel
+         |prep -flatten -run coarse: -top $topLevel
+         |memory
+         |opt -full $topLevel
+         |design -stash comp
+         |
+         |design -copy-from gold -as gold $topLevel
+         |design -copy-from comp -as comp $topLevel
+         |
+         |equiv_make gold comp equiv
+         |prep -flatten -top equiv
+         |opt -full equiv
+         |opt_clean -purge
+         |
+         |#show -prefix equiv-prep -colors 1 -stretch
+         |
+         |equiv_simple -seq 5
+         |equiv_induct -seq 20
+         |
+         |equiv_status -assert
+         |""".stripMargin
     }
 
     system(
@@ -537,15 +537,15 @@ trait CompilationTest
       resetStyle match {
         case ResetStyle.SyncHigh | ResetStyle.AsyncHigh =>
           mpw.write {
-            s"""|  reg $name = 1;
-                |  always @(posedge clk) $name <= 1'd0;
-                |""".stripMargin
+            s"""  reg $name = 1;
+               |  always @(posedge clk) $name <= 1'd0;
+               |""".stripMargin
           }
         case ResetStyle.SyncLow | ResetStyle.AsyncLow =>
           mpw.write {
-            s"""|  reg $name = 0;
-                |  always @(posedge clk) $name <= 1'd1;
-                |""".stripMargin
+            s"""  reg $name = 0;
+               |  always @(posedge clk) $name <= 1'd1;
+               |""".stripMargin
           }
       }
     }
@@ -617,41 +617,41 @@ trait CompilationTest
     // Write sby script
     val scriptFile = tmpDir.resolve("equiv.sby").toFile
     writeFile(scriptFile) {
-      s"""|[options]
-          |mode ${fec.getOrElse("mode", if (clock.isDefined) "prove" else "bmc")}
-          |depth ${fec.getOrElse("depth", if (clock.isDefined) 20 else 2)}
-          |timeout ${fec.getOrElse("timeout", "10")}
-          |
-          |[engines]
-          |smtbmc ${fec.getOrElse("solver", "z3")}
-          |
-          |[script]
-          |# Read the reference implementation
-          |read_verilog -formal ${goldenFile.getName}
-          |rename $topLevel golden
-          |
-          |# Read the compiled design
-          |read_verilog ${tmpDir.resolve(topLevel + ".v").toFile.getName}
-          |rename $topLevel alogic
-          |
-          |# Read the miter circuit
-          |read_verilog -formal ${miterFile.getName}
-          |
-          |# Resolve and prep
-          |hierarchy -check -libdir $tmpDir -top miter
-          |prep -run coarse: -top miter
-          |
-          |# Set initial state of all memories to 0
-          |setparam -set INIT 0 t:$$mem
-          |
-          |#memory; flatten; opt -full
-          |#show -colors 1 -stretch miter
-          |
-          |[files]
-          |${topLevel + ".v"}
-          |${goldenFile.getName}
-          |${miterFile.getName}
-          |""".stripMargin
+      s"""[options]
+         |mode ${fec.getOrElse("mode", if (clock.isDefined) "prove" else "bmc")}
+         |depth ${fec.getOrElse("depth", if (clock.isDefined) 20 else 2)}
+         |timeout ${fec.getOrElse("timeout", "10")}
+         |
+         |[engines]
+         |smtbmc ${fec.getOrElse("solver", "z3")}
+         |
+         |[script]
+         |# Read the reference implementation
+         |read_verilog -formal ${goldenFile.getName}
+         |rename $topLevel golden
+         |
+         |# Read the compiled design
+         |read_verilog ${tmpDir.resolve(topLevel + ".v").toFile.getName}
+         |rename $topLevel alogic
+         |
+         |# Read the miter circuit
+         |read_verilog -formal ${miterFile.getName}
+         |
+         |# Resolve and prep
+         |hierarchy -check -libdir $tmpDir -top miter
+         |prep -run coarse: -top miter
+         |
+         |# Set initial state of all memories to 0
+         |setparam -set INIT 0 t:$$mem
+         |
+         |#memory; flatten; opt -full
+         |#show -colors 1 -stretch miter
+         |
+         |[files]
+         |${topLevel + ".v"}
+         |${goldenFile.getName}
+         |${miterFile.getName}
+         |""".stripMargin
     }
 
     // Perform the equivalence check

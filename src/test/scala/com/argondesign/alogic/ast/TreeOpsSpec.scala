@@ -69,7 +69,7 @@ final class TreeOpsSpec extends AnyFreeSpec with AlogicTest {
 
         nodes should have length 19
         nodes(0) should matchPattern { case Thicket(List(_, _, _)) => }
-        nodes(1) should matchPattern { case ExprBinary(_, "a", _)  => }
+        nodes(1) should matchPattern { case ExprBinary(_, "a", _) => }
         nodes(2) shouldBe ExprStr("0")
         nodes(3) should matchPattern { case ExprBinary(_, "b", _) => }
         nodes(4) shouldBe ExprStr("1")
@@ -111,9 +111,9 @@ final class TreeOpsSpec extends AnyFreeSpec with AlogicTest {
         nodes(13) should matchPattern { case ExprBinary(_, "c", _) => }
         nodes(14) shouldBe ExprStr("6")
         nodes(15) shouldBe ExprStr("7")
-        nodes(16) should matchPattern { case ExprCat(List(_, _, _, _))            => }
+        nodes(16) should matchPattern { case ExprCat(List(_, _, _, _)) => }
         nodes(17) should matchPattern { case DescVar(Ident("y", Nil), _, Some(_)) => }
-        nodes(18) should matchPattern { case Thicket(List(_, _, _))               => }
+        nodes(18) should matchPattern { case Thicket(List(_, _, _)) => }
       }
     }
 

@@ -555,7 +555,9 @@ final class Namer(implicit cc: CompilerContext) extends StatefulTreeTransformer 
         lookup(tree.loc, name) match {
           case Some(symbol) =>
             // Check use before definition in statements
-            if (stmtLevel > 0 && (stmtSymbols contains symbol) && symbol.loc.start > tree.loc.start) {
+            if (
+              stmtLevel > 0 && (stmtSymbols contains symbol) && symbol.loc.start > tree.loc.start
+            ) {
               cc.error(tree, s"'$name' used before it is defined")
             }
             // Rewrite node

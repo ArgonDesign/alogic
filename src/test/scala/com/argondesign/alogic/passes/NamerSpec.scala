@@ -44,10 +44,10 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
 
   "The Namer should " - {
     "issue error for redefinition of variable" in {
-      """|{
-         |  u1 foo;
-         |  u2 foo;
-         |}""".stripMargin.asTree[Stmt] rewrite namer
+      """{
+        |  u1 foo;
+        |  u2 foo;
+        |}""".stripMargin.asTree[Stmt] rewrite namer
 
       cc.messages should have length 1
       cc.messages(0) should beThe[Error](
@@ -59,10 +59,10 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
 
     "issue error for redefinition of type" in {
       xform {
-        """|fsm a {
-           |  typedef u1 foo;
-           |  typedef u2 foo;
-           |}""".stripMargin.asTree[Desc]
+        """fsm a {
+          |  typedef u1 foo;
+          |  typedef u2 foo;
+          |}""".stripMargin.asTree[Desc]
       }
 
       cc.messages.loneElement should beThe[Error](
@@ -73,10 +73,10 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
     }
 
     "issue warning for variable hiding" in {
-      """|{
-         |  u1 foo;
-         |  { u2 foo; }
-         |}""".stripMargin.asTree[Stmt] rewrite namer
+      """{
+        |  u1 foo;
+        |  { u2 foo; }
+        |}""".stripMargin.asTree[Stmt] rewrite namer
 
       cc.messages should have length 1
       cc.messages(0) should beThe[Warning](
@@ -87,49 +87,49 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
     }
 
     "not issue warning for variable hiding for later symbol" in {
-      """|{
-         |  { u2 foo; }
-         |  u1 foo;
-         |}""".stripMargin.asTree[Stmt] rewrite namer
+      """{
+        |  { u2 foo; }
+        |  u1 foo;
+        |}""".stripMargin.asTree[Stmt] rewrite namer
 
       cc.messages shouldBe empty
     }
 
     "cope with using the same name in non-intersecting scopes" in {
-      """|{
-         |  { u1 foo; }
-         |  { u2 foo; }
-         |}""".stripMargin.asTree[Stmt] rewrite namer
+      """{
+        |  { u1 foo; }
+        |  { u2 foo; }
+        |}""".stripMargin.asTree[Stmt] rewrite namer
 
       cc.messages shouldBe empty
     }
 
     "cope with multi level typedefs" in {
-      val root = """|typedef bool a;
-                    |typedef a b;
-                    |fsm c {}""".stripMargin.asTree[Root]
+      val root = """typedef bool a;
+                   |typedef a b;
+                   |fsm c {}""".stripMargin.asTree[Root]
       xform(root)
 
       cc.messages shouldBe empty
     }
 
     "issue error for use before definition for symbols defined in statements" in {
-      """|{
-         |  u1 foo = bar;
-         |  u1 bar;
-         |}""".stripMargin.asTree[Stmt] rewrite namer
+      """{
+        |  u1 foo = bar;
+        |  u1 bar;
+        |}""".stripMargin.asTree[Stmt] rewrite namer
 
       cc.messages.loneElement should beThe[Error]("'bar' used before it is defined")
       cc.messages.loneElement.loc.line shouldBe 2
     }
 
     "not issue error for use before definition for symbols not defined in statements" in {
-      val tree = """|fsm a {
-                    |  void main() {
-                    |    foo();
-                    |  }
-                    |  void foo() {}
-                    |}""".stripMargin.asTree[Desc]
+      val tree = """fsm a {
+                   |  void main() {
+                   |    foo();
+                   |  }
+                   |  void foo() {}
+                   |}""".stripMargin.asTree[Desc]
 
       xform(tree)
 
@@ -137,9 +137,9 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
     }
 
     "issue error for undefined term names" in {
-      """|{
-         |  u1 foo = bar;
-         |}""".stripMargin.asTree[Stmt] rewrite namer
+      """{
+        |  u1 foo = bar;
+        |}""".stripMargin.asTree[Stmt] rewrite namer
 
       cc.messages should have length 1
       cc.messages(0) should beThe[Error]("'bar' is not defined")
@@ -147,9 +147,9 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
     }
 
     "issue error for undefined type names" in {
-      """|{
-         |  foo_t foo;
-         |}""".stripMargin.asTree[Stmt] rewrite namer
+      """{
+        |  foo_t foo;
+        |}""".stripMargin.asTree[Stmt] rewrite namer
 
       cc.messages should have length 1
       cc.messages(0) should beThe[Error]("'foo_t' is not defined")
@@ -157,9 +157,9 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
     }
 
     "insert names from 'for ()' loop initializers into the loop scope" in {
-      """|for (bool b=true;;) {
-         | i2 b;
-         |}""".stripMargin.asTree[Stmt] rewrite namer
+      """for (bool b=true;;) {
+        | i2 b;
+        |}""".stripMargin.asTree[Stmt] rewrite namer
 
       cc.messages should have length 1
       cc.messages(0) should beThe[Warning](
@@ -170,9 +170,9 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
     }
 
     "insert names from 'let ()' initializers into the following loop scope" in {
-      """|let (bool a=true) do {
-         | i2 a;
-         |} while (1);""".stripMargin.asTree[Stmt] rewrite namer
+      """let (bool a=true) do {
+        | i2 a;
+        |} while (1);""".stripMargin.asTree[Stmt] rewrite namer
 
       cc.messages should have length 1
       cc.messages(0) should beThe[Warning](
@@ -183,14 +183,14 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
     }
 
     "resolve term names to their correct definitions" in {
-      val tree = """|{
-                    |  bool a;
-                    |  {
-                    |    bool a;
-                    |    a = false;
-                    |  }
-                    |  a = true;
-                    |}""".stripMargin.asTree[Stmt] rewrite namer
+      val tree = """{
+                   |  bool a;
+                   |  {
+                   |    bool a;
+                   |    a = false;
+                   |  }
+                   |  a = true;
+                   |}""".stripMargin.asTree[Stmt] rewrite namer
 
       inside(tree) {
         case StmtBlock(
@@ -222,13 +222,13 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
     }
 
     "resolve term names to their correct definitions - dict a" in {
-      val root = """|network a {
-                    |  gen for (uint N < 10) {
-                    |    in bool i#[N];
-                    |    out bool o#[N];
-                    |    i#[N] -> o#[N];
-                    |  }
-                    |}""".stripMargin.asTree[Root]
+      val root = """network a {
+                   |  gen for (uint N < 10) {
+                   |    in bool i#[N];
+                   |    out bool o#[N];
+                   |    i#[N] -> o#[N];
+                   |  }
+                   |}""".stripMargin.asTree[Root]
 
       inside(xform(root)) {
         case Root(List(RizDesc(DescEntity(_, EntityVariant.Net, ents)))) =>
@@ -260,14 +260,14 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
     }
 
     "resolve term names to their correct definitions - dict b" in {
-      val root = """|network a {
-                    |  gen for (uint N < 2) {
-                    |    in bool i#[N];
-                    |    out bool o#[N];
-                    |  }
-                    |  i#[0] -> o#[0];
-                    |  i#[1] -> o#[1];
-                    |}""".stripMargin.asTree[Root]
+      val root = """network a {
+                   |  gen for (uint N < 2) {
+                   |    in bool i#[N];
+                   |    out bool o#[N];
+                   |  }
+                   |  i#[0] -> o#[0];
+                   |  i#[1] -> o#[1];
+                   |}""".stripMargin.asTree[Root]
 
       inside(xform(root)) {
         case Root(List(RizDesc(DescEntity(_, EntityVariant.Net, ents)))) =>
@@ -308,14 +308,14 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
     }
 
     "resolve type names to their correct definitions - typedef" in {
-      val root = """|typedef bool foo_t;
-                    |
-                    |fsm a {
-                    |  fence {
-                    |    { bool foo_t = 0; }
-                    |    foo_t b;
-                    |  }
-                    |}""".stripMargin.asTree[Root]
+      val root = """typedef bool foo_t;
+                   |
+                   |fsm a {
+                   |  fence {
+                   |    { bool foo_t = 0; }
+                   |    foo_t b;
+                   |  }
+                   |}""".stripMargin.asTree[Root]
 
       inside(xform(root)) {
         case Root(List(RizDesc(typedef), RizDesc(entity))) =>
@@ -340,16 +340,16 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
     }
 
     "resolve type names to their correct definitions - struct" in {
-      val root = """|struct bar_t {
-                    |  bool a;
-                    |}
-                    |
-                    |fsm a {
-                    |  fence {
-                    |    { bool bar_t; }
-                    |    bar_t b;
-                    |  }
-                    |}""".stripMargin.asTree[Root]
+      val root = """struct bar_t {
+                   |  bool a;
+                   |}
+                   |
+                   |fsm a {
+                   |  fence {
+                   |    { bool bar_t; }
+                   |    bar_t b;
+                   |  }
+                   |}""".stripMargin.asTree[Root]
 
       inside(xform(root)) {
         case Root(List(RizDesc(record), RizDesc(entity))) =>
@@ -374,10 +374,10 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
     }
 
     "resolve function references to later definitions" in {
-      val entity = """|fsm a {
-                      |  void main () { foo(); }
-                      |  void foo () {}
-                      |}""".stripMargin.asTree[Desc]
+      val entity = """fsm a {
+                     |  void main () { foo(); }
+                     |  void foo () {}
+                     |}""".stripMargin.asTree[Desc]
 
       inside(xform(entity)) {
         case DescEntity(_, EntityVariant.Fsm, List(main, foo)) =>
@@ -395,9 +395,9 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
 
     "resolve entity symbols in instantiations" in {
       val entityA = """fsm a {}""".stripMargin.asTree[Desc]
-      val entityB = """|network b {
-                       |  i = new a();
-                       |}""".stripMargin.asTree[Desc]
+      val entityB = """network b {
+                      |  i = new a();
+                      |}""".stripMargin.asTree[Desc]
 
       cc.addGlobalDescs(List(entityA, entityB))
 
@@ -419,10 +419,10 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
     }
 
     "resolve goto targets" in {
-      val entity = """|fsm a {
-                      |  void main() { goto foo; }
-                      |  void foo() {}
-                      |}""".stripMargin.asTree[Desc]
+      val entity = """fsm a {
+                     |  void main() { goto foo; }
+                     |  void foo() {}
+                     |}""".stripMargin.asTree[Desc]
 
       inside(xform(entity)) {
         case DescEntity(_, EntityVariant.Fsm, List(main, foo)) =>
@@ -439,11 +439,11 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
     }
 
     "resolve names inside type arguments" in {
-      val block = """|{
-                     |  i8 a;
-                     |  i8 b;
-                     |  int(b)[a] c;
-                     |}""".stripMargin.asTree[Stmt]
+      val block = """{
+                    |  i8 a;
+                    |  i8 b;
+                    |  int(b)[a] c;
+                    |}""".stripMargin.asTree[Stmt]
 
       val tree = block rewrite namer
 
@@ -468,10 +468,10 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
     }
 
     "resolve names inside array dimension" in {
-      val block = """|{
-                     |  i8 a;
-                     |  bool b[a];
-                     |}""".stripMargin.asTree[Stmt]
+      val block = """{
+                    |  i8 a;
+                    |  bool b[a];
+                    |}""".stripMargin.asTree[Stmt]
 
       val tree = block rewrite namer
 
@@ -502,9 +502,9 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
     }
 
     "use unique symbols in definitions" in {
-      val block = """|fsm a {
-                     |  i8 a;
-                     |}""".stripMargin.asTree[Root]
+      val block = """fsm a {
+                    |  i8 a;
+                    |}""".stripMargin.asTree[Root]
 
       val tree = block rewrite namer
 
@@ -682,11 +682,11 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
 
         "if then" in {
           val tree = xform {
-            """|{
-               |  gen if (1) {
-               |    bool a;
-               |  }
-               |}""".stripMargin.asTree[Stmt]
+            """{
+              |  gen if (1) {
+              |    bool a;
+              |  }
+              |}""".stripMargin.asTree[Stmt]
           }
 
           inside(tree) {
@@ -703,11 +703,11 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
 
         "if else" in {
           val tree = xform {
-            """|{
-               |  gen if (1) {} else {
-               |    bool a;
-               |  }
-               |}""".stripMargin.asTree[Stmt]
+            """{
+              |  gen if (1) {} else {
+              |    bool a;
+              |  }
+              |}""".stripMargin.asTree[Stmt]
           }
 
           inside(tree) {
@@ -724,13 +724,13 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
 
         "if then else" in {
           val tree = xform {
-            """|{
-               |  gen if (1) {
-               |    bool a;
-               |  } else {
-               |    bool a;
-               |  }
-               |}""".stripMargin.asTree[Stmt]
+            """{
+              |  gen if (1) {
+              |    bool a;
+              |  } else {
+              |    bool a;
+              |  }
+              |}""".stripMargin.asTree[Stmt]
           }
 
           inside(tree) {
@@ -747,17 +747,17 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
 
         "multiple if then " in {
           val tree = xform {
-            """|{
-               |  gen if (1) {
-               |    bool a;
-               |  }
-               |  gen if (1) {
-               |    bool a;
-               |  }
-               |  gen if (1) {
-               |    bool a;
-               |  }
-               |}""".stripMargin.asTree[Stmt]
+            """{
+              |  gen if (1) {
+              |    bool a;
+              |  }
+              |  gen if (1) {
+              |    bool a;
+              |  }
+              |  gen if (1) {
+              |    bool a;
+              |  }
+              |}""".stripMargin.asTree[Stmt]
           }
 
           inside(tree) {
@@ -783,18 +783,18 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
 
         "multiple if then else" in {
           val tree = xform {
-            """|{
-               |  gen if (1) {
-               |    bool a;
-               |  } else {
-               |    bool a;
-               |  }
-               |  gen if (1) {
-               |    bool a;
-               |  } else {
-               |    bool a;
-               |  }
-               |}""".stripMargin.asTree[Stmt]
+            """{
+              |  gen if (1) {
+              |    bool a;
+              |  } else {
+              |    bool a;
+              |  }
+              |  gen if (1) {
+              |    bool a;
+              |  } else {
+              |    bool a;
+              |  }
+              |}""".stripMargin.asTree[Stmt]
           }
 
           inside(tree) {
@@ -821,17 +821,17 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
 
         "nested if then" in {
           val tree = xform {
-            """|{
-               |  gen if (1) {
-               |    gen if (1) {
-               |      bool a;
-               |    }
-               |  } else {
-               |    gen if (1) {
-               |      bool a;
-               |    }
-               |  }
-               |}""".stripMargin.asTree[Stmt]
+            """{
+              |  gen if (1) {
+              |    gen if (1) {
+              |      bool a;
+              |    }
+              |  } else {
+              |    gen if (1) {
+              |      bool a;
+              |    }
+              |  }
+              |}""".stripMargin.asTree[Stmt]
           }
 
           inside(tree) {
@@ -858,21 +858,21 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
 
         "nested if then else" in {
           val tree = xform {
-            """|{
-               |  gen if (1) {
-               |    gen if (1) {
-               |      bool a;
-               |    } else {
-               |      bool a;
-               |    }
-               |  } else {
-               |    gen if (1) {
-               |      bool a;
-               |    } else {
-               |      bool a;
-               |    }
-               |  }
-               |}""".stripMargin.asTree[Stmt]
+            """{
+              |  gen if (1) {
+              |    gen if (1) {
+              |      bool a;
+              |    } else {
+              |      bool a;
+              |    }
+              |  } else {
+              |    gen if (1) {
+              |      bool a;
+              |    } else {
+              |      bool a;
+              |    }
+              |  }
+              |}""".stripMargin.asTree[Stmt]
           }
 
           inside(tree) {
@@ -905,12 +905,12 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
 
         "for" in {
           val tree = xform {
-            """|{
-               |  gen for(uint N = 0 ; N < 1 ; N++) {
-               |    bool a#[N];
-               |    bool b;
-               |  }
-               |}""".stripMargin.asTree[Stmt]
+            """{
+              |  gen for(uint N = 0 ; N < 1 ; N++) {
+              |    bool a#[N];
+              |    bool b;
+              |  }
+              |}""".stripMargin.asTree[Stmt]
           }
 
           inside(tree) {
@@ -928,16 +928,16 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
 
         "multiple for" in {
           val tree = xform {
-            """|{
-               |  gen for(uint N = 0 ; N < 1 ; N++) {
-               |    bool a#[N];
-               |    bool b;
-               |  }
-               |  gen for(uint N = 0 ; N < 1 ; N++) {
-               |    bool a#[N];
-               |    bool b;
-               |  }
-               |}""".stripMargin.asTree[Stmt]
+            """{
+              |  gen for(uint N = 0 ; N < 1 ; N++) {
+              |    bool a#[N];
+              |    bool b;
+              |  }
+              |  gen for(uint N = 0 ; N < 1 ; N++) {
+              |    bool a#[N];
+              |    bool b;
+              |  }
+              |}""".stripMargin.asTree[Stmt]
           }
 
           inside(tree) {
@@ -958,14 +958,14 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
 
         "for if " in {
           val tree = xform {
-            """|{
-               |  gen for (uint N = 0 ; N < 1 ; N++) {
-               |    gen if (1) {
-               |      bool a#[N];
-               |      bool b;
-               |    }
-               |  }
-               |}""".stripMargin.asTree[Stmt]
+            """{
+              |  gen for (uint N = 0 ; N < 1 ; N++) {
+              |    gen if (1) {
+              |      bool a#[N];
+              |      bool b;
+              |    }
+              |  }
+              |}""".stripMargin.asTree[Stmt]
           }
 
           inside(tree) {
@@ -1000,13 +1000,13 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
         "decl" - {
           "entity" in {
             val tree = xform {
-              """|fsm foo {
-                 |  gen if (1) {
-                 |    bool a;
-                 |  } else {
-                 |    bool a;
-                 |  }
-                 |}""".stripMargin.asTree[Desc]
+              """fsm foo {
+                |  gen if (1) {
+                |    bool a;
+                |  } else {
+                |    bool a;
+                |  }
+                |}""".stripMargin.asTree[Desc]
             }
 
             inside(tree) {
@@ -1025,13 +1025,13 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
 
           "singleton" in {
             val tree = xform {
-              """|new fsm foo {
-                 |  gen if (1) {
-                 |    bool a;
-                 |  } else {
-                 |    bool a;
-                 |  }
-                 |}""".stripMargin.asTree[Desc]
+              """new fsm foo {
+                |  gen if (1) {
+                |    bool a;
+                |  } else {
+                |    bool a;
+                |  }
+                |}""".stripMargin.asTree[Desc]
             }
 
             inside(tree) {
@@ -1048,13 +1048,13 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
 
           "func" in {
             val tree = xform {
-              """|void foo() {
-                 |  gen if (1) {
-                 |    bool a;
-                 |  } else {
-                 |    bool a;
-                 |  }
-                 |}""".stripMargin.asTree[Desc]
+              """void foo() {
+                |  gen if (1) {
+                |    bool a;
+                |  } else {
+                |    bool a;
+                |  }
+                |}""".stripMargin.asTree[Desc]
             }
 
             inside(tree) {
@@ -1075,13 +1075,13 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
 
           "if then" in {
             val tree = xform {
-              """|gen if (1) {
-                 |  gen if (1) {
-                 |    bool a;
-                 |  } else {
-                 |    bool a;
-                 |  }
-                 |}""".stripMargin.asTree[Gen]
+              """gen if (1) {
+                |  gen if (1) {
+                |    bool a;
+                |  } else {
+                |    bool a;
+                |  }
+                |}""".stripMargin.asTree[Gen]
             }
 
             inside(tree) {
@@ -1102,13 +1102,13 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
 
           "if else" in {
             val tree = xform {
-              """|gen if (1) {} else {
-                 |  gen if (1) {
-                 |    bool a;
-                 |  } else {
-                 |    bool a;
-                 |  }
-                 |}""".stripMargin.asTree[Gen]
+              """gen if (1) {} else {
+                |  gen if (1) {
+                |    bool a;
+                |  } else {
+                |    bool a;
+                |  }
+                |}""".stripMargin.asTree[Gen]
             }
 
             inside(tree) {
@@ -1129,19 +1129,19 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
 
           "if then else" in {
             val tree = xform {
-              """|gen if (1) {
-                 |  gen if (1) {
-                 |    bool a;
-                 |  } else {
-                 |    bool a;
-                 |  }
-                 |} else {
-                 |  gen if (1) {
-                 |    bool a;
-                 |  } else {
-                 |    bool a;
-                 |  }
-                 |}""".stripMargin.asTree[Gen]
+              """gen if (1) {
+                |  gen if (1) {
+                |    bool a;
+                |  } else {
+                |    bool a;
+                |  }
+                |} else {
+                |  gen if (1) {
+                |    bool a;
+                |  } else {
+                |    bool a;
+                |  }
+                |}""".stripMargin.asTree[Gen]
             }
 
             inside(tree) {
@@ -1168,13 +1168,13 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
 
           "for" in {
             val tree = xform {
-              """|gen for (u8 a = 0 ; a < 10 ; a++) {
-                 |  gen if (1) {
-                 |    bool a;
-                 |  } else {
-                 |    bool a;
-                 |  }
-                 |}""".stripMargin.asTree[Gen]
+              """gen for (u8 a = 0 ; a < 10 ; a++) {
+                |  gen if (1) {
+                |    bool a;
+                |  } else {
+                |    bool a;
+                |  }
+                |}""".stripMargin.asTree[Gen]
             }
 
             inside(tree) {
@@ -1196,13 +1196,13 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
 
           "range" in {
             val tree = xform {
-              """|gen for (u8 a < 10) {
-                 |  gen if (1) {
-                 |    bool a;
-                 |  } else {
-                 |    bool a;
-                 |  }
-                 |}""".stripMargin.asTree[Gen]
+              """gen for (u8 a < 10) {
+                |  gen if (1) {
+                |    bool a;
+                |  } else {
+                |    bool a;
+                |  }
+                |}""".stripMargin.asTree[Gen]
             }
 
             inside(tree) {
@@ -1227,13 +1227,13 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
         "ent" - {
           "comb process" in {
             val tree = xform {
-              """|fence {
-                 |  gen if (1) {
-                 |    bool a;
-                 |  } else {
-                 |    bool a;
-                 |  }
-                 |}""".stripMargin.asTree[Ent]
+              """fence {
+                |  gen if (1) {
+                |    bool a;
+                |  } else {
+                |    bool a;
+                |  }
+                |}""".stripMargin.asTree[Ent]
             }
 
             inside(tree) {
@@ -1252,13 +1252,13 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
         "stmt" - {
           "block" in {
             val tree = xform {
-              """|{
-                 |  gen if (1) {
-                 |    bool a;
-                 |  } else {
-                 |    bool a;
-                 |  }
-                 |}""".stripMargin.asTree[Stmt]
+              """{
+                |  gen if (1) {
+                |    bool a;
+                |  } else {
+                |    bool a;
+                |  }
+                |}""".stripMargin.asTree[Stmt]
             }
 
             inside(tree) {
@@ -1279,13 +1279,13 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
 
           "if then" in {
             val tree = xform {
-              """|if (1) {
-                 |  gen if (1) {
-                 |    bool a;
-                 |  } else {
-                 |    bool a;
-                 |  }
-                 |}""".stripMargin.asTree[Stmt]
+              """if (1) {
+                |  gen if (1) {
+                |    bool a;
+                |  } else {
+                |    bool a;
+                |  }
+                |}""".stripMargin.asTree[Stmt]
             }
 
             inside(tree) {
@@ -1308,13 +1308,13 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
 
           "if else" in {
             val tree = xform {
-              """|if (1) {} else {
-                 |  gen if (1) {
-                 |    bool a;
-                 |  } else {
-                 |    bool a;
-                 |  }
-                 |}""".stripMargin.asTree[Stmt]
+              """if (1) {} else {
+                |  gen if (1) {
+                |    bool a;
+                |  } else {
+                |    bool a;
+                |  }
+                |}""".stripMargin.asTree[Stmt]
             }
 
             inside(tree) {
@@ -1337,19 +1337,19 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
 
           "if then else" in {
             val tree = xform {
-              """|if (1) {
-                 |  gen if (1) {
-                 |    bool a;
-                 |  } else {
-                 |    bool a;
-                 |  }
-                 |} else {
-                 |  gen if (1) {
-                 |    bool a;
-                 |  } else {
-                 |    bool a;
-                 |  }
-                 |}""".stripMargin.asTree[Stmt]
+              """if (1) {
+                |  gen if (1) {
+                |    bool a;
+                |  } else {
+                |    bool a;
+                |  }
+                |} else {
+                |  gen if (1) {
+                |    bool a;
+                |  } else {
+                |    bool a;
+                |  }
+                |}""".stripMargin.asTree[Stmt]
             }
 
             inside(tree) {
@@ -1380,13 +1380,13 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
 
           "case regular" in {
             val tree = xform {
-              """|case (1) {
-                 |  1: gen if (1) {
-                 |    bool a;
-                 |  } else {
-                 |    bool a;
-                 |  }
-                 |}""".stripMargin.asTree[Stmt]
+              """case (1) {
+                |  1: gen if (1) {
+                |    bool a;
+                |  } else {
+                |    bool a;
+                |  }
+                |}""".stripMargin.asTree[Stmt]
             }
 
             inside(tree) {
@@ -1417,13 +1417,13 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
 
           "case default" in {
             val tree = xform {
-              """|case (1) {
-                 |  default: gen if (1) {
-                 |    bool a;
-                 |  } else {
-                 |    bool a;
-                 |  }
-                 |}""".stripMargin.asTree[Stmt]
+              """case (1) {
+                |  default: gen if (1) {
+                |    bool a;
+                |  } else {
+                |    bool a;
+                |  }
+                |}""".stripMargin.asTree[Stmt]
             }
 
             inside(tree) {
@@ -1453,13 +1453,13 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
 
           "loop" in {
             val tree = xform {
-              """|loop {
-                 |  gen if (1) {
-                 |    bool a;
-                 |  } else {
-                 |    bool a;
-                 |  }
-                 |}""".stripMargin.asTree[Stmt]
+              """loop {
+                |  gen if (1) {
+                |    bool a;
+                |  } else {
+                |    bool a;
+                |  }
+                |}""".stripMargin.asTree[Stmt]
             }
 
             inside(tree) {
@@ -1480,13 +1480,13 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
 
           "do" in {
             val tree = xform {
-              """|do {
-                 |  gen if (1) {
-                 |    bool a;
-                 |  } else {
-                 |    bool a;
-                 |  }
-                 |} while (1);""".stripMargin.asTree[Stmt]
+              """do {
+                |  gen if (1) {
+                |    bool a;
+                |  } else {
+                |    bool a;
+                |  }
+                |} while (1);""".stripMargin.asTree[Stmt]
             }
 
             inside(tree) {
@@ -1508,13 +1508,13 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
 
           "while" in {
             val tree = xform {
-              """|while (1) {
-                 |  gen if (1) {
-                 |    bool a;
-                 |  } else {
-                 |    bool a;
-                 |  }
-                 |}""".stripMargin.asTree[Stmt]
+              """while (1) {
+                |  gen if (1) {
+                |    bool a;
+                |  } else {
+                |    bool a;
+                |  }
+                |}""".stripMargin.asTree[Stmt]
             }
 
             inside(tree) {
@@ -1536,13 +1536,13 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
 
           "for" in {
             val tree = xform {
-              """|for (u8 a = 0 ; a < 10 ; a++) {
-                 |  gen if (1) {
-                 |    bool a;
-                 |  } else {
-                 |    bool a;
-                 |  }
-                 |}""".stripMargin.asTree[Stmt]
+              """for (u8 a = 0 ; a < 10 ; a++) {
+                |  gen if (1) {
+                |    bool a;
+                |  } else {
+                |    bool a;
+                |  }
+                |}""".stripMargin.asTree[Stmt]
             }
 
             inside(tree) {
@@ -1566,13 +1566,13 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
 
           "let" in {
             val tree = xform {
-              """|let (u8 a = 0) {
-                 |  gen if (1) {
-                 |    bool a;
-                 |  } else {
-                 |    bool a;
-                 |  }
-                 |}""".stripMargin.asTree[Stmt]
+              """let (u8 a = 0) {
+                |  gen if (1) {
+                |    bool a;
+                |  } else {
+                |    bool a;
+                |  }
+                |}""".stripMargin.asTree[Stmt]
             }
 
             inside(tree) {

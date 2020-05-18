@@ -105,7 +105,7 @@ final class PortCheckASpec extends AnyFreeSpec with AlogicTest {
 
         s"'$fc' with '$st'" in {
           portCheckA {
-            s"""|fsm a {
+            s"""fsm a {
              |   (* unused *) out $fc $st bool po;
              |}"""
           }

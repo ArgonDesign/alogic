@@ -64,9 +64,9 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
     "should accept valid input" - {
 
       "file without type definitions" in {
-        """|fsm foo {
-           |
-           |}""".stripMargin.asTree[Root] should matchPattern {
+        """fsm foo {
+          |
+          |}""".stripMargin.asTree[Root] should matchPattern {
           case Root(List(RizDesc(_: DescEntity))) =>
         }
         cc.messages shouldBe empty
@@ -919,11 +919,11 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
           }
 
           "case without default" in {
-            """|case (1) {
-               | 1: a;
-               | 2: b;
-               |}
-               |""".stripMargin.asTree[Stmt] shouldBe {
+            """case (1) {
+              | 1: a;
+              | 2: b;
+              |}
+              |""".stripMargin.asTree[Stmt] shouldBe {
               StmtCase(
                 Expr(1),
                 List(
@@ -935,10 +935,10 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
           }
 
           "case with default" in {
-            """|case (1) {
-               | default: c;
-               |}
-               |""".stripMargin.asTree[Stmt] shouldBe {
+            """case (1) {
+              | default: c;
+              |}
+              |""".stripMargin.asTree[Stmt] shouldBe {
               StmtCase(
                 Expr(1),
                 List(
@@ -949,11 +949,11 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
           }
 
           "case with multiple labels" in {
-            """|case (1) {
-               | 1: c;
-               | 2, 3: d;
-               |}
-               |""".stripMargin.asTree[Stmt] shouldBe {
+            """case (1) {
+              | 1: c;
+              | 2, 3: d;
+              |}
+              |""".stripMargin.asTree[Stmt] shouldBe {
               StmtCase(
                 Expr(1),
                 List(
@@ -965,11 +965,11 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
           }
 
           "case with multiple defaults" in {
-            """|case (1) {
-               | default: c;
-               | default: d;
-               |}
-               |""".stripMargin.asTree[Stmt] shouldBe {
+            """case (1) {
+              | default: c;
+              | default: d;
+              |}
+              |""".stripMargin.asTree[Stmt] shouldBe {
               StmtCase(
                 Expr(1),
                 List(
@@ -981,13 +981,13 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
           }
 
           "case ordering" in {
-            """|case (1) {
-               | 1: a;
-               | default: b;
-               | 3: c;
-               | default: d;
-               |}
-               |""".stripMargin.asTree[Stmt] shouldBe {
+            """case (1) {
+              | 1: a;
+              | default: b;
+              | 3: c;
+              | default: d;
+              |}
+              |""".stripMargin.asTree[Stmt] shouldBe {
               StmtCase(
                 Expr(1),
                 List(
@@ -1001,11 +1001,11 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
           }
 
           "case without braces" in {
-            """|case (1) {
-               | 1: a;
-               | default: c;
-               |}
-               |""".stripMargin.asTree[Stmt] shouldBe {
+            """case (1) {
+              | 1: a;
+              | default: c;
+              |}
+              |""".stripMargin.asTree[Stmt] shouldBe {
               StmtCase(
                 Expr(1),
                 List(
@@ -1017,11 +1017,11 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
           }
 
           "case with braces" in {
-            """|case (1) {
-               | 1: {a;}
-               | default: {c;}
-               |}
-               |""".stripMargin.asTree[Stmt] shouldBe {
+            """case (1) {
+              | 1: {a;}
+              | default: {c;}
+              |}
+              |""".stripMargin.asTree[Stmt] shouldBe {
               StmtCase(
                 Expr(1),
                 List(
@@ -1035,22 +1035,22 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
 
         "loops" - {
           "loop" in {
-            """|loop {
-               |  1;
-               |}""".stripMargin.asTree[Stmt] shouldBe StmtLoop(List(StmtExpr(Expr(1))))
+            """loop {
+              |  1;
+              |}""".stripMargin.asTree[Stmt] shouldBe StmtLoop(List(StmtExpr(Expr(1))))
           }
 
           "while" in {
-            """|while (a) {
-               |  fence;
-               |}""".stripMargin
+            """while (a) {
+              |  fence;
+              |}""".stripMargin
               .asTree[Stmt] shouldBe StmtWhile(ExprRef(Ident("a", Nil)), List(StmtFence()))
           }
 
           "do" in {
-            """|do {
-               | fence;
-               |} while(b);""".stripMargin
+            """do {
+              | fence;
+              |} while(b);""".stripMargin
               .asTree[Stmt] shouldBe StmtDo(ExprRef(Ident("b", Nil)), List(StmtFence()))
           }
 
@@ -1060,9 +1060,9 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
             }
 
             "with single init assign" in {
-              """|for (a=2;a;a--) {
-                 |  2;
-                 |}""".stripMargin.asTree[Stmt] shouldBe {
+              """for (a=2;a;a--) {
+                |  2;
+                |}""".stripMargin.asTree[Stmt] shouldBe {
                 StmtFor(
                   List(StmtAssign(ExprRef(Ident("a", Nil)), Expr(2))),
                   Some(ExprRef(Ident("a", Nil))),
@@ -1074,9 +1074,9 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
             }
 
             "with single init decl" in {
-              """|for (i8 a=2;a;a--) {
-                 |  2;
-                 |}""".stripMargin.asTree[Stmt] shouldBe {
+              """for (i8 a=2;a;a--) {
+                |  2;
+                |}""".stripMargin.asTree[Stmt] shouldBe {
                 StmtFor(
                   List(StmtDesc(DescVar(Ident("a", Nil), ExprType(TypeSInt(8)), Some(Expr(2))))),
                   Some(ExprRef(Ident("a", Nil))),
@@ -1087,8 +1087,8 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
             }
 
             "with multiple init" in {
-              """|for (i8 a=2, b=1;;) {
-                 |}""".stripMargin.asTree[Stmt] shouldBe {
+              """for (i8 a=2, b=1;;) {
+                |}""".stripMargin.asTree[Stmt] shouldBe {
                 StmtFor(
                   List(
                     StmtDesc(DescVar(Ident("a", Nil), ExprType(TypeSInt(8)), Some(Expr(2)))),
@@ -1102,8 +1102,8 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
             }
 
             "with multiple step" in {
-              """|for (;;a++, b--) {
-                 |}""".stripMargin.asTree[Stmt] shouldBe {
+              """for (;;a++, b--) {
+                |}""".stripMargin.asTree[Stmt] shouldBe {
                 StmtFor(
                   Nil,
                   None,
@@ -1634,28 +1634,30 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
             }
           }
 
-          for (op <- List(
-                 "*",
-                 "/",
-                 "%",
-                 "+",
-                 "-",
-                 "<<",
-                 ">>",
-                 ">>>",
-                 "<<<",
-                 ">",
-                 ">=",
-                 "<",
-                 "<=",
-                 "==",
-                 "!=",
-                 "&",
-                 "^",
-                 "|",
-                 "&&",
-                 "||"
-               )) {
+          for (
+            op <- List(
+              "*",
+              "/",
+              "%",
+              "+",
+              "-",
+              "<<",
+              ">>",
+              ">>>",
+              "<<<",
+              ">",
+              ">=",
+              "<",
+              "<=",
+              "==",
+              "!=",
+              "&",
+              "^",
+              "|",
+              "&&",
+              "||"
+            )
+          ) {
             s"binary $op" in {
               s"4 $op 3".asTree[Expr] shouldBe ExprBinary(Expr(4), op, Expr(3))
             }
@@ -1875,13 +1877,13 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
           }
 
           "with 1 else if" in {
-            """|gen if (i) {
-               |  fence;
-               |} else if (j) {
-               |  return;
-               |} else {
-               |  break;
-               |}""".stripMargin.asTree[Gen](SourceContext.Entity) shouldBe {
+            """gen if (i) {
+              |  fence;
+              |} else if (j) {
+              |  return;
+              |} else {
+              |  break;
+              |}""".stripMargin.asTree[Gen](SourceContext.Entity) shouldBe {
               GenIf(
                 ExprRef(Ident("i", Nil)),
                 List(StmtFence()),
@@ -1897,15 +1899,15 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
           }
 
           "with 2 else if" in {
-            """|gen if (i) {
-               |  fence;
-               |} else if (j) {
-               |  return;
-               |} else if (k) {
-               |  f();
-               |} else {
-               |  break;
-               |}""".stripMargin.asTree[Gen](SourceContext.Entity) shouldBe {
+            """gen if (i) {
+              |  fence;
+              |} else if (j) {
+              |  return;
+              |} else if (k) {
+              |  f();
+              |} else {
+              |  break;
+              |}""".stripMargin.asTree[Gen](SourceContext.Entity) shouldBe {
               GenIf(
                 ExprRef(Ident("i", Nil)),
                 List(StmtFence()),
@@ -1947,9 +1949,9 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
           }
 
           "with single init decl" in {
-            """|gen for (i8 a=2;a;a--) {
-               |  2;
-               |}""".stripMargin.asTree[Gen] shouldBe {
+            """gen for (i8 a=2;a;a--) {
+              |  2;
+              |}""".stripMargin.asTree[Gen] shouldBe {
               GenFor(
                 List(StmtDesc(DescGen(Ident("a", Nil), ExprType(TypeSInt(8)), Expr(2)))),
                 ExprRef(Ident("a", Nil)),
@@ -1960,8 +1962,8 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
           }
 
           "with multiple init decl" in {
-            """|gen for (i8 a=2, u8 b=1;1;1++) {
-               |}""".stripMargin.asTree[Gen] shouldBe {
+            """gen for (i8 a=2, u8 b=1;1;1++) {
+              |}""".stripMargin.asTree[Gen] shouldBe {
               GenFor(
                 List(
                   StmtDesc(DescGen(Ident("a", Nil), ExprType(TypeSInt(8)), Expr(2))),
@@ -1975,8 +1977,8 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
           }
 
           "with multiple step" in {
-            """|gen for (uint a = 0;a;a++, b--) {
-               |}""".stripMargin.asTree[Gen] shouldBe {
+            """gen for (uint a = 0;a;a++, b--) {
+              |}""".stripMargin.asTree[Gen] shouldBe {
               GenFor(
                 List(
                   StmtDesc(DescGen(Ident("a", Nil), ExprType(TypeNum(false)), Expr(0)))
@@ -2024,12 +2026,12 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
 
     "should assign correct locations to tree nodes" in {
 
-      val tree = """|fsm foo {
-                    |  void main() {
-                    |    bar i;
-                    |    loop { }
-                    |  }
-                    |}""".stripMargin.asTree[Desc]
+      val tree = """fsm foo {
+                   |  void main() {
+                   |    bar i;
+                   |    loop { }
+                   |  }
+                   |}""".stripMargin.asTree[Desc]
 
       inside(tree) {
         case entity @ DescEntity(_, EntityVariant.Fsm, eBody) =>

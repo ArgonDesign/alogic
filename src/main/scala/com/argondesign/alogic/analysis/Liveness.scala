@@ -51,7 +51,7 @@ object Liveness {
 
       if (lo != 0) {
         var ql = lo / 64
-        val rl = (lo % 64)
+        val rl = lo % 64
         arr(ql) &= -1L << rl
         while (ql > 0) {
           ql -= 1

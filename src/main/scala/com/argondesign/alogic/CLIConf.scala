@@ -116,9 +116,9 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
       val min = prefix().length + 16
       outNameMaxLen.toOption partialMatch {
         case Some(value) if value < min =>
-          Left(s"""|Minimum value of option '${outNameMaxLen.name}' is $min
-                   |(prefix length + 16) but value provided is $value
-                   |""".stripMargin.replaceAll("\n+", " "))
+          Left(s"""Minimum value of option '${outNameMaxLen.name}' is $min
+                  |(prefix length + 16) but value provided is $value
+                  |""".stripMargin.replaceAll("\n+", " "))
       } getOrElse Right(())
     }
 
@@ -162,13 +162,13 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
   val srcbase = opt[File](
     noshort = true,
     required = false,
-    descr = """|Base directory for source files. When specified, all directories
-               |specified with -y must be under this directory, and output files
-               |will be written to the same relative path under the output
-               |directory specified with -o, as the corresponding source is
-               |relative to --srcbase. When --srcbase is not provided, output
-               |files are written to the output directory directly
-               |""".stripMargin.replace('\n', ' ')
+    descr = """Base directory for source files. When specified, all directories
+              |specified with -y must be under this directory, and output files
+              |will be written to the same relative path under the output
+              |directory specified with -o, as the corresponding source is
+              |relative to --srcbase. When --srcbase is not provided, output
+              |files are written to the output directory directly
+              |""".stripMargin.replace('\n', ' ')
   )
 
   validateOpt(srcbase, ydir) {
@@ -195,14 +195,14 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
   val uninitialized = opt[UninitializedLocals.Type](
     noshort = true,
     required = false,
-    descr = """|Specify whether to default initialize local variables declared
-               |without an explicit initializer expression. Possible values
-               |are: 'none' meaning leave them un-initialized, 'zeros' means
-               |initialize them to zero. 'ones' means initialize them to all
-               |ones, 'random' means initialize them to a compile time constant,
-               |deterministic, but otherwise arbitrary bit pattern. Default is
-               |'none'
-               |""".stripMargin.replace('\n', ' '),
+    descr = """Specify whether to default initialize local variables declared
+              |without an explicit initializer expression. Possible values
+              |are: 'none' meaning leave them un-initialized, 'zeros' means
+              |initialize them to zero. 'ones' means initialize them to all
+              |ones, 'random' means initialize them to a compile time constant,
+              |deterministic, but otherwise arbitrary bit pattern. Default is
+              |'none'
+              |""".stripMargin.replace('\n', ' '),
     default = Some(UninitializedLocals.None)
   )(
     singleArgConverter(
@@ -222,11 +222,11 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
     name = "ensure-prefix",
     noshort = true,
     required = false,
-    descr = """|Ensure all output module names start with the prefix provided.
-               |If the name of an Alogic entity already starts with a suffix of
-               |the given prefix, only the remaining initial part of the prefix
-               |will be applied.
-               |""".stripMargin.replace('\n', ' '),
+    descr = """Ensure all output module names start with the prefix provided.
+              |If the name of an Alogic entity already starts with a suffix of
+              |the given prefix, only the remaining initial part of the prefix
+              |will be applied.
+              |""".stripMargin.replace('\n', ' '),
     default = Some("")
   )
 
@@ -234,10 +234,10 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
     name = "output-name-max-length",
     noshort = true,
     required = false,
-    descr = """|Enforce a maximum length upon output module names (excluding top-level
-               |modules). Any names exceeding this length will be truncated and appended
-               |with a short number. The default behaviour is no maximum.
-               |""".stripMargin.replace('\n', ' '),
+    descr = """Enforce a maximum length upon output module names (excluding top-level
+              |modules). Any names exceeding this length will be truncated and appended
+              |with a short number. The default behaviour is no maximum.
+              |""".stripMargin.replace('\n', ' '),
     default = None
   )
 
@@ -255,10 +255,10 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
   val color = opt[String](
     noshort = true,
     required = false,
-    descr = """|Colorize diagnostic messages, one of: 'always|never|auto'.
-               |Default is 'auto' which uses colors only if the output is
-               |to a terminal
-               |""".stripMargin.replace('\n', ' '),
+    descr = """Colorize diagnostic messages, one of: 'always|never|auto'.
+              |Default is 'auto' which uses colors only if the output is
+              |to a terminal
+              |""".stripMargin.replace('\n', ' '),
     default = Some("auto")
   )
 
@@ -276,11 +276,11 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
   val resetStyle = opt[ResetStyle.Type](
     noshort = true,
     required = false,
-    descr = """|Determines the reset style used in the output. One of
-               |'async-low', 'async-high', 'sync-low', 'sync-high' for
-               |synchronous/asynchronous assert, active low/high reset.
-               |Default is 'async-low
-               |""".stripMargin.replace('\n', ' '),
+    descr = """Determines the reset style used in the output. One of
+              |'async-low', 'async-high', 'sync-low', 'sync-high' for
+              |synchronous/asynchronous assert, active low/high reset.
+              |Default is 'async-low
+              |""".stripMargin.replace('\n', ' '),
     default = Some(ResetStyle.AsyncLow)
   )(
     singleArgConverter(
@@ -298,27 +298,27 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
 
   val noResetAll = opt[Boolean](
     noshort = true,
-    descr = """|Only reset flops that require reset initialization according
-               |to Alogic semantics, and leave other flops unreset. By default
-               |all flops emitted are reset.
-               |""".stripMargin.replace('\n', ' ')
+    descr = """Only reset flops that require reset initialization according
+              |to Alogic semantics, and leave other flops unreset. By default
+              |all flops emitted are reset.
+              |""".stripMargin.replace('\n', ' ')
   )
 
   val genLoopLimit = opt[Int](
     noshort = true,
-    descr = """|Maximum iteration count of standard 'gen for' loops before
-               |assuming the loop is infinite.
-               |""".stripMargin.replace('\n', ' '),
+    descr = """Maximum iteration count of standard 'gen for' loops before
+              |assuming the loop is infinite.
+              |""".stripMargin.replace('\n', ' '),
     default = Some(1024)
   )
 
   val combRecLimit = opt[Int](
     noshort = true,
-    descr = """|Combinational function recursion limit. This is the maximum
-               |number of calls to the same function that can be active before
-               |the compiler assumes the recursion is infinite and reports an
-               |error.
-               |""".stripMargin.replace('\n', ' '),
+    descr = """Combinational function recursion limit. This is the maximum
+              |number of calls to the same function that can be active before
+              |the compiler assumes the recursion is infinite and reports an
+              |error.
+              |""".stripMargin.replace('\n', ' '),
     default = Some(16)
   )
 
@@ -340,10 +340,10 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
   val topLevels = trailArg[List[String]](
     name = "top-levels",
     required = true,
-    descr = """|List of top level entities. Parameter values for top level
-               |entities can be provided with the same call-style syntax as
-               |for an Alogic instantiation.
-               |""".stripMargin.replace('\n', ' ')
+    descr = """List of top level entities. Parameter values for top level
+              |entities can be provided with the same call-style syntax as
+              |for an Alogic instantiation.
+              |""".stripMargin.replace('\n', ' ')
   )
 
   verify()

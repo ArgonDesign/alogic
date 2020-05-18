@@ -404,7 +404,7 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
     "doesn't assign return stack " - {
       "if call graph is tree and only one call to each" in {
         val result = analyseCallGraph {
-          """|fsm fsm_e {
+          """fsm fsm_e {
              |  void main() { a(); b(); c(); }
              |  void a() { e(); f(); return; }
              |  void b() { goto d; }
@@ -444,7 +444,7 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
 
       "if all returns have static return point" in {
         val result = analyseCallGraph {
-          """|fsm fsm_e {
+          """fsm fsm_e {
              |  in bool pi;
              |  void main() { a(); }
              |  void a() { if (pi) { goto b; } else { goto c; } }
@@ -483,7 +483,7 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
 
       "when return points are not static" in {
         val result = analyseCallGraph {
-          """|fsm fsm_e {
+          """fsm fsm_e {
              |  void main() { a(); b(); }
              |  void a() { goto c; }
              |  void b() { goto c; }
@@ -518,7 +518,7 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
 
         "1" in {
           val result = analyseCallGraph {
-            """|fsm fsm_e {
+            """fsm fsm_e {
                |  void main() { a(); a(); b(); }
                |  void a() { return; }
                |  void b() { return; }
@@ -552,7 +552,7 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
 
         "2" in {
           val result = analyseCallGraph {
-            """|fsm fsm_e {
+            """fsm fsm_e {
                |  void main() { a(); b(); }
                |  void a() { c(); return; }
                |  void b() { c(); return; }
@@ -593,7 +593,7 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
       "with appropriate depth" in {
         // Only need to use the stack when we call b or d, so stack depth should be 2
         val result = analyseCallGraph {
-          """|fsm fsm_e {
+          """fsm fsm_e {
              |  void main() { a(); }
              |  void a() { b(); b(); return; }
              |  void b() { goto b2; }
@@ -645,7 +645,7 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
         // However returns from c always go back to call site of a.
         // So c has a static return point yet must still pop the stack.
         val result = analyseCallGraph {
-          """|fsm fsm_e {
+          """fsm fsm_e {
              |  in bool pi;
              |  void main() { a(); b(); }
              |  void a() {
@@ -684,7 +684,7 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
       "with correct depth when longest path doesn't start at main" in {
         // Calls to b, c and d require pushes but not a.
         val result = analyseCallGraph {
-          """|fsm fsm_e {
+          """fsm fsm_e {
              |  void main() { a(); }
              |  void a() { b(); b(); return; }
              |  void b() { c(); c(); return; }
@@ -728,7 +728,7 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
     "handles returns to main by " - {
       "returning to top of main if return called" in {
         val result = analyseCallGraph {
-          """|fsm fsm_e {
+          """fsm fsm_e {
              |  void main() { return; }
              |}"""
         }
@@ -755,7 +755,7 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
 
       "returning to top of main after goto in main function" in {
         val result = analyseCallGraph {
-          """|fsm fsm_e {
+          """fsm fsm_e {
              |  void main() { goto a; }
              |  void a() { return; }
              |}"""
@@ -784,7 +784,7 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
       "refer to stack if main calls itself" in {
         // The return statement in the body of main could go to either of the two states.
         val result = analyseCallGraph {
-          """|fsm fsm_e {
+          """fsm fsm_e {
              |  (* reclimit = 2 *) void main() { main(); return; }
              |}"""
         }
@@ -815,7 +815,7 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
         // The return statement in the body of a will always return to the same point.
         // The return statement in the body of main will either go to a or to the start of main.
         val result = analyseCallGraph {
-          """|fsm fsm_e {
+          """fsm fsm_e {
              |  (* reclimit = 3 *) void main() { a(); return; }
              |  (* reclimit = 3 *) void a() { main(); return; }
              |}"""

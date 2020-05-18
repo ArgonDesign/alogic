@@ -93,9 +93,9 @@ final class DesugarSpec extends AnyFreeSpec with AlogicTest {
       for {
         (name, loop, pattern) <- List[(String, String, PartialFunction[Any, Unit])](
           ("loop", "loop { fence; }", { case _: StmtLoop => }),
-          ("while", "while (b) {}", { case _: StmtWhile  => }),
-          ("do", "do {} while(b);", { case _: StmtDo     => }),
-          ("for", "for(;;) {}", { case _: StmtFor        => })
+          ("while", "while (b) {}", { case _: StmtWhile => }),
+          ("do", "do {} while(b);", { case _: StmtDo => }),
+          ("for", "for(;;) {}", { case _: StmtFor => })
         )
       } {
         name in {

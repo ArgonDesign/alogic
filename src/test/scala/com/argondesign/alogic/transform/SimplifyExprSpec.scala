@@ -1155,7 +1155,7 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
       } {
         text in {
           fold {
-            s"""|
+            s"""
              |fsm f {
              |  in u1 a;
              |  in u7 b;

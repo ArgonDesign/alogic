@@ -740,8 +740,10 @@ final class Typer(
               error(tree)
             }
           } else if (strictWidth) {
-            if (!checkPacked(lhs, s"Left hand operand of '$op'") |||
-                  !checkPacked(rhs, s"Right hand operand of '$op'")) {
+            if (
+              !checkPacked(lhs, s"Left hand operand of '$op'") |||
+                !checkPacked(rhs, s"Right hand operand of '$op'")
+            ) {
               error(tree)
             } else if (lhs.tpe.width != rhs.tpe.width) {
               error(
@@ -752,8 +754,10 @@ final class Typer(
               )
             }
           } else {
-            if (!checkNumericOrPacked(lhs, s"Left hand operand of '$op'") |||
-                  !checkNumericOrPacked(rhs, s"Right hand operand of '$op'")) {
+            if (
+              !checkNumericOrPacked(lhs, s"Left hand operand of '$op'") |||
+                !checkNumericOrPacked(rhs, s"Right hand operand of '$op'")
+            ) {
               error(tree)
             }
           }

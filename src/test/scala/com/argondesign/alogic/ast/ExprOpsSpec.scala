@@ -42,19 +42,19 @@ final class ExprOpsSpec extends AnyFreeSpec with AlogicTest {
     }
 
     "operator extractors should work naturally" - {
-      "*" in { Expr(1) * Expr(2) should matchPattern { case Expr(1) * Expr(2)       => } }
-      "/" in { Expr(1) / Expr(2) should matchPattern { case Expr(1) / Expr(2)       => } }
-      "%" in { Expr(1) % Expr(2) should matchPattern { case Expr(1) % Expr(2)       => } }
-      "+" in { Expr(1) + Expr(2) should matchPattern { case Expr(1) + Expr(2)       => } }
-      "-" in { Expr(1) - Expr(2) should matchPattern { case Expr(1) - Expr(2)       => } }
-      "<<" in { Expr(1) << Expr(2) should matchPattern { case Expr(1) << Expr(2)    => } }
-      ">>" in { Expr(1) >> Expr(2) should matchPattern { case Expr(1) >> Expr(2)    => } }
+      "*" in { Expr(1) * Expr(2) should matchPattern { case Expr(1) * Expr(2) => } }
+      "/" in { Expr(1) / Expr(2) should matchPattern { case Expr(1) / Expr(2) => } }
+      "%" in { Expr(1) % Expr(2) should matchPattern { case Expr(1) % Expr(2) => } }
+      "+" in { Expr(1) + Expr(2) should matchPattern { case Expr(1) + Expr(2) => } }
+      "-" in { Expr(1) - Expr(2) should matchPattern { case Expr(1) - Expr(2) => } }
+      "<<" in { Expr(1) << Expr(2) should matchPattern { case Expr(1) << Expr(2) => } }
+      ">>" in { Expr(1) >> Expr(2) should matchPattern { case Expr(1) >> Expr(2) => } }
       ">>>" in { Expr(1) >>> Expr(2) should matchPattern { case Expr(1) >>> Expr(2) => } }
-      "&" in { Expr(1) & Expr(2) should matchPattern { case Expr(1) & Expr(2)       => } }
-      "^" in { Expr(1) ^ Expr(2) should matchPattern { case Expr(1) ^ Expr(2)       => } }
-      "|" in { Expr(1) | Expr(2) should matchPattern { case Expr(1) `|` Expr(2)     => } }
-      "&&" in { Expr(1) && Expr(2) should matchPattern { case Expr(1) && Expr(2)    => } }
-      "||" in { Expr(1) || Expr(2) should matchPattern { case Expr(1) || Expr(2)    => } }
+      "&" in { Expr(1) & Expr(2) should matchPattern { case Expr(1) & Expr(2) => } }
+      "^" in { Expr(1) ^ Expr(2) should matchPattern { case Expr(1) ^ Expr(2) => } }
+      "|" in { Expr(1) | Expr(2) should matchPattern { case Expr(1) `|` Expr(2) => } }
+      "&&" in { Expr(1) && Expr(2) should matchPattern { case Expr(1) && Expr(2) => } }
+      "||" in { Expr(1) || Expr(2) should matchPattern { case Expr(1) || Expr(2) => } }
     }
   }
 }

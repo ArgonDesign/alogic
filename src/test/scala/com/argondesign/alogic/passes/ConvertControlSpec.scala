@@ -81,7 +81,7 @@ final class ConvertControlSpec extends AnyFreeSpec with AlogicTest {
 
     "correctly assign static return points" in {
       val result = convertControl {
-        """|fsm fsm_e {
+        """fsm fsm_e {
            |  void main() {
            |    fence;
            |    fence;
@@ -116,7 +116,7 @@ final class ConvertControlSpec extends AnyFreeSpec with AlogicTest {
 
     "correctly push and pop to stack" in {
       val result = convertControl {
-        """|fsm fsm_e {
+        """fsm fsm_e {
            |  void main() {
            |    a();
            |    a();
@@ -141,7 +141,7 @@ final class ConvertControlSpec extends AnyFreeSpec with AlogicTest {
 
     "correctly pops from stack even when return point is static" in {
       val result = convertControl {
-        """|fsm fsm_e {
+        """fsm fsm_e {
            |  in bool pi;
            |  void main() { a(); b(); }
            |  void a() {
@@ -173,7 +173,7 @@ final class ConvertControlSpec extends AnyFreeSpec with AlogicTest {
 
     "correctly returns to entry point of main" in {
       val result = convertControl {
-        """|fsm fsm_e {
+        """fsm fsm_e {
            |  void main() {
            |    fence;
            |    goto a;
@@ -198,7 +198,7 @@ final class ConvertControlSpec extends AnyFreeSpec with AlogicTest {
 
     "deals with returns when stack empty" in {
       val result = convertControl {
-        """|fsm fsm_e {
+        """fsm fsm_e {
            |  void main() {
            |    a();
            |    goto a;

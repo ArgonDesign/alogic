@@ -192,25 +192,25 @@ final class UnusedCheckSpec extends AnyFlatSpec with AlogicTest {
 
   it should "not issue unused warning for nested instance using outer ports" in {
     xform {
-      """|network foo {
-         |  in  sync ready void i;
-         |  out sync ready void o;
-         |  new fsm bar {
-         |    void main() {
-         |      i.read();
-         |      fence;
-         |      o.write();
-         |      fence;
-         |    }
-         |  }
-         |}""".stripMargin.asTree[Desc]
+      """network foo {
+        |  in  sync ready void i;
+        |  out sync ready void o;
+        |  new fsm bar {
+        |    void main() {
+        |      i.read();
+        |      fence;
+        |      o.write();
+        |      fence;
+        |    }
+        |  }
+        |}""".stripMargin.asTree[Desc]
     }
     cc.messages shouldBe empty
   }
 
   it should "issue unused warnings in source line order" in {
     xform {
-      """|{
+      """{
          |  bool a;
          |  {
          |    bool b;

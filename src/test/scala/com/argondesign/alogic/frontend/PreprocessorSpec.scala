@@ -43,13 +43,13 @@ final class PreprocessorSpec extends AnyFlatSpec with Matchers {
 
     val source = Source(
       "test.alogic",
-      """|plain text should
-         |be unchanged""".stripMargin
+      """plain text should
+        |be unchanged""".stripMargin
     )
 
     preproc(source, emptyDefines, Nil).text should be {
-      """|plain text should
-         |be unchanged""".stripMargin
+      """plain text should
+        |be unchanged""".stripMargin
     }
 
     cc.messages shouldBe empty
@@ -59,13 +59,13 @@ final class PreprocessorSpec extends AnyFlatSpec with Matchers {
 
     val source = Source(
       "test.alogic",
-      """|// comments should
-         |/* be unchanged*/""".stripMargin
+      """// comments should
+        |/* be unchanged*/""".stripMargin
     )
 
     preproc(source, emptyDefines, Nil).text should be {
-      """|// comments should
-         |/* be unchanged*/""".stripMargin
+      """// comments should
+        |/* be unchanged*/""".stripMargin
     }
 
     cc.messages shouldBe empty
@@ -79,17 +79,17 @@ final class PreprocessorSpec extends AnyFlatSpec with Matchers {
 
     val source = Source(
       "test.alogic",
-      """|#define plain macro
-         |#define unchanged changed
-         |plain text should
-         |be unchanged""".stripMargin
+      """#define plain macro
+        |#define unchanged changed
+        |plain text should
+        |be unchanged""".stripMargin
     )
 
     preproc(source, emptyDefines, Nil).text should be {
-      """|
-         |
-         |macro text should
-         |be changed""".stripMargin
+      """
+        |
+        |macro text should
+        |be changed""".stripMargin
     }
 
     cc.messages shouldBe empty
@@ -99,15 +99,15 @@ final class PreprocessorSpec extends AnyFlatSpec with Matchers {
 
     val source = Source(
       "test.alogic",
-      """|plain text should
-         |be unchanged""".stripMargin
+      """plain text should
+        |be unchanged""".stripMargin
     )
 
     val initialDefines = Map("plain" -> "not so plain", "unchanged" -> "changed")
 
     preproc(source, initialDefines, Nil).text should be {
-      """|not so plain text should
-         |be changed""".stripMargin
+      """not so plain text should
+        |be changed""".stripMargin
     }
 
     cc.messages shouldBe empty
@@ -117,9 +117,9 @@ final class PreprocessorSpec extends AnyFlatSpec with Matchers {
 
     val source = Source(
       "test.alogic",
-      """|#define foo first
-         |
-         |#define foo again""".stripMargin
+      """#define foo first
+        |
+        |#define foo again""".stripMargin
     )
 
     preproc(source, emptyDefines, Nil)
@@ -138,7 +138,7 @@ final class PreprocessorSpec extends AnyFlatSpec with Matchers {
 
     val source = Source(
       "test.alogic",
-      """|#define foo maybe first""".stripMargin
+      """#define foo maybe first""".stripMargin
     )
 
     preproc(source, Map("foo" -> "real first"), Nil)
@@ -160,16 +160,16 @@ final class PreprocessorSpec extends AnyFlatSpec with Matchers {
   {
     val source = Source(
       "test.alogic",
-      """|#if COND
-         |  Yay!!
-         |#endif""".stripMargin
+      """#if COND
+        |  Yay!!
+        |#endif""".stripMargin
     )
 
     it should "handle true #if without #else" in new Fixture {
       preproc(source, Map("COND" -> "1"), Nil).text should be {
-        """|
-           |  Yay!!
-           |""".stripMargin
+        """
+          |  Yay!!
+          |""".stripMargin
       }
 
       cc.messages shouldBe empty
@@ -177,9 +177,9 @@ final class PreprocessorSpec extends AnyFlatSpec with Matchers {
 
     it should "handle false #if without #else" in new Fixture {
       preproc(source, Map("COND" -> "0"), Nil).text should be {
-        """|
-           |
-           |""".stripMargin
+        """
+          |
+          |""".stripMargin
       }
 
       cc.messages shouldBe empty
@@ -218,16 +218,16 @@ final class PreprocessorSpec extends AnyFlatSpec with Matchers {
   {
     val source = Source(
       "test.alogic",
-      """|#ifdef COND
-         |  Yay!!
-         |#endif""".stripMargin
+      """#ifdef COND
+        |  Yay!!
+        |#endif""".stripMargin
     )
 
     it should "handle true #ifdef without #else" in new Fixture {
       preproc(source, Map("COND" -> "abc"), Nil).text should be {
-        """|
-           |  Yay!!
-           |""".stripMargin
+        """
+          |  Yay!!
+          |""".stripMargin
       }
 
       cc.messages shouldBe empty
@@ -235,9 +235,9 @@ final class PreprocessorSpec extends AnyFlatSpec with Matchers {
 
     it should "handle false #ifdef without #else" in new Fixture {
       preproc(source, Map("NotCOND" -> "abc"), Nil).text should be {
-        """|
-           |
-           |""".stripMargin
+        """
+          |
+          |""".stripMargin
       }
 
       cc.messages shouldBe empty
@@ -251,20 +251,20 @@ final class PreprocessorSpec extends AnyFlatSpec with Matchers {
   {
     val source = Source(
       "test.alogic",
-      """|#if COND
-         |  Yay!!
-         |#else
-         |  Boo!
-         |#endif""".stripMargin
+      """#if COND
+        |  Yay!!
+        |#else
+        |  Boo!
+        |#endif""".stripMargin
     )
 
     it should "handle true #if with #else" in new Fixture {
       preproc(source, Map("COND" -> "1"), Nil).text should be {
-        """|
-           |  Yay!!
-           |
-           |
-           |""".stripMargin
+        """
+          |  Yay!!
+          |
+          |
+          |""".stripMargin
       }
 
       cc.messages shouldBe empty
@@ -272,11 +272,11 @@ final class PreprocessorSpec extends AnyFlatSpec with Matchers {
 
     it should "handle false #if with #else" in new Fixture {
       preproc(source, Map("COND" -> "0"), Nil).text should be {
-        """|
-           |
-           |
-           |  Boo!
-           |""".stripMargin
+        """
+          |
+          |
+          |  Boo!
+          |""".stripMargin
       }
 
       cc.messages shouldBe empty
@@ -290,20 +290,20 @@ final class PreprocessorSpec extends AnyFlatSpec with Matchers {
   {
     val source = Source(
       "text.alogic",
-      """|#ifdef COND
-         |  Yay!!
-         |#else
-         |  Boo!
-         |#endif""".stripMargin
+      """#ifdef COND
+        |  Yay!!
+        |#else
+        |  Boo!
+        |#endif""".stripMargin
     )
 
     it should "handle true #ifdef with #else" in new Fixture {
       preproc(source, Map("COND" -> "abc"), Nil).text should be {
-        """|
-           |  Yay!!
-           |
-           |
-           |""".stripMargin
+        """
+          |  Yay!!
+          |
+          |
+          |""".stripMargin
       }
 
       cc.messages shouldBe empty
@@ -311,11 +311,11 @@ final class PreprocessorSpec extends AnyFlatSpec with Matchers {
 
     it should "handle false #ifdef with #else" in new Fixture {
       preproc(source, Map("NotCOND" -> "abc"), Nil).text should be {
-        """|
-           |
-           |
-           |  Boo!
-           |""".stripMargin
+        """
+          |
+          |
+          |  Boo!
+          |""".stripMargin
       }
 
       cc.messages shouldBe empty
@@ -332,31 +332,31 @@ final class PreprocessorSpec extends AnyFlatSpec with Matchers {
         case "foo.h" =>
           Source(
             "foo.h",
-            """|This is
-               |from foo.h
-               |#include "bar.h"
-               |foo.h again ...
-               |#include "bar.h"
-               |... and again
-               |""".stripMargin
+            """This is
+              |from foo.h
+              |#include "bar.h"
+              |foo.h again ...
+              |#include "bar.h"
+              |... and again
+              |""".stripMargin
           )
         case "bar.h" =>
-          Source("bar.h", """|--This is
-                            |--from bar.h""".stripMargin)
+          Source("bar.h", """--This is
+                           |--from bar.h""".stripMargin)
         case "def1.h" =>
           Source(
             "def1.h",
-            """|
-               |#define a def1
-               |#include "def2.h"
-               |#define b def1
-               |#include "def2.h"
-               |#define a def1
-               |""".stripMargin
+            """
+              |#define a def1
+              |#include "def2.h"
+              |#define b def1
+              |#include "def2.h"
+              |#define a def1
+              |""".stripMargin
           )
         case "def2.h" =>
-          Source("def2.h", """|#define a def2
-                             |#define b def2""".stripMargin)
+          Source("def2.h", """#define a def2
+                            |#define b def2""".stripMargin)
       }
       Right(result)
     }
@@ -364,20 +364,20 @@ final class PreprocessorSpec extends AnyFlatSpec with Matchers {
     it should "handle simple #include" in new Fixture {
       val source = Source(
         "test.alogic",
-        """|Pre
-           |
-           |#include "bar.h"
-           |
-           |Post""".stripMargin
+        """Pre
+          |
+          |#include "bar.h"
+          |
+          |Post""".stripMargin
       )
 
       preproc(source, emptyDefines, includeResolver(_, _)).text should be {
-        """|Pre
-           |
-           |--This is
-           |--from bar.h
-           |
-           |Post""".stripMargin
+        """Pre
+          |
+          |--This is
+          |--from bar.h
+          |
+          |Post""".stripMargin
       }
 
       cc.messages shouldBe empty
@@ -386,27 +386,27 @@ final class PreprocessorSpec extends AnyFlatSpec with Matchers {
     it should "handle recursive #include" in new Fixture {
       val source = Source(
         "test.alogic",
-        """|Pre
-           |
-           |#include "foo.h"
-           |
-           |Post""".stripMargin
+        """Pre
+          |
+          |#include "foo.h"
+          |
+          |Post""".stripMargin
       )
 
       preproc(source, emptyDefines, includeResolver(_, _)).text should be {
-        """|Pre
-           |
-           |This is
-           |from foo.h
-           |--This is
-           |--from bar.h
-           |foo.h again ...
-           |--This is
-           |--from bar.h
-           |... and again
-           |
-           |
-           |Post""".stripMargin
+        """Pre
+          |
+          |This is
+          |from foo.h
+          |--This is
+          |--from bar.h
+          |foo.h again ...
+          |--This is
+          |--from bar.h
+          |... and again
+          |
+          |
+          |Post""".stripMargin
       }
 
       cc.messages shouldBe empty
@@ -415,12 +415,12 @@ final class PreprocessorSpec extends AnyFlatSpec with Matchers {
     it should "remap line numbers after resolving #include" in new Fixture {
       val source = Source(
         "test.alogic",
-        """|#define a root
-           |#define b root
-           |#include "def1.h"
-           |#define a root
-           |#define b root
-           |""".stripMargin
+        """#define a root
+          |#define b root
+          |#include "def1.h"
+          |#define a root
+          |#define b root
+          |""".stripMargin
       )
 
       preproc(source, emptyDefines, includeResolver(_, _)).text should be("\n" * 13)
@@ -450,8 +450,8 @@ final class PreprocessorSpec extends AnyFlatSpec with Matchers {
     it should "fatal for absolute include paths" in new Fixture {
       val source = Source(
         "test.alogic",
-        """|#include "/abs.h"
-           |""".stripMargin
+        """#include "/abs.h"
+          |""".stripMargin
       )
 
       a[FatalErrorException] should be thrownBy {
@@ -471,8 +471,8 @@ final class PreprocessorSpec extends AnyFlatSpec with Matchers {
     it should "fatal for unsuccessful path search" in new Fixture {
       val source = Source(
         "test.alogic",
-        """|#include "missing.h"
-           |""".stripMargin
+        """#include "missing.h"
+          |""".stripMargin
       )
 
       val includeSearchPaths = List(
@@ -505,15 +505,15 @@ final class PreprocessorSpec extends AnyFlatSpec with Matchers {
     it should "handle true indented #if without #else" in new Fixture {
       val source = Source(
         "test.alogic",
-        """|#   if COND
-           |  Yay!!
-           |#    endif""".stripMargin
+        """#   if COND
+          |  Yay!!
+          |#    endif""".stripMargin
       )
 
       preproc(source, Map("COND" -> "1"), Nil).text should be {
-        """|
-           |  Yay!!
-           |""".stripMargin
+        """
+          |  Yay!!
+          |""".stripMargin
       }
 
       cc.messages shouldBe empty
@@ -522,15 +522,15 @@ final class PreprocessorSpec extends AnyFlatSpec with Matchers {
     it should "handle false indented #if without #else" in new Fixture {
       val source = Source(
         "test.alogic",
-        """|#   if COND
-           |  Yay!!
-           |#    endif""".stripMargin
+        """#   if COND
+          |  Yay!!
+          |#    endif""".stripMargin
       )
 
       preproc(source, Map("COND" -> "0"), Nil).text should be {
-        """|
-           |
-           |""".stripMargin
+        """
+          |
+          |""".stripMargin
       }
 
       cc.messages shouldBe empty

@@ -88,11 +88,11 @@ trait AlogicTest
       (true, s"matches the expected $msgName message ")
     }
 
-    val reply = s"""|--- Message
-                    |${message.string}
-                    |--- $hint ---
-                    |${lines mkString ("  ", "\n  ", "")}
-                    |---""".stripMargin
+    val reply = s"""--- Message
+                   |${message.string}
+                   |--- $hint ---
+                   |${lines mkString ("  ", "\n  ", "")}
+                   |---""".stripMargin
 
     MatchResult(pass, reply, reply)
   }

@@ -28,10 +28,10 @@ final class StatelessTreeTransformerSpec extends AnyFlatSpec with AlogicTest {
   implicit val cc: CompilerContext = new CompilerContext
 
   "A TreeTransformer" should "rewrite all nodes where it applies" in {
-    val tree = """|{
-                  |  u1 foo;
-                  |  u2 foo;
-                  |}""".stripMargin.asTree[Stmt] rewrite new StatelessTreeTransformer {
+    val tree = """{
+                 |  u1 foo;
+                 |  u2 foo;
+                 |}""".stripMargin.asTree[Stmt] rewrite new StatelessTreeTransformer {
       override val typed = false
       override def transform(tree: Tree): Tree = tree match {
         case _: Ident => Ident("bar", Nil) withLoc tree.loc

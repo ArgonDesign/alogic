@@ -587,7 +587,9 @@ object TreeCopier {
       steps: List[Tree],
       body: List[Tree]
     ): GenFor = {
-    if ((inits eq tree.inits) && (cond eq tree.cond) && (steps eq tree.steps) && (body eq tree.body)) {
+    if (
+      (inits eq tree.inits) && (cond eq tree.cond) && (steps eq tree.steps) && (body eq tree.body)
+    ) {
       tree
     } else {
       assert(inits forall { _.isInstanceOf[Stmt] })
@@ -899,7 +901,9 @@ object TreeCopier {
       steps: List[Tree],
       body: List[Tree]
     ): StmtFor = {
-    if ((inits eq tree.inits) && (cond eq tree.cond) && (steps eq tree.steps) && (body eq tree.body)) {
+    if (
+      (inits eq tree.inits) && (cond eq tree.cond) && (steps eq tree.steps) && (body eq tree.body)
+    ) {
       tree
     } else {
       assert(inits forall { _.isInstanceOf[Stmt] })

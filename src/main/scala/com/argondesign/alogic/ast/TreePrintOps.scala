@@ -41,9 +41,9 @@ trait TreePrintOps extends { this: Tree =>
       s"$prefix{}"
     } else {
       val i = "  " * indent
-      s"""|$prefix{
-          |$i  ${body map { v(_)(cc, indent + 1) } mkString s"\n$i  "}
-          |$i}""".stripMargin
+      s"""$prefix{
+         |$i  ${body map { v(_)(cc, indent + 1) } mkString s"\n$i  "}
+         |$i}""".stripMargin
     }
   }
 

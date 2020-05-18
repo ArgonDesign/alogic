@@ -141,7 +141,7 @@ final class MakeVerilog(
       body.emitSection(1, "Declaration section") {
         if (hasXenoFuncs) {
           body.emitBlock(1, "Foreign functions") {
-           xenoFuncs foreach { symbol=>
+            xenoFuncs foreach { symbol =>
               body.emit(1)(vdecl(symbol, 1))
             }
           }

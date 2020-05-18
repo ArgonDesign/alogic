@@ -187,7 +187,7 @@ object StaticEvaluation {
       // Remove all bindings that reference the just added symbol,
       // as these used the old value. TODO: use SSA form...
       val written = Set(symbol)
-      val remaining = (curr filterNot { case (_, v) => uses(v, written) })
+      val remaining = curr filterNot { case (_, v) => uses(v, written) }
       // If the new expression is at this point still self referential, then
       // the current bindings didn't cover the symbol, so we do not know the
       // new value as we did not know the old value, so only add it to the

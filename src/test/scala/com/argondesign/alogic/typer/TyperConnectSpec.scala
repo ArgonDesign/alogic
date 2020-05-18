@@ -38,23 +38,23 @@ final class TyperConnectSpec extends AnyFreeSpec with AlogicTest {
     } getOrElse Nil
   }
 
-  private val fsmA = s"""|fsm a_entity {
-                         |  out             bool fcn;
-                         |  out             bool fcnb;
-                         |  out             u2   fcn2;
-                         |  out sync        bool fcv;
-                         |  out sync ready  bool fcr;
-                         |  out sync accept bool fca;
-                         |}""".stripMargin
-  private val fsmB = s"""|fsm b_entity {
-                         |  in              bool fcn;
-                         |  in              bool fcnb;
-                         |  in              u2   fcn2;
-                         |  in sync         bool fcv;
-                         |  in sync         u2   fcv2;
-                         |  in sync ready   bool fcr;
-                         |  in sync accept  bool fca;
-                         |}""".stripMargin
+  private val fsmA = s"""fsm a_entity {
+                        |  out             bool fcn;
+                        |  out             bool fcnb;
+                        |  out             u2   fcn2;
+                        |  out sync        bool fcv;
+                        |  out sync ready  bool fcr;
+                        |  out sync accept bool fca;
+                        |}""".stripMargin
+  private val fsmB = s"""fsm b_entity {
+                        |  in              bool fcn;
+                        |  in              bool fcnb;
+                        |  in              u2   fcn2;
+                        |  in sync         bool fcv;
+                        |  in sync         u2   fcv2;
+                        |  in sync ready   bool fcr;
+                        |  in sync accept  bool fca;
+                        |}""".stripMargin
 
   "The Typer should check Connect usage" - {
 
@@ -679,8 +679,8 @@ final class TyperConnectSpec extends AnyFreeSpec with AlogicTest {
     "no error for const on RHS of '->'" - {
       for {
         init <- List(
-          ("const uint A = 2;"),
-          ("const u2   A = 2'd2;")
+          "const uint A = 2;",
+          "const u2   A = 2'd2;"
         )
       } {
         init in {

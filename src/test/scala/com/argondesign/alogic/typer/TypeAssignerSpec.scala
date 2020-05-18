@@ -98,20 +98,16 @@ final class TypeAssignerSpec extends AnyFreeSpec with AlogicTest {
         "types" - {
           for {
             (text, kind) <- List[(String, PartialFunction[Any, Unit])](
-              ("bool", { case TypeUInt(w) if w == 1                               => }),
-              ("u2", { case TypeUInt(w) if w == 2                                 => }),
+              // format: off
+              ("bool", { case TypeUInt(w) if w == 1 => }),
+              ("u2", { case TypeUInt(w) if w == 2 => }),
               ("u3[6]", { case TypeVector(TypeUInt(w1), w2) if w1 == 3 && w2 == 6 => }),
-              ("i2", { case TypeSInt(w) if w == 2                                 => }),
+              ("i2", { case TypeSInt(w) if w == 2 => }),
               ("i3[6]", { case TypeVector(TypeSInt(w1), w2) if w1 == 3 && w2 == 6 => }),
-              ("void", { case TypeVoid                                            => }),
-              ("t /* typedef */", { case TypeUInt(w) if w == 4                    => }),
-              (
-                "s /* struct */",
-                {
-                  case TypeRecord(s, List(b, c))
-                      if s.name == "s" && b.name == "b" && c.name == "c" =>
-                }
-              )
+              ("void", { case TypeVoid => }),
+              ("t /* typedef */", { case TypeUInt(w) if w == 4 => }),
+              ("s /* struct */", { case TypeRecord(s, List(b, c)) if s.name == "s" && b.name == "b" && c.name == "c" => })
+              // format: on
             )
           } {
             text in {
@@ -859,11 +855,11 @@ final class TypeAssignerSpec extends AnyFreeSpec with AlogicTest {
       "select from type" - {
         for {
           (text, pattern) <- List[(String, PartialFunction[Any, Unit])](
-            ("a.x", { case TypeNone(TypeSInt(w)) if w == 8                                   => }),
+            ("a.x", { case TypeNone(TypeSInt(w)) if w == 8 => }),
             ("b.y", { case TypeNone(TypeRecord(Symbol("a"), List(Symbol("x"), Symbol("f")))) => }),
-            ("b.y.x", { case TypeNone(TypeSInt(w)) if w == 8                                 => }),
-            ("c.d", { case TypeNone(TypeRecord(Symbol("d"), Nil))                            => }),
-            ("a.f", { case TypeStaticMethod(Symbol("f"), TypeVoid, Nil)                      => })
+            ("b.y.x", { case TypeNone(TypeSInt(w)) if w == 8 => }),
+            ("c.d", { case TypeNone(TypeRecord(Symbol("d"), Nil)) => }),
+            ("a.f", { case TypeStaticMethod(Symbol("f"), TypeVoid, Nil) => })
           )
         } {
           text in {
@@ -1043,9 +1039,9 @@ final class TypeAssignerSpec extends AnyFreeSpec with AlogicTest {
                     if w1 == 1 && w2 == 3 && w3 == 2 =>
               }
             ),
-            ("s.a", { case TypeNone(TypeUInt(w)) if w == 32              => }),
+            ("s.a", { case TypeNone(TypeUInt(w)) if w == 32 => }),
             ("s.t", { case TypeNone(TypeRecord(t, Nil)) if t.name == "t" => }),
-            ("x.a", { case TypeType(TypeUInt(w)) if w == 32              => }),
+            ("x.a", { case TypeType(TypeUInt(w)) if w == 32 => }),
             ("x.t", { case TypeType(TypeRecord(t, Nil)) if t.name == "t" => })
           )
         } {
@@ -1081,14 +1077,14 @@ final class TypeAssignerSpec extends AnyFreeSpec with AlogicTest {
       "unambiguous comb statements" - {
         for {
           (text, pattern) <- List[(String, PartialFunction[Any, Unit])](
-            ("a = a + 1;", { case _: StmtAssign       => }),
-            ("a++;", { case _: StmtPost               => }),
-            ("a += 1;", { case _: StmtUpdate          => }),
-            ("bool c;", { case _: StmtDefn            => }),
-            ("read;", { case _: StmtRead              => }),
-            ("write;", { case _: StmtWrite            => }),
+            ("a = a + 1;", { case _: StmtAssign => }),
+            ("a++;", { case _: StmtPost => }),
+            ("a += 1;", { case _: StmtUpdate => }),
+            ("bool c;", { case _: StmtDefn => }),
+            ("read;", { case _: StmtRead => }),
+            ("write;", { case _: StmtWrite => }),
             ("assert false;", { case _: StmtAssertion => }),
-            ("return;", { case _: StmtReturn          => })
+            ("return;", { case _: StmtReturn => })
           )
         } {
           text in {
@@ -1119,19 +1115,19 @@ final class TypeAssignerSpec extends AnyFreeSpec with AlogicTest {
       "unambiguous ctrl statements" - {
         for {
           (text, pattern) <- List[(String, PartialFunction[Any, Unit])](
-            ("goto a;", { case _: StmtGoto                                          => }),
-            ("return;", { case _: StmtReturn                                        => }),
-            ("fence;", { case _: StmtFence                                          => }),
-            ("break;", { case _: StmtBreak                                          => }),
-            ("continue;", { case _: StmtContinue                                    => }),
-            ("for(;;) {}", { case _: StmtFor                                        => }),
-            ("do {} while(1);", { case _: StmtDo                                    => }),
-            ("while (1) {}", { case _: StmtWhile                                    => }),
-            ("loop {}", { case _: StmtLoop                                          => }),
-            ("let (bool b = 1) for(;;) {}", { case StmtLet(_, List(_: StmtFor))     => }),
+            ("goto a;", { case _: StmtGoto => }),
+            ("return;", { case _: StmtReturn => }),
+            ("fence;", { case _: StmtFence => }),
+            ("break;", { case _: StmtBreak => }),
+            ("continue;", { case _: StmtContinue => }),
+            ("for(;;) {}", { case _: StmtFor => }),
+            ("do {} while(1);", { case _: StmtDo => }),
+            ("while (1) {}", { case _: StmtWhile => }),
+            ("loop {}", { case _: StmtLoop => }),
+            ("let (bool b = 1) for(;;) {}", { case StmtLet(_, List(_: StmtFor)) => }),
             ("let (bool b = 1) do {} while(1);", { case StmtLet(_, List(_: StmtDo)) => }),
             ("let (bool b = 1) while (1) {}", { case StmtLet(_, List(_: StmtWhile)) => }),
-            ("let (bool b = 1) loop {}", { case StmtLet(_, List(_: StmtLoop))       => })
+            ("let (bool b = 1) loop {}", { case StmtLet(_, List(_: StmtLoop)) => })
           )
         } {
           text in {
@@ -1162,27 +1158,27 @@ final class TypeAssignerSpec extends AnyFreeSpec with AlogicTest {
       "content dependent statements" - {
         for {
           (text, pattern, kind) <- List[(String, PartialFunction[Any, Unit], Type)](
-            ("if(a) {} else {}", { case StmtIf(_, Nil, Nil)           => }, TypeCombStmt),
-            ("if(a) read;", { case StmtIf(_, _, Nil)                  => }, TypeCombStmt),
-            ("if(a) read; else write;", { case StmtIf(_, _, _ :: _)   => }, TypeCombStmt),
-            ("if(a) fence;", { case StmtIf(_, _, Nil)                 => }, TypeCtrlStmt),
+            ("if(a) {} else {}", { case StmtIf(_, Nil, Nil) => }, TypeCombStmt),
+            ("if(a) read;", { case StmtIf(_, _, Nil) => }, TypeCombStmt),
+            ("if(a) read; else write;", { case StmtIf(_, _, _ :: _) => }, TypeCombStmt),
+            ("if(a) fence;", { case StmtIf(_, _, Nil) => }, TypeCtrlStmt),
             ("if(a) fence; else return;", { case StmtIf(_, _, _ :: _) => }, TypeCtrlStmt),
-            ("case(a) {}", { case StmtCase(_, Nil)                    => }, TypeCombStmt),
-            ("case(a) {a: read;}", { case _: StmtCase                 => }, TypeCombStmt),
-            ("case(a) {default: read;}", { case _: StmtCase           => }, TypeCombStmt),
-            ("case(a) {a: fence;}", { case _: StmtCase                => }, TypeCtrlStmt),
-            ("case(a) {default: fence;}", { case _: StmtCase          => }, TypeCtrlStmt),
-            ("case(a) {default: {read; fence;}}", { case _: StmtCase  => }, TypeCtrlStmt),
-            ("a;", { case StmtExpr(_: ExprSym)                        => }, TypeCombStmt),
-            ("a + a;", { case StmtExpr(_: ExprBinary)                 => }, TypeCombStmt),
-            ("a.read();", { case StmtExpr(_: ExprCall)                => }, TypeCombStmt),
-            ("main();", { case StmtExpr(_: ExprCall)                  => }, TypeCtrlStmt),
-            ("xeno();", { case StmtExpr(_: ExprCall)                  => }, TypeCombStmt),
-            ("s.f();", { case StmtExpr(_: ExprCall)                   => }, TypeCombStmt),
-            ("i.g();", { case StmtExpr(_: ExprCall)                   => }, TypeCombStmt),
-            ("{ }", { case _: StmtBlock                               => }, TypeCombStmt),
-            ("{ a; fence; }", { case _: StmtBlock                     => }, TypeCtrlStmt),
-            ("{ a; a; }", { case _: StmtBlock                         => }, TypeCombStmt)
+            ("case(a) {}", { case StmtCase(_, Nil) => }, TypeCombStmt),
+            ("case(a) {a: read;}", { case _: StmtCase => }, TypeCombStmt),
+            ("case(a) {default: read;}", { case _: StmtCase => }, TypeCombStmt),
+            ("case(a) {a: fence;}", { case _: StmtCase => }, TypeCtrlStmt),
+            ("case(a) {default: fence;}", { case _: StmtCase => }, TypeCtrlStmt),
+            ("case(a) {default: {read; fence;}}", { case _: StmtCase => }, TypeCtrlStmt),
+            ("a;", { case StmtExpr(_: ExprSym) => }, TypeCombStmt),
+            ("a + a;", { case StmtExpr(_: ExprBinary) => }, TypeCombStmt),
+            ("a.read();", { case StmtExpr(_: ExprCall) => }, TypeCombStmt),
+            ("main();", { case StmtExpr(_: ExprCall) => }, TypeCtrlStmt),
+            ("xeno();", { case StmtExpr(_: ExprCall) => }, TypeCombStmt),
+            ("s.f();", { case StmtExpr(_: ExprCall) => }, TypeCombStmt),
+            ("i.g();", { case StmtExpr(_: ExprCall) => }, TypeCombStmt),
+            ("{ }", { case _: StmtBlock => }, TypeCombStmt),
+            ("{ a; fence; }", { case _: StmtBlock => }, TypeCtrlStmt),
+            ("{ a; a; }", { case _: StmtBlock => }, TypeCombStmt)
           )
         } {
           text in {
