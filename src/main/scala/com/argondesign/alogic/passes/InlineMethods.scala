@@ -165,7 +165,7 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatelessTreeTra
             case expr: ExprThis =>
               thisOpt match {
                 case Some(symbol) =>
-                  val thisSymbol = symbol.kind match {
+                  val thisSymbol = symbol.kind.underlying match {
                     case TypeRecord(s, _) => s
                     case _                => cc.ice(expr, "Strange 'this' instance type")
                   }

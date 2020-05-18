@@ -1,0 +1,61 @@
+struct s {
+  bool x;
+  bool get() { return x; }
+  void set(bool v) { x = v; }
+}
+
+network method_pipeline_01 {
+  in bool i;
+  out wire bool o;
+
+  pipeline s t;
+
+  new fsm stage_0 {
+    void main() {
+      t.set(i);
+      write;
+      fence;
+    }
+  }
+
+  stage_0 -> stage_1;
+
+  new fsm stage_1 {
+    void main() {
+      read;
+      t.set(~t.get());
+      write;
+      fence;
+    }
+  }
+
+  stage_1 -> stage_2;
+
+  new fsm stage_2 {
+    void main() {
+      read;
+      o = t.get();
+      fence;
+    }
+  }
+}
+// @fec/golden {{{
+//  module method_pipeline_01(
+//    input  wire clk,
+//    input  wire rst,
+//    input  wire i,
+//    output wire o
+//  );
+//    reg [1:0] q;
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        q <= 2'd0;
+//      end else begin
+//        q <= {q[0], ~i};
+//      end
+//    end
+//
+//    assign o = q[1];
+//  endmodule
+// }}}
