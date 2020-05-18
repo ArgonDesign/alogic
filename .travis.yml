@@ -44,6 +44,5 @@ after_script:
 
 notifications:
   email:
-    if: repo = alogic/alogic
     recipients:
       - gezalore@gmail.com
