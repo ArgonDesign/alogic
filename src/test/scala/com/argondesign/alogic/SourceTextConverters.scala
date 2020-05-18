@@ -28,11 +28,7 @@ object SourceTextConverters {
 
   implicit class String2Repr(val string: String) {
 
-    val source: Source = {
-      val strip = string.startsWith("|") && (string.count(_ == '\n') > 0)
-      val text = if (strip) string.stripMargin else string
-      Source("nofile", text)
-    }
+    val source: Source = Source("nofile", string)
 
     def asTree[T <: Tree: Parseable](implicit cc: CompilerContext): T =
       Parser[T](source, SourceContext.Unknown) getOrElse { throw AsTreeSyntaxErrorException() }

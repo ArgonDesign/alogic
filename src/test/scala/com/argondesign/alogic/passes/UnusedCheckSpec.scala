@@ -211,14 +211,14 @@ final class UnusedCheckSpec extends AnyFlatSpec with AlogicTest {
   it should "issue unused warnings in source line order" in {
     xform {
       """{
-         |  bool a;
-         |  {
-         |    bool b;
-         |    {
-         |      bool c;
-         |    }
-         |  }
-         |}""".asTree[Stmt]
+        |  bool a;
+        |  {
+        |    bool b;
+        |    {
+        |      bool c;
+        |    }
+        |  }
+        |}""".stripMargin.asTree[Stmt]
     }
 
     cc.messages should have length 3
