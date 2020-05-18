@@ -1,0 +1,34 @@
+struct s {
+  u2 x;
+  u2 getSwapped() { return {x[0], x[1]}; }
+}
+
+fsm method_input_00 {
+  in s i;
+  out u2 o;
+
+  void main() {
+    o = i.getSwapped();
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module method_input_00(
+//    input  wire clk,
+//    input  wire rst,
+//    input  wire [1:0] i__x,
+//    output wire [1:0] o
+//  );
+//    reg [1:0] q;
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        q <= 2'd0;
+//      end else begin
+//        q <= {i__x[0], i__x[1]};
+//      end
+//    end
+//
+//    assign o = q;
+//  endmodule
+// }}}
