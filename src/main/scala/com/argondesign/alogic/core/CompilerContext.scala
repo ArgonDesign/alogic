@@ -25,6 +25,8 @@ import com.argondesign.alogic.core.enums.ResetStyle._
 import com.argondesign.alogic.passes.Passes
 import com.argondesign.alogic.typer.Typer
 
+import scala.collection.mutable
+
 class CompilerContext(val settings: Settings = Settings())
     extends Messaging
     with LocationRemapping
@@ -42,6 +44,8 @@ class CompilerContext(val settings: Settings = Settings())
     case AsyncLow | SyncLow => "rst_n"
     case _                  => "rst"
   }
+
+  val manifest: mutable.Map[String, Any] = mutable.LinkedHashMap[String, Any]()
 
   //////////////////////////////////////////////////////////////////////////////
   // Compile the top levels

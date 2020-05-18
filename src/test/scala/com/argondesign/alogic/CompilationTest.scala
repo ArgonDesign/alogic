@@ -455,7 +455,7 @@ trait CompilationTest
     val manifest = {
       io.circe.parser.parse(outputs("manifest.json")) match {
         case Left(failure) => fail(failure.message)
-        case Right(json)   => json.hcursor.downField(topLevel)
+        case Right(json)   => json.hcursor.downField("top-levels").downField(topLevel)
       }
     }
 

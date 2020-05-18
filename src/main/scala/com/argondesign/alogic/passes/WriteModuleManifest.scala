@@ -16,8 +16,7 @@
 
 package com.argondesign.alogic.passes
 
-import java.io.Writer
-
+import com.argondesign.alogic.BuildInfo
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FlowControlTypes._
@@ -30,10 +29,15 @@ import com.argondesign.alogic.util.unreachable
 import scala.collection.immutable.ListMap
 import scala.collection.parallel.CollectionConverters._
 
-object WriteModuleManifest extends PairsTransformerPass {
-  val name = "write-module-manifest"
+object WriteManifest extends PairsTransformerPass {
+  val name = "write-manifest"
 
-  def emit(ow: Writer, pairs: List[(Decl, Defn)])(implicit cc: CompilerContext): Unit = {
+  def topLevelManifest(
+      pairs: List[(Decl, Defn)]
+    )(
+      implicit
+      cc: CompilerContext
+    ): Map[String, Any] = {
 
     ////////////////////////////////////////////////////////////////////////////
     // Build nested manifest as a Map (dictionary)
@@ -167,11 +171,7 @@ object WriteModuleManifest extends PairsTransformerPass {
       )
     }
 
-    ////////////////////////////////////////////////////////////////////////////
-    // Write out the nested dict
-    ////////////////////////////////////////////////////////////////////////////
-
-    Json.write(ow, ListMap.from(dict))
+    ListMap.from(dict)
   }
 
   override def process(
@@ -181,10 +181,18 @@ object WriteModuleManifest extends PairsTransformerPass {
       cc: CompilerContext
     ): List[(Decl, Defn)] = {
 
+    // Add the module manifest
+    cc.manifest("top-levels") = topLevelManifest(input)
+
+    // Add compiler version
+    cc.manifest("alogic-version") = BuildInfo.version
+
+    // Write out the manifest
     val w = cc.settings.outputWriterFactory(Right("manifest.json"))
-    emit(w, input)
+    Json.write(w, cc.manifest)
     w.close()
 
+    // Done
     input
   }
 

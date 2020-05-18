@@ -23,7 +23,6 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FuncVariant
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.lib.Json
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.SequenceNumbers
 
@@ -184,9 +183,7 @@ object LowerForeignFunctions {
         }
 
         if (foreignFunctions.nonEmpty) {
-          val w = cc.settings.outputWriterFactory(Right("foreign_functions.json"))
-          Json.write(w, foreignFunctions)
-          w.close()
+          cc.manifest("foreign-functions") = foreignFunctions
         }
 
         pairs

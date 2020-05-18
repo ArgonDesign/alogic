@@ -102,7 +102,7 @@ object Passes extends ChainingSyntax {
         RenameSymbols andThen
 //      // TODO: RenameKeywords
 //      // TODO: final check pass to make sure everything is well-formed
-        WriteModuleManifest andThen
+        WriteManifest andThen
         CodeGeneration
 
     // Apply the passes to the trees
