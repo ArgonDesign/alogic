@@ -984,7 +984,7 @@ object TreeCopier {
   }
 
   def apply(tree: StmtOutcall)(output: Tree, func: Tree, inputs: List[Tree]): StmtOutcall = {
-    if ((output eq tree.output) && (func eq tree.func) && (output eq tree.output)) {
+    if ((output eq tree.output) && (func eq tree.func) && (inputs eq tree.inputs)) {
       tree
     } else {
       assert(inputs forall { _.isInstanceOf[Expr] })

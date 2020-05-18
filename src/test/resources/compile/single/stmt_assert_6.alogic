@@ -1,0 +1,27 @@
+struct s_t {
+    u4 code;
+    u28 unused;
+}
+
+fsm stmt_assert_6 {
+  import bool f(u4 code);
+  in u32 p_in;
+  void main() {
+    s_t msg = p_in.read();
+    assert f(msg.code);
+    fence;
+  }
+}
+
+// @sim/test {{{
+//  wire [31:0] p_in = 32'h10000000;
+// }}}
+// @sim/dpi {{{
+//  #include "svdpi.h"
+//  extern "C" void f(svBitVecVal *o, const svBitVecVal *code) {
+//    *o = *code == 0;
+//  }
+// }}}
+// @sim/expect {{{
+//  \[2000\] %Error: stmt_assert_6\.v:\d+: Assertion failed in TOP\.testbench\.dut: 'assert' failed.
+// }}}
