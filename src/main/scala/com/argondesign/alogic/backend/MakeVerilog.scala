@@ -121,7 +121,6 @@ final class MakeVerilog(
     case ExprCat(ps)                   => ps map { vexpr(_) } mkString ("{", ", ", "}")
     case ExprIndex(e, i)               => s"${vexpr(e)}[${vexpr(i)}]"
     case ExprSlice(e, l, op, r)        => s"${vexpr(e)}[${vexpr(l)}$op${vexpr(r)}]"
-    case ExprSelect(e, s, Nil)         => s"${vexpr(e)}${cc.sep}$s"
     case ExprSym(symbol)               => symbol.name
     case ExprInt(false, w, v)          => s"$w'd$v"
     case ExprInt(true, w, v) if v >= 0 => s"$w'sd$v"
