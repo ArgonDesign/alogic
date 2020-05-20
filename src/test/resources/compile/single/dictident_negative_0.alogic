@@ -1,0 +1,31 @@
+network dictident_negative_0 {
+  gen for (int n = -2s ; n <= 2s; n++) {
+    in bool i#[n];
+    out bool o#[n];
+  }
+  gen for (int n = -2s ; n <= 2s; n++) {
+    i#[n] -> o#[n];
+  }
+}
+// @fec/golden {{{
+//  module dictident_negative_0(
+//    input wire i__n2,
+//    input wire i__n1,
+//    input wire i__0,
+//    input wire i__1,
+//    input wire i__2,
+//    output wire o__n2,
+//    output wire o__n1,
+//    output wire o__0,
+//    output wire o__1,
+//    output wire o__2
+//  );
+//
+//    assign o__n2 = i__n2;
+//    assign o__n1 = i__n1;
+//    assign o__0 = i__0;
+//    assign o__1 = i__1;
+//    assign o__2 = i__2;
+//
+//  endmodule
+// }}}

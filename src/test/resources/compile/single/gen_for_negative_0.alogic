@@ -1,0 +1,29 @@
+network gen_for_negative_0 {
+  gen for (int n = -2s ; n <= 2s; n++) {
+    in bool i;
+    out bool o;
+    i -> o;
+  }
+}
+// @fec/golden {{{
+//  module gen_for_negative_0(
+//    input wire i__n_n2,
+//    input wire i__n_n1,
+//    input wire i__n_0,
+//    input wire i__n_1,
+//    input wire i__n_2,
+//    output wire o__n_n2,
+//    output wire o__n_n1,
+//    output wire o__n_0,
+//    output wire o__n_1,
+//    output wire o__n_2
+//  );
+//
+//    assign o__n_n2 = i__n_n2;
+//    assign o__n_n1 = i__n_n1;
+//    assign o__n_0 = i__n_0;
+//    assign o__n_1 = i__n_1;
+//    assign o__n_2 = i__n_2;
+//
+//  endmodule
+// }}}

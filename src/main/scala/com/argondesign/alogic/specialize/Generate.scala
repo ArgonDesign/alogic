@@ -311,7 +311,9 @@ private[specialize] object Generate {
               val newSymbol = symbol.dup
 
               // Rename based on value of indices
-              newSymbol.name = idxValues.mkString(symbol.name + cc.sep, "_", "")
+              newSymbol.name = idxValues
+                .map(n => if (n < 0) s"n${-n}" else n)
+                .mkString(symbol.name + cc.sep, "_", "")
 
               // Set the attribute used ot resolve external dict references
               newSymbol.attr.sourceName.set((symbol.name, idxValues))
@@ -360,7 +362,9 @@ private[specialize] object Generate {
               bindings.toList sortBy {
                 _._1.loc.start
               } map {
-                case (symbol, expr) => s"${symbol.name}_${expr.value.get}"
+                case (symbol, expr) =>
+                  val n = expr.value.get
+                  s"${symbol.name}_${if (n < 0) s"n${-n}" else s"$n"}"
               } mkString (cc.sep, cc.sep, "")
             }
 
