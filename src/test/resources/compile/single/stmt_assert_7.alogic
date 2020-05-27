@@ -1,0 +1,23 @@
+// Use async reset, make sure no Verilator SYNCASYNCNET warning.
+// @reset-style:async-low
+fsm stmt_assert_7 {
+  in bool i;
+  out sync ready bool o;
+
+  void main() {
+    assert i;
+    o.write(i);
+    fence;
+  }
+}
+// @sim/test {{{
+//  wire i = 1'd0;
+//  /* verilator lint_off UNUSED */
+//  wire o;
+//  wire o__valid;
+//  /* verilator lint_on UNUSED */
+//  wire o__ready = 1'd0;
+// }}}
+// @sim/expect {{{
+//  \[2000\] %Error: stmt_assert_7\.v:\d+: Assertion failed in TOP\.testbench\.dut: 'assert' failed\.
+// }}}

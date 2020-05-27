@@ -38,6 +38,12 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatefulTreeTr
   private val assertions =
     mutable.ListBuffer[(Symbol, Expr, List[Symbol], Option[String], String)]()
 
+  // Assertion enable symbol for the whole entity, used to gate assertions with
+  // go and reset. Separate signal otherwise Verilator complains SYNCASYNCNET
+  // about asynchronous reset being used in a block which is not sensitive to
+  // it. Also helps readability.
+  private var aEnSymbolOpt: Option[Symbol] = None
+
   private val assertSeqNum = new SequenceNumbers
 
   // Predicate indicating what kind of symbols need to be copied for assertions
@@ -136,6 +142,9 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatefulTreeTr
       Thicket(lb.toList)
 
     case defn: DefnEntity if assertions.nonEmpty =>
+      val aEnSymbol = cc.newSymbol(s"_assertions_en", tree.loc)
+      aEnSymbol.kind = TypeUInt(1)
+      aEnSymbolOpt = Some(aEnSymbol)
       val newBody = List from {
         defn.body.iterator concat {
           assertions.iterator flatMap {
@@ -146,6 +155,20 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatefulTreeTr
                 }
               }
           }
+        } concat {
+          val aEnDefn = EntDefn(aEnSymbol.mkDefn) regularize defn.loc;
+          val aEnConnect = {
+            val rstInactive = cc.settings.resetStyle match {
+              case ResetStyle.AsyncHigh | ResetStyle.SyncHigh => !ExprSym(defn.rst.get)
+              case ResetStyle.AsyncLow | ResetStyle.SyncLow   => ExprSym(defn.rst.get)
+            }
+            val cond = defn.go match {
+              case Some(goSymbol) => ExprSym(goSymbol) && rstInactive
+              case None           => rstInactive
+            }
+            EntConnect(cond, ExprSym(aEnSymbol) :: Nil) regularize defn.loc
+          }
+          Iterator(aEnDefn, aEnConnect)
         } concat {
           Iterator single {
             val asserts = List from {
@@ -161,24 +184,14 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatefulTreeTr
                   )
               }
             }
-            val rstInactive = cc.settings.resetStyle match {
-              case ResetStyle.AsyncHigh | ResetStyle.SyncHigh => !ExprSym(defn.rst.get)
-              case ResetStyle.AsyncLow | ResetStyle.SyncLow   => ExprSym(defn.rst.get)
-            }
-            val stmts = List(
-              StmtComment("Assertions") regularize tree.loc,
-              defn.go match {
-                case Some(goSymbol) =>
-                  StmtIf(ExprSym(goSymbol) && rstInactive, asserts, Nil) regularize tree.loc
-                case None =>
-                  StmtIf(rstInactive, asserts, Nil) regularize tree.loc
-              }
-            )
             TypeAssigner(
               EntClockedProcess(
                 ExprSym(defn.clk.get) regularize tree.loc,
                 None,
-                stmts
+                List(
+                  StmtComment("Assertions") regularize tree.loc,
+                  StmtIf(ExprSym(aEnSymbol), asserts, Nil) regularize tree.loc
+                )
               ) withLoc tree.loc
             )
           }
@@ -189,6 +202,8 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatefulTreeTr
     case decl: DeclEntity if assertions.nonEmpty =>
       val newDecls = List from {
         decl.decls.iterator concat {
+          aEnSymbolOpt.iterator map { _.mkDecl regularize decl.loc }
+        } concat {
           assertions.iterator flatMap {
             case (enSymbol, _, condSymbols, _, _) =>
               Iterator.single(enSymbol.mkDecl regularize enSymbol.loc) concat {
