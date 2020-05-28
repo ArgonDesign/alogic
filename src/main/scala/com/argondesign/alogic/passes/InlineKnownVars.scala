@@ -18,10 +18,11 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.analysis.StaticEvaluation
 import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Bindings
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.typer.TypeAssigner
+import com.argondesign.alogic.util.BigIntOps._
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -104,6 +105,29 @@ final class InlineKnownVars(
             // Note: rIdx is always constant
             TypeAssigner(e.copy(expr = newExpr, lIdx = known) withLoc tree.loc).simplify
           case other => TypeAssigner(e.copy(lIdx = other) withLoc tree.loc)
+        }
+      }
+
+    // Selects on structs are removed by SplitStruct but InlineKnownVars might
+    // be called prior, e.g. from InlineMethods, so handle them if we can.
+    case e @ ExprSelect(expr, sel, _) if expr.tpe.underlying.isRecord =>
+      Some {
+        walk(expr).asInstanceOf[Expr].simplify match {
+          case known: ExprInt =>
+            val kind = expr.tpe.underlying.asRecord
+            val dataMembers = kind.dataMembers
+            val fieldIndex = dataMembers.indexWhere(_.name == sel)
+            val fieldSymbol = dataMembers(fieldIndex)
+            val width = fieldSymbol.kind.width.toInt
+            val signed = fieldSymbol.kind.isSigned
+            val lsb = (dataMembers.iterator map { _.kind.width.toInt })
+              .scanLeft(0)(_ + _)
+              .drop(fieldIndex)
+              .next
+            TypeAssigner(
+              ExprInt(signed, width, known.value.extract(lsb, width, signed)) withLoc tree.loc
+            )
+          case other => TypeAssigner(e.copy(expr = other) withLoc tree.loc)
         }
       }
 
