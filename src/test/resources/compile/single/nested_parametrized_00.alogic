@@ -1,0 +1,25 @@
+network nested_parametrized_00 {
+  in bool i;
+  out wire bool o;
+  new fsm inner {
+    struct s {
+      param uint P;
+      static uint(P) id(uint(P) x) {
+        return x;
+      }
+    }
+
+    void main() {
+      o = s(1).id(i);
+      fence;
+    }
+  }
+}
+// @fec/golden {{{
+//  module nested_parametrized_00(
+//    input wire i,
+//    output wire o
+//  );
+//    assign o = i;
+//  endmodule
+// }}}
