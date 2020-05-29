@@ -1,0 +1,18 @@
+network param_assignment_required_3 {
+  in bool i;
+  out wire bool o;
+  new fsm inner {
+    struct s {
+      param uint P;
+      static uint(P) id(uint(P) x) {
+        return x;
+      }
+    }
+
+    void main() {
+      o = s.id(i);
+      fence;
+    }
+  }
+}
+// :13: ERROR: Parametrized type requires parameter list

@@ -51,12 +51,7 @@ class BoolHelpers(val value: Boolean) extends AnyVal {
   def implies(other: => Boolean): Boolean = !value || other
 }
 
-final class Typer(
-    errorForParametrized: Boolean = true
-  )(
-    implicit
-    cc: CompilerContext)
-    extends StatefulTreeTransformer {
+final class Typer(implicit cc: CompilerContext) extends StatefulTreeTransformer {
 
   override val typed: Boolean = false
 
@@ -264,6 +259,11 @@ final class Typer(
   }
 
   // TODO: Type attributes in a systematic way..
+
+  // The node the Typer was invoked on
+  private var top: Tree = _
+
+  override def start(tree: Tree): Unit = top = tree
 
   override def enter(tree: Tree): Option[Tree] = {
     implicit val itree: Tree = tree
@@ -841,7 +841,10 @@ final class Typer(
       // Assign type if have not been assigned by now
       if (tree.hasTpe) tree else TypeAssigner(tree)
     } tap { _ =>
-      if (errorForParametrized && tree.tpe.isParametrized) {
+      // It's OK for the end result to be parametrized (this happens during
+      // parameter specialization), but any intermediate node must be fully
+      // specialized.
+      if ((tree ne top) && tree.tpe.isParametrized) {
         cc.error(tree, s"Parametrized type requires parameter list")
         hadError = true
       }
@@ -857,6 +860,8 @@ final class Typer(
   }
 
   override def finalCheck(tree: Tree): Unit = {
+    assert(tree eq top, "Typer must not modify the tree")
+
     if (tree.hasTpe && !tree.tpe.isError) {
       assert(contextKind.isEmpty, s"${tree.loc.prefix}\n$contextKind\n$contextNode")
 
