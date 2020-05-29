@@ -1,0 +1,33 @@
+fsm inline_type_punned_struct_value {
+  in i3[2] p_in;
+  out wire bool p_out;
+
+  struct s1_t {
+    i3  data;
+  }
+
+  struct combin {
+    static bool func() {
+      // We will try to simplity this prior to structure splitting to a single
+      // return statement by folding 'data' into 'p_in[0].data', but 'p_in[0]'
+      // on it's own is not a struct type, so we need to check for that.
+      s1_t s1 = p_in[0];
+      i3 data = s1.data;
+      return (data < 0s) ? 1'b0 : 1'b1;
+    }
+  }
+
+  void main() {
+    p_out = combin.func();
+    fence;
+  }
+}
+// @verilator-lint-off
+// @fec/golden {{{
+//  module inline_type_punned_struct_value(
+//    input wire [5:0] p_in,
+//    output wire p_out
+//  );
+//    assign p_out = p_in[2] ? 1'b0 : 1'b1;
+//  endmodule
+// }}}
