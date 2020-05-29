@@ -1,0 +1,9 @@
+network p8009_249 {
+  new network inner {
+    struct s {
+      param uint P;
+    }
+  }
+}
+// :2: WARNING: Singleton instance 'inner' is unused
+// :3: WARNING: struct 's' is unused

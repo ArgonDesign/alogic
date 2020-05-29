@@ -282,7 +282,7 @@ class LiftEntitiesA(
         }
         TypeAssigner(decl.copy(decls = rest) withLoc decl.loc) :: (nested flatMap flatten)
       }
-      Thicket(flatten(decl))
+      Thicket(flatten(decl) sortBy { _.symbol.id })
     case defn: DefnEntity =>
       def flatten(defn: DefnEntity): List[DefnEntity] = {
         val (nested, rest) = defn.body partitionMap {
@@ -291,7 +291,7 @@ class LiftEntitiesA(
         }
         TypeAssigner(defn.copy(body = rest) withLoc defn.loc) :: (nested flatMap flatten)
       }
-      Thicket(flatten(defn))
+      Thicket(flatten(defn) sortBy { _.symbol.id })
     case _ => unreachable
   }
 

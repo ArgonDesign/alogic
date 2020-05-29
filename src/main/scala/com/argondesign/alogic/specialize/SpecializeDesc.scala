@@ -15,6 +15,7 @@
 
 package com.argondesign.alogic.specialize
 
+import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
@@ -576,47 +577,56 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
 
       // Return all complete specializations of the given parametrized Descs
       Some {
-        def specials(descs: List[Desc]): (List[Decl], List[Defn]) = {
-          assert(descs forall { _.isParametrized })
-          descs flatMap { desc =>
-            specializations.getOrElse(desc.symbol, Map.empty).valuesIterator
-          } pipe {
-            _.unzip
-          }
-        }
-
-        def splice[T <: Tree, R <: Tree](trees: List[T], f: T => R): List[R] =
-          trees.map { tree =>
-            f(tree) withLoc tree.loc
-          }
-
-        // All dependencies of given definition, including itself
+        // All specialized dependencies of given definition, including itself
         def dependencies(decl: Decl, defn: Defn): Iterator[(Decl, Defn)] = {
-          // Replace parametrized members with their specializations
-          val (sDecl, sDefn) = (decl, defn) match {
-            case (decl @ DeclEntity(_, decls), defn @ DefnEntity(_, _, body)) =>
-              val (extraDecls, extraDefns) = specials(defn.descs)
-              val newDecl = decl.copy(decls = decls ::: extraDecls) withLoc decl.loc
-              val newDefn = defn.copy(
-                body = (body filter { !_.isInstanceOf[EntDesc] }) ::: splice(extraDefns, EntDefn)
-              ) withLoc defn.loc
-              (newDecl, newDefn)
-            case (decl @ DeclRecord(_, decls), defn @ DefnRecord(_, body)) =>
-              val (extraDecls, extraDefns) = specials(defn.descs)
-              val newDecl = decl.copy(decls = decls ::: extraDecls) withLoc decl.loc
-              val newDefn = defn.copy(
-                body = (body filter { !_.isInstanceOf[RecDesc] }) ::: splice(extraDefns, RecDefn)
-              ) withLoc defn.loc
-              (newDecl, newDefn)
-            case (decl @ DeclSingleton(_, decls), defn @ DefnSingleton(_, _, body)) =>
-              val (extraDecls, extraDefns) = specials(defn.descs)
-              val newDecl = decl.copy(decls = decls ::: extraDecls) withLoc decl.loc
-              val newDefn = defn.copy(
-                body = (body filter { !_.isInstanceOf[EntDesc] }) ::: splice(extraDefns, EntDefn)
-              ) withLoc defn.loc
-              (newDecl, newDefn)
-            case _ => (decl, defn)
+          object ReplaceParametrizedWithSpecializations extends StatefulTreeTransformer {
+            override protected val typed = false
+
+            private val extraDecls = mutable.Map[Symbol, Iterator[Decl]]()
+
+            override def enter(tree: Tree): Option[Tree] = tree match {
+              case EntDesc(desc) =>
+                val (specialDecls, specialDefns) =
+                  specializations.getOrElse(desc.symbol, Map.empty).values.unzip
+                extraDecls.updateWith(enclosingSymbols.head) {
+                  case None       => Some(specialDecls.iterator)
+                  case Some(iter) => Some(iter concat specialDecls.iterator)
+                }
+                Some(Thicket(specialDefns.toList map { EntDefn(_) withLoc tree.loc }))
+              case RecDesc(desc) =>
+                val (specialDecls, specialDefns) =
+                  specializations.getOrElse(desc.symbol, Map.empty).values.unzip
+                extraDecls.updateWith(enclosingSymbols.head) {
+                  case None       => Some(specialDecls.iterator)
+                  case Some(iter) => Some(iter concat specialDecls.iterator)
+                }
+                Some(Thicket(specialDefns.toList map { RecDefn(_) withLoc tree.loc }))
+              case _ => None
+            }
+
+            override def transform(tree: Tree): Tree = tree match {
+              case decl @ DeclEntity(symbol, decls) =>
+                extraDecls.get(symbol) map { extra =>
+                  val newDecls = List.from(decls.iterator concat extra)
+                  decl.copy(decls = newDecls) withLoc tree.loc
+                } getOrElse tree
+              case decl @ DeclRecord(symbol, decls) =>
+                extraDecls.get(symbol) map { extra =>
+                  val newDecls = List.from(decls.iterator concat extra)
+                  decl.copy(decls = newDecls) withLoc tree.loc
+                } getOrElse tree
+              case decl @ DeclSingleton(symbol, decls) =>
+                extraDecls.get(symbol) map { extra =>
+                  val newDecls = List.from(decls.iterator concat extra)
+                  decl.copy(decls = newDecls) withLoc tree.loc
+                } getOrElse tree
+              case _ => tree
+            }
           }
+
+          // Replace parametrized members with their specializations
+          val sDefn = defn rewrite ReplaceParametrizedWithSpecializations
+          val sDecl = decl rewrite ReplaceParametrizedWithSpecializations
 
           prevDumped = null
           dump("Final")(Right((sDecl, sDefn)))
