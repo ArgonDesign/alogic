@@ -85,7 +85,7 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
         StmtContinue() withLoc ctx.loc
 
       override def visitStmtGoto(ctx: StmtGotoContext): Stmt =
-        StmtGoto(ExprRef(IdentBuilder(ctx.ident)) withLoc ctx.ident.loc) withLoc ctx.loc
+        StmtGoto(ExprBuilder(ctx.expr)) withLoc ctx.loc
 
       override def visitStmtReturn(ctx: StmtReturnContext): Stmt = {
         val comb = sc match {

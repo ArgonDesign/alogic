@@ -463,9 +463,12 @@ call site of _b_ inside _a_:
 
 ```
   void b() {
-    goto c;
+    goto c();
   }
 ```
+
+The target of the `goto` statement must be a function call to a control
+function.
 
 ### Looping statements
 

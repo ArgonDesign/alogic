@@ -302,6 +302,14 @@ final class Checker(implicit cc: CompilerContext) extends StatefulTreeTransforme
       cc.error(lhs, s"Invalid expression on left hand side of '$op'")
       StmtError() withLoc tree.loc
 
+    case StmtGoto(expr) =>
+      expr match {
+        case _: ExprCall => tree
+        case _ =>
+          cc.error(expr, s"Target of 'goto' statement must be a function call expression")
+          StmtError() withLoc tree.loc
+      }
+
     case ExprCat(List(_)) =>
       cc.warning(tree, "Single expression concatenation")
       tree

@@ -12,18 +12,18 @@ network gen_alt_func_1 {
     out u4 p_o;
 
     void main() {
-      goto doit;
+      goto doit();
     }
 
     gen if (SIGNED) {
       void doit() {
         p_o.write('$signed(p_i_0) * '$signed(p_i_1));
-        goto doit;
+        goto doit();
       }
     } else {
       void doit() {
         p_o.write('p_i_0 * 'p_i_1);
-        goto doit;
+        goto doit();
       }
     }
   }

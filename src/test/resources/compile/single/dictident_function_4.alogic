@@ -7,17 +7,17 @@ fsm dictident_function_4 {
   }
 
   void main() {
-    goto func#[0];
+    goto func#[0]();
   }
 
   gen for (uint N < 2) {
     void func#[N]() {
       gen if (N > 0) {
         o = ~i;
-        goto main;
+        goto main();
       } else {
         o = i;
-        goto func#[N+1];
+        goto func#[N+1]();
       }
     }
   }

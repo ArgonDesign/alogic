@@ -4,26 +4,26 @@ fsm recursive_goto_3 {
 
   void main() {
     o = i;
-    goto a;
+    goto a();
   }
 
   void a() {
     o = i + 1;
     if (i == 0) {
-      goto main;
+      goto main();
     } else if (i == 1) {
-      goto b;
+      goto b();
     } else {
-      goto a;
+      goto a();
     }
   }
 
   void b() {
     o = i + 2;
     if (i == 0) {
-      goto main;
+      goto main();
     } else {
-      goto b;
+      goto b();
     }
   }
 }

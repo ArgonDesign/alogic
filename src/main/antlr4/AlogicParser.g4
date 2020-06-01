@@ -173,7 +173,7 @@ stmt
   | 'fence' ';'                                                 # StmtFence
   | 'break' ';'                                                 # StmtBreak
   | 'continue' ';'                                              # StmtContinue
-  | 'goto' ident ';'                                            # StmtGoto
+  | 'goto' expr ';'                                             # StmtGoto
   | 'return' expr? ';'                                          # StmtReturn
   | expr point='=' expr ';'                                     # StmtAssign
   | expr ASSIGNOP expr ';'                                      # StmtUpdate

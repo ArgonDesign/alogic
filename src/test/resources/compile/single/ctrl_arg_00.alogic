@@ -1,41 +1,39 @@
-fsm recursive_goto_1 {
-  in       bool i;
-  out wire bool o;
+// @ignore
+fsm ctrl_arg_00 {
+  in bool i;
+  out bool o;
 
   void main() {
-    o = i;
-    goto a();
+    f(i);
   }
 
-  void a() {
-    o = ~i;
-    goto main();
+  void f(bool x) {
+    o = x;
+    return;
   }
+
 }
 // @fec/golden {{{
-//  module recursive_goto_1(
+//  module ctrl_arg_00(
 //    input wire clk,
 //    input wire rst,
 //    input wire i,
 //    output reg o
 //  );
 //
-//    reg state_q;
+//    reg prev_i_q;
+//    req state_q;
 //
 //    always @(posedge clk) begin
 //      if (rst) begin
+//        prev_i_q <= 1'd0;
 //        state_q <= 1'd0;
+//        o <= 1'd0;
 //      end else begin
+//        prev_i_q <= i;
 //        state_q <= ~state_q;
+//        if (state_q) o <= prev_i_q;
 //      end
 //    end
-//
-//    always @* begin
-//      case (state_q)
-//        1'b0: o = i;
-//        1'b1: o = ~i;
-//      endcase
-//    end
-//
 //  endmodule
 // }}}

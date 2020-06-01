@@ -3,12 +3,12 @@ fsm circular_reference_1 {
 
   void main() {
     p_o = false;
-    goto other;
+    goto other();
   }
 
   void other() {
     p_o = true;
-    goto main;
+    goto main();
   }
 
 }

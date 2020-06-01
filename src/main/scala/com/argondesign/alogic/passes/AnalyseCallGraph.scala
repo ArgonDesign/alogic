@@ -391,18 +391,16 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends StatefulTreeT
     // Collect the call graph edges as we go
     //////////////////////////////////////////////////////////////////////////
 
-    case ExprCall(ref, _) if ref.tpe.isCtrlFunc =>
-      ref match {
-        case ExprSym(callee) =>
-          calls add (Some(currentFunction) -> callee)
-          callCounts(callee) += 1
-        case _ => unreachable
-      }
-      None
-
-    case StmtGoto(ExprSym(callee)) =>
+    case StmtGoto(ExprCall(ref, _)) =>
+      val callee = ref.tpe.asCtrlFunc.symbol
       gotos add (currentFunction -> callee)
-      None
+      Some(tree)
+
+    case ExprCall(ref, _) if ref.tpe.isCtrlFunc =>
+      val callee = ref.tpe.asCtrlFunc.symbol
+      calls add (Some(currentFunction) -> callee)
+      callCounts(callee) += 1
+      Some(tree)
 
     //
     case _ => None

@@ -24,30 +24,30 @@ network gen_alt_func_2 {
       gen if (DOUBLE) {
         void doit() {
           p_o.write('$signed(p_i_0) * '$signed(p_i_0) * '$signed(p_i_1)* '$signed(p_i_1));
-          goto doit;
+          goto doit();
         }
       } else {
         void doit() {
           p_o.write('$signed(p_i_0) * '$signed(p_i_1));
-          goto doit;
+          goto doit();
         }
       }
     } else {
       gen if (DOUBLE) {
         void doit() {
           p_o.write('p_i_0 * 'p_i_0 * 'p_i_1 * 'p_i_1);
-          goto doit;
+          goto doit();
         }
       } else {
         void doit() {
           p_o.write('p_i_0 * 'p_i_1);
-          goto doit;
+          goto doit();
         }
       }
     }
 
     void main() {
-      goto doit;
+      goto doit();
     }
   }
 

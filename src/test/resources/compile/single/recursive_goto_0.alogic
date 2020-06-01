@@ -4,7 +4,7 @@ fsm recursive_goto_0 {
 
   void main() {
     o = i;
-    goto main;
+    goto main();
   }
 }
 // @fec/golden {{{

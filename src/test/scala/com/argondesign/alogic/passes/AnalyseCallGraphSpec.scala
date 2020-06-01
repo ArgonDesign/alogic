@@ -93,7 +93,7 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
         s"""
         |fsm a {
         |  void main() { foo(); }
-        |  void foo() { goto foo; }
+        |  void foo() { goto foo(); }
         |}"""
       }
       cc.messages shouldBe empty
@@ -171,7 +171,7 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
         analyseCallGraph {
           s"""
           |fsm a {
-          |  void main() { goto main; }
+          |  void main() { goto main(); }
           |}"""
         }
         cc.messages shouldBe empty
@@ -181,8 +181,8 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
         analyseCallGraph {
           s"""
           |fsm a {
-          |  void main() { goto foo; }
-          |  void foo() { goto main; }
+          |  void main() { goto foo(); }
+          |  void foo() { goto main(); }
           |}"""
         }
         cc.messages shouldBe empty
@@ -192,9 +192,9 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
         analyseCallGraph {
           s"""
           |fsm a {
-          |  void main() { goto foo; }
-          |  void foo() { goto bar; }
-          |  void bar() { goto main; }
+          |  void main() { goto foo(); }
+          |  void foo() { goto bar(); }
+          |  void bar() { goto main(); }
           |}"""
         }
         cc.messages shouldBe empty
@@ -244,7 +244,7 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
           s"""
           |fsm a {
           |  void main() { foo(); }
-          |  (* reclimit = 2 *) void foo() { goto foo; }
+          |  (* reclimit = 2 *) void foo() { goto foo(); }
           |}"""
         }
         cc.messages.loneElement should beThe[Warning](
@@ -257,7 +257,7 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
           analyseCallGraph {
             s"""
             |fsm a {
-            |  (* reclimit = 2 *) void main() { goto main; }
+            |  (* reclimit = 2 *) void main() { goto main(); }
             |}"""
           }
           cc.messages.loneElement should beThe[Warning](
@@ -269,8 +269,8 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
           analyseCallGraph {
             s"""
             |fsm a {
-            |  (* reclimit = 2 *) void main() { goto foo; }
-            |  (* reclimit = 2 *) void foo() { goto main; }
+            |  (* reclimit = 2 *) void main() { goto foo(); }
+            |  (* reclimit = 2 *) void foo() { goto main(); }
             |}"""
           }
           cc.messages should have length 2
@@ -286,9 +286,9 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
           analyseCallGraph {
             s"""
             |fsm a {
-            |  (* reclimit = 2 *) void main() { goto foo; }
-            |  (* reclimit = 2 *) void foo() { goto bar; }
-            |  (* reclimit = 2 *) void bar() { goto main; }
+            |  (* reclimit = 2 *) void main() { goto foo(); }
+            |  (* reclimit = 2 *) void foo() { goto bar(); }
+            |  (* reclimit = 2 *) void bar() { goto main(); }
             |}"""
           }
           cc.messages should have length 3
@@ -407,9 +407,9 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
           """fsm fsm_e {
              |  void main() { a(); b(); c(); }
              |  void a() { e(); f(); return; }
-             |  void b() { goto d; }
+             |  void b() { goto d(); }
              |  void c() { return; }
-             |  void d() { goto g; }
+             |  void d() { goto g(); }
              |  void e() { return; }
              |  void f() { return; }
              |  void g() { return; }
@@ -447,7 +447,7 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
           """fsm fsm_e {
              |  in bool pi;
              |  void main() { a(); }
-             |  void a() { if (pi) { goto b; } else { goto c; } }
+             |  void a() { if (pi) { goto b(); } else { goto c(); } }
              |  void b() { return; }
              |  void c() { d(); return; }
              |  void d() { return; }
@@ -485,8 +485,8 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
         val result = analyseCallGraph {
           """fsm fsm_e {
              |  void main() { a(); b(); }
-             |  void a() { goto c; }
-             |  void b() { goto c; }
+             |  void a() { goto c(); }
+             |  void b() { goto c(); }
              |  void c() { return; }
              |}"""
         }
@@ -596,10 +596,10 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
           """fsm fsm_e {
              |  void main() { a(); }
              |  void a() { b(); b(); return; }
-             |  void b() { goto b2; }
+             |  void b() { goto b2(); }
              |  void b2() { c(); return; }
              |  void c() { d(); d(); return; }
-             |  void d() { goto d2; }
+             |  void d() { goto d2(); }
              |  void d2() { e(); return; }
              |  void e() { return; }
              |}"""
@@ -649,7 +649,7 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
              |  in bool pi;
              |  void main() { a(); b(); }
              |  void a() {
-             |    if (pi) { goto c; } else { goto b; }
+             |    if (pi) { goto c(); } else { goto b(); }
              |  }
              |  void b() { return; }
              |  void c() { return; }
@@ -756,7 +756,7 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
       "returning to top of main after goto in main function" in {
         val result = analyseCallGraph {
           """fsm fsm_e {
-             |  void main() { goto a; }
+             |  void main() { goto a(); }
              |  void a() { return; }
              |}"""
         }

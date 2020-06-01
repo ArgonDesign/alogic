@@ -108,7 +108,7 @@ void main() {
 
   d.write(a);   // | Cycle 2
   e--;          // | Cycle 2
-  goto foo;     // V Cycle 2 ends - Cycle 3 would start at the first
+  goto foo();   // V Cycle 2 ends - Cycle 3 would start at the first
                 //                  statement of control function 'foo'
 }
 ```
@@ -135,7 +135,7 @@ void main() {
 
   d.write(a);   // | Cycle 2
   e--;          // | Cycle 2
-  goto foo;     // V Cycle 2 ends
+  goto foo();   // V Cycle 2 ends
 }
 ```
 
@@ -157,7 +157,7 @@ void main() {
 
     d.write(a); // | Cycle 2
     e--;        // | Cycle 2
-    goto foo;   // V Cycle 2 ends
+    goto foo(); // V Cycle 2 ends
   }
 }
 ```
@@ -189,7 +189,7 @@ void main() {
 
   d.write(a);   // | Cycle 2
   e--;          // | Cycle 2
-  goto foo;     // V Cycle 2 ends
+  goto foo();   // V Cycle 2 ends
 }
 ```
 
@@ -222,7 +222,7 @@ void main() {
 
   d.write(a);   // | Cycle 2 if 'a' was true, and Cycle 3 if 'a' was false
   e--;          // | Cycle 2 if 'a' was true, and Cycle 3 if 'a' was false
-  goto foo;     // V Cycle 2 ends if 'a' was true, and Cycle 3 ends if 'a' was false
+  goto foo();   // V Cycle 2 ends if 'a' was true, and Cycle 3 ends if 'a' was false
 }
 ```
 
@@ -251,7 +251,7 @@ void main() {
 
   d.write(a); // | Cycle 3
   e--;        // | Cycle 3
-  goto foo;   // V Cycle 3 ends
+  goto foo(); // V Cycle 3 ends
 }
 ```
 
@@ -274,7 +274,7 @@ void main() {
   
   d.write(a); // | Cycle 3 if 'while' loop was entered, otherwise Cycle 2
   e--;        // | Cycle 3 if 'while' loop was entered, otherwise Cycle 2
-  goto foo;   // V Cycle 3 ends if 'while' loop was entered, otherwise Cycle 2 ends
+  goto foo(); // V Cycle 3 ends if 'while' loop was entered, otherwise Cycle 2 ends
 }
 ```
 

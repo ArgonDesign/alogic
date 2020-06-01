@@ -192,18 +192,8 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
       //////////////////////////////////////////////////////////////////////////
 
       override def visitExprCall(ctx: ExprCallContext): Expr = {
-        object ArgVisitor extends AlogicScalarVisitor[Arg] {
-          override def visitArgNamed(ctx: ArgNamedContext): Arg = {
-            val loc = ctx.loc.copy(point = ctx.point.getStartIndex)
-            ArgN(ctx.IDENTIFIER, ExprBuilder(ctx.expr)) withLoc loc
-          }
-
-          override def visitArgPositional(ctx: ArgPositionalContext): Arg =
-            ArgP(ExprBuilder(ctx.expr)) withLoc ctx.loc
-        }
-
-        val args = if (ctx.args == null) Nil else ArgVisitor(ctx.args.arg)
-        ExprCall(visit(ctx.expr), args) withLoc ctx.loc.copy(point = ctx.open.getStartIndex)
+        val loc = ctx.loc.copy(point = ctx.open.getStartIndex)
+        ExprCall(visit(ctx.expr), ArgBuilder(ctx.args)) withLoc loc
       }
 
       //////////////////////////////////////////////////////////////////////////

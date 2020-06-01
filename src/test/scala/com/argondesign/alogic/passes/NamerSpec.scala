@@ -420,14 +420,16 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
 
     "resolve goto targets" in {
       val entity = """fsm a {
-                     |  void main() { goto foo; }
+                     |  void main() { goto foo(); }
                      |  void foo() {}
                      |}""".stripMargin.asTree[Desc]
 
       inside(xform(entity)) {
         case DescEntity(_, EntityVariant.Fsm, List(main, foo)) =>
           inside(main) {
-            case EntDesc(DescFunc(Sym(_, Nil), _, _, _, List(StmtGoto(ExprSym(sym))))) =>
+            case EntDesc(
+                  DescFunc(Sym(_, Nil), _, _, _, List(StmtGoto(ExprCall(ExprSym(sym), Nil))))
+                ) =>
               inside(foo) {
                 case EntDesc(DescFunc(Sym(fooSym, Nil), _, _, _, _)) =>
                   sym should be theSameInstanceAs fooSym

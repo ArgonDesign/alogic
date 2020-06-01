@@ -27,7 +27,8 @@ final class ConvertControlSpec extends AnyFreeSpec with AlogicTest {
 
   private def convertControl(text: String): Thicket = Thicket {
     transformWithPass(
-      Namer andThen
+      Checker andThen
+        Namer andThen
         Elaborate andThen
         TypeCheck andThen
         AnalyseCallGraph andThen
@@ -145,7 +146,7 @@ final class ConvertControlSpec extends AnyFreeSpec with AlogicTest {
            |  in bool pi;
            |  void main() { a(); b(); }
            |  void a() {
-           |    if (pi) { goto c; } else { goto b; }
+           |    if (pi) { goto c(); } else { goto b(); }
            |  }
            |  void b() { return; }
            |  void c() { return; }
@@ -176,9 +177,9 @@ final class ConvertControlSpec extends AnyFreeSpec with AlogicTest {
         """fsm fsm_e {
            |  void main() {
            |    fence;
-           |    goto a;
+           |    goto a();
            |  }
-           |  void a() { goto b; }
+           |  void a() { goto b(); }
            |  void b() { return; }
            |}"""
       }
@@ -201,7 +202,7 @@ final class ConvertControlSpec extends AnyFreeSpec with AlogicTest {
         """fsm fsm_e {
            |  void main() {
            |    a();
-           |    goto a;
+           |    goto a();
            |  }
            |  void a() { return; }
            |}"""

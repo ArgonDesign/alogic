@@ -80,8 +80,8 @@ final class NormalizeControl(implicit cc: CompilerContext) extends StatelessTree
       // Convert final 'call' to 'goto' (tail call)
       case StmtExpr(expr) =>
         expr match {
-          case ExprCall(t, Nil) => StmtGoto(ExprSym(t.tpe.asCtrlFunc.symbol)) regularize stmt.loc
-          case _                => unreachable
+          case call: ExprCall => StmtGoto(call) regularize stmt.loc
+          case _              => unreachable
         }
 
       // Convert 'break' in final loop to 'return'

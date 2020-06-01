@@ -226,7 +226,8 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
         // Ensure the function entry state is emitted
         pendingStates.push(Some(stateSymbol))
 
-      case StmtExpr(ExprCall(ExprSym(functionSymbol), Nil)) =>
+      case StmtExpr(ExprCall(ExprSym(functionSymbol), args)) =>
+        assert(args.isEmpty)
         stateFollowingCallOf(functionSymbol) = followingState.top
 
       //////////////////////////////////////////////////////////////////////////
@@ -319,7 +320,8 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
         val ref = ExprSym(continueTargets.top)
         StmtGoto(ref) regularize tree.loc
 
-      case StmtGoto(ExprSym(symbol)) =>
+      case StmtGoto(ExprCall(ExprSym(symbol), args)) =>
+        assert(args.isEmpty)
         val ref = ExprSym(func2state(symbol))
         StmtGoto(ref) regularize tree.loc
 

@@ -1151,5 +1151,36 @@ final class CheckerSpec extends AnyFreeSpec with AlogicTest {
 
       }
     }
+
+    "check goto is to a call expression" - {
+      for {
+        (tgt, ok) <- List(
+          ("a()", true),
+          ("a.b()", true),
+          ("a", false),
+          ("1", false),
+          ("bool", false)
+        )
+      } {
+        tgt in {
+          val tree = s"""fsm f {
+                        |  void main() {
+                        |    goto $tgt;
+                        |  }
+                        |}""".stripMargin.asTree[Root]
+
+          tree rewrite checker
+
+          if (ok) {
+            cc.messages shouldBe empty
+          } else {
+            cc.messages.loneElement should beThe[Error](
+              s"Target of 'goto' statement must be a function call expression"
+            )
+          }
+        }
+      }
+
+    }
   }
 }

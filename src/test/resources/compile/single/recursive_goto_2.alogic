@@ -4,15 +4,15 @@ fsm recursive_goto_2 {
 
   void main() {
     o = i;
-    goto a;
+    goto a();
   }
 
   void a() {
     o = ~i;
     if (i) {
-      goto main;
+      goto main();
     } else {
-      goto a;
+      goto a();
     }
   }
 }

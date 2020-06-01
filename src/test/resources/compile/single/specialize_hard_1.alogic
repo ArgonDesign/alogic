@@ -11,20 +11,20 @@ fsm specialize_hard_1 {
   void main() {
     o = 0;
     if (x) {
-      goto a;
+      goto a();
     } else {
-      goto b;
+      goto b();
     }
   }
 
   void a() {
     o = 1;
-    goto main;
+    goto main();
   }
 
   void b() {
     o = i;
-    goto main;
+    goto main();
   }
 }
 // @fec/mode: bmc

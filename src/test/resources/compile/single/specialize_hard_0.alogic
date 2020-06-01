@@ -9,12 +9,12 @@ fsm specialize_hard_0 {
 
   void main() {
     o = i;
-    goto other;
+    goto other();
   }
 
   void other() {
     o = 0;
-    goto main;
+    goto main();
   }
 }
 // @fec/mode: bmc
