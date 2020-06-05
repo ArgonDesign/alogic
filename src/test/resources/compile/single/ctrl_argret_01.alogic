@@ -1,0 +1,44 @@
+fsm ctrl_argret_01 {
+  in bool i_0;
+  in bool i_1;
+  out bool o;
+
+  void main() {
+    f(i_0, i_1);
+  }
+
+  void f(bool x, bool y) {
+    o = x ^ y;
+    return;
+  }
+}
+// @fec/mode: bmc
+// @fec/golden {{{
+//  module ctrl_argret_01(
+//    input wire clk,
+//    input wire rst,
+//    input wire i_0,
+//    input wire i_1,
+//    output reg o
+//  );
+//
+//    reg prev_i_0_q;
+//    reg prev_i_1_q;
+//    reg state_q;
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        prev_i_0_q <= 1'd0;
+//        prev_i_1_q <= 1'd0;
+//        state_q <= 1'd0;
+//        o <= 1'd0;
+//      end else begin
+//        prev_i_0_q <= i_0;
+//        prev_i_1_q <= i_1;
+//        state_q <= ~state_q;
+//        if (state_q) o <= prev_i_0_q ^ prev_i_1_q;
+//      end
+//    end
+//
+//  endmodule
+// }}}

@@ -1,5 +1,4 @@
-// @ignore
-fsm ctrl_arg_00 {
+fsm ctrl_argret_00 {
   in bool i;
   out bool o;
 
@@ -11,10 +10,10 @@ fsm ctrl_arg_00 {
     o = x;
     return;
   }
-
 }
+// @fec/mode: bmc
 // @fec/golden {{{
-//  module ctrl_arg_00(
+//  module ctrl_argret_00(
 //    input wire clk,
 //    input wire rst,
 //    input wire i,
@@ -22,7 +21,7 @@ fsm ctrl_arg_00 {
 //  );
 //
 //    reg prev_i_q;
-//    req state_q;
+//    reg state_q;
 //
 //    always @(posedge clk) begin
 //      if (rst) begin
@@ -35,5 +34,6 @@ fsm ctrl_arg_00 {
 //        if (state_q) o <= prev_i_q;
 //      end
 //    end
+//
 //  endmodule
 // }}}

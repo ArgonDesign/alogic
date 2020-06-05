@@ -1,0 +1,20 @@
+fsm ctrl_argret_04 {
+  out u8 o;
+
+  void main() {
+    o = fib(3);
+    fence;
+  }
+
+  (* reclimit = 3 *)
+  u8 fib(u8 n) {
+    if (n == 0) {
+      return 0;
+    } else if (n == 1) {
+      return 1;
+    } else {
+      return fib(n-2) + fib(n-1);
+    }
+  }
+}
+// :10: ERROR: Recursive control function cannot take arguments

@@ -150,7 +150,7 @@ final class InlineKnownVars(
       bs.get(symbol) map simplify match {
         // If the value is known, replace the ref
         case Some(expr: ExprInt) => expr
-        // If the current ref is a temporary, and there placement is simply
+        // If the current ref is a temporary, and the replacement is simply
         // another symbol, replace the temporary with the other symbol
         case Some(expr: ExprSym) if symbol.attr.tmp.isSet => expr
         case _                                            => tree

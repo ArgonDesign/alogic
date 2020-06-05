@@ -351,7 +351,8 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
           case (false, None) => unreachable
         }
 
-      case StmtExpr(ExprCall(ExprSym(symbol), Nil)) =>
+      case StmtExpr(ExprCall(ExprSym(symbol), args)) =>
+        assert(args.isEmpty)
         val ref = ExprSym(func2state(symbol))
         if (symbol.attr.pushStackOnCall.value) {
           val ret = ArgP(ExprSym(followingState.top))

@@ -96,6 +96,10 @@ final class LowerVariables(implicit cc: CompilerContext) extends StatefulTreeTra
             }
             dSymbol.attr.default set default
             symbol.attr.default.clear()
+            // Mark _d as tmp if _q is tmp
+            if (symbol.attr.tmp.isSet) {
+              dSymbol.attr.tmp set true
+            }
             // Set attributes
             symbol.attr.flop set dSymbol
             // Memorize

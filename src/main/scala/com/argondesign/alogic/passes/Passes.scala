@@ -58,6 +58,7 @@ object Passes extends ChainingSyntax {
         NormalizeControl andThen
         AnalyseCallGraph andThen
         ConvertLocalDecls andThen
+        ConvertControlArgsAndReturn andThen
         RemoveStructuralSharing andThen
         ConvertControl andThen
         CreateStateSystem andThen

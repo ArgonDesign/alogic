@@ -1,0 +1,57 @@
+fsm ctrl_argret_03 {
+  in bool i_0;
+  in bool i_1;
+  out bool o;
+
+  void main() {
+    o = f(i_0, i_1);
+    fence;
+  }
+
+  bool f(bool a, bool b) {
+    return a ^ b;
+  }
+}
+// @fec/mode: bmc
+// @fec/golden {{{
+//  module ctrl_argret_03(
+//    input wire clk,
+//    input wire rst,
+//    input wire i_0,
+//    input wire i_1,
+//    output reg o
+//  );
+//
+//    reg prev_i_0_q;
+//    reg prev_i_1_q;
+//    reg next_o_q;
+//    reg [1:0] state_q;
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        prev_i_0_q <= 1'd0;
+//        prev_i_1_q <= 1'd0;
+//        next_o_q <= 1'd0;
+//        state_q <= 2'd0;
+//        o <= 1'd0;
+//      end else begin
+//        prev_i_0_q <= i_0;
+//        prev_i_1_q <= i_1;
+//        case (state_q)
+//          2'b00: begin
+//            state_q <= 2'b01;
+//          end
+//          2'b01: begin
+//            state_q <= 2'b10;
+//            next_o_q <= prev_i_0_q ^ prev_i_1_q;
+//          end
+//          default: begin
+//            state_q <= 2'b00;
+//            o <= next_o_q;
+//          end
+//        endcase
+//      end
+//    end
+//
+//  endmodule
+// }}}
