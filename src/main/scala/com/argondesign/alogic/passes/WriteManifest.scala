@@ -156,6 +156,7 @@ object WriteManifest extends PairsTransformerPass {
       //////////////////////////////////////////////////////////////////////////
 
       eSymbol.name -> ListMap(
+        "alogic-name" -> eSymbol.attr.sourceName.value._1,
         "ports" -> ports,
         "signals" -> signals,
         "clock" -> (defn.clk map { _.name }).orNull,

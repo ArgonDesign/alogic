@@ -407,10 +407,9 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
         }
 
         def sourceName(symbol: Symbol): String = symbol.attr.sourceName.get match {
-          case Some((name, idxs)) =>
-            assert(idxs.nonEmpty)
-            idxs mkString (s"$name#[", ", ", "]")
-          case None => symbol.name
+          case Some((name, Nil))  => name
+          case Some((name, idxs)) => idxs mkString (s"$name#[", ", ", "]")
+          case None               => symbol.name
         }
 
         msg += s"Definition of '${sourceName(desc.symbol)}' is circular:"

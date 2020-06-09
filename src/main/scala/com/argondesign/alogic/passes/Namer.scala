@@ -388,6 +388,10 @@ final class Namer(implicit cc: CompilerContext) extends StatefulTreeTransformer 
 
         // Update symbol attributes with named ident attributes
         symbol.attr update ident.attr
+        // Set sourceName of toplevels
+        if (symbol.attr.topLevel.isSet) {
+          symbol.attr.sourceName.set((symbol.name, Nil))
+        }
 
         // Behaviour specific to particular definitions - TODO: shouldn't really be in the Namer
         desc match {
