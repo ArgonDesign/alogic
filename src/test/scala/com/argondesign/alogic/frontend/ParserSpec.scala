@@ -344,17 +344,37 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
           }
         }
 
-        "parameter" in {
-          "param i2 a = 2;".asTree[Desc] shouldBe {
-            DescParam(Ident("a", Nil), ExprType(TypeSInt(2)), Some(Expr(2)))
+        "parameter" - {
+          "without initializer" in {
+            "param bool a;".asTree[Desc] shouldBe {
+              DescParam(Ident("a", Nil), ExprType(TypeUInt(1)), None)
+            }
           }
-        }
 
-        "parameter with attribute" in {
-          inside("(* foo *) param i2 a = 2;".asTree[Desc]) {
-            case DescParam(ident @ Ident("a", Nil), ExprType(TypeSInt(w)), Some(Expr(2)))
-                if w == 2 =>
-              ident.attr shouldBe Map("foo" -> SourceAttribute.Flag())
+          "with initializer" in {
+            "param i2 a = 2;".asTree[Desc] shouldBe {
+              DescParam(Ident("a", Nil), ExprType(TypeSInt(2)), Some(Expr(2)))
+            }
+          }
+
+          "with attribute" in {
+            inside("(* foo *) param i2 a = 2;".asTree[Desc]) {
+              case DescParam(ident @ Ident("a", Nil), ExprType(TypeSInt(w)), Some(Expr(2)))
+                  if w == 2 =>
+                ident.attr shouldBe Map("foo" -> SourceAttribute.Flag())
+            }
+          }
+
+          "type without initialzier" in {
+            "param type T;".asTree[Desc] shouldBe {
+              DescParamType(Ident("T", Nil), None)
+            }
+          }
+
+          "type with initialzier" in {
+            "param type T = uint;".asTree[Desc] shouldBe {
+              DescParamType(Ident("T", Nil), Some(ExprType(TypeNum(false))))
+            }
           }
         }
 

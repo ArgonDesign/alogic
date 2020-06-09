@@ -46,6 +46,7 @@ private[specialize] object SubstituteParams {
       cc: CompilerContext
     ): ParamSubstitution = {
     require(!desc.isInstanceOf[DescParam])
+    require(!desc.isInstanceOf[DescParamType])
 
     def checkPosOk: Boolean = bindings match {
       case _: ParamBindingsPositional => desc.params.length == 1
@@ -70,6 +71,14 @@ private[specialize] object SubstituteParams {
             case ParamBindingsNamed(params)           => params get ref.symbol.name
           }
           desc -> (binding orElse default)
+        case desc @ DescParamType(ref, default) =>
+          val binding: Option[Expr] = bindings match {
+            case ParamBindingsPositional(expr :: Nil) => Some(expr)
+            case _: ParamBindingsPositional           => unreachable
+            case ParamBindingsNamed(params)           => params get ref.symbol.name
+          }
+          desc -> (binding orElse default)
+        case _ => unreachable
       }
 
       // Find the unbound parameters
@@ -126,12 +135,21 @@ private[specialize] object SubstituteParams {
                 case None         => tree
               }
 
-            // Change bound parameters into constants
+            // Change bound value parameters into constants
             case DescParam(ref @ Sym(symbol, _), spec, _) =>
               symbolBindings.get(symbol) match {
                 case Some(init) =>
                   symbol.attr.wasParam set true
                   DescConst(ref, spec, init) withLoc tree.loc
+                case None => tree
+              }
+
+            // Change bound type parameters into typedefs
+            case DescParamType(ref @ Sym(symbol, _), _) =>
+              symbolBindings.get(symbol) match {
+                case Some(init) =>
+                  symbol.attr.wasParam set true
+                  DescType(ref, init) withLoc tree.loc
                 case None => tree
               }
 

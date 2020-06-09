@@ -42,7 +42,7 @@ object Types {
   case class TypeSInt(size: BigInt) extends TypeInt
   case class TypeUInt(size: BigInt) extends TypeInt
   case class TypeNum(signed: Boolean) extends TypeFund
-  case class TypeVector(elementType: Type, size: BigInt) extends TypeFund
+  case class TypeVector(kind: TypeFund, size: BigInt) extends TypeFund
   case object TypeVoid extends TypeFund
   case object TypeStr extends TypeFund
   case class TypeRecord(symbol: Symbol, members: List[Symbol]) extends TypeFund with CompoundType with TypeRecordImpl

@@ -1,0 +1,22 @@
+struct t {
+  param type T;
+  T x;
+}
+
+fsm param_type_02 {
+  in t(2) i;
+  out wire t(3) o;
+
+  void main() {
+    o = i;
+    fence;
+  }
+}
+// :7: ERROR: Type parameter 'T' must be assigned a type.
+// :7: ERROR: ... Definition if 'T' is at .*param_type_02.alogic:2
+// :7: ERROR: ...     param type T;
+// :7: ERROR: ...     ~~~~~~~~~~~\^~
+// :8: ERROR: Type parameter 'T' must be assigned a type.
+// :8: ERROR: ... Definition if 'T' is at .*param_type_02.alogic:2
+// :8: ERROR: ...     param type T;
+// :8: ERROR: ...     ~~~~~~~~~~~\^~

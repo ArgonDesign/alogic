@@ -78,6 +78,9 @@ private[specialize] object SpecializeContained {
         // Skip DescParam nodes
         case EntDesc(_: DescParam) => Some(tree)
         case RecDesc(_: DescParam) => Some(tree)
+        // Skip DescParamType nodes
+        case EntDesc(_: DescParamType) => Some(tree)
+        case RecDesc(_: DescParamType) => Some(tree)
         // Skip parametrized Desc nodes
         case EntDesc(desc) if desc.isParametrized  => Some(tree)
         case RecDesc(desc) if desc.isParametrized  => Some(tree)

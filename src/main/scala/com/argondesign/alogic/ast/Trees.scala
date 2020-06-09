@@ -74,6 +74,7 @@ object Trees {
   case class DescOut(ref: Ref, spec: Expr, fc: FlowControlType, st: StorageType, initOpt: Option[Expr]) extends Desc
   case class DescPipeline(ref: Ref, spec: Expr) extends Desc
   case class DescParam(ref: Ref, spec: Expr, initOpt: Option[Expr]) extends Desc
+  case class DescParamType(ref: Ref, initOpt: Option[Expr]) extends Desc
   case class DescConst(ref: Ref, spec: Expr, init: Expr) extends Desc
   case class DescGen(ref: Ref, spec: Expr, init: Expr) extends Desc
   case class DescArray(ref: Ref, elem: Expr, size: Expr) extends Desc
@@ -103,7 +104,8 @@ object Trees {
   case class DeclIn(symbol: Symbol, spec: Expr, fc: FlowControlType) extends Decl
   case class DeclOut(symbol: Symbol, spec: Expr, fc: FlowControlType, st: StorageType) extends Decl
   case class DeclPipeline(symbol: Symbol, spec: Expr) extends Decl
-//  case class DeclParam(symbol: Symbol, spec: Expr) extends Decl
+//case class DeclParam(symbol: Symbol, spec: Expr) extends Decl
+//case class DeclParamType(ref: Ref, initOpt: Option[Expr]) extends Desc
   case class DeclConst(symbol: Symbol, spec: Expr) extends Decl
   case class DeclGen(symbol: Symbol, spec: Expr) extends Decl
   case class DeclArray(symbol: Symbol, elem: Expr, size: Expr) extends Decl
@@ -116,7 +118,7 @@ object Trees {
   case class DeclSingleton(symbol: Symbol, override val decls: List[Decl]) extends Decl with DeclSingletonOps
   case class DeclFunc(symbol: Symbol, variant: FuncVariant, ret: Expr, args: List[Decl]) extends Decl
   case class DeclState(symbol: Symbol) extends Decl
-//  case class DeclChoice(symbol: Symbol) extends Decl
+//case class DeclChoice(symbol: Symbol) extends Decl
   // format: on
 
   //////////////////////////////////////////////////////////////////////////////
@@ -133,7 +135,8 @@ object Trees {
   case class DefnIn(symbol: Symbol) extends Defn
   case class DefnOut(symbol: Symbol, initOpt: Option[Expr]) extends Defn
   case class DefnPipeline(symbol: Symbol) extends Defn
-//  case class DefnParam(symbol: Symbol, initOpt: Option[Expr]) extends Defn
+//case class DefnParam(symbol: Symbol, initOpt: Option[Expr]) extends Defn
+//case class DefnParamType(ref: Ref, initOpt: Option[Expr]) extends Desc
   case class DefnConst(symbol: Symbol, init: Expr) extends Defn
   case class DefnGen(symbol: Symbol, init: Expr) extends Defn
   case class DefnArray(symbol: Symbol) extends Defn
@@ -146,7 +149,7 @@ object Trees {
   case class DefnSingleton(symbol: Symbol, variant: EntityVariant.Type, body: List[Ent]) extends Defn with DefnSingletonOps
   case class DefnFunc(symbol: Symbol, args: List[Defn], body: List[Stmt]) extends Defn with DefnFuncOps
   case class DefnState(symbol: Symbol, expr: Expr, body: List[Stmt]) extends Defn
-//  case class DefnChoice(symbol: Symbol, choices: List[ExprSym]) extends Defn
+//case class DefnChoice(symbol: Symbol, choices: List[ExprSym]) extends Defn
   // format: on
 
   //////////////////////////////////////////////////////////////////////////////

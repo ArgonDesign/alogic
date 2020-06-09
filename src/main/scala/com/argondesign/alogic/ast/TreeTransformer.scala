@@ -196,6 +196,10 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
       val spec = walk(node.spec)
       val initOpt = walk(node.initOpt)
       TreeCopier(node)(ref, spec, initOpt)
+    case node: DescParamType =>
+      val ref = walk(node.ref)
+      val initOpt = walk(node.initOpt)
+      TreeCopier(node)(ref, initOpt)
     case node: DescConst =>
       val ref = walk(node.ref)
       val spec = walk(node.spec)

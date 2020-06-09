@@ -51,6 +51,7 @@ descbase
   | 'out' fct? stt? expr ident ('=' init=expr)? ';'                     # DescOut
   | 'pipeline' expr ident ';'                                           # DescPipeline
   | 'param' expr IDENTIFIER ('=' init=expr)?  ';'                       # DescParam
+  | 'param' 'type' IDENTIFIER ('=' init=expr)?  ';'                     # DescParamType
   | 'const' expr IDENTIFIER '=' expr  ';'                               # DescConst
   | expr ident '[' expr ']' ';'                                         # DescArr
   | 'sram' (wire='wire')? expr ident '[' expr ']' ';'                   # DescSram

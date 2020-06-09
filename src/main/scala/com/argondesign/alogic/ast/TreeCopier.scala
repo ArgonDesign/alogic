@@ -137,6 +137,18 @@ object TreeCopier {
     }
   }
 
+  def apply(tree: DescParamType)(ref: Tree, initOpt: Option[Tree]): DescParamType = {
+    if ((ref eq tree.ref) && (initOpt eq tree.initOpt)) {
+      tree
+    } else {
+      assert(initOpt forall { _.isInstanceOf[Expr] })
+      DescParamType(
+        ref.asInstanceOf[Ref],
+        initOpt.asInstanceOf[Option[Expr]]
+      ) withLoc tree.loc
+    }
+  }
+
   def apply(tree: DescConst)(ref: Tree, spec: Tree, init: Tree): DescConst = {
     if ((ref eq tree.ref) && (spec eq tree.spec) && (init eq tree.init)) {
       tree

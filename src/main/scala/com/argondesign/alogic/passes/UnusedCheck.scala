@@ -181,6 +181,7 @@ final class UnusedCheck(implicit cc: CompilerContext) extends StatefulTreeTransf
           case _: DescOut       => "Output port"
           case _: DescPipeline  => "Pipeline variable"
           case _: DescParam     => "Parameter"
+          case _: DescParamType => "Type parameter"
           case _: DescConst     => "Constant"
           case _: DescGen       => "'gen' variable"
           case _: DescArray     => "Array"

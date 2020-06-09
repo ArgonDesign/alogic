@@ -81,6 +81,21 @@ fsm bar {
 }
 ```
 
+In addition to value parameters, Alogic also implements type parameters, which
+are declared using the `type` keyword instead of the type specifier expression
+in the parameter declaration. Type parameters can be used to implement generic
+components:
+
+```
+fsm fifo {
+  param type T;
+  in  T i;
+  out T o;
+  storage T[10];
+  ...
+}
+```
+
 #### Parameter specialization
 
 Alogic performs parameter specialization, meaning the compiler will emit

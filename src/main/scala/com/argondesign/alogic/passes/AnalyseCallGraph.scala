@@ -466,7 +466,7 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends StatefulTreeT
         TypeAssigner(defn.copy(body = newBody) withLoc defn.loc)
       } else {
         // Allocate the return stack with TypeVoid entries and with the right
-        // depth. The elementType will be refined in a later pass when the
+        // depth. The element type will be refined in a later pass when the
         // state numbers are allocated
         val name = if (stackDepth > 1) "return_stack" else "return_state"
         val symbol = cc.newSymbol(name, defn.loc) tap { s =>

@@ -148,6 +148,8 @@ trait TreePrintOps extends { this: Tree =>
     case DescPipeline(_, spec)                 => s"desc pipeline ${v(spec)} $name"
     case DescParam(_, spec, None)              => s"desc param ${v(spec)} $name"
     case DescParam(_, spec, Some(init))        => s"desc param ${v(spec)} $name = ${v(init)}"
+    case DescParamType(_, None)                => s"desc param type $name"
+    case DescParamType(_, Some(init))          => s"desc param type $name = ${v(init)}"
     case DescConst(_, spec, init)              => s"desc const ${v(spec)} $name = ${v(init)}"
     case DescGen(_, spec, init)                => s"desc gen ${v(spec)} $name = ${v(init)}"
     case DescArray(_, elem, size)              => s"desc ${v(elem)} $name[$size]"

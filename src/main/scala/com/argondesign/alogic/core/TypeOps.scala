@@ -159,7 +159,8 @@ trait TypeOps extends TypePrintOps { this: Type =>
 
   def addVectorDimension(size: BigInt): TypeVector = this match {
     case TypeVector(kind, sz) => TypeVector(kind addVectorDimension size, sz)
-    case kind                 => TypeVector(kind, size)
+    case kind: TypeFund       => TypeVector(kind, size)
+    case _                    => unreachable
   }
 
 }

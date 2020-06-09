@@ -27,8 +27,9 @@ trait DescOps { this: Desc =>
 
   def decls: List[Decl] = Nil
 
-  final lazy val params: List[DescParam] = descs collect {
-    case desc: DescParam => desc
+  final lazy val params: List[Desc] = descs collect {
+    case desc: DescParam     => desc
+    case desc: DescParamType => desc
   }
 
   final lazy val isParametrized: Boolean = params.nonEmpty
@@ -38,6 +39,7 @@ trait DescOps { this: Desc =>
     case DescVal(_, _, i)          => Some(i)
     case DescOut(_, _, _, _, iOpt) => iOpt
     case DescParam(_, _, iOpt)     => iOpt
+    case DescParamType(_, iOpt)    => iOpt
     case DescConst(_, _, i)        => Some(i)
     case DescGen(_, _, i)          => Some(i)
     case _                         => None
@@ -50,6 +52,7 @@ trait DescOps { this: Desc =>
     case node: DescOut       => node.copy(ref = ref)
     case node: DescPipeline  => node.copy(ref = ref)
     case node: DescParam     => node.copy(ref = ref)
+    case node: DescParamType => node.copy(ref = ref)
     case node: DescConst     => node.copy(ref = ref)
     case node: DescGen       => node.copy(ref = ref)
     case node: DescArray     => node.copy(ref = ref)

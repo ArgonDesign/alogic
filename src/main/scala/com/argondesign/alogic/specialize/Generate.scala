@@ -107,6 +107,7 @@ private[specialize] object Generate {
       case _: Rec             => true
       case _: DescVar         => true
       case _: DescParam       => true
+      case _: DescParamType   => true
       case _: DescConst       => true
       case _: DescType        => true
       case _: DescRecord      => true

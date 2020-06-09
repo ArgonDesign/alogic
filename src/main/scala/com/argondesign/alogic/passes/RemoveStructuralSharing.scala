@@ -45,6 +45,7 @@ final class RemoveStructuralSharing(implicit cc: CompilerContext) extends Statef
         case node: DescOut       => node.copy()
         case node: DescPipeline  => node.copy()
         case node: DescParam     => node.copy()
+        case node: DescParamType => node.copy()
         case node: DescConst     => node.copy()
         case node: DescGen       => node.copy()
         case node: DescArray     => node.copy()

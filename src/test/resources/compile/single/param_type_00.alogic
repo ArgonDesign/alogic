@@ -1,0 +1,24 @@
+struct t {
+  param type T;
+  T x;
+}
+
+fsm param_type_00 {
+  in t(u8) i;
+  out wire t(u8) o;
+
+  void main() {
+    o = i;
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module param_type_00(
+//    input  wire [7:0] i__x,
+//    output wire [7:0] o__x
+//  );
+//
+//    assign o__x = i__x;
+//
+//  endmodule
+// }}}

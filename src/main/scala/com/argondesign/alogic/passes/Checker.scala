@@ -103,11 +103,12 @@ final class Checker(implicit cc: CompilerContext) extends StatefulTreeTransforme
     val verbatims = body collect { case node: EntVerbatim => node }
 
     val nonports = body filter {
-      case EntDesc(_: DescIn)    => false
-      case EntDesc(_: DescOut)   => false
-      case EntDesc(_: DescParam) => false
-      case EntDesc(_: DescConst) => false
-      case _                     => true
+      case EntDesc(_: DescIn)        => false
+      case EntDesc(_: DescOut)       => false
+      case EntDesc(_: DescParam)     => false
+      case EntDesc(_: DescParamType) => false
+      case EntDesc(_: DescConst)     => false
+      case _                         => true
     }
 
     if (variant != EntityVariant.Ver && verbatims.nonEmpty && verbatims.length == nonports.length) {
@@ -126,6 +127,10 @@ final class Checker(implicit cc: CompilerContext) extends StatefulTreeTransforme
 
     case EntDesc(_: DescParam) if singletonStack.top =>
       cc.error(tree, "Singleton entity cannot have parameters. Use a 'const' declaration instead.")
+      Stump
+
+    case EntDesc(_: DescParamType) if singletonStack.top =>
+      cc.error(tree, "Singleton entity cannot have type parameters. Use a 'typedef' instead.")
       Stump
 
     case EntDesc(desc) =>

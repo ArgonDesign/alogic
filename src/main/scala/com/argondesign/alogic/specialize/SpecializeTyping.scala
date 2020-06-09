@@ -60,9 +60,10 @@ private[specialize] object SpecializeTyping {
         f: (Map[Symbol, Symbol], Iterator[Decl], Iterator[Defn]) => TypingSpecialization
       ): TypingSpecialization = {
       val unknown = descs exists {
-        case _: DescChoice => true
-        case _: DescParam  => unreachable
-        case _             => false
+        case _: DescChoice    => true
+        case _: DescParam     => unreachable
+        case _: DescParamType => unreachable
+        case _                => false
       }
 
       if (unknown) {
@@ -138,7 +139,8 @@ private[specialize] object SpecializeTyping {
             DefnPipeline(ref.symbol) withLoc desc.loc
           )
         }
-      case _: DescParam => unreachable
+      case _: DescParam     => unreachable
+      case _: DescParamType => unreachable
       case DescConst(ref, spec, init) =>
         specializeExpr(spec) { specialSpec =>
           TypingSpecializationComplete(

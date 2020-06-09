@@ -20,6 +20,7 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.Types.Type
 import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.tailrec
@@ -113,7 +114,7 @@ private[specialize] case class DescSpecializationUnknown(symbols: collection.Set
 private[specialize] case class DescSpecializationPending(decl: Decl) extends DescSpecialization
 // Specialization successful with no more unbound parameters remaining,
 // with the given final parameter values
-private[specialize] case class DescSpecializationComplete(decl: Decl, defn: Defn, paramValues: Map[String, BigInt]) extends DescSpecialization
+private[specialize] case class DescSpecializationComplete(decl: Decl, defn: Defn, paramValues: Map[String, Either[BigInt, Type]]) extends DescSpecialization
 // format: on
 
 private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
@@ -128,7 +129,7 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
 
   // Complete specialization results 'original symbol' -> 'param values' -> 'result Decl and Defn'
   private[this] val specializations =
-    mutable.HashMap[Symbol, mutable.Map[Map[String, BigInt], (Decl, Defn)]]()
+    mutable.HashMap[Symbol, mutable.Map[Map[String, Either[BigInt, Type]], (Decl, Defn)]]()
 
   // To detect circular and divergent definitions, we keep track of the pending
   // specializations (current active path in the depth first traversal) on a
