@@ -1,0 +1,39 @@
+// @ignore
+struct s {
+  i8 a;
+  struct t {
+    i4 x;
+    i4 y;
+  }
+  t b;
+  i8 c;
+}
+
+fsm nested_struct_00 {
+  in s i;
+  out wire s o;
+
+  void main() {
+    o = i;
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module nested_struct_00(
+//    input  wire [7:0] i__a,
+//    input  wire [3:0] i__b__x,
+//    input  wire [3:0] i__b__y,
+//    input  wire [7:0] i__c,
+//    output wire [7:0] o__a,
+//    output wire [3:0] o__b__x,
+//    output wire [3:0] o__b__y,
+//    output wire [7:0] o__c,
+//  );
+//
+//    assign o__a = i__a;
+//    assign o__b__x = i__b__x;
+//    assign o__b__y = i__b__y;
+//    assign o__c = i__c;
+//
+//  endmodule
+// }}}
