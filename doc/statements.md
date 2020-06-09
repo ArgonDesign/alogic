@@ -175,6 +175,44 @@ when standing alone in statement position. All lvalues are valid.
   {sign, abs}--;
 ```
 
+### `wait` statement (combinational)
+
+The `wait` statements is a combinational statement. It takes an optional 
+condition expression. If a condition expression is provided, the containing
+FSM is stalled until the condition becomes true:
+
+```
+  bool cond;
+  ...
+  wait cond;
+  x = cond; // At this point 'cond' will be 'true'
+```
+
+Omitting the condition expression has the same effect as `wait false`, i.e.:
+the containing FSM is stalled indefinitely. To avoid deadlock, the compiler
+will issue an error if an unconditional `wait` statement is not under a 
+conditional statement. Therefor this is allowed:
+
+```
+  in u4 x;
+  ...
+  case (x) {
+   4'd0: // Do something if x == 0
+   4'd1: // Do something if x == 1
+   4'd4: // Do something if x == 4
+   default: wait; // Otherwise stall
+  }
+```
+
+The following however will raise a compile time error;
+
+```
+  void main() {
+    wait; // Deadlock
+    ...
+  }
+```
+
 ### The `fence` statement (control)
 
 The `fence` statement is the simplest control statement, and is used to indicate

@@ -181,6 +181,7 @@ stmt
   | expr op=('++'|'--') ';'                                     # StmtPost
   | expr ';'                                                    # StmtExpr
   | assertion                                                   # StmtAssertion
+  | 'wait' expr? ';'                                            # StmtWait
   ;
 
 kase

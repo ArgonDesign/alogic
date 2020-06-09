@@ -1299,6 +1299,20 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
             StmtAssertion(AssertionStatic(ExprInt(false, 1, 0), Some("msg")))
           }
         }
+
+        "wait statement" - {
+          "with condition" in {
+            "wait a;".asTree[Stmt] shouldBe {
+              StmtWait(ExprRef(Ident("a", Nil)))
+            }
+          }
+
+          "without condition" in {
+            "wait;".asTree[Stmt] shouldBe {
+              StmtWait(ExprInt(false, 1, 0))
+            }
+          }
+        }
       }
 
       "expressions" - {

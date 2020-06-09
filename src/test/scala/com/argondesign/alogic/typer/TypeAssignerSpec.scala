@@ -786,18 +786,14 @@ final class TypeAssignerSpec extends AnyFreeSpec with AlogicTest {
             ("a.b.b", { case TypeUInt(w) if w == 8                                      => }),
             ("pi0.valid", { case TypeUInt(w) if w == 1                                  => }),
             ("pi0.read", { case TypeCombFunc(_, TypeSInt(w), Nil) if w == 8             => }),
-            ("pi0.wait", { case TypeCombFunc(_, TypeVoid, Nil)                          => }),
             ("pi1.valid", { case TypeUInt(w) if w == 1                                  => }),
             ("pi1.read", { case TypeCombFunc(_, TypeVoid, Nil)                          => }),
-            ("pi1.wait", { case TypeCombFunc(_, TypeVoid, Nil)                          => }),
             ("po0.valid", { case TypeUInt(w) if w == 1                                  => }),
             ("po0.write", { case TypeCombFunc(_, TypeVoid, List(TypeSInt(w))) if w == 8 => }),
-            ("po0.flush", { case TypeCombFunc(_, TypeVoid, Nil)                         => }),
             ("po0.full", { case TypeUInt(w) if w == 1                                   => }),
             ("po0.empty", { case TypeUInt(w) if w == 1                                  => }),
             ("po1.valid", { case TypeUInt(w) if w == 1                                  => }),
             ("po1.write", { case TypeCombFunc(_, TypeVoid, Nil)                         => }),
-            ("po1.flush", { case TypeCombFunc(_, TypeVoid, Nil)                         => }),
             ("po1.full", { case TypeUInt(w) if w == 1                                   => }),
             ("po1.empty", { case TypeUInt(w) if w == 1                                  => }),
             ("a.b.f", { case TypeStaticMethod(Symbol("f"), TypeVoid, Nil)                 => }),
@@ -954,13 +950,9 @@ final class TypeAssignerSpec extends AnyFreeSpec with AlogicTest {
         for {
           (expr, kind) <- List(
             ("pi0.read", TypeSInt(8)),
-            ("pi0.wait", TypeVoid),
             ("pi1.read", TypeVoid),
-            ("pi1.wait", TypeVoid),
             ("po0.write", TypeVoid),
-            ("po0.flush", TypeVoid),
-            ("po1.write", TypeVoid),
-            ("po1.flush", TypeVoid)
+            ("po1.write", TypeVoid)
           )
         } {
           val text = expr.trim.replaceAll(" +", " ")
@@ -1084,7 +1076,9 @@ final class TypeAssignerSpec extends AnyFreeSpec with AlogicTest {
             ("read;", { case _: StmtRead => }),
             ("write;", { case _: StmtWrite => }),
             ("assert false;", { case _: StmtAssertion => }),
-            ("return;", { case _: StmtReturn => })
+            ("return;", { case _: StmtReturn => }),
+            ("wait a;", { case _: StmtWait => }),
+            ("wait;", { case _: StmtWait => })
           )
         } {
           text in {

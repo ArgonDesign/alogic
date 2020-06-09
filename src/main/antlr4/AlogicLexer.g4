@@ -155,7 +155,7 @@ NEW     : 'new' ;
 LET     : 'let' ;
 ENTITY  : 'entity' ;
 STATIC  : 'static' ;
-STALL   : 'stall' ;
+WAIT    : 'wait' ;
 COMB    : 'comb'  ;
 STACK   : 'stack' ;
 SRAM    : 'sram' ;

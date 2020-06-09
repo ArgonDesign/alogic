@@ -309,7 +309,7 @@ trait TreePrintOps extends { this: Tree =>
     case StmtRead()                        => "read;"
     case StmtWrite()                       => "write;"
     case StmtComment(str)                  => "// " + str
-    case StmtStall(cond)                   => s"stall ${v(cond)};"
+    case StmtWait(cond)                   => s"wait ${v(cond)};"
     case StmtAssertion(assertion)          => v(assertion)
     case StmtError()                       => "/* Error statement */"
   }

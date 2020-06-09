@@ -149,7 +149,7 @@ final class RemoveStructuralSharing(implicit cc: CompilerContext) extends Statef
         case _: StmtRead         => StmtRead()
         case _: StmtWrite        => StmtWrite()
         case node: StmtExpr      => node.copy()
-        case node: StmtStall     => node.copy()
+        case node: StmtWait      => node.copy()
         case node: StmtAssertion => node.copy()
         case _: StmtError        => StmtError()
         case node: StmtComment   => node.copy()

@@ -1,0 +1,11 @@
+fsm stmt_wait_04 {
+  in bool i;
+  out bool o;
+
+  void main() {
+    wait;
+    o = i;
+    fence;
+  }
+}
+// :6: ERROR: Wait condition is always false

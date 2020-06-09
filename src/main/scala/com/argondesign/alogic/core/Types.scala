@@ -230,20 +230,12 @@ trait TypeInImpl extends ExtensionType { this: TypeIn =>
       val read = new Symbol(-1, Loc.synthetic, "read")
       read.kind = TypeCombFunc(read, kind, Nil)
       List(read)
-    case FlowControlTypeValid =>
+    case FlowControlTypeValid | FlowControlTypeReady =>
       val read = new Symbol(-1, Loc.synthetic, "read")
       read.kind = TypeCombFunc(read, kind, Nil)
       val valid = new Symbol(-1, Loc.synthetic, "valid")
       valid.kind = TypeUInt(1)
       List(read, valid)
-    case FlowControlTypeReady =>
-      val read = new Symbol(-1, Loc.synthetic, "read")
-      read.kind = TypeCombFunc(read, kind, Nil)
-      val valid = new Symbol(-1, Loc.synthetic, "valid")
-      valid.kind = TypeUInt(1)
-      val wait = new Symbol(-1, Loc.synthetic, "wait")
-      wait.kind = TypeCombFunc(wait, TypeVoid, Nil)
-      List(read, valid, wait)
     case FlowControlTypeAccept =>
       val read = new Symbol(-1, Loc.synthetic, "read")
       read.kind = TypeCombFunc(read, kind, Nil)
@@ -276,8 +268,6 @@ trait TypeOutImpl extends ExtensionType { this: TypeOut =>
         write.kind = writeFuncType(write)
         val valid = new Symbol(-1, Loc.synthetic, "valid")
         valid.kind = TypeUInt(1)
-        val flush = new Symbol(-1, Loc.synthetic, "flush")
-        flush.kind = TypeCombFunc(flush, TypeVoid, Nil)
         val full = new Symbol(-1, Loc.synthetic, "full")
         full.kind = TypeUInt(1)
         val empty = new Symbol(-1, Loc.synthetic, "empty")
@@ -288,7 +278,7 @@ trait TypeOutImpl extends ExtensionType { this: TypeOut =>
           case _                         => 1
         }
         space.kind = TypeUInt(nSlices)
-        List(write, valid, flush, full, empty, space)
+        List(write, valid, full, empty, space)
       case FlowControlTypeAccept =>
         val write = new Symbol(-1, Loc.synthetic, "write")
         write.kind = writeFuncType(write)

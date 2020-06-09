@@ -1,0 +1,34 @@
+fsm stmt_wait_06 {
+  in bool i;
+  out bool o = 1'b0;
+
+  void main() {
+    case (i) {
+      ~o:     {}
+      default: wait;
+    }
+    o = i;
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module stmt_wait_06(
+//    input  wire rst,
+//    input  wire clk,
+//    input  wire i,
+//    output reg o
+//  );
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        o <= 1'b0;
+//      end else if (o & ~i) begin
+//        o <= 1'b0;
+//      end else if (~o & i) begin
+//        o <= 1'b1;
+//      end
+//    end
+//
+//  endmodule
+// }}}
+

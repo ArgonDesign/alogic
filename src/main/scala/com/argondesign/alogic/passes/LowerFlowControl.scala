@@ -319,15 +319,15 @@ final class LowerFlowControlA(
           case List(Some(`symbol`), None, None, None) => // No flow control
             ref
           case List(pSymbolOpt, Some(vSymbol), None, None) => // valid
-            extraStmts.top append StmtStall(ExprSym(vSymbol))
+            extraStmts.top append StmtWait(ExprSym(vSymbol))
             pSymbolOpt map ExprSym getOrElse tree
           case List(pSymbolOpt, Some(vSymbol), Some(rSymbol), None) => // ready
             extraStmts.top append assignTrue(ExprSym(rSymbol))
-            extraStmts.top append StmtStall(ExprSym(vSymbol))
+            extraStmts.top append StmtWait(ExprSym(vSymbol))
             pSymbolOpt map ExprSym getOrElse tree
           case List(pSymbolOpt, Some(vSymbol), None, Some(aSymbol)) => // accept
             extraStmts.top append assignTrue(ExprSym(aSymbol))
-            extraStmts.top append StmtStall(ExprSym(vSymbol))
+            extraStmts.top append StmtWait(ExprSym(vSymbol))
             pSymbolOpt map ExprSym getOrElse tree
           case _ => unreachable
         } getOrElse tree
@@ -348,7 +348,7 @@ final class LowerFlowControlA(
                   extraStmts.top append StmtAssign(iRef select "ip", arg)
                 }
                 extraStmts.top append assignTrue(iRef select s"ip${sep}valid")
-                extraStmts.top append StmtStall(iRef select s"ip${sep}ready")
+                extraStmts.top append StmtWait(iRef select s"ip${sep}ready")
               case _ => unreachable
             }
           case None =>
@@ -365,28 +365,9 @@ final class LowerFlowControlA(
                   extraStmts.top append StmtAssign(ExprSym(pSymbol), arg)
                 }
                 extraStmts.top append assignTrue(ExprSym(vSymbol))
-                extraStmts.top append StmtStall(ExprSym(aSymbol))
+                extraStmts.top append StmtWait(ExprSym(aSymbol))
               case _ => unreachable
             }
-        }
-        tree
-
-      case ExprCall(ExprSelect(ExprSym(symbol), "wait", _), _) =>
-        assert(removeStmt)
-        portMap.get(symbol) foreach {
-          case List(_, Some(vSymbol), Some(_), _) =>
-            extraStmts.top append StmtStall(ExprSym(vSymbol))
-          case _ => unreachable
-        }
-        tree
-
-      case ExprCall(ExprSelect(ExprSym(symbol), "flush", _), _) =>
-        assert(removeStmt)
-        oStorage.get(symbol) foreach {
-          case (_, iSymbol, false) =>
-            extraStmts.top append StmtStall(ExprSym(iSymbol) select "space")
-          case (_, iSymbol, true) =>
-            extraStmts.top append StmtStall(ExprSym(iSymbol) select "space" unary "&")
         }
         tree
 

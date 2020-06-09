@@ -1020,11 +1020,11 @@ object TreeCopier {
     }
   }
 
-  def apply(tree: StmtStall)(cond: Tree): StmtStall = {
+  def apply(tree: StmtWait)(cond: Tree): StmtWait = {
     if (cond eq tree.cond) {
       tree
     } else {
-      StmtStall(cond.asInstanceOf[Expr]) withLoc tree.loc
+      StmtWait(cond.asInstanceOf[Expr]) withLoc tree.loc
     }
   }
 

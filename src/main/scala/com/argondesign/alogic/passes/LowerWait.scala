@@ -24,7 +24,7 @@ import com.argondesign.alogic.typer.TypeAssigner
 
 import scala.collection.mutable
 
-final class LowerStalls(implicit cc: CompilerContext) extends StatefulTreeTransformer {
+final class LowerWait(implicit cc: CompilerContext) extends StatefulTreeTransformer {
 
   private var goSymbol: Option[Symbol] = None
 
@@ -47,10 +47,10 @@ final class LowerStalls(implicit cc: CompilerContext) extends StatefulTreeTransf
 
   override def transform(tree: Tree): Tree = tree match {
     //////////////////////////////////////////////////////////////////////////
-    // Rewrite StmtStall into clearing go
+    // Rewrite StmtWait into clearing go
     //////////////////////////////////////////////////////////////////////////
 
-    case StmtStall(cond) =>
+    case StmtWait(cond) =>
       StmtIf(
         !cond,
         List(StmtAssign(ExprSym(goSymbol.get), ExprInt(false, 1, 0))),
@@ -85,16 +85,16 @@ final class LowerStalls(implicit cc: CompilerContext) extends StatefulTreeTransf
   }
 
   override def finalCheck(tree: Tree): Unit = tree visit {
-    case stmt: StmtStall => cc.ice(stmt, "StmtStall remains")
+    case stmt: StmtWait => cc.ice(stmt, "StmtWait remains")
   }
 
 }
 
-object LowerStalls extends EntityTransformerPass(declFirst = true) {
-  val name = "lower-stalls"
+object LowerWait extends EntityTransformerPass(declFirst = true) {
+  val name = "lower-wait"
 
   override def skip(decl: Decl, defn: Defn)(implicit cc: CompilerContext): Boolean =
     super.skip(decl, defn) || defn.asInstanceOf[DefnEntity].variant != EntityVariant.Fsm
 
-  def create(symbol: Symbol)(implicit cc: CompilerContext) = new LowerStalls
+  def create(symbol: Symbol)(implicit cc: CompilerContext) = new LowerWait
 }

@@ -430,7 +430,7 @@ final class TyperCheckStmtSpec extends AnyFreeSpec with AlogicTest {
       }
     }
 
-    "warn for conditionals with packed condition wider than 1 bit" - {
+    "error for conditionals with packed condition wider than 1 bit" - {
       for {
         (cond, err) <- List(
           ("a", Nil),
@@ -458,6 +458,44 @@ final class TyperCheckStmtSpec extends AnyFreeSpec with AlogicTest {
                |
                |  void main() {
                |     if ($cond) {}
+               |     fence;
+               |  }
+               |}"""
+          }
+          checkSingleError(err)
+        }
+      }
+    }
+
+    "stall" - {
+      for {
+        (cond, err) <- List(
+          ("a", Nil),
+          ("b", Nil),
+          ("c", "Condition of 'stall' statement yields 2 bits, 1 bit is expected" :: Nil),
+          ("d", "Condition of 'stall' statement yields 8 bits, 1 bit is expected" :: Nil),
+          ("c[0]", Nil),
+          ("d[1]", Nil),
+          ("0", "Condition of 'stall' statement yields an unsized value, 1 bit is expected" :: Nil),
+          ("1", "Condition of 'stall' statement yields an unsized value, 1 bit is expected" :: Nil),
+          ("5", "Condition of 'stall' statement yields an unsized value, 1 bit is expected" :: Nil),
+          ("1'd0", Nil),
+          ("1'd1", Nil),
+          ("2'd0", "Condition of 'stall' statement yields 2 bits, 1 bit is expected" :: Nil),
+          ("9'd1", "Condition of 'stall' statement yields 9 bits, 1 bit is expected" :: Nil),
+          ("bool", "Condition of 'stall' statement is of neither numeric nor packed type" :: Nil)
+        )
+      } {
+        cond in {
+          typeCheck {
+            s"""fsm  f {
+               |  u1 a;
+               |  i1 b;
+               |  u2 c;
+               |  i8 d;
+               |
+               |  void main() {
+               |     wait $cond;
                |     fence;
                |  }
                |}"""

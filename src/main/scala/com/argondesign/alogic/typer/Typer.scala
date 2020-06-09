@@ -599,6 +599,13 @@ final class Typer(implicit cc: CompilerContext) extends StatefulTreeTransformer 
       case StmtExpr(expr) if expr.isPure =>
         error(tree, "A pure expression in statement position does nothing")
 
+      case StmtWait(cond) =>
+        if (!checkNumericOrPacked(cond, "Condition of 'stall' statement")) {
+          error(tree)
+        } else if (!checkWidth(1, cond, "Condition of 'stall' statement")) {
+          error(tree)
+        }
+
       //////////////////////////////////////////////////////////////////////////
       // Expr
       //////////////////////////////////////////////////////////////////////////

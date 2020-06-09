@@ -248,7 +248,7 @@ object Liveness {
 
             (live, dead)
 
-          case StmtStall(cond) =>
+          case StmtWait(cond) =>
             val born = usedRv(cond) diff cDead
             val live = cLive union born
             (live, cDead)

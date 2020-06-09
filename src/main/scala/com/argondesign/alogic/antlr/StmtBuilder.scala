@@ -127,6 +127,15 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
         StmtAssertion(AssertionBuilder(ctx.assertion)) withLoc ctx.loc
       }
 
+      override def visitStmtWait(ctx: StmtWaitContext): Stmt = {
+        val cond = if (ctx.expr != null) {
+          ExprBuilder(ctx.expr)
+        } else {
+          ExprInt(false, 1, 0) withLoc ctx.loc
+        }
+        StmtWait(cond) withLoc ctx.loc
+      }
+
       override def visitLoopInitAssign(ctx: LoopInitAssignContext): Stmt =
         StmtAssign(ExprBuilder(ctx.expr(0)), ExprBuilder(ctx.expr(1))) withLoc {
           ctx.loc.copy(point = ctx.point.getStartIndex)

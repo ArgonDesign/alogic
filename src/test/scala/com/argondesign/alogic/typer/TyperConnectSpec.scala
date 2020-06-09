@@ -101,7 +101,6 @@ final class TyperConnectSpec extends AnyFreeSpec with AlogicTest {
     "reject invalid port references on right hand side of ->" - {
       for {
         conn <- List(
-          "pi2 -> po2sr.flush()",
           "pi2 -> -po2",
           "pi2 -> po2 + po2b",
           "pi2 -> (po2==0) ? po2 : po2b",

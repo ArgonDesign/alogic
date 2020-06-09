@@ -39,6 +39,8 @@ final class Fold(implicit cc: CompilerContext) extends StatelessTreeTransformer 
     case other                                                    => other
   }
 
+  private var condLvl = 0
+
   override def enter(tree: Tree): Option[Tree] = tree match {
     // Simplify expressions
     case expr: Expr => Some(expr.simplify)
@@ -78,15 +80,19 @@ final class Fold(implicit cc: CompilerContext) extends StatelessTreeTransformer 
       cond.value match {
         case Some(v) if v != 0 => Some(Thicket(walk(thenStmts)))
         case Some(v) if v == 0 => Some(Thicket(walk(elseStmts)))
-        case None              => None
+        case None =>
+          condLvl += 1
+          None
       }
 
-    // Fold 'stall' with known conditions
-    case StmtStall(cond) =>
+    // Fold 'wait' with known conditions
+    case StmtWait(cond) =>
       cond.value match {
         case Some(v) if v != 0 => Some(Stump)
-        case Some(v) if v == 0 => cc.error(tree, "Stall condition is always true"); Some(tree)
-        case None              => None
+        case Some(v) if v == 0 && condLvl == 0 =>
+          cc.error(tree, "Wait condition is always false")
+          None
+        case _ => None
       }
 
     // Fold 'case' with known conditions
@@ -122,6 +128,11 @@ final class Fold(implicit cc: CompilerContext) extends StatelessTreeTransformer 
           loop(cases)
       }
 
+    // Just to track we are in a conditional (it's easier here than in StmtCase above)
+    case _: Case =>
+      condLvl += 1
+      None
+
     // Drop type definitions, references to these will be folded by expr.simplify
     case _: DeclType => Some(Stump)
     case _: DefnType => Some(Stump)
@@ -149,6 +160,7 @@ final class Fold(implicit cc: CompilerContext) extends StatelessTreeTransformer 
 
     // Simplify 'if' with empty branches
     case StmtIf(cond, ts, es) =>
+      condLvl -= 1
       (empty(ts), empty(es)) match {
         case (true, true)  => Stump
         case (false, true) => TypeAssigner(StmtIf(cond, ts, Nil) withLoc tree.loc)
@@ -158,6 +170,10 @@ final class Fold(implicit cc: CompilerContext) extends StatelessTreeTransformer 
 
     // Remove empty 'case' statements
     case StmtCase(_, cases) if cases.iterator map { _.stmts } forall empty => Stump
+
+    case _: Case =>
+      condLvl -= 1
+      tree
 
     // Drop empty processes
     case EntCombProcess(stmts) if empty(stmts)          => Stump
@@ -171,6 +187,10 @@ final class Fold(implicit cc: CompilerContext) extends StatelessTreeTransformer 
 
     //
     case _ => tree
+  }
+
+  override protected def finalCheck(tree: Tree): Unit = {
+    assert(condLvl == 0, s"condLvl: $condLvl")
   }
 
 }

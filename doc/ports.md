@@ -319,9 +319,9 @@ including `cycles`.
 
 ### Waiting for transactions without consuming them
 
-The `.wait()` method can be used on `sync ready` input ports to wait for an
-incoming transaction. This stalls state machines until the `valid` signal on the
-corresponding port becomes high.
+The `.valid` property, combined with the `wait` statement can be used on 
+input ports to wait for an incoming transaction. This stalls state machines 
+until the `valid` signal on the corresponding port becomes high.
 
 <a href="http://afiddle.argondesign.com/?example=ports_waiting.alogic">Fiddle with this code here.</a>
 
@@ -329,7 +329,7 @@ corresponding port becomes high.
   in sync ready void start;
 
   void main() {
-    start.wait();
+    wait start.valid;
 
     // do_something
     ...
@@ -337,10 +337,10 @@ corresponding port becomes high.
 ```
 
 Using `a = p_in.read();` requires replicating the contents of `p_in` to create
-the local flops for `a`. If a is very wide and the data will be used over
-multiple cycles, it is more efficient (in area) to use `p_in.wait()`, following
+the local flops for `a`. If `a` is very wide and the data will be used over
+multiple cycles, it is more area efficient to use `wait p_in.valid`, followed
 by direct port access to `p_in`. When the entity has finished using the data in
-`p_in`, `p_in.read();` can then be used (as a statement).
+`p_in`, a `p_in.read();` statement can be used to consume the transaction.
 
 <a href="http://afiddle.argondesign.com/?example=ports_stepdown.alogic">Fiddle with this code here.</a>
 
@@ -350,7 +350,7 @@ fsm stepdown {
   out sync ready  u256 less;
 
   void main() {
-    huge.wait();
+    wait huge.valid;
     less.write(huge[  0 +: 256]);
     fence;
     less.write(huge[256 +: 256]);
@@ -625,10 +625,11 @@ in that slice is not occupied. For output ports using a single output slice,
 
 #### Flushing output slices
 
-The `.flush()` method can be used on `sync ready` output ports. This stalls the
-entity until the output slices of the port become empty, and can be used to
-ensure all outputs produced up to that point have been consumed be the reader of
-the output port.
+The `.empty` property, combined with the `wait` statement can be used on output
+ports to ensure output storage has been flushed. The statement
+`wait <port>.empty;` will stall the entity until the output slices of the port
+become empty, and consequently ensures all outputs produced via that port up to
+that point have been consumed by the reader of the output port.
 
 ### Initial state of output ports.
 
@@ -659,15 +660,14 @@ ports. `N` is the number of output slices instantiated for the output port:
 | `in`      |              | `.read()`       | void => port type    | Same as referencing the port directly                                           |
 | `in`      | `sync`       | `.read()`       | void => port type    | Stalls if `valid` is low                                                        |
 | `in`      | `sync ready` | `.read()`       | void => port type    | Stalls if `valid` is low, raises `ready`                                        |
-| `in`      | `sync` or `sync ready` | `.wait()` | void => void | Stalls if `valid` is low                                                        |
+| `in`      | `sync` or `sync ready` | `.valid` | bool  | Evaluates to the state of the input `valid` signal                                 |
 | `out`     |              | `.write(_)`     | port type => void    | Same as direct assignment to the port                                           |
 | `out`     | `sync`       | `.write(_)`     | port type => void    | Sets `valid` high                                                               |
 | `out`     | `sync ready` | `.write(_)`     | port type => void    | Push transaction to output slice, stalls if first output slice is not available |
-| `out`     | `sync` or `sync ready` | `.valid` | bool      | Evaluates to state of the output `valid` signal                                 |
-| `out`     | `sync ready` | `.flush()`      | void => void | Stalls if the output slices are not empty                                       |
+| `out`     | `sync` or `sync ready` | `.valid` | bool      | Evaluates to the state of the output `valid` signal                                 |
 | `out`     | `sync ready` | `.empty`        | bool         | True if and only if all output slices are empty                                 |
 | `out`     | `sync ready` | `.full`         | bool         | True if and only if all output slices are occupied                              |
-| `out`     | `sync ready` | `.space`        | bool[N]      | Indicating occupancy of each output slice                                       |
+| `out`     | `sync ready` | `.space`        | bool[N]      | Indicates occupancy of each output slice                                       |
 
 <p align="center">
 <a href="literals.md">Previous</a> |

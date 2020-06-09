@@ -496,7 +496,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
     case node: StmtExpr =>
       val expr = walk(node.expr)
       TreeCopier(node)(expr)
-    case node: StmtStall =>
+    case node: StmtWait =>
       val cond = walk(node.cond)
       TreeCopier(node)(cond)
     case node: StmtAssertion => splice(node.assertion, TreeCopier(node))

@@ -44,7 +44,7 @@ final class OptimizeClearOnStall(implicit cc: CompilerContext) extends Stateless
   private def enumeratePaths(stmts: List[Stmt]): List[List[Stmt]] = {
     val (init, rest) = stmts span {
       case _: StmtAssign => true
-      case _: StmtStall  => true
+      case _: StmtWait   => true
       case _             => false
     }
 
@@ -100,7 +100,7 @@ final class OptimizeClearOnStall(implicit cc: CompilerContext) extends Stateless
               case _       => true
             }
             StatementFilter {
-              case _: StmtStall                   => true
+              case _: StmtWait                    => true
               case StmtAssign(ExprSym(symbol), _) => symbol.attr.clearOnStall contains true
               case stmt if leafStatement(stmt)    => false // Discard other leaf statements
             }
@@ -114,7 +114,7 @@ final class OptimizeClearOnStall(implicit cc: CompilerContext) extends Stateless
           // Check each path through the statements
           for (path <- enumeratePaths(trimmed)) {
             // Gather all the distinct stall conditions
-            val stallConditions = (path collect { case StmtStall(cond) => cond }).distinct
+            val stallConditions = (path collect { case StmtWait(cond) => cond }).distinct
             stallConditions match {
               case Nil                              => // No stall conditions through this path, we are safe
               case (cond @ ExprSym(sSymbol)) :: Nil =>

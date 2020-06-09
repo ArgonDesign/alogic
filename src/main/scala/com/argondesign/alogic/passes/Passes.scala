@@ -92,7 +92,7 @@ object Passes extends ChainingSyntax {
         InlineKnownVars(combOnly = true) andThen
         Fold andThen
         OptimizeClearOnStall andThen
-        LowerStalls andThen
+        LowerWait andThen
         RemoveAssume andThen
         DefaultAssignments andThen
         TieOffInputs andThen

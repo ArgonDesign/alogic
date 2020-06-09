@@ -246,7 +246,7 @@ object Trees {
   case class StmtRead() extends Stmt
   case class StmtWrite() extends Stmt
   case class StmtExpr(expr: Expr) extends Stmt
-  case class StmtStall(cond: Expr) extends Stmt
+  case class StmtWait(cond: Expr) extends Stmt
   case class StmtAssertion(assertion: Assertion) extends Stmt
   case class StmtError() extends Stmt
   case class StmtComment(str: String) extends Stmt
