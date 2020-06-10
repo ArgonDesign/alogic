@@ -86,58 +86,190 @@ final class TyperCheckExprSpec extends AnyFreeSpec with AlogicTest {
 
     "binary" - {
       "errors" - {
-        for (op <- List("*", "/", "%", "+", "-", "&", "|", "^", ">", ">=", "<", "<=", "==", "!=")) {
-          for {
-            (expr, err) <- List(
-              (s"8'd3 $op 8'd2", Nil),
-              (s"8'd3 $op 8'sd2", Nil),
-              (s"8'sd3 $op 8'd2", Nil),
-              (s"8'sd3 $op 8'sd2", Nil),
-              (s"8'd3 $op 2", Nil),
-              (s"3 $op 8'd2", Nil),
-              (s"3 $op 2", Nil),
-              (
-                s"7'd3 $op 8'd2",
-                s"Both operands of binary '$op' must have the same width, but" ::
-                  "left  hand operand is 7 bits wide, and" ::
-                  "right hand operand is 8 bits wide" :: Nil
-              ),
-              (
-                s"8'd3 $op 7'd2",
-                s"Both operands of binary '$op' must have the same width, but" ::
-                  "left  hand operand is 8 bits wide, and" ::
-                  "right hand operand is 7 bits wide" :: Nil
-              ),
-              (
-                s"4'sd3 $op 3'sd2",
-                s"Both operands of binary '$op' must have the same width, but" ::
-                  "left  hand operand is 4 bits wide, and" ::
-                  "right hand operand is 3 bits wide" :: Nil
-              ),
-              (
-                s"3'sd3 $op 4'sd2",
-                s"Both operands of binary '$op' must have the same width, but" ::
-                  "left  hand operand is 3 bits wide, and" ::
-                  "right hand operand is 4 bits wide" :: Nil
-              ),
-              (s"bool $op 8'd2", s"Left hand operand of '$op' is of non-packed type" :: Nil),
-              (s"8'd3 $op bool", s"Right hand operand of '$op' is of non-packed type" :: Nil)
-            )
-          } {
-            expr in {
-              typeCheck {
-                s"""
-                |fsm a {
-                |  void main() {
-                |    $$display("", $expr);
-                |    fence;
-                |  }
-                |}"""
+        "same width" - {
+          for (
+            op <- List("*", "/", "%", "+", "-", "&", "|", "^", ">", ">=", "<", "<=", "==", "!=")
+          ) {
+            for {
+              (expr, err) <- List(
+                (s"8'd3 $op 8'd2", Nil),
+                (s"8'd3 $op 8'sd2", Nil),
+                (s"8'sd3 $op 8'd2", Nil),
+                (s"8'sd3 $op 8'sd2", Nil),
+                (s"8'd3 $op 2", Nil),
+                (s"3 $op 8'd2", Nil),
+                (s"3 $op 2", Nil),
+                (
+                  s"7'd3 $op 8'd2",
+                  s"Both operands of binary '$op' must have the same width, but" ::
+                    "left  hand operand is 7 bits wide, and" ::
+                    "right hand operand is 8 bits wide" :: Nil
+                ),
+                (
+                  s"8'd3 $op 7'd2",
+                  s"Both operands of binary '$op' must have the same width, but" ::
+                    "left  hand operand is 8 bits wide, and" ::
+                    "right hand operand is 7 bits wide" :: Nil
+                ),
+                (
+                  s"4'sd3 $op 3'sd2",
+                  s"Both operands of binary '$op' must have the same width, but" ::
+                    "left  hand operand is 4 bits wide, and" ::
+                    "right hand operand is 3 bits wide" :: Nil
+                ),
+                (
+                  s"3'sd3 $op 4'sd2",
+                  s"Both operands of binary '$op' must have the same width, but" ::
+                    "left  hand operand is 3 bits wide, and" ::
+                    "right hand operand is 4 bits wide" :: Nil
+                ),
+                (s"bool $op 8'd2", s"Left hand operand of '$op' is of non-packed type" :: Nil),
+                (s"8'd3 $op bool", s"Right hand operand of '$op' is of non-packed type" :: Nil)
+              )
+            } {
+              expr in {
+                typeCheck {
+                  s"""
+                     |fsm a {
+                     |  void main() {
+                     |    $$display("", $expr);
+                     |    fence;
+                     |  }
+                     |}"""
+                }
+                checkSingleError(err)
               }
-              checkSingleError(err)
             }
           }
         }
+
+        "non numeric operand" - {
+          for (
+            (op, strictWidth) <- List(
+              ("*", true),
+              ("/", true),
+              ("%", true),
+              ("+", true),
+              ("-", true),
+              ("<<", false),
+              ("<<<", false),
+              (">>", false),
+              (">>>", false),
+              (">", true),
+              (">=", true),
+              ("<", true),
+              ("<=", true),
+              ("==", true),
+              ("!=", true),
+              ("&", true),
+              ("|", true),
+              ("^", true),
+              ("&&", false),
+              ("||", false)
+            )
+          ) {
+            val msg =
+              if (strictWidth) "is of non-packed type" else "is of neither numeric nor packed type"
+            for {
+              (expr, err) <- List(
+                (s"bool $op 8'd2", s"Left hand operand of '$op' $msg" :: Nil),
+                (s"8'd3 $op bool", s"Right hand operand of '$op' $msg" :: Nil)
+              )
+            } {
+              expr in {
+                typeCheck {
+                  s"""
+                     |fsm a {
+                     |  void main() {
+                     |    $$display("", $expr);
+                     |    fence;
+                     |  }
+                     |}"""
+                }
+                checkSingleError(err)
+              }
+            }
+          }
+        }
+
+        "binary ' " - {
+          "LHS is const" - {
+            for (lhs <- List("i", "bool ", "@randbit()")) {
+              lhs in {
+                typeCheck {
+                  s"""
+                     |fsm a {
+                     |  in u32 i;
+                     |  void main() {
+                     |    $$display("", i'(2'd0));
+                     |    fence;
+                     |  }
+                     |}"""
+                }
+                checkSingleError(
+                  "Left hand operand of binary ' operator must be a compile time constant" :: Nil
+                )
+              }
+            }
+          }
+
+          "LHS is positive" - {
+            for (lhs <- List("0", "-1s")) {
+              lhs in {
+                typeCheck {
+                  s"""
+                     |fsm a {
+                     |  in u32 i;
+                     |  void main() {
+                     |    $$display("", $lhs'(2'd0));
+                     |    fence;
+                     |  }
+                     |}"""
+                }
+                val value = if (lhs.endsWith("s")) lhs.dropRight(1) else lhs
+                checkSingleError(
+                  s"Left hand operand of binary ' operator must be positive (not $value)" :: Nil
+                )
+              }
+            }
+          }
+
+          "RHS is packed" - {
+            for ((rhs, ok) <- List(("1", false), ("bool", false), ("2'd0", true))) {
+              rhs in {
+                typeCheck {
+                  s"""
+                     |fsm a {
+                     |  void main() {
+                     |    $$display("", 32'($rhs));
+                     |    fence;
+                     |  }
+                     |}"""
+                }
+                checkSingleError(
+                  if (ok) Nil
+                  else "Right hand operand of binary ' operator is of non-packed type" :: Nil
+                )
+              }
+            }
+          }
+
+          "narrowing" in {
+            typeCheck {
+              s"""
+                 |fsm a {
+                 |  void main() {
+                 |    $$display("", 1'(2'd0));
+                 |    fence;
+                 |  }
+                 |}"""
+            }
+            checkSingleError(
+              "Binary ' operator causes narrowing" :: Nil
+            )
+          }
+        }
+
       }
 
       "warnings" - {

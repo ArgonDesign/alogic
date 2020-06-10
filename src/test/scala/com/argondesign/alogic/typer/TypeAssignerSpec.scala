@@ -562,7 +562,22 @@ final class TypeAssignerSpec extends AnyFreeSpec with AlogicTest {
             ("3'sd1 >>> 32'sd1", TypeSInt(3)),
             ("3'sd1 <<< 32'sd1", TypeSInt(3)),
             ("3'sd1 &&  32'sd1", TypeUInt(1)),
-            ("3'sd1 ||  32'sd1", TypeUInt(1))
+            ("3'sd1 ||  32'sd1", TypeUInt(1)),
+            //
+            // Binary '
+            //
+            // unsigned - unsigned
+            ("10'd4 ' 3'd2", TypeUInt(4)),
+            ("10'd3 ' 3'd2", TypeUInt(3)),
+            // unsigned - signed
+            ("10'd4 ' 3'sd2", TypeSInt(4)),
+            ("10'd3 ' 3'sd2", TypeSInt(3)),
+            // signed - unsigned
+            ("10'sd4 ' 3'd2", TypeUInt(4)),
+            ("10'sd3 ' 3'd2", TypeUInt(3)),
+            // signed - signed
+            ("10'sd4 ' 3'sd2", TypeSInt(4)),
+            ("10'sd3 ' 3'sd2", TypeSInt(3))
           )
         } {
           src in {

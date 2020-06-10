@@ -56,7 +56,7 @@ final class Typer(implicit cc: CompilerContext) extends StatefulTreeTransformer 
 
   override val typed: Boolean = false
 
-  final private val mixedWidthBinaryOps = Set("<<", ">>", "<<<", ">>>", "&&", "||")
+  final private val mixedWidthBinaryOps = Set("'", "<<", ">>", "<<<", ">>>", "&&", "||")
   final private val comparisonBinaryOps = Set(">", ">=", "<", "<=", "==", "!=")
 
   private def hasError(node: Tree): Boolean = node.children exists { child =>
@@ -757,6 +757,20 @@ final class Typer(implicit cc: CompilerContext) extends StatefulTreeTransformer 
         }
 
       // Binary ops
+      case ExprBinary(lhs, "'", rhs) =>
+        val lhsOK = lhs.value.nonEmpty ifFalse {
+          error(tree, "Left hand operand of binary ' operator must be a compile time constant")
+        }
+        val rhsOk = checkPacked(rhs, "Right hand operand of binary ' operator")
+        if (lhsOK && rhsOk) {
+          val w = lhs.value.get
+          if (w <= 0) {
+            error(tree, s"Left hand operand of binary ' operator must be positive (not $w)")
+          } else if (w < rhs.tpe.width) {
+            error(tree, "Binary ' operator causes narrowing")
+          }
+        }
+
       case ExprBinary(lhs, op, rhs) =>
         if (!lhs.tpe.underlying.isNum || !rhs.tpe.underlying.isNum) {
           lazy val strictWidth = !(mixedWidthBinaryOps contains op)

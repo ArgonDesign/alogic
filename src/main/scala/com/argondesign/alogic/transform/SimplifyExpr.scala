@@ -445,13 +445,29 @@ final class SimplifyExpr(implicit cc: CompilerContext)
   private def transformBinary(tree: ExprBinary): Expr = tree match {
 
     ////////////////////////////////////////////////////////////////////////////
+    // Fold binary '
+    ////////////////////////////////////////////////////////////////////////////
+
+    case ExprBinary(lhs, "'", rhs) =>
+      val width = lhs.value match {
+        case Some(v) if v > 0 => v.toInt
+        case Some(_)          => cc.ice(tree, "LHS of binary ' is non positive")
+        case None             => cc.ice(tree, "Cannot compute value of LHS of binary '")
+      }
+      val rhsWidth = rhs.tpe.width.toInt // Must be packed so must know width
+      require(width >= rhsWidth)
+      rhs match {
+        case expr: ExprInt          => expr.copy(width = width) withLoc tree.loc
+        case _ if width == rhsWidth => rhs
+        case _ if rhs.tpe.isSigned  => rhs sx width
+        case _                      => rhs zx width
+      }
+
+    ////////////////////////////////////////////////////////////////////////////
     // Fold shifts with an unsized left hand side
     ////////////////////////////////////////////////////////////////////////////
 
-    case expr @ ExprBinary(_: ExprNum, op, _: ExprNum) if shiftOps contains op =>
-      foldShiftUnsized(expr)
-
-    case expr @ ExprBinary(_: ExprNum, op, _: ExprInt) if shiftOps contains op =>
+    case expr @ ExprBinary(_: ExprNum, op, _: ExprNum | _: ExprInt) if shiftOps contains op =>
       foldShiftUnsized(expr)
 
     ////////////////////////////////////////////////////////////////////////////

@@ -1877,6 +1877,53 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
       }
     }
 
+    "binary '" - {
+      for {
+        (expr, pattern) <- List[(String, PartialFunction[Any, Unit])](
+          // format: off
+          ("20'10'sd12", { case ExprInt(true, 20, v) if v == 12 => }),
+          ("20'10'd12", { case ExprInt(false, 20, v) if v == 12 => }),
+          ("20'-10'sd1", { case ExprInt(true, 20, v) if v == -1 => }),
+          ("10'a", { case ExprCat(List(ExprInt(false, 2, z), ExprSym(Symbol("a")))) if z == 0 => }),
+          ("10'b", { case ExprCall(
+                            ExprSym(Symbol("$signed")),
+                            List(ArgP(
+                              ExprCat(List(
+                                ExprRep(Expr(3), ExprIndex(ExprSym(Symbol("b")), ExprInt(false, 3, i))),
+                                ExprSym(Symbol("b"))
+                              ))
+                            ))
+                          ) if i == 6 => }),
+          ("8'a", { case ExprSym(Symbol("a")) => }),
+          ("7'b", { case ExprSym(Symbol("b")) => }),
+          ("10'c", { case ExprInt(false, 10, v) if v == 7 => }),
+          ("10'd", { case ExprInt(true, 10, v) if v == -3 => })
+          // format: on
+        )
+      } {
+        expr in {
+          fold {
+            s"""
+               |fsm f {
+               |  u8 a;
+               |  i7 b;
+               |  const u8 c =  7;
+               |  const i8 d = -3s;
+               |  void main() {
+               |    $$display("", $expr);
+               |    fence;
+               |  }
+               |}"""
+          } getFirst {
+            case ExprCall(_, List(_, ArgP(e))) => e
+          } tap { expr =>
+            cc.messages shouldBe empty
+            expr should matchPattern(pattern)
+          }
+        }
+      }
+    }
+
     "reference to type" - {
       for {
         (decl, pattern) <- List[(String, PartialFunction[Any, Unit])](

@@ -237,6 +237,7 @@ expr
   | expr '.' ident                                              # ExprSelect
   // Operators
   | op=('+' | '-' | '~' | '!' | '&' | '|' | '^' | '\'' ) expr   # ExprUnary
+  | expr op='\'' expr                                           # ExprBinary
   | expr op=('*' | '/' | '%') expr                              # ExprBinary
   | expr op=('+' | '-') expr                                    # ExprBinary
   | expr op=('<<' | '>>' | '>>>' | '<<<' ) expr                 # ExprBinary

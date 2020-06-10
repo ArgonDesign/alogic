@@ -271,6 +271,8 @@ object TypeAssigner {
   private def kind(tree: ExprBinary)(implicit cc: CompilerContext) = tree.op match {
     case ">" | ">=" | "<" | "<=" | "==" | "!=" | "&&" | "||" => TypeUInt(1)
     case "<<" | ">>" | "<<<" | ">>>"                         => tree.lhs.tpe
+    case "'" =>
+      TypeInt(tree.rhs.tpe.isSigned, tree.lhs.value.get)
     case _ =>
       val lTpe = tree.lhs.tpe
       val rTpe = tree.rhs.tpe

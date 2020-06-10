@@ -65,10 +65,11 @@ using the `@bits`, `@max` and `$clog2` built-in functions.
 | Slice `+:` `-:`                                                    | `a[b+:c]`   | @bits(b) == @max(1, $clog2(size of indexed dimension)) and @bits(c) == $clog2(size of indexed dimension + 1) |
 | Unary `+` `-` `~` `&` `\|` `^`                                     | `-a`        | none |
 | Unary `'`                                                          | `'a`        | @bits(a) <= result width (see later sections) |
+| Binary `'`                                                         | `N'a`       | @bits(a) <= N |
 | Binary `*` `/` `%` `+` `-` `&` `\|` `^` `>` `>=` `<` `<=` `==` `!=`| `a + b`     | @bits(a) == @bits(b) |
 | Binary `<<` `<<<` `>>` `>>>` `&&` `\|\|`                           | `a << b`    | none |
 | Ternary                                                            | `a ? b : c` | @bits(b) == @bits(c) |
-| Repetition                                                         | `{N{a}}`     | none |
+| Repetition                                                         | `{N{a}}`    | none |
 | Concatenation                                                      | `{a, b}`    | none |
 
 Every operator detailed above also yields a result which has a well
@@ -84,6 +85,7 @@ result types of operators are:
 | Unary `+` `-` `~`                         | `-a`        | type of operand |
 | Unary `&` `\|` `^`                        | `&a`        | `u1` |
 | Unary `'`                                 | `'a`        | `int(result width)` if `a` is signed else `uint(result width)` |
+| Binary `'`                                | `N'a`       | `int(N)` if `a` is signed else `uint(N)` |
 | Binary `*` `/` `%` `+` `-` `&` `\|` `^`   | `a + b`     | `int(@bits(a))` if both `a` and `b` are signed else `uint(@bits(a))` |
 | Binary `>` `>=` `<` `<=` `==` `!=`        | `a + b`     | `u1` |
 | Binary `<<` `<<<` `>>` `>>>`              | `a << b`    | type of left hand operand |
@@ -211,6 +213,16 @@ const uint D = 'A + 'B;  // A and B are converted to unsized values,
                          // then the sum is evaluated on infinite
                          // precision avoiding oveflow
 ```
+
+#### The binary `'` operator
+
+The binary `'` operator can be used to widen a value to an explicitly specified
+width. The left hand operand of the binary `'` operator must be a compile time
+constant value which specifies the target width. Similarly to the unary `'`
+operator, the result of the binary `'` operator has the same signedness as the
+right hand operand. Unsigned types are widened using zero extension, signed
+values are widened using sign extension. Attempting to narrow a value using the
+binary `'` operator yields a compile time error.
 
 <p align="center">
 <a href="types.md">Previous</a> |

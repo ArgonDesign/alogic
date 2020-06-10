@@ -1680,6 +1680,7 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
 
           for (
             op <- List(
+              "'",
               "*",
               "/",
               "%",
