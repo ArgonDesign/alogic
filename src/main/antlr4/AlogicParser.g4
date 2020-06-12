@@ -50,9 +50,9 @@ descbase
   | 'in' fct? expr ident ';'                                            # DescIn
   | 'out' fct? stt? expr ident ('=' init=expr)? ';'                     # DescOut
   | 'pipeline' expr ident ';'                                           # DescPipeline
-  | 'param' expr IDENTIFIER ('=' init=expr)?  ';'                       # DescParam
-  | 'param' 'type' IDENTIFIER ('=' init=expr)?  ';'                     # DescParamType
-  | 'const' expr IDENTIFIER '=' expr  ';'                               # DescConst
+  | 'param' expr ident ('=' init=expr)?  ';'                            # DescParam
+  | 'param' 'type' ident ('=' init=expr)?  ';'                          # DescParamType
+  | 'const' expr ident '=' expr  ';'                                    # DescConst
   | expr ident '[' expr ']' ';'                                         # DescArr
   | 'sram' (wire='wire')? expr ident '[' expr ']' ';'                   # DescSram
   | 'typedef' expr ident ';'                                            # DescType
@@ -255,6 +255,6 @@ expr
 
 args : arg (',' arg)* ;
 arg
-  : IDENTIFIER point='=' expr   # ArgNamed
-  | expr                        # ArgPositional
+  : ident point='=' expr    # ArgNamed
+  | expr                    # ArgPositional
   ;

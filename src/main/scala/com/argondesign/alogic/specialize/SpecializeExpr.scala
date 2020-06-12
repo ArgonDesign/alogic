@@ -131,6 +131,7 @@ private[specialize] object SpecializeExpr {
                 val (posArgs, namedArgs) = args partition {
                   case _: ArgP => true
                   case _: ArgN => false
+                  case _: ArgD => false
                 }
                 if (posArgs.nonEmpty && namedArgs.nonEmpty) {
                   error(tree, "Mixing positional and named parameter assignments is not allowed")
@@ -144,7 +145,15 @@ private[specialize] object SpecializeExpr {
                   } else {
                     ParamBindingsNamed {
                       Map from {
-                        namedArgs.iterator collect { case ArgN(name, expr) => name -> expr }
+                        namedArgs.iterator collect {
+                          case ArgN(name, expr) => (name, Nil) -> expr
+                          case ArgD(name, idxs, expr) =>
+                            idxs.iterator filter { _.value.isEmpty } foreach {
+                              error(_, "Identifier index must be a compile time constant")
+                            }
+                            val idxValues = if (hadError) Nil else idxs map { _.value.get }
+                            (name, idxValues) -> expr
+                        }
                       }
                     }
                   }

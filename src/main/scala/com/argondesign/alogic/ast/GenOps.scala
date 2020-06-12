@@ -15,21 +15,19 @@
 package com.argondesign.alogic.ast
 
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.util.unreachable
 
-trait ArgOps { this: Arg =>
+trait GenOps { this: Gen =>
 
-  val expr: Expr
-
-}
-
-trait ArgObjOps { self: Arg.type =>
-
-  final def unapply(arg: Arg): Option[Expr] = Some {
-    arg match {
-      case ArgP(expr)    => expr
-      case ArgN(_, expr) => expr
-      case _: ArgD       => unreachable
+  final lazy val mayGenerateParam: Boolean = {
+    def check(trees: List[Tree]): Boolean = trees exists {
+      case _: DescParam | _: DescParamType => true
+      case gen: Gen                        => gen.mayGenerateParam
+      case _                               => false
+    }
+    this match {
+      case GenIf(_, thenItems, elseItems) => check(thenItems) || check(elseItems)
+      case GenFor(_, _, _, body)          => check(body)
+      case GenRange(_, _, _, body)        => check(body)
     }
   }
 

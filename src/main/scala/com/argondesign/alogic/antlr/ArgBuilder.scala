@@ -26,8 +26,14 @@ object ArgBuilder extends BaseBuilder[ArgContext, Arg] {
   def apply(ctx: ArgContext)(implicit cc: CompilerContext, sc: SourceContext): Arg = {
     object Visitor extends AlogicScalarVisitor[Arg] {
       override def visitArgNamed(ctx: ArgNamedContext): Arg = {
+        val Ident(name, idxs) = IdentBuilder(ctx.ident)
+        val expr = ExprBuilder(ctx.expr)
         val loc = ctx.loc.copy(point = ctx.point.getStartIndex)
-        ArgN(ctx.IDENTIFIER, ExprBuilder(ctx.expr)) withLoc loc
+        if (idxs.isEmpty) {
+          ArgN(name, expr) withLoc loc
+        } else {
+          ArgD(name, idxs, expr) withLoc loc
+        }
       }
 
       override def visitArgPositional(ctx: ArgPositionalContext): Arg =

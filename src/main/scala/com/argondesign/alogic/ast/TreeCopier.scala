@@ -1201,6 +1201,18 @@ object TreeCopier {
     }
   }
 
+  def apply(tree: ArgD)(idxs: List[Tree], expr: Tree): ArgD = {
+    if ((idxs eq tree.idxs) && (expr eq tree.expr)) {
+      tree
+    } else {
+      assert(idxs forall { _.isInstanceOf[Expr] })
+      tree.copy(
+        idxs = idxs.asInstanceOf[List[Expr]],
+        expr = expr.asInstanceOf[Expr]
+      ) withLoc tree.loc
+    }
+  }
+
   //////////////////////////////////////////////////////////////////////////////
   // Thicket
   //////////////////////////////////////////////////////////////////////////////

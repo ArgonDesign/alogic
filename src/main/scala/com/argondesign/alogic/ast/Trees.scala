@@ -157,8 +157,8 @@ object Trees {
   //////////////////////////////////////////////////////////////////////////////
 
   // format: off
-  sealed trait Gen extends Tree
-
+  sealed trait Gen extends Tree with GenOps
+  
   case class GenIf(cond: Expr, thenItems: List[Tree], elseItems: List[Tree]) extends Gen
   case class GenFor(inits: List[Stmt], cond: Expr, steps: List[Stmt], body: List[Tree]) extends Gen
   case class GenRange(inits: List[Stmt], op: String, end: Expr, body: List[Tree]) extends Gen
@@ -297,8 +297,11 @@ object Trees {
 
   sealed trait Arg extends Tree with ArgOps
 
+  object Arg extends ArgObjOps
+
   case class ArgP(override val expr: Expr) extends Arg
   case class ArgN(name: String, override val expr: Expr) extends Arg
+  case class ArgD(name: String, idxs: List[Expr], override val expr: Expr) extends Arg
 
   //////////////////////////////////////////////////////////////////////////////
   // Thicket/Stump

@@ -413,7 +413,7 @@ final class Typer(implicit cc: CompilerContext) extends StatefulTreeTransformer 
               val msg = {
                 val declCtx = symbol.decl.loc.context(AnsiColor.YELLOW).split("\\s*\n")
                 s"Type parameter '${symbol.name}' must be assigned a type." ::
-                  s"Definition if '${symbol.name}' is at ${symbol.decl.loc.prefix}" ::
+                  s"Definition of '${symbol.name}' is at ${symbol.decl.loc.prefix}" ::
                   (declCtx.toList map { "  " + _ })
               }
               error(tree, spec, msg: _*)

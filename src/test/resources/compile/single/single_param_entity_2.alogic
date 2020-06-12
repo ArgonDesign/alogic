@@ -11,6 +11,6 @@ network single_param_entity_2 {
   }
 
   inst = new inner(1, 1);
-  i -> inner.ii; inner.oo -> o;
+  i -> inst.ii; inst.oo -> o;
 }
 // :13: ERROR: Multiple parameter assignments must be given by name

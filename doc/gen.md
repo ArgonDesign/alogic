@@ -10,10 +10,10 @@ Alogic supports compile time code generation using the `gen` construct,
 which is similar to the Verilog generate construct.
 
 The compiler will process all `gen` constructs to produce expanded
-source code prior to compilation. `gen` constructs are expanded after
+source code prior to compilation. `gen` constructs are expanded during
 [parameter specialization](params.md#parameter-specialization) but
-before type checking or control flow conversion. This allows `gen`
-constructs to depend on final parameter values and produce arbitrary
+before global type checking or control flow conversion. This allows `gen`
+constructs to depend on actual parameter values and produce arbitrary
 code fragments that are syntactically valid in the context of the `gen`
 construct.
 
@@ -368,38 +368,41 @@ network optional_buffer {
 }
 ```
 
-There is one restriction on generating entity contents, which is that
-`param` and `const` declarations must appear directly under the
-containing entity, and not inside a `gen` construct. It is still
-possible to create parametrized nested entities inside a `gen`, so this
-is possible:
+It is possible to generate `param` and `const` declarations, including
+declarations dependent on actual values of other parameters:
 
 ```
-network foo {
-  param bool P;
+struct bus {
+  u20 addr;
+  u8  data;
+}
 
-  gen if (P) {
-    fsm nested {
-      param uint Q; // OK, it is directly under the containing entity,
-                    // even though the declaration is under a 'gen'
-      ...
+fsm gen_decoder {
+  param uint N_PORTS;
+
+  in sync bus i;
+  gen for (uint n < N_PORTS) {
+    out u8 o#[n];
+    param u20 BASE#[n];
+  }
+
+  void main() {
+    i.read();
+    case(i.addr) {
+      gen for (uint n < N_PORTS) {
+        BASE#[n]: o#[n].write(i.data);
+      }
+      default: {} // Do nothing
     }
-    ...    
+    fence;
   }
 }
 ```
 
-The following however will raise a compiler error
-(<a href="http://afiddle.argondesign.com/?example=gen_param_const_error.alogic">fiddle here</a>):
+To instantiate the above with 3 ports, use:
 
 ```
-network foo {
-  param bool P;
-  gen if (P) {
-    param bool Q; // Error, must appear directly under containing entity
-  }
-  ...    
-}
+decoder = gen_decoder(N_PORTS=3, BASE#[0]=2, BASE#[1]=10, BASE#[2]=150);
 ```
 
 ### Lexical scopes of `gen` constructs 

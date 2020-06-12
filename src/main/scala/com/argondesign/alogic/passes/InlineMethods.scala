@@ -89,6 +89,7 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatelessTreeTra
         case argn: ArgN =>
           // For now it does not work, not hard though..
           cc.fatal(argn, "Function call arguments must be positional")
+        case _: ArgD => unreachable
       }
 
       // Local temporary symbols holding actual arguments

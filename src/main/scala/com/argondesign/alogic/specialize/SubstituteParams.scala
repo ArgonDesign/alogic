@@ -49,7 +49,7 @@ private[specialize] object SubstituteParams {
     require(!desc.isInstanceOf[DescParamType])
 
     def checkPosOk: Boolean = bindings match {
-      case _: ParamBindingsPositional => desc.params.length == 1
+      case _: ParamBindingsPositional => desc.params.length == 1 && !desc.mayHaveGeneratedParam
       case _                          => true
     }
 
@@ -63,22 +63,22 @@ private[specialize] object SubstituteParams {
       // Otherwise attempt to do some useful work
 
       // Compute the parameter bindings
-      val pairs: List[(Desc, Option[Expr])] = desc.params map {
-        case desc @ DescParam(ref, _, default) =>
-          val binding: Option[Expr] = bindings match {
-            case ParamBindingsPositional(expr :: Nil) => Some(expr)
-            case _: ParamBindingsPositional           => unreachable
-            case ParamBindingsNamed(params)           => params get ref.symbol.name
-          }
-          desc -> (binding orElse default)
-        case desc @ DescParamType(ref, default) =>
-          val binding: Option[Expr] = bindings match {
-            case ParamBindingsPositional(expr :: Nil) => Some(expr)
-            case _: ParamBindingsPositional           => unreachable
-            case ParamBindingsNamed(params)           => params get ref.symbol.name
-          }
-          desc -> (binding orElse default)
-        case _ => unreachable
+      val pairs: List[(Desc, Option[Expr])] = {
+        def getBinding(ref: Ref): Option[Expr] = bindings match {
+          case ParamBindingsPositional(expr :: Nil) => Some(expr)
+          case _: ParamBindingsPositional           => unreachable
+          case ParamBindingsNamed(params) =>
+            val (name, idxValues) = ref.symbol.attr.sourceName.get match {
+              case Some((name, idxValues)) => (name, idxValues)
+              case _                       => (ref.symbol.name, Nil)
+            }
+            params.get((name, idxValues))
+        }
+        desc.params map {
+          case desc @ DescParam(ref, _, default)  => desc -> (getBinding(ref) orElse default)
+          case desc @ DescParamType(ref, default) => desc -> (getBinding(ref) orElse default)
+          case _                                  => unreachable
+        }
       }
 
       // Find the unbound parameters
@@ -92,30 +92,28 @@ private[specialize] object SubstituteParams {
       } else {
         // Otherwise substitute the parameters
 
-        // Clone bound parameter symbols
-        val symbolMap: Map[Symbol, Symbol] = Map from {
-          val boundSymbols: Set[Symbol] = Set from { pairs.iterator map { _._1.symbol } }
-          desc.params collect {
-            case Desc(Sym(symbol, _)) if boundSymbols(symbol) => symbol -> symbol.dup
-          }
-        }
-
         // Compute the actual symbol bindings keyed by symbols (this is to
         // avoid replacing a parameter in a nested Desc with the same name)
         val symbolBindings: Map[Symbol, Expr] = Map from {
           pairs.iterator collect {
-            case (desc, Some(expr)) => symbolMap(desc.symbol) -> expr
+            case (desc, Some(expr)) => desc.symbol -> expr
           }
         }
 
         // Compute the unused bindings
         val unusedBindings = bindings match {
-          case ParamBindingsPositional(params) =>
-            assert(params.length == 1)
-            ParamBindingsPositional(Nil)
+          case _: ParamBindingsPositional => ParamBindingsPositional(Nil)
           case ParamBindingsNamed(params) =>
-            val boundNames: Set[String] = Set from { symbolBindings.keysIterator map { _.name } }
-            ParamBindingsNamed(params filter { case (k, _) => !boundNames(k) })
+            val unusedParams = params filterNot {
+              case ((name, idxValues), _) =>
+                symbolBindings.keysIterator exists { symbol =>
+                  symbol.attr.sourceName.get match {
+                    case Some((sName, sIdxValues)) => sName == name && sIdxValues == idxValues
+                    case None                      => symbol.name == name && idxValues.isEmpty
+                  }
+                }
+            }
+            ParamBindingsNamed(unusedParams)
         }
 
         // Transform that replaces the bound parameters
@@ -123,18 +121,6 @@ private[specialize] object SubstituteParams {
           override val typed: Boolean = false
 
           override def transform(tree: Tree): Tree = tree match {
-            // Replace cloned symbols
-            case node: Sym =>
-              symbolMap.get(node.symbol) match {
-                case Some(symbol) => node.copy(symbol = symbol) withLoc node.loc
-                case None         => tree
-              }
-            case node: ExprSym =>
-              symbolMap.get(node.symbol) match {
-                case Some(symbol) => node.copy(symbol = symbol) withLoc node.loc
-                case None         => tree
-              }
-
             // Change bound value parameters into constants
             case DescParam(ref @ Sym(symbol, _), spec, _) =>
               symbolBindings.get(symbol) match {
@@ -159,7 +145,7 @@ private[specialize] object SubstituteParams {
         }
 
         // Perform the transform
-        val substituted = desc rewrite transform ensuring { !_.isParametrized }
+        val substituted = desc rewrite transform ensuring { _.params.isEmpty }
 
         // Done
         ParamSubstitutionComplete(substituted, unusedBindings)

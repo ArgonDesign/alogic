@@ -1,0 +1,10 @@
+network no_such_param_01 {
+  network inner {
+    param uint A;
+    param uint B;
+  }
+  inst = new inner(A=1, B=2, C#[0]=3);
+}
+// :3: WARNING: Parameter 'A' is unused
+// :4: WARNING: Parameter 'B' is unused
+// :6: ERROR: 'inner' has no parameter 'C#\[0\]'

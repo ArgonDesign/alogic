@@ -116,7 +116,7 @@ object DescBuilder extends BaseBuilder[DescContext, Desc] with ChainingSyntax {
       }
 
       override def visitDescParam(ctx: DescParamContext): Desc = {
-        val ident = IdentBuilder(ctx.IDENTIFIER)
+        val ident = IdentBuilder(ctx.ident)
         val spec = ExprBuilder(ctx.expr(0))
         val initOpt = if (ctx.init != null) Some(ExprBuilder(ctx.init)) else None
         val loc = ctx.loc.copy(point = ident.loc.start)
@@ -124,14 +124,14 @@ object DescBuilder extends BaseBuilder[DescContext, Desc] with ChainingSyntax {
       }
 
       override def visitDescParamType(ctx: DescParamTypeContext): Desc = {
-        val ident = IdentBuilder(ctx.IDENTIFIER)
+        val ident = IdentBuilder(ctx.ident)
         val initOpt = if (ctx.init != null) Some(ExprBuilder(ctx.init)) else None
         val loc = ctx.loc.copy(point = ident.loc.start)
         DescParamType(ident, initOpt) withLoc loc
       }
 
       override def visitDescConst(ctx: DescConstContext): Desc = {
-        val ident = IdentBuilder(ctx.IDENTIFIER)
+        val ident = IdentBuilder(ctx.ident)
         val spec = ExprBuilder(ctx.expr(0))
         val init = ExprBuilder(ctx.expr(1))
         val loc = ctx.loc.copy(point = ident.loc.start)

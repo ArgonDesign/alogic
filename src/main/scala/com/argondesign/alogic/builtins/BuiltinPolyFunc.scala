@@ -27,6 +27,7 @@ import com.argondesign.alogic.core.Types.TypeFund
 import com.argondesign.alogic.core.Types.TypePolyFunc
 import com.argondesign.alogic.util.BooleanOps
 import com.argondesign.alogic.util.PartialMatch
+import com.argondesign.alogic.util.unreachable
 
 import scala.collection.concurrent.TrieMap
 import scala.util.ChainingSyntax
@@ -116,6 +117,7 @@ abstract class BuiltinPolyFunc(
   private[builtins] def pargs(args: List[Arg]): List[Expr] = args flatMap {
     case ArgP(expr) => Some(expr)
     case arg: ArgN  => cc.error(arg, s"Cannot pass named arguments to builtin '$name'"); None
+    case _: ArgD    => unreachable
   }
 
 }

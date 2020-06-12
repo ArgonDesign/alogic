@@ -29,10 +29,7 @@ import scala.util.chaining._
 
 object ConnectChecks {
 
-  def argExprs(args: List[Arg]): List[Expr] = args map {
-    case ArgP(expr)    => expr
-    case ArgN(_, expr) => expr
-  }
+  def argExprs(args: List[Arg]): List[Expr] = args map { case Arg(expr) => expr }
 
   private def flowControlType(
       expr: Expr,

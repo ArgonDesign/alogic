@@ -578,6 +578,10 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
     case node: ArgN =>
       val expr = walk(node.expr)
       TreeCopier(node)(expr)
+    case node: ArgD =>
+      val idxs = walk(node.idxs)
+      val expr = walk(node.expr)
+      TreeCopier(node)(idxs, expr)
   }
 
   // Walk children of node

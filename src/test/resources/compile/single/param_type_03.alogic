@@ -13,6 +13,6 @@ fsm param_type_03 {
   }
 }
 // :2: ERROR: Type parameter 'T' must be assigned a type.
-// :2: ERROR: ... Definition if 'T' is at .*param_type_03.alogic:2
+// :2: ERROR: ... Definition of 'T' is at .*param_type_03.alogic:2
 // :2: ERROR: ...     param type T = 10;
 // :2: ERROR: ...     ~~~~~~~~~~~\^~~~~~~

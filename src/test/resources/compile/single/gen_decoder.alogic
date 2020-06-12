@@ -1,0 +1,55 @@
+// @top: gen_decoder(N_PORTS=3, BASE#[0]=2, BASE#[1]=10, BASE#[2]=150)
+struct bus {
+  u20 addr;
+  u8  data;
+}
+
+fsm gen_decoder {
+  param uint N_PORTS;
+
+  in sync bus i;
+  gen for (uint n < N_PORTS) {
+    out u8 o#[n];
+    param u20 BASE#[n];
+  }
+
+  void main() {
+    i.read();
+    case(i.addr) {
+      gen for (uint n < N_PORTS) {
+        BASE#[n]: o#[n].write(i.data);
+      }
+      default: {} // Do nothing
+    }
+    fence;
+  }
+}
+// @out-top: gen_decoder__N_PORTS_3__BASE__0_2__BASE__1_10__BASE__2_150
+// @fec/golden {{{
+//  module gen_decoder__N_PORTS_3__BASE__0_2__BASE__1_10__BASE__2_150(
+//    input  wire clk,
+//    input  wire rst,
+//    input  wire [19:0] i__addr,
+//    input  wire [ 7:0] i__data,
+//    input  wire        i__valid,
+//    output reg  [ 7:0] o__0,
+//    output reg  [ 7:0] o__1,
+//    output reg  [ 7:0] o__2
+//  );
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        o__0 <= 8'd0;
+//        o__1 <= 8'd0;
+//        o__2 <= 8'd0;
+//      end else if (i__valid) begin
+//        if (i__addr == 20'd2) begin
+//          o__0 <= i__data;
+//        end else if (i__addr == 20'd10) begin
+//          o__1 <= i__data;
+//        end else if (i__addr == 20'd150) begin
+//          o__2 <= i__data;
+//        end
+//      end
+//    end
+//  endmodule
+// }}}

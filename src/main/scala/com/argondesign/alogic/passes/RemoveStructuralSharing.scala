@@ -179,6 +179,7 @@ final class RemoveStructuralSharing(implicit cc: CompilerContext) extends Statef
 
         case node: ArgP => node.copy()
         case node: ArgN => node.copy()
+        case node: ArgD => node.copy()
 
         case _: Thicket => unreachable
         case Stump      => unreachable

@@ -1632,43 +1632,68 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
             "(((1)))".asTree[Expr] shouldBe Expr(1)
           }
 
-          "call with no arguments" in {
-            "a()".asTree[Expr] shouldBe ExprCall(ExprRef(Ident("a", Nil)), Nil)
-          }
-
-          "call with 1 positional argument" in {
-            "b(2)".asTree[Expr] shouldBe ExprCall(ExprRef(Ident("b", Nil)), List(ArgP(Expr(2))))
-          }
-
-          "call with 2 positional arguments" in {
-            "c(d, e)".asTree[Expr] shouldBe {
-              ExprCall(
-                ExprRef(Ident("c", Nil)),
-                List(ArgP(ExprRef(Ident("d", Nil))), ArgP(ExprRef(Ident("e", Nil))))
-              )
+          "call" - {
+            "with no arguments" in {
+              "a()".asTree[Expr] shouldBe ExprCall(ExprRef(Ident("a", Nil)), Nil)
             }
-          }
 
-          "call with 1 named argument" in {
-            "b(x = 2)"
-              .asTree[Expr] shouldBe ExprCall(ExprRef(Ident("b", Nil)), List(ArgN("x", Expr(2))))
-          }
-
-          "call with 2 named arguments" in {
-            "c(x=d, y=e)".asTree[Expr] shouldBe {
-              ExprCall(
-                ExprRef(Ident("c", Nil)),
-                List(ArgN("x", ExprRef(Ident("d", Nil))), ArgN("y", ExprRef(Ident("e", Nil))))
-              )
+            "with 1 positional argument" in {
+              "b(2)".asTree[Expr] shouldBe ExprCall(ExprRef(Ident("b", Nil)), List(ArgP(Expr(2))))
             }
-          }
 
-          "call with 1 positional and 1 named argument" in {
-            "c(d, y=e)".asTree[Expr] shouldBe {
-              ExprCall(
-                ExprRef(Ident("c", Nil)),
-                List(ArgP(ExprRef(Ident("d", Nil))), ArgN("y", ExprRef(Ident("e", Nil))))
-              )
+            "with 2 positional arguments" in {
+              "c(d, e)".asTree[Expr] shouldBe {
+                ExprCall(
+                  ExprRef(Ident("c", Nil)),
+                  List(ArgP(ExprRef(Ident("d", Nil))), ArgP(ExprRef(Ident("e", Nil))))
+                )
+              }
+            }
+
+            "with 1 named argument" in {
+              "b(x = 2)"
+                .asTree[Expr] shouldBe ExprCall(ExprRef(Ident("b", Nil)), List(ArgN("x", Expr(2))))
+            }
+
+            "with 2 named arguments" in {
+              "c(x=d, y=e)".asTree[Expr] shouldBe {
+                ExprCall(
+                  ExprRef(Ident("c", Nil)),
+                  List(ArgN("x", ExprRef(Ident("d", Nil))), ArgN("y", ExprRef(Ident("e", Nil))))
+                )
+              }
+            }
+
+            "with 1 positional and 1 named argument" in {
+              "c(d, y=e)".asTree[Expr] shouldBe {
+                ExprCall(
+                  ExprRef(Ident("c", Nil)),
+                  List(ArgP(ExprRef(Ident("d", Nil))), ArgN("y", ExprRef(Ident("e", Nil))))
+                )
+              }
+            }
+
+            "with 1 dict argument" in {
+              "c(x#[0]=d)".asTree[Expr] shouldBe {
+                ExprCall(
+                  ExprRef(Ident("c", Nil)),
+                  List(
+                    ArgD("x", Expr(0) :: Nil, ExprRef(Ident("d", Nil)))
+                  )
+                )
+              }
+            }
+
+            "with 2 dict arguments" in {
+              "c(x#[0]=d, x#[1]=e)".asTree[Expr] shouldBe {
+                ExprCall(
+                  ExprRef(Ident("c", Nil)),
+                  List(
+                    ArgD("x", Expr(0) :: Nil, ExprRef(Ident("d", Nil))),
+                    ArgD("x", Expr(1) :: Nil, ExprRef(Ident("e", Nil)))
+                  )
+                )
+              }
             }
           }
 

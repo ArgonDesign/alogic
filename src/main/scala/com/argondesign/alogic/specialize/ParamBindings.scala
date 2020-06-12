@@ -18,5 +18,5 @@ import com.argondesign.alogic.ast.Trees.Expr
 
 sealed trait ParamBindings
 
-case class ParamBindingsNamed(params: Map[String, Expr]) extends ParamBindings
+case class ParamBindingsNamed(params: Map[(String, List[BigInt]), Expr]) extends ParamBindings
 case class ParamBindingsPositional(params: List[Expr]) extends ParamBindings

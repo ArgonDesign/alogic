@@ -17,6 +17,7 @@ package com.argondesign.alogic.specialize
 
 import com.argondesign.alogic.analysis.StaticEvaluation
 import com.argondesign.alogic.ast.StatefulTreeTransformer
+import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Bindings
 import com.argondesign.alogic.core.CompilerContext
@@ -145,6 +146,7 @@ private[specialize] object Generate {
     def splice(tree: Tree): Stmt = tree match {
       case gen: Gen             => StmtGen(gen) withLoc gen.loc
       case stmt: Stmt           => stmt
+      case DescConst(r, s, i)   => StmtDesc(DescVal(r, s, i) withLoc tree.loc) withLoc tree.loc
       case desc: Desc           => StmtDesc(desc) withLoc desc.loc
       case assertion: Assertion => StmtAssertion(assertion) withLoc assertion.loc
       case _                    => unreachable
@@ -187,7 +189,7 @@ private[specialize] object Generate {
           case Some(value) =>
             values(tail, bindings) map { value :: _ }
           case None =>
-            cc.error(head, "Identifier index must be a compile time constant");
+            cc.error(head, "Identifier index must be a compile time constant")
             values(tail, bindings) // Compute it anyway to emit all errors
             None
         }
@@ -200,11 +202,11 @@ private[specialize] object Generate {
       implicit
       cc: CompilerContext
     ): Option[Either[Desc, (Decl, Defn)]] = {
-    assert(input.left forall { !_.isParametrized })
+    assert(input.left forall { _.params.isEmpty })
     assert(input.left forall { _.ref.asInstanceOf[Sym].idxs.isEmpty })
 
-    // Whether this choice has been generated
-    val validChoices = mutable.Set[Symbol]()
+    // Map from symbol to cloned symbol of valid choices
+    val validChoices = mutable.Map[Symbol, Symbol]()
 
     // Whether this choice has not been eliminated
     val potentialChoices = mutable.Set[Symbol]()
@@ -213,18 +215,13 @@ private[specialize] object Generate {
         // Bindings for symbols with known values (gen variables)
         bindings: Bindings,
         // The symbols already cloned externally (generated symbols that are used outside)
-        newSymbols: Map[Symbol, Symbol],
-        // This is inside a gen
-        inGen: Boolean
+        symbolMap: Map[Symbol, Symbol]
       )(
         implicit
         cc: CompilerContext)
         extends StatefulTreeTransformer {
 
       override val typed: Boolean = false
-
-      // The cloned symbol map
-      private val symbolMap = mutable.Map from newSymbols
 
       // Mark if we made any progress
       var progress = false
@@ -242,74 +239,43 @@ private[specialize] object Generate {
       private def cloneSymbolsInDescs(
           descs: List[Desc],
           bindings: Bindings,
-          suffix: String,
-          inGen: Boolean
+          suffix: String
         ): List[(Symbol, Symbol)] = descs flatMap {
-        // Don't clone parametrized symbols outside Gen. These will be
-        // specialized and replaced
-        case desc: Desc if desc.isParametrized && !inGen => Nil
         // Scalar symbols
         case desc: Desc if desc.ref.idxs.isEmpty =>
-          symbolMap.get(desc.symbol) match {
-            // A scalar symbol may already be cloned if referenced by an outer
-            // DescChoice. We just need to mark it valid at this point.
-            case Some(cloneSymbol) =>
-              // This choice will now be active, so mark as such
-              validChoices add cloneSymbol
-              // Rename the clone by appending the suffix
-              cloneSymbol.name = cloneSymbol.name + suffix
-              // Already in the symbol map, no need to add it
-              Nil
+          // Get the introduced symbol
+          val symbol = desc.symbol
+          // Sanity check
+          assert(!(symbolMap contains symbol), "Already cloned in this context")
+          // Clone the symbol
+          val cloneSymbol = symbol.dup
+          // Rename the clone by appending the suffix
+          cloneSymbol.name = cloneSymbol.name + suffix
+          // Mark as valid choice, remember global choice mapping to clone.
+          // Note that this mapping might already exists if the symbol is in a
+          // Gen loop, that's OK though as scalar symbols don't escape Gen loop
+          // scopes so they will never be an outer choice alternative. This
+          // means we can just overwrite the mapping as we will never use it.
+          validChoices(symbol) = cloneSymbol
+          // Add to context local mapping
+          Some(symbol -> cloneSymbol)
 
-            // If a scalar symbol was not already cloned, we must clone it
-            case None =>
-              // Clone the symbol
-              val newSymbol = desc.symbol.dup
-              // Rename the clone by appending the suffix
-              newSymbol.name = newSymbol.name + suffix
-              // If this is a choice symbol, recursively clone all referenced
-              // choices as well. We clone recursively to ensure only one
-              // clone exists, even if a referenced choice is inside a loop.
-              def choiceClones(intr: Desc): List[(Symbol, Symbol)] = intr match {
-                case DescChoice(_, choices) =>
-                  choices flatMap {
-                    case ExprSym(choice) =>
-                      // These could not have been seen before,
-                      assert(!(symbolMap contains choice))
-                      (choice -> choice.dup) :: choiceClones(choice.desc)
-                  }
-                case _ => Nil
-              }
-              // Add this clone and the choice clones (if any)
-              (desc.symbol -> newSymbol) :: choiceClones(desc)
-          }
         // Dict symbols
         case desc: Desc =>
-          // Choice symbols are never dict
-          assert(!desc.isInstanceOf[DescChoice])
+          // Get the introduced symbol
+          val symbol = desc.symbol
+          // Sanity check
+          assert(!(symbolMap contains symbol), "Dict symbol must not be cloned")
+          assert(!(validChoices contains symbol), "Dict symbol must not be in validChoices")
+          assert(!desc.isInstanceOf[DescChoice], "Choice symbols are never dict")
           // At this point the indices must be known, or it's an error
           values(desc.ref.idxs, bindings) match {
-            case None =>
-              hadError = true
-              Nil
+            case None            => hadError = true
             case Some(idxValues) =>
-              // Get the introduced symbol
-              val symbol = desc.symbol
-
-              // Dict symbols will have always either been cloned as they can only
-              // be defined in a 'gen' loop, and they are always injected into the
-              // enclosing scope via a choice symbol, or have been cloned in another
-              // call to generate and subsequently resolved to the clone, so just get
-              // the clone (if introduced in the generate being processed, or use
-              // the already resolved symbol).
-              val dictSymbol = symbolMap.getOrElse(symbol, symbol)
-
-              // We will now have at least one instance of the dict decl,
-              // so mark the dictSymbol as a valid choice
-              validChoices add dictSymbol
-
               // Clone the symbol, this is the specific instance
               val newSymbol = symbol.dup
+              // Clear attribute on clone, just in case it got inherited
+              newSymbol.attr.dictResolutions.clear()
 
               // Rename based on value of indices
               newSymbol.name = idxValues
@@ -320,19 +286,19 @@ private[specialize] object Generate {
               newSymbol.attr.sourceName.set((symbol.name, idxValues))
 
               // Add to dictResolutions, error if already exists
-              dictSymbol.attr.dictResolutions
+              symbol.attr.dictResolutions
                 .getOrElseUpdate(mutable.Map())
                 .put(idxValues, newSymbol) match {
-                case Some(_) =>
-                  val ref = desc.ref
-                  val srcName = idxValues.mkString(symbol.name + "#[", ", ", "]")
-                  error(ref, s"'$srcName' defined multiple times after processing 'gen' constructs")
                 case None => // OK, first definition with these indices
+                case Some(_) =>
+                  val name = idxValues.mkString(symbol.name + "#[", ", ", "]")
+                  error(
+                    desc.ref,
+                    s"'$name' defined multiple times after processing 'gen' constructs"
+                  )
               }
-
-              // The dict clone is already in the symbolMap, no need to add it
-              Nil
           }
+          None
       }
 
       // Compute the generated tree from generate
@@ -344,38 +310,76 @@ private[specialize] object Generate {
           val (valid, invalid) = trees partition dispatcher.isValid
 
           // Issue error for any invalid contents
-          invalid foreach { t =>
-            error(
-              t,
-              s"'gen' construct yields invalid syntax, ${dispatcher.description} is expected"
+          lazy val hint = dispatcher.description
+          invalid foreach {
+            error(_, s"'gen' construct yields invalid syntax, $hint is expected")
+          }
+
+          // Clone symbols introduced in the scope of this Gen, and build the
+          // symbol map of the gen context.
+          val newSymbolMap = symbolMap ++ {
+            // Gather Descs in the Gen scope, but not from nested Gens
+            val (directScalarDescs, otherDescs) = {
+              val direcScalars = mutable.ListBuffer[Desc]()
+              val other = mutable.ListBuffer[Desc]()
+
+              object GatherDescs extends StatelessTreeTransformer {
+                override val typed = false
+                var level = 0
+                override def enter(tree: Tree): Option[Tree] = tree match {
+                  case desc: Desc =>
+                    if (level == 0 && desc.ref.idxs.isEmpty) {
+                      direcScalars append desc
+                    } else {
+                      other append desc
+                    }
+                    level += 1
+                    None
+                  case gen: Gen =>
+                    // Include Descs in Gen header, but not body
+                    level += 1;
+                    gen match {
+                      case _: GenIf                 =>
+                      case GenFor(inits, _, _, _)   => walk(inits);
+                      case GenRange(inits, _, _, _) => walk(inits);
+                    }
+                    level -= 1
+                    Some(tree)
+                  case _ => None
+                }
+                override protected def transform(tree: Tree): Tree = tree match {
+                  case _: Desc => level -= 1; tree
+                  case _       => tree
+                }
+              }
+
+              valid foreach GatherDescs
+
+              (direcScalars.toList, other.toList)
+            }
+
+            // Rename non nested cloned scalar symbols based on bindings.
+            def n(v: BigInt): String = if (v < 0) s"n${-v}" else s"$v"
+            val suffix = bindings.toList sortBy { _._1.loc.start } map {
+              case (symbol, expr) => s"${symbol.name}_${n(expr.value.get)}"
+            } pipe {
+              case Nil  => ""
+              case list => list mkString (cc.sep, cc.sep, "")
+            }
+
+            cloneSymbolsInDescs(
+              directScalarDescs,
+              bindings,
+              suffix
+            ) concat cloneSymbolsInDescs(
+              otherDescs,
+              bindings,
+              ""
             )
           }
 
-          // Gather definitions in the 'gen' scope
-          val descs = valid collect { case desc: Desc => desc }
-
-          // Clone symbols introduced in the scope of this Gen, and build the new
-          // starting symbol map. Rename cloned scalar symbols based on bindins.
-          val sm = {
-            val suffix = if (bindings.isEmpty) {
-              ""
-            } else {
-              bindings.toList sortBy {
-                _._1.loc.start
-              } map {
-                case (symbol, expr) =>
-                  val n = expr.value.get
-                  s"${symbol.name}_${if (n < 0) s"n${-n}" else s"$n"}"
-              } mkString (cc.sep, cc.sep, "")
-            }
-
-            Map from {
-              symbolMap.iterator concat cloneSymbolsInDescs(descs, bindings, suffix, true)
-            }
-          }
-
           // Create the recursive Generate transform
-          val transform = new Process(bindings, sm, true)
+          val transform = new Process(bindings, newSymbolMap)
 
           // Recursively process valid trees, then splice them
           val results = valid map dispatcher.splice map transform
@@ -553,44 +557,26 @@ private[specialize] object Generate {
         if (hadError) Some(Nil) else result
       }
 
-      // Indicates whether we are in a parametrized Desc (> 0) or not ( == 0)
-      private var parametrizedLevel = 0
+      // Stack of enclosing parametrized symbols. We use this to track if
+      // we are inside a parametrized desc (i.e.: in a desc which is known
+      // to have parameters, not including parameters that might be generated
+      // by Gen). We use a stack as expanding generates might introduce new
+      // parameters (i.e.: desc.params is not invariant to this transform)
+      private val parametrizedSymbols = mutable.Stack[Symbol]()
 
       override def enter(tree: Tree): Option[Tree] = {
+        // Only process Gen in non-parametrized context (note Gens themselves
+        // might generate params, so we only check the already known params)
         tree match {
-          case desc: Desc if desc.isParametrized => parametrizedLevel += 1
-          case _                                 =>
+          case desc: Desc if desc.params.nonEmpty =>
+            // Note the symbol might be cloned, so push the clone
+            parametrizedSymbols push symbolMap.getOrElse(desc.symbol, desc.symbol)
+          case _ =>
         }
 
-        // Only process Gen in non-parametrized context
-        if (parametrizedLevel > 0) {
+        if (parametrizedSymbols.nonEmpty) {
           None
         } else {
-          // Clone un-specialized symbols introduced in the scope of this tree
-          symbolMap ++= {
-            def stmtDescs(stmts: List[Stmt]): List[Desc] = stmts collect {
-              case StmtDesc(desc) => desc
-            }
-
-            val descs = tree match {
-              case desc: Desc                      => desc.descs
-              case defn: Defn                      => defn.descs
-              case EntCombProcess(stmts)           => stmtDescs(stmts)
-              case StmtBlock(body)                 => stmtDescs(body)
-              case StmtIf(_, thenStmts, elseStmts) => stmtDescs(thenStmts) ::: stmtDescs(elseStmts)
-              case StmtLoop(body)                  => stmtDescs(body)
-              case StmtWhile(_, body)              => stmtDescs(body)
-              case StmtFor(inits, _, _, body)      => stmtDescs(inits) ::: stmtDescs(body)
-              case StmtDo(_, body)                 => stmtDescs(body)
-              case StmtLet(inits, body)            => stmtDescs(inits) ::: stmtDescs(body)
-              case CaseRegular(_, stmts)           => stmtDescs(stmts)
-              case CaseDefault(stmts)              => stmtDescs(stmts)
-              case _                               => Nil
-            }
-
-            cloneSymbolsInDescs(descs, bindings, "", inGen)
-          }
-
           tree pipe {
             // Gen that must produce entity contents
             case EntGen(gen) => generate[Ent](gen) map Thicket
@@ -652,8 +638,8 @@ private[specialize] object Generate {
 
         case desc: Desc =>
           potentialChoices add desc.symbol
-          if (desc.isParametrized) {
-            parametrizedLevel -= 1
+          if (parametrizedSymbols.headOption contains desc.symbol) {
+            parametrizedSymbols.pop()
           }
           tree
 
@@ -666,7 +652,7 @@ private[specialize] object Generate {
 
       override def finalCheck(tree: Tree): Unit = {
         if (!hadError) {
-          assert(parametrizedLevel == 0)
+          assert(parametrizedSymbols.isEmpty, parametrizedSymbols)
         }
       }
     }
@@ -688,7 +674,7 @@ private[specialize] object Generate {
         hadError = true
       }
 
-      // Indicates whether we are in a parametrized Decl (> 0) or not ( == 0)
+      // Indicates whether we are in a nested parametrized Decl (> 0) or not ( == 0)
       private var parametrizedLevel = 0
 
       // Indicates whether we are in an un-expanded gen
@@ -699,17 +685,19 @@ private[specialize] object Generate {
           Some(symbol)
         } else {
           def extractValidChoices(symbol: Symbol): List[Symbol] = {
-            symbol.desc.asInstanceOf[DescChoice].choices flatMap { choice =>
-              if (!(validChoices contains choice.symbol)) {
-                Nil
-              } else if (choice.symbol.isChoice) {
-                extractValidChoices(choice.symbol) match {
-                  case Nil     => List(choice.symbol)
-                  case choices => choices
+            symbol.desc.asInstanceOf[DescChoice].choices flatMap {
+              // Dict symbol with valid any actual instances is valid is valid
+              case ExprSym(choice) if choice.attr.dictResolutions.isSet => List(choice)
+              case ExprSym(choice) =>
+                validChoices.get(choice) match {
+                  case Some(clone) if clone.isChoice =>
+                    extractValidChoices(clone) match {
+                      case Nil     => List(clone) // Not yet resolved
+                      case choices => choices
+                    }
+                  case Some(clone) => List(clone)
+                  case None        => Nil
                 }
-              } else {
-                List(choice.symbol)
-              }
             }
           }
 
@@ -728,9 +716,7 @@ private[specialize] object Generate {
               if (finished) {
                 val msg =
                   s"'${symbol.name}' is ambiguous after processing 'gen' constructs. Active definitions at:" ::
-                    (resolutions.reverse map {
-                    _.loc.prefix
-                  })
+                    (resolutions.reverse map { _.loc.prefix })
                 error(loc, msg: _*)
               }
               None
@@ -771,6 +757,15 @@ private[specialize] object Generate {
           }
         }
 
+      private var rootSymbol: Symbol = _
+
+      override protected def start(tree: Tree): Unit = tree match {
+        case Desc(ref)    => rootSymbol = ref.symbol
+        case Decl(symbol) => rootSymbol = symbol
+        case Defn(symbol) => rootSymbol = symbol
+        case _            => unreachable
+      }
+
       override def enter(tree: Tree): Option[Tree] = tree match {
         //////////////////////////////////////////////////////////////////////////
         // Update DescChoice
@@ -798,14 +793,39 @@ private[specialize] object Generate {
           }
 
         //
-        case desc: Desc if desc.isParametrized =>
+        case desc: Desc if desc.isParametrized && (desc.symbol != rootSymbol) =>
           parametrizedLevel += 1
           None
 
         //
-        case _: Gen =>
-          genLevel += 1
-          None
+        case gen: Gen =>
+          Some {
+            // Headers still belong to the outer scope, so resolve appropriately
+            gen match {
+              case GenIf(cond, thenItems, elseItems) =>
+                val newCond = walk(cond).asInstanceOf[Expr]
+                genLevel += 1
+                val newThenItems = walk(thenItems)
+                val newElseItems = walk(elseItems)
+                genLevel -= 1
+                GenIf(newCond, newThenItems, newElseItems) withLoc tree.loc
+              case GenFor(inits, cond, steps, body) =>
+                val newInits = walk(inits).asInstanceOf[List[Stmt]]
+                val newCond = walk(cond).asInstanceOf[Expr]
+                val newSteps = walk(steps).asInstanceOf[List[Stmt]]
+                genLevel += 1
+                val newBody = walk(body)
+                genLevel -= 1
+                GenFor(newInits, newCond, newSteps, newBody) withLoc tree.loc
+              case GenRange(inits, op, end, body) =>
+                val newInits = walk(inits).asInstanceOf[List[Stmt]]
+                val newEnd = walk(end).asInstanceOf[Expr]
+                genLevel += 1
+                val newBody = walk(body)
+                genLevel -= 1
+                GenRange(newInits, op, newEnd, newBody) withLoc tree.loc
+            }
+          }
 
         //
         case _ => None
@@ -818,7 +838,6 @@ private[specialize] object Generate {
 
         case ExprSym(symbol) =>
           resolveChoiceSymbol(symbol, tree.loc) map { symbol =>
-            assert(!symbol.attr.dictResolutions.isSet)
             ExprSym(symbol) withLoc tree.loc
           } getOrElse tree
 
@@ -851,15 +870,11 @@ private[specialize] object Generate {
         case ExprRef(Sym(symbol, Nil)) => ExprSym(symbol) withLoc tree.loc
 
         //////////////////////////////////////////////////////////////////////////
-        // Update parametrizedLevel/genLevel
+        // Update parametrizedLevel
         //////////////////////////////////////////////////////////////////////////
 
-        case desc: Desc if desc.isParametrized =>
+        case desc: Desc if desc.isParametrized && (desc.symbol != rootSymbol) =>
           parametrizedLevel -= 1
-          tree
-
-        case _: Gen =>
-          genLevel -= 1
           tree
 
         ////////////////////////////////////////////////////////////////////////
@@ -891,7 +906,7 @@ private[specialize] object Generate {
     }
 
     // Expand Gen nodes
-    val process = new Process(Bindings.empty, Map.empty, false)
+    val process = new Process(Bindings.empty, Map.empty)
     val processed = rewrite(input, process)
 
     if (process.hadError) {

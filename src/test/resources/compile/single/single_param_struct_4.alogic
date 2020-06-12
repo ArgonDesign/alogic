@@ -1,0 +1,15 @@
+network single_param_struct_4 {
+  struct s_t {
+    param uint W;
+    gen if (W > 0) {
+      param uint V = 1;
+    }
+    uint(W + V) a;
+  }
+
+  in  s_t(1) i;
+  out s_t(1) o;
+  i -> o;
+}
+// :10: ERROR: Type with more than one parameter requires named parameter assignment
+// :11: ERROR: Type with more than one parameter requires named parameter assignment

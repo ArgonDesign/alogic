@@ -9,6 +9,6 @@ network single_param_entity_1 {
   }
 
   inst = new inner(2);
-  i -> inner.ii; inner.oo -> o;
+  i -> inst.ii; inst.oo -> o;
 }
 // :11: ERROR: Type does not take any parameters

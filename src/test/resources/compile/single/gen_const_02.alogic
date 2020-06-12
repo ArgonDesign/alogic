@@ -1,0 +1,67 @@
+network gen_const_02 {
+  in  u3  i_a_0;
+  in  u3  i_a_1;
+  in  u3  i_b_0;
+  in  u3  i_b_1;
+  in  u3  i_b_2;
+
+  out u3  o_a_0;
+  out u3  o_a_1;
+  out u3  o_b_0;
+  out u3  o_b_1;
+  out u3  o_b_2;
+
+  fsm inner {
+    param uint N;
+    gen for (uint n < N) {
+      const    uint INCREMENT#[n] = N == 2 ? n + 1 : n + 3;
+      in       u3 i#[n];
+      out wire u3 o#[n];
+    }
+
+    void main() {
+      gen for (uint n < N) {
+        o#[n] = i#[n];
+        gen for (uint i < INCREMENT#[n]) {
+          o#[n] += 1;
+        }
+      }
+      fence;
+    }
+  }
+
+  inner_a = new inner(2);
+
+  i_a_0 -> inner_a.i#[0]; inner_a.o#[0] -> o_a_0;
+  i_a_1 -> inner_a.i#[1]; inner_a.o#[1] -> o_a_1;
+
+  inner_b = new inner(3);
+
+  i_b_0 -> inner_b.i#[0]; inner_b.o#[0] -> o_b_0;
+  i_b_1 -> inner_b.i#[1]; inner_b.o#[1] -> o_b_1;
+  i_b_2 -> inner_b.i#[2]; inner_b.o#[2] -> o_b_2;
+
+}
+// @fec/golden {{{
+//  module gen_const_02(
+//    input  wire [2:0] i_a_0,
+//    input  wire [2:0] i_a_1,
+//    input  wire [2:0] i_b_0,
+//    input  wire [2:0] i_b_1,
+//    input  wire [2:0] i_b_2,
+//    output wire [2:0] o_a_0,
+//    output wire [2:0] o_a_1,
+//    output wire [2:0] o_b_0,
+//    output wire [2:0] o_b_1,
+//    output wire [2:0] o_b_2
+//  );
+//
+//    assign o_a_0 = i_a_0 + 3'd1;
+//    assign o_a_1 = i_a_1 + 3'd2;
+//    assign o_b_0 = i_b_0 + 3'd3;
+//    assign o_b_1 = i_b_1 + 3'd4;
+//    assign o_b_2 = i_b_2 + 3'd5;
+//
+//  endmodule
+// }}}
+

@@ -348,8 +348,9 @@ trait TreePrintOps extends { this: Tree =>
   // format: on
 
   final private def v(tree: Arg)(implicit cc: CompilerContext, indent: Int): String = tree match {
-    case ArgP(expr)       => v(expr)
-    case ArgN(name, expr) => s"$name = ${v(expr)}"
+    case ArgP(expr)             => v(expr)
+    case ArgN(name, expr)       => s"$name = ${v(expr)}"
+    case ArgD(name, idxs, expr) => vs(idxs, s"$name#[", ",", s"] = ${v(expr)}")
   }
 
 }

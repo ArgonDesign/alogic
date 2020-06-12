@@ -32,7 +32,15 @@ trait DescOps { this: Desc =>
     case desc: DescParamType => desc
   }
 
-  final lazy val isParametrized: Boolean = params.nonEmpty
+  final lazy val mayHaveGeneratedParam: Boolean = this match {
+    case DescEntity(_, _, body) =>
+      body exists { case EntGen(gen) => gen.mayGenerateParam; case _ => false }
+    case DescRecord(_, body) =>
+      body exists { case RecGen(gen) => gen.mayGenerateParam; case _ => false }
+    case _ => false
+  }
+
+  final lazy val isParametrized: Boolean = params.nonEmpty || mayHaveGeneratedParam
 
   final lazy val initializer: Option[Expr] = this match {
     case DescVar(_, _, iOpt)       => iOpt

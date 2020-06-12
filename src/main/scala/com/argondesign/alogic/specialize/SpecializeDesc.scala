@@ -127,10 +127,6 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
   // Kept as an var to an immutable for easy reverting
   private[this] var cache: Map[(Symbol, ParamBindings, Boolean), DescSpecialization] = Map.empty
 
-  // Complete specialization results 'original symbol' -> 'param values' -> 'result Decl and Defn'
-  private[this] val specializations =
-    mutable.HashMap[Symbol, mutable.Map[Map[String, Either[BigInt, Type]], (Decl, Defn)]]()
-
   // To detect circular and divergent definitions, we keep track of the pending
   // specializations (current active path in the depth first traversal) on a
   // stack. To avoid having to do a linear time search of the stack all the
@@ -144,32 +140,36 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
   private[this] val dumpEnable = cc.settings.traceElaborate
   private[this] var prevDumped: Either[Desc, (Decl, Defn)] = _
 
+  private[this] def printWithPrefix(lines: String*): Unit = if (dumpEnable) {
+    val prefix = pendingStack.reverse map {
+      case (symbol, _) => s"${symbol.name}@${symbol.id}"
+    } mkString (" ", AnsiColor.WHITE_B + " " + AnsiColor.RESET, " ")
+    lines foreach { line =>
+      println(prefix + line)
+    }
+  }
+
   private[this] def dump(label: String)(item: Either[Desc, (Decl, Defn)]): Unit =
-    if (dumpEnable && item != prevDumped) {
-      val prefix = pendingStack.reverse map {
-        case (symbol, _) => s"${symbol.name}@${symbol.id}"
-      } mkString (" ", AnsiColor.WHITE_B + " " + AnsiColor.RESET, " ")
-
-      println(prefix + AnsiColor.BOLD + label + AnsiColor.RESET)
-
+    if (dumpEnable) {
       import AnsiColor._
-
-      val text = item
-        .fold(_.toSource, { case (decl, defn) => decl.toSource + "\n" + defn.toSource })
-        .replaceAll("\\bparam\\b", BOLD + RED + "param" + RESET)
-        .replaceAll("\\bconst\\b", BOLD + GREEN + "const" + RESET)
-        .replaceAll("\\bgen\\b", BOLD + YELLOW + "gen" + RESET)
-        .replaceAll("\\bchoice\\b", BOLD + YELLOW + "choice" + RESET)
-        .replaceAll("\\bdesc\\b", BOLD + MAGENTA + "desc" + RESET)
-        .replaceAll("\\bdecl\\b", BOLD + CYAN + "decl" + RESET)
-        .replaceAll("\\bdefn\\b", BOLD + BLUE + "defn" + RESET)
-
-      println(prefix + text.replace("\n", "\n" + prefix))
+      if (item != prevDumped) {
+        printWithPrefix(BOLD + label + RESET)
+        val text = item
+          .fold(_.toSource, { case (decl, defn) => decl.toSource + "\n" + defn.toSource })
+          .replaceAll("\\bparam\\b", BOLD + RED + "param" + RESET)
+          .replaceAll("\\bconst\\b", BOLD + GREEN + "const" + RESET)
+          .replaceAll("\\bgen\\b", BOLD + YELLOW + "gen" + RESET)
+          .replaceAll("\\bchoice\\b", BOLD + YELLOW + "choice" + RESET)
+          .replaceAll("\\bdesc\\b", BOLD + MAGENTA + "desc" + RESET)
+          .replaceAll("\\bdecl\\b", BOLD + CYAN + "decl" + RESET)
+          .replaceAll("\\bdefn\\b", BOLD + BLUE + "defn" + RESET)
+        printWithPrefix(text.split("\n").toIndexedSeq: _*)
+      } else {
+        printWithPrefix(BOLD + label + WHITE + " SAME" + RESET)
+      }
 
       if (cc.hasError) {
-        cc.messages foreach { msg =>
-          println(msg.string)
-        }
+        cc.messages foreach { msg => println(msg.string) }
         cc.fatal("Stopping due to errors")
       }
       prevDumped = item
@@ -320,11 +320,25 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
               case Left(_) =>
                 unreachable // TODO: implement partial specialization
               case Right((decl, defn)) =>
-                Finalize(decl, defn) match {
-                  case None => DescSpecializationErrorOther
-                  case Some((fDecl, fDefn, paramValues)) =>
-                    dump("Finalized")(Right((fDecl, fDefn)))
-                    DescSpecializationComplete(fDecl, fDefn, paramValues)
+                unusedBindings match {
+                  case ParamBindingsPositional(bindings) if bindings.nonEmpty => unreachable
+                  case ParamBindingsNamed(unused) if unused.nonEmpty =>
+                    unused.iterator map {
+                      case ((name, Nil), value) => (name, value)
+                      case ((name, idxs), value) =>
+                        (idxs.mkString(s"$name#[", ", ", "]"), value)
+                    } foreach {
+                      case (sourceName, value) =>
+                        cc.error(value, s"'${decl.symbol.name}' has no parameter '$sourceName'")
+                    }
+                    DescSpecializationErrorOther
+                  case _ =>
+                    Finalize(decl, defn) match {
+                      case None => DescSpecializationErrorOther
+                      case Some((fDecl, fDefn, paramValues)) =>
+                        dump("Finalized")(Right((fDecl, fDefn)))
+                        DescSpecializationComplete(fDecl, fDefn, paramValues)
+                    }
                 }
             }
           }
@@ -402,7 +416,8 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
             } mkString ("with parameter values: ", ", ", "")
           case ParamBindingsNamed(params) if params.nonEmpty =>
             msg += params map {
-              case (k, v) => s"$k = ${v.toSource}"
+              case ((name, Nil), v)  => s"$name = ${v.toSource}"
+              case ((name, idxs), v) => s"$name#[${idxs.mkString(", ")}] = ${v.toSource}"
             } mkString ("with parameter assignments: ", ", ", "")
           case _ =>
         }
@@ -486,6 +501,7 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
       useDefaultParameters: Boolean,
       refLoc: Loc
     ): DescSpecialization = {
+    require(desc.symbol.desc eq desc, "Not canonical desc")
     require(useDefaultParameters, "Not yet implemented")
     require(!desc.isInstanceOf[DescChoice], "Cannot specialize DescChoice")
 
@@ -515,26 +531,33 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
       case None         =>
         // Here is how to actually compute the result if it is not cached
         attempt(desc, simplifiedParamBindings, useDefaultParameters, refLoc) pipe {
-          case DescSpecializationComplete(decl, defn, paramValues) =>
+          case result @ DescSpecializationComplete(_, _, paramValues) =>
             // The specialization is complete. Now we check if we have ended
             // up with these param values before and if so, we throw away what
             // we just did and return that equivalent specialization instead.
             // This is to avoid doing extra work in the remaining passes and
             // subsequently emitting identical code in the output.
-            val (maybeCachedDecl, maybeCachedDefn) = specializations
-              .getOrElseUpdate(desc.symbol, mutable.LinkedHashMap())
-              .getOrElseUpdate(paramValues, (decl, defn))
-            DescSpecializationComplete(maybeCachedDecl, maybeCachedDefn, paramValues)
+            // TODO: could use a structure here that is faster to look up
+            cache.iterator collectFirst {
+              case ((symbol, _, _), cached: DescSpecializationComplete)
+                  if symbol == desc.symbol && cached.paramValues == paramValues =>
+                cached
+            } getOrElse result
           case other =>
             // Other result
             other
+        } tap { r =>
+          printWithPrefix(
+            s"Result: ${desc.symbol.name}@${desc.symbol.id} -> ${r.getClass.getSimpleName}"
+          )
         } tap {
           // Update the cache
-          case result: DescSpecializationUnknown =>
+          case _: DescSpecializationUnknown =>
             // Result is unknown. Revert cache to initial state as we might have
-            // added specialization dependent on this result (which is unknown),
-            // but add this result so we don't try to do it again.
-            cache = savedCache + (key -> result)
+            // added specialization dependent on this result (which is unknown).
+            // Do not add this result so we can try again when other symbols
+            // this desc depends on have been resolved.
+            cache = savedCache
           case result: DescSpecializationError =>
             // Result is error. We will eventually fail anyway, so do not
             // revert the cache, as doing so might cause error messages to
@@ -584,23 +607,32 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
 
             private val extraDecls = mutable.Map[Symbol, Iterator[Decl]]()
 
+            def specializations(symbol: Symbol): List[(Decl, Defn)] = List from {
+              val pairs = cache.iterator collect {
+                case ((`symbol`, _, _), DescSpecializationComplete(decl, defn, _)) => (decl, defn)
+              }
+              // Keep only distinct results, as the above might have duplicates
+              // due to different param assignments actually yielding the same
+              // bindings.
+              pairs.distinct
+            }
+
             override def enter(tree: Tree): Option[Tree] = tree match {
               case EntDesc(desc) =>
                 val (specialDecls, specialDefns) =
-                  specializations.getOrElse(desc.symbol, Map.empty).values.unzip
+                  specializations(desc.symbol).unzip
                 extraDecls.updateWith(enclosingSymbols.head) {
                   case None       => Some(specialDecls.iterator)
                   case Some(iter) => Some(iter concat specialDecls.iterator)
                 }
-                Some(Thicket(specialDefns.toList map { EntDefn(_) withLoc tree.loc }))
+                Some(Thicket(specialDefns map { EntDefn(_) withLoc tree.loc }))
               case RecDesc(desc) =>
-                val (specialDecls, specialDefns) =
-                  specializations.getOrElse(desc.symbol, Map.empty).values.unzip
+                val (specialDecls, specialDefns) = specializations(desc.symbol).unzip
                 extraDecls.updateWith(enclosingSymbols.head) {
                   case None       => Some(specialDecls.iterator)
                   case Some(iter) => Some(iter concat specialDecls.iterator)
                 }
-                Some(Thicket(specialDefns.toList map { RecDefn(_) withLoc tree.loc }))
+                Some(Thicket(specialDefns map { RecDefn(_) withLoc tree.loc }))
               case _ => None
             }
 

@@ -1,0 +1,10 @@
+network no_such_param_02 {
+  network inner {
+    gen for (uint n < 2) {
+      param uint A#[2*n];
+    }
+  }
+  inst = new inner(A#[0]=0, A#[1]=1, A#[2]=2, A#[3]=3);
+}
+// :7: ERROR: 'inner' has no parameter 'A#\[1\]'
+// :7: ERROR: 'inner' has no parameter 'A#\[3\]'
