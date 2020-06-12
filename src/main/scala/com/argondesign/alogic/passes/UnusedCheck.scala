@@ -176,6 +176,7 @@ final class UnusedCheck(implicit cc: CompilerContext) extends StatefulTreeTransf
         if !(symbol.attr.unused.get contains true)
       } {
         val hint = symbol.desc match {
+          case _: DescVal       => "Variable"
           case _: DescVar       => "Variable"
           case _: DescIn        => "Input port"
           case _: DescOut       => "Output port"
@@ -192,7 +193,7 @@ final class UnusedCheck(implicit cc: CompilerContext) extends StatefulTreeTransf
           case _: DescInstance  => "Instance"
           case _: DescSingleton => "Singleton instance"
           case _: DescFunc      => "Function"
-          case _                => unreachable
+          case _: DescChoice    => unreachable
         }
         val name = symbol.attr.sourceName.get match {
           case None               => symbol.name

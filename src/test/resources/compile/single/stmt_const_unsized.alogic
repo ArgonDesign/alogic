@@ -1,0 +1,8 @@
+fsm stmt_const_unsized {
+  void main() {
+    const uint CONSTANT = 1;
+    fence;
+  }
+}
+// :3: WARNING: Variable 'CONSTANT' is unused
+// :3: ERROR: 'const' declaration in statement position cannot have an unsized integer type

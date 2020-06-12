@@ -394,8 +394,17 @@ final class Typer(implicit cc: CompilerContext) extends StatefulTreeTransformer 
       case decl: Decl =>
         // TODO: These need loads more checks (eg, void variable, etc etc...)
         val ok = decl match {
-          case DeclVar(_, spec)       => checkType(spec)
-          case DeclVal(_, spec)       => checkType(spec)
+          case DeclVar(_, spec) => checkType(spec)
+          case DeclVal(_, spec) =>
+            checkType(spec) && {
+              !spec.tpe.asType.kind.isNum ifFalse {
+                error(
+                  tree,
+                  spec,
+                  "'const' declaration in statement position cannot have an unsized integer type"
+                )
+              }
+            }
           case DeclIn(_, spec, _)     => checkType(spec)
           case DeclOut(_, spec, _, _) => checkType(spec)
           case DeclPipeline(_, spec)  => checkType(spec)

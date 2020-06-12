@@ -40,6 +40,11 @@ final class UnusedCheckSpec extends AnyFlatSpec with AlogicTest {
     cc.messages.loneElement should beThe[Warning]("Variable 'b' is unused")
   }
 
+  it should "issue warning for unused local const variables" in {
+    xform("{ const i8 b = 0; }".asTree[Stmt])
+    cc.messages.loneElement should beThe[Warning]("Variable 'b' is unused")
+  }
+
   it should "issue warning for unused local variables - but not with 'unused' attribute" in {
     xform("{ (* unused *) i8 b; }".asTree[Stmt])
     cc.messages shouldBe empty
