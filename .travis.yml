@@ -1,46 +1,58 @@
 # Copyright (c) 2020 Argon Design Ltd. All rights reserved.
 
-os: linux
-dist: bionic
-
 language: scala
 
-jdk:
-  - openjdk8
-  - openjdk11
-
 cache:
-  ccache: true
   directories:
-    - symbiyosys
-    - verilator
+    - symbiyosys # See also before_cache
+    - verilator  # See also before_cache
     - $HOME/.sbt
     - $HOME/.cache/coursier
+    - $HOME/.ccache
 
-before_cache:
-  - find $HOME/.sbt -name "*.lock" -print -delete
+stages:
+  - deps # Build dependencies
+  - test # Run tests
 
 before_install:
-  # SymbiYosys dependencies
-  - sudo apt-get install gperf
-  - sudo apt-get install libftdi-dev
-  - sudo apt-get install libboost-program-options-dev
-  # Verilator dependencies
-  - sudo apt-get install libfl-dev
-  - sudo apt-get install libgoogle-perftools-dev
+  - cd "$TRAVIS_BUILD_DIR" # Skipping the git clone in later stages requires this
+  - env | sort # Platform info for debug
 
 install:
-  - bash -x setup-symbiyosys
-  - bash -x setup-verilator
+  - ./ci/travis-install.bash
+
+before_script:
+  # Set environment variables here so they do not form part of the build
+  # configuration, otherwise they affect which Travis build cache is used
+  - export JAVA_OPTS=-Dsbt.ci=true # SBT CI mode (less noise on output)
+  - export CCACHE_MAXSIZE=64M # ccache used by Verilator during tests, keep small
+  - ccache -s -z
 
 script:
-  - sbt compile
-  - sbt test:compile
-  - sbt test
-  - sbt scalafmtCheckAll
+  - ./ci/travis-script.bash
 
-after_script:
-  - ccache -s
+jobs:
+  include:
+    ############################################################################
+    # Deps stage (to avoid 50 minute timeout)
+    ############################################################################
+    - {stage: deps, os: linux, dist: bionic, workspaces: {create: {name: bionic, paths: .}}}
+    ############################################################################
+    # Test stage
+    ############################################################################
+    - {stage: test, os: linux, dist: bionic, jdk: openjdk8,  workspaces: {use: bionic}, git: {clone: false}}
+    - {stage: test, os: linux, dist: bionic, jdk: openjdk11, workspaces: {use: bionic}, git: {clone: false}}
+
+before_cache:
+  - ccache -s -z
+  - find $HOME/.sbt -name "*.lock" -print -delete
+  # Only the deps stage should save SymbiYosys and Verilator in the build cache.
+  # The rest are acquiring these via the workspace created in the deps stage.
+  - |
+    if [ "$TRAVIS_BUILD_STAGE_NAME" != "deps" ]; then
+      rm -rf symbiyosys
+      rm -rf verilator
+    fi
 
 notifications:
   email:
