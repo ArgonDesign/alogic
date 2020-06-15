@@ -116,3 +116,11 @@ enablePlugins(BuildInfoPlugin)
 buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion)
 
 buildInfoPackage := "com.argondesign.alogic"
+
+////////////////////////////////////////////////////////////////////////////////
+// SBT scoverage
+////////////////////////////////////////////////////////////////////////////////
+
+coverageOutputXML := !(sys.env contains "TRAVIS")
+coverageOutputHTML := !(sys.env contains "TRAVIS")
+coverageOutputCobertura := true

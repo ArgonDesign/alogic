@@ -24,7 +24,7 @@ elif [ "$TRAVIS_BUILD_STAGE_NAME" = "test" ]; then
     sbt clean compile test:compile test scalafmtCheckAll
   else
     sbt clean coverage test coverageReport
-    bash <(curl -s https://codecov.io/bash)
+    bash <(curl -s https://codecov.io/bash) -X gcov -X coveragepy -s target
   fi
 else
   ##############################################################################
