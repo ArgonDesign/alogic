@@ -1,4 +1,5 @@
 [![Build Status](https://travis-ci.com/alogic/alogic.svg?branch=4.0.x)](https://travis-ci.com/alogic/alogic)
+[![codecov](https://codecov.io/gh/alogic/alogic/branch/4.0.x/graph/badge.svg)](https://codecov.io/gh/alogic/alogic)
 
 # Alogic
 
