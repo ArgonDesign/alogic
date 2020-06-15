@@ -20,7 +20,12 @@ elif [ "$TRAVIS_BUILD_STAGE_NAME" = "test" ]; then
   # Run tests
   ##############################################################################
 
-  sbt compile test:compile test scalafmtCheckAll
+  if [ "$COVERAGE" != 1 ]; then
+    sbt clean compile test:compile test scalafmtCheckAll
+  else
+    sbt clean coverage test coverageReport
+    bash <(curl -s https://codecov.io/bash)
+  fi
 else
   ##############################################################################
   # Unknown build stage

@@ -42,6 +42,7 @@ jobs:
     ############################################################################
     - {stage: test, os: linux, dist: bionic, jdk: openjdk8,  workspaces: {use: bionic}, git: {clone: false}}
     - {stage: test, os: linux, dist: bionic, jdk: openjdk11, workspaces: {use: bionic}, git: {clone: false}}
+    - {stage: test, os: linux, dist: bionic, jdk: openjdk8,  workspaces: {use: bionic}, git: {clone: false}, env: COVERAGE=1}
 
 before_cache:
   - ccache -s -z
