@@ -33,6 +33,7 @@ trait DefnOps { this: Defn =>
   }
 
   def cpy(symbol: Symbol): Defn = this match {
+    // $COVERAGE-OFF$ Trivial to keep full, but not necessarily used
     case node: DefnVar       => node.copy(symbol = symbol)
     case node: DefnVal       => node.copy(symbol = symbol)
     case node: DefnIn        => node.copy(symbol = symbol)
@@ -50,6 +51,7 @@ trait DefnOps { this: Defn =>
     case node: DefnSingleton => node.copy(symbol = symbol)
     case node: DefnFunc      => node.copy(symbol = symbol)
     case node: DefnState     => node.copy(symbol = symbol)
+    // $COVERAGE-ON$
   }
 
 }

@@ -19,6 +19,7 @@ import com.argondesign.alogic.core.FlowControlTypes._
 import com.argondesign.alogic.core.StorageTypes._
 import com.argondesign.alogic.core.Types._
 
+// $COVERAGE-OFF$ debug code
 trait TypePrintOps { this: Type =>
 
   final private[this] def fct2String(fct: FlowControlType): String = fct match {

@@ -22,6 +22,7 @@ trait DeclOps { this: Decl =>
   def decls: List[Decl] = Nil
 
   def cpy(symbol: Symbol): Decl = this match {
+    // $COVERAGE-OFF$ Trivial to keep full, but not necessarily used
     case node: DeclVar       => node.copy(symbol = symbol)
     case node: DeclVal       => node.copy(symbol = symbol)
     case node: DeclIn        => node.copy(symbol = symbol)
@@ -39,6 +40,7 @@ trait DeclOps { this: Decl =>
     case node: DeclSingleton => node.copy(symbol = symbol)
     case node: DeclFunc      => node.copy(symbol = symbol)
     case node: DeclState     => node.copy(symbol = symbol)
+    // $COVERAGE-ON$
   }
 
 }

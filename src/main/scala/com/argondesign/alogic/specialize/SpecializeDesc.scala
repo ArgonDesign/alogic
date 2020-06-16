@@ -140,6 +140,7 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
   private[this] val dumpEnable = cc.settings.traceElaborate
   private[this] var prevDumped: Either[Desc, (Decl, Defn)] = _
 
+  // $COVERAGE-OFF$ debug code
   private[this] def printWithPrefix(lines: String*): Unit = if (dumpEnable) {
     val prefix = pendingStack.reverse map {
       case (symbol, _) => s"${symbol.name}@${symbol.id}"
@@ -174,6 +175,8 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
       }
       prevDumped = item
     }
+
+  // $COVERAGE-ON$
 
   // Predicate to see if Desc has any Gen that might influence the type
   // of the introduced symbol
@@ -547,12 +550,14 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
             // Other result
             other
         } tap {
+          // $COVERAGE-OFF$ debug code
           case _ if !dumpEnable => // Nothing
           case DescSpecializationUnknown(symbols) =>
             printWithPrefix(s"Result: ${desc.ref.toSource} -> DescSpecializationUnknown")
             symbols foreach { symbol => printWithPrefix(s"Unknown: $symbol") }
           case r =>
             printWithPrefix(s"Result: ${desc.ref.toSource} -> ${r.getClass.getSimpleName}")
+          // $COVERAGE-ON$
         } tap {
           // Update the cache
           case _: DescSpecializationUnknown =>

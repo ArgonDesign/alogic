@@ -24,6 +24,7 @@ import com.argondesign.alogic.core.enums.EntityVariant
 
 import scala.util.chaining._
 
+// $COVERAGE-OFF$ debug code
 trait TreePrintOps extends { this: Tree =>
 
   def toSource(implicit cc: CompilerContext): String = v(this)(cc, 0)

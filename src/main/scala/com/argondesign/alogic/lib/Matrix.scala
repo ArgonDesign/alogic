@@ -98,6 +98,7 @@ case class Matrix[T: Numeric](elements: List[List[T]]) {
     loop(rows)
   }
 
+  // $COVERAGE-OFF$ Debug code
   override def toString: String = {
     val lines = for (row <- rows) yield {
       row mkString ("[", " ", "]")
@@ -121,6 +122,8 @@ case class Matrix[T: Numeric](elements: List[List[T]]) {
     require(this.isSquare)
     printWithHeaders(headers, headers)
   }
+
+  // $COVERAGE-ON$
 
 }
 

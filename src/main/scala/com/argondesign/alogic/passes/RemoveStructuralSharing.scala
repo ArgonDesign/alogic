@@ -33,6 +33,9 @@ final class RemoveStructuralSharing(implicit cc: CompilerContext) extends Statef
       visited add tree.id
       tree
     } else {
+      // $COVERAGE-OFF$ Not all of these are necessarily used, but it is hard
+      // to reason about what is and what isn't actually needed, plus they are
+      // trivial so keep it a complete match with a coverage exclusion.
       val duplicate = tree match {
         case node: Root => node.copy()
 
@@ -184,6 +187,7 @@ final class RemoveStructuralSharing(implicit cc: CompilerContext) extends Statef
         case _: Thicket => unreachable
         case Stump      => unreachable
       }
+      // $COVERAGE-ON$
       duplicate withLoc tree.loc withTpe tree.tpe
     }
   }

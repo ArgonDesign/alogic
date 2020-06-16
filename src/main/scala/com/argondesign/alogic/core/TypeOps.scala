@@ -25,6 +25,7 @@ trait TypeOps extends TypePrintOps { this: Type =>
   // Primitive type tests
   //////////////////////////////////////////////////////////////////////////////
 
+  // $COVERAGE-OFF$ Trivial to keep full, but not necessarily used
   final def isFund: Boolean = this.isInstanceOf[TypeFund]
   final def isInt: Boolean = this.isInstanceOf[TypeInt]
   final def isSInt: Boolean = this.isInstanceOf[TypeSInt]
@@ -62,11 +63,13 @@ trait TypeOps extends TypePrintOps { this: Type =>
   final def isState: Boolean = this eq TypeState
   final def isMisc: Boolean = this eq TypeMisc
   final def isError: Boolean = this eq TypeError
+  // $COVERAGE-ON$
 
   //////////////////////////////////////////////////////////////////////////////
   // ... equivalent casts (unless the type is an object)
   //////////////////////////////////////////////////////////////////////////////
 
+  // $COVERAGE-OFF$ Trivial to keep full, but not necessarily used
   final def asFund: TypeFund = this.asInstanceOf[TypeFund]
   final def asInt: TypeInt = this.asInstanceOf[TypeInt]
   final def asSInt: TypeSInt = this.asInstanceOf[TypeSInt]
@@ -95,6 +98,7 @@ trait TypeOps extends TypePrintOps { this: Type =>
   final def asMethod: TypeMethod = this.asInstanceOf[TypeMethod]
   final def asStaticMethod: TypeStaticMethod = this.asInstanceOf[TypeStaticMethod]
   final def asNormalMethod: TypeNormalMethod = this.asInstanceOf[TypeNormalMethod]
+  // $COVERAGE-ON$
 
   // Is this a primitive numeric type
   final lazy val isNumeric: Boolean = underlying match {
