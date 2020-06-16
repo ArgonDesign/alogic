@@ -107,7 +107,8 @@ object Main extends App {
     resetAll = !cliConf.noResetAll(),
     genLoopLimit = cliConf.genLoopLimit(),
     combRecLimit = cliConf.combRecLimit(),
-    assertions = !cliConf.noAssertions()
+    assertions = !cliConf.noAssertions(),
+    traceElaborate = cliConf.traceElaborate.toOption contains true
   )
 
   implicit val cc: CompilerContext = new CompilerContext(settings)

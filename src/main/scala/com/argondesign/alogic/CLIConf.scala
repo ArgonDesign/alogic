@@ -334,6 +334,9 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
   // Dump entities after each pass
   val dumpTrees = toggle(name = "dump-trees", noshort = true, hidden = true)
 
+  // Dump entities after each pass
+  val traceElaborate = toggle(name = "trace-elaborate", noshort = true, hidden = true)
+
   // Measure and report inserted execution timing
   val profile = toggle(name = "profile", noshort = true, hidden = true)
 
