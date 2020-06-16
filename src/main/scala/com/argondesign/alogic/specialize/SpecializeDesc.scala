@@ -546,10 +546,13 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
           case other =>
             // Other result
             other
-        } tap { r =>
-          printWithPrefix(
-            s"Result: ${desc.symbol.name}@${desc.symbol.id} -> ${r.getClass.getSimpleName}"
-          )
+        } tap {
+          case _ if !dumpEnable => // Nothing
+          case DescSpecializationUnknown(symbols) =>
+            printWithPrefix(s"Result: ${desc.ref.toSource} -> DescSpecializationUnknown")
+            symbols foreach { symbol => printWithPrefix(s"Unknown: $symbol") }
+          case r =>
+            printWithPrefix(s"Result: ${desc.ref.toSource} -> ${r.getClass.getSimpleName}")
         } tap {
           // Update the cache
           case _: DescSpecializationUnknown =>

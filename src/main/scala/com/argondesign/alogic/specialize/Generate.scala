@@ -239,26 +239,53 @@ private[specialize] object Generate {
       private def cloneSymbolsInDescs(
           descs: List[Desc],
           bindings: Bindings,
-          suffix: String
+          suffix: String,
+          inGenIf: Boolean
         ): List[(Symbol, Symbol)] = descs flatMap {
         // Scalar symbols
         case desc: Desc if desc.ref.idxs.isEmpty =>
           // Get the introduced symbol
           val symbol = desc.symbol
-          // Sanity check
-          assert(!(symbolMap contains symbol), "Already cloned in this context")
-          // Clone the symbol
-          val cloneSymbol = symbol.dup
-          // Rename the clone by appending the suffix
-          cloneSymbol.name = cloneSymbol.name + suffix
-          // Mark as valid choice, remember global choice mapping to clone.
-          // Note that this mapping might already exists if the symbol is in a
-          // Gen loop, that's OK though as scalar symbols don't escape Gen loop
-          // scopes so they will never be an outer choice alternative. This
-          // means we can just overwrite the mapping as we will never use it.
-          validChoices(symbol) = cloneSymbol
-          // Add to context local mapping
-          Some(symbol -> cloneSymbol)
+          symbolMap.get(symbol) match {
+            case Some(cloneSymbol) =>
+              // Symbol already cloned in outer scope. This can only happen
+              // because it is a choice in an outer DescChoice (see recursive
+              // cloning below). Nothing to do, just mark as a valid choice
+              // now that it is actually being generated. Note that if this
+              // has been cloned, then the outer choice reference will have
+              // also been replaced by the clone, so map as identity
+              validChoices(cloneSymbol) = cloneSymbol
+              Nil
+            case None =>
+              // Clone the symbol
+              val cloneSymbol = symbol.dup
+              // Rename the clone by appending the suffix
+              cloneSymbol.name = cloneSymbol.name + suffix
+              if (inGenIf) {
+                // Mark as valid choice, remember mapping to clone.
+                validChoices(symbol) = cloneSymbol
+              }
+              // If this is a choice symbol, recursively clone all possible scalar
+              // choices as well, as the choices are really introduced into this
+              // scope, and they need to be unique symbols in case this choice
+              // is inside a Gen loop itself. See the specialize_hard_02 test.
+              def choiceClones(intr: Desc): List[(Symbol, Symbol)] = intr match {
+                case DescChoice(_, choices) =>
+                  choices flatMap {
+                    case ExprSym(choice) if choice.desc.ref.idxs.isEmpty =>
+                      // These cannot have been encountered yet
+                      assert(!(symbolMap contains choice), "Already cloned in this context")
+                      // Clone and rename
+                      val choiceClone = choice.dup
+                      choiceClone.name = choiceClone.name + suffix
+                      (choice -> choiceClone) :: choiceClones(choice.desc)
+                    case _ => Nil
+                  }
+                case _ => Nil
+              }
+              // Add to context local mapping
+              (symbol -> cloneSymbol) :: choiceClones(desc)
+          }
 
         // Dict symbols
         case desc: Desc =>
@@ -298,7 +325,7 @@ private[specialize] object Generate {
                   )
               }
           }
-          None
+          Nil
       }
 
       // Compute the generated tree from generate
@@ -367,14 +394,21 @@ private[specialize] object Generate {
               case list => list mkString (cc.sep, cc.sep, "")
             }
 
+            val inGenIf = gen match {
+              case _: GenIf => true
+              case _        => false
+            }
+
             cloneSymbolsInDescs(
               directScalarDescs,
               bindings,
-              suffix
+              suffix,
+              inGenIf
             ) concat cloneSymbolsInDescs(
               otherDescs,
               bindings,
-              ""
+              "",
+              inGenIf
             )
           }
 

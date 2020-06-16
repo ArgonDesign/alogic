@@ -1,0 +1,47 @@
+fsm specialize_hard_03 {
+  in       u8 p_i;
+  out wire u8 p_o;
+  void main() {
+    gen for (uint n < 5) {
+      // Make 'j' a double deep choice to test recursion
+      gen if (n < 2) {
+        gen if (n < 1) {
+          const u8 j = 0;
+        } else {
+          const u8 j = 1;
+        }
+      } else {
+        gen if (n < 3) {
+          const u8 j = 2;
+        } else {
+          const u8 j = 4;
+        }
+      }
+      gen for (uint i < 8) {
+        // This gen is dependent on outer choice symbol 'j' which itself
+        // is inside a gen loop, so it has multiple copies.
+        gen if (i >= j) {
+          p_o[i] =  p_i[i];
+        } else {
+          p_o[i] = ~p_i[i];
+        }
+      }
+    }
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module specialize_hard_03(
+//    input  wire [7:0] p_i,
+//    output wire [7:0] p_o
+//  );
+//    assign p_o[0] = ~p_i[0];
+//    assign p_o[1] = ~p_i[1];
+//    assign p_o[2] = ~p_i[2];
+//    assign p_o[3] = ~p_i[3];
+//    assign p_o[4] =  p_i[4];
+//    assign p_o[5] =  p_i[5];
+//    assign p_o[6] =  p_i[6];
+//    assign p_o[7] =  p_i[7];
+//  endmodule
+// }}}

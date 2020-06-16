@@ -1,4 +1,4 @@
-fsm specialize_hard_1 {
+fsm specialize_hard_01 {
   in bool x;
   // Putting this under a 'gen if' makes initial specialization of 'a'
   // succeed but 'main' and 'b' fail, resulting inn having to discard the 
@@ -29,7 +29,7 @@ fsm specialize_hard_1 {
 }
 // @fec/mode: bmc
 // @fec/golden {{{
-//  module specialize_hard_1(
+//  module specialize_hard_01(
 //    input   wire clk,
 //    input   wire rst,
 //    input   wire x,

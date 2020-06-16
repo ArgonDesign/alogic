@@ -131,7 +131,7 @@ object Symbols {
 
     override def hashCode: Int = id // TODO: review if this is still needed
 
-    override def toString = s"Symbol(id=$id, name=$name)"
+    override def toString = s"$name@$id"
 
     ////////////////////////////////////////////////////////////////////////////
     // The following is the mechanism figuring out the type of the symbol
