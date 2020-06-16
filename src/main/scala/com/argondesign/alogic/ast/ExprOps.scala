@@ -204,7 +204,11 @@ trait ExprOps { this: Expr =>
         case _: TypeConst => true
         case _: TypeParam => unreachable
         case _: TypeGen   => true
-        case _            => false
+        case _ =>
+          symbol.decl match {
+            case _: DeclVal => symbol.init.get.isKnownConst
+            case _          => false
+          }
       }
     case ExprUnary(_, expr)      => expr.isKnownConst
     case ExprBinary(lhs, _, rhs) => lhs.isKnownConst && rhs.isKnownConst

@@ -51,7 +51,7 @@ final class AddCasts(implicit cc: CompilerContext) extends StatefulTreeTransform
           case _            => unreachable
         }
 
-      case defn: Defn if defn.symbol.kind.underlying.isNum && (defn.initializer forall {
+      case defn: Defn if defn.symbol.kind.underlying.isNum && (defn.initializer exists {
             _.tpe.isSigned != defn.symbol.kind.isSigned
           }) =>
         val init = defn.initializer.get

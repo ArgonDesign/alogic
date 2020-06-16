@@ -137,9 +137,9 @@ final class Fold(implicit cc: CompilerContext) extends StatelessTreeTransformer 
     case _: DeclType => Some(Stump)
     case _: DefnType => Some(Stump)
 
-    // Drop unsized consts, references to these will be folded by expr.simplify
-    case DeclConst(symbol, _) if symbol.kind.underlying.isNum => Some(Stump)
-    case DefnConst(symbol, _) if symbol.kind.underlying.isNum => Some(Stump)
+    // Drop unsized symbols, references to these will be folded by expr.simplify
+    case Decl(symbol) if symbol.kind.underlying.isNum => Some(Stump)
+    case Defn(symbol) if symbol.kind.underlying.isNum => Some(Stump)
 
     //
     case _ => None

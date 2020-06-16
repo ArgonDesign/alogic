@@ -1,8 +1,15 @@
 fsm stmt_const_unsized {
+  out wire u8 o;
   void main() {
     const uint CONSTANT = 1;
+    o = CONSTANT;
     fence;
   }
 }
-// :3: WARNING: Variable 'CONSTANT' is unused
-// :3: ERROR: 'const' declaration in statement position cannot have an unsized integer type
+// @fec/golden {{{
+//  module stmt_const_unsized(
+//    output wire [7:0] o
+//  );
+//    assign o = 8'd1;
+//  endmodule
+// }}}
