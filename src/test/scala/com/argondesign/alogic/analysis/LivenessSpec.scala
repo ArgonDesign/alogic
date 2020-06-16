@@ -35,6 +35,12 @@ class LivenessSpec extends AnyFreeSpec with AlogicTest {
   private val bSymbol = cc.newSymbol("b", Loc.synthetic) tap { _.kind = TypeUInt(8) }
   private val cSymbol = cc.newSymbol("c", Loc.synthetic) tap { _.kind = TypeUInt(256) }
 
+  // Make sure decl/defn exists
+  List(aSymbol, bSymbol, cSymbol) foreach { symbol =>
+    symbol.mkDecl regularize symbol.loc
+    symbol.mkDefn regularize symbol.loc
+  }
+
   private val aRef = ExprSym(aSymbol) regularize Loc.synthetic
   private val bRef = ExprSym(bSymbol) regularize Loc.synthetic
   private val cRef = ExprSym(cSymbol) regularize Loc.synthetic

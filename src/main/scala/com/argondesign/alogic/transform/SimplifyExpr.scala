@@ -374,6 +374,25 @@ final class SimplifyExpr(implicit cc: CompilerContext)
 
       case _: TypeConst => symbol.init getOrElse unreachable
 
+      //////////////////////////////////////////////////////////////////////////
+      // Fold references to val symbols, iff they have a constant initializer
+      //////////////////////////////////////////////////////////////////////////
+
+      case _: TypeFund =>
+        symbol.defn match {
+          case _: DefnVal =>
+            symbol.init.get.simplify match {
+              case value: ExprNum => value
+              case value: ExprInt => value
+              case _              => tree
+            }
+          case _ => tree
+        }
+
+      //////////////////////////////////////////////////////////////////////////
+      // Otherwise don't fold
+      //////////////////////////////////////////////////////////////////////////
+
       case _ => tree
     }
   }

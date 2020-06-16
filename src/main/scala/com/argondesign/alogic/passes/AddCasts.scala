@@ -44,6 +44,7 @@ final class AddCasts(implicit cc: CompilerContext) extends StatefulTreeTransform
         val newInit = cast(defn.symbol.kind, defn.initializer.get)
         defn match {
           case d: DefnVar   => d.copy(initOpt = Some(newInit))
+          case d: DefnVal   => d.copy(init = newInit)
           case d: DefnOut   => d.copy(initOpt = Some(newInit))
           case d: DefnConst => d.copy(init = newInit)
           case d: DefnGen   => d.copy(init = newInit)
@@ -61,6 +62,7 @@ final class AddCasts(implicit cc: CompilerContext) extends StatefulTreeTransform
         }
         defn match {
           case d: DefnVar   => d.copy(initOpt = Some(newInit))
+          case d: DefnVal   => d.copy(init = newInit)
           case d: DefnOut   => d.copy(initOpt = Some(newInit))
           case d: DefnConst => d.copy(init = newInit)
           case d: DefnGen   => d.copy(init = newInit)

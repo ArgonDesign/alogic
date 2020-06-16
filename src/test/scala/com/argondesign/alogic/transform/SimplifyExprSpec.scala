@@ -1715,6 +1715,44 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
       }
     }
 
+    "reference to val" - {
+      for {
+        (expr, pattern) <- List[(String, PartialFunction[Any, Unit])](
+          // format: off
+          ("A", { case ExprInt(false, 36, v) if v == 0x0000000fffL => }),
+          ("B", { case ExprInt(false, 41, v) if v == 0x1000000fffL => }),
+          ("C", { case ExprInt(false,  8, v) if v == 2 => }),
+          ("D", { case ExprInt(false,  7, v) if v == 3 => }),
+          ("E", { case ExprInt(true,   6, v) if v == 4 => }),
+          ("F", { case ExprInt(true,   5, v) if v == 5 => }),
+          ("G", { case ExprSym(Symbol("G")) => })
+          // format: on
+        )
+      } expr in {
+        fold {
+          s"""
+             |fsm a {
+             |
+             |  void main() {
+             |    const u36 A = {{24{1'b0}}, {12{1'b1}}};
+             |    const u41 B = {5'h1, A[35:0]};
+             |    const u8  C = 2;
+             |    const u7  D = 3s;
+             |    const i6  E = 4;
+             |    const i5  F = 5s;
+             |    const u1  G = @randbit();
+             |    $$display("", $expr);
+             |    fence;
+             |  }
+             |}"""
+        } getFirst {
+          case ExprCall(_, _ :: ArgP(expr) :: Nil) => expr
+        } tap {
+          _ should matchPattern(pattern)
+        }
+      }
+    }
+
     "sliced or indexed refs when slice or index is const" - {
       for {
         (stmt, pattern) <- List[(String, PartialFunction[Any, Unit])](
