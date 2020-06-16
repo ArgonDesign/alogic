@@ -12,7 +12,7 @@
 //
 // Utility class to write formatted source text to output
 ////////////////////////////////////////////////////////////////////////////////
-package alogic.backend
+package com.argondesign.alogic.backend
 
 final class CodeWriter {
 

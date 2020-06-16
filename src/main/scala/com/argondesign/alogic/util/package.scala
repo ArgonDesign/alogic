@@ -16,5 +16,7 @@
 package com.argondesign.alogic
 
 package object util {
+  // $COVERAGE-OFF$
   def unreachable: Nothing = throw UnreachableException()
+  // $COVERAGE-ON$
 }

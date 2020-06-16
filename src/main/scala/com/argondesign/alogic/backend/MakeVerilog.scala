@@ -14,7 +14,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 package com.argondesign.alogic.backend
 
-import alogic.backend.CodeWriter
+import com.argondesign.alogic.backend.CodeWriter
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols._

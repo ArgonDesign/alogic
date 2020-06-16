@@ -1,7 +1,11 @@
 # Copyright (c) 2020 Argon Design Ltd. All rights reserved.
 
 # To validate execute:
-# curl --data-binary @codecov.yml https://codecov.io/validate
+# curl --data-binary @.codecov.yml https://codecov.io/validate
 
 codecov:
   require_ci_to_pass: no
+
+ignore:
+  - "verilator"
+  - "symbiyosys"
