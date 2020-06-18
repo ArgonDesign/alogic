@@ -34,7 +34,7 @@ object SlicesBuilder extends BaseBuilder[SlicesContext, List[StorageSlice]] with
       sc: SourceContext
     ): List[StorageSlice] = {
     ctx.slice.asScala.toList map {
-      _.text match {
+      _.txt match {
         case "bubble" => StorageSliceBub
         case "fslice" => StorageSliceFwd
         case "bslice" => StorageSliceBwd

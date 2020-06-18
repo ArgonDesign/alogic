@@ -164,7 +164,7 @@ object DescBuilder extends BaseBuilder[DescContext, Desc] with ChainingSyntax {
 
       override def visitDescEntity(ctx: DescEntityContext): Desc = {
         val ident = IdentBuilder(ctx.ident)
-        val variant = ctx.entity_keyword.text match {
+        val variant = ctx.entity_keyword.txt match {
           case "fsm"     => EntityVariant.Fsm
           case "network" => EntityVariant.Net
           case _         => EntityVariant.Ver
@@ -190,7 +190,7 @@ object DescBuilder extends BaseBuilder[DescContext, Desc] with ChainingSyntax {
 
       override def visitDescSingleton(ctx: DescSingletonContext): Desc = {
         val ident = IdentBuilder(ctx.ident)
-        val variant = ctx.entity_keyword.text match {
+        val variant = ctx.entity_keyword.txt match {
           case "fsm"     => EntityVariant.Fsm
           case "network" => EntityVariant.Net
           case _         => EntityVariant.Ver

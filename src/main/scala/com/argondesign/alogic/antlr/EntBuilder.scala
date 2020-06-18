@@ -48,7 +48,7 @@ object EntBuilder extends BaseBuilder[EntContext, Ent] {
         EntAssertion(AssertionBuilder(ctx.assertion)) withLoc ctx.loc
 
       override def visitEntVerbatimBlock(ctx: EntVerbatimBlockContext): Ent =
-        EntVerbatim(ctx.IDENTIFIER, ctx.VERBATIM_BODY.text.tail.init) withLoc ctx.loc
+        EntVerbatim(ctx.IDENTIFIER.txt, ctx.VERBATIM_BODY.txt.tail.init) withLoc ctx.loc
     }
 
     Visitor(ctx)

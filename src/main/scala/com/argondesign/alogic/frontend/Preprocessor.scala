@@ -18,9 +18,7 @@ package com.argondesign.alogic.frontend
 import java.io.File
 
 import com.argondesign.alogic.FindFile
-import com.argondesign.alogic.antlr.AntlrConverters.RichParserRuleContext
-import com.argondesign.alogic.antlr.AntlrConverters.RichToken
-import com.argondesign.alogic.antlr.AntlrConverters.terminalNodeToRichToken
+import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.antlr.PreprocParser._
 import com.argondesign.alogic.antlr._
 import com.argondesign.alogic.core.CompilerContext
@@ -53,30 +51,30 @@ class Preprocessor(implicit cc: CompilerContext) {
         ctx.entity.asScala.map(visit) mkString ""
 
       override def visitHashDefine(ctx: HashDefineContext): String = {
-        val s = ctx.IDENTIFIER.text
+        val s = ctx.IDENTIFIER.txt
         if (defines contains s) {
           cc.warning(ctx, s"Redefined preprocessor identifier '$s'")
         }
-        defines(s) = ctx.REST.text.trim
+        defines(s) = ctx.REST.txt.trim
         "" // Replace with empty string
       }
 
       override def visitIdentifier(ctx: IdentifierContext): String = {
-        val ident = ctx.text
+        val ident = ctx.txt
         defines.getOrElse(ident, ident)
       }
 
-      override def visitLiteral(ctx: LiteralContext): String = ctx.text
+      override def visitLiteral(ctx: LiteralContext): String = ctx.txt
 
-      override def visitLineComment(ctx: LineCommentContext): String = ctx.text
+      override def visitLineComment(ctx: LineCommentContext): String = ctx.txt
 
-      override def visitBlockComment(ctx: BlockCommentContext): String = ctx.text
+      override def visitBlockComment(ctx: BlockCommentContext): String = ctx.txt
 
-      override def visitAnything(ctx: AnythingContext): String = ctx.text
+      override def visitAnything(ctx: AnythingContext): String = ctx.txt
 
       override def visitHashIf(ctx: HashIfContext): String = {
-        val valueCond = ctx.ifcond.text.filterNot(_.isWhitespace) == "#if"
-        val ident = ctx.IDENTIFIER.text
+        val valueCond = ctx.ifcond.txt.filterNot(_.isWhitespace) == "#if"
+        val ident = ctx.IDENTIFIER.txt
 
         val useElseOpt = if (valueCond) {
           if (defines contains ident) {
@@ -107,13 +105,13 @@ class Preprocessor(implicit cc: CompilerContext) {
             val first = if (!useElse) {
               visit(ctx.entities(0))
             } else {
-              "\n" * ctx.entities(0).text.count(_ == '\n')
+              "\n" * ctx.entities(0).txt.count(_ == '\n')
             }
 
             val second = if (useElse && hasElse) {
               visit(ctx.entities(1))
             } else if (hasElse) {
-              "\n" * ctx.entities(1).text.count(_ == '\n')
+              "\n" * ctx.entities(1).txt.count(_ == '\n')
             } else {
               ""
             }
@@ -125,7 +123,7 @@ class Preprocessor(implicit cc: CompilerContext) {
 
       override def visitHashInclude(ctx: HashIncludeContext): String = {
         // Get the include path specifier
-        val includeSpec = ctx.LITERAL.text.drop(1).dropRight(1)
+        val includeSpec = ctx.LITERAL.txt.drop(1).dropRight(1)
 
         // Find the include file
         val includeSource = includeResolver(source, includeSpec) match {

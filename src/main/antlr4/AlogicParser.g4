@@ -17,6 +17,7 @@ parser grammar AlogicParser;
 
 options {
   tokenVocab = AlogicLexer;
+  contextSuperClass = com.argondesign.alogic.antlr.AlogicParserRuleContext;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

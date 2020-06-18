@@ -47,8 +47,8 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
         ExprInt(false, 1, 0) withLoc ctx.loc
 
       override def visitExprLitSizedInt(ctx: ExprLitSizedIntContext): Expr = {
-        val neg = ctx.sign != null && ctx.sign.text == "-"
-        val text = ctx.SIZEDINT.text
+        val neg = ctx.sign != null && ctx.sign.txt == "-"
+        val text = ctx.SIZEDINT.txt
         val (widthDigits, tickRest) = text span { _ != '\'' }
         val width = widthDigits.toInt
         if (width == 0) {
@@ -98,8 +98,8 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
       }
 
       override def visitExprLitUnsizedInt(ctx: ExprLitUnsizedIntContext): Expr = {
-        val neg = ctx.sign != null && ctx.sign.text == "-"
-        val text = ctx.UNSIZEDINT.text
+        val neg = ctx.sign != null && ctx.sign.txt == "-"
+        val text = ctx.UNSIZEDINT.txt
         if (text.length > 1 && text(0) == '0' && text(1).isDigit) {
           cc.error(
             ctx,
@@ -141,7 +141,7 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
       }
 
       override def visitExprLitString(ctx: ExprLitStringContext): Expr =
-        ExprStr(ctx.STRING.text.tail.init) withLoc ctx.loc
+        ExprStr(ctx.STRING.txt.tail.init) withLoc ctx.loc
 
       //////////////////////////////////////////////////////////////////////////
       // Primitive types
@@ -151,10 +151,10 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
         ExprType(TypeUInt(1)) withLoc ctx.loc
 
       override def visitExprTypeSInt(ctx: ExprTypeSIntContext): Expr =
-        ExprType(TypeSInt(ctx.INTTYPE.text.tail.toInt)) withLoc ctx.loc
+        ExprType(TypeSInt(ctx.INTTYPE.txt.tail.toInt)) withLoc ctx.loc
 
       override def visitExprTypeUInt(ctx: ExprTypeUIntContext): Expr =
-        ExprType(TypeUInt(ctx.UINTTYPE.text.tail.toInt)) withLoc ctx.loc
+        ExprType(TypeUInt(ctx.UINTTYPE.txt.tail.toInt)) withLoc ctx.loc
 
       override def visitExprTypeSNum(ctx: ExprTypeSNumContext): Expr =
         ExprType(TypeNum(true)) withLoc ctx.loc
@@ -204,7 +204,7 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
         ExprIndex(visit(ctx.expr(0)), visit(ctx.idx)) withLoc ctx.loc
 
       override def visitExprSlice(ctx: ExprSliceContext): Expr =
-        ExprSlice(visit(ctx.expr(0)), visit(ctx.lidx), ctx.op, visit(ctx.ridx)) withLoc ctx.loc
+        ExprSlice(visit(ctx.expr(0)), visit(ctx.lidx), ctx.op.txt, visit(ctx.ridx)) withLoc ctx.loc
 
       //////////////////////////////////////////////////////////////////////////
       // Select
@@ -221,11 +221,11 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
       //////////////////////////////////////////////////////////////////////////
 
       override def visitExprUnary(ctx: ExprUnaryContext): Expr =
-        ExprUnary(ctx.op, visit(ctx.expr)) withLoc ctx.loc
+        ExprUnary(ctx.op.txt, visit(ctx.expr)) withLoc ctx.loc
 
       override def visitExprBinary(ctx: ExprBinaryContext): Expr = {
         val loc = ctx.loc.copy(point = ctx.op.getStartIndex)
-        ExprBinary(visit(ctx.expr(0)), ctx.op, visit(ctx.expr(1))) withLoc loc
+        ExprBinary(visit(ctx.expr(0)), ctx.op.txt, visit(ctx.expr(1))) withLoc loc
       }
 
       override def visitExprTernary(ctx: ExprTernaryContext): Expr = {

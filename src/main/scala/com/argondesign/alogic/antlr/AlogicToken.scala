@@ -24,6 +24,8 @@ class AlogicToken(
     val file: String // source file name (can be changed by #line)
   ) extends CommonToken(source, kind, channel, start, stop) {
 
+  def txt = getText
+
   lazy val loc: Loc =
     Loc(file, getLine, alogicSource, getStartIndex, getStopIndex + 1, getStartIndex)
 

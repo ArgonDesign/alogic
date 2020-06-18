@@ -17,6 +17,7 @@ parser grammar PreprocParser;
 
 options {
   tokenVocab = PreprocLexer;
+  contextSuperClass = com.argondesign.alogic.antlr.AlogicParserRuleContext;
 }
 
 start : entities EOF ;

@@ -16,11 +16,10 @@
 package com.argondesign.alogic.antlr
 
 import com.argondesign.alogic.antlr.AlogicParser._
-import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.SourceContext
 import com.argondesign.alogic.core.FuncVariant
+import com.argondesign.alogic.core.SourceContext
 
 object RizBuilder extends BaseBuilder[RizContext, Riz] {
 

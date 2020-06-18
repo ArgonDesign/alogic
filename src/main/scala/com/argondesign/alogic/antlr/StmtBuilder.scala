@@ -105,17 +105,17 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
       override def visitStmtUpdate(ctx: StmtUpdateContext): Stmt =
         StmtUpdate(
           ExprBuilder(ctx.expr(0)),
-          ctx.ASSIGNOP.text.init,
+          ctx.ASSIGNOP.txt.init,
           ExprBuilder(ctx.expr(1))
         ) withLoc {
           ctx.loc.copy(point = ctx.ASSIGNOP.getStartIndex)
         }
 
       override def visitStmtPost(ctx: StmtPostContext): Stmt =
-        StmtPost(ExprBuilder(ctx.expr), ctx.op) withLoc ctx.loc
+        StmtPost(ExprBuilder(ctx.expr), ctx.op.txt) withLoc ctx.loc
 
       override def visitStmtExpr(ctx: StmtExprContext): Stmt = {
-        val stmt = ctx.expr.text match {
+        val stmt = ctx.expr.txt match {
           case "read"  => StmtRead()
           case "write" => StmtWrite()
           case _       => StmtExpr(ExprBuilder(ctx.expr))
@@ -158,14 +158,14 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
       override def visitLoopStepUpdate(ctx: LoopStepUpdateContext): Stmt =
         StmtUpdate(
           ExprBuilder(ctx.expr(0)),
-          ctx.ASSIGNOP.text.init,
+          ctx.ASSIGNOP.txt.init,
           ExprBuilder(ctx.expr(1))
         ) withLoc {
           ctx.loc.copy(point = ctx.ASSIGNOP.getStartIndex)
         }
 
       override def visitLoopStepPost(ctx: LoopStepPostContext): Stmt =
-        StmtPost(ExprBuilder(ctx.expr), ctx.op) withLoc ctx.loc
+        StmtPost(ExprBuilder(ctx.expr), ctx.op.txt) withLoc ctx.loc
     }
 
     Visitor(ctx)

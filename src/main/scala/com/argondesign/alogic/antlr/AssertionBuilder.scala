@@ -33,14 +33,14 @@ object AssertionBuilder extends BaseBuilder[AssertionContext, Assertion] {
     object Visitor extends AlogicScalarVisitor[Assertion] {
       override def visitAssertionAssert(ctx: AssertionAssertContext): Assertion = {
         val msgOpt = Option.when(ctx.STRING != null) {
-          ctx.STRING.text.slice(1, ctx.STRING.text.length - 1)
+          ctx.STRING.txt.slice(1, ctx.STRING.txt.length - 1)
         }
         AssertionAssert(ExprBuilder(ctx.expr), msgOpt) withLoc ctx.loc
       }
 
       override def visitAssertionStatic(ctx: AssertionStaticContext): Assertion = {
         val msgOpt = Option.when(ctx.STRING != null) {
-          ctx.STRING.text.slice(1, ctx.STRING.text.length - 1)
+          ctx.STRING.txt.slice(1, ctx.STRING.txt.length - 1)
         }
         AssertionStatic(ExprBuilder(ctx.expr), msgOpt) withLoc ctx.loc
       }

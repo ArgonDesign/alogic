@@ -691,7 +691,7 @@ trait CompilationTest
     lazy val hardOK = symbiYosysEquiv(topLevel, goldenFile, tmpDir, fec)
 
     if (!easyOK && !hardOK) {
-      fail("FEC failed");
+      fail("FEC failed")
     }
   }
 
@@ -700,7 +700,7 @@ trait CompilationTest
     val line: Int
     val patterns: List[String]
 
-    def matches(message: Message)(implicit cc: CompilerContext): Boolean = {
+    def matches(message: Message): Boolean = {
       val typeMatches = (this, message) match {
         case (_: WarningSpec, _: Warning) => true
         case (_: ErrorSpec, _: Error)     => true

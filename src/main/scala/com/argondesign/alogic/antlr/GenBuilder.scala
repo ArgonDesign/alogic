@@ -103,7 +103,7 @@ object GenBuilder extends BaseBuilder[GenContext, Gen] {
         }
         val end = ExprBuilder(ctx.expr(1))
         val body = GenItemVisitor(ctx.genitems.genitem)
-        GenRange(inits, ctx.op, end, body) withLoc ctx.loc
+        GenRange(inits, ctx.op.txt, end, body) withLoc ctx.loc
       }
     }
 

@@ -24,8 +24,8 @@ import org.antlr.v4.runtime.Token
 
 object IdentBuilder extends BaseBuilder[IdentContext, Ident] {
   def apply(ctx: IdentContext)(implicit cc: CompilerContext, sc: SourceContext): Ident =
-    Ident(ctx.IDENTIFIER.text, ExprBuilder(ctx.expr)) withLoc ctx.loc
+    Ident(ctx.IDENTIFIER.txt, ExprBuilder(ctx.expr)) withLoc ctx.loc
 
   def apply(token: Token): Ident =
-    Ident(token, Nil) withLoc token.loc
+    Ident(token.txt, Nil) withLoc token.loc
 }

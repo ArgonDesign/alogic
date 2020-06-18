@@ -16,7 +16,6 @@
 package com.argondesign.alogic.antlr
 
 import com.argondesign.alogic.antlr.AlogicParser._
-import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.SourceContext
