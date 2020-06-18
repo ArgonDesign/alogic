@@ -34,17 +34,21 @@ sealed abstract trait Message {
     case None      => unreachable
   }
 
-  def string(implicit cc: CompilerContext): String = {
+  private def string(colorOpt: Option[String]): String = {
     val prefix = lop match {
       case Some(loc) => s"${loc.prefix}: $cat: "
       case None      => s"$cat: "
     }
     val context = lop match {
-      case Some(loc) => "\n" + loc.context(color)
+      case Some(loc) => "\n" + loc.context(colorOpt)
       case None      => ""
     }
     (msg mkString (prefix, "\n" + prefix + "... ", "")) + context
   }
+
+  def string: String = string(None)
+
+  def string(cc: CompilerContext): String = string(cc.colorOpt(color))
 
 }
 
@@ -84,6 +88,8 @@ case class FatalErrorException(cc: CompilerContext, message: Fatal) extends Exce
 case class InternalCompilerErrorException(cc: CompilerContext, message: ICE) extends Exception
 
 trait Messaging { self: CompilerContext =>
+
+  def colorOpt(string: String): Option[String] = Option.when(settings.colourize)(string)
 
   // buffer to store messages without source location information
   final private[this] val messageBuffer = mutable.ListBuffer[Message]()

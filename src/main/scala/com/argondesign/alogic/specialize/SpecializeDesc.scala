@@ -170,7 +170,7 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
       }
 
       if (cc.hasError) {
-        cc.messages foreach { msg => println(msg.string) }
+        cc.messages foreach { msg => println(msg.string(cc)) }
         cc.fatal("Stopping due to errors")
       }
       prevDumped = item
@@ -408,7 +408,7 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
     pendingMap.get(tag) match {
       case Some(startLoc) =>
         // Already in progress. Report the cycle
-        val color = AnsiColor.GREEN + AnsiColor.BOLD
+        val color = cc.colorOpt(AnsiColor.GREEN + AnsiColor.BOLD)
 
         val msg = new ListBuffer[String]
 

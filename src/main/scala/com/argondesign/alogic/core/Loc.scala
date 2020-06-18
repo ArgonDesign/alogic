@@ -25,7 +25,7 @@ case class Loc(
   def prefix: String = s"$file:$line"
 
   // Construct context lines
-  def context(ansiColor: String)(implicit cc: CompilerContext): String = {
+  def context(ansiColor: Option[String]): String = {
     val startLine = source.lineFor(start)
     val endLine = source.lineFor(end)
     val lines = source.lines.slice(startLine - 1, endLine)
@@ -45,8 +45,8 @@ case class Loc(
       case _                => ' '
     } mkString ""
 
-    val useColours = cc.settings.colourize && s != e
-    val colourOn = if (useColours) ansiColor else ""
+    val useColours = ansiColor.isDefined
+    val colourOn = ansiColor.getOrElse("")
     val colourOff = if (useColours) AnsiColor.RESET else ""
     val colourBold = if (useColours) AnsiColor.BOLD else ""
 

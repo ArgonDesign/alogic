@@ -31,9 +31,9 @@ import com.argondesign.alogic.core.SourceAttribute
 import com.argondesign.alogic.core.Warning
 import com.argondesign.alogic.passes.Pass
 import org.scalatest._
-import org.scalatest.matchers.should.Matchers
 import org.scalatest.matchers.MatchResult
 import org.scalatest.matchers.Matcher
+import org.scalatest.matchers.should.Matchers
 
 import scala.reflect.ClassTag
 import scala.util.ChainingSyntax
@@ -54,11 +54,11 @@ trait AlogicTest
         failed tap { _ =>
           failed.exception match {
             case FatalErrorException(cc, _) =>
-              cc.messages map { _.string(cc) } foreach Console.err.println
+              cc.messages map { _.string } foreach Console.err.println
             case InternalCompilerErrorException(cc, _) =>
-              cc.messages map { _.string(cc) } foreach Console.err.println
+              cc.messages map { _.string } foreach Console.err.println
             case AsTreeSyntaxErrorException(cc) =>
-              cc.messages map { _.string(cc) } foreach Console.err.println
+              cc.messages map { _.string } foreach Console.err.println
             case _ =>
           }
         }
@@ -68,9 +68,6 @@ trait AlogicTest
 
   final protected def beThe[T <: Message: ClassTag](
       lines: String*
-    )(
-      implicit
-      cc: CompilerContext
     ): Matcher[Message] = Matcher { message: Message =>
     lazy val linesMatch = lines.length == message.msg.length && {
       val regexes = lines map { _.r }
