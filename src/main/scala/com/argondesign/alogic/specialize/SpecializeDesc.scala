@@ -170,7 +170,6 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
       }
 
       if (cc.hasError) {
-        cc.messages foreach { msg => println(msg.string(cc)) }
         cc.fatal("Stopping due to errors")
       }
       prevDumped = item

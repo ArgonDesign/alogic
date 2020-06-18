@@ -1,5 +1,4 @@
-// @no-reset-all
-// @reset-style:sync-low
+// @args: --reset-style sync-low
 fsm lower_variables_sync_low_0 {
   in       bool i;
   out wire bool o;

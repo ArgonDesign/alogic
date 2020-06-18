@@ -1,4 +1,4 @@
-// @no-assertions
+// @args: --no-assertions
 fsm assume_04 {
   in       u2 c;
   in       bool i;

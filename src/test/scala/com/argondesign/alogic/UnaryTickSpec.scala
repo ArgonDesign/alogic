@@ -64,9 +64,6 @@ final class UnaryTickSpec extends AnyFreeSpec with AlogicTest {
 
   def check(kinds: List[Type])(text: String): Unit = {
     val tree = replaceUnaryTicks(text)
-    cc.messages foreach { msg =>
-      println(msg.string(cc))
-    }
     cc.messages shouldBe empty
     val exprs = { tree.value collect { case e @ ExprUnary("'", _) => e } }.toList
     exprs should have length kinds.length

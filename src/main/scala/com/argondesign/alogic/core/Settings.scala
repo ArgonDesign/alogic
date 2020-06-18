@@ -16,7 +16,7 @@
 package com.argondesign.alogic.core
 
 import java.io.File
-import java.io.Writer
+import java.io.PrintWriter
 
 import com.argondesign.alogic.ast.Trees.Tree
 import com.argondesign.alogic.core.enums.ResetStyle
@@ -30,12 +30,8 @@ case class Settings(
     // Initial preprocessor definitions
     initialDefines: Map[String, String] = Map.empty,
     // Output writer factory
-    outputWriterFactory: Either[(Tree, String), String] => Writer = { _ =>
+    outputWriterFactory: Either[(Tree, String), String] => PrintWriter = { _ =>
       ???
-    },
-    // Message emitter
-    messageEmitter: (Message, CompilerContext) => Unit = {
-      case (msg: Message, cc: CompilerContext) => Console.err.println(msg.string(cc))
     },
     // The field separator sequence
     sep: String = "__",
@@ -47,8 +43,8 @@ case class Settings(
     outputNameMaxLength: Option[Int] = None,
     // Header text to prepend to output files
     header: String = "",
-    // Colourize diagnostic messages
-    colourize: Boolean = false,
+    // Colorize diagnostic messages
+    colorize: Boolean = false,
     // Dump trees after each pass
     dumpTrees: Boolean = false,
     // Measure and report inserted execution timing

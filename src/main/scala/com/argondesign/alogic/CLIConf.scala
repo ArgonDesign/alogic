@@ -17,6 +17,7 @@ package com.argondesign.alogic
 
 import java.io.File
 
+import com.argondesign.alogic.core.MessageBuffer
 import com.argondesign.alogic.core.enums.ResetStyle
 import com.argondesign.alogic.core.enums.UninitializedLocals
 import com.argondesign.alogic.util.PartialMatch
@@ -28,7 +29,9 @@ import org.rogach.scallop.singleArgConverter
 
 // Option parser based on Scallop. See the Scallop wiki for usage:
 // https://github.com/scallop/scallop/wiki
-class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
+class CLIConf(args: Seq[String], messageBuffer: MessageBuffer)
+    extends ScallopConf(args)
+    with PartialMatch {
   implicit private[this] val fileConverter =
     singleArgConverter[File](path => (new File(path)).getCanonicalFile())
 
@@ -127,8 +130,7 @@ class CLIConf(args: Seq[String]) extends ScallopConf(args) with PartialMatch {
   banner("Alogic compiler")
 
   errorMessageHandler = { message =>
-    Console.err.println(s"FATAL: %s" format message)
-    sys.exit(1)
+    messageBuffer.error(None, message)
   }
 
   val ydir = opt[List[File]](

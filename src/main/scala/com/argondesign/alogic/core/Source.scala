@@ -18,11 +18,14 @@ package com.argondesign.alogic.core
 import java.io.File
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
+import java.nio.file.Path
 
 class Source(val file: File, val text: String) {
   val name = file.toString
 
   lazy val lines: List[String] = text.linesWithSeparators.toList
+
+  def linesIterator: Iterator[String] = text.linesIterator
 
   // Return line number (1 based) offset belongs to
   def lineFor(offset: Int): Int = text.slice(0, offset + 1).linesWithSeparators.length
@@ -38,6 +41,8 @@ object Source {
     val text = new String(Files.readAllBytes(file.toPath), StandardCharsets.UTF_8)
     new Source(file, text)
   }
+
+  def apply(path: Path): Source = Source(path.toFile)
 
   def apply(file: String, text: String): Source = Source(new File(file), text)
   def apply(file: String): Source = Source(new File(file))

@@ -45,23 +45,23 @@ case class Loc(
       case _                => ' '
     } mkString ""
 
-    val useColours = ansiColor.isDefined
-    val colourOn = ansiColor.getOrElse("")
-    val colourOff = if (useColours) AnsiColor.RESET else ""
-    val colourBold = if (useColours) AnsiColor.BOLD else ""
+    val useColors = ansiColor.isDefined
+    val colorOn = ansiColor.getOrElse("")
+    val colorOff = if (useColors) AnsiColor.RESET else ""
+    val colorBold = if (useColors) AnsiColor.BOLD else ""
 
-    val colorText = text.take(s) + colourOn + text.slice(s, e) + colourOff + text.drop(e)
+    val colorText = text.take(s) + colorOn + text.slice(s, e) + colorOff + text.drop(e)
 
     // Zip the lines with the squiggles line by line
     // (but not the color escapes), and join them
     val sb = new StringBuilder()
     for ((line, squiggle) <- colorText.linesWithSeparators zip squiggle.linesWithSeparators) {
-      if (useColours && (line contains colourOn) || (sb endsWith colourOn)) {
+      if (useColors && (line contains colorOn) || (sb endsWith colorOn)) {
         sb append line
-        sb append colourOff
+        sb append colorOff
         sb append squiggle
-        if (!(line contains colourOff)) {
-          sb append colourOn
+        if (!(line contains colorOff)) {
+          sb append colorOn
         }
       } else {
         sb append line
@@ -75,7 +75,7 @@ case class Loc(
       txt
     } else {
       (lns.take(4) ++
-        Vector(colourOff, colourBold, "  ... omitted ...", colourOff, colourOn) ++
+        Vector(colorOff, colorBold, "  ... omitted ...", colorOff, colorOn) ++
         lns.takeRight(4)) mkString "\n"
     }
   }

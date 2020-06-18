@@ -15,20 +15,20 @@
 
 package com.argondesign.alogic
 
-import java.io.File
+import java.nio.file.Paths
 
 final class CompileMultiple extends CompilationTest {
 
-  val base = "/compile/multi"
+  private val base = "/compile/multi"
 
-  val testPath = new File(getClass.getResource(base).getPath)
+  private val testPath = Paths.get(getClass.getResource(base).getPath)
 
   // Fore each subdirectory in the test directory
-  (testPath.listFiles filter { _.isDirectory }).sorted foreach { dir =>
+  (testPath.toFile.listFiles filter { _.isDirectory }).sorted foreach { dir =>
     // Name of check file (same as top level file)
     val checkFile = dir.toPath.resolve("top.alogic").toString
 
     // Define test
-    defineTest(s"${base.tail}/${dir.getName}", dir, "top", checkFile)
+    defineTest(s"${dir.getName}", dir.toPath, "top", checkFile)
   }
 }

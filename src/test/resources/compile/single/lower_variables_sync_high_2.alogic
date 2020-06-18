@@ -1,5 +1,4 @@
-// @no-reset-all
-// @reset-style:sync-high
+// @args: --reset-style sync-high --no-reset-all
 fsm lower_variables_sync_high_2 {
   in       bool i;
   out wire bool o;

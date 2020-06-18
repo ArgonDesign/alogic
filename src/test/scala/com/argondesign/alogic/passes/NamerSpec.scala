@@ -255,7 +255,6 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
           }
       }
 
-      cc.emitMessages()
       cc.messages shouldBe empty
     }
 

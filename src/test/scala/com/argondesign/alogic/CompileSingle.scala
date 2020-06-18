@@ -15,16 +15,16 @@
 
 package com.argondesign.alogic
 
-import java.io.File
+import java.nio.file.Paths
 
 final class CompileSingle extends CompilationTest {
 
-  val base = "/compile/single"
+  private val base = "/compile/single"
 
-  val testPath = new File(getClass.getResource(base).getPath)
+  private val testPath = Paths.get(getClass.getResource(base).getPath)
 
   // For each source file in the test directory
-  testPath.listFiles.sorted foreach { file =>
+  testPath.toFile.listFiles.sorted foreach { file =>
     // Figure out the name of the entity (also filters out non matching files)
     """.*/(.*)\.alogic$""".r findFirstMatchIn file.getPath foreach { matchData =>
       // Name of top level
@@ -34,7 +34,7 @@ final class CompileSingle extends CompilationTest {
       val checkFile = matchData.group(0)
 
       // Define test
-      defineTest(s"${base.tail}/$top.alogic", testPath, top, checkFile)
+      defineTest(s"$top.alogic", testPath, top, checkFile)
     }
   }
 }

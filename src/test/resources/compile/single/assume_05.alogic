@@ -1,4 +1,4 @@
-// @no-assertions
+// @args: --no-assertions
 fsm assume_05 {
   in       u2 i;
   out wire u2 o;

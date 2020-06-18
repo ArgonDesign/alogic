@@ -1,5 +1,5 @@
 // Use async reset, make sure no Verilator SYNCASYNCNET warning.
-// @reset-style:async-low
+// @args: --reset-style async-low
 fsm stmt_assert_7 {
   in bool i;
   out sync ready bool o;

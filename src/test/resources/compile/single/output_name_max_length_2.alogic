@@ -1,4 +1,4 @@
-// @output-name-max-length: 16
+// @args: --output-name-max-length 16
 network output_name_max_length_2 {
     out wire u8 o;
 

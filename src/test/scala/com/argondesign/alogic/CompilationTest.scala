@@ -17,21 +17,15 @@ package com.argondesign.alogic
 
 import java.io.File
 import java.io.PrintWriter
-import java.io.StringWriter
-import java.io.Writer
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 
-import com.argondesign.alogic.ast.Trees.Decl
-import com.argondesign.alogic.ast.Trees.Root
-import com.argondesign.alogic.ast.Trees.Tree
-import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Error
 import com.argondesign.alogic.core.Fatal
-import com.argondesign.alogic.core.InternalCompilerErrorException
 import com.argondesign.alogic.core.Message
-import com.argondesign.alogic.core.Settings
+import com.argondesign.alogic.core.MessageBuffer
+import com.argondesign.alogic.core.Source
 import com.argondesign.alogic.core.Warning
 import com.argondesign.alogic.core.enums.ResetStyle
 import com.argondesign.alogic.util.unreachable
@@ -44,7 +38,6 @@ import scala.collection.immutable.ListMap
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.io.AnsiColor
-import scala.io.Source
 import scala.sys.process._
 
 trait CompilationTest
@@ -55,7 +48,7 @@ trait CompilationTest
 
   def getTool(path: Path, name: String, msg: String): File = {
     path.resolve(name).toFile
-  } pipe { _.getCanonicalFile } ensuring { _.exists }
+  } pipe { _.getCanonicalFile } ensuring (_.exists, msg)
 
   private lazy val verilatorPath = Paths.get("verilator/install/bin").toAbsolutePath
 
@@ -81,22 +74,19 @@ trait CompilationTest
 
   // Test config
   case class Config(
-      dumpTrees: Boolean,
-      tmpDir: Option[String],
       trace: Boolean,
-      traceElaborate: Boolean,
       verbose: Int)
 
   // Create temporary directory, run function passing the path to the temporary
   // directory as argument, then remove the temporary directory
-  def withTmpDir[R](f: Path => R)(implicit config: Config): R = {
+  def withTmpDir[R](tmpDir: Option[String])(f: Path => Unit): Unit = {
     def del(f: File): Unit = {
       if (f.isDirectory) {
         f.listFiles foreach del
       }
       f.delete()
     }
-    config.tmpDir match {
+    tmpDir match {
       case Some(tmpDir) =>
         val tmp = new File(tmpDir)
         if (tmp.exists) {
@@ -114,53 +104,12 @@ trait CompilationTest
     }
   }
 
-  // Will be updated form multiple threads so must be thread safe
-  private val outputs = scala.collection.concurrent.TrieMap[String, String]()
-
-  // Insert compiler output to the 'outputs' map above
-  private def outputWriterFactory(
-      treeAndSuffixOrFileName: Either[(Tree, String), String]
-    ): Writer = {
-    new StringWriter {
-      override def close(): Unit = {
-        treeAndSuffixOrFileName match {
-          case Left((decl: Decl, suffix)) => outputs(decl.symbol.name + suffix) = this.toString
-          case Left((root: Root, suffix)) =>
-            outputs(root.loc.source.file.getName.split('.').head + suffix) = this.toString
-          case Right(fileName) => outputs(fileName) = this.toString
-          case _               => ???
-        }
-        super.close()
-      }
-    }
-  }
-
-  // Compiler message buffer
-  private val messages = new ListBuffer[Message]
-
-  // Save messages to the buffer above
-  private def messageEmitter(msg: Message, cc: CompilerContext) = {
-    messages synchronized {
-      messages append msg
-    }
-  }
-
   def writeFile(file: File)(content: String): Unit = {
     val pw = new PrintWriter(file)
     pw.write(content)
     pw.flush()
     pw.close()
   }
-
-  def writeOutputs(path: Path): Unit = outputs foreach {
-    case (name, text) => writeFile(path.resolve(name).toFile)(text)
-  }
-
-  def checkFileExists(name: String): Unit =
-    if (!(outputs contains name)) {
-      val files = outputs.keys mkString "\n"
-      fail(s"Could not find file '$name' among \n$files\n")
-    }
 
   def system(
       cmd: String,
@@ -183,12 +132,7 @@ trait CompilationTest
     logger.close()
     if (config.verbose > 0) {
       println("=== Output:")
-      val source = Source.fromFile(logFile)
-      try {
-        source.getLines foreach println
-      } finally {
-        source.close()
-      }
+      Source(logFile).linesIterator foreach println
     }
     if (!failOk && ret != 0) {
       fail(s"Command failed: '$cmd'")
@@ -205,12 +149,9 @@ trait CompilationTest
   }
 
   // Lint compiler output with Verilator
-  def verilatorLint(topLevel: String, tmpDir: Path)(implicit config: Config): Unit = {
-    // Write all files to temporary directory
-    writeOutputs(tmpDir)
-
+  def verilatorLint(topLevel: String, oPath: Path)(implicit config: Config): Unit = {
     // Lint the top level
-    system(s"$verilator --lint-only -Wall -y $tmpDir $topLevel", tmpDir, "verilator-lint.log")
+    system(s"$verilator --lint-only -Wall -y $oPath $topLevel", oPath, "verilator-lint.log")
   }
 
   // Build and run simulation with Verilator
@@ -221,24 +162,38 @@ trait CompilationTest
       dpi: String,
       timeout: Long,
       trace: Boolean,
-      tmpDir: Path
+      oPath: Path
     )(
       implicit
-      cc: CompilerContext,
       config: Config
     ): Unit = {
-    require(topLevel != "testbench")
-    assert(outputs forall { _._1 != "testbench" })
 
-    // Write all files to temporary directory
-    writeOutputs(tmpDir)
+    // TODO: factor common with fec
+    val manifest = {
+      io.circe.parser.parse(Source(oPath resolve "manifest.json").text) match {
+        case Left(failure) => fail(failure.message)
+        case Right(json)   => json.hcursor.downField("top-levels").downField(topLevel)
+      }
+    }
+
+    val clock = manifest.get[String]("clock").toOption.getOrElse("clk")
+    val reset = manifest.get[String]("reset").toOption.getOrElse("rst")
+
+    val resetStyle = manifest.get[String]("reset-style") match {
+      case Right("sync-high")  => ResetStyle.SyncHigh
+      case Right("sync-low")   => ResetStyle.SyncLow
+      case Right("async-high") => ResetStyle.AsyncHigh
+      case Right("async-low")  => ResetStyle.AsyncLow
+      case other               => fail("Unknown reset style: " + other)
+    }
 
     // Write the testbench
-    val tbFile = tmpDir.resolve("testbench.sv").toFile
+    val tbFile = oPath.resolve("testbench.sv").toFile
+    assert(!tbFile.exists)
     writeFile(tbFile) {
       s"""module testbench(
-         |  input wire clk,
-         |  input wire ${cc.rst}
+         |  input wire $clock,
+         |  input wire $reset
          |);
          |
          |$test
@@ -250,23 +205,23 @@ trait CompilationTest
     }
 
     // Write the dpi source file
-    val dpiFileOpt = Option.when(dpi.nonEmpty)(tmpDir.resolve("dpi.cc").toFile)
+    val dpiFileOpt = Option.when(dpi.nonEmpty)(oPath.resolve("dpi.cc").toFile)
     dpiFileOpt foreach { dpiFile =>
       writeFile(dpiFile)(dpi)
     }
 
     // The Verilator output directory
-    val objPath = tmpDir.resolve("obj_dir")
+    val objPath = oPath.resolve("obj_dir")
 
     // Write simulation main
-    val mainFile = tmpDir.resolve("main.cc").toFile
+    val mainFile = oPath.resolve("main.cc").toFile
     writeFile(mainFile) {
-      val rstActive = cc.settings.resetStyle match {
+      val rstActive = resetStyle match {
         case ResetStyle.AsyncHigh | ResetStyle.SyncHigh => 1
         case _                                          => 0
       }
       val rstInactive = 1 - rstActive
-      val rstSync = cc.settings.resetStyle match {
+      val rstSync = resetStyle match {
         case ResetStyle.SyncHigh | ResetStyle.SyncLow => 1
         case _                                        => 0
       }
@@ -317,31 +272,31 @@ trait CompilationTest
          |#endif
          |
          |  // Initialize
-         |  testbench.${cc.rst} = $rstInactive;
-         |  testbench.clk = 0;
+         |  testbench.$reset = $rstInactive;
+         |  testbench.$clock = 0;
          |  EVAL();
          |  main_time += HALF_CLK_PERIOD;
          |
          |  // Assert reset asynchronously
-         |  testbench.${cc.rst} = $rstActive;
+         |  testbench.$reset = $rstActive;
          |  EVAL();
          |  main_time += HALF_CLK_PERIOD;
          |
          |  // Apply a clock pulse when using sync reset
-         |  testbench.clk = $rstSync;
+         |  testbench.$clock = $rstSync;
          |  EVAL();
          |  main_time += HALF_CLK_PERIOD;
          |
          |  // De-assert reset
-         |  testbench.${cc.rst} = $rstInactive;
-         |  testbench.clk = 0;
+         |  testbench.$reset = $rstInactive;
+         |  testbench.$clock = 0;
          |  EVAL();
          |  main_time += HALF_CLK_PERIOD;
          |
          |  // Tick the clock
          |  int exit_code = 0;
          |  while (!Verilated::gotFinish()) {
-         |    testbench.clk = !testbench.clk;
+         |    testbench.$clock = !testbench.$clock;
          |    try {
          |      EVAL();
          |      main_time += HALF_CLK_PERIOD;
@@ -373,15 +328,15 @@ trait CompilationTest
       val traceOpts = if (trace) "--trace" else ""
       val cflags = "-DVL_USER_STOP"
       val files = s"$tbFile $mainFile ${dpiFileOpt.fold("")(_.toString)}"
-      s"""$verilator --cc --exe -Wall $traceOpts -CFLAGS "$cflags" -O3 --assert --trace-underscore -y $tmpDir --Mdir $objPath $files"""
+      s"""$verilator --cc --exe -Wall $traceOpts -CFLAGS "$cflags" -O3 --assert --trace-underscore -y $oPath --Mdir $objPath $files"""
     }
-    system(verilatorCmd, tmpDir, "verilator-compile.log")
+    system(verilatorCmd, oPath, "verilator-compile.log")
 
     // Build model
-    system(s"make -C $objPath -f Vtestbench.mk", tmpDir, "verilator-build.log")
+    system(s"make -C $objPath -f Vtestbench.mk", oPath, "verilator-build.log")
 
     // Run model and check output
-    val lines = Process(s"${objPath.resolve("Vtestbench")}", tmpDir.toFile).lazyLines_!
+    val lines = Process(s"${objPath.resolve("Vtestbench")}", oPath.toFile).lazyLines_!
     val patterns = expect.split("\n") map { _.trim }
     if (!allMatches(patterns, lines)) {
       println("Output:")
@@ -445,7 +400,7 @@ trait CompilationTest
   def symbiYosysEquiv(
       topLevel: String,
       goldenFile: File,
-      tmpDir: Path,
+      oPath: Path,
       fec: Map[String, String]
     )(
       implicit
@@ -453,7 +408,7 @@ trait CompilationTest
     ): Boolean = {
     // Generate the miter circuit
     val manifest = {
-      io.circe.parser.parse(outputs("manifest.json")) match {
+      io.circe.parser.parse(Source(oPath resolve "manifest.json").text) match {
         case Left(failure) => fail(failure.message)
         case Right(json)   => json.hcursor.downField("top-levels").downField(topLevel)
       }
@@ -502,7 +457,7 @@ trait CompilationTest
       case (name, _)                               => name -> 1
     }
 
-    val miterFile = tmpDir.resolve("__miter.v").toFile
+    val miterFile = oPath.resolve("__miter.v").toFile
     val mpw = new PrintWriter(miterFile)
 
     def writeDecl(
@@ -615,7 +570,7 @@ trait CompilationTest
     mpw.close()
 
     // Write sby script
-    val scriptFile = tmpDir.resolve("equiv.sby").toFile
+    val scriptFile = oPath.resolve("equiv.sby").toFile
     writeFile(scriptFile) {
       s"""[options]
          |mode ${fec.getOrElse("mode", if (clock.isDefined) "prove" else "bmc")}
@@ -631,14 +586,14 @@ trait CompilationTest
          |rename $topLevel golden
          |
          |# Read the compiled design
-         |read_verilog ${tmpDir.resolve(topLevel + ".v").toFile.getName}
+         |read_verilog ${oPath.resolve(topLevel + ".v").toFile.getName}
          |rename $topLevel alogic
          |
          |# Read the miter circuit
          |read_verilog -formal ${miterFile.getName}
          |
          |# Resolve and prep
-         |hierarchy -check -libdir $tmpDir -top miter
+         |hierarchy -check -libdir $oPath -top miter
          |prep -run coarse: -top miter
          |
          |# Set initial state of all memories to 0
@@ -657,38 +612,35 @@ trait CompilationTest
     // Perform the equivalence check
     val sbyCmd = s"$symbiyosys ${scriptFile.getName}"
     val path = s"$symbiyosysPath:${scala.util.Properties.envOrElse("PATH", "")}"
-    system(sbyCmd, tmpDir, "sby-equiv.log", failOk = true, Map("PATH" -> path))
+    system(sbyCmd, oPath, "sby-equiv.log", failOk = true, Map("PATH" -> path))
   }
 
   def formalEquivalenceCheck(
       topLevel: String,
       fec: Map[String, String],
-      tmpDir: Path
+      oDir: Path
     )(
       implicit
       config: Config
     ): Unit = {
-    // Write all files to temporary directory
-    writeOutputs(tmpDir)
-
     // Write the golden model
-    val goldenFile = tmpDir.resolve("__golden.v").toFile
+    val goldenFile = oDir.resolve("__golden.v").toFile
     writeFile(goldenFile)(fec("golden"))
 
     // Lint the golden model, just to be sure, as yosys "helpfully" provides
     // implicit declarations of undeclared names.
     system(
       s"$verilator --lint-only -Wall -Wno-DECLFILENAME -Wno-UNUSED ${goldenFile.getName}",
-      tmpDir,
+      oDir,
       "verilator-golden-lint.log"
     )
 
     // Now strip `line because it's too much for yosys...
-    system(s"sed -i s/`line.*// ${goldenFile.getName}", tmpDir, "sed.log")
+    system(s"sed -i s/`line.*// ${goldenFile.getName}", oDir, "sed.log")
 
     // First check the simple  if that fails try the hard way
-    lazy val easyOK = yosysEquiv(topLevel, goldenFile, tmpDir)
-    lazy val hardOK = symbiYosysEquiv(topLevel, goldenFile, tmpDir, fec)
+    lazy val easyOK = yosysEquiv(topLevel, goldenFile, oDir)
+    lazy val hardOK = symbiYosysEquiv(topLevel, goldenFile, oDir, fec)
 
     if (!easyOK && !hardOK) {
       fail("FEC failed")
@@ -707,9 +659,14 @@ trait CompilationTest
         case (_: FatalSpec, _: Fatal)     => true
         case _                            => false
       }
+      lazy val locMatches = message.locOpt match {
+        case Some(loc) =>
+          loc.line == line && // Right line number
+            file.r.pattern.matcher(loc.file).matches() // Right file pattern
+        case None => true
+      }
       typeMatches && // Right type
-      message.loc.line == line && // Right line number
-      file.r.pattern.matcher(message.loc.file).matches() && // Right file pattern
+      locMatches && // Right location (if any)
       allMatches(patterns, message.msg) // Right text
     }
 
@@ -779,43 +736,39 @@ trait CompilationTest
       }
     }
 
-    val source = Source.fromFile(checkFile)
+    val source = Source(checkFile)
 
-    try {
-      for {
-        (line, lineNo) <- source.getLines zip LazyList.from(1)
-        if line startsWith "//"
-      } {
-        val text = line.drop(2)
-        text.trim match {
-          case pairMatcher(k, v) if key == "" => add(k, v.trim)
-          case longMatcher(k) if key == "" =>
-            key = k
-            key filterNot { _.isWhitespace } match {
-              case "fec/golden" => buf append s"`line ${lineNo + 1} $checkFile 0"
-              case _            =>
-            }
-          case "}}}" if key != ""          => add(key, buf mkString "\n"); buf.clear(); key = ""
-          case _ if key != ""              => buf append text
-          case boolMatcher(k) if key == "" => add(k, "")
-          case mesgMatcher(file, line, kind, null, pattern) if key == "" =>
-            if (mesgBuff.nonEmpty) {
-              finishMessageSpec()
-            }
-            mesgFile = file.trim
-            mesgLine = line.trim
-            mesgType = kind.trim
-            mesgBuff append pattern
-          case mesgMatcher(file, line, kind, _, pattern) if key == "" =>
-            assert(mesgFile == file.trim, "Message continuation must have same file pattern")
-            assert(mesgLine == line.trim, "Message continuation must have same line number")
-            assert(mesgType == kind.trim, "Message continuation must have same message type")
-            mesgBuff append pattern
-          case _ =>
-        }
+    for {
+      (line, lineNo) <- source.linesIterator zip LazyList.from(1)
+      if line startsWith "//"
+    } {
+      val text = line.drop(2)
+      text.trim match {
+        case pairMatcher(k, v) if key == "" => add(k, v.trim)
+        case longMatcher(k) if key == "" =>
+          key = k
+          key filterNot { _.isWhitespace } match {
+            case "fec/golden" => buf append s"`line ${lineNo + 1} $checkFile 0"
+            case _            =>
+          }
+        case "}}}" if key != ""          => add(key, buf mkString "\n"); buf.clear(); key = ""
+        case _ if key != ""              => buf append text
+        case boolMatcher(k) if key == "" => add(k, "")
+        case mesgMatcher(file, line, kind, null, pattern) if key == "" =>
+          if (mesgBuff.nonEmpty) {
+            finishMessageSpec()
+          }
+          mesgFile = file.trim
+          mesgLine = line.trim
+          mesgType = kind.trim
+          mesgBuff append pattern
+        case mesgMatcher(file, line, kind, _, pattern) if key == "" =>
+          assert(mesgFile == file.trim, "Message continuation must have same file pattern")
+          assert(mesgLine == line.trim, "Message continuation must have same line number")
+          assert(mesgType == kind.trim, "Message continuation must have same message type")
+          mesgBuff append pattern
+        case _ =>
       }
-    } finally {
-      source.close()
     }
 
     if (mesgBuff.nonEmpty) {
@@ -829,12 +782,9 @@ trait CompilationTest
         "expect-file",
         "fec",
         "ignore",
-        "no-assertions",
-        "no-reset-all",
         "out-top",
-        "output-name-max-length",
-        "reset-style",
         "sim",
+        "args",
         "top",
         "verilator-lint-off"
       )
@@ -847,157 +797,164 @@ trait CompilationTest
 
   def defineTest(
       name: String,
-      searchPath: File,
+      searchPath: Path,
       top: String,
       checkFile: String
     ): Unit = {
     name in { configMap: ConfigMap =>
-      implicit val config: Config = Config(
-        dumpTrees = configMap.getWithDefault("dump-trees", "0").toInt != 0,
-        tmpDir = configMap.getOptional[String]("tmpdir"),
-        trace = configMap.getWithDefault("trace", "0").toInt != 0,
-        traceElaborate = configMap.getWithDefault("trace-elaborate", "0").toInt != 0,
-        verbose = configMap.getWithDefault("verbose", "0").toInt
-      )
-
       // Parse the check file
       val (attr, dict, messageSpecs) = parseCheckFile(checkFile)
 
       // Cancel test if required
       if (attr contains "ignore") {
-        cancel
+        cancel("@ignore")
       }
 
-      val resetStyle = attr.get("reset-style") map {
-        case "async-low"  => ResetStyle.AsyncLow
-        case "async-high" => ResetStyle.AsyncHigh
-        case "sync-low"   => ResetStyle.SyncLow
-        case "sync-high"  => ResetStyle.SyncHigh
-        case other        => fail(s"Unknown reset style: $other")
-      } getOrElse ResetStyle.SyncHigh
-
-      val resetAll = !(attr contains "no-reset-all")
-
-      // Create compiler context
-      implicit val cc: CompilerContext = new CompilerContext(
-        Settings(
-          moduleSearchDirs = List(searchPath),
-          outputWriterFactory = outputWriterFactory,
-          messageEmitter = messageEmitter,
-          dumpTrees = config.dumpTrees,
-          resetStyle = resetStyle,
-          resetAll = resetAll,
-          traceElaborate = config.traceElaborate,
-          outputNameMaxLength = attr.get("output-name-max-length") map { _.toInt },
-          assertions = !(attr contains "no-assertions")
-        )
+      // Create config
+      implicit val config: Config = Config(
+        trace = configMap.getWithDefault("trace", "0").toInt != 0,
+        verbose = configMap.getWithDefault("verbose", "0").toInt
       )
 
-      // Do the compilation
-      try {
-        cc.compile(List(attr.getOrElse("top", top)))
-      } catch {
-        case e: InternalCompilerErrorException =>
-          print(e.message.string)
-          throw e
-        case e: StackOverflowError =>
-          // For some reason scalatest swallows stack overflow exceptions,
-          // wrapping them makes them show up in the test runner.......
-          throw new RuntimeException(e)
-      } finally {
-        if (cc.settings.dumpTrees) {
-          withTmpDir(writeOutputs)
-        }
-      }
+      // Create output directory and runt he test
+      withTmpDir(configMap.getOptional[String]("tmpdir")) { oPath =>
+        // Create argument array
+        val args = {
+          val buf = new mutable.ArrayBuffer[String]
 
-      // Check messages
-      {
-        // fail flag
-        var messageCheckFailed = false
+          // Arguments always required
+          buf append "-y"
+          buf append searchPath.toAbsolutePath.toString
+          buf append "-o"
+          buf append oPath.toAbsolutePath.toString
 
-        // Group messages by specs
-        val messageGroups = messages.toList groupBy { message =>
-          messageSpecs find { _ matches message }
-        }
-
-        // Fail if a spec matches multiple messages
-        for ((Some(spec), messages) <- messageGroups if messages.lengthIs > 1) {
-          println("Message pattern:")
-          println(spec.string)
-          println("Matches multiple messages:")
-          messages foreach { message =>
-            println(message.string)
+          // Arguments specified in the tests
+          attr.get("args") foreach {
+            _.split(" ") filter { _.nonEmpty } foreach buf.append
           }
-          messageCheckFailed = true
-        }
 
-        // Print unexpected messages
-        messageGroups.get(None) foreach { unexpectedMessages =>
-          unexpectedMessages foreach { message =>
-            println("Unexpected message:")
-            println(message.string)
+          // Arguments specified to ScalaTest
+          configMap.getOptional[String]("args") foreach {
+            _.split(" ") filter { _.nonEmpty } foreach buf.append
           }
-          messageCheckFailed = true
+
+          // Override default reset style to make FEC easier
+          if (!(buf contains "--reset-style")) {
+            buf append "--reset-style"
+            buf append "sync-high"
+          }
+
+          // The top-level specifier
+          buf append attr.getOrElse("top", top)
+
+          buf.toArray
         }
 
-        // Print unused patterns
-        for {
-          spec <- messageSpecs
-          if !(messageGroups contains Some(spec))
-        } {
-          println("Unused message pattern:")
-          println(spec.string)
-          messageCheckFailed = true
+        if (config.verbose >= 2) {
+          println(s"${AnsiColor.BOLD}=== command line arguments:${AnsiColor.RESET}")
+          args foreach println
         }
 
-        // Fail test if message check failed
-        if (messageCheckFailed) {
-          fail("Message check failed")
+        // Do the compilation
+        val runReturn =
+          try {
+            Main.run(args)
+          } catch {
+            // For some reason ScalaTest swallows stack overflow exceptions,
+            // wrapping them makes them show up in the test runner.
+            case e: StackOverflowError =>
+              throw new RuntimeException(e)
+          }
+
+        // Check messages
+        {
+          // fail flag
+          var messageCheckFailed = false
+
+          val messages = {
+            val messageBuffer: MessageBuffer = runReturn._1
+            messageBuffer.messages
+          }
+
+          // Group messages by specs
+          val messageGroups = messages groupBy { message =>
+            messageSpecs find { _ matches message }
+          }
+
+          // Fail if a spec matches multiple messages
+          for ((Some(spec), messages) <- messageGroups if messages.lengthIs > 1) {
+            println("Message pattern:")
+            println(spec.string)
+            println("Matches multiple messages:")
+            messages foreach { message => println(message.render) }
+            messageCheckFailed = true
+          }
+
+          // Print unexpected messages
+          messageGroups.get(None) foreach { unexpectedMessages =>
+            unexpectedMessages foreach { message =>
+              println("Unexpected message:")
+              println(message.render)
+            }
+            messageCheckFailed = true
+          }
+
+          // Print unused patterns
+          for {
+            spec <- messageSpecs
+            if !(messageGroups contains Some(spec))
+          } {
+            println("Unused message pattern:")
+            println(spec.string)
+            messageCheckFailed = true
+          }
+
+          // Fail test if message check failed
+          if (messageCheckFailed) {
+            fail("Message check failed")
+          }
         }
-      }
 
-      // If an ERROR or a FATAL is expected, the compilation should have failed
-      val expectedToFail = messageSpecs exists {
-        case _: ErrorSpec => true
-        case _: FatalSpec => true
-        case _            => false
-      }
-
-      // Check compilation status
-      cc.hasError shouldBe expectedToFail
-
-      if (!expectedToFail) {
-        attr get "expect-file" foreach { name =>
-          // Check expected output file exists
-          checkFileExists(name)
+        // If an ERROR or a FATAL is expected, the compilation should have failed
+        val expectedToFail = messageSpecs exists {
+          case _: ErrorSpec => true
+          case _: FatalSpec => true
+          case _            => false
         }
 
-        val outTop = attr.getOrElse("out-top", top)
+        // Check compilation status
+        val retCode: Int = runReturn._3
+        (retCode != 0) shouldBe expectedToFail
 
-        dict get "sim" match {
-          // Build and run testbench if provided
-          case Some(sim) =>
-            withTmpDir { tmpDir =>
+        if (!expectedToFail) {
+          attr get "expect-file" foreach { name =>
+            // Check expected output file exists
+            if (!(oPath resolve name).toFile.exists) {
+              fail(s"Expected output file was not created '$name'")
+            }
+          }
+
+          val outTop = attr.getOrElse("out-top", top)
+
+          dict get "sim" match {
+            // Build and run testbench if provided
+            case Some(sim) =>
               val test = sim("test")
               val expect = sim.getOrElse("expect", "")
               val dpi = sim.getOrElse("dpi", "")
               val timeout = sim.getOrElse("timeout", "100").toLong
               val trace = config.trace
-              verilatorSim(outTop, test, expect, dpi, timeout, trace, tmpDir)
-            }
-          case None =>
-            // Lint unless told not to
-            if (!(attr contains "verilator-lint-off")) {
-              withTmpDir { tmpDir =>
-                verilatorLint(outTop, tmpDir)
+              verilatorSim(outTop, test, expect, dpi, timeout, trace, oPath)
+            case None =>
+              // Lint unless told not to
+              if (!(attr contains "verilator-lint-off")) {
+                verilatorLint(outTop, oPath)
               }
-            }
-        }
+          }
 
-        dict get "fec" foreach { fec =>
-          // Perform equivalence check with golden reference
-          withTmpDir { tmpDir =>
-            formalEquivalenceCheck(outTop, fec, tmpDir)
+          dict get "fec" foreach { fec =>
+            // Perform equivalence check with golden reference
+            formalEquivalenceCheck(outTop, fec, oPath)
           }
         }
       }

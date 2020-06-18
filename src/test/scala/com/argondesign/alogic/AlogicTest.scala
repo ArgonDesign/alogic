@@ -23,8 +23,6 @@ import com.argondesign.alogic.ast.Trees.RizDesc
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Error
-import com.argondesign.alogic.core.FatalErrorException
-import com.argondesign.alogic.core.InternalCompilerErrorException
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Message
 import com.argondesign.alogic.core.SourceAttribute
@@ -48,24 +46,6 @@ trait AlogicTest
     with OneInstancePerTest // ????
     with ChainingSyntax {
 
-  override def withFixture(test: NoArgTest): Outcome = {
-    super.withFixture(test) match {
-      case failed: Failed =>
-        failed tap { _ =>
-          failed.exception match {
-            case FatalErrorException(cc, _) =>
-              cc.messages map { _.string } foreach Console.err.println
-            case InternalCompilerErrorException(cc, _) =>
-              cc.messages map { _.string } foreach Console.err.println
-            case AsTreeSyntaxErrorException(cc) =>
-              cc.messages map { _.string } foreach Console.err.println
-            case _ =>
-          }
-        }
-      case other => other
-    }
-  }
-
   final protected def beThe[T <: Message: ClassTag](
       lines: String*
     ): Matcher[Message] = Matcher { message: Message =>
@@ -88,7 +68,7 @@ trait AlogicTest
     }
 
     val reply = s"""--- Message
-                   |${message.string}
+                   |${message.render}
                    |--- $hint ---
                    |${lines mkString ("  ", "\n  ", "")}
                    |---""".stripMargin

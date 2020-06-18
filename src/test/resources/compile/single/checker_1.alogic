@@ -1,4 +1,4 @@
-// @no-assertions
+// @args: --no-assertions
 fsm checker_1 {
   in        u8 a;
   in        u8 b;

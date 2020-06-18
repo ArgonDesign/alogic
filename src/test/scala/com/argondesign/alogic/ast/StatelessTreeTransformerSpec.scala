@@ -21,6 +21,7 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Types.TypeUInt
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Warning
+import com.argondesign.alogic.util.SequenceNumbers
 import org.scalatest.flatspec.AnyFlatSpec
 
 final class StatelessTreeTransformerSpec extends AnyFlatSpec with AlogicTest {
@@ -53,15 +54,19 @@ final class StatelessTreeTransformerSpec extends AnyFlatSpec with AlogicTest {
     val oldTree = "{ a = b; bool c = a; }".asTree[Stmt]
     val newTree = oldTree rewrite new StatelessTreeTransformer {
       override val typed = false
+      val sequenceNumbers = new SequenceNumbers
       override def transform(tree: Tree): Tree = tree tap { _ =>
-        cc.warning(tree, "Saw it")
+        cc.warning(tree, s"Saw it ${sequenceNumbers.next}")
       }
     }
 
     newTree should be theSameInstanceAs oldTree
 
     cc.messages should have length 12
-    forAll(cc.messages)(_ should beThe[Warning]("Saw it"))
+    cc.messages.zipWithIndex foreach {
+      case (msg, idx) => msg should beThe[Warning](s"Saw it $idx")
+    }
+
   }
 
 }

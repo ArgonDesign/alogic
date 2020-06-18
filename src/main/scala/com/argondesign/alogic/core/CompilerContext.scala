@@ -26,7 +26,9 @@ import com.argondesign.alogic.typer.Typer
 
 import scala.collection.mutable
 
-class CompilerContext(val settings: Settings = Settings())
+class CompilerContext(
+    val messageBuffer: MessageBuffer = new MessageBuffer(),
+    val settings: Settings = Settings())
     extends Messaging
     with Symbols
     with Builtins
@@ -53,9 +55,7 @@ class CompilerContext(val settings: Settings = Settings())
     try {
       Passes(topLevels)(cc = this)
     } catch {
-      case _: FatalErrorException =>
-    } finally {
-      emitMessages()
+      case _: FatalErrorException => // Return normally from here
     }
   }
 

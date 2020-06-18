@@ -1,5 +1,4 @@
-// @no-reset-all
-// @reset-style:async-low
+// @args: --reset-style async-low
 fsm lower_variables_async_low_0 {
   in       bool i;
   out wire bool o;
