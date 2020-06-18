@@ -28,7 +28,6 @@ import scala.collection.mutable
 
 class CompilerContext(val settings: Settings = Settings())
     extends Messaging
-    with LocationRemapping
     with Symbols
     with Builtins
     with Output

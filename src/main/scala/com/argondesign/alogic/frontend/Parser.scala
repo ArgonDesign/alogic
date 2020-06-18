@@ -20,11 +20,13 @@ package com.argondesign.alogic.frontend
 import com.argondesign.alogic.antlr._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.SourceContext
 import com.argondesign.alogic.core.Source
+import com.argondesign.alogic.core.SourceContext
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 import org.antlr.v4.runtime.ParserRuleContext
+
+import scala.util.chaining._
 
 object Parser {
 
@@ -43,36 +45,27 @@ object Parser {
       implicit
       cc: CompilerContext
     ): Option[T] = {
-    // Build Antlr4 parse tree
-    val inputStream = CharStreams.fromString(source.text, source.name)
-
-    val src = source
-
-    val lexer = new AlogicLexer(inputStream) with SourceMixin { val source: Source = src }
-    val tokenStream = new CommonTokenStream(lexer)
-    tokenStream.fill()
-
-    val parser = new AlogicParser(tokenStream) with SourceMixin { val source: Source = src }
-    parser.removeErrorListeners()
-    parser.addErrorListener(new AlogicParseErrorListener)
-
     val dispatcher = implicitly[Parseable[T]]
 
+    // Create Antlr4 parser
+    val parser = {
+      val lexer = new AlogicLexer(CharStreams.fromString(source.text, source.name))
+      lexer.setTokenFactory(new AlogicTokenFactory(source))
+      new AlogicParser(new CommonTokenStream(lexer)) tap { parser =>
+        parser.removeErrorListeners()
+        parser.addErrorListener(new AlogicParseErrorListener)
+      }
+    }
+
+    // Build Antlr4 parse tree
     val ctx = dispatcher.parse(parser)
 
-    val opt = if (parser.getNumberOfSyntaxErrors != 0) None else Some(ctx)
-
-    opt map { ctx =>
-      // Build the Abstract Sytnax Tree from the Parse Tree
-      val tree = dispatcher.build(ctx)(cc, sc)
-
-      // TODO: Make optional
-      // Ensure all nodes have locations
-      tree visitAll {
-        case tree: Tree if !tree.hasLoc => cc.ice(s"Tree has no location $tree")
+    // Build the Abstract Syntax Tree from the Parse Tree (assuming no syntax)
+    Option.when(parser.getNumberOfSyntaxErrors == 0) {
+      dispatcher.build(ctx)(cc, sc) tap {
+        // Ensure all nodes have locations TODO: Make optional
+        _ visitAll { case tree: Tree if !tree.hasLoc => cc.ice(s"Tree has no location $tree") }
       }
-
-      tree
     }
   }
 

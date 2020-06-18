@@ -15,14 +15,9 @@
 
 lexer grammar AlogicLexer;
 
-channels {
-  WHITESPACE,
-  COMMENT
-}
-
-fragment LCMT: '//' .*? NL;                 // Line comment
-fragment BCMT: '/*'  .*? '*/';              // Block comment
-CMT: (LCMT | BCMT) -> channel(COMMENT) ;    // Any comment
+fragment LCMT: '//' ~[\n]*   ;          // Line comment
+fragment BCMT: '/*'  .*? '*/';          // Block comment
+CMT: (LCMT | BCMT) -> channel(HIDDEN) ; // Any comment
 
 UINTTYPE: 'u' [0-9]+;
 
@@ -43,6 +38,8 @@ UNSIZEDINT
   ;
 
 SIZEDINT: DECIMALDIGIT+ '\'' 's'? [bdh] HEXVALUE ;
+
+fragment SIMPLEID: [a-zA-Z_][a-zA-Z0-9_$]* ;
 
 ATID    : '@' SIMPLEID  ;
 
@@ -170,8 +167,8 @@ IMPORT  : 'import' ;
 THIS    : 'this' ;
 
 SYNC        : 'sync';
-SYNC_READY  : 'sync' (WS|CMT)* 'ready';
-SYNC_ACCEPT : 'sync' (WS|CMT)* 'accept';
+SYNC_READY  : 'sync' (WS|NL|CMT)* 'ready';
+SYNC_ACCEPT : 'sync' (WS|NL|CMT)* 'accept';
 
 WIRE        : 'wire';
 BUBBLE      : 'bubble';
@@ -182,16 +179,19 @@ VERBATIM: 'verbatim' -> pushMode(VERBATIMENTRY_MODE);
 
 IDENTIFIER: SIMPLEID;
 
-fragment SIMPLEID: [a-zA-Z_][a-zA-Z0-9_$]* ;
+WS: [ \t\r]+ -> channel(HIDDEN);
 
-fragment NL
-  : '\r'? '\n'
-  ;
+// This is not hidden here as knowing where newlines are is requried to
+// implement the preprocessor directives below. All NL tokens will eventually
+// be hidden by AlogicTokenFactory so the parser will not see one ever.
+NL: '\n';
 
-WS
-  : ([ \t] | NL)+ -> channel(WHITESPACE)
-  ;
+// Preprocessor directives. These are implemented by AlogicTokenFactory,
+// which subsequently hides these tokens, so the parser will never see them.
+HASHLINE : '#' WS* 'line';
 
+// Match anything else. This rule ensures the lexer never causes a syntax
+// error and therefore we can handle all errros in the parser for simplicity.
 ERRORCHAR : . ;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -200,22 +200,26 @@ mode VERBATIMENTRY_MODE;
 
 VERBATIMENTRY_ENTITY: ENTITY -> type(ENTITY), popMode;
 
-VERBATIMENTRY_WS: WS -> channel(WHITESPACE);
+VERBATIMENTRY_WS: WS -> type(WS), channel(HIDDEN);
 
-VERBATIMENTRY_CMT: CMT -> channel(COMMENT);
+VERBATIMENTRY_NL: NL -> type(NL), channel(HIDDEN);
+
+VERBATIMENTRY_CMT: CMT -> type(CMT), channel(HIDDEN);
 
 VERBATIMENTRY_IDENTIFIER: IDENTIFIER -> type(IDENTIFIER), Mode(VERBATIM_MODE);
 
-VERBATIMENTRY_ERRORCHAR : . ;
+VERBATIMENTRY_ERRORCHAR : . -> type(ERRORCHAR);
 
 ////////////////////////////////////////////////////////////////////////////////
 
 mode VERBATIM_MODE;
 
-VERBATIM_WS: WS -> channel(WHITESPACE);
+VERBATIM_WS: WS -> type(WS), channel(HIDDEN);
 
-VERBATIM_CMT: CMT -> channel(COMMENT);
+VERBATIM_NL: NL -> type(NL), channel(HIDDEN);
+
+VERBATIM_CMT: CMT -> type(CMT), channel(HIDDEN);
 
 VERBATIM_BODY: '{' ( VERBATIM_BODY | ~[{}] )* '}'  -> popMode;
 
-VERBATIM_ERRORCHAR : . ;
+VERBATIM_ERRORCHAR : . -> type(ERRORCHAR);

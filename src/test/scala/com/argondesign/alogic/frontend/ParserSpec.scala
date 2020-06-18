@@ -2094,45 +2094,106 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
     // Locations
     /////////////////////////////////////////////////////////////////////////////
 
-    "should assign correct locations to tree nodes" in {
+    "should assign correct locations to tree nodes" - {
 
-      val tree = """fsm foo {
-                   |  void main() {
-                   |    bar i;
-                   |    loop { }
-                   |  }
-                   |}""".stripMargin.asTree[Desc]
+      "simple" in {
+        val tree = """fsm foo {
+                     |  void main() {
+                     |    bar i;
+                     |    loop { }
+                     |  }
+                     |}""".stripMargin.asTree[Desc]
 
-      inside(tree) {
-        case entity @ DescEntity(_, EntityVariant.Fsm, eBody) =>
-          entity.loc.line shouldBe 1
-          inside(eBody.loneElement) {
-            case function @ EntDesc(
-                  DescFunc(_, FuncVariant.Ctrl, ExprType(TypeVoid), Nil, fBody)
-                ) =>
-              function.loc.line shouldBe 2
-              inside(fBody(0)) {
-                case stmtDesc: StmtDesc =>
-                  stmtDesc.loc.line shouldBe 3
-                  inside(stmtDesc.desc) {
-                    case desc @ DescVar(ident: Ident, spec, None) =>
-                      desc.loc.line shouldBe 3
-                      ident.loc.line shouldBe 3
-                      inside(spec) {
-                        case ExprRef(ident @ Ident("bar", Nil)) =>
-                          ident.loc.line shouldBe 3
-                      }
-                  }
-              }
-              inside(fBody(1)) {
-                case stmtLoop: StmtLoop =>
-                  stmtLoop.loc.line shouldBe 4
-                  stmtLoop.body shouldBe empty
-              }
-          }
+        inside(tree) {
+          case entity @ DescEntity(_, EntityVariant.Fsm, eBody) =>
+            entity.loc.line shouldBe 1
+            entity.loc.file shouldBe "<asTree>"
+            inside(eBody.loneElement) {
+              case function @ EntDesc(
+                    DescFunc(_, FuncVariant.Ctrl, ExprType(TypeVoid), Nil, fBody)
+                  ) =>
+                function.loc.line shouldBe 2
+                function.loc.file shouldBe "<asTree>"
+                inside(fBody(0)) {
+                  case stmtDesc: StmtDesc =>
+                    stmtDesc.loc.line shouldBe 3
+                    stmtDesc.loc.file shouldBe "<asTree>"
+                    inside(stmtDesc.desc) {
+                      case desc @ DescVar(ident: Ident, spec, None) =>
+                        desc.loc.line shouldBe 3
+                        desc.loc.file shouldBe "<asTree>"
+                        ident.loc.line shouldBe 3
+                        ident.loc.file shouldBe "<asTree>"
+                        inside(spec) {
+                          case ExprRef(ident @ Ident("bar", Nil)) =>
+                            ident.loc.line shouldBe 3
+                            ident.loc.file shouldBe "<asTree>"
+                        }
+                    }
+                }
+                inside(fBody(1)) {
+                  case stmtLoop: StmtLoop =>
+                    stmtLoop.loc.line shouldBe 4
+                    stmtLoop.loc.file shouldBe "<asTree>"
+                    stmtLoop.body shouldBe empty
+                }
+            }
+        }
+
+        cc.messages shouldBe empty
       }
 
-      cc.messages shouldBe empty
+      "with line directives" in {
+        val tree = """fsm foo {
+                     |#line 20 "foo.bar"
+                     |  void main() {
+                     |#line 100
+                     |    bar
+                     |    i;
+                     |#line 2 "another"
+                     |    loop { }
+                     |  }
+                     |}""".stripMargin.asTree[Desc]
+
+        inside(tree) {
+          case entity @ DescEntity(_, EntityVariant.Fsm, eBody) =>
+            entity.loc.line shouldBe 1
+            entity.loc.file shouldBe "<asTree>"
+            inside(eBody.loneElement) {
+              case function @ EntDesc(
+                    DescFunc(_, FuncVariant.Ctrl, ExprType(TypeVoid), Nil, fBody)
+                  ) =>
+                function.loc.line shouldBe 20
+                function.loc.file shouldBe "foo.bar"
+                inside(fBody(0)) {
+                  case stmtDesc: StmtDesc =>
+                    stmtDesc.loc.line shouldBe 100
+                    stmtDesc.loc.file shouldBe "foo.bar"
+                    inside(stmtDesc.desc) {
+                      case desc @ DescVar(ident: Ident, spec, None) =>
+                        desc.loc.line shouldBe 100
+                        desc.loc.file shouldBe "foo.bar"
+                        ident.loc.line shouldBe 101
+                        ident.loc.file shouldBe "foo.bar"
+                        inside(spec) {
+                          case ExprRef(ident @ Ident("bar", Nil)) =>
+                            ident.loc.line shouldBe 100
+                            ident.loc.file shouldBe "foo.bar"
+                        }
+                    }
+                }
+                inside(fBody(1)) {
+                  case stmtLoop: StmtLoop =>
+                    stmtLoop.loc.line shouldBe 2
+                    stmtLoop.loc.file shouldBe "another"
+                    stmtLoop.body shouldBe empty
+                }
+            }
+        }
+
+        cc.messages shouldBe empty
+      }
+
     }
 
   }

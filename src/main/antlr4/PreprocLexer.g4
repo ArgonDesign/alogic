@@ -35,11 +35,9 @@ IDENTIFIER: [a-zA-Z_][a-zA-Z0-9_$]*;
 
 LITERAL: '"' ~["]* '"';
 
-LINE_COMMENT: '//' .*? NL;
+LINE_COMMENT: '//' ~[\n]*;
 
 BLOCK_COMMENT: '/*'  .*? '*/';
-
-fragment NL: '\r'? '\n';
 
 ANYTHING : . ;
 
@@ -51,4 +49,3 @@ mode DEFINERESTMODE;
 
 // TODO: should support line continuation with \
 REST: ~[\r\n/*()]+ -> popMode;
-

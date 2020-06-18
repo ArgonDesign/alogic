@@ -51,17 +51,14 @@ object AntlrConverters extends {
     def loc: Loc = {
       val sLoc = ctx.start.loc
       val eLoc = ctx.stop.loc
-      Loc(sLoc.source, sLoc.start, eLoc.end, sLoc.point)
+      Loc(sLoc.file, sLoc.line, sLoc.source, sLoc.start, eLoc.end, sLoc.point)
     }
 
   }
 
   implicit class RichToken(private val token: Token) extends AnyVal {
 
-    def loc: Loc = {
-      val source = token.getTokenSource.asInstanceOf[SourceMixin].source
-      Loc(source, token.getStartIndex, token.getStopIndex + 1, token.getStartIndex)
-    }
+    def loc: Loc = token.asInstanceOf[AlogicToken].loc
 
     def text: String = token.getText
 

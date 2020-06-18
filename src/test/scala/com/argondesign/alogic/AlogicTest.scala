@@ -57,6 +57,8 @@ trait AlogicTest
               cc.messages map { _.string(cc) } foreach Console.err.println
             case InternalCompilerErrorException(cc, _) =>
               cc.messages map { _.string(cc) } foreach Console.err.println
+            case AsTreeSyntaxErrorException(cc) =>
+              cc.messages map { _.string(cc) } foreach Console.err.println
             case _ =>
           }
         }

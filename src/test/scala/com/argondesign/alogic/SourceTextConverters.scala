@@ -24,17 +24,17 @@ import com.argondesign.alogic.frontend.Parser.Parseable
 
 object SourceTextConverters {
 
-  case class AsTreeSyntaxErrorException() extends Exception
+  case class AsTreeSyntaxErrorException(cc: CompilerContext) extends Exception
 
   implicit class String2Repr(val string: String) {
 
-    val source: Source = Source("nofile", string)
+    val source: Source = Source("<asTree>", string)
 
     def asTree[T <: Tree: Parseable](implicit cc: CompilerContext): T =
-      Parser[T](source, SourceContext.Unknown) getOrElse { throw AsTreeSyntaxErrorException() }
+      Parser[T](source, SourceContext.Unknown) getOrElse { throw AsTreeSyntaxErrorException(cc) }
 
     def asTree[T <: Tree: Parseable](sc: SourceContext)(implicit cc: CompilerContext): T =
-      Parser[T](source, sc) getOrElse { throw AsTreeSyntaxErrorException() }
+      Parser[T](source, sc) getOrElse { throw AsTreeSyntaxErrorException(cc) }
 
   }
 

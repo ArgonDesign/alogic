@@ -89,7 +89,7 @@ abstract class BuiltinPolyFunc(
     }) && (isValidConnLhs || isKnownConst(args))
 
   // Synthetic location of this builtin
-  final protected[this] lazy val loc = Loc(Source(s"builtin $name", ""), 0, 0, 0)
+  final protected[this] lazy val loc = Loc(s"builtin $name", 0, Source("", ""), 0, 0, 0)
 
   // Collection of overloaded symbols (if any) for given arguments
   // TODO: This map should be in cc to avoid a space leak

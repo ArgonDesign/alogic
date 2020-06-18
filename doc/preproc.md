@@ -69,6 +69,21 @@ name of a macro (i.e. `#if 0` is not valid).
 simple integer. It is then true if and only if the subject macro evaluates to a
 non-zero value.
 
+### Line control
+
+Alogic supports the `#line` directive, which can be used to alter the file and
+line information reported by the compiler. `#line` requires an integer argument
+denoting the line number of the following line, and an optional string literal
+denoting the file name to use for subsequent source code:
+
+```
+#line 10 "foo.alogic"
+```
+
+The line following the above directive will be processed as if it was line
+10 of file `foo.alogic`. If the file name is omitted, the compiler continues
+to use the current file name.
+
 <p align="center">
 <a href="interop.md">Previous</a> |
 <a href="index.md">Index</a> |

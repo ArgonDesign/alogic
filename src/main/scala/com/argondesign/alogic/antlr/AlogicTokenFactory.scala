@@ -1,0 +1,143 @@
+////////////////////////////////////////////////////////////////////////////////
+// Copyright (c) 2020 Argon Design Ltd. All rights reserved.
+//
+// This file is covered by the BSD (with attribution) license.
+// See the LICENSE file for the precise wording of the license.
+////////////////////////////////////////////////////////////////////////////////
+
+package com.argondesign.alogic.antlr
+
+import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Source
+import com.argondesign.alogic.util.unreachable
+import org.antlr.v4.runtime.CharStream
+import org.antlr.v4.runtime.Token
+import org.antlr.v4.runtime.TokenFactory
+import org.antlr.v4.runtime.TokenSource
+import org.antlr.v4.runtime.misc.Pair
+
+import scala.util.ChainingSyntax
+
+// Token factory used by the lexer. Also implements #line. Note this is
+// currently used both by PreprocLexer and AlogicLexer.
+class AlogicTokenFactory(val alogicSource: Source)(implicit cc: CompilerContext)
+    extends TokenFactory[AlogicToken]
+    with ChainingSyntax {
+
+  // Used to implement #line
+  private var fileName: String = alogicSource.name
+  private var lineOffset: Int = 0
+
+  // Preprocessor state (only implements #line)
+  sealed private trait PPState
+  private case object PPNormal extends PPState
+  private case object PPExpectLineNumber extends PPState
+  private case object PPExpectLineName extends PPState
+  private case object PPSkipLine extends PPState
+
+  private var ppState: PPState = PPNormal
+
+  private def adjustLine(line: Int): Int = line - lineOffset
+
+  private def eol(kind: Int): Boolean = kind == AlogicLexer.NL
+
+  private def warnIgnored(token: AlogicToken): Unit =
+    cc.warning(token.loc, "Ignoring extraneous input at end of line")
+
+  def create(
+      source: Pair[TokenSource, CharStream],
+      kind: Int,
+      text: String,
+      channel: Int,
+      start: Int,
+      stop: Int,
+      line: Int,
+      charPositionInLine: Int
+    ): AlogicToken = {
+    require(channel == Token.DEFAULT_CHANNEL || channel == Token.HIDDEN_CHANNEL)
+    require(text == null)
+
+    def mkToken(channel: Int): AlogicToken = {
+      val token = new AlogicToken(source, kind, channel, alogicSource, start, stop, fileName)
+      token.setLine(adjustLine(line))
+      token.setCharPositionInLine(charPositionInLine)
+      token
+    }
+    // Creates normal token passed to the parser
+    def normalToken: AlogicToken = mkToken(Token.DEFAULT_CHANNEL)
+    // Creates hidden token not passed to the parser
+    def hiddenToken: AlogicToken = mkToken(Token.HIDDEN_CHANNEL)
+
+    if (channel == Token.HIDDEN_CHANNEL) {
+      // Hidden tokens, nothing special
+      hiddenToken
+    } else if (!source.a.isInstanceOf[AlogicLexer]) {
+      // PreprocLexer, nothing special
+      normalToken
+    } else if (kind == Token.EOF) {
+      // Pass through EOF
+      normalToken
+    } else {
+      // #line state machine
+      ppState match {
+        case PPNormal =>
+          if (kind == AlogicLexer.HASHLINE) {
+            // '#line' token, expect line number
+            ppState = PPExpectLineNumber
+            hiddenToken
+          } else if (eol(kind)) {
+            // Normal mode, but hide newlines
+            hiddenToken
+          } else {
+            // Normal mode
+            normalToken
+          }
+        case PPExpectLineNumber =>
+          // Create token up front, so we can retrieve its text, even if the
+          // text argument is null
+          hiddenToken tap { token =>
+            if (kind == AlogicLexer.UNSIZEDINT && (token.getText forall { _.isDigit })) {
+              // Line number given, expect optional file name
+              ppState = PPExpectLineName
+              // Set line offset such that the next line - lineOffset yields the
+              // specified line number, i.e.: 'line + 1 - lineOffset == given'
+              lineOffset = line + 1 - token.getText.toInt
+            } else {
+              // Unexpected token, skip rest of line
+              ppState = PPSkipLine
+              cc.error(token.loc, "'#line' requires a positive decimal integer as first argument")
+            }
+          }
+        case PPExpectLineName =>
+          if (eol(kind)) {
+            // End of line, return to normal mode
+            ppState = PPNormal
+            hiddenToken
+          } else if (kind == AlogicLexer.STRING) {
+            // Filename given, skip rest of line
+            ppState = PPSkipLine
+            hiddenToken tap { _ =>
+              fileName = hiddenToken.getText.tail.init
+            }
+          } else {
+            // Filename not provided, skip rest of line
+            ppState = PPSkipLine
+            hiddenToken tap warnIgnored
+          }
+        case PPSkipLine =>
+          if (eol(kind)) {
+            // End of line, return to normal mode
+            ppState = PPNormal
+            hiddenToken
+          } else {
+            // Stray input at end of line
+            hiddenToken tap warnIgnored
+          }
+      }
+    }
+  } ensuring (!eol(kind) || _.getChannel == Token.HIDDEN_CHANNEL, "Failed to hide newline")
+
+  // This is never be used by Alogic but is part of the TokenFactory interface
+  def create(kind: Int, text: String): AlogicToken = unreachable
+
+}

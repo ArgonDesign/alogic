@@ -374,8 +374,10 @@ final class PreprocessorSpec extends AnyFlatSpec with Matchers {
       preproc(source, emptyDefines, includeResolver(_, _)).text should be {
         """Pre
           |
+          |#line 1 "bar.h"
           |--This is
           |--from bar.h
+          |#line 4 "test.alogic"
           |
           |Post""".stripMargin
       }
@@ -396,15 +398,20 @@ final class PreprocessorSpec extends AnyFlatSpec with Matchers {
       preproc(source, emptyDefines, includeResolver(_, _)).text should be {
         """Pre
           |
+          |#line 1 "foo.h"
           |This is
           |from foo.h
+          |#line 1 "bar.h"
           |--This is
           |--from bar.h
+          |#line 4 "foo.h"
           |foo.h again ...
+          |#line 1 "bar.h"
           |--This is
           |--from bar.h
+          |#line 6 "foo.h"
           |... and again
-          |
+          |#line 4 "test.alogic"
           |
           |Post""".stripMargin
       }
@@ -423,28 +430,28 @@ final class PreprocessorSpec extends AnyFlatSpec with Matchers {
           |""".stripMargin
       )
 
-      preproc(source, emptyDefines, includeResolver(_, _)).text should be("\n" * 13)
+      preproc(source, emptyDefines, includeResolver(_, _))
 
       cc.messages should have length 9
 
-      cc.messages(0).loc.source.name should endWith("def1.h")
-      cc.messages(0).loc.line should be(2)
-      cc.messages(1).loc.source.name should endWith("def2.h")
-      cc.messages(1).loc.line should be(1)
-      cc.messages(2).loc.source.name should endWith("def2.h")
-      cc.messages(2).loc.line should be(2)
-      cc.messages(3).loc.source.name should endWith("def1.h")
-      cc.messages(3).loc.line should be(4)
-      cc.messages(4).loc.source.name should endWith("def2.h")
-      cc.messages(4).loc.line should be(1)
-      cc.messages(5).loc.source.name should endWith("def2.h")
-      cc.messages(5).loc.line should be(2)
-      cc.messages(6).loc.source.name should endWith("def1.h")
-      cc.messages(6).loc.line should be(6)
-      cc.messages(7).loc.source.name should endWith("test.alogic")
-      cc.messages(7).loc.line should be(4)
-      cc.messages(8).loc.source.name should endWith("test.alogic")
-      cc.messages(8).loc.line should be(5)
+      cc.messages(0).loc.file shouldBe "def1.h"
+      cc.messages(0).loc.line shouldBe 2
+      cc.messages(1).loc.file shouldBe "def2.h"
+      cc.messages(1).loc.line shouldBe 1
+      cc.messages(2).loc.file shouldBe "def2.h"
+      cc.messages(2).loc.line shouldBe 2
+      cc.messages(3).loc.file shouldBe "def1.h"
+      cc.messages(3).loc.line shouldBe 4
+      cc.messages(4).loc.file shouldBe "def2.h"
+      cc.messages(4).loc.line shouldBe 1
+      cc.messages(5).loc.file shouldBe "def2.h"
+      cc.messages(5).loc.line shouldBe 2
+      cc.messages(6).loc.file shouldBe "def1.h"
+      cc.messages(6).loc.line shouldBe 6
+      cc.messages(7).loc.file shouldBe "test.alogic"
+      cc.messages(7).loc.line shouldBe 4
+      cc.messages(8).loc.file shouldBe "test.alogic"
+      cc.messages(8).loc.line shouldBe 5
     }
 
     it should "fatal for absolute include paths" in new Fixture {
