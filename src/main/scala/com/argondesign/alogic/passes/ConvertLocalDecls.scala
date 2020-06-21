@@ -43,26 +43,26 @@ final class ConvertLocalDecls(implicit cc: CompilerContext) extends StatefulTree
   }
 
   private[this] def getDefaultInitializer(kind: Type): Option[Expr] = {
-    lazy val signed = kind.isSigned
-    lazy val width = kind.width.toInt
-    cc.settings.uninitialized match {
-      case UninitializedLocals.None  => None
-      case UninitializedLocals.Zeros => Some(ExprInt(signed, width, 0))
-      case UninitializedLocals.Ones =>
-        val expr = if (signed) {
-          ExprInt(signed = true, width, -1)
-        } else {
-          ExprInt(signed = false, width, (BigInt(1) << width) - 1)
-        }
-        Some(expr)
-      case UninitializedLocals.Random =>
-        val expr = (width, signed) match {
-          case (1, true)  => ExprInt(signed = true, 1, -BigInt(1, rng))
-          case (1, false) => ExprInt(signed = false, 1, BigInt(1, rng))
-          case (n, true)  => ExprInt(signed = true, n, BigInt(n, rng) - (BigInt(1) << (n - 1)))
-          case (n, false) => ExprInt(signed = false, n, BigInt(n, rng))
-        }
-        Some(expr)
+    val width = kind.width.toInt
+    Option.when(width > 0 && cc.settings.uninitialized != UninitializedLocals.None) {
+      val signed = kind.isSigned
+      cc.settings.uninitialized match {
+        case UninitializedLocals.None  => unreachable
+        case UninitializedLocals.Zeros => ExprInt(signed, width, 0)
+        case UninitializedLocals.Ones =>
+          if (signed) {
+            ExprInt(signed = true, width, -1)
+          } else {
+            ExprInt(signed = false, width, (BigInt(1) << width) - 1)
+          }
+        case UninitializedLocals.Random =>
+          (width, signed) match {
+            case (1, true)  => ExprInt(signed = true, 1, -BigInt(1, rng))
+            case (1, false) => ExprInt(signed = false, 1, BigInt(1, rng))
+            case (n, true)  => ExprInt(signed = true, n, BigInt(n, rng) - (BigInt(1) << (n - 1)))
+            case (n, false) => ExprInt(signed = false, n, BigInt(n, rng))
+          }
+      }
     }
   }
 

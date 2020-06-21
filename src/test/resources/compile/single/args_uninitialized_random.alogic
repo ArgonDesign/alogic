@@ -1,0 +1,19 @@
+// @args: --uninitialized random
+fsm args_uninitialized_random {
+  out wire u1 ou1;
+  out wire u1 oi1;
+  out wire u2 ou2;
+  out wire u2 oi2;
+
+  void main() {
+    u1 xu1;
+    ou1 = xu1;
+    i1 xi1;
+    oi1 = xi1;
+    u2 xu2;
+    ou2 = xu2;
+    i2 xi2;
+    oi2 = xi2;
+    fence;
+  }
+}

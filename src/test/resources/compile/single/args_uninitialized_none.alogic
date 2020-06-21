@@ -1,0 +1,10 @@
+// @args: --uninitialized none
+fsm args_uninitialized_none {
+  out wire u2 o;
+
+  void main() {
+    u2 x;
+    o = x;
+    fence;
+  }
+}

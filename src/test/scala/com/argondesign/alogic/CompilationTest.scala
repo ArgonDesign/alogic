@@ -648,8 +648,7 @@ trait CompilationTest
   }
 
   sealed private trait MessageSpec {
-    val file: String
-    val line: Int
+    val fileLineOpt: Option[(String, Int)]
     val patterns: List[String]
 
     def matches(message: Message): Boolean = {
@@ -659,24 +658,28 @@ trait CompilationTest
         case (_: FatalSpec, _: Fatal)     => true
         case _                            => false
       }
-      lazy val locMatches = message.locOpt match {
-        case Some(loc) =>
+      lazy val locMatches = (message.locOpt, fileLineOpt) match {
+        case (Some(loc), Some((file, line))) =>
           loc.line == line && // Right line number
             file.r.pattern.matcher(loc.file).matches() // Right file pattern
-        case None => true
+        case (None, None) => true // No location in Message, nor MessageSpec
+        case _            => false
       }
       typeMatches && // Right type
-      locMatches && // Right location (if any)
+      locMatches && // Right location
       allMatches(patterns, message.msg) // Right text
     }
 
-    def string: String = {
+    def render: String = {
       val kindString = this match {
         case _: WarningSpec => "WARNING"
         case _: ErrorSpec   => "ERROR"
         case _: FatalSpec   => "FATAL"
       }
-      val prefix = s"$file:$line: $kindString: "
+      val prefix = fileLineOpt match {
+        case Some((file, line)) => s"$file:$line: $kindString: "
+        case None               => s"$kindString: "
+      }
       val triplets =
         LazyList.continually(prefix) lazyZip ("" +: LazyList.continually("... ")) lazyZip patterns
       triplets map { case (a, b, c) => a + b + c } mkString "\n"
@@ -684,10 +687,11 @@ trait CompilationTest
 
   }
 
-  private case class WarningSpec(file: String, line: Int, patterns: List[String])
-      extends MessageSpec
-  private case class ErrorSpec(file: String, line: Int, patterns: List[String]) extends MessageSpec
-  private case class FatalSpec(file: String, line: Int, patterns: List[String]) extends MessageSpec
+  // format: off
+  private case class WarningSpec(fileLineOpt: Option[(String, Int)], patterns: List[String]) extends MessageSpec
+  private case class ErrorSpec(fileLineOpt: Option[(String, Int)], patterns: List[String]) extends MessageSpec
+  private case class FatalSpec(fileLineOpt: Option[(String, Int)], patterns: List[String]) extends MessageSpec
+  // format: on
 
   private def parseCheckFile(checkFile: String): (
       Map[String, String],
@@ -700,21 +704,24 @@ trait CompilationTest
     val pairMatcher = """@([^:]+):(.*)""".r
     val longMatcher = """@(.+)\{\{\{""".r
     val boolMatcher = """@(.+)""".r
-    val mesgMatcher = """(.*):(\d+): (WARNING|ERROR|FATAL): (\.\.\. )?(.*)""".r
+    val mesgMatcher = """((.*):(\d+): )?(WARNING|ERROR|FATAL): (\.\.\. )?(.*)""".r
 
     val mesgSpecs = new ListBuffer[MessageSpec]
 
     val mesgBuff = new ListBuffer[String]
-    var mesgType = ""
-    var mesgFile = ""
-    var mesgLine = ""
+    var mesgType: String = ""
+    var mesgFileLineOpt: Option[(String, String)] = None
 
-    def finishMessageSpec(): Unit = {
-      val file = if (mesgFile.isEmpty) ".*" + checkFile.split("/").last else mesgFile
+    def finishPendingMessageSpec(): Unit = if (mesgBuff.nonEmpty) {
+      val fileLineOpt = mesgFileLineOpt match {
+        case Some(("", string))      => Some((".*" + checkFile.split("/").last, string.toInt))
+        case Some((pattern, string)) => Some((pattern, string.toInt))
+        case None                    => None
+      }
       mesgType match {
-        case "WARNING" => mesgSpecs append WarningSpec(file, mesgLine.toInt, mesgBuff.toList)
-        case "ERROR"   => mesgSpecs append ErrorSpec(file, mesgLine.toInt, mesgBuff.toList)
-        case "FATAL"   => mesgSpecs append FatalSpec(file, mesgLine.toInt, mesgBuff.toList)
+        case "WARNING" => mesgSpecs append WarningSpec(fileLineOpt, mesgBuff.toList)
+        case "ERROR"   => mesgSpecs append ErrorSpec(fileLineOpt, mesgBuff.toList)
+        case "FATAL"   => mesgSpecs append FatalSpec(fileLineOpt, mesgBuff.toList)
         case _         => unreachable
       }
       mesgBuff.clear()
@@ -754,26 +761,25 @@ trait CompilationTest
         case "}}}" if key != ""          => add(key, buf mkString "\n"); buf.clear(); key = ""
         case _ if key != ""              => buf append text
         case boolMatcher(k) if key == "" => add(k, "")
-        case mesgMatcher(file, line, kind, null, pattern) if key == "" =>
-          if (mesgBuff.nonEmpty) {
-            finishMessageSpec()
-          }
-          mesgFile = file.trim
-          mesgLine = line.trim
+        case mesgMatcher(fileLine, file, line, kind, null, pattern) if key == "" =>
+          finishPendingMessageSpec()
+          mesgFileLineOpt = if (fileLine != null) Some((file.trim, line.trim)) else None
           mesgType = kind.trim
           mesgBuff append pattern
-        case mesgMatcher(file, line, kind, _, pattern) if key == "" =>
-          assert(mesgFile == file.trim, "Message continuation must have same file pattern")
-          assert(mesgLine == line.trim, "Message continuation must have same line number")
-          assert(mesgType == kind.trim, "Message continuation must have same message type")
+        case mesgMatcher(fileLine, file, line, kind, _, pattern) if key == "" =>
+          val mflo = mesgFileLineOpt
+          val fileOk = (fileLine == null && mflo.isEmpty) || (mflo.get._1 == file.trim)
+          val lineOk = (fileLine == null && mflo.isEmpty) || (mflo.get._2 == line.trim)
+          val typeOk = mesgType == kind.trim
+          assert(fileOk, "Message continuation must have same file pattern")
+          assert(lineOk, "Message continuation must have same line number")
+          assert(typeOk, "Message continuation must have same message type")
           mesgBuff append pattern
         case _ =>
       }
     }
 
-    if (mesgBuff.nonEmpty) {
-      finishMessageSpec()
-    }
+    finishPendingMessageSpec()
 
     (attrs.toMap, dicts.toMap, mesgSpecs.toList)
   } tap {
@@ -884,7 +890,7 @@ trait CompilationTest
           // Fail if a spec matches multiple messages
           for ((Some(spec), messages) <- messageGroups if messages.lengthIs > 1) {
             println("Message pattern:")
-            println(spec.string)
+            println(spec.render)
             println("Matches multiple messages:")
             messages foreach { message => println(message.render) }
             messageCheckFailed = true
@@ -905,7 +911,7 @@ trait CompilationTest
             if !(messageGroups contains Some(spec))
           } {
             println("Unused message pattern:")
-            println(spec.string)
+            println(spec.render)
             messageCheckFailed = true
           }
 

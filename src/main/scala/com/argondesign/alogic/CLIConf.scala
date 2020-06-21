@@ -215,7 +215,7 @@ class CLIConf(args: Seq[String], messageBuffer: MessageBuffer)
         case "random" => UninitializedLocals.Random
       },
       {
-        case _ => Left("must be one of 'none', 'zeros', 'ones', 'random")
+        case _ => Left("must be one of 'none', 'zeros', 'ones', 'random'")
       }
     )
   )

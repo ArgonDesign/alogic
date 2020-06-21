@@ -1,0 +1,23 @@
+// @args: --uninitialized ones
+fsm args_uninitialized_ones {
+  out wire u2 ou;
+  out wire u2 oi;
+
+
+  void main() {
+    u2 x;
+    ou = x;
+    i2 y;
+    oi = y;
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module args_uninitialized_ones(
+//    output wire [1:0] ou,
+//    output wire [1:0] oi
+//  );
+//    assign ou = 2'b11;
+//    assign oi = 2'b11;
+//  endmodule
+// }}}

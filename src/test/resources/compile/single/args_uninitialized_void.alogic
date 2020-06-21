@@ -1,0 +1,21 @@
+// @args: --uninitialized zeros
+fsm args_uninitialized_void {
+  out wire u2 o;
+
+  struct s {
+    u2 get() { return 2'b10; }
+  }
+
+  void main() {
+    s x; // @bits(x) is 0, so no initializer is required
+    o = x.get();
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module args_uninitialized_void(
+//    output wire [1:0] o
+//  );
+//    assign o = 2'b10;
+//  endmodule
+// }}}
