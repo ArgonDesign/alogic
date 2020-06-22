@@ -1,0 +1,35 @@
+struct s {
+  bool a;
+  bool b;
+}
+
+struct t {
+  static bool a() {
+    s x = 2'b10;
+    return x.a;
+  }
+  static bool b() {
+    s x = 2'b10;
+    return x.b;
+  }
+}
+
+fsm inline_known_vars_00 {
+  out wire bool oa;
+  out wire bool ob;
+
+  void main() {
+    oa = t.a();
+    ob = t.b();
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module inline_known_vars_00(
+//    output wire oa,
+//    output wire ob
+//  );
+//    assign oa = 1'b1;
+//    assign ob = 1'b0;
+//  endmodule
+// }}}

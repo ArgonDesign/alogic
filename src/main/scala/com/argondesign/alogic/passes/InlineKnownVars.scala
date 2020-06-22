@@ -115,7 +115,7 @@ final class InlineKnownVars(
         walk(expr).asInstanceOf[Expr].simplify match {
           case known: ExprInt =>
             val kind = expr.tpe.underlying.asRecord
-            val dataMembers = kind.dataMembers
+            val dataMembers = kind.dataMembers.reverse // Reverse for big-endian packing
             val fieldIndex = dataMembers.indexWhere(_.name == sel)
             val fieldSymbol = dataMembers(fieldIndex)
             val width = fieldSymbol.kind.width.toInt
