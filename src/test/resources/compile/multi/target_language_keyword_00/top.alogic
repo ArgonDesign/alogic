@@ -1,0 +1,17 @@
+network top {
+  in  bool i;
+  out bool o;
+
+  inst = new always;
+
+  i -> inst.i; inst.o -> o;
+}
+// @expect-file: always_.v
+// @fec/golden {{{
+//  module top(
+//    input  wire i,
+//    output wire o
+//  );
+//    assign o = i;
+//  endmodule
+// }}}
