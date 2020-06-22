@@ -1,0 +1,9 @@
+fsm empty_main_with_out_sync {
+  out sync u1 o;
+  void main() {
+    fence;
+  }
+}
+// @verilator-lint-off
+// :2: WARNING: Output port 'o' is unused
+

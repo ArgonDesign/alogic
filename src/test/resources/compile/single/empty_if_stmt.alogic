@@ -1,0 +1,39 @@
+fsm empty_if_stmt {
+  in  sync u8 i;
+  out sync u8 o;
+  void main() {
+    if (i.valid) {
+      if (i == 8'd0) {
+        // Empty if statement
+      }
+      o.write(i);
+    }
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module empty_if_stmt(
+//    input  wire       clk,
+//    input  wire       rst,
+//    input  wire [7:0] i,
+//    input  wire       i__valid,
+//    output reg  [7:0] o,
+//    output reg        o__valid
+//  );
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        o <= 8'd0;
+//        o__valid <= 1'd0;
+//      end else begin
+//        if (i__valid) begin
+//          o <= i;
+//          o__valid <= 1'd1;
+//        end else begin
+//          o__valid <= 1'b0;
+//        end
+//      end
+//    end
+//
+//  endmodule
+// }}}

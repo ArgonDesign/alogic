@@ -1,4 +1,4 @@
-fsm p8009_198 {
+fsm huge_width_00 {
   const uint ARRAY_SIZE = 2;
   const u3[ARRAY_SIZE] ARRAY = {3'd5, 3'd4};
   const u3 ARRAY_ITEM = ARRAY[0];
@@ -12,7 +12,7 @@ fsm p8009_198 {
   }
 }
 // @fec/golden {{{
-//  module p8009_198(
+//  module huge_width_00(
 //    output wire [2:0] o
 //  );
 //    assign o = 3'd2;

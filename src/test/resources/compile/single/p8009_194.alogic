@@ -1,9 +1,0 @@
-fsm p8009_194 {
-  out sync u1 foo;
-  void main() {
-    fence;
-  }
-}
-// @verilator-lint-off
-// :2: WARNING: Output port 'foo' is unused
-

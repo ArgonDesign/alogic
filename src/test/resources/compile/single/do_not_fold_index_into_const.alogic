@@ -1,4 +1,4 @@
-fsm p8009_193 {
+fsm do_not_fold_index_into_const {
   const u3[5] ARRAY = {3'd0, 3'd1, 3'd2, 3'd3, 3'd4};
   out u3 x = 3'd0;
   out u3 y = 3'd0;
@@ -14,7 +14,7 @@ fsm p8009_193 {
   }
 }
 // @fec/golden {{{
-//  module p8009_193(
+//  module do_not_fold_index_into_const(
 //    input  wire       clk,
 //    input  wire       rst,
 //    output reg[2:0]   x,

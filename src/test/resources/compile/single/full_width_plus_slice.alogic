@@ -1,4 +1,4 @@
-fsm p8009_181 {
+fsm full_width_plus_slice {
   in       u8 i;
   out wire u8 o;
 
@@ -10,7 +10,7 @@ fsm p8009_181 {
   }
 }
 // @fec/golden {{{
-//  module p8009_181(
+//  module full_width_plus_slice(
 //    input  wire [7:0] i,
 //    output wire [7:0] o
 //  );

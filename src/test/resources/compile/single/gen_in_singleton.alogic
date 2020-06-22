@@ -1,0 +1,75 @@
+network gen_in_singleton {
+  const uint N = 4;
+
+  in sync u4 i;
+
+  gen for (uint n < N) {
+    in  u4 v#[n];
+    out u4 o#[n];
+  }
+
+  out u1 error;
+
+  new fsm inner {
+    u4 tmp;
+
+    void main() {
+      tmp = i.read();
+      error = 1;
+      gen for (uint n < N) {
+        if (tmp == v#[n]) {
+          o#[n].write(tmp);
+          error = 0;
+        }
+      }
+      fence;
+    }
+  }
+}
+// @fec/golden {{{
+//  module gen_in_singleton(
+//    input wire       clk,
+//    input wire       rst,
+//    input wire [3:0] i,
+//    input wire       i__valid,
+//    input wire [3:0] v__0,
+//    input wire [3:0] v__1,
+//    input wire [3:0] v__2,
+//    input wire [3:0] v__3,
+//    output reg [3:0] o__0,
+//    output reg [3:0] o__1,
+//    output reg [3:0] o__2,
+//    output reg [3:0] o__3,
+//    output reg       error
+//  );
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        o__0 <= 4'd0;
+//        o__1 <= 4'd0;
+//        o__2 <= 4'd0;
+//        o__3 <= 4'd0;
+//        error <= 1'd0;
+//      end else if (i__valid) begin
+//        error <= 1'd1;
+//        if (i == v__0) begin
+//          o__0 <= i;
+//          error <= 1'd0;
+//        end
+//        if (i == v__1) begin
+//          o__1 <= i;
+//          error <= 1'd0;
+//        end
+//        if (i == v__2) begin
+//          o__2 <= i;
+//          error <= 1'd0;
+//        end
+//        if (i == v__3) begin
+//          o__3 <= i;
+//          error <= 1'd0;
+//        end
+//      end
+//    end
+//
+//  endmodule
+// }}}

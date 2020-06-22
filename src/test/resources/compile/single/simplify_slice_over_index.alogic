@@ -1,4 +1,4 @@
-fsm p8009_108 {
+fsm simplify_slice_over_index {
     in u1 i;
     in u16[2] bar;
     out u16 o;
@@ -9,7 +9,7 @@ fsm p8009_108 {
     }
 }
 // @fec/golden {{{
-//  module p8009_108(
+//  module simplify_slice_over_index(
 //    input  wire        clk,
 //    input  wire        rst,
 //    input  wire        i,
