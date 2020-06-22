@@ -1,0 +1,47 @@
+fsm out_sync_ready_07 {
+  out sync ready bslice void o;
+
+  void main() {
+    o.write();
+    fence;
+    fence;
+  }
+}
+// @fec/smtc {{{
+//  always 1
+//  assert (= [golden.state_q] [alogic.state_q])
+// }}}
+// @fec/golden {{{
+//  module out_sync_ready_07(
+//    input wire clk,
+//    input wire rst,
+//    output wire o__valid,
+//    input wire o__ready
+//  );
+//
+//    reg state_q;
+//    reg valid_q;
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        state_q <= 1'b0;
+//        valid_q <= 1'b0;
+//      end else begin
+//        if (o__ready) begin
+//          valid_q <= 1'b0;
+//        end
+//        if (~state_q) begin
+//          if (~valid_q) begin
+//            state_q <= 1'b1;
+//            valid_q <= ~o__ready;
+//          end
+//        end else begin
+//          state_q <= 1'b0;
+//        end
+//      end
+//    end
+//
+//    assign o__valid = valid_q | state_q == 1'b0;
+//
+//  endmodule
+// }}}

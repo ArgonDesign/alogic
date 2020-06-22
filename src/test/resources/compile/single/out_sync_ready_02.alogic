@@ -1,0 +1,58 @@
+fsm out_sync_ready_02 {
+  out sync ready bslice bool o;
+
+  bool flop = false;
+
+  void main() {
+    o.write(flop);
+    flop = ~flop;
+    fence;
+    fence;
+  }
+}
+// @fec/smtc {{{
+//  always 1
+//  assert (= [golden.state_q] [alogic.state_q])
+//  assert (= [golden.flop_q] [alogic.flop_q])
+// }}}
+// @fec/golden {{{
+//  module out_sync_ready_02(
+//    input wire clk,
+//    input wire rst,
+//    output wire o,
+//    output wire o__valid,
+//    input wire o__ready
+//  );
+//
+//    reg state_q;
+//    reg flop_q;
+//    reg store_q;
+//    reg valid_q;
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        state_q <= 1'b0;
+//        flop_q <= 1'b0;
+//        valid_q <= 1'b0;
+//      end else begin
+//        if (o__ready) begin
+//          valid_q <= 1'b0;
+//        end
+//        if (~state_q) begin
+//          if (~valid_q) begin
+//            state_q <= 1'b1;
+//            flop_q <= ~flop_q;
+//            store_q <= flop_q;
+//            valid_q <= ~o__ready;
+//          end
+//        end else begin
+//          state_q <= 1'b0;
+//        end
+//      end
+//    end
+//
+//    assign o = valid_q ? store_q : flop_q;
+//    assign o__valid = valid_q | state_q == 1'b0;
+//
+//  endmodule
+// }}}

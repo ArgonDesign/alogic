@@ -1,0 +1,69 @@
+fsm out_sync_ready_04 {
+  out sync ready bslice fslice bool o;
+
+  bool flop = false;
+
+  void main() {
+    o.write(flop);
+    flop = ~flop;
+    fence;
+    fence;
+  }
+}
+// @fec/mode: bmc
+// @fec/depth: 40
+// @fec/timeout: 20
+// @fec/solver: yices
+// @fec/golden {{{
+//  module out_sync_ready_04(
+//    input wire clk,
+//    input wire rst,
+//    output reg o,
+//    output reg o__valid,
+//    input wire o__ready
+//  );
+//
+//    reg state_q;
+//    reg flop_q;
+//    reg bslice_store_q;
+//    reg bslice_valid_q;
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        state_q <= 1'b0;
+//        flop_q <= 1'b0;
+//        o__valid <= 1'b0;
+//        bslice_valid_q <= 1'b0;
+//      end else begin
+//        // fslice moving out
+//        if (o__ready) begin
+//          o__valid <= 1'b0;
+//        end
+//        // bslice moving into fslice
+//        if (bslice_valid_q & (o__ready | ~o__valid)) begin
+//          o <= bslice_store_q;
+//          o__valid <= 1'b1;
+//          bslice_valid_q <= 1'b0;
+//        end
+//        if (~state_q) begin
+//          if (~bslice_valid_q) begin
+//            state_q <= 1'b1;
+//            flop_q <= ~flop_q;
+//            if (o__ready | ~o__valid) begin
+//              // Straight to fslice
+//              o <= flop_q;
+//              o__valid <= 1'b1;
+//            end else begin
+//              // Into bslice
+//              bslice_store_q <= flop_q;
+//              bslice_valid_q <= 1'b1;
+//            end
+//          end
+//        end else begin
+//          state_q <= 1'b0;
+//        end
+//      end
+//    end
+//
+//  endmodule
+// }}}

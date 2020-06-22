@@ -433,16 +433,25 @@ trait CompilationTest
     val ports = topLevelManifest.downField("ports").as[ListMap[String, Port]].getOrElse(fail)
     val signals = topLevelManifest.downField("signals").as[ListMap[String, Signal]].getOrElse(fail)
 
-    val vInputs = signals collect {
+    // All Verilog inputs
+    val vInputs: Iterable[String] = signals collect {
       case (name, Signal(port, "payload", _, _, _)) if ports(port).dir == "in" => name
       case (name, Signal(port, "valid", _, _, _)) if ports(port).dir == "in"   => name
       case (name, Signal(port, "ready", _, _, _)) if ports(port).dir == "out"  => name
     }
 
-    val vOutputs = signals collect {
+    // All verilog outputs
+    val vOutputs: Iterable[String] = signals collect {
       case (name, Signal(port, "payload", _, _, _)) if ports(port).dir == "out" => name
       case (name, Signal(port, "valid", _, _, _)) if ports(port).dir == "out"   => name
       case (name, Signal(port, "ready", _, _, _)) if ports(port).dir == "in"    => name
+    }
+
+    // Map from payload signal to corresponding valid
+    val vValidOfPayload: Map[String, String] = signals flatMap {
+      case (name, Signal(port, "payload", _, _, _)) =>
+        signals collectFirst { case (valid, Signal(`port`, "valid", _, _, _)) => name -> valid }
+      case _ => None
     }
 
     val widthOf: Map[String, Int] = signals map {
@@ -534,14 +543,18 @@ trait CompilationTest
     mpw.write("\n")
     mpw.write("  // Output comparators\n")
     vOutputs foreach { name =>
-      writeDecl("wire", 1, s"cmp__$name", s" = golden__$name === alogic__$name;")
+      val assign = vValidOfPayload.get(name) match {
+        case Some(valid) => s" = (golden__$name === alogic__$name) || ~alogic__$valid;"
+        case None        => s" = (golden__$name === alogic__$name);"
+      }
+      writeDecl("wire", 1, s"ok__$name", assign)
     }
 
     mpw.write("\n")
     mpw.write("  // The equivalence signal\n")
     mpw.write(
       vOutputs.iterator
-        .map(n => s"cmp__$n")
+        .map(n => s"ok__$n")
         .mkString("  wire equiv = &{\n    ", ",\n    ", "\n  };\n")
     )
 

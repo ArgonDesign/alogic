@@ -1,0 +1,25 @@
+fsm out_reg_01 {
+  out bool o = true;
+
+  void main() {
+    o = ~o;
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module out_reg_01(
+//    input wire clk,
+//    input wire rst,
+//    output reg o
+//  );
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        o <= 1'b1;
+//      end else begin
+//        o <= ~o;
+//      end
+//    end
+//
+//  endmodule
+// }}}
