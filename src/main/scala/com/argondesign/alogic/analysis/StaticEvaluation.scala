@@ -305,7 +305,8 @@ object StaticEvaluation {
             (afters map { _.get.toSet } reduce { _ intersect _ }).toMap
           }
 
-        // Infer assumption is true
+        // Infer assertion/assumption is true
+        case StmtAssertion(AssertionAssert(cond, _)) => Some(inferTrueTransitive(curr, cond))
         case StmtAssertion(AssertionAssume(cond, _)) => Some(inferTrueTransitive(curr, cond))
 
         // Infer stall condition will be true (by the time subsequent statements execute
