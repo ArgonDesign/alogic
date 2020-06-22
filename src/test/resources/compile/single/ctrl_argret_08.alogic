@@ -1,0 +1,49 @@
+// @args: --no-assertions
+fsm ctrl_argret_08 {
+  in  bool i;
+  out bool o;
+
+  import bool fx(); // Don't confuse with foreign function
+
+  void fc(bool x) { // Must not be "() -> void"
+    o = x;
+    return;
+  }
+
+  void main() {
+    assert fx();
+    fc(i);
+  }
+}
+// @fec/mode: bmc
+// @fec/golden {{{
+//  module ctrl_argret_08(
+//    input wire clk,
+//    input wire rst,
+//    input wire i,
+//    output reg o
+//  );
+//
+//    reg tmp_q;
+//    reg state_q;
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        state_q <= 1'd0;
+//        o <= 1'd0;
+//      end else begin
+//        case (state_q)
+//          1'd0: begin // 'main'
+//            tmp_q <= i;
+//            state_q <= 1'd1;
+//          end
+//          default: begin // 'fx'
+//            state_q <= 1'd0;
+//            o <= tmp_q;
+//          end
+//        endcase
+//      end
+//    end
+//
+//  endmodule
+// }}}

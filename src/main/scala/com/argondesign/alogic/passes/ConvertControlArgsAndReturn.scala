@@ -19,6 +19,7 @@ import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.FuncVariant
 import com.argondesign.alogic.core.Symbols
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types.TypeVoid
@@ -79,7 +80,7 @@ final class ConvertControlArgsAndReturn(implicit cc: CompilerContext)
   override def transform(tree: Tree): Tree = tree match {
     case decl: DeclEntity if argsMap.nonEmpty || retMap.nonEmpty =>
       // Update function attributes
-      decl.functions foreach { d =>
+      decl.functions.iterator filter { _.symbol.kind.isCtrlFunc } foreach { d =>
         val srp = d.symbol.attr.staticReturnPoint.value match {
           case None                => None
           case some @ Some(symbol) => repl(symbol) orElse some
@@ -107,7 +108,8 @@ final class ConvertControlArgsAndReturn(implicit cc: CompilerContext)
       }
       TypeAssigner(defn.copy(body = defn.body appendedAll extraBody) withLoc defn.loc)
 
-    case decl @ DeclFunc(symbol, _, ret, args) if args.nonEmpty || !ret.tpe.asType.kind.isVoid =>
+    case decl @ DeclFunc(symbol, FuncVariant.Ctrl, ret, args)
+        if args.nonEmpty || !ret.tpe.asType.kind.isVoid =>
       // Update argMap/retMap (symbol is being replaced)
       argsMap.remove(orig(symbol)) foreach { argsMap(symbol) = _ }
       retMap.remove(orig(symbol)) foreach { retMap(symbol) = _ }
