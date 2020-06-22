@@ -270,7 +270,7 @@ signals:
 
 ```
   out u4 number;
-  
+
   void main() {
     number = 4'd3;
     fence;
@@ -288,7 +288,7 @@ the entity, and on output ports, where it resolves to the `valid` signal being
 driven from the entity.
 
 One important use of testing port state is non-blocking read/write from ports
-with flow control: 
+with flow control:
 
 <a href="http://afiddle.argondesign.com/?example=ports_checking.alogic">Fiddle with this code here.</a>
 
@@ -313,14 +313,33 @@ fsm nonblocking {
 
 The FSM defined above never stalls, as `p_in.read()` is guarded by the `if`
 statement. If the guarding `if` statement was omitted, the variables `cycles`
-and `transactions` would always have the same value, as lack of a transaction
+and `transactions` would always have the same value, as lack of an input value
 on `p_in` would cause the entity to stall, preventing the update of any state,
 including `cycles`.
 
+To perform non-blocking writes on `sync ready` output port, test `space[0]`
+to see if the closest register slice has space. Note that due to the way
+`fslice` register slices are structured, and because the incoming ready signal
+on an output slice is not observable (to avoid combinational loops), this
+would only allow a write on every other cycle in the best case:
+
+```
+out sync ready fslice bool p_o;
+
+void main() {
+  if (p_o.space[0]) {
+    p_o.write(true); // This fills the 'fslice' for the next cycle.
+  }
+}
+```
+
+To allow full throughput output ports with the above non-blocking write
+pattern, use a `bslice`, or `bslice fslice` if required.
+
 ### Waiting for transactions without consuming them
 
-The `.valid` property, combined with the `wait` statement can be used on 
-input ports to wait for an incoming transaction. This stalls state machines 
+The `.valid` property, combined with the `wait` statement can be used on
+input ports to wait for an incoming transaction. This stalls state machines
 until the `valid` signal on the corresponding port becomes high.
 
 <a href="http://afiddle.argondesign.com/?example=ports_waiting.alogic">Fiddle with this code here.</a>
@@ -385,7 +404,7 @@ Fiddle with this code here.</a>
 ```
 fsm registered {
  out bool a;
- 
+
  void main() {
     a = false;
     fence;
@@ -419,7 +438,7 @@ Fiddle with this code here.</a>
 ```
 fsm combinatorial {
  out wire bool a;
- 
+
  void main() {
     a = false;
     // a is now false
@@ -467,7 +486,7 @@ fsm syncports {
   }
 }
 ```
- 
+
 <!--
 { signal : [
   { name: "clk",      wave: "p........" },
@@ -588,7 +607,7 @@ output signals of the entity. This can be used to add small amount of extra
 buffering on output ports as required:
 
 ```
-  out sync ready fslice fslice u8 a; 
+  out sync ready fslice fslice u8 a;
 ```
 
 Another important use of multiple output slices is the combination of a `bslice`
