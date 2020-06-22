@@ -1,0 +1,58 @@
+fsm ctrl_argret_07 {
+  in  u8 i;
+  out u8 o;
+
+  u8 dec1(u8 x) {
+    return x-1;
+  }
+  u8 dec2(u8 x) {
+    return x-2;
+  }
+
+  void main() {
+    o = dec2(dec1(i));
+    fence;
+  }
+}
+// @fec/mode: bmc
+// @fec/golden {{{
+//  module ctrl_argret_07(
+//    input wire clk,
+//    input wire rst,
+//    input wire [7:0] i,
+//    output reg [7:0] o
+//  );
+//
+//    reg [7:0] tmp_q;
+//    reg [2:0] state_q;
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        tmp_q <= 8'd0;
+//        state_q <= 3'd0;
+//        o <= 8'd0;
+//      end else begin
+//        case (state_q)
+//          3'd0: begin // Call 'dec1'
+//            state_q <= 3'd1;
+//            tmp_q <= i;
+//          end
+//          3'd1: begin // Return 'dec1'
+//            state_q <= 3'd2;
+//          end
+//          3'd2: begin // Call 'dec2'
+//            state_q <= 3'd3;
+//          end
+//          3'd3: begin // Return 'dec2'
+//            state_q <= 3'd4;
+//          end
+//          default: begin // End of 'main'
+//            state_q <= 3'd0;
+//            o <= tmp_q - 8'd3;
+//          end
+//        endcase
+//      end
+//    end
+//
+//  endmodule
+// }}}
