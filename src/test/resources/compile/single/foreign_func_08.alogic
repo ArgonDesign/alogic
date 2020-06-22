@@ -26,3 +26,13 @@ fsm foreign_func_08 {
 //  Instance: TOP.testbench.dut
 //  - .*/foreign_func_08\.v:\d+: Verilog \$finish
 // }}}
+//
+// @manifest/foreign-functions/f {{{
+//  {
+//    "return" : {
+//      "width" : 0,
+//      "signed" : false
+//    },
+//    "args" : []
+//  }
+// }}}

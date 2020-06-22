@@ -38,3 +38,19 @@ fsm foreign_func_01 {
 // }}}
 //
 // @sim/expect: TIMEOUT at 100ns
+//
+// @manifest/foreign-functions/f {{{
+//  {
+//    "return" : {
+//      "width" : 2,
+//      "signed" : false
+//    },
+//    "args" : [
+//      {
+//        "name" : "i",
+//        "width" : 1,
+//        "signed" : false
+//      }
+//    ]
+//  }
+// }}}

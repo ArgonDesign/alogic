@@ -29,3 +29,19 @@ fsm foreign_func_03 {
 //  YAY 4294967295
 //  - .*/foreign_func_03\.v:\d+: Verilog \$finish
 // }}}
+//
+// @manifest/foreign-functions/f {{{
+//  {
+//    "return" : {
+//      "width" : 0,
+//      "signed" : false
+//    },
+//    "args" : [
+//      {
+//        "name" : "i",
+//        "width" : 32,
+//        "signed" : false
+//      }
+//    ]
+//  }
+// }}}

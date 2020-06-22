@@ -53,3 +53,13 @@ network foreign_func_09 {
 //  Instance: TOP.testbench.dut.a
 //  - .*/foreign_func_09__a\.v:\d+: Verilog \$finish
 // }}}
+//
+// @manifest/foreign-functions/f {{{
+//  {
+//    "return" : {
+//      "width" : 0,
+//      "signed" : false
+//    },
+//    "args" : []
+//  }
+// }}}

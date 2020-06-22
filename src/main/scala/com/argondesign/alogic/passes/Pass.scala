@@ -191,7 +191,7 @@ trait PairTransformerPass extends PairsTransformerPass with ChainingSyntax {
             case Defn(symbol) if symbol != decl.symbol => symbol
           }
         }
-        assert(declSymbols == defnSymbols)
+        assert(declSymbols == defnSymbols, name)
     }
   }
 

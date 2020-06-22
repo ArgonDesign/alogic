@@ -17,7 +17,6 @@
 package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.StatefulTreeTransformer
-import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FuncVariant
@@ -150,12 +149,21 @@ object LowerForeignFunctions {
 
     val encountered = mutable.Map[String, (TypeXenoFunc, List[String])]()
 
-    new EntityTransformerPass(declFirst = false) {
+    new PairTransformerPass {
       val name = "lower-foreign-functions"
 
-      override def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
-        new LowerForeignFunctions(encountered)
-
+      override protected def transform(
+          decl: Decl,
+          defn: Defn
+        )(
+          implicit
+          cc: CompilerContext
+        ): (Tree, Tree) = {
+        val transform = new LowerForeignFunctions(encountered)
+        val newDefn = transform(defn)
+        val newDecl = transform(decl)
+        (newDecl, newDefn)
+      }
       override def finish(
           pairs: List[(Decl, Defn)]
         )(

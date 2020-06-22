@@ -50,12 +50,6 @@ final class LiftSramsFrom(
     enclosingSymbols.isEmpty && (liftFromMap contains symbol)
   }
 
-  override def skip(tree: Tree): Boolean = tree match {
-    case DeclEntity(symbol, _)    => !(liftFromMap contains symbol)
-    case DefnEntity(symbol, _, _) => !(liftFromMap contains symbol)
-    case _                        => false
-  }
-
   override protected def enter(tree: Tree): Option[Tree] = {
     tree match {
       case DeclEntity(symbol, _) => orig.get(symbol) foreach { replacements(_) = symbol }
@@ -211,8 +205,8 @@ object LiftSrams extends PairsTransformerPass {
       val liftFromMap: Map[Symbol, List[Symbol]] = Map from {
         for {
           (decl, _) <- pairs.iterator
-          eSymbol = decl.symbol
-          if liftFromSet contains eSymbol
+          symbol = decl.symbol
+          if liftFromSet contains symbol
           desc = decl.asInstanceOf[DeclEntity]
           iSymbols: List[Symbol] = for {
             instance <- desc.instances
@@ -222,7 +216,7 @@ object LiftSrams extends PairsTransformerPass {
           }
           if iSymbols.nonEmpty
         } yield {
-          eSymbol -> iSymbols
+          symbol -> iSymbols
         }
       }
 
@@ -235,10 +229,14 @@ object LiftSrams extends PairsTransformerPass {
         // Apply the liftFrom transform
         val liftedFrom = pairs map {
           case (decl, defn) =>
-            val transform = new LiftSramsFrom(replacements, liftFromMap)
-            val newDecl = decl rewrite transform
-            val newDefn = defn rewrite transform
-            (newDecl, newDefn)
+            if (liftFromMap contains decl.symbol) {
+              val transform = new LiftSramsFrom(replacements, liftFromMap)
+              val newDecl = decl rewrite transform
+              val newDefn = defn rewrite transform
+              (newDecl, newDefn)
+            } else {
+              (decl, defn)
+            }
         }
 
         // Apply the liftTo transform
@@ -260,13 +258,14 @@ object LiftSrams extends PairsTransformerPass {
       }
     }
 
-    // TODO: We just accidentally lost all non-entitities here
-    val eSymbols = pairs collect { case (DeclEntity(symbol, _), _) => symbol }
-
     // Gather entities with the liftSrams attribute,
     // and all other entities instantiated by them
     val liftFromSet: Set[Symbol] = {
-      val seedSet = Set from { eSymbols filter { _.attr.liftSrams contains true } }
+      val seedSet = Set from {
+        pairs collect {
+          case (DeclEntity(symbol, _), _) if symbol.attr.liftSrams contains true => symbol
+        }
+      }
 
       // Expand entity set by adding all instantiated entities
       @tailrec
@@ -284,12 +283,7 @@ object LiftSrams extends PairsTransformerPass {
       expand(seedSet, Set())
     }
 
-    loop(
-      eSymbols map { s =>
-        (s.decl, s.defn)
-      },
-      liftFromSet
-    )
+    loop(pairs, liftFromSet)
   }
 
 }

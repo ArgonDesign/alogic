@@ -30,3 +30,13 @@ fsm foreign_func_04 {
 //  Yay 3
 //  - .*/foreign_func_04\.v:\d+: Verilog \$finish
 // }}}
+//
+// @manifest/foreign-functions/yay {{{
+//  {
+//    "return" : {
+//      "width" : 0,
+//      "signed" : false
+//    },
+//    "args" : []
+//  }
+// }}}

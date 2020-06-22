@@ -42,3 +42,19 @@ fsm foreign_func_05 {
 //  5000 0xffffffff_ffffffff_ffffffff_33333333
 //  - .*/foreign_func_05\.v:\d+: Verilog \$finish
 // }}}
+//
+// @manifest/foreign-functions/f {{{
+//  {
+//    "return" : {
+//      "width" : 0,
+//      "signed" : false
+//    },
+//    "args" : [
+//      {
+//        "name" : "i",
+//        "width" : 128,
+//        "signed" : false
+//      }
+//    ]
+//  }
+// }}}

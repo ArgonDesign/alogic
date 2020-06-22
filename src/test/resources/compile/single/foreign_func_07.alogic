@@ -47,3 +47,19 @@ fsm foreign_func_07 {
 //  2 aa5533cc
 //  - .*/foreign_func_07\.v:\d+: Verilog \$finish
 // }}}
+//
+// @manifest/foreign-functions/f {{{
+//  {
+//    "return" : {
+//      "width" : 16,
+//      "signed" : false
+//    },
+//    "args" : [
+//      {
+//        "name" : "i",
+//        "width" : 8,
+//        "signed" : false
+//      }
+//    ]
+//  }
+// }}}

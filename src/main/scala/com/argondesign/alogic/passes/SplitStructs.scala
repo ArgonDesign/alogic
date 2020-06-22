@@ -252,6 +252,19 @@ object SplitStructs {
 
       def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
         new SplitStructsB(globalReplacements, fMaps)
+
+      override def finish(
+          pairs: List[(Decl, Defn)]
+        )(
+          implicit
+          cc: CompilerContext
+        ): List[(Decl, Defn)] = {
+        // Drop record pairs
+        pairs filter {
+          case (_: DeclRecord, _) => false
+          case _                  => true
+        }
+      }
     }
   }
 

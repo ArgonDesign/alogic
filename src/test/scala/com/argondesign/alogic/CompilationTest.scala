@@ -29,6 +29,7 @@ import com.argondesign.alogic.core.Source
 import com.argondesign.alogic.core.Warning
 import com.argondesign.alogic.core.enums.ResetStyle
 import com.argondesign.alogic.util.unreachable
+import io.circe.Json
 import org.scalatest.ConfigMap
 import org.scalatest.ParallelTestExecution
 import org.scalatest.fixture
@@ -162,24 +163,20 @@ trait CompilationTest
       dpi: String,
       timeout: Long,
       trace: Boolean,
-      oPath: Path
+      oPath: Path,
+      manifest: Json
     )(
       implicit
       config: Config
     ): Unit = {
 
+    val topLevelManifest = manifest.hcursor.downField("top-levels").downField(topLevel)
+
     // TODO: factor common with fec
-    val manifest = {
-      io.circe.parser.parse(Source(oPath resolve "manifest.json").text) match {
-        case Left(failure) => fail(failure.message)
-        case Right(json)   => json.hcursor.downField("top-levels").downField(topLevel)
-      }
-    }
+    val clock = topLevelManifest.get[String]("clock").toOption.getOrElse("clk")
+    val reset = topLevelManifest.get[String]("reset").toOption.getOrElse("rst")
 
-    val clock = manifest.get[String]("clock").toOption.getOrElse("clk")
-    val reset = manifest.get[String]("reset").toOption.getOrElse("rst")
-
-    val resetStyle = manifest.get[String]("reset-style") match {
+    val resetStyle = topLevelManifest.get[String]("reset-style") match {
       case Right("sync-high")  => ResetStyle.SyncHigh
       case Right("sync-low")   => ResetStyle.SyncLow
       case Right("async-high") => ResetStyle.AsyncHigh
@@ -401,23 +398,19 @@ trait CompilationTest
       topLevel: String,
       goldenFile: File,
       oPath: Path,
+      manifest: Json,
       fec: Map[String, String]
     )(
       implicit
       config: Config
     ): Boolean = {
     // Generate the miter circuit
-    val manifest = {
-      io.circe.parser.parse(Source(oPath resolve "manifest.json").text) match {
-        case Left(failure) => fail(failure.message)
-        case Right(json)   => json.hcursor.downField("top-levels").downField(topLevel)
-      }
-    }
+    val topLevelManifest = manifest.hcursor.downField("top-levels").downField(topLevel)
 
-    val clock = manifest.get[String]("clock").toOption
-    val reset = manifest.get[String]("reset").toOption
+    val clock = topLevelManifest.get[String]("clock").toOption
+    val reset = topLevelManifest.get[String]("reset").toOption
 
-    val resetStyle = manifest.get[String]("reset-style") match {
+    val resetStyle = topLevelManifest.get[String]("reset-style") match {
       case Right("sync-high")  => ResetStyle.SyncHigh
       case Right("sync-low")   => ResetStyle.SyncLow
       case Right("async-high") => ResetStyle.AsyncHigh
@@ -437,8 +430,8 @@ trait CompilationTest
       io.circe.Decoder.forProduct2("dir", "flow-control")(Port.apply)
     implicit val signalDecoder: io.circe.Decoder[Signal] = io.circe.generic.semiauto.deriveDecoder
 
-    val ports = manifest.downField("ports").as[ListMap[String, Port]].getOrElse(fail)
-    val signals = manifest.downField("signals").as[ListMap[String, Signal]].getOrElse(fail)
+    val ports = topLevelManifest.downField("ports").as[ListMap[String, Port]].getOrElse(fail)
+    val signals = topLevelManifest.downField("signals").as[ListMap[String, Signal]].getOrElse(fail)
 
     val vInputs = signals collect {
       case (name, Signal(port, "payload", _, _, _)) if ports(port).dir == "in" => name
@@ -618,7 +611,8 @@ trait CompilationTest
   def formalEquivalenceCheck(
       topLevel: String,
       fec: Map[String, String],
-      oDir: Path
+      oDir: Path,
+      manifeset: Json
     )(
       implicit
       config: Config
@@ -640,7 +634,7 @@ trait CompilationTest
 
     // First check the simple  if that fails try the hard way
     lazy val easyOK = yosysEquiv(topLevel, goldenFile, oDir)
-    lazy val hardOK = symbiYosysEquiv(topLevel, goldenFile, oDir, fec)
+    lazy val hardOK = symbiYosysEquiv(topLevel, goldenFile, oDir, manifeset, fec)
 
     if (!easyOK && !hardOK) {
       fail("FEC failed")
@@ -784,20 +778,24 @@ trait CompilationTest
     (attrs.toMap, dicts.toMap, mesgSpecs.toList)
   } tap {
     case (attr, dict, _) =>
-      val valid = Set(
+      val validAttr = Set(
+        "args",
         "expect-file",
-        "fec",
         "ignore",
         "out-top",
-        "sim",
-        "args",
         "top",
         "verilator-lint-off"
       )
-      attr.keysIterator concat dict.keysIterator foreach { k =>
-        if (!valid(k)) {
-          fail(s"Unknown test attribute '$k'")
-        }
+      attr.keysIterator foreach { k =>
+        if (!validAttr(k)) { fail(s"Unknown test attribute '$k'") }
+      }
+      val validDict = Set(
+        "fec",
+        "manifest",
+        "sim"
+      )
+      dict.keysIterator foreach { k =>
+        if (!validDict(k)) { fail(s"Unknown test dictionary attribute '$k'") }
       }
   }
 
@@ -940,6 +938,29 @@ trait CompilationTest
             }
           }
 
+          val manifest = io.circe.parser.parse(Source(oPath resolve "manifest.json").text) match {
+            case Left(failure) => fail("Failed to parse manifest: " + failure.message)
+            case Right(json)   => json
+          }
+
+          dict get "manifest" foreach { expected =>
+            expected foreach {
+              case (keys, value) =>
+                val root: io.circe.ACursor = manifest.hcursor
+                val selection = keys.split("/").foldLeft(root)({ case (c, k) => c.downField(k) })
+                val expectedValue = io.circe.parser.parse(value) match {
+                  case Left(failure) =>
+                    fail(s"Failed to parse expected manifest entry '$keys': " + failure.message)
+                  case Right(json) => json
+                }
+                selection.focus match {
+                  case None       => fail(s"No entry '$keys' in manifest")
+                  case Some(json) => json shouldBe expectedValue
+                }
+            }
+
+          }
+
           val outTop = attr.getOrElse("out-top", top)
 
           dict get "sim" match {
@@ -950,7 +971,7 @@ trait CompilationTest
               val dpi = sim.getOrElse("dpi", "")
               val timeout = sim.getOrElse("timeout", "100").toLong
               val trace = config.trace
-              verilatorSim(outTop, test, expect, dpi, timeout, trace, oPath)
+              verilatorSim(outTop, test, expect, dpi, timeout, trace, oPath, manifest)
             case None =>
               // Lint unless told not to
               if (!(attr contains "verilator-lint-off")) {
@@ -960,7 +981,7 @@ trait CompilationTest
 
           dict get "fec" foreach { fec =>
             // Perform equivalence check with golden reference
-            formalEquivalenceCheck(outTop, fec, oPath)
+            formalEquivalenceCheck(outTop, fec, oPath, manifest)
           }
         }
       }

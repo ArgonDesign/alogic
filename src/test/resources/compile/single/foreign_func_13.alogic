@@ -54,3 +54,24 @@ network foreign_func_13 {
 // }}}
 //
 // @sim/expect: TIMEOUT at 100ns
+//
+// @manifest/foreign-functions/f {{{
+//  {
+//    "return" : {
+//      "width" : 32,
+//      "signed" : false
+//    },
+//    "args" : [
+//      {
+//        "name" : "i",
+//        "width" : 32,
+//        "signed" : false
+//      },
+//      {
+//        "name" : "j",
+//        "width" : 32,
+//        "signed" : false
+//      }
+//    ]
+//  }
+// }}}
