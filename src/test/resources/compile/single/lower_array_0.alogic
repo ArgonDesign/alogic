@@ -12,7 +12,12 @@ fsm lower_array_0 {
     fence;
   }
 }
-// @fec/mode: bmc
+// @fec/smtc {{{
+//  initial
+//  assume (= [golden.store_q] [alogic.store_q])
+//  always
+//  assert (= [golden.store_q] [alogic.store_q])
+// }}}
 // @fec/golden {{{
 //  module lower_array_0(
 //    input             clk,

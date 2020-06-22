@@ -512,7 +512,7 @@ trait CompilationTest
 
     mpw.write("\n")
     mpw.write("  // Golden instance\n")
-    mpw.write("  golden golden_u (\n")
+    mpw.write("  golden golden (\n")
     vInputs foreach { name => mpw.write(s"    .$name($name),\n") }
     vOutputs.iterator.zipWithIndex foreach {
       case (name, idx) =>
@@ -522,7 +522,7 @@ trait CompilationTest
     mpw.write("  );\n")
     mpw.write("\n")
     mpw.write("  // Alogic instance\n")
-    mpw.write("  alogic alogic_u (\n")
+    mpw.write("  alogic alogic (\n")
     vInputs foreach { name => mpw.write(s"    .$name($name),\n") }
     vOutputs.iterator.zipWithIndex foreach {
       case (name, idx) =>
@@ -562,6 +562,16 @@ trait CompilationTest
     mpw.flush()
     mpw.close()
 
+    // Write constraints file
+    val constraintsFileOpt = fec.get("smtc") map { constraints =>
+      val file = oPath.resolve("__constraints.smtc").toFile
+      val pw = new PrintWriter(file)
+      pw.write(constraints)
+      pw.flush()
+      pw.close()
+      file
+    }
+
     // Write sby script
     val scriptFile = oPath.resolve("equiv.sby").toFile
     writeFile(scriptFile) {
@@ -569,6 +579,7 @@ trait CompilationTest
          |mode ${fec.getOrElse("mode", if (clock.isDefined) "prove" else "bmc")}
          |depth ${fec.getOrElse("depth", if (clock.isDefined) 20 else 2)}
          |timeout ${fec.getOrElse("timeout", "10")}
+         |${constraintsFileOpt map { "smtc " + _.getName } getOrElse "# No constraints"}
          |
          |[engines]
          |smtbmc ${fec.getOrElse("solver", "z3")}
@@ -589,9 +600,6 @@ trait CompilationTest
          |hierarchy -check -libdir $oPath -top miter
          |prep -run coarse: -top miter
          |
-         |# Set initial state of all memories to 0
-         |setparam -set INIT 0 t:$$mem
-         |
          |#memory; flatten; opt -full
          |#show -colors 1 -stretch miter
          |
@@ -599,6 +607,7 @@ trait CompilationTest
          |${topLevel + ".v"}
          |${goldenFile.getName}
          |${miterFile.getName}
+         |${constraintsFileOpt.map(_.getName).getOrElse("# No constraints file")}
          |""".stripMargin
     }
 
