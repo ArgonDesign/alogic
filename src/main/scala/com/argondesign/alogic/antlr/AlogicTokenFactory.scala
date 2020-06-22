@@ -55,12 +55,14 @@ class AlogicTokenFactory(val alogicSource: Source)(implicit cc: CompilerContext)
       charPositionInLine: Int
     ): AlogicToken = {
     require(channel == Token.DEFAULT_CHANNEL || channel == Token.HIDDEN_CHANNEL)
-    require(text == null)
 
     def mkToken(channel: Int): AlogicToken = {
       val token = new AlogicToken(source, kind, channel, alogicSource, start, stop, fileName)
       token.setLine(adjustLine(line))
       token.setCharPositionInLine(charPositionInLine)
+      if (text != null) {
+        token.setText(text)
+      }
       token
     }
     // Creates normal token passed to the parser

@@ -134,6 +134,13 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
         cc.messages should not be empty
       }
 
+      "missing brace" in {
+        a[AsTreeSyntaxErrorException] should be thrownBy {
+          "a = {".asTree[Stmt]
+        }
+        cc.messages should not be empty
+      }
+
       // TODO: Mandatory blocks
     }
 
