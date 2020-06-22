@@ -1,0 +1,28 @@
+struct s_t {
+  u2 a;
+  u2 b;
+}
+
+fsm struct_slice_01 {
+  in       s_t  i;
+  in       u2   idx;
+  out wire u2   o;
+
+  void main() {
+    o = i[idx +: 2];
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module struct_slice_01(
+//    input  wire [1:0] i__a,
+//    input  wire [1:0] i__b,
+//    input  wire [1:0] idx,
+//    output wire [1:0] o
+//  );
+//
+//    wire [3:0] tmp = {i__a, i__b};
+//    assign o = tmp[idx +: 2];
+//
+//  endmodule
+// }}}

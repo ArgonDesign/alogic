@@ -60,7 +60,7 @@ Alogic supports the usual ternary conditional `?:` operator:
 
 <a href="http://afiddle.argondesign.com/?example=expr_indexing.alogic">Fiddle with indexing and slicing here.</a>
 
-Variables with appropriate type can be indexes with the usual `[_]` syntax,
+Values with appropriate type can be indexes with the usual `[_]` syntax,
 possibly multiple times.
 
 ```
@@ -80,6 +80,17 @@ In an Alogic `[_:_]` slice expression, the left hand side index must be greater
 than or equal to the right hand side index.
 
 `[_+:_]` and `[_-:_]` are also supported, with the same meaning as in Verilog.
+
+As opposed to Verilog, Alogic allows indexing or slicing of arbitrary
+sub-expressions with a packed type:
+
+```
+ u8 a;
+ u8 b;
+
+ u4 topOfSum = (a + b)[7:4];
+ bool lsbOfDifference = (a - b)[0];
+```
 
 ### Bit concatenations and repetition
 

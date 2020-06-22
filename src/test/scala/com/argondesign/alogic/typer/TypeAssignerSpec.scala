@@ -706,6 +706,8 @@ final class TypeAssignerSpec extends AnyFreeSpec with AlogicTest {
             ("f[0][0][1]", TypeSInt(7)),
             ("f[0][0][0][0]", TypeUInt(1)),
             ("f[0][0][0][1]", TypeUInt(1)),
+            ("h[0]", TypeUInt(1)),
+            ("h[1]", TypeUInt(1)),
             ("g[0]", TypeUInt(1)),
             ("g[1]", TypeUInt(1)),
             ("1[0]", TypeUInt(1)),
@@ -716,6 +718,12 @@ final class TypeAssignerSpec extends AnyFreeSpec with AlogicTest {
           text in {
             elaborate {
               s"""
+              |struct s {
+              |   bool f0;
+              |   bool f1;
+              |   bool f2;
+              |}
+              |
               |(* toplevel *)
               |void function() {
               |  i7 a;
@@ -725,6 +733,7 @@ final class TypeAssignerSpec extends AnyFreeSpec with AlogicTest {
               |  i7 e[2];
               |  i7[4][2] f[3];
               |  in i7 g;
+              |  in s h;
               |
               |  $text;
               |}"""
@@ -764,16 +773,29 @@ final class TypeAssignerSpec extends AnyFreeSpec with AlogicTest {
             ("b[2'd1-:3'd1]", TypeVector(TypeUInt(32), 1)),
             ("b[2'd1-:3'd2]", TypeVector(TypeUInt(32), 2)),
             ("b[2'd3-:3'd3]", TypeVector(TypeUInt(32), 3)),
-            ("b[2'd3-:3'd4]", TypeVector(TypeUInt(32), 4))
+            ("b[2'd3-:3'd4]", TypeVector(TypeUInt(32), 4)),
+            ("c[8'd3 :8'd2]", TypeUInt(2)),
+            ("c[8'd0 :8'd0]", TypeUInt(1)),
+            ("c[8'd4+:8'd3]", TypeUInt(3)),
+            ("c[8'd4-:8'd3]", TypeUInt(3)),
+            ("c[8'd23:8'd0]", TypeUInt(24))
           )
         } {
           val text = expr.trim.replaceAll(" +", " ")
           text in {
             elaborate {
               s"""
+              |struct s {
+              |   u8 f0;
+              |   u8 f1;
+              |   u8 f2;
+              |}
+              |
+              |(* toplevel *)
               |void function() {
               |  u32 a;
               |  u32[4] b;
+              |  s c;
               |
               |  $text;
               |}"""

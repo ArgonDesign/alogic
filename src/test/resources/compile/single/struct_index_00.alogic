@@ -1,0 +1,28 @@
+struct s_t {
+  u2 a;
+  u2 b;
+}
+
+fsm struct_index_00 {
+  in       s_t  i;
+  out wire bool o;
+
+  void main() {
+    o = i[0];
+    fence;
+  }
+}
+// @verilator-lint-off
+// @fec/golden {{{
+//  module struct_index_00(
+//    /* verilator lint_off UNUSED */
+//    input  wire [1:0] i__a,
+//    input  wire [1:0] i__b,
+//    /* verilator lint_on UNUSED */
+//    output wire       o
+//  );
+//
+//    assign o = i__b[0];
+//
+//  endmodule
+// }}}

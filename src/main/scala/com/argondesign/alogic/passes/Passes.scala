@@ -100,6 +100,7 @@ object Passes extends ChainingSyntax {
         Fold andThen
         RemoveUnused andThen
         Fold andThen
+        CreateTemporaries andThen
         RenameSymbols andThen
 //      // TODO: RenameKeywords
 //      // TODO: final check pass to make sure everything is well-formed

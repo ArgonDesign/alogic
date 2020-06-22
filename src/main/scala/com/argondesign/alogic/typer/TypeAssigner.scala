@@ -307,12 +307,12 @@ object TypeAssigner {
 
   private def kind(tree: ExprIndex)(implicit cc: CompilerContext) = {
     tree.expr.tpe.underlying match {
-      case _: TypeNum          => TypeUInt(1)
-      case _: TypeInt          => TypeUInt(1)
-      case TypeArray(kind, _)  => kind
-      case TypeVector(kind, _) => kind
-      case TypeType(kind)      => TypeType(kind addVectorDimension tree.index.value.get)
-      case _                   => unreachable
+      case _: TypeNum                              => TypeUInt(1)
+      case TypeArray(kind, _)                      => kind
+      case TypeVector(kind, _)                     => kind
+      case TypeType(kind)                          => TypeType(kind addVectorDimension tree.index.value.get)
+      case kind if kind.isPacked && kind.width > 0 => TypeUInt(1)
+      case _                                       => unreachable
     }
   }
 
@@ -323,10 +323,10 @@ object TypeAssigner {
       tree.rIdx.value.get
     }
     tree.expr.tpe.underlying match {
-      case _: TypeNum          => TypeUInt(size)
-      case _: TypeInt          => TypeUInt(size)
-      case TypeVector(kind, _) => TypeVector(kind, size)
-      case _                   => unreachable
+      case _: TypeNum                              => TypeUInt(size)
+      case TypeVector(kind, _)                     => TypeVector(kind, size)
+      case kind if kind.isPacked && kind.width > 0 => TypeUInt(size)
+      case _                                       => unreachable
     }
   }
 

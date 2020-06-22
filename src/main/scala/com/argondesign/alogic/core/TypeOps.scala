@@ -143,11 +143,11 @@ trait TypeOps extends TypePrintOps { this: Type =>
     _width
   }
 
-  final def shapeIter: Iterator[BigInt] = underlying match {
-    case TypeInt(_, size)           => Iterator.single(size)
-    case TypeArray(elemKind, size)  => Iterator.single(size) ++ elemKind.shapeIter
-    case TypeVector(elemKind, size) => Iterator.single(size) ++ elemKind.shapeIter
-    case _                          => Iterator.empty
+  final def shapeIter(implicit cc: CompilerContext): Iterator[BigInt] = underlying match {
+    case TypeArray(elemKind, size)               => Iterator.single(size) ++ elemKind.shapeIter
+    case TypeVector(elemKind, size)              => Iterator.single(size) ++ elemKind.shapeIter
+    case kind if kind.isPacked && kind.width > 0 => Iterator.single(kind.width)
+    case _                                       => Iterator.empty
   }
 
   // If this is a proxy type, get the underlying type, otherwise get this type

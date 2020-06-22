@@ -1,0 +1,22 @@
+fsm expr_slice_01{
+  in       u4 a;
+  in       u4 b;
+  out wire u2 o;
+
+  void main() {
+    o = ((a + b) << 2)[1+:2];
+    fence;
+  }
+}
+// @verilator-lint-off
+// @fec/golden {{{
+//  module expr_slice_01(
+//    input  wire [3:0] a,
+//    input  wire [3:0] b,
+//    output wire [1:0] o
+//  );
+//
+//    assign o = {a[0] ^ b[0], 1'b0};
+//
+//  endmodule
+// }}}

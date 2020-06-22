@@ -1,0 +1,22 @@
+fsm expr_index_00 {
+  in       u2 a;
+  in       u2 b;
+  out wire u1 o;
+
+  void main() {
+    o = (a + b)[0];
+    fence;
+  }
+}
+// @verilator-lint-off
+// @fec/golden {{{
+//  module expr_index_00(
+//    input  wire [1:0] a,
+//    input  wire [1:0] b,
+//    output wire       o
+//  );
+//
+//    assign o = a[0] ^ b[0];
+//
+//  endmodule
+// }}}
