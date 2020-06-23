@@ -892,6 +892,12 @@ trait CompilationTest
               throw new RuntimeException(e)
           }
 
+        // Cancel here if coverageEnabled as we have all the coverage we want,
+        // and this speeds up running the test suite up considerably.
+        if (BuildInfo.coverageEnabled) {
+          cancel("Cancel CompilationTest checks because coverageEnabled")
+        }
+
         // Check messages
         {
           // fail flag

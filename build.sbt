@@ -116,7 +116,13 @@ git.useGitDescribe := true
 
 enablePlugins(BuildInfoPlugin)
 
-buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion)
+buildInfoKeys := Seq[BuildInfoKey](
+  name,
+  version,
+  scalaVersion,
+  sbtVersion,
+  coverageEnabled
+)
 
 buildInfoPackage := "com.argondesign.alogic"
 
