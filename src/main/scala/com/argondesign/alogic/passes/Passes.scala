@@ -83,7 +83,7 @@ object Passes extends ChainingSyntax {
         ////////////////////////////////////////////////////////////////////////
         // Back-end
         ////////////////////////////////////////////////////////////////////////
-        RenameSymbols andThen
+        RenameSymbols(last = false) andThen
         LowerVariables andThen
         LowerInterconnect andThen
         InferImplications andThen
@@ -101,8 +101,7 @@ object Passes extends ChainingSyntax {
         RemoveUnused andThen
         Fold andThen
         CreateTemporaries andThen
-        RenameSymbols andThen
-//      // TODO: RenameKeywords
+        RenameSymbols(last = true) andThen
 //      // TODO: final check pass to make sure everything is well-formed
         WriteManifest andThen
         CodeGeneration
