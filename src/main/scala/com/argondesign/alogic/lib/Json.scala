@@ -80,7 +80,7 @@ object Json {
     } else {
       val indent = i0 * level
 
-      // Open dict
+      // Open array
       w.write("[")
 
       def writeValue(value: Any): Unit = {
@@ -103,7 +103,7 @@ object Json {
         writeValue(it.next)
       }
 
-      // Close dict
+      // Close array
       w.write("\n")
       w.write(indent)
       w.write("]")
@@ -111,11 +111,6 @@ object Json {
 
   def write(w: Writer, obj: Map[String, Any]): Unit = {
     writeObj(w, obj, 0)
-    w.write("\n")
-  }
-
-  def write(w: Writer, arr: Seq[Any]): Unit = {
-    writeAny(w, arr, 0)
     w.write("\n")
   }
 

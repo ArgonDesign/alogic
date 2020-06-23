@@ -22,29 +22,17 @@ import scala.jdk.CollectionConverters._
 
 // T: result of application to single node
 // L: result of application to list of nodes
-// O: result of application to Option[node]
-abstract class AlogicBaseVisitor[T, L, O] extends AlogicParserBaseVisitor[T] {
+abstract class AlogicBaseVisitor[T, L] extends AlogicParserBaseVisitor[T] {
 
-  // scalastyle:off null
-  override def visit(tree: ParseTree): T = {
+  final override def visit(tree: ParseTree): T = {
     if (null == tree) defaultResult else super.visit(tree)
-  } ensuring {
-    null != _
-  }
-
-  // scalastyle:on
+  } ensuring { _ != null }
 
   def visit[U <: RuleNode](ctxList: List[U]): L
 
-  def visit[U <: RuleNode](ctxOpt: Option[U]): O
+  final def visit[U <: RuleNode](ctxList: java.util.List[U]): L = visit(ctxList.asScala.toList)
 
-  def visit[U <: RuleNode](ctxList: java.util.List[U]): L = visit(ctxList.asScala.toList)
+  final def apply[U <: RuleNode](ctx: U): T = visit(ctx)
 
-  def apply[U <: RuleNode](ctx: U): T = visit(ctx)
-
-  def apply[U <: RuleNode](ctxList: List[U]): L = visit(ctxList)
-
-  def apply[U <: RuleNode](ctxOpt: Option[U]): O = visit(ctxOpt)
-
-  def apply[U <: RuleNode](ctxList: java.util.List[U]): L = visit(ctxList)
+  final def apply[U <: RuleNode](ctxList: java.util.List[U]): L = visit(ctxList)
 }

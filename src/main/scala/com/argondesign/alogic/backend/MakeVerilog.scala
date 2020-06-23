@@ -227,14 +227,6 @@ final class MakeVerilog(
     }
 
     stmt match {
-      // Block
-      case StmtBlock(stmts) =>
-        body.emit(indent)("begin")
-        stmts foreach {
-          emitStatement(body, indent + 1, _)
-        }
-        body.emit(indent)("end")
-
       // If statement
       case StmtIf(cond, thenStmts, elseStmts) =>
         body.emit(indent)(s"if (${vexpr(cond)}) begin")

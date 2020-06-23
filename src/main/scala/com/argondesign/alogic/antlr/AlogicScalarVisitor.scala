@@ -17,8 +17,6 @@ package com.argondesign.alogic.antlr
 
 import org.antlr.v4.runtime.tree.RuleNode
 
-class AlogicScalarVisitor[T] extends AlogicBaseVisitor[T, List[T], Option[T]] {
+class AlogicScalarVisitor[T] extends AlogicBaseVisitor[T, List[T]] {
   override def visit[U <: RuleNode](ctxList: List[U]): List[T] = ctxList map visit
-
-  override def visit[U <: RuleNode](ctxOpt: Option[U]): Option[T] = ctxOpt map visit
 }

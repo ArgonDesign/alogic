@@ -36,7 +36,8 @@ object GenBuilder extends BaseBuilder[GenContext, Gen] {
       override def visitGenItemStmt(ctx: GenItemStmtContext): Tree = StmtBuilder(ctx.stmt)
       override def visitGenItemCase(ctx: GenItemCaseContext): Tree = CaseBuilder(ctx.kase)
       override def visitGenItemEnt(ctx: GenItemEntContext): Tree = EntBuilder(ctx.ent)
-      override def visitGenItemRec(ctx: GenItemRecContext): Tree = RecBuilder(ctx.rec)
+      // Currently there are no Rec items that are not covered by the above
+      override def visitGenItemRec(ctx: GenItemRecContext): Tree = unreachable 
       // format: on
     }
 

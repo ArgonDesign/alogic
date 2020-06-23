@@ -25,7 +25,6 @@ import com.argondesign.alogic.core.Types.Type
 import com.argondesign.alogic.core.Types.TypeCombFunc
 import com.argondesign.alogic.core.Types.TypeFund
 import com.argondesign.alogic.core.Types.TypePolyFunc
-import com.argondesign.alogic.util.BooleanOps
 import com.argondesign.alogic.util.PartialMatch
 import com.argondesign.alogic.util.unreachable
 
@@ -37,8 +36,7 @@ abstract class BuiltinPolyFunc(
   )(
     implicit
     cc: CompilerContext)
-    extends BooleanOps
-    with PartialMatch
+    extends PartialMatch
     with ChainingSyntax {
 
   //////////////////////////////////////////////////////////////////////////////
@@ -62,9 +60,6 @@ abstract class BuiltinPolyFunc(
 
   // Is this a known compile time constant?
   protected[this] def isKnown(args: List[Expr]): Boolean
-
-  // Can this call be exist on the lhs of a Connect?
-  protected[this] def isValidConnLhs(args: List[Expr]): Boolean = false
 
   // Is this a pure function?
   protected[builtins] val isPure: Boolean

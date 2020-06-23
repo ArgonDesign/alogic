@@ -11,88 +11,36 @@
 // DESCRIPTION:
 //
 // A data structure representing a map from symbols to their value as
-// expressions
+// expressions (Scala 3: type Bindings = Map[Sybol, Expr]
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.core
 
 import com.argondesign.alogic.ast.Trees.Expr
-import com.argondesign.alogic.ast.Trees.ExprSym
 import com.argondesign.alogic.core.Symbols.Symbol
 
-import scala.annotation.tailrec
 import scala.language.implicitConversions
 
 class Bindings(val underlying: Map[Symbol, Expr]) extends AnyVal {
-
-  // Expand bindings by replacing references to symbols within the bindings
-  // with their values. i.e.: If any value in the bindings map references a
-  // key in the same bindings map, replace that reference with the value for
-  // that key.
-  @tailrec
-  final def expand(implicit cc: CompilerContext): Bindings = {
-    // Simplify the expressions
-    val simplified = this mapValues { _.simplify }
-
-    // Collect any symbols referenced that have a value in the bindings
-    val referenced = simplified.valuesIterator flatMap {
-      _ collect { case ExprSym(symbol) if symbol.kind.isParam => symbol }
-    } filter {
-      this.contains
-    }
-
-    if (referenced.isEmpty) {
-      // If no symbols are referenced, we are done
-      simplified
-    } else {
-      // Otherwise expand the bindings using themselves
-      val expanded = this map {
-        case (symbol, expr) => symbol -> (expr given this)
-      }
-      // Go again until the bindings are flat
-      expanded.expand
-    }
-  }
-
-  def mapValues(f: Expr => Expr): Bindings = {
-    (underlying.view mapValues f).toMap
-  }
-
-  def map(f: ((Symbol, Expr)) => (Symbol, Expr)): Bindings = {
-    underlying map f
-  }
-
   def +(pair: (Symbol, Expr)): Bindings = underlying + pair
 
-  override def toString: String = s"Bindings(${underlying.toString})"
+  override def toString: String = s"Bindings($underlying)"
 }
 
 object Bindings {
 
   val empty = new Bindings(Map.empty)
 
-  implicit def from(pairs: IterableOnce[(Symbol, Expr)]): Bindings = {
+  def from(pairs: IterableOnce[(Symbol, Expr)]): Bindings = {
     new Bindings(Map.from(pairs))
   }
 
-  implicit def apply(pairs: Seq[(Symbol, Expr)]): Bindings = {
-    new Bindings(pairs.toMap)
-  }
-
-  implicit def apply(map: scala.collection.Map[Symbol, Expr]): Bindings = {
-    new Bindings(map.toMap)
-  }
-
-  implicit def apply(underlying: Map[Symbol, Expr]): Bindings = {
+  implicit def underlyingToBindings(underlying: Map[Symbol, Expr]): Bindings = {
     new Bindings(underlying)
   }
 
-  implicit def apply(pairOpt: Option[(Symbol, Expr)]): Bindings = {
-    new Bindings(pairOpt.toMap)
-  }
-
-  implicit def toUnderlying(symbolBitSet: Bindings): Map[Symbol, Expr] = {
-    symbolBitSet.underlying
+  implicit def bindingsToUnderlying(bindings: Bindings): Map[Symbol, Expr] = {
+    bindings.underlying
   }
 
 }

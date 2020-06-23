@@ -110,17 +110,6 @@ final class SymbolBitSet(val underlying: Map[Symbol, BitSet]) extends AnyVal {
       }
     }
 
-  def subsetOf(that: SymbolBitSet): Boolean =
-    underlying forall {
-      case (symbol, bits) =>
-        bits.isEmpty || {
-          that get symbol match {
-            case Some(other) => bits subsetOf other
-            case None        => false
-          }
-        }
-    }
-
   override def toString: String = s"SymbolBitSet(${underlying.toString})"
 
 }

@@ -299,29 +299,6 @@ trait TreeOps extends TreePrintOps { this: Tree =>
     this
   }
 
-  ////////////////////////////////////////////////////////////////////////////////
-  // Pretty print
-  ////////////////////////////////////////////////////////////////////////////////
-
-  def toPrettyString: String = {
-    val sb = new StringBuilder
-    var lvl = 0
-    for (c <- this.toString) {
-      sb append c
-      c match {
-        case '(' =>
-          lvl += 1
-          sb append ("\n" + "  " * lvl)
-        case ')' =>
-          lvl -= 1
-        case ',' =>
-          sb append ("\n" + "  " * lvl)
-        case _ =>
-      }
-    }
-    sb.toString
-  }
-
 }
 
 //////////////////////////////////////////////////////////////////////////////

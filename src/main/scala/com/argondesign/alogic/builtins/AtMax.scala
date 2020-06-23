@@ -36,8 +36,8 @@ private[builtins] class AtMax(implicit cc: CompilerContext)
 
   val isPure: Boolean = true
 
-  def simplify(loc: Loc, args: List[Expr]) = {
-    (args forall { _.isInstanceOf[ExprNum] }) option {
+  def simplify(loc: Loc, args: List[Expr]) =
+    Option.when(args forall { _.isInstanceOf[ExprNum] }) {
       args match {
         case Nil       => unreachable
         case List(arg) => arg
@@ -47,6 +47,5 @@ private[builtins] class AtMax(implicit cc: CompilerContext)
         }
       }
     }
-  }
 
 }

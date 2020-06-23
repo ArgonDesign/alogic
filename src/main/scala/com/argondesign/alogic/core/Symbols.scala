@@ -112,9 +112,6 @@ trait Symbols extends { self: CompilerContext =>
       symbol.attr.tmp set true
     }
 
-  final def newTempLike(symbol: Symbols.Symbol): Symbols.Symbol =
-    newSymbolLike(symbol) tap { _.attr.tmp set true }
-
 }
 
 object Symbols {

@@ -19,6 +19,7 @@ import com.argondesign.alogic.Config
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.typer.TypeAssigner
+import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable.ListBuffer
 import scala.util.ChainingSyntax
@@ -615,7 +616,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
       case node: Thicket =>
         val trees = walk(node.trees)
         TreeCopier(node)(trees)
-      case Stump => Stump
+      case Stump => unreachable
     }
   }
 

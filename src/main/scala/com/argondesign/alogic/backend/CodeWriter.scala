@@ -16,46 +16,31 @@ package com.argondesign.alogic.backend
 
 final class CodeWriter {
 
-  private[this] val i0 = "  "
+  private val i0 = "  "
 
-  private[this] val sb = new StringBuilder
+  private val sb = new StringBuilder
 
-  def ensureBlankLine(): Unit = {
-    val lastIndex = sb.length - 1
-    if (sb(lastIndex) != '\n') {
-      sb append "\n\n"
-    } else if (sb(lastIndex - 1) != '\n') {
+  def ensureBlankLine(): Unit =
+    while (!(sb endsWith "\n\n")) {
       sb append "\n"
     }
-  }
 
-  def append(text: String): Unit = {
+  private def emit(indent: String)(text: String): Unit = {
+    if (sb.isEmpty || sb.last == '\n') {
+      sb append indent
+    }
     sb append text
+    sb append "\n"
   }
 
-  // Recursively emit arbitrarily nested lists of anything as lines into the output
-  def emit(indent: String)(item: Any): Unit = item match {
-    case items: List[_] =>
-      for (item <- items) {
-        emit(indent)(item)
-      }
-    case item => {
-      if (sb.isEmpty || sb.last == '\n') {
-        sb append indent
-      }
-      sb append item
-      sb append "\n"
-    }
-  }
+  def emit(indent: Int)(text: String): Unit = emit(i0 * indent)(text)
 
-  def emit(indent: Int)(item: Any): Unit = emit(i0 * indent)(item)
-
-  def emitTable(indent: String, sep: String)(rows: List[List[String]]): Unit = {
+  private def emitTable(indent: String, sep: String)(rows: List[List[String]]): Unit = {
     if (rows.nonEmpty) {
       val colCount = rows.head.length
       assert(rows forall { _.lengthCompare(colCount) == 0 })
       // Compute width of each output columns, set the width of
-      // the last colum to 0 to avoid trailing whitepace
+      // the last column to 0 to avoid trailing whitespace
       val fieldWidths = {
         val initWidths = rows.transpose.init map { _ map { _.length } } map { _.max }
         initWidths ::: List(0)
@@ -70,7 +55,7 @@ final class CodeWriter {
             col
           } else {
             val buf = new StringBuilder(col)
-            for (i <- 0 until pad) buf append " "
+            buf append (" " * pad)
             buf.toString
           }
         }
@@ -79,11 +64,10 @@ final class CodeWriter {
     }
   }
 
-  def emitTable(indent: Int, sep: String)(rows: List[List[String]]): Unit = {
+  def emitTable(indent: Int, sep: String)(rows: List[List[String]]): Unit =
     emitTable(i0 * indent, sep)(rows)
-  }
 
-  def emitBlock(indent: String, header: String)(rest: => Unit): Unit = {
+  private def emitBlock(indent: String, header: String)(rest: => Unit): Unit = {
     sb append indent
     sb append "// "
     sb append header
@@ -92,11 +76,10 @@ final class CodeWriter {
     ensureBlankLine()
   }
 
-  def emitBlock(indent: Int, header: String)(rest: => Unit): Unit = {
+  def emitBlock(indent: Int, header: String)(rest: => Unit): Unit =
     emitBlock(i0 * indent, header)(rest)
-  }
 
-  def emitSection(indent: String, title: String)(rest: => Unit) = {
+  private def emitSection(indent: String, title: String)(rest: => Unit): Unit = {
     ensureBlankLine()
     sb append indent + ("/" * (80 - indent.length)) + "\n"
     sb append indent + "// " + title + "\n"
@@ -106,10 +89,9 @@ final class CodeWriter {
     ensureBlankLine()
   }
 
-  def emitSection(indent: Int, title: String)(rest: => Unit): Unit = {
+  def emitSection(indent: Int, title: String)(rest: => Unit): Unit =
     emitSection(i0 * indent, title)(rest)
-  }
 
-  def text = sb.toString
+  def text: String = sb.toString
 
 }

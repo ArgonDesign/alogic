@@ -181,7 +181,7 @@ object StaticEvaluation {
     ): Option[Bindings] = {
     // Add the new binding for the symbol, but first substitute the new
     // expression using the current binding of symbol to remove self references
-    val selfBinding = Bindings(curr get symbol map { symbol -> _ })
+    val selfBinding = Bindings from { curr get symbol map { symbol -> _ } }
     val newValue = (expr given selfBinding).simplify
     Option.unless(newValue.tpe.isError) {
       // Remove all bindings that reference the just added symbol,
