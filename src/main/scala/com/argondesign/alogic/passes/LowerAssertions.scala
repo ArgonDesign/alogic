@@ -81,11 +81,11 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatefulTreeTr
     case TypeCombStmt        => unreachable
     case TypeCtrlStmt        => unreachable
     //
-    case TypeUnknown => unreachable
-    case TypeChoice  => unreachable
-    case TypeState   => unreachable
-    case TypeMisc    => unreachable
-    case TypeError   => unreachable
+    case TypeUnknown  => unreachable
+    case TypeChoice   => unreachable
+    case _: TypeState => unreachable
+    case TypeMisc     => unreachable
+    case TypeError    => unreachable
   }
 
   override protected def skip(tree: Tree): Boolean = tree match {

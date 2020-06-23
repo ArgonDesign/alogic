@@ -60,7 +60,7 @@ trait TypeOps extends TypePrintOps { this: Type =>
   final def isNormalMethod: Boolean = this.isInstanceOf[TypeNormalMethod]
   final def isUnknown: Boolean = this eq TypeUnknown
   final def isChoice: Boolean = this eq TypeChoice
-  final def isState: Boolean = this eq TypeState
+  final def isState: Boolean = this.isInstanceOf[TypeState]
   final def isMisc: Boolean = this eq TypeMisc
   final def isError: Boolean = this eq TypeError
   // $COVERAGE-ON$
@@ -98,6 +98,7 @@ trait TypeOps extends TypePrintOps { this: Type =>
   final def asMethod: TypeMethod = this.asInstanceOf[TypeMethod]
   final def asStaticMethod: TypeStaticMethod = this.asInstanceOf[TypeStaticMethod]
   final def asNormalMethod: TypeNormalMethod = this.asInstanceOf[TypeNormalMethod]
+  final def asState: TypeState = this.asInstanceOf[TypeState]
   // $COVERAGE-ON$
 
   // Is this a primitive numeric type

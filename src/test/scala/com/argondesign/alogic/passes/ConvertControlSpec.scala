@@ -47,7 +47,7 @@ final class ConvertControlSpec extends AnyFreeSpec with AlogicTest {
       val stateTo = stateFrom getFirst {
         case StmtGoto(ExprSym(sym: Symbol)) => sym
       }
-      stateTo shouldBe stateToGolden.expr.asInstanceOf[ExprSym].symbol
+      stateTo shouldBe stateToGolden.symbol
     }
 
     def checkGoesToPop(state: DefnState): Unit = {
@@ -73,10 +73,9 @@ final class ConvertControlSpec extends AnyFreeSpec with AlogicTest {
 
     def checkPushesState(stateFrom: DefnState, statePushedGolden: DefnState): Unit = {
       val pushCall = stateFrom getFirst { case x: ExprCall => x }
-      val statePushSymGolden = statePushedGolden.expr.asInstanceOf[ExprSym].symbol
       pushCall should matchPattern {
-        case ExprCall(ExprSelect(_, "push", Nil), List(ArgP(ExprSym(ref: Symbol))))
-            if ref == statePushSymGolden =>
+        case ExprCall(ExprSelect(_, "push", Nil), List(ArgP(ExprSym(symbol))))
+            if symbol == statePushedGolden.symbol =>
       }
     }
 

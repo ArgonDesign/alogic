@@ -93,7 +93,9 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
       if stmt.tpe == TypeCtrlStmt
     } yield {
       // Allocate a new state for the following statement
-      val symbol = cc.newSymbol(s"l${next.loc.line}", next.loc) tap { _.kind = TypeState }
+      val symbol = cc.newSymbol(s"l${next.loc.line}", next.loc) tap { symbol =>
+        symbol.kind = TypeState(symbol)
+      }
       allocStmts(stmt.id) = symbol
       entryStmts(next.id) = symbol
       symbol
@@ -139,7 +141,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
             val funcSymbol = funcDefn.symbol
             val name = s"l${funcSymbol.loc.line}_function_${funcSymbol.name}"
             val stateSymbol = cc.newSymbol(name, funcSymbol.loc)
-            stateSymbol.kind = TypeState
+            stateSymbol.kind = TypeState(stateSymbol)
             stateSymbol.attr.update(funcSymbol.attr)
             stateSymbol.attr.recLimit.clear()
             entryStmts(funcDefn.body.head.id) = stateSymbol
@@ -188,8 +190,8 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
             pendingStates.push(None)
             symbol
           case None =>
-            val symbol = cc.newSymbol(s"l${tree.loc.line}_loop", tree.loc) tap {
-              _.kind = TypeState
+            val symbol = cc.newSymbol(s"l${tree.loc.line}_loop", tree.loc) tap { symbol =>
+              symbol.kind = TypeState(symbol)
             }
             entryStmts(tree.id) = symbol
             // Need to emit newly created state
@@ -289,7 +291,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
 
     symOpt foreach { symbol =>
       emittedStates append {
-        EntDefn(DefnState(symbol, ExprSym(symbol), body)) regularize body.head.loc
+        EntDefn(DefnState(symbol, body)) regularize body.head.loc
       }
     }
 
@@ -310,7 +312,14 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
 
       case _: StmtFence =>
         val ref = ExprSym(followingState.top)
-        StmtGoto(ref) regularize tree.loc
+        // Add a comment as well so empty states created by 'fence' statements
+        // do not get optimized away in CreateStateSystem
+        Thicket(
+          List(
+            StmtComment(s"@@@KEEP@@@") regularize tree.loc,
+            StmtGoto(ref) regularize tree.loc
+          )
+        )
 
       case _: StmtBreak =>
         val ref = ExprSym(breakTargets.top)
@@ -329,7 +338,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
         def stmtGotoStateFollowing(returnee: Symbol): StmtGoto = {
           val returnStateAlias =
             cc.newSymbol(s"l${stmt.loc.line}_state_alias_following_${returnee.name}_call", stmt.loc)
-          returnStateAlias.kind = TypeState
+          returnStateAlias.kind = TypeState(returnStateAlias)
 
           functionCallReturningTo(returnStateAlias) = returnee
 

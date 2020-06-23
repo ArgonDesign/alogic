@@ -47,15 +47,10 @@ network gen_alt_func_1 {
 //    output reg [3:0] p_out_s
 //  );
 //
-//    reg state;
-//
 //    always @(posedge clk) begin
 //      if (rst) begin
-//        state <= 1'b0;
 //        p_out_u <= 4'd0;
 //        p_out_s <= 4'd0;
-//      end else if (state == 1'b0) begin
-//        state <= 1'b1;
 //      end else begin
 //        p_out_u <= {2'd0, p_in_0} * {2'd0, p_in_1};
 //        p_out_s <= $signed({{2{p_in_0[1]}}, p_in_0}) * $signed({{2{p_in_1[1]}}, p_in_1});

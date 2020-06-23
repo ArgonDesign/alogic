@@ -148,7 +148,7 @@ object Trees {
   case class DefnInstance(symbol: Symbol) extends Defn
   case class DefnSingleton(symbol: Symbol, variant: EntityVariant.Type, body: List[Ent]) extends Defn with DefnSingletonOps
   case class DefnFunc(symbol: Symbol, args: List[Defn], body: List[Stmt]) extends Defn with DefnFuncOps
-  case class DefnState(symbol: Symbol, expr: Expr, body: List[Stmt]) extends Defn
+  case class DefnState(symbol: Symbol, body: List[Stmt]) extends Defn
 //case class DefnChoice(symbol: Symbol, choices: List[ExprSym]) extends Defn
   // format: on
 

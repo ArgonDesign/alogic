@@ -75,7 +75,7 @@ trait TypePrintOps { this: Type =>
     case _: TypePolyFunc                      => this.toString
     case TypeUnknown                          => this.toString
     case TypeChoice                           => this.toString
-    case TypeState                            => this.toString
+    case TypeState(symbol)                    => s"state ${symbol.name}"
     case TypeMisc                             => this.toString
     case TypeError                            => this.toString
   }

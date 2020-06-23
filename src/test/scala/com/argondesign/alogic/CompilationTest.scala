@@ -654,7 +654,7 @@ trait CompilationTest
     // Now strip `line because it's too much for yosys...
     system(s"sed -i s/`line.*// ${goldenFile.getName}", oDir, "sed.log")
 
-    // First check the simple  if that fails try the hard way
+    // First check the simple way if that fails try the hard way
     lazy val easyOK = yosysEquiv(topLevel, goldenFile, oDir)
     lazy val hardOK = symbiYosysEquiv(topLevel, goldenFile, oDir, manifeset, fec)
 

@@ -132,7 +132,7 @@ object Types {
   // Other miscellaneous types
   //////////////////////////////////////////////////////////////////////////////
 
-  case object TypeState extends Type
+  case class TypeState(symbol: Symbol) extends Type
   case object TypeMisc extends Type
   case object TypeError extends Type
 

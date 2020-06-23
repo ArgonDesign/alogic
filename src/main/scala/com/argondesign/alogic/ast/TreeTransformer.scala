@@ -346,9 +346,8 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
       val body = walk(node.body)
       TreeCopier(node)(args, body)
     case node: DefnState =>
-      val expr = walk(node.expr)
       val body = walk(node.body)
-      TreeCopier(node)(expr, body)
+      TreeCopier(node)(body)
   }
 
   private def walkChildrenGen(tree: Gen): Tree = tree match {

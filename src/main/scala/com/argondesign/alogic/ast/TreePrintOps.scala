@@ -225,7 +225,7 @@ trait TreePrintOps extends { this: Tree =>
     case DefnInstance(_)                 => s"defn $name;"
     case DefnSingleton(_, variant, body) => block(s"defn ${v(variant)} $name", body)
     case DefnFunc(_, args, body)         => block(s"defn $name(${vs(args)})", body)
-    case DefnState(_, expr, body)        => block(s"defn $name ${v(expr)}", body)
+    case DefnState(_, body)              => block(s"defn $name", body)
   }
   // format: on
 

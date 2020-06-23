@@ -563,13 +563,12 @@ object TreeCopier {
     }
   }
 
-  def apply(tree: DefnState)(expr: Tree, body: List[Tree]): DefnState = {
-    if ((expr eq tree.expr) && (body eq tree.body)) {
+  def apply(tree: DefnState)(body: List[Tree]): DefnState = {
+    if (body eq tree.body) {
       tree
     } else {
       assert(body forall { _.isInstanceOf[Stmt] })
       tree.copy(
-        expr = expr.asInstanceOf[Expr],
         body = body.asInstanceOf[List[Stmt]]
       ) withLoc tree.loc
     }

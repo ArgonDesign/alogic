@@ -1,0 +1,33 @@
+fsm control_call_02 {
+  out u4 o = 0;
+
+  void main() {
+    f();
+  }
+
+  void f() {
+    g();
+  }
+
+  void g() {
+    o += 2;
+    return;
+  }
+}
+// @fec/golden {{{
+//  module control_call_02(
+//    input wire       clk,
+//    input wire       rst,
+//    output reg [3:0] o
+//  );
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        o <= 4'd0;
+//      end else begin
+//        o <= o + 4'd2;
+//      end
+//    end
+//
+//  endmodule
+// }}}

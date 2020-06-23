@@ -66,33 +66,43 @@ final class NormalizeControl(implicit cc: CompilerContext) extends StatelessTree
   }
 
   private def convertFinal(stmts: List[Stmt]): List[Stmt] =
-    stmts.init appended convertFinal(stmts.last)
+    stmts.init concat convertFinal(stmts.last)
 
-  private def convertFinal(stmt: Stmt): Stmt = {
+  private def convertFinal(stmt: Stmt): Iterator[Stmt] = {
     require(stmt.tpe.isCtrlStmt)
     stmt match {
       // 'return' and 'goto' are OK
-      case _: StmtReturn => stmt
-      case _: StmtGoto   => stmt
+      case _: StmtReturn => Iterator.single(stmt)
+      case _: StmtGoto   => Iterator.single(stmt)
 
-      // Convert final 'fence' to 'return'
-      case _: StmtFence => TypeAssigner(StmtReturn(comb = false, None) withLoc stmt.loc)
+      // Convert final 'fence' to 'fence; return' (we keep the fence as well,
+      // in order to prevent potential removal of the empty state if the
+      // function ends in 'fence; fence')
+      case _: StmtFence =>
+        Iterator(
+          stmt,
+          TypeAssigner(StmtReturn(comb = false, None) withLoc stmt.loc)
+        )
+
       // Convert final 'call' to 'goto' (tail call)
       case StmtExpr(expr) =>
         expr match {
-          case call: ExprCall => StmtGoto(call) regularize stmt.loc
+          case call: ExprCall => Iterator(StmtGoto(call) regularize stmt.loc)
           case _              => unreachable
         }
 
       // Convert 'break' in final loop to 'return'
-      case StmtLoop(body) => TypeAssigner(StmtLoop(convertBreak(body)) withLoc stmt.loc)
+      case StmtLoop(body) =>
+        Iterator.single(TypeAssigner(StmtLoop(convertBreak(body)) withLoc stmt.loc))
 
       // Nested statements, convert each branch
       case StmtBlock(body) =>
-        TypeAssigner(StmtBlock(convertFinal(body)) withLoc stmt.loc)
+        Iterator.single(TypeAssigner(StmtBlock(convertFinal(body)) withLoc stmt.loc))
       case s @ StmtIf(_, ts, es) =>
-        TypeAssigner {
-          s.copy(thenStmts = convertFinal(ts), elseStmts = convertFinal(es)) withLoc stmt.loc
+        Iterator.single {
+          TypeAssigner {
+            s.copy(thenStmts = convertFinal(ts), elseStmts = convertFinal(es)) withLoc stmt.loc
+          }
         }
       case s @ StmtCase(_, cases) =>
         val newCases = cases map {
@@ -102,7 +112,7 @@ final class NormalizeControl(implicit cc: CompilerContext) extends StatelessTree
             TypeAssigner(c.copy(stmts = convertFinal(stmts)) withLoc c.loc)
           case _: CaseGen => unreachable
         }
-        TypeAssigner(s.copy(cases = newCases) withLoc s.loc)
+        Iterator.single(TypeAssigner(s.copy(cases = newCases) withLoc s.loc))
 
       // The rest are either invalid in final position of have been removed
       // by earlier passes

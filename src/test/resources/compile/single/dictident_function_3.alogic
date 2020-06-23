@@ -2,10 +2,6 @@ fsm dictident_function_3 {
   in        bool i;
   out wire  bool o;
 
-  fence {
-    o = 1'b0;
-  }
-
   gen for (uint N < 2) {
     void func#[N]() {
       gen if (N > 0) {
@@ -29,27 +25,24 @@ fsm dictident_function_3 {
 //    input  wire i,
 //    output reg  o
 //  );
-//    reg [1:0] s_q;
-//    reg [1:0] s_d;
+//    reg s_q;
+//    reg s_d;
 //
 //    always @(posedge clk) begin
 //      if (rst) begin
-//        s_q <= 2'd0;
+//        s_q <= 1'd0;
 //      end else begin
 //        s_q <= s_d;
 //      end
 //    end
 //
 //    always @* begin
-//      if (s_q == 2'd1) begin
+//      if (s_q == 1'd0) begin
 //        o = i;
-//        s_d = 2'd2;
-//      end else if (s_q == 2'd2) begin
-//        o = ~i;
-//        s_d = 2'd0;
+//        s_d = 1'd1;
 //      end else begin
-//        o = 1'b0;
-//        s_d = 2'd1;
+//        o = ~i;
+//        s_d = 1'd0;
 //      end
 //    end
 //

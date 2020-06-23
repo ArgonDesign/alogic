@@ -28,20 +28,24 @@ import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.SequenceNumbers
 import com.argondesign.alogic.util.unreachable
 
+import scala.annotation.tailrec
+
 final class CreateStateSystem(implicit cc: CompilerContext) extends StatefulTreeTransformer {
 
   // The 'go' symbol
-  private[this] var goSymbol: Symbol = _
+  private var goSymbol: Symbol = _
   // whether there is only a single state
-  private[this] var singleState: Boolean = _
+  private var singleState: Boolean = _
   // Number of bits in state variable
-  private[this] var stateWidth: Int = _
+  private var stateWidth: Int = _
   // The state variable symbol
-  private[this] var stateVarSymbol: Symbol = _
+  private var stateVarSymbol: Symbol = _
   // The entry state
-  private[this] var entryState: Symbol = _
+  private var entryState: Symbol = _
   // Map from state symbol to state number
-  private[this] var stateNumbers: Map[Symbol, Int] = _
+  private var stateNumbers: Map[Symbol, ExprInt] = _
+  // Map from empty state to the equivalent true state
+  private var nullStates: Map[Symbol, Symbol] = _
 
   // Replace the return stack symbol (if it's being kept)
   override protected def replace(symbol: Symbol): Boolean =
@@ -55,7 +59,66 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends StatefulTree
         s.attr.combSignal set true
       }
 
-      val nStates = defn.states.length
+      // Optimize aways states that consist of a single goto to another state
+      // Note we inserted some comments in ConvertControl so this doesn't remove
+      // states introduced by a single fence statement.
+      nullStates = {
+        // state -> next state transitions of empty states, but with cycles removed
+        val next = {
+          // All empty state transitions
+          val transitions = Map from {
+            defn.states.iterator collect {
+              case DefnState(curr, List(StmtGoto(ExprSym(next)))) if curr != next => curr -> next
+            }
+          }
+
+          // Break cycles by removing the state with the lowest ordering
+          def removeCycleMin(transitions: Map[Symbol, Symbol]): Map[Symbol, Symbol] = {
+            def getCycle(symbol: Symbol): Option[Set[Symbol]] = {
+              @tailrec
+              def loop(states: Set[Symbol], curr: Symbol): Option[Set[Symbol]] =
+                if (states contains curr) {
+                  Some(states) // Circular
+                } else {
+                  transitions.get(curr) match {
+                    case Some(next) => loop(states + curr, next)
+                    case None       => None // Non-circular
+                  }
+                }
+              loop(Set.empty, symbol)
+            }
+            // Find distinct cycles
+            val cycles = (transitions.keysIterator flatMap getCycle).distinct
+            // Remove the lowest order node in each cycle
+            transitions.removedAll(cycles map { _.min })
+          }
+          removeCycleMin(transitions)
+        }
+
+        // Assign f(a) = f(f(a)) until settled, so the mapping is direct
+        @tailrec
+        def loop(map: Map[Symbol, Symbol]): Map[Symbol, Symbol] = {
+          val updated = map map {
+            case (k, v) =>
+              map.get(v) match {
+                case Some(w) => k -> w
+                case None    => k -> v
+              }
+          }
+          if (updated != map) loop(updated) else map
+        }
+        loop(next)
+      }
+
+      // In case we are removing the entry state, propagate the attribute
+      nullStates foreach {
+        case (a, b) => if (a.attr.entry.isSet) { b.attr.entry set true }
+      }
+
+      // Keep only the true states
+      val trueStates = defn.states filterNot { nullStates contains _.symbol }
+
+      val nStates = trueStates.length
       singleState = nStates == 1
       stateWidth = Math.clog2(nStates) max 1
       if (nStates > 1) {
@@ -65,19 +128,24 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends StatefulTree
       }
 
       // Pick up the entry state
-      val (entryStates, otherStates) = defn.states partition { _.symbol.attr.entry.isSet }
+      val (entryStates, otherStates) = trueStates partition { _.symbol.attr.entry.isSet }
       assert(entryStates.length == 1)
       entryState = entryStates.head.symbol
 
       // For now, just allocate state numbers linearly as binary coded
       stateNumbers = {
-        val it = new SequenceNumbers
-        // Ensure the entry symbol is allocated number 0.
-        // This is necessary since the return stack uses the special value 0
-        // to mean "stack is empty - return to top of main".
-        Map from {
-          (entryStates.head :: otherStates) map { _.symbol -> it.next }
+        val trueStateNumbers = {
+          val it = new SequenceNumbers
+          // Ensure the entry symbol is allocated number 0.
+          // This is necessary since the return stack uses the special value 0
+          // to mean "stack is empty - return to top of main".
+          Map from {
+            (entryStates.head :: otherStates) map {
+              _.symbol -> ExprInt(false, stateWidth, it.next)
+            }
+          }
         }
+        trueStateNumbers ++ (nullStates.view mapValues trueStateNumbers)
       }
 
       None
@@ -90,7 +158,9 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends StatefulTree
       }
 
     // Remove goto <current state>
-    case StmtGoto(ExprSym(symbol)) if symbol eq enclosingSymbols.head => Some(Stump)
+    case StmtGoto(ExprSym(symbol))
+        if nullStates.getOrElse(symbol, symbol) eq enclosingSymbols.head =>
+      Some(Stump)
 
     case _ => None
   }
@@ -98,23 +168,32 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends StatefulTree
   override def transform(tree: Tree): Tree = tree match {
     // Replace references to states with the state numbers
     case ExprSym(symbol) =>
-      stateNumbers.get(symbol) map { stateNumber =>
-        TypeAssigner(ExprInt(false, stateWidth, stateNumber) withLoc tree.loc)
+      stateNumbers.get(symbol) map { expr =>
+        TypeAssigner(expr.copy() withLoc tree.loc)
       } getOrElse tree
-
-    // Convert goto <other state> to state assignment
-    case StmtGoto(expr) => StmtAssign(ExprSym(stateVarSymbol), expr) regularize tree.loc
 
     // If only 1 state, drop push to return stack
     case StmtExpr(ExprCall(ExprSelect(ExprSym(symbol), _, _), _))
         if symbol.attr.returnStack.isSet && singleState =>
       Stump
 
+    // Convert goto <other state> to state assignment
+    case StmtGoto(expr) =>
+      if (singleState) {
+        Stump // This can happen if we optimized away all but one states
+      } else {
+        StmtAssign(ExprSym(stateVarSymbol), expr) regularize tree.loc
+      }
+
+    // Drop magic marker comments inserted by ConvertControl
+    case StmtComment(s"@@@KEEP@@@") => Stump
+
     // Drop State Decl
     case _: DeclState => Stump
 
     // Add comment to state body (State Defn will be dropped later)
-    case desc @ DefnState(_, ExprInt(_, _, value), body) =>
+    case desc @ DefnState(symbol, body) =>
+      val value = stateNumbers(symbol).value
       val cmnt = TypeAssigner(StmtComment(s"State $value - line ${tree.loc.line}") withLoc tree.loc)
       TypeAssigner(desc.copy(body = cmnt :: body) withLoc tree.loc)
 
@@ -147,7 +226,7 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends StatefulTree
         } concat {
           // Add state variable Defn
           Option.when(!singleState) {
-            val init = ExprInt(false, stateWidth, stateNumbers(entryState))
+            val init = stateNumbers(entryState).copy()
             EntDefn(stateVarSymbol.mkDefn(init)) regularize stateVarSymbol.loc
           }
         } concat {
@@ -160,9 +239,11 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends StatefulTree
         } concat {
           // Add the comb process back with the state dispatch
           Iterator single {
-            // Ensure entry state is the first
-            val (entryStates, otherStates) = defn.states partition {
-              case DefnState(symbol, _, _) => symbol == entryState
+            // Keep only true states, ensure entry state is the first
+            val (entryStates, otherStates) = defn.states filterNot {
+              nullStates contains _.symbol
+            } partition {
+              case DefnState(symbol, _) => symbol == entryState
             }
 
             assert(entryStates.lengthIs == 1)
@@ -177,11 +258,7 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends StatefulTree
                 List(
                   StmtComment("State dispatch"),
                   StmtIf(
-                    ExprBinary(
-                      ExprSym(stateVarSymbol),
-                      "==",
-                      ExprInt(false, stateWidth, stateNumbers(entryState))
-                    ),
+                    ExprBinary(ExprSym(stateVarSymbol), "==", stateNumbers(entryState).copy()),
                     entry.body,
                     other.body
                   )
@@ -196,7 +273,8 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends StatefulTree
                     ExprSym(stateVarSymbol),
                     CaseDefault(entry.body) :: {
                       rest map {
-                        case DefnState(_, expr, body) => CaseRegular(List(expr), body)
+                        case DefnState(symbol, body) =>
+                          CaseRegular(List(stateNumbers(symbol).copy()), body)
                       }
                     }
                   )

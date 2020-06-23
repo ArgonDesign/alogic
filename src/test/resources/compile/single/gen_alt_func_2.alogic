@@ -83,17 +83,12 @@ network gen_alt_func_2 {
 //    output reg [7:0] p_out_s_1
 //  );
 //
-//    reg state;
-//
 //    always @(posedge clk) begin
 //      if (rst) begin
-//        state <= 1'b0;
 //        p_out_u_0 <= 4'd0;
 //        p_out_u_1 <= 8'd0;
 //        p_out_s_0 <= 4'd0;
 //        p_out_s_1 <= 8'd0;
-//      end else if (state == 1'b0) begin
-//        state <= 1'b1;
 //      end else begin
 //        p_out_u_0 <= {2'd0, p_in_0} *
 //                     {2'd0, p_in_1};

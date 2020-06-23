@@ -253,7 +253,7 @@ object Symbols {
               case FuncVariant.Method => TypeNormalMethod(this, retType, argTypes)
               case FuncVariant.None   => cc.ice(_decl, "Unknown function variant")
             }
-          case _: DeclState => TypeState
+          case _: DeclState => TypeState(this)
         }
       }
     }
@@ -281,7 +281,7 @@ object Symbols {
         case TypeSram(e, size, st)            => DeclSram(this, spec(e), ExprNum(false, size), st)
         case TypeStack(e, size)               => DeclStack(this, spec(e), ExprNum(false, size))
         case TypeType(TypeRecord(s, members)) => DeclRecord(s, members map { _.mkDecl })
-        case TypeState                        => DeclState(this)
+        case TypeState(symbol) => assert(symbol == this); DeclState(this)
         // The rest should never be used by the compiler, but ones that make
         // sense can be added if required in the future
         case _ => unreachable
@@ -389,6 +389,22 @@ object Symbols {
   object Symbol {
     // Extractor to pattern match against symbol name
     def unapply(arg: Symbol): Option[String] = Some(arg.name)
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Ordering for Symbol
+    ////////////////////////////////////////////////////////////////////////////
+
+    implicit val symbolOrdering: Ordering[Symbol] = (x: Symbol, y: Symbol) =>
+      if (x eq y) {
+        0
+      } else {
+        (x.loc.start compare y.loc.start) match {
+          case 0 =>
+            (x.name compare y.name) ensuring (_ != 0, "Different Symbols must not compare equal")
+          case result => result
+        }
+      }
+
   }
 
 }
