@@ -17,19 +17,18 @@ package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Loc
-import com.argondesign.alogic.core.SramFactory
 import com.argondesign.alogic.core.StorageTypes.StorageTypeReg
 import com.argondesign.alogic.core.StorageTypes.StorageTypeWire
 import com.argondesign.alogic.core.Symbols._
-import com.argondesign.alogic.core.SyncRegFactory
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.enums.EntityVariant
+import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Loc
+import com.argondesign.alogic.core.SramFactory
+import com.argondesign.alogic.core.SyncRegFactory
 import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
-import scala.collection.mutable.ListBuffer
 
 final class SramBuilder {
   // Re-use SRAM entities of identical sizes
@@ -132,10 +131,7 @@ final class LowerSrams(
   }
 
   // Map from original sram variable symbol to the corresponding SramKit,
-  private[this] val sramMap = mutable.LinkedHashMap[Symbol, SramParts]()
-
-  // Stack of extra statements to emit when finished with a statement
-  private[this] val extraStmts = mutable.Stack[mutable.ListBuffer[Stmt]]()
+  private val sramMap = mutable.LinkedHashMap[Symbol, SramParts]()
 
   override def enter(tree: Tree): Option[Tree] = {
     tree match {
@@ -210,22 +206,13 @@ final class LowerSrams(
           case _ =>
         }
 
-      ////////////////////////////////////////////////////////////////////////////
-      // FlowControlTypeReady
-      ////////////////////////////////////////////////////////////////////////////
-
-      case _: Stmt =>
-        // Whenever we enter a new statement, add a new buffer to
-        // store potential extra statements
-        extraStmts.push(ListBuffer())
-
       case _ =>
     }
     None
   }
 
-  private[this] def assignTrue(expr: Expr) = StmtAssign(expr, ExprInt(false, 1, 1))
-  private[this] def assignFalse(expr: Expr) = StmtAssign(expr, ExprInt(false, 1, 0))
+  private def assignTrue(expr: Expr) = StmtAssign(expr, ExprInt(false, 1, 1))
+  private def assignFalse(expr: Expr) = StmtAssign(expr, ExprInt(false, 1, 0))
 
   override def transform(tree: Tree): Tree = {
     val result: Tree = tree match {
@@ -238,7 +225,7 @@ final class LowerSrams(
         sramMap.get(symbol) map {
           case SramWire(iSymbol) =>
             val iRef = ExprSym(iSymbol)
-            StmtBlock(
+            Thicket(
               List(
                 assignTrue(iRef select "ce"),
                 assignFalse(iRef select "we"),
@@ -250,7 +237,7 @@ final class LowerSrams(
               case TypeSram(kind, _, _) =>
                 val oRef = ExprSym(oSymbol)
                 val data = ExprInt(false, kind.width.toInt, 0) // Don't care
-                StmtBlock(
+                Thicket(
                   List(
                     assignTrue(oRef select s"ip${sep}valid"),
                     StmtAssign(oRef select "ip", ExprCat(List(ExprInt(false, 1, 0), addr, data)))
@@ -268,7 +255,7 @@ final class LowerSrams(
         sramMap.get(symbol) map {
           case SramWire(iSymbol) =>
             val iRef = ExprSym(iSymbol)
-            StmtBlock(
+            Thicket(
               List(
                 assignTrue(iRef select "ce"),
                 assignTrue(iRef select "we"),
@@ -278,7 +265,7 @@ final class LowerSrams(
             )
           case SramReg(_, _, oSymbol) =>
             val oRef = ExprSym(oSymbol)
-            StmtBlock(
+            Thicket(
               List(
                 assignTrue(oRef select s"ip${sep}valid"),
                 StmtAssign(oRef select "ip", ExprCat(List(ExprInt(false, 1, 1), addr, data)))
@@ -361,21 +348,13 @@ final class LowerSrams(
       case _ => tree
     }
 
-    // Emit any extra statement with this statement
-    val result2 = result match {
-      case stmt: Stmt =>
-        val extra = extraStmts.pop()
-        if (extra.isEmpty) stmt else StmtBlock((extra append stmt).toList)
-      case _ => result
-    }
-
     // If we did modify the node, regularize it
-    if (result2 ne tree) {
-      result2 regularize tree.loc
+    if (result ne tree) {
+      result regularize tree.loc
     }
 
     // Done
-    result2
+    result
   }
 
   override def finish(tree: Tree): Tree = tree match {
@@ -391,11 +370,7 @@ final class LowerSrams(
   }
 
   override def finalCheck(tree: Tree): Unit = {
-    assert(extraStmts.isEmpty)
-
-    tree visit {
-      case node @ ExprSelect(ref, sel, _) if ref.tpe.isSram => cc.ice(node, s"SRAM .$sel remains")
-    }
+    tree visit { case n @ ExprSelect(r, s, _) if r.tpe.isSram => cc.ice(n, s"SRAM .$s remains") }
   }
 
 }

@@ -1,42 +1,48 @@
-fsm sram_vector_00 {
-  in  u1 i;
-  out u8 o;
+fsm sram_02 {
+  in  u2 i;
+  out u4 o = 0;
 
-  sram u2[2][2] storage[2];
+  struct s {
+    bool a;
+    u2   b;
+    bool c;
+  }
+
+  sram s storage[4];
 
   void main() {
     storage.read(i);
     fence;
     fence;
-    o = storage.rdata;
-    storage.write(i, {8{i}});
+    o = {storage.rdata.c, storage.rdata.a, storage.rdata.b};
+    storage.write(i, {~i, i});
     fence;
     fence;
   }
 }
-// @fec/mode: bmc
-// @fec/depth: 50
 // @fec/smtc {{{
-//  initial
+//  state 1
 //  assume (= [golden.storage_q] [alogic.sram__storage.storage_q])
-//  assume (or (not [alogic.rst]) (not [alogic.sram__storage.ce]))
+//  always 1
+//  assert (= [golden.state_q] [alogic.state_q])
+//  assert (= [golden.storage_q] [alogic.sram__storage.storage_q])
 // }}}
 // @fec/golden {{{
-//  module sram_vector_00(
+//  module sram_02(
 //    input wire       clk,
 //    input wire       rst,
-//    input wire       i,
-//    output reg [7:0] o
+//    input wire [1:0] i,
+//    output reg [3:0] o
 //  );
 //    reg [1:0] state_q;
-//    reg       addr_q;
-//    reg [7:0] storage_q [1:0];
-//    reg [7:0] rdata_q;
+//    reg [1:0] addr_q;
+//    reg [3:0] storage_q [3:0];
+//    reg [3:0] data_q;
 //
 //    always @(posedge clk) begin
 //      if (rst) begin
 //        state_q <= 2'b0;
-//        o <= 8'd0;
+//        o <= 4'd0;
 //      end else begin
 //        case (state_q)
 //          2'd0: begin
@@ -45,15 +51,17 @@ fsm sram_vector_00 {
 //          end
 //          2'd1: begin
 //            state_q <= 2'd2;
-//            rdata_q <= storage_q[addr_q];
+//            data_q <= storage_q[addr_q];
 //          end
 //          2'd2: begin
 //            state_q <= 2'd3;
-//            o <= rdata_q;
-//            storage_q[i] <= {8{i}};
+//            o <= {data_q[0], data_q[3], data_q[2:1]};
+//            addr_q <= i;
+//            data_q <= {~i, i};
 //          end
 //          default: begin
 //            state_q <= 2'd0;
+//            storage_q[addr_q] <= data_q;
 //          end
 //        endcase
 //      end

@@ -1,0 +1,53 @@
+fsm sram_01 {
+  in  u2 i;
+  out u3 o = 0;
+
+  sram wire u3 storage[4];
+
+  void main() {
+    storage.read(i);
+    fence;
+    o = storage.rdata;
+    storage.write(i, {~i[0], i});
+    fence;
+  }
+}
+// @fec/smtc {{{
+//  state 1
+//  assume (= [golden.storage_q] [alogic.sram__storage.storage_q])
+//  always 1
+//  assert (= [golden.state_q] [alogic.state_q])
+//  assert (= [golden.storage_q] [alogic.sram__storage.storage_q])
+// }}}
+// @fec/golden {{{
+//  module sram_01(
+//    input wire       clk,
+//    input wire       rst,
+//    input wire [1:0] i,
+//    output reg [2:0] o
+//  );
+//    reg       state_q;
+//    reg [2:0] storage_q [3:0];
+//    reg [2:0] data_q;
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        state_q <= 1'b0;
+//        o <= 3'd0;
+//      end else begin
+//        case (state_q)
+//          1'd0: begin
+//            state_q <= 1'd1;
+//            data_q <= storage_q[i];
+//          end
+//          default: begin
+//            state_q <= 1'd0;
+//            o <= data_q;
+//            storage_q[i] <= {~i[0], i};
+//          end
+//        endcase
+//      end
+//    end
+//
+//  endmodule
+// }}}
