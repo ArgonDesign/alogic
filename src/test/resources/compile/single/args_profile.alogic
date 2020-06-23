@@ -1,0 +1,3 @@
+// @args: --profile
+network args_profile {}
+// @expect-file: profile.txt

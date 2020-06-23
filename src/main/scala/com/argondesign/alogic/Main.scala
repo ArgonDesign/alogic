@@ -158,7 +158,7 @@ object Main {
 
     // Emit profile, if required
     if (cc.settings.profile) {
-      val pw = cc.settings.outputWriterFactory(Right("profile"))
+      val pw = cc.settings.outputWriterFactory(Right("profile.txt"))
       cc.writeProfile(pw)
       pw.close()
     }
