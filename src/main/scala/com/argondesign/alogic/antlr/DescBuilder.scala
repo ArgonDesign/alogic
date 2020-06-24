@@ -38,8 +38,6 @@ object DescBuilder extends BaseBuilder[DescContext, Desc] with ChainingSyntax {
         FlowControlTypeValid
       override def visitFCTSyncReady(ctx: FCTSyncReadyContext): FlowControlType =
         FlowControlTypeReady
-      override def visitFCTSyncAccept(ctx: FCTSyncAcceptContext): FlowControlType =
-        FlowControlTypeAccept
     }
 
     object STTVisitor extends AlogicScalarVisitor[StorageType] {

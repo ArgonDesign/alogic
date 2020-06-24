@@ -65,7 +65,6 @@ object Passes extends ChainingSyntax {
         Replace1Stacks andThen
         // TODO: Replace1Arrays
         DefaultStorage andThen
-        // TODO: CheckAcceptUsage
         LowerFlowControl() andThen
         LowerSrams() andThen
         LowerStacks andThen

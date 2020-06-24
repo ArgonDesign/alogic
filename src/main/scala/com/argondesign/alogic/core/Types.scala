@@ -236,10 +236,6 @@ trait TypeInImpl extends ExtensionType { this: TypeIn =>
       val valid = new Symbol(-1, Loc.synthetic, "valid")
       valid.kind = TypeUInt(1)
       List(read, valid)
-    case FlowControlTypeAccept =>
-      val read = new Symbol(-1, Loc.synthetic, "read")
-      read.kind = TypeCombFunc(read, kind, Nil)
-      List(read)
   }
 
 }
@@ -279,10 +275,6 @@ trait TypeOutImpl extends ExtensionType { this: TypeOut =>
         }
         space.kind = TypeUInt(nSlices)
         List(write, valid, full, empty, space)
-      case FlowControlTypeAccept =>
-        val write = new Symbol(-1, Loc.synthetic, "write")
-        write.kind = writeFuncType(write)
-        List(write)
     }
   }
 

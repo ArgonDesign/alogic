@@ -689,8 +689,7 @@ final class CheckerSpec extends AnyFreeSpec with AlogicTest {
             // format: off
             ("fsm", "out wire i8 a = 0", "Output port with 'wire' storage specifier"),
             ("fsm", "out sync i8 a = 0", "Output port with 'sync' flow control"),
-            ("fsm", "out sync ready i8 a = 0", "Output port with 'sync ready' flow control"),
-            ("fsm", "out sync accept i8 a = 0", "Output port with 'sync accept' flow control")
+            ("fsm", "out sync ready i8 a = 0", "Output port with 'sync ready' flow control")
             // format: on
           )
         } {

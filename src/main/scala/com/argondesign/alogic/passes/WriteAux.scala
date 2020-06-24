@@ -113,15 +113,13 @@ object WriteAux extends PairsTransformerPass {
           pSymbol <- pSymbols
         } yield {
           val (dir, fc) = pSymbol.kind match {
-            case TypeIn(_, FlowControlTypeNone)       => ("in", "none")
-            case TypeIn(_, FlowControlTypeValid)      => ("in", "sync")
-            case TypeIn(_, FlowControlTypeReady)      => ("in", "sync ready")
-            case TypeIn(_, FlowControlTypeAccept)     => ("in", "sync accept")
-            case TypeOut(_, FlowControlTypeNone, _)   => ("out", "none")
-            case TypeOut(_, FlowControlTypeValid, _)  => ("out", "sync")
-            case TypeOut(_, FlowControlTypeReady, _)  => ("out", "sync ready")
-            case TypeOut(_, FlowControlTypeAccept, _) => ("out", "sync accept")
-            case _                                    => unreachable
+            case TypeIn(_, FlowControlTypeNone)      => ("in", "none")
+            case TypeIn(_, FlowControlTypeValid)     => ("in", "sync")
+            case TypeIn(_, FlowControlTypeReady)     => ("in", "sync ready")
+            case TypeOut(_, FlowControlTypeNone, _)  => ("out", "none")
+            case TypeOut(_, FlowControlTypeValid, _) => ("out", "sync")
+            case TypeOut(_, FlowControlTypeReady, _) => ("out", "sync ready")
+            case _                                   => unreachable
           }
           pSymbol.name -> ListMap("dir" -> dir, "flow-control" -> fc)
         }

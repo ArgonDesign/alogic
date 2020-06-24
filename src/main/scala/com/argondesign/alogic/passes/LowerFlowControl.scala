@@ -29,6 +29,7 @@ import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.SyncRegFactory
 import com.argondesign.alogic.core.SyncSliceFactory
 import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.passes.LowerFlowControl.LoweredSymbols
 import com.argondesign.alogic.util.unreachable
 
 import scala.collection.concurrent.TrieMap
@@ -37,7 +38,7 @@ import scala.collection.mutable.ListBuffer
 
 final class LowerFlowControlA(
     globalReplacements: mutable.Map[Symbol, Symbol],
-    portMap: mutable.Map[Symbol, List[Option[Symbol]]]
+    portMap: mutable.Map[Symbol, LoweredSymbols]
   )(
     implicit
     cc: CompilerContext)
@@ -87,11 +88,11 @@ final class LowerFlowControlA(
 
           case TypeIn(_, FlowControlTypeNone) =>
             symbol.attr.payloadOfPort set symbol
-            portMap(symbol) = List(Some(symbol), None, None, None)
+            portMap(symbol) = (Some(symbol), None, None)
 
           case TypeOut(_, FlowControlTypeNone, _) =>
             symbol.attr.payloadOfPort set symbol
-            portMap(symbol) = List(Some(symbol), None, None, None)
+            portMap(symbol) = (Some(symbol), None, None)
 
           ////////////////////////////////////////////////////////////////////////////
           // FlowControlTypeValid
@@ -111,7 +112,7 @@ final class LowerFlowControlA(
               s.attr.validOfPort set symbol
             }
             val newSymbols = if (kind != TypeVoid) (Some(pSymbol), vSymbol) else (None, vSymbol)
-            portMap(symbol) = List(newSymbols._1, Some(newSymbols._2), None, None)
+            portMap(symbol) = (newSymbols._1, Some(newSymbols._2), None)
 
           case TypeOut(kind, FlowControlTypeValid, st) =>
             // Allocate payload and valid signals
@@ -127,7 +128,7 @@ final class LowerFlowControlA(
               s.attr.validOfPort set symbol
             }
             val newSymbols = if (kind != TypeVoid) (Some(pSymbol), vSymbol) else (None, vSymbol)
-            portMap(symbol) = List(newSymbols._1, Some(newSymbols._2), None, None)
+            portMap(symbol) = (newSymbols._1, Some(newSymbols._2), None)
             if (st == StorageTypeWire) {
               vSymbol.attr.default set (ExprInt(false, 1, 0) withLoc loc)
               vSymbol.attr.clearOnStall set true
@@ -174,7 +175,7 @@ final class LowerFlowControlA(
               (None, vSymbol, rSymbol)
             }
             // Set attributes
-            portMap(symbol) = List(newSymbols._1, Some(newSymbols._2), Some(newSymbols._3), None)
+            portMap(symbol) = (newSymbols._1, Some(newSymbols._2), Some(newSymbols._3))
             rSymbol.attr.default set (ExprInt(false, 1, 0) withLoc loc)
             rSymbol.attr.clearOnStall set true
             rSymbol.attr.dontCareUnless set vSymbol
@@ -204,7 +205,7 @@ final class LowerFlowControlA(
               (None, vSymbol, rSymbol)
             }
             // Set attributes
-            portMap(symbol) = List(newSymbols._1, Some(newSymbols._2), Some(newSymbols._3), None)
+            portMap(symbol) = (newSymbols._1, Some(newSymbols._2), Some(newSymbols._3))
             rSymbol.attr.dontCareUnless set vSymbol
             vSymbol.attr.dontCareUnless set rSymbol
             // If output slices are required, construct them
@@ -226,48 +227,6 @@ final class LowerFlowControlA(
                 entitySymbol.attr.interconnectClearOnStall.append((iSymbol, s"ip${sep}valid"))
               case _ => unreachable
             }
-
-          ////////////////////////////////////////////////////////////////////////////
-          // FlowControlTypeAccept
-          ////////////////////////////////////////////////////////////////////////////
-
-          case TypeIn(kind, FlowControlTypeAccept) =>
-            // Allocate payload, valid and accept signals
-            val loc = tree.loc
-            val pName = symbol.name
-            val vName = pName + sep + "valid"
-            val aName = pName + sep + "accept"
-            lazy val pSymbol = cc.newSymbol(pName, loc) tap { _.kind = TypeIn(kind, fctn) }
-            val vSymbol = cc.newSymbol(vName, loc) tap { _.kind = TypeIn(TypeUInt(1), fctn) }
-            val aSymbol = cc.newSymbol(aName, loc) tap { _.kind = TypeOut(TypeUInt(1), fctn, stw) }
-            val newSymbols = if (kind != TypeVoid) {
-              (Some(pSymbol), vSymbol, aSymbol)
-            } else {
-              (None, vSymbol, aSymbol)
-            }
-            // Set attributes
-            portMap(symbol) = List(newSymbols._1, Some(newSymbols._2), None, Some(newSymbols._3))
-            aSymbol.attr.default set (ExprInt(false, 1, 0) withLoc loc)
-
-          case TypeOut(kind, FlowControlTypeAccept, _) =>
-            // Allocate payload, valid and ready signals
-            val loc = tree.loc
-            val pName = symbol.name
-            val vName = pName + sep + "valid"
-            val aName = pName + sep + "accept"
-            lazy val pSymbol = cc.newSymbol(pName, loc) tap { _.kind = TypeOut(kind, fctn, stw) }
-            val vSymbol = cc.newSymbol(vName, loc) tap { _.kind = TypeOut(TypeUInt(1), fctn, stw) }
-            val aSymbol = cc.newSymbol(aName, loc) tap { _.kind = TypeIn(TypeUInt(1), fctn) }
-            val newSymbols = if (kind != TypeVoid) {
-              (Some(pSymbol), vSymbol, aSymbol)
-            } else {
-              (None, vSymbol, aSymbol)
-            }
-            // Set attributes
-            portMap(symbol) = List(newSymbols._1, Some(newSymbols._2), None, Some(newSymbols._3))
-            vSymbol.attr.default set (ExprInt(false, 1, 0) withLoc loc)
-            vSymbol.attr.clearOnStall set true
-            vSymbol.attr.dontCareUnless set aSymbol
 
           ////////////////////////////////////////////////////////////////////////////
           // Other decls
@@ -316,17 +275,13 @@ final class LowerFlowControlA(
 
       case ExprCall(ExprSelect(ref @ ExprSym(symbol), "read", _), Nil) =>
         portMap.get(symbol) map {
-          case List(Some(`symbol`), None, None, None) => // No flow control
+          case (Some(`symbol`), None, None) => // No flow control
             ref
-          case List(pSymbolOpt, Some(vSymbol), None, None) => // valid
+          case (pSymbolOpt, Some(vSymbol), None) => // valid
             extraStmts.top append StmtWait(ExprSym(vSymbol))
             pSymbolOpt map ExprSym getOrElse tree
-          case List(pSymbolOpt, Some(vSymbol), Some(rSymbol), None) => // ready
+          case (pSymbolOpt, Some(vSymbol), Some(rSymbol)) => // ready
             extraStmts.top append assignTrue(ExprSym(rSymbol))
-            extraStmts.top append StmtWait(ExprSym(vSymbol))
-            pSymbolOpt map ExprSym getOrElse tree
-          case List(pSymbolOpt, Some(vSymbol), None, Some(aSymbol)) => // accept
-            extraStmts.top append assignTrue(ExprSym(aSymbol))
             extraStmts.top append StmtWait(ExprSym(vSymbol))
             pSymbolOpt map ExprSym getOrElse tree
           case _ => unreachable
@@ -338,12 +293,12 @@ final class LowerFlowControlA(
           case Some((_, iSymbol, _)) =>
             val iRef = ExprSym(iSymbol)
             portMap.get(symbol) map {
-              case List(pSymbolOpt, Some(_), None, None) => // valid
+              case (pSymbolOpt, Some(_), None) => // valid
                 pSymbolOpt foreach { _ =>
                   extraStmts.top append StmtAssign(iRef select "ip", arg)
                 }
                 extraStmts.top append assignTrue(iRef select s"ip${sep}valid")
-              case List(pSymbolOpt, Some(_), Some(_), None) => // ready
+              case (pSymbolOpt, Some(_), Some(_)) => // ready
                 pSymbolOpt foreach { _ =>
                   extraStmts.top append StmtAssign(iRef select "ip", arg)
                 }
@@ -353,19 +308,13 @@ final class LowerFlowControlA(
             }
           case None =>
             portMap.get(symbol) foreach {
-              case List(Some(`symbol`), None, None, None) => // No flow control
+              case (Some(`symbol`), None, None) => // No flow control
                 extraStmts.top append StmtAssign(ref, arg)
-              case List(pSymbolOpt, Some(vSymbol), None, None) => // valid
+              case (pSymbolOpt, Some(vSymbol), None) => // valid
                 pSymbolOpt foreach { pSymbol =>
                   extraStmts.top append StmtAssign(ExprSym(pSymbol), arg)
                 }
                 extraStmts.top append assignTrue(ExprSym(vSymbol))
-              case List(pSymbolOpt, Some(vSymbol), None, Some(aSymbol)) => // accept
-                pSymbolOpt foreach { pSymbol =>
-                  extraStmts.top append StmtAssign(ExprSym(pSymbol), arg)
-                }
-                extraStmts.top append assignTrue(ExprSym(vSymbol))
-                extraStmts.top append StmtWait(ExprSym(aSymbol))
               case _ => unreachable
             }
         }
@@ -373,8 +322,8 @@ final class LowerFlowControlA(
 
       case ExprSelect(ExprSym(symbol), "valid", _) =>
         portMap.get(symbol) map {
-          case List(_, Some(vSymbol), _, None) => ExprSym(vSymbol)
-          case _                               => unreachable
+          case (_, Some(vSymbol), _) => ExprSym(vSymbol)
+          case _                     => unreachable
         } getOrElse tree
 
       case ExprSelect(ExprSym(symbol), "space", _) =>
@@ -406,9 +355,11 @@ final class LowerFlowControlA(
 
       case Decl(symbol) =>
         portMap.get(symbol) map { loweredSymbolOpts =>
-          val portDecls = loweredSymbolOpts.iterator.flatten map {
-            case `symbol` => tree
-            case nSymbol  => nSymbol.mkDecl
+          val portDecls = loweredSymbolOpts.productIterator flatMap {
+            case Some(`symbol`)        => Some(tree)
+            case Some(nSymbol: Symbol) => Some(nSymbol.mkDecl)
+            case None                  => None
+            case _                     => unreachable
           }
           val storageDecl = oStorage.get(symbol).iterator map {
             case (_, sSymbol, _) => sSymbol.mkDecl
@@ -424,16 +375,18 @@ final class LowerFlowControlA(
         // Note: Output port defaults, including for flow control signals will
         // be set in the DefaultAssignments/TieOffInputs pass
         portMap.get(symbol) map { loweredSymbolOpts =>
-          val portDefns = loweredSymbolOpts.iterator.flatten map {
-            case `symbol` => tree
-            case nSymbol  => EntDefn(nSymbol.mkDefn)
+          val portDefns = loweredSymbolOpts.productIterator flatMap {
+            case Some(`symbol`)        => Some(tree)
+            case Some(nSymbol: Symbol) => Some(EntDefn(nSymbol.mkDefn))
+            case None                  => None
+            case _                     => unreachable
           }
           val storageDefnAndConnects = oStorage.get(symbol).iterator flatMap {
             case (_, sSymbol, _) =>
               Iterator.single(EntDefn(sSymbol.mkDefn)) ++ {
                 val iRef = ExprSym(sSymbol)
                 loweredSymbolOpts match {
-                  case List(pSymbolOpt, Some(vSymbol), rSymbolOpt, None) =>
+                  case (pSymbolOpt, Some(vSymbol), rSymbolOpt) =>
                     (pSymbolOpt.iterator map { pSymbol =>
                       EntConnect(iRef select "op", List(ExprSym(pSymbol)))
                     }) ++ Iterator.single {
@@ -501,7 +454,7 @@ final class LowerFlowControlA(
 
 final class LowerFlowControlB(
     globalReplacements: collection.Map[Symbol, Symbol],
-    portMaps: collection.Map[Symbol, collection.Map[Symbol, List[Option[Symbol]]]]
+    portMaps: collection.Map[Symbol, collection.Map[Symbol, LoweredSymbols]]
   )(
     implicit
     cc: CompilerContext)
@@ -511,18 +464,16 @@ final class LowerFlowControlB(
   // Extractor mechanism used to convert references to lowered versions
   //////////////////////////////////////////////////////////////////////////////
 
-  type Extractor = List[Option[Symbol]] => Option[Symbol]
+  type Extractor = LoweredSymbols => Option[Symbol]
 
   // Given a symbol, return the corresponding payload symbol, if any
-  private[this] val payloadSymbol: Extractor = _.head
+  private[this] val payloadSymbol: Extractor = _._1
 
   // Given a symbol, return the corresponding valid symbol, if any
-  private[this] val validSymbol: Extractor = _(1)
+  private[this] val validSymbol: Extractor = _._2
 
-  // Given a symbol, return the corresponding ready/accept symbol, if any
-  private[this] val backSymbol: Extractor = { ls =>
-    ls(2) orElse ls(3)
-  }
+  // Given a symbol, return the corresponding ready symbol, if any
+  private[this] val readySymbol: Extractor = _._3
 
   // Extractor function to use during current tree walk
   private var extractor: Extractor = payloadSymbol
@@ -594,8 +545,8 @@ final class LowerFlowControlB(
         val vLhs = extract(lhs, validSymbol)
         val vRhs = extract(rhs, validSymbol)
 
-        val bLhs = extract(lhs, backSymbol)
-        val bRhs = extract(rhs, backSymbol)
+        val bLhs = extract(lhs, readySymbol)
+        val bRhs = extract(rhs, readySymbol)
 
         val pConn = pLhs flatMap { lhs =>
           pRhs map { rhs =>
@@ -663,16 +614,19 @@ final class LowerFlowControlB(
 
 object LowerFlowControl {
 
+  // Triple of 'payload', 'valid', 'ready' if any
+  type LoweredSymbols = (Option[Symbol], Option[Symbol], Option[Symbol])
+
   def apply(): Pass[List[(Decl, Defn)], List[(Decl, Defn)]] = {
 
     val globalReplacements = TrieMap[Symbol, Symbol]()
-    val portMaps = TrieMap[Symbol, mutable.Map[Symbol, List[Option[Symbol]]]]()
+    val portMaps = TrieMap[Symbol, mutable.Map[Symbol, LoweredSymbols]]()
 
     new EntityTransformerPass(declFirst = true) {
       val name = "lower-flow-control-a"
 
       def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer = {
-        val portMap = mutable.Map[Symbol, List[Option[Symbol]]]()
+        val portMap = mutable.Map[Symbol, LoweredSymbols]()
         portMaps(symbol) = portMap
         new LowerFlowControlA(globalReplacements, portMap)
       }
@@ -680,7 +634,7 @@ object LowerFlowControl {
       val name = "lower-flow-control-b"
 
       // Remap the keys to their replacements
-      lazy val pMaps: collection.Map[Symbol, collection.Map[Symbol, List[Option[Symbol]]]] =
+      lazy val pMaps: collection.Map[Symbol, collection.Map[Symbol, LoweredSymbols]] =
         portMaps map { case (k, v) => (globalReplacements(k), v) }
 
       def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =

@@ -44,7 +44,6 @@ final class TyperConnectSpec extends AnyFreeSpec with AlogicTest {
                         |  out             u2   fcn2;
                         |  out sync        bool fcv;
                         |  out sync ready  bool fcr;
-                        |  out sync accept bool fca;
                         |}""".stripMargin
   private val fsmB = s"""fsm b_entity {
                         |  in              bool fcn;
@@ -53,7 +52,6 @@ final class TyperConnectSpec extends AnyFreeSpec with AlogicTest {
                         |  in sync         bool fcv;
                         |  in sync         u2   fcv2;
                         |  in sync ready   bool fcr;
-                        |  in sync accept  bool fca;
                         |}""".stripMargin
 
   "The Typer should check Connect usage" - {
@@ -323,33 +321,28 @@ final class TyperConnectSpec extends AnyFreeSpec with AlogicTest {
     "connections have drivers on left" - {
       for {
         (conn, msg) <- List(
+          // format: off
           ("a -> b", ""),
           ("a.fcn -> b.fcn", ""),
           ("a.fcv -> b.fcv", ""),
           ("a.fcr -> b.fcr", ""),
-          ("a.fca -> b.fca", ""),
           ("{a.fcn, a.fcn} -> b.fcn2", ""),
           ("b.fcn -> b.fcn", "Left hand side of '->' contains an input to instance 'b'"),
           ("b.fcv -> b.fcv", "Left hand side of '->' contains an input to instance 'b'"),
           ("b.fcr -> b.fcr", "Left hand side of '->' contains an input to instance 'b'"),
-          ("b.fca -> b.fca", "Left hand side of '->' contains an input to instance 'b'"),
           ("{b.fcn, b.fcnb} -> b.fcn2", "Left hand side of '->' contains an input to instance 'b'"),
           ("ifcn -> b.fcn", ""),
           ("ifcv -> b.fcv", ""),
           ("ifcr -> b.fcr", ""),
-          ("ifca -> b.fca", ""),
           ("{ifcn, ifcn} -> b.fcn2", ""),
           ("ofcn -> b.fcn", "Left hand side of '->' contains an output from enclosing entity"),
           ("ofcv -> b.fcv", "Left hand side of '->' contains an output from enclosing entity"),
           ("ofcr -> b.fcr", "Left hand side of '->' contains an output from enclosing entity"),
-          ("ofca -> b.fca", "Left hand side of '->' contains an output from enclosing entity"),
-          (
-            "{ofcn, ofcn} -> b.fcn2",
-            "Left hand side of '->' contains an output from enclosing entity"
-          ),
+          ("{ofcn, ofcn} -> b.fcn2", "Left hand side of '->' contains an output from enclosing entity"),
           ("P -> b.fcn", ""),
           ("isn.a -> b.fcn", ""),
           ("a_entity -> ofcn", "Left hand side of '->' contains non-port type")
+          // format: on
         )
       } {
         conn in {
@@ -370,11 +363,9 @@ final class TyperConnectSpec extends AnyFreeSpec with AlogicTest {
             |  in              bar  isn;
             |  in sync         bool ifcv;
             |  in sync ready   bool ifcr;
-            |  in sync accept  bool ifca;
             |  out             bool ofcn;
             |  out sync        bool ofcv;
             |  out sync ready  bool ofcr;
-            |  out sync accept bool ofca;
             |  a = new a_entity;
             |  b = new b_entity;
             |  $conn;
@@ -392,36 +383,28 @@ final class TyperConnectSpec extends AnyFreeSpec with AlogicTest {
     "connections have sinks on right" - {
       for {
         (conn, msg) <- List(
+          // format: off
           ("a -> b", ""),
           ("a.fcn -> b.fcn", ""),
           ("a.fcv -> b.fcv", ""),
           ("a.fcr -> b.fcr", ""),
-          ("a.fca -> b.fca", ""),
           ("a.fcn2 -> {b.fcn, b.fcnb}", ""),
           ("a.fcn -> a.fcn", "Right hand side of '->' contains an output from instance 'a'"),
           ("a.fcv -> a.fcv", "Right hand side of '->' contains an output from instance 'a'"),
           ("a.fcr -> a.fcr", "Right hand side of '->' contains an output from instance 'a'"),
-          ("a.fca -> a.fca", "Right hand side of '->' contains an output from instance 'a'"),
-          (
-            "a.fcn2 -> {a.fcn, a.fcnb}",
-            "Right hand side of '->' contains an output from instance 'a'"
-          ),
+          ("a.fcn2 -> {a.fcn, a.fcnb}", "Right hand side of '->' contains an output from instance 'a'"),
           ("a.fcn -> ifcn", "Right hand side of '->' contains an input to enclosing entity"),
           ("a.fcv -> ifcv", "Right hand side of '->' contains an input to enclosing entity"),
           ("a.fcr -> ifcr", "Right hand side of '->' contains an input to enclosing entity"),
-          ("a.fca -> ifca", "Right hand side of '->' contains an input to enclosing entity"),
-          (
-            "a.fcn2 -> {ifcn,ifcnb}",
-            "Right hand side of '->' contains an input to enclosing entity"
-          ),
+          ("a.fcn2 -> {ifcn,ifcnb}", "Right hand side of '->' contains an input to enclosing entity"),
           ("a.fcn -> ofcn", ""),
           ("a.fcv -> ofcv", ""),
           ("a.fcr -> ofcr", ""),
-          ("a.fca -> ofca", ""),
           ("a.fcn2 -> {ofcn,ofcnb}", ""),
           ("a.fcn -> P", "Right hand side of '->' contains non-port type"),
           ("a.fcn -> osn.a", ""),
           ("ifcn -> b_entity", "Right hand side of '->' contains non-port type")
+          // format: off
         )
       } {
         conn in {
@@ -442,13 +425,11 @@ final class TyperConnectSpec extends AnyFreeSpec with AlogicTest {
             |  in              bool ifcnb;
             |  in sync         bool ifcv;
             |  in sync ready   bool ifcr;
-            |  in sync accept  bool ifca;
             |  out             bar  osn;
             |  out             bool ofcn;
             |  out             bool ofcnb;
             |  out sync        bool ofcv;
             |  out sync ready  bool ofcr;
-            |  out sync accept bool ofca;
             |  a = new a_entity;
             |  b = new b_entity;
             |  $conn;
@@ -513,21 +494,14 @@ final class TyperConnectSpec extends AnyFreeSpec with AlogicTest {
           ("{a.fcn, a.fcn} -> b.fcn2", Nil),
           ("a.fcn -> b.fcv", List("Ports have incompatible flow control", "none -> sync")),
           ("a.fcn -> b.fcr", List("Ports have incompatible flow control", "none -> sync ready")),
-          ("a.fcn -> b.fca", List("Ports have incompatible flow control", "none -> sync accept")),
           ("a.fcv -> b.fcn", List("Ports have incompatible flow control", "sync -> none")),
           ("{a.fcn, a.fcn} -> b.fcv2", List("Ports have incompatible flow control", "none -> sync")),
           ("is.a -> b.fcv2", List("Ports have incompatible flow control", "none -> sync")),
           ("a.fcv -> b.fcv", Nil),
           ("a.fcv -> b.fcr", List("Ports have incompatible flow control", "sync -> sync ready")),
-          ("a.fcv -> b.fca", List("Ports have incompatible flow control", "sync -> sync accept")),
           ("a.fcr -> b.fcn", List("Ports have incompatible flow control", "sync ready -> none")),
           ("a.fcr -> b.fcv", List("Ports have incompatible flow control", "sync ready -> sync")),
-          ("a.fcr -> b.fcr", Nil),
-          ("a.fcr -> b.fca", List("Ports have incompatible flow control", "sync ready -> sync accept")),
-          ("a.fca -> b.fcn", List("Ports have incompatible flow control", "sync accept -> none")),
-          ("a.fca -> b.fcv", List("Ports have incompatible flow control", "sync accept -> sync")),
-          ("a.fca -> b.fcr", List("Ports have incompatible flow control", "sync accept -> sync ready")),
-          ("a.fca -> b.fca", Nil)
+          ("a.fcr -> b.fcr", Nil)
         )
         // format: on
       } {
@@ -562,18 +536,13 @@ final class TyperConnectSpec extends AnyFreeSpec with AlogicTest {
     "multiple right hand sides are valid" - {
       for {
         (conn, msg) <- List(
+          // format: off
           ("a.fcn -> b.fcn, ofcn", ""),
           ("a.fcn2 -> {b.fcn, b.fcnb}, ofcn2", ""),
           ("a.fcn2 -> os.a, ofcn2", ""),
           ("a.fcv -> b.fcv, ofcv", ""),
-          (
-            "a.fcr -> b.fcr, ofcr",
-            "Port with 'sync ready' flow control cannot have multiple sinks"
-          ),
-          (
-            "a.fca -> b.fca, ofca",
-            "Port with 'sync accept' flow control cannot have multiple sinks"
-          )
+          ("a.fcr -> b.fcr, ofcr", "Port with 'sync ready' flow control cannot have multiple sinks")
+          // format: on
         )
       } {
         conn in {
@@ -594,7 +563,6 @@ final class TyperConnectSpec extends AnyFreeSpec with AlogicTest {
             |  out             bar  os;
             |  out sync        bool ofcv;
             |  out sync ready  bool ofcr;
-            |  out sync accept bool ofca;
             |  a = new a_entity;
             |  b = new b_entity;
             |  $conn;
@@ -620,9 +588,7 @@ final class TyperConnectSpec extends AnyFreeSpec with AlogicTest {
           ("sync ready", "fslice", false),
           ("sync ready", "bslice", false),
           ("sync ready", "bubble", false),
-          ("sync ready", "bubble bubble", false),
-          ("sync accept", "", true),
-          ("sync accept", "wire", false)
+          ("sync ready", "bubble bubble", false)
         )
       } {
 

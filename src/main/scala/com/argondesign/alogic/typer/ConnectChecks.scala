@@ -92,10 +92,9 @@ object ConnectChecks {
   }
 
   private def fctToSource(fct: FlowControlType): String = fct match {
-    case FlowControlTypeNone   => "none"
-    case FlowControlTypeValid  => "sync"
-    case FlowControlTypeReady  => "sync ready"
-    case FlowControlTypeAccept => "sync accept"
+    case FlowControlTypeNone  => "none"
+    case FlowControlTypeValid => "sync"
+    case FlowControlTypeReady => "sync ready"
   }
 
   private def lhsIsLegal(lhs: Expr)(implicit cc: CompilerContext): Boolean = {

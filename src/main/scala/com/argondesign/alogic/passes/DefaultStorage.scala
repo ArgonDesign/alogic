@@ -66,9 +66,8 @@ final class DefaultStorage(implicit cc: CompilerContext) extends StatefulTreeTra
         StorageTypeWire
       } else {
         fc match {
-          case FlowControlTypeReady  => StorageTypeSlices(List(StorageSliceFwd))
-          case FlowControlTypeAccept => StorageTypeWire
-          case _                     => StorageTypeReg
+          case FlowControlTypeReady => StorageTypeSlices(List(StorageSliceFwd))
+          case _                    => StorageTypeReg
         }
       }
       TypeAssigner(decl.copy(st = newSt) withLoc decl.loc)

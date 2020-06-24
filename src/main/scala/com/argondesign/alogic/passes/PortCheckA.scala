@@ -19,7 +19,6 @@ import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees.Expr.InstancePortRef
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeAccept
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeReady
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.StorageTypes._
@@ -106,8 +105,6 @@ final class PortCheckA(implicit cc: CompilerContext) extends StatelessTreeTransf
           decl.symbol.kind match {
             case TypeOut(_, FlowControlTypeReady, StorageTypeWire) =>
               cc.error(decl, "'sync ready' port cannot use 'wire' storage specifier")
-            case TypeOut(_, FlowControlTypeAccept, st) if st != StorageTypeWire =>
-              cc.error(decl, "'sync accept' port must use 'wire' storage specifier")
             case _ => ()
           }
         }

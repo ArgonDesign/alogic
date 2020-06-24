@@ -68,7 +68,6 @@ descbase
 fct
   : 'sync'        # FCTSync
   | SYNC_READY    # FCTSyncReady
-  | SYNC_ACCEPT   # FCTSyncAccept
   ;
 
 slices : (slice+=('bubble' | 'fslice' | 'bslice'))+ ;

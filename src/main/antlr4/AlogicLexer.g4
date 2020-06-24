@@ -168,7 +168,6 @@ THIS    : 'this' ;
 
 SYNC        : 'sync';
 SYNC_READY  : 'sync' (WS|NL|CMT)* 'ready';
-SYNC_ACCEPT : 'sync' (WS|NL|CMT)* 'accept';
 
 WIRE        : 'wire';
 BUBBLE      : 'bubble';

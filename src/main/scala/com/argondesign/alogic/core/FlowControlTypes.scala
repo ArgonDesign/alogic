@@ -22,6 +22,5 @@ object FlowControlTypes {
   case object FlowControlTypeNone extends FlowControlType
   case object FlowControlTypeValid extends FlowControlType
   case object FlowControlTypeReady extends FlowControlType
-  case object FlowControlTypeAccept extends FlowControlType
 
 }

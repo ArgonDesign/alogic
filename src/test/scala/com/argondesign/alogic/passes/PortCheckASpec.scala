@@ -97,9 +97,7 @@ final class PortCheckASpec extends AnyFreeSpec with AlogicTest {
           ("sync ready", "bslice", ""),
           ("sync ready", "bubble", ""),
           ("sync ready", "bubble bubble", ""),
-          ("sync ready", "wire", "'sync ready' port cannot use 'wire' storage specifier"),
-          ("sync accept", "", "'sync accept' port must use 'wire' storage specifier"),
-          ("sync accept", "wire", "")
+          ("sync ready", "wire", "'sync ready' port cannot use 'wire' storage specifier")
         )
       } {
 

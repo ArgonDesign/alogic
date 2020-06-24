@@ -49,10 +49,9 @@ trait TreePrintOps extends { this: Tree =>
   }
 
   final private def v(fct: FlowControlType): String = fct match {
-    case FlowControlTypeNone   => ""
-    case FlowControlTypeValid  => "sync "
-    case FlowControlTypeReady  => "sync ready "
-    case FlowControlTypeAccept => "sync accept "
+    case FlowControlTypeNone  => ""
+    case FlowControlTypeValid => "sync "
+    case FlowControlTypeReady => "sync ready "
   }
 
   final private def v(st: StorageType): String = st match {

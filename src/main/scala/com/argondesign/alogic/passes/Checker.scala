@@ -31,7 +31,6 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeAccept
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeReady
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeValid
@@ -236,7 +235,6 @@ final class Checker(implicit cc: CompilerContext) extends StatefulTreeTransforme
         case (FlowControlTypeNone, StorageTypeWire) => Some("'wire' storage specifier")
         case (FlowControlTypeValid, _)              => Some("'sync' flow control")
         case (FlowControlTypeReady, _)              => Some("'sync ready' flow control")
-        case (FlowControlTypeAccept, _)             => Some("'sync accept' flow control")
         case _                                      => None
       } map { hint =>
         cc.error(init, s"Output port with $hint cannot have an initializer")

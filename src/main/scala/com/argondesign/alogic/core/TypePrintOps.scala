@@ -23,10 +23,9 @@ import com.argondesign.alogic.core.Types._
 trait TypePrintOps { this: Type =>
 
   final private[this] def fct2String(fct: FlowControlType): String = fct match {
-    case FlowControlTypeNone   => ""
-    case FlowControlTypeValid  => "sync "
-    case FlowControlTypeReady  => "sync ready "
-    case FlowControlTypeAccept => "sync accept "
+    case FlowControlTypeNone  => ""
+    case FlowControlTypeValid => "sync "
+    case FlowControlTypeReady => "sync ready "
   }
 
   final private[this] def st2String(st: StorageType): String = st match {
