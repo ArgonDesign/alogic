@@ -1,0 +1,26 @@
+fsm method_static_4 {
+  in       bool i;
+  out wire bool o;
+
+  struct s {
+    static void f() {
+      o = i;
+      return;
+    }
+  }
+
+  void main() {
+    s.f();
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module method_static_4(
+//    input  wire i,
+//    output wire o
+//  );
+//
+//    assign o = i;
+//
+//  endmodule
+// }}}

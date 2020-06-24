@@ -53,7 +53,6 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatelessTreeTra
   // 'this' symbol, return an iterator holding the statements to be emitted
   // to inline the function, and the symbol holding the return value, if the
   // function has non-void return type.
-  // TODO: return in non-end-of-function-position
   private def inline(
       symbol: Symbol,
       args: List[Arg],
@@ -210,8 +209,13 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatelessTreeTra
             case _ => tree
           }
         }
-
-        reachable map { _ rewrite Transform }
+        reachable flatMap { stmt =>
+          Transform(stmt) match {
+            case result: Stmt => Some(result)
+            case Stump        => None
+            case _            => unreachable
+          }
+        }
       }
 
       // Walk the result recursively so we inline calls within function bodies,
