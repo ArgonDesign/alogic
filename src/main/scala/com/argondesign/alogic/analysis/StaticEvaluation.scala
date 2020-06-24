@@ -181,8 +181,16 @@ object StaticEvaluation {
     ): Option[Bindings] = {
     // Add the new binding for the symbol, but first substitute the new
     // expression using the current binding of symbol to remove self references
-    val selfBinding = Bindings from { curr get symbol map { symbol -> _ } }
-    val newValue = (expr given selfBinding).simplify
+    val newValue = {
+      val selfBinding = Bindings from { curr get symbol map { symbol -> _ } }
+      val replaced = expr given selfBinding
+      val signFixed = if (symbol.kind.isSigned != replaced.tpe.isSigned) {
+        if (symbol.kind.isSigned) replaced.castSigned else replaced.castUnsigned
+      } else {
+        replaced
+      }
+      signFixed.simplify
+    }
     Option.unless(newValue.tpe.isError) {
       // Remove all bindings that reference the just added symbol,
       // as these used the old value. TODO: use SSA form...

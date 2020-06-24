@@ -1,0 +1,17 @@
+fsm inline_known_vars_01 {
+  out wire u1 o;
+
+  void main() {
+    i8 a;
+    a = 8'd4; // Needs to preserve signedness
+    o = -a < 8'sd3;
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module inline_known_vars_01(
+//    output  wire o
+//  );
+//    assign o = 1'd1;
+//  endmodule
+// }}}
