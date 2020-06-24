@@ -345,13 +345,8 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends StatefulTreeT
       // we will not have an opportunity to do it later
       warnIgnoredStacklimitAttribute(symbol)
       true
-    case _: DefnEntity => false
-    case _: EntDefn    => false
-    case _: Ent        => true
-    case _: DefnFunc   => false
-    case _: Defn       => true
-    case _: Decl       => true
-    case _             => false
+    case _: Decl | _: DefnRecord => true
+    case _                       => false
   }
 
   override def enter(tree: Tree): Option[Tree] = tree match {
