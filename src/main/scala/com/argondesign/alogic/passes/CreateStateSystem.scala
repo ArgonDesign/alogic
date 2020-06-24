@@ -127,6 +127,8 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends StatefulTree
         }
       }
 
+      cc.stats((defn.symbol.sourceName, "states")) = nStates
+
       // Pick up the entry state
       val (entryStates, otherStates) = trueStates partition { _.symbol.attr.entry.isSet }
       assert(entryStates.length == 1)

@@ -108,7 +108,7 @@ class SymbolAttributes {
   val liftSrams = new Attribute[Boolean]()
 
   // Name of this symbol as declared in source, with dictionary index values
-  val sourceName = new Attribute[(String, List[BigInt])]
+  val dictName = new Attribute[(String, List[BigInt])]
 
   // Whether this choice has been generated
   val wasParam = new Attribute[Boolean]()
@@ -161,7 +161,7 @@ class SymbolAttributes {
     default,
     sram,
     liftSrams,
-    sourceName,
+    dictName,
     wasParam,
     pipelineStorage,
     dictResolutions,
@@ -201,7 +201,7 @@ class SymbolAttributes {
     "default",
     "sram",
     "liftSrams",
-    "sourceName",
+    "dictName",
     "wasParam",
     "pipelineStorage",
     "dictResolutions",

@@ -802,7 +802,8 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
           "main" -> None
         )
 
-        checkStack(defnEntity, Some(2))
+        // Note this needs only 1 stack entry as first call is spontaneous
+        checkStack(defnEntity, Some(1))
         checkFunctionAttrs(
           defnEntity,
           goldenPushStackOnCall,
@@ -837,7 +838,8 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
           "a" -> Some("a")
         )
 
-        checkStack(defnEntity, Some(3))
+        // Note this needs only 2 stack entries as first call is spontaneous
+        checkStack(defnEntity, Some(2))
         checkFunctionAttrs(
           defnEntity,
           goldenPushStackOnCall,

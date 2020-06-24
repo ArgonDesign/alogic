@@ -1,17 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2018 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2020 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
 //
-// Module: Alogic Compiler
-// Author: Geza Lore
-//
 // DESCRIPTION:
-//
-// Gather all parameter bindings from instances, and the default parameter
-// bindings from entities. Specialize top level entities.
+//  Emit auxiliary output
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.passes
@@ -29,8 +23,8 @@ import com.argondesign.alogic.util.unreachable
 import scala.collection.immutable.ListMap
 import scala.collection.parallel.CollectionConverters._
 
-object WriteManifest extends PairsTransformerPass {
-  val name = "write-manifest"
+object WriteAux extends PairsTransformerPass {
+  val name = "write-aux"
 
   def topLevelManifest(
       pairs: List[(Decl, Defn)]
@@ -156,7 +150,7 @@ object WriteManifest extends PairsTransformerPass {
       //////////////////////////////////////////////////////////////////////////
 
       eSymbol.name -> ListMap(
-        "alogic-name" -> eSymbol.attr.sourceName.value._1,
+        "alogic-name" -> eSymbol.sourceName,
         "ports" -> ports,
         "signals" -> signals,
         "clock" -> (defn.clk map { _.name }).orNull,
@@ -192,6 +186,23 @@ object WriteManifest extends PairsTransformerPass {
     val w = cc.settings.outputWriterFactory(Right("manifest.json"))
     Json.write(w, cc.manifest)
     w.close()
+
+    // Write out the stats
+    if (cc.settings.stats) {
+      val w = cc.settings.outputWriterFactory(Right("stats.json"))
+      val stats: ListMap[String, ListMap[String, Any]] = ListMap from {
+        cc.stats.groupBy(_._1._1).toSeq.sortBy(_._1) map {
+          case (sourceName, dict) =>
+            sourceName -> {
+              ListMap from {
+                dict.toSeq.sortBy(_._1) map { case ((_, key), value) => key -> value }
+              }
+            }
+        }
+      }
+      Json.write(w, stats)
+      w.close()
+    }
 
     // Done
     input

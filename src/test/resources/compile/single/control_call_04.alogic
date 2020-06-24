@@ -1,9 +1,11 @@
-fsm control_call_00 {
+fsm control_call_04 {
   out u4 o = 0;
 
   void main() {
     f();
     f();
+    o += 1;
+    fence;
   }
 
   void f() {
@@ -13,29 +15,36 @@ fsm control_call_00 {
 }
 // Note: The above compiles into a stack machine, but this is equivalent
 // @fec/golden {{{
-//  module control_call_00(
+//  module control_call_04(
 //    input wire       clk,
 //    input wire       rst,
 //    output reg [3:0] o
 //  );
-//    reg [1:0] state_q;
+//    reg [2:0] state_q;
 //
 //    always @(posedge clk) begin
 //      if (rst) begin
-//        state_q <= 2'b0;
+//        state_q <= 3'b0;
 //        o <= 4'd0;
 //      end else begin
 //        case (state_q)
-//          2'd0: begin
-//            state_q <= 2'd1;
+//          3'd0: begin
+//            state_q <= 3'd1;
 //          end
-//          2'd1: begin // First in 'f'
-//            state_q <= 2'd2;
+//          3'd1: begin // First in 'f'
+//            state_q <= 3'd2;
 //            o <= o + 4'd2;
 //          end
-//          default: begin // Second in 'f'
-//            state_q <= 2'd0;
+//          3'd2: begin
+//            state_q <= 3'd3;
+//          end
+//          3'd3: begin // Second in 'f'
+//            state_q <= 3'd4;
 //            o <= o + 4'd2;
+//          end
+//          default: begin
+//            state_q <= 3'd0;
+//            o <= o + 4'd1;
 //          end
 //        endcase
 //      end
@@ -43,5 +52,5 @@ fsm control_call_00 {
 //
 //  endmodule
 // }}}
-// @stats/control_call_00/stack-depth: 1
-// @stats/control_call_00/states: 2
+// @stats/control_call_04/stack-depth: 1
+// @stats/control_call_04/states: 4

@@ -15,10 +15,12 @@
 
 package com.argondesign.alogic.passes
 
+import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.specialize.Specialize
 
+import scala.collection.parallel.CollectionConverters._
 import scala.util.ChainingSyntax
 
 object Elaborate extends Pass[(List[Root], List[Expr]), List[(Decl, Defn)]] with ChainingSyntax {
@@ -29,10 +31,36 @@ object Elaborate extends Pass[(List[Root], List[Expr]), List[(Decl, Defn)]] with
       case (decl, defn) => cc.dump(decl, defn, "." + tag)
     }
 
+  // Visitor that sets sourceName fields of symbols
+  // TODO: Subsume this into TypeCheck Pass ?
+  class SourceNameSetter(implicit cc: CompilerContext) extends StatefulTreeTransformer {
+    override val typed = false
+
+    override def enter(tree: Tree): Option[Tree] = {
+      tree match {
+        case Decl(symbol) =>
+          // TODO: disambiguate parametrized types and dictidents
+          symbol.sourceName = enclosingSymbols.headOption match {
+            case Some(enclosingSymbol) => s"${enclosingSymbol.sourceName}.${symbol.name}"
+            case None                  => symbol.name
+          }
+        case _ =>
+      }
+      None
+    }
+
+  }
+
   def process(input: (List[Root], List[Expr]))(implicit cc: CompilerContext): List[(Decl, Defn)] = {
     val topLevelSpecs = input._2
-    val specializedTopLevelDescs = Specialize(topLevelSpecs)
-    specializedTopLevelDescs map { _.toList } getOrElse Nil
+    Specialize(topLevelSpecs) match {
+      case Some(results) =>
+        // Set symbol sourceName values
+        results.par foreach { case (decl, _) => (new SourceNameSetter()(cc))(decl) }
+        // Yield results
+        results.toList
+      case None => Nil
+    }
   }
 
 }

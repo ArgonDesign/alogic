@@ -144,7 +144,7 @@ private[specialize] object Finalize {
         // Error for referencing x.p#[n] as x.p__n
         case ExprSelect(ExprSym(iSymbol), sel, Nil) if iSymbol.kind.isEntity =>
           iSymbol.kind.asEntity.publicSymbols exists { pSymbol =>
-            !pSymbol.attr.sourceName.isSet && pSymbol.name == sel
+            !pSymbol.attr.dictName.isSet && pSymbol.name == sel
           } pipe {
             case true => tree
             case false =>
@@ -158,7 +158,7 @@ private[specialize] object Finalize {
             case ExprSym(iSymbol) if iSymbol.kind.isEntity =>
               values(idxs) map { idxValues =>
                 iSymbol.kind.asEntity.publicSymbols collectFirst {
-                  case portSymbol if portSymbol.attr.sourceName.contains((sel, idxValues)) =>
+                  case portSymbol if portSymbol.attr.dictName.contains((sel, idxValues)) =>
                     ExprSelect(expr, portSymbol.name, Nil)
                 } getOrElse {
                   val srcName = idxValues.mkString(sel + "#[", ", ", "]")

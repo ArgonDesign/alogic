@@ -263,14 +263,16 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends StatefulTreeT
   }
 
   // When this function is called, should we push an entry to the return stack?
-  // True if and only if every call arc with this function as returnee
-  // ends at a function with uniqueReturnPoint.
+  // True if and only if every call arc (with a true caller) with this function
+  // as returnee ends at a function with uniqueReturnPoint.
   private def pushStackOnCall(symbol: Symbol, callArcs: Set[CallArc]): Boolean =
     // We can skip checking this if the function has multiple call sites, as it
     // will then definitely need to push
     (callCounts(symbol) > 1) || {
       // This function is indeed called only once, figure out if we need a push
-      val arcsWithSymbolAsReturnee = callArcs filter { _._2 == symbol }
+      val arcsWithSymbolAsReturnee = callArcs filter {
+        case (caller, returnee, _) => caller.isDefined && returnee == symbol
+      }
       // Since callCounts(symbol) == 1, all tuples should have identical callers
       assert((arcsWithSymbolAsReturnee map { _._1 }).sizeIs <= 1)
       arcsWithSymbolAsReturnee exists {
@@ -329,11 +331,18 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends StatefulTreeT
       val costOfCalling: Map[Symbol, Int] = Map from {
         (functionSymbols lazyZip recLimits) map {
           case (returnee, recLimit) =>
-            returnee -> (if (returnee.attr.pushStackOnCall.value) recLimit else 0)
+            val cost = if (!returnee.attr.pushStackOnCall.value) {
+              0 // No push needed for this function
+            } else if (returnee.attr.entry.isSet) {
+              recLimit - 1 // Entry point function needs one less stack entry
+            } else {
+              recLimit // All other function reclimit
+            }
+            returnee -> cost
         }
       }
 
-      // Find the longest path in the static call graph
+      // Find the longest path in the static call graph, minus 1 for root call
       computeLongestPathLength(callArcs, costOfCalling)
     }
   }
@@ -457,6 +466,8 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends StatefulTreeT
       }
 
       val stackDepth = returnStackDepth(defn.symbol, callArcs, adjMat, indMat, recLimtis)
+
+      cc.stats((defn.symbol.sourceName, "stack-depth")) = stackDepth
 
       if (stackDepth == 0) {
         TypeAssigner(defn.copy(body = newBody) withLoc defn.loc)

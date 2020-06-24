@@ -195,7 +195,7 @@ final class UnusedCheck(implicit cc: CompilerContext) extends StatefulTreeTransf
           case _: DescFunc      => "Function"
           case _: DescChoice    => unreachable
         }
-        val name = symbol.attr.sourceName.get match {
+        val name = symbol.attr.dictName.get match {
           case None               => symbol.name
           case Some((base, idxs)) => idxs mkString (s"$base#[", ", ", "]")
         }

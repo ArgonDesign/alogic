@@ -75,12 +75,12 @@ final class NormalizeControl(implicit cc: CompilerContext) extends StatelessTree
       case _: StmtReturn => Iterator.single(stmt)
       case _: StmtGoto   => Iterator.single(stmt)
 
-      // Convert final 'fence' to 'fence; return' (we keep the fence as well,
-      // in order to prevent potential removal of the empty state if the
-      // function ends in 'fence; fence')
+      // Convert final 'fence' to 'Comment + return'. The comment is there to
+      // prevent potential removal of an empty state if the function ends in
+      // '<ControlStatement>; fence;'
       case _: StmtFence =>
         Iterator(
-          stmt,
+          TypeAssigner(StmtComment("@@@KEEP@@@") withLoc stmt.loc),
           TypeAssigner(StmtReturn(comb = false, None) withLoc stmt.loc)
         )
 

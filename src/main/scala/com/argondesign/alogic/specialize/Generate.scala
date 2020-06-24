@@ -310,7 +310,7 @@ private[specialize] object Generate {
                 .mkString(symbol.name + cc.sep, "_", "")
 
               // Set the attribute used ot resolve external dict references
-              newSymbol.attr.sourceName.set((symbol.name, idxValues))
+              newSymbol.attr.dictName.set((symbol.name, idxValues))
 
               // Add to dictResolutions, error if already exists
               symbol.attr.dictResolutions

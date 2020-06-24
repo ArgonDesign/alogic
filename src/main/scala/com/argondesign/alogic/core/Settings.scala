@@ -59,5 +59,7 @@ case class Settings(
     combRecLimit: Int = 16,
     // Enable LowerAssertions
     assertions: Boolean = true,
+    // Emit stats
+    stats: Boolean = false,
     // For debugging only, trace the progress of elaboration
     traceElaborate: Boolean = false)

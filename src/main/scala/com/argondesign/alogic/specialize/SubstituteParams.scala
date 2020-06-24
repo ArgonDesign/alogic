@@ -68,7 +68,7 @@ private[specialize] object SubstituteParams {
           case ParamBindingsPositional(expr :: Nil) => Some(expr)
           case _: ParamBindingsPositional           => unreachable
           case ParamBindingsNamed(params) =>
-            val (name, idxValues) = ref.symbol.attr.sourceName.get match {
+            val (name, idxValues) = ref.symbol.attr.dictName.get match {
               case Some((name, idxValues)) => (name, idxValues)
               case _                       => (ref.symbol.name, Nil)
             }
@@ -107,7 +107,7 @@ private[specialize] object SubstituteParams {
             val unusedParams = params filterNot {
               case ((name, idxValues), _) =>
                 symbolBindings.keysIterator exists { symbol =>
-                  symbol.attr.sourceName.get match {
+                  symbol.attr.dictName.get match {
                     case Some((sName, sIdxValues)) => sName == name && sIdxValues == idxValues
                     case None                      => symbol.name == name && idxValues.isEmpty
                   }

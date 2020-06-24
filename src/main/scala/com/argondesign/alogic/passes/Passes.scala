@@ -103,7 +103,7 @@ object Passes extends ChainingSyntax {
         CreateTemporaries andThen
         RenameSymbols(last = true) andThen
 //      // TODO: final check pass to make sure everything is well-formed
-        WriteManifest andThen
+        WriteAux andThen
         CodeGeneration
 
     // Apply the passes to the trees

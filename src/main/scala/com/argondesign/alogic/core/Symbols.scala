@@ -99,13 +99,6 @@ trait Symbols extends { self: CompilerContext =>
     }
   }
 
-  final def newSymbolLike(symbol: Symbols.Symbol): Symbols.Symbol = {
-    newSymbol(symbol.name, symbol.loc) tap { newSymbol =>
-      newSymbol.kind = symbol.kind(this)
-      newSymbol.attr.update(symbol.attr)
-    }
-  }
-
   final def newTemp(name: String, loc: Loc, kind: Type): Symbols.Symbol =
     newSymbol(name, loc) tap { symbol =>
       symbol.kind = kind
@@ -129,6 +122,8 @@ object Symbols {
     override def hashCode: Int = id // TODO: review if this is still needed
 
     override def toString = s"$name@$id"
+
+    var sourceName: String = ""
 
     ////////////////////////////////////////////////////////////////////////////
     // The following is the mechanism figuring out the type of the symbol
@@ -382,7 +377,10 @@ object Symbols {
     ////////////////////////////////////////////////////////////////////////////
 
     def dup(implicit cc: CompilerContext): Symbol =
-      cc.newSymbol(name, loc) tap { _.attr update attr }
+      cc.newSymbol(name, loc) tap { newSymbol =>
+        newSymbol.attr update attr
+        newSymbol.sourceName = sourceName
+      }
 
   }
 

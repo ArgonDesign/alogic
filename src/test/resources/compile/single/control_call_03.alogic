@@ -35,3 +35,5 @@ fsm control_call_03 {
 //
 //  endmodule
 // }}}
+// @stats/control_call_03/stack-depth: 0
+// @stats/control_call_03/states: 1

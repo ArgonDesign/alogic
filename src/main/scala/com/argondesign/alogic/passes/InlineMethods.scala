@@ -149,7 +149,7 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatelessTreeTra
               // Declarations in function bodies (statements) are in-order with
               // the decl first, so clone the local when we encountered it.
               assert(!(substitution contains symbol))
-              val newSymbol = cc.newSymbolLike(symbol)
+              val newSymbol = symbol.dup tap { _.kind = symbol.kind }
               substitution(symbol) = newSymbol
               TypeAssigner(decl.cpy(symbol = newSymbol) withLoc tree.loc)
 

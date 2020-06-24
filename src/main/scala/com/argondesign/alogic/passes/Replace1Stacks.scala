@@ -38,7 +38,7 @@ final class Replace1Stacks(implicit cc: CompilerContext) extends StatefulTreeTra
 
       // TODO: iff no access to empty/full ports
       case DeclStack(symbol, _, depth) if depth.value contains BigInt(1) =>
-        val newSymbol = cc.newSymbolLike(symbol) tap { _.kind = symbol.kind.asStack.kind }
+        val newSymbol = symbol.dup tap { _.kind = symbol.kind.asStack.kind }
         stackMap(symbol) = newSymbol
         newSymbol.mkDecl
 

@@ -329,6 +329,11 @@ class CLIConf(args: Seq[String], messageBuffer: MessageBuffer)
     descr = "Disable emitting assertions"
   )
 
+  val stats = opt[Boolean](
+    noshort = true,
+    descr = "Emit statistics about the design"
+  )
+
   // There is no standard library call to check if the console is a terminal,
   // so we pass this hidden option from the wrapper script to help ourselves out
   val stderrisatty = toggle(noshort = true, hidden = true)

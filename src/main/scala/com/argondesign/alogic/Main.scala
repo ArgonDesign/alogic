@@ -139,6 +139,7 @@ object Main {
         genLoopLimit = cliConf.genLoopLimit(),
         combRecLimit = cliConf.combRecLimit(),
         assertions = !cliConf.noAssertions(),
+        stats = cliConf.stats(),
         traceElaborate = cliConf.traceElaborate.toOption contains true
       )
     }

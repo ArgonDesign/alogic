@@ -663,6 +663,23 @@ trait CompilationTest
     }
   }
 
+  private def checkJson(name: String, json: Json, expected: Map[String, String]): Unit = {
+    expected foreach {
+      case (keys, value) =>
+        val root: io.circe.ACursor = json.hcursor
+        val selection = keys.split("/").foldLeft(root)({ case (c, k) => c.downField(k) })
+        val expectedValue = io.circe.parser.parse(value) match {
+          case Left(failure) =>
+            fail(s"Failed to parse expected '$name' entry '$keys': " + failure.message)
+          case Right(json) => json
+        }
+        selection.focus match {
+          case None       => fail(s"No entry '$keys' in '$name'")
+          case Some(json) => assert(json == expectedValue, s"'$name' - '$keys'")
+        }
+    }
+  }
+
   sealed private trait MessageSpec {
     val fileLineOpt: Option[(String, Int)]
     val patterns: List[String]
@@ -814,7 +831,8 @@ trait CompilationTest
       val validDict = Set(
         "fec",
         "manifest",
-        "sim"
+        "sim",
+        "stats"
       )
       dict.keysIterator foreach { k =>
         if (!validDict(k)) { fail(s"Unknown test dictionary attribute '$k'") }
@@ -868,6 +886,11 @@ trait CompilationTest
           if (!(buf contains "--reset-style")) {
             buf append "--reset-style"
             buf append "sync-high"
+          }
+
+          // Generate stats is we are checking them
+          if (dict contains "stats") {
+            buf append "--stats"
           }
 
           // The top-level specifier
@@ -959,12 +982,18 @@ trait CompilationTest
         (retCode != 0) shouldBe expectedToFail
 
         if (!expectedToFail) {
+          //////////////////////////////////////////////////////////////////////
+          // Check expected output file exists
+          //////////////////////////////////////////////////////////////////////
           attr get "expect-file" foreach { name =>
-            // Check expected output file exists
             if (!(oPath resolve name).toFile.exists) {
               fail(s"Expected output file was not created '$name'")
             }
           }
+
+          //////////////////////////////////////////////////////////////////////
+          // Load and check manifest
+          //////////////////////////////////////////////////////////////////////
 
           val manifest = io.circe.parser.parse(Source(oPath resolve "manifest.json").text) match {
             case Left(failure) => fail("Failed to parse manifest: " + failure.message)
@@ -972,21 +1001,20 @@ trait CompilationTest
           }
 
           dict get "manifest" foreach { expected =>
-            expected foreach {
-              case (keys, value) =>
-                val root: io.circe.ACursor = manifest.hcursor
-                val selection = keys.split("/").foldLeft(root)({ case (c, k) => c.downField(k) })
-                val expectedValue = io.circe.parser.parse(value) match {
-                  case Left(failure) =>
-                    fail(s"Failed to parse expected manifest entry '$keys': " + failure.message)
-                  case Right(json) => json
-                }
-                selection.focus match {
-                  case None       => fail(s"No entry '$keys' in manifest")
-                  case Some(json) => json shouldBe expectedValue
-                }
+            checkJson("manifest.json", manifest, expected)
+          }
+
+          //////////////////////////////////////////////////////////////////////
+          // Load and check stats
+          //////////////////////////////////////////////////////////////////////
+
+          dict get "stats" foreach { expected =>
+            val stats = io.circe.parser.parse(Source(oPath resolve "stats.json").text) match {
+              case Left(failure) => fail("Failed to parse stats: " + failure.message)
+              case Right(json)   => json
             }
 
+            checkJson("stats.json", stats, expected)
           }
 
           val outTop = attr.getOrElse("out-top", top)

@@ -424,7 +424,7 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
           case _ =>
         }
 
-        def sourceName(symbol: Symbol): String = symbol.attr.sourceName.get match {
+        def sourceName(symbol: Symbol): String = symbol.attr.dictName.get match {
           case Some((name, Nil))  => name
           case Some((name, idxs)) => idxs mkString (s"$name#[", ", ", "]")
           case None               => symbol.name
