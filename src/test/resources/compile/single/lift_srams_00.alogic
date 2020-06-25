@@ -1,0 +1,72 @@
+(* liftsrams *)
+fsm lift_srams_00 {
+  in  u2 i;
+  out u2 o = 0;
+
+  sram u2 storage[4];
+
+  void main() {
+    storage.read(i);
+    fence;
+    fence;
+    o = storage.rdata;
+    storage.write(i, i);
+    fence;
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module lift_srams_00(
+//    input wire       clk,
+//    input wire       rst,
+//    input wire [1:0] i,
+//    output reg [1:0] o,
+//    output reg       sram__storage__ce,
+//    output reg       sram__storage__we,
+//    output reg [1:0] sram__storage__addr,
+//    output reg [1:0] sram__storage__wdata,
+//    input wire [1:0] sram__storage__rdata
+//  );
+//    reg [1:0] state_q;
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        state_q <= 2'b0;
+//        o <= 2'd0;
+//        sram__storage__ce <= 1'd0;
+//        sram__storage__we <= 1'd0;
+//        sram__storage__addr <= 2'd0;
+//        sram__storage__wdata <= 2'd0;
+//      end else begin
+//        sram__storage__ce <= 1'd0;
+//        case (state_q)
+//          2'd0: begin
+//            state_q <= 2'd1;
+//            sram__storage__ce <= 1'd1;
+//            sram__storage__we <= 1'd0;
+//            sram__storage__addr <= i;
+//            sram__storage__wdata <= 2'd0;
+//          end
+//          2'd1: begin
+//            state_q <= 2'd2;
+//          end
+//          2'd2: begin
+//            state_q <= 2'd3;
+//            o <= sram__storage__rdata;
+//            sram__storage__ce <= 1'd1;
+//            sram__storage__we <= 1'd1;
+//            sram__storage__addr <= i;
+//            sram__storage__wdata <= i;
+//          end
+//          default: begin
+//            state_q <= 2'd0;
+//          end
+//        endcase
+//      end
+//    end
+//
+//  endmodule
+// }}}
+// @manifest/sram-sizes {{{
+//  [ {"width": 2, "depth": 4} ]
+// }}}

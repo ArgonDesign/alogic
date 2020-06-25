@@ -1,0 +1,74 @@
+network lift_srams_10 {
+  in  u2 i;
+  out u2 o = 0;
+
+  (* liftsrams *)
+  new network a {
+    new fsm b {
+      sram u2 storage[4];
+
+      void main() {
+        storage.read(i);
+        fence;
+        fence;
+        o = storage.rdata;
+        storage.write(i, i);
+        fence;
+        fence;
+      }
+    }
+  }
+}
+// Note: The hierarchical referenes in smtc prove the SRAM is in the right place
+// @fec/smtc {{{
+//  state 1
+//  assume (= [golden.storage_q] [alogic.sram__a__b__storage.storage_q])
+//  always 1
+//  assert (= [golden.state_q] [alogic.a.b.state_q])
+//  assert (= [golden.storage_q] [alogic.sram__a__b__storage.storage_q])
+// }}}
+// @fec/golden {{{
+//  module lift_srams_10(
+//    input wire       clk,
+//    input wire       rst,
+//    input wire [1:0] i,
+//    output reg [1:0] o
+//  );
+//    reg [1:0] state_q;
+//    reg [1:0] addr_q;
+//    reg [1:0] storage_q [3:0];
+//    reg [1:0] data_q;
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        state_q <= 2'b0;
+//        o <= 2'd0;
+//      end else begin
+//        case (state_q)
+//          2'd0: begin
+//            state_q <= 2'd1;
+//            addr_q <= i;
+//          end
+//          2'd1: begin
+//            state_q <= 2'd2;
+//            data_q <= storage_q[addr_q];
+//          end
+//          2'd2: begin
+//            state_q <= 2'd3;
+//            o <= data_q;
+//            addr_q <= i;
+//            data_q <= i;
+//          end
+//          default: begin
+//            state_q <= 2'd0;
+//            storage_q[addr_q] <= data_q;
+//          end
+//        endcase
+//      end
+//    end
+//
+//  endmodule
+// }}}
+// @manifest/sram-sizes {{{
+//  [ {"width": 2, "depth": 4} ]
+// }}}

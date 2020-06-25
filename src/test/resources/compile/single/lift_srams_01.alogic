@@ -1,0 +1,65 @@
+(* liftsrams *)
+fsm lift_srams_01 {
+  in  u2 i;
+  out u3 o = 0;
+
+  sram wire u3 storage[4];
+
+  void main() {
+    storage.read(i);
+    fence;
+    o = storage.rdata;
+    storage.write(i, {~i[0], i});
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module lift_srams_01(
+//    input wire       clk,
+//    input wire       rst,
+//    input wire [1:0] i,
+//    output reg [2:0] o,
+//    output reg       sram__storage__ce,
+//    output reg       sram__storage__we,
+//    output reg [1:0] sram__storage__addr,
+//    output reg [2:0] sram__storage__wdata,
+//    input wire [2:0] sram__storage__rdata
+//  );
+//    reg       state_q;
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        state_q <= 1'b0;
+//        o <= 3'd0;
+//      end else begin
+//        case (state_q)
+//          1'd0: begin
+//            state_q <= 1'd1;
+//          end
+//          default: begin
+//            state_q <= 1'd0;
+//            o <= sram__storage__rdata;
+//          end
+//        endcase
+//      end
+//    end
+//
+//    always @* begin
+//      if (~state_q) begin
+//        sram__storage__ce = 1'd1;
+//        sram__storage__we = 1'd0;
+//        sram__storage__addr = i;
+//        sram__storage__wdata = 3'd0;
+//      end else begin
+//        sram__storage__ce = 1'd1;
+//        sram__storage__we = 1'd1;
+//        sram__storage__addr = i;
+//        sram__storage__wdata = {~i[0], i};
+//      end
+//    end
+//
+//  endmodule
+// }}}
+// @manifest/sram-sizes {{{
+//  [ {"width": 3, "depth": 4} ]
+// }}}
