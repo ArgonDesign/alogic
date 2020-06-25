@@ -1,3 +1,4 @@
+// @args: --no-assertions
 fsm control_call_01 {
   out u4 o = 0;
 

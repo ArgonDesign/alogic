@@ -16,6 +16,7 @@
 package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.StatefulTreeTransformer
+import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols._
@@ -36,7 +37,6 @@ final class Replace1Stacks(implicit cc: CompilerContext) extends StatefulTreeTra
       // Replace the stack decl/defn with the decl/defn of the new symbol
       //////////////////////////////////////////////////////////////////////////
 
-      // TODO: iff no access to empty/full ports
       case DeclStack(symbol, _, depth) if depth.value contains BigInt(1) =>
         val newSymbol = symbol.dup tap { _.kind = symbol.kind.asStack.kind }
         stackMap(symbol) = newSymbol
@@ -80,9 +80,6 @@ final class Replace1Stacks(implicit cc: CompilerContext) extends StatefulTreeTra
           )
         )
 
-      case ExprSelect(ExprSym(s), sel @ ("full" | "empty"), _) if stackMap contains s =>
-        cc.ice(tree, s"Replacing 1 deep stack with '$sel' access")
-
       case _ => tree
     }
 
@@ -97,26 +94,9 @@ final class Replace1Stacks(implicit cc: CompilerContext) extends StatefulTreeTra
 
 }
 
-object Replace1Stacks extends PairTransformerPass {
+object Replace1Stacks extends EntityTransformerPass(declFirst = true) {
   val name = "replace-1-stacks"
 
-  def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {
-    (decl, defn) match {
-      case (dcl: DeclEntity, _: DefnEntity) =>
-        if (dcl.decls.isEmpty) {
-          // If no decls, then there is nothing to do
-          (decl, defn)
-        } else {
-          // Perform the transform
-          val transformer = new Replace1Stacks
-          // First transform the decl
-          val newDecl = transformer(decl)
-          // Then transform the defn
-          val newDefn = transformer(defn)
-          (newDecl, newDefn)
-        }
-      case _ => (decl, defn)
-    }
-  }
-
+  override protected def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
+    new Replace1Stacks
 }

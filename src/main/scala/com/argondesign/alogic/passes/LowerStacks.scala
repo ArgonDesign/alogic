@@ -46,13 +46,14 @@ final class LowerStacks(implicit cc: CompilerContext) extends StatefulTreeTransf
             val pName = symbol.name
             // TODO: mark inline
             val eName = entitySymbol.name + cc.sep + "stack" + cc.sep + pName
-            val stackEntity = StackFactory(eName, loc, kind, depth)
+            val stackEntity = StackFactory(eName, loc, kind, depth.toInt)
             val instanceSymbol = cc.newSymbol(pName, loc) tap {
               _.kind = stackEntity._1.symbol.kind.asType.kind
             }
             stackMap(symbol) = (stackEntity, instanceSymbol)
-            // Clear enable when the entity stalls
-            entitySymbol.attr.interconnectClearOnStall.append((instanceSymbol, "en"))
+            // Clear control signals on stall
+            entitySymbol.attr.interconnectClearOnStall.append((instanceSymbol, "push"))
+            entitySymbol.attr.interconnectClearOnStall.append((instanceSymbol, "pop"))
 
           case _ =>
         }
@@ -80,27 +81,15 @@ final class LowerStacks(implicit cc: CompilerContext) extends StatefulTreeTransf
       case StmtExpr(ExprCall(ExprSelect(ExprSym(symbol), "push", _), List(ArgP(arg)))) =>
         stackMap.get(symbol) map {
           case (_, iSymbol) =>
-            StmtBlock(
-              List(
-                assignTrue(ExprSym(iSymbol) select "en"),
-                assignTrue(ExprSym(iSymbol) select "push"),
-                StmtAssign(ExprSym(iSymbol) select "d", arg)
-              )
-            )
+            extraStmts.top append assignTrue(ExprSym(iSymbol) select "push")
+            StmtAssign(ExprSym(iSymbol) select "d", arg)
         } getOrElse {
           tree
         }
 
       case StmtExpr(ExprCall(ExprSelect(ExprSym(symbol), "set", _), List(ArgP(arg)))) =>
         stackMap.get(symbol) map {
-          case (_, iSymbol) =>
-            StmtBlock(
-              List(
-                assignTrue(ExprSym(iSymbol) select "en"),
-                StmtAssign(ExprSym(iSymbol) select "d", arg)
-              )
-            )
-
+          case (_, iSymbol) => StmtAssign(ExprSym(iSymbol) select "d", arg)
         } getOrElse {
           tree
         }
@@ -112,30 +101,15 @@ final class LowerStacks(implicit cc: CompilerContext) extends StatefulTreeTransf
       case ExprCall(ExprSelect(ExprSym(symbol), "pop", _), Nil) =>
         stackMap.get(symbol) map {
           case (_, iSymbol) =>
-            extraStmts.top append assignTrue(ExprSym(iSymbol) select "en")
             extraStmts.top append assignTrue(ExprSym(iSymbol) select "pop")
-            ExprSym(iSymbol) select "q"
+            ExprSym(iSymbol) select "d"
         } getOrElse {
           tree
         }
 
       case ExprSelect(ExprSym(symbol), "top", _) =>
         stackMap.get(symbol) map {
-          case (_, iSymbol) => ExprSym(iSymbol) select "q"
-        } getOrElse {
-          tree
-        }
-
-      case ExprSelect(ExprSym(symbol), "full", _) =>
-        stackMap.get(symbol) map {
-          case (_, iSymbol) => ExprSym(iSymbol) select "full"
-        } getOrElse {
-          tree
-        }
-
-      case ExprSelect(ExprSym(symbol), "empty", _) =>
-        stackMap.get(symbol) map {
-          case (_, iSymbol) => ExprSym(iSymbol) select "empty"
+          case (_, iSymbol) => ExprSym(iSymbol) select "d"
         } getOrElse {
           tree
         }
@@ -169,10 +143,9 @@ final class LowerStacks(implicit cc: CompilerContext) extends StatefulTreeTransf
                 val iRef = ExprSym(iSymbol)
                 StmtBlock(
                   List(
-                    assignFalse(iRef select "en"),
-                    StmtAssign(iRef select "d", iRef select "q"), // TODO: redundant
-                    assignFalse(iRef select "push"), // TODO: redundant
-                    assignFalse(iRef select "pop") // TODO: redundant
+                    StmtAssign(iRef select "d", iRef select "q"),
+                    assignFalse(iRef select "push"),
+                    assignFalse(iRef select "pop")
                   )
                 )
               }
@@ -196,7 +169,7 @@ final class LowerStacks(implicit cc: CompilerContext) extends StatefulTreeTransf
     val result2 = result match {
       case stmt: Stmt =>
         val extra = extraStmts.pop()
-        if (extra.isEmpty) stmt else StmtBlock((extra append stmt).toList)
+        if (extra.isEmpty) stmt else Thicket((extra append stmt).toList)
       case _ => result
     }
 
