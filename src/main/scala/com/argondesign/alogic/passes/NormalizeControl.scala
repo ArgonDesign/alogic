@@ -28,9 +28,6 @@ import com.argondesign.alogic.core.enums.EntityVariant
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.unreachable
 
-import scala.annotation.tailrec
-import scala.collection.mutable.ListBuffer
-
 final class NormalizeControl(implicit cc: CompilerContext) extends StatelessTreeTransformer {
 
   override def skip(tree: Tree): Boolean = tree match {
@@ -47,10 +44,12 @@ final class NormalizeControl(implicit cc: CompilerContext) extends StatelessTree
     // Nested statements, convert each branch
     case StmtBlock(body) =>
       TypeAssigner(StmtBlock(convertBreak(body)) withLoc stmt.loc)
+
     case s @ StmtIf(_, ts, es) =>
       TypeAssigner {
         s.copy(thenStmts = convertBreak(ts), elseStmts = convertBreak(es)) withLoc stmt.loc
       }
+
     case s @ StmtCase(_, cases) =>
       val newCases = cases map {
         case c @ CaseRegular(_, stmts) =>
@@ -98,12 +97,14 @@ final class NormalizeControl(implicit cc: CompilerContext) extends StatelessTree
       // Nested statements, convert each branch
       case StmtBlock(body) =>
         Iterator.single(TypeAssigner(StmtBlock(convertFinal(body)) withLoc stmt.loc))
+
       case s @ StmtIf(_, ts, es) =>
         Iterator.single {
           TypeAssigner {
             s.copy(thenStmts = convertFinal(ts), elseStmts = convertFinal(es)) withLoc stmt.loc
           }
         }
+
       case s @ StmtCase(_, cases) =>
         val newCases = cases map {
           case c @ CaseRegular(_, stmts) =>
@@ -123,47 +124,18 @@ final class NormalizeControl(implicit cc: CompilerContext) extends StatelessTree
   override def transform(tree: Tree): Tree = tree match {
 
     ////////////////////////////////////////////////////////////////////////////
-    // Add implicit fences in empty branches
+    // Add implicit fences in empty default branches
     ////////////////////////////////////////////////////////////////////////////
-
-    case stmt @ StmtIf(_, Nil, _) if stmt.tpe.isCtrlStmt =>
-      val fence = TypeAssigner(StmtFence() withLoc tree.loc)
-      TypeAssigner(stmt.copy(thenStmts = fence :: Nil) withLoc tree.loc)
 
     case stmt @ StmtIf(_, _, Nil) if stmt.tpe.isCtrlStmt =>
       val fence = TypeAssigner(StmtFence() withLoc tree.loc)
       TypeAssigner(stmt.copy(elseStmts = fence :: Nil) withLoc tree.loc)
 
-    case stmt: StmtCase if stmt.tpe.isCtrlStmt =>
+    case stmt: StmtCase
+        if stmt.tpe.isCtrlStmt && !(stmt.cases exists { _.isInstanceOf[CaseDefault] }) =>
       val fence = TypeAssigner(StmtFence() withLoc tree.loc)
-
-      val newCases = new ListBuffer[Case]()
-
-      @tailrec
-      def loop(cases: List[Case], needsDefault: Boolean = true): List[Case] = cases match {
-        case (c: CaseRegular) :: tail =>
-          if (c.stmts.nonEmpty) {
-            newCases append c
-          } else {
-            newCases append TypeAssigner(c.copy(stmts = fence :: Nil) withLoc c.loc)
-          }
-          loop(tail, needsDefault)
-        case (c: CaseDefault) :: tail =>
-          if (c.stmts.nonEmpty) {
-            newCases append c
-          } else {
-            newCases append TypeAssigner(CaseDefault(fence :: Nil) withLoc c.loc)
-          }
-          loop(tail, false)
-        case (_: CaseGen) :: _ => unreachable
-        case Nil =>
-          if (needsDefault) {
-            newCases prepend TypeAssigner(CaseDefault(fence :: Nil) withLoc stmt.loc)
-          }
-          newCases.toList
-      }
-
-      TypeAssigner(stmt.copy(cases = loop(stmt.cases)) withLoc stmt.loc)
+      val default = TypeAssigner(CaseDefault(fence :: Nil) withLoc stmt.loc)
+      TypeAssigner(stmt.copy(cases = stmt.cases appended default) withLoc stmt.loc)
 
     ////////////////////////////////////////////////////////////////////////////
     // Normalize final statements in control functions

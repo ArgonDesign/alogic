@@ -74,11 +74,19 @@ final class TyperCheckStmtSpec extends AnyFreeSpec with AlogicTest {
           ("if (true) fence; else fence;", Nil),
           (
             "if (true) fence; else $display();",
-            "Either both or neither branches of if-else must be control statements" :: Nil
+            "Either both or neither branches of 'if' statement must be control statements" :: Nil
           ),
           (
             "if (true) $display(); else fence;",
-            "Either both or neither branches of if-else must be control statements" :: Nil
+            "Either both or neither branches of 'if' statement must be control statements" :: Nil
+          ),
+          (
+            "if (true) fence; else {}",
+            "Either both or neither branches of 'if' statement must be control statements" :: Nil
+          ),
+          (
+            "if (true) {} else fence;",
+            "Either both or neither branches of 'if' statement must be control statements" :: Nil
           ),
           (
             "if (void) $display();",
@@ -94,19 +102,19 @@ final class TyperCheckStmtSpec extends AnyFreeSpec with AlogicTest {
           ("case(1) { 1: fence; default: fence; }", Nil),
           (
             "case(1) { 1: $display(); 2: fence; }",
-            "Either all or no cases of a case statement must be control statements" :: Nil
+            "Either all or no cases of a 'case' statement must be control statements" :: Nil
           ),
           (
             "case(1) { 1: fence; 2: $display(); }",
-            "Either all or no cases of a case statement must be control statements" :: Nil
+            "Either all or no cases of a 'case' statement must be control statements" :: Nil
           ),
           (
             "case(1) { 1: $display(); default: fence; }",
-            "Either all or no cases of a case statement must be control statements" :: Nil
+            "Either all or no cases of a 'case' statement must be control statements" :: Nil
           ),
           (
             "case(1) { 1: fence; default: $display(); }",
-            "Either all or no cases of a case statement must be control statements" :: Nil
+            "Either all or no cases of a 'case' statement must be control statements" :: Nil
           ),
           (
             "case(void) { 1: $display(); }",

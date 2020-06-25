@@ -1323,10 +1323,18 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
                     _,
                     Nil,
                     List(
-                      StmtGen(
-                        GenIf(_, List(DescVar(Sym(a0, _), _, _)), List(DescVar(Sym(a1, _), _, _)))
-                      ),
-                      StmtDesc(d0)
+                      StmtBlock(
+                        List(
+                          StmtGen(
+                            GenIf(
+                              _,
+                              List(DescVar(Sym(a0, _), _, _)),
+                              List(DescVar(Sym(a1, _), _, _))
+                            )
+                          ),
+                          StmtDesc(d0)
+                        )
+                      )
                     )
                   ) =>
                 inside(d0) {
@@ -1363,10 +1371,18 @@ final class NamerSpec extends AnyFreeSpec with AlogicTest {
                       StmtDesc(d0)
                     ),
                     List(
-                      StmtGen(
-                        GenIf(_, List(DescVar(Sym(a2, _), _, _)), List(DescVar(Sym(a3, _), _, _)))
-                      ),
-                      StmtDesc(d1)
+                      StmtBlock(
+                        List(
+                          StmtGen(
+                            GenIf(
+                              _,
+                              List(DescVar(Sym(a2, _), _, _)),
+                              List(DescVar(Sym(a3, _), _, _))
+                            )
+                          ),
+                          StmtDesc(d1)
+                        )
+                      )
                     )
                   ) =>
                 inside(d0) {

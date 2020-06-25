@@ -48,7 +48,13 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
       override def visitStmtIf(ctx: StmtIfContext): Stmt = {
         val cond = ExprBuilder(ctx.expr)
         val thenStmts = stmts(visit(ctx.thenStmt))
-        val elseStmts = if (ctx.elseStmt != null) stmts(visit(ctx.elseStmt)) else Nil
+        val elseStmts = if (ctx.elseStmt == null) {
+          Nil
+        } else {
+          // Wrap it in a StmtBlock. This indicates an explicit 'else' was
+          // written even if it's empty or 'gen' expands to empty
+          List(StmtBlock(stmts(visit(ctx.elseStmt))) withLoc ctx.elseStmt.loc)
+        }
         StmtIf(cond, thenStmts, elseStmts) withLoc ctx.loc
       }
 

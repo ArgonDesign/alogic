@@ -926,7 +926,7 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
               .asTree[Stmt](SourceContext.Entity) shouldBe StmtIf(
               Expr(1),
               List(StmtFence()),
-              List(StmtReturn(comb = false, None))
+              List(StmtBlock(List(StmtReturn(comb = false, None))))
             )
           }
 
@@ -940,9 +940,18 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
               StmtIf(
                 Expr(1),
                 List(StmtFence()),
-                List(StmtReturn(comb = false, None))
+                List(StmtBlock(List(StmtReturn(comb = false, None))))
               )
             }
+          }
+
+          "if with explicity empty else" in {
+            "if (1) {} else {};"
+              .asTree[Stmt](SourceContext.Entity) shouldBe StmtIf(
+              Expr(1),
+              Nil,
+              List(StmtBlock(Nil))
+            )
           }
 
           "case without default" in {

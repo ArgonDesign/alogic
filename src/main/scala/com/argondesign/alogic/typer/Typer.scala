@@ -520,8 +520,13 @@ final class Typer(implicit cc: CompilerContext) extends StatefulTreeTransformer 
         }
         if (!(checkBlock(ts) &&& checkBlock(es))) {
           error(tree)
-        } else if (ts.nonEmpty && es.nonEmpty && ts.last.tpe != es.last.tpe) {
-          error(tree, "Either both or neither branches of if-else must be control statements")
+        } else if (es.nonEmpty) {
+          if ((ts.isEmpty || ts.last.tpe.isCombStmt) != es.last.tpe.isCombStmt) {
+            error(
+              tree,
+              "Either both or neither branches of 'if' statement must be control statements"
+            )
+          }
         }
 
       case StmtCase(expr, cases) =>
@@ -537,7 +542,7 @@ final class Typer(implicit cc: CompilerContext) extends StatefulTreeTransformer 
           val allComb = cases forall { _.stmts forall { _.tpe.isCombStmt } }
           val allCtrl = cases forall { _.stmts exists { _.tpe.isCtrlStmt } }
           if (!allComb && !allCtrl) {
-            error(tree, "Either all or no cases of a case statement must be control statements")
+            error(tree, "Either all or no cases of a 'case' statement must be control statements")
           }
         }
 

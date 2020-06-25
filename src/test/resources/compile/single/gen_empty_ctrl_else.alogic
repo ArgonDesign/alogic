@@ -1,0 +1,14 @@
+fsm gen_empty_ctrl_else {
+  in  bool i;
+
+  void main() {
+    if (i) {
+      fence;
+    } else {
+      gen if (false) { // Generate producing empty else in control 'if'
+        fence;
+      }
+    }
+  }
+}
+// :5: ERROR: Either both or neither branches of 'if' statement must be control statements
