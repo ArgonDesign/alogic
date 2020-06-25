@@ -1,0 +1,51 @@
+fsm control_if_00 {
+  in bool i;
+  out u4 o = 0;
+
+  void main() {
+    if (i) {
+      o += 1;
+      fence;
+    } else {
+      o += 2;
+      fence;
+      o += 3;
+      fence;
+    }
+  }
+}
+// @fec/golden {{{
+//  module control_if_00(
+//    input wire       clk,
+//    input wire       rst,
+//    input wire       i,
+//    output reg [3:0] o
+//  );
+//    reg state_q;
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        state_q <= 1'd0;
+//        o <= 4'd0;
+//      end else begin
+//        case (state_q)
+//          1'd0: begin
+//            if (i) begin
+//                o <= o + 4'd1;
+//            end else begin
+//                state_q <= 1'd1;
+//                o <= o + 4'd2;
+//            end
+//          end
+//          1'd1: begin
+//            state_q <= 1'd0;
+//            o <= o + 4'd3;
+//          end
+//        endcase
+//      end
+//    end
+//
+//  endmodule
+// }}}
+// @stats/control_if_00/stack-depth: 0
+// @stats/control_if_00/states: 2

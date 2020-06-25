@@ -1,0 +1,104 @@
+fsm control_case_00 {
+  in u2 i;
+  out u4 o = 0;
+
+  void main() {
+    case (i) {
+      2'd0: {
+        o = 0;
+        fence;
+      }
+      2'd1: {
+        o = 1;
+        fence;
+        o = 2;
+        fence;
+      }
+      2'd2: {
+        o = 3;
+        fence;
+        o = 4;
+        fence;
+        o = 5;
+        fence;
+      }
+      default: {
+        o = 6;
+        fence;
+        o = 7;
+        fence;
+        o = 8;
+        fence;
+        o = 9;
+        fence;
+      }
+    }
+  }
+}
+// @fec/golden {{{
+//  module control_case_00(
+//    input wire       clk,
+//    input wire       rst,
+//    input wire [1:0] i,
+//    output reg [3:0] o
+//  );
+//    reg [2:0] state_q;
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        state_q <= 3'd0;
+//        o <= 4'd0;
+//      end else begin
+//        case (state_q)
+//          3'd0: begin
+//            case (i)
+//              2'd0: begin
+//                state_q <= 3'd0;
+//                o <= 4'd0;
+//              end
+//              2'd1: begin
+//                state_q <= 3'd1;
+//                o <= 4'd1;
+//              end
+//              2'd2: begin
+//                state_q <= 3'd2;
+//                o <= 4'd3;
+//              end
+//              default: begin
+//                state_q <= 3'd4;
+//                o <= 4'd6;
+//              end
+//            endcase
+//          end
+//          3'd1: begin
+//            state_q <= 3'd0;
+//            o <= 4'd2;
+//          end
+//          3'd2: begin
+//            state_q <= 3'd3;
+//            o <= 4'd4;
+//          end
+//          3'd3: begin
+//            state_q <= 3'd0;
+//            o <= 4'd5;
+//          end
+//          3'd4: begin
+//            state_q <= 3'd5;
+//            o <= 4'd7;
+//          end
+//          3'd5: begin
+//            state_q <= 3'd6;
+//            o <= 4'd8;
+//          end
+//          default: begin
+//            state_q <= 3'd0;
+//            o <= 4'd9;
+//          end
+//        endcase
+//      end
+//    end
+//
+//  endmodule
+// }}}
+// @stats/control_case_00/stack-depth: 0
+// @stats/control_case_00/states: 7
