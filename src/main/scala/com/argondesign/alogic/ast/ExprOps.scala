@@ -58,53 +58,61 @@ trait ExprOps { this: Expr =>
     fix(ExprInt(false, clog2(tpe.shapeIter.next) max 1, idx))
   }
 
+  final private def mkSliceLength(idx: Int)(implicit cc: CompilerContext) = {
+    fix(ExprInt(false, clog2(tpe.shapeIter.next + 1), idx))
+  }
+
   // Helpers to easily combine expression trees manually with other expressions
   // format: off
-  final def *(rhs: Expr)(implicit cc: CompilerContext): ExprBinary = mkBinary("*", rhs)
-  final def /(rhs: Expr)(implicit cc: CompilerContext): ExprBinary = mkBinary("/", rhs)
-  final def %(rhs: Expr)(implicit cc: CompilerContext): ExprBinary = mkBinary("%", rhs)
-  final def +(rhs: Expr)(implicit cc: CompilerContext): ExprBinary = mkBinary("+", rhs)
-  final def -(rhs: Expr)(implicit cc: CompilerContext): ExprBinary = mkBinary("-", rhs)
-  final def <<(rhs: Expr)(implicit cc: CompilerContext): ExprBinary = mkBinary("<<", rhs)
-  final def >>(rhs: Expr)(implicit cc: CompilerContext): ExprBinary = mkBinary(">>", rhs)
+  final def *  (rhs: Expr)(implicit cc: CompilerContext): ExprBinary = mkBinary("*", rhs)
+  final def /  (rhs: Expr)(implicit cc: CompilerContext): ExprBinary = mkBinary("/", rhs)
+  final def %  (rhs: Expr)(implicit cc: CompilerContext): ExprBinary = mkBinary("%", rhs)
+  final def +  (rhs: Expr)(implicit cc: CompilerContext): ExprBinary = mkBinary("+", rhs)
+  final def -  (rhs: Expr)(implicit cc: CompilerContext): ExprBinary = mkBinary("-", rhs)
+  final def << (rhs: Expr)(implicit cc: CompilerContext): ExprBinary = mkBinary("<<", rhs)
+  final def >> (rhs: Expr)(implicit cc: CompilerContext): ExprBinary = mkBinary(">>", rhs)
   final def <<<(rhs: Expr)(implicit cc: CompilerContext): ExprBinary = mkBinary("<<<", rhs)
   final def >>>(rhs: Expr)(implicit cc: CompilerContext): ExprBinary = mkBinary(">>>", rhs)
-  final def &(rhs: Expr)(implicit cc: CompilerContext): ExprBinary = mkBinary("&", rhs)
-  final def ^(rhs: Expr)(implicit cc: CompilerContext): ExprBinary = mkBinary("^", rhs)
-  final def |(rhs: Expr)(implicit cc: CompilerContext): ExprBinary = mkBinary("|", rhs)
-  final def &&(rhs: Expr)(implicit cc: CompilerContext): ExprBinary = mkBinary("&&", rhs)
-  final def ||(rhs: Expr)(implicit cc: CompilerContext): ExprBinary = mkBinary("||", rhs)
-  final def <(rhs: Expr)(implicit cc: CompilerContext): ExprBinary = mkBinary("<", rhs)
-  final def <=(rhs: Expr)(implicit cc: CompilerContext): ExprBinary = mkBinary("<=", rhs)
-  final def >(rhs: Expr)(implicit cc: CompilerContext): ExprBinary = mkBinary(">", rhs)
-  final def >=(rhs: Expr)(implicit cc: CompilerContext): ExprBinary = mkBinary(">=", rhs)
+  final def &  (rhs: Expr)(implicit cc: CompilerContext): ExprBinary = mkBinary("&", rhs)
+  final def ^  (rhs: Expr)(implicit cc: CompilerContext): ExprBinary = mkBinary("^", rhs)
+  final def |  (rhs: Expr)(implicit cc: CompilerContext): ExprBinary = mkBinary("|", rhs)
+  final def && (rhs: Expr)(implicit cc: CompilerContext): ExprBinary = mkBinary("&&", rhs)
+  final def || (rhs: Expr)(implicit cc: CompilerContext): ExprBinary = mkBinary("||", rhs)
+  final def <  (rhs: Expr)(implicit cc: CompilerContext): ExprBinary = mkBinary("<", rhs)
+  final def <= (rhs: Expr)(implicit cc: CompilerContext): ExprBinary = mkBinary("<=", rhs)
+  final def >  (rhs: Expr)(implicit cc: CompilerContext): ExprBinary = mkBinary(">", rhs)
+  final def >= (rhs: Expr)(implicit cc: CompilerContext): ExprBinary = mkBinary(">=", rhs)
 
-  final def *(rhs: Int)(implicit cc: CompilerContext): ExprBinary = mkBinary("*", mkSized(rhs))
-  final def /(rhs: Int)(implicit cc: CompilerContext): ExprBinary = mkBinary("/", mkSized(rhs))
-  final def %(rhs: Int)(implicit cc: CompilerContext): ExprBinary = mkBinary("%", mkSized(rhs))
-  final def +(rhs: Int)(implicit cc: CompilerContext): ExprBinary = mkBinary("+", mkSized(rhs))
-  final def -(rhs: Int)(implicit cc: CompilerContext): ExprBinary = mkBinary("-", mkSized(rhs))
-  final def <<(rhs: Int)(implicit cc: CompilerContext): ExprBinary = mkBinary("<<", fix(Expr(rhs)))
-  final def >>(rhs: Int)(implicit cc: CompilerContext): ExprBinary = mkBinary(">>", fix(Expr(rhs)))
-  final def <<<(rhs: Int)(implicit cc: CompilerContext): ExprBinary = mkBinary("<<<", fix(Expr(rhs)))
-  final def >>>(rhs: Int)(implicit cc: CompilerContext): ExprBinary = mkBinary(">>>", fix(Expr(rhs)))
-  final def &(rhs: Int)(implicit cc: CompilerContext): ExprBinary = mkBinary("&", mkSized(rhs))
-  final def ^(rhs: Int)(implicit cc: CompilerContext): ExprBinary = mkBinary("^", mkSized(rhs))
-  final def |(rhs: Int)(implicit cc: CompilerContext): ExprBinary = mkBinary("|", mkSized(rhs))
-  final def &&(rhs: Int)(implicit cc: CompilerContext): ExprBinary = mkBinary("&&", fix(Expr(rhs)))
-  final def ||(rhs: Int)(implicit cc: CompilerContext): ExprBinary = mkBinary("||", fix(Expr(rhs)))
-  final def <(rhs: Int)(implicit cc: CompilerContext): ExprBinary = mkBinary("<", fix(Expr(rhs)))
-  final def <=(rhs: Int)(implicit cc: CompilerContext): ExprBinary = mkBinary("<=", fix(Expr(rhs)))
-  final def >(rhs: Int)(implicit cc: CompilerContext): ExprBinary = mkBinary(">", fix(Expr(rhs)))
-  final def >=(rhs: Int)(implicit cc: CompilerContext): ExprBinary = mkBinary(">=", fix(Expr(rhs)))
+  final def *  (rhs: Int)(implicit cc: CompilerContext): ExprBinary = this *   mkSized(rhs)
+  final def /  (rhs: Int)(implicit cc: CompilerContext): ExprBinary = this /   mkSized(rhs)
+  final def %  (rhs: Int)(implicit cc: CompilerContext): ExprBinary = this %   mkSized(rhs)
+  final def +  (rhs: Int)(implicit cc: CompilerContext): ExprBinary = this +   mkSized(rhs)
+  final def -  (rhs: Int)(implicit cc: CompilerContext): ExprBinary = this -   mkSized(rhs)
+  final def << (rhs: Int)(implicit cc: CompilerContext): ExprBinary = this <<  fix(Expr(rhs))
+  final def >> (rhs: Int)(implicit cc: CompilerContext): ExprBinary = this >>  fix(Expr(rhs))
+  final def <<<(rhs: Int)(implicit cc: CompilerContext): ExprBinary = this <<< fix(Expr(rhs))
+  final def >>>(rhs: Int)(implicit cc: CompilerContext): ExprBinary = this >>> fix(Expr(rhs))
+  final def &  (rhs: Int)(implicit cc: CompilerContext): ExprBinary = this &   mkSized(rhs)
+  final def ^  (rhs: Int)(implicit cc: CompilerContext): ExprBinary = this ^   mkSized(rhs)
+  final def |  (rhs: Int)(implicit cc: CompilerContext): ExprBinary = this |   mkSized(rhs)
+  final def && (rhs: Int)(implicit cc: CompilerContext): ExprBinary = this &&  fix(Expr(rhs))
+  final def || (rhs: Int)(implicit cc: CompilerContext): ExprBinary = this ||  fix(Expr(rhs))
+  final def <  (rhs: Int)(implicit cc: CompilerContext): ExprBinary = this <   mkSized(rhs)
+  final def <= (rhs: Int)(implicit cc: CompilerContext): ExprBinary = this <=  mkSized(rhs)
+  final def >  (rhs: Int)(implicit cc: CompilerContext): ExprBinary = this >   mkSized(rhs)
+  final def >= (rhs: Int)(implicit cc: CompilerContext): ExprBinary = this >=  mkSized(rhs)
 
   final def index(idx: Expr)(implicit cc: CompilerContext): ExprIndex = fix(ExprIndex(this, idx))
-  final def index(idx: Int)(implicit cc: CompilerContext): ExprIndex = fix(ExprIndex(this, mkIndex(idx)))
+  final def index(idx: Int)(implicit cc: CompilerContext): ExprIndex = this index mkIndex(idx)
 
-  final def slice(lIdx: Expr, op: String, rIdx: Expr)(implicit cc: CompilerContext): ExprSlice = fix(ExprSlice(this, lIdx, op, rIdx))
-  final def slice(lIdx: Expr, op: String, rIdx: Int)(implicit cc: CompilerContext): ExprSlice = fix(ExprSlice(this, lIdx, op, mkIndex(rIdx)))
-  final def slice(lIdx: Int, op: String, rIdx: Expr)(implicit cc: CompilerContext): ExprSlice = fix(ExprSlice(this, mkIndex(lIdx), op, rIdx))
-  final def slice(lIdx: Int, op: String, rIdx: Int)(implicit cc: CompilerContext): ExprSlice = fix(ExprSlice(this, mkIndex(lIdx), op, mkIndex(rIdx)))
+  final def slice(lIdx: Expr, op: String, rIdx: Expr)(implicit cc: CompilerContext): ExprSlice = 
+    fix(ExprSlice(this, lIdx, op, rIdx))
+  final def slice(lIdx: Expr, op: String, rIdx: Int )(implicit cc: CompilerContext): ExprSlice = 
+    this.slice(lIdx, op, if (op == ":") mkIndex(rIdx) else mkSliceLength(rIdx))
+  final def slice(lIdx: Int,  op: String, rIdx: Expr)(implicit cc: CompilerContext): ExprSlice = 
+    this.slice(mkIndex(lIdx), op, rIdx)
+  final def slice(lIdx: Int,  op: String, rIdx: Int )(implicit cc: CompilerContext): ExprSlice = 
+    this.slice(mkIndex(lIdx), op, if (op == ":") mkIndex(rIdx) else mkSliceLength(rIdx))
 
   final def select(name: String)(implicit cc: CompilerContext): ExprSelect = fix(ExprSelect(this, name, Nil))
   final def call(args: List[Arg])(implicit cc: CompilerContext): ExprCall = fix(ExprCall(this, args))
@@ -112,9 +120,16 @@ trait ExprOps { this: Expr =>
   final def cat(rhs: Expr)(implicit cc: CompilerContext): ExprCat = fix(ExprCat(List(this, rhs)))
 
   final def rep(cnt: Expr)(implicit cc: CompilerContext): ExprRep = fix(ExprRep(cnt, this))
-  final def rep(cnt: Int)(implicit cc: CompilerContext): ExprRep = fix(ExprRep(fix(Expr(cnt)), this))
+  final def rep(cnt: Int)(implicit cc: CompilerContext): ExprRep = this rep fix(Expr(cnt))
 
   final def cast(kind: TypeFund)(implicit cc: CompilerContext): ExprCast = fix(ExprCast(kind, this))
+
+  final def unary(op: String)(implicit cc: CompilerContext): ExprUnary = fix(ExprUnary(op, this))
+
+  final def unary_+ : this.type = this
+  final def unary_-(implicit cc: CompilerContext) : ExprUnary = unary("-")
+  final def unary_~(implicit cc: CompilerContext) : ExprUnary = unary("~")
+  final def unary_!(implicit cc: CompilerContext) : ExprUnary = unary("!")
 
   final def zx(width: Expr)(implicit cc: CompilerContext): ExprCall = cc.makeBuiltinCall("@zx", loc, List(width, this))
   final def zx(width: Int)(implicit cc: CompilerContext): ExprCall = this zx fix(Expr(width))
@@ -122,18 +137,19 @@ trait ExprOps { this: Expr =>
   final def sx(width: Expr)(implicit cc: CompilerContext): ExprCall = cc.makeBuiltinCall("@sx", loc, List(width, this))
   final def sx(width: Int)(implicit cc: CompilerContext): ExprCall = this sx fix(Expr(width))
 
-  final def unary(op: String)(implicit cc: CompilerContext): ExprUnary = fix(ExprUnary(op, this))
-
-  final def unary_+ : this.type = this
-  final def unary_-(implicit cc: CompilerContext) : ExprUnary = fix(ExprUnary("-", this))
-  final def unary_~(implicit cc: CompilerContext) : ExprUnary = fix(ExprUnary("~", this))
-  final def unary_!(implicit cc: CompilerContext) : ExprUnary = fix(ExprUnary("!", this))
-
   final def castUnsigned(implicit cc: CompilerContext): ExprCall = cc.makeBuiltinCall("$unsigned", loc, this :: Nil)
   final def castSigned(implicit cc: CompilerContext): ExprCall = cc.makeBuiltinCall("$signed", loc, this :: Nil)
 
-  final def inc(implicit cc:CompilerContext): Expr = if (tpe.isSigned && tpe.isPacked && tpe.width == 1) this - -1 else this + 1 // -1 works with i1
-  final def dec(implicit cc:CompilerContext): Expr = if (tpe.isSigned && tpe.isPacked && tpe.width == 1) this + -1 else this - 1 // -1 works with i1
+  final def inc(implicit cc:CompilerContext): Expr = if (tpe.isSigned && tpe.isPacked && tpe.width == 1) {
+    this - -1 // -1 works with i1
+  } else {
+    this + 1
+  }
+  final def dec(implicit cc:CompilerContext): Expr = if (tpe.isSigned && tpe.isPacked && tpe.width == 1) {
+    this + -1 // -1 works with i1
+  } else {
+    this - 1
+  }
   // format: on
 
   // Is this expression shaped as a valid type expression
@@ -358,12 +374,12 @@ trait ExprObjOps { self: Expr.type =>
     def unapply(expr: ExprBinary) = if (expr.op == ">>") Some((expr.lhs, expr.rhs)) else None
   }
 
-  final object >>> {
-    def unapply(expr: ExprBinary) = if (expr.op == ">>>") Some((expr.lhs, expr.rhs)) else None
-  }
-
   final object <<< {
     def unapply(expr: ExprBinary) = if (expr.op == "<<<") Some((expr.lhs, expr.rhs)) else None
+  }
+
+  final object >>> {
+    def unapply(expr: ExprBinary) = if (expr.op == ">>>") Some((expr.lhs, expr.rhs)) else None
   }
 
   final object & {
@@ -384,6 +400,22 @@ trait ExprObjOps { self: Expr.type =>
 
   final object || {
     def unapply(expr: ExprBinary) = if (expr.op == "||") Some((expr.lhs, expr.rhs)) else None
+  }
+
+  final object < {
+    def unapply(expr: ExprBinary) = if (expr.op == "<") Some((expr.lhs, expr.rhs)) else None
+  }
+
+  final object <= {
+    def unapply(expr: ExprBinary) = if (expr.op == "<=") Some((expr.lhs, expr.rhs)) else None
+  }
+
+  final object > {
+    def unapply(expr: ExprBinary) = if (expr.op == ">") Some((expr.lhs, expr.rhs)) else None
+  }
+
+  final object >= {
+    def unapply(expr: ExprBinary) = if (expr.op == ">=") Some((expr.lhs, expr.rhs)) else None
   }
 
   // Extractor for instance port references
