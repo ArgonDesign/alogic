@@ -28,13 +28,14 @@ import com.argondesign.alogic.core.SramFactory
 import com.argondesign.alogic.core.SyncRegFactory
 import com.argondesign.alogic.util.unreachable
 
+import scala.collection.immutable.ListMap
 import scala.collection.mutable
 
 final class SramBuilder {
   // Re-use SRAM entities of identical sizes
   private val store = mutable.Map[(Int, Int), (DeclEntity, DefnEntity)]()
 
-  def srams: Iterable[(DeclEntity, DefnEntity)] = store.values
+  def srams: Iterable[((Int, Int), (DeclEntity, DefnEntity))] = store
 
   def apply(width: Int, depth: Int)(implicit cc: CompilerContext): Symbol = synchronized {
     lazy val sram = SramFactory(s"sram_${depth}x$width", Loc.synthetic, width, depth)
@@ -407,8 +408,14 @@ object LowerSrams {
         implicit
         cc: CompilerContext
       ): List[(Decl, Defn)] = {
+      // Add sram sizes required to manifest
+      cc.manifest("sram-sizes") = List from {
+        sramBuilder.srams.iterator map {
+          case ((width, depth), _) => ListMap("width" -> width, "depth" -> depth)
+        }
+      }
       // Add all SRAMs to the results
-      results ++ sramBuilder.srams
+      results ++ (sramBuilder.srams map { _._2 })
     }
 
   }

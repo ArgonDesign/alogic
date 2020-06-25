@@ -57,3 +57,6 @@ fsm sram_03 {
 //
 //  endmodule
 // }}}
+// @manifest/sram-sizes {{{
+//  [ {"width": 5, "depth": 4} ]
+// }}}
