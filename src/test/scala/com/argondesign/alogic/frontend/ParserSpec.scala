@@ -798,6 +798,14 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
         }
       }
 
+      "file contents" - {
+        "entity" in {
+          "fsm x {};".asTree[Riz] shouldBe {
+            RizDesc(DescEntity(Ident("x", Nil), EntityVariant.Fsm, Nil))
+          }
+        }
+      }
+
       "entity contents" - {
         "declaration" in {
           "bool x;".stripMargin.asTree[Ent] shouldBe {
@@ -1936,6 +1944,13 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
             )
           } {
             expr in { expr.asTree[Expr] shouldBe equiv.asTree[Expr] }
+          }
+        }
+
+        "this" in {
+          "this".asTree[Expr] shouldBe ExprError()
+          cc.messages.loneElement should beThe[Error] {
+            "'this' reference is not user accessible"
           }
         }
       }
