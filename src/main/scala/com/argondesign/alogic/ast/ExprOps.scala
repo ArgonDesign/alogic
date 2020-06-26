@@ -153,15 +153,6 @@ trait ExprOps { this: Expr =>
     this - 1
   }
 
-  // Is this expression shaped as a valid type expression
-  lazy val isTypeExpr: Boolean = this forall {
-    case _: ExprRef               => true
-    case _: ExprSym               => true
-    case _: ExprType              => true
-    case ExprSelect(expr, _, Nil) => expr.isTypeExpr
-    case _                        => false
-  }
-
   // Is this expression shaped as a valid lvalue expression
   lazy val isLValueExpr: Boolean = this forall {
     case _: ExprRef               => true
@@ -171,15 +162,6 @@ trait ExprOps { this: Expr =>
     case ExprSelect(expr, _, _)   => expr.isLValueExpr
     case ExprCat(parts)           => parts forall { _.isLValueExpr }
     case _                        => false
-  }
-
-  // Is this expression shaped as a valid port reference expression
-  lazy val isPortRefExpr: Boolean = this match {
-    case _: ExprRef                   => true
-    case _: ExprSym                   => true
-    case ExprSelect(_: ExprRef, _, _) => true
-    case ExprSelect(_: ExprSym, _, _) => true
-    case _                            => false
   }
 
   def isValidConnectRhs(implicit cc: CompilerContext): Boolean = this match {
