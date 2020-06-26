@@ -25,11 +25,6 @@ private[builtins] class AtEx(implicit cc: CompilerContext)
 
   val name = "@ex"
 
-  def validArgs(args: List[Expr]) = args match {
-    case List(bit, width, expr) => (bit.tpe.width == 1) && width.isKnownConst && expr.tpe.isPacked
-    case _                      => false
-  }
-
   def returnType(args: List[Expr]): Option[TypeFund] = Some {
     TypeInt(args(2).tpe.isSigned, args(1).value.get.toInt)
   }

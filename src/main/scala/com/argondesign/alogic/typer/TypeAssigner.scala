@@ -35,41 +35,23 @@ object TypeAssigner {
   //////////////////////////////////////////////////////////////////////////////
 
   private def kind(tree: Tree)(implicit cc: CompilerContext): Type = tree match {
-    case node: Root      => kind(node)
-    case node: Ref       => kind(node)
-    case node: Desc      => kind(node)
+    case _: Root         => cc.ice(tree, "TypeAssigner called on Root node")
+    case _: Ref          => cc.ice(tree, "TypeAssigner called on Ref node")
+    case _: Desc         => cc.ice(tree, "TypeAssigner called on Desc node")
     case node: Decl      => kind(node)
     case node: Defn      => kind(node)
-    case _: Gen          => unreachable
+    case _: Gen          => cc.ice(tree, "TypeAssigner called on Gen node")
     case node: Assertion => kind(node)
-    case node: Riz       => kind(node)
+    case _: Riz          => cc.ice(tree, "TypeAssigner called on Riz node")
     case node: Ent       => kind(node)
     case node: Rec       => kind(node)
     case node: Stmt      => kind(node)
     case node: Case      => kind(node)
     case node: Expr      => kind(node)
     case node: Arg       => kind(node)
-    case node: Thicket   => kind(node)
-    case Stump           => kind(Stump)
+    case _: Thicket      => cc.ice(tree, "TypeAssigner called on Thicket")
+    case Stump           => cc.ice(tree, "TypeAssigner called on Stump")
   }
-
-  //////////////////////////////////////////////////////////////////////////////
-  // Root
-  //////////////////////////////////////////////////////////////////////////////
-
-  private def kind(tree: Root) = TypeMisc
-
-  //////////////////////////////////////////////////////////////////////////////
-  // Ref
-  //////////////////////////////////////////////////////////////////////////////
-
-  private def kind(tree: Ref) = TypeMisc
-
-  //////////////////////////////////////////////////////////////////////////////
-  // Desc
-  //////////////////////////////////////////////////////////////////////////////
-
-  private def kind(tree: Desc) = TypeMisc
 
   //////////////////////////////////////////////////////////////////////////////
   // Decl
@@ -90,12 +72,6 @@ object TypeAssigner {
   private def kind(tree: Assertion) = TypeMisc
 
   //////////////////////////////////////////////////////////////////////////////
-  // Riz
-  //////////////////////////////////////////////////////////////////////////////
-
-  private def kind(tree: Riz): Type = TypeMisc
-
-  //////////////////////////////////////////////////////////////////////////////
   // Ent
   //////////////////////////////////////////////////////////////////////////////
 
@@ -112,7 +88,7 @@ object TypeAssigner {
   //////////////////////////////////////////////////////////////////////////////
 
   private def kind(tree: Stmt): Type = tree match {
-    case node: StmtDesc      => kind(node)
+    case _: StmtDesc         => unreachable
     case node: StmtDecl      => kind(node)
     case node: StmtDefn      => kind(node)
     case _: StmtGen          => unreachable
@@ -142,8 +118,6 @@ object TypeAssigner {
     case node: StmtError     => kind(node)
     case node: StmtComment   => kind(node)
   }
-
-  private def kind(tree: StmtDesc) = TypeCombStmt
 
   private def kind(tree: StmtDecl) = TypeCombStmt
 
@@ -257,8 +231,6 @@ object TypeAssigner {
     case TypeXenoFunc(_, returnType, _)     => returnType
     case TypeStaticMethod(_, returnType, _) => returnType
     case TypeNormalMethod(_, returnType, _) => returnType
-    case _: TypeType                        => TypeUnknown
-    case _: TypeParametrized                => TypeUnknown
     case _                                  => unreachable
   }
 
@@ -349,9 +321,7 @@ object TypeAssigner {
     }
 
   private def kind(tree: ExprSym)(implicit cc: CompilerContext) = tree.symbol.kind match {
-    // If this is a reference to a choice symbol. Then we don't know it's type yet.
-    case TypeChoice => TypeUnknown
-    // Parameters should have been specialized by type checking
+    // Parameters should have been specialized prior to type checking
     case _: TypeParam => unreachable
     // TODO: lose these
     case TypeConst(kind)    => kind
@@ -381,14 +351,6 @@ object TypeAssigner {
   private def kind(tree: Arg) = TypeMisc
 
   //////////////////////////////////////////////////////////////////////////////
-  // Thicket/Stump // TODO: should be unreachable
-  //////////////////////////////////////////////////////////////////////////////
-
-  private def kind(tree: Thicket) = TypeMisc
-
-  private def kind(tree: Stump.type) = TypeMisc
-
-  //////////////////////////////////////////////////////////////////////////////
   // 'apply' methods propagate type errors or assign the computed type. There
   // are lots of overloads of these to use static dispatch wherever possible,
   // but otherwise they are exactly the same. There should be one for each
@@ -397,13 +359,9 @@ object TypeAssigner {
 
   // format: off
   def apply(tree: Tree)(implicit cc: CompilerContext): tree.type = assign(tree)(kind(tree))
-  def apply(tree: Root): tree.type = assign(tree)(kind(tree))
-  def apply(tree: Ref): tree.type = assign(tree)(kind(tree))
-  def apply(tree: Desc): tree.type = assign(tree)(kind(tree))
   def apply(tree: Decl): tree.type = assign(tree)(kind(tree))
   def apply(tree: Defn): tree.type = assign(tree)(kind(tree))
   def apply(tree: Assertion): tree.type = assign(tree)(kind(tree))
-  def apply(tree: Riz): tree.type = assign(tree)(kind(tree))
   def apply(tree: Ent): tree.type = assign(tree)(kind(tree))
   def apply(tree: Rec): tree.type = assign(tree)(kind(tree))
   def apply(tree: Stmt): tree.type = assign(tree)(kind(tree))
@@ -426,7 +384,6 @@ object TypeAssigner {
   def apply(tree: StmtPost): tree.type = assign(tree)(kind(tree))
   def apply(tree: StmtDelayed): tree.type = assign(tree)(kind(tree))
   def apply(tree: StmtOutcall): tree.type = assign(tree)(kind(tree))
-  def apply(tree: StmtDesc): tree.type = assign(tree)(kind(tree))
   def apply(tree: StmtDecl): tree.type = assign(tree)(kind(tree))
   def apply(tree: StmtDefn): tree.type = assign(tree)(kind(tree))
   def apply(tree: StmtRead): tree.type = assign(tree)(kind(tree))
@@ -455,7 +412,6 @@ object TypeAssigner {
   def apply(tree: ExprStr): tree.type = assign(tree)(kind(tree))
   def apply(tree: ExprError): tree.type = assign(tree)(kind(tree))
   def apply(tree: Arg): tree.type = assign(tree)(kind(tree))
-  def apply(tree: Thicket): tree.type = assign(tree)(kind(tree))
   // format: on
 
   private def assign(tree: Tree)(kind: => Type): tree.type = {

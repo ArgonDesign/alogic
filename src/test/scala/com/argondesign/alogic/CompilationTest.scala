@@ -915,9 +915,15 @@ trait CompilationTest
               throw new RuntimeException(e)
           }
 
+        val messages = {
+          val messageBuffer: MessageBuffer = runReturn._1
+          messageBuffer.messages
+        }
+
         // Cancel here if coverageEnabled as we have all the coverage we want,
         // and this speeds up running the test suite up considerably.
         if (BuildInfo.coverageEnabled) {
+          messages foreach { _.render } // Render messages still to fill coverage
           cancel("Cancel CompilationTest checks because coverageEnabled")
         }
 
@@ -925,11 +931,6 @@ trait CompilationTest
         {
           // fail flag
           var messageCheckFailed = false
-
-          val messages = {
-            val messageBuffer: MessageBuffer = runReturn._1
-            messageBuffer.messages
-          }
 
           // Group messages by specs
           val messageGroups = messages groupBy { message =>
@@ -995,10 +996,11 @@ trait CompilationTest
           // Load and check manifest
           //////////////////////////////////////////////////////////////////////
 
-          val manifest = io.circe.parser.parse(Source(oPath resolve "manifest.json").text) match {
-            case Left(failure) => fail("Failed to parse manifest: " + failure.message)
-            case Right(json)   => json
-          }
+          val manifest =
+            io.circe.parser.parse(Source((oPath resolve "manifest.json").toFile).text) match {
+              case Left(failure) => fail("Failed to parse manifest: " + failure.message)
+              case Right(json)   => json
+            }
 
           dict get "manifest" foreach { expected =>
             checkJson("manifest.json", manifest, expected)
@@ -1009,10 +1011,11 @@ trait CompilationTest
           //////////////////////////////////////////////////////////////////////
 
           dict get "stats" foreach { expected =>
-            val stats = io.circe.parser.parse(Source(oPath resolve "stats.json").text) match {
-              case Left(failure) => fail("Failed to parse stats: " + failure.message)
-              case Right(json)   => json
-            }
+            val stats =
+              io.circe.parser.parse(Source((oPath resolve "stats.json").toFile).text) match {
+                case Left(failure) => fail("Failed to parse stats: " + failure.message)
+                case Right(json)   => json
+              }
 
             checkJson("stats.json", stats, expected)
           }

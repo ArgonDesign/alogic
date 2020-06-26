@@ -82,7 +82,6 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatefulTreeTr
     case TypeCtrlStmt        => unreachable
     //
     case TypeUnknown  => unreachable
-    case TypeChoice   => unreachable
     case _: TypeState => unreachable
     case TypeMisc     => unreachable
     case TypeError    => unreachable

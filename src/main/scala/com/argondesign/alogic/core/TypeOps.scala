@@ -59,7 +59,6 @@ trait TypeOps extends TypePrintOps { this: Type =>
   final def isStaticMethod: Boolean = this.isInstanceOf[TypeStaticMethod]
   final def isNormalMethod: Boolean = this.isInstanceOf[TypeNormalMethod]
   final def isUnknown: Boolean = this eq TypeUnknown
-  final def isChoice: Boolean = this eq TypeChoice
   final def isState: Boolean = this.isInstanceOf[TypeState]
   final def isMisc: Boolean = this eq TypeMisc
   final def isError: Boolean = this eq TypeError

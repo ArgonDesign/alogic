@@ -533,9 +533,6 @@ final class SimplifyExpr(implicit cc: CompilerContext)
         case (_, op @ ("&" | "^" | "|"), _) if nege =>
           cc.error(tree, s"Bitwise '$op' operator is not well defined for negative unsized values")
           ExprError()
-        case (_, "~^", _) =>
-          cc.error(tree, "Bitwise '~^' operator is not well defined for unsized values")
-          ExprError()
         case (true, "&", true) => ExprNum(true, lv & rv)
         case (true, "^", true) => ExprNum(true, lv ^ rv)
         case (true, "|", true) => ExprNum(true, lv | rv)

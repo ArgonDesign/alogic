@@ -195,7 +195,7 @@ final class Typer(implicit cc: CompilerContext) extends StatefulTreeTransformer 
     WrittenSyms(expr) map {
       case ref @ ExprSym(symbol) =>
         symbol.kind match {
-          case _: TypeParam => error(tree, ref, "Parameter cannot be modified"); false
+          case _: TypeParam => unreachable // Removed by elaboration
           case _: TypeConst => error(tree, ref, "Constant cannot be modified"); false
           case _: TypeIn    => error(tree, ref, "Input port cannot be modified"); false
           case _: TypeArray => error(tree, ref, "Memory can only be modified using .write()"); false
@@ -349,8 +349,7 @@ final class Typer(implicit cc: CompilerContext) extends StatefulTreeTransformer 
           case TypeStaticMethod(_, _, argTypes) => process(argTypes)
           case TypeNormalMethod(_, _, argTypes) => process(argTypes)
           case _: TypePolyFunc                  =>
-          case _: TypeParametrized              =>
-          case _: TypeType                      =>
+          case _: TypeParametrized              => unreachable // Removed by elaboration
           case TypeNone(_: TypeNormalMethod) =>
             error(tree, tgt, "Attempting to call non-static method via type")
           case _ => error(tree, tgt, s"Expression is not callable")

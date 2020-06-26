@@ -1283,11 +1283,5 @@ final class TypeAssignerSpec extends AnyFreeSpec with AlogicTest {
         }
       }
     }
-
-    "Sym" in {
-      val symbol = cc.newSymbol("foo", Loc.synthetic) tap { _.kind = TypeUInt(4) }
-      TypeAssigner(Sym(symbol, Nil)).tpe shouldBe TypeMisc
-      cc.messages shouldBe empty
-    }
   }
 }

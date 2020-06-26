@@ -73,7 +73,6 @@ trait TypePrintOps { this: Type =>
     case TypeNormalMethod(s, r, as)           => s"method ${r.toSource} ${s.name} ${as map { _.toSource } mkString ("(", ", ", ")")}"
     case _: TypePolyFunc                      => this.toString
     case TypeUnknown                          => this.toString
-    case TypeChoice                           => this.toString
     case TypeState(symbol)                    => s"state ${symbol.name}"
     case TypeMisc                             => this.toString
     case TypeError                            => this.toString

@@ -69,7 +69,6 @@ object ConnectChecks {
           case TypeOut(_, fct, _) => fct
           case _: TypeEntity      => FlowControlTypeReady
           case _: TypeInt         => FlowControlTypeNone
-          case _: TypeParam       => FlowControlTypeNone
           case _: TypeConst       => FlowControlTypeNone
           case _                  => unreachable
         }
