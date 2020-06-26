@@ -139,18 +139,19 @@ trait ExprOps { this: Expr =>
 
   final def castUnsigned(implicit cc: CompilerContext): ExprCall = cc.makeBuiltinCall("$unsigned", loc, this :: Nil)
   final def castSigned(implicit cc: CompilerContext): ExprCall = cc.makeBuiltinCall("$signed", loc, this :: Nil)
+  // format: on
 
-  final def inc(implicit cc:CompilerContext): Expr = if (tpe.isSigned && tpe.isPacked && tpe.width == 1) {
-    this - -1 // -1 works with i1
+  final def inc(implicit cc: CompilerContext): Expr = if (tpe.isPacked && tpe.width == 1) {
+    ~this
   } else {
     this + 1
   }
-  final def dec(implicit cc:CompilerContext): Expr = if (tpe.isSigned && tpe.isPacked && tpe.width == 1) {
-    this + -1 // -1 works with i1
+
+  final def dec(implicit cc: CompilerContext): Expr = if (tpe.isPacked && tpe.width == 1) {
+    ~this
   } else {
     this - 1
   }
-  // format: on
 
   // Is this expression shaped as a valid type expression
   lazy val isTypeExpr: Boolean = this forall {

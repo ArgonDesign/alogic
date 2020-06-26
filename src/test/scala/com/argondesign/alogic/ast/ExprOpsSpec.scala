@@ -232,5 +232,21 @@ final class ExprOpsSpec extends AnyFreeSpec with AlogicTest {
     "cast" in {
       Expr(1) cast TypeUInt(8) shouldBe ExprCast(TypeUInt(8), Expr(1))
     }
+
+    "inc 1-bit" in {
+      TypeAssigner(ExprInt(false, 1, 0)).inc shouldBe ~ExprInt(false, 1, 0)
+    }
+
+    "inc n-bit" in {
+      TypeAssigner(ExprInt(false, 2, 0)).inc shouldBe ExprInt(false, 2, 0) + ExprInt(false, 2, 1)
+    }
+
+    "inc num" in {
+      TypeAssigner(Expr(0)).inc shouldBe Expr(0) + Expr(1)
+    }
+
+    "dec num" in {
+      TypeAssigner(Expr(0)).dec shouldBe Expr(0) - Expr(1)
+    }
   }
 }
