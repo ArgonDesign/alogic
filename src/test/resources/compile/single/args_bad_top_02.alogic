@@ -1,0 +1,2 @@
+// @top: /*comment*/a
+// command-line:1: ERROR: extraneous text before top-level specifier

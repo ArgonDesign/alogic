@@ -198,6 +198,12 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
     case _ => false
   }
 
+  private def sourceName(symbol: Symbol): String = symbol.attr.dictName.get match {
+    case Some((name, Nil))  => name
+    case Some((name, idxs)) => idxs mkString (s"$name#[", ", ", "]")
+    case None               => symbol.name
+  }
+
   // Entry point to the actual specialization algorithm
   private[this] def step1(
       desc: Desc,
@@ -213,8 +219,8 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
     SubstituteParams(desc, paramBindings) match {
       case ParamSubstitutionUnbound(unbound) =>
         // Unbound parameter remains
-        unbound foreach { d: Desc =>
-          cc.error(loc, s"'${desc.name}' requires parameter '${d.name}'")
+        unbound foreach { d =>
+          cc.error(loc, s"'${desc.name}' requires parameter '${sourceName(d.symbol)}'")
         }
         DescSpecializationErrorOther
       case ParamSubstitutionNeedsNamed =>
@@ -422,12 +428,6 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
               case ((name, idxs), v) => s"$name#[${idxs.mkString(", ")}] = ${v.toSource}"
             } mkString ("with parameter assignments: ", ", ", "")
           case _ =>
-        }
-
-        def sourceName(symbol: Symbol): String = symbol.attr.dictName.get match {
-          case Some((name, Nil))  => name
-          case Some((name, idxs)) => idxs mkString (s"$name#[", ", ", "]")
-          case None               => symbol.name
         }
 
         msg += s"Definition of '${sourceName(desc.symbol)}' is circular:"

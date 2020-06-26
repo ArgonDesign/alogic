@@ -1,0 +1,2 @@
+// @top: a=b
+// command-line:1: ERROR: extraneous text after top-level specifier

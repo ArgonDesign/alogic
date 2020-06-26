@@ -1,0 +1,23 @@
+// @top: top_param_13(N=3, C#[0]=2, C#[1]=10, C#[2]=30)
+fsm top_param_13 {
+  param uint N;
+  gen for (uint n < N) {
+    param uint C#[n];
+  }
+  out wire u8 o;
+
+  void main() {
+    o = 0;
+    gen for(uint n < N) {
+      o += C#[n];
+    }
+    fence;
+  }
+}
+// @out-top: top_param_13__N_3__C__0_2__C__1_10__C__2_30
+// @fec/golden {{{
+//  module top_param_13__N_3__C__0_2__C__1_10__C__2_30(
+//    output wire [7:0] o
+//  );
+//    assign o = 8'd42;
+//  endmodule

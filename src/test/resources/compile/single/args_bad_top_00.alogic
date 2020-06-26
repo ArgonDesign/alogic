@@ -1,0 +1,3 @@
+// @top: sync
+// command-line:1: ERROR: Syntax error: .*
+// command-line:1: ERROR: Failed to parse top level specified on command line

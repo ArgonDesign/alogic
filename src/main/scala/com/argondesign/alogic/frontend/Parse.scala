@@ -219,7 +219,7 @@ object Parse extends Pass[List[String], (List[Root], List[Expr])] {
         val l = text.length
         Parser[Expr](source, SourceContext.Unknown) tap {
           case None =>
-            val loc = Loc("command-line", 0, source, 0, l, 0)
+            val loc = Loc("command-line", 1, source, 0, l, 0)
             cc.error(loc, "Failed to parse top level specified on command line")
           case _ =>
         } flatMap { expr =>
@@ -228,11 +228,11 @@ object Parse extends Pass[List[String], (List[Root], List[Expr])] {
           val pre = text.slice(0, s)
           val suf = text.slice(e, l)
           if (pre exists { !_.isWhitespace }) {
-            val loc = Loc("command-line", 0, source, 0, s, pre indexWhere (!_.isWhitespace))
+            val loc = Loc("command-line", 1, source, 0, s, pre indexWhere (!_.isWhitespace))
             cc.error(loc, "extraneous text before top-level specifier")
             None
           } else if (suf exists { !_.isWhitespace }) {
-            val loc = Loc("command-line", 0, source, e, l, e + (suf indexWhere (!_.isWhitespace)))
+            val loc = Loc("command-line", 1, source, e, l, e + (suf indexWhere (!_.isWhitespace)))
             cc.error(loc, "extraneous text after top-level specifier")
             None
           } else {

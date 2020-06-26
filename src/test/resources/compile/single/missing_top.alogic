@@ -1,0 +1,3 @@
+// @top: somethign_that_will_surely_not_exist
+// FATAL: Cannot find top level entity 'somethign_that_will_surely_not_exist'. Looked in:
+// FATAL: ... .*/compile/single
