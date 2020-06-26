@@ -2163,10 +2163,10 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
         val tree = """fsm foo {
                      |#line 20 "foo.bar"
                      |  void main() {
-                     |#line 100
+                     |#line 100 // Comment
                      |    bar
                      |    i;
-                     |#line 2 "another"
+                     |#line 2 /* Comment */ "another"
                      |    loop { }
                      |  }
                      |}""".stripMargin.asTree[Desc]

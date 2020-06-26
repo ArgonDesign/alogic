@@ -1,0 +1,3 @@
+#line
+// :1: ERROR: '#line' requires a positive decimal integer as first argument
+// FATAL: Stopping due to syntax errors

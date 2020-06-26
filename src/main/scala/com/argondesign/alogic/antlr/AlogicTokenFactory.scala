@@ -41,8 +41,16 @@ class AlogicTokenFactory(val alogicSource: Source)(implicit cc: CompilerContext)
 
   private def eol(kind: Int): Boolean = kind == AlogicLexer.NL
 
-  private def warnIgnored(token: AlogicToken): Unit =
-    cc.warning(token.loc, "Ignoring extraneous input at end of line")
+  var hadError: Boolean = false
+
+  private def error(token: AlogicToken, msg: String): Unit = {
+    hadError = true
+    cc.error(token.loc, msg)
+  }
+
+  // New line offset and file name only committed at end of line
+  private var newLineOffset: Int = _
+  private var newFileName: String = _
 
   def create(
       source: Pair[TokenSource, CharStream],
@@ -95,45 +103,46 @@ class AlogicTokenFactory(val alogicSource: Source)(implicit cc: CompilerContext)
             normalToken
           }
         case PPExpectLineNumber =>
-          // Create token up front, so we can retrieve its text, even if the
-          // text argument is null
           hiddenToken tap { token =>
             if (kind == AlogicLexer.UNSIZEDINT && (token.getText forall { _.isDigit })) {
               // Line number given, expect optional file name
               ppState = PPExpectLineName
               // Set line offset such that the next line - lineOffset yields the
               // specified line number, i.e.: 'line + 1 - lineOffset == given'
-              lineOffset = line + 1 - token.getText.toInt
+              newLineOffset = line + 1 - token.getText.toInt
             } else {
               // Unexpected token, skip rest of line
               ppState = PPSkipLine
-              cc.error(token.loc, "'#line' requires a positive decimal integer as first argument")
+              error(token, "'#line' requires a positive decimal integer as first argument")
             }
           }
         case PPExpectLineName =>
-          if (eol(kind)) {
-            // End of line, return to normal mode
-            ppState = PPNormal
-            hiddenToken
-          } else if (kind == AlogicLexer.STRING) {
-            // Filename given, skip rest of line
-            ppState = PPSkipLine
-            hiddenToken tap { _ =>
-              fileName = hiddenToken.getText.tail.init
+          hiddenToken tap { token =>
+            if (eol(kind)) {
+              // End of line, return to normal mode, commit new line offset
+              ppState = PPNormal
+              lineOffset = newLineOffset
+            } else if (kind == AlogicLexer.STRING) {
+              // Filename given, skip rest of line
+              ppState = PPSkipLine
+              newFileName = hiddenToken.getText.tail.init
+            } else {
+              // Unexpected token, skip rest of line
+              ppState = PPSkipLine
+              error(token, "Second argument to '#line' must be a string literal")
             }
-          } else {
-            // Filename not provided, skip rest of line
-            ppState = PPSkipLine
-            hiddenToken tap warnIgnored
           }
         case PPSkipLine =>
-          if (eol(kind)) {
-            // End of line, return to normal mode
-            ppState = PPNormal
-            hiddenToken
-          } else {
-            // Stray input at end of line
-            hiddenToken tap warnIgnored
+          hiddenToken tap { token =>
+            if (eol(kind)) {
+              // End of line, return to normal mode, commit new line offset and file name
+              ppState = PPNormal
+              lineOffset = newLineOffset
+              fileName = newFileName
+            } else {
+              // Stray input at end of line
+              error(token, "Extraneous arguments to '#line'")
+            }
           }
       }
     }
