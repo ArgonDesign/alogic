@@ -1,16 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2017-2018 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2020 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
 //
-// Module: Alogic Compiler CLI
-// Author: Geza Lore
-//
 // DESCRIPTION:
-//
-// Command line option parser
+//  Command line option parser
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic
@@ -29,7 +24,7 @@ import org.rogach.scallop.singleArgConverter
 
 // Option parser based on Scallop. See the Scallop wiki for usage:
 // https://github.com/scallop/scallop/wiki
-class CLIConf(args: Seq[String], messageBuffer: MessageBuffer)
+class OptionParser(args: Seq[String], messageBuffer: MessageBuffer)
     extends ScallopConf(args)
     with PartialMatch {
   implicit private[this] val fileConverter =
@@ -61,7 +56,9 @@ class CLIConf(args: Seq[String], messageBuffer: MessageBuffer)
     )(
       check: PartialFunction[T, String]
     ) = addValidation {
-    option.toOption flatMap check.lift map { Left(_) } getOrElse Right(())
+    option.toOption flatMap check.lift map {
+      Left(_)
+    } getOrElse Right(())
   }
 
   private[this] def validateListOption[T](
@@ -176,7 +173,9 @@ class CLIConf(args: Seq[String], messageBuffer: MessageBuffer)
   validateOpt(srcbase, ydir) {
     case (Some(base), Some(ys)) => {
       val basePath = base.toPath.toRealPath()
-      val bad = ys filterNot { _.toPath.toRealPath() startsWith basePath }
+      val bad = ys filterNot {
+        _.toPath.toRealPath() startsWith basePath
+      }
       if (bad.isEmpty) {
         Right(())
       } else {

@@ -17,7 +17,6 @@ package com.argondesign.alogic.frontend
 
 import java.io.File
 
-import com.argondesign.alogic.FindFile
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.SourceContext

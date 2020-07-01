@@ -181,13 +181,13 @@ object WriteAux extends PairsTransformerPass {
     cc.manifest("alogic-version") = BuildInfo.version
 
     // Write out the manifest
-    val w = cc.settings.outputWriterFactory(Right("manifest.json"))
+    val w = cc.getOutputWriter("manifest.json")
     Json.write(w, cc.manifest)
     w.close()
 
     // Write out the stats
     if (cc.settings.stats) {
-      val w = cc.settings.outputWriterFactory(Right("stats.json"))
+      val w = cc.getOutputWriter("stats.json")
       val stats: ListMap[String, ListMap[String, Any]] = ListMap from {
         cc.stats.groupBy(_._1._1).toSeq.sortBy(_._1) map {
           case (sourceName, dict) =>

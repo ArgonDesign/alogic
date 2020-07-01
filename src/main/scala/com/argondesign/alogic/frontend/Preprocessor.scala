@@ -17,7 +17,6 @@ package com.argondesign.alogic.frontend
 
 import java.io.File
 
-import com.argondesign.alogic.FindFile
 import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.antlr.PreprocParser._
 import com.argondesign.alogic.antlr._

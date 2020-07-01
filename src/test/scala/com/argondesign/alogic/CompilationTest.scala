@@ -80,7 +80,7 @@ trait CompilationTest
 
   // Create temporary directory, run function passing the path to the temporary
   // directory as argument, then remove the temporary directory
-  def withTmpDir[R](tmpDir: Option[String])(f: Path => Unit): Unit = {
+  def withTmpDir(tmpDir: Option[String])(f: Path => Unit): Unit = {
     def del(f: File): Unit = {
       if (f.isDirectory) {
         f.listFiles foreach del
@@ -907,7 +907,7 @@ trait CompilationTest
         // Do the compilation
         val runReturn =
           try {
-            Main.run(args)
+            CommandLineInterface.run(args)
           } catch {
             // For some reason ScalaTest swallows stack overflow exceptions,
             // wrapping them makes them show up in the test runner.

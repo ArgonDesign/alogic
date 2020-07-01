@@ -16,9 +16,8 @@
 package com.argondesign.alogic.core
 
 import java.io.File
-import java.io.PrintWriter
+import java.nio.file.Path
 
-import com.argondesign.alogic.ast.Trees.Tree
 import com.argondesign.alogic.core.enums.ResetStyle
 import com.argondesign.alogic.core.enums.UninitializedLocals
 
@@ -29,10 +28,10 @@ case class Settings(
     includeSearchDirs: List[File] = Nil,
     // Initial preprocessor definitions
     initialDefines: Map[String, String] = Map.empty,
-    // Output writer factory
-    outputWriterFactory: Either[(Tree, String), String] => PrintWriter = { _ =>
-      ???
-    },
+    // Source base directory
+    srcBase: Option[Path] = None,
+    // Output directory
+    oPath: Option[Path] = None,
     // The field separator sequence
     sep: String = "__",
     // The strategy for handling uninitialized local variables
