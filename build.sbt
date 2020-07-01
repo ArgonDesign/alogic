@@ -1,12 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2017 Argon Design Ltd. All rights reserved.
-//
-// Module : Scala Alogic Compiler
-// Author : Peter de Rivaz/Geza Lore
-//
-// DESCRIPTION:
-//
+// Copyright (c) 2017-2021 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
@@ -29,6 +22,20 @@ scalaVersion := "2.13.2"
 scalacOptions ++= Seq("-feature", "-explaintypes", "-unchecked", "-Xlint:_")
 
 ////////////////////////////////////////////////////////////////////////////////
+// Some of the build is conditional and built only on Java 11
+////////////////////////////////////////////////////////////////////////////////
+
+val onJava11 = System.getProperty("java.version").startsWith("11.")
+
+unmanagedSources / excludeFilter := {
+  if (onJava11) {
+    ""
+  } else {
+    new SimpleFileFilter(_.getCanonicalPath contains "com/argondesign/alogic/gcp")
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // Library dependencies
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -37,19 +44,30 @@ libraryDependencies += "org.rogach" %% "scallop" % "3.3.1"
 libraryDependencies +=
   "org.scala-lang.modules" %% "scala-parallel-collections" % "0.2.0"
 
-////////////////////////////////////////////////////////////////////////////////
-// Testing dependencies
-////////////////////////////////////////////////////////////////////////////////
-
-libraryDependencies += "org.scalatest" %% "scalatest" % "3.1.1" % "test"
-
 libraryDependencies ++= Seq(
   "io.circe" %% "circe-core",
   "io.circe" %% "circe-generic",
   "io.circe" %% "circe-parser"
 ) map {
-  _ % "0.13.0" % "test"
+  _ % "0.13.0"
 }
+
+// Java 11 only
+libraryDependencies ++= {
+  if (onJava11) {
+    Seq("com.google.cloud.functions" % "functions-framework-api" % "1.0.3")
+  } else {
+    Seq.empty
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Testing dependencies
+////////////////////////////////////////////////////////////////////////////////
+
+libraryDependencies += "org.scalatest" %% "scalatest" % "3.1.1" % Test
+
+libraryDependencies += "org.scalamock" %% "scalamock" % "4.4.0" % Test
 
 logBuffered in Test := false
 
@@ -131,7 +149,8 @@ buildInfoKeys := Seq[BuildInfoKey](
   version,
   scalaVersion,
   sbtVersion,
-  coverageEnabled
+  coverageEnabled,
+  BuildInfoKey.action("buildTime")(System.currentTimeMillis)
 )
 
 buildInfoPackage := "com.argondesign.alogic"
@@ -196,3 +215,57 @@ coverageUpdateIgnored := {
 
 // UpdateIgnored before Report
 coverageReport := (coverageReport dependsOn coverageUpdateIgnored).value
+
+////////////////////////////////////////////////////////////////////////////////
+// SBT assembly
+////////////////////////////////////////////////////////////////////////////////
+
+// Do not run tests when running assembly
+test in assembly := {}
+
+// Put output in it's own directory as needed by GCP
+assemblyOutputPath in assembly := crossTarget.value / "assembly" / (assemblyJarName in assembly).value
+
+////////////////////////////////////////////////////////////////////////////////
+// Google Cloud Functions
+////////////////////////////////////////////////////////////////////////////////
+
+val gcfRun = taskKey[Unit]("Run local server for Google Cloud Function endpoint")
+gcfRun := {
+  import scala.collection.mutable
+  import com.google.cloud.functions.invoker.runner.Invoker
+
+  val log = streams.value.log
+  val classPath = (Runtime / fullClasspath).value map { _.data } mkString ":"
+
+  val args = new mutable.ArrayBuffer[String]
+  args.append("--classpath")
+  args.append(classPath)
+  args.append("--target")
+  args.append("com.argondesign.alogic.gcp.FunctionCompile")
+  log.info("Calling Invoker with " + args);
+  Invoker.main(args.toArray)
+}
+
+val gcfDeploy = taskKey[Unit]("Deploy Google Cloud Functions to GCP")
+gcfDeploy := {
+  import scala.sys.process._
+
+  val log = streams.value.log
+
+  Seq(
+    "gcloud",
+    "--project=ccx-eng-cam",
+    "functions",
+    "deploy",
+    "alogic-playground",
+    "--region=us-central1",
+    "--service-account=alogic-playground@ccx-eng-cam.iam.gserviceaccount.com",
+    "--entry-point=com.argondesign.alogic.gcp.FunctionCompile",
+    "--runtime=java11",
+    "--memory=512MB",
+    "--trigger-http",
+    "--allow-unauthenticated",
+    s"--source=${assembly.value.getParent}"
+  ) ! ProcessLogger { s: String => log.info(s) } ensuring { _ == 0 }
+}

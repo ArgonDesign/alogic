@@ -869,7 +869,7 @@ trait CompilationTest
       withTmpDir(configMap.getOptional[String]("tmpdir")) { oPath =>
         // Create argument array
         val args = {
-          val buf = new mutable.ArrayBuffer[String]
+          val buf = new mutable.ListBuffer[String]
 
           // Arguments always required
           buf append "-o"
@@ -904,7 +904,7 @@ trait CompilationTest
           // The input source file
           buf append attr.getOrElse("source-file", sourceFile)
 
-          buf.toArray
+          buf.toSeq
         }
 
         if (config.verbose >= 2) {

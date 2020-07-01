@@ -20,30 +20,37 @@ import com.argondesign.alogic.core.MessageBuffer
 import com.argondesign.alogic.core.Settings
 import com.argondesign.alogic.core.Source
 
+import java.nio.file.Path
+
 object Compiler {
 
   // Parse compiler arguments. Possibly adds messages to message buffer.
   // On success, returns Some(compiler settings and input file).
   def parseArgs(
       messageBuffer: MessageBuffer,
-      args: Seq[String]
+      args: Seq[String],
+      sandboxPathOpt: Option[Path]
     ): Option[(Settings, Source, List[String])] = {
 
     // Parse command line arguments
-    val options = new OptionParser(args, messageBuffer)
+    val options = new OptionParser(
+      args,
+      messageBuffer,
+      sandboxPathOpt.map(_.toFile.getCanonicalFile.toPath)
+    )
 
     Option.unless(messageBuffer.hasError) {
       // Build settings based on arguments
       val settings = Settings(
-        importSearchDirs = options.ydir() map { _.toPath.toAbsolutePath },
-        srcBase = options.srcbase.toOption map { _.toPath.toAbsolutePath },
-        oPath = options.odir.toOption map { _.toPath.toAbsolutePath },
+        importSearchDirs = options.ydir() map { _.toAbsolutePath },
+        srcBase = options.srcbase.toOption map { _.toAbsolutePath },
+        oPath = options.odir.toOption map { _.toAbsolutePath },
         sep = options.sep(),
         uninitialized = options.uninitialized(),
         ensurePrefix = options.ensurePrefix(),
         outputNameMaxLength = options.outputNameMaxLength.toOption,
         header = options.header.toOption map { file =>
-          val str = new String(Files.readAllBytes(file.toPath), StandardCharsets.UTF_8)
+          val str = new String(Files.readAllBytes(file), StandardCharsets.UTF_8)
           if (str.endsWith("\n")) str else str + "\n"
         } getOrElse "",
         colorize = options.color() match {
@@ -65,13 +72,13 @@ object Compiler {
       // Add some defaults for convenience
       val settings2 = settings.copy(
         importSearchDirs = if (settings.importSearchDirs.isEmpty) {
-          List(options.file().toPath.toAbsolutePath.getParent)
+          List(options.file().toAbsolutePath.getParent)
         } else {
           settings.importSearchDirs
         }
       )
 
-      (settings2, Source(options.file()), options.param())
+      (settings2, Source(options.file().toFile), options.param())
     }
   }
 

@@ -1,5 +1,9 @@
 name: Build
-on: [push]
+on:
+  push:
+    branches:
+      - new-frontend
+  workflow_dispatch:
 
 env:
   JAVA_OPTS: -Dsbt.ci=true # SBT CI mode (less noise on output)
@@ -119,3 +123,33 @@ jobs:
         run: sbt coverageOn coverageReport
       - name: Upload coverage to codecov.io
         run: bash <(curl -s https://codecov.io/bash) -X gcov -X coveragepy -s target
+  deploy:
+    name: Deploy Cloud Function for playground
+    needs: build
+    if: ${{ github.repository == 'alogic/alogic' && github.event_name == 'push' && github.ref == 'refs/heads/new-frontend' }}
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0 # Need full history for 'git describe', used for version numbers
+      - name: Set up JDK 11
+        uses: actions/setup-java@v1
+        with:
+          java-version: 11
+      - name: Cache SBT
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.sbt
+            ~/.cache/coursier
+            ~/.ivy2/cache
+          key: deploy-SBT-${{ hashFiles('**/build.sbt') }}
+          restore-keys: deploy-SBT-
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@master
+        with:
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          export_default_credentials: true
+      - name: Deploy
+        run: sbt gcfDeploy

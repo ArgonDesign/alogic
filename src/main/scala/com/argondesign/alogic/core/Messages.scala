@@ -38,6 +38,11 @@ object Messages {
     val loc: Loc
     val msg: Seq[String]
 
+    private def context(highlightStart: String, highlightEnd: String): String =
+      loc.context(highlightStart, highlightEnd)
+
+    def context: String = context("", "")
+
     private def render(highlightStart: String, highlightEnd: String): String = {
       val prefix = {
         val tag = category match {
@@ -56,11 +61,8 @@ object Messages {
         case IceCategory => msg.iterator.concat(Iterator.single("Please file a bug report"))
         case _           => msg.iterator
       }
-      val context = loc match {
-        case Loc.unknown => ""
-        case _           => loc.context(highlightStart, highlightEnd)
-      }
-      (lines mkString (prefix, "\n" + prefix + "... ", "\n")) + context
+      (lines mkString (prefix, "\n" + prefix + "... ", "\n")) +
+        context(highlightStart, highlightEnd)
     }
 
     def render: String = render("", "")

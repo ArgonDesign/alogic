@@ -10,8 +10,6 @@
 
 package com.argondesign.alogic
 
-import java.io.File
-
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.MessageBuffer
 import com.argondesign.alogic.core.enums.ResetStyle
@@ -23,20 +21,49 @@ import org.rogach.scallop.ScallopOption
 import org.rogach.scallop.ValueConverter
 import org.rogach.scallop.singleArgConverter
 
+import java.io.File
+import java.nio.file.Path
+import scala.util.chaining.scalaUtilChainingOps
+import scala.util.Try
+
 // Option parser based on Scallop. See the Scallop wiki for usage:
 // https://github.com/scallop/scallop/wiki
-class OptionParser(args: Seq[String], messageBuffer: MessageBuffer)
+class OptionParser(args: Seq[String], messageBuffer: MessageBuffer, sandboxPathOpt: Option[Path])
     extends ScallopConf(args)
     with PartialMatch {
-  implicit private val fileConverter =
-    singleArgConverter[File](path => (new File(path)).getCanonicalFile())
+
+  object NotInSanbox extends Exception
+
+  def stringToPath(input: String): Path = {
+    val f = new File(input)
+    sandboxPathOpt pipe {
+      case Some(sandboxPath) if !f.isAbsolute => (sandboxPath resolve input).toFile
+      case _                                  => f
+    } pipe {
+      _.getCanonicalFile.toPath
+    } tap { path =>
+      sandboxPathOpt foreach { sandboxPath =>
+        if (!path.startsWith(sandboxPath)) {
+          throw NotInSanbox
+        }
+      }
+    }
+  }
+
+  implicit private val pathConverter: ValueConverter[Path] =
+    singleArgConverter(
+      stringToPath,
+      { case NotInSanbox => Left(s"not inside sandbox") }
+    )
 
   // Ensures all option instances have only a single argument
   // eg -y foo -y bar -y baz, but not -y foo bar
 
   abstract class SingleValueCovnerter[T] extends ValueConverter[List[T]] {
 
-    def convert(value: String): T
+    protected def convert(value: String): T
+
+    protected val handler: PartialFunction[Throwable, Either[String, Option[List[T]]]] = { throw _ }
 
     def parse(instances: List[(String, List[String])]): Either[String, Option[List[T]]] = {
       val bad = instances.filter(_._2.size > 1)
@@ -46,24 +73,32 @@ class OptionParser(args: Seq[String], messageBuffer: MessageBuffer)
           yield r mkString " ");
         Left(msg mkString "\n")
       } else {
-        Right(Some(instances.flatMap(_._2) map convert))
+        Try(Right(Some(instances.flatMap(_._2) map convert)))
+          .recover(handler)
+          .recover({ case _: Exception => Left("wrong arguments format") })
+          .get
       }
     }
 
     val argType: ArgType.V = ArgType.SINGLE
   }
 
-  private val singlefileListConverter: SingleValueCovnerter[File] = { value =>
-    (new File(value)).getCanonicalFile
+  private val singlePathListConverter: SingleValueCovnerter[Path] = new SingleValueCovnerter[Path] {
+    final override protected def convert(input: String): Path = stringToPath(input)
+
+    final override protected val handler = {
+      case NotInSanbox => Left("not inside sandbox")
+    }
+
   }
 
-  private val singlestringListConverter: SingleValueCovnerter[String] = { value => value }
+  private val singleStringListconverter: SingleValueCovnerter[String] = identity(_)
 
   private def validateOption[T](
       option: ScallopOption[T]
     )(
       check: PartialFunction[T, String]
-    ) = addValidation {
+    ): Unit = addValidation {
     option.toOption flatMap check.lift map {
       Left(_)
     } getOrElse Right(())
@@ -73,7 +108,7 @@ class OptionParser(args: Seq[String], messageBuffer: MessageBuffer)
       option: ScallopOption[List[T]]
     )(
       check: PartialFunction[T, String]
-    ) = addValidation {
+    ): Unit = addValidation {
     val msgs = option.toOption.getOrElse(Nil) collect check
     if (msgs.nonEmpty) {
       Left(msgs mkString "\n")
@@ -82,31 +117,30 @@ class OptionParser(args: Seq[String], messageBuffer: MessageBuffer)
     }
   }
 
-  private def validateFileExist(option: ScallopOption[File]) =
+  private def validatePathExist(option: ScallopOption[Path]): Unit =
     validateOption(option) {
-      case path: File if !path.exists() => s"'$path' does not exist"
+      case path: Path if !path.toFile.exists() => s"'$path' does not exist"
     }
 
-  private def validateFileIsRegular(option: ScallopOption[File]) =
+  private def validatePathsExist(option: ScallopOption[List[Path]]): Unit =
+    validateListOption(option) {
+      case path: Path if !path.toFile.exists() => s"'$path' does not exist"
+    }
+
+  private def validatePathIsRegularFile(option: ScallopOption[Path]): Unit =
     validateOption(option) {
-      case path: File if !path.isFile() => s"'$path' is not a regular file"
+      case path: Path if !path.toFile.isFile => s"'$path' is not a regular file"
     }
 
-  override def validateFilesExist(option: ScallopOption[List[File]]) =
+  private def validatePathsAreDirectories(option: ScallopOption[List[Path]]): Unit =
     validateListOption(option) {
-      case path: File if !path.exists() => s"'$path' does not exist"
+      case path: Path if !path.toFile.isDirectory => s"'$path' is not a directory"
     }
 
-  private def validateFilesAreDirectories(option: ScallopOption[List[File]]) =
-    validateListOption(option) {
-      case path: File if !path.isDirectory() => s"'$path' is not a directory"
-    }
-
-  private def validateOneOf[T](option: ScallopOption[T])(choices: T*) = addValidation {
+  private def validateOneOf[T](option: ScallopOption[T])(choices: T*): Unit = addValidation {
     option.toOption partialMatch {
-      case Some(value) if !(choices contains value) => {
+      case Some(value) if !(choices contains value) =>
         Left(s"Option '${option.name}' must be one of: " + (choices mkString " "))
-      }
     } getOrElse {
       Right(())
     }
@@ -115,7 +149,7 @@ class OptionParser(args: Seq[String], messageBuffer: MessageBuffer)
   private def validateOutputNameMaxLengthWithPrefix(
       outNameMaxLen: ScallopOption[Int],
       prefix: ScallopOption[String]
-    ) =
+    ): Unit =
     addValidation {
       val min = prefix().length + 16
       outNameMaxLen.toOption partialMatch {
@@ -134,24 +168,24 @@ class OptionParser(args: Seq[String], messageBuffer: MessageBuffer)
     messageBuffer.error(Loc.unknown, Seq(message))
   }
 
-  val ydir = opt[List[File]](
+  val ydir = opt[List[Path]](
     short = 'y',
     descr = """|Directory to search for imported packages. Can be repeated to
                |specify multiple search paths. If none provided, the directory
                |containing the input file is assumed.
                |""".stripMargin.replace('\n', ' ')
-  )(singlefileListConverter)
+  )(singlePathListConverter)
 
-  validateFilesExist(ydir)
-  validateFilesAreDirectories(ydir)
+  validatePathsExist(ydir)
+  validatePathsAreDirectories(ydir)
 
-  val odir = opt[File](
+  val odir = opt[Path](
     short = 'o',
     required = true,
     descr = "Output directory. See description of --srcbase as well"
   )
 
-  val srcbase = opt[File](
+  val srcbase = opt[Path](
     noshort = true,
     required = false,
     descr = """Base directory for source files. When specified, all directories
@@ -164,18 +198,15 @@ class OptionParser(args: Seq[String], messageBuffer: MessageBuffer)
   )
 
   validateOpt(srcbase, ydir) {
-    case (Some(base), Some(ys)) => {
-      val basePath = base.toPath.toRealPath()
-      val bad = ys filterNot {
-        _.toPath.toRealPath() startsWith basePath
-      }
+    case (Some(base), Some(ys)) =>
+      val basePath = base.toRealPath()
+      val bad = ys filterNot { _.toRealPath() startsWith basePath }
       if (bad.isEmpty) {
         Right(())
       } else {
         val msgs = for (file <- bad) yield s"-y '$file' is not under --srcbase '$base'"
         Left(msgs mkString "\n")
       }
-    }
     case _ => Right(())
   }
 
@@ -237,14 +268,14 @@ class OptionParser(args: Seq[String], messageBuffer: MessageBuffer)
 
   validateOutputNameMaxLengthWithPrefix(outputNameMaxLength, ensurePrefix)
 
-  val header = opt[File](
+  val header = opt[Path](
     noshort = true,
     required = false,
     descr = "File containing text that will be prepended to every output file"
   )
 
-  validateFileExist(header)
-  validateFileIsRegular(header)
+  validatePathExist(header)
+  validatePathIsRegularFile(header)
 
   val color = opt[String](
     noshort = true,
@@ -330,7 +361,7 @@ class OptionParser(args: Seq[String], messageBuffer: MessageBuffer)
     short = 'P',
     descr = """|Specifies actual parameters to the input file.
                |""".stripMargin.replace('\n', ' ')
-  )(singlestringListConverter)
+  )(singleStringListconverter)
 
   // There is no standard library call to check if the console is a terminal,
   // so we pass this hidden option from the wrapper script to help ourselves out
@@ -345,14 +376,21 @@ class OptionParser(args: Seq[String], messageBuffer: MessageBuffer)
   // Measure and report inserted execution timing
   val profile = toggle(name = "profile", noshort = true, hidden = true)
 
+  // Crash the compiler for testing purposes
+  val testCrash = toggle(name = "test-crash", noshort = true, hidden = true)
+
+  validateOption(testCrash) {
+    case true => throw new RuntimeException("Crashing on purpose due to --test-crash")
+  }
+
   // Input file
-  val file = trailArg[File](
+  val file = trailArg[Path](
     required = true,
     descr = "Input file"
   )
 
-  validateFileExist(file)
-  validateFileIsRegular(file)
+  validatePathExist(file)
+  validatePathIsRegularFile(file)
 
   verify()
 }
