@@ -166,8 +166,11 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
         ExprType(TypeVoid) withLoc ctx.loc
 
       //////////////////////////////////////////////////////////////////////////
-      // 'this'
+      // Keywords
       //////////////////////////////////////////////////////////////////////////
+
+      override def visitExprKeyword(ctx: ExprKeywordContext): Expr =
+        ExprRef(Ident(ctx.txt, Nil) withLoc ctx.loc) withLoc ctx.loc
 
       override def visitExprThis(ctx: ExprThisContext): Expr = {
         cc.error(ctx.loc, "'this' reference is not user accessible")
@@ -186,7 +189,6 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
 
       override def visitExprDollarid(ctx: ExprDollaridContext): Expr =
         ExprRef(IdentBuilder(ctx.DOLLARID)) withLoc ctx.loc
-
       //////////////////////////////////////////////////////////////////////////
       // Call
       //////////////////////////////////////////////////////////////////////////

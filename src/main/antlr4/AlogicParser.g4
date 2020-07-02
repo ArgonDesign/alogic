@@ -48,8 +48,8 @@ attr
 
 descbase
   : expr ident ('=' init=expr)? ';'                                     # DescVar
-  | 'in' fct? expr ident ';'                                            # DescIn
-  | 'out' fct? stt? expr ident ('=' init=expr)? ';'                     # DescOut
+  | in='in' fct? expr ident? ';'                                        # DescIn
+  | out='out' fct? stt? expr ident? ('=' init=expr)? ';'                # DescOut
   | 'pipeline' expr ident ';'                                           # DescPipeline
   | 'param' expr ident ('=' init=expr)?  ';'                            # DescParam
   | 'param' 'type' ident ('=' init=expr)?  ';'                          # DescParamType
@@ -222,7 +222,8 @@ expr
   | 'int'                                                       # ExprTypeSNum
   | 'uint'                                                      # ExprTypeUNum
   | 'void'                                                      # ExprTypeVoid
-  // 'this'
+  // Keywords
+  | ('in' | 'out')                                              # ExprKeyword
   | 'this'                                                      # ExprThis
   // Names
   | ident                                                       # ExprIdent

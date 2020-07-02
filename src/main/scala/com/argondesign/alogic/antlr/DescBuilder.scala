@@ -80,6 +80,9 @@ object DescBuilder extends BaseBuilder[DescContext, Desc] with ChainingSyntax {
       // Desc
       //////////////////////////////////////////////////////////////////////////
 
+      private def identOrElse(ctx: IdentContext, ident: => Ident): Ident =
+        if (ctx != null) IdentBuilder(ctx) else ident
+
       override def visitDescVar(ctx: DescVarContext): Desc = {
         val ident = IdentBuilder(ctx.ident)
         val spec = ExprBuilder(ctx.expr(0))
@@ -89,7 +92,7 @@ object DescBuilder extends BaseBuilder[DescContext, Desc] with ChainingSyntax {
       }
 
       override def visitDescIn(ctx: DescInContext): Desc = {
-        val ident = IdentBuilder(ctx.ident)
+        val ident = identOrElse(ctx.ident, Ident("in", Nil) withLoc ctx.in.loc)
         val spec = ExprBuilder(ctx.expr)
         val fct = FCTVisitor(ctx.fct)
         val loc = ctx.loc.copy(point = ident.loc.start)
@@ -97,7 +100,7 @@ object DescBuilder extends BaseBuilder[DescContext, Desc] with ChainingSyntax {
       }
 
       override def visitDescOut(ctx: DescOutContext): Desc = {
-        val ident = IdentBuilder(ctx.ident)
+        val ident = identOrElse(ctx.ident, Ident("out", Nil) withLoc ctx.out.loc)
         val spec = ExprBuilder(ctx.expr(0))
         val fct = FCTVisitor(ctx.fct)
         val stt = STTVisitor(ctx.stt)

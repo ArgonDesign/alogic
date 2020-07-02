@@ -321,6 +321,30 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
               }
             }
           }
+
+          "unnamed" in {
+            "out bool;".asTree[Desc] shouldBe {
+              DescOut(
+                Ident("out", Nil),
+                ExprType(TypeUInt(1)),
+                FlowControlTypeNone,
+                StorageTypeDefault,
+                None
+              )
+            }
+          }
+
+          "unnamed with initializer" in {
+            "out bool = true;".asTree[Desc] shouldBe {
+              DescOut(
+                Ident("out", Nil),
+                ExprType(TypeUInt(1)),
+                FlowControlTypeNone,
+                StorageTypeDefault,
+                Some(ExprInt(false, 1, 1))
+              )
+            }
+          }
         }
 
         "inputs" - {
@@ -347,6 +371,12 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
               case DescIn(ident @ Ident("a", Nil), ExprType(TypeSInt(w)), FlowControlTypeNone)
                   if w == 2 =>
                 ident.attr shouldBe Map("foo" -> SourceAttribute.Flag())
+            }
+          }
+
+          "unnamed" in {
+            "in bool;".asTree[Desc] shouldBe {
+              DescIn(Ident("in", Nil), ExprType(TypeUInt(1)), FlowControlTypeNone)
             }
           }
         }
@@ -1951,6 +1981,16 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
           "this".asTree[Expr] shouldBe ExprError()
           cc.messages.loneElement should beThe[Error] {
             "'this' reference is not user accessible"
+          }
+        }
+
+        "keywords" - {
+          "in" in {
+            "in".asTree[Expr] shouldBe ExprRef(Ident("in", Nil))
+          }
+
+          "out" in {
+            "out".asTree[Expr] shouldBe ExprRef(Ident("out", Nil))
           }
         }
       }
