@@ -14,33 +14,17 @@ network circular_definition_2 {
 
   start = new inner(P = 0);
 }
-// :15: ERROR: Definition of 'inner' is circular:
+// :15: ERROR: Definition of 'inner' is circular
 // :15: ERROR: ... with parameter assignments: P = 0
-// :15: ERROR: ... defined at .*circular_definition_2.alogic:2
-// :15: ERROR: ...     network inner \{
-// :15: ERROR: ...             \^~~~~
-// :15: ERROR: ... depends on 'inner' via .*circular_definition_2.alogic:5
-// :15: ERROR: ... with parameter assignments: P = 1
-// :15: ERROR: ...         i = new inner\(P = 1\);
-// :15: ERROR: ...                 ~~~~~\^~~~~~~
-// :15: ERROR: ... defined at .*circular_definition_2.alogic:2
-// :15: ERROR: ...     network inner \{
-// :15: ERROR: ...             \^~~~~
-// :15: ERROR: ... depends on 'inner' via .*circular_definition_2.alogic:7
-// :15: ERROR: ... with parameter assignments: P = 2
-// :15: ERROR: ...         i = new inner\(P = 2\);
-// :15: ERROR: ...                 ~~~~~\^~~~~~~
-// :15: ERROR: ... defined at .*circular_definition_2.alogic:2
-// :15: ERROR: ...     network inner \{
-// :15: ERROR: ...             \^~~~~
-// :15: ERROR: ... depends on 'inner' via .*circular_definition_2.alogic:9
-// :15: ERROR: ... with parameter assignments: P = 3
-// :15: ERROR: ...         i = new inner\(P = 3\);
-// :15: ERROR: ...                 ~~~~~\^~~~~~~
-// :15: ERROR: ... defined at .*circular_definition_2.alogic:2
-// :15: ERROR: ...     network inner \{
-// :15: ERROR: ...             \^~~~~
-// :15: ERROR: ... depends on 'inner' via .*circular_definition_2.alogic:11
-// :15: ERROR: ... with parameter assignments: P = 0
-// :15: ERROR: ...         i = new inner\(P = 0\);
-// :15: ERROR: ...                 ~~~~~\^~~~~~~
+// :2: NOTE: 'inner' is defined at
+// :5: NOTE: depends on 'inner'
+// :5: NOTE: ... with parameter assignments: P = 1
+// :2: NOTE: 'inner' is defined at
+// :7: NOTE: depends on 'inner'
+// :7: NOTE: ... with parameter assignments: P = 2
+// :2: NOTE: 'inner' is defined at
+// :9: NOTE: depends on 'inner'
+// :9: NOTE: ... with parameter assignments: P = 3
+// :2: NOTE: 'inner' is defined at
+// :11: NOTE: which in turn depends on 'inner'
+// :11: NOTE: ... with parameter assignments: P = 0

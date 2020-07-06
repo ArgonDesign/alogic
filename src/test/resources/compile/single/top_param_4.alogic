@@ -2,5 +2,5 @@
 network top_param_4 {
   param uint W;
 }
-// command-line:1: ERROR: Multiple parameter assignments must be given by name
 // :3: WARNING: Parameter 'W' is unused
+// command-line:1: ERROR: Multiple parameter assignments must be given by name

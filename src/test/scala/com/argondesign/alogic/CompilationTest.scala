@@ -21,12 +21,14 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 
-import com.argondesign.alogic.core.Error
-import com.argondesign.alogic.core.Fatal
-import com.argondesign.alogic.core.Message
+import com.argondesign.alogic.core.Messages.Error
+import com.argondesign.alogic.core.Messages.Fatal
+import com.argondesign.alogic.core.Messages.Message
+import com.argondesign.alogic.core.Messages.Note
+import com.argondesign.alogic.core.Messages.Warning
+import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.MessageBuffer
 import com.argondesign.alogic.core.Source
-import com.argondesign.alogic.core.Warning
 import com.argondesign.alogic.core.enums.ResetStyle
 import com.argondesign.alogic.util.unreachable
 import io.circe.Json
@@ -688,15 +690,16 @@ trait CompilationTest
       val typeMatches = (this, message) match {
         case (_: WarningSpec, _: Warning) => true
         case (_: ErrorSpec, _: Error)     => true
+        case (_: NoteSpec, _: Note)       => true
         case (_: FatalSpec, _: Fatal)     => true
         case _                            => false
       }
-      lazy val locMatches = (message.locOpt, fileLineOpt) match {
-        case (Some(loc), Some((file, line))) =>
+      lazy val locMatches = (message.loc, fileLineOpt) match {
+        case (Loc.unknown, None) => true // No location in Message, nor MessageSpec
+        case (loc, Some((file, line))) =>
           loc.line == line && // Right line number
             file.r.pattern.matcher(loc.file).matches() // Right file pattern
-        case (None, None) => true // No location in Message, nor MessageSpec
-        case _            => false
+        case _ => false
       }
       typeMatches && // Right type
       locMatches && // Right location
@@ -707,6 +710,7 @@ trait CompilationTest
       val kindString = this match {
         case _: WarningSpec => "WARNING"
         case _: ErrorSpec   => "ERROR"
+        case _: NoteSpec    => "NOTE"
         case _: FatalSpec   => "FATAL"
       }
       val prefix = fileLineOpt match {
@@ -723,6 +727,7 @@ trait CompilationTest
   // format: off
   private case class WarningSpec(fileLineOpt: Option[(String, Int)], patterns: List[String]) extends MessageSpec
   private case class ErrorSpec(fileLineOpt: Option[(String, Int)], patterns: List[String]) extends MessageSpec
+  private case class NoteSpec(fileLineOpt: Option[(String, Int)], patterns: List[String]) extends MessageSpec
   private case class FatalSpec(fileLineOpt: Option[(String, Int)], patterns: List[String]) extends MessageSpec
   // format: on
 
@@ -737,7 +742,7 @@ trait CompilationTest
     val pairMatcher = """@([^:]+):(.*)""".r
     val longMatcher = """@(.+)\{\{\{""".r
     val boolMatcher = """@(.+)""".r
-    val mesgMatcher = """((.*):(\d+): )?(WARNING|ERROR|FATAL): (\.\.\. )?(.*)""".r
+    val mesgMatcher = """((.*):(\d+): )?(WARNING|ERROR|NOTE|FATAL): (\.\.\. )?(.*)""".r
 
     val mesgSpecs = new ListBuffer[MessageSpec]
 
@@ -754,6 +759,7 @@ trait CompilationTest
       mesgType match {
         case "WARNING" => mesgSpecs append WarningSpec(fileLineOpt, mesgBuff.toList)
         case "ERROR"   => mesgSpecs append ErrorSpec(fileLineOpt, mesgBuff.toList)
+        case "NOTE"    => mesgSpecs append NoteSpec(fileLineOpt, mesgBuff.toList)
         case "FATAL"   => mesgSpecs append FatalSpec(fileLineOpt, mesgBuff.toList)
         case _         => unreachable
       }
@@ -929,45 +935,30 @@ trait CompilationTest
 
         // Check messages
         {
-          // fail flag
-          var messageCheckFailed = false
-
-          // Group messages by specs
-          val messageGroups = messages groupBy { message =>
-            messageSpecs find { _ matches message }
-          }
-
-          // Fail if a spec matches multiple messages
-          for ((Some(spec), messages) <- messageGroups if messages.lengthIs > 1) {
-            println("Message pattern:")
-            println(spec.render)
-            println("Matches multiple messages:")
-            messages foreach { message => println(message.render) }
-            messageCheckFailed = true
-          }
-
-          // Print unexpected messages
-          messageGroups.get(None) foreach { unexpectedMessages =>
-            unexpectedMessages foreach { message =>
-              println("Unexpected message:")
-              println(message.render)
-            }
-            messageCheckFailed = true
-          }
-
-          // Print unused patterns
-          for {
-            spec <- messageSpecs
-            if !(messageGroups contains Some(spec))
-          } {
-            println("Unused message pattern:")
-            println(spec.render)
-            messageCheckFailed = true
-          }
-
-          // Fail test if message check failed
-          if (messageCheckFailed) {
-            fail("Message check failed")
+          // Each message spec should consume one message, in the given order
+          val mIt = messages.iterator map { Some(_) }
+          val sIt = messageSpecs.iterator map { Some(_) }
+          mIt.zipAll(sIt, None, None) filterNot {
+            case (Some(message), Some(spec)) => spec matches message
+            case _                           => false
+          } pipe {
+            case iterator if iterator.isEmpty => // All OK
+            case iterator =>
+              iterator foreach {
+                case (Some(message), Some(spec)) =>
+                  println("Mismatched message, expected:")
+                  println(spec.render)
+                  println("actual:")
+                  println(message.render)
+                case (Some(message), None) =>
+                  println("Unexpected message:")
+                  println(message.render)
+                case (None, Some(spec)) =>
+                  println("Missing message:")
+                  println(spec.render)
+                case _ => unreachable
+              }
+              fail("Message check failed")
           }
         }
 

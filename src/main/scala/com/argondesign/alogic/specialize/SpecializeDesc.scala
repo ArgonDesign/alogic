@@ -25,7 +25,6 @@ import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.tailrec
 import scala.collection.mutable
-import scala.collection.mutable.ListBuffer
 import scala.io.AnsiColor
 import scala.util.chaining._
 
@@ -412,28 +411,22 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
 
     pendingMap.get(tag) match {
       case Some(startLoc) =>
-        // Already in progress. Report the cycle
-        val color = cc.colorOpt(AnsiColor.GREEN + AnsiColor.BOLD)
-
-        val msg = new ListBuffer[String]
-
-        def bindingsNote(bindings: ParamBindings): Unit = bindings match {
+        def bindingsNote(bindings: ParamBindings): List[String] = bindings match {
           case ParamBindingsPositional(params) if params.nonEmpty =>
-            msg += params map {
-              _.toSource
-            } mkString ("with parameter values: ", ", ", "")
+            List(params map {
+              _.simplify.toSource
+            } mkString ("with parameter values: ", ", ", ""))
           case ParamBindingsNamed(params) if params.nonEmpty =>
-            msg += params map {
-              case ((name, Nil), v)  => s"$name = ${v.toSource}"
-              case ((name, idxs), v) => s"$name#[${idxs.mkString(", ")}] = ${v.toSource}"
-            } mkString ("with parameter assignments: ", ", ", "")
-          case _ =>
+            List(params map {
+              case ((name, Nil), v)  => s"$name = ${v.simplify.toSource}"
+              case ((name, idxs), v) => s"$name#[${idxs.mkString(", ")}] = ${v.simplify.toSource}"
+            } mkString ("with parameter assignments: ", ", ", ""))
+          case _ => Nil
         }
 
-        msg += s"Definition of '${sourceName(desc.symbol)}' is circular:"
-        bindingsNote(paramBindings)
-        msg += s"defined at ${desc.symbol.loc.prefix}"
-        msg ++= desc.symbol.loc.context(color).split("\\s*\n") map { "  " + _ }
+        val sName = sourceName(desc.symbol)
+        cc.error(startLoc, s"Definition of '$sName' is circular" :: bindingsNote(paramBindings): _*)
+        cc.note(desc.symbol, s"'$sName' is defined at")
 
         def addEntry(
             symbol: Symbol,
@@ -441,12 +434,13 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
             loc: Loc,
             last: Boolean = false
           ): Unit = {
-          msg += s"depends on '${sourceName(symbol)}' via ${loc.prefix}"
-          bindingsNote(bindings)
-          msg ++= loc.context(color).split("\\s*\n") map { "  " + _ }
+          val sName = sourceName(symbol)
+          val bNote = bindingsNote(bindings)
           if (!last) {
-            msg += s"defined at ${symbol.loc.prefix}"
-            msg ++= symbol.loc.context(color).split("\\s*\n") map { "  " + _ }
+            cc.note(loc, s"depends on '$sName'" :: bNote: _*)
+            cc.note(symbol, s"'$sName' is defined at")
+          } else {
+            cc.note(loc, s"which in turn depends on '$sName'" :: bNote: _*)
           }
         }
 
@@ -458,8 +452,6 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
         }
 
         addEntry(desc.symbol, paramBindings, refLoc, last = true)
-
-        cc.error(startLoc, msg.toList: _*)
 
         DescSpecializationErrorOther
 

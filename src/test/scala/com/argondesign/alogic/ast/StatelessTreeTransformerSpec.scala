@@ -20,7 +20,7 @@ import com.argondesign.alogic.SourceTextConverters._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Types.TypeUInt
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Warning
+import com.argondesign.alogic.core.Messages.Warning
 import com.argondesign.alogic.util.SequenceNumbers
 import org.scalatest.flatspec.AnyFlatSpec
 

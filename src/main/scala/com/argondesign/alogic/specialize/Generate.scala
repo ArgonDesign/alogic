@@ -189,7 +189,7 @@ private[specialize] object Generate {
           case Some(value) =>
             values(tail, bindings) map { value :: _ }
           case None =>
-            cc.error(head, "Identifier index must be a compile time constant")
+            cc.errorOnce(head, "Identifier index must be a compile time constant")
             values(tail, bindings) // Compute it anyway to emit all errors
             None
         }
@@ -704,7 +704,7 @@ private[specialize] object Generate {
       var hadError = false
 
       private[this] def error(loc: Loc, msg: String*): Unit = {
-        cc.error(loc, msg: _*)
+        cc.errorOnce(loc, msg: _*)
         hadError = true
       }
 

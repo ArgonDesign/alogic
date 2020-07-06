@@ -24,16 +24,15 @@ import com.argondesign.alogic.analysis.WrittenSyms
 import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
-import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.CompoundType
 import com.argondesign.alogic.core.ExtensionType
 import com.argondesign.alogic.core.Loc
+import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Math.clog2
 import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
-import scala.io.AnsiColor
 import scala.language.implicitConversions
 
 class BoolHelpers(val value: Boolean) extends AnyVal {
@@ -409,14 +408,8 @@ final class Typer(implicit cc: CompilerContext) extends StatefulTreeTransformer 
           case _: DeclStack => unreachable
           case DeclType(symbol, spec) if symbol.attr.wasParam.isSet =>
             spec.tpe.isType ifFalse {
-              val msg = {
-                val color = cc.colorOpt(AnsiColor.YELLOW)
-                val declCtx = symbol.decl.loc.context(color).split("\\s*\n")
-                s"Type parameter '${symbol.name}' must be assigned a type." ::
-                  s"Definition of '${symbol.name}' is at ${symbol.decl.loc.prefix}" ::
-                  (declCtx.toList map { "  " + _ })
-              }
-              error(tree, spec, msg: _*)
+              error(tree, spec, s"Type parameter '${symbol.name}' must be assigned a type.")
+              cc.note(symbol, s"'${symbol.name}' is defined at")
             }
           case DeclType(_, spec)      => checkType(spec)
           case _: DeclEntity          => true

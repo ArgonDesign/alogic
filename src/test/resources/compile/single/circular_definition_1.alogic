@@ -4,22 +4,10 @@ fsm circular_definition_1 {
   uint(@bits(c)) b;
   uint(@bits(a)) c;
 }
-// :2: ERROR: Definition of 'c' is circular:
-// :2: ERROR: ... defined at .*circular_definition_1.alogic:5
-// :2: ERROR: ...     uint\(@bits\(a\)\) c;
-// :2: ERROR: ...                    \^
-// :2: ERROR: ... depends on 'a' via .*circular_definition_1\.alogic:5
-// :2: ERROR: ...     uint\(@bits\(a\)\) c;
-// :2: ERROR: ...                \^
-// :2: ERROR: ... defined at .*circular_definition_1\.alogic:3
-// :2: ERROR: ...     uint\(@bits\(b\)\) a;
-// :2: ERROR: ...                    \^
-// :2: ERROR: ... depends on 'b' via .*circular_definition_1\.alogic:3
-// :2: ERROR: ...     uint\(@bits\(b\)\) a;
-// :2: ERROR: ...                \^
-// :2: ERROR: ... defined at .*circular_definition_1\.alogic:4
-// :2: ERROR: ...     uint\(@bits\(c\)\) b;
-// :2: ERROR: ...                    \^
-// :2: ERROR: ... depends on 'c' via .*circular_definition_1\.alogic:4
-// :2: ERROR: ...     uint\(@bits\(c\)\) b;
-// :2: ERROR: ...                \^
+// :2: ERROR: Definition of 'c' is circular
+// :5: NOTE: 'c' is defined at
+// :5: NOTE: depends on 'a'
+// :3: NOTE: 'a' is defined at
+// :3: NOTE: depends on 'b'
+// :4: NOTE: 'b' is defined at
+// :4: NOTE: which in turn depends on 'c'

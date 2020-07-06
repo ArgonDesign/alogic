@@ -2,7 +2,7 @@
 network top_param_12 {
   param uint W;
 }
+// :3: WARNING: Parameter 'W' is unused
 // command-line:1: ERROR: Both operands of binary '\+' must have the same width, but
 // command-line:1: ERROR: ... left  hand operand is 2 bits wide, and
 // command-line:1: ERROR: ... right hand operand is 3 bits wide
-// :3: WARNING: Parameter 'W' is unused

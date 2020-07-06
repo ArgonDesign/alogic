@@ -22,8 +22,8 @@ import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types.TypeNum
 import com.argondesign.alogic.core.Types.TypeUInt
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Error
-import com.argondesign.alogic.core.Warning
+import com.argondesign.alogic.core.Messages.Error
+import com.argondesign.alogic.core.Messages.Warning
 import com.argondesign.alogic.core.enums.EntityVariant
 import org.scalatest.freespec.AnyFreeSpec
 

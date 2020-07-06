@@ -21,6 +21,7 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.Messages.Error
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.passes._
 import com.argondesign.alogic.typer.Typer

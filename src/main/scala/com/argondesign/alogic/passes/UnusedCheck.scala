@@ -172,7 +172,7 @@ final class UnusedCheck(implicit cc: CompilerContext) extends StatefulTreeTransf
       val allUsed = used.values.foldLeft(Set.empty[Symbol])(_ union _)
 
       for {
-        symbol <- allDeclared diff allUsed
+        symbol <- (allDeclared diff allUsed).toSeq.sorted
         if !(symbol.attr.unused.get contains true)
       } {
         val hint = symbol.desc match {

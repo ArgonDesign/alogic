@@ -21,12 +21,12 @@ import com.argondesign.alogic.SourceTextConverters._
 import com.argondesign.alogic.ast.Trees.Ident
 import com.argondesign.alogic.ast.Trees.RizDesc
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.core.Messages.Error
+import com.argondesign.alogic.core.Messages.Message
+import com.argondesign.alogic.core.Messages.Warning
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Error
 import com.argondesign.alogic.core.Loc
-import com.argondesign.alogic.core.Message
 import com.argondesign.alogic.core.SourceAttribute
-import com.argondesign.alogic.core.Warning
 import com.argondesign.alogic.passes.Pass
 import org.scalatest._
 import org.scalatest.matchers.MatchResult

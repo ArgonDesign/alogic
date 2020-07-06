@@ -19,7 +19,7 @@ import java.util.regex.Pattern
 
 import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Error
+import com.argondesign.alogic.core.Messages.Error
 import org.scalatest.freespec.AnyFreeSpec
 
 final class PortCheckASpec extends AnyFreeSpec with AlogicTest {

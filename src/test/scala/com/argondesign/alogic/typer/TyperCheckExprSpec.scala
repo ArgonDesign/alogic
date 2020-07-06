@@ -18,7 +18,7 @@ package com.argondesign.alogic.typer
 import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Error
+import com.argondesign.alogic.core.Messages.Error
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.passes.Elaborate
 import com.argondesign.alogic.passes.Namer

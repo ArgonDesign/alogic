@@ -25,12 +25,12 @@ import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeValid
 import com.argondesign.alogic.core.StorageTypes._
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Error
+import com.argondesign.alogic.core.Messages.Error
+import com.argondesign.alogic.core.Messages.Message
+import com.argondesign.alogic.core.Messages.Warning
 import com.argondesign.alogic.core.FuncVariant
-import com.argondesign.alogic.core.Message
 import com.argondesign.alogic.core.SourceAttribute
 import com.argondesign.alogic.core.SourceContext
-import com.argondesign.alogic.core.Warning
 import com.argondesign.alogic.core.enums.EntityVariant
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.MatchResult

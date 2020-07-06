@@ -12,6 +12,7 @@ package com.argondesign.alogic
 
 import java.io.File
 
+import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.MessageBuffer
 import com.argondesign.alogic.core.enums.ResetStyle
 import com.argondesign.alogic.core.enums.UninitializedLocals
@@ -127,7 +128,7 @@ class OptionParser(args: Seq[String], messageBuffer: MessageBuffer)
   banner("Alogic compiler")
 
   errorMessageHandler = { message =>
-    messageBuffer.error(None, message)
+    messageBuffer.error(Loc.unknown, Seq(message))
   }
 
   val ydir = opt[List[File]](

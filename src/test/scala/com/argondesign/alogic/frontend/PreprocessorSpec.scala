@@ -17,12 +17,12 @@ package com.argondesign.alogic.frontend
 
 import java.io.File
 
+import com.argondesign.alogic.core.Messages.Error
+import com.argondesign.alogic.core.Messages.Fatal
+import com.argondesign.alogic.core.Messages.Warning
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Error
-import com.argondesign.alogic.core.Fatal
 import com.argondesign.alogic.core.FatalErrorException
 import com.argondesign.alogic.core.Source
-import com.argondesign.alogic.core.Warning
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

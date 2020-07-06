@@ -13,6 +13,7 @@ package com.argondesign.alogic
 import java.io.File
 
 import com.argondesign.alogic.core.MessageBuffer
+import com.argondesign.alogic.core.Messages
 
 object CommandLineInterface {
 
@@ -21,8 +22,9 @@ object CommandLineInterface {
     val (messageBuffer, colorize, returnCode) = run(args)
 
     // Emit messages
+    val colorMap = if (colorize) Messages.ansiColorMap else Messages.emptyColorMap
     messageBuffer.messages foreach { msg =>
-      Console.err.println(msg.render(colorize))
+      Console.err.println(msg.render(colorMap))
     }
 
     // Finished

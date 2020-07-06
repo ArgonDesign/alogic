@@ -22,9 +22,9 @@ import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeValid
 import com.argondesign.alogic.core.StorageTypes.StorageTypeReg
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Error
+import com.argondesign.alogic.core.Messages.Error
 import com.argondesign.alogic.core.Loc
-import com.argondesign.alogic.core.Warning
+import com.argondesign.alogic.core.Messages.Warning
 import org.scalatest.freespec.AnyFreeSpec
 
 import scala.collection.immutable.ListMap

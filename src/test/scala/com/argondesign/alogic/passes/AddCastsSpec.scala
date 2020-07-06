@@ -21,7 +21,7 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Warning
+import com.argondesign.alogic.core.Messages.Warning
 import org.scalatest.freespec.AnyFreeSpec
 
 final class AddCastsSpec extends AnyFreeSpec with AlogicTest {

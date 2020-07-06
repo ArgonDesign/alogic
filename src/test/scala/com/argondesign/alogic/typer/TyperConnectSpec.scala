@@ -20,7 +20,7 @@ import java.util.regex.Pattern
 import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Error
+import com.argondesign.alogic.core.Messages.Error
 import com.argondesign.alogic.passes.Elaborate
 import com.argondesign.alogic.passes.Namer
 import com.argondesign.alogic.passes.TypeCheck
