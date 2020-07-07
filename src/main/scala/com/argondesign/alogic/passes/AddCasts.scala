@@ -142,7 +142,7 @@ final class AddCasts(implicit cc: CompilerContext) extends StatefulTreeTransform
           expr.copy(rhs = cast(lhs.tpe, rhs))
         }
 
-      case expr @ ExprTernary(_, tExpr, eExpr)
+      case expr @ ExprCond(_, tExpr, eExpr)
           if tExpr.tpe.underlying.isNum != eExpr.tpe.underlying.isNum =>
         if (tExpr.tpe.underlying.isNum) {
           expr.copy(thenExpr = cast(eExpr.tpe, tExpr))

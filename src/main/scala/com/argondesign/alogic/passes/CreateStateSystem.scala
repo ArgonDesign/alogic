@@ -175,7 +175,7 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends StatefulTree
       } getOrElse tree
 
     // If only 1 state, drop push to return stack
-    case StmtExpr(ExprCall(ExprSelect(ExprSym(symbol), _, _), _))
+    case StmtExpr(ExprCall(ExprSel(ExprSym(symbol), _, _), _))
         if symbol.attr.returnStack.isSet && singleState =>
       Stump
 

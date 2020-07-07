@@ -846,8 +846,8 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
         "single connection" in {
           "i.a -> j.b;".asTree[Ent] shouldBe {
             EntConnect(
-              ExprSelect(ExprRef(Ident("i", Nil)), "a", Nil),
-              List(ExprSelect(ExprRef(Ident("j", Nil)), "b", Nil))
+              ExprSel(ExprRef(Ident("i", Nil)), "a", Nil),
+              List(ExprSel(ExprRef(Ident("j", Nil)), "b", Nil))
             )
           }
         }
@@ -855,10 +855,10 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
         "multiple connections" in {
           "i.a -> j.b, k.c;".asTree[Ent] shouldBe {
             EntConnect(
-              ExprSelect(ExprRef(Ident("i", Nil)), "a", Nil),
+              ExprSel(ExprRef(Ident("i", Nil)), "a", Nil),
               List(
-                ExprSelect(ExprRef(Ident("j", Nil)), "b", Nil),
-                ExprSelect(ExprRef(Ident("k", Nil)), "c", Nil)
+                ExprSel(ExprRef(Ident("j", Nil)), "b", Nil),
+                ExprSel(ExprRef(Ident("k", Nil)), "c", Nil)
               )
             )
           }
@@ -867,8 +867,8 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
         "dict connection" in {
           "i.a#[0] -> j.b#[1, 2];".asTree[Ent] shouldBe {
             EntConnect(
-              ExprSelect(ExprRef(Ident("i", Nil)), "a", Expr(0) :: Nil),
-              List(ExprSelect(ExprRef(Ident("j", Nil)), "b", Expr(1) :: Expr(2) :: Nil))
+              ExprSel(ExprRef(Ident("i", Nil)), "a", Expr(0) :: Nil),
+              List(ExprSel(ExprRef(Ident("j", Nil)), "b", Expr(1) :: Expr(2) :: Nil))
             )
           }
         }
@@ -1788,7 +1788,7 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
           }
 
           "ternary" in {
-            "1 ? 2 : 3".asTree[Expr] shouldBe ExprTernary(Expr(1), Expr(2), Expr(3))
+            "1 ? 2 : 3".asTree[Expr] shouldBe ExprCond(Expr(1), Expr(2), Expr(3))
           }
 
           "repetition" in {
@@ -1836,12 +1836,12 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
           }
 
           "select 1x" in {
-            "a.b".asTree[Expr] shouldBe ExprSelect(ExprRef(Ident("a", Nil)), "b", Nil)
+            "a.b".asTree[Expr] shouldBe ExprSel(ExprRef(Ident("a", Nil)), "b", Nil)
           }
 
           "select 2x" in {
-            "a.b.c".asTree[Expr] shouldBe ExprSelect(
-              ExprSelect(ExprRef(Ident("a", Nil)), "b", Nil),
+            "a.b.c".asTree[Expr] shouldBe ExprSel(
+              ExprSel(ExprRef(Ident("a", Nil)), "b", Nil),
               "c",
               Nil
             )
@@ -1893,7 +1893,7 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
 
           "a.b && a.c" in {
             "a.b && a.c".asTree[Expr] shouldBe {
-              ExprSelect(ExprRef(Ident("a", Nil)), "b", Nil) && ExprSelect(
+              ExprSel(ExprRef(Ident("a", Nil)), "b", Nil) && ExprSel(
                 ExprRef(Ident("a", Nil)),
                 "c",
                 Nil
@@ -1903,14 +1903,14 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
 
           "a.b && a.c == 1" in {
             "a.b && a.c == 1".asTree[Expr] shouldBe {
-              ExprSelect(ExprRef(Ident("a", Nil)), "b", Nil) &&
-              ExprBinary(ExprSelect(ExprRef(Ident("a", Nil)), "c", Nil), "==", Expr(1))
+              ExprSel(ExprRef(Ident("a", Nil)), "b", Nil) &&
+              ExprBinary(ExprSel(ExprRef(Ident("a", Nil)), "c", Nil), "==", Expr(1))
             }
           }
 
           "a.b && a[0]" in {
             "a.b && a[0]".asTree[Expr] shouldBe {
-              ExprSelect(ExprRef(Ident("a", Nil)), "b", Nil) && ExprIndex(
+              ExprSel(ExprRef(Ident("a", Nil)), "b", Nil) && ExprIndex(
                 ExprRef(Ident("a", Nil)),
                 0
               )
@@ -1919,7 +1919,7 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
 
           "a.b && a[1:0]" in {
             "a.b && a[1:0]".asTree[Expr] shouldBe {
-              ExprSelect(ExprRef(Ident("a", Nil)), "b", Nil) && ExprSlice(
+              ExprSel(ExprRef(Ident("a", Nil)), "b", Nil) && ExprSlice(
                 ExprRef(Ident("a", Nil)),
                 1,
                 ":",
@@ -1930,7 +1930,7 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
 
           "a.b[1]" in {
             "a.b[1]".asTree[Expr] shouldBe {
-              ExprIndex(ExprSelect(ExprRef(Ident("a", Nil)), "b", Nil), 1)
+              ExprIndex(ExprSel(ExprRef(Ident("a", Nil)), "b", Nil), 1)
             }
           }
           // TODO: complete all precedence checks

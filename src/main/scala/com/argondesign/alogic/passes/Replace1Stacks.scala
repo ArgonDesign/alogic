@@ -52,7 +52,7 @@ final class Replace1Stacks(implicit cc: CompilerContext) extends StatefulTreeTra
       // Rewrite statements
       //////////////////////////////////////////////////////////////////////////
 
-      case StmtExpr(ExprCall(ExprSelect(ExprSym(s), "push" | "set", _), List(ArgP(arg)))) =>
+      case StmtExpr(ExprCall(ExprSel(ExprSym(s), "push" | "set", _), List(ArgP(arg)))) =>
         stackMap.get(s) map { symbol =>
           StmtAssign(ExprSym(symbol), arg)
         } getOrElse tree
@@ -61,10 +61,10 @@ final class Replace1Stacks(implicit cc: CompilerContext) extends StatefulTreeTra
       // Rewrite expressions
       //////////////////////////////////////////////////////////////////////////
 
-      case ExprCall(ExprSelect(ExprSym(s), "top", _), Nil) =>
+      case ExprCall(ExprSel(ExprSym(s), "top", _), Nil) =>
         stackMap.get(s) map ExprSym getOrElse tree
 
-      case ExprCall(ExprSelect(ExprSym(s), "pop", _), Nil) =>
+      case ExprCall(ExprSel(ExprSym(s), "pop", _), Nil) =>
         stackMap.get(s) map { symbol =>
           poppedStack = Some(symbol)
           ExprSym(symbol)

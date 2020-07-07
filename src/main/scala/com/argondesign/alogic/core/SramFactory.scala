@@ -104,7 +104,7 @@ object SramFactory extends ChainingSyntax {
           StmtIf(
             weRef,
             List(
-              StmtExpr(ExprCall(stRef select "write", List(ArgP(adRef), ArgP(wdRef)))),
+              StmtExpr(ExprCall(stRef sel "write", List(ArgP(adRef), ArgP(wdRef)))),
               StmtAssign(rdRef, ExprInt(false, width, 0))
             ),
             List(

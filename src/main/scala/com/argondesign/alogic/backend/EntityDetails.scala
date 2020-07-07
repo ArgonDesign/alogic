@@ -15,7 +15,7 @@
 package com.argondesign.alogic.backend
 
 import com.argondesign.alogic.analysis.WrittenSymbols
-import com.argondesign.alogic.ast.Trees.Expr.InstancePortRef
+import com.argondesign.alogic.ast.Trees.Expr.InstancePortSel
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols._
@@ -78,10 +78,10 @@ final class EntityDetails(
       _.attr.interconnect.isSet
     } flatMap { nSymbol =>
       defn.connects collectFirst {
-        case EntConnect(ExprSelect(ExprSym(iSymbol), sel, Nil), List(rhs))
+        case EntConnect(ExprSel(ExprSym(iSymbol), sel, Nil), List(rhs))
             if WrittenSymbols(rhs) contains nSymbol =>
           (iSymbol, sel, nSymbol)
-        case EntConnect(lhs, List(ExprSelect(ExprSym(iSymbol), sel, Nil)))
+        case EntConnect(lhs, List(ExprSel(ExprSym(iSymbol), sel, Nil)))
             if lhs.isLValueExpr && (WrittenSymbols(lhs) contains nSymbol) =>
           (iSymbol, sel, nSymbol)
       }
@@ -135,9 +135,9 @@ final class EntityDetails(
   // Function from 'instance symbol => port selector => connected expression'
   lazy val instancePortExpr: Map[Symbol, Map[String, Expr]] = {
     val trip = defn.connects collect {
-      case EntConnect(InstancePortRef(iSymbol, pSymbol), List(rhs)) =>
+      case EntConnect(InstancePortSel(iSymbol, pSymbol), List(rhs)) =>
         (iSymbol, pSymbol.name, rhs)
-      case EntConnect(lhs, List(InstancePortRef(iSymbol, pSymbol))) =>
+      case EntConnect(lhs, List(InstancePortSel(iSymbol, pSymbol))) =>
         (iSymbol, pSymbol.name, lhs)
     }
 
@@ -153,8 +153,8 @@ final class EntityDetails(
   // Connects that are not of the form 'a.b -> SOMETHING' or 'SOMETHING -> a.b'
   // where a is an instance
   lazy val nonPortConnects: List[EntConnect] = defn.connects filter {
-    case EntConnect(InstancePortRef(_, _), _)       => false
-    case EntConnect(_, List(InstancePortRef(_, _))) => false
+    case EntConnect(InstancePortSel(_, _), _)       => false
+    case EntConnect(_, List(InstancePortSel(_, _))) => false
     case _                                          => true
   }
 

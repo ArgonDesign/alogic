@@ -203,7 +203,7 @@ object SyncSliceFactory extends ChainingSyntax {
       // ~valid -> ip_ready;
       // ~valid -> space;
       List(
-        EntConnect(ExprTernary(vRef, pRef, ipRef), List(opRef)),
+        EntConnect(ExprCond(vRef, pRef, ipRef), List(opRef)),
         EntConnect(vRef | ipvRef, List(opvRef)),
         EntConnect(~vRef, List(iprRef)),
         EntConnect(~vRef, List(sRef))
@@ -424,29 +424,29 @@ object SyncSliceFactory extends ChainingSyntax {
     // Create the cascade connection
     if (kind != TypeVoid) {
       // Payload
-      connects append EntConnect(ipRef, List(iRefs.head select ipName))
+      connects append EntConnect(ipRef, List(iRefs.head sel ipName))
       for ((aRef, bRef) <- iRefs zip iRefs.tail) {
-        connects append EntConnect(aRef select opName, List(bRef select ipName))
+        connects append EntConnect(aRef sel opName, List(bRef sel ipName))
       }
-      connects append EntConnect(iRefs.last select opName, List(opRef))
+      connects append EntConnect(iRefs.last sel opName, List(opRef))
     }
 
     // Valid
-    connects append EntConnect(ipvRef, List(iRefs.head select ipvName))
+    connects append EntConnect(ipvRef, List(iRefs.head sel ipvName))
     for ((aRef, bRef) <- iRefs zip iRefs.tail) {
-      connects append EntConnect(aRef select opvName, List(bRef select ipvName))
+      connects append EntConnect(aRef sel opvName, List(bRef sel ipvName))
     }
-    connects append EntConnect(iRefs.last select opvName, List(opvRef))
+    connects append EntConnect(iRefs.last sel opvName, List(opvRef))
 
     // Ready
-    connects append EntConnect(oprRef, List(iRefs.last select oprName))
+    connects append EntConnect(oprRef, List(iRefs.last sel oprName))
     for ((aRef, bRef) <- (iRefs zip iRefs.tail).reverse) {
-      connects append EntConnect(bRef select iprName, List(aRef select oprName))
+      connects append EntConnect(bRef sel iprName, List(aRef sel oprName))
     }
-    connects append EntConnect(iRefs.head select iprName, List(iprRef))
+    connects append EntConnect(iRefs.head sel iprName, List(iprRef))
 
     // Build the space, empty and full signals
-    connects append EntConnect(ExprCat(iRefs.reverse map { _ select "space" }), List(sRef))
+    connects append EntConnect(ExprCat(iRefs.reverse map { _ sel "space" }), List(sRef))
 
     // Put it all together
     val decls = {

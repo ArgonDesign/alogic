@@ -89,7 +89,7 @@ final class LowerPipelineStage(
             ExprSym(pipelinedNames(symbol.name))
           }
           val lhs = ExprCat(lhsRefs)
-          val rhs = ExprCall(ExprSelect(ExprSym(iPortSymbol), "read", Nil), Nil)
+          val rhs = ExprCall(ExprSel(ExprSym(iPortSymbol), "read", Nil), Nil)
           StmtAssign(lhs, rhs) regularize node.loc
         case _ => unreachable
       }
@@ -105,7 +105,7 @@ final class LowerPipelineStage(
             ExprSym(pipelinedNames(symbol.name))
           }
           val arg = ArgP(ExprCat(rhsRefs))
-          val call = ExprCall(ExprSelect(ExprSym(oPortSymbol), "write", Nil), List(arg))
+          val call = ExprCall(ExprSel(ExprSym(oPortSymbol), "write", Nil), List(arg))
           StmtExpr(call) regularize node.loc
         case _ => unreachable
       }
@@ -279,8 +279,8 @@ final class LowerPipelineHost(implicit cc: CompilerContext) extends StatefulTree
 
     // Rewrite pipeline connections
     case EntConnect(lhs, List(rhs)) if lhs.tpe.isEntity && rhs.tpe.isEntity =>
-      val newLhs = ExprSelect(lhs, "pipeline_o", Nil) withLoc lhs.loc
-      val newRhs = ExprSelect(rhs, "pipeline_i", Nil) withLoc rhs.loc
+      val newLhs = ExprSel(lhs, "pipeline_o", Nil) withLoc lhs.loc
+      val newRhs = ExprSel(rhs, "pipeline_i", Nil) withLoc rhs.loc
       val newConn = EntConnect(newLhs, List(newRhs))
       newConn regularize tree.loc
 

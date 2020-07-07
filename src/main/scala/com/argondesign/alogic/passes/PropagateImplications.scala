@@ -18,7 +18,7 @@ package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.TreeTransformer
-import com.argondesign.alogic.ast.Trees.Expr.InstancePortRef
+import com.argondesign.alogic.ast.Trees.Expr.InstancePortSel
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols._
@@ -45,9 +45,9 @@ final class PropagateImplications(implicit cc: CompilerContext) extends Stateles
 
         // populate them
         defn.connects foreach {
-          case EntConnect(InstancePortRef(iSymbol, pSymbol), List(ExprSym(nSymbol))) =>
+          case EntConnect(InstancePortSel(iSymbol, pSymbol), List(ExprSym(nSymbol))) =>
             maps(iSymbol)(pSymbol) = nSymbol
-          case EntConnect(ExprSym(nSymbol), List(InstancePortRef(iSymbol, pSymbol))) =>
+          case EntConnect(ExprSym(nSymbol), List(InstancePortSel(iSymbol, pSymbol))) =>
             maps(iSymbol)(pSymbol) = nSymbol
           case _ =>
         }

@@ -274,12 +274,12 @@ object Trees {
   case class ExprCall(expr: Expr, args: List[Arg]) extends Expr
   case class ExprUnary(op: String, expr: Expr) extends Expr
   case class ExprBinary(lhs: Expr, op: String, rhs: Expr) extends Expr
-  case class ExprTernary(cond: Expr, thenExpr: Expr, elseExpr: Expr) extends Expr
+  case class ExprCond(cond: Expr, thenExpr: Expr, elseExpr: Expr) extends Expr
   case class ExprRep(count: Expr, expr: Expr) extends Expr
   case class ExprCat(parts: List[Expr]) extends Expr
   case class ExprIndex(expr: Expr, index: Expr) extends Expr
   case class ExprSlice(expr: Expr, lIdx: Expr, op: String, rIdx: Expr) extends Expr
-  case class ExprSelect(expr: Expr, selector: String, idxs: List[Expr]) extends Expr
+  case class ExprSel(expr: Expr, selector: String, idxs: List[Expr]) extends Expr
   case class ExprRef(ref: Ref) extends Expr
   case class ExprSym(symbol: Symbol) extends Expr
   case class ExprThis(expr: Expr) extends Expr

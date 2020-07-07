@@ -278,8 +278,8 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatelessTreeTra
     require(tgt.tpe.isMethod)
     Option.unless(tgt.tpe.isStaticMethod) {
       tgt match {
-        case ExprSelect(ExprSym(symbol), _, _) => symbol
-        case _                                 => cc.ice(tgt, "Don't know how to translate that method call")
+        case ExprSel(ExprSym(symbol), _, _) => symbol
+        case _                              => cc.ice(tgt, "Don't know how to translate that method call")
       }
     }
   }

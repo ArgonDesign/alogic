@@ -142,7 +142,7 @@ private[specialize] object Finalize {
           tree
 
         // Error for referencing x.p#[n] as x.p__n
-        case ExprSelect(ExprSym(iSymbol), sel, Nil) if iSymbol.kind.isEntity =>
+        case ExprSel(ExprSym(iSymbol), sel, Nil) if iSymbol.kind.isEntity =>
           iSymbol.kind.asEntity.publicSymbols exists { pSymbol =>
             !pSymbol.attr.dictName.isSet && pSymbol.name == sel
           } pipe {
@@ -153,13 +153,13 @@ private[specialize] object Finalize {
               ExprError() withLoc tree.loc
           }
 
-        case ExprSelect(expr, sel, idxs) if idxs.nonEmpty =>
+        case ExprSel(expr, sel, idxs) if idxs.nonEmpty =>
           val res = expr match {
             case ExprSym(iSymbol) if iSymbol.kind.isEntity =>
               values(idxs) map { idxValues =>
                 iSymbol.kind.asEntity.publicSymbols collectFirst {
                   case portSymbol if portSymbol.attr.dictName.contains((sel, idxValues)) =>
-                    ExprSelect(expr, portSymbol.name, Nil)
+                    ExprSel(expr, portSymbol.name, Nil)
                 } getOrElse {
                   val srcName = idxValues.mkString(sel + "#[", ", ", "]")
                   cc.error(tree, s"No port named '$srcName' on instance '${iSymbol.name}'")

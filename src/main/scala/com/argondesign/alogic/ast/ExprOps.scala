@@ -114,7 +114,7 @@ trait ExprOps { this: Expr =>
   final def slice(lIdx: Int,  op: String, rIdx: Int )(implicit cc: CompilerContext): ExprSlice = 
     this.slice(mkIndex(lIdx), op, if (op == ":") mkIndex(rIdx) else mkSliceLength(rIdx))
 
-  final def select(name: String)(implicit cc: CompilerContext): ExprSelect = fix(ExprSelect(this, name, Nil))
+  final def sel(name: String)(implicit cc: CompilerContext): ExprSel = fix(ExprSel(this, name, Nil))
   final def call(args: List[Arg])(implicit cc: CompilerContext): ExprCall = fix(ExprCall(this, args))
 
   final def cat(rhs: Expr)(implicit cc: CompilerContext): ExprCat = fix(ExprCat(List(this, rhs)))
@@ -159,7 +159,7 @@ trait ExprOps { this: Expr =>
     case _: ExprSym               => true
     case ExprIndex(expr, _)       => expr.isLValueExpr
     case ExprSlice(expr, _, _, _) => expr.isLValueExpr
-    case ExprSelect(expr, _, _)   => expr.isLValueExpr
+    case ExprSel(expr, _, _)      => expr.isLValueExpr
     case ExprCat(parts)           => parts forall { _.isLValueExpr }
     case _                        => false
   }
@@ -170,7 +170,7 @@ trait ExprOps { this: Expr =>
       expr.isValidConnectRhs && idx.isKnownConst
     case ExprSlice(expr, lIdx, _, rIdx) =>
       expr.isValidConnectRhs && lIdx.isKnownConst && rIdx.isKnownConst
-    case ExprSelect(expr, _, idxs) =>
+    case ExprSel(expr, _, idxs) =>
       expr.isValidConnectRhs && (idxs forall { _.isValidConnectRhs })
     case ExprCat(parts) => parts forall { _.isValidConnectRhs }
     case _              => false
@@ -182,7 +182,7 @@ trait ExprOps { this: Expr =>
       expr.isValidConnectLhs && idx.isKnownConst
     case ExprSlice(expr, lIdx, _, rIdx) =>
       expr.isValidConnectLhs && lIdx.isKnownConst && rIdx.isKnownConst
-    case ExprSelect(expr, _, idxs) =>
+    case ExprSel(expr, _, idxs) =>
       expr.isValidConnectLhs && (idxs forall { _.isValidConnectLhs })
     case ExprCat(parts)   => parts forall { _.isValidConnectLhs }
     case ExprRep(_, expr) => expr.isValidConnectLhs
@@ -211,14 +211,14 @@ trait ExprOps { this: Expr =>
       }
     case ExprUnary(_, expr)      => expr.isKnownConst
     case ExprBinary(lhs, _, rhs) => lhs.isKnownConst && rhs.isKnownConst
-    case ExprTernary(cond, thenExpr, elseExpr) =>
+    case ExprCond(cond, thenExpr, elseExpr) =>
       thenExpr.isKnownConst && elseExpr.isKnownConst && (cond.isKnownConst || thenExpr.simplify == elseExpr.simplify)
     case ExprRep(count, expr)   => count.isKnownConst && expr.isKnownConst
     case ExprCat(parts)         => parts forall { _.isKnownConst }
     case ExprIndex(expr, index) => expr.isKnownConst && index.isKnownConst
     case ExprSlice(expr, lIdx, _, rIdx) =>
       expr.isKnownConst && lIdx.isKnownConst && rIdx.isKnownConst
-    case ExprSelect(expr, _, idxs) => expr.isKnownConst && (idxs forall { _.isKnownConst })
+    case ExprSel(expr, _, idxs) => expr.isKnownConst && (idxs forall { _.isKnownConst })
     case call @ ExprCall(ExprSym(symbol), _) if symbol.isBuiltin =>
       cc.isKnownConstBuiltinCall(call)
     case ExprCast(_, expr) => expr.isKnownConst
@@ -235,13 +235,13 @@ trait ExprOps { this: Expr =>
         }
       case ExprUnary(_, e)         => p(e)
       case ExprBinary(l, _, r)     => p(l) && p(r)
-      case ExprTernary(c, t, e)    => p(c) && p(t) && p(e)
+      case ExprCond(c, t, e)       => p(c) && p(t) && p(e)
       case ExprRep(_, e)           => p(e)
       case ExprCat(ps)             => ps forall p
       case ExprIndex(e, i)         => p(e) && p(i)
       case ExprSlice(e, _, ":", _) => p(e)
       case ExprSlice(e, l, _, _)   => p(e) && p(l)
-      case ExprSelect(e, _, _)     => p(e)
+      case ExprSel(e, _, _)        => p(e)
       case _: ExprRef              => true
       case _: ExprSym              => true
       case _: ExprThis             => true
@@ -287,10 +287,10 @@ trait ExprOps { this: Expr =>
               }
             } withLoc loc
           }
-        case _: ExprIndex  => simplify
-        case _: ExprSlice  => simplify
-        case _: ExprSelect => this
-        case _             => unreachable
+        case _: ExprIndex => simplify
+        case _: ExprSlice => simplify
+        case _: ExprSel   => this
+        case _            => unreachable
       }
       // The simplified expression cannot be simplified further
       _simplifiedLValue._simplifiedLValue = _simplifiedLValue
@@ -401,12 +401,12 @@ trait ExprObjOps { self: Expr.type =>
     def unapply(expr: ExprBinary) = if (expr.op == ">=") Some((expr.lhs, expr.rhs)) else None
   }
 
-  // Extractor for instance port references
-  final object InstancePortRef {
+  // Extractor for instance port selects
+  final object InstancePortSel {
 
-    def unapply(expr: ExprSelect)(implicit cc: CompilerContext): Option[(Symbol, Symbol)] =
+    def unapply(expr: ExprSel)(implicit cc: CompilerContext): Option[(Symbol, Symbol)] =
       expr partialMatch {
-        case ExprSelect(ExprSym(iSymbol), sel, idxs) if iSymbol.kind.isEntity =>
+        case ExprSel(ExprSym(iSymbol), sel, idxs) if iSymbol.kind.isEntity =>
           assert(idxs.isEmpty)
           (iSymbol, iSymbol.kind.asEntity(sel).get)
       }

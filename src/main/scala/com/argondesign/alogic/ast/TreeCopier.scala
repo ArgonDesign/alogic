@@ -1095,11 +1095,11 @@ object TreeCopier {
     }
   }
 
-  def apply(tree: ExprTernary)(cond: Tree, thenExpr: Tree, elseExpr: Tree): ExprTernary = {
+  def apply(tree: ExprCond)(cond: Tree, thenExpr: Tree, elseExpr: Tree): ExprCond = {
     if ((cond eq tree.cond) && (thenExpr eq tree.thenExpr) && (elseExpr eq tree.elseExpr)) {
       tree
     } else {
-      ExprTernary(
+      ExprCond(
         cond.asInstanceOf[Expr],
         thenExpr.asInstanceOf[Expr],
         elseExpr.asInstanceOf[Expr]
@@ -1144,7 +1144,7 @@ object TreeCopier {
     }
   }
 
-  def apply(tree: ExprSelect)(expr: Tree, idxs: List[Tree]): ExprSelect = {
+  def apply(tree: ExprSel)(expr: Tree, idxs: List[Tree]): ExprSel = {
     if ((expr eq tree.expr) && (idxs eq tree.idxs)) {
       tree
     } else {

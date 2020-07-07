@@ -147,11 +147,11 @@ final class SplitStructsB(
     case _                      => false
   }
 
-  // Transform the target expression of ExprSelect, out of order in order to
-  // avoid creating an illegal ExprSelect during the standard traversal
+  // Transform the target expression of ExprSel, out of order in order to
+  // avoid creating an illegal ExprSel during the standard traversal
   override def enter(tree: Tree): Option[Tree] = tree match {
     // Select on struct
-    case ExprSelect(expr, sel, _) if expr.tpe.underlying.isRecord =>
+    case ExprSel(expr, sel, _) if expr.tpe.underlying.isRecord =>
       Some {
         val kind = expr.tpe.underlying.asRecord
         val fieldIndex = kind.dataMembers.indexWhere(_.name == sel)
@@ -160,7 +160,7 @@ final class SplitStructsB(
       }
 
     // Select on instance
-    case ExprSelect(expr @ ExprSym(iSymbol), sel, _) =>
+    case ExprSel(expr @ ExprSym(iSymbol), sel, _) =>
       val kind = iSymbol.kind.asEntity
       val pSymbol = kind(sel).get
       val fieldMap = fieldMaps(globalReplacements(kind.symbol))
@@ -170,7 +170,7 @@ final class SplitStructsB(
           struct.publicSymbols map { symbol =>
             symbol.kind match {
               case struct: TypeRecord => cat(struct, it)
-              case _                  => ExprSelect(ref, it.next().name, Nil)
+              case _                  => ExprSel(ref, it.next().name, Nil)
             }
           }
         }

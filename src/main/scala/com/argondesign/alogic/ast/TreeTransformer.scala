@@ -529,7 +529,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
       val lhs = walk(node.lhs)
       val rhs = walk(node.rhs)
       TreeCopier(node)(lhs, rhs)
-    case node: ExprTernary =>
+    case node: ExprCond =>
       val cond = walk(node.cond)
       val thenExpr = walk(node.thenExpr)
       val elseExpr = walk(node.elseExpr)
@@ -550,7 +550,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
       val lidx = walk(node.lIdx)
       val ridx = walk(node.rIdx)
       TreeCopier(node)(expr, lidx, ridx)
-    case node: ExprSelect =>
+    case node: ExprSel =>
       val expr = walk(node.expr)
       val idxs = walk(node.idxs)
       TreeCopier(node)(expr, idxs)

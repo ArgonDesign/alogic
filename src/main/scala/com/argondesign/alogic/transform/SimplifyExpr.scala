@@ -213,7 +213,7 @@ final class SimplifyExpr(implicit cc: CompilerContext)
     // Fold selects
     //////////////////////////////////////////////////////////////////////////
 
-    case expr @ ExprSelect(tgt, sel, idxs) =>
+    case expr @ ExprSel(tgt, sel, idxs) =>
       assert(idxs.isEmpty)
       Some {
         walk(tgt) match {
@@ -251,7 +251,7 @@ final class SimplifyExpr(implicit cc: CompilerContext)
     // so we will support it.
     //////////////////////////////////////////////////////////////////////////
 
-    case expr @ ExprTernary(cond, thenExpr, elseExpr) =>
+    case expr @ ExprCond(cond, thenExpr, elseExpr) =>
       Some {
         walk(cond) match {
           case Integral(_, _, value) =>
@@ -262,7 +262,7 @@ final class SimplifyExpr(implicit cc: CompilerContext)
           case newC: Expr =>
             val newTE = walk(thenExpr).asInstanceOf[Expr]
             val newEE = walk(elseExpr).asInstanceOf[Expr]
-            transform(TypeAssigner(ExprTernary(newC, newTE, newEE) withLoc tree.loc))
+            transform(TypeAssigner(ExprCond(newC, newTE, newEE) withLoc tree.loc))
           case _ => unreachable
         }
       }
@@ -284,16 +284,16 @@ final class SimplifyExpr(implicit cc: CompilerContext)
     // Everything else, dispatch based on the root node to speed things up
     //////////////////////////////////////////////////////////////////////////
 
-    case expr: ExprSym     => transformSym(expr)
-    case expr: ExprUnary   => transformUnary(expr)
-    case expr: ExprBinary  => transformBinary(expr)
-    case expr: ExprTernary => transformTernary(expr)
-    case expr: ExprIndex   => transformIndex(expr)
-    case expr: ExprSlice   => transformSlice(expr)
-    case expr: ExprCat     => transformCat(expr)
-    case expr: ExprRep     => transformRep(expr)
-    case expr: ExprCast    => transformCast(expr)
-    case expr: ExprCall    => transformCall(expr)
+    case expr: ExprSym    => transformSym(expr)
+    case expr: ExprUnary  => transformUnary(expr)
+    case expr: ExprBinary => transformBinary(expr)
+    case expr: ExprCond   => transformTernary(expr)
+    case expr: ExprIndex  => transformIndex(expr)
+    case expr: ExprSlice  => transformSlice(expr)
+    case expr: ExprCat    => transformCat(expr)
+    case expr: ExprRep    => transformRep(expr)
+    case expr: ExprCast   => transformCast(expr)
+    case expr: ExprCall   => transformCall(expr)
 
     //////////////////////////////////////////////////////////////////////////
     // Leave rest alone
@@ -603,8 +603,8 @@ final class SimplifyExpr(implicit cc: CompilerContext)
     case _ => tree
   }
 
-  private def transformTernary(tree: ExprTernary): Expr = tree match {
-    case ExprTernary(_, thenExpr, elseExpr) =>
+  private def transformTernary(tree: ExprCond): Expr = tree match {
+    case ExprCond(_, thenExpr, elseExpr) =>
       // Condition folded in enter
       if (thenExpr == elseExpr && thenExpr.tpe == elseExpr.tpe) {
         thenExpr

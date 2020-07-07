@@ -608,7 +608,7 @@ final class Typer(implicit cc: CompilerContext) extends StatefulTreeTransformer 
       // Expr
       //////////////////////////////////////////////////////////////////////////
 
-      case ExprSelect(expr, sel, idxs) =>
+      case ExprSel(expr, sel, idxs) =>
         assert(idxs.isEmpty)
 
         val field = expr.tpe match {
@@ -818,7 +818,7 @@ final class Typer(implicit cc: CompilerContext) extends StatefulTreeTransformer 
           }
         }
 
-      case ExprTernary(cond, thenExpr, elseExpr) =>
+      case ExprCond(cond, thenExpr, elseExpr) =>
         if (!checkNumericOrPacked(cond, "Condition of '?:'")) {
           error(tree)
         } else if (!thenExpr.tpe.underlying.isNum || !elseExpr.tpe.underlying.isNum) {

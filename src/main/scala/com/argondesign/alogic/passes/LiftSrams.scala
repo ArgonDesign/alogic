@@ -16,7 +16,7 @@
 package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.StatefulTreeTransformer
-import com.argondesign.alogic.ast.Trees.Expr.InstancePortRef
+import com.argondesign.alogic.ast.Trees.Expr.InstancePortSel
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
@@ -100,7 +100,7 @@ final class LiftSramsFrom(
     // Rewrite references to instance.port as references to the new port
     ////////////////////////////////////////////////////////////////////////////
 
-    case InstancePortRef(iSymbol, pSymbol) =>
+    case InstancePortSel(iSymbol, pSymbol) =>
       portMap.get((iSymbol, pSymbol)) map { nSymbol =>
         ExprSym(nSymbol) regularize tree.loc
       } getOrElse {
@@ -121,7 +121,7 @@ final class LiftSramsTo(
     cc: CompilerContext)
     extends StatefulTreeTransformer {
 
-  private def portRef(iSymbol: Symbol, sel: String) = ExprSelect(ExprSym(iSymbol), sel, Nil)
+  private def portRef(iSymbol: Symbol, sel: String) = ExprSel(ExprSym(iSymbol), sel, Nil)
 
   override def replace(symbol: Symbol): Boolean = symbol.kind match {
     case TypeEntity(symbol, _) => liftFromMap contains symbol

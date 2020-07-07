@@ -106,7 +106,7 @@ final class AddCastsSpec extends AnyFreeSpec with AlogicTest {
               |  }
               |}"""
             } getFirst {
-              case expr: ExprTernary => expr
+              case expr: ExprCond => expr
             } tap { expr =>
               res match {
                 case Some(Left(l))  => expr.thenExpr shouldBe l

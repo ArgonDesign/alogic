@@ -171,7 +171,7 @@ final class PortCheckB(implicit cc: CompilerContext) extends StatelessTreeTransf
 
           @tailrec
           def checkWiderSinks(e_narrow: Expr): Unit = e_narrow match {
-            case ExprSelect(e_wider, _, _) => {
+            case ExprSel(e_wider, _, _) => {
               // E.g. e_narrow == x.y.z so check that e_wider (= x.y) doesn't have an entry in sinks
               for {
                 loa <- sinks.get(e_wider)

@@ -620,7 +620,7 @@ final class TypeAssignerSpec extends AnyFreeSpec with AlogicTest {
         } {
           src in {
             src.asTree[Expr] match {
-              case expr @ ExprTernary(cond, thenExpr, elseExpr) =>
+              case expr @ ExprCond(cond, thenExpr, elseExpr) =>
                 TypeAssigner(cond)
                 TypeAssigner(thenExpr)
                 TypeAssigner(elseExpr)
@@ -872,7 +872,7 @@ final class TypeAssignerSpec extends AnyFreeSpec with AlogicTest {
               |  }
               |}"""
             } getFirst {
-              case expr: ExprSelect => expr
+              case expr: ExprSel => expr
             } tap {
               assignChildren(_)
             } pipe {
@@ -918,7 +918,7 @@ final class TypeAssignerSpec extends AnyFreeSpec with AlogicTest {
               |  }
               |}"""
             } getFirst {
-              case e: ExprSelect => e
+              case e: ExprSel => e
             } tap {
               assignChildren(_)
             } pipe {

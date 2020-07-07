@@ -175,23 +175,23 @@ trait TreePrintOps extends { this: Tree =>
 
   // format: off
   private final def v(tree: Decl, name: String)(implicit cc: CompilerContext, indent: Int): String = tree match {
-    case DeclVar(_, spec)                => s"decl ${v(spec)} $name;"
-    case DeclVal(_, spec)                => s"decl val ${v(spec)} $name;"
-    case DeclIn(_, spec, fct)            => s"decl in ${v(fct)}${v(spec)} $name;"
-    case DeclOut(_, spec, fct, st)       => s"decl out ${v(fct)}${v(st)}${v(spec)} $name;"
-    case DeclPipeline(_, spec)           => s"decl pipeline ${v(spec)} $name;"
-    case DeclConst(_, spec)              => s"decl const ${v(spec)} $name;"
-    case DeclGen(_, spec)                => s"decl gen ${v(spec)} $name;"
-    case DeclArray(_, elem, size)        => s"decl ${v(elem)} $name[${v(size)}];"
-    case DeclSram(_, elem, size, st)     => s"decl sram ${v(st)}${v(elem)} $name[${v(size)}];"
-    case DeclStack(_, elem, size)        => s"decl stack ${v(elem)} $name[${v(size)}];"
-    case DeclType(_, spec)               => s"decl typedef ${v(spec)} $name;"
-    case DeclEntity(_, decls)            => block(s"decl entity $name", decls)
-    case DeclRecord(_, decls)            => block(s"decl record $name", decls)
-    case DeclInstance(_, spec)           => s"decl $name = new ${v(spec)};"
-    case DeclSingleton(_, decls)         => block(s"decl new entity $name", decls)
-    case DeclFunc(_, _, ret, args)       => s"decl ${v(ret)} $name(${vs(args)});"
-    case DeclState(_)                    => s"decl state $name;"
+    case DeclVar(_, spec)             => s"decl ${v(spec)} $name;"
+    case DeclVal(_, spec)             => s"decl val ${v(spec)} $name;"
+    case DeclIn(_, spec, fct)         => s"decl in ${v(fct)}${v(spec)} $name;"
+    case DeclOut(_, spec, fct, st)    => s"decl out ${v(fct)}${v(st)}${v(spec)} $name;"
+    case DeclPipeline(_, spec)        => s"decl pipeline ${v(spec)} $name;"
+    case DeclConst(_, spec)           => s"decl const ${v(spec)} $name;"
+    case DeclGen(_, spec)             => s"decl gen ${v(spec)} $name;"
+    case DeclArray(_, elem, size)     => s"decl ${v(elem)} $name[${v(size)}];"
+    case DeclSram(_, elem, size, st)  => s"decl sram ${v(st)}${v(elem)} $name[${v(size)}];"
+    case DeclStack(_, elem, size)     => s"decl stack ${v(elem)} $name[${v(size)}];"
+    case DeclType(_, spec)            => s"decl typedef ${v(spec)} $name;"
+    case DeclEntity(_, decls)         => block(s"decl entity $name", decls)
+    case DeclRecord(_, decls)         => block(s"decl record $name", decls)
+    case DeclInstance(_, spec)        => s"decl $name = new ${v(spec)};"
+    case DeclSingleton(_, decls)      => block(s"decl new entity $name", decls)
+    case DeclFunc(_, _, ret, args)    => s"decl ${v(ret)} $name(${vs(args)});"
+    case DeclState(_)                 => s"decl state $name;"
   }
   // format: on
 
@@ -309,7 +309,7 @@ trait TreePrintOps extends { this: Tree =>
     case StmtRead()                        => "read;"
     case StmtWrite()                       => "write;"
     case StmtComment(str)                  => "// " + str
-    case StmtWait(cond)                   => s"wait ${v(cond)};"
+    case StmtWait(cond)                    => s"wait ${v(cond)};"
     case StmtAssertion(assertion)          => v(assertion)
     case StmtError()                       => "/* Error statement */"
   }
@@ -323,27 +323,27 @@ trait TreePrintOps extends { this: Tree =>
 
   // format: off
   private final def v(tree: Expr)(implicit cc: CompilerContext, indent: Int): String = tree match {
-    case ExprCall(expr, args)                  => s"${v(expr)}(${vs(args)})"
-    case ExprUnary(op, expr)                   => s"$op${v(expr)}"
-    case ExprBinary(lhs, op, rhs)              => s"(${v(lhs)} $op ${v(rhs)})"
-    case ExprTernary(cond, thenExpr, elseExpr) => s"(${v(cond)} ? ${v(thenExpr)} : ${v(elseExpr)})"
-    case ExprRep(count, expr)                  => s"{${v(count)}{${v(expr)}}}"
-    case ExprCat(parts)                        => s"{${vs(parts)}}"
-    case ExprIndex(expr, index)                => s"${v(expr)}[${v(index)}]"
-    case ExprSlice(expr, lIdx, op, rIdx)       => s"${v(expr)}[${v(lIdx)}$op${v(rIdx)}]"
-    case ExprSelect(expr, selector, Nil)       => s"${v(expr)}.$selector"
-    case ExprSelect(expr, selector, idxs)      => s"${v(expr)}.$selector#[${vs(idxs)}]"
-    case ExprRef(ref)                          => v(ref)
-    case ExprSym(symbol)                       => s"${symbol.name}@${symbol.id}"
-    case ExprThis(expr)                        => s"this(${v(expr)})"
-    case ExprType(kind)                        => s"${kind.toSource}"
-    case ExprCast(kind, expr)                  => s"(${kind.toSource})(${v(expr)})"
-    case ExprInt(true, width, value)           => s"$width'sd$value"
-    case ExprInt(false, width, value)          => s"$width'd$value"
-    case ExprNum(true, value)                  => s"'sd$value"
-    case ExprNum(false, value)                 => s"$value"
-    case ExprStr(value)                        => s""""$value""""
-    case ExprError()                           => "ExprError"
+    case ExprCall(expr, args)               => s"${v(expr)}(${vs(args)})"
+    case ExprUnary(op, expr)                => s"$op${v(expr)}"
+    case ExprBinary(lhs, op, rhs)           => s"(${v(lhs)} $op ${v(rhs)})"
+    case ExprCond(cond, thenExpr, elseExpr) => s"(${v(cond)} ? ${v(thenExpr)} : ${v(elseExpr)})"
+    case ExprRep(count, expr)               => s"{${v(count)}{${v(expr)}}}"
+    case ExprCat(parts)                     => s"{${vs(parts)}}"
+    case ExprIndex(expr, index)             => s"${v(expr)}[${v(index)}]"
+    case ExprSlice(expr, lIdx, op, rIdx)    => s"${v(expr)}[${v(lIdx)}$op${v(rIdx)}]"
+    case ExprSel(expr, selector, Nil)       => s"${v(expr)}.$selector"
+    case ExprSel(expr, selector, idxs)      => s"${v(expr)}.$selector#[${vs(idxs)}]"
+    case ExprRef(ref)                       => v(ref)
+    case ExprSym(symbol)                    => s"${symbol.name}@${symbol.id}"
+    case ExprThis(expr)                     => s"this(${v(expr)})"
+    case ExprType(kind)                     => s"${kind.toSource}"
+    case ExprCast(kind, expr)               => s"(${kind.toSource})(${v(expr)})"
+    case ExprInt(true, width, value)        => s"$width'sd$value"
+    case ExprInt(false, width, value)       => s"$width'd$value"
+    case ExprNum(true, value)               => s"'sd$value"
+    case ExprNum(false, value)              => s"$value"
+    case ExprStr(value)                     => s""""$value""""
+    case ExprError()                        => "ExprError"
   }
   // format: on
 

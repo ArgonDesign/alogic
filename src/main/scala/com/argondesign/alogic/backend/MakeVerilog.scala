@@ -81,35 +81,35 @@ final class MakeVerilog(
       s"${vexpr(e)}(${aa mkString ", "})"
     case ExprUnary(op, e) =>
       e match {
-        case _: ExprBinary | _: ExprTernary => s"$op(${vexpr(e)})"
-        case _: ExprInt | _: ExprNum        => cc.ice(e, "Should have been folded")
-        case _                              => s"$op${vexpr(e)}"
+        case _: ExprBinary | _: ExprCond => s"$op(${vexpr(e)})"
+        case _: ExprInt | _: ExprNum     => cc.ice(e, "Should have been folded")
+        case _                           => s"$op${vexpr(e)}"
       }
     case ExprBinary(l, op, r) =>
       val ll = l match {
         case ExprBinary(_, `op`, _) if multiBinOps(op) => vexpr(l)
-        case _: ExprBinary | _: ExprTernary            => s"(${vexpr(l)})"
+        case _: ExprBinary | _: ExprCond               => s"(${vexpr(l)})"
         case _                                         => vexpr(l)
       }
       val rr = r match {
         case ExprBinary(_, `op`, _) if multiBinOps(op) => vexpr(r)
         case ExprUnary(`op`, _)                        => s"(${vexpr(r)})"
-        case _: ExprBinary | _: ExprTernary            => s"(${vexpr(r)})"
+        case _: ExprBinary | _: ExprCond               => s"(${vexpr(r)})"
         case _                                         => vexpr(r)
       }
       s"$ll $op $rr"
-    case ExprTernary(c, t, e) =>
+    case ExprCond(c, t, e) =>
       val cc = c match {
-        case _: ExprTernary => s"(${vexpr(c)})"
-        case _              => vexpr(c)
+        case _: ExprCond => s"(${vexpr(c)})"
+        case _           => vexpr(c)
       }
       val tt = t match {
-        case _: ExprTernary => s"(${vexpr(t)})"
-        case _              => vexpr(t)
+        case _: ExprCond => s"(${vexpr(t)})"
+        case _           => vexpr(t)
       }
       val ee = e match {
-        case _: ExprTernary => s"(${vexpr(e)})"
-        case _              => vexpr(e)
+        case _: ExprCond => s"(${vexpr(e)})"
+        case _           => vexpr(e)
       }
       s"$cc ? $tt : $ee"
     case ExprRep(c, e) => s"{${vexpr(c)}{${vexpr(e)}}}"

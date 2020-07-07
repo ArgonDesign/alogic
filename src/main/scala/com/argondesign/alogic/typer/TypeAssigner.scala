@@ -204,24 +204,24 @@ object TypeAssigner {
   //////////////////////////////////////////////////////////////////////////////
 
   private def kind(tree: Expr)(implicit cc: CompilerContext): Type = tree match {
-    case node: ExprCall    => kind(node)
-    case node: ExprUnary   => kind(node)
-    case node: ExprBinary  => kind(node)
-    case node: ExprTernary => kind(node)
-    case node: ExprRep     => kind(node)
-    case node: ExprCat     => kind(node)
-    case node: ExprIndex   => kind(node)
-    case node: ExprSlice   => kind(node)
-    case node: ExprSelect  => kind(node)
-    case _: ExprRef        => unreachable
-    case node: ExprSym     => kind(node)
-    case node: ExprThis    => kind(node)
-    case node: ExprType    => kind(node)
-    case node: ExprCast    => kind(node)
-    case node: ExprInt     => kind(node)
-    case node: ExprNum     => kind(node)
-    case node: ExprStr     => kind(node)
-    case node: ExprError   => kind(node)
+    case node: ExprCall   => kind(node)
+    case node: ExprUnary  => kind(node)
+    case node: ExprBinary => kind(node)
+    case node: ExprCond   => kind(node)
+    case node: ExprRep    => kind(node)
+    case node: ExprCat    => kind(node)
+    case node: ExprIndex  => kind(node)
+    case node: ExprSlice  => kind(node)
+    case node: ExprSel    => kind(node)
+    case _: ExprRef       => unreachable
+    case node: ExprSym    => kind(node)
+    case node: ExprThis   => kind(node)
+    case node: ExprType   => kind(node)
+    case node: ExprCast   => kind(node)
+    case node: ExprInt    => kind(node)
+    case node: ExprNum    => kind(node)
+    case node: ExprStr    => kind(node)
+    case node: ExprError  => kind(node)
   }
 
   private def kind(tree: ExprCall)(implicit cc: CompilerContext) = tree.expr.tpe match {
@@ -257,7 +257,7 @@ object TypeAssigner {
       }
   }
 
-  private def kind(tree: ExprTernary)(implicit cc: CompilerContext) = {
+  private def kind(tree: ExprCond)(implicit cc: CompilerContext) = {
     val tTpe = tree.thenExpr.tpe
     val eTpe = tree.elseExpr.tpe
     val signed = tTpe.isSigned && eTpe.isSigned
@@ -302,7 +302,7 @@ object TypeAssigner {
     }
   }
 
-  private def kind(tree: ExprSelect)(implicit cc: CompilerContext) =
+  private def kind(tree: ExprSel)(implicit cc: CompilerContext) =
     tree.expr.tpe pipe {
       case TypeType(kind: CompoundType) =>
         // TODO: Relax select on TypeType if the result is a proper type (i.e.:
@@ -397,12 +397,12 @@ object TypeAssigner {
   def apply(tree: ExprCall)(implicit cc: CompilerContext): tree.type = assign(tree)(kind(tree))
   def apply(tree: ExprUnary): tree.type = assign(tree)(kind(tree))
   def apply(tree: ExprBinary)(implicit cc: CompilerContext): tree.type = assign(tree)(kind(tree))
-  def apply(tree: ExprTernary)(implicit cc: CompilerContext): tree.type = assign(tree)(kind(tree))
+  def apply(tree: ExprCond)(implicit cc: CompilerContext): tree.type = assign(tree)(kind(tree))
   def apply(tree: ExprRep)(implicit cc: CompilerContext): tree.type = assign(tree)(kind(tree))
   def apply(tree: ExprCat)(implicit cc: CompilerContext): tree.type = assign(tree)(kind(tree))
   def apply(tree: ExprIndex)(implicit cc: CompilerContext): tree.type = assign(tree)(kind(tree))
   def apply(tree: ExprSlice)(implicit cc: CompilerContext): tree.type = assign(tree)(kind(tree))
-  def apply(tree: ExprSelect)(implicit cc: CompilerContext): tree.type = assign(tree)(kind(tree))
+  def apply(tree: ExprSel)(implicit cc: CompilerContext): tree.type = assign(tree)(kind(tree))
   def apply(tree: ExprSym)(implicit cc: CompilerContext): tree.type = assign(tree)(kind(tree))
   def apply(tree: ExprThis): tree.type = assign(tree)(kind(tree))
   def apply(tree: ExprType): tree.type = assign(tree)(kind(tree))

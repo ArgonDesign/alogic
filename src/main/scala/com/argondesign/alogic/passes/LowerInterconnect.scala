@@ -25,7 +25,7 @@
 package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.StatefulTreeTransformer
-import com.argondesign.alogic.ast.Trees.Expr.InstancePortRef
+import com.argondesign.alogic.ast.Trees.Expr.InstancePortSel
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols._
@@ -62,8 +62,8 @@ final class LowerInterconnect(implicit cc: CompilerContext)
   // Return the interconnect symbol for 'iSymbol.sel', if any. If the
   // interconnect symbol does not exist and alloc is true, allocate
   // it and connect it up
-  def handlePortSelect(select: ExprSelect, alloc: Boolean): Option[Symbol] = select match {
-    case ExprSelect(ExprSym(iSymbol), sel, _) =>
+  def handlePortSelect(select: ExprSel, alloc: Boolean): Option[Symbol] = select match {
+    case ExprSel(ExprSym(iSymbol), sel, _) =>
       val key = (iSymbol, sel)
       if (!alloc) {
         newSymbols.get(key)
@@ -108,19 +108,19 @@ final class LowerInterconnect(implicit cc: CompilerContext)
         enableStack push enableStack.top
 
       // a.b -> c.d, allocate on left hand side only
-      case EntConnect(InstancePortRef(_, _), List(InstancePortRef(_, _))) =>
+      case EntConnect(InstancePortSel(_, _), List(InstancePortSel(_, _))) =>
         assert(enableStack.isEmpty)
         enableStack push false push true
         inConnect = true
 
       // a.b -> SOMETHING, allocate on right hand side only
-      case EntConnect(InstancePortRef(_, _), _) =>
+      case EntConnect(InstancePortSel(_, _), _) =>
         assert(enableStack.isEmpty)
         enableStack push true push false
         inConnect = true
 
       // SOMETHING -> a.b, allocate on left hand side only
-      case EntConnect(_, List(InstancePortRef(_, _))) =>
+      case EntConnect(_, List(InstancePortSel(_, _))) =>
         assert(enableStack.isEmpty)
         enableStack push false push true
         inConnect = true
@@ -142,7 +142,7 @@ final class LowerInterconnect(implicit cc: CompilerContext)
       // Rewrite references, allocating if enabled and necessary
       //////////////////////////////////////////////////////////////////////////
 
-      case select @ InstancePortRef(_, _) =>
+      case select @ InstancePortSel(_, _) =>
         handlePortSelect(select, !inConnect || enableStack.top) map { nSymbol =>
           ExprSym(nSymbol) regularize tree.loc
         } getOrElse tree
@@ -160,9 +160,9 @@ final class LowerInterconnect(implicit cc: CompilerContext)
         newConnects.clear()
 
         // Collect the sinks of all 'instance.port'
-        val sinks: Map[ExprSelect, List[Expr]] = {
+        val sinks: Map[ExprSel, List[Expr]] = {
           val pairs = connects collect {
-            case EntConnect(select @ InstancePortRef(_, _), List(sink)) => select -> sink
+            case EntConnect(select @ InstancePortSel(_, _), List(sink)) => select -> sink
           }
           pairs.groupMap(_._1)(_._2)
         }
@@ -187,7 +187,7 @@ final class LowerInterconnect(implicit cc: CompilerContext)
         // a port with multiple sinks, and the right hand side is not the
         // interconnect symbol
         val modConnects = connects map {
-          case conn @ EntConnect(expr: ExprSelect, List(rhs)) =>
+          case conn @ EntConnect(expr: ExprSel, List(rhs)) =>
             nMap get expr map { nSymbol =>
               rhs match {
                 case ExprSym(`nSymbol`) => conn // Already the nSymbol, leave it alone
@@ -275,13 +275,13 @@ final class LowerInterconnect(implicit cc: CompilerContext)
     assert(!inConnect)
 
     def check(tree: Tree): Unit = tree visit {
-      case node @ ExprSelect(ExprSym(symbol), _, _) if symbol.kind.isEntity =>
+      case node @ ExprSel(ExprSym(symbol), _, _) if symbol.kind.isEntity =>
         cc.ice(node, "Direct port access remains")
     }
 
     tree visit {
-      case EntConnect(InstancePortRef(_, _), List(rhs)) => check(rhs)
-      case EntConnect(lhs, List(InstancePortRef(_, _))) => check(lhs)
+      case EntConnect(InstancePortSel(_, _), List(rhs)) => check(rhs)
+      case EntConnect(lhs, List(InstancePortSel(_, _))) => check(lhs)
       case node: Expr                                   => check(node)
     }
   }

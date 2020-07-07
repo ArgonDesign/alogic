@@ -110,7 +110,7 @@ final class InlineKnownVars(
 
     // Selects on structs are removed by SplitStruct but InlineKnownVars might
     // be called prior, e.g. from InlineMethods, so handle them if we can.
-    case e @ ExprSelect(expr, sel, _) if expr.tpe.underlying.isRecord =>
+    case e @ ExprSel(expr, sel, _) if expr.tpe.underlying.isRecord =>
       Some {
         walk(expr).asInstanceOf[Expr].simplify match {
           case known: ExprInt =>

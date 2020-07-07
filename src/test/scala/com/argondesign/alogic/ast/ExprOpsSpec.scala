@@ -209,7 +209,7 @@ final class ExprOpsSpec extends AnyFreeSpec with AlogicTest {
     }
 
     "select" in {
-      Expr(1) select "b" shouldBe ExprSelect(Expr(1), "b", Nil)
+      Expr(1) sel "b" shouldBe ExprSel(Expr(1), "b", Nil)
     }
 
     "call" in {

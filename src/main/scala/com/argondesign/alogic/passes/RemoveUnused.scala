@@ -18,7 +18,7 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.analysis.ReadSymbols
 import com.argondesign.alogic.analysis.WrittenSymbols
 import com.argondesign.alogic.ast.StatefulTreeTransformer
-import com.argondesign.alogic.ast.Trees.Expr.InstancePortRef
+import com.argondesign.alogic.ast.Trees.Expr.InstancePortSel
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols._
@@ -59,7 +59,7 @@ final class RemoveUnused(unusedSymbols: Set[Symbol])(implicit cc: CompilerContex
 
     case EntConnect(_, List(rhs)) if WrittenSymbols(rhs) forall unusedSymbols => Some(Stump)
 
-    case EntConnect(_, List(InstancePortRef(_, pSymbol))) if unusedSymbols(pSymbol) => Some(Stump)
+    case EntConnect(_, List(InstancePortSel(_, pSymbol))) if unusedSymbols(pSymbol) => Some(Stump)
 
     case _ => None
   }
@@ -167,15 +167,15 @@ object RemoveUnused extends PairsTransformerPass {
           // Concatenation on the right, everything is used, if only as a placeholder
           // TODO: if any symbol in the concatenation is used, then all are used
           val lSymbols = lhs match {
-            case InstancePortRef(iSymbol, pSymbol) => Iterator(iSymbol, pSymbol)
+            case InstancePortSel(iSymbol, pSymbol) => Iterator(iSymbol, pSymbol)
             case _                                 => ReadSymbols.rval(lhs)
           }
           val rSymbols = rhs collect { case ExprSym(symbol) => symbol }
           lSymbols ++ rSymbols
-        case EntConnect(InstancePortRef(iSymbol, pSymbol), List(rhs)) =>
+        case EntConnect(InstancePortSel(iSymbol, pSymbol), List(rhs)) =>
           // instance.port on left hand side
           Iterator(iSymbol, pSymbol) ++ ReadSymbols.lval(rhs)
-        case EntConnect(lhs, List(InstancePortRef(_, _))) =>
+        case EntConnect(lhs, List(InstancePortSel(_, _))) =>
           // instance.port on right hand side
           ReadSymbols.rval(lhs)
         case EntConnect(lhs, List(rhs)) =>

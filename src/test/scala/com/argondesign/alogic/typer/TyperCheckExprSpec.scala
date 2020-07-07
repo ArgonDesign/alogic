@@ -587,7 +587,7 @@ final class TyperCheckExprSpec extends AnyFreeSpec with AlogicTest {
           } tap { tree =>
             if (msg.isEmpty) {
               tree getFirst {
-                case e: ExprSelect => e
+                case e: ExprSel => e
               } tap {
                 _.tpe should matchPattern(kind)
               }

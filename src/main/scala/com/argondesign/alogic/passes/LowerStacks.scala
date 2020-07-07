@@ -78,18 +78,18 @@ final class LowerStacks(implicit cc: CompilerContext) extends StatefulTreeTransf
       // Rewrite statements
       //////////////////////////////////////////////////////////////////////////
 
-      case StmtExpr(ExprCall(ExprSelect(ExprSym(symbol), "push", _), List(ArgP(arg)))) =>
+      case StmtExpr(ExprCall(ExprSel(ExprSym(symbol), "push", _), List(ArgP(arg)))) =>
         stackMap.get(symbol) map {
           case (_, iSymbol) =>
-            extraStmts.top append assignTrue(ExprSym(iSymbol) select "push")
-            StmtAssign(ExprSym(iSymbol) select "d", arg)
+            extraStmts.top append assignTrue(ExprSym(iSymbol) sel "push")
+            StmtAssign(ExprSym(iSymbol) sel "d", arg)
         } getOrElse {
           tree
         }
 
-      case StmtExpr(ExprCall(ExprSelect(ExprSym(symbol), "set", _), List(ArgP(arg)))) =>
+      case StmtExpr(ExprCall(ExprSel(ExprSym(symbol), "set", _), List(ArgP(arg)))) =>
         stackMap.get(symbol) map {
-          case (_, iSymbol) => StmtAssign(ExprSym(iSymbol) select "d", arg)
+          case (_, iSymbol) => StmtAssign(ExprSym(iSymbol) sel "d", arg)
         } getOrElse {
           tree
         }
@@ -98,18 +98,18 @@ final class LowerStacks(implicit cc: CompilerContext) extends StatefulTreeTransf
       // Rewrite expressions
       //////////////////////////////////////////////////////////////////////////
 
-      case ExprCall(ExprSelect(ExprSym(symbol), "pop", _), Nil) =>
+      case ExprCall(ExprSel(ExprSym(symbol), "pop", _), Nil) =>
         stackMap.get(symbol) map {
           case (_, iSymbol) =>
-            extraStmts.top append assignTrue(ExprSym(iSymbol) select "pop")
-            ExprSym(iSymbol) select "d"
+            extraStmts.top append assignTrue(ExprSym(iSymbol) sel "pop")
+            ExprSym(iSymbol) sel "d"
         } getOrElse {
           tree
         }
 
-      case ExprSelect(ExprSym(symbol), "top", _) =>
+      case ExprSel(ExprSym(symbol), "top", _) =>
         stackMap.get(symbol) map {
-          case (_, iSymbol) => ExprSym(iSymbol) select "d"
+          case (_, iSymbol) => ExprSym(iSymbol) sel "d"
         } getOrElse {
           tree
         }
@@ -143,9 +143,9 @@ final class LowerStacks(implicit cc: CompilerContext) extends StatefulTreeTransf
                 val iRef = ExprSym(iSymbol)
                 StmtBlock(
                   List(
-                    StmtAssign(iRef select "d", iRef select "q"),
-                    assignFalse(iRef select "push"),
-                    assignFalse(iRef select "pop")
+                    StmtAssign(iRef sel "d", iRef sel "q"),
+                    assignFalse(iRef sel "push"),
+                    assignFalse(iRef sel "pop")
                   )
                 )
               }
@@ -192,7 +192,7 @@ final class LowerStacks(implicit cc: CompilerContext) extends StatefulTreeTransf
     assert(extraStmts.isEmpty)
 
     tree visit {
-      case node @ ExprSelect(ref, sel, _) if ref.tpe.isStack => cc.ice(node, s"Stack .$sel remains")
+      case node @ ExprSel(ref, sel, _) if ref.tpe.isStack => cc.ice(node, s"Stack .$sel remains")
     }
   }
 

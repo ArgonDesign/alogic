@@ -242,13 +242,13 @@ class LiftEntitiesA(
                   Some(
                     EntConnect(
                       ExprSym(outerSymbol),
-                      List(ExprSym(defn.symbol) select requiredSymbol.name)
+                      List(ExprSym(defn.symbol) sel requiredSymbol.name)
                     ) regularize defn.loc
                   )
                 case _: TypeOut =>
                   Some(
                     EntConnect(
-                      ExprSym(defn.symbol) select requiredSymbol.name,
+                      ExprSym(defn.symbol) sel requiredSymbol.name,
                       List(ExprSym(outerSymbol))
                     ) regularize defn.loc
                   )

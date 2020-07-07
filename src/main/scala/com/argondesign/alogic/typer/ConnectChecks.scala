@@ -15,7 +15,7 @@
 
 package com.argondesign.alogic.typer
 
-import com.argondesign.alogic.ast.Trees.Expr.InstancePortRef
+import com.argondesign.alogic.ast.Trees.Expr.InstancePortSel
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FlowControlTypes._
@@ -41,14 +41,14 @@ object ConnectChecks {
 
     val simpleExpr = expr match {
       case _: ExprSym            => true
-      case InstancePortRef(_, _) => true
+      case InstancePortSel(_, _) => true
       case _                     => false
     }
 
     def portTypes(expr: Expr): List[(Type, Expr)] = expr match {
       case e @ ExprSym(symbol)            => List((symbol.kind, e))
-      case e @ InstancePortRef(_, symbol) => List((symbol.kind, e))
-      case ExprSelect(expr, _, _)         => portTypes(expr)
+      case e @ InstancePortSel(_, symbol) => List((symbol.kind, e))
+      case ExprSel(expr, _, _)            => portTypes(expr)
       case ExprIndex(expr, _)             => portTypes(expr)
       case ExprSlice(expr, _, _, _)       => portTypes(expr)
       case ExprCat(parts)                 => parts flatMap portTypes
@@ -117,12 +117,12 @@ object ConnectChecks {
           cc.error(expr, s"Left hand side of '->' contains non-port type")
         }
         symbol.kind.isIn && !symbol.kind.isOut
-      case InstancePortRef(iSymbol, symbol) =>
+      case InstancePortSel(iSymbol, symbol) =>
         if (symbol.kind.isIn) {
           cc.error(expr, s"Left hand side of '->' contains an input to instance '${iSymbol.name}'")
         }
         !symbol.kind.isIn
-      case ExprSelect(expr, _, _)   => portDirectionsValid(expr)
+      case ExprSel(expr, _, _)      => portDirectionsValid(expr)
       case ExprIndex(expr, _)       => portDirectionsValid(expr)
       case ExprSlice(expr, _, _, _) => portDirectionsValid(expr)
       case ExprCat(parts)           => parts forall portDirectionsValid
@@ -158,7 +158,7 @@ object ConnectChecks {
           cc.error(expr, s"Right hand side of '->' contains non-port type")
         }
         symbol.kind.isOut && !symbol.kind.isIn
-      case InstancePortRef(iSymbol, symbol) =>
+      case InstancePortSel(iSymbol, symbol) =>
         if (symbol.kind.isOut) {
           cc.error(
             expr,
@@ -166,7 +166,7 @@ object ConnectChecks {
           )
         }
         !symbol.kind.isOut
-      case ExprSelect(expr, _, _)   => portDirectionsValid(expr)
+      case ExprSel(expr, _, _)      => portDirectionsValid(expr)
       case ExprIndex(expr, _)       => portDirectionsValid(expr)
       case ExprSlice(expr, _, _, _) => portDirectionsValid(expr)
       case ExprCat(parts)           => parts forall portDirectionsValid

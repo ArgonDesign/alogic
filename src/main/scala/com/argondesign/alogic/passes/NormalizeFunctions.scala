@@ -266,7 +266,7 @@ final class NormalizeFunctions(implicit cc: CompilerContext) extends StatelessTr
             cc.error(tree, "Static method cannot reference non-static members")
             tree
           } else {
-            (ExprThis(ExprSym(thisSymbol)) select symbol.name) regularize tree.loc
+            (ExprThis(ExprSym(thisSymbol)) sel symbol.name) regularize tree.loc
           }
         case _ => tree
       }

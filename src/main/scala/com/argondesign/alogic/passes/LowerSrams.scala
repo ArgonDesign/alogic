@@ -222,15 +222,15 @@ final class LowerSrams(
       // Rewrite statements
       //////////////////////////////////////////////////////////////////////////
 
-      case StmtExpr(ExprCall(ExprSelect(ExprSym(symbol), "read", _), List(ArgP(addr)))) =>
+      case StmtExpr(ExprCall(ExprSel(ExprSym(symbol), "read", _), List(ArgP(addr)))) =>
         sramMap.get(symbol) map {
           case SramWire(iSymbol) =>
             val iRef = ExprSym(iSymbol)
             Thicket(
               List(
-                assignTrue(iRef select "ce"),
-                assignFalse(iRef select "we"),
-                StmtAssign(iRef select "addr", addr)
+                assignTrue(iRef sel "ce"),
+                assignFalse(iRef sel "we"),
+                StmtAssign(iRef sel "addr", addr)
               )
             )
           case SramReg(_, _, oSymbol) =>
@@ -240,8 +240,8 @@ final class LowerSrams(
                 val data = ExprInt(false, kind.width.toInt, 0) // Don't care
                 Thicket(
                   List(
-                    assignTrue(oRef select s"ip${sep}valid"),
-                    StmtAssign(oRef select "ip", ExprCat(List(ExprInt(false, 1, 0), addr, data)))
+                    assignTrue(oRef sel s"ip${sep}valid"),
+                    StmtAssign(oRef sel "ip", ExprCat(List(ExprInt(false, 1, 0), addr, data)))
                   )
                 )
               case _ => unreachable
@@ -251,25 +251,25 @@ final class LowerSrams(
         }
 
       case StmtExpr(
-            ExprCall(ExprSelect(ExprSym(symbol), "write", _), List(ArgP(addr), ArgP(data)))
+            ExprCall(ExprSel(ExprSym(symbol), "write", _), List(ArgP(addr), ArgP(data)))
           ) =>
         sramMap.get(symbol) map {
           case SramWire(iSymbol) =>
             val iRef = ExprSym(iSymbol)
             Thicket(
               List(
-                assignTrue(iRef select "ce"),
-                assignTrue(iRef select "we"),
-                StmtAssign(iRef select "addr", addr),
-                StmtAssign(iRef select "wdata", data)
+                assignTrue(iRef sel "ce"),
+                assignTrue(iRef sel "we"),
+                StmtAssign(iRef sel "addr", addr),
+                StmtAssign(iRef sel "wdata", data)
               )
             )
           case SramReg(_, _, oSymbol) =>
             val oRef = ExprSym(oSymbol)
             Thicket(
               List(
-                assignTrue(oRef select s"ip${sep}valid"),
-                StmtAssign(oRef select "ip", ExprCat(List(ExprInt(false, 1, 1), addr, data)))
+                assignTrue(oRef sel s"ip${sep}valid"),
+                StmtAssign(oRef sel "ip", ExprCat(List(ExprInt(false, 1, 1), addr, data)))
               )
             )
         } getOrElse {
@@ -280,9 +280,9 @@ final class LowerSrams(
       // Rewrite expressions
       //////////////////////////////////////////////////////////////////////////
 
-      case ExprSelect(ExprSym(symbol), "rdata", _) =>
+      case ExprSel(ExprSym(symbol), "rdata", _) =>
         sramMap.get(symbol) map {
-          case SramInt(iSymbol)       => ExprSym(iSymbol) select "rdata"
+          case SramInt(iSymbol)       => ExprSym(iSymbol) sel "rdata"
           case SramStruct(_, rSymbol) => ExprSym(rSymbol)
         } getOrElse {
           tree
@@ -319,7 +319,7 @@ final class LowerSrams(
           // Add connects for read data unpacking
           sramMap.valuesIterator collect {
             case SramStruct(sS, rS) =>
-              EntConnect(ExprSym(sS) select "rdata", List(ExprSym(rS)))
+              EntConnect(ExprSym(sS) sel "rdata", List(ExprSym(rS)))
           }
         } concat {
           // Add connects for reg driver
@@ -327,14 +327,14 @@ final class LowerSrams(
             sramMap.valuesIterator collect {
               case SramReg(sS, _, oS) =>
                 Iterator(
-                  EntConnect(ExprSym(oS) select s"op${sep}valid", List(ExprSym(sS) select "ce")),
+                  EntConnect(ExprSym(oS) sel s"op${sep}valid", List(ExprSym(sS) sel "ce")),
                   EntConnect(
-                    ExprSym(oS) select s"op",
+                    ExprSym(oS) sel s"op",
                     List(ExprCat {
                       List(
-                        ExprSym(sS) select "we",
-                        ExprSym(sS) select "addr",
-                        ExprSym(sS) select "wdata"
+                        ExprSym(sS) sel "we",
+                        ExprSym(sS) sel "addr",
+                        ExprSym(sS) sel "wdata"
                       )
                     })
                   )
@@ -371,7 +371,7 @@ final class LowerSrams(
   }
 
   override def finalCheck(tree: Tree): Unit = {
-    tree visit { case n @ ExprSelect(r, s, _) if r.tpe.isSram => cc.ice(n, s"SRAM .$s remains") }
+    tree visit { case n @ ExprSel(r, s, _) if r.tpe.isSram => cc.ice(n, s"SRAM .$s remains") }
   }
 
 }

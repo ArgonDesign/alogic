@@ -80,7 +80,7 @@ final class LowerArrays(implicit cc: CompilerContext) extends StatefulTreeTransf
     //////////////////////////////////////////////////////////////////////////
 
     case StmtExpr(
-          ExprCall(ExprSelect(ExprSym(symbol), "write", _), List(ArgP(addr), ArgP(data)))
+          ExprCall(ExprSel(ExprSym(symbol), "write", _), List(ArgP(addr), ArgP(data)))
         ) =>
       // Rewrite assignments to array elements
       symbol.attr.memory.get map {

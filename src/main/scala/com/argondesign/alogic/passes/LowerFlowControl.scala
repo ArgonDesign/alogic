@@ -239,7 +239,7 @@ final class LowerFlowControlA(
       // Statements
       ////////////////////////////////////////////////////////////////////////////
 
-      case StmtExpr(ExprCall(ExprSelect(ExprSym(symbol), _, _), _)) =>
+      case StmtExpr(ExprCall(ExprSel(ExprSym(symbol), _, _), _)) =>
         extraStmts.push(ListBuffer())
 
         // We can remove 'port._();' statements altogether
@@ -273,7 +273,7 @@ final class LowerFlowControlA(
       // Rewrite expressions
       //////////////////////////////////////////////////////////////////////////
 
-      case ExprCall(ExprSelect(ref @ ExprSym(symbol), "read", _), Nil) =>
+      case ExprCall(ExprSel(ref @ ExprSym(symbol), "read", _), Nil) =>
         portMap.get(symbol) map {
           case (Some(`symbol`), None, None) => // No flow control
             ref
@@ -287,7 +287,7 @@ final class LowerFlowControlA(
           case _ => unreachable
         } getOrElse tree
 
-      case ExprCall(ExprSelect(ref @ ExprSym(symbol), "write", _), args) =>
+      case ExprCall(ExprSel(ref @ ExprSym(symbol), "write", _), args) =>
         lazy val arg = args.head.asInstanceOf[ArgP].expr
         oStorage.get(symbol) match {
           case Some((_, iSymbol, _)) =>
@@ -295,15 +295,15 @@ final class LowerFlowControlA(
             portMap.get(symbol) map {
               case (pSymbolOpt, Some(_), None) => // valid
                 pSymbolOpt foreach { _ =>
-                  extraStmts.top append StmtAssign(iRef select "ip", arg)
+                  extraStmts.top append StmtAssign(iRef sel "ip", arg)
                 }
-                extraStmts.top append assignTrue(iRef select s"ip${sep}valid")
+                extraStmts.top append assignTrue(iRef sel s"ip${sep}valid")
               case (pSymbolOpt, Some(_), Some(_)) => // ready
                 pSymbolOpt foreach { _ =>
-                  extraStmts.top append StmtAssign(iRef select "ip", arg)
+                  extraStmts.top append StmtAssign(iRef sel "ip", arg)
                 }
-                extraStmts.top append assignTrue(iRef select s"ip${sep}valid")
-                extraStmts.top append StmtWait(iRef select s"ip${sep}ready")
+                extraStmts.top append assignTrue(iRef sel s"ip${sep}valid")
+                extraStmts.top append StmtWait(iRef sel s"ip${sep}ready")
               case _ => unreachable
             }
           case None =>
@@ -320,31 +320,31 @@ final class LowerFlowControlA(
         }
         tree
 
-      case ExprSelect(ExprSym(symbol), "valid", _) =>
+      case ExprSel(ExprSym(symbol), "valid", _) =>
         portMap.get(symbol) map {
           case (_, Some(vSymbol), _) => ExprSym(vSymbol)
           case _                     => unreachable
         } getOrElse tree
 
-      case ExprSelect(ExprSym(symbol), "space", _) =>
+      case ExprSel(ExprSym(symbol), "space", _) =>
         oStorage.get(symbol) map {
-          case (_, iSymbol, _) => ExprSym(iSymbol) select "space"
+          case (_, iSymbol, _) => ExprSym(iSymbol) sel "space"
         } getOrElse {
           tree
         }
 
-      case ExprSelect(ExprSym(symbol), "empty", _) =>
+      case ExprSel(ExprSym(symbol), "empty", _) =>
         oStorage.get(symbol) map {
-          case (_, iSymbol, false) => ExprSym(iSymbol) select "space"
-          case (_, iSymbol, true)  => ExprSym(iSymbol) select "space" unary "&"
+          case (_, iSymbol, false) => ExprSym(iSymbol) sel "space"
+          case (_, iSymbol, true)  => ExprSym(iSymbol) sel "space" unary "&"
         } getOrElse {
           tree
         }
 
-      case ExprSelect(ExprSym(symbol), "full", _) =>
+      case ExprSel(ExprSym(symbol), "full", _) =>
         oStorage.get(symbol) map {
-          case (_, iSymbol, false) => ~(ExprSym(iSymbol) select "space")
-          case (_, iSymbol, true)  => ~(ExprSym(iSymbol) select "space" unary "|")
+          case (_, iSymbol, false) => ~(ExprSym(iSymbol) sel "space")
+          case (_, iSymbol, true)  => ~(ExprSym(iSymbol) sel "space" unary "|")
         } getOrElse {
           tree
         }
@@ -388,11 +388,11 @@ final class LowerFlowControlA(
                 loweredSymbolOpts match {
                   case (pSymbolOpt, Some(vSymbol), rSymbolOpt) =>
                     (pSymbolOpt.iterator map { pSymbol =>
-                      EntConnect(iRef select "op", List(ExprSym(pSymbol)))
+                      EntConnect(iRef sel "op", List(ExprSym(pSymbol)))
                     }) ++ Iterator.single {
-                      EntConnect(iRef select s"op${sep}valid", List(ExprSym(vSymbol)))
+                      EntConnect(iRef sel s"op${sep}valid", List(ExprSym(vSymbol)))
                     } ++ (rSymbolOpt.iterator map { rSymbol =>
-                      EntConnect(ExprSym(rSymbol), List(iRef select s"op${sep}ready"))
+                      EntConnect(ExprSym(rSymbol), List(iRef sel s"op${sep}ready"))
                     })
                   case _ => unreachable
                 }
@@ -437,9 +437,9 @@ final class LowerFlowControlA(
     assert(extraStmts.isEmpty)
 
     tree visit {
-      case node @ ExprCall(ExprSelect(ref, sel, _), _) if ref.tpe.isOut =>
+      case node @ ExprCall(ExprSel(ref, sel, _), _) if ref.tpe.isOut =>
         cc.ice(node, s"Output port .$sel() remains")
-      case node @ ExprCall(ExprSelect(ref, sel, _), _) if ref.tpe.isIn =>
+      case node @ ExprCall(ExprSel(ref, sel, _), _) if ref.tpe.isIn =>
         cc.ice(node, s"Input port .$sel() remains")
       case node @ DeclIn(_, _, fc) if fc != FlowControlTypeNone =>
         cc.ice(node, "Input port with flow control remains")
@@ -513,7 +513,7 @@ final class LowerFlowControlB(
 
   override def enter(tree: Tree): Option[Tree] = tree match {
     // Select on instance
-    case ExprSelect(expr @ ExprSym(iSymbol), sel, _) if iSymbol.kind.isEntity =>
+    case ExprSel(expr @ ExprSym(iSymbol), sel, _) if iSymbol.kind.isEntity =>
       Some {
         val kind = iSymbol.kind.asEntity
         globalReplacements.get(kind.symbol) match {
@@ -528,7 +528,7 @@ final class LowerFlowControlB(
               case None => abortExtraction = true; tree
               // Replace with reference to extracted port
               case Some(symbol) =>
-                walk(expr).asInstanceOf[Expr] select symbol.name tap { _ =>
+                walk(expr).asInstanceOf[Expr] sel symbol.name tap { _ =>
                   abortExtraction = false
                 }
             }

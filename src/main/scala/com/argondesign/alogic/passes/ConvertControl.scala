@@ -345,7 +345,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
           StmtGoto(ExprSym(returnStateAlias))
         }
 
-        lazy val pop = ExprSym(rsSymbol) select "pop" call Nil
+        lazy val pop = ExprSym(rsSymbol) sel "pop" call Nil
 
         (
           currentFunction.attr.popStackOnReturn.value,
@@ -365,7 +365,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
         val ref = ExprSym(func2state(symbol))
         if (symbol.attr.pushStackOnCall.value) {
           val ret = ArgP(ExprSym(followingState.top))
-          val push = ExprSym(rsSymbol) select "push" call List(ret)
+          val push = ExprSym(rsSymbol) sel "push" call List(ret)
           Thicket(List(StmtExpr(push), StmtGoto(ref))) regularize tree.loc
         } else {
           StmtGoto(ref) regularize tree.loc

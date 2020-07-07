@@ -16,7 +16,7 @@
 package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.StatelessTreeTransformer
-import com.argondesign.alogic.ast.Trees.Expr.InstancePortRef
+import com.argondesign.alogic.ast.Trees.Expr.InstancePortSel
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeReady
@@ -85,7 +85,7 @@ final class PortCheckA(implicit cc: CompilerContext) extends StatelessTreeTransf
                 drivOurs.get(symbol) foreach { multipleSinkError(lhs, _) }
                 drivOurs(symbol) = connect.loc
               }
-            case InstancePortRef(iSymbol, pSymbol) =>
+            case InstancePortSel(iSymbol, pSymbol) =>
               if (pSymbol.kind.asInstanceOf[TypeOut].fc == FlowControlTypeReady) {
                 val key = (iSymbol, pSymbol)
                 drivInst.get(key) foreach { multipleSinkError(lhs, _) }

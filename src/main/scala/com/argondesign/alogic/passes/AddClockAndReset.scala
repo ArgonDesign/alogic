@@ -113,11 +113,11 @@ final class AddClockAndResetB(
             case Defn(iSymbol) =>
               val clkConn = EntConnect(
                 ExprSym(clk),
-                List(ExprSym(iSymbol) select "clk")
+                List(ExprSym(iSymbol) sel "clk")
               ) regularize Loc.synthetic
               val rstConn = EntConnect(
                 ExprSym(rst),
-                List(ExprSym(iSymbol) select cc.rst)
+                List(ExprSym(iSymbol) sel cc.rst)
               ) regularize Loc.synthetic
               Iterator(clkConn, rstConn)
           }

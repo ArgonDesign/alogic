@@ -15,7 +15,7 @@
 
 package com.argondesign.alogic.passes
 
-import com.argondesign.alogic.ast.Trees.Expr.InstancePortRef
+import com.argondesign.alogic.ast.Trees.Expr.InstancePortSel
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols._
@@ -50,7 +50,7 @@ object TieOffInputs extends PairTransformerPass {
 
     // Remove all that are driven
     entityDefn.connects.iterator foreach {
-      case EntConnect(_, InstancePortRef(iSymbol, pSymbol) :: Nil) =>
+      case EntConnect(_, InstancePortSel(iSymbol, pSymbol) :: Nil) =>
         needsTieOff -= ((iSymbol, pSymbol))
       case _ =>
     }
@@ -65,7 +65,7 @@ object TieOffInputs extends PairTransformerPass {
             case (iSymbol, pSymbol) =>
               EntConnect(
                 pSymbol.attr.default.value,
-                (ExprSym(iSymbol) select pSymbol.name) :: Nil
+                (ExprSym(iSymbol) sel pSymbol.name) :: Nil
               ) regularize iSymbol.loc
           }
         }

@@ -52,21 +52,21 @@ final class ConvertControlSpec extends AnyFreeSpec with AlogicTest {
 
     def checkGoesToPop(state: DefnState): Unit = {
       val goto = state collectFirst {
-        case e @ StmtGoto(ExprCall(ExprSelect(_, "pop", Nil), Nil)) => e
+        case e @ StmtGoto(ExprCall(ExprSel(_, "pop", Nil), Nil)) => e
       }
       goto should matchPattern { case Some(_) => }
     }
 
     def checkPopsStack(state: DefnState): Unit = {
       val pop = state collectFirst {
-        case e @ ExprCall(ExprSelect(_, "pop", Nil), Nil) => e
+        case e @ ExprCall(ExprSel(_, "pop", Nil), Nil) => e
       }
       pop should matchPattern { case Some(_) => }
     }
 
     def checkDoesntPush(stateFrom: DefnState): Unit = {
       val hopefullyNone = stateFrom collectFirst {
-        case e @ ExprCall(ExprSelect(_, "push", Nil), _) => e
+        case e @ ExprCall(ExprSel(_, "push", Nil), _) => e
       }
       hopefullyNone shouldBe None
     }
@@ -74,7 +74,7 @@ final class ConvertControlSpec extends AnyFreeSpec with AlogicTest {
     def checkPushesState(stateFrom: DefnState, statePushedGolden: DefnState): Unit = {
       val pushCall = stateFrom getFirst { case x: ExprCall => x }
       pushCall should matchPattern {
-        case ExprCall(ExprSelect(_, "push", Nil), List(ArgP(ExprSym(symbol))))
+        case ExprCall(ExprSel(_, "push", Nil), List(ArgP(ExprSym(symbol))))
             if symbol == statePushedGolden.symbol =>
       }
     }
