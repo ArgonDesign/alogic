@@ -4,8 +4,23 @@
 # curl --data-binary @.codecov.yml https://codecov.io/validate
 
 codecov:
-  require_ci_to_pass: no
+  require_ci_to_pass: yes
 
 ignore:
   - "verilator"
   - "symbiyosys"
+
+coverage:
+  status:
+    project:
+      default:
+        threshold: 0.5%
+        only_pulls: true
+    patch:
+      default:
+        only_pulls: true
+
+comment:
+  layout: "diff, reach"
+  behavior: new
+  require_changes: false
