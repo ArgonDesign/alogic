@@ -125,9 +125,8 @@ trait TreePrintOps extends { this: Tree =>
       case ident: Ident if ident.attr.isEmpty => ""
       case ident: Ident =>
         ident.attr.iterator map {
-          case (k, _: SourceAttribute.Flag)        => k
-          case (k, SourceAttribute.Expr(expr))     => s"$k = ${v(expr)}"
-          case (k, SourceAttribute.Slices(slices)) => s"$k = ${v(StorageTypeSlices(slices))}"
+          case (k, _: SourceAttribute.Flag)    => k
+          case (k, SourceAttribute.Expr(expr)) => s"$k = ${v(expr)}"
         } mkString ("(* ", ", ", " *)")
     } pipe {
       case ""  => ""
@@ -145,7 +144,9 @@ trait TreePrintOps extends { this: Tree =>
     case DescIn(_, spec, fct)                  => s"desc in ${v(fct)}${v(spec)} $name"
     case DescOut(_, spec, fct, st, None)       => s"desc out ${v(fct)}${v(st)}${v(spec)} $name"
     case DescOut(_, spec, fct, st, Some(init)) => s"desc out ${v(fct)}${v(st)}${v(spec)} $name = ${v(init)}"
-    case DescPipeline(_, spec)                 => s"desc pipeline ${v(spec)} $name"
+    case DescPipeVar(_, spec)                  => s"desc pipeline ${v(spec)} $name"
+    case DescPipeIn(_, fct)                    => s"desc in ${v(fct)}pipeline $name"
+    case DescPipeOut(_, fct, st)               => s"desc out ${v(fct)}${v(st)}pipeline $name"
     case DescParam(_, spec, None)              => s"desc param ${v(spec)} $name"
     case DescParam(_, spec, Some(init))        => s"desc param ${v(spec)} $name = ${v(init)}"
     case DescParamType(_, None)                => s"desc param type $name"
@@ -179,7 +180,9 @@ trait TreePrintOps extends { this: Tree =>
     case DeclVal(_, spec)             => s"decl val ${v(spec)} $name;"
     case DeclIn(_, spec, fct)         => s"decl in ${v(fct)}${v(spec)} $name;"
     case DeclOut(_, spec, fct, st)    => s"decl out ${v(fct)}${v(st)}${v(spec)} $name;"
-    case DeclPipeline(_, spec)        => s"decl pipeline ${v(spec)} $name;"
+    case DeclPipeVar(_, spec)         => s"decl pipeline ${v(spec)} $name;"
+    case DeclPipeIn(_, fct)           => s"decl in ${v(fct)}pipeline $name;"
+    case DeclPipeOut(_, fct, st)      => s"decl out ${v(fct)}${v(st)}pipeline $name;"
     case DeclConst(_, spec)           => s"decl const ${v(spec)} $name;"
     case DeclGen(_, spec)             => s"decl gen ${v(spec)} $name;"
     case DeclArray(_, elem, size)     => s"decl ${v(elem)} $name[${v(size)}];"
@@ -212,7 +215,9 @@ trait TreePrintOps extends { this: Tree =>
     case DefnIn(_)                       => s"defn $name;"
     case DefnOut(_, None)                => s"defn $name;"
     case DefnOut(_, Some(init))          => s"defn $name = ${v(init)};"
-    case DefnPipeline(_)                 => s"defn $name;"
+    case DefnPipeVar(_)                  => s"defn $name;"
+    case DefnPipeIn(_)                   => s"defn $name;"
+    case DefnPipeOut(_)                  => s"defn $name;"
     case DefnConst(_, init)              => s"defn $name = ${v(init)};"
     case DefnGen(_, init)                => s"defn $name = ${v(init)};"
     case DefnArray(_)                    => s"defn $name;"
@@ -306,8 +311,6 @@ trait TreePrintOps extends { this: Tree =>
     case StmtDelayed(lhs, rhs)             => s"${v(lhs)} <= ${v(rhs)};"
     case StmtOutcall(o, f, is)             => s"${v(f)}(${v(o)} <- ${vs(is)});"
     case StmtExpr(expr)                    => s"${v(expr)};"
-    case StmtRead()                        => "read;"
-    case StmtWrite()                       => "write;"
     case StmtComment(str)                  => "// " + str
     case StmtWait(cond)                    => s"wait ${v(cond)};"
     case StmtAssertion(assertion)          => v(assertion)

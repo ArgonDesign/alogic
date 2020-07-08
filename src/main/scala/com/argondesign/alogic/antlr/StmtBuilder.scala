@@ -120,18 +120,11 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
       override def visitStmtPost(ctx: StmtPostContext): Stmt =
         StmtPost(ExprBuilder(ctx.expr), ctx.op.txt) withLoc ctx.loc
 
-      override def visitStmtExpr(ctx: StmtExprContext): Stmt = {
-        val stmt = ctx.expr.txt match {
-          case "read"  => StmtRead()
-          case "write" => StmtWrite()
-          case _       => StmtExpr(ExprBuilder(ctx.expr))
-        }
-        stmt withLoc ctx.loc
-      }
+      override def visitStmtExpr(ctx: StmtExprContext): Stmt =
+        StmtExpr(ExprBuilder(ctx.expr)) withLoc ctx.loc
 
-      override def visitStmtAssertion(ctx: StmtAssertionContext): Stmt = {
+      override def visitStmtAssertion(ctx: StmtAssertionContext): Stmt =
         StmtAssertion(AssertionBuilder(ctx.assertion)) withLoc ctx.loc
-      }
 
       override def visitStmtWait(ctx: StmtWaitContext): Stmt = {
         val cond = if (ctx.expr != null) {

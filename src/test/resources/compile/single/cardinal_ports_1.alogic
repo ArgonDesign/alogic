@@ -1,0 +1,24 @@
+network cardinal_ports_1 {
+  in  bool;
+  out bool;
+
+  new network inner {
+    in  bool;
+    out bool;
+
+    in -> out;
+  }
+
+  in -> inner.in; inner.out -> out;
+}
+// @fec/golden {{{
+//  module cardinal_ports_1(
+//    input  wire in,
+//    output wire out
+//  );
+//
+//    assign out = in;
+//
+//  endmodule
+// }}}
+

@@ -67,11 +67,4 @@ trait Builtins { this: CompilerContext =>
     case _ => unreachable
   }
 
-  // Is call valid as a connect LHS
-  def isValidConnectLhsBuiltinCall(call: ExprCall): Boolean =
-    call.expr match {
-      case ExprSym(symbol) => symbol.attr.builtin.value.isValidConnectLhs(call.args)
-      case _               => unreachable
-    }
-
 }

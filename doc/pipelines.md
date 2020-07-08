@@ -9,10 +9,9 @@
 ### Networks for describing pipelines
 
 Networks combined with nested FSMs are also used as the abstraction to describe
-pipelines. This is achieved using `pipeline` variable declarations and the `read;` and
-`write;` statements available in nested FSMs.
+pipelines. This is achieved using `pipeline` variable and port declarations.
 
-#### Pipeline variable declarations
+#### Pipeline variable and pipeline port declarations
 
 Networks can contain variable declarations qualified with the `pipeline`
 keyword:
@@ -22,7 +21,17 @@ pipeline u16 a;
 ```
 
 `pipeline` variables used in nested FSMs will be passed along the referencing
-FSMs through automatically inserted pipeline ports.
+FSMs through pipeline ports. Pipeline ports can be declared by using the
+`pipeline` keyword instead of a type specifier in the port declaration. It
+is conventional to declare pipeline ports as the cardinal ports of a pipeline
+stage:
+
+```
+in sync ready pipeline;
+out sync ready pipeline;
+```
+
+There can be at most one pipeline input and one pipeline output per entity.
 
 #### Nested FSMs as pipeline stages
 
@@ -38,20 +47,15 @@ pipeline order in the enclosing network.
 should be declared as `pipeline` variables. These can then be used inside the
 nested FSMs.
 
-- All pipeline stages must be connected instance to instance using
-`<stage-0-name> -> <stage-1-name>`. Ports should not be used as the compiler
-will automatically connect the required pipeline ports.
+- The pipeline ports of the stages must be connected in the desired order.
+Using cardinal pipeline ports makes this convenient:
+`<stage-n> -> <stage-n+1>`.
 
-- All pipeline stages (except for the first) can use the `read;` statement to
-read in the pipeline variables from the previous pipeline stage. The `read;`
-statement can appear anywhere where a control statement is valid.
+- The `.read()` method of an input pipeline port can be used to consume the
+incoming pipeline variables from the previous stage.
 
-- All pipeline stages (except for the last) can use the `write;` statement to
-write the pipeline variables to the subsequent pipeline stage. The `write;`
-statement can appear anywhere where a control statement is valid.
-
-- The `read;` and `write;` statements operate on the pipeline variables that
-have been automatically connected by the compiler
+- The `.write()` method of an output pipeline port can be used to emit the
+outgoing pipeline variables to the next stage.
 
 <a href="http://afiddle.argondesign.com/?example=pipelines_commands.alogic">Fiddle with these commands here.</a>
 
@@ -93,6 +97,7 @@ network dotprod {
   pipeline u33 sum32;
 
   new fsm stage0 {
+    out sync ready pipeline;
     void main() {
       // Read operands, zero-extend them to 32 bits and perform multiplications
       mul0 = @zx(32, a0.read()) * @zx(32, b0.read());
@@ -100,37 +105,40 @@ network dotprod {
       mul2 = @zx(32, a2.read()) * @zx(32, b2.read());
       mul3 = @zx(32, a3.read()) * @zx(32, b3.read());
 
-      // Write pipeline variables to next stage
-      write;
+      // Write pipeline variables to the pipeline output port
+      out.write();
 
       fence;
     }
   }
 
-  stage0 -> stage1; // Connect pipeline ports
+  stage0 -> stage1; // Connect cardinal pipeline ports
 
   new fsm stage1 {
+    in sync ready pipeline;
+    out sync ready pipeline;
     void main() {
-      // Read pipeline variables from previous stage
-      read;
+      // Read pipeline variables from the pipeline input port
+      in.read();
 
       // Zero-extend to 33 bits and perform 1st level of the reduction
       sum10 = @zx(33, mul0) + @zx(33, mul1);
       sum32 = @zx(33, mul2) + @zx(33, mul3);
 
-      // Write pipeline variables to next stage
-      write;
+      // Write pipeline variables to the pipeline output port
+      out.write();
 
       fence;
     }
   }
 
-  stage1 -> stage2; // Connect pipeline ports
+  stage1 -> stage2; // Connect cardinal pipeline ports
 
   new fsm stage2 {
+    in sync ready pipeline;
     void main() {
-      // Read pipeline variables from previous stage
-      read;
+      // Read pipeline variables from the pipeline input port
+      in.read();
 
       // Zero-extend to 34 bits and perform the final sum
       u34 prod = @zx(34, sum32) + @zx(34, sum10);
@@ -144,12 +152,11 @@ network dotprod {
 }
 ```
 
-To implement a pipeline, the compiler will automatically insert pipeline input
-and output ports into the stages, and pass all required pipeline variables where
-they are needed. Pipeline ports always use `sync ready` flow control and an
-`fslice` as storage. The compiler turns the above definition of the `dotprod`
-pipeline into the following, before compilation proceeds as for other Alogic
-networks:
+To implement a pipeline, the compiler will automatically determine which
+pipeline variable needs to flow from stage to stage, and will replace the
+pipeline ports with regular ports holding a packed structure with all the
+transiting variables. The definition of the `dotprod` pipeline above is
+equivalent to:
 
 <a href="http://afiddle.argondesign.com/?example=pipelines_example2.alogic">Fiddle with this example here.</a>
 
@@ -170,14 +177,19 @@ network dotprod {
   // Output dot product
   out sync ready u34 p_prod;
 
-  // Notice how pipeline variable declarations
-  // are pushed into the referencing stages
+  // The pipeline variables are pushed into the referencing stages
 
   new fsm stage0 {
-    // The automatically inserted pipeline output port
-    out sync ready pipeline_stage0_o_t pipeline_o;
+    // The compiler derives this structure as the pipeline output port type
+    struct pipeline_out_t {
+        u32 mul0;
+        u32 mul1;
+        u32 mul2;
+        u32 mul3;
+    };
 
-    // Note that the first stage does not contain a pipeline input port
+    // The pipeline port is converted to an ordinery port
+    out sync ready pipeline_out_t;
 
     // The declarations of the referenced pipeline variables are
     // pushed into the stage as local varaible declarations
@@ -193,25 +205,34 @@ network dotprod {
       mul2 = @zx(32, a2.read()) * @zx(32, b2.read());
       mul3 = @zx(32, a3.read()) * @zx(32, b3.read());
 
-      // The 'write;' statement is turned into a '.write()' call on the
-      // automatically inserted pipeline output port, carrying the pipeline
-      // variables referenced by later stages
-      pipeline_o.write({mul0, mul1, mul2, mul3});
+      // The 'out.write()' call is replaced with a write call passing the
+      // outgoing pipeline variables
+      out.write({mul0, mul1, mul2, mul3});
 
       fence;
     }
   }
 
-  // stage to stage connectsions are turned into pipeline
-  // output port to pipeline input port connections
-  stage0.pipeline_o -> stage1.pipeline_i;
+  stage0 -> stage1; // Connect cardinal ports (no longer pipeline ports)
 
   new fsm stage1 {
-    // The automatically inserted pipeline input port
-    in sync ready pipeline_stage1_i_t pipeline_i;
+    // The compiler derives this structure as the pipeline input port type
+    struct pipeline_in_t {
+        u32 mul0;
+        u32 mul1;
+        u32 mul2;
+        u32 mul3;
+    };
 
-    // The automatically inserted pipeline output port
-    out sync ready pipeline_stage1_o_t pipeline_o;
+    // The compiler derives this structure as the pipeline output port type
+    struct pipeline_out_t {
+        u33 sum10;
+        u33 sum32;
+    };
+
+    // The pipeline port are converted to ordinery ports
+    in sync ready pipeline_in_t;
+    out sync ready pipeline_out_t;
 
     // Declarations of the referenced pipeline variables
     u32 mul0;
@@ -222,39 +243,42 @@ network dotprod {
     u33 sum32;
 
     void main() {
-      // The 'read;' statement is turned into a '.read()' call on the
-      // automatically inserted pipeline input port, carrying the pipeline
-      // variables referenced be this or any subsequent stage. The result
-      // of the `.read()' is assigned to the now local pipeline variables
-      {mul0, mul1, mul2, mul3} = pipeline_i.read();
+      // The 'in.read();' statement is turned into a '.read()' call on the
+      // pipeline input port, carrying the pipeline variables referenced in
+      // this or any subsequent stage. The result of the `.read()' is assigned
+      // to the now local pipeline variables
+      {mul0, mul1, mul2, mul3} = in.read();
 
       // Zero-extend to 33 bits and perform 1st level of the reduction
       sum10 = @zx(33, mul0) + @zx(33, mul1);
       sum32 = @zx(33, mul2) + @zx(33, mul3);
 
-      // Write pipeline variables referenced by later stages to the
-      // pipeline output port
-      pipeline_o.write({sum10, sum32});
+      // Write pipeline variables referenced by later stages to the output port
+      out.write({sum10, sum32});
 
       fence;
     }
   }
 
-  stage1.pipeline_o -> stage2.pipeline_i;
+  stage1 -> stage2;  // Connect cardinal ports (no longer pipeline ports)
 
   new fsm stage2 {
-    // The automatically inserted pipeline input port
-    in sync ready pipeline_stage2_i_t pipeline_i;
+    // The compiler derives this structure as the pipeline input port type
+    struct pipeline_in_t {
+        u33 sum10;
+        u33 sum32;
+    };
 
-    // Note that the last stage does not contain a pipeline output port
+    // The pipeline port is converted to an ordinery port
+    in sync ready pipeline_out_t;
 
     // Declarations of the referenced pipeline variables
     u33 sum10;
     u33 sum32;
 
     void main() {
-      // Write referenced pipeline variables from previous stage
-      {sum10, sum32} = pipeline_i.read();
+      // The converted 'in.read();' statement
+      {sum10, sum32} = in.read();
 
       // Zero-extend to 34 bits and perform the final sum
       u34 prod = {1'd0, sum32} + {1'd0, sum10};
@@ -271,15 +295,14 @@ network dotprod {
 #### Complexity of stages
 
 While it is common to build pipelines that sustain a single operation every
-cycle, note that the `read;` and `write;` statements simply turn into common
-`.read()` and `.write()` calls on the inserted pipeline ports, and as such can
-be used at any place in the pipeline stage where a combinatorial statement is
-permitted.
+cycle, note that the pipeline port `.read();` and `.write();` statements simply
+turn into common `.read()` and `.write()` calls on the converted input and
+output ports, and as such can be used at any place in the pipeline stage where
+a combinational statement is permitted.
 
 Note further that the pipeline stages really are fully capable FSMs and can have
 multiple states, perform function calls, or declare local storage and further
-explicit ports, the same way as any other FSM. The `read;` and `write;`
-statements can be invoked in multiple states, making more complex pipelines
+explicit ports, the same way as any other FSM, making more complex pipelines
 possible.
 
 <p align="center">

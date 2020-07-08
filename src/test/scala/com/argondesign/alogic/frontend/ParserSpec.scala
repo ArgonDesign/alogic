@@ -194,6 +194,46 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
           }
         }
 
+        "input" - {
+          "no flow control" in {
+            "in i2 a;".asTree[Desc] shouldBe {
+              DescIn(Ident("a", Nil), ExprType(TypeSInt(2)), FlowControlTypeNone)
+            }
+          }
+
+          "valid flow control" in {
+            "in sync i2 a;".asTree[Desc] shouldBe {
+              DescIn(Ident("a", Nil), ExprType(TypeSInt(2)), FlowControlTypeValid)
+            }
+          }
+
+          "valid/ready flow control" in {
+            "in sync ready i2 a;".asTree[Desc] shouldBe {
+              DescIn(Ident("a", Nil), ExprType(TypeSInt(2)), FlowControlTypeReady)
+            }
+          }
+
+          "with attribute" in {
+            inside("(* foo *) in i2 a;".asTree[Desc]) {
+              case DescIn(ident @ Ident("a", Nil), ExprType(TypeSInt(w)), FlowControlTypeNone)
+                  if w == 2 =>
+                ident.attr shouldBe Map("foo" -> SourceAttribute.Flag())
+            }
+          }
+
+          "unnamed" in {
+            "in bool;".asTree[Desc] shouldBe {
+              DescIn(Ident("in", Nil), ExprType(TypeUInt(1)), FlowControlTypeNone)
+            }
+          }
+
+          "pipeline" in {
+            "in pipeline a;".asTree[Desc] shouldBe {
+              DescPipeIn(Ident("a", Nil), FlowControlTypeNone)
+            }
+          }
+        }
+
         "output" - {
           "no flow control" - {
             "default" in {
@@ -345,40 +385,30 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
               )
             }
           }
-        }
 
-        "inputs" - {
-          "no flow control" in {
-            "in i2 a;".asTree[Desc] shouldBe {
-              DescIn(Ident("a", Nil), ExprType(TypeSInt(2)), FlowControlTypeNone)
+          "pipeline" in {
+            "out pipeline a;".asTree[Desc] shouldBe {
+              DescPipeOut(
+                Ident("a", Nil),
+                FlowControlTypeNone,
+                StorageTypeDefault
+              )
             }
           }
 
-          "valid flow control" in {
-            "in sync i2 a;".asTree[Desc] shouldBe {
-              DescIn(Ident("a", Nil), ExprType(TypeSInt(2)), FlowControlTypeValid)
+          "pipeline with initializer" in {
+            "out pipeline a = 0;".asTree[Desc] shouldBe {
+              DescPipeOut(
+                Ident("a", Nil),
+                FlowControlTypeNone,
+                StorageTypeDefault
+              )
             }
+            cc.messages.loneElement should beThe[Error](
+              "Pipeline output port cannot have an initializer"
+            )
           }
 
-          "valid/ready flow control" in {
-            "in sync ready i2 a;".asTree[Desc] shouldBe {
-              DescIn(Ident("a", Nil), ExprType(TypeSInt(2)), FlowControlTypeReady)
-            }
-          }
-
-          "with attribute" in {
-            inside("(* foo *) in i2 a;".asTree[Desc]) {
-              case DescIn(ident @ Ident("a", Nil), ExprType(TypeSInt(w)), FlowControlTypeNone)
-                  if w == 2 =>
-                ident.attr shouldBe Map("foo" -> SourceAttribute.Flag())
-            }
-          }
-
-          "unnamed" in {
-            "in bool;".asTree[Desc] shouldBe {
-              DescIn(Ident("in", Nil), ExprType(TypeUInt(1)), FlowControlTypeNone)
-            }
-          }
         }
 
         "parameter" - {
@@ -430,13 +460,13 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
 
         "pipeline variable" in {
           "pipeline u8 a;".asTree[Desc] shouldBe {
-            DescPipeline(Ident("a", Nil), ExprType(TypeUInt(8)))
+            DescPipeVar(Ident("a", Nil), ExprType(TypeUInt(8)))
           }
         }
 
         "pipeline variable with attribute" in {
           inside("(* foo *) pipeline u8 a;".asTree[Desc]) {
-            case DescPipeline(ident @ Ident("a", Nil), ExprType(TypeUInt(w))) if w == 8 =>
+            case DescPipeVar(ident @ Ident("a", Nil), ExprType(TypeUInt(w))) if w == 8 =>
               ident.attr shouldBe Map("foo" -> SourceAttribute.Flag())
           }
         }
@@ -680,15 +710,6 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
           inside("(* expr = 2 *) void a;".asTree[Desc]) {
             case DescVar(ident @ Ident("a", Nil), ExprType(TypeVoid), None) =>
               ident.attr shouldBe Map("expr" -> SourceAttribute.Expr(Expr(2)))
-          }
-        }
-
-        "slices" in {
-          inside("(* expr = bubble fslice *) void a;".asTree[Desc]) {
-            case DescVar(ident @ Ident("a", Nil), ExprType(TypeVoid), None) =>
-              ident.attr shouldBe Map(
-                "expr" -> SourceAttribute.Slices(List(StorageSliceBub, StorageSliceFwd))
-              )
           }
         }
       }
@@ -1322,14 +1343,6 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
           }
         }
 
-        "read statement" in {
-          "read;".asTree[Stmt] shouldBe StmtRead()
-        }
-
-        "write statement" in {
-          "write;".asTree[Stmt] shouldBe StmtWrite()
-        }
-
         "assert statement with no message" in {
           "assert false;".asTree[Stmt] shouldBe {
             StmtAssertion(AssertionAssert(ExprInt(false, 1, 0), None))
@@ -1845,6 +1858,14 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
               "c",
               Nil
             )
+          }
+
+          "select in" in {
+            "a.in".asTree[Expr] shouldBe ExprSel(ExprRef(Ident("a", Nil)), "in", Nil)
+          }
+
+          "select out" in {
+            "a.out".asTree[Expr] shouldBe ExprSel(ExprRef(Ident("a", Nil)), "out", Nil)
           }
 
           "@id" in {

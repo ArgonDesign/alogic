@@ -669,6 +669,32 @@ is allowed in the declarations of any other kinds of ports.
 The same can be done for variables declared in entity scope - see
 [FSMs](fsms.md).
 
+### Cardinal ports
+
+A cardinal port can be declared by omitting the name from the port declaration.
+There can be at most one cardinal input port and one cardinal output port per
+entity. Cardinal ports behave as if they were declared with the names `in` or
+`out`, and as such they can be referred to with those keywords. The entity
+can declare additional ordinary ports:
+
+```
+fsm cardinal_adder {
+  in  u8;
+  out u8;
+  in  u8 addend;
+
+  void main () {
+    out = in + addend;
+    fence;
+  }
+}
+```
+
+Cardinal ports behave exactly the same as ordinary ports, except in [port
+connections](networks.md#connecting-cardinal-ports) where they are used
+implicitly when referring to an instance of an entity, without naming a
+particular port.
+
 ### Summary of port methods and properties
 
 The following table summarizes the methods and properties available on various

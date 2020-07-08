@@ -188,10 +188,16 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
       val spec = walk(node.spec)
       val initOpt = walk(node.initOpt)
       TreeCopier(node)(ref, spec, initOpt)
-    case node: DescPipeline =>
+    case node: DescPipeVar =>
       val ref = walk(node.ref)
       val spec = walk(node.spec)
       TreeCopier(node)(ref, spec)
+    case node: DescPipeIn =>
+      val ref = walk(node.ref)
+      TreeCopier(node)(ref)
+    case node: DescPipeOut =>
+      val ref = walk(node.ref)
+      TreeCopier(node)(ref)
     case node: DescParam =>
       val ref = walk(node.ref)
       val spec = walk(node.spec)
@@ -266,9 +272,11 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
     case node: DeclOut =>
       val spec = walk(node.spec)
       TreeCopier(node)(spec)
-    case node: DeclPipeline =>
+    case node: DeclPipeVar =>
       val spec = walk(node.spec)
       TreeCopier(node)(spec)
+    case node: DeclPipeIn  => node
+    case node: DeclPipeOut => node
     case node: DeclConst =>
       val spec = walk(node.spec)
       TreeCopier(node)(spec)
@@ -320,7 +328,9 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
     case node: DefnOut =>
       val initOpt = walk(node.initOpt)
       TreeCopier(node)(initOpt)
-    case node: DefnPipeline => node
+    case node: DefnPipeVar => node
+    case node: DefnPipeIn  => node
+    case node: DefnPipeOut => node
     case node: DefnConst =>
       val init = walk(node.init)
       TreeCopier(node)(init)
@@ -491,8 +501,6 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
       val func = walk(node.func)
       val inputs = walk(node.inputs)
       TreeCopier(node)(output, func, inputs)
-    case node: StmtRead  => node
-    case node: StmtWrite => node
     case node: StmtExpr =>
       val expr = walk(node.expr)
       TreeCopier(node)(expr)

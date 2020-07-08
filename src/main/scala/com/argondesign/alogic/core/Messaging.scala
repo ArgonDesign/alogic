@@ -16,6 +16,7 @@
 package com.argondesign.alogic.core
 
 import com.argondesign.alogic.core.Messages._
+import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
 
@@ -39,6 +40,18 @@ final class MessageBuffer {
   def messages: List[Message] = buffer.toList
 
   def hasError: Boolean = errorCount > 0
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Add message to bufer
+  //////////////////////////////////////////////////////////////////////////////
+
+  def add(msg: Message): Unit = msg match {
+    case _: Warning => buffer append msg
+    case _: Error   => buffer append msg; errorCount += 1
+    case _: Note    => buffer append msg
+    case _: Fatal   => unreachable
+    case _: Ice     => unreachable
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   // Create messages, add them to buffer
@@ -130,4 +143,12 @@ trait Messaging { self: CompilerContext =>
   final def errorOnce[T](item: T, msg: String*)(implicit loc: Locatable[T]): Unit =
     messageBuffer.error(loc(item), msg, once = true)
 
+  //////////////////////////////////////////////////////////////////////////////
+  // Add pre-computed messages
+  //////////////////////////////////////////////////////////////////////////////
+
+  final def addMessage(message: Message): Unit = messageBuffer.add(message)
+
+  final def addMessages(messages: IterableOnce[Message]): Unit =
+    messages.iterator foreach messageBuffer.add
 }

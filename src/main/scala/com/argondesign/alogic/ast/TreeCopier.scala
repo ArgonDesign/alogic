@@ -113,13 +113,33 @@ object TreeCopier {
     }
   }
 
-  def apply(tree: DescPipeline)(ref: Tree, spec: Tree): DescPipeline = {
+  def apply(tree: DescPipeVar)(ref: Tree, spec: Tree): DescPipeVar = {
     if ((ref eq tree.ref) && (spec eq tree.spec)) {
       tree
     } else {
-      DescPipeline(
+      DescPipeVar(
         ref.asInstanceOf[Ref],
         spec.asInstanceOf[Expr]
+      ) withLoc tree.loc
+    }
+  }
+
+  def apply(tree: DescPipeIn)(ref: Tree): DescPipeIn = {
+    if (ref eq tree.ref) {
+      tree
+    } else {
+      tree.copy(
+        ref = ref.asInstanceOf[Ref]
+      ) withLoc tree.loc
+    }
+  }
+
+  def apply(tree: DescPipeOut)(ref: Tree): DescPipeOut = {
+    if (ref eq tree.ref) {
+      tree
+    } else {
+      tree.copy(
+        ref = ref.asInstanceOf[Ref]
       ) withLoc tree.loc
     }
   }
@@ -333,7 +353,7 @@ object TreeCopier {
     }
   }
 
-  def apply(tree: DeclPipeline)(spec: Tree): DeclPipeline = {
+  def apply(tree: DeclPipeVar)(spec: Tree): DeclPipeVar = {
     if (spec eq tree.spec) {
       tree
     } else {

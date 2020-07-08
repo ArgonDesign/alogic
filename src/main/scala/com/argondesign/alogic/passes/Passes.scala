@@ -35,11 +35,9 @@ object Passes extends ChainingSyntax {
         Namer andThen
         UnusedCheck andThen
         Elaborate andThen
-////      UnusedCheck(postElaborate = true),
         // Any passes between here and the middle end can only perform checks
         // and cannot re-write any trees unless errors have been detected
         TypeCheck andThen
-        PortCheckA andThen
         ////////////////////////////////////////////////////////////////////////
         // Middle-end
         ////////////////////////////////////////////////////////////////////////
@@ -48,8 +46,7 @@ object Passes extends ChainingSyntax {
         AddCasts andThen
         Desugar andThen
         Fold andThen
-        PortCheckB andThen
-        ConvertMultiConnect andThen
+        PortCheck andThen
         NormalizeFunctions andThen
         InlineMethods andThen
         LowerPipeline andThen
@@ -85,6 +82,7 @@ object Passes extends ChainingSyntax {
         RenameSymbols(last = false) andThen
         LowerVariables andThen
         LowerInterconnect andThen
+        // TODO: Bitwise multiple driver check
         InferImplications andThen
         PropagateImplications andThen
         RemoveStructuralSharing andThen
@@ -101,7 +99,6 @@ object Passes extends ChainingSyntax {
         Fold andThen
         CreateTemporaries andThen
         RenameSymbols(last = true) andThen
-//      // TODO: final check pass to make sure everything is well-formed
         WriteAux andThen
         CodeGeneration
 

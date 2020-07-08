@@ -833,10 +833,10 @@ final class TypeAssignerSpec extends AnyFreeSpec with AlogicTest {
             ("po1.write", { case TypeCombFunc(_, TypeVoid, Nil)                         => }),
             ("po1.full", { case TypeUInt(w) if w == 1                                   => }),
             ("po1.empty", { case TypeUInt(w) if w == 1                                  => }),
-            ("a.b.f", { case TypeStaticMethod(Symbol("f"), TypeVoid, Nil)                 => }),
-            ("a.b.g", { case TypeNormalMethod(Symbol("g"), TypeVoid, Nil)                 => }),
-            ("a.h", { case TypeStaticMethod(Symbol("h"), TypeVoid, Nil)                   => }),
-            ("a.i", { case TypeNormalMethod(Symbol("i"), TypeVoid, Nil)                   => })
+            ("a.b.f", { case TypeStaticMethod(Symbol("f"), TypeVoid, Nil)               => }),
+            ("a.b.g", { case TypeNormalMethod(Symbol("g"), TypeVoid, Nil)               => }),
+            ("a.h", { case TypeStaticMethod(Symbol("h"), TypeVoid, Nil)                 => }),
+            ("a.i", { case TypeNormalMethod(Symbol("i"), TypeVoid, Nil)                 => })
             // format: on
           )
         } {
@@ -1110,8 +1110,6 @@ final class TypeAssignerSpec extends AnyFreeSpec with AlogicTest {
             ("a++;", { case _: StmtPost => }),
             ("a += 1;", { case _: StmtUpdate => }),
             ("bool c;", { case _: StmtDefn => }),
-            ("read;", { case _: StmtRead => }),
-            ("write;", { case _: StmtWrite => }),
             ("assert false;", { case _: StmtAssertion => }),
             ("return;", { case _: StmtReturn => }),
             ("wait a;", { case _: StmtWait => }),
@@ -1191,19 +1189,19 @@ final class TypeAssignerSpec extends AnyFreeSpec with AlogicTest {
           (text, pattern, kind) <- List[(String, PartialFunction[Any, Unit], Type)](
             ("if(a) {}", { case StmtIf(_, Nil, Nil) => }, TypeCombStmt),
             ("if(a) {} else {}", { case StmtIf(_, Nil, StmtBlock(Nil) :: Nil) => }, TypeCombStmt),
-            ("if(a) read;", { case StmtIf(_, _, Nil) => }, TypeCombStmt),
-            ("if(a) read; else write;", { case StmtIf(_, _, _ :: _) => }, TypeCombStmt),
+            ("if(a) b.read();", { case StmtIf(_, _, Nil) => }, TypeCombStmt),
+            ("if(a) b.read(); else c.write();", { case StmtIf(_, _, _ :: _) => }, TypeCombStmt),
             ("if(a) fence;", { case StmtIf(_, _, Nil) => }, TypeCtrlStmt),
             ("if(a) fence; else return;", { case StmtIf(_, _, _ :: _) => }, TypeCtrlStmt),
             ("case(a) {}", { case StmtCase(_, Nil) => }, TypeCombStmt),
-            ("case(a) {a: read;}", { case _: StmtCase => }, TypeCombStmt),
-            ("case(a) {default: read;}", { case _: StmtCase => }, TypeCombStmt),
+            ("case(a) {a: b.read();}", { case _: StmtCase => }, TypeCombStmt),
+            ("case(a) {default: b.read();}", { case _: StmtCase => }, TypeCombStmt),
             ("case(a) {a: fence;}", { case _: StmtCase => }, TypeCtrlStmt),
             ("case(a) {default: fence;}", { case _: StmtCase => }, TypeCtrlStmt),
-            ("case(a) {default: {read; fence;}}", { case _: StmtCase => }, TypeCtrlStmt),
+            ("case(a) {default: {b.read(); fence;}}", { case _: StmtCase => }, TypeCtrlStmt),
             ("a;", { case StmtExpr(_: ExprSym) => }, TypeCombStmt),
             ("a + a;", { case StmtExpr(_: ExprBinary) => }, TypeCombStmt),
-            ("a.read();", { case StmtExpr(_: ExprCall) => }, TypeCombStmt),
+            ("b.read();", { case StmtExpr(_: ExprCall) => }, TypeCombStmt),
             ("main();", { case StmtExpr(_: ExprCall) => }, TypeCtrlStmt),
             ("xeno();", { case StmtExpr(_: ExprCall) => }, TypeCombStmt),
             ("s.f();", { case StmtExpr(_: ExprCall) => }, TypeCombStmt),
@@ -1218,6 +1216,8 @@ final class TypeAssignerSpec extends AnyFreeSpec with AlogicTest {
               s"""
               |fsm a {
               |  in sync bool a;
+              |  in sync void b;
+              |  out sync void c;
               |  import bool xeno();
               |
               |  struct s {

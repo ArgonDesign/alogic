@@ -1,295 +1,135 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2017 - 2018 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017 - 2020 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
 //
-// Module: Alogic Compiler
-// Author: Peter de Rivaz/Geza Lore
-//
 // DESCRIPTION:
-//
-// Transform pipeline variables and read/write statements into pipeline ports
-// and .read()/.write() on those ports.
+//  Transform pipeline variables and ports into local variables and common ports
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.StatefulTreeTransformer
+import com.argondesign.alogic.ast.TreeTransformer
+import com.argondesign.alogic.ast.Trees.Expr.InstancePortSel
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeReady
 import com.argondesign.alogic.core.Loc
-import com.argondesign.alogic.core.StorageTypes.StorageSliceFwd
-import com.argondesign.alogic.core.StorageTypes.StorageTypeSlices
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.typer.TypeAssigner
-import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.tailrec
 import scala.collection.immutable.ListMap
-import scala.collection.mutable
-import scala.language.postfixOps
 
 final class LowerPipelineStage(
-    iPortSymbolOpt: Option[(Symbol, TypeRecord)],
-    oPortSymbolOpt: Option[(Symbol, TypeRecord)],
-    pipelinedSymbols: Map[Symbol, Symbol]
+    pipeInSymbols: List[Symbol], // List of incoming PipeVar symbols
+    pipeOutSymbols: List[Symbol], // List of outgoing PipeVar symbols
+    pipeAllSymbols: List[Symbol] // List of all active PipeVar symbols
   )(
     implicit
     cc: CompilerContext)
     extends StatefulTreeTransformer {
+  require(pipeInSymbols forall { pipeAllSymbols contains _ })
+  require(pipeOutSymbols forall { pipeAllSymbols contains _ })
 
-  private val pipelinedNames = pipelinedSymbols map { case (k, v) => (k.name, v) }
+  private def dupDropPipeVar(symbol: Symbol): Symbol = {
+    require(symbol.kind.isPipeVar)
+    symbol.dup tap { _.kind = symbol.kind.underlying }
+  }
 
-  private def mkEntDefn(symbol: Symbol) = EntDefn(symbol.mkDefn) regularize symbol.loc
-  private def mkDecl(symbol: Symbol) = symbol.mkDecl regularize symbol.loc
+  // Map from active pipeline symbol to local symbol
+  private val pipeSymbolMap = ListMap from {
+    pipeAllSymbols map { symbol => symbol -> dupDropPipeVar(symbol) }
+  }
+
+  private def makeRecordTypeSymbol(name: String, symbols: List[Symbol]): Symbol = {
+    require(symbols.nonEmpty)
+    val recSymbol = cc.newSymbol(name, Loc.synthetic)
+    val kind = TypeRecord(recSymbol, symbols map dupDropPipeVar)
+    recSymbol.kind = TypeType(kind)
+    recSymbol
+  }
+
+  private lazy val iPortTypeSymbol = makeRecordTypeSymbol("pipeline_in_t", pipeInSymbols)
+  private lazy val oPortTypeSymbol = makeRecordTypeSymbol("pipeline_out_t", pipeOutSymbols)
+
+  // New symbols added to the transformed entity
+  private def newSymbols: Iterator[Symbol] = pipeSymbolMap.valuesIterator concat {
+    if (pipeInSymbols.nonEmpty) Iterator.single(iPortTypeSymbol) else Iterator.empty
+  } concat {
+    if (pipeOutSymbols.nonEmpty) Iterator.single(oPortTypeSymbol) else Iterator.empty
+  }
+
+  override protected def replace(symbol: Symbol): Boolean = symbol.kind match {
+    case _: TypePipeIn | _: TypePipeOut => true
+    case _                              => false
+  }
+
+  override protected def enter(tree: Tree): Option[Tree] = tree match {
+    // Rewrite 'TypePipeIn.read();' statements to '{....} = TypeIn.read();'
+    // Note TypeIPipeIn.read() is Type Void, but TypeIn.read() is not, so we
+    // need to do this at the statement level.
+    case StmtExpr(call @ ExprCall(ExprSel(ExprSym(symbol), "read", Nil), Nil))
+        if symbol.kind.isPipeIn =>
+      Some {
+        // The lhs is all local copies of the incoming pipeline variable symbols
+        val lhs = ExprCat(pipeInSymbols map { symbol => ExprSym(pipeSymbolMap(symbol)) })
+        // The rhs is the call, but with the type update, 'walk' does just that
+        // because we are replacing the pipeline port symbols.
+        val rhs = walk(call).asInstanceOf[Expr]
+        // Form the assignment
+        StmtAssign(lhs, rhs) regularize tree.loc
+      }
+
+    // Rewrite 'TypePipeOut.write()' to 'TypeOut.write({....})'. Note both of
+    // these expressions are TypeVoid, so we cando it at the expression level.
+    case ExprCall(sel @ ExprSel(ExprSym(symbol), "write", Nil), Nil) if symbol.kind.isPipeOut =>
+      Some {
+        // The argument is all local copies of the outgoing pipeline variable symbols
+        val arg = ArgP(ExprCat(pipeOutSymbols map { symbol => ExprSym(pipeSymbolMap(symbol)) }))
+        // The call target is the same port, but with the type updated, so 'walk' ...
+        val tgt = walk(sel).asInstanceOf[Expr]
+        // Form the call
+        ExprCall(tgt, arg :: Nil) regularize tree.loc
+      }
+
+    case _ => None
+  }
 
   override def transform(tree: Tree): Tree = tree match {
-    // Add definitions
+    // Update pipeline port Decl/Defn
+    case DeclPipeIn(symbol, fc) =>
+      DeclIn(symbol, ExprSym(iPortTypeSymbol), fc) regularize tree.loc
+    case DefnPipeIn(symbol) =>
+      DefnIn(symbol) regularize tree.loc
+    case DeclPipeOut(symbol, fc, st) =>
+      DeclOut(symbol, ExprSym(oPortTypeSymbol), fc, st) regularize tree.loc
+    case DefnPipeOut(symbol) =>
+      DefnOut(symbol, None) regularize tree.loc
+
+    // Add Decls/Defns of pipelined variables and the port type
+    case decl: DeclEntity =>
+      val newDecls = newSymbols map { symbol => symbol.mkDecl regularize symbol.loc }
+      TypeAssigner {
+        decl.copy(
+          decls = List.from(decl.decls.iterator ++ newDecls)
+        ) withLoc decl.loc
+      }
     case defn: DefnEntity =>
-      val iPortDefn = iPortSymbolOpt.iterator flatMap {
-        case (port, struct) => Iterator(mkEntDefn(struct.symbol), mkEntDefn(port))
-      }
-      val oPortDefn = oPortSymbolOpt.iterator flatMap {
-        case (port, struct) => Iterator(mkEntDefn(struct.symbol), mkEntDefn(port))
-      }
-      val pipelinedDefns = pipelinedSymbols.valuesIterator map mkEntDefn
+      val newDefns = newSymbols map { symbol => EntDefn(symbol.mkDefn) regularize symbol.loc }
       TypeAssigner {
         defn.copy(
-          body = List.from(iPortDefn ++ oPortDefn ++ pipelinedDefns ++ defn.body.iterator)
+          body = List.from(defn.body.iterator ++ newDefns)
         ) withLoc defn.loc
       }
 
-    // Add declarations
-    case decl: DeclEntity =>
-      val iPortDecl = iPortSymbolOpt.iterator flatMap {
-        case (port, struct) => Iterator(mkDecl(struct.symbol), mkDecl(port))
-      }
-      val oPortDecl = oPortSymbolOpt.iterator flatMap {
-        case (port, struct) => Iterator(mkDecl(struct.symbol), mkDecl(port))
-      }
-      val pipelinedDecls = pipelinedSymbols.valuesIterator map mkDecl
-      TypeAssigner {
-        decl.copy(
-          decls = List.from(iPortDecl ++ oPortDecl ++ pipelinedDecls ++ decl.decls.iterator)
-        ) withLoc decl.loc
-      }
-
-    // Rewrite 'read;' statement to '{....} = pipeline_i.read();'
-    case node: StmtRead =>
-      iPortSymbolOpt match {
-        case None =>
-          cc.error(node, "'read' statement in first pipeline stage")
-          Stump
-        case Some((iPortSymbol, iPortKind)) =>
-          val lhsRefs = iPortKind.publicSymbols map { symbol =>
-            ExprSym(pipelinedNames(symbol.name))
-          }
-          val lhs = ExprCat(lhsRefs)
-          val rhs = ExprCall(ExprSel(ExprSym(iPortSymbol), "read", Nil), Nil)
-          StmtAssign(lhs, rhs) regularize node.loc
-        case _ => unreachable
-      }
-
-    // Rewrite 'write;' statement to 'pipeline_o.write({....});'
-    case node: StmtWrite =>
-      oPortSymbolOpt match {
-        case None =>
-          cc.error(node, "'write' statement in last pipeline stage")
-          Stump
-        case Some((oPortSymbol, oPortKind)) =>
-          val rhsRefs = oPortKind.publicSymbols map { symbol =>
-            ExprSym(pipelinedNames(symbol.name))
-          }
-          val arg = ArgP(ExprCat(rhsRefs))
-          val call = ExprCall(ExprSel(ExprSym(oPortSymbol), "write", Nil), List(arg))
-          StmtExpr(call) regularize node.loc
-        case _ => unreachable
-      }
-
-    // Rewrite references to pipeline symbols with the local pipelined symbol
+    // Rewrite references to pipelined variables with the local symbol
     case ExprSym(symbol) =>
-      pipelinedSymbols get symbol match {
-        case Some(newSymbol) => TypeAssigner(ExprSym(newSymbol) withLoc tree.loc)
-        case None            => tree
-      }
-
-    //
-    case _ => tree
-  }
-
-}
-
-final class LowerPipelineHost(implicit cc: CompilerContext) extends StatefulTreeTransformer {
-
-  // Map from old symbols to replaced symbol/decl/defn
-  private val symbolMap: mutable.Map[Symbol, (Symbol, Decl, Defn)] = mutable.Map()
-
-  override def enter(tree: Tree): Option[Tree] = {
-    tree match {
-      // Process entities which contain pipeline variables
-      case outer: DefnEntity if outer.symbol.decl.decls exists { _.symbol.kind.isPipeline } =>
-        // Work out the prev an next maps
-        val nextMap = Map from {
-          outer.connects collect {
-            case EntConnect(ExprSym(iSymbolA), List(ExprSym(iSymbolB))) =>
-              (iSymbolA.kind, iSymbolB.kind) match {
-                case (TypeEntity(eSymbolA, _), TypeEntity(eSymbolB, _)) => eSymbolA -> eSymbolB
-                case _                                                  => unreachable
-              }
-          }
-        }
-
-        val prevMap = nextMap map { _.swap }
-
-        // Sort stages using pipeline connections
-        val entities = {
-          @tailrec
-          def lt(a: Symbol, b: Symbol): Boolean = nextMap.get(a) match {
-            case Some(`b`)   => true
-            case Some(other) => lt(other, b)
-            case None        => false
-          }
-          outer.entities sortWith {
-            case (aEntity, bEntity) => lt(aEntity.symbol, bEntity.symbol)
-          }
-        }
-
-        // Collect pipeline symbols referenced in nested entities to create the use sets
-        val useSets = for { inner <- entities } yield {
-          Set from {
-            inner collect {
-              case ExprSym(symbol) if symbol.kind.isPipeline => symbol
-            }
-          }
-        }
-
-        // Propagate uses between first and last use to create the active sets
-        val actSetsMap = {
-          @tailrec
-          def loop(useSets: List[Set[Symbol]], actSets: List[Set[Symbol]]): List[Set[Symbol]] = {
-            if (useSets.isEmpty) {
-              actSets.reverse
-            } else {
-              // symbols active at any stage later than the current stage
-              val actTail = useSets.tail.foldLeft(Set.empty[Symbol])(_ | _)
-              // symbols active at the previous stage
-              val actPrev = actSets.head
-              // symbols active at the current stage
-              val actHead = useSets.head | (actTail & actPrev)
-              // Do next stage
-              loop(useSets.tail, actHead :: actSets)
-            }
-          }
-          val propagated = loop(useSets.tail, List(useSets.head))
-          (entities zip propagated) map { case (entity, actSet) => entity.symbol -> actSet } toMap
-        }
-
-        // Transform stage entities
-        for (inner <- outer.entities) {
-          // Figure out pipeline port types
-          val actPrev = prevMap.get(inner.symbol) map actSetsMap getOrElse Set[Symbol]()
-          val actCurr = actSetsMap(inner.symbol)
-          val actNext = nextMap.get(inner.symbol) map actSetsMap getOrElse Set[Symbol]()
-
-          def makePortSymbol(in: Boolean, actSet: Set[Symbol]): Option[(Symbol, TypeRecord)] = {
-            if (actSet.isEmpty) {
-              None
-            } else {
-              val aSymbols = actSet.toList sortWith { _.id < _.id }
-              val mSymbols = aSymbols map { symbol =>
-                cc.newSymbol(symbol.name, symbol.loc) tap { _.kind = symbol.kind.underlying }
-              }
-              val name = if (in) "pipeline_i" else "pipeline_o"
-              val sSymbol = cc.newSymbol(s"${name}_t", Loc.synthetic)
-              val pType = TypeRecord(sSymbol, mSymbols)
-              sSymbol.kind = TypeType(pType)
-              val kind = if (in) {
-                TypeIn(pType, FlowControlTypeReady)
-              } else {
-                val slices = inner.symbol.attr.pipelineStorage.getOrElse(List(StorageSliceFwd))
-                TypeOut(pType, FlowControlTypeReady, StorageTypeSlices(slices))
-              }
-              Some((cc.newSymbol(name, inner.loc) tap { _.kind = kind }, pType))
-            }
-          }
-
-          val iPortSymbolOpt = makePortSymbol(in = true, actPrev & actCurr)
-          val oPortSymbolOpt = makePortSymbol(in = false, actNext & actCurr)
-          val pipelinedSymbols = ListMap from {
-            for (pSymbol <- actCurr.toList sortWith { _.id < _.id }) yield {
-              pSymbol -> (pSymbol.dup tap { _.kind = pSymbol.kind.underlying })
-            }
-          }
-
-          val transform = new LowerPipelineStage(
-            iPortSymbolOpt,
-            oPortSymbolOpt,
-            pipelinedSymbols
-          )
-
-          val newSymbol = inner.symbol.dup
-          val newDecl = TypeAssigner(
-            inner.symbol.decl.cpy(symbol = newSymbol) withLoc inner.loc
-          ) rewrite transform
-          val newDefn =
-            TypeAssigner(inner.copy(symbol = newSymbol) withLoc inner.loc) rewrite transform
-          symbolMap(inner.symbol) = (newSymbol, newDecl, newDefn)
-        }
-
-        // Transform stage instances
-        for (inner <- outer.instances) {
-          val eSymbol = inner.symbol.kind.asEntity.symbol
-          symbolMap.get(eSymbol) match {
-            case None =>
-            case Some((newESymbol, _, _)) =>
-              val newSymbol = inner.symbol.dup tap { _.kind = newESymbol.kind.asType.kind }
-              val newDecl = newSymbol.mkDecl regularize inner.loc
-              val newDefn = newSymbol.mkDefn regularize inner.loc
-              symbolMap(inner.symbol) = (newSymbol, newDecl, newDefn)
-          }
-        }
-
-      case _ =>
-    }
-    None
-  }
-
-  override def transform(tree: Tree): Tree = tree match {
-    // Drop Pipeline decl/defn
-    case _: DeclPipeline => Stump
-    case _: DefnPipeline => Stump
-
-    // Update declarations of replaced symbols
-    case decl: Decl =>
-      symbolMap get decl.symbol match {
-        case None                  => tree
-        case Some((_, newDecl, _)) => newDecl
-      }
-
-    // Update definitions of replaced symbols
-    case defn: Defn =>
-      symbolMap get defn.symbol match {
-        case None                  => tree
-        case Some((_, _, newDefn)) => newDefn
-      }
-
-    // Rewrite pipeline connections
-    case EntConnect(lhs, List(rhs)) if lhs.tpe.isEntity && rhs.tpe.isEntity =>
-      val newLhs = ExprSel(lhs, "pipeline_o", Nil) withLoc lhs.loc
-      val newRhs = ExprSel(rhs, "pipeline_i", Nil) withLoc rhs.loc
-      val newConn = EntConnect(newLhs, List(newRhs))
-      newConn regularize tree.loc
-
-    // Rewrite references to replaced symbols
-    case ExprSym(symbol) =>
-      symbolMap get symbol match {
-        case Some((newSymbol, _, _)) => TypeAssigner(ExprSym(newSymbol) withLoc tree.loc)
-        case None                    => tree
-      }
+      pipeSymbolMap get symbol map { localSymbol =>
+        TypeAssigner(ExprSym(localSymbol) withLoc tree.loc)
+      } getOrElse tree
 
     //
     case _ => tree
@@ -297,36 +137,145 @@ final class LowerPipelineHost(implicit cc: CompilerContext) extends StatefulTree
 
   override def finalCheck(tree: Tree): Unit = {
     tree visit {
-      case node: StmtRead  => cc.ice(node, "read statement remains after LowerPipeline")
-      case node: StmtWrite => cc.ice(node, "write statement remains after LowerPipeline")
-      case node: DeclPipeline =>
-        cc.ice(node, "Pipeline variable declaration remains after LowerPipeline")
-      case node: DefnPipeline =>
-        cc.ice(node, "Pipeline variable definition remains after LowerPipeline")
-      case node @ ExprSym(symbol) if symbol.kind.isPipeline =>
-        cc.ice(node, "Pipeline variable reference remains after LowerPipeline")
-      case node @ ExprSym(symbol) if symbolMap contains symbol =>
-        cc.ice(node, "Reference to replaced symbol remains")
+      case node: DeclPipeIn  => cc.ice(node, "DeclPipeIn remains after LowerPipeline")
+      case node: DefnPipeIn  => cc.ice(node, "DefnPipeIn remains after LowerPipeline")
+      case node: DeclPipeOut => cc.ice(node, "DeclPipeOut remains after LowerPipeline")
+      case node: DefnPipeOut => cc.ice(node, "DefnPipeOut remains after LowerPipeline")
     }
 
     tree visitAll {
-      case node: Tree if node.tpe.isPipeline =>
-        cc.ice(node, "Pipeline variable type remains after LowerPipeline")
+      case node if node.tpe.isPipeVar => cc.ice(node, "TypePipeVar tree remains")
+      case node if node.tpe.isPipeIn  => cc.ice(node, "TypePipeIn tree remains")
+      case node if node.tpe.isPipeOut => cc.ice(node, "TypePipeOut tree remains")
     }
   }
 
 }
 
-object LowerPipeline extends PairTransformerPass {
-  val name = "lower-pipeline"
+final class LowerPipelineHost(implicit cc: CompilerContext) extends StatefulTreeTransformer {
 
-  def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {
-    val transformer = new LowerPipelineHost
-    // First transform the defn
-    val newDefn = transformer(defn)
-    // Then transform the decl
-    val newDecl = transformer(decl)
-    (newDecl, newDefn)
+  // Map from stage entity symbol the transform to apply to its Decl/Defn
+  private var stageTransform: Map[Symbol, LowerPipelineStage] = _
+
+  // Replace stage entities and instances
+  override protected def replace(symbol: Symbol): Boolean = symbol.kind match {
+    case _ if stageTransform == null => false
+    case TypeType(_: TypeEntity)     => stageTransform contains symbol // Stage entity
+    case kind: TypeEntity            => stageTransform contains kind.symbol // Stage instance
+    case _                           => false
   }
 
+  override def enter(tree: Tree): Option[Tree] = tree match {
+    // Process entities which contain pipeline variables
+    case host: DefnEntity if host.symbol.decl.decls exists { _.symbol.kind.isPipeVar } =>
+      // Map from stage entity to next stage entity
+      val nextMap: Map[Symbol, Symbol] = Map from {
+        host.connects collect {
+          case EntConnect(
+                InstancePortSel(iSymbolL, pSymbolL),
+                List(InstancePortSel(iSymbolR, pSymbolR))
+              ) if pSymbolL.kind.isPipeOut =>
+            assert(pSymbolR.kind.isPipeIn)
+            iSymbolL.kind.asEntity.symbol -> iSymbolR.kind.asEntity.symbol
+        }
+      }
+
+      // Map from stage entity to previous stage entity
+      val prevMap: Map[Symbol, Symbol] = nextMap map { _.swap }
+
+      // Sort stages in pipeline order, based on connections
+      val stages = {
+        @tailrec
+        def lt(a: Symbol, b: Symbol): Boolean = nextMap.get(a) match {
+          case Some(`b`)   => true
+          case Some(other) => lt(other, b)
+          case None        => false
+        }
+        (nextMap.keySet union prevMap.keySet).toList sortWith lt
+      }
+
+      // Map from stage entity to pipeline variables that are active in that stage.
+      // A pipeline variable is considered active in a stage if either:
+      // - It is used in the given stage
+      // - It is used in a later stage, and is generated in an earlier stage
+      //   (i.e: needs to be passed through)
+      val actSetsMap: Map[Symbol, Set[Symbol]] = {
+        // Collect pipeline variable symbols referenced in each stage
+        val useSets = stages map { stage =>
+          Set from {
+            stage.defn collect { case ExprSym(symbol) if symbol.kind.isPipeVar => symbol }
+          }
+        }
+
+        // Propagate uses between first and last use to create the active sets
+        @tailrec
+        def loop(useSets: List[Set[Symbol]], actSets: List[Set[Symbol]]): Seq[Set[Symbol]] =
+          useSets match {
+            case Nil             => actSets.reverse // We have built it in reverse
+            case useHead :: tail =>
+              // symbols active at any stage after the current stage
+              val useTail = tail.foldLeft(Set.empty[Symbol])(_ union _)
+              // symbols active at the previous stage
+              val actPrev = actSets.headOption getOrElse Set.empty
+              // symbols active at the current stage
+              val actCurr = useHead union (useTail intersect actPrev)
+              // Do next stage
+              loop(tail, actCurr :: actSets)
+          }
+        Map from { stages zip loop(useSets, Nil) }
+      }
+
+      // Create the stage transforms
+      stageTransform = Map from {
+        stages.iterator map { stage =>
+          // Figure out pipeline symbols in, active, out
+          val actPrev = prevMap.get(stage) map actSetsMap getOrElse Set.empty
+          val actCurr = actSetsMap(stage)
+          val actNext = nextMap.get(stage) map actSetsMap getOrElse Set.empty
+
+          val pipeInSymbols = (actPrev & actCurr).toList.sorted
+          val pipeOutSymbols = (actNext & actCurr).toList.sorted
+          val pipeAllSymbols = actCurr.toList.sorted
+
+          stage -> new LowerPipelineStage(pipeInSymbols, pipeOutSymbols, pipeAllSymbols)
+        }
+      }
+
+      None
+    case _ => None
+  }
+
+  override def transform(tree: Tree): Tree = tree match {
+    // Drop PipeVar decl/defn
+    case _: DeclPipeVar => Stump
+    case _: DefnPipeVar => Stump
+
+    // Apply the stage transforms if exists
+    case Decl(symbol) => orig.get(symbol) flatMap stageTransform.get map { _(tree) } getOrElse tree
+    case Defn(symbol) => orig.get(symbol) flatMap stageTransform.get map { _(tree) } getOrElse tree
+
+    //
+    case _ => tree
+  }
+
+  override def finalCheck(tree: Tree): Unit = {
+    tree visit {
+      case node: DeclPipeVar => cc.ice(node, "DeclPipeVar remains after LowerPipeline")
+      case node: DefnPipeVar => cc.ice(node, "DefnPipeVar remains after LowerPipeline")
+    }
+
+    tree visitAll {
+      case node if node.tpe.isPipeVar => cc.ice(node, "TypePipeVar tree remains")
+      case node if node.tpe.isPipeIn  => cc.ice(node, "TypePipeIn tree remains")
+      case node if node.tpe.isPipeOut => cc.ice(node, "TypePipeOut tree remains")
+    }
+  }
+
+}
+
+object LowerPipeline extends EntityTransformerPass(declFirst = false) {
+  val name = "lower-pipeline"
+
+  override def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
+    new LowerPipelineHost
 }

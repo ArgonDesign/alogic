@@ -110,8 +110,6 @@ object TypeAssigner {
     case node: StmtPost      => kind(node)
     case node: StmtDelayed   => kind(node)
     case node: StmtOutcall   => kind(node)
-    case node: StmtRead      => kind(node)
-    case node: StmtWrite     => kind(node)
     case node: StmtExpr      => kind(node)
     case node: StmtWait      => kind(node)
     case node: StmtAssertion => kind(node)
@@ -175,10 +173,6 @@ object TypeAssigner {
   private def kind(tree: StmtDelayed) = TypeCombStmt
 
   private def kind(tree: StmtOutcall) = TypeCombStmt
-
-  private def kind(tree: StmtRead) = TypeCombStmt
-
-  private def kind(tree: StmtWrite) = TypeCombStmt
 
   private def kind(tree: StmtExpr) = tree.expr match {
     case ExprCall(target, _) if target.tpe.isCtrlFunc => TypeCtrlStmt
@@ -324,8 +318,8 @@ object TypeAssigner {
     // Parameters should have been specialized prior to type checking
     case _: TypeParam => unreachable
     // TODO: lose these
-    case TypeConst(kind)    => kind
-    case TypePipeline(kind) => kind
+    case TypeConst(kind)   => kind
+    case TypePipeVar(kind) => kind
     //
     case other => other
   }
@@ -386,8 +380,6 @@ object TypeAssigner {
   def apply(tree: StmtOutcall): tree.type = assign(tree)(kind(tree))
   def apply(tree: StmtDecl): tree.type = assign(tree)(kind(tree))
   def apply(tree: StmtDefn): tree.type = assign(tree)(kind(tree))
-  def apply(tree: StmtRead): tree.type = assign(tree)(kind(tree))
-  def apply(tree: StmtWrite): tree.type = assign(tree)(kind(tree))
   def apply(tree: StmtComment): tree.type = assign(tree)(kind(tree))
   def apply(tree: StmtWait): tree.type = assign(tree)(kind(tree))
   def apply(tree: StmtAssertion): tree.type = assign(tree)(kind(tree))

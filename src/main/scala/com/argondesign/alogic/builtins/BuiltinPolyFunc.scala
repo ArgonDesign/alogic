@@ -31,11 +31,7 @@ import com.argondesign.alogic.util.unreachable
 import scala.collection.concurrent.TrieMap
 import scala.util.ChainingSyntax
 
-abstract class BuiltinPolyFunc(
-    val isValidConnLhs: Boolean
-  )(
-    implicit
-    cc: CompilerContext)
+abstract class BuiltinPolyFunc(implicit cc: CompilerContext)
     extends PartialMatch
     with ChainingSyntax {
 
@@ -76,12 +72,6 @@ abstract class BuiltinPolyFunc(
 
   // Fold calls to this function
   private[builtins] def fold(loc: Loc, args: List[Arg]): Option[Expr] = simplify(loc, pargs(args))
-
-  // Is this valid on the left hand side of a connect?
-  private[builtins] def isValidConnectLhs(args: List[Arg]): Boolean =
-    (pargs(args) forall { expr =>
-      expr.isKnownConst || expr.isValidConnectLhs
-    }) && (isValidConnLhs || isKnownConst(args))
 
   // Synthetic location of this builtin
   final protected[this] lazy val loc = Loc(s"builtin $name", 0, Source("", ""), 0, 0, 0)

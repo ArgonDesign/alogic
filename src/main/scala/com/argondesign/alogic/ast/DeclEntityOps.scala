@@ -36,8 +36,10 @@ trait DeclEntityOps { this: DeclEntity =>
   }
 
   final lazy val ports: List[Symbol] = decls collect {
-    case decl: DeclIn  => decl.symbol
-    case decl: DeclOut => decl.symbol
+    case decl: DeclIn      => decl.symbol
+    case decl: DeclOut     => decl.symbol
+    case decl: DeclPipeIn  => decl.symbol
+    case decl: DeclPipeOut => decl.symbol
   }
 
   final lazy val clk: Option[Symbol] =

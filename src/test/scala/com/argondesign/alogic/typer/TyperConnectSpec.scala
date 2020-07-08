@@ -21,6 +21,7 @@ import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Messages.Error
+import com.argondesign.alogic.core.Messages.Note
 import com.argondesign.alogic.passes.Elaborate
 import com.argondesign.alogic.passes.Namer
 import com.argondesign.alogic.passes.TypeCheck
@@ -33,7 +34,8 @@ final class TyperConnectSpec extends AnyFreeSpec with AlogicTest {
   private def typeCheck(text: String): Thicket = Thicket {
     transformWithPass(Namer andThen Elaborate andThen TypeCheck, text) map {
       _ flatMap {
-        case (decl, defn) => List(decl, defn)
+        case (decl, defn) =>
+          List(decl, defn)
       }
     } getOrElse Nil
   }
@@ -58,27 +60,46 @@ final class TyperConnectSpec extends AnyFreeSpec with AlogicTest {
 
     "reject invalid port references on left hand side of ->" - {
       for {
-        conn <- List(
-          "pi2.read() -> po2",
-          "-pi2 -> po2",
-          "pi2 + pi2b -> po2",
-          "(pi2==0) ? pi2 : pi2b -> po2",
-          "{2{pi4[pi2]}} -> po2",
-          "@zx(2, pi4[pi2]) -> po2",
-          "$signed(2*pi2) -> po2",
-          "$display() -> po2",
-          "$finish() -> po2",
-          "@randbit() -> po2",
-          "1 -> po2",
-          """ "hello" -> po2""",
-          "pi4[pi2] -> po1",
-          "pi4[pi2+:2] -> po2",
-          "{pi4[pi2], pi4[pi2]} -> po2"
+        (conn, messages) <- List[(String, List[String])](
+          // format: off
+          ("pi2.read() -> po2", "Left hand side of '->' yields active logic" :: Nil),
+          ("-pi2 -> po2", "Left hand side of '->' yields active logic" :: Nil),
+          ("pi2 + pi2b -> po2", "Left hand side of '->' yields active logic" :: Nil),
+          ("(pi2==0) ? pi2 : pi2b -> po2", "Left hand side of '->' yields active logic" :: Nil),
+          ("{2{pi4[pi2]}} -> po2", "Left hand side of '->' yields active logic" :: Nil),
+          ("@zx(2, pi4[pi2]) -> po2", "Left hand side of '->' yields active logic" :: Nil),
+          ("$signed(2*pi2) -> po2", "Left hand side of '->' yields active logic" :: Nil),
+          ("$display() -> po2", "Left hand side of '->' yields active logic" :: Nil),
+          ("$finish() -> po2", "Left hand side of '->' yields active logic" :: Nil),
+          ("@randbit() -> po2", "Left hand side of '->' yields active logic" :: Nil),
+          ("1 -> po2", "Expression on left hand side of '->' is not a valid source." :: Nil),
+          (""" "hello" -> po2""", "Expression on left hand side of '->' is not a valid source." :: Nil),
+          ("2'd1 << pi2 -> po2", "Left hand side of '->' yields active logic" :: Nil),
+          ("2'sd1 <<< pi2 -> po2", "Left hand side of '->' yields active logic" :: Nil),
+          ("2'd1 >> pi2 -> po2", "Left hand side of '->' yields active logic" :: Nil),
+          ("2'sd1 >>> pi2 -> po2", "Left hand side of '->' yields active logic" :: Nil),
+          ("(pi2+1) << 1 -> po2", "Left hand side of '->' yields active logic" :: Nil),
+          ("$signed(pi2+1) <<< 1 -> po2", "Left hand side of '->' yields active logic" :: Nil),
+          ("(pi2+1) >> 1 -> po2", "Left hand side of '->' yields active logic" :: Nil),
+          ("$signed(pi2+1) >>> 1 -> po2", "Left hand side of '->' yields active logic" :: Nil),
+          ("pi4[pi2] -> po1", "Left hand side of '->' yields active logic" :: Nil),
+          ("pi4[pi2+:2] -> po2", "Left hand side of '->' yields active logic" :: Nil),
+          ("{pi4[pi2], pi4[pi2]} -> po2",
+            "Left hand side of '->' yields active logic" ::
+              "Left hand side of '->' yields active logic" ::
+              Nil),
+          ("bar.a -> po1", "Expression on left hand side of '->' is not a valid source." :: Nil)
+          // format: on
         )
       } {
         conn in {
           typeCheck {
             s"""
+            |struct bar {
+            |  bool a;
+            |}
+            |
+            |(*toplevel*)
             |network p {
             |  in u2 pi2;
             |  in u2 pi2b;
@@ -88,28 +109,33 @@ final class TyperConnectSpec extends AnyFreeSpec with AlogicTest {
             |  $conn;
             |}"""
           }
-          cc.messages.loneElement should beThe[Error](
-            "Invalid port reference on left hand side of '->'",
-            "Only expressions which are purely wiring are permitted"
-          )
+          cc.messages should have length messages.length
+          for ((message, expected) <- cc.messages zip messages) {
+            message should beThe[Error](expected)
+          }
         }
       }
     }
 
     "reject invalid port references on right hand side of ->" - {
       for {
-        conn <- List(
-          "pi2 -> -po2",
-          "pi2 -> po2 + po2b",
-          "pi2 -> (po2==0) ? po2 : po2b",
-          "pi2 -> {2{po4[po2]}}",
-          "pi2 -> @zx(2, po4[po2])",
-          "pi2 -> $signed(2*po2)",
-          "pi2 -> 1",
-          """pi2 -> "hello" """,
-          "pi1 -> po4[po2]",
-          "pi2 -> po4[po2+:2]",
-          "pi2 -> {po4[po2], po4[po2]}"
+        (conn, messages) <- List[(String, List[String])](
+          // format: off
+          ("pi2 -> -po2", "Right hand side of '->' is not a valid assignment target" :: Nil),
+          ("pi2 -> po2 + po2b", "Right hand side of '->' is not a valid assignment target" :: Nil),
+          ("pi2 -> (po2==0) ? po2 : po2b", "Right hand side of '->' is not a valid assignment target" :: Nil),
+          ("pi2 -> {2{po4[po2]}}", "Right hand side of '->' is not a valid assignment target" :: Nil),
+          ("pi2 -> @zx(2, po4[po2])", "Right hand side of '->' is not a valid assignment target" :: Nil),
+          ("pi2 -> $signed(2*po2)", "Right hand side of '->' is not a valid assignment target" :: Nil),
+          ("pi2 -> 1", "Right hand side of '->' is not a valid assignment target" :: Nil),
+          ("""pi2 -> "hello" """, "Right hand side of '->' is not a valid assignment target" :: Nil),
+          ("pi1 -> po4[po2]", "Right hand side of '->' yields active logic" :: Nil),
+          ("pi2 -> po4[po2+:2]", "Right hand side of '->' yields active logic" :: Nil),
+          ("pi2 -> {po4[po2], po4[po2]}",
+            "Right hand side of '->' yields active logic" ::
+              "Right hand side of '->' yields active logic" :: 
+              Nil),
+          // format: on
         )
       } {
         conn in {
@@ -125,10 +151,10 @@ final class TyperConnectSpec extends AnyFreeSpec with AlogicTest {
             |  $conn;
             |}"""
           }
-          cc.messages.loneElement should beThe[Error](
-            "Invalid port reference on right hand side of '->'",
-            "Only expressions which are purely wiring are permitted"
-          )
+          cc.messages should have length messages.length
+          for ((message, expected) <- cc.messages zip messages) {
+            message should beThe[Error](expected)
+          }
         }
       }
     }
@@ -146,6 +172,10 @@ final class TyperConnectSpec extends AnyFreeSpec with AlogicTest {
           "$unsigned(pi2) -> po2",
           "2'd2 -> po2",
           "P -> po2",
+          "pi2 << 1 -> po2",
+          "$signed(pi2) <<< 1 -> po2",
+          "pi2 >> 1 -> po2",
+          "$signed(pi2) >>> 1 -> po2",
           "pi4[2] -> po1",
           "pi4[$clog2(2)] -> po1",
           "pi4[@bits(po4)-1] -> po1",
@@ -277,7 +307,7 @@ final class TyperConnectSpec extends AnyFreeSpec with AlogicTest {
             case lw :: rws =>
               cc.messages.length shouldBe rws.length
               for ((msg, rw) <- cc.messages zip rws) {
-                msg should beThe[Error](s"Port widths do not match: $lw -> $rw")
+                msg should beThe[Error](s"Connected ports have mismatched widths: $lw -> $rw")
               }
           }
         }
@@ -286,15 +316,52 @@ final class TyperConnectSpec extends AnyFreeSpec with AlogicTest {
 
     "nested entity pipeline port usage" - {
       for {
-        (conn, msg) <- List(
-          ("pipea -> pipeb", ""),
-          ("pipea -> pipec", ""),
-          ("pipeb -> pipea", ""),
-          ("pipeb -> pipec", ""),
-          ("pipec -> pipea", ""),
-          ("pipec -> pipeb", ""),
-          ("pipea -> po1", "Cannot connect pipeline port to non-pipeline port"),
-          ("pi1 -> pipea", "Cannot connect non-pipeline port to pipeline port")
+        (conn, messages) <- List[(String, List[List[String]])](
+          ("pipea     -> pipeb", Nil),
+          ("pipea     -> pipeb.in", Nil),
+          ("pipea.out -> pipeb", Nil),
+          ("pipea.out -> pipeb.in", Nil),
+          ("pipea -> pipec", Nil),
+          (
+            "pipeb -> pipea",
+            List(
+              "Expression on right hand side of '->' is not a valid sink." ::
+                "'pipea' has no cardinal input port." :: Nil
+            )
+          ),
+          ("pipeb -> pipec", Nil),
+          (
+            "pipec -> pipea",
+            List(
+              "Expression on left hand side of '->' is not a valid source." ::
+                "'pipec' has no cardinal output port." :: Nil,
+              "Expression on right hand side of '->' is not a valid sink." ::
+                "'pipea' has no cardinal input port." :: Nil
+            )
+          ),
+          (
+            "pipec -> pipeb",
+            List(
+              "Expression on left hand side of '->' is not a valid source." ::
+                "'pipec' has no cardinal output port." :: Nil
+            )
+          ),
+          ("pipea -> po1", List("Cannot connect pipeline port to non-pipeline port" :: Nil)),
+          ("pi1 -> pipec", List("Cannot connect non-pipeline port to pipeline port" :: Nil)),
+          (
+            "pipec.in -> pipeb",
+            List(
+              "Expression on left hand side of '->' is not a valid source." ::
+                "It is an input of the referenced instance." :: Nil
+            )
+          ),
+          (
+            "pipeb -> pipea.out",
+            List(
+              "Expression on right hand side of '->' is not a valid sink." ::
+                "It is an output of the referenced instance." :: Nil
+            )
+          )
         )
       } {
         conn in {
@@ -303,16 +370,22 @@ final class TyperConnectSpec extends AnyFreeSpec with AlogicTest {
             |network p {
             |  in u1 pi1;
             |  out u1 po1;
-            |  new fsm pipea {}
-            |  new fsm pipeb {}
-            |  new fsm pipec {}
+            |  new fsm pipea {
+            |    out pipeline;
+            |  }
+            |  new fsm pipeb {
+            |    in pipeline;
+            |    out pipeline;
+            |  }
+            |  new fsm pipec {
+            |    in pipeline;
+            |  }
             |  $conn;
             |}"""
           }
-          if (msg.isEmpty) {
-            cc.messages shouldBe empty
-          } else {
-            cc.messages.loneElement should beThe[Error](msg)
+          cc.messages should have length messages.length
+          for ((message, expected) <- cc.messages zip messages) {
+            message should beThe[Error](expected: _*)
           }
         }
       }
@@ -320,28 +393,73 @@ final class TyperConnectSpec extends AnyFreeSpec with AlogicTest {
 
     "connections have drivers on left" - {
       for {
-        (conn, msg) <- List(
+        (conn, messages) <- List[(String, List[(Boolean, List[String])])](
           // format: off
-          ("a -> b", ""),
-          ("a.fcn -> b.fcn", ""),
-          ("a.fcv -> b.fcv", ""),
-          ("a.fcr -> b.fcr", ""),
-          ("{a.fcn, a.fcn} -> b.fcn2", ""),
-          ("b.fcn -> b.fcn", "Left hand side of '->' contains an input to instance 'b'"),
-          ("b.fcv -> b.fcv", "Left hand side of '->' contains an input to instance 'b'"),
-          ("b.fcr -> b.fcr", "Left hand side of '->' contains an input to instance 'b'"),
-          ("{b.fcn, b.fcnb} -> b.fcn2", "Left hand side of '->' contains an input to instance 'b'"),
-          ("ifcn -> b.fcn", ""),
-          ("ifcv -> b.fcv", ""),
-          ("ifcr -> b.fcr", ""),
-          ("{ifcn, ifcn} -> b.fcn2", ""),
-          ("ofcn -> b.fcn", "Left hand side of '->' contains an output from enclosing entity"),
-          ("ofcv -> b.fcv", "Left hand side of '->' contains an output from enclosing entity"),
-          ("ofcr -> b.fcr", "Left hand side of '->' contains an output from enclosing entity"),
-          ("{ofcn, ofcn} -> b.fcn2", "Left hand side of '->' contains an output from enclosing entity"),
-          ("P -> b.fcn", ""),
-          ("isn.a -> b.fcn", ""),
-          ("a_entity -> ofcn", "Left hand side of '->' contains non-port type")
+          ("a -> b.fcn",
+            List(
+              (true, "Expression on left hand side of '->' is not a valid source." ::
+                "'a' has no cardinal output port." :: Nil),
+              (false, "'a' is an instance of:" :: Nil)
+            )),
+          ("ac -> ofcn", Nil),
+          ("a.fcn -> b.fcn", Nil),
+          ("a.fcv -> b.fcv", Nil),
+          ("a.fcr -> b.fcr", Nil),
+          ("{a.fcn, a.fcn} -> b.fcn2", Nil),
+          ("b.fcn -> b.fcn",
+            List(
+              (true, "Expression on left hand side of '->' is not a valid source." ::
+                "It is an input of the referenced instance." :: Nil)
+            )),
+          ("b.fcv -> b.fcv",
+            List(
+              (true, "Expression on left hand side of '->' is not a valid source." ::
+                "It is an input of the referenced instance." :: Nil)
+            )),
+          ("b.fcr -> b.fcr",
+            List(
+              (true, "Expression on left hand side of '->' is not a valid source." ::
+                "It is an input of the referenced instance." :: Nil)
+            )),
+          ("{b.fcn, b.fcnb} -> b.fcn2",
+            List(
+              (true, "Expression on left hand side of '->' is not a valid source." ::
+                "It is an input of the referenced instance." :: Nil),
+              (true, "Expression on left hand side of '->' is not a valid source." ::
+                "It is an input of the referenced instance." :: Nil)
+            )),
+          ("ifcn -> b.fcn", Nil),
+          ("ifcv -> b.fcv", Nil),
+          ("ifcr -> b.fcr", Nil),
+          ("{ifcn, ifcn} -> b.fcn2", Nil),
+          ("ofcn -> b.fcn",
+            List(
+              (true, "Expression on left hand side of '->' is not a valid source." ::
+                "'ofcn' is an output of an enclosing entity." :: Nil)
+            )),
+          ("ofcv -> b.fcv",
+            List(
+              (true, "Expression on left hand side of '->' is not a valid source." ::
+                "'ofcv' is an output of an enclosing entity." :: Nil)
+            )),
+          ("ofcr -> b.fcr",
+            List(
+              (true, "Expression on left hand side of '->' is not a valid source." ::
+                "'ofcr' is an output of an enclosing entity." :: Nil)
+            )),
+          ("{ofcn, ofcn} -> b.fcn2",
+            List(
+              (true, "Expression on left hand side of '->' is not a valid source." ::
+                "'ofcn' is an output of an enclosing entity." :: Nil),
+              (true, "Expression on left hand side of '->' is not a valid source." ::
+                "'ofcn' is an output of an enclosing entity." :: Nil)
+            )),
+          ("P -> b.fcn", Nil),
+          ("isn.a -> b.fcn", Nil),
+          ("a_entity -> ofcn",
+            List(
+              (true, "Expression on left hand side of '->' is not a valid source." :: Nil)
+            ))
           // format: on
         )
       } {
@@ -368,13 +486,25 @@ final class TyperConnectSpec extends AnyFreeSpec with AlogicTest {
             |  out sync ready  bool ofcr;
             |  a = new a_entity;
             |  b = new b_entity;
+            |
+            |  new fsm ac {
+            |    out bool;
+            |  }
+            |
             |  $conn;
             |}"""
           }
-          if (msg.isEmpty) {
+          if (messages.isEmpty) {
             cc.messages shouldBe empty
           } else {
-            cc.messages.loneElement should beThe[Error](msg)
+            cc.messages should have length messages.length
+            for ((message, (isError, expected)) <- cc.messages zip messages) {
+              if (isError) {
+                message should beThe[Error](expected: _*)
+              } else {
+                message should beThe[Note](expected: _*)
+              }
+            }
           }
         }
       }
@@ -382,28 +512,71 @@ final class TyperConnectSpec extends AnyFreeSpec with AlogicTest {
 
     "connections have sinks on right" - {
       for {
-        (conn, msg) <- List(
+        (conn, messages) <- List[(String, List[(Boolean, List[String])])](
           // format: off
-          ("a -> b", ""),
-          ("a.fcn -> b.fcn", ""),
-          ("a.fcv -> b.fcv", ""),
-          ("a.fcr -> b.fcr", ""),
-          ("a.fcn2 -> {b.fcn, b.fcnb}", ""),
-          ("a.fcn -> a.fcn", "Right hand side of '->' contains an output from instance 'a'"),
-          ("a.fcv -> a.fcv", "Right hand side of '->' contains an output from instance 'a'"),
-          ("a.fcr -> a.fcr", "Right hand side of '->' contains an output from instance 'a'"),
-          ("a.fcn2 -> {a.fcn, a.fcnb}", "Right hand side of '->' contains an output from instance 'a'"),
-          ("a.fcn -> ifcn", "Right hand side of '->' contains an input to enclosing entity"),
-          ("a.fcv -> ifcv", "Right hand side of '->' contains an input to enclosing entity"),
-          ("a.fcr -> ifcr", "Right hand side of '->' contains an input to enclosing entity"),
-          ("a.fcn2 -> {ifcn,ifcnb}", "Right hand side of '->' contains an input to enclosing entity"),
-          ("a.fcn -> ofcn", ""),
-          ("a.fcv -> ofcv", ""),
-          ("a.fcr -> ofcr", ""),
-          ("a.fcn2 -> {ofcn,ofcnb}", ""),
-          ("a.fcn -> P", "Right hand side of '->' contains non-port type"),
-          ("a.fcn -> osn.a", ""),
-          ("ifcn -> b_entity", "Right hand side of '->' contains non-port type")
+          ("a.fcn -> b",
+            List(
+              (true, "Expression on right hand side of '->' is not a valid sink." ::
+                "'b' has no cardinal input port." :: Nil),
+              (false, "'b' is an instance of:" :: Nil),
+            )),
+          ("ifcn -> ac", Nil),
+          ("a.fcn -> b.fcn", Nil),
+          ("a.fcv -> b.fcv", Nil),
+          ("a.fcr -> b.fcr", Nil),
+          ("a.fcn2 -> {b.fcn, b.fcnb}", Nil),
+          ("a.fcn -> a.fcn",
+            List(
+              (true, "Expression on right hand side of '->' is not a valid sink." ::
+                "It is an output of the referenced instance." :: Nil)
+            )),
+          ("a.fcv -> a.fcv",
+            List(
+              (true, "Expression on right hand side of '->' is not a valid sink." ::
+                "It is an output of the referenced instance." :: Nil)
+            )),
+          ("a.fcr -> a.fcr",
+            List(
+              (true, "Expression on right hand side of '->' is not a valid sink." ::
+                "It is an output of the referenced instance." :: Nil)
+            )),
+          ("a.fcn2 -> {a.fcn, a.fcnb}",
+            List(
+              (true, "Expression on right hand side of '->' is not a valid sink." ::
+                "It is an output of the referenced instance." :: Nil),
+              (true, "Expression on right hand side of '->' is not a valid sink." ::
+                "It is an output of the referenced instance." :: Nil)
+            )),
+          ("a.fcn -> ifcn",
+            List(
+              (true, "Expression on right hand side of '->' is not a valid sink." ::
+                "'ifcn' is an input of an enclosing entity." :: Nil)
+            )),
+          ("a.fcv -> ifcv",
+            List(
+              (true, "Expression on right hand side of '->' is not a valid sink." ::
+                "'ifcv' is an input of an enclosing entity." :: Nil)
+            )),
+          ("a.fcr -> ifcr",
+            List(
+              (true, "Expression on right hand side of '->' is not a valid sink." ::
+                "'ifcr' is an input of an enclosing entity." :: Nil)
+            )),
+          ("a.fcn2 -> {ifcn,ifcnb}",
+            List(
+              (true, "Expression on right hand side of '->' is not a valid sink." ::
+                "'ifcn' is an input of an enclosing entity." :: Nil),
+              (true, "Expression on right hand side of '->' is not a valid sink." ::
+                "'ifcnb' is an input of an enclosing entity." :: Nil)
+            )),
+          ("a.fcn -> ofcn", Nil),
+          ("a.fcv -> ofcv", Nil),
+          ("a.fcr -> ofcr", Nil),
+          ("a.fcn2 -> {ofcn,ofcnb}", Nil),
+          ("a.fcn -> P", List((true, "Expression on right hand side of '->' is not a valid sink." :: Nil))),
+          ("a.fcn -> osn.a", Nil),
+          ("ifcn -> b_entity", List((true, "Expression on right hand side of '->' is not a valid sink." :: Nil))),
+          ("ifcn -> bar.a", List((true, "Expression on right hand side of '->' is not a valid sink." :: Nil)))
           // format: off
         )
       } {
@@ -432,31 +605,42 @@ final class TyperConnectSpec extends AnyFreeSpec with AlogicTest {
             |  out sync ready  bool ofcr;
             |  a = new a_entity;
             |  b = new b_entity;
+            |
+            |  new fsm ac {
+            |    in bool;
+            |  }
+            |
             |  $conn;
             |}"""
           }
-          if (msg.isEmpty) {
+          if (messages.isEmpty) {
             cc.messages shouldBe empty
           } else {
-            cc.messages.loneElement should beThe[Error](msg)
+            cc.messages should have length messages.length
+            for ((message, (isError, expected)) <- cc.messages zip messages) {
+              if (isError) {
+                message should beThe[Error](expected: _*)
+              } else {
+                message should beThe[Note](expected: _*)
+              }
+            }
           }
         }
       }
     }
 
-    "non-trivial connect expressions have no flow control" - {
-      def mkMsg(side: String) =
-        s"Port with flow control found in non-trivial expression on $side hand side of '->'"
+    "complex connect expressions have no flow control" - {
+      val msg ="Port with flow control cannot be connected in a complex expression"
 
       for {
         (connect, msgs) <- List(
-          ("{a.fcn, a.fcv} -> b.fcn2", List(mkMsg("left"))),
-          ("{a.fcn, a.fcr} -> b.fcn2", List(mkMsg("left"))),
-          ("{a.fcv, a.fcv} -> b.fcn2", List(mkMsg("left"), mkMsg("left"))),
-          ("$signed(a.fcv) -> b.fcv", List(mkMsg("left"))),
-          ("a.fcn2 -> {b.fcn, b.fcv}", List(mkMsg("right"))),
-          ("a.fcn2 -> {b.fcr, b.fcr}", List(mkMsg("right"), mkMsg("right"))),
-          ("is.a -> b.fcn", List(mkMsg("left")))
+          ("{a.fcn, a.fcv} -> b.fcn2", List(msg)),
+          ("{a.fcn, a.fcr} -> b.fcn2", List(msg)),
+          ("{a.fcv, a.fcv} -> b.fcn2", List(msg, msg)),
+          ("$signed(a.fcv) -> b.fcv", List(msg)),
+          ("a.fcn2 -> {b.fcn, b.fcv}", List(msg)),
+          ("a.fcn2 -> {b.fcr, b.fcr}", List(msg, msg)),
+          ("is.a -> b.fcn", List(msg))
         )
       } {
         connect in {
@@ -492,15 +676,15 @@ final class TyperConnectSpec extends AnyFreeSpec with AlogicTest {
         (connect, msg) <- List(
           ("a.fcn -> b.fcn", Nil),
           ("{a.fcn, a.fcn} -> b.fcn2", Nil),
-          ("a.fcn -> b.fcv", List("Ports have incompatible flow control", "none -> sync")),
-          ("a.fcn -> b.fcr", List("Ports have incompatible flow control", "none -> sync ready")),
-          ("a.fcv -> b.fcn", List("Ports have incompatible flow control", "sync -> none")),
-          ("{a.fcn, a.fcn} -> b.fcv2", List("Ports have incompatible flow control", "none -> sync")),
-          ("is.a -> b.fcv2", List("Ports have incompatible flow control", "none -> sync")),
+          ("a.fcn -> b.fcv", List("Ports have incompatible flow control", "'none' -> 'sync'")),
+          ("a.fcn -> b.fcr", List("Ports have incompatible flow control", "'none' -> 'sync ready'")),
+          ("a.fcv -> b.fcn", List("Ports have incompatible flow control", "'sync' -> 'none'")),
+          ("{a.fcn, a.fcn} -> b.fcv2", List("Ports have incompatible flow control", "'none' -> 'sync'")),
+          ("is.a -> b.fcv2", List("Ports have incompatible flow control", "'none' -> 'sync'")),
           ("a.fcv -> b.fcv", Nil),
-          ("a.fcv -> b.fcr", List("Ports have incompatible flow control", "sync -> sync ready")),
-          ("a.fcr -> b.fcn", List("Ports have incompatible flow control", "sync ready -> none")),
-          ("a.fcr -> b.fcv", List("Ports have incompatible flow control", "sync ready -> sync")),
+          ("a.fcv -> b.fcr", List("Ports have incompatible flow control", "'sync' -> 'sync ready'")),
+          ("a.fcr -> b.fcn", List("Ports have incompatible flow control", "'sync ready' -> 'none'")),
+          ("a.fcr -> b.fcv", List("Ports have incompatible flow control", "'sync ready' -> 'sync'")),
           ("a.fcr -> b.fcr", Nil)
         )
         // format: on
@@ -604,9 +788,12 @@ final class TyperConnectSpec extends AnyFreeSpec with AlogicTest {
           if (ok) {
             cc.messages shouldBe empty
           } else {
-            cc.messages.loneElement should beThe[Error](
-              "Port driven by '->' must not specify output storage",
-              "'->' is at:.*"
+            cc.messages should have length 2
+            cc.messages(0) should beThe[Error](
+              "Output port driven by '->' cannot have a storage specifier"
+            )
+            cc.messages(1) should beThe[Note](
+              "'.*' is driven here"
             )
           }
         }
@@ -632,9 +819,12 @@ final class TyperConnectSpec extends AnyFreeSpec with AlogicTest {
           if (ok) {
             cc.messages shouldBe empty
           } else {
-            cc.messages.loneElement should beThe[Error](
-              "Port driven by '->' must not have an initializer",
-              "'->' is at:.*"
+            cc.messages should have length 2
+            cc.messages(0) should beThe[Error](
+              "Output port driven by '->' cannot have an initializer"
+            )
+            cc.messages(1) should beThe[Note](
+              "'.*' is driven here"
             )
           }
         }

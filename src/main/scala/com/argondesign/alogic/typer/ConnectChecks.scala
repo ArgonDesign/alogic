@@ -1,16 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2018 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2020 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
 //
-// Module: Alogic Compiler
-// Author: Geza Lore
-//
 // DESCRIPTION:
-//
-// Type checking for '->' connections
+//  Type checking for '->' connections
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.typer
@@ -19,300 +14,309 @@ import com.argondesign.alogic.ast.Trees.Expr.InstancePortSel
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FlowControlTypes._
-import com.argondesign.alogic.core.Loc
+import com.argondesign.alogic.core.Messages.Error
+import com.argondesign.alogic.core.Messages.Message
+import com.argondesign.alogic.core.Messages.Note
 import com.argondesign.alogic.core.StorageTypes.StorageTypeDefault
+import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.unreachable
 
-import scala.language.postfixOps
 import scala.util.chaining._
 
 object ConnectChecks {
 
-  def argExprs(args: List[Arg]): List[Expr] = args map { case Arg(expr) => expr }
-
-  private def flowControlType(
-      expr: Expr,
-      side: String
-    )(
-      implicit
-      cc: CompilerContext
-    ): Option[FlowControlType] = {
-
-    val simpleExpr = expr match {
-      case _: ExprSym            => true
-      case InstancePortSel(_, _) => true
-      case _                     => false
-    }
-
-    def portTypes(expr: Expr): List[(Type, Expr)] = expr match {
-      case e @ ExprSym(symbol)            => List((symbol.kind, e))
-      case e @ InstancePortSel(_, symbol) => List((symbol.kind, e))
-      case ExprSel(expr, _, _)            => portTypes(expr)
-      case ExprIndex(expr, _)             => portTypes(expr)
-      case ExprSlice(expr, _, _, _)       => portTypes(expr)
-      case ExprCat(parts)                 => parts flatMap portTypes
-      case ExprRep(_, expr)               => portTypes(expr)
-      case e: ExprInt                     => List((expr.tpe, e))
-      case ExprCall(_, args) =>
-        argExprs(args) filter {
-          case _: ExprNum => false
-          case _          => true
-        } flatMap portTypes
-      case _ => unreachable
-    }
-
-    val flowControlTypes = portTypes(expr) map {
-      case (t, e) =>
-        val fct = t match {
-          case TypeIn(_, fct)     => fct
-          case TypeOut(_, fct, _) => fct
-          case _: TypeEntity      => FlowControlTypeReady
-          case _: TypeInt         => FlowControlTypeNone
-          case _: TypeConst       => FlowControlTypeNone
-          case _                  => unreachable
-        }
-        (fct, e)
-    }
-
-    if (simpleExpr) {
-      Some(flowControlTypes.head._1)
-    } else {
-      val noFlowControl = flowControlTypes collect {
-        case (fct, e) if fct != FlowControlTypeNone =>
-          cc.error(
-            e,
-            s"Port with flow control found in non-trivial expression on $side hand side of '->'"
-          )
-      } isEmpty
-
-      if (noFlowControl) Some(flowControlTypes.head._1) else None
-    }
+  // Just for local convenience
+  implicit private class IteratorOps[T](val self: Iterator[T]) extends AnyVal {
+    def ifEmpty(other: => Iterator[T]): Iterator[T] = if (self.nonEmpty) self else other
   }
 
-  private def fctToSource(fct: FlowControlType): String = fct match {
-    case FlowControlTypeNone  => "none"
-    case FlowControlTypeValid => "sync"
-    case FlowControlTypeReady => "sync ready"
-  }
-
-  private def lhsIsLegal(lhs: Expr)(implicit cc: CompilerContext): Boolean = {
-    val lhsValidExpr = lhs.isValidConnectLhs tap { b =>
-      if (!b) {
-        cc.error(
-          lhs,
-          "Invalid port reference on left hand side of '->'",
-          "Only expressions which are purely wiring are permitted"
-        )
-      }
-    }
-
-    def portDirectionsValid(expr: Expr): Boolean = expr match {
-      case ExprSym(symbol) if symbol.kind.isEntity                       => true
-      case ExprSym(symbol) if symbol.kind.isConst || symbol.kind.isParam => true
-      case ExprSym(symbol) =>
-        if (symbol.kind.isOut) {
-          cc.error(expr, "Left hand side of '->' contains an output from enclosing entity")
-        } else if (!symbol.kind.isIn) {
-          cc.error(expr, s"Left hand side of '->' contains non-port type")
-        }
-        symbol.kind.isIn && !symbol.kind.isOut
-      case InstancePortSel(iSymbol, symbol) =>
-        if (symbol.kind.isIn) {
-          cc.error(expr, s"Left hand side of '->' contains an input to instance '${iSymbol.name}'")
-        }
-        !symbol.kind.isIn
-      case ExprSel(expr, _, _)      => portDirectionsValid(expr)
-      case ExprIndex(expr, _)       => portDirectionsValid(expr)
-      case ExprSlice(expr, _, _, _) => portDirectionsValid(expr)
-      case ExprCat(parts)           => parts forall portDirectionsValid
-      case ExprRep(_, expr)         => portDirectionsValid(expr)
-      case _: ExprInt               => true
-      case ExprCall(_, args) =>
-        argExprs(args) filter {
-          case _: ExprNum => false
-          case _          => true
-        } forall portDirectionsValid
-    }
-
-    lhsValidExpr && portDirectionsValid(lhs)
-  }
-
-  private def rhsIsLegal(rhs: Expr)(implicit cc: CompilerContext): Boolean = {
-    val rhsValidExpr = rhs.isValidConnectRhs tap { b =>
-      if (!b) {
-        cc.error(
-          rhs,
-          "Invalid port reference on right hand side of '->'",
-          "Only expressions which are purely wiring are permitted"
-        )
-      }
-    }
-
-    def portDirectionsValid(expr: Expr): Boolean = expr match {
-      case ExprSym(symbol) if symbol.kind.isEntity => true
-      case ExprSym(symbol) =>
-        if (symbol.kind.isIn) {
-          cc.error(expr, "Right hand side of '->' contains an input to enclosing entity")
-        } else if (!symbol.kind.isOut) {
-          cc.error(expr, s"Right hand side of '->' contains non-port type")
-        }
-        symbol.kind.isOut && !symbol.kind.isIn
-      case InstancePortSel(iSymbol, symbol) =>
-        if (symbol.kind.isOut) {
-          cc.error(
-            expr,
-            s"Right hand side of '->' contains an output from instance '${iSymbol.name}'"
-          )
-        }
-        !symbol.kind.isOut
-      case ExprSel(expr, _, _)      => portDirectionsValid(expr)
-      case ExprIndex(expr, _)       => portDirectionsValid(expr)
-      case ExprSlice(expr, _, _, _) => portDirectionsValid(expr)
-      case ExprCat(parts)           => parts forall portDirectionsValid
-    }
-
-    rhsValidExpr && portDirectionsValid(rhs)
-  }
-
-  private def compatibleType(
-      loc: Loc,
-      lhs: Expr,
-      rhs: Expr
-    )(
-      implicit
-      cc: CompilerContext
-    ): Boolean = {
-    (lhs.tpe, rhs.tpe) match {
-      case (_: TypeEntity, _: TypeEntity) => true
-      case (_: TypeEntity, _) =>
-        cc.error(rhs, "Cannot connect pipeline port to non-pipeline port")
-        false
-      case (_, _: TypeEntity) =>
-        cc.error(lhs, "Cannot connect non-pipeline port to pipeline port")
-        false
-      case _ =>
-        val lhsWidth = lhs.tpe.width
-        val rhsWidth = rhs.tpe.width
-
-        if (lhsWidth != rhsWidth) {
-          cc.error(
-            loc.copy(point = rhs.loc.start),
-            s"Port widths do not match: $lhsWidth -> $rhsWidth"
-          )
-        }
-
-        lhsWidth == rhsWidth
-    }
-  }
-
-  private def compatibleFlowControl(
-      lhs: Expr,
-      rhs: Expr
-    )(
-      implicit
-      cc: CompilerContext
-    ): Boolean = {
-
-    val fctlo = flowControlType(lhs, "left")
-    val fctro = flowControlType(rhs, "right")
-    (fctlo, fctro) match {
-      case (Some(fctl), Some(fctr)) =>
-        if (fctr != fctl) {
-          cc.error(
-            rhs,
-            s"Ports have incompatible flow control",
-            s"${fctToSource(fctl)} -> ${fctToSource(fctr)}"
-          )
-          false
-        } else {
-          true
-        }
-      case _ => false
-    }
-  }
-
-  private def sinkCountLegal(
-      loc: Loc,
-      lhs: Expr,
-      rhss: List[Expr]
-    )(
-      implicit
-      cc: CompilerContext
-    ): Boolean = {
-    rhss.lengthCompare(1) == 0 || {
-      flowControlType(lhs, "left") match {
-        case Some(FlowControlTypeNone)  => true
-        case Some(FlowControlTypeValid) => true
-        case Some(other) =>
-          cc.error(
-            loc,
-            s"Port with '${fctToSource(other)}' flow control cannot have multiple sinks"
-          )
-          false
-        case _ => unreachable
-      }
-    }
-  }
-
-  private def validStorage(loc: Loc, rhs: Expr)(implicit cc: CompilerContext): Boolean = {
-    rhs collect {
-      case ExprSym(symbol) => (symbol, symbol.kind)
-    } collect {
-      case (symbol, TypeOut(_, _, st)) if st != StorageTypeDefault =>
-        cc.error(
-          symbol,
-          "Port driven by '->' must not specify output storage",
-          s"'->' is at: ${loc.prefix}"
-        )
-    } isEmpty
-  }
-
-  private def noInitializer(loc: Loc, rhs: Expr)(implicit cc: CompilerContext): Boolean = {
-    rhs collect {
-      case e @ ExprSym(symbol) if symbol.init.isDefined && !e.isKnownConst =>
-        cc.error(
-          symbol,
-          "Port driven by '->' must not have an initializer",
-          s"'->' is at: ${loc.prefix}"
-        )
-    } isEmpty
+  implicit private class IteratorObjOps(val obj: Iterator.type) extends AnyVal {
+    def when[T](cond: Boolean)(value: => T): Iterator[T] =
+      if (cond) Iterator.single(value) else Iterator.empty
   }
 
   // Return true if this is a well formed and typed Connect instance
   def apply(conn: EntConnect)(implicit cc: CompilerContext): Boolean = {
-    // TODO: error on connect same thing on multiple lhss
-    // TODO: error on connect same thing on multiple rhss
+    // Given an expression, extract sub-expressions that require active logic
+    // to implement. If the returned Iterator is empty, then the given
+    // expression can be implemented purely as wiring.
+    def activeLogic(expr: Expr): Iterator[Expr] = expr match {
+      // TODO: indices must be known in connect exprssions. Check and remove thems
+      case ExprCall(tgt, args) =>
+        tgt match {
+          case ExprSym(Symbol("$signed" | "$unsigned")) =>
+            args.iterator flatMap { arg => activeLogic(arg.expr) }
+          case _ => Iterator.single(expr)
+        }
+      case _: ExprUnary => Iterator.single(expr)
+      case ExprBinary(lhs, op, rhs) =>
+        op match {
+          case "<<" | "<<<" | ">>" | ">>>" =>
+            if (rhs.isKnown) activeLogic(lhs) else Iterator.single(expr)
+          case _ => Iterator.single(expr)
+        }
+      case _: ExprCond      => Iterator.single(expr)
+      case ExprRep(_, expr) => activeLogic(expr)
+      case ExprCat(parts)   => parts.iterator flatMap activeLogic
+      case ExprIndex(tgt, idx) =>
+        if (idx.isKnown) activeLogic(tgt) else Iterator.single(expr)
+      case ExprSlice(tgt, lIdx, op, _) =>
+        if (op == ":" || lIdx.isKnown) activeLogic(tgt) else Iterator.single(expr)
+      case ExprSel(tgt, _, _)                                              => activeLogic(tgt)
+      case _: ExprSym | _: ExprType | _: ExprInt | _: ExprNum | _: ExprStr => Iterator.empty
+      case _: ExprRef | _: ExprThis | _: ExprCast | _: ExprError           => unreachable
+    }
+
+    // Given the type of a an expression in a connect, return the type of
+    // flow control it has (if any), assuming it appears on the given side.
+    def flowControlType(kind: Type, onLhs: Boolean): Option[FlowControlType] = kind match {
+      case TypeIn(_, FlowControlTypeNone)      => None
+      case TypeIn(_, fc)                       => Some(fc)
+      case TypeOut(_, FlowControlTypeNone, _)  => None
+      case TypeOut(_, fc, _)                   => Some(fc)
+      case TypePipeIn(FlowControlTypeNone)     => None
+      case TypePipeIn(fc)                      => Some(fc)
+      case TypePipeOut(FlowControlTypeNone, _) => None
+      case TypePipeOut(fc, _)                  => Some(fc)
+      case kind: TypeEntity                    =>
+        // Check the cardinal port
+        kind(if (onLhs) "out" else "in") flatMap { symbol => flowControlType(symbol.kind, onLhs) }
+      case _ => None
+    }
+
+    def checkComplexExprWithFlowControl(expr: Expr, onLhs: Boolean): Iterator[Message] = {
+      // Given an expression in a connect, extract sub-expressions that
+      // reference ports.
+      def portReferences(expr: Expr): Iterator[Expr] = {
+        def isIO(kind: Type): Boolean = kind match {
+          case _: TypeIn | _: TypeOut | _: TypePipeIn | _: TypePipeOut => true
+          case _                                                       => false
+        }
+        expr flatCollect {
+          // Simply pick up any port types
+          case expr: Expr if isIO(expr.tpe) => Iterator.single(expr)
+          // Select from instance that does not yield a port. Stop recursion so we
+          // do not pick up the entity reference under the select.
+          case ExprSel(tgt, _, _) if tgt.tpe.isEntity => unreachable // Iterator.empty
+          // Reference to an entity is a reference to one of the cardinal ports
+          case expr: Expr if expr.tpe.isEntity => Iterator.single(expr)
+        }
+      }
+
+      expr match {
+        case _: ExprSym | InstancePortSel(_, _) => Iterator.empty // OK: simple expression
+        case _ =>
+          portReferences(expr) filter { expr =>
+            flowControlType(expr.tpe, onLhs).isDefined
+          } map { expr =>
+            Error(expr, "Port with flow control cannot be connected in a complex expression")
+          }
+      }
+    }
+
+    def checkValidLhs(expr: Expr): Iterator[Message] = {
+      def checkValidSource(expr: Expr): Iterator[Message] = {
+        def error(extra: String*): Iterator[Error] = Iterator single {
+          Error(expr.loc, "Expression on left hand side of '->' is not a valid source." +: extra)
+        }
+
+        expr match {
+          case ExprSym(symbol) =>
+            val n = symbol.name
+            symbol.kind match {
+              case _: TypeIn | _: TypePipeIn => Iterator.empty // OK
+              case kind: TypeEntity =>
+                if (kind("out").isDefined) {
+                  Iterator.empty // Ok
+                } else {
+                  error(s"'$n' has no cardinal output port.") ++
+                    Iterator.when(!kind.symbol.decl.isInstanceOf[DeclSingleton]) {
+                      Note(kind.symbol, s"'$n' is an instance of:")
+                    }
+                }
+              case _: TypeOut | _: TypePipeOut =>
+                error(s"'$n' is an output of an enclosing entity.")
+              case _ => error()
+            }
+          case ExprSel(tgt, _, _) =>
+            if (tgt.tpe.isEntity) {
+              expr.tpe match {
+                case _: TypeOut | _: TypePipeOut => Iterator.empty // OK
+                case _: TypeIn | _: TypePipeIn =>
+                  error("It is an input of the referenced instance.")
+                case _ => unreachable
+              }
+            } else if (expr.tpe.isPacked) {
+              checkValidSource(tgt)
+            } else {
+              error()
+            }
+          case ExprIndex(tgt, _)       => checkValidSource(tgt)
+          case ExprSlice(tgt, _, _, _) => checkValidSource(tgt)
+          case ExprCat(parts)          => parts.iterator flatMap checkValidSource
+          case ExprRep(_, expr)        => checkValidSource(expr)
+          case _: ExprNum              => error() // TODO: allow this - Iterator.empty // Ok
+          case _                       => if (expr.tpe.isPacked) Iterator.empty else error()
+        }
+      }
+
+      activeLogic(expr.simplify) map { active =>
+        Error(active, "Left hand side of '->' yields active logic")
+      } concat {
+        checkComplexExprWithFlowControl(expr, onLhs = true)
+      } concat {
+        checkValidSource(expr.simplify)
+      }
+    }
+
+    def checkValidRhs(expr: Expr): Iterator[Message] = {
+      def checkValidSink(expr: Expr): Iterator[Message] = {
+        def error(extra: String*): Iterator[Error] = Iterator single {
+          Error(expr.loc, "Expression on right hand side of '->' is not a valid sink." +: extra)
+        }
+
+        expr match {
+          case ExprSym(symbol) =>
+            val n = symbol.name
+            symbol.kind match {
+              case _: TypeOut | _: TypePipeOut => Iterator.empty // OK
+              case kind: TypeEntity =>
+                if (kind("in").isDefined) {
+                  Iterator.empty // Ok
+                } else {
+                  error(s"'$n' has no cardinal input port.") ++
+                    Iterator.when(!kind.symbol.decl.isInstanceOf[DeclSingleton]) {
+                      Note(kind.symbol, s"'$n' is an instance of:")
+                    }
+                }
+              case _: TypeIn | _: TypePipeIn => error(s"'$n' is an input of an enclosing entity.")
+              case _                         => error()
+            }
+          case ExprSel(tgt, _, _) =>
+            if (tgt.tpe.isEntity) {
+              expr.tpe match {
+                case _: TypeIn | _: TypePipeIn => Iterator.empty // OK
+                case _: TypeOut | _: TypePipeOut =>
+                  error("It is an output of the referenced instance.")
+                case _ => unreachable
+              }
+            } else if (expr.tpe.isPacked) {
+              checkValidSink(tgt)
+            } else {
+              error()
+            }
+          case ExprIndex(tgt, _)       => checkValidSink(tgt)
+          case ExprSlice(tgt, _, _, _) => checkValidSink(tgt)
+          case ExprCat(parts)          => parts.iterator flatMap checkValidSink
+          case _                       => unreachable // Not an LValue
+        }
+      }
+
+      if (!expr.isLValueExpr) {
+        // TODO: move this to Checker
+        Iterator.single(Error(expr, "Right hand side of '->' is not a valid assignment target"))
+      } else {
+        activeLogic(expr.simplifyLValue) map { active =>
+          Error(active, "Right hand side of '->' yields active logic")
+        } concat {
+          checkComplexExprWithFlowControl(expr, onLhs = false)
+        } concat {
+          checkValidSink(expr.simplifyLValue)
+        }
+      }
+    }
+
+    def checkTypesCompatible(lhs: Expr)(rhs: Expr): Iterator[Message] = {
+      val lKind = lhs.tpe match {
+        case kind: TypeEntity => kind("out").get.kind
+        case kind             => kind
+      }
+      val rKind = rhs.tpe match {
+        case kind: TypeEntity => kind("in").get.kind
+        case kind             => kind
+      }
+      (lKind, rKind) match {
+        case (_: TypePipeOut, _: TypePipeIn) => Iterator.empty
+        case (_: TypePipeIn, _: TypePipeOut) => unreachable // Should have been caught already
+        case (_: TypePipeOut, _) =>
+          Iterator.single(Error(rhs, "Cannot connect pipeline port to non-pipeline port"))
+        case (_, _: TypePipeIn) =>
+          Iterator.single(Error(lhs, "Cannot connect non-pipeline port to pipeline port"))
+        case _ =>
+          val lWidth = lKind.width
+          val rWidth = rKind.width
+          Iterator.when(lWidth != rWidth) {
+            val loc = rhs.loc.copy(start = lhs.loc.start)
+            Error(loc, s"Connected ports have mismatched widths: $lWidth -> $rWidth")
+          }
+      }
+    }
+
+    def checkValidStorage(rhs: Expr): Iterator[Message] = {
+      def outWithNonDefaultStorage(symbol: Symbol): Boolean = symbol.kind match {
+        case TypeOut(_, _, st)  => st != StorageTypeDefault
+        case TypePipeOut(_, st) => st != StorageTypeDefault
+        case _                  => false
+      }
+      rhs flatCollect {
+        case expr @ ExprSym(symbol) if outWithNonDefaultStorage(symbol) =>
+          Iterator(
+            Error(symbol, "Output port driven by '->' cannot have a storage specifier"),
+            Note(expr, s"'${symbol.name}' is driven here")
+          )
+      }
+    }
+
+    def checkNoInitializer(rhs: Expr): Iterator[Message] = rhs flatCollect {
+      case expr @ ExprSym(symbol) if symbol.kind.isOut && symbol.init.isDefined =>
+        Iterator(
+          Error(symbol, "Output port driven by '->' cannot have an initializer"),
+          Note(expr, s"'${symbol.name}' is driven here")
+        )
+    }
+
+    def checkFlowControlCompatible(lhs: Expr)(rhs: Expr): Iterator[Message] = {
+      val fctl = flowControlType(lhs.tpe, onLhs = true)
+      val fctr = flowControlType(rhs.tpe, onLhs = false)
+      Iterator.when(fctl != fctr) {
+        val loc = rhs.loc.copy(start = lhs.loc.start)
+        def txt(fct: Option[FlowControlType]): String = fct match {
+          case None                       => "none"
+          case Some(FlowControlTypeNone)  => unreachable
+          case Some(FlowControlTypeValid) => "sync"
+          case Some(FlowControlTypeReady) => "sync ready"
+        }
+        Error(loc, "Ports have incompatible flow control", s"'${txt(fctl)}' -> '${txt(fctr)}'")
+      }
+    }
+
+    def checkSinkCount(lhs: Expr, rhss: List[Expr]): Iterator[Message] =
+      flowControlType(lhs.tpe, onLhs = true) match {
+        case None                       => Iterator.empty
+        case Some(FlowControlTypeNone)  => unreachable
+        case Some(FlowControlTypeValid) => Iterator.empty
+        case Some(FlowControlTypeReady) =>
+          Iterator.when(rhss.lengthIs > 1) {
+            val loc = lhs.loc.copy(end = rhss.last.loc.end)
+            Error(loc, s"Port with 'sync ready' flow control cannot have multiple sinks")
+          }
+      }
 
     val EntConnect(lhs, rhss) = conn
 
-    // Check left hand side is legal
-    val lhsOk = lhsIsLegal(lhs)
-
-    // Check right hand side is legal
-    val rhssOk = rhss map { rhsIsLegal } reduce { _ && _ }
-
-    // Check types are compatible
-    lazy val typeOk = rhss map { compatibleType(conn.loc, lhs, _) } reduce { _ && _ }
-
-    // Check flow control is compatible
-    lazy val flowControlOk = rhss map { compatibleFlowControl(lhs, _) } reduce { _ && _ }
-
-    // Check number of right hand sides is legal
-    lazy val sinkCountOk = sinkCountLegal(conn.loc, lhs, rhss)
-
-    // Check storage specifier of rhs is default
-    lazy val storageOk = rhss map { validStorage(conn.loc, _) } reduce { _ && _ }
-
-    // Check rhs does not have an initializer
-    lazy val initOk = rhss map { noInitializer(conn.loc, _) } reduce { _ && _ }
-
-    // Force some value to yield more errors if they makes sense
-    lhsOk && rhssOk && storageOk
-    lhsOk && rhssOk && initOk
-
-    // Everything needs to be OK
-    lhsOk && rhssOk && typeOk && flowControlOk && sinkCountOk && storageOk && initOk
+    // Perform the checks in stages. Later stages assume earlier checks passed.
+    {
+      checkValidLhs(lhs) ++ (rhss.iterator flatMap checkValidRhs)
+    } ifEmpty {
+      (rhss.iterator flatMap checkTypesCompatible(lhs)) ++
+        (rhss.iterator flatMap checkValidStorage) ++
+        (rhss.iterator flatMap checkNoInitializer)
+    } ifEmpty {
+      (rhss.iterator flatMap checkFlowControlCompatible(lhs)) ++ checkSinkCount(lhs, rhss)
+    } pipe { errors => // Pass if no errors, add the messages
+      errors.isEmpty tap { _ => cc.addMessages(errors) }
+    }
   }
 
 }

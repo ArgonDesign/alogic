@@ -37,8 +37,6 @@ object AttrBuilder extends BaseBuilder[AttrContext, (String, SourceAttribute)] w
         (ctx.IDENTIFIER.txt, SourceAttribute.Flag() withLoc ctx.loc)
       override def visitAttrExpr(ctx: AttrExprContext): (String, SourceAttribute) =
         (ctx.IDENTIFIER.txt, SourceAttribute.Expr(ExprBuilder(ctx.expr)) withLoc ctx.loc)
-      override def visitAttrSlices(ctx: AttrSlicesContext): (String, SourceAttribute) =
-        (ctx.IDENTIFIER.txt, SourceAttribute.Slices(SlicesBuilder(ctx.slices)) withLoc ctx.loc)
     }
 
     Visitor(ctx)

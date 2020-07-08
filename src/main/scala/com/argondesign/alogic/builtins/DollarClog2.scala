@@ -21,8 +21,7 @@ import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Math
 
-private[builtins] class DollarClog2(implicit cc: CompilerContext)
-    extends BuiltinPolyFunc(isValidConnLhs = true) {
+private[builtins] class DollarClog2(implicit cc: CompilerContext) extends BuiltinPolyFunc {
 
   val name = "$clog2"
 

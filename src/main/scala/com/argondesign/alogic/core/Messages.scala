@@ -75,7 +75,8 @@ object Messages {
   case class Warning(loc: Loc, msg: Seq[String]) extends Message(WarningCategory)
 
   object Warning {
-    def apply(msg: Seq[String]): Warning = Warning(Loc.unknown, msg)
+    def apply(msg: String*): Warning = Warning(Loc.unknown, msg)
+    def apply[T](item: T, msg: String*)(implicit ev: Locatable[T]): Warning = Warning(ev(item), msg)
   }
 
   // Errors indicate situations where the compiler can still make forward
@@ -85,7 +86,8 @@ object Messages {
   case class Error(loc: Loc, msg: Seq[String]) extends Message(ErrorCategory)
 
   object Error {
-    def apply(msg: Seq[String]): Error = Error(Loc.unknown, msg)
+    def apply(msg: String*): Error = Error(Loc.unknown, msg)
+    def apply[T](item: T, msg: String*)(implicit ev: Locatable[T]): Error = Error(ev(item), msg)
   }
 
   // Note messages provide additional information, usually emitted right after
@@ -93,7 +95,8 @@ object Messages {
   case class Note(loc: Loc, msg: Seq[String]) extends Message(NoteCategory)
 
   object Note {
-    def apply(msg: Seq[String]): Note = Note(Loc.unknown, msg)
+    def apply(msg: String*): Note = Note(Loc.unknown, msg)
+    def apply[T](item: T, msg: String*)(implicit ev: Locatable[T]): Note = Note(ev(item), msg)
   }
 
   // Fatal indicates situations where the compiler cannot make forward
@@ -101,14 +104,16 @@ object Messages {
   case class Fatal(loc: Loc, msg: Seq[String]) extends Message(FatalCategory)
 
   object Fatal {
-    def apply(msg: Seq[String]): Fatal = Fatal(Loc.unknown, msg)
+    def apply(msg: String*): Fatal = Fatal(Loc.unknown, msg)
+    def apply[T](item: T, msg: String*)(implicit ev: Locatable[T]): Fatal = Fatal(ev(item), msg)
   }
 
   // Internal compiler error indicates a programming error in the compiler.
   case class Ice(loc: Loc, msg: Seq[String]) extends Message(IceCategory)
 
   object Ice {
-    def apply(msg: Seq[String]): Ice = Ice(Loc.unknown, msg)
+    def apply(msg: String*): Ice = Ice(Loc.unknown, msg)
+    def apply[T](item: T, msg: String*)(implicit ev: Locatable[T]): Ice = Ice(ev(item), msg)
   }
 
 }

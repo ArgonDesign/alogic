@@ -20,8 +20,7 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
 
-private[builtins] class AtMsb(implicit cc: CompilerContext)
-    extends BuiltinPolyFunc(isValidConnLhs = true) {
+private[builtins] class AtMsb(implicit cc: CompilerContext) extends BuiltinPolyFunc {
 
   val name = "@msb"
 

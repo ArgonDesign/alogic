@@ -60,13 +60,16 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatefulTreeTr
     // Derived
     case _: TypeIn          => false
     case TypeOut(_, fct, _) => fct == FlowControlTypeNone
-    case _: TypePipeline    => unreachable
+    case _: TypePipeVar     => unreachable
     case _: TypeParam       => unreachable
     case _: TypeConst       => false
     case _: TypeGen         => unreachable
     case _: TypeArray       => false
     case _: TypeSram        => false
     case _: TypeStack       => false
+    // Pipeline ports
+    case _: TypePipeIn  => unreachable
+    case _: TypePipeOut => unreachable
     // Function types
     case _: TypeCombFunc     => false
     case _: TypeCtrlFunc     => unreachable

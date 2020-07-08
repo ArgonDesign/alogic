@@ -11,9 +11,10 @@ network method_pipeline_01 {
   pipeline s t;
 
   new fsm stage_0 {
+    out sync ready pipeline;
     void main() {
       t.set(i);
-      write;
+      out.write();
       fence;
     }
   }
@@ -21,10 +22,12 @@ network method_pipeline_01 {
   stage_0 -> stage_1;
 
   new fsm stage_1 {
+    in sync ready pipeline;
+    out sync ready pipeline;
     void main() {
-      read;
+      in.read();
       t.set(~t.get());
-      write;
+      out.write();
       fence;
     }
   }
@@ -32,8 +35,9 @@ network method_pipeline_01 {
   stage_1 -> stage_2;
 
   new fsm stage_2 {
+    in sync ready pipeline;
     void main() {
-      read;
+      in.read();
       o = t.get();
       fence;
     }

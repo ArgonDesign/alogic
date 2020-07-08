@@ -212,10 +212,16 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
       // Select
       //////////////////////////////////////////////////////////////////////////
 
-      override def visitExprSelect(ctx: ExprSelectContext): Expr = {
-        val loc = ctx.loc.copy(point = ctx.ident.start.getStartIndex - 1)
-        val Ident(name, idxs) = IdentBuilder(ctx.ident)
-        ExprSel(visit(ctx.expr), name, idxs) withLoc loc
+      override def visitExprSel(ctx: ExprSelContext): Expr = {
+        val expr = visit(ctx.expr)
+        if (ctx.ident != null) {
+          val loc = ctx.loc.copy(point = ctx.ident.start.getStartIndex - 1)
+          val Ident(name, idxs) = IdentBuilder(ctx.ident)
+          ExprSel(expr, name, idxs) withLoc loc
+        } else {
+          val loc = ctx.loc.copy(point = ctx.inout.getStartIndex - 1)
+          ExprSel(expr, ctx.inout.txt, Nil) withLoc loc
+        }
       }
 
       //////////////////////////////////////////////////////////////////////////

@@ -17,7 +17,6 @@ package com.argondesign.alogic.core
 
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.builtins.BuiltinPolyFunc
-import com.argondesign.alogic.core.StorageTypes.StorageSlice
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types.TypeEntity
 
@@ -113,9 +112,6 @@ class SymbolAttributes {
   // Whether this choice has been generated
   val wasParam = new Attribute[Boolean]()
 
-  // Storage slices to use for pipeline output port
-  val pipelineStorage = new Attribute[List[StorageSlice]]()
-
   // Resolution of a dictionary symbol: 'indices' -> 'result'
   val dictResolutions = new Attribute[mutable.Map[List[BigInt], Symbol]]()
 
@@ -163,7 +159,6 @@ class SymbolAttributes {
     liftSrams,
     dictName,
     wasParam,
-    pipelineStorage,
     dictResolutions,
     eliminated,
     builtin,
@@ -203,7 +198,6 @@ class SymbolAttributes {
     "liftSrams",
     "dictName",
     "wasParam",
-    "pipelineStorage",
     "dictResolutions",
     "eliminated",
     "builtin",
@@ -227,20 +221,17 @@ class SymbolAttributes {
     ): Unit =
     for ((name, sa) <- attr) {
       (name, sa) match {
-        case ("unused", _: SourceAttribute.Flag)                 => unused set true
-        case ("unused", _)                                       => cc.error(sa, "'unused' attribute is a flag")
-        case ("stacklimit", SourceAttribute.Expr(expr))          => stackLimit set expr
-        case ("stacklimit", _)                                   => cc.error(sa, "'stacklimit' attribute must be an expression")
-        case ("reclimit", SourceAttribute.Expr(expr))            => recLimit set expr
-        case ("reclimit", _)                                     => cc.error(sa, "'reclimit' attribute must be an expression")
-        case ("toplevel", _: SourceAttribute.Flag)               => topLevel set true
-        case ("toplevel", _)                                     => cc.error(sa, "'toplevel' attribute is a flag")
-        case ("liftsrams", _: SourceAttribute.Flag)              => liftSrams set true
-        case ("liftsrams", _)                                    => cc.error(sa, "'liftsrams' attribute is a flag")
-        case ("pipelinestorage", SourceAttribute.Slices(slices)) => pipelineStorage set slices
-        case ("pipelinestorage", _) =>
-          cc.error(sa, "'pipelinestorage' attribute must be a list of slices")
-        case _ => cc.error(sa, s"Unknown attribute '$name'")
+        case ("unused", _: SourceAttribute.Flag)        => unused set true
+        case ("unused", _)                              => cc.error(sa, "'unused' attribute is a flag")
+        case ("stacklimit", SourceAttribute.Expr(expr)) => stackLimit set expr
+        case ("stacklimit", _)                          => cc.error(sa, "'stacklimit' attribute must be an expression")
+        case ("reclimit", SourceAttribute.Expr(expr))   => recLimit set expr
+        case ("reclimit", _)                            => cc.error(sa, "'reclimit' attribute must be an expression")
+        case ("toplevel", _: SourceAttribute.Flag)      => topLevel set true
+        case ("toplevel", _)                            => cc.error(sa, "'toplevel' attribute is a flag")
+        case ("liftsrams", _: SourceAttribute.Flag)     => liftSrams set true
+        case ("liftsrams", _)                           => cc.error(sa, "'liftsrams' attribute is a flag")
+        case _                                          => cc.error(sa, s"Unknown attribute '$name'")
       }
     }
 

@@ -1,13 +1,14 @@
-network pipeline_0 {
+network pipeline_01 {
   in  bool i;
   out bool o;
 
   pipeline bool p;
 
   new fsm a {
+    out sync ready pipeline;
     void main() {
       p = i.read();
-      write;
+      out.write();
       fence;
     }
   }
@@ -15,9 +16,11 @@ network pipeline_0 {
   a -> b;
 
   new fsm b {
+    in sync ready pipeline;
+    out sync ready pipeline;
     void main() {
-      read;
-      write;
+      in.read();
+      out.write();
       fence;
     }
   }
@@ -25,8 +28,9 @@ network pipeline_0 {
   b -> c;
 
   new fsm c {
+    in sync ready pipeline;
     void main() {
-      read;
+      in.read();
       o.write(p);
       fence;
     }
@@ -35,7 +39,7 @@ network pipeline_0 {
 }
 
 // @fec/golden {{{
-// module pipeline_0(
+// module pipeline_01(
 //   input  wire clk,
 //   input  wire rst,
 //   input  wire i,

@@ -35,14 +35,15 @@ final class CheckerSpec extends AnyFreeSpec with AlogicTest {
   val checker = new Checker
 
   "The Checker should" - {
-    "check usage of read/write statements" - {
+    "check usage of pipeline port declarations" - {
       "accepting them in nested entities" - {
-        for (word <- List("read", "write")) {
-          word in {
+        for (desc <- List("in pipeline", "out pipeline")) {
+          desc in {
             val tree = s"""network a {
                           |  new fsm b {
+                          |    $desc;
                           |    void main() {
-                          |      $word;
+                          |      fence;
                           |    }
                           |  }
                           |}""".stripMargin.asTree[Desc]
@@ -55,26 +56,19 @@ final class CheckerSpec extends AnyFreeSpec with AlogicTest {
       }
 
       "rejecting them in root entities" - {
-        for (word <- List("read", "write")) {
-          word in {
+        for (desc <- List("in pipeline", "out pipeline")) {
+          desc in {
             val tree = s"""fsm b {
+                          |  $desc;
                           |  void main() {
-                          |    $word;
+                          |    fence;
                           |  }
                           |}""".stripMargin.asTree[Desc]
 
-            val node = tree rewrite checker
-
-            inside(node) {
-              case DescEntity(_, _, List(EntDesc(main))) =>
-                inside(main) {
-                  case DescFunc(_, _, _, _, List(stmt)) =>
-                    stmt shouldBe StmtError()
-                }
-            }
+            tree rewrite checker
 
             cc.messages.loneElement should beThe[Error](
-              s"${word.capitalize} statements are only allowed inside nested entities"
+              s"Pipeline ports are only allowed inside nested entities"
             )
           }
         }

@@ -1,16 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2018-2019 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2020 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
 //
-// Module: Alogic Compiler
-// Author: Geza Lore
-//
 // DESCRIPTION:
-//
-// Desugar rewrites basic syntactic sugar into their equivalent form.
+//  Rewrite basic syntactic sugar into their equivalent normal form.
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.passes
@@ -18,6 +13,7 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Types.TypeEntity
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.unreachable
 
@@ -57,19 +53,36 @@ final class Desugar(implicit cc: CompilerContext) extends StatelessTreeTransform
       val defnInstance = TypeAssigner(DefnInstance(symbol) withLoc tree.loc)
       Thicket(List(defnEntity, defnInstance))
 
+    // Ensure connections only have 1 right hand side. Make cardinal port
+    // references explicit.
+    case EntConnect(lhs, rhss) =>
+      val newLhs = lhs.tpe match {
+        case _: TypeEntity => TypeAssigner(ExprSel(lhs, "out", Nil) withLoc lhs.loc)
+        case _             => lhs
+      }
+      Thicket(
+        rhss map { rhs =>
+          val newRhs = rhs.tpe match {
+            case _: TypeEntity => TypeAssigner(ExprSel(rhs, "in", Nil) withLoc rhs.loc)
+            case _             => rhs
+          }
+          val loc = tree.loc.copy(end = rhs.loc.end)
+          TypeAssigner(EntConnect(newLhs, newRhs :: Nil) withLoc loc)
+        }
+      )
+
     //
     case _ => tree
   }
 
-  override def finalCheck(tree: Tree): Unit = {
-    // Should have removed all StmtLet, StmtUpdate, StmtPost
-    tree visit {
-      case node: StmtLet       => cc.ice(node, s"StmtLet remains")
-      case node: StmtUpdate    => cc.ice(node, s"StmtUpdate remains")
-      case node: StmtPost      => cc.ice(node, s"StmtPost remains")
-      case node: DeclSingleton => cc.ice(node, s"DeclSingleton remains")
-      case node: DefnSingleton => cc.ice(node, s"DefnSingleton remains")
-    }
+  override def finalCheck(tree: Tree): Unit = tree visit {
+    case node: StmtLet           => cc.ice(node, s"StmtLet remains")
+    case node: StmtUpdate        => cc.ice(node, s"StmtUpdate remains")
+    case node: StmtPost          => cc.ice(node, s"StmtPost remains")
+    case node: DeclSingleton     => cc.ice(node, s"DeclSingleton remains")
+    case node: DefnSingleton     => cc.ice(node, s"DefnSingleton remains")
+    case EntConnect(_, _ :: Nil) => // Ok
+    case node @ EntConnect(_, _) => cc.ice(node, "Connect with multiple rhs remains")
   }
 
 }

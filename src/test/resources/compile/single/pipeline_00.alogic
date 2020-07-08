@@ -1,0 +1,49 @@
+network pipeline_00 {
+  in  bool i;
+  out bool o;
+
+  pipeline bool p;
+
+  new fsm a {
+    out sync ready pipeline;
+    void main() {
+      p = i.read();
+      out.write();
+      fence;
+    }
+  }
+
+  a -> b;
+
+  new fsm b {
+    in sync ready pipeline;
+    void main() {
+      in.read();
+      o.write(p);
+      fence;
+    }
+  }
+}
+// @fec/golden {{{
+// module pipeline_00(
+//   input  wire clk,
+//   input  wire rst,
+//   input  wire i,
+//   output reg  o
+// );
+//
+//   reg p_a_q;
+//   reg p_b_q;
+//
+//   always @(posedge clk) begin
+//     if (rst) begin
+//       p_a_q <= 1'b0;
+//       o <= 1'b0;
+//     end else begin
+//       p_a_q <= i;
+//       o <= p_a_q;
+//     end
+//   end
+//
+// endmodule
+// }}}

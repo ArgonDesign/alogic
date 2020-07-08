@@ -164,34 +164,6 @@ trait ExprOps { this: Expr =>
     case _                        => false
   }
 
-  def isValidConnectRhs(implicit cc: CompilerContext): Boolean = this match {
-    case _: ExprSym => true
-    case ExprIndex(expr, idx) =>
-      expr.isValidConnectRhs && idx.isKnownConst
-    case ExprSlice(expr, lIdx, _, rIdx) =>
-      expr.isValidConnectRhs && lIdx.isKnownConst && rIdx.isKnownConst
-    case ExprSel(expr, _, idxs) =>
-      expr.isValidConnectRhs && (idxs forall { _.isValidConnectRhs })
-    case ExprCat(parts) => parts forall { _.isValidConnectRhs }
-    case _              => false
-  }
-
-  def isValidConnectLhs(implicit cc: CompilerContext): Boolean = this match {
-    case _: ExprSym => true
-    case ExprIndex(expr, idx) =>
-      expr.isValidConnectLhs && idx.isKnownConst
-    case ExprSlice(expr, lIdx, _, rIdx) =>
-      expr.isValidConnectLhs && lIdx.isKnownConst && rIdx.isKnownConst
-    case ExprSel(expr, _, idxs) =>
-      expr.isValidConnectLhs && (idxs forall { _.isValidConnectLhs })
-    case ExprCat(parts)   => parts forall { _.isValidConnectLhs }
-    case ExprRep(_, expr) => expr.isValidConnectLhs
-    case _: ExprInt       => true
-    case call @ ExprCall(ExprSym(symbol), _) if symbol.isBuiltin =>
-      cc.isValidConnectLhsBuiltinCall(call)
-    case _ => false
-  }
-
   // Is this expression a known constant
   def isKnownConst(implicit cc: CompilerContext): Boolean = this match {
     case _: ExprNum  => true
@@ -313,6 +285,8 @@ trait ExprOps { this: Expr =>
     case _                    => None
   }
 
+  // True if this we know the value of this expression (same as value.isDefined)
+  def isKnown(implicit cc: CompilerContext): Boolean = value.isDefined
 }
 
 trait ExprObjOps { self: Expr.type =>
@@ -405,10 +379,14 @@ trait ExprObjOps { self: Expr.type =>
   final object InstancePortSel {
 
     def unapply(expr: ExprSel)(implicit cc: CompilerContext): Option[(Symbol, Symbol)] =
-      expr partialMatch {
-        case ExprSel(ExprSym(iSymbol), sel, idxs) if iSymbol.kind.isEntity =>
-          assert(idxs.isEmpty)
-          (iSymbol, iSymbol.kind.asEntity(sel).get)
+      expr match {
+        case ExprSel(ExprSym(symbol), sel, idxs) =>
+          assert(idxs.isEmpty, "InstancePortSel cannot be used before elaboration")
+          symbol.kind match {
+            case kind: TypeEntity => kind(sel) map { (symbol, _) }
+            case _                => None
+          }
+        case _ => None
       }
 
   }

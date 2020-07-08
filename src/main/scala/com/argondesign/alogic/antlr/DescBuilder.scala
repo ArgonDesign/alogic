@@ -93,27 +93,38 @@ object DescBuilder extends BaseBuilder[DescContext, Desc] with ChainingSyntax {
 
       override def visitDescIn(ctx: DescInContext): Desc = {
         val ident = identOrElse(ctx.ident, Ident("in", Nil) withLoc ctx.in.loc)
-        val spec = ExprBuilder(ctx.expr)
         val fct = FCTVisitor(ctx.fct)
         val loc = ctx.loc.copy(point = ident.loc.start)
-        DescIn(ident, spec, fct) withLoc loc
+        if (ctx.spec != null) {
+          val spec = ExprBuilder(ctx.spec)
+          DescIn(ident, spec, fct) withLoc loc
+        } else {
+          DescPipeIn(ident, fct) withLoc loc
+        }
       }
 
       override def visitDescOut(ctx: DescOutContext): Desc = {
         val ident = identOrElse(ctx.ident, Ident("out", Nil) withLoc ctx.out.loc)
-        val spec = ExprBuilder(ctx.expr(0))
         val fct = FCTVisitor(ctx.fct)
         val stt = STTVisitor(ctx.stt)
-        val initOpt = if (ctx.init != null) Some(ExprBuilder(ctx.init)) else None
         val loc = ctx.loc.copy(point = ident.loc.start)
-        DescOut(ident, spec, fct, stt, initOpt) withLoc loc
+        if (ctx.spec != null) {
+          val spec = ExprBuilder(ctx.spec)
+          val initOpt = if (ctx.init != null) Some(ExprBuilder(ctx.init)) else None
+          DescOut(ident, spec, fct, stt, initOpt) withLoc loc
+        } else {
+          if (ctx.init != null) {
+            cc.error(ctx.init, "Pipeline output port cannot have an initializer")
+          }
+          DescPipeOut(ident, fct, stt) withLoc loc
+        }
       }
 
-      override def visitDescPipeline(ctx: DescPipelineContext): Desc = {
+      override def visitDescPipeVar(ctx: DescPipeVarContext): Desc = {
         val ident = IdentBuilder(ctx.ident)
         val spec = ExprBuilder(ctx.expr)
         val loc = ctx.loc.copy(point = ident.loc.start)
-        DescPipeline(ident, spec) withLoc loc
+        DescPipeVar(ident, spec) withLoc loc
       }
 
       override def visitDescParam(ctx: DescParamContext): Desc = {

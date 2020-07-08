@@ -226,7 +226,9 @@ object Symbols {
           case DeclVal(_, spec)            => spec.tpe.asType.kind
           case DeclIn(_, spec, fc)         => TypeIn(spec.tpe.asType.kind, fc)
           case DeclOut(_, spec, fc, st)    => TypeOut(spec.tpe.asType.kind, fc, st)
-          case DeclPipeline(_, spec)       => TypePipeline(spec.tpe.asType.kind)
+          case DeclPipeVar(_, spec)        => TypePipeVar(spec.tpe.asType.kind)
+          case DeclPipeIn(_, fc)           => TypePipeIn(fc)
+          case DeclPipeOut(_, fc, st)      => TypePipeOut(fc, st)
           case DeclConst(_, spec)          => TypeConst(spec.tpe.asType.kind)
           case DeclGen(_, spec)            => TypeGen(spec.tpe.asType.kind)
           case DeclArray(_, elem, size)    => TypeArray(elem.tpe.asType.kind, size.value.get)
@@ -396,7 +398,7 @@ object Symbols {
       if (x eq y) {
         0
       } else {
-        (x.loc.start compare y.loc.start) match {
+        implicitly[Ordering[Loc]].compare(x.loc, y.loc) match {
           case 0 =>
             (x.name compare y.name) ensuring (_ != 0, "Different Symbols must not compare equal")
           case result => result

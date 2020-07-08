@@ -16,12 +16,10 @@
 package com.argondesign.alogic.core
 
 import com.argondesign.alogic.ast.Trees
-import com.argondesign.alogic.core.StorageTypes.StorageSlice
 
 sealed trait SourceAttribute extends Locationed
 
 object SourceAttribute {
   final case class Flag() extends SourceAttribute
   final case class Expr(expr: Trees.Expr) extends SourceAttribute
-  final case class Slices(slices: List[StorageSlice]) extends SourceAttribute
 }

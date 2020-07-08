@@ -1,0 +1,26 @@
+network cardinal_ports_3 {
+  in       bool;
+  out wire bool;
+
+  new fsm inner {
+    in  bool;
+
+    void main() {
+      out = ~in;
+      fence;
+    }
+  }
+
+  in -> inner.in;
+}
+// @fec/golden {{{
+//  module cardinal_ports_3(
+//    input  wire in,
+//    output wire out
+//  );
+//
+//    assign out = ~in;
+//
+//  endmodule
+// }}}
+

@@ -81,4 +81,23 @@ case class Loc(
 object Loc {
   final val synthetic = Loc("<synthetic>", 0, Source("", ""), 0, 0, 0)
   final val unknown = Loc("<unknown>", 0, Source("", ""), 0, 0, 0)
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Ordering for Loc
+  //////////////////////////////////////////////////////////////////////////////
+
+  implicit val locOrdering: Ordering[Loc] = (x: Loc, y: Loc) => {
+    val compare1 = x.file compare y.file
+    if (compare1 != 0) {
+      compare1
+    } else {
+      val compare2 = x.start compare y.start
+      if (compare2 != 0) {
+        compare2
+      } else {
+        x.end compare y.end
+      }
+    }
+  }
+
 }

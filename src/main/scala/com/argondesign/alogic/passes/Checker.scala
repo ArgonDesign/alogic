@@ -136,7 +136,7 @@ final class Checker(implicit cc: CompilerContext) extends StatefulTreeTransforme
       variantStack.top match {
         case EntityVariant.Fsm =>
           desc match {
-            case _: DescPipeline  => entErr(desc, "pipeline variable declarations")
+            case _: DescPipeVar   => entErr(desc, "pipeline variable declarations")
             case _: DescEntity    => entErr(desc, "nested entities")
             case _: DescInstance  => entErr(desc, "instantiations")
             case _: DescSingleton => entErr(desc, "singleton entities")
@@ -155,9 +155,9 @@ final class Checker(implicit cc: CompilerContext) extends StatefulTreeTransforme
           }
         case EntityVariant.Ver =>
           desc match {
-            case _: DescVar      => entErr(desc, "variable declarations")
-            case _: DescPipeline => entErr(desc, "pipeline variable declarations")
-            case _: DescArray    => entErr(desc, "distributed memory declarations")
+            case _: DescVar     => entErr(desc, "variable declarations")
+            case _: DescPipeVar => entErr(desc, "pipeline variable declarations")
+            case _: DescArray   => entErr(desc, "distributed memory declarations")
             case DescSram(_, _, _, st) if st != StorageTypeWire =>
               entErr(desc, "registered SRAM declarations")
             case _: DescEntity    => entErr(desc, "nested entities")
@@ -190,7 +190,7 @@ final class Checker(implicit cc: CompilerContext) extends StatefulTreeTransforme
       desc match {
         case _: DescIn        => clsErr(desc, "port declarations")
         case _: DescOut       => clsErr(desc, "port declarations")
-        case _: DescPipeline  => clsErr(desc, "pipeline declarations")
+        case _: DescPipeVar   => clsErr(desc, "pipeline declarations")
         case _: DescArray     => clsErr(desc, "distributed memory declarations")
         case _: DescSram      => clsErr(desc, "SRAM declarations")
         case _: DescEntity    => clsErr(desc, "entity declarations")
@@ -252,21 +252,9 @@ final class Checker(implicit cc: CompilerContext) extends StatefulTreeTransforme
         case _ => tree
       }
 
-    case StmtRead() =>
-      if (variantStack.lengthIs <= 1) {
-        cc.error(tree, "Read statements are only allowed inside nested entities")
-        StmtError() withLoc tree.loc
-      } else {
-        tree
-      }
-
-    case StmtWrite() =>
-      if (variantStack.lengthIs <= 1) {
-        cc.error(tree, "Write statements are only allowed inside nested entities")
-        StmtError() withLoc tree.loc
-      } else {
-        tree
-      }
+    case _: DescPipeIn | _: DescPipeOut if variantStack.lengthIs <= 1 =>
+      cc.error(tree, "Pipeline ports are only allowed inside nested entities")
+      tree
 
     case StmtDesc(desc) =>
       desc match {

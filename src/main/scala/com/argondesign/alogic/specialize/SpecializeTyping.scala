@@ -132,13 +132,23 @@ private[specialize] object SpecializeTyping {
             DefnOut(ref.symbol, initOpt) withLoc desc.loc
           )
         }
-      case DescPipeline(ref, spec) =>
+      case DescPipeVar(ref, spec) =>
         specializeExpr(spec) { specialSpec =>
           TypingSpecializationComplete(
-            DeclPipeline(ref.symbol, specialSpec) withLoc desc.loc,
-            DefnPipeline(ref.symbol) withLoc desc.loc
+            DeclPipeVar(ref.symbol, specialSpec) withLoc desc.loc,
+            DefnPipeVar(ref.symbol) withLoc desc.loc
           )
         }
+      case DescPipeIn(ref, fc) =>
+        TypingSpecializationComplete(
+          DeclPipeIn(ref.symbol, fc) withLoc desc.loc,
+          DefnPipeIn(ref.symbol) withLoc desc.loc
+        )
+      case DescPipeOut(ref, fc, st) =>
+        TypingSpecializationComplete(
+          DeclPipeOut(ref.symbol, fc, st) withLoc desc.loc,
+          DefnPipeOut(ref.symbol) withLoc desc.loc
+        )
       case _: DescParam     => unreachable
       case _: DescParamType => unreachable
       case DescConst(ref, spec, init) =>

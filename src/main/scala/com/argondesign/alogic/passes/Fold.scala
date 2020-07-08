@@ -68,13 +68,12 @@ final class Fold(implicit cc: CompilerContext) extends StatelessTreeTransformer 
           ) withLoc tree.loc
         }
       }
-    case EntConnect(lhs, rhss) =>
+    case EntConnect(lhs, rhs :: Nil) =>
       Some {
         TypeAssigner {
-          EntConnect(simplifyAssignmentSource(lhs), rhss map { _.simplifyLValue }) withLoc tree.loc
+          EntConnect(simplifyAssignmentSource(lhs), rhs.simplifyLValue :: Nil) withLoc tree.loc
         }
       }
-
     // Fold 'if' with known conditions
     case StmtIf(cond, thenStmts, elseStmts) =>
       cond.value match {

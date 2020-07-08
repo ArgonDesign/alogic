@@ -56,7 +56,7 @@ object Types {
   // format: off
   case class TypeIn(kind: TypeFund, fc: FlowControlType) extends Type with TypeInImpl
   case class TypeOut(kind: TypeFund, fc: FlowControlType, st: StorageType) extends Type with TypeOutImpl
-  case class TypePipeline(kind: TypeFund) extends Type
+  case class TypePipeVar(kind: TypeFund) extends Type
   case class TypeParam(kind: TypeFund) extends Type
   case class TypeConst(kind: TypeFund) extends Type
   case class TypeGen(kind: TypeFund) extends Type
@@ -64,6 +64,13 @@ object Types {
   case class TypeSram(kind: TypeFund, size: BigInt, st: StorageType) extends Type with TypeSramImpl
   case class TypeStack(kind: TypeFund, size: BigInt) extends Type with TypeStackImpl
   // format: on
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Type port types
+  //////////////////////////////////////////////////////////////////////////////
+
+  case class TypePipeIn(fc: FlowControlType) extends Type with TypePipeInImpl
+  case class TypePipeOut(fc: FlowControlType, st: StorageType) extends Type with TypePipeOutImpl
 
   //////////////////////////////////////////////////////////////////////////////
   // Type wrappers for semantic disambiguation
@@ -218,6 +225,7 @@ trait ExtensionType extends CompoundType {
 
 trait TypeInImpl extends ExtensionType { this: TypeIn =>
 
+  // TODO: fix symbol Ids, here and below
   final protected def extensionSymbols: List[Symbol] = fc match {
     case FlowControlTypeNone =>
       val read = new Symbol(-1, Loc.synthetic, "read")
@@ -271,6 +279,58 @@ trait TypeOutImpl extends ExtensionType { this: TypeOut =>
     }
   }
 
+}
+
+trait TypePipeInImpl extends CompoundType { this: TypePipeIn =>
+
+  final private val _publicSymbols: List[Symbol] = fc match {
+    case FlowControlTypeNone =>
+      val read = new Symbol(-1, Loc.synthetic, "read")
+      read.kind = TypeCombFunc(read, TypeVoid, Nil)
+      List(read)
+    case FlowControlTypeValid | FlowControlTypeReady =>
+      val read = new Symbol(-1, Loc.synthetic, "read")
+      read.kind = TypeCombFunc(read, TypeVoid, Nil)
+      val valid = new Symbol(-1, Loc.synthetic, "valid")
+      valid.kind = TypeUInt(1)
+      List(read, valid)
+  }
+
+  final def publicSymbols(implicit cc: CompilerContext): List[Symbol] = _publicSymbols
+}
+
+trait TypePipeOutImpl extends CompoundType { this: TypePipeOut =>
+
+  final private val _publicSymbols: List[Symbol] = fc match {
+    case FlowControlTypeNone =>
+      val write = new Symbol(-1, Loc.synthetic, "write")
+      write.kind = TypeCombFunc(write, TypeVoid, Nil)
+      List(write)
+    case FlowControlTypeValid =>
+      val write = new Symbol(-1, Loc.synthetic, "write")
+      write.kind = TypeCombFunc(write, TypeVoid, Nil)
+      val valid = new Symbol(-1, Loc.synthetic, "valid")
+      valid.kind = TypeUInt(1)
+      List(write, valid)
+    case FlowControlTypeReady =>
+      val write = new Symbol(-1, Loc.synthetic, "write")
+      write.kind = TypeCombFunc(write, TypeVoid, Nil)
+      val valid = new Symbol(-1, Loc.synthetic, "valid")
+      valid.kind = TypeUInt(1)
+      val full = new Symbol(-1, Loc.synthetic, "full")
+      full.kind = TypeUInt(1)
+      val empty = new Symbol(-1, Loc.synthetic, "empty")
+      empty.kind = TypeUInt(1)
+      val space = new Symbol(-1, Loc.synthetic, "space")
+      val nSlices = st match {
+        case StorageTypeSlices(slices) => slices.length
+        case _                         => 1
+      }
+      space.kind = TypeUInt(nSlices)
+      List(write, valid, full, empty, space)
+  }
+
+  final def publicSymbols(implicit cc: CompilerContext): List[Symbol] = _publicSymbols
 }
 
 trait TypeStackImpl extends CompoundType { this: TypeStack =>

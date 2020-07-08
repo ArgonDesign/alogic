@@ -67,12 +67,14 @@ object Trees {
   sealed trait Desc extends Tree with DescImpl with DescOps { val ref: Ref }
 
   object Desc extends DescObjOps
-  
+
   case class DescVar(ref: Ref, spec: Expr, initOpt: Option[Expr]) extends Desc
   case class DescVal(ref: Ref, spec: Expr, init: Expr) extends Desc
   case class DescIn(ref: Ref, spec: Expr, fc: FlowControlType) extends Desc
   case class DescOut(ref: Ref, spec: Expr, fc: FlowControlType, st: StorageType, initOpt: Option[Expr]) extends Desc
-  case class DescPipeline(ref: Ref, spec: Expr) extends Desc
+  case class DescPipeVar(ref: Ref, spec: Expr) extends Desc
+  case class DescPipeIn(ref: Ref, fc: FlowControlType) extends Desc
+  case class DescPipeOut(ref: Ref, fc: FlowControlType, st: StorageType) extends Desc
   case class DescParam(ref: Ref, spec: Expr, initOpt: Option[Expr]) extends Desc
   case class DescParamType(ref: Ref, initOpt: Option[Expr]) extends Desc
   case class DescConst(ref: Ref, spec: Expr, init: Expr) extends Desc
@@ -103,7 +105,9 @@ object Trees {
   case class DeclVal(symbol: Symbol, spec: Expr) extends Decl
   case class DeclIn(symbol: Symbol, spec: Expr, fc: FlowControlType) extends Decl
   case class DeclOut(symbol: Symbol, spec: Expr, fc: FlowControlType, st: StorageType) extends Decl
-  case class DeclPipeline(symbol: Symbol, spec: Expr) extends Decl
+  case class DeclPipeVar(symbol: Symbol, spec: Expr) extends Decl
+  case class DeclPipeIn(symbol: Symbol, fc: FlowControlType) extends Decl
+  case class DeclPipeOut(symbol: Symbol, fc: FlowControlType, st: StorageType) extends Decl
 //case class DeclParam(symbol: Symbol, spec: Expr) extends Decl
 //case class DeclParamType(ref: Ref, initOpt: Option[Expr]) extends Desc
   case class DeclConst(symbol: Symbol, spec: Expr) extends Decl
@@ -129,12 +133,14 @@ object Trees {
   sealed trait Defn extends Tree with DefnImpl with DefnOps { val symbol: Symbol }
 
   object Defn extends DefnObjOps
-  
+
   case class DefnVar(symbol: Symbol, initOpt: Option[Expr]) extends Defn
   case class DefnVal(symbol: Symbol, init: Expr) extends Defn
   case class DefnIn(symbol: Symbol) extends Defn
   case class DefnOut(symbol: Symbol, initOpt: Option[Expr]) extends Defn
-  case class DefnPipeline(symbol: Symbol) extends Defn
+  case class DefnPipeVar(symbol: Symbol) extends Defn
+  case class DefnPipeIn(symbol: Symbol) extends Defn
+  case class DefnPipeOut(symbol: Symbol) extends Defn
 //case class DefnParam(symbol: Symbol, initOpt: Option[Expr]) extends Defn
 //case class DefnParamType(ref: Ref, initOpt: Option[Expr]) extends Desc
   case class DefnConst(symbol: Symbol, init: Expr) extends Defn
@@ -158,7 +164,7 @@ object Trees {
 
   // format: off
   sealed trait Gen extends Tree with GenOps
-  
+
   case class GenIf(cond: Expr, thenItems: List[Tree], elseItems: List[Tree]) extends Gen
   case class GenFor(inits: List[Stmt], cond: Expr, steps: List[Stmt], body: List[Tree]) extends Gen
   case class GenRange(inits: List[Stmt], op: String, end: Expr, body: List[Tree]) extends Gen
@@ -243,8 +249,6 @@ object Trees {
   case class StmtPost(expr: Expr, op: String) extends Stmt
   case class StmtDelayed(lhs: Expr, rhs: Expr) extends Stmt
   case class StmtOutcall(output: Expr, func: Expr, inputs: List[Expr]) extends Stmt
-  case class StmtRead() extends Stmt
-  case class StmtWrite() extends Stmt
   case class StmtExpr(expr: Expr) extends Stmt
   case class StmtWait(cond: Expr) extends Stmt
   case class StmtAssertion(assertion: Assertion) extends Stmt

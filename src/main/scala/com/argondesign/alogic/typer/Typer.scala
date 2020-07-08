@@ -396,7 +396,9 @@ final class Typer(implicit cc: CompilerContext) extends StatefulTreeTransformer 
           case DeclVal(_, spec)       => checkType(spec)
           case DeclIn(_, spec, _)     => checkType(spec)
           case DeclOut(_, spec, _, _) => checkType(spec)
-          case DeclPipeline(_, spec)  => checkType(spec)
+          case DeclPipeVar(_, spec)   => checkType(spec)
+          case _: DeclPipeIn          => true
+          case _: DeclPipeOut         => true
           case DeclConst(_, spec)     => checkType(spec)
           case DeclGen(_, spec)       => checkType(spec)
           case DeclArray(_, elem, size) =>
@@ -496,7 +498,7 @@ final class Typer(implicit cc: CompilerContext) extends StatefulTreeTransformer 
           error(tree, _, "'fence' block must contain only combinational statements")
         }
 
-      case conn: EntConnect => ConnectChecks(conn)
+      case conn: EntConnect => if (!ConnectChecks(conn)) error(tree)
 
       //////////////////////////////////////////////////////////////////////////
       // Stmt

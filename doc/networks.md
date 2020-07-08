@@ -163,6 +163,37 @@ In the above:
   width greater than 1, and
   - the port `pin_2` on the entity `a` is a struct type with a member named `z`.
 
+### Connecting cardinal ports
+
+Cardinal ports simplify port connection expressions. If the left hand side of a
+connection refers to an instance (as opposed to a port of the instance), it is
+considered a reference to the cardinal output port of the instance. Similarly
+on the right hand side of a connection, the cardinal input port is used.
+Cardinal ports can also be referenced explicitly if necessary:
+
+```
+fsm add_3 {
+  in  u8
+  out u8;
+  void main() {
+    out = in + 3;
+    fence;
+  }
+}
+
+network cardinal_connect {
+    in  u8 i;
+    out u8 o;
+
+    a = new add_3;
+    b = new add_3;
+
+    i -> a; // Same as: i -> a.in;
+    a -> b; // Same as: a.out -> b.in;
+    b -> o; // Same as: b.out -> o;
+}
+```
+
 ### Nested FSMs
 
 Networks can also contain nested `fsm` definitions, which can be instantiated in

@@ -1,11 +1,13 @@
-network unnamed_io {
-  in bool;
+network cardinal_ports_2 {
+  in  bool;
   out bool;
 
-  in -> out;
+  new network inner {
+    in -> out;
+  }
 }
 // @fec/golden {{{
-//  module unnamed_io(
+//  module cardinal_ports_2(
 //    input  wire in,
 //    output wire out
 //  );

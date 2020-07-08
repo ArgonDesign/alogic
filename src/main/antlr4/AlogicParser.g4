@@ -43,26 +43,25 @@ attributes : '(*' attr (',' attr)* '*)' ;
 attr
   : IDENTIFIER              # AttrFlag
   | IDENTIFIER '=' expr     # AttrExpr
-  | IDENTIFIER '=' slices   # AttrSlices
   ;
 
 descbase
-  : expr ident ('=' init=expr)? ';'                                     # DescVar
-  | in='in' fct? expr ident? ';'                                        # DescIn
-  | out='out' fct? stt? expr ident? ('=' init=expr)? ';'                # DescOut
-  | 'pipeline' expr ident ';'                                           # DescPipeline
-  | 'param' expr ident ('=' init=expr)?  ';'                            # DescParam
-  | 'param' 'type' ident ('=' init=expr)?  ';'                          # DescParamType
-  | 'const' expr ident '=' expr  ';'                                    # DescConst
-  | expr ident '[' expr ']' ';'                                         # DescArr
-  | 'sram' (wire='wire')? expr ident '[' expr ']' ';'                   # DescSram
-  | 'typedef' expr ident ';'                                            # DescType
-  | entity_keyword ident '{' ent* '}'                                   # DescEntity
-  | 'struct' ident '{' rec* '}'                                         # DescRecord
-  | ident '=' 'new' expr ';'                                            # DescInstance
-  | 'new' entity_keyword ident '{' ent* '}'                             # DescSingleton
-  | (stat='static')? expr ident '(' formal_arguments? ')' '{' stmt* '}' # DescFuncAlogic
-  | 'import' expr IDENTIFIER '('formal_arguments? ')' ';'               # DescFuncImport
+  : expr ident ('=' init=expr)? ';'                                             # DescVar
+  | in='in' fct? (spec=expr | 'pipeline') ident? ';'                            # DescIn
+  | out='out' fct? stt? (spec=expr | 'pipeline') ident? ('=' init=expr)? ';'    # DescOut
+  | 'pipeline' expr ident ';'                                                   # DescPipeVar
+  | 'param' expr ident ('=' init=expr)?  ';'                                    # DescParam
+  | 'param' 'type' ident ('=' init=expr)?  ';'                                  # DescParamType
+  | 'const' expr ident '=' expr  ';'                                            # DescConst
+  | expr ident '[' expr ']' ';'                                                 # DescArr
+  | 'sram' (wire='wire')? expr ident '[' expr ']' ';'                           # DescSram
+  | 'typedef' expr ident ';'                                                    # DescType
+  | entity_keyword ident '{' ent* '}'                                           # DescEntity
+  | 'struct' ident '{' rec* '}'                                                 # DescRecord
+  | ident '=' 'new' expr ';'                                                    # DescInstance
+  | 'new' entity_keyword ident '{' ent* '}'                                     # DescSingleton
+  | (stat='static')? expr ident '(' formal_arguments? ')' '{' stmt* '}'         # DescFuncAlogic
+  | 'import' expr IDENTIFIER '('formal_arguments? ')' ';'                       # DescFuncImport
   ;
 
 fct
@@ -235,7 +234,7 @@ expr
   | expr '[' idx=expr ']'                                       # ExprIndex
   | expr '[' lidx=expr op=(':' | '-:' | '+:') ridx=expr ']'     # ExprSlice
   // Select
-  | expr '.' ident                                              # ExprSelect
+  | expr '.' (ident | inout=('in' | 'out'))                     # ExprSel
   // Operators
   | op=('+' | '-' | '~' | '!' | '&' | '|' | '^' | '\'' ) expr   # ExprUnary
   | expr op='\'' expr                                           # ExprBinary

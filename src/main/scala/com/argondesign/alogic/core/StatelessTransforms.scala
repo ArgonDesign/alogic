@@ -22,13 +22,11 @@ import com.argondesign.alogic.transform.SimplifyExpr
 trait StatelessTransforms { this: CompilerContext =>
   val simpifyExpr: StatelessTreeTransformer = new SimplifyExpr()(cc = this)
 
-  val portCheckA: StatelessTreeTransformer = new PortCheckA()(cc = this)
   val replaceUnaryTicks: StatelessTreeTransformer = new ReplaceUnaryTicks()(cc = this)
   val resolvePolyFunc: StatelessTreeTransformer = new ResolvePolyFunc()(cc = this)
   val desugar: StatelessTreeTransformer = new Desugar()(cc = this)
   val fold: StatelessTreeTransformer = new Fold()(cc = this)
-  val portCheckB: StatelessTreeTransformer = new PortCheckB()(cc = this)
-  val convertMultiConnect: StatelessTreeTransformer = new ConvertMultiConnect()(cc = this)
+  val portCheck: StatelessTreeTransformer = new PortCheck()(cc = this)
   val simplifyCat: StatelessTreeTransformer = new SimplifyCat()(cc = this)
   val inferImplications: StatelessTreeTransformer = new InferImplications()(cc = this)
   val propagateImplications: StatelessTreeTransformer = new PropagateImplications()(cc = this)
