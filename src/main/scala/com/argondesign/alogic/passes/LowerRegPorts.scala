@@ -69,11 +69,11 @@ final class LowerRegPorts(implicit cc: CompilerContext) extends StatefulTreeTran
 
     case EntDefn(defn @ DefnOut(symbol, initOpt)) if oRegs contains symbol =>
       oRegs.get(symbol) map { rSymbol =>
-        // Add register definition and connect
+        // Add register definition and assignment
         val oDefn = EntDefn(defn.copy(initOpt = None))
         val rDefn = EntDefn(rSymbol.mkDefn(initOpt))
-        val conn = EntConnect(ExprSym(rSymbol), List(ExprSym(symbol)))
-        Thicket(List(oDefn, rDefn, conn)) regularize tree.loc
+        val assign = EntAssign(ExprSym(symbol), ExprSym(rSymbol))
+        Thicket(List(oDefn, rDefn, assign)) regularize tree.loc
       } getOrElse tree
 
     case _ => tree

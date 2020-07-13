@@ -32,8 +32,8 @@ final class LowerVariables(implicit cc: CompilerContext) extends StatefulTreeTra
 
   override def skip(tree: Tree): Boolean = tree match {
     // We do not replace _q with _d in connects, connects always use the _q
-    case _: EntConnect => true
-    case _             => false
+    case _: EntAssign => true
+    case _            => false
   }
 
   private val resetFlops = new ListBuffer[(Symbol, Symbol, Expr)]()
@@ -67,8 +67,8 @@ final class LowerVariables(implicit cc: CompilerContext) extends StatefulTreeTra
 
         // Mark local symbols driven by Connect as combinational nets
         for {
-          EntConnect(_, List(rhs)) <- defn.connects
-          symbol <- WrittenSymbols(rhs)
+          EntAssign(lhs, _) <- defn.assigns
+          symbol <- WrittenSymbols(lhs)
           if symbol.kind.isInt
         } {
           symbol.attr.combSignal set true

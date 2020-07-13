@@ -141,15 +141,10 @@ object SyncRegFactory extends ChainingSyntax {
       EntDefn
     }
 
-    val connects = if (kind != TypeVoid) {
-      List(
-        EntConnect(pRef, List(opRef)),
-        EntConnect(vRef, List(opvRef))
-      )
+    val assigns = if (kind != TypeVoid) {
+      List(EntAssign(opRef, pRef), EntAssign(opvRef, vRef))
     } else {
-      List(
-        EntConnect(vRef, List(opvRef))
-      )
+      List(EntAssign(opvRef, vRef))
     }
 
     val entitySymbol = cc.newSymbol(name, loc)
@@ -157,7 +152,7 @@ object SyncRegFactory extends ChainingSyntax {
     val defn = DefnEntity(
       entitySymbol,
       EntityVariant.Fsm,
-      defns ::: EntCombProcess(statements) :: connects
+      defns ::: EntCombProcess(statements) :: assigns
     ) regularize loc
     (decl, defn)
   }

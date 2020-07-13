@@ -201,6 +201,7 @@ object Trees {
   case class EntDefn(defn: Defn) extends Ent
   case class EntGen(gen: Gen) extends Ent
   case class EntConnect(lhs: Expr, rhs: List[Expr]) extends Ent
+  case class EntAssign(lhs: Expr, rhs: Expr) extends Ent
   case class EntCombProcess(stmts: List[Stmt]) extends Ent
   case class EntClockedProcess(clk: Expr, rstOpt: Option[Expr], stmts: List[Stmt]) extends Ent
   case class EntAssertion(assertion: Assertion) extends Ent

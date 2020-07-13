@@ -111,15 +111,15 @@ final class AddClockAndResetB(
         defn.body.iterator concat {
           defn.instances flatMap {
             case Defn(iSymbol) =>
-              val clkConn = EntConnect(
-                ExprSym(clk),
-                List(ExprSym(iSymbol) sel "clk")
+              val clkAssign = EntAssign(
+                ExprSym(iSymbol) sel "clk",
+                ExprSym(clk)
               ) regularize Loc.synthetic
-              val rstConn = EntConnect(
-                ExprSym(rst),
-                List(ExprSym(iSymbol) sel cc.rst)
+              val rstAssign = EntAssign(
+                ExprSym(iSymbol) sel cc.rst,
+                ExprSym(rst)
               ) regularize Loc.synthetic
-              Iterator(clkConn, rstConn)
+              Iterator(clkAssign, rstAssign)
           }
         }
       }

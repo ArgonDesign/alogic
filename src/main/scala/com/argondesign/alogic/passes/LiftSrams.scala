@@ -128,7 +128,7 @@ final class LiftSramsTo(
     case _                     => false
   }
 
-  var newInstances: List[(Symbol, Iterator[EntConnect])] = _
+  var newInstances: List[(Symbol, Iterator[EntAssign])] = _
 
   override protected def transform(tree: Tree): Tree = tree match {
     // Update instances
@@ -156,14 +156,14 @@ final class LiftSramsTo(
         // Create the connections
         val connects = for (pSymbol <- lKind.publicSymbols.iterator) yield {
           val iPortName = lSymbol.name + cc.sep + pSymbol.name
-          val connect = pSymbol.kind match {
+          val assign = pSymbol.kind match {
             case _: TypeIn =>
-              EntConnect(portRef(iSymbol, iPortName), List(portRef(nSymbol, pSymbol.name)))
+              EntAssign(portRef(nSymbol, pSymbol.name), portRef(iSymbol, iPortName))
             case _: TypeOut =>
-              EntConnect(portRef(nSymbol, pSymbol.name), List(portRef(iSymbol, iPortName)))
+              EntAssign(portRef(iSymbol, iPortName), portRef(nSymbol, pSymbol.name))
             case _ => unreachable
           }
-          (connect regularize lSymbol.loc).asInstanceOf[EntConnect]
+          (assign regularize lSymbol.loc).asInstanceOf[EntAssign]
         }
         nSymbol -> connects
       }

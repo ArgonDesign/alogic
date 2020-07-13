@@ -133,7 +133,7 @@ object StackFactory extends ChainingSyntax {
       )
     )
 
-    val conn = EntConnect(sRefs.head, List(qRef))
+    val assign = EntAssign(qRef, sRefs.head)
 
     val decls = pusDecl :: popDecl :: dDecl :: qDecl :: sDecls
     val defns = (pusDefn :: popDefn :: dDefn :: qDefn :: sDefns) map EntDefn
@@ -143,7 +143,7 @@ object StackFactory extends ChainingSyntax {
     val defn = DefnEntity(
       entitySymbol,
       EntityVariant.Fsm,
-      EntCombProcess(statements) :: conn :: defns
+      EntCombProcess(statements) :: assign :: defns
     ) regularize loc
     (decl, defn)
   }

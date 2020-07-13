@@ -240,16 +240,16 @@ class LiftEntitiesA(
               outerSymbol.kind match {
                 case _: TypeIn =>
                   Some(
-                    EntConnect(
-                      ExprSym(outerSymbol),
-                      List(ExprSym(defn.symbol) sel requiredSymbol.name)
+                    EntAssign(
+                      ExprSym(defn.symbol) sel requiredSymbol.name,
+                      ExprSym(outerSymbol)
                     ) regularize defn.loc
                   )
                 case _: TypeOut =>
                   Some(
-                    EntConnect(
-                      ExprSym(defn.symbol) sel requiredSymbol.name,
-                      List(ExprSym(outerSymbol))
+                    EntAssign(
+                      ExprSym(outerSymbol),
+                      ExprSym(defn.symbol) sel requiredSymbol.name
                     ) regularize defn.loc
                   )
                 case _: TypeConst    => None

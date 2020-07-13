@@ -388,11 +388,11 @@ final class LowerFlowControlA(
                 loweredSymbolOpts match {
                   case (pSymbolOpt, Some(vSymbol), rSymbolOpt) =>
                     (pSymbolOpt.iterator map { pSymbol =>
-                      EntConnect(iRef sel "op", List(ExprSym(pSymbol)))
+                      EntAssign(ExprSym(pSymbol), iRef sel "op")
                     }) ++ Iterator.single {
-                      EntConnect(iRef sel s"op${sep}valid", List(ExprSym(vSymbol)))
+                      EntAssign(ExprSym(vSymbol), iRef sel s"op${sep}valid")
                     } ++ (rSymbolOpt.iterator map { rSymbol =>
-                      EntConnect(ExprSym(rSymbol), List(iRef sel s"op${sep}ready"))
+                      EntAssign(iRef sel s"op${sep}ready", ExprSym(rSymbol))
                     })
                   case _ => unreachable
                 }
@@ -536,31 +536,31 @@ final class LowerFlowControlB(
       }
 
     // Connection
-    case EntConnect(lhs, List(rhs)) =>
+    case EntAssign(lhs, rhs) =>
       Some {
         // Expand inter-entity connections
-        val pLhs = extract(lhs, payloadSymbol)
         val pRhs = extract(rhs, payloadSymbol)
+        val pLhs = extract(lhs, payloadSymbol)
 
-        val vLhs = extract(lhs, validSymbol)
         val vRhs = extract(rhs, validSymbol)
+        val vLhs = extract(lhs, validSymbol)
 
-        val bLhs = extract(lhs, readySymbol)
         val bRhs = extract(rhs, readySymbol)
+        val bLhs = extract(lhs, readySymbol)
 
-        val pConn = pLhs flatMap { lhs =>
-          pRhs map { rhs =>
-            EntConnect(lhs, List(rhs)) regularize tree.loc
+        val pConn = pRhs flatMap { rhs =>
+          pLhs map { lhs =>
+            EntAssign(lhs, rhs) regularize tree.loc
           }
         }
-        val vConn = vLhs flatMap { lhs =>
-          vRhs map { rhs =>
-            EntConnect(lhs, List(rhs)) regularize tree.loc
+        val vConn = vRhs flatMap { rhs =>
+          vLhs map { lhs =>
+            EntAssign(lhs, rhs) regularize tree.loc
           }
         }
-        val bConn = bLhs flatMap { lhs =>
-          bRhs map { rhs =>
-            EntConnect(rhs, List(lhs)) regularize tree.loc
+        val bConn = bRhs flatMap { lhs =>
+          bLhs map { rhs =>
+            EntAssign(lhs, rhs) regularize tree.loc
           }
         }
 

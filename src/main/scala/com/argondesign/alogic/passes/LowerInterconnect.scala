@@ -11,14 +11,13 @@
 // DESCRIPTION:
 //
 // Lower drivers of instance ports by allocating interconnect variables:
-//  - Ensure at least either one of source or destination of Connect
-//    is not an 'instance.port' (or concatenations of such), but a
-//    proper expression
+//  - Ensure at least either one of source or destination of EntAssign
+//    is not an 'instance.port' (or expression containing of such)
 //  - Allocate intermediate variables for instance port access in states
 //  - Ensure an 'instance.port' is only present in a single Connect
 // After this stage, the only place where an 'instance.port' reference can
-// remain is on either side of a Connect, and only one side of a connect
-// can be such an reference. Furthermore, there is only one Connect which
+// remain is on either side of a EntAssign, and only one side of an assign
+// can be such an reference. Furthermore, there is only one EntAssign
 // to any one 'instance.port'.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -45,14 +44,14 @@ final class LowerInterconnect(implicit cc: CompilerContext)
   private[this] val newSymbols = mutable.LinkedHashMap[(Symbol, String), Symbol]()
 
   // List of new Connect instances to emit
-  private[this] val newConnects = new ListBuffer[EntConnect]()
+  private[this] val newAssigns = new ListBuffer[EntAssign]()
 
   // Keep a stack of booleans indicating that we should
   // be allocating interconnect symbols in a connect expression
   private[this] val enableStack = mutable.Stack[Boolean]()
 
   // Keep track of whether we are in a connect expression
-  private[this] var inConnect = false
+  private[this] var inAssign = false
 
   // Convert interconnectClearOnStall attribute to a set
   private[this] lazy val interconnectClearOnStall = {
@@ -87,11 +86,11 @@ final class LowerInterconnect(implicit cc: CompilerContext)
           val ref = ExprSym(symbol) regularize loc
           val conn = TypeAssigner {
             pKind match {
-              case _: TypeIn => EntConnect(ref, List(select)) withLoc loc
-              case _         => EntConnect(select, List(ref)) withLoc loc
+              case _: TypeIn => EntAssign(select, ref) withLoc loc
+              case _         => EntAssign(ref, select) withLoc loc
             }
           }
-          newConnects append conn
+          newAssigns append conn
 
           // The new symbol
           symbol
@@ -104,32 +103,32 @@ final class LowerInterconnect(implicit cc: CompilerContext)
   override def enter(tree: Tree): Option[Tree] = {
     tree match {
       // Nested expression in a connect, do the same as before
-      case _: Expr if inConnect =>
+      case _: Expr if inAssign =>
         enableStack push enableStack.top
 
-      // a.b -> c.d, allocate on left hand side only
-      case EntConnect(InstancePortSel(_, _), List(InstancePortSel(_, _))) =>
-        assert(enableStack.isEmpty)
-        enableStack push false push true
-        inConnect = true
-
-      // a.b -> SOMETHING, allocate on right hand side only
-      case EntConnect(InstancePortSel(_, _), _) =>
+      // a.b <- c.d, allocate on right hand side only
+      case EntAssign(InstancePortSel(_, _), InstancePortSel(_, _)) =>
         assert(enableStack.isEmpty)
         enableStack push true push false
-        inConnect = true
+        inAssign = true
 
-      // SOMETHING -> a.b, allocate on left hand side only
-      case EntConnect(_, List(InstancePortSel(_, _))) =>
+      // SOMETHING <- a.b , allocate on left hand side only
+      case EntAssign(_, InstancePortSel(_, _)) =>
         assert(enableStack.isEmpty)
         enableStack push false push true
-        inConnect = true
+        inAssign = true
 
-      // SOMETHING -> SOMETHING, allocate on both sides
-      case _: EntConnect =>
+      // a.b <- SOMETHING, allocate on right hand side only
+      case EntAssign(InstancePortSel(_, _), _) =>
+        assert(enableStack.isEmpty)
+        enableStack push true push false
+        inAssign = true
+
+      // SOMETHING <- SOMETHING, allocate on both sides
+      case _: EntAssign =>
         assert(enableStack.isEmpty)
         enableStack push true push true
-        inConnect = true
+        inAssign = true
 
       case _ =>
     }
@@ -143,7 +142,7 @@ final class LowerInterconnect(implicit cc: CompilerContext)
       //////////////////////////////////////////////////////////////////////////
 
       case select @ InstancePortSel(_, _) =>
-        handlePortSelect(select, !inConnect || enableStack.top) map { nSymbol =>
+        handlePortSelect(select, !inAssign || enableStack.top) map { nSymbol =>
           ExprSym(nSymbol) regularize tree.loc
         } getOrElse tree
 
@@ -155,14 +154,14 @@ final class LowerInterconnect(implicit cc: CompilerContext)
         // Ensure that any 'instance.port' is only present on the left
         // of a single Connect instance (i.e.: there is only 1 sink variable)
 
-        val connects = defn.connects ++ newConnects.iterator
+        val assigns = defn.assigns ++ newAssigns.iterator
 
-        newConnects.clear()
+        newAssigns.clear()
 
         // Collect the sinks of all 'instance.port'
         val sinks: Map[ExprSel, List[Expr]] = {
-          val pairs = connects collect {
-            case EntConnect(select @ InstancePortSel(_, _), List(sink)) => select -> sink
+          val pairs = assigns collect {
+            case EntAssign(sink, select @ InstancePortSel(_, _)) => select -> sink
           }
           pairs.groupMap(_._1)(_._2)
         }
@@ -186,14 +185,14 @@ final class LowerInterconnect(implicit cc: CompilerContext)
         // Update all connect instances that reference on the left hand side
         // a port with multiple sinks, and the right hand side is not the
         // interconnect symbol
-        val modConnects = connects map {
-          case conn @ EntConnect(expr: ExprSel, List(rhs)) =>
+        val modAssigns = assigns map {
+          case assign @ EntAssign(lhs, expr: ExprSel) =>
             nMap get expr map { nSymbol =>
-              rhs match {
-                case ExprSym(`nSymbol`) => conn // Already the nSymbol, leave it alone
-                case _                  => EntConnect(ExprSym(nSymbol), List(rhs)) regularize rhs.loc
+              lhs match {
+                case ExprSym(`nSymbol`) => assign // Already the nSymbol, leave it alone
+                case _                  => EntAssign(lhs, ExprSym(nSymbol)) regularize lhs.loc
               }
-            } getOrElse conn
+            } getOrElse assign
           case other => other
         }
 
@@ -201,14 +200,14 @@ final class LowerInterconnect(implicit cc: CompilerContext)
         // add modified connects
         val body = List from {
           defn.body.iterator filter {
-            case _: EntConnect => false
-            case _             => true
+            case _: EntAssign => false
+            case _            => true
           } concat {
             newSymbols.valuesIterator map { symbol =>
               EntDefn(symbol.mkDefn) regularize symbol.loc
             }
           } concat {
-            modConnects.iterator
+            modAssigns.iterator
           }
         }
 
@@ -242,7 +241,7 @@ final class LowerInterconnect(implicit cc: CompilerContext)
       case _ => tree
     }
   } tap { _ =>
-    if (inConnect) {
+    if (inAssign) {
       tree match {
         // If we just processed an expression in a connect, pop the enableStack.
         // If we are now back to 2 elements, then this was the root expression
@@ -258,9 +257,9 @@ final class LowerInterconnect(implicit cc: CompilerContext)
           }
         // If we just processed a connect, mark we are
         // out and empty the enableStack
-        case _: EntConnect =>
+        case _: EntAssign =>
           assert(enableStack.size == 2)
-          inConnect = false
+          inAssign = false
           enableStack.pop()
           enableStack.pop()
         //
@@ -270,9 +269,9 @@ final class LowerInterconnect(implicit cc: CompilerContext)
   }
 
   override protected def finalCheck(tree: Tree): Unit = {
-    assert(newConnects.isEmpty)
+    assert(newAssigns.isEmpty)
     assert(enableStack.isEmpty)
-    assert(!inConnect)
+    assert(!inAssign)
 
     def check(tree: Tree): Unit = tree visit {
       case node @ ExprSel(ExprSym(symbol), _, _) if symbol.kind.isEntity =>
@@ -280,9 +279,9 @@ final class LowerInterconnect(implicit cc: CompilerContext)
     }
 
     tree visit {
-      case EntConnect(InstancePortSel(_, _), List(rhs)) => check(rhs)
-      case EntConnect(lhs, List(InstancePortSel(_, _))) => check(lhs)
-      case node: Expr                                   => check(node)
+      case EntAssign(lhs, InstancePortSel(_, _)) => check(lhs)
+      case EntAssign(InstancePortSel(_, _), rhs) => check(rhs)
+      case node: Expr                            => check(node)
     }
   }
 

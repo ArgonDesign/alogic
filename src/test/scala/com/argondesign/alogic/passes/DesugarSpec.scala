@@ -19,6 +19,7 @@ import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.core.Symbols.Symbol
 import org.scalatest.freespec.AnyFreeSpec
 
 final class DesugarSpec extends AnyFreeSpec with AlogicTest {
@@ -171,6 +172,90 @@ final class DesugarSpec extends AnyFreeSpec with AlogicTest {
             }
         }
       }
+    }
+
+    "rewrite -> connections as <- assignments" - {
+      for {
+        (connect, patterns) <- List[(String, List[PartialFunction[Any, Unit]])](
+          // format: off
+          ("i -> oa", List({ case EntAssign(ExprSym(Symbol("oa")), ExprSym(Symbol("i"))) => })),
+          ("i -> ob", List({ case EntAssign(ExprSym(Symbol("ob")), ExprSym(Symbol("i"))) => })),
+          ("i -> oa, ob", List({ case EntAssign(ExprSym(Symbol("oa")), ExprSym(Symbol("i"))) => },
+                               { case EntAssign(ExprSym(Symbol("ob")), ExprSym(Symbol("i"))) => })),
+          ("i -> oc, ob, oa", List({ case EntAssign(ExprSym(Symbol("oc")), ExprSym(Symbol("i"))) => },
+                                   { case EntAssign(ExprSym(Symbol("ob")), ExprSym(Symbol("i"))) => },
+                                   { case EntAssign(ExprSym(Symbol("oa")), ExprSym(Symbol("i"))) => })),
+          // format: on
+        )
+      } {
+        connect in {
+          desugar {
+            s"""network n {
+               |  in bool i;
+               |  out bool oa;
+               |  out bool ob;
+               |  out bool oc;
+               |  $connect;
+               |}"""
+          } collect {
+            case ent: EntAssign => ent
+          } tap { ents =>
+            ents should have length patterns.length
+            ents zip patterns foreach {
+              case (ent, pattern) => ent should matchPattern(pattern)
+            }
+          }
+          cc.messages shouldBe empty
+        }
+      }
+    }
+
+    "make cardinal ports explicit" - {
+      for {
+        (connect, pattern) <- List[(String, PartialFunction[Any, Unit])](
+          // format: off
+          ("i -> inner.ii", { case EntAssign(ExprSel(ExprSym(Symbol("inner")), "ii", Nil), ExprSym(Symbol("i"))) => }),
+          ("i -> inner.in", { case EntAssign(ExprSel(ExprSym(Symbol("inner")), "in", Nil), ExprSym(Symbol("i"))) => }),
+          ("i -> inner",    { case EntAssign(ExprSel(ExprSym(Symbol("inner")), "in", Nil), ExprSym(Symbol("i"))) => } ),
+          ("inner.oo  -> o", { case EntAssign(ExprSym(Symbol("o")), ExprSel(ExprSym(Symbol("inner")), "oo", Nil)) => }),
+          ("inner.out -> o", { case EntAssign(ExprSym(Symbol("o")), ExprSel(ExprSym(Symbol("inner")), "out", Nil)) => }),
+          ("inner     -> o", { case EntAssign(ExprSym(Symbol("o")), ExprSel(ExprSym(Symbol("inner")), "out", Nil)) => }),
+          ("inner.oo -> inner.ii", { case EntAssign(ExprSel(ExprSym(Symbol("inner")), "ii", Nil), ExprSel(ExprSym(Symbol("inner")), "oo", Nil)) => }),
+          ("inner.oo -> inner.in", { case EntAssign(ExprSel(ExprSym(Symbol("inner")), "in", Nil), ExprSel(ExprSym(Symbol("inner")), "oo", Nil)) => }),
+          ("inner.oo -> inner",    { case EntAssign(ExprSel(ExprSym(Symbol("inner")), "in", Nil), ExprSel(ExprSym(Symbol("inner")), "oo", Nil)) => }),
+          ("inner.out -> inner.ii", { case EntAssign(ExprSel(ExprSym(Symbol("inner")), "ii", Nil), ExprSel(ExprSym(Symbol("inner")), "out", Nil)) => }),
+          ("inner.out -> inner.in", { case EntAssign(ExprSel(ExprSym(Symbol("inner")), "in", Nil), ExprSel(ExprSym(Symbol("inner")), "out", Nil)) => }),
+          ("inner.out -> inner",    { case EntAssign(ExprSel(ExprSym(Symbol("inner")), "in", Nil), ExprSel(ExprSym(Symbol("inner")), "out", Nil)) => }),
+          ("inner -> inner.ii", { case EntAssign(ExprSel(ExprSym(Symbol("inner")), "ii", Nil), ExprSel(ExprSym(Symbol("inner")), "out", Nil)) => }),
+          ("inner -> inner.in", { case EntAssign(ExprSel(ExprSym(Symbol("inner")), "in", Nil), ExprSel(ExprSym(Symbol("inner")), "out", Nil)) => }),
+          ("inner -> inner",    { case EntAssign(ExprSel(ExprSym(Symbol("inner")), "in", Nil), ExprSel(ExprSym(Symbol("inner")), "out", Nil)) => }),
+          // format: on
+        )
+      } {
+        connect in {
+          desugar {
+            s"""network n {
+               |  in bool i;
+               |  out bool o;
+               |
+               |  new fsm inner {
+               |    in bool ii;
+               |    in bool;
+               |    out bool oo;
+               |    out bool;
+               |  }
+               |
+               |  $connect;
+               |}"""
+          } getFirst {
+            case ent: EntAssign => ent
+          } tap {
+            _ should matchPattern(pattern)
+          }
+          cc.messages shouldBe empty
+        }
+      }
+
     }
   }
 }

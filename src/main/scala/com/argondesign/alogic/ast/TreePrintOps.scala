@@ -266,6 +266,7 @@ trait TreePrintOps extends { this: Tree =>
     case EntDefn(defn)                            => v(defn)
     case EntGen(gen)                              => v(gen)
     case EntConnect(lhs, rhs)                     => s"${v(lhs)} -> ${vs(rhs)};"
+    case EntAssign(lhs, rhs)                      => s"${v(lhs)} <- ${v(rhs)};"
     case EntCombProcess(stmts)                    => block("comb-process", stmts)
     case EntClockedProcess(clk, None, stmts)      => block(s"clocked-process clk=${v(clk)}", stmts)
     case EntClockedProcess(clk, Some(rst), stmts) => block(s"clocked-process clk=${v(clk)} reset=${v(rst)}", stmts)

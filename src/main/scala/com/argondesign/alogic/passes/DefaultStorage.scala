@@ -32,7 +32,7 @@ final class DefaultStorage(implicit cc: CompilerContext) extends StatefulTreeTra
   // Set of output ports connected with '->'
   private[this] val connectedSet = mutable.Set[Symbol]()
 
-  private[this] var inConnect = false
+  private[this] var inAssign = false
 
   private[this] var entityVariant: EntityVariant.Type = _
 
@@ -41,11 +41,11 @@ final class DefaultStorage(implicit cc: CompilerContext) extends StatefulTreeTra
       case DefnEntity(_, variant, _) =>
         entityVariant = variant
 
-      case _: EntConnect =>
-        assert(!inConnect)
-        inConnect = true
+      case _: EntAssign =>
+        assert(!inAssign)
+        inAssign = true
 
-      case ExprSym(symbol) if symbol.kind.isOut && inConnect =>
+      case ExprSym(symbol) if symbol.kind.isOut && inAssign =>
         connectedSet add symbol
 
       case _ =>
@@ -54,9 +54,9 @@ final class DefaultStorage(implicit cc: CompilerContext) extends StatefulTreeTra
   }
 
   override def transform(tree: Tree): Tree = tree match {
-    case _: EntConnect =>
-      assert(inConnect)
-      inConnect = false
+    case _: EntAssign =>
+      assert(inAssign)
+      inAssign = false
       tree
 
     case decl @ DeclOut(symbol, _, fc, StorageTypeDefault) =>
@@ -76,7 +76,7 @@ final class DefaultStorage(implicit cc: CompilerContext) extends StatefulTreeTra
   }
 
   override def finalCheck(tree: Tree): Unit = {
-    assert(!inConnect)
+    assert(!inAssign)
     tree visitAll {
       case node @ DeclOut(_, _, _, StorageTypeDefault) =>
         cc.ice(node, "Default storage type remains")

@@ -159,7 +159,7 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatefulTreeTr
           }
         } concat {
           val aEnDefn = EntDefn(aEnSymbol.mkDefn) regularize defn.loc;
-          val aEnConnect = {
+          val aEnAssign = {
             val rstInactive = cc.settings.resetStyle match {
               case ResetStyle.AsyncHigh | ResetStyle.SyncHigh => !ExprSym(defn.rst.get)
               case ResetStyle.AsyncLow | ResetStyle.SyncLow   => ExprSym(defn.rst.get)
@@ -168,9 +168,9 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatefulTreeTr
               case Some(goSymbol) => ExprSym(goSymbol) && rstInactive
               case None           => rstInactive
             }
-            EntConnect(cond, ExprSym(aEnSymbol) :: Nil) regularize defn.loc
+            EntAssign(ExprSym(aEnSymbol), cond) regularize defn.loc
           }
-          Iterator(aEnDefn, aEnConnect)
+          Iterator(aEnDefn, aEnAssign)
         } concat {
           Iterator single {
             val asserts = List from {

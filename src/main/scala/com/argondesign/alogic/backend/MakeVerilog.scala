@@ -370,11 +370,11 @@ final class MakeVerilog(
   }
 
   private def emitConnects(body: CodeWriter): Unit = {
-    if (nonPortConnects.nonEmpty) {
+    if (nonPortAssigns.nonEmpty) {
       body.emitSection(1, "Connections") {
-        for (EntConnect(lhs, rhs :: Nil) <- nonPortConnects) {
-          val assignLhs = vexpr(rhs, indent = 1)
-          val assignRhs = vexpr(lhs, indent = 1)
+        for (EntAssign(lhs, rhs) <- nonPortAssigns) {
+          val assignLhs = vexpr(lhs, indent = 1)
+          val assignRhs = vexpr(rhs, indent = 1)
           body.emit(1)(s"assign $assignLhs = $assignRhs;")
         }
       }

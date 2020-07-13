@@ -319,7 +319,7 @@ final class LowerSrams(
           // Add connects for read data unpacking
           sramMap.valuesIterator collect {
             case SramStruct(sS, rS) =>
-              EntConnect(ExprSym(sS) sel "rdata", List(ExprSym(rS)))
+              EntAssign(ExprSym(rS), ExprSym(sS) sel "rdata")
           }
         } concat {
           // Add connects for reg driver
@@ -327,16 +327,16 @@ final class LowerSrams(
             sramMap.valuesIterator collect {
               case SramReg(sS, _, oS) =>
                 Iterator(
-                  EntConnect(ExprSym(oS) sel s"op${sep}valid", List(ExprSym(sS) sel "ce")),
-                  EntConnect(
-                    ExprSym(oS) sel s"op",
-                    List(ExprCat {
+                  EntAssign(ExprSym(sS) sel "ce", ExprSym(oS) sel s"op${sep}valid"),
+                  EntAssign(
+                    ExprCat(
                       List(
                         ExprSym(sS) sel "we",
                         ExprSym(sS) sel "addr",
                         ExprSym(sS) sel "wdata"
                       )
-                    })
+                    ),
+                    ExprSym(oS) sel s"op"
                   )
                 )
             }

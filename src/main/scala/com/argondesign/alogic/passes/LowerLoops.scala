@@ -25,10 +25,10 @@ final class LowerLoops(implicit cc: CompilerContext) extends StatefulTreeTransfo
 
   // TODO: Add back correct skip condition
   override def skip(tree: Tree): Boolean = tree match {
-    case _: Decl       => true
-    case _: Expr       => true
-    case _: EntConnect => true
-    case _             => false
+    case _: Decl      => true
+    case _: Expr      => true
+    case _: EntAssign => true
+    case _            => false
 
   }
 

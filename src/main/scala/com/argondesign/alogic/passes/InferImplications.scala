@@ -22,18 +22,20 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.Symbol
 
+import scala.annotation.tailrec
+
 final class InferImplications(implicit cc: CompilerContext) extends StatelessTreeTransformer {
 
   override def skip(tree: Tree): Boolean = tree match {
-    case _: DefnEntity                     => false
-    case EntConnect(_, List(ExprSym(rhs))) => rhs.kind.width != 1
-    case _                                 => true
+    case _: DefnEntity              => false
+    case EntAssign(ExprSym(lhs), _) => lhs.kind.width != 1
+    case _                          => true
   }
 
   override def transform(tree: Tree): Tree = {
     tree match {
-      case EntConnect(lhs, List(ExprSym(dst))) =>
-        lhs match {
+      case EntAssign(ExprSym(dst), rhs) =>
+        rhs match {
           case ExprSym(src) =>
             src.attr.implications.append((true, true, dst))
             src.attr.implications.append((false, false, dst))
@@ -49,6 +51,7 @@ final class InferImplications(implicit cc: CompilerContext) extends StatelessTre
 
       case defn: DefnEntity =>
         // Transitively propagate all implication relations within the entity
+        @tailrec
         def loop(): Unit = {
           val found = for {
             Defn(aSymbol) <- defn.defns

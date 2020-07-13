@@ -44,10 +44,10 @@ final class PropagateImplications(implicit cc: CompilerContext) extends Stateles
         }
 
         // populate them
-        defn.connects foreach {
-          case EntConnect(InstancePortSel(iSymbol, pSymbol), List(ExprSym(nSymbol))) =>
+        defn.assigns foreach {
+          case EntAssign(ExprSym(nSymbol), InstancePortSel(iSymbol, pSymbol)) =>
             maps(iSymbol)(pSymbol) = nSymbol
-          case EntConnect(ExprSym(nSymbol), List(InstancePortSel(iSymbol, pSymbol))) =>
+          case EntAssign(InstancePortSel(iSymbol, pSymbol), ExprSym(nSymbol)) =>
             maps(iSymbol)(pSymbol) = nSymbol
           case _ =>
         }

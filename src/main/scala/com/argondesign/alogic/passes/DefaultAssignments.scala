@@ -52,9 +52,9 @@ object DefaultAssignments extends PairTransformerPass {
       (decl, defn)
     } else {
 
-      // Remove any nets driven through a connect
-      for (EntConnect(_, List(rhs)) <- entityDefn.connects) {
-        rhs.visit {
+      // Remove any nets driven through an assign
+      for (EntAssign(lhs, _) <- entityDefn.assigns) {
+        lhs.visit {
           case ExprSym(symbol) => needsDefault remove symbol
         }
       }
@@ -93,9 +93,9 @@ object DefaultAssignments extends PairTransformerPass {
       // default value otherwise zero.
       val initializeToDefault = {
         val symbolsDrivingConnect = Set from {
-          entityDefn.connects.iterator flatMap {
-            case EntConnect(lhs, _) =>
-              lhs.collect {
+          entityDefn.assigns.iterator flatMap {
+            case EntAssign(_, rhs) =>
+              rhs.collect {
                 case ExprSym(symbol) => symbol.attr.flop.getOrElse(symbol)
               }
           }

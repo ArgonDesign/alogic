@@ -408,6 +408,10 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
       val lhs = walk(node.lhs)
       val rhs = walk(node.rhs)
       TreeCopier(node)(lhs, rhs)
+    case node: EntAssign =>
+      val lhs = walk(node.lhs)
+      val rhs = walk(node.rhs)
+      TreeCopier(node)(lhs, rhs)
     case node: EntCombProcess =>
       val stmts = walk(node.stmts)
       TreeCopier(node)(stmts)

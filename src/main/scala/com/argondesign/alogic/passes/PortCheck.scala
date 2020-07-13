@@ -42,11 +42,11 @@ final class PortCheck(implicit cc: CompilerContext) extends StatelessTreeTransfo
   }
 
   // Check ports that can only have a single sink indeed only have a single sink
-  private def checkMultipleSinks(connects: List[EntConnect]): Unit = {
-    connects.groupBy(_.lhs).iterator filter {
+  private def checkMultipleSinks(assigns: List[EntAssign]): Unit = {
+    assigns.groupBy(_.rhs).iterator filter {
       case (_, _ :: Nil) => false // Single sink
-      case (lhs, _) =>
-        lhs.tpe match {
+      case (rhs, _) =>
+        rhs.tpe match {
           case TypeIn(_, FlowControlTypeReady)     => true
           case TypeOut(_, FlowControlTypeReady, _) => true
           case _                                   => false
@@ -54,15 +54,15 @@ final class PortCheck(implicit cc: CompilerContext) extends StatelessTreeTransfo
     } foreach {
       case (_, conns) =>
         val sorted = conns.sortBy(_.loc)
-        cc.error(sorted.head.lhs, "Port with 'sync ready' flow control has multiple sinks")
+        cc.error(sorted.head.rhs, "Port with 'sync ready' flow control has multiple sinks")
         sorted.iterator.zipWithIndex foreach {
           case (conn, idx) => cc.note(conn, s"The ${ordinal(idx + 1)} connection is here")
         }
     }
   }
 
-  private def checkMultipleDriversSimple(connects: List[EntConnect]): Unit = {
-    connects.groupBy(_.rhs.head).iterator filter {
+  private def checkMultipleDriversSimple(connects: List[EntAssign]): Unit = {
+    connects.groupBy(_.lhs).iterator filter {
       case (_, _ :: Nil)              => false // Single source
       case (_: ExprSym, _)            => true
       case (InstancePortSel(_, _), _) => true
@@ -70,7 +70,7 @@ final class PortCheck(implicit cc: CompilerContext) extends StatelessTreeTransfo
     } foreach {
       case (_, conns) =>
         val sorted = conns.sortBy(_.loc)
-        cc.error(sorted.head.rhs.head, "Port has multiple drivers")
+        cc.error(sorted.head.lhs, "Port has multiple drivers")
         sorted.iterator.zipWithIndex foreach {
           case (conn, idx) => cc.note(conn, s"The ${ordinal(idx + 1)} connection is here")
         }
@@ -96,9 +96,9 @@ final class PortCheck(implicit cc: CompilerContext) extends StatelessTreeTransfo
     //////////////////////////////////////////////////////////////////////////
 
     case decl: DeclEntity =>
-      val connects = decl.symbol.defn.asInstanceOf[DefnEntity].connects
-      checkMultipleSinks(connects)
-      checkMultipleDriversSimple(connects)
+      val assigns = decl.symbol.defn.asInstanceOf[DefnEntity].assigns
+      checkMultipleSinks(assigns)
+      checkMultipleDriversSimple(assigns)
       // TODO: Add back bitwise multiple driver analysis for complex port expressions
       None
 

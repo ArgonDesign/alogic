@@ -119,7 +119,7 @@ final class SimplifyCat(implicit cc: CompilerContext) extends StatelessTreeTrans
         }
       }
 
-    case EntConnect(ExprCat(oLhss), List(ExprCat(oRhss))) =>
+    case EntAssign(ExprCat(oLhss), ExprCat(oRhss)) =>
       val pairs = pairUp(tree.loc, oLhss, oRhss)
       if (pairs.lengthIs == 1) {
         tree
@@ -135,7 +135,7 @@ final class SimplifyCat(implicit cc: CompilerContext) extends StatelessTreeTrans
                 case head :: Nil => head
                 case _           => TypeAssigner(ExprCat(rhss) withLoc tree.loc)
               }
-              walk(TypeAssigner(EntConnect(lhs, List(rhs)) withLoc tree.loc)) match {
+              walk(TypeAssigner(EntAssign(lhs, rhs) withLoc tree.loc)) match {
                 case Thicket(ts) => ts
                 case t           => List(t)
               }

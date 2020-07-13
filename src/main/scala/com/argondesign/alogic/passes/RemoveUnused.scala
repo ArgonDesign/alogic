@@ -57,9 +57,9 @@ final class RemoveUnused(unusedSymbols: Set[Symbol])(implicit cc: CompilerContex
     // Remove connects driving only unused symbols
     ////////////////////////////////////////////////////////////////////////////
 
-    case EntConnect(_, List(rhs)) if WrittenSymbols(rhs) forall unusedSymbols => Some(Stump)
+    case EntAssign(lhs, _) if WrittenSymbols(lhs) forall unusedSymbols => Some(Stump)
 
-    case EntConnect(_, List(InstancePortSel(_, pSymbol))) if unusedSymbols(pSymbol) => Some(Stump)
+    case EntAssign(InstancePortSel(_, pSymbol), _) if unusedSymbols(pSymbol) => Some(Stump)
 
     case _ => None
   }
@@ -163,24 +163,24 @@ object RemoveUnused extends PairsTransformerPass {
           Iterator.single(symbol)
       }
       val partB = defn flatCollect {
-        case EntConnect(lhs, List(rhs: ExprCat)) =>
+        case EntAssign(lhs: ExprCat, rhs) =>
           // Concatenation on the right, everything is used, if only as a placeholder
           // TODO: if any symbol in the concatenation is used, then all are used
-          val lSymbols = lhs match {
+          val lSymbols = rhs match {
             case InstancePortSel(iSymbol, pSymbol) => Iterator(iSymbol, pSymbol)
-            case _                                 => ReadSymbols.rval(lhs)
+            case _                                 => ReadSymbols.rval(rhs)
           }
-          val rSymbols = rhs collect { case ExprSym(symbol) => symbol }
+          val rSymbols = lhs collect { case ExprSym(symbol) => symbol }
           lSymbols ++ rSymbols
-        case EntConnect(InstancePortSel(iSymbol, pSymbol), List(rhs)) =>
+        case EntAssign(lhs, InstancePortSel(iSymbol, pSymbol)) =>
           // instance.port on left hand side
-          Iterator(iSymbol, pSymbol) ++ ReadSymbols.lval(rhs)
-        case EntConnect(lhs, List(InstancePortSel(_, _))) =>
+          Iterator(iSymbol, pSymbol) ++ ReadSymbols.lval(lhs)
+        case EntAssign(InstancePortSel(_, _), rhs) =>
           // instance.port on right hand side
-          ReadSymbols.rval(lhs)
-        case EntConnect(lhs, List(rhs)) =>
-          // Everything on the left, but on the right only stuff that is read
-          ReadSymbols.rval(lhs) ++ ReadSymbols.lval(rhs)
+          ReadSymbols.rval(rhs)
+        case EntAssign(lhs, rhs) =>
+          // Everything on the right, but on the left only stuff that is read
+          ReadSymbols.rval(rhs) ++ ReadSymbols.lval(lhs)
         case stmt @ StmtAssign(_: ExprCat, _) =>
           // Concatenation on the left, everything is used, if only as a placeholder
           // TODO: if any symbol in the concatenation is used, then all are used

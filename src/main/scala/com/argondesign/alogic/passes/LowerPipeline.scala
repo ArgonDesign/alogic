@@ -170,10 +170,10 @@ final class LowerPipelineHost(implicit cc: CompilerContext) extends StatefulTree
     case host: DefnEntity if host.symbol.decl.decls exists { _.symbol.kind.isPipeVar } =>
       // Map from stage entity to next stage entity
       val nextMap: Map[Symbol, Symbol] = Map from {
-        host.connects collect {
-          case EntConnect(
-                InstancePortSel(iSymbolL, pSymbolL),
-                List(InstancePortSel(iSymbolR, pSymbolR))
+        host.assigns collect {
+          case EntAssign(
+                InstancePortSel(iSymbolR, pSymbolR),
+                InstancePortSel(iSymbolL, pSymbolL)
               ) if pSymbolL.kind.isPipeOut =>
             assert(pSymbolR.kind.isPipeIn)
             iSymbolL.kind.asEntity.symbol -> iSymbolR.kind.asEntity.symbol

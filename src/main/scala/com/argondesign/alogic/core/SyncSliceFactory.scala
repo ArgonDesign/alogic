@@ -64,8 +64,8 @@ object SyncSliceFactory extends ChainingSyntax {
       List(StmtAssign(vRef, (vRef | ipvRef) & ~oprRef))
   }
 
-  // slice connects for void payload:
-  private def voidConnects(
+  // slice net assignments for void payload:
+  private def voidAssigns(
       ss: StorageSlice,
       ipvRef: ExprSym,
       iprRef: ExprSym,
@@ -76,33 +76,33 @@ object SyncSliceFactory extends ChainingSyntax {
     )(
       implicit
       cc: CompilerContext
-    ): List[EntConnect] = ss match {
+    ): List[EntAssign] = ss match {
     case StorageSliceBub =>
-      // valid -> op_valid;
-      // ~valid -> ip_ready;
-      // ~valid -> space;
+      // op_valid <- valid;
+      // ip_ready <- ~valid;
+      // space <- ~valid;
       List(
-        EntConnect(vRef, List(opvRef)),
-        EntConnect(~vRef, List(iprRef)),
-        EntConnect(~vRef, List(sRef))
+        EntAssign(opvRef, vRef),
+        EntAssign(iprRef, ~vRef),
+        EntAssign(sRef, ~vRef)
       )
     case StorageSliceFwd =>
-      // valid -> op_valid;
-      // ~valid | op_ready -> ip_ready;
-      // ~valid -> space;
+      // op_valid <- valid;
+      // ip_ready <- ~valid | op_ready;
+      // space <- ~valid;
       List(
-        EntConnect(vRef, List(opvRef)),
-        EntConnect(~vRef | oprRef, List(iprRef)),
-        EntConnect(~vRef, List(sRef))
+        EntAssign(opvRef, vRef),
+        EntAssign(iprRef, ~vRef | oprRef),
+        EntAssign(sRef, ~vRef)
       )
     case StorageSliceBwd =>
-      // valid | ip_valid -> op_valid;
-      // ~valid -> ip_ready;
-      // ~valid -> space;
+      // op_valid <- valid | ip_valid;
+      // ip_ready <- ~valid;
+      // space <- ~valid;
       List(
-        EntConnect(vRef | ipvRef, List(opvRef)),
-        EntConnect(~vRef, List(iprRef)),
-        EntConnect(~vRef, List(sRef))
+        EntAssign(opvRef, vRef | ipvRef),
+        EntAssign(iprRef, ~vRef),
+        EntAssign(sRef, ~vRef)
       )
   }
 
@@ -160,7 +160,7 @@ object SyncSliceFactory extends ChainingSyntax {
   }
 
   // slice connects for non-void payload:
-  private def nonVoidConnects(
+  private def nonVoidAssigns(
       ss: StorageSlice,
       ipRef: ExprSym,
       opRef: ExprSym,
@@ -174,39 +174,39 @@ object SyncSliceFactory extends ChainingSyntax {
     )(
       implicit
       cc: CompilerContext
-    ): List[EntConnect] = ss match {
+    ): List[EntAssign] = ss match {
     case StorageSliceBub =>
-      // payload -> op ;
-      // valid -> op_valid;
-      // ~valid -> ip_ready;
-      // ~valid -> space;
+      // op <- payload;
+      // op_valid <- valid;
+      // ip_ready <- ~valid;
+      // space <- ~valid;
       List(
-        EntConnect(vRef, List(opvRef)),
-        EntConnect(pRef, List(opRef)),
-        EntConnect(~vRef, List(iprRef)),
-        EntConnect(~vRef, List(sRef))
+        EntAssign(opvRef, vRef),
+        EntAssign(opRef, pRef),
+        EntAssign(iprRef, ~vRef),
+        EntAssign(sRef, ~vRef)
       )
     case StorageSliceFwd =>
-      // payload -> op;
-      // valid -> op_valid;
-      // ~valid | op_ready -> ip_ready;
-      // ~valid -> space;
+      // op <- payload;
+      // op_valid <- valid;
+      // ip_ready <- ~valid | op_ready;
+      // space <- ~valid;
       List(
-        EntConnect(pRef, List(opRef)),
-        EntConnect(vRef, List(opvRef)),
-        EntConnect(~vRef | oprRef, List(iprRef)),
-        EntConnect(~vRef, List(sRef))
+        EntAssign(opRef, pRef),
+        EntAssign(opvRef, vRef),
+        EntAssign(iprRef, ~vRef | oprRef),
+        EntAssign(sRef, ~vRef)
       )
     case StorageSliceBwd =>
-      // valid ? payload : ip -> op;
-      // valid | ip_valid -> op_valid;
-      // ~valid -> ip_ready;
-      // ~valid -> space;
+      // op <- valid ? payload : ip;
+      // op_valid <- valid | ip_valid;
+      // ip_ready <- ~valid;
+      // space <- ~valid;
       List(
-        EntConnect(ExprCond(vRef, pRef, ipRef), List(opRef)),
-        EntConnect(vRef | ipvRef, List(opvRef)),
-        EntConnect(~vRef, List(iprRef)),
-        EntConnect(~vRef, List(sRef))
+        EntAssign(opRef, ExprCond(vRef, pRef, ipRef)),
+        EntAssign(opvRef, vRef | ipvRef),
+        EntAssign(iprRef, ~vRef),
+        EntAssign(sRef, ~vRef)
       )
   }
 
@@ -326,9 +326,9 @@ object SyncSliceFactory extends ChainingSyntax {
     }
 
     val connects = if (kind != TypeVoid) {
-      nonVoidConnects(ss, ipRef, opRef, ipvRef, iprRef, opvRef, oprRef, sRef, pRef, vRef)
+      nonVoidAssigns(ss, ipRef, opRef, ipvRef, iprRef, opvRef, oprRef, sRef, pRef, vRef)
     } else {
-      voidConnects(ss, ipvRef, iprRef, opvRef, oprRef, sRef, vRef)
+      voidAssigns(ss, ipvRef, iprRef, opvRef, oprRef, sRef, vRef)
     }
 
     val entitySymbol = cc.newSymbol(name, loc)
@@ -419,34 +419,34 @@ object SyncSliceFactory extends ChainingSyntax {
 
     val iRefs = iSymbols map ExprSym
 
-    val connects = new ListBuffer[EntConnect]()
+    val assigns = new ListBuffer[EntAssign]()
 
     // Create the cascade connection
     if (kind != TypeVoid) {
       // Payload
-      connects append EntConnect(ipRef, List(iRefs.head sel ipName))
+      assigns append EntAssign(iRefs.head sel ipName, ipRef)
       for ((aRef, bRef) <- iRefs zip iRefs.tail) {
-        connects append EntConnect(aRef sel opName, List(bRef sel ipName))
+        assigns append EntAssign(bRef sel ipName, aRef sel opName)
       }
-      connects append EntConnect(iRefs.last sel opName, List(opRef))
+      assigns append EntAssign(opRef, iRefs.last sel opName)
     }
 
     // Valid
-    connects append EntConnect(ipvRef, List(iRefs.head sel ipvName))
+    assigns append EntAssign(iRefs.head sel ipvName, ipvRef)
     for ((aRef, bRef) <- iRefs zip iRefs.tail) {
-      connects append EntConnect(aRef sel opvName, List(bRef sel ipvName))
+      assigns append EntAssign(bRef sel ipvName, aRef sel opvName)
     }
-    connects append EntConnect(iRefs.last sel opvName, List(opvRef))
+    assigns append EntAssign(opvRef, iRefs.last sel opvName)
 
     // Ready
-    connects append EntConnect(oprRef, List(iRefs.last sel oprName))
+    assigns append EntAssign(iRefs.last sel oprName, oprRef)
     for ((aRef, bRef) <- (iRefs zip iRefs.tail).reverse) {
-      connects append EntConnect(bRef sel iprName, List(aRef sel oprName))
+      assigns append EntAssign(aRef sel oprName, bRef sel iprName)
     }
-    connects append EntConnect(iRefs.head sel iprName, List(iprRef))
+    assigns append EntAssign(iprRef, iRefs.head sel iprName)
 
     // Build the space, empty and full signals
-    connects append EntConnect(ExprCat(iRefs.reverse map { _ sel "space" }), List(sRef))
+    assigns append EntAssign(sRef, ExprCat(iRefs.reverse map { _ sel "space" }))
 
     // Put it all together
     val decls = {
@@ -472,7 +472,7 @@ object SyncSliceFactory extends ChainingSyntax {
     val defn = DefnEntity(
       entitySymbol,
       EntityVariant.Net,
-      defns ::: connects.toList
+      defns ::: assigns.toList
     ) regularize loc
     (decl, defn)
   }

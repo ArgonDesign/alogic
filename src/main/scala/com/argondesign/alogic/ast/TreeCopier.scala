@@ -748,6 +748,14 @@ object TreeCopier {
     }
   }
 
+  def apply(tree: EntAssign)(lhs: Tree, rhs: Tree): EntAssign = {
+    if ((lhs eq tree.lhs) && (rhs eq tree.rhs)) {
+      tree
+    } else {
+      EntAssign(lhs.asInstanceOf[Expr], rhs.asInstanceOf[Expr]) withLoc tree.loc
+    }
+  }
+
   def apply(tree: EntCombProcess)(stmts: List[Tree]): EntCombProcess = {
     if (stmts eq tree.stmts) {
       tree

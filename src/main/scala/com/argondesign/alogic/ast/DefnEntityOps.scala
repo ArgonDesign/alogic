@@ -41,7 +41,7 @@ trait DefnEntityOps { this: DefnEntity =>
     case defn: DefnState => defn
   }
 
-  final lazy val connects: List[EntConnect] = body collect { case node: EntConnect => node }
+  final lazy val assigns: List[EntAssign] = body collect { case node: EntAssign => node }
 
   final lazy val combProcesses: List[EntCombProcess] = body collect {
     case node: EntCombProcess => node

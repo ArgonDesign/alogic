@@ -53,21 +53,21 @@ final class Desugar(implicit cc: CompilerContext) extends StatelessTreeTransform
       val defnInstance = TypeAssigner(DefnInstance(symbol) withLoc tree.loc)
       Thicket(List(defnEntity, defnInstance))
 
-    // Ensure connections only have 1 right hand side. Make cardinal port
-    // references explicit.
+    // Convert EntConnects to EntAssigns (note this swap the roder of LHS/RHS).
+    // Make cardinal port references explicit.
     case EntConnect(lhs, rhss) =>
-      val newLhs = lhs.tpe match {
+      val newRhs = lhs.tpe match {
         case _: TypeEntity => TypeAssigner(ExprSel(lhs, "out", Nil) withLoc lhs.loc)
         case _             => lhs
       }
       Thicket(
         rhss map { rhs =>
-          val newRhs = rhs.tpe match {
+          val newLhs = rhs.tpe match {
             case _: TypeEntity => TypeAssigner(ExprSel(rhs, "in", Nil) withLoc rhs.loc)
             case _             => rhs
           }
-          val loc = tree.loc.copy(end = rhs.loc.end)
-          TypeAssigner(EntConnect(newLhs, newRhs :: Nil) withLoc loc)
+          val loc = tree.loc.copy(end = rhs.loc.end, point = rhs.loc.start)
+          TypeAssigner(EntAssign(newLhs, newRhs) withLoc loc)
         }
       )
 
@@ -76,13 +76,12 @@ final class Desugar(implicit cc: CompilerContext) extends StatelessTreeTransform
   }
 
   override def finalCheck(tree: Tree): Unit = tree visit {
-    case node: StmtLet           => cc.ice(node, s"StmtLet remains")
-    case node: StmtUpdate        => cc.ice(node, s"StmtUpdate remains")
-    case node: StmtPost          => cc.ice(node, s"StmtPost remains")
-    case node: DeclSingleton     => cc.ice(node, s"DeclSingleton remains")
-    case node: DefnSingleton     => cc.ice(node, s"DefnSingleton remains")
-    case EntConnect(_, _ :: Nil) => // Ok
-    case node @ EntConnect(_, _) => cc.ice(node, "Connect with multiple rhs remains")
+    case node: StmtLet       => cc.ice(node, s"StmtLet remains")
+    case node: StmtUpdate    => cc.ice(node, s"StmtUpdate remains")
+    case node: StmtPost      => cc.ice(node, s"StmtPost remains")
+    case node: DeclSingleton => cc.ice(node, s"DeclSingleton remains")
+    case node: DefnSingleton => cc.ice(node, s"DefnSingleton remains")
+    case node: EntConnect    => cc.ice(node, "EntConnect with remains")
   }
 
 }

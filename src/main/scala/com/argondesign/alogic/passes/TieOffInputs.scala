@@ -49,8 +49,8 @@ object TieOffInputs extends PairTransformerPass {
     }
 
     // Remove all that are driven
-    entityDefn.connects.iterator foreach {
-      case EntConnect(_, InstancePortSel(iSymbol, pSymbol) :: Nil) =>
+    entityDefn.assigns.iterator foreach {
+      case EntAssign(InstancePortSel(iSymbol, pSymbol), _) =>
         needsTieOff -= ((iSymbol, pSymbol))
       case _ =>
     }
@@ -63,9 +63,9 @@ object TieOffInputs extends PairTransformerPass {
         entityDefn.body.iterator concat {
           needsTieOff.iterator map {
             case (iSymbol, pSymbol) =>
-              EntConnect(
-                pSymbol.attr.default.value,
-                (ExprSym(iSymbol) sel pSymbol.name) :: Nil
+              EntAssign(
+                ExprSym(iSymbol) sel pSymbol.name,
+                pSymbol.attr.default.value
               ) regularize iSymbol.loc
           }
         }

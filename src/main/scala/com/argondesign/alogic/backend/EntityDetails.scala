@@ -64,9 +64,9 @@ final class EntityDetails(
   lazy val hasInstances: Boolean = decl.instances.nonEmpty
 
   // Any symbol that is driven by a connect must be a net
-  lazy val netSymbols: List[Symbol] = defn.connects flatMap {
-    case EntConnect(_, rhs :: Nil) => rhs collect { case ExprSym(symbol) => symbol }
-    case _                         => Nil
+  lazy val netSymbols: List[Symbol] = defn.assigns flatMap {
+    case EntAssign(lhs, _) => lhs collect { case ExprSym(symbol) => symbol }
+    case _                 => Nil
   }
 
   // Group and sort interconnect symbols by instance, then by port declaration order
@@ -77,12 +77,12 @@ final class EntityDetails(
     } filter {
       _.attr.interconnect.isSet
     } flatMap { nSymbol =>
-      defn.connects collectFirst {
-        case EntConnect(ExprSel(ExprSym(iSymbol), sel, Nil), List(rhs))
-            if WrittenSymbols(rhs) contains nSymbol =>
+      defn.assigns collectFirst {
+        case EntAssign(lhs, ExprSel(ExprSym(iSymbol), sel, Nil))
+            if WrittenSymbols(lhs) contains nSymbol =>
           (iSymbol, sel, nSymbol)
-        case EntConnect(lhs, List(ExprSel(ExprSym(iSymbol), sel, Nil)))
-            if lhs.isLValueExpr && (WrittenSymbols(lhs) contains nSymbol) =>
+        case EntAssign(ExprSel(ExprSym(iSymbol), sel, Nil), rhs)
+            if rhs.isLValueExpr && (WrittenSymbols(rhs) contains nSymbol) =>
           (iSymbol, sel, nSymbol)
       }
     }
@@ -134,11 +134,11 @@ final class EntityDetails(
 
   // Function from 'instance symbol => port selector => connected expression'
   lazy val instancePortExpr: Map[Symbol, Map[String, Expr]] = {
-    val trip = defn.connects collect {
-      case EntConnect(InstancePortSel(iSymbol, pSymbol), List(rhs)) =>
-        (iSymbol, pSymbol.name, rhs)
-      case EntConnect(lhs, List(InstancePortSel(iSymbol, pSymbol))) =>
+    val trip = defn.assigns collect {
+      case EntAssign(lhs, InstancePortSel(iSymbol, pSymbol)) =>
         (iSymbol, pSymbol.name, lhs)
+      case EntAssign(InstancePortSel(iSymbol, pSymbol), rhs) =>
+        (iSymbol, pSymbol.name, rhs)
     }
 
     val grouped = trip.groupMap(_._1)({ case (_, s, e) => (s, e) })
@@ -152,10 +152,10 @@ final class EntityDetails(
 
   // Connects that are not of the form 'a.b -> SOMETHING' or 'SOMETHING -> a.b'
   // where a is an instance
-  lazy val nonPortConnects: List[EntConnect] = defn.connects filter {
-    case EntConnect(InstancePortSel(_, _), _)       => false
-    case EntConnect(_, List(InstancePortSel(_, _))) => false
-    case _                                          => true
+  lazy val nonPortAssigns: List[EntAssign] = defn.assigns filter {
+    case EntAssign(_, InstancePortSel(_, _)) => false
+    case EntAssign(InstancePortSel(_, _), _) => false
+    case _                                   => true
   }
 
   // Foreign functions referenced by this entity
