@@ -1,0 +1,27 @@
+network interconnect_check_12 {
+  struct ss {
+    u2 z;
+  }
+  struct s {
+    u2[2] x;
+    ss    y;
+  }
+  in u8 i;
+  out s o;
+
+  new fsm n {
+    in  s ii;
+    out s oo;
+    void main() {
+      oo = ii;
+      fence;
+    }
+  }
+
+  i[2+:2] -> n.ii.y;
+  i[0+:2] -> n.ii.y.z;
+  n.oo -> o;
+}
+// :21: ERROR: Bits 1:0 of 'n.ii__y__z' have multiple drivers
+// :21: NOTE: The 1st driver is here
+// :22: NOTE: The 2nd driver is here

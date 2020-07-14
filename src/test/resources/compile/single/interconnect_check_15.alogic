@@ -1,0 +1,11 @@
+network interconnect_check_15 {
+  const uint A = 1;
+  in  u8    i;
+  out u2[2] o;
+
+  i[0] -> o[0][1], o[0][A];
+}
+// :6: ERROR: Bits 1 of 'o' have multiple drivers
+// :6: NOTE: The 1st driver is here
+// :6: NOTE: The 2nd driver is here
+// :4: ERROR: Bits 3:2, 0 of 'o' are undriven

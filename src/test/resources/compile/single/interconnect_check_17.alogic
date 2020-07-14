@@ -1,0 +1,8 @@
+network interconnect_check_17 {
+  in  u8 i;
+  out u8 o;
+
+  i[0] -> o[1];
+  i[1] -> o[4];
+}
+// :3: ERROR: Bits 7:5, 3:2, 0 of 'o' are undriven

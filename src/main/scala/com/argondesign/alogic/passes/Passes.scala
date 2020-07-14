@@ -82,7 +82,6 @@ object Passes extends ChainingSyntax {
         RenameSymbols(last = false) andThen
         LowerVariables andThen
         LowerInterconnect andThen
-        // TODO: Bitwise multiple driver check
         InferImplications andThen
         PropagateImplications andThen
         RemoveStructuralSharing andThen
@@ -97,6 +96,7 @@ object Passes extends ChainingSyntax {
         Fold andThen
         RemoveUnused andThen
         Fold andThen
+        InterconnectCheck andThen
         CreateTemporaries andThen
         RenameSymbols(last = true) andThen
         WriteAux andThen

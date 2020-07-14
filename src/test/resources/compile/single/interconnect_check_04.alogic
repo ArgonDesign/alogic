@@ -1,0 +1,11 @@
+network interconnect_check_04 {
+  in  u8 i;
+  out u4 o;
+
+  i[1:0] -> o[1:0];
+  i[2]   -> o[1];
+}
+// :5: ERROR: Bits 1 of 'o' have multiple drivers
+// :5: NOTE: The 1st driver is here
+// :6: NOTE: The 2nd driver is here
+// :3: ERROR: Bits 3:2 of 'o' are undriven
