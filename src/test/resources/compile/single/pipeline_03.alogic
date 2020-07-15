@@ -1,4 +1,4 @@
-network pipeline_00 {
+network pipeline_03 {
   in  u2 i;
   out u2 o;
 
@@ -18,6 +18,18 @@ network pipeline_00 {
 
   new fsm b {
     in pipeline;
+    out pipeline;
+    void main() {
+      in.read();
+      out.write();
+      fence;
+    }
+  }
+
+  b -> c;
+
+  new fsm c {
+    in pipeline;
     void main() {
       in.read();
       o.write({q, p});
@@ -26,7 +38,7 @@ network pipeline_00 {
   }
 }
 // @fec/golden {{{
-// module pipeline_00(
+// module pipeline_03(
 //   input  wire        clk,
 //   input  wire        rst,
 //   input  wire  [1:0] i,
@@ -35,15 +47,20 @@ network pipeline_00 {
 //
 //   reg pa_q;
 //   reg qa_q;
+//   reg pb_q;
+//   reg qb_q;
 //
 //   always @(posedge clk) begin
 //     if (rst) begin
 //       pa_q <= 1'b0;
 //       qa_q <= 1'b0;
+//       pb_q <= 1'b0;
+//       qb_q <= 1'b0;
 //       o <= 2'b0;
 //     end else begin
 //       {pa_q, qa_q} <= i;
-//       o <= {qa_q, pa_q};
+//       {pb_q, qb_q} <= {pa_q, qa_q};
+//       o <= {qb_q, pb_q};
 //     end
 //   end
 //

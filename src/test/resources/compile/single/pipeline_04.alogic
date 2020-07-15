@@ -1,4 +1,4 @@
-network pipeline_01 {
+network pipeline_04 {
   in  sync u2 i;
   out sync u2 o;
 
@@ -18,6 +18,18 @@ network pipeline_01 {
 
   new fsm b {
     in sync pipeline;
+    out sync pipeline;
+    void main() {
+      in.read();
+      out.write();
+      fence;
+    }
+  }
+
+  b -> c;
+
+  new fsm c {
+    in sync pipeline;
     void main() {
       in.read();
       o.write({q, p});
@@ -26,7 +38,7 @@ network pipeline_01 {
   }
 }
 // @fec/golden {{{
-// module pipeline_01(
+// module pipeline_04(
 //    input   wire        clk,
 //    input   wire        rst,
 //    input   wire  [1:0] i,
@@ -38,12 +50,18 @@ network pipeline_01 {
 //    reg pa_q;
 //    reg qa_q;
 //    reg a__valid;
+//    reg pb_q;
+//    reg qb_q;
+//    reg b__valid;
 //
 //    always @(posedge clk) begin
 //      if (rst) begin
 //        pa_q <= 1'b0;
 //        qa_q <= 1'b0;
 //        a__valid <= 1'b0;
+//        pb_q <= 1'b0;
+//        qb_q <= 1'b0;
+//        b__valid <= 1'b0;
 //        o <= 2'b0;
 //        o__valid <= 1'b0;
 //      end else begin
@@ -52,9 +70,14 @@ network pipeline_01 {
 //          {pa_q, qa_q} <= i;
 //          a__valid <= 1'b1;
 //        end
-//        o__valid <= 1'b0;
+//        b__valid <= 1'b0;
 //        if (a__valid) begin
-//          o <= {qa_q, pa_q};
+//          {pb_q, qb_q} <= {pa_q, qa_q};
+//          b__valid <= 1'b1;
+//        end
+//        o__valid <= 1'b0;
+//        if (b__valid) begin
+//          o <= {qb_q, pb_q};
 //          o__valid <= 1'd1;
 //        end
 //      end

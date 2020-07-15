@@ -15,10 +15,13 @@ import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees.Expr.InstancePortSel
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.CompoundType
 import com.argondesign.alogic.core.Loc
+import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.typer.TypeAssigner
+import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.tailrec
 import scala.collection.immutable.ListMap
@@ -44,55 +47,82 @@ final class LowerPipelineStage(
     pipeAllSymbols map { symbol => symbol -> dupDropPipeVar(symbol) }
   }
 
-  private def makeRecordTypeSymbol(name: String, symbols: List[Symbol]): Symbol = {
-    require(symbols.nonEmpty)
-    val recSymbol = cc.newSymbol(name, Loc.synthetic)
-    val kind = TypeRecord(recSymbol, symbols map dupDropPipeVar)
-    recSymbol.kind = TypeType(kind)
-    recSymbol
+  private def makePortType(name: String, symbols: List[Symbol]): Type = symbols match {
+    case Nil => TypeVoid
+    case _ =>
+      val recSymbol = cc.newSymbol(name, Loc.synthetic)
+      val kind = TypeRecord(recSymbol, symbols map dupDropPipeVar)
+      recSymbol.kind = TypeType(kind)
+      kind
   }
 
-  private lazy val iPortTypeSymbol = makeRecordTypeSymbol("pipeline_in_t", pipeInSymbols)
-  private lazy val oPortTypeSymbol = makeRecordTypeSymbol("pipeline_out_t", pipeOutSymbols)
+  private lazy val iPortType = makePortType("pipeline_in_t", pipeInSymbols)
+  private lazy val oPortType = makePortType("pipeline_out_t", pipeOutSymbols)
 
   // New symbols added to the transformed entity
   private def newSymbols: Iterator[Symbol] = pipeSymbolMap.valuesIterator concat {
-    if (pipeInSymbols.nonEmpty) Iterator.single(iPortTypeSymbol) else Iterator.empty
+    iPortType match {
+      case TypeRecord(symbol, _) => Iterator.single(symbol)
+      case _                     => Iterator.empty
+    }
   } concat {
-    if (pipeOutSymbols.nonEmpty) Iterator.single(oPortTypeSymbol) else Iterator.empty
+    oPortType match {
+      case TypeRecord(symbol, _) => Iterator.single(symbol)
+      case _                     => Iterator.empty
+    }
   }
 
   override protected def replace(symbol: Symbol): Boolean = symbol.kind match {
-    case _: TypePipeIn | _: TypePipeOut => true
-    case _                              => false
+    case TypePipeIn(FlowControlTypeNone)     => pipeInSymbols.nonEmpty // Otherwise will be removed
+    case TypePipeOut(FlowControlTypeNone, _) => pipeOutSymbols.nonEmpty // Otherwise will be removed
+    case _: TypePipeIn | _: TypePipeOut      => true
+    case _                                   => false
   }
 
   override protected def enter(tree: Tree): Option[Tree] = tree match {
     // Rewrite 'TypePipeIn.read();' statements to '{....} = TypeIn.read();'
-    // Note TypeIPipeIn.read() is Type Void, but TypeIn.read() is not, so we
-    // need to do this at the statement level.
     case StmtExpr(call @ ExprCall(ExprSel(ExprSym(symbol), "read", Nil), Nil))
         if symbol.kind.isPipeIn =>
       Some {
-        // The lhs is all local copies of the incoming pipeline variable symbols
-        val lhs = ExprCat(pipeInSymbols map { symbol => ExprSym(pipeSymbolMap(symbol)) })
-        // The rhs is the call, but with the type update, 'walk' does just that
-        // because we are replacing the pipeline port symbols.
-        val rhs = walk(call).asInstanceOf[Expr]
-        // Form the assignment
-        StmtAssign(lhs, rhs) regularize tree.loc
+        if (symbol.kind.asPipeIn.fc == FlowControlTypeNone && iPortType == TypeVoid) {
+          // This port is being removed
+          Stump
+        } else {
+          // The rhs is the call, but with the type update, 'walk' does just
+          // that because we are replacing the pipeline port symbols.
+          val rhs = walk(call).asInstanceOf[Expr]
+          if (iPortType == TypeVoid) {
+            // The result type is void, so no assignment is required
+            StmtExpr(rhs) regularize tree.loc
+          } else {
+            // The lhs is all local copies of the incoming pipeline variable symbols
+            val lhs = ExprCat(pipeInSymbols map { symbol => ExprSym(pipeSymbolMap(symbol)) })
+            // Form the assignment
+            StmtAssign(lhs, rhs) regularize tree.loc
+          }
+        }
       }
 
-    // Rewrite 'TypePipeOut.write()' to 'TypeOut.write({....})'. Note both of
-    // these expressions are TypeVoid, so we cando it at the expression level.
-    case ExprCall(sel @ ExprSel(ExprSym(symbol), "write", Nil), Nil) if symbol.kind.isPipeOut =>
+    // Rewrite 'TypePipeOut.write();' statements to 'TypeOut.write({....});'.
+    case StmtExpr(ExprCall(sel @ ExprSel(ExprSym(symbol), "write", Nil), Nil))
+        if symbol.kind.isPipeOut =>
       Some {
-        // The argument is all local copies of the outgoing pipeline variable symbols
-        val arg = ArgP(ExprCat(pipeOutSymbols map { symbol => ExprSym(pipeSymbolMap(symbol)) }))
-        // The call target is the same port, but with the type updated, so 'walk' ...
-        val tgt = walk(sel).asInstanceOf[Expr]
-        // Form the call
-        ExprCall(tgt, arg :: Nil) regularize tree.loc
+        if (symbol.kind.asPipeOut.fc == FlowControlTypeNone && oPortType == TypeVoid) {
+          // This port is being removed
+          Stump
+        } else {
+          // The call target is the same port, but with the type updated, so 'walk' ...
+          val tgt = walk(sel).asInstanceOf[Expr]
+          val args = if (oPortType.isVoid) {
+            // No outgoing pipeline variables
+            Nil
+          } else {
+            // The argument is all local copies of the outgoing pipeline variable symbols
+            ArgP(ExprCat(pipeOutSymbols map { symbol => ExprSym(pipeSymbolMap(symbol)) })) :: Nil
+          }
+          // Form the call
+          StmtExpr(ExprCall(tgt, args)) regularize tree.loc
+        }
       }
 
     case _ => None
@@ -101,13 +131,43 @@ final class LowerPipelineStage(
   override def transform(tree: Tree): Tree = tree match {
     // Update pipeline port Decl/Defn
     case DeclPipeIn(symbol, fc) =>
-      DeclIn(symbol, ExprSym(iPortTypeSymbol), fc) regularize tree.loc
+      iPortType match {
+        case TypeVoid =>
+          if (fc == FlowControlTypeNone) {
+            Stump
+          } else {
+            DeclIn(symbol, ExprType(TypeVoid), fc) regularize tree.loc
+          }
+        case TypeRecord(rSymbol, _) => DeclIn(symbol, ExprSym(rSymbol), fc) regularize tree.loc
+        case _                      => unreachable
+      }
     case DefnPipeIn(symbol) =>
-      DefnIn(symbol) regularize tree.loc
+      if (
+        iPortType.isVoid && orig.getOrElse(symbol, symbol).kind.asPipeIn.fc == FlowControlTypeNone
+      ) {
+        Stump
+      } else {
+        DefnIn(symbol) regularize tree.loc
+      }
     case DeclPipeOut(symbol, fc, st) =>
-      DeclOut(symbol, ExprSym(oPortTypeSymbol), fc, st) regularize tree.loc
+      oPortType match {
+        case TypeVoid =>
+          if (fc == FlowControlTypeNone) {
+            Stump
+          } else {
+            DeclOut(symbol, ExprType(TypeVoid), fc, st) regularize tree.loc
+          }
+        case TypeRecord(rSymbol, _) => DeclOut(symbol, ExprSym(rSymbol), fc, st) regularize tree.loc
+        case _                      => unreachable
+      }
     case DefnPipeOut(symbol) =>
-      DefnOut(symbol, None) regularize tree.loc
+      if (
+        oPortType.isVoid && orig.getOrElse(symbol, symbol).kind.asPipeOut.fc == FlowControlTypeNone
+      ) {
+        Stump
+      } else {
+        DefnOut(symbol, None) regularize tree.loc
+      }
 
     // Add Decls/Defns of pipelined variables and the port type
     case decl: DeclEntity =>
@@ -165,9 +225,20 @@ final class LowerPipelineHost(implicit cc: CompilerContext) extends StatefulTree
     case _                           => false
   }
 
+  private def isPipelineHost(defn: DefnEntity): Boolean = defn.defns exists {
+    case _: DefnPipeVar => true // Has a pipeline variable
+    case defn: DefnEntity => // Has an entity with a pipeline port
+      defn.defns exists {
+        case _: DefnPipeIn  => true
+        case _: DefnPipeOut => true
+        case _              => false
+      }
+    case _ => false
+  }
+
   override def enter(tree: Tree): Option[Tree] = tree match {
-    // Process entities which contain pipeline variables
-    case host: DefnEntity if host.symbol.decl.decls exists { _.symbol.kind.isPipeVar } =>
+    // Process entities which contain pipeline variables or pipeline stages
+    case host: DefnEntity if isPipelineHost(host) =>
       // Map from stage entity to next stage entity
       val nextMap: Map[Symbol, Symbol] = Map from {
         host.assigns collect {
@@ -242,6 +313,23 @@ final class LowerPipelineHost(implicit cc: CompilerContext) extends StatefulTree
       }
 
       None
+
+    // If a port got removed, drop the connect
+    case EntAssign(ExprSel(lTgt, lSel, _), ExprSel(rTgt, rSel, _)) =>
+      val newLTgt = walk(lTgt).asInstanceOf[Expr]
+      val newRTgt = walk(rTgt).asInstanceOf[Expr]
+      val lOk = newLTgt.tpe match {
+        case kind: CompoundType => kind(lSel).isDefined
+        case _                  => unreachable
+      }
+      val rOk = newRTgt.tpe match {
+        case kind: CompoundType => kind(rSel).isDefined
+        case _                  => unreachable
+      }
+      Option.when(!lOk || !rOk) {
+        Stump
+      }
+
     case _ => None
   }
 

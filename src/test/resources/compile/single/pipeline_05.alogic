@@ -1,0 +1,102 @@
+network pipeline_05 {
+  in  sync ready u2 i;
+  out sync ready u2 o;
+
+  pipeline bool p;
+  pipeline bool q;
+
+  new fsm a {
+    out sync ready pipeline;
+    void main() {
+      {p, q} = i.read();
+      out.write();
+      fence;
+    }
+  }
+
+  a -> b;
+
+  new fsm b {
+    in sync ready pipeline;
+    out sync ready pipeline;
+    void main() {
+      in.read();
+      out.write();
+      fence;
+    }
+  }
+
+  b -> c;
+
+  new fsm c {
+    in sync ready pipeline;
+    void main() {
+      in.read();
+      o.write({q, p});
+      fence;
+    }
+  }
+}
+// @fec/mode: bmc
+// @fec/golden {{{
+// module pipeline_05(
+//    input   wire        clk,
+//    input   wire        rst,
+//    input   wire  [1:0] i,
+//    input   wire        i__valid,
+//    output  wire        i__ready,
+//    output  reg   [1:0] o,
+//    output  reg         o__valid,
+//    input   wire        o__ready
+// );
+//
+//    reg pa_q;
+//    reg qa_q;
+//    reg a__valid;
+//    reg pb_q;
+//    reg qb_q;
+//    reg b__valid;
+//
+//    wire o_moe = ~o__valid | o__ready;
+//    wire b_moe = ~b__valid | o_moe;
+//    wire a_moe = ~a__valid | b_moe;
+//
+//    assign i__ready = i__valid && a_moe;
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        pa_q <= 1'b0;
+//        qa_q <= 1'b0;
+//        a__valid <= 1'b0;
+//        pb_q <= 1'b0;
+//        qb_q <= 1'b0;
+//        b__valid <= 1'b0;
+//        o <= 2'b0;
+//        o__valid <= 1'b0;
+//      end else begin
+//        if (a_moe) begin
+//          a__valid <= 1'b0;
+//          if (i__valid) begin
+//            {pa_q, qa_q} <= i;
+//            a__valid <= 1'b1;
+//          end
+//        end
+//        if (b_moe) begin
+//          b__valid <= 1'b0;
+//          if (a__valid) begin
+//            {pb_q, qb_q} <= {pa_q, qa_q};
+//            b__valid <= 1'b1;
+//          end
+//        end
+//        if (o_moe) begin
+//          o__valid <= 1'b0;
+//          if (b__valid) begin
+//            o <= {qb_q, pb_q};
+//            o__valid <= 1'd1;
+//          end
+//        end
+//      end
+//    end
+//
+// endmodule
+// }}}

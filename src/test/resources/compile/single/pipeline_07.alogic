@@ -1,0 +1,47 @@
+network pipeline_07 {
+  in  bool i;
+  out bool o;
+  in  bool x;
+
+  // No actual pipeline variables
+
+  new fsm a {
+    out pipeline;
+    void main() {
+      i.read();
+      out.write();
+      fence;
+    }
+  }
+
+  a -> b;
+
+  new fsm b {
+    in pipeline;
+    void main() {
+      in.read();
+      o.write(x);
+      fence;
+    }
+  }
+}
+// @verilator-lint-off
+// @fec/golden {{{
+// module pipeline_07(
+//   input  wire  clk,
+//   input  wire  rst,
+//   input  wire  i,
+//   output reg   o,
+//   input  wire  x
+// );
+//
+//   always @(posedge clk) begin
+//     if (rst) begin
+//       o <= 1'b0;
+//     end else begin
+//       o <= x;
+//     end
+//   end
+//
+// endmodule
+// }}}

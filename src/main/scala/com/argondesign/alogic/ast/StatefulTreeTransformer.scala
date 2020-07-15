@@ -115,7 +115,10 @@ abstract class StatefulTreeTransformer(implicit cc: CompilerContext) extends Tre
         // Copy the decl replacing the symbol with the fresh symbol
         val cpyDecl = TypeAssigner(symbol.decl.cpy(symbol = newSymbol) withLoc symbol.decl.loc)
         // Transform the replaced decl immediately to ensure types are known
-        descend(cpyDecl).asInstanceOf[Decl]
+        descend(cpyDecl) match {
+          case decl: Decl => decl
+          case _          => cc.ice("Replaced symbol Decl transformed into something unexpected")
+        }
       }
     )
   }

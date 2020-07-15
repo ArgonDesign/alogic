@@ -1,14 +1,14 @@
-network pipeline_01 {
-  in  sync u2 i;
-  out sync u2 o;
+network pipeline_08 {
+  in  sync void i;
+  out sync bool o;
+  in       bool x;
 
-  pipeline bool p;
-  pipeline bool q;
+  // No actual pipeline variables, but with pipeline flow control
 
   new fsm a {
     out sync pipeline;
     void main() {
-      {p, q} = i.read();
+      i.read();
       out.write();
       fence;
     }
@@ -20,41 +20,36 @@ network pipeline_01 {
     in sync pipeline;
     void main() {
       in.read();
-      o.write({q, p});
+      o.write(x);
       fence;
     }
   }
 }
 // @fec/golden {{{
-// module pipeline_01(
-//    input   wire        clk,
-//    input   wire        rst,
-//    input   wire  [1:0] i,
-//    input   wire        i__valid,
-//    output  reg   [1:0] o,
-//    output  reg         o__valid
+// module pipeline_08(
+//    input   wire  clk,
+//    input   wire  rst,
+//    input   wire  i__valid,
+//    output  reg   o,
+//    output  reg   o__valid,
+//    input   wire  x
 // );
 //
-//    reg pa_q;
-//    reg qa_q;
 //    reg a__valid;
 //
 //    always @(posedge clk) begin
 //      if (rst) begin
-//        pa_q <= 1'b0;
-//        qa_q <= 1'b0;
 //        a__valid <= 1'b0;
-//        o <= 2'b0;
+//        o <= 1'b0;
 //        o__valid <= 1'b0;
 //      end else begin
 //        a__valid <= 1'b0;
 //        if (i__valid) begin
-//          {pa_q, qa_q} <= i;
 //          a__valid <= 1'b1;
 //        end
 //        o__valid <= 1'b0;
 //        if (a__valid) begin
-//          o <= {qa_q, pa_q};
+//          o <= x;
 //          o__valid <= 1'd1;
 //        end
 //      end

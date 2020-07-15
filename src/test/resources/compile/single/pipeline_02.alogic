@@ -1,12 +1,12 @@
-network pipeline_01 {
-  in  sync u2 i;
-  out sync u2 o;
+network pipeline_02 {
+  in  sync ready u2 i;
+  out sync ready u2 o;
 
   pipeline bool p;
   pipeline bool q;
 
   new fsm a {
-    out sync pipeline;
+    out sync ready pipeline;
     void main() {
       {p, q} = i.read();
       out.write();
@@ -17,7 +17,7 @@ network pipeline_01 {
   a -> b;
 
   new fsm b {
-    in sync pipeline;
+    in sync ready pipeline;
     void main() {
       in.read();
       o.write({q, p});
@@ -25,19 +25,27 @@ network pipeline_01 {
     }
   }
 }
+// @fec/mode: bmc
 // @fec/golden {{{
-// module pipeline_01(
+// module pipeline_02(
 //    input   wire        clk,
 //    input   wire        rst,
 //    input   wire  [1:0] i,
 //    input   wire        i__valid,
+//    output  wire        i__ready,
 //    output  reg   [1:0] o,
-//    output  reg         o__valid
+//    output  reg         o__valid,
+//    input   wire        o__ready
 // );
 //
 //    reg pa_q;
 //    reg qa_q;
 //    reg a__valid;
+//
+//    wire o_moe = ~o__valid | o__ready;
+//    wire a_moe = ~a__valid | o_moe;
+//
+//    assign i__ready = i__valid && a_moe;
 //
 //    always @(posedge clk) begin
 //      if (rst) begin
@@ -47,15 +55,19 @@ network pipeline_01 {
 //        o <= 2'b0;
 //        o__valid <= 1'b0;
 //      end else begin
-//        a__valid <= 1'b0;
-//        if (i__valid) begin
-//          {pa_q, qa_q} <= i;
-//          a__valid <= 1'b1;
+//        if (a_moe) begin
+//          a__valid <= 1'b0;
+//          if (i__valid) begin
+//            {pa_q, qa_q} <= i;
+//            a__valid <= 1'b1;
+//          end
 //        end
-//        o__valid <= 1'b0;
-//        if (a__valid) begin
-//          o <= {qa_q, pa_q};
-//          o__valid <= 1'd1;
+//        if (o_moe) begin
+//          o__valid <= 1'b0;
+//          if (a__valid) begin
+//            o <= {qa_q, pa_q};
+//            o__valid <= 1'd1;
+//          end
 //        end
 //      end
 //    end

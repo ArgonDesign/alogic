@@ -1,32 +1,35 @@
-network pipeline_00 {
+// @ignore
+network pipeline_09 {
   in  u2 i;
   out u2 o;
 
   pipeline bool p;
   pipeline bool q;
 
+  // No actual pipeline ports
+
   new fsm a {
-    out pipeline;
+    out u2 oo;
     void main() {
       {p, q} = i.read();
-      out.write();
+      oo.write({p, q});
       fence;
     }
   }
 
-  a -> b;
+  a.oo -> b.ii;
 
   new fsm b {
-    in pipeline;
+    in u2 ii;
     void main() {
-      in.read();
+      {p, q} = ii.read();
       o.write({q, p});
       fence;
     }
   }
 }
 // @fec/golden {{{
-// module pipeline_00(
+// module pipeline_09(
 //   input  wire        clk,
 //   input  wire        rst,
 //   input  wire  [1:0] i,

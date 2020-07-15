@@ -417,7 +417,7 @@ final class LowerFlowControlA(
     }
 
     // If we did modify the node, regularize it
-    if (result2 ne tree) {
+    if ((result2 ne tree) && result2 != Stump) {
       result2 regularize tree.loc
     }
 
