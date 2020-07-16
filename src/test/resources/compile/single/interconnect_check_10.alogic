@@ -12,6 +12,6 @@ network interconnect_check_10 {
   i[0+:2] -> o.y.z;
   i[2+:2] -> o.y;
 }
-// :12: ERROR: Bits 1:0 of 'o__y__z' have multiple drivers
+// :10: ERROR: Bits 1:0 of 'o__y__z' have multiple drivers
 // :12: NOTE: The 1st driver is here
 // :13: NOTE: The 2nd driver is here

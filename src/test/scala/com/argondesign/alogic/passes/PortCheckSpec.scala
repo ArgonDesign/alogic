@@ -43,24 +43,28 @@ final class PortCheckSpec extends AnyFreeSpec with AlogicTest {
 
     "error for invalid storage specifiers" - {
       for {
-        (fc, st, msg) <- List(
-          ("", "", ""),
-          ("", "wire", ""),
-          ("sync", "", ""),
-          ("sync", "wire", ""),
-          ("sync ready", "", ""),
-          ("sync ready", "fslice", ""),
-          ("sync ready", "bslice", ""),
-          ("sync ready", "bubble", ""),
-          ("sync ready", "bubble bubble", ""),
-          ("sync ready", "wire", "'sync ready' port cannot use 'wire' storage specifier")
+        kind <- List("bool", "pipeline")
+        (decl, msg) <- List(
+          // format: off
+          (s"$kind",                          ""),
+          (s"wire $kind",                     ""),
+          (s"sync $kind",                     ""),
+          (s"sync wire $kind",                ""),
+          (s"sync ready $kind",               ""),
+          (s"sync ready fslice $kind",        ""),
+          (s"sync ready bslice $kind",        ""),
+          (s"sync ready bubble $kind",        ""),
+          (s"sync ready bubble bubble $kind", ""),
+          (s"sync ready wire $kind",          "'sync ready' port cannot use 'wire' storage specifier"),
+          // format: on
         )
       } {
-
-        s"'$fc' with '$st'" in {
+        decl in {
           portCheck {
-            s"""fsm a {
-               |  out $fc $st bool po;
+            s"""network n {
+               |  fsm a {
+               |    out $decl po;
+               |  }
                |}"""
           }
           if (msg.isEmpty) {
@@ -88,7 +92,9 @@ final class PortCheckSpec extends AnyFreeSpec with AlogicTest {
           ("n.po_y -> po_y_a;", None),
           ("n.po_y -> po_y_b;", None),
           ("pi_y -> po_y_a; pi_y -> po_y_b;", None),
-          ("n.po_y -> po_y_a; n.po_y -> po_y_b;", None)
+          ("n.po_y -> po_y_a; n.po_y -> po_y_b;", None),
+          ("p0.o -> p1.i;", None),
+          ("p0.o -> p1.i; p0.o -> p2.i;", Some(2))
         )
       } {
         conn in {
@@ -109,6 +115,16 @@ final class PortCheckSpec extends AnyFreeSpec with AlogicTest {
                |    out sync bool po_y;
                |  }
                |
+               |  new fsm p0 {
+               |    out sync ready pipeline o;
+               |  }
+               |  new fsm p1 {
+               |    in  sync ready pipeline i;
+               |  }
+                  new fsm p2 {
+               |    in  sync ready pipeline i;
+               |  }
+               |
                |  $conn
                |}"""
           }
@@ -117,11 +133,11 @@ final class PortCheckSpec extends AnyFreeSpec with AlogicTest {
             case Some(count) =>
               cc.messages should have length count + 1
               cc.messages(0) should beThe[Error](
-                "Port with 'sync ready' flow control has multiple sinks"
+                "Port '.*' with 'sync ready' flow control has multiple sinks"
               )
               for (i <- 1 to count) {
                 cc.messages(i) should beThe[Note](
-                  s"The $i(st|nd|rd|th) connection is here"
+                  s"The $i(st|nd|rd|th) sink is here"
                 )
               }
           }
@@ -167,11 +183,11 @@ final class PortCheckSpec extends AnyFreeSpec with AlogicTest {
             case Some(count) =>
               cc.messages should have length count + 1
               cc.messages(0) should beThe[Error](
-                "Port has multiple drivers"
+                "Port '.*' has multiple drivers"
               )
               for (i <- 1 to count) {
                 cc.messages(i) should beThe[Note](
-                  s"The $i(st|nd|rd|th) connection is here"
+                  s"The $i(st|nd|rd|th) driver is here"
                 )
               }
           }
@@ -190,10 +206,9 @@ final class PortCheckSpec extends AnyFreeSpec with AlogicTest {
       cc.messages shouldBe empty
     }
 
-    "not error when pipeline connects overlap with port selections" ignore {
+    "not error when pipeline connects overlap with port selections" in {
       portCheck {
-        s"""
-            |network p {
+        s"""network p {
             |
             |  in  u8 pi;
             |  out u8 po;

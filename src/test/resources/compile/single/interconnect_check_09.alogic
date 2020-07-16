@@ -12,6 +12,6 @@ network interconnect_check_09 {
   i[2+:4] -> o.x;
   i[0+:6] -> o;
 }
-// :12: ERROR: Bits 3:0 of 'o__x' have multiple drivers
+// :10: ERROR: Bits 3:0 of 'o__x' have multiple drivers
 // :12: NOTE: The 1st driver is here
 // :13: NOTE: The 2nd driver is here

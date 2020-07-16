@@ -46,11 +46,12 @@ object Passes extends ChainingSyntax {
         AddCasts andThen
         Desugar andThen
         Fold andThen
-        PortCheck andThen
         NormalizeFunctions andThen
         InlineMethods andThen
+        NormalizeReferences() andThen
+        PortCheck andThen
         LowerPipeline andThen
-        LiftEntities() andThen
+        ExtractTypes andThen
         LowerLoops andThen
         NormalizeControl andThen
         AnalyseCallGraph andThen

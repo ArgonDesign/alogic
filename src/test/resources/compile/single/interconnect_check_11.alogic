@@ -12,7 +12,7 @@ network interconnect_check_11 {
   i[0+:2] -> o.x[0];
   i[2]    -> o.x[0][1];
 }
-// :12: ERROR: Bits 1 of 'o__x' have multiple drivers
+// :10: ERROR: Bits 1 of 'o__x' have multiple drivers
 // :12: NOTE: The 1st driver is here
 // :13: NOTE: The 2nd driver is here
 // :10: ERROR: Bits 3:2 of 'o__x' are undriven

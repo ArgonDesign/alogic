@@ -18,7 +18,10 @@ import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeReady
 import com.argondesign.alogic.core.StorageTypes.StorageTypeWire
 import com.argondesign.alogic.core.Types.TypeIn
 import com.argondesign.alogic.core.Types.TypeOut
+import com.argondesign.alogic.core.Types.TypePipeIn
+import com.argondesign.alogic.core.Types.TypePipeOut
 import com.argondesign.alogic.util.Ordinal
+import com.argondesign.alogic.util.unreachable
 
 final class PortCheck(implicit cc: CompilerContext) extends StatelessTreeTransformer {
 
@@ -34,16 +37,27 @@ final class PortCheck(implicit cc: CompilerContext) extends StatelessTreeTransfo
       case (_, _ :: Nil) => false // Single sink
       case (rhs, _) =>
         rhs.tpe match {
-          case TypeIn(_, FlowControlTypeReady)     => true
-          case TypeOut(_, FlowControlTypeReady, _) => true
-          case _                                   => false
+          case TypeIn(_, FlowControlTypeReady)      => true
+          case TypeOut(_, FlowControlTypeReady, _)  => true
+          case TypePipeIn(FlowControlTypeReady)     => true
+          case TypePipeOut(FlowControlTypeReady, _) => true
+          case _                                    => false
         }
     } foreach {
-      case (_, conns) =>
-        val sorted = conns.sortBy(_.loc)
-        cc.error(sorted.head.rhs, "Port with 'sync ready' flow control has multiple sinks")
-        sorted.iterator.zipWithIndex foreach {
-          case (conn, idx) => cc.note(conn, s"The ${Ordinal(idx + 1)} connection is here")
+      case (expr, conns) =>
+        val what = expr match {
+          case ExprSym(symbol)       => symbol.name
+          case InstancePortSel(i, p) => s"${i.name}.${p.name}"
+          case _                     => unreachable
+        }
+        val where = expr match {
+          case ExprSym(symbol)       => symbol.loc
+          case InstancePortSel(i, _) => i.loc
+          case _                     => unreachable
+        }
+        cc.error(where, s"Port '$what' with 'sync ready' flow control has multiple sinks")
+        conns.sortBy(_.loc).iterator.zipWithIndex foreach {
+          case (conn, idx) => cc.note(conn, s"The ${Ordinal(idx + 1)} sink is here")
         }
     }
   }
@@ -55,18 +69,27 @@ final class PortCheck(implicit cc: CompilerContext) extends StatelessTreeTransfo
       case (InstancePortSel(_, _), _) => true
       case _                          => false // Complex expression
     } foreach {
-      case (_, conns) =>
-        val sorted = conns.sortBy(_.loc)
-        cc.error(sorted.head.lhs, "Port has multiple drivers")
-        sorted.iterator.zipWithIndex foreach {
-          case (conn, idx) => cc.note(conn, s"The ${Ordinal(idx + 1)} connection is here")
+      case (expr, conns) =>
+        val what = expr match {
+          case ExprSym(symbol)       => symbol.name
+          case InstancePortSel(i, p) => s"${i.name}.${p.name}"
+          case _                     => unreachable
+        }
+        val where = expr match {
+          case ExprSym(symbol)       => symbol.loc
+          case InstancePortSel(i, _) => i.loc
+          case _                     => unreachable
+        }
+        cc.error(where, s"Port '$what' has multiple drivers")
+        conns.sortBy(_.loc).iterator.zipWithIndex foreach {
+          case (conn, idx) => cc.note(conn, s"The ${Ordinal(idx + 1)} driver is here")
         }
     }
   }
 
   override def skip(tree: Tree): Boolean = tree match {
-    case _: DeclEntity | _: DeclOut => false
-    case _                          => true
+    case _: DeclEntity | _: DeclOut | _: DeclPipeOut => false
+    case _                                           => true
   }
 
   override def enter(tree: Tree): Option[Tree] = tree match {
@@ -75,6 +98,10 @@ final class PortCheck(implicit cc: CompilerContext) extends StatelessTreeTransfo
     //////////////////////////////////////////////////////////////////////////
 
     case DeclOut(_, _, FlowControlTypeReady, StorageTypeWire) =>
+      cc.error(tree, "'sync ready' port cannot use 'wire' storage specifier")
+      Some(tree)
+
+    case DeclPipeOut(_, FlowControlTypeReady, StorageTypeWire) =>
       cc.error(tree, "'sync ready' port cannot use 'wire' storage specifier")
       Some(tree)
 

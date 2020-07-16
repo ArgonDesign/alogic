@@ -4,7 +4,7 @@ network interconnect_check_01 {
 
   i[0] -> o[0], o[0];
 }
-// :5: ERROR: Bits 0 of 'o' have multiple drivers
+// :3: ERROR: Bits 0 of 'o' have multiple drivers
 // :5: NOTE: The 1st driver is here
 // :5: NOTE: The 2nd driver is here
 // :3: ERROR: Bits 3:1 of 'o' are undriven

@@ -130,7 +130,7 @@ object InterconnectCheck extends PairTransformerPass {
         Option.when(bad.hasNext) {
           dst -> {
             val what = dst.fold(_.name, { case (i, p) => s"${i.name}.${p.name}" })
-            lazy val where = dst.fold(identity, _._1).loc
+            val where = dst.fold(identity, _._1).loc
             bad.toSeq sortBy {
               case (assigns, bits) => (-assigns.length, bits.min)
             } map {
@@ -140,7 +140,7 @@ object InterconnectCheck extends PairTransformerPass {
                 Iterator.single(Error(where, s"Bits $ranges of '$what' are undriven"))
               case (assigns, ranges) =>
                 Iterator.single(
-                  Error(assigns.head.lhs, s"Bits $ranges of '$what' have multiple drivers")
+                  Error(where, s"Bits $ranges of '$what' have multiple drivers")
                 ) concat {
                   assigns.iterator.zipWithIndex map {
                     case (assign, idx) => Note(assign, s"The ${Ordinal(idx + 1)} driver is here")

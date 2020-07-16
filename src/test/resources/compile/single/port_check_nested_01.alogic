@@ -1,0 +1,24 @@
+network port_check_nested_01 {
+  in  sync ready bool i;
+  out sync ready bool o;
+
+  new fsm a {
+    void main() {
+      o.write(i.read());
+      fence;
+    }
+  }
+
+  new fsm b {
+    void main() {
+      o.write(i.read());
+      fence;
+    }
+  }
+}
+// :2: ERROR: Port 'i' with 'sync ready' flow control has multiple sinks
+// :5: NOTE: The 1st sink is here
+// :12: NOTE: The 2nd sink is here
+// :3: ERROR: Port 'o' has multiple drivers
+// :5: NOTE: The 1st driver is here
+// :12: NOTE: The 2nd driver is here

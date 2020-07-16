@@ -1,16 +1,12 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2018 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2020 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
 //
-// Module: Alogic Compiler
-// Author: Geza Lore
-//
 // DESCRIPTION:
-//
-// Lift nested entities, wire through directly accessed ports
+//  Convert references to term symbols external to an entity but local to an
+//  enclosing entity to local references and wire through signals as necessary.
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.passes
@@ -46,11 +42,7 @@ private object Analyze {
     require(decl.symbol eq defn.symbol)
     // Set of term symbols defined within this entity
     val definedSymbols = Set from {
-      decl.decls.iterator filter {
-        case _: DeclEntity => false
-        case _: DeclRecord => false
-        case _             => true
-      } map { _.symbol }
+      decl.decls.iterator map { _.symbol } filterNot { _.kind.isType }
     }
     // Set of symbols directly referenced within this entity
     val directlyReferencedSymbols = Set from {
@@ -68,6 +60,7 @@ private object Analyze {
         case ExprSym(symbol) if symbol.kind.isIn       => true
         case ExprSym(symbol) if symbol.kind.isOut      => true
         case ExprSym(symbol) if symbol.kind.isConst    => true
+        case ExprSym(symbol) if symbol.kind.isPipeVar  => false
         case ExprSym(symbol) if symbol.kind.isXenoFunc => true
         case e @ ExprSym(symbol) =>
           if (outerSymbols(symbol)) {
@@ -107,7 +100,7 @@ private object Analyze {
 
 }
 
-class LiftEntitiesA(
+final class NormalizeReferencesA(
     requiredSymbolsMap: Map[Symbol, Set[Symbol]]
   )(
     implicit
@@ -273,28 +266,6 @@ class LiftEntitiesA(
     case _ => tree
   }
 
-  override protected def finish(tree: Tree): Tree = tree match {
-    case decl: DeclEntity =>
-      def flatten(decl: DeclEntity): List[DeclEntity] = {
-        val (nested, rest) = decl.decls partitionMap {
-          case entity: DeclEntity => Left(entity)
-          case other              => Right(other)
-        }
-        TypeAssigner(decl.copy(decls = rest) withLoc decl.loc) :: (nested flatMap flatten)
-      }
-      Thicket(flatten(decl) sortBy { _.symbol.id })
-    case defn: DefnEntity =>
-      def flatten(defn: DefnEntity): List[DefnEntity] = {
-        val (nested, rest) = defn.body partitionMap {
-          case EntDefn(entity: DefnEntity) => Left(entity)
-          case other                       => Right(other)
-        }
-        TypeAssigner(defn.copy(body = rest) withLoc defn.loc) :: (nested flatMap flatten)
-      }
-      Thicket(flatten(defn) sortBy { _.symbol.id })
-    case _ => unreachable
-  }
-
   override def finalCheck(tree: Tree): Unit = {
     assert(newDeclsStack.isEmpty)
     assert(newDefnsStack.isEmpty)
@@ -302,7 +273,7 @@ class LiftEntitiesA(
 
 }
 
-class LiftEntitiesB(
+final class NormalizeReferencesB(
     globalReplacements: mutable.Map[Symbol, Symbol],
     propagatedSymbols: Set[Symbol]
   )(
@@ -310,36 +281,55 @@ class LiftEntitiesB(
     cc: CompilerContext)
     extends StatefulTreeTransformer {
 
-  // Output ports with storage that have been pushed into nested entities need
-  // to loose their storage and turn into wire ports, we collect these in a set
-  private val stripStorageSymbols = propagatedSymbols filter {
-    _.kind match {
-      case TypeOut(_, _, st) => st != StorageTypeDefault
-      case _                 => false
-    }
-  }
-
-  // Replace:
+  // We need to replace:
   // - All symbols which have storage stripped
-  // - All symbols which contain a symbol with storage stripped
-  override def replace(symbol: Symbol): Boolean = {
-    stripStorageSymbols(symbol) || {
-      symbol.kind match {
-        case TypeType(TypeEntity(_, publicSymbols)) =>
-          enclosingSymbols.isEmpty && (publicSymbols exists stripStorageSymbols)
-        case _ => false
+  // - All entity symbols which contain a symbol with storage stripped, but
+  //   only if the entity is defined in the input tree. We will do global
+  //   replacement later
+  // - All instance symbols of local entities replaces
+
+  // Set of symbols to replace. Initialize to port symbols needing storage
+  // stripped
+  private val symbolsToReplace = mutable.Set from {
+    propagatedSymbols.iterator filter {
+      _.kind match {
+        case TypeOut(_, _, st) => st != StorageTypeDefault
+        case _                 => false
       }
     }
   }
 
-  // Note: We build decls/defns up front in enter as the defn of constants
-  // is required in order to work out widths (and hence types) of some
-  // expressions, so defns of constants must be available before their use.
+  // Replace marked symbols, or instances thereof
+  override def replace(symbol: Symbol): Boolean = symbolsToReplace(symbol) || {
+    symbol.kind match {
+      case TypeEntity(symbol, _) => symbolsToReplace(symbol)
+      case _                     => false
+    }
+  }
+
+  // Just a predicate
+  private def hasReplacedMember(kind: Type): Boolean = kind match {
+    case TypeType(TypeEntity(_, publicSymbols)) => publicSymbols exists symbolsToReplace
+    case _                                      => false
+  }
+
+  // Mark root symbol as replaced if needed
+  override protected def start(tree: Tree): Unit = tree match {
+    case Decl(symbol) if hasReplacedMember(symbol.kind) => symbolsToReplace add symbol
+    case _                                              =>
+  }
+
   override def enter(tree: Tree): Option[Tree] = {
     tree match {
       case decl: DeclEntity =>
+        // Marked nested definitions as replaced if needed
+        decl.decls foreach {
+          case Decl(symbol) if hasReplacedMember(symbol.kind) => symbolsToReplace add symbol
+          case _                                              =>
+        }
+        // Memorize the entity symbol replacement for the global pass
         orig.get(decl.symbol) foreach { oldSymbol =>
-          assert(!(globalReplacements contains oldSymbol), oldSymbol)
+          assert(!(globalReplacements contains oldSymbol), globalReplacements foreach println)
           globalReplacements(oldSymbol) = decl.symbol
         }
       case _ =>
@@ -361,13 +351,14 @@ class LiftEntitiesB(
 
 }
 
-final class LiftEntitiesC(
+final class NormalizeReferencesC(
     globalReplacements: collection.Map[Symbol, Symbol]
   )(
     implicit
     cc: CompilerContext)
     extends StatefulTreeTransformer {
 
+  // Now replace instances with replaced entities
   override def replace(symbol: Symbol): Boolean = symbol.kind match {
     case TypeEntity(eSymbol, _) => globalReplacements contains eSymbol
     case _                      => false
@@ -375,7 +366,7 @@ final class LiftEntitiesC(
 
   override def transform(tree: Tree): Tree = tree match {
     //////////////////////////////////////////////////////////////////////////
-    // Update instance types
+    // Update remaining instance types
     //////////////////////////////////////////////////////////////////////////
 
     case decl @ DeclInstance(_, ExprSym(eSymbol)) =>
@@ -389,7 +380,7 @@ final class LiftEntitiesC(
 
 }
 
-object LiftEntities {
+object NormalizeReferences {
 
   def apply(): Pass[List[(Decl, Defn)], List[(Decl, Defn)]] = {
 
@@ -397,7 +388,7 @@ object LiftEntities {
     val requiredSymbolMaps = TrieMap[Symbol, Map[Symbol, Set[Symbol]]]()
 
     new EntityTransformerPass(declFirst = true) {
-      val name = "lift-entities-a"
+      val name = "normalize-references-a"
 
       def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer = {
         // Get decl/defn
@@ -407,22 +398,22 @@ object LiftEntities {
         val requiredSymbols = Analyze(decl, defn) ensuring { _(symbol).isEmpty }
         requiredSymbolMaps(symbol) = requiredSymbols
         //
-        new LiftEntitiesA(requiredSymbols)
+        new NormalizeReferencesA(requiredSymbols)
       }
     } andThen new EntityTransformerPass(declFirst = true) {
-      val name = "lift-entities-b"
+      val name = "normalize-references-b"
 
       lazy val propagatedSymbols = Set from {
         requiredSymbolMaps.valuesIterator flatMap { _.valuesIterator flatMap { _.iterator } }
       }
 
       def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
-        new LiftEntitiesB(globalReplacements, propagatedSymbols)
+        new NormalizeReferencesB(globalReplacements, propagatedSymbols)
     } andThen new EntityTransformerPass(declFirst = true) {
-      val name = "lift-entities-c"
+      val name = "normalize-references-c"
 
       def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
-        new LiftEntitiesC(globalReplacements)
+        new NormalizeReferencesC(globalReplacements)
     }
   }
 
