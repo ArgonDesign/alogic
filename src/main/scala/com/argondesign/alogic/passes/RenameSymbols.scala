@@ -17,6 +17,7 @@ package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.SequenceNumbers
 
@@ -172,7 +173,7 @@ object RenameSymbols {
               eSymbol.name = entityNameWithLegalLen
 
               if (topNames(eSymbol.name)) {
-                cc.ice(eSymbol.loc, "entity name collision")
+                throw Ice(eSymbol.loc, "entity name collision")
               }
 
               topNames += eSymbol.name

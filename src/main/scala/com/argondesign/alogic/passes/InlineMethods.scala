@@ -14,6 +14,8 @@ import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
+import com.argondesign.alogic.core.Messages.Fatal
+import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types.TypeRecord
 import com.argondesign.alogic.core.Types.TypeVoid
@@ -87,7 +89,7 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatelessTreeTra
         case ArgP(expr) => expr
         case argn: ArgN =>
           // For now it does not work, not hard though..
-          cc.fatal(argn, "Function call arguments must be positional")
+          throw Fatal(argn, "Function call arguments must be positional")
         case _: ArgD => unreachable
       }
 
@@ -167,18 +169,18 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatelessTreeTra
                 case Some(symbol) =>
                   val thisSymbol = symbol.kind.underlying match {
                     case TypeRecord(s, _) => s
-                    case _                => cc.ice(expr, "Strange 'this' instance type")
+                    case _                => throw Ice(expr, "Strange 'this' instance type")
                   }
                   val exprSymbol = expr.tpe match {
                     case TypeRecord(s, _) => s
-                    case _                => cc.ice(expr, "Strange 'this' reference type")
+                    case _                => throw Ice(expr, "Strange 'this' reference type")
                   }
                   if (thisSymbol == exprSymbol) {
                     ExprSym(symbol) regularize tree.loc
                   } else {
-                    cc.ice(expr, "Incompatible 'this' reference")
+                    throw Ice(expr, "Incompatible 'this' reference")
                   }
-                case None => cc.ice(expr, "Missing instance for 'this' reference")
+                case None => throw Ice(expr, "Missing instance for 'this' reference")
               }
 
             case _ => tree
@@ -279,7 +281,7 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatelessTreeTra
     Option.unless(tgt.tpe.isStaticMethod) {
       tgt match {
         case ExprSel(ExprSym(symbol), _, _) => symbol
-        case _                              => cc.ice(tgt, "Don't know how to translate that method call")
+        case _                              => throw Ice(tgt, "Don't know how to translate that method call")
       }
     }
   }

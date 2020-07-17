@@ -18,6 +18,7 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Math.clog2
 import com.argondesign.alogic.typer.TypeAssigner
@@ -32,7 +33,7 @@ final class AddCasts(implicit cc: CompilerContext) extends StatefulTreeTransform
       (TypeInt(expr.tpe.isSigned, kind.width), expr)
     }
     if (castType.isNum && !castExpr.isKnownConst) {
-      cc.ice(expr, s"Trying to cast non-constant expression to type '${castType.toSource}'")
+      throw Ice(expr, s"Trying to cast non-constant expression to type '${castType.toSource}'")
     }
     castExpr cast castType
   }

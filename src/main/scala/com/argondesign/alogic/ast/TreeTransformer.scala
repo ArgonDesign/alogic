@@ -18,6 +18,7 @@ package com.argondesign.alogic.ast
 import com.argondesign.alogic.Config
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.unreachable
 
@@ -126,7 +127,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
   // Check result of walk
   final private def checkResult(tree: Tree, result: Tree): Unit = {
     if (!result.hasLoc) {
-      cc.ice(
+      throw Ice(
         s"TreeTransformer '${this.getClass.getName}' lost location of transformed node:",
         result.toString,
         "original at:",
@@ -137,7 +138,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
 
     // Check it has type
     if (typed && !result.hasTpe) {
-      cc.ice(
+      throw Ice(
         s"TreeTransformer '${this.getClass.getName}' lost type of transformed node:",
         result.toString,
         "original at:",

@@ -19,6 +19,7 @@ import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees.Expr.Integral
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Math.clog2
@@ -105,7 +106,7 @@ final class SimplifyExpr(implicit cc: CompilerContext)
 
   override def start(tree: Tree): Unit = tree match {
     case _: Expr =>
-    case _       => cc.ice(tree, "Cannot invoke SimplifyExpr on non Expr tree.")
+    case _       => throw Ice(tree, "Cannot invoke SimplifyExpr on non Expr tree.")
   }
 
   override def skip(tree: Tree): Boolean = tree match {
@@ -331,19 +332,19 @@ final class SimplifyExpr(implicit cc: CompilerContext)
         result.tpe.underlying.toString
       )
       if (result.tpe.isPacked != tree.tpe.isPacked) {
-        cc.ice(tree, s"SimplifyExpr changed packedness." :: hints: _*)
+        throw Ice(tree, s"SimplifyExpr changed packedness." :: hints: _*)
       }
       if (result.tpe.isSigned != tree.tpe.isSigned) {
-        cc.ice(tree, s"SimplifyExpr changed signedness." :: hints: _*)
+        throw Ice(tree, s"SimplifyExpr changed signedness." :: hints: _*)
       }
       if (result.tpe.isPacked && result.tpe.width != tree.tpe.width) {
-        cc.ice(tree, s"SimplifyExpr changed width." :: hints: _*)
+        throw Ice(tree, s"SimplifyExpr changed width." :: hints: _*)
       }
       if (result.tpe.isNum != tree.tpe.isNum) {
-        cc.ice(tree, s"SimplifyExpr changed Num'ness." :: hints: _*)
+        throw Ice(tree, s"SimplifyExpr changed Num'ness." :: hints: _*)
       }
       if (result.tpe.isType != tree.tpe.isType) {
-        cc.ice(tree, s"SimplifyExpr changed Type'ness." :: hints: _*)
+        throw Ice(tree, s"SimplifyExpr changed Type'ness." :: hints: _*)
       }
     }
   }
@@ -470,8 +471,8 @@ final class SimplifyExpr(implicit cc: CompilerContext)
     case ExprBinary(lhs, "'", rhs) =>
       val width = lhs.value match {
         case Some(v) if v > 0 => v.toInt
-        case Some(_)          => cc.ice(tree, "LHS of binary ' is non positive")
-        case None             => cc.ice(tree, "Cannot compute value of LHS of binary '")
+        case Some(_)          => throw Ice(tree, "LHS of binary ' is non positive")
+        case None             => throw Ice(tree, "Cannot compute value of LHS of binary '")
       }
       val rhsWidth = rhs.tpe.width.toInt // Must be packed so must know width
       require(width >= rhsWidth)

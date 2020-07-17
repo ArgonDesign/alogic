@@ -18,6 +18,7 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.typer.TypeAssigner
 
 final class ResolvePolyFunc(implicit cc: CompilerContext) extends StatelessTreeTransformer {
@@ -35,7 +36,7 @@ final class ResolvePolyFunc(implicit cc: CompilerContext) extends StatelessTreeT
     // $COVERAGE-OFF$ Debug code
     tree visitAll {
       case node: Tree if node.tpe.isPolyFunc =>
-        cc.ice(node, s"ResolvePolyFunc: node of type TypePolyFunc remains")
+        throw Ice(node, s"ResolvePolyFunc: node of type TypePolyFunc remains")
     }
     // $COVERAGE-ON$
   }

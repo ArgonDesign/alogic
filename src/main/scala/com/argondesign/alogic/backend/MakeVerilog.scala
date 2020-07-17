@@ -17,6 +17,7 @@ package com.argondesign.alogic.backend
 import com.argondesign.alogic.backend.CodeWriter
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.enums.ResetStyle
@@ -62,7 +63,7 @@ final class MakeVerilog(
           val i1 = i0 + "  "
           s"""import "DPI-C" context function void $id(${as mkString ("\n" + i1, ",\n" + i1, "\n" + i0)});"""
         }
-      case _ => cc.ice(s"Don't know how to declare this type in Verilog:", kind.toString)
+      case _ => throw Ice(s"Don't know how to declare this type in Verilog:", kind.toString)
     }
 
     decl(symbol.name, symbol.kind.underlying)
@@ -82,7 +83,7 @@ final class MakeVerilog(
     case ExprUnary(op, e) =>
       e match {
         case _: ExprUnary | _: ExprBinary | _: ExprCond => s"$op(${vexpr(e)})"
-        case _: ExprInt | _: ExprNum                    => cc.ice(e, "Should have been folded")
+        case _: ExprInt | _: ExprNum                    => throw Ice(e, "Should have been folded")
         case _                                          => s"$op${vexpr(e)}"
       }
     case ExprBinary(l, op, r) =>
@@ -128,7 +129,7 @@ final class MakeVerilog(
     case ExprNum(true, v)              => s"$v"
     case ExprStr(str)                  => s""""$str""""
     case _ =>
-      cc.ice(expr, "Don't know how to emit Verilog for expression", expr.toString)
+      throw Ice(expr, "Don't know how to emit Verilog for expression", expr.toString)
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -285,7 +286,7 @@ final class MakeVerilog(
         }
         body.emit(indent)(s"assert (${vexpr(cond)})$elsePart;")
 
-      case other => cc.ice(other, "Don't know how to emit Verilog for statement", other.toString)
+      case other => throw Ice(other, "Don't know how to emit Verilog for statement", other.toString)
     }
   }
 

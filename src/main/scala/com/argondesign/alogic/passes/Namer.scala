@@ -22,6 +22,7 @@ import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
+import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.SourceAttribute
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.enums.EntityVariant
@@ -592,8 +593,8 @@ final class Namer(implicit cc: CompilerContext) extends StatefulTreeTransformer 
     assert(extraThenDescsStack.isEmpty)
 
     tree visitAll {
-      case node: Ident                 => cc.ice(node, "Ident remains")
-      case node @ ExprRef(Sym(_, Nil)) => cc.ice(node, "ExprRef(Sym(_, Nil))")
+      case node: Ident                 => throw Ice(node, "Ident remains")
+      case node @ ExprRef(Sym(_, Nil)) => throw Ice(node, "ExprRef(Sym(_, Nil))")
     }
   }
 

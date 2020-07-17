@@ -21,6 +21,7 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Math
@@ -303,9 +304,9 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends StatefulTree
   }
 
   override protected def finalCheck(tree: Tree): Unit = tree visit {
-    case node: DeclState => cc.ice(node, "DeclState remains")
-    case node: DefnState => cc.ice(node, "DefnState remains")
-    case node: StmtFence => cc.ice(node, "StmtFence remains")
+    case node: DeclState => throw Ice(node, "DeclState remains")
+    case node: DefnState => throw Ice(node, "DefnState remains")
+    case node: StmtFence => throw Ice(node, "StmtFence remains")
   }
 
 }

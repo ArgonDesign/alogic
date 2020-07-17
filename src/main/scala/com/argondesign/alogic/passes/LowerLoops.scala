@@ -18,6 +18,7 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Types.TypeCombStmt
 import com.argondesign.alogic.core.Types.TypeCtrlStmt
 import com.argondesign.alogic.util.unreachable
@@ -122,10 +123,10 @@ final class LowerLoops(implicit cc: CompilerContext) extends StatefulTreeTransfo
 
     // $COVERAGE-OFF$ Debug code
     tree visit {
-      case node: Tree if !node.hasTpe => cc.ice(node, "lost type")
-      case node: StmtFor              => cc.ice(node, "for statement remains after LowerLoops")
-      case node: StmtDo               => cc.ice(node, "do statement remains after LowerLoops")
-      case node: StmtWhile            => cc.ice(node, "while statement remains after LowerLoops")
+      case node: Tree if !node.hasTpe => throw Ice(node, "lost type")
+      case node: StmtFor              => throw Ice(node, "for statement remains after LowerLoops")
+      case node: StmtDo               => throw Ice(node, "do statement remains after LowerLoops")
+      case node: StmtWhile            => throw Ice(node, "while statement remains after LowerLoops")
     }
     // $COVERAGE-ON$
   }

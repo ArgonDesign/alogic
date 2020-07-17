@@ -19,6 +19,7 @@ import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.StorageTypes._
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.enums.EntityVariant
@@ -83,7 +84,7 @@ final class LowerRegPorts(implicit cc: CompilerContext) extends StatefulTreeTran
     // $COVERAGE-OFF$ Debug code
     tree visit {
       case node @ DeclOut(_, _, _, st) if st != StorageTypeWire =>
-        cc.ice(node, s"Output port with non-wire storage remains")
+        throw Ice(node, s"Output port with non-wire storage remains")
     }
     // $COVERAGE-ON$
   }

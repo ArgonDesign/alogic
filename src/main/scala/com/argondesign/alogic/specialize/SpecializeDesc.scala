@@ -19,6 +19,8 @@ import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
+import com.argondesign.alogic.core.Messages.Fatal
+import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types.Type
 import com.argondesign.alogic.util.unreachable
@@ -169,7 +171,7 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
       }
 
       if (cc.hasError) {
-        cc.fatal("Stopping due to errors")
+        throw Fatal("Stopping due to errors")
       }
       prevDumped = item
     }
@@ -316,7 +318,7 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
               // Propagate error
               case None => DescSpecializationErrorOther
               // If no gen nodes were expanded
-              case Some(`item`) => cc.fatal("Circular 'gen'")
+              case Some(`item`) => throw Fatal("Circular 'gen'")
               // Otherwise go again
               case Some(Left(desc)) => step1(desc, unusedBindings, useDefaultParameters, loc)
               case Some(item)       => step3(item, unusedBindings, useDefaultParameters, loc)
@@ -470,14 +472,14 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
             // be caught by the type checker later.
             defn visit {
               case desc: Desc if !desc.isParametrized =>
-                cc.ice(desc, "Non-parametrized Desc remains in Defn")
+                throw Ice(desc, "Non-parametrized Desc remains in Defn")
               case _: Desc => // OK
               case EntDecl(decl) =>
-                cc.ice(decl, "EntDecl remains in Defn")
+                throw Ice(decl, "EntDecl remains in Defn")
               case RecDecl(decl) =>
-                cc.ice(decl, "RecDecl remains in Defn")
+                throw Ice(decl, "RecDecl remains in Defn")
               case node: AssertionStatic =>
-                cc.ice(node, "AssertionStatic remains in Defn")
+                throw Ice(node, "AssertionStatic remains in Defn")
             }
           case _ =>
         }
@@ -702,11 +704,11 @@ private[specialize] class SpecializeDesc(implicit cc: CompilerContext) {
       // Quick sanity check: All definitions must have been fully specialized
       def check(tree: Tree): Unit = tree visit {
         case Desc(ref) =>
-          cc.ice(ref, "Unspecialized definition remains")
+          throw Ice(ref, "Unspecialized definition remains")
         case node: ExprRef =>
-          cc.ice(node, "ExprRef remains")
+          throw Ice(node, "ExprRef remains")
         case node: DescChoice =>
-          cc.ice(node, "DescChoice remains")
+          throw Ice(node, "DescChoice remains")
       }
       results tapEach {
         case (decl, defn) =>

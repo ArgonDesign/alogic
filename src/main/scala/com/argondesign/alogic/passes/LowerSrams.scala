@@ -24,6 +24,7 @@ import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.enums.EntityVariant
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
+import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.SramFactory
 import com.argondesign.alogic.core.SyncRegFactory
 import com.argondesign.alogic.util.unreachable
@@ -198,7 +199,7 @@ final class LowerSrams(
               case (_: TypeRecord | _: TypeVector, StorageTypeReg) =>
                 SramRegStruct(sSymbol, rSymbol, oEntity, oSymbol)
               case _ =>
-                cc.ice(tree, "Don't know how to build SRAM of type", kind.toSource)
+                throw Ice(tree, "Don't know how to build SRAM of type", kind.toSource)
             }
 
             sramMap(symbol) = sramParts
@@ -371,7 +372,7 @@ final class LowerSrams(
   }
 
   override def finalCheck(tree: Tree): Unit = {
-    tree visit { case n @ ExprSel(r, s, _) if r.tpe.isSram => cc.ice(n, s"SRAM .$s remains") }
+    tree visit { case n @ ExprSel(r, s, _) if r.tpe.isSram => throw Ice(n, s"SRAM .$s remains") }
   }
 
 }

@@ -21,6 +21,7 @@ import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.antlr.PreprocParser._
 import com.argondesign.alogic.antlr._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Messages.Fatal
 import com.argondesign.alogic.core.Source
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
@@ -127,7 +128,7 @@ class Preprocessor(implicit cc: CompilerContext) {
         // Find the include file
         val includeSource = includeResolver(source, includeSpec) match {
           case Right(resultSource) => resultSource
-          case Left(msgs)          => cc.fatal(ctx, msgs: _*)
+          case Left(msgs)          => throw Fatal(ctx.loc, msgs)
         }
 
         // Process the include file in the current context

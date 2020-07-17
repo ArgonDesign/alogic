@@ -21,6 +21,7 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.SourceContext
 import com.argondesign.alogic.core.Loc
+import com.argondesign.alogic.core.Messages.Fatal
 import com.argondesign.alogic.core.Source
 import com.argondesign.alogic.core.SourceAttribute
 import com.argondesign.alogic.passes.Pass
@@ -54,9 +55,9 @@ class Parse(
       val hints = moduleSeachDirs map { _.toString }
       locOpt match {
         case None =>
-          cc.fatal(s"Cannot find top level entity '$entityName'. Looked in:" :: hints: _*)
+          throw Fatal(s"Cannot find top level entity '$entityName'. Looked in:" :: hints: _*)
         case Some(loc) =>
-          cc.fatal(loc, s"Cannot find entity '$entityName'. Looked in:" :: hints: _*)
+          throw Fatal(loc, s"Cannot find entity '$entityName'. Looked in:" :: hints)
       }
     }
 
@@ -70,7 +71,7 @@ class Parse(
 
   private[this] def parseIt(source: Source, fileName: String): Root = {
     Parser[Root](source, SourceContext.File).getOrElse {
-      cc.fatal("Stopping due to syntax errors")
+      throw Fatal("Stopping due to syntax errors")
     }
   }
 
@@ -107,9 +108,9 @@ class Parse(
         parseIt(source, name) tap { root =>
           // Find the declaration of name, ensure there is one and only one,
           val decl = root.descs filter { _.name == name } match {
-            case Nil      => cc.fatal(s"'${source.name}' does not contain the definition of '$name'")
+            case Nil      => throw Fatal(s"'${source.name}' does not contain the definition of '$name'")
             case d :: Nil => d
-            case _        => cc.fatal(s"'${source.name}' contains multiple definitions of '$name'")
+            case _        => throw Fatal(s"'${source.name}' contains multiple definitions of '$name'")
           }
           // Add it to the root decls
           synchronized {

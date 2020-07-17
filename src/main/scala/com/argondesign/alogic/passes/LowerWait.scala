@@ -18,6 +18,7 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.enums.EntityVariant
 import com.argondesign.alogic.typer.TypeAssigner
@@ -85,7 +86,7 @@ final class LowerWait(implicit cc: CompilerContext) extends StatefulTreeTransfor
   }
 
   override def finalCheck(tree: Tree): Unit = tree visit {
-    case stmt: StmtWait => cc.ice(stmt, "StmtWait remains")
+    case stmt: StmtWait => throw Ice(stmt, "StmtWait remains")
   }
 
 }

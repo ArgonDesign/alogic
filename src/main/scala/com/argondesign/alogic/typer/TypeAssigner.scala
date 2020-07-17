@@ -19,6 +19,7 @@ package com.argondesign.alogic.typer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.CompoundType
+import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.unreachable
 
@@ -35,22 +36,22 @@ object TypeAssigner {
   //////////////////////////////////////////////////////////////////////////////
 
   private def kind(tree: Tree)(implicit cc: CompilerContext): Type = tree match {
-    case _: Root         => cc.ice(tree, "TypeAssigner called on Root node")
-    case _: Ref          => cc.ice(tree, "TypeAssigner called on Ref node")
-    case _: Desc         => cc.ice(tree, "TypeAssigner called on Desc node")
+    case _: Root         => throw Ice(tree, "TypeAssigner called on Root node")
+    case _: Ref          => throw Ice(tree, "TypeAssigner called on Ref node")
+    case _: Desc         => throw Ice(tree, "TypeAssigner called on Desc node")
     case node: Decl      => kind(node)
     case node: Defn      => kind(node)
-    case _: Gen          => cc.ice(tree, "TypeAssigner called on Gen node")
+    case _: Gen          => throw Ice(tree, "TypeAssigner called on Gen node")
     case node: Assertion => kind(node)
-    case _: Riz          => cc.ice(tree, "TypeAssigner called on Riz node")
+    case _: Riz          => throw Ice(tree, "TypeAssigner called on Riz node")
     case node: Ent       => kind(node)
     case node: Rec       => kind(node)
     case node: Stmt      => kind(node)
     case node: Case      => kind(node)
     case node: Expr      => kind(node)
     case node: Arg       => kind(node)
-    case _: Thicket      => cc.ice(tree, "TypeAssigner called on Thicket")
-    case Stump           => cc.ice(tree, "TypeAssigner called on Stump")
+    case _: Thicket      => throw Ice(tree, "TypeAssigner called on Thicket")
+    case Stump           => throw Ice(tree, "TypeAssigner called on Stump")
   }
 
   //////////////////////////////////////////////////////////////////////////////

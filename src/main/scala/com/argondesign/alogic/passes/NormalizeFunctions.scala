@@ -17,6 +17,7 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types.TypeUInt
 import com.argondesign.alogic.typer.TypeAssigner
@@ -124,7 +125,8 @@ final class NormalizeFunctions(implicit cc: CompilerContext) extends StatelessTr
 
   override def enter(tree: Tree): Option[Tree] = tree match {
     case defn: DefnRecord =>
-      if (selfSymbols.nonEmpty) cc.ice(defn, "Nested structure definitions are not yet supported")
+      if (selfSymbols.nonEmpty)
+        throw Ice(defn, "Nested structure definitions are not yet supported")
       selfSymbols = Some((defn.symbol, Set.from(defn.defns.iterator map { _.symbol })))
       None
 

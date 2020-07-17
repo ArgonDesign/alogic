@@ -27,6 +27,7 @@ import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees.Expr.InstancePortSel
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.typer.TypeAssigner
@@ -276,7 +277,7 @@ final class LowerInterconnect(implicit cc: CompilerContext)
     def check(tree: Tree): Unit = tree visit {
       // $COVERAGE-OFF$ Debug code
       case node @ ExprSel(ExprSym(symbol), _, _) if symbol.kind.isEntity =>
-        cc.ice(node, "Direct port access remains")
+        throw Ice(node, "Direct port access remains")
       // $COVERAGE-ON$
     }
 

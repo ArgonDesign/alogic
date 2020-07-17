@@ -28,6 +28,7 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.CompoundType
 import com.argondesign.alogic.core.ExtensionType
 import com.argondesign.alogic.core.Loc
+import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Math.clog2
 import com.argondesign.alogic.util.unreachable
@@ -458,7 +459,7 @@ final class Typer(implicit cc: CompilerContext) extends StatefulTreeTransformer 
             )
           }
         } else if (!symbol.kind.isXenoFunc) {
-          cc.ice(tree, "Unknown function definition")
+          throw Ice(tree, "Unknown function definition")
         }
 
       case defn: Defn =>
@@ -899,7 +900,7 @@ final class Typer(implicit cc: CompilerContext) extends StatefulTreeTransformer 
 
       // $COVERAGE-OFF$ Debug code
       tree visitAll {
-        case n: Tree if !n.hasTpe => cc.ice(n, "Typer: untyped node remains", n.toString)
+        case n: Tree if !n.hasTpe => throw Ice(n, "Typer: untyped node remains", n.toString)
       }
       // $COVERAGE-ON$
     }

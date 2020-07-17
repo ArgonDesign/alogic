@@ -17,6 +17,7 @@ package com.argondesign.alogic.ast
 
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types.TypeEntity
 import com.argondesign.alogic.core.Types.TypeType
@@ -117,7 +118,7 @@ abstract class StatefulTreeTransformer(implicit cc: CompilerContext) extends Tre
         // Transform the replaced decl immediately to ensure types are known
         descend(cpyDecl) match {
           case decl: Decl => decl
-          case _          => cc.ice("Replaced symbol Decl transformed into something unexpected")
+          case _          => throw Ice("Replaced symbol Decl transformed into something unexpected")
         }
       }
     )

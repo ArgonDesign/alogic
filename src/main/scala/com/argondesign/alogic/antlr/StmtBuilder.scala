@@ -19,6 +19,7 @@ import com.argondesign.alogic.antlr.AlogicParser._
 import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.SourceContext
 import org.antlr.v4.runtime.ParserRuleContext
 
@@ -98,7 +99,7 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
           case SourceContext.Entity => false
           case SourceContext.Record => true
           case SourceContext.File | SourceContext.Unknown =>
-            cc.ice(ctx, "Cannot parse 'return' without knowing enclosing context")
+            throw Ice(ctx, "Cannot parse 'return' without knowing enclosing context")
         }
         StmtReturn(comb, Option.when(ctx.expr != null)(ExprBuilder(ctx.expr))) withLoc ctx.loc
       }

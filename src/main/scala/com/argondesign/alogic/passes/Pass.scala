@@ -25,6 +25,7 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.util.unreachable
 
@@ -167,7 +168,7 @@ trait PairTransformerPass extends PairsTransformerPass with ChainingSyntax {
             assert(newDefns forall { _.isInstanceOf[Defn] })
             newDecls.asInstanceOf[List[Decl]] lazyZip newDefns.asInstanceOf[List[Defn]]
           case (Stump, Stump) => Nil
-          case other          => cc.ice(s"Sadly, no. $other")
+          case other          => throw Ice(s"Sadly, no. $other")
         }
       case pair => Iterator.single(pair)
     }

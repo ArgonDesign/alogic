@@ -315,7 +315,7 @@ object ConnectChecks {
     } ifEmpty {
       (rhss.iterator flatMap checkFlowControlCompatible(lhs)) ++ checkSinkCount(lhs, rhss)
     } pipe { errors => // Pass if no errors, add the messages
-      errors.isEmpty tap { _ => cc.addMessages(errors) }
+      errors.isEmpty tap { _ => errors foreach cc.addMessage }
     }
   }
 

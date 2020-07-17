@@ -19,6 +19,7 @@ import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.unreachable
@@ -39,7 +40,7 @@ final class SplitStructsA(
       symbol.kind match {
         case k: TypeRecord => flattenStruct(s"$prefix${cc.sep}${symbol.name}", k)
         case k: TypeFund   => List((s"$prefix${cc.sep}${symbol.name}", k))
-        case k             => cc.ice(symbol, s"Don't know how to flatten field of type $k")
+        case k             => throw Ice(symbol, s"Don't know how to flatten field of type $k")
       }
     }
   }

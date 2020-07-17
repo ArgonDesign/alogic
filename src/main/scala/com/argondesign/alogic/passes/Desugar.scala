@@ -13,6 +13,7 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Types.TypeEntity
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.unreachable
@@ -76,12 +77,12 @@ final class Desugar(implicit cc: CompilerContext) extends StatelessTreeTransform
   }
 
   override def finalCheck(tree: Tree): Unit = tree visit {
-    case node: StmtLet       => cc.ice(node, s"StmtLet remains")
-    case node: StmtUpdate    => cc.ice(node, s"StmtUpdate remains")
-    case node: StmtPost      => cc.ice(node, s"StmtPost remains")
-    case node: DeclSingleton => cc.ice(node, s"DeclSingleton remains")
-    case node: DefnSingleton => cc.ice(node, s"DefnSingleton remains")
-    case node: EntConnect    => cc.ice(node, "EntConnect with remains")
+    case node: StmtLet       => throw Ice(node, s"StmtLet remains")
+    case node: StmtUpdate    => throw Ice(node, s"StmtUpdate remains")
+    case node: StmtPost      => throw Ice(node, s"StmtPost remains")
+    case node: DeclSingleton => throw Ice(node, s"DeclSingleton remains")
+    case node: DefnSingleton => throw Ice(node, s"DefnSingleton remains")
+    case node: EntConnect    => throw Ice(node, "EntConnect with remains")
   }
 
 }

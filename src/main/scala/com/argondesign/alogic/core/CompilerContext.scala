@@ -19,6 +19,8 @@ package com.argondesign.alogic.core
 
 import com.argondesign.alogic.ast.Trees.Tree
 import com.argondesign.alogic.builtins.Builtins
+import com.argondesign.alogic.core.Messages.Fatal
+import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Types.TypeUnknown
 import com.argondesign.alogic.core.enums.ResetStyle._
 import com.argondesign.alogic.passes.Passes
@@ -57,7 +59,10 @@ class CompilerContext(
     try {
       Passes(topLevels)(cc = this)
     } catch {
-      case _: FatalErrorException => // Return normally from here
+      // Catch fatal messages, add them to message buffer for reporting,
+      // then return normally from here.
+      case message: Fatal => addMessage(message)
+      case message: Ice   => addMessage(message)
     }
   }
 

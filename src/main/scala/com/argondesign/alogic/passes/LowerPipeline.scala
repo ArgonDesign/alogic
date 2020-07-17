@@ -18,6 +18,7 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.CompoundType
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
+import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.typer.TypeAssigner
@@ -198,16 +199,16 @@ final class LowerPipelineStage(
   override def finalCheck(tree: Tree): Unit = {
     // $COVERAGE-OFF$ Debug code
     tree visit {
-      case node: DeclPipeIn  => cc.ice(node, "DeclPipeIn remains after LowerPipeline")
-      case node: DefnPipeIn  => cc.ice(node, "DefnPipeIn remains after LowerPipeline")
-      case node: DeclPipeOut => cc.ice(node, "DeclPipeOut remains after LowerPipeline")
-      case node: DefnPipeOut => cc.ice(node, "DefnPipeOut remains after LowerPipeline")
+      case node: DeclPipeIn  => throw Ice(node, "DeclPipeIn remains after LowerPipeline")
+      case node: DefnPipeIn  => throw Ice(node, "DefnPipeIn remains after LowerPipeline")
+      case node: DeclPipeOut => throw Ice(node, "DeclPipeOut remains after LowerPipeline")
+      case node: DefnPipeOut => throw Ice(node, "DefnPipeOut remains after LowerPipeline")
     }
 
     tree visitAll {
-      case node if node.tpe.isPipeVar => cc.ice(node, "TypePipeVar tree remains")
-      case node if node.tpe.isPipeIn  => cc.ice(node, "TypePipeIn tree remains")
-      case node if node.tpe.isPipeOut => cc.ice(node, "TypePipeOut tree remains")
+      case node if node.tpe.isPipeVar => throw Ice(node, "TypePipeVar tree remains")
+      case node if node.tpe.isPipeIn  => throw Ice(node, "TypePipeIn tree remains")
+      case node if node.tpe.isPipeOut => throw Ice(node, "TypePipeOut tree remains")
     }
     // $COVERAGE-ON$
   }
@@ -351,14 +352,14 @@ final class LowerPipelineHost(implicit cc: CompilerContext) extends StatefulTree
   override def finalCheck(tree: Tree): Unit = {
     // $COVERAGE-OFF$ Debug code
     tree visit {
-      case node: DeclPipeVar => cc.ice(node, "DeclPipeVar remains after LowerPipeline")
-      case node: DefnPipeVar => cc.ice(node, "DefnPipeVar remains after LowerPipeline")
+      case node: DeclPipeVar => throw Ice(node, "DeclPipeVar remains after LowerPipeline")
+      case node: DefnPipeVar => throw Ice(node, "DefnPipeVar remains after LowerPipeline")
     }
 
     tree visitAll {
-      case node if node.tpe.isPipeVar => cc.ice(node, "TypePipeVar tree remains")
-      case node if node.tpe.isPipeIn  => cc.ice(node, "TypePipeIn tree remains")
-      case node if node.tpe.isPipeOut => cc.ice(node, "TypePipeOut tree remains")
+      case node if node.tpe.isPipeVar => throw Ice(node, "TypePipeVar tree remains")
+      case node if node.tpe.isPipeIn  => throw Ice(node, "TypePipeIn tree remains")
+      case node if node.tpe.isPipeOut => throw Ice(node, "TypePipeOut tree remains")
     }
     // $COVERAGE-ON$
   }

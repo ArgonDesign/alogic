@@ -21,6 +21,7 @@ import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Bindings
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.transform.ReplaceTermRefs
@@ -475,7 +476,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
       //////////////////////////////////////////////////////////////////////////
 
       case node: Stmt if node.tpe == TypeCtrlStmt =>
-        cc.ice(node, "Cannot convert control statement", node.toSource)
+        throw Ice(node, "Cannot convert control statement", node.toSource)
 
       //////////////////////////////////////////////////////////////////////////
       // Otherwise nothing interesting
@@ -500,15 +501,17 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
 
     // $COVERAGE-OFF$ Debug code
     tree visit {
-      case node: Tree if !node.hasTpe                    => cc.ice(node, "Lost tpe of", node.toString)
-      case node: DeclFunc if node.symbol.kind.isCtrlFunc => cc.ice(node, "Control Function remains")
-      case node: DefnFunc if node.symbol.kind.isCtrlFunc => cc.ice(node, "Control Function remains")
-      case node: StmtLoop                                => cc.ice(node, "Loop remains")
-      case node: StmtFence                               => cc.ice(node, "Fence statement remains")
-      case node: StmtBreak                               => cc.ice(node, "Break statement remains")
-      case node: StmtReturn                              => cc.ice(node, "Return statement remains")
+      case node: Tree if !node.hasTpe => throw Ice(node, "Lost tpe of", node.toString)
+      case node: DeclFunc if node.symbol.kind.isCtrlFunc =>
+        throw Ice(node, "Control Function remains")
+      case node: DefnFunc if node.symbol.kind.isCtrlFunc =>
+        throw Ice(node, "Control Function remains")
+      case node: StmtLoop   => throw Ice(node, "Loop remains")
+      case node: StmtFence  => throw Ice(node, "Fence statement remains")
+      case node: StmtBreak  => throw Ice(node, "Break statement remains")
+      case node: StmtReturn => throw Ice(node, "Return statement remains")
       case node @ ExprCall(ref, _) if ref.tpe == TypeCtrlStmt =>
-        cc.ice(node, "Control function call remains")
+        throw Ice(node, "Control function call remains")
     }
     // $COVERAGE-ON$
   }

@@ -147,15 +147,10 @@ coverageUpdateIgnored := {
 
   // Gather code ranges that should be ignored
   val ignoreRanges = coverage.statements filter { stmt =>
-    {
-      stmt.treeName == "Apply" ||
-      stmt.treeName == "ApplyToImplicitArgs"
-    } && {
+    stmt.treeName == "Apply" && {
       // Arguments to assert/require (strictly, should ignore only the 2nd argument)
       stmt.symbolName == "scala.Predef.assert" ||
-      stmt.symbolName == "scala.Predef.require" ||
-      // Arguments to fatal internal compiler error message
-      stmt.symbolName == "com.argondesign.alogic.core.Messaging.ice"
+      stmt.symbolName == "scala.Predef.require"
     }
   } groupBy {
     _.location.fullClassName
@@ -174,6 +169,7 @@ coverageUpdateIgnored := {
       }
     stmt.symbolName == "com.argondesign.alogic.util.unreachable" ||
     stmt.symbolName == "com.argondesign.alogic.core.Messaging.ice" ||
+    stmt.desc.startsWith("throw com.argondesign.alogic.core.Messages.Ice") ||
     isAssertArgument(stmt)
   }
 

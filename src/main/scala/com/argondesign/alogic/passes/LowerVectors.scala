@@ -19,6 +19,7 @@ import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Math.clog2
@@ -248,7 +249,7 @@ final class LowerVectorsB(
   override def finalCheck(tree: Tree): Unit = {
     // $COVERAGE-OFF$ Debug code
     tree visit {
-      case t: Tree if t.tpe.underlying.isVector => cc.ice(t, "Tree with vector type remains")
+      case t: Tree if t.tpe.underlying.isVector => throw Ice(t, "Tree with vector type remains")
     }
     // $COVERAGE-ON$
   }

@@ -16,12 +16,8 @@
 package com.argondesign.alogic.core
 
 import com.argondesign.alogic.core.Messages._
-import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
-
-// Thrown when adding a fatal message to the MessageBuffer
-class FatalErrorException extends Exception
 
 final class MessageBuffer {
 
@@ -31,7 +27,12 @@ final class MessageBuffer {
 
   private val buffer = mutable.ListBuffer[Message]() // buffer storing messages
 
-  private var errorCount = 0 // Number of Error/Fatal/ICE encountered
+  private var _hasError = false
+
+  private def append(message: Message, once: Boolean): Unit =
+    if (!once || !(buffer contains message)) {
+      buffer append message
+    }
 
   //////////////////////////////////////////////////////////////////////////////
   // Get messages/status
@@ -39,7 +40,7 @@ final class MessageBuffer {
 
   def messages: List[Message] = buffer.toList
 
-  def hasError: Boolean = errorCount > 0
+  def hasError: Boolean = _hasError
 
   //////////////////////////////////////////////////////////////////////////////
   // Add message to bufer
@@ -47,10 +48,10 @@ final class MessageBuffer {
 
   def add(msg: Message): Unit = msg match {
     case _: Warning => buffer append msg
-    case _: Error   => buffer append msg; errorCount += 1
+    case _: Error   => buffer append msg; _hasError = true
     case _: Note    => buffer append msg
-    case _: Fatal   => unreachable
-    case _: Ice     => unreachable
+    case _: Fatal   => buffer append msg; _hasError = true
+    case _: Ice     => buffer append msg; _hasError = true
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -58,34 +59,16 @@ final class MessageBuffer {
   //////////////////////////////////////////////////////////////////////////////
 
   def warning(loc: Loc, msg: Seq[String], once: Boolean = false): Unit = synchronized {
-    val message = Warning(loc, msg)
-    if (!once || !(buffer contains message)) {
-      buffer append message
-    }
+    append(Warning(loc, msg), once)
   }
 
   def error(loc: Loc, msg: Seq[String], once: Boolean = false): Unit = synchronized {
-    val message = Error(loc, msg)
-    if (!once || !(buffer contains message)) {
-      buffer append message
-      errorCount += 1
-    }
+    append(Error(loc, msg), once)
+    _hasError = true
   }
 
-  def note(loc: Loc, msg: Seq[String]): Unit = synchronized {
-    buffer append Note(loc, msg)
-  }
-
-  def fatal(loc: Loc, msg: Seq[String]): Nothing = synchronized {
-    buffer append Fatal(loc, msg)
-    errorCount += 1
-    throw new FatalErrorException
-  }
-
-  def ice(loc: Loc, msg: Seq[String]): Nothing = synchronized {
-    buffer append Ice(loc, msg)
-    errorCount += 1
-    throw new FatalErrorException
+  def note(loc: Loc, msg: Seq[String], once: Boolean = false): Unit = synchronized {
+    append(Note(loc, msg), once)
   }
 
 }
@@ -110,10 +93,6 @@ trait Messaging { self: CompilerContext =>
 
   final def note(msg: String*): Unit = messageBuffer.note(Loc.unknown, msg)
 
-  final def fatal(msg: String*): Nothing = messageBuffer.fatal(Loc.unknown, msg)
-
-  final def ice(msg: String*): Nothing = messageBuffer.ice(Loc.unknown, msg)
-
   //////////////////////////////////////////////////////////////////////////////
   // Versions with a source location
   //////////////////////////////////////////////////////////////////////////////
@@ -127,12 +106,6 @@ trait Messaging { self: CompilerContext =>
   final def note[T](item: T, msg: String*)(implicit ev: Locatable[T]): Unit =
     messageBuffer.note(ev(item), msg)
 
-  final def fatal[T](item: T, msg: String*)(implicit ev: Locatable[T]): Nothing =
-    messageBuffer.fatal(ev(item), msg)
-
-  final def ice[T](item: T, msg: String*)(implicit ev: Locatable[T]): Nothing =
-    messageBuffer.ice(ev(item), msg)
-
   //////////////////////////////////////////////////////////////////////////////
   // Versions that discard messages identical to ones already issued
   //////////////////////////////////////////////////////////////////////////////
@@ -143,12 +116,12 @@ trait Messaging { self: CompilerContext =>
   final def errorOnce[T](item: T, msg: String*)(implicit loc: Locatable[T]): Unit =
     messageBuffer.error(loc(item), msg, once = true)
 
+  final def noteOnce[T](item: T, msg: String*)(implicit loc: Locatable[T]): Unit =
+    messageBuffer.note(loc(item), msg, once = true)
+
   //////////////////////////////////////////////////////////////////////////////
   // Add pre-computed messages
   //////////////////////////////////////////////////////////////////////////////
 
   final def addMessage(message: Message): Unit = messageBuffer.add(message)
-
-  final def addMessages(messages: IterableOnce[Message]): Unit =
-    messages.iterator foreach messageBuffer.add
 }

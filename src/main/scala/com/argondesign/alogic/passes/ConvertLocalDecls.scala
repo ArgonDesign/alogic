@@ -20,6 +20,7 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Types.Type
 import com.argondesign.alogic.core.enums.UninitializedLocals
 import com.argondesign.alogic.util.unreachable
@@ -123,7 +124,7 @@ final class ConvertLocalDecls(implicit cc: CompilerContext) extends StatefulTree
 
   override protected def finalCheck(tree: Tree): Unit = {
     tree visit {
-      case node: StmtDecl => cc.ice(node, "Local declaration remains")
+      case node: StmtDecl => throw Ice(node, "Local declaration remains")
     }
   }
 

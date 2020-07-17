@@ -21,7 +21,6 @@ import com.argondesign.alogic.core.Messages.Error
 import com.argondesign.alogic.core.Messages.Fatal
 import com.argondesign.alogic.core.Messages.Warning
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.FatalErrorException
 import com.argondesign.alogic.core.Source
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -461,13 +460,11 @@ final class PreprocessorSpec extends AnyFlatSpec with Matchers {
           |""".stripMargin
       )
 
-      a[FatalErrorException] should be thrownBy {
+      val message = the[Fatal] thrownBy {
         preproc(source, emptyDefines, Nil)
       }
 
-      cc.messages should have length 1
-
-      val message = cc.messages(0)
+      cc.messages should have length 0
 
       message shouldBe a[Fatal]
       message.loc.source should be(source)
@@ -487,13 +484,11 @@ final class PreprocessorSpec extends AnyFlatSpec with Matchers {
         new File("/another/hopefully/nonexistent/path/where/alogic/will/look/for/header")
       )
 
-      a[FatalErrorException] should be thrownBy {
+      val message = the[Fatal] thrownBy {
         preproc(source, emptyDefines, includeSearchPaths)
       }
 
-      cc.messages should have length 1
-
-      val message = cc.messages(0)
+      cc.messages should have length 0
 
       message shouldBe a[Fatal]
       message.loc.source should be(source)

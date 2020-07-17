@@ -20,6 +20,7 @@ package com.argondesign.alogic.frontend
 import com.argondesign.alogic.antlr._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Source
 import com.argondesign.alogic.core.SourceContext
 import org.antlr.v4.runtime.CharStreams
@@ -65,7 +66,7 @@ object Parser {
     Option.when(parser.getNumberOfSyntaxErrors == 0 && !tokenFactory.hadError) {
       dispatcher.build(ctx)(cc, sc) tap {
         // Ensure all nodes have locations TODO: Make optional
-        _ visitAll { case tree: Tree if !tree.hasLoc => cc.ice(s"Tree has no location $tree") }
+        _ visitAll { case tree: Tree if !tree.hasLoc => throw Ice(s"Tree has no location $tree") }
       }
     }
   }

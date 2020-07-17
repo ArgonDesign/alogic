@@ -20,6 +20,7 @@ import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FlowControlTypes._
+import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.StorageTypes._
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.enums.EntityVariant
@@ -79,7 +80,7 @@ final class DefaultStorage(implicit cc: CompilerContext) extends StatefulTreeTra
     assert(!inAssign)
     tree visitAll {
       case node @ DeclOut(_, _, _, StorageTypeDefault) =>
-        cc.ice(node, "Default storage type remains")
+        throw Ice(node, "Default storage type remains")
     }
   }
 

@@ -18,6 +18,7 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.StackFactory
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types.TypeStack
@@ -193,7 +194,7 @@ final class LowerStacks(implicit cc: CompilerContext) extends StatefulTreeTransf
 
     // $COVERAGE-OFF$ Debug code
     tree visit {
-      case node @ ExprSel(ref, sel, _) if ref.tpe.isStack => cc.ice(node, s"Stack .$sel remains")
+      case node @ ExprSel(ref, sel, _) if ref.tpe.isStack => throw Ice(node, s"Stack .$sel remains")
     }
     // $COVERAGE-ON$
   }

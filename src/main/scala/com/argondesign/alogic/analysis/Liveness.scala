@@ -17,6 +17,7 @@ package com.argondesign.alogic.analysis
 
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.util.unreachable
 
@@ -113,7 +114,7 @@ object Liveness {
       case ExprSlice(_: ExprSym, lIdx, _, rIdx) => usedRvalPairs(lIdx) ++ usedRvalPairs(rIdx)
       case ExprCat(parts)                       => parts.iterator flatMap gather
       case other =>
-        cc.ice(other, "Don't know how to extract read variables from lval", other.toSource)
+        throw Ice(other, "Don't know how to extract read variables from lval", other.toSource)
     }
 
     gather(lval).foldLeft(Map.empty[Symbol, BitSet]) {
@@ -153,7 +154,7 @@ object Liveness {
         }
       case ExprCat(parts) => parts.iterator flatMap gather
       case other =>
-        cc.ice(other, "Don't know how to extract written variables from", other.toSource)
+        throw Ice(other, "Don't know how to extract written variables from", other.toSource)
     }
 
     gather(lval).foldLeft(Map.empty[Symbol, BitSet]) {

@@ -18,6 +18,7 @@
 package com.argondesign.alogic.core
 
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.SequenceNumbers
 import com.argondesign.alogic.util.unreachable
@@ -43,11 +44,11 @@ trait Symbols extends { self: CompilerContext =>
   // Add a symbol to the global scope, assuming it is still open
   final def addGlobalSymbol(symbol: Symbols.Symbol): Unit = synchronized {
     _globalScope match {
-      case None => ice("Global scope is already sealed")
+      case None => throw Ice("Global scope is already sealed")
       case Some(scope) =>
         val name = symbol.name
         if (scope contains name) {
-          ice(s"Global scope already contains '$name'")
+          throw Ice(s"Global scope already contains '$name'")
         }
         scope(name) = symbol
     }
@@ -67,7 +68,7 @@ trait Symbols extends { self: CompilerContext =>
   final def lookupGlobalTerm(name: String): Symbols.Symbol = synchronized {
     globalScope.get(name) match {
       case Some(symbol) => symbol
-      case None         => ice(s"Cannot find global term '$name'")
+      case None         => throw Ice(s"Cannot find global term '$name'")
     }
   }
 
@@ -208,7 +209,7 @@ object Symbols {
         } else if (isParametrized) {
           TypeParametrized(this)
         } else {
-          cc.ice(loc, "Cannot compute type of un-specialized non-parametric symbol")
+          throw Ice(loc, "Cannot compute type of un-specialized non-parametric symbol")
         }
         // Mark complete
         pending = false
@@ -248,7 +249,7 @@ object Symbols {
               case FuncVariant.Xeno   => TypeXenoFunc(this, retType, argTypes)
               case FuncVariant.Static => TypeStaticMethod(this, retType, argTypes)
               case FuncVariant.Method => TypeNormalMethod(this, retType, argTypes)
-              case FuncVariant.None   => cc.ice(_decl, "Unknown function variant")
+              case FuncVariant.None   => throw Ice(_decl, "Unknown function variant")
             }
           case _: DeclState => TypeState(this)
         }

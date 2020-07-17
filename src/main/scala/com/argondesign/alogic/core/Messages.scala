@@ -31,7 +31,8 @@ object Messages {
 
   def emptyColorMap: Map[MessageCategory, (String, String)] = Map.empty
 
-  sealed abstract class Message(val category: MessageCategory) {
+  sealed trait Message {
+    val category: MessageCategory
     val loc: Loc
     val msg: Seq[String]
 
@@ -70,9 +71,15 @@ object Messages {
 
   }
 
+  //////////////////////////////////////////////////////////////////////////////
+  // Regular messages
+  //////////////////////////////////////////////////////////////////////////////
+
   // Warnings are informative messages about issues that the compiler can
   // recover from, and still produce functional output.
-  case class Warning(loc: Loc, msg: Seq[String]) extends Message(WarningCategory)
+  case class Warning(loc: Loc, msg: Seq[String]) extends Message {
+    override val category: MessageCategory = WarningCategory
+  }
 
   object Warning {
     def apply(msg: String*): Warning = Warning(Loc.unknown, msg)
@@ -83,7 +90,9 @@ object Messages {
   // progress, but the generated output would not be functional. In this case
   // the compiler carries on trying to generate as many messages as possible,
   // but the final exit status of the program will indicate failure.
-  case class Error(loc: Loc, msg: Seq[String]) extends Message(ErrorCategory)
+  case class Error(loc: Loc, msg: Seq[String]) extends Message {
+    override val category: MessageCategory = ErrorCategory
+  }
 
   object Error {
     def apply(msg: String*): Error = Error(Loc.unknown, msg)
@@ -92,16 +101,24 @@ object Messages {
 
   // Note messages provide additional information, usually emitted right after
   // the message they augment.
-  case class Note(loc: Loc, msg: Seq[String]) extends Message(NoteCategory)
+  case class Note(loc: Loc, msg: Seq[String]) extends Message {
+    override val category: MessageCategory = NoteCategory
+  }
 
   object Note {
     def apply(msg: String*): Note = Note(Loc.unknown, msg)
     def apply[T](item: T, msg: String*)(implicit ev: Locatable[T]): Note = Note(ev(item), msg)
   }
 
+  //////////////////////////////////////////////////////////////////////////////
+  // Fatal messages - these are Throwable
+  //////////////////////////////////////////////////////////////////////////////
+
   // Fatal indicates situations where the compiler cannot make forward
   // progress. The first fatal message will cause the compiler to terminate.
-  case class Fatal(loc: Loc, msg: Seq[String]) extends Message(FatalCategory)
+  case class Fatal(loc: Loc, msg: Seq[String]) extends Throwable with Message {
+    override val category: MessageCategory = FatalCategory
+  }
 
   object Fatal {
     def apply(msg: String*): Fatal = Fatal(Loc.unknown, msg)
@@ -109,7 +126,9 @@ object Messages {
   }
 
   // Internal compiler error indicates a programming error in the compiler.
-  case class Ice(loc: Loc, msg: Seq[String]) extends Message(IceCategory)
+  case class Ice(loc: Loc, msg: Seq[String]) extends Throwable with Message {
+    override val category: MessageCategory = IceCategory
+  }
 
   object Ice {
     def apply(msg: String*): Ice = Ice(Loc.unknown, msg)

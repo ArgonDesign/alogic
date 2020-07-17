@@ -24,6 +24,7 @@ import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FlowControlTypes._
+import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.StorageTypes._
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.SyncRegFactory
@@ -439,15 +440,15 @@ final class LowerFlowControlA(
     // $COVERAGE-OFF$ Debug code
     tree visit {
       case node @ ExprCall(ExprSel(ref, sel, _), _) if ref.tpe.isOut =>
-        cc.ice(node, s"Output port .$sel() remains")
+        throw Ice(node, s"Output port .$sel() remains")
       case node @ ExprCall(ExprSel(ref, sel, _), _) if ref.tpe.isIn =>
-        cc.ice(node, s"Input port .$sel() remains")
+        throw Ice(node, s"Input port .$sel() remains")
       case node @ DeclIn(_, _, fc) if fc != FlowControlTypeNone =>
-        cc.ice(node, "Input port with flow control remains")
+        throw Ice(node, "Input port with flow control remains")
       case node @ DeclOut(_, _, fc, _) if fc != FlowControlTypeNone =>
-        cc.ice(node, "Output port with flow control remains")
+        throw Ice(node, "Output port with flow control remains")
       case node @ DeclOut(_, _, _: StorageTypeSlices, _) =>
-        cc.ice(node, "Output port with slices remains")
+        throw Ice(node, "Output port with slices remains")
     }
     // $COVERAGE-ON$
   }
