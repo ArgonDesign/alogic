@@ -21,6 +21,7 @@ import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.tailrec
 
@@ -67,7 +68,7 @@ final class InferImplications(implicit cc: CompilerContext) extends StatelessTre
         }
         loop()
 
-      case _ =>
+      case _ => unreachable // Due to skip
     }
 
     tree

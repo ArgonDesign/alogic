@@ -505,10 +505,6 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends StatefulTreeT
     case _ => tree
   }
 
-  override def finalCheck(tree: Tree): Unit = tree visit {
-    case node: Tree if !node.hasTpe => cc.ice(node, "Lost tpe of", node.toString)
-  }
-
 }
 
 object AnalyseCallGraph extends EntityTransformerPass(declFirst = false) {

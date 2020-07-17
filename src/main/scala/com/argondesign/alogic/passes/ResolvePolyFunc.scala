@@ -31,9 +31,13 @@ final class ResolvePolyFunc(implicit cc: CompilerContext) extends StatelessTreeT
     case _ => tree
   }
 
-  override def finalCheck(tree: Tree): Unit = tree visitAll {
-    case node: Tree if node.tpe.isPolyFunc =>
-      cc.ice(node, s"ResolvePolyFunc: node of type TypePolyFunc remains")
+  override def finalCheck(tree: Tree): Unit = {
+    // $COVERAGE-OFF$ Debug code
+    tree visitAll {
+      case node: Tree if node.tpe.isPolyFunc =>
+        cc.ice(node, s"ResolvePolyFunc: node of type TypePolyFunc remains")
+    }
+    // $COVERAGE-ON$
   }
 
 }

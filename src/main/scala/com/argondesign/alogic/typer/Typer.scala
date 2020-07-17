@@ -897,9 +897,11 @@ final class Typer(implicit cc: CompilerContext) extends StatefulTreeTransformer 
     if (tree.hasTpe && !tree.tpe.isError) {
       assert(contextKind.isEmpty, s"${tree.loc.prefix}\n$contextKind\n$contextNode")
 
+      // $COVERAGE-OFF$ Debug code
       tree visitAll {
         case n: Tree if !n.hasTpe => cc.ice(n, "Typer: untyped node remains", n.toString)
       }
+      // $COVERAGE-ON$
     }
   }
 

@@ -351,6 +351,7 @@ object TypeAssigner {
   // 'kind' method above.
   //////////////////////////////////////////////////////////////////////////////
 
+  // $COVERAGE-OFF$ As mentioned above, these are just for static dispatch
   // format: off
   def apply(tree: Tree)(implicit cc: CompilerContext): tree.type = assign(tree)(kind(tree))
   def apply(tree: Decl): tree.type = assign(tree)(kind(tree))
@@ -405,6 +406,7 @@ object TypeAssigner {
   def apply(tree: ExprError): tree.type = assign(tree)(kind(tree))
   def apply(tree: Arg): tree.type = assign(tree)(kind(tree))
   // format: on
+  // $COVERAGE-ON$
 
   private def assign(tree: Tree)(kind: => Type): tree.type = {
     require(!tree.hasTpe, tree.tpe)

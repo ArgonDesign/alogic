@@ -246,9 +246,11 @@ final class LowerVectorsB(
   }
 
   override def finalCheck(tree: Tree): Unit = {
+    // $COVERAGE-OFF$ Debug code
     tree visit {
       case t: Tree if t.tpe.underlying.isVector => cc.ice(t, "Tree with vector type remains")
     }
+    // $COVERAGE-ON$
   }
 
 }

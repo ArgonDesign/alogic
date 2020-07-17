@@ -191,9 +191,11 @@ final class LowerStacks(implicit cc: CompilerContext) extends StatefulTreeTransf
   override def finalCheck(tree: Tree): Unit = {
     assert(extraStmts.isEmpty)
 
+    // $COVERAGE-OFF$ Debug code
     tree visit {
       case node @ ExprSel(ref, sel, _) if ref.tpe.isStack => cc.ice(node, s"Stack .$sel remains")
     }
+    // $COVERAGE-ON$
   }
 
 }

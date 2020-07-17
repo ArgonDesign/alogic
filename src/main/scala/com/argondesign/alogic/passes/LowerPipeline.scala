@@ -196,6 +196,7 @@ final class LowerPipelineStage(
   }
 
   override def finalCheck(tree: Tree): Unit = {
+    // $COVERAGE-OFF$ Debug code
     tree visit {
       case node: DeclPipeIn  => cc.ice(node, "DeclPipeIn remains after LowerPipeline")
       case node: DefnPipeIn  => cc.ice(node, "DefnPipeIn remains after LowerPipeline")
@@ -208,6 +209,7 @@ final class LowerPipelineStage(
       case node if node.tpe.isPipeIn  => cc.ice(node, "TypePipeIn tree remains")
       case node if node.tpe.isPipeOut => cc.ice(node, "TypePipeOut tree remains")
     }
+    // $COVERAGE-ON$
   }
 
 }
@@ -347,6 +349,7 @@ final class LowerPipelineHost(implicit cc: CompilerContext) extends StatefulTree
   }
 
   override def finalCheck(tree: Tree): Unit = {
+    // $COVERAGE-OFF$ Debug code
     tree visit {
       case node: DeclPipeVar => cc.ice(node, "DeclPipeVar remains after LowerPipeline")
       case node: DefnPipeVar => cc.ice(node, "DefnPipeVar remains after LowerPipeline")
@@ -357,6 +360,7 @@ final class LowerPipelineHost(implicit cc: CompilerContext) extends StatefulTree
       case node if node.tpe.isPipeIn  => cc.ice(node, "TypePipeIn tree remains")
       case node if node.tpe.isPipeOut => cc.ice(node, "TypePipeOut tree remains")
     }
+    // $COVERAGE-ON$
   }
 
 }

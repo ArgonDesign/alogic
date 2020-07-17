@@ -498,6 +498,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
     assert(continueTargets.isEmpty)
     assert(pendingStates.isEmpty)
 
+    // $COVERAGE-OFF$ Debug code
     tree visit {
       case node: Tree if !node.hasTpe                    => cc.ice(node, "Lost tpe of", node.toString)
       case node: DeclFunc if node.symbol.kind.isCtrlFunc => cc.ice(node, "Control Function remains")
@@ -509,6 +510,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
       case node @ ExprCall(ref, _) if ref.tpe == TypeCtrlStmt =>
         cc.ice(node, "Control function call remains")
     }
+    // $COVERAGE-ON$
   }
 
 }

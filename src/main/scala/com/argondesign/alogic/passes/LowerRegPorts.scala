@@ -80,10 +80,12 @@ final class LowerRegPorts(implicit cc: CompilerContext) extends StatefulTreeTran
   }
 
   override def finalCheck(tree: Tree): Unit = {
+    // $COVERAGE-OFF$ Debug code
     tree visit {
       case node @ DeclOut(_, _, _, st) if st != StorageTypeWire =>
         cc.ice(node, s"Output port with non-wire storage remains")
     }
+    // $COVERAGE-ON$
   }
 
 }

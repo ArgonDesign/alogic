@@ -120,12 +120,14 @@ final class LowerLoops(implicit cc: CompilerContext) extends StatefulTreeTransfo
   override def finalCheck(tree: Tree): Unit = {
     assert(continueRewrites.isEmpty)
 
+    // $COVERAGE-OFF$ Debug code
     tree visit {
       case node: Tree if !node.hasTpe => cc.ice(node, "lost type")
       case node: StmtFor              => cc.ice(node, "for statement remains after LowerLoops")
       case node: StmtDo               => cc.ice(node, "do statement remains after LowerLoops")
       case node: StmtWhile            => cc.ice(node, "while statement remains after LowerLoops")
     }
+    // $COVERAGE-ON$
   }
 
 }

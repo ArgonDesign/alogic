@@ -7,7 +7,6 @@
 
 package com.argondesign.alogic.antlr
 
-import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.Token
 import org.antlr.v4.runtime.tree.TerminalNode
 
@@ -17,10 +16,6 @@ import scala.language.implicitConversions
 object AntlrConverters extends {
   // All Token are AlogicToken (see AlogicTokenFactory)
   implicit def t2at(token: Token): AlogicToken = token.asInstanceOf[AlogicToken]
-
-  // All ParserRuleContext are AlogicParserRuleContext (see contextSuperClass grammar option)
-  implicit def prc2aprc(ctx: ParserRuleContext): AlogicParserRuleContext =
-    ctx.asInstanceOf[AlogicParserRuleContext]
 
   // TerminalNode is just a parse tree node holding a Token
   implicit def tb2at(node: TerminalNode): AlogicToken = node.getSymbol.asInstanceOf[AlogicToken]

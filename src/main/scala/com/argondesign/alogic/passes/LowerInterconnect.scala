@@ -274,8 +274,10 @@ final class LowerInterconnect(implicit cc: CompilerContext)
     assert(!inAssign)
 
     def check(tree: Tree): Unit = tree visit {
+      // $COVERAGE-OFF$ Debug code
       case node @ ExprSel(ExprSym(symbol), _, _) if symbol.kind.isEntity =>
         cc.ice(node, "Direct port access remains")
+      // $COVERAGE-ON$
     }
 
     tree visit {

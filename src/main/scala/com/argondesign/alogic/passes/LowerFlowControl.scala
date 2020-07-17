@@ -436,6 +436,7 @@ final class LowerFlowControlA(
   override def finalCheck(tree: Tree): Unit = {
     assert(extraStmts.isEmpty)
 
+    // $COVERAGE-OFF$ Debug code
     tree visit {
       case node @ ExprCall(ExprSel(ref, sel, _), _) if ref.tpe.isOut =>
         cc.ice(node, s"Output port .$sel() remains")
@@ -448,6 +449,7 @@ final class LowerFlowControlA(
       case node @ DeclOut(_, _, _: StorageTypeSlices, _) =>
         cc.ice(node, "Output port with slices remains")
     }
+    // $COVERAGE-ON$
   }
 
 }
