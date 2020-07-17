@@ -81,9 +81,9 @@ final class MakeVerilog(
       s"${vexpr(e)}(${aa mkString ", "})"
     case ExprUnary(op, e) =>
       e match {
-        case _: ExprBinary | _: ExprCond => s"$op(${vexpr(e)})"
-        case _: ExprInt | _: ExprNum     => cc.ice(e, "Should have been folded")
-        case _                           => s"$op${vexpr(e)}"
+        case _: ExprUnary | _: ExprBinary | _: ExprCond => s"$op(${vexpr(e)})"
+        case _: ExprInt | _: ExprNum                    => cc.ice(e, "Should have been folded")
+        case _                                          => s"$op${vexpr(e)}"
       }
     case ExprBinary(l, op, r) =>
       val ll = l match {
