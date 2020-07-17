@@ -1,0 +1,73 @@
+fsm control_do_02 {
+  in  bool i;
+  in  bool j;
+  out bool o = 0;
+  in  bool a;
+  in  bool b;
+
+  void main() {
+    do {
+      o = a;
+      if (i) continue; else if (j) break;
+      o = ~a;
+    } while (j);
+    do {
+      o = b;
+      if (i) continue; else if (j) break;
+      o = ~b;
+    } while (j);
+  }
+}
+// @fec/smtc {{{
+//  always 1
+//  assert (= [golden.state_q] [alogic.state_q])
+// }}}
+// @fec/golden {{{
+// module control_do_02(
+//    input  wire  clk,
+//    input  wire  rst,
+//    input  wire  i,
+//    input  wire  j,
+//    output reg   o,
+//    input  wire  a,
+//    input  wire  b
+// );
+//
+//    localparam [1:0] A_HEAD = 2'd0;
+//    localparam [1:0] A_NEXT = 2'd1;
+//    localparam [1:0] B_HEAD = 2'd2;
+//    localparam [1:0] B_NEXT = 2'd3;
+//
+//    reg [1:0] state_q;
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        o <= 1'd0;
+//        state_q <= A_HEAD;
+//      end else begin
+//        case (state_q)
+//          A_HEAD: begin
+//            o <= a;
+//            state_q <= i ? (j ? A_HEAD : B_HEAD) :
+//                           (j ? B_HEAD : A_NEXT) ;
+//          end
+//          A_NEXT: begin
+//            o <= ~a;
+//            state_q <= j ? A_HEAD : B_HEAD;
+//          end
+//          B_HEAD: begin
+//            o <= b;
+//            state_q <= i ? (j ? B_HEAD : A_HEAD) :
+//                           (j ? A_HEAD : B_NEXT) ;
+//          end
+//          B_NEXT: begin
+//            o <= ~b;
+//            state_q <= j ? B_HEAD : A_HEAD;
+//          end
+//        endcase
+//      end
+//    end
+//
+// endmodule
+// }}}
+// @stats/control_do_02/states: 4

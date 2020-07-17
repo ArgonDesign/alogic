@@ -1,0 +1,79 @@
+fsm control_do_01 {
+  in  bool i;
+  out bool o = 0;
+  in  bool a;
+  in  bool b;
+
+  void main() {
+    do {
+      o = a;
+      do {
+        o = ~a;
+      } while (i);
+    } while (i);
+    do {
+      o = b;
+      do {
+        o = ~b;
+      } while (i);
+    } while (i);
+  }
+}
+// @fec/smtc {{{
+//  always 1
+//  assert (= [golden.state_q] [alogic.state_q])
+// }}}
+// @fec/golden {{{
+// module control_do_01(
+//    input  wire  clk,
+//    input  wire  rst,
+//    input  wire  i,
+//    output reg   o,
+//    input  wire  a,
+//    input  wire  b
+// );
+//
+//    localparam [2:0] A_OUTER_HEAD = 3'd0;
+//    localparam [2:0] A_INNER_HEAD = 3'd2;
+//    localparam [2:0] A_OUTER_LAST = 3'd1;
+//    localparam [2:0] B_OUTER_HEAD = 3'd4;
+//    localparam [2:0] B_INNER_HEAD = 3'd5;
+//    localparam [2:0] B_OUTER_LAST = 3'd3;
+//
+//    reg [2:0] state_q;
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        o <= 1'd0;
+//        state_q <= A_OUTER_HEAD;
+//      end else begin
+//        case (state_q)
+//          A_OUTER_HEAD: begin
+//            o <= a;
+//            state_q <= A_INNER_HEAD;
+//          end
+//          A_INNER_HEAD: begin
+//            o <= ~a;
+//            state_q <= i ? A_INNER_HEAD : A_OUTER_LAST;
+//          end
+//          A_OUTER_LAST: begin
+//            state_q <= i ? A_OUTER_HEAD : B_OUTER_HEAD;
+//          end
+//          B_OUTER_HEAD: begin
+//            o <= b;
+//            state_q <= B_INNER_HEAD;
+//          end
+//          B_INNER_HEAD: begin
+//            o <= ~b;
+//            state_q <= i ? B_INNER_HEAD : B_OUTER_LAST;
+//          end
+//          /* B_OUTER_LAST */ default: begin
+//            state_q <= i ? B_OUTER_HEAD : A_OUTER_HEAD;
+//          end
+//        endcase
+//      end
+//    end
+//
+// endmodule
+// }}}
+// @stats/control_do_01/states: 6

@@ -1,0 +1,55 @@
+fsm control_do_00 {
+  in  bool i;
+  out bool o = 0;
+  in  bool a;
+  in  bool b;
+
+  void main() {
+    do {
+      o = a;
+    } while (i);
+    do {
+      o = b;
+    } while (i);
+  }
+}
+// @fec/smtc {{{
+//  always 1
+//  assert (= [golden.state_q] [alogic.state_q])
+// }}}
+// @fec/golden {{{
+// module control_do_00(
+//    input  wire  clk,
+//    input  wire  rst,
+//    input  wire  i,
+//    output reg   o,
+//    input  wire  a,
+//    input  wire  b
+// );
+//
+//    localparam A_HEAD = 1'd0;
+//    localparam B_HEAD = 1'd1;
+//
+//    reg state_q;
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        o <= 1'd0;
+//        state_q <= A_HEAD;
+//      end else begin
+//        case (state_q)
+//          A_HEAD: begin
+//            o <= a;
+//            if (!i) state_q <= B_HEAD;
+//          end
+//          B_HEAD: begin
+//            o <= b;
+//            if (!i) state_q <= A_HEAD;
+//          end
+//        endcase
+//      end
+//    end
+//
+// endmodule
+// }}}
+// @stats/control_do_00/states: 2

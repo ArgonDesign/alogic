@@ -1,0 +1,75 @@
+fsm control_while_00 {
+  in  bool i;
+  out bool o = 0;
+  in  bool a;
+  in  bool b;
+
+  void main() {
+    while (i) {
+      o = a;
+    }
+    while (i) {
+      o = b;
+    }
+  }
+}
+// @fec/smtc {{{
+//  always 1
+//  assert (= [golden.state_q] [alogic.state_q])
+// }}}
+// @fec/golden {{{
+// module control_while_00(
+//    input  wire  clk,
+//    input  wire  rst,
+//    input  wire  i,
+//    output reg   o,
+//    input  wire  a,
+//    input  wire  b
+// );
+//
+//    localparam [1:0] A_TEST = 2'd0;
+//    localparam [1:0] A_HEAD = 2'd1;
+//    localparam [1:0] B_TEST = 2'd2;
+//    localparam [1:0] B_HEAD = 2'd3;
+//
+//    reg [1:0] state_q;
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        o <= 1'd0;
+//        state_q <= A_TEST;
+//      end else begin
+//        case (state_q)
+//          A_TEST: begin
+//            if (i) begin
+//              state_q <= A_HEAD;
+//            end else begin
+//              state_q <= B_TEST;
+//            end
+//          end
+//          A_HEAD: begin
+//            o <= a;
+//            if (!i) begin
+//              state_q <= B_TEST;
+//            end
+//          end
+//          B_TEST: begin
+//            if (i) begin
+//              state_q <= B_HEAD;
+//            end else begin
+//              state_q <= A_TEST;
+//            end
+//          end
+//          B_HEAD: begin
+//            o <= b;
+//            if (!i) begin
+//              state_q <= A_TEST;
+//            end
+//          end
+//        endcase
+//      end
+//    end
+//
+// endmodule
+// }}}
+// @stats/control_while_00/states: 4

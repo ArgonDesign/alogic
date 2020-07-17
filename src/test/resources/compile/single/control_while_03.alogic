@@ -1,0 +1,161 @@
+fsm control_while_03 {
+  in  bool i;
+  in  bool j;
+  out bool o = 0;
+  in  bool a;
+  in  bool b;
+
+  void main() {
+    while (j) {
+      o = a;
+      if (i) break; else if (j) continue;
+      while (j) {
+        o = ~a;
+        if (i) break; else if (j) continue;
+        o = 0;
+      }
+    }
+    while (j) {
+      o = b;
+      if (i) break; else if (j) continue;
+      while (j) {
+        o = ~b;
+        if (i) break; else if (j) continue;
+        o = 1;
+      }
+    }
+  }
+}
+// @fec/smtc {{{
+//  always 1
+//  assert (= [golden.state_q] [alogic.state_q])
+// }}}
+// @fec/golden {{{
+// module control_while_03(
+//    input  wire  clk,
+//    input  wire  rst,
+//    input  wire  i,
+//    input  wire  j,
+//    output reg   o,
+//    input  wire  a,
+//    input  wire  b
+// );
+//
+//    localparam [3:0] A_OUTER_TEST = 4'd0;
+//    localparam [3:0] A_OUTER_HEAD = 4'd2;
+//    localparam [3:0] A_INNER_TEST = 4'd3;
+//    localparam [3:0] A_INNER_HEAD = 4'd4;
+//    localparam [3:0] A_INNER_NEXT = 4'd5;
+//    localparam [3:0] A_OUTER_LAST = 4'd1;
+//    localparam [3:0] B_OUTER_TEST = 4'd7;
+//    localparam [3:0] B_OUTER_HEAD = 4'd8;
+//    localparam [3:0] B_INNER_TEST = 4'd9;
+//    localparam [3:0] B_INNER_HEAD = 4'd10;
+//    localparam [3:0] B_INNER_NEXT = 4'd11;
+//    localparam [3:0] B_OUTER_LAST = 4'd6;
+//
+//    reg [3:0] state_q;
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        o <= 1'd0;
+//        state_q <= A_OUTER_TEST;
+//      end else begin
+//        case (state_q)
+//          A_OUTER_TEST: begin
+//            if (j) begin
+//              state_q <= A_OUTER_HEAD;
+//            end else begin
+//              state_q <= B_OUTER_TEST;
+//            end
+//          end
+//          A_OUTER_HEAD: begin
+//            o <= a;
+//            if (i) begin
+//              state_q <= B_OUTER_TEST;
+//            end else if (!j) begin
+//              state_q <= A_INNER_TEST;
+//            end
+//          end
+//          A_INNER_TEST: begin
+//            if (j) begin
+//              state_q <= A_INNER_HEAD;
+//            end else begin
+//              state_q <= A_OUTER_LAST;
+//            end
+//          end
+//          A_INNER_HEAD: begin
+//            o <= ~a;
+//            if (i) begin
+//              state_q <= A_OUTER_LAST;
+//            end else if (!j) begin
+//              state_q <= A_INNER_NEXT;
+//            end
+//          end
+//          A_INNER_NEXT: begin
+//            o <= 1'd0;
+//            if (j) begin
+//              state_q <= A_INNER_HEAD;
+//            end else begin
+//              state_q <= A_OUTER_LAST;
+//            end
+//          end
+//          A_OUTER_LAST: begin
+//            if (j) begin
+//              state_q <= A_OUTER_HEAD;
+//            end else begin
+//              state_q <= B_OUTER_TEST;
+//            end
+//          end
+//          B_OUTER_TEST: begin
+//            if (j) begin
+//              state_q <= B_OUTER_HEAD;
+//            end else begin
+//              state_q <= A_OUTER_TEST;
+//            end
+//          end
+//          B_OUTER_HEAD: begin
+//            o <= b;
+//            if (i) begin
+//              state_q <= A_OUTER_TEST;
+//            end else if (!j) begin
+//              state_q <= B_INNER_TEST;
+//            end
+//          end
+//          B_INNER_TEST: begin
+//            if (j) begin
+//              state_q <= B_INNER_HEAD;
+//            end else begin
+//              state_q <= B_OUTER_LAST;
+//            end
+//          end
+//          B_INNER_HEAD: begin
+//            o <= ~b;
+//            if (i) begin
+//              state_q <= B_OUTER_LAST;
+//            end else if (!j) begin
+//              state_q <= B_INNER_NEXT;
+//            end
+//          end
+//          B_INNER_NEXT: begin
+//            o <= 1'd1;
+//            if (j) begin
+//              state_q <= B_INNER_HEAD;
+//            end else begin
+//              state_q <= B_OUTER_LAST;
+//            end
+//          end
+//          /* B_OUTER_LAST */ default: begin
+//            if (j) begin
+//              state_q <= B_OUTER_HEAD;
+//            end else begin
+//              state_q <= A_OUTER_TEST;
+//            end
+//          end
+//        endcase
+//      end
+//    end
+//
+// endmodule
+// }}}
+// @stats/control_while_03/states: 12

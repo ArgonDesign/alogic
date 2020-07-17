@@ -399,8 +399,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
       // Convert block
       //////////////////////////////////////////////////////////////////////////
 
-      case StmtBlock(body) =>
-        TypeAssigner(StmtBlock(convertControlUnits(body)) withLoc tree.loc)
+      case StmtBlock(body) => Thicket(convertControlUnits(body))
 
       //////////////////////////////////////////////////////////////////////////
       // Convert loop
@@ -409,19 +408,18 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
       case StmtLoop(body) => {
           val head = convertControlUnits(body)
           // Emit the loop entry state if necessary
-          val stmt = emitState(head) match {
+          emitState(head) match {
             case Some(symbol) =>
               // Loop entry state was emitted, so the containing state
               // needs to go to the emitted state
               val ref = ExprSym(symbol) regularize symbol.loc
-              StmtGoto(ref)
+              TypeAssigner(StmtGoto(ref) withLoc tree.loc)
             case None =>
               // Loop entry state was not emitted (because the containing
               // state is empty), so the containing state becomes the loop
               // entry state
-              StmtBlock(head)
+              Thicket(head)
           }
-          TypeAssigner(stmt withLoc tree.loc)
         } tap { _ =>
           breakTargets.pop()
           followingState.pop()

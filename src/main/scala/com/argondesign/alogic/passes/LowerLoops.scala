@@ -18,6 +18,9 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Types.TypeCombStmt
+import com.argondesign.alogic.core.Types.TypeCtrlStmt
+import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
 
@@ -33,7 +36,7 @@ final class LowerLoops(implicit cc: CompilerContext) extends StatefulTreeTransfo
   }
 
   // Stack of statements to replace continue statements with
-  private[this] val continueRewrites = mutable.Stack[Option[() => Stmt]]()
+  private[this] val continueRewrites = mutable.Stack[Option[() => Tree]]()
 
   override def enter(tree: Tree): Option[Tree] = {
     tree match {
@@ -51,12 +54,12 @@ final class LowerLoops(implicit cc: CompilerContext) extends StatefulTreeTransfo
 
       case StmtFor(_, Some(cond), step, _) =>
         continueRewrites.push(Some { () =>
-          StmtBlock(step :+ StmtIf(cond, List(StmtContinue()), List(StmtBreak())))
+          Thicket(step :+ StmtIf(cond, List(StmtContinue()), List(StmtBreak())))
         })
 
       case StmtFor(_, None, step, _) =>
         continueRewrites.push(Some { () =>
-          StmtBlock(step :+ StmtContinue())
+          Thicket(step :+ StmtContinue())
         })
 
       case _ =>
@@ -95,13 +98,18 @@ final class LowerLoops(implicit cc: CompilerContext) extends StatefulTreeTransfo
     case StmtFor(inits, Some(cond), steps, body) => {
         val test = StmtIf(cond, List(StmtFence()), List(StmtBreak()))
         val loop = StmtLoop(body ::: (steps :+ test))
-        StmtBlock(inits :+ StmtIf(cond, List(loop), Nil)) regularize tree.loc
+        Thicket(inits :+ StmtIf(cond, List(loop), Nil)) regularize tree.loc
       } tap { _ =>
         continueRewrites.pop()
       }
 
     case StmtFor(inits, None, steps, body) => {
-        StmtBlock(inits :+ StmtLoop(body ::: steps)) regularize tree.loc
+        val extra = body.last.tpe match {
+          case TypeCtrlStmt => steps
+          case TypeCombStmt => steps :+ StmtFence()
+          case _            => unreachable
+        }
+        Thicket(inits :+ StmtLoop(body ::: extra)) regularize tree.loc
       } tap { _ =>
         continueRewrites.pop()
       }

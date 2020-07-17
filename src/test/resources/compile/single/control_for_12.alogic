@@ -1,0 +1,85 @@
+fsm control_for_12 {
+  out bool o = 0;
+  in  bool a;
+  in  bool b;
+  in  u3   i;
+
+  void main() {
+    for (u3 x = 0 ; x < i ; x++) {
+      o = a;
+    }
+    for (u3 y = 7 ; y > i ; y--) {
+      o = b;
+    }
+  }
+}
+// @fec/smtc {{{
+//  always 1
+//  assert (= [golden.state_q] [alogic.state_q])
+//  assert (= [golden.x_q] [alogic.x_q])
+//  assert (= [golden.y_q] [alogic.y_q])
+// }}}
+// @fec/golden {{{
+// module control_for_12(
+//    input  wire  clk,
+//    input  wire  rst,
+//    output reg   o,
+//    input  wire  a,
+//    input  wire  b,
+//    input  wire [2:0] i
+// );
+//
+//    localparam [1:0] A_TEST = 2'd0;
+//    localparam [1:0] A_HEAD = 2'd1;
+//    localparam [1:0] B_TEST = 2'd2;
+//    localparam [1:0] B_HEAD = 2'd3;
+//
+//    reg [1:0] state_q;
+//    reg [2:0] x_q;
+//    reg [2:0] y_q;
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        o <= 1'd0;
+//        x_q <= 3'd0;
+//        y_q <= 3'd0;
+//        state_q <= A_TEST;
+//      end else begin
+//        case (state_q)
+//          A_TEST: begin
+//            x_q <= 3'd0;
+//            if (3'd0 < i) begin
+//              state_q <= A_HEAD;
+//            end else begin
+//              state_q <= B_TEST;
+//            end
+//          end
+//          A_HEAD: begin
+//            o <= a;
+//            x_q <= x_q + 3'd1;
+//            if (x_q + 3'd1 >= i) begin
+//              state_q <= B_TEST;
+//            end
+//          end
+//          B_TEST: begin
+//            y_q <= 3'd7;
+//            if (3'd7 > i) begin
+//              state_q <= B_HEAD;
+//            end else begin
+//              state_q <= A_TEST;
+//            end
+//          end
+//          B_HEAD: begin
+//            o <= b;
+//            y_q <= y_q - 3'd1;
+//            if (y_q - 3'd1 <= i) begin
+//              state_q <= A_TEST;
+//            end
+//          end
+//        endcase
+//      end
+//    end
+//
+// endmodule
+// }}}
+// @stats/control_for_12/states: 4
