@@ -37,6 +37,7 @@ network pipeline_05 {
     }
   }
 }
+// @fec/solver: boolector
 // @fec/mode: bmc
 // @fec/golden {{{
 // module pipeline_05(
