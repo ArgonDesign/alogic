@@ -147,7 +147,10 @@ coverageUpdateIgnored := {
 
   // Gather code ranges that should be ignored
   val ignoreRanges = coverage.statements filter { stmt =>
-    stmt.treeName == "Apply" && {
+    {
+      stmt.treeName == "Apply" ||
+      stmt.treeName == "ApplyToImplicitArgs"
+    } && {
       // Arguments to assert/require (strictly, should ignore only the 2nd argument)
       stmt.symbolName == "scala.Predef.assert" ||
       stmt.symbolName == "scala.Predef.require" ||
