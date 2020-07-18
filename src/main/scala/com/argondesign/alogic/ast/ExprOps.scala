@@ -32,14 +32,14 @@ import scala.math.BigInt.int2bigInt
 
 trait ExprOps { this: Expr =>
 
-  final private def fix(expr: Expr)(implicit cc: CompilerContext): expr.type = {
+  final private def fix(tree: Tree)(implicit cc: CompilerContext): tree.type = {
     if (hasLoc) {
-      expr withLoc loc
+      tree withLoc loc
     }
     if (hasTpe) {
-      TypeAssigner(expr)
+      TypeAssigner(tree)
     }
-    expr
+    tree
   }
 
   final private def mkBinary(op: String, rhs: Expr)(implicit cc: CompilerContext) = {
@@ -116,6 +116,7 @@ trait ExprOps { this: Expr =>
 
   final def sel(name: String)(implicit cc: CompilerContext): ExprSel = fix(ExprSel(this, name, Nil))
   final def call(args: List[Arg])(implicit cc: CompilerContext): ExprCall = fix(ExprCall(this, args))
+  final def call(arg: Expr)(implicit cc: CompilerContext): ExprCall = this.call(fix(ArgP(arg)) :: Nil)
 
   final def cat(rhs: Expr)(implicit cc: CompilerContext): ExprCat = fix(ExprCat(List(this, rhs)))
 
@@ -152,6 +153,11 @@ trait ExprOps { this: Expr =>
   } else {
     this - 1
   }
+
+  final def assign(expr: Expr)(implicit cc: CompilerContext): StmtAssign =
+    fix(StmtAssign(this, expr))
+  final def assign(value: Int)(implicit cc: CompilerContext): StmtAssign =
+    this assign fix(ExprInt(tpe.isSigned, tpe.width.toInt, value))
 
   // Is this expression shaped as a valid lvalue expression
   lazy val isLValueExpr: Boolean = this forall {
@@ -194,6 +200,7 @@ trait ExprOps { this: Expr =>
     case call @ ExprCall(ExprSym(symbol), _) if symbol.isBuiltin =>
       cc.isKnownConstBuiltinCall(call)
     case ExprCast(_, expr) => expr.isKnownConst
+    case ExprOld(expr)     => expr.isKnownConst
     case _                 => false
   }
 
@@ -216,6 +223,7 @@ trait ExprOps { this: Expr =>
       case ExprSel(e, _, _)        => p(e)
       case _: ExprRef              => true
       case _: ExprSym              => true
+      case _: ExprOld              => true
       case _: ExprThis             => true
       case _: ExprType             => true
       case ExprCast(_, e)          => p(e)

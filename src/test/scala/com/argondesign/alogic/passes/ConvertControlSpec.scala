@@ -51,10 +51,13 @@ final class ConvertControlSpec extends AnyFreeSpec with AlogicTest {
     }
 
     def checkGoesToPop(state: DefnState): Unit = {
-      val goto = state collectFirst {
-        case e @ StmtGoto(ExprCall(ExprSel(_, "pop", Nil), Nil)) => e
+      val stack = state getFirst {
+        case StmtExpr(ExprCall(ExprSel(s, "pop", _), Nil)) => s
       }
-      goto should matchPattern { case Some(_) => }
+      state.postOrderIterator exists {
+        case StmtGoto(ExprSel(`stack`, "old", Nil)) => true
+        case _                                      => false
+      } shouldBe true
     }
 
     def checkPopsStack(state: DefnState): Unit = {
@@ -72,11 +75,13 @@ final class ConvertControlSpec extends AnyFreeSpec with AlogicTest {
     }
 
     def checkPushesState(stateFrom: DefnState, statePushedGolden: DefnState): Unit = {
-      val pushCall = stateFrom getFirst { case x: ExprCall => x }
-      pushCall should matchPattern {
-        case ExprCall(ExprSel(_, "push", Nil), List(ArgP(ExprSym(symbol))))
-            if symbol == statePushedGolden.symbol =>
+      val stack = stateFrom getFirst {
+        case StmtExpr(ExprCall(ExprSel(s, "push", _), Nil)) => s
       }
+      stateFrom.postOrderIterator exists {
+        case StmtAssign(ExprSel(`stack`, "top", Nil), ExprSym(g)) => g == statePushedGolden.symbol
+        case _                                                    => false
+      } shouldBe true
     }
 
     "correctly assign static return points" in {

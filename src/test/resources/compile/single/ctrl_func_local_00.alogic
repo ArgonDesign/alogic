@@ -1,0 +1,43 @@
+fsm ctrl_func_local_00 {
+  in  bool i;
+  out bool o = 0;
+
+  void main() {
+    bool a = ~i;
+    fence;
+    o = a;
+    return;
+  }
+}
+// @fec/mode: bmc
+// @fec/golden {{{
+//  module ctrl_func_local_00(
+//    input wire clk,
+//    input wire rst,
+//    input wire i,
+//    output reg o
+//  );
+//
+//    reg state_q;
+//    reg a_q;
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        o <= 1'd0;
+//        state_q <= 1'd0;
+//      end else begin
+//        case (state_q)
+//          1'd0: begin
+//            a_q <= ~i;
+//            state_q <= 1'd1;
+//          end
+//          1'd1: begin
+//            o <= a_q;
+//            state_q <= 1'd0;
+//          end
+//        endcase
+//      end
+//    end
+//
+//  endmodule
+// }}}

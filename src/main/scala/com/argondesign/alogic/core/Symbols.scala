@@ -399,10 +399,16 @@ object Symbols {
       if (x eq y) {
         0
       } else {
-        implicitly[Ordering[Loc]].compare(x.loc, y.loc) match {
-          case 0 =>
-            (x.name compare y.name) ensuring (_ != 0, "Different Symbols must not compare equal")
-          case result => result
+        val compare1 = implicitly[Ordering[Loc]].compare(x.loc, y.loc)
+        if (compare1 != 0) {
+          compare1
+        } else {
+          val compare2 = x.name compare y.name
+          if (compare2 != 0) {
+            compare2
+          } else {
+            x.id compare y.id
+          }
         }
       }
 

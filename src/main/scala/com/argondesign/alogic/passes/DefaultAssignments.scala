@@ -89,20 +89,15 @@ object DefaultAssignments extends PairTransformerPass {
         }
       }
 
-      // If a symbol is live or drives a connection, initialize to its
-      // default value otherwise zero.
-      val initializeToDefault = {
-        val symbolsDrivingConnect = Set from {
-          entityDefn.assigns.iterator flatMap {
-            case EntAssign(_, rhs) =>
-              rhs.collect {
-                case ExprSym(symbol) => symbol.attr.flop.getOrElse(symbol)
-              }
-          }
+      // If a symbol is live or we use it's _q, initialize to its default value
+      // otherwise zero.
+      val initializeToDefault = Set from {
+        def collect(tree: Tree): Iterator[Symbol] = tree flatCollect {
+          case StmtDelayed(_: ExprSym, rhs) => collect(rhs)
+          case ExprSym(symbol)              => symbol.attr.flop.get.iterator
         }
-
-        liveSymbolBits.keySet union symbolsDrivingConnect
-      }
+        collect(entityDefn)
+      } union liveSymbolBits.keySet
 
       // Any Q symbols which are referenced  (other than in the clocked blocks)
       val referencedQSymbols = Set from {

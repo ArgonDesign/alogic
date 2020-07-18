@@ -339,6 +339,7 @@ trait TreePrintOps extends { this: Tree =>
     case ExprSel(expr, selector, idxs)      => s"${v(expr)}.$selector#[${vs(idxs)}]"
     case ExprRef(ref)                       => v(ref)
     case ExprSym(symbol)                    => s"${symbol.name}@${symbol.id}"
+    case ExprOld(expr)                      => s"old(${v(expr)})"
     case ExprThis(expr)                     => s"this(${v(expr)})"
     case ExprType(kind)                     => s"${kind.toSource}"
     case ExprCast(kind, expr)               => s"(${kind.toSource})(${v(expr)})"

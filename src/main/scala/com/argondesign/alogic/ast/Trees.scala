@@ -287,6 +287,7 @@ object Trees {
   case class ExprSel(expr: Expr, selector: String, idxs: List[Expr]) extends Expr
   case class ExprRef(ref: Ref) extends Expr
   case class ExprSym(symbol: Symbol) extends Expr
+  case class ExprOld(expr: Expr) extends Expr
   case class ExprThis(expr: Expr) extends Expr
   case class ExprType(kind: TypeFund) extends Expr
   case class ExprCast(kind: TypeFund, expr: Expr) extends Expr

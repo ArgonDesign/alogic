@@ -1192,6 +1192,14 @@ object TreeCopier {
     }
   }
 
+  def apply(tree: ExprOld)(expr: Tree): ExprOld = {
+    if (expr eq tree.expr) {
+      tree
+    } else {
+      ExprOld(expr.asInstanceOf[Expr]) withLoc tree.loc
+    }
+  }
+
   def apply(tree: ExprThis)(expr: Tree): ExprThis = {
     if (expr eq tree.expr) {
       tree

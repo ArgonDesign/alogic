@@ -162,6 +162,7 @@ object StaticEvaluation {
       case ExprRep(c, e)         => p(e) || p(c)
       case ExprSel(e, _, _)      => p(e)
       case ExprCast(_, e)        => p(e)
+      case ExprOld(e)            => p(e)
       case _: ExprType           => false
       case _: ExprStr            => false
       case _: ExprError          => false

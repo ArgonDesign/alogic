@@ -571,6 +571,9 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
       val ref = walk(node.ref)
       TreeCopier(node)(ref)
     case node: ExprSym => node
+    case node: ExprOld =>
+      val expr = walk(node.expr)
+      TreeCopier(node)(expr)
     case node: ExprThis =>
       val expr = walk(node.expr)
       TreeCopier(node)(expr)

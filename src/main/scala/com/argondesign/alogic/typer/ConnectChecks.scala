@@ -63,9 +63,9 @@ object ConnectChecks {
         if (idx.isKnown) activeLogic(tgt) else Iterator.single(expr)
       case ExprSlice(tgt, lIdx, op, _) =>
         if (op == ":" || lIdx.isKnown) activeLogic(tgt) else Iterator.single(expr)
-      case ExprSel(tgt, _, _)                                              => activeLogic(tgt)
-      case _: ExprSym | _: ExprType | _: ExprInt | _: ExprNum | _: ExprStr => Iterator.empty
-      case _: ExprRef | _: ExprThis | _: ExprCast | _: ExprError           => unreachable
+      case ExprSel(tgt, _, _)                                                 => activeLogic(tgt)
+      case _: ExprSym | _: ExprType | _: ExprInt | _: ExprNum | _: ExprStr    => Iterator.empty
+      case _: ExprRef | _: ExprOld | _: ExprThis | _: ExprCast | _: ExprError => unreachable
     }
 
     // Given the type of a an expression in a connect, return the type of

@@ -210,6 +210,7 @@ object TypeAssigner {
     case node: ExprSel    => kind(node)
     case _: ExprRef       => unreachable
     case node: ExprSym    => kind(node)
+    case node: ExprOld    => kind(node)
     case node: ExprThis   => kind(node)
     case node: ExprType   => kind(node)
     case node: ExprCast   => kind(node)
@@ -325,6 +326,8 @@ object TypeAssigner {
     case other => other
   }
 
+  private def kind(tree: ExprOld) = tree.expr.tpe
+
   private def kind(tree: ExprThis) = tree.expr.tpe.asType.kind
 
   private def kind(tree: ExprType) = TypeType(tree.kind)
@@ -398,6 +401,7 @@ object TypeAssigner {
   def apply(tree: ExprSlice)(implicit cc: CompilerContext): tree.type = assign(tree)(kind(tree))
   def apply(tree: ExprSel)(implicit cc: CompilerContext): tree.type = assign(tree)(kind(tree))
   def apply(tree: ExprSym)(implicit cc: CompilerContext): tree.type = assign(tree)(kind(tree))
+  def apply(tree: ExprOld): tree.type = assign(tree)(kind(tree))
   def apply(tree: ExprThis): tree.type = assign(tree)(kind(tree))
   def apply(tree: ExprType): tree.type = assign(tree)(kind(tree))
   def apply(tree: ExprCast): tree.type = assign(tree)(kind(tree))

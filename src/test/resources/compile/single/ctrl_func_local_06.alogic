@@ -1,0 +1,71 @@
+// @args: --no-assertions
+fsm ctrl_func_local_06 {
+  in  bool i;
+  out bool o = 0;
+
+  u2 lvl = 3;
+
+  (* reclimit = 4 *)
+  void main() {
+    bool a = ~i;
+    lvl--;
+    if (~&lvl) {
+      main();
+    }
+    lvl++;
+    o = a;
+    return;
+  }
+}
+// @fec/mode: bmc
+// @fec/golden {{{
+//  module ctrl_func_local_06(
+//    input wire clk,
+//    input wire rst,
+//    input wire i,
+//    output reg o
+//  );
+//
+//    reg [2:0] state_q;
+//    reg a0_q;
+//    reg a1_q;
+//    reg a2_q;
+//    reg a3_q;
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        o <= 1'd0;
+//        state_q <= 3'd0;
+//      end else begin
+//        state_q <= state_q + 3'd1;
+//        case (state_q)
+//          3'd0: begin
+//            a0_q <= ~i;
+//          end
+//          3'd1: begin
+//            a1_q <= ~i;
+//          end
+//          3'd2: begin
+//            a2_q <= ~i;
+//          end
+//          3'd3: begin
+//            a3_q <= ~i;
+//          end
+//          3'd4: begin
+//            o <= a3_q;
+//          end
+//          3'd5: begin
+//            o <= a2_q;
+//          end
+//          3'd6: begin
+//            o <= a1_q;
+//          end
+//          3'd7: begin
+//            o <= a0_q;
+//          end
+//        endcase
+//      end
+//    end
+//
+//  endmodule
+// }}}

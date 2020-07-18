@@ -21,6 +21,7 @@ import com.argondesign.alogic.analysis.WrittenSymbols
 import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.enums.EntityVariant
 import com.argondesign.alogic.core.enums.ResetStyle
@@ -50,73 +51,77 @@ final class LowerVariables(implicit cc: CompilerContext) extends StatefulTreeTra
     case _ =>
   }
 
-  override def enter(tree: Tree): Option[Tree] = {
-    tree match {
+  override def enter(tree: Tree): Option[Tree] = tree match {
+    case defn: DefnEntity =>
+      // Drop the oreg prefix from the flops allocated for registered outputs,
+      // These will now gain _d and _q, so the names will become unique.
+      val prefix = s"`oreg${cc.sep}"
+      val prefixLen = prefix.length
+      for {
+        Defn(symbol) <- defn.defns
+        if symbol.name startsWith prefix
+      } {
+        symbol.name = symbol.name drop prefixLen
+      }
 
-      case defn: DefnEntity =>
-        // Drop the oreg prefix from the flops allocated for registered outputs,
-        // These will now gain _d and _q, so the names will become unique.
-        val prefix = s"`oreg${cc.sep}"
-        val prefixLen = prefix.length
-        for {
-          Defn(symbol) <- defn.defns
-          if symbol.name startsWith prefix
-        } {
-          symbol.name = symbol.name drop prefixLen
-        }
+      // Mark local symbols driven by Connect as combinational nets
+      for {
+        EntAssign(lhs, _) <- defn.assigns
+        symbol <- WrittenSymbols(lhs)
+        if symbol.kind.isInt
+      } {
+        symbol.attr.combSignal set true
+      }
 
-        // Mark local symbols driven by Connect as combinational nets
-        for {
-          EntAssign(lhs, _) <- defn.assigns
-          symbol <- WrittenSymbols(lhs)
-          if symbol.kind.isInt
-        } {
-          symbol.attr.combSignal set true
-        }
+      defn.defns foreach {
+        case defn @ DefnVar(symbol, initOpt) if !(symbol.attr.combSignal contains true) =>
+          val loc = defn.loc
+          val name = symbol.name
+          // Append _q to the name of the symbol
+          symbol.name = s"${name}_q"
+          // Create the _d symbol
+          val dSymbol = cc.newSymbol(s"${name}_d", loc) tap {
+            _.kind = symbol.kind
+          }
+          // Move the clearOnStall attribute to the _d symbol
+          symbol.attr.clearOnStall.get foreach { attr =>
+            dSymbol.attr.clearOnStall set attr
+            symbol.attr.clearOnStall.clear()
+          }
+          // If the symbol has a default attribute, move that to the _d,
+          // otherwise use the _q as the default initializer
+          val default = symbol.attr.default.getOrElse {
+            ExprSym(symbol) regularize loc
+          }
+          dSymbol.attr.default set default
+          symbol.attr.default.clear()
+          // Mark _d as tmp if _q is tmp
+          if (symbol.attr.tmp.isSet) {
+            dSymbol.attr.tmp set true
+          }
+          // Set attributes
+          symbol.attr.flop set dSymbol
+          // Memorize
+          if (cc.settings.resetAll || initOpt.isDefined) {
+            val kind = symbol.kind
+            val resetExpr = initOpt getOrElse ExprInt(kind.isSigned, kind.width.toInt, 0)
+            resetFlops.append((symbol, dSymbol, resetExpr))
+          } else {
+            nonResetFlops.append((symbol, dSymbol))
+          }
 
-        defn.defns foreach {
-          case defn @ DefnVar(symbol, initOpt) if !(symbol.attr.combSignal contains true) =>
-            val loc = defn.loc
-            val name = symbol.name
-            // Append _q to the name of the symbol
-            symbol.name = s"${name}_q"
-            // Create the _d symbol
-            val dSymbol = cc.newSymbol(s"${name}_d", loc) tap {
-              _.kind = symbol.kind
-            }
-            // Move the clearOnStall attribute to the _d symbol
-            symbol.attr.clearOnStall.get foreach { attr =>
-              dSymbol.attr.clearOnStall set attr
-              symbol.attr.clearOnStall.clear()
-            }
-            // If the symbol has a default attribute, move that to the _d,
-            // otherwise use the _q as the default initializer
-            val default = symbol.attr.default.getOrElse {
-              ExprSym(symbol) regularize loc
-            }
-            dSymbol.attr.default set default
-            symbol.attr.default.clear()
-            // Mark _d as tmp if _q is tmp
-            if (symbol.attr.tmp.isSet) {
-              dSymbol.attr.tmp set true
-            }
-            // Set attributes
-            symbol.attr.flop set dSymbol
-            // Memorize
-            if (cc.settings.resetAll || initOpt.isDefined) {
-              val kind = symbol.kind
-              val resetExpr = initOpt getOrElse ExprInt(kind.isSigned, kind.width.toInt, 0)
-              resetFlops.append((symbol, dSymbol, resetExpr))
-            } else {
-              nonResetFlops.append((symbol, dSymbol))
-            }
+        case _ =>
+      }
+      None
 
-          case _ =>
-        }
+    // Do not replace _q with _d below ExprOld
+    case ExprOld(expr) =>
+      if (expr collect { case ExprSym(symbol) => symbol } exists { !_.attr.flop.isSet }) {
+        throw Ice(tree, "Non-flop symbol under ExprOld")
+      }
+      Some(expr)
 
-      case _ =>
-    }
-    None
+    case _ => None
   }
 
   override def transform(tree: Tree): Tree = tree match {

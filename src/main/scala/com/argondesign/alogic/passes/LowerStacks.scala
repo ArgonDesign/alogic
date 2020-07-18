@@ -79,41 +79,29 @@ final class LowerStacks(implicit cc: CompilerContext) extends StatefulTreeTransf
       // Rewrite statements
       //////////////////////////////////////////////////////////////////////////
 
-      case StmtExpr(ExprCall(ExprSel(ExprSym(symbol), "push", _), List(ArgP(arg)))) =>
+      case StmtExpr(ExprCall(ExprSel(ExprSym(symbol), "push", _), _)) =>
         stackMap.get(symbol) map {
-          case (_, iSymbol) =>
-            extraStmts.top append assignTrue(ExprSym(iSymbol) sel "push")
-            StmtAssign(ExprSym(iSymbol) sel "d", arg)
-        } getOrElse {
-          tree
-        }
+          case (_, iSymbol) => assignTrue(ExprSym(iSymbol) sel "push")
+        } getOrElse tree
 
-      case StmtExpr(ExprCall(ExprSel(ExprSym(symbol), "set", _), List(ArgP(arg)))) =>
+      case StmtExpr(ExprCall(ExprSel(ExprSym(symbol), "pop", _), _)) =>
         stackMap.get(symbol) map {
-          case (_, iSymbol) => StmtAssign(ExprSym(iSymbol) sel "d", arg)
-        } getOrElse {
-          tree
-        }
+          case (_, iSymbol) => assignTrue(ExprSym(iSymbol) sel "pop")
+        } getOrElse tree
 
       //////////////////////////////////////////////////////////////////////////
       // Rewrite expressions
       //////////////////////////////////////////////////////////////////////////
 
-      case ExprCall(ExprSel(ExprSym(symbol), "pop", _), Nil) =>
-        stackMap.get(symbol) map {
-          case (_, iSymbol) =>
-            extraStmts.top append assignTrue(ExprSym(iSymbol) sel "pop")
-            ExprSym(iSymbol) sel "d"
-        } getOrElse {
-          tree
-        }
-
       case ExprSel(ExprSym(symbol), "top", _) =>
         stackMap.get(symbol) map {
           case (_, iSymbol) => ExprSym(iSymbol) sel "d"
-        } getOrElse {
-          tree
-        }
+        } getOrElse tree
+
+      case ExprSel(ExprSym(symbol), "old", _) =>
+        stackMap.get(symbol) map {
+          case (_, iSymbol) => ExprSym(iSymbol) sel "q"
+        } getOrElse tree
 
       //////////////////////////////////////////////////////////////////////////
       // Replace Stack Decl/Defn with the Decl/Defn of the expanded symbols

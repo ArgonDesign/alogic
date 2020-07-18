@@ -1,0 +1,72 @@
+// @args: --no-assertions
+fsm ctrl_func_local_08 {
+  in  u2 i;
+  in  u2 j;
+  out u2 o = 0;
+
+  bool rec = false;
+
+  (* reclimit = 2 *)
+  void main() {
+    u2 a = ~i;
+    u2 b = ~j;
+    if (!rec) {
+      rec = true;
+      main();
+    }
+    a++;
+    b--;
+    fence;
+    rec = false;
+    o = a ^ b;
+    return;
+  }
+}
+// @fec/mode: bmc
+// @fec/golden {{{
+//  module ctrl_func_local_08(
+//    input wire clk,
+//    input wire rst,
+//    input wire [1:0] i,
+//    input wire [1:0] j,
+//    output reg [1:0] o
+//  );
+//
+//    reg [2:0] state_q;
+//    reg [1:0] a0_q;
+//    reg [1:0] a1_q;
+//    reg [1:0] b0_q;
+//    reg [1:0] b1_q;
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        o <= 2'd0;
+//        state_q <= 3'd0;
+//      end else begin
+//        state_q <= state_q + 3'd1;
+//        case (state_q)
+//          3'd0: begin
+//            a0_q <= i;
+//            b0_q <= j;
+//          end
+//          3'd1: begin
+//            a1_q <= i;
+//            b1_q <= j;
+//          end
+//          3'd2: begin
+//          end
+//          3'd3: begin
+//            o <= (~a1_q + 2'd1) ^ (~b1_q - 2'd1);
+//          end
+//          3'd4: begin
+//          end
+//          default: begin
+//            o <= (~a0_q + 2'd1) ^ (~b0_q - 2'd1);
+//            state_q <= 3'd0;
+//          end
+//        endcase
+//      end
+//    end
+//
+//  endmodule
+// }}}

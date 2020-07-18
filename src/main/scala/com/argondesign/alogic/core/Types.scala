@@ -337,18 +337,14 @@ trait TypeStackImpl extends CompoundType { this: TypeStack =>
 
   final private val _publicSymbols: List[Symbol] = {
     val push = new Symbol(-1, Loc.synthetic, "push")
-    push.kind = TypeCombFunc(push, TypeVoid, List(kind))
+    push.kind = TypeCombFunc(push, TypeVoid, Nil)
     val pop = new Symbol(-1, Loc.synthetic, "pop")
-    pop.kind = TypeCombFunc(pop, kind, Nil)
-    val set = new Symbol(-1, Loc.synthetic, "set")
-    set.kind = TypeCombFunc(set, TypeVoid, List(kind))
+    pop.kind = TypeCombFunc(pop, TypeVoid, Nil)
     val top = new Symbol(-1, Loc.synthetic, "top")
     top.kind = kind
-    val full = new Symbol(-1, Loc.synthetic, "full")
-    full.kind = TypeUInt(1)
-    val empty = new Symbol(-1, Loc.synthetic, "empty")
-    empty.kind = TypeUInt(1)
-    List(push, pop, set, top, full, empty)
+    val old = new Symbol(-1, Loc.synthetic, "old")
+    old.kind = kind
+    List(push, pop, top, old)
   }
 
   final def publicSymbols(implicit cc: CompilerContext): List[Symbol] = _publicSymbols

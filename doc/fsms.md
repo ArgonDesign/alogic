@@ -164,8 +164,8 @@ fsm rec {
 }
 ```
 
-It is the responsibility of the designer to ensure that the actual program logic of
-the FSM does not violate the specified recursion limit.
+It is the responsibility of the designer to ensure that the actual program
+logic of the FSM does not violate the specified recursion limit.
 
 The size of the return stack can be specified explicitly using the `stacklimit`
 annotation attached to the FSM itself. This can be used when the worst case
@@ -181,44 +181,9 @@ fsm rec {
 }
 ```
 
-It is very important to note that all variables declared in a function body use
-statically allocated storage. This means that there is only 1 instance of every
-variable name declared in the function, even if a function is invoked multiple
-times in a recursive call stack. In the following example, there is only one
-copy of `a` and `i`, so when they are overwritten by subsequent calls to the
-function they will keep their latest value. This means that on return to the
-`main` function, we will have `b == 3`. (If a new local variable was used for
-every new recursion, then on return to `main` we would have `b == 0`.)
-
-<a href="http://afiddle.argondesign.com/?example=fsms_static.alogic">Fiddle with this code here.</a>
-
-```
-fsm static_storage {
-  u8 i;
-  u8 b;
-
-  void main() {
-    i = 0;
-    foo();
-    // At this point b == 3
-  }
-
-  (* reclimit = 4 *)
-  void foo() {
-    u8 a = i;
-    // The C equivalent of the declaration above would be a combination of
-    // a static declaration and an assignment statement:
-    //   static uint8_t a;
-    //   a = i;
-    if (i < 3) {
-      i += 1;
-      foo();
-    }
-    b = a;
-    return;
-  }
-}
-```
+Local variables of recursive functions are implemented using a hardware stack
+structure. This means that each invocation of a recursive function has it's own
+copy of local variables.
 
 ### The `fence` block
 
