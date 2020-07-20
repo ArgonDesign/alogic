@@ -25,6 +25,7 @@ import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Math
+import com.argondesign.alogic.transform.StatementFilter
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.SequenceNumbers
 import com.argondesign.alogic.util.unreachable
@@ -45,8 +46,8 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends StatefulTree
   private var entryState: Symbol = _
   // Map from state symbol to state number
   private var stateNumbers: Map[Symbol, ExprInt] = _
-  // Map from empty state to the equivalent true state
-  private var nullStates: Map[Symbol, Symbol] = _
+  // Map from removed state to equivalent true state
+  private var removedStates: Map[Symbol, Symbol] = _
 
   // Replace the return stack symbol (if it's being kept)
   override protected def replace(symbol: Symbol): Boolean =
@@ -63,7 +64,7 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends StatefulTree
       // Optimize aways states that consist of a single goto to another state
       // Note we inserted some comments in ConvertControl so this doesn't remove
       // states introduced by a single fence statement.
-      nullStates = {
+      val nullStates: Map[Symbol, Symbol] = {
         // state -> next state transitions of empty states, but with cycles removed
         val next = {
           // All empty state transitions
@@ -111,13 +112,39 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends StatefulTree
         loop(next)
       }
 
+      // Fuse equivalent states
+      val redundantStates: Map[Symbol, Symbol] = {
+        // Keep non-null states, clean up bodies for comparisons, then sort
+        // by symbol so the earliest of all equivalent states are kept.
+        val states = List from {
+          defn.states filterNot { nullStates contains _.symbol } map {
+            StatementFilter { case _: StmtComment => false }
+          } map {
+            case d: DefnState => d
+            case _            => unreachable
+          }
+        } sortBy { _.symbol }
+        // Build the map
+        Map from {
+          // Pairwise compare bodies..
+          states.iterator.zipWithIndex flatMap {
+            case (a, i) =>
+              states.drop(i + 1).iterator flatMap { b =>
+                Option.when(a.body == b.body)((b.symbol, a.symbol))
+              }
+          }
+        }
+      }
+
+      removedStates = nullStates concat redundantStates
+
       // In case we are removing the entry state, propagate the attribute
-      nullStates foreach {
+      removedStates foreach {
         case (a, b) => if (a.attr.entry.isSet) { b.attr.entry set true }
       }
 
       // Keep only the true states
-      val trueStates = defn.states filterNot { nullStates contains _.symbol }
+      val trueStates = defn.states filterNot { removedStates contains _.symbol }
 
       val nStates = trueStates.length
       singleState = nStates == 1
@@ -148,7 +175,7 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends StatefulTree
             }
           }
         }
-        trueStateNumbers ++ (nullStates.view mapValues trueStateNumbers)
+        trueStateNumbers ++ (removedStates.view mapValues trueStateNumbers)
       }
 
       None
@@ -160,9 +187,15 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends StatefulTree
         TypeAssigner(decl.copy(elem = newElem) withLoc tree.loc)
       }
 
+    // Drop all state Decls
+    case _: DeclState => Some(Stump)
+
+    // Drop removed state Defns
+    case DefnState(symbol, _) if removedStates contains symbol => Some(Stump)
+
     // Remove goto <current state>
     case StmtGoto(ExprSym(symbol))
-        if nullStates.getOrElse(symbol, symbol) eq enclosingSymbols.head =>
+        if removedStates.getOrElse(symbol, symbol) eq enclosingSymbols.head =>
       Some(Stump)
 
     case _ => None
@@ -190,9 +223,6 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends StatefulTree
 
     // Drop magic marker comments inserted by ConvertControl
     case StmtComment(s"@@@KEEP@@@") => Stump
-
-    // Drop State Decl
-    case _: DeclState => Stump
 
     // Add comment to state body (State Defn will be dropped later)
     case desc @ DefnState(symbol, body) =>
@@ -243,9 +273,7 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends StatefulTree
           // Add the comb process back with the state dispatch
           Iterator single {
             // Keep only true states, ensure entry state is the first
-            val (entryStates, otherStates) = defn.states filterNot {
-              nullStates contains _.symbol
-            } partition {
+            val (entryStates, otherStates) = defn.states partition {
               case DefnState(symbol, _) => symbol == entryState
             }
 
