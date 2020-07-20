@@ -80,6 +80,7 @@ final class ConvertCtrlFuncLocals(implicit cc: CompilerContext) extends Stateful
           _ flatCollect {
             case DeclVar(symbol, _) => Option.unless(symbol.attr.combSignal.isSet)(symbol)
             case DeclVal(symbol, _) => Option.unless(symbol.attr.combSignal.isSet)(symbol)
+            case _: DeclStatic      => None
             case _: Decl            => unreachable
           }
         }
@@ -132,22 +133,26 @@ final class ConvertCtrlFuncLocals(implicit cc: CompilerContext) extends Stateful
 
   override def transform(tree: Tree): Tree = tree match {
     ////////////////////////////////////////////////////////////////////////////
-    // Drop/extract local Decls
+    // Drop StmtDecls
     ////////////////////////////////////////////////////////////////////////////
 
     case _: StmtDecl => Stump
 
     ////////////////////////////////////////////////////////////////////////////
-    // Drop/extract local Defns, assign initializer if any
+    // Drop StmtDefns, assign initializer if any
     ////////////////////////////////////////////////////////////////////////////
 
     case StmtDefn(defn) =>
-      defn.initializer orElse getDefaultInitializer(defn.symbol.kind) map { init =>
-        StmtAssign(
-          locals.get(defn.symbol) map selLocal getOrElse ExprSym(defn.symbol),
-          init
-        ) regularize tree.loc
-      } getOrElse Stump
+      defn match {
+        case _: DefnVar | _: DefnVal =>
+          defn.initializer orElse getDefaultInitializer(defn.symbol.kind) map { init =>
+            StmtAssign(
+              locals.get(defn.symbol) map selLocal getOrElse ExprSym(defn.symbol),
+              init
+            ) regularize tree.loc
+          } getOrElse Stump
+        case _ => Stump
+      }
 
     ////////////////////////////////////////////////////////////////////////////
     // Push locals on function entry
@@ -178,27 +183,39 @@ final class ConvertCtrlFuncLocals(implicit cc: CompilerContext) extends Stateful
       locals.get(symbol) map { name => selLocal(name) regularize tree.loc } getOrElse tree
 
     ////////////////////////////////////////////////////////////////////////////
-    // Add entity extra Decl/Defn pairs
+    // Add entity extra Decl/Defn pairs, convert DeclStatic/DefnStatic
     ////////////////////////////////////////////////////////////////////////////
 
     case decl: DeclEntity if extraDecls.nonEmpty =>
-      val newDecls = List.from(decl.decls.iterator ++ extraDecls.iterator)
+      val newDecls = List from {
+        decl.decls.iterator concat {
+          extraDecls.iterator map {
+            case d: DeclStatic => TypeAssigner(DeclVar(d.symbol, d.spec) withLoc d.loc)
+            case d             => d
+          }
+        }
+      }
       TypeAssigner(decl.copy(decls = newDecls) withLoc tree.loc)
 
     case defn: DefnEntity if extraDefns.nonEmpty =>
-      val newDefns = extraDefns.iterator map { d =>
+      val newDefns = extraDefns.iterator map {
+        case d: DefnStatic => TypeAssigner(DefnVar(d.symbol, d.initOpt) withLoc d.loc)
+        case d             => d
+      } map { d =>
         TypeAssigner(EntDefn(d) withLoc d.loc)
       }
       val newBody = List.from(defn.body.iterator ++ newDefns)
       TypeAssigner(defn.copy(body = newBody) withLoc tree.loc)
 
+    //
     case _ => tree
   }
 
-  override protected def finalCheck(tree: Tree): Unit = {
-    tree visit {
-      case node: StmtDecl => throw Ice(node, "Local declaration remains")
-    }
+  override protected def finalCheck(tree: Tree): Unit = tree visit {
+    case node: StmtDecl   => throw Ice(node, "StmtDecl remains")
+    case node: StmtDefn   => throw Ice(node, "StmtDefn remains")
+    case node: DeclStatic => throw Ice(node, "DeclStatic remains")
+    case node: DefnStatic => throw Ice(node, "DefnStatic remains")
   }
 
 }

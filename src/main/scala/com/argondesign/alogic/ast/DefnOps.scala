@@ -24,18 +24,20 @@ trait DefnOps { this: Defn =>
   def defns: List[Defn] = Nil
 
   final lazy val initializer: Option[Expr] = this match {
-    case DefnVar(_, iOpt) => iOpt
-    case DefnVal(_, i)    => Some(i)
-    case DefnOut(_, iOpt) => iOpt
-    case DefnConst(_, i)  => Some(i)
-    case DefnGen(_, i)    => Some(i)
-    case _                => None
+    case DefnVar(_, iOpt)    => iOpt
+    case DefnVal(_, i)       => Some(i)
+    case DefnStatic(_, iOpt) => iOpt
+    case DefnOut(_, iOpt)    => iOpt
+    case DefnConst(_, i)     => Some(i)
+    case DefnGen(_, i)       => Some(i)
+    case _                   => None
   }
 
   def cpy(symbol: Symbol): Defn = this match {
     // $COVERAGE-OFF$ Trivial to keep full, but not necessarily used
     case node: DefnVar       => node.copy(symbol = symbol)
     case node: DefnVal       => node.copy(symbol = symbol)
+    case node: DefnStatic    => node.copy(symbol = symbol)
     case node: DefnIn        => node.copy(symbol = symbol)
     case node: DefnOut       => node.copy(symbol = symbol)
     case node: DefnPipeVar   => node.copy(symbol = symbol)

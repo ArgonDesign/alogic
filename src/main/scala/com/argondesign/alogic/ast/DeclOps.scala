@@ -25,6 +25,7 @@ trait DeclOps { this: Decl =>
     // $COVERAGE-OFF$ Trivial to keep full, but not necessarily used
     case node: DeclVar       => node.copy(symbol = symbol)
     case node: DeclVal       => node.copy(symbol = symbol)
+    case node: DeclStatic    => node.copy(symbol = symbol)
     case node: DeclIn        => node.copy(symbol = symbol)
     case node: DeclOut       => node.copy(symbol = symbol)
     case node: DeclPipeVar   => node.copy(symbol = symbol)

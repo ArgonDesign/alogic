@@ -88,7 +88,11 @@ object DescBuilder extends BaseBuilder[DescContext, Desc] with ChainingSyntax {
         val spec = ExprBuilder(ctx.expr(0))
         val initOpt = if (ctx.init != null) Some(ExprBuilder(ctx.init)) else None
         val loc = ctx.loc.copy(point = ident.loc.start)
-        DescVar(ident, spec, initOpt) withLoc loc
+        if (ctx.sttc != null) {
+          DescStatic(ident, spec, initOpt) withLoc loc
+        } else {
+          DescVar(ident, spec, initOpt) withLoc loc
+        }
       }
 
       override def visitDescIn(ctx: DescInContext): Desc = {

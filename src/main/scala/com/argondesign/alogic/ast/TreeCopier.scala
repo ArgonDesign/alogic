@@ -89,6 +89,19 @@ object TreeCopier {
     }
   }
 
+  def apply(tree: DescStatic)(ref: Tree, spec: Tree, initOpt: Option[Tree]): DescStatic = {
+    if ((ref eq tree.ref) && (spec eq tree.spec) && (initOpt eq tree.initOpt)) {
+      tree
+    } else {
+      assert(initOpt forall { _.isInstanceOf[Expr] })
+      DescStatic(
+        ref.asInstanceOf[Ref],
+        spec.asInstanceOf[Expr],
+        initOpt.asInstanceOf[Option[Expr]]
+      ) withLoc tree.loc
+    }
+  }
+
   def apply(tree: DescIn)(ref: Tree, spec: Tree): DescIn = {
     if ((ref eq tree.ref) && (spec eq tree.spec)) {
       tree
@@ -333,6 +346,16 @@ object TreeCopier {
     }
   }
 
+  def apply(tree: DeclStatic)(spec: Tree): DeclStatic = {
+    if (spec eq tree.spec) {
+      tree
+    } else {
+      tree.copy(
+        spec = spec.asInstanceOf[Expr]
+      ) withLoc tree.loc
+    }
+  }
+
   def apply(tree: DeclIn)(spec: Tree): DeclIn = {
     if (spec eq tree.spec) {
       tree
@@ -502,6 +525,17 @@ object TreeCopier {
     } else {
       tree.copy(
         init = init.asInstanceOf[Expr]
+      ) withLoc tree.loc
+    }
+  }
+
+  def apply(tree: DefnStatic)(initOpt: Option[Tree]): DefnStatic = {
+    if (initOpt eq tree.initOpt) {
+      tree
+    } else {
+      assert(initOpt forall { _.isInstanceOf[Expr] })
+      tree.copy(
+        initOpt = initOpt.asInstanceOf[Option[Expr]]
       ) withLoc tree.loc
     }
   }

@@ -1,0 +1,27 @@
+fsm ctrl_func_static_01 {
+  out wire u8 o;
+
+  void main() {
+    static u8 x = 8'd3;
+    x++;
+    o = x;
+    return;
+  }
+}
+// @fec/golden {{{
+//  module ctrl_func_static_01(
+//    input wire clk,
+//    input wire rst,
+//    output reg [7:0] o
+//  );
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        o <= 8'd4;
+//      end else begin
+//        o <= o + 8'd1;
+//      end
+//    end
+//
+//  endmodule
+// }}}

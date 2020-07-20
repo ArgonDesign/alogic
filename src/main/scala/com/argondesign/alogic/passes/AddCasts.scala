@@ -44,12 +44,13 @@ final class AddCasts(implicit cc: CompilerContext) extends StatefulTreeTransform
           if defn.symbol.kind.isPacked && (defn.initializer exists { _.tpe.underlying.isNum }) =>
         val newInit = cast(defn.symbol.kind, defn.initializer.get)
         defn match {
-          case d: DefnVar   => d.copy(initOpt = Some(newInit))
-          case d: DefnVal   => d.copy(init = newInit)
-          case d: DefnOut   => d.copy(initOpt = Some(newInit))
-          case d: DefnConst => d.copy(init = newInit)
-          case d: DefnGen   => d.copy(init = newInit)
-          case _            => unreachable
+          case d: DefnVar    => d.copy(initOpt = Some(newInit))
+          case d: DefnVal    => d.copy(init = newInit)
+          case d: DefnStatic => d.copy(initOpt = Some(newInit))
+          case d: DefnOut    => d.copy(initOpt = Some(newInit))
+          case d: DefnConst  => d.copy(init = newInit)
+          case d: DefnGen    => d.copy(init = newInit)
+          case _             => unreachable
         }
 
       case defn: Defn if defn.symbol.kind.underlying.isNum && (defn.initializer exists {
@@ -62,12 +63,13 @@ final class AddCasts(implicit cc: CompilerContext) extends StatefulTreeTransform
           cc.makeBuiltinCall("$unsigned", init.loc, List(init))
         }
         defn match {
-          case d: DefnVar   => d.copy(initOpt = Some(newInit))
-          case d: DefnVal   => d.copy(init = newInit)
-          case d: DefnOut   => d.copy(initOpt = Some(newInit))
-          case d: DefnConst => d.copy(init = newInit)
-          case d: DefnGen   => d.copy(init = newInit)
-          case _            => unreachable
+          case d: DefnVar    => d.copy(initOpt = Some(newInit))
+          case d: DefnVal    => d.copy(init = newInit)
+          case d: DefnStatic => d.copy(initOpt = Some(newInit))
+          case d: DefnOut    => d.copy(initOpt = Some(newInit))
+          case d: DefnConst  => d.copy(init = newInit)
+          case d: DefnGen    => d.copy(init = newInit)
+          case _             => unreachable
         }
 
       case stmt @ StmtAssign(lhs, rhs) if lhs.tpe.isPacked && rhs.tpe.underlying.isNum =>

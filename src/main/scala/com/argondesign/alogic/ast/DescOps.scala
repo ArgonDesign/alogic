@@ -57,6 +57,7 @@ trait DescOps { this: Desc =>
     // $COVERAGE-OFF$ Trivial to keep full, but not necessarily used
     case node: DescVar       => node.copy(ref = ref)
     case node: DescVal       => node.copy(ref = ref)
+    case node: DescStatic    => node.copy(ref = ref)
     case node: DescIn        => node.copy(ref = ref)
     case node: DescOut       => node.copy(ref = ref)
     case node: DescPipeVar   => node.copy(ref = ref)

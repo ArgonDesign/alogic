@@ -395,6 +395,7 @@ final class Typer(implicit cc: CompilerContext) extends StatefulTreeTransformer 
         val ok = decl match {
           case DeclVar(_, spec)       => checkType(spec)
           case DeclVal(_, spec)       => checkType(spec)
+          case DeclStatic(_, spec)    => checkType(spec)
           case DeclIn(_, spec, _)     => checkType(spec)
           case DeclOut(_, spec, _, _) => checkType(spec)
           case DeclPipeVar(_, spec)   => checkType(spec)
@@ -476,9 +477,16 @@ final class Typer(implicit cc: CompilerContext) extends StatefulTreeTransformer 
             if (!(checkPacked(init, msg) && checkWidth(symbol.kind.width, init, msg))) {
               error(tree)
             }
-          } else if ((symbol.kind.isConst || symbol.kind.isParam) && !init.isKnownConst) {
-            val what = if (symbol.kind.isConst) "cons" else "param"
-            error(tree, init, s"Initializer of '$what' declaration must be compile time constant")
+          } else if (!init.isKnownConst) {
+            def msg(thing: String) =
+              s"Initializer of '$thing' declaration must be compile time constant"
+            if (symbol.kind.isConst) {
+              error(tree, init, msg("const"))
+            } else if (symbol.kind.isParam) {
+              error(tree, init, msg("param"))
+            } else if (defn.isInstanceOf[DefnStatic]) {
+              error(tree, init, msg("static"))
+            }
           }
         }
 

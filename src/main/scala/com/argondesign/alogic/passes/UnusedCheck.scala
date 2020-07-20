@@ -176,26 +176,25 @@ final class UnusedCheck(implicit cc: CompilerContext) extends StatefulTreeTransf
         if !(symbol.attr.unused.get contains true)
       } {
         val hint = symbol.desc match {
-          case _: DescVal       => "Variable"
-          case _: DescVar       => "Variable"
-          case _: DescIn        => "Input port"
-          case _: DescOut       => "Output port"
-          case _: DescPipeVar   => "Pipeline variable"
-          case _: DescPipeIn    => "Pipeline input port"
-          case _: DescPipeOut   => "Pipeline output port"
-          case _: DescParam     => "Parameter"
-          case _: DescParamType => "Type parameter"
-          case _: DescConst     => "Constant"
-          case _: DescGen       => "'gen' variable"
-          case _: DescArray     => "Array"
-          case _: DescSram      => "SRAM"
-          case _: DescType      => "Type"
-          case _: DescEntity    => "Entity"
-          case _: DescRecord    => "struct"
-          case _: DescInstance  => "Instance"
-          case _: DescSingleton => "Singleton instance"
-          case _: DescFunc      => "Function"
-          case _: DescChoice    => unreachable
+          case _: DescVar | _: DescVal | _: DescStatic => "Variable"
+          case _: DescIn                               => "Input port"
+          case _: DescOut                              => "Output port"
+          case _: DescPipeVar                          => "Pipeline variable"
+          case _: DescPipeIn                           => "Pipeline input port"
+          case _: DescPipeOut                          => "Pipeline output port"
+          case _: DescParam                            => "Parameter"
+          case _: DescParamType                        => "Type parameter"
+          case _: DescConst                            => "Constant"
+          case _: DescGen                              => "'gen' variable"
+          case _: DescArray                            => "Array"
+          case _: DescSram                             => "SRAM"
+          case _: DescType                             => "Type"
+          case _: DescEntity                           => "Entity"
+          case _: DescRecord                           => "struct"
+          case _: DescInstance                         => "Instance"
+          case _: DescSingleton                        => "Singleton instance"
+          case _: DescFunc                             => "Function"
+          case _: DescChoice                           => unreachable
         }
         val name = symbol.attr.dictName.get match {
           case None               => symbol.name

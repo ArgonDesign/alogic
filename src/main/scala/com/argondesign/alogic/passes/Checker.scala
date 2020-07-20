@@ -146,18 +146,18 @@ final class Checker(implicit cc: CompilerContext) extends StatefulTreeTransforme
           }
         case EntityVariant.Net =>
           desc match {
-            case _: DescVar   => entErr(desc, "variable declarations")
-            case _: DescArray => entErr(desc, "distributed memory declarations")
-            case _: DescSram  => entErr(desc, "SRAM declarations")
+            case _: DescVar | _: DescVal | _: DescStatic => entErr(desc, "variable declarations")
+            case _: DescArray                            => entErr(desc, "distributed memory declarations")
+            case _: DescSram                             => entErr(desc, "SRAM declarations")
             case DescFunc(_, funcVariant, _, _, _) if funcVariant != FuncVariant.Xeno =>
               entErr(desc, "function definitions")
             case _ => tree
           }
         case EntityVariant.Ver =>
           desc match {
-            case _: DescVar     => entErr(desc, "variable declarations")
-            case _: DescPipeVar => entErr(desc, "pipeline variable declarations")
-            case _: DescArray   => entErr(desc, "distributed memory declarations")
+            case _: DescVar | _: DescVal | _: DescStatic => entErr(desc, "variable declarations")
+            case _: DescPipeVar                          => entErr(desc, "pipeline variable declarations")
+            case _: DescArray                            => entErr(desc, "distributed memory declarations")
             case DescSram(_, _, _, st) if st != StorageTypeWire =>
               entErr(desc, "registered SRAM declarations")
             case _: DescEntity    => entErr(desc, "nested entities")
@@ -258,9 +258,10 @@ final class Checker(implicit cc: CompilerContext) extends StatefulTreeTransforme
 
     case StmtDesc(desc) =>
       desc match {
-        case _: DescVar => tree
-        case _: DescVal => tree
-        case _: DescGen => tree
+        case _: DescVar    => tree
+        case _: DescVal    => tree
+        case _: DescStatic => tree
+        case _: DescGen    => tree
         case _ =>
           cc.error(tree, "Only variables can be declared in declaration statements")
           StmtError() withLoc tree.loc

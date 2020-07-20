@@ -225,6 +225,7 @@ object Symbols {
         _decl match {
           case DeclVar(_, spec)            => spec.tpe.asType.kind
           case DeclVal(_, spec)            => spec.tpe.asType.kind
+          case DeclStatic(_, spec)         => spec.tpe.asType.kind
           case DeclIn(_, spec, fc)         => TypeIn(spec.tpe.asType.kind, fc)
           case DeclOut(_, spec, fc, st)    => TypeOut(spec.tpe.asType.kind, fc, st)
           case DeclPipeVar(_, spec)        => TypePipeVar(spec.tpe.asType.kind)

@@ -178,6 +178,26 @@ final class ParserSpec extends AnyFreeSpec with AlogicTest {
           }
         }
 
+        "static variable" - {
+          "without initializer" in {
+            "static bool a;"
+              .asTree[Desc] shouldBe DescStatic(Ident("a", Nil), ExprType(TypeUInt(1)), None)
+          }
+
+          "with initializer" in {
+            "static bool b = true;".asTree[Desc] shouldBe {
+              DescStatic(Ident("b", Nil), ExprType(TypeUInt(1)), Some(ExprInt(false, 1, 1)))
+            }
+          }
+
+          "with attribute" in {
+            inside("(* foo *) static bool b;".asTree[Desc]) {
+              case DescStatic(ident @ Ident("b", Nil), ExprType(TypeUInt(w)), None) if w == 1 =>
+                ident.attr shouldBe Map("foo" -> SourceAttribute.Flag())
+            }
+          }
+        }
+
         "array" - {
           "1D" in {
             "i8 c[2];".asTree[Desc] shouldBe {

@@ -149,19 +149,21 @@ final class CheckerSpec extends AnyFreeSpec with AlogicTest {
       }
 
       "can declare" - {
-        "scalars" in {
+        "variables" in {
           val tree = "bool a;".asTree[Stmt]
-
           tree rewrite checker should not be StmtError()
-
           cc.messages shouldBe empty
         }
 
-        "vectors" in {
-          val tree = "i3[2] a;".asTree[Stmt]
-
+        "const" in {
+          val tree = "const bool a = true;".asTree[Stmt]
           tree rewrite checker should not be StmtError()
+          cc.messages shouldBe empty
+        }
 
+        "static" in {
+          val tree = "static bool a;".asTree[Stmt]
+          tree rewrite checker should not be StmtError()
           cc.messages shouldBe empty
         }
       }

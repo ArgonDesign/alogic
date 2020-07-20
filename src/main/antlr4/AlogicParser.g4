@@ -46,7 +46,7 @@ attr
   ;
 
 descbase
-  : expr ident ('=' init=expr)? ';'                                             # DescVar
+  : (sttc='static')? expr ident ('=' init=expr)? ';'                            # DescVar
   | in='in' fct? (spec=expr | 'pipeline') ident? ';'                            # DescIn
   | out='out' fct? stt? (spec=expr | 'pipeline') ident? ('=' init=expr)? ';'    # DescOut
   | 'pipeline' expr ident ';'                                                   # DescPipeVar

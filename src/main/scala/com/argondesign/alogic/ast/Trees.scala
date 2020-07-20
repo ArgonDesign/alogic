@@ -70,6 +70,7 @@ object Trees {
 
   case class DescVar(ref: Ref, spec: Expr, initOpt: Option[Expr]) extends Desc
   case class DescVal(ref: Ref, spec: Expr, init: Expr) extends Desc
+  case class DescStatic(ref: Ref, spec: Expr, initOpt: Option[Expr]) extends Desc
   case class DescIn(ref: Ref, spec: Expr, fc: FlowControlType) extends Desc
   case class DescOut(ref: Ref, spec: Expr, fc: FlowControlType, st: StorageType, initOpt: Option[Expr]) extends Desc
   case class DescPipeVar(ref: Ref, spec: Expr) extends Desc
@@ -103,6 +104,7 @@ object Trees {
 
   case class DeclVar(symbol: Symbol, spec: Expr) extends Decl
   case class DeclVal(symbol: Symbol, spec: Expr) extends Decl
+  case class DeclStatic(symbol: Symbol, spec: Expr) extends Decl
   case class DeclIn(symbol: Symbol, spec: Expr, fc: FlowControlType) extends Decl
   case class DeclOut(symbol: Symbol, spec: Expr, fc: FlowControlType, st: StorageType) extends Decl
   case class DeclPipeVar(symbol: Symbol, spec: Expr) extends Decl
@@ -136,6 +138,7 @@ object Trees {
 
   case class DefnVar(symbol: Symbol, initOpt: Option[Expr]) extends Defn
   case class DefnVal(symbol: Symbol, init: Expr) extends Defn
+  case class DefnStatic(symbol: Symbol, initOpt: Option[Expr]) extends Defn
   case class DefnIn(symbol: Symbol) extends Defn
   case class DefnOut(symbol: Symbol, initOpt: Option[Expr]) extends Defn
   case class DefnPipeVar(symbol: Symbol) extends Defn
