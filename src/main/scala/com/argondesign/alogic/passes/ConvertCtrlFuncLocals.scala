@@ -27,7 +27,7 @@ import com.argondesign.alogic.util.unreachable
 import scala.collection.mutable.ListBuffer
 import scala.util.Random
 
-final class ConvertLocals(implicit cc: CompilerContext) extends StatefulTreeTransformer {
+final class ConvertCtrlFuncLocals(implicit cc: CompilerContext) extends StatefulTreeTransformer {
 
   private val extraDecls = ListBuffer[Decl]()
 
@@ -203,9 +203,9 @@ final class ConvertLocals(implicit cc: CompilerContext) extends StatefulTreeTran
 
 }
 
-object ConvertLocals extends EntityTransformerPass(declFirst = false) {
-  val name = "convert-locals"
+object ConvertCtrlFuncLocals extends EntityTransformerPass(declFirst = false) {
+  val name = "convert-ctrl-func-locals"
 
   override protected def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
-    new ConvertLocals
+    new ConvertCtrlFuncLocals
 }
