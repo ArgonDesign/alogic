@@ -45,8 +45,10 @@ object StackFactory extends ChainingSyntax {
   //    storage#[0] -> q;
   //
   //    void() main {
-  //      assert !(push & pop), "Push and pop on the same cycle";
-  //      if (pop) {
+  //      if (push & pop) {
+  //        // Nothing to do if both pushing and popping. More specifically
+  //        // ensure the top is not updated, to preserve outer locals.
+  //      } else if (pop) {
   //        gen for (uint n = 0 ; n < DEPTH-1 ; n++) {
   //          s#[n] = s#[n+1];
   //        }
@@ -109,24 +111,32 @@ object StackFactory extends ChainingSyntax {
     val sRefs = sSymbols map ExprSym
 
     val statements = List(
-      StmtAssertion(AssertionAssert(!(pusRef & popRef), Some("Push & Pop on same cycle"))),
       StmtIf(
-        popRef,
-        List from {
-          (0 until depth) map { n =>
-            StmtAssign(sRefs(n), if (n == depth - 1) ExprInt(signed, width, 0) else sRefs(n + 1))
-          }
-        },
+        pusRef & popRef,
+        Nil,
         List(
           StmtIf(
-            pusRef,
+            popRef,
             List from {
-              ((depth - 1) to 0 by -1) map { n =>
-                StmtAssign(sRefs(n), if (n == 0) dRef else sRefs(n - 1))
+              (0 until depth) map { n =>
+                StmtAssign(
+                  sRefs(n),
+                  if (n == depth - 1) ExprInt(signed, width, 0) else sRefs(n + 1)
+                )
               }
             },
             List(
-              StmtAssign(sRefs.head, dRef)
+              StmtIf(
+                pusRef,
+                List from {
+                  ((depth - 1) to 0 by -1) map { n =>
+                    StmtAssign(sRefs(n), if (n == 0) dRef else sRefs(n - 1))
+                  }
+                },
+                List(
+                  StmtAssign(sRefs.head, dRef)
+                )
+              )
             )
           )
         )

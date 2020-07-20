@@ -1,14 +1,14 @@
 // @args: --no-assertions
-fsm ctrl_argret_04 {
+fsm ctrl_argret_10 {
   in  u3 i;
   out u3 o;
 
   void main() {
-    o = fib(3) + i;
+    o = fib(4) + i;
     fence;
   }
 
-  (* reclimit = 3 *)
+  (* reclimit = 4 *)
   u3 fib(u8 n) {
     if (n == 0) {
       return 0;
@@ -22,25 +22,25 @@ fsm ctrl_argret_04 {
 // @fec/mode: bmc
 // @fec/depth: 100
 // @fec/golden {{{
-//  module ctrl_argret_04(
+//  module ctrl_argret_10(
 //    input wire clk,
 //    input wire rst,
 //    input wire [2:0] i,
 //    output reg [2:0] o
 //  );
 //
-//    reg [3:0] state_q;
+//    reg [4:0] state_q;
 //
 //    always @(posedge clk) begin
 //      if (rst) begin
 //        o <= 3'd0;
-//        state_q <= 4'd0;
+//        state_q <= 5'd0;
 //      end else begin
-//        state_q <= state_q + 4'd1;
+//        state_q <= state_q + 5'd1;
 //        case (state_q)
-//          4'd10: begin
-//            o <= i + 3'd2;
-//            state_q <= 4'd0;
+//          5'd18: begin
+//            o <= i + 3'd3;
+//            state_q <= 5'd0;
 //          end
 //          default: begin
 //          end
