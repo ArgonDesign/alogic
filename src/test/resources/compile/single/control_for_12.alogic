@@ -16,8 +16,8 @@ fsm control_for_12 {
 // @fec/smtc {{{
 //  always 1
 //  assert (= [golden.state_q] [alogic.state_q])
-//  assert (= [golden.x_q] [alogic.x_q])
-//  assert (= [golden.y_q] [alogic.y_q])
+//  assert (= [golden.x_q] [alogic.main__locals__x_q])
+//  assert (= [golden.y_q] [alogic.main__locals__y_q])
 // }}}
 // @fec/golden {{{
 // module control_for_12(

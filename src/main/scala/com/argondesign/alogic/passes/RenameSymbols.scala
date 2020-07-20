@@ -18,10 +18,11 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Messages.Ice
-import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.util.SequenceNumbers
 
 import scala.annotation.tailrec
+import scala.collection.Iterable
 import scala.collection.mutable
 
 object RenameSymbols {
@@ -69,6 +70,28 @@ object RenameSymbols {
   )
   // format: on
 
+  def makeNamesUnique(symbols: Iterable[Symbol])(implicit cc: CompilerContext): Unit =
+    symbols.groupBy(_.name).iterator filter { _._2.sizeIs > 1 } foreach {
+      case (name, symbols) =>
+        // Group by line
+        val groupedByLine = symbols.groupBy(_.loc.line)
+        // Only add line number if there are definitions on multiple lines
+        val addLineNumber = groupedByLine.sizeIs > 1
+        // Rename symbols
+        groupedByLine foreach {
+          case (line, symbols) =>
+            val nameLine = if (addLineNumber) s"$name${cc.sep}l$line" else name
+            if (symbols.sizeIs == 1) {
+              // Only one symbol on this line, line number will disambiguate
+              symbols.head.name = nameLine
+            } else {
+              // Ensure uniqueness, even if defined on the same line
+              val seq = new SequenceNumbers
+              symbols foreach { _.name = s"$nameLine${cc.sep}${seq.next}" }
+            }
+        }
+    }
+
   def apply(last: Boolean): PairsTransformerPass =
     new PairsTransformerPass {
       val name = "rename-symbols"
@@ -95,41 +118,9 @@ object RenameSymbols {
           case (decl: DeclEntity, _) => decl
         } foreach {
           case DeclEntity(eSymbol, decls) =>
-            val nameGroups = decls.groupMap(_.symbol.name)(_.symbol)
+            makeNamesUnique(decls map { _.symbol })
 
-            for ((name, symbols) <- nameGroups if symbols.size > 1) {
-              // Sort by location
-              val sortedSymbols = symbols sortBy { _.loc.start }
-
-              // Only add line number if there are definitions on multiple lines
-              val addLineNumber = (sortedSymbols.view map { _.loc.line }).distinct.sizeIs > 1
-
-              val newNames = for (symbol <- sortedSymbols) yield {
-                symbol.kind match {
-                  case _: TypeIn          => name
-                  case _: TypeOut         => name
-                  case _: TypeConst       => name
-                  case _ if addLineNumber => s"$name${cc.sep}l${symbol.loc.line}"
-                  case _                  => name
-                }
-              }
-
-              val seq = new SequenceNumbers
-
-              for {
-                (symbol, newName) <- sortedSymbols lazyZip newNames
-                if !symbol.kind.isIn && !symbol.kind.isOut
-              } {
-                // Ensure uniqueness, even if defined on the same line
-                symbol.name = if (newNames.count(_ == newName) > 1) {
-                  s"$newName${cc.sep}${seq.next}"
-                } else {
-                  newName
-                }
-              }
-            }
-
-            // Only run on very last rename pass (just before code generatino)
+            // Only run on very last rename pass (just before code generation)
             if (last) {
               // Fix keywords
               decls foreach { decl =>

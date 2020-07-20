@@ -17,22 +17,23 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types.Type
+import com.argondesign.alogic.core.Types.TypeRecord
+import com.argondesign.alogic.core.Types.TypeStack
+import com.argondesign.alogic.core.Types.TypeType
 import com.argondesign.alogic.core.enums.UninitializedLocals
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.unreachable
 
-import scala.collection.immutable.SortedSet
-import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.util.Random
 
 final class ConvertLocals(implicit cc: CompilerContext) extends StatefulTreeTransformer {
 
-  private[this] val localDecls = ListBuffer[Decl]()
+  private val extraDecls = ListBuffer[Decl]()
 
-  private[this] val localDefns = ListBuffer[Defn]()
+  private val extraDefns = ListBuffer[Defn]()
 
-  private[this] var rng: Random = _
+  private var rng: Random = _
 
   override def start(tree: Tree): Unit = tree match {
     case Defn(symbol) => rng = new Random(symbol.name.foldLeft(0)(_ ^ _))
@@ -40,7 +41,7 @@ final class ConvertLocals(implicit cc: CompilerContext) extends StatefulTreeTran
     case _            => unreachable
   }
 
-  private[this] def getDefaultInitializer(kind: Type): Option[Expr] = {
+  private def getDefaultInitializer(kind: Type): Option[Expr] = {
     val width = kind.width.toInt
     Option.when(width > 0 && cc.settings.uninitialized != UninitializedLocals.None) {
       val signed = kind.isSigned
@@ -64,155 +65,128 @@ final class ConvertLocals(implicit cc: CompilerContext) extends StatefulTreeTran
     }
   }
 
-  // The locals in the current control function
-  private var locals = SortedSet.empty[Symbol]
-  // The recLimit of the current control function
-  private var recLimit: Option[Int] = None
-
-  // Repalcing all locals
-  override protected def replace(symbol: Symbol): Boolean = locals(symbol)
+  // The storage structure for local variables of the current control function
+  private var lSymbolOpt: Option[Symbol] = None
+  // Map from the local variables of the current control function to the field
+  // name in the local storage structure
+  private var locals: Map[Symbol, String] = Map.empty
 
   override def enter(tree: Tree): Option[Tree] = tree match {
+    // Analyse local variables
     case DefnFunc(symbol, _, body) if symbol.kind.isCtrlFunc =>
-      // Gather locals
-      locals = SortedSet from {
+      // Gather locals, excluding known combinational signals
+      val localSymbols = List from {
         body.iterator flatMap {
-          _ collect {
-            case DeclVar(symbol, _) => symbol
-            case DeclVal(symbol, _) => symbol
+          _ flatCollect {
+            case DeclVar(symbol, _) => Option.unless(symbol.attr.combSignal.isSet)(symbol)
+            case DeclVal(symbol, _) => Option.unless(symbol.attr.combSignal.isSet)(symbol)
             case _: Decl            => unreachable
           }
         }
       }
-      // Hold on to recLimit
-      recLimit = Some(symbol.attr.recLimit.value.value.get.toInt)
+      // Create the name map
+      val mSymbols = localSymbols map { symbol => symbol.dup tap { _.kind = symbol.kind } }
+      RenameSymbols.makeNamesUnique(mSymbols)
+      locals = Map from { localSymbols.iterator zip (mSymbols.iterator map { _.name }) }
+      // Create the storage structure
+      lSymbolOpt = Option.when(localSymbols.nonEmpty) {
+        // Create the locals structure type
+        val sSymbol = cc.newSymbol(s"${symbol.name}${cc.sep}locals_t", symbol.loc)
+        val sKind = TypeRecord(sSymbol, mSymbols)
+        sSymbol.kind = TypeType(sKind)
+        extraDecls append (sSymbol.mkDecl regularize tree.loc)
+        extraDefns append (sSymbol.mkDefn regularize tree.loc)
+        // Create the locals variable/stack
+        cc.newSymbol(s"${symbol.name}${cc.sep}locals", symbol.loc) tap { lSymbol =>
+          lSymbol.kind = {
+            val recLimit = symbol.attr.recLimit.value.value.get.toInt
+            if (recLimit > 1) TypeStack(sKind, recLimit) else sKind
+          }
+          extraDecls append (lSymbol.mkDecl regularize tree.loc)
+          extraDefns append (lSymbol.mkDefn regularize tree.loc)
+        }
+      }
       //
       None
 
+    // Extract Decl/Defn in statement position that is not in the local storage
+    case StmtDecl(decl) if !(locals contains decl.symbol) =>
+      extraDecls append decl
+      None
+
+    case StmtDefn(defn) if !(locals contains defn.symbol) =>
+      extraDefns append defn
+      None
+
+    //
     case _ => None
   }
 
-  private val initializers = mutable.Map[Symbol, Expr]()
+  private def selLocal(name: String): Expr = {
+    val lSymbol = lSymbolOpt.get
+    lSymbol.kind match {
+      case _: TypeStack => ExprSym(lSymbol) sel "top" sel name
+      case _            => ExprSym(lSymbol) sel name
+    }
+  }
 
   override def transform(tree: Tree): Tree = tree match {
     ////////////////////////////////////////////////////////////////////////////
-    // Convert locals to variables
+    // Drop/extract local Decls
     ////////////////////////////////////////////////////////////////////////////
 
-    case DeclVar(symbol, spec) if orig.get(symbol) exists locals =>
-      recLimit match {
-        case Some(1) => tree
-        case Some(n) => DeclStack(symbol, spec, Expr(n)) regularize tree.loc
-        case None    => unreachable
-      }
-
-    case DefnVar(symbol, initOpt) if orig.get(symbol) exists locals =>
-      initOpt foreach { initializers(symbol) = _ }
-      recLimit match {
-        case Some(1) => DefnVar(symbol, None) regularize tree.loc
-        case Some(_) => DefnStack(symbol) regularize tree.loc
-        case None    => unreachable
-      }
-
-    case DeclVal(symbol, spec) if orig.get(symbol) exists locals =>
-      recLimit match {
-        case Some(1) => DeclVar(symbol, spec) regularize tree.loc
-        case Some(n) => DeclStack(symbol, spec, Expr(n)) regularize tree.loc
-        case None    => unreachable // Can only appear in control function
-      }
-
-    case DefnVal(symbol, init) if orig.get(symbol) exists locals =>
-      initializers(symbol) = init
-      recLimit match {
-        case Some(1) => DefnVar(symbol, None) regularize tree.loc
-        case Some(_) => DefnStack(symbol) regularize tree.loc
-        case None    => unreachable // Can only appear in control function
-      }
+    case _: StmtDecl => Stump
 
     ////////////////////////////////////////////////////////////////////////////
-    // Pull StmtDecl to entity
+    // Drop/extract local Defns, assign initializer if any
     ////////////////////////////////////////////////////////////////////////////
 
-    case StmtDecl(decl: DeclVar) =>
-      localDecls append decl
-      Stump
-
-    case StmtDecl(decl: DeclStack) =>
-      localDecls append decl
-      Stump
-
-    case _: StmtDecl => unreachable
+    case StmtDefn(defn) =>
+      defn.initializer orElse getDefaultInitializer(defn.symbol.kind) map { init =>
+        StmtAssign(
+          locals.get(defn.symbol) map selLocal getOrElse ExprSym(defn.symbol),
+          init
+        ) regularize tree.loc
+      } getOrElse Stump
 
     ////////////////////////////////////////////////////////////////////////////
-    // Pull StmtDefn to entity, assign initializer if any
+    // Push locals on function entry
     ////////////////////////////////////////////////////////////////////////////
 
-    case StmtDefn(defn @ DefnVar(symbol, None)) =>
-      localDefns append defn
-      initializers.get(symbol) orElse getDefaultInitializer(symbol.kind) match {
-        case Some(init) => StmtAssign(ExprSym(symbol), init) regularize tree.loc
-        case None       => Stump
-      }
-
-    case StmtDefn(defn @ DefnStack(symbol)) =>
-      localDefns append defn
-      initializers.get(symbol) orElse getDefaultInitializer(symbol.kind.asStack.kind) match {
-        case Some(init) => StmtAssign(ExprSym(symbol) sel "top", init) regularize tree.loc
-        case None       => Stump
-      }
-
-    case _: StmtDefn => unreachable
+    case defn @ DefnFunc(symbol, _, body)
+        if symbol.kind.isCtrlFunc && (lSymbolOpt exists { _.kind.isStack }) =>
+      val push = StmtExpr(ExprSym(lSymbolOpt.get) sel "push" call Nil) regularize tree.loc
+      TypeAssigner(defn.copy(body = push :: body) withLoc defn.loc)
 
     ////////////////////////////////////////////////////////////////////////////
-    // Push all locals on function entry
+    // Pop locals on function return
     ////////////////////////////////////////////////////////////////////////////
 
-    case defn @ DefnFunc(_, _, body) if locals.nonEmpty && recLimit.get > 1 => {
-        val newBody = locals.iterator.foldLeft(body) {
-          case (tail, oldSymbol) =>
-            val symbol = repl(oldSymbol).get
-            val call = ExprSym(symbol) sel "push" call Nil
-            val head = StmtExpr(call) regularize symbol.loc
-            head :: tail
-        }
-        TypeAssigner(defn.copy(body = newBody) withLoc defn.loc)
-      } tap { _ =>
-        locals = SortedSet.empty
-        recLimit = None
-      }
+    case stmt @ StmtReturn(false, _) if lSymbolOpt exists { _.kind.isStack } =>
+      Thicket(
+        List(
+          StmtExpr(ExprSym(lSymbolOpt.get) sel "pop" call Nil) regularize tree.loc,
+          stmt
+        )
+      )
 
     ////////////////////////////////////////////////////////////////////////////
-    // Pop all locals on function return
+    // Replace references to locals with references to the local storage
     ////////////////////////////////////////////////////////////////////////////
 
-    case stmt @ StmtReturn(false, _) if locals.nonEmpty && recLimit.get > 1 =>
-      Thicket {
-        locals.iterator.foldLeft(List[Stmt](stmt)) {
-          case (tail, oldSymbol) =>
-            val symbol = repl(oldSymbol).get
-            val call = ExprSym(symbol) sel "pop" call Nil
-            val head = StmtExpr(call) regularize symbol.loc
-            head :: tail
-        }
-      }
-
-    ////////////////////////////////////////////////////////////////////////////
-    // Replace references to stacked locals with references to the top
-    ////////////////////////////////////////////////////////////////////////////
-
-    case expr @ ExprSym(symbol) if (orig.get(symbol) exists locals) && (recLimit.get > 1) =>
-      expr sel "top"
+    case ExprSym(symbol) =>
+      locals.get(symbol) map { name => selLocal(name) regularize tree.loc } getOrElse tree
 
     ////////////////////////////////////////////////////////////////////////////
     // Add entity extra Decl/Defn pairs
     ////////////////////////////////////////////////////////////////////////////
 
-    case decl: DeclEntity if localDecls.nonEmpty =>
-      val newDecls = List.from(decl.decls.iterator ++ localDecls.iterator)
+    case decl: DeclEntity if extraDecls.nonEmpty =>
+      val newDecls = List.from(decl.decls.iterator ++ extraDecls.iterator)
       TypeAssigner(decl.copy(decls = newDecls) withLoc tree.loc)
 
-    case defn: DefnEntity if localDefns.nonEmpty =>
-      val newDefns = localDefns.iterator map { d =>
+    case defn: DefnEntity if extraDefns.nonEmpty =>
+      val newDefns = extraDefns.iterator map { d =>
         TypeAssigner(EntDefn(d) withLoc d.loc)
       }
       val newBody = List.from(defn.body.iterator ++ newDefns)

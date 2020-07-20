@@ -172,7 +172,8 @@ final class NormalizeFunctions(implicit cc: CompilerContext) extends StatelessTr
         // after a return has been executed
 
         // The flag noting a return has occurred
-        val didReturnSymbol = cc.newSymbol("_didReturn", tree.loc) tap { _.kind = TypeUInt(1) }
+        val didReturnSymbol = cc.newTemp("_didReturn", tree.loc, TypeUInt(1))
+        didReturnSymbol.attr.combSignal set true
 
         // Initial statements (decl/defn for above, initialized to 0)
         val init = {

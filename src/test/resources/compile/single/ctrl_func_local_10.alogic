@@ -1,0 +1,95 @@
+// @args: --no-assertions
+fsm ctrl_func_local_10 {
+  in  bool i;
+  out bool o = 0;
+
+  bool rec = false;
+
+  (* reclimit = 2 *)
+  void main() {
+    {
+      bool a = ~i; // Same name
+      if (!rec) {
+        rec = true;
+        main();
+      }
+      o = a;
+      fence;
+    }
+    {
+      bool a = ~i; // Same name
+      if (!rec) {
+        rec = true;
+        main();
+      }
+      rec = false;
+      o = a;
+      fence;
+    }
+  }
+}
+// @fec/mode: bmc
+// @fec/golden {{{
+//  module ctrl_func_local_10(
+//    input wire clk,
+//    input wire rst,
+//    input wire i,
+//    output reg o
+//  );
+//
+//    reg [3:0] state_q;
+//    reg aa0_q;
+//    reg ab0_q;
+//    reg aa1_q;
+//    reg ab1_q;
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        o <= 1'd0;
+//        state_q <= 4'd0;
+//      end else begin
+//        state_q <= state_q + 4'd1;
+//        case (state_q)
+//          4'd0: begin
+//            aa0_q <= ~i;
+//          end
+//            4'd1: begin
+//              aa1_q <= ~i;
+//            end
+//            4'd2: begin
+//              o <= aa1_q;
+//            end
+//            4'd3: begin
+//              ab1_q <= ~i;
+//            end
+//            4'd4: begin
+//              o <= ab1_q;
+//            end
+//          4'd5: begin
+//            o <= aa0_q;
+//          end
+//          4'd6: begin
+//            ab0_q <= ~i;
+//          end
+//            4'd7: begin
+//              aa1_q <= ~i;
+//            end
+//            4'd8: begin
+//              o <= aa1_q;
+//            end
+//            4'd9: begin
+//              ab1_q <= ~i;
+//            end
+//            4'd10: begin
+//              o <= ab1_q;
+//            end
+//          default: begin
+//            o <= ab0_q;
+//            state_q <= 4'd0;
+//          end
+//        endcase
+//      end
+//    end
+//
+//  endmodule
+// }}}

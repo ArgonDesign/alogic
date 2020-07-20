@@ -1,0 +1,57 @@
+fsm ctrl_func_local_09 {
+  in  bool i;
+  out bool o = 0;
+
+  void main() {
+    bool a = i; // Same name
+    fence;
+    {
+      bool a = ~i; // Same name
+      fence;
+      o = a;
+      fence;
+    }
+    o = a;
+    return;
+  }
+}
+// :9: WARNING: Definition of 'a' hides previous definition at
+// :9: WARNING: ... .*
+// @fec/mode: bmc
+// @fec/golden {{{
+//  module ctrl_func_local_09(
+//    input wire clk,
+//    input wire rst,
+//    input wire i,
+//    output reg o
+//  );
+//
+//    reg [1:0] state_q;
+//    reg aa_q;
+//    reg ab_q;
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        o <= 1'd0;
+//        state_q <= 2'd0;
+//      end else begin
+//        state_q <= state_q + 2'd1;
+//        case (state_q)
+//          2'd0: begin
+//            aa_q <= i;
+//          end
+//          2'd1: begin
+//            ab_q <= ~i;
+//          end
+//          2'd2: begin
+//            o <= ab_q;
+//          end
+//          2'd3: begin
+//            o <= aa_q;
+//          end
+//        endcase
+//      end
+//    end
+//
+//  endmodule
+// }}}
