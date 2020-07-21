@@ -212,6 +212,7 @@ final class AddCastsSpec extends AnyFreeSpec with AlogicTest {
 
       "initializer expressions" - {
         for {
+          qual <- List("", "const ", "static ", "out ")
           (decl, pattern) <- List[(String, PartialFunction[Any, Unit])](
             // format: off
             ("i8 a = 2s", { case ExprCast(TypeSInt(w), ExprNum(true, v)) if v == 2 && w == 8 => }),
@@ -225,16 +226,19 @@ final class AddCastsSpec extends AnyFreeSpec with AlogicTest {
             // format: on
           )
         } {
-          decl in {
+          s"$qual$decl" in {
             addCasts {
               s"""
               |struct s {
               |  void function() {
-              |    $decl;
+              |    $qual$decl;
               |  }
               |}"""
             } getFirst {
-              case DefnVar(_, Some(i)) => i
+              case DefnVar(_, Some(i))    => i
+              case DefnVal(_, i)          => i
+              case DefnStatic(_, Some(i)) => i
+              case DefnOut(_, Some(i))    => i
             } tap {
               _ should matchPattern(pattern)
             }
