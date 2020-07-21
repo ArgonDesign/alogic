@@ -1,0 +1,48 @@
+fsm empty_state_replaced_with_redudant_state {
+  in  bool i;
+  out bool o;
+
+  // Both these functions yield empty states
+  void f() { return; }
+  void g() { return; }
+
+  void main() {
+    o = i;
+    // Both states labeled A and B are the same hence one is redundant,
+    // but the redundant is also the follower of an empty state f or g.
+    if (i) {
+      f();
+      fence; // A
+    } else {
+      g();
+      fence; // B
+    }
+  }
+}
+// @fec/smtc {{{
+//  always 1
+//  assert (= [golden.state_q] [alogic.state_q])
+// }}}
+// @fec/golden {{{
+//  module empty_state_replaced_with_redudant_state(
+//    input  wire  clk,
+//    input  wire  rst,
+//    input  wire  i,
+//    output reg   o
+//  );
+//
+//    reg state_q;
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        o <= 1'd0;
+//        state_q <= 1'd0;
+//      end else begin
+//        state_q <= ~state_q;
+//        if (!state_q) o <= i;
+//      end
+//    end
+//
+// endmodule
+// }}}
+// @stats/empty_state_replaced_with_redudant_state/states: 2

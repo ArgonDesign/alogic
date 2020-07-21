@@ -126,7 +126,7 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends StatefulTree
         } sortBy { _.symbol }
         // Build the map
         Map from {
-          // Pairwise compare bodies..
+          // Pairwise compare bodies.
           states.iterator.zipWithIndex flatMap {
             case (a, i) =>
               states.drop(i + 1).iterator flatMap { b =>
@@ -136,7 +136,13 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends StatefulTree
         }
       }
 
-      removedStates = nullStates concat redundantStates
+      // Merge the maps, but remap null state replacements in case they are
+      // redundant
+      removedStates = Map from {
+        nullStates.view mapValues { symbol =>
+          redundantStates.getOrElse(symbol, symbol)
+        } concat redundantStates
+      }
 
       // In case we are removing the entry state, propagate the attribute
       removedStates foreach {
