@@ -51,6 +51,9 @@ final class InlineKnownVars(
     case defn: DefnEntity =>
       assert(defn.combProcesses.lengthIs <= 1)
       defn.combProcesses.headOption foreach { proc => computeEvaluation(StmtBlock(proc.stmts)) }
+    case defn: DefnState =>
+      assert(combOnly)
+      computeEvaluation(StmtBlock(defn.body))
     case stmt: Stmt => computeEvaluation(stmt)
     case _          =>
   }

@@ -1,0 +1,41 @@
+// @args: --no-assertions
+fsm prune_unreachable_states {
+  in  bool i;
+  out bool o = false;
+
+  void main() {
+    assert i;
+    if (i) {
+      o = true;
+      fence;
+    } else {
+      fence;
+      o = false;
+      fence;
+      o = true;
+      fence;
+      o = false;
+      fence;
+    }
+  }
+}
+// @verilator-lint-off
+// @fec/golden {{{
+//  module prune_unreachable_states(
+//    input  wire  clk,
+//    input  wire  rst,
+//    input  wire  i,
+//    output reg   o
+//  );
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        o <= 1'd0;
+//      end else begin
+//        o <= 1'd1;
+//      end
+//    end
+//
+//  endmodule
+// }}}
+// @stats/prune_unreachable_states/states: 1

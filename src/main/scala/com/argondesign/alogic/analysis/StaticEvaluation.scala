@@ -325,10 +325,10 @@ object StaticEvaluation {
         case _: StmtComment => Some(curr)
         case _: StmtDecl    => Some(curr)
 
-        // TODO: This is only used by InlineMethods and could be improved by
-        // indicating this branch does not join hence shouldn't constrain
-        // subsequent statements
+        // TODO: This could be improved by indicating this branch does not join
+        // hence shouldn't constrain subsequent statements.
         case _: StmtReturn => Some(curr)
+        case _: StmtGoto   => Some(curr)
 
         case _ => unreachable
       }

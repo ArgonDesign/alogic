@@ -59,6 +59,7 @@ object Passes extends ChainingSyntax {
         ConvertCtrlFuncLocals andThen
         RemoveStructuralSharing andThen
         ConvertControl andThen
+        SimplifyStates andThen
         CreateStateSystem andThen
         Replace1Stacks andThen
         // TODO: Replace1Arrays
