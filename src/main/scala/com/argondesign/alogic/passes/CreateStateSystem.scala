@@ -124,15 +124,18 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends StatefulTree
             case _            => unreachable
           }
         } sortBy { _.symbol }
-        // Build the map
-        Map from {
-          // Pairwise compare bodies.
-          states.iterator.zipWithIndex flatMap {
-            case (a, i) =>
-              states.drop(i + 1).iterator flatMap { b =>
-                Option.when(a.body == b.body)((b.symbol, a.symbol))
-              }
-          }
+        // Pairwise compare bodies and build iterators of equivalent pairs.
+        val pairs = states.iterator.zipWithIndex flatMap {
+          case (a, i) =>
+            states.drop(i + 1).iterator flatMap { b =>
+              Option.when(a.body == b.body)((b.symbol, a.symbol))
+            }
+        }
+        // Build map from pairs, but keep only the earliest mappings for a key.
+        // Due to the sorting we done earlier and the enumeration order, this
+        // ensures redundant states are mapped to the lowest equivalent state.
+        pairs.foldLeft(Map.empty[Symbol, Symbol]) {
+          case (acc, (k, v)) => acc.updatedWith(k)(_ orElse Some(v))
         }
       }
 

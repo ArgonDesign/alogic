@@ -1,0 +1,61 @@
+fsm tripple_redundant_state {
+  in  u2 i;
+  out u2 o;
+
+  // The 2nd state in all branches are the same, so 3 states get merged
+
+  void main() {
+    case (i) {
+      2'd0: {
+        o = 2'd1;
+        fence;
+        o = 2'd0;
+        fence;
+      }
+      2'd1: {
+        o = 2'd2;
+        fence;
+        o = 2'd0;
+        fence;
+      }
+      default: {
+        o = 2'd3;
+        fence;
+        o = 2'd0;
+        fence;
+      }
+    }
+  }
+}
+// @fec/smtc {{{
+//  always 1
+//  assert (= [golden.state_q] [alogic.state_q])
+// }}}
+// @fec/golden {{{
+//  module tripple_redundant_state(
+//    input  wire       clk,
+//    input  wire       rst,
+//    input  wire [1:0] i,
+//    output reg  [1:0] o
+//  );
+//
+//    reg state_q;
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        o <= 2'd0;
+//        state_q <= 1'd0;
+//      end else begin
+//        state_q <= ~state_q;
+//        if (!state_q) begin
+//          o <= i == 2'd0 ? 2'd1 :
+//               i == 2'd1 ? 2'd2 : 2'd3;
+//        end else begin
+//          o <= 2'd0;
+//        end
+//      end
+//    end
+//
+// endmodule
+// }}}
+// @stats/tripple_redundant_state/states: 2
