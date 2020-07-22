@@ -1,0 +1,30 @@
+struct t {
+  static u2 a() {
+    u2[2] x = 4'b1100;
+    return x[0];
+  }
+  static u2 b() {
+    u2[2] x = 4'b1100;
+    return x[1];
+  }
+}
+
+fsm inline_known_vars_02 {
+  out wire u2 oa;
+  out wire u2 ob;
+
+  void main() {
+    oa = t.a();
+    ob = t.b();
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module inline_known_vars_02(
+//    output wire [1:0] oa,
+//    output wire [1:0] ob
+//  );
+//    assign oa = 2'b00;
+//    assign ob = 2'b11;
+//  endmodule
+// }}}

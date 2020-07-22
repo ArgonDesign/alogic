@@ -1,0 +1,24 @@
+fsm method_static_5 {
+  in       u2[2]  i;
+  out wire u4     o;
+
+  struct swap_halves {
+    param uint W;
+    static uint(W) f(uint(W) val) {
+      return {val[0 +: W/2], val[W/2 +: W/2]};
+    }
+  }
+
+  void main() {
+    o = swap_halves(4).f(i);
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module method_static_5(
+//    input  wire [3:0] i,
+//    output wire [3:0] o
+//  );
+//    assign o = {i[1:0], i[3:2]};
+//  endmodule
+// }}}

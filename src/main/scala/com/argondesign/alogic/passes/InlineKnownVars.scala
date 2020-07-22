@@ -139,12 +139,11 @@ final class InlineKnownVars(
   }
 
   override def transform(tree: Tree): Tree = tree match {
-    // Substitute known constants
-    case ExprSym(symbol) =>
-      // Drop bindings which contain records, so we don't accidentally
-      // create illegal nodes by losing the struct type during inlining.
-      // This only happens prior to SplitStructs.
-      val bs = bindings.top filterNot { _._2 existsAll { _.tpe.isRecord } }
+    // Substitute known constants of scalar types
+    case ExprSym(symbol) if symbol.kind.underlying.isNumeric =>
+      // Drop bindings which contain non-numeric symbols, as operator change
+      // over them. This only happens prior to SplitStructs and LowerVectors.
+      val bs = bindings.top filterNot { _._2 existsAll { !_.tpe.isNumeric } }
       @tailrec // Recursively replace with bound values
       def simplify(expr: Expr): Expr = (expr given bs).simplify match {
         case simplified: ExprInt => simplified
