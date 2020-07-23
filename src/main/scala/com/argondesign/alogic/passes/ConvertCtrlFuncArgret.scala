@@ -215,7 +215,8 @@ final class ConvertCtrlFuncArgret(implicit cc: CompilerContext) extends Stateful
 
     case ExprSym(symbol) if arguments(symbol) =>
       // Replace references to arguments
-      val aSymbol = argsMap(enclosingSymbols.head)
+      val fSymbol = enclosingSymbols.find(_.kind.isCtrlFunc).get
+      val aSymbol = argsMap(fSymbol)
       aSymbol.kind pipe {
         case _: TypeStack => ExprSym(aSymbol) sel "top" sel symbol.name
         case _            => ExprSym(aSymbol) sel symbol.name

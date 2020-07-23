@@ -1,0 +1,40 @@
+fsm ctrl_argret_11 {
+  in bool i;
+  out bool o;
+
+  void main() {
+    f(i);
+  }
+
+  void f(bool x) {
+    const bool tmp = x;
+    o = tmp;
+    return;
+  }
+}
+// @fec/mode: bmc
+// @fec/golden {{{
+//  module ctrl_argret_11(
+//    input wire clk,
+//    input wire rst,
+//    input wire i,
+//    output reg o
+//  );
+//
+//    reg prev_i_q;
+//    reg state_q;
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        prev_i_q <= 1'd0;
+//        state_q <= 1'd0;
+//        o <= 1'd0;
+//      end else begin
+//        prev_i_q <= i;
+//        state_q <= ~state_q;
+//        if (state_q) o <= prev_i_q;
+//      end
+//    end
+//
+//  endmodule
+// }}}
