@@ -1,0 +1,24 @@
+fsm rename_public_member {
+    in       bool i;
+    out wire bool o;
+
+    void main() {
+      const bool tmp = i;
+      {
+        static bool i;
+        i = tmp;
+        o = i;
+      }
+      fence;
+    }
+}
+// :8: WARNING: Definition of 'i' hides previous definition at
+// :8: WARNING: ... .*rename_public_member.alogic:2
+// @fec/golden {{{
+//  module rename_public_member(
+//    input  wire i,
+//    output wire o
+//  );
+//    assign o = i;
+//  endmodule
+// }}}

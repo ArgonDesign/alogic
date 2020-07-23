@@ -74,24 +74,32 @@ object RenameSymbols {
   )
   // format: on
 
-  def makeNamesUnique(symbols: Iterable[Symbol])(implicit cc: CompilerContext): Unit =
+  def makeNamesUnique(
+      symbols: Iterable[Symbol],
+      ignore: Set[Symbol] = Set.empty
+    )(
+      implicit
+      cc: CompilerContext
+    ): Unit =
     symbols.groupBy(_.name).iterator filter { _._2.sizeIs > 1 } foreach {
       case (name, symbols) =>
         // Group by line
         val groupedByLine = symbols.groupBy(_.loc.line)
-        // Only add line number if there are definitions on multiple lines
+        // Only add line numbers if there are definitions on multiple lines
         val addLineNumber = groupedByLine.sizeIs > 1
         // Rename symbols
-        groupedByLine foreach {
+        groupedByLine.iterator map {
           case (line, symbols) =>
-            val nameLine = if (addLineNumber) s"$name${cc.sep}l$line" else name
+            (if (addLineNumber) s"$name${cc.sep}l$line" else name, symbols filterNot ignore)
+        } foreach {
+          case (base, symbols) =>
             if (symbols.sizeIs == 1) {
               // Only one symbol on this line, line number will disambiguate
-              symbols.head.name = nameLine
+              symbols.head.name = base
             } else {
               // Ensure uniqueness, even if defined on the same line
               val seq = new SequenceNumbers
-              symbols foreach { _.name = s"$nameLine${cc.sep}${seq.next}" }
+              symbols foreach { _.name = s"$base${cc.sep}${seq.next}" }
             }
         }
     }
@@ -131,7 +139,7 @@ object RenameSymbols {
             val symbols = decls map { _.symbol }
 
             // Rename symbols within entities that have the same name
-            makeNamesUnique(symbols)
+            makeNamesUnique(symbols, publicSymbols)
 
             // Only run on very last rename pass (just before code generation)
             if (last) {
