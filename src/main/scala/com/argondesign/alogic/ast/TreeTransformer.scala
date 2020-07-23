@@ -1,16 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2018 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2020 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
 //
-// Module: Alogic Compiler
-// Author: Geza Lore
-//
 // DESCRIPTION:
-//
-// A Tree transformer used to modify Trees
+//  Base class of a Tree transformer used to modify Trees
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.ast
@@ -22,7 +17,6 @@ import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.unreachable
 
-import scala.collection.mutable.ListBuffer
 import scala.util.ChainingSyntax
 
 // Tree transformers are applied during a traversal of a Tree.
@@ -54,6 +48,48 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
   }
 
   //////////////////////////////////////////////////////////////////////////////
+  // Transform specific interface overridable by sub-classes
+  //////////////////////////////////////////////////////////////////////////////
+
+  // 'enter' is called on each non-skipped node, in pre-order (before visiting
+  // any of their children) when the node is first encountered. 'enter' is used
+  // to modify the state of the TreeTransformer or the context before
+  // transforming children. When 'enter' returns Some(node), the node 'enter'
+  // is called with is immediately replaced with the returned node, without
+  // visiting the children or calling transform on the node, effectively
+  // preempting traversal of the subtree below the given tree. If 'enter'
+  // returns None, traversal continues by transforming all children and the
+  // entered node.
+  protected def enter(tree: Tree): Option[Tree] = None
+
+  // 'transform' is called on each non-skipped node, in post-order (after all
+  // children have been transformed). 'transform' us used to modify tree nodes.
+  // When 'transform' is called, all child nodes have already been transformed
+  // using the same function.
+  protected def transform(tree: Tree): Tree = tree
+
+  // 'skip' is a predicate that can be used to mark subtrees that should not be
+  // visited. If 'skip' returns true for a node, that node will not be visited,
+  // i.e.: enter and transform will not be called on that node, or any of their
+  // children, leaving the subtree unmodified
+  protected def skip(tree: Tree): Boolean = false
+
+  // 'start' is called with the root of the input tree, at the beginning of the
+  // walk.
+  protected def start(tree: Tree): Unit = ()
+
+  // 'finish' is called with the root of the transformed tree, at the end of the
+  // walk. It returns the final result tree.
+  protected def finish(tree: Tree): Tree = tree
+
+  // 'finalCheck' is invoked with the root of the transformed tree.
+  // This can be used to verify invariants introduced by this transform
+  protected def finalCheck(tree: Tree): Unit = ()
+
+  // Whether this transform operates on typed or untyped trees
+  protected val typed: Boolean = true
+
+  //////////////////////////////////////////////////////////////////////////////
   // Protected API
   //////////////////////////////////////////////////////////////////////////////
 
@@ -64,7 +100,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
       // Using a ListBuilder without recursion here as these lists can grow
       // very long with liberal use of 'gen' constructs.
       var same = true
-      val results = new ListBuffer[Tree]()
+      val results = new collection.mutable.ListBuffer[Tree]()
       trees foreach { tree =>
         walk(tree) match {
           case Thicket(ts)          => same = false; results ++= ts
@@ -85,7 +121,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
   }
 
   // Walk single node and check post conditions
-  protected def walk(tree: Tree): Tree = walkTree(tree) tap {
+  final protected def walk(tree: Tree): Tree = walkTree(tree) tap {
     case Thicket(ts) =>
       ts foreach { result =>
         checkResult(tree, result)
@@ -102,26 +138,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
   protected[ast] def walkTree(tree: Tree): Tree
 
   //////////////////////////////////////////////////////////////////////////////
-  // Transform specific interface to be filled in by sub-classes
-  //////////////////////////////////////////////////////////////////////////////
-
-  // 'start' is called with the root of the input tree, at the beginning of the
-  // walk.
-  protected def start(tree: Tree): Unit = ()
-
-  // 'finish' is called with the root of the transformed tree, at the end of the
-  // walk. It returns the final result tree.
-  protected def finish(tree: Tree): Tree = tree
-
-  // 'finalCheck' is invoked with the root of the transformed tree.
-  // This can be used to verify invariants introduced by this transform
-  protected def finalCheck(tree: Tree): Unit = ()
-
-  // Whether this transform operates on typed or untyped trees
-  protected val typed: Boolean = true
-
-  //////////////////////////////////////////////////////////////////////////////
-  // Internals
+  // Private internals
   //////////////////////////////////////////////////////////////////////////////
 
   // Check result of walk
@@ -160,7 +177,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
     case tree        => treeCopier(tree)
   }
 
-  private def walkChildrenRef(tree: Ref): Tree = tree match {
+  final private def walkChildrenRef(tree: Ref): Tree = tree match {
     case node: Ident =>
       val indices = walk(node.idxs)
       TreeCopier(node)(indices)
@@ -169,7 +186,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
       TreeCopier(node)(indices)
   }
 
-  private def walkChildrenDesc(tree: Desc): Tree = tree match {
+  final private def walkChildrenDesc(tree: Desc): Tree = tree match {
     case node: DescVar =>
       val ref = walk(node.ref)
       val spec = walk(node.spec)
@@ -265,7 +282,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
       TreeCopier(node)(ref, choices)
   }
 
-  private def walkChildrenDecl(tree: Decl): Tree = tree match {
+  final private def walkChildrenDecl(tree: Decl): Tree = tree match {
     case node: DeclVar =>
       val spec = walk(node.spec)
       TreeCopier(node)(spec)
@@ -326,7 +343,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
     case node: DeclState => node
   }
 
-  private def walkChildrenDefn(tree: Defn): Tree = tree match {
+  final private def walkChildrenDefn(tree: Defn): Tree = tree match {
     case node: DefnVar =>
       val initOpt = walk(node.initOpt)
       TreeCopier(node)(initOpt)
@@ -372,7 +389,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
       TreeCopier(node)(body)
   }
 
-  private def walkChildrenGen(tree: Gen): Tree = tree match {
+  final private def walkChildrenGen(tree: Gen): Tree = tree match {
     case node: GenIf =>
       val cond = walk(node.cond)
       val thenItems = walk(node.thenItems)
@@ -391,7 +408,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
       TreeCopier(node)(inits, end, body)
   }
 
-  private def walkChildrenAssertion(tree: Assertion): Tree = tree match {
+  final private def walkChildrenAssertion(tree: Assertion): Tree = tree match {
     case node: AssertionAssert =>
       val cond = walk(node.cond)
       TreeCopier(node)(cond)
@@ -403,13 +420,13 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
       TreeCopier(node)(cond)
   }
 
-  private def walkChildrenRiz(tree: Riz): Tree = tree match {
+  final private def walkChildrenRiz(tree: Riz): Tree = tree match {
     case node: RizDesc => splice(node.desc, TreeCopier(node))
     case node: RizDecl => splice(node.decl, TreeCopier(node))
     case node: RizDefn => splice(node.defn, TreeCopier(node))
   }
 
-  private def walkChildrenEnt(tree: Ent): Tree = tree match {
+  final private def walkChildrenEnt(tree: Ent): Tree = tree match {
     case node: EntDesc => splice(node.desc, TreeCopier(node))
     case node: EntDecl => splice(node.decl, TreeCopier(node))
     case node: EntDefn => splice(node.defn, TreeCopier(node))
@@ -437,7 +454,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
     case node: EntComment   => node
   }
 
-  private def walkChildrenRec(tree: Rec): Tree = tree match {
+  final private def walkChildrenRec(tree: Rec): Tree = tree match {
     case node: RecDesc => splice(node.desc, TreeCopier(node))
     case node: RecDecl => splice(node.decl, TreeCopier(node))
     case node: RecDefn => splice(node.defn, TreeCopier(node))
@@ -448,7 +465,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
     case node: RecComment   => node
   }
 
-  private def walkChildrenStmt(tree: Stmt): Tree = tree match {
+  final private def walkChildrenStmt(tree: Stmt): Tree = tree match {
     case node: StmtDesc => splice(node.desc, TreeCopier(node))
     case node: StmtDecl => splice(node.decl, TreeCopier(node))
     case node: StmtDefn => splice(node.defn, TreeCopier(node))
@@ -528,7 +545,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
     case node: StmtComment   => node
   }
 
-  private def walkChildrenCase(tree: Case): Tree = tree match {
+  final private def walkChildrenCase(tree: Case): Tree = tree match {
     case node: CaseGen =>
       val gen = walk(node.gen)
       TreeCopier(node)(gen)
@@ -541,7 +558,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
       TreeCopier(node)(stmts)
   }
 
-  private def walkChildrenExpr(tree: Expr): Tree = tree match {
+  final private def walkChildrenExpr(tree: Expr): Tree = tree match {
     case node: ExprCall =>
       val expr = walk(node.expr)
       val args = walk(node.args)
@@ -598,7 +615,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
     case node: ExprError => node
   }
 
-  private def walkChildrenArg(tree: Arg): Tree = tree match {
+  final private def walkChildrenArg(tree: Arg): Tree = tree match {
     case node: ArgP =>
       val expr = walk(node.expr)
       TreeCopier(node)(expr)
@@ -610,6 +627,10 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
       val expr = walk(node.expr)
       TreeCopier(node)(idxs, expr)
   }
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Protected internals
+  //////////////////////////////////////////////////////////////////////////////
 
   // Walk children of node
   final protected[ast] def walkChildren(tree: Tree): Tree = assignType {
@@ -646,11 +667,16 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
     }
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  // Default checks to run after each transformation
-  //////////////////////////////////////////////////////////////////////////////
+  // Apply transform to list of trees, flatten Thickets
+  final protected[ast] def transform(trees: List[Tree]): List[Tree] = trees flatMap { t =>
+    transform(t) match {
+      case Thicket(results) => results
+      case result           => List(result)
+    }
+  }
 
-  protected def defaultCheck(orig: Tree, tree: Tree): Unit = {
+  // Default checks to run after each transformation
+  protected[ast] def defaultCheck(orig: Tree, tree: Tree): Unit = {
     assert(!typed || !tree.tpe.isError, this.getClass.getName + "\n" + tree.toSource)
     // TODO: Add back referencing checks
   }
