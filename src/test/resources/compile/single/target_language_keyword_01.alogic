@@ -1,0 +1,19 @@
+network target_language_keyword_01 {
+  in       bool input;
+  out wire bool output;
+
+  new fsm inner {
+    void main() {
+      output = input;
+      fence;
+    }
+  }
+}
+// @fec/golden {{{
+//  module target_language_keyword_01(
+//    input  wire input_,
+//    output wire output_
+//  );
+//    assign output_ = input_;
+//  endmodule
+// }}}
