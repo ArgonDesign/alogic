@@ -33,10 +33,7 @@ final class TyperConnectSpec extends AnyFreeSpec with AlogicTest {
 
   private def typeCheck(text: String): Thicket = Thicket {
     transformWithPass(Namer andThen Elaborate andThen TypeCheck, text) map {
-      _ flatMap {
-        case (decl, defn) =>
-          List(decl, defn)
-      }
+      _.toList flatMap { case (decl, defn) => List(decl, defn) }
     } getOrElse Nil
   }
 

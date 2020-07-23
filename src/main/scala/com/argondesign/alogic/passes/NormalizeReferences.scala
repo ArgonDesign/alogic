@@ -382,7 +382,7 @@ final class NormalizeReferencesC(
 
 object NormalizeReferences {
 
-  def apply(): Pass[List[(Decl, Defn)], List[(Decl, Defn)]] = {
+  def apply(): Pass[Iterable[(Decl, Defn)], Iterable[(Decl, Defn)]] = {
 
     val globalReplacements = TrieMap[Symbol, Symbol]()
     val requiredSymbolMaps = TrieMap[Symbol, Map[Symbol, Set[Symbol]]]()

@@ -192,15 +192,15 @@ object LiftSrams extends PairsTransformerPass {
   val name = "lift-srams"
 
   def process(
-      pairs: List[(Decl, Defn)]
+      pairs: Iterable[(Decl, Defn)]
     )(
       implicit
       cc: CompilerContext
-    ): List[(Decl, Defn)] = {
+    ): Iterable[(Decl, Defn)] = {
 
     // Lift entities by 1 level in each iteration
     @tailrec
-    def loop(pairs: List[(Decl, Defn)], liftFromSet: Set[Symbol]): List[(Decl, Defn)] = {
+    def loop(pairs: Iterable[(Decl, Defn)], liftFromSet: Set[Symbol]): Iterable[(Decl, Defn)] = {
       // Gather the 'parent entity' -> 'List(instances to be lifted)' map
       val liftFromMap: Map[Symbol, List[Symbol]] = Map from {
         for {

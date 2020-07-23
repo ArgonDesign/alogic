@@ -35,9 +35,7 @@ final class ConvertControlSpec extends AnyFreeSpec with AlogicTest {
         ConvertControl,
       text
     ) map {
-      _ flatMap {
-        case (decl, defn) => List(decl, defn)
-      }
+      _.toList flatMap { case (decl, defn) => List(decl, defn) }
     } getOrElse Nil
   }
 

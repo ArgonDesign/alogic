@@ -27,7 +27,7 @@ object WriteAux extends PairsTransformerPass {
   val name = "write-aux"
 
   def topLevelManifest(
-      pairs: List[(Decl, Defn)]
+      pairs: Iterable[(Decl, Defn)]
     )(
       implicit
       cc: CompilerContext
@@ -168,11 +168,11 @@ object WriteAux extends PairsTransformerPass {
   }
 
   override def process(
-      input: List[(Decl, Defn)]
+      input: Iterable[(Decl, Defn)]
     )(
       implicit
       cc: CompilerContext
-    ): List[(Decl, Defn)] = {
+    ): Iterable[(Decl, Defn)] = {
 
     // Add the module manifest
     cc.manifest("top-levels") = topLevelManifest(input)

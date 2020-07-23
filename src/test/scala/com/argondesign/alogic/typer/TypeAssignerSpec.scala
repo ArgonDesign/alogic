@@ -33,7 +33,7 @@ final class TypeAssignerSpec extends AnyFreeSpec with AlogicTest {
   implicit val cc: CompilerContext = new CompilerContext
 
   protected def elaborate(text: String): Thicket = Thicket {
-    transformWithPass(Namer andThen Elaborate, text).value flatMap {
+    transformWithPass(Namer andThen Elaborate, text).value.toList flatMap {
       case (decl, defn) => List(decl, defn)
     }
   }

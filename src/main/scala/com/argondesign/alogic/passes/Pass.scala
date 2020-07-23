@@ -56,28 +56,28 @@ trait Pass[T, R] { self =>
   // Apply the pass
   final def apply(input: T)(implicit cc: CompilerContext): Option[R] = run(input, 0)
 
-  // Run  the pass
+  // Actual implementation of pass application
   protected def run(input: T, passNumber: Int)(implicit cc: CompilerContext): Option[R] = {
     // Process the inputs
     val output = cc.timeit(f"pass $passNumber%02d $name")(process(input))
     // Dump result if requested
     if (cc.settings.dumpTrees) dump(output, f"$passNumber%02d.$name")
     // Yield output, if there were no errors
-    if (cc.hasError) None else Some(output)
+    Option.unless(cc.hasError)(output)
   }
 
   // Combine with subsequent pass, with this Pass applied first
   final def andThen[U](next: Pass[R, U]): Pass[T, U] = new Pass[T, U] {
     val name: String = self.name + " andThen " + next.name
 
+    // These are not called on the comined pass directly
     protected def process(input: T)(implicit cc: CompilerContext): U = unreachable
-
     protected def dump(result: U, tag: String)(implicit cc: CompilerContext): Unit = unreachable
 
     override protected val steps: Int = self.steps + next.steps
 
+    // Apply the self pass and then the next pass
     override def run(input: T, passNumber: Int)(implicit cc: CompilerContext): Option[U] = {
-      // Apply the self pass and then the tail pass
       self.run(input, passNumber) flatMap { next.run(_, passNumber + self.steps) }
     }
 
@@ -85,24 +85,25 @@ trait Pass[T, R] { self =>
 
 }
 
-// Passes before Elaborate work on a list of Root trees, together with a list
-// of top level instance specifier expressions
-trait PreElaboratePass extends Pass[(List[Root], List[Expr]), (List[Root], List[Expr])] {
+// Passes before Elaborate work on a collection of Root trees, together with a
+// collection of top level instance specifier expressions
+trait PreElaboratePass
+    extends Pass[(Iterable[Root], Iterable[Expr]), (Iterable[Root], Iterable[Expr])] {
 
   // Factory method to create a new instance of the tree transformer
   protected def create(implicit cc: CompilerContext): TreeTransformer
 
   protected def process(
-      input: (List[Root], List[Expr])
+      input: (Iterable[Root], Iterable[Expr])
     )(
       implicit
       cc: CompilerContext
-    ): (List[Root], List[Expr]) =
+    ): (Iterable[Root], Iterable[Expr]) =
     // Apply pass to all Roots, pass through top level specs
     (input._1 map { _ rewrite create }, input._2)
 
   final protected def dump(
-      result: (List[Root], List[Expr]),
+      result: (Iterable[Root], Iterable[Expr]),
       tag: String
     )(
       implicit
@@ -112,10 +113,10 @@ trait PreElaboratePass extends Pass[(List[Root], List[Expr]), (List[Root], List[
 
 }
 
-trait PairsTransformerPass extends Pass[List[(Decl, Defn)], List[(Decl, Defn)]] {
+trait PairsTransformerPass extends Pass[Iterable[(Decl, Defn)], Iterable[(Decl, Defn)]] {
 
   final protected def dump(
-      result: List[(Decl, Defn)],
+      result: Iterable[(Decl, Defn)],
       tag: String
     )(
       implicit
@@ -130,7 +131,7 @@ trait PairTransformerPass extends PairsTransformerPass with ChainingSyntax {
 
   // Called before any pair has been transformed with the input pairs
   @nowarn("msg=parameter value cc .* is never used")
-  protected def start(pairs: List[(Decl, Defn)])(implicit cc: CompilerContext): Unit = {}
+  protected def start(pairs: Iterable[(Decl, Defn)])(implicit cc: CompilerContext): Unit = {}
 
   // Predicate to check whether this pair needs transforming
   @nowarn("msg=parameter value cc .* is never used")
@@ -142,19 +143,19 @@ trait PairTransformerPass extends PairsTransformerPass with ChainingSyntax {
   // Called after all pairs have been transformed with the output pairs
   @nowarn("msg=parameter value cc .* is never used")
   protected def finish(
-      pairs: List[(Decl, Defn)]
+      pairs: Iterable[(Decl, Defn)]
     )(
       implicit
       cc: CompilerContext
-    ): List[(Decl, Defn)] = pairs
+    ): Iterable[(Decl, Defn)] = pairs
 
   // Implementation of the pass
   final protected def process(
-      pairs: List[(Decl, Defn)]
+      pairs: Iterable[(Decl, Defn)]
     )(
       implicit
       cc: CompilerContext
-    ): List[(Decl, Defn)] = {
+    ): Iterable[(Decl, Defn)] = {
     // Call start
     start(pairs)
     // Apply transform to all pairs, flatten Thicket/Stump

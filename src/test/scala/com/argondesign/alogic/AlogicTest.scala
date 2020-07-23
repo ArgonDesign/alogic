@@ -77,7 +77,7 @@ trait AlogicTest
   }
 
   final protected def transformWithPass[R](
-      pass: Pass[(List[Root], List[Expr]), R],
+      pass: Pass[(Iterable[Root], Iterable[Expr]), R],
       text: String
     )(
       implicit

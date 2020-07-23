@@ -404,11 +404,11 @@ object LowerSrams {
     }
 
     override protected def finish(
-        results: List[(Decl, Defn)]
+        results: Iterable[(Decl, Defn)]
       )(
         implicit
         cc: CompilerContext
-      ): List[(Decl, Defn)] = {
+      ): Iterable[(Decl, Defn)] = {
       // Add sram sizes required to manifest
       cc.manifest("sram-sizes") = List from {
         sramBuilder.srams.iterator map {

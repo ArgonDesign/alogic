@@ -115,11 +115,11 @@ object RenameSymbols {
       val name = "rename-symbols"
 
       override protected def process(
-          input: List[(Decl, Defn)]
+          input: Iterable[(Decl, Defn)]
         )(
           implicit
           cc: CompilerContext
-        ): List[(Decl, Defn)] = {
+        ): Iterable[(Decl, Defn)] = {
 
         // Set of top level names to avoid collissions
         val topNames = mutable.Set[String]()
@@ -209,23 +209,21 @@ object RenameSymbols {
           input
         } else {
           assert(last, "Should only rename public symbols on last rename pass")
-          List from {
-            object Transform extends StatelessTreeTransformer {
-              override protected def transform(tree: Tree): Tree = tree match {
-                case expr @ ExprSel(tgt, selector, _) =>
-                  tgt.tpe match {
-                    case TypeEntity(eSymbol, _) =>
-                      publicNameMap.get((eSymbol, selector)) map { newSelector =>
-                        TypeAssigner(expr.copy(selector = newSelector) withLoc tree.loc)
-                      } getOrElse tree
-                    case _ => tree
-                  }
-                case _ => tree
-              }
+          object Transform extends StatelessTreeTransformer {
+            override protected def transform(tree: Tree): Tree = tree match {
+              case expr @ ExprSel(tgt, selector, _) =>
+                tgt.tpe match {
+                  case TypeEntity(eSymbol, _) =>
+                    publicNameMap.get((eSymbol, selector)) map { newSelector =>
+                      TypeAssigner(expr.copy(selector = newSelector) withLoc tree.loc)
+                    } getOrElse tree
+                  case _ => tree
+                }
+              case _ => tree
             }
-
-            input.par map { case (decl, defn) => (decl, defn rewrite Transform) }
           }
+
+          (input.par map { case (decl, defn) => (decl, defn rewrite Transform) }).seq
         }
       }
 

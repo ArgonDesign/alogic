@@ -201,10 +201,15 @@ class Parse(
 
 }
 
-object Parse extends Pass[List[String], (List[Root], List[Expr])] {
+object Parse extends Pass[Iterable[String], (Iterable[Root], Iterable[Expr])] {
   val name = "parser"
 
-  def process(topLevels: List[String])(implicit cc: CompilerContext): (List[Root], List[Expr]) = {
+  def process(
+      topLevels: Iterable[String]
+    )(
+      implicit
+      cc: CompilerContext
+    ): (Iterable[Root], Iterable[Expr]) = {
     val parse = new Parse(
       cc.settings.moduleSearchDirs,
       cc.settings.includeSearchDirs,
@@ -213,7 +218,7 @@ object Parse extends Pass[List[String], (List[Root], List[Expr])] {
 
     // Parse the top level specifications
     var badArg = false
-    val specs: Map[String, List[Expr]] = {
+    val specs: Map[String, Iterable[Expr]] = {
       val pairs = topLevels flatMap { text =>
         val source = Source("command-line", text)
         val l = text.length
@@ -278,10 +283,17 @@ object Parse extends Pass[List[String], (List[Root], List[Expr])] {
       cc.addGlobalDescs(rootDescs)
 
       // Return the root trees and the top level specs
-      (roots, specs.valuesIterator.flatten.toList)
+      (roots, Iterable.from(specs.valuesIterator.flatten))
     }
   }
 
-  def dump(result: (List[Root], List[Expr]), tag: String)(implicit cc: CompilerContext): Unit =
+  def dump(
+      result: (Iterable[Root], Iterable[Expr]),
+      tag: String
+    )(
+      implicit
+      cc: CompilerContext
+    ): Unit =
     result._1 foreach { cc.dump(_, "." + tag) }
+
 }

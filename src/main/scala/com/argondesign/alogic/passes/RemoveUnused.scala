@@ -103,7 +103,7 @@ object RemoveUnused extends PairsTransformerPass {
   val name = "remove-unused"
 
   private def gather(
-      pairs: List[(Decl, Defn)]
+      pairs: Iterable[(Decl, Defn)]
     )(
       f: (DeclEntity, DefnEntity) => Iterator[Symbol]
     ): Set[Symbol] =
@@ -114,7 +114,12 @@ object RemoveUnused extends PairsTransformerPass {
     }
 
   @tailrec
-  def process(pairs: List[(Decl, Defn)])(implicit cc: CompilerContext): List[(Decl, Defn)] = {
+  def process(
+      pairs: Iterable[(Decl, Defn)]
+    )(
+      implicit
+      cc: CompilerContext
+    ): Iterable[(Decl, Defn)] = {
     // TODO: Could prune every entity completely that has only inputs left
     // (unless it has non-pure contents like foreign function calls..)
 

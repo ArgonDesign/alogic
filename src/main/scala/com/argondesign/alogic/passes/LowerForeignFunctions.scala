@@ -145,7 +145,7 @@ final class LowerForeignFunctions(
 
 object LowerForeignFunctions {
 
-  def apply(): Pass[List[(Decl, Defn)], List[(Decl, Defn)]] = {
+  def apply(): Pass[Iterable[(Decl, Defn)], Iterable[(Decl, Defn)]] = {
 
     val encountered = mutable.Map[String, (TypeXenoFunc, List[String])]()
 
@@ -165,11 +165,11 @@ object LowerForeignFunctions {
         (newDecl, newDefn)
       }
       override def finish(
-          pairs: List[(Decl, Defn)]
+          pairs: Iterable[(Decl, Defn)]
         )(
           implicit
           cc: CompilerContext
-        ): List[(Decl, Defn)] = {
+        ): Iterable[(Decl, Defn)] = {
 
         def desc(kind: Type) = Iterator(
           "width" -> kind.width.toInt,

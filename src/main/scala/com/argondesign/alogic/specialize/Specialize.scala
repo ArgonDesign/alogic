@@ -20,7 +20,7 @@ import com.argondesign.alogic.core.CompilerContext
 
 object Specialize {
 
-  def apply(specs: List[Expr])(implicit cc: CompilerContext): Option[Set[(Decl, Defn)]] = {
+  def apply(specs: Iterable[Expr])(implicit cc: CompilerContext): Option[Iterable[(Decl, Defn)]] = {
     (new SpecializeDesc()(cc))(specs)
   }
 

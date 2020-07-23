@@ -37,9 +37,7 @@ final class AddCastsSpec extends AnyFreeSpec with AlogicTest {
         AddCasts,
       text
     ) map {
-      _ flatMap {
-        case (decl, defn) => List(decl, defn)
-      }
+      _.toList flatMap { case (decl, defn) => List(decl, defn) }
     } getOrElse Nil
   }
 

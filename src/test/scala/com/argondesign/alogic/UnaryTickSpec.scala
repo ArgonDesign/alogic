@@ -36,7 +36,7 @@ final class UnaryTickSpec extends AnyFreeSpec with AlogicTest {
       text
     ) map { pairs =>
       Thicket {
-        pairs flatMap {
+        pairs.toList flatMap {
           case (decl, defn) => List(decl, defn)
         }
       }

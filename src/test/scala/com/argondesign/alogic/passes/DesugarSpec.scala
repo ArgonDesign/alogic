@@ -28,9 +28,7 @@ final class DesugarSpec extends AnyFreeSpec with AlogicTest {
 
   private def desugar(text: String): Thicket = Thicket {
     transformWithPass(Namer andThen Elaborate andThen TypeCheck andThen Desugar, text) map {
-      _ flatMap {
-        case (decl, defn) => List(decl, defn)
-      }
+      _.toList flatMap { case (decl, defn) => List(decl, defn) }
     } getOrElse Nil
   }
 

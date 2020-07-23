@@ -40,9 +40,8 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
         AddCasts andThen
         Fold,
       text
-    ).value flatMap {
-      case (decl, defn) =>
-        List(decl, defn)
+    ).value.toList flatMap {
+      case (decl, defn) => List(decl, defn)
     }
   }
 

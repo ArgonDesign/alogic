@@ -21,7 +21,7 @@ import com.argondesign.alogic.core.CompilerContext
 object TypeCheck extends PairsTransformerPass {
   val name = "type-check"
 
-  def process(pairs: List[(Decl, Defn)])(implicit cc: CompilerContext): List[(Decl, Defn)] =
+  def process(pairs: Iterable[(Decl, Defn)])(implicit cc: CompilerContext): Iterable[(Decl, Defn)] =
     pairs filter {
       case (decl, defn) => cc.typeCheck(decl) && cc.typeCheck(defn)
     }

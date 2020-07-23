@@ -23,10 +23,18 @@ import com.argondesign.alogic.specialize.Specialize
 import scala.collection.parallel.CollectionConverters._
 import scala.util.ChainingSyntax
 
-object Elaborate extends Pass[(List[Root], List[Expr]), List[(Decl, Defn)]] with ChainingSyntax {
+object Elaborate
+    extends Pass[(Iterable[Root], Iterable[Expr]), Iterable[(Decl, Defn)]]
+    with ChainingSyntax {
   val name = "elaborate"
 
-  override def dump(result: List[(Decl, Defn)], tag: String)(implicit cc: CompilerContext): Unit =
+  override def dump(
+      result: Iterable[(Decl, Defn)],
+      tag: String
+    )(
+      implicit
+      cc: CompilerContext
+    ): Unit =
     result foreach {
       case (decl, defn) => cc.dump(decl, defn, "." + tag)
     }
@@ -51,14 +59,19 @@ object Elaborate extends Pass[(List[Root], List[Expr]), List[(Decl, Defn)]] with
 
   }
 
-  def process(input: (List[Root], List[Expr]))(implicit cc: CompilerContext): List[(Decl, Defn)] = {
+  def process(
+      input: (Iterable[Root], Iterable[Expr])
+    )(
+      implicit
+      cc: CompilerContext
+    ): Iterable[(Decl, Defn)] = {
     val topLevelSpecs = input._2
     Specialize(topLevelSpecs) match {
       case Some(results) =>
         // Set symbol sourceName values
         results.par foreach { case (decl, _) => (new SourceNameSetter()(cc))(decl) }
         // Yield results
-        results.toList
+        results
       case None => Nil
     }
   }

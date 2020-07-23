@@ -231,7 +231,7 @@ final class SplitStructsB(
 
 object SplitStructs {
 
-  def apply(): Pass[List[(Decl, Defn)], List[(Decl, Defn)]] = {
+  def apply(): Pass[Iterable[(Decl, Defn)], Iterable[(Decl, Defn)]] = {
 
     val globalReplacements = TrieMap[Symbol, Symbol]()
     val fieldMaps = TrieMap[Symbol, mutable.Map[Symbol, List[Symbol]]]()
@@ -255,11 +255,11 @@ object SplitStructs {
         new SplitStructsB(globalReplacements, fMaps)
 
       override def finish(
-          pairs: List[(Decl, Defn)]
+          pairs: Iterable[(Decl, Defn)]
         )(
           implicit
           cc: CompilerContext
-        ): List[(Decl, Defn)] = {
+        ): Iterable[(Decl, Defn)] = {
         // Drop record pairs
         pairs filter {
           case (_: DeclRecord, _) => false

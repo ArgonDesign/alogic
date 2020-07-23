@@ -42,9 +42,7 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
         AnalyseCallGraph,
       text
     ) map {
-      _ flatMap {
-        case (decl, defn) => List(decl, defn)
-      }
+      _.toList flatMap { case (decl, defn) => List(decl, defn) }
     } getOrElse Nil
   }
 
