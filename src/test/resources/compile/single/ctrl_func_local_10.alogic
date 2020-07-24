@@ -93,3 +93,4 @@ fsm ctrl_func_local_10 {
 //
 //  endmodule
 // }}}
+// @stats/ctrl_func_local_10.main/local-bits: 2

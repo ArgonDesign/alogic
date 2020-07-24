@@ -107,6 +107,8 @@ final class ConvertCtrlFuncLocals(implicit cc: CompilerContext) extends Stateful
           extraDefns append (lSymbol.mkDefn regularize tree.loc)
         }
       }
+      // Add total number of local variable bits to stats
+      cc.stats((symbol.sourceName, "local-bits")) = localSymbols.foldLeft(0)(_ + _.kind.width.toInt)
       //
       None
 
@@ -183,15 +185,19 @@ final class ConvertCtrlFuncLocals(implicit cc: CompilerContext) extends Stateful
       locals.get(symbol) map { name => selLocal(name) regularize tree.loc } getOrElse tree
 
     ////////////////////////////////////////////////////////////////////////////
-    // Add entity extra Decl/Defn pairs, convert DeclStatic/DefnStatic
+    // Add entity extra Decl/Defn pairs, convert all to DeclVar/DefnVar
     ////////////////////////////////////////////////////////////////////////////
 
     case decl: DeclEntity if extraDecls.nonEmpty =>
       val newDecls = List from {
         decl.decls.iterator concat {
           extraDecls.iterator map {
+            case d: DeclVar    => d
+            case d: DeclVal    => TypeAssigner(DeclVar(d.symbol, d.spec) withLoc d.loc)
             case d: DeclStatic => TypeAssigner(DeclVar(d.symbol, d.spec) withLoc d.loc)
-            case d             => d
+            case d: DeclStack  => d
+            case d: DeclRecord => d
+            case _             => unreachable
           }
         }
       }
@@ -199,8 +205,12 @@ final class ConvertCtrlFuncLocals(implicit cc: CompilerContext) extends Stateful
 
     case defn: DefnEntity if extraDefns.nonEmpty =>
       val newDefns = extraDefns.iterator map {
+        case d: DefnVar    => TypeAssigner(DefnVar(d.symbol, None) withLoc d.loc)
+        case d: DefnVal    => TypeAssigner(DefnVar(d.symbol, None) withLoc d.loc)
         case d: DefnStatic => TypeAssigner(DefnVar(d.symbol, d.initOpt) withLoc d.loc)
-        case d             => d
+        case d: DefnStack  => d
+        case d: DefnRecord => d
+        case _             => unreachable
       } map { d =>
         TypeAssigner(EntDefn(d) withLoc d.loc)
       }
@@ -214,6 +224,8 @@ final class ConvertCtrlFuncLocals(implicit cc: CompilerContext) extends Stateful
   override protected def finalCheck(tree: Tree): Unit = tree visit {
     case node: StmtDecl   => throw Ice(node, "StmtDecl remains")
     case node: StmtDefn   => throw Ice(node, "StmtDefn remains")
+    case node: DeclVal    => throw Ice(node, "DeclVal remains")
+    case node: DefnVal    => throw Ice(node, "DefnVal remains")
     case node: DeclStatic => throw Ice(node, "DeclStatic remains")
     case node: DefnStatic => throw Ice(node, "DefnStatic remains")
   }

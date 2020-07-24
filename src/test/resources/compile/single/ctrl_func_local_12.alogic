@@ -1,0 +1,36 @@
+fsm ctrl_func_local_12 {
+  in  bool i;
+  out bool o = 0;
+
+  struct s {
+    static bool get() {
+      const bool t = ~i;
+      return t;
+    }
+  }
+
+  void main() {
+    o = s.get();
+    return;
+  }
+}
+// @fec/mode: bmc
+// @fec/golden {{{
+//  module ctrl_func_local_12(
+//    input wire clk,
+//    input wire rst,
+//    input wire i,
+//    output reg o
+//  );
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        o <= 1'd0;
+//      end else begin
+//        o <= ~i;
+//      end
+//    end
+//
+//  endmodule
+// }}}
+// @stats/ctrl_func_local_12.main/local-bits: 0

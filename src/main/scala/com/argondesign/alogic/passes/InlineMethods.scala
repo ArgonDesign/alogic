@@ -101,7 +101,7 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatelessTreeTra
               s"_${symbol.name}${cc.sep}arg${cc.sep}${fSymbol.name}",
               aExpr.loc,
               fSymbol.kind
-            )
+            ) tap { _.attr.combSignal set true }
         }
       }
 
@@ -150,8 +150,12 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatelessTreeTra
             case decl @ Decl(symbol) =>
               // Declarations in function bodies (statements) are in-order with
               // the decl first, so clone the local when we encountered it.
+              // As these are all combinational, we can mark them as combSingals
               assert(!(substitution contains symbol))
-              val newSymbol = symbol.dup tap { _.kind = symbol.kind }
+              val newSymbol = symbol.dup tap { s =>
+                s.kind = symbol.kind
+                s.attr.combSignal set true
+              }
               substitution(symbol) = newSymbol
               TypeAssigner(decl.cpy(symbol = newSymbol) withLoc tree.loc)
 
