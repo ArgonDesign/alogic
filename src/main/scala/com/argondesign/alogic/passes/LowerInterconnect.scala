@@ -24,13 +24,13 @@
 package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.StatefulTreeTransformer
-import com.argondesign.alogic.ast.Trees.Expr.InstancePortSel
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.ast.Trees.Expr.InstancePortSel
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.PartialMatch
 import com.argondesign.alogic.util.unreachable
 
@@ -63,7 +63,7 @@ final class LowerInterconnect(implicit cc: CompilerContext)
   // interconnect symbol does not exist and alloc is true, allocate
   // it and connect it up
   def handlePortSelect(select: ExprSel, alloc: Boolean): Option[Symbol] = select match {
-    case ExprSel(ExprSym(iSymbol), sel, _) =>
+    case ExprSel(ExprSym(iSymbol), sel) =>
       val key = (iSymbol, sel)
       if (!alloc) {
         newSymbols.get(key)
@@ -205,7 +205,7 @@ final class LowerInterconnect(implicit cc: CompilerContext)
             case _            => true
           } concat {
             newSymbols.valuesIterator map { symbol =>
-              EntDefn(symbol.mkDefn) regularize symbol.loc
+              EntSplice(symbol.mkDefn) regularize symbol.loc
             }
           } concat {
             modAssigns.iterator
@@ -276,7 +276,7 @@ final class LowerInterconnect(implicit cc: CompilerContext)
 
     def check(tree: Tree): Unit = tree visit {
       // $COVERAGE-OFF$ Debug code
-      case node @ ExprSel(ExprSym(symbol), _, _) if symbol.kind.isEntity =>
+      case node @ ExprSel(ExprSym(symbol), _) if symbol.kind.isEntity =>
         throw Ice(node, "Direct port access remains")
       // $COVERAGE-ON$
     }

@@ -1,4 +1,5 @@
-// @top: top_param_2(1)
+compile top_param_2(1) as top;
+
 network top_param_2 {
   param uint W;
 
@@ -9,9 +10,9 @@ network top_param_2 {
 
   i -> o;
 }
-// @out-top: top_param_2__W_1
+
 // @fec/golden {{{
-//  module top_param_2__W_1(
+//  module top(
 //    input   wire  i,
 //    output  wire  o
 //  );

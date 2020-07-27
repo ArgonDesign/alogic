@@ -1,5 +1,7 @@
-// @top: top_param_11(top_param_11)
+compile top_param_11(top_param_11) as top;
+
 network top_param_11 {
   param uint W;
 }
-// command-line:1: ERROR: Top level specifier can only refer to built-in identifiers
+
+// :1: ERROR: Parametrized type requires parameter list

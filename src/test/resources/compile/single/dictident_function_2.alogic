@@ -13,4 +13,4 @@ fsm dictident_function_2 {
     func#[1]();
   }
 }
-// :13: ERROR: 'func#\[1\]' is not defined after processing 'gen' constructs
+// :13: ERROR: 'func#\[1\]' is undefined

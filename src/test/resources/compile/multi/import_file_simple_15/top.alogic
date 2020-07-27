@@ -1,0 +1,14 @@
+import a;
+
+fsm top {
+  in       u4 i;
+  out wire u4 o;
+
+  void main() {
+    o = i + a.C;
+    fence;
+  }
+}
+// .*/top.alogic:1: ERROR: No package named 'a'
+// .*/top.alogic:1: NOTE: Looked in: .*/import_file_simple_15
+

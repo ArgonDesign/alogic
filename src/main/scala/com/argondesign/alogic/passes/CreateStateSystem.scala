@@ -21,12 +21,12 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Math
 import com.argondesign.alogic.transform.StatementFilter
-import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.SequenceNumbers
 import com.argondesign.alogic.util.unreachable
 
@@ -164,7 +164,7 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends StatefulTree
         }
       }
 
-      cc.stats((defn.symbol.sourceName, "states")) = nStates
+      cc.stats((defn.symbol.hierName, "states")) = nStates
 
       // Pick up the entry state
       val (entryStates, otherStates) = trueStates partition { _.symbol.attr.entry.isSet }
@@ -218,7 +218,7 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends StatefulTree
       } getOrElse tree
 
     // If only 1 state, drop push to return stack
-    case StmtExpr(ExprCall(ExprSel(ExprSym(symbol), _, _), _))
+    case StmtExpr(ExprCall(ExprSel(ExprSym(symbol), _), _))
         if symbol.attr.returnStack.isSet && singleState =>
       Stump
 
@@ -236,7 +236,8 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends StatefulTree
     // Add comment to state body (State Defn will be dropped later)
     case desc @ DefnState(symbol, body) =>
       val value = stateNumbers(symbol).value
-      val cmnt = TypeAssigner(StmtComment(s"State $value - line ${tree.loc.line}") withLoc tree.loc)
+      val cmnt =
+        TypeAssigner(StmtComment(s"State $value - line ${tree.loc.line}") withLoc tree.loc)
       TypeAssigner(desc.copy(body = cmnt :: body) withLoc tree.loc)
 
     // If only 1 state, drop the return stack Decl/Defn
@@ -263,20 +264,20 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends StatefulTree
         {
           // Add 'go' definition
           Iterator single {
-            EntDefn(goSymbol.mkDefn) regularize goSymbol.loc
+            EntSplice(goSymbol.mkDefn) regularize goSymbol.loc
           }
         } concat {
           // Add state variable Defn
           Option.when(!singleState) {
             val init = stateNumbers(entryState).copy()
-            EntDefn(stateVarSymbol.mkDefn(init)) regularize stateVarSymbol.loc
+            EntSplice(stateVarSymbol.mkDefn(init)) regularize stateVarSymbol.loc
           }
         } concat {
           // Drop states and the comb process
           defn.body.iterator filter {
-            case _: EntCombProcess     => false
-            case EntDefn(_: DefnState) => false
-            case _                     => true
+            case _: EntCombProcess       => false
+            case EntSplice(_: DefnState) => false
+            case _                       => true
           }
         } concat {
           // Add the comb process back with the state dispatch

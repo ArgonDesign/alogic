@@ -13,9 +13,9 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Types.TypeEntity
-import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.unreachable
 
 final class Desugar(implicit cc: CompilerContext) extends StatelessTreeTransformer {
@@ -54,17 +54,17 @@ final class Desugar(implicit cc: CompilerContext) extends StatelessTreeTransform
       val defnInstance = TypeAssigner(DefnInstance(symbol) withLoc tree.loc)
       Thicket(List(defnEntity, defnInstance))
 
-    // Convert EntConnects to EntAssigns (note this swap the roder of LHS/RHS).
+    // Convert EntConnects to EntAssigns (note this swap the order of LHS/RHS).
     // Make cardinal port references explicit.
     case EntConnect(lhs, rhss) =>
       val newRhs = lhs.tpe match {
-        case _: TypeEntity => TypeAssigner(ExprSel(lhs, "out", Nil) withLoc lhs.loc)
+        case _: TypeEntity => TypeAssigner(ExprSel(lhs, "out") withLoc lhs.loc)
         case _             => lhs
       }
       Thicket(
         rhss map { rhs =>
           val newLhs = rhs.tpe match {
-            case _: TypeEntity => TypeAssigner(ExprSel(rhs, "in", Nil) withLoc rhs.loc)
+            case _: TypeEntity => TypeAssigner(ExprSel(rhs, "in") withLoc rhs.loc)
             case _             => rhs
           }
           val loc = tree.loc.copy(end = rhs.loc.end, point = rhs.loc.start)

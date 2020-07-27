@@ -3,5 +3,11 @@ network dictident_decl_0 {
   out bool o#[0];
   i#[0] -> o#[0];
 }
-// :2: ERROR: Definition with dictionary identifier must appear directly in 'gen' loop scope.
-// :3: ERROR: Definition with dictionary identifier must appear directly in 'gen' loop scope.
+// @fec/golden {{{
+//  module dictident_decl_0(
+//    input  wire i__0,
+//    output wire o__0
+//  );
+//    assign o__0 = i__0;
+//  endmodule
+// }}}

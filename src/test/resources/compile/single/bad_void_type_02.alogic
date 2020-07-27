@@ -1,0 +1,7 @@
+fsm bad_void_type_02 {
+  param void a = 0;
+}
+
+compile bad_void_type_02() as top;
+
+// :2: ERROR: Parameter cannot have a 'void' type

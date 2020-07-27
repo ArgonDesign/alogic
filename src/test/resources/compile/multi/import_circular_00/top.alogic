@@ -1,0 +1,3 @@
+import top;
+// :1: ERROR: Circular definition: imported package 'top'
+// :1: NOTE: Depends on imported package 'top'

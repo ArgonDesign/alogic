@@ -32,7 +32,6 @@ trait DeclOps { this: Decl =>
     case node: DeclPipeIn    => node.copy(symbol = symbol)
     case node: DeclPipeOut   => node.copy(symbol = symbol)
     case node: DeclConst     => node.copy(symbol = symbol)
-    case node: DeclGen       => node.copy(symbol = symbol)
     case node: DeclArray     => node.copy(symbol = symbol)
     case node: DeclSram      => node.copy(symbol = symbol)
     case node: DeclStack     => node.copy(symbol = symbol)

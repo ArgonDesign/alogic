@@ -1,0 +1,13 @@
+fsm resolve_names_01 {
+  in       u8 i;
+  out wire u8 o;
+
+  const u8 C#[0, 0] = 1;
+  const uint M = 0;
+
+  void main() {
+     o = i + C#[M, N];
+     fence;
+  }
+}
+// :9: ERROR: 'N' is undefined

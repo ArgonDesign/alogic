@@ -108,4 +108,4 @@ fsm control_for_02 {
 //
 // endmodule
 // }}}
-// @stats/control_for_02/states: 6
+// @stats/control_for_02.control_for_02/states: 6

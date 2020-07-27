@@ -138,7 +138,7 @@ object SyncRegFactory extends ChainingSyntax {
         List(ipvDefn, opvDefn, vDefn)
       }
     } map {
-      EntDefn
+      EntSplice
     }
 
     val assigns = if (kind != TypeVoid) {

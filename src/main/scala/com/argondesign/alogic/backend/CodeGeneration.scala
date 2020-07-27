@@ -1,15 +1,10 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2018 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2020 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
 //
-// Module: Alogic Compiler
-// Author: Geza Lore
-//
 // DESCRIPTION:
-//
 // The final standard pass implementing code generation
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -31,21 +26,15 @@ object CodeGeneration extends PairsTransformerPass {
       implicit
       cc: CompilerContext
     ): Iterable[(Decl, Defn)] = {
-    // Create the details objects for all entities, collect them into a map,
-    // passing the resulting map as a by name argument to EntityDetails itself,
-    // this way EntityDetails can use details of other entities to figure out
-    // their own details.
-    lazy val entityDetails: Map[Symbol, EntityDetails] = Map from {
-      for ((decl: DeclEntity, defn: DefnEntity) <- input) yield {
-        val details = new EntityDetails(decl, defn, entityDetails)
-        decl.symbol -> details
-      }
+    // Create the details objects for all entities.
+    val entityDetails: Map[Symbol, EntityDetails] = Map from {
+      for ((decl: DeclEntity, defn: DefnEntity) <- input)
+        yield decl.symbol -> new EntityDetails(decl, defn)
     }
 
     // Generate code in parallel
     entityDetails.values.par foreach { details =>
-      val verilog = new MakeVerilog(details, entityDetails).moduleSource
-
+      val verilog = new MakeVerilog(details).moduleSource
       val writer = cc.getOutputWriter(details.decl, ".v")
       writer.write(cc.settings.header)
       writer.write(verilog)

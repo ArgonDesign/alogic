@@ -1,0 +1,17 @@
+fsm bad_void_type_00 {
+  in  void a;
+  out void b;
+
+  void c;
+  void d[4];
+  sram void e[4];
+
+  u2 f(void g, void h) {}
+}
+// :2: ERROR: Input port without flow control cannot have a 'void' type
+// :3: ERROR: Output port without flow control cannot have a 'void' type
+// :5: ERROR: Variable cannot have a 'void' type
+// :6: ERROR: Array element cannot have a 'void' type
+// :7: ERROR: SRAM element cannot have a 'void' type
+// :9: ERROR: Variable cannot have a 'void' type
+// :9: ERROR: Variable cannot have a 'void' type

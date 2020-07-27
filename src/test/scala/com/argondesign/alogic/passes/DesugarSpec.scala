@@ -1,16 +1,10 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2018 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2020 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
 //
-// Module: Alogic Compiler
-// Author: Geza Lore
-//
 // DESCRIPTION:
-//
-// Namer tests
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.passes
@@ -18,8 +12,9 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.core.Messages.Warning
 import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.Types._
 import org.scalatest.freespec.AnyFreeSpec
 
 final class DesugarSpec extends AnyFreeSpec with AlogicTest {
@@ -27,7 +22,13 @@ final class DesugarSpec extends AnyFreeSpec with AlogicTest {
   implicit val cc: CompilerContext = new CompilerContext
 
   private def desugar(text: String): Thicket = Thicket {
-    transformWithPass(Namer andThen Elaborate andThen TypeCheck andThen Desugar, text) map {
+    transformWithPass(
+      FrontendPass andThen
+        DropPackageAndParametrizedDescs andThen
+        DescToDeclDefn andThen
+        Desugar,
+      text
+    ) map {
       _.toList flatMap { case (decl, defn) => List(decl, defn) }
     } getOrElse Nil
   }
@@ -38,16 +39,20 @@ final class DesugarSpec extends AnyFreeSpec with AlogicTest {
         op in {
           desugar {
             s"""
-            |struct s {
-            |  void function() {
-            |    i2 a; a$op;
-            |  }
-            |}"""
+               |struct s {
+               |  void function() {
+               |    i2 a; a$op;
+               |  }
+               |}""".stripMargin
           } getFirst {
             case DefnFunc(_, _, body) => body
           } tap {
             inside(_) {
-              case List(StmtDecl(DeclVar(dSym, _)), _: StmtDefn, StmtAssign(lhs, rhs)) =>
+              case List(
+                    StmtSplice(DeclVar(dSym, _)),
+                    StmtSplice(_: Defn),
+                    StmtAssign(lhs, rhs)
+                  ) =>
                 lhs shouldBe ExprSym(dSym)
                 inside(rhs) {
                   case ExprBinary(ExprSym(sym), opStr, ExprInt(true, 2, v)) if v == 1 =>
@@ -66,16 +71,16 @@ final class DesugarSpec extends AnyFreeSpec with AlogicTest {
         s"$op=" in {
           desugar {
             s"""
-            |struct s {
-            |  void function() {
-            |    i100 a; a $op= 100'd2;
-            |  }
-            |}"""
+               |struct s {
+               |  void function() {
+               |    i100 a; a $op= 100'd2;
+               |  }
+               |}""".stripMargin
           } getFirst {
             case DefnFunc(_, _, body) => body
           } tap {
             inside(_) {
-              case List(StmtDecl(DeclVar(dSym, _)), _: StmtDefn, StmtAssign(lhs, rhs)) =>
+              case List(StmtSplice(DeclVar(dSym, _)), StmtSplice(_: Defn), StmtAssign(lhs, rhs)) =>
                 lhs shouldBe ExprSym(dSym)
                 inside(rhs) {
                   case ExprBinary(ExprSym(sym), `op`, ExprInt(false, 100, v)) if v == 2 =>
@@ -100,21 +105,21 @@ final class DesugarSpec extends AnyFreeSpec with AlogicTest {
         name in {
           desugar {
             s"""
-            |fsm e {
-            |  void function() {
-            |    i2 b;
-            |    let (i2 a = 2'd0, b = a) $loop
-            |  }
-            |}"""
+               |fsm e {
+               |  void main() {
+               |    i2 b;
+               |    let (u2 a = 2'd0, b = a) $loop
+               |  }
+               |}""".stripMargin
           } getFirst {
             case DefnFunc(_, _, body) => body
           } tap {
             inside(_) {
               case List(
-                    StmtDecl(declB),
-                    StmtDefn(defnB),
-                    StmtDecl(declA),
-                    StmtDefn(defnA),
+                    StmtSplice(declB: Decl),
+                    StmtSplice(defnB: Defn),
+                    StmtSplice(declA: Decl),
+                    StmtSplice(defnA: Defn),
                     assign,
                     loop
                   ) =>
@@ -125,7 +130,7 @@ final class DesugarSpec extends AnyFreeSpec with AlogicTest {
                 defnA.symbol.name shouldBe "a"
                 declA.symbol should be theSameInstanceAs defnA.symbol
                 declA should matchPattern {
-                  case DeclVar(_, ExprType(TypeSInt(w))) if w == 2 =>
+                  case DeclVar(_, ExprType(TypeUInt(w))) if w == 2 =>
                 }
                 defnA should matchPattern {
                   case DefnVar(_, Some(ExprInt(false, 2, v))) if v == 0 =>
@@ -148,7 +153,7 @@ final class DesugarSpec extends AnyFreeSpec with AlogicTest {
         """
           |network a {
           |  new fsm b {}
-          |}"""
+          |}""".stripMargin
       } getFirst {
         case Thicket(body) => body
       } tap {
@@ -164,7 +169,7 @@ final class DesugarSpec extends AnyFreeSpec with AlogicTest {
                 }
             }
             inside(defn_a) {
-              case DefnEntity(_, _, List(EntDefn(defn_b_e), EntDefn(defn_b_i))) =>
+              case DefnEntity(_, _, List(EntSplice(defn_b_e: Defn), EntSplice(defn_b_i: Defn))) =>
                 defn_b_e should matchPattern { case DefnEntity(b_e, _, Nil) => }
                 defn_b_i shouldBe a[DefnInstance]
             }
@@ -188,13 +193,14 @@ final class DesugarSpec extends AnyFreeSpec with AlogicTest {
       } {
         connect in {
           desugar {
-            s"""network n {
+            s"""
+               |network n {
                |  in bool i;
                |  out bool oa;
                |  out bool ob;
                |  out bool oc;
                |  $connect;
-               |}"""
+               |}""".stripMargin
           } collect {
             case ent: EntAssign => ent
           } tap { ents =>
@@ -203,7 +209,7 @@ final class DesugarSpec extends AnyFreeSpec with AlogicTest {
               case (ent, pattern) => ent should matchPattern(pattern)
             }
           }
-          cc.messages shouldBe empty
+          cc.messages filterNot { _.isInstanceOf[Warning] } shouldBe empty
         }
       }
     }
@@ -212,27 +218,28 @@ final class DesugarSpec extends AnyFreeSpec with AlogicTest {
       for {
         (connect, pattern) <- List[(String, PartialFunction[Any, Unit])](
           // format: off
-          ("i -> inner.ii", { case EntAssign(ExprSel(ExprSym(Symbol("inner")), "ii", Nil), ExprSym(Symbol("i"))) => }),
-          ("i -> inner.in", { case EntAssign(ExprSel(ExprSym(Symbol("inner")), "in", Nil), ExprSym(Symbol("i"))) => }),
-          ("i -> inner",    { case EntAssign(ExprSel(ExprSym(Symbol("inner")), "in", Nil), ExprSym(Symbol("i"))) => } ),
-          ("inner.oo  -> o", { case EntAssign(ExprSym(Symbol("o")), ExprSel(ExprSym(Symbol("inner")), "oo", Nil)) => }),
-          ("inner.out -> o", { case EntAssign(ExprSym(Symbol("o")), ExprSel(ExprSym(Symbol("inner")), "out", Nil)) => }),
-          ("inner     -> o", { case EntAssign(ExprSym(Symbol("o")), ExprSel(ExprSym(Symbol("inner")), "out", Nil)) => }),
-          ("inner.oo -> inner.ii", { case EntAssign(ExprSel(ExprSym(Symbol("inner")), "ii", Nil), ExprSel(ExprSym(Symbol("inner")), "oo", Nil)) => }),
-          ("inner.oo -> inner.in", { case EntAssign(ExprSel(ExprSym(Symbol("inner")), "in", Nil), ExprSel(ExprSym(Symbol("inner")), "oo", Nil)) => }),
-          ("inner.oo -> inner",    { case EntAssign(ExprSel(ExprSym(Symbol("inner")), "in", Nil), ExprSel(ExprSym(Symbol("inner")), "oo", Nil)) => }),
-          ("inner.out -> inner.ii", { case EntAssign(ExprSel(ExprSym(Symbol("inner")), "ii", Nil), ExprSel(ExprSym(Symbol("inner")), "out", Nil)) => }),
-          ("inner.out -> inner.in", { case EntAssign(ExprSel(ExprSym(Symbol("inner")), "in", Nil), ExprSel(ExprSym(Symbol("inner")), "out", Nil)) => }),
-          ("inner.out -> inner",    { case EntAssign(ExprSel(ExprSym(Symbol("inner")), "in", Nil), ExprSel(ExprSym(Symbol("inner")), "out", Nil)) => }),
-          ("inner -> inner.ii", { case EntAssign(ExprSel(ExprSym(Symbol("inner")), "ii", Nil), ExprSel(ExprSym(Symbol("inner")), "out", Nil)) => }),
-          ("inner -> inner.in", { case EntAssign(ExprSel(ExprSym(Symbol("inner")), "in", Nil), ExprSel(ExprSym(Symbol("inner")), "out", Nil)) => }),
-          ("inner -> inner",    { case EntAssign(ExprSel(ExprSym(Symbol("inner")), "in", Nil), ExprSel(ExprSym(Symbol("inner")), "out", Nil)) => }),
+          ("i -> inner.ii", { case EntAssign(ExprSel(ExprSym(Symbol("inner")), "ii"), ExprSym(Symbol("i"))) => }),
+          ("i -> inner.in", { case EntAssign(ExprSel(ExprSym(Symbol("inner")), "in"), ExprSym(Symbol("i"))) => }),
+          ("i -> inner",    { case EntAssign(ExprSel(ExprSym(Symbol("inner")), "in"), ExprSym(Symbol("i"))) => } ),
+          ("inner.oo  -> o", { case EntAssign(ExprSym(Symbol("o")), ExprSel(ExprSym(Symbol("inner")), "oo" )) => }),
+          ("inner.out -> o", { case EntAssign(ExprSym(Symbol("o")), ExprSel(ExprSym(Symbol("inner")), "out")) => }),
+          ("inner     -> o", { case EntAssign(ExprSym(Symbol("o")), ExprSel(ExprSym(Symbol("inner")), "out")) => }),
+          ("inner.oo -> inner.ii", { case EntAssign(ExprSel(ExprSym(Symbol("inner")), "ii"), ExprSel(ExprSym(Symbol("inner")), "oo")) => }),
+          ("inner.oo -> inner.in", { case EntAssign(ExprSel(ExprSym(Symbol("inner")), "in"), ExprSel(ExprSym(Symbol("inner")), "oo")) => }),
+          ("inner.oo -> inner",    { case EntAssign(ExprSel(ExprSym(Symbol("inner")), "in"), ExprSel(ExprSym(Symbol("inner")), "oo")) => }),
+          ("inner.out -> inner.ii", { case EntAssign(ExprSel(ExprSym(Symbol("inner")), "ii"), ExprSel(ExprSym(Symbol("inner")), "out")) => }),
+          ("inner.out -> inner.in", { case EntAssign(ExprSel(ExprSym(Symbol("inner")), "in"), ExprSel(ExprSym(Symbol("inner")), "out")) => }),
+          ("inner.out -> inner",    { case EntAssign(ExprSel(ExprSym(Symbol("inner")), "in"), ExprSel(ExprSym(Symbol("inner")), "out")) => }),
+          ("inner -> inner.ii", { case EntAssign(ExprSel(ExprSym(Symbol("inner")), "ii"), ExprSel(ExprSym(Symbol("inner")), "out")) => }),
+          ("inner -> inner.in", { case EntAssign(ExprSel(ExprSym(Symbol("inner")), "in"), ExprSel(ExprSym(Symbol("inner")), "out")) => }),
+          ("inner -> inner",    { case EntAssign(ExprSel(ExprSym(Symbol("inner")), "in"), ExprSel(ExprSym(Symbol("inner")), "out")) => }),
           // format: on
         )
       } {
         connect in {
           desugar {
-            s"""network n {
+            s"""
+               |network n {
                |  in bool i;
                |  out bool o;
                |
@@ -244,16 +251,15 @@ final class DesugarSpec extends AnyFreeSpec with AlogicTest {
                |  }
                |
                |  $connect;
-               |}"""
+               |}""".stripMargin
           } getFirst {
             case ent: EntAssign => ent
           } tap {
             _ should matchPattern(pattern)
           }
-          cc.messages shouldBe empty
+          cc.messages filterNot { _.isInstanceOf[Warning] } shouldBe empty
         }
       }
-
     }
   }
 }

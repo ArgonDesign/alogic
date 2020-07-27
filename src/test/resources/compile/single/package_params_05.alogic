@@ -1,0 +1,12 @@
+// @args: -P fsm
+
+param uint WIDTH;
+
+network package_params_05 {
+  in  uint(WIDTH) i;
+  out uint(WIDTH) o;
+
+  i -> o;
+}
+
+// command-line:1: ERROR: Syntax error: mismatched input 'fsm' expecting.*

@@ -13,4 +13,11 @@ network single_param_entity_3 {
   inst = new inner(1);
   i -> inst.ii; inst.oo -> o;
 }
-// :13: ERROR: Type with more than one parameter requires named parameter assignment
+// @fec/golden {{{
+//  module single_param_entity_3 (
+//    input  wire [1:0] i,
+//    output wire [1:0] o
+//  );
+//    assign o = i;
+//  endmodule
+// }}}

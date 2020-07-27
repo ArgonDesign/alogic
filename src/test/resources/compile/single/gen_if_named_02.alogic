@@ -1,0 +1,25 @@
+fsm gen_if_named_02 {
+  in        u2 i;
+  out wire  u2 o;
+
+  void main() {
+    gen if (false) : block {
+      u2 x = i + 1;
+    } else if (true) {
+      u2 x = i + 2;
+    } else {
+      u2 x = i + 3;
+    }
+    o = block.x;
+    fence;
+  }
+}
+
+// @fec/golden {{{
+//  module gen_if_named_02(
+//    input  wire [1:0] i,
+//    output wire [1:0] o
+//  );
+//    assign o = i + 2'd2;
+//  endmodule
+// }}}

@@ -16,7 +16,7 @@ package com.argondesign.alogic.antlr
 
 import com.argondesign.alogic.antlr.AlogicParser._
 import com.argondesign.alogic.antlr.AntlrConverters._
-import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.MessageBuffer
 import com.argondesign.alogic.core.SourceContext
 import com.argondesign.alogic.core.StorageTypes._
 import com.argondesign.alogic.util.unreachable
@@ -30,7 +30,7 @@ object SlicesBuilder extends BaseBuilder[SlicesContext, List[StorageSlice]] with
       ctx: SlicesContext
     )(
       implicit
-      cc: CompilerContext,
+      mb: MessageBuffer,
       sc: SourceContext
     ): List[StorageSlice] = {
     ctx.slice.asScala.toList map {

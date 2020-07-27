@@ -1,0 +1,2 @@
+// @source-file: /
+// ERROR: '/' is not a regular file

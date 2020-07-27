@@ -1,0 +1,6 @@
+network gen_for_bad_05 {
+  in u8 i;
+  gen for (u8 n = 0 ; n < 10 ; {n, n} += {2{i}}) {
+  }
+}
+// :3: ERROR: Cannot statically evaluate step statements

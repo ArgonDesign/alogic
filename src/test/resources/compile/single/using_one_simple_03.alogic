@@ -1,0 +1,29 @@
+struct S {
+  static bool not(bool i) { return ~i; }
+}
+
+fsm using_one_simple_03 {
+  in       bool i;
+  out wire bool o;
+
+  struct s {
+    static bool f() {
+      using S.not;
+      return not(i);
+    }
+  }
+
+  void main() {
+    o = s.f();
+    fence;
+  }
+}
+
+// @fec/golden {{{
+//  module using_one_simple_03(
+//    input  wire i,
+//    output wire o
+//  );
+//    assign o = ~i;
+//  endmodule
+// }}}

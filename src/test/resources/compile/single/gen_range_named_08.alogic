@@ -1,0 +1,24 @@
+fsm gen_range_named_08 {
+  in        u4 i;
+  out wire  u4 o_0;
+  out wire  u4 o_1;
+  out wire  u4 o_2;
+  out wire  u4 o_3;
+
+  void main() {
+    gen for (uint n < 2) : block_a#[2*n] {
+      gen for (uint m < 2) : block_b {
+        u4 b#[2*n+m] = i + 2*n + m;
+      }
+    }
+    o_0 = block_a#[0].b#[0];
+    o_1 = block_a#[0].b#[1];
+    o_2 = block_a#[2].b#[2];
+    o_3 = block_a#[2].b#[3];
+    fence;
+  }
+}
+// :14: ERROR: No member named 'b#\[0\]' in value of type 'scope block_a#\[0\]'
+// :15: ERROR: No member named 'b#\[1\]' in value of type 'scope block_a#\[0\]'
+// :16: ERROR: No member named 'b#\[2\]' in value of type 'scope block_a#\[2\]'
+// :17: ERROR: No member named 'b#\[3\]' in value of type 'scope block_a#\[2\]'

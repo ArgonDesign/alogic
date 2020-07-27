@@ -1,6 +1,5 @@
-// @top: ent_static_assert_7(3)
 network ent_static_assert_7 {
-  param uint P;
+  const uint P = 3;
   static assert P % 2 == 0, "P must be even";
 }
-// :4: ERROR: Static assertion failure: P must be even
+// :3: ERROR: Static assertion failure: P must be even

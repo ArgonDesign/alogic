@@ -21,11 +21,11 @@ import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Bindings
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.transform.ReplaceTermRefs
-import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.tailrec
@@ -175,7 +175,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
         cases.reverse foreach {
           case CaseRegular(_, stmts) => allocateStates(stmts)
           case CaseDefault(stmts)    => allocateStates(stmts)
-          case _: CaseGen            => unreachable
+          case _: CaseSplice         => unreachable
         }
 
       case StmtLoop(body) =>
@@ -279,7 +279,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
     }
 
   // List of emitted states
-  private[this] val emittedStates = ListBuffer[EntDefn]()
+  private[this] val emittedStates = ListBuffer[EntSplice]()
 
   private[this] lazy val finishedStates = emittedStates.toList sortBy { _.loc.start }
 
@@ -292,7 +292,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
 
     symOpt foreach { symbol =>
       emittedStates append {
-        EntDefn(DefnState(symbol, body)) regularize body.head.loc
+        EntSplice(DefnState(symbol, body)) regularize body.head.loc
       }
     }
 
@@ -392,7 +392,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
             CaseRegular(cond, convertControlUnits(stmts))
           case CaseDefault(stmts) =>
             CaseDefault(convertControlUnits(stmts))
-          case _: CaseGen => unreachable
+          case _: CaseSplice => unreachable
         }
 
         stmt.copy(cases = newCases) regularize tree.loc
@@ -448,8 +448,9 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
       case decl: DeclEntity =>
         val newDecls = List from {
           decl.decls.iterator ++ {
-            finishedStates.iterator map { ent =>
-              ent.defn.symbol.mkDecl regularize ent.loc
+            finishedStates.iterator map {
+              case ent @ EntSplice(defn: Defn) => defn.symbol.mkDecl regularize ent.loc
+              case _                           => unreachable
             }
           }
         }

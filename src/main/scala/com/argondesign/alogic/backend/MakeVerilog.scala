@@ -14,7 +14,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 package com.argondesign.alogic.backend
 
-import com.argondesign.alogic.backend.CodeWriter
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Messages.Ice
@@ -28,8 +27,7 @@ import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
 
 final class MakeVerilog(
-    presentDetails: EntityDetails,
-    details: => Map[Symbol, EntityDetails]
+    presentDetails: EntityDetails
   )(
     implicit
     cc: CompilerContext) {
@@ -150,10 +148,9 @@ final class MakeVerilog(
         if (hasConsts) {
           // Emit const declarations
           body.emitBlock(1, "Local parameter declarations") {
-            defn.defns collect {
-              case DefnConst(symbol, init) => (symbol, init)
-            } foreach {
-              case (symbol, init) => body.emit(1)(s"localparam ${vdecl(symbol)} = ${vexpr(init)};")
+            constants foreach { symbol =>
+              val init = symbol.defn.asInstanceOf[DefnConst].init
+              body.emit(1)(s"localparam ${vdecl(symbol)} = ${vexpr(init)};")
             }
           }
         }
@@ -259,7 +256,7 @@ final class MakeVerilog(
             body.emit(indent + 1)("default: begin")
             stmts foreach { emitStatement(body, indent + 2, _) }
             body.emit(indent + 1)("end")
-          case _: CaseGen => unreachable
+          case _: CaseSplice => unreachable
         }
         body.emit(indent)(s"endcase")
 
@@ -279,7 +276,7 @@ final class MakeVerilog(
       case StmtComment(str) => body.emit(indent)("// " + str)
 
       // Procedural assertion
-      case StmtAssertion(AssertionAssert(cond, msgOpt)) =>
+      case StmtSplice(AssertionAssert(cond, msgOpt)) =>
         val elsePart = msgOpt match {
           case None      => ""
           case Some(msg) => s""" else $$error("$msg")"""

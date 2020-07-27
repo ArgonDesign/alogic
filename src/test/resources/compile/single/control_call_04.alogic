@@ -52,5 +52,5 @@ fsm control_call_04 {
 //
 //  endmodule
 // }}}
-// @stats/control_call_04/stack-depth: 1
-// @stats/control_call_04/states: 4
+// @stats/control_call_04.control_call_04/stack-depth: 1
+// @stats/control_call_04.control_call_04/states: 4

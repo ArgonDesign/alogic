@@ -71,6 +71,14 @@ final class MessageBuffer {
     append(Note(loc, msg), once)
   }
 
+  //////////////////////////////////////////////////////////////////////////////
+  // Convenience versions with a source location
+  //////////////////////////////////////////////////////////////////////////////
+
+  def warning[T](item: T, msg: String*)(implicit ev: Locatable[T]): Unit = warning(ev(item), msg)
+  def error[T](item: T, msg: String*)(implicit ev: Locatable[T]): Unit = error(ev(item), msg)
+  def note[T](item: T, msg: String*)(implicit ev: Locatable[T]): Unit = note(ev(item), msg)
+
 }
 
 trait Messaging { self: CompilerContext =>

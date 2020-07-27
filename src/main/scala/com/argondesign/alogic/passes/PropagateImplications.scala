@@ -18,8 +18,8 @@ package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.TreeTransformer
-import com.argondesign.alogic.ast.Trees.Expr.InstancePortSel
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.ast.Trees.Expr.InstancePortSel
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols._
 

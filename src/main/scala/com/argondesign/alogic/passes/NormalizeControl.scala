@@ -23,9 +23,9 @@ import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.enums.EntityVariant
-import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.unreachable
 
 final class NormalizeControl(implicit cc: CompilerContext) extends StatelessTreeTransformer {
@@ -56,7 +56,7 @@ final class NormalizeControl(implicit cc: CompilerContext) extends StatelessTree
           TypeAssigner(c.copy(stmts = convertBreak(stmts)) withLoc c.loc)
         case c @ CaseDefault(stmts) =>
           TypeAssigner(c.copy(stmts = convertBreak(stmts)) withLoc c.loc)
-        case _: CaseGen => unreachable
+        case _: CaseSplice => unreachable
       }
       TypeAssigner(s.copy(cases = newCases) withLoc s.loc)
 
@@ -111,7 +111,7 @@ final class NormalizeControl(implicit cc: CompilerContext) extends StatelessTree
             TypeAssigner(c.copy(stmts = convertFinal(stmts)) withLoc c.loc)
           case c @ CaseDefault(stmts) =>
             TypeAssigner(c.copy(stmts = convertFinal(stmts)) withLoc c.loc)
-          case _: CaseGen => unreachable
+          case _: CaseSplice => unreachable
         }
         Iterator.single(TypeAssigner(s.copy(cases = newCases) withLoc s.loc))
 

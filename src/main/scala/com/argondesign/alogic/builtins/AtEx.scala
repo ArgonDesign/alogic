@@ -1,15 +1,10 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2018 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2020 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
 //
-// Module: Alogic Compiler
-// Author: Geza Lore
-//
 // DESCRIPTION:
-//
 // Builtin '@ex(bit, width, expr)'
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -19,16 +14,25 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.frontend.Complete
+import com.argondesign.alogic.frontend.Frontend
 
 private[builtins] class AtEx(implicit cc: CompilerContext) extends BuiltinPolyFunc {
 
   val name = "@ex"
 
-  def returnType(args: List[Expr]): Option[TypeFund] = Some {
-    TypeInt(args(2).tpe.isSigned, args(1).value.get.toInt)
+  def returnType(args: List[Expr], feOpt: Option[Frontend]): Option[TypeFund] = args match {
+    case List(_, width, expr) if expr.tpe.isPacked =>
+      feOpt match {
+        case Some(fe) =>
+          fe.evaluate(width, s"second argument of '$name' (width)") match {
+            case Complete(value) => Some(TypeInt(expr.tpe.isSigned, value.toInt))
+            case _               => None
+          }
+        case None => Some(TypeInt(expr.tpe.isSigned, width.value.get.toInt))
+      }
+    case _ => None
   }
-
-  def isKnown(args: List[Expr]) = args(0).isKnownConst && args(2).isKnownConst
 
   val isPure: Boolean = true
 
@@ -57,7 +61,7 @@ private[builtins] object AtEx {
         if (expr.hasTpe) {
           result regularize loc
         }
-        cc.makeBuiltinCall("$signed", result.loc, List(result))
+        result.castSigned
       } else {
         result
       }

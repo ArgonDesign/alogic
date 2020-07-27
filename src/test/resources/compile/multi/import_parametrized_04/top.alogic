@@ -1,0 +1,12 @@
+import a(4) as a4;
+
+compile a4.add as top;
+
+// @fec/golden {{{
+//  module top(
+//    input   wire [7:0]  i,
+//    output  wire [7:0]  o
+//  );
+//    assign o = i + 8'd4;
+//  endmodule
+// }}}

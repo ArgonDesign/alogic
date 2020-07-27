@@ -17,16 +17,16 @@ package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Loc
+import com.argondesign.alogic.core.SramFactory
+import com.argondesign.alogic.core.SyncRegFactory
+import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.StorageTypes.StorageTypeReg
 import com.argondesign.alogic.core.StorageTypes.StorageTypeWire
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.enums.EntityVariant
-import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Loc
-import com.argondesign.alogic.core.Messages.Ice
-import com.argondesign.alogic.core.SramFactory
-import com.argondesign.alogic.core.SyncRegFactory
 import com.argondesign.alogic.util.unreachable
 
 import scala.collection.immutable.ListMap
@@ -223,7 +223,7 @@ final class LowerSrams(
       // Rewrite statements
       //////////////////////////////////////////////////////////////////////////
 
-      case StmtExpr(ExprCall(ExprSel(ExprSym(symbol), "read", _), List(ArgP(addr)))) =>
+      case StmtExpr(ExprCall(ExprSel(ExprSym(symbol), "read"), List(ArgP(addr)))) =>
         sramMap.get(symbol) map {
           case SramWire(iSymbol) =>
             val iRef = ExprSym(iSymbol)
@@ -252,7 +252,7 @@ final class LowerSrams(
         }
 
       case StmtExpr(
-            ExprCall(ExprSel(ExprSym(symbol), "write", _), List(ArgP(addr), ArgP(data)))
+            ExprCall(ExprSel(ExprSym(symbol), "write"), List(ArgP(addr), ArgP(data)))
           ) =>
         sramMap.get(symbol) map {
           case SramWire(iSymbol) =>
@@ -281,7 +281,7 @@ final class LowerSrams(
       // Rewrite expressions
       //////////////////////////////////////////////////////////////////////////
 
-      case ExprSel(ExprSym(symbol), "rdata", _) =>
+      case ExprSel(ExprSym(symbol), "rdata") =>
         sramMap.get(symbol) map {
           case SramInt(iSymbol)       => ExprSym(iSymbol) sel "rdata"
           case SramStruct(_, rSymbol) => ExprSym(rSymbol)
@@ -372,7 +372,7 @@ final class LowerSrams(
   }
 
   override def finalCheck(tree: Tree): Unit = {
-    tree visit { case n @ ExprSel(r, s, _) if r.tpe.isSram => throw Ice(n, s"SRAM .$s remains") }
+    tree visit { case n @ ExprSel(r, s) if r.tpe.isSram => throw Ice(n, s"SRAM .$s remains") }
   }
 
 }

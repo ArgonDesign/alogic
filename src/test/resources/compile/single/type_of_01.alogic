@@ -1,0 +1,9 @@
+struct foo {
+  param uint P;
+}
+
+network type_of_01 {
+    in foo i;
+}
+
+// :6: ERROR: Parametrized type requires parameter list

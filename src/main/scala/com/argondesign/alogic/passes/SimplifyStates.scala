@@ -14,8 +14,8 @@ import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Symbols.Symbol
-import com.argondesign.alogic.typer.TypeAssigner
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -23,9 +23,9 @@ import scala.collection.mutable
 final class SimplifyStates(implicit cc: CompilerContext) extends StatefulTreeTransformer {
 
   override protected def skip(tree: Tree): Boolean = tree match {
-    case _: DeclEntity | _: DefnEntity => false
-    case _: EntDefn | _: DefnState     => false
-    case _                             => true
+    case _: DeclEntity | _: DefnEntity     => false
+    case EntSplice(_: Defn) | _: DefnState => false
+    case _                                 => true
   }
 
   // Pairs of states where the first can reach the second. Note this is not
@@ -70,8 +70,8 @@ final class SimplifyStates(implicit cc: CompilerContext) extends StatefulTreeTra
         tree
       } else {
         val keptBody = defn.body filter {
-          case EntDefn(DefnState(symbol, _)) => reachable(symbol)
-          case _                             => true
+          case EntSplice(DefnState(symbol, _)) => reachable(symbol)
+          case _                               => true
         }
         TypeAssigner(defn.copy(body = keptBody) withLoc tree.loc)
       }

@@ -1,0 +1,6 @@
+struct S {
+  gen if (true) {
+    fence;
+  }
+}
+// :3: ERROR: Record content expected

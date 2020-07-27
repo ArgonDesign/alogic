@@ -1,0 +1,5 @@
+network foo {
+  in  bool i;
+  out bool o;
+  i -> o;
+}

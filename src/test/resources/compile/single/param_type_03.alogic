@@ -12,5 +12,4 @@ fsm param_type_03 {
     fence;
   }
 }
-// :2: ERROR: Type parameter 'T' must be assigned a type.
-// :2: NOTE: 'T' is defined at
+// :2: ERROR: Type parameter default initializer does not name a type

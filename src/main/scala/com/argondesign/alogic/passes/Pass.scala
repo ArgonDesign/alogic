@@ -22,8 +22,8 @@
 
 package com.argondesign.alogic.passes
 
-import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols.Symbol
@@ -82,34 +82,6 @@ trait Pass[T, R] { self =>
     }
 
   }
-
-}
-
-// Passes before Elaborate work on a collection of Root trees, together with a
-// collection of top level instance specifier expressions
-trait PreElaboratePass
-    extends Pass[(Iterable[Root], Iterable[Expr]), (Iterable[Root], Iterable[Expr])] {
-
-  // Factory method to create a new instance of the tree transformer
-  protected def create(implicit cc: CompilerContext): TreeTransformer
-
-  protected def process(
-      input: (Iterable[Root], Iterable[Expr])
-    )(
-      implicit
-      cc: CompilerContext
-    ): (Iterable[Root], Iterable[Expr]) =
-    // Apply pass to all Roots, pass through top level specs
-    (input._1 map { _ rewrite create }, input._2)
-
-  final protected def dump(
-      result: (Iterable[Root], Iterable[Expr]),
-      tag: String
-    )(
-      implicit
-      cc: CompilerContext
-    ): Unit =
-    result._1 foreach { cc.dump(_, "." + tag) }
 
 }
 
@@ -187,10 +159,11 @@ trait PairTransformerPass extends PairsTransformerPass with ChainingSyntax {
           }
         }
         val defnSymbols = Set from {
-          defn collect {
-            case EntDefn(Defn(symbol))                 => symbol // Do not recurse into sub symbols
-            case RecDefn(Defn(symbol))                 => symbol // Do not recurse into sub symbols
-            case Defn(symbol) if symbol != decl.symbol => symbol
+          defn flatCollect {
+            case EntSplice(Defn(symbol))               => Some(symbol) // Do not recurse into sub symbols
+            case RecSplice(Defn(symbol))               => Some(symbol) // Do not recurse into sub symbols
+            case _: EntCombProcess                     => None // Do no recurse
+            case Defn(symbol) if symbol != decl.symbol => Some(symbol)
           }
         }
         assert(declSymbols == defnSymbols, name)

@@ -3,4 +3,12 @@ network dictident_entity_0#[0] {
   out bool o;
   i -> o;
 }
-// :1: ERROR: Definition with dictionary identifier must appear directly in 'gen' loop scope.
+// @fec/golden {{{
+//  module dictident_entity_0__0(
+//    input  wire i,
+//    output wire o
+//  );
+//    assign o = i;
+//  endmodule
+// }}}
+// @manifest/top-levels/dictident_entity_0__0/alogic-name: "dictident_entity_0.dictident_entity_0#[0]"

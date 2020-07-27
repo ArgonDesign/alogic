@@ -10,7 +10,7 @@ network param_spec_0 {
     in  u1       p_i;
     out uint(W1) p_o;
 
-    (* unused *) new fsm nested {
+    new fsm nested {
       void main() {
         p_o.write({W1{p_i.read()}});
         fence;

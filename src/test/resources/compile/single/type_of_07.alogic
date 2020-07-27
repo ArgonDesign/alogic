@@ -1,0 +1,30 @@
+// Very complicated way of writing a 1-bit wire that hits a code coverage
+// hole in TypeOf.scala
+
+network type_of_07 {
+  // This needs the type of 'block'
+  in uint(@bits(block.o#[0])) i;
+
+  // This needs the type of 'i' and is evaluated early during elaboration
+  gen for (uint M < @bits(i)) {
+    using block.o#[M]; // TODO: Typer Connect Checks are too strict now, drop ...
+    i[M] -> o#[M];
+  }
+
+  // This is needed for type of 'i'
+  gen for (uint N < M) : block {
+    out bool o#[N];
+  }
+
+  // This is needed for the previous 'gen'
+  const uint M = 1;
+}
+
+// @fec/golden {{{
+//  module type_of_07(
+//    input  wire i,
+//    output wire block__o__0
+//  );
+//    assign block__o__0 = i;
+//  endmodule
+// }}}

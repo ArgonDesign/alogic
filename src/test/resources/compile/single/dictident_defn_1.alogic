@@ -13,7 +13,14 @@ network dictident_defn_1 {
   i_0 -> o_0;
   i_1 -> o_1;
 }
-// :4: ERROR: Redefinition of 'i_t' with previous definition at
-// :4: ERROR: ... .*dictident_defn_1.alogic:3
-// :6: ERROR: Redefinition of 'o_t' with previous definition at
-// :6: ERROR: ... .*dictident_defn_1.alogic:5
+// @fec/golden {{{
+//  module dictident_defn_1(
+//    input  wire i_0,
+//    input  wire i_1,
+//    output wire o_0,
+//    output wire o_1
+//  );
+//    assign o_0 = i_0;
+//    assign o_1 = i_1;
+//  endmodule
+// }}}

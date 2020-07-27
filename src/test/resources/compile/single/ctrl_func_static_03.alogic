@@ -1,0 +1,9 @@
+fsm ctrl_func_static_03 {
+  in u8 i;
+
+  void main() {
+    static u8 x = i;
+    fence;
+  }
+}
+// :5: ERROR: Initializer of 'static' variable definition must be a compile time constant

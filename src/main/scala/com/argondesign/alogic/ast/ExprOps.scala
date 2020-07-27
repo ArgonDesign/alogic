@@ -19,11 +19,11 @@ package com.argondesign.alogic.ast
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Bindings
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Math.clog2
 import com.argondesign.alogic.transform.ReplaceTermRefs
-import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.PartialMatch._
 import com.argondesign.alogic.util.unreachable
 
@@ -114,7 +114,7 @@ trait ExprOps { this: Expr =>
   final def slice(lIdx: Int,  op: String, rIdx: Int )(implicit cc: CompilerContext): ExprSlice = 
     this.slice(mkIndex(lIdx), op, if (op == ":") mkIndex(rIdx) else mkSliceLength(rIdx))
 
-  final def sel(name: String)(implicit cc: CompilerContext): ExprSel = fix(ExprSel(this, name, Nil))
+  final def sel(name: String)(implicit cc: CompilerContext): ExprSel = fix(ExprSel(this, name))
   final def call(args: List[Arg])(implicit cc: CompilerContext): ExprCall = fix(ExprCall(this, args))
   final def call(arg: Expr)(implicit cc: CompilerContext): ExprCall = this.call(fix(ArgP(arg)) :: Nil)
 
@@ -161,47 +161,14 @@ trait ExprOps { this: Expr =>
 
   // Is this expression shaped as a valid lvalue expression
   lazy val isLValueExpr: Boolean = this forall {
-    case _: ExprRef               => true
+    case _: ExprIdent             => true
     case _: ExprSym               => true
     case ExprIndex(expr, _)       => expr.isLValueExpr
     case ExprSlice(expr, _, _, _) => expr.isLValueExpr
-    case ExprSel(expr, _, _)      => expr.isLValueExpr
+    case ExprDot(expr, _, _)      => expr.isLValueExpr
+    case ExprSel(expr, _)         => expr.isLValueExpr
     case ExprCat(parts)           => parts forall { _.isLValueExpr }
     case _                        => false
-  }
-
-  // Is this expression a known constant
-  def isKnownConst(implicit cc: CompilerContext): Boolean = this match {
-    case _: ExprNum  => true
-    case _: ExprInt  => true
-    case _: ExprStr  => true
-    case _: ExprType => true
-    case ExprSym(symbol) =>
-      symbol.kind match {
-        case _: TypeConst => true
-        case _: TypeParam => unreachable
-        case _: TypeGen   => true
-        case _ =>
-          symbol.decl match {
-            case _: DeclVal => symbol.init.get.isKnownConst
-            case _          => false
-          }
-      }
-    case ExprUnary(_, expr)      => expr.isKnownConst
-    case ExprBinary(lhs, _, rhs) => lhs.isKnownConst && rhs.isKnownConst
-    case ExprCond(cond, thenExpr, elseExpr) =>
-      thenExpr.isKnownConst && elseExpr.isKnownConst && (cond.isKnownConst || thenExpr.simplify == elseExpr.simplify)
-    case ExprRep(count, expr)   => count.isKnownConst && expr.isKnownConst
-    case ExprCat(parts)         => parts forall { _.isKnownConst }
-    case ExprIndex(expr, index) => expr.isKnownConst && index.isKnownConst
-    case ExprSlice(expr, lIdx, _, rIdx) =>
-      expr.isKnownConst && lIdx.isKnownConst && rIdx.isKnownConst
-    case ExprSel(expr, _, idxs) => expr.isKnownConst && (idxs forall { _.isKnownConst })
-    case call @ ExprCall(ExprSym(symbol), _) if symbol.isBuiltin =>
-      cc.isKnownConstBuiltinCall(call)
-    case ExprCast(_, expr) => expr.isKnownConst
-    case ExprOld(expr)     => expr.isKnownConst
-    case _                 => false
   }
 
   final def isPure(implicit cc: CompilerContext): Boolean = {
@@ -220,8 +187,10 @@ trait ExprOps { this: Expr =>
       case ExprIndex(e, i)         => p(e) && p(i)
       case ExprSlice(e, _, ":", _) => p(e)
       case ExprSlice(e, l, _, _)   => p(e) && p(l)
-      case ExprSel(e, _, _)        => p(e)
-      case _: ExprRef              => true
+      case ExprDot(e, _, _)        => p(e)
+      case ExprSel(e, _)           => p(e)
+      case ExprSymSel(e, _)        => p(e)
+      case _: ExprIdent            => true
       case _: ExprSym              => true
       case _: ExprOld              => true
       case _: ExprThis             => true
@@ -241,7 +210,7 @@ trait ExprOps { this: Expr =>
   final def simplify(implicit cc: CompilerContext): Expr = {
     if (_simplified == null) {
       // Compute the simplified expression
-      _simplified = (new TreeExt(this)).normalize rewrite cc.simpifyExpr
+      _simplified = this rewrite cc.simpifyExpr
       // The simplified expression cannot be simplified further
       _simplified._simplified = _simplified
     }
@@ -286,13 +255,42 @@ trait ExprOps { this: Expr =>
 
   // Value of this expression if it can be determined right now, otherwise None
   def value(implicit cc: CompilerContext): Option[BigInt] = simplify match {
-    case ExprNum(_, value)    => Some(value)
-    case ExprInt(_, _, value) => Some(value)
-    case _                    => None
+    case ExprNum(_, value)                 => Some(value)
+    case ExprInt(_, _, value)              => Some(value)
+    case ExprCast(_, ExprNum(_, value))    => Some(value)
+    case ExprCast(_, ExprInt(_, _, value)) => Some(value)
+    case _                                 => None
   }
 
   // True if this we know the value of this expression (same as value.isDefined)
   def isKnown(implicit cc: CompilerContext): Boolean = value.isDefined
+
+  def cpy(): Expr = this match {
+    // $COVERAGE-OFF$ Trivial to keep full, but not necessarily used
+    case expr: ExprCall   => expr.copy()
+    case expr: ExprUnary  => expr.copy()
+    case expr: ExprBinary => expr.copy()
+    case expr: ExprCond   => expr.copy()
+    case expr: ExprRep    => expr.copy()
+    case expr: ExprCat    => expr.copy()
+    case expr: ExprIndex  => expr.copy()
+    case expr: ExprSlice  => expr.copy()
+    case expr: ExprDot    => expr.copy()
+    case expr: ExprSel    => expr.copy()
+    case expr: ExprSymSel => expr.copy()
+    case expr: ExprIdent  => expr.copy()
+    case expr: ExprSym    => expr.copy()
+    case expr: ExprOld    => expr.copy()
+    case expr: ExprThis   => expr.copy()
+    case expr: ExprType   => expr.copy()
+    case expr: ExprCast   => expr.copy()
+    case expr: ExprInt    => expr.copy()
+    case expr: ExprNum    => expr.copy()
+    case expr: ExprStr    => expr.copy()
+    case expr: ExprError  => ExprError()
+    // $COVERAGE-ON$
+  }
+
 }
 
 trait ExprObjOps { self: Expr.type =>
@@ -384,16 +382,14 @@ trait ExprObjOps { self: Expr.type =>
   // Extractor for instance port selects
   final object InstancePortSel {
 
-    def unapply(expr: ExprSel)(implicit cc: CompilerContext): Option[(Symbol, Symbol)] =
-      expr match {
-        case ExprSel(ExprSym(symbol), sel, idxs) =>
-          assert(idxs.isEmpty, "InstancePortSel cannot be used before elaboration")
-          symbol.kind match {
-            case kind: TypeEntity => kind(sel) map { (symbol, _) }
-            case _                => None
-          }
-        case _ => None
-      }
+    def unapply(expr: ExprSel): Option[(Symbol, Symbol)] = expr match {
+      case ExprSel(ExprSym(symbol), sel) =>
+        symbol.kind match {
+          case kind: TypeEntity => kind(sel) map { (symbol, _) }
+          case _                => None
+        }
+      case _ => None
+    }
 
   }
 
@@ -401,8 +397,10 @@ trait ExprObjOps { self: Expr.type =>
   final object Integral {
 
     def unapply(expr: Expr): Option[(Boolean, Option[Int], BigInt)] = expr partialMatch {
-      case ExprNum(signed, value)        => (signed, None, value)
-      case ExprInt(signed, width, value) => (signed, Some(width), value)
+      case ExprNum(signed, value)                     => (signed, None, value)
+      case ExprInt(signed, width, value)              => (signed, Some(width), value)
+      case ExprCast(_, ExprNum(signed, value))        => (signed, None, value)
+      case ExprCast(_, ExprInt(signed, width, value)) => (signed, Some(width), value)
     }
 
   }

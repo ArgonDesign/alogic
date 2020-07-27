@@ -33,4 +33,4 @@ fsm ctrl_func_local_12 {
 //
 //  endmodule
 // }}}
-// @stats/ctrl_func_local_12.main/local-bits: 0
+// @stats/ctrl_func_local_12.ctrl_func_local_12.main/local-bits: 0

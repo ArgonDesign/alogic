@@ -17,10 +17,10 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types.TypeUInt
-import com.argondesign.alogic.typer.TypeAssigner
 
 final class NormalizeFunctions(implicit cc: CompilerContext) extends StatelessTreeTransformer {
 
@@ -177,8 +177,8 @@ final class NormalizeFunctions(implicit cc: CompilerContext) extends StatelessTr
 
         // Initial statements (decl/defn for above, initialized to 0)
         val init = {
-          val decl = StmtDecl(didReturnSymbol.mkDecl) regularize tree.loc
-          val defn = StmtDefn(didReturnSymbol.mkDefn(ExprInt(false, 1, 0))) regularize tree.loc
+          val decl = StmtSplice(didReturnSymbol.mkDecl) regularize tree.loc
+          val defn = StmtSplice(didReturnSymbol.mkDefn(ExprInt(false, 1, 0))) regularize tree.loc
           Iterator(decl, defn)
         }
 

@@ -1,4 +1,3 @@
-// @out-top: def_ent_1
 struct data_t {
   u2 a;
   u4 b;

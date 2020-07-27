@@ -1,0 +1,19 @@
+fsm gen_range_named_04 {
+  in        u4 i;
+  out wire  u4 o_0;
+  out wire  u4 o_1;
+  out wire  u4 o_2;
+
+  void main() {
+    gen for (uint n < 3) : block#[n] {
+      u4 b#[n+10] = i + n;
+    }
+    o_0 = b#[10];
+    o_1 = b#[11];
+    o_2 = b#[12];
+    fence;
+  }
+}
+// :11: ERROR: 'b#\[10\]' is undefined
+// :12: ERROR: 'b#\[11\]' is undefined
+// :13: ERROR: 'b#\[12\]' is undefined

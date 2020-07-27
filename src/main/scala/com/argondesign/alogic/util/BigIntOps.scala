@@ -1,19 +1,19 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2018 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2020 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
 //
-// Module: Alogic Compiler
-// Author: Geza Lore
-//
 // DESCRIPTION:
-//
 // Provide extension methods for BigInt
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.util
+
+import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.ast.Trees.ExprInt
+import com.argondesign.alogic.ast.Trees.ExprNum
+import com.argondesign.alogic.core.Types.Type
 
 object BigIntOps {
 
@@ -30,6 +30,18 @@ object BigIntOps {
       if (!signed || !bits.testBit(width - 1)) bits else (BigInt(-1) << width) | bits
     } ensuring { result =>
       !signed || (value.testBit(lsb + width - 1) == (result < 0))
+    }
+
+    def asExpr(kind: Type): Expr = {
+      require(kind.isFund)
+      require(kind.isNumeric || kind.isPacked)
+      if (kind.isNum) {
+        ExprNum(kind.isSigned, value)
+      } else if (kind.isInt) {
+        ExprInt(kind.isSigned, kind.width.toInt, value)
+      } else { // kind.isPacked
+        ExprCast(kind.asFund, ExprInt(kind.isSigned, kind.width.toInt, value))
+      }
     }
 
   }

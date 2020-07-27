@@ -70,6 +70,7 @@ sealed abstract class Bindings extends Iterable[(Symbol, Expr)] {
     }
   }
 
+  def contains(symbol: Symbol): Boolean = get(symbol).isDefined
 }
 
 final case class BasicBindings(underlying: immutable.Map[Symbol, Expr]) extends Bindings {

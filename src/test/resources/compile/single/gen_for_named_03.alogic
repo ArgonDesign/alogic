@@ -1,0 +1,29 @@
+fsm gen_for_named_03 {
+  in        u4 i;
+  out wire  u4 o_0;
+  out wire  u4 o_1;
+  out wire  u4 o_2;
+
+  void main() {
+    gen for (uint n = 0 ; n < 3 ; n++) : block#[n] {
+      u4 b#[n+10] = i + n;
+    }
+    o_0 = block#[0].b#[10];
+    o_1 = block#[1].b#[11];
+    o_2 = block#[2].b#[12];
+    fence;
+  }
+}
+
+// @fec/golden {{{
+//  module gen_for_named_03(
+//    input  wire [3:0] i,
+//    output wire [3:0] o_0,
+//    output wire [3:0] o_1,
+//    output wire [3:0] o_2
+//  );
+//    assign o_0 = i;
+//    assign o_1 = i + 4'd1;
+//    assign o_2 = i + 4'd2;
+//  endmodule
+// }}}

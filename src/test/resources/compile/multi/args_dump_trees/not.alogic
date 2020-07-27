@@ -1,0 +1,9 @@
+fsm not {
+  in       bool i;
+  out wire bool o;
+
+  void main() {
+    o = ~i;
+    fence;
+  }
+}

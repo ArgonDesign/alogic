@@ -1,13 +1,11 @@
 fsm circular_definition_1 {
-  (* unused *) const uint foo = @bits(c);
+  const uint x = @bits(a);
   uint(@bits(b)) a;
   uint(@bits(c)) b;
-  uint(@bits(a)) c;
+  uint(x)        c;
 }
-// :2: ERROR: Definition of 'c' is circular
-// :5: NOTE: 'c' is defined at
-// :5: NOTE: depends on 'a'
-// :3: NOTE: 'a' is defined at
-// :3: NOTE: depends on 'b'
-// :4: NOTE: 'b' is defined at
-// :4: NOTE: which in turn depends on 'c'
+// :2: ERROR: Circular definition: value of symbol 'x'
+// :2: NOTE: Depends on type of symbol 'a'
+// :3: NOTE: Depends on type of symbol 'b'
+// :4: NOTE: Depends on type of symbol 'c'
+// :5: NOTE: Depends on value of symbol 'x'

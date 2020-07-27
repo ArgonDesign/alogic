@@ -1,0 +1,7 @@
+network gen_if_bad_4 {
+  gen if (1) {
+  } else if (@zx(1, 1'd1)) {
+  } else if (N) {
+  }
+}
+// :4: ERROR: 'N' is undefined

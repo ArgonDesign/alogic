@@ -1,0 +1,24 @@
+fsm resolve_names_04 {
+  in       u8 i;
+  out wire u8 o;
+
+  const u8 C#[0] = 1;
+  const uint N = M;
+
+  void main() {
+     o = i + C#[N];
+     fence;
+  }
+
+  gen if (true) {
+    const uint M = 0;
+  }
+}
+// @fec/golden {{{
+//  module resolve_names_04(
+//    input  wire [7:0] i,
+//    output wire [7:0] o
+//  );
+//    assign o = i + 8'd1;
+//  endmodule
+// }}}

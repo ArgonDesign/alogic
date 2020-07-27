@@ -18,12 +18,13 @@ package com.argondesign.alogic.transform
 import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees.Expr.Integral
 import com.argondesign.alogic.ast.Trees._
+
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Math.clog2
-import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.BigIntOps._
 import com.argondesign.alogic.util.PartialMatch
 import com.argondesign.alogic.util.unreachable
@@ -143,7 +144,7 @@ final class SimplifyExpr(implicit cc: CompilerContext)
           case (newTgt, newIdx) if (newTgt eq tgt) && (newIdx eq idx) =>
             // If all children are final, simply apply the transform to the input
             transform(expr)
-          case (_: ExprInt | _: ExprNum, newIdx: Expr) =>
+          case (_: ExprInt | _: ExprNum | ExprCast(_, _: ExprInt | _: ExprNum), newIdx: Expr) =>
             // Do not fold unknown index into known value, but transform the
             // simplified expression
             transform {
@@ -191,9 +192,13 @@ final class SimplifyExpr(implicit cc: CompilerContext)
               if (newTgt eq tgt) && (newLIdx eq lIdx) && (newRIdx eq rIdx) =>
             // If all children are final, simply apply the transform to the input
             transform(expr)
-          case (_: ExprInt | _: ExprNum, newLIdx: Expr, newRIdx: Expr) =>
-            // Do not fold unknown slice into known value, but transform the
-            // simplified expression
+          case (
+                _: ExprInt | _: ExprNum | ExprCast(_, _: ExprInt | _: ExprNum),
+                newLIdx: Expr,
+                newRIdx: Expr
+              ) =>
+            // Do not fold unknown slice into known symbol value, but transform
+            // the simplified expression
             transform {
               TypeAssigner {
                 expr.copy(lIdx = newLIdx, rIdx = newRIdx) withLoc tree.loc
@@ -214,14 +219,29 @@ final class SimplifyExpr(implicit cc: CompilerContext)
     // Fold selects
     //////////////////////////////////////////////////////////////////////////
 
-    case expr @ ExprSel(tgt, sel, idxs) =>
-      assert(idxs.isEmpty)
+    case expr @ (_: ExprSel | _: ExprSymSel) =>
       Some {
+        val (tgt, predicate, copy) = expr match {
+          case e: ExprSel =>
+            (
+              e.expr,
+              { symbol: Symbol => symbol.name != e.selector },
+              { newTgt: Expr => e.copy(expr = newTgt) }
+            )
+          case e: ExprSymSel =>
+            (
+              e.expr,
+              { symbol: Symbol => symbol != e.symbol },
+              { newTgt: Expr => e.copy(expr = newTgt) }
+            )
+          case _ => unreachable
+        }
+
         walk(tgt) match {
           case Integral(_, _, value) =>
             // Fold select into known value
             val (fieldTpe, lessSigFieldTpes) =
-              tgt.tpe.asRecord.publicSymbols dropWhile { _.name != sel } map { _.kind } match {
+              tgt.tpe.asRecord.publicSymbols dropWhile predicate map { _.kind } match {
                 case head :: tail => (head, tail)
                 case Nil          => unreachable
               }
@@ -237,7 +257,7 @@ final class SimplifyExpr(implicit cc: CompilerContext)
             // Transform the simplified expression
             transform {
               TypeAssigner {
-                expr.copy(expr = newTgt) withLoc tree.loc
+                copy(newTgt) withLoc tree.loc
               }
             }
           case _ => unreachable
@@ -324,12 +344,12 @@ final class SimplifyExpr(implicit cc: CompilerContext)
         tree.toString,
         tree.toSource,
         "Old type:",
-        tree.tpe.underlying.toString,
+        tree.tpe.toString,
         "New tree:",
         result.toString,
         result.toSource,
         "New type:",
-        result.tpe.underlying.toString
+        result.tpe.toString
       )
       if (result.tpe.isPacked != tree.tpe.isPacked) {
         throw Ice(tree, s"SimplifyExpr changed packedness." :: hints: _*)
@@ -340,7 +360,7 @@ final class SimplifyExpr(implicit cc: CompilerContext)
       if (result.tpe.isPacked && result.tpe.width != tree.tpe.width) {
         throw Ice(tree, s"SimplifyExpr changed width." :: hints: _*)
       }
-      if (result.tpe.isNum != tree.tpe.isNum) {
+      if (result.tpe.isNum != tree.tpe.underlying.isNum) {
         throw Ice(tree, s"SimplifyExpr changed Num'ness." :: hints: _*)
       }
       if (result.tpe.isType != tree.tpe.isType) {
@@ -370,19 +390,23 @@ final class SimplifyExpr(implicit cc: CompilerContext)
         }
 
       //////////////////////////////////////////////////////////////////////////
-      // Fold references to const symbols
+      // Fold references to const symbols if possible
       //////////////////////////////////////////////////////////////////////////
 
-      case _: TypeConst => symbol.init getOrElse unreachable
+      case _: TypeConst =>
+        symbol.defnOption match {
+          case Some(defn) => defn.asInstanceOf[DefnConst].init
+          case None       => tree
+        }
 
       //////////////////////////////////////////////////////////////////////////
       // Fold references to val symbols, iff they have a constant initializer
       //////////////////////////////////////////////////////////////////////////
 
       case _: TypeFund =>
-        symbol.defn match {
-          case _: DefnVal =>
-            symbol.init.get.simplify match {
+        symbol.defnOption match {
+          case Some(DefnVal(_, init)) =>
+            init.simplify match {
               case value: ExprNum => value
               case value: ExprInt => value
               case _              => tree
@@ -942,9 +966,8 @@ final class SimplifyExpr(implicit cc: CompilerContext)
     kind match {
       case TypeNum(signed) =>
         expr match {
-          case ExprNum(_, v)    => ExprNum(signed, v) withLoc tree.loc
-          case ExprInt(_, _, v) => ExprNum(signed, v) withLoc tree.loc
-          case _                => unreachable
+          case Integral(_, _, v) => ExprNum(signed, v) withLoc tree.loc
+          case _                 => unreachable
         }
 
       case TypeInt(signed, width) =>
@@ -967,20 +990,33 @@ final class SimplifyExpr(implicit cc: CompilerContext)
           case ExprInt(_, eWidth, v) =>
             require(width.toInt >= eWidth)
             mkValue(v)
+          case ExprCast(_, ExprNum(_, v)) =>
+            mkValue(v)
+          case ExprCast(_, ExprInt(_, eWidth, v)) =>
+            require(width.toInt >= eWidth)
+            mkValue(v)
           case _ =>
             val kWidth = width.toInt
             val eWidth = expr.tpe.width.toInt
             require(kWidth >= eWidth)
             if (kWidth == eWidth) {
-              expr
-            } else if (expr.tpe.isSigned) {
-              expr sx kWidth
+              if (!signed && expr.tpe.isSigned) {
+                expr.castUnsigned
+              } else if (signed && !expr.tpe.isSigned) {
+                expr.castSigned
+              } else {
+                expr
+              }
             } else {
-              expr zx kWidth
+              if (expr.tpe.isSigned) {
+                expr sx kWidth
+              } else {
+                expr zx kWidth
+              }
             }
         }
 
-      case _ => unreachable
+      case _ => tree
     }
   }
 

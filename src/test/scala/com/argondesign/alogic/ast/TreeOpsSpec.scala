@@ -38,11 +38,13 @@ final class TreeOpsSpec extends AnyFreeSpec with AlogicTest {
       ),
       DescVar(
         Ident("x", Nil),
+        Nil,
         ExprType(TypeUInt(1)),
         None
       ),
       DescVar(
         Ident("y", Nil),
+        Nil,
         ExprType(TypeUInt(2)),
         Some(
           ExprCat(
@@ -74,10 +76,10 @@ final class TreeOpsSpec extends AnyFreeSpec with AlogicTest {
         nodes(3) should matchPattern { case ExprBinary(_, "b", _) => }
         nodes(4) shouldBe ExprStr("1")
         nodes(5) shouldBe ExprStr("2")
-        nodes(6) should matchPattern { case DescVar(Ident("x", Nil), _, None) => }
+        nodes(6) should matchPattern { case DescVar(Ident("x", Nil), _, _, None) => }
         nodes(7) shouldBe Ident("x", Nil)
         nodes(8) shouldBe ExprType(TypeUInt(1))
-        nodes(9) should matchPattern { case DescVar(Ident("y", Nil), _, Some(_)) => }
+        nodes(9) should matchPattern { case DescVar(Ident("y", Nil), _, _, Some(_)) => }
         nodes(10) shouldBe Ident("y", Nil)
         nodes(11) shouldBe ExprType(TypeUInt(2))
         nodes(12) should matchPattern { case ExprCat(List(_, _, _, _)) => }
@@ -102,7 +104,7 @@ final class TreeOpsSpec extends AnyFreeSpec with AlogicTest {
         nodes(4) should matchPattern { case ExprBinary(_, "a", _) => }
         nodes(5) shouldBe Ident("x", Nil)
         nodes(6) shouldBe ExprType(TypeUInt(1))
-        nodes(7) should matchPattern { case DescVar(Ident("x", Nil), _, None) => }
+        nodes(7) should matchPattern { case DescVar(Ident("x", Nil), _, _, None) => }
         nodes(8) shouldBe Ident("y", Nil)
         nodes(9) shouldBe ExprType(TypeUInt(2))
         nodes(10) shouldBe ExprStr("3")
@@ -112,7 +114,7 @@ final class TreeOpsSpec extends AnyFreeSpec with AlogicTest {
         nodes(14) shouldBe ExprStr("6")
         nodes(15) shouldBe ExprStr("7")
         nodes(16) should matchPattern { case ExprCat(List(_, _, _, _)) => }
-        nodes(17) should matchPattern { case DescVar(Ident("y", Nil), _, Some(_)) => }
+        nodes(17) should matchPattern { case DescVar(Ident("y", Nil), _, _, Some(_)) => }
         nodes(18) should matchPattern { case Thicket(List(_, _, _)) => }
       }
     }

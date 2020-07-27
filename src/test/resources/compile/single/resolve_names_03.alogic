@@ -1,0 +1,15 @@
+fsm resolve_names_03 {
+  in       u8 i;
+  out wire u8 o;
+
+  const u8 C#[0] = 1;
+  const u8 D#[0] = 0;
+
+  void main() {
+     o = i + C#[D#[8'd0 + 2'd0]];
+     fence;
+  }
+}
+// :9: ERROR: Both operands of binary '\+' must have the same width, but
+// :9: ERROR: ... left  hand operand is 8 bits wide, and
+// :9: ERROR: ... right hand operand is 2 bits wide

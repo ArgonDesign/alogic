@@ -1,0 +1,16 @@
+import a; // Leave un-referenced so no specializations exit
+
+network top {
+  in  bool i;
+  out bool o;
+  i -> o;
+}
+
+// @fec/golden {{{
+//  module top(
+//    input   wire i,
+//    output  wire o
+//  );
+//    assign o = i;
+//  endmodule
+// }}}

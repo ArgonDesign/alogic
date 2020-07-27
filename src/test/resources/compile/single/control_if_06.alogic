@@ -45,5 +45,5 @@ fsm control_if_06 {
 //
 //  endmodule
 // }}}
-// @stats/control_if_06/stack-depth: 0
-// @stats/control_if_06/states: 2
+// @stats/control_if_06.control_if_06/stack-depth: 0
+// @stats/control_if_06.control_if_06/states: 2

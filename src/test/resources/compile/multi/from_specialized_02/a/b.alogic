@@ -1,0 +1,4 @@
+struct S {
+  param uint WIDTH;
+  uint(WIDTH) field;
+}

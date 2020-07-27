@@ -1,0 +1,8 @@
+struct S {
+  void foo() {
+    gen if (true) {
+      compile S;
+    }
+  }
+}
+// :4: ERROR: Statement expected

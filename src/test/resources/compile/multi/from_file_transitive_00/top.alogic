@@ -1,0 +1,13 @@
+from a import C;
+
+fsm top {
+  in       u4 i;
+  out wire u4 o;
+
+  void main() {
+    o = i + C;
+    fence;
+  }
+}
+
+// .*/top.alogic:1: ERROR: No member named 'C' in value of type '.*/a.alogic'

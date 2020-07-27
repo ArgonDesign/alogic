@@ -1,3 +1,3 @@
 // @args: --dump-trees
 network args_dump_trees {}
-// @expect-file: args_dump_trees.00.parser.alogic
+// @expect-file: args_dump_trees.00.frontend.alogic

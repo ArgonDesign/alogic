@@ -5,35 +5,39 @@
 // See the LICENSE file for the precise wording of the license.
 //
 // DESCRIPTION:
-//  Compiler entry point
+//  Compiler entry points
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic
 
+import com.argondesign.alogic.ast.Trees.Arg
+
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
-
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.MessageBuffer
 import com.argondesign.alogic.core.Settings
+import com.argondesign.alogic.core.Source
 
 object Compiler {
 
-  // Parse argument vector. Return compiler settings and list of requested top level entities
+  // Parse compiler arguments. Possibly adds messages to message buffer.
+  // On success, returns Some(compiler settings and input file).
   def parseArgs(
       messageBuffer: MessageBuffer,
       args: Seq[String]
-    ): Option[(Settings, List[String])] = {
+    ): Option[(Settings, Source, List[String])] = {
 
+    // Parse command line arguments
     val options = new OptionParser(args, messageBuffer)
 
     Option.unless(messageBuffer.hasError) {
+      // Build settings based on arguments
       val settings = Settings(
-        moduleSearchDirs = options.ydir(),
-        includeSearchDirs = options.incdir(),
-        initialDefines = options.defs,
-        srcBase = options.srcbase.toOption map { _.toPath },
-        oPath = options.odir.toOption map { _.toPath },
+        importSearchDirs = options.ydir() map { _.toPath.toAbsolutePath },
+        srcBase = options.srcbase.toOption map { _.toPath.toAbsolutePath },
+        oPath = options.odir.toOption map { _.toPath.toAbsolutePath },
         sep = options.sep(),
         uninitialized = options.uninitialized(),
         ensurePrefix = options.ensurePrefix(),
@@ -58,14 +62,25 @@ object Compiler {
         traceElaborate = options.traceElaborate.toOption contains true
       )
 
-      (settings, options.topLevels())
+      // Add some defaults for convenience
+      val settings2 = settings.copy(
+        importSearchDirs = if (settings.importSearchDirs.isEmpty) {
+          List(options.file().toPath.toAbsolutePath.getParent)
+        } else {
+          settings.importSearchDirs
+        }
+      )
+
+      (settings2, Source(options.file()), options.param())
     }
   }
 
   def compile(
       messageBuffer: MessageBuffer,
       settings: Settings,
-      topLevels: List[String]
+      source: Source,
+      loc: Loc,
+      params: List[Arg]
     ): Int = {
 
     ////////////////////////////////////////////////////////////////////////////
@@ -79,7 +94,7 @@ object Compiler {
     ////////////////////////////////////////////////////////////////////////////
 
     // Compile what is requested
-    cc.compile(topLevels)
+    cc.compile(source, loc, params)
 
     // Emit profile, if required
     if (cc.settings.profile) {

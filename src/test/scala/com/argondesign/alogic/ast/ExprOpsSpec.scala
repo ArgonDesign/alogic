@@ -19,8 +19,8 @@ import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.ast.Trees.Expr._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Types.TypeUInt
-import com.argondesign.alogic.typer.TypeAssigner
 import org.scalatest.freespec.AnyFreeSpec
 
 final class ExprOpsSpec extends AnyFreeSpec with AlogicTest {
@@ -137,26 +137,28 @@ final class ExprOpsSpec extends AnyFreeSpec with AlogicTest {
     }
 
     "slice Expr : Expr" in {
-      ExprInt(false, 8, 0).slice(Expr(1), ":", Expr(2)) shouldBe {
-        ExprSlice(ExprInt(false, 8, 0), Expr(1), ":", Expr(2))
+      ExprInt(false, 8, 0).slice(Expr(2), ":", Expr(1)) shouldBe {
+        ExprSlice(ExprInt(false, 8, 0), Expr(2), ":", Expr(1))
       }
     }
     "slice Expr : Int" in {
-      TypeAssigner(ExprInt(false, 8, 0)).slice(TypeAssigner(Expr(1)), ":", 2) should matchPattern {
-        case ExprSlice(ExprInt(false, 8, v), Expr(1), ":", ExprInt(false, 3, b))
+      TypeAssigner(ExprInt(false, 8, 0))
+        .slice(2, ":", TypeAssigner(Expr(1))) should matchPattern {
+        case ExprSlice(ExprInt(false, 8, v), ExprInt(false, 3, b), ":", Expr(1))
             if v == 0 && b == 2 =>
       }
     }
     "slice Int : Expr" in {
-      TypeAssigner(ExprInt(false, 8, 0)).slice(1, ":", TypeAssigner(Expr(2))) should matchPattern {
-        case ExprSlice(ExprInt(false, 8, v), ExprInt(false, 3, a), ":", Expr(2))
+      TypeAssigner(ExprInt(false, 8, 0))
+        .slice(TypeAssigner(Expr(2)), ":", 1) should matchPattern {
+        case ExprSlice(ExprInt(false, 8, v), Expr(2), ":", ExprInt(false, 3, a))
             if v == 0 && a == 1 =>
       }
     }
     "slice Int : Int" in {
-      TypeAssigner(ExprInt(false, 8, 0)).slice(1, ":", 2) should matchPattern {
+      TypeAssigner(ExprInt(false, 8, 0)).slice(2, ":", 1) should matchPattern {
         case ExprSlice(ExprInt(false, 8, v), ExprInt(false, 3, a), ":", ExprInt(false, 3, b))
-            if v == 0 && a == 1 && b == 2 =>
+            if v == 0 && a == 2 && b == 1 =>
       }
     }
 
@@ -166,13 +168,15 @@ final class ExprOpsSpec extends AnyFreeSpec with AlogicTest {
       }
     }
     "slice Expr +: Int" in {
-      TypeAssigner(ExprInt(false, 8, 0)).slice(TypeAssigner(Expr(1)), "+:", 2) should matchPattern {
+      TypeAssigner(ExprInt(false, 8, 0))
+        .slice(TypeAssigner(Expr(1)), "+:", 2) should matchPattern {
         case ExprSlice(ExprInt(false, 8, v), Expr(1), "+:", ExprInt(false, 4, b))
             if v == 0 && b == 2 =>
       }
     }
     "slice Int +: Expr" in {
-      TypeAssigner(ExprInt(false, 8, 0)).slice(1, "+:", TypeAssigner(Expr(2))) should matchPattern {
+      TypeAssigner(ExprInt(false, 8, 0))
+        .slice(1, "+:", TypeAssigner(Expr(2))) should matchPattern {
         case ExprSlice(ExprInt(false, 8, v), ExprInt(false, 3, a), "+:", Expr(2))
             if v == 0 && a == 1 =>
       }
@@ -190,13 +194,15 @@ final class ExprOpsSpec extends AnyFreeSpec with AlogicTest {
       }
     }
     "slice Expr -: Int" in {
-      TypeAssigner(ExprInt(false, 7, 0)).slice(TypeAssigner(Expr(1)), "-:", 2) should matchPattern {
+      TypeAssigner(ExprInt(false, 7, 0))
+        .slice(TypeAssigner(Expr(1)), "-:", 2) should matchPattern {
         case ExprSlice(ExprInt(false, 7, v), Expr(1), "-:", ExprInt(false, 3, b))
             if v == 0 && b == 2 =>
       }
     }
     "slice Int -: Expr" in {
-      TypeAssigner(ExprInt(false, 7, 0)).slice(1, "-:", TypeAssigner(Expr(2))) should matchPattern {
+      TypeAssigner(ExprInt(false, 7, 0))
+        .slice(1, "-:", TypeAssigner(Expr(2))) should matchPattern {
         case ExprSlice(ExprInt(false, 7, v), ExprInt(false, 3, a), "-:", Expr(2))
             if v == 0 && a == 1 =>
       }
@@ -209,7 +215,7 @@ final class ExprOpsSpec extends AnyFreeSpec with AlogicTest {
     }
 
     "select" in {
-      Expr(1) sel "b" shouldBe ExprSel(Expr(1), "b", Nil)
+      Expr(1) sel "b" shouldBe ExprSel(Expr(1), "b")
     }
 
     "call" in {
@@ -238,7 +244,11 @@ final class ExprOpsSpec extends AnyFreeSpec with AlogicTest {
     }
 
     "inc n-bit" in {
-      TypeAssigner(ExprInt(false, 2, 0)).inc shouldBe ExprInt(false, 2, 0) + ExprInt(false, 2, 1)
+      TypeAssigner(ExprInt(false, 2, 0)).inc shouldBe ExprInt(false, 2, 0) + ExprInt(
+        false,
+        2,
+        1
+      )
     }
 
     "inc num" in {

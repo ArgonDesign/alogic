@@ -1,0 +1,6 @@
+gen if (true) {
+  gen for (uint n < 20) : block {
+    fence;
+  }
+}
+// :3: ERROR: Package content expected

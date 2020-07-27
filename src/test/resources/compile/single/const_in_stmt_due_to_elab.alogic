@@ -1,0 +1,29 @@
+struct s_t {
+  static u4 ffs(u16 val) {
+    u4 idx;
+    case (1'b1) {
+      // This generates a DescGenVar in Stmt position which then
+      // gets turned into a DeclConst/DefnConst pair.
+      gen for (u4 i < 16) {
+        val[15-i]: idx = 15-i;
+      }
+    }
+    return idx;
+  }
+}
+
+fsm const_in_stmt_due_to_elab {
+  out wire u4 o;
+  void main() {
+    o = 's_t.ffs(16'b0010_1111_1010_0000);
+    fence;
+  }
+}
+
+// @fec/golden {{{
+//  module const_in_stmt_due_to_elab(
+//    output wire [3:0] o
+//  );
+//    assign o = 4'd13;
+//  endmodule
+// }}}

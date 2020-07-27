@@ -1,0 +1,5 @@
+network gen_range_bad_03 {
+  gen for (i8 n <= 128) {
+  }
+}
+// :2: ERROR: End value 128 is out of range for variable 'n' with type 'i8'

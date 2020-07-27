@@ -3,10 +3,7 @@ fsm circular_definition_0 {
   uint(@bits(c)) b;
   uint(@bits(a)) c;
 }
-// :2: ERROR: Definition of 'a' is circular
-// :2: NOTE: 'a' is defined at
-// :2: NOTE: depends on 'b'
-// :3: NOTE: 'b' is defined at
-// :3: NOTE: depends on 'c'
-// :4: NOTE: 'c' is defined at
-// :4: NOTE: which in turn depends on 'a'
+// :2: ERROR: Circular definition: type of symbol 'a'
+// :2: NOTE: Depends on type of symbol 'b'
+// :3: NOTE: Depends on type of symbol 'c'
+// :4: NOTE: Depends on type of symbol 'a'

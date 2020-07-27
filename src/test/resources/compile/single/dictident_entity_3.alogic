@@ -18,4 +18,4 @@ network dictident_entity_3 {
   i_a -> inner_a.ii; inner_a.oo -> o_a;
   i_b -> inner_b.ii; inner_b.oo -> o_b;
 }
-// :16: ERROR: 'inner#\[1\]' is not defined after processing 'gen' constructs
+// :16: ERROR: 'inner#\[1\]' is undefined

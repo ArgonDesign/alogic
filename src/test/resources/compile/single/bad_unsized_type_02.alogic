@@ -1,0 +1,4 @@
+network bad_unsized_type_02 {
+  pipeline  uint a;
+}
+// :2: ERROR: Pipeline variable cannot have an unsized integer type

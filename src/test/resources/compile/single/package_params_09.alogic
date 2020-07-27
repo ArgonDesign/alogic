@@ -1,0 +1,3 @@
+// @args: -P 2 -P FOO=2
+// command-line:1: ERROR: Package defined in input file '.*/package_params_09\.alogic' does not take any parameters.
+// command-line:1: ERROR: Package defined in input file '.*/package_params_09\.alogic' does not take any parameters.

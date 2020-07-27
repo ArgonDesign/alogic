@@ -1,16 +1,10 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2020 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2020 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
 //
-// Module: Alogic Compiler
-// Author: Thomas Brown
-//
 // DESCRIPTION:
-//
-// ConvertControl tests
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.passes
@@ -23,14 +17,13 @@ import org.scalatest.freespec.AnyFreeSpec
 
 final class ConvertControlSpec extends AnyFreeSpec with AlogicTest {
 
-  implicit val cc = new CompilerContext
+  implicit val cc: CompilerContext = new CompilerContext
 
   private def convertControl(text: String): Thicket = Thicket {
     transformWithPass(
-      Checker andThen
-        Namer andThen
-        Elaborate andThen
-        TypeCheck andThen
+      FrontendPass andThen
+        DropPackageAndParametrizedDescs andThen
+        DescToDeclDefn andThen
         AnalyseCallGraph andThen
         ConvertControl,
       text
@@ -50,53 +43,53 @@ final class ConvertControlSpec extends AnyFreeSpec with AlogicTest {
 
     def checkGoesToPop(state: DefnState): Unit = {
       val stack = state getFirst {
-        case StmtExpr(ExprCall(ExprSel(s, "pop", _), Nil)) => s
+        case StmtExpr(ExprCall(ExprSel(s, "pop"), Nil)) => s
       }
       state.postOrderIterator exists {
-        case StmtGoto(ExprSel(`stack`, "old", Nil)) => true
-        case _                                      => false
+        case StmtGoto(ExprSel(`stack`, "old")) => true
+        case _                                 => false
       } shouldBe true
     }
 
     def checkPopsStack(state: DefnState): Unit = {
       val pop = state collectFirst {
-        case e @ ExprCall(ExprSel(_, "pop", Nil), Nil) => e
+        case e @ ExprCall(ExprSel(_, "pop"), Nil) => e
       }
       pop should matchPattern { case Some(_) => }
     }
 
     def checkDoesntPush(stateFrom: DefnState): Unit = {
       val hopefullyNone = stateFrom collectFirst {
-        case e @ ExprCall(ExprSel(_, "push", Nil), _) => e
+        case e @ ExprCall(ExprSel(_, "push"), _) => e
       }
       hopefullyNone shouldBe None
     }
 
     def checkPushesState(stateFrom: DefnState, statePushedGolden: DefnState): Unit = {
       val stack = stateFrom getFirst {
-        case StmtExpr(ExprCall(ExprSel(s, "push", _), Nil)) => s
+        case StmtExpr(ExprCall(ExprSel(s, "push"), Nil)) => s
       }
       stateFrom.postOrderIterator exists {
-        case StmtAssign(ExprSel(`stack`, "top", Nil), ExprSym(g)) => g == statePushedGolden.symbol
-        case _                                                    => false
+        case StmtAssign(ExprSel(`stack`, "top"), ExprSym(g)) => g == statePushedGolden.symbol
+        case _                                               => false
       } shouldBe true
     }
 
     "correctly assign static return points" in {
       val result = convertControl {
         """fsm fsm_e {
-           |  void main() {
-           |    fence;
-           |    fence;
-           |    a();
-           |    fence;
-           |    fence;
-           |    b();
-           |    fence;
-           |  }
-           |  void a() { return; } // State 7, should return to state 3
-           |  void b() { return; } // State 8, should return to state 6
-           |}"""
+          |  void main() {
+          |    fence;
+          |    fence;
+          |    a();
+          |    fence;
+          |    fence;
+          |    b();
+          |    fence;
+          |  }
+          |  void a() { return; } // State 7, should return to state 3
+          |  void b() { return; } // State 8, should return to state 6
+          |}""".stripMargin
       }
       val states = List from (result collect {
         case x: DefnState => x
@@ -120,12 +113,12 @@ final class ConvertControlSpec extends AnyFreeSpec with AlogicTest {
     "correctly push and pop to stack" in {
       val result = convertControl {
         """fsm fsm_e {
-           |  void main() {
-           |    a();
-           |    a();
-           |  }
-           |  void a() { return; }
-           |}"""
+          |  void main() {
+          |    a();
+          |    a();
+          |  }
+          |  void a() { return; }
+          |}""".stripMargin
       }
       val states = List from (result collect {
         case x: DefnState => x
@@ -145,14 +138,14 @@ final class ConvertControlSpec extends AnyFreeSpec with AlogicTest {
     "correctly pops from stack even when return point is static" in {
       val result = convertControl {
         """fsm fsm_e {
-           |  in bool pi;
-           |  void main() { a(); b(); }
-           |  void a() {
-           |    if (pi) { goto c(); } else { goto b(); }
-           |  }
-           |  void b() { return; }
-           |  void c() { return; }
-           |}"""
+          |  in bool pi;
+          |  void main() { a(); b(); }
+          |  void a() {
+          |    if (pi) { goto c(); } else { goto b(); }
+          |  }
+          |  void b() { return; }
+          |  void c() { return; }
+          |}""".stripMargin
       }
       val states = List from (result collect {
         case x: DefnState => x
@@ -177,13 +170,13 @@ final class ConvertControlSpec extends AnyFreeSpec with AlogicTest {
     "correctly returns to entry point of main" in {
       val result = convertControl {
         """fsm fsm_e {
-           |  void main() {
-           |    fence;
-           |    goto a();
-           |  }
-           |  void a() { goto b(); }
-           |  void b() { return; }
-           |}"""
+          |  void main() {
+          |    fence;
+          |    goto a();
+          |  }
+          |  void a() { goto b(); }
+          |  void b() { return; }
+          |}""".stripMargin
       }
       val states = List from (result collect {
         case x: DefnState => x
@@ -202,12 +195,12 @@ final class ConvertControlSpec extends AnyFreeSpec with AlogicTest {
     "deals with returns when stack empty" in {
       val result = convertControl {
         """fsm fsm_e {
-           |  void main() {
-           |    a();
-           |    goto a();
-           |  }
-           |  void a() { return; }
-           |}"""
+          |  void main() {
+          |    a();
+          |    goto a();
+          |  }
+          |  void a() { return; }
+          |}""".stripMargin
       }
       val states = List from (result collect {
         case x: DefnState => x

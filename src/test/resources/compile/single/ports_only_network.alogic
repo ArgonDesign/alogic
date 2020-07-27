@@ -1,10 +1,17 @@
 // @verilator-lint-off
 network ports_only_network {
-  (* unused *) in             u8 ia;
-  (* unused *) in sync        u8 ib;
-  (* unused *) in sync ready  u8 ic;
-  (* unused *) out            u8 oa;
-  (* unused *) out sync       u8 ob;
-  (* unused *) out sync ready u8 oc;
-  (* unused *) out wire       u8 od;
+  in             u8 ia;
+  in sync        u8 ib;
+  in sync ready  u8 ic;
+  out            u8 oa;
+  out sync       u8 ob;
+  out sync ready u8 oc;
+  out wire       u8 od;
 }
+// :3: WARNING: Input port 'ia' is unused
+// :4: WARNING: Input port 'ib' is unused
+// :5: WARNING: Input port 'ic' is unused
+// :6: WARNING: Output port 'oa' is unused
+// :7: WARNING: Output port 'ob' is unused
+// :8: WARNING: Output port 'oc' is unused
+// :9: WARNING: Output port 'od' is unused

@@ -8,13 +8,13 @@
 package com.argondesign.alogic.antlr
 
 import com.argondesign.alogic.antlr.AlogicLexer._
-import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.MessageBuffer
 import com.argondesign.alogic.util.unreachable
 import org.antlr.v4.runtime.BaseErrorListener
 import org.antlr.v4.runtime.RecognitionException
 import org.antlr.v4.runtime.Recognizer
 
-class AlogicParseErrorListener(implicit cc: CompilerContext) extends BaseErrorListener {
+class AlogicParseErrorListener(implicit mb: MessageBuffer) extends BaseErrorListener {
 
   override def syntaxError(
       recogniser: Recognizer[_, _],
@@ -44,7 +44,7 @@ class AlogicParseErrorListener(implicit cc: CompilerContext) extends BaseErrorLi
       case _                  => unreachable
     }
 
-    cc.error(loc, s"Syntax error: $message")
+    mb.error(loc, s"Syntax error: $message")
   }
 
 }

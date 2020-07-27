@@ -1,5 +1,4 @@
-// @top: gen_alt_defn_4()
-// @out-top: gen_alt_defn_4__SIGNED_0
+compile gen_alt_defn_4() as top;
 network gen_alt_defn_4 {
   param bool SIGNED = false;
   in u2 p_in_0;
@@ -30,7 +29,7 @@ network gen_alt_defn_4 {
   inner.p_o -> p_out;
 }
 // @fec/golden {{{
-//  module gen_alt_defn_4__SIGNED_0(
+//  module top(
 //    input wire clk,
 //    input wire rst,
 //    input wire [1:0] p_in_0,

@@ -1,0 +1,6 @@
+network connect {
+  in bool i;
+  out bool o;
+
+  i -> o;
+}

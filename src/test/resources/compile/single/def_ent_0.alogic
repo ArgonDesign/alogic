@@ -1,4 +1,3 @@
-// @out-top: def_ent_0
 fsm def_ent_0 {
   typedef u6 data_t;
 

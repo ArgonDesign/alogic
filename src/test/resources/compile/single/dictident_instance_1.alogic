@@ -11,12 +11,21 @@ network dictident_instance_1 {
   }
 
   gen for (uint N < 1) {
-    inst#[0] = new inner();
-    inst#[1] = new inner();
+    inst#[0] = new inner;
+    inst#[1] = new inner;
   }
 
   i_a -> inst#[0].ii; inst#[0].oo -> o_a;
   i_b -> inst#[1].ii; inst#[1].oo -> o_b;
 }
-// :15: ERROR: Redefinition of 'inst' with previous definition at
-// :15: ERROR: ... .*dictident_instance_1.alogic:14
+// @fec/golden {{{
+//  module dictident_instance_1(
+//    input  wire i_a,
+//    input  wire i_b,
+//    output wire o_a,
+//    output wire o_b
+//  );
+//    assign o_a = i_a;
+//    assign o_b = i_b;
+//  endmodule
+// }}}

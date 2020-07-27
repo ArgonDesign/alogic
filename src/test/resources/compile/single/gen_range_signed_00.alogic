@@ -1,0 +1,20 @@
+fsm gen_range_signed_00 {
+  in        u8 i;
+  out wire  u8 o;
+
+  void main() {
+    gen for (i4 n < 8) {
+      o[n[2:0]] = ~i[n[2:0]];
+    }
+    fence;
+  }
+}
+
+// @fec/golden {{{
+//  module gen_range_signed_00(
+//    input   wire [7:0]  i,
+//    output  wire [7:0]  o
+//  );
+//    assign o = ~i;
+//  endmodule
+// }}}

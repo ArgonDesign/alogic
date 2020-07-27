@@ -1,16 +1,10 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2018-2019 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2020 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
 //
-// Module: Alogic Compiler
-// Author: Geza Lore
-//
 // DESCRIPTION:
-//
-// SimplifyExpr tests
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.transform
@@ -18,13 +12,18 @@ package com.argondesign.alogic.transform
 import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.SourceTextConverters._
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.core.Messages.Warning
+import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
-import com.argondesign.alogic.core.Symbols.Symbol
-import com.argondesign.alogic.core.Messages.Error
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.frontend.Clarify
+import com.argondesign.alogic.frontend.Complete
+import com.argondesign.alogic.frontend.Finished
+import com.argondesign.alogic.frontend.Frontend
+import com.argondesign.alogic.frontend.ResolveNames
 import com.argondesign.alogic.passes._
-import com.argondesign.alogic.typer.Typer
 import org.scalatest.freespec.AnyFreeSpec
 
 final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
@@ -33,11 +32,9 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
 
   protected def fold(text: String): Thicket = Thicket {
     transformWithPass(
-      Namer andThen
-        Elaborate andThen
-        TypeCheck andThen
-        ResolvePolyFunc andThen
-        AddCasts andThen
+      FrontendPass andThen
+        DropPackageAndParametrizedDescs andThen
+        DescToDeclDefn andThen
         Fold,
       text
     ).value.toList flatMap {
@@ -45,8 +42,18 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
     }
   }
 
-  protected def simplify(text: String): Expr =
-    (text.asTree[Expr] rewrite new Namer rewrite new Typer).simplify
+  protected def simplify(text: String): Expr = {
+    implicit val fe: Frontend = new Frontend
+    val expr = ResolveNames(text.asTree[Expr], cc.builtins)
+      .proceed(e => fe.typeCheck(e) map { _ => e })
+      .map(Clarify(_))
+      .pipe {
+        case Complete(result) => result
+        case Finished(result) => result
+        case _                => fail
+      }
+    expr.simplify
+  }
 
   "FoldExpr should fold" - {
     "unary operators applied to unsized integer literals" - {
@@ -728,22 +735,22 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
         text in {
           fold {
             s"""
-            |fsm f {
-            |  u1 x_u1;
-            |  i1 x_i1;
-            |  u8 x_u8;
-            |  i8 x_i8;
-            |  void main() {
-            |    $$display("", $text);
-            |    fence;
-            |  }
-            |}"""
+               |fsm f {
+               |  u1 x_u1;
+               |  i1 x_i1;
+               |  u8 x_u8;
+               |  i8 x_i8;
+               |  void main() {
+               |    $$display("", $text);
+               |    fence;
+               |  }
+               |}""".stripMargin
           } getFirst {
             case ExprCall(_, _ :: ArgP(expr) :: Nil) => expr
           } tap {
             _ should matchPattern(pattern)
           }
-          cc.messages filter { _.isInstanceOf[Error] } shouldBe empty
+          cc.messages filterNot { _.isInstanceOf[Warning] } shouldBe empty
         }
       }
     }
@@ -902,13 +909,13 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
         text in {
           fold {
             s"""
-            |fsm f {
-            |  in u10 a;
-            |  out u1 b;
-            |  fence {
-            |    b = $text;
-            |  }
-            |}"""
+               |fsm f {
+               |  in u10 a;
+               |  out u1 b;
+               |  fence {
+               |    b = $text;
+               |  }
+               |}""".stripMargin
           } getFirst {
             case StmtAssign(_, rhs) => rhs
           } tap {
@@ -972,13 +979,13 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
             text in {
               fold {
                 s"""
-                |fsm f {
-                |  in  $in_type  a;
-                |  out $out_type b;
-                |  fence {
-                |    b = $text;
-                |  }
-                |}"""
+                   |fsm f {
+                   |  in  $in_type  a;
+                   |  out $out_type b;
+                   |  fence {
+                   |    b = $text;
+                   |  }
+                   |}""".stripMargin
               } getFirst {
                 case StmtAssign(_, rhs) => rhs
               } tap {
@@ -1005,13 +1012,13 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
         text in {
           fold {
             s"""
-            |fsm f {
-            |  in u8 a;
-            |  out u1 b;
-            |  fence {
-            |    b = $text;
-            |  }
-            |}"""
+               |fsm f {
+               |  in u8 a;
+               |  out u1 b;
+               |  fence {
+               |    b = $text;
+               |  }
+               |}""".stripMargin
           } getFirst {
             case StmtAssign(_, rhs) => rhs
           } tap {
@@ -1044,13 +1051,13 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
         text in {
           fold {
             s"""
-            |fsm f {
-            |  in u8 a;
-            |  out u2 b;
-            |  fence {
-            |    b = $text;
-            |  }
-            |}"""
+               |fsm f {
+               |  in u8 a;
+               |  out u2 b;
+               |  fence {
+               |    b = $text;
+               |  }
+               |}""".stripMargin
           } getFirst {
             case StmtAssign(_, rhs) => rhs
           } tap {
@@ -1083,22 +1090,22 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
         text in {
           fold {
             s"""
-            |fsm f {
-            |  in u8 a;
-            |  in u3 b;
-            |  in u2[8] v;
-            |  out u1 c;
-            |  out u2 d;
-            |  fence {
-            |    $text;
-            |  }
-            |}"""
+               |fsm f {
+               |  in u8 a;
+               |  in u3 b;
+               |  in u2[8] v;
+               |  out u1 c;
+               |  out u2 d;
+               |  fence {
+               |    $text;
+               |  }
+               |}""".stripMargin
           } getFirst {
             case StmtAssign(_, rhs) => rhs
           } tap {
             _ should matchPattern(pattern)
           }
-          cc.messages shouldBe empty
+          cc.messages filterNot { _.isInstanceOf[Warning] } shouldBe empty
         }
       }
     }
@@ -1123,22 +1130,22 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
         text in {
           fold {
             s"""
-            |fsm f {
-            |  in u7 a;
-            |  in u1 b;
-            |  out u7 c;
-            |  out u1 d;
-            |  in i7 e;
-            |  fence {
-            |    $text;
-            |  }
-            |}"""
+               |fsm f {
+               |  in u7 a;
+               |  in u1 b;
+               |  out u7 c;
+               |  out u1 d;
+               |  in i7 e;
+               |  fence {
+               |    $text;
+               |  }
+               |}""".stripMargin
           } getFirst {
             case StmtAssign(_, rhs) => rhs
           } tap {
             _ should matchPattern(pattern)
           }
-          cc.messages shouldBe empty
+          cc.messages filterNot { _.isInstanceOf[Warning] } shouldBe empty
         }
       }
     }
@@ -1156,20 +1163,20 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
         text in {
           fold {
             s"""
-             |fsm f {
-             |  in u1 a;
-             |  in u7 b;
-             |  out u1 c;
-             |  out u8 d;
-             |  u8 mem[8];
-             |  fence { $text; }
-             |}"""
+               |fsm f {
+               |  in u1 a;
+               |  in u7 b;
+               |  out u1 c;
+               |  out u8 d;
+               |  u8 mem[8];
+               |  fence { $text; }
+               |}""".stripMargin
           } getFirst {
             case StmtAssign(_, rhs) => rhs
           } tap {
             _ should matchPattern(pattern)
           }
-          cc.messages shouldBe empty
+          cc.messages filterNot { _.isInstanceOf[Warning] } shouldBe empty
         }
       }
     }
@@ -1188,20 +1195,20 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
         text in {
           fold {
             s"""
-            |fsm f {
-            |  in u8 a;
-            |  in i8 b;
-            |  void main() {
-            |    $$display("", $text);
-            |    fence;
-            |  }
-            |}"""
+               |fsm f {
+               |  in u8 a;
+               |  in i8 b;
+               |  void main() {
+               |    $$display("", $text);
+               |    fence;
+               |  }
+               |}""".stripMargin
           } getFirst {
             case ExprCall(_, _ :: ArgP(expr) :: Nil) => expr
           } tap {
             _ should matchPattern(pattern)
           }
-          cc.messages shouldBe empty
+          cc.messages filterNot { _.isInstanceOf[Warning] } shouldBe empty
         }
       }
     }
@@ -1218,21 +1225,21 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
         text in {
           fold {
             s"""
-            |fsm f {
-            |  in u8 a;
-            |  in i8 b;
-            |  out u8 c;
-            |  void main() {
-            |    $$display("", $text);
-            |    fence;
-            |  }
-            |}"""
+               |fsm f {
+               |  in u8 a;
+               |  in i8 b;
+               |  out u8 c;
+               |  void main() {
+               |    $$display("", $text);
+               |    fence;
+               |  }
+               |}""".stripMargin
           } getFirst {
             case ExprCall(_, _ :: ArgP(expr) :: Nil) => expr
           } tap {
             _ should matchPattern(pattern)
           }
-          cc.messages shouldBe empty
+          cc.messages filterNot { _.isInstanceOf[Warning] } shouldBe empty
         }
       }
     }
@@ -1297,21 +1304,21 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
         text in {
           fold {
             s"""
-            |fsm f {
-            |  in u4 a;
-            |  in u4 b;
-            |  out u1 c;
-            |  out u28 d;
-            |  fence {
-            |    $text;
-            |  }
-            |}"""
+               |fsm f {
+               |  in u4 a;
+               |  in u4 b;
+               |  out u1 c;
+               |  out u28 d;
+               |  fence {
+               |    $text;
+               |  }
+               |}""".stripMargin
           } getFirst {
             case StmtAssign(_, rhs) => rhs
           } tap {
             _ should matchPattern(pattern)
           }
-          cc.messages shouldBe empty
+          cc.messages filterNot { _.isInstanceOf[Warning] } shouldBe empty
         }
       }
     }
@@ -1328,19 +1335,19 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
         text in {
           fold {
             s"""
-            |fsm f {
-            |  in u4 a;
-            |  out u1 c;
-            |  fence {
-            |    $text;
-            |  }
-            |}"""
+               |fsm f {
+               |  in u4 a;
+               |  out u1 c;
+               |  fence {
+               |    $text;
+               |  }
+               |}""".stripMargin
           } getFirst {
             case StmtAssign(_, rhs) => rhs
           } tap {
             _ should matchPattern(pattern)
           }
-          cc.messages shouldBe empty
+          cc.messages filterNot { _.isInstanceOf[Warning] } shouldBe empty
         }
       }
     }
@@ -1374,22 +1381,22 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
         text in {
           fold {
             s"""
-            |fsm f {
-            |  in u4 a;
-            |  in u4 b;
-            |  in u4 c;
-            |  out u3 d;
-            |  out u7 e;
-            |  fence {
-            |    $text;
-            |  }
-            |}"""
+               |fsm f {
+               |  in u4 a;
+               |  in u4 b;
+               |  in u4 c;
+               |  out u3 d;
+               |  out u7 e;
+               |  fence {
+               |    $text;
+               |  }
+               |}""".stripMargin
           } getFirst {
             case StmtAssign(_, rhs) => rhs
           } tap {
             _ should matchPattern(pattern)
           }
-          cc.messages shouldBe empty
+          cc.messages filterNot { _.isInstanceOf[Warning] } shouldBe empty
         }
       }
     }
@@ -1444,21 +1451,21 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
         text in {
           fold {
             s"""
-            |fsm f {
-            |  in u4 a;
-            |  out u3 c;
-            |  out u7 d;
-            |  out u11 e;
-            |  fence {
-            |    $text;
-            |  }
-            |}"""
+               |fsm f {
+               |  in u4 a;
+               |  out u3 c;
+               |  out u7 d;
+               |  out u11 e;
+               |  fence {
+               |    $text;
+               |  }
+               |}""".stripMargin
           } getFirst {
             case StmtAssign(_, rhs) => rhs
           } tap {
             _ should matchPattern(pattern)
           }
-          cc.messages shouldBe empty
+          cc.messages filterNot { _.isInstanceOf[Warning] } shouldBe empty
         }
       }
     }
@@ -1594,30 +1601,30 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
           text in {
             fold {
               s"""
-              |struct b_t {
-              |  u2 f0;
-              |}
-              |
-              |struct a_t {
-              |  bool f0;
-              |  i7   f1;
-              |  b_t  f2;
-              |}
-              |
-              |(* toplevel *)
-              |fsm x {
-              |  a_t a;
-              |  void main() {
-              |    $$display("", $text);
-              |    fence;
-              |  }
-              |}"""
+                 |struct b_t {
+                 |  u2 f0;
+                 |}
+                 |
+                 |struct a_t {
+                 |  bool f0;
+                 |  i7   f1;
+                 |  b_t  f2;
+                 |}
+                 |
+                 |(* toplevel *)
+                 |fsm x {
+                 |  a_t a;
+                 |  void main() {
+                 |    $$display("", $text);
+                 |    fence;
+                 |  }
+                 |}""".stripMargin
             } getFirst {
               case ExprCall(_, List(_, ArgP(e))) => e
             } tap {
               _ shouldBe result
             }
-            cc.messages shouldBe empty
+            cc.messages filterNot { _.isInstanceOf[Warning] } shouldBe empty
           }
         }
       }
@@ -1673,7 +1680,6 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
           text in {
             simplify(text) shouldBe result
             checkSingleError(err)
-
           }
         }
       }
@@ -1694,19 +1700,19 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
       } expr in {
         fold {
           s"""
-          |fsm a {
-          |  const u36 A = {{24{1'b0}}, {12{1'b1}}};
-          |  const u41 B = {5'h1, A[35:0]};
-          |  const u8  C = 2;
-          |  const u7  D = 3s;
-          |  const i6  E = 4;
-          |  const i5  F = 5s;
-          |
-          |  void main() {
-          |    $$display("", $expr);
-          |    fence;
-          |  }
-          |}"""
+             |fsm a {
+             |  const u36 A = {{24{1'b0}}, {12{1'b1}}};
+             |  const u41 B = {5'h1, A[35:0]};
+             |  const u8  C = 2;
+             |  const u7  D = 3s;
+             |  const i6  E = 4;
+             |  const i5  F = 5s;
+             |
+             |  void main() {
+             |    $$display("", $expr);
+             |    fence;
+             |  }
+             |}""".stripMargin
         } getFirst {
           case ExprCall(_, _ :: ArgP(expr) :: Nil) => expr
         } tap {
@@ -1744,7 +1750,7 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
              |    $$display("", $expr);
              |    fence;
              |  }
-             |}"""
+             |}""".stripMargin
         } getFirst {
           case ExprCall(_, _ :: ArgP(expr) :: Nil) => expr
         } tap {
@@ -1775,36 +1781,36 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
         stmt in {
           fold {
             s"""
-            |fsm a {
-            |  struct struct_t {
-            |    u8 a;
-            |    u8 b;
-            |    u4[2] c;
-            |  }
-            |  const u8[3] A = {8'd5, 8'd123, 8'd7};
-            |  const u2[3] B = {2'd2, 2'd1, 2'd0};
-            |  const i2[3] Bs= {-2'sd1, -2'sd1, 2'sd0};
-            |  const struct_t C = {8'd47, 8'd23, {4'd3, 4'd4}};
-            |
-            |  in  u2 i_2;
-            |  in  u3 i_3;
-            |  out u1 o_1;
-            |  out u2 o_2;
-            |  out i2 os_2;
-            |  out u4 o_4;
-            |  out u8 o_8;
-            |  out u16 o_16;
-            |
-            |  fence {
-            |    $stmt;
-            |  }
-            |}"""
+               |fsm a {
+               |  struct struct_t {
+               |    u8 a;
+               |    u8 b;
+               |    u4[2] c;
+               |  }
+               |  const u8[3] A = {8'd5, 8'd123, 8'd7};
+               |  const u2[3] B = {2'd2, 2'd1, 2'd0};
+               |  const i2[3] Bs= {-2'sd1, -2'sd1, 2'sd0};
+               |  const struct_t C = {8'd47, 8'd23, {4'd3, 4'd4}};
+               |
+               |  in  u2 i_2;
+               |  in  u3 i_3;
+               |  out u1 o_1;
+               |  out u2 o_2;
+               |  out i2 os_2;
+               |  out u4 o_4;
+               |  out u8 o_8;
+               |  out u16 o_16;
+               |
+               |  fence {
+               |    $stmt;
+               |  }
+               |}""".stripMargin
           } getFirst {
             case StmtAssign(_, rhs) => rhs.simplify
           } tap {
             _ should matchPattern(pattern)
           }
-          cc.messages shouldBe empty
+          cc.messages filterNot { _.isInstanceOf[Warning] } shouldBe empty
         }
       }
     }
@@ -1826,21 +1832,21 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
         stmt in {
           fold {
             s"""
-            |fsm a {
-            |  const u8    A = 8'b10101100;
-            |  const u2[3] B = {2'd2, 2'd1, 2'd0};
-            |
-            |  in  u1 i_1;
-            |  in  u2 i_2;
-            |  in  u3 i_3;
-            |  out u1 o_1;
-            |  out u2 o_2;
-            |  out u4 o_4;
-            |
-            |  fence {
-            |    $stmt;
-            |  }
-            |}"""
+               |fsm a {
+               |  const u8    A = 8'b10101100;
+               |  const u2[3] B = {2'd2, 2'd1, 2'd0};
+               |
+               |  in  u1 i_1;
+               |  in  u2 i_2;
+               |  in  u3 i_3;
+               |  out u1 o_1;
+               |  out u2 o_2;
+               |  out u4 o_4;
+               |
+               |  fence {
+               |    $stmt;
+               |  }
+               |}""".stripMargin
           } getFirst {
             case StmtAssign(_, rhs) => rhs
           } tap {
@@ -1855,58 +1861,58 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
         (exprSrc, kindSrc, pattern, err) <-
           List[(String, String, PartialFunction[Any, Unit], List[String])](
             // format: off
-          ("32", "u8", { case ExprInt(false, 8, v) if v == 32 => }, Nil),
-          ("32s", "i8", { case ExprInt(true, 8, v) if v == 32=> }, Nil),
-          ("-1s", "i8", { case ExprInt(true, 8, v) if v == -1 => }, Nil),
-          ("32", "u4", { case ExprError() => }, "Value 32 cannot be represented with 4 unsigned bits" :: Nil),
-          ("32s", "i4", { case ExprError() => }, "Value 32 cannot be represented with 4 signed bits" :: Nil),
-          ("31", "u5", { case ExprInt(false, 5, v) if v == 31 => }, Nil),
-          ("31s", "i5", { case ExprError() => }, "Value 31 cannot be represented with 5 signed bits" :: Nil),
-          ("10'sd12",  "int", { case ExprNum(true, v) if v == 12 => }, Nil),
-          ("10'd12",  "uint", { case ExprNum(false, v) if v == 12 => }, Nil),
-          ("-10'sd1",  "int", { case ExprNum(true, v) if v == -1 => }, Nil),
-          ("a",  "u10", { case ExprCat(List(ExprInt(false, 2, z), ExprSym(Symbol("a")))) if z == 0  => }, Nil),
-          ("b",  "i10", { case ExprCall(
-                                ExprSym(Symbol("$signed")),
-                                List(ArgP(ExprCat(List(
-                                      ExprRep(
-                                        Expr(3),
-                                        ExprIndex(
-                                          ExprSym(Symbol("b")),
-                                          ExprInt(false, 3, i))),
-                                      ExprSym(Symbol("b"))))))) if i == 6 =>
-          }, Nil),
-          ("a",  "u8", { case ExprSym(Symbol("a")) => }, Nil),
-          ("b",  "i7", { case ExprSym(Symbol("b")) => }, Nil),
-          ("c",  "u10", { case ExprInt(false, 10, v) if v == 7 => }, Nil),
-          ("c", "uint", { case ExprNum(false, v) if v == 7 => }, Nil),
-          ("d",  "i10", { case ExprInt(true, 10, v) if v == -3 => }, Nil),
-          ("d",  "int", { case ExprNum(true, v) if v == -3 => }, Nil)
-          // format: on
+            ("32", "u8", { case ExprInt(false, 8, v) if v == 32 => }, Nil),
+            ("32s", "i8", { case ExprInt(true, 8, v) if v == 32=> }, Nil),
+            ("-1s", "i8", { case ExprInt(true, 8, v) if v == -1 => }, Nil),
+            ("32", "u4", { case ExprError() => }, "Value 32 cannot be represented with 4 unsigned bits" :: Nil),
+            ("32s", "i4", { case ExprError() => }, "Value 32 cannot be represented with 4 signed bits" :: Nil),
+            ("31", "u5", { case ExprInt(false, 5, v) if v == 31 => }, Nil),
+            ("31s", "i5", { case ExprError() => }, "Value 31 cannot be represented with 5 signed bits" :: Nil),
+            ("10'sd12",  "int", { case ExprNum(true, v) if v == 12 => }, Nil),
+            ("10'd12",  "uint", { case ExprNum(false, v) if v == 12 => }, Nil),
+            ("-10'sd1",  "int", { case ExprNum(true, v) if v == -1 => }, Nil),
+            ("a",  "u10", { case ExprCat(List(ExprInt(false, 2, z), ExprSym(Symbol("a")))) if z == 0  => }, Nil),
+            ("b",  "i10", { case ExprCall(
+                                  ExprSym(Symbol("$signed")),
+                                  List(ArgP(ExprCat(List(
+                                        ExprRep(
+                                          Expr(3),
+                                          ExprIndex(
+                                            ExprSym(Symbol("b")),
+                                            ExprInt(false, 3, i))),
+                                        ExprSym(Symbol("b"))))))) if i == 6 =>
+            }, Nil),
+            ("a",  "u8", { case ExprSym(Symbol("a")) => }, Nil),
+            ("b",  "i7", { case ExprSym(Symbol("b")) => }, Nil),
+            ("c",  "u10", { case ExprInt(false, 10, v) if v == 7 => }, Nil),
+            ("c", "uint", { case ExprNum(false, v) if v == 7 => }, Nil),
+            ("d",  "i10", { case ExprInt(true, 10, v) if v == -3 => }, Nil),
+            ("d",  "int", { case ExprNum(true, v) if v == -3 => }, Nil)
+            // format: on
           )
       } {
         s"($kindSrc)($exprSrc)" in {
           fold {
             s"""
-            |fsm f {
-            |  u8 a;
-            |  i7 b;
-            |  const u8 c =  7;
-            |  const i8 d = -3s;
-            |  void main() {
-            |    $$display("", $exprSrc);
-            |    fence;
-            |  }
-            |}"""
+               |fsm f {
+               |  u8 a;
+               |  i7 b;
+               |  const u8 c =  7;
+               |  const i8 d = -3s;
+               |  void main() {
+               |    $$display("", $exprSrc);
+               |    fence;
+               |  }
+               |}""".stripMargin
           } getFirst {
             case ExprCall(_, List(_, ArgP(e))) => e
           } tap { expr =>
-            cc.messages shouldBe empty
+            cc.messages filterNot { _.isInstanceOf[Warning] } shouldBe empty
             val kind = kindSrc.asTree[Expr] match {
               case ExprType(kind) => kind
               case _              => fail
             }
-            ExprCast(kind, expr) withLoc Loc.synthetic rewrite {
+            TypeAssigner(ExprCast(kind, expr) withLoc Loc.synthetic) rewrite {
               cc.simpifyExpr
             } should matchPattern(pattern)
             checkSingleError(err)
@@ -1951,11 +1957,11 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
                |    $$display("", $expr);
                |    fence;
                |  }
-               |}"""
+               |}""".stripMargin
           } getFirst {
             case ExprCall(_, List(_, ArgP(e))) => e
           } tap { expr =>
-            cc.messages shouldBe empty
+            cc.messages filterNot { _.isInstanceOf[Warning] } shouldBe empty
             expr should matchPattern(pattern)
           }
         }
@@ -1981,23 +1987,22 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
         decl in {
           fold {
             s"""
-            |struct s_t {
-            |  bool x;
-            |}
-            |
-            |network e_t {
-            |}
-            |
-            |(* toplevel *)
-            |network a {
-            |  typedef bool  bool_t;
-            |  typedef i2    i2_t;
-            |  typedef u2[3] v3u2_t;
-            |  typedef void  void_t;
-            |  typedef s_t   ts_t;
-            |
-            |  $decl
-            |}"""
+               |struct s_t {
+               |  bool x;
+               |}
+               |
+               |network e_t {
+               |}
+               |
+               |network a {
+               |  typedef bool  bool_t;
+               |  typedef i2    i2_t;
+               |  typedef u2[3] v3u2_t;
+               |  typedef void  void_t;
+               |  typedef s_t   ts_t;
+               |
+               |  $decl
+               |}""".stripMargin
           } getFirst {
             case DeclIn(_, spec, _)    => spec
             case DeclConst(_, spec)    => spec

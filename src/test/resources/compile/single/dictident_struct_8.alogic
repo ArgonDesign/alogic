@@ -15,5 +15,5 @@ network dictident_struct_8 {
 
   i -> inner.ii; inner.oo -> o;
 }
-// :6: ERROR: 'i_t#\[0\]' defined multiple times after processing 'gen' constructs
-// :7: ERROR: 'o_t#\[0\]' defined multiple times after processing 'gen' constructs
+// :6: ERROR: 'i_t#\[0\]' has multiple definitions
+// :7: ERROR: 'o_t#\[0\]' has multiple definitions

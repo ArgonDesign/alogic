@@ -1,0 +1,13 @@
+import a as x;
+
+fsm top {
+  in       u4 i;
+  out wire u4 o;
+
+  void main() {
+    o = i + x.y.C;
+    fence;
+  }
+}
+
+// .*/top.alogic:8: ERROR: No member named 'y' in value of type '.*/a/package.alogic'

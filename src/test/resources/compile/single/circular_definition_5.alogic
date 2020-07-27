@@ -1,0 +1,5 @@
+network circular_definition_5 {
+  const u32 x = x < 1 ? 1 : x;
+}
+// :2: ERROR: Circular definition: value of symbol 'x'
+// :2: NOTE: Depends on value of symbol 'x'

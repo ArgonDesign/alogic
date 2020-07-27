@@ -14,8 +14,8 @@ import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Symbols.Symbol
-import com.argondesign.alogic.typer.TypeAssigner
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -56,7 +56,7 @@ final class CreateTemporaries(implicit cc: CompilerContext) extends StatelessTre
       TypeAssigner(decl.copy(decls = decl.decls appendedAll extraDecls) withLoc tree.loc)
 
     case defn: DefnEntity if tmpSymbols.nonEmpty =>
-      val extraBody = tmpSymbols.iterator map { s => EntDefn(s.mkDefn) regularize s.loc }
+      val extraBody = tmpSymbols.iterator map { s => EntSplice(s.mkDefn) regularize s.loc }
       TypeAssigner(defn.copy(body = defn.body appendedAll extraBody) withLoc defn.loc)
 
     ////////////////////////////////////////////////////////////////////////////

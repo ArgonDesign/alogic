@@ -1,0 +1,4 @@
+fsm bad_void_type_01 {
+  const void a = 0;
+}
+// :2: ERROR: Constant cannot have a 'void' type

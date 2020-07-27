@@ -19,15 +19,17 @@ import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Types.TypeEntity
-import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.SequenceNumbers
+import com.argondesign.alogic.util.unreachable
 
+import java.security.MessageDigest
 import scala.annotation.tailrec
-import scala.collection.concurrent.TrieMap
 import scala.collection.Iterable
-import scala.collection.mutable
+import scala.collection.concurrent.TrieMap
 import scala.collection.parallel.CollectionConverters._
+import scala.util.chaining.scalaUtilChainingOps
 
 object RenameSymbols {
 
@@ -138,7 +140,9 @@ object RenameSymbols {
       implicit
       cc: CompilerContext
     ): Unit =
-    symbols.groupBy(_.name).iterator filter { _._2.sizeIs > 1 } foreach {
+    symbols
+      .groupBy(_.name)
+      .iterator filter { _._2.sizeIs > 1 } foreach {
       case (name, symbols) =>
         // Group by line
         val groupedByLine = symbols.groupBy(_.loc.line)
@@ -178,87 +182,113 @@ object RenameSymbols {
           cc: CompilerContext
         ): Iterable[(Decl, Defn)] = {
 
-        // Set of top level names to avoid collissions
-        val topNames = mutable.Set[String]()
+        // Set of top level names to avoid collisions
+        val topNames = TrieMap[String, Unit]()
 
         // Map from (entitySymbol, publicSymbolOldName) -> publicSymbolNewName
         val publicNameMap = TrieMap[(Symbol, String), String]()
 
-        // Process each Entity
-        input.par foreach {
-          case (DeclEntity(eSymbol, decls), _) =>
-            ////////////////////////////////////////////////////////////////////
-            // Rename the member symbols
-            ////////////////////////////////////////////////////////////////////
+        // Process each Entity, grouped by name
+        input.par
+          .collect {
+            case (decl: DeclEntity, _) => decl
+          }
+          .groupBy(_.symbol.name) foreach {
+          case (_, eDecls) =>
+            // Process entities with the same name in a defined order to ensure
+            // deterministic output.
+            val sequenceNumbers = LazyList.from(0).iterator
+            eDecls.toSeq.seq.sortBy(_.loc) foreach {
+              case DeclEntity(eSymbol, decls) =>
+                ////////////////////////////////////////////////////////////////////
+                // Rename the member symbols
+                ////////////////////////////////////////////////////////////////////
 
-            val publicSymbols = Set.from(eSymbol.kind.asType.kind.asEntity.publicSymbols)
+                val publicSymbols = Set.from(eSymbol.kind.asType.kind.asEntity.publicSymbols)
 
-            val symbols = decls map { _.symbol }
+                val symbols = decls.map(_.symbol)
 
-            // Rename symbols within entities that have the same name
-            makeNamesUnique(symbols, publicSymbols)
-
-            // Only run on very last rename pass (just before code generation)
-            if (last) {
-              // Rename symbols with names that are target language keywords
-              symbols foreach { symbol =>
-                val newName = fixIfKeyword(symbol.name)
-                // Memorize mapping of renamed public symbols
-                if (publicSymbols(symbol) && newName != symbol.name) {
-                  publicNameMap((eSymbol, symbol.name)) = newName
-                }
-                symbol.name = newName
-              }
-            }
-
-            ////////////////////////////////////////////////////////////////////
-            // Rename the entity
-            ////////////////////////////////////////////////////////////////////
-
-            // Only run on very last rename pass (just before code generation)
-            if (last) {
-              // Add entity prefix if provided
-              val ep = cc.settings.ensurePrefix
-              val prefix = (0 to ep.length) collectFirst {
-                case n if eSymbol.name startsWith ep.drop(n) => ep.take(n)
-              }
-
-              // Also ensure the entity name is not keyword
-              val nameWithPrefix = fixIfKeyword(prefix.get + eSymbol.name)
-
-              // Enforce max name length if provided
-              val nameWithLegalLen = cc.settings.outputNameMaxLength match {
-                case Some(limit) if nameWithPrefix.length > limit && !eSymbol.attr.topLevel.isSet =>
-                  val (nameKeep, nameDrop) = nameWithPrefix.splitAt(limit - 16)
-
-                  @tailrec
-                  def generateUniqueShortName(salt: Int): String = {
-                    val shortName = {
-                      val salted = salt.toString + nameDrop
-                      val md5Buf =
-                        java.security.MessageDigest.getInstance("MD5").digest(salted.getBytes)
-                      val md5Str = md5Buf take 7 map {
-                        "%02x" format _
-                      } mkString ""
-                      s"${nameKeep}_h$md5Str"
-                    }
-
-                    // Try again on hash collision
-                    if (topNames(shortName)) generateUniqueShortName(salt + 1) else shortName
+                def rename(symbol: Symbol, newName: String): Unit = {
+                  // Memorize mapping of renamed public symbols
+                  if (publicSymbols(symbol) && newName != symbol.name) {
+                    publicNameMap((eSymbol, symbol.name)) = newName
                   }
+                  symbol.name = newName
+                }
 
-                  generateUniqueShortName(0)
-                case _ => nameWithPrefix
-              }
+                // Only run on very last rename pass (just before code generation)
+                if (last) {
+                  // Make all names valid target language identifiers
+                  (eSymbol :: symbols) foreach { symbol =>
+                    val newName = symbol.name
+                      .replace("#[", cc.sep)
+                      .replace(",", "_")
+                      .replace("]", "")
+                      .replace("-", "n")
+                    rename(symbol, fixIfKeyword(newName))
+                  }
+                }
 
-              // Finally rename the symbol, check consistency, and remember name
-              eSymbol.name = nameWithLegalLen
-              assert(!topNames(eSymbol.name), "entity name collision")
-              topNames addOne eSymbol.name
+                // Rename symbols within entities that have the same name
+                makeNamesUnique(symbols, publicSymbols)
+
+                // Only run on very last rename pass (just before code generation)
+                if (last) {
+                  ////////////////////////////////////////////////////////////////////
+                  // Rename the entity
+                  ////////////////////////////////////////////////////////////////////
+
+                  eSymbol.name = eSymbol.name pipe { newName =>
+                    // Add entity prefix (no-op if the given prefix is empty)
+                    val ep = cc.settings.ensurePrefix
+                    // Drop longest suffix of 'ep' which is is a prefix of 'newName'
+                    val prefix = (0 until ep.length) collectFirst {
+                      case n if newName startsWith ep.drop(n) => ep.take(n)
+                    } getOrElse ep
+                    // Also ensure the resulting name is not keyword
+                    fixIfKeyword(prefix + newName)
+                  } pipe { newName =>
+                    // Ensure names are unique, but don't mangle singular names
+                    // or names of top-level entities
+                    if (eDecls.size == 1 || eSymbol.attr.topLevel.isSet) {
+                      newName
+                    } else {
+                      newName + cc.sep + sequenceNumbers.next
+                    }
+                  } pipe { newName =>
+                    // Enforce max name length if provided
+                    cc.settings.outputNameMaxLength match {
+                      case Some(limit) if newName.length > limit && !eSymbol.attr.topLevel.isSet =>
+                        // Name is longer than limit
+                        val (nameKeep, nameDrop) = newName.splitAt(limit - 16)
+
+                        @tailrec
+                        def generateUniqueShortName(salt: Int): String = {
+                          val shortName = {
+                            val salted = salt.toString + nameDrop
+                            val md5Buf = MessageDigest.getInstance("MD5").digest(salted.getBytes)
+                            val md5Str = md5Buf.take(7).map("%02x" format _).mkString("")
+                            s"${nameKeep}_h$md5Str"
+                          }
+
+                          // Insert, try again on collision
+                          topNames.putIfAbsent(shortName, ()) match {
+                            case None => shortName
+                            case _    => generateUniqueShortName(salt + 1)
+                          }
+                        }
+
+                        generateUniqueShortName(0)
+                      case _ =>
+                        // Insert, cannot have a collision
+                        topNames.putIfAbsent(newName, ()) match {
+                          case None => newName
+                          case _    => unreachable
+                        }
+                    }
+                  }
+                }
             }
-
-          //
-          case _ =>
         }
 
         // If we renamed public symbols, fix select references
@@ -268,7 +298,7 @@ object RenameSymbols {
           assert(last, "Should only rename public symbols on last rename pass")
           object Transform extends StatelessTreeTransformer {
             override protected def transform(tree: Tree): Tree = tree match {
-              case expr @ ExprSel(tgt, selector, _) =>
+              case expr @ ExprSel(tgt, selector) =>
                 tgt.tpe match {
                   case TypeEntity(eSymbol, _) =>
                     publicNameMap.get((eSymbol, selector)) map { newSelector =>

@@ -1,0 +1,7 @@
+network param_bad_02 {
+  param bool P = true;
+}
+
+compile param_bad_02(P=@randbit()) as top;
+
+// :5: ERROR: Actual parameter value must be a compile time constant

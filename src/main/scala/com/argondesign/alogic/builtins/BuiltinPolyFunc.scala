@@ -1,15 +1,10 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2018 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2020 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
 //
-// Module: Alogic Compiler
-// Author: Geza Lore
-//
 // DESCRIPTION:
-//
 // Base for builtin polymorphic functions
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -25,6 +20,7 @@ import com.argondesign.alogic.core.Types.Type
 import com.argondesign.alogic.core.Types.TypeCombFunc
 import com.argondesign.alogic.core.Types.TypeFund
 import com.argondesign.alogic.core.Types.TypePolyFunc
+import com.argondesign.alogic.frontend.Frontend
 import com.argondesign.alogic.util.PartialMatch
 import com.argondesign.alogic.util.unreachable
 
@@ -52,10 +48,8 @@ abstract class BuiltinPolyFunc(implicit cc: CompilerContext)
   protected[this] val name: String
 
   // Type of return value for given arguments, or None if these arguments are invalid
-  protected[this] def returnType(args: List[Expr]): Option[TypeFund]
-
-  // Is this a known compile time constant?
-  protected[this] def isKnown(args: List[Expr]): Boolean
+  // TODO: Should return frontend.Result[TypeFund] and messages properly
+  protected[this] def returnType(args: List[Expr], feOpt: Option[Frontend]): Option[TypeFund]
 
   // Is this a pure function?
   protected[builtins] val isPure: Boolean
@@ -66,9 +60,6 @@ abstract class BuiltinPolyFunc(implicit cc: CompilerContext)
   //////////////////////////////////////////////////////////////////////////////
   // Implementation
   //////////////////////////////////////////////////////////////////////////////
-
-  // Is this a known compile time constant?
-  private[builtins] def isKnownConst(args: List[Arg]): Boolean = isKnown(pargs(args))
 
   // Fold calls to this function
   private[builtins] def fold(loc: Loc, args: List[Arg]): Option[Expr] = simplify(loc, pargs(args))
@@ -81,9 +72,9 @@ abstract class BuiltinPolyFunc(implicit cc: CompilerContext)
   final private[this] val overloads = TrieMap[(Type, List[Type]), Symbol]()
 
   // The resolver for TypePolyFunc
-  final private[this] def resolver(args: List[Arg]): Option[Symbol] = {
+  final private[this] def resolver(args: List[Arg], feOpt: Option[Frontend]): Option[Symbol] = {
     val pas = pargs(args)
-    returnType(pas) map { retType =>
+    returnType(pas, feOpt) map { retType =>
       val argTypes = pas map { _.tpe }
       overloads.getOrElseUpdate(
         (retType, argTypes),

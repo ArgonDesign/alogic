@@ -14,13 +14,13 @@ import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Messages.Fatal
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types.TypeRecord
 import com.argondesign.alogic.core.Types.TypeVoid
 import com.argondesign.alogic.transform.StatementFilter
-import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
@@ -118,17 +118,20 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatelessTreeTra
       val temporaries = {
         // Decl/Defn for non-constant actual arguments
         val aDecls = aSymbols.iterator map { aSymbol =>
-          StmtDecl(aSymbol.mkDecl) regularize aSymbol.loc
+          StmtSplice(aSymbol.mkDecl) regularize aSymbol.loc
         }
         val aDefns = (aSymbols.iterator zip aExprs.iterator) map {
           case (aSymbol, aExpr) =>
-            // Make defn then normalize it to resolve unary ticks
-            (StmtDefn(aSymbol.mkDefn(Some(aExpr))) regularize aSymbol.loc).normalize
+            StmtSplice(aSymbol.mkDefn(Some(aExpr))) regularize aSymbol.loc
         }
 
         // Decl/Defn for optional return value
-        val rDeclOpt = rSymbolOpt map { rSymbol => StmtDecl(rSymbol.mkDecl) regularize rSymbol.loc }
-        val rDefnOpt = rSymbolOpt map { rSymbol => StmtDefn(rSymbol.mkDefn) regularize rSymbol.loc }
+        val rDeclOpt = rSymbolOpt map { rSymbol =>
+          StmtSplice(rSymbol.mkDecl) regularize rSymbol.loc
+        }
+        val rDefnOpt = rSymbolOpt map { rSymbol =>
+          StmtSplice(rSymbol.mkDefn) regularize rSymbol.loc
+        }
 
         aDecls concat aDefns concat rDeclOpt concat rDefnOpt
       }
@@ -257,13 +260,13 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatelessTreeTra
         }
         val unused = Set from {
           inlined.iterator collect {
-            case StmtDecl(Decl(symbol)) if !referenced(symbol) => symbol
+            case StmtSplice(Decl(symbol)) if !referenced(symbol) => symbol
           }
         }
         val filter = StatementFilter {
-          case StmtDecl(Decl(symbol)) => !unused(symbol)
-          case StmtDefn(Defn(symbol)) => !unused(symbol)
-          case StmtAssign(lhs, _)     => !(WrittenSymbols(lhs) forall unused)
+          case StmtSplice(Decl(symbol)) => !unused(symbol)
+          case StmtSplice(Defn(symbol)) => !unused(symbol)
+          case StmtAssign(lhs, _)       => !(WrittenSymbols(lhs) forall unused)
         }
         inlined.iterator flatMap {
           filter(_) match {
@@ -284,8 +287,8 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatelessTreeTra
     require(tgt.tpe.isMethod)
     Option.unless(tgt.tpe.isStaticMethod) {
       tgt match {
-        case ExprSel(ExprSym(symbol), _, _) => symbol
-        case _                              => throw Ice(tgt, "Don't know how to translate that method call")
+        case ExprSel(ExprSym(symbol), _) => symbol
+        case _                           => throw Ice(tgt, "Don't know how to translate that method call")
       }
     }
   }

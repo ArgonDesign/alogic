@@ -1,0 +1,20 @@
+// Very complicated way of writing a 1-bit wire that hits a code coverage
+// hole in TypeOf.scala
+
+network type_of_13 {
+  in  uint(M) i;
+  out u1      o;
+
+  // Requires type of 'i' during elaboration
+  gen if (@bits(i) == 1) {
+    i -> o;
+  }
+
+  // Required for type of 'i'
+  param uint M;
+}
+
+compile type_of_13() as top;
+
+// :17: ERROR: 'M' requires actual parameter value
+// :14: NOTE: 'M' is defined here

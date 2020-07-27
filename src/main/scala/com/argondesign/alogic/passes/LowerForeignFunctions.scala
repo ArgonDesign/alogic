@@ -20,14 +20,15 @@ import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FuncVariant
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.SequenceNumbers
 
 import scala.collection.immutable.ListMap
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
+import scala.math.Ordered.orderingToOrdered
 
 final class LowerForeignFunctions(
     encountered: mutable.Map[String, (TypeXenoFunc, List[String])]
@@ -51,11 +52,10 @@ final class LowerForeignFunctions(
           case Some((kind, _)) =>
             val newKind = symbol.kind.asXenoFunc
             if (kind.retType != newKind.retType || kind.argTypes != newKind.argTypes) {
-              cc.error(
-                tree,
-                "Foreign function imported with different signatures. First import is at:",
-                kind.symbol.loc.prefix
-              )
+              val (a, b) =
+                if (kind.symbol < symbol) (kind.symbol, symbol) else (symbol, kind.symbol)
+              cc.error(b, "Foreign function imported with different signatures.")
+              cc.note(a, "Conflicting 'import' is here")
             }
         }
       }
@@ -117,7 +117,7 @@ final class LowerForeignFunctions(
       val newBody = List from {
         defn.body.iterator concat {
           extraSymbols.iterator map { symbol =>
-            EntDefn(symbol.mkDefn) regularize symbol.loc
+            EntSplice(symbol.mkDefn) regularize symbol.loc
           }
         }
       }

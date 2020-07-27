@@ -10,6 +10,8 @@
 
 package com.argondesign.alogic.core
 
+import com.argondesign.alogic.ast.Trees.Desc
+
 import scala.io.AnsiColor
 
 object Messages {
@@ -108,6 +110,7 @@ object Messages {
   object Note {
     def apply(msg: String*): Note = Note(Loc.unknown, msg)
     def apply[T](item: T, msg: String*)(implicit ev: Locatable[T]): Note = Note(ev(item), msg)
+    def definedHere(desc: Desc): Note = Note(desc, s"'${desc.symbol.name}' is defined here")
   }
 
   //////////////////////////////////////////////////////////////////////////////

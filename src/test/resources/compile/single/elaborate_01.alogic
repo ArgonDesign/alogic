@@ -1,0 +1,13 @@
+network elaborate_01 {
+  in  u1 i;
+  i -> o;
+  out u1 o;
+}
+// @fec/golden {{{
+//  module elaborate_01(
+//    input  wire i,
+//    output wire o
+//  );
+//    assign o = i;
+//  endmodule
+// }}}

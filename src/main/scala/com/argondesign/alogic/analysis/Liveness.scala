@@ -222,7 +222,7 @@ object Liveness {
             val caseReaders = cases flatMap {
               case CaseRegular(cond, _) => cond
               case _: CaseDefault       => Nil
-              case _: CaseGen           => unreachable
+              case _: CaseSplice        => unreachable
             }
             val readers = expr :: caseReaders
             val reads = readers map { usedRv }
@@ -233,7 +233,7 @@ object Liveness {
               val sets = cases map {
                 case CaseRegular(_, stmt) => analyse(dLive, cDead, stmt)
                 case CaseDefault(stmt)    => analyse(dLive, cDead, stmt)
-                case _: CaseGen           => unreachable
+                case _: CaseSplice        => unreachable
               }
 
               val explicitDefault = cases exists {

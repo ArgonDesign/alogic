@@ -17,13 +17,15 @@ case class Loc(
     end: Int, // End index (exclusive) into text of 'source'
     point: Int // Index of '^' caret in text of 'source'
   ) {
-  require(start <= point && point <= end)
+  require(start <= point && point <= end, toString)
 
   // Prefix used for printing messages
   def prefix: String = s"$file:$line"
 
   // Construct context lines
-  def context(highlightStart: String, highlightReset: String): String = {
+  def context(highlightStart: String, highlightReset: String): String = if (start == end) {
+    ""
+  } else {
     require(highlightStart.nonEmpty == highlightReset.nonEmpty)
     val startLine = source.lineFor(start)
     val endLine = source.lineFor(end)
@@ -76,10 +78,16 @@ case class Loc(
     }
   }
 
+  // Check if this Loc range contains the given Loc range
+  def contains(that: Loc): Boolean =
+    this.file == that.file && this.start <= that.start && that.end <= this.end
+
+  def isSynthetic: Boolean = file startsWith "<synthetic>"
 }
 
 object Loc {
-  final val synthetic = Loc("<synthetic>", 0, Source("", ""), 0, 0, 0)
+  final def synth(tag: String) = Loc(s"<synthetic> $tag", 0, Source("", ""), 0, 0, 0)
+  final val synthetic = synth("")
   final val unknown = Loc("<unknown>", 0, Source("", ""), 0, 0, 0)
 
   //////////////////////////////////////////////////////////////////////////////

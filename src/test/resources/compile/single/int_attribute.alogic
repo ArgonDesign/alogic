@@ -1,0 +1,8 @@
+// Signed unsized integer attribute.
+// Hits a code coverage line in Elaborate.scala.
+(* reclimit = 1s *)
+fsm int_attribute {
+  void main() {
+    main();
+  }
+}

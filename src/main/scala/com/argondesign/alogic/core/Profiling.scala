@@ -16,7 +16,6 @@
 package com.argondesign.alogic.core
 
 import java.io.PrintWriter
-
 import scala.annotation.tailrec
 import scala.collection.mutable
 

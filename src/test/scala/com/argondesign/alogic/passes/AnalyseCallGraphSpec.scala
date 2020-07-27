@@ -1,28 +1,22 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2018 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2020 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
 //
-// Module: Alogic Compiler
-// Author: Geza Lore
-//
 // DESCRIPTION:
-//
-// AllocateReturnStack tests
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.Symbols.Symbol
-import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Messages.Error
+import com.argondesign.alogic.core.Messages.Warning
+import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FuncVariant
 import com.argondesign.alogic.core.SymbolAttributes
-import com.argondesign.alogic.core.Messages.Warning
+import com.argondesign.alogic.core.Symbols.Symbol
 import org.scalatest.freespec.AnyFreeSpec
 
 final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
@@ -31,12 +25,9 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
 
   private def analyseCallGraph(text: String): Thicket = Thicket {
     transformWithPass(
-      Namer andThen
-        Elaborate andThen
-        TypeCheck andThen
-        ReplaceUnaryTicks andThen
-        ResolvePolyFunc andThen
-        AddCasts andThen
+      FrontendPass andThen
+        DropPackageAndParametrizedDescs andThen
+        DescToDeclDefn andThen
         Fold andThen
         LowerLoops andThen
         AnalyseCallGraph,
@@ -50,11 +41,10 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
     "error for directly recursive functions without reclimit attribute" - {
       "simple" in {
         analyseCallGraph {
-          s"""
-          |fsm a {
-          |  void main() { foo(); }
-          |  void foo() { foo(); }
-          |}"""
+          s"""fsm a {
+             |  void main() { foo(); }
+             |  void foo() { foo(); }
+             |}""".stripMargin
         }
         cc.messages.loneElement should beThe[Error](
           "Recursive function 'foo' requires 'reclimit' attribute"
@@ -63,11 +53,10 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
 
       "even if stacklimit of enclosed entity is provided" in {
         analyseCallGraph {
-          s"""
-          |(* stacklimit = 2 *) fsm a {
-          |  void main() { foo(); }
-          |  void foo() { foo(); }
-          |}"""
+          s"""(* stacklimit = 2 *) fsm a {
+             |  void main() { foo(); }
+             |  void foo() { foo(); }
+             |}""".stripMargin
         }
         cc.messages.loneElement should beThe[Error](
           "Recursive function 'foo' requires 'reclimit' attribute"
@@ -77,22 +66,20 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
 
     "do not error for directly recursive functions with reclimit attribute" in {
       analyseCallGraph {
-        s"""
-        |fsm a {
-        |  void main() { foo(); }
-        |  (* reclimit = 2 *) void foo() { foo(); }
-        |}"""
+        s"""fsm a {
+           |  void main() { foo(); }
+           |  (* reclimit = 2 *) void foo() { foo(); }
+           |}""".stripMargin
       }
       cc.messages shouldBe empty
     }
 
     "do not error for functions that goto themselves without reclimit attribute" in {
       analyseCallGraph {
-        s"""
-        |fsm a {
-        |  void main() { foo(); }
-        |  void foo() { goto foo(); }
-        |}"""
+        s"""fsm a {
+           |  void main() { foo(); }
+           |  void foo() { goto foo(); }
+           |}""".stripMargin
       }
       cc.messages shouldBe empty
     }
@@ -100,12 +87,11 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
     "error for indirectly recursive functions without reclimit attribute" - {
       "2 cycle" in {
         analyseCallGraph {
-          s"""
-          |fsm a {
-          |  void main() { foo(); }
-          |  void foo() { bar(); }
-          |  void bar() { foo(); }
-          |}"""
+          s"""fsm a {
+             |  void main() { foo(); }
+             |  void foo() { bar(); }
+             |  void bar() { foo(); }
+             |}""".stripMargin
         }
         cc.messages should have length 2
         cc.messages(0) should beThe[Error](
@@ -118,12 +104,11 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
 
       "3 cycle" in {
         analyseCallGraph {
-          s"""
-          |fsm a {
-          |  void main() { foo(); }
-          |  void foo() { bar(); }
-          |  void bar() { main(); }
-          |}"""
+          s"""fsm a {
+             |  void main() { foo(); }
+             |  void foo() { bar(); }
+             |  void bar() { main(); }
+             |}""".stripMargin
         }
         cc.messages should have length 3
         cc.messages(0) should beThe[Error](
@@ -141,24 +126,22 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
     "do not error for indirectly recursive functions with reclimit attribute" - {
       "2 cycle" in {
         analyseCallGraph {
-          s"""
-          |fsm a {
-          |  void main() { foo(); }
-          |  (* reclimit = 2 *) void foo() { bar(); }
-          |  (* reclimit = 2 *) void bar() { foo(); }
-          |}"""
+          s"""fsm a {
+             |  void main() { foo(); }
+             |  (* reclimit = 2 *) void foo() { bar(); }
+             |  (* reclimit = 2 *) void bar() { foo(); }
+             |}""".stripMargin
         }
         cc.messages shouldBe empty
       }
 
       "3 cycle" in {
         analyseCallGraph {
-          s"""
-          |fsm a {
-          |  (* reclimit = 2 *) void main() { foo(); }
-          |  (* reclimit = 2 *) void foo() { bar(); }
-          |  (* reclimit = 2 *) void bar() { main(); }
-          |}"""
+          s"""fsm a {
+             |  (* reclimit = 2 *) void main() { foo(); }
+             |  (* reclimit = 2 *) void foo() { bar(); }
+             |  (* reclimit = 2 *) void bar() { main(); }
+             |}""".stripMargin
         }
         cc.messages shouldBe empty
       }
@@ -167,33 +150,30 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
     "do not error for recursion through gotos only without reclimit attributes" - {
       "direct" in {
         analyseCallGraph {
-          s"""
-          |fsm a {
-          |  void main() { goto main(); }
-          |}"""
+          s"""fsm a {
+             |  void main() { goto main(); }
+             |}""".stripMargin
         }
         cc.messages shouldBe empty
       }
 
       "2 cycle" in {
         analyseCallGraph {
-          s"""
-          |fsm a {
-          |  void main() { goto foo(); }
-          |  void foo() { goto main(); }
-          |}"""
+          s"""fsm a {
+             |  void main() { goto foo(); }
+             |  void foo() { goto main(); }
+             |}""".stripMargin
         }
         cc.messages shouldBe empty
       }
 
       "3 cycle" in {
         analyseCallGraph {
-          s"""
-          |fsm a {
-          |  void main() { goto foo(); }
-          |  void foo() { goto bar(); }
-          |  void bar() { goto main(); }
-          |}"""
+          s"""fsm a {
+             |  void main() { goto foo(); }
+             |  void foo() { goto bar(); }
+             |  void bar() { goto main(); }
+             |}""".stripMargin
         }
         cc.messages shouldBe empty
       }
@@ -201,22 +181,20 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
 
     "error for non-computable reclimit attribute" in {
       analyseCallGraph {
-        s"""
-        |fsm a {
-        |  (* reclimit = @randbit() *) void main() { main(); }
-        |}"""
+        s"""fsm a {
+           |  (* reclimit = @randbit() *) void main() { main(); }
+           |}""".stripMargin
       }
       cc.messages.loneElement should beThe[Error](
-        "Cannot compute value of 'reclimit' attribute of function 'main'"
+        "'reclimit' attribute must be a compile time constant"
       )
     }
 
     "error for reclimit 1" in {
       analyseCallGraph {
-        s"""
-        |fsm a {
-        |  (* reclimit = 1 *) void main() { main(); }
-        |}"""
+        s"""fsm a {
+           |  (* reclimit = 1 *) void main() { main(); }
+           |}""".stripMargin
       }
       cc.messages.loneElement should beThe[Error](
         "Recursive function 'main' has 'reclimit' attribute equal to 1"
@@ -226,11 +204,10 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
     "warn for ignored reclimit attribute" - {
       "non-recursive" in {
         analyseCallGraph {
-          s"""
-          |fsm a {
-          |  void main() { foo(); }
-          |  (* reclimit = 2 *) void foo() { fence; }
-          |}"""
+          s"""fsm a {
+             |  void main() { foo(); }
+             |  (* reclimit = 2 *) void foo() { fence; }
+             |}""".stripMargin
         }
         cc.messages.loneElement should beThe[Warning](
           "'reclimit' attribute ignored on function 'foo'"
@@ -239,11 +216,10 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
 
       "tail recursion only" in {
         analyseCallGraph {
-          s"""
-          |fsm a {
-          |  void main() { foo(); }
-          |  (* reclimit = 2 *) void foo() { goto foo(); }
-          |}"""
+          s"""fsm a {
+             |  void main() { foo(); }
+             |  (* reclimit = 2 *) void foo() { goto foo(); }
+             |}""".stripMargin
         }
         cc.messages.loneElement should beThe[Warning](
           "'reclimit' attribute ignored on function 'foo'"
@@ -253,10 +229,9 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
       "recursion through gotos only" - {
         "direct" in {
           analyseCallGraph {
-            s"""
-            |fsm a {
-            |  (* reclimit = 2 *) void main() { goto main(); }
-            |}"""
+            s"""fsm a {
+               |  (* reclimit = 2 *) void main() { goto main(); }
+               |}""".stripMargin
           }
           cc.messages.loneElement should beThe[Warning](
             "'reclimit' attribute ignored on function 'main'"
@@ -265,11 +240,10 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
 
         "2 cycle" in {
           analyseCallGraph {
-            s"""
-            |fsm a {
-            |  (* reclimit = 2 *) void main() { goto foo(); }
-            |  (* reclimit = 2 *) void foo() { goto main(); }
-            |}"""
+            s"""fsm a {
+               |  (* reclimit = 2 *) void main() { goto foo(); }
+               |  (* reclimit = 2 *) void foo() { goto main(); }
+               |}""".stripMargin
           }
           cc.messages should have length 2
           cc.messages(0) should beThe[Warning](
@@ -282,12 +256,11 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
 
         "3 cycle" in {
           analyseCallGraph {
-            s"""
-            |fsm a {
-            |  (* reclimit = 2 *) void main() { goto foo(); }
-            |  (* reclimit = 2 *) void foo() { goto bar(); }
-            |  (* reclimit = 2 *) void bar() { goto main(); }
-            |}"""
+            s"""fsm a {
+               |  (* reclimit = 2 *) void main() { goto foo(); }
+               |  (* reclimit = 2 *) void foo() { goto bar(); }
+               |  (* reclimit = 2 *) void bar() { goto main(); }
+               |}""".stripMargin
           }
           cc.messages should have length 3
           cc.messages(0) should beThe[Warning](
@@ -304,11 +277,10 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
 
       "even if stacklimit is provided" in {
         analyseCallGraph {
-          s"""
-          |(* stacklimit = 1 *) fsm a {
-          |  (* reclimit = 2 *) void main() { foo(); main(); }
-          |  (* reclimit = 2 *) void foo() { fence; }
-          |}"""
+          s"""(* stacklimit = 1 *) fsm a {
+             |  (* reclimit = 2 *) void main() { foo(); main(); }
+             |  (* reclimit = 2 *) void foo() { fence; }
+             |}""".stripMargin
         }
         cc.messages.loneElement should beThe[Warning](
           "'reclimit' attribute ignored on function 'foo'"
@@ -319,22 +291,20 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
 
     "error for non-computable stacklimit attribute" in {
       analyseCallGraph {
-        s"""
-        |(* stacklimit = @randbit() *) fsm a {
-        |   (*reclimit = 2 *) void main() { main(); }
-        |}"""
+        s"""(* stacklimit = @randbit() *) fsm a {
+           |   (*reclimit = 2 *) void main() { main(); }
+           |}""".stripMargin
       }
       cc.messages.loneElement should beThe[Error](
-        "Cannot compute value of 'stacklimit' attribute of entity 'a'"
+        "'stacklimit' attribute must be a compile time constant"
       )
     }
 
     "error for stacklimit 0" in {
       analyseCallGraph {
-        s"""
-        |(* stacklimit = 0 *) fsm a {
-        |   (*reclimit = 2 *) void main() { main(); }
-        |}"""
+        s"""(* stacklimit = 0 *) fsm a {
+           |   (*reclimit = 2 *) void main() { main(); }
+           |}""".stripMargin
       }
       cc.messages.loneElement should beThe[Error](
         "Entity 'a' has 'stacklimit' attribute equal to 0"
@@ -344,11 +314,10 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
     "warn for ignored stacklimit attribute " - {
       "non-recursive fsm" in {
         analyseCallGraph {
-          s"""
-          |(* stacklimit = 2 *) fsm a {
-          |  void main() { foo(); }
-          |  void foo() { fence; }
-          |}"""
+          s"""(* stacklimit = 2 *) fsm a {
+             |  void main() { foo(); }
+             |  void foo() { fence; }
+             |}""".stripMargin
         }
         cc.messages.loneElement should beThe[Warning](
           "'stacklimit' attribute ignored on entity 'a'"
@@ -357,9 +326,8 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
 
       "no functions" in {
         analyseCallGraph {
-          s"""
-          |(* stacklimit = 2 *) network a {
-          |}"""
+          s"""(* stacklimit = 2 *) network a {
+             |}""".stripMargin
         }
         cc.messages.loneElement should beThe[Warning](
           "'stacklimit' attribute ignored on entity 'a'"
@@ -403,15 +371,15 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
       "if call graph is tree and only one call to each" in {
         val result = analyseCallGraph {
           """fsm fsm_e {
-             |  void main() { a(); b(); c(); }
-             |  void a() { e(); f(); return; }
-             |  void b() { goto d(); }
-             |  void c() { return; }
-             |  void d() { goto g(); }
-             |  void e() { return; }
-             |  void f() { return; }
-             |  void g() { return; }
-             |}"""
+            |  void main() { a(); b(); c(); }
+            |  void a() { e(); f(); return; }
+            |  void b() { goto d(); }
+            |  void c() { return; }
+            |  void d() { goto g(); }
+            |  void e() { return; }
+            |  void f() { return; }
+            |  void g() { return; }
+            |}""".stripMargin
         }
         val defnEntity = result getFirst {
           case entity: DefnEntity => entity
@@ -443,13 +411,13 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
       "if all returns have static return point" in {
         val result = analyseCallGraph {
           """fsm fsm_e {
-             |  in bool pi;
-             |  void main() { a(); }
-             |  void a() { if (pi) { goto b(); } else { goto c(); } }
-             |  void b() { return; }
-             |  void c() { d(); return; }
-             |  void d() { return; }
-             |}"""
+            |  in bool pi;
+            |  void main() { a(); }
+            |  void a() { if (pi) { goto b(); } else { goto c(); } }
+            |  void b() { return; }
+            |  void c() { d(); return; }
+            |  void d() { return; }
+            |}""".stripMargin
         }
         val defnEntity = result getFirst {
           case entity: DefnEntity => entity
@@ -482,11 +450,11 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
       "when return points are not static" in {
         val result = analyseCallGraph {
           """fsm fsm_e {
-             |  void main() { a(); b(); }
-             |  void a() { goto c(); }
-             |  void b() { goto c(); }
-             |  void c() { return; }
-             |}"""
+            |  void main() { a(); b(); }
+            |  void a() { goto c(); }
+            |  void b() { goto c(); }
+            |  void c() { return; }
+            |}""".stripMargin
         }
         val defnEntity = result getFirst {
           case entity: DefnEntity => entity
@@ -517,10 +485,10 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
         "1" in {
           val result = analyseCallGraph {
             """fsm fsm_e {
-               |  void main() { a(); a(); b(); }
-               |  void a() { return; }
-               |  void b() { return; }
-               |}"""
+              |  void main() { a(); a(); b(); }
+              |  void a() { return; }
+              |  void b() { return; }
+              |}""".stripMargin
           }
           val defnEntity = result getFirst {
             case entity: DefnEntity => entity
@@ -551,11 +519,11 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
         "2" in {
           val result = analyseCallGraph {
             """fsm fsm_e {
-               |  void main() { a(); b(); }
-               |  void a() { c(); return; }
-               |  void b() { c(); return; }
-               |  void c() { return; }
-               |}"""
+              |  void main() { a(); b(); }
+              |  void a() { c(); return; }
+              |  void b() { c(); return; }
+              |  void c() { return; }
+              |}""".stripMargin
           }
           val defnEntity = result getFirst {
             case entity: DefnEntity => entity
@@ -592,15 +560,15 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
         // Only need to use the stack when we call b or d, so stack depth should be 2
         val result = analyseCallGraph {
           """fsm fsm_e {
-             |  void main() { a(); }
-             |  void a() { b(); b(); return; }
-             |  void b() { goto b2(); }
-             |  void b2() { c(); return; }
-             |  void c() { d(); d(); return; }
-             |  void d() { goto d2(); }
-             |  void d2() { e(); return; }
-             |  void e() { return; }
-             |}"""
+            |  void main() { a(); }
+            |  void a() { b(); b(); return; }
+            |  void b() { goto b2(); }
+            |  void b2() { c(); return; }
+            |  void c() { d(); d(); return; }
+            |  void d() { goto d2(); }
+            |  void d2() { e(); return; }
+            |  void e() { return; }
+            |}""".stripMargin
         }
         val defnEntity = result getFirst {
           case entity: DefnEntity => entity
@@ -644,14 +612,14 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
         // So c has a static return point yet must still pop the stack.
         val result = analyseCallGraph {
           """fsm fsm_e {
-             |  in bool pi;
-             |  void main() { a(); b(); }
-             |  void a() {
-             |    if (pi) { goto c(); } else { goto b(); }
-             |  }
-             |  void b() { return; }
-             |  void c() { return; }
-             |}"""
+            |  in bool pi;
+            |  void main() { a(); b(); }
+            |  void a() {
+            |    if (pi) { goto c(); } else { goto b(); }
+            |  }
+            |  void b() { return; }
+            |  void c() { return; }
+            |}""".stripMargin
         }
         val defnEntity = result getFirst {
           case entity: DefnEntity => entity
@@ -683,12 +651,12 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
         // Calls to b, c and d require pushes but not a.
         val result = analyseCallGraph {
           """fsm fsm_e {
-             |  void main() { a(); }
-             |  void a() { b(); b(); return; }
-             |  void b() { c(); c(); return; }
-             |  void c() { d(); d(); return; }
-             |  void d() { return; }
-             |}"""
+            |  void main() { a(); }
+            |  void a() { b(); b(); return; }
+            |  void b() { c(); c(); return; }
+            |  void c() { d(); d(); return; }
+            |  void d() { return; }
+            |}""".stripMargin
         }
         val defnEntity = result getFirst {
           case entity: DefnEntity => entity
@@ -727,8 +695,8 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
       "returning to top of main if return called" in {
         val result = analyseCallGraph {
           """fsm fsm_e {
-             |  void main() { return; }
-             |}"""
+            |  void main() { return; }
+            |}""".stripMargin
         }
         val defnEntity = result getFirst {
           case entity: DefnEntity => entity
@@ -754,9 +722,9 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
       "returning to top of main after goto in main function" in {
         val result = analyseCallGraph {
           """fsm fsm_e {
-             |  void main() { goto a(); }
-             |  void a() { return; }
-             |}"""
+            |  void main() { goto a(); }
+            |  void a() { return; }
+            |}""".stripMargin
         }
         val defnEntity = result getFirst {
           case entity: DefnEntity => entity
@@ -783,8 +751,8 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
         // The return statement in the body of main could go to either of the two states.
         val result = analyseCallGraph {
           """fsm fsm_e {
-             |  (* reclimit = 2 *) void main() { main(); return; }
-             |}"""
+            |  (* reclimit = 2 *) void main() { main(); return; }
+            |}""".stripMargin
         }
         val defnEntity = result getFirst {
           case entity: DefnEntity => entity
@@ -815,9 +783,9 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
         // The return statement in the body of main will either go to a or to the start of main.
         val result = analyseCallGraph {
           """fsm fsm_e {
-             |  (* reclimit = 3 *) void main() { a(); return; }
-             |  (* reclimit = 3 *) void a() { main(); return; }
-             |}"""
+            |  (* reclimit = 3 *) void main() { a(); return; }
+            |  (* reclimit = 3 *) void a() { main(); return; }
+            |}""".stripMargin
         }
         val defnEntity = result getFirst {
           case entity: DefnEntity => entity

@@ -21,11 +21,11 @@ import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Bindings
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.enums.ResetStyle
-import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.SequenceNumbers
 import com.argondesign.alogic.util.unreachable
 
@@ -84,10 +84,11 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatefulTreeTr
     case TypeCombStmt        => unreachable
     case TypeCtrlStmt        => unreachable
     //
-    case TypeUnknown  => unreachable
-    case _: TypeState => unreachable
-    case TypeMisc     => unreachable
-    case TypeError    => unreachable
+    case _: TypeState   => unreachable
+    case TypeMisc       => unreachable
+    case TypeError      => unreachable
+    case _: TypePackage => unreachable
+    case _: TypeScope   => unreachable
   }
 
   override protected def skip(tree: Tree): Boolean = tree match {
@@ -99,9 +100,9 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatefulTreeTr
 
     // If assertions are not enabled, just convert them to assumptions if the
     // condition is pure, otherwise drop them
-    case StmtAssertion(AssertionAssert(cond, msgOpt)) if !cc.settings.assertions =>
+    case StmtSplice(AssertionAssert(cond, msgOpt)) if !cc.settings.assertions =>
       if (cond.isPure) {
-        StmtAssertion(AssertionAssume(cond, msgOpt)) regularize tree.loc
+        StmtSplice(AssertionAssume(cond, msgOpt)) regularize tree.loc
       } else {
         Stump
       }
@@ -109,7 +110,7 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatefulTreeTr
     // If assertions are enabled, convert them to deferred assertions, but
     // leave in the original as an assume to be used by folding. The assume
     // will be removed by the RemoveAssume pass.
-    case StmtAssertion(AssertionAssert(cond, msgOpt)) =>
+    case StmtSplice(AssertionAssert(cond, msgOpt)) =>
       val prefix = s"_assert_${assertSeqNum.next}"
       val comment = s"'assert' on line ${tree.loc.line}"
       val enSymbol = cc.newSymbol(s"${prefix}_en", tree.loc)
@@ -139,7 +140,7 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatefulTreeTr
           lb.append(StmtAssign(ExprSym(newSymbol), ExprSym(symbol)) regularize cond.loc)
       }
       if (cond.isPure) {
-        lb.append(StmtAssertion(AssertionAssume(cond, msgOpt)) regularize cond.loc)
+        lb.append(StmtSplice(AssertionAssume(cond, msgOpt)) regularize cond.loc)
       }
       Thicket(lb.toList)
 
@@ -151,14 +152,14 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatefulTreeTr
         defn.body.iterator concat {
           assertions.iterator flatMap {
             case (enSymbol, _, condSymbols, _, _) =>
-              Iterator.single(EntDefn(enSymbol.mkDefn) regularize enSymbol.loc) concat {
+              Iterator.single(EntSplice(enSymbol.mkDefn) regularize enSymbol.loc) concat {
                 condSymbols.iterator map { condSymbol =>
-                  EntDefn(condSymbol.mkDefn) regularize condSymbol.loc
+                  EntSplice(condSymbol.mkDefn) regularize condSymbol.loc
                 }
               }
           }
         } concat {
-          val aEnDefn = EntDefn(aEnSymbol.mkDefn) regularize defn.loc;
+          val aEnDefn = EntSplice(aEnSymbol.mkDefn) regularize defn.loc;
           val aEnAssign = {
             val rstInactive = cc.settings.resetStyle match {
               case ResetStyle.AsyncHigh | ResetStyle.SyncHigh => !ExprSym(defn.rst.get)
@@ -180,7 +181,7 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatefulTreeTr
                     StmtComment(comment),
                     StmtIf(
                       ExprSym(enSymbol),
-                      StmtAssertion(AssertionAssert(cond, msgOpt)) :: Nil,
+                      StmtSplice(AssertionAssert(cond, msgOpt)) :: Nil,
                       Nil
                     ) regularize enSymbol.loc
                   )

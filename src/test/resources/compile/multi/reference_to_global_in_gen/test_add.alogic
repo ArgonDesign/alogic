@@ -1,10 +1,10 @@
 fsm test_add {
-  in sync u16 a;
-  in sync u16 b;
-  out sync u16 c;
+  in       u2 a;
+  in       u2 b;
+  out wire u2 c;
 
   void main() {
-    c.write(a + b);
+    c.write(a.read() + b.read());
     fence;
   }
 }

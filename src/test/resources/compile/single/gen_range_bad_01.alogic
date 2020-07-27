@@ -1,0 +1,5 @@
+network gen_range_bad_01 {
+  gen for (u8 n <= 256) {
+  }
+}
+// :2: ERROR: End value 256 is out of range for variable 'n' with type 'u8'

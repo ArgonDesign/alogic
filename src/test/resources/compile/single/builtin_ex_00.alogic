@@ -1,0 +1,20 @@
+fsm builtin_ex_00 {
+  // Need to go through a symbol, as they are only evaulatable through the
+  // Frontend during elaboration
+  const uint C = 2;
+
+  out wire u3 o;
+
+  void main() {
+    o = {1'b1, @ex(1'b0, C, 1'b1)};
+    fence;
+  }
+}
+
+// @fec/golden {{{
+//  module builtin_ex_00(
+//    output wire [2:0] o
+//  );
+//    assign o = 3'b101;
+//  endmodule
+// }}}

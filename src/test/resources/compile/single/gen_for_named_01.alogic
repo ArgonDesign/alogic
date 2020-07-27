@@ -1,0 +1,17 @@
+fsm gen_for_named_01 {
+  in        u4 i;
+  out wire  u4 o_0;
+  out wire  u4 o_1;
+
+  void main() {
+    gen for (uint n = 0 ; n < 2 ; n++) : block {
+      u4 b#[n] = i + n;
+    }
+    o_0 = b#[0];
+    o_1 = b#[1];
+    fence;
+  }
+}
+// :10: ERROR: 'b#\[0\]' is undefined
+// :11: ERROR: 'b#\[1\]' is undefined
+

@@ -1,11 +1,50 @@
 fsm dictident_main_fsm {
-  in  u2 i;
-  out u2 o;
+  out u2 o = 0;
   gen for (uint n < 2) {
     void main#[n]() {
-      o[n] = i[n];
+      o += n + 1;
       fence;
     }
   }
+  void main() {
+    o = 0;
+    main#[0]();
+    main#[1]();
+  }
 }
-// :5: ERROR: 'main' function cannot be declared with a dictionary identifier
+// @fec/smtc {{{
+//  always 1
+//  assert (= [golden.state_q] [alogic.state_q])
+// }}}
+// @fec/golden {{{
+//  module dictident_main_fsm(
+//    input wire       clk,
+//    input wire       rst,
+//    output reg [1:0] o
+//  );
+//    reg [1:0] state_q;
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        state_q <= 2'b0;
+//        o <= 2'd0;
+//      end else begin
+//        case (state_q)
+//          2'd0: begin
+//            state_q <= 2'd1;
+//            o <= 2'd0;
+//          end
+//          2'd1: begin
+//            state_q <= 2'd2;
+//            o <= 2'd1;
+//          end
+//          default: begin
+//            state_q <= 2'd0;
+//            o <= 2'd3;
+//          end
+//        endcase
+//      end
+//    end
+//
+//  endmodule
+// }}}

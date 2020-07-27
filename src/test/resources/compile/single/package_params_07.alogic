@@ -1,0 +1,3 @@
+import a().b;
+
+// :1: ERROR: Invalid import expression

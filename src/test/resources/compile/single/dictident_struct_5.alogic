@@ -26,9 +26,11 @@ network dictident_struct_5 {
     i#[N] -> inner.ii#[N]; inner.oo#[N] -> o#[N];
   }
 }
-// :19: ERROR: 'i_t' is ambiguous after processing 'gen' constructs. Active definitions at:
-// :19: ERROR: ... .*dictident_struct_5.alogic:8
-// :19: ERROR: ... .*dictident_struct_5.alogic:13
-// :20: ERROR: 'o_t' is ambiguous after processing 'gen' constructs. Active definitions at:
-// :20: ERROR: ... .*dictident_struct_5.alogic:9
-// :20: ERROR: ... .*dictident_struct_5.alogic:14
+// :8: ERROR: 'i_t#\[0\]' has multiple definitions
+// :13: ERROR: 'i_t#\[0\]' has multiple definitions
+// :8: ERROR: 'i_t#\[1\]' has multiple definitions
+// :13: ERROR: 'i_t#\[1\]' has multiple definitions
+// :9: ERROR: 'o_t#\[0\]' has multiple definitions
+// :14: ERROR: 'o_t#\[0\]' has multiple definitions
+// :9: ERROR: 'o_t#\[1\]' has multiple definitions
+// :14: ERROR: 'o_t#\[1\]' has multiple definitions

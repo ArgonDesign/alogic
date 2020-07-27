@@ -33,6 +33,8 @@ class Attribute[T] {
 
   def set(v: T): Unit = store = Some(v)
 
+  def updateWith(f: Option[T] => Option[T]): Unit = store = f(store)
+
   def append[E](v: E)(implicit a: Attribute.Appendable[E, T]): Unit = store match {
     case Some(coll) => store = Some(a.append(coll, v))
     case None       => store = Some(a.create(v))

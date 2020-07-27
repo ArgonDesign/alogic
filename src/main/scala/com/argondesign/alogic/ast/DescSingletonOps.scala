@@ -18,8 +18,6 @@ import com.argondesign.alogic.ast.Trees._
 
 trait DescSingletonOps { this: DescSingleton =>
 
-  final override lazy val descs: List[Desc] = body collect { case EntDesc(desc: Desc) => desc }
-
-  final override lazy val decls: List[Decl] = body collect { case EntDecl(decl) => decl }
+  final lazy val descs: List[Desc] = body collect { case EntSplice(desc: Desc) => desc }
 
 }

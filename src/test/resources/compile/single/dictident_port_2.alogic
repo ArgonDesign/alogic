@@ -15,5 +15,6 @@ network dictident_port_2 {
   i_0 -> inner.i#[0]; inner.o#[0] -> o_0;
   i_1 -> inner.i#[1]; inner.o#[1] -> o_1;
 }
-// :16: ERROR: No port named 'i#\[1\]' on instance 'inner'
-// :16: ERROR: No port named 'o#\[1\]' on instance 'inner'
+// :16: ERROR: No port named 'i#\[1\]' on singleton instance 'inner'
+// :7: NOTE: 'inner' is defined here
+// :16: ERROR: No port named 'o#\[1\]' on singleton instance 'inner'

@@ -1,0 +1,23 @@
+struct S{
+  param uint WIDTH;
+  uint(WIDTH) field;
+}
+
+gen if (true) : block {
+  using S(9) as T;
+}
+
+network using_specialized_02 {
+  in  block.T i;
+  out block.T o;
+  i -> o;
+}
+
+// @fec/golden {{{
+//  module using_specialized_02(
+//    input  wire [8:0] i__field,
+//    output wire [8:0] o__field
+//  );
+//    assign o__field = i__field;
+//  endmodule
+// }}}

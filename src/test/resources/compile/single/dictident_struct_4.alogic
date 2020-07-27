@@ -1,5 +1,4 @@
-// @top: dictident_struct_4()
-// @out-top: dictident_struct_4__P_1
+compile dictident_struct_4() as top;
 network dictident_struct_4 {
   param bool P = true;
   gen for (uint N < 2) {
@@ -32,7 +31,7 @@ network dictident_struct_4 {
   }
 }
 // @fec/golden {{{
-//  module dictident_struct_4__P_1(
+//  module top(
 //    input  wire       i__0,
 //    input  wire [1:0] i__1,
 //    output wire       o__0,

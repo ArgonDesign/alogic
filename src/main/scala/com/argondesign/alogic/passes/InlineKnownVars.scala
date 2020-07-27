@@ -20,8 +20,8 @@ import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Bindings
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Symbols.Symbol
-import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.BigIntOps._
 
 import scala.annotation.tailrec
@@ -113,7 +113,7 @@ final class InlineKnownVars(
 
     // Selects on structs are removed by SplitStruct but InlineKnownVars might
     // be called prior, e.g. from InlineMethods, so handle them if we can.
-    case e @ ExprSel(expr, sel, _) if expr.tpe.underlying.isRecord =>
+    case e @ ExprSel(expr, sel) if expr.tpe.underlying.isRecord =>
       Some {
         walk(expr).asInstanceOf[Expr].simplify match {
           case known: ExprInt =>

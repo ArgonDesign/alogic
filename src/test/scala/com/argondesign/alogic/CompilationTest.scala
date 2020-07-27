@@ -15,18 +15,13 @@
 
 package com.argondesign.alogic
 
-import java.io.File
-import java.io.PrintWriter
-import java.nio.file.Files
-import java.nio.file.Path
-import java.nio.file.Paths
+import com.argondesign.alogic.core.Loc
+import com.argondesign.alogic.core.MessageBuffer
 import com.argondesign.alogic.core.Messages.Error
 import com.argondesign.alogic.core.Messages.Fatal
 import com.argondesign.alogic.core.Messages.Message
 import com.argondesign.alogic.core.Messages.Note
 import com.argondesign.alogic.core.Messages.Warning
-import com.argondesign.alogic.core.Loc
-import com.argondesign.alogic.core.MessageBuffer
 import com.argondesign.alogic.core.Source
 import com.argondesign.alogic.core.enums.ResetStyle
 import com.argondesign.alogic.util.unreachable
@@ -37,6 +32,11 @@ import org.scalatest.fixture
 import org.scalatest.freespec.FixtureAnyFreeSpec
 import org.scalatest.Tag
 
+import java.io.File
+import java.io.PrintWriter
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.Paths
 import scala.collection.immutable.ListMap
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -818,6 +818,8 @@ trait CompilationTest
       }
     }
 
+    if (key.nonEmpty) { fail(s"Missing closing }}} for '${key.trim}' in test file") }
+
     finishPendingMessageSpec()
 
     (attrs.toMap, dicts.toMap, mesgSpecs.toList)
@@ -828,7 +830,7 @@ trait CompilationTest
         "expect-file",
         "ignore",
         "out-top",
-        "top",
+        "source-file",
         "verilator-lint-off"
       )
       attr.keysIterator foreach { k =>
@@ -847,15 +849,10 @@ trait CompilationTest
 
   private object EndToEndTest extends Tag("com.argondesign.alogic.tags.EndToEndTest")
 
-  def defineTest(
-      name: String,
-      searchPath: Path,
-      top: String,
-      checkFile: String
-    ): Unit = {
-    name taggedAs EndToEndTest in { configMap: ConfigMap =>
+  def defineTest(sourceFile: String): Unit =
+    sourceFile taggedAs EndToEndTest in { configMap: ConfigMap =>
       // Parse the check file
-      val (attr, dict, messageSpecs) = parseCheckFile(checkFile)
+      val (attr, dict, messageSpecs) = parseCheckFile(sourceFile)
 
       // Cancel test if required
       if (attr contains "ignore") {
@@ -875,20 +872,23 @@ trait CompilationTest
           val buf = new mutable.ArrayBuffer[String]
 
           // Arguments always required
-          buf append "-y"
-          buf append searchPath.toAbsolutePath.toString
           buf append "-o"
           buf append oPath.toAbsolutePath.toString
 
+          val sourceDir = Paths.get(sourceFile).getParent
+
+          def addArgs(args: String): Unit =
+            args
+              .split(" ")
+              .filter(_.nonEmpty)
+              .map(_.replaceAll("\\$TESTDIR", sourceDir.toString))
+              .foreach(buf.append)
+
           // Arguments specified in the tests
-          attr.get("args") foreach {
-            _.split(" ") filter { _.nonEmpty } foreach buf.append
-          }
+          attr.get("args") foreach addArgs
 
           // Arguments specified to ScalaTest
-          configMap.getOptional[String]("args") foreach {
-            _.split(" ") filter { _.nonEmpty } foreach buf.append
-          }
+          configMap.getOptional[String]("args") foreach addArgs
 
           // Override default reset style to make FEC easier
           if (!(buf contains "--reset-style")) {
@@ -901,8 +901,8 @@ trait CompilationTest
             buf append "--stats"
           }
 
-          // The top-level specifier
-          buf append attr.getOrElse("top", top)
+          // The input source file
+          buf append attr.getOrElse("source-file", sourceFile)
 
           buf.toArray
         }
@@ -979,11 +979,17 @@ trait CompilationTest
           //////////////////////////////////////////////////////////////////////
           // Check expected output file exists
           //////////////////////////////////////////////////////////////////////
-          attr get "expect-file" foreach { name =>
-            if (!(oPath resolve name).toFile.exists) {
-              fail(s"Expected output file was not created '$name'")
+
+          attr
+            .get("expect-file")
+            .iterator
+            .flatMap(_ split "\n")
+            .map(_.trim)
+            .foreach { name =>
+              if (!(oPath resolve name).toFile.exists) {
+                fail(s"Expected output file was not created '$name'")
+              }
             }
-          }
 
           //////////////////////////////////////////////////////////////////////
           // Load and check manifest
@@ -1013,7 +1019,13 @@ trait CompilationTest
             checkJson("stats.json", stats, expected)
           }
 
-          val outTop = attr.getOrElse("out-top", top)
+          val outTop = attr.getOrElse(
+            "out-top",
+            manifest.hcursor.downField("top-levels").keys.get.toSeq match {
+              case Seq(t) => t
+              case _      => fail("Need @out-top")
+            }
+          )
 
           dict get "sim" match {
             // Build and run testbench if provided
@@ -1038,6 +1050,5 @@ trait CompilationTest
         }
       }
     }
-  }
 
 }

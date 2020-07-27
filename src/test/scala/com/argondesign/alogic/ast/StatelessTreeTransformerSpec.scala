@@ -18,9 +18,9 @@ package com.argondesign.alogic.ast
 import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.SourceTextConverters._
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.Types.TypeUInt
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Messages.Warning
+import com.argondesign.alogic.core.Types.TypeUInt
 import com.argondesign.alogic.util.SequenceNumbers
 import org.scalatest.flatspec.AnyFlatSpec
 
@@ -43,8 +43,8 @@ final class StatelessTreeTransformerSpec extends AnyFlatSpec with AlogicTest {
     tree should matchPattern {
       case StmtBlock(
             List(
-              StmtDesc(DescVar(Ident("bar", Nil), ExprType(TypeUInt(w1)), None)),
-              StmtDesc(DescVar(Ident("bar", Nil), ExprType(TypeUInt(w2)), None))
+              StmtSplice(DescVar(Ident("bar", Nil), Nil, ExprType(TypeUInt(w1)), None)),
+              StmtSplice(DescVar(Ident("bar", Nil), Nil, ExprType(TypeUInt(w2)), None))
             )
           ) if w1 == 1 && w2 == 2 =>
     }

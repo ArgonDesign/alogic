@@ -17,12 +17,12 @@ package com.argondesign.alogic.antlr
 
 import com.argondesign.alogic.antlr.AlogicParser._
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.MessageBuffer
 import com.argondesign.alogic.core.SourceContext
 
 object ArgBuilder extends BaseBuilder[ArgContext, Arg] {
 
-  def apply(ctx: ArgContext)(implicit cc: CompilerContext, sc: SourceContext): Arg = {
+  def apply(ctx: ArgContext)(implicit mb: MessageBuffer, sc: SourceContext): Arg = {
     object Visitor extends AlogicScalarVisitor[Arg] {
       override def visitArgNamed(ctx: ArgNamedContext): Arg = {
         val Ident(name, idxs) = IdentBuilder(ctx.ident)
@@ -42,7 +42,7 @@ object ArgBuilder extends BaseBuilder[ArgContext, Arg] {
     Visitor(ctx)
   }
 
-  def apply(ctx: ArgsContext)(implicit cc: CompilerContext, sc: SourceContext): List[Arg] =
+  def apply(ctx: ArgsContext)(implicit mb: MessageBuffer, sc: SourceContext): List[Arg] =
     if (ctx == null) Nil else apply(ctx.arg)
 
 }

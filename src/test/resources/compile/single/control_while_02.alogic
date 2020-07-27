@@ -108,4 +108,4 @@ fsm control_while_02 {
 //
 // endmodule
 // }}}
-// @stats/control_while_02/states: 6
+// @stats/control_while_02.control_while_02/states: 6

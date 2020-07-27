@@ -1,9 +1,11 @@
 fsm if_then_else_redef_1 {
   void main() {
     if (false)
-      (* unused *) u8 a;
+      u8 a;
     else
-      (* unused *) i7 a;
+      i7 a;
     fence;
   }
 }
+// :4: WARNING: Variable 'a' is unused
+// :6: WARNING: Variable 'a' is unused

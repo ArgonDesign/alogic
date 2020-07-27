@@ -151,7 +151,7 @@ object StackFactory extends ChainingSyntax {
     val assign = EntAssign(qRef, sRefs.head)
 
     val decls = pusDecl :: popDecl :: setDecl :: dDecl :: qDecl :: sDecls
-    val defns = (pusDefn :: popDefn :: setDefn :: dDefn :: qDefn :: sDefns) map EntDefn
+    val defns = (pusDefn :: popDefn :: setDefn :: dDefn :: qDefn :: sDefns) map EntSplice
 
     val entitySymbol = cc.newSymbol(name, loc)
     val decl = DeclEntity(entitySymbol, decls) regularize loc

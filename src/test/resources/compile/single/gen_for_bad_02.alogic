@@ -1,0 +1,5 @@
+network gen_for_bad_02 {
+  gen for (u8 n = 0 ; 0 ; n++) {
+  }
+}
+// :2: ERROR: Condition of 'gen for' yields an unsized value, 1 bit is expected

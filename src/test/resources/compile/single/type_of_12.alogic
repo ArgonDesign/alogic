@@ -1,0 +1,29 @@
+// Very complicated way of writing a 1-bit wire that hits a code coverage
+// hole in TypeOf.scala
+
+network type_of_12 {
+  in  uint(@bits(s)) i;
+  out bool           o;
+
+  // Needs type of 'i' during elaboration
+  gen if (@bits(i) == 1) {
+    i -> o;
+  }
+
+  // Needed for type of 'i'
+  struct s {
+    bool f#[M];
+  }
+
+  // This prevents resolution of 'M' in the struct on the first try
+  const uint M = 1;
+}
+
+// @fec/golden {{{
+//  module type_of_12(
+//    input  wire i,
+//    output wire o
+//  );
+//    assign o = i;
+//  endmodule
+// }}}

@@ -1,5 +1,4 @@
-// @top: gen_alt_defn_5()
-// @out-top: gen_alt_defn_5__STRANGE_0
+compile gen_alt_defn_5() as top;
 network gen_alt_defn_5 {
   param bool STRANGE = false;
 
@@ -55,7 +54,7 @@ network gen_alt_defn_5 {
   inner_s.p_o -> p_out_s;
 }
 // @fec/golden {{{
-//  module gen_alt_defn_5__STRANGE_0(
+//  module top(
 //    input wire clk,
 //    input wire rst,
 //    input wire [1:0] p_in_0,

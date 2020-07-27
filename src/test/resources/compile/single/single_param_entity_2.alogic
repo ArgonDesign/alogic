@@ -13,4 +13,11 @@ network single_param_entity_2 {
   inst = new inner(1, 1);
   i -> inst.ii; inst.oo -> o;
 }
-// :13: ERROR: Multiple parameter assignments must be given by name
+// @fec/golden {{{
+//  module single_param_entity_2 (
+//    input  wire [1:0] i,
+//    output wire [1:0] o
+//  );
+//    assign o = i;
+//  endmodule
+// }}}

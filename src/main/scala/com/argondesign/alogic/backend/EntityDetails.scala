@@ -1,34 +1,24 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2018 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2020 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
 //
-// Module: Alogic Compiler
-// Author: Geza Lore
-//
 // DESCRIPTION:
-//
 // Unpicked entity details used in the backed
 ////////////////////////////////////////////////////////////////////////////////
 package com.argondesign.alogic.backend
 
 import com.argondesign.alogic.analysis.WrittenSymbols
-import com.argondesign.alogic.ast.Trees.Expr.InstancePortSel
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.ast.Trees.Expr.InstancePortSel
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.enums.EntityVariant
 
-final class EntityDetails(
-    val decl: DeclEntity,
-    val defn: DefnEntity,
-    details: => Map[Symbol, EntityDetails]
-  )(
-    implicit
-    cc: CompilerContext) {
+import scala.util.chaining.scalaUtilChainingOps
+
+final class EntityDetails(val decl: DeclEntity, val defn: DefnEntity) {
 
   assert {
     decl.decls forall {
@@ -49,7 +39,7 @@ final class EntityDetails(
 
   lazy val isVerbatim: Boolean = defn.variant == EntityVariant.Ver
 
-  lazy val hasConsts: Boolean = decl.decls exists { _.symbol.kind.isConst }
+  lazy val hasConsts: Boolean = constants.nonEmpty
 
   lazy val hasFlops: Boolean = decl.decls exists { _.symbol.attr.flop.isSet }
 
@@ -78,10 +68,10 @@ final class EntityDetails(
       _.attr.interconnect.isSet
     } flatMap { nSymbol =>
       defn.assigns collectFirst {
-        case EntAssign(lhs, ExprSel(ExprSym(iSymbol), sel, Nil))
+        case EntAssign(lhs, ExprSel(ExprSym(iSymbol), sel))
             if WrittenSymbols(lhs) contains nSymbol =>
           (iSymbol, sel, nSymbol)
-        case EntAssign(ExprSel(ExprSym(iSymbol), sel, Nil), rhs)
+        case EntAssign(ExprSel(ExprSym(iSymbol), sel), rhs)
             if rhs.isLValueExpr && (WrittenSymbols(rhs) contains nSymbol) =>
           (iSymbol, sel, nSymbol)
       }
@@ -157,6 +147,17 @@ final class EntityDetails(
     case EntAssign(InstancePortSel(_, _), _) => false
     case _                                   => true
   }
+
+  // Constants referenced by this entity
+  lazy val constants: List[Symbol] = List from {
+    decl.decls collect {
+      case DeclConst(symbol, _) => symbol
+    } concat {
+      defn collect {
+        case ExprSym(symbol) if symbol.kind.isConst => symbol
+      }
+    }
+  } pipe { _.distinct.sortBy(_.loc) }
 
   // Foreign functions referenced by this entity
   lazy val xenoFuncs: List[Symbol] = {

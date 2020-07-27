@@ -1,4 +1,3 @@
 
 #line 10 not_string_literal
 // :2: ERROR: Second argument to '#line' must be a string literal
-// FATAL: Stopping due to syntax errors

@@ -1,0 +1,17 @@
+// @args: --dump-trees
+from not import not;
+
+network top {
+  in  bool i;
+  out bool o;
+
+  inst = new not;
+
+  i -> inst.i; inst.o -> o;
+}
+// @expect-file {{{
+//   top.00.frontend.alogic
+//   not.00.frontend.alogic
+//   top.01.mark-top-levels.alogic
+//   not.01.mark-top-levels.alogic
+// }}}

@@ -1,0 +1,13 @@
+network elaborate_03 {
+  in  uint(@bits(o)) i;
+  out u1 o;
+  i -> o;
+}
+// @fec/golden {{{
+//  module elaborate_03(
+//    input  wire i,
+//    output wire o
+//  );
+//    assign o = i;
+//  endmodule
+// }}}

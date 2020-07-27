@@ -1,5 +1,4 @@
-// @top: arbitrary_connects_const_param_indices()
-// @out-top: arbitrary_connects_const_param_indices__Bu_7
+compile arbitrary_connects_const_param_indices() as top;
 network arbitrary_connects_const_param_indices {
 
     const uint Au = 5;
@@ -18,7 +17,7 @@ network arbitrary_connects_const_param_indices {
 
 }
 // @fec/golden {{{
-//  module arbitrary_connects_const_param_indices__Bu_7(
+//  module top(
 //    input  wire [31:0] in_const_index,
 //    input  wire [31:0] in_param_index,
 //    output wire [31:0] out_const_index,

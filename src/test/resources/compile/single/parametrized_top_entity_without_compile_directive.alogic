@@ -1,0 +1,4 @@
+network top {
+  param bool P;
+}
+// :1: ERROR: Parametrized top level definition requires an explicit 'compile' directive

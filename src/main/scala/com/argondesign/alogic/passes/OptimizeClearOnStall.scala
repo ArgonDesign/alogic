@@ -59,7 +59,7 @@ final class OptimizeClearOnStall(implicit cc: CompilerContext) extends Stateless
             cases flatMap {
               case CaseRegular(_, ss) => enumeratePaths(ss)
               case CaseDefault(ss)    => enumeratePaths(ss)
-              case _: CaseGen         => unreachable
+              case _: CaseSplice      => unreachable
             }
           case _ => unreachable
         }

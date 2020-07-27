@@ -10,4 +10,4 @@ fsm gen_for_scope_2 {
     fence;
   }
 }
-// :9: ERROR: 'c' is not defined
+// :9: ERROR: 'c' is undefined

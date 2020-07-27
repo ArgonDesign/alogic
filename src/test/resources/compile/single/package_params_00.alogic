@@ -1,0 +1,11 @@
+param uint WIDTH;
+
+network package_params_00 {
+  in  uint(WIDTH) i;
+  out uint(WIDTH) o;
+
+  i -> o;
+}
+
+// command-line:1: ERROR: 'WIDTH' requires actual parameter value
+// :1: NOTE: 'WIDTH' is defined here

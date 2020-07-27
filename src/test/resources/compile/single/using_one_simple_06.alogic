@@ -1,0 +1,17 @@
+struct S {
+  static bool not(bool i) { return ~i; }
+}
+
+using S;
+
+fsm using_one_simple_06 {
+  in       bool i;
+  out wire bool o;
+
+  void main() {
+    o = not(i);
+    fence;
+  }
+}
+
+// :5: ERROR: Redundant 'using' declaration

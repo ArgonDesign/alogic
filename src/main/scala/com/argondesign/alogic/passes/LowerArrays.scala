@@ -19,11 +19,11 @@ import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.enums.EntityVariant
 import com.argondesign.alogic.lib.Math
-import com.argondesign.alogic.typer.TypeAssigner
 
 import scala.collection.mutable
 
@@ -80,7 +80,7 @@ final class LowerArrays(implicit cc: CompilerContext) extends StatefulTreeTransf
     //////////////////////////////////////////////////////////////////////////
 
     case StmtExpr(
-          ExprCall(ExprSel(ExprSym(symbol), "write", _), List(ArgP(addr), ArgP(data)))
+          ExprCall(ExprSel(ExprSym(symbol), "write"), List(ArgP(addr), ArgP(data)))
         ) =>
       // Rewrite assignments to array elements
       symbol.attr.memory.get map {
@@ -104,7 +104,7 @@ final class LowerArrays(implicit cc: CompilerContext) extends StatefulTreeTransf
       val (we, wa, wd) = symbol.attr.memory.value
       Thicket(List(tree, we.mkDecl, wa.mkDecl, wd.mkDecl)) regularize tree.loc
 
-    case EntDefn(DefnArray(symbol)) =>
+    case EntSplice(DefnArray(symbol)) =>
       val (we, wa, wd) = symbol.attr.memory.value
       val stmts = List(
         StmtComment(s"Distributed memory '${symbol.name}' - line ${symbol.loc.line}"),
@@ -119,9 +119,9 @@ final class LowerArrays(implicit cc: CompilerContext) extends StatefulTreeTransf
       Thicket(
         List(
           tree,
-          EntDefn(we.mkDefn),
-          EntDefn(wa.mkDefn),
-          EntDefn(wd.mkDefn),
+          EntSplice(we.mkDefn),
+          EntSplice(wa.mkDefn),
+          EntSplice(wd.mkDefn),
           EntClockedProcess(ExprSym(clk), None, stmts)
         )
       ) regularize tree.loc

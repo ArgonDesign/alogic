@@ -17,8 +17,10 @@ package com.argondesign.alogic.core
 sealed trait SourceContext
 
 object SourceContext {
+  case object Package extends SourceContext
   case object Entity extends SourceContext
   case object Record extends SourceContext
-  case object File extends SourceContext
+  case object FuncCtrl extends SourceContext
+  case object FuncComb extends SourceContext
   case object Unknown extends SourceContext
 }

@@ -1,0 +1,26 @@
+fsm param_type_06 {
+  in       u4 i;
+  out wire u4 o;
+
+  struct t {
+    param type T;
+    static T f() {
+      o = i + 3;
+    }
+  }
+
+  void main() {
+    t(void).f();
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module param_type_06(
+//    input  wire [3:0] i,
+//    output wire [3:0] o
+//  );
+//
+//    assign o = i + 4'd3;
+//
+//  endmodule
+// }}}

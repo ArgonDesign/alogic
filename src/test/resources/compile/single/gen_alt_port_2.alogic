@@ -31,4 +31,4 @@ network gen_alt_port_2 {
   inner_u.p_o -> p_out_u;
   inner_s.p_o -> p_out_s;
 }
-// :20: ERROR: 'p_o' is not defined after processing 'gen' constructs
+// :20: ERROR: 'p_o' is undefined

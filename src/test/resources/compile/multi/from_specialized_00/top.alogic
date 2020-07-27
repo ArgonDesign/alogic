@@ -1,0 +1,16 @@
+from a import S(7) as T;
+
+network top {
+  in  T i;
+  out T o;
+  i -> o;
+}
+
+// @fec/golden {{{
+//  module top(
+//    input  wire [6:0] i__field,
+//    output wire [6:0] o__field
+//  );
+//    assign o__field = i__field;
+//  endmodule
+// }}}

@@ -1,0 +1,10 @@
+struct S {
+  void foo() {
+    gen for (uint n < 20) {
+      gen if (true) {
+        1 -> 2;
+      }
+    }
+  }
+}
+// :5: ERROR: Statement expected

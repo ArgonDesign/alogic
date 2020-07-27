@@ -1,6 +1,0 @@
-network missing_entity {
-  inst = new somethign_that_will_surely_not_exist;
-}
-// :2: FATAL: Cannot find entity 'somethign_that_will_surely_not_exist'. Looked in:
-// :2: FATAL: ... .*/compile/single
-

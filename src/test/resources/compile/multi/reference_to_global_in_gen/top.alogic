@@ -1,19 +1,38 @@
-// @verilator-lint-off
 network top {
-    const uint N = 2;
-    gen for (uint n < N) {
-        in sync u16 a#[n];
-        in sync u16 b#[n];
-        out sync u16 c#[n];
-    }
+  const uint N = 2;
 
-    gen for (uint n < N) {
-        instance#[n] = new test_add;
-    }
-    gen for (uint n < N) {
-        a#[n] -> instance#[n].a;
-        b#[n] -> instance#[n].b;
-        instance#[n].c -> c#[n];
-    }
+  gen for (uint n < N) {
+    in   u2 a#[n];
+    in   u2 b#[n];
+    out  u2 c#[n];
+  }
 
+  from test_add import test_add;
+
+  gen for (uint n < N) {
+    instance#[n] = new test_add;
+  }
+
+  gen for (uint n < N) {
+    a#[n] -> instance#[n].a;
+    b#[n] -> instance#[n].b;
+    instance#[n].c -> c#[n];
+  }
 }
+// @fec/golden {{{
+//  module top(
+//    input  wire [1:0] a__0,
+//    input  wire [1:0] a__1,
+//    input  wire [1:0] a__2,
+//    input  wire [1:0] b__0,
+//    input  wire [1:0] b__1,
+//    input  wire [1:0] b__2,
+//    output wire [1:0] c__0,
+//    output wire [1:0] c__1,
+//    output wire [1:0] c__2
+//  );
+//    assign c__0 = a__0 + b__0;
+//    assign c__1 = a__1 + b__1;
+//    assign c__2 = a__2 + b__2;
+//  endmodule
+// }}}

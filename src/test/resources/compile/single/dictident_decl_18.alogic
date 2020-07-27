@@ -1,5 +1,3 @@
-// @ignore
-// TODO: currently we don't check for unusedness of expanded dictidents
 // @verilator-lint-off
 network dictident_decl_18 {
   gen for (uint N < 3) {

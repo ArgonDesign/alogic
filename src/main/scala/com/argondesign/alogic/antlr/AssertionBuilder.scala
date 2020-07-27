@@ -18,7 +18,7 @@ package com.argondesign.alogic.antlr
 import com.argondesign.alogic.antlr.AlogicParser._
 import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.MessageBuffer
 import com.argondesign.alogic.core.SourceContext
 
 object AssertionBuilder extends BaseBuilder[AssertionContext, Assertion] {
@@ -27,7 +27,7 @@ object AssertionBuilder extends BaseBuilder[AssertionContext, Assertion] {
       ctx: AssertionContext
     )(
       implicit
-      cc: CompilerContext,
+      mb: MessageBuffer,
       sc: SourceContext
     ): Assertion = {
     object Visitor extends AlogicScalarVisitor[Assertion] {

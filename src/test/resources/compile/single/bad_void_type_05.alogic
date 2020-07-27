@@ -1,0 +1,6 @@
+fsm bad_void_type_05 {
+  void main () {
+    const void a = 0;
+  }
+}
+// :3: ERROR: Constant cannot have a 'void' type

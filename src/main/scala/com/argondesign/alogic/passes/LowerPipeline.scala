@@ -12,16 +12,16 @@ package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.TreeTransformer
-import com.argondesign.alogic.ast.Trees.Expr.InstancePortSel
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.ast.Trees.Expr.InstancePortSel
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.CompoundType
 import com.argondesign.alogic.core.Loc
+import com.argondesign.alogic.core.TypeAssigner
+import com.argondesign.alogic.core.TypeCompound
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.tailrec
@@ -82,8 +82,7 @@ final class LowerPipelineStage(
 
   override protected def enter(tree: Tree): Option[Tree] = tree match {
     // Rewrite 'TypePipeIn.read();' statements to '{....} = TypeIn.read();'
-    case StmtExpr(call @ ExprCall(ExprSel(ExprSym(symbol), "read", Nil), Nil))
-        if symbol.kind.isPipeIn =>
+    case StmtExpr(call @ ExprCall(ExprSel(ExprSym(symbol), "read"), Nil)) if symbol.kind.isPipeIn =>
       Some {
         if (symbol.kind.asPipeIn.fc == FlowControlTypeNone && iPortType == TypeVoid) {
           // This port is being removed
@@ -105,7 +104,7 @@ final class LowerPipelineStage(
       }
 
     // Rewrite 'TypePipeOut.write();' statements to 'TypeOut.write({....});'.
-    case StmtExpr(ExprCall(sel @ ExprSel(ExprSym(symbol), "write", Nil), Nil))
+    case StmtExpr(ExprCall(sel @ ExprSel(ExprSym(symbol), "write"), Nil))
         if symbol.kind.isPipeOut =>
       Some {
         if (symbol.kind.asPipeOut.fc == FlowControlTypeNone && oPortType == TypeVoid) {
@@ -179,7 +178,7 @@ final class LowerPipelineStage(
         ) withLoc decl.loc
       }
     case defn: DefnEntity =>
-      val newDefns = newSymbols map { symbol => EntDefn(symbol.mkDefn) regularize symbol.loc }
+      val newDefns = newSymbols map { symbol => EntSplice(symbol.mkDefn) regularize symbol.loc }
       TypeAssigner {
         defn.copy(
           body = List.from(defn.body.iterator ++ newDefns)
@@ -318,15 +317,15 @@ final class LowerPipelineHost(implicit cc: CompilerContext) extends StatefulTree
       None
 
     // If a port got removed, drop the connect
-    case EntAssign(ExprSel(lTgt, lSel, _), ExprSel(rTgt, rSel, _)) =>
+    case EntAssign(ExprSel(lTgt, lSel), ExprSel(rTgt, rSel)) =>
       val newLTgt = walk(lTgt).asInstanceOf[Expr]
       val newRTgt = walk(rTgt).asInstanceOf[Expr]
       val lOk = newLTgt.tpe match {
-        case kind: CompoundType => kind(lSel).isDefined
+        case kind: TypeCompound => kind(lSel).isDefined
         case _                  => unreachable
       }
       val rOk = newRTgt.tpe match {
-        case kind: CompoundType => kind(rSel).isDefined
+        case kind: TypeCompound => kind(rSel).isDefined
         case _                  => unreachable
       }
       Option.when(!lOk || !rOk) {

@@ -17,28 +17,27 @@ package com.argondesign.alogic.antlr
 
 import com.argondesign.alogic.antlr.AlogicParser._
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.FuncVariant
+import com.argondesign.alogic.core.MessageBuffer
 import com.argondesign.alogic.core.SourceContext
 
 object RecBuilder extends BaseBuilder[RecContext, Rec] {
 
-  def apply(ctx: RecContext)(implicit cc: CompilerContext, sc: SourceContext): Rec = {
+  def apply(ctx: RecContext)(implicit mb: MessageBuffer, sc: SourceContext): Rec = {
     object Visitor extends AlogicScalarVisitor[Rec] {
-      override def visitRecDesc(ctx: RecDescContext): Rec = {
-        val desc = DescBuilder(ctx.desc) match {
-          case func: DescFunc if func.variant == FuncVariant.None =>
-            func.copy(variant = FuncVariant.Method) withLoc func.loc
-          case other => other
-        }
-        RecDesc(desc) withLoc ctx.loc
-      }
+      override def visitRecDesc(ctx: RecDescContext): Rec =
+        RecSplice(DescBuilder(ctx.desc)(mb, SourceContext.Record)) withLoc ctx.loc
 
-      override def visitRecGen(ctx: RecGenContext): Rec =
-        RecGen(GenBuilder(ctx.gen)) withLoc ctx.loc
+      override def visitRecImport(ctx: RecImportContext): Rec =
+        RecSplice(ImportBuilder(ctx.imprt)) withLoc ctx.loc
+
+      override def visitRecUsing(ctx: RecUsingContext): Rec =
+        RecSplice(UsingBuilder(ctx.using)) withLoc ctx.loc
+
+      override def visitRecFrom(ctx: RecFromContext): Rec =
+        RecSplice(FromBuilder(ctx.from)) withLoc ctx.loc
 
       override def visitRecAssertion(ctx: RecAssertionContext): Rec =
-        RecAssertion(AssertionBuilder(ctx.assertion)) withLoc ctx.loc
+        RecSplice(AssertionBuilder(ctx.assertion)) withLoc ctx.loc
     }
 
     Visitor(ctx)

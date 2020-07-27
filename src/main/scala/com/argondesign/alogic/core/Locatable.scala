@@ -26,8 +26,6 @@ object Locatable {
 
   implicit val locatableSymbol: Locatable[Symbol] = _.loc
 
-  implicit val locatableSA: Locatable[SourceAttribute] = _.loc
-
   implicit def locatableAPRC[T <: AlogicPRC]: Locatable[T] = _.loc
 
 }

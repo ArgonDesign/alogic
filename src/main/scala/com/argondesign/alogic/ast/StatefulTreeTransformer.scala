@@ -15,11 +15,11 @@ package com.argondesign.alogic.ast
 
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types.TypeEntity
 import com.argondesign.alogic.core.Types.TypeType
-import com.argondesign.alogic.typer.TypeAssigner
 
 import scala.collection.mutable
 
@@ -115,7 +115,7 @@ abstract class StatefulTreeTransformer(implicit cc: CompilerContext) extends Tre
       tree
     } else {
       tree match {
-        case sym @ Sym(symbol, _) if mustBeReplaced(symbol) =>
+        case sym @ Sym(symbol) if mustBeReplaced(symbol) =>
           assert(typed)
           descend {
             TypeAssigner(sym.copy(symbol = replacementSymbol(symbol)) withLoc tree.loc)
@@ -148,8 +148,8 @@ abstract class StatefulTreeTransformer(implicit cc: CompilerContext) extends Tre
         val introducedSymbol = tree match {
           case desc: Desc =>
             desc.ref match {
-              case Sym(symbol, _) => Some(symbol)
-              case _              => None
+              case Sym(symbol) => Some(symbol)
+              case _           => None
             }
           case Decl(symbol) => Some(symbol)
           case Defn(symbol) => Some(symbol)

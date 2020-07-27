@@ -1,0 +1,8 @@
+struct S{
+  param uint WIDTH;
+  uint(WIDTH) field;
+}
+
+using S(10);
+
+// :6: ERROR: 'using' requires 'as' clause

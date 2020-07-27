@@ -1,6 +1,8 @@
-// @top: top_param_1()
+compile top_param_1() as top;
+
 network top_param_1 {
   param uint W;
 }
-// :3: WARNING: Parameter 'W' is unused
-// command-line:1: ERROR: 'top_param_1' requires parameter 'W'
+
+// :1: ERROR: 'W' requires actual parameter value
+// :4: NOTE: 'W' is defined here

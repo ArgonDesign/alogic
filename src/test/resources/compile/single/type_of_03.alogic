@@ -1,0 +1,8 @@
+network type_of_03 {
+  param type P;
+}
+
+compile type_of_03() as top;
+
+// :5: ERROR: 'P' requires actual parameter value
+// :2: NOTE: 'P' is defined here

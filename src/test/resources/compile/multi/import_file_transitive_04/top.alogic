@@ -1,0 +1,19 @@
+import a;
+
+fsm top {
+  in       u4 i;
+  out wire u4 o;
+
+  void main() {
+    o = i + a.D;
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module top(
+//    input  wire [3:0] i,
+//    output wire [3:0] o
+//  );
+//    assign o = i + 4'd5;
+//  endmodule
+// }}}

@@ -322,7 +322,7 @@ object SyncSliceFactory extends ChainingSyntax {
         List(ipvDefn, iprDefn, opvDefn, oprDefn, sDefn, vDefn)
       }
     } map {
-      EntDefn
+      EntSplice
     }
 
     val connects = if (kind != TypeVoid) {
@@ -464,7 +464,7 @@ object SyncSliceFactory extends ChainingSyntax {
         List(ipvDefn, iprDefn, opvDefn, oprDefn, sDefn) ::: iDefns
       }
     } map {
-      EntDefn
+      EntSplice
     }
 
     val entitySymbol = cc.newSymbol(name, loc)

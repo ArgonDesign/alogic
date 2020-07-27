@@ -14,6 +14,7 @@ import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types.Type
@@ -21,7 +22,6 @@ import com.argondesign.alogic.core.Types.TypeRecord
 import com.argondesign.alogic.core.Types.TypeStack
 import com.argondesign.alogic.core.Types.TypeType
 import com.argondesign.alogic.core.enums.UninitializedLocals
-import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable.ListBuffer
@@ -81,7 +81,8 @@ final class ConvertCtrlFuncLocals(implicit cc: CompilerContext) extends Stateful
             case DeclVar(symbol, _) => Option.unless(symbol.attr.combSignal.isSet)(symbol)
             case DeclVal(symbol, _) => Option.unless(symbol.attr.combSignal.isSet)(symbol)
             case _: DeclStatic      => None
-            case _: Decl            => unreachable
+            case _: DeclConst       => None
+            case d: Decl            => unreachable
           }
         }
       }
@@ -100,7 +101,7 @@ final class ConvertCtrlFuncLocals(implicit cc: CompilerContext) extends Stateful
         // Create the locals variable/stack
         cc.newSymbol(s"${symbol.name}${cc.sep}locals", symbol.loc) tap { lSymbol =>
           lSymbol.kind = {
-            val recLimit = symbol.attr.recLimit.value.value.get.toInt
+            val recLimit = symbol.attr.recLimit.value
             if (recLimit > 1) TypeStack(sKind, recLimit) else sKind
           }
           extraDecls append (lSymbol.mkDecl regularize tree.loc)
@@ -108,16 +109,16 @@ final class ConvertCtrlFuncLocals(implicit cc: CompilerContext) extends Stateful
         }
       }
       // Add total number of local variable bits to stats
-      cc.stats((symbol.sourceName, "local-bits")) = localSymbols.foldLeft(0)(_ + _.kind.width.toInt)
+      cc.stats((symbol.hierName, "local-bits")) = localSymbols.foldLeft(0)(_ + _.kind.width.toInt)
       //
       None
 
     // Extract Decl/Defn in statement position that is not in the local storage
-    case StmtDecl(decl) if !(locals contains decl.symbol) =>
+    case StmtSplice(decl: Decl) if !(locals contains decl.symbol) =>
       extraDecls append decl
       None
 
-    case StmtDefn(defn) if !(locals contains defn.symbol) =>
+    case StmtSplice(defn: Defn) if !(locals contains defn.symbol) =>
       extraDefns append defn
       None
 
@@ -138,13 +139,13 @@ final class ConvertCtrlFuncLocals(implicit cc: CompilerContext) extends Stateful
     // Drop StmtDecls
     ////////////////////////////////////////////////////////////////////////////
 
-    case _: StmtDecl => Stump
+    case StmtSplice(_: Decl) => Stump
 
     ////////////////////////////////////////////////////////////////////////////
     // Drop StmtDefns, assign initializer if any
     ////////////////////////////////////////////////////////////////////////////
 
-    case StmtDefn(defn) =>
+    case StmtSplice(defn: Defn) =>
       defn match {
         case _: DefnVar | _: DefnVal =>
           defn.initializer orElse getDefaultInitializer(defn.symbol.kind) map { init =>
@@ -195,6 +196,7 @@ final class ConvertCtrlFuncLocals(implicit cc: CompilerContext) extends Stateful
             case d: DeclVar    => d
             case d: DeclVal    => TypeAssigner(DeclVar(d.symbol, d.spec) withLoc d.loc)
             case d: DeclStatic => TypeAssigner(DeclVar(d.symbol, d.spec) withLoc d.loc)
+            case d: DeclConst  => d
             case d: DeclStack  => d
             case d: DeclRecord => d
             case _             => unreachable
@@ -208,11 +210,12 @@ final class ConvertCtrlFuncLocals(implicit cc: CompilerContext) extends Stateful
         case d: DefnVar    => TypeAssigner(DefnVar(d.symbol, None) withLoc d.loc)
         case d: DefnVal    => TypeAssigner(DefnVar(d.symbol, None) withLoc d.loc)
         case d: DefnStatic => TypeAssigner(DefnVar(d.symbol, d.initOpt) withLoc d.loc)
+        case d: DefnConst  => d
         case d: DefnStack  => d
         case d: DefnRecord => d
         case _             => unreachable
       } map { d =>
-        TypeAssigner(EntDefn(d) withLoc d.loc)
+        TypeAssigner(EntSplice(d) withLoc d.loc)
       }
       val newBody = List.from(defn.body.iterator ++ newDefns)
       TypeAssigner(defn.copy(body = newBody) withLoc tree.loc)
@@ -222,12 +225,12 @@ final class ConvertCtrlFuncLocals(implicit cc: CompilerContext) extends Stateful
   }
 
   override protected def finalCheck(tree: Tree): Unit = tree visit {
-    case node: StmtDecl   => throw Ice(node, "StmtDecl remains")
-    case node: StmtDefn   => throw Ice(node, "StmtDefn remains")
-    case node: DeclVal    => throw Ice(node, "DeclVal remains")
-    case node: DefnVal    => throw Ice(node, "DefnVal remains")
-    case node: DeclStatic => throw Ice(node, "DeclStatic remains")
-    case node: DefnStatic => throw Ice(node, "DefnStatic remains")
+    case StmtSplice(node: Decl) => throw Ice(node, "StmtSplice(_: Decl) remains")
+    case StmtSplice(node: Defn) => throw Ice(node, "StmtSplice(_: Defn) remains")
+    case node: DeclVal          => throw Ice(node, "DeclVal remains")
+    case node: DefnVal          => throw Ice(node, "DefnVal remains")
+    case node: DeclStatic       => throw Ice(node, "DeclStatic remains")
+    case node: DefnStatic       => throw Ice(node, "DefnStatic remains")
   }
 
 }

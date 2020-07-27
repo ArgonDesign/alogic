@@ -1,0 +1,4 @@
+gen if (true) {
+  fence;
+}
+// :2: ERROR: Package content expected

@@ -15,19 +15,20 @@
 
 package com.argondesign.alogic.antlr
 
-import scala.jdk.CollectionConverters._
-import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.MessageBuffer
 import com.argondesign.alogic.core.SourceContext
+
+import scala.jdk.CollectionConverters._
 
 trait BaseBuilder[C, T] {
 
-  def apply(ctx: C)(implicit cc: CompilerContext, sc: SourceContext): T
+  def apply(ctx: C)(implicit mb: MessageBuffer, sc: SourceContext): T
 
   def apply(
       ctxs: java.util.List[_ <: C]
     )(
       implicit
-      cc: CompilerContext,
+      mb: MessageBuffer,
       sc: SourceContext
     ): List[T] = List from { ctxs.iterator.asScala map apply }
 

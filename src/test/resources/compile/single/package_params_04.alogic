@@ -1,0 +1,12 @@
+// @args: -P 2 -P 2
+
+param uint WIDTH;
+
+network package_params_04 {
+  in  uint(WIDTH) i;
+  out uint(WIDTH) o;
+
+  i -> o;
+}
+
+// command-line:1: ERROR: Too many positional parameters

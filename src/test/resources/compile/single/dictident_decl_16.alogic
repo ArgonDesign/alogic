@@ -5,5 +5,5 @@ network dictident_decl_16 {
   }
   i#[0] -> o#[0];
 }
-// :6: ERROR: 'i' is not defined after processing 'gen' constructs
-// :6: ERROR: 'o' is not defined after processing 'gen' constructs
+// :6: ERROR: 'i#\[0\]' is undefined
+// :6: ERROR: 'o#\[0\]' is undefined

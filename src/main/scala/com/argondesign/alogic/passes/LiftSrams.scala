@@ -16,16 +16,16 @@
 package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.StatefulTreeTransformer
-import com.argondesign.alogic.ast.Trees.Expr.InstancePortSel
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.ast.Trees.Expr.InstancePortSel
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
 import com.argondesign.alogic.core.StorageTypes.StorageTypeWire
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types.TypeEntity
 import com.argondesign.alogic.core.Types.TypeIn
 import com.argondesign.alogic.core.Types.TypeOut
-import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.tailrec
@@ -121,7 +121,7 @@ final class LiftSramsTo(
     cc: CompilerContext)
     extends StatefulTreeTransformer {
 
-  private def portRef(iSymbol: Symbol, sel: String) = ExprSel(ExprSym(iSymbol), sel, Nil)
+  private def portRef(iSymbol: Symbol, sel: String) = ExprSel(ExprSym(iSymbol), sel)
 
   override def replace(symbol: Symbol): Boolean = symbol.kind match {
     case TypeEntity(symbol, _) => liftFromMap contains symbol
@@ -178,7 +178,7 @@ final class LiftSramsTo(
       // Add definitions of lifted instances and connects
       val extraBody = newInstances.iterator flatMap {
         case (nSymbol, connects) =>
-          Iterator.single(EntDefn(nSymbol.mkDefn) regularize nSymbol.loc) ++ connects
+          Iterator.single(EntSplice(nSymbol.mkDefn) regularize nSymbol.loc) ++ connects
       }
       TypeAssigner(defn.copy(body = defn.body ++ extraBody) withLoc defn.loc)
 

@@ -1,0 +1,7 @@
+fsm badly_unresolvable_name {
+  // To evalauate 'badly_unresolvable_name' we need it's type, but here we
+  // can't even compute that because the type of the entity depends on its
+  // contents, which we are computing right now..
+  out bool N = M#[badly_unresolvable_name];
+}
+// :5: ERROR: identifier is undefined

@@ -1,0 +1,4 @@
+fsm bad_void_type_03 {
+  static void a;
+}
+// :2: ERROR: Static variable cannot have a 'void' type

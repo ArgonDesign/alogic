@@ -1,15 +1,10 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2018 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2020 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
 //
-// Module: Alogic Compiler
-// Author: Geza Lore
-//
 // DESCRIPTION:
-//
 // Builtin '$display'
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -19,6 +14,7 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.frontend.Frontend
 
 private[builtins] class DollarDisplay(implicit cc: CompilerContext) extends BuiltinPolyFunc {
 
@@ -30,7 +26,7 @@ private[builtins] class DollarDisplay(implicit cc: CompilerContext) extends Buil
     case kind       => kind.isPacked
   }
 
-  def returnType(args: List[Expr]): Option[TypeFund] = args partialMatch {
+  def returnType(args: List[Expr], feOpt: Option[Frontend]): Option[TypeFund] = args partialMatch {
     case Nil                                                         => TypeVoid
     case str :: rest if str.tpe == TypeStr && (rest forall validArg) => TypeVoid
   }

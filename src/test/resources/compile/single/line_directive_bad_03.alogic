@@ -2,4 +2,3 @@
 
 #line 10 "a" "b"
 // :3: ERROR: Extraneous arguments to '#line'
-// FATAL: Stopping due to syntax errors

@@ -23,8 +23,14 @@ import com.argondesign.alogic.core.Types.TypeEntity
 import scala.collection.mutable
 
 class SymbolAttributes {
-  // Symbol is meant to be unused, do not warn
-  val unused = new Attribute[Boolean]()
+  // Specializations of this symbol
+  val specializations = new Attribute[Map[List[Arg], Symbol]]()
+
+  // Symbol was used during elaboration
+  val wasUsed = new Attribute[Boolean]()
+
+  // Name of symbol in it's local scope (i.e.: as it was typed)
+  val localName = new Attribute[String]()
 
   // Is this a toplevel entity
   val topLevel = new Attribute[Boolean]()
@@ -32,9 +38,9 @@ class SymbolAttributes {
   val entry = new Attribute[Boolean]()
 
   // Entity call stack limit
-  val stackLimit = new Attribute[Expr]() // TODO: Treeify
+  val stackLimit = new Attribute[Int]() // TODO: Treeify
   // Function recursion limit
-  val recLimit = new Attribute[Expr]() // TODO: Treeify
+  val recLimit = new Attribute[Int]() // TODO: Treeify
   // This is the return stack of the enclosing entity
   val returnStack = new Attribute[Boolean]()
   // Whether calling this function should push to the return stack
@@ -129,7 +135,9 @@ class SymbolAttributes {
 
   // Iterator that enumerates all fields above
   private def attrIterator = Iterator(
-    unused,
+    specializations,
+    wasUsed,
+    localName,
     topLevel,
     entry,
     stackLimit,
@@ -168,7 +176,9 @@ class SymbolAttributes {
 
   // Iterator that enumerates names of fields above
   private def nameIterator = Iterator(
-    "unused",
+    "specializations",
+    "wasUsed",
+    "localName",
     "topLevel",
     "entry",
     "stackLimit",
@@ -214,29 +224,25 @@ class SymbolAttributes {
 
   // Copy values from source attributes
   def update(
-      attr: scala.collection.Map[String, SourceAttribute]
+      attr: List[Attr]
     )(
       implicit
       cc: CompilerContext
     ): Unit =
-    for ((name, sa) <- attr) {
-      (name, sa) match {
-        case ("unused", _: SourceAttribute.Flag)        => unused set true
-        case ("unused", _)                              => cc.error(sa, "'unused' attribute is a flag")
-        case ("stacklimit", SourceAttribute.Expr(expr)) => stackLimit set expr
-        case ("stacklimit", _)                          => cc.error(sa, "'stacklimit' attribute must be an expression")
-        case ("reclimit", SourceAttribute.Expr(expr))   => recLimit set expr
-        case ("reclimit", _)                            => cc.error(sa, "'reclimit' attribute must be an expression")
-        case ("toplevel", _: SourceAttribute.Flag)      => topLevel set true
-        case ("toplevel", _)                            => cc.error(sa, "'toplevel' attribute is a flag")
-        case ("liftsrams", _: SourceAttribute.Flag)     => liftSrams set true
-        case ("liftsrams", _)                           => cc.error(sa, "'liftsrams' attribute is a flag")
-        case _                                          => cc.error(sa, s"Unknown attribute '$name'")
-      }
+    attr foreach {
+      case AttrBool("toplevel")                      => topLevel set true
+      case a @ Attr("toplevel")                      => cc.error(a, "'toplevel' attribute is a boolean flag")
+      case AttrBool("liftsrams")                     => liftSrams set true
+      case a @ Attr("liftsrams")                     => cc.error(a, "'liftSrams' attribute is a boolean flag")
+      case AttrExpr("stacklimit", ExprNum(_, value)) => stackLimit set value.toInt
+      case a @ Attr("stacklimit")                    => cc.error(a, "'stacklimit' attribute must be an expression")
+      case AttrExpr("reclimit", ExprNum(_, value))   => recLimit set value.toInt
+      case a @ Attr("reclimit")                      => cc.error(a, "'stacklimit' attribute must be an expression")
+      case a @ Attr(name)                            => cc.error(a, s"Unknown attribute '$name'")
     }
 
   // Render in some human readable form
-  def toSource(implicit cc: CompilerContext): String = {
+  def toSource: String = {
     val parts = for ((name, attr) <- nameIterator zip attrIterator if attr.isSet) yield {
       attr.value match {
         case true       => s"$name"

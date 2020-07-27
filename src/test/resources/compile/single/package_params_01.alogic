@@ -1,0 +1,19 @@
+// @args: -P 2
+
+param uint WIDTH;
+
+network package_params_01 {
+  in  uint(WIDTH) i;
+  out uint(WIDTH) o;
+
+  i -> o;
+}
+
+// @fec/golden {{{
+//  module package_params_01(
+//    input   wire [1:0]  i,
+//    output  wire [1:0]  o
+//  );
+//    assign o = i;
+//  endmodule
+// }}}

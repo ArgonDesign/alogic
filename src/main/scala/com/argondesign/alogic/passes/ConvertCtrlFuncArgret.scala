@@ -15,12 +15,12 @@ import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types.TypeRecord
 import com.argondesign.alogic.core.Types.TypeStack
 import com.argondesign.alogic.core.Types.TypeType
 import com.argondesign.alogic.core.Types.TypeVoid
-import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
@@ -55,7 +55,7 @@ final class ConvertCtrlFuncArgret(implicit cc: CompilerContext) extends Stateful
             // Create the args variable/stack
             val aSymbol = cc.newSymbol(s"${symbol.name}${cc.sep}args", symbol.loc)
             aSymbol.kind = {
-              val recLimit = symbol.attr.recLimit.value.value.get.toInt
+              val recLimit = symbol.attr.recLimit.value
               if (recLimit > 1) TypeStack(sKind, recLimit) else sKind
             }
             extraSymbols append aSymbol
@@ -118,7 +118,7 @@ final class ConvertCtrlFuncArgret(implicit cc: CompilerContext) extends Stateful
     case defn: DefnEntity =>
       // Add extra defns
       val extraBody = extraSymbols.iterator map { symbol =>
-        EntDefn(symbol.mkDefn) regularize symbol.loc
+        EntSplice(symbol.mkDefn) regularize symbol.loc
       }
       TypeAssigner(defn.copy(body = defn.body appendedAll extraBody) withLoc defn.loc)
 
@@ -207,8 +207,8 @@ final class ConvertCtrlFuncArgret(implicit cc: CompilerContext) extends Stateful
         // local variable in case of recursion, so add it as such, initialized
         // to the return value
         val tSymbol = cc.newTemp(s"${rSymbol.name}${cc.sep}copy", tree.loc, rSymbol.kind)
-        stmts append { StmtDecl(tSymbol.mkDecl) regularize tree.loc }
-        stmts append { StmtDefn(tSymbol.mkDefn(ExprSym(rSymbol))) regularize tree.loc }
+        stmts append { StmtSplice(tSymbol.mkDecl) regularize tree.loc }
+        stmts append { StmtSplice(tSymbol.mkDefn(ExprSym(rSymbol))) regularize tree.loc }
         // Replace with the temporary holding the return value
         TypeAssigner(ExprSym(tSymbol) withLoc tree.loc)
       } getOrElse noArgsCall

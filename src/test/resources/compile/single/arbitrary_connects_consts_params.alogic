@@ -1,5 +1,4 @@
-// @top: arbitrary_connects_consts_params()
-// @out-top: arbitrary_connects_consts_params__B_7
+compile arbitrary_connects_consts_params() as top;
 network arbitrary_connects_consts_params {
 
     const u32 A = 5;
@@ -16,7 +15,7 @@ network arbitrary_connects_consts_params {
 
 }
 // @fec/golden {{{
-//  module arbitrary_connects_consts_params__B_7(
+//  module top(
 //    output wire [31:0] out_const,
 //    output wire [31:0] out_param,
 //    output wire [31:0] out_lit

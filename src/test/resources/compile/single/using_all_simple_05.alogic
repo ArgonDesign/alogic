@@ -1,0 +1,20 @@
+struct S {
+  static bool not(bool i) { return ~i; }
+  static bool xor(bool i, bool j) { return i ^ j; }
+}
+
+fsm using_all_simple_05 {
+  in       bool ia;
+  in       bool ib;
+  out wire bool o;
+
+  void main() {
+    {
+      using S.*;
+    }
+    o = xor(ia, ib) & not(ia);
+    fence;
+  }
+}
+// :15: ERROR: 'xor' is undefined
+// :15: ERROR: 'not' is undefined

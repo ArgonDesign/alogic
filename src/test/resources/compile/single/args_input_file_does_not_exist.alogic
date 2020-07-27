@@ -1,0 +1,2 @@
+// @source-file: somethign-that-will-not-exist.alogic
+// ERROR: '.*/somethign-that-will-not-exist.alogic' does not exist

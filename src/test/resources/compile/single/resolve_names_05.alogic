@@ -1,0 +1,16 @@
+fsm resolve_names_05 {
+  in       u8 i;
+  out wire u8 o;
+
+  gen if (true) : block {
+    const u8 C#[0, 0] = 1;
+  }
+
+  void main() {
+     o = i + block.C#[N];
+     fence;
+  }
+}
+// :10: ERROR: 'N' is undefined
+// :10: ERROR: 'N' is undefined
+// TODO: single error only...

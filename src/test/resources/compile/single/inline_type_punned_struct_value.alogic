@@ -8,7 +8,7 @@ fsm inline_type_punned_struct_value {
 
   struct combin {
     static bool func() {
-      // We will try to simplity this prior to structure splitting to a single
+      // We will try to simplify this prior to structure splitting to a single
       // return statement by folding 'data' into 'p_in[0].data', but 'p_in[0]'
       // on it's own is not a struct type, so we need to check for that.
       s1_t s1 = p_in[0];

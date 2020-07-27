@@ -1,0 +1,21 @@
+network name_shadowing_00 {
+  out u2 o;
+
+  fsm inner {
+    param bool P;
+
+    out wire bool o;
+
+    void main() {
+      o.write(P);
+      fence;
+    }
+  }
+
+  inst = new inner(false);
+
+  inst.o -> o[0];
+  1'b1 -> o[1];
+}
+
+compile name_shadowing_00;

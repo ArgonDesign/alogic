@@ -23,7 +23,14 @@ network dictident_struct_1 {
     i#[N] -> inner.ii#[N]; inner.oo#[N] -> o#[N];
   }
 }
-// :9: ERROR: Redefinition of 'i_t' with previous definition at
-// :9: ERROR: ... .*dictident_struct_1.alogic:8
-// :11: ERROR: Redefinition of 'o_t' with previous definition at
-// :11: ERROR: ... .*dictident_struct_1.alogic:10
+// @fec/golden {{{
+//  module dictident_struct_1(
+//    input  wire       i__0,
+//    input  wire [1:0] i__1,
+//    output wire       o__0,
+//    output wire [1:0] o__1
+//  );
+//    assign o__0 = i__0;
+//    assign o__1 = i__1;
+//  endmodule
+// }}}

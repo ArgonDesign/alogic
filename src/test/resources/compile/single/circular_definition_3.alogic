@@ -1,6 +1,6 @@
 network circular_definition_3 {
   same = new circular_definition_3;
 }
-// command-line:1: ERROR: Definition of 'circular_definition_3' is circular
-// :1: NOTE: 'circular_definition_3' is defined at
-// :2: NOTE: which in turn depends on 'circular_definition_3'
+// :1: ERROR: Circular definition: type of symbol 'circular_definition_3'
+// :2: NOTE: Depends on type of symbol 'same'
+// :2: NOTE: Depends on type of symbol 'circular_definition_3'

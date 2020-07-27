@@ -1,0 +1,5 @@
+network const_bad_00 {
+  in bool i;
+  const bool a = i;
+}
+// :3: ERROR: Initializer of 'const' definition must be a compile time constant

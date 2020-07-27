@@ -6,26 +6,26 @@ fsm dictident_decl_17 {
 
   void main() {
     gen for(uint n < 8) {
-      bool tmp#[n];
+      bool tmpa#[n];
       gen if (n == 0) {
-        tmp#[n] = x;
+        tmpa#[n] = x;
       } else {
-        tmp#[n] = ~tmp#[n-1];
+        tmpa#[n] = ~tmpa#[n-1];
       }
       gen if (n == 7) {
-        a = tmp#[n];
+        a = tmpa#[n];
       }
     }
 
     gen for(uint n < 7) {
-      bool tmp#[n];
+      bool tmpb#[n];
       gen if (n == 0) {
-        tmp#[n] = y;
+        tmpb#[n] = y;
       } else {
-        tmp#[n] = ~tmp#[n-1];
+        tmpb#[n] = ~tmpb#[n-1];
       }
       gen if (n == 6) {
-        b = tmp#[n];
+        b = tmpb#[n];
       }
     }
 

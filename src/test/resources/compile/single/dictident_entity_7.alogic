@@ -18,4 +18,4 @@ network dictident_entity_7 {
   i_a -> inner_a.ii; inner_a.oo -> o_a;
   i_b -> inner_b.ii; inner_b.oo -> o_b;
 }
-// :8: ERROR: 'inner#\[0\]' defined multiple times after processing 'gen' constructs
+// :8: ERROR: 'inner#\[0\]' has multiple definitions

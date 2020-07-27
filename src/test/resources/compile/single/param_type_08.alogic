@@ -1,0 +1,33 @@
+fsm not {
+  in       bool i;
+  out wire bool o;
+
+  void main() {
+    o = ~i;
+    fence;
+  }
+}
+
+network param_type_07 {
+  in  bool i;
+  out bool o;
+
+  param type T;
+
+  inst = new T;
+
+  i -> inst.i; inst.o -> o;
+}
+
+compile param_type_07(not) as top;
+
+// @fec/golden {{{
+//  module top(
+//    input  wire [3:0] i,
+//    output wire [3:0] o
+//  );
+//
+//    assign o = i + 4'd3;
+//
+//  endmodule
+// }}}

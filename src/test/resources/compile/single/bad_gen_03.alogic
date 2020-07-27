@@ -1,0 +1,8 @@
+fsm bad_gen_03 {
+  gen if (true) {
+    gen for (uint n < 20) {
+      fence;
+    }
+  }
+}
+// :4: ERROR: Entity content expected

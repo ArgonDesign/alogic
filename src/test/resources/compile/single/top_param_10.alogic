@@ -1,5 +1,7 @@
-// @top: top_param_10(a#[0])
+compile top_param_10(a#[0]) as top;
+
 network top_param_10 {
   param uint W;
 }
-// command-line:1: ERROR: top level specifier cannot contain dictionary identifiers
+
+// :1: ERROR: 'a#\[0\]' is undefined

@@ -1,0 +1,12 @@
+network compile_specialized_00 {
+  param uint WIDTH;
+
+  in  uint(WIDTH) i;
+  out uint(WIDTH) o;
+
+  i -> o;
+}
+
+compile compile_specialized_00(8);
+
+// :10: ERROR: 'compile' requires 'as' clause

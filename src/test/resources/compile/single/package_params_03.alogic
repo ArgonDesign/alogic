@@ -1,0 +1,12 @@
+// @args: -P X=2 -P WIDTH=2
+
+param uint WIDTH;
+
+network package_params_03 {
+  in  uint(WIDTH) i;
+  out uint(WIDTH) o;
+
+  i -> o;
+}
+
+// command-line:1: ERROR: '.*/package_params_03\.alogic' has no parameter 'X'

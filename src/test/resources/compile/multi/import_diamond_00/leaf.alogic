@@ -1,0 +1,6 @@
+network connect {
+  param uint WIDTH;
+  in  uint(WIDTH) i;
+  out uint(WIDTH) o;
+  i -> o;
+}

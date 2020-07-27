@@ -17,8 +17,8 @@
 
 package com.argondesign.alogic.analysis
 
-import com.argondesign.alogic.ast.Trees.Expr.Integral
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.ast.Trees.Expr.Integral
 import com.argondesign.alogic.core.Bindings
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.Symbol
@@ -213,13 +213,15 @@ object StaticEvaluation {
       case ExprSlice(e, l, _, r) => p(e) || p(l) || p(r)
       case ExprCat(ps)           => ps exists p
       case ExprRep(c, e)         => p(e) || p(c)
-      case ExprSel(e, _, _)      => p(e)
+      case ExprSel(e, _)         => p(e)
       case ExprCast(_, e)        => p(e)
       case ExprOld(e)            => p(e)
       case _: ExprType           => false
       case _: ExprStr            => false
       case _: ExprError          => false
-      case _: ExprRef            => unreachable
+      case _: ExprDot            => unreachable
+      case _: ExprSymSel         => unreachable
+      case _: ExprIdent          => unreachable
       case _: ExprThis           => unreachable
     }
     p(expr)
@@ -325,9 +327,15 @@ object StaticEvaluation {
         // inlining combinational functions. As the symbol is being introduced
         // by this statement, and in statements definitions must precede use,
         // we know that the symbol is not in the bindings, so just add it
-        case StmtDefn(DefnVal(symbol, init))       => Some(curr.add(symbol, init))
-        case StmtDefn(DefnVar(symbol, Some(init))) => Some(curr.add(symbol, init))
-        case StmtDefn(DefnVar(_, None))            => Some(curr)
+        case StmtSplice(DefnVal(symbol, init))       => Some(curr.add(symbol, init))
+        case StmtSplice(DefnVar(symbol, Some(init))) => Some(curr.add(symbol, init))
+        case StmtSplice(DefnVar(_, None))            => Some(curr)
+
+        // Constant definitions can be created in statement position during
+        // elaboration of 'gen' loops as loop variable instances. These however
+        // can be directly folded by SimplifyExpr so we need not track them
+        // explicitly through the static evaluation.
+        case StmtSplice(_: DefnConst) => Some(curr)
 
         // TODO: these could be improved by computing new bindings
         // Assignments with complex left hand side
@@ -397,15 +405,15 @@ object StaticEvaluation {
           }
 
         // Infer assertion/assumption is true
-        case StmtAssertion(AssertionAssert(cond, _)) => Some(inferTrueTransitive(curr, cond))
-        case StmtAssertion(AssertionAssume(cond, _)) => Some(inferTrueTransitive(curr, cond))
+        case StmtSplice(AssertionAssert(cond, _)) => Some(inferTrueTransitive(curr, cond))
+        case StmtSplice(AssertionAssume(cond, _)) => Some(inferTrueTransitive(curr, cond))
 
         // Infer stall condition will be true (by the time subsequent statements execute
         case StmtWait(cond) => Some(inferTrueTransitive(curr, cond))
 
-        case _: StmtExpr    => Some(curr)
-        case _: StmtComment => Some(curr)
-        case _: StmtDecl    => Some(curr)
+        case _: StmtExpr         => Some(curr)
+        case _: StmtComment      => Some(curr)
+        case StmtSplice(_: Decl) => Some(curr)
 
         // TODO: This could be improved by indicating this branch does not join
         // hence shouldn't constrain subsequent statements.

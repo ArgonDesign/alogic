@@ -15,4 +15,5 @@ network single_param_entity_4 {
   inst = new inner(1);
   i -> inst.ii; inst.oo -> o;
 }
-// :15: ERROR: Type with more than one parameter requires named parameter assignment
+// :15: ERROR: Type with generated parameters requires named parameter assignment
+// :5: NOTE: 'inner' is defined here

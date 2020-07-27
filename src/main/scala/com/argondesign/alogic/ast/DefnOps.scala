@@ -19,8 +19,6 @@ import com.argondesign.alogic.core.Symbols.Symbol
 
 trait DefnOps { this: Defn =>
 
-  def descs: List[Desc] = Nil
-
   def defns: List[Defn] = Nil
 
   final lazy val initializer: Option[Expr] = this match {
@@ -29,7 +27,6 @@ trait DefnOps { this: Defn =>
     case DefnStatic(_, iOpt) => iOpt
     case DefnOut(_, iOpt)    => iOpt
     case DefnConst(_, i)     => Some(i)
-    case DefnGen(_, i)       => Some(i)
     case _                   => None
   }
 
@@ -44,7 +41,6 @@ trait DefnOps { this: Defn =>
     case node: DefnPipeIn    => node.copy(symbol = symbol)
     case node: DefnPipeOut   => node.copy(symbol = symbol)
     case node: DefnConst     => node.copy(symbol = symbol)
-    case node: DefnGen       => node.copy(symbol = symbol)
     case node: DefnArray     => node.copy(symbol = symbol)
     case node: DefnSram      => node.copy(symbol = symbol)
     case node: DefnStack     => node.copy(symbol = symbol)

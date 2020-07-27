@@ -1,0 +1,18 @@
+struct S {
+  static bool not(bool i) { return ~i; }
+}
+
+fsm using_one_simple_05 {
+  in  bool i;
+  out bool o;
+
+  void main() {
+    {
+      using S.not;
+    }
+    o = not(i);
+    fence;
+  }
+}
+
+// :13: ERROR: 'not' is undefined

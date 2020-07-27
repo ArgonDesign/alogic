@@ -1,5 +1,4 @@
-// @top: gen_alt_defn_8()
-// @out-top: gen_alt_defn_8__SIGNED_0
+compile gen_alt_defn_8() as top;
 network gen_alt_defn_8 {
   param bool SIGNED = false;
 
@@ -21,7 +20,7 @@ network gen_alt_defn_8 {
   }
 }
 // @fec/golden {{{
-//  module gen_alt_defn_8__SIGNED_0(
+//  module top(
 //    input wire clk,
 //    input wire rst,
 //    input wire [1:0] p_i_0,

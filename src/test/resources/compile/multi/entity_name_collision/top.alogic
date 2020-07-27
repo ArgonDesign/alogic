@@ -1,0 +1,13 @@
+import foo as f;
+
+compile f.foo as foo;
+
+// @expect-file: foo__0.v
+// @fec/golden {{{
+//  module foo(
+//    input  wire i,
+//    output wire o
+//  );
+//    assign o = i;
+//  endmodule
+// }}}

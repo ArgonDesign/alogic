@@ -1,0 +1,16 @@
+from pkg import *;
+
+network top {
+  in  a i;
+  out a o;
+  i -> o;
+}
+
+// @fec/golden {{{
+//  module top(
+//    input  wire i__f,
+//    output wire o__f
+//  );
+//    assign o__f = i__f;
+//  endmodule
+// }}}

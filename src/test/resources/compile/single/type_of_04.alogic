@@ -1,0 +1,12 @@
+fsm type_of_04 {
+  in u8 i;
+  out u8 o;
+
+  sram bool s[i];
+
+  void main() {
+    o = @bits(s[0]);
+    fence;
+  }
+}
+// :5: ERROR: Size of SRAM must be a compile time constant

@@ -1,0 +1,9 @@
+fsm circular_definition_6 {
+  uint(C) a;
+  const uint C = D;
+  const uint D = @bits(a);
+}
+// :4: ERROR: Circular definition: value of symbol 'D'
+// :4: NOTE: Depends on type of symbol 'a'
+// :2: NOTE: Depends on value of symbol 'C'
+// :3: NOTE: Depends on value of symbol 'D'

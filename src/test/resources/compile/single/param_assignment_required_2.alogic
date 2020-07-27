@@ -7,5 +7,4 @@ network param_assignment_required_2 {
 
   t -> o;
 }
-// :5: WARNING: Parameter 'W' is unused
 // :8: ERROR: Parametrized type requires parameter list

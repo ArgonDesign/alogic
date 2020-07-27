@@ -15,6 +15,7 @@
 
 package com.argondesign.alogic.core
 
+import com.argondesign.alogic.ast.Trees.Tree
 import com.argondesign.alogic.util.unreachable
 
 trait Locationed {
@@ -35,4 +36,5 @@ trait Locationed {
     this
   }
 
+  def withLocOf(tree: Tree): this.type = this withLoc tree.loc
 }

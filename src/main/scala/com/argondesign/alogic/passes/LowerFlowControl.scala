@@ -23,12 +23,12 @@ import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.SyncRegFactory
+import com.argondesign.alogic.core.SyncSliceFactory
 import com.argondesign.alogic.core.FlowControlTypes._
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.StorageTypes._
 import com.argondesign.alogic.core.Symbols._
-import com.argondesign.alogic.core.SyncRegFactory
-import com.argondesign.alogic.core.SyncSliceFactory
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.passes.LowerFlowControl.LoweredSymbols
 import com.argondesign.alogic.util.unreachable
@@ -240,7 +240,7 @@ final class LowerFlowControlA(
       // Statements
       ////////////////////////////////////////////////////////////////////////////
 
-      case StmtExpr(ExprCall(ExprSel(ExprSym(symbol), _, _), _)) =>
+      case StmtExpr(ExprCall(ExprSel(ExprSym(symbol), _), _)) =>
         extraStmts.push(ListBuffer())
 
         // We can remove 'port._();' statements altogether
@@ -274,7 +274,7 @@ final class LowerFlowControlA(
       // Rewrite expressions
       //////////////////////////////////////////////////////////////////////////
 
-      case ExprCall(ExprSel(ref @ ExprSym(symbol), "read", _), Nil) =>
+      case ExprCall(ExprSel(ref @ ExprSym(symbol), "read"), Nil) =>
         portMap.get(symbol) map {
           case (Some(`symbol`), None, None) => // No flow control
             ref
@@ -288,7 +288,7 @@ final class LowerFlowControlA(
           case _ => unreachable
         } getOrElse tree
 
-      case ExprCall(ExprSel(ref @ ExprSym(symbol), "write", _), args) =>
+      case ExprCall(ExprSel(ref @ ExprSym(symbol), "write"), args) =>
         lazy val arg = args.head.asInstanceOf[ArgP].expr
         oStorage.get(symbol) match {
           case Some((_, iSymbol, _)) =>
@@ -321,20 +321,20 @@ final class LowerFlowControlA(
         }
         tree
 
-      case ExprSel(ExprSym(symbol), "valid", _) =>
+      case ExprSel(ExprSym(symbol), "valid") =>
         portMap.get(symbol) map {
           case (_, Some(vSymbol), _) => ExprSym(vSymbol)
           case _                     => unreachable
         } getOrElse tree
 
-      case ExprSel(ExprSym(symbol), "space", _) =>
+      case ExprSel(ExprSym(symbol), "space") =>
         oStorage.get(symbol) map {
           case (_, iSymbol, _) => ExprSym(iSymbol) sel "space"
         } getOrElse {
           tree
         }
 
-      case ExprSel(ExprSym(symbol), "empty", _) =>
+      case ExprSel(ExprSym(symbol), "empty") =>
         oStorage.get(symbol) map {
           case (_, iSymbol, false) => ExprSym(iSymbol) sel "space"
           case (_, iSymbol, true)  => ExprSym(iSymbol) sel "space" unary "&"
@@ -342,7 +342,7 @@ final class LowerFlowControlA(
           tree
         }
 
-      case ExprSel(ExprSym(symbol), "full", _) =>
+      case ExprSel(ExprSym(symbol), "full") =>
         oStorage.get(symbol) map {
           case (_, iSymbol, false) => ~(ExprSym(iSymbol) sel "space")
           case (_, iSymbol, true)  => ~(ExprSym(iSymbol) sel "space" unary "|")
@@ -372,19 +372,19 @@ final class LowerFlowControlA(
       // Add defn of the expanded symbols and storage component and wire them up
       //////////////////////////////////////////////////////////////////////////
 
-      case EntDefn(Defn(symbol)) =>
+      case EntSplice(Defn(symbol)) =>
         // Note: Output port defaults, including for flow control signals will
         // be set in the DefaultAssignments/TieOffInputs pass
         portMap.get(symbol) map { loweredSymbolOpts =>
           val portDefns = loweredSymbolOpts.productIterator flatMap {
             case Some(`symbol`)        => Some(tree)
-            case Some(nSymbol: Symbol) => Some(EntDefn(nSymbol.mkDefn))
+            case Some(nSymbol: Symbol) => Some(EntSplice(nSymbol.mkDefn))
             case None                  => None
             case _                     => unreachable
           }
           val storageDefnAndConnects = oStorage.get(symbol).iterator flatMap {
             case (_, sSymbol, _) =>
-              Iterator.single(EntDefn(sSymbol.mkDefn)) ++ {
+              Iterator.single(EntSplice(sSymbol.mkDefn)) ++ {
                 val iRef = ExprSym(sSymbol)
                 loweredSymbolOpts match {
                   case (pSymbolOpt, Some(vSymbol), rSymbolOpt) =>
@@ -439,9 +439,9 @@ final class LowerFlowControlA(
 
     // $COVERAGE-OFF$ Debug code
     tree visit {
-      case node @ ExprCall(ExprSel(ref, sel, _), _) if ref.tpe.isOut =>
+      case node @ ExprCall(ExprSel(ref, sel), _) if ref.tpe.isOut =>
         throw Ice(node, s"Output port .$sel() remains")
-      case node @ ExprCall(ExprSel(ref, sel, _), _) if ref.tpe.isIn =>
+      case node @ ExprCall(ExprSel(ref, sel), _) if ref.tpe.isIn =>
         throw Ice(node, s"Input port .$sel() remains")
       case node @ DeclIn(_, _, fc) if fc != FlowControlTypeNone =>
         throw Ice(node, "Input port with flow control remains")
@@ -516,7 +516,7 @@ final class LowerFlowControlB(
 
   override def enter(tree: Tree): Option[Tree] = tree match {
     // Select on instance
-    case ExprSel(expr @ ExprSym(iSymbol), sel, _) if iSymbol.kind.isEntity =>
+    case ExprSel(expr @ ExprSym(iSymbol), sel) if iSymbol.kind.isEntity =>
       Some {
         val kind = iSymbol.kind.asEntity
         globalReplacements.get(kind.symbol) match {

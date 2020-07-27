@@ -1,0 +1,13 @@
+fsm gen_range_named_05 {
+  in        u4 i;
+  out wire  u4 o;
+
+  void main() {
+    gen for (uint n < 2) {
+      u4 b = i + n;
+    }
+    o = b;
+    fence;
+  }
+}
+// :9: ERROR: 'b' is undefined

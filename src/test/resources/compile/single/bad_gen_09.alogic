@@ -1,0 +1,12 @@
+struct S {
+  void f() {
+    case (5'd10) {
+      gen for (uint n < 20) {
+        gen if (true) {
+          1 -> 2;
+        }
+      }
+    }
+  }
+}
+// :6: ERROR: Case clause expected

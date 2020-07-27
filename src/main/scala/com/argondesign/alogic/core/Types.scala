@@ -1,16 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2017-2019 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2020 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
 //
-// Module: Alogic Compiler
-// Author: Geza Lore
-//
 // DESCRIPTION:
-//
-// Representations of various internal types.
+// Representations of various user facing and internal data types.
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.core
@@ -20,8 +15,8 @@ import com.argondesign.alogic.core.FlowControlTypes._
 import com.argondesign.alogic.core.StorageTypes._
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.frontend.Frontend
 import com.argondesign.alogic.lib.Math
-import com.argondesign.alogic.util.CCLazy
 
 object Types {
 
@@ -38,15 +33,15 @@ object Types {
   sealed trait TypeFund extends Type
 
   // format: off
-  sealed trait TypeInt extends TypeFund
+  sealed trait TypeInt extends TypeFund with TypeIntImpl
   case class TypeSInt(size: BigInt) extends TypeInt
   case class TypeUInt(size: BigInt) extends TypeInt
   case class TypeNum(signed: Boolean) extends TypeFund
-  case class TypeVector(kind: TypeFund, size: BigInt) extends TypeFund
+  case class TypeVector(kind: TypeFund, size: BigInt) extends TypeFund with TypeVectorImpl
   case object TypeVoid extends TypeFund
   case object TypeStr extends TypeFund
-  case class TypeRecord(symbol: Symbol, members: List[Symbol]) extends TypeFund with CompoundType with TypeRecordImpl
-  case class TypeEntity(symbol: Symbol, ports: List[Symbol]) extends TypeFund with CompoundType with TypeEntityImpl
+  case class TypeRecord(symbol: Symbol, members: List[Symbol]) extends TypeFund with TypeCompound with TypeRecordImpl
+  case class TypeEntity(symbol: Symbol, members: List[Symbol]) extends TypeFund with TypeCompound with TypeEntityImpl
   // format: on
 
   //////////////////////////////////////////////////////////////////////////////
@@ -85,6 +80,24 @@ object Types {
   case class TypeNone(kind: Type) extends Type
 
   //////////////////////////////////////////////////////////////////////////////
+  // Package type
+  //////////////////////////////////////////////////////////////////////////////
+
+  case class TypePackage(symbol: Symbol, members: List[Symbol])
+      extends Type
+      with TypeCompound
+      with TypePackageImpl
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Type of scopes
+  //////////////////////////////////////////////////////////////////////////////
+
+  case class TypeScope(symbol: Symbol, members: List[Symbol])
+      extends Type
+      with TypeCompound
+      with TypeScopeImpl
+
+  //////////////////////////////////////////////////////////////////////////////
   // Parametrized type
   //////////////////////////////////////////////////////////////////////////////
 
@@ -118,15 +131,9 @@ object Types {
   // format: on
 
   // This is callable, but is not quite a TypeCallable yet
-  case class TypePolyFunc(symbol: Symbol, resolver: List[Arg] => Option[Symbol])
+  case class TypePolyFunc(symbol: Symbol, resolver: (List[Arg], Option[Frontend]) => Option[Symbol])
       extends Type
       with TypePolyFuncImpl
-
-  //////////////////////////////////////////////////////////////////////////////
-  // Unknown type (placeholder used prior to type checking)
-  //////////////////////////////////////////////////////////////////////////////
-
-  case object TypeUnknown extends Type
 
   //////////////////////////////////////////////////////////////////////////////
   // Other miscellaneous types
@@ -170,55 +177,72 @@ object Types {
 //////////////////////////////////////////////////////////////////////////////
 
 // A base trait for types that have fields that can be looked up using dot notation
-trait CompoundType {
+trait TypeCompound {
   // List of public symbols
-  def publicSymbols(implicit cc: CompilerContext): List[Symbol]
-  // Apply returns the selected symbol
-  final def apply(sel: String)(implicit cc: CompilerContext): Option[Symbol] =
-    publicSymbols find { _.name == sel }
+  def publicSymbols: List[Symbol]
+  // 'apply' returns the selected symbol
+  final def apply(sel: String): Option[Symbol] = publicSymbols.find(_.name == sel)
+}
+
+trait TypeIntImpl { this: TypeInt =>
+  val size: BigInt
+  require(size > 0)
+}
+
+trait TypeVectorImpl { this: TypeVector =>
+  require(size > 0)
 }
 
 trait TypeRecordImpl { this: TypeRecord =>
-  final def dataMembers(implicit cc: CompilerContext): List[Symbol] = _dataMembers(cc)
+  final def publicSymbols: List[Symbol] = members
 
-  final private val _dataMembers = CCLazy[List[Symbol]] { implicit cc =>
-    members filter { _.kind.isFund }
-  }
+  final lazy val dataMembers: List[Symbol] = members.filter(_.kind.isFund)
+}
 
-  final def publicSymbols(implicit cc: CompilerContext): List[Symbol] = _publicSymbols(cc)
+trait TypeEntityImpl { this: TypeEntity =>
+  final def publicSymbols: List[Symbol] = members
 
-  final private val _publicSymbols = CCLazy[List[Symbol]] { _ =>
-    // Doesn't depend on cc right now but will in the future
-    members
+  final lazy val portMembers: List[Symbol] = members filter {
+    _.kind match {
+      case _: TypeIn      => true
+      case _: TypeOut     => true
+      case _: TypePipeIn  => true
+      case _: TypePipeOut => true
+      case _              => false
+    }
   }
 
 }
 
-trait TypeEntityImpl { this: TypeEntity =>
-  final def publicSymbols(implicit cc: CompilerContext): List[Symbol] = _publicSymbols(cc)
+trait TypePackageImpl { this: TypePackage =>
+  final def publicSymbols: List[Symbol] = members
+}
 
-  final private val _publicSymbols = CCLazy[List[Symbol]] { _ =>
-    // Doesn't depend on cc right now but will in the future
-    ports
-  }
+trait TypeScopeImpl { this: TypeScope =>
+  final def publicSymbols: List[Symbol] = members
+
+  final def scoped(name: String): Option[Symbol] =
+    members.iterator
+      .map { symbol =>
+        (symbol, symbol.attr.localName.getOrElse(symbol.name))
+      }
+      .collectFirst {
+        case (symbol, `name`) => symbol
+      }
 
 }
 
 // Base trait of types that add fields to existing types
-trait ExtensionType extends CompoundType {
+trait ExtensionType extends TypeCompound {
   // The underlying type
   def kind: Type
 
   // The extensions
   protected def extensionSymbols: List[Symbol]
 
-  final def publicSymbols(implicit cc: CompilerContext): List[Symbol] = _publicSymbols(cc)
-
-  final private val _publicSymbols = CCLazy[List[Symbol]] { implicit cc =>
-    kind match {
-      case ct: CompoundType => extensionSymbols ::: ct.publicSymbols
-      case _                => extensionSymbols
-    }
+  final lazy val publicSymbols: List[Symbol] = kind match {
+    case ct: TypeCompound => extensionSymbols ::: ct.publicSymbols
+    case _                => extensionSymbols
   }
 
 }
@@ -226,7 +250,7 @@ trait ExtensionType extends CompoundType {
 trait TypeInImpl extends ExtensionType { this: TypeIn =>
 
   // TODO: fix symbol Ids, here and below
-  final protected def extensionSymbols: List[Symbol] = fc match {
+  final lazy val extensionSymbols: List[Symbol] = fc match {
     case FlowControlTypeNone =>
       val read = new Symbol(-1, Loc.synthetic, "read")
       read.kind = TypeCombFunc(read, kind, Nil)
@@ -243,7 +267,7 @@ trait TypeInImpl extends ExtensionType { this: TypeIn =>
 
 trait TypeOutImpl extends ExtensionType { this: TypeOut =>
 
-  final protected def extensionSymbols: List[Symbol] = {
+  final lazy val extensionSymbols: List[Symbol] = {
     def writeFuncType(symbol: Symbol): TypeCombFunc = kind match {
       case TypeVoid => TypeCombFunc(symbol, TypeVoid, Nil)
       case _        => TypeCombFunc(symbol, TypeVoid, List(kind))
@@ -281,9 +305,9 @@ trait TypeOutImpl extends ExtensionType { this: TypeOut =>
 
 }
 
-trait TypePipeInImpl extends CompoundType { this: TypePipeIn =>
+trait TypePipeInImpl extends TypeCompound { this: TypePipeIn =>
 
-  final private val _publicSymbols: List[Symbol] = fc match {
+  final lazy val publicSymbols: List[Symbol] = fc match {
     case FlowControlTypeNone =>
       val read = new Symbol(-1, Loc.synthetic, "read")
       read.kind = TypeCombFunc(read, TypeVoid, Nil)
@@ -296,12 +320,11 @@ trait TypePipeInImpl extends CompoundType { this: TypePipeIn =>
       List(read, valid)
   }
 
-  final def publicSymbols(implicit cc: CompilerContext): List[Symbol] = _publicSymbols
 }
 
-trait TypePipeOutImpl extends CompoundType { this: TypePipeOut =>
+trait TypePipeOutImpl extends TypeCompound { this: TypePipeOut =>
 
-  final private val _publicSymbols: List[Symbol] = fc match {
+  final lazy val publicSymbols: List[Symbol] = fc match {
     case FlowControlTypeNone =>
       val write = new Symbol(-1, Loc.synthetic, "write")
       write.kind = TypeCombFunc(write, TypeVoid, Nil)
@@ -330,12 +353,12 @@ trait TypePipeOutImpl extends CompoundType { this: TypePipeOut =>
       List(write, valid, full, empty, space)
   }
 
-  final def publicSymbols(implicit cc: CompilerContext): List[Symbol] = _publicSymbols
 }
 
-trait TypeStackImpl extends CompoundType { this: TypeStack =>
+trait TypeStackImpl extends TypeCompound { this: TypeStack =>
+  require(size > 0)
 
-  final private val _publicSymbols: List[Symbol] = {
+  final lazy val publicSymbols: List[Symbol] = {
     val push = new Symbol(-1, Loc.synthetic, "push")
     push.kind = TypeCombFunc(push, TypeVoid, Nil)
     val pop = new Symbol(-1, Loc.synthetic, "pop")
@@ -347,24 +370,26 @@ trait TypeStackImpl extends CompoundType { this: TypeStack =>
     List(push, pop, top, old)
   }
 
-  final def publicSymbols(implicit cc: CompilerContext): List[Symbol] = _publicSymbols
 }
 
-trait TypeArrayImpl extends CompoundType { this: TypeArray =>
+trait TypeArrayImpl extends TypeCompound { this: TypeArray =>
+  require(size > 0)
 
   final private val _publicSymbols: List[Symbol] = {
+    val addrType = TypeUInt(Math.clog2(size) max 1)
     val write = new Symbol(-1, Loc.synthetic, "write")
-    write.kind = TypeCombFunc(write, TypeVoid, List(TypeUInt(Math.clog2(size)), kind))
+    write.kind = TypeCombFunc(write, TypeVoid, List(addrType, kind))
     List(write)
   }
 
-  final def publicSymbols(implicit cc: CompilerContext): List[Symbol] = _publicSymbols
+  final def publicSymbols: List[Symbol] = _publicSymbols
 }
 
-trait TypeSramImpl extends CompoundType { this: TypeSram =>
+trait TypeSramImpl extends TypeCompound { this: TypeSram =>
+  require(size > 0)
 
-  final private val _publicSymbols: List[Symbol] = {
-    val addrType = TypeUInt(Math.clog2(size))
+  final lazy val publicSymbols: List[Symbol] = {
+    val addrType = TypeUInt(Math.clog2(size) max 1)
     val read = new Symbol(-1, Loc.synthetic, "read")
     read.kind = TypeCombFunc(read, TypeVoid, List(addrType))
     val write = new Symbol(-1, Loc.synthetic, "write")
@@ -374,10 +399,10 @@ trait TypeSramImpl extends CompoundType { this: TypeSram =>
     List(read, write, rdata)
   }
 
-  final def publicSymbols(implicit cc: CompilerContext): List[Symbol] = _publicSymbols
 }
 
 trait TypePolyFuncImpl { this: TypePolyFunc =>
   // Resolve based on arguments to the correct overload of the symbol
-  final def resolve(args: List[Arg]): Option[Symbol] = resolver(args)
+  final def resolve(args: List[Arg], feOpt: Option[Frontend]): Option[Symbol] =
+    resolver(args, feOpt)
 }

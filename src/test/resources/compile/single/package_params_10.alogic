@@ -1,0 +1,14 @@
+// @args: -P foo
+
+const uint foo = 1;
+
+param uint WIDTH;
+
+network package_params_10 {
+  in  uint(WIDTH) i;
+  out uint(WIDTH) o;
+
+  i -> o;
+}
+
+// command-line:1: ERROR: 'foo' is undefined

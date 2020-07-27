@@ -25,10 +25,6 @@ final class CompileMultiple extends CompilationTest {
 
   // Fore each subdirectory in the test directory
   (testPath.toFile.listFiles filter { _.isDirectory }).sorted foreach { dir =>
-    // Name of check file (same as top level file)
-    val checkFile = dir.toPath.resolve("top.alogic").toString
-
-    // Define test
-    defineTest(s"${dir.getName}", dir.toPath, "top", checkFile)
+    defineTest(dir.toPath.resolve("top.alogic").toFile.getAbsolutePath)
   }
 }

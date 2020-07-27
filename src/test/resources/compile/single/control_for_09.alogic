@@ -80,4 +80,4 @@ fsm control_for_09 {
 //
 // endmodule
 // }}}
-// @stats/control_for_09/states: 4
+// @stats/control_for_09.control_for_09/states: 4

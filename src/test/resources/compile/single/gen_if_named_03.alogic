@@ -1,0 +1,17 @@
+fsm gen_if_named_03 {
+  in        u2 i;
+  out wire  u2 o;
+
+  void main() {
+    gen if (false) : block {
+      u2 x = i + 1;
+    } else if (true) {
+      u2 x = i + 2;
+    } else {
+      u2 x = i + 3;
+    }
+    o = x;
+    fence;
+  }
+}
+// :13: ERROR: 'x' is undefined

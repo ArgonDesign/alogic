@@ -17,9 +17,9 @@ package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.StackFactory
+import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types.TypeStack
 import com.argondesign.alogic.core.enums.EntityVariant
@@ -80,12 +80,12 @@ final class LowerStacks(implicit cc: CompilerContext) extends StatefulTreeTransf
       // Rewrite statements
       //////////////////////////////////////////////////////////////////////////
 
-      case StmtExpr(ExprCall(ExprSel(ExprSym(symbol), "push", _), _)) =>
+      case StmtExpr(ExprCall(ExprSel(ExprSym(symbol), "push"), _)) =>
         stackMap.get(symbol) map {
           case (_, iSymbol) => assignTrue(ExprSym(iSymbol) sel "push")
         } getOrElse tree
 
-      case StmtExpr(ExprCall(ExprSel(ExprSym(symbol), "pop", _), _)) =>
+      case StmtExpr(ExprCall(ExprSel(ExprSym(symbol), "pop"), _)) =>
         stackMap.get(symbol) map {
           case (_, iSymbol) => assignTrue(ExprSym(iSymbol) sel "pop")
         } getOrElse tree
@@ -94,12 +94,12 @@ final class LowerStacks(implicit cc: CompilerContext) extends StatefulTreeTransf
       // Rewrite expressions
       //////////////////////////////////////////////////////////////////////////
 
-      case ExprSel(ExprSym(symbol), "top", _) =>
+      case ExprSel(ExprSym(symbol), "top") =>
         stackMap.get(symbol) map {
           case (_, iSymbol) => ExprSym(iSymbol) sel "d"
         } getOrElse tree
 
-      case ExprSel(ExprSym(symbol), "old", _) =>
+      case ExprSel(ExprSym(symbol), "old") =>
         stackMap.get(symbol) map {
           case (_, iSymbol) => ExprSym(iSymbol) sel "q"
         } getOrElse tree
@@ -184,7 +184,7 @@ final class LowerStacks(implicit cc: CompilerContext) extends StatefulTreeTransf
 
     // $COVERAGE-OFF$ Debug code
     tree visit {
-      case node @ ExprSel(ref, sel, _) if ref.tpe.isStack => throw Ice(node, s"Stack .$sel remains")
+      case node @ ExprSel(ref, sel) if ref.tpe.isStack => throw Ice(node, s"Stack .$sel remains")
     }
     // $COVERAGE-ON$
   }

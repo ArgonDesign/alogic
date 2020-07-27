@@ -14,5 +14,11 @@ network dictident_struct_0 {
 
   i -> inner.ii; inner.oo -> o;
 }
-// :5: ERROR: Definition with dictionary identifier must appear directly in 'gen' loop scope.
-// :6: ERROR: Definition with dictionary identifier must appear directly in 'gen' loop scope.
+// @fec/golden {{{
+//  module dictident_struct_0(
+//    input  wire i,
+//    output wire o
+//  );
+//    assign o = i;
+//  endmodule
+// }}}

@@ -1,0 +1,17 @@
+network compile_wrapper_00 {
+  // These names clash with the wrapper generated instance name
+  in  bool inst;
+  out bool inst_;
+  inst -> inst_;
+}
+
+compile compile_wrapper_00 as top;
+
+// @fec/golden {{{
+//  module top(
+//    input   wire inst,
+//    output  wire inst_
+//  );
+//    assign inst_ = inst;
+//  endmodule
+// }}}

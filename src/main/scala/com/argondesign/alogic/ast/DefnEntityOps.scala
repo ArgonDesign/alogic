@@ -19,11 +19,9 @@ import com.argondesign.alogic.core.Symbols.Symbol
 
 trait DefnEntityOps { this: DefnEntity =>
 
-  final override lazy val descs: List[Desc] = body collect { case EntDesc(desc) => desc }
+  final lazy val decls: List[Decl] = body collect { case EntSplice(decl: Decl) => decl }
 
-  final lazy val decls: List[Decl] = body collect { case EntDecl(decl) => decl }
-
-  final override lazy val defns: List[Defn] = body collect { case EntDefn(defn) => defn }
+  final override lazy val defns: List[Defn] = body collect { case EntSplice(defn: Defn) => defn }
 
   final lazy val entities: List[DefnEntity] = defns collect {
     case defn: DefnEntity => defn
@@ -54,11 +52,11 @@ trait DefnEntityOps { this: DefnEntity =>
   final lazy val verbatims: List[EntVerbatim] = body collect { case node: EntVerbatim => node }
 
   final lazy val clk: Option[Symbol] =
-    body collectFirst { case EntDefn(Defn(symbol)) if symbol.attr.clk.isSet => symbol }
+    body collectFirst { case EntSplice(Defn(symbol)) if symbol.attr.clk.isSet => symbol }
 
   final lazy val rst: Option[Symbol] =
-    body collectFirst { case EntDefn(Defn(symbol)) if symbol.attr.rst.isSet => symbol }
+    body collectFirst { case EntSplice(Defn(symbol)) if symbol.attr.rst.isSet => symbol }
 
   final lazy val go: Option[Symbol] =
-    body collectFirst { case EntDefn(Defn(symbol)) if symbol.attr.go.isSet => symbol }
+    body collectFirst { case EntSplice(Defn(symbol)) if symbol.attr.go.isSet => symbol }
 }

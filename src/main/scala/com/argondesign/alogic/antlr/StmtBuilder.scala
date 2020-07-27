@@ -18,7 +18,7 @@ package com.argondesign.alogic.antlr
 import com.argondesign.alogic.antlr.AlogicParser._
 import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.MessageBuffer
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.SourceContext
 import org.antlr.v4.runtime.ParserRuleContext
@@ -30,18 +30,22 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
     case s             => List(s)
   }
 
-  def apply(ctx: ParserRuleContext)(implicit cc: CompilerContext, sc: SourceContext): Stmt = {
+  def apply(ctx: ParserRuleContext)(implicit mb: MessageBuffer, sc: SourceContext): Stmt = {
     object Visitor extends AlogicScalarVisitor[Stmt] { self =>
-      override def visitStmtDesc(ctx: StmtDescContext): Stmt = {
-        val desc = DescBuilder(ctx.desc) match {
-          case const: DescConst => DescVal(const.ref, const.spec, const.init) withLoc const.loc
-          case other            => other
-        }
-        StmtDesc(desc) withLoc ctx.loc
-      }
+      override def visitStmtDesc(ctx: StmtDescContext): Stmt =
+        StmtSplice(DescBuilder(ctx.desc)) withLoc ctx.loc
 
-      override def visitStmtGen(ctx: StmtGenContext): Stmt =
-        StmtGen(GenBuilder(ctx.gen)) withLoc ctx.loc
+      override def visitStmtImport(ctx: StmtImportContext): Stmt =
+        StmtSplice(ImportBuilder(ctx.imprt)) withLoc ctx.loc
+
+      override def visitStmtUsing(ctx: StmtUsingContext): Stmt =
+        StmtSplice(UsingBuilder(ctx.using)) withLoc ctx.loc
+
+      override def visitStmtFrom(ctx: StmtFromContext): Stmt =
+        StmtSplice(FromBuilder(ctx.from)) withLoc ctx.loc
+
+      override def visitStmtAssertion(ctx: StmtAssertionContext): Stmt =
+        StmtSplice(AssertionBuilder(ctx.assertion)) withLoc ctx.loc
 
       override def visitStmtBlock(ctx: StmtBlockContext): Stmt =
         StmtBlock(visit(ctx.stmt)) withLoc ctx.loc
@@ -96,10 +100,12 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
 
       override def visitStmtReturn(ctx: StmtReturnContext): Stmt = {
         val comb = sc match {
-          case SourceContext.Entity => false
-          case SourceContext.Record => true
-          case SourceContext.File | SourceContext.Unknown =>
-            throw Ice(ctx, "Cannot parse 'return' without knowing enclosing context")
+          case SourceContext.FuncComb => true
+          case SourceContext.FuncCtrl => false
+          case SourceContext.Unknown =>
+            throw Ice("Cannot parse 'return' statement without source context")
+          case _ =>
+            mb.error(ctx.loc, "'return' statement not inside function"); false
         }
         StmtReturn(comb, Option.when(ctx.expr != null)(ExprBuilder(ctx.expr))) withLoc ctx.loc
       }
@@ -124,9 +130,6 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
       override def visitStmtExpr(ctx: StmtExprContext): Stmt =
         StmtExpr(ExprBuilder(ctx.expr)) withLoc ctx.loc
 
-      override def visitStmtAssertion(ctx: StmtAssertionContext): Stmt =
-        StmtAssertion(AssertionBuilder(ctx.assertion)) withLoc ctx.loc
-
       override def visitStmtWait(ctx: StmtWaitContext): Stmt = {
         val cond = if (ctx.expr != null) {
           ExprBuilder(ctx.expr)
@@ -146,8 +149,8 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
         val spec = ExprBuilder(ctx.expr(0))
         val init = ExprBuilder(ctx.expr(1))
         val loc = ctx.loc.copy(point = ident.loc.start)
-        val desc = DescVar(ident, spec, Some(init)) withLoc loc
-        StmtDesc(desc) withLoc ctx.loc
+        val desc = DescVar(ident, Nil, spec, Some(init)) withLoc loc
+        StmtSplice(desc) withLoc ctx.loc
       }
 
       override def visitLoopStepAssign(ctx: LoopStepAssignContext): Stmt =

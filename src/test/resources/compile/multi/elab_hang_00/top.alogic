@@ -1,0 +1,5 @@
+from a import a;
+
+compile a(P=64) as top;
+
+// .*/a\.alogic:3: ERROR: 'unknown_t' is undefined

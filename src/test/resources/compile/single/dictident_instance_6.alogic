@@ -10,7 +10,7 @@ network dictident_instance_6 {
   inst#[1].oo -> o_b;
 
   gen for (uint N < 3) {
-    inst#[N%2] = new inner();
+    inst#[N%2] = new inner;
   }
 
   network inner {
@@ -19,4 +19,4 @@ network dictident_instance_6 {
     ii -> oo;
   }
 }
-// :13: ERROR: 'inst#\[0\]' defined multiple times after processing 'gen' constructs
+// :13: ERROR: 'inst#\[0\]' has multiple definitions

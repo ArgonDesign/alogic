@@ -1,0 +1,17 @@
+struct S {
+  static bool not(bool i) { return ~i; }
+}
+
+using S.foo;
+
+fsm using_one_simple_08 {
+  in       bool i;
+  out wire bool o;
+
+  void main() {
+    o = foo(i);
+    fence;
+  }
+}
+
+// :5: ERROR: No member named 'foo' in value of type 'type struct S'

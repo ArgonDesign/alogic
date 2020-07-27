@@ -42,11 +42,12 @@ object WriteAux extends PairsTransformerPass {
       if eSymbol.attr.topLevel.isSet
     } yield {
       // High level port symbols
-      val pSymbols = eSymbol.attr.highLevelKind.get map { _.ports } getOrElse Nil sortBy { symbol =>
-        (symbol.loc.start, symbol.name)
+      val pSymbols = eSymbol.attr.highLevelKind.get map { _.portMembers } getOrElse Nil sortBy {
+        symbol =>
+          (symbol.loc.start, symbol.name)
       }
       // Low level signal symbols
-      val sSymbols = eSymbol.kind.asType.kind.asEntity.ports sortBy { symbol =>
+      val sSymbols = eSymbol.kind.asType.kind.asEntity.portMembers sortBy { symbol =>
         (symbol.loc.start, symbol.name)
       }
 
@@ -148,7 +149,7 @@ object WriteAux extends PairsTransformerPass {
       //////////////////////////////////////////////////////////////////////////
 
       eSymbol.name -> ListMap(
-        "alogic-name" -> eSymbol.sourceName,
+        "alogic-name" -> eSymbol.hierName,
         "ports" -> ports,
         "signals" -> signals,
         "clock" -> (defn.clk map { _.name }).orNull,
@@ -190,8 +191,8 @@ object WriteAux extends PairsTransformerPass {
       val w = cc.getOutputWriter("stats.json")
       val stats: ListMap[String, ListMap[String, Any]] = ListMap from {
         cc.stats.groupBy(_._1._1).toSeq.sortBy(_._1) map {
-          case (sourceName, dict) =>
-            sourceName -> {
+          case (hierName, dict) =>
+            hierName -> {
               ListMap from {
                 dict.toSeq.sortBy(_._1) map { case ((_, key), value) => key -> value }
               }

@@ -22,7 +22,7 @@ network dictident_hard_1 {
         } else if (n == N - 1) {
           oo#[n] = 1;
         } else {
-          // The hard bit is that this ii is cpmpletely eliminated, before
+          // The hard bit is that this ii is completely eliminated, before
           // these gens are processed at all.
           oo#[n] = ii#[n-2];
         }

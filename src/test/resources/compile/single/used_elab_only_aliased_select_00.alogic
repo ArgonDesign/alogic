@@ -1,0 +1,25 @@
+struct s{
+  bool x;
+}
+
+fsm used_elab_only_select_00 {
+  s t;
+  using t.x;
+
+  in       uint(@bits(x)) i;
+  out wire bool           o;
+
+  void main() {
+    o = i;
+    fence;
+  }
+}
+
+// @fec/golden {{{
+//  module used_elab_only_select_00(
+//    input  wire i,
+//    output wire o
+//  );
+//    assign o = i;
+//  endmodule
+// }}}

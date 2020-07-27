@@ -52,4 +52,4 @@ fsm control_do_00 {
 //
 // endmodule
 // }}}
-// @stats/control_do_00/states: 2
+// @stats/control_do_00.control_do_00/states: 2

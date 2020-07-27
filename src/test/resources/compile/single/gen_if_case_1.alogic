@@ -1,0 +1,28 @@
+fsm gen_if_case_1 {
+  in        u2 i;
+  out wire  u2 o;
+
+  struct s {
+    static u2 inc(u2 x) { return x + 1; }
+  }
+
+  void main() {
+    case (i) {
+      gen if (true) {
+        using s.inc;
+        2'd0: o = inc(i);
+      }
+      default: o = i + 1;
+    }
+    fence;
+  }
+}
+
+// @fec/golden {{{
+//  module gen_if_case_1(
+//    input   wire [1:0]  i,
+//    output  wire [1:0]  o
+//  );
+//    assign o = i + 2'd1;
+//  endmodule
+// }}}

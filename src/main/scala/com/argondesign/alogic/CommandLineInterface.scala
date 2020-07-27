@@ -10,10 +10,15 @@
 
 package com.argondesign.alogic
 
-import java.io.File
-
+import com.argondesign.alogic.ast.Trees.Arg
+import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.MessageBuffer
 import com.argondesign.alogic.core.Messages
+import com.argondesign.alogic.core.Source
+import com.argondesign.alogic.core.SourceContext
+import com.argondesign.alogic.frontend.Parser
+
+import java.io.File
 
 object CommandLineInterface {
 
@@ -37,23 +42,47 @@ object CommandLineInterface {
     // Create the message buffer for this run
     ////////////////////////////////////////////////////////////////////////////
 
-    val messageBuffer = new MessageBuffer
+    implicit val messageBuffer: MessageBuffer = new MessageBuffer
 
     ////////////////////////////////////////////////////////////////////////////
     // Parse arguments and then compile
     ////////////////////////////////////////////////////////////////////////////
 
-    Compiler.parseArgs(messageBuffer, args.toSeq) map {
-      case (s, topLevels) =>
-        // Add some convenience default settings for the command line interface
-        lazy val cwd = new File(".").getCanonicalFile
+    Compiler.parseArgs(messageBuffer, args.toSeq) flatMap {
+      case (settings, source, params) =>
+        ////////////////////////////////////////////////////////////////////////
+        // Setup command line location reporting
+        ////////////////////////////////////////////////////////////////////////
 
-        val settings = s.copy(
-          moduleSearchDirs = if (s.moduleSearchDirs.isEmpty) List(cwd) else s.moduleSearchDirs,
-          includeSearchDirs = if (s.includeSearchDirs.isEmpty) List(cwd) else s.includeSearchDirs
-        )
+        val cliText = args.mkString(" ")
+        val cliSource = Source("command-line", cliText)
 
-        (messageBuffer, settings.colorize, Compiler.compile(messageBuffer, settings, topLevels))
+        // Location where input file parameter errors will be reported, as if
+        // it was the specialization location
+        val packageInstanceLoc: Loc = {
+          val end = cliText.length
+          val start = end - args.last.length
+          val point = start + args.last.reverse.dropWhile(_ != File.separatorChar).length
+          Loc(cliSource.name, 1, cliSource, start, end, point)
+        }
+
+        ////////////////////////////////////////////////////////////////////////
+        // Parse the parameter assignments
+        ////////////////////////////////////////////////////////////////////////
+
+        val ps: List[Arg] = params flatMap { param =>
+          val start = cliText.indexOf(s"-P $param") + 3
+          assert(start >= 0)
+          Parser[Arg](cliSource, SourceContext.Unknown, start, start + param.length)
+        }
+
+        Option.unless(messageBuffer.hasError) {
+          (
+            messageBuffer,
+            settings.colorize,
+            Compiler.compile(messageBuffer, settings, source, packageInstanceLoc, ps)
+          )
+        }
     } getOrElse {
       // If argument parsing failed
       (messageBuffer, false, 2)

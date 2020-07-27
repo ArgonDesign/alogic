@@ -12,4 +12,11 @@ network dictident_entity_1 {
 
   i -> inst.ii; inst.oo -> o;
 }
-// :5: ERROR: Definition with dictionary identifier must appear directly in 'gen' loop scope.
+// @fec/golden {{{
+//  module dictident_entity_1(
+//    input  wire i,
+//    output wire o
+//  );
+//    assign o = i;
+//  endmodule
+// }}}

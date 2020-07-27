@@ -1,5 +1,4 @@
-// @top: def_ent_3()
-// @out-top: def_ent_3__W_2
+compile def_ent_3() as top;
 fsm def_ent_3 {
   param uint W = 2;
 
@@ -17,7 +16,7 @@ fsm def_ent_3 {
   }
 }
 // @fec/golden {{{
-//  module def_ent_3__W_2(
+//  module top(
 //    input  wire [1:0] i__a,
 //    input  wire [3:0] i__b,
 //    output wire [1:0] o__a,

@@ -1,16 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2018-2020 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2020 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
 //
-// Module: Alogic Compiler
-// Author: Geza Lore
-//
 // DESCRIPTION:
-//
-// Lower TypeVector to TypeUInt by flattening dimensions
+//  Lower TypeVector to TypeUInt by flattening dimensions
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.passes
@@ -19,10 +14,12 @@ import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Math.clog2
+import com.argondesign.alogic.util.unreachable
 
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
@@ -97,7 +94,18 @@ final class LowerVectorsA(
         decl.copy(spec = vecSpec(symbol)) regularize tree.loc
 
       case decl @ DeclConst(symbol, _) if symbol.kind.underlying.isVector =>
-        decl.copy(spec = vecSpec(symbol)) regularize tree.loc
+        decl.copy(spec = vecSpec(symbol)) regularize tree.loc tap { _ =>
+          // TODO: There is an issue if a replaced const is declared in file
+          //       scope, in which case it's defn doesn't reach this transformer,
+          //       so to hack around this we walk the defn of consts here.
+          //       Need to be fixed properly in the long term
+          val oldSymbol = orig(symbol)
+          walk(TypeAssigner(oldSymbol.defn.cpy(symbol = symbol) withLoc oldSymbol.defn.loc)) match {
+            // Also need to simplify initializer as the Defn is not added back to the global list..
+            case d: DefnConst => TypeAssigner(d.copy(init = d.init.simplify) withLocOf d)
+            case _            => unreachable
+          }
+        }
 
       //////////////////////////////////////////////////////////////////////////
       // Transform vector operations
@@ -175,6 +183,10 @@ final class LowerVectorsA(
           case _ => tree
         }
 
+      // Cast
+      case expr @ ExprCast(kind: TypeVector, _) =>
+        TypeAssigner(expr.copy(kind = TypeUInt(kind.width)) withLocOf expr)
+
       //
       case _ => tree
     }
@@ -249,7 +261,8 @@ final class LowerVectorsB(
   override def finalCheck(tree: Tree): Unit = {
     // $COVERAGE-OFF$ Debug code
     tree visit {
-      case t: Tree if t.tpe.underlying.isVector => throw Ice(t, "Tree with vector type remains")
+      case t: Tree if t.tpe.underlying.isVector =>
+        throw Ice(t, "Tree with vector type remains", t.toSource)
     }
     // $COVERAGE-ON$
   }

@@ -29,7 +29,9 @@ object WrittenSyms {
       case ExprCat(parts)           => parts.iterator flatMap apply
       case ExprIndex(expr, _)       => apply(expr)
       case ExprSlice(expr, _, _, _) => apply(expr)
-      case ExprSel(expr, _, _)      => apply(expr)
+      case ExprSel(expr, _)         => apply(expr)
+      case ExprSymSel(expr, _)      => apply(expr)
+      case ExprDot(expr, _, Nil)    => apply(expr)
       case _                        => unreachable
     }
   }

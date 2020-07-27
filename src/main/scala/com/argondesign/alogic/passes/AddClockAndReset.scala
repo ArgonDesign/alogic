@@ -19,11 +19,11 @@ import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.FlowControlTypes._
 import com.argondesign.alogic.core.Loc
+import com.argondesign.alogic.core.TypeAssigner
+import com.argondesign.alogic.core.FlowControlTypes._
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.typer.TypeAssigner
 
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
@@ -64,8 +64,8 @@ final class AddClockAndResetA(
       TypeAssigner(decl.copy(decls = clkDecl :: rstDecl :: decl.decls) withLoc tree.loc)
 
     case defn: DefnEntity =>
-      val clkDefn = EntDefn(clk.mkDefn) regularize Loc.synthetic
-      val rstDefn = EntDefn(rst.mkDefn) regularize Loc.synthetic
+      val clkDefn = EntSplice(clk.mkDefn) regularize Loc.synthetic
+      val rstDefn = EntSplice(rst.mkDefn) regularize Loc.synthetic
       TypeAssigner(defn.copy(body = clkDefn :: rstDefn :: defn.body) withLoc tree.loc)
 
     case _ => tree

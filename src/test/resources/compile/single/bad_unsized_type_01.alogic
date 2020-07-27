@@ -1,0 +1,4 @@
+fsm bad_unsized_type_01 {
+  static  uint a;
+}
+// :2: ERROR: Static variable cannot have an unsized integer type

@@ -1,4 +1,3 @@
-// @top: gen_decoder(N_PORTS=3, BASE#[0]=2, BASE#[1]=10, BASE#[2]=150)
 struct bus {
   u20 addr;
   u8  data;
@@ -24,9 +23,11 @@ fsm gen_decoder {
     fence;
   }
 }
-// @out-top: gen_decoder__N_PORTS_3__BASE__0_2__BASE__1_10__BASE__2_150
+
+compile gen_decoder(N_PORTS=3, BASE#[0]=2, BASE#[1]=10, BASE#[2]=150) as top;
+
 // @fec/golden {{{
-//  module gen_decoder__N_PORTS_3__BASE__0_2__BASE__1_10__BASE__2_150(
+//  module top(
 //    input  wire clk,
 //    input  wire rst,
 //    input  wire [19:0] i__addr,

@@ -1,0 +1,53 @@
+fsm gen_range_named_10 {
+  in        u4 i;
+  out wire  u4 o_0;
+  out wire  u4 o_1;
+  out wire  u4 o_2;
+  out wire  u4 o_3;
+  out wire  u4 o_4;
+  out wire  u4 o_5;
+  out wire  u4 o_6;
+  out wire  u4 o_7;
+
+  void main() {
+    gen for (uint n < 2) : block_a {
+      gen for (uint m < 2) : block_b#[2*n, m] {
+        gen for (uint j < 2) : block_c {
+          u4 b#[2*(2*n+m)+j] = i + 4*n + 2*m + j;
+        }
+      }
+    }
+    o_0 = block_a.block_b#[0,0].block_c.b#[0];
+    o_1 = block_a.block_b#[0,0].block_c.b#[1];
+    o_2 = block_a.block_b#[0,1].block_c.b#[2];
+    o_3 = block_a.block_b#[0,1].block_c.b#[3];
+    o_4 = block_a.block_b#[2,0].block_c.b#[4];
+    o_5 = block_a.block_b#[2,0].block_c.b#[5];
+    o_6 = block_a.block_b#[2,1].block_c.b#[6];
+    o_7 = block_a.block_b#[2,1].block_c.b#[7];
+    fence;
+  }
+}
+
+// @fec/golden {{{
+//  module gen_range_named_10(
+//    input  wire [3:0] i,
+//    output wire [3:0] o_0,
+//    output wire [3:0] o_1,
+//    output wire [3:0] o_2,
+//    output wire [3:0] o_3,
+//    output wire [3:0] o_4,
+//    output wire [3:0] o_5,
+//    output wire [3:0] o_6,
+//    output wire [3:0] o_7
+//  );
+//    assign o_0 = i;
+//    assign o_1 = i + 4'd1;
+//    assign o_2 = i + 4'd2;
+//    assign o_3 = i + 4'd3;
+//    assign o_4 = i + 4'd4;
+//    assign o_5 = i + 4'd5;
+//    assign o_6 = i + 4'd6;
+//    assign o_7 = i + 4'd7;
+//  endmodule
+// }}}

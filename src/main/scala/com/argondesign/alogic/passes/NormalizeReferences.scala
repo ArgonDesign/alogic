@@ -15,10 +15,10 @@ import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.StorageTypes.StorageTypeDefault
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.unreachable
 
 import scala.collection.concurrent.TrieMap
@@ -209,18 +209,18 @@ final class NormalizeReferencesA(
           val sortedNewConstDefns = newConstDefns.toSeq
             .sortBy(d => (d.loc.start, d.symbol.name))
             .iterator
-            .map(newDefn => TypeAssigner(EntDefn(newDefn) withLoc newDefn.loc))
+            .map(newDefn => TypeAssigner(EntSplice(newDefn) withLoc newDefn.loc))
           val sortedNewOtherDefns = newOtherDedns.toSeq
             .sortBy(d => (d.loc.start, d.symbol.name))
             .iterator
-            .map(newDefn => TypeAssigner(EntDefn(newDefn) withLoc newDefn.loc))
+            .map(newDefn => TypeAssigner(EntSplice(newDefn) withLoc newDefn.loc))
           TypeAssigner(defn.copy(body = List from {
             sortedNewConstDefns ++ defn.body.iterator ++ sortedNewOtherDefns
           }) withLoc defn.loc)
       }
 
     // Wire through ports to instances of entities with propagated ports
-    case EntDefn(defn: DefnInstance) =>
+    case EntSplice(defn: DefnInstance) =>
       orig get defn.symbol match {
         case None => tree
         case Some(oldSymbol) =>

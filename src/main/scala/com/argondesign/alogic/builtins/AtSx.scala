@@ -1,15 +1,10 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2018 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2020 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
 //
-// Module: Alogic Compiler
-// Author: Geza Lore
-//
 // DESCRIPTION:
-//
 // Builtin '@sx'
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -19,17 +14,25 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.frontend.Complete
+import com.argondesign.alogic.frontend.Frontend
 
 private[builtins] class AtSx(implicit cc: CompilerContext) extends BuiltinPolyFunc {
 
   val name = "@sx"
 
-  def returnType(args: List[Expr]): Option[TypeFund] = args partialMatch {
-    case List(width, expr) if width.isKnownConst && expr.tpe.isPacked =>
-      TypeInt(expr.tpe.isSigned, width.value.get.toInt)
+  def returnType(args: List[Expr], feOpt: Option[Frontend]): Option[TypeFund] = args match {
+    case List(width, expr) if expr.tpe.isPacked =>
+      feOpt match {
+        case Some(fe) =>
+          fe.evaluate(width, s"first argument of '$name' (width)") match {
+            case Complete(value) => Some(TypeInt(expr.tpe.isSigned, value.toInt))
+            case _               => None
+          }
+        case None => Some(TypeInt(expr.tpe.isSigned, width.value.get.toInt))
+      }
+    case _ => None
   }
-
-  def isKnown(args: List[Expr]) = args(1).isKnownConst
 
   val isPure: Boolean = true
 

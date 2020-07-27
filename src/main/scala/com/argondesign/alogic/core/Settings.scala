@@ -15,19 +15,14 @@
 
 package com.argondesign.alogic.core
 
-import java.io.File
-import java.nio.file.Path
-
 import com.argondesign.alogic.core.enums.ResetStyle
 import com.argondesign.alogic.core.enums.UninitializedLocals
 
+import java.nio.file.Path
+
 case class Settings(
-    // Directories to search for alogic files
-    moduleSearchDirs: List[File] = Nil,
-    // Directories to search for preprocessor include files
-    includeSearchDirs: List[File] = Nil,
-    // Initial preprocessor definitions
-    initialDefines: Map[String, String] = Map.empty,
+    // Directories to search for imported packages
+    importSearchDirs: List[Path] = Nil,
     // Source base directory
     srcBase: Option[Path] = None,
     // Output directory

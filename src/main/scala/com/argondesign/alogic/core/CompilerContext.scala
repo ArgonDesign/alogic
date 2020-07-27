@@ -17,14 +17,12 @@
 
 package com.argondesign.alogic.core
 
-import com.argondesign.alogic.ast.Trees.Tree
+import com.argondesign.alogic.ast.Trees.Arg
 import com.argondesign.alogic.builtins.Builtins
 import com.argondesign.alogic.core.Messages.Fatal
 import com.argondesign.alogic.core.Messages.Ice
-import com.argondesign.alogic.core.Types.TypeUnknown
 import com.argondesign.alogic.core.enums.ResetStyle._
 import com.argondesign.alogic.passes.Passes
-import com.argondesign.alogic.typer.Typer
 
 import scala.collection.mutable
 
@@ -52,32 +50,18 @@ class CompilerContext(
   val stats: mutable.Map[(String, String), Any] = mutable.Map.empty
 
   //////////////////////////////////////////////////////////////////////////////
-  // Compile the top levels
+  // Compile the given sourcess
   //////////////////////////////////////////////////////////////////////////////
 
-  def compile(topLevels: List[String]): Unit = {
+  def compile(source: Source, loc: Loc, params: List[Arg]): Unit = {
     try {
-      Passes(topLevels)(cc = this)
+      Passes(source, loc, params)(cc = this)
     } catch {
       // Catch fatal messages, add them to message buffer for reporting,
       // then return normally from here.
       case message: Fatal => addMessage(message)
       case message: Ice   => addMessage(message)
     }
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  // Entry point to the type checker
-  //////////////////////////////////////////////////////////////////////////////
-
-  // Type check tree
-  def typeCheck(tree: Tree): Boolean = {
-    if (!tree.hasTpe) {
-      (tree rewrite new Typer()(this)) ensuring { _ eq tree }
-    }
-    assert(tree.hasTpe)
-    assert(tree.tpe != TypeUnknown)
-    !tree.tpe.isError
   }
 
 }

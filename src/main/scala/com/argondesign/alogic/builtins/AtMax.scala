@@ -1,15 +1,10 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2018 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2020 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
 //
-// Module: Alogic Compiler
-// Author: Geza Lore
-//
 // DESCRIPTION:
-//
 // Builtin '@max'
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -19,13 +14,14 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.frontend.Frontend
 import com.argondesign.alogic.util.unreachable
 
 private[builtins] class AtMax(implicit cc: CompilerContext) extends BuiltinPolyFunc {
 
   val name = "@max"
 
-  def returnType(args: List[Expr]): Option[TypeFund] = args partialMatch {
+  def returnType(args: List[Expr], feOpt: Option[Frontend]): Option[TypeFund] = args partialMatch {
     case args if args.nonEmpty && (args forall { _.tpe.isNum }) => {
       TypeNum(args forall { _.tpe.isSigned })
     }

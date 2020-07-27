@@ -1,0 +1,8 @@
+network param_bad_00 {
+  in bool i;
+  param bool P = i;
+}
+
+compile param_bad_00() as top;
+
+// :3: ERROR: Default initializer of 'param' definition must be a compile time constant

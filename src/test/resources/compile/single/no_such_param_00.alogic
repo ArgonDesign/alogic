@@ -5,6 +5,4 @@ network no_such_param_00 {
   }
   inst = new inner(A=1, B=2, C=3);
 }
-// :3: WARNING: Parameter 'A' is unused
-// :4: WARNING: Parameter 'B' is unused
 // :6: ERROR: 'inner' has no parameter 'C'

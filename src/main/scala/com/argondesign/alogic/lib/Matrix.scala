@@ -16,9 +16,10 @@
 
 package com.argondesign.alogic.lib
 
+import com.argondesign.alogic.util.unreachable
+
 import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
-import com.argondesign.alogic.util.unreachable
 
 // elements: List of rows which are themselves lists
 case class Matrix[T: Numeric](elements: List[List[T]]) {

@@ -1,0 +1,8 @@
+struct S {
+  gen for (uint n < 10) {
+    gen if (true) {
+      fence;
+    }
+  }
+}
+// :4: ERROR: Record content expected

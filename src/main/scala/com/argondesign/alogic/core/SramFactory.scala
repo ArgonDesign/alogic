@@ -116,7 +116,7 @@ object SramFactory extends ChainingSyntax {
     )
 
     val decls = List(ceDecl, weDecl, adDecl, wdDecl, rdDecl, stDecl)
-    val defns = List(ceDefn, weDefn, adDefn, wdDefn, rdDefn, stDefn) map EntDefn
+    val defns = List(ceDefn, weDefn, adDefn, wdDefn, rdDefn, stDefn) map EntSplice
 
     val entitySymbol = cc.newSymbol(name, loc)
     val decl = DeclEntity(entitySymbol, decls) regularize loc

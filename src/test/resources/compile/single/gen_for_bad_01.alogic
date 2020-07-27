@@ -1,0 +1,5 @@
+network gen_for_bad_01 {
+  gen for (u8 n = 0 ; bool ; n++) {
+  }
+}
+// :2: ERROR: Condition of 'gen for' must be a 1 bit value

@@ -1,0 +1,25 @@
+fsm not {
+  in       bool i;
+  out wire bool o;
+
+  void main() {
+    o = ~i;
+    fence;
+  }
+}
+
+network param_type_07 {
+  in       bool i;
+  out wire bool o;
+
+  param type T;
+
+  inst = new T;
+
+  i -> inst.i; inst.o -> o;
+}
+
+compile param_type_07(not) as top;
+
+// :13: ERROR: Output port driven by '->' cannot have a storage specifier
+// :19: NOTE: 'o' is driven here

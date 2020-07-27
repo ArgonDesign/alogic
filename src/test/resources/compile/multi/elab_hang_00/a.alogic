@@ -1,0 +1,4 @@
+network a {
+  param u32 P = 64;
+  in unknown_t i;
+}

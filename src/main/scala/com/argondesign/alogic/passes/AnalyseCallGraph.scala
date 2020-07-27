@@ -23,11 +23,11 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.enums.EntityVariant
 import com.argondesign.alogic.lib.Matrix
-import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.tailrec
@@ -168,32 +168,25 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends StatefulTreeT
       } yield {
         lazy val loc = symbol.loc
         lazy val name = symbol.name
-        val exprOpt = symbol.attr.recLimit.get
+        val recLimitOpt = symbol.attr.recLimit.get
         if (!isRecD && !isRecI) {
-          if (exprOpt.isDefined) {
+          if (recLimitOpt.isDefined) {
             cc.warning(loc, s"'reclimit' attribute ignored on function '$name'")
           }
           1
         } else {
-          exprOpt match {
+          recLimitOpt match {
             case None =>
               val hint = if (isRecD) "Recursive" else "Indirectly recursive"
               cc.error(loc, s"$hint function '$name' requires 'reclimit' attribute")
               0
-            case Some(expr) =>
-              expr.value match {
-                case Some(value) if value < 2 =>
-                  cc.error(
-                    loc,
-                    s"Recursive function '$name' has 'reclimit' attribute equal to $value"
-                  )
-                  0
-                case None =>
-                  symbol.attr.recLimit set Expr(2)
-                  cc.error(loc, s"Cannot compute value of 'reclimit' attribute of function '$name'")
-                  0
-                case Some(value) => value.toInt
-              }
+            case Some(value) if value < 2 =>
+              cc.error(
+                loc,
+                s"Recursive function '$name' has 'reclimit' attribute equal to $value"
+              )
+              0
+            case Some(value) => value
           }
         }
       }
@@ -305,17 +298,13 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends StatefulTreeT
 
     // Compute the value of the 'stacklimit' attribute of the entity
     lazy val stackLimit: Option[Int] = {
-      eSymbol.attr.stackLimit.get flatMap { expr =>
-        lazy val loc = eSymbol.loc
-        lazy val name = eSymbol.name
-        expr.value match {
-          case Some(value) if value < 1 =>
-            cc.error(loc, s"Entity '$name' has 'stacklimit' attribute equal to $value")
-            None
-          case None =>
-            cc.error(loc, s"Cannot compute value of 'stacklimit' attribute of entity '$name'")
-            None
-          case Some(value) => Some(value.toInt)
+      lazy val loc = eSymbol.loc
+      lazy val name = eSymbol.name
+      eSymbol.attr.stackLimit.get filter { value =>
+        if (value >= 1) {
+          true // Ok
+        } else {
+          cc.error(loc, s"Entity '$name' has 'stacklimit' attribute equal to $value"); false
         }
       }
     }
@@ -441,7 +430,7 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends StatefulTreeT
       val recLimtis =
         computeRecLimits(callArcs, adjMat, indMat).getOrElse(List.fill(functionSymbols.size)(1))
       for ((symbol, value) <- functionSymbols lazyZip recLimtis) {
-        symbol.attr.recLimit set Expr(value)
+        symbol.attr.recLimit set value
       }
 
       // Set function attributes
@@ -461,13 +450,13 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends StatefulTreeT
 
       // Drop unused functions
       val newBody = defn.body filter {
-        case EntDefn(DefnFunc(symbol, _, _)) if symbol.kind.isCtrlFunc => usedFunctions(symbol)
-        case _                                                         => true
+        case EntSplice(DefnFunc(symbol, _, _)) if symbol.kind.isCtrlFunc => usedFunctions(symbol)
+        case _                                                           => true
       }
 
       val stackDepth = returnStackDepth(defn.symbol, callArcs, adjMat, indMat, recLimtis)
 
-      cc.stats((defn.symbol.sourceName, "stack-depth")) = stackDepth
+      cc.stats((defn.symbol.hierName, "stack-depth")) = stackDepth
 
       if (stackDepth == 0) {
         TypeAssigner(defn.copy(body = newBody) withLoc defn.loc)
@@ -482,7 +471,7 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends StatefulTreeT
         }
         // Add th Defn of the return stack. ConvertControl relies on it being
         // added to the front so it can be picked up in 'transform' early.
-        val stackDefn = EntDefn(symbol.mkDefn) regularize defn.loc
+        val stackDefn = EntSplice(symbol.mkDefn) regularize defn.loc
         TypeAssigner(defn.copy(body = stackDefn :: newBody) withLoc defn.loc)
       }
 

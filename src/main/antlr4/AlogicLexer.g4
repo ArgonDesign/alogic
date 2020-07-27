@@ -164,7 +164,11 @@ TYPE    : 'type' ;
 ASSERT  : 'assert' ;
 ASSUME  : 'assume' ;
 IMPORT  : 'import' ;
+USING   : 'using' ;
+FROM    : 'from' ;
 THIS    : 'this' ;
+AS      : 'as' ;
+COMPILE : 'compile' ;
 
 SYNC        : 'sync';
 SYNC_READY  : 'sync' (WS|NL|CMT)* 'ready';

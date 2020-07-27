@@ -49,6 +49,7 @@ trait TypeOps extends TypePrintOps { this: Type =>
   final def isStack: Boolean = this.isInstanceOf[TypeStack]
   final def isType: Boolean = this.isInstanceOf[TypeType]
   final def isNone: Boolean = this.isInstanceOf[TypeNone]
+  final def isPackage: Boolean = this.isInstanceOf[TypePackage]
   final def isParametrized: Boolean = this.isInstanceOf[TypeParametrized]
   final def isCombStmt: Boolean = this eq TypeCombStmt
   final def isCtrlStmt: Boolean = this eq TypeCtrlStmt
@@ -60,10 +61,11 @@ trait TypeOps extends TypePrintOps { this: Type =>
   final def isMethod: Boolean = this.isInstanceOf[TypeMethod]
   final def isStaticMethod: Boolean = this.isInstanceOf[TypeStaticMethod]
   final def isNormalMethod: Boolean = this.isInstanceOf[TypeNormalMethod]
-  final def isUnknown: Boolean = this eq TypeUnknown
   final def isState: Boolean = this.isInstanceOf[TypeState]
   final def isMisc: Boolean = this eq TypeMisc
   final def isError: Boolean = this eq TypeError
+  final def isCompound: Boolean = this.isInstanceOf[TypeCompound]
+  final def isScope: Boolean = this.isInstanceOf[TypeScope]
   // $COVERAGE-ON$
 
   //////////////////////////////////////////////////////////////////////////////
@@ -92,6 +94,7 @@ trait TypeOps extends TypePrintOps { this: Type =>
   final def asStack: TypeStack = this.asInstanceOf[TypeStack]
   final def asType: TypeType = this.asInstanceOf[TypeType]
   final def asNone: TypeNone = this.asInstanceOf[TypeNone]
+  final def asPackage: TypePackage = this.asInstanceOf[TypePackage]
   final def asParametrized: TypeParametrized = this.asInstanceOf[TypeParametrized]
   final def asCallable: TypeCallable = this.asInstanceOf[TypeCallable]
   final def asCombFunc: TypeCombFunc = this.asInstanceOf[TypeCombFunc]
@@ -102,6 +105,8 @@ trait TypeOps extends TypePrintOps { this: Type =>
   final def asStaticMethod: TypeStaticMethod = this.asInstanceOf[TypeStaticMethod]
   final def asNormalMethod: TypeNormalMethod = this.asInstanceOf[TypeNormalMethod]
   final def asState: TypeState = this.asInstanceOf[TypeState]
+  final def asCompound: TypeCompound = this.asInstanceOf[TypeCompound]
+  final def asScope: TypeScope = this.asInstanceOf[TypeScope]
   // $COVERAGE-ON$
 
   // Is this a primitive numeric type
@@ -129,25 +134,17 @@ trait TypeOps extends TypePrintOps { this: Type =>
     case _               => false
   }
 
-  // Cached width
-  private[this] var _width: BigInt = _
-
   // Width of this type
-  final def width(implicit cc: CompilerContext): BigInt = {
-    if (_width == null) {
-      _width = underlying match {
-        case TypeSInt(size)          => size
-        case TypeUInt(size)          => size
-        case self: TypeRecord        => self.dataMembers.foldLeft(BigInt(0))(_ + _.kind.width)
-        case TypeVoid                => 0
-        case TypeVector(eType, size) => size * eType.width
-        case _                       => unreachable
-      }
-    }
-    _width
+  final lazy val width: BigInt = underlying match {
+    case TypeSInt(size)          => size
+    case TypeUInt(size)          => size
+    case self: TypeRecord        => self.dataMembers.foldLeft(BigInt(0))(_ + _.kind.width)
+    case TypeVoid                => 0
+    case TypeVector(eType, size) => size * eType.width
+    case _                       => unreachable
   }
 
-  final def shapeIter(implicit cc: CompilerContext): Iterator[BigInt] = underlying match {
+  final def shapeIter: Iterator[BigInt] = underlying match {
     case TypeArray(elemKind, size)               => Iterator.single(size) ++ elemKind.shapeIter
     case TypeVector(elemKind, size)              => Iterator.single(size) ++ elemKind.shapeIter
     case kind if kind.isPacked && kind.width > 0 => Iterator.single(kind.width)

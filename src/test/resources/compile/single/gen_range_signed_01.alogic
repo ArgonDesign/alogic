@@ -1,0 +1,22 @@
+fsm gen_range_signed_01 {
+  in        u8 i;
+  out wire  u8 o;
+
+  void main() {
+    o = i;
+    gen for (i3 n <= 3) {
+      o[$unsigned(n)] = ~i[$unsigned(n)];
+    }
+    fence;
+  }
+}
+
+// @fec/golden {{{
+//  module gen_range_signed_01(
+//    input   wire [7:0]  i,
+//    output  wire [7:0]  o
+//  );
+//    assign o[3:0] = ~i[3:0];
+//    assign o[7:4] =  i[7:4];
+//  endmodule
+// }}}

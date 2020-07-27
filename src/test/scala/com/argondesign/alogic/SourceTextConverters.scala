@@ -17,6 +17,7 @@ package com.argondesign.alogic
 
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.MessageBuffer
 import com.argondesign.alogic.core.Source
 import com.argondesign.alogic.core.SourceContext
 import com.argondesign.alogic.frontend.Parser
@@ -30,11 +31,15 @@ object SourceTextConverters {
 
     val source: Source = Source("<asTree>", string)
 
-    def asTree[T <: Tree: Parseable](implicit cc: CompilerContext): T =
+    def asTree[T <: Tree: Parseable](implicit cc: CompilerContext): T = {
+      implicit val mb: MessageBuffer = cc.messageBuffer
       Parser[T](source, SourceContext.Unknown) getOrElse { throw AsTreeSyntaxErrorException(cc) }
+    }
 
-    def asTree[T <: Tree: Parseable](sc: SourceContext)(implicit cc: CompilerContext): T =
+    def asTree[T <: Tree: Parseable](sc: SourceContext)(implicit cc: CompilerContext): T = {
+      implicit val mb: MessageBuffer = cc.messageBuffer
       Parser[T](source, sc) getOrElse { throw AsTreeSyntaxErrorException(cc) }
+    }
 
   }
 

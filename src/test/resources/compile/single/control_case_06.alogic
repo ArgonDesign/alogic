@@ -64,5 +64,5 @@ fsm control_case_06 {
 //
 //  endmodule
 // }}}
-// @stats/control_case_06/stack-depth: 0
-// @stats/control_case_06/states: 3
+// @stats/control_case_06.control_case_06/stack-depth: 0
+// @stats/control_case_06.control_case_06/states: 3

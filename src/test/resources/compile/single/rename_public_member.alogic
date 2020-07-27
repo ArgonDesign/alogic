@@ -12,8 +12,6 @@ fsm rename_public_member {
       fence;
     }
 }
-// :8: WARNING: Definition of 'i' hides previous definition at
-// :8: WARNING: ... .*rename_public_member.alogic:2
 // @fec/golden {{{
 //  module rename_public_member(
 //    input  wire i,

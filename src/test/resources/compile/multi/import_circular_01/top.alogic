@@ -1,0 +1,4 @@
+import other;
+// .*/top.alogic:1: ERROR: Circular definition: imported package 'other'
+// .*/other.alogic:1: NOTE: Depends on imported package 'top'
+// .*/top.alogic:1: NOTE: Depends on imported package 'other'

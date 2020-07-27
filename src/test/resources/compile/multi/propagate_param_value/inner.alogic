@@ -1,0 +1,13 @@
+from inner_2 import *;
+
+network inner {
+  param u10 WIDTH = 1;
+
+  in  uint(WIDTH) a;
+  out uint(WIDTH) b;
+
+  inst = new inner_2(WIDTH=WIDTH);
+
+  a -> inst.a;
+  inst.b -> b;
+}

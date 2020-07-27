@@ -15,9 +15,9 @@
 
 package com.argondesign.alogic.lib
 
+import java.io.Writer
 import scala.collection.Map
 import scala.collection.Seq
-import java.io.Writer
 
 object Json {
 

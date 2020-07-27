@@ -1,0 +1,25 @@
+fsm gen_if_named_07 {
+  in        bool i;
+  out wire  bool o;
+
+  void main() {
+    gen if (true) {
+      gen if (true) : block_b {
+        gen if (true) {
+          bool x = ~i;
+        }
+      }
+    }
+    o = block_b.x;
+    fence;
+  }
+}
+
+// @fec/golden {{{
+//  module gen_if_named_07(
+//    input  wire i,
+//    output wire o
+//  );
+//    assign o = ~i;
+//  endmodule
+// }}}

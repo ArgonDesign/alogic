@@ -1,5 +1,4 @@
-// @top: access_outer_param()
-// @out-top: access_outer_param__N_20
+compile access_outer_param() as top;
 network access_outer_param {
   param int N = 20;
   in sync ready u8 p_in;
@@ -13,7 +12,7 @@ network access_outer_param {
   }
 }
 // @fec/golden {{{
-//  module access_outer_param__N_20(
+//  module top(
 //    input  wire       clk,
 //    input  wire       rst,
 //    input  wire [7:0] p_in,

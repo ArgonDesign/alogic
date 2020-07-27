@@ -11,7 +11,7 @@ network dictident_instance_2 {
   }
 
   gen for (uint N < 1) {
-    inst#[N] = new inner();
+    inst#[N] = new inner;
   }
 
   i_a -> inst#[0].ii;
@@ -19,5 +19,5 @@ network dictident_instance_2 {
   i_b -> inst#[1].ii;
   inst#[1].oo -> o_b;
 }
-// :19: ERROR: 'inst#\[1\]' is not defined after processing 'gen' constructs
-// :20: ERROR: 'inst#\[1\]' is not defined after processing 'gen' constructs
+// :19: ERROR: 'inst#\[1\]' is undefined
+// :20: ERROR: 'inst#\[1\]' is undefined

@@ -1,28 +1,21 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2018 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2020 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
 //
-// Module: Alogic Compiler
-// Author: Geza Lore
-//
 // DESCRIPTION:
-//
-// Tests for WrittenSymbols
+//  Tests for Liveness analysis
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.analysis
 
 import com.argondesign.alogic.AlogicTest
-import com.argondesign.alogic.SourceTextConverters._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.passes.Namer
-import com.argondesign.alogic.typer.Typer
+import com.argondesign.alogic.frontend.SymbolTable
 import org.scalatest.freespec.AnyFreeSpec
 
 import scala.collection.immutable.BitSet
@@ -49,8 +42,12 @@ class LivenessSpec extends AnyFreeSpec with AlogicTest {
     ExprCat(List(ExprInt(false, n, 0), expr)) regularize Loc.synthetic
 
   private val randBitCall = {
-    ("@randbit()".asTree[Expr] rewrite new Namer rewrite new Typer)
-      .asInstanceOf[ExprCall]
+    val poly = cc.builtins.get("@randbit") match {
+      case SymbolTable.Local(symbol) => symbol
+
+      case _ => fail
+    }
+    ExprCall(ExprSym(poly.kind.asPolyFunc.resolve(Nil, None).get), Nil)
   }
 
   private def prep(expr: Expr): Expr = {

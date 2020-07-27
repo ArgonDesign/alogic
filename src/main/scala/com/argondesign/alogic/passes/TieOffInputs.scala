@@ -15,11 +15,11 @@
 
 package com.argondesign.alogic.passes
 
-import com.argondesign.alogic.ast.Trees.Expr.InstancePortSel
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.ast.Trees.Expr.InstancePortSel
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Symbols._
-import com.argondesign.alogic.typer.TypeAssigner
 
 import scala.collection.mutable
 

@@ -1,5 +1,7 @@
-// @top: top_param_8(foo)
+compile top_param_8(foo) as top;
+
 network top_param_8 {
   param uint W;
 }
-// command-line:1: ERROR: 'foo' is not defined
+
+// :1: ERROR: 'foo' is undefined

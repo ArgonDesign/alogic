@@ -21,10 +21,10 @@ options {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Start rule for whole source file
+// Start rule for whole source file (aka package, but 'package' is a keyword)
 ////////////////////////////////////////////////////////////////////////////////
 
-root : riz* EOF ;
+file : pkg* EOF ;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Identifiers
@@ -33,7 +33,7 @@ root : riz* EOF ;
 ident : IDENTIFIER ('#' '[' expr (',' expr)* ']')? ;
 
 ////////////////////////////////////////////////////////////////////////////////
-// Descriptions (introducint a name)
+// Descriptions (introducing a name)
 ////////////////////////////////////////////////////////////////////////////////
 
 desc : attributes? descbase ;
@@ -41,7 +41,7 @@ desc : attributes? descbase ;
 attributes : '(*' attr (',' attr)* '*)' ;
 
 attr
-  : IDENTIFIER              # AttrFlag
+  : IDENTIFIER              # AttrBool
   | IDENTIFIER '=' expr     # AttrExpr
   ;
 
@@ -60,8 +60,15 @@ descbase
   | 'struct' ident '{' rec* '}'                                                 # DescRecord
   | ident '=' 'new' expr ';'                                                    # DescInstance
   | 'new' entity_keyword ident '{' ent* '}'                                     # DescSingleton
-  | (stat='static')? expr ident '(' formal_arguments? ')' '{' stmt* '}'         # DescFuncAlogic
+  | (stat='static')? expr ident '(' formal_arguments? cpar=')' '{' stmt* '}'    # DescFuncAlogic
   | 'import' expr IDENTIFIER '('formal_arguments? ')' ';'                       # DescFuncImport
+  | 'gen' 'if' '(' conds+=expr cpar=')' (':' ident)? '{' thenItemss+=genitems '}'
+    ('else' 'if' '(' conds+=expr ')' '{' thenItemss+=genitems '}')*
+    ('else' '{' elseItems=genitems '}')?                                        # DescGenIf
+  | 'gen' 'for' '(' ginits ';' expr ';' lsteps cpar=')' (':' ident)?
+    '{' genitems '}'                                                            # DescGenFor
+  | 'gen' 'for' '(' expr IDENTIFIER op=('<' | '<=')  expr cpar=')' (':' ident)?
+    '{' genitems '}'                                                            # DescGenRange
   ;
 
 fct
@@ -86,33 +93,48 @@ formal_arguments
   : expr IDENTIFIER (',' expr IDENTIFIER)*
   ;
 
-////////////////////////////////////////////////////////////////////////////////
-// Gen constructs
-////////////////////////////////////////////////////////////////////////////////
-
-gen : 'gen' generate ;
-
-generate
-  : 'if' '(' thenCond=expr ')' '{' thenItems=genitems '}'
-    ('else' 'if' '(' elifCond+=expr ')' '{' elifItems+=genitems '}')*
-    ('else' '{' elseItems=genitems '}')?                                    # GenIf
-  | 'for' '(' ginits ';' expr ';' lsteps ')' '{' genitems '}'               # GenFor
-  | 'for' '(' expr IDENTIFIER op=('<' | '<=')  expr ')' '{' genitems '}'    # GenRange
-  ;
-
 genitems : genitem* ;
 genitem
-  : gen         # GenItemGen
-  | desc        # GenItemDesc
+  : desc        # GenItemDesc
+  | imprt       # GenItemImport
+  | using       # GenItemUsing
+  | from        # GenItemFrom
   | assertion   # GenItemAssertion
-  | stmt        # GenItemStmt
-  | kase        # GenItemCase
+  | pkg         # GenItemPkg
   | ent         # GenItemEnt
   | rec         # GenItemRec
+  | stmt        # GenItemStmt
+  | kase        # GenItemCase
   ;
 
 ginits : ginit (',' ginit)* ;
 ginit : expr IDENTIFIER point='=' expr ;
+
+////////////////////////////////////////////////////////////////////////////////
+// Imports
+////////////////////////////////////////////////////////////////////////////////
+
+imprt
+  : 'import' (relative+='.')* expr ('as' ident)? ';' # ImportOne
+  ;
+
+////////////////////////////////////////////////////////////////////////////////
+// Using
+////////////////////////////////////////////////////////////////////////////////
+
+using
+  : 'using' expr ('as' ident)? ';'  # UsingOne
+  | 'using' expr '.' '*' ';'        # UsingAll
+  ;
+
+////////////////////////////////////////////////////////////////////////////////
+// From (sugar for import + using)
+////////////////////////////////////////////////////////////////////////////////
+
+from
+  : 'from' (relative+='.')* expr 'import' expr ('as' ident)? ';' # FromOne
+  | 'from' (relative+='.')* expr 'import' '*' ';'                # FromAll
+  ;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Assertions
@@ -124,12 +146,16 @@ assertion
   ;
 
 ////////////////////////////////////////////////////////////////////////////////
-// File contents
+// Package (file) contents
 ////////////////////////////////////////////////////////////////////////////////
 
-
-riz
-  : desc    # RizDesc
+pkg
+  : desc                                # PkgDesc
+  | imprt                               # PkgImport
+  | using                               # PkgUsing
+  | from                                # PkgFrom
+  | assertion                           # PkgAssertion
+  | 'compile' expr ('as' ident)? ';'    # PkgCompile
   ;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -138,10 +164,12 @@ riz
 
 ent
   : desc                                                # EntDesc
-  | gen                                                 # EntGen
+  | imprt                                               # EntImport
+  | using                                               # EntUsing
+  | from                                                # EntFrom
+  | assertion                                           # EntAssertion
   | lhs=expr point='->' rhs+=expr (',' rhs+=expr)* ';'  # EntConnect
   | 'fence' '{' stmt* '}'                               # EntFenceBlock
-  | assertion                                           # EntAssertion
   | 'verbatim' IDENTIFIER VERBATIM_BODY                 # EntVerbatimBlock
   ;
 
@@ -151,7 +179,9 @@ ent
 
 rec
   : desc        # RecDesc
-  | gen         # RecGen
+  | imprt       # RecImport
+  | using       # RecUsing
+  | from        # RecFrom
   | assertion   # RecAssertion
   ;
 
@@ -161,7 +191,10 @@ rec
 
 stmt
   : desc                                                        # StmtDesc
-  | gen                                                         # StmtGen
+  | imprt                                                       # StmtImport
+  | using                                                       # StmtUsing
+  | from                                                        # StmtFrom
+  | assertion                                                   # StmtAssertion
   | '{' stmt* '}'                                               # StmtBlock
   | 'if' '(' expr ')' thenStmt=stmt ('else' elseStmt=stmt)?     # StmtIf
   | 'case' '(' expr ')' '{' kase* '}'                           # StmtCase
@@ -179,12 +212,11 @@ stmt
   | expr ASSIGNOP expr ';'                                      # StmtUpdate
   | expr op=('++'|'--') ';'                                     # StmtPost
   | expr ';'                                                    # StmtExpr
-  | assertion                                                   # StmtAssertion
   | 'wait' expr? ';'                                            # StmtWait
   ;
 
 kase
-  : gen                         # CaseGen
+  : desc                        # CaseDesc // This is here to supprot 'gen' only
   | expr (',' expr)* ':' stmt   # CaseRegular
   | 'default' ':' stmt          # CaseDefault
   ;
@@ -229,12 +261,12 @@ expr
   | ATID                                                        # ExprAtid
   | DOLLARID                                                    # ExprDollarid
   // Call
-  | expr open='(' args? ')'                                     # ExprCall
+  | expr point='(' args? ')'                                    # ExprCall
   // Index/Slice
-  | expr '[' idx=expr ']'                                       # ExprIndex
-  | expr '[' lidx=expr op=(':' | '-:' | '+:') ridx=expr ']'     # ExprSlice
+  | expr point='[' idx=expr ']'                                     # ExprIndex
+  | expr point='[' lidx=expr op=(':' | '-:' | '+:') ridx=expr ']'   # ExprSlice
   // Select
-  | expr '.' (ident | inout=('in' | 'out'))                     # ExprSel
+  | expr point='.' (ident | inout=('in' | 'out'))               # ExprDot
   // Operators
   | op=('+' | '-' | '~' | '!' | '&' | '|' | '^' | '\'' ) expr   # ExprUnary
   | expr op='\'' expr                                           # ExprBinary
@@ -248,7 +280,7 @@ expr
   | expr op='|' expr                                            # ExprBinary
   | expr op='&&' expr                                           # ExprBinary
   | expr op='||' expr                                           # ExprBinary
-  |<assoc=right> expr op='?' expr ':' expr                      # ExprTernary
+  |<assoc=right> expr point='?' expr ':' expr                   # ExprTernary
   | '{' expr s='{' expr (',' expr)* e='}' '}'                   # ExprRep
   | '{' expr (',' expr)* '}'                                    # ExprCat
   ;

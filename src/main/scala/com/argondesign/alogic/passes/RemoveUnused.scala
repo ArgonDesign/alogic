@@ -18,8 +18,8 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.analysis.ReadSymbols
 import com.argondesign.alogic.analysis.WrittenSymbols
 import com.argondesign.alogic.ast.StatefulTreeTransformer
-import com.argondesign.alogic.ast.Trees.Expr.InstancePortSel
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.ast.Trees.Expr.InstancePortSel
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
@@ -47,7 +47,7 @@ final class RemoveUnused(unusedSymbols: Set[Symbol])(implicit cc: CompilerContex
       cases forall {
         case CaseRegular(_, stmts) => stmts forall emptyStmt
         case CaseDefault(stmts)    => stmts forall emptyStmt
-        case _: CaseGen            => unreachable
+        case _: CaseSplice         => unreachable
       }
     case _ => false
   }

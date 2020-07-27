@@ -5,4 +5,4 @@ fsm stmt_static_assert_4 {
     fence;
   }
 }
-// :4: ERROR: Cannot evaluate condition of static assertion at compilation time
+// :4: ERROR: Condition of static assertion must be a compile time constant

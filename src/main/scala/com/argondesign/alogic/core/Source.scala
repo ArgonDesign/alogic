@@ -22,6 +22,8 @@ import java.nio.file.Files
 class Source(val file: File, val text: String) {
   val name = file.toString
 
+  val baseName = file.getName
+
   lazy val lines: List[String] = text.linesWithSeparators.toList
 
   def linesIterator: Iterator[String] = text.linesIterator

@@ -32,7 +32,9 @@ object ReadSymbols {
     case ExprCat(parts)              => parts.iterator flatMap lval
     case ExprIndex(_, idx)           => rval(idx)
     case ExprSlice(_, lIdx, _, rIdx) => rval(lIdx) ++ rval(rIdx)
-    case ExprSel(expr, _, Nil)       => rval(expr)
+    case ExprSel(expr, _)            => rval(expr)
+    case ExprSymSel(expr, _)         => rval(expr)
+    case ExprDot(expr, _, Nil)       => rval(expr)
     case _                           => unreachable
   }
 

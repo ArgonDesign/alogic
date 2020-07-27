@@ -18,9 +18,10 @@ package com.argondesign.alogic.transform
 
 import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
+
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
-import com.argondesign.alogic.typer.TypeAssigner
+import com.argondesign.alogic.core.TypeAssigner
 
 final class Regularize(loc: Loc)(implicit cc: CompilerContext) extends StatelessTreeTransformer {
 

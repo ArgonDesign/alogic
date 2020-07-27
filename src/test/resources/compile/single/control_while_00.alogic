@@ -72,4 +72,4 @@ fsm control_while_00 {
 //
 // endmodule
 // }}}
-// @stats/control_while_00/states: 4
+// @stats/control_while_00.control_while_00/states: 4

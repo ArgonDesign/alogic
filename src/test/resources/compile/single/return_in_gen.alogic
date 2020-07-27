@@ -1,0 +1,7 @@
+fsm return_in_gen {
+  void main() {
+    gen if (true) {
+      return;
+    }
+  }
+}

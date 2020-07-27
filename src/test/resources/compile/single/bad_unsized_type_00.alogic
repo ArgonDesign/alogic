@@ -1,0 +1,25 @@
+fsm bad_unsized_type_00 {
+  in  uint a;
+  out uint b;
+
+  in  sync uint c;
+  out sync uint d;
+
+  uint e;
+  uint f[4];
+  sram uint g[4];
+
+  void h(uint i, uint j) {}
+  uint k() {}
+}
+
+// :2: ERROR: Input port cannot have an unsized integer type
+// :3: ERROR: Output port cannot have an unsized integer type
+// :5: ERROR: Input port cannot have an unsized integer type
+// :6: ERROR: Output port cannot have an unsized integer type
+// :8: ERROR: Variable cannot have an unsized integer type
+// :9: ERROR: Array element cannot have an unsized integer type
+// :10: ERROR: SRAM element cannot have an unsized integer type
+// :12: ERROR: Variable cannot have an unsized integer type
+// :12: ERROR: Variable cannot have an unsized integer type
+// :13: ERROR: Function return value cannot have an unsized integer type

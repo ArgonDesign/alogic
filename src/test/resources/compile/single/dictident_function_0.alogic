@@ -1,9 +1,35 @@
 fsm dictident_function_0 {
-  in        bool i;
-  out wire  bool o;
+  in  bool i;
+  out bool o = false;
 
   void func#[0]() {
     o = i;
+    return;
+  }
+
+  void main() {
+    o = ~i;
+    func#[0]();
   }
 }
-// :5: ERROR: Definition with dictionary identifier must appear directly in 'gen' loop scope.
+// @fec/golden {{{
+//  module dictident_function_0(
+//    input  wire clk,
+//    input  wire rst,
+//    input  wire i,
+//    output reg o
+//  );
+//    reg state_q;
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        state_q <= 1'd0;
+//        o <= 1'd0;
+//      end else begin
+//        state_q <= ~state_q;
+//        o <= state_q ? i : ~i;
+//      end
+//    end
+//
+//  endmodule
+// }}}

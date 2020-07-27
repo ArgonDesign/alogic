@@ -1,0 +1,7 @@
+network a {}
+network b {}
+// :1: ERROR: Input file 'multiple_top_entities_without_compile_directive_00.alogic' contains multiple entity definitions
+// :1: ERROR: ... please use explicit 'compile' directives to define top level compilation targets
+// :2: ERROR: Input file 'multiple_top_entities_without_compile_directive_00.alogic' contains multiple entity definitions
+// :2: ERROR: ... please use explicit 'compile' directives to define top level compilation targets
+

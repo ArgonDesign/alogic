@@ -1,0 +1,6 @@
+network gen_for_bad_00 {
+  in u8 i;
+  gen for (u8 n = i ; n < 10 ; n++) {
+  }
+}
+// :3: ERROR: 'gen' variable initializer must be a compile time constant

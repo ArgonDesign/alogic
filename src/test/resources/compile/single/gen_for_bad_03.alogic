@@ -1,0 +1,5 @@
+network gen_for_bad_03 {
+  gen for (u8 n = 0 ; n ; n++) {
+  }
+}
+// :2: ERROR: Condition of 'gen for' yields 8 bits, 1 bit is expected

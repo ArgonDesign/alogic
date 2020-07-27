@@ -1,0 +1,4 @@
+network bad_void_type_04 {
+  pipeline void a;
+}
+// :2: ERROR: Pipeline variable cannot have a 'void' type

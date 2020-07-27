@@ -1,0 +1,12 @@
+import a() as a_default;
+
+compile a_default.add as top;
+
+// @fec/golden {{{
+//  module top(
+//    input   wire [7:0]  i,
+//    output  wire [7:0]  o
+//  );
+//    assign o = i + 8'd6;
+//  endmodule
+// }}}

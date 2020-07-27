@@ -1,7 +1,0 @@
-network gen_static_assert_2 {
-  static assert false, "Must fail";
-  gen if (true) {
-    static assert false, "Should not be checked";
-  }
-}
-// :2: ERROR: Static assertion failure: Must fail

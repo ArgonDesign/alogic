@@ -1,0 +1,2 @@
+// @args: -P 2
+// command-line:1: ERROR: Package defined in input file '.*/package_params_08\.alogic' does not take any parameters.

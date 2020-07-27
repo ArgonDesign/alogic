@@ -16,13 +16,13 @@
 package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.StatefulTreeTransformer
-import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols._
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.unreachable
 
 import scala.collection.concurrent.TrieMap
@@ -130,6 +130,10 @@ final class SplitStructsA(
         tree
       }
 
+    // Cast
+    case expr @ ExprCast(kind: TypeRecord, _) =>
+      TypeAssigner(expr.copy(kind = TypeUInt(kind.width)) withLocOf expr)
+
     //
     case _ => tree
   }
@@ -176,13 +180,13 @@ final class SplitStructsB(
   // avoid creating an illegal ExprSel during the standard traversal
   override def enter(tree: Tree): Option[Tree] = tree match {
     // Select on struct
-    case ExprSel(expr, sel, _) if expr.tpe.underlying.isRecord =>
+    case ExprSel(expr, sel) if expr.tpe.underlying.isRecord =>
       Some {
         def extract(expr: Expr, sel: String): Expr = {
           val cat = expr match {
             case ExprSym(symbol) =>
               recordCat(symbol)
-            case ExprSel(expr, sel, _) if expr.tpe.isRecord =>
+            case ExprSel(expr, sel) if expr.tpe.isRecord =>
               extract(expr, sel).asInstanceOf[ExprCat]
             case expr: ExprSel => // Select on instance
               walk(expr).asInstanceOf[ExprCat]
@@ -210,7 +214,7 @@ final class SplitStructsB(
       }
 
     // Select on instance
-    case ExprSel(expr @ ExprSym(iSymbol), sel, _) =>
+    case ExprSel(expr @ ExprSym(iSymbol), sel) =>
       val kind = iSymbol.kind.asEntity
       val pSymbol = kind(sel).get
       val fieldMap = fieldMaps(globalReplacements(kind.symbol))
@@ -221,7 +225,7 @@ final class SplitStructsB(
           struct.publicSymbols map { symbol =>
             symbol.kind match {
               case struct: TypeRecord => cat(struct, it)
-              case _                  => ExprSel(ref, it.next().name, Nil)
+              case _                  => ExprSel(ref, it.next().name)
             }
           }
         }
@@ -266,6 +270,15 @@ final class SplitStructsB(
       case _ =>
     }
     tree
+  }
+
+  override def finalCheck(tree: Tree): Unit = {
+    // $COVERAGE-OFF$ Debug code
+    tree visit {
+      case t: Tree if t.tpe.underlying.isRecord =>
+        throw Ice(t, "Tree with record type remains", t.toSource)
+    }
+    // $COVERAGE-ON$
   }
 
 }

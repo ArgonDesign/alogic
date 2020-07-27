@@ -1,71 +1,76 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2018 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2020 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
 //
-// Module: Alogic Compiler
-// Author: Geza Lore
-//
 // DESCRIPTION:
-//
-// Expression type checking tests
+//  Unary tick (') operator tests
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic
 
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.Messages.Error
-import com.argondesign.alogic.passes.Elaborate
-import com.argondesign.alogic.passes.Namer
-import com.argondesign.alogic.passes.TypeCheck
+import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Source
+import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.frontend.Complete
+import com.argondesign.alogic.frontend.Failure
+import com.argondesign.alogic.frontend.Frontend
+import com.argondesign.alogic.frontend.Unknown
 import org.scalatest.freespec.AnyFreeSpec
 
 final class UnaryTickSpec extends AnyFreeSpec with AlogicTest {
 
   implicit val cc: CompilerContext = new CompilerContext
 
-  protected def replaceUnaryTicks(text: String): Option[Thicket] = {
-    transformWithPass(
-      Namer andThen
-        Elaborate andThen
-        TypeCheck,
-      text
-    ) map { pairs =>
-      Thicket {
-        pairs.toList flatMap {
-          case (decl, defn) => List(decl, defn)
-        }
-      }
+  private val fe = new Frontend
+
+  private def elaborate(text: String): Option[Desc] =
+    fe.elaborate(Source("TyperCheckerExprSpec", text)) pipe {
+      case Left(ms)      => ms foreach cc.addMessage; None
+      case Right(result) => Some(result)
     }
-  }
+
+  private def typeCheck(tree: Tree): Unit =
+    fe.typeCheck(tree) match {
+      case Complete(_) =>
+      case Unknown(_)  => fail
+      case Failure(ms) => ms foreach cc.addMessage
+    }
+
+  private def typeCheck(text: String): Tree =
+    elaborate(text) tap { _ =>
+      cc.messages foreach println
+      cc.messages shouldBe empty
+    } pipe { _.value } tap { tree =>
+      typeCheck(tree)
+    }
 
   def checkUnpacked(text: String): Unit = {
-    replaceUnaryTicks(text)
+    typeCheck(text)
     cc.messages.loneElement should beThe[Error](
       """Operand of unary ' operator is of non-packed type"""
     )
   }
 
   def checkNarrowing(text: String): Unit = {
-    replaceUnaryTicks(text)
+    typeCheck(text)
     cc.messages.loneElement should beThe[Error](
       """Unary ' causes narrowing of width from \d+ to \d+"""
     )
   }
 
   def checkInvalidContext(text: String): Unit = {
-    replaceUnaryTicks(text)
+    typeCheck(text)
     cc.messages.loneElement should beThe[Error]("Unary ' operator used in invalid context")
   }
 
   def check(kinds: List[Type])(text: String): Unit = {
-    val tree = replaceUnaryTicks(text)
+    val tree = typeCheck(text)
     cc.messages shouldBe empty
-    val exprs = { tree.value collect { case e @ ExprUnary("'", _) => e } }.toList
+    val exprs = { tree collect { case e @ ExprUnary("'", _) => e } }.toList
     exprs should have length kinds.length
     for ((kind, expr) <- kinds zip exprs) {
       expr.tpe shouldBe kind
@@ -78,7 +83,7 @@ final class UnaryTickSpec extends AnyFreeSpec with AlogicTest {
         "a" in check(TypeUInt(9) :: Nil) {
           """fsm f {
             |  in u8 a;
-            |  (* unused *) u9 b = 'a;
+            |  u9 b = 'a;
             |}""".stripMargin
         }
 
@@ -86,7 +91,7 @@ final class UnaryTickSpec extends AnyFreeSpec with AlogicTest {
           """fsm f {
             |  in u8 a;
             |  void main() {
-            |    (* unused *) u9 b = 'a;
+            |    u9 b = 'a;
             |    fence;
             |  }
             |}""".stripMargin
@@ -96,7 +101,7 @@ final class UnaryTickSpec extends AnyFreeSpec with AlogicTest {
           """fsm f {
             |  in u8 a;
             |  void main() {
-            |    (* unused *)u9 b = 'a + 10;
+            |    u9 b = 'a + 10;
             |    fence;
             |  }
             |}""".stripMargin
@@ -106,7 +111,7 @@ final class UnaryTickSpec extends AnyFreeSpec with AlogicTest {
           """fsm f {
             |  in i8 a;
             |  void main() {
-            |    (* unused *)u9 b = 'a;
+            |    u9 b = 'a;
             |    fence;
             |  }
             |}""".stripMargin
@@ -118,7 +123,7 @@ final class UnaryTickSpec extends AnyFreeSpec with AlogicTest {
             |  u2 c = 0;
             |  void main() {
             |    c++;
-            |    (* unused *)u9 b = a + 'c;
+            |    u9 b = a + 'c;
             |    fence;
             |  }
             |}""".stripMargin
@@ -130,7 +135,7 @@ final class UnaryTickSpec extends AnyFreeSpec with AlogicTest {
             |  i2 c = 0;
             |  void main() {
             |    c++;
-            |    (* unused *)u9 b = a + 'c;
+            |    u9 b = a + 'c;
             |    fence;
             |  }
             |}""".stripMargin
@@ -146,7 +151,7 @@ final class UnaryTickSpec extends AnyFreeSpec with AlogicTest {
             |fsm x {
             |  in s a;
             |  void main() {
-            |    (* unused *)u9 b = 'a;
+            |    u9 b = 'a;
             |    fence;
             |  }
             |}""".stripMargin
@@ -156,7 +161,7 @@ final class UnaryTickSpec extends AnyFreeSpec with AlogicTest {
           """fsm f {
             |  in u10[3] a;
             |  void main() {
-            |    (* unused *)u10[4] b = 'a;
+            |    u10[4] b = 'a;
             |    fence;
             |  }
             |}""".stripMargin

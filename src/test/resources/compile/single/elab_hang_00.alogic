@@ -1,0 +1,13 @@
+network inner {
+  param uint Q;
+  rf = new undefined(R=Q);
+}
+
+network top {
+  const uint P = 16;
+  inst = new inner(P);
+}
+
+compile top;
+
+// :3: ERROR: 'undefined' is undefined

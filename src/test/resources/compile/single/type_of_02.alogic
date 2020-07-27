@@ -1,0 +1,8 @@
+network type_of_02 {
+  param uint P;
+}
+
+compile type_of_02() as top;
+
+// :5: ERROR: 'P' requires actual parameter value
+// :2: NOTE: 'P' is defined here

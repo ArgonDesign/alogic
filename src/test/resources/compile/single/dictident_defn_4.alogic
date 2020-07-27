@@ -1,5 +1,4 @@
-// @top: dictident_defn_4()
-// @out-top: dictident_defn_4__P_1
+compile dictident_defn_4() as top;
 network dictident_defn_4 {
   param bool P = true;
   gen if (P) {
@@ -21,7 +20,7 @@ network dictident_defn_4 {
   i_1 -> o_1;
 }
 // @fec/golden {{{
-//  module dictident_defn_4__P_1(
+//  module top(
 //    input  wire       i_0,
 //    input  wire [1:0] i_1,
 //    output wire       o_0,

@@ -1,6 +1,4 @@
-// @top: ent_static_assert_6(2)
 network ent_static_assert_6 {
-  param uint P;
+  const uint P = 2;
   static assert P % 2 == 0, "P must be even";
 }
-// @out-top: ent_static_assert_6__P_2

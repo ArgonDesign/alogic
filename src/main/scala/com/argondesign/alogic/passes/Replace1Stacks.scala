@@ -14,8 +14,8 @@ import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Symbols._
-import com.argondesign.alogic.typer.TypeAssigner
 
 import scala.collection.mutable
 
@@ -31,7 +31,7 @@ final class Replace1Stacks(implicit cc: CompilerContext) extends StatefulTreeTra
       // Replace the stack decl/defn with the decl/defn of the new symbol
       //////////////////////////////////////////////////////////////////////////
 
-      case DeclStack(symbol, _, depth) if depth.value contains BigInt(1) =>
+      case DeclStack(symbol, _, 1) =>
         val newSymbol = symbol.dup tap { _.kind = symbol.kind.asStack.kind }
         stackMap(symbol) = newSymbol
         newSymbol.mkDecl
@@ -43,20 +43,20 @@ final class Replace1Stacks(implicit cc: CompilerContext) extends StatefulTreeTra
       // Replace push/pop statements
       //////////////////////////////////////////////////////////////////////////
 
-      case StmtExpr(ExprCall(ExprSel(ExprSym(s), "push", _), _)) =>
+      case StmtExpr(ExprCall(ExprSel(ExprSym(s), "push"), _)) =>
         stackMap.get(s) map { _ => Stump } getOrElse tree
 
-      case StmtExpr(ExprCall(ExprSel(ExprSym(s), "pop", _), _)) =>
+      case StmtExpr(ExprCall(ExprSel(ExprSym(s), "pop"), _)) =>
         stackMap.get(s) map { symbol => TypeAssigner(ExprSym(symbol)) assign 0 } getOrElse tree
 
       //////////////////////////////////////////////////////////////////////////
       // Rewrite expressions
       //////////////////////////////////////////////////////////////////////////
 
-      case ExprSel(ExprSym(s), "top", _) =>
+      case ExprSel(ExprSym(s), "top") =>
         stackMap.get(s) map ExprSym getOrElse tree
 
-      case ExprSel(ExprSym(s), "old", _) =>
+      case ExprSel(ExprSym(s), "old") =>
         stackMap.get(s) map { symbol => ExprOld(ExprSym(symbol)) } getOrElse tree
 
       //

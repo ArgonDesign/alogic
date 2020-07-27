@@ -70,4 +70,4 @@ fsm control_for_10 {
 //
 // endmodule
 // }}}
-// @stats/control_for_10/states: 4
+// @stats/control_for_10.control_for_10/states: 4

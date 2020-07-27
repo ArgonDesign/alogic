@@ -2,6 +2,8 @@ network top {
   in bool i;
   out bool o;
 
+  from recursive_connect import *;
+
   inst = new recursive_connect(P=10);
 
   i -> inst.i; inst.o -> o;

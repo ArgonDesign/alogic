@@ -1,0 +1,9 @@
+fsm foo {}
+
+network type_of_00 {
+    in foo i;
+}
+
+compile type_of_00;
+
+// :4: ERROR: Type specifier refers to an entity

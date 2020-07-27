@@ -9,5 +9,11 @@ network single_param_struct_2 {
   out s_t(1, 1) o;
   i -> o;
 }
-// :8: ERROR: Multiple parameter assignments must be given by name
-// :9: ERROR: Multiple parameter assignments must be given by name
+// @fec/golden {{{
+//  module single_param_struct_2 (
+//    input  wire [1:0] i__a,
+//    output wire [1:0] o__a
+//  );
+//    assign o__a = i__a;
+//  endmodule
+// }}}

@@ -12,7 +12,6 @@ fsm param_type_02 {
     fence;
   }
 }
-// :7: ERROR: Type parameter 'T' must be assigned a type.
-// :2: NOTE: 'T' is defined at
-// :8: ERROR: Type parameter 'T' must be assigned a type.
-// :2: NOTE: 'T' is defined at
+// :7: ERROR: Actual value of parameter 'T' does not name a type
+// :2: NOTE: 'T' is defined here
+// :8: ERROR: Actual value of parameter 'T' does not name a type

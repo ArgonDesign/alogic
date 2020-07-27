@@ -15,35 +15,37 @@
 
 package com.argondesign.alogic.passes
 
+import com.argondesign.alogic.ast.Trees.Arg
 import com.argondesign.alogic.backend.CodeGeneration
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.frontend.Parse
+import com.argondesign.alogic.core.Loc
+import com.argondesign.alogic.core.Source
 
 import scala.util.ChainingSyntax
 
 object Passes extends ChainingSyntax {
 
   // All trees are transformed with the given pass before the next pass begins
-  def apply(topLevels: List[String])(implicit cc: CompilerContext) = {
+  def apply(
+      source: Source,
+      loc: Loc,
+      params: List[Arg]
+    )(
+      implicit
+      cc: CompilerContext
+    ): Unit = {
     // Define the passes to apply
     val passes =
       ////////////////////////////////////////////////////////////////////////
       // Front-end
       ////////////////////////////////////////////////////////////////////////
-      Parse andThen
-        Checker andThen
-        Namer andThen
-        UnusedCheck andThen
-        Elaborate andThen
-        // Any passes between here and the middle end can only perform checks
-        // and cannot re-write any trees unless errors have been detected
-        TypeCheck andThen
+      FrontendPass andThen
+        MarkTopLevels andThen
+        DropPackageAndParametrizedDescs andThen
+        DescToDeclDefn andThen
         ////////////////////////////////////////////////////////////////////////
         // Middle-end
         ////////////////////////////////////////////////////////////////////////
-        ReplaceUnaryTicks andThen // This must be first as TypeAssigner cannot handle unary '
-        ResolvePolyFunc andThen
-        AddCasts andThen
         Desugar andThen
         Fold andThen
         NormalizeFunctions andThen
@@ -75,7 +77,7 @@ object Passes extends ChainingSyntax {
         LowerArrays andThen
         SplitStructs() andThen
         LowerVectors() andThen
-        AddCasts andThen // TODO: Remove the need for this (make previous passes not add Nums..)
+        // FIXME: AddCasts andThen // TODO: Remove the need for this (make previous passes not add Nums..)
         Fold andThen
         SimplifyCat andThen
         ////////////////////////////////////////////////////////////////////////
@@ -104,8 +106,8 @@ object Passes extends ChainingSyntax {
         WriteAux andThen
         CodeGeneration
 
-    // Apply the passes to the trees
-    passes(topLevels)
+    // Apply the passes to the input
+    passes((source, loc, params))
   }
 
 }

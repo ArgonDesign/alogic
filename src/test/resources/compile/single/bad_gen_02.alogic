@@ -1,0 +1,6 @@
+fsm bad_gen_02 {
+  gen if (true) {
+    fence;
+  }
+}
+// :3: ERROR: Entity content expected

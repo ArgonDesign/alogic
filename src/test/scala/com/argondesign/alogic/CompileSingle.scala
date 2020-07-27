@@ -24,17 +24,7 @@ final class CompileSingle extends CompilationTest {
   private val testPath = Paths.get(getClass.getResource(base).getPath)
 
   // For each source file in the test directory
-  testPath.toFile.listFiles.sorted foreach { file =>
-    // Figure out the name of the entity (also filters out non matching files)
-    """.*/(.*)\.alogic$""".r findFirstMatchIn file.getPath foreach { matchData =>
-      // Name of top level
-      val top = matchData.group(1)
-
-      // Name of check file (same as source file)
-      val checkFile = matchData.group(0)
-
-      // Define test
-      defineTest(s"$top.alogic", testPath, top, checkFile)
-    }
+  (testPath.toFile.listFiles filter { _.getPath.endsWith(".alogic") }).sorted foreach { file =>
+    defineTest(file.getAbsolutePath)
   }
 }

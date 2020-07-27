@@ -1,4 +1,5 @@
-// @top: sized_param_init_0()
+compile sized_param_init_0() as top;
+
 fsm sized_param_init_0 {
   param u32 DEPTH = 32'd512;
   out wire uint(DEPTH*2) p_o;
@@ -8,9 +9,8 @@ fsm sized_param_init_0 {
     fence;
   }
 }
-// @out-top: sized_param_init_0__DEPTH_512
 // @fec/golden {{{
-//  module sized_param_init_0__DEPTH_512(
+//  module top(
 //    output wire [1023:0] p_o
 //  );
 //

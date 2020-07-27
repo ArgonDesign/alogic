@@ -11,5 +11,6 @@ network single_param_struct_4 {
   out s_t(1) o;
   i -> o;
 }
-// :10: ERROR: Type with more than one parameter requires named parameter assignment
-// :11: ERROR: Type with more than one parameter requires named parameter assignment
+// :10: ERROR: Type with generated parameters requires named parameter assignment
+// :2: NOTE: 's_t' is defined here
+// :11: ERROR: Type with generated parameters requires named parameter assignment

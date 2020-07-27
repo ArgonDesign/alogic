@@ -1,0 +1,5 @@
+fsm using_all_bad_00 {
+  bool b;
+  using b.*;
+}
+// :3: ERROR: Target of 'using \.\*;' must be a compound type

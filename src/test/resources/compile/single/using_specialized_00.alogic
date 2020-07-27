@@ -1,0 +1,21 @@
+struct S{
+  param uint WIDTH;
+  uint(WIDTH) field;
+}
+
+using S(10) as T;
+
+network using_specialized_00 {
+  in  T i;
+  out T o;
+  i -> o;
+}
+
+// @fec/golden {{{
+//  module using_specialized_00(
+//    input  wire [9:0] i__field,
+//    output wire [9:0] o__field
+//  );
+//    assign o__field = i__field;
+//  endmodule
+// }}}

@@ -1,13 +1,16 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Copyright (c) 2020 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2020 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
+//
+// DESCRIPTION:
+//  Token factory used by the lexer. Also implements #line.
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.antlr
 
-import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.MessageBuffer
 import com.argondesign.alogic.core.Source
 import com.argondesign.alogic.util.unreachable
 import org.antlr.v4.runtime.CharStream
@@ -18,9 +21,7 @@ import org.antlr.v4.runtime.misc.Pair
 
 import scala.util.ChainingSyntax
 
-// Token factory used by the lexer. Also implements #line. Note this is
-// currently used both by PreprocLexer and AlogicLexer.
-class AlogicTokenFactory(val alogicSource: Source)(implicit cc: CompilerContext)
+class AlogicTokenFactory(val alogicSource: Source)(implicit mb: MessageBuffer)
     extends TokenFactory[AlogicToken]
     with ChainingSyntax {
 
@@ -45,7 +46,7 @@ class AlogicTokenFactory(val alogicSource: Source)(implicit cc: CompilerContext)
 
   private def error(token: AlogicToken, msg: String): Unit = {
     hadError = true
-    cc.error(token.loc, msg)
+    mb.error(token.loc, msg)
   }
 
   // New line offset and file name only committed at end of line
@@ -63,6 +64,7 @@ class AlogicTokenFactory(val alogicSource: Source)(implicit cc: CompilerContext)
       charPositionInLine: Int
     ): AlogicToken = {
     require(channel == Token.DEFAULT_CHANNEL || channel == Token.HIDDEN_CHANNEL)
+    require(source.a.isInstanceOf[AlogicLexer])
 
     def mkToken(channel: Int): AlogicToken = {
       val token = new AlogicToken(source, kind, channel, alogicSource, start, stop, fileName)
@@ -81,9 +83,6 @@ class AlogicTokenFactory(val alogicSource: Source)(implicit cc: CompilerContext)
     if (channel == Token.HIDDEN_CHANNEL) {
       // Hidden tokens, nothing special
       hiddenToken
-    } else if (!source.a.isInstanceOf[AlogicLexer]) {
-      // PreprocLexer, nothing special
-      normalToken
     } else if (kind == Token.EOF) {
       // Pass through EOF
       normalToken
