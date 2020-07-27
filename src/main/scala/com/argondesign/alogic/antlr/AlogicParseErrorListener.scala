@@ -36,8 +36,7 @@ class AlogicParseErrorListener(implicit cc: CompilerContext) extends BaseErrorLi
         } else {
           defaultMessage
         }
-      case _: PreprocParser => defaultMessage
-      case _                => unreachable
+      case _ => unreachable
     }
 
     val loc = offendingSymbol match {
