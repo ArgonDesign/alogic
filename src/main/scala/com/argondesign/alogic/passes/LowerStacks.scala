@@ -17,8 +17,8 @@ package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Messages.Ice
+import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.StackFactory
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types.TypeStack
@@ -55,6 +55,7 @@ final class LowerStacks(implicit cc: CompilerContext) extends StatefulTreeTransf
             // Clear control signals on stall
             entitySymbol.attr.interconnectClearOnStall.append((instanceSymbol, "push"))
             entitySymbol.attr.interconnectClearOnStall.append((instanceSymbol, "pop"))
+            entitySymbol.attr.interconnectClearOnStall.append((instanceSymbol, "set"))
 
           case _ =>
         }
@@ -134,7 +135,8 @@ final class LowerStacks(implicit cc: CompilerContext) extends StatefulTreeTransf
                   List(
                     StmtAssign(iRef sel "d", iRef sel "q"),
                     assignFalse(iRef sel "push"),
-                    assignFalse(iRef sel "pop")
+                    assignFalse(iRef sel "pop"),
+                    assignTrue(iRef sel "set")
                   )
                 )
               }

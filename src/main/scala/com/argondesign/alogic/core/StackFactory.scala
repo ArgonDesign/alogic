@@ -35,6 +35,7 @@ object StackFactory extends ChainingSyntax {
   //
   //    in       bool push;
   //    in       bool pop;
+  //    in       bool set;
   //    in       TYPE d;
   //    out wire TYPE q;
   //
@@ -58,7 +59,7 @@ object StackFactory extends ChainingSyntax {
   //          s#[n] = s#[n-1];
   //        }
   //        s#[0] = d;
-  //      } else {
+  //      } else if (set) {
   //        s#[0] = d;
   //      }
   //      fence;
@@ -84,6 +85,7 @@ object StackFactory extends ChainingSyntax {
 
     val pusSymbol = cc.newSymbol("push", loc) tap { _.kind = TypeIn(TypeUInt(1), fcn) }
     val popSymbol = cc.newSymbol("pop", loc) tap { _.kind = TypeIn(TypeUInt(1), fcn) }
+    val setSymbol = cc.newSymbol("set", loc) tap { _.kind = TypeIn(TypeUInt(1), fcn) }
     val dSymbol = cc.newSymbol("d", loc) tap { _.kind = TypeIn(kind, fcn) }
     val qSymbol = cc.newSymbol("q", loc) tap { _.kind = TypeOut(kind, fcn, stw) }
     val sSymbols = List from {
@@ -92,12 +94,14 @@ object StackFactory extends ChainingSyntax {
 
     val pusDecl = pusSymbol.mkDecl regularize loc
     val popDecl = popSymbol.mkDecl regularize loc
+    val setDecl = setSymbol.mkDecl regularize loc
     val dDecl = dSymbol.mkDecl regularize loc
     val qDecl = qSymbol.mkDecl regularize loc
     val sDecls = sSymbols map { sSymbol => sSymbol.mkDecl regularize loc }
 
     val pusDefn = pusSymbol.mkDefn
     val popDefn = popSymbol.mkDefn
+    val setDefn = setSymbol.mkDefn
     val dDefn = dSymbol.mkDefn
     val qDefn = qSymbol.mkDefn
     val sDefns = sSymbols map { sSymbol =>
@@ -106,6 +110,7 @@ object StackFactory extends ChainingSyntax {
 
     val pusRef = ExprSym(pusSymbol)
     val popRef = ExprSym(popSymbol)
+    val setRef = ExprSym(setSymbol)
     val dRef = ExprSym(dSymbol)
     val qRef = ExprSym(qSymbol)
     val sRefs = sSymbols map ExprSym
@@ -134,7 +139,7 @@ object StackFactory extends ChainingSyntax {
                   }
                 },
                 List(
-                  StmtAssign(sRefs.head, dRef)
+                  StmtIf(setRef, List(StmtAssign(sRefs.head, dRef)), Nil)
                 )
               )
             )
@@ -145,8 +150,8 @@ object StackFactory extends ChainingSyntax {
 
     val assign = EntAssign(qRef, sRefs.head)
 
-    val decls = pusDecl :: popDecl :: dDecl :: qDecl :: sDecls
-    val defns = (pusDefn :: popDefn :: dDefn :: qDefn :: sDefns) map EntDefn
+    val decls = pusDecl :: popDecl :: setDecl :: dDecl :: qDecl :: sDecls
+    val defns = (pusDefn :: popDefn :: setDefn :: dDefn :: qDefn :: sDefns) map EntDefn
 
     val entitySymbol = cc.newSymbol(name, loc)
     val decl = DeclEntity(entitySymbol, decls) regularize loc
