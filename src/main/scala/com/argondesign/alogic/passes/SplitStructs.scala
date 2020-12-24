@@ -22,6 +22,7 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.unreachable
 
 import scala.collection.concurrent.TrieMap
@@ -143,6 +144,29 @@ final class SplitStructsB(
     cc: CompilerContext)
     extends StatefulTreeTransformer {
 
+  private def makeRecordCat(symbol: Symbol): ExprCat = {
+    val fSymbols = fieldMaps(entitySymbol)(symbol)
+    def cat(struct: TypeRecord, it: Iterator[Symbol]): ExprCat = ExprCat {
+      struct.dataMembers map { symbol =>
+        symbol.kind match {
+          case struct: TypeRecord => cat(struct, it)
+          case _                  => ExprSym(it.next())
+        }
+      }
+    }
+    cat(symbol.kind.underlying.asRecord, fSymbols.iterator)
+  }
+
+  // We cache concatenation expression representing split structures because
+  // a lot of times we just want to do an ExprSel into these, in which case
+  // it is severely wasteful to build the ExprCat just to take a part of it.
+  private val recordCatCache = mutable.Map[(Symbol, Symbol), ExprCat]()
+
+  private def recordCat(symbol: Symbol): ExprCat = {
+    require(symbol.kind.underlying.isRecord, symbol.kind.toString)
+    recordCatCache.getOrElseUpdate((entitySymbol, symbol), makeRecordCat(symbol))
+  }
+
   override def replace(symbol: Symbol): Boolean = symbol.kind match {
     case TypeEntity(eSymbol, _) => globalReplacements contains eSymbol
     case _                      => false
@@ -154,10 +178,35 @@ final class SplitStructsB(
     // Select on struct
     case ExprSel(expr, sel, _) if expr.tpe.underlying.isRecord =>
       Some {
-        val kind = expr.tpe.underlying.asRecord
-        val fieldIndex = kind.dataMembers.indexWhere(_.name == sel)
-        val cat = walk(expr).asInstanceOf[ExprCat]
-        cat.parts(fieldIndex)
+        def extract(expr: Expr, sel: String): Expr = {
+          val cat = expr match {
+            case ExprSym(symbol) =>
+              recordCat(symbol)
+            case ExprSel(expr, sel, _) if expr.tpe.isRecord =>
+              extract(expr, sel).asInstanceOf[ExprCat]
+            case expr: ExprSel => // Select on instance
+              walk(expr).asInstanceOf[ExprCat]
+            case _ => unreachable
+          }
+          val fieldIndex = expr.tpe.underlying.asRecord.dataMembers.indexWhere(_.name == sel)
+          cat.parts(fieldIndex)
+        }
+
+        val loc = tree.loc
+
+        // Deep copy so we can update location
+        def deepCopyAndRegularize(expr: Expr): Expr = expr match {
+          case e: ExprSym =>
+            TypeAssigner(e.copy() withLoc loc)
+          case e: ExprCat =>
+            TypeAssigner(e.copy(parts = e.parts map deepCopyAndRegularize) withLoc loc)
+          case e: ExprSel =>
+            TypeAssigner(e.copy(expr = deepCopyAndRegularize(e.expr)) withLoc loc)
+          case _ =>
+            unreachable
+        }
+
+        deepCopyAndRegularize(extract(expr, sel))
       }
 
     // Select on instance
@@ -167,6 +216,7 @@ final class SplitStructsB(
       val fieldMap = fieldMaps(globalReplacements(kind.symbol))
       fieldMap.get(pSymbol) map { fSymbols =>
         val ref = walk(expr).asInstanceOf[Expr]
+
         def cat(struct: TypeRecord, it: Iterator[Symbol]): ExprCat = ExprCat {
           struct.publicSymbols map { symbol =>
             symbol.kind match {
@@ -175,6 +225,7 @@ final class SplitStructsB(
             }
           }
         }
+
         cat(pSymbol.kind.underlying.asRecord, fSymbols.iterator) regularize tree.loc
       }
 
@@ -196,18 +247,8 @@ final class SplitStructsB(
     // Rewrite reference to struct symbol as a nested concatenation
     //////////////////////////////////////////////////////////////////////////
 
-    case ExprSym(symbol) =>
-      fieldMaps(entitySymbol).get(symbol) map { fSymbols =>
-        def cat(struct: TypeRecord, it: Iterator[Symbol]): ExprCat = ExprCat {
-          struct.publicSymbols filter { _.kind.isFund } map { symbol =>
-            symbol.kind match {
-              case struct: TypeRecord => cat(struct, it)
-              case _                  => ExprSym(it.next())
-            }
-          }
-        }
-        cat(symbol.kind.underlying.asRecord, fSymbols.iterator) regularize tree.loc
-      } getOrElse tree
+    case ExprSym(symbol) if symbol.kind.underlying.isRecord =>
+      makeRecordCat(symbol) regularize tree.loc
 
     //
     case _ => tree
