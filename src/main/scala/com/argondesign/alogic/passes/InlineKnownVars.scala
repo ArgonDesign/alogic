@@ -141,9 +141,9 @@ final class InlineKnownVars(
   override def transform(tree: Tree): Tree = tree match {
     // Substitute known constants of scalar types
     case ExprSym(symbol) if symbol.kind.underlying.isNumeric =>
-      // Drop bindings which contain non-numeric symbols, as operator change
+      // Drop bindings which contain non-numeric symbols, as operators change
       // over them. This only happens prior to SplitStructs and LowerVectors.
-      val bs = bindings.top filterNot { _._2 existsAll { !_.tpe.isNumeric } }
+      val bs = bindings.top.view.filter(p => !(p._2 existsAll { !_.tpe.isNumeric }))
       @tailrec // Recursively replace with bound values
       def simplify(expr: Expr): Expr = (expr given bs).simplify match {
         case simplified: ExprInt => simplified
