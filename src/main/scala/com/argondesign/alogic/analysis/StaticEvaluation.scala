@@ -26,17 +26,58 @@ import com.argondesign.alogic.util.PartialMatch._
 import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.tailrec
+import scala.collection.immutable
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 object StaticEvaluation {
+
+  // Evaluation context used throughout the traversal. 'bindings' just
+  // contains the expressions that define the values of symbols and forms
+  // directly the result of the evaluation. The 'used' set is only used
+  // to speed up the algorithm as it can be used to eliminate an expensive
+  // "filter map by predicate on value" type operation required when
+  // removing or replacing a binding. In order to do this, the 'used' set
+  // must always be a superset of
+  // 'bindings.valuesIterator.flatMap(ReadSymbols.rval).toSet',
+  // i.e.: the set of all symbols used in an expression in the bindings.
+  // It is ok if 'used' is a proper superset and contains symbols which are
+  // not actually used. These will be removed from the 'used' set the next
+  // time time we try to remove bindings using that symbol (which do not
+  // exist), so the worst case waste is one full traversal of the bindings
+  // which is also what would often be needed to keep the 'used' set precise,
+  // but we only pay this if we actually want to remove that symbol, which is
+  // optimal.
+  case class Ctx(bindings: Bindings, used: immutable.Set[Symbol]) {
+
+    def add(symbol: Symbol, expr: Expr): Ctx = {
+      // Note: The used set of the result is approximate (because we don't
+      // drop overwritten bindings), but is conservative which is sufficient.
+      Ctx(bindings + (symbol -> expr), used ++ ReadSymbols.rval(expr))
+    }
+
+    def addAll(newBindings: Bindings): Ctx = {
+      newBindings.iterator.foldLeft(this) { case (ctx, (symbol, expr)) => ctx.add(symbol, expr) }
+    }
+
+    def intersect(that: Ctx): Ctx = {
+      // Note: used set is approximate again, but is conservative.
+      Ctx((bindings.toSet intersect that.bindings.toSet).toMap, used union that.used)
+    }
+
+  }
+
+  object Ctx {
+    def from(bindings: Bindings): Ctx =
+      Ctx(bindings, bindings.valuesIterator.flatMap(ReadSymbols.rval).toSet)
+  }
 
   // Given an expression that is known to be true, return a set
   // of bindings that can be inferred
   private def inferTrue(expr: Expr)(implicit cc: CompilerContext): Bindings = {
     if (expr.tpe.isPacked && expr.tpe.width == 1) {
       expr match {
-        case ExprSym(symbol) => {
+        case ExprSym(symbol) =>
           val self =
             Iterator.single(symbol -> (ExprInt(symbol.kind.isSigned, 1, 1) regularize expr.loc))
           val implied = symbol.attr.implications.enumerate collect {
@@ -46,7 +87,6 @@ object StaticEvaluation {
               iSymbol -> (ExprInt(iSymbol.kind.isSigned, 1, 0) regularize expr.loc)
           }
           (self ++ implied).toMap
-        }
         case ExprUnary("!" | "~", expr)             => inferFalse(expr)
         case ExprBinary(lhs, "&&" | "&", rhs)       => inferTrue(lhs) ++ inferTrue(rhs)
         case ExprBinary(lhs, "==", ExprSym(symbol)) => Map(symbol -> lhs)
@@ -67,7 +107,7 @@ object StaticEvaluation {
       val eWidth = expr.tpe.width
       if (eWidth == 1) {
         expr match {
-          case ExprSym(symbol) => {
+          case ExprSym(symbol) =>
             val self =
               Iterator.single(symbol -> (ExprInt(symbol.kind.isSigned, 1, 0) regularize expr.loc))
             val implied = symbol.attr.implications.enumerate collect {
@@ -77,7 +117,6 @@ object StaticEvaluation {
                 iSymbol -> (ExprInt(iSymbol.kind.isSigned, 1, 0) regularize expr.loc)
             }
             (self ++ implied).toMap
-          }
           case ExprUnary("!" | "~", expr)             => inferTrue(expr)
           case ExprBinary(lhs, "||" | "|", rhs)       => inferFalse(lhs) ++ inferFalse(rhs)
           case ExprBinary(lhs, "!=", ExprSym(symbol)) => Map(symbol -> lhs)
@@ -86,9 +125,8 @@ object StaticEvaluation {
         }
       } else {
         expr match {
-          case ExprSym(symbol) => {
+          case ExprSym(symbol) =>
             Map(symbol -> (ExprInt(symbol.kind.isSigned, eWidth.toInt, 0) regularize expr.loc))
-          }
           //        case ExprCat(parts) => (Bindings.empty /: parts)(_ ++ inferFalse(_))
           case _ => Bindings.empty
         }
@@ -100,49 +138,48 @@ object StaticEvaluation {
   // infer bindings for symbols defining the just inferred symbols
   @tailrec
   private def inferTransitive(
-      curr: Bindings,
+      curr: Ctx,
       inferred: Bindings
     )(
       implicit
       cc: CompilerContext
-    ): Bindings = {
+    ): Ctx = {
     if (inferred.isEmpty) {
       curr
     } else {
-      val transitives = curr flatMap {
-        case (symbol, oldExpr) => {
+      val transitives = curr.bindings flatMap {
+        case (symbol, oldExpr) =>
           inferred.get(symbol) flatMap { newExpr =>
             newExpr partialMatch {
               case Integral(_, _, value) if value == 0 => inferFalse(oldExpr)
               case Integral(_, _, value) if value != 0 => inferTrue(oldExpr)
             }
           }
-        }
       }
 
       val transitive = transitives.foldLeft(Bindings.empty)(_ ++ _)
 
-      inferTransitive(curr ++ inferred, transitive)
+      inferTransitive(curr addAll inferred, transitive)
     }
   }
 
   private def inferTrueTransitive(
-      curr: Bindings,
+      curr: Ctx,
       expr: Expr
     )(
       implicit
       cc: CompilerContext
-    ): Bindings = {
+    ): Ctx = {
     inferTransitive(curr, inferTrue(expr))
   }
 
   private def inferFalseTransitive(
-      curr: Bindings,
+      curr: Ctx,
       expr: Expr
     )(
       implicit
       cc: CompilerContext
-    ): Bindings = {
+    ): Ctx = {
     inferTransitive(curr, inferFalse(expr))
   }
 
@@ -173,17 +210,17 @@ object StaticEvaluation {
   }
 
   private def overwrite(
-      curr: Bindings,
+      curr: Ctx,
       symbol: Symbol,
       expr: Expr
     )(
       implicit
       cc: CompilerContext
-    ): Option[Bindings] = {
+    ): Option[Ctx] = {
     // Add the new binding for the symbol, but first substitute the new
     // expression using the current binding of symbol to remove self references
     val newValue = {
-      val selfBinding = Bindings from { curr get symbol map { symbol -> _ } }
+      val selfBinding = Bindings from { curr.bindings get symbol map { symbol -> _ } }
       val replaced = expr given selfBinding
       val signFixed = if (symbol.kind.isSigned != replaced.tpe.isSigned) {
         if (symbol.kind.isSigned) replaced.castSigned else replaced.castUnsigned
@@ -192,28 +229,52 @@ object StaticEvaluation {
       }
       signFixed.simplify
     }
+    // TODO: Get rid of this Option by catching all errors currently reported
+    //       in SimplifyExpr in the TypeChecker
     Option.unless(newValue.tpe.isError) {
-      // Remove all bindings that reference the just added symbol,
-      // as these used the old value. TODO: use SSA form...
-      val written = Set(symbol)
-      val remaining = curr filterNot { case (_, v) => uses(v, written) }
+      val remaining = if (!curr.used(symbol)) {
+        // The written symbol is not used in the value of any of the current
+        // bindings, so there is no need to filter
+        curr
+      } else {
+        // Remove all bindings that reference the just added symbol,
+        // as these used the old value. Also update the 'used' set.
+        // TODO: use SSA form...
+        // TODO: Specialize 'uses' for single symbol
+        Ctx(curr.bindings filterNot { case (_, v) => uses(v, Set(symbol)) }, curr.used.excl(symbol))
+      }
       // If the new expression is at this point still self referential, then
       // the current bindings didn't cover the symbol, so we do not know the
       // new value as we did not know the old value, so only add it to the
       // binding if no self references and hence we might know the value.
+      // We also know that if the new value is self-referential, then remaining
+      // does not contain a binding for the symbol, because if it did, then
+      // the result could not be self referential due to the above substitution.
       if (newValue exists { case ExprSym(`symbol`) => true }) {
         remaining
       } else {
-        remaining + (symbol -> newValue)
+        remaining.add(symbol, newValue)
       }
     }
   }
 
-  private def removeWritten(curr: Bindings, lval: Expr): Bindings = {
+  private def removeWritten(curr: Ctx, lval: Expr): Ctx = {
     // Remove bindings of the written symbols, and all
     // bindings that reference a written symbol
     val written = WrittenSymbols(lval).toSet
-    curr filterNot { case (k, v) => written(k) || uses(v, written) }
+    val writtenAndUsed = written filter curr.used
+    if (writtenAndUsed.isEmpty) {
+      // None of he written symbols are used, just drop based on keys which
+      // is a lot faster
+      Ctx(curr.bindings.removedAll(written), curr.used)
+    } else {
+      // Do the hard work of filtering based on value as well
+      val newBingings = curr.bindings filterNot {
+        case (k, v) => written(k) || uses(v, writtenAndUsed)
+      }
+      val newUsed = curr.used diff writtenAndUsed
+      Ctx(newBingings, newUsed)
+    }
   }
 
   def apply(
@@ -225,15 +286,14 @@ object StaticEvaluation {
     ): Option[(Map[Int, Bindings], Bindings)] = {
     val res = mutable.Map[Int, Bindings]()
 
-    def analyse(curr: Bindings, stmt: Stmt): Option[Bindings] = {
+    def analyse(curr: Ctx, stmt: Stmt): Option[Ctx] = {
       // Annotate the current statement right at the beginning,
       // this side-effect builds the final map we are returning
-      res(stmt.id) = curr
+      res(stmt.id) = curr.bindings
       //
-      def analyseOpt(bindingsOpt: Option[Bindings], stmt: Stmt): Option[Bindings] =
-        bindingsOpt flatMap { bindings =>
-          analyse(bindings, stmt)
-        }
+      def analyseOpt(ctxOpt: Option[Ctx], stmt: Stmt): Option[Ctx] =
+        ctxOpt.flatMap(analyse(_, stmt))
+
       // Compute the new bindings after this statement
       stmt match {
         // Simple assignment
@@ -249,8 +309,8 @@ object StaticEvaluation {
         // inlining combinational functions. As the symbol is being introduced
         // by this statement, and in statements definitions must precede use,
         // we know that the symbol is not in the bindings, so just add it
-        case StmtDefn(DefnVal(symbol, init))       => Some(curr + (symbol -> init))
-        case StmtDefn(DefnVar(symbol, Some(init))) => Some(curr + (symbol -> init))
+        case StmtDefn(DefnVal(symbol, init))       => Some(curr.add(symbol, init))
+        case StmtDefn(DefnVar(symbol, Some(init))) => Some(curr.add(symbol, init))
         case StmtDefn(DefnVar(_, None))            => Some(curr)
 
         // TODO: these could be improved by computing new bindings
@@ -273,7 +333,7 @@ object StaticEvaluation {
           // Keep only the bindings that are the same across both branches
           afterThen flatMap { at =>
             afterElse map { ae =>
-              (at.toSet intersect ae.toSet).toMap
+              at intersect ae
             }
           }
 
@@ -292,10 +352,10 @@ object StaticEvaluation {
                 conds map { ExprBinary(_, "==", value) } reduce { _ || _ } regularize node.loc
             }
 
-            val buf = ListBuffer[Bindings]()
+            val buf = ListBuffer[Ctx]()
 
             @tailrec
-            def loop(curr: Bindings, constraints: List[Expr]): List[Bindings] = {
+            def loop(curr: Ctx, constraints: List[Expr]): List[Ctx] = {
               if (constraints.isEmpty) {
                 curr :: buf.toList
               } else {
@@ -309,9 +369,10 @@ object StaticEvaluation {
 
           val afters = for ((before, stmt) <- befores zip stmts) yield analyse(before, stmt)
 
+          // Keep only the bindings that are the same across all branches
           Option.when(afters forall { _.isDefined }) {
             // Keep only the bindings that are the same across all branches
-            (afters map { _.get.toSet } reduce { _ intersect _ }).toMap
+            afters.map(_.get).reduce(_ intersect _)
           }
 
         // Infer assertion/assumption is true
@@ -334,8 +395,8 @@ object StaticEvaluation {
       }
     }
 
-    analyse(initialBindings, stmt) map { finalBindings =>
-      (res.toMap, finalBindings)
+    analyse(Ctx.from(initialBindings), stmt) map { finalCtx =>
+      (res.toMap, finalCtx.bindings)
     }
   }
 
