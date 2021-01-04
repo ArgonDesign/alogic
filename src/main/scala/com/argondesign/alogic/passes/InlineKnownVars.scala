@@ -143,13 +143,14 @@ final class InlineKnownVars(
     case ExprSym(symbol) if symbol.kind.underlying.isNumeric =>
       // Drop bindings which contain non-numeric symbols, as operators change
       // over them. This only happens prior to SplitStructs and LowerVectors.
-      val bs = bindings.top.view.filter(p => !(p._2 existsAll { !_.tpe.isNumeric }))
+      val bs: Symbol => Option[Expr] =
+        bindings.top.get(_).filterNot(_ existsAll { !_.tpe.isNumeric })
       @tailrec // Recursively replace with bound values
       def simplify(expr: Expr): Expr = (expr given bs).simplify match {
         case simplified: ExprInt => simplified
         case simplified          => if (simplified eq expr) expr else simplify(simplified)
       }
-      bs.get(symbol) map simplify match {
+      bs(symbol) map simplify match {
         // If the value is known, replace the ref
         case Some(expr: ExprInt) => expr
         // If the current ref is a temporary, and the replacement is simply

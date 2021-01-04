@@ -60,9 +60,19 @@ object StaticEvaluation {
       newBindings.iterator.foldLeft(this) { case (ctx, (symbol, expr)) => ctx.add(symbol, expr) }
     }
 
-    def intersect(that: Ctx): Ctx = {
+    def fastIntersect(f: Ctx => Option[IterableOnce[Ctx]]): Option[Ctx] = {
+      var acc: immutable.Set[Symbol] = Set.empty
+      val newBindingsOpt = bindings.fastIntersect { bindings =>
+        f(Ctx(bindings, used)) map {
+          _.iterator map { ctx =>
+            acc = acc union ctx.used
+            ctx.bindings
+          }
+        }
+      }
+
       // Note: used set is approximate again, but is conservative.
-      Ctx((bindings.toSet intersect that.bindings.toSet).toMap, used union that.used)
+      newBindingsOpt map { Ctx(_, acc) }
     }
 
   }
@@ -86,11 +96,11 @@ object StaticEvaluation {
             case (true, false, iSymbol) =>
               iSymbol -> (ExprInt(iSymbol.kind.isSigned, 1, 0) regularize expr.loc)
           }
-          (self ++ implied).toMap
+          Bindings.from(self ++ implied)
         case ExprUnary("!" | "~", expr)             => inferFalse(expr)
         case ExprBinary(lhs, "&&" | "&", rhs)       => inferTrue(lhs) ++ inferTrue(rhs)
-        case ExprBinary(lhs, "==", ExprSym(symbol)) => Map(symbol -> lhs)
-        case ExprBinary(ExprSym(symbol), "==", rhs) => Map(symbol -> rhs)
+        case ExprBinary(lhs, "==", ExprSym(symbol)) => Bindings.from(Iterator.single(symbol -> lhs))
+        case ExprBinary(ExprSym(symbol), "==", rhs) => Bindings.from(Iterator.single(symbol -> rhs))
         case _                                      => Bindings.empty
       }
     } else {
@@ -116,17 +126,23 @@ object StaticEvaluation {
               case (false, false, iSymbol) =>
                 iSymbol -> (ExprInt(iSymbol.kind.isSigned, 1, 0) regularize expr.loc)
             }
-            (self ++ implied).toMap
-          case ExprUnary("!" | "~", expr)             => inferTrue(expr)
-          case ExprBinary(lhs, "||" | "|", rhs)       => inferFalse(lhs) ++ inferFalse(rhs)
-          case ExprBinary(lhs, "!=", ExprSym(symbol)) => Map(symbol -> lhs)
-          case ExprBinary(ExprSym(symbol), "!=", rhs) => Map(symbol -> rhs)
-          case _                                      => Bindings.empty
+            Bindings.from(self ++ implied)
+          case ExprUnary("!" | "~", expr)       => inferTrue(expr)
+          case ExprBinary(lhs, "||" | "|", rhs) => inferFalse(lhs) ++ inferFalse(rhs)
+          case ExprBinary(lhs, "!=", ExprSym(symbol)) =>
+            Bindings.from(Iterator.single(symbol -> lhs))
+          case ExprBinary(ExprSym(symbol), "!=", rhs) =>
+            Bindings.from(Iterator.single(symbol -> rhs))
+          case _ => Bindings.empty
         }
       } else {
         expr match {
           case ExprSym(symbol) =>
-            Map(symbol -> (ExprInt(symbol.kind.isSigned, eWidth.toInt, 0) regularize expr.loc))
+            Bindings.from(
+              Iterator.single(
+                symbol -> (ExprInt(symbol.kind.isSigned, eWidth.toInt, 0) regularize expr.loc)
+              )
+            )
           //        case ExprCat(parts) => (Bindings.empty /: parts)(_ ++ inferFalse(_))
           case _ => Bindings.empty
         }
@@ -147,7 +163,7 @@ object StaticEvaluation {
     if (inferred.isEmpty) {
       curr
     } else {
-      val transitives = curr.bindings flatMap {
+      val transitives = curr.bindings.iterator flatMap {
         case (symbol, oldExpr) =>
           inferred.get(symbol) flatMap { newExpr =>
             newExpr partialMatch {
@@ -327,13 +343,15 @@ object StaticEvaluation {
         case StmtBlock(body) => body.foldLeft(Option(curr))(analyseOpt)
 
         case StmtIf(cond, thenStmts, elseStmts) =>
-          val afterThen = thenStmts.foldLeft(Option(inferTrueTransitive(curr, cond)))(analyseOpt)
-          val afterElse = elseStmts.foldLeft(Option(inferFalseTransitive(curr, cond)))(analyseOpt)
+          // At the end, keep only the bindings that are the same across all branches
+          curr fastIntersect { curr =>
+            val afterThen = thenStmts.foldLeft(Option(inferTrueTransitive(curr, cond)))(analyseOpt)
+            val afterElse = elseStmts.foldLeft(Option(inferFalseTransitive(curr, cond)))(analyseOpt)
 
-          // Keep only the bindings that are the same across both branches
-          afterThen flatMap { at =>
-            afterElse map { ae =>
-              at intersect ae
+            afterThen flatMap { at =>
+              afterElse map { ae =>
+                Iterator(at, ae)
+              }
             }
           }
 
@@ -346,33 +364,36 @@ object StaticEvaluation {
           val regularStmts = cases collect { case CaseRegular(_, stmts) => StmtBlock(stmts) }
           val stmts = defaultStmt :: regularStmts
 
-          val befores = {
-            val constraints = cases collect {
-              case node @ CaseRegular(conds, _) =>
-                conds map { ExprBinary(_, "==", value) } reduce { _ || _ } regularize node.loc
-            }
-
-            val buf = ListBuffer[Ctx]()
-
-            @tailrec
-            def loop(curr: Ctx, constraints: List[Expr]): List[Ctx] = {
-              if (constraints.isEmpty) {
-                curr :: buf.toList
-              } else {
-                buf append inferTrueTransitive(curr, constraints.head)
-                loop(inferFalseTransitive(curr, constraints.head), constraints.tail)
+          // At the end, keep only the bindings that are the same across all branches
+          curr fastIntersect { curr =>
+            val befores = {
+              val constraints = cases collect {
+                case node @ CaseRegular(conds, _) =>
+                  conds map {
+                    ExprBinary(_, "==", value)
+                  } reduce {
+                    _ || _
+                  } regularize node.loc
               }
+
+              val buf = ListBuffer[Ctx]()
+
+              @tailrec
+              def loop(curr: Ctx, constraints: List[Expr]): List[Ctx] = {
+                if (constraints.isEmpty) {
+                  curr :: buf.toList
+                } else {
+                  buf append inferTrueTransitive(curr, constraints.head)
+                  loop(inferFalseTransitive(curr, constraints.head), constraints.tail)
+                }
+              }
+
+              loop(curr, constraints)
             }
 
-            loop(curr, constraints)
-          }
+            val afters = for ((before, stmt) <- befores zip stmts) yield analyse(before, stmt)
 
-          val afters = for ((before, stmt) <- befores zip stmts) yield analyse(before, stmt)
-
-          // Keep only the bindings that are the same across all branches
-          Option.when(afters forall { _.isDefined }) {
-            // Keep only the bindings that are the same across all branches
-            afters.map(_.get).reduce(_ intersect _)
+            Option.when(afters forall { _.isDefined })(afters.map(_.get))
           }
 
         // Infer assertion/assumption is true

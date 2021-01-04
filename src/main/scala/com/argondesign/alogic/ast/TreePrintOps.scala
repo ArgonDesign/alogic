@@ -249,11 +249,11 @@ trait TreePrintOps extends { this: Tree =>
 
   // format: off
   private final def v(tree: Assertion)(implicit cc: CompilerContext, indent: Int): String = tree match {
-    case AssertionAssert(cond, Some(msg)) => s"assert ${v(cond)}, $msg;"
+    case AssertionAssert(cond, Some(msg)) => s"""assert ${v(cond)}, "$msg";"""
     case AssertionAssert(cond, None)      => s"assert ${v(cond)};"
-    case AssertionAssume(cond, Some(msg)) => s"assume ${v(cond)}, $msg;"
+    case AssertionAssume(cond, Some(msg)) => s"""assume ${v(cond)}, "$msg";"""
     case AssertionAssume(cond, None)      => s"assume ${v(cond)};"
-    case AssertionStatic(cond, Some(msg)) => s"static assert ${v(cond)}, $msg;"
+    case AssertionStatic(cond, Some(msg)) => s"""static assert ${v(cond)}, "$msg";"""
     case AssertionStatic(cond, None)      => s"static assert ${v(cond)};"
   }
   // format: on

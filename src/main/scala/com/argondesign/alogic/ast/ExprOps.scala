@@ -27,7 +27,6 @@ import com.argondesign.alogic.typer.TypeAssigner
 import com.argondesign.alogic.util.PartialMatch._
 import com.argondesign.alogic.util.unreachable
 
-import scala.collection.MapView
 import scala.language.implicitConversions
 import scala.math.BigInt.int2bigInt
 
@@ -280,14 +279,10 @@ trait ExprOps { this: Expr =>
   }
 
   // Rewrite expression using bindings provided
-  def given(bindings: MapView[Symbol, Expr])(implicit cc: CompilerContext): Expr =
-    if (bindings.nonEmpty) {
-      this rewrite new ReplaceTermRefs(bindings)
-    } else {
-      this
-    }
+  def given(bindings: Symbol => Option[Expr])(implicit cc: CompilerContext): Expr =
+    this rewrite new ReplaceTermRefs(bindings)
 
-  def given(bindings: Bindings)(implicit cc: CompilerContext): Expr = given(bindings.view)
+  def given(bindings: Bindings)(implicit cc: CompilerContext): Expr = this.given(bindings.get _)
 
   // Value of this expression if it can be determined right now, otherwise None
   def value(implicit cc: CompilerContext): Option[BigInt] = simplify match {

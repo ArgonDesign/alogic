@@ -17,13 +17,11 @@ package com.argondesign.alogic.transform
 
 import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.CompilerContext
-
-import scala.collection.MapView
+import com.argondesign.alogic.core.Symbols.Symbol
 
 final class ReplaceTermRefs(
-    bindings: MapView[Symbol, Expr],
+    bindings: Symbol => Option[Expr],
     override val typed: Boolean = true
   )(
     implicit
@@ -40,7 +38,7 @@ final class ReplaceTermRefs(
 
   override def enter(tree: Tree): Option[Tree] = tree match {
     case ExprSym(symbol) =>
-      bindings.get(symbol) match {
+      bindings(symbol) match {
         case some @ Some(replacement) => replacement regularize tree.loc; some
         case None                     => Some(tree)
       }

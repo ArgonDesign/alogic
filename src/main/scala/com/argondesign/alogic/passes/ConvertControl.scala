@@ -464,7 +464,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
           }
         }
 
-        val resolve = new ReplaceTermRefs(bindings.view)
+        val resolve = new ReplaceTermRefs(bindings.get)
 
         val newBody = List from {
           defn.body.iterator ++ (finishedStates.iterator map { _ rewrite resolve })
