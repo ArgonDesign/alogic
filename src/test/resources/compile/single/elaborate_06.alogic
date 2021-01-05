@@ -1,0 +1,22 @@
+network elaborate_06 {
+  const uint cos_bits = 13;
+
+  gen if (cos_bits == 10) {
+    const i32[5] sinpi = { 32'd0, 32'd330, 32'd621, 32'd836, 32'd951 };
+  } else if (cos_bits == 11) {
+    const i32[5] sinpi = { 32'd0, 32'd660, 32'd1241, 32'd1672, 32'd1901 };
+  }
+
+  in  sync ready i32[4] i;
+  out sync ready i32[4] o;
+
+  fsm stage {
+    void main() {
+      i32[4] x;
+      x = i.read();
+      x[0] = sinpi[1] * x[0];
+      o.write(x);
+    }
+  }
+}
+// :17: ERROR: 'sinpi' is undefined

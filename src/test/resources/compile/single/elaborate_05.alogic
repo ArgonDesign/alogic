@@ -1,0 +1,8 @@
+network elaborate_05 {
+  param u5[2] stage_bits = 5'd13;
+  out int(stage_bits[0]) p_in;
+}
+
+compile elaborate_05() as top;
+
+// :2: ERROR: Parameter value yields 5 bits, 10 bits are expected

@@ -1,0 +1,6 @@
+fsm elaborate_04 {
+  const u6[2] bits = {6'd1, 6'd2};
+  const uint num_bits = bits[0];
+  const uint(num_bits) bar = 3;
+}
+// :3: ERROR: Unsized integer declaration has packed initializer
