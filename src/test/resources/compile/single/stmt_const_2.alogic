@@ -1,0 +1,23 @@
+fsm stmt_const_2 {
+  in       u32 i;
+  out wire u16 o;
+
+  void main() {
+    const uint i_lsb = 8;
+    const uint o_lsb = 0;
+    const uint o_msb = 9;
+    const uint bits = o_msb - o_lsb + 1;
+    o = 0;
+    o[o_msb : o_lsb] = i[i_lsb +: bits];
+    fence;
+  }
+}
+// @verilator-lint-off
+// @fec/golden {{{
+//  module stmt_const_2(
+//    input   wire [31:0] i,
+//    output  wire [15:0] o
+//  );
+//    assign o = {6'd0, i[17:8]};
+//  endmodule
+// }}}
