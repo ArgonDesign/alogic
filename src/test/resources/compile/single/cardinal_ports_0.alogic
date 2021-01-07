@@ -6,11 +6,11 @@ network cardinal_ports_0 {
 }
 // @fec/golden {{{
 //  module cardinal_ports_0(
-//    input  wire in,
-//    output wire out
+//    input  wire in_,
+//    output wire out_
 //  );
 //
-//    assign out = in;
+//    assign out_ = in_;
 //
 //  endmodule
 // }}}

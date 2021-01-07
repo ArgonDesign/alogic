@@ -31,9 +31,15 @@ import scala.collection.parallel.CollectionConverters._
 
 object RenameSymbols {
 
+  // We rename all symbols that are target language keywords, or keywords
+  // in related languages (HDL linters usually warn for using keywords of
+  // other HDLs as identifiers because this hinders interoperability when
+  // using mixed sources is a design). The following Set is constructed
+  // lazily, once per compiler process, so we leave duplicates in the
+  // initializer in exchange for simpler maintenance.
   // format: off
-  // IEEE 1800-2017 Annex B
-  private val systemVerilogKeywords = Set(
+  private lazy val keywords = Set(
+    // SystemVerilog keywords from: IEEE 1800-2017 Annex B
     "accept_on", "alias", "always", "always_comb", "always_ff", "always_latch",
     "and", "assert", "assign", "assume", "automatic", "before", "begin", "bind",
     "bins", "binsof", "bit", "break", "buf", "bufif0", "bufif1", "byte", "case",
@@ -70,7 +76,58 @@ object RenameSymbols {
     "trireg", "type", "typedef", "union", "unique", "unique0", "unsigned",
     "until", "until_with", "untyped", "use", "uwire", "var", "vectored",
     "virtual", "void", "wait", "wait_order", "wand", "weak", "weak0", "weak1",
-    "while", "wildcard", "wire", "with", "within", "wor", "xnor", "xor"
+    "while", "wildcard", "wire", "with", "within", "wor", "xnor", "xor",
+
+    // VHDL keywords from: IEEE 1076-2019 section 15.10
+    "abs", "access", "after", "alias", "all", "and", "architecture", "array",
+    "assert", "assume", "attribute", "begin", "block", "body", "buffer", "bus",
+    "case", "component", "configuration", "constant", "context", "cover",
+    "default", "disconnect", "downto", "else", "elsif", "end", "entity", "exit",
+    "fairness", "file", "for", "force", "function", "generate", "generic",
+    "group", "guarded", "if", "impure", "in", "inertial", "inout", "is",
+    "label", "library", "linkage", "literal", "loop", "map", "mod", "nand",
+    "new", "next", "nor", "not", "null", "of", "on", "open", "or", "others",
+    "out", "package", "parameter", "port", "postponed", "procedure", "process",
+    "property", "protected", "private", "pure", "range", "record", "register",
+    "reject", "release", "rem", "report", "restrict", "return", "rol", "ror",
+    "select", "sequence", "severity", "signal", "shared", "sla", "sll", "sra",
+    "srl", "strong", "subtype", "then", "to", "transport", "type", "unaffected",
+    "units", "until", "use", "variable", "view", "vpkg", "vmode", "vprop",
+    "vunit", "wait", "when", "while", "with", "xnor", "xor",
+
+    // Verilog-AMS keywords from: Verilog-AMS LRM 2.4.0 Annex B
+    "above", "abs", "absdelay", "absdelta", "abstol", "access", "acos", "acosh",
+    "ac_stim", "aliasparam", "always", "analog", "analysis", "and", "asin",
+    "asinh", "assert", "assign", "atan", "atan2", "atanh", "automatic", "begin",
+    "branch", "buf", "bufif0", "bufif1", "case", "casex", "casez", "ceil",
+    "cell", "cmos", "config", "connect", "connectmodule", "connectrules",
+    "continuous", "cos", "cosh", "cross", "ddt", "ddt_nature", "ddx",
+    "deassign", "default", "defparam", "design", "disable", "discipline",
+    "discrete", "domain", "driver_update", "edge", "else", "end", "endcase",
+    "endconfig", "endconnectrules", "enddiscipline", "endfunction",
+    "endgenerate", "endmodule", "endnature", "endparamset", "endprimitive",
+    "endspecify", "endtable", "endtask", "event", "exclude", "exp",
+    "final_step", "flicker_noise", "floor", "flow", "for", "force", "forever",
+    "fork", "from", "function", "generate", "genvar", "ground", "highz0",
+    "highz1", "hypot", "idt", "idtmod", "idt_nature", "if", "ifnone", "incdir",
+    "include", "inf", "initial", "initial_step", "inout", "input", "instance",
+    "integer", "join", "laplace_nd", "laplace_np", "laplace_zd", "laplace_zp",
+    "large", "last_crossing", "liblist", "library", "limexp", "ln",
+    "localparam", "log", "macromodule", "max", "medium", "merged", "min",
+    "module", "nand", "nature", "negedge", "net_resolution", "nmos",
+    "noise_table", "noise_table_log", "nor", "noshowcancelled", "not", "notif0",
+    "notif1", "or", "output", "parameter", "paramset", "pmos", "posedge",
+    "potential", "pow", "primitive", "pull0", "pull1", "pulldown", "pullup",
+    "pulsestyle_onevent", "pulsestyle_ondetect", "rcmos", "real", "realtime",
+    "reg", "release", "repeat", "resolveto", "rnmos", "rpmos", "rtran",
+    "rtranif0", "rtranif1", "scalared", "sin", "sinh", "showcancelled",
+    "signed", "slew", "small", "specify", "specparam", "split", "sqrt",
+    "string", "strong0", "strong1", "supply0", "supply1", "table", "tan",
+    "tanh", "task", "time", "timer", "tran", "tranif0", "tranif1", "transition",
+    "tri", "tri0", "tri1", "triand", "trior", "trireg", "units", "unsigned",
+    "use", "uwire", "vectored", "wait", "wand", "weak0", "weak1", "while",
+    "white_noise", "wire", "wor", "wreal", "xnor", "xor", "zi_nd", "zi_np",
+    "zi_zd", "zi_zp"
   )
   // format: on
 
@@ -104,7 +161,7 @@ object RenameSymbols {
         }
     }
 
-  private def fixIfKeyword(name: String): String = if (systemVerilogKeywords contains name) {
+  private def fixIfKeyword(name: String): String = if (keywords contains name) {
     name + "_" // Add a single underscore
   } else {
     name
