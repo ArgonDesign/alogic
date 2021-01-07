@@ -56,8 +56,18 @@ logBuffered in Test := false
 testOptions in Test += Tests.Argument("-oD") // Add F for full stack traces
 
 ////////////////////////////////////////////////////////////////////////////////
-// Style check
+// Target aliases
 ////////////////////////////////////////////////////////////////////////////////
+
+addCommandAlias(
+  "runUnitTests",
+  """testOnly -- -l "com.argondesign.alogic.tags.EndToEndTest""""
+)
+
+addCommandAlias(
+  "runEndToEndTests",
+  """testOnly -- -n "com.argondesign.alogic.tags.EndToEndTest""""
+)
 
 ////////////////////////////////////////////////////////////////////////////////
 // Antlr4 plugin
@@ -131,7 +141,7 @@ buildInfoPackage := "com.argondesign.alogic"
 ////////////////////////////////////////////////////////////////////////////////
 
 coverageOutputXML := true
-coverageOutputHTML := !(sys.env contains "TRAVIS")
+coverageOutputHTML := !(sys.env.get("GITHUB_ACTIONS") contains "true")
 coverageOutputCobertura := false
 
 val coverageUpdateIgnored = taskKey[Unit]("Mark ignored statements as such")

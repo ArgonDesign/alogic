@@ -1,0 +1,121 @@
+name: Build
+on: [push]
+
+env:
+  JAVA_OPTS: -Dsbt.ci=true # SBT CI mode (less noise on output)
+  CCACHE_MAXSIZE: 64M # ccache used by Verilator during tests, keep small
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        java: [8, 11]
+        os: [ubuntu-20.04]
+        suite: [UnitTests, EndToEndTests]
+    name: Build + ${{ matrix.suite }} (Java ${{ matrix.java }})
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Install APT dependencies
+        if: matrix.suite == 'EndToEndTests'
+        run: |
+          # ccache - Used by Verilator when running tests
+          sudo apt-get install ccache
+          # SymbiYosys dependencies
+          sudo apt-get install tcl-dev
+          sudo apt-get install graphviz
+          sudo apt-get install xdot
+          sudo apt-get install libftdi-dev
+          sudo apt-get install gperf
+          sudo apt-get install libboost-program-options-dev
+          # Verilator dependencies
+          sudo apt-get install libfl-dev
+          sudo apt-get install libgoogle-perftools-dev
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Cache testing tools
+        if: matrix.suite == 'EndToEndTests'
+        uses: actions/cache@v2
+        with:
+          path: |
+            symbiyosys
+            verilator
+          key: ${{ matrix.os }}-testing-tools-${{ hashFiles('setup-*') }}
+      - name: Build testing tools
+        if: matrix.suite == 'EndToEndTests'
+        run: |
+          bash -x ./setup-symbiyosys
+          bash -x ./setup-verilator
+          ccache -s -z -C
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v1
+        with:
+          java-version: ${{ matrix.java }}
+      - name: Cache SBT
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.sbt
+            ~/.cache/coursier
+            ~/.ivy2/cache
+          key: build-${{ matrix.os }}-SBT-${{ matrix.java }}-${{ matrix.suite }}-${{ hashFiles('**/build.sbt') }}
+          restore-keys: build-${{ matrix.os }}-SBT-${{ matrix.java }}-${{ matrix.suite }}-
+      - name: Cache ccache
+        if: matrix.suite == 'EndToEndTests'
+        uses: actions/cache@v2
+        with:
+          path: ~/.ccache
+          key: build-${{ matrix.os }}-ccache-${{ github.sha }}
+          restore-keys: build-${{ matrix.os }}-ccache-
+      - name: Compile
+        run: sbt clean compile Test/compile
+      - name: Run tests
+        run: sbt run${{ matrix.suite }}
+  format:
+    name: Check code formatting
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Set up JDK 11
+        uses: actions/setup-java@v1
+        with:
+          java-version: 11
+      - name: Cache SBT
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.sbt
+            ~/.cache/coursier
+            ~/.ivy2/cache
+          key: format-SBT-${{ hashFiles('**/build.sbt') }}
+          restore-keys: format-SBT-
+      - name: Check code formatting
+        run: sbt scalafmtCheckAll
+  coverage:
+    name: Measure test suite code coverage
+    needs: build
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Set up JDK 11
+        uses: actions/setup-java@v1
+        with:
+          java-version: 11
+      - name: Cache SBT
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.sbt
+            ~/.cache/coursier
+            ~/.ivy2/cache
+          key: coverage-SBT-${{ hashFiles('**/build.sbt') }}
+          restore-keys: coverage-SBT-
+      - name: Compile - with coverage
+        run: sbt coverageOn clean compile Test/compile
+      - name: Run tests - with coverage
+        run: sbt coverageOn test
+      - name: Generate coverage report
+        run: sbt coverageOn coverageReport
+      - name: Upload coverage to codecov.io
+        run: bash <(curl -s https://codecov.io/bash) -X gcov -X coveragepy -s target

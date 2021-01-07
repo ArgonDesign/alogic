@@ -20,7 +20,6 @@ import java.io.PrintWriter
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
-
 import com.argondesign.alogic.core.Messages.Error
 import com.argondesign.alogic.core.Messages.Fatal
 import com.argondesign.alogic.core.Messages.Message
@@ -36,6 +35,7 @@ import org.scalatest.ConfigMap
 import org.scalatest.ParallelTestExecution
 import org.scalatest.fixture
 import org.scalatest.freespec.FixtureAnyFreeSpec
+import org.scalatest.Tag
 
 import scala.collection.immutable.ListMap
 import scala.collection.mutable
@@ -845,13 +845,15 @@ trait CompilationTest
       }
   }
 
+  private object EndToEndTest extends Tag("com.argondesign.alogic.tags.EndToEndTest")
+
   def defineTest(
       name: String,
       searchPath: Path,
       top: String,
       checkFile: String
     ): Unit = {
-    name in { configMap: ConfigMap =>
+    name taggedAs EndToEndTest in { configMap: ConfigMap =>
       // Parse the check file
       val (attr, dict, messageSpecs) = parseCheckFile(checkFile)
 
