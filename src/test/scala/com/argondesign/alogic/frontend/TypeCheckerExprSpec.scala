@@ -172,9 +172,7 @@ final class TypeCheckerExprSpec extends AnyFreeSpec with AlogicTest {
               ("!=", true),
               ("&", true),
               ("|", true),
-              ("^", true),
-              ("&&", false),
-              ("||", false)
+              ("^", true)
             )
           ) {
             val msg =
@@ -344,6 +342,35 @@ final class TypeCheckerExprSpec extends AnyFreeSpec with AlogicTest {
           }
         }
       }
+
+      "&& ||" - {
+        for (op <- List("&&", "||")) {
+          for {
+            (expr, error) <- List(
+              // format: off
+              (s"1'd1 $op 1'd0", Nil),
+              (s"1    $op 1'd1", List(s"Left hand operand of '$op' yields an unsized value, a 1 bit value is expected")),
+              (s"1'd1 $op    1", List(s"Right hand operand of '$op' yields an unsized value, a 1 bit value is expected")),
+              (s"bool $op 1'd1", List(s"Left hand operand of '$op' is of non-packed type, a 1 bit value is expected")),
+              (s"1'd1 $op bool", List(s"Right hand operand of '$op' is of non-packed type, a 1 bit value is expected")),
+              (s"2'd0 $op 1'd1", List(s"Left hand operand of '$op' yields 2 bits, a 1 bit value is expected"))
+              // format: on
+            )
+          } expr in {
+            typeCheck {
+              s"""
+                 |fsm a {
+                 |  const u8 N = 8'd2;
+                 |  void main() {
+                 |    $$display("", $expr);
+                 |    fence;
+                 |  }
+                 |}""".stripMargin
+            }
+            checkSingleError(error)
+          }
+        }
+      }
     }
 
     "ternary" - {
@@ -352,7 +379,7 @@ final class TypeCheckerExprSpec extends AnyFreeSpec with AlogicTest {
           ("a ? b[0][0] : c[0][0][0]", Nil),
           (
             "c ? b : c[0][0][0]",
-            "Condition of ternary '?:' is of neither numeric nor packed type" :: Nil
+            "Condition of ternary '?:' is of non-packed type, a 1 bit value is expected" :: Nil
           ),
           ("a ? 8'd3 : 8'd2", Nil),
           ("a ? 8'd3 : 8'sd2", Nil),
@@ -360,8 +387,10 @@ final class TypeCheckerExprSpec extends AnyFreeSpec with AlogicTest {
           ("a ? 8'sd3 : 8'sd2", Nil),
           ("a ? 8'd3 : 2", Nil),
           ("a ? 3 : 8'd1", Nil),
-          // TODO: Add this back somewhere
-//          ("a ? 3 : 2", "Expression of unsized integer type must be compile time constant" :: Nil),
+          (
+            "a ? 3 : 2",
+            "Expression of unsized integer type must be a compile time constant" :: Nil
+          ),
           (
             "a ? 7'd3 : 8'd2",
             s"'then' and 'else' operands of ternary '?:' must have the same width, but" ::
@@ -390,11 +419,11 @@ final class TypeCheckerExprSpec extends AnyFreeSpec with AlogicTest {
           ("a ? b : c", "'else' operand of ternary '?:' is of non-packed type" :: Nil),
           (
             "2'd0 ? 1'd0 : 1'd1",
-            "Condition of ternary '?:' yields 2 bits, 1 bit is expected" :: Nil
+            "Condition of ternary '?:' yields 2 bits, a 1 bit value is expected" :: Nil
           ),
           (
             "0 ? 1'd0 : 1'd1",
-            "Condition of ternary '?:' yields an unsized value, 1 bit is expected" :: Nil
+            "Condition of ternary '?:' yields an unsized value, a 1 bit value is expected" :: Nil
           )
         )
       } {
@@ -433,17 +462,17 @@ final class TypeCheckerExprSpec extends AnyFreeSpec with AlogicTest {
             ("8'd2[0][0][0]", Nil),
             ("main[0]", "Target is not indexable" :: Nil),
             ("a[bool]", "Index is of non-packed type" :: Nil),
-            ("8'd0[2'd0]", "Index yields 2 bits, 3 bits are expected" :: Nil),
+            ("8'd0[2'd0]", "Index yields 2 bits, a 3 bit value is expected" :: Nil),
             ("8'd0[3'd0]", Nil),
-            ("8'd0[4'd0]", "Index yields 4 bits, 3 bits are expected" :: Nil),
-            ("7'd0[2'd0]", "Index yields 2 bits, 3 bits are expected" :: Nil),
+            ("8'd0[4'd0]", "Index yields 4 bits, a 3 bit value is expected" :: Nil),
+            ("7'd0[2'd0]", "Index yields 2 bits, a 3 bit value is expected" :: Nil),
             ("7'd0[3'd0]", Nil),
-            ("7'd0[4'd0]", "Index yields 4 bits, 3 bits are expected" :: Nil),
-            ("9'd0[2'd0]", "Index yields 2 bits, 4 bits are expected" :: Nil),
-            ("9'd0[3'd0]", "Index yields 3 bits, 4 bits are expected" :: Nil),
+            ("7'd0[4'd0]", "Index yields 4 bits, a 3 bit value is expected" :: Nil),
+            ("9'd0[2'd0]", "Index yields 2 bits, a 4 bit value is expected" :: Nil),
+            ("9'd0[3'd0]", "Index yields 3 bits, a 4 bit value is expected" :: Nil),
             ("9'd0[4'd0]", Nil),
             ("1'd0[1'd0]", Nil),
-            ("1'd0[2'd0]", "Index yields 2 bits, 1 bit is expected" :: Nil),
+            ("1'd0[2'd0]", "Index yields 2 bits, a 1 bit value is expected" :: Nil),
             ("c[2'd3][1'd0][1'd1][2'd2]", Nil),
             ("8'd0[3'sd0]", "Index must be unsigned" :: Nil)
           )
@@ -520,27 +549,72 @@ final class TypeCheckerExprSpec extends AnyFreeSpec with AlogicTest {
           ("main[1:0]", "Target is not sliceable" :: Nil),
           ("a[1:bool]", "Right index of ':' slice is of non-packed type" :: Nil),
           ("a[bool:0]", "Left index of ':' slice is of non-packed type" :: Nil),
-          ("8'd0[3'd1:2'd0]", "Right index of ':' slice yields 2 bits, 3 bits are expected" :: Nil),
+          (
+            "8'd0[3'd1:2'd0]",
+            "Right index of ':' slice yields 2 bits, a 3 bit value is expected" :: Nil
+          ),
           ("8'd0[3'd1:3'd0]", Nil),
-          ("8'd0[3'd1:4'd0]", "Right index of ':' slice yields 4 bits, 3 bits are expected" :: Nil),
-          ("7'd0[3'd1:2'd0]", "Right index of ':' slice yields 2 bits, 3 bits are expected" :: Nil),
+          (
+            "8'd0[3'd1:4'd0]",
+            "Right index of ':' slice yields 4 bits, a 3 bit value is expected" :: Nil
+          ),
+          (
+            "7'd0[3'd1:2'd0]",
+            "Right index of ':' slice yields 2 bits, a 3 bit value is expected" :: Nil
+          ),
           ("7'd0[3'd1:3'd0]", Nil),
-          ("7'd0[3'd1:4'd0]", "Right index of ':' slice yields 4 bits, 3 bits are expected" :: Nil),
-          ("9'd0[4'd1:2'd0]", "Right index of ':' slice yields 2 bits, 4 bits are expected" :: Nil),
-          ("9'd0[4'd1:3'd0]", "Right index of ':' slice yields 3 bits, 4 bits are expected" :: Nil),
+          (
+            "7'd0[3'd1:4'd0]",
+            "Right index of ':' slice yields 4 bits, a 3 bit value is expected" :: Nil
+          ),
+          (
+            "9'd0[4'd1:2'd0]",
+            "Right index of ':' slice yields 2 bits, a 4 bit value is expected" :: Nil
+          ),
+          (
+            "9'd0[4'd1:3'd0]",
+            "Right index of ':' slice yields 3 bits, a 4 bit value is expected" :: Nil
+          ),
           ("9'd0[4'd1:4'd0]", Nil),
-          ("8'd0[2'd1:3'd0]", "Left index of ':' slice yields 2 bits, 3 bits are expected" :: Nil),
-          ("8'd0[4'd1:3'd0]", "Left index of ':' slice yields 4 bits, 3 bits are expected" :: Nil),
-          ("7'd0[2'd1:3'd0]", "Left index of ':' slice yields 2 bits, 3 bits are expected" :: Nil),
-          ("7'd0[4'd1:3'd0]", "Left index of ':' slice yields 4 bits, 3 bits are expected" :: Nil),
-          ("9'd0[2'd1:4'd0]", "Left index of ':' slice yields 2 bits, 4 bits are expected" :: Nil),
-          ("9'd0[3'd1:4'd0]", "Left index of ':' slice yields 3 bits, 4 bits are expected" :: Nil),
+          (
+            "8'd0[2'd1:3'd0]",
+            "Left index of ':' slice yields 2 bits, a 3 bit value is expected" :: Nil
+          ),
+          (
+            "8'd0[4'd1:3'd0]",
+            "Left index of ':' slice yields 4 bits, a 3 bit value is expected" :: Nil
+          ),
+          (
+            "7'd0[2'd1:3'd0]",
+            "Left index of ':' slice yields 2 bits, a 3 bit value is expected" :: Nil
+          ),
+          (
+            "7'd0[4'd1:3'd0]",
+            "Left index of ':' slice yields 4 bits, a 3 bit value is expected" :: Nil
+          ),
+          (
+            "9'd0[2'd1:4'd0]",
+            "Left index of ':' slice yields 2 bits, a 4 bit value is expected" :: Nil
+          ),
+          (
+            "9'd0[3'd1:4'd0]",
+            "Left index of ':' slice yields 3 bits, a 4 bit value is expected" :: Nil
+          ),
           ("9'd0[4'sd1:4'd0]", "Left index of ':' slice must be unsigned" :: Nil),
           ("9'd0[4'd1:4'sd0]", "Right index of ':' slice must be unsigned" :: Nil),
           ("b[0:0]", Nil),
-          ("b[1'd1:2'd0]", "Right index of ':' slice yields 2 bits, 1 bit is expected" :: Nil),
-          ("b[2'd1:1'd0]", "Left index of ':' slice yields 2 bits, 1 bit is expected" :: Nil),
-          ("b[1'd0+:1'd1]", "Right index of '+:' slice yields 1 bit, 2 bits are expected" :: Nil)
+          (
+            "b[1'd1:2'd0]",
+            "Right index of ':' slice yields 2 bits, a 1 bit value is expected" :: Nil
+          ),
+          (
+            "b[2'd1:1'd0]",
+            "Left index of ':' slice yields 2 bits, a 1 bit value is expected" :: Nil
+          ),
+          (
+            "b[1'd0+:1'd1]",
+            "Right index of '+:' slice yields 1 bit, a 2 bit value is expected" :: Nil
+          )
         )
       } {
         expr in {
@@ -631,9 +705,9 @@ final class TypeCheckerExprSpec extends AnyFreeSpec with AlogicTest {
           ("a.write(2'b1, 1'b1)", TypeError, "Function call expects 1 arguments, 2 given"),
           ("bar()", TypeVoid, ""),
           ("bar(1, 2, 3, 4, 5)", TypeError, "Function call expects 0 arguments, 5 given"),
-          ("a.write(bar)", TypeError, "Argument 1 of function call is of non-packed type"),
-          ("a.write(3'b1)", TypeError, "Argument 1 of function call yields 3 bits, 2 bits are expected"),
-          ("a.write(1'b1)", TypeError, "Argument 1 of function call yields 1 bit, 2 bits are expected"),
+          ("a.write(bar)", TypeError, "Argument 1 of function call is of non-packed type, a 2 bit value is expected"),
+          ("a.write(3'b1)", TypeError, "Argument 1 of function call yields 3 bits, a 2 bit value is expected"),
+          ("a.write(1'b1)", TypeError, "Argument 1 of function call yields 1 bit, a 2 bit value is expected"),
           ("const uint x = @bits(a)", TypeNum(false), ""),
           ("const uint x = @bits(a.valid)", TypeNum(false), ""),
           ("s.f()", TypeError, "Attempting to call non-static method via type")

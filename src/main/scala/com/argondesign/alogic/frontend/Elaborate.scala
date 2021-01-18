@@ -416,12 +416,21 @@ object Elaborate {
     val processed = desc.cases map {
       case GenCase(cond, body) =>
         fe.typeCheck(cond) flatMap { _ =>
-          if (!cond.tpe.isNumeric) {
-            Failure(cond, "Condition of 'gen if' must be a 1 bit value")
+          if (cond.tpe.underlying.isNum) {
+            Failure(
+              cond,
+              "Condition of 'gen if' yields an unsized value, a 1 bit value is expected"
+            )
           } else if (!cond.tpe.isPacked) {
-            Failure(cond, "Condition of 'gen if' yields an unsized value, 1 bit is expected")
+            Failure(
+              cond,
+              "Condition of 'gen if' is of non-packed type, a 1 bit value is expected"
+            )
           } else if (cond.tpe.width != 1) {
-            Failure(cond, s"Condition of 'gen if' yields ${cond.tpe.width} bits, 1 bit is expected")
+            Failure(
+              cond,
+              s"Condition of 'gen if' yields ${cond.tpe.width} bits, a 1 bit value is expected"
+            )
           } else {
             fe.evaluate(cond, "'gen' condition") match {
               case Success(v) if v == 0 => Complete(None)
@@ -479,17 +488,20 @@ object Elaborate {
         } proceed { desc =>
           // Type check condition
           fe.typeCheck(desc.cond) flatMap { kind =>
-            if (!kind.isNumeric) {
-              Failure(desc.cond, "Condition of 'gen for' must be a 1 bit value")
+            if (kind.underlying.isNum) {
+              Failure(
+                desc.cond,
+                "Condition of 'gen for' yields an unsized value, a 1 bit value is expected"
+              )
             } else if (!kind.isPacked) {
               Failure(
                 desc.cond,
-                "Condition of 'gen for' yields an unsized value, 1 bit is expected"
+                "Condition of 'gen for' is of non-packed type, a 1 bit value is expected"
               )
             } else if (kind.width != 1) {
               Failure(
                 desc.cond,
-                s"Condition of 'gen for' yields ${kind.width} bits, 1 bit is expected"
+                s"Condition of 'gen for' yields ${kind.width} bits, a 1 bit value is expected"
               )
             } else {
               Complete(desc)

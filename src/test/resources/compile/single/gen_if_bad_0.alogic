@@ -2,4 +2,4 @@ network gen_if_bad_0 {
   const uint N = 1;
   gen if (N + 2) {}
 }
-// :3: ERROR: Condition of 'gen if' yields an unsized value, 1 bit is expected
+// :3: ERROR: Condition of 'gen if' yields an unsized value, a 1 bit value is expected

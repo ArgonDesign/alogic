@@ -98,7 +98,7 @@ final class TypeCheckerStmtSpec extends AnyFreeSpec with AlogicTest {
           ),
           (
             "if (void) $display();",
-            "Condition of 'if' statement is of neither numeric nor packed type" :: Nil
+            "Condition of 'if' statement is of non-packed type, a 1 bit value is expected" :: Nil
           ),
           ("case(1) { 1: $display(); }", Nil),
           ("case(1) { 1: fence; }", Nil),
@@ -155,11 +155,23 @@ final class TypeCheckerStmtSpec extends AnyFreeSpec with AlogicTest {
         (assignment, err) <- List(
           ("a = 2", Nil),
           ("a = 8'd2", Nil),
-          ("a = bool", "Right hand side of assignment is of non-packed type" :: Nil),
+          (
+            "a = bool",
+            "Right hand side of assignment is of non-packed type, a 8 bit value is expected" :: Nil
+          ),
           ("a += 8'd2", Nil),
-          ("a += bool", "Right hand side of assignment is of non-packed type" :: Nil),
-          ("a = 9'd2", "Right hand side of assignment yields 9 bits, 8 bits are expected" :: Nil),
-          ("a = 7'd2", "Right hand side of assignment yields 7 bits, 8 bits are expected" :: Nil)
+          (
+            "a += bool",
+            "Right hand side of assignment is of non-packed type, a 8 bit value is expected" :: Nil
+          ),
+          (
+            "a = 9'd2",
+            "Right hand side of assignment yields 9 bits, a 8 bit value is expected" :: Nil
+          ),
+          (
+            "a = 7'd2",
+            "Right hand side of assignment yields 7 bits, a 8 bit value is expected" :: Nil
+          )
         )
       } {
         assignment in {
@@ -354,7 +366,7 @@ final class TypeCheckerStmtSpec extends AnyFreeSpec with AlogicTest {
       for {
         (text, err) <- List(
           ("1 * 2", error),
-          ("-(1)", error),
+          ("-(1s)", error),
           ("@randbit()", Nil),
           ("1 + @randbit()", Nil),
           ("1 + $clog2(2)", error),
@@ -410,9 +422,9 @@ final class TypeCheckerStmtSpec extends AnyFreeSpec with AlogicTest {
           (kind, value, err) <- List(
             ("u8", "2", Nil),
             ("u8", "8'd2", Nil),
-            ("u8", "bool", "Return value is of non-packed type" :: Nil),
-            ("u8", "9'd2", "Return value yields 9 bits, 8 bits are expected" :: Nil),
-            ("u8", "7'd2", "Return value yields 7 bits, 8 bits are expected" :: Nil),
+            ("u8", "bool", "Return value is of non-packed type, a 8 bit value is expected" :: Nil),
+            ("u8", "9'd2", "Return value yields 9 bits, a 8 bit value is expected" :: Nil),
+            ("u8", "7'd2", "Return value yields 7 bits, a 8 bit value is expected" :: Nil),
             ("u8", "", "non-void function 'f' must return a value" :: Nil),
             ("void", "", Nil),
             ("void", "8'd2", "void function 'f' cannot return a value" :: Nil),
@@ -451,17 +463,26 @@ final class TypeCheckerStmtSpec extends AnyFreeSpec with AlogicTest {
         (cond, err) <- List(
           ("a", Nil),
           ("b", Nil),
-          ("c", "Condition of 'if' statement yields 2 bits, 1 bit is expected" :: Nil),
-          ("d", "Condition of 'if' statement yields 8 bits, 1 bit is expected" :: Nil),
+          ("c", "Condition of 'if' statement yields 2 bits, a 1 bit value is expected" :: Nil),
+          ("d", "Condition of 'if' statement yields 8 bits, a 1 bit value is expected" :: Nil),
           ("c[0]", Nil),
           ("d[1]", Nil),
-          ("0", "Condition of 'if' statement yields an unsized value, 1 bit is expected" :: Nil),
-          ("1", "Condition of 'if' statement yields an unsized value, 1 bit is expected" :: Nil),
-          ("5", "Condition of 'if' statement yields an unsized value, 1 bit is expected" :: Nil),
+          (
+            "0",
+            "Condition of 'if' statement yields an unsized value, a 1 bit value is expected" :: Nil
+          ),
+          (
+            "1",
+            "Condition of 'if' statement yields an unsized value, a 1 bit value is expected" :: Nil
+          ),
+          (
+            "5",
+            "Condition of 'if' statement yields an unsized value, a 1 bit value is expected" :: Nil
+          ),
           ("1'd0", Nil),
           ("1'd1", Nil),
-          ("2'd0", "Condition of 'if' statement yields 2 bits, 1 bit is expected" :: Nil),
-          ("9'd1", "Condition of 'if' statement yields 9 bits, 1 bit is expected" :: Nil)
+          ("2'd0", "Condition of 'if' statement yields 2 bits, a 1 bit value is expected" :: Nil),
+          ("9'd1", "Condition of 'if' statement yields 9 bits, a 1 bit value is expected" :: Nil)
         )
       } {
         cond in {
@@ -488,18 +509,30 @@ final class TypeCheckerStmtSpec extends AnyFreeSpec with AlogicTest {
         (cond, err) <- List(
           ("a", Nil),
           ("b", Nil),
-          ("c", "Condition of 'wait' statement yields 2 bits, 1 bit is expected" :: Nil),
-          ("d", "Condition of 'wait' statement yields 8 bits, 1 bit is expected" :: Nil),
+          ("c", "Condition of 'wait' statement yields 2 bits, a 1 bit value is expected" :: Nil),
+          ("d", "Condition of 'wait' statement yields 8 bits, a 1 bit value is expected" :: Nil),
           ("c[0]", Nil),
           ("d[1]", Nil),
-          ("0", "Condition of 'wait' statement yields an unsized value, 1 bit is expected" :: Nil),
-          ("1", "Condition of 'wait' statement yields an unsized value, 1 bit is expected" :: Nil),
-          ("5", "Condition of 'wait' statement yields an unsized value, 1 bit is expected" :: Nil),
+          (
+            "0",
+            "Condition of 'wait' statement yields an unsized value, a 1 bit value is expected" :: Nil
+          ),
+          (
+            "1",
+            "Condition of 'wait' statement yields an unsized value, a 1 bit value is expected" :: Nil
+          ),
+          (
+            "5",
+            "Condition of 'wait' statement yields an unsized value, a 1 bit value is expected" :: Nil
+          ),
           ("1'd0", Nil),
           ("1'd1", Nil),
-          ("2'd0", "Condition of 'wait' statement yields 2 bits, 1 bit is expected" :: Nil),
-          ("9'd1", "Condition of 'wait' statement yields 9 bits, 1 bit is expected" :: Nil),
-          ("bool", "Condition of 'wait' statement is of neither numeric nor packed type" :: Nil)
+          ("2'd0", "Condition of 'wait' statement yields 2 bits, a 1 bit value is expected" :: Nil),
+          ("9'd1", "Condition of 'wait' statement yields 9 bits, a 1 bit value is expected" :: Nil),
+          (
+            "bool",
+            "Condition of 'wait' statement is of non-packed type, a 1 bit value is expected" :: Nil
+          )
         )
       } {
         cond in {

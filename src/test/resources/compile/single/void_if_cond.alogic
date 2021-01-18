@@ -11,4 +11,4 @@ fsm void_if_cond {
     fence;
   }
 }
-// :8: ERROR: Condition of 'if' statement yields 0 bits, 1 bit is expected
+// :8: ERROR: Condition of 'if' statement yields 0 bits, a 1 bit value is expected

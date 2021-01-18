@@ -139,7 +139,7 @@ trait TypeOps extends TypePrintOps { this: Type =>
     case TypeSInt(size)          => size
     case TypeUInt(size)          => size
     case self: TypeRecord        => self.dataMembers.foldLeft(BigInt(0))(_ + _.kind.width)
-    case TypeVoid                => 0
+    case TypeVoid                => 0 // TODO: should void be packed?
     case TypeVector(eType, size) => size * eType.width
     case _                       => unreachable
   }

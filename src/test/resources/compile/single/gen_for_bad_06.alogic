@@ -1,3 +1,4 @@
+// @ignore
 network gen_for_bad_06 {
   in u8 i;
   gen for (u8 n = 0 ; n < 10 ; n += 2 - 3) {

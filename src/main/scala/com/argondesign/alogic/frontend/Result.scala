@@ -43,7 +43,9 @@ final case class Unknown(rs: Seq[Reason]) extends FinalResult[Nothing] {
 }
 
 // An error was encountered, re-attempting the operation is futile.
-final case class Failure(ms: Seq[Message]) extends FinalResult[Nothing]
+final case class Failure(ms: Seq[Message]) extends FinalResult[Nothing] {
+  require(ms.nonEmpty)
+}
 
 // Extractor for successful finished result, i.e.: Finished(_) or Complete(_)
 object Success { //
@@ -80,10 +82,14 @@ object Failure {
 
 // Reasons for Unknown result
 sealed trait Reason
-case class ReasonUnresolved(ident: Ident) extends Reason // Name not in symbol table
-case class ReasonUnelaborated(tree: Tree) extends Reason // Tree is not elaborated yet
-case class ReasonNeedsParamValue(symbol: Symbol, loc: Loc)
-    extends Reason // No actual parameter value
+case class ReasonUnresolved(ident: Ident) // Name not in symbol table
+    extends Reason
+case class ReasonUnelaborated(tree: Tree) // Tree is not elaborated yet
+    extends Reason
+case class ReasonNeedsParamValue(symbol: Symbol, loc: Loc) // No actual parameter value
+    extends Reason
+case class ReasonEarlierTypeError(tree: Tree) // Encountered type error during earlier type check
+    extends Reason
 
 trait ResultOps[+T] { self: Result[T] =>
 
@@ -203,16 +209,16 @@ trait FinalResultOps[+T] { self: FinalResult[T] =>
               case Complete(name) => Iterator.single(Error(t, s"'$name' is undefined"))
               case _              => Iterator.single(Error(t, s"identifier is undefined"))
             }
-          case ReasonUnelaborated(t) => {
-            // $COVERAGE-OFF$ ICE should not be hit..
-            Iterator.single(Ice(t, s"not yet elaborated"))
-            // $COVERAGE-ON$
-          }
+
           case ReasonNeedsParamValue(symbol, loc) =>
             Iterator(
               Error(loc, s"'${symbol.name}' requires actual parameter value"),
               Note.definedHere(symbol.desc)
             )
+          // $COVERAGE-OFF$ ICEs should not be hit..
+          case ReasonUnelaborated(t)     => Iterator.single(Ice(t, s"Not elaborated"))
+          case ReasonEarlierTypeError(t) => Iterator.single(Ice(t, s"Earlier type error"))
+          // $COVERAGE-ON$
         }
       }
     case Failure(ms) => Left(ms.distinct)

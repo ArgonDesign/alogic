@@ -14,8 +14,6 @@ import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.unreachable
 
-import scala.util.chaining.scalaUtilChainingOps
-
 object ConnectChecks {
 
   // Just for local convenience
@@ -29,7 +27,7 @@ object ConnectChecks {
   }
 
   // Return true if this is a well formed and typed Connect instance
-  def apply(conn: EntConnect)(implicit cc: CompilerContext): Boolean = {
+  def apply(conn: EntConnect)(implicit cc: CompilerContext): Iterator[Message] = {
     // Given an expression, extract sub-expressions that require active logic
     // to implement. If the returned Iterator is empty, then the given
     // expression can be implemented purely as wiring.
@@ -315,8 +313,6 @@ object ConnectChecks {
         (rhss.iterator flatMap checkNoInitializer)
     } ifEmpty {
       (rhss.iterator flatMap checkFlowControlCompatible(lhs)) ++ checkSinkCount(lhs, rhss)
-    } pipe { errors => // Pass if no errors, add the messages
-      errors.isEmpty tap { _ => errors foreach cc.addMessage }
     }
   }
 

@@ -1,4 +1,4 @@
 network gen_if_bad_2 {
   gen if (bool) {}
 }
-// :2: ERROR: Condition of 'gen if' must be a 1 bit value
+// :2: ERROR: Condition of 'gen if' is of non-packed type, a 1 bit value is expected

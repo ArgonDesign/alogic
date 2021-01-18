@@ -5,4 +5,4 @@ network elaborate_05 {
 
 compile elaborate_05() as top;
 
-// :2: ERROR: Parameter value yields 5 bits, 10 bits are expected
+// :2: ERROR: Parameter value yields 5 bits, a 10 bit value is expected

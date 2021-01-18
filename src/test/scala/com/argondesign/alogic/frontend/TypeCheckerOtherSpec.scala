@@ -122,9 +122,12 @@ final class TypeCheckerOtherSpec extends AnyFreeSpec with AlogicTest {
         (decl, err) <- List(
           ("i8 a = 2", Nil),
           ("i8 a = 8'd2", Nil),
-          ("i8 a = bool", "Initializer expression is of non-packed type" :: Nil),
-          ("i8 a = 9'd2", "Initializer expression yields 9 bits, 8 bits are expected" :: Nil),
-          ("i8 a = 7'd2", "Initializer expression yields 7 bits, 8 bits are expected" :: Nil),
+          (
+            "i8 a = bool",
+            "Initializer expression is of non-packed type, a 8 bit value is expected" :: Nil
+          ),
+          ("i8 a = 9'd2", "Initializer expression yields 9 bits, a 8 bit value is expected" :: Nil),
+          ("i8 a = 7'd2", "Initializer expression yields 7 bits, a 8 bit value is expected" :: Nil),
           ("const uint a = 7'd2", "Unsized integer declaration has packed initializer" :: Nil)
         )
       } {
