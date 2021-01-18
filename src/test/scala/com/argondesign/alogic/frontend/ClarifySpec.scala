@@ -96,15 +96,15 @@ final class ClarifySpec extends AnyFreeSpec with AlogicTest {
         "ternary operator operands" - {
           for {
             (text, res) <- List(
-              ("0 ? 0 : 2'd1", Some(Left(ExprCast(TypeUInt(2), 0)))),
-              ("0 ? 2'd1 : 0", Some(Right(ExprCast(TypeUInt(2), 0)))),
-              ("0 ? 0 : 3'sd1", Some(Left(ExprCast(TypeUInt(3), 0)))),
-              ("0 ? 3'sd1 : 0", Some(Right(ExprCast(TypeUInt(3), 0)))),
-              ("0 ? 0s : 2'd1", Some(Left(ExprCast(TypeSInt(2), ExprNum(true, 0))))),
-              ("0 ? 2'd1 : 0s", Some(Right(ExprCast(TypeSInt(2), ExprNum(true, 0))))),
-              ("0 ? 0s : 3'sd1", Some(Left(ExprCast(TypeSInt(3), ExprNum(true, 0))))),
-              ("0 ? 3'sd1 : 0s", Some(Right(ExprCast(TypeSInt(3), ExprNum(true, 0))))),
-              ("0 ? 1 : 0", None)
+              ("1'd0 ? 0 : 2'd1", Some(Left(ExprCast(TypeUInt(2), 0)))),
+              ("1'd0 ? 2'd1 : 0", Some(Right(ExprCast(TypeUInt(2), 0)))),
+              ("1'd0 ? 0 : 3'sd1", Some(Left(ExprCast(TypeUInt(3), 0)))),
+              ("1'd0 ? 3'sd1 : 0", Some(Right(ExprCast(TypeUInt(3), 0)))),
+              ("1'd0 ? 0s : 2'd1", Some(Left(ExprCast(TypeSInt(2), ExprNum(true, 0))))),
+              ("1'd0 ? 2'd1 : 0s", Some(Right(ExprCast(TypeSInt(2), ExprNum(true, 0))))),
+              ("1'd0 ? 0s : 3'sd1", Some(Left(ExprCast(TypeSInt(3), ExprNum(true, 0))))),
+              ("1'd0 ? 3'sd1 : 0s", Some(Right(ExprCast(TypeSInt(3), ExprNum(true, 0))))),
+              ("1'd0 ? 1 : 0", None)
             )
           } {
             text in {

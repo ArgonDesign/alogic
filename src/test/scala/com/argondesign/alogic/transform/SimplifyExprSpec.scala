@@ -585,16 +585,16 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
       for {
         (text, pattern, err) <- List[(String, PartialFunction[Any, Unit], List[String])](
           // format: off
-          ("0 ? 1 : 2", { case ExprNum(false, v) if v == 2                                      => }, Nil),
-          ("1 ? 1 : 2", { case ExprNum(false, v) if v == 1                                      => }, Nil),
-          ("@randbit() ? 1 : 1", { case ExprNum(false, v) if v == 1                             => }, Nil),
-          ("@randbit() ? 2 : 2", { case ExprNum(false, v) if v == 2                             => }, Nil),
-          ("@randbit() ? 8'd0 : 8'd0", { case ExprInt(false, 8, v) if v == 0                    => }, Nil),
+          ("1'd0 ? 1 : 2", { case ExprNum(false, v) if v == 2                                => }, Nil),
+          ("1'd1 ? 1 : 2", { case ExprNum(false, v) if v == 1                                => }, Nil),
+          ("@randbit() ? 1 : 1", { case ExprNum(false, v) if v == 1                          => }, Nil),
+          ("@randbit() ? 2 : 2", { case ExprNum(false, v) if v == 2                          => }, Nil),
+          ("@randbit() ? 8'd0 : 8'd0", { case ExprInt(false, 8, v) if v == 0                 => }, Nil),
           ("@randbit() ? 8'd0 : 8'd1", { case ExprCond(_: ExprCall, _: ExprInt, _: ExprInt)  => }, Nil),
           ("@randbit() ? 8'd0 : 8'sd0", { case ExprCond(_: ExprCall, _: ExprInt, _: ExprInt) => }, Nil),
-          ("1 ? 1 : 0 - 2", { case ExprNum(false, v) if v == 1                                  => }, Nil),
-          ("1 ? 1s : 0", { case ExprNum(false, v) if v == 1                                     => }, Nil),
-          ("@randbit() ? 1 - 1 : 2 - 2", { case ExprNum(false, v) if v == 0                     => }, Nil)
+          ("1'd1 ? 1 : 0 - 2", { case ExprNum(false, v) if v == 1                            => }, Nil),
+          ("1'd1 ? 1s : 0", { case ExprNum(false, v) if v == 1                               => }, Nil),
+          ("@randbit() ? 1 - 1 : 2 - 2", { case ExprNum(false, v) if v == 0                  => }, Nil)
           // format: on
         )
       } {

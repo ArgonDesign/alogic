@@ -351,7 +351,10 @@ final class TypeCheckerExprSpec extends AnyFreeSpec with AlogicTest {
       for {
         (expr, err) <- List(
           ("a ? b[0][0] : c[0][0][0]", Nil),
-          ("c ? b : c[0][0][0]", "Condition of '?:' is of neither numeric nor packed type" :: Nil),
+          (
+            "c ? b : c[0][0][0]",
+            "Condition of ternary '?:' is of neither numeric nor packed type" :: Nil
+          ),
           ("a ? 8'd3 : 8'd2", Nil),
           ("a ? 8'd3 : 8'sd2", Nil),
           ("a ? 8'sd3 : 8'd2", Nil),
@@ -384,15 +387,23 @@ final class TypeCheckerExprSpec extends AnyFreeSpec with AlogicTest {
               "'then' operand is 3 bits wide, and" ::
               "'else' operand is 4 bits wide" :: Nil
           ),
-          ("a ? c : b", "'then' operand of '?:' is of non-packed type" :: Nil),
-          ("a ? b : c", "'else' operand of '?:' is of non-packed type" :: Nil)
+          ("a ? c : b", "'then' operand of ternary '?:' is of non-packed type" :: Nil),
+          ("a ? b : c", "'else' operand of ternary '?:' is of non-packed type" :: Nil),
+          (
+            "2'd0 ? 1'd0 : 1'd1",
+            "Condition of ternary '?:' yields 2 bits, 1 bit is expected" :: Nil
+          ),
+          (
+            "0 ? 1'd0 : 1'd1",
+            "Condition of ternary '?:' yields an unsized value, 1 bit is expected" :: Nil
+          )
         )
       } {
         expr in {
           typeCheck {
             s"""
                |fsm f {
-               |  out sync u2 a;
+               |  out sync u1 a;
                |  i2[1][2] b;
                |  i2[1][2] c[4];
                |  void main() {

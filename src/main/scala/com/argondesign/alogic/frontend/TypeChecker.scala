@@ -1135,11 +1135,13 @@ private[frontend] object TypeChecker {
             }
 
           case ExprCond(cond, thenExpr, elseExpr) =>
-            if (!checkNumericOrPacked(cond, "Condition of '?:'")) {
+            if (!checkNumericOrPacked(cond, "Condition of ternary '?:'")) {
+              error(tree)
+            } else if (!checkWidth(1, cond, "Condition of ternary '?:'")) {
               error(tree)
             } else if (!thenExpr.tpe.underlying.isNum || !elseExpr.tpe.underlying.isNum) {
-              lazy val okThen = checkPacked(thenExpr, "'then' operand of '?:'")
-              lazy val okElse = checkPacked(elseExpr, "'else' operand of '?:'")
+              lazy val okThen = checkPacked(thenExpr, "'then' operand of ternary '?:'")
+              lazy val okElse = checkPacked(elseExpr, "'else' operand of ternary '?:'")
               if (thenExpr.tpe.underlying.isNum) {
                 if (!okElse) error(tree)
               } else if (elseExpr.tpe.underlying.isNum) {
