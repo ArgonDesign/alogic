@@ -334,6 +334,76 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
       }
     }
 
+    "shifts with a sized left hand side and an unsized right hand side" - {
+      for {
+        (text, result, err) <- List(
+          // format: off
+          //////////////////////////////////////////////
+          // signed signed
+          //////////////////////////////////////////////
+          (" 8'sd3 <<   2s", ExprInt(true, 8,  12), Nil),
+          (" 8'sd3 >>   2s", ExprInt(true, 8,  0), Nil),
+          (" 8'sd3 <<<  2s", ExprInt(true, 8,  12), Nil),
+          (" 8'sd3 >>>  2s", ExprInt(true, 8,  0), Nil),
+          (" 8'sd3 <<  -2s", ExprError(), "Negative shift amount" :: Nil),
+          (" 8'sd3 >>  -2s", ExprError(), "Negative shift amount" :: Nil),
+          (" 8'sd3 <<< -2s", ExprError(), "Negative shift amount" :: Nil),
+          (" 8'sd3 >>> -2s", ExprError(), "Negative shift amount" :: Nil),
+          ("-8'sd3 <<   2s", ExprInt(true, 8, -12), Nil),
+          ("-8'sd3 >>   2s", ExprInt(true, 8, 63), Nil),
+          ("-8'sd3 <<<  2s", ExprInt(true, 8, -12), Nil),
+          ("-8'sd3 >>>  2s", ExprInt(true, 8, -1), Nil),
+          ("-8'sd3 <<  -2s", ExprError(), "Negative shift amount" :: Nil),
+          ("-8'sd3 >>  -2s", ExprError(), "Negative shift amount" :: Nil),
+          ("-8'sd3 <<< -2s", ExprError(), "Negative shift amount" :: Nil),
+          ("-8'sd3 >>> -2s", ExprError(), "Negative shift amount" :: Nil),
+          //////////////////////////////////////////////
+          // signed unsigned
+          //////////////////////////////////////////////
+          (" 8'sd3 <<  2", ExprInt(true, 8, 12), Nil),
+          (" 8'sd3 >>  2", ExprInt(true, 8, 0), Nil),
+          (" 8'sd3 <<< 2", ExprInt(true, 8, 12), Nil),
+          (" 8'sd3 >>> 2", ExprInt(true, 8, 0), Nil),
+          ("-8'sd3 <<  2", ExprInt(true, 8, -12), Nil),
+          ("-8'sd3 >>  2", ExprInt(true, 8, 63), Nil),
+          ("-8'sd3 <<< 2", ExprInt(true, 8, -12), Nil),
+          ("-8'sd3 >>> 2", ExprInt(true, 8, -1), Nil),
+          //////////////////////////////////////////////
+          // unsigned signed
+          //////////////////////////////////////////////
+          ("8'd3 <<   2s", ExprInt(false, 8, 12), Nil),
+          ("8'd3 >>   2s", ExprInt(false, 8, 0), Nil),
+          ("8'd3 <<<  2s", ExprInt(false, 8, 12), Nil),
+          ("8'd3 >>>  2s", ExprInt(false, 8, 0), Nil),
+          ("8'd3 <<  -2s", ExprError(), "Negative shift amount" :: Nil),
+          ("8'd3 >>  -2s", ExprError(), "Negative shift amount" :: Nil),
+          ("8'd3 <<< -2s", ExprError(), "Negative shift amount" :: Nil),
+          ("8'd3 >>> -2s", ExprError(), "Negative shift amount" :: Nil),
+          ("8'd129 <<  2s", ExprInt(false, 8, 4), Nil),
+          ("8'd129 >>  2s", ExprInt(false, 8, 32), Nil),
+          ("8'd129 <<< 2s", ExprInt(false, 8, 4), Nil),
+          ("8'd129 >>> 2s", ExprInt(false, 8, 32), Nil),
+          //////////////////////////////////////////////
+          // unsigned unsigned
+          //////////////////////////////////////////////
+          ("8'd3 <<  2", ExprInt(false, 8, 12), Nil),
+          ("8'd3 >>  2", ExprInt(false, 8, 0), Nil),
+          ("8'd3 <<< 2", ExprInt(false, 8, 12), Nil),
+          ("8'd3 >>> 2", ExprInt(false, 8, 0), Nil),
+          ("8'd129 <<  2", ExprInt(false, 8, 4), Nil),
+          ("8'd129 >>  2", ExprInt(false, 8, 32), Nil),
+          ("8'd129 <<< 2", ExprInt(false, 8, 4), Nil),
+          ("8'd129 >>> 2", ExprInt(false, 8, 32), Nil),
+          // format: on
+        )
+      } {
+        text in {
+          simplify(text) shouldBe result
+          checkSingleError(err)
+        }
+      }
+    }
+
     "unary operators applied to sized integer literals" - {
       for {
         (text, result, err) <- List(

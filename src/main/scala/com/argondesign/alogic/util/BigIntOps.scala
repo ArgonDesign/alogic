@@ -24,7 +24,7 @@ object BigIntOps {
     def extract(lsb: Int, width: Int, signed: Boolean = false): BigInt = {
       require(lsb >= 0)
       require(width >= 1)
-      val mask = (BigInt(1) << width) - 1
+      val mask = BigInt.mask(width)
       val bits = (value >> lsb) & mask
       assert(bits >= 0)
       if (!signed || !bits.testBit(width - 1)) bits else (BigInt(-1) << width) | bits

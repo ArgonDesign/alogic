@@ -38,30 +38,6 @@ final class SimplifyExpr(implicit cc: CompilerContext)
 
   implicit private def boolean2BigInt(bool: Boolean): BigInt = if (bool) BigInt(1) else BigInt(0)
 
-  private val shiftOps = Set("<<", ">>", "<<<", ">>>")
-
-  private def foldShiftUnsized(expr: ExprBinary): Expr = expr match {
-    case ExprBinary(ExprNum(ls, lv), op, rhs) =>
-      val rv = rhs.value.get
-      val negl = lv < 0
-      val negr = rv < 0
-      val num = (ls, op) match {
-        case _ if negr =>
-          cc.error(expr, "Negative shift amount")
-          ExprError()
-        case (true, ">>") if negl =>
-          cc.error(expr, "'>>' is not well defined for negative unsized values")
-          ExprError()
-        case (signed, "<<")  => ExprNum(signed, lv << rv.toInt)
-        case (signed, ">>")  => ExprNum(signed, lv >> rv.toInt)
-        case (signed, "<<<") => ExprNum(signed, lv << rv.toInt)
-        case (signed, ">>>") => ExprNum(signed, lv >> rv.toInt)
-        case _               => unreachable
-      }
-      num withLoc expr.loc
-    case _ => unreachable
-  }
-
   private def foldBinOpOneKnown(
       kSigned: Boolean,
       kWidthOpt: Option[Int],
@@ -508,11 +484,48 @@ final class SimplifyExpr(implicit cc: CompilerContext)
       }
 
     ////////////////////////////////////////////////////////////////////////////
-    // Fold shifts with an unsized left hand side
+    // Fold shifts with an known right hand side
     ////////////////////////////////////////////////////////////////////////////
 
-    case expr @ ExprBinary(_: ExprNum, op, _: ExprNum | _: ExprInt) if shiftOps contains op =>
-      foldShiftUnsized(expr)
+    case expr @ ExprBinary(lhs, op @ ("<<" | ">>" | "<<<" | ">>>"), Integral(_, _, rv)) =>
+      if (rv == 0) {
+        lhs
+      } else if (rv < 0) {
+        cc.error(expr, "Negative shift amount")
+        ExprError()
+      } else {
+        val shift = rv.toInt
+        lhs match {
+          case ExprNum(ls, lv) =>
+            if (lv < 0 && op == ">>") {
+              cc.error(expr, "'>>' is not well defined for negative unsized values")
+              ExprError()
+            } else {
+              op pipe {
+                case "<<" | "<<<" => ExprNum(ls, lv << shift)
+                case ">>" | ">>>" => ExprNum(ls, lv >> shift)
+                case _            => unreachable
+              } withLocOf expr
+            }
+          case ExprInt(false, lw, lv) =>
+            op pipe {
+              case "<<" | "<<<" => ExprInt(false, lw, (lv << shift).extract(0, lw))
+              case ">>" | ">>>" => ExprInt(false, lw, (lv >> shift).extract(0, lw))
+              case _            => unreachable
+            } withLocOf expr
+          case ExprInt(true, lw, lv) =>
+            op pipe {
+              case "<<" | "<<<"        => ExprInt(true, lw, (lv << shift).extract(0, lw, signed = true))
+              case ">>" if shift >= lw => ExprInt(true, lw, 0)
+              case ">>"                => ExprInt(true, lw, (lv >> shift).extract(0, lw - shift))
+              case ">>>"               => ExprInt(true, lw, (lv >> shift).extract(0, lw, signed = true))
+              case _                   => unreachable
+            } withLocOf expr
+          case _ =>
+            // TODO: fold shifts-wider-than-width of unknown values
+            expr
+        }
+      }
 
     ////////////////////////////////////////////////////////////////////////////
     // Fold other binary expressions with 2 unsized operands
