@@ -173,9 +173,9 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
       tree rewrite checker
 
       cc.messages should have length 2
-      cc.messages(0) should beThe[Error]("Multiple fence blocks specified in entity 'foo'")
+      cc.messages(0) should beThe[Error]("Multiple fence blocks specified in entity")
       cc.messages(0).loc.line shouldBe 2
-      cc.messages(1) should beThe[Error]("Multiple fence blocks specified in entity 'foo'")
+      cc.messages(1) should beThe[Error]("Multiple fence blocks specified in entity")
       cc.messages(1).loc.line shouldBe 3
     }
 
@@ -646,7 +646,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
                         |}""".stripMargin.asTree[Desc]
           tree rewrite checker shouldBe a[Desc]
           cc.messages.loneElement should beThe[Warning](
-            s"Entity 'a' contains only verbatim blocks, use a 'verbatim entity' instead"
+            s"Entity contains only verbatim blocks, use a 'verbatim entity' instead"
           )
         }
       }

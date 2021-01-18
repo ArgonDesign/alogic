@@ -299,8 +299,12 @@ class Frontend(implicit cc: CompilerContext) {
     ): Option[(DescPackage, Iterable[DescPackage])] = {
     // Apply Finalize
     val finalized @ (input, dependencies) = Finalize(desc)
+    //
+    val iterable = (Iterable(input) concat dependencies.iterator).par
+    // Apply a secondary SyntaxCheck to ensure 'gen' yielded well formed trees
+    iterable foreach { SyntaxCheck(_) }
     // Apply UnusedCheck
-    (Iterable(input) concat dependencies.iterator).par foreach UnusedCheck.apply
+    iterable foreach UnusedCheck.apply
     //
     Some(finalized)
   }

@@ -1,0 +1,8 @@
+fsm bad_gen_10 {
+  gen for (uint n < 2) {
+    fence {}
+  }
+}
+
+// :3: ERROR: Multiple fence blocks specified in entity
+// :3: ERROR: Multiple fence blocks specified in entity

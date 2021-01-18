@@ -1,0 +1,12 @@
+fsm bad_gen_11 {
+  void main () {
+    case (1'd0) {
+      gen for (uint n < 2) {
+        default: {}
+      }
+    }
+    fence;
+  }
+}
+// :5: ERROR: Multiple 'default' clauses specified in case statement
+// :5: ERROR: Multiple 'default' clauses specified in case statement

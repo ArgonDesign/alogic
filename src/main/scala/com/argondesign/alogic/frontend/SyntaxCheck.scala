@@ -47,14 +47,14 @@ final class SyntaxCheck(implicit cc: CompilerContext) extends StatefulTreeTransf
 
   override def enter(tree: Tree): Option[Tree] = {
     tree match {
-      case DescEntity(ident: Ident, _, variant, body) =>
+      case DescEntity(ref: Ref, _, variant, body) =>
         variantStack push variant
         singletonStack push false
-        checkEntityBody(ident, variant, body)
-      case DescSingleton(ident: Ident, _, variant, body) =>
+        checkEntityBody(ref, variant, body)
+      case DescSingleton(ref: Ref, _, variant, body) =>
         variantStack push variant
         singletonStack push true
-        checkEntityBody(ident, variant, body)
+        checkEntityBody(ref, variant, body)
       case _: StmtLoop | _: StmtWhile | _: StmtFor | _: StmtDo =>
         loopLevel += 1
       case _ =>
@@ -80,12 +80,12 @@ final class SyntaxCheck(implicit cc: CompilerContext) extends StatefulTreeTransf
   private def notVariant(variant: EntityVariant.Type) =
     variantStack.nonEmpty && variantStack.top != variant
 
-  private def checkEntityBody(ident: Ident, variant: EntityVariant.Type, body: List[Ent]): Unit = {
+  private def checkEntityBody(ref: Ref, variant: EntityVariant.Type, body: List[Ent]): Unit = {
     val combProcesses = body collect { case node: EntCombProcess => node }
 
     if (combProcesses.lengthIs > 1) {
       combProcesses foreach {
-        cc.error(_, s"Multiple fence blocks specified in entity '${ident.base}'")
+        cc.error(_, s"Multiple fence blocks specified in entity")
       }
     }
 
@@ -102,8 +102,8 @@ final class SyntaxCheck(implicit cc: CompilerContext) extends StatefulTreeTransf
 
     if (variant != EntityVariant.Ver && verbatims.nonEmpty && verbatims.length == nonports.length) {
       cc.warning(
-        ident,
-        s"Entity '${ident.base}' contains only verbatim blocks, use a 'verbatim entity' instead"
+        ref,
+        s"Entity contains only verbatim blocks, use a 'verbatim entity' instead"
       )
     }
   }
@@ -247,6 +247,7 @@ final class SyntaxCheck(implicit cc: CompilerContext) extends StatefulTreeTransf
         case _: DescGenIf    => tree
         case _: DescGenFor   => tree
         case _: DescGenRange => tree
+        case _: DescGenVar   => tree // After Elaboration
         case _ =>
           cc.error(tree, "Only variables can be declared in declaration statements")
           StmtError() withLoc tree.loc
