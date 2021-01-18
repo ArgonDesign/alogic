@@ -181,8 +181,8 @@ final class TypeCheckerExprSpec extends AnyFreeSpec with AlogicTest {
               if (strictWidth) "is of non-packed type" else "is of neither numeric nor packed type"
             for {
               (expr, err) <- List(
-                (s"bool $op 8'd2", s"Left hand operand of '$op' $msg" :: Nil),
-                (s"8'd3 $op bool", s"Right hand operand of '$op' $msg" :: Nil)
+                (s"bool $op 1'd1", s"Left hand operand of '$op' $msg" :: Nil),
+                (s"1'd1 $op bool", s"Right hand operand of '$op' $msg" :: Nil)
               )
             } {
               expr in {
@@ -279,7 +279,6 @@ final class TypeCheckerExprSpec extends AnyFreeSpec with AlogicTest {
             )
           }
         }
-
       }
 
       "warnings" - {

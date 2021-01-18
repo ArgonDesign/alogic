@@ -37,7 +37,7 @@ private[frontend] object TypeChecker {
     def implies(other: => Boolean): Boolean = !value || other
   }
 
-  final private val mixedWidthBinaryOps = Set("'", "<<", ">>", "<<<", ">>>", "&&", "||")
+  final private val shiftBinaryOps = Set("<<", ">>", "<<<", ">>>")
   final private val comparisonBinaryOps = Set(">", ">=", "<", "<=", "==", "!=")
 
   def apply(
@@ -151,7 +151,7 @@ private[frontend] object TypeChecker {
           ): Boolean = {
           val expected = s"${pluralize(width, "bit is", "bits are")} expected"
           if (expr.tpe.isNum) {
-            error(tree, s"$msg yields an unsized value, $expected")
+            error(tree, expr, s"$msg yields an unsized value, $expected")
             false
           } else if (expr.tpe.width != width) {
             error(tree, expr, s"$msg yields ${pluralize(expr.tpe.width, "bit", "bits")}, $expected")
@@ -1085,9 +1085,18 @@ private[frontend] object TypeChecker {
                   tree withTpe TypeInt(rhs.tpe.isSigned, v)
               }
 
+          case ExprBinary(lhs, op @ ("&&" | "||"), rhs) =>
+            val lHint = s"Left hand operand of '$op'"
+            val rHint = s"Right hand operand of '$op'"
+            val lOK = checkNumericOrPacked(lhs, lHint) && checkWidth(1, lhs, lHint)
+            val rOK = checkNumericOrPacked(rhs, rHint) && checkWidth(1, rhs, rHint)
+            if (!lOK || !rOK) {
+              error(tree)
+            }
+
           case ExprBinary(lhs, op, rhs) =>
             if (!lhs.tpe.underlying.isNum || !rhs.tpe.underlying.isNum) {
-              lazy val strictWidth = !(mixedWidthBinaryOps contains op)
+              lazy val strictWidth = !(shiftBinaryOps contains op)
               if (lhs.tpe.underlying.isNum && strictWidth) {
                 if (!checkPacked(rhs, s"Right hand operand of '$op'")) {
                   error(tree)
