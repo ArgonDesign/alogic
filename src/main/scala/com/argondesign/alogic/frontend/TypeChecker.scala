@@ -847,9 +847,9 @@ private[frontend] object TypeChecker {
             error(tree, "A pure expression in statement position does nothing")
 
           case StmtWait(cond) =>
-            if (!checkNumericOrPacked(cond, "Condition of 'stall' statement")) {
+            if (!checkNumericOrPacked(cond, "Condition of 'wait' statement")) {
               error(tree)
-            } else if (!checkWidth(1, cond, "Condition of 'stall' statement")) {
+            } else if (!checkWidth(1, cond, "Condition of 'wait' statement")) {
               error(tree)
             }
 

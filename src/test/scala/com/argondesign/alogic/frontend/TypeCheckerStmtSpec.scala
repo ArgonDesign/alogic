@@ -483,23 +483,23 @@ final class TypeCheckerStmtSpec extends AnyFreeSpec with AlogicTest {
       }
     }
 
-    "stall" - {
+    "wait" - {
       for {
         (cond, err) <- List(
           ("a", Nil),
           ("b", Nil),
-          ("c", "Condition of 'stall' statement yields 2 bits, 1 bit is expected" :: Nil),
-          ("d", "Condition of 'stall' statement yields 8 bits, 1 bit is expected" :: Nil),
+          ("c", "Condition of 'wait' statement yields 2 bits, 1 bit is expected" :: Nil),
+          ("d", "Condition of 'wait' statement yields 8 bits, 1 bit is expected" :: Nil),
           ("c[0]", Nil),
           ("d[1]", Nil),
-          ("0", "Condition of 'stall' statement yields an unsized value, 1 bit is expected" :: Nil),
-          ("1", "Condition of 'stall' statement yields an unsized value, 1 bit is expected" :: Nil),
-          ("5", "Condition of 'stall' statement yields an unsized value, 1 bit is expected" :: Nil),
+          ("0", "Condition of 'wait' statement yields an unsized value, 1 bit is expected" :: Nil),
+          ("1", "Condition of 'wait' statement yields an unsized value, 1 bit is expected" :: Nil),
+          ("5", "Condition of 'wait' statement yields an unsized value, 1 bit is expected" :: Nil),
           ("1'd0", Nil),
           ("1'd1", Nil),
-          ("2'd0", "Condition of 'stall' statement yields 2 bits, 1 bit is expected" :: Nil),
-          ("9'd1", "Condition of 'stall' statement yields 9 bits, 1 bit is expected" :: Nil),
-          ("bool", "Condition of 'stall' statement is of neither numeric nor packed type" :: Nil)
+          ("2'd0", "Condition of 'wait' statement yields 2 bits, 1 bit is expected" :: Nil),
+          ("9'd1", "Condition of 'wait' statement yields 9 bits, 1 bit is expected" :: Nil),
+          ("bool", "Condition of 'wait' statement is of neither numeric nor packed type" :: Nil)
         )
       } {
         cond in {
