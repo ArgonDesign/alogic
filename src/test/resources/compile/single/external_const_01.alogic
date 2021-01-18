@@ -1,6 +1,11 @@
-const bool[2] C = {false, true};
+// @ignore
+struct s {
+  bool a;
+  bool b;
+}
+const s C = {false, true};
 
-fsm external_const {
+fsm external_const_01 {
   in       bool i;
   out wire bool o;
 
@@ -11,7 +16,7 @@ fsm external_const {
 }
 
 // @fec/golden {{{
-//  module external_const(
+//  module external_const_01(
 //    input  wire i,
 //    output wire o
 //  );

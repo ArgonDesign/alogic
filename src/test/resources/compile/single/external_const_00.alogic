@@ -1,0 +1,20 @@
+const bool[2] C = {false, true};
+
+fsm external_const_00 {
+  in       bool i;
+  out wire bool o;
+
+  void main() {
+    o = C[i];
+    fence;
+  }
+}
+
+// @fec/golden {{{
+//  module external_const_00(
+//    input  wire i,
+//    output wire o
+//  );
+//    assign o = ~i;
+//  endmodule
+// }}}
