@@ -121,7 +121,10 @@ jobs:
       - name: Generate coverage report
         run: sbt coverageOn coverageReport
       - name: Upload coverage to codecov.io
-        run: bash <(curl -s https://codecov.io/bash) -X gcov -X coveragepy -s target
+        uses: codecov/codecov-action@v1
+        with:
+          fail_ci_if_error: true
+          verbose: true
   deploy:
     name: Deploy Cloud Function for playground
     needs: build
