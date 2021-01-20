@@ -44,7 +44,9 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
 
   protected def simplify(text: String): Expr = {
     implicit val fe: Frontend = new Frontend
-    val expr = ResolveNames(text.asTree[Expr], cc.builtins)
+    val tree = text.asTree[Expr]
+    assert(cc.messages.filterNot(_.isInstanceOf[Warning]).isEmpty)
+    val expr = ResolveNames(tree, cc.builtins)
       .proceed(e => fe.typeCheck(e) map { _ => e })
       .map(Clarify(_))
       .pipe {
@@ -78,7 +80,7 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
           ("~(-1s)", ExprNum(true, 0), Nil),
           // unsigned non-0 operand
           ("+(2)", ExprNum(false, 2), Nil),
-          ("-(2)", ExprError(), "Unary '-' is not well defined for unsigned values" :: Nil),
+          ("-(2)", ExprError(), "Unary '-' is not well defined for unsized unsigned values" :: Nil),
           ("~(2)", ExprError(), "Unary '~' is not well defined for unsized unsigned values" :: Nil),
           // unsigned 0 operand
           ("+(0)", ExprNum(false, 0), Nil),
@@ -428,7 +430,7 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
           ("^(-8'sd1)", ExprInt(false, 1, 0), Nil),
           // unsigned non-0 operand
           ("+(8'd2)", ExprInt(false, 8, 2), Nil),
-          ("-(8'd2)", ExprError(), "Unary '-' is not well defined for unsigned values" :: Nil),
+          ("-(8'd2)", ExprInt(false, 8, 254), Nil),
           ("~(8'd2)", ExprInt(false, 8, 253), Nil),
           ("!(1'd1)", ExprInt(false, 1, 0), Nil),
           ("&(8'd2)", ExprInt(false, 1, 0), Nil),
@@ -550,6 +552,51 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
           ("4'd3 ^  4'd2", ExprInt(false, 4, 1)),
           ("4'd3 |  4'd2", ExprInt(false, 4, 3))
           // format: on
+        )
+      } {
+        text in {
+          simplify(text) shouldBe result
+          checkSingleError(Nil)
+        }
+      }
+    }
+
+    "binary %" - {
+      for {
+        (text, result) <- List(
+          // Unsized
+          // - unsigned unsigned
+          ("  10  %  3", ExprNum(false, 1)),
+          // - unsigned signed
+          ("  10  %  3s", ExprNum(false, 1)),
+          // - signed unsigned
+          ("  10s %  3", ExprNum(false, 1)),
+          // - signed signed
+          ("  10s %  3s", ExprNum(true, 1)),
+          ("  10s % -3s", ExprNum(true, 1)),
+          (" -10s %  3s", ExprNum(true, -1)),
+          (" -10s % -3s", ExprNum(true, -1)),
+          // Sized
+          // - unsigned unsigned
+          ("  8'd10  %   8'd3 ", ExprInt(false, 8, 1)),
+          ("  8'd10  % -(8'd3)", ExprInt(false, 8, 10)),
+          ("-(8'd10) %   8'd3 ", ExprInt(false, 8, 0)),
+          ("-(8'd10) % -(8'd3)", ExprInt(false, 8, 246)),
+          // - unsigned signed
+          ("  8'd10  %   8'sd3", ExprInt(false, 8, 1)),
+          ("  8'd10  %  -8'sd3", ExprInt(false, 8, 10)),
+          ("-(8'd10) %   8'sd3", ExprInt(false, 8, 0)),
+          ("-(8'd10) %  -8'sd3", ExprInt(false, 8, 246)),
+          // - signed unsigned
+          ("  8'sd10 %   8'd3 ", ExprInt(false, 8, 1)),
+          ("  8'sd10 % -(8'd3)", ExprInt(false, 8, 10)),
+          (" -8'sd10 %   8'd3 ", ExprInt(false, 8, 0)),
+          (" -8'sd10 % -(8'd3)", ExprInt(false, 8, 246)),
+          // - signed signed
+          ("  8'sd10 %   8'sd3", ExprInt(true, 8, 1)),
+          ("  8'sd10 %  -8'sd3", ExprInt(true, 8, 1)),
+          (" -8'sd10 %   8'sd3", ExprInt(true, 8, -1)),
+          (" -8'sd10 %  -8'sd3", ExprInt(true, 8, -1))
         )
       } {
         text in {

@@ -408,7 +408,7 @@ final class SimplifyExpr(implicit cc: CompilerContext)
       val num = op match {
         // Invalid cases
         case "-" if !signed && value > 0 =>
-          cc.error(tree, "Unary '-' is not well defined for unsigned values")
+          cc.error(tree, "Unary '-' is not well defined for unsized unsigned values")
           ExprError()
         case "~" if !signed =>
           cc.error(tree, "Unary '~' is not well defined for unsized unsigned values")
@@ -443,13 +443,8 @@ final class SimplifyExpr(implicit cc: CompilerContext)
     case ExprUnary(op, expr @ ExprInt(signed, width, value)) =>
       lazy val mask = (BigInt(1) << width) - 1
       val num = op match {
-        // Invalid cases
-        case "-" if !signed && value > 0 =>
-          cc.error(tree, "Unary '-' is not well defined for unsigned values")
-          ExprError()
-        // Valid cases
         case "+"           => expr
-        case "-"           => ExprInt(signed, width, -value)
+        case "-"           => ExprInt(signed, width, (-value).extract(0, width, signed))
         case "~" if signed => ExprInt(true, width, ~value)
         case "~"           => ExprInt(false, width, ~value & mask)
         case "!"           => ExprInt(false, 1, value == 0)
@@ -555,7 +550,7 @@ final class SimplifyExpr(implicit cc: CompilerContext)
         case (_, "&&", _) => ExprInt(false, 1, (lv != 0) && (rv != 0))
         case (_, "||", _) => ExprInt(false, 1, (lv != 0) || (rv != 0))
 
-        // Arith
+        // Arithmetic
         case (true, "*", true) => ExprNum(true, lv * rv)
         case (true, "/", true) => ExprNum(true, lv / rv)
         case (true, "%", true) => ExprNum(true, lv % rv)
@@ -601,12 +596,14 @@ final class SimplifyExpr(implicit cc: CompilerContext)
         case "&&" => ExprInt(false, 1, (lv != 0) && (rv != 0))
         case "||" => ExprInt(false, 1, (lv != 0) || (rv != 0))
 
-        // Arith with matching sign
+        // Arithmetic, except modulus, with matching sign
         case "+" if sm => ExprInt(s, w, (lv + rv).extract(0, w, s))
         case "-" if sm => ExprInt(s, w, (lv - rv).extract(0, w, s))
         case "*" if sm => ExprInt(s, w, (lv * rv).extract(0, w, s))
         case "/" if sm => ExprInt(s, w, (lv / rv).extract(0, w, s))
-        case "%" if sm => ExprInt(s, w, (lv % rv).extract(0, w, s))
+
+        // Modulus
+        case "%" => ExprInt(s, lw, (lv.extract(0, w, s) % rv.extract(0, w, s)).extract(0, w, s))
 
         // Bitwise
         case "&" => ExprInt(s, w, (lv & rv).extract(0, w, s))
