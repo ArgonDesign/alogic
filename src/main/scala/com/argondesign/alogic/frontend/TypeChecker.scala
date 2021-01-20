@@ -1122,34 +1122,40 @@ final private class Checker(val root: Tree)(implicit cc: CompilerContext, fe: Fr
       checkWidth(1, rhs, s"Right hand operand of '$op'")
 
     case ExprBinary(lhs, op, rhs) => // Arithmetic and comparison operators
-      if (lhs.tpe.underlying.isNum && rhs.tpe.underlying.isNum) {
-        // Both operands unsized, which is always OK
-      } else if (lhs.tpe.underlying.isNum) {
-        // Left operand is unsized, the right must be packed
-        checkPacked(rhs, s"Right hand operand of '$op'")
-      } else if (rhs.tpe.underlying.isNum) {
-        // Right operand is unsized, the left must be packed
-        checkPacked(lhs, s"Left hand operand of '$op'")
-      } else {
-        // Neither operands are unsized, they both must be packed,
-        // and have the same width
-        checkPacked(lhs, s"Left hand operand of '$op'")
-        checkPacked(rhs, s"Right hand operand of '$op'")
-        if (okSoFar && lhs.tpe.width != rhs.tpe.width) {
-          error(
-            s"Both operands of binary '$op' must have the same width, but",
-            s"left  hand operand is ${lhs.tpe.width} bits wide, and",
-            s"right hand operand is ${rhs.tpe.width} bits wide"
-          )
+      if (!lhs.tpe.underlying.isNum || !rhs.tpe.underlying.isNum) { // OK if both are unsized
+        if (lhs.tpe.underlying.isNum) {
+          // Left operand is unsized, the right must be packed
+          checkPacked(rhs, s"Right hand operand of '$op'")
+        } else if (rhs.tpe.underlying.isNum) {
+          // Right operand is unsized, the left must be packed
+          checkPacked(lhs, s"Left hand operand of '$op'")
+        } else {
+          // Neither operands are unsized, they both must be packed,
+          // and have the same width
+          checkPacked(lhs, s"Left hand operand of '$op'")
+          checkPacked(rhs, s"Right hand operand of '$op'")
+          if (okSoFar && lhs.tpe.width != rhs.tpe.width) {
+            error(
+              s"Both operands of binary '$op' must have the same width, but",
+              s"left  hand operand is ${lhs.tpe.width} bits wide, and",
+              s"right hand operand is ${rhs.tpe.width} bits wide"
+            )
+          }
         }
-      }
 
-      if (okSoFar) {
-        if (comparisonBinaryOps contains op) {
-          if (lhs.tpe.isSigned && !rhs.tpe.isSigned) {
-            cc.warning(tree, "Comparison between signed and unsigned operands")
-          } else if (!lhs.tpe.isSigned && rhs.tpe.isSigned) {
-            cc.warning(tree, "Comparison between unsigned and signed operands")
+        if (okSoFar) {
+          if (comparisonBinaryOps contains op) {
+            if (lhs.tpe.isSigned && !rhs.tpe.isSigned) {
+              cc.warning(
+                tree,
+                "Comparison between signed and unsigned operands is interpreted as a comparison between two unsigned values"
+              )
+            } else if (!lhs.tpe.isSigned && rhs.tpe.isSigned) {
+              cc.warning(
+                tree,
+                "Comparison between signed and unsigned operands is interpreted as a comparison between two unsigned values"
+              )
+            }
           }
         }
       }

@@ -323,10 +323,24 @@ final class TypeCheckerExprSpec extends AnyFreeSpec with AlogicTest {
           for (op <- List(">", ">=", "<", "<=", "==", "!=")) {
             for {
               (expr, warn) <- List(
-                (s"8'd3  $op 1", Nil),
-                (s"8'sd3 $op 1", "Comparison between signed and unsigned operands" :: Nil),
-                (s"3     $op 1s", "Comparison between unsigned and signed operands" :: Nil),
-                (s"3s    $op 1s", Nil)
+                // format: off
+                (s"3     $op 1    ", Nil),
+                (s"3     $op 1s   ", Nil),
+                (s"3s    $op 1    ", Nil),
+                (s"3s    $op 1s   ", Nil),
+                (s"3     $op 8'd1 ", Nil),
+                (s"3     $op 8'sd1", "Comparison between signed and unsigned operands is interpreted as a comparison between two unsigned values" :: Nil),
+                (s"3s    $op 8'd1 ", "Comparison between signed and unsigned operands is interpreted as a comparison between two unsigned values" :: Nil),
+                (s"3s    $op 8'sd1", Nil),
+                (s"8'd3  $op 1    ", Nil),
+                (s"8'd3  $op 1s   ", "Comparison between signed and unsigned operands is interpreted as a comparison between two unsigned values" :: Nil),
+                (s"8'sd3 $op 1    ", "Comparison between signed and unsigned operands is interpreted as a comparison between two unsigned values" :: Nil),
+                (s"8'sd3 $op 1s   ", Nil),
+                (s"8'd3  $op 8'd1 ", Nil),
+                (s"8'd3  $op 8'sd1", "Comparison between signed and unsigned operands is interpreted as a comparison between two unsigned values" :: Nil),
+                (s"8'sd3 $op 8'd1 ", "Comparison between signed and unsigned operands is interpreted as a comparison between two unsigned values" :: Nil),
+                (s"8'sd3 $op 8'sd1", Nil)
+                // format: on
               )
             } {
               expr in {

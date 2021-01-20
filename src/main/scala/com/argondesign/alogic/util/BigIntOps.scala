@@ -44,6 +44,8 @@ object BigIntOps {
       }
     }
 
+    def asU(width: Int): BigInt = extract(0, width)
+
   }
 
   implicit final class ObjectOps(private val value: BigInt.type) extends AnyVal {

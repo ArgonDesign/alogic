@@ -523,95 +523,80 @@ final class SimplifyExpr(implicit cc: CompilerContext)
       }
 
     ////////////////////////////////////////////////////////////////////////////
-    // Fold other binary expressions with 2 unsized operands
+    // Fold other binary expressions with known unsized operands
     ////////////////////////////////////////////////////////////////////////////
 
     case ExprBinary(ExprNum(ls, lv), op, ExprNum(rs, rv)) =>
-      def makeUnsignedExprNum(value: BigInt) = {
-        if (value >= 0) {
-          ExprNum(false, value)
+      def makeNum(signed: Boolean, value: BigInt) = {
+        if (signed || value >= 0) {
+          ExprNum(signed, value)
         } else {
           cc.error(tree, s"Result of operator '$op' is unsigned, but value is negative: $value")
           ExprError()
         }
       }
 
-      val negl = lv < 0
-      val negr = rv < 0
-      val nege = negl || negr
-      val num = (ls, op, rs) match {
-        // Always valid
-        case (_, ">", _)  => ExprInt(false, 1, lv > rv)
-        case (_, "<", _)  => ExprInt(false, 1, lv < rv)
-        case (_, ">=", _) => ExprInt(false, 1, lv >= rv)
-        case (_, "<=", _) => ExprInt(false, 1, lv <= rv)
-        case (_, "==", _) => ExprInt(false, 1, lv == rv)
-        case (_, "!=", _) => ExprInt(false, 1, lv != rv)
-        case (_, "&&", _) => ExprInt(false, 1, (lv != 0) && (rv != 0))
-        case (_, "||", _) => ExprInt(false, 1, (lv != 0) || (rv != 0))
-
-        // Arithmetic
-        case (true, "*", true) => ExprNum(true, lv * rv)
-        case (true, "/", true) => ExprNum(true, lv / rv)
-        case (true, "%", true) => ExprNum(true, lv % rv)
-        case (true, "+", true) => ExprNum(true, lv + rv)
-        case (true, "-", true) => ExprNum(true, lv - rv)
-        case (_, "*", _)       => makeUnsignedExprNum(lv * rv)
-        case (_, "/", _)       => makeUnsignedExprNum(lv / rv)
-        case (_, "%", _)       => makeUnsignedExprNum(lv % rv)
-        case (_, "+", _)       => makeUnsignedExprNum(lv + rv)
-        case (_, "-", _)       => makeUnsignedExprNum(lv - rv)
-
-        // Bitwise
-        case (_, op @ ("&" | "^" | "|"), _) if nege =>
-          cc.error(tree, s"Bitwise '$op' operator is not well defined for negative unsized values")
-          ExprError()
-        case (true, "&", true) => ExprNum(true, lv & rv)
-        case (true, "^", true) => ExprNum(true, lv ^ rv)
-        case (true, "|", true) => ExprNum(true, lv | rv)
-        case (_, "&", _)       => ExprNum(false, lv & rv)
-        case (_, "^", _)       => ExprNum(false, lv ^ rv)
-        case (_, "|", _)       => ExprNum(false, lv | rv)
-
-        case _ => unreachable
-      }
-      num withLoc tree.loc
-
-    ////////////////////////////////////////////////////////////////////////////
-    // Fold binary expressions with equally sized operands
-    ////////////////////////////////////////////////////////////////////////////
-
-    case ExprBinary(ExprInt(ls, lw, lv), op, ExprInt(rs, rw, rv)) if lw == rw =>
-      val w = lw
       val s = ls && rs
-      val sm = ls == rs
       val num = op match {
-        // Always valid
+        // Comparison
         case ">"  => ExprInt(false, 1, lv > rv)
         case "<"  => ExprInt(false, 1, lv < rv)
         case ">=" => ExprInt(false, 1, lv >= rv)
         case "<=" => ExprInt(false, 1, lv <= rv)
         case "==" => ExprInt(false, 1, lv == rv)
         case "!=" => ExprInt(false, 1, lv != rv)
-        case "&&" => ExprInt(false, 1, (lv != 0) && (rv != 0))
-        case "||" => ExprInt(false, 1, (lv != 0) || (rv != 0))
 
-        // Arithmetic, except modulus, with matching sign
-        case "+" if sm => ExprInt(s, w, (lv + rv).extract(0, w, s))
-        case "-" if sm => ExprInt(s, w, (lv - rv).extract(0, w, s))
-        case "*" if sm => ExprInt(s, w, (lv * rv).extract(0, w, s))
-        case "/" if sm => ExprInt(s, w, (lv / rv).extract(0, w, s))
+        // Arithmetic
+        case "*" => makeNum(s, lv * rv)
+        case "/" => makeNum(s, lv / rv)
+        case "%" => makeNum(s, lv % rv)
+        case "+" => makeNum(s, lv + rv)
+        case "-" => makeNum(s, lv - rv)
 
-        // Modulus
-        case "%" => ExprInt(s, lw, (lv.extract(0, w, s) % rv.extract(0, w, s)).extract(0, w, s))
+        // Bitwise
+        case "&" => ExprNum(s, lv & rv)
+        case "|" => ExprNum(s, lv | rv)
+        case "^" => ExprNum(s, lv ^ rv)
+
+        case _ => unreachable
+      }
+      num withLoc tree.loc
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Fold other binary expressions with known sized operands
+    ////////////////////////////////////////////////////////////////////////////
+
+    case ExprBinary(ExprInt(ls, lw, lv), op, ExprInt(rs, rw, rv)) =>
+      assert(lw == rw)
+      val w = lw
+      val s = ls && rs
+      val num = op match {
+        // Comparison
+        case ">"  => ExprInt(false, 1, if (ls == rs) lv > rv else lv.asU(w) > rv.asU(w))
+        case "<"  => ExprInt(false, 1, if (ls == rs) lv < rv else lv.asU(w) < rv.asU(w))
+        case ">=" => ExprInt(false, 1, if (ls == rs) lv >= rv else lv.asU(w) >= rv.asU(w))
+        case "<=" => ExprInt(false, 1, if (ls == rs) lv <= rv else lv.asU(w) <= rv.asU(w))
+        case "==" => ExprInt(false, 1, if (ls == rs) lv == rv else lv.asU(w) == rv.asU(w))
+        case "!=" => ExprInt(false, 1, if (ls == rs) lv != rv else lv.asU(w) != rv.asU(w))
+
+        // Arithmetic
+        case "+" => ExprInt(s, w, (lv + rv).extract(0, w, s))
+        case "-" => ExprInt(s, w, (lv - rv).extract(0, w, s))
+        case "*" => ExprInt(s, w, (lv * rv).extract(0, w, s))
+        case "/" => ExprInt(s, w, lv.extract(0, w, s) / rv.extract(0, w, s))
+        case "%" => ExprInt(s, w, lv.extract(0, w, s) % rv.extract(0, w, s))
 
         // Bitwise
         case "&" => ExprInt(s, w, (lv & rv).extract(0, w, s))
         case "^" => ExprInt(s, w, (lv ^ rv).extract(0, w, s))
         case "|" => ExprInt(s, w, (lv | rv).extract(0, w, s))
 
-        // TODO: handle
-        case _ => tree
+        // Boolean
+        case "&&" => ExprInt(false, 1, if (lv != 0 && rv != 0) 1 else 0)
+        case "||" => ExprInt(false, 1, if (lv != 0 || rv != 0) 1 else 0)
+
+        //
+        case _ => unreachable
       }
       if (num.hasLoc) num else num withLoc tree.loc
 
@@ -963,7 +948,7 @@ final class SimplifyExpr(implicit cc: CompilerContext)
       count.value map { cnt =>
         val c = cnt.toInt
         val w = width.toInt
-        val b = value.extract(0, w)
+        val b = value.asU(w)
         val v = (0 until c).foldLeft(BigInt(0)) { case (a, _) => (a << w) | b }
         ExprInt(signed = false, c * w, v) withLoc tree.loc
       } getOrElse tree
