@@ -463,7 +463,7 @@ final private class Checker(val root: Tree)(implicit cc: CompilerContext, fe: Fr
         if (!parametrizedOk && expr.tpe.isParametrized) {
           error(expr, "Parametrized type requires parameter list")
         }
-        if (expr.tpe.underlying.isNum) {
+        if (!tree.isInstanceOf[Expr] && expr.tpe.underlying.isNum) {
           evaluate(expr, "Expression of unsized integer type")
         }
       case _ =>
