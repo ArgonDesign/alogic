@@ -1075,6 +1075,9 @@ final private class Checker(val root: Tree)(implicit cc: CompilerContext, fe: Fr
         }
       }
 
+    case ExprUnary("!", expr) =>
+      checkWidth(1, expr, s"Operand of unary '!' operator")
+
     case ExprUnary(op, expr) =>
       if (expr.tpe.underlying.isNum) {
         // TODO: Allow & an | as these could generalized (| ~~ != 0, & ~~ == -1) ?
@@ -1082,7 +1085,7 @@ final private class Checker(val root: Tree)(implicit cc: CompilerContext, fe: Fr
           error(s"Unary operator '$op' cannot be applied to unsized integer value")
         }
       } else {
-        checkPacked(expr, s"Operand of unary operator '$op'")
+        checkPacked(expr, s"Operand of unary '$op' operator")
       }
 
     ////////////////////////////////////////////////////////////////////////////

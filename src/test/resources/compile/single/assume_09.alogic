@@ -5,7 +5,7 @@ fsm assume_09 {
 
   void main() {
     u2 tmp = i;
-    assert !tmp;
+    assert tmp == 0;
     o = i;
     fence;
   }

@@ -49,31 +49,34 @@ final class TypeCheckerExprSpec extends AnyFreeSpec with AlogicTest {
     "unary" - {
       for {
         (expr, err) <- List(
+          // format: off
           (s"+(N)", Nil),
           (s"-(N)", Nil),
           (s"~(N)", Nil),
-          (s"!(N)", Nil),
+          (s"!(N)", "Operand of unary '!' operator yields 8 bits, a 1 bit value is expected" :: Nil),
           (s"&(N)", Nil),
           (s"|(N)", Nil),
           (s"^(N)", Nil),
-          (s"+(main)", "Operand of unary operator '+' is of non-packed type" :: Nil),
-          (s"-(main)", "Operand of unary operator '-' is of non-packed type" :: Nil),
-          (s"~(main)", "Operand of unary operator '~' is of non-packed type" :: Nil),
-          (s"!(main)", "Operand of unary operator '!' is of non-packed type" :: Nil),
-          (s"&(main)", "Operand of unary operator '&' is of non-packed type" :: Nil),
-          (s"|(main)", "Operand of unary operator '|' is of non-packed type" :: Nil),
-          (s"^(main)", "Operand of unary operator '^' is of non-packed type" :: Nil),
+          (s"+(main)", "Operand of unary '+' operator is of non-packed type" :: Nil),
+          (s"-(main)", "Operand of unary '-' operator is of non-packed type" :: Nil),
+          (s"~(main)", "Operand of unary '~' operator is of non-packed type" :: Nil),
+          (s"!(main)", "Operand of unary '!' operator is of non-packed type, a 1 bit value is expected" :: Nil),
+          (s"&(main)", "Operand of unary '&' operator is of non-packed type" :: Nil),
+          (s"|(main)", "Operand of unary '|' operator is of non-packed type" :: Nil),
+          (s"^(main)", "Operand of unary '^' operator is of non-packed type" :: Nil),
           (s"+(8'd1)", Nil),
           (s"-(8'd1)", Nil),
           (s"~(8'd1)", Nil),
-          (s"!(8'd1)", Nil),
+          (s"!(8'd1)", "Operand of unary '!' operator yields 8 bits, a 1 bit value is expected" :: Nil),
           (s"+(8'sd1)", Nil),
           (s"-(8'sd1)", Nil),
           (s"~(8'sd1)", Nil),
-          (s"!(8'sd1)", Nil),
+          (s"!(8'sd1)", "Operand of unary '!' operator yields 8 bits, a 1 bit value is expected" :: Nil),
           (s"&(1)", "Unary operator '&' cannot be applied to unsized integer value" :: Nil),
           (s"|(1)", "Unary operator '|' cannot be applied to unsized integer value" :: Nil),
-          (s"^(1)", "Unary operator '^' cannot be applied to unsized integer value" :: Nil)
+          (s"^(1)", "Unary operator '^' cannot be applied to unsized integer value" :: Nil),
+          ("!true", Nil)
+          // format: on
         )
       } {
         expr in {

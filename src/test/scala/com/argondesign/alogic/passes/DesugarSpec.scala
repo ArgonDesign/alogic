@@ -107,8 +107,8 @@ final class DesugarSpec extends AnyFreeSpec with AlogicTest {
             s"""
                |fsm e {
                |  void main() {
-               |    i2 b;
-               |    let (u2 a = 2'd0, b = a) $loop
+               |    i1 b;
+               |    let (u1 a = 1'd0, b = a) $loop
                |  }
                |}""".stripMargin
           } getFirst {
@@ -130,10 +130,10 @@ final class DesugarSpec extends AnyFreeSpec with AlogicTest {
                 defnA.symbol.name shouldBe "a"
                 declA.symbol should be theSameInstanceAs defnA.symbol
                 declA should matchPattern {
-                  case DeclVar(_, ExprType(TypeUInt(w))) if w == 2 =>
+                  case DeclVar(_, ExprType(TypeUInt(w))) if w == 1 =>
                 }
                 defnA should matchPattern {
-                  case DefnVar(_, Some(ExprInt(false, 2, v))) if v == 0 =>
+                  case DefnVar(_, Some(ExprInt(false, 1, v))) if v == 0 =>
                 }
                 inside(assign) {
                   case StmtAssign(ExprSym(symB), ExprSym(symA)) =>

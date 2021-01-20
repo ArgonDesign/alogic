@@ -4,7 +4,7 @@ fsm assume_06 {
   out wire u2 o;
 
   void main() {
-    assert !i;
+    assert i == 0;
     o = i;
     fence;
   }

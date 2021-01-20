@@ -64,32 +64,26 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
           ("+(2s)", ExprNum(true, 2), Nil),
           ("-(2s)", ExprNum(true, -2), Nil),
           ("~(2s)", ExprNum(true, -3), Nil),
-          ("!(2s)", ExprInt(false, 1, 0), Nil),
           // signed negative operand
           ("+(-2s)", ExprNum(true, -2), Nil),
           ("-(-2s)", ExprNum(true, 2), Nil),
           ("~(-2s)", ExprNum(true, 1), Nil),
-          ("!(-2s)", ExprInt(false, 1, 0), Nil),
           // signed 0 operand
           ("+(0s)", ExprNum(true, 0), Nil),
           ("-(0s)", ExprNum(true, 0), Nil),
           ("~(0s)", ExprNum(true, -1), Nil),
-          ("!(0s)", ExprInt(false, 1, 1), Nil),
           // signed -1 operand
           ("+(-1s)", ExprNum(true, -1), Nil),
           ("-(-1s)", ExprNum(true, 1), Nil),
           ("~(-1s)", ExprNum(true, 0), Nil),
-          ("!(-1s)", ExprInt(false, 1, 0), Nil),
           // unsigned non-0 operand
           ("+(2)", ExprNum(false, 2), Nil),
           ("-(2)", ExprError(), "Unary '-' is not well defined for unsigned values" :: Nil),
           ("~(2)", ExprError(), "Unary '~' is not well defined for unsized unsigned values" :: Nil),
-          ("!(2)", ExprInt(false, 1, 0), Nil),
           // unsigned 0 operand
           ("+(0)", ExprNum(false, 0), Nil),
           ("-(0)", ExprNum(false, 0), Nil),
-          ("~(0)", ExprError(), "Unary '~' is not well defined for unsized unsigned values" :: Nil),
-          ("!(0)", ExprInt(false, 1, 1), Nil)
+          ("~(0)", ExprError(), "Unary '~' is not well defined for unsized unsigned values" :: Nil)
           // format: on
         )
       } {
@@ -404,7 +398,7 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
           ("+(8'sd2)", ExprInt(true, 8, 2), Nil),
           ("-(8'sd2)", ExprInt(true, 8, -2), Nil),
           ("~(8'sd2)", ExprInt(true, 8, -3), Nil),
-          ("!(8'sd2)", ExprInt(false, 1, 0), Nil),
+          // No !
           ("&(8'sd2)", ExprInt(false, 1, 0), Nil),
           ("|(8'sd2)", ExprInt(false, 1, 1), Nil),
           ("^(8'sd2)", ExprInt(false, 1, 1), Nil),
@@ -412,7 +406,7 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
           ("+(-8'sd2)", ExprInt(true, 8, -2), Nil),
           ("-(-8'sd2)", ExprInt(true, 8, 2), Nil),
           ("~(-8'sd2)", ExprInt(true, 8, 1), Nil),
-          ("!(-8'sd2)", ExprInt(false, 1, 0), Nil),
+          ("!(-1'sd1)", ExprInt(false, 1, 0), Nil),
           ("&(-8'sd2)", ExprInt(false, 1, 0), Nil),
           ("|(-8'sd2)", ExprInt(false, 1, 1), Nil),
           ("^(-8'sd2)", ExprInt(false, 1, 1), Nil),
@@ -420,7 +414,7 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
           ("+(8'sd0)", ExprInt(true, 8, 0), Nil),
           ("-(8'sd0)", ExprInt(true, 8, 0), Nil),
           ("~(8'sd0)", ExprInt(true, 8, -1), Nil),
-          ("!(8'sd0)", ExprInt(false, 1, 1), Nil),
+          ("!(1'sd0)", ExprInt(false, 1, 1), Nil),
           ("&(8'sd0)", ExprInt(false, 1, 0), Nil),
           ("|(8'sd0)", ExprInt(false, 1, 0), Nil),
           ("^(8'sd0)", ExprInt(false, 1, 0), Nil),
@@ -428,7 +422,7 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
           ("+(-8'sd1)", ExprInt(true, 8, -1), Nil),
           ("-(-8'sd1)", ExprInt(true, 8, 1), Nil),
           ("~(-8'sd1)", ExprInt(true, 8, 0), Nil),
-          ("!(-8'sd1)", ExprInt(false, 1, 0), Nil),
+          // ! already covered
           ("&(-8'sd1)", ExprInt(false, 1, 1), Nil),
           ("|(-8'sd1)", ExprInt(false, 1, 1), Nil),
           ("^(-8'sd1)", ExprInt(false, 1, 0), Nil),
@@ -436,7 +430,7 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
           ("+(8'd2)", ExprInt(false, 8, 2), Nil),
           ("-(8'd2)", ExprError(), "Unary '-' is not well defined for unsigned values" :: Nil),
           ("~(8'd2)", ExprInt(false, 8, 253), Nil),
-          ("!(8'd2)", ExprInt(false, 1, 0), Nil),
+          ("!(1'd1)", ExprInt(false, 1, 0), Nil),
           ("&(8'd2)", ExprInt(false, 1, 0), Nil),
           ("|(8'd2)", ExprInt(false, 1, 1), Nil),
           ("^(8'd2)", ExprInt(false, 1, 1), Nil),
@@ -444,7 +438,7 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
           ("+(8'd0)", ExprInt(false, 8, 0), Nil),
           ("-(8'd0)", ExprInt(false, 8, 0), Nil),
           ("~(8'd0)", ExprInt(false, 8, 255), Nil),
-          ("!(8'd0)", ExprInt(false, 1, 1), Nil),
+          ("!(1'd0)", ExprInt(false, 1, 1), Nil),
           ("&(8'd0)", ExprInt(false, 1, 0), Nil),
           ("|(8'd0)", ExprInt(false, 1, 0), Nil),
           ("^(8'd0)", ExprInt(false, 1, 0), Nil),
