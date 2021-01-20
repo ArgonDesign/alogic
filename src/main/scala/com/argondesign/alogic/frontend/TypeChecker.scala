@@ -932,8 +932,8 @@ final private class Checker(val root: Tree)(implicit cc: CompilerContext, fe: Fr
                 case Some(symbol) => tree withTpe symbol.kind.asCombFunc.retType
                 case None =>
                   error(
-                    s"Builtin function '${expr.toSource}' cannot be applied to arguments",
-                    args map { arg => s"'${arg.toSource}' of type ${arg.tpe.toSource}" }: _*
+                    s"Builtin function '${expr.toSource}' cannot be applied to arguments of types",
+                    args map { arg => s"'${arg.expr.tpe.toSource}'" }: _*
                   )
               }
             case _ => unreachable // Handled in enter

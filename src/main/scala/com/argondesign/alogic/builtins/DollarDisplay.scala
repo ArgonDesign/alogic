@@ -20,7 +20,7 @@ private[builtins] class DollarDisplay(implicit cc: CompilerContext) extends Buil
 
   val name = "$display"
 
-  private def validArg(expr: Expr) = expr.tpe match {
+  private def validArg(expr: Expr) = expr.tpe.underlying match {
     case TypeVoid   => false
     case _: TypeNum => true
     case kind       => kind.isPacked
