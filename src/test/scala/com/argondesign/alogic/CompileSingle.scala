@@ -1,30 +1,26 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2019 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2021 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
 //
-// Module: Alogic Compiler
-// Author: Geza Lore
-//
 // DESCRIPTION:
-//
-// Compile single alogic files as tests
+// Compile single .alogic files under src/test/resources/compile/single as tests
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic
 
+import java.nio.file.Files
+import java.nio.file.Path
 import java.nio.file.Paths
 
 final class CompileSingle extends CompilationTest {
+  private val basePath: Path = Paths.get(getClass.getResource("/compile/single").getPath)
 
-  private val base = "/compile/single"
-
-  private val testPath = Paths.get(getClass.getResource(base).getPath)
-
-  // For each source file in the test directory
-  (testPath.toFile.listFiles filter { _.getPath.endsWith(".alogic") }).sorted foreach { file =>
-    defineTest(file.getAbsolutePath)
-  }
+  // For each source file under the test directory recursively
+  Files
+    .walk(basePath)
+    .filter(_.toString.endsWith(".alogic"))
+    .sorted
+    .forEach(path => defineTest(basePath.relativize(path).toString, path.toFile))
 }

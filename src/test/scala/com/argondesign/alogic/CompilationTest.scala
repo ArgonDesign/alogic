@@ -49,7 +49,7 @@ trait CompilationTest
     with fixture.ConfigMapFixture
     with ParallelTestExecution {
 
-  def getTool(path: Path, name: String, msg: String): File = {
+  private def getTool(path: Path, name: String, msg: String): File = {
     path.resolve(name).toFile
   } pipe { _.getCanonicalFile } ensuring (_.exists, msg)
 
@@ -76,13 +76,13 @@ trait CompilationTest
   )
 
   // Test config
-  case class Config(
+  private case class Config(
       trace: Boolean,
       verbose: Int)
 
   // Create temporary directory, run function passing the path to the temporary
   // directory as argument, then remove the temporary directory
-  def withTmpDir(tmpDir: Option[String])(f: Path => Unit): Unit = {
+  private def withTmpDir(tmpDir: Option[String])(f: Path => Unit): Unit = {
     def del(f: File): Unit = {
       if (f.isDirectory) {
         f.listFiles foreach del
@@ -107,14 +107,14 @@ trait CompilationTest
     }
   }
 
-  def writeFile(file: File)(content: String): Unit = {
+  private def writeFile(file: File)(content: String): Unit = {
     val pw = new PrintWriter(file)
     pw.write(content)
     pw.flush()
     pw.close()
   }
 
-  def system(
+  private def system(
       cmd: String,
       cwd: Path,
       logfile: String,
@@ -143,7 +143,7 @@ trait CompilationTest
     ret == 0
   }
 
-  def allMatches(patterns: Iterable[String], lines: Iterable[String]): Boolean = {
+  private def allMatches(patterns: Iterable[String], lines: Iterable[String]): Boolean = {
     lines.sizeIs == patterns.size && { // Right length
       (patterns.iterator zip lines.iterator) forall { // Right content
         case (pattern, line) => pattern.r.pattern.matcher(line).matches()
@@ -152,13 +152,13 @@ trait CompilationTest
   }
 
   // Lint compiler output with Verilator
-  def verilatorLint(topLevel: String, oPath: Path)(implicit config: Config): Unit = {
+  private def verilatorLint(topLevel: String, oPath: Path)(implicit config: Config): Unit = {
     // Lint the top level
     system(s"$verilator --lint-only -Wall -y $oPath $topLevel", oPath, "verilator-lint.log")
   }
 
   // Build and run simulation with Verilator
-  def verilatorSim(
+  private def verilatorSim(
       topLevel: String,
       test: String,
       expect: String,
@@ -347,7 +347,7 @@ trait CompilationTest
   }
 
   // Structural equivalence checking with yosys
-  def yosysEquiv(
+  private def yosysEquiv(
       topLevel: String,
       goldenFile: File,
       tmpDir: Path
@@ -396,7 +396,7 @@ trait CompilationTest
   }
 
   // BMC/k-induction based equivalence checking using SymbiYosys
-  def symbiYosysEquiv(
+  private def symbiYosysEquiv(
       topLevel: String,
       goldenFile: File,
       oPath: Path,
@@ -632,7 +632,7 @@ trait CompilationTest
     system(sbyCmd, oPath, "sby-equiv.log", failOk = true, Map("PATH" -> path))
   }
 
-  def formalEquivalenceCheck(
+  private def formalEquivalenceCheck(
       topLevel: String,
       fec: Map[String, String],
       oDir: Path,
@@ -731,7 +731,7 @@ trait CompilationTest
   private case class FatalSpec(fileLineOpt: Option[(String, Int)], patterns: List[String]) extends MessageSpec
   // format: on
 
-  private def parseCheckFile(checkFile: String): (
+  private def parseCheckFile(checkFile: File): (
       Map[String, String],
       Map[String, Map[String, String]],
       List[MessageSpec]
@@ -752,7 +752,8 @@ trait CompilationTest
 
     def finishPendingMessageSpec(): Unit = if (mesgBuff.nonEmpty) {
       val fileLineOpt = mesgFileLineOpt match {
-        case Some(("", string))      => Some((".*" + checkFile.split("/").last, string.toInt))
+        case Some(("", string)) =>
+          Some((".*" + checkFile.getAbsolutePath.split("/").last, string.toInt))
         case Some((pattern, string)) => Some((pattern, string.toInt))
         case None                    => None
       }
@@ -794,7 +795,7 @@ trait CompilationTest
         case longMatcher(k) if key == "" =>
           key = k
           key filterNot { _.isWhitespace } match {
-            case "fec/golden" => buf append s"`line ${lineNo + 1} $checkFile 0"
+            case "fec/golden" => buf append s"`line ${lineNo + 1} ${checkFile.getAbsolutePath} 0"
             case _            =>
           }
         case "}}}" if key != ""          => add(key, buf mkString "\n"); buf.clear(); key = ""
@@ -849,8 +850,8 @@ trait CompilationTest
 
   private object EndToEndTest extends Tag("com.argondesign.alogic.tags.EndToEndTest")
 
-  def defineTest(sourceFile: String): Unit =
-    sourceFile taggedAs EndToEndTest in { configMap: ConfigMap =>
+  def defineTest(testName: String, sourceFile: File): Unit =
+    testName taggedAs EndToEndTest in { configMap: ConfigMap =>
       // Parse the check file
       val (attr, dict, messageSpecs) = parseCheckFile(sourceFile)
 
@@ -875,7 +876,7 @@ trait CompilationTest
           buf append "-o"
           buf append oPath.toAbsolutePath.toString
 
-          val sourceDir = Paths.get(sourceFile).getParent
+          val sourceDir = sourceFile.toPath.getParent
 
           def addArgs(args: String): Unit =
             args
@@ -902,7 +903,7 @@ trait CompilationTest
           }
 
           // The input source file
-          buf append attr.getOrElse("source-file", sourceFile)
+          buf append attr.getOrElse("source-file", sourceFile.getAbsolutePath)
 
           buf.toSeq
         }
