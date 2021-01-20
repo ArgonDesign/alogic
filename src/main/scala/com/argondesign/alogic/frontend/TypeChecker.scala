@@ -350,8 +350,8 @@ final private class Checker(val root: Tree)(implicit cc: CompilerContext, fe: Fr
     }
   }
 
-  // Skip already typed sub-trees, bail quickly if we have an unresolved dependency
-  override def skip(tree: Tree): Boolean = tree.hasTpe || rAcc.nonEmpty
+  // Skip already typed sub-trees
+  override def skip(tree: Tree): Boolean = tree.hasTpe
 
   override def enter(tree: Tree): Option[Tree] = {
     implicit val theTree: Tree = tree
@@ -488,17 +488,17 @@ final private class Checker(val root: Tree)(implicit cc: CompilerContext, fe: Fr
     implicit val theTree: Tree = tree
     val alreadyHadError = hadError
 
+    // If any of the children have a type error, propagate it upwards
+    if (tree.children.exists(child => child.hasTpe && child.tpe.isError)) {
+      error
+    }
+
     // Bail quickly if we already had an unknown
-    if (rAcc.isEmpty) {
-      if (tree.children.exists(_.tpe.isError)) {
-        // If any of the children have a type error, propagate it upwards
-        error
-      } else {
-        checkChildren
-        if (okSoFar) {
-          // Apply the post-order checks
-          postOrder(tree)
-        }
+    if (rAcc.isEmpty && okSoFar) {
+      checkChildren
+      if (okSoFar) {
+        // Apply the post-order checks
+        postOrder(tree)
       }
     }
 
