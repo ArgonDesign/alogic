@@ -771,6 +771,15 @@ final private class Checker(val root: Tree)(implicit cc: CompilerContext, fe: Fr
         error("Body of 'loop' must end in a control statement")
       }
 
+    case StmtWhile(cond, _) =>
+      checkWidth(1, cond, "Condition of 'while' loop")
+
+    case StmtFor(_, condOpt, _, _) =>
+      condOpt.foreach(checkWidth(1, _, "Condition of 'for' loop"))
+
+    case StmtDo(cond, _) =>
+      checkWidth(1, cond, "Condition of 'do' loop")
+
     ////////////////////////////////////////////////////////////////////////////
     // Assignment like/updating statements
     ////////////////////////////////////////////////////////////////////////////

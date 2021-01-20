@@ -1,0 +1,7 @@
+fsm while_cond_00 {
+  void main() {
+    u8 i = 1;
+    while (i) {}
+  }
+}
+// :4: ERROR: Condition of 'while' loop yields 8 bits, a 1 bit value is expected

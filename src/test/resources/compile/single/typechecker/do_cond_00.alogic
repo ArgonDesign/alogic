@@ -1,0 +1,7 @@
+fsm do_cond_00 {
+  void main() {
+    u8 i = 1;
+    do {} while (i);
+  }
+}
+// :4: ERROR: Condition of 'do' loop yields 8 bits, a 1 bit value is expected

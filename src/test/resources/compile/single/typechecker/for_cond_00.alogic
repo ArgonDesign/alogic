@@ -1,0 +1,6 @@
+fsm for_cond_00 {
+  void main() {
+    for (u8 i = 1; i ; i++) {}
+  }
+}
+// :3: ERROR: Condition of 'for' loop yields 8 bits, a 1 bit value is expected
