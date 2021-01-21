@@ -1,0 +1,4 @@
+import "other" as other;
+// .*/top.alogic:1: ERROR: Circular definition: imported file ".*/import/circular_01/other.alogic"
+// .*/other.alogic:1: NOTE: Depends on imported file ".*/import/circular_01/top.alogic"
+// .*/top.alogic:1: NOTE: Depends on imported file ".*/import/circular_01/other.alogic"

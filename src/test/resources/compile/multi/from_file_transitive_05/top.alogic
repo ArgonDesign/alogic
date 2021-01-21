@@ -1,3 +1,0 @@
-from a import D;
-
-// .*/top.alogic:1: ERROR: No member named 'D' in value of type '.*/a.alogic'

@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Copyright (c) 2017-2020 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2021 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
 //
 // DESCRIPTION:
-//  Tests for parsing Import
+//  Tests for parsing From
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.frontend
@@ -23,137 +23,45 @@ final class ParserParseFromSpec extends AnyFreeSpec with AlogicTest {
   "The parser should build correct ASTs for From" - {
     "From one" - {
       "without alias" - {
-        "ident" in {
-          "from a import b;".asTree[From] shouldBe {
-            FromOne(0, ExprIdent(Ident("a", Nil)), ExprIdent(Ident("b", Nil)), None)
-          }
+        """from "a" import b;""".asTree[From] shouldBe {
+          FromOne("a", ExprIdent(Ident("b", Nil)), None)
         }
 
-        "select" in {
-          "from a.b import c;".asTree[From] shouldBe {
-            FromOne(
-              0,
-              ExprDot(ExprIdent(Ident("a", Nil)), "b", Nil),
-              ExprIdent(Ident("c", Nil)),
-              None
-            )
-          }
+        """from "a" import b.c;""".asTree[From] shouldBe {
+          FromOne("a", ExprDot(ExprIdent(Ident("b", Nil)), "c", Nil), None)
         }
 
-        "call" in {
-          "from a.b(0) import c;".asTree[From] shouldBe {
-            FromOne(
-              0,
-              ExprCall(
-                ExprDot(ExprIdent(Ident("a", Nil)), "b", Nil),
-                ArgP(ExprNum(false, 0)) :: Nil
-              ),
-              ExprIdent(Ident("c", Nil)),
-              None
-            )
-          }
+        """from "a" import b.c(2);""".asTree[From] shouldBe {
+          FromOne(
+            "a",
+            ExprCall(ExprDot(ExprIdent(Ident("b", Nil)), "c", Nil), ArgP(Expr(2)) :: Nil),
+            None
+          )
         }
       }
 
       "with alias" - {
-        "ident" in {
-          "from a import b as x;".asTree[From] shouldBe {
-            FromOne(
-              0,
-              ExprIdent(Ident("a", Nil)),
-              ExprIdent(Ident("b", Nil)),
-              Some(Ident("x", Nil))
-            )
-          }
+        """from "a" import b as x;""".asTree[From] shouldBe {
+          FromOne("a", ExprIdent(Ident("b", Nil)), Some(Ident("x", Nil)))
         }
 
-        "select" in {
-          "from a.b import c as y;".asTree[From] shouldBe {
-            FromOne(
-              0,
-              ExprDot(ExprIdent(Ident("a", Nil)), "b", Nil),
-              ExprIdent(Ident("c", Nil)),
-              Some(Ident("y", Nil))
-            )
-          }
+        """from "a" import b.c as x;""".asTree[From] shouldBe {
+          FromOne("a", ExprDot(ExprIdent(Ident("b", Nil)), "c", Nil), Some(Ident("x", Nil)))
         }
 
-        "call" in {
-          "from a.b(0) import c as z#[2];".asTree[From] shouldBe {
-            FromOne(
-              0,
-              ExprCall(
-                ExprDot(ExprIdent(Ident("a", Nil)), "b", Nil),
-                ArgP(ExprNum(false, 0)) :: Nil
-              ),
-              ExprIdent(Ident("c", Nil)),
-              Some(Ident("z", ExprNum(false, 2) :: Nil))
-            )
-          }
-        }
-      }
-
-      "relative" - {
-        "." in {
-          "from .a import b;".asTree[From] shouldBe {
-            FromOne(1, ExprIdent(Ident("a", Nil)), ExprIdent(Ident("b", Nil)), None)
-          }
-        }
-
-        ".." in {
-          "from ..a import b;".asTree[From] shouldBe {
-            FromOne(2, ExprIdent(Ident("a", Nil)), ExprIdent(Ident("b", Nil)), None)
-          }
-        }
-
-        "..." in {
-          "from ...a import b;".asTree[From] shouldBe {
-            FromOne(3, ExprIdent(Ident("a", Nil)), ExprIdent(Ident("b", Nil)), None)
-          }
+        """from "a" import b.c(2) as x;""".asTree[From] shouldBe {
+          FromOne(
+            "a",
+            ExprCall(ExprDot(ExprIdent(Ident("b", Nil)), "c", Nil), ArgP(Expr(2)) :: Nil),
+            Some(Ident("x", Nil))
+          )
         }
       }
     }
 
     "Import all" - {
-      "ident" in {
-        "from a import *;".asTree[From] shouldBe {
-          FromAll(0, ExprIdent(Ident("a", Nil)))
-        }
-      }
-
-      "select" in {
-        "from a.b import *;".asTree[From] shouldBe {
-          FromAll(0, ExprDot(ExprIdent(Ident("a", Nil)), "b", Nil))
-        }
-      }
-
-      "call" in {
-        "from a.b(0) import *;".asTree[From] shouldBe {
-          FromAll(
-            0,
-            ExprCall(ExprDot(ExprIdent(Ident("a", Nil)), "b", Nil), ArgP(ExprNum(false, 0)) :: Nil)
-          )
-        }
-      }
-
-      "relative" - {
-        "." in {
-          "from .a import *;".asTree[From] shouldBe {
-            FromAll(1, ExprIdent(Ident("a", Nil)))
-          }
-        }
-
-        ".." in {
-          "from ..a import *;".asTree[From] shouldBe {
-            FromAll(2, ExprIdent(Ident("a", Nil)))
-          }
-        }
-
-        "..." in {
-          "from ...a  import *;".asTree[From] shouldBe {
-            FromAll(3, ExprIdent(Ident("a", Nil)))
-          }
-        }
+      """from "a" import *;""".asTree[From] shouldBe {
+        FromAll("a")
       }
     }
   }

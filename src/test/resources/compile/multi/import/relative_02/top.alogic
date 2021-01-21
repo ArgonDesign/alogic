@@ -1,0 +1,14 @@
+import "a" as a;
+
+fsm top {
+  in       u4 i;
+  out wire u4 o;
+
+  void main() {
+    o = i + a.b.C;
+    fence;
+  }
+}
+
+// .*/a.alogic:1: ERROR: Cannot find absolute import target "b"
+// .*/a.alogic:1: NOTE: Looked in: .*/import/relative_02

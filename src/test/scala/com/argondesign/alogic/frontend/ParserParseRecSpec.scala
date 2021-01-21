@@ -48,8 +48,8 @@ final class ParserParseRecSpec extends AnyFreeSpec with AlogicTest {
     }
 
     "import" in {
-      "import a;".asTree[Rec] shouldBe {
-        RecSplice(ImportOne(0, ExprIdent(Ident("a", Nil)), None))
+      """import "a" as a;""".asTree[Rec] shouldBe {
+        RecSplice(ImportOne("a", Ident("a", Nil)))
       }
     }
 
@@ -60,8 +60,8 @@ final class ParserParseRecSpec extends AnyFreeSpec with AlogicTest {
     }
 
     "from" in {
-      "from a import b;".asTree[Rec] shouldBe {
-        RecSplice(FromOne(0, ExprIdent(Ident("a", Nil)), ExprIdent(Ident("b", Nil)), None))
+      """from "a" import b;""".asTree[Rec] shouldBe {
+        RecSplice(FromOne("a", ExprIdent(Ident("b", Nil)), None))
       }
     }
 

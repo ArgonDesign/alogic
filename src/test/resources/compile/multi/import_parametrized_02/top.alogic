@@ -1,5 +1,0 @@
-import a;
-
-compile a(2, 2).add as top;
-
-// :3: ERROR: Too many positional parameters

@@ -15,4 +15,4 @@ network param_assignment_required_3 {
     }
   }
 }
-// :13: ERROR: Parametrized type requires parameter list
+// :13: ERROR: Parametrized struct requires parameter list

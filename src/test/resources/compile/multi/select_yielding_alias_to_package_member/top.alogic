@@ -3,7 +3,7 @@ fsm top {
   out wire u4 o;
 
   struct s {
-    import a;
+    import "a" as a;
     using a.C;
   }
 

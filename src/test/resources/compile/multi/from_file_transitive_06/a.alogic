@@ -1,4 +1,0 @@
-gen for (uint N < 1) {
-  from b import C;
-  using C as D#[N];
-}

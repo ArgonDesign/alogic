@@ -1,0 +1,7 @@
+import "a" as a;
+
+network top {
+    in a i;
+}
+
+// :4: ERROR: Parametrized package requires parameter list

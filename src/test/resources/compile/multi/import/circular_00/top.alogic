@@ -1,0 +1,3 @@
+import "top" as top;
+// :1: ERROR: Circular definition: imported file ".*/import/circular_00/top.alogic"
+// :1: NOTE: Depends on imported file ".*/import/circular_00/top.alogic"

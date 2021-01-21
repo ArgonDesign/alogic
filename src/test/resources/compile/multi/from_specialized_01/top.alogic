@@ -1,2 +1,0 @@
-from a import S(7);
-// :1: ERROR: from import requires 'as' clause

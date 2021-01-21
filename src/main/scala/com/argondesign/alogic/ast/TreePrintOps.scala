@@ -253,8 +253,7 @@ trait TreePrintOps extends {
 
   // format: off
   final private def v(tree: Import)(implicit indent: Int): String = tree match {
-    case ImportOne(relative, expr, Some(ident)) => s"import ${"."*relative}${v(expr)} as ${v(ident)};"
-    case ImportOne(relative, expr, None) => s"import ${"."*relative}${v(expr)};"
+    case ImportOne(path, ident) => s"import $path as ${v(ident)};"
   }
   // format: on
 
@@ -269,9 +268,9 @@ trait TreePrintOps extends {
 
   // format: off
   final private def v(tree: From)(implicit indent: Int): String = tree match {
-    case FromOne(relative, expr, name, Some(ident)) => s"from ${"."*relative}${v(expr)} import ${v(name)} as ${v(ident)};"
-    case FromOne(relative, expr, name, None) => s"from ${"."*relative}${v(expr)} import ${v(name)};"
-    case FromAll(relative, expr) => s"from ${"."*relative}${v(expr)} import *;"
+    case FromOne(path, name, Some(ident)) => s"from $path import ${v(name)} as ${v(ident)};"
+    case FromOne(path, name, None) => s"from $path import ${v(name)};"
+    case FromAll(path) => s"from $path import *;"
   }
   // format: on
 

@@ -1,0 +1,3 @@
+import "leaf" as leaf;
+
+const u4 C = 2 * leaf.C;

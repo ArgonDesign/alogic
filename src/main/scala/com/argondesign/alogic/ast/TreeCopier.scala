@@ -957,14 +957,12 @@ object TreeCopier {
   // Import
   //////////////////////////////////////////////////////////////////////////////
 
-  def apply(tree: ImportOne)(expr: Tree, identOpt: Option[Tree]): ImportOne = {
-    if ((expr eq tree.expr) && (identOpt eq tree.identOpt)) {
+  def apply(tree: ImportOne)(ident: Tree): ImportOne = {
+    if (ident eq tree.ident) {
       tree
     } else {
-      assert(identOpt forall { _.isInstanceOf[Ident] })
       tree.copy(
-        expr = expr.asInstanceOf[Expr],
-        identOpt = identOpt.asInstanceOf[Option[Ident]]
+        ident = ident.asInstanceOf[Ident]
       ) withLoc tree.loc
     }
   }
@@ -1007,24 +1005,15 @@ object TreeCopier {
   // From
   //////////////////////////////////////////////////////////////////////////////
 
-  def apply(tree: FromOne)(expr: Tree, name: Tree, identOpt: Option[Tree]): FromOne = {
-    if ((expr eq tree.expr) && (name eq tree.name) && (identOpt eq tree.identOpt)) {
+  def apply(tree: FromOne)(name: Tree, identOpt: Option[Tree]): FromOne = {
+    if ((name eq tree.name) && (identOpt eq tree.identOpt)) {
       tree
     } else {
       assert(identOpt forall { _.isInstanceOf[Ident] })
       tree.copy(
-        expr = expr.asInstanceOf[Expr],
         name = name.asInstanceOf[Expr],
         identOpt = identOpt.asInstanceOf[Option[Ident]]
       ) withLoc tree.loc
-    }
-  }
-
-  def apply(tree: FromAll)(expr: Tree): FromAll = {
-    if (expr eq tree.expr) {
-      tree
-    } else {
-      tree.copy(expr = expr.asInstanceOf[Expr]) withLoc tree.loc
     }
   }
 

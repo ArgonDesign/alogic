@@ -1,10 +1,10 @@
-// @args: -P foo
+// @args: -P foo -P @zx(2,1'd1)
 
 const uint foo = 1;
 
 param uint WIDTH;
 
-network package_params_10 {
+network package_params_11 {
   in  uint(WIDTH) i;
   out uint(WIDTH) o;
 

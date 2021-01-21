@@ -1,5 +1,5 @@
 // @args: --dump-trees
-from not import not;
+from "not" import not;
 
 network top {
   in  bool i;

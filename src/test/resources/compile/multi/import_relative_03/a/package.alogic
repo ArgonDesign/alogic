@@ -1,3 +1,0 @@
-import .b;
-
-const u4 C = b.C;

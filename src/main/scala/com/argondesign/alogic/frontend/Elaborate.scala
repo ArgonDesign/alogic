@@ -1087,14 +1087,13 @@ object Elaborate {
       fe: Frontend
     ): Result[Tree] =
     imprt pipe {
-      case ImportOne(relative, expr, Some(ident)) =>
-        fe.imprt(expr, relative, imprt.loc) map { symbol =>
-          DescAlias(ident, Nil, ExprSym(symbol) withLocOf expr, exprt = false) withLocOf imprt
+      case ImportOne(path, ident) =>
+        fe.imprt(path, imprt.loc) map { symbol =>
+          DescAlias(ident, Nil, ExprSym(symbol) withLocOf imprt, exprt = false) withLocOf imprt
         } proceed {
           // Type parameter is unused as DescAlias doesn't have a body...
           elaborate[Desc](_, symtab, None)
         }
-      case ImportOne(_, _, None) => unreachable // Eliminated by SyntaxNormalize
     } tap assertProgressIsReal(imprt)
 
   private def reExport(symbol: Symbol): Boolean = symbol.desc match {

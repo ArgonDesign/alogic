@@ -1,3 +1,0 @@
-from a import D#[0];
-
-// .*/top.alogic:1: ERROR: No member named 'D#\[0\]' in value of type '.*/a.alogic'

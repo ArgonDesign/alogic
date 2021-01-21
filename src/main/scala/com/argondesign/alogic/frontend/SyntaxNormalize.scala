@@ -95,16 +95,6 @@ final class SyntaxNormalize(implicit cc: CompilerContext) extends StatefulTreeTr
       }
 
     ////////////////////////////////////////////////////////////////////////////
-    // Ensure ImportOne instances have explicit name
-    ////////////////////////////////////////////////////////////////////////////
-
-    case imprt @ ImportOne(_, expr, None) =>
-      localName(expr) match {
-        case some: Some[_] => imprt.copy(identOpt = some) withLocOf tree
-        case None          => cc.error(imprt, "import requires 'as' clause"); tree
-      }
-
-    ////////////////////////////////////////////////////////////////////////////
     // Ensure UsingOne instances have explicit name
     ////////////////////////////////////////////////////////////////////////////
 
@@ -118,10 +108,10 @@ final class SyntaxNormalize(implicit cc: CompilerContext) extends StatefulTreeTr
     // Turn From instances to Import + Using
     ////////////////////////////////////////////////////////////////////////////
 
-    case from @ FromOne(relative, expr, name, identOpt) =>
+    case from @ FromOne(path, name, identOpt) =>
       identOpt orElse localName(name) match {
         case some: Some[_] =>
-          val imprtTmpIdent = nextTempIdent() withLocOf expr
+          val imprtTmpIdent = nextTempIdent() withLocOf tree
           val selected = {
             def reselect(stem: Expr, name: Expr): Expr = name match {
               case ExprIdent(Ident(base, idxs)) =>
@@ -135,17 +125,17 @@ final class SyntaxNormalize(implicit cc: CompilerContext) extends StatefulTreeTr
             reselect(ExprIdent(imprtTmpIdent) withLocOf name, name)
           }
           Thicket(
-            ImportOne(relative, expr, Some(imprtTmpIdent)) withLocOf tree,
+            ImportOne(path, imprtTmpIdent) withLocOf tree,
             UsingOne(selected, some) withLocOf tree
           )
         case None => cc.error(from, "from import requires 'as' clause"); tree
       }
 
-    case FromAll(relative, expr) =>
-      val imprtTmpIdent = nextTempIdent() withLocOf expr
+    case FromAll(path) =>
+      val imprtTmpIdent = nextTempIdent() withLocOf tree
       Thicket(
-        ImportOne(relative, expr, Some(imprtTmpIdent)) withLocOf tree,
-        UsingAll(ExprIdent(imprtTmpIdent) withLocOf expr, exprt = false) withLocOf tree
+        ImportOne(path, imprtTmpIdent) withLocOf tree,
+        UsingAll(ExprIdent(imprtTmpIdent) withLocOf tree, exprt = false) withLocOf tree
       )
 
     ////////////////////////////////////////////////////////////////////////////

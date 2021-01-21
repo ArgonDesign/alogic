@@ -1,3 +1,0 @@
-from b import C;
-
-const u4 D = C;

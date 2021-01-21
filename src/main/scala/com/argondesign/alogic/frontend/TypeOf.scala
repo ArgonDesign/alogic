@@ -24,19 +24,29 @@ import scala.util.chaining._
 
 private[frontend] object TypeOf {
 
+  private def parametrizedWhat(symbol: Symbol): String =
+    symbol.desc.asInstanceOf[DescParametrized].desc match {
+      case _: DescPackage => "package"
+      case _: DescEntity  => "entity"
+      case _: DescRecord  => "struct"
+      case _              => unreachable
+    }
+
   private def simpleTypeFrom(spec: Expr)(implicit fe: Frontend): FinalResult[TypeFund] =
     fe.typeCheck(spec) flatMap {
       case TypeType(_: TypeEntity) => Failure(spec, "Type specifier refers to an entity")
       case TypeType(kind)          => Complete(kind)
-      case _: TypeParametrized     => Failure(spec, s"Parametrized type requires parameter list")
-      case _                       => Failure(spec, s"Type specifier does not name a type")
+      case TypeParametrized(symbol) =>
+        Failure(spec, s"Parametrized ${parametrizedWhat(symbol)} requires parameter list")
+      case _ => Failure(spec, s"Type specifier does not name a type")
     }
 
   private def entityTypeFrom(spec: Expr)(implicit fe: Frontend): FinalResult[TypeEntity] =
     fe.typeCheck(spec) flatMap {
       case TypeType(kind: TypeEntity) => Complete(kind)
-      case _: TypeParametrized        => Failure(spec, s"Parametrized type requires parameter list")
-      case _                          => Failure(spec, "Expression does not name an entity")
+      case TypeParametrized(symbol) =>
+        Failure(spec, s"Parametrized ${parametrizedWhat(symbol)} requires parameter list")
+      case _ => Failure(spec, "Expression does not name an entity")
     }
 
   private def ensureNotNum[T: Locatable](

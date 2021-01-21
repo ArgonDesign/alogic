@@ -6,4 +6,4 @@ network type_of_01 {
     in foo i;
 }
 
-// :6: ERROR: Parametrized type requires parameter list
+// :6: ERROR: Parametrized struct requires parameter list

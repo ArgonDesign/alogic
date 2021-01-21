@@ -439,6 +439,9 @@ final private class Checker(val root: Tree)(implicit cc: CompilerContext, fe: Fr
                 case _: TypeType =>
                   error(tgt, s"Type does not take any parameters")
                   Some(tree)
+                case _: TypePackage =>
+                  error(tgt, s"Package does not take any parameters")
+                  Some(tree)
                 case _ =>
                   error(tgt, s"Expression is not callable")
                   Some(tree)
@@ -461,7 +464,13 @@ final private class Checker(val root: Tree)(implicit cc: CompilerContext, fe: Fr
     child match {
       case expr: Expr =>
         if (!parametrizedOk && expr.tpe.isParametrized) {
-          error(expr, "Parametrized type requires parameter list")
+          val what = expr.tpe.asParametrized.symbol.desc.asInstanceOf[DescParametrized].desc match {
+            case _: DescPackage => "package"
+            case _: DescEntity  => "entity"
+            case _: DescRecord  => "struct"
+            case _              => unreachable
+          }
+          error(expr, s"Parametrized $what requires parameter list")
         }
         if (!tree.isInstanceOf[Expr] && expr.tpe.underlying.isNum) {
           evaluate(expr, "Expression of unsized integer type")

@@ -24,7 +24,6 @@ import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types.Type
 import com.argondesign.alogic.util.unreachable
 
-import java.io.File
 import java.nio.file.Path
 import java.nio.file.Paths
 import scala.annotation.tailrec
@@ -51,7 +50,7 @@ class Frontend(implicit cc: CompilerContext) {
   case class PendingTypeOf(symbol: Symbol) extends PendingFrontendOp
   case class PendingEvaluate(symbol: Symbol) extends PendingFrontendOp
   case class PendingSpecialzie(symbol: Symbol, params: List[Arg]) extends PendingFrontendOp
-  case class PendingImport(paths: List[String], parts: List[String]) extends PendingFrontendOp
+  case class PendingImport(path: String) extends PendingFrontendOp
 
   private val pendingSet = mutable.Set[PendingFrontendOp]()
   private val pendingStack = mutable.Stack[(PendingFrontendOp, Loc)]()
@@ -72,7 +71,7 @@ class Frontend(implicit cc: CompilerContext) {
                   s"$base#[${idxs map { _.toSource } mkString ","}] = ${expr.toSource}"
               } mkString ", "
               s"specialization of symbol '${symbol.name}' with parameters: $paramString"
-            case PendingImport(_, parts) => s"imported package '${parts.mkString(".")}'"
+            case PendingImport(path) => s"""imported file "$path""""
           } pipe { msg =>
             if (initial) {
               Error(loc, s"Circular definition: $msg")
@@ -116,83 +115,77 @@ class Frontend(implicit cc: CompilerContext) {
 
   private def imprt(
       searchPaths: List[Path],
-      nameParts: List[String],
+      path: String,
       loc: Loc,
-      paramOpts: Option[List[Arg]]
+      absolute: Boolean
     ): FinalResult[Symbol] =
     searchPaths.iterator.flatMap { searchPath =>
-      def loop(path: Path, parts: List[String]): Option[File] = parts match {
-        case Nil => unreachable
-        case p :: Nil =>
-          val subPath = path.resolve(p)
-          val pkgFile = if (subPath.toFile.isDirectory) {
-            subPath.resolve("package.alogic").toFile
-          } else {
-            path.resolve(p + ".alogic").toFile
-          }
-          Option.when(pkgFile.isFile)(pkgFile)
-        case p :: ps =>
-          val subPath = path.resolve(p)
-          val pkgFile = subPath.resolve("package.alogic").toFile
-          if (!subPath.toFile.isDirectory || !pkgFile.isFile) None else loop(subPath, ps)
+      val asIs = searchPath.resolve(path).toFile
+      Option.when(asIs.isFile)(asIs) orElse {
+        val withSuffix = searchPath.resolve(path + ".alogic").toFile
+        Option.when(withSuffix.isFile)(withSuffix)
       }
-      loop(searchPath, nameParts)
     }.nextOption match {
       case None =>
         Failure {
-          Error(loc, s"No package named '${nameParts.mkString(".")}'") :: {
-            searchPaths map { path => Note(loc, s"Looked in: $path") }
+          if (absolute) {
+            Error(loc, s"""Cannot find absolute import target "$path"""") :: {
+              searchPaths map { path => Note(loc, s"Looked in: $path") }
+            }
+          } else {
+            Error(loc, s"""Cannot find relative import target "$path"""") :: {
+              val expected = searchPaths.head.resolve(path).toFile.getCanonicalPath
+              val msg = s"Path does not exist or is not a regular file: $expected" :: {
+                if (path endsWith ".alogic") Nil else List(s"or: $expected.alogic")
+              }
+              Note(loc, msg) :: Nil
+            }
           }
         }
       case Some(file) =>
         importCache.getOrElseUpdate(
           file.getCanonicalPath,
-          fe.elaborate(Source(file)) pipe {
-            case Left(ms)    => Failure(ms)
-            case Right(desc) => Complete(desc)
-          } flatMap { desc =>
-            fe.typeCheck(desc) map { _ => desc.symbol }
+          // TODO: sandbox check
+          guardCircular(PendingImport(file.getCanonicalPath), loc) {
+            file.getName.dropWhile(_ != '.') match {
+              case ".alogic" =>
+                fe.elaborate(Source(file)) pipe {
+                  case Left(ms)    => Failure(ms)
+                  case Right(desc) => Complete(desc)
+                } flatMap { desc =>
+                  fe.typeCheck(desc) map { _ => desc.symbol }
+                }
+              case _ =>
+                Failure(
+                  loc,
+                  s"Unable to import file ${file.getCanonicalPath}",
+                  "unknown filename extension"
+                )
+            }
           }
         ) flatMap { symbol =>
-          paramOpts match {
-            case None => Complete(symbol)
-            case Some(params) =>
-              fe.typeOf(symbol, loc) flatMap {
-                case t if t.isParametrized => fe.specialize(symbol, params, loc)
-                case _                     => Failure(loc, "Package does not take parameters")
-              }
-          }
+          Complete(symbol)
         }
     }
 
-  def imprt(expr: Expr, relative: Int, loc: Loc): FinalResult[Symbol] =
-    withLog(s"Importing $expr") {
-      require(!expr.loc.isSynthetic)
-      require(relative >= 0)
-      val searchPaths = if (relative == 0) {
-        cc.settings.importSearchDirs
-      } else {
-        @tailrec
-        def loop(path: Path, n: Int): Path = if (n == 0) path else loop(path.getParent, n - 1)
-        List(loop(Paths.get(expr.loc.file).toAbsolutePath, relative))
-      }
-
-      def extractParts(expr: Expr): FinalResult[(List[String], Option[List[Arg]])] = {
-        def loop(expr: Expr): FinalResult[List[String]] = expr match {
-          case ExprIdent(Ident(name, Nil)) => Complete(name :: Nil)
-          case ExprDot(expr, name, Nil)    => loop(expr) map { name :: _ }
-          case _                           => Failure(expr, "Invalid import expression")
-        }
-        expr match {
-          case ExprCall(tgt, args) => loop(tgt) map { (_, Some(args)) }
-          case _                   => loop(expr) map { (_, None) }
-        }
-      }
-      extractParts(expr) flatMap {
-        case (nameParts, paramOpts) =>
-          guardCircular(PendingImport(searchPaths map { _.toString }, nameParts), loc) {
-            imprt(searchPaths, nameParts.reverse, loc, paramOpts)
+  def imprt(path: String, loc: Loc): FinalResult[Symbol] =
+    withLog(s"""Importing "$path"""") {
+      path.trim pipe { path =>
+        if (path.isEmpty) {
+          Failure(loc, "Empty import path")
+        } else if (path.startsWith("/")) {
+          Failure(loc, "Import path cannot start with a leading '/'")
+        } else {
+          val absolute = path.head != '.'
+          val searchPaths = if (absolute) {
+            // Absolute import
+            cc.settings.importSearchDirs
+          } else {
+            // Relative import
+            List(Paths.get(loc.file).toAbsolutePath.getParent)
           }
+          imprt(searchPaths, path, loc, absolute)
+        }
       }
     }
 

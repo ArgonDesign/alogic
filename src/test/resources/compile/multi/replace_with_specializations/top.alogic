@@ -4,7 +4,7 @@ network top {
   out bool o_0;
   out bool o_1;
 
-  from sub import sub;
+  from "sub" import sub;
 
   inst_0 = new sub(INVERT=false);
   inst_1 = new sub(INVERT=true);

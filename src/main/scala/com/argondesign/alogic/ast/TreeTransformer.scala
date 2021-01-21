@@ -449,9 +449,8 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
 
   final private def walkChildrenImport(tree: Import): Tree = tree match {
     case node: ImportOne =>
-      val expr = walk(node.expr)
-      val identOpt = walk(node.identOpt)
-      TreeCopier(node)(expr, identOpt)
+      val ident = walk(node.ident)
+      TreeCopier(node)(ident)
   }
 
   final private def walkChildrenUsing(tree: Using): Tree = tree match {
@@ -469,13 +468,10 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
 
   final private def walkChildrenFrom(tree: From): Tree = tree match {
     case node: FromOne =>
-      val expr = walk(node.expr)
       val name = walk(node.name)
       val identOpt = walk(node.identOpt)
-      TreeCopier(node)(expr, name, identOpt)
-    case node: FromAll =>
-      val expr = walk(node.expr)
-      TreeCopier(node)(expr)
+      TreeCopier(node)(name, identOpt)
+    case node: FromAll => node
   }
 
   final private def walkChildrenAssertion(tree: Assertion): Tree = tree match {

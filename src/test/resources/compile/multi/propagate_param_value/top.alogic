@@ -1,4 +1,4 @@
-from inner import *;
+from "inner" import *;
 
 struct my_type {
   u10 x;

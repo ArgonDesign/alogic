@@ -1,3 +1,2 @@
-import a().b;
-
-// :1: ERROR: Invalid import expression
+// @args: -P 2
+// command-line:1: ERROR: Package defined in input file '.*/package_params_07\.alogic' does not take any parameters.

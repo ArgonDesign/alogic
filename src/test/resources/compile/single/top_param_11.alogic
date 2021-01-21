@@ -4,4 +4,4 @@ network top_param_11 {
   param uint W;
 }
 
-// :1: ERROR: Parametrized type requires parameter list
+// :1: ERROR: Parametrized entity requires parameter list

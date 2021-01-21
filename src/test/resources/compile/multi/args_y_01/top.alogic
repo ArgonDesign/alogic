@@ -1,8 +1,8 @@
 // @args: -y /tmp -y /home
-import something_that_hopefully_does_not_exist_in_tmp_nor_home;
+import "something_that_hopefully_does_not_exist_in_tmp_nor_home" as p;
 
-compile something_that_hopefully_does_not_exist_in_tmp_nor_home.connect;
+compile p.connect;
 
-// .*/top.alogic:2: ERROR: No package named 'something_that_hopefully_does_not_exist_in_tmp_nor_home'
+// .*/top.alogic:2: ERROR: Cannot find absolute import target "something_that_hopefully_does_not_exist_in_tmp_nor_home"
 // .*/top.alogic:2: NOTE: Looked in: /tmp
 // .*/top.alogic:2: NOTE: Looked in: /home

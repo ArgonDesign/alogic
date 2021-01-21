@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Copyright (c) 2017-2020 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2021 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
@@ -11,6 +11,7 @@
 package com.argondesign.alogic.antlr
 
 import com.argondesign.alogic.antlr.AlogicParser._
+import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.MessageBuffer
 import com.argondesign.alogic.core.SourceContext
@@ -21,10 +22,9 @@ object ImportBuilder extends BaseBuilder[ImprtContext, Import] {
     object Visitor extends AlogicScalarVisitor[Import] {
       override def visitImportOne(ctx: ImportOneContext): Import =
         ImportOne(
-          if (ctx.relative == null) 0 else ctx.relative.size,
-          ExprBuilder(ctx.expr),
-          Option.when(ctx.ident != null)(IdentBuilder(ctx.ident))
-        ) withLoc ctx.loc
+          ctx.STRING.txt.slice(1, ctx.STRING.txt.length - 1),
+          IdentBuilder(ctx.ident)
+        ) withLoc ctx.loc.copy(point = ctx.STRING.loc.start)
     }
 
     Visitor(ctx)

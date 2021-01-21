@@ -1,5 +1,0 @@
-import a(5) as a5;
-
-compile a5.add as top;
-
-// :1: ERROR: Package does not take parameters

@@ -1,4 +1,4 @@
-from inner_2 import *;
+from "inner_2" import *;
 
 network inner {
   param u10 WIDTH = 1;

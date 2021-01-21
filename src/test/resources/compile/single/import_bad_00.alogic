@@ -1,0 +1,3 @@
+import "/a" as a;
+
+// :1: ERROR: Import path cannot start with a leading '/'

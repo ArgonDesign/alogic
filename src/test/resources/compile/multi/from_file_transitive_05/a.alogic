@@ -1,7 +1,0 @@
-from b import C;
-
-gen if (true) {
-  gen if (true) {
-    using C as D;
-  }
-}

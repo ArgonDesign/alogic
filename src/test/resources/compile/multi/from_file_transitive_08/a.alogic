@@ -1,4 +1,0 @@
-gen for (uint N < 1) {
-  from b import C;
-  const u4 D#[N] = C;
-}

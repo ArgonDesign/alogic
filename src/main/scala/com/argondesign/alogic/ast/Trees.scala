@@ -188,7 +188,7 @@ object Trees {
 
   sealed trait Import extends Tree with Spliceable
 
-  case class ImportOne(relative: Int, expr: Expr, identOpt: Option[Ident]) extends Import
+  case class ImportOne(path: String, ident: Ident) extends Import
 
   //////////////////////////////////////////////////////////////////////////////
   // Using
@@ -204,12 +204,10 @@ object Trees {
   // From
   //////////////////////////////////////////////////////////////////////////////
 
-  // format: off
   sealed trait From extends Tree with Spliceable
 
-  case class FromOne(relative: Int, expr: Expr, name: Expr, identOpt: Option[Ident]) extends From
-  case class FromAll(relative: Int, expr: Expr) extends From
-  // format: on
+  case class FromOne(path: String, name: Expr, identOpt: Option[Ident]) extends From
+  case class FromAll(path: String) extends From
 
   //////////////////////////////////////////////////////////////////////////////
   // Assertion

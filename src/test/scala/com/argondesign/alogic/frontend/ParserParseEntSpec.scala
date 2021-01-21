@@ -38,8 +38,8 @@ final class ParserParseEntSpec extends AnyFreeSpec with AlogicTest {
     }
 
     "import" in {
-      "import a;".asTree[Ent] shouldBe {
-        EntSplice(ImportOne(0, ExprIdent(Ident("a", Nil)), None))
+      """import "a" as a;""".asTree[Ent] shouldBe {
+        EntSplice(ImportOne("a", Ident("a", Nil)))
       }
     }
 
@@ -50,8 +50,8 @@ final class ParserParseEntSpec extends AnyFreeSpec with AlogicTest {
     }
 
     "from" in {
-      "from a import b;".asTree[Ent] shouldBe {
-        EntSplice(FromOne(0, ExprIdent(Ident("a", Nil)), ExprIdent(Ident("b", Nil)), None))
+      """from "a" import b;""".asTree[Ent] shouldBe {
+        EntSplice(FromOne("a", ExprIdent(Ident("b", Nil)), None))
       }
     }
 

@@ -1,0 +1,30 @@
+// @ignore: Requires 'export'
+import "mid_a" as mid_a;
+import "mid_b" as mid_b;
+
+network top {
+  in  u1 i_a;
+  out u1 o_a;
+
+  in  u1 i_b;
+  out u1 o_b;
+
+  // The 2 entities refer to the same thing in the leaf package.
+  inst_a = new mid_a.connect(WIDTH=1);
+  inst_b = new mid_b.connect(WIDTH=1);
+
+  i_a -> inst_a.i; inst_a.o -> o_a;
+  i_b -> inst_b.i; inst_b.o -> o_b;
+}
+// @fec/golden {{{
+//  module top(
+//    input  wire i_a,
+//    output wire o_a,
+//    input  wire i_b,
+//    output wire o_b
+//  );
+//    assign o_a = i_a;
+//    assign o_b = i_b;
+//  endmodule
+// }}}
+

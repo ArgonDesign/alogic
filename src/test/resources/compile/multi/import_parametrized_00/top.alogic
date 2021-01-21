@@ -1,5 +1,0 @@
-import a;
-
-compile a.inc;
-
-// :3: ERROR: Parametrized type requires parameter list

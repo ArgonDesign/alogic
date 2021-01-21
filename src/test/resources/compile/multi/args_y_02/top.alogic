@@ -1,6 +1,6 @@
-import this_is_the_correct_package;
+import "this_is_the_correct_package" as p;
 
-compile this_is_the_correct_package.connect as top;
+compile p.connect as top;
 
 // @fec/golden {{{
 //  module top(

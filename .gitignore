@@ -4,9 +4,13 @@
 /project/project/target
 /gen
 
+# Antlr generated
+/src/main/antlr4/AlogicLexer.tokens
+
 # Testing tools
 /verilator
 /symbiyosys
 
 # Common debug output directory
 /tmp
+

@@ -1,0 +1,12 @@
+import "a" as a;
+
+compile a(1).add as top;
+
+// @fec/golden {{{
+//  module top(
+//    input   wire [7:0]  i,
+//    output  wire [7:0]  o
+//  );
+//    assign o = i + 8'd1;
+//  endmodule
+// }}}

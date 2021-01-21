@@ -1,0 +1,6 @@
+gen for (uint N < 1) {
+  gen for (uint M < 1) {
+    from "b" import C;
+    const u4 D#[N, M] = C;
+  }
+}

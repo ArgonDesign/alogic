@@ -1,4 +1,4 @@
-from always import *;
+from "always" import *;
 
 network top {
   in  bool i;

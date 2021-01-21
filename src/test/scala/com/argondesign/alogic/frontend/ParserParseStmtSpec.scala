@@ -38,8 +38,8 @@ final class ParserParseStmtSpec extends AnyFreeSpec with AlogicTest {
     }
 
     "import" in {
-      "import a;".asTree[Stmt] shouldBe {
-        StmtSplice(ImportOne(0, ExprIdent(Ident("a", Nil)), None))
+      """import "a" as a;""".asTree[Stmt] shouldBe {
+        StmtSplice(ImportOne("a", Ident("a", Nil)))
       }
     }
 
@@ -50,8 +50,8 @@ final class ParserParseStmtSpec extends AnyFreeSpec with AlogicTest {
     }
 
     "from" in {
-      "from a import b;".asTree[Stmt] shouldBe {
-        StmtSplice(FromOne(0, ExprIdent(Ident("a", Nil)), ExprIdent(Ident("b", Nil)), None))
+      """from "a" import b;""".asTree[Stmt] shouldBe {
+        StmtSplice(FromOne("a", ExprIdent(Ident("b", Nil)), None))
       }
     }
 

@@ -1,0 +1,3 @@
+import "../b/c" as c;
+
+const u4 C = c.C;

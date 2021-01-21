@@ -115,7 +115,7 @@ ginit : expr IDENTIFIER point='=' expr ;
 ////////////////////////////////////////////////////////////////////////////////
 
 imprt
-  : 'import' (relative+='.')* expr ('as' ident)? ';' # ImportOne
+  : 'import' STRING 'as' ident ';' # ImportOne
   ;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -132,8 +132,8 @@ using
 ////////////////////////////////////////////////////////////////////////////////
 
 from
-  : 'from' (relative+='.')* expr 'import' expr ('as' ident)? ';' # FromOne
-  | 'from' (relative+='.')* expr 'import' '*' ';'                # FromAll
+  : 'from' STRING 'import' expr ('as' ident)? ';'   # FromOne
+  | 'from' STRING 'import' '*' ';'                  # FromAll
   ;
 
 ////////////////////////////////////////////////////////////////////////////////

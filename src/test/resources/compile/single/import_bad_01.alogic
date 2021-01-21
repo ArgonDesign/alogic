@@ -1,0 +1,3 @@
+import "" as a;
+
+// :1: ERROR: Empty import path

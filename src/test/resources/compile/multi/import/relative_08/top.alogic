@@ -1,0 +1,15 @@
+import "a/d/e" as e;
+
+fsm top {
+  in       u4 i;
+  out wire u4 o;
+
+  void main() {
+    o = i + a.d.e.c.C;
+    fence;
+  }
+}
+
+// .*/a/d/e.alogic:1: ERROR: Cannot find relative import target "./b/c"
+// .*/a/d/e.alogic:1: NOTE: Path does not exist or is not a regular file: .*/import/relative_08/a/d/b/c
+// .*/a/d/e.alogic:1: NOTE: ... or: .*/import/relative_08/a/d/b/c.alogic

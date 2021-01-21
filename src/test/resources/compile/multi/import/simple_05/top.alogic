@@ -1,0 +1,13 @@
+fsm top {
+  in       u4 i;
+  out wire u4 o;
+
+  void main() {
+    import "a" as x;
+
+    o = i + a.C;
+    fence;
+  }
+}
+
+// .*/top.alogic:8: ERROR: 'a' is undefined

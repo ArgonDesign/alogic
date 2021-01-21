@@ -1,0 +1,5 @@
+import "a" as a;
+
+compile a.add as top;
+
+// :3: ERROR: Parametrized package requires parameter list

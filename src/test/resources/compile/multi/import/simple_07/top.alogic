@@ -1,0 +1,18 @@
+fsm top {
+  in       u4 i;
+  out wire u4 o;
+
+  struct s {
+    static u4 f() {
+      import "a" as x;
+      return a.C;
+    }
+  }
+
+  void main() {
+    o = i + s.f();
+    fence;
+  }
+}
+
+// .*/top.alogic:8: ERROR: 'a' is undefined
