@@ -14,11 +14,10 @@ import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
-import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Messages.Fatal
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols.Symbol
-import com.argondesign.alogic.core.Types.TypeRecord
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Types.TypeVoid
 import com.argondesign.alogic.transform.StatementFilter
 import com.argondesign.alogic.util.unreachable
@@ -52,13 +51,13 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatelessTreeTra
   }
 
   // Given a function symbol, a list of actual arguments, and an optional
-  // 'this' symbol, return an iterator holding the statements to be emitted
+  // 'this' expression, return an iterator holding the statements to be emitted
   // to inline the function, and the symbol holding the return value, if the
   // function has non-void return type.
   private def inline(
       symbol: Symbol,
       args: List[Arg],
-      thisOpt: Option[Symbol],
+      thisOpt: Option[Expr],
       loc: Loc
     ): Option[(Iterator[Stmt], Option[Symbol])] = {
 
@@ -173,20 +172,12 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatelessTreeTra
 
             case expr: ExprThis =>
               thisOpt match {
-                case Some(symbol) =>
-                  val thisSymbol = symbol.kind.underlying match {
-                    case TypeRecord(s, _) => s
-                    case _                => throw Ice(expr, "Strange 'this' instance type")
-                  }
-                  val exprSymbol = expr.tpe match {
-                    case TypeRecord(s, _) => s
-                    case _                => throw Ice(expr, "Strange 'this' reference type")
-                  }
-                  if (thisSymbol == exprSymbol) {
-                    ExprSym(symbol) regularize tree.loc
-                  } else {
-                    throw Ice(expr, "Incompatible 'this' reference")
-                  }
+                case Some(thisExpr) =>
+                  assert(expr.tpe.isRecord)
+                  assert(thisExpr.tpe.underlying.isRecord)
+                  assert(expr.tpe.asRecord.symbol == thisExpr.tpe.underlying.asRecord.symbol)
+                  // TODO: should do deep copy here to preserve all locations
+                  TypeAssigner(thisExpr.cpy() withLocOf tree)
                 case None => throw Ice(expr, "Missing instance for 'this' reference")
               }
 
@@ -283,12 +274,12 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatelessTreeTra
     }
   }
 
-  private def getReceiver(tgt: Expr): Option[Symbol] = {
+  private def getReceiver(tgt: Expr): Option[Expr] = {
     require(tgt.tpe.isMethod)
     Option.unless(tgt.tpe.isStaticMethod) {
       tgt match {
-        case ExprSel(ExprSym(symbol), _) => symbol
-        case _                           => throw Ice(tgt, "Don't know how to translate that method call")
+        case ExprSel(expr, _) => expr
+        case _                => throw Ice(tgt, "Don't know how to translate that method call")
       }
     }
   }

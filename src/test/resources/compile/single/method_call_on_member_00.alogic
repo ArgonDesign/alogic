@@ -1,0 +1,30 @@
+struct a {
+  u1 f(u1 i) {
+    return ~i;
+  }
+}
+
+struct b {
+  a x;
+  u1 f(u1 i) {
+    return x.f(i);
+  }
+}
+
+fsm method_call_on_member_00 {
+  in       bool i;
+  out wire bool o;
+  void main() {
+    b y;
+    o = y.f(i);
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module method_call_on_member_00(
+//    input  wire i,
+//    output wire o
+//  );
+//    assign o = ~i;
+//  endmodule
+// }}}
