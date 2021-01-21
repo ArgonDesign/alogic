@@ -88,12 +88,12 @@ object WriteAux extends PairsTransformerPass {
         sSymbols.iterator map { sSymbol =>
           // Figure out whether this is payload, valid or ready
           val value = v2p.get(sSymbol).map { pSymbol =>
-            ListMap("port" -> pSymbol.name, "component" -> "valid")
+            ListMap("port" -> pSymbol.origName, "component" -> "valid")
           } orElse r2p.get(sSymbol).map { pSymbol =>
-            ListMap("port" -> pSymbol.name, "component" -> "ready")
+            ListMap("port" -> pSymbol.origName, "component" -> "ready")
           } getOrElse {
             ListMap[String, Any](
-              "port" -> d2p.getOrElse(sSymbol, sSymbol).name,
+              "port" -> d2p.getOrElse(sSymbol, sSymbol).origName,
               "component" -> "payload",
               "width" -> sSymbol.kind.width,
               "signed" -> sSymbol.kind.isSigned,
@@ -122,7 +122,7 @@ object WriteAux extends PairsTransformerPass {
             case TypeOut(_, FlowControlTypeReady, _) => ("out", "sync ready")
             case _                                   => unreachable
           }
-          pSymbol.name -> ListMap("dir" -> dir, "flow-control" -> fc)
+          pSymbol.origName -> ListMap("dir" -> dir, "flow-control" -> fc)
         }
 
         // Low level ports with no matching high level port
@@ -133,7 +133,7 @@ object WriteAux extends PairsTransformerPass {
             if !coveredPorts(sSymbol)
           } yield {
             val dir = if (sSymbol.kind.isIn) "in" else "out"
-            sSymbol.name -> ListMap("dir" -> dir, "flow-control" -> "none")
+            sSymbol.origName -> ListMap("dir" -> dir, "flow-control" -> "none")
           }
         }
 

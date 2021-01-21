@@ -1,0 +1,30 @@
+network manifest_dictident_ports {
+  struct s8 {
+    u8 a;
+  }
+
+  in  u8 i#[0];
+  out s8 o#[0];
+
+  i#[0] -> o#[0];
+}
+// @fec/golden {{{
+//  module manifest_dictident_ports(
+//    input  wire [7:0] i__0,
+//    output wire [7:0] o__0__a
+//  );
+//    assign o__0__a = i__0;
+//  endmodule
+// }}}
+// @manifest/top-levels/manifest_dictident_ports/ports/i#[0] {{{
+//  { "dir": "in", "flow-control": "none" }
+// }}}
+// @manifest/top-levels/manifest_dictident_ports/ports/o#[0] {{{
+//  { "dir": "out", "flow-control": "none" }
+// }}}
+// @manifest/top-levels/manifest_dictident_ports/signals/i__0 {{{
+//  { "port" : "i#[0]", "component" : "payload", "width" : 8, "signed" : false, "offset" : 0 }
+// }}}
+// @manifest/top-levels/manifest_dictident_ports/signals/o__0__a {{{
+//  { "port" : "o#[0]", "component" : "payload", "width" : 8, "signed" : false, "offset" : 0 }
+// }}}
