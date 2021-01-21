@@ -1,0 +1,34 @@
+struct a {
+  bool x;
+  void f() {
+    x = 0;
+  }
+}
+
+// The indirection triggers a bug around replacing external symbols, in this
+// case InlineMethods removes 'f' from 'a', but does not update the type of
+// 'y' in 'b'.
+struct b {
+  a y;
+}
+
+network instance_sel_struct_port {
+  in  b i;
+  out b o;
+
+  new network inner {
+    in  b ii;
+    out b oo;
+    ii -> oo;
+  }
+
+  i -> inner.ii; inner.oo -> o;
+}
+// @fec/golden {{{
+//  module instance_sel_struct_port(
+//    input  wire i__y__x,
+//    output wire o__y__x
+//  );
+//    assign o__y__x = i__y__x;
+//  endmodule
+// }}}

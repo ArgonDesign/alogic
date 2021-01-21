@@ -222,7 +222,7 @@ final class SplitStructsB(
         val ref = walk(expr).asInstanceOf[Expr]
 
         def cat(struct: TypeRecord, it: Iterator[Symbol]): ExprCat = ExprCat {
-          struct.publicSymbols map { symbol =>
+          struct.dataMembers map { symbol =>
             symbol.kind match {
               case struct: TypeRecord => cat(struct, it)
               case _                  => ExprSel(ref, it.next().name)
